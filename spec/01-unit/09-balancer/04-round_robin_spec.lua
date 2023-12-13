@@ -1039,6 +1039,10 @@ describe("[round robin balancer]", function()
       -- expire the existing record
       record.expire = 0
       record.expired = true
+      -- targets.resolve_targets() queries DNS record with nil(none) qtype
+      assert(client:getcache():delete("none:short:"..record[1].name))
+      assert(client:getcache():delete(record[1].type..":"..record[1].name))
+
       -- do a lookup to trigger the async lookup
       client.resolve("really.really.really.does.not.exist.hostname.test", {qtype = client.TYPE_A})
       sleep(0.5) -- provide time for async lookup to complete
@@ -1282,6 +1286,9 @@ describe("[round robin balancer]", function()
       local test_name = "really.really.really.does.not.exist.hostname.test"
       local ttl = 0.1
       local staleTtl = 0   -- stale ttl = 0, force lookup upon expiring
+      assert(client.init {
+        staleTtl = staleTtl,
+      })
       local record = dnsA({
         { name = test_name, address = "1.2.3.4", ttl = ttl },
       }, staleTtl)

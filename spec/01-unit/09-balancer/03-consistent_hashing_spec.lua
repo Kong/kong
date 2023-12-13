@@ -843,6 +843,10 @@ describe("[consistent_hashing]", function()
       -- expire the existing record
       record.expire = 0
       record.expired = true
+      -- targets.resolve_targets() queries DNS record with nil("none") qtype
+      assert(client:getcache():delete("none:short:"..record[1].name))
+      assert(client:getcache():delete(record[1].type..":"..record[1].name))
+
       -- do a lookup to trigger the async lookup
       client.resolve("really.really.really.does.not.exist.host.test", {qtype = client.TYPE_A})
       sleep(1) -- provide time for async lookup to complete

@@ -268,10 +268,10 @@ describe("[DNS client]", function()
               "options ndots:1",
             }
           }))
-        local dnscache = client.getcache()
+        local lrucache = client.getcache()
         -- insert a last successful type
         local hostname = "host"
-        dnscache:set(hostname, {ttl=0}, client.TYPE_CNAME)
+        lrucache:set(hostname, client.TYPE_CNAME)
         local list = {}
         for qname, qtype in client._search_iter(hostname, nil) do
           table.insert(list, tostring(qname)..":"..tostring(qtype))
@@ -363,10 +363,10 @@ describe("[DNS client]", function()
               "options ndots:1",
             }
           }))
-        local dnscache = client.getcache()
+        local lrucache = client.getcache()
         -- insert a last successful type
         local hostname = "host."
-        dnscache:set(hostname, {ttl=0}, client.TYPE_CNAME)
+        lrucache:set(hostname, client.TYPE_CNAME)
         local list = {}
         for qname, qtype in client._search_iter(hostname, nil) do
           table.insert(list, tostring(qname)..":"..tostring(qtype))
@@ -761,7 +761,7 @@ describe("[DNS client]", function()
 
   it("fetching A record redirected through 2 CNAME records (un-typed)", function()
     assert(client.init({ search = {}, }))
-    local dnscache = client.getcache()
+    local lrucache = client.getcache()
 
     --[[
     This test might fail. Recurse flag is on by default. This means that the first return
@@ -783,13 +783,13 @@ describe("[DNS client]", function()
 
     -- check first CNAME
     local key1 = client.TYPE_CNAME..":"..host
-    local entry1 = dnscache:get(key1)
+    local entry1 = lrucache:get(key1)
     assert.are.equal(host, entry1[1].name)       -- the 1st record is the original 'smtp.'..TEST_DOMAIN
     assert.are.equal(client.TYPE_CNAME, entry1[1].type) -- and that is a CNAME
 
     -- check second CNAME
     local key2 = client.TYPE_CNAME..":"..entry1[1].cname
-    local entry2 = dnscache:get(key2)
+    local entry2 = lrucache:get(key2)
     assert.are.equal(entry1[1].cname, entry2[1].name) -- the 2nd is the middle 'thuis.'..TEST_DOMAIN
     assert.are.equal(client.TYPE_CNAME, entry2[1].type) -- and that is also a CNAME
 
@@ -800,9 +800,9 @@ describe("[DNS client]", function()
     assert.are.equal(#answers, 1)
 
     -- check last successful lookup references
-    local lastsuccess3 = dnscache:get(answers[1].name)
-    local lastsuccess2 = dnscache:get(entry2[1].name)
-    local lastsuccess1 = dnscache:get(entry1[1].name)
+    local lastsuccess3 = lrucache:get(answers[1].name)
+    local lastsuccess2 = lrucache:get(entry2[1].name)
+    local lastsuccess1 = lrucache:get(entry1[1].name)
     assert.are.equal(client.TYPE_A, lastsuccess3)
     assert.are.equal(client.TYPE_CNAME, lastsuccess2)
     assert.are.equal(client.TYPE_CNAME, lastsuccess1)
@@ -828,7 +828,7 @@ describe("[DNS client]", function()
 
   it("fetching multiple SRV records through CNAME (un-typed)", function()
     assert(client.init({ search = {}, }))
-    local dnscache = client.getcache()
+    local lrucache = client.getcache()
 
     local host = "cname2srv."..TEST_DOMAIN
     local typ = client.TYPE_SRV
@@ -838,7 +838,7 @@ describe("[DNS client]", function()
 
     -- first check CNAME
     local key = client.TYPE_CNAME..":"..host
-    local entry = dnscache:get(key)
+    local entry = lrucache:get(key)
     assert.are.equal(host, entry[1].name)
     assert.are.equal(client.TYPE_CNAME, entry[1].type)
 
@@ -885,7 +885,7 @@ describe("[DNS client]", function()
 
   it("fetching IPv4 address as A type", function()
     assert(client.init())
-    local dnscache = client.getcache()
+    local lrucache = client.getcache()
 
     local host = "1.2.3.4"
 
@@ -894,7 +894,7 @@ describe("[DNS client]", function()
     assert.are.equal(client.TYPE_A, answers[1].type)
     assert.are.equal(10*365*24*60*60, answers[1].ttl)  -- 10 year ttl
 
-    assert.equal(client.TYPE_A, dnscache:get(host))
+    assert.equal(client.TYPE_A, lrucache:get(host))
   end)
 
   it("fetching IPv4 address as SRV type", function()
@@ -926,8 +926,8 @@ describe("[DNS client]", function()
     assert.are.equal(10*365*24*60*60, answers[1].ttl)  -- 10 year ttl
     assert.are.equal(host, answers[1].address)
 
-    local dnscache = client.getcache()
-    assert.equal(client.TYPE_AAAA, dnscache:get(host))
+    local lrucache = client.getcache()
+    assert.equal(client.TYPE_AAAA, lrucache:get(host))
   end)
 
   it("fetching IPv6 address as AAAA type (without brackets)", function()
@@ -941,8 +941,8 @@ describe("[DNS client]", function()
     assert.are.equal(10*365*24*60*60, answers[1].ttl)  -- 10 year ttl
     assert.are.equal("["..host.."]", answers[1].address) -- brackets added
 
-    local dnscache = client.getcache()
-    assert.equal(client.TYPE_AAAA, dnscache:get(host))
+    local lrucache = client.getcache()
+    assert.equal(client.TYPE_AAAA, lrucache:get(host))
   end)
 
   it("fetching IPv6 address as SRV type", function()
@@ -1046,7 +1046,7 @@ describe("[DNS client]", function()
             "nameserver 198.51.100.0",
           },
         }))
-    local dnscache = client.getcache()
+    local lrucache = client.getcache()
     local entry1 = {
       {
         type = client.TYPE_CNAME,
@@ -1059,7 +1059,7 @@ describe("[DNS client]", function()
       expire = 0,
     }
     -- insert in the cache
-    dnscache:set(entry1[1].type..":"..entry1[1].name, {ttl=0}, entry1)
+    lrucache:set(entry1[1].type..":"..entry1[1].name, entry1)
 
     -- Note: the bad case would be that the below lookup would hang due to round-robin on an empty table
     local result, err, _ = client.resolve("hello.world", nil, true)
@@ -1074,7 +1074,7 @@ describe("[DNS client]", function()
             "nameserver 198.51.100.0",
           },
         }))
-    local dnscache = client.getcache()
+    local lrucache = client.getcache()
     local entry1 = {
       {
         type = client.TYPE_CNAME,
@@ -1098,8 +1098,8 @@ describe("[DNS client]", function()
       expire = 0,
     }
     -- insert in the cache
-    dnscache:set(entry1[1].type..":"..entry1[1].name, {ttl=0}, entry1)
-    dnscache:set(entry2[1].type..":"..entry2[1].name, {ttl=0}, entry2)
+    lrucache:set(entry1[1].type..":"..entry1[1].name, entry1)
+    lrucache:set(entry2[1].type..":"..entry2[1].name, entry2)
 
     -- Note: the bad case would be that the below lookup would hang due to round-robin on an empty table
     local result, err, _ = client.resolve("hello.world", nil, true)
@@ -1119,8 +1119,8 @@ describe("[DNS client]", function()
         order = {"SRV", "CNAME", "A", "AAAA"},
       }))
 
-    local dnscache = client.getcache()
-    assert.equal(client.TYPE_A, dnscache:get("localhost")) -- success set to A as it is the preferred option
+    local lrucache = client.getcache()
+    assert.equal(client.TYPE_A, lrucache:get("localhost")) -- success set to A as it is the preferred option
 
     assert(client.init(
       {
@@ -1128,8 +1128,8 @@ describe("[DNS client]", function()
         order = {"SRV", "CNAME", "AAAA", "A"},
       }))
 
-    dnscache = client.getcache()
-    assert.equal(client.TYPE_AAAA, dnscache:get("localhost")) -- success set to AAAA as it is the preferred option
+    lrucache = client.getcache()
+    assert.equal(client.TYPE_AAAA, lrucache:get("localhost")) -- success set to AAAA as it is the preferred option
   end)
 
 
@@ -1187,7 +1187,7 @@ describe("[DNS client]", function()
     end)
     it("SRV-record, round-robin on lowest prio",function()
       assert(client.init())
-      local dnscache = client.getcache()
+      local lrucache = client.getcache()
       local host = "hello.world.test"
       local entry = {
         {
@@ -1224,7 +1224,7 @@ describe("[DNS client]", function()
         expire = gettime()+10,
       }
       -- insert in the cache
-      dnscache:set(entry[1].type..":"..entry[1].name, {ttl=0}, entry)
+      lrucache:set(entry[1].type..":"..entry[1].name, entry)
 
       local results = {}
       for _ = 1,20 do
@@ -1239,7 +1239,7 @@ describe("[DNS client]", function()
     end)
     it("SRV-record with 1 entry, round-robin",function()
       assert(client.init())
-      local dnscache = client.getcache()
+      local lrucache = client.getcache()
       local host = "hello.world"
       local entry = {
         {
@@ -1256,7 +1256,7 @@ describe("[DNS client]", function()
         expire = gettime()+10,
       }
       -- insert in the cache
-      dnscache:set(entry[1].type..":"..entry[1].name, {ttl=0}, entry)
+      lrucache:set(entry[1].type..":"..entry[1].name, entry)
 
       -- repeated lookups, as the first will simply serve the first entry
       -- and the only second will setup the round-robin scheme, this is
@@ -1269,7 +1269,7 @@ describe("[DNS client]", function()
     end)
     it("SRV-record with 0-weight, round-robin",function()
       assert(client.init())
-      local dnscache = client.getcache()
+      local lrucache = client.getcache()
       local host = "hello.world"
       local entry = {
         {
@@ -1306,7 +1306,7 @@ describe("[DNS client]", function()
         expire = gettime()+10,
       }
       -- insert in the cache
-      dnscache:set(entry[1].type..":"..entry[1].name, {ttl=0}, entry)
+      lrucache:set(entry[1].type..":"..entry[1].name, entry)
 
       -- weight 0 will be weight 1, without any reduction in weight
       -- of the other ones.
@@ -1321,7 +1321,7 @@ describe("[DNS client]", function()
     end)
     it("port passing",function()
       assert(client.init())
-      local dnscache = client.getcache()
+      local lrucache = client.getcache()
       local entry_a = {
         {
           type = client.TYPE_A,
@@ -1348,8 +1348,8 @@ describe("[DNS client]", function()
         expire = gettime()+10,
       }
       -- insert in the cache
-      dnscache:set(entry_a[1].type..":"..entry_a[1].name, {ttl=0}, entry_a)
-      dnscache:set(entry_srv[1].type..":"..entry_srv[1].name, {ttl=0}, entry_srv)
+      lrucache:set(entry_a[1].type..":"..entry_a[1].name, entry_a)
+      lrucache:set(entry_srv[1].type..":"..entry_srv[1].name, entry_srv)
       local ip, port
       local host = "a.record.test"
       ip,port = client.toip(host)
@@ -1433,9 +1433,9 @@ describe("[DNS client]", function()
           expire = gettime()+10,  -- active
         }
         -- insert in the cache
-        local dnscache = client.getcache()
-        dnscache:set(A_entry[1].type..":"..A_entry[1].name, {ttl=0}, A_entry)
-        dnscache:set(AAAA_entry[1].type..":"..AAAA_entry[1].name, {ttl=0}, AAAA_entry)
+        local lrucache = client.getcache()
+        lrucache:set(A_entry[1].type..":"..A_entry[1].name, A_entry)
+        lrucache:set(AAAA_entry[1].type..":"..AAAA_entry[1].name, AAAA_entry)
       end
       assert(client.init({order = {"AAAA", "A"}}))
       config()
@@ -1467,7 +1467,7 @@ describe("[DNS client]", function()
               "nameserver 198.51.100.0",
             },
           }))
-      local dnscache = client.getcache()
+      local lrucache = client.getcache()
       local entry1 = {
         {
           type = client.TYPE_CNAME,
@@ -1491,8 +1491,8 @@ describe("[DNS client]", function()
         expire = gettime()+10, -- active
       }
       -- insert in the cache
-      dnscache:set(entry1[1].type..":"..entry1[1].name, {ttl=0}, entry1)
-      dnscache:set(entry2[1].type..":"..entry2[1].name, {ttl=0}, entry2)
+      lrucache:set(entry1[1].type..":"..entry1[1].name, entry1)
+      lrucache:set(entry2[1].type..":"..entry2[1].name, entry2)
 
       -- Note: the bad case would be that the below lookup would hang due to round-robin on an empty table
       local ip, port, _ = client.toip("hello.world", 123, true)
@@ -1597,7 +1597,12 @@ describe("[DNS client]", function()
     assert.are.equal(1, call_count)
     assert.are.equal(NOT_FOUND_ERROR, err2)
     res2 = assert(client.getcache():get(client.TYPE_A..":"..qname))
-    assert.equal(res1, res2)
+    -- We have updated the new expired res2 in the shared dict,
+    -- see the logic of handling the stale value in function lookup_callback().
+    assert.not_equal(res1, res2)
+    assert.equal(res1.errcode, res2.errcode)
+    assert.equal(res1.errstr, res2.errstr)
+    assert.falsy(res1.expired)
     assert.is_true(res2.expired)  -- by now, record is marked as expired
 
 
@@ -1672,7 +1677,12 @@ describe("[DNS client]", function()
     assert.are.equal(call_count, 1)
     assert.are.equal(err1, err2)
     res2 = assert(client.getcache():get(client.TYPE_A..":"..qname))
-    assert.are.equal(res1, res2)
+    -- We have updated the new expired res2 in the shared dict,
+    -- see the logic of handling the stale value in function lookup_callback().
+    assert.are_not.equal(res1, res2)
+    assert.equal(res1.errcode, res2.errcode)
+    assert.equal(res1.errstr, res2.errstr)
+    assert.falsy(res1.expired)
     assert.is_true(res2.expired)
 
     -- wait for expiry of staleTtl and retry, 2 calls, new result
@@ -1733,6 +1743,7 @@ describe("[DNS client]", function()
       -- now count the unique responses we got
       local counters = {}
       for _, r in ipairs(results) do
+        assert.equal(r[1].address, results[1][1].address)
         r = tostring(r)
         counters[r] = (counters[r] or 0) + 1
       end
@@ -1741,7 +1752,8 @@ describe("[DNS client]", function()
 
       -- we should have a single result table, as all threads are supposed to
       -- return the exact same table.
-      assert.equal(1,count)
+      assert.equal(1, call_count)
+      assert.equal(10, count)
     end)
 
     it("timeout while waiting", function()
@@ -1807,14 +1819,14 @@ describe("[DNS client]", function()
 
       -- results[1~9] are equal, as they all will wait for the first response
       for i = 1, 9 do
-        assert.equal("timeout", results[i])
+        assert.equal("could not acquire callback lock: timeout", results[i])
       end
       -- results[10] comes from synchronous DNS access of the first request
       assert.equal(ip, results[10][1]["address"])
     end)
   end)
 
-  it("noSynchronisation == true, queries on each request", function()
+  it("noSynchronisation == true, queries on each request (deprecated)", function()
     -- basically the local function _synchronized_query
     assert(client.init({
       resolvConf = {
@@ -1870,7 +1882,7 @@ describe("[DNS client]", function()
     end
 
     -- all results are unique, each call got its own query
-    assert.equal(call_count, 10)
+    assert.equal(call_count, 1)
   end)
 
 end)

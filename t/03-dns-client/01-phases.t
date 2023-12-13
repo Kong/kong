@@ -1,5 +1,7 @@
 use Test::Nginx::Socket;
 
+no_long_string();
+
 plan tests => repeat_each() * (blocks() * 4 + 1);
 
 workers(6);
@@ -64,9 +66,8 @@ qq {
     }
 --- request
 GET /t
---- response_body
-answers: nil
-err: nil
---- error_log
+--- response_body_like chomp
+err: callback threw an error: .* API disabled in the context of init_worker_by_lua
+--- no_error_log
 [error]
 API disabled in the context of init_worker_by_lua
