@@ -41,7 +41,22 @@ jobs:
           PRINTABLE_SIZE=$(numfmt --to=iec --suffix=B --format="%.1f" "$SIZE")
 
           git push -f origin HEAD:chore/update-runtimes
+          cat > /tmp/commit-message <<EOD
+          This PR updates the test runtimes file to incorporate latest statistics for better scheduling.
+          
+          It increases the repository size by $PRINTABLE_SIZE.
+          
+          The commit must be signed by a developer using these steps in the kong repository:
+          \`\`\`
+          git fetch
+          git checkout -b chore/update-runtimes origin/update-runtimes
+          git commit --amend --no-edit --author "\$(git config user.name) <\$(git config user.email)>"
+          git push -f
+          git checkout main
+          git branch -d chore/update-runtimes
+          \`\`\`
+          EOD
           gh pr create --title "chore(ci): update test runtimes" \
-                       --body "This PR updates the test runtimes file to incorporate latest statistics for better scheduling.  It increases the repository size by $PRINTABLE_SIZE" \
+                       --body-file /tmp/commit-message
                        --base master \
                        --head chore/update-runtimes
