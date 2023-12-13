@@ -1,0 +1,3 @@
+message: "cleanup of rpm/deb residual files after uninstall"
+type: feature
+scope: Core
