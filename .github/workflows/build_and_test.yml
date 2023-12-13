@@ -104,7 +104,7 @@ jobs:
         test-suites-file: .ci/test_suites.json
         test-file-runtime-file: .ci/runtimes.txt
         output-prefix: test-chunk.
-        runner-count: $RUNNER_COUNT
+        runner-count: ${{ env.RUNNER_COUNT }}
 
     - name: Upload schedule files
       uses: actions/upload-artifact@v3
