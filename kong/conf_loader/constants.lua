@@ -8,7 +8,6 @@
 
 local kong_meta = require "kong.meta"
 local constants = require "kong.constants"
-local openssl_version = require "resty.openssl.version"
 local ee_conf_loader = require "kong.enterprise_edition.conf_loader"
 
 
@@ -79,38 +78,8 @@ local CIPHER_SUITES = {
                           -- can optionally turn them on if they are aware of the caveats.
                           -- No FIPS compliant predefined DH group available prior to
                           -- OpenSSL 3.0.
-                          -- BoringSSL has issue expanding TLSv1.2+FIPS, so we hard code the list here
                 protocols = "TLSv1.2",
-                  -- XXX EE
-                  ciphers = openssl_version.BORINGSSL and
-                           ("ECDHE-RSA-AES256-GCM-SHA384:"
-                        .. "DHE-DSS-AES256-GCM-SHA384:"
-                        .. "DHE-RSA-AES256-GCM-SHA384:"
-                        .. "ECDHE-ECDSA-AES128-GCM-SHA256:"
-                        .. "ECDHE-RSA-AES128-GCM-SHA256:"
-                        .. "DHE-DSS-AES128-GCM-SHA256:"
-                        .. "DHE-RSA-AES128-GCM-SHA256:"
-                        .. "ECDHE-ECDSA-AES256-SHA384:"
-                        .. "ECDHE-RSA-AES256-SHA384:"
-                        .. "DHE-RSA-AES256-SHA256:"
-                        .. "DHE-DSS-AES256-SHA256:"
-                        .. "ECDHE-ECDSA-AES128-SHA256:"
-                        .. "ECDHE-RSA-AES128-SHA256:"
-                        .. "DHE-RSA-AES128-SHA256:"
-                        .. "DHE-DSS-AES128-SHA256:"
-                        .. "RSA-PSK-AES256-GCM-SHA384:"
-                        .. "DHE-PSK-AES256-GCM-SHA384:"
-                        .. "AES256-GCM-SHA384:"
-                        .. "PSK-AES256-GCM-SHA384:"
-                        .. "RSA-PSK-AES128-GCM-SHA256:"
-                        .. "DHE-PSK-AES128-GCM-SHA256:"
-                        .. "AES128-GCM-SHA256:"
-                        .. "PSK-AES128-GCM-SHA256:"
-                        .. "AES256-SHA256:"
-                        .. "AES128-SHA256:"
-                        .. "AES256-SHA:"
-                        .. "AES128-SHA") or
-                           "TLSv1.2+FIPS:kRSA+FIPS:!eNULL:!aNULL",
+                  ciphers = "TLSv1.2+FIPS:kRSA+FIPS:!eNULL:!aNULL",
     prefer_server_ciphers = "on",
   }
 }
@@ -243,13 +212,6 @@ local DYNAMIC_KEY_NAMESPACES = {
     prefix = "nginx_wasm_",
     ignore = EMPTY,
   },
-  -- XXX EE
-  {
-    injected_conf_name = "nginx_debug_directives",
-    prefix = "nginx_debug_",
-    ignore = EMPTY,
-  },
-  -- XXX EE
 }
 
 
@@ -533,9 +495,7 @@ local CONF_PARSERS = {
   cluster_control_plane = { typ = "string", },
   cluster_cert = { typ = "string" },
   cluster_cert_key = { typ = "string" },
-  --- XXX EE
-  cluster_mtls = { enum = { "shared", "pki", "pki_check_cn" } },
-  --- XXX EE
+  cluster_mtls = { enum = { "shared", "pki" } },
   cluster_ca_cert = { typ = "string" },
   cluster_server_name = { typ = "string" },
   cluster_data_plane_purge_delay = { typ = "number" },
@@ -599,36 +559,6 @@ local CONF_PARSERS = {
 
   request_debug = { typ = "boolean" },
   request_debug_token = { typ = "string" },
-
-  --- XXX EE
-  debug_listen = { typ = "array" },
-  debug_listen_local = { typ = "boolean" },
-  debug_ssl_cert = { typ = "array" },
-  debug_ssl_cert_key = { typ = "array" },
-  debug_access_log = { typ = "string" },
-  debug_error_log = { typ = "string" },
-
-  pg_ssl_required = { typ = "boolean" },
-  pg_ssl_version = { enum = { "tlsv1_1", "tlsv1_2", "tlsv1_3", "any" } },
-  pg_ssl_cert = { typ = "string" },
-  pg_ssl_cert_key = { typ = "string" },
-
-  pg_ro_ssl_required = { typ = "boolean" },
-  -- allow nil because it uses pg_ssl_version by default
-  pg_ro_ssl_version = { enum = { nil, "tlsv1_1", "tlsv1_2", "tlsv1_3", "any" } },
-  pg_ro_ssl_cert = { typ = "string" },
-  pg_ro_ssl_cert_key = { typ = "string" },
-
-  cluster_allowed_common_names = { typ = "array" },
-
-  cluster_fallback_config_storage = { typ = "string" },
-  cluster_fallback_export_s3_config = { typ = "string" },
-  cluster_fallback_config_export = { typ = "boolean" },
-  cluster_fallback_config_export_delay = { typ = "number" },
-  cluster_fallback_config_import = { typ = "boolean" },
-
-  allow_inconsistent_data_plane_plugins = { typ = "boolean" },
-  --- XXX EE
 }
 
 
@@ -664,25 +594,6 @@ local CONF_BASIC = {
   nginx_http_lua_ssl_protocols = true,
   nginx_stream_lua_ssl_protocols = true,
   vault_env_prefix = true,
-
-  -- XXX EE
-  vault_aws_region = true,
-  vault_gcp_project_id = true,
-  vault_hcv_protocol = true,
-  vault_hcv_host = true,
-  vault_hcv_port = true,
-  vault_hcv_namespace = true,
-  vault_hcv_mount = true,
-  vault_hcv_kv = true,
-  vault_hcv_token = true,
-  vault_hcv_auth_method = true,
-  vault_hcv_kube_role = true,
-  vault_hcv_kube_api_token_file = true,
-  vault_azure_client_id = true,
-  vault_azure_tenant_id = true,
-  vault_azure_type = true,
-  vault_azure_vault_uri = true,
-  -- XXX EE
 }
 
 
@@ -731,6 +642,9 @@ local ADMIN_GUI_AUTH_CONFIGS = {
 ee_conf_loader.add(PREFIX_PATHS, ee_conf_loader.EE_PREFIX_PATHS)
 ee_conf_loader.add(CONF_PARSERS, ee_conf_loader.EE_CONF_INFERENCES)
 ee_conf_loader.add(CONF_SENSITIVE, ee_conf_loader.EE_CONF_SENSITIVE)
+
+ee_conf_loader.add(CONF_BASIC, ee_conf_loader.EE_CONF_BASIC)
+ee_conf_loader.append(DYNAMIC_KEY_NAMESPACES, ee_conf_loader.EE_DYNAMIC_KEY_NAMESPACES)
 
 --- XXX EE
 

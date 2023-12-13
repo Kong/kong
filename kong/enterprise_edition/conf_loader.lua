@@ -201,6 +201,37 @@ local EE_CONF_INFERENCES = {
 
   pg_iam_auth = { typ = "boolean" },
   pg_ro_iam_auth = { typ = "boolean" },
+
+  -- "pki_check_cn" only for EE
+  cluster_mtls = { enum = { "shared", "pki", "pki_check_cn" } },
+
+  debug_listen = { typ = "array" },
+  debug_listen_local = { typ = "boolean" },
+  debug_ssl_cert = { typ = "array" },
+  debug_ssl_cert_key = { typ = "array" },
+  debug_access_log = { typ = "string" },
+  debug_error_log = { typ = "string" },
+
+  pg_ssl_required = { typ = "boolean" },
+  pg_ssl_version = { enum = { "tlsv1_1", "tlsv1_2", "tlsv1_3", "any" } },
+  pg_ssl_cert = { typ = "string" },
+  pg_ssl_cert_key = { typ = "string" },
+
+  pg_ro_ssl_required = { typ = "boolean" },
+  -- allow nil because it uses pg_ssl_version by default
+  pg_ro_ssl_version = { enum = { nil, "tlsv1_1", "tlsv1_2", "tlsv1_3", "any" } },
+  pg_ro_ssl_cert = { typ = "string" },
+  pg_ro_ssl_cert_key = { typ = "string" },
+
+  cluster_allowed_common_names = { typ = "array" },
+
+  cluster_fallback_config_storage = { typ = "string" },
+  cluster_fallback_export_s3_config = { typ = "string" },
+  cluster_fallback_config_export = { typ = "boolean" },
+  cluster_fallback_config_export_delay = { typ = "number" },
+  cluster_fallback_config_import = { typ = "boolean" },
+
+  allow_inconsistent_data_plane_plugins = { typ = "boolean" },
 }
 
 
@@ -217,6 +248,38 @@ local EE_CONF_SENSITIVE = {
   keyring_private_key = true,
   keyring_recovery_public_key = true,
   vault_hcv_token = true,
+}
+
+
+local EMPTY = {}
+
+
+local EE_DYNAMIC_KEY_NAMESPACES = {
+  {
+    injected_conf_name = "nginx_debug_directives",
+    prefix = "nginx_debug_",
+    ignore = EMPTY,
+  },
+}
+
+
+local EE_CONF_BASIC = {
+  vault_aws_region = true,
+  vault_gcp_project_id = true,
+  vault_hcv_protocol = true,
+  vault_hcv_host = true,
+  vault_hcv_port = true,
+  vault_hcv_namespace = true,
+  vault_hcv_mount = true,
+  vault_hcv_kv = true,
+  vault_hcv_token = true,
+  vault_hcv_auth_method = true,
+  vault_hcv_kube_role = true,
+  vault_hcv_kube_api_token_file = true,
+  vault_azure_client_id = true,
+  vault_azure_tenant_id = true,
+  vault_azure_type = true,
+  vault_azure_vault_uri = true,
 }
 
 
@@ -1002,14 +1065,25 @@ local function add(dst, src)
 end
 
 
+local function append(dst, src)
+  for _, v in ipairs(src) do
+    table.insert(dst, v)
+  end
+end
+
+
 return {
   EE_PREFIX_PATHS = EE_PREFIX_PATHS,
   EE_CONF_INFERENCES = EE_CONF_INFERENCES,
   EE_CONF_SENSITIVE = EE_CONF_SENSITIVE,
 
+  EE_DYNAMIC_KEY_NAMESPACES = EE_DYNAMIC_KEY_NAMESPACES,
+  EE_CONF_BASIC = EE_CONF_BASIC,
+
   validate = validate,
   load = load,
   add = add,
+  append = append,
 
   -- only exposed for unit testing :-(
   validate_enforce_rbac = validate_enforce_rbac,
