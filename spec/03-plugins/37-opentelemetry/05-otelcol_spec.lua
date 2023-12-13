@@ -75,7 +75,8 @@ for _, strategy in helpers.each_strategy() do
 
       lazy_setup(function()
         -- clear file
-        os.execute("cat /dev/null > " .. OTELCOL_FILE_EXPORTER_PATH)
+        local shell = require "resty.shell"
+        shell.run("cat /dev/null > " .. OTELCOL_FILE_EXPORTER_PATH, nil, 0)
         setup_instrumentations("all")
       end)
 
