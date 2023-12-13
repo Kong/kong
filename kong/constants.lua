@@ -36,6 +36,7 @@ local plugins = {
   "azure-functions",
   "zipkin",
   "opentelemetry",
+  "ai-proxy",
 }
 
 local plugin_map = {}
