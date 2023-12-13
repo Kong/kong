@@ -13,7 +13,7 @@ on:
 jobs:
   notify_failure:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.event != 'schedule' }}
+    # if: ${{ github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.event != 'schedule' }}
     steps:
     - name: Fetch mapping file
       id: fetch_mapping
@@ -42,6 +42,18 @@ jobs:
           const run_url = "${{ github.event.workflow_run.html_url }}";
           const slack_mapping = JSON.parse(process.env.SLACK_MAPPING);
           const actor_github_id = "${{ github.event.workflow_run.actor.login }}";
+
+          const pullRequests = github.event.workflow_run.pull_requests;
+          if (pullRequests && pullRequests.length > 0) {
+              const prNumber = pullRequests[0].number;
+              const prAuthor = pullRequests[0].user.login;
+
+              console.log(`PR Number: ${prNumber}`);
+              console.log(`PR Author: ${prAuthor}`);
+            } else {
+              console.log("No pull requests found in the workflow run context.");
+            }
+
           const actor_slack_id = slack_mapping[actor_github_id];
           const actor = actor_slack_id ? `<@${actor_slack_id}>` : actor_github_id;
           const payload = {
