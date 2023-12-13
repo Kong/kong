@@ -31,18 +31,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
         run: |
+          FIRST_LINE=$(git diff-tree -r -c -M -C --no-commit-id HEAD | head -n 1)
+          BLOB_HASH=$(echo $FIRST_LINE | awk '{print $4}')
+          SIZE=$(echo $BLOB_HASH | git cat-file --batch-check | grep "blob" | awk '{ print $3 }')
+          PRINTABLE_SIZE=$(numfmt --to=iec --suffix=B --format="%.1f" "$SIZE")
+
           git config user.name "GitHub Actions Bot"
           git config user.email "<team-gateway@konghq.com>"
           git commit -m "chore(ci): updated test file runtime file" .ci/runtimes.json
           git push -f origin HEAD:chore/update-runtimes
           gh pr create --title "chore(ci): update test runtimes" \
-                       --body "This PR updates the test runtimes file to incorporate latest statistics for better scheduling." \
+                       --body "This PR updates the test runtimes file to incorporate latest statistics for better scheduling.  It increases the repository size by $PRINTABLE_SIZE" \
                        --base master \
                        --head chore/update-runtimes
-
-      - name: Report repository size increase
-        run: |
-          FIRST_LINE=$(git diff-tree -r -c -M -C --no-commit-id HEAD | head -n 1)
-          BLOB_HASH=$(echo $FIRST_LINE | awk '{print $4}')
-          SIZE=$(echo $BLOB_HASH | git cat-file --batch-check | grep "blob" | awk '{ print $3 }')
-          echo The repository increased in size by $(numfmt --to=iec --suffix=B --format="%.1f" "$SIZE")
