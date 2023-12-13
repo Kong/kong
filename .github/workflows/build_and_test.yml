@@ -265,8 +265,8 @@ jobs:
       uses: Kong/gateway-test-scheduler/runner@main
       with:
         tests-to-run-file: test-chunk.${{ matrix.runner }}.json
-        failed-test-files-file: $FAILED_TEST_FILES_FILE
-        test-file-runtime-file: $TEST_FILE_RUNTIME_FILE
+        failed-test-files-file: ${{ env.FAILED_TEST_FILES_FILE }}
+        test-file-runtime-file: ${{ env.TEST_FILE_RUNTIME_FILE }}
         setup-venv: . ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
 
     - name: Upload test rerun information
