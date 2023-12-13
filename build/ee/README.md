@@ -4,8 +4,7 @@
 
 In addition to the standard OpenResty, the Enterprise Edition of OpenResty includes the following features:
 
-- `--ssl-provider` option to `kong-ngx-build` for specifying the SSL provider to use. Currently only `openssl` and `boringssl` are supported.
-- `--boringssl` option to `kong-ngx-build` for specifying the BoringSSL version to use.
+- `--ssl-provider` option to `kong-ngx-build` for specifying the SSL provider to use. Currently only `openssl` is supported.
 - `--resty-websocket` option to `kong-ngx-build` for enabling the `resty.websocket` module.
 - `pre-install` and `post-install` hooks to install Enterprise Edition specific binaries and files.
 

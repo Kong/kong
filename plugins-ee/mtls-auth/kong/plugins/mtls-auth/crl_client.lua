@@ -7,10 +7,6 @@
 
 local http = require "resty.http"
 local socket_url = require "socket.url"
-local openssl_x509_store = require("resty.openssl.x509.store")
-local verify_flags = openssl_x509_store.verify_flags
-local flags = verify_flags.X509_V_FLAG_PARTIAL_CHAIN +
-        verify_flags.X509_V_FLAG_CRL_CHECK
 
 local _M = {}
 
@@ -22,7 +18,6 @@ local function validate_protocol(host_url)
 
   return host_url
 end
-
 
 local function get_and_validate_crl_url(cert)
   local crl_url, err = cert:get_crl_url()
@@ -76,19 +71,11 @@ function _M.validate_cert(conf, proof_chain, store)
   store:add(crl, true)
 
   local res, err = store:check_revocation(proof_chain)
-  if res then
-    return true
-  else
-    -- fallback to call store:verify if check_revocation isn't supported
-    if err == "x509.store:check_revocation: this API is not supported in BoringSSL"
-      or err == "x509.store:check_revocation: this API is supported from OpenSSL 1.1.0" then
-      res, err = store:verify(proof_chain[1], proof_chain, false, nil, nil, flags)
-      if res then
-        return true
-      end
-    end
+  if not res then
     return false, err
   end
+
+  return true
 end
 
 return _M

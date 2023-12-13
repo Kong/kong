@@ -31,15 +31,6 @@ def transform(f: FileInfo):
             f.runpath = expected_rpath
         # otherwise remain unmodified
 
-    # XXX: boringssl also hardcodes the rpath during build; normally library
-    # loads libssl.so also loads libcrypto.so so we _should_ be fine.
-    # we are also replacing boringssl with openssl 3.0 for FIPS for not fixing this for now
-    if glob_match(f.path, ["**/kong/lib/libssl.so.1.1"]):
-        if f.runpath and "boringssl_fips/build/crypto" in f.runpath:
-            f.runpath = "<removed in manifest>"
-        elif f.rpath and "boringssl_fips/build/crypto" in f.rpath:
-            f.rpath = "<removed in manifest>"
-
 
 # libc:
 # - https://repology.org/project/glibc/versions
@@ -221,7 +212,7 @@ for target in list(targets.keys()):
 
         # ubuntu-22.04-arm64
         targets[target.replace("-amd64", "-arm64")] = e
-    
+
     if target in ("el8-amd64", "el9-amd64", "ubuntu-20.04-amd64", "ubuntu-22.04-amd64"):
         e = deepcopy(targets[target])
         e.manifest = e.manifest.replace("-amd64.txt", "-amd64-fips.txt")
@@ -231,4 +222,3 @@ for target in list(targets.keys()):
 
         # ubuntu-22.04-amd64-fips
         targets[target + "-fips"] = e
-
