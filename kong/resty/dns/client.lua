@@ -1275,9 +1275,8 @@ local function resolve(qname, r_opts, dnsCacheOnly, try_list)
           cacheShortInsert(records, qname, qtype)
         end
 
-        -- check if we need to dereference a CNAME
+        -- dereference CNAME
         if records[1].type == _M.TYPE_CNAME and qtype ~= _M.TYPE_CNAME then
-          -- dereference CNAME
           opts.qtype = nil
           add_status_to_try_list(try_list, "dereferencing CNAME")
           return resolve(records[1].cname, opts, dnsCacheOnly, try_list)
