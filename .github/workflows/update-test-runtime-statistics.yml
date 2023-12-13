@@ -30,17 +30,18 @@ jobs:
       - name: Commit
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
+          GIT_AUTHOR_NAME: "GitHub Actions Bot"
+          GIT_AUTHOR_EMAIL: "<team-gateway@konghq.com>"
         run: |
-          git config user.name "GitHub Actions Bot"
-          git config user.email "<team-gateway@konghq.com>"
           git commit -m "chore(ci): updated test file runtime file" .ci/runtimes.json
 
+      - name: Create PR message
+        run: |
           FIRST_LINE=$(git diff-tree -r -c -M -C --no-commit-id HEAD | head -n 1)
           BLOB_HASH=$(echo $FIRST_LINE | awk '{print $4}')
           SIZE=$(echo $BLOB_HASH | git cat-file --batch-check | grep "blob" | awk '{ print $3 }')
           PRINTABLE_SIZE=$(numfmt --to=iec --suffix=B --format="%.1f" "$SIZE")
 
-          git push -f origin HEAD:chore/update-runtimes
           cat > /tmp/commit-message <<EOD
           This PR updates the test runtimes file to incorporate latest statistics for better scheduling.
           
@@ -56,6 +57,10 @@ jobs:
           git branch -d chore/update-runtimes
           \`\`\`
           EOD
+
+      - run: git push origin :chore/update-runtimes
+      - run: git push -f origin HEAD:chore/update-runtimes
+      - run: |
           gh pr create --title "chore(ci): update test runtimes" \
                        --body-file /tmp/commit-message
                        --base master \
