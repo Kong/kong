@@ -59,13 +59,17 @@ jobs:
           \`\`\`
           EOD
 
-      - run: git push origin :chore/update-runtimes
-      - run: git push -f origin HEAD:chore/update-runtimes
+      - name: Delete previous branch if it exists
+        run: git push origin :chore/update-runtimes
+
+      - name: Push to branch
+        run: git push -f origin HEAD:chore/update-runtimes
+
       - name: Create PR
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
         run: |
           gh pr create --title "chore(ci): update test runtimes" \
-                       --body-file /tmp/commit-message
+                       --body-file /tmp/commit-message \
                        --base master \
                        --head chore/update-runtimes
