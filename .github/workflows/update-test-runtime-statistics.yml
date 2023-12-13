@@ -29,7 +29,6 @@ jobs:
 
       - name: Commit
         env:
-          GITHUB_TOKEN: ${{ secrets.PAT }}
           GIT_COMMITTER_NAME: "GitHub Actions Bot"
           GIT_COMMITTER_EMAIL: "<team-gateway@konghq.com>"
           GIT_AUTHOR_NAME: "GitHub Actions Bot"
@@ -62,7 +61,10 @@ jobs:
 
       - run: git push origin :chore/update-runtimes
       - run: git push -f origin HEAD:chore/update-runtimes
-      - run: |
+      - name: Create PR
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
+        run: |
           gh pr create --title "chore(ci): update test runtimes" \
                        --body-file /tmp/commit-message
                        --base master \
