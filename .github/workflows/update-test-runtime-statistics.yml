@@ -34,7 +34,7 @@ jobs:
           git config user.name "GitHub Actions Bot"
           git config user.email "<team-gateway@konghq.com>"
           git commit -m "chore(ci): updated test file runtime file" .ci/runtimes.json
-          git push origin HEAD:chore/update-runtimes
+          git push -f origin HEAD:chore/update-runtimes
           gh pr create --title "chore(ci): update test runtimes" \
                        --body "This PR updates the test runtimes file to incorporate latest statistics for better scheduling." \
                        --base master \
