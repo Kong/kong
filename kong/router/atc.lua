@@ -533,20 +533,22 @@ end
 
 
 function _M:exec(ctx)
-  local req_method = self.fields["http.method"] and get_method()
+  local fields = self.fields
+
+  local req_method = fields["http.method"] and get_method()
   local req_uri = ctx and ctx.request_uri or var.request_uri
   local req_host = var.http_host
-  local sni = self.fields["tls.sni"] and server_name()
+  local sni = fields["tls.sni"] and server_name()
 
   local headers
-  if not is_empty_field(self.fields[HTTP_HEADERS_PREFIX]) then
+  if not is_empty_field(fields[HTTP_HEADERS_PREFIX]) then
     headers = get_http_params(get_headers, "headers", "lua_max_req_headers")
 
     headers["host"] = nil
   end
 
   local queries
-  if not is_empty_field(self.fields[HTTP_QUERIES_PREFIX]) then
+  if not is_empty_field(fields[HTTP_QUERIES_PREFIX]) then
     queries = get_http_params(get_uri_args, "queries", "lua_max_uri_args")
   end
 
@@ -563,7 +565,7 @@ function _M:exec(ctx)
   cache_params.headers = headers
   cache_params.queries = queries
 
-  local cache_key = get_cache_key(self.fields, cache_params)
+  local cache_key = get_cache_key(fields, cache_params)
 
   table_release(CACHE_KEY_PARAMS_POOL, cache_params, true)
 
@@ -665,11 +667,13 @@ end
 
 
 function _M:exec(ctx)
-  local src_ip   = self.fields["net.src.ip"] and var.remote_addr
-  local dst_ip   = self.fields["net.dst.ip"] and var.server_addr
+  local fields = self.fields
 
-  local src_port = self.fields["net.src.port"] and tonumber(var.remote_port, 10)
-  local dst_port = self.fields["net.dst.port"] and
+  local src_ip   = fields["net.src.ip"] and var.remote_addr
+  local dst_ip   = fields["net.dst.ip"] and var.server_addr
+
+  local src_port = fields["net.src.port"] and tonumber(var.remote_port, 10)
+  local dst_port = fields["net.dst.port"] and
                    (tonumber((ctx or ngx.ctx).host_port, 10) or tonumber(var.server_port, 10))
 
   -- error value for non-TLS connections ignored intentionally
@@ -704,7 +708,7 @@ function _M:exec(ctx)
   cache_params.dst_port  = dst_port
   cache_params.sni       = sni
 
-  local cache_key = get_cache_key(self.fields, cache_params)
+  local cache_key = get_cache_key(fields, cache_params)
 
   table_release(CACHE_KEY_PARAMS_POOL, cache_params, true)
 
