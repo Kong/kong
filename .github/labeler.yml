@@ -86,6 +86,10 @@ plugins/acme:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/acme/**/*
 
+plugins/ai-proxy:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/ai-proxy/**/*
+
 plugins/aws-lambda:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/aws-lambda/**/*

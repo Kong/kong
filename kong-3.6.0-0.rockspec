@@ -552,6 +552,16 @@ build = {
     ["kong.plugins.opentelemetry.proto"]  = "kong/plugins/opentelemetry/proto.lua",
     ["kong.plugins.opentelemetry.otlp"]  = "kong/plugins/opentelemetry/otlp.lua",
 
+    ["kong.plugins.ai-proxy.handler"] = "kong/plugins/ai-proxy/handler.lua",
+    ["kong.plugins.ai-proxy.schema"] = "kong/plugins/ai-proxy/schema.lua",
+    ["kong.plugins.ai-proxy.drivers.shared"] = "kong/plugins/ai-proxy/drivers/shared.lua",
+    ["kong.plugins.ai-proxy.drivers.openai"] = "kong/plugins/ai-proxy/drivers/openai.lua",
+    ["kong.plugins.ai-proxy.drivers.azure"] = "kong/plugins/ai-proxy/drivers/azure.lua",
+    ["kong.plugins.ai-proxy.drivers.cohere"] = "kong/plugins/ai-proxy/drivers/cohere.lua",
+    ["kong.plugins.ai-proxy.drivers.anthropic"] = "kong/plugins/ai-proxy/drivers/anthropic.lua",
+    ["kong.plugins.ai-proxy.drivers.mistral"] = "kong/plugins/ai-proxy/drivers/mistral.lua",
+    ["kong.plugins.ai-proxy.drivers.llama2"] = "kong/plugins/ai-proxy/drivers/llama2.lua",
+
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
 
