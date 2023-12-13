@@ -99,7 +99,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Schedule tests
-      uses: Kong/gateway-test-scheduler/run@main
+      uses: Kong/gateway-test-scheduler/schedule@main
       with:
         test-suites-file: .ci/test_suites.json
         output-prefix: test-chunk.
