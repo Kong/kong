@@ -6,10 +6,10 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
-local pl_utils = require "pl.utils"
 local utils = require "kong.tools.utils"
 local DB = require "kong.db.init"
 local tb_clone = require "table.clone"
+local shell = require "resty.shell"
 
 
 -- Current number of migrations to execute in a new install
@@ -81,7 +81,7 @@ for _, strategy in helpers.each_strategy() do
         local cmd = string.format(helpers.unindent [[
           echo y | %s KONG_DATABASE=%s %s migrations reset --v -c %s
         ]], lua_path, strategy, helpers.bin_path, helpers.test_conf_path)
-        local ok, code, _, stderr = pl_utils.executeex(cmd)
+        local ok, _, stderr, _, code = shell.run(cmd, nil, 0)
         assert.falsy(ok)
         assert.same(1, code)
         assert.match("not a tty", stderr, 1, true)

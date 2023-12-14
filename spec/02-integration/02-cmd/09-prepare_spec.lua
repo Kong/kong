@@ -7,7 +7,7 @@
 
 local helpers = require "spec.helpers"
 local signals = require "kong.cmd.utils.nginx_signals"
-local pl_utils = require "pl.utils"
+local shell = require "resty.shell"
 
 
 local fmt = string.format
@@ -134,7 +134,7 @@ describe("kong prepare", function()
         assert.is_nil(err)
 
         local cmd = fmt("%s -p %s -c %s", nginx_bin, TEST_PREFIX, "nginx.conf")
-        local ok, _, _, stderr = pl_utils.executeex(cmd)
+        local ok, _, stderr = shell.run(cmd, nil, 0)
 
         assert_no_stderr(stderr)
         assert.truthy(ok)
@@ -168,7 +168,7 @@ describe("kong prepare", function()
         assert.is_nil(err)
 
         local cmd = fmt("%s -p %s -c %s", nginx_bin, TEST_PREFIX, "nginx.conf")
-        local ok, _, _, stderr = pl_utils.executeex(cmd)
+        local ok, _, stderr = shell.run(cmd, nil, 0)
 
         assert.matches("kong_tests_unknown", stderr)
         assert.falsy(ok)

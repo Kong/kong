@@ -161,7 +161,8 @@ for _, strategy in helpers.each_strategy() do
     before_each(function()
       proxy_client = helpers.proxy_client()
       admin_client = helpers.admin_client()
-      os.execute(":> " .. helpers.test_conf.nginx_err_logs) -- clean log files
+      local shell = require "resty.shell"
+      shell.run(":> " .. helpers.test_conf.nginx_err_logs, nil, 0) -- clean log files
     end)
 
     after_each(function ()

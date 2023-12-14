@@ -10,6 +10,7 @@ local constants = require "kong.constants"
 local cjson = require "cjson"
 local lyaml = require "lyaml"
 local lfs = require "lfs"
+local shell = require "resty.shell"
 
 
 local function sort_by_name(a, b)
@@ -719,11 +720,11 @@ describe("kong config", function()
     local kong_yml_exists = false
     if lfs.attributes("kong.yml") then
       kong_yml_exists = true
-      os.execute("mv kong.yml kong.yml~")
+      shell.run("mv kong.yml kong.yml~", nil, 0)
     end
     finally(function()
       if kong_yml_exists then
-        os.execute("mv kong.yml~ kong.yml")
+        shell.run("mv kong.yml~ kong.yml", nil, 0)
       else
         os.remove("kong.yml")
       end

@@ -9,6 +9,7 @@ local signals = require "kong.cmd.utils.nginx_signals"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local pl_dir = require "pl.dir"
+local shell = require "resty.shell"
 
 describe("kong cli utils", function()
 
@@ -35,7 +36,7 @@ describe("kong cli utils", function()
 echo 'nginx version: openresty/%s' >&2]], version
         ))
 
-        assert(os.execute("chmod +x " .. nginx))
+        assert(shell.run("chmod +x " .. nginx, nil, 0))
 
         return nginx
       end

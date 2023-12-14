@@ -5,6 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local shell = require "resty.shell"
 local perf = require("spec.helpers.perf")
 local split = require("pl.stringx").split
 local utils = require("spec.helpers.perf.utils")
@@ -26,7 +27,7 @@ end
 
 local LOAD_DURATION = 180
 
-os.execute("mkdir -p output")
+shell.run("mkdir -p output", nil, 0)
 
 local function patch(helpers, patch_interval)
   local status, bsize
