@@ -132,7 +132,7 @@ describe("CP/DP config compat #" .. strategy, function()
         local fn = chkrs[2]
         if ver == version_num(dp_version) then
           local plugins_table = { plugins = {{ config = conf, name = plugin.name }}}
-          fn(plugins_table)
+          fn(plugins_table, dp_version, "")
         end
       end
       for _, field in ipairs(case.removed or {}) do
@@ -342,12 +342,26 @@ describe("CP/DP config compat #" .. strategy, function()
         config = {
           limit = {1},
           window_size = {2},
-          identifier = "consumer-group"
+          identifier = "consumer-group",
         },
         status = STATUS.NORMAL,
         checker = CHECKERS,
         validator = function(config)
           return config.identifier == 'consumer'
+        end
+      },
+      {
+        plugin = "rate-limiting",
+        label = "w/ limit_by consumer-group unsupported",
+        pending = false,
+        config = {
+          second = 1,
+          limit_by = "consumer-group"
+        },
+        status = STATUS.NORMAL,
+        checker = CHECKERS,
+        validator = function(config)
+          return config.limit_by == 'consumer'
         end
       },
       {

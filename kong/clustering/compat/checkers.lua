@@ -53,7 +53,18 @@ local compatible_checkers = {
             has_update = true
           end
         end
-
+        if plugin.name == 'rate-limiting' then
+          local config = plugin.config
+          if config.limit_by == "consumer-group" then
+            -- remove consumer-group limit_by and replace with the default
+            config.limit_by = "consumer"
+            log_warn_message('configures ' .. plugin.name .. ' plugin with:' ..
+                             ' limit_by == consumer-group',
+                             'overwritten with default value `consumer`',
+                             dp_version, log_suffix)
+            has_update = true
+          end
+        end
         if plugin.name == 'openid-connect' then
           local config = plugin.config
 
