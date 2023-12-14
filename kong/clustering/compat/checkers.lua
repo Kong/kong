@@ -36,6 +36,28 @@ end
 
 
 local compatible_checkers = {
+  {
+    3006000000, -- [[ 3.6.0.0 ]]
+    function(config_table, dp_version, log_suffix)
+      local has_update
+      for _, plugin in ipairs(config_table.plugins or {}) do
+        if plugin.name == 'rate-limiting-advanced' then
+          local config = plugin.config
+          if config.identifier == "consumer-group" then
+            -- remove consumer-group identifier and replace with the default
+            config.identifier = "consumer"
+            log_warn_message('configures ' .. plugin.name .. ' plugin with:' ..
+                             ' identifier == consumer-group',
+                             'overwritten with default value `consumer`',
+                             dp_version, log_suffix)
+            has_update = true
+          end
+        end
+      end
+      return has_update
+    end
+
+  },
   { 3005000000, --[[ 3.5.0.0 ]]
     function(config_table, dp_version, log_suffix)
       local has_update

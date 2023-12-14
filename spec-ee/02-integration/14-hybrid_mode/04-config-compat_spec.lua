@@ -10,10 +10,13 @@ local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
 local FIELDS = require("kong.clustering.compat.removed_fields")
+local CHECKERS = require("kong.clustering.compat.checkers")
+local version = require("kong.clustering.compat.version")
 
 local admin = require "spec.fixtures.admin_api"
 
 local fmt = string.format
+local version_num = version.string_to_number
 
 local CP_HOST = "127.0.0.1"
 local CP_PORT = 9005
@@ -123,6 +126,14 @@ describe("CP/DP config compat #" .. strategy, function()
     assert.equals(case.status, status)
 
     if case.status == STATUS.NORMAL then
+      for _, chkrs in pairs(case.checker or EMPTY) do
+        local ver = chkrs[1]
+        local fn = chkrs[2]
+        if ver == version_num(dp_version) then
+          local plugins_table = { plugins = {{ config = conf, name = plugin.name }}}
+          fn(plugins_table)
+        end
+      end
       for _, field in ipairs(case.removed or {}) do
         assert.not_nil(get(plugin.config, field),
                         "field '" .. field .. "' is missing from the " ..
@@ -148,7 +159,7 @@ describe("CP/DP config compat #" .. strategy, function()
       "services",
       "plugins",
       "clustering_data_planes",
-    }, {'graphql-rate-limiting-advanced'})
+    }, {'graphql-rate-limiting-advanced', 'rate-limiting-advanced'})
 
     PLUGIN_LIST = helpers.get_plugins_list()
 
@@ -168,7 +179,7 @@ describe("CP/DP config compat #" .. strategy, function()
       db_update_frequency = 0.1,
       cluster_listen = CP_HOST .. ":" .. CP_PORT,
       nginx_conf = "spec/fixtures/custom_nginx.template",
-      plugins = "bundled,graphql-rate-limiting-advanced",
+      plugins = "bundled,graphql-rate-limiting-advanced,rate-limiting-advanced",
     }))
   end)
 
@@ -317,6 +328,34 @@ describe("CP/DP config compat #" .. strategy, function()
 
       test(fmt("%s - %s", case.plugin, case.label), function()
         do_assert(case, "3.4.0.0")
+      end)
+    end
+  end)
+
+  describe("3.6.x.y", function()
+    local CASES = {
+      {
+        plugin = "rate-limiting-advanced",
+        label = "w/ identifier consumer-group unsupported",
+        pending = false,
+        config = {
+          limit = {1},
+          window_size = {2},
+          identifier = "consumer-group"
+        },
+        status = STATUS.NORMAL,
+        checker = CHECKERS,
+        validator = function(config)
+          return config.identifier == 'consumer'
+        end
+      }
+    }
+
+    for _, case in ipairs(CASES) do
+      local test = case.pending and pending or it
+
+      test(fmt("%s - %s", case.plugin, case.label), function()
+        do_assert(case, "3.6.0.0")
       end)
     end
   end)
