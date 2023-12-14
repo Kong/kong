@@ -235,7 +235,8 @@ plugins-ee/canary:
   - any-glob-to-any-file: plugins-ee/canary/**/*
 
 plugins-ee/degraphql:
-- plugins-ee/degraphql/**/*
+- changed-files:
+  - any-glob-to-any-file: plugins-ee/degraphql/**/*
 
 plugins-ee/exit-transformer:
 - changed-files:
