@@ -24,7 +24,7 @@ core/db/migrations:
 
 core/db:
 - changed-files:
-  - any-glob-to-any-file: ['kong/db/**/*', '!kong/db/migrations/**/*']
+  - all-globs-to-any-file: ['kong/db/**/*', '!kong/db/migrations/**/*']
 
 changelog:
 - changed-files:
@@ -32,7 +32,7 @@ changelog:
 
 core/docs:
 - changed-files:
-  - any-glob-to-any-file:['**/*.md', '!CHANGELOG.md']
+  - all-globs-to-any-file: ['**/*.md', '!CHANGELOG.md']
 
 autodoc:
 - changed-files:
@@ -56,11 +56,11 @@ core/logs:
 
 core/pdk:
 - changed-files:
-  - any-glob-to-any-file: ['kong/pdk/**/*', '!kong/pdk/log.lua']
+  - all-globs-to-any-file: ['kong/pdk/**/*', '!kong/pdk/log.lua']
 
 core/proxy:
 - changed-files:
-  - any-glob-to-any-file: ['kong/runloop/**/*', '!kong/runloop/balancer/*', '!kong/runloop/plugin_servers/*']
+  - all-globs-to-any-file: ['kong/runloop/**/*', '!kong/runloop/balancer/*', '!kong/runloop/plugin_servers/*']
 
 core/router:
 - changed-files:
