@@ -1302,7 +1302,8 @@ describe(desc, function ()
       delete_route(admin_client, route)
       delete_service(admin_client, service)
       red:close()
-      os.execute("cat servroot/logs/error.log")
+      local shell = require "resty.shell"
+      shell.run("cat servroot/logs/error.log", nil, 0)
     end)
 
     helpers.wait_for_all_config_update({
