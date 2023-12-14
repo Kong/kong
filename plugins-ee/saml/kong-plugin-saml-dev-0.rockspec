@@ -25,7 +25,6 @@ build = {
     ["kong.plugins.saml.saml"] = "kong/plugins/saml/saml.lua",
     ["kong.plugins.saml.sessions"] = "kong/plugins/saml/sessions.lua",
     ["kong.plugins.saml.consumers"] = "kong/plugins/saml/consumers.lua",
-    ["kong.plugins.saml.utils.digest"] = "kong/plugins/saml/utils/digest.lua",
     ["kong.plugins.saml.utils.evp"] = "kong/plugins/saml/utils/evp.lua",
     ["kong.plugins.saml.utils.helpers"] = "kong/plugins/saml/utils/helpers.lua",
     ["kong.plugins.saml.utils.canon"] = "kong/plugins/saml/utils/canon.lua",

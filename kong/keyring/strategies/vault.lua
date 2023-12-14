@@ -7,9 +7,9 @@
 
 local http = require "resty.http"
 local cjson = require "cjson.safe"
-local resty_sha256 = require "resty.sha256"
 local keyring = require "kong.keyring"
 local hcv = require "kong.vaults.hcv"
+local sha256_bin = require "kong.tools.sha256".sha256_bin
 
 
 local _M = {}
@@ -126,9 +126,7 @@ function _M.sync(token)
   end
 
   for _, entry in ipairs(keys) do
-    local sha256 = resty_sha256:new()
-    sha256:update(entry.key)
-    local bytes = sha256:final()
+    local bytes = sha256_bin(entry.key)
 
     keyring.keyring_add(entry.id, bytes)
 

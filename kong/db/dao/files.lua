@@ -11,7 +11,7 @@ local constants = require "kong.constants"
 local workspaces = require "kong.workspaces"
 local permissions = require "kong.portal.permissions"
 local files = require "kong.db.schema.entities.files"
-local resty_sha256 = require "resty.sha256"
+local sha256_hex = require "kong.tools.sha256".sha256_hex
 local file_helpers = require "kong.portal.file_helpers"
 local workspace_config = require "kong.portal.workspace_config"
 
@@ -19,13 +19,6 @@ local workspace_config = require "kong.portal.workspace_config"
 local ws_constants = constants.WORKSPACE_CONFIG
 local DEFAULT_WORKSPACE = workspaces.DEFAULT_WORKSPACE
 
-
-local CHAR_TO_HEX = {};
-for i = 0, 255 do
-  local char = string.char(i)
-  local hex = string.format("%02x", i)
-  CHAR_TO_HEX[char] = hex
-end
 
 
 local function is_legacy()
@@ -42,19 +35,6 @@ local function transform_legacy_fields(entity)
   end
 
   return entity
-end
-
-
-local function hex_encode(str) -- From prosody's util.hex
-  return (str:gsub(".", CHAR_TO_HEX))
-end
-
-
-local function generate_checksum(str)
-  local sha256 = resty_sha256:new()
-  sha256:update(str or "")
-  local digest = sha256:final()
-  return hex_encode(digest)
 end
 
 
@@ -133,7 +113,7 @@ function _Files:insert(entity, options)
   end
 
   if next(entity) and entity.contents then
-    entity.checksum = entity.checksum or generate_checksum(entity.contents)
+    entity.checksum = entity.checksum or sha256_hex(entity.contents or "")
   end
 
   local Files = Schema.new(files)
@@ -165,7 +145,7 @@ function _Files:upsert(file_pk, entity, options)
   end
 
   if next(entity) and entity.contents then
-    entity.checksum = entity.checksum or generate_checksum(entity.contents)
+    entity.checksum = entity.checksum or sha256_hex(entity.contents or "")
   end
 
   if not entity.path then
@@ -205,7 +185,7 @@ function _Files:upsert_by_path(file_pk, entity, options)
   end
 
   if next(entity) and entity.contents then
-    entity.checksum = entity.checksum or generate_checksum(entity.contents)
+    entity.checksum = entity.checksum or sha256_hex(entity.contents or "")
   end
 
   if not entity.path then
@@ -240,7 +220,7 @@ function _Files:update(file_pk, entity, options)
   end
 
   if next(entity) and entity.contents then
-    entity.checksum = entity.checksum or generate_checksum(entity.contents)
+    entity.checksum = entity.checksum or sha256_hex(entity.contents or "")
   end
 
   if not entity.path then
@@ -279,7 +259,7 @@ function _Files:update_by_path(file_pk, entity, options)
   end
 
   if next(entity) and entity.contents then
-    entity.checksum = entity.checksum or generate_checksum(entity.contents)
+    entity.checksum = entity.checksum or sha256_hex(entity.contents or "")
   end
 
   if not entity.path then

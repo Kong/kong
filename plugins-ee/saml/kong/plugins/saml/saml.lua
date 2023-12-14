@@ -7,12 +7,12 @@
 
 local pkey                = require "resty.openssl.pkey"
 local cipher              = require "resty.openssl.cipher"
+local digest              = require "resty.openssl.digest"
 local xmlua               = require "xmlua"
 
 local utils               = require "kong.tools.utils"
 local log                 = require "kong.plugins.saml.log"
 local helpers             = require "kong.plugins.saml.utils.helpers"
-local digest              = require "kong.plugins.saml.utils.digest"
 local timestamp           = require "kong.plugins.saml.utils.timestamp"
 local evp                 = require "kong.plugins.saml.utils.evp"
 local canon               = require "kong.plugins.saml.utils.canon"
@@ -20,6 +20,8 @@ local xslt                = require "kong.plugins.saml.utils.xslt"
 local xpath               = require "kong.plugins.saml.utils.xpath"
 local xmlcatalog          = require "kong.plugins.saml.utils.xmlcatalog"
 local xmlschema           = require "kong.plugins.saml.utils.xmlschema"
+
+local base64_decode       = ngx.decode_base64
 
 
 xmlcatalog.load("xml/xsd/saml-metadata.xml")
@@ -138,7 +140,15 @@ local function verify_reference(element, signature_algorithm)
   -- fixme: do we need to make a copy of the document before we unlink the signature?
   sig:unlink()
   local canon_xml = canon:c14n(element)
-  local valid = digest.verify(canon_xml, digest_value, signature_algorithm)
+  local mdi, err = digest.new(signature_algorithm)
+  if err then
+    return false, "unsupported digest algorithm: " .. (signature_algorithm or "nil")
+  end
+  local md, err = mdi:final(canon_xml)
+  if err then
+    return false, "failed to generate digest: " .. err
+  end
+  local valid = md == base64_decode(digest_value)
   log("reference validation is ", valid)
   if not valid then
     return false, "digest does not match"
@@ -404,10 +414,18 @@ _M.build_login_request = function(request_id, config)
   end
 
   local digest_algorithm = config.request_digest_algorithm
-  local digest = digest.generate(canon:c14n(unsigned_authn_request:root()), digest_algorithm)
+  local mdi, err = digest.new(digest_algorithm)
+  if err then
+    return nil, "unsupported digest algorithm: " .. (digest_algorithm or "nil")
+  end
+
+  local md, err = mdi:final(canon:c14n(unsigned_authn_request:root()))
+  if err then
+    return nil, "failed to generate digest: " .. err
+  end
 
   transform_parameters["digest-algorithm"] = DIGEST_ALGORITHM_TO_XML[digest_algorithm]
-  transform_parameters["digest-value"] = ngx.encode_base64(digest)
+  transform_parameters["digest-value"] = ngx.encode_base64(md)
   transform_parameters["signature-algorithm"] = DIGEST_ALGORITHM_TO_XML[config.request_signature_algorithm]
 
   log("create authn request with digest")

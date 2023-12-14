@@ -4,15 +4,13 @@
 -- subject to the terms of the Kong Master Software License Agreement found
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
-local resty_sha256 = require "resty.sha256"
-local resty_str = require "resty.string"
 local meta = require "kong.meta"
 local helpers = require "kong.enterprise_edition.consumer_groups_helpers"
 local oidc_plugin = require "kong.plugins.openid-connect.handler"
 local kaa_oidc = require "kong.plugins.konnect-application-auth.oidc"
 local arguments = require "kong.plugins.openid-connect.arguments"
+local sha256_hex = require "kong.tools.sha256".sha256_hex
 
-local tostring = tostring
 local ngx = ngx
 local kong = kong
 local table = table
@@ -50,12 +48,6 @@ local function has_value(tab, val)
   return false
 end
 
-local function hash_key(key)
-  local sha256 = resty_sha256:new()
-  sha256:update(key)
-  return resty_str.to_hex(sha256:final())
-end
-
 local function get_api_key(plugin_conf)
   local apikey
   local headers = kong.request.get_headers()
@@ -86,7 +78,7 @@ local function get_api_key(plugin_conf)
   end
 
   if apikey and apikey ~= "" then
-    return hash_key(apikey)
+    return sha256_hex(apikey)
   end
 end
 

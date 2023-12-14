@@ -6,8 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local cjson = require "cjson.safe"
-local resty_sha256 = require "resty.sha256"
-local resty_str = require "resty.string"
+local sha256_hex = require "kong.tools.sha256".sha256_hex
 
 
 local helpers = require "spec.helpers"
@@ -16,12 +15,6 @@ local uuid = require("kong.tools.utils").uuid
 
 local PLUGIN_NAME = "konnect-application-auth"
 
-
-local function hash_key(key)
-  local sha256 = resty_sha256:new()
-  sha256:update(key)
-  return resty_str.to_hex(sha256:final())
-end
 
 
 for _, strategy in helpers.each_strategy() do
@@ -184,7 +177,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       db.konnect_applications:insert({
-        client_id = hash_key("opensesame"),
+        client_id = sha256_hex("opensesame"),
         scopes = { scope }
       })
 
@@ -228,13 +221,13 @@ for _, strategy in helpers.each_strategy() do
       }
 
       db.konnect_applications:insert({
-        client_id = hash_key("opendadoor"),
+        client_id = sha256_hex("opendadoor"),
         scopes = { scope },
         consumer_groups = {"imindaband1","imindaband2"}
       })
 
       db.konnect_applications:insert({
-        client_id = hash_key("opendadoor2"),
+        client_id = sha256_hex("opendadoor2"),
         scopes = { scope },
         consumer_groups = {"idontexist"}
       })
