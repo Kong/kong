@@ -43,7 +43,7 @@ describe("reports", function()
     end)
 
     it("sends report over TCP[TLS]", function()
-      local ngx_run_dir = helpers.start_echo_server(port)
+      local _, svr_dir = helpers.start_echo_server(port)
 
       bytes, err = reports.send("stub", {
         hello = "world",
@@ -57,8 +57,8 @@ describe("reports", function()
       assert.truthy(bytes>0)
       assert.is_nil(err)
 
-      local res = helpers.get_echo_server_received_data(ngx_run_dir, expected_data)
-      helpers.stop_echo_server(ngx_run_dir)
+      local res = helpers.get_echo_server_received_data(svr_dir, expected_data)
+      helpers.stop_kong(svr_dir)
 
       assert.matches("^<14>", res)
       res = res:sub(5)
@@ -73,12 +73,11 @@ describe("reports", function()
       assert.not_matches("nilval", res, nil, true)
       assert.matches("foobar=" .. cjson.encode({ foo = "bar" }), res, nil, true)
       assert.matches("bazbat=" .. cjson.encode({ baz = "bat" }), res, nil, true)
-      helpers.cleanup_echo_server(ngx_run_dir)
     end)
 
     it("doesn't send if not enabled", function()
       reports.toggle(false)
-      local ngx_run_dir = helpers.start_echo_server(port)
+      local _, svr_dir = helpers.start_echo_server(port)
 
       bytes, err = reports.send({
         foo = "bar"
@@ -86,16 +85,15 @@ describe("reports", function()
       assert.is_nil(bytes)
       assert.equal(err, "disabled")
 
-      local res = helpers.get_echo_server_received_data(ngx_run_dir, expected_data, 0.1)
-      helpers.stop_echo_server(ngx_run_dir)
+      local res = helpers.get_echo_server_received_data(svr_dir, expected_data, 0.1)
+      helpers.stop_kong(svr_dir)
       assert.equal("timeout", res)
-      helpers.cleanup_echo_server(ngx_run_dir)
     end)
 
     it("accepts custom immutable items", function()
       reports.toggle(true)
 
-      local ngx_run_dir = helpers.start_echo_server(port)
+      local _, svr_dir = helpers.start_echo_server(port)
 
       reports.add_immutable_value("imm1", "fooval")
       reports.add_immutable_value("imm2", "barval")
@@ -104,12 +102,11 @@ describe("reports", function()
       assert.truthy(bytes > 0)
       assert.is_nil(err)
 
-      local res = helpers.get_echo_server_received_data(ngx_run_dir, expected_data)
-      helpers.stop_echo_server(ngx_run_dir)
+      local res = helpers.get_echo_server_received_data(svr_dir, expected_data)
+      helpers.stop_kong(svr_dir)
       assert.matches("imm1=fooval", res)
       assert.matches("imm2=barval", res)
       assert.matches("k1=bazval", res)
-      helpers.cleanup_echo_server(ngx_run_dir)
     end)
   end)
 
@@ -117,17 +114,15 @@ describe("reports", function()
     local conf_loader = require "kong.conf_loader"
     local function send_reports_and_check_result(reports, conf, port, matches)
       reports.configure_ping(conf)
-      local ngx_run_dir = helpers.start_echo_server(port)
+      local _, svr_dir = helpers.start_echo_server(port)
 
       reports.send_ping("127.0.0.1", port)
-      local res = helpers.get_echo_server_received_data(ngx_run_dir, expected_data)
-      helpers.stop_echo_server(ngx_run_dir)
+      local res = helpers.get_echo_server_received_data(svr_dir, expected_data)
+      helpers.stop_kong(svr_dir)
 
       for _,m in ipairs(matches) do
         assert.matches(m, res, nil, true)
       end
-
-      helpers.cleanup_echo_server(ngx_run_dir)
     end
 
     before_each(function()
