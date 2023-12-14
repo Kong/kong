@@ -7,6 +7,7 @@
 
 local pl_template = require "pl.template"
 local pl_tablex = require "pl.tablex"
+local math_floor = math.floor
 
 local set_path = kong.service.request.set_path
 local req_get_headers = ngx.req.get_headers
@@ -81,10 +82,16 @@ local conf_cache = setmetatable({}, {
     if conf.path then
       local tmpl = assert(pl_template.compile(conf.path))
       funcs[#funcs+1] = function(env)
+        local new_value, err = tmpl:render(env)
+        if not new_value then
+          kong.log.err("failed to render path template: ", err)
+          return kong.response.exit(500)
+        end
+
         if conf.escape_path then
-          set_path(assert(tmpl:render(env)))
+          set_path(new_value)
         else
-          ngx.var.upstream_uri = assert(tmpl:render(env))
+          ngx.var.upstream_uri = new_value
         end
       end
     end
@@ -92,14 +99,32 @@ local conf_cache = setmetatable({}, {
     if conf.host then
       local tmpl = assert(pl_template.compile(conf.host))
       funcs[#funcs+1] = function(env)
-        ngx.ctx.balancer_data.host = assert(tmpl:render(env))
+        local new_value, err = tmpl:render(env)
+        if not new_value then
+          kong.log.err("failed to render host template: ", err)
+          return kong.response.exit(500)
+        end
+
+        ngx.ctx.balancer_data.host = new_value
       end
     end
 
     if conf.port then
       local tmpl = assert(pl_template.compile(conf.port))
       funcs[#funcs+1] = function(env)
-        ngx.ctx.balancer_data.port = assert(tonumber(assert(tmpl:render(env))))
+        local new_value, err = tmpl:render(env)
+        if not new_value then
+          kong.log.err("failed to render port template: ", err)
+          return kong.response.exit(500)
+        end
+
+        local new_port = tonumber(new_value)
+        if not new_port then
+          kong.log.err("failed to render port template, returned: ", new_value)
+          return kong.response.exit(500)
+        end
+
+        ngx.ctx.balancer_data.port = math_floor(new_port)
       end
     end
 

@@ -1,0 +1,3 @@
+message: "Provide better error messages in the route-transformer-advanced plugin"
+type: "bugfix"
+scope: "Plugin"
