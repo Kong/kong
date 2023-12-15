@@ -677,12 +677,15 @@ function _M:exec(ctx)
                    (tonumber((ctx or ngx.ctx).host_port, 10) or tonumber(var.server_port, 10)) or
                    nil
 
-  -- error value for non-TLS connections ignored intentionally
-  local sni = server_name()
+  local sni
+  if fields["tls.sni"] then
+    -- error value for non-TLS connections ignored intentionally
+    sni = server_name()
 
-  -- fallback to preread SNI if current connection doesn't terminate TLS
-  if not sni then
-    sni = var.ssl_preread_server_name
+    -- fallback to preread SNI if current connection doesn't terminate TLS
+    if not sni then
+      sni = var.ssl_preread_server_name
+    end
   end
 
   local scheme
