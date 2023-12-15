@@ -1,3 +1,0 @@
-message: "fix malloc assertion error by replacing thread tcp server in reports_spec.lua."
-type: bugfix
-scope: Core
