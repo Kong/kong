@@ -8,11 +8,24 @@ describe("reports", function()
   local port = 8189
 
   setup(function()
-    helpers.start_echo_server(port)
+    -- start the echo server
+    assert(helpers.start_kong({
+               nginx_conf = "spec/fixtures/custom_nginx.template",
+               -- we don't actually use any stream proxy features in tcp_server,
+               -- but this is needed in order to load the echo server defined at
+               -- nginx_kong_test_tcp_echo_server_custom_inject_stream.lua
+               stream_listen = helpers.get_proxy_ip(false) .. ":19000",
+               -- to fix "Database needs bootstrapping or is older than Kong 1.0" in CI.
+               database = "off",
+               log_level = "info",
+                      }))
+
+    assert(helpers.is_echo_server_ready())
   end)
 
   teardown(function()
-    helpers.stop_echo_server()
+    helpers.stop_kong()
+    helpers.echo_server_reset()
   end)
 
   before_each(function()
