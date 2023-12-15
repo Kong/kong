@@ -4,8 +4,17 @@ local cjson = require "cjson"
 
 describe("reports", function()
   local reports, bytes, err
-  local port = 8189
   local expected_data = "version"
+  local port = 8189
+
+  setup(function()
+    helpers.start_echo_server(port)
+  end)
+
+  teardown(function()
+    helpers.stop_echo_server()
+  end)
+
   before_each(function()
     package.loaded["kong.reports"] = nil
     reports = require "kong.reports"
@@ -43,8 +52,6 @@ describe("reports", function()
     end)
 
     it("sends report over TCP[TLS]", function()
-      local _, svr_dir = helpers.start_echo_server(port)
-
       bytes, err = reports.send("stub", {
         hello = "world",
         foo = "bar",
@@ -57,8 +64,7 @@ describe("reports", function()
       assert.truthy(bytes>0)
       assert.is_nil(err)
 
-      local res = helpers.get_echo_server_received_data(svr_dir, expected_data)
-      helpers.stop_kong(svr_dir)
+      local res = helpers.get_echo_server_received_data(expected_data)
 
       assert.matches("^<14>", res)
       res = res:sub(5)
@@ -77,7 +83,6 @@ describe("reports", function()
 
     it("doesn't send if not enabled", function()
       reports.toggle(false)
-      local _, svr_dir = helpers.start_echo_server(port)
 
       bytes, err = reports.send({
         foo = "bar"
@@ -85,15 +90,12 @@ describe("reports", function()
       assert.is_nil(bytes)
       assert.equal(err, "disabled")
 
-      local res = helpers.get_echo_server_received_data(svr_dir, expected_data, 0.1)
-      helpers.stop_kong(svr_dir)
+      local res = helpers.get_echo_server_received_data(expected_data, 0.1)
       assert.equal("timeout", res)
     end)
 
     it("accepts custom immutable items", function()
       reports.toggle(true)
-
-      local _, svr_dir = helpers.start_echo_server(port)
 
       reports.add_immutable_value("imm1", "fooval")
       reports.add_immutable_value("imm2", "barval")
@@ -102,8 +104,8 @@ describe("reports", function()
       assert.truthy(bytes > 0)
       assert.is_nil(err)
 
-      local res = helpers.get_echo_server_received_data(svr_dir, expected_data)
-      helpers.stop_kong(svr_dir)
+      local res = helpers.get_echo_server_received_data(expected_data)
+
       assert.matches("imm1=fooval", res)
       assert.matches("imm2=barval", res)
       assert.matches("k1=bazval", res)
@@ -114,11 +116,8 @@ describe("reports", function()
     local conf_loader = require "kong.conf_loader"
     local function send_reports_and_check_result(reports, conf, port, matches)
       reports.configure_ping(conf)
-      local _, svr_dir = helpers.start_echo_server(port)
-
       reports.send_ping("127.0.0.1", port)
-      local res = helpers.get_echo_server_received_data(svr_dir, expected_data)
-      helpers.stop_kong(svr_dir)
+      local res = helpers.get_echo_server_received_data(expected_data)
 
       for _,m in ipairs(matches) do
         assert.matches(m, res, nil, true)

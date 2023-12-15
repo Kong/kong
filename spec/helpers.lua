@@ -3846,108 +3846,126 @@ local function reload_kong(strategy, ...)
   return ok, err
 end
 
---- Run an echo TCP server.
---
--- @function start_echo_server
--- @param port the port to run the server.
--- @return  the server running directory.
-local function start_echo_server(port)
-  local test_port = 15383
-  local conf_template = [[
-    server {
-      listen localhost:%s ssl;
-      listen localhost:%s;
-
-      ssl_certificate ../spec/fixtures/kong_spec.crt;
-      ssl_certificate_key ../spec/fixtures/kong_spec.key;
-
-      error_log logs/error.log info;
-
-      content_by_lua_block {
-          local sock = assert(ngx.req.socket())
-          local data = sock:receive()  -- read a line from downstream
-          if data then
-            sock:send(data.."\n") -- echo whatever was sent
-            ngx.log(ngx.INFO, "received data: " .. data)
-          else
-            ngx.log(ngx.WARN, "Nothing received")
-          end
-      }
-    }
-  ]]
-  local conf = string.format(conf_template, port, test_port)
-  local fixtures = { stream_mock = { conf } }
+local start_echo_server, get_echo_server_received_data, stop_echo_server
+do
+  -- Message id is maintained within echo server context and not
+  -- needed for echo server user.
+  -- This id is extracted from the number in nginx error.log at each
+  -- line of log. i.e.:
+  --  2023/12/15 14:10:12 [info] 718291#0: *303 stream [lua] content_by_lua ...
+  -- in above case, the id is 303.
+  local msg_id = -1
   local server_dir = "servroot_tcp_echo"
   
-  assert(start_kong({
-             nginx_conf = "spec/fixtures/custom_nginx.template",
-             -- we don't actually use any stream proxy features in tcp_server,
-             -- but this is needed in order to load above stream_mock fixture.
-             stream_listen = get_proxy_ip(false) .. ":19000",
-             prefix = server_dir,
-             -- to fix "Database needs bootstrapping or is older than Kong 1.0" in CI.
-             database = "off",
-             log_level = "info",
-                    }, nil, nil, fixtures))
+  --- Run an echo TCP server.
+  --
+  -- @function start_echo_server
+  -- @param port the port to run the server.
+  -- @return  the server running directory.
+  function start_echo_server(port)
+    local test_port = 15383
+    local conf_template = [[
+      server {
+        listen localhost:%s ssl;
+        listen localhost:%s;
 
-  -- ensure server is ready.
-  local sock = ngx.socket.tcp()
-  sock:settimeout(0.1)
-  local retry = 0
-  while true do
-    if sock:connect("localhost", test_port) then
-      sock:send("START\n")
-      local ok = sock:receive()
-      sock:close()
-      if ok == "START" then
-        return true, server_dir
-      end
-    else
-      retry = retry + 1
-      if retry > 10 then
-        assert(nil, "can not create server after "..retry.." retries")
+        ssl_certificate ../spec/fixtures/kong_spec.crt;
+        ssl_certificate_key ../spec/fixtures/kong_spec.key;
+
+        error_log logs/error.log info;
+
+        content_by_lua_block {
+            local sock = assert(ngx.req.socket())
+            local data = sock:receive()  -- read a line from downstream
+            if data then
+              sock:send(data.."\n") -- echo whatever was sent
+              ngx.log(ngx.INFO, "received data: " .. data)
+            else
+              ngx.log(ngx.WARN, "Nothing received")
+            end
+        }
+      }
+    ]]
+    local conf = string.format(conf_template, port, test_port)
+    local fixtures = { stream_mock = { conf } }
+
+    assert(start_kong({
+               nginx_conf = "spec/fixtures/custom_nginx.template",
+               -- we don't actually use any stream proxy features in tcp_server,
+               -- but this is needed in order to load above stream_mock fixture.
+               stream_listen = get_proxy_ip(false) .. ":19000",
+               prefix = server_dir,
+               -- to fix "Database needs bootstrapping or is older than Kong 1.0" in CI.
+               database = "off",
+               log_level = "info",
+                      }, nil, nil, fixtures))
+
+    -- ensure server is ready.
+    local sock = ngx.socket.tcp()
+    sock:settimeout(0.1)
+    local retry = 0
+    while true do
+      if sock:connect("localhost", test_port) then
+        sock:send("START\n")
+        local ok = sock:receive()
+        sock:close()
+        if ok == "START" then
+          return true
+        end
+      else
+        retry = retry + 1
+        if retry > 10 then
+          assert(nil, "can not create server after "..retry.." retries")
+        end
       end
     end
   end
-end
 
---- Get the echo server's received data.
--- This function check the part of expected data with a timeout.
---
--- @function get_echo_server_received_data
--- @param server_dir the running server directory.
--- @param expected part of the data expected.
--- @param timeout (optional) timeout in seconds, default is 0.5.
--- @return  the data the echo server received. If timeouts, return "timeout".
-local function get_echo_server_received_data(server_dir, expected, timeout)
-  if timeout == nil then
-    timeout = 0.5
-  end
-
-  local extract_cmd = "grep content_by_lua "..server_dir.."/logs/error.log | tail -1"
-  local ok, _, log = exec(extract_cmd)
-  assert(ok)
-  local pattern = "received data: " .. "(.*)"
-  local _, _, data = string.find(log, pattern)
-  -- unit is second.
-  local t = 0.1
-  local time_acc = 0
-
-  -- retry it when data is not available. because sometime,
-  -- the error.log has not been flushed yet.
-  while string.find(data, expected) == nil do
-    ngx.sleep(t)
-    time_acc = time_acc + t
-    if time_acc >= timeout then
-      return "timeout"
+  --- Get the echo server's received data.
+  -- This function check the part of expected data with a timeout.
+  --
+  -- @function get_echo_server_received_data
+  -- @param expected part of the data expected.
+  -- @param timeout (optional) timeout in seconds, default is 0.5.
+  -- @return  the data the echo server received. If timeouts, return "timeout".
+  function get_echo_server_received_data(expected, timeout)
+    if timeout == nil then
+      timeout = 0.5
     end
 
-    ok, _, log = exec(extract_cmd)
-    assert(ok)
-    _, _, data = string.find(log, pattern)
+    local extract_cmd = "grep content_by_lua "..server_dir.."/logs/error.log | tail -1"
+    local _, _, log = assert(exec(extract_cmd))
+    local pattern = "%*(%d+)%s.*received data: (.*)"
+    local cur_msg_id, data = string.match(log, pattern)
+
+    -- unit is second.
+    local t = 0.1
+    local time_acc = 0
+
+    -- retry it when data is not available. because sometime,
+    -- the error.log has not been flushed yet.
+    while string.find(data, expected) == nil or cur_msg_id == msg_id  do
+      ngx.sleep(t)
+      time_acc = time_acc + t
+      if time_acc >= timeout then
+        return "timeout"
+      end
+
+      _, _, log = assert(exec(extract_cmd))
+      cur_msg_id, data = string.match(log, pattern)
+    end
+
+    -- update the msg_id, it persists during a cycle from echo server
+    -- start to stop.
+    msg_id = cur_msg_id
+
+    return data
   end
 
-  return data
+  function stop_echo_server()
+    stop_kong(server_dir)
+    msg_id = -1
+  end
 end
 
 --- Simulate a Hybrid mode DP and connect to the CP specified in `opts`.
@@ -4187,6 +4205,7 @@ end
   udp_server = udp_server,
   kill_tcp_server = kill_tcp_server,
   start_echo_server = start_echo_server,
+  stop_echo_server = stop_echo_server,
   get_echo_server_received_data = get_echo_server_received_data,
   http_mock = http_mock,
   get_proxy_ip = get_proxy_ip,
