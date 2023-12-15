@@ -535,10 +535,10 @@ end
 function _M:exec(ctx)
   local fields = self.fields
 
-  local req_method = fields["http.method"] and get_method()
+  local req_method = fields["http.method"] and get_method() or nil
   local req_uri = ctx and ctx.request_uri or var.request_uri
   local req_host = var.http_host
-  local sni = fields["tls.sni"] and server_name()
+  local sni = fields["tls.sni"] and server_name() or nil
 
   local headers
   if not is_empty_field(fields[HTTP_HEADERS_PREFIX]) then
@@ -669,12 +669,13 @@ end
 function _M:exec(ctx)
   local fields = self.fields
 
-  local src_ip   = fields["net.src.ip"] and var.remote_addr
-  local dst_ip   = fields["net.dst.ip"] and var.server_addr
+  local src_ip   = fields["net.src.ip"] and var.remote_addr or nil
+  local dst_ip   = fields["net.dst.ip"] and var.server_addr or nil
 
-  local src_port = fields["net.src.port"] and tonumber(var.remote_port, 10)
+  local src_port = fields["net.src.port"] and tonumber(var.remote_port, 10) or nil
   local dst_port = fields["net.dst.port"] and
-                   (tonumber((ctx or ngx.ctx).host_port, 10) or tonumber(var.server_port, 10))
+                   (tonumber((ctx or ngx.ctx).host_port, 10) or tonumber(var.server_port, 10)) or
+                   nil
 
   -- error value for non-TLS connections ignored intentionally
   local sni = server_name()
