@@ -1,3 +1,5 @@
+import { isCI } from '@support';
+
 /**
  * Wait for the `assertions` does not throw any exceptions.
  * @param assertions - The assertions to be executed.
@@ -13,6 +15,8 @@ export const eventually = async (
   verbose = false,
 ): Promise<void> => {
   let errorMsg = '';
+  // enable verbose logs in GH Actions for debugability
+  verbose = isCI() ? true : verbose
 
   while (timeout >= 0) {
     const start = Date.now();

@@ -52,7 +52,8 @@ export {
   getKongVersionFromContainer,
   runDockerContainerCommand,
   deployKonnectDataPlane,
-  stopAndRemoveTargetContainer
+  stopAndRemoveTargetContainer,
+  reloadGateway
 } from './exec/gateway-container';
 export { removeSecretFile, safeStopGateway, startGateway } from './exec/gw-ec2';
 export {
@@ -95,6 +96,8 @@ export {
   getSharedDictValue,
   waitForConfigHashUpdate,
   waitForDictUpdate,
+  queryPrometheusMetrics,
+  getAllMetrics
 } from './utilities/metrics';
 export { eventually } from './utilities/eventually';
 export * from './config/geos';

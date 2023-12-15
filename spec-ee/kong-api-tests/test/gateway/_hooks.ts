@@ -21,7 +21,7 @@ export const mochaHooks: Mocha.RootHookObject = {
         await eventually(async () => {
           const intitialConfigRebuildSuccess = await waitForConfigRebuild();
           expect(intitialConfigRebuildSuccess).to.be.true
-        }, 20000, 3000, true)
+        })
       }
     } catch (err) {
       console.error(`Something went wrong in beforeAll hook while rebuilding configuration: ${err}`)

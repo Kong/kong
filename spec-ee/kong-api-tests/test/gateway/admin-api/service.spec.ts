@@ -13,10 +13,9 @@ import {
   isKoko,
   isGateway
 } from '@support';
-import axios, { AxiosRequestHeaders, AxiosResponse } from 'axios';
+import axios, { AxiosResponse } from 'axios';
 
 describe('@smoke: Gateway Admin API: Services', function () {
-  let headers: AxiosRequestHeaders | undefined;
   let url: string
   let serviceId: string
   let routeId: string;
@@ -63,8 +62,7 @@ describe('@smoke: Gateway Admin API: Services', function () {
     let resp = await axios({
       method: 'post',
       url,
-      data: servicePayload,
-      headers,
+      data: servicePayload
     });
 
     logResponse(resp);
@@ -82,7 +80,6 @@ describe('@smoke: Gateway Admin API: Services', function () {
         name: randomString(),
         paths: [`/${randomString()}`],
       },
-      headers,
     });
     logResponse(resp);
     expect(resp.status, 'Status should be 201').equal(201);
@@ -90,7 +87,7 @@ describe('@smoke: Gateway Admin API: Services', function () {
   });
 
   it('should not create a service with same name', async function () {
-    const resp = await postNegative(url, servicePayload, 'post', headers);
+    const resp = await postNegative(url, servicePayload, 'post');
     logResponse(resp);
 
     // *** RESPONSE DIFFERENCES IN GATEWAY AND KOKO ***
@@ -118,7 +115,7 @@ describe('@smoke: Gateway Admin API: Services', function () {
       host: 'httpbin',
       path: 'anything',
     };
-    const resp = await postNegative(url, wrongPayload, 'post', headers);
+    const resp = await postNegative(url, wrongPayload, 'post');
     logResponse(resp);
 
     expect(resp.status, 'Status should be 400').equal(400);
@@ -138,7 +135,7 @@ describe('@smoke: Gateway Admin API: Services', function () {
   });
 
   it('should get the service by name', async function () {
-    const resp = await axios(`${url}/${servicePayload.name}`, { headers });
+    const resp = await axios(`${url}/${servicePayload.name}`);
     logResponse(resp);
 
     expect(resp.status, 'Status should be 200').to.equal(200);
@@ -149,7 +146,7 @@ describe('@smoke: Gateway Admin API: Services', function () {
   });
 
   it('should get the service by id', async function () {
-    const resp = await axios(`${url}/${serviceId}`, { headers });
+    const resp = await axios(`${url}/${serviceId}`);
     logResponse(resp);
 
     expect(resp.status, 'Status should be 200').to.equal(200);
@@ -170,7 +167,6 @@ describe('@smoke: Gateway Admin API: Services', function () {
           port: 8080,
           path: newPath,
         },
-        headers,
       });
       logResponse(resp);
 
@@ -182,7 +178,7 @@ describe('@smoke: Gateway Admin API: Services', function () {
   }
 
   it('should not get the service by wrong name', async function () {
-    const resp = await getNegative(`${url}/wrong`, headers);
+    const resp = await getNegative(`${url}/wrong`);
     logResponse(resp);
 
     expect(resp.status, 'Should have correct error code').to.equal(404);
@@ -192,8 +188,7 @@ describe('@smoke: Gateway Admin API: Services', function () {
 
   it('should not get the service by wrong id', async function () {
     const resp = await getNegative(
-      `${url}/650d4122-3928-45a1-909d-73921163bb13`,
-      headers
+      `${url}/650d4122-3928-45a1-909d-73921163bb13`
     );
     logResponse(resp);
 
@@ -208,8 +203,7 @@ describe('@smoke: Gateway Admin API: Services', function () {
       const resp = await postNegative(
         `${url}/${serviceId}`,
         {},
-        'delete',
-        headers
+        'delete'
       );
       logResponse(resp);
 
@@ -221,12 +215,11 @@ describe('@smoke: Gateway Admin API: Services', function () {
   }
 
   it('should delete the service by id when it has no associated route', async function () {
-    await deleteGatewayRoute(routeId, headers);
+    await deleteGatewayRoute(routeId);
 
     const resp = await axios({
       method: 'delete',
-      url: `${url}/${serviceId}`,
-      headers,
+      url: `${url}/${serviceId}`
     });
     logResponse(resp);
     expect(resp.status, 'Status should be 204').to.equal(204);
@@ -243,7 +236,6 @@ describe('@smoke: Gateway Admin API: Services', function () {
         host: 'mockbin.org',
         path: '/kongstrongservice',
       },
-      headers,
     });
 
     logResponse(resp);
@@ -262,8 +254,7 @@ describe('@smoke: Gateway Admin API: Services', function () {
   it('should delete the service by name', async function () {
     const resp = await axios({
       method: 'delete',
-      url: `${url}/${isGateway() ? servicePayload.name : serviceId}`,
-      headers,
+      url: `${url}/${isGateway() ? servicePayload.name : serviceId}`
     });
     logResponse(resp);
     expect(resp.status, 'Status should be 204').to.equal(204);

@@ -1,7 +1,7 @@
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import { isGwNative } from 'support/config/gateway-vars';
+import { getKongContainerName, isGwNative } from 'support/config/gateway-vars';
 
 /**
  * Sets Kong Gateway target container variables
@@ -10,7 +10,7 @@ import { isGwNative } from 'support/config/gateway-vars';
  */
 export const setGatewayContainerEnvVariable = (
   targetEnvironmentVariables: object,
-  containerName
+  containerName: string
 ) => {
   const isKongNative = isGwNative();
   const newVars: any = [];
@@ -38,8 +38,29 @@ export const setGatewayContainerEnvVariable = (
       { stdio: 'inherit' }
     );
   } catch (error) {
-    console.log(
+    throw new Error(
       `Something went wrong during updating the container environment variable: ${error}`
+    );
+  }
+};
+
+/**
+ * Reload gateway
+ * @param {string} containerName - target docker kong container name, default is 'kong-cp'
+ */
+export const reloadGateway = (
+  containerName: string = getKongContainerName()
+) => {
+  const command = 'kong reload'
+
+  try {
+    return execSync(
+      `docker exec $(docker ps -aqf name=${containerName}) ${command}`,
+      { stdio: 'inherit' }
+    );
+  } catch (error) {
+    console.log(
+      `Something went wrong during reloading the gateway: ${error}`
     );
   }
 };
@@ -118,7 +139,7 @@ export const getKongVersionFromContainer = (containerName = 'kong-cp') => {
 
     return version.toString().trim();
   } catch (error) {
-    console.log(
+    throw new Error(
       `Something went wrong while getting kong container version: ${error}`
     );
   }

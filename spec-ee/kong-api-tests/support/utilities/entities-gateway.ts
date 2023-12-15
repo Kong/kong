@@ -171,13 +171,11 @@ export const createExpressionRouteForService = async (
  * @returns {AxiosResponse}
  */
 export const deleteGatewayRoute = async (
-  routeIdOrName: string,
-  headers: object = {}
+  routeIdOrName: string
 ) => {
   const resp = await axios({
     method: 'delete',
-    url: `${getUrl('routes')}/${routeIdOrName}`,
-    headers,
+    url: `${getUrl('routes')}/${routeIdOrName}`
   });
   logResponse(resp);
 
@@ -412,7 +410,6 @@ export const createBasicAuthCredentialForConsumer = async (
   });
   logResponse(resp);
   expect(resp.status, 'Status should be 201').to.equal(201);
-
   return resp;
 };
 
@@ -508,6 +505,75 @@ export const deletePlugin = async (pluginId: string) => {
   logResponse(resp);
   expect(resp.status, 'Status should be 204').to.equal(204);
 };
+
+/**
+ * Create upstream
+ * @param {string} upstreamName - name of the upstream
+ * @param {object} payload- request payload
+ */
+export const createUpstream = async (upstreamName = randomString(), payload?: object) => {
+  payload ? (payload = { ...payload, name: upstreamName,  }) : null;
+
+  const resp = await axios({
+    method: 'post',
+    url: `${getUrl('upstreams')}`,
+    data: payload || {
+      name: upstreamName,
+      healthchecks: {
+        active: {
+          healthy: {
+            interval: 2,
+            successes: 2,
+            http_statuses: [200, 302]
+          },
+          unhealthy: {
+            interval: 2,
+            http_failures: 1,
+            http_statuses: [429, 404, 500, 501, 502, 503, 504, 505]
+          }
+        },
+      },
+    },
+  });
+  logResponse(resp);
+
+  return resp.data
+}
+
+/**
+ * Delete an upstream
+ * @param {string} upstreamId
+ * @returns {AxiosResponse}
+ */
+export const deleteUpstream = async (upstreamId: string) => {
+  const resp = await axios({
+    method: 'delete',
+    url: `${getUrl('upstreams')}/${upstreamId}`,
+  });
+  logResponse(resp);
+  expect(resp.status, 'Status should be 204').to.equal(204);
+};
+
+/**
+ * Create a target for an existing upstream
+ * @param {string} upstreamId - upstream id to create target for
+ * @param {string} target - target url
+ * @returns {AxiosResponse}
+ */
+export const addTargetToUpstream = async (upstreamId: string, target: string) => {
+  const resp = await axios({
+    url: `${getUrl('upstreams')}/${upstreamId}/targets`,
+    method: 'post',
+    data: {
+      target,
+      weight: 1000
+    },
+  });
+  logResponse(resp);
+
+  expect(resp.status, 'should return 201 status').to.equal(201);
+  return resp.data
+}
 
 
 /**

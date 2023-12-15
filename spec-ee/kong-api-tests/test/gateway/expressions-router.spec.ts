@@ -10,6 +10,7 @@ import {
   getRouterFlavor, 
   isGwHybrid,
   wait,
+  getKongContainerName,
 } from '@support';
 
 describe('Expressions Router Tests', function () {
@@ -25,6 +26,7 @@ describe('Expressions Router Tests', function () {
   // router flavors
   const expressions = 'expressions'
   const traditional = 'traditional_compatible'
+  const gwContainerName = getKongContainerName();
 
   const url = `${getBasePath({
     environment: Environment.gateway.admin,
@@ -44,9 +46,9 @@ describe('Expressions Router Tests', function () {
   }
 
   before(async function () {
-    await setGatewayContainerEnvVariable({ KONG_ROUTER_FLAVOR: expressions }, 'kong-cp');
+    setGatewayContainerEnvVariable({ KONG_ROUTER_FLAVOR: expressions }, gwContainerName);
     if (isGwHybrid()) {
-      await setGatewayContainerEnvVariable({ KONG_ROUTER_FLAVOR: expressions }, 'kong-dp1');
+      setGatewayContainerEnvVariable({ KONG_ROUTER_FLAVOR: expressions }, 'kong-dp1');
       // need to wait for DP to restart and reconnect to CP
       // eslint-disable-next-line no-restricted-syntax
       await wait(timeout);
@@ -296,9 +298,9 @@ describe('Expressions Router Tests', function () {
       method: 'delete',
       url: `${url}/services/${serviceId}`,
     });
-    await setGatewayContainerEnvVariable({ KONG_ROUTER_FLAVOR: traditional }, 'kong-cp');
+    setGatewayContainerEnvVariable({ KONG_ROUTER_FLAVOR: traditional }, gwContainerName);
     if (isGwHybrid())  {
-      await setGatewayContainerEnvVariable({ KONG_ROUTER_FLAVOR: traditional }, 'kong-dp1');
+      setGatewayContainerEnvVariable({ KONG_ROUTER_FLAVOR: traditional }, 'kong-dp1');
       // eslint-disable-next-line no-restricted-syntax
       await wait(timeout) // wait for DP to restart and reconnect to CP
     }

@@ -1,11 +1,13 @@
 import axios from 'axios';
 import { wait } from './random';
 import { expect } from '../assert/chai-expect';
-import { getBasePath, Environment, isGateway } from '@support';
+import { getBasePath, Environment, isGateway, getNegative } from '@support';
 import https from 'https';
 
 const host = getBasePath({ environment: isGateway() ? Environment.gateway.hostName : undefined });
 const metricsUrl = `https://${host}:8100/metrics`;
+const dataPlaneMetricsUrl =`https://${host}:8101/metrics`;
+const prometheusQueryUrl = `http://${host}:9090/api/v1/query`
 
 const agent = new https.Agent({
   rejectUnauthorized: false,
@@ -15,12 +17,13 @@ axios.defaults.httpsAgent = agent;
 
 /**
  * Send a request to the status API to get all metrics
+ * @param {string} kongNodeName - target metric url
  * @returns metrics response
  */
-const getAllMetrics = async () => {
+export const getAllMetrics = async (kongNodeName = "cp") => {
   const resp = await axios({
     method: 'get',
-    url: metricsUrl,
+    url: kongNodeName === "cp" ? metricsUrl : dataPlaneMetricsUrl
   });
 
   expect(resp.status, 'Status for getting /metrics should be 200').equal(200);
@@ -124,3 +127,18 @@ export const waitForDictUpdate = async (initialValue, dict_name) => {
     }
   }
 };
+
+/**
+ * Querys the target metrics data from prometheus
+ * @param {string} query - target query to execute
+ */
+export const queryPrometheusMetrics = async (query) => {
+  const url = `${prometheusQueryUrl}?query=${query}`
+
+  const resp = await getNegative(url)
+
+  expect(resp.status, 'Status should be 200').to.equal(200);
+  expect(resp.data.data.result, `Should receive prometheus query results for ${query}`).to.not.be.empty;
+
+  return resp.data.data
+}
