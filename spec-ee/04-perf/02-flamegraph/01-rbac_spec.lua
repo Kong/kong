@@ -8,6 +8,7 @@
 local perf = require("spec.helpers.perf")
 local split = require("pl.stringx").split
 local utils = require("spec.helpers.perf.utils")
+local shell = require "resty.shell"
 
 perf.use_defaults()
 perf.enable_charts(false)
@@ -27,7 +28,7 @@ local wrk_script = [[
   end
 ]]
 
-os.execute("mkdir -p output")
+shell.run("mkdir -p output", nil, 0)
 
 for _, version in ipairs(versions) do
   describe("perf test for Kong " .. version .. " #admin_api #rbac", function()

@@ -6,10 +6,10 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local pl_stringx       = require "pl.stringx"
-local pl_utils         = require "pl.utils"
 local cjson            = require "cjson"
 local helpers          = require "spec.helpers"
 local http             = require "resty.http"
+local shell            = require "resty.shell"
 
 local DT_ENV_ID        = os.getenv("DT_ENV_ID")
 local EXTENSION_NAME   = "custom:com.konghq.extension.prometheus-kong"
@@ -38,7 +38,7 @@ local function http_request(url, query, headers, method, body)
 end
 
 local function get_ci_hostname()
-  local ok, _, stdout, stderr = pl_utils.executeex("hostname")
+  local ok, stdout, stderr = shell.run("hostname", nil, 0)
   assert(ok, stderr)
   return pl_stringx.rstrip(stdout)
 end

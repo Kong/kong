@@ -7,7 +7,7 @@
 
 local helpers = require "spec.helpers"
 local signals = require "kong.cmd.utils.nginx_signals"
-local pl_utils = require "pl.utils"
+local shell   = require "resty.shell"
 
 local fmt = string.format
 
@@ -24,7 +24,7 @@ describe("kong prepare", function()
   end)
 
   it("prepare profiling directory with the right permission", function()
-    local _, _, user  = pl_utils.executeex("whoami")
+    local _, user  = shell.run("whoami", nil, 0)
     user = user:match([[([%w_\-]+)]])
 
     assert(helpers.kong_exec("prepare -c " .. helpers.test_conf_path, {
@@ -36,7 +36,7 @@ describe("kong prepare", function()
     local profiling_dir = helpers.path.join(TEST_PREFIX, "profiling")
     assert.truthy(helpers.path.exists(profiling_dir))
 
-    local _, _, stdout = pl_utils.executeex("stat -c '%U' " .. profiling_dir)
+    local _, stdout = shell.run("stat -c '%U' " .. profiling_dir, nil, 0)
     assert.equal(user, stdout:sub(1, -2)) -- strip trailing \n
   end)
 end)

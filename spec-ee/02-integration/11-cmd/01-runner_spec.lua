@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
+local shell = require "resty.shell"
 
 describe("kong runner", function()
 
@@ -24,7 +25,7 @@ describe("kong runner", function()
       local tmpfile = require("pl.path").tmpname()  -- this creates the file!
       finally(function() os.remove(tmpfile) end)
 
-      os.execute([[echo 'print(#args)' >]] .. tmpfile)
+      shell.run([[echo 'print(#args)' >]] .. tmpfile, nil, 0)
       local _, _, stdout = helpers.execute(
         helpers.bin_path .. [[ runner ]] .. tmpfile .. " foo")
 
@@ -34,7 +35,7 @@ describe("kong runner", function()
   it("errs with sintactically wrong lua file", function()
     local tmpfile = require("pl.path").tmpname()  -- this creates the file!
     finally(function() os.remove(tmpfile) end)
-    os.execute([[echo "print('roar'" >]] .. tmpfile)
+    shell.run([[echo "print('roar'" >]] .. tmpfile, nil, 0)
     local ok = helpers.execute(helpers.bin_path .. [[ runner ]] .. tmpfile)
     assert.is_false(ok)
   end)

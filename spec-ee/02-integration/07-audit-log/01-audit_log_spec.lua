@@ -10,6 +10,7 @@ local cjson = require "cjson"
 local admin_api = require "spec.fixtures.admin_api"
 local pl_file = require "pl.file"
 local inspect = require "inspect"
+local shell = require "resty.shell"
 
 local fmt = string.format
 local TEST_CONF = helpers.test_conf
@@ -816,9 +817,9 @@ for _, strategy in helpers.each_strategy() do
     setup(function()
       db = select(2, helpers.get_db_utils(strategy))
 
-      os.execute(fmt("rm -f %s", key_file))
-      os.execute(fmt("openssl genrsa -out %s 2048 2>/dev/null", key_file))
-      os.execute(fmt("chmod 0777 %s", key_file))
+      shell.run(fmt("rm -f %s", key_file), nil, 0)
+      shell.run(fmt("openssl genrsa -out %s 2048 2>/dev/null", key_file), nil, 0)
+      shell.run(fmt("chmod 0777 %s", key_file), nil, 0)
 
       assert(helpers.start_kong({
         database   = strategy,

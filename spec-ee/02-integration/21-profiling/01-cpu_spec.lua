@@ -7,6 +7,7 @@
 
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
+local shell = require "resty.shell"
 
 
 local DEBUG_LISTEN_HOST = "0.0.0.0"
@@ -459,7 +460,7 @@ for __, deploy in ipairs({ "traditional", "hybrid" }) do
     -- wait for automatic recovery
     helpers.pwait_until(function()
       -- remove the file to emulate a crash
-      os.execute("rm -rf " .. path)
+      shell.run("rm -rf " .. path, nil, 0)
 
       --[[
         since we are reloading, the old connection will be closed,
