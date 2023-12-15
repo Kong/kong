@@ -2880,10 +2880,9 @@
                         # Reset Password flow on a Dev Portal and will
                         # receive an email with password reset instructions.
                         #
-                        # When disabled, developers will *not* be able to
-                        # reset their account passwords. Kong Admins will have
-                        # to manually create new credentials for the Developer
-                        # in the Kong Manager.
+                        # Note: When disabled, developers will *not* be able to reset their account
+                        # passwords. The password resetting email is the only way to reset developer
+                        # passwords.
                         #
                         # The email looks like the following:
                         #
