@@ -680,6 +680,7 @@ do
     end
 
     t[key] = nil
+
     return key, value
   end
 
@@ -1158,6 +1159,7 @@ function _M:declarative_config_flattened(err_t, input)
   end
 
   local flattened = flatten_errors(input, err_t)
+
   err_t = self:declarative_config(err_t)
 
   err_t.flattened_errors = flattened
