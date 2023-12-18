@@ -4,7 +4,6 @@ import {
   expect,
   Environment,
   getBasePath,
-  isGwHybrid,
   isLocalDatabase,
   createGatewayService,
   deleteGatewayService,
@@ -16,6 +15,7 @@ import {
   deleteConsumer,
   getNegative,
   retryRequest,
+  waitForConfigRebuild,
 } from '@support';
 
 describe('Gateway Plugins: jwt-signer', function () {
@@ -25,10 +25,8 @@ describe('Gateway Plugins: jwt-signer', function () {
   const consumerName = 'demo';
   const upstreamConsumerHeaderName = 'X-Consumer-Username';
   const upstreamConsumerHeaderId = 'X-Consumer-Id';
-  const isHybrid = isGwHybrid();
   const islocalDb = isLocalDatabase();
   const waitTime = 5000;
-  const hybridWaitTime = 10000;
   const expiredTokenHeaders = {
     Authorization: `bearer ${authDetails.expired_token}`,
   };
@@ -46,10 +44,9 @@ describe('Gateway Plugins: jwt-signer', function () {
   const proxyUrl = `${getBasePath({
     environment: Environment.gateway.proxy,
   })}`;
-  const jwksServer = `${getBasePath({
-    environment: Environment.gateway.ec2TestServer,
-  })}`;
-  const jwksUri = `http://${jwksServer}:3000/db`;
+
+  // json server running in the same docker network as kong
+  const jwksUri = `http://json-server:3000/db`;
 
   let basePayload: any;
   let pluginId: string;
@@ -93,22 +90,17 @@ describe('Gateway Plugins: jwt-signer', function () {
     expect(resp.status, 'Status should be 201').to.equal(201);
     expect(resp.data.config.verify_access_token_expiry, 'Expiry should be true')
       .to.true;
-
     expect(
       resp.data.config.access_token_issuer,
       'Issuer should be kong'
     ).to.equal('kong');
-
     expect(
       resp.data.config.access_token_signing_algorithm,
       'Algorithm should be RS256'
     ).to.equal('RS256');
-
     expect(resp.data.config.access_token_jwks_uri, 'Jwks uri should be null').to
       .be.null;
-
     expect(resp.data.config.access_token_optional, 'Should be false').to.false;
-
     expect(resp.data.config.channel_token_optional, 'Should be false').to.false;
 
     pluginId = resp.data.id;
@@ -127,7 +119,7 @@ describe('Gateway Plugins: jwt-signer', function () {
     await retryRequest(req, assertions);
   });
 
-  it.skip('should patch jwt-signer plugin to set JWKS_URI allowing token validation', async function () {
+  it('should patch jwt-signer plugin to set JWKS_URI allowing token validation', async function () {
     const resp = await axios({
       method: 'patch',
       url: `${url}/${pluginId}`,
@@ -146,10 +138,11 @@ describe('Gateway Plugins: jwt-signer', function () {
       resp.data.config.access_token_jwks_uri,
       'Jwks uri should not be null'
     ).to.equal(jwksUri);
-    await wait(isHybrid ? hybridWaitTime : waitTime); // eslint-disable-line no-restricted-syntax
+
+    await waitForConfigRebuild()
   });
 
-  it.skip('should proxy request with a valid token', async function () {
+  it('should proxy request with a valid token', async function () {
     const resp = await axios({
       headers: validTokenHeaders,
       url: `${proxyUrl}${path}`,
