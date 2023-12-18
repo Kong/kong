@@ -1,0 +1,41 @@
+version: '3.5'
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:${PONGO_KEYCLOAK_VERSION:-22.0}
+    command:
+      - >
+        start-dev
+        --https-trust-store-file /tmp/truststore.jks
+        --https-trust-store-password=password
+        --https-client-auth=request
+        --https-protocols=TLSv1.2
+        --https-certificate-file=/tmp/server.crt
+        --https-certificate-key-file=/tmp/server.key
+        --import-realm
+    volumes:
+      - $PWD/../openid-connect/.pongo/demo.json:/opt/keycloak/data/import/demo.json
+      - $PWD/../openid-connect/.pongo/truststore.jks:/tmp/truststore.jks
+      - $PWD/../openid-connect/.pongo/server.crt:/tmp/server.crt
+      - $PWD/../openid-connect/.pongo/server.key:/tmp/server.key
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: test
+      VIRTUAL_PORT: 8080,8443
+      DB_VENDOR: h2
+      JAVA_OPTS_APPEND: -Dkeycloak.migration.strategy=OVERWRITE_EXISTING
+    healthcheck:
+      interval: 5s
+      retries: 10
+      test:
+      - CMD
+      - timeout
+      - 3s
+      - bash
+      - -c
+      - ':> /dev/tcp/127.0.0.1/8080'
+      timeout: 10s
+    restart: on-failure
+    stop_signal: SIGKILL
+    networks:
+      - ${NETWORK_NAME}

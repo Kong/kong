@@ -1,0 +1,4 @@
+message: |
+  **Konnect Application Auth**: add implementation for v2 strategies
+type: feature
+scope: Plugin
