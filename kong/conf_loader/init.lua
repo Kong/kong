@@ -8,7 +8,7 @@ local pl_stringx = require "pl.stringx"
 local socket_url = require "socket.url"
 local conf_constants = require "kong.conf_loader.constants"
 local listeners = require "kong.conf_loader.listeners"
-local conf_utils = require "kong.conf_loader.utils"
+local conf_parse = require "kong.conf_loader.parse"
 local pl_pretty = require "pl.pretty"
 local pl_config = require "pl.config"
 local pl_file = require "pl.file"
@@ -52,12 +52,12 @@ ffi.cdef([[
 ]])
 
 
-local get_phase = conf_utils.get_phase
-local is_predefined_dhgroup = conf_utils.is_predefined_dhgroup
-local parse_value = conf_utils.parse_value
-local check_and_parse = conf_utils.check_and_parse
-local overrides = conf_utils.overrides
-local parse_nginx_directives = conf_utils.parse_nginx_directives
+local get_phase = conf_parse.get_phase
+local is_predefined_dhgroup = conf_parse.is_predefined_dhgroup
+local parse_value = conf_parse.parse_value
+local check_and_parse = conf_parse.check_and_parse
+local overrides = conf_parse.overrides
+local parse_nginx_directives = conf_parse.parse_nginx_directives
 
 
 local function aliased_properties(conf)
