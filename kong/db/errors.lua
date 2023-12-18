@@ -1032,6 +1032,12 @@ do
       for i, err_t_i in drain(section_errors) do
         local entity = entities[i]
 
+
+        -- promote error strings to `@entity` type errors
+        if type(err_t_i) == "string" then
+          err_t_i = { ["@entity"] = err_t_i }
+        end
+
         if type(entity) == "table" and type(err_t_i) == "table" then
           add_entity_errors(entity_type, entity, err_t_i, flattened)
 
@@ -1039,7 +1045,6 @@ do
           log(WARN, "failed to resolve errors for ", entity_type, " at ",
                     "index '", i, "'")
           section_errors[i] = err_t_i
-          err_t[entity_type] = section_errors
         end
       end
 

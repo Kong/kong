@@ -2702,40 +2702,22 @@ R6InCcH2Wh8wSeY5AuDXvu2tv9g/PW9wIJmPuKSHMA==
       _format_version = "3.0",
       consumers = {
         {
+          id = "a73dc9a7-93df-584d-97c0-7f41a1bbce3d",
           username = "test-consumer-1",
         },
         {
+          id = "a73dc9a7-93df-584d-97c0-7f41a1bbce32",
           username = "test-consumer-1",
         },
       },
     }
 
-    local res = client:post("/config?flatten_errors=1", {
-      body = input,
-      headers = {
-        ["Content-Type"] = "application/json"
-      },
-    })
+    local flattened = post_config(input)
 
-    assert.response(res).has.status(400)
-    local body = assert.response(res).has.jsonbody()
-
-    local errors = body.flattened_errors
-
-    assert.not_nil(errors, "`flattened_errors` is missing from the response")
-    assert.is_table(errors, "`flattened_errors` is not a table")
-
-    assert.logfile().has.no.line("[emerg]", true, 0)
-    assert.logfile().has.no.line("[crit]",  true, 0)
-    assert.logfile().has.no.line("[alert]", true, 0)
-    assert.logfile().has.no.line("[error]", true, 0)
-
-    -- empty flattened errors
-    assert.equals(0, #errors, "unexpected number of flattened errors")
-
-    -- original errors exist
-    assert.equals(body.fields.consumers[2], "uniqueness violation: 'consumers' entity with username set to 'test-consumer-1' already declared", "unexpected original errors")
-
+    assert.equals(1, #flattened,
+                  "unexpected number of flattened errors")
+    assert.equals("uniqueness violation: 'consumers' entity with username set to 'test-consumer-1' already declared", flattened[1].errors[1].message)
+    assert.equals("entity", flattened[1].errors[1].type)
   end)
 end)
 
