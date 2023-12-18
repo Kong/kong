@@ -92,37 +92,37 @@ CACHE_KEY_FUNCS = {
 
 MATCH_CTX_FUNCS = {
     ["http.method"] =
-    function(v, c, params)
+    function(v, params, c)
       return c:add_value("http.method", params.method)
     end,
 
     ["http.path"] =
-    function(v, c, params)
+    function(v, params, c)
       return c:add_value("http.path", params.uri)
     end,
 
     ["http.host"] =
-    function(v, c, params)
+    function(v, params, c)
       return c:add_value("http.host", params.host)
     end,
 
     ["tls.sni"] =
-    function(v, c, params)
+    function(v, params, c)
       return c:add_value("tls.sni", params.sni)
     end,
 
     ["net.protocol"] =
-    function(v, c, params)
+    function(v, params, c)
       return c:add_value("net.protocol", params.scheme)
     end,
 
     ["net.port"] =
-    function(v, c, params)
+    function(v, params, c)
       return c:add_value("net.port", params.port)
     end,
 
     ["http.headers."] =
-    function(v, c, params)
+    function(v, params, c)
       local headers = params.headers
       if not headers then
         return true
@@ -152,7 +152,7 @@ MATCH_CTX_FUNCS = {
     end,
 
     ["http.queries."] =
-    function(v, c, params)
+    function(v, params, c)
       local queries = params.queries
       if not queries then
         return true
@@ -248,32 +248,32 @@ CACHE_KEY_FUNCS = {
 
 MATCH_CTX_FUNCS = {
     ["net.src.ip"] =
-    function(v, c, params)
+    function(v, params, c)
       return c:add_value("net.src.ip", params.src_ip)
     end,
 
     ["net.src.port"] =
-    function(v, c, params)
+    function(v, params, c)
       return c:add_value("net.src.port", params.src_port)
     end,
 
     ["net.dst.ip"] =
-    function(v, c, params)
+    function(v, params, c)
       return c:add_value("net.dst.ip", params.dst_ip)
     end,
 
     ["net.dst.port"] =
-    function(v, c, params)
+    function(v, params, c)
       return c:add_value("net.dst.port", params.dst_port)
     end,
 
     ["tls.sni"] =
-    function(v, c, params)
+    function(v, params, c)
       return c:add_value("tls.sni", params.sni)
     end,
 
     ["net.protocol"] =
-    function(v, c, params)
+    function(v, params, c)
       return c:add_value("net.protocol", params.scheme)
     end,
 }
@@ -306,7 +306,7 @@ local function get_atc_context(schema, fields, params)
 
     assert(value)
 
-    local res, err = func(value, c, params)
+    local res, err = func(value, params, c)
     if not res then
       return nil, err
     end
