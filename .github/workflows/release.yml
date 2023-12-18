@@ -270,7 +270,7 @@ jobs:
         tail -n500 bazel-out/**/*/CMake.log || true
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.label }}-packages
         path: bazel-bin/pkg
