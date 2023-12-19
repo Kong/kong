@@ -86,7 +86,8 @@ local COMPLEX_FIELDS_FUNCS = {
       for _, name in ipairs(v) do
         local value = headers[name]
 
-        local res, err = cb("http.headers." .. name, value)
+        local res, err = cb("http.headers." .. name, value,
+                            replace_dashes_lower) -- only for cache_key
         if not res then
           return nil, err
         end
@@ -123,6 +124,7 @@ local str_buf = buffer.new(64)
 local function get_cache_key(fields, params)
   str_buf:reset()
 
+  -- NOTE: DO NOT yield until str_buf:get()
   for field, value in pairs(fields) do
 
     -- these fields were not in cache key
@@ -146,11 +148,9 @@ local function get_cache_key(fields, params)
     func = COMPLEX_FIELDS_FUNCS[field]
 
     if func then  -- http.headers.* or http.queries.*
-      func(value, params, function(field, value)
-        local headers_or_queries = field:sub(1, PREFIX_LEN)
-
-        if headers_or_queries == "http.headers." then
-          field = replace_dashes_lower(field)
+      func(value, params, function(field, value, lower_func)
+        if lower_func then
+          field = lower_func(field)
         end
 
         if type(value) == "table" then
