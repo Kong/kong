@@ -5,7 +5,6 @@ local context = require("resty.router.context")
 local type = type
 local pairs = pairs
 local ipairs = ipairs
-local assert = assert
 local fmt = string.format
 local tb_sort = table.sort
 local tb_concat = table.concat
@@ -145,29 +144,20 @@ local function get_cache_key(fields, params)
 
     func = COMPLEX_FIELDS_FUNCS[field]
 
-    if func then
+    if func then  -- http.headers.* or http.queries.*
       func(value, params, function(field, value)
         local headers_or_queries = field:sub(1, PREFIX_LEN)
 
         if headers_or_queries == "http.headers." then
           field = replace_dashes_lower(field)
-          headers_or_queries = true
-
-        elseif headers_or_queries == "http.queries." then
-          headers_or_queries = true
-
-        else
-          headers_or_queries = false
         end
 
-        if headers_or_queries then
-          if type(value) == "table" then
-            tb_sort(value)
-            value = tb_concat(value, ",")
-          end
-
-          value = fmt("%s=%s", field, value)
+        if type(value) == "table" then
+          tb_sort(value)
+          value = tb_concat(value, ",")
         end
+
+        value = fmt("%s=%s", field, value)
 
         str_buf:put(value or ""):put("|")
 
@@ -204,39 +194,28 @@ local function get_atc_context(schema, fields, params)
 
     func = COMPLEX_FIELDS_FUNCS[field]
 
-    if func then
+    if func then  -- http.headers.* or http.queries.*
       local res, err = func(value, params, function(field, value)
-        local headers_or_queries = field:sub(1, PREFIX_LEN)
+        local v_type = type(value)
 
-        if headers_or_queries == "http.headers." or headers_or_queries == "http.queries." then
-          headers_or_queries = true
-
-        else
-          headers_or_queries = false
-        end
-
-        if headers_or_queries then
-          local v_type = type(value)
-
-          -- multiple values for a single query parameter, like /?foo=bar&foo=baz
-          if v_type == "table" then
-            for _, v in ipairs(value) do
-              local res, err = c:add_value(field, v)
-              if not res then
-                return nil, err
-              end
+        -- multiple values for a single query parameter, like /?foo=bar&foo=baz
+        if v_type == "table" then
+          for _, v in ipairs(value) do
+            local res, err = c:add_value(field, v)
+            if not res then
+              return nil, err
             end
+          end
 
-            return true
+          return true
 
-          -- the query parameter has only one value, like /?foo=bar
-          -- the query parameter has no value, like /?foo,
-          -- get_uri_arg will get a boolean `true`
-          -- we think it is equivalent to /?foo=
-          elseif v_type == "boolean" then
-            value = ""
-          end -- if v_type
-        end   -- if headers_or_queries
+        -- the query parameter has only one value, like /?foo=bar
+        -- the query parameter has no value, like /?foo,
+        -- get_uri_arg will get a boolean `true`
+        -- we think it is equivalent to /?foo=
+        elseif v_type == "boolean" then
+          value = ""
+        end -- if v_type
 
         return c:add_value(field, value)
       end)
