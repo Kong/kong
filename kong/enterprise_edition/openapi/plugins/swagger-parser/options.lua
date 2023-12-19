@@ -20,8 +20,8 @@ local EMPTY_T = {}
 local DEFAULT_OPTIONS = {
   resolve_base_path = false,
   dereference = {
-    circular = false, -- Don't allow circular $refs
-  }
+    maximum_dereference = 0
+  },
 }
 
 

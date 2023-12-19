@@ -1,0 +1,3 @@
+message: "**Mocking**: Fix an issue where valid recursive schemas are always rejected."
+type: bugfix
+scope: Plugin

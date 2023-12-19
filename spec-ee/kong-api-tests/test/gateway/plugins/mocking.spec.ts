@@ -86,7 +86,7 @@ describe('Mocking Plugin Tests', function () {
 
     expect(resp.status, 'Status should be 400').to.equal(400);
     expect(resp.data.message, 'Should have correct error message').to.contain(
-      'api_specification is neither valid json nor valid yaml'
+      "api specification is neither valid json ('Expected value but found invalid token at character 1') nor valid yaml ('not valid')"
     );
   });
 

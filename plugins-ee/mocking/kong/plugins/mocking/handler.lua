@@ -9,6 +9,7 @@ local meta = require "kong.meta"
 local mime_parse = require "kong.plugins.mocking.mime_parse"
 local mocker = require "kong.plugins.mocking.jsonschema-mocker.mocker"
 local swagger_parser = require "kong.enterprise_edition.openapi.plugins.swagger-parser.parser"
+local swagger_dereference = require "kong.enterprise_edition.openapi.plugins.swagger-parser.dereference"
 local constants = require "kong.plugins.mocking.constants"
 
 local ngx = ngx
@@ -58,6 +59,23 @@ local function retrieve_operation(spec, path, method)
   end
 end
 
+local function resolve_schema(schema)
+  if type(schema.is_ref) == "function" and schema:is_ref() then
+    local metatable = getmetatable(schema)
+
+    local opts = {
+      dereference = {
+        maximum_dereference = 3,
+      }
+    }
+
+    local decoded_schema, err = swagger_dereference.dereference(schema, opts, metatable.refs)
+    assert(decoded_schema, err)
+    return decoded_schema
+  end
+  return schema
+end
+
 
 local function retrieve_mocking_response_v2(response, accept, code, conf, behavioral_headers)
   local mocking_response = {
@@ -76,7 +94,8 @@ local function retrieve_mocking_response_v2(response, accept, code, conf, behavi
     end
 
   elseif response.schema then
-    local example = mocker.mock(response.schema)
+    local schema = resolve_schema(response.schema)
+    local example = mocker.mock(schema)
     mocking_response.example = example
 
   end
@@ -130,7 +149,8 @@ local function retrieve_mocking_response_v3(response, accept, code, conf, behavi
         end
 
       else
-        mocking_response.example = mocker.mock(schema)
+        local resolved_schema = resolve_schema(schema)
+        mocking_response.example = mocker.mock(resolved_schema)
       end
     end
 
@@ -282,7 +302,8 @@ function MockingHandler:access(conf)
       return kong.response.exit(500, { message = err })
     end
     local opts = {
-      resolve_base_path = conf.include_base_path
+      resolve_base_path = conf.include_base_path,
+      dereference = { maximum_dereference = 3 },
     }
     spec, err = swagger_parser.parse(content, opts)
     if err then

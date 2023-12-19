@@ -94,11 +94,7 @@ local function resolve_ref(spec, schema, opts, parent_ref)
   end
 
   for key, value in pairs(schema) do
-    if key == "schema"
-      ---[[ mocking compatibility
-      and opts.dereference.circular
-      --]]
-    then
+    if key == "schema" then
       if has_ref(value) then
         -- attach a metatable to indicate it's a reference schema
         setmetatable(value, {
@@ -114,31 +110,31 @@ local function resolve_ref(spec, schema, opts, parent_ref)
       end
 
     else
-      ---[[ mocking compatibility
       local curr_parent_ref = clone(parent_ref)
-      --]]
-
-      -- only resolve $ref that does not belong to jsonschema(the key is not 'schema')
       while is_ref(value) do
         local ref = value["$ref"]
         if byte(ref, 1) ~= byte("#") then
           return nil, "only local references are supported, not " .. ref
         end
 
-        ---[[ mocking compatibility
-        if curr_parent_ref[ref] then
+        local maximum_dereference = opts.dereference and opts.dereference.maximum_dereference or 0
+        if curr_parent_ref[ref] and maximum_dereference == 0 then
           return nil, "recursion detected in schema dereferencing"
         end
-        curr_parent_ref[ref] = true
-        --]]
+        local derefer_cnt = curr_parent_ref[ref]
+        if not derefer_cnt or derefer_cnt < maximum_dereference then
+          local ref_target, err = by_ref(spec, sub(ref, 2))
+          if not ref_target then
+            return nil, "failed dereferencing schema: " .. err
+          end
+          value = utils.cycle_aware_deep_copy(ref_target)
+          schema[key] = value
 
-        local ref_target, err = by_ref(spec, sub(ref, 2))
-        if not ref_target then
-          return nil, "failed dereferencing schema: " .. err
+        else
+          schema[key] = nil
+          break
         end
-
-        value = utils.cycle_aware_deep_copy(ref_target)
-        schema[key] = value
+        curr_parent_ref[ref] = (derefer_cnt or 0) + 1
       end
 
       if type(value) == "table" then

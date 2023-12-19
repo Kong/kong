@@ -9,7 +9,7 @@ local typedefs = require "kong.db.schema.typedefs"
 local swagger_parser = require "kong.enterprise_edition.openapi.plugins.swagger-parser.parser"
 
 local function validate_spec(entity)
-  return swagger_parser.parse(entity, { dereference = { circular = true } })
+  return swagger_parser.parse(entity)
 end
 
 return {

@@ -1,0 +1,132 @@
+openapi: 3.0.1
+info:
+  title: Sample API
+  description: A Sample OpenAPI Spec
+  version: 1.0.0
+
+paths:
+  /ref-case-1:
+    post:
+      responses:
+        200:
+          description: OK
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/Simple'
+  /ref-case-2:
+    post:
+      responses:
+        200:
+          description: OK
+          content:
+            'application/json':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Simple'
+                minItems: 2
+                maxItems: 2
+  /ref-case-3:
+    post:
+      responses:
+        '200':
+          description: OK
+          content:
+            'application/json':
+              schema:
+                type: object
+                properties:
+                  key_integer:
+                    type: integer
+                  key_boolean:
+                    type: boolean
+                  simple:
+                    $ref: '#/components/schemas/Simple'
+
+  /recursive-ref-case-1:
+    post:
+      responses:
+        '200':
+          description: OK
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/Node'
+  /recursive-ref-case-2:
+    post:
+      responses:
+        '200':
+          description: OK
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/ComparedTcmAgreementsDto'
+
+  /recursive-ref-case-3:
+    post:
+      responses:
+        '200':
+          description: OK
+          content:
+            'application/json':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Customer'
+                minItems: 1
+                maxItems: 1
+
+components:
+  schemas:
+    Simple:
+      type: object
+      properties:
+        key_string:
+          type: string
+    Node:
+      type: object
+      properties:
+        value:
+          type: string
+        node:
+          $ref: '#/components/schemas/Node'
+    ComparedTcmAgreementsDto:
+      type: object
+      properties:
+        differentFields:
+          type: array
+          items:
+            type: string
+        securityEligibilityRules:
+          $ref: '#/components/schemas/ConstraintTree'
+    ConstraintTree:
+      type: object
+      properties:
+        constraint:
+          type: string
+        leaves:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConstraintTree'
+        operation:
+          type: string
+          enum:
+            - IS
+            - AND
+            - OR
+    Customer:
+      type: object
+      properties:
+        title:
+          type: string
+        profile:
+          $ref: '#/components/schemas/Profile'
+    Profile:
+      type: object
+      properties:
+        customer:
+          $ref: '#/components/schemas/Customer'
+        createdDate:
+          type: string
+          format: date-time

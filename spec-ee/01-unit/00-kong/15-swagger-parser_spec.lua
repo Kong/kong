@@ -10,7 +10,7 @@ local lyaml = require "lyaml"
 
 local opts = {
   dereference = {
-    circular = true,
+
   }
 }
 

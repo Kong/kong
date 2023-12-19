@@ -11,6 +11,7 @@ local integer_generator = require "kong.plugins.mocking.jsonschema-mocker.type.i
 local number_generator = require "kong.plugins.mocking.jsonschema-mocker.type.number"
 local string_generator = require "kong.plugins.mocking.jsonschema-mocker.type.string"
 local utils = require "kong.tools.utils"
+local cjson = require "cjson"
 
 local type = type
 local table_insert = table.insert
@@ -65,6 +66,7 @@ local generator = {
     local max_items = type(schema.maxItems) == "number" and schema.maxItems or opts.default_max_items
 
     local value = {}
+    setmetatable(value, cjson.array_mt)
     if schema.items then
       local n = random(min_items, max_items)
       for i = 1, n do

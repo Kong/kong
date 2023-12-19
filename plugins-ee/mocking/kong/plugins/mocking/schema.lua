@@ -4,24 +4,12 @@
 -- subject to the terms of the Kong Master Software License Agreement found
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
+local typedefs = require "kong.db.schema.typedefs"
+local swagger_parser = require "kong.enterprise_edition.openapi.plugins.swagger-parser.parser"
 
-
-local cjson = require("cjson.safe").new()
-local lyaml = require "lyaml"
-
-local function validate_specification(spec_content)
-  local parsed_spec, _ = cjson.decode(spec_content)
-  if type(parsed_spec) ~= "table" then
-    local pok
-    pok, parsed_spec = pcall(lyaml.load, spec_content)
-    if not pok or type(parsed_spec) ~= "table" then
-      return false, "api_specification is neither valid json nor valid yaml"
-    end
-  end
-  return true
+local function validate_spec(entity)
+  return swagger_parser.parse(entity)
 end
-
-local typedefs  = require "kong.db.schema.typedefs"
 
 return {
   name = "mocking",
@@ -32,7 +20,7 @@ return {
       type = "record",
       fields = {
         { api_specification_filename = { description = "The path and name of the specification file loaded into Kong Gateway's database. You cannot use this option for DB-less or hybrid mode.", type = "string", required = false } },
-        { api_specification = { description = "The contents of the specification file. You must use this option for hybrid or DB-less mode. You can include the full specification as part of the configuration. In Kong Manager, you can copy and paste the contents of the spec directly into the `Config.Api Specification` text field.", type = "string", required = false, custom_validator = validate_specification } },
+        { api_specification = { description = "The contents of the specification file. You must use this option for hybrid or DB-less mode. You can include the full specification as part of the configuration. In Kong Manager, you can copy and paste the contents of the spec directly into the `Config.Api Specification` text field.", type = "string", required = false, custom_validator = validate_spec } },
         { random_delay = { description = "Enables a random delay in the mocked response. Introduces delays to simulate real-time response times by APIs.", type = "boolean", default = false } },
         { max_delay_time = { description = "The maximum value in seconds of delay time. Set this value when `random_delay` is enabled and you want to adjust the default. The value must be greater than the `min_delay_time`.", type = "number", default = 1 } },
         { min_delay_time = { description = "The minimum value in seconds of delay time. Set this value when `random_delay` is enabled and you want to adjust the default. The value must be less than the `max_delay_time`.", type = "number", default = 0.001 } },
