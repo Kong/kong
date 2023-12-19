@@ -1,0 +1,3 @@
+message: "**Ldap-auth-advanced**: support decoding non-standard asn1 integer and enumerated encoded with redundant leading padding"
+type: feature
+scope: Plugin

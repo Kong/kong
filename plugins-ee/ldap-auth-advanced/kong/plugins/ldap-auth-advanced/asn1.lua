@@ -16,17 +16,26 @@ local new_tab = base.new_tab
 local lpack = require "lua_pack"
 local bpack = lpack.pack
 local insert = table.insert
+local byte = string.byte
 
 local cucharpp = ffi_new("const unsigned char*[1]")
 local ucharpp = ffi_new("unsigned char*[1]")
 local charpp = ffi_new("char*[1]")
 
 
-ffi.cdef [[
+local BN_ULONG
+if ffi.abi('64bit') then
+  BN_ULONG = 'unsigned long long'
+else -- 32bit
+  BN_ULONG = 'unsigned int'
+end
+
+ffi.cdef( [[
   typedef struct asn1_string_st ASN1_OCTET_STRING;
   typedef struct asn1_string_st ASN1_INTEGER;
   typedef struct asn1_string_st ASN1_ENUMERATED;
   typedef struct asn1_string_st ASN1_STRING;
+  typedef struct bignum_st BIGNUM;
 
   ASN1_OCTET_STRING *ASN1_OCTET_STRING_new();
   ASN1_INTEGER *ASN1_INTEGER_new();
@@ -60,7 +69,10 @@ ffi.cdef [[
 
   void ASN1_put_object(unsigned char **pp, int constructed, int length,
                       int tag, int xclass);
-]]
+  BIGNUM *BN_bin2bn(const unsigned char *s, int len, BIGNUM *ret);
+  unsigned ]] .. BN_ULONG .. [[ BN_get_word(BIGNUM *a);
+  void BN_free(BIGNUM *a);
+]])
 
 
 local ASN1_STRING_get0_data
@@ -229,6 +241,36 @@ local decode
 do
   local decoder = new_tab(0, 3)
 
+  -- some implemetations like VDS are not strictly comply to
+  -- the smallest length integer encoding of BER. That is,
+  -- there may be redundant leading padding.
+  -- https://konghq.atlassian.net/browse/FTI-5605
+  -- So that we don't use d2i_ASN1_INTEGER here.
+  local function decode_integer(der, offset, name)
+    assert(offset < #der)
+
+    local len_byte1 = byte(der, offset + 2)
+    if len_byte1 == 0x80 then
+      return nil, name .. " can't use indefinite form"
+    elseif band(len_byte1, 0x80) == 0x80 then
+      return nil, "don't support long form for " .. name
+    end
+
+    if band(byte(der, offset + 3), 0x80) == 0x80 then
+      return nil, name .. " is negative"
+    end
+
+    cucharpp[0] = ffi_cast("const unsigned char *", der:sub(offset + 3))
+    local bn = C.BN_bin2bn(cucharpp[0], len_byte1, nil)
+    if bn == nil then
+      return nil, "failed to decode " .. name
+    end
+
+    local ret = tonumber(C.BN_get_word(bn))
+    C.BN_free(bn)
+    return ret
+  end
+
   decoder[TAG.OCTET_STRING] = function(der, offset, len)
     assert(offset < #der)
     cucharpp[0] = ffi_cast("const unsigned char *", der) + offset
@@ -242,27 +284,11 @@ do
   end
 
   decoder[TAG.INTEGER] = function(der, offset, len)
-    assert(offset < #der)
-    cucharpp[0] = ffi_cast("const unsigned char *", der) + offset
-    local typ = C.d2i_ASN1_INTEGER(nil, cucharpp, len)
-    if typ == nil then
-      return nil, "failed to decode ASN1_INTEGER"
-    end
-    local ret = C.ASN1_INTEGER_get(typ)
-    C.ASN1_INTEGER_free(typ)
-    return tonumber(ret)
+    return decode_integer(der, offset, "ASN1_INTEGER")
   end
 
   decoder[TAG.ENUMERATED] = function(der, offset, len)
-    assert(offset < #der)
-    cucharpp[0] = ffi_cast("const unsigned char *", der) + offset
-    local typ = C.d2i_ASN1_ENUMERATED(nil, cucharpp, len)
-    if typ == nil then
-      return nil, "failed to decode ASN1_ENUMERATED"
-    end
-    local ret = C.ASN1_ENUMERATED_get(typ)
-    C.ASN1_INTEGER_free(typ)
-    return tonumber(ret)
+    return decode_integer(der, offset, "ASN1_ENUMERATED")
   end
 
   decoder[TAG.SET] = function(der, offset, len)

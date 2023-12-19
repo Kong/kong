@@ -63,22 +63,36 @@ describe("Plugin: ldap-auth (decode)", function()
     assert.equals(12, offset)
   end)
 
+  it("positive integer/enumerated with redundant leading padding -- short form", function()
+    for _, tag in ipairs({"02", "0a"}) do
+      local der = from_hex(tag .. "020001")
+      local offset, ret, err = asn1_decode(der)
+      assert.same(nil, err)
+      assert.equals(1, ret)
+      assert.equals(4, offset)
+    end
+  end)
+
+  it("doesn't support integer/enumerated with long form", function()
+    for name, tag in pairs({ ASN1_INTEGER = "02", ASN1_ENUMERATED = "0a" }) do
+      local der = from_hex(tag .. "81020001")  -- value length 2
+      local _, _, err = asn1_decode(der)
+      assert.same("don't support long form for " .. name, err)
+    end
+  end)
+
+  it("negative integer/enumerated should report error", function()
+    for name, tag in pairs({ ASN1_INTEGER = "02", ASN1_ENUMERATED = "0a" }) do
+      local der = from_hex(tag .. "01ff")
+      local _, _, err = asn1_decode(der)
+      assert.same(name .. " is negative", err)
+    end
+  end)
+
   it("invalid asn1", function()
     local der = from_hex("020302") -- too long length
     local _, _, err = asn1_decode(der)
     assert.same("der with error encoding: 128", err)
-  end)
-
-  it("abnormal integer", function()
-    local der = from_hex("02020001") -- invalid padding
-    local _, _, err = asn1_decode(der)
-    assert.same("failed to decode ASN1_INTEGER", err)
-  end)
-
-  it("abnormal enumerated", function()
-    local der = from_hex("0a020001") -- invalid padding
-    local _, _, err = asn1_decode(der)
-    assert.same("failed to decode ASN1_ENUMERATED", err)
   end)
 
   it("unknown tag", function()
@@ -94,9 +108,9 @@ describe("Plugin: ldap-auth (decode)", function()
   end)
 
   it("abnormal set -- internal element error", function()
-    local der = from_hex("110b02020001040568656c6c6f") -- invalid padding with internal integer
+    local der = from_hex("110a0201ff040568656c6c6f") -- internal integer is negative
     local _, _, err = asn1_decode(der)
-    assert.same("failed to decode ASN1_SET: failed to decode ASN1_INTEGER", err)
+    assert.same("failed to decode ASN1_SET: ASN1_INTEGER is negative", err)
   end)
 
   it("abnormal sequence -- external error", function()
@@ -106,9 +120,9 @@ describe("Plugin: ldap-auth (decode)", function()
   end)
 
   it("abnormal sequence -- internal element error", function()
-    local der = from_hex("100b02020001040568656c6c6f") -- invalid padding with internal integer
+    local der = from_hex("100b02810101040568656c6c6f") -- internal integer is long form
     local _, _, err = asn1_decode(der)
-    assert.same("failed to decode ASN1_SEQUENCE: failed to decode ASN1_INTEGER", err)
+    assert.same("failed to decode ASN1_SEQUENCE: don't support long form for ASN1_INTEGER", err)
   end)
 
   it("normal bind response -- success", function()
