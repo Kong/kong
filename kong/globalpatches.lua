@@ -362,11 +362,10 @@ return function(options)
         if expire_at == nil then
           return 0
         end
-        local remaining = expire_at - ngx.now()
-        if remaining == 0 then
-          return nil, "not found"
-        end
-        return remaining
+        -- There is a problem that also exists in the official OpenResty:
+        -- 0 means the key never expires. So it's hard to distinguish between a
+        -- never-expired key and an expired key with a TTL value of 0.
+        return expire_at - ngx.now()
       end
 
       -- hack
