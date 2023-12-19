@@ -10,10 +10,6 @@ local tb_concat = table.concat
 local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
 
 
--- 13 bytes, same len for "http.queries."
-local PREFIX_LEN = 13 -- #"http.headers."
-
-
 local SIMPLE_FIELDS_FUNCS = {
     -- http.*
 
