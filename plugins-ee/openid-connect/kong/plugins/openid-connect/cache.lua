@@ -367,7 +367,7 @@ end
 
 
 local function fetch_configuration(issuer, opts)
-  local key = "oic:" .. sha256_base64url(issuer)
+  local key = "oic:" .. sha256_base64url(issuer .. "#configuration")
   local data, err = cache_get(key, nil, load_configuration, issuer, opts)
   if not data then
     return nil, err
@@ -407,7 +407,7 @@ end
 
 
 local function fetch_keys(jwks_uri, opts)
-  local key = "oic:" .. sha256_base64url(jwks_uri)
+  local key = "oic:" .. sha256_base64url(jwks_uri .. "#jwks")
   local data, err = cache_get(key, nil, load_keys, jwks_uri, opts)
   if not data then
     return nil, err

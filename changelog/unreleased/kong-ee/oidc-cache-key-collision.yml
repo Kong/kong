@@ -1,0 +1,3 @@
+message: "**OpenID-Connect**: fix the cache key collision when config `issuer` and `extra_jwks_uris` contain the same uri"
+type: bugfix
+scope: Plugin
