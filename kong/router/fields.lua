@@ -121,6 +121,8 @@ local str_buf = buffer.new(64)
 
 
 local function get_cache_key(fields, params)
+  str_buf:reset()
+
   for field, value in pairs(fields) do
 
     -- these fields were not in cache key
@@ -165,7 +167,7 @@ local function get_cache_key(fields, params)
     -- ignore unknown fields
 
     ::continue::
-  end
+  end -- for fields
 
   return str_buf:get()
 end
@@ -187,7 +189,7 @@ local function get_atc_context(schema, fields, params)
       end
 
       goto continue
-    end
+    end -- if func
 
     func = COMPLEX_FIELDS_FUNCS[field]
 
@@ -219,11 +221,11 @@ local function get_atc_context(schema, fields, params)
       end
 
       goto continue
-    end
+    end -- if func
 
     if not func then  -- unknown field
       error("unknown router matching schema field: " .. field)
-    end
+    end -- if func
 
     ::continue::
   end -- for fields
