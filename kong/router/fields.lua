@@ -5,7 +5,6 @@ local context = require("resty.router.context")
 local type = type
 local pairs = pairs
 local ipairs = ipairs
-local fmt = string.format
 local tb_sort = table.sort
 local tb_concat = table.concat
 local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
@@ -157,9 +156,7 @@ local function get_cache_key(fields, params)
           value = tb_concat(value, ",")
         end
 
-        value = fmt("%s=%s", field, value)
-
-        str_buf:put(value or ""):put("|")
+        str_buf:putf("%s=%s|", field, value or "")
 
         return true
       end)
@@ -208,16 +205,13 @@ local function get_atc_context(schema, fields, params)
           end
 
           return true
+        end -- if v_type
 
         -- the query parameter has only one value, like /?foo=bar
         -- the query parameter has no value, like /?foo,
         -- get_uri_arg will get a boolean `true`
         -- we think it is equivalent to /?foo=
-        elseif v_type == "boolean" then
-          value = ""
-        end -- if v_type
-
-        return c:add_value(field, value)
+        return c:add_value(field, v_type == "boolean" and "" or value)
       end)
 
       if not res then
