@@ -2704,20 +2704,35 @@ R6InCcH2Wh8wSeY5AuDXvu2tv9g/PW9wIJmPuKSHMA==
         {
           id = "a73dc9a7-93df-584d-97c0-7f41a1bbce3d",
           username = "test-consumer-1",
+          tags =  { "consumer-1" },
         },
         {
           id = "a73dc9a7-93df-584d-97c0-7f41a1bbce32",
           username = "test-consumer-1",
+          tags =  { "consumer-2" },
         },
       },
     }
-
     local flattened = post_config(input)
-
-    assert.equals(1, #flattened,
-                  "unexpected number of flattened errors")
-    assert.equals("uniqueness violation: 'consumers' entity with username set to 'test-consumer-1' already declared", flattened[1].errors[1].message)
-    assert.equals("entity", flattened[1].errors[1].type)
+    validate({
+      {
+        entity_type = "consumer",
+        entity_id   = "a73dc9a7-93df-584d-97c0-7f41a1bbce32",
+        entity_name = nil,
+        entity_tags = { "consumer-2" },
+        entity      =  {
+          id = "a73dc9a7-93df-584d-97c0-7f41a1bbce32",
+          username = "test-consumer-1",
+          tags =  { "consumer-2" },
+        },
+        errors = {
+          {
+            type    = "entity",
+            message = "uniqueness violation: 'consumers' entity with username set to 'test-consumer-1' already declared",
+          }
+        },
+      },
+    }, flattened)
   end)
 end)
 
