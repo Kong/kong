@@ -17,7 +17,6 @@ local is_http = ngx.config.subsystem == "http"
 
 local MATCH_CTX_FUNCS
 local CACHE_KEY_FUNCS
-local get_cache_key
 
 
 if is_http then
@@ -194,23 +193,6 @@ MATCH_CTX_FUNCS = {
 }
 
 
-function get_cache_key(fields, params)
-  for field, value in pairs(fields) do
-    local func = CACHE_KEY_FUNCS[field]
-
-    if func then
-      func(value, params, str_buf)
-    end
-  end
-
-  if not fields["http.host"] then -- preserve_host
-    CACHE_KEY_FUNCS["http.host"](true, params, str_buf)
-  end
-
-  return str_buf:get()
-end
-
-
 else -- stream subsystem
 
 
@@ -275,7 +257,10 @@ MATCH_CTX_FUNCS = {
 }
 
 
-function get_cache_key(fields, params)
+end -- is_http
+
+
+local function get_cache_key(fields, params)
   for field, value in pairs(fields) do
     local func = CACHE_KEY_FUNCS[field]
 
@@ -286,9 +271,6 @@ function get_cache_key(fields, params)
 
   return str_buf:get()
 end
-
-
-end -- is_http
 
 
 local function get_atc_context(schema, fields, params)

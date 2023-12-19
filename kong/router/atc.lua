@@ -598,6 +598,11 @@ function _M:exec(ctx)
 
   else
     route_match_stat(ctx, "pos")
+
+    -- preserve_host header logic, modify cache result
+    if match_t.route.preserve_host then
+      match_t.upstream_host = req_host
+    end
   end
 
   -- found a match
