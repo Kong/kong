@@ -207,10 +207,6 @@ function get_cache_key(fields, params)
     CACHE_KEY_FUNCS["http.host"](true, params, str_buf)
   end
 
-  if not fields["http.path"] then -- 05-proxy/02-router_spec.lua:1329
-    CACHE_KEY_FUNCS["http.path"](true, params, str_buf)
-  end
-
   return str_buf:get()
 end
 
