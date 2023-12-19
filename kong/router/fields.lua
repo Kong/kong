@@ -16,7 +16,7 @@ local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
 local PREFIX_LEN = 13 -- #"http.headers."
 
 
-local FIELDS_FUNCS = {
+local SIMPLE_FIELDS_FUNCS = {
     -- http.*
 
     ["http.method"] =
@@ -32,44 +32,6 @@ local FIELDS_FUNCS = {
     ["http.host"] =
     function(v, params, cb)
       return cb("http.host", params.host)
-    end,
-
-    ["http.headers."] =
-    function(v, params, cb)
-      local headers = params.headers
-      if not headers then
-        return true
-      end
-
-      for _, name in ipairs(v) do
-        local value = headers[name]
-
-        local res, err = cb("http.headers." .. name, value)
-        if not res then
-          return nil, err
-        end
-      end -- for ipairs(v)
-
-      return true
-    end,
-
-    ["http.queries."] =
-    function(v, params, cb)
-      local queries = params.queries
-      if not queries then
-        return true
-      end
-
-      for _, name in ipairs(v) do
-        local value = queries[name]
-
-        local res, err = cb("http.queries." .. name, value)
-        if not res then
-          return nil, err
-        end
-      end -- for ipairs(v)
-
-      return true
     end,
 
     -- tls.*
@@ -115,6 +77,47 @@ local FIELDS_FUNCS = {
 }
 
 
+local COMPLEX_FIELDS_FUNCS = {
+    ["http.headers."] =
+    function(v, params, cb)
+      local headers = params.headers
+      if not headers then
+        return true
+      end
+
+      for _, name in ipairs(v) do
+        local value = headers[name]
+
+        local res, err = cb("http.headers." .. name, value)
+        if not res then
+          return nil, err
+        end
+      end -- for ipairs(v)
+
+      return true
+    end,
+
+    ["http.queries."] =
+    function(v, params, cb)
+      local queries = params.queries
+      if not queries then
+        return true
+      end
+
+      for _, name in ipairs(v) do
+        local value = queries[name]
+
+        local res, err = cb("http.queries." .. name, value)
+        if not res then
+          return nil, err
+        end
+      end -- for ipairs(v)
+
+      return true
+    end,
+}
+
+
 -- cache key string
 local str_buf = buffer.new(64)
 
@@ -129,39 +132,50 @@ local function get_cache_key(fields, params)
       goto continue
     end
 
-    local func = FIELDS_FUNCS[field]
+    local func = SIMPLE_FIELDS_FUNCS[field]
 
-    if not func then
+    if func then
+      func(value, params, function(field, value)
+        str_buf:put(value or ""):put("|")
+        return true
+      end)
+
       goto continue
-    end
+    end -- if func
 
-    func(value, params, function(field, value)
-      local headers_or_queries = field:sub(1, PREFIX_LEN)
+    func = COMPLEX_FIELDS_FUNCS[field]
 
-      if headers_or_queries == "http.headers." then
-        field = replace_dashes_lower(field)
-        headers_or_queries = true
+    if func then
+      func(value, params, function(field, value)
+        local headers_or_queries = field:sub(1, PREFIX_LEN)
 
-      elseif headers_or_queries == "http.queries." then
-        headers_or_queries = true
+        if headers_or_queries == "http.headers." then
+          field = replace_dashes_lower(field)
+          headers_or_queries = true
 
-      else
-        headers_or_queries = false
-      end
+        elseif headers_or_queries == "http.queries." then
+          headers_or_queries = true
 
-      if headers_or_queries then
-        if type(value) == "table" then
-          tb_sort(value)
-          value = tb_concat(value, ",")
+        else
+          headers_or_queries = false
         end
 
-        value = fmt("%s=%s", field, value)
-      end
+        if headers_or_queries then
+          if type(value) == "table" then
+            tb_sort(value)
+            value = tb_concat(value, ",")
+          end
 
-      str_buf:put(value or ""):put("|")
+          value = fmt("%s=%s", field, value)
+        end
 
-      return true
-    end)
+        str_buf:put(value or ""):put("|")
+
+        return true
+      end)
+    end -- if func
+
+    -- ignore unknown fields
 
     ::continue::
   end
@@ -174,53 +188,71 @@ local function get_atc_context(schema, fields, params)
   local c = context.new(schema)
 
   for field, value in pairs(fields) do
-    local func = FIELDS_FUNCS[field]
+    local func = SIMPLE_FIELDS_FUNCS[field]
+
+    if func then
+      local res, err = func(value, params, function(field, value)
+        return c:add_value(field, value)
+      end)
+
+      if not res then
+        return nil, err
+      end
+
+      goto continue
+    end
+
+    func = COMPLEX_FIELDS_FUNCS[field]
+
+    if func then
+      local res, err = func(value, params, function(field, value)
+        local headers_or_queries = field:sub(1, PREFIX_LEN)
+
+        if headers_or_queries == "http.headers." or headers_or_queries == "http.queries." then
+          headers_or_queries = true
+
+        else
+          headers_or_queries = false
+        end
+
+        if headers_or_queries then
+          local v_type = type(value)
+
+          -- multiple values for a single query parameter, like /?foo=bar&foo=baz
+          if v_type == "table" then
+            for _, v in ipairs(value) do
+              local res, err = c:add_value(field, v)
+              if not res then
+                return nil, err
+              end
+            end
+
+            return true
+
+          -- the query parameter has only one value, like /?foo=bar
+          -- the query parameter has no value, like /?foo,
+          -- get_uri_arg will get a boolean `true`
+          -- we think it is equivalent to /?foo=
+          elseif v_type == "boolean" then
+            value = ""
+          end -- if v_type
+        end   -- if headers_or_queries
+
+        return c:add_value(field, value)
+      end)
+
+      if not res then
+        return nil, err
+      end
+
+      goto continue
+    end
+
     if not func then  -- unknown field
       error("unknown router matching schema field: " .. field)
     end
 
-    assert(value)
-
-    local res, err = func(value, params, function(field, value)
-      local headers_or_queries = field:sub(1, PREFIX_LEN)
-
-      if headers_or_queries == "http.headers." or headers_or_queries == "http.queries." then
-        headers_or_queries = true
-
-      else
-        headers_or_queries = false
-      end
-
-      if headers_or_queries then
-        local v_type = type(value)
-
-        -- multiple values for a single query parameter, like /?foo=bar&foo=baz
-        if v_type == "table" then
-          for _, v in ipairs(value) do
-            local res, err = c:add_value(field, v)
-            if not res then
-              return nil, err
-            end
-          end
-
-          return true
-
-        -- the query parameter has only one value, like /?foo=bar
-        -- the query parameter has no value, like /?foo,
-        -- get_uri_arg will get a boolean `true`
-        -- we think it is equivalent to /?foo=
-        elseif v_type == "boolean" then
-          value = ""
-        end -- if v_type
-      end   -- if headers_or_queries
-
-      return c:add_value(field, value)
-    end)
-
-    if not res then
-      return nil, err
-    end
-
+    ::continue::
   end -- for fields
 
   return c
