@@ -12,6 +12,10 @@ local tb_concat = table.concat
 local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
 
 
+-- 13 bytes, same len for "http.queries."
+local PREFIX_LEN = 13 -- #"http.headers."
+
+
 local FIELDS_FUNCS = {
     -- http.*
 
@@ -132,7 +136,7 @@ local function get_cache_key(fields, params)
     end
 
     func(value, params, function(field, value)
-      local headers_or_queries = field:sub(1, 13)
+      local headers_or_queries = field:sub(1, PREFIX_LEN)
 
       if headers_or_queries == "http.headers." then
         field = replace_dashes_lower(field)
@@ -178,7 +182,7 @@ local function get_atc_context(schema, fields, params)
     assert(value)
 
     local res, err = func(value, params, function(field, value)
-      local headers_or_queries = field:sub(1, 13)
+      local headers_or_queries = field:sub(1, PREFIX_LEN)
 
       if headers_or_queries == "http.headers." or headers_or_queries == "http.queries." then
         headers_or_queries = true
