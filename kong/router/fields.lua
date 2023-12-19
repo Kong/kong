@@ -22,71 +22,94 @@ local MATCH_CTX_FUNCS
 local FIELDS_FUNCS = {
     ["http.method"] =
     function(v, params, cb)
-      cb("http.method", params.method)
+      return cb("http.method", params.method)
     end,
 
     ["http.path"] =
     function(v, params, cb)
-      cb("http.path", params.uri)
+      return cb("http.path", params.uri)
     end,
 
     ["http.host"] =
     function(v, params, cb)
-      cb("http.host", params.host)
-    end,
-
-    ["tls.sni"] =
-    function(v, params, cb)
-      cb("tls.sni", params.sni)
+      return cb("http.host", params.host)
     end,
 
     ["http.headers."] =
     function(v, params, cb)
       local headers = params.headers
       if not headers then
-        return
+        return true
       end
 
       for _, name in ipairs(v) do
         local value = headers[name]
 
-        cb("http.headers." .. name, value)
+        local res, err = cb("http.headers." .. name, value)
+        if not res then
+          return nil, err
+        end
       end -- for ipairs(v)
+
+      return true
     end,
 
     ["http.queries."] =
     function(v, params, cb)
       local queries = params.queries
       if not queries then
-        return
+        return true
       end
 
       for _, name in ipairs(v) do
         local value = queries[name]
 
-        cb("http.queries." .. name, value)
+        local res, err = cb("http.queries." .. name, value)
+        if not res then
+          return nil, err
+        end
       end -- for ipairs(v)
+
+      return true
+    end,
+
+    ["tls.sni"] =
+    function(v, params, cb)
+      return cb("tls.sni", params.sni)
     end,
 
     ["net.src.ip"] =
     function(v, params, cb)
-      cb("net.src.ip", params.src_ip)
+      return cb("net.src.ip", params.src_ip)
     end,
 
     ["net.src.port"] =
     function(v, params, cb)
-      cb("net.src.port", params.src_port)
+      return cb("net.src.port", params.src_port)
     end,
 
     ["net.dst.ip"] =
     function(v, params, cb)
-      cb("net.dst.ip", params.dst_ip)
+      return cb("net.dst.ip", params.dst_ip)
     end,
 
     ["net.dst.port"] =
     function(v, params, cb)
-      cb("net.dst.port", params.dst_port)
+      return cb("net.dst.port", params.dst_port)
     end,
+
+    -- below are atc context only
+
+    ["net.protocol"] =
+    function(v, params, c)
+      return cb("net.protocol", params.scheme)
+    end,
+
+    ["net.port"] =
+    function(v, params, c)
+      return cb("net.port", params.port)
+    end,
+
 }
 
 
@@ -281,6 +304,8 @@ local function get_cache_key(fields, params)
       end
 
       str_buf:put(value or ""):put("|")
+
+      return true
     end)
 
     ::continue::
@@ -295,11 +320,40 @@ local function get_atc_context(schema, fields, params)
 
   for field, value in pairs(fields) do
     local func = MATCH_CTX_FUNCS[field]
+    --local func = FIELDS_FUNCS[field]
     if not func then  -- unknown field
       error("unknown router matching schema field: " .. field)
     end
 
     assert(value)
+
+    --[[
+    local res, err = func(value, params, function(field, value)
+      local headers_or_queries = field:sub(1, 13)
+
+      if headers_or_queries == "http.headers." or headers_or_queries == "http.queries." then
+        headers_or_queries = true
+
+      else
+        headers_or_queries = false
+      end
+
+      if headers_or_queries then
+        if type(value) == "table" then
+          tb_sort(value)
+          value = tb_concat(value, ",")
+        end
+
+        value = fmt("%s=%s", field, value)
+      end
+
+      return c:add_value(field, value)
+    end)
+
+    if not res then
+      return nil, err
+    end
+    --]]
 
     local res, err = func(value, params, c)
     if not res then
