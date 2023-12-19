@@ -21,47 +21,41 @@ local MATCH_CTX_FUNCS
 
 local FIELDS_FUNCS = {
     ["http.method"] =
-    function(v, params, func)
-      func("http.method", params.method)
+    function(v, params, cb)
+      cb("http.method", params.method)
     end,
 
     ["http.path"] =
-    function(v, params, func)
-      func("http.path", params.uri)
+    function(v, params, cb)
+      cb("http.path", params.uri)
     end,
 
     ["http.host"] =
-    function(v, params, func)
-      func("http.host", params.host)
+    function(v, params, cb)
+      cb("http.host", params.host)
     end,
 
     ["tls.sni"] =
-    function(v, params, func)
-      func("tls.sni", params.sni)
+    function(v, params, cb)
+      cb("tls.sni", params.sni)
     end,
 
     ["http.headers."] =
-    function(v, params, func)
+    function(v, params, cb)
       local headers = params.headers
       if not headers then
         return
       end
 
       for _, name in ipairs(v) do
-        --local name = replace_dashes_lower(name)
         local value = headers[name]
 
-        --if type(value) == "table" then
-        --  tb_sort(value)
-        --  value = tb_concat(value, ",")
-        --end
-
-        func("http.headers." .. name, value)
+        cb("http.headers." .. name, value)
       end -- for ipairs(v)
     end,
 
     ["http.queries."] =
-    function(v, params, func)
+    function(v, params, cb)
       local queries = params.queries
       if not queries then
         return
@@ -70,101 +64,33 @@ local FIELDS_FUNCS = {
       for _, name in ipairs(v) do
         local value = queries[name]
 
-        --if type(value) == "table" then
-        --  tb_sort(value)
-        --  value = tb_concat(value, ",")
-        --end
-
-        func("http.queries." .. name, value)
+        cb("http.queries." .. name, value)
       end -- for ipairs(v)
     end,
 
     ["net.src.ip"] =
-    function(v, params, func)
-      func("net.src.ip", params.src_ip)
+    function(v, params, cb)
+      cb("net.src.ip", params.src_ip)
     end,
 
     ["net.src.port"] =
-    function(v, params, func)
-      func("net.src.port", params.src_port)
+    function(v, params, cb)
+      cb("net.src.port", params.src_port)
     end,
 
     ["net.dst.ip"] =
-    function(v, params, func)
-      func("net.dst.ip", params.dst_ip)
+    function(v, params, cb)
+      cb("net.dst.ip", params.dst_ip)
     end,
 
     ["net.dst.port"] =
-    function(v, params, func)
-      func("net.dst.port", params.dst_port)
+    function(v, params, cb)
+      cb("net.dst.port", params.dst_port)
     end,
 }
 
 
 if is_http then
-
---[[
-CACHE_KEY_FUNCS = {
-    ["http.method"] =
-    function(v, params, buf)
-      buf:put(params.method or ""):put("|")
-    end,
-
-    ["http.path"] =
-    function(v, params, buf)
-      buf:put(params.uri or ""):put("|")
-    end,
-
-    ["http.host"] =
-    function(v, params, buf)
-      buf:put(params.host or ""):put("|")
-    end,
-
-    ["tls.sni"] =
-    function(v, params, buf)
-      buf:put(params.sni or ""):put("|")
-    end,
-
-    ["http.headers."] =
-    function(v, params, buf)
-      local headers = params.headers
-      if not headers then
-        return
-      end
-
-      for _, name in ipairs(v) do
-        local name = replace_dashes_lower(name)
-        local value = headers[name]
-
-        if type(value) == "table" then
-          tb_sort(value)
-          value = tb_concat(value, ",")
-        end
-
-        buf:putf("%s=%s|", name, value)
-      end -- for ipairs(v)
-    end,
-
-    ["http.queries."] =
-    function(v, params, buf)
-      local queries = params.queries
-      if not queries then
-        return
-      end
-
-      for _, name in ipairs(v) do
-        local value = queries[name]
-
-        if type(value) == "table" then
-          tb_sort(value)
-          value = tb_concat(value, ",")
-        end
-
-        buf:putf("%s=%s|", name, value)
-      end -- for ipairs(v)
-    end,
-}
---]]
 
 
 MATCH_CTX_FUNCS = {
@@ -273,34 +199,6 @@ MATCH_CTX_FUNCS = {
 
 else -- stream subsystem
 
---[[
-CACHE_KEY_FUNCS = {
-    ["net.src.ip"] =
-    function(v, params, buf)
-      buf:put(params.src_ip or ""):put("|")
-    end,
-
-    ["net.src.port"] =
-    function(v, params, buf)
-      buf:put(params.src_port or ""):put("|")
-    end,
-
-    ["net.dst.ip"] =
-    function(v, params, buf)
-      buf:put(params.dst_ip or ""):put("|")
-    end,
-
-    ["net.dst.port"] =
-    function(v, params, buf)
-      buf:put(params.dst_port or ""):put("|")
-    end,
-
-    ["tls.sni"] =
-    function(v, params, buf)
-      buf:put(params.sni or ""):put("|")
-    end,
-}
---]]
 
 MATCH_CTX_FUNCS = {
     ["net.src.ip"] =
@@ -360,15 +258,21 @@ local function get_cache_key(fields, params)
     end
 
     func(value, params, function(field, value)
-      local prefix = field:sub(1, 13)
+      local headers_or_queries = field:sub(1, 13)
 
-      if prefix == "http.headers." or prefix == "http.queries." then
+      if headers_or_queries == "http.headers." then
+        field = replace_dashes_lower(field)
+        headers_or_queries = true
+
+      elseif headers_or_queries == "http.queries." then
+        headers_or_queries = true
+
+      else
+        headers_or_queries = false
+      end
+
+      if headers_or_queries then
         if type(value) == "table" then
-
-          if prefix == "http.headers." then
-            field = replace_dashes_lower(field)
-          end
-
           tb_sort(value)
           value = tb_concat(value, ",")
         end
