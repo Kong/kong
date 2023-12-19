@@ -99,12 +99,12 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Download runtimes file
-      uses: Kong/gh-storage/download@main
+      uses: Kong/gh-storage/download@v1
       with:
         repo-path: Kong/gateway-action-storage/main/.ci/runtimes.json
 
     - name: Schedule tests
-      uses: Kong/gateway-test-scheduler/schedule@main
+      uses: Kong/gateway-test-scheduler/schedule@v1
       with:
         test-suites-file: .ci/test_suites.json
         test-file-runtime-file: .ci/runtimes.json
@@ -267,7 +267,7 @@ jobs:
         DD_CIVISIBILITY_AGENTLESS_ENABLED: true
         DD_TRACE_GIT_METADATA_ENABLED: true
         DD_API_KEY: ${{ secrets.DATADOG_API_KEY }}
-      uses: Kong/gateway-test-scheduler/runner@main
+      uses: Kong/gateway-test-scheduler/runner@v1
       with:
         tests-to-run-file: test-chunk.${{ matrix.runner }}.json
         failed-test-files-file: ${{ env.FAILED_TEST_FILES_FILE }}

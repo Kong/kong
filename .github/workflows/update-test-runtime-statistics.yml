@@ -19,7 +19,7 @@ jobs:
           token: ${{ secrets.PAT }}
 
       - name: Process statistics
-        uses: Kong/gateway-test-scheduler/analyze@main
+        uses: Kong/gateway-test-scheduler/analyze@v1
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
         with:
@@ -28,7 +28,7 @@ jobs:
           artifact-name-regexp: "^test-runtime-statistics-\\d+$"
 
       - name: Upload new runtimes file
-        uses: Kong/gh-storage/upload@main
+        uses: Kong/gh-storage/upload@v1
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
         with:
