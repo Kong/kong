@@ -177,7 +177,8 @@ function NewRLHandler:configure(configs)
   if configs then
     for _, config in ipairs(configs) do
       local namespace = config.namespace
-      local sync_rate = config.sync_rate
+      -- if nil, do not sync with DB or Redis
+      local sync_rate = config.sync_rate or -1
 
       namespaces[namespace] = true
 

@@ -1,0 +1,3 @@
+message: "check if `sync_rate` is `nil` when calling the RLA phase `configure()`"
+type: bugfix
+scope: Plugin

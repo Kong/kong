@@ -2580,3 +2580,95 @@ for _, strategy in strategies() do
     end
   end
 end
+
+for _, strategy in ipairs({ "off" }) do
+  local PLUGIN_NAME = "rate-limiting-advanced"
+  describe(PLUGIN_NAME .. " with strategy #" .. strategy, function()
+    local yaml_templ, yaml_file
+    local admin_client, proxy_client
+    local err_log_file
+
+    lazy_setup(function()
+      yaml_templ = [=[
+        _format_version: '3.0'
+        services:
+        - name: mock_upstream
+          url: %s
+          routes:
+          - name: mock_route
+            hosts:
+            - rla.test
+            paths:
+            - /anything
+            plugins:
+            - name: %s
+              config:
+                namespace: rla
+                window_size:
+                - %s
+                limit:
+                - 5
+                strategy: local
+                sync_rate: null
+      ]=]
+      yaml_file = helpers.make_yaml_file(yaml_templ:format("http://127.0.0.1:15555", PLUGIN_NAME, 30))
+
+      assert(helpers.start_kong({
+        database = strategy,
+        plugins = "bundled," .. PLUGIN_NAME,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        declarative_config = strategy == "off" and yaml_file or nil,
+      }))
+
+      err_log_file = helpers.test_conf.nginx_err_logs
+    end)
+
+    before_each(function()
+      admin_client = helpers.admin_client()
+      proxy_client = helpers.proxy_client()
+
+      helpers.clean_logfile(err_log_file)
+    end)
+
+    after_each(function()
+      if admin_client then admin_client:close() end
+      if proxy_client then proxy_client:close() end
+
+      helpers.clean_logfile(err_log_file)
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+      os.remove(yaml_file)
+    end)
+
+    it("works when value of sync_rate is nil", function()
+      local dc = assert(admin_client:send {
+        method = "GET",
+        path = "/config",
+        headers = {
+          ["Content-Type"] = "application/json"
+        },
+      })
+      assert.res_status(200, dc)
+
+      dc = assert(admin_client:send {
+        method = "POST",
+        path = "/config?check_hash=1",
+        headers = {
+          ["Content-Type"] = "application/json"
+        },
+        body = {
+          config = yaml_templ:format("http://127.0.0.1:15555", PLUGIN_NAME, 60)
+        }
+      })
+      assert.res_status(201, dc)
+
+      local err_msg = "failed to execute plugin '" .. PLUGIN_NAME .. ":configure \\(.*handler\\.lua:\\d{1,}: attempt to compare number with nil\\)"
+      assert.logfile(err_log_file).has.no.line(err_msg, false)
+
+    end)
+
+  end)
+
+end
