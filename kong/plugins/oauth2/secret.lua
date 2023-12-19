@@ -201,9 +201,9 @@ if ENABLED_ALGORITHMS.PBKDF2 then
   local PBKDF2_PREFIX
 
   local ok, crypt = pcall(function()
-    local kdf = require "resty.openssl.kdf"
+    local openssl_kdf = require "resty.openssl.kdf"
 
-    -- pbkdf2 settings
+    -- pbkdf2 default settings
     local PBKDF2_DIGEST     = "sha512"
     local PBKDF2_ITERATIONS = 10000
     local PBKDF2_HASH_LEN   = 32
@@ -211,17 +211,32 @@ if ENABLED_ALGORITHMS.PBKDF2 then
 
     local EMPTY  = {}
 
+    local kdf
+
     local function derive(secret, opts)
       opts = opts or EMPTY
+      local err
+      if kdf then
+        local _, err = kdf:reset()
+        if err then
+          kdf = nil
+        end
+      end
+
+      if not kdf then
+        kdf, err = openssl_kdf.new("PBKDF2")
+        if err then
+          return nil, err
+        end
+      end
+
       local salt = opts.salt or utils.get_rand_bytes(PBKDF2_SALT_LEN)
-      local hash, err = kdf.derive({
-        type        = kdf.PBKDF2,
-        outlen      = opts.outlen      or PBKDF2_HASH_LEN,
+      local hash, err = kdf:derive(opts.outlen or PBKDF2_HASH_LEN, {
         pass        = secret,
         salt        = salt,
-        md          = opts.md          or PBKDF2_DIGEST,
-        pbkdf2_iter = opts.pbkdf2_iter or PBKDF2_ITERATIONS,
-      })
+        digest      = opts.digest or PBKDF2_DIGEST,
+        iter        = opts.iter   or PBKDF2_ITERATIONS,
+      }, 4)
       if not hash then
         return nil, err
       end
@@ -245,8 +260,8 @@ if ENABLED_ALGORITHMS.PBKDF2 then
 
     local crypt = {}
 
-    function crypt.hash(secret)
-      return derive(secret)
+    function crypt.hash(secret, options)
+      return derive(secret, options)
     end
 
     function crypt.verify(secret, hash)
@@ -263,8 +278,8 @@ if ENABLED_ALGORITHMS.PBKDF2 then
       local calculated_hash, err = derive(secret, {
         outlen      = outlen,
         salt        = phc.salt,
-        md          = phc.digest,
-        pbkdf2_iter = phc.params.i
+        digest      = phc.digest,
+        iter        = phc.params.i
       })
       if not calculated_hash then
         return nil, err
@@ -287,7 +302,7 @@ end
 local crypt = {}
 
 
-function crypt.hash(secret)
+function crypt.hash(secret, options)
   assert(type(secret) == "string", "secret needs to be a string")
 
   if ARGON2 then
@@ -299,7 +314,7 @@ function crypt.hash(secret)
   end
 
   if PBKDF2 then
-    return PBKDF2.hash(secret)
+    return PBKDF2.hash(secret, options)
   end
 
   return nil, "no suitable password hashing algorithm found"
