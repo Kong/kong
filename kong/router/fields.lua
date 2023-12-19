@@ -6,27 +6,104 @@ local type = type
 local pairs = pairs
 local ipairs = ipairs
 local assert = assert
-
-
--- cache key string
-local str_buf = buffer.new(64)
+local fmt = string.format
+local tb_sort = table.sort
+local tb_concat = table.concat
+local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
 
 
 local is_http = ngx.config.subsystem == "http"
 
 
 local MATCH_CTX_FUNCS
-local CACHE_KEY_FUNCS
+--local CACHE_KEY_FUNCS
+
+
+local FIELDS_FUNCS = {
+    ["http.method"] =
+    function(v, params, func)
+      func("http.method", params.method)
+    end,
+
+    ["http.path"] =
+    function(v, params, func)
+      func("http.path", params.uri)
+    end,
+
+    ["http.host"] =
+    function(v, params, func)
+      func("http.host", params.host)
+    end,
+
+    ["tls.sni"] =
+    function(v, params, func)
+      func("tls.sni", params.sni)
+    end,
+
+    ["http.headers."] =
+    function(v, params, func)
+      local headers = params.headers
+      if not headers then
+        return
+      end
+
+      for _, name in ipairs(v) do
+        --local name = replace_dashes_lower(name)
+        local value = headers[name]
+
+        --if type(value) == "table" then
+        --  tb_sort(value)
+        --  value = tb_concat(value, ",")
+        --end
+
+        func("http.headers." .. name, value)
+      end -- for ipairs(v)
+    end,
+
+    ["http.queries."] =
+    function(v, params, func)
+      local queries = params.queries
+      if not queries then
+        return
+      end
+
+      for _, name in ipairs(v) do
+        local value = queries[name]
+
+        --if type(value) == "table" then
+        --  tb_sort(value)
+        --  value = tb_concat(value, ",")
+        --end
+
+        func("http.queries." .. name, value)
+      end -- for ipairs(v)
+    end,
+
+    ["net.src.ip"] =
+    function(v, params, func)
+      func("net.src.ip", params.src_ip)
+    end,
+
+    ["net.src.port"] =
+    function(v, params, func)
+      func("net.src.port", params.src_port)
+    end,
+
+    ["net.dst.ip"] =
+    function(v, params, func)
+      func("net.dst.ip", params.dst_ip)
+    end,
+
+    ["net.dst.port"] =
+    function(v, params, func)
+      func("net.dst.port", params.dst_port)
+    end,
+}
 
 
 if is_http then
 
-
-local tb_sort = table.sort
-local tb_concat = table.concat
-local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
-
-
+--[[
 CACHE_KEY_FUNCS = {
     ["http.method"] =
     function(v, params, buf)
@@ -87,6 +164,7 @@ CACHE_KEY_FUNCS = {
       end -- for ipairs(v)
     end,
 }
+--]]
 
 
 MATCH_CTX_FUNCS = {
@@ -195,7 +273,7 @@ MATCH_CTX_FUNCS = {
 
 else -- stream subsystem
 
-
+--[[
 CACHE_KEY_FUNCS = {
     ["net.src.ip"] =
     function(v, params, buf)
@@ -222,7 +300,7 @@ CACHE_KEY_FUNCS = {
       buf:put(params.sni or ""):put("|")
     end,
 }
-
+--]]
 
 MATCH_CTX_FUNCS = {
     ["net.src.ip"] =
@@ -260,13 +338,48 @@ MATCH_CTX_FUNCS = {
 end -- is_http
 
 
+-- cache key string
+local str_buf = buffer.new(64)
+
+
 local function get_cache_key(fields, params)
   for field, value in pairs(fields) do
-    local func = CACHE_KEY_FUNCS[field]
 
-    if func then
-      func(value, params, str_buf)
+    -- these fields were not in cache key
+    if field == "http.scheme"  or
+       field == "net.protocol" or
+       field == "net.port"
+    then
+      goto continue
     end
+
+    local func = FIELDS_FUNCS[field]
+
+    if not func then
+      goto continue
+    end
+
+    func(value, params, function(field, value)
+      local prefix = field:sub(1, 13)
+
+      if prefix == "http.headers." or prefix == "http.queries." then
+        if type(value) == "table" then
+
+          if prefix == "http.headers." then
+            field = replace_dashes_lower(field)
+          end
+
+          tb_sort(value)
+          value = tb_concat(value, ",")
+        end
+
+        value = fmt("%s=%s", field, value)
+      end
+
+      str_buf:put(value or ""):put("|")
+    end)
+
+    ::continue::
   end
 
   return str_buf:get()
