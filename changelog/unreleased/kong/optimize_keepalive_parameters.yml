@@ -1,0 +1,3 @@
+message: Bumped default values of `nginx_http_keepalive_requests` and `upstream_keepalive_max_requests` to 10000.
+type: performance
+scope: Configuration
