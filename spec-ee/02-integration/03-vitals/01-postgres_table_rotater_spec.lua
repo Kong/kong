@@ -238,6 +238,10 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
 
         -- set schema so that it will bootstrap schema in `get_db_utils`
         assert(db:query("SET SCHEMA 'custom';\n"))
+        -- get_db_utils will migrate before calling db:truncate()
+        -- which will fail if the schema is not empty
+        -- clean the whole schema before migration to avoid conflicts
+        db:truncate()
         local _, db, _ = helpers.get_db_utils("postgres")
         db = db.connector
         finally(function()
