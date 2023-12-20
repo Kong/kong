@@ -32,6 +32,12 @@ scan-vulnerabilities:
 - label: debian
 
 release-packages:
+- label: debian-12
+  package: deb
+  artifact-from: debian-12
+  artifact-version: 12
+  artifact-type: debian
+  artifact: kong.amd64.deb
 
 release-images:
 - label: ubuntu
