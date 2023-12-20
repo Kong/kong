@@ -227,8 +227,7 @@ jobs:
         psql -hlocalhost -Ukong kong -tAc 'alter system set max_connections = 5000;'
 
     - name: Download test schedule file
-      uses: actions/download-artifact@v3
-      continue-on-error: true
+      uses: actions/download-artifact@v4
       with:
         name: schedule-test-files
 
@@ -242,13 +241,13 @@ jobs:
         make dev
 
     - name: Download test rerun information
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       continue-on-error: true
       with:
         name: test-rerun-info-${{ matrix.runner }}
 
     - name: Download test runtime statistics from previous runs
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       continue-on-error: true
       with:
         name: test-runtime-statistics-${{ matrix.runner }}
@@ -368,7 +367,7 @@ jobs:
         sudo luarocks install luafilesystem
 
     # Download all archived coverage stats files
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
 
     - name: Stats aggregation
       shell: bash
