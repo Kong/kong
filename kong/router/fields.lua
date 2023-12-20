@@ -158,9 +158,13 @@ local function get_cache_key(fields, params)
 
         return true
       end)
+
+      goto continue
     end -- if func
 
-    -- ignore unknown fields
+    if not func then  -- unknown field
+      error("unknown router matching schema field: " .. field)
+    end -- if func
 
     ::continue::
   end -- for fields
