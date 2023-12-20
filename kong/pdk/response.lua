@@ -431,7 +431,7 @@ local function new(self, major_version)
       return
     end
 
-    ngx.header[name] = normalize_header(value)
+    ngx.header[name] = normalize_multi_header(value)
   end
 
 
@@ -463,7 +463,7 @@ local function new(self, major_version)
 
     validate_header(name, value)
 
-    add_header(name, normalize_header(value))
+    add_header(name, normalize_multi_header(value))
   end
 
 
