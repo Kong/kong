@@ -7,7 +7,6 @@ local schema = require("resty.router.schema")
 local router = require("resty.router.router")
 local lrucache = require("resty.lrucache")
 local server_name = require("ngx.ssl").server_name
-local tablepool = require("tablepool")
 local tb_new = require("table.new")
 local fields = require("kong.router.fields")
 local utils = require("kong.router.utils")
@@ -21,8 +20,6 @@ local pairs = pairs
 local ipairs = ipairs
 local tonumber = tonumber
 local table_insert = table.insert
-local table_fetch = tablepool.fetch
-local table_release = tablepool.release
 
 
 local max = math.max
@@ -60,8 +57,6 @@ local is_http = ngx.config.subsystem == "http"
 local values_buf = buffer.new(64)
 
 
-local CACHE_KEY_PARAMS_POOL = "atc_router_cache_key_params_pool"
-local ATC_MATCH_PARAMS_POOL = "atc_router_match_params_pool"
 local HTTP_HEADERS_PREFIX = "http.headers."
 local HTTP_QUERIES_PREFIX = "http.queries."
 
@@ -434,6 +429,10 @@ end
 if is_http then
 
 
+local CACHE_PARAMS = tb_new(0, 8)
+local MATCH_PARAMS = tb_new(0, 6)
+
+
 local sanitize_uri_postfix = utils.sanitize_uri_postfix
 local strip_uri_args       = utils.strip_uri_args
 local add_debug_headers    = utils.add_debug_headers
@@ -452,20 +451,16 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 
   local host, port = split_host_port(req_host)
 
-  local match_params = assert(table_fetch(ATC_MATCH_PARAMS_POOL, 0, 8))
+  MATCH_PARAMS.method  = req_method
+  MATCH_PARAMS.uri     = req_uri
+  MATCH_PARAMS.host    = host
+  MATCH_PARAMS.port    = port
+  MATCH_PARAMS.scheme  = req_scheme
+  MATCH_PARAMS.sni     = sni
+  MATCH_PARAMS.headers = req_headers
+  MATCH_PARAMS.queries = req_queries
 
-  match_params.method  = req_method
-  match_params.uri     = req_uri
-  match_params.host    = host
-  match_params.port    = port
-  match_params.scheme  = req_scheme
-  match_params.sni     = sni
-  match_params.headers = req_headers
-  match_params.queries = req_queries
-
-  local c, err = get_atc_context(self.schema, self.fields, match_params)
-
-  table_release(ATC_MATCH_PARAMS_POOL, match_params, true)
+  local c, err = get_atc_context(self.schema, self.fields, MATCH_PARAMS)
 
   if not c then
     return nil, err
@@ -556,18 +551,14 @@ function _M:exec(ctx)
 
   -- cache key calculation
 
-  local cache_params = assert(table_fetch(CACHE_KEY_PARAMS_POOL, 0, 6))
+  CACHE_PARAMS.method  = req_method
+  CACHE_PARAMS.uri     = req_uri
+  CACHE_PARAMS.host    = req_host
+  CACHE_PARAMS.sni     = sni
+  CACHE_PARAMS.headers = headers
+  CACHE_PARAMS.queries = queries
 
-  cache_params.method  = req_method
-  cache_params.uri     = req_uri
-  cache_params.host    = req_host
-  cache_params.sni     = sni
-  cache_params.headers = headers
-  cache_params.queries = queries
-
-  local cache_key = get_cache_key(fields, cache_params)
-
-  table_release(CACHE_KEY_PARAMS_POOL, cache_params, true)
+  local cache_key = get_cache_key(fields, CACHE_PARAMS)
 
   -- cache lookup
 
@@ -616,6 +607,10 @@ end
 else  -- is stream subsystem
 
 
+local CACHE_PARAMS = tb_new(0, 6)
+local MATCH_PARAMS = tb_new(0, 5)
+
+
 function _M:select(_, _, _, scheme,
                    src_ip, src_port,
                    dst_ip, dst_port,
@@ -626,19 +621,14 @@ function _M:select(_, _, _, scheme,
                       dst_ip, dst_port,
                       sni)
 
-  local match_params = assert(table_fetch(ATC_MATCH_PARAMS_POOL, 0, 6))
+  MATCH_PARAMS.scheme    = scheme
+  MATCH_PARAMS.src_ip    = src_ip
+  MATCH_PARAMS.src_port  = src_port
+  MATCH_PARAMS.dst_ip    = dst_ip
+  MATCH_PARAMS.dst_port  = dst_port
+  MATCH_PARAMS.sni       = sni
 
-  match_params.scheme    = scheme
-  match_params.src_ip    = src_ip
-  match_params.src_port  = src_port
-  match_params.dst_ip    = dst_ip
-  match_params.dst_port  = dst_port
-  match_params.sni       = sni
-
-  local c, err = get_atc_context(self.schema, self.fields, match_params)
-
-  table_release(ATC_MATCH_PARAMS_POOL, match_params, true)
-
+  local c, err = get_atc_context(self.schema, self.fields, MATCH_PARAMS)
   if not c then
     return nil, err
   end
@@ -699,17 +689,13 @@ function _M:exec(ctx)
 
   -- cache key calculation
 
-  local cache_params = assert(table_fetch(CACHE_KEY_PARAMS_POOL, 0, 5))
+  CACHE_PARAMS.src_ip    = src_ip
+  CACHE_PARAMS.src_port  = src_port
+  CACHE_PARAMS.dst_ip    = dst_ip
+  CACHE_PARAMS.dst_port  = dst_port
+  CACHE_PARAMS.sni       = sni
 
-  cache_params.src_ip    = src_ip
-  cache_params.src_port  = src_port
-  cache_params.dst_ip    = dst_ip
-  cache_params.dst_port  = dst_port
-  cache_params.sni       = sni
-
-  local cache_key = get_cache_key(fields, cache_params)
-
-  table_release(CACHE_KEY_PARAMS_POOL, cache_params, true)
+  local cache_key = get_cache_key(fields, CACHE_PARAMS)
 
   -- cache lookup
 
