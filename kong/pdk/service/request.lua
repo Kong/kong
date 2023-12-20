@@ -312,7 +312,7 @@ local function new(self)
       end
     end
 
-    ngx.req.set_header(header, normalize_header(value))
+    ngx.req.set_header(header, normalize_multi_header(value))
   end
 
   ---
@@ -343,7 +343,7 @@ local function new(self)
       headers = { headers }
     end
 
-    table_insert(headers, normalize_header(value))
+    table_insert(headers, normalize_multi_header(value))
 
     ngx.req.set_header(header, headers)
   end
