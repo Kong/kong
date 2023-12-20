@@ -176,6 +176,19 @@ targets = {
             },
         }
     ),
+    "debian-12-amd64": ExpectSuite(
+        name="Debian 12 (amd64)",
+        manifest="fixtures/debian-12-amd64.txt",
+        tests={
+            common_suites: {},
+            libc_libcpp_suites: {
+                "libc_max_version": "2.36",
+                # gcc 12.1.0
+                "libcxx_max_version": "3.4.30",
+                "cxxabi_max_version": "1.3.13",
+            },
+        }
+    ),
     "docker-image": ExpectSuite(
         name="Generic Docker Image",
         manifest=None,

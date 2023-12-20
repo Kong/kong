@@ -1,0 +1,3 @@
+message: "Build deb packages for Debian 12. The debian variant of kong docker image is built using Debian 12 now."
+type: feature
+scope: Core
