@@ -1,3 +1,0 @@
-message: "fix response transformer header rename error trace when the same header was set twice"
-type: bugfix
-scope: Plugin
