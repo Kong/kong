@@ -5,31 +5,17 @@ build-packages:
   package: deb
   check-manifest-suite: ubuntu-22.04-amd64
 
-# Debian
-- label: debian-12
-  image: debian:12
-  package: deb
-  check-manifest-suite: debian-12-amd64
-
 build-images:
 - label: ubuntu
   base-image: ubuntu:22.04
   package: deb
   artifact-from: ubuntu-22.04
 
-# Debian
-- label: debian
-  base-image: debian:12-slim
-  package: deb
-  artifact-from: debian-12
-
 smoke-tests:
 - label: ubuntu
-- label: debian
 
 scan-vulnerabilities:
 - label: ubuntu
-- label: debian
 
 release-packages:
 - label: debian-12
@@ -42,4 +28,3 @@ release-packages:
 release-images:
 - label: ubuntu
   package: deb
-- label: debian
