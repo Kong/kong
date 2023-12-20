@@ -17,7 +17,7 @@ jobs:
     steps:
     - name: Fetch mapping file
       id: fetch_mapping
-      uses: actions/github-script@v6
+      uses: actions/github-script@v7
       env:
         ACCESS_TOKEN: ${{ secrets.PAT }}
       with:
@@ -50,7 +50,7 @@ jobs:
       env:
         SLACK_CHANNEL: gateway-notifications
         SLACK_MAPPING: "${{ steps.fetch_mapping.outputs.result }}"
-      uses: actions/github-script@v6
+      uses: actions/github-script@v7
       with:
         script: |
           const pr_html_url = "${{ steps.retrieve_pr_info.outputs.pr_html_url }}";
