@@ -70,7 +70,7 @@ headers_upstream = x-kong-request-id
 trusted_ips = NONE
 error_default_type = text/plain
 upstream_keepalive_pool_size = 512
-upstream_keepalive_max_requests = 1000
+upstream_keepalive_max_requests = 10000
 upstream_keepalive_idle_timeout = 60
 allow_debug_header = off
 
@@ -93,7 +93,7 @@ nginx_http_ssl_session_tickets = NONE
 nginx_http_ssl_session_timeout = NONE
 nginx_http_lua_regex_match_limit = 100000
 nginx_http_lua_regex_cache_max_entries = 8192
-nginx_http_keepalive_requests = 1000
+nginx_http_keepalive_requests = 10000
 nginx_stream_ssl_protocols = NONE
 nginx_stream_ssl_prefer_server_ciphers = NONE
 nginx_stream_ssl_dhparam = NONE
