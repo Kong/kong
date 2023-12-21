@@ -6,7 +6,6 @@ local buffer = require("string.buffer")
 local schema = require("resty.router.schema")
 local router = require("resty.router.router")
 local lrucache = require("resty.lrucache")
---local server_name = require("ngx.ssl").server_name
 local tb_new = require("table.new")
 local tb_clear = require "table.clear"
 local fields = require("kong.router.fields")
@@ -20,7 +19,6 @@ local setmetatable = setmetatable
 local pairs = pairs
 local ipairs = ipairs
 local tonumber = tonumber
---local table_insert = table.insert
 
 
 local max = math.max
@@ -31,9 +29,6 @@ local header        = ngx.header
 local var           = ngx.var
 local ngx_log       = ngx.log
 local get_phase     = ngx.get_phase
---local get_method    = ngx.req.get_method
---local get_headers   = ngx.req.get_headers
---local get_uri_args  = ngx.req.get_uri_args
 local ngx_ERR       = ngx.ERR
 
 
@@ -56,10 +51,6 @@ local is_http = ngx.config.subsystem == "http"
 
 -- reuse buffer object
 local values_buf = buffer.new(64)
-
-
---local HTTP_HEADERS_PREFIX = "http.headers."
---local HTTP_QUERIES_PREFIX = "http.queries."
 
 
 local CACHED_SCHEMA
@@ -190,38 +181,6 @@ local function add_atc_matcher(inst, route, route_id,
 
   return true
 end
-
-
---[[
-local function categorize_fields(fields)
-  local basic = {}
-
-  -- 13 bytes, same len for "http.queries."
-  local PREFIX_LEN = 13 -- #"http.headers."
-
-  for _, field in ipairs(fields) do
-    local prefix = field:sub(1, PREFIX_LEN)
-
-    if prefix == HTTP_HEADERS_PREFIX then
-      if not basic[HTTP_HEADERS_PREFIX] then
-        basic[HTTP_HEADERS_PREFIX] = {}
-      end
-      table_insert(basic[HTTP_HEADERS_PREFIX], field:sub(PREFIX_LEN + 1))
-
-    elseif prefix == HTTP_QUERIES_PREFIX then
-      if not basic[HTTP_QUERIES_PREFIX] then
-        basic[HTTP_QUERIES_PREFIX] = {}
-      end
-      table_insert(basic[HTTP_QUERIES_PREFIX], field:sub(PREFIX_LEN + 1))
-
-    else
-      basic[field] = true
-    end
-  end
-
-  return basic
-end
---]]
 
 
 local function new_from_scratch(routes, get_exp_and_priority)
@@ -511,62 +470,20 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 end
 
 
---[[
--- func => get_headers or get_uri_args
--- name => "headers" or "queries"
--- max_config_option => "lua_max_req_headers" or "lua_max_uri_args"
-local function get_http_params(func, name, max_config_option)
-  local params, err = func()
-  if err == "truncated" then
-    local max = kong and kong.configuration and kong.configuration[max_config_option] or 100
-    ngx_log(ngx_ERR,
-            string.format("router: not all request %s were read in order to determine the route " ..
-                          "as the request contains more than %d %s, " ..
-                          "route selection may be inaccurate, " ..
-                          "consider increasing the '%s' configuration value " ..
-                          "(currently at %d)",
-                          name, max, name, max_config_option, max))
-  end
-
-  return params
-end
---]]
-
-
 function _M:exec(ctx)
-  --local fields = self.fields
-
-  --local req_method = fields["http.method"] and get_method() or nil
   local req_uri = ctx and ctx.request_uri or var.request_uri
   local req_host = var.http_host
-  --local sni = fields["tls.sni"] and server_name() or nil
-
-  --local headers
-  --if not is_empty_field(fields[HTTP_HEADERS_PREFIX]) then
-  --  headers = get_http_params(get_headers, "headers", "lua_max_req_headers")
-
-  --  headers["host"] = nil
-  --end
-
-  --local queries
-  --if not is_empty_field(fields[HTTP_QUERIES_PREFIX]) then
-  --  queries = get_http_params(get_uri_args, "queries", "lua_max_uri_args")
-  --end
 
   req_uri = strip_uri_args(req_uri)
 
   -- cache key calculation
+
   tb_clear(CACHE_PARAMS)
 
-  --CACHE_PARAMS.method  = req_method
   CACHE_PARAMS.uri     = req_uri
   CACHE_PARAMS.host    = req_host
-  --CACHE_PARAMS.sni     = sni
-  --CACHE_PARAMS.headers = headers
-  --CACHE_PARAMS.queries = queries
 
   local cache_key = get_cache_key(self.fields, CACHE_PARAMS)
-  --print("cache = ", cache_key)
 
   -- cache lookup
 
@@ -580,7 +497,7 @@ function _M:exec(ctx)
     local req_scheme = ctx and ctx.scheme or var.scheme
 
     local err
-    match_t, err = self:select(CACHE_PARAMS.method, CACHE_PARAMS.uri, CACHE_PARAMS.host, req_scheme,
+    match_t, err = self:select(CACHE_PARAMS.method, req_uri, req_host, req_scheme,
                                nil, nil, nil, nil,
                                CACHE_PARAMS.sni, CACHE_PARAMS.headers, CACHE_PARAMS.queries)
     if not match_t then
@@ -672,42 +589,11 @@ end
 
 
 function _M:exec(ctx)
-  --local fields = self.fields
-
-  --local src_ip   = fields["net.src.ip"] and var.remote_addr or nil
-  --local dst_ip   = fields["net.dst.ip"] and var.server_addr or nil
-
-  --local src_port = fields["net.src.port"] and tonumber(var.remote_port, 10) or nil
-  --local dst_port = fields["net.dst.port"] and
-  --                 (tonumber((ctx or ngx.ctx).host_port, 10) or tonumber(var.server_port, 10)) or
-  --                 nil
-
-  -- error value for non-TLS connections ignored intentionally
-  --local sni = server_name()
-
-  -- fallback to preread SNI if current connection doesn't terminate TLS
-  --if not sni then
-  --  sni = var.ssl_preread_server_name
-  --end
-
-  -- when proxying TLS request in second layer or doing TLS passthrough
-  -- rewrite the dst_ip, port back to what specified in proxy_protocol
-  --if var.kong_tls_passthrough_block == "1" or var.ssl_protocol then
-  --  dst_ip = var.proxy_protocol_server_addr
-  --  dst_port = tonumber(var.proxy_protocol_server_port)
-  --end
-
   -- cache key calculation
+
   tb_clear(CACHE_PARAMS)
 
-  --CACHE_PARAMS.src_ip    = src_ip
-  --CACHE_PARAMS.src_port  = src_port
-  --CACHE_PARAMS.dst_ip    = dst_ip
-  --CACHE_PARAMS.dst_port  = dst_port
-  --CACHE_PARAMS.sni       = sni
-
   local cache_key = get_cache_key(self.fields, CACHE_PARAMS, ctx)
-  --print("cache = ", cache_key)
 
   -- cache lookup
 
@@ -767,22 +653,6 @@ function _M._set_ngx(mock_ngx)
   if mock_ngx.log then
     ngx_log = mock_ngx.log
   end
-
-  --[[
-  if type(mock_ngx.req) == "table" then
-    if mock_ngx.req.get_method then
-      get_method = mock_ngx.req.get_method
-    end
-
-    if mock_ngx.req.get_headers then
-      get_headers = mock_ngx.req.get_headers
-    end
-
-    if mock_ngx.req.get_uri_args then
-      get_uri_args = mock_ngx.req.get_uri_args
-    end
-  end
-  --]]
 
   -- unit testing
   fields._set_ngx(mock_ngx)
