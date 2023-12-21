@@ -246,9 +246,13 @@ describe("Plugin: acme (storage.redis)", function()
               preferred_chain = "test",
               storage_config = {
                 redis = {
-                  host = helpers.redis_host,
-                  port = helpers.redis_port,
-                  namespace = "namespace1:",
+                  base = {
+                    host = helpers.redis_host,
+                    port = helpers.redis_port,
+                  },
+                  extra_options = {
+                    namespace = "namespace1:",
+                  }
                 },
               },
             },
@@ -272,9 +276,13 @@ describe("Plugin: acme (storage.redis)", function()
                 preferred_chain = "test",
                 storage_config = {
                   redis = {
-                    host = helpers.redis_host,
-                    port = helpers.redis_port,
-                    namespace = v,
+                    base = {
+                      host = helpers.redis_host,
+                      port = helpers.redis_port,
+                    },
+                    extra_options = {
+                      namespace = v,
+                    }
                   },
                 },
               },
@@ -327,8 +335,10 @@ describe("Plugin: acme (storage.redis)", function()
           storage = "redis",
           storage_config = {
             redis = {
-              host = helpers.redis_host,
-              port = helpers.redis_port,
+              base = {
+                host = helpers.redis_host,
+                port = helpers.redis_port,
+              }
               -- namespace: "", default to empty
             },
           },
@@ -377,9 +387,13 @@ describe("Plugin: acme (storage.redis)", function()
             storage = "redis",
             storage_config = {
               redis = {
-                host = helpers.redis_host,
-                port = helpers.redis_port,
-                namespace = namespace,    -- change namespace
+                base = {
+                  host = helpers.redis_host,
+                  port = helpers.redis_port,
+                },
+                extra_options = {
+                  namespace = namespace,    -- change namespace
+                }
               },
             },
           },

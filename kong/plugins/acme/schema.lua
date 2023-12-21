@@ -1,5 +1,6 @@
 local typedefs = require "kong.db.schema.typedefs"
 local reserved_words = require "kong.plugins.acme.reserved_words"
+local redis_schema = require "kong.tools.redis.schema"
 
 local CERT_TYPES = { "rsa", "ecc" }
 
@@ -35,24 +36,24 @@ local KONG_STORAGE_SCHEMA = {
 }
 
 local REDIS_STORAGE_SCHEMA = {
-  { host = typedefs.host, },
-  { port = typedefs.port, },
-  { database = { type = "number", description = "The index of the Redis database to use.", } },
-  { auth = { type = "string", referenceable = true, description = "The Redis password to use for authentication. " } },
-  { ssl = { type = "boolean", required = true, default = false, description = "Whether to use SSL/TLS encryption when connecting to the Redis server."} },
-  { ssl_verify = { type = "boolean", required = true, default = false, description = "Whether to verify the SSL/TLS certificate presented by the Redis server. This should be a boolean value." } },
-  { ssl_server_name = typedefs.sni { required = false, description = "The expected server name for the SSL/TLS certificate presented by the Redis server." }},
-  {
-    namespace = {
-      type = "string",
-      description = "A namespace to prepend to all keys stored in Redis.",
-      required = true,
-      default = "",
-      len_min = 0,
-      custom_validator = validate_namespace
+  { base = redis_schema.config_schema },
+  { extra_options = {
+    description = "Custom ACME Redis options",
+    type = "record",
+    fields = {
+      {
+        namespace = {
+          type = "string",
+          description = "A namespace to prepend to all keys stored in Redis.",
+          required = true,
+          default = "",
+          len_min = 0,
+          custom_validator = validate_namespace
+        }
+      },
+      { scan_count = { type = "number", required = false, default = 10, description = "The number of keys to return in Redis SCAN calls." } },
     }
-  },
-  { scan_count = { type = "number", required = false, default = 10, description = "The number of keys to return in Redis SCAN calls." } },
+  } }
 }
 
 local CONSUL_STORAGE_SCHEMA = {
