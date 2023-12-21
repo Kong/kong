@@ -939,7 +939,7 @@
                                             # at worst any regex Kong executes could finish within
                                             # roughly 2 seconds.
 
-#nginx_http_keepalive_requests = 1000  # Sets the maximum number of client requests that can be served through one
+#nginx_http_keepalive_requests = 10000 # Sets the maximum number of client requests that can be served through one
                                        # keep-alive connection. After the maximum number of requests are made,
                                        # the connection is closed.
                                        # Closing connections periodically is necessary to free per-connection
