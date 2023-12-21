@@ -4,6 +4,7 @@ local context = require("resty.router.context")
 
 local type = type
 local ipairs = ipairs
+local fmt = string.format
 local tb_sort = table.sort
 local tb_concat = table.concat
 local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
@@ -179,21 +180,22 @@ if is_http then
 
 
   setmetatable(FIELDS_FUNCS, {
-  __index = function(t, field)
+  __index = function(_, field)
+    local func
+
     local prefix = field:sub(1, PREFIX_LEN)
 
     if prefix == HTTP_HEADERS_PREFIX then
-      return function(params)
+      func = function(params)
         if not params.headers then
           params.headers = get_http_params(get_headers, "headers", "lua_max_req_headers")
         end
 
         return params.headers[field:sub(PREFIX_LEN + 1)]
       end
-    end
 
-    if prefix == HTTP_QUERIES_PREFIX then
-      return function(params)
+    elseif prefix == HTTP_QUERIES_PREFIX then
+      func = function(params)
         if not params.queries then
           params.queries = get_http_params(get_uri_args, "queries", "lua_max_uri_args")
         end
@@ -201,6 +203,10 @@ if is_http then
         return params.queries[field:sub(PREFIX_LEN + 1)]
       end
     end
+
+    -- cache the lazily generated method
+    FIELDS_FUNCS[field] = func
+    return func
   end
   })
 
@@ -259,8 +265,7 @@ local function get_cache_key(fields, params, ctx)
         value = tb_concat(value, ",")
       end
 
-      str_buf:putf("%s=%s|", field, value or "")
-      return true
+      value = fmt("%s=%s", field, value or "")
     end
 
     str_buf:put(value or ""):put("|")
