@@ -181,12 +181,10 @@ if is_http then
 
   setmetatable(FIELDS_FUNCS, {
   __index = function(_, field)
-    local func
-
     local prefix = field:sub(1, PREFIX_LEN)
 
     if prefix == HTTP_HEADERS_PREFIX then
-      func = function(params)
+      return function(params)
         if not params.headers then
           params.headers = get_http_params(get_headers, "headers", "lua_max_req_headers")
         end
@@ -195,7 +193,7 @@ if is_http then
       end
 
     elseif prefix == HTTP_QUERIES_PREFIX then
-      func = function(params)
+      return function(params)
         if not params.queries then
           params.queries = get_http_params(get_uri_args, "queries", "lua_max_uri_args")
         end
@@ -204,9 +202,7 @@ if is_http then
       end
     end
 
-    -- cache the lazily generated method
-    FIELDS_FUNCS[field] = func
-    return func
+    -- others return nil
   end
   })
 
