@@ -1,0 +1,3 @@
+message: Introduced the new **AI Prompt Guard** plugin that enables regex allow/block patterns for LLM 'completion' and 'chat' prompts.
+type: feature
+scope: Plugin
