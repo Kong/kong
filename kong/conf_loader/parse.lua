@@ -12,7 +12,6 @@ local require = require
 local cjson = require "cjson"
 local pl_stringx = require "pl.stringx"
 local pl_path = require "pl.path"
-local pl_file = require "pl.file"
 local socket_url = require "socket.url"
 local tablex = require "pl.tablex"
 local openssl_x509 = require "resty.openssl.x509"
@@ -34,7 +33,6 @@ local is_valid_ip_or_cidr = tools_ip.is_valid_ip_or_cidr
 local try_decode_base64 = require("kong.tools.string").try_decode_base64
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local is_valid_uuid = require("kong.tools.uuid").is_valid_uuid
-local get_cn_parent_domain = require("kong.tools.ssl").get_cn_parent_domain
 
 
 local type = type
@@ -437,29 +435,8 @@ local function check_and_parse(conf, opts)
     end
   end
 
-  -- XXX EE
-  if conf.pg_ssl then
-    if conf.pg_ssl_cert and not conf.pg_ssl_cert_key then
-      errors[#errors + 1] = "pg_ssl_cert_key must be specified"
-
-    elseif conf.pg_ssl_cert_key and not conf.pg_ssl_cert then
-      errors[#errors + 1] = "pg_ssl_cert must be specified"
-    end
-
-    if conf.pg_ssl_cert and not pl_path.exists(conf.pg_ssl_cert) then
-      errors[#errors + 1] = "pg_ssl_cert: no such file at " ..
-                          conf.pg_ssl_cert
-    end
-
-    if conf.pg_ssl_cert_key and not pl_path.exists(conf.pg_ssl_cert_key) then
-      errors[#errors + 1] = "pg_ssl_cert_key: no such file at " ..
-                          conf.pg_ssl_cert_key
-    end
-  end
-
-  -- enterprise validations
+  -- XXX EE enterprise validations
   ee_conf_loader.validate(conf, errors)
-  -- XXX EE
 
   if conf.ssl_cipher_suite ~= "custom" then
     local suite = conf_constants.CIPHER_SUITES[conf.ssl_cipher_suite]
@@ -749,37 +726,6 @@ local function check_and_parse(conf, opts)
       errors[#errors + 1] = "cluster_use_proxy can not be used when role = \"control_plane\""
     end
 
-    -- XXX EE
-    if conf.cluster_mtls == "pki_check_cn" then
-      if not conf.cluster_ca_cert then
-        errors[#errors + 1] = "cluster_ca_cert must be specified when cluster_mtls = \"pki_check_cn\""
-      end
-
-      local cluster_cert, err = pl_file.read(conf.cluster_cert)
-      if not cluster_cert then
-        errors[#errors + 1] = "unable to open cluster_cert file \"" .. conf.cluster_cert .. "\": "..err
-
-      else
-        cluster_cert, err = openssl_x509.new(cluster_cert, "PEM")
-        if err then
-          errors[#errors + 1] = "cluster_cert file is not a valid PEM certificate: "..err
-
-        elseif not conf.cluster_allowed_common_names
-               or #conf.cluster_allowed_common_names == 0
-        then
-          local cn, cn_parent = get_cn_parent_domain(cluster_cert)
-          if not cn then
-            errors[#errors + 1] = "unable to get CommonName of cluster_cert: " .. cn
-          elseif not cn_parent then
-            errors[#errors + 1] = "cluster_cert is a certificate with " ..
-                            "top level domain: \"" .. cn .. "\", this is insufficient " ..
-                            "to verify Data Plane identity when cluster_mtls = \"pki_check_cn\""
-          end
-        end
-      end
-    end
-    -- XXX EE
-
     if conf.cluster_dp_labels and #conf.cluster_dp_labels > 0 then
       errors[#errors + 1] = "cluster_dp_labels can not be used when role = \"control_plane\""
     end
@@ -868,63 +814,6 @@ local function check_and_parse(conf, opts)
       errors[#errors + 1] = "tracing_sampling_rate must be between 0 and 1"
     end
   end
-
-  -- XXX EE
-  if (conf.cluster_fallback_config_import or conf.cluster_fallback_config_export) and conf.role == "traditional" then
-    errors[#errors + 1] =
-      "cluster_fallback_config_import and cluster_fallback_config_export can only be enabled for hybrid mode"
-  end
-
-  if conf.cluster_fallback_export_s3_config then
-    if not conf.cluster_fallback_config_storage then
-      errors[#errors + 1] = "cluster_fallback_config_storage must be set when cluster_fallback_export_s3_config is enabled"
-    else
-      local scheme = conf.cluster_fallback_config_storage:match("^[^:]+")
-      if scheme ~= "s3" then
-        errors[#errors + 1] =
-          "cluster_fallback_config_storage must be set to an S3 storage location (the scheme must be s3)"
-      else
-        local cluster_fallback_export_s3_config, err = cjson.decode(tostring(conf.cluster_fallback_export_s3_config))
-        if err then
-          errors[#errors+1] = "cluster_fallback_export_s3_config must be valid json or not set: "
-            .. err .. " - " .. conf.cluster_fallback_config_storage
-        end
-        conf.cluster_fallback_export_s3_config = cluster_fallback_export_s3_config
-        setmetatable(conf.cluster_fallback_export_s3_config, {
-          __tostring = function (v)
-            return assert(cjson.encode(v))
-          end
-        })
-      end
-    end
-  end
-
-  if (conf.cluster_fallback_config_import or conf.cluster_fallback_config_export) and conf.role ~= "traditional" then
-    if conf.cluster_fallback_config_import and conf.cluster_fallback_config_export then
-      errors[#errors + 1] =
-        "node cannot enable `cluster_fallback_config_import` and `cluster_fallback_config_export` simultaneously"
-    end
-
-    if conf.cluster_fallback_config_import and conf.role ~= "data_plane" then
-      errors[#errors + 1] = "cluster_fallback_config_import can only be enabled when role = \"data_plane\""
-    end
-    if not conf.cluster_fallback_config_storage then
-      errors[#errors + 1] = "cluster_fallback_config_storage must be set when either cluster_fallback_config_import" ..
-                            " or cluster_fallback_config_export is enabled"
-
-    else
-      local scheme = conf.cluster_fallback_config_storage:match("^[^:]+")
-      if scheme ~= "s3" and scheme ~= "gcs" then
-        errors[#errors + 1] =
-          "cluster_fallback_config_storage must be set to an S3 or GCP storage location (the scheme must be s3 or gcs)"
-      end
-    end
-  end
-
-  if conf.node_id and not is_valid_uuid(conf.node_id) then
-    errors[#errors + 1] = "node_id must be a valid UUID"
-  end
-  -- XXX EE
 
   if conf.lua_max_req_headers < 1 or conf.lua_max_req_headers > 1000
   or conf.lua_max_req_headers ~= floor(conf.lua_max_req_headers)
