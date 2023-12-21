@@ -1,0 +1,3 @@
+message: Introduced the new **AI Prompt Decorator** plugin that allows Kong administrators to inject chat messages into LLM consumer prompts.
+type: feature
+scope: Plugin
