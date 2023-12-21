@@ -387,7 +387,6 @@ do
 end
 
 
-local MATCH_PARAMS = {}
 local CACHE_PARAMS = {}
 
 
@@ -400,30 +399,21 @@ local add_debug_headers    = utils.add_debug_headers
 local get_upstream_uri_v0  = utils.get_upstream_uri_v0
 
 
-function _M:select(req_method, req_uri, req_host, req_scheme,
-                   _, _,
-                   _, _,
-                   sni, req_headers, req_queries)
+function _M:matching(params)
+  local req_uri = params.uri
+  local req_host = params.host
 
-  check_select_params(req_method, req_uri, req_host, req_scheme,
+  check_select_params(params.method, req_uri, req_host, params.scheme,
                       nil, nil,
                       nil, nil,
-                      sni, req_headers, req_queries)
+                      params.sni, params.headers, params.queries)
 
   local host, port = split_host_port(req_host)
 
-  tb_clear(MATCH_PARAMS)
+  params.host = host
+  params.port = port
 
-  MATCH_PARAMS.method  = req_method
-  MATCH_PARAMS.uri     = req_uri
-  MATCH_PARAMS.host    = host
-  MATCH_PARAMS.port    = port
-  MATCH_PARAMS.scheme  = req_scheme
-  MATCH_PARAMS.sni     = sni
-  MATCH_PARAMS.headers = req_headers
-  MATCH_PARAMS.queries = req_queries
-
-  local c, err = get_atc_context(self.schema, self.fields, MATCH_PARAMS)
+  local c, err = get_atc_context(self.schema, self.fields, params)
 
   if not c then
     return nil, err
@@ -470,6 +460,26 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 end
 
 
+-- only for unit-testing
+function _M:select(req_method, req_uri, req_host, req_scheme,
+                   _, _,
+                   _, _,
+                   sni, req_headers, req_queries)
+
+  local params = {
+    method  = req_method,
+    uri     = req_uri,
+    host    = req_host,
+    scheme  = req_scheme,
+    sni     = sni,
+    headers = req_headers,
+    queries = req_queries,
+  }
+
+  return self:matching(params)
+end
+
+
 function _M:exec(ctx)
   local req_uri = ctx and ctx.request_uri or var.request_uri
   local req_host = var.http_host
@@ -480,8 +490,8 @@ function _M:exec(ctx)
 
   tb_clear(CACHE_PARAMS)
 
-  CACHE_PARAMS.uri     = req_uri
-  CACHE_PARAMS.host    = req_host
+  CACHE_PARAMS.uri  = req_uri
+  CACHE_PARAMS.host = req_host
 
   local cache_key = get_cache_key(self.fields, CACHE_PARAMS)
 
@@ -494,12 +504,10 @@ function _M:exec(ctx)
       return nil
     end
 
-    local req_scheme = ctx and ctx.scheme or var.scheme
+    CACHE_PARAMS.scheme = ctx and ctx.scheme or var.scheme
 
     local err
-    match_t, err = self:select(CACHE_PARAMS.method, req_uri, req_host, req_scheme,
-                               nil, nil, nil, nil,
-                               CACHE_PARAMS.sni, CACHE_PARAMS.headers, CACHE_PARAMS.queries)
+    match_t, err = self:matching(CACHE_PARAMS)
     if not match_t then
       if err then
         ngx_log(ngx_ERR, "router returned an error: ", err,
@@ -532,26 +540,15 @@ end
 else  -- is stream subsystem
 
 
-function _M:select(_, _, _, scheme,
-                   src_ip, src_port,
-                   dst_ip, dst_port,
-                   sni)
+function _M:matching(params)
+  local sni = params.sni
 
-  check_select_params(nil, nil, nil, scheme,
-                      src_ip, src_port,
-                      dst_ip, dst_port,
+  check_select_params(nil, nil, nil, params.scheme,
+                      params.src_ip, params.src_port,
+                      params.dst_ip, params.dst_port,
                       sni)
 
-  tb_clear(MATCH_PARAMS)
-
-  MATCH_PARAMS.scheme    = scheme
-  MATCH_PARAMS.src_ip    = src_ip
-  MATCH_PARAMS.src_port  = src_port
-  MATCH_PARAMS.dst_ip    = dst_ip
-  MATCH_PARAMS.dst_port  = dst_port
-  MATCH_PARAMS.sni       = sni
-
-  local c, err = get_atc_context(self.schema, self.fields, MATCH_PARAMS)
+  local c, err = get_atc_context(self.schema, self.fields, params)
   if not c then
     return nil, err
   end
@@ -584,6 +581,25 @@ function _M:select(_, _, _, scheme,
 end
 
 
+-- only for unit-testing
+function _M:select(_, _, _, scheme,
+                   src_ip, src_port,
+                   dst_ip, dst_port,
+                   sni)
+
+  local params = {
+    scheme    = scheme,
+    src_ip    = src_ip,
+    src_port  = src_port,
+    dst_ip    = dst_ip,
+    dst_port  = dst_port,
+    sni       = sni,
+  }
+
+  return self:matching(params)
+end
+
+
 function _M:exec(ctx)
   -- cache key calculation
 
@@ -606,12 +622,10 @@ function _M:exec(ctx)
     else
       scheme = CACHE_PARAMS.sni and "tls" or "tcp"
     end
+    CACHE_PARAMS.scheme = scheme
 
     local err
-    match_t, err = self:select(nil, nil, nil, scheme,
-                               CACHE_PARAMS.src_ip, CACHE_PARAMS.src_port,
-                               CACHE_PARAMS.dst_ip, CACHE_PARAMS.dst_port,
-                               CACHE_PARAMS.sni)
+    match_t, err = self:matching(CACHE_PARAMS)
     if not match_t then
       if err then
         ngx_log(ngx_ERR, "router returned an error: ", err)
