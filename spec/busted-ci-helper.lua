@@ -55,7 +55,7 @@ if busted_event_path then
       for i, original in ipairs{...} do
         if type(original) == "table" then
           args[i] = copyTable(original)
-        elseif type(original) ~= "function" then
+        elseif type(original) ~= "function" and type(original) ~= "userdata" then
           args[i] = original
         end
       end

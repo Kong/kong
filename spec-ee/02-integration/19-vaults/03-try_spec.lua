@@ -59,6 +59,11 @@ describe("vault try() (#" .. attachment_point .. "_" .. vault.name .. ")", funct
   end
 
   lazy_setup(function()
+    local bp = helpers.get_db_utils(nil,
+                                    nil,
+                                    { "dummy" },
+                                    { vault.name })
+
     helpers.setenv("KONG_LUA_PATH_OVERRIDE", LUA_PATH)
     helpers.setenv("KONG_VAULT_ROTATION_INTERVAL", "600")
 
@@ -68,11 +73,6 @@ describe("vault try() (#" .. attachment_point .. "_" .. vault.name .. ")", funct
 
     vault:setup()
     vault:create_secret(secret, "init")
-
-    local bp = helpers.get_db_utils(nil,
-                                    nil,
-                                    { "dummy" },
-                                    { vault.name })
 
     assert(bp.vaults:insert({
       name     = vault.name,

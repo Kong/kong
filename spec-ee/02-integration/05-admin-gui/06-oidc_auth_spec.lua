@@ -58,6 +58,7 @@ for _, strategy in helpers.each_strategy() do
   describe("oidc auth with groups claim [#" .. strategy .. "]", function()
 
     lazy_setup(function()
+      helpers.get_db_utils(nil, {})
       helpers.kong_exec("migrations reset --yes")
       helpers.kong_exec("migrations bootstrap", { password = "kong" })
 

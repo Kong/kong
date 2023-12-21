@@ -448,16 +448,10 @@ jobs:
       run: |
         # arm64 runners may use more connections due to more worker cores
         psql -hlocalhost -Ukong kong -tAc 'alter system set max_connections = 5000;'
-    
-    - name: Create kong_ro user in Postgres
+
+    - name: Set up ldap ad server
       run: |
-        psql -v ON_ERROR_STOP=1 -h localhost --username kong <<\EOD
-                CREATE user kong_ro;
-                GRANT CONNECT ON DATABASE kong TO kong_ro;
-                \c kong;
-                GRANT USAGE ON SCHEMA public TO kong_ro;
-                ALTER DEFAULT PRIVILEGES FOR ROLE kong IN SCHEMA public GRANT SELECT ON TABLES TO kong_ro;
-        EOD
+        cd .ci/ad-server && make build-ad-server
 
     - name: Download test schedule file
       uses: actions/download-artifact@v4
@@ -481,6 +475,27 @@ jobs:
       with:
         name: test-runtime-statistics-${{ matrix.runner }}
 
+    - name: Set Kong License Data
+      env:
+        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
+      run: |
+        KONG_LICENSE_URL="https://download.konghq.com/internal/kong-gateway/license.json"
+        export KONG_LICENSE_DATA=$(curl \
+          --silent \
+          --location \
+          --retry 3 \
+          --retry-delay 3 \
+          --user "$PULP_USERNAME:$PULP_PASSWORD" \
+          --url "$KONG_LICENSE_URL"
+        )
+
+        if [[ -z $KONG_LICENSE_DATA ]]; then
+          echo "failed downloading license from $KONG_LICENSE_URL"
+          exit 1
+        fi
+
+        echo KONG_LICENSE_DATA=$KONG_LICENSE_DATA >> $GITHUB_ENV
+
     - name: Run Tests
       env:
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
@@ -497,6 +512,10 @@ jobs:
         KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
         KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
         KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
+        DT_TEST: ${{ inputs.dt-test }}
+        DT_ENV_ID: ${{ secrets.DT_ENV_ID }}
+        DT_API_TOKEN: ${{ secrets.DT_API_TOKEN }}
+        KONG_TEST_LICENSE_DATA: ${{ env.KONG_LICENSE_DATA }}
       uses: Kong/gateway-test-scheduler/runner@5d27a0bf1acc78fab865eafb41d60e0c7625d261 # v2
       with:
         tests-to-run-file: test-chunk.${{ matrix.runner }}.json

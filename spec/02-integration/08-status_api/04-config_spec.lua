@@ -10,6 +10,10 @@ local cjson = require "cjson"
 
 for _, strategy in helpers.all_strategies() do
   describe("Status API - with strategy #" .. strategy, function()
+    lazy_setup(function()
+      helpers.get_db_utils(strategy, {})
+    end)
+
     it("default enable", function()
       assert.truthy(helpers.kong_exec("start -c spec/fixtures/default_status_listen.conf"))
       local client = helpers.http_client("127.0.0.1", 8007, 20000)

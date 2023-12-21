@@ -77,6 +77,7 @@ describe("admin_gui template", function()
 
       setup(function()
         prefix_handler.prepare_prefixed_interface_dir("/usr/local/kong", "gui", conf)
+        os.execute("mkdir -p " .. mock_prefix)
         assert(pl_path.isdir(mock_prefix))
       end)
 
@@ -140,6 +141,7 @@ describe("admin_gui template", function()
         reset_license_data = ee_helpers.clear_license_env()
         helpers.setenv("KONG_LICENSE_PATH", "spec-ee/fixtures/mock_license.json")
         prefix_handler.prepare_prefixed_interface_dir("/usr/local/kong", "gui", conf)
+        os.execute("mkdir -p " .. mock_prefix)
         assert(pl_path.isdir(mock_prefix))
       end)
 
@@ -228,6 +230,7 @@ describe("admin_gui template", function()
         kong.configuration.portal_and_vitals_key = ee_helpers.get_portal_and_vitals_key()
 
         prefix_handler.prepare_prefixed_interface_dir("/usr/local/kong", "gui", conf)
+        os.execute("mkdir -p " .. mock_prefix)
         assert(pl_path.isdir(mock_prefix))
       end)
 

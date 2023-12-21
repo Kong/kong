@@ -14,6 +14,7 @@ for _, strategy in helpers.each_strategy() do
     local reset_license_data
 
     lazy_setup(function()
+      helpers.get_db_utils(strategy) -- runs migrations
       reset_license_data = clear_license_env()
       assert(helpers.start_kong({
         portal_and_vitals_key = get_portal_and_vitals_key(),

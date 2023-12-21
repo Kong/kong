@@ -26,6 +26,7 @@ local dnsSRV = function(...) return helpers.dnsSRV(client, ...) end
 local dnsA = function(...) return helpers.dnsA(client, ...) end
 local dnsAAAA = function(...) return helpers.dnsAAAA(client, ...) end
 
+require "spec.helpers" -- initialize test environment
 
 local unset_register = {}
 local function setup_block(consistency)

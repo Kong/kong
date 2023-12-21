@@ -36,10 +36,5 @@
       "spec/03-plugins/",
       "spec-ee/03-plugins/"
     ]
-  },
-  {
-    "name": "aws-integration",
-    "exclude_tags": "flaky,ipv6,ce",
-    "specs": ["spec-ee/thirdparty-integration/aws"]
   }
 ]

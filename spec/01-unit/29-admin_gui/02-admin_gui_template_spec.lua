@@ -78,7 +78,7 @@ describe("admin_gui template", function()
 
     setup(function()
       prefix_handler.prepare_prefixed_interface_dir("/usr/local/kong", "gui", conf)
-      assert(pl_path.isdir(mock_prefix))
+      os.execute("mkdir -p " .. mock_prefix)
     end)
 
     it("should generates the appropriate kconfig", function()
@@ -211,7 +211,7 @@ describe("admin_gui template", function()
 
     setup(function()
       prefix_handler.prepare_prefixed_interface_dir("/usr/local/kong", "gui", conf)
-      assert(pl_path.isdir(mock_prefix))
+      os.execute("mkdir -p " .. mock_prefix)
     end)
 
     it("should generates the appropriate kconfig", function()

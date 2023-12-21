@@ -11,10 +11,26 @@ local utils   = require "kong.tools.utils"
 
 
 for _, strategy in helpers.each_strategy() do
-  local postgres_only = strategy == "postgres" and it or pending
+local postgres_only = strategy == "postgres" and it or pending
 
 
-  describe("kong.db.init [#" .. strategy .. "]", function()
+describe("db_spec [#" .. strategy .. "]", function()
+  lazy_setup(function()
+    local _, db = helpers.get_db_utils(strategy, {})
+    -- db permissions setup
+    local pg_ro_user = helpers.test_conf.pg_ro_user
+    local pg_db = helpers.test_conf.pg_database
+    db:schema_reset()
+    db.connector:query(string.format("CREATE user %s;", pg_ro_user))
+    db.connector:query(string.format([[
+      GRANT CONNECT ON DATABASE %s TO %s;
+      GRANT USAGE ON SCHEMA public TO %s;
+      ALTER DEFAULT PRIVILEGES FOR ROLE kong IN SCHEMA public GRANT SELECT ON TABLES TO %s;
+    ]], pg_db, pg_ro_user, pg_ro_user, pg_ro_user))
+    helpers.bootstrap_database(db)
+  end)
+
+  describe("kong.db.init", function()
     describe(".new()", function()
       it("errors on invalid arg", function()
         assert.has_error(function()
@@ -110,7 +126,7 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  describe(":init_connector() [#" .. strategy .. "]", function()
+  describe(":init_connector()", function()
     it("initializes infos", function()
       local db, err = DB.new(helpers.test_conf, strategy)
 
@@ -184,7 +200,7 @@ for _, strategy in helpers.each_strategy() do
   end)
 
 
-  describe(":connect() [#" .. strategy .. "]", function()
+  describe(":connect()", function()
     lazy_setup(function()
       helpers.get_db_utils(strategy, {})
     end)
@@ -403,7 +419,7 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  describe("#testme :query() [#" .. strategy .. "]", function()
+  describe("#testme :query()", function()
     lazy_setup(function()
       helpers.get_db_utils(strategy, {})
     end)
@@ -448,7 +464,7 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  describe(":setkeepalive() [#" .. strategy .. "]", function()
+  describe(":setkeepalive()", function()
     lazy_setup(function()
       helpers.get_db_utils(strategy, {})
     end)
@@ -661,7 +677,7 @@ for _, strategy in helpers.each_strategy() do
   end)
 
 
-  describe(":close() [#" .. strategy .. "]", function()
+  describe(":close()", function()
     lazy_setup(function()
       helpers.get_db_utils(strategy, {})
     end)
@@ -862,4 +878,5 @@ for _, strategy in helpers.each_strategy() do
       db:close()
     end)
   end)
+end)
 end
