@@ -1,14 +1,14 @@
 local buffer = require("string.buffer")
 local context = require("resty.router.context")
-local utils = require("kong.router.utils")
+--local utils = require("kong.router.utils")
 
 
 local type = type
-local pairs = pairs
+--local pairs = pairs
 local ipairs = ipairs
 local tb_sort = table.sort
 local tb_concat = table.concat
-local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
+--local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
 
 
 local var           = ngx.var
@@ -18,7 +18,7 @@ local get_uri_args  = ngx.req.get_uri_args
 local server_name   = require("ngx.ssl").server_name
 
 
-local strip_uri_args       = utils.strip_uri_args
+--local strip_uri_args       = utils.strip_uri_args
 
 
 local PREFIX_LEN = 13 -- #"http.headers."
@@ -48,9 +48,9 @@ local FIELDS_FUNCS = {
 
     ["http.host"] =
     function(params)
-      if not params.host then
-        params.host = var.http_host
-      end
+      --if not params.host then
+      --  params.host = var.http_host
+      --end
       return params.host
     end,
 
@@ -259,10 +259,15 @@ local function get_atc_context(schema, fields, params)
     return c:add_value(field, value)
   end)
 
+  if not res then
+    return nil, err
+  end
+
   return c
 end
 
 
+--[[
 local SIMPLE_FIELDS_FUNCS = {
     -- http.*
 
@@ -364,13 +369,14 @@ local COMPLEX_FIELDS_FUNCS = {
       return true
     end,
 }
+--]]
 
 
+--[[
 -- cache key string
 local str_buf = buffer.new(64)
 
 
---[[
 local function get_cache_key(fields, params)
   str_buf:reset()
 

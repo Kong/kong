@@ -6,7 +6,7 @@ local buffer = require("string.buffer")
 local schema = require("resty.router.schema")
 local router = require("resty.router.router")
 local lrucache = require("resty.lrucache")
-local server_name = require("ngx.ssl").server_name
+--local server_name = require("ngx.ssl").server_name
 local tb_new = require("table.new")
 local tb_clear = require "table.clear"
 local fields = require("kong.router.fields")
@@ -20,7 +20,7 @@ local setmetatable = setmetatable
 local pairs = pairs
 local ipairs = ipairs
 local tonumber = tonumber
-local table_insert = table.insert
+--local table_insert = table.insert
 
 
 local max = math.max
@@ -31,9 +31,9 @@ local header        = ngx.header
 local var           = ngx.var
 local ngx_log       = ngx.log
 local get_phase     = ngx.get_phase
-local get_method    = ngx.req.get_method
-local get_headers   = ngx.req.get_headers
-local get_uri_args  = ngx.req.get_uri_args
+--local get_method    = ngx.req.get_method
+--local get_headers   = ngx.req.get_headers
+--local get_uri_args  = ngx.req.get_uri_args
 local ngx_ERR       = ngx.ERR
 
 
@@ -58,8 +58,8 @@ local is_http = ngx.config.subsystem == "http"
 local values_buf = buffer.new(64)
 
 
-local HTTP_HEADERS_PREFIX = "http.headers."
-local HTTP_QUERIES_PREFIX = "http.queries."
+--local HTTP_HEADERS_PREFIX = "http.headers."
+--local HTTP_QUERIES_PREFIX = "http.queries."
 
 
 local CACHED_SCHEMA
@@ -195,6 +195,7 @@ end
 local function categorize_fields(fields)
   do return fields end
 
+  --[[
   local basic = {}
 
   -- 13 bytes, same len for "http.queries."
@@ -221,6 +222,7 @@ local function categorize_fields(fields)
   end
 
   return basic
+  --]]
 end
 
 
@@ -511,6 +513,7 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 end
 
 
+--[[
 -- func => get_headers or get_uri_args
 -- name => "headers" or "queries"
 -- max_config_option => "lua_max_req_headers" or "lua_max_uri_args"
@@ -529,6 +532,7 @@ local function get_http_params(func, name, max_config_option)
 
   return params
 end
+--]]
 
 
 function _M:exec(ctx)
@@ -536,7 +540,7 @@ function _M:exec(ctx)
 
   --local req_method = fields["http.method"] and get_method() or nil
   local req_uri = ctx and ctx.request_uri or var.request_uri
-  --local req_host = var.http_host
+  local req_host = var.http_host
   --local sni = fields["tls.sni"] and server_name() or nil
 
   --local headers
@@ -551,14 +555,14 @@ function _M:exec(ctx)
   --  queries = get_http_params(get_uri_args, "queries", "lua_max_uri_args")
   --end
 
-  --req_uri = strip_uri_args(req_uri)
+  req_uri = strip_uri_args(req_uri)
 
   -- cache key calculation
   tb_clear(CACHE_PARAMS)
 
   --CACHE_PARAMS.method  = req_method
   CACHE_PARAMS.uri     = req_uri
-  --CACHE_PARAMS.host    = req_host
+  CACHE_PARAMS.host    = req_host
   --CACHE_PARAMS.sni     = sni
   --CACHE_PARAMS.headers = headers
   --CACHE_PARAMS.queries = queries
@@ -766,6 +770,7 @@ function _M._set_ngx(mock_ngx)
     ngx_log = mock_ngx.log
   end
 
+  --[[
   if type(mock_ngx.req) == "table" then
     if mock_ngx.req.get_method then
       get_method = mock_ngx.req.get_method
@@ -779,6 +784,7 @@ function _M._set_ngx(mock_ngx)
       get_uri_args = mock_ngx.req.get_uri_args
     end
   end
+  --]]
 
   -- unit testing
   fields._set_ngx(mock_ngx)
