@@ -559,7 +559,7 @@ local function new_tracer(name, options)
   --
   -- Else, apply the probability-based should_sample decision.
   --
-  -- @function kong.tracing:set_should_sample
+  -- @function kong.tracing:get_sampling_decision
   -- @tparam bool parent_should_sample value of the parent span sampled flag
   -- extracted from the incoming tracing headers
   -- @tparam number sampling_rate the sampling rate to apply for the

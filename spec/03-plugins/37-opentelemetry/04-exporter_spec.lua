@@ -131,7 +131,6 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.res_status(200, r)
 
-          -- close client connection
           cli:close()
 
           local lines
@@ -209,7 +208,6 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.res_status(200, r)
 
-          -- close client connection
           cli:close()
 
           ngx.sleep(2)
@@ -230,7 +228,6 @@ for _, strategy in helpers.each_strategy() do
             })
             assert.res_status(200, r)
 
-            -- close client connection
             cli:close()
 
             local lines
@@ -289,7 +286,6 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.res_status(200, r)
 
-          -- close client connection
           cli:close()
 
           local lines, err = mock()
@@ -340,7 +336,6 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.res_status(200, r)
 
-          -- close client connection
           cli:close()
 
           local lines
@@ -438,7 +433,6 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, r)
 
-        -- close client connection
         cli:close()
 
         helpers.wait_until(function()
@@ -509,7 +503,6 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.res_status(200, r)
 
-          -- close client connection
           cli:close()
 
           local lines
@@ -591,7 +584,6 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.res_status(200, r)
 
-          -- close client connection
           cli:close()
 
           local lines
