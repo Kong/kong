@@ -83,51 +83,6 @@ function print_memusage {
 }
 trap print_memusage EXIT
 
-if [[ "$KONG_TEST_COVERAGE" = true ]]; then
-    export TEST_CMD="$TEST_CMD --keep-going"
-fi
-
-if [ "$TEST_SUITE" == "integration" ]; then
-    if [[ "$TEST_SPLIT" == first-CE ]]; then
-        # GitHub Actions, run first batch of integration tests
-        eval "$TEST_CMD" $(ls -d spec/02-integration/* | grep -v 05-proxy)
-
-    elif [[ "$TEST_SPLIT" == second-CE ]]; then
-        # GitHub Actions, run second batch of integration tests
-        # Note that the split here is chosen carefully to result
-        # in a similar run time between the two batches, and should
-        # be adjusted if imbalance become significant in the future
-        eval "$TEST_CMD" $(ls -d spec/02-integration/* | grep 05-proxy)
-
-    elif [[ "$TEST_SPLIT" == first-EE ]]; then
-        pushd .ci/ad-server && make build-ad-server && popd
-        eval "$TEST_CMD" $(ls -d spec-ee/02-integration/* | head -n4)
-
-    elif [[ "$TEST_SPLIT" == second-EE ]]; then
-        pushd .ci/ad-server && make build-ad-server && popd
-        eval "$TEST_CMD" $(ls -d spec-ee/02-integration/* | sed -n '5p')
-
-    elif [[ "$TEST_SPLIT" == third-EE ]]; then
-        pushd .ci/ad-server && make build-ad-server && popd
-        eval "$TEST_CMD" $(ls -d spec-ee/02-integration/* | tail -n+6)
-
-    else
-        # Non GitHub Actions
-        eval "$TEST_CMD" spec/02-integration/ spec-ee/02-integration
-    fi
-fi
-
-if [ "$TEST_SUITE" == "dbless" ]; then
-    eval "$TEST_CMD" spec/02-integration/02-cmd \
-                     spec/02-integration/05-proxy \
-                     spec/02-integration/04-admin_api/02-kong_routes_spec.lua \
-                     spec/02-integration/04-admin_api/15-off_spec.lua \
-                     spec/02-integration/08-status_api/03-readiness_endpoint_spec.lua \
-                     spec/02-integration/08-status_api/01-core_routes_spec.lua \
-                     spec/02-integration/11-dbless \
-                     spec/02-integration/20-wasm
-
-fi
 
 if [ "$TEST_SPLIT" == "first-fips" ]; then
     # we test 05-fips first as a sanity check
@@ -146,6 +101,7 @@ if [ "$TEST_SPLIT" == "first-fips" ]; then
                      spec-ee/03-plugins/01-plugins_order_spec.lua \
                      spec-ee/03-plugins/02-websocket-log-plugins_spec.lua
 fi
+
 
 if [ "$TEST_SPLIT" == "second-fips" ]; then
     pushd .ci/ad-server && make build-ad-server && popd
@@ -186,88 +142,6 @@ if [ "$TEST_SPLIT" == "fourth-fips" ]; then
 fi
 
 
-if [ "$TEST_SUITE" == "aws-integration" ]; then
-    eval "$TEST_CMD" spec-ee/thirdparty-integration/aws
-fi
-
-if [ "$TEST_SUITE" == "plugins" ]; then
-    set +ex
-    rm -f .failed
-    PLUGINS=""
-
-    if [[ "$TEST_SPLIT" == first-CE ]]; then
-        # GitHub Actions, run first batch of plugin tests
-        PLUGINS=$(ls -d spec/03-plugins/* | head -n22)
-
-    elif [[ "$TEST_SPLIT" == second-CE ]]; then
-        # GitHub Actions, run second batch of plugin tests
-        # Note that the split here is chosen carefully to result
-        # in a similar run time between the two batches, and should
-        # be adjusted if imbalance become significant in the future
-        PLUGINS=$(ls -d spec/03-plugins/* | tail -n+23)
-
-    elif [[ "$TEST_SPLIT" == first-EE ]]; then
-        PLUGINS=$(ls -d spec-ee/03-plugins/*)
-
-    else
-        # Non GitHub Actions
-        PLUGINS=$(ls -d spec/03-plugins/* spec-ee/03-plugins/*)
-    fi
-
-    for p in $PLUGINS; do
-        echo
-        cyan "--------------------------------------"
-        cyan $(basename $p)
-        cyan "--------------------------------------"
-        echo
-
-        $TEST_CMD $p || echo "* $p" >> .failed
-        mv $XML_OUTPUT/report.xml $XML_OUTPUT/report-$RANDOM.xml
-    done
-
-    if [[ "$TEST_SPLIT" == second* ]] || [[ "$TEST_SPLIT" != first* ]] || [[ "$TEST_SPLIT" != third* ]]; then
-        cat kong-*.rockspec | grep kong- | grep -v zipkin | grep -v sidecar | grep "~" | grep -v kong-prometheus-plugin | while read line ; do
-            REPOSITORY=`echo $line | sed "s/\"/ /g" | awk -F" " '{print $1}'`
-            VERSION=`luarocks show $REPOSITORY | grep $REPOSITORY | head -1 | awk -F" " '{print $2}' | cut -f1 -d"-"`
-            REPOSITORY=`echo $REPOSITORY | sed -e 's/kong-prometheus-plugin/kong-plugin-prometheus/g'`
-            REPOSITORY=`echo $REPOSITORY | sed -e 's/kong-proxy-cache-plugin/kong-plugin-proxy-cache/g'`
-
-            echo
-            cyan "--------------------------------------"
-            cyan $REPOSITORY $VERSION
-            cyan "--------------------------------------"
-            echo
-
-            git clone https://github.com/Kong/$REPOSITORY.git --branch $VERSION --single-branch /tmp/test-$REPOSITORY || \
-            git clone https://github.com/Kong/$REPOSITORY.git --branch v$VERSION --single-branch /tmp/test-$REPOSITORY
-            sed -i 's/grpcbin:9000/localhost:15002/g' /tmp/test-$REPOSITORY/spec/*.lua
-            sed -i 's/grpcbin:9001/localhost:15003/g' /tmp/test-$REPOSITORY/spec/*.lua
-            cp -R /tmp/test-$REPOSITORY/spec/fixtures/* spec/fixtures/ || true
-
-            pushd /tmp/test-$REPOSITORY
-                luarocks make
-            popd
-
-            $TEST_CMD /tmp/test-$REPOSITORY/spec/ || echo "* $REPOSITORY" >> .failed
-
-        done
-    fi
-
-    if [ -f .failed ]; then
-        echo
-        red "--------------------------------------"
-        red "Plugin tests failed:"
-        red "--------------------------------------"
-        cat .failed
-        exit 1
-    else
-        exit 0
-    fi
-fi
-
-if [ "$TEST_SUITE" == "pdk" ]; then
-    prove -I. -r t
-fi
 
 if [ "$TEST_SUITE" == "plugins-ee" ]; then
     scripts/enterprise_plugin.sh build-deps
