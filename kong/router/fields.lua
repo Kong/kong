@@ -1,14 +1,12 @@
 local buffer = require("string.buffer")
 local context = require("resty.router.context")
---local utils = require("kong.router.utils")
 
 
 local type = type
---local pairs = pairs
 local ipairs = ipairs
 local tb_sort = table.sort
 local tb_concat = table.concat
---local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
+local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
 
 
 local var           = ngx.var
@@ -16,9 +14,6 @@ local get_method    = ngx.req.get_method
 local get_headers   = ngx.req.get_headers
 local get_uri_args  = ngx.req.get_uri_args
 local server_name   = require("ngx.ssl").server_name
-
-
---local strip_uri_args       = utils.strip_uri_args
 
 
 local PREFIX_LEN = 13 -- #"http.headers."
@@ -39,18 +34,11 @@ local FIELDS_FUNCS = {
 
     ["http.path"] =
     function(params, ctx)
-      --if not params.uri then
-      --  params.uri = strip_uri_args(ctx and ctx.request_uri or var.request_uri)
-      --end
-
       return params.uri
     end,
 
     ["http.host"] =
     function(params)
-      --if not params.host then
-      --  params.host = var.http_host
-      --end
       return params.host
     end,
 
@@ -123,6 +111,8 @@ if is_http then
 else
 
     -- tls.*
+    -- error value for non-TLS connections ignored intentionally
+    -- fallback to preread SNI if current connection doesn't terminate TLS
 
     FIELDS_FUNCS["tls.sni"] =
     function(params)
@@ -133,6 +123,8 @@ else
     end
 
     -- net.*
+    -- when proxying TLS request in second layer or doing TLS passthrough
+    -- rewrite the dst_ip, port back to what specified in proxy_protocol
 
     FIELDS_FUNCS["net.dst.ip"] =
     function(params)
@@ -193,9 +185,7 @@ if is_http then
     if prefix == HTTP_HEADERS_PREFIX then
       return function(params)
         if not params.headers then
-          local headers = get_http_params(get_headers, "headers", "lua_max_req_headers")
-          --headers["host"] = nil
-          params.headers = headers
+          params.headers = get_http_params(get_headers, "headers", "lua_max_req_headers")
         end
 
         return params.headers[field:sub(PREFIX_LEN + 1)]
@@ -217,7 +207,7 @@ if is_http then
 end -- is_http
 
 
-local function fields_vistor(fields, params, ctx, cb)
+local function fields_visitor(fields, params, ctx, cb)
   for _, field in ipairs(fields) do
     local func = FIELDS_FUNCS[field]
 
@@ -226,7 +216,6 @@ local function fields_vistor(fields, params, ctx, cb)
     end -- if func
 
     local value = func(params, ctx)
-    --print("f = ", field, ", v = ", value)
 
     local res, err = cb(field, value)
     if not res then
@@ -238,20 +227,33 @@ local function fields_vistor(fields, params, ctx, cb)
 end
 
 
+-- cache key string
+local str_buf = buffer.new(64)
+
+
 local function get_cache_key(fields, params, ctx)
-  --print(table.concat(fields, "|"))
+  str_buf:reset()
 
-  local str_buf = buffer.new(64)
-
-  fields_vistor(fields, params, ctx, function(field, value)
+  fields_visitor(fields, params, ctx, function(field, value)
     -- these fields were not in cache key
     if field == "net.protocol" or field == "net.port" then
       return true
     end
 
-    local prefix = field:sub(1, PREFIX_LEN)
+    local headers_or_queries = field:sub(1, PREFIX_LEN)
 
-    if prefix == HTTP_HEADERS_PREFIX or prefix == HTTP_QUERIES_PREFIX then
+    if headers_or_queries == HTTP_HEADERS_PREFIX then
+      headers_or_queries = true
+      field = replace_dashes_lower(field)
+
+    elseif headers_or_queries == HTTP_QUERIES_PREFIX then
+      headers_or_queries = true
+
+    else
+      headers_or_queries = false
+    end
+
+    if headers_or_queries then
       if type(value) == "table" then
         tb_sort(value)
         value = tb_concat(value, ",")
@@ -272,7 +274,7 @@ end
 local function get_atc_context(schema, fields, params)
   local c = context.new(schema)
 
-  local res, err = fields_vistor(fields, params, nil, function(field, value)
+  local res, err = fields_visitor(fields, params, nil, function(field, value)
     local prefix = field:sub(1, PREFIX_LEN)
 
     if prefix == HTTP_HEADERS_PREFIX or prefix == HTTP_QUERIES_PREFIX then
@@ -294,10 +296,9 @@ local function get_atc_context(schema, fields, params)
       -- the query parameter has no value, like /?foo,
       -- get_uri_arg will get a boolean `true`
       -- we think it is equivalent to /?foo=
-      return c:add_value(field, v_type == "boolean" and "" or value)
-      --if v_type == "boolean" then
-      --  value = ""
-      --end
+      if v_type == "boolean" then
+        value = ""
+      end
     end
 
     return c:add_value(field, value)
@@ -309,235 +310,6 @@ local function get_atc_context(schema, fields, params)
 
   return c
 end
-
-
---[[
-local SIMPLE_FIELDS_FUNCS = {
-    -- http.*
-
-    ["http.method"] =
-    function(v, params, cb)
-      return cb("http.method", params.method)
-    end,
-
-    ["http.path"] =
-    function(v, params, cb)
-      return cb("http.path", params.uri)
-    end,
-
-    ["http.host"] =
-    function(v, params, cb)
-      return cb("http.host", params.host)
-    end,
-
-    -- tls.*
-
-    ["tls.sni"] =
-    function(v, params, cb)
-      return cb("tls.sni", params.sni)
-    end,
-
-    -- net.*
-
-    ["net.src.ip"] =
-    function(v, params, cb)
-      return cb("net.src.ip", params.src_ip)
-    end,
-
-    ["net.src.port"] =
-    function(v, params, cb)
-      return cb("net.src.port", params.src_port)
-    end,
-
-    ["net.dst.ip"] =
-    function(v, params, cb)
-      return cb("net.dst.ip", params.dst_ip)
-    end,
-
-    ["net.dst.port"] =
-    function(v, params, cb)
-      return cb("net.dst.port", params.dst_port)
-    end,
-
-    -- below are atc context only
-
-    ["net.protocol"] =
-    function(v, params, cb)
-      return cb("net.protocol", params.scheme)
-    end,
-
-    ["net.port"] =
-    function(v, params, cb)
-      return cb("net.port", params.port)
-    end,
-}
-
-
-local COMPLEX_FIELDS_FUNCS = {
-    ["http.headers."] =
-    function(v, params, cb)
-      local headers = params.headers
-      if not headers then
-        return true
-      end
-
-      for _, name in ipairs(v) do
-        local value = headers[name]
-
-        local res, err = cb("http.headers." .. name, value,
-                            replace_dashes_lower) -- only for cache_key
-        if not res then
-          return nil, err
-        end
-      end -- for ipairs(v)
-
-      return true
-    end,
-
-    ["http.queries."] =
-    function(v, params, cb)
-      local queries = params.queries
-      if not queries then
-        return true
-      end
-
-      for _, name in ipairs(v) do
-        local value = queries[name]
-
-        local res, err = cb("http.queries." .. name, value)
-        if not res then
-          return nil, err
-        end
-      end -- for ipairs(v)
-
-      return true
-    end,
-}
---]]
-
-
---[[
--- cache key string
-local str_buf = buffer.new(64)
-
-
-local function get_cache_key(fields, params)
-  str_buf:reset()
-
-  -- NOTE: DO NOT yield until str_buf:get()
-  for field, value in pairs(fields) do
-
-    -- these fields were not in cache key
-    if field == "net.protocol" or
-       field == "net.port"
-    then
-      goto continue
-    end
-
-    local func = SIMPLE_FIELDS_FUNCS[field]
-
-    if func then
-      func(value, params, function(field, value)
-        str_buf:put(value or ""):put("|")
-        return true
-      end)
-
-      goto continue
-    end -- if func
-
-    func = COMPLEX_FIELDS_FUNCS[field]
-
-    if func then  -- http.headers.* or http.queries.*
-      func(value, params, function(field, value, lower_func)
-        if lower_func then
-          field = lower_func(field)
-        end
-
-        if type(value) == "table" then
-          tb_sort(value)
-          value = tb_concat(value, ",")
-        end
-
-        str_buf:putf("%s=%s|", field, value or "")
-
-        return true
-      end)
-
-      goto continue
-    end -- if func
-
-    if not func then  -- unknown field
-      error("unknown router matching schema field: " .. field)
-    end -- if func
-
-    ::continue::
-  end -- for fields
-
-  return str_buf:get()
-end
---]]
-
---[[
-local function get_atc_context(schema, fields, params)
-  local c = context.new(schema)
-
-  for field, value in pairs(fields) do
-    local func = SIMPLE_FIELDS_FUNCS[field]
-
-    if func then
-      local res, err = func(value, params, function(field, value)
-        return c:add_value(field, value)
-      end)
-
-      if not res then
-        return nil, err
-      end
-
-      goto continue
-    end -- if func
-
-    func = COMPLEX_FIELDS_FUNCS[field]
-
-    if func then  -- http.headers.* or http.queries.*
-      local res, err = func(value, params, function(field, value)
-        local v_type = type(value)
-
-        -- multiple values for a single query parameter, like /?foo=bar&foo=baz
-        if v_type == "table" then
-          for _, v in ipairs(value) do
-            local res, err = c:add_value(field, v)
-            if not res then
-              return nil, err
-            end
-          end
-
-          return true
-        end -- if v_type
-
-        -- the query parameter has only one value, like /?foo=bar
-        -- the query parameter has no value, like /?foo,
-        -- get_uri_arg will get a boolean `true`
-        -- we think it is equivalent to /?foo=
-        return c:add_value(field, v_type == "boolean" and "" or value)
-      end)
-
-      if not res then
-        return nil, err
-      end
-
-      goto continue
-    end -- if func
-
-    if not func then  -- unknown field
-      error("unknown router matching schema field: " .. field)
-    end -- if func
-
-    ::continue::
-  end -- for fields
-
-  return c
-end
---]]
 
 
 local function _set_ngx(mock_ngx)
