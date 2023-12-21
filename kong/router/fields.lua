@@ -167,12 +167,12 @@ if is_http then
     if err == "truncated" then
       local max = kong and kong.configuration and kong.configuration[max_config_option] or 100
       ngx.log(ngx.ERR,
-              string.format("router: not all request %s were read in order to determine the route " ..
-                            "as the request contains more than %d %s, " ..
-                            "route selection may be inaccurate, " ..
-                            "consider increasing the '%s' configuration value " ..
-                            "(currently at %d)",
-                            name, max, name, max_config_option, max))
+              fmt("router: not all request %s were read in order to determine the route " ..
+                  "as the request contains more than %d %s, " ..
+                  "route selection may be inaccurate, " ..
+                  "consider increasing the '%s' configuration value " ..
+                  "(currently at %d)",
+                  name, max, name, max_config_option, max))
     end
 
     return params
