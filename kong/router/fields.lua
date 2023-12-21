@@ -34,7 +34,7 @@ local FIELDS_FUNCS = {
     end,
 
     ["http.path"] =
-    function(params, ctx)
+    function(params)
       return params.uri
     end,
 
