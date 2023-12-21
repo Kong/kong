@@ -4,18 +4,18 @@ local _M = {}
 local fmt = string.format
 
 local function do_bad_request(msg)
-  return 400, msg
+  return 400, { error = true, message = msg }
 end
 
 local function do_internal_server_error(msg)
-  return 500, msg
+  return 500, { error = true, message = msg }
 end
 
 function _M.execute(request, conf)
   local user_prompt
 
   -- concat all 'user' prompts into one string, if allowed
-  if request.messages and conf.allow_all_conversation_history then
+  if request.messages and not conf.allow_all_conversation_history then
     for k, v in ipairs(request.messages) do
       if v.role == "user" then
         if not user_prompt then user_prompt = "" end
