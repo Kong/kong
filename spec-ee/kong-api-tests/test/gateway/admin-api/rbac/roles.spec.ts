@@ -6,11 +6,12 @@ import {
   Environment,
   randomString,
   logResponse,
+  isGateway,
 } from '@support';
 
 describe('Gateway RBAC: Roles', function () {
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/rbac/roles`;
 
   const role1Name = 'role1';

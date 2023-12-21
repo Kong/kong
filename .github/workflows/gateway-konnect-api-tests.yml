@@ -1,6 +1,11 @@
 name: gateway-konnect-api-tests
 
 on:
+  pull_request:
+    paths:
+      - 'spec-ee/kong-api-tests/package*.json'
+    branches:
+      - master
   workflow_dispatch:
     inputs:
       enable_verbose_response_logging:
@@ -51,6 +56,9 @@ on:
         type: boolean
         default: false
 
+  schedule:
+    - cron: '0 11 * * 6'
+
 env:
   KONNECT_DP_IMAGE: ${{ inputs.data_plane_image || 'kong/kong-gateway-dev:nightly-ubuntu' }}
   SEND_SLACK_RESULTS: ${{ github.event.inputs.send_slack_results }}
@@ -59,7 +67,7 @@ env:
   HAS_ACCESS_TO_SECRETS: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && !contains(github.actor, 'dependabot')) }}
 
 jobs:
-  gateway_api_tests:
+  gateway_konnect_api_tests:
     defaults:
       run:
         working-directory: spec-ee/kong-api-tests
@@ -69,6 +77,8 @@ jobs:
       GW_MODE: ${{ matrix.gateway_mode }}
       VERBOSE_RESPONSE_LOGS: ${{ inputs.enable_verbose_response_logging }}
       RUN_SPEC: ${{ inputs.target_test || 'all' }}
+      KONNECT_USER_PASSWORD: ${{ secrets.TEST_API_KONNECT_USER_PASSWORD }}
+      TEST_APP: koko
     strategy:
       fail-fast: false
       matrix:
@@ -104,15 +114,19 @@ jobs:
 
       - name: Execute Konnect API Tests
         id: execute_tests
-        env:
-          KONNECT_USER_PASSWORD: ${{ secrets.TEST_API_KONNECT_USER_PASSWORD }}
-          GW_MODE: hybrid
         run: |
           if [[ $RUN_SPEC == 'all' ]]; then
             npm run test-koko;
           else
             TEST_APP=koko TEST_ENV=dev npm run test-spec --spec=$RUN_SPEC;
           fi
+        continue-on-error: true
+
+      - name: Retry Konnect Failed API Tests
+        if: steps.execute_tests.outcome == 'failure'
+        run: npm run test-multiple -- --spec=$(cat failed-tests.txt)
+        env:
+          TEST_ENV: dev
 
       - name: Get Gateway Details
         if: ${{ always() }}

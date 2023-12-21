@@ -1,11 +1,14 @@
 import { registerOrgAndAuthenticateAdmin } from '@shared/kauth_workflows';
 import { getDefaultRuntimeGroup, setupKonnectDataPlane } from '@shared/konnect_workflows';
-import { getAuthOptions, removeCertficatesAndKeys, stopAndRemoveTargetContainer, KokoAuthHeaders, isCI  } from '@support';
+import { getAuthOptions, removeCertficatesAndKeys, stopAndRemoveTargetContainer, KokoAuthHeaders  } from '@support';
 import axios from 'axios';
 
 export const mochaHooks: Mocha.RootHookObject = {
   beforeAll: async function (this: Mocha.Context) {
     try {
+      // stop and remove the data plane container if exists
+      stopAndRemoveTargetContainer('konnect-dp1')
+
       await registerOrgAndAuthenticateAdmin();
       // get the deafult runtime group id which is being created automatically with the Organization
       await getDefaultRuntimeGroup();
@@ -25,12 +28,6 @@ export const mochaHooks: Mocha.RootHookObject = {
   },
 
   afterAll: async function (this: Mocha.Context) {
-    // stop and remove the data plane container for local runs
-    // in GH Actions we keep this for subsequent steps to extract information such as Git commit sha for Slack notification
-    if(!isCI()) {
-      stopAndRemoveTargetContainer('konnect-dp1')
-    }
-
     // remove the generated certificates and keys for konnect data plane
     removeCertficatesAndKeys()
   },

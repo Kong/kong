@@ -11,6 +11,7 @@ import {
   createGatewayService,
   isCI,
   wait,
+  isGateway,
 } from '@support';
 
 describe('Gateway /licenses API tests', function () {
@@ -22,11 +23,11 @@ describe('Gateway /licenses API tests', function () {
   const inValidLicense = authDetails.license.invalid;
 
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/licenses`;
 
   const pluginsUrl = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/plugins`;
 
   let licenseId: string;

@@ -27,7 +27,6 @@ import {
 // ********* End **********
 
 describe('Vaults: Azure Secret referencing in Azure functions plugin', function () {
-  checkGwVars('azure');
   this.timeout(50000)
 
   let serviceId = '';
@@ -36,7 +35,7 @@ describe('Vaults: Azure Secret referencing in Azure functions plugin', function 
 
   const path = `/${randomString()}`;
   const pluginUrl = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/plugins`;
 
   const proxyUrl = getBasePath({ environment: isGateway() ? Environment.gateway.proxy : undefined });
@@ -45,6 +44,7 @@ describe('Vaults: Azure Secret referencing in Azure functions plugin', function 
 
 
   before(async function () {
+    checkGwVars('azure');
     const service = await createGatewayService('AzureVaultFunctionService', { url: 'http://httpbin' });
     serviceId = service.id;
     const route = await createRouteForService(serviceId, [path]);

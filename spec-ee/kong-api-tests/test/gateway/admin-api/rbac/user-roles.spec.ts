@@ -11,11 +11,12 @@ import {
   deleteUser,
   createRoleEndpointPermission,
   logResponse,
+  isGateway,
 } from '@support';
 
 describe(`Gateway RBAC: User's Roles`, function () {
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/rbac`;
 
   const userName = randomString();

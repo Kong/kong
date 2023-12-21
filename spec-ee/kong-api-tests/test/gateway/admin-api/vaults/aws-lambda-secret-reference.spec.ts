@@ -32,15 +32,13 @@ import {
 // ********* End **********
 
 describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
-  checkGwVars('aws');
-
   let serviceId = '';
   let routeId = '';
   let awsPluginId = '';
 
   const path = `/${randomString()}`;
   const pluginUrl = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/plugins`;
 
   const proxyUrl = getBasePath({ environment: isGateway() ? Environment.gateway.proxy : undefined });
@@ -93,6 +91,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
   };
 
   before(async function () {
+    checkGwVars('aws');
     await clearAllKongResources();
     const service = await createGatewayService('VaultSecretAwsService');
     serviceId = service.id;

@@ -20,21 +20,23 @@ import {
   removeConsumerFromConsumerGroup,
   waitForConfigRebuild,
   clearAllKongResources,
+  isGateway,
 } from '@support';
 
 describe('Gateway Consumer Groups with RLA', function () {
   this.timeout(45000);
 
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/consumer_groups`;
 
   const proxyUrl = `${getBasePath({
+    app: 'gateway',
     environment: Environment.gateway.proxy,
   })}`;
 
   const adminUrl = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}`;
 
   const path = `/${randomString()}`;

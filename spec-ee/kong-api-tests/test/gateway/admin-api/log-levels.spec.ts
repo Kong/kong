@@ -32,7 +32,7 @@ import {
 describe('Dynamic Log Level Tests', function () {
   this.timeout(30000);
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/debug`;
 
   const proxyUrl = getBasePath({ environment: isGateway() ? Environment.gateway.proxy : undefined });

@@ -6,11 +6,12 @@ import {
   getBasePath,
   Environment,
   logResponse,
+  isGateway,
 } from '@support';
 
 describe('@smoke: Gateway RBAC: Users', function () {
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/rbac/users`;
 
   const user1Name = 'user1';

@@ -7,12 +7,13 @@ import {
   postNegative,
   logResponse,
   retryRequest,
+  isGateway,
 } from '@support';
 import axios from 'axios';
 
 describe('Gateway Admin API: Targets', function () {
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/upstreams`;
 
   const name = 'test-upstream';
@@ -348,7 +349,7 @@ describe('Gateway Admin API: Targets', function () {
 
 describe('Gateway Admin API: Targets health', function () {
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/upstreams`;
 
   const name = 'test-upstream';

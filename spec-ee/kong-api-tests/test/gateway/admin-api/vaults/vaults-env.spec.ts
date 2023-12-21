@@ -6,11 +6,12 @@ import {
   getBasePath,
   Environment,
   logResponse,
+  isGateway,
 } from '@support';
 
 describe('Vaults: Environment Variables', function () {
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/vaults`;
 
   const vaultPrefix = 'evprefix';

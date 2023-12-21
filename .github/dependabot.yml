@@ -2,6 +2,12 @@
 
 version: 2
 
+registries:
+  npm:
+    type: npm-registry
+    url: https://registry.npmjs.org
+    token: ${{ secrets.NPM_TOKEN_PRIVATE_READ }}
+
 updates:
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -12,7 +18,7 @@ updates:
   - package-ecosystem: npm
     directory: "/spec-ee/kong-api-tests"
     schedule:
-      interval: weekly
+      interval: daily
     ignore: # ignore major updates
       - dependency-name: '*'
         update-types: [version-update:semver-major]

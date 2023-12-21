@@ -225,10 +225,16 @@ export const deployKonnectDataPlane = (controlPlaneEndpoint, telemetryEndpoint, 
  * @param {string} containerName 
  */
 export const stopAndRemoveTargetContainer = (containerName) => {
+  // if konnect-dp1 container exists
+  const doesContainerExists = execSync(`docker ps -a -q -f name=${containerName}`).toString().trim()
+  if (doesContainerExists) {
     try {
       execSync(`docker stop ${containerName}; docker rm ${containerName} -f`, { stdio: 'inherit' });
       console.info(`Successfully removed the ${containerName} docker container`)
     } catch (error) {
       console.error(`Something went wrong while removing the ${containerName} docker container`, error);
     }
+  } else {
+    console.info(`Konnect container ${containerName} doesn't exist, moving on with the rest of the test setup`)
   }
+}

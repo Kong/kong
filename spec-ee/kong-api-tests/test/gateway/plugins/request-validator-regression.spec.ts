@@ -31,7 +31,7 @@ describe('Gateway Plugins: Request Validator Regression Tests', function () {
   let routeId: string;
 
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/plugins`;
   const proxyUrl = getBasePath({ environment: isGateway() ? Environment.gateway.proxy : undefined });
 

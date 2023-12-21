@@ -24,12 +24,13 @@ import {
   wait,
   logResponse,
   retryRequest,
+  isGateway,
 } from '@support';
 
 describe('Gateway RBAC: E2E User Permissions', function () {
   const isHybrid = isGwHybrid();
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}`;
 
   const updateRoleName = 'rbacUpdatedRoleName';

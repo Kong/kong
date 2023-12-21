@@ -13,6 +13,7 @@ import {
   expect,
   getBasePath,
   getNegative,
+  isGateway,
   logResponse,
   postNegative,
   waitForConfigRebuild,
@@ -36,9 +37,10 @@ describe('Gateway Plugins: jwe-decrypt JWK', function () {
   let keysId: string;
 
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}`;
   const proxyUrl = `${getBasePath({
+    app: 'gateway',
     environment: Environment.gateway.proxy,
   })}`;
 

@@ -12,12 +12,13 @@ import {
   postNegative,
   randomString,
   logResponse,
+  isGateway,
 } from '@support';
 import axios from 'axios';
 
 describe('Gateway RBAC: Role Entity Permissions', function () {
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/rbac/roles`;
 
   const roleName = randomString();

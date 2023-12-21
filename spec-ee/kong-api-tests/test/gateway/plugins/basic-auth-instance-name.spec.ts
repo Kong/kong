@@ -10,6 +10,7 @@ import {
   expect,
   getBasePath,
   getNegative,
+  isGateway,
   isGwHybrid,
   logResponse,
   postNegative,
@@ -35,9 +36,10 @@ describe('Gateway Plugins: basic-auth using plugin instance name', function () {
   const plugin = 'basic-auth';
 
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}`;
   const proxyUrl = `${getBasePath({
+    app: 'gateway',
     environment: Environment.gateway.proxy,
   })}`;
 

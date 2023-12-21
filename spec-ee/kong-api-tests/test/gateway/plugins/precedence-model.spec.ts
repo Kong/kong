@@ -18,13 +18,15 @@ import {
   createPlugin,
   deletePlugin,
   getNegative,
+  isGateway,
 } from '@support';
 
 describe.skip('Plugin Scope Precedence Model', () => {
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}`;
   const proxyUrl = getBasePath({
+    app: 'gateway',
     environment: Environment.gateway.proxy,
   });
   let serviceId;

@@ -6,11 +6,12 @@ import {
   getBasePath,
   Environment,
   logResponse,
+  isGateway,
 } from '@support';
 
 describe('Gateway Admin API: Key-Sets For jwe-decrypt plugin', function () {
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/key-sets`;
 
   const keySetPayload = {

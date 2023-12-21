@@ -9,11 +9,12 @@ import {
   createConsumer,
   deleteConsumer,
   logResponse,
+  isGateway,
 } from '@support';
 
 describe('Gateway Consumer Groups with RLA', function () {
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/consumer_groups`;
   const consumerGroup1Name = randomString();
   const consumerGroup2Name = randomString();

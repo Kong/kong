@@ -15,7 +15,7 @@ import {
 } from '@support';
 import axios, { AxiosResponse } from 'axios';
 
-describe('@smoke: Gateway Admin API: Services', function () {
+describe('@smoke @koko: Gateway Admin API: Services', function () {
   let url: string
   let serviceId: string
   let routeId: string;

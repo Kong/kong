@@ -15,6 +15,7 @@ import {
   deleteConsumer,
   getNegative,
   retryRequest,
+  isGateway,
   waitForConfigRebuild,
 } from '@support';
 
@@ -39,9 +40,10 @@ describe('Gateway Plugins: jwt-signer', function () {
   let consumerId: string;
 
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/plugins`;
   const proxyUrl = `${getBasePath({
+    app: 'gateway',
     environment: Environment.gateway.proxy,
   })}`;
 

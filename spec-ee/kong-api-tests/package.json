@@ -11,7 +11,7 @@
     "test-multiple": "mocha ${npm_config_spec}",
     "test-smoke": "TEST_APP=gateway mocha -g @smoke --recursive",
     "test-non-smoke": "TEST_APP=gateway mocha --invert -g @smoke --recursive",
-    "test-koko": "TEST_APP=koko TEST_ENV=dev mocha \"test/koko/koko_gateway_tests.spec.ts\""
+    "test-koko": "TEST_APP=koko TEST_ENV=dev mocha -g @koko --recursive"
   },
   "dependencies": {
     "@kong/kauth-test-utils": "^0.0.13",

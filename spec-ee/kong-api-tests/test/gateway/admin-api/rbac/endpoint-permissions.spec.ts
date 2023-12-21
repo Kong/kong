@@ -12,11 +12,12 @@ import {
   waitForConfigRebuild,
   retryRequest,
   eventually,
+  isGateway,
 } from '@support';
 
 describe('@smoke: Gateway RBAC: Role Endpoint Permissions', function () {
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/rbac/roles`;
 
   const roleName = randomString();

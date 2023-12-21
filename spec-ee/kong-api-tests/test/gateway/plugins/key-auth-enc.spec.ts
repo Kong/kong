@@ -10,7 +10,8 @@ import {
   wait,
   waitForConfigRebuild,
   retryRequest,
-  clearAllKongResources
+  clearAllKongResources,
+  isGateway
 } from '@support';
 import axios from 'axios';
 
@@ -24,9 +25,10 @@ describe('Gateway Plugins: key-auth-enc', function () {
   const plugin = 'key-auth-enc';
 
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}`;
   const proxyUrl = `${getBasePath({
+    app: 'gateway',
     environment: Environment.gateway.proxy,
   })}`;
   const inValidTokenHeaders = {

@@ -35,15 +35,13 @@ import {
 // ********* End **********
 
 describe('Vaults: Secret referencing in RLA Plugin', function () {
-  checkGwVars('aws');
-
   let serviceId = '';
   let routeId = '';
   let rlaPluginId = '';
 
   const path = `/${randomString()}`;
   const pluginUrl = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/plugins`;
 
   const proxyUrl = getBasePath({ environment: isGateway() ? Environment.gateway.proxy : undefined });
@@ -131,6 +129,7 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
   };
 
   before(async function () {
+    checkGwVars('aws');
     const service = await createGatewayService('VaultSecretService');
     serviceId = service.id;
     const route = await createRouteForService(serviceId, [path]);

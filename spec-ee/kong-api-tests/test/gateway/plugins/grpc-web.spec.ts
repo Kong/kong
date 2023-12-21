@@ -12,6 +12,7 @@ import {
   updateGatewayService,
   logResponse,
   eventually,
+  isGateway,
 } from '@support';
 
 describe('Gateway Plugins: gRPC-web', function () {
@@ -31,12 +32,14 @@ describe('Gateway Plugins: gRPC-web', function () {
   let routeId: string;
 
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/plugins`;
   const proxyUrl = `${getBasePath({
+    app: 'gateway',
     environment: Environment.gateway.proxy,
   })}`;
   const proxyUrlSecure = `${getBasePath({
+    app: 'gateway',
     environment: Environment.gateway.proxySec,
   })}`;
   // This is needed in order to send a secure request to the upstream

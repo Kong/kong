@@ -47,7 +47,7 @@ const currentHost = getGatewayHost();
 
 const isLocalDb = isLocalDatabase();
 
-describe('@smoke: Router Functionality Tests', function () {
+describe('@smoke @koko: Router Functionality Tests', function () {
   const proxyUrl = `${getBasePath({
     app: 'gateway',
     environment: Environment.gateway.proxySec,
@@ -58,7 +58,6 @@ describe('@smoke: Router Functionality Tests', function () {
   const kongContainerName = getKongContainerName();
   const regexPath = '~/(hell?o|world)-(?<user>[a-zA-Z]+)';
   const waitTime = 5000;
-  const longWaitTime = 10000;
   const hybridWaitTime = 6000;
 
   let serviceDetails: any;
@@ -271,7 +270,7 @@ describe('@smoke: Router Functionality Tests', function () {
       expect(resp.data.headers, 'Should have no headers').to.not.exist
     }
 
-    await wait(isLocalDb ? waitTime : longWaitTime); // eslint-disable-line no-restricted-syntax
+    await waitForConfigRebuild()
   });
   
   regexCorrectPatterns.forEach((correctPattern) => {

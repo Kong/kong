@@ -10,6 +10,7 @@ import {
   getRouterFlavor, 
   isGwHybrid,
   wait,
+  isGateway,
   getKongContainerName,
 } from '@support';
 
@@ -29,9 +30,10 @@ describe('Expressions Router Tests', function () {
   const gwContainerName = getKongContainerName();
 
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}`;
   const proxyUrl = `${getBasePath({
+    app: 'gateway',
     environment: Environment.gateway.proxy,
   })}`;
 

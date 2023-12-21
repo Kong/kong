@@ -6,12 +6,13 @@ import {
   getNegative,
   postNegative,
   logResponse,
+  isGateway,
 } from '@support';
 import axios from 'axios';
 
 describe('Gateway Admin API: Cert-Associated Upstreams', function () {
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/certificates`;
 
   const name = 'test-cert-upstream';

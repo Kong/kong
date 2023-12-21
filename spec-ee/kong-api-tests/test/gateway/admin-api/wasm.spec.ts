@@ -10,6 +10,7 @@ import {
   expect,
   getBasePath,
   getNegative,
+  isGateway,
   logResponse,
   postNegative,
   randomString,
@@ -21,10 +22,11 @@ describe('WASM filter admin API', function () {
 
   this.timeout(30000);
   const adminUrl = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}`;
 
   const proxyUrl = `${getBasePath({
+    app: 'gateway',
     environment: Environment.gateway.proxy,
   })}`;
 

@@ -5,11 +5,12 @@ import {
   getBasePath,
   Environment,
   logResponse,
+  isGateway,
 } from '@support';
 
 describe('Vaults: Azure', function () {
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/vaults`;
 
   const vaultPrefix = 'azureprefix';

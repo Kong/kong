@@ -48,7 +48,7 @@ kvEngineVersions.forEach((kvVersion) => {
     const longWaitTime = 8000;
     const path = `/${randomString()}`;
     const url = `${getBasePath({
-      environment: Environment.gateway.admin,
+      environment: isGateway() ? Environment.gateway.admin : undefined,
     })}`;
 
     const proxyUrl = getBasePath({ environment: isGateway() ? Environment.gateway.proxy : undefined });

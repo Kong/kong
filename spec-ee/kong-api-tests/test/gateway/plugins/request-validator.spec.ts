@@ -15,6 +15,7 @@ import {
   waitForConfigHashUpdate,
   getMetric,
   isGwHybrid,
+  isGateway,
 } from '@support';
 
 describe('Gateway Plugins: Request Validator', function () {
@@ -28,9 +29,10 @@ describe('Gateway Plugins: Request Validator', function () {
   let configHash: string;
 
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/plugins`;
   const proxyUrl = `${getBasePath({
+    app: 'gateway',
     environment: Environment.gateway.proxy,
   })}`;
 

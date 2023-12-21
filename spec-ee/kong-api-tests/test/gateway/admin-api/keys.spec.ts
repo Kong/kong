@@ -5,6 +5,7 @@ import {
   expect,
   getBasePath,
   getNegative,
+  isGateway,
   logResponse,
   postNegative,
 } from '@support';
@@ -12,10 +13,10 @@ import axios, { AxiosResponse } from 'axios';
 
 describe('Gateway Admin API: Keys For jwe-decrypt plugin', function () {
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/keys`;
   const keySets = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/key-sets`;
 
   const pemKeySetsName = 'pem-jwe-key-sets';

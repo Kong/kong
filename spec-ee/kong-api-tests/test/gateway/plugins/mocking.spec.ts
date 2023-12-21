@@ -13,6 +13,7 @@ import {
   logResponse,
   postNegative,
   wait,
+  isGateway,
 } from '@support';
 import axios from 'axios';
 
@@ -22,9 +23,10 @@ describe('Mocking Plugin Tests', function () {
   const isLocalDb = isLocalDatabase();
 
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/plugins`;
   const proxyUrl = getBasePath({
+    app: 'gateway',
     environment: Environment.gateway.proxy,
   });
   const longWait = 8000;

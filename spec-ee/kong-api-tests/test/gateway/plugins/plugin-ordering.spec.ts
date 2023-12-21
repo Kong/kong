@@ -20,6 +20,7 @@ import {
   waitForConfigRebuild,
   getMetric,
   waitForConfigHashUpdate,
+  isGateway,
 } from '@support';
 
 describe('Plugin Ordering: featuring RTA,basic-auth,RV plugins', function () {
@@ -38,9 +39,10 @@ describe('Plugin Ordering: featuring RTA,basic-auth,RV plugins', function () {
   let basePayload: any;
 
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/plugins`;
   const proxyUrl = `${getBasePath({
+    app: 'gateway',
     environment: Environment.gateway.proxy,
   })}`;
 

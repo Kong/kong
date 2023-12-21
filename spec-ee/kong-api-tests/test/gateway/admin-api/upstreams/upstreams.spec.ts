@@ -5,12 +5,13 @@ import {
   getNegative,
   postNegative,
   logResponse,
+  isGateway,
 } from '@support';
 import axios from 'axios';
 
 describe('@smoke: Gateway Admin API: Upstreams', function () {
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/upstreams`;
 
   // Setting up test variables

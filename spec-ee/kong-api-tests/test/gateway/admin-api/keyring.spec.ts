@@ -8,11 +8,12 @@ import {
   createBasicAuthCredentialForConsumer,
   deleteConsumer,
   logResponse,
+  isGateway,
 } from '@support';
 
 describe('Gateway Admin API: Keyring', function () {
   const url = `${getBasePath({
-    environment: Environment.gateway.admin,
+    environment: isGateway() ? Environment.gateway.admin : undefined
   })}/keyring`;
   const basicAuthPassword = 'secretPassword';
   const updatedPassword = 'somenewpassword';
