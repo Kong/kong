@@ -387,11 +387,11 @@ do
 end
 
 
+local MATCH_PARAMS = {}
+local CACHE_PARAMS = {}
+
+
 if is_http then
-
-
-local MATCH_PARAMS = tb_new(0, 8)
-local CACHE_PARAMS = tb_new(0, 6)
 
 
 local sanitize_uri_postfix = utils.sanitize_uri_postfix
@@ -530,10 +530,6 @@ function _M:exec(ctx)
 end
 
 else  -- is stream subsystem
-
-
-local MATCH_PARAMS = tb_new(0, 6)
-local CACHE_PARAMS = tb_new(0, 5)
 
 
 function _M:select(_, _, _, scheme,
