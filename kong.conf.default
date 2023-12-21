@@ -1169,7 +1169,7 @@
                                                 # It is recommended to set it to at least (number of regex paths * 2)
                                                 # to avoid high CPU usages.
 
-#nginx_http_keepalive_requests = 1000  # Sets the maximum number of client requests that can be served through one
+#nginx_http_keepalive_requests = 10000 # Sets the maximum number of client requests that can be served through one
                                        # keep-alive connection. After the maximum number of requests are made,
                                        # the connection is closed.
                                        # Closing connections periodically is necessary to free per-connection
