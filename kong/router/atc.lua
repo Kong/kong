@@ -8,6 +8,7 @@ local router = require("resty.router.router")
 local lrucache = require("resty.lrucache")
 local server_name = require("ngx.ssl").server_name
 local tb_new = require("table.new")
+local tb_clear = require "table.clear"
 local fields = require("kong.router.fields")
 local utils = require("kong.router.utils")
 local yield = require("kong.tools.yield").yield
@@ -192,6 +193,7 @@ end
 
 
 local function categorize_fields(fields)
+  do return fields end
 
   local basic = {}
 
@@ -451,6 +453,8 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
 
   local host, port = split_host_port(req_host)
 
+  tb_clear(MATCH_PARAMS)
+
   MATCH_PARAMS.method  = req_method
   MATCH_PARAMS.uri     = req_uri
   MATCH_PARAMS.host    = host
@@ -550,15 +554,17 @@ function _M:exec(ctx)
   req_uri = strip_uri_args(req_uri)
 
   -- cache key calculation
+  tb_clear(CACHE_PARAMS)
 
-  CACHE_PARAMS.method  = req_method
-  CACHE_PARAMS.uri     = req_uri
-  CACHE_PARAMS.host    = req_host
-  CACHE_PARAMS.sni     = sni
-  CACHE_PARAMS.headers = headers
-  CACHE_PARAMS.queries = queries
+  --CACHE_PARAMS.method  = req_method
+  --CACHE_PARAMS.uri     = req_uri
+  --CACHE_PARAMS.host    = req_host
+  --CACHE_PARAMS.sni     = sni
+  --CACHE_PARAMS.headers = headers
+  --CACHE_PARAMS.queries = queries
 
   local cache_key = get_cache_key(fields, CACHE_PARAMS)
+  --print("cache = ", cache_key)
 
   -- cache lookup
 
@@ -620,6 +626,8 @@ function _M:select(_, _, _, scheme,
                       src_ip, src_port,
                       dst_ip, dst_port,
                       sni)
+
+  tb_clear(MATCH_PARAMS)
 
   MATCH_PARAMS.scheme    = scheme
   MATCH_PARAMS.src_ip    = src_ip
@@ -688,6 +696,7 @@ function _M:exec(ctx)
   end
 
   -- cache key calculation
+  tb_clear(CACHE_PARAMS)
 
   CACHE_PARAMS.src_ip    = src_ip
   CACHE_PARAMS.src_port  = src_port
@@ -695,7 +704,7 @@ function _M:exec(ctx)
   CACHE_PARAMS.dst_port  = dst_port
   CACHE_PARAMS.sni       = sni
 
-  local cache_key = get_cache_key(fields, CACHE_PARAMS)
+  local cache_key = get_cache_key(fields, CACHE_PARAMS, ctx)
 
   -- cache lookup
 
@@ -769,6 +778,9 @@ function _M._set_ngx(mock_ngx)
       get_uri_args = mock_ngx.req.get_uri_args
     end
   end
+
+  -- unit testing
+  fields._set_ngx(mock_ngx)
 end
 
 

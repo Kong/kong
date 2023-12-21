@@ -55,6 +55,10 @@ end
 
 
 local function strip_uri_args(req_uri)
+  if not req_uri then
+    return nil
+  end
+
   local idx = find(req_uri, "?", 2, true)
   if idx then
     req_uri = sub(req_uri, 1, idx - 1)
