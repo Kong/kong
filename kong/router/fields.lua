@@ -54,16 +54,6 @@ local FIELDS_FUNCS = {
       return params.host
     end,
 
-    -- tls.*
-
-    ["tls.sni"] =
-    function(params)
-      if not params.sni then
-        params.sni = server_name() or var.ssl_preread_server_name
-      end
-      return params.sni
-    end,
-
     -- net.*
 
     ["net.src.ip"] =
@@ -82,31 +72,6 @@ local FIELDS_FUNCS = {
       return params.src_port
     end,
 
-    ["net.dst.ip"] =
-    function(params)
-      if not params.dst_ip then
-        if var.kong_tls_passthrough_block == "1" or var.ssl_protocol then
-          params.dst_ip = var.proxy_protocol_server_addr
-        else
-          params.dst_ip = var.server_addr
-        end
-      end
-      return params.dst_ip
-    end,
-
-    ["net.dst.port"] =
-    function(params, ctx)
-      if not params.dst_port then
-        if var.kong_tls_passthrough_block == "1" or var.ssl_protocol then
-          params.dst_port = tonumber(var.proxy_protocol_server_port)
-        else
-          params.dst_port = tonumber((ctx or ngx.ctx).host_port, 10) or
-                            tonumber(var.server_port, 10)
-        end
-      end
-      return params.dst_port
-    end,
-
     -- below are atc context only
 
     ["net.protocol"] =
@@ -121,7 +86,86 @@ local FIELDS_FUNCS = {
 }
 
 
-do
+local is_http = ngx.config.subsystem == "http"
+
+
+if is_http then
+
+    -- tls.*
+
+    FIELDS_FUNCS["tls.sni"] =
+    function(params)
+      if not params.sni then
+        params.sni = server_name()
+      end
+      return params.sni
+    end
+
+    -- net.*
+
+    FIELDS_FUNCS["net.dst.ip"] =
+    function(params)
+      if not params.dst_ip then
+        params.dst_ip = var.server_addr
+      end
+      return params.dst_ip
+    end
+
+    FIELDS_FUNCS["net.dst.port"] =
+    function(params, ctx)
+      if not params.dst_port then
+        params.dst_port = tonumber((ctx or ngx.ctx).host_port, 10) or
+                          tonumber(var.server_port, 10)
+      end
+      return params.dst_port
+    end
+
+else
+
+    -- tls.*
+
+    FIELDS_FUNCS["tls.sni"] =
+    function(params)
+      if not params.sni then
+        params.sni = server_name() or var.ssl_preread_server_name
+      end
+      return params.sni
+    end
+
+    -- net.*
+
+    FIELDS_FUNCS["net.dst.ip"] =
+    function(params)
+      if not params.dst_ip then
+        if var.kong_tls_passthrough_block == "1" or var.ssl_protocol then
+          params.dst_ip = var.proxy_protocol_server_addr
+        else
+          params.dst_ip = var.server_addr
+        end
+      end
+
+      return params.dst_ip
+    end
+
+    FIELDS_FUNCS["net.dst.port"] =
+    function(params, ctx)
+      if not params.dst_port then
+        if var.kong_tls_passthrough_block == "1" or var.ssl_protocol then
+          params.dst_port = tonumber(var.proxy_protocol_server_port)
+        else
+          params.dst_port = tonumber((ctx or ngx.ctx).host_port, 10) or
+                            tonumber(var.server_port, 10)
+        end
+      end
+
+      return params.dst_port
+    end
+
+end -- is_http
+
+
+if is_http then
+
   -- func => get_headers or get_uri_args
   -- name => "headers" or "queries"
   -- max_config_option => "lua_max_req_headers" or "lua_max_uri_args"
@@ -170,10 +214,10 @@ do
   end
   })
 
-end
+end -- is_http
 
 
-local function visit_fields(fields, params, ctx, cb)
+local function fields_vistor(fields, params, ctx, cb)
   for _, field in ipairs(fields) do
     local func = FIELDS_FUNCS[field]
 
@@ -199,7 +243,7 @@ local function get_cache_key(fields, params, ctx)
 
   local str_buf = buffer.new(64)
 
-  visit_fields(fields, params, ctx, function(field, value)
+  fields_vistor(fields, params, ctx, function(field, value)
     -- these fields were not in cache key
     if field == "net.protocol" or field == "net.port" then
       return true
@@ -228,7 +272,7 @@ end
 local function get_atc_context(schema, fields, params)
   local c = context.new(schema)
 
-  local res, err = visit_fields(fields, params, nil, function(field, value)
+  local res, err = fields_vistor(fields, params, nil, function(field, value)
     local prefix = field:sub(1, PREFIX_LEN)
 
     if prefix == HTTP_HEADERS_PREFIX or prefix == HTTP_QUERIES_PREFIX then

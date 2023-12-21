@@ -192,10 +192,8 @@ local function add_atc_matcher(inst, route, route_id,
 end
 
 
+--[[
 local function categorize_fields(fields)
-  do return fields end
-
-  --[[
   local basic = {}
 
   -- 13 bytes, same len for "http.queries."
@@ -222,8 +220,8 @@ local function categorize_fields(fields)
   end
 
   return basic
-  --]]
 end
+--]]
 
 
 local function new_from_scratch(routes, get_exp_and_priority)
@@ -264,7 +262,7 @@ local function new_from_scratch(routes, get_exp_and_priority)
     yield(true, phase)
   end
 
-  local fields = categorize_fields(inst:get_fields())
+  local fields = inst:get_fields()
 
   return setmetatable({
       schema = CACHED_SCHEMA,
@@ -353,7 +351,7 @@ local function new_from_previous(routes, get_exp_and_priority, old_router)
     yield(true, phase)
   end
 
-  local fields = categorize_fields(inst:get_fields())
+  local fields = inst:get_fields()
 
   old_router.fields = fields
   old_router.updated_at = new_updated_at
