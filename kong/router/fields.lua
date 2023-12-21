@@ -150,7 +150,7 @@ do
       return function(params)
         if not params.headers then
           local headers = get_http_params(get_headers, "headers", "lua_max_req_headers")
-          headers["host"] = nil
+          --headers["host"] = nil
           params.headers = headers
         end
 
@@ -195,7 +195,7 @@ end
 
 
 local function get_cache_key(fields, params, ctx)
-  --print(table.concat(fields, ","))
+  --print(table.concat(fields, "|"))
 
   local str_buf = buffer.new(64)
 

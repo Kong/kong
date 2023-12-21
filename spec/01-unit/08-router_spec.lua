@@ -370,7 +370,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
         router = assert(new_router(use_case))
 
         -- let atc-router happy
-        local _ngx = mock_ngx("GET", "/", { host = "domain.org" })
+        local _ngx = mock_ngx("GET", "/", { a = "1" })
         router._set_ngx(_ngx)
       end)
 
@@ -2750,6 +2750,11 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
 
           it("matches correct route", function()
             local router = assert(new_router(use_case))
+
+            -- let atc-router happy
+            local _ngx = mock_ngx("GET", "/", { a = "1" })
+            router._set_ngx(_ngx)
+
             local match_t = router:select("GET", "/my-target-uri", "domain.org")
             assert.truthy(match_t)
             assert.same(use_case[#use_case].route, match_t.route)
@@ -4345,7 +4350,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             router = assert(new_router(use_case))
 
             -- let atc-router happy
-            local _ngx = mock_ngx("GET", "/", { host = "domain.org" })
+            local _ngx = mock_ngx("GET", "/", { a = "1" })
             router._set_ngx(_ngx)
           end)
 
