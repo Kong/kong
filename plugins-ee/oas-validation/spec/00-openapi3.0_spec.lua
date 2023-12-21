@@ -61,10 +61,9 @@ for _, strategy in helpers.each_strategy() do
           validate_request_header_params = true,
           validate_request_query_params = true,
           validate_request_uri_params = true,
-          header_parameter_check = true,
+          header_parameter_check = false,
           query_parameter_check = true,
           verbose_response = true,
-          allowed_header_parameters = "Host,Content-Type,User-Agent,Accept,Content-Length,X-Mock-Response"
         },
       })
       assert(helpers.start_kong({
@@ -154,6 +153,112 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         assert.response(res).has.status(200)
+      end)
+    end)
+
+    describe("cookie", function()
+      it("accepts when required coookie parameter is meet", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/cookie/required",
+          headers = {
+            host = "example.com",
+            cookie = "cookie_boolean_required=true; other=value"
+          },
+        })
+        assert.response(res).has.status(200)
+      end)
+      it("accepts when missing cookie for optional", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/cookie/optional",
+          headers = {
+            host = "example.com",
+          },
+        })
+        assert.response(res).has.status(200)
+      end)
+      it("rejects when missing required coookie parameter", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/cookie/required",
+          headers = {
+            host = "example.com",
+          },
+        })
+        assert.response(res).has.status(400)
+        local json = assert.response(res).has.jsonbody()
+        assert.equal("cookie 'cookie_boolean_required' validation failed with error: 'required parameter value not found in request'", json.message)
+      end)
+      it("rejects when passing an invalid value", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/cookie/required",
+          headers = {
+            host = "example.com",
+            cookie = "cookie_boolean_required=string"
+          },
+        })
+        assert.response(res).has.status(400)
+        local json = assert.response(res).has.jsonbody()
+        assert.equal(
+          "cookie 'cookie_boolean_required' validation failed with error: 'wrong type: expected boolean, got string'",
+          json.message
+        )
+      end)
+      describe("cookie parameter serialization", function()
+        it("array", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/cookie/array",
+            headers = {
+              host = "example.com",
+              cookie = "cookie_array=1,2,3,4; other=value"
+            },
+          })
+          assert.response(res).has.status(200)
+
+          local res = assert(client:send {
+            method = "GET",
+            path = "/cookie/array",
+            headers = {
+              host = "example.com",
+              cookie = "cookie_array=a,b,c,d; other=value"
+            },
+          })
+          assert.response(res).has.status(400)
+          local json = assert.response(res).has.jsonbody()
+          assert.equal(
+            "cookie 'cookie_array' validation failed with error: 'failed to validate item 1: wrong type: expected integer, got string'",
+            json.message
+          )
+        end)
+        it("object", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/cookie/object",
+            headers = {
+              host = "example.com",
+              cookie = "cookie_object=string,string_value,integer,100; other=value"
+            },
+          })
+          assert.response(res).has.status(200)
+
+          local res = assert(client:send {
+            method = "GET",
+            path = "/cookie/object",
+            headers = {
+              host = "example.com",
+              cookie = "cookie_object=string,string_value,integer,invalid_integer_value; other=value"
+            },
+          })
+          assert.response(res).has.status(400)
+          local json = assert.response(res).has.jsonbody()
+          assert.equal(
+            "cookie 'cookie_object' validation failed with error: 'property integer validation failed: wrong type: expected integer, got string'",
+            json.message
+          )
+        end)
       end)
     end)
   end)

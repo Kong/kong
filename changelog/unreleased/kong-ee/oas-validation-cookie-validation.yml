@@ -1,0 +1,3 @@
+message: "**OAS-Validation**: Fixed an issue that the cookie parameters are not being validated."
+type: bugfix
+scope: Plugin

@@ -72,6 +72,61 @@ paths:
           description: OK
           content: {}
 
+  /cookie/required:
+    get:
+      parameters:
+        - name: cookie_boolean_required
+          in: cookie
+          schema:
+            type: boolean
+          required: true
+      responses:
+        200:
+          description: OK
+          content: { }
+  /cookie/optional:
+    get:
+      parameters:
+        - name: cookie_integer
+          in: cookie
+          schema:
+            type: integer
+        - name: cookie_string
+          in: cookie
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content: { }
+  /cookie/array:
+    get:
+      parameters:
+        - name: cookie_array
+          in: cookie
+          schema:
+            type: array
+            items:
+              type: integer
+          required: true
+      responses:
+        200:
+          description: OK
+          content: { }
+  /cookie/object:
+    get:
+      parameters:
+        - name: cookie_object
+          in: cookie
+          schema:
+            $ref: "#/components/schemas/CookieObject"
+          required: true
+      responses:
+        200:
+          description: OK
+          content: { }
+
+
 components:
   schemas:
     NullablePropertiesObject:
@@ -98,4 +153,10 @@ components:
         email:
           type: string
           pattern: "^[a-zA-Z0-9_!#$%&’*+/=?`{|}~^.-]+@[a-zA-Z0-9.-]+$"
-
+    CookieObject:
+      type: object
+      properties:
+        string:
+          type: string
+        integer:
+          type: integer

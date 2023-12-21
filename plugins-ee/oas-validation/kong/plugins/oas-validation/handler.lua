@@ -23,6 +23,7 @@ local generator = require "kong.tools.json-schema.draft4".generate
 local parse_mime_type = require "kong.tools.mime_type".parse_mime_type
 local meta = require "kong.meta"
 local constants = require "kong.plugins.oas-validation.constants"
+local cookie = require "resty.cookie"
 
 local kong = kong
 local ngx = ngx
@@ -164,6 +165,10 @@ end
 
 
 local function validate_parameter_value_openapi(parameter)
+  if parameter["in"] == "cookie" then
+    parameter.style = "form" -- cookie only allow form style
+  end
+
   if parameter["in"] == "body" then
     local validator = validator_cache[parameter]
     -- try to validate body against schema
@@ -489,6 +494,10 @@ local function parse_spec(conf)
 end
 
 local function init_template_environment()
+  local cookie_obj, err = cookie:new()
+  if err then
+    kong.log.warn("failed to create cookie object for current request: ", err)
+  end
   -- meta table for the sandbox, exposing lazily loaded values
   local __meta_environment = {
     __index = function(self, key)
@@ -501,7 +510,13 @@ local function init_template_environment()
         end,
         path = function(self)
           return split(string_sub(normalize(kong.request.get_path(),true), 2),"/") or EMPTY_T
-        end
+        end,
+        cookie = function(self)
+          if not cookie_obj then
+            return EMPTY_T
+          end
+          return cookie_obj:get_all() or EMPTY_T
+        end,
       }
       local loader = lazy_loaders[key]
       if not loader then
