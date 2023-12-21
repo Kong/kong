@@ -368,6 +368,10 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
           },
         }
         router = assert(new_router(use_case))
+
+        -- let atc-router happy
+        local _ngx = mock_ngx("GET", "/", { host = "domain.org" })
+        router._set_ngx(_ngx)
       end)
 
 
@@ -4339,6 +4343,10 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             }
 
             router = assert(new_router(use_case))
+
+            -- let atc-router happy
+            local _ngx = mock_ngx("GET", "/", { host = "domain.org" })
+            router._set_ngx(_ngx)
           end)
 
           it("[src_ip]", function()

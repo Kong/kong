@@ -532,38 +532,38 @@ end
 
 
 function _M:exec(ctx)
-  local fields = self.fields
+  --local fields = self.fields
 
-  local req_method = fields["http.method"] and get_method() or nil
+  --local req_method = fields["http.method"] and get_method() or nil
   local req_uri = ctx and ctx.request_uri or var.request_uri
-  local req_host = var.http_host
-  local sni = fields["tls.sni"] and server_name() or nil
+  --local req_host = var.http_host
+  --local sni = fields["tls.sni"] and server_name() or nil
 
-  local headers
-  if not is_empty_field(fields[HTTP_HEADERS_PREFIX]) then
-    headers = get_http_params(get_headers, "headers", "lua_max_req_headers")
+  --local headers
+  --if not is_empty_field(fields[HTTP_HEADERS_PREFIX]) then
+  --  headers = get_http_params(get_headers, "headers", "lua_max_req_headers")
 
-    headers["host"] = nil
-  end
+  --  headers["host"] = nil
+  --end
 
-  local queries
-  if not is_empty_field(fields[HTTP_QUERIES_PREFIX]) then
-    queries = get_http_params(get_uri_args, "queries", "lua_max_uri_args")
-  end
+  --local queries
+  --if not is_empty_field(fields[HTTP_QUERIES_PREFIX]) then
+  --  queries = get_http_params(get_uri_args, "queries", "lua_max_uri_args")
+  --end
 
-  req_uri = strip_uri_args(req_uri)
+  --req_uri = strip_uri_args(req_uri)
 
   -- cache key calculation
   tb_clear(CACHE_PARAMS)
 
   --CACHE_PARAMS.method  = req_method
-  --CACHE_PARAMS.uri     = req_uri
+  CACHE_PARAMS.uri     = req_uri
   --CACHE_PARAMS.host    = req_host
   --CACHE_PARAMS.sni     = sni
   --CACHE_PARAMS.headers = headers
   --CACHE_PARAMS.queries = queries
 
-  local cache_key = get_cache_key(fields, CACHE_PARAMS)
+  local cache_key = get_cache_key(self.fields, CACHE_PARAMS)
   --print("cache = ", cache_key)
 
   -- cache lookup
@@ -578,9 +578,9 @@ function _M:exec(ctx)
     local req_scheme = ctx and ctx.scheme or var.scheme
 
     local err
-    match_t, err = self:select(req_method, req_uri, req_host, req_scheme,
+    match_t, err = self:select(CACHE_PARAMS.method, CACHE_PARAMS.uri, CACHE_PARAMS.host, req_scheme,
                                nil, nil, nil, nil,
-                               sni, headers, queries)
+                               CACHE_PARAMS.sni, CACHE_PARAMS.headers, CACHE_PARAMS.queries)
     if not match_t then
       if err then
         ngx_log(ngx_ERR, "router returned an error: ", err,
@@ -670,41 +670,42 @@ end
 
 
 function _M:exec(ctx)
-  local fields = self.fields
+  --local fields = self.fields
 
-  local src_ip   = fields["net.src.ip"] and var.remote_addr or nil
-  local dst_ip   = fields["net.dst.ip"] and var.server_addr or nil
+  --local src_ip   = fields["net.src.ip"] and var.remote_addr or nil
+  --local dst_ip   = fields["net.dst.ip"] and var.server_addr or nil
 
-  local src_port = fields["net.src.port"] and tonumber(var.remote_port, 10) or nil
-  local dst_port = fields["net.dst.port"] and
-                   (tonumber((ctx or ngx.ctx).host_port, 10) or tonumber(var.server_port, 10)) or
-                   nil
+  --local src_port = fields["net.src.port"] and tonumber(var.remote_port, 10) or nil
+  --local dst_port = fields["net.dst.port"] and
+  --                 (tonumber((ctx or ngx.ctx).host_port, 10) or tonumber(var.server_port, 10)) or
+  --                 nil
 
   -- error value for non-TLS connections ignored intentionally
-  local sni = server_name()
+  --local sni = server_name()
 
   -- fallback to preread SNI if current connection doesn't terminate TLS
-  if not sni then
-    sni = var.ssl_preread_server_name
-  end
+  --if not sni then
+  --  sni = var.ssl_preread_server_name
+  --end
 
   -- when proxying TLS request in second layer or doing TLS passthrough
   -- rewrite the dst_ip, port back to what specified in proxy_protocol
-  if var.kong_tls_passthrough_block == "1" or var.ssl_protocol then
-    dst_ip = var.proxy_protocol_server_addr
-    dst_port = tonumber(var.proxy_protocol_server_port)
-  end
+  --if var.kong_tls_passthrough_block == "1" or var.ssl_protocol then
+  --  dst_ip = var.proxy_protocol_server_addr
+  --  dst_port = tonumber(var.proxy_protocol_server_port)
+  --end
 
   -- cache key calculation
   tb_clear(CACHE_PARAMS)
 
-  CACHE_PARAMS.src_ip    = src_ip
-  CACHE_PARAMS.src_port  = src_port
-  CACHE_PARAMS.dst_ip    = dst_ip
-  CACHE_PARAMS.dst_port  = dst_port
-  CACHE_PARAMS.sni       = sni
+  --CACHE_PARAMS.src_ip    = src_ip
+  --CACHE_PARAMS.src_port  = src_port
+  --CACHE_PARAMS.dst_ip    = dst_ip
+  --CACHE_PARAMS.dst_port  = dst_port
+  --CACHE_PARAMS.sni       = sni
 
-  local cache_key = get_cache_key(fields, CACHE_PARAMS, ctx)
+  local cache_key = get_cache_key(self.fields, CACHE_PARAMS, ctx)
+  --print("cache = ", cache_key)
 
   -- cache lookup
 
@@ -719,14 +720,14 @@ function _M:exec(ctx)
     if var.protocol == "UDP" then
       scheme = "udp"
     else
-      scheme = sni and "tls" or "tcp"
+      scheme = CACHE_PARAMS.sni and "tls" or "tcp"
     end
 
     local err
     match_t, err = self:select(nil, nil, nil, scheme,
-                               src_ip, src_port,
-                               dst_ip, dst_port,
-                               sni)
+                               CACHE_PARAMS.src_ip, CACHE_PARAMS.src_port,
+                               CACHE_PARAMS.dst_ip, CACHE_PARAMS.dst_port,
+                               CACHE_PARAMS.sni)
     if not match_t then
       if err then
         ngx_log(ngx_ERR, "router returned an error: ", err)

@@ -39,9 +39,9 @@ local FIELDS_FUNCS = {
 
     ["http.path"] =
     function(params, ctx)
-      if not params.uri then
-        params.uri = strip_uri_args(ctx and ctx.request_uri or var.request_uri)
-      end
+      --if not params.uri then
+      --  params.uri = strip_uri_args(ctx and ctx.request_uri or var.request_uri)
+      --end
 
       return params.uri
     end,
@@ -59,7 +59,7 @@ local FIELDS_FUNCS = {
     ["tls.sni"] =
     function(params)
       if not params.sni then
-        params.sni = server_name()
+        params.sni = server_name() or var.ssl_preread_server_name
       end
       return params.sni
     end,
@@ -85,7 +85,11 @@ local FIELDS_FUNCS = {
     ["net.dst.ip"] =
     function(params)
       if not params.dst_ip then
-        params.dst_ip = var.server_addr
+        if var.kong_tls_passthrough_block == "1" or var.ssl_protocol then
+          params.dst_ip = var.proxy_protocol_server_addr
+        else
+          params.dst_ip = var.server_addr
+        end
       end
       return params.dst_ip
     end,
@@ -93,8 +97,12 @@ local FIELDS_FUNCS = {
     ["net.dst.port"] =
     function(params, ctx)
       if not params.dst_port then
-        params.dst_port = tonumber((ctx or ngx.ctx).host_port, 10) or
-                          tonumber(var.server_port, 10)
+        if var.kong_tls_passthrough_block == "1" or var.ssl_protocol then
+          params.dst_port = tonumber(var.proxy_protocol_server_port)
+        else
+          params.dst_port = tonumber((ctx or ngx.ctx).host_port, 10) or
+                            tonumber(var.server_port, 10)
+        end
       end
       return params.dst_port
     end,
@@ -187,6 +195,8 @@ end
 
 
 local function get_cache_key(fields, params, ctx)
+  --print(table.concat(fields, ","))
+
   local str_buf = buffer.new(64)
 
   visit_fields(fields, params, ctx, function(field, value)
