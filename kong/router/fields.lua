@@ -4,7 +4,6 @@ local context = require("resty.router.context")
 
 local type = type
 local ipairs = ipairs
-local fmt = string.format
 local tb_sort = table.sort
 local tb_concat = table.concat
 local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
@@ -159,6 +158,8 @@ end -- is_http
 
 if is_http then
 
+  local fmt = string.format
+
   -- func => get_headers or get_uri_args
   -- name => "headers" or "queries"
   -- max_config_option => "lua_max_req_headers" or "lua_max_uri_args"
@@ -237,6 +238,7 @@ local function get_cache_key(fields, params, ctx)
   str_buf:reset()
 
   fields_visitor(fields, params, ctx, function(field, value)
+
     -- these fields were not in cache key
     if field == "net.protocol" or field == "net.port" then
       return true
@@ -255,16 +257,18 @@ local function get_cache_key(fields, params, ctx)
       headers_or_queries = false
     end
 
-    if headers_or_queries then
+    if not headers_or_queries then
+      str_buf:put(value or ""):put("|")
+
+    else  -- headers or quries
       if type(value) == "table" then
         tb_sort(value)
         value = tb_concat(value, ",")
       end
 
-      value = fmt("%s=%s", field, value or "")
+      str_buf:putf("%s=%s|", field, value or "")
     end
 
-    str_buf:put(value or ""):put("|")
     return true
   end)
 
@@ -276,6 +280,7 @@ local function get_atc_context(schema, fields, params)
   local c = context.new(schema)
 
   local res, err = fields_visitor(fields, params, nil, function(field, value)
+
     local prefix = field:sub(1, PREFIX_LEN)
 
     if prefix == HTTP_HEADERS_PREFIX or prefix == HTTP_QUERIES_PREFIX then
