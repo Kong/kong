@@ -260,7 +260,7 @@ local function get_cache_key(fields, params, ctx)
     if not headers_or_queries then
       str_buf:put(value or ""):put("|")
 
-    else  -- headers or quries
+    else  -- headers or queries
       if type(value) == "table" then
         tb_sort(value)
         value = tb_concat(value, ",")
