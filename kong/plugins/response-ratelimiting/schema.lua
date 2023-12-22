@@ -1,5 +1,5 @@
 local typedefs = require "kong.db.schema.typedefs"
-
+local redis_schema = require "kong.tools.redis.schema"
 
 local ORDERED_PERIODS = { "second", "minute", "hour", "day", "month", "year" }
 
@@ -94,67 +94,9 @@ return {
               default = true
             },
           },
-          {
-            redis_host = typedefs.redis_host,
-          },
-          {
-            redis_port = typedefs.port({
-              default = 6379,
-              description = "When using the `redis` policy, this property specifies the port of the Redis server."
-            }),
-          },
-          {
-            redis_password = {
-              description =
-              "When using the `redis` policy, this property specifies the password to connect to the Redis server.",
-              type = "string",
-              len_min = 0,
-              referenceable = true
-            },
-          },
-          {
-            redis_username = {
-              description =
-              "When using the `redis` policy, this property specifies the username to connect to the Redis server when ACL authentication is desired.\nThis requires Redis v6.0.0+. The username **cannot** be set to `default`.",
-              type = "string",
-              referenceable = true
-            },
-          },
-          {
-            redis_ssl = {
-              description =
-              "When using the `redis` policy, this property specifies if SSL is used to connect to the Redis server.",
-              type = "boolean",
-              required = true,
-              default = false,
-            },
-          },
-          {
-            redis_ssl_verify = {
-              description =
-              "When using the `redis` policy with `redis_ssl` set to `true`, this property specifies if the server SSL certificate is validated. Note that you need to configure the `lua_ssl_trusted_certificate` to specify the CA (or server) certificate used by your Redis server. You may also need to configure `lua_ssl_verify_depth` accordingly.",
-              type = "boolean",
-              required = true,
-              default = false
-            },
-          },
-          {
-            redis_server_name = typedefs.redis_server_name
-          },
-          {
-            redis_timeout = {
-              description = "When using the `redis` policy, this property specifies the timeout in milliseconds of any command submitted to the Redis server.",
-              type = "number",
-              default = 2000
-            },
-          },
-          {
-            redis_database = {
-              description = "When using the `redis` policy, this property specifies Redis database to use.",
-              type = "number",
-              default = 0
-            },
-          },
+          { redis = { description = "Redis configuration", type = "record", fields = {
+            { base = redis_schema.config_schema},
+          }}},
           {
             block_on_first_violation = {
               description =
@@ -202,29 +144,17 @@ return {
     },
   },
   entity_checks = {
-    {
-      conditional = {
-        if_field = "config.policy",
-        if_match = { eq = "redis" },
-        then_field = "config.redis_host",
-        then_match = { required = true },
-      }
-    },
-    {
-      conditional = {
-        if_field = "config.policy",
-        if_match = { eq = "redis" },
-        then_field = "config.redis_port",
-        then_match = { required = true },
-      }
-    },
-    {
-      conditional = {
-        if_field = "config.policy",
-        if_match = { eq = "redis" },
-        then_field = "config.redis_timeout",
-        then_match = { required = true },
-      }
-    },
+    { conditional = {
+      if_field = "config.policy", if_match = { eq = "redis" },
+      then_field = "config.redis.base.host", then_match = { required = true },
+    } },
+    { conditional = {
+      if_field = "config.policy", if_match = { eq = "redis" },
+      then_field = "config.redis.base.port", then_match = { required = true },
+    } },
+    { conditional = {
+      if_field = "config.policy", if_match = { eq = "redis" },
+      then_field = "config.redis.base.timeout", then_match = { required = true },
+    } },
   },
 }

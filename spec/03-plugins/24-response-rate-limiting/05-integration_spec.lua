@@ -122,14 +122,18 @@ describe("Plugin: rate-limiting (integration)", function()
           route = { id = route1.id },
           config = {
             policy            = "redis",
-            redis_host        = REDIS_HOST,
-            redis_port        = config.redis_port,
-            redis_database    = REDIS_DB_1,
-            redis_ssl         = config.redis_ssl,
-            redis_ssl_verify  = config.redis_ssl_verify,
-            redis_server_name = config.redis_server_name,
+            redis = {
+              base = {
+                host        = REDIS_HOST,
+                port        = config.redis_port,
+                database    = REDIS_DB_1,
+                ssl         = config.redis_ssl,
+                ssl_verify  = config.redis_ssl_verify,
+                server_name = config.redis_server_name,
+                timeout     = 10000,
+              }
+            },
             fault_tolerant    = false,
-            redis_timeout     = 10000,
             limits            = { video = { minute = 6 } },
           },
         })
@@ -142,14 +146,18 @@ describe("Plugin: rate-limiting (integration)", function()
           route = { id = route2.id },
           config = {
             policy            = "redis",
-            redis_host        = REDIS_HOST,
-            redis_port        = config.redis_port,
-            redis_database    = REDIS_DB_2,
-            redis_ssl         = config.redis_ssl,
-            redis_ssl_verify  = config.redis_ssl_verify,
-            redis_server_name = config.redis_server_name,
+            redis = {
+              base = {
+                host        = REDIS_HOST,
+                port        = config.redis_port,
+                database    = REDIS_DB_2,
+                ssl         = config.redis_ssl,
+                ssl_verify  = config.redis_ssl_verify,
+                server_name = config.redis_server_name,
+                timeout     = 10000,
+              }
+            },
             fault_tolerant    = false,
-            redis_timeout     = 10000,
             limits            = { video = { minute = 6 } },
           },
         })
@@ -163,16 +171,20 @@ describe("Plugin: rate-limiting (integration)", function()
             route = { id = route3.id },
             config = {
               policy            = "redis",
-              redis_host        = REDIS_HOST,
-              redis_port        = config.redis_port,
-              redis_username    = REDIS_USER_VALID,
-              redis_password    = REDIS_PASSWORD,
-              redis_database    = REDIS_DB_3,
-              redis_ssl         = config.redis_ssl,
-              redis_ssl_verify  = config.redis_ssl_verify,
-              redis_server_name = config.redis_server_name,
+              redis = {
+                base = {
+                  host        = REDIS_HOST,
+                  port        = config.redis_port,
+                  username    = REDIS_USER_VALID,
+                  password    = REDIS_PASSWORD,
+                  database    = REDIS_DB_3,
+                  ssl         = config.redis_ssl,
+                  ssl_verify  = config.redis_ssl_verify,
+                  server_name = config.redis_server_name,
+                  timeout     = 10000,
+                }
+              },
               fault_tolerant    = false,
-              redis_timeout     = 10000,
               limits            = { video = { minute = 6 } },
             },
           })
@@ -185,16 +197,20 @@ describe("Plugin: rate-limiting (integration)", function()
             route = { id = route4.id },
             config = {
               policy            = "redis",
-              redis_host        = REDIS_HOST,
-              redis_port        = config.redis_port,
-              redis_username    = REDIS_USER_INVALID,
-              redis_password    = REDIS_PASSWORD,
-              redis_database    = REDIS_DB_4,
-              redis_ssl         = config.redis_ssl,
-              redis_ssl_verify  = config.redis_ssl_verify,
-              redis_server_name = config.redis_server_name,
+              redis = {
+                base = {
+                  host        = REDIS_HOST,
+                  port        = config.redis_port,
+                  username    = REDIS_USER_INVALID,
+                  password    = REDIS_PASSWORD,
+                  database    = REDIS_DB_4,
+                  ssl         = config.redis_ssl,
+                  ssl_verify  = config.redis_ssl_verify,
+                  server_name = config.redis_server_name,
+                  timeout     = 10000,
+                }
+              },
               fault_tolerant    = false,
-              redis_timeout     = 10000,
               limits            = { video = { minute = 6 } },
             },
           })
