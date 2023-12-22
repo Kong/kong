@@ -270,7 +270,7 @@ local function get_cache_key(fields, params, ctx)
     end
 
     return true
-  end)
+  end)  -- fields_visitor
 
   return str_buf:get()
 end
@@ -279,7 +279,8 @@ end
 local function get_atc_context(schema, fields, params)
   local c = context.new(schema)
 
-  local res, err = fields_visitor(fields, params, nil, function(field, value)
+  local res, err =
+  fields_visitor(fields, params, nil, function(field, value)
 
     local prefix = field:sub(1, PREFIX_LEN)
 
@@ -308,7 +309,7 @@ local function get_atc_context(schema, fields, params)
     end
 
     return c:add_value(field, value)
-  end)
+  end)  -- fields_visitor
 
   if not res then
     return nil, err
