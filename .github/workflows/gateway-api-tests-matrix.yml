@@ -253,6 +253,7 @@ jobs:
           REDIS_MODE: standalone
           SWAGGER: true
           GW_HOST: localhost
+          KEYCLOAK: true
           HCV: true
           JAEGER: true
           CUSTOM_CONFIG_ALL: "RLA_REDISU: redisuser; RLA_REDISP: redispassword; AWS_REGION: us-east-2; AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID }}; AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY }}; GCP_SERVICE_ACCOUNT: '${{ env.GCP_SERVICE_ACCOUNT }}'"
@@ -405,6 +406,7 @@ jobs:
           REDIS_MODE: standalone
           SWAGGER: true
           GW_HOST: localhost
+          KEYCLOAK: true
           PG_VERSION: ${{ matrix.postgres_version == 'rds-15.3' && 'latest' || matrix.postgres_version }}
           PG_SSL_VERSION: ${{ matrix.pg_ssl_version }}
           HCV: true
@@ -561,6 +563,7 @@ jobs:
           REDIS_MODE: standalone
           SWAGGER: true
           GW_HOST: localhost
+          KEYCLOAK: true
           HCV: true
           JAEGER: true
           PROMETHEUS: true

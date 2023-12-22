@@ -116,7 +116,7 @@ jobs:
           echo "FIPS_MODE=$FIPS_MODE" >> $GITHUB_ENV
 
       - name: Start Gateway
-        run: cd gateway-docker-compose-generator && make generate && make start
+        run: cd gateway-docker-compose-generator && make generate && cat docker-compose.yml && make start
         env:
           EE_LICENSE: false
           PKI: true
@@ -127,6 +127,7 @@ jobs:
           HCV: true
           JAEGER: true
           CUSTOM_CONFIG_ALL: "RLA_REDISU: redisuser; RLA_REDISP: redispassword; AWS_REGION: us-east-2; AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID }}; AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY }}; GCP_SERVICE_ACCOUNT: '${{ secrets.TEST_API_GCP_SERVICE_ACCOUNT }}'"
+          KEYCLOAK: true
           STATUS_LISTEN: true
           PROMETHEUS: true
           WASM: true
