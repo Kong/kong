@@ -214,4 +214,11 @@ return {
       "response_headers",
     },
   },
+
+  -- Any dataplane older than 3.6.0
+  [3006000000] = {
+    opentelemetry = {
+      "sampling_rate",
+    },
+  },
 }

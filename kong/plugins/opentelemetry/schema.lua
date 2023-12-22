@@ -61,6 +61,13 @@ return {
         { http_response_header_for_traceid = { type = "string", default = nil }},
         { header_type = { type = "string", required = false, default = "preserve",
                           one_of = { "preserve", "ignore", "b3", "b3-single", "w3c", "jaeger", "ot", "aws", "gcp", "datadog" } } },
+        { sampling_rate = {
+          description = "Tracing sampling rate for configuring the probability-based sampler. When set, this value supersedes the global `tracing_sampling_rate` setting from kong.conf.",
+          type = "number",
+          between = {0, 1},
+          required = false,
+          default = nil,
+        } },
       },
       entity_checks = {
         { custom_entity_check = {

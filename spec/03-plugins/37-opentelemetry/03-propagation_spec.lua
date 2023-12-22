@@ -64,9 +64,21 @@ local function assert_correct_trace_hierarchy(spans, incoming_span_id)
 end
 
 for _, strategy in helpers.each_strategy() do
-describe("propagation tests #" .. strategy, function()
+for _, instrumentations in ipairs({"all", "off"}) do
+for _, sampling_rate in ipairs({1, 0}) do
+describe("propagation tests #" .. strategy .. " instrumentations: " .. instrumentations .. " sampling_rate: " .. sampling_rate, function()
   local service
   local proxy_client
+
+  local sampled_flag_w3c
+  local sampled_flag_b3
+  if instrumentations == "all" and sampling_rate == 1 then
+    sampled_flag_w3c = "01"
+    sampled_flag_b3 = "1"
+  else
+    sampled_flag_w3c = "00"
+    sampled_flag_b3 = "0"
+  end
 
   lazy_setup(function()
     local bp = helpers.get_db_utils(strategy, { "services", "routes", "plugins" }, { "trace-propagator" })
@@ -148,7 +160,8 @@ describe("propagation tests #" .. strategy, function()
       database = strategy,
       plugins = "bundled, trace-propagator",
       nginx_conf = "spec/fixtures/custom_nginx.template",
-      -- tracing_instrumentations = "all",
+      tracing_instrumentations = instrumentations,
+      tracing_sampling_rate = sampling_rate,
     })
 
     proxy_client = helpers.proxy_client()
@@ -166,8 +179,7 @@ describe("propagation tests #" .. strategy, function()
     })
     local body = assert.response(r).has.status(200)
     local json = cjson.decode(body)
-
-    assert.matches("00%-%x+-%x+-01", json.headers.traceparent)
+    assert.matches("00%-%x+-%x+-" .. sampled_flag_w3c, json.headers.traceparent)
   end)
 
   it("propagates tracing headers (b3 request)", function()
@@ -198,7 +210,7 @@ describe("propagation tests #" .. strategy, function()
       })
       local body = assert.response(r).has.status(200)
       local json = cjson.decode(body)
-      assert.matches(trace_id .. "%-%x+%-1%-%x+", json.headers.b3)
+      assert.matches(trace_id .. "%-%x+%-" .. sampled_flag_b3 .. "%-%x+", json.headers.b3)
     end)
 
     it("without parent_id", function()
@@ -213,10 +225,10 @@ describe("propagation tests #" .. strategy, function()
       })
       local body = assert.response(r).has.status(200)
       local json = cjson.decode(body)
-      assert.matches(trace_id .. "%-%x+%-1", json.headers.b3)
+      assert.matches(trace_id .. "%-%x+%-" .. sampled_flag_b3, json.headers.b3)
     end)
 
-    it("with disabled sampling", function()
+    it("reflects the disabled sampled flag of the incoming tracing header", function()
       local trace_id = gen_trace_id()
       local span_id = gen_span_id()
 
@@ -228,6 +240,8 @@ describe("propagation tests #" .. strategy, function()
       })
       local body = assert.response(r).has.status(200)
       local json = cjson.decode(body)
+      -- incoming header has sampled=0: always disabled by
+      -- parent-based sampler
       assert.matches(trace_id .. "%-%x+%-0", json.headers.b3)
     end)
   end)
@@ -244,7 +258,7 @@ describe("propagation tests #" .. strategy, function()
     })
     local body = assert.response(r).has.status(200)
     local json = cjson.decode(body)
-    assert.matches("00%-" .. trace_id .. "%-%x+-01", json.headers.traceparent)
+    assert.matches("00%-" .. trace_id .. "%-%x+-" .. sampled_flag_w3c, json.headers.traceparent)
   end)
 
   it("defaults to w3c without propagating when header_type set to ignore and w3c headers sent", function()
@@ -261,7 +275,7 @@ describe("propagation tests #" .. strategy, function()
     local json = cjson.decode(body)
     assert.is_not_nil(json.headers.traceparent)
     -- incoming trace id is ignored
-    assert.not_matches("00%-" .. trace_id .. "%-%x+-01", json.headers.traceparent)
+    assert.not_matches("00%-" .. trace_id .. "%-%x+-" .. sampled_flag_w3c, json.headers.traceparent)
   end)
 
   it("defaults to w3c without propagating when header_type set to ignore and b3 headers sent", function()
@@ -277,7 +291,7 @@ describe("propagation tests #" .. strategy, function()
     local json = cjson.decode(body)
     assert.is_not_nil(json.headers.traceparent)
     -- incoming trace id is ignored
-    assert.not_matches("00%-" .. trace_id .. "%-%x+-01", json.headers.traceparent)
+    assert.not_matches("00%-" .. trace_id .. "%-%x+-" .. sampled_flag_w3c, json.headers.traceparent)
   end)
 
   it("propagates w3c tracing headers when header_type set to w3c", function()
@@ -292,7 +306,7 @@ describe("propagation tests #" .. strategy, function()
     })
     local body = assert.response(r).has.status(200)
     local json = cjson.decode(body)
-    assert.matches("00%-" .. trace_id .. "%-%x+-01", json.headers.traceparent)
+    assert.matches("00%-" .. trace_id .. "%-%x+-" .. sampled_flag_w3c, json.headers.traceparent)
   end)
 
   it("propagates jaeger tracing headers", function()
@@ -309,7 +323,7 @@ describe("propagation tests #" .. strategy, function()
     local body = assert.response(r).has.status(200)
     local json = cjson.decode(body)
     -- Trace ID is left padded with 0 for assert
-    assert.matches( ('0'):rep(32-#trace_id) .. trace_id .. ":%x+:%x+:01", json.headers["uber-trace-id"])
+    assert.matches( ('0'):rep(32-#trace_id) .. trace_id .. ":%x+:%x+:" .. sampled_flag_w3c, json.headers["uber-trace-id"])
   end)
 
   it("propagates ot headers", function()
@@ -372,10 +386,10 @@ describe("propagation tests #" .. strategy, function()
 
     assert.same(32, #m[1])
     assert.same(16, #m[2])
-    assert.same("01", m[3])
+    assert.same(sampled_flag_w3c, m[3])
   end)
 
-  it("reuses span propagated by another plugin", function()
+  it("with multiple plugins, propagates the correct header", function()
     local trace_id = gen_trace_id()
 
     local r = proxy_client:get("/", {
@@ -387,13 +401,11 @@ describe("propagation tests #" .. strategy, function()
     })
     local body = assert.response(r).has.status(200)
     local json = cjson.decode(body)
-
-    -- trace-propagator parses incoming b3 headers, generates a span and
-    -- propagates it as b3. Opentelemetry ignores incoming type, reuses span
-    -- generated by the other plugin and propagates it as w3c.
-    assert.matches("00%-%x+-" .. json.headers["x-b3-spanid"] .. "%-01", json.headers.traceparent)
+    assert.matches("00%-%x+-" .. json.headers["x-b3-spanid"] .. "%-" .. sampled_flag_w3c, json.headers.traceparent)
   end)
 end)
+end
+end
 
 for _, instrumentation in ipairs({ "request", "request,balancer", "all" }) do
 describe("propagation tests with enabled " .. instrumentation .. " instrumentation (issue #11294) #" .. strategy, function()
