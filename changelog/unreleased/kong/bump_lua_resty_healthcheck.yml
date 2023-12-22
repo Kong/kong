@@ -1,0 +1,3 @@
+message: Bump lua-resty-healthcheck version to fix target delay clear bug
+type: bugfix
+scope: Core
