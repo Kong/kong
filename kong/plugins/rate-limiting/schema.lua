@@ -1,5 +1,5 @@
 local typedefs = require "kong.db.schema.typedefs"
-
+local redis_schema = require "kong.tools.redis.schema"
 
 local SYNC_RATE_REALTIME = -1
 
@@ -91,15 +91,9 @@ return {
           { path = typedefs.path },
           { policy = policy },
           { fault_tolerant = { description = "A boolean value that determines if the requests should be proxied even if Kong has troubles connecting a third-party data store. If `true`, requests will be proxied anyway, effectively disabling the rate-limiting function until the data store is working again. If `false`, then the clients will see `500` errors.", type = "boolean", required = true, default = true }, },
-          { redis_host = typedefs.host },
-          { redis_port = typedefs.port({ default = 6379 }), },
-          { redis_password = { description = "When using the `redis` policy, this property specifies the password to connect to the Redis server.", type = "string", len_min = 0, referenceable = true }, },
-          { redis_username = { description = "When using the `redis` policy, this property specifies the username to connect to the Redis server when ACL authentication is desired.", type = "string", referenceable = true }, },
-          { redis_ssl = { description = "When using the `redis` policy, this property specifies if SSL is used to connect to the Redis server.", type = "boolean", required = true, default = false, }, },
-          { redis_ssl_verify = { description = "When using the `redis` policy with `redis_ssl` set to `true`, this property specifies it server SSL certificate is validated. Note that you need to configure the lua_ssl_trusted_certificate to specify the CA (or server) certificate used by your Redis server. You may also need to configure lua_ssl_verify_depth accordingly.", type = "boolean", required = true, default = false }, },
-          { redis_server_name = typedefs.sni },
-          { redis_timeout = { description = "When using the `redis` policy, this property specifies the timeout in milliseconds of any command submitted to the Redis server.", type = "number", default = 2000, }, },
-          { redis_database = { description = "When using the `redis` policy, this property specifies the Redis database to use.", type = "integer", default = 0 }, },
+          { redis = { description = "Redis configuration", type = "record", fields = {
+            { base = redis_schema.config_schema},
+          }}},
           { hide_client_headers = { description = "Optionally hide informative response headers.", type = "boolean", required = true, default = false }, },
           { error_code = { description = "Set a custom error code to return when the rate limit is exceeded.", type = "number", default = 429, gt = 0 }, },
           { error_message = { description = "Set a custom error message to return when the rate limit is exceeded.", type = "string", default = "API rate limit exceeded" }, },
@@ -113,11 +107,15 @@ return {
     { at_least_one_of = { "config.second", "config.minute", "config.hour", "config.day", "config.month", "config.year" } },
     { conditional = {
       if_field = "config.policy", if_match = { eq = "redis" },
-      then_field = "config.redis_host", then_match = { required = true },
+      then_field = "config.redis.base.host", then_match = { required = true },
     } },
     { conditional = {
       if_field = "config.policy", if_match = { eq = "redis" },
-      then_field = "config.redis_port", then_match = { required = true },
+      then_field = "config.redis.base.port", then_match = { required = true },
+    } },
+    { conditional = {
+      if_field = "config.policy", if_match = { eq = "redis" },
+      then_field = "config.redis.base.timeout", then_match = { required = true },
     } },
     { conditional = {
       if_field = "config.limit_by", if_match = { eq = "header" },
@@ -126,10 +124,6 @@ return {
     { conditional = {
       if_field = "config.limit_by", if_match = { eq = "path" },
       then_field = "config.path", then_match = { required = true },
-    } },
-    { conditional = {
-      if_field = "config.policy", if_match = { eq = "redis" },
-      then_field = "config.redis_timeout", then_match = { required = true },
     } },
   },
 }

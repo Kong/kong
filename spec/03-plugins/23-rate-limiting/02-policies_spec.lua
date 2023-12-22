@@ -5,7 +5,7 @@ local timestamp = require "kong.tools.timestamp"
 local SYNC_RATE_REALTIME = -1
 
 --[[
-  basically a copy of `get_local_key()` 
+  basically a copy of `get_local_key()`
   in `kong/plugins/rate-limiting/policies/init.lua`
 --]]
 local EMPTY_UUID = "00000000-0000-0000-0000-000000000000"
@@ -41,7 +41,7 @@ describe("Plugin: rate-limiting (policies)", function()
   lazy_setup(function()
     package.loaded["kong.plugins.rate-limiting.policies"] = nil
     policies = require "kong.plugins.rate-limiting.policies"
-    
+
     if not _G.kong then
       _G.kong.db = {}
     end
@@ -186,9 +186,13 @@ describe("Plugin: rate-limiting (policies)", function()
         local conf       = {
           route_id = uuid(),
           service_id = uuid(),
-          redis_host = helpers.redis_host,
-          redis_port = helpers.redis_port,
-          redis_database = 0,
+          redis = {
+            base = {
+              host = helpers.redis_host,
+              port = helpers.redis_port,
+              database = 0,
+            }
+          },
           sync_rate = sync_rate,
         }
 
@@ -196,7 +200,7 @@ describe("Plugin: rate-limiting (policies)", function()
           local red = require "resty.redis"
           local redis = assert(red:new())
           redis:set_timeout(1000)
-          assert(redis:connect(conf.redis_host, conf.redis_port))
+          assert(redis:connect(conf.redis.base.host, conf.redis.base.port))
           redis:flushall()
           redis:close()
         end)

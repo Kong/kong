@@ -70,7 +70,7 @@ describe("Plugin: rate-limiting (integration)", function()
   end)
 
   local strategies = {
-    no_ssl = { 
+    no_ssl = {
       redis_port = REDIS_PORT,
     },
     ssl_verify = {
@@ -121,14 +121,18 @@ describe("Plugin: rate-limiting (integration)", function()
             config = {
               minute            = 1,
               policy            = "redis",
-              redis_host        = REDIS_HOST,
-              redis_port        = config.redis_port,
-              redis_database    = REDIS_DB_1,
-              redis_ssl         = config.redis_ssl,
-              redis_ssl_verify  = config.redis_ssl_verify,
-              redis_server_name = config.redis_server_name,
+              redis = {
+                base = {
+                  host        = REDIS_HOST,
+                  port        = config.redis_port,
+                  database    = REDIS_DB_1,
+                  ssl         = config.redis_ssl,
+                  ssl_verify  = config.redis_ssl_verify,
+                  server_name = config.redis_server_name,
+                  timeout     = 10000,
+                }
+              },
               fault_tolerant    = false,
-              redis_timeout     = 10000,
               sync_rate         = with_sync_rate and SYNC_RATE or nil,
             },
           })
@@ -142,14 +146,18 @@ describe("Plugin: rate-limiting (integration)", function()
             config = {
               minute            = 1,
               policy            = "redis",
-              redis_host        = REDIS_HOST,
-              redis_port        = config.redis_port,
-              redis_database    = REDIS_DB_2,
-              redis_ssl         = config.redis_ssl,
-              redis_ssl_verify  = config.redis_ssl_verify,
-              redis_server_name = config.redis_server_name,
+              redis = {
+                base = {
+                  host        = REDIS_HOST,
+                  port        = config.redis_port,
+                  database    = REDIS_DB_2,
+                  ssl         = config.redis_ssl,
+                  ssl_verify  = config.redis_ssl_verify,
+                  server_name = config.redis_server_name,
+                  timeout     = 10000,
+                }
+              },
               fault_tolerant    = false,
-              redis_timeout     = 10000,
             },
           })
 
@@ -163,16 +171,20 @@ describe("Plugin: rate-limiting (integration)", function()
               config = {
                 minute            = 2, -- Handle multiple tests
                 policy            = "redis",
-                redis_host        = REDIS_HOST,
-                redis_port        = config.redis_port,
-                redis_username    = REDIS_USER_VALID,
-                redis_password    = REDIS_PASSWORD,
-                redis_database    = REDIS_DB_3, -- ensure to not get a pooled authenticated connection by using a different db
-                redis_ssl         = config.redis_ssl,
-                redis_ssl_verify  = config.redis_ssl_verify,
-                redis_server_name = config.redis_server_name,
+                redis = {
+                  base = {
+                    host        = REDIS_HOST,
+                    port        = config.redis_port,
+                    username    = REDIS_USER_VALID,
+                    password    = REDIS_PASSWORD,
+                    database    = REDIS_DB_3, -- ensure to not get a pooled authenticated connection by using a different db
+                    ssl         = config.redis_ssl,
+                    ssl_verify  = config.redis_ssl_verify,
+                    server_name = config.redis_server_name,
+                    timeout     = 10000,
+                  }
+                },
                 fault_tolerant    = false,
-                redis_timeout     = 10000,
               },
             })
 
@@ -185,16 +197,20 @@ describe("Plugin: rate-limiting (integration)", function()
               config = {
                 minute            = 1,
                 policy            = "redis",
-                redis_host        = REDIS_HOST,
-                redis_port        = config.redis_port,
-                redis_username    = REDIS_USER_INVALID,
-                redis_password    = REDIS_PASSWORD,
-                redis_database    = REDIS_DB_4, -- ensure to not get a pooled authenticated connection by using a different db
-                redis_ssl         = config.redis_ssl,
-                redis_ssl_verify  = config.redis_ssl_verify,
-                redis_server_name = config.redis_server_name,
+                redis = {
+                  base = {
+                    host        = REDIS_HOST,
+                    port        = config.redis_port,
+                    username    = REDIS_USER_INVALID,
+                    password    = REDIS_PASSWORD,
+                    database    = REDIS_DB_4, -- ensure to not get a pooled authenticated connection by using a different db
+                    ssl         = config.redis_ssl,
+                    ssl_verify  = config.redis_ssl_verify,
+                    server_name = config.redis_server_name,
+                    timeout     = 10000,
+                  }
+                },
                 fault_tolerant    = false,
-                redis_timeout     = 10000,
               },
             })
           end

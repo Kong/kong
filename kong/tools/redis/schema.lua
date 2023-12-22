@@ -13,7 +13,8 @@ return {
                 } },
             { password = { description = "Password to use for Redis connections. If undefined, no AUTH commands are sent to Redis.", type = "string",
                 encrypted = true,
-                referenceable = true
+                referenceable = true,
+                len_min = 0
                 } },
             { database = { description = "Database to use for the Redis connection when using the `redis` strategy", type = "integer",
                 default = 0
