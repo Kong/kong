@@ -44,6 +44,15 @@ build-packages:
   package: deb
   bazel-args: --platforms=//:generic-crossbuild-aarch64
   check-manifest-suite: debian-11-arm64
+- label: debian-12
+  image: debian:12
+  package: deb
+  check-manifest-suite: debian-12-amd64
+- label: debian-12-arm64
+  image: debian:12
+  package: deb
+  bazel-args: --platforms=//:generic-crossbuild-aarch64
+  check-manifest-suite: debian-12-arm64
 
 # RHEL
 - label: rhel-7
@@ -127,10 +136,10 @@ build-images:
 
 # Debian
 - label: debian
-  base-image: debian:11-slim
+  base-image: debian:12-slim
   package: deb
-  artifact-from: debian-11
-  artifact-from-alt: debian-11-arm64
+  artifact-from: debian-12
+  artifact-from-alt: debian-12-arm64
   docker-platforms: linux/amd64, linux/arm64
 
 # RHEL
@@ -213,6 +222,18 @@ release-packages:
   package: deb
   artifact-from: debian-11-arm64
   artifact-version: 11
+  artifact-type: debian
+  artifact: kong.arm64.deb
+- label: debian-12
+  package: deb
+  artifact-from: debian-12
+  artifact-version: 12
+  artifact-type: debian
+  artifact: kong.amd64.deb
+- label: debian-12-arm64
+  package: deb
+  artifact-from: debian-12-arm64
+  artifact-version: 12
   artifact-type: debian
   artifact: kong.arm64.deb
 
