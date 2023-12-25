@@ -1333,7 +1333,7 @@ describe("Admin API RBAC with #" .. strategy, function()
           local res = assert(client:send {
             method = "POST",
             path = "/rbac/roles",
-           body = {
+            body = {
               name = "read-only",
             },
             headers = {

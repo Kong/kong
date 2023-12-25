@@ -1,0 +1,3 @@
+message: "Fixed an rbac issue that required adding missing endpoints to all workspaces."
+type: "bugfix"
+scope: "Core"
