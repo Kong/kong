@@ -137,7 +137,7 @@ invalid header value in array "foo": got table, expected string
 --- request
 GET /t
 --- response_body chop
-invalid header value for "foo": got nil, expected table, string, number or boolean
+invalid header value for "foo": got nil, expected array of string, string, number or boolean
 --- no_error_log
 [error]
 
