@@ -25,7 +25,6 @@ local string_find = string.find
 local string_sub = string.sub
 local string_byte = string.byte
 local string_lower = string.lower
-local normalize_header = checks.normalize_header
 local normalize_multi_header = checks.normalize_multi_header
 local validate_header = checks.validate_header
 local validate_headers = checks.validate_headers
@@ -330,7 +329,7 @@ local function new(self)
       end
     end
 
-    ngx.req.set_header(header, normalize_header(value))
+    ngx.req.set_header(header, normalize_multi_header(value))
   end
 
   ---
@@ -361,7 +360,7 @@ local function new(self)
       headers = { headers }
     end
 
-    table_insert(headers, normalize_header(value))
+    table_insert(headers, normalize_multi_header(value))
 
     ngx.req.set_header(header, headers)
   end

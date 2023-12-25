@@ -37,7 +37,6 @@ local error = error
 local pairs = pairs
 local coroutine = coroutine
 local cjson_encode = cjson.encode
-local normalize_header = checks.normalize_header
 local normalize_multi_header = checks.normalize_multi_header
 local validate_header = checks.validate_header
 local validate_headers = checks.validate_headers
@@ -444,7 +443,7 @@ local function new(self, major_version)
       return
     end
 
-    ngx.header[name] = normalize_header(value)
+    ngx.header[name] = normalize_multi_header(value)
   end
 
 
@@ -476,7 +475,7 @@ local function new(self, major_version)
 
     validate_header(name, value)
 
-    add_header(name, normalize_header(value))
+    add_header(name, normalize_multi_header(value))
   end
 
 
