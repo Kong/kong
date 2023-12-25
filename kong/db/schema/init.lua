@@ -930,6 +930,7 @@ function Schema:validate_field(field, value)
     local field_schema = get_field_schema(field)
     -- TODO return nested table or string?
     local copy = field_schema:process_auto_fields(value, "insert")
+    -- Changes in custom entity check only applies to copy, not to value
     local ok, err = field_schema:validate(copy)
     if not ok then
       return nil, err
@@ -2345,6 +2346,21 @@ local function run_transformations(self, transformations, input, original_input,
   return output or input
 end
 
+--- Check if the schema has transformation definitions.
+-- @param input a table holding entities
+-- @return a boolean value: 'true' or 'false'
+function Schema:has_transformations(input)
+  if self.transformations then
+    return true
+  end
+
+  local subschema = get_subschema(self, input)
+  if subschema and subschema.transformations then
+    return true
+  end
+
+  return false
+end
 
 --- Run transformations on fields.
 -- @param input The input table.
