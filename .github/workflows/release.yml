@@ -464,7 +464,7 @@ jobs:
     # This will sign images recursively for all platforms by digest and Not per tag for each unique image repository
     # Publishes signature to the private kong/notary-internal container registry
     # Publish permanent entry to Sigstore Public Rekor - Transparency log
-    # Note: 
+    # Note:
       ## For private repos, no good solution is available for transparency requirement for SLSA.
       ## Hence exposing repo name and workflow details and commit details by leveraging public sigstore instance
     - name: Sign Prerelease Container Images
@@ -479,7 +479,7 @@ jobs:
         signature_registry: ${{ env.NOTARY_REPOSITORY }}
       env:
         NOTARY_REPOSITORY: kong/notary-internal
-    
+
     # Aggregate the list of images from the image build step because:
     #   GHA limiatations doesn't allow aggregated output list:
     #     https://github.com/actions/runner/pull/2477?
@@ -704,6 +704,12 @@ jobs:
         VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
       run: build/tests/03-http2-admin-api.sh
 
+    - name: Smoke Tests - Uninstall Tests
+      env:
+        VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
+        BUILD_LABEL: ${{ matrix.label }}
+      run: build/tests/04-uninstall.sh
+
   test-images-smoke:
     name: Smoke Test Images - ${{ matrix.label }}
     needs: [metadata, build-images]
@@ -918,7 +924,7 @@ jobs:
         release_tags=$(echo "${DOCKER_METADATA_JSON}" | jq '.tags[]|select(.|contains("kong/kong-gateway:"))' | jq -sr '. | join(" ")')
         echo "RELEASE TAGS=${release_tags}"
         echo "release_tags=${release_tags}" >> $GITHUB_OUTPUT
-    
+
     # Keyless container signing
     # This step will sign official images using digest for every platform
     # Publish signature to a public kong/notary docker repository
@@ -938,7 +944,7 @@ jobs:
         signature_registry: ${{ env.NOTARY_REPOSITORY }}
       env:
         NOTARY_REPOSITORY: kong/notary
-    
+
     # Workaround to aggregate the tags output from the image build step
     # GHA limiatations doesn't allow aggregated output list: https://github.com/actions/runner/pull/2477?
     # GHA limiatations doesn't support dynamic output keys for matrix jobs
@@ -948,8 +954,8 @@ jobs:
         && steps.attestation_metadata.outputs.release_tags != ''
         && env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true'
         && steps.release_images.outputs.prerelease_image_digest != ''
-        && ( 
-          github.event_name != 'pull_request' || 
+        && (
+          github.event_name != 'pull_request' ||
           github.event.pull_request.head.repo.full_name == github.repository
         )
       id: release-provenance-metadata
@@ -961,14 +967,14 @@ jobs:
           image: ${{ env.DOCKER_REPOSITORY }}
           digest: ${{ steps.release_images.outputs.prerelease_image_digest }}
           tags: ${{ toJson(steps.attestation_metadata.outputs.release_tags) }}
-         
-  
+
+
   # The provenance job is reusable workflow that:
   # Cannot be used as a step within other jobs
   # Cannot be used to pass ENV variables
   # GHA limitations don't allow dynamic output keys / expressions
   # Note: The `job` names for pre-release and release are hardcoded to collect matrix outputs
-  provenance-metadata: 
+  provenance-metadata:
     name: Read provenance metadata
     needs: [metadata, build-images, release-images]
     runs-on: ${{ needs.metadata.outputs.release-runs-on }}
@@ -990,7 +996,7 @@ jobs:
           matrix-step-name: release-images
       - run: |
           echo ${{ steps.release-images-provenance-metadata.outputs.result }}
-  
+
   # Provenance job for build / pre-release images
   # SLSA generator is a reusable workflow
   # pull-request event is [not supported](https://github.com/slsa-framework/slsa-github-generator/tree/main/internal/builders/container#supported-triggers)
@@ -1023,7 +1029,7 @@ jobs:
     secrets:
       registry-password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
       registry-username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
-  
+
   # Provenance job for official release images
   # Provenqnce job for internal images are skipped
   # SLSA generator is a reusable workflow
@@ -1059,4 +1065,4 @@ jobs:
       registry-password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
       registry-username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
 
-  
+
