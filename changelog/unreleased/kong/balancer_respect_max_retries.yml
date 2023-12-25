@@ -1,3 +1,3 @@
 message: Fix an issue that the actual number of retry times exceeds the `retries` setting.
 type: bugfix
-scope: Balancer
+scope: Core
