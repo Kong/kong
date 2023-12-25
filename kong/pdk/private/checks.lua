@@ -63,7 +63,7 @@ function checks.validate_header(name, value)
       value = tostring(value)
     else
       error(fmt("invalid header value for %q: got %s, expected " ..
-                          "table, string, number or boolean", name, tvalue), 3)
+                          "array of string, string, number or boolean", name, tvalue), 3)
     end
   end
   return value
