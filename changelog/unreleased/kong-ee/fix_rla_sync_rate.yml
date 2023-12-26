@@ -1,0 +1,4 @@
+message: |
+  Skip sync with DB or Redis if `sync_rate` is `nil` or `null`.
+type: bugfix
+scope: Plugin

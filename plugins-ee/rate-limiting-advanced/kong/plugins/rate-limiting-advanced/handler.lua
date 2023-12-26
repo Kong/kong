@@ -14,6 +14,7 @@ local meta = require "kong.meta"
 
 
 local ngx = ngx
+local null = ngx.null
 local kong = kong
 local ceil = math.ceil
 local floor = math.floor
@@ -190,7 +191,12 @@ function NewRLHandler:configure(configs)
     for _, config in ipairs(configs) do
       local namespace = config.namespace
       -- if nil, do not sync with DB or Redis
-      local sync_rate = config.sync_rate or -1
+      local sync_rate = config.sync_rate
+      if not sync_rate or
+         sync_rate == null
+      then
+        sync_rate = -1
+      end
 
       namespaces[namespace] = true
 
