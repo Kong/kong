@@ -425,7 +425,7 @@ local function new(self, major_version)
   -- @function kong.response.set_header
   -- @phases rewrite, access, header_filter, response, admin_api
   -- @tparam string name The name of the header
-  -- @tparam string|number|boolean value The new value for the header.
+  -- @tparam array of strings|string|number|boolean value The new value for the header.
   -- @return Nothing; throws an error on invalid input.
   -- @usage
   -- kong.response.set_header("X-Foo", "value")
@@ -458,7 +458,7 @@ local function new(self, major_version)
   -- @function kong.response.add_header
   -- @phases rewrite, access, header_filter, response, admin_api
   -- @tparam string name The header name.
-  -- @tparam string|number|boolean value The header value.
+  -- @tparam array of strings|string|number|boolean value The header value.
   -- @return Nothing; throws an error on invalid input.
   -- @usage
   -- kong.response.add_header("Cache-Control", "no-cache")

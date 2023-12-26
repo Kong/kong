@@ -305,7 +305,7 @@ local function new(self)
   -- @function kong.service.request.set_header
   -- @phases `rewrite`, `access`, `balancer`
   -- @tparam string header The header name. Example: "X-Foo".
-  -- @tparam string|boolean|number value The header value. Example: "hello world".
+  -- @tparam array of strings|string|boolean|number value The header value. Example: "hello world".
   -- @return Nothing; throws an error on invalid inputs.
   -- @usage
   -- kong.service.request.set_header("X-Foo", "value")
@@ -341,7 +341,7 @@ local function new(self)
   -- @function kong.service.request.add_header
   -- @phases `rewrite`, `access`
   -- @tparam string header The header name. Example: "Cache-Control".
-  -- @tparam string|number|boolean value The header value. Example: "no-cache".
+  -- @tparam array of strings|string|number|boolean value The header value. Example: "no-cache".
   -- @return Nothing; throws an error on invalid inputs.
   -- @usage
   -- kong.service.request.add_header("Cache-Control", "no-cache")
