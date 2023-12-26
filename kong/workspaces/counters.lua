@@ -185,7 +185,19 @@ local function pg_build_queries()
   table.insert(code, truncate_query)
 
   for _, name in countable_schemas() do
-    local insert = render(insert_query, {TABLE = name})
+    local insert
+    if name == "consumers" then
+      -- Skip counting non-proxy consumers
+      insert = render([[
+        INSERT INTO workspace_entity_counters
+          SELECT ws_id, '$(TABLE)', count(*)
+          FROM $(TABLE)
+          WHERE type = $(TYPE_PROXY)
+          GROUP BY ws_id;]], { TABLE = name, TYPE_PROXY = enums.CONSUMERS.TYPE.PROXY })
+    else
+      insert = render(insert_query, {TABLE = name})
+    end
+
     table.insert(code, insert)
   end
 

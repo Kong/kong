@@ -306,6 +306,38 @@ for _, strategy in helpers.each_strategy() do
         assert.same(2, rows[1].count)
       end)
 
+      it("#db non-proxy consumers should not count in workspace entity counters", function()
+        run_kong("migrations reset --yes")
+
+        local env_mock_admin_consumer = "KONG_TEST_MOCK_ADMIN_CONSUMER"
+        if not os.getenv(env_mock_admin_consumer) then
+          finally(function() helpers.unsetenv(env_mock_admin_consumer) end)
+          helpers.setenv(env_mock_admin_consumer, "true")
+        end
+
+        local code = run_kong("migrations bootstrap")
+        assert.same(0, code)
+
+        local db = init_db()
+        local rows = db.connector:query([[SELECT count(*) FROM consumers;]])
+        assert.same(1, rows[1].count)
+
+        rows = db.connector:query([[
+          SELECT count(*) FROM workspace_entity_counters WHERE entity_type = 'consumers';
+        ]])
+        assert.same(0, rows[1].count)
+
+        code = run_kong("migrations up", {
+          plugins = "with-migrations",
+        })
+        assert.same(0, code)
+
+        rows = db.connector:query([[
+          SELECT count(*) FROM workspace_entity_counters WHERE entity_type = 'consumers';
+        ]])
+        assert.same(0, rows[1].count)
+      end)
+
       if strategy == "off" then
         it("always reports as up-to-date", function()
           local code, stdout = run_kong("migrations up")
