@@ -620,6 +620,9 @@ function _M.before_filter(self)
     -- by replacing named parameters with *
     rbac.validate_user(self.rbac_user)
     rbac.validate_endpoint(self.route_name, ngx.var.uri, self.rbac_user)
+    if ngx.ctx.rbac then
+      rbac.validate_permit_update(self)
+    end
   end
 end
 

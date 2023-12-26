@@ -1,0 +1,3 @@
+message: "disallow admins or RBAC users to update their own roles"
+type: "bugfix"
+scope: "Admin API"

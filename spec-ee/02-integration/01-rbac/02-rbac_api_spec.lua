@@ -4060,20 +4060,20 @@ for _, strategy in helpers.each_strategy() do
     end
   end)
 
-  it("cannot give permissions to workspaces they do not manage", function()
+  it("should not give permissions to workspaces they do not manage", function()
     post("/ws1/rbac/roles/ws1-admin/endpoints", {
       endpoint = "*",
       workspace = "ws2",
       actions = "read,create,update,delete"},
-        {["Kong-Admin-Token"] = "bob"}, 403, "not allowed to create cross workspace permissions")
+      { ["Kong-Admin-Token"] = "bob" }, 403, "the admin should not update their own roles")
   end)
 
-  it("can give permissions to the same workspace of the request", function()
+  it("should not give permissions to their own roles", function()
     post("/ws1/rbac/roles/ws1-admin/endpoints", {
       endpoint = "/bla",
       workspace = "ws1",
       actions = "read,create,update,delete"},
-        {["Kong-Admin-Token"] = "bob"}, 201)
+      { ["Kong-Admin-Token"] = "bob" }, 403, "the admin should not update their own roles")
   end)
 
   it("can give permissions to other workspaces if they manage", function()

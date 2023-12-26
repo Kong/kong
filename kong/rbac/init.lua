@@ -12,6 +12,7 @@ local workspaces = require "kong.workspaces"
 local utils      = require "kong.tools.utils"
 local cjson      = require "cjson"
 local tablex     = require "pl.tablex"
+local stringx    = require "pl.stringx"
 local bcrypt     = require "bcrypt"
 local secret     = require "kong.plugins.oauth2.secret"
 local digest     = require "resty.openssl.digest"
@@ -19,7 +20,7 @@ local new_tab    = require "table.new"
 local base       = require "resty.core.base"
 local hooks      = require "kong.hooks"
 local resty_str  = require "resty.string"
-local constants = require "kong.constants"
+local constants  = require "kong.constants"
 
 local BCRYPT_COST_FACTOR = constants.RBAC.BCRYPT_COST_FACTOR
 
@@ -1674,6 +1675,95 @@ function _M.validate_endpoint(route_name, route, rbac_user)
     local err = fmt("%s, you do not have permissions to %s this resource",
                     rbac_ctx.user.name, readable_action(rbac_ctx.action))
     return kong.response.exit(403, { message = err })
+  end
+end
+
+local function find_admin_by_username_or_id(username_or_id)
+  if not username_or_id then
+    return nil
+  end
+
+  local admin, err
+  if utils.is_valid_uuid(username_or_id) then
+    admin, err = kong.db.admins:select({ id = username_or_id })
+    if err then
+      return nil, err
+    end
+  end
+
+  if not admin then
+    admin, err = kong.db.admins:select_by_username(username_or_id)
+    if err then
+      return nil, err
+    end
+  end
+
+  return admin
+end
+
+local function is_rbac_role_in_ctx(request)
+  local rbac = ngx.ctx.rbac
+  local rbac_roles_id_or_name = request.params.rbac_roles
+  if rbac and rbac.roles then
+    for _, role in ipairs(rbac.roles) do
+      if role.id == rbac_roles_id_or_name or role.name == rbac_roles_id_or_name then
+        return true
+      end
+    end
+  end
+
+  return false
+end
+
+-- these routes the admin should not update by themselves
+local NOT_PERMIT_ROUTE = {}
+
+NOT_PERMIT_ROUTE["/admins/:admin/roles"] = {
+  handler = function(request)
+    local rbac_user = ngx.ctx.rbac.user
+    local name_or_id = request.params.admin
+    local admin      = find_admin_by_username_or_id(name_or_id)
+    if admin and admin.rbac_user and rbac_user.id == admin.rbac_user.id then
+      return true
+    end
+
+    return false
+  end,
+  methods = { POST = true, DELETE = true },
+  err = "the admin should not update their own roles",
+}
+
+NOT_PERMIT_ROUTE["/rbac/roles/:rbac_roles/endpoints"] = {
+  handler = is_rbac_role_in_ctx,
+  methods = { POST = true, },
+  err = "the admin should not update their own roles",
+}
+
+NOT_PERMIT_ROUTE["/rbac/roles/:rbac_roles/endpoints/:workspace/*"] = {
+  handler = is_rbac_role_in_ctx,
+  methods = { PATCH = true, DELETE = true },
+  err = "the admin should not update or delete their own endpoints",
+}
+
+-- should not delete their own roles
+NOT_PERMIT_ROUTE["/rbac/roles/:rbac_roles"] = {
+  handler = is_rbac_role_in_ctx,
+  methods = { DELETE = true, },
+  err = "the admin should not delete their own roles",
+}
+
+function _M.validate_permit_update(request)
+  local route_name = request.route_name
+  if route_name and stringx.startswith(route_name, "workspace_") then
+    route_name = stringx.replace(route_name, "workspace_", "")
+  end
+  
+  local route = NOT_PERMIT_ROUTE[route_name]
+  if route then
+    local method = request.req.method
+    if route.methods[method] and route.handler(request) then
+      return kong.response.exit(403, { message = route.err })
+    end
   end
 end
 
