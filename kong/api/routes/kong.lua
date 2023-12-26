@@ -221,6 +221,7 @@ return {
         -- XXX EE ]]
         tagline = tagline,
         version = version,
+        edition = meta._VERSION:match("enterprise") and "enterprise" or "community",
         hostname = knode.get_hostname(),
         node_id = node_id,
         timers = {
