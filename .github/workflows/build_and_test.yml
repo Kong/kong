@@ -104,7 +104,7 @@ jobs:
         repo-path: Kong/gateway-action-storage/main/.ci/runtimes.json
 
     - name: Schedule tests
-      uses: Kong/gateway-test-scheduler/schedule@v1
+      uses: Kong/gateway-test-scheduler/schedule@b91bd7aec42bd13748652929f087be81d1d40843 # v1
       with:
         test-suites-file: .ci/test_suites.json
         test-file-runtime-file: .ci/runtimes.json
@@ -266,7 +266,7 @@ jobs:
         DD_CIVISIBILITY_AGENTLESS_ENABLED: true
         DD_TRACE_GIT_METADATA_ENABLED: true
         DD_API_KEY: ${{ secrets.DATADOG_API_KEY }}
-      uses: Kong/gateway-test-scheduler/runner@v1
+      uses: Kong/gateway-test-scheduler/runner@b91bd7aec42bd13748652929f087be81d1d40843 # v1
       with:
         tests-to-run-file: test-chunk.${{ matrix.runner }}.json
         failed-test-files-file: ${{ env.FAILED_TEST_FILES_FILE }}
