@@ -288,7 +288,7 @@ end
 
 
 local function get_atc_context(context, fields, params)
-  local c = context:reset()
+  context:reset()
 
   local res, err =
   fields_visitor(fields, params, nil, function(field, value)
@@ -301,7 +301,7 @@ local function get_atc_context(context, fields, params)
       -- multiple values for a single query parameter, like /?foo=bar&foo=baz
       if v_type == "table" then
         for _, v in ipairs(value) do
-          local res, err = c:add_value(field, v)
+          local res, err = context:add_value(field, v)
           if not res then
             return nil, err
           end
@@ -319,14 +319,14 @@ local function get_atc_context(context, fields, params)
       end
     end
 
-    return c:add_value(field, value)
+    return context:add_value(field, value)
   end)  -- fields_visitor
 
   if not res then
     return nil, err
   end
 
-  return c
+  return context
 end
 
 
