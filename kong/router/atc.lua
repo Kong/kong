@@ -619,6 +619,7 @@ function _M:exec(ctx)
     local scheme
     if var.protocol == "UDP" then
       scheme = "udp"
+
     else
       scheme = CACHE_PARAMS.sni and "tls" or "tcp"
     end

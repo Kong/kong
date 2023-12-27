@@ -138,6 +138,7 @@ else  -- stream
       if not params.dst_ip then
         if var.kong_tls_passthrough_block == "1" or var.ssl_protocol then
           params.dst_ip = var.proxy_protocol_server_addr
+
         else
           params.dst_ip = var.server_addr
         end
@@ -151,6 +152,7 @@ else  -- stream
       if not params.dst_port then
         if var.kong_tls_passthrough_block == "1" or var.ssl_protocol then
           params.dst_port = tonumber(var.proxy_protocol_server_port)
+
         else
           params.dst_port = tonumber((ctx or ngx.ctx).host_port, 10) or
                             tonumber(var.server_port, 10)
