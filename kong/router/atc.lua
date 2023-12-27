@@ -224,7 +224,6 @@ local function new_from_scratch(routes, get_exp_and_priority)
   local fields = inst:get_fields()
 
   return setmetatable({
-      --schema = CACHED_SCHEMA,
       context = context.new(CACHED_SCHEMA),
       router = inst,
       routes = routes_t,
