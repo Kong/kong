@@ -4,6 +4,7 @@ local _MT = { __index = _M, }
 
 local buffer = require("string.buffer")
 local schema = require("resty.router.schema")
+local context = require("resty.router.context")
 local router = require("resty.router.router")
 local lrucache = require("resty.lrucache")
 local tb_new = require("table.new")
@@ -223,7 +224,8 @@ local function new_from_scratch(routes, get_exp_and_priority)
   local fields = inst:get_fields()
 
   return setmetatable({
-      schema = CACHED_SCHEMA,
+      --schema = CACHED_SCHEMA,
+      context = context.new(CACHED_SCHEMA),
       router = inst,
       routes = routes_t,
       services = services_t,
@@ -412,7 +414,7 @@ function _M:matching(params)
   params.host = host
   params.port = port
 
-  local c, err = get_atc_context(self.schema, self.fields, params)
+  local c, err = get_atc_context(self.context, self.fields, params)
 
   if not c then
     return nil, err
@@ -552,7 +554,7 @@ function _M:matching(params)
                       params.dst_ip, params.dst_port,
                       sni)
 
-  local c, err = get_atc_context(self.schema, self.fields, params)
+  local c, err = get_atc_context(self.context, self.fields, params)
   if not c then
     return nil, err
   end

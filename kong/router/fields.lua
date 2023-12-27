@@ -1,5 +1,4 @@
 local buffer = require("string.buffer")
-local context = require("resty.router.context")
 
 
 local type = type
@@ -288,8 +287,8 @@ local function get_cache_key(fields, params, ctx)
 end
 
 
-local function get_atc_context(schema, fields, params)
-  local c = context.new(schema)
+local function get_atc_context(context, fields, params)
+  local c = context:reset()
 
   local res, err =
   fields_visitor(fields, params, nil, function(field, value)
