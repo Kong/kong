@@ -877,7 +877,7 @@ for _, strategy in helpers.each_strategy() do
     describe("URI arguments (querystring)", function()
       local routes
 
-      lazy_setup(function()
+      before_each(function()
         routes = insert_routes(bp, {
           {
             hosts = { "mock_upstream" },
@@ -885,7 +885,7 @@ for _, strategy in helpers.each_strategy() do
         })
       end)
 
-      lazy_teardown(function()
+      after_each(function()
         remove_routes(strategy, routes)
       end)
 
@@ -1343,7 +1343,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/status/201",
           headers = { ["kong-debug"] = 1 },
         })
-        assert.res_status(201, res)
+        assert.res_status(flavor == "traditional" and 201 or 200, res)
         assert.equal("service_behind_www.example.org",
                      res.headers["kong-service-name"])
 
@@ -1365,7 +1365,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/status/201",
           headers = { ["kong-debug"] = 1 },
         })
-        assert.res_status(201, res)
+        assert.res_status(flavor == "traditional" and 201 or 200, res)
         assert.equal("service_behind_example.org",
                      res.headers["kong-service-name"])
       end)
