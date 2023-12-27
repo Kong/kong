@@ -680,7 +680,8 @@
                          #
                          # Example: `admin_listen = 127.0.0.1:8444 http2 ssl`
 
-#status_listen = off     # Comma-separated list of addresses and ports on
+#status_listen = 127.0.0.1:8007 reuseport backlog=16384
+                         # Comma-separated list of addresses and ports on
                          # which the Status API should listen.
                          # The Status API is a read-only endpoint
                          # allowing monitoring tools to retrieve metrics,
