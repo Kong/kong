@@ -387,7 +387,7 @@ do
 end
 
 
-local CACHE_PARAMS = {}
+local CACHE_PARAMS
 
 
 if is_http then
@@ -488,7 +488,12 @@ function _M:exec(ctx)
 
   -- cache key calculation
 
-  tb_clear(CACHE_PARAMS)
+  if not CACHE_PARAMS then
+    -- access `kong.configuration.log_level` here
+    CACHE_PARAMS = require("kong.tools.request_aware_table").new()
+  end
+
+  CACHE_PARAMS:clear()
 
   CACHE_PARAMS.uri  = req_uri
   CACHE_PARAMS.host = req_host
@@ -603,7 +608,12 @@ end
 function _M:exec(ctx)
   -- cache key calculation
 
-  tb_clear(CACHE_PARAMS)
+  if not CACHE_PARAMS then
+    -- access `kong.configuration.log_level` here
+    CACHE_PARAMS = require("kong.tools.request_aware_table").new()
+  end
+
+  CACHE_PARAMS:clear()
 
   local cache_key = get_cache_key(self.fields, CACHE_PARAMS, ctx)
 
