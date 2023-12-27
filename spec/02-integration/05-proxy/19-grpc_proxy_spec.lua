@@ -409,14 +409,8 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.falsy(ok)
 
-        if flavor == "expressions" then
-          assert.matches("Code: NotFound", resp, nil, true)
-          assert.matches("Message: NotFound", resp, nil, true)
-
-        else
-          assert.matches("Code: Canceled", resp, nil, true)
-          assert.matches("Message: gRPC request matched gRPCs route", resp, nil, true)
-        end
+        assert.matches("Code: Canceled", resp, nil, true)
+        assert.matches("Message: gRPC request matched gRPCs route", resp, nil, true)
       end)
     end)
   end)
