@@ -29,6 +29,7 @@ local FIELDS_FUNCS = {
       if not params.method then
         params.method = get_method()
       end
+
       return params.method
     end,
 
@@ -49,6 +50,7 @@ local FIELDS_FUNCS = {
       if not params.src_ip then
         params.src_ip = var.remote_addr
       end
+
       return params.src_ip
     end,
 
@@ -57,6 +59,7 @@ local FIELDS_FUNCS = {
       if not params.src_port then
         params.src_port = tonumber(var.remote_port, 10)
       end
+
       return params.src_port
     end,
 
@@ -86,6 +89,7 @@ if is_http then
       if not params.sni then
         params.sni = server_name()
       end
+
       return params.sni
     end
 
@@ -96,6 +100,7 @@ if is_http then
       if not params.dst_ip then
         params.dst_ip = var.server_addr
       end
+
       return params.dst_ip
     end
 
@@ -105,6 +110,7 @@ if is_http then
         params.dst_port = tonumber((ctx or ngx.ctx).host_port, 10) or
                           tonumber(var.server_port, 10)
       end
+
       return params.dst_port
     end
 
@@ -119,6 +125,7 @@ else
       if not params.sni then
         params.sni = server_name() or var.ssl_preread_server_name
       end
+
       return params.sni
     end
 
