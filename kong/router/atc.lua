@@ -7,7 +7,6 @@ local schema = require("resty.router.schema")
 local router = require("resty.router.router")
 local lrucache = require("resty.lrucache")
 local tb_new = require("table.new")
-local tb_clear = require "table.clear"
 local fields = require("kong.router.fields")
 local utils = require("kong.router.utils")
 local yield = require("kong.tools.yield").yield
