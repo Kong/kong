@@ -480,9 +480,9 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
     headers = req_headers,
     queries = req_queries,
 
-    src_ip = src_ip,
+    src_ip   = src_ip,
     src_port = src_port,
-    dst_ip = dst_ip,
+    dst_ip   = dst_ip,
     dst_port = dst_port,
   }
 
