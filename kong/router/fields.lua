@@ -4,6 +4,7 @@ local context = require("resty.router.context")
 
 local type = type
 local ipairs = ipairs
+local assert = assert
 local tb_sort = table.sort
 local tb_concat = table.concat
 local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
@@ -81,7 +82,6 @@ local is_http = ngx.config.subsystem == "http"
 
 
 if is_http then
-
     -- tls.*
 
     FIELDS_FUNCS["tls.sni"] =
@@ -114,7 +114,7 @@ if is_http then
       return params.dst_port
     end
 
-else
+else  -- stream
 
     -- tls.*
     -- error value for non-TLS connections ignored intentionally
@@ -244,6 +244,7 @@ local str_buf = buffer.new(64)
 local function get_cache_key(fields, params, ctx)
   str_buf:reset()
 
+  local res =
   fields_visitor(fields, params, ctx, function(field, value)
 
     -- these fields were not in cache key
@@ -278,6 +279,8 @@ local function get_cache_key(fields, params, ctx)
 
     return true
   end)  -- fields_visitor
+
+  assert(res)
 
   return str_buf:get()
 end

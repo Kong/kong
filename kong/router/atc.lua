@@ -622,6 +622,7 @@ function _M:exec(ctx)
     else
       scheme = CACHE_PARAMS.sni and "tls" or "tcp"
     end
+
     CACHE_PARAMS.scheme = scheme
 
     local err
