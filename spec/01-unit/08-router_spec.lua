@@ -5288,6 +5288,10 @@ do
     it("select() should convert 'net.port' to 'net.dst.port' and work well", function()
       router = assert(new_router(use_case))
 
+      -- let atc-router happy
+      local _ngx = mock_ngx("GET", "/", { a = "1" })
+      router._set_ngx(_ngx)
+
       local match_t = router:select("GET", "/", "www.example.com:80")
       assert.falsy(match_t)
 
