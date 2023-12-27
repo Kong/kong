@@ -549,7 +549,7 @@ return function(options)
         end
       end
 
-      return f(sock, host, port, opts)
+      return f(sock, host, port, port and opts or nil)
     end
 
     local function tcp_resolve_connect(sock, host, port, opts)
