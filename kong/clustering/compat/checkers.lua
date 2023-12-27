@@ -23,6 +23,39 @@ end
 
 
 local compatible_checkers = {
+  { 3006000000, --[[ 3.6.0.0 ]]
+    function(config_table, dp_version, log_suffix)
+      -- remove tls_verify, ca_certificates, tls_verify_depth fields for core entity services
+      local config_services = config_table["services"]
+      if not config_services then
+        return nil
+      end
+
+      local has_update
+      for _, t in ipairs(config_services) do
+        if t["protocol"] == "grpcs" then
+          if t["tls_verify"] or t["tls_verify_depth"] or t["ca_certificates"]
+          then
+            t["tls_verify"] = nil
+            t["tls_verify_depth"] = nil
+            t["ca_certificates"] = nil
+
+            has_update = true
+          end
+        end
+      end
+
+      if has_update then
+        log_warn_message("grpcs protocol service contains configuration 'service.tls_verify'" ..
+          "or 'service.tls_verify_depth' or 'service.ca_certificates'",
+          "be removed",
+          dp_version,
+          log_suffix)
+      end
+
+      return has_update
+    end
+  },
   { 3005000000, --[[ 3.5.0.0 ]]
     function(config_table, dp_version, log_suffix)
       local has_update
