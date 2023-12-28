@@ -74,6 +74,7 @@ describe("WebSocket PDK #" .. strategy, function()
 
     bp.routes:insert {
       hosts = { "ws.test" },
+      paths = { "/" },
       protocols = { "ws", "wss" },
       service = service,
     }

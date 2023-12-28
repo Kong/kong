@@ -43,6 +43,7 @@ describe("WebSocket proxying behavior", function()
 
     bp.routes:insert {
       hosts = { "ws.test" },
+      paths = { "/" },
       protocols = { "ws" },
       service = service,
     }
@@ -537,6 +538,7 @@ describe("(#proxy) close frame test when worker exiting", function()
 
     bp.routes:insert {
       hosts = { "ws.test" },
+      paths = { "/" },
       protocols = { "ws" },
       service = service,
     }
