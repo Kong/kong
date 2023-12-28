@@ -36,7 +36,7 @@ local check_select_params  = utils.check_select_params
 local get_service_info     = utils.get_service_info
 local route_match_stat     = utils.route_match_stat
 local get_cache_key        = fields.get_cache_key
-local get_atc_context      = fields.get_atc_context
+local fill_atc_context      = fields.fill_atc_context
 
 
 local DEFAULT_MATCH_LRUCACHE_SIZE = utils.DEFAULT_MATCH_LRUCACHE_SIZE
@@ -408,12 +408,14 @@ function _M:matching(params)
                       nil, nil,
                       params.sni, params.headers, params.queries)
 
+  self.context:reset()
+
   local host, port = split_host_port(req_host)
 
   params.host = host
   params.port = port
 
-  local c, err = get_atc_context(self.context, self.fields, params)
+  local c, err = fill_atc_context(self.context, self.fields, params)
 
   if not c then
     return nil, err
@@ -553,7 +555,9 @@ function _M:matching(params)
                       params.dst_ip, params.dst_port,
                       sni)
 
-  local c, err = get_atc_context(self.context, self.fields, params)
+  self.context:reset()
+
+  local c, err = fill_atc_context(self.context, self.fields, params)
   if not c then
     return nil, err
   end
