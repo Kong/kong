@@ -73,14 +73,14 @@ def common_suites(expect, libxcrypt_no_obsolete_api: bool = False):
         expect("/usr/local/openresty/nginx/sbin/nginx", "nginx should link libxcrypt.so.1") \
             .needed_libraries.contain("libcrypt.so.1")
 
-    expect("/usr/local/openresty/nginx/sbin/nginx", "nginx compiled with OpenSSL 3.1.x") \
-        .nginx_compiled_openssl.matches("OpenSSL 3.1.\d") \
-        .version_requirement.key("libssl.so.3").less_than("OPENSSL_3.2.0") \
-        .version_requirement.key("libcrypto.so.3").less_than("OPENSSL_3.2.0") \
+    expect("/usr/local/openresty/nginx/sbin/nginx", "nginx compiled with OpenSSL 3.2.x") \
+        .nginx_compiled_openssl.matches("OpenSSL 3.2.\d") \
+        .version_requirement.key("libssl.so.3").less_than("OPENSSL_3.3.0") \
+        .version_requirement.key("libcrypto.so.3").less_than("OPENSSL_3.3.0") \
 
-    expect("**/*.so", "dynamic libraries are compiled with OpenSSL 3.1.x") \
-        .version_requirement.key("libssl.so.3").less_than("OPENSSL_3.2.0") \
-        .version_requirement.key("libcrypto.so.3").less_than("OPENSSL_3.2.0") \
+    expect("**/*.so", "dynamic libraries are compiled with OpenSSL 3.2.x") \
+        .version_requirement.key("libssl.so.3").less_than("OPENSSL_3.3.0") \
+        .version_requirement.key("libcrypto.so.3").less_than("OPENSSL_3.3.0") \
 
 
 def ee_suites(expect, fips: bool = False):
