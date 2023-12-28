@@ -11,6 +11,7 @@ local tb_new = require("table.new")
 local fields = require("kong.router.fields")
 local utils = require("kong.router.utils")
 local yield = require("kong.tools.yield").yield
+local server_name = require("ngx.ssl").server_name
 
 
 local type = type
@@ -655,6 +656,11 @@ function _M:exec(ctx)
 
   else
     route_match_stat(ctx, "pos")
+
+    -- preserve_host logic, modify cache result
+    if match_t.route.preserve_host then
+      match_t.upstream_host = fields.get_value("tls.sni", CACHE_PARAMS)
+    end
   end
 
   return match_t
