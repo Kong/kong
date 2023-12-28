@@ -1162,6 +1162,7 @@ manually setting Transfer-Encoding. Ignored.
     location = /t {
         default_type 'text/test';
         access_by_lua_block {
+            require("kong.globalpatches")()
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
