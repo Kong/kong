@@ -1531,7 +1531,8 @@ describe("routes schema (flavor = expressions)", function()
     assert.truthy(Routes:validate(route))
 
     assert.spy(log).was.called_with(ngx.WARN,
-                                    "The field 'net.port' of expression is deprecated, " ..
+                                    "The field 'net.port' of expression is deprecated " ..
+                                    "and will be removed in the upcoming major release, " ..
                                     "please use 'net.dst.port' instead.")
   end)
 

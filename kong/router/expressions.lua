@@ -41,7 +41,8 @@ local function transform_expression(route)
   local new_exp = re_gsub(exp, NET_PORT_REG, NET_PORT_REPLACE, "jo")
 
   if exp ~= new_exp then
-    ngx.log(ngx.WARN, "The field 'net.port' of expression is deprecated, " ..
+    ngx.log(ngx.WARN, "The field 'net.port' of expression is deprecated " ..
+                      "and will be removed in the upcoming major release, " ..
                       "please use 'net.dst.port' instead.")
   end
 
