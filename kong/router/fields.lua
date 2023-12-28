@@ -6,7 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local buffer = require("string.buffer")
-local context = require("resty.router.context")
 
 
 local type = type
@@ -300,8 +299,8 @@ local function get_cache_key(fields, params, ctx)
 end
 
 
-local function get_atc_context(schema, fields, params)
-  local c = context.new(schema)
+local function fill_atc_context(context, fields, params)
+  local c = context
 
   local res, err =
   fields_visitor(fields, params, nil, function(field, value)
@@ -368,7 +367,7 @@ return {
   get_value = get_value,
 
   get_cache_key = get_cache_key,
-  get_atc_context = get_atc_context,
+  fill_atc_context = fill_atc_context,
 
   _set_ngx = _set_ngx,
 }
