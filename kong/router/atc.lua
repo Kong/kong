@@ -408,12 +408,12 @@ function _M:matching(params)
                       nil, nil,
                       params.sni, params.headers, params.queries)
 
-  self.context:reset()
-
   local host, port = split_host_port(req_host)
 
   params.host = host
   params.port = port
+
+  self.context:reset()
 
   local c, err = fill_atc_context(self.context, self.fields, params)
 
