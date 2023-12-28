@@ -184,6 +184,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
 
           local route1 = bp.routes:insert {
             hosts = { "ldap.test" },
+            paths = { "/" },
           }
 
           route2 = bp.routes:insert {

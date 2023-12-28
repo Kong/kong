@@ -59,6 +59,7 @@ for _, strategy in helpers.each_strategy() do
 
       local route1 = assert(db.routes:insert({
         hosts = { "petstore1.test" },
+        paths = { "/" },
         service = service1,
       }))
       assert(db.plugins:insert {

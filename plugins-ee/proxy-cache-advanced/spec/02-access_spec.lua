@@ -95,6 +95,7 @@ for _, policy in ipairs({"memory", "redis"}) do
 
       local route1 = assert(bp.routes:insert {
         hosts = { "route-1.test" },
+        paths = { "/" },
       })
       local route2 = assert(bp.routes:insert {
         hosts = { "route-2.test" },

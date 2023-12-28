@@ -31,6 +31,7 @@ for _, x_headers_mode in ipairs{ "append", "transparent", "delete", } do
 
       local route1 = bp.routes:insert {
         hosts = { "service-1.test" },
+        paths = { "/" },
         service   = service,
       }
 

@@ -328,6 +328,7 @@ for _, strategy in strategies() do
         local route1 = assert(bp.routes:insert {
           name = "route-1",
           hosts = { "test1.test" },
+          paths = { "/" },
         })
         assert(bp.plugins:insert(
           build_plugin(route1.id, MOCK_RATE, 6, 10, nil, nil, redis_configuration)
