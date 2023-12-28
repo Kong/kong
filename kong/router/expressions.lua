@@ -25,7 +25,7 @@ local PROTOCOLS_OVERRIDE = {
 
 
 -- net.port => net.dst.port
-local function verify_expression(route)
+local function transform_expression(route)
   local exp = route.expression
 
   if not exp then
@@ -47,11 +47,11 @@ local function verify_expression(route)
 
   return new_exp
 end
-_M.verify_expression = verify_expression
+_M.transform_expression = transform_expression
 
 
 local function get_exp_and_priority(route)
-  local exp = verify_expression(route)
+  local exp = transform_expression(route)
   if not exp then
     ngx.log(ngx.ERR, "expecting an expression route while it's not (probably a traditional route). ",
                      "Likely it's a misconfiguration. Please check the 'router_flavor' config in kong.conf")
