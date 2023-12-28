@@ -4,6 +4,7 @@ local _MT = { __index = _M, }
 
 local buffer = require("string.buffer")
 local schema = require("resty.router.schema")
+local context = require("resty.router.context")
 local router = require("resty.router.router")
 local lrucache = require("resty.lrucache")
 local tb_new = require("table.new")
@@ -35,7 +36,7 @@ local check_select_params  = utils.check_select_params
 local get_service_info     = utils.get_service_info
 local route_match_stat     = utils.route_match_stat
 local get_cache_key        = fields.get_cache_key
-local get_atc_context      = fields.get_atc_context
+local fill_atc_context      = fields.fill_atc_context
 
 
 local DEFAULT_MATCH_LRUCACHE_SIZE = utils.DEFAULT_MATCH_LRUCACHE_SIZE
@@ -223,7 +224,7 @@ local function new_from_scratch(routes, get_exp_and_priority)
   local fields = inst:get_fields()
 
   return setmetatable({
-      schema = CACHED_SCHEMA,
+      context = context.new(CACHED_SCHEMA),
       router = inst,
       routes = routes_t,
       services = services_t,
@@ -412,7 +413,9 @@ function _M:matching(params)
   params.host = host
   params.port = port
 
-  local c, err = get_atc_context(self.schema, self.fields, params)
+  self.context:reset()
+
+  local c, err = fill_atc_context(self.context, self.fields, params)
 
   if not c then
     return nil, err
@@ -552,7 +555,9 @@ function _M:matching(params)
                       params.dst_ip, params.dst_port,
                       sni)
 
-  local c, err = get_atc_context(self.schema, self.fields, params)
+  self.context:reset()
+
+  local c, err = fill_atc_context(self.context, self.fields, params)
   if not c then
     return nil, err
   end
