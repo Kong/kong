@@ -5303,6 +5303,7 @@ do
     it("exec() should use var.server_port if host has no port", function()
       router = assert(new_router(use_case))
 
+      local ctx = {}
       local _ngx = mock_ngx("GET", "/foo", { host = "www.example.com" })
       router._set_ngx(_ngx)
 
@@ -5314,14 +5315,23 @@ do
       _ngx.var.server_port = 8000
       router._set_ngx(_ngx)
 
-      local match_t = router:exec()
+      -- first match
+      local match_t = router:exec(ctx)
       assert.truthy(match_t)
       assert.same(use_case[1].route, match_t.route)
+      assert.falsy(ctx.route_match_cached)
+
+      -- cache hit
+      local match_t = router:exec(ctx)
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+      assert.same(ctx.route_match_cached, "pos")
     end)
 
     it("exec() should support net.src.* and net.dst.*", function()
       router = assert(new_router(use_case))
 
+      local ctx = {}
       local _ngx = mock_ngx("GET", "/foo", { host = "domain.org" })
       router._set_ngx(_ngx)
 
@@ -5334,9 +5344,17 @@ do
       _ngx.var.server_addr = "2.2.2.2"
       router._set_ngx(_ngx)
 
-      local match_t = router:exec()
+      -- first match
+      local match_t = router:exec(ctx)
       assert.truthy(match_t)
       assert.same(use_case[2].route, match_t.route)
+      assert.falsy(ctx.route_match_cached)
+
+      -- cache hit
+      local match_t = router:exec(ctx)
+      assert.truthy(match_t)
+      assert.same(use_case[2].route, match_t.route)
+      assert.same(ctx.route_match_cached, "pos")
     end)
   end)
 end   -- local flavor = "expressions"
