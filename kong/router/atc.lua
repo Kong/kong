@@ -11,7 +11,6 @@ local tb_new = require("table.new")
 local fields = require("kong.router.fields")
 local utils = require("kong.router.utils")
 local yield = require("kong.tools.yield").yield
-local server_name = require("ngx.ssl").server_name
 
 
 local type = type
