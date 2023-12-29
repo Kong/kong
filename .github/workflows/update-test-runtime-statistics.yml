@@ -19,7 +19,7 @@ jobs:
           token: ${{ secrets.PAT }}
 
       - name: Process statistics
-        uses: Kong/gateway-test-scheduler/analyze@b91bd7aec42bd13748652929f087be81d1d40843 # v1
+        uses: Kong/gateway-test-scheduler/analyze@575cedef7f16d5aa626cf8e4bce57dafcb153df6 # v1
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
         with:
