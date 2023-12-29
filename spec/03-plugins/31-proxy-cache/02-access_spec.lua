@@ -38,6 +38,7 @@ do
 
       local route1 = assert(bp.routes:insert {
         hosts = { "route-1.com" },
+        paths = { "/" },
       })
       local route2 = assert(bp.routes:insert {
         hosts = { "route-2.com" },
