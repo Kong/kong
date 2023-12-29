@@ -655,6 +655,11 @@ function _M:exec(ctx)
 
   else
     route_match_stat(ctx, "pos")
+
+    -- preserve_host logic, modify cache result
+    if match_t.route.preserve_host then
+      match_t.upstream_host = fields.get_value("tls.sni", CACHE_PARAMS)
+    end
   end
 
   return match_t

@@ -278,6 +278,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert(bp.routes:insert {
           hosts = { "headers-charset.test" },
+          paths = { "/" },
           service = service,
         })
 
