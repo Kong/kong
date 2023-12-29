@@ -33,6 +33,7 @@ for _, strategy in helpers.each_strategy() do
       bp.routes:insert {
         hosts     = { "mock_upstream" },
         protocols = { "http" },
+        paths = { "/" },
         service   = service
       }
 

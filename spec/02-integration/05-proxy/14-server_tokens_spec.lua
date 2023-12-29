@@ -301,6 +301,7 @@ describe("headers [#" .. strategy .. "]", function()
         helpers.with_current_ws(nil, function()
         bp.routes:insert {
           hosts = { "headers-inspect.test" },
+          paths = { "/" },
         }
         end, db)
 

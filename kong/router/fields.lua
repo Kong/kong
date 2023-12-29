@@ -226,15 +226,20 @@ if is_http then
 end -- is_http
 
 
+local function get_value(field, params, ctx)
+  local func = FIELDS_FUNCS[field]
+
+  if not func then  -- unknown field
+    error("unknown router matching schema field: " .. field)
+  end -- if func
+
+  return func(params, ctx)
+end
+
+
 local function fields_visitor(fields, params, ctx, cb)
   for _, field in ipairs(fields) do
-    local func = FIELDS_FUNCS[field]
-
-    if not func then  -- unknown field
-      error("unknown router matching schema field: " .. field)
-    end -- if func
-
-    local value = func(params, ctx)
+    local value = get_value(field, params, ctx)
 
     local res, err = cb(field, value)
     if not res then
@@ -360,6 +365,8 @@ end
 
 
 return {
+  get_value = get_value,
+
   get_cache_key = get_cache_key,
   get_atc_context = get_atc_context,
 
