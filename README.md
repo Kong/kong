@@ -23,7 +23,7 @@ We suggest using the docker-compose distribution via the instructions below, but
 
 Whether you’re running in the cloud, on bare metal, or using containers, you can find every supported distribution on our [official installation](https://konghq.com/install/#kong-community) page.
 
-1) To start, clone the Docker repository and navigate to the compose folder.
+1) To start, clone the Docker repository and navigate to the compose folder:
 ```cmd
   $ git clone https://github.com/Kong/docker-kong
   $ cd docker-kong/compose/
