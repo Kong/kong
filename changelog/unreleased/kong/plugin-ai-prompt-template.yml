@@ -1,0 +1,3 @@
+message: Introduced the new **AI Prompt Template** plugin that enables mustache-like variable substitutions for chat and completions requests.
+type: feature
+scope: Plugin
