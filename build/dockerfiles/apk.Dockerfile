@@ -1,4 +1,4 @@
-ARG KONG_BASE_IMAGE=alpine:3.16
+ARG KONG_BASE_IMAGE=alpine:3.19
 FROM --platform=$TARGETPLATFORM $KONG_BASE_IMAGE
 
 LABEL maintainer="Kong Docker Maintainers <docker@konghq.com> (@team-gateway-bot)"

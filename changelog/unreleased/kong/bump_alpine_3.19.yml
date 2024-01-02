@@ -1,0 +1,4 @@
+message: |
+  Bump Alpine base image from `3.16` to `3.19`.
+type: dependency
+scope: Core

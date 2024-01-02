@@ -45,9 +45,9 @@ targets = {
         tests={
             common_suites: {},
             libc_libcpp_suites: {
-                # alpine 3.16: gcc 11.2.1
-                "libcxx_max_version": "3.4.29",
-                "cxxabi_max_version": "1.3.13",
+                # alpine 3.19: gcc 13.2.1
+                "libcxx_max_version": "3.4.32",
+                "cxxabi_max_version": "1.3.14",
             },
         }
     ),
