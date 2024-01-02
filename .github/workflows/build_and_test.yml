@@ -319,7 +319,7 @@ jobs:
   integration-tests-postgres:
     name: ${{ matrix.suite }} - ${{ matrix.split }} tests
     runs-on: ${{ inputs.arm64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
-    timeout-minutes: ${{ inputs.coverage == false && github.event_name != 'schedule' && inputs.arm64 == false && 30 || 45 }}
+    timeout-minutes: 50
     needs: build
     strategy:
       fail-fast: false
@@ -549,7 +549,7 @@ jobs:
   integration-tests-dbless:
     name: DB-less integration tests
     runs-on: ${{ inputs.arm64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
-    timeout-minutes: ${{ inputs.coverage == false && github.event_name != 'schedule' && inputs.arm64 == false && 25 || 40 }}
+    timeout-minutes: 45
     needs: build
 
     services:
@@ -676,7 +676,7 @@ jobs:
   pdk-tests:
     name: PDK tests
     runs-on: ${{ inputs.arm64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
-    timeout-minutes: ${{ inputs.coverage == false && github.event_name != 'schedule' && inputs.arm64 == false && 10 || 30 }}
+    timeout-minutes: 30
     needs: build
 
     steps:
@@ -867,7 +867,7 @@ jobs:
   plugins-ee-tests:
     name: plugins EE - ${{ matrix.split }} tests
     runs-on: ${{ inputs.arm64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
-    timeout-minutes: ${{ inputs.coverage == false && github.event_name != 'schedule' && inputs.arm64 == false && 30 || 45 }}
+    timeout-minutes: 50
     needs: build-image
 
     strategy:
