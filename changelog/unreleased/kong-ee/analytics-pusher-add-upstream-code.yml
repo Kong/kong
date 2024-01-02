@@ -1,0 +1,3 @@
+message: "Add new `upstream_status` and `source` properties to analytics pusher."
+type: "feature"
+scope: "Core"

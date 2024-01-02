@@ -22,6 +22,8 @@ message RequestMetadata {
   AuthInfo auth = 11;
   bytes trace_id = 12;
   string request_id = 13;
+  string upstream_status = 14;
+  string source = 15;
 }
 
 message RequestInfo {

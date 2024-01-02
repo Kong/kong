@@ -309,7 +309,9 @@ function _M:create_payload(message)
     auth = {
       id = "",
       type = ""
-    }
+    },
+    upstream_status = "",
+    source = "",
   }
 
   payload.client_ip = message.client_ip
@@ -439,6 +441,13 @@ function _M:create_payload(message)
     if message.authenticated_entity ~= nil then
       auth.id = message.authenticated_entity.id
     end
+  end
+
+  if message.upstream_status ~= nil then
+    payload.upstream_status = self:safe_string(message.upstream_status)
+  end
+  if message.source ~= nil then
+    payload.source = message.source
   end
 
   return payload

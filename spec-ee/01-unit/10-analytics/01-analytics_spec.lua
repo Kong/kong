@@ -112,7 +112,9 @@ local request_log = {
   consumer = {
     id = "54baa5a9-23d6-41e0-9c9a-02434b010b25",
   },
-  started_at = 1614232668342
+  started_at = 1614232668342,
+  upstream_status = "200",
+  source = "upstream",
 }
 
 local request_log_with_user_agent_table = {
@@ -208,7 +210,9 @@ local request_log_with_user_agent_table = {
   consumer = {
     id = "54baa5a9-23d6-41e0-9c9a-02434b010b25",
   },
-  started_at = 1614232668342
+  started_at = 1614232668342,
+  upstream_status = "200",
+  source = "upstream",
 }
 
 local request_log_rate_limit = {
@@ -320,7 +324,9 @@ local request_log_rate_limit = {
   consumer = {
     id = "54baa5a9-23d6-41e0-9c9a-02434b010b25",
   },
-  started_at = 1614232668342
+  started_at = 1614232668342,
+  upstream_status = "200",
+  source = "upstream",
 }
 
 
@@ -433,6 +439,8 @@ describe("extract request log properly", function()
       consumer = {
         id = "54baa5a9-23d6-41e0-9c9a-02434b010b25",
       },
+      upstream_status = "200",
+      source = "upstream",
     }
     assert.are.same(expected, payload)
   end)
@@ -497,6 +505,8 @@ describe("extract request log properly", function()
       consumer = {
         id = "54baa5a9-23d6-41e0-9c9a-02434b010b25",
       },
+      upstream_status = "200",
+      source = "upstream",
     }
     assert.are.same(expected, payload)
   end)
@@ -561,6 +571,8 @@ describe("extract request log properly", function()
       consumer = {
         id = "54baa5a9-23d6-41e0-9c9a-02434b010b25",
       },
+      upstream_status = "200",
+      source = "upstream",
     }
     assert.are.same(expected, payload)
   end)
@@ -640,6 +652,8 @@ describe("extract request log properly", function()
       consumer = {
         id = "54baa5a9-23d6-41e0-9c9a-02434b010b25",
       },
+      upstream_status = "200",
+      source = "upstream",
     }
     assert.are.same(expected, payload)
 
@@ -769,6 +783,8 @@ describe("proto buffer", function()
         ratelimit_enabled_year = false
       },
       tries = {},
+      upstream_status = "",
+      source = "",
     }
     assert.are.same(expected, decoded.data[1])
   end)
@@ -812,6 +828,8 @@ describe("proto buffer", function()
         ratelimit_enabled_year = false
       },
       tries = {},
+      upstream_status = "",
+      source = "",
     }
     assert.are.same(default, decoded)
   end)
