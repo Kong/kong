@@ -3,10 +3,7 @@ local _M = {}
 -- imports
 local kong_meta      = require "kong.meta"
 local templater      = require("kong.plugins.ai-prompt-template.templater"):new()
-local re_match       = ngx.re.match
-local re_find        = ngx.re.find
 local fmt            = string.format
-local table_insert   = table.insert
 local parse_url      = require("socket.url").parse
 local byte           = string.byte
 local sub            = string.sub
@@ -24,12 +21,6 @@ local log_entry_keys = {
 local function do_bad_request(msg)
   kong.log.warn(msg)
   kong.response.exit(400, { error = true, message = msg })
-end
-
-
-local function do_internal_server_error(msg)
-  kong.log.err(msg)
-  kong.response.exit(500, { error = true, message = msg })
 end
 
 local BRACE_START = byte("{")
@@ -56,12 +47,12 @@ local function is_reference(reference)
      and sub(reference, 2, 9) == "template"
 end
 
-local function find_template(reference_object, templates)
-  if is_reference(reference_object) then
-    local parts, err = parse_url(sub(reference_object, 2, -2))
+local function find_template(reference_string, templates)
+  if is_reference(reference_string) then
+    local parts, err = parse_url(sub(reference_string, 2, -2))
     if not parts then
-      return nil, fmt("template reference is not in format '{template://template_name}' (%s) [%s]", err, reference)
-    end  
+      return nil, fmt("template reference is not in format '{template://template_name}' (%s) [%s]", err, reference_string)
+    end
 
     -- iterate templates to find it
     for i, v in ipairs(templates) do
@@ -124,7 +115,7 @@ function _M:access(conf)
 
   if not err then
     -- try to render the replacement request
-    local rendered_template, err = templater:render(requested_template, request_format, request.properties or {})
+    local rendered_template, err = templater:render(requested_template, format, request.properties or {})
     if err then do_bad_request(err) end
 
     -- stash the result for parsing later (in ai-proxy etcetera)

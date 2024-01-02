@@ -1,47 +1,12 @@
 local _S = {}
 
 -- imports
-local sha256        = require "resty.sha256"
-local encode_base64 = ngx.encode_base64
 local fmt           = string.format
-local cjson         = require("cjson.safe")
 --
 
 -- globals
-local GMATCH_PATTERN = "{{(.*?)}}"
 local GSUB_REPLACE_PATTERN = "{{([%w_]+)}}"
 --
-
-
-local function deepcopy(o, seen)
-  seen = seen or {}
-  if o == nil then return nil end
-  if seen[o] then return seen[o] end
-
-  local no
-  if type(o) == 'table' then
-    no = {}
-    seen[o] = no
-
-    for k, v in next, o, nil do
-      no[deepcopy(k, seen)] = deepcopy(v, seen)
-    end
-    setmetatable(no, deepcopy(getmetatable(o), seen))
-  else -- number, string, boolean, etc
-    no = o
-  end
-  return no
-end
-
-
-local function hash_template(template_table)
-  local template_string, err = cjson.encode(template_table)
-  if err then return nil, err end
-
-  local template_hash = sha256:new()
-  template_hash:update(template_string or '')
-  return fmt("SHA-256=%s", encode_base64(template_hash:final())), nil
-end
 
 local function backslash_replacement_function(c)
   if c == "\n" then
@@ -85,7 +50,7 @@ local function sanitize_parameter(s)
   return s:gsub(chars_to_be_escaped_in_JSON_string, backslash_replacement_function), nil
 end
 
-function _S:new()
+function _S:new(o)
   local o = o or {}
   setmetatable(o, self)
   self.__index = self
@@ -111,7 +76,7 @@ function _S:render(template, request_type, properties)
     errors[w] = true
   end
 
-  if not (next(errors) == nil) then
+  if next(errors) ~= nil then
     for k, _ in pairs(errors) do
       if not error_string then
         error_string = fmt("missing template parameters: [%s]", k)
