@@ -168,7 +168,7 @@ local function transform_headers(conf, template_env)
     old_name = old_name:lower()
     local value = headers[old_name]
     if value then
-      headers[new_name:lower()] = value
+      headers[new_name] = value
       headers[old_name] = nil
       headers_to_remove[old_name] = true
     end
