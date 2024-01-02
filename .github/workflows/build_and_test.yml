@@ -308,7 +308,7 @@ jobs:
         fi
 
     - name: Upload core dumps
-      if: failure() && env.ENABLE_COREDUMP_DEBUG == true
+      if: ${{ failure() && env.ENABLE_COREDUMP_DEBUG }}
       uses: actions/upload-artifact@v3
       with:
         name: core-dumps-${{ github.job }}-${{ github.run_id }}
@@ -531,7 +531,7 @@ jobs:
         fi
 
     - name: Upload core dumps
-      if: failure() && env.ENABLE_COREDUMP_DEBUG == true
+      if: ${{ failure() && env.ENABLE_COREDUMP_DEBUG }}
       uses: actions/upload-artifact@v3
       with:
         name: core-dumps-${{ github.job }}-${{ matrix.suite }}-${{ matrix.split }}}-${{ github.run_id }}
@@ -658,7 +658,7 @@ jobs:
         fi
 
     - name: Upload core dumps
-      if: failure() && env.ENABLE_COREDUMP_DEBUG == true
+      if: ${{ failure() && env.ENABLE_COREDUMP_DEBUG }}
       uses: actions/upload-artifact@v3
       with:
         name: core-dumps-${{ github.job }}-${{ github.run_id }}
@@ -748,7 +748,7 @@ jobs:
         fi
 
     - name: Upload core dumps
-      if: failure() && env.ENABLE_COREDUMP_DEBUG == true
+      if: ${{ failure() && env.ENABLE_COREDUMP_DEBUG }}
       uses: actions/upload-artifact@v3
       with:
         name: core-dumps-${{ github.job }}-${{ github.run_id }}
