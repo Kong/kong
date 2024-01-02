@@ -4,9 +4,6 @@ on:
     paths:
     - 'build/openresty/patches/**'
 
-permissions:
-  pull-requests: write
-
 jobs:
   create-pr:
     runs-on: ubuntu-latest
