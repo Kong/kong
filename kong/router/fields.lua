@@ -4,6 +4,7 @@ local buffer = require("string.buffer")
 local type = type
 local ipairs = ipairs
 local assert = assert
+local tonumber = tonumber
 local tb_sort = table.sort
 local tb_concat = table.concat
 local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
