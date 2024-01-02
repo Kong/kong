@@ -9,6 +9,7 @@ import {
     deletePlugin,
     waitForConfigRebuild,
     logResponse,
+    isGateway,
 } from '@support';
 import {
     authDetails,
@@ -44,13 +45,15 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
     let token: string;
 
     const url = `${getBasePath({
-        environment: Environment.gateway.admin,
+        environment: isGateway() ? Environment.gateway.admin : undefined,
     })}`;
     const proxyUrl = `${getBasePath({
+        app: 'gateway',
         environment: Environment.gateway.proxySec,
     })}`;
 
     const keycloakUrl = `${getBasePath({
+        app: 'gateway',
         environment: Environment.gateway.keycloakSec,
     })}/realms/demo`;
 
