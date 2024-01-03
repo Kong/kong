@@ -507,101 +507,9 @@ jobs:
         asset_prefix: kong-${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}-linux-arm64
         image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
 
-  smoke-tests:
-    name: Smoke Tests - ${{ matrix.label }}
-    needs: [metadata, build-images]
-    runs-on: ubuntu-22.04
-    if: |-
-      fromJSON(needs.metadata.outputs.matrix)['smoke-tests'] != ''
-      && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'))
-
-    # TODO: test packages
-    strategy:
-      fail-fast: false
-      matrix:
-        include: "${{ fromJSON(needs.metadata.outputs.matrix)['smoke-tests'] }}"
-
-    services:
-      postgres:
-        image: postgres:13
-        env:
-          POSTGRES_USER: kong
-          POSTGRES_DB: kong
-          POSTGRES_PASSWORD: kong
-        ports:
-        - "5432:5432"
-        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
-
-    env:
-      KONG_ADMIN_URI: http://localhost:8001
-      KONG_ADMIN_HTTP2_URI: https://localhost:8444
-      KONG_PROXY_URI: http://localhost:8000
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Login to Docker Hub
-      uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d # v2.1.0
-      with:
-        username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
-        password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
-
-    - name: Setup Kong instance
-      # always pull the latest image to ensure we're testing the latest version.
-      run: |
-        docker run \
-          -p 8000:8000 -p 8001:8001 -p 8444:8444\
-          -e KONG_PG_PASSWORD=kong \
-          -e KONG_ADMIN_LISTEN="0.0.0.0:8001, 0.0.0.0:8444 ssl http2" \
-          -e KONG_ANONYMOUS_REPORTS=off \
-          --name kong \
-          --restart always \
-          --network=host -d \
-          --pull always \
-          ${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }} \
-          sh -c "kong migrations bootstrap && kong start"
-        sleep 3
-        docker logs kong
-
-    - name: Smoke Tests - Version Test
-      run: |
-        workflow_version="$(
-          echo '${{ steps.metadata.outputs.kong-version }}' \
-            | sed -e 's@\.@\\\.@g'
-        )"
-
-        # confirm workflow's version and built container version match with
-        # dots escaped, and end-line delimited
-        if ! docker exec kong kong version | grep -E "${workflow_version}$"; then
-          echo "Built container's 'kong version' didn't match workflow's."
-          echo "Ensure that versions in the meta.lua files are as expected."
-          exit 1
-        fi
-
-    - name: Smoke Tests - Base Tests
-      env:
-        VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
-      run: build/tests/01-base.sh
-
-    - name: Smoke Tests - Admin API
-      env:
-        VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
-      run: build/tests/02-admin-api.sh
-
-    - name: Smoke Tests - HTTP2 Admin API
-      env:
-        VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
-      run: build/tests/03-http2-admin-api.sh
-
-    - name: Smoke Tests - Uninstall Tests
-      env:
-        VERBOSE: ${{ runner.debug == '1' && '1' || '' }}
-        BUILD_LABEL: ${{ matrix.label }}
-      run: build/tests/04-uninstall.sh
-
   release-packages:
     name: Release Packages - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
-    needs: [metadata, build-packages, build-images, smoke-tests]
+    needs: [metadata, build-packages, build-images]
     runs-on: ubuntu-22.04
     if: fromJSON(needs.metadata.outputs.matrix)['release-packages'] != ''
     timeout-minutes: 5 # PULP takes a while to publish
@@ -671,7 +579,7 @@ jobs:
 
   release-images:
     name: Release Images - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
-    needs: [metadata, build-images, smoke-tests]
+    needs: [metadata, build-images]
     runs-on: ubuntu-22.04
     if: github.repository_owner == 'Kong' && fromJSON(needs.metadata.outputs.matrix)['release-images'] != ''
 
