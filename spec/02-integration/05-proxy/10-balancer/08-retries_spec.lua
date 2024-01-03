@@ -118,6 +118,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert.res_status(502, res)
 
+      -- wait for the http-log plugin to flush the log
       ngx.sleep(1)
 
       local entries = get_log("http", 2)
