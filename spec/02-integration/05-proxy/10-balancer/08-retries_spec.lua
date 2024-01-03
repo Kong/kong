@@ -118,6 +118,8 @@ for _, strategy in helpers.each_strategy() do
 
       assert.res_status(502, res)
 
+      ngx.sleep(1)
+
       local entries = get_log("http", 2)
       assert.equal(#entries[2].tries, 6)
       assert.equal(entries[2].upstream_status, "502, 502, 502, 502, 502, 502")
