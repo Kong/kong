@@ -24,7 +24,7 @@ index a385222..d3de3b7 100644
      ngx_uint_t                       status;
      ngx_msec_t                       response_time;
 diff --git a/bundle/ngx_lua-0.10.25/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-0.10.25/src/ngx_http_lua_balancer.c
-index af4da73..61c11e1 100644
+index af4da73..8451158 100644
 --- a/bundle/ngx_lua-0.10.25/src/ngx_http_lua_balancer.c
 +++ b/bundle/ngx_lua-0.10.25/src/ngx_http_lua_balancer.c
 @@ -16,46 +16,106 @@
@@ -122,7 +122,7 @@ index af4da73..61c11e1 100644
  static void ngx_http_lua_balancer_free_peer(ngx_peer_connection_t *pc,
      void *data, ngx_uint_t state);
 +static void ngx_http_lua_balancer_notify_peer(ngx_peer_connection_t *pc,
-+    void *data, ngx_uint_t state);
++    void *data, ngx_uint_t type);
 +static ngx_int_t ngx_http_lua_balancer_create_keepalive_pool(lua_State *L,
 +    ngx_log_t *log, ngx_str_t *cpool_name, ngx_uint_t cpool_size,
 +    ngx_http_lua_balancer_keepalive_pool_t **cpool);
@@ -580,11 +580,11 @@ index af4da73..61c11e1 100644
      ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0,
 -                   "lua balancer free peer, tries: %ui", pc->tries);
 +                   "lua balancer: free peer, tries: %ui", pc->tries);
- 
--    if (bp->sockaddr && bp->socklen) {
++
 +    u = bp->request->upstream;
 +    c = pc->connection;
-+
+ 
+-    if (bp->sockaddr && bp->socklen) {
 +    if (ngx_http_lua_balancer_peer_set(bp)) {
          bp->last_peer_state = (int) state;
  
@@ -833,15 +833,17 @@ index af4da73..61c11e1 100644
 +
 +    if (lua_isnil(L, -1)) {
 +        lua_pop(L, 1); /* orig stack */
-+        return;
-+    }
-+
+         return;
+     }
+ 
+-    /* fallback */
 +    ngx_http_lua_assert(lua_istable(L, -1));
 +
 +    lua_pushlstring(L, (const char *)cpool->cpool_name.data, cpool->cpool_name.len);
 +    lua_pushnil(L); /* pools nil */
 +    lua_rawset(L, -3); /* pools */
-+
+ 
+-    ngx_http_upstream_free_round_robin_peer(pc, data, state);
 +    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, log, 0,
 +                   "lua balancer: keepalive free pool, "
 +                   "name: %V, cpool: %p",
@@ -914,13 +916,11 @@ index af4da73..61c11e1 100644
 +            goto close;
 +        }
 +
-         return;
-     }
- 
--    /* fallback */
++        return;
++    }
++
 +close:
- 
--    ngx_http_upstream_free_round_robin_peer(pc, data, state);
++
 +    item = c->data;
 +    c->log = ev->log;
 +
