@@ -1,6 +1,6 @@
 return {
-    -- postgres = {
-      -- up = [[
+    postgres = {
+      up = [[
       --   DO $$
       --   BEGIN
       --     UPDATE plugins
@@ -38,6 +38,6 @@ return {
       --         )
       --       WHERE name = 'acme';
       --   END$$;
-      -- ]],
-    -- },
+      ]],
+    },
 }
