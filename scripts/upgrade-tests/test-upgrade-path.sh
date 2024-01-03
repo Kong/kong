@@ -110,11 +110,12 @@ function initialize_test_list() {
     # Prepare list of tests to run
     if [ -z "$TESTS" ]
     then
+        echo "Trying to figure out tests"
         all_tests_file=$(mktemp)
         available_tests_file=$(mktemp)
 
-        docker exec $OLD_CONTAINER kong migrations reset --yes || true
-        docker exec $OLD_CONTAINER kong migrations bootstrap
+        docker exec $OLD_CONTAINER kong migrations -v reset --yes || true
+        docker exec $OLD_CONTAINER kong migrations -v bootstrap
         docker exec $NEW_CONTAINER kong migrations status \
             | jq -r '.new_migrations | .[] | (.namespace | gsub("[.]"; "/")) as $namespace | .migrations[] | "\($namespace)/\(.)_spec.lua" | gsub("^kong"; "spec/05-migration")' \
             | sort > $all_tests_file
