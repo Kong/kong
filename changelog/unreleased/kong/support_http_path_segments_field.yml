@@ -1,0 +1,4 @@
+message: |
+  support `http.path.segments.*` field in expressions router flavor.
+type: feature
+scope: Core
