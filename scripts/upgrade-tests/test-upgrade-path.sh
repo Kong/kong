@@ -118,9 +118,9 @@ function initialize_test_list() {
         echo "Here 1"
         docker exec $OLD_CONTAINER kong migrations bootstrap
         echo "Here 2"
-        docker exec $NEW_CONTAINER kong migrations --vv status \
-            | jq -r '.new_migrations | .[] | (.namespace | gsub("[.]"; "/")) as $namespace | .migrations[] | "\($namespace)/\(.)_spec.lua" | gsub("^kong"; "spec/05-migration")' \
-            | sort > $all_tests_file
+        docker exec $NEW_CONTAINER kong migrations --vv status
+            # | jq -r '.new_migrations | .[] | (.namespace | gsub("[.]"; "/")) as $namespace | .migrations[] | "\($namespace)/\(.)_spec.lua" | gsub("^kong"; "spec/05-migration")' \
+            # | sort > $all_tests_file
         echo "Here 3"
         cat $all_tests_file
         ls 2>/dev/null $(cat $all_tests_file) \
