@@ -1,0 +1,3 @@
+message: Data-plane nodes running in Konnect will now report config reload failures such as invalid configuration or transient errors to the control-plane.
+type: feature
+scope: Clustering
