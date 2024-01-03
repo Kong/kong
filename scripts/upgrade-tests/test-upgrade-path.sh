@@ -118,8 +118,11 @@ function initialize_test_list() {
         docker exec $NEW_CONTAINER kong migrations status \
             | jq -r '.new_migrations | .[] | (.namespace | gsub("[.]"; "/")) as $namespace | .migrations[] | "\($namespace)/\(.)_spec.lua" | gsub("^kong"; "spec/05-migration")' \
             | sort > $all_tests_file
+        cat $all_tests_file
         ls 2>/dev/null $(cat $all_tests_file) \
             | sort > $available_tests_file
+
+        cat $available_tests_file
 
         if [ "$IGNORE_MISSING_TESTS" = "1" ]
         then
