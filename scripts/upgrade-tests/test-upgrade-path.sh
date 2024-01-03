@@ -114,17 +114,20 @@ function initialize_test_list() {
         all_tests_file=$(mktemp)
         available_tests_file=$(mktemp)
 
-        docker exec $OLD_CONTAINER kong migrations --vv reset --yes || true
-        docker exec $OLD_CONTAINER kong migrations --vv bootstrap
-        docker exec $NEW_CONTAINER kong migrations status \
+        docker exec $OLD_CONTAINER kong migrations reset --yes || true
+        echo "Here 1"
+        docker exec $OLD_CONTAINER kong migrations bootstrap
+        echo "Here 2"
+        docker exec $NEW_CONTAINER kong migrations --vv status \
             | jq -r '.new_migrations | .[] | (.namespace | gsub("[.]"; "/")) as $namespace | .migrations[] | "\($namespace)/\(.)_spec.lua" | gsub("^kong"; "spec/05-migration")' \
             | sort > $all_tests_file
+        echo "Here 3"
         cat $all_tests_file
         ls 2>/dev/null $(cat $all_tests_file) \
             | sort > $available_tests_file
-
+        echo "Here 4"
         cat $available_tests_file
-
+        echo "Here 5"
         if [ "$IGNORE_MISSING_TESTS" = "1" ]
         then
             TESTS=$(cat $available_tests_file)
