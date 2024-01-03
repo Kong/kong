@@ -61,6 +61,7 @@ if busted_event_path then
       end
 
       sock:send(cjson.encode({ event = event[1] .. (event[2] and ":" .. event[2] or ""), args = args }) .. "\n")
+      return nil, true --continue
     end)
   end
 end
