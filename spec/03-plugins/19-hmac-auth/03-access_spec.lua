@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local cjson = require "cjson"
-local openssl_hmac = require "resty.openssl.hmac"
+local openssl_mac = require "resty.openssl.mac"
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 local resty_sha256 = require "resty.sha256"
@@ -17,7 +17,7 @@ local fmt = string.format
 
 
 local hmac_sha1_binary = function(secret, data)
-  return openssl_hmac.new(secret, "sha1"):final(data)
+  return openssl_mac.new(secret, "HMAC", nil, "sha1"):final(data)
 end
 
 
@@ -840,7 +840,7 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should not pass with GET with wrong algorithm", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          openssl_hmac.new("secret", "sha256"):final("date: " .. date .. "\n"
+          openssl_mac.new("secret", "HMAC", nil, "sha256"):final("date: " .. date .. "\n"
             .. "content-md5: md5" .. "\nGET /request HTTP/1.1"))
         local hmacAuth = [[hmac username="bob",algorithm="hmac-sha",]]
           .. [[  headers="date content-md5 request-line",signature="]]
@@ -863,7 +863,7 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should pass the right headers to the upstream server", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          openssl_hmac.new("secret", "sha256"):final("date: " .. date .. "\n"
+          openssl_mac.new("secret", "HMAC", nil, "sha256"):final("date: " .. date .. "\n"
                              .. "content-md5: md5" .. "\nGET /request HTTP/1.1"))
         local hmacAuth = [[hmac username="bob",algorithm="hmac-sha256",]]
           .. [[  headers="date content-md5 request-line",signature="]]
@@ -1619,7 +1619,7 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should pass with GET with hmac-sha384", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          openssl_hmac.new("secret", "sha384"):final("date: " .. date .. "\n"
+          openssl_mac.new("secret", "HMAC", nil, "sha384"):final("date: " .. date .. "\n"
                   .. "content-md5: md5" .. "\nGET /request HTTP/1.1"))
         local hmacAuth = [[hmac username="bob",  algorithm="hmac-sha384", ]]
                 .. [[headers="date content-md5 request-line", signature="]]
@@ -1641,7 +1641,7 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should pass with GET with hmac-sha512", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          openssl_hmac.new("secret", "sha512"):final("date: " .. date .. "\n"
+          openssl_mac.new("secret", "HMAC", nil, "sha512"):final("date: " .. date .. "\n"
                   .. "content-md5: md5" .. "\nGET /request HTTP/1.1"))
         local hmacAuth = [[hmac username="bob",  algorithm="hmac-sha512", ]]
                 .. [[headers="date content-md5 request-line", signature="]]
@@ -1663,7 +1663,7 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should not pass with hmac-sha512", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          openssl_hmac.new("secret", "sha512"):final("date: " .. date .. "\n"
+          openssl_mac.new("secret", "HMAC", nil, "sha512"):final("date: " .. date .. "\n"
                   .. "content-md5: md5" .. "\nGET /request HTTP/1.1"))
         local hmacAuth = [[hmac username="bob",  algorithm="hmac-sha512", ]]
                 .. [[headers="date content-md5 request-line", signature="]]
@@ -1700,7 +1700,7 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should pass with hmac-sha1", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          openssl_hmac.new("secret", "sha1"):final("date: " .. date .. "\n"
+          openssl_mac.new("secret", "HMAC", nil, "sha1"):final("date: " .. date .. "\n"
                   .. "content-md5: md5" .. "\nGET /request HTTP/1.1"))
         local hmacAuth = [[hmac username="bob",  algorithm="hmac-sha1", ]]
                 .. [[headers="date content-md5 request-line", signature="]]

@@ -16,7 +16,7 @@ local json = require "cjson"
 local b64 = require "ngx.base64"
 local buffer = require "string.buffer"
 local openssl_digest = require "resty.openssl.digest"
-local openssl_hmac = require "resty.openssl.hmac"
+local openssl_mac = require "resty.openssl.mac"
 local openssl_pkey = require "resty.openssl.pkey"
 
 
@@ -40,9 +40,9 @@ local decode_base64url = b64.decode_base64url
 
 --- Supported algorithms for signing tokens.
 local alg_sign = {
-  HS256 = function(data, key) return openssl_hmac.new(key, "sha256"):final(data) end,
-  HS384 = function(data, key) return openssl_hmac.new(key, "sha384"):final(data) end,
-  HS512 = function(data, key) return openssl_hmac.new(key, "sha512"):final(data) end,
+  HS256 = function(data, key) return openssl_mac.new(key, "HMAC", nil, "sha256"):final(data) end,
+  HS384 = function(data, key) return openssl_mac.new(key, "HMAC", nil, "sha384"):final(data) end,
+  HS512 = function(data, key) return openssl_mac.new(key, "HMAC", nil, "sha512"):final(data) end,
   RS256 = function(data, key)
     local digest = openssl_digest.new("sha256")
     assert(digest:update(data))

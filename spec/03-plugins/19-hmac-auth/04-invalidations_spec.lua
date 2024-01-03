@@ -7,7 +7,7 @@
 
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local openssl_hmac = require "resty.openssl.hmac"
+local openssl_mac = require "resty.openssl.mac"
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: hmac-auth (invalidations) [#" .. strategy .. "]", function()
@@ -69,7 +69,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     local function hmac_sha1_binary(secret, data)
-      return openssl_hmac.new(secret, "sha1"):final(data)
+      return openssl_mac.new(secret, "HMAC", nil, "sha1"):final(data)
     end
 
     local function get_authorization(username)
