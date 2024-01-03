@@ -8,7 +8,7 @@
 -- JWT
 -- Adapted from kong.plugins.jwt.jwt_parser
 
-local openssl_hmac  = require "resty.openssl.hmac"
+local openssl_mac   = require "resty.openssl.mac"
 local cjson         = require "cjson.safe"
 local pl_string     = require "pl.stringx"
 local string_rep    = string.rep
@@ -26,7 +26,7 @@ _M.EXPIRED_JWT = "Expired JWT"
 
 
 local algs = {
-  ["HS256"] = function (data, secret) return openssl_hmac.new(secret, "sha256"):final(data) end,
+  ["HS256"] = function (data, secret) return openssl_mac.new(secret, "HMAC", nil, "sha256"):final(data) end,
 }
 
 --- base 64 encoding
