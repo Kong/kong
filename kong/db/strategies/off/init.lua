@@ -23,12 +23,6 @@ local lmdb_get = lmdb.get
 local get_workspace_id = workspaces.get_workspace_id
 
 
-local PROCESS_AUTO_FIELDS_OPTS = {
-  no_defaults = true,
-  show_ws_id = true,
-}
-
-
 local off = {}
 
 
@@ -213,7 +207,7 @@ local function page_for_key(self, key, size, offset, options)
     end
 
     if item then
-      ret[ret_idx] = schema:process_auto_fields(item, "select", true, PROCESS_AUTO_FIELDS_OPTS)
+      ret[ret_idx] = item
       ret_idx = ret_idx + 1
     end
   end
@@ -238,8 +232,6 @@ local function select_by_key(schema, key)
       return nil
     end
   end
-
-  entity = schema:process_auto_fields(entity, "select", true, PROCESS_AUTO_FIELDS_OPTS)
 
   return entity
 end
