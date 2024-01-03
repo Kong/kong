@@ -107,6 +107,8 @@ jobs:
 
     - name: Download runtimes file
       uses: Kong/gh-storage/download@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.PAT }}
       with:
         repo-path: Kong/gateway-action-storage/main/.ci/runtimes.json
 
@@ -206,7 +208,6 @@ jobs:
           docker logs kong_redis
 
     - name: Run OpenTelemetry Collector
-      if: ${{ matrix.suite == 'plugins' }}
       run: |
           mkdir -p ${{ github.workspace }}/tmp/otel
           touch ${{ github.workspace }}/tmp/otel/file_exporter.json
@@ -243,16 +244,6 @@ jobs:
         echo luarocks: $(which luarocks)
         luarocks --version
         luarocks config
-
-    - name: Create kong_ro user in Postgres
-      run: |
-        psql -v ON_ERROR_STOP=1 -h localhost --username kong <<\EOD
-                CREATE user kong_ro;
-                GRANT CONNECT ON DATABASE kong TO kong_ro;
-                \c kong;
-                GRANT USAGE ON SCHEMA public TO kong_ro;
-                ALTER DEFAULT PRIVILEGES FOR ROLE kong IN SCHEMA public GRANT SELECT ON TABLES TO kong_ro;
-        EOD
 
     - name: Tune up postgres max_connections
       run: |

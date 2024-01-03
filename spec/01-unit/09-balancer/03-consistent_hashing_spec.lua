@@ -8,6 +8,7 @@ assert:set_parameter("TableFormatLevel", 5) -- when displaying tables, set a big
 local client
 local targets, balancers
 
+require "spec.helpers" -- initialize db
 local dns_utils = require "kong.resty.dns.utils"
 local mocker = require "spec.fixtures.mocker"
 local utils = require "kong.tools.utils"
