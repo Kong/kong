@@ -8,6 +8,7 @@
 local cjson = require("cjson.safe").new()
 local lrucache = require "resty.lrucache"
 local pl_tablex = require "pl.tablex"
+local pl_stringx = require "pl.stringx"
 local deserialize = require "resty.openapi3.deserializer"
 local validators = require "kong.plugins.request-validator.validators"
 local meta = require "kong.meta"
@@ -29,11 +30,13 @@ local req_get_uri_args = ngx.req.get_uri_args
 local ipairs = ipairs
 local setmetatable = setmetatable
 local ngx_null = ngx.null
-local string_find = string.find
 local fmt = string.format
 local table_insert = table.insert
 local lower = string.lower
 local parse_mime_type = mime_type.parse_mime_type
+local mime_type_includes = mime_type.includes
+local strip = pl_stringx.strip
+
 
 cjson.decode_array_with_array_mt(true)
 
@@ -336,7 +339,14 @@ function RequestValidator:access(conf)
       end
     end
 
-    if not string_find(content_type, "application/json") then
+    local expected_media_type = { type = "application", subtype = "json" }
+    local t, subtype = parse_mime_type(strip(content_type))
+    if not t or not subtype then
+      return
+    end
+
+    local media_type = { type = t, subtype = subtype }
+    if not mime_type_includes(expected_media_type, media_type) then
       return
     end
 

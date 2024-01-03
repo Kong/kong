@@ -247,6 +247,18 @@ for _, strategy in strategies() do
           body = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
         })
         assert.res_status(200, res)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Content-Type"] = "application/whatever+json",
+          },
+          body = cjson.encode({
+            f1 = "value!"
+          })
+        })
+        assert.res_status(400, res)
       end)
 
       it("deny on extra parameter", function()
@@ -341,6 +353,49 @@ for _, strategy in strategies() do
           body = {
             f1 = "value!",
           }
+        })
+        assert.response(res).has.status(400)
+        local body = assert.response(res).has.jsonbody()
+        assert.same({ message = "request body doesn't conform to schema" }, body)
+      end)
+
+      it("content-type with json suffix", function()
+        local schema = [[
+          [
+            {
+              "f1": {
+                "type": "string",
+                "required": true
+              }
+            }
+          ]
+        ]]
+
+        add_plugin(admin_client, {body_schema = schema, allowed_content_types = {
+          "application/merge+json",
+        }}, 201)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Content-Type"] = "application/merge+json",
+          },
+          body = cjson.encode({
+            f1 = "value!",
+          })
+        })
+        assert.res_status(200, res)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Content-Type"] = "application/merge+json",
+          },
+          body = cjson.encode({
+            f1 = 123,
+          })
         })
         assert.response(res).has.status(400)
         local body = assert.response(res).has.jsonbody()

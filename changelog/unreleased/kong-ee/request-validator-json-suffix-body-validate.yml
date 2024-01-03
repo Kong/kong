@@ -1,0 +1,3 @@
+message: "**Request Validator:** The Request Validator plugin now validates the request body schema when json is the suffix value in the request content type's subtype, for example `application/merge-patch+json`."
+type: bugfix
+scope: Plugin
