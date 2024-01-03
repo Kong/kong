@@ -114,8 +114,8 @@ function initialize_test_list() {
         all_tests_file=$(mktemp)
         available_tests_file=$(mktemp)
 
-        docker exec $OLD_CONTAINER kong migrations -v reset --yes || true
-        docker exec $OLD_CONTAINER kong migrations -v bootstrap
+        docker exec $OLD_CONTAINER kong migrations --vv reset --yes || true
+        docker exec $OLD_CONTAINER kong migrations --vv bootstrap
         docker exec $NEW_CONTAINER kong migrations status \
             | jq -r '.new_migrations | .[] | (.namespace | gsub("[.]"; "/")) as $namespace | .migrations[] | "\($namespace)/\(.)_spec.lua" | gsub("^kong"; "spec/05-migration")' \
             | sort > $all_tests_file
