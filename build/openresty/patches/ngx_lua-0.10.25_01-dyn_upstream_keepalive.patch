@@ -1,17 +1,30 @@
 diff --git a/bundle/nginx-1.21.4/src/http/ngx_http_upstream.c b/bundle/nginx-1.21.4/src/http/ngx_http_upstream.c
-index b07e564..a72dcf2 100644
+index b07e564..68c9b05 100644
 --- a/bundle/nginx-1.21.4/src/http/ngx_http_upstream.c
 +++ b/bundle/nginx-1.21.4/src/http/ngx_http_upstream.c
 @@ -4304,6 +4304,7 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
      if (u->peer.cached && ft_type == NGX_HTTP_UPSTREAM_FT_ERROR) {
          /* TODO: inform balancer instead */
          u->peer.tries++;
-+        u->peer.notify(&u->peer, u->peer.data, 0);
++        u->peer.notify(&u->peer, u->peer.data, NGX_HTTP_UPSTREAM_NOTIFY_BALANCER);
      }
  
      switch (ft_type) {
+diff --git a/bundle/nginx-1.21.4/src/http/ngx_http_upstream.h b/bundle/nginx-1.21.4/src/http/ngx_http_upstream.h
+index a385222..d3de3b7 100644
+--- a/bundle/nginx-1.21.4/src/http/ngx_http_upstream.h
++++ b/bundle/nginx-1.21.4/src/http/ngx_http_upstream.h
+@@ -56,6 +56,8 @@
+ #define NGX_HTTP_UPSTREAM_IGN_VARY           0x00000200
+ 
+ 
++#define NGX_HTTP_UPSTREAM_NOTIFY_BALANCER    0x1
++
+ typedef struct {
+     ngx_uint_t                       status;
+     ngx_msec_t                       response_time;
 diff --git a/bundle/ngx_lua-0.10.25/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-0.10.25/src/ngx_http_lua_balancer.c
-index af4da73..678313a 100644
+index af4da73..61c11e1 100644
 --- a/bundle/ngx_lua-0.10.25/src/ngx_http_lua_balancer.c
 +++ b/bundle/ngx_lua-0.10.25/src/ngx_http_lua_balancer.c
 @@ -16,46 +16,106 @@
@@ -552,7 +565,7 @@ index af4da73..678313a 100644
      return rc;
  }
  
-@@ -413,24 +583,362 @@ static void
+@@ -413,24 +583,364 @@ static void
  ngx_http_lua_balancer_free_peer(ngx_peer_connection_t *pc, void *data,
      ngx_uint_t state)
  {
@@ -694,9 +707,11 @@ index af4da73..678313a 100644
 +
 +static void
 +ngx_http_lua_balancer_notify_peer(ngx_peer_connection_t *pc, void *data,
-+    ngx_uint_t state)
++    ngx_uint_t type)
 +{
-+    pc->tries--;
++    if (type == NGX_HTTP_UPSTREAM_NOTIFY_BALANCER) {
++        pc->tries--;
++    }
 +}
 +
 +
@@ -920,7 +935,7 @@ index af4da73..678313a 100644
  }
  
  
-@@ -441,12 +949,12 @@ ngx_http_lua_balancer_set_session(ngx_peer_connection_t *pc, void *data)
+@@ -441,12 +951,12 @@ ngx_http_lua_balancer_set_session(ngx_peer_connection_t *pc, void *data)
  {
      ngx_http_lua_balancer_peer_data_t  *bp = data;
  
@@ -935,7 +950,7 @@ index af4da73..678313a 100644
  }
  
  
-@@ -455,13 +963,12 @@ ngx_http_lua_balancer_save_session(ngx_peer_connection_t *pc, void *data)
+@@ -455,13 +965,12 @@ ngx_http_lua_balancer_save_session(ngx_peer_connection_t *pc, void *data)
  {
      ngx_http_lua_balancer_peer_data_t  *bp = data;
  
@@ -951,7 +966,7 @@ index af4da73..678313a 100644
  }
  
  #endif
-@@ -469,14 +976,14 @@ ngx_http_lua_balancer_save_session(ngx_peer_connection_t *pc, void *data)
+@@ -469,14 +978,14 @@ ngx_http_lua_balancer_save_session(ngx_peer_connection_t *pc, void *data)
  
  int
  ngx_http_lua_ffi_balancer_set_current_peer(ngx_http_request_t *r,
@@ -973,7 +988,7 @@ index af4da73..678313a 100644
  
      if (r == NULL) {
          *err = "no request found";
-@@ -501,18 +1008,6 @@ ngx_http_lua_ffi_balancer_set_current_peer(ngx_http_request_t *r,
+@@ -501,18 +1010,6 @@ ngx_http_lua_ffi_balancer_set_current_peer(ngx_http_request_t *r,
          return NGX_ERROR;
      }
  
@@ -992,7 +1007,7 @@ index af4da73..678313a 100644
      ngx_memzero(&url, sizeof(ngx_url_t));
  
      url.url.data = ngx_palloc(r->pool, addr_len);
-@@ -536,6 +1031,8 @@ ngx_http_lua_ffi_balancer_set_current_peer(ngx_http_request_t *r,
+@@ -536,6 +1033,8 @@ ngx_http_lua_ffi_balancer_set_current_peer(ngx_http_request_t *r,
          return NGX_ERROR;
      }
  
@@ -1001,7 +1016,7 @@ index af4da73..678313a 100644
      if (url.addrs && url.addrs[0].sockaddr) {
          bp->sockaddr = url.addrs[0].sockaddr;
          bp->socklen = url.addrs[0].socklen;
-@@ -546,6 +1043,72 @@ ngx_http_lua_ffi_balancer_set_current_peer(ngx_http_request_t *r,
+@@ -546,6 +1045,72 @@ ngx_http_lua_ffi_balancer_set_current_peer(ngx_http_request_t *r,
          return NGX_ERROR;
      }
  
@@ -1074,7 +1089,7 @@ index af4da73..678313a 100644
      return NGX_OK;
  }
  
-@@ -555,14 +1118,13 @@ ngx_http_lua_ffi_balancer_set_timeouts(ngx_http_request_t *r,
+@@ -555,14 +1120,13 @@ ngx_http_lua_ffi_balancer_set_timeouts(ngx_http_request_t *r,
      long connect_timeout, long send_timeout, long read_timeout,
      char **err)
  {
@@ -1092,7 +1107,7 @@ index af4da73..678313a 100644
  
      if (r == NULL) {
          *err = "no request found";
-@@ -587,15 +1149,9 @@ ngx_http_lua_ffi_balancer_set_timeouts(ngx_http_request_t *r,
+@@ -587,15 +1151,9 @@ ngx_http_lua_ffi_balancer_set_timeouts(ngx_http_request_t *r,
          return NGX_ERROR;
      }
  
@@ -1110,7 +1125,7 @@ index af4da73..678313a 100644
      if (!bp->cloned_upstream_conf) {
          /* we clone the upstream conf for the current request so that
           * we do not affect other requests at all. */
-@@ -650,12 +1206,10 @@ ngx_http_lua_ffi_balancer_set_more_tries(ngx_http_request_t *r,
+@@ -650,12 +1208,10 @@ ngx_http_lua_ffi_balancer_set_more_tries(ngx_http_request_t *r,
      int count, char **err)
  {
  #if (nginx_version >= 1007005)
@@ -1126,7 +1141,7 @@ index af4da73..678313a 100644
      ngx_http_lua_balancer_peer_data_t  *bp;
  
      if (r == NULL) {
-@@ -681,13 +1235,7 @@ ngx_http_lua_ffi_balancer_set_more_tries(ngx_http_request_t *r,
+@@ -681,13 +1237,7 @@ ngx_http_lua_ffi_balancer_set_more_tries(ngx_http_request_t *r,
          return NGX_ERROR;
      }
  
@@ -1141,7 +1156,7 @@ index af4da73..678313a 100644
  
  #if (nginx_version >= 1007005)
      max_tries = r->upstream->conf->next_upstream_tries;
-@@ -713,12 +1261,10 @@ int
+@@ -713,12 +1263,10 @@ int
  ngx_http_lua_ffi_balancer_get_last_failure(ngx_http_request_t *r,
      int *status, char **err)
  {
@@ -1157,7 +1172,7 @@ index af4da73..678313a 100644
  
      if (r == NULL) {
          *err = "no request found";
-@@ -743,13 +1289,7 @@ ngx_http_lua_ffi_balancer_get_last_failure(ngx_http_request_t *r,
+@@ -743,13 +1291,7 @@ ngx_http_lua_ffi_balancer_get_last_failure(ngx_http_request_t *r,
          return NGX_ERROR;
      }
  
