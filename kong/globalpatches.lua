@@ -14,27 +14,6 @@ return function(options)
   options = options or {}
   local meta = require "kong.meta"
 
-  do -- make cjson encode numbers with a precision of up to 16 decimals
-    local cjson = require "cjson"
-    local cjson_safe = require "cjson.safe"
-    local native_cjson_new = cjson.new
-    local native_cjson_safe_new = cjson_safe.new
-
-    cjson.encode_number_precision(16)
-    cjson_safe.encode_number_precision(16)
-
-    cjson.new = function()
-      local json = native_cjson_new()
-      json.encode_number_precision(16)
-      return json
-    end
-
-    cjson_safe.new = function()
-      local json = native_cjson_safe_new()
-      json.encode_number_precision(16)
-      return json
-    end
-  end
 
   local cjson = require("cjson.safe")
   cjson.encode_sparse_array(nil, nil, 2^15)

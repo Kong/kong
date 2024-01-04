@@ -6,6 +6,8 @@ local utils         = require "kong.tools.utils"
 local new_tab       = require "table.new"
 local clear_tab     = require "table.clear"
 
+cjson.encode_number_precision(16)
+cjson_safe.encode_number_precision(16)
 
 local kong          = kong
 local ngx           = ngx
