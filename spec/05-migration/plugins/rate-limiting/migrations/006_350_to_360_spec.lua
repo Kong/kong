@@ -1,12 +1,7 @@
 
 local cjson = require "cjson"
--- local tablex = require "pl.tablex"
 local uh = require "spec.upgrade_helpers"
 
--- local function matches(t1, t2)
---     local inters = tablex.merge(t1, t2)
---     return assert.same(inters, t1)
--- end
 
 local function deep_matches(t1, t2, parent_keys)
     for key, v in pairs(t1) do
@@ -20,9 +15,8 @@ local function deep_matches(t1, t2, parent_keys)
 end
 
 if uh.database_type() == 'postgres' then
-    describe("acme plugin migration", function()
+    describe("rate-limiting plugin migration", function()
         lazy_setup(function()
-            -- uh.get_database()
             assert(uh.start_kong())
         end)
 
@@ -37,18 +31,18 @@ if uh.database_type() == 'postgres' then
                 method = "POST",
                 path = "/plugins/",
                 body = {
-                    name = "acme",
+                    name = "rate-limiting",
                     config = {
-                        account_email = "test@example.com",
-                        storage = "redis",
-                        storage_config = {
-                            redis = {
-                                host = "localhost",
-                                port = 57198,
-                                auth = "secret",
-                                database = 2
-                            }
-                        }
+                        minute = 200,
+                        redis_host = "localhost",
+                        redis_port = 57198,
+                        redis_username = "test",
+                        redis_password = "secret",
+                        redis_ssl = true,
+                        redis_ssl_verify = true,
+                        redis_server_name = "test.example",
+                        redis_timeout = 1100,
+                        redis_database = 2,
                     }
                 },
                 headers = {
@@ -59,7 +53,7 @@ if uh.database_type() == 'postgres' then
             admin_client:close()
         end)
 
-        uh.new_after_up("has updated acme redis configuration", function ()
+        uh.new_after_up("has updated rate-limiting redis configuration", function ()
             local admin_client = assert(uh.admin_client())
             local res = assert(admin_client:send {
                 method = "GET",
@@ -67,21 +61,22 @@ if uh.database_type() == 'postgres' then
             })
             local body = cjson.decode(assert.res_status(200, res))
             assert.equal(1, #body.data)
-            assert.equal("acme", body.data[1].name)
+            assert.equal("rate-limiting", body.data[1].name)
             local expected_config = {
-                account_email = "test@example.com",
-                storage = "redis",
-                storage_config = {
-                    redis = {
-                        base = {
-                            host = "localhost",
-                            port = 57198,
-                            password = "secret",
-                            database = 2
-                        }
+                minute = 200,
+                redis = {
+                    base = {
+                        host = "localhost",
+                        port = 57198,
+                        username = "test",
+                        password = "secret",
+                        ssl = true,
+                        ssl_verify = true,
+                        server_name = "test.example",
+                        timeout = 1100,
+                        database = 2,
                     }
                 }
-
             }
             deep_matches(expected_config, body.data[1].config)
             admin_client:close()
