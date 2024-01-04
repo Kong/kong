@@ -45,6 +45,8 @@ local PHASES = phase_checker.phases
 
 
 cjson.decode_array_with_array_mt(true)
+cjson.encode_sparse_array(nil, nil, 2^15)
+cjson.encode_number_precision(16)
 
 
 local function new(self)

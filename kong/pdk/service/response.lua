@@ -24,6 +24,8 @@ local check_phase = phase_checker.check
 
 
 cjson.decode_array_with_array_mt(true)
+cjson.encode_sparse_array(nil, nil, 2^15)
+cjson.encode_number_precision(16)
 
 
 local replace_dashes       = string_tools.replace_dashes

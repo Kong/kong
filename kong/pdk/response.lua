@@ -13,13 +13,14 @@
 
 
 local buffer = require "string.buffer"
-local cjson = require "cjson.safe"
+local cjson = require "cjson.safe".new()
 local checks = require "kong.pdk.private.checks"
 local phase_checker = require "kong.pdk.private.phases"
 local utils = require "kong.tools.utils"
 local request_id = require "kong.tracing.request_id"
 local constants = require "kong.constants"
 
+cjson.encode_sparse_array(nil, nil, 2^15)
 cjson.encode_number_precision(16)
 
 local ngx = ngx
