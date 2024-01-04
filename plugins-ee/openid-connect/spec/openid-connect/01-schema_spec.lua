@@ -45,7 +45,7 @@ end
 
 
 
-describe(PLUGIN_NAME .. ": (schema)", function()
+describe(PLUGIN_NAME .. ": (#schema)", function()
   local bp
 
   lazy_setup(function()
@@ -264,7 +264,9 @@ describe(PLUGIN_NAME .. ": (schema)", function()
   end
 
   describe("referenceable fields", function()
+    local old_kong
     lazy_setup(function()
+      old_kong = _G.kong
       _G.kong = {
         log   = require "kong.pdk.log".new(),
         vault = require "kong.pdk.vault".new(),
@@ -279,7 +281,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
       helpers.unsetenv("TEST_SCOPE_BAR")
       helpers.unsetenv("TEST_LOGIN_URI")
       helpers.unsetenv("TEST_LOGOUT_URI")
-      _G.kong = nil
+      _G.kong = old_kong
     end)
 
     it("scopes", function()
@@ -304,4 +306,46 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
   end)
 
+
+  describe("mTLS Client Authentication", function()
+    local crt_id = utils.uuid()
+    local plugin_config = {
+      issuer = "https://accounts.google.com/.well-known/openid-configuration",
+    }
+
+    for tls_client_auth_config_k, tls_client_auth_config_v in pairs{
+      client_auth                        = { "tls_client_auth", "self_signed_tls_client_auth" },
+      token_endpoint_auth_method         = "self_signed_tls_client_auth",
+      introspection_endpoint_auth_method = "tls_client_auth",
+      revocation_endpoint_auth_method    = "tls_client_auth",
+    } do
+      describe("using auth method config key: " .. tls_client_auth_config_k, function ()
+        plugin_config[tls_client_auth_config_k] = tls_client_auth_config_v
+
+        it("validates client certificate id", function()
+          -- valid cert id
+          plugin_config.tls_client_auth_cert_id = crt_id
+          local ok, err = validate(plugin_config)
+          assert.is_truthy(ok)
+          assert.is_nil(err)
+
+          -- cert id is nil
+          plugin_config.tls_client_auth_cert_id = nil
+          ok, err = validate(plugin_config)
+          assert.is_falsy(ok)
+          assert.same({
+            config = "tls_client_auth_cert_id is required when tls client auth is enabled"
+          }, err)
+        end)
+      end)
+    end
+
+    it("accepts certificates without auth method", function()
+      -- valid cert id
+      plugin_config.tls_client_auth_cert_id = crt_id
+      local ok, err = validate(plugin_config)
+      assert.is_truthy(ok)
+      assert.is_nil(err)
+    end)
+  end)
 end)

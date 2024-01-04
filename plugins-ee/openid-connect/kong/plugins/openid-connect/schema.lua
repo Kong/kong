@@ -9,10 +9,11 @@
 local Schema = require "kong.db.schema"
 
 
-local typedefs  = require "kong.db.schema.typedefs"
-local oidcdefs  = require "kong.plugins.openid-connect.typedefs"
-local cache     = require "kong.plugins.openid-connect.cache"
-local arguments = require "kong.plugins.openid-connect.arguments"
+local typedefs          = require "kong.db.schema.typedefs"
+local table_contains    = require "kong.tools.utils".table_contains
+local oidcdefs          = require "kong.plugins.openid-connect.typedefs"
+local cache             = require "kong.plugins.openid-connect.cache"
+local arguments         = require "kong.plugins.openid-connect.arguments"
 
 
 local get_phase = ngx.get_phase
@@ -82,8 +83,39 @@ local function validate_proof_of_possession(conf)
   return true
 end
 
+
+local function validate_tls_client_auth_certs(conf)
+  local client_auth = conf.client_auth
+  client_auth = type(client_auth) == "table" and client_auth or {}
+
+  local function has_auth_method(value)
+    return table_contains(client_auth, value)                or
+           conf.token_endpoint_auth_method         == value  or
+           conf.introspection_endpoint_auth_method == value  or
+           conf.revocation_endpoint_auth_method    == value
+  end
+
+  local tls_client_auth_enabled = has_auth_method("tls_client_auth") or
+                                  has_auth_method("self_signed_tls_client_auth")
+  if not tls_client_auth_enabled then
+    return true
+  end
+
+  local tls_client_auth_cert_id = conf.tls_client_auth_cert_id ~= ngx.null and conf.tls_client_auth_cert_id
+  if not tls_client_auth_cert_id then
+    return false, "tls_client_auth_cert_id is required when tls client auth is enabled"
+  end
+  return true
+end
+
+
 local function validate(conf)
   local ok, err = validate_issuer(conf)
+  if not ok then
+    return false, err
+  end
+
+  ok, err = validate_tls_client_auth_certs(conf)
   if not ok then
     return false, err
   end
@@ -212,6 +244,8 @@ local config = {
                   "client_secret_post",
                   "client_secret_jwt",
                   "private_key_jwt",
+                  "tls_client_auth",
+                  "self_signed_tls_client_auth",
                   "none",
                 },
               },
@@ -551,6 +585,8 @@ local config = {
                 "client_secret_post",
                 "client_secret_jwt",
                 "private_key_jwt",
+                "tls_client_auth",
+                "self_signed_tls_client_auth",
                 "none",
               },
             },
@@ -643,6 +679,8 @@ local config = {
                 "client_secret_post",
                 "client_secret_jwt",
                 "private_key_jwt",
+                "tls_client_auth",
+                "self_signed_tls_client_auth",
                 "none",
               },
             },
@@ -737,6 +775,8 @@ local config = {
                 "client_secret_post",
                 "client_secret_jwt",
                 "private_key_jwt",
+                "tls_client_auth",
+                "self_signed_tls_client_auth",
                 "none",
               },
             },
@@ -1764,6 +1804,37 @@ local config = {
               type = "boolean",
               default = true,
             }
+          },
+          {
+            tls_client_auth_cert_id = typedefs.uuid {
+              description = "ID of the Certificate entity representing the client certificate to use for mTLS client authentication for connections between Kong and the Auth Server.",
+              required = false,
+              auto = false,
+            },
+          },
+          {
+            tls_client_auth_ssl_verify = { description = "Verify identity provider server certificate during mTLS client authentication.", required = false,
+              type = "boolean",
+              default = true,
+            },
+          },
+          {
+            mtls_token_endpoint = typedefs.url {
+              description = "Alias for the token endpoint to be used for mTLS client authentication. If set it overrides the value in `mtls_endpoint_aliases` returned by the discovery endpoint.",
+              required = false,
+            },
+          },
+          {
+            mtls_introspection_endpoint = typedefs.url {
+              description = "Alias for the introspection endpoint to be used for mTLS client authentication. If set it overrides the value in `mtls_endpoint_aliases` returned by the discovery endpoint.",
+              required = false,
+            },
+          },
+          {
+            mtls_revocation_endpoint = typedefs.url {
+              description = "Alias for the introspection endpoint to be used for mTLS client authentication. If set it overrides the value in `mtls_endpoint_aliases` returned by the discovery endpoint.",
+              required = false,
+            },
           },
         },
         shorthand_fields = {

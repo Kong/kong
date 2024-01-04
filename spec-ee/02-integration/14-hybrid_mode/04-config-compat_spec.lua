@@ -12,6 +12,7 @@ local STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
 local FIELDS = require("kong.clustering.compat.removed_fields")
 local CHECKERS = require("kong.clustering.compat.checkers")
 local version = require("kong.clustering.compat.version")
+local tablex = require "pl.tablex"
 
 local admin = require "spec.fixtures.admin_api"
 
@@ -159,7 +160,7 @@ describe("CP/DP config compat #" .. strategy, function()
       "services",
       "plugins",
       "clustering_data_planes",
-    }, {'graphql-rate-limiting-advanced', 'rate-limiting-advanced'})
+    }, {'graphql-rate-limiting-advanced', 'rate-limiting-advanced', 'openid-connect'})
 
     PLUGIN_LIST = helpers.get_plugins_list()
 
@@ -179,7 +180,7 @@ describe("CP/DP config compat #" .. strategy, function()
       db_update_frequency = 0.1,
       cluster_listen = CP_HOST .. ":" .. CP_PORT,
       nginx_conf = "spec/fixtures/custom_nginx.template",
-      plugins = "bundled,graphql-rate-limiting-advanced,rate-limiting-advanced",
+      plugins = "bundled,graphql-rate-limiting-advanced,rate-limiting-advanced,openid-connect",
     }))
   end)
 
@@ -347,6 +348,32 @@ describe("CP/DP config compat #" .. strategy, function()
         checker = CHECKERS,
         validator = function(config)
           return config.identifier == 'consumer'
+        end
+      },
+      {
+        plugin = "openid-connect",
+        label = "w/ unsupported client auth methods",
+        pending = false,
+        config = {
+          issuer = "https://test.test",
+          client_auth = {
+            "client_secret_post",
+            "client_secret_basic",
+            "tls_client_auth",
+            "self_signed_tls_client_auth"
+          },
+          tls_client_auth_cert_id            = "821a7065-ebce-43a2-adb6-2dcb1a3d6ef9",
+          token_endpoint_auth_method         = "tls_client_auth",
+          introspection_endpoint_auth_method = "self_signed_tls_client_auth",
+          revocation_endpoint_auth_method    = "self_signed_tls_client_auth"
+        },
+        status = STATUS.NORMAL,
+        checker = CHECKERS,
+        validator = function(config)
+          return tablex.compare({ "client_secret_post", "client_secret_basic" }, config.client_auth, "==") and
+          config.token_endpoint_auth_method         == nil and
+          config.introspection_endpoint_auth_method == nil and
+          config.revocation_endpoint_auth_method    == nil
         end
       }
     }

@@ -6,232 +6,65 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local ngx_ssl = require "ngx.ssl"
+local tablex = require "pl.tablex"
+
 local helpers = require "spec.helpers"
 local http_mock = require "spec.helpers.http_mock"
+local fixtures_certificates = require "spec.openid-connect.fixtures.certificates"
+
+local pl_file = require "pl.file"
 local cjson = require "cjson"
 
+
 local PLUGIN_NAME = "openid-connect"
+local KONG_HOSTNAME = "kong"
+local PROXY_PORT_HTTPS = 8000
+local UPSTREAM_PORT = helpers.get_available_port()
+local USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36" -- luacheck: ignore
+
+-- Keycloak:
 local KEYCLOAK_HOST = "keycloak"
 local KEYCLOAK_SSL_PORT = 8443
 local REALM_PATH = "/realms/demo"
 local ISSUER_SSL_URL = "https://" .. KEYCLOAK_HOST .. ":" .. KEYCLOAK_SSL_PORT .. REALM_PATH .. "/.well-known/openid-configuration"
+---- Clients:
 local KONG_CLIENT_ID = "kong"
 local KONG_CLIENT_SECRET = "X5DGMNBb6NjEp595L9h5Wb2x7DC4jvwE"
-
-local PROXY_PORT = 8000
-local UPSTREAM_PORT = helpers.get_available_port()
-
-
-local ROOT_CA_CERT = [[
------BEGIN CERTIFICATE-----
-MIIDHzCCAgegAwIBAgIUS9LvDXbMV9qVUqdF8pfHdsVz22cwDQYJKoZIhvcNAQEL
-BQAwHjEcMBoGA1UEAwwTcm9vdC55b3VyZG9tYWluLmNvbTAgFw0yMzA5MjcwODQ2
-MDFaGA8yMTIzMDkwMzA4NDYwMVowHjEcMBoGA1UEAwwTcm9vdC55b3VyZG9tYWlu
-LmNvbTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAMUq/OhSKsR2G7fz
-j46rQFXpA5XJS8oWGmwRTSyHt+GJ4NAb4z4CxYe76FYkgY3yirOKau1vPNWb8O5R
-2k0ijgVZ8iK+zHbnXNJiO4WEVp6V2hyss6HaXInteI+ghoxA2qEJnsV8ZXSMXTJM
-YNpFEkaI25iKlEfWVU+8evIpX7ttbtnalWt2appy7rb+PuOudi0zv1e/+6MVtTKu
-4tOiQ6EX4ynD+wlodRcjjsW5AwtMC5pbPmVqJDXIFiLA0R+yx87pRboffHZhHiD6
-Q8L1HSZC3elObddKiF4BHZw/e4G1DGmzxZgOUPxndi6UE0ZOuH3DJa6W+I7vTqfB
-aBQnlCUCAwEAAaNTMFEwHQYDVR0OBBYEFB3zuCXHhuvl0EgMgJ7Os7FwzaZUMB8G
-A1UdIwQYMBaAFB3zuCXHhuvl0EgMgJ7Os7FwzaZUMA8GA1UdEwEB/wQFMAMBAf8w
-DQYJKoZIhvcNAQELBQADggEBALzRxfnzOVXqxEVZx26L21vWy3myvWG7ZOUp1kQz
-SwctLIKFzuoLVH+GN+kZQJ50kMycA+U1UFO8dRjSTHl64XyJknQAMvlIbTcu2K2q
-ZkoIe2YYD3VmVS/FbDTCQrAVXwF+fS7k8gvT3A4hNNkaCR/pOG5dRATnWg+dJ1b+
-yk4Mzob48zwyW7xEhjO4HigRUU+NPmNY6i11lOsPPjlLwrdZ2uUnYforcupHxz/f
-EPTVwOymaXoBYdb228pUWyHm8WXP/+k5LQEfoteJ81n4hR9GioMiqGGdW14ev+Se
-M86Hcd5BSowSPTbjT2RmrOqmCFEBey4edyrFhOzzPsPuD50=
------END CERTIFICATE-----
-]]
+local TLS_AUTH_CLIENT_ID = "kong-client-tls-auth"
+---- Users:
+local USERNAME = "john"
+local PASSWORD = "doe"
+local PASSWORD_CREDENTIALS = "Basic " .. ngx.encode_base64(USERNAME .. ":" .. PASSWORD)
 
 
-local INTERMEDIATE_CA_CERT = [[
------BEGIN CERTIFICATE-----
-MIIDJzCCAg+gAwIBAgIUGJzjzGqQ0kBGQoled6IQnwy9rggwDQYJKoZIhvcNAQEL
-BQAwHjEcMBoGA1UEAwwTcm9vdC55b3VyZG9tYWluLmNvbTAgFw0yMzA5MjcwODQ2
-MDJaGA8yMTIzMDkwMzA4NDYwMlowJjEkMCIGA1UEAwwbaW50ZXJtZWRpYXRlLnlv
-dXJkb21haW4uY29tMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAkwhb
-4Zy2iiVRxpBE7dcaOXuBnSsnwnC+0SA0YeaNHTEKbrYYPkoQl+56w447GH6sAToa
-yjrFDS/bmZyPnugdM6rFM34hDkR4yeBFMXjcPplY6NWB6ZVff7mx1aCMgHLhDpr8
-nlkgGuqHZefm3fSbmbaDNXQZib6+ADef5W4XE8VpMuw2zq1KafcBzDN6Pj+7kSNG
-qhg24KWNGprXdGuuHoxaZG2pqnjs+fWG+0nlbYcFoHBCBNO3b0XpbIBzePi/JwXg
-7t/j9V4U75lQyb55PMEiNippUYjyWr+MU8Gv9Ze0SUd7BC35smghmzzg9p47k1aw
-Fu2V6lSIBj7s+DszGQIDAQABo1MwUTAdBgNVHQ4EFgQU+J2B9kno5+9xzUxqQX/x
-MipT/iQwHwYDVR0jBBgwFoAUHfO4JceG6+XQSAyAns6zsXDNplQwDwYDVR0TAQH/
-BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAQEAwoqvzkBl37C0CIk3+zLd8+a5egZY
-py2aSQOGL6EfqtSExJndc6KFbO5gRPKl4CJvnIc1Mia+Sb5XJTs/R9fG475HtNNY
-tcykcQCLv3cGgLLxITrSVaKAasY8IrwSuRl8N7bivxmN8h7y7XKJZRnLvFvc2y2Q
-RJlUfjLK9rNam9NksBxjWEF5Tu0fHyyHlksbrd7LH76yqerUq7mEcWM+dduI4XUb
-CQtFcRMPeATWXHWqTWzKx51XWraczLhkNFMIFgyknX3nCEpqe+scatwZeQcEmCGr
-EwpEubSG3nXe22vVtHr295tAi3vHc0bsYZg4Jv+rK3QfeSj58Jvi523SEA==
------END CERTIFICATE-----
-]]
+-- Certificates:
+local CERT_ROOT_FOLDER = "/kong-plugin/.pongo/"
 
--- x5t_s256 hh_XBSxIT3qG46n5igJA0MsFEgXosYoWvzeRZfRCknY
-local USER_CERT_STR = [[
------BEGIN CERTIFICATE-----
-MIICvjCCAaYCFHYzBjKWczsVgX/S8QMBtuG63E7/MA0GCSqGSIb3DQEBCwUAMCYx
-JDAiBgNVBAMMG2ludGVybWVkaWF0ZS55b3VyZG9tYWluLmNvbTAgFw0yMzA5Mjcw
-ODQ2MDNaGA8yMTIzMDkwMzA4NDYwM1owDzENMAsGA1UEAwwEa29uZzCCASIwDQYJ
-KoZIhvcNAQEBBQADggEPADCCAQoCggEBALkDb0lH8uUUfiiFF24mO7Wg7oAWULOt
-HnoK/WIesO1qzfPZrEGfUghPZKhfYfJBAjhzAEr0TkXxXJIk7p1v3GScJUpvSRtU
-8kCKqp+HuF1psSuULyuYnTDI5wuXOBKOss2RU3xWdFz2Mug6LbsZ0g5AYxk88saD
-tM0OhV02F4kRipLtnKst5NR17SeJtdskvgyV1BCsXvveCs0t5I1fykyvwbpNhzv6
-V1UPHDq506H9VaT0SZ6mJu202KNeStibm13cmXlVMYP5V3raN1f4ZlKAuf6cp7Pv
-bzP5K8dOjc9fTOf3m2ryjlGL1SsoK4Z2qBjm8a7m61Z0l6qy/w4RqicCAwEAATAN
-BgkqhkiG9w0BAQsFAAOCAQEADAZlkXFXaSj3NK9MGtRlP6la05/sVGGbEHG3JeYd
-d2TjQDVJCgY3eceP2fxpwKxzQdOzPd4EfbhDbpOYqV5+cZdlZBYX/Yz0lBOknTTS
-5ywSPq/rnU6FSGdnHxY+Edkz+oKiu3ADOMdatZ1pPyFslGTsY48/bj5/+jlnTx2u
-yfuX1qRM2B/YFv1P4NkTjEgjbFM7J313RBGkVws+TN6HwEQS8a6FpNt1JdHrhj8O
-+jqcl6m9M4/KysxCladGVo6WTMVr3Yq2m+J3rYkaJkK5w16gMaYvx2iDVr/aaAUB
-EjkqX1fpGhhkqsLSggd1CZsLyOAlQ6b/q+JBeeyY0SD08w==
------END CERTIFICATE-----
-]]
+local ROOT_CA_CERT = fixtures_certificates.ROOT_CA_CERT
+local INTERMEDIATE_CA_CERT = fixtures_certificates.INTERMEDIATE_CA_CERT
 
-local USER_KEY_STR = [[
------BEGIN PRIVATE KEY-----
-MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC5A29JR/LlFH4o
-hRduJju1oO6AFlCzrR56Cv1iHrDtas3z2axBn1IIT2SoX2HyQQI4cwBK9E5F8VyS
-JO6db9xknCVKb0kbVPJAiqqfh7hdabErlC8rmJ0wyOcLlzgSjrLNkVN8VnRc9jLo
-Oi27GdIOQGMZPPLGg7TNDoVdNheJEYqS7ZyrLeTUde0nibXbJL4MldQQrF773grN
-LeSNX8pMr8G6TYc7+ldVDxw6udOh/VWk9EmepibttNijXkrYm5td3Jl5VTGD+Vd6
-2jdX+GZSgLn+nKez728z+SvHTo3PX0zn95tq8o5Ri9UrKCuGdqgY5vGu5utWdJeq
-sv8OEaonAgMBAAECggEAEXXihc71fGsfsOFGoc2X6v9CIvJ4MUzQSIJLAXyWBAIF
-Z9MOL69ChahAfqdpzfwWoo8v4uMFlBJAQ0abAl6xNQmLd2fjRWIR7sdnbODZJG+6
-GbvFa97eTuFW9MATuaSf+UiS0XQzTSarDUGYWUUJjvDCqXoYC2YYpRWOvopBVF0b
-VnwhCAhEDlCPI5dmSCYAtcQpJAHYUjcKsOgL1VH6AZFQPrcFhBc9EnJcKcTo0Lrn
-dNUJ4fqTPMZC05UpqBhr2A/k243tA2OtY0r6dHV7ENDE6a2LbwlTAGIHsKNfT8YD
-OpqVqtpo/KWB+9jVDKvzh1u2lIqdbJrsVtQ4a5hZYQKBgQDSy0nMDwIfHbu7Yb8e
-TpLWOD3zwSroMmhlqnYkV6N3eTM/byVjGTutOciO4WcsLyP2mqok9OnlM279/Cs4
-f2N8vOi3FJBtO2uav4WuJPy9ZB6pBVRd81+KY2mRhxKmp6xocotE97eTT493zUkz
-XtNulYIl2Hkm6AQgY0N+ZxrdNwKBgQDgsMXmNY0+QpoD59/0aBfZ2VtbW4JxnFQ0
-mNtmFnPLP/Ug5pEjomczHzsvmBvz/phMN+w9dIeZYM61HlJaW3N53+sc5rPF7Q1a
-bj77YJkWZY2UNFPfb/wg182PoJaiBud1TL58jXf/JPtNyggoOs0lGE59RJojqWgG
-SxidGFeSkQKBgFAPS8EH9jtRNKsPjeH538Ui6Uy6EgzMkGAEpQhajMhkrPUrxpxj
-ygmZx7WUoHXklZkk1vhgWLFnnoEylEvJ/kQzD4PxeIU0K0ND+IbSn3djHk39qzRf
-qerKpR7TmV7Ykh+9WW3hU8TMU+YhfurW2iDHAf5TwHfpaR/P86N/j3FzAoGBAMgp
-0nLNvCD91hSqqWEipjTFJFSThfZN7NnaXoFoeQlU1bvUivGyyLrLFL/GgwhvAx/L
-JeJtgCsMCblh5L1oAMxOxTW+8+Hb1ux7kBICsP45w9GGeD1xlqtvdEmCJw76lZFy
-p7Nvl7mtKU7YL0IfeAeWyr1fsu0YCnqoxamVONZxAoGBAJy7nEjTVij9nmkMKGjm
-MM7yIkcdIXNMFDw7Tbecrt6e50wTZEJhqfloghGyHEXI4tnBqt36OduxyeqBnv8e
-pDbfU/KpVKSzt+MPB+wIOV5ksg60behg6x82KdooI+gJ9SWG3Ou73XhmDje8ssxU
-taW8qv1lggdpySX4Q4TtYMua
------END PRIVATE KEY-----
-]]
+---- x5t_s256 hh_XBSxIT3qG46n5igJA0MsFEgXosYoWvzeRZfRCknY
+local USER_CERT_STR = fixtures_certificates.USER_CERT_STR
+local USER_KEY_STR = fixtures_certificates.USER_KEY_STR
 
 local USER_CERT = ngx_ssl.parse_pem_cert(USER_CERT_STR)
 local USER_KEY = ngx_ssl.parse_pem_priv_key(USER_KEY_STR)
 
--- x5t_s256 S7mEqyMUtjPZ-xK9HqK2sEoeFjNOz0IB7IGY_KzwQIE
-local USER_CERT_STR_2 = [[
------BEGIN CERTIFICATE-----
-MIICvjCCAaYCFE8AcNjBACReSIJ7/McD2OXC8AOrMA0GCSqGSIb3DQEBCwUAMCYx
-JDAiBgNVBAMMG2ludGVybWVkaWF0ZS55b3VyZG9tYWluLmNvbTAgFw0yMzEwMDMw
-NzMyNTVaGA8yMTIzMDkwOTA3MzI1NVowDzENMAsGA1UEAwwEa29uZzCCASIwDQYJ
-KoZIhvcNAQEBBQADggEPADCCAQoCggEBAMs09++evhu5QMfVPioTxmUae11rjrb2
-gO1ePfqV5+BNRaez/DorwrkeeZCF+Xr4b0pLa11EEIAy29SCmv/hjRu3UN9lXFd9
-b257gUebNmnQEjnPS9IpjS4aWw2sLsxSQyYpTZ8jHOJo4f4Et/C2y/fU+ZjIcJlp
-Vf9kiEkS3FBPkciSjF5ycloxJIH7WRextklAxzxBzzopIYJB7N8ja/d9RIdmPdoe
-ynVG2Q7lVox0LshYtBSBeLSwF9EMKsoErgo0IqB8uE0fFoCrR0ZGgAY01Tjy4Rh/
-cYF38zM3F4ZsBPIKJVdvnQdw2ZW0dyTEdE15RvghmiJX4SiVlbKQJMcCAwEAATAN
-BgkqhkiG9w0BAQsFAAOCAQEAfdpR5TPUCu6flTuMYpmBtvUdDLtwSuQbRFx7f/Ef
-RiG4Afsnp9zXVleU1Iq2nc25zT+NyV3dCnqHraVGi9RkRfQ1XuQxqRjzGZruczhh
-hVOixw2qNN8T2TGh8CCELvXgUWiAOi4njO/5XtXqxaa4tM5rVQjKsTE7FXuzeNAw
-TZqocFwISUFvZBoXMSnSE+z715/O355bJ9K0eQEu5dM/3KXAtEN3lSMsmCDdBt1v
-pFQyW2rTsV6ysz1Z1xFDHOGP1DhWx+oM8Uio0rt43m3Sa2iTn3akEG+WtVbpIurl
-NSltGjOcPVsTtLDcgepBcrsx0IU7wNlkshkX3Z82U9CyTQ==
------END CERTIFICATE-----
-]]
-
-local USER_KEY_STR_2 = [[
------BEGIN PRIVATE KEY-----
-MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDLNPfvnr4buUDH
-1T4qE8ZlGntda4629oDtXj36lefgTUWns/w6K8K5HnmQhfl6+G9KS2tdRBCAMtvU
-gpr/4Y0bt1DfZVxXfW9ue4FHmzZp0BI5z0vSKY0uGlsNrC7MUkMmKU2fIxziaOH+
-BLfwtsv31PmYyHCZaVX/ZIhJEtxQT5HIkoxecnJaMSSB+1kXsbZJQMc8Qc86KSGC
-QezfI2v3fUSHZj3aHsp1RtkO5VaMdC7IWLQUgXi0sBfRDCrKBK4KNCKgfLhNHxaA
-q0dGRoAGNNU48uEYf3GBd/MzNxeGbATyCiVXb50HcNmVtHckxHRNeUb4IZoiV+Eo
-lZWykCTHAgMBAAECggEADJncRh+x6kYynjG7CSDwzJQ30jM5Rl9C33VYopFpL5+b
-Eis3GORdztz07OFh9x4wyIqkvcPawhhlSWhP9E4oUe+sNC4067f7kP5XpfkaBrXA
-a5VPPlkVSCaaPt7OiB0RzOwCxDuJLwESAo6IWYT8YQHz+GV1lg3SJ2Q0j1N8Ff68
-3nmXfyrAptUHLepmCyNPNJ5cTkBkkVDG9eGb22Cz27NSlsfW+tCoK2My9S1GYzkL
-PM1NGvhTN0qCEeLl2CHZzt7gRr0NT1HYtbw6W8OQHVyBzQDGjNunEw6KLmIAq3im
-8LptdRuRfgkhVjHWAOY8BC7RNdjJvyoFeXF6alDsAQKBgQDrT6KIMXgBKpUX3Q1M
-JMKQxbQ5aimWAUUfqCUdvOtKwToKLdJHVyMmqmEOuwcLFOn4KpFNv86k2WSbY3cI
-MttUrZTHvwlHonqVPEr9NFMqjjaRS9JbUtnFxZhi6coHx475eY74pZBAEnGpZ6Gi
-VdDm9GlIKIc+roWWHCYesxNONwKBgQDdErw9EqHCuVSdl7pmTQ29NBSPCr5YW9Re
-KC/ZZviuinjAxMN5Xjfsm9G8spgF5G0U/P0zaoeabpZ8p7nwgoTxgV3lnRVz6zMe
-BJGrVJnkh1L6wqJQgPkToE6ajzWwKBpfiolmLEO8GZ54yhgcMfXDHexhSe8LVFcK
-U453Q08V8QKBgQCnRHJqkY+WdKiK0A11xOOxeXgFIBvzj2+Ncz7/Bp3TA8u4FJ5X
-K+/GunJHwFbfX7x5NfkX5XKE6CuF8YxZfZ0/cixCWN/F1g+BKdy8ZIeBxpmvatBb
-LmezGCScm0eLhCVz3R7uTPJfOT0miI3zEUFwCukT7AtHWVOIQvYt+GmOvQKBgHag
-mg/vkoup5WTXSTeh+1BexPVo33EMfa20xNBU9/a46UkPjJDw5PN7PZWTBA6NX5dW
-lgvkCzXsR6ZGXnlXoDzznU4b96oHOJvP+dbFA/tkPju++1hVjNJiQCuh0z5elqBT
-95yy/fnOiYHpd/yRNn5n7TLbeIFM1ZP9+EG5BZQRAoGBAIfOKJ+6oRwhGLiq6Cnr
-9NhPXBjXF+YTBHqNP53EoEq3lM1XvYgP/N3zmwFeWHoV3MRa9UoS9iJ9dYL96/RT
-zHrFceI9y6LN3MNmn/heRFhocwa+0q7SKfonuduuc4wMa/yJWftuVmZm3z2KTEy5
-yR5Nho7rSAQfuIxSGga1RUM/
------END PRIVATE KEY-----
-]]
+---- x5t_s256 S7mEqyMUtjPZ-xK9HqK2sEoeFjNOz0IB7IGY_KzwQIE
+local USER_CERT_STR_2 = fixtures_certificates.USER_CERT_STR_2
+local USER_KEY_STR_2 = fixtures_certificates.USER_KEY_STR_2
 
 local USER_CERT_2 = ngx_ssl.parse_pem_cert(USER_CERT_STR_2)
 local USER_KEY_2 = ngx_ssl.parse_pem_priv_key(USER_KEY_STR_2)
 
--- key generated with a same CA to the correct one
--- x5t_s256 oDLR7Uo02EQ928ECU87wRgGmZU8-9s_kf06OfdiglAo
-local RANDOM_CERT = [[
------BEGIN CERTIFICATE-----
-MIICwjCCAaoCFDTJk8FARG5sxanHl3L0Lblpa+RqMA0GCSqGSIb3DQEBCwUAMCYx
-JDAiBgNVBAMMG2ludGVybWVkaWF0ZS55b3VyZG9tYWluLmNvbTAgFw0yMzA5Mjcw
-ODQ2MDJaGA8yMTIzMDkwMzA4NDYwMlowEzERMA8GA1UEAwwIa2V5Y2xvYWswggEi
-MA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDcXrc2v8aPpaOqfDgGsQtwvY+i
-2qbG+3EDvmv4fVAdcOowU1o5F4E7vue394LS9Fl60giso7K/OjYBfw9wbQORY4Sn
-E2ElviL0tO5m7DD3yA//YUCj52LJFXt5HRywHRcRQYTJq7xCzih+ggColdexDX3S
-Uflbq698aHfdn6gb1bcZBxFo4LvO35x46p7xT33kOQKgFaJ2TDJ259MwasamPOHJ
-qG7pG0BtPmCdaeLAYZj+7OsAqTumMrXwK7ajOlpqJw/8SyHqq2xaDKnrBlaxNQhm
-cwqBxcWFVRkjnvJlMp4gYLgb/2QAii14DyS9qdG5+SeqimRSN65XxQ7KIduNAgMB
-AAEwDQYJKoZIhvcNAQELBQADggEBAHg7OrXpAkLCZwqH9FTeElW9kBxZC3IioBjR
-e99DIavt1Gd4mB3s2ZxTOeeg5WR7jDIM4NMbNbSJdNjOUFXje0Mj5aK1n8H9F7fT
-kxgesMq4xryjRaELillAxIcqfjyw5tPLdPsUcUFrYZuEaXzDzVD5HCiO8xv5L5AS
-OiIjGdARQ8WTDqmPyPwSECIG6eZ7/Aowk57ddtj4RI+9HP8Esh8Ttm2+GqO5sEMq
-+IF3+iJUQbVNuxQWP8N2FRm2KkE+TvvPrijRnjdFNKTjSpFMrUFTzRatydtodI6P
-f5geFlaTDSopdj5pC5v9Xw1ut1Bqve6Xf7l2L9mK7HkAYxEW1Fk=
------END CERTIFICATE-----
-]]
-
-local RANDOM_KEY = [[
------BEGIN PRIVATE KEY-----
-MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDcXrc2v8aPpaOq
-fDgGsQtwvY+i2qbG+3EDvmv4fVAdcOowU1o5F4E7vue394LS9Fl60giso7K/OjYB
-fw9wbQORY4SnE2ElviL0tO5m7DD3yA//YUCj52LJFXt5HRywHRcRQYTJq7xCzih+
-ggColdexDX3SUflbq698aHfdn6gb1bcZBxFo4LvO35x46p7xT33kOQKgFaJ2TDJ2
-59MwasamPOHJqG7pG0BtPmCdaeLAYZj+7OsAqTumMrXwK7ajOlpqJw/8SyHqq2xa
-DKnrBlaxNQhmcwqBxcWFVRkjnvJlMp4gYLgb/2QAii14DyS9qdG5+SeqimRSN65X
-xQ7KIduNAgMBAAECggEAEb4MeTt6hKE86qKCrkM93Q9eC6oYCGhBIqCHt+N6+kvX
-hxmG55bVYFaP+HdUkKB8vc9ARIoPf6bzpy4wM4iLY37ENOFyDmRfEx2oHiBBFwoE
-A7c0SZ39DZyNquQlpaZJ76k7RDNv/l7z0q+r1ubtjUM9UJwp++/4Ood8sxrCIa9u
-cdBv9+CJvfZQRLaaeTec3MxJ0/wYPownfrrXFQTI8MYVaY4ccJaLyCyCQbODDlPQ
-WAKdpsF9UyV/1ILB9T2/rxMY/iHxU50z1d6zIqQGpZoDizPV1JHfwTdcIl3G62mc
-NNzv9HFDIjC/Icvfz98CHxG8oz8zUQmS5z8FM5g5IQKBgQDezefEYnaFg2xquLV1
-VkjIWAQmOOlGgQBTM2bOwIhsAulCSJ2QZs/cPuGf+DFsoo0mabq55zC6cT1NT8UV
-uKFgk7T/zDLXnav5erNk2zWihRAwqTzHEjDukvF6LzIWCRPWaU4i3lawNDwcOJ3q
-y+w/xOMJOxTmT8AZtXTza3fT3QKBgQD9M/YMNyArWqhI9wOLeRvPaV0sJtftskZp
-chzQh9upIrsscHLRLm78IC5l3CD3eH1/LnaXyr66qy3JXnZG3m8cAJGlAKwyQgHg
-hHNMhFIuhrFwHtu6pZIny8nOE/1nQT2IvckECQghsP7lb1QJwUfeRVclWY+2bGKT
-W2i1I4zDcQKBgE5CrSJCI7eKDk7+Sl7IzA/zOqHiY64sKd0PtRDyd/jYnO53a0EJ
-nAGU5NO37kRmZIYVpU0fc/JJTGsXlfanP6gYuf8PztwFuh6Lhu/qP9CyRJmTGJIk
-RaPHYaK1aTZsQdeSbau5xWFnN6YCDRYoQvezRLw9UH4FjUh6gHXwTcrRAoGAJlN3
-KuItPGK8lk7Neo8aZorMT6KRjKkvf0aGlgn6dd+L9W4P8xnUMtWsMD7hvpO+a0Hd
-MZy+wgKnK5Pg01lX+CUd5pvzdKgJILLrwOlGh0RcF1yUZewp81wlb8wWz0pQxiH0
-C2hSksb3zkLLta5L8pkMV9r2peZCBYwQjVqUNAECgYAdhi+X+Un+U56vsETjbHmt
-Kpg9RJIV9Yy5IM3oj7+hVcjdBNy54sHD95F7I4uQ3q9XmUQENl1kdWvAAlR2xaMe
-Fqw5OLpDViA4O/v3PowZL+cFbCtbmTEVNyboiCjKoiC5Fv3LnzePVsQO/6Z/XGL7
-3yQdnIbOUTqk948/fT0Mjg==
------END PRIVATE KEY-----
-]]
+---- key generated with a same CA to the correct one
+---- x5t_s256 oDLR7Uo02EQ928ECU87wRgGmZU8-9s_kf06OfdiglAo
+local RANDOM_CERT = fixtures_certificates.RANDOM_CERT
+local RANDOM_KEY = fixtures_certificates.RANDOM_KEY
 
 local RANDOM_SSL_CLIENT_CERT = ngx_ssl.parse_pem_cert(RANDOM_CERT)
 local RANDOM_SSL_CLIENT_PRIV_KEY = ngx_ssl.parse_pem_priv_key(RANDOM_KEY)
+
 
 local function get_jwt_from_token_endpoint()
   local path = REALM_PATH .. "/protocol/openid-connect/token"
@@ -267,9 +100,15 @@ local function get_jwt_from_token_endpoint()
   return body.access_token
 end
 
+
+local function request_uri(uri, opts)
+  return require("resty.http").new():request_uri(uri, opts)
+end
+
+for _, strategy in helpers.all_strategies() do
 for _, mtls_plugin  in ipairs({"tls-handshake-modifier", "mtls-auth"}) do
 for _, auth_method in ipairs({ "bearer", "introspection" }) do
-for _, strategy in helpers.all_strategies() do
+
   describe("proof of possession (mtls) strategy: #" .. strategy .. " auth_method: #" .. auth_method .. " mtls plugin: #" .. mtls_plugin, function()
     local upstream
     local clients
@@ -341,28 +180,23 @@ for _, strategy in helpers.all_strategies() do
             KONG_CLIENT_SECRET,
           },
           proof_of_possession_mtls = "strict",
-          authorization_query_args_names = {
-            "tls_client_auth",
-          },
-          authorization_query_args_values = {
-            "true",
-          },
           auth_methods = { auth_method, "session" },
         },
       })
       assert(helpers.start_kong({
         database = strategy,
         plugins = "bundled," .. mtls_plugin .. "," .. PLUGIN_NAME,
-        proxy_listen = "0.0.0.0:" .. PROXY_PORT .. " http2 ssl",
-        lua_ssl_trusted_certificate = mtls_plugin == "mtls-auth"
-        and "/kong-plugin/.pongo/root_ca.crt,/kong-plugin/.pongo/intermediate_ca.crt" or nil,
+        proxy_listen = "0.0.0.0:" .. PROXY_PORT_HTTPS .. " http2 ssl",
+        lua_ssl_trusted_certificate = mtls_plugin == "mtls-auth" and
+          CERT_ROOT_FOLDER .. "root_ca.crt," ..
+          CERT_ROOT_FOLDER .. "intermediate_ca.crt" or nil,
       }))
 
       clients = {}
       clients.valid_client = helpers.http_client({
         scheme = "https",
         host = "127.0.0.1",
-        port = PROXY_PORT,
+        port = PROXY_PORT_HTTPS,
         ssl_verify = false,
         ssl_client_cert = USER_CERT,
         ssl_client_priv_key = USER_KEY,
@@ -370,7 +204,7 @@ for _, strategy in helpers.all_strategies() do
       clients.valid_client_2 = helpers.http_client({
         scheme = "https",
         host = "127.0.0.1",
-        port = PROXY_PORT,
+        port = PROXY_PORT_HTTPS,
         ssl_verify = false,
         ssl_client_cert = USER_CERT_2,
         ssl_client_priv_key = USER_KEY_2,
@@ -379,14 +213,14 @@ for _, strategy in helpers.all_strategies() do
       clients.malicious_client_1 = helpers.http_client({
         scheme = "https",
         host = "127.0.0.1",
-        port = PROXY_PORT,
+        port = PROXY_PORT_HTTPS,
         ssl_verify = false,
       })
 
       clients.malicious_client_2 = helpers.http_client({
         scheme = "https",
         host = "127.0.0.1",
-        port = PROXY_PORT,
+        port = PROXY_PORT_HTTPS,
         ssl_verify = false,
         ssl_client_cert = RANDOM_SSL_CLIENT_CERT,
         ssl_client_priv_key = RANDOM_SSL_CLIENT_PRIV_KEY,
@@ -469,4 +303,783 @@ for _, strategy in helpers.all_strategies() do
   end)
 end
 end
+
+
+describe("mTLS Client Authentication strategy: #" .. strategy, function()
+  local valid_cert_id   = "28a3ec7a-3fe0-4b85-909b-8c42c59f3ebf"
+  local invalid_cert_id = "60450682-f39f-4848-897b-6d6133b45de4"
+  local expired_cert_id = "7c29c59a-0d16-48f2-8806-b95f29c07d4e"
+
+  local valid_cert_path   = CERT_ROOT_FOLDER .. "client-cert.pem"
+  local valid_key_path    = CERT_ROOT_FOLDER .. "client-key.pem"
+  local invalid_cert_path = CERT_ROOT_FOLDER .. "hacker-cert.pem"
+  local invalid_key_path  = CERT_ROOT_FOLDER .. "hacker-key.pem"
+  local expired_cert_path = CERT_ROOT_FOLDER .. "expired-cert.pem"
+  local expired_key_path  = CERT_ROOT_FOLDER .. "expired-key.pem"
+
+  local VALID_CERT_STR   = pl_file.read(valid_cert_path)
+  local VALID_KEY_STR    = pl_file.read(valid_key_path)
+  local INVALID_CERT_STR = pl_file.read(invalid_cert_path)
+  local INVALID_KEY_STR  = pl_file.read(invalid_key_path)
+  local EXPIRED_CERT_STR = pl_file.read(expired_cert_path)
+  local EXPIRED_KEY_STR  = pl_file.read(expired_key_path)
+
+  local function set_up_plugin_start_kong(configs, kong_config)
+    local bp = helpers.get_db_utils(strategy, {
+      "routes",
+      "services",
+      "ca_certificates",
+      "plugins",
+    }, {
+      PLUGIN_NAME,
+    })
+
+    local service = assert(bp.services:insert {
+      name = "mock-service",
+      host = "localhost",
+    })
+
+    bp.routes:insert {
+      service = service,
+      paths   = { "/logout" },
+    }
+
+    bp.certificates:insert {
+      cert = VALID_CERT_STR,
+      key = VALID_KEY_STR,
+      id = valid_cert_id,
+    }
+
+    bp.certificates:insert {
+      cert = INVALID_CERT_STR,
+      key = INVALID_KEY_STR,
+      id = invalid_cert_id,
+    }
+
+    bp.certificates:insert {
+      cert = EXPIRED_CERT_STR,
+      key = EXPIRED_KEY_STR,
+      id = expired_cert_id,
+    }
+
+
+    for path, plugin_config in pairs(configs) do
+      local route = assert(bp.routes:insert {
+        service = service,
+        paths   = { path },
+      })
+
+      assert(bp.plugins:insert {
+        route  = route,
+        name   = PLUGIN_NAME,
+        config = plugin_config,
+      })
+    end
+
+    assert(helpers.start_kong(tablex.merge({
+      database = strategy,
+      plugins = "bundled," .. PLUGIN_NAME,
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }, kong_config or {}, true)))
+  end
+
+
+  local function get_tokens(proxy_client, path, token_key)
+    local token, inv_token
+
+    local res = proxy_client:get(path, {
+      headers = {
+        Authorization = PASSWORD_CREDENTIALS,
+      },
+    })
+    assert.response(res).has.status(200)
+    local json = assert.response(res).has.jsonbody()
+    token = json.headers[token_key]
+
+    if token_key == "authorization" then
+      assert.equal("Bearer", string.sub(token, 1, 6))
+      token = string.sub(token, 8)
+    end
+
+    if string.sub(token, -4) == "7oig" then
+      inv_token = string.sub(token, 1, -5) .. "cYe8"
+    else
+      inv_token = string.sub(token, 1, -5) .. "7oig"
+    end
+
+    return token, inv_token
+  end
+
+
+  ------------------------------------------------------
+  -- Token Endpoint
+  ------------------------------------------------------
+  describe("Authorization code flow", function()
+    local proxy_client
+
+    local valid_path = "/auth-code-valid"
+    local invalid_path = "/auth-code-invalid"
+
+    local plugin_config_auth_code = {
+      issuer = ISSUER_SSL_URL,
+      client_id = {
+        TLS_AUTH_CLIENT_ID
+      },
+      scopes = {
+        -- this is the default
+        "openid",
+      },
+      auth_methods = {
+        "authorization_code"
+      },
+      preserve_query_args = true,
+      login_action = "upstream",
+      login_tokens = {},
+      client_auth = { "tls_client_auth" },
+      upstream_refresh_token_header = "refresh_token",
+      refresh_token_param_name = "refresh_token",
+    }
+
+    local function do_auth_code_flow(path)
+      local res = proxy_client:get(path, {
+        headers = {
+          ["Host"] = KONG_HOSTNAME
+        }
+      })
+      assert.response(res).has.status(302)
+      local redirect = res.headers["Location"]
+      local auth_cookie = res.headers["Set-Cookie"]
+      local auth_cookie_cleaned = string.sub(auth_cookie, 0, string.find(auth_cookie, ";") -1)
+      local rres, err = request_uri(redirect, {
+        headers = {
+          ["User-Agent"] = USER_AGENT,
+          ["Host"] = KEYCLOAK_HOST .. ":" .. KEYCLOAK_SSL_PORT,
+        },
+        ssl_verify = false,
+      })
+      assert.is_nil(err)
+      assert.equal(200, rres.status)
+
+      local cookies = rres.headers["Set-Cookie"]
+      local user_session
+      local user_session_header_table = {}
+      for _, cookie in ipairs(cookies) do
+        user_session = string.sub(cookie, 0, string.find(cookie, ";") -1)
+        if string.find(user_session, 'AUTH_SESSION_ID=', 1, true) ~= 1 then
+          -- auth_session_id is dropped by the browser for non-https connections
+          table.insert(user_session_header_table, user_session)
+        end
+      end
+      -- get the action_url from submit button and post username:password
+      local action_start = string.find(rres.body, 'action="', 0, true)
+      local action_end = string.find(rres.body, '"', action_start+8, true)
+      local login_button_url = string.sub(rres.body, action_start+8, action_end-1)
+      -- the login_button_url is endcoded. decode it
+      login_button_url = string.gsub(login_button_url,"&amp;", "&")
+      -- build form_data
+      local form_data = "username="..USERNAME.."&password="..PASSWORD.."&credentialId="
+      local opts = { method = "POST",
+        body = form_data,
+        ssl_verify = false,
+        headers = {
+          ["User-Agent"] = USER_AGENT,
+          ["Host"] = KEYCLOAK_HOST .. ":" .. KEYCLOAK_SSL_PORT,
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+          Cookie = user_session_header_table,
+      }}
+      local loginres
+      loginres, err = request_uri(login_button_url, opts)
+      assert.is_nil(err)
+      assert.equal(302, loginres.status)
+
+      -- after sending login data to the login action page, expect a redirect
+      local upstream_url = loginres.headers["Location"]
+      local ures
+      ures, err = request_uri(upstream_url, {
+        headers = {
+          -- authenticate using the cookie from the initial request
+          Cookie = auth_cookie_cleaned
+        },
+        ssl_verify = false,
+      })
+
+      return ures, err
+    end
+
+    lazy_setup(function()
+      local plugin_config_valid_cert = tablex.merge(plugin_config_auth_code, {
+        tls_client_auth_cert_id = valid_cert_id,
+      }, true)
+      local plugin_config_invalid_cert = tablex.merge(plugin_config_auth_code, {
+        tls_client_auth_cert_id = invalid_cert_id,
+      }, true)
+
+      set_up_plugin_start_kong({
+        [valid_path] = plugin_config_valid_cert,
+        [invalid_path] = plugin_config_invalid_cert,
+      }, {
+        lua_ssl_trusted_certificate = CERT_ROOT_FOLDER .. "root_ca.crt," ..
+                                      CERT_ROOT_FOLDER .. "intermediate_ca.crt",
+        lua_ssl_verify_depth = 2,
+      })
+
+      proxy_client = helpers.proxy_client()
+    end)
+
+    lazy_teardown(function()
+      if proxy_client then
+        proxy_client:close()
+      end
+      helpers.stop_kong(nil, true)
+    end)
+
+    it("Authorizes a valid client certificate", function()
+      local ures, err = do_auth_code_flow(valid_path)
+
+      assert.is_nil(err)
+      assert.equal(200, ures.status)
+
+      local json = assert(cjson.decode(ures.body))
+      assert.is_not_nil(json.headers.authorization)
+      assert.equal("Bearer", string.sub(json.headers.authorization, 1, 6))
+    end)
+
+    it("Rejects an invalid client certificate", function()
+      local ures, err = do_auth_code_flow(invalid_path)
+
+      assert.is_nil(err)
+      assert.equal(401, ures.status)
+    end)
+  end)
+
+  describe("Password Grant", function()
+    local proxy_client
+
+    local valid_path = "/password-grant-valid"
+    local invalid_path = "/password-grant-invalid"
+
+    local plugin_config_password_grant = {
+      issuer = ISSUER_SSL_URL,
+      scopes = {
+        -- this is the default
+        "openid",
+      },
+      client_id = {
+        TLS_AUTH_CLIENT_ID,
+      },
+      upstream_refresh_token_header = "refresh_token",
+      refresh_token_param_name      = "refresh_token",
+      auth_methods = {
+        "password",
+      },
+      display_errors = true,
+      client_auth = { "tls_client_auth" },
+    }
+
+    lazy_setup(function()
+      local plugin_config_valid_cert = tablex.merge(plugin_config_password_grant, {
+        tls_client_auth_cert_id = valid_cert_id,
+      }, true)
+      local plugin_config_invalid_cert = tablex.merge(plugin_config_password_grant, {
+        tls_client_auth_cert_id = invalid_cert_id,
+      }, true)
+
+      set_up_plugin_start_kong({
+        [valid_path] = plugin_config_valid_cert,
+        [invalid_path] = plugin_config_invalid_cert,
+      }, {
+        lua_ssl_trusted_certificate = CERT_ROOT_FOLDER .. "root_ca.crt," ..
+                                      CERT_ROOT_FOLDER .. "intermediate_ca.crt",
+        lua_ssl_verify_depth = 2,
+      })
+
+      proxy_client = helpers.proxy_client()
+    end)
+
+    lazy_teardown(function()
+      if proxy_client then
+        proxy_client:close()
+      end
+      helpers.stop_kong(nil, true)
+    end)
+
+    it("Authorizes a valid client certificate", function()
+      local res = proxy_client:get(valid_path, {
+        headers = {
+          Authorization = PASSWORD_CREDENTIALS,
+        },
+      })
+
+      assert.response(res).has.status(200)
+      local json = assert.response(res).has.jsonbody()
+      assert.not_nil(json.headers.authorization)
+      assert.equals("Bearer", string.sub(json.headers.authorization, 1, 6))
+    end)
+
+    it("Rejects an invalid client certificate", function()
+      local res = proxy_client:get(invalid_path, {
+        headers = {
+          Authorization = PASSWORD_CREDENTIALS,
+        },
+      })
+
+      assert.response(res).has.status(401)
+    end)
+  end)
+
+  describe("Refresh Token Grant", function()
+    local proxy_client, valid_token, invalid_token
+
+    local valid_path = "/refresh-token-valid"
+    local invalid_path = "/refresh-token-invalid"
+
+    local plugin_config_ref_token = {
+      issuer = ISSUER_SSL_URL,
+      scopes = { "openid" },
+      client_id = { TLS_AUTH_CLIENT_ID },
+      upstream_refresh_token_header = "refresh_token",
+      refresh_token_param_name      = "refresh_token",
+      auth_methods = {
+        "refresh_token",
+        "password",
+      },
+      client_auth = { "tls_client_auth" },
+    }
+
+    lazy_setup(function()
+      local plugin_config_valid_cert = tablex.merge(plugin_config_ref_token, {
+        tls_client_auth_cert_id = valid_cert_id,
+      }, true)
+      local plugin_config_invalid_cert = tablex.merge(plugin_config_ref_token, {
+        tls_client_auth_cert_id = invalid_cert_id,
+      }, true)
+
+      set_up_plugin_start_kong({
+        [valid_path] = plugin_config_valid_cert,
+        [invalid_path] = plugin_config_invalid_cert,
+      }, {
+        lua_ssl_trusted_certificate = CERT_ROOT_FOLDER .. "root_ca.crt," ..
+                                      CERT_ROOT_FOLDER .. "intermediate_ca.crt",
+        lua_ssl_verify_depth = 2,
+      })
+
+      proxy_client = helpers.proxy_client()
+      valid_token, invalid_token = get_tokens(proxy_client, valid_path, "refresh_token")
+    end)
+
+    lazy_teardown(function()
+      if proxy_client then
+        proxy_client:close()
+      end
+      helpers.stop_kong(nil, true)
+    end)
+
+    it("Authorizes a valid client certificate with valid token", function()
+      local res = proxy_client:get(valid_path, {
+        headers = {
+          ["Refresh-Token"] = valid_token,
+        },
+      })
+
+      assert.response(res).has.status(200)
+      local json = assert.response(res).has.jsonbody()
+      assert.is_not_nil(json.headers.authorization)
+      assert.equal("Bearer", string.sub(json.headers.authorization, 1, 6))
+      assert.is_not_nil(json.headers.refresh_token)
+      assert.not_equal(valid_token, json.headers.refresh_token)
+    end)
+
+    it("Rejects a valid client certificate with an invalid token", function()
+      local res = proxy_client:get(valid_path, {
+        headers = {
+          ["Refresh-Token"] = invalid_token,
+        },
+      })
+
+      assert.response(res).has.status(401)
+      local json = assert.response(res).has.jsonbody()
+      assert.same("Unauthorized", json.message)
+      local header = res.headers["WWW-Authenticate"]
+      assert.matches(string.format('error="invalid_token"'), header)
+    end)
+
+    it("Rejects invalid client certificate with valid token", function()
+      local res = proxy_client:get(invalid_path, {
+        headers = {
+          ["Refresh-Token"] = valid_token,
+        },
+      })
+
+      assert.response(res).has.status(401)
+      local json = assert.response(res).has.jsonbody()
+      assert.same("Unauthorized", json.message)
+      local header = res.headers["WWW-Authenticate"]
+      assert.matches(string.format('error="invalid_token"'), header)
+    end)
+  end)
+
+
+  ------------------------------------------------------
+  -- Introspection Endpoint
+  ------------------------------------------------------
+  describe("Introspection Authentication", function()
+    local proxy_client, valid_token, invalid_token
+
+    local valid_path = "/introspection-valid"
+    local invalid_path = "/introspection-invalid"
+
+    local plugin_config_introspection = {
+      issuer = ISSUER_SSL_URL,
+      scopes = { "openid" },
+      client_id = { TLS_AUTH_CLIENT_ID },
+      auth_methods = { "introspection" },
+      bearer_token_param_type = { "body" },
+      cache_introspection = false,
+      client_auth = { "tls_client_auth" },
+    }
+
+    lazy_setup(function()
+      local plugin_config_valid_cert = tablex.merge(plugin_config_introspection, {
+        tls_client_auth_cert_id = valid_cert_id,
+      }, true)
+      local plugin_config_invalid_cert = tablex.merge(plugin_config_introspection, {
+        tls_client_auth_cert_id = invalid_cert_id,
+      }, true)
+
+      set_up_plugin_start_kong({
+        [valid_path] = plugin_config_valid_cert,
+        [invalid_path] = plugin_config_invalid_cert,
+        ["/tokens"] = {
+          issuer = ISSUER_SSL_URL,
+          scopes = {
+            "openid",
+          },
+          client_id = {
+            TLS_AUTH_CLIENT_ID,
+          },
+          client_auth = { "tls_client_auth" },
+          cache_introspection = false,
+          tls_client_auth_cert_id = valid_cert_id,
+        },
+      }, {
+        lua_ssl_trusted_certificate = CERT_ROOT_FOLDER .. "root_ca.crt," ..
+                                      CERT_ROOT_FOLDER .. "intermediate_ca.crt",
+        lua_ssl_verify_depth = 2,
+      })
+
+      proxy_client = helpers.proxy_client()
+      valid_token, invalid_token = get_tokens(proxy_client, "/tokens", "authorization")
+    end)
+
+    lazy_teardown(function()
+      if proxy_client then
+        proxy_client:close()
+      end
+      helpers.stop_kong(nil, true)
+    end)
+
+    it("Authorizes a valid client certificate with valid token", function()
+      local res = proxy_client:get(valid_path, {
+        headers = {
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+        },
+        body = ngx.encode_args({
+          access_token = valid_token,
+        }),
+      })
+
+      assert.response(res).has.status(200)
+      local json = assert.response(res).has.jsonbody()
+      assert.not_nil(json.headers.authorization)
+      assert.equal(valid_token, string.sub(json.headers.authorization, 8))
+    end)
+
+    it("Rejects a valid client certificate with invalid token", function()
+      local res = proxy_client:get(valid_path, {
+        headers = {
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+        },
+        body = ngx.encode_args({
+          access_token = invalid_token,
+        }),
+      })
+
+      assert.response(res).has.status(401)
+    end)
+
+    it("Rejects invalid client certificate with valid token", function()
+      local res = proxy_client:get(invalid_path, {
+        headers = {
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+        },
+        body = ngx.encode_args({
+          access_token = valid_token,
+        }),
+      })
+
+      assert.response(res).has.status(401)
+    end)
+  end)
+
+
+  ------------------------------------------------------
+  -- Token Revocation Endpoint
+  ------------------------------------------------------
+  describe("Revocation", function()
+    local proxy_client
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      }, {
+        PLUGIN_NAME
+      })
+
+      local service = bp.services:insert {
+        name = PLUGIN_NAME,
+        path = "/anything"
+      }
+      local route = bp.routes:insert {
+        service = service,
+        paths   = { "/" },
+      }
+
+      local c = bp.certificates:insert {
+        cert = VALID_CERT_STR,
+        key = VALID_KEY_STR,
+      }
+      valid_cert_id = c.id
+
+      bp.plugins:insert {
+        route   = route,
+        name    = PLUGIN_NAME,
+        config  = {
+          issuer    = ISSUER_SSL_URL,
+          client_id = { TLS_AUTH_CLIENT_ID },
+          auth_methods = {
+            "session",
+            "password"
+          },
+          logout_uri_suffix = "/logout",
+          logout_methods = {
+            "POST",
+          },
+          logout_revoke = true,
+          display_errors = true,
+          client_auth = { "tls_client_auth" },
+          tls_client_auth_cert_id = valid_cert_id,
+        },
+      }
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        plugins    = "bundled," .. PLUGIN_NAME,
+        lua_ssl_trusted_certificate = CERT_ROOT_FOLDER .. "root_ca.crt," ..
+                                      CERT_ROOT_FOLDER .. "intermediate_ca.crt",
+        lua_ssl_verify_depth = 2,
+      }))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+    before_each(function()
+      proxy_client = helpers.proxy_client()
+    end)
+
+    after_each(function()
+      if proxy_client then
+        proxy_client:close()
+      end
+    end)
+
+    describe("logout", function ()
+
+      local user_session
+      local user_session_header_table = {}
+      local user_token
+
+      lazy_setup(function()
+        local client = helpers.proxy_client()
+        local res = client:get("/", {
+          headers = {
+            Authorization = PASSWORD_CREDENTIALS,
+          },
+        })
+        assert.response(res).has.status(200)
+
+        local json = assert.response(res).has.jsonbody()
+        local cookies = res.headers["Set-Cookie"]
+        if type(cookies) == "table" then
+          -- multiple cookies can be expected
+          for i, cookie in ipairs(cookies) do
+            user_session = string.sub(cookie, 0, string.find(cookie, ";") -1)
+            user_session_header_table[i] = user_session
+          end
+        else
+            user_session = string.sub(cookies, 0, string.find(cookies, ";") -1)
+            user_session_header_table[1] = user_session
+        end
+        user_token = string.sub(json.headers.authorization, 8, -1)
+      end)
+
+      it("successfully revokes token", function ()
+        local res = proxy_client:get("/", {
+          headers = {
+            Cookie = user_session_header_table
+          },
+        })
+
+        -- Test that the session auth works
+        assert.response(res).has.status(200)
+        local json = assert.response(res).has.jsonbody()
+        assert.equal(user_token, string.sub(json.headers.authorization, 8))
+        -- logout
+        local lres = proxy_client:post("/logout?query-args-wont-matter=1", {
+          headers = {
+            Cookie = user_session_header_table,
+          },
+        })
+        assert.response(lres).has.status(302)
+        -- test if Expires=beginningofepoch
+        local cookie = lres.headers["Set-Cookie"]
+        local expected_header_name = "Expires="
+        -- match from Expires= until next ; divider
+        local expiry_init = string.find(cookie, expected_header_name)
+        local expiry_date = string.sub(cookie, expiry_init + #expected_header_name, string.find(cookie, ';', expiry_init)-1)
+        assert(expiry_date, "Thu, 01 Jan 1970 00:00:01 GMT")
+        -- follow redirect (call IDP)
+
+        local redirect = lres.headers["Location"]
+        local rres, err = request_uri(redirect, {
+          ssl_verify = false,
+        })
+        assert.is_nil(err)
+        assert.equal(200, rres.status)
+      end)
+    end)
+  end)
+
+
+  ------------------------------------------------------
+  -- Other tests
+  ------------------------------------------------------
+  describe("Expired Certificate", function()
+    local proxy_client
+
+    local path = "/password-grant-exp"
+
+    local plugin_config_password_grant = {
+      issuer = ISSUER_SSL_URL,
+      scopes = {
+        -- this is the default
+        "openid",
+      },
+      client_id = {
+        TLS_AUTH_CLIENT_ID,
+      },
+      upstream_refresh_token_header = "refresh_token",
+      refresh_token_param_name      = "refresh_token",
+      auth_methods = {
+        "password",
+      },
+      client_auth = { "tls_client_auth" },
+      tls_client_auth_cert_id = expired_cert_id,
+      display_errors = true,
+    }
+
+    lazy_setup(function()
+      set_up_plugin_start_kong({
+        [path] = plugin_config_password_grant,
+      }, {
+        lua_ssl_trusted_certificate = CERT_ROOT_FOLDER .. "root_ca.crt," ..
+                                      CERT_ROOT_FOLDER .. "intermediate_ca.crt",
+        lua_ssl_verify_depth = 2,
+      })
+
+      proxy_client = helpers.proxy_client()
+    end)
+
+    lazy_teardown(function()
+      if proxy_client then
+        proxy_client:close()
+      end
+      helpers.stop_kong(nil, true)
+    end)
+
+    it("notifies in the logs", function()
+      proxy_client:get(path, {
+        headers = {
+          Authorization = PASSWORD_CREDENTIALS,
+        },
+      })
+
+      -- looks like keycloak allows using expired client certs
+      -- so we are not expecting a 401 here
+      assert.logfile().has.line("tls_client_auth_cert expired at")
+    end)
+  end)
+
+
+  describe("With tls_client_auth_ssl_verify = false", function()
+    local proxy_client
+
+    local valid_path = "/password-grant-valid"
+
+    local plugin_config_password_grant = {
+      issuer = ISSUER_SSL_URL,
+      scopes = {
+        -- this is the default
+        "openid",
+      },
+      client_id = {
+        TLS_AUTH_CLIENT_ID,
+      },
+      upstream_refresh_token_header = "refresh_token",
+      refresh_token_param_name      = "refresh_token",
+      auth_methods = {
+        "password",
+      },
+      display_errors = true,
+      client_auth = { "tls_client_auth" },
+      tls_client_auth_ssl_verify = false,
+    }
+
+    lazy_setup(function()
+      local plugin_config_valid_cert = tablex.merge(plugin_config_password_grant, {
+        tls_client_auth_cert_id = valid_cert_id,
+      }, true)
+
+      -- start kong without the lua_ssl_trusted_certificate setting
+      set_up_plugin_start_kong({
+        [valid_path] = plugin_config_valid_cert,
+      })
+
+      proxy_client = helpers.proxy_client()
+    end)
+
+    lazy_teardown(function()
+      if proxy_client then
+        proxy_client:close()
+      end
+      helpers.stop_kong(nil, true)
+    end)
+
+    it("Authorizes a valid client certificate", function()
+      local res = proxy_client:get(valid_path, {
+        headers = {
+          Authorization = PASSWORD_CREDENTIALS,
+        },
+      })
+
+      assert.response(res).has.status(200)
+      local json = assert.response(res).has.jsonbody()
+      assert.not_nil(json.headers.authorization)
+      assert.equals("Bearer", string.sub(json.headers.authorization, 1, 6))
+    end)
+  end)
+end)
 end

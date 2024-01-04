@@ -220,5 +220,12 @@ return {
     opentelemetry = {
       "sampling_rate",
     },
-  },
+    openid_connect = {
+      "tls_client_auth_cert_id",
+      "tls_client_auth_ssl_verify",
+      "mtls_token_endpoint",
+      "mtls_introspection_endpoint",
+      "mtls_revocation_endpoint",
+    },
+  }
 }

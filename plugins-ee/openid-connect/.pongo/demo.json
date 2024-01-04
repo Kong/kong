@@ -1107,6 +1107,110 @@
       "configure": true,
       "manage": true
     }
+  }, {
+    "id": "64fccc64-73a8-4453-8257-850633de9948",
+    "clientId": "kong-client-tls-auth",
+    "name": "kong-client-tls-auth",
+    "description": "",
+    "rootUrl": "",
+    "adminUrl": "",
+    "baseUrl": "",
+    "surrogateAuthRequired": false,
+    "enabled": true,
+    "alwaysDisplayInConsole": false,
+    "clientAuthenticatorType": "client-x509",
+    "redirectUris" : [
+      "https://kong:8443/*", "http://kong:8000/*", "http://kong:9000/*", "https://kong:9443/*", "http://kong:9003/*", "http://kong:9004/*", "http://kong:9001/*", "http://kong:9008/*",
+      "https://localhost:8443/*", "http://localhost:8000/*", "http://localhost:9000/*", "https://localhost:9443/*", "http://localhost:9003/*", "http://localhost:9004/*", "http://localhost:9001/*", "http://localhost:9008/*",
+      "https://default.localhost:8443/*", "http://default.localhost:8000/*", "http://default.localhost:9000/*", "https://default.localhost:9443/*", "http://default.localhost:9003/*", "http://default.localhost:9004/*", "http://default.localhost:9001/*", "http://default.localhost:9008/*",
+      "https://demo.localhost:8443/*", "http://demo.localhost:8000/*", "http://demo.localhost:9000/*", "https://demo.localhost:9443/*", "http://demo.localhost:9003/*", "http://demo.localhost:9004/*", "http://demo.localhost:9001/*", "http://demo.localhost:9008/*"
+    ],
+    "webOrigins": [],
+    "notBefore": 0,
+    "bearerOnly": false,
+    "consentRequired": false,
+    "standardFlowEnabled": true,
+    "implicitFlowEnabled": true,
+    "directAccessGrantsEnabled": true,
+    "serviceAccountsEnabled": true,
+    "authorizationServicesEnabled": true,
+    "publicClient": false,
+    "frontchannelLogout": true,
+    "protocol": "openid-connect",
+    "attributes": {
+      "oidc.ciba.grant.enabled": "false",
+      "client.secret.creation.time": "1701271287",
+      "x509.subjectdn": "CN=JohnDoe, OU=IT",
+      "backchannel.logout.session.required": "true",
+      "post.logout.redirect.uris": "+",
+      "oauth2.device.authorization.grant.enabled": "false",
+      "display.on.consent.screen": "false",
+      "x509.allow.regex.pattern.comparison": "false",
+      "backchannel.logout.revoke.offline.tokens": "false"
+    },
+    "authenticationFlowBindingOverrides": {},
+    "fullScopeAllowed": true,
+    "nodeReRegistrationTimeout": -1,
+    "protocolMappers": [
+      {
+        "id": "3ffaf3eb-1d8f-404a-a14d-f6ac25947daa",
+        "name": "Client ID",
+        "protocol": "openid-connect",
+        "protocolMapper": "oidc-usersessionmodel-note-mapper",
+        "consentRequired": false,
+        "config": {
+          "user.session.note": "client_id",
+          "userinfo.token.claim": "true",
+          "id.token.claim": "true",
+          "access.token.claim": "true",
+          "claim.name": "client_id",
+          "jsonType.label": "String"
+        }
+      },
+      {
+        "id": "f294f547-aec3-440f-a62b-00d1b2abcfcf",
+        "name": "Client IP Address",
+        "protocol": "openid-connect",
+        "protocolMapper": "oidc-usersessionmodel-note-mapper",
+        "consentRequired": false,
+        "config": {
+          "user.session.note": "clientAddress",
+          "userinfo.token.claim": "true",
+          "id.token.claim": "true",
+          "access.token.claim": "true",
+          "claim.name": "clientAddress",
+          "jsonType.label": "String"
+        }
+      },
+      {
+        "id": "f888f3e4-ef7e-4f3d-8b49-320d961a8be7",
+        "name": "Client Host",
+        "protocol": "openid-connect",
+        "protocolMapper": "oidc-usersessionmodel-note-mapper",
+        "consentRequired": false,
+        "config": {
+          "user.session.note": "clientHost",
+          "userinfo.token.claim": "true",
+          "id.token.claim": "true",
+          "access.token.claim": "true",
+          "claim.name": "clientHost",
+          "jsonType.label": "String"
+        }
+      }
+    ],
+    "defaultClientScopes": [
+      "web-origins",
+      "acr",
+      "roles",
+      "profile",
+      "email"
+    ],
+    "optionalClientScopes": [
+      "address",
+      "phone",
+      "offline_access",
+      "microprofile-jwt"
+    ]
   } ],
   "clientScopes" : [ {
     "id" : "cca45be7-05c1-4834-917c-3d65bc95796a",

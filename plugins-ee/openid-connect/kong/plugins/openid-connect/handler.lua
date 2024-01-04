@@ -15,45 +15,47 @@ local OICHandler = {
 }
 
 
-local inspect         = require "inspect"
+local inspect            = require "inspect"
+local openssl_x509       = require "resty.openssl.x509"
+local table_clear        = require "table.clear"
 
 
-local log             = require "kong.plugins.openid-connect.log"
-local cache           = require "kong.plugins.openid-connect.cache"
-local claims          = require "kong.plugins.openid-connect.claims"
-local clients         = require "kong.plugins.openid-connect.clients"
-local headers         = require "kong.plugins.openid-connect.headers"
-local sessions        = require "kong.plugins.openid-connect.sessions"
-local userinfo        = require "kong.plugins.openid-connect.userinfo"
-local consumers       = require "kong.plugins.openid-connect.consumers"
-local responses       = require "kong.plugins.openid-connect.responses"
-local arguments       = require "kong.plugins.openid-connect.arguments"
-local introspect      = require "kong.plugins.openid-connect.introspect"
-local unexpected      = require "kong.plugins.openid-connect.unexpected"
+local log                = require "kong.plugins.openid-connect.log"
+local cache              = require "kong.plugins.openid-connect.cache"
+local claims             = require "kong.plugins.openid-connect.claims"
+local clients            = require "kong.plugins.openid-connect.clients"
+local headers            = require "kong.plugins.openid-connect.headers"
+local sessions           = require "kong.plugins.openid-connect.sessions"
+local userinfo           = require "kong.plugins.openid-connect.userinfo"
+local consumers          = require "kong.plugins.openid-connect.consumers"
+local responses          = require "kong.plugins.openid-connect.responses"
+local arguments          = require "kong.plugins.openid-connect.arguments"
+local introspect         = require "kong.plugins.openid-connect.introspect"
+local unexpected         = require "kong.plugins.openid-connect.unexpected"
 
 
-local openid          = require "kong.openid-connect"
-local set             = require "kong.openid-connect.set"
-local codec           = require "kong.openid-connect.codec"
+local openid             = require "kong.openid-connect"
+local set                = require "kong.openid-connect.set"
+local codec              = require "kong.openid-connect.codec"
 
 
-local kong            = kong
-local ngx             = ngx
-local var             = ngx.var
-local time            = ngx.time
-local update_time     = ngx.update_time
-local escape_uri      = ngx.escape_uri
-local tostring        = tostring
-local ipairs          = ipairs
-local concat          = table.concat
-local lower           = string.lower
-local gsub            = string.gsub
-local find            = string.find
-local type            = type
-local sub             = string.sub
-local json            = codec.json
-local base64url       = codec.base64url
-local normalize_uri   = require("kong.tools.uri").normalize
+local kong               = kong
+local ngx                = ngx
+local var                = ngx.var
+local time               = ngx.time
+local update_time        = ngx.update_time
+local escape_uri         = ngx.escape_uri
+local tostring           = tostring
+local ipairs             = ipairs
+local concat             = table.concat
+local lower              = string.lower
+local gsub               = string.gsub
+local find               = string.find
+local type               = type
+local sub                = string.sub
+local json               = codec.json
+local base64url          = codec.base64url
+local normalize_uri      = require("kong.tools.uri").normalize
 
 
 local TOKEN_EXPIRED_MESSAGE = "The access token expired"
@@ -68,6 +70,9 @@ local CLIENT_CREDENTIALS_GRANT = "client_credentials"
 local PASSWORD_GRANT = "password"
 local REFRESH_TOKEN_GRANT = "refresh_token"
 local JWT_BEARER_GRANT = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+
+
+local tls_client_auth_certs = {}
 
 
 local function rediscover_keys(issuer, options)
@@ -108,9 +113,53 @@ local function get_authorization_args(args)
 end
 
 
+local function load_client_cert_from_db(conf)
+  local cert_id = conf.tls_client_auth_cert_id
+  if not cert_id then
+    return
+  end
+
+  local certificate, err = kong.db.certificates:select({ id = cert_id })
+  if not certificate then
+    log.err("Failed loading client certificate from db using id: " ..
+            cert_id .. ", err: ", err)
+    return
+  end
+  local cert = certificate.cert
+  local key = certificate.key
+
+  -- for reading the expiration date
+  local cert_x509
+  cert_x509, err = openssl_x509.new(cert, "PEM")
+  if not cert_x509 then
+    log.err("Failed parsing x509 certificate: ", err)
+    return
+  end
+  local exp = cert_x509:get_not_after()
+
+  return {
+    cert = cert,
+    key = key,
+    exp = exp,
+  }
+end
+
+
 function OICHandler.init_worker()
   clients.init_worker()
   cache.init_worker()
+end
+
+
+function OICHandler.configure(_, conf)
+  if not conf then
+    return
+  end
+  table_clear(tls_client_auth_certs)
+
+  for _, c in ipairs(conf) do
+    tls_client_auth_certs[c.__plugin_id] = load_client_cert_from_db(c)
+  end
 end
 
 
@@ -155,6 +204,17 @@ function OICHandler.access(_, conf)
       return unexpected(client, err or "discovery information could not be loaded")
     end
 
+    local tls_client_auth_cert, tls_client_auth_key
+    local certs = tls_client_auth_certs[conf.__plugin_id]
+    if certs then
+      tls_client_auth_cert = certs.cert
+      tls_client_auth_key = certs.key
+
+      if time() > certs.exp then
+        log.warn("tls_client_auth_cert expired at: ", certs.exp)
+      end
+    end
+
     options = args.get_http_opts({
       client_id = client.id,
       client_secret = client.secret,
@@ -173,6 +233,9 @@ function OICHandler.access(_, conf)
       authorization_endpoint = args.get_conf_arg("authorization_endpoint"),
       token_endpoint = args.get_conf_arg("token_endpoint"),
       introspection_endpoint = args.get_conf_arg("introspection_endpoint"),
+      mtls_token_endpoint = args.get_conf_arg("mtls_token_endpoint"),
+      mtls_introspection_endpoint = args.get_conf_arg("mtls_introspection_endpoint"),
+      mtls_revocation_endpoint = args.get_conf_arg("mtls_revocation_endpoint"),
       userinfo_endpoint = args.get_conf_arg("userinfo_endpoint"),
       verify_parameters = args.get_conf_arg("verify_parameters"),
       verify_nonce = args.get_conf_arg("verify_nonce"),
@@ -185,6 +248,9 @@ function OICHandler.access(_, conf)
       rediscover_keys = rediscover_keys(issuer_uri, discovery_options),
       proof_of_possession_mtls = args.get_conf_arg("proof_of_possession_mtls", "off"),
       client_cert_pem = ngx.var.ssl_client_raw_cert,
+      tls_client_auth_cert = tls_client_auth_cert,
+      tls_client_auth_key = tls_client_auth_key,
+      tls_client_auth_ssl_verify = args.get_conf_arg("tls_client_auth_ssl_verify", true),
     })
 
     log("initializing library")

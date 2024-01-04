@@ -53,6 +53,38 @@ local compatible_checkers = {
             has_update = true
           end
         end
+
+        if plugin.name == 'openid-connect' then
+          local config = plugin.config
+
+          for _, config_val in ipairs({ "tls_client_auth", "self_signed_tls_client_auth" }) do
+
+            for i = #config.client_auth, 1, -1 do
+              if config.client_auth[i] == config_val then
+                log_warn_message('configures ' .. plugin.name .. ' plugin with:' ..
+                                 ' client_auth containing: ' .. config_val,
+                                 'removed',
+                                 dp_version, log_suffix)
+                table_remove(config.client_auth, i)
+                has_update = true
+              end
+            end
+
+            for _, config_key in ipairs({ "token_endpoint_auth_method",
+                                          "introspection_endpoint_auth_method",
+                                          "revocation_endpoint_auth_method" }) do
+
+              if config[config_key] == config_val then
+                log_warn_message('configures ' .. plugin.name .. ' plugin with: ' ..
+                                 config_key .. ' == ' .. config_val,
+                                 'overwritten with default value `nil`',
+                                 dp_version, log_suffix)
+                config[config_key] = nil
+                has_update = true
+              end
+            end
+          end
+        end
       end
       return has_update
     end

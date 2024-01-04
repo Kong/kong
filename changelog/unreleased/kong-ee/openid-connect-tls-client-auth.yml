@@ -1,0 +1,6 @@
+message: >
+  Support the `tls_client_auth` and `self_signed_tls_client_auth` auth methods
+  in the OpenID Connect plugin, allowing to do mTLS Client Authentication with
+  the IdP.
+type: feature
+scope: Plugin
