@@ -76,8 +76,6 @@ if uh.database_type() == 'postgres' then
                             host = "localhost",
                             port = 57198,
                             password = "secret",
-                            ssl = false,
-                            ssl_verify = false,
                             database = 2
                         },
                         extra_options = {
