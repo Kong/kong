@@ -77,10 +77,6 @@ if uh.database_type() == 'postgres' then
                             port = 57198,
                             password = "secret",
                             database = 2
-                        },
-                        extra_options = {
-                            namespace = "",
-                            scan_count = 10
                         }
                     }
                 }
