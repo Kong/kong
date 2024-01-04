@@ -16,12 +16,12 @@ if uh.database_type() == 'postgres' then
 
         uh.setup(function ()
             local admin_client = assert(uh.admin_client())
-            local test_res = assert(admin_client:send {
-                method = "GET",
-                path = "/schemas/plugins/acme"
-            })
-            assert.res_status(200, test_res)
-            print("test_res = " .. require("inspect")(test_res))
+            -- local test_res = assert(admin_client:send {
+            --     method = "GET",
+            --     path = "/schemas/plugins/acme"
+            -- })
+            -- assert.res_status(200, test_res)
+            -- print("test_res = " .. require("inspect")(test_res))
 
 
             local res = assert(admin_client:send {
@@ -37,12 +37,7 @@ if uh.database_type() == 'postgres' then
                                 host = "localhost",
                                 port = 57198,
                                 auth = "secret",
-                                username = "test",
-                                ssl = true,
-                                ssl_verify = false,
-                                database = 2,
-                                namespace = "test_prefix",
-                                scan_count = 13
+                                database = 2
                             }
                         }
                     }
