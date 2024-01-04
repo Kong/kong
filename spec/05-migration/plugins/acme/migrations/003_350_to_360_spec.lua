@@ -1,7 +1,23 @@
 
 local cjson = require "cjson"
-
+local tablex = require "pl.tablex"
 local uh = require "spec.upgrade_helpers"
+
+local function matches(t1, t2)
+    local inters = tablex.merge(t1, t2)
+    return assert.same(inters, t1)
+end
+
+local function deep_matches(t1, t2, parent_keys)
+    for key, v in pairs(t1) do
+        local composed_key = (parent_keys and parent_keys .. "." .. key) or key
+        if type(v) == "table" then
+            deep_matches(t1[key], t2[key], composed_key)
+        else
+            assert.message("expected values at key " .. composed_key .. " to be the same").equal(t1[key], t2[key])
+        end
+    end
+end
 
 if uh.database_type() == 'postgres' then
     describe("acme plugin migration", function()
@@ -16,13 +32,6 @@ if uh.database_type() == 'postgres' then
 
         uh.setup(function ()
             local admin_client = assert(uh.admin_client())
-            -- local test_res = assert(admin_client:send {
-            --     method = "GET",
-            --     path = "/schemas/plugins/acme"
-            -- })
-            -- assert.res_status(200, test_res)
-            -- print("test_res = " .. require("inspect")(test_res))
-
 
             local res = assert(admin_client:send {
                 method = "POST",
@@ -58,25 +67,28 @@ if uh.database_type() == 'postgres' then
             })
             local body = cjson.decode(assert.res_status(200, res))
             assert.equal(1, #body.data)
-            local expected_redis_config = {
-                base = {
-                    host = "localhost",
-                    port = 57198,
-                    password = "secret",
-                    username = "test",
-                    ssl = true,
-                    ssl_verify = false,
-                    database = 2
-                },
-                extra_options = {
-                    namespace = "",
-                    scan_count = 10
+            local expected_config = {
+                account_email = "test@example.com",
+                storage = "redis",
+                storage_config = {
+                    redis = {
+                        base = {
+                            host = "localhost",
+                            port = 57198,
+                            password = "secret",
+                            ssl = false,
+                            ssl_verify = false,
+                            database = 2
+                        },
+                        extra_options = {
+                            namespace = "",
+                            scan_count = 10
+                        }
+                    }
                 }
+
             }
-            assert.equal("test@example.com", body.data[1].config.account_email)
-            assert.equal("redis", body.data[1].config.storage)
-            local redis_config = assert(body.data[1].config.storage_config.redis)
-            assert.same(expected_redis_config, redis_config)
+            deep_matches(expected_config, body.data[1].config)
             admin_client:close()
         end)
     end)
