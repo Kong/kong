@@ -79,7 +79,7 @@ local proxy_configs = {
 
 for _, strategy in helpers.each_strategy() do
   for proxy_desc, proxy_opts in pairs(proxy_configs) do
-    describe("Hybrid vitals works throgh proxy (" .. proxy_desc .. ") with #" .. strategy .. " backend", function()
+    describe("Hybrid vitals works through proxy (" .. proxy_desc .. ") with #" .. strategy .. " backend", function()
       local reset_license_data
       local db
 

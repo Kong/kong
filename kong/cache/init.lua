@@ -175,7 +175,10 @@ function _M:get(key, opts, cb, ...)
     return nil, "failed to get from node cache: " .. err
   end
 
-  kong.vitals:cache_accessed(hit_lvl, key, v)
+  if kong.vitals then
+    kong.vitals:cache_accessed(hit_lvl, key, v)
+  end
+
   reports.report_cached_entity(v, key)
 
   return v, nil, hit_lvl

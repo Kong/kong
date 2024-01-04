@@ -7,6 +7,8 @@
 
 local helpers = require "spec.helpers"
 local kong_vitals = require "kong.vitals"
+local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
+
 
 describe("Hybrid vitals", function()
     local vitals
@@ -16,6 +18,8 @@ describe("Hybrid vitals", function()
         kong.configuration = {
             role = "control_plane",
             vitals = true,
+            license_path = "spec-ee/fixtures/mock_license.json",
+            portal_and_vitals_key = get_portal_and_vitals_key(),
         }
 
         -- with role=control_plane, the vitals.clustering strategy will be used

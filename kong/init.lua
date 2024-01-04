@@ -730,14 +730,16 @@ function Kong.init()
   reports.add_immutable_value("enterprise", true)
   reports.add_entity_reports()
 
-  kong.vitals = vitals.new {
-      db             = db,
-      flush_interval = config.vitals_flush_interval,
-      delete_interval_pg = config.vitals_delete_interval_pg,
-      ttl_seconds    = config.vitals_ttl_seconds,
-      ttl_minutes    = config.vitals_ttl_minutes,
-      ttl_days       = config.vitals_ttl_days,
-  }
+  if config.portal_and_vitals_key then
+    kong.vitals = vitals.new {
+        db             = db,
+        flush_interval = config.vitals_flush_interval,
+        delete_interval_pg = config.vitals_delete_interval_pg,
+        ttl_seconds    = config.vitals_ttl_seconds,
+        ttl_minutes    = config.vitals_ttl_minutes,
+        ttl_days       = config.vitals_ttl_days,
+    }
+  end
 
   kong.analytics = analytics.new(config)
 
@@ -918,11 +920,13 @@ function Kong.init_worker()
   end
   kong.cluster_events = cluster_events
 
-  kong.vitals:register_config_change(worker_events)
-  -- vitals functions require a timer, so must start in worker context
-  local ok, err = kong.vitals:init()
-  if not ok then
-    ngx.log(ngx.CRIT, "could not initialize vitals: ", err)
+  if kong.vitals then
+    kong.vitals:register_config_change(worker_events)
+    -- vitals functions require a timer, so must start in worker context
+    local ok, err = kong.vitals:init()
+    if not ok then
+      ngx.log(ngx.CRIT, "could not initialize vitals: ", err)
+    end
   end
 
   kong.analytics:register_config_change(worker_events)

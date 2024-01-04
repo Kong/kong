@@ -239,6 +239,7 @@ for _, strategy in helpers.each_strategy() do
           cluster_control_plane = "127.0.0.1:9005",
           cluster_telemetry_endpoint = "127.0.0.1:9006",
           proxy_listen = "0.0.0.0:9002",
+          portal_and_vitals_key = get_portal_and_vitals_key(),
           vitals = true,
           log_level = "debug",
         }))
@@ -343,6 +344,7 @@ for _, strategy in helpers.each_strategy() do
           cluster_control_plane = "127.0.0.1:9005",
           cluster_telemetry_endpoint = "127.0.0.1:9006",
           proxy_listen = "0.0.0.0:9002",
+          portal_and_vitals_key = get_portal_and_vitals_key(),
           vitals = true,
           log_level = "debug",
         }))

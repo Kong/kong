@@ -141,7 +141,7 @@ _M.handlers = {
   },
   header_filter = {
     after = function(ctx)
-      if not ctx.is_internal then
+      if not ctx.is_internal and kong.vitals then
         kong.vitals:log_upstream_latency(ctx.KONG_WAITING_TIME)
       end
     end
@@ -151,10 +151,12 @@ _M.handlers = {
       tracing.flush()
 
       if not ctx.is_internal then
-        kong.vitals:log_latency(ctx.KONG_PROXY_LATENCY)
-        kong.vitals:log_request(ctx)
         kong.sales_counters:log_request()
-        kong.vitals:log_phase_after_plugins(ctx, status)
+        if kong.vitals then
+          kong.vitals:log_latency(ctx.KONG_PROXY_LATENCY)
+          kong.vitals:log_request(ctx)
+          kong.vitals:log_phase_after_plugins(ctx, status)
+        end
       end
     end
   },

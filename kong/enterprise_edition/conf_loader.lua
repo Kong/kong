@@ -250,6 +250,7 @@ local EE_CONF_SENSITIVE = {
   keyring_private_key = true,
   keyring_recovery_public_key = true,
   vault_hcv_token = true,
+  portal_and_vitals_key = true,
 }
 
 

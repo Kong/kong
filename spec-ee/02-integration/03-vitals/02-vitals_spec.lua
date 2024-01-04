@@ -9,6 +9,7 @@ local kong_vitals  = require "kong.vitals"
 local utils        = require "kong.tools.utils"
 local json_null  = require("cjson").null
 local helpers = require "spec.helpers"
+local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 
 local ngx_time     = ngx.time
 local fmt          = string.format
@@ -41,7 +42,9 @@ for _, strategy in helpers.each_strategy() do
 
       kong.configuration = {
         role = "traditional",
-        vitals = true
+        vitals = true,
+        license_path = "spec-ee/fixtures/mock_license.json",
+        portal_and_vitals_key = get_portal_and_vitals_key(),
       }
 
       vitals = kong_vitals.new({
@@ -50,7 +53,6 @@ for _, strategy in helpers.each_strategy() do
         ttl_minutes = 24 * 60,
         ttl_days = 30,
       })
-
       vitals:init()
     end)
 

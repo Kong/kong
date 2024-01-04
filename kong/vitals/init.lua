@@ -46,6 +46,8 @@ local table_insert      = table.insert
 
 local utils_unpack      = utils.unpack
 
+local portal_and_vitals_allowed = license_helpers.portal_and_vitals_allowed
+
 local knode             = (kong and kong.node) and kong.node or
                           require "kong.pdk.node".new()
 
@@ -309,7 +311,7 @@ function _M:register_config_change(events_handler)
 
     log(DEBUG, _log_prefix, "config change event, incoming vitals: ", kong.configuration.vitals)
 
-    if kong.configuration.vitals then
+    if kong.configuration.vitals and portal_and_vitals_allowed() then
       if not self.initialized then
         self:init()
       end
@@ -1006,6 +1008,10 @@ end
 
 
 function _M:flush_counters()
+  if not self:enabled() then
+    return true
+  end
+
   -- acquire the lock at the beginning of our lock routine. we may not have the
   -- lock here, but we are still going to push up our data
   local lock = self:flush_lock()
@@ -1161,6 +1167,10 @@ end
 
 
 function _M:phone_home(stat_label)
+  if not self:enabled() then
+    return
+  end
+
   local res, err = self.list_cache:get(PH_STATS_KEY)
 
   if err then

@@ -5,11 +5,12 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local helpers       = require "spec.helpers"
-local vitals        = require "kong.vitals"
-local pl_file       = require "pl.file"
-local pl_path       = require "pl.path"
-local pl_dir        = require "pl.dir"
+local helpers                   = require "spec.helpers"
+local vitals                    = require "kong.vitals"
+local pl_file                   = require "pl.file"
+local pl_path                   = require "pl.path"
+local pl_dir                    = require "pl.dir"
+local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 
 -- kong < 2.3
 local get_hostname = require("kong.tools.utils").get_hostname or
@@ -470,7 +471,9 @@ for _, strategy in helpers.each_strategy() do
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins = "bundled,statsd-advanced",
-        vitals = "on"
+        vitals = "on",
+        license_path = "spec-ee/fixtures/mock_license.json",
+        portal_and_vitals_key = get_portal_and_vitals_key(),
       }))
 
       proxy_client = helpers.proxy_client()
@@ -502,7 +505,9 @@ for _, strategy in helpers.each_strategy() do
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
           plugins = "bundled,statsd-advanced",
-          vitals = "on"
+          vitals = "on",
+          license_path = "spec-ee/fixtures/mock_license.json",
+          portal_and_vitals_key = get_portal_and_vitals_key(),
         }))
 
         proxy_client = helpers.proxy_client()
