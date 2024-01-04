@@ -2,4 +2,3 @@ message: |
   fix an error where the request transformer may not rename header correctly.
 type: bugfix
 scope: Plugin
-
