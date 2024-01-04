@@ -59,20 +59,18 @@ if uh.database_type() == 'postgres' then
             local body = cjson.decode(assert.res_status(200, res))
             assert.equal(1, #body.data)
             local expected_redis_config = {
-                redis ={
-                    base = {
-                        host = "localhost",
-                        port = 57198,
-                        auth = "secret",
-                        username = "test",
-                        ssl = true,
-                        ssl_verify = false,
-                        database = 2
-                    },
-                    extra_options = {
-                        namespace = "test_prefix",
-                        scan_count = 13
-                    }
+                base = {
+                    host = "localhost",
+                    port = 57198,
+                    password = "secret",
+                    username = "test",
+                    ssl = true,
+                    ssl_verify = false,
+                    database = 2
+                },
+                extra_options = {
+                    namespace = "",
+                    scan_count = nil
                 }
             }
             assert.equal("test@example.com", body.data[1].config.account_email)
