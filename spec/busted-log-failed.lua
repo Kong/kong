@@ -13,10 +13,12 @@ local FAILED_FILES = {}
 
 busted.subscribe({ 'failure' }, function(element, parent, message, debug)
   FAILED_FILES[element.trace.source] = true
+  return nil, true --continue
 end)
 
 busted.subscribe({ 'error' }, function(element, parent, message, debug)
   FAILED_FILES[element.trace.source] = true
+  return nil, true --continue
 end)
 
 busted.subscribe({ 'suite', 'end' }, function(suite, count, total)
@@ -30,4 +32,5 @@ busted.subscribe({ 'suite', 'end' }, function(suite, count, total)
     end
   end
   output:close()
+  return nil, true --continue
 end)
