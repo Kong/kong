@@ -81,14 +81,17 @@ describe("Plugin: rate-limiting (policies)", function()
 
     it("expires after due time", function ()
       local timestamp = 569000048000
+      local key = get_local_key(conf, identifier, 'second', timestamp)
 
       assert(policies['local'].increment(conf, {second=100}, identifier, timestamp+20, 1))
-      local v = assert(shm:ttl(get_local_key(conf, identifier, 'second', timestamp)))
+      local v = assert(shm:ttl(key))
       assert(v > 0, "wrong value")
       ngx.sleep(1.020)
 
-      v = shm:ttl(get_local_key(conf, identifier, 'second', timestamp))
-      assert(v == nil, "still there")
+      v = shm:ttl(key)
+      assert(v < 0, "expected ttl to be negative")
+      local val = shm:get(key)
+      assert.is_nil(val)
     end)
   end)
 
