@@ -1,0 +1,3 @@
+message: "**OpenID-Connect**: Correctly handle boundary conditions for token expiration time checking"
+type: bugfix
+scope: Plugin

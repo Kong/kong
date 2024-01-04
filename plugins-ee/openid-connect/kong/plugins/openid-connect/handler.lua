@@ -1428,7 +1428,7 @@ function OICHandler.access(_, conf)
 
   log("checking for access token expiration")
 
-  if leeway_adjusted_exp == 0 or leeway_adjusted_exp > ttl.now then
+  if leeway_adjusted_exp == 0 or leeway_adjusted_exp >= ttl.now then
     log("access token is valid and has not expired")
 
     if auth_method == "session" then
