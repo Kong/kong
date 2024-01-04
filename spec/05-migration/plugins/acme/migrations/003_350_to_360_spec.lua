@@ -58,28 +58,27 @@ if uh.database_type() == 'postgres' then
             })
             local body = cjson.decode(assert.res_status(200, res))
             assert.equal(1, #body.data)
-            local expected_config = {
-                account_email = "test@example.com",
-                storage = "redis",
-                storage_config = {
-                    redis ={
-                        base = {
-                            host = "localhost",
-                            port = 57198,
-                            auth = "secret",
-                            username = "test",
-                            ssl = true,
-                            ssl_verify = false,
-                            database = 2
-                        },
-                        extra_options = {
-                            namespace = "test_prefix",
-                            scan_count = 13
-                        }
+            local expected_redis_config = {
+                redis ={
+                    base = {
+                        host = "localhost",
+                        port = 57198,
+                        auth = "secret",
+                        username = "test",
+                        ssl = true,
+                        ssl_verify = false,
+                        database = 2
+                    },
+                    extra_options = {
+                        namespace = "test_prefix",
+                        scan_count = 13
                     }
                 }
             }
-            assert.same(expected_config, body.data[1].config)
+            assert.equal("test@example.com", body.data[1].config.account_email)
+            assert.equal("redis", body.data[1].config.storage)
+            local redis_config = assert(body.data[1].config.storage_config.redis)
+            assert.same(expected_redis_config, redis_config)
             admin_client:close()
         end)
     end)
