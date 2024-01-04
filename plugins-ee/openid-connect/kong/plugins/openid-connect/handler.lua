@@ -251,6 +251,9 @@ function OICHandler.access(_, conf)
       tls_client_auth_cert = tls_client_auth_cert,
       tls_client_auth_key = tls_client_auth_key,
       tls_client_auth_ssl_verify = args.get_conf_arg("tls_client_auth_ssl_verify", true),
+      pushed_authorization_request_endpoint = args.get_conf_arg("pushed_authorization_request_endpoint"),
+      pushed_authorization_request_endpoint_auth_method = args.get_conf_arg("pushed_authorization_request_endpoint_auth_method"),
+      require_pushed_authorization_requests = args.get_conf_arg("require_pushed_authorization_requests"),
     })
 
     log("initializing library")

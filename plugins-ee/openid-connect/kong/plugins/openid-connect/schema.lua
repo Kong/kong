@@ -259,7 +259,7 @@ local config = {
           },
           {
             client_auth = {
-              description = "The authentication method used by the client (plugin) when calling the endpoint.",
+              description = "The default OpenID Connect client authentication method is 'client_secret_basic' (using 'Authorization: Basic' header), 'client_secret_post' (credentials in body), 'client_secret_jwt' (signed client assertion in body), 'private_key_jwt' (private key-signed assertion), 'tls_client_auth' (client certificate), 'self_signed_tls_client_auth' (self-signed client certificate), and 'none' (no authentication).",
               required = false,
               type = "array",
               elements = {
@@ -569,6 +569,35 @@ local config = {
             },
           },
           {
+            pushed_authorization_request_endpoint = typedefs.url {
+              description = "The pushed authorization endpoint. If set it overrides the value in `pushed_authorization_request_endpoint` returned by the discovery endpoint.",
+              required = false,
+            },
+          },
+          {
+            pushed_authorization_request_endpoint_auth_method = {
+              description = "The pushed authorization request endpoint authentication method: `client_secret_basic`, `client_secret_post`, `client_secret_jwt`, `private_key_jwt`, `tls_client_auth`, `self_signed_tls_client_auth`, or `none`: do not authenticate",
+              required = false,
+              type = "string",
+              one_of = {
+                "client_secret_basic",
+                "client_secret_post",
+                "client_secret_jwt",
+                "private_key_jwt",
+                "tls_client_auth",
+                "self_signed_tls_client_auth",
+                "none",
+              },
+            },
+          },
+          {
+            require_pushed_authorization_requests = {
+              description = "Forcibly enable or disable the pushed authorization requests. When not set the value is determined through the discovery using the value of `require_pushed_authorization_requests` (which defaults to `false`).",
+              required = false,
+              type = "boolean",
+            },
+          },
+          {
             authorization_endpoint = typedefs.url {
               description = "The authorization endpoint. If set it overrides the value in `authorization_endpoint` returned by the discovery endpoint.",
               required = false,
@@ -679,7 +708,7 @@ local config = {
           },
           {
             token_endpoint_auth_method = {
-              description = "The token endpoint authentication method: - `client_secret_basic`: send `client_id` and `client_secret` in `Authorization: Basic` header - `client_secret_post`: send `client_id` and `client_secret` as part of the body - `client_secret_jwt`: send client assertion signed with the `client_secret` as part of the body - `private_key_jwt`:  send client assertion signed with the `private key` as part of the body - `none`: do not authenticate.",
+              description = "The token endpoint authentication method: `client_secret_basic`, `client_secret_post`, `client_secret_jwt`, `private_key_jwt`, `tls_client_auth`, `self_signed_tls_client_auth`, or `none`: do not authenticate",
               required = false,
               type = "string",
               one_of = {
@@ -794,7 +823,7 @@ local config = {
           },
           {
             introspection_endpoint_auth_method = {
-              description = "The introspection endpoint authentication method: - `client_secret_basic`: send `client_id` and `client_secret` in `Authorization: Basic` header - `client_secret_post`: send `client_id` and `client_secret` as part of the body - `client_secret_jwt`: send client assertion signed with the `client_secret` as part of the body - `private_key_jwt`:  send client assertion signed with the `private key` as part of the body - `none`: do not authenticate.",
+              description = "The introspection endpoint authentication method: : `client_secret_basic`, `client_secret_post`, `client_secret_jwt`, `private_key_jwt`, `tls_client_auth`, `self_signed_tls_client_auth`, or `none`: do not authenticate",
               required = false,
               type = "string",
               one_of = {
@@ -913,7 +942,7 @@ local config = {
           },
           {
             revocation_endpoint_auth_method = {
-              description = "The revocation endpoint authentication method: - `client_secret_basic`: send `client_id` and `client_secret` in `Authorization: Basic` header - `client_secret_post`: send `client_id` and `client_secret` as part of the body - `client_secret_jwt`: send client assertion signed with the `client_secret` as part of the body - `private_key_jwt`:  send client assertion signed with the `private key` as part of the body - `none`: do not authenticate.",
+              description = "The revocation endpoint authentication method: : `client_secret_basic`, `client_secret_post`, `client_secret_jwt`, `private_key_jwt`, `tls_client_auth`, `self_signed_tls_client_auth`, or `none`: do not authenticate",
               required = false,
               type = "string",
               one_of = {

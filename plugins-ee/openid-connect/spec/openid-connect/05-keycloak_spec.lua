@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 
+local uri = require "kong.openid-connect.uri"
 local cjson = require "cjson.safe"
 local helpers = require "spec.helpers"
 local redis = require "resty.redis"
@@ -86,8 +87,8 @@ local mock = http_mock.new(HTTP_SERVER_PORT, {
   })
 local MOCK_ISSUER_URL = "http://localhost:" .. HTTP_SERVER_PORT .. REALM_PATH
 
-local function request_uri(uri, opts)
-  return require("resty.http").new():request_uri(uri, opts)
+local function request_uri(endpoint, opts)
+  return require("resty.http").new():request_uri(endpoint, opts)
 end
 
 local function error_assert(res, code, desc)
@@ -286,6 +287,11 @@ for _, strategy in helpers.all_strategies() do
           paths   = { "/code-flow" },
         }
 
+        local par_code_flow_route = bp.routes:insert {
+          service = service,
+          paths = { "/par-code-flow" },
+        }
+
         local cookie_attrs_route = bp.routes:insert {
           service = service,
           paths   = { "/cookie-attrs" },
@@ -315,6 +321,34 @@ for _, strategy in helpers.all_strategies() do
             },
             upstream_refresh_token_header = "refresh_token",
             refresh_token_param_name      = "refresh_token",
+          },
+        }
+
+        bp.plugins:insert {
+          route   = par_code_flow_route,
+          name    = PLUGIN_NAME,
+          config  = {
+            issuer    = ISSUER_URL,
+            scopes = {
+              -- this is the default
+              "openid",
+            },
+            auth_methods = {
+              "authorization_code",
+              "session"
+            },
+            preserve_query_args = true,
+            login_action = "redirect",
+            login_tokens = {},
+            client_id = {
+              KONG_CLIENT_ID,
+            },
+            client_secret = {
+              KONG_CLIENT_SECRET,
+            },
+            upstream_refresh_token_header = "refresh_token",
+            refresh_token_param_name      = "refresh_token",
+            require_pushed_authorization_requests = true,
           },
         }
 
@@ -703,6 +737,16 @@ for _, strategy in helpers.all_strategies() do
           })
           assert.response(res).has.status(302)
           local redirect = res.headers["Location"]
+          local url = uri.parse(redirect)
+
+          assert.equal("http", url.scheme)
+          assert.equal(KEYCLOAK_HOST, url.host)
+          assert.equal(KEYCLOAK_PORT, url.port)
+          assert.equal(KONG_CLIENT_ID, url.args.client_id)
+          assert.is_nil(url.args.request_uri)
+          assert.is_string(url.args.redirect_uri)
+          assert.not_equal("", url.args.redirect_uri)
+
           -- get authorization=...; cookie
           local auth_cookie = res.headers["Set-Cookie"]
           local auth_cookie_cleaned = sub(auth_cookie, 0, find(auth_cookie, ";") -1)
@@ -744,6 +788,110 @@ for _, strategy in helpers.all_strategies() do
               ["Content-Type"] = "application/x-www-form-urlencoded",
               Cookie = user_session_header_table,
           }}
+          local loginres
+          loginres, err = request_uri(login_button_url, opts)
+          assert.is_nil(err)
+          assert.equal(302, loginres.status)
+
+          -- after sending login data to the login action page, expect a redirect
+          local upstream_url = loginres.headers["Location"]
+          local ures
+          ures, err = request_uri(upstream_url, {
+            headers = {
+              -- authenticate using the cookie from the initial request
+              Cookie = auth_cookie_cleaned
+            }
+          })
+          assert.is_nil(err)
+          assert.equal(302, ures.status)
+
+          local client_session
+          local client_session_header_table = {}
+          -- extract session cookies
+          local ucookies = ures.headers["Set-Cookie"]
+          -- extract final redirect
+          local final_url = ures.headers["Location"]
+          for i, cookie in ipairs(ucookies) do
+            client_session = sub(cookie, 0, find(cookie, ";") -1)
+            client_session_header_table[i] = client_session
+          end
+          local ures_final
+          ures_final, err = request_uri(final_url, {
+            headers = {
+              -- send session cookie
+              Cookie = client_session_header_table
+            }
+          })
+          assert.is_nil(err)
+          assert.equal(200, ures_final.status)
+
+          local json = assert(cjson.decode(ures_final.body))
+          assert.is_not_nil(json.headers.authorization)
+          assert.equal("Bearer", sub(json.headers.authorization, 1, 6))
+        end)
+
+        it("initial request, expect redirect to login page using pushed authorization requests", function()
+          local res = proxy_client:get("/par-code-flow", {
+            headers = {
+              ["Host"] = "kong"
+            }
+          })
+          assert.response(res).has.status(302)
+          local redirect = res.headers["Location"]
+          local url = uri.parse(redirect)
+
+          assert.equal("http", url.scheme)
+          assert.equal(KEYCLOAK_HOST, url.host)
+          assert.equal(KEYCLOAK_PORT, url.port)
+          assert.equal(KONG_CLIENT_ID, url.args.client_id)
+          assert.is_string(url.args.request_uri)
+          assert.not_equal("", url.args.request_uri)
+          assert.is_nil(url.args.redirect_uri)
+          local rurl = uri.parse(url.args.request_uri)
+          assert.is_string(rurl.scheme)
+          assert.not_equal("", rurl.scheme)
+
+          -- get authorization=...; cookie
+          local auth_cookie = res.headers["Set-Cookie"]
+          local auth_cookie_cleaned = sub(auth_cookie, 0, find(auth_cookie, ";") -1)
+          local rres, err = request_uri(redirect, {
+            headers = {
+              -- impersonate as browser
+              ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", -- luacheck: ignore
+              ["Host"] = "keycloak:8080",
+            }
+          })
+          assert.is_nil(err)
+          assert.equal(200, rres.status)
+
+          local cookies = rres.headers["Set-Cookie"]
+          local user_session
+          local user_session_header_table = {}
+          for _, cookie in ipairs(cookies) do
+            user_session = sub(cookie, 0, find(cookie, ";") -1)
+            if find(user_session, 'AUTH_SESSION_ID=', 1, true) ~= 1 then
+              -- auth_session_id is dropped by the browser for non-https connections
+              table.insert(user_session_header_table, user_session)
+            end
+          end
+          -- get the action_url from submit button and post username:password
+          local action_start = find(rres.body, 'action="', 0, true)
+          local action_end = find(rres.body, '"', action_start+8, true)
+          local login_button_url = string.sub(rres.body, action_start+8, action_end-1)
+          -- the login_button_url is endcoded. decode it
+          login_button_url = string.gsub(login_button_url,"&amp;", "&")
+          -- build form_data
+          local form_data = "username="..USERNAME.."&password="..PASSWORD.."&credentialId="
+          local opts = { method = "POST",
+                         body = form_data,
+                         headers = {
+                           -- impersonate as browser
+                           ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", --luacheck: ignore
+                           ["Host"] = "keycloak:8080",
+                           -- due to form_data
+                           ["Content-Type"] = "application/x-www-form-urlencoded",
+                           Cookie = user_session_header_table,
+                         }}
           local loginres
           loginres, err = request_uri(login_button_url, opts)
           assert.is_nil(err)

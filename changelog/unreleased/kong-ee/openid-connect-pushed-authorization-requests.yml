@@ -1,0 +1,3 @@
+message: "**Openid-Connect**: add support for pushed authorization requests (PAR)."
+type: feature
+scope: Plugin
