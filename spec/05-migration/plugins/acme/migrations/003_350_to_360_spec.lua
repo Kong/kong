@@ -70,7 +70,7 @@ if uh.database_type() == 'postgres' then
                 },
                 extra_options = {
                     namespace = "",
-                    scan_count = nil
+                    scan_count = 10
                 }
             }
             assert.equal("test@example.com", body.data[1].config.account_email)
