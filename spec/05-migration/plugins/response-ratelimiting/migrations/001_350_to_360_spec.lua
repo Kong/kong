@@ -33,7 +33,11 @@ if uh.database_type() == 'postgres' then
                 body = {
                     name = "response-ratelimiting",
                     config = {
-                        minute = 200,
+                        limits = {
+                            video = {
+                                minute = 200,
+                            }
+                        },
                         redis_host = "localhost",
                         redis_port = 57198,
                         redis_username = "test",
@@ -63,7 +67,11 @@ if uh.database_type() == 'postgres' then
             assert.equal(1, #body.data)
             assert.equal("response-ratelimiting", body.data[1].name)
             local expected_config = {
-                minute = 200,
+                limits = {
+                    video = {
+                        minute = 200,
+                    }
+                },
                 redis = {
                     base = {
                         host = "localhost",
