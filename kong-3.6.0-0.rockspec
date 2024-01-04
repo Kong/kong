@@ -180,6 +180,7 @@ build = {
     ["kong.tools.module"] = "kong/tools/module.lua",
     ["kong.tools.ip"] = "kong/tools/ip.lua",
     ["kong.tools.http"] = "kong/tools/http.lua",
+    ["kong.tools.redis.schema"] = "kong/tools/redis/schema.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.events"] = "kong/runloop/events.lua",
@@ -487,6 +488,8 @@ build = {
     ["kong.plugins.acme.migrations"] = "kong/plugins/acme/migrations/init.lua",
     ["kong.plugins.acme.schema"] = "kong/plugins/acme/schema.lua",
     ["kong.plugins.acme.storage.kong"] = "kong/plugins/acme/storage/kong.lua",
+    ["kong.plugins.acme.storage.config_adapters"] = "kong/plugins/acme/storage/config_adapters/init.lua",
+    ["kong.plugins.acme.storage.config_adapters.redis"] = "kong/plugins/acme/storage/config_adapters/redis.lua",
     ["kong.plugins.acme.reserved_words"] = "kong/plugins/acme/reserved_words.lua",
 
     ["kong.plugins.prometheus.api"] = "kong/plugins/prometheus/api.lua",
