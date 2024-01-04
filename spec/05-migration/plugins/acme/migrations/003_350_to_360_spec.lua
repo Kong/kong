@@ -16,28 +16,36 @@ if uh.database_type() == 'postgres' then
 
         uh.setup(function ()
             local admin_client = assert(uh.admin_client())
+            local test_res = assert(admin_client:send {
+                method = "GET",
+                path = "/schemas/plugins/acme"
+            })
+            assert.res_status(200, test_res)
+            print("test_res = " .. require("inspect")(test_res))
+
+
             local res = assert(admin_client:send {
                 method = "POST",
                 path = "/plugins/",
                 body = {
-                name = "acme",
-                config = {
-                    account_email = "test@example.com",
-                    storage = "redis",
-                    storage_config = {
-                        redis = {
-                            host = "localhost",
-                            port = 57198,
-                            auth = "secret",
-                            username = "test",
-                            ssl = true,
-                            ssl_verify = false,
-                            database = 2,
-                            namespace = "test_prefix",
-                            scan_count = 13
+                    name = "acme",
+                    config = {
+                        account_email = "test@example.com",
+                        storage = "redis",
+                        storage_config = {
+                            redis = {
+                                host = "localhost",
+                                port = 57198,
+                                auth = "secret",
+                                username = "test",
+                                ssl = true,
+                                ssl_verify = false,
+                                database = 2,
+                                namespace = "test_prefix",
+                                scan_count = 13
+                            }
                         }
                     }
-                }
                 },
                 headers = {
                 ["Content-Type"] = "application/json"
@@ -47,7 +55,7 @@ if uh.database_type() == 'postgres' then
             admin_client:close()
         end)
 
-        uh.new_after_finish("has updated acme redis configuration", function ()
+        uh.old_after_up("has updated acme redis configuration", function ()
             local admin_client = assert(uh.admin_client())
             local res = assert(admin_client:send {
                 method = "GET",
