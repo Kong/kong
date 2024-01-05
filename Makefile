@@ -1,7 +1,7 @@
 OS := $(shell uname | awk '{print tolower($$0)}')
 MACHINE := $(shell uname -m)
 
-DEV_ROCKS = "busted 2.1.2" "busted-htest 1.0.0" "luacheck 1.1.1" "lua-llthreads2 0.1.6" "ldoc 1.5.0" "luacov 0.15.0"
+DEV_ROCKS = "busted 2.2.0" "busted-htest 1.0.0" "luacheck 1.1.1" "lua-llthreads2 0.1.6" "ldoc 1.5.0" "luacov 0.15.0"
 WIN_SCRIPTS = "bin/busted" "bin/kong" "bin/kong-health"
 BUSTED_ARGS ?= -v
 TEST_CMD ?= bin/busted $(BUSTED_ARGS)
@@ -137,6 +137,9 @@ lint: dev
 	@$(VENV) luacheck -q .
 	@!(grep -R -E -I -n -w '#only|#o' spec && echo "#only or #o tag detected") >&2
 	@!(grep -R -E -I -n -- '---\s+ONLY' t && echo "--- ONLY block detected") >&2
+
+update-copyright: build-venv
+	bash -c 'OPENSSL_DIR=$(OPENSSL_DIR) EXPAT_DIR=$(EXPAT_DIR) $(VENV) luajit $(KONG_SOURCE_LOCATION)/scripts/update-copyright'
 
 test: dev
 	@$(VENV) $(TEST_CMD) spec/01-unit

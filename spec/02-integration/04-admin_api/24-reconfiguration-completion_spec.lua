@@ -56,13 +56,13 @@ describe("Admin API - Reconfiguration Completion -", function()
         headers = { ["Content-Type"] = "application/json" },
       })
       assert.res_status(201, res)
-      kong_transaction_id = res.headers['x-kong-transaction-id']
+      kong_transaction_id = res.headers['kong-test-transaction-id']
       assert.is_string(kong_transaction_id)
 
       res = proxy_client:get(service_path,
               {
                 headers = {
-                  ["X-If-Kong-Transaction-Id"] = kong_transaction_id
+                  ["If-Kong-Test-Transaction-Id"] = kong_transaction_id
                 }
               })
       assert.res_status(503, res)
@@ -76,7 +76,7 @@ describe("Admin API - Reconfiguration Completion -", function()
       res = proxy_client:get(service_path,
               {
                 headers = {
-                  ["X-If-Kong-Transaction-Id"] = kong_transaction_id
+                  ["If-Kong-Test-Transaction-Id"] = kong_transaction_id
                 }
               })
       body = assert.res_status(200, res)

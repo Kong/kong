@@ -44,16 +44,22 @@ local pb_decode_span = function(data)
 end
 
 describe("Plugin: opentelemetry (otlp)", function()
+  local old_ngx_get_phase
+
   lazy_setup(function ()
     -- overwrite for testing
     pb.option("enum_as_value")
     pb.option("auto_default_values")
+    old_ngx_get_phase = ngx.get_phase
+    -- trick the pdk into thinking we are not in the timer context
+    _G.ngx.get_phase = function() return "access" end  -- luacheck: ignore
   end)
 
   lazy_teardown(function()
     -- revert it back
     pb.option("enum_as_name")
     pb.option("no_default_values")
+    _G.ngx.get_phase = old_ngx_get_phase  -- luacheck: ignore
   end)
 
   after_each(function ()

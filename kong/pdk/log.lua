@@ -10,6 +10,7 @@
 -- @module kong.log
 
 
+local buffer = require "string.buffer"
 local errlog = require "ngx.errlog"
 local ngx_re = require "ngx.re"
 local inspect = require "inspect"
@@ -17,6 +18,7 @@ local ngx_ssl = require "ngx.ssl"
 local phase_checker = require "kong.pdk.private.phases"
 local utils = require "kong.tools.utils"
 local cycle_aware_deep_copy = utils.cycle_aware_deep_copy
+local constants = require "kong.constants"
 
 local sub = string.sub
 local type = type
@@ -45,6 +47,7 @@ local _DEFAULT_NAMESPACED_FORMAT = "%file_src:%line_src [%namespace] %message"
 local PHASES = phase_checker.phases
 local PHASES_LOG = PHASES.log
 local QUESTION_MARK = byte("?")
+local TYPE_NAMES = constants.RESPONSE_SOURCE.NAMES
 
 local phases_with_ctx =
     phase_checker.new(PHASES.rewrite,
@@ -137,34 +140,34 @@ end
 
 
 local serializers = {
-  [1] = function(buf, to_string, ...)
-    buf[1] = to_string((select(1, ...)))
+  [1] = function(buf, sep, to_string, ...)
+    buf:put(to_string((select(1, ...))))
   end,
 
-  [2] = function(buf, to_string, ...)
-    buf[1] = to_string((select(1, ...)))
-    buf[2] = to_string((select(2, ...)))
+  [2] = function(buf, sep, to_string, ...)
+    buf:put(to_string((select(1, ...)))):put(sep)
+       :put(to_string((select(2, ...))))
   end,
 
-  [3] = function(buf, to_string, ...)
-    buf[1] = to_string((select(1, ...)))
-    buf[2] = to_string((select(2, ...)))
-    buf[3] = to_string((select(3, ...)))
+  [3] = function(buf, sep, to_string, ...)
+    buf:put(to_string((select(1, ...)))):put(sep)
+       :put(to_string((select(2, ...)))):put(sep)
+       :put(to_string((select(3, ...))))
   end,
 
-  [4] = function(buf, to_string, ...)
-    buf[1] = to_string((select(1, ...)))
-    buf[2] = to_string((select(2, ...)))
-    buf[3] = to_string((select(3, ...)))
-    buf[4] = to_string((select(4, ...)))
+  [4] = function(buf, sep, to_string, ...)
+    buf:put(to_string((select(1, ...)))):put(sep)
+       :put(to_string((select(2, ...)))):put(sep)
+       :put(to_string((select(3, ...)))):put(sep)
+       :put(to_string((select(4, ...))))
   end,
 
-  [5] = function(buf, to_string, ...)
-    buf[1] = to_string((select(1, ...)))
-    buf[2] = to_string((select(2, ...)))
-    buf[3] = to_string((select(3, ...)))
-    buf[4] = to_string((select(4, ...)))
-    buf[5] = to_string((select(5, ...)))
+  [5] = function(buf, sep, to_string, ...)
+    buf:put(to_string((select(1, ...)))):put(sep)
+       :put(to_string((select(2, ...)))):put(sep)
+       :put(to_string((select(3, ...)))):put(sep)
+       :put(to_string((select(4, ...)))):put(sep)
+       :put(to_string((select(5, ...))))
   end,
 }
 
@@ -282,7 +285,7 @@ local function gen_log_func(lvl_const, imm_buf, to_string, stack_level, sep)
   to_string = to_string or tostring
   stack_level = stack_level or 2
 
-  local variadic_buf = {}
+  local variadic_buf = buffer.new()
 
   return function(...)
     local sys_log_level = nil
@@ -320,15 +323,16 @@ local function gen_log_func(lvl_const, imm_buf, to_string, stack_level, sep)
     end
 
     if serializers[n] then
-      serializers[n](variadic_buf, to_string, ...)
+      serializers[n](variadic_buf, sep or "" , to_string, ...)
 
     else
-      for i = 1, n do
-        variadic_buf[i] = to_string((select(i, ...)))
+      for i = 1, n - 1 do
+        variadic_buf:put(to_string((select(i, ...)))):put(sep or "")
       end
+      variadic_buf:put(to_string((select(n, ...))))
     end
 
-    local msg = concat(variadic_buf, sep, 1, n)
+    local msg = variadic_buf:get()
 
     for i = 1, imm_buf.n_messages do
       imm_buf[imm_buf.message_idxs[i]] = msg
@@ -815,6 +819,9 @@ do
       -- the nginx doc: http://nginx.org/en/docs/http/ngx_http_upstream_module.html#upstream_status
       local upstream_status = var.upstream_status or ""
 
+      local response_source = okong.response.get_source(ongx.ctx)
+      local response_source_name = TYPE_NAMES[response_source]
+
       local root = {
         request = {
           id = request_id_get() or "",
@@ -846,6 +853,7 @@ do
         consumer = cycle_aware_deep_copy(ctx.authenticated_consumer),
         client_ip = var.remote_addr,
         started_at = okong.request.get_start_time(),
+        source = response_source_name,
       }
 
       return edit_result(ctx, root)

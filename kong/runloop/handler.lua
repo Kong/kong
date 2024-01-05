@@ -51,6 +51,7 @@ local http_version      = ngx.req.http_version
 local request_id_get    = request_id.get
 local escape            = require("kong.tools.uri").escape
 local encode            = require("string.buffer").encode
+local yield             = require("kong.tools.yield").yield
 
 local req_dyn_hook_run_hooks = req_dyn_hook.run_hooks
 
@@ -86,6 +87,7 @@ local QUESTION_MARK = byte("?")
 local ARRAY_MT = require("cjson.safe").array_mt
 
 local HOST_PORTS = {}
+local IS_DEBUG = false
 
 
 local SUBSYSTEMS = constants.PROTOCOLS_WITH_SUBSYSTEM
@@ -747,7 +749,7 @@ do
         wasm.set_state(wasm_state)
       end
 
-      global.CURRENT_TRANSACTION_ID = kong_shm:get("declarative:current-transaction-id") or 0
+      global.CURRENT_TRANSACTION_ID = kong_shm:get("declarative:current_transaction_id") or 0
 
       return true
     end)  -- concurrency.with_coroutine_mutex
@@ -893,6 +895,7 @@ return {
 
   init_worker = {
     before = function()
+      IS_DEBUG = (kong.configuration.log_level == "debug")
       -- TODO: PR #9337 may affect the following line
       local prefix = kong.configuration.prefix or ngx.config.prefix()
 
@@ -1006,9 +1009,9 @@ return {
 
           if rebuild_transaction_id then
             -- Yield to process any pending invalidations
-            utils.yield()
+            yield()
 
-            log(NOTICE, "configuration processing completed for transaction ID " .. rebuild_transaction_id)
+            log(DEBUG, "configuration processing completed for transaction ID " .. rebuild_transaction_id)
             global.CURRENT_TRANSACTION_ID = rebuild_transaction_id
           end
         end
@@ -1108,20 +1111,22 @@ return {
   },
   access = {
     before = function(ctx)
-      -- If this is a version-conditional request, abort it if this dataplane has not processed at least the
-      -- specified configuration version yet.
-      local if_kong_transaction_id = kong.request and kong.request.get_header('x-if-kong-transaction-id')
-      if if_kong_transaction_id then
-        if_kong_transaction_id = tonumber(if_kong_transaction_id)
-        if if_kong_transaction_id and if_kong_transaction_id >= global.CURRENT_TRANSACTION_ID then
-          return kong.response.error(
-                  503,
-                  "Service Unavailable",
-                  {
-                    ["X-Kong-Reconfiguration-Status"] = "pending",
-                    ["Retry-After"] = tostring(kong.configuration.worker_state_update_frequency or 1),
-                  }
-          )
+      if IS_DEBUG then
+        -- If this is a version-conditional request, abort it if this dataplane has not processed at least the
+        -- specified configuration version yet.
+        local if_kong_transaction_id = kong.request and kong.request.get_header('if-kong-test-transaction-id')
+        if if_kong_transaction_id then
+          if_kong_transaction_id = tonumber(if_kong_transaction_id)
+          if if_kong_transaction_id and if_kong_transaction_id >= global.CURRENT_TRANSACTION_ID then
+            return kong.response.error(
+                    503,
+                    "Service Unavailable",
+                    {
+                      ["X-Kong-Reconfiguration-Status"] = "pending",
+                      ["Retry-After"] = tostring(kong.configuration.worker_state_update_frequency or 1),
+                    }
+            )
+          end
         end
       end
 

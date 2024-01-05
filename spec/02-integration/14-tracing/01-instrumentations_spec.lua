@@ -4,23 +4,29 @@ local pretty  = require "pl.pretty"
 
 local fmt = string.format
 
-local function get_span(name, spans)
+local function get_spans(name, spans)
+  local res = {}
   for _, span in ipairs(spans) do
     if span.name == name then
-      return span
+      res[#res+1] = span
     end
   end
+  return #res > 0 and res or nil
 end
 
-local function assert_has_span(name, spans)
-  local span = get_span(name, spans)
-  assert.is_truthy(span, fmt("\nExpected to find %q span in:\n%s\n",
+local function assert_has_spans(name, spans, count)
+  local res = get_spans(name, spans)
+  assert.is_truthy(res, fmt("\nExpected to find %q span in:\n%s\n",
                              name, pretty.write(spans)))
-  return span
+  if count then
+    assert.equals(count, #res, fmt("\nExpected to find %d %q spans in:\n%s\n",
+                                 count, name, pretty.write(spans)))
+  end
+  return #res > 0 and res or nil
 end
 
 local function assert_has_no_span(name, spans)
-  local found = get_span(name, spans)
+  local found = get_spans(name, spans)
   assert.is_falsy(found, fmt("\nExpected not to find %q span in:\n%s\n",
                              name, pretty.write(spans)))
 end
@@ -42,7 +48,7 @@ for _, strategy in helpers.each_strategy() do
 
   describe("tracing instrumentations spec #" .. strategy, function()
 
-    local function setup_instrumentations(types, custom_spans)
+    local function setup_instrumentations(types, custom_spans, post_func)
       local bp, _ = assert(helpers.get_db_utils(strategy, {
         "services",
         "routes",
@@ -89,6 +95,10 @@ for _, strategy in helpers.each_strategy() do
           message = "No coffee for you. I'm a teapot.",
         }
       })
+
+      if post_func then
+        post_func(bp)
+      end
 
       assert(helpers.start_kong {
         database = strategy,
@@ -152,8 +162,8 @@ for _, strategy in helpers.each_strategy() do
         assert.is_string(res)
 
         local spans = cjson.decode(res)
-        assert_has_span("kong", spans)
-        assert_has_span("kong.database.query", spans)
+        assert_has_spans("kong", spans, 1)
+        assert_has_spans("kong.database.query", spans)
 
         assert_has_no_span("kong.balancer", spans)
         assert_has_no_span("kong.dns", spans)
@@ -186,8 +196,8 @@ for _, strategy in helpers.each_strategy() do
         assert.is_string(res)
 
         local spans = cjson.decode(res)
-        assert_has_span("kong", spans)
-        assert_has_span("kong.router", spans)
+        assert_has_spans("kong", spans, 1)
+        assert_has_spans("kong.router", spans, 1)
 
         assert_has_no_span("kong.balancer", spans)
         assert_has_no_span("kong.database.query", spans)
@@ -220,8 +230,8 @@ for _, strategy in helpers.each_strategy() do
         assert.is_string(res)
 
         local spans = cjson.decode(res)
-        assert_has_span("kong", spans)
-        assert_has_span("kong.internal.request", spans)
+        assert_has_spans("kong", spans, 1)
+        assert_has_spans("kong.internal.request", spans, 1)
 
         assert_has_no_span("kong.balancer", spans)
         assert_has_no_span("kong.database.query", spans)
@@ -254,8 +264,8 @@ for _, strategy in helpers.each_strategy() do
         assert.is_string(res)
 
         local spans = cjson.decode(res)
-        assert_has_span("kong", spans)
-        assert_has_span("kong.balancer", spans)
+        assert_has_spans("kong", spans, 1)
+        assert_has_spans("kong.balancer", spans, 1)
 
         assert_has_no_span("kong.database.query", spans)
         assert_has_no_span("kong.dns", spans)
@@ -288,8 +298,8 @@ for _, strategy in helpers.each_strategy() do
         assert.is_string(res)
 
         local spans = cjson.decode(res)
-        assert_has_span("kong", spans)
-        assert_has_span("kong.rewrite.plugin." .. tcp_trace_plugin_name, spans)
+        assert_has_spans("kong", spans, 1)
+        assert_has_spans("kong.rewrite.plugin." .. tcp_trace_plugin_name, spans, 1)
 
         assert_has_no_span("kong.balancer", spans)
         assert_has_no_span("kong.database.query", spans)
@@ -323,8 +333,8 @@ for _, strategy in helpers.each_strategy() do
 
         -- Making sure it's alright
         local spans = cjson.decode(res)
-        assert_has_span("kong", spans)
-        assert_has_span("kong.header_filter.plugin." .. tcp_trace_plugin_name, spans)
+        assert_has_spans("kong", spans, 1)
+        assert_has_spans("kong.header_filter.plugin." .. tcp_trace_plugin_name, spans, 1)
 
         assert_has_no_span("kong.balancer", spans)
         assert_has_no_span("kong.database.query", spans)
@@ -348,7 +358,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- Making sure it's alright
         local spans = cjson.decode(res)
-        local kong_span = assert_has_span("kong", spans)
+        local kong_span = assert_has_spans("kong", spans, 1)[1]
 
         assert_has_attributes(kong_span, {
           ["http.method"]    = "GET",
@@ -357,7 +367,7 @@ for _, strategy in helpers.each_strategy() do
           ["http.route"] = "/noproxy",
           ["http.url"] = "http://0.0.0.0/noproxy",
         })
-        assert_has_span("kong.header_filter.plugin." .. tcp_trace_plugin_name, spans)
+        assert_has_spans("kong.header_filter.plugin." .. tcp_trace_plugin_name, spans, 1)
         assert_has_no_span("kong.balancer", spans)
         assert_has_no_span("kong.database.query", spans)
         assert_has_no_span("kong.router", spans)
@@ -390,8 +400,8 @@ for _, strategy in helpers.each_strategy() do
         assert.is_string(res)
 
         local spans = cjson.decode(res)
-        assert_has_span("kong", spans)
-        assert_has_span("kong.dns", spans)
+        assert_has_spans("kong", spans, 1)
+        assert_has_spans("kong.dns", spans, 2)
 
         assert_has_no_span("kong.balancer", spans)
         assert_has_no_span("kong.database.query", spans)
@@ -427,14 +437,14 @@ for _, strategy in helpers.each_strategy() do
         assert.is_string(res)
 
         local spans = cjson.decode(res)
-        local kong_span = assert_has_span("kong", spans)
-        local dns_span = assert_has_span("kong.dns", spans)
-        local balancer_span = assert_has_span("kong.balancer", spans)
-        local db_span = assert_has_span("kong.database.query", spans)
-        local int_req_span = assert_has_span("kong.internal.request", spans)
-        assert_has_span("kong.router", spans)
-        assert_has_span("kong.rewrite.plugin." .. tcp_trace_plugin_name, spans)
-        assert_has_span("kong.header_filter.plugin." .. tcp_trace_plugin_name, spans)
+        local kong_span = assert_has_spans("kong", spans, 1)[1]
+        local dns_spans = assert_has_spans("kong.dns", spans, 2)
+        local balancer_span = assert_has_spans("kong.balancer", spans, 1)[1]
+        local db_spans = assert_has_spans("kong.database.query", spans)[1]
+        local int_req_span = assert_has_spans("kong.internal.request", spans, 1)[1]
+        assert_has_spans("kong.router", spans, 1)
+        assert_has_spans("kong.rewrite.plugin." .. tcp_trace_plugin_name, spans, 1)
+        assert_has_spans("kong.header_filter.plugin." .. tcp_trace_plugin_name, spans, 1)
 
         -- span attributes check
         assert_has_attributes(kong_span, {
@@ -449,11 +459,13 @@ for _, strategy in helpers.each_strategy() do
           ["kong.request.id"] = "^[0-9a-f]+$",
         })
 
-        assert_has_attributes(dns_span, {
-          ["dns.record.domain"] = "[%w\\.]+",
-          ["dns.record.ip"] = "[%d\\.]+",
-          ["dns.record.port"] = "%d+"
-        })
+        for _, dns_span in ipairs(dns_spans) do
+          assert_has_attributes(dns_span, {
+            ["dns.record.domain"] = "[%w\\.]+",
+            ["dns.record.ip"] = "[%d\\.]+",
+            ["dns.record.port"] = "%d+"
+          })
+        end
 
         assert_has_attributes(balancer_span, {
           ["net.peer.ip"] = "127.0.0.1",
@@ -461,10 +473,12 @@ for _, strategy in helpers.each_strategy() do
           ["net.peer.name"]  = "127.0.0.1",
         })
 
-        assert_has_attributes(db_span, {
-          ["db.statement"] = ".*",
-          ["db.system"] = "%w+",
-        })
+        for _, db_span in ipairs(db_spans) do
+          assert_has_attributes(db_span, {
+            ["db.statement"] = ".*",
+            ["db.system"] = "%w+",
+          })
+        end
 
         assert_has_attributes(int_req_span, {
           ["http.method"]    = "GET",
@@ -499,7 +513,62 @@ for _, strategy in helpers.each_strategy() do
         assert.is_string(res)
 
         local spans = cjson.decode(res)
-        assert_has_span("kong", spans)
+        assert_has_spans("kong", spans, 1)
+      end)
+    end)
+
+    describe("#regression", function ()
+      describe("nil attribute for dns_query when fail to query", function ()
+        lazy_setup(function()
+          setup_instrumentations("dns_query", true, function(bp)
+            -- intentionally trigger a DNS query error
+            local service = bp.services:insert({
+              name = "inexist-host-service",
+              host = "really-inexist-host",
+              port = 80,
+            })
+
+            bp.routes:insert({
+              service = service,
+              protocols = { "http" },
+              paths = { "/test" },
+            })
+          end)
+        end)
+  
+        lazy_teardown(function()
+          helpers.stop_kong()
+        end)
+  
+        it("contains the expected kong.dns span", function ()
+          local thread = helpers.tcp_server(TCP_PORT)
+          local r = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/test",
+          })
+          assert.res_status(503, r)
+  
+          -- Getting back the TCP server input
+          local ok, res = thread:join()
+          assert.True(ok)
+          assert.is_string(res)
+  
+          local spans = cjson.decode(res)
+          assert_has_spans("kong", spans)
+          local dns_spans = assert_has_spans("kong.dns", spans)
+          local upstream_dns
+          for _, dns_span in ipairs(dns_spans) do
+            if dns_span.attributes["dns.record.domain"] == "really-inexist-host" then
+              upstream_dns = dns_span
+              break
+            end
+          end
+          
+          assert.is_not_nil(upstream_dns)
+          assert.is_nil(upstream_dns.attributes["dns.record.ip"])
+          -- has error reported
+          assert.is_not_nil(upstream_dns.events)
+        end)
       end)
     end)
   end)

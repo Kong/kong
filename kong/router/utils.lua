@@ -2,11 +2,13 @@ local constants = require("kong.constants")
 local hostname_type = require("kong.tools.utils").hostname_type
 local normalize = require("kong.tools.uri").normalize
 
-local type   = type
-local error  = error
-local find   = string.find
-local sub    = string.sub
-local byte   = string.byte
+
+local type = type
+local error = error
+local ipairs = ipairs
+local find = string.find
+local sub = string.sub
+local byte = string.byte
 
 
 local SLASH  = byte("/")
@@ -249,7 +251,9 @@ local phonehome_statistics
 do
   local reports = require("kong.reports")
   local nkeys = require("table.nkeys")
+  local yield = require("kong.tools.yield").yield
   local worker_id = ngx.worker.id
+  local get_phase = ngx.get_phase
 
   local TILDE = byte("~")
   is_regex_magic = function(path)
@@ -291,7 +295,11 @@ do
     local v0              = 0
     local v1              = 0
 
+    local phase = get_phase()
+
     for _, route in ipairs(routes) do
+      yield(true, phase)
+
       local r = route.route
 
       local paths_t     = r.paths or empty_table

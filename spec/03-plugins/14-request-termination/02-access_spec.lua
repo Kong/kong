@@ -19,45 +19,45 @@ for _, strategy in helpers.each_strategy() do
       })
 
       local route1 = bp.routes:insert({
-        hosts = { "api1.request-termination.com" },
+        hosts = { "api1.request-termination.test" },
       })
 
       local route2 = bp.routes:insert({
-        hosts = { "api2.request-termination.com" },
+        hosts = { "api2.request-termination.test" },
       })
 
       local route3 = bp.routes:insert({
-        hosts = { "api3.request-termination.com" },
+        hosts = { "api3.request-termination.test" },
       })
 
       local route4 = bp.routes:insert({
-        hosts = { "api4.request-termination.com" },
+        hosts = { "api4.request-termination.test" },
       })
 
       local route5 = bp.routes:insert({
-        hosts = { "api5.request-termination.com" },
+        hosts = { "api5.request-termination.test" },
       })
 
       local route6 = bp.routes:insert({
-        hosts = { "api6.request-termination.com" },
+        hosts = { "api6.request-termination.test" },
       })
 
       local route7 = db.routes:insert({
-        hosts = { "api7.request-termination.com" },
+        hosts = { "api7.request-termination.test" },
       })
 
       local route8 = bp.routes:insert({
-        hosts = { "api8.request-termination.com" },
+        hosts = { "api8.request-termination.test" },
       })
 
       local route9 = bp.routes:insert({
-        hosts = { "api9.request-termination.com" },
+        hosts = { "api9.request-termination.test" },
         strip_path = false,
         paths = { "~/(?<parameter>[^#?/]+)/200" }
       })
 
       local route10 = bp.routes:insert({
-        hosts = { "api10.request-termination.com" },
+        hosts = { "api10.request-termination.test" },
       })
 
       bp.plugins:insert {
@@ -191,7 +191,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/status/200",
           headers = {
-            ["Host"] = "api1.request-termination.com"
+            ["Host"] = "api1.request-termination.test"
           }
         })
         local body = assert.res_status(503, res)
@@ -204,7 +204,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/status/200",
           headers = {
-            ["Host"] = "api7.request-termination.com"
+            ["Host"] = "api7.request-termination.test"
           }
         })
         local body = assert.res_status(503, res)
@@ -217,7 +217,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/status/200",
           headers = {
-            ["Host"] = "api2.request-termination.com"
+            ["Host"] = "api2.request-termination.test"
           }
         })
         local body = assert.res_status(404, res)
@@ -230,7 +230,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/status/200",
           headers = {
-            ["Host"] = "api3.request-termination.com"
+            ["Host"] = "api3.request-termination.test"
           }
         })
         local body = assert.res_status(406, res)
@@ -243,7 +243,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/status/204",
           headers = {
-            ["Host"] = "api8.request-termination.com"
+            ["Host"] = "api8.request-termination.test"
           }
         })
 
@@ -259,7 +259,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/status/200",
           headers = {
-            ["Host"] = "api4.request-termination.com"
+            ["Host"] = "api4.request-termination.test"
           }
         })
         local body = assert.res_status(503, res)
@@ -271,7 +271,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/status/200",
           headers = {
-            ["Host"] = "api5.request-termination.com"
+            ["Host"] = "api5.request-termination.test"
           }
         })
         local body = assert.res_status(451, res)
@@ -294,7 +294,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/status/200",
           headers = {
-            ["Host"] = "api6.request-termination.com"
+            ["Host"] = "api6.request-termination.test"
           }
         })
         local body = assert.res_status(503, res)
@@ -308,7 +308,7 @@ for _, strategy in helpers.each_strategy() do
         method = "GET",
         path = "/status/200",
         headers = {
-          ["Host"] = "api1.request-termination.com"
+          ["Host"] = "api1.request-termination.test"
         }
       })
 
@@ -324,20 +324,20 @@ for _, strategy in helpers.each_strategy() do
           },
           path = "/status/200",
           headers = {
-            ["Host"] = "api9.request-termination.com"
+            ["Host"] = "api9.request-termination.test"
           },
           body = "cool body",
         })
         assert.response(res).has.status(404)
         local json = assert.response(res).has.jsonbody()
-        assert.equal("api9.request-termination.com", json.matched_route.hosts[1])
+        assert.equal("api9.request-termination.test", json.matched_route.hosts[1])
         json.request.headers["user-agent"] = nil -- clear, depends on lua-resty-http version
         assert.same({
           headers = {
             ["content-length"] = '9',
-            host = 'api9.request-termination.com',
+            host = 'api9.request-termination.test',
           },
-          host = 'api9.request-termination.com',
+          host = 'api9.request-termination.test',
           method = 'GET',
           path = '/status/200',
           port = helpers.get_proxy_port(),
@@ -357,7 +357,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/status/200",
           headers = {
-            ["Host"] = "api10.request-termination.com"
+            ["Host"] = "api10.request-termination.test"
           }
         })
         assert.response(res).has.status(200)
@@ -370,22 +370,22 @@ for _, strategy in helpers.each_strategy() do
           },
           path = "/status/200",
           headers = {
-            ["Host"] = "api10.request-termination.com",
+            ["Host"] = "api10.request-termination.test",
             ["Gimme-An-Echo"] = "anything will do"
           },
           body = "cool body",
         })
         assert.response(res).has.status(404)
         local json = assert.response(res).has.jsonbody()
-        assert.equal("api10.request-termination.com", json.matched_route.hosts[1])
+        assert.equal("api10.request-termination.test", json.matched_route.hosts[1])
         json.request.headers["user-agent"] = nil -- clear, depends on lua-resty-http version
         assert.same({
           headers = {
             ["content-length"] = '9',
             ["gimme-an-echo"] = 'anything will do',
-            host = 'api10.request-termination.com',
+            host = 'api10.request-termination.test',
           },
-          host = 'api10.request-termination.com',
+          host = 'api10.request-termination.test',
           method = 'GET',
           path = '/status/200',
           port = helpers.get_proxy_port(),
@@ -409,20 +409,20 @@ for _, strategy in helpers.each_strategy() do
             },
           path = "/status/200",
           headers = {
-            ["Host"] = "api10.request-termination.com",
+            ["Host"] = "api10.request-termination.test",
           },
           body = "cool body",
         })
         assert.response(res).has.status(404)
         local json = assert.response(res).has.jsonbody()
-        assert.equal("api10.request-termination.com", json.matched_route.hosts[1])
+        assert.equal("api10.request-termination.test", json.matched_route.hosts[1])
         json.request.headers["user-agent"] = nil -- clear, depends on lua-resty-http version
         assert.same({
           headers = {
             ["content-length"] = '9',
-            host = 'api10.request-termination.com',
+            host = 'api10.request-termination.test',
           },
-          host = 'api10.request-termination.com',
+          host = 'api10.request-termination.test',
           method = 'GET',
           path = '/status/200',
           port = helpers.get_proxy_port(),

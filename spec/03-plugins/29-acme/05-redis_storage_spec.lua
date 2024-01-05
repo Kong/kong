@@ -289,7 +289,7 @@ describe("Plugin: acme (storage.redis)", function()
 
   describe("Plugin: acme (handler.access) [#postgres]", function()
     local bp
-    local domain = "mydomain.com"
+    local domain = "mydomain.test"
     local dummy_id = "ZR02iVO6PFywzFLj6igWHd6fnK2R07C-97dkQKC7vJo"
     local namespace = "namespace1"
     local plugin

@@ -15,25 +15,55 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.event != 'schedule' }}
     steps:
+    - name: Fetch mapping file
+      id: fetch_mapping
+      uses: actions/github-script@v7
+      env:
+        ACCESS_TOKEN: ${{ secrets.PAT }}
+      with:
+        script: |
+          const url = 'https://raw.githubusercontent.com/Kong/github-slack-mapping/main/mapping.json';
+          const headers = {Authorization: `token ${process.env.ACCESS_TOKEN}`};
+          const response = await fetch(url, {headers});
+          const mapping = await response.json();
+          return mapping;
+
+    - name: Retrieve PR info
+      id: retrieve_pr_info
+      env:
+        ACCESS_TOKEN: ${{ secrets.PAT }}
+      run: |
+        repo_name="${{ github.event.workflow_run.repository.full_name }}"
+        head_sha="${{ github.event.workflow_run.head_sha }}"
+        IFS=$'\t' read pr_html_url pr_user_login < <(curl -sS \
+                         -H "Authorization: Bearer ${{ env.ACCESS_TOKEN }}" \
+                         -H "Accept: application/vnd.github+json" \
+                         -H "X-GitHub-Api-Version: 2022-11-28" \
+                         "https://api.github.com/repos/$repo_name/commits/$head_sha/pulls" \
+                         | jq -r '.[0] | [.html_url, .user.login] | @tsv')
+        echo "pr_html_url=$pr_html_url" >> $GITHUB_OUTPUT
+        echo "pr_user_login=$pr_user_login" >> $GITHUB_OUTPUT
+      shell: bash
+
     - name: Generate Slack Payload
       id: generate-payload
       env:
         SLACK_CHANNEL: gateway-notifications
-        SLACK_MAPPING: "${{ vars.GH_ID_2_SLACK_ID_MAPPING }}"
-      uses: actions/github-script@v6
+        SLACK_MAPPING: "${{ steps.fetch_mapping.outputs.result }}"
+      uses: actions/github-script@v7
       with:
         script: |
-          const slack_mapping = JSON.parse(process.env.SLACK_MAPPING);
-          const repo_name = "${{ github.event.workflow_run.repository.full_name }}";
-          const run_id = ${{ github.event.workflow_run.id }};
-          const run_url = `https://github.com/${repo_name}/actions/runs/${run_id}`;
+          const pr_html_url = "${{ steps.retrieve_pr_info.outputs.pr_html_url }}";
           const workflow_name = "${{ github.event.workflow_run.name }}";
+          const repo_name = "${{ github.event.workflow_run.repository.full_name }}";
           const branch_name = "${{ github.event.workflow_run.head_branch }}";
-          const actor_github_id = "${{ github.event.workflow_run.actor.login }}";
+          const run_url = "${{ github.event.workflow_run.html_url }}";
+          const slack_mapping = JSON.parse(process.env.SLACK_MAPPING);
+          const actor_github_id = "${{ steps.retrieve_pr_info.outputs.pr_user_login }}";
           const actor_slack_id = slack_mapping[actor_github_id];
           const actor = actor_slack_id ? `<@${actor_slack_id}>` : actor_github_id;
           const payload = {
-            text: `Workflow “${workflow_name}” failed in repo: "${repo_name}", branch: "${branch_name}". Run URL: ${run_url}. Please check it ${actor} .`,
+            text: `${actor} , workflow “${workflow_name}” failed, repo: "${repo_name}", branch: "${branch_name}", PR: "${pr_html_url}". Please check it: ${run_url}.`,
             channel: process.env.SLACK_CHANNEL,
           };
           return JSON.stringify(payload);

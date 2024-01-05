@@ -296,7 +296,7 @@ end
 
 
 function _GLOBAL.get_current_transaction_id()
-  local rows, err = kong.db.connector:query("select pg_current_xact_id() as _pg_transaction_id")
+  local rows, err = kong.db.connector:query("select txid_current() as _pg_transaction_id")
   if not rows then
     return nil, "could not query postgres for current transaction id: " .. err
   else

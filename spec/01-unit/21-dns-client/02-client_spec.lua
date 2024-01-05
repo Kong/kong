@@ -584,7 +584,10 @@ describe("[DNS client]", function()
             }
           }))
           query_func = function(self, original_query_func, name, options)
-            ngx.sleep(5)
+            -- The first request uses syncQuery not waiting on the
+            -- aysncQuery timer, so the low-level r:query() could not sleep(5s),
+            -- it can only sleep(timeout).
+            ngx.sleep(math.min(timeout, 5))
             return nil
           end
           local start_time = ngx.now()
@@ -1742,9 +1745,12 @@ describe("[DNS client]", function()
     end)
 
     it("timeout while waiting", function()
+
+      local timeout = 500
+      local ip = "1.4.2.3"
       -- basically the local function _synchronized_query
       assert(client.init({
-        timeout = 500,
+        timeout = timeout,
         retrans = 1,
         resolvConf = {
           -- resolv.conf without `search` and `domain` options
@@ -1755,7 +1761,7 @@ describe("[DNS client]", function()
       -- insert a stub thats waits and returns a fixed record
       local name = TEST_DOMAIN
       query_func = function()
-        local ip = "1.4.2.3"
+        local ip = ip
         local entry = {
           {
             type = client.TYPE_A,
@@ -1767,7 +1773,9 @@ describe("[DNS client]", function()
           touch = 0,
           expire = gettime() + 10,
         }
-        sleep(0.5) -- wait before we return the results
+        -- wait before we return the results
+        -- `+ 2` s ensures that the semaphore:wait() expires
+        sleep(timeout/1000 + 2)
         return entry
       end
 
@@ -1797,10 +1805,12 @@ describe("[DNS client]", function()
         ngx.thread.wait(coros[i]) -- this wait will resume the scheduled ones
       end
 
-      -- all results are equal, as they all will wait for the first response
-      for i = 1, 10 do
+      -- results[1~9] are equal, as they all will wait for the first response
+      for i = 1, 9 do
         assert.equal("timeout", results[i])
       end
+      -- results[10] comes from synchronous DNS access of the first request
+      assert.equal(ip, results[10][1]["address"])
     end)
   end)
 

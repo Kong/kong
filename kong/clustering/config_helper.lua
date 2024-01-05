@@ -14,7 +14,7 @@ local error = error
 local pairs = pairs
 local ipairs = ipairs
 local sort = table.sort
-local yield = require("kong.tools.utils").yield
+local yield = require("kong.tools.yield").yield
 local fetch_table = tablepool.fetch
 local release_table = tablepool.release
 
@@ -246,7 +246,9 @@ function _M.update(declarative_config, msg)
     return nil, err
   end
 
-  ngx_log(ngx.NOTICE, "loaded configuration with transaction ID " .. msg.current_transaction_id)
+  if kong.configuration.log_level == "debug" then
+     ngx_log(ngx.DEBUG, _log_prefix, "loaded configuration with transaction ID " .. msg.current_transaction_id)
+  end
 
   return true
 end

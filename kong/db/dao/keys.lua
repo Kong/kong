@@ -76,14 +76,20 @@ local function _load_pkey(key, part)
     pk, err = pkey.new(key.jwk, { format = "JWK" })
   end
   if key.pem then
-    if not key.pem[part] then
-      return nil, fmt("%s key not found.", part)
+    -- public key can be derived from private key, but not vice versa
+    if part == "private_key" and not key.pem[part] then
+      return nil, "could not load a private key from public key material"
     end
     pk, err = pkey.new(key.pem[part], { format = "PEM" })
   end
   if not pk then
     return nil, "could not load pkey. " .. err
   end
+
+  if part == "private_key" and not pk:is_private() then
+    return nil, "could not load a private key from public key material"
+  end
+
   return pk
 end
 

@@ -18,6 +18,7 @@ local checks = require "kong.pdk.private.checks"
 local phase_checker = require "kong.pdk.private.phases"
 local utils = require "kong.tools.utils"
 local request_id = require "kong.tracing.request_id"
+local constants = require "kong.constants"
 
 
 local ngx = ngx
@@ -30,7 +31,6 @@ local error = error
 local pairs = pairs
 local coroutine = coroutine
 local cjson_encode = cjson.encode
-local normalize_header = checks.normalize_header
 local normalize_multi_header = checks.normalize_multi_header
 local validate_header = checks.validate_header
 local validate_headers = checks.validate_headers
@@ -40,6 +40,7 @@ local is_http_subsystem = ngx and ngx.config.subsystem == "http"
 if is_http_subsystem then
   add_header = require("ngx.resp").add_header
 end
+local RESPONSE_SOURCE_TYPES = constants.RESPONSE_SOURCE.TYPES
 
 
 local PHASES = phase_checker.phases
@@ -349,15 +350,15 @@ local function new(self, major_version)
     end
 
     if ctx.KONG_UNEXPECTED then
-      return "error"
+      return RESPONSE_SOURCE_TYPES.ERROR
     end
 
     if ctx.KONG_EXITED then
-      return "exit"
+      return RESPONSE_SOURCE_TYPES.EXIT
     end
 
     if ctx.KONG_PROXIED then
-      return "service"
+      return RESPONSE_SOURCE_TYPES.SERVICE
     end
 
     return "error"
@@ -411,7 +412,7 @@ local function new(self, major_version)
   -- @function kong.response.set_header
   -- @phases rewrite, access, header_filter, response, admin_api
   -- @tparam string name The name of the header
-  -- @tparam string|number|boolean value The new value for the header.
+  -- @tparam array of strings|string|number|boolean value The new value for the header.
   -- @return Nothing; throws an error on invalid input.
   -- @usage
   -- kong.response.set_header("X-Foo", "value")
@@ -429,7 +430,7 @@ local function new(self, major_version)
       return
     end
 
-    ngx.header[name] = normalize_header(value)
+    ngx.header[name] = normalize_multi_header(value)
   end
 
 
@@ -444,7 +445,7 @@ local function new(self, major_version)
   -- @function kong.response.add_header
   -- @phases rewrite, access, header_filter, response, admin_api
   -- @tparam string name The header name.
-  -- @tparam string|number|boolean value The header value.
+  -- @tparam array of strings|string|number|boolean value The header value.
   -- @return Nothing; throws an error on invalid input.
   -- @usage
   -- kong.response.add_header("Cache-Control", "no-cache")
@@ -461,7 +462,7 @@ local function new(self, major_version)
 
     validate_header(name, value)
 
-    add_header(name, normalize_header(value))
+    add_header(name, normalize_multi_header(value))
   end
 
 
@@ -660,7 +661,6 @@ local function new(self, major_version)
     local has_content_length
     if headers ~= nil then
       for name, value in pairs(headers) do
-        ngx.header[name] = normalize_multi_header(value)
         local lower_name = lower(name)
         if lower_name == "transfer-encoding" or lower_name == "transfer_encoding" then
           self.log.warn("manually setting Transfer-Encoding. Ignored.")

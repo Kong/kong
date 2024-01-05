@@ -3,6 +3,8 @@
 --[[
 Usage: ./scripts/update-copyright
 
+Use `make update-copyright` is recommended without least setup.
+
 The COPYRIGHT file should be updated after running this. Changes are not added to git, visual
 review is recommended.
 
@@ -20,11 +22,12 @@ including installing rocks inside said folder.
 
 Requires internet connection in order to download luarocks and license files.
 
-On Macs, you might need to set up OPENSSL_DIR and CRYPTO_DIR.
+On Macs, you might need to set up OPENSSL_DIR and EXPAT_DIR.
 
 The default for mac is:
 
-OPENSSL_DIR=/usr/local/opt/openssl/ CRYPTO_DIR=/usr/local/opt/openssl/ ./scripts/update-copyright
+OPENSSL_DIR=/usr/local/opt/openssl/ EXPAT_DIR=/usr/local/opt/expat ./scripts/update-copyright
+
 ]]
 
 setmetatable(_G, nil)
@@ -34,10 +37,10 @@ local url = require "socket.url"
 local fmt = string.format
 
 local OPENSSL_DIR = os.getenv("OPENSSL_DIR")
-assert(OPENSSL_DIR, "please set the OPENSSL_DIR env variable (needed for installing luaOSSL)")
+assert(OPENSSL_DIR, "please set the OPENSSL_DIR env variable (needed for installing luasocket)")
 
-local CRYPTO_DIR = os.getenv("CRYPTO_DIR")
-assert(CRYPTO_DIR, "please set the CRYPTO_DIR env variable (needed for installing luaOSSL)")
+local EXPAT_DIR = os.getenv("EXPAT_DIR")
+assert(EXPAT_DIR, "please set the EXPAT_DIR env variable (needed for installing luaexpat)")
 
 local work_folder = os.tmpname() .. "-update-copyright"
 
@@ -72,9 +75,8 @@ local HARDCODED_DEPENDENCIES = {
     url = "https://luarocks.org",
     repo_url = "https://github.com/luarocks/luarocks",
   },
-  ["luaossl"] = { -- the rockspec information is not up to date
-    url = "http://25thandclement.com/~william/projects/luaossl.html",
-    repo_url = "https://github.com/wahern/luaossl",
+  ["OpenSSL"] = {
+    url = "https://github.com/openssl/openssl",
   },
   -- go-pdk dependencies:
   ["go-codec"] = {
@@ -330,7 +332,7 @@ local function find_and_download_license(main_url, alt_url)
 
       local attempt_url = url.build(parsed_url)
       local text = download_file(attempt_url)
-      if text then
+      if text and #text > 0 then
         parsed_url.host = "github.com"
         parsed_url.path = fmt("/%s/%s/blob/master/%s", user, reponame, attempt)
         local url_for_humans = url.build(parsed_url)
@@ -344,7 +346,7 @@ local function find_and_download_license(main_url, alt_url)
       local readme_markdown = download_file(readme_url)
       if readme_markdown then
         local header, text = extract_license_from_markdown(readme_markdown)
-        if header then
+        if header and #header > 0 then
           parsed_url.host = "github.com"
           parsed_url.path = fmt("/%s/%s", user, reponame)
           parsed_url.fragment = to_anchor(header)
@@ -383,8 +385,8 @@ print("")
 print(fmt("Installing rocks in work folder. (Install log: %s/luarocks.log) ...", work_folder))
 
 assert(os.execute(fmt("cp kong*.rockspec %s", work_folder)))
-assert(os.execute(fmt("luarocks --lua-version=5.1 --tree %s make %s/kong*.rockspec OPENSSL_DIR=%s CRYPTO_DIR=%s 2>&1 > %s/luarocks.log",
-                      work_folder, work_folder, OPENSSL_DIR, CRYPTO_DIR, work_folder)))
+assert(os.execute(fmt("luarocks --lua-version=5.1 --tree %s make %s/kong*.rockspec OPENSSL_DIR=%s EXPAT_DIR=%s 2>&1 > %s/luarocks.log",
+                      work_folder, work_folder, OPENSSL_DIR, EXPAT_DIR, work_folder)))
 
 local rocklist_path = fmt("%s/rocklist.txt", work_folder)
 assert(os.execute(fmt("find %s/lib | grep rockspec > %s", work_folder, rocklist_path)))

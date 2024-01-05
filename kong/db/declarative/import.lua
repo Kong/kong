@@ -6,6 +6,7 @@ local utils = require("kong.tools.utils")
 local declarative_config = require("kong.db.schema.others.declarative_config")
 
 
+local yield = require("kong.tools.yield").yield
 local marshall = require("kong.db.declarative.marshaller").marshall
 local schema_topological_sort = require("kong.db.schema.topological_sort")
 local nkeys = require("table.nkeys")
@@ -18,7 +19,6 @@ local next = next
 local insert = table.insert
 local null = ngx.null
 local get_phase = ngx.get_phase
-local yield = utils.yield
 
 
 local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
@@ -524,7 +524,7 @@ do
     ok, err = load_into_cache_with_events_no_lock(entities, meta, hash, hashes)
 
     if ok and transaction_id then
-      ok, err = kong_shm:set("declarative:current-transaction-id", transaction_id)
+      ok, err = kong_shm:set("declarative:current_transaction_id", transaction_id)
     end
 
     kong_shm:delete(DECLARATIVE_LOCK_KEY)

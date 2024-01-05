@@ -55,7 +55,7 @@ for _, strategy in helpers.each_strategy() do
         route = { id = route2.id },
         name     = "http-log",
         config   = {
-          http_endpoint = "http://this-does-not-exist.example.com:80/this-does-not-exist",
+          http_endpoint = "http://this-does-not-exist.example.test:80/this-does-not-exist",
           queue = {
             max_batch_size = 10,
             max_coalescing_delay = 10,

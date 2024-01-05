@@ -1,9 +1,11 @@
 local url = require "socket.url"
 local utils = require "kong.tools.utils"
 local constants = require "kong.constants"
-local sha256 = require "resty.sha256"
 local timestamp = require "kong.tools.timestamp"
 local secret = require "kong.plugins.oauth2.secret"
+
+
+local sha256_base64url = require "kong.tools.sha256".sha256_base64url
 
 
 local kong = kong
@@ -107,9 +109,7 @@ local function generate_token(conf, service, credential, authenticated_userid,
   local refresh_token
   local token, err
   if existing_token and conf.reuse_refresh_token then
-    token, err = kong.db.oauth2_tokens:update({
-      id = existing_token.id
-    }, {
+    token, err = kong.db.oauth2_tokens:update(existing_token, {
       access_token = random_string(),
       expires_in = token_expiration,
       created_at = timestamp.get_utc() / 1000
@@ -487,11 +487,7 @@ local function validate_pkce_verifier(parameters, auth_code)
     }
   end
 
-  local s256 = sha256:new()
-  s256:update(verifier)
-  local digest = s256:final()
-
-  local challenge = base64url_encode(digest)
+  local challenge = sha256_base64url(verifier)
 
   if not challenge
   or not auth_code.challenge
@@ -676,7 +672,7 @@ local function issue_token(conf)
               auth_code.scope, state)
 
             -- Delete authorization code so it cannot be reused
-            kong.db.oauth2_authorization_codes:delete({ id = auth_code.id })
+            kong.db.oauth2_authorization_codes:delete(auth_code)
           end
         end
 
@@ -785,7 +781,7 @@ local function issue_token(conf)
                                              token.scope, state, false, token)
             -- Delete old token if refresh token not persisted
             if not conf.reuse_refresh_token then
-              kong.db.oauth2_tokens:delete({ id = token.id })
+              kong.db.oauth2_tokens:delete(token)
             end
           end
         end
@@ -894,7 +890,7 @@ end
 
 
 local function load_oauth2_credential_into_memory(credential_id)
-  local result, err = kong.db.oauth2_credentials:select { id = credential_id }
+  local result, err = kong.db.oauth2_credentials:select({ id = credential_id })
   if err then
     return nil, err
   end
