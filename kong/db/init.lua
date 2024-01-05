@@ -8,9 +8,11 @@ local MetaSchema   = require "kong.db.schema.metaschema"
 local constants    = require "kong.constants"
 local log          = require "kong.cmd.utils.log"
 local workspaces   = require "kong.workspaces"
-local utils        = require "kong.tools.utils"
 local knode        = kong and kong.node
                      or require "kong.pdk.node".new()
+
+
+local load_module_if_exists = require "kong.tools.module".load_module_if_exists
 
 
 local fmt          = string.format
@@ -71,7 +73,7 @@ function DB.new(kong_config, strategy)
 
       -- load core entities subschemas
       local subschemas
-      ok, subschemas = utils.load_module_if_exists("kong.db.schema.entities." .. entity_name .. "_subschemas")
+      ok, subschemas = load_module_if_exists("kong.db.schema.entities." .. entity_name .. "_subschemas")
       if ok then
         for name, subschema in pairs(subschemas) do
           local ok, err = entity:new_subschema(name, subschema)
@@ -418,7 +420,6 @@ end
 
 do
   -- migrations
-  local utils = require "kong.tools.utils"
   local MigrationsState = require "kong.db.migrations.state"
 
 
@@ -490,8 +491,8 @@ do
     if run_teardown and options.skip_teardown_migrations then
       for _, t in ipairs(options.skip_teardown_migrations) do
         for _, mig in ipairs(t.migrations) do
-          local ok, mod = utils.load_module_if_exists(t.namespace .. "." ..
-                                                      mig.name)
+          local ok, mod = load_module_if_exists(t.namespace .. "." ..
+                                                mig.name)
           if ok then
             local strategy_migration = mod[self.strategy]
             if strategy_migration and strategy_migration.teardown then
@@ -523,8 +524,8 @@ do
           self.infos.db_name)
 
       for _, mig in ipairs(t.migrations) do
-        local ok, mod = utils.load_module_if_exists(t.namespace .. "." ..
-                                                    mig.name)
+        local ok, mod = load_module_if_exists(t.namespace .. "." ..
+                                              mig.name)
         if not ok then
           self.connector:close()
           return nil, fmt_err(self, "failed to load migration '%s': %s",
@@ -638,8 +639,8 @@ do
 
     for _, t in ipairs(migrations) do
       for _, mig in ipairs(t.migrations) do
-        local ok, mod = utils.load_module_if_exists(t.namespace .. "." ..
-                                                    mig.name)
+        local ok, mod = load_module_if_exists(t.namespace .. "." ..
+                                              mig.name)
         if not ok then
           return nil, fmt("failed to load migration '%s': %s", mig.name,
                           mod)

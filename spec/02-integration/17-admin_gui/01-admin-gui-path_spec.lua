@@ -2,6 +2,7 @@ local lfs = require "lfs"
 local pl_path = require "pl.path"
 local helpers = require "spec.helpers"
 local test_prefix = helpers.test_conf.prefix
+local shell = require "resty.shell"
 
 local _
 
@@ -24,7 +25,7 @@ describe("Admin GUI - admin_gui_path", function()
 
     local err, gui_dir_path, gui_index_file_path
     gui_dir_path = pl_path.join(test_prefix, "gui")
-    os.execute("rm -rf " .. gui_dir_path)
+    shell.run("rm -rf " .. gui_dir_path, nil, 0)
     _, err = lfs.mkdir(gui_dir_path)
     assert.is_nil(err)
 
@@ -62,7 +63,7 @@ describe("Admin GUI - admin_gui_path", function()
 
     local err, gui_dir_path, gui_index_file_path
     gui_dir_path = pl_path.join(test_prefix, "gui")
-    os.execute("rm -rf " .. gui_dir_path)
+    shell.run("rm -rf " .. gui_dir_path, nil, 0)
     _, err = lfs.mkdir(gui_dir_path)
     assert.is_nil(err)
 

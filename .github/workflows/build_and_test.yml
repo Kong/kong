@@ -106,7 +106,7 @@ jobs:
           $TEST_CMD
 
     - name: Archive coverage stats file
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
       with:
         name: luacov-stats-out-${{ github.job }}-${{ github.run_id }}
@@ -237,7 +237,7 @@ jobs:
 
 
     - name: Download test rerun information
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       continue-on-error: true
       with:
         name: ${{ env.FAILED_TEST_FILES_FILE }}
@@ -259,14 +259,14 @@ jobs:
 
     - name: Upload test rerun information
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ env.FAILED_TEST_FILES_FILE }}
         path: ${{ env.FAILED_TEST_FILES_FILE }}
         retention-days: 2
 
     - name: Archive coverage stats file
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
       with:
         name: luacov-stats-out-${{ github.job }}-${{ github.run_id }}-${{ matrix.suite }}-${{ contains(matrix.split, 'first') && '1' || '2' }}
@@ -339,7 +339,7 @@ jobs:
           .ci/run_tests.sh
 
     - name: Archive coverage stats file
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
       with:
         name: luacov-stats-out-${{ github.job }}-${{ github.run_id }}
@@ -391,7 +391,7 @@ jobs:
           .ci/run_tests.sh
 
     - name: Archive coverage stats file
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
       with:
         name: luacov-stats-out-${{ github.job }}-${{ github.run_id }}
@@ -421,7 +421,7 @@ jobs:
         sudo luarocks install luafilesystem
 
     # Download all archived coverage stats files
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
 
     - name: Stats aggregation
       shell: bash

@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 local fmt = string.format
 local lower = string.lower
-local sha256_hex = require "kong.tools.utils".sha256_hex
+local sha256_hex = require("kong.tools.sha256").sha256_hex
 
 local ldap_host_aws = "ec2-54-172-82-117.compute-1.amazonaws.com"
 

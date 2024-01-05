@@ -3,7 +3,6 @@ local pl_utils = require "pl.utils"
 local mlcache = require "kong.resty.mlcache"
 local new_tab = require "table.new"
 local constants = require "kong.constants"
-local utils = require "kong.tools.utils"
 local plugin_servers = require "kong.runloop.plugin_servers"
 local openssl_x509_store = require "resty.openssl.x509.store"
 local openssl_x509 = require "resty.openssl.x509"
@@ -418,9 +417,11 @@ end
 -- here we assume the field name is always `ca_certificates`
 local get_ca_certificate_reference_plugins
 do
+  local load_module_if_exists = require "kong.tools.module".load_module_if_exists
+
   local function is_plugin_referencing_ca_certificates(name)
     local plugin_schema = "kong.plugins." .. name .. ".schema"
-    local ok, schema = utils.load_module_if_exists(plugin_schema)
+    local ok, schema = load_module_if_exists(plugin_schema)
     if not ok then
       ok, schema = plugin_servers.load_schema(name)
     end

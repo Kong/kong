@@ -409,7 +409,7 @@ for _, strategy in helpers.each_strategy() do
     describe("ssl_certificates / snis", function()
 
       local function get_cert(port, sn)
-        local pl_utils = require "pl.utils"
+        local shell = require "resty.shell"
 
         local cmd = [[
           echo "" | openssl s_client \
@@ -418,7 +418,7 @@ for _, strategy in helpers.each_strategy() do
           -servername %s \
         ]]
 
-        local _, _, stderr = pl_utils.executeex(string.format(cmd, port, sn))
+        local _, _, stderr = shell.run(string.format(cmd, port, sn), nil, 0)
 
         return stderr
       end

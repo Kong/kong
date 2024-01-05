@@ -3,6 +3,7 @@ local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
+local shell = require "resty.shell"
 
 
 local LOG_WAIT_TIMEOUT = 10
@@ -410,7 +411,7 @@ for _, strategy in helpers.each_strategy() do
 
       before_each(function()
         helpers.clean_logfile(FILE_LOG_PATH)
-        os.execute("chmod 0777 " .. FILE_LOG_PATH)
+        shell.run("chmod 0777 " .. FILE_LOG_PATH, nil, 0)
       end)
 
       it("execute a log plugin", function()
@@ -750,7 +751,7 @@ for _, strategy in helpers.each_strategy() do
       before_each(function()
         proxy_client = helpers.proxy_client()
         helpers.clean_logfile(FILE_LOG_PATH)
-        os.execute("chmod 0777 " .. FILE_LOG_PATH)
+        shell.run("chmod 0777 " .. FILE_LOG_PATH, nil, 0)
       end)
 
 

@@ -1,4 +1,4 @@
-ARG KONG_BASE_IMAGE=debian:bullseye-slim
+ARG KONG_BASE_IMAGE=debian:bookworm-slim
 FROM --platform=$TARGETPLATFORM $KONG_BASE_IMAGE
 
 LABEL maintainer="Kong Docker Maintainers <docker@konghq.com> (@team-gateway-bot)"

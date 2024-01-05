@@ -107,13 +107,8 @@ assert_exec 0 'root' "/usr/local/openresty/bin/resty -e 'print(jit.version)' | g
 ###
 
 # check which ssl openresty is using
-if docker_exec root '/usr/local/openresty/bin/openresty -V 2>&1' | grep 'BoringSSL'; then
-    msg_test 'openresty binary uses expected boringssl version'
-    assert_exec 0 'root' "/usr/local/openresty/bin/openresty -V 2>&1 | grep '1.1.0'"
-else
-    msg_test 'openresty binary uses expected openssl version'
-    assert_exec 0 'root' "/usr/local/openresty/bin/openresty -V 2>&1 | grep '${OPENSSL}'"
-fi
+msg_test 'openresty binary uses expected openssl version'
+assert_exec 0 'root' "/usr/local/openresty/bin/openresty -V 2>&1 | grep '${OPENSSL}'"
 
 msg_test 'openresty binary is linked to kong-provided ssl libraries'
 assert_exec 0 'root' "ldd /usr/local/openresty/bin/openresty | grep -E 'libssl.so.*kong/lib'"

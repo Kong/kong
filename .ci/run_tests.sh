@@ -10,7 +10,7 @@ function red() {
 }
 
 function get_failed {
-    if [ ! -z "$FAILED_TEST_FILES_FILE" -a -f "$FAILED_TEST_FILES_FILE" ]
+    if [ ! -z "$FAILED_TEST_FILES_FILE" -a -s "$FAILED_TEST_FILES_FILE" ]
     then
         cat < $FAILED_TEST_FILES_FILE
     else
@@ -103,7 +103,18 @@ if [ "$TEST_SUITE" == "plugins" ]; then
         echo
 
         $TEST_CMD $p || echo "* $p" >> .failed
+
+        # the suite is run multiple times for plugins: collect partial failures
+        if [ ! -z "$FAILED_TEST_FILES_FILE" ]
+        then
+            cat "$FAILED_TEST_FILES_FILE" >> "$FAILED_TEST_FILES_FILE.tmp"
+        fi
     done
+
+    if [ ! -z "$FAILED_TEST_FILES_FILE.tmp" -a -s "$FAILED_TEST_FILES_FILE.tmp" ]
+    then
+        mv "$FAILED_TEST_FILES_FILE.tmp" "$FAILED_TEST_FILES_FILE"
+    fi
 
     if [[ "$TEST_SPLIT" != first* ]]; then
         cat kong-*.rockspec | grep kong- | grep -v zipkin | grep -v sidecar | grep "~" | grep -v kong-prometheus-plugin | while read line ; do

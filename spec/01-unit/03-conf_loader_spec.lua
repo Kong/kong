@@ -1,6 +1,5 @@
 local kong_meta = require "kong.meta"
 local conf_loader = require "kong.conf_loader"
-local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
 local helpers = require "spec.helpers"
 local tablex = require "pl.tablex"
@@ -983,6 +982,8 @@ describe("Configuration loader", function()
           assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
         end)
         it("expands the `system` property in lua_ssl_trusted_certificate", function()
+          local utils = require "kong.tools.system"
+
           local old_gstcf = utils.get_system_trusted_certs_filepath
           local old_exists = pl_path.exists
           finally(function()
