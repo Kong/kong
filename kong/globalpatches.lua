@@ -240,6 +240,156 @@ return function(options)
     end
   end
 
+
+  do  -- implement a Lua based shm for: cli (and hence rbusted)
+
+    if options.cli and not ngx.shared.kong then
+      -- ngx.shared.DICT proxy
+      -- https://github.com/bsm/fakengx/blob/master/fakengx.lua
+      -- with minor fixes and additions such as exptime
+      --
+      -- See https://github.com/openresty/resty-cli/pull/12
+      -- for a definitive solution of using shms in CLI
+      local SharedDict = {}
+      local function set(data, key, value, expire_at)
+        data[key] = {
+          value = value,
+          info = {expire_at = expire_at}
+        }
+        return data[key]
+      end
+      local function get(data, key)
+        local item = data[key]
+        if item and item.info.expire_at and item.info.expire_at <= ngx.now() then
+          data[key] = nil
+          item = nil
+        end
+        return item
+      end
+      function SharedDict:new()
+        return setmetatable({data = {}}, {__index = self})
+      end
+      function SharedDict:capacity()
+        return 0
+      end
+      function SharedDict:free_space()
+        return 0
+      end
+      function SharedDict:get(key)
+        local item = get(self.data, key)
+        return item and item.value, nil
+      end
+      SharedDict.get_stale = SharedDict.get
+      function SharedDict:set(key, value, exptime)
+        local expire_at = (exptime and exptime ~= 0) and (ngx.now() + exptime)
+        set(self.data, key, value, expire_at)
+        return true, nil, false
+      end
+      SharedDict.safe_set = SharedDict.set
+      function SharedDict:add(key, value, exptime)
+        if get(self.data, key) then
+          return false, "exists", false
+        end
+
+        return self:set(key, value, exptime)
+      end
+      SharedDict.safe_add = SharedDict.add
+      function SharedDict:replace(key, value)
+        if not get(key) then
+          return false, "not found", false
+        end
+        set(self.data, key, value)
+        return true, nil, false
+      end
+      function SharedDict:delete(key)
+        if self.data[key] ~= nil then
+          self.data[key] = nil
+        end
+        return true
+      end
+      function SharedDict:incr(key, value, init, init_ttl)
+        local item = get(self.data, key)
+        if not item then
+          if not init then
+            return nil, "not found"
+          end
+          item = set(self.data, key, init, init_ttl and ngx.now() + init_ttl)
+        elseif type(item.value) ~= "number" then
+          return nil, "not a number"
+        end
+        item.value = item.value + value
+        return item.value, nil
+      end
+      function SharedDict:flush_all()
+        for _, item in pairs(self.data) do
+          item.info.expire_at = ngx.now()
+        end
+      end
+      function SharedDict:flush_expired(n)
+        local data = self.data
+        local flushed = 0
+
+        for key, item in pairs(self.data) do
+          if item.info.expire_at and item.info.expire_at <= ngx.now() then
+            data[key] = nil
+            flushed = flushed + 1
+            if n and flushed == n then
+              break
+            end
+          end
+        end
+        self.data = data
+        return flushed
+      end
+      function SharedDict:get_keys(n)
+        n = n or 1024
+        local i = 0
+        local keys = {}
+        for k, item in pairs(self.data) do
+          if item.info.expire_at and item.info.expire_at <= ngx.now() then
+            self.data[k] = nil
+          else
+            keys[#keys+1] = k
+            i = i + 1
+            if n ~= 0 and i == n then
+              break
+            end
+          end
+        end
+        return keys
+      end
+      function SharedDict:ttl(key)
+        local item = self.data[key]
+        if item == nil then
+          return nil, "not found"
+        end
+        local expire_at = item.info.expire_at
+        if expire_at == nil then
+          return 0
+        end
+        -- There is a problem that also exists in the official OpenResty:
+        -- 0 means the key never expires. So it's hard to distinguish between a
+        -- never-expired key and an expired key with a TTL value of 0.
+        return expire_at - ngx.now()
+      end
+
+      -- hack
+      _G.ngx.shared = setmetatable({}, {
+        __index = function(self, key)
+          local shm = rawget(self, key)
+          if not shm then
+            shm = SharedDict:new()
+            rawset(self, key, shm)
+          end
+          return shm
+        end
+      })
+    end
+
+  end
+
+
+
   do -- randomseeding patch for: cli, rbusted and OpenResty
 
     --- Seeds the random generator, use with care.
