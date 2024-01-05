@@ -141,6 +141,8 @@ describe("kong start/stop #" .. strategy, function()
     }))
 
     assert.not_matches("failed to dereference {vault://env/pg_password}", stderr, nil, true)
+    assert.logfile().has.no.line("[warn]", true)
+    assert.logfile().has.no.line("env/pg_password", true)
     assert.matches("Kong started", stdout, nil, true)
     assert(kong_exec("stop", {
       prefix = PREFIX,
@@ -661,8 +663,43 @@ describe("kong start/stop #" .. strategy, function()
         assert.matches("in 'name': invalid value '@gobo': the only accepted ascii characters are alphanumerics or ., -, _, and ~", err, nil, true)
         assert.matches("in entry 2 of 'hosts': invalid hostname: \\\\99", err, nil, true)
       end)
-    end
 
+      it("dbless can reference secrets in declarative configuration", function()
+        local yaml_file = helpers.make_yaml_file [[
+          _format_version: "3.0"
+          _transform: true
+          plugins:
+          - name: session
+            instance_name: session
+            config:
+              secret: "{vault://mocksocket/test}"
+        ]]
+
+        finally(function()
+          os.remove(yaml_file)
+        end)
+
+        helpers.setenv("KONG_LUA_PATH_OVERRIDE", "./spec/fixtures/custom_vaults/?.lua;./spec/fixtures/custom_vaults/?/init.lua;;")
+        helpers.get_db_utils(strategy, {
+          "vaults",
+        }, {
+          "session"
+        }, {
+          "mocksocket"
+        })
+
+        local ok, err = helpers.start_kong({
+          database = "off",
+          declarative_config = yaml_file,
+          vaults = "mocksocket",
+          plugins = "session"
+        })
+
+        assert.truthy(ok)
+        assert.not_matches("error", err)
+        assert.logfile().has.no.line("[error]", true, 0)
+      end)
+    end
   end)
 
   describe("deprecated properties", function()

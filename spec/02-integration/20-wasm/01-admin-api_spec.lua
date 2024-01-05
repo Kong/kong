@@ -3,6 +3,7 @@ local utils = require "kong.tools.utils"
 
 local fmt = string.format
 
+local FILTER_PATH = assert(helpers.test_conf.wasm_filters_path)
 
 local function json(body)
   return {
@@ -22,8 +23,12 @@ describe("wasm admin API [#" .. strategy .. "]", function()
 
   lazy_setup(function()
     require("kong.runloop.wasm").enable({
-      { name = "tests" },
-      { name = "response_transformer" },
+      { name = "tests",
+        path = FILTER_PATH .. "/tests.wasm",
+      },
+      { name = "response_transformer",
+        path = FILTER_PATH .. "/response_transformer.wasm",
+      },
     })
 
     bp, db = helpers.get_db_utils(strategy, {
@@ -56,7 +61,7 @@ describe("wasm admin API [#" .. strategy .. "]", function()
 
   lazy_teardown(function()
     if admin then admin:close() end
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
 
@@ -422,7 +427,7 @@ describe("wasm admin API [#" .. strategy .. "]", function()
       fcs = {
         assert(bp.filter_chains:insert({
           filters = {
-            { name = "tests", config = ngx.null, enabled = true },
+            { name = "tests", config = nil, enabled = true },
             { name = "response_transformer", config = "{}", enabled = false },
           },
           service = { id = service.id },
@@ -563,7 +568,7 @@ describe("wasm admin API - wasm = off [#" .. strategy .. "]", function()
 
   lazy_teardown(function()
     if admin then admin:close() end
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
   describe("/filter-chains", function()

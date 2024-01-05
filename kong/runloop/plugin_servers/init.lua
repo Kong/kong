@@ -158,6 +158,7 @@ local exposed_api = {
 
 local get_instance_id
 local reset_instance
+local reset_instances_for_plugin
 
 local protocol_implementations = {
   ["MsgPack:1"] = "kong.runloop.plugin_servers.mp_rpc",
@@ -204,6 +205,7 @@ function get_instance_id(plugin_name, conf)
     -- to prevent a potential dead loop when someone failed to release the ID
     wait_count = wait_count + 1
     if wait_count > MAX_WAIT_STEPS then
+      running_instances[key] = nil
       return nil, "Could not claim instance_id for " .. plugin_name .. " (key: " .. key .. ")"
     end
     instance_info = running_instances[key]
@@ -211,7 +213,7 @@ function get_instance_id(plugin_name, conf)
 
   if instance_info
     and instance_info.id
-    and instance_info.seq == conf.__seq__
+    and instance_info.conf and instance_info.conf.__plugin_id == key
   then
     -- exact match, return it
     return instance_info.id
@@ -222,7 +224,6 @@ function get_instance_id(plugin_name, conf)
     -- we're the first, put something to claim
     instance_info          = {
       conf = conf,
-      seq = conf.__seq__,
     }
     running_instances[key] = instance_info
   else
@@ -243,8 +244,8 @@ function get_instance_id(plugin_name, conf)
   end
 
   instance_info.id = new_instance_info.id
+  instance_info.plugin_name = plugin_name
   instance_info.conf = new_instance_info.conf
-  instance_info.seq = new_instance_info.seq
   instance_info.Config = new_instance_info.Config
   instance_info.rpc = new_instance_info.rpc
 
@@ -257,11 +258,16 @@ function get_instance_id(plugin_name, conf)
   return instance_info.id
 end
 
+function reset_instances_for_plugin(plugin_name)
+  for k, instance in pairs(running_instances) do
+    if instance.plugin_name == plugin_name then
+      running_instances[k] = nil
+    end
+  end
+end
+
 --- reset_instance: removes an instance from the table.
 function reset_instance(plugin_name, conf)
-  local key = type(conf) == "table" and kong.plugin.get_id() or plugin_name
-  local current_instance = running_instances[key]
-
   --
   -- the same plugin (which acts as a plugin server) is shared among
   -- instances of the plugin; for example, the same plugin can be applied
@@ -269,10 +275,11 @@ function reset_instance(plugin_name, conf)
   -- `reset_instance` is called when (but not only) the plugin server died;
   -- in such case, all associated instances must be removed, not only the current
   --
-  for k, instance in pairs(running_instances) do
-    if instance.rpc == current_instance.rpc then
-      running_instances[k] = nil
-    end
+  reset_instances_for_plugin(plugin_name)
+
+  local ok, err = kong.worker_events.post("plugin_server", "reset_instances", { plugin_name = plugin_name })
+  if not ok then
+    kong.log.err("failed to post plugin_server reset_instances event: ", err)
   end
 end
 
@@ -390,7 +397,7 @@ function plugin_servers.start()
 
   -- in case plugin server restarts, all workers need to update their defs
   kong.worker_events.register(function (data)
-    reset_instance(data.plugin_name, data.conf)
+    reset_instances_for_plugin(data.plugin_name)
   end, "plugin_server", "reset_instances")
 end
 

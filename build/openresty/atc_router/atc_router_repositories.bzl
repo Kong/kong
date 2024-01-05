@@ -1,4 +1,4 @@
-"""A module defining the third party dependency PCRE"""
+"""A module defining the dependency atc-router"""
 
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")

@@ -161,7 +161,7 @@
   - libgcc_s.so.1
   - libc.so.6
   - ld-linux-aarch64.so.1
-  Runpath   : /usr/local/openresty/luajit/lib:/usr/local/kong/lib
+  Runpath   : /usr/local/openresty/luajit/lib:/usr/local/kong/lib:/usr/local/openresty/lualib
 
 - Path      : /usr/local/openresty/nginx/sbin/nginx
   Needed    :
@@ -172,13 +172,14 @@
   - libz.so.1
   - libc.so.6
   - ld-linux-aarch64.so.1
-  Runpath   : /usr/local/openresty/luajit/lib:/usr/local/kong/lib
+  Runpath   : /usr/local/openresty/luajit/lib:/usr/local/kong/lib:/usr/local/openresty/lualib
   Modules   :
   - lua-kong-nginx-module
   - lua-kong-nginx-module/stream
   - lua-resty-events
   - lua-resty-lmdb
   - ngx_wasm_module
-  OpenSSL   : OpenSSL 3.1.2 1 Aug 2023
+  OpenSSL   : OpenSSL 3.2.0 23 Nov 2023
   DWARF     : True
   DWARF - ngx_http_request_t related DWARF DIEs: True
+

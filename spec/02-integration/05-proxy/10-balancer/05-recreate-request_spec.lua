@@ -118,7 +118,7 @@ for _, strategy in helpers.each_strategy() do
         service = { id = service.id },
         preserve_host = true,
         paths = { "/", },
-        hosts = { "test.com" }
+        hosts = { "test.test" }
       })
       bu.end_testcase_setup(strategy, bp, "strict")
 
@@ -126,12 +126,12 @@ for _, strategy in helpers.each_strategy() do
         local res = assert(proxy_client:send {
           method  = "GET",
           path = "/recreate_test",
-          headers = { ["Host"] = "test.com" },
+          headers = { ["Host"] = "test.test" },
         })
 
         return pcall(function()
           local body = assert.response(res).has_status(200)
-          assert.equal("host is: test.com", body)
+          assert.equal("host is: test.test", body)
         end)
       end, 10)
     end)

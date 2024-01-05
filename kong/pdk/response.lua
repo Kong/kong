@@ -12,10 +12,13 @@
 -- @module kong.response
 
 
+local buffer = require "string.buffer"
 local cjson = require "cjson.safe"
 local checks = require "kong.pdk.private.checks"
 local phase_checker = require "kong.pdk.private.phases"
 local utils = require "kong.tools.utils"
+local request_id = require "kong.tracing.request_id"
+local constants = require "kong.constants"
 
 
 local ngx = ngx
@@ -26,10 +29,8 @@ local find = string.find
 local lower = string.lower
 local error = error
 local pairs = pairs
-local concat = table.concat
 local coroutine = coroutine
 local cjson_encode = cjson.encode
-local normalize_header = checks.normalize_header
 local normalize_multi_header = checks.normalize_multi_header
 local validate_header = checks.validate_header
 local validate_headers = checks.validate_headers
@@ -39,6 +40,7 @@ local is_http_subsystem = ngx and ngx.config.subsystem == "http"
 if is_http_subsystem then
   add_header = require("ngx.resp").add_header
 end
+local RESPONSE_SOURCE_TYPES = constants.RESPONSE_SOURCE.TYPES
 
 
 local PHASES = phase_checker.phases
@@ -348,15 +350,15 @@ local function new(self, major_version)
     end
 
     if ctx.KONG_UNEXPECTED then
-      return "error"
+      return RESPONSE_SOURCE_TYPES.ERROR
     end
 
     if ctx.KONG_EXITED then
-      return "exit"
+      return RESPONSE_SOURCE_TYPES.EXIT
     end
 
     if ctx.KONG_PROXIED then
-      return "service"
+      return RESPONSE_SOURCE_TYPES.SERVICE
     end
 
     return "error"
@@ -387,10 +389,6 @@ local function new(self, major_version)
       error(fmt("code must be a number between %u and %u", MIN_STATUS_CODE, MAX_STATUS_CODE), 2)
     end
 
-    if ngx.headers_sent then
-      error("headers have already been sent", 2)
-    end
-
     ngx.status = status
   end
 
@@ -414,7 +412,7 @@ local function new(self, major_version)
   -- @function kong.response.set_header
   -- @phases rewrite, access, header_filter, response, admin_api
   -- @tparam string name The name of the header
-  -- @tparam string|number|boolean value The new value for the header.
+  -- @tparam array of strings|string|number|boolean value The new value for the header.
   -- @return Nothing; throws an error on invalid input.
   -- @usage
   -- kong.response.set_header("X-Foo", "value")
@@ -432,7 +430,7 @@ local function new(self, major_version)
       return
     end
 
-    ngx.header[name] = normalize_header(value)
+    ngx.header[name] = normalize_multi_header(value)
   end
 
 
@@ -447,7 +445,7 @@ local function new(self, major_version)
   -- @function kong.response.add_header
   -- @phases rewrite, access, header_filter, response, admin_api
   -- @tparam string name The header name.
-  -- @tparam string|number|boolean value The header value.
+  -- @tparam array of strings|string|number|boolean value The header value.
   -- @return Nothing; throws an error on invalid input.
   -- @usage
   -- kong.response.add_header("Cache-Control", "no-cache")
@@ -464,7 +462,7 @@ local function new(self, major_version)
 
     validate_header(name, value)
 
-    add_header(name, normalize_header(value))
+    add_header(name, normalize_multi_header(value))
   end
 
 
@@ -571,39 +569,27 @@ local function new(self, major_version)
   function _RESPONSE.get_raw_body()
     check_phase(PHASES.body_filter)
 
-    local body_buffer
+    local body_buffer = ngx.ctx.KONG_BODY_BUFFER
     local chunk = arg[1]
     local eof = arg[2]
-    if eof then
-      body_buffer = ngx.ctx.KONG_BODY_BUFFER
-      if not body_buffer then
-        return chunk
-      end
+
+    if eof and not body_buffer then
+      return chunk
     end
 
     if type(chunk) == "string" and chunk ~= "" then
-      if not eof then
-        body_buffer = ngx.ctx.KONG_BODY_BUFFER
-      end
-
-      if body_buffer then
-        local n = body_buffer.n + 1
-        body_buffer.n = n
-        body_buffer[n] = chunk
-
-      else
-        body_buffer = {
-          chunk,
-          n = 1,
-        }
+      if not body_buffer then
+        body_buffer = buffer.new()
 
         ngx.ctx.KONG_BODY_BUFFER = body_buffer
       end
+
+      body_buffer:put(chunk)
     end
 
     if eof then
       if body_buffer then
-        body_buffer = concat(body_buffer, "", 1, body_buffer.n)
+        body_buffer = body_buffer:get()
       else
         body_buffer = ""
       end
@@ -675,7 +661,6 @@ local function new(self, major_version)
     local has_content_length
     if headers ~= nil then
       for name, value in pairs(headers) do
-        ngx.header[name] = normalize_multi_header(value)
         local lower_name = lower(name)
         if lower_name == "transfer-encoding" or lower_name == "transfer_encoding" then
           self.log.warn("manually setting Transfer-Encoding. Ignored.")
@@ -1170,7 +1155,8 @@ local function new(self, major_version)
     local body
     if content_type ~= CONTENT_TYPE_GRPC then
       local actual_message = message or get_http_error_message(status)
-      body = fmt(utils.get_error_template(content_type), actual_message)
+      local rid = request_id.get() or ""
+      body = fmt(utils.get_error_template(content_type), actual_message, rid)
     end
 
     local ctx = ngx.ctx

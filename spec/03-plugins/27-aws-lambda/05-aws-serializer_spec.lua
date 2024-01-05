@@ -7,6 +7,15 @@ describe("[AWS Lambda] aws-gateway input", function()
   local old_ngx
   local aws_serialize
 
+
+  local function reload_module()
+    -- make sure to reload the module
+    package.loaded["kong.tracing.request_id"] = nil
+    package.loaded["kong.plugins.aws-lambda.request-util"] = nil
+    aws_serialize = require "kong.plugins.aws-lambda.request-util".aws_serializer
+  end
+
+
   setup(function()
     old_ngx = ngx
     local body_data
@@ -20,6 +29,9 @@ describe("[AWS Lambda] aws-gateway input", function()
         start_time = function() return mock_request.start_time end,
       },
       log = function() end,
+      get_phase = function() -- luacheck: ignore
+        return "access"
+      end,
       encode_base64 = old_ngx.encode_base64
     }, {
       -- look up any unknown key in the mock request, eg. .var and .ctx tables
@@ -27,11 +39,6 @@ describe("[AWS Lambda] aws-gateway input", function()
         return mock_request and mock_request[key]
       end,
     })
-
-
-    -- make sure to reload the module
-    package.loaded["kong.plugins.aws-lambda.request-util"] = nil
-    aws_serialize = require "kong.plugins.aws-lambda.request-util".aws_serializer
   end)
 
   teardown(function()
@@ -60,8 +67,8 @@ describe("[AWS Lambda] aws-gateway input", function()
       var = {
         request_method = "GET",
         upstream_uri = "/123/strip/more?boolean=;multi-query=first;single-query=hello%20world;multi-query=second",
-        request_id = "1234567890",
-        host = "abc.myhost.com",
+        kong_request_id = "1234567890",
+        host = "abc.myhost.test",
         remote_addr = "123.123.123.123"
       },
       ctx = {
@@ -75,6 +82,8 @@ describe("[AWS Lambda] aws-gateway input", function()
         },
       },
     }
+
+    reload_module()
 
     local out = aws_serialize()
 
@@ -111,7 +120,7 @@ describe("[AWS Lambda] aws-gateway input", function()
           path = "/123/strip/more",
           protocol = "HTTP/1.1",
           httpMethod = "GET",
-          domainName = "abc.myhost.com",
+          domainName = "abc.myhost.test",
           domainPrefix = "abc",
           identity = { sourceIp = "123.123.123.123", userAgent = "curl/7.54.0" },
           requestId = "1234567890",
@@ -140,8 +149,8 @@ describe("[AWS Lambda] aws-gateway input", function()
       var = {
         request_method = "GET",
         upstream_uri = "/plain/strip/more?boolean=;multi-query=first;single-query=hello%20world;multi-query=second",
-        request_id = "1234567890",
-        host = "def.myhost.com",
+        kong_request_id = "1234567890",
+        host = "def.myhost.test",
         remote_addr = "123.123.123.123"
       },
       ctx = {
@@ -150,6 +159,8 @@ describe("[AWS Lambda] aws-gateway input", function()
         },
       },
     }
+
+    reload_module()
 
     local out = aws_serialize()
 
@@ -184,7 +195,7 @@ describe("[AWS Lambda] aws-gateway input", function()
           path = "/plain/strip/more",
           protocol = "HTTP/1.0",
           httpMethod = "GET",
-          domainName = "def.myhost.com",
+          domainName = "def.myhost.test",
           domainPrefix = "def",
           identity = { sourceIp = "123.123.123.123", userAgent = "curl/7.54.0" },
           requestId = "1234567890",
@@ -235,8 +246,8 @@ describe("[AWS Lambda] aws-gateway input", function()
             request_method = "GET",
             upstream_uri = "/plain/strip/more",
             http_content_type = tdata.ct,
-            request_id = "1234567890",
-            host = "def.myhost.com",
+            kong_request_id = "1234567890",
+            host = "def.myhost.test",
             remote_addr = "123.123.123.123"
           },
           ctx = {
@@ -245,6 +256,8 @@ describe("[AWS Lambda] aws-gateway input", function()
             },
           },
         }
+
+        reload_module()
 
         local out = aws_serialize()
 
@@ -269,7 +282,7 @@ describe("[AWS Lambda] aws-gateway input", function()
             path = "/plain/strip/more",
             protocol = "HTTP/1.0",
             httpMethod = "GET",
-            domainName = "def.myhost.com",
+            domainName = "def.myhost.test",
             domainPrefix = "def",
             identity = { sourceIp = "123.123.123.123", userAgent = "curl/7.54.0" },
             requestId = "1234567890",

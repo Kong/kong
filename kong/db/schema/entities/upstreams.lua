@@ -189,7 +189,7 @@ local r =  {
     { hash_fallback = hash_on },
     { hash_on_header = typedefs.header_name, },
     { hash_fallback_header = typedefs.header_name, },
-    { hash_on_cookie = { description = "The cookie name to take the value from as hash input.", type = "string",  custom_validator = utils.validate_cookie_name }, },
+    { hash_on_cookie = typedefs.cookie_name{ description = "The cookie name to take the value from as hash input."}, },
     { hash_on_cookie_path = typedefs.path{ default = "/", }, },
     { hash_on_query_arg = simple_param },
     { hash_fallback_query_arg = simple_param },

@@ -3,6 +3,7 @@ local http = require "resty.http"
 local clone = require "table.clone"
 local otlp = require "kong.plugins.opentelemetry.otlp"
 local propagation = require "kong.tracing.propagation"
+local tracing_context = require "kong.tracing.tracing_context"
 
 
 local ngx = ngx
@@ -93,28 +94,32 @@ end
 function OpenTelemetryHandler:access(conf)
   local headers = ngx_get_headers()
   local root_span = ngx.ctx.KONG_SPANS and ngx.ctx.KONG_SPANS[1]
-  local tracer = kong.tracing.new("otel")
 
-  -- make propagation running with tracing instrumetation not enabled
+  -- get the global tracer when available, or instantiate a new one
+  local tracer = kong.tracing.name == "noop" and kong.tracing.new("otel")
+                 or kong.tracing
+
+  -- make propagation work with tracing disabled
   if not root_span then
     root_span = tracer.start_span("root")
+    root_span:set_attribute("kong.propagation_only", true)
 
-    -- the span created only for the propagation and will be bypassed to the exporter
+    -- since tracing is disabled, turn off sampling entirely for this trace
     kong.ctx.plugin.should_sample = false
   end
 
-  local header_type, trace_id, span_id, parent_id, should_sample, _ = propagation_parse(headers, conf.header_type)
-  if should_sample == false then
-    tracer:set_should_sample(should_sample)
-  end
+  local injected_parent_span = tracing_context.get_unlinked_span("balancer") or root_span
+  local header_type, trace_id, span_id, parent_id, parent_sampled, _ = propagation_parse(headers, conf.header_type)
 
-  -- overwrite trace id
-  -- as we are in a chain of existing trace
+  -- Overwrite trace ids
+  -- with the value extracted from incoming tracing headers
   if trace_id then
-    root_span.trace_id = trace_id
-    kong.ctx.plugin.trace_id = trace_id
+    -- to propagate the correct trace ID we have to set it here
+    -- before passing this span to propagation.set()
+    injected_parent_span.trace_id = trace_id
+    -- update the Tracing Context with the trace ID extracted from headers
+    tracing_context.set_raw_trace_id(trace_id)
   end
-
   -- overwrite root span's parent_id
   if span_id then
     root_span.parent_id = span_id
@@ -123,20 +128,32 @@ function OpenTelemetryHandler:access(conf)
     root_span.parent_id = parent_id
   end
 
-  -- propagate the span that identifies the "last" balancer try
-  -- This has to happen "in advance". The span will be activated (linked)
-  -- after the OpenResty balancer results are available
-  local balancer_span = tracer.create_span(nil, {
-    span_kind = 3,
-    parent = root_span,
-  })
-  propagation_set(conf.header_type, header_type, balancer_span, "w3c", true)
+  -- Configure the sampled flags
+  local sampled
+  if kong.ctx.plugin.should_sample == false then
+    sampled = false
+
+  else
+    -- Sampling decision for the current trace.
+    local err
+    -- get_sampling_decision() depends on the value of the trace id: call it
+    -- after the trace_id is updated
+    sampled, err = tracer:get_sampling_decision(parent_sampled, conf.sampling_rate)
+    if err then
+      ngx_log(ngx_ERR, _log_prefix, "sampler failure: ", err)
+    end
+  end
+  tracer:set_should_sample(sampled)
+  -- Set the sampled flag for the outgoing header's span
+  injected_parent_span.should_sample = sampled
+
+  propagation_set(conf.header_type, header_type, injected_parent_span, "w3c")
 end
 
 
 function OpenTelemetryHandler:header_filter(conf)
   if conf.http_response_header_for_traceid then
-    local trace_id = kong.ctx.plugin.trace_id
+    local trace_id = tracing_context.get_raw_trace_id()
     if not trace_id then
       local root_span = ngx.ctx.KONG_SPANS and ngx.ctx.KONG_SPANS[1]
       trace_id = root_span and root_span.trace_id
@@ -157,7 +174,7 @@ function OpenTelemetryHandler:log(conf)
     end
 
     -- overwrite
-    local trace_id = kong.ctx.plugin.trace_id
+    local trace_id = tracing_context.get_raw_trace_id()
     if trace_id then
       span.trace_id = trace_id
     end

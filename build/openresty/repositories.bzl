@@ -30,10 +30,11 @@ def openresty_repositories():
         openresty_http_archive_wrapper,
         name = "openresty",
         build_file = "//build/openresty:BUILD.openresty.bazel",
-        sha256 = "0c5093b64f7821e85065c99e5d4e6cc31820cfd7f37b9a0dec84209d87a2af99",
+        sha256 = "33a84c63cfd9e46b0e5c62eb2ddc7b8068bda2e1686314343b89fc3ffd24cdd3",
         strip_prefix = "openresty-" + openresty_version,
         urls = [
             "https://openresty.org/download/openresty-" + openresty_version + ".tar.gz",
+            "https://github.com/Kong/openresty-release-mirror/releases/download/" + openresty_version + "/openresty-" + openresty_version + ".tar.gz",
         ],
         patches = KONG_VAR["OPENRESTY_PATCHES"],
         patch_args = ["-p1"],

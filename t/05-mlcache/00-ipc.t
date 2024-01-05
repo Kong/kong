@@ -119,7 +119,7 @@ GET /t
 --- response_body
 
 --- error_log eval
-qr/\[error\] .*? \[ipc\] callback for channel 'my_channel' threw a Lua error: init_worker_by_lua:\d: my callback had an error/
+qr/\[error\] .*? \[ipc\] callback for channel 'my_channel' threw a Lua error: .*?my callback had an error/
 --- no_error_log
 lua entry thread aborted: runtime error
 

@@ -33,10 +33,11 @@ Accept: application/json
 --- error_code: 502
 --- response_headers_like
 Content-Type: application/json; charset=utf-8
---- response_body chop
-{
-  "message":"An invalid response was received from the upstream server"
-}
+--- response_body eval
+qr/{
+\s*"message":"An invalid response was received from the upstream server",
+\s*"request_id":".*"
+}/
 --- no_error_log
 [error]
 
@@ -62,10 +63,11 @@ GET /t
 --- error_code: 400
 --- response_headers_like
 Content-Type: application/json; charset=utf-8
---- response_body chop
-{
-  "message":"Bad request"
-}
+--- response_body eval
+qr/{
+\s*"message":"Bad request",
+\s*"request_id":".*"
+}/
 --- no_error_log
 [error]
 
@@ -93,10 +95,11 @@ Accept: json
 --- error_code: 400
 --- response_headers_like
 Content-Type: application/json; charset=utf-8
---- response_body chop
-{
-  "message":"Bad request"
-}
+--- response_body eval
+qr/{
+\s*"message":"Bad request",
+\s*"request_id":".*"
+}/
 --- no_error_log
 [error]
 
@@ -128,11 +131,11 @@ Accept: application/json
 --- error_code: 503
 --- response_headers_like
 Content-Type: application/xml
---- response_body
-<?xml version="1.0" encoding="UTF-8"?>
-<error>
-  <message>this is fine</message>
-</error>
+--- response_body eval
+qr/<\?xml version="1\.0" encoding="UTF\-8"\?>\n<error>
+\s*<message>this is fine<\/message>
+\s*<requestid>.*<\/requestid>
+<\/error>/
 --- no_error_log
 [error]
 
@@ -160,18 +163,19 @@ Accept: text/plain;q=0.3, text/html;q=0.7, text/html;level=1, text/html;level=2;
 --- error_code: 502
 --- response_headers_like
 Content-Type: text/html; charset=utf-8
---- response_body
-<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <title>Error</title>
-  </head>
-  <body>
-    <h1>Error</h1>
-    <p>An invalid response was received from the upstream server.</p>
-  </body>
-</html>
+--- response_body eval
+qr/<!doctype html>
+\s*<html>
+\s*<head>
+\s*<meta charset="utf\-8">
+\s*<title>Error<\/title>
+\s*<\/head>
+\s*<body>
+\s*<h1>Error<\/h1>
+\s*<p>An invalid response was received from the upstream server.<\/p>
+\s*<p>request_id: .*<\/p>
+\s*<\/body>
+\s*<\/html>/
 --- no_error_log
 [error]
 
@@ -211,10 +215,11 @@ GET /t
 --- error_code: 500
 --- response_headers_like
 Content-Type: application/json; charset=utf-8
---- response_body chop
-{
-  "message":"An unexpected error occurred"
-}
+--- response_body eval
+qr/{
+\s*"message":"An unexpected error occurred",
+\s*"request_id":".*"
+}/
 --- no_error_log
 [error]
 
@@ -242,10 +247,11 @@ Accept: application/json
 --- error_code: 419
 --- response_headers_like
 Content-Type: application/json; charset=utf-8
---- response_body chop
-{
-  "message":"I'm not a teapot"
-}
+--- response_body eval
+qr/{
+\s*"message":"I'm not a teapot",
+\s*"request_id":".*"
+}/
 --- no_error_log
 [error]
 
@@ -273,10 +279,11 @@ Accept: application/json
 --- error_code: 500
 --- response_headers_like
 Content-Type: application/json; charset=utf-8
---- response_body chop
-{
-  "message":"oh no"
-}
+--- response_body eval
+qr/{
+\s*"message":"oh no",
+\s*"request_id":".*"
+}/
 --- no_error_log
 [error]
 
@@ -304,11 +311,11 @@ Accept: application/xml
 --- error_code: 502
 --- response_headers_like
 Content-Type: application/xml; charset=utf-8
---- response_body
-<?xml version="1.0" encoding="UTF-8"?>
-<error>
-  <message>{"a field":"not a default message"}</message>
-</error>
+--- response_body eval
+qr/<\?xml version="1\.0" encoding="UTF\-8"\?>\n<error>
+\s*<message>\{"a field":"not a default message"\}<\/message>
+\s*<requestid>.*<\/requestid>
+<\/error>/
 --- no_error_log
 [error]
 
@@ -336,8 +343,9 @@ Accept: text/*
 --- error_code: 410
 --- response_headers_like
 Content-Type: text/plain; charset=utf-8
---- response_body
-Gone
+--- response_body eval
+qr/Gone
+request_id:.*/
 --- no_error_log
 [error]
 
@@ -470,17 +478,18 @@ Accept: application/xml;q=0.2, application/json;q=0.3
 --- error_code: 502
 --- response_headers_like
 Content-Type: text/html; charset=utf-8
---- response_body
-<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <title>Error</title>
-  </head>
-  <body>
-    <h1>Error</h1>
-    <p>An invalid response was received from the upstream server.</p>
-  </body>
-</html>
+--- response_body eval
+qr/<!doctype html>
+\s*<html>
+\s*<head>
+\s*<meta charset="utf\-8">
+\s*<title>Error<\/title>
+\s*<\/head>
+\s*<body>
+\s*<h1>Error<\/h1>
+\s*<p>An invalid response was received from the upstream server.<\/p>
+\s*<p>request_id: .*<\/p>
+\s*<\/body>
+\s*<\/html>/
 --- no_error_log
 [error]

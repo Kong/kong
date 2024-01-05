@@ -5,6 +5,8 @@ local cjson        = require "cjson"
 local new_tab      = require "table.new"
 local nkeys        = require "table.nkeys"
 local is_reference = require "kong.pdk.vault".is_reference
+local json         = require "kong.db.schema.json"
+local cjson_safe   = require "cjson.safe"
 
 
 local setmetatable = setmetatable
@@ -17,7 +19,7 @@ local insert       = table.insert
 local format       = string.format
 local unpack       = unpack
 local assert       = assert
-local yield        = utils.yield
+local yield        = require("kong.tools.yield").yield
 local pairs        = pairs
 local pcall        = pcall
 local floor        = math.floor
@@ -30,10 +32,12 @@ local find         = string.find
 local null         = ngx.null
 local max          = math.max
 local sub          = string.sub
+local safe_decode  = cjson_safe.decode
 
 
 local random_string = utils.random_string
 local uuid = utils.uuid
+local json_validate = json.validate
 
 
 local Schema       = {}
@@ -115,6 +119,12 @@ local validation_errors = {
   SUBSCHEMA_ABSTRACT_FIELD  = "error in schema definition: abstract field was not specialized",
   -- transformations
   TRANSFORMATION_ERROR      = "transformation failed: %s",
+  -- json
+  JSON_ENCODE_ERROR         = "value could not be JSON-encoded: %s",
+  JSON_DECODE_ERROR         = "value could not be JSON-decoded: %s",
+  JSON_SCHEMA_ERROR         = "value failed JSON-schema validation: %s",
+  JSON_PARENT_KEY_MISSING   = "validation of %s depends on the parent attribute %s, but it is not set",
+  JSON_SCHEMA_NOT_FOUND     = "mandatory json schema for field (%s) not found"
 }
 
 
@@ -129,6 +139,7 @@ Schema.valid_types = {
   map          = true,
   record       = true,
   ["function"] = true,
+  json         = true,
 }
 
 
@@ -1110,7 +1121,35 @@ validate_fields = function(self, input)
   for k, v in pairs(input) do
     local err
     local field = self.fields[tostring(k)]
-    if field and field.type == "self" then
+
+    if field and field.type == "json" then
+      local json_schema = field.json_schema
+      local inline_schema = json_schema.inline
+
+      if inline_schema then
+        _, errors[k] = json_validate(v, inline_schema)
+
+      else
+        local parent_key = json_schema.parent_subschema_key
+        local json_subschema_key = input[parent_key]
+
+        if json_subschema_key then
+          local schema_name = json_schema.namespace .. "/" .. json_subschema_key
+          inline_schema = json.get_schema(schema_name) or json_schema.default
+
+          if inline_schema then
+            _, errors[k] = json_validate(v, inline_schema)
+
+          elseif not json_schema.optional then
+            errors[k] = validation_errors.JSON_SCHEMA_NOT_FOUND:format(schema_name)
+          end
+
+        elseif not json_schema.optional then
+          errors[k] = validation_errors.JSON_PARENT_KEY_MISSING:format(k, parent_key)
+        end
+      end
+
+    elseif field and field.type == "self" then
       local pok
       pok, err, errors[k] = pcall(self.validate_field, self, input, v)
       if not pok then
@@ -1575,15 +1614,9 @@ local function adjust_field_for_context(field, value, context, nulls, opts)
     end
 
     if subfield then
-      if field.type ~= "map" then
-        for i = 1, #value do
-          value[i] = adjust_field_for_context(subfield, value[i], context, nulls, opts)
-        end
-
-      else
-        for k, v in pairs(value) do
-          value[k] = adjust_field_for_context(subfield, v, context, nulls, opts)
-        end
+      -- uses pairs also for arrays and sets as well as maps, as there can be holes
+      for k, v in pairs(value) do
+        value[k] = adjust_field_for_context(subfield, v, context, nulls, opts)
       end
     end
   end
@@ -1739,7 +1772,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
                 kong.log.warn("unable to resolve reference ", value)
               end
 
-              value = nil
+              value = ""
             end
 
           elseif prev_refs and prev_refs[key] then
@@ -1778,7 +1811,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
                       kong.log.warn("unable to resolve reference ", value[i])
                     end
 
-                    value[i] = nil
+                    value[i] = ""
                   end
                 end
               end
@@ -1824,7 +1857,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
                       kong.log.warn("unable to resolve reference ", v)
                     end
 
-                    value[k] = nil
+                    value[k] = ""
                   end
                 end
               end
@@ -1863,7 +1896,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
   for key in pairs(data) do
     local field = self.fields[key]
     if field then
-      if field.type == "string" and (field.len_min or 1) > 0 and data[key] == ""
+      if field.type == "string" and (field.len_min or 1) > 0 and data[key] == "" and not (refs and refs[key])
       then
         data[key] = nulls and null or nil
       end
@@ -2267,6 +2300,14 @@ end
 
 
 local function run_transformations(self, transformations, input, original_input, context)
+  if self.type == "json" and context == "select" then
+    local decoded, err = safe_decode(input)
+    if err then
+      return nil, validation_errors.JSON_DECODE_ERROR:format(err)
+    end
+    input = decoded
+  end
+
   local output
   for i = 1, #transformations do
     local transformation = transformations[i]

@@ -6,19 +6,20 @@ local Router       = require "kong.router"
 local balancer     = require "kong.runloop.balancer"
 local events       = require "kong.runloop.events"
 local wasm         = require "kong.runloop.wasm"
+local upstream_ssl = require "kong.runloop.upstream_ssl"
 local reports      = require "kong.reports"
 local constants    = require "kong.constants"
-local certificate  = require "kong.runloop.certificate"
 local concurrency  = require "kong.concurrency"
 local lrucache     = require "resty.lrucache"
 local ktls         = require "resty.kong.tls"
-
-
+local request_id   = require "kong.tracing.request_id"
+local global       = require "kong.global"
 
 
 local PluginsIterator = require "kong.runloop.plugins_iterator"
 local log_level       = require "kong.runloop.log_level"
 local instrumentation = require "kong.tracing.instrumentation"
+local req_dyn_hook   = require "kong.dynamic_hook"
 
 
 local kong              = kong
@@ -43,12 +44,16 @@ local exit              = ngx.exit
 local exec              = ngx.exec
 local header            = ngx.header
 local timer_at          = ngx.timer.at
+local get_phase         = ngx.get_phase
 local subsystem         = ngx.config.subsystem
 local clear_header      = ngx.req.clear_header
 local http_version      = ngx.req.http_version
+local request_id_get    = request_id.get
 local escape            = require("kong.tools.uri").escape
 local encode            = require("string.buffer").encode
+local yield             = require("kong.tools.yield").yield
 
+local req_dyn_hook_run_hooks = req_dyn_hook.run_hooks
 
 local is_http_module   = subsystem == "http"
 local is_stream_module = subsystem == "stream"
@@ -72,7 +77,6 @@ local NOOP = function() end
 
 
 local ERR   = ngx.ERR
-local CRIT  = ngx.CRIT
 local NOTICE = ngx.NOTICE
 local WARN  = ngx.WARN
 local INFO  = ngx.INFO
@@ -83,6 +87,7 @@ local QUESTION_MARK = byte("?")
 local ARRAY_MT = require("cjson.safe").array_mt
 
 local HOST_PORTS = {}
+local IS_DEBUG = false
 
 
 local SUBSYSTEMS = constants.PROTOCOLS_WITH_SUBSYSTEM
@@ -110,10 +115,7 @@ local STREAM_TLS_PASSTHROUGH_SOCK
 
 
 local set_authority
-local set_upstream_cert_and_key = ktls.set_upstream_cert_and_key
-local set_upstream_ssl_verify = ktls.set_upstream_ssl_verify
-local set_upstream_ssl_verify_depth = ktls.set_upstream_ssl_verify_depth
-local set_upstream_ssl_trusted_store = ktls.set_upstream_ssl_trusted_store
+local set_service_ssl = upstream_ssl.set_service_ssl
 
 if is_http_module then
   set_authority = require("resty.kong.grpc").set_authority
@@ -518,6 +520,14 @@ local function build_plugins_iterator(version)
   if not plugins_iterator then
     return nil, err
   end
+
+  local phase = get_phase()
+  -- skip calling plugins_iterator:configure on init/init_worker
+  -- as it is explicitly called on init_worker
+  if phase ~= "init" and phase ~= "init_worker" then
+    plugins_iterator:configure()
+  end
+
   PLUGINS_ITERATOR = plugins_iterator
   return true
 end
@@ -612,8 +622,8 @@ end
 
 local reconfigure_handler
 do
-  local now = ngx.now
-  local update_time = ngx.update_time
+  local get_monotonic_ms = utils.get_updated_monotonic_ms
+
   local ngx_worker_id = ngx.worker.id
   local exiting = ngx.worker.exiting
 
@@ -624,11 +634,6 @@ do
   local CURRENT_PLUGINS_HASH  = 0
   local CURRENT_BALANCER_HASH = 0
 
-  local function get_now_ms()
-    update_time()
-    return now() * 1000
-  end
-
   reconfigure_handler = function(data)
     local worker_id = ngx_worker_id()
 
@@ -638,7 +643,7 @@ do
       return true
     end
 
-    local reconfigure_started_at = get_now_ms()
+    local reconfigure_started_at = get_monotonic_ms()
 
     log(INFO, "declarative reconfigure was started on worker #", worker_id)
 
@@ -657,6 +662,8 @@ do
     local ok, err = concurrency.with_coroutine_mutex(RECONFIGURE_OPTS, function()
       -- below you are encouraged to yield for cooperative threading
 
+      kong.vault.flush()
+
       local rebuild_balancer = balancer_hash ~= CURRENT_BALANCER_HASH
       if rebuild_balancer then
         log(DEBUG, "stopping previously started health checkers on worker #", worker_id)
@@ -668,41 +675,39 @@ do
 
       local router, err
       if router_hash ~= CURRENT_ROUTER_HASH then
-        local start = get_now_ms()
+        local start = get_monotonic_ms()
 
         router, err = new_router()
         if not router then
           return nil, err
         end
 
-        log(INFO, "building a new router took ",  get_now_ms() - start,
+        log(INFO, "building a new router took ",  get_monotonic_ms() - start,
                   " ms on worker #", worker_id)
       end
 
       local plugins_iterator
       if plugins_hash ~= CURRENT_PLUGINS_HASH then
-        local start = get_now_ms()
-
-        kong.vault.flush()
+        local start = get_monotonic_ms()
         plugins_iterator, err = new_plugins_iterator()
         if not plugins_iterator then
           return nil, err
         end
 
-        log(INFO, "building a new plugins iterator took ", get_now_ms() - start,
+        log(INFO, "building a new plugins iterator took ", get_monotonic_ms() - start,
                   " ms on worker #", worker_id)
       end
 
       local wasm_state
       if wasm.enabled() then
-        local start = get_now_ms()
+        local start = get_monotonic_ms()
         wasm_state, err = wasm.rebuild_state()
 
         if not wasm_state then
           return nil, err
         end
 
-        log(INFO, "rebuilding wasm filter chain state took ", get_now_ms() - start,
+        log(INFO, "rebuilding wasm filter chain state took ", get_monotonic_ms() - start,
                   " ms on worker #", worker_id)
       end
 
@@ -723,6 +728,11 @@ do
       end
 
       if plugins_iterator then
+        -- Before we replace plugin iterator we need to call configure handler
+        -- of each plugin. There is a slight chance that plugin configure handler
+        -- would yield, and that should be considered a bad practice.
+        plugins_iterator:configure()
+
         PLUGINS_ITERATOR = plugins_iterator
         CURRENT_PLUGINS_HASH = plugins_hash or 0
       end
@@ -739,10 +749,12 @@ do
         wasm.set_state(wasm_state)
       end
 
+      global.CURRENT_TRANSACTION_ID = kong_shm:get("declarative:current_transaction_id") or 0
+
       return true
     end)  -- concurrency.with_coroutine_mutex
 
-    local reconfigure_time = get_now_ms() - reconfigure_started_at
+    local reconfigure_time = get_monotonic_ms() - reconfigure_started_at
 
     if ok then
       log(INFO, "declarative reconfigure took ", reconfigure_time,
@@ -756,16 +768,8 @@ do
 end
 
 
-local function register_events()
-  events.register_events(reconfigure_handler)
-end
-
-
 local balancer_prepare
 do
-  local get_certificate = certificate.get_certificate
-  local get_ca_certificate_store = certificate.get_ca_certificate_store
-
   local function sleep_once_for_balancer_init()
     ngx.sleep(0)
     sleep_once_for_balancer_init = NOOP
@@ -814,60 +818,7 @@ do
     ctx.route            = route
     ctx.balancer_data    = balancer_data
 
-    if service then
-      local res, err
-      local client_certificate = service.client_certificate
-
-      if client_certificate then
-        local cert, err = get_certificate(client_certificate)
-        if not cert then
-          log(ERR, "unable to fetch upstream client TLS certificate ",
-                   client_certificate.id, ": ", err)
-          return
-        end
-
-        res, err = set_upstream_cert_and_key(cert.cert, cert.key)
-        if not res then
-          log(ERR, "unable to apply upstream client TLS certificate ",
-                   client_certificate.id, ": ", err)
-        end
-      end
-
-      local tls_verify = service.tls_verify
-      if tls_verify then
-        res, err = set_upstream_ssl_verify(tls_verify)
-        if not res then
-          log(CRIT, "unable to set upstream TLS verification to: ",
-                   tls_verify, ", err: ", err)
-        end
-      end
-
-      local tls_verify_depth = service.tls_verify_depth
-      if tls_verify_depth then
-        res, err = set_upstream_ssl_verify_depth(tls_verify_depth)
-        if not res then
-          log(CRIT, "unable to set upstream TLS verification to: ",
-                   tls_verify, ", err: ", err)
-          -- in case verify can not be enabled, request can no longer be
-          -- processed without potentially compromising security
-          return kong.response.exit(500)
-        end
-      end
-
-      local ca_certificates = service.ca_certificates
-      if ca_certificates then
-        res, err = get_ca_certificate_store(ca_certificates)
-        if not res then
-          log(CRIT, "unable to get upstream TLS CA store, err: ", err)
-
-        else
-          res, err = set_upstream_ssl_trusted_store(res)
-          if not res then
-            log(CRIT, "unable to set upstream TLS CA store, err: ", err)
-          end
-        end
-      end
-    end
+    set_service_ssl(ctx)
 
     if is_stream_module and scheme == "tcp" then
       local res, err = disable_proxy_ssl()
@@ -944,6 +895,7 @@ return {
 
   init_worker = {
     before = function()
+      IS_DEBUG = (kong.configuration.log_level == "debug")
       -- TODO: PR #9337 may affect the following line
       local prefix = kong.configuration.prefix or ngx.config.prefix()
 
@@ -968,7 +920,7 @@ return {
         return
       end
 
-      register_events()
+      events.register_events(reconfigure_handler)
 
       -- initialize balancers for active healthchecks
       timer_at(0, function()
@@ -1014,83 +966,61 @@ return {
       if strategy ~= "off" then
         local worker_state_update_frequency = kong.configuration.worker_state_update_frequency or 1
 
-        local router_async_opts = {
-          name = "router",
-          timeout = 0,
-          on_timeout = "return_true",
-        }
-
-        local function rebuild_router_timer(premature)
+        local function rebuild_timer(premature)
           if premature then
             return
           end
 
-          -- Don't wait for the semaphore (timeout = 0) when updating via the
-          -- timer.
-          -- If the semaphore is locked, that means that the rebuild is
-          -- already ongoing.
-          local ok, err = rebuild_router(router_async_opts)
-          if not ok then
-            log(ERR, "could not rebuild router via timer: ", err)
-          end
-        end
-
-        local _, err = kong.timer:named_every("router-rebuild",
-                                         worker_state_update_frequency,
-                                         rebuild_router_timer)
-        if err then
-          log(ERR, "could not schedule timer to rebuild router: ", err)
-        end
-
-        local plugins_iterator_async_opts = {
-          name = "plugins_iterator",
-          timeout = 0,
-          on_timeout = "return_true",
-        }
-
-        local function rebuild_plugins_iterator_timer(premature)
-          if premature then
-            return
+          -- Before rebuiding the internal structures, retrieve the current PostgreSQL transaction ID to make it the
+          -- current transaction ID after the rebuild has finished.
+          local rebuild_transaction_id, err = global.get_current_transaction_id()
+          if not rebuild_transaction_id then
+            log(ERR, err)
           end
 
-          local _, err = rebuild_plugins_iterator(plugins_iterator_async_opts)
-          if err then
-            log(ERR, "could not rebuild plugins iterator via timer: ", err)
-          end
-        end
-
-        local _, err = kong.timer:named_every("plugins-iterator-rebuild",
-                                         worker_state_update_frequency,
-                                         rebuild_plugins_iterator_timer)
-        if err then
-          log(ERR, "could not schedule timer to rebuild plugins iterator: ", err)
-        end
-
-
-        if wasm.enabled() then
-          local wasm_async_opts = {
-            name = "wasm",
+          local router_update_status, err = rebuild_router({
+            name = "router",
             timeout = 0,
             on_timeout = "return_true",
-          }
+          })
+          if not router_update_status then
+            log(ERR, "could not rebuild router via timer: ", err)
+          end
 
-          local function rebuild_wasm_filter_chains_timer(premature)
-            if premature then
-              return
-            end
+          local plugins_iterator_update_status, err = rebuild_plugins_iterator({
+            name = "plugins_iterator",
+            timeout = 0,
+            on_timeout = "return_true",
+          })
+          if not plugins_iterator_update_status then
+            log(ERR, "could not rebuild plugins iterator via timer: ", err)
+          end
 
-            local _, err = rebuild_wasm_state(wasm_async_opts)
-            if err then
+          if wasm.enabled() then
+            local wasm_update_status, err = rebuild_wasm_state({
+              name = "wasm",
+              timeout = 0,
+              on_timeout = "return_true",
+            })
+            if not wasm_update_status then
               log(ERR, "could not rebuild wasm filter chains via timer: ", err)
             end
           end
 
-          local _, err = kong.timer:named_every("wasm-filter-chains-rebuild",
-                                           worker_state_update_frequency,
-                                           rebuild_wasm_filter_chains_timer)
-          if err then
-            log(ERR, "could not schedule timer to rebuild wasm filter chains: ", err)
+          if rebuild_transaction_id then
+            -- Yield to process any pending invalidations
+            yield()
+
+            log(DEBUG, "configuration processing completed for transaction ID " .. rebuild_transaction_id)
+            global.CURRENT_TRANSACTION_ID = rebuild_transaction_id
           end
+        end
+
+        local _, err = kong.timer:named_every("rebuild",
+                                         worker_state_update_frequency,
+                                         rebuild_timer)
+        if err then
+          log(ERR, "could not schedule timer to rebuild: ", err)
         end
       end
     end,
@@ -1181,6 +1111,25 @@ return {
   },
   access = {
     before = function(ctx)
+      if IS_DEBUG then
+        -- If this is a version-conditional request, abort it if this dataplane has not processed at least the
+        -- specified configuration version yet.
+        local if_kong_transaction_id = kong.request and kong.request.get_header('if-kong-test-transaction-id')
+        if if_kong_transaction_id then
+          if_kong_transaction_id = tonumber(if_kong_transaction_id)
+          if if_kong_transaction_id and if_kong_transaction_id >= global.CURRENT_TRANSACTION_ID then
+            return kong.response.error(
+                    503,
+                    "Service Unavailable",
+                    {
+                      ["X-Kong-Reconfiguration-Status"] = "pending",
+                      ["Retry-After"] = tostring(kong.configuration.worker_state_update_frequency or 1),
+                    }
+            )
+          end
+        end
+      end
+
       -- if there is a gRPC service in the context, don't re-execute the pre-access
       -- phase handler - it has been executed before the internal redirect
       if ctx.service and (ctx.service.protocol == "grpc" or
@@ -1194,10 +1143,24 @@ return {
 
       -- trace router
       local span = instrumentation.router()
+      -- create the balancer span "in advance" so its ID is available
+      -- to plugins in the access phase for doing headers propagation
+      instrumentation.precreate_balancer_span(ctx)
+
+      local has_timing = ctx.has_timing
+
+      if has_timing then
+        req_dyn_hook_run_hooks(ctx, "timing", "before:router")
+      end
 
       -- routing request
       local router = get_updated_router()
       local match_t = router:exec(ctx)
+
+      if has_timing then
+        req_dyn_hook_run_hooks(ctx, "timing", "after:router")
+      end
+
       if not match_t then
         -- tracing
         if span then
@@ -1214,6 +1177,10 @@ return {
       end
 
       ctx.workspace = match_t.route and match_t.route.ws_id
+
+      if has_timing then
+        req_dyn_hook_run_hooks(ctx, "timing", "workspace_id:got", ctx.workspace)
+      end
 
       local host           = var.host
       local port           = tonumber(ctx.host_port, 10)
@@ -1568,6 +1535,16 @@ return {
             header[headers.SERVER] = nil
           end
         end
+      end
+
+      -- X-Kong-Request-Id downstream header
+      local rid, rid_get_err = request_id_get()
+      if not rid then
+        log(WARN, "failed to get Request ID: ", rid_get_err)
+      end
+
+      if enabled_headers[headers.REQUEST_ID] and rid then
+        header[headers.REQUEST_ID] = rid
       end
     end
   },

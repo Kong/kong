@@ -34,6 +34,11 @@ function workspaces.get_workspace()
 end
 
 
+function workspaces.get_workspace_name()
+  return "default"
+end
+
+
 function workspaces.set_workspace(ws)
   ngx.ctx.workspace = ws and ws.id
 end

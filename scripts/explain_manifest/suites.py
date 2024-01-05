@@ -23,7 +23,7 @@ def common_suites(expect, libxcrypt_no_obsolete_api: bool = False):
 
     # binary correctness
     expect("/usr/local/openresty/nginx/sbin/nginx", "nginx rpath should contain kong lib") \
-        .rpath.equals("/usr/local/openresty/luajit/lib:/usr/local/kong/lib")
+        .rpath.equals("/usr/local/openresty/luajit/lib:/usr/local/kong/lib:/usr/local/openresty/lualib")
 
     expect("/usr/local/openresty/nginx/sbin/nginx", "nginx binary should contain dwarf info for dynatrace") \
         .has_dwarf_info.equals(True) \
@@ -60,6 +60,10 @@ def common_suites(expect, libxcrypt_no_obsolete_api: bool = False):
         .contain("ngx_http_lua_kong_ffi_var_set_by_index") \
         .contain("ngx_http_lua_kong_ffi_var_load_indexes")
 
+    expect("/usr/local/openresty/lualib/libatc_router.so", "ATC router so should have ffi module compiled") \
+        .functions \
+        .contain("router_execute")
+
     if libxcrypt_no_obsolete_api:
         expect("/usr/local/openresty/nginx/sbin/nginx", "nginx linked with libxcrypt.so.2") \
             .needed_libraries.contain("libcrypt.so.2")
@@ -67,14 +71,14 @@ def common_suites(expect, libxcrypt_no_obsolete_api: bool = False):
         expect("/usr/local/openresty/nginx/sbin/nginx", "nginx should link libxcrypt.so.1") \
             .needed_libraries.contain("libcrypt.so.1")
 
-    expect("/usr/local/openresty/nginx/sbin/nginx", "nginx compiled with OpenSSL 3.1.x") \
-        .nginx_compiled_openssl.matches("OpenSSL 3.1.\d") \
-        .version_requirement.key("libssl.so.3").less_than("OPENSSL_3.2.0") \
-        .version_requirement.key("libcrypto.so.3").less_than("OPENSSL_3.2.0") \
+    expect("/usr/local/openresty/nginx/sbin/nginx", "nginx compiled with OpenSSL 3.2.x") \
+        .nginx_compiled_openssl.matches("OpenSSL 3.2.\d") \
+        .version_requirement.key("libssl.so.3").less_than("OPENSSL_3.3.0") \
+        .version_requirement.key("libcrypto.so.3").less_than("OPENSSL_3.3.0") \
 
-    expect("**/*.so", "dynamic libraries are compiled with OpenSSL 3.1.x") \
-        .version_requirement.key("libssl.so.3").less_than("OPENSSL_3.2.0") \
-        .version_requirement.key("libcrypto.so.3").less_than("OPENSSL_3.2.0") \
+    expect("**/*.so", "dynamic libraries are compiled with OpenSSL 3.2.x") \
+        .version_requirement.key("libssl.so.3").less_than("OPENSSL_3.3.0") \
+        .version_requirement.key("libcrypto.so.3").less_than("OPENSSL_3.3.0") \
 
 
 def libc_libcpp_suites(expect, libc_max_version: str = None, libcxx_max_version: str = None, cxxabi_max_version: str = None):

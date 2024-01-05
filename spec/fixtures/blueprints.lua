@@ -60,6 +60,13 @@ function Blueprint:insert_n(n, overrides, options)
   return res
 end
 
+function Blueprint:truncate()
+  local _, err = self.dao:truncate()
+  if err then
+    error(err, 2)
+  end
+  return true
+end
 
 local function new_blueprint(dao, build_function)
   return setmetatable({
@@ -173,8 +180,15 @@ function _M.new(db)
   end)
 
   res.routes = new_blueprint(db.routes, function(overrides)
+    local service
+    if overrides.no_service then
+      service = nil
+      overrides.no_service = nil
+    else
+      service = overrides.service or res.services:insert()
+    end
     return {
-      service = overrides.service or res.services:insert(),
+      service = service,
     }
   end)
 

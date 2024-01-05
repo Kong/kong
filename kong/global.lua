@@ -68,7 +68,8 @@ end
 
 
 local _GLOBAL = {
-  phases = phase_checker.phases,
+  phases                 = phase_checker.phases,
+  CURRENT_TRANSACTION_ID = 0,
 }
 
 
@@ -286,6 +287,21 @@ function _GLOBAL.init_core_cache(kong_config, cluster_events, worker_events)
     resty_lock_opts = LOCK_OPTS,
     lru_size        = get_lru_size(kong_config),
   })
+end
+
+
+function _GLOBAL.init_timing()
+  return require("kong.timing")
+end
+
+
+function _GLOBAL.get_current_transaction_id()
+  local rows, err = kong.db.connector:query("select txid_current() as _pg_transaction_id")
+  if not rows then
+    return nil, "could not query postgres for current transaction id: " .. err
+  else
+    return tonumber(rows[1]._pg_transaction_id)
+  end
 end
 
 

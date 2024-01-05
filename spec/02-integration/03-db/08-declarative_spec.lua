@@ -208,16 +208,16 @@ for _, strategy in helpers.each_strategy() do
       assert(declarative.load_into_db({
         snis = { [sni_def.id] = sni_def },
         certificates = { [certificate_def.id] = certificate_def },
-        routes = { 
+        routes = {
           [route_def.id] = route_def,
           [disabled_route_def.id] = disabled_route_def,
         },
-        services = { 
+        services = {
           [service_def.id] = service_def,
           [disabled_service_def.id] = disabled_service_def,
        },
         consumers = { [consumer_def.id] = consumer_def },
-        plugins = { 
+        plugins = {
           [plugin_def.id] = plugin_def,
           [disabled_service_plugin_def.id] = disabled_service_plugin_def,
           [disabled_plugin_def.id] = disabled_plugin_def,
@@ -239,7 +239,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equals(sni_def.id, sni.id)
         assert.equals(certificate_def.id, sni.certificate.id)
 
-        local cert = assert(db.certificates:select({ id = certificate_def.id }))
+        local cert = assert(db.certificates:select(certificate_def))
         assert.equals(certificate_def.id, cert.id)
         assert.same(ssl_fixtures.key, cert.key)
         assert.same(ssl_fixtures.cert, cert.cert)
@@ -260,23 +260,23 @@ for _, strategy in helpers.each_strategy() do
         assert.equals("andru", consumer_def.username)
         assert.equals("donalds", consumer_def.custom_id)
 
-        local plugin = assert(db.plugins:select({ id = plugin_def.id }, { nulls = true }))
+        local plugin = assert(db.plugins:select(plugin_def, { nulls = true }))
         assert.equals(plugin_def.id, plugin.id)
         assert.equals(service.id, plugin.service.id)
         assert.equals("acl", plugin.name)
         assert.same(plugin_def.config, plugin.config)
 
-        local acl = assert(db.acls:select({ id = acl_def.id }))
+        local acl = assert(db.acls:select(acl_def))
         assert.equals(consumer_def.id, acl.consumer.id)
         assert.equals("The A Team", acl.group)
 
-        local basicauth_credential = assert(db.basicauth_credentials:select({ id = basicauth_credential_def.id }))
+        local basicauth_credential = assert(db.basicauth_credentials:select(basicauth_credential_def))
         assert.equals(basicauth_credential_def.id, basicauth_credential.id)
         assert.equals(consumer.id, basicauth_credential.consumer.id)
         assert.equals("james", basicauth_credential.username)
         assert.equals(crypto.hash(consumer.id, "secret"), basicauth_credential.password)
 
-        local basicauth_hashed_credential = assert(db.basicauth_credentials:select({ id = basicauth_hashed_credential_def.id }))
+        local basicauth_hashed_credential = assert(db.basicauth_credentials:select(basicauth_hashed_credential_def))
         assert.equals(basicauth_hashed_credential_def.id, basicauth_hashed_credential.id)
         assert.equals(consumer.id, basicauth_hashed_credential.consumer.id)
         assert.equals("bond", basicauth_hashed_credential.username)
@@ -392,7 +392,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same(plugin_def.config, plugin.config)
 
         --[[ FIXME this case is known to cause an issue
-        local plugin_with_null = assert(db.plugins:select({ id = plugin_with_null_def.id }, { nulls = true }))
+        local plugin_with_null = assert(db.plugins:select(plugin_with_null_def, { nulls = true }))
         assert.equals(plugin_with_null_def.id, plugin_with_null.id)
         assert.equals(service.id, plugin_with_null.service.id)
         assert.equals("correlation-id", plugin_with_null.name)
@@ -503,7 +503,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same(plugin_def.config, plugin.config)
 
         --[[ FIXME this case is known to cause an issue
-        local plugin_with_null = assert(db.plugins:select({ id = plugin_with_null_def.id }, { nulls = true }))
+        local plugin_with_null = assert(db.plugins:select(plugin_with_null_def, { nulls = true }))
         assert.equals(plugin_with_null_def.id, plugin_with_null.id)
         assert.equals(service.id, plugin_with_null.service.id)
         assert.equals("correlation-id", plugin_with_null.name)
@@ -533,5 +533,3 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 end
-
-

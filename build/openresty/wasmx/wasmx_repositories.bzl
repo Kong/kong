@@ -42,12 +42,12 @@ wasm_runtimes = {
     },
     "wasmtime": {
         "linux": {
-            "x86_64": "1f40c3c91b8d82b7960921df94c43cf542fbb4e60522aaef02c150b421dfb34f",
-            "aarch64": "35585833923556d757c34f5e3293a8fb68ae9b327774d0eb160d424a02446e70",
+            "x86_64": "a1285b0e2e3c6edf9cb6c7f214a682780f01ca8746a5d03f162512169cdf1e50",
+            "aarch64": "ef527ed31c3f141b5949bfd2e766a908f44b66ee839d4f0f22e740186236fd48",
         },
         "macos": {
-            "x86_64": "1f90d4120b155ef351a11c49c62803d63aae99f25573ca8f5202dac5c3286eb0",
-            "aarch64": "193640f63ed7f58e13277030cc5f3e8be8cb6846d01f691cc1bfbbffca25bd5c",
+            "x86_64": "c30ffb79f8097512fbe9ad02503dcdb0cd168eec2112b6951a013eed51050245",
+            "aarch64": "2834d667fc218925184db77fa91eca44d14f688a4972e2f365fe2b7c12e6d49f",
         },
     },
 }

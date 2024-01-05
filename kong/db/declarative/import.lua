@@ -6,6 +6,7 @@ local utils = require("kong.tools.utils")
 local declarative_config = require("kong.db.schema.others.declarative_config")
 
 
+local yield = require("kong.tools.yield").yield
 local marshall = require("kong.db.declarative.marshaller").marshall
 local schema_topological_sort = require("kong.db.schema.topological_sort")
 local nkeys = require("table.nkeys")
@@ -16,12 +17,8 @@ local type = type
 local pairs = pairs
 local next = next
 local insert = table.insert
-local min = math.min
 local null = ngx.null
-local md5 = ngx.md5
 local get_phase = ngx.get_phase
-local yield = utils.yield
-local sha256 = utils.sha256_hex
 
 
 local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
@@ -136,10 +133,6 @@ local function unique_field_key(schema_name, ws_id, field, value, unique_across_
   if unique_across_ws then
     ws_id = ""
   end
-
-  -- LMDB imposes a default limit of 511 for keys, but the length of our unique
-  -- value might be unbounded, so we'll use a checksum instead of the raw value
-  value = sha256(value)
 
   return schema_name .. "|" .. ws_id .. "|" .. field .. ":" .. value
 end
@@ -443,14 +436,15 @@ local load_into_cache_with_events
 do
   local events = require("kong.runloop.events")
 
+  local md5 = ngx.md5
+  local min = math.min
+
   local exiting = ngx.worker.exiting
 
   local function load_into_cache_with_events_no_lock(entities, meta, hash, hashes)
     if exiting() then
       return nil, "exiting"
     end
-
-    local reconfigure_data
 
     local ok, err, default_ws = load_into_cache(entities, meta, hash)
     if not ok then
@@ -464,6 +458,7 @@ do
     local router_hash
     local plugins_hash
     local balancer_hash
+
     if hashes then
       if hashes.routes ~= DECLARATIVE_EMPTY_CONFIG_HASH then
         router_hash = md5(hashes.services .. hashes.routes)
@@ -479,13 +474,12 @@ do
          targets_hash   ~= DECLARATIVE_EMPTY_CONFIG_HASH
       then
         balancer_hash = md5(upstreams_hash .. targets_hash)
-
       else
         balancer_hash = DECLARATIVE_EMPTY_CONFIG_HASH
       end
     end
 
-    reconfigure_data = {
+    local reconfigure_data = {
       default_ws,
       router_hash,
       plugins_hash,
@@ -513,7 +507,7 @@ do
   local DECLARATIVE_LOCK_KEY = "declarative:lock"
 
   -- make sure no matter which path it exits, we released the lock.
-  load_into_cache_with_events = function(entities, meta, hash, hashes)
+  load_into_cache_with_events = function(entities, meta, hash, hashes, transaction_id)
     local kong_shm = ngx.shared.kong
 
     local ok, err = kong_shm:add(DECLARATIVE_LOCK_KEY, 0, DECLARATIVE_LOCK_TTL)
@@ -528,6 +522,11 @@ do
     end
 
     ok, err = load_into_cache_with_events_no_lock(entities, meta, hash, hashes)
+
+    if ok and transaction_id then
+      ok, err = kong_shm:set("declarative:current_transaction_id", transaction_id)
+    end
+
     kong_shm:delete(DECLARATIVE_LOCK_KEY)
 
     return ok, err

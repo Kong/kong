@@ -1,13 +1,17 @@
 -- Copyright (C) Kong Inc.
 
-local fmt = string.format
 local ngx_var = ngx.var
 local ngx_now = ngx.now
 local ngx_update_time = ngx.update_time
+local md5_bin = ngx.md5_bin
+local fmt = string.format
+local buffer = require "string.buffer"
+local lrucache = require "resty.lrucache"
 
 local kong = kong
 local meta = require "kong.meta"
 local constants = require "kong.constants"
+local aws_config = require "resty.aws.config" -- reads environment variables, thus specified here
 local VIA_HEADER = constants.HEADERS.VIA
 local VIA_HEADER_VALUE = meta._NAME .. "/" .. meta._VERSION
 
@@ -21,7 +25,7 @@ local AWS_REGION do
   AWS_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")
 end
 local AWS
-local LAMBDA_SERVICE_CACHE = setmetatable({}, { __mode = "k" })
+local LAMBDA_SERVICE_CACHE
 
 
 local function get_now()
@@ -30,18 +34,47 @@ local function get_now()
 end
 
 
+local function initialize()
+  LAMBDA_SERVICE_CACHE = lrucache.new(1000)
+  AWS_GLOBAL_CONFIG = aws_config.global
+  AWS = aws()
+  initialize = nil
+end
+
+local build_cache_key do
+  -- Use AWS Service related config fields to build cache key
+  -- so that service object can be reused between plugins and
+  -- vault refresh can take effect when key/secret is rotated
+  local SERVICE_RELATED_FIELD = { "timeout", "keepalive", "aws_key", "aws_secret",
+                                  "aws_assume_role_arn", "aws_role_session_name",
+                                  "aws_region", "host", "port", "disable_https",
+                                  "proxy_url", "aws_imds_protocol_version" }
+
+  build_cache_key = function (conf)
+    local cache_key_buffer = buffer.new(100):reset()
+    for _, field in ipairs(SERVICE_RELATED_FIELD) do
+      local v = conf[field]
+      if v then
+        cache_key_buffer:putf("%s=%s;", field, v)
+      end
+    end
+
+    return md5_bin(cache_key_buffer:get())
+  end
+end
+
+
 local AWSLambdaHandler = {
   PRIORITY = 750,
   VERSION = meta.version
 }
 
-function AWSLambdaHandler:init()
-  AWS_GLOBAL_CONFIG = require("resty.aws.config").global
-  AWS = aws()
-end
-
 
 function AWSLambdaHandler:access(conf)
+  if initialize then
+    initialize()
+  end
+
   -- The region in plugin configuraion has higher priority
   -- than the one in environment variable
   local region = conf.aws_region or AWS_REGION
@@ -55,10 +88,14 @@ function AWSLambdaHandler:access(conf)
   local scheme = conf.disable_https and "http" or "https"
   local endpoint = fmt("%s://%s", scheme, host)
 
-  local lambda_service = LAMBDA_SERVICE_CACHE[conf]
+  local cache_key = build_cache_key(conf)
+  local lambda_service = LAMBDA_SERVICE_CACHE:get(cache_key)
   if not lambda_service then
     local credentials = AWS.config.credentials
     -- Override credential config according to plugin config
+    -- Note that we will not override the credential in AWS
+    -- singleton directly because it may be needed for other
+    -- scenario
     if conf.aws_key then
       local creds = AWS:Credentials {
         accessKeyId = conf.aws_key,
@@ -66,6 +103,23 @@ function AWSLambdaHandler:access(conf)
       }
 
       credentials = creds
+
+    elseif conf.proxy_url
+      -- If plugin config has proxy, then EKS IRSA might
+      -- need it as well, so we need to re-init the AWS
+      -- IRSA credential provider
+      and AWS_GLOBAL_CONFIG.AWS_WEB_IDENTITY_TOKEN_FILE
+      and AWS_GLOBAL_CONFIG.AWS_ROLE_ARN then
+        local creds = AWS:TokenFileWebIdentityCredentials()
+        creds.sts = AWS:STS({
+          region = region,
+          stsRegionalEndpoints = AWS_GLOBAL_CONFIG.sts_regional_endpoints,
+          ssl_verify = false,
+          http_proxy = conf.proxy_url,
+          https_proxy = conf.proxy_url,
+        })
+
+        credentials = creds
     end
 
     -- Assume role based on configuration
@@ -74,6 +128,7 @@ function AWSLambdaHandler:access(conf)
         credentials = credentials,
         region = region,
         stsRegionalEndpoints = AWS_GLOBAL_CONFIG.sts_regional_endpoints,
+        ssl_verify = false,
         http_proxy = conf.proxy_url,
         https_proxy = conf.proxy_url,
       })
@@ -104,7 +159,7 @@ function AWSLambdaHandler:access(conf)
       http_proxy = conf.proxy_url,
       https_proxy = conf.proxy_url,
     })
-    LAMBDA_SERVICE_CACHE[conf] = lambda_service
+    LAMBDA_SERVICE_CACHE:set(cache_key, lambda_service)
   end
 
   local upstream_body_json = build_request_payload(conf)
@@ -126,7 +181,7 @@ function AWSLambdaHandler:access(conf)
 
   local content = res.body
   if res.status >= 400 then
-    return error(content)
+    return error(content.Message)
   end
 
   -- TRACING: set KONG_WAITING_TIME stop

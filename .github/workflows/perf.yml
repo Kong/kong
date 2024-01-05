@@ -32,7 +32,7 @@ jobs:
 
     steps:
     - name: Checkout Kong source code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Generate cache key
       id: cache-key
@@ -65,7 +65,7 @@ jobs:
         luarocks
 
     - name: Bazel Outputs
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: failure()
       with:
         name: bazel-outputs
@@ -110,7 +110,7 @@ jobs:
         repo-token: ${{ secrets.PAT }}
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         # Fetch all history for all tags and branches
         fetch-depth: 0
@@ -251,7 +251,7 @@ jobs:
           inkscape --export-area-drawing --export-png="${i%.*}.png" --export-dpi=300 -b FFFFFF $i
         done
 
-    - uses: actions/setup-python@v4
+    - uses: actions/setup-python@v5
       with:
         python-version: '3.10'
         cache: 'pip'
@@ -267,7 +267,7 @@ jobs:
         done
 
     - name: Save results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: perf-results
@@ -278,7 +278,7 @@ jobs:
         retention-days: 31
 
     - name: Save error logs
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: error_logs

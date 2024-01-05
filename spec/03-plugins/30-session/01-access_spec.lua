@@ -21,27 +21,27 @@ for _, strategy in helpers.each_strategy() do
 
       local route1 = bp.routes:insert {
         paths    = {"/test1"},
-        hosts = {"konghq.com"},
+        hosts = {"konghq.test"},
       }
 
       local route2 = bp.routes:insert {
         paths    = {"/test2"},
-        hosts = {"konghq.com"},
+        hosts = {"konghq.test"},
       }
 
       local route3 = bp.routes:insert {
         paths    = {"/headers"},
-        hosts = {"konghq.com"},
+        hosts = {"konghq.test"},
       }
 
       local route4 = bp.routes:insert {
         paths    = {"/headers"},
-        hosts = {"mockbin.org"},
+        hosts = {"mockbin.test"},
       }
 
       local route5 = bp.routes:insert {
         paths    = {"/test5"},
-        hosts = {"httpbin.org"},
+        hosts = {"httpbin.test"},
       }
 
       assert(bp.plugins:insert {
@@ -188,7 +188,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/test1/status/200",
           headers = {
-            host = "konghq.com",
+            host = "konghq.test",
             apikey = "kong",
           },
         })
@@ -214,7 +214,7 @@ for _, strategy in helpers.each_strategy() do
         local request = {
           method = "GET",
           path = "/test2/status/200",
-          headers = { host = "konghq.com", },
+          headers = { host = "konghq.test", },
         }
 
         -- make sure the anonymous consumer can't get in (request termination)
@@ -253,7 +253,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/test5/status/200",
           headers = {
-            host = "httpbin.org",
+            host = "httpbin.test",
             apikey = "kong",
           },
         })
@@ -283,7 +283,7 @@ for _, strategy in helpers.each_strategy() do
         local request = {
           method = "GET",
           path = "/headers",
-          headers = { host = "konghq.com", },
+          headers = { host = "konghq.test", },
         }
 
         -- make a request with a valid key, grab the cookie for later
@@ -323,7 +323,7 @@ for _, strategy in helpers.each_strategy() do
         local request = {
           method = "GET",
           path = "/headers",
-          headers = { host = "mockbin.org", },
+          headers = { host = "mockbin.test", },
         }
 
         -- make a request with a valid key, grab the cookie for later

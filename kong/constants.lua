@@ -116,6 +116,7 @@ local constants = {
     FORWARDED_PATH = "X-Forwarded-Path",
     FORWARDED_PREFIX = "X-Forwarded-Prefix",
     ANONYMOUS = "X-Anonymous-Consumer",
+    REQUEST_ID = "X-Kong-Request-Id",
     VIA = "Via",
     SERVER = "Server"
   },
@@ -245,6 +246,26 @@ local constants = {
   DYN_LOG_LEVEL_TIMEOUT_AT_KEY = "kong:dyn_log_level_timeout_at",
 
   ADMIN_GUI_KCONFIG_CACHE_KEY = "admin:gui:kconfig",
+
+  REQUEST_DEBUG_TOKEN_FILE = ".request_debug_token",
+  REQUEST_DEBUG_LOG_PREFIX = "[request-debug]",
+
+  SCHEMA_NAMESPACES = {
+    PROXY_WASM_FILTERS = "proxy-wasm-filters",
+  },
+
+  RESPONSE_SOURCE = {
+    TYPES = {
+      ERROR = "error",
+      EXIT = "exit",
+      SERVICE = "service",
+    },
+    NAMES = {
+      error = "kong",
+      exit = "kong",
+      service = "upstream",
+    }
+  }
 }
 
 for _, v in ipairs(constants.CLUSTERING_SYNC_STATUS) do

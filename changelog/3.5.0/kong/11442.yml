@@ -1,0 +1,3 @@
+message: refactor workspace id and name retrieval
+type: performance
+scope: Core

@@ -58,7 +58,7 @@ for _, strategy in helpers.each_strategy() do
         }
 
         bp.routes:insert {
-          hosts     = { "retries.com" },
+          hosts     = { "retries.test" },
           service   = service
         }
 
@@ -86,7 +86,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/",
           headers = {
-            host  = "retries.com"
+            host  = "retries.test"
           }
         }
         assert.response(r).has.status(502)
@@ -115,7 +115,7 @@ for _, strategy in helpers.each_strategy() do
         }
 
         bp.routes:insert {
-          hosts     = { "retries.com" },
+          hosts     = { "retries.test" },
           protocols = { "http" },
           service   = service
         }
@@ -139,7 +139,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/",
           headers = {
-            host  = "retries.com"
+            host  = "retries.test"
           }
         }
         assert.response(r).has.status(503)
@@ -204,6 +204,65 @@ for _, strategy in helpers.each_strategy() do
         local ok, stderr, stdout = helpers.execute("netstat -n | grep 53 | grep udp | wc -l")
         assert.truthy(ok, stderr)
         assert.equals(0, assert(tonumber(stdout)))
+      end)
+    end)
+
+    describe("run in stream subsystem", function()
+      local domain_name = "www.example.test"
+      local address = "127.0.0.1"
+
+      local fixtures = {
+        dns_mock = helpers.dns_mock.new()
+      }
+      fixtures.dns_mock:A({
+        name = domain_name,
+        address = address,
+      })
+
+      lazy_setup(function()
+        local bp = helpers.get_db_utils(strategy, {
+          "routes",
+          "services",
+        })
+
+        local tcp_srv = bp.services:insert({
+          name = "tcp",
+          host = domain_name,
+          port = helpers.mock_upstream_stream_port,
+          protocol = "tcp",
+        })
+
+        bp.routes:insert {
+          destinations = {
+            { ip = "0.0.0.0/0", port = 19000 },
+          },
+          protocols = {
+            "tcp",
+          },
+          service = tcp_srv,
+        }
+
+        assert(helpers.start_kong({
+          database = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+          stream_listen = helpers.get_proxy_ip(false) .. ":19000",
+          log_level = "info",
+        }, nil, nil, fixtures))
+
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+      end)
+
+      it("resolve domain name", function()
+        local tcp = ngx.socket.tcp()
+        assert(tcp:connect(helpers.get_proxy_ip(false), 19000))
+        local MESSAGE = "echo, ping, pong. echo, ping, pong. echo, ping, pong.\n"
+        assert(tcp:send(MESSAGE))
+        local body = assert(tcp:receive("*a"))
+        assert.equal(MESSAGE, body)
+        tcp:close()
       end)
     end)
   end)

@@ -16,6 +16,11 @@ $(el.name) $(el.value);
 > if database == "off" then
 lmdb_environment_path ${{LMDB_ENVIRONMENT_PATH}};
 lmdb_map_size         ${{LMDB_MAP_SIZE}};
+
+> if lmdb_validation_tag then
+lmdb_validation_tag   $(lmdb_validation_tag);
+> end
+
 > end
 
 events {
@@ -27,7 +32,7 @@ events {
 
 > if wasm then
 wasm {
-> for _, el in ipairs(nginx_wasm_main_shm_directives) do
+> for _, el in ipairs(nginx_wasm_main_shm_kv_directives) do
   shm_kv $(el.name) $(el.value);
 > end
 

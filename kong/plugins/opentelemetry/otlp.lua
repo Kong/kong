@@ -13,6 +13,7 @@ local table_merge = utils.table_merge
 local setmetatable = setmetatable
 
 local TRACE_ID_LEN = 16
+local SPAN_ID_LEN  = 8
 local NULL = "\0"
 local POOL_OTLP = "KONG_OTLP"
 local EMPTY_TAB = {}
@@ -74,17 +75,25 @@ local function transform_events(events)
   return pb_events
 end
 
--- translate the trace_id to otlp format
-local function to_ot_trace_id(trace_id)
-  local len = #trace_id
-  if len > TRACE_ID_LEN then
-    return trace_id:sub(-TRACE_ID_LEN)
+local function id_formatter(length)
+  return function(id)
+    local len = #id
+    if len > length then
+      return id:sub(-length)
 
-  elseif len < TRACE_ID_LEN then
-    return NULL:rep(TRACE_ID_LEN - len) .. trace_id
+    elseif len < length then
+      return NULL:rep(length - len) .. id
+    end
+
+    return id
   end
+end
 
-  return trace_id
+local to_ot_trace_id, to_ot_span_id
+do
+  -- translate the trace_id and span_id to otlp format
+  to_ot_trace_id = id_formatter(TRACE_ID_LEN)
+  to_ot_span_id  = id_formatter(SPAN_ID_LEN)
 end
 
 -- this function is to prepare span to be encoded and sent via grpc
@@ -96,7 +105,8 @@ local function transform_span(span)
     trace_id = to_ot_trace_id(span.trace_id),
     span_id = span.span_id,
     -- trace_state = "",
-    parent_span_id = span.parent_id or "",
+    parent_span_id = span.parent_id and
+                     to_ot_span_id(span.parent_id) or "",
     name = span.name,
     kind = span.kind or 0,
     start_time_unix_nano = span.start_time_ns,

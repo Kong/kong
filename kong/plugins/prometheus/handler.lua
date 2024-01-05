@@ -11,14 +11,20 @@ local PrometheusHandler = {
   VERSION  = kong_meta.version,
 }
 
-function PrometheusHandler.init_worker()
+function PrometheusHandler:init_worker()
   exporter.init_worker()
 end
+
+
+function PrometheusHandler:configure(configs)
+  exporter.configure(configs)
+end
+
 
 local http_subsystem = ngx.config.subsystem == "http"
 
 
-function PrometheusHandler.log(self, conf)
+function PrometheusHandler:log(conf)
   local message = kong.log.serialize()
 
   local serialized = {}

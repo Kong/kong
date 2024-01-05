@@ -67,6 +67,7 @@ local pkey = require "resty.openssl.pkey"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
+local shell = require "resty.shell"
 local ffi = require "ffi"
 local ssl = require "ngx.ssl"
 local ws_client = require "resty.websocket.client"
@@ -104,7 +105,7 @@ end
 -- @function openresty_ver_num
 local function openresty_ver_num()
   local nginx_bin = assert(nginx_signals.find_nginx_bin())
-  local _, _, _, stderr = pl_utils.executeex(string.format("%s -V", nginx_bin))
+  local _, _, stderr = shell.run(string.format("%s -V", nginx_bin), nil, 0)
 
   local a, b, c, d = string.match(stderr or "", "openresty/(%d+)%.(%d+)%.(%d+)%.(%d+)")
   if not a then
@@ -203,7 +204,7 @@ do
       if not USED_PORTS[port] then
           USED_PORTS[port] = true
 
-          local ok = os.execute("netstat -lnt | grep \":" .. port .. "\" > /dev/null")
+          local ok = shell.run("netstat -lnt | grep \":" .. port .. "\" > /dev/null", nil, 0)
 
           if not ok then
             -- return code of 1 means `grep` did not found the listening port
@@ -1114,23 +1115,18 @@ local function http2_client(host, port, tls)
       cmd = cmd .. " -http1"
     end
 
-    local body_filename
+    --shell.run does not support '<'
     if body then
-      body_filename = pl_path.tmpname()
-      pl_file.write(body_filename, body)
-      cmd = cmd .. " -post < " .. body_filename
+      cmd = cmd .. " -post"
     end
 
     if http2_debug then
       print("HTTP/2 cmd:\n" .. cmd)
     end
 
-    local ok, _, stdout, stderr = pl_utils.executeex(cmd)
+    --100MB for retrieving stdout & stderr
+    local ok, stdout, stderr = shell.run(cmd, body, 0, 1024*1024*100)
     assert(ok, stderr)
-
-    if body_filename then
-      pl_file.delete(body_filename)
-    end
 
     if http2_debug then
       print("HTTP/2 debug:\n")
@@ -1908,20 +1904,24 @@ local function wait_for_all_config_update(opts)
   local stream_enabled = opts.stream_enabled or false
   local override_rl = opts.override_global_rate_limiting_plugin or false
   local override_auth = opts.override_global_key_auth_plugin or false
+  local headers = opts.override_default_headers or { ["Content-Type"] = "application/json" }
+  local disable_ipv6 = opts.disable_ipv6 or false
 
-  local function call_admin_api(method, path, body, expected_status)
+  local function call_admin_api(method, path, body, expected_status, headers)
     local client = admin_client(admin_client_timeout, forced_admin_port)
 
     local res
 
     if string.upper(method) == "POST" then
       res = client:post(path, {
-        headers = {["Content-Type"] = "application/json"},
+        headers = headers,
         body = body,
       })
 
     elseif string.upper(method) == "DELETE" then
-      res = client:delete(path)
+      res = client:delete(path, {
+        headers = headers
+      })
     end
 
     local ok, json_or_nil_or_err = pcall(function ()
@@ -1946,9 +1946,9 @@ local function wait_for_all_config_update(opts)
   local upstream_id, target_id, service_id, route_id
   local stream_upstream_id, stream_target_id, stream_service_id, stream_route_id
   local consumer_id, rl_plugin_id, key_auth_plugin_id, credential_id
-  local upstream_name = "really.really.really.really.really.really.really.mocking.upstream.com"
+  local upstream_name = "really.really.really.really.really.really.really.mocking.upstream.test"
   local service_name = "really-really-really-really-really-really-really-mocking-service"
-  local stream_upstream_name = "stream-really.really.really.really.really.really.really.mocking.upstream.com"
+  local stream_upstream_name = "stream-really.really.really.really.really.really.really.mocking.upstream.test"
   local stream_service_name = "stream-really-really-really-really-really-really-really-mocking-service"
   local route_path = "/really-really-really-really-really-really-really-mocking-route"
   local key_header_name = "really-really-really-really-really-really-really-mocking-key"
@@ -1958,7 +1958,7 @@ local function wait_for_all_config_update(opts)
   local host = "localhost"
   local port = get_available_port()
 
-  local server = https_server.new(port, host, "http", nil, 1)
+  local server = https_server.new(port, host, "http", nil, 1, nil, disable_ipv6)
 
   server:start()
 
@@ -1966,28 +1966,28 @@ local function wait_for_all_config_update(opts)
   local res = assert(call_admin_api("POST",
                              "/upstreams",
                              { name = upstream_name },
-                             201))
+                             201, headers))
   upstream_id = res.id
 
   -- create mocking target to mocking upstream
   res = assert(call_admin_api("POST",
                        string.format("/upstreams/%s/targets", upstream_id),
                        { target = host .. ":" .. port },
-                       201))
+                       201, headers))
   target_id = res.id
 
   -- create mocking service to mocking upstream
   res = assert(call_admin_api("POST",
                        "/services",
                        { name = service_name, url = "http://" .. upstream_name .. "/always_200" },
-                       201))
+                       201, headers))
   service_id = res.id
 
   -- create mocking route to mocking service
   res = assert(call_admin_api("POST",
                        string.format("/services/%s/routes", service_id),
                        { paths = { route_path }, strip_path = true, path_handling = "v0",},
-                       201))
+                       201, headers))
   route_id = res.id
 
   if override_rl then
@@ -1995,7 +1995,7 @@ local function wait_for_all_config_update(opts)
     res = assert(call_admin_api("POST",
                                 string.format("/services/%s/plugins", service_id),
                                 { name = "rate-limiting", config = { minute = 999999, policy = "local" } },
-                                201))
+                                201, headers))
     rl_plugin_id = res.id
   end
 
@@ -2004,21 +2004,21 @@ local function wait_for_all_config_update(opts)
     res = assert(call_admin_api("POST",
                                 string.format("/services/%s/plugins", service_id),
                                 { name = "key-auth", config = { key_names = { key_header_name } } },
-                                201))
+                                201, headers))
     key_auth_plugin_id = res.id
 
     -- create consumer
     res = assert(call_admin_api("POST",
                                 "/consumers",
                                 { username = consumer_name },
-                                201))
+                                201, headers))
       consumer_id = res.id
 
     -- create credential to key-auth plugin
     res = assert(call_admin_api("POST",
                                 string.format("/consumers/%s/key-auth", consumer_id),
                                 { key = test_credentials },
-                                201))
+                                201, headers))
     credential_id = res.id
   end
 
@@ -2027,28 +2027,28 @@ local function wait_for_all_config_update(opts)
     local res = assert(call_admin_api("POST",
                               "/upstreams",
                               { name = stream_upstream_name },
-                              201))
+                              201, headers))
     stream_upstream_id = res.id
 
     -- create mocking target to mocking upstream
     res = assert(call_admin_api("POST",
                         string.format("/upstreams/%s/targets", stream_upstream_id),
                         { target = host .. ":" .. port },
-                        201))
+                        201, headers))
     stream_target_id = res.id
 
     -- create mocking service to mocking upstream
     res = assert(call_admin_api("POST",
                         "/services",
                         { name = stream_service_name, url = "tcp://" .. stream_upstream_name },
-                        201))
+                        201, headers))
     stream_service_id = res.id
 
     -- create mocking route to mocking service
     res = assert(call_admin_api("POST",
                         string.format("/services/%s/routes", stream_service_id),
                         { destinations = { { port = stream_port }, }, protocols = { "tcp" },},
-                        201))
+                        201, headers))
     stream_route_id = res.id
   end
 
@@ -2087,25 +2087,25 @@ local function wait_for_all_config_update(opts)
 
   -- delete mocking configurations
   if override_auth then
-    call_admin_api("DELETE", string.format("/consumers/%s/key-auth/%s", consumer_id, credential_id), nil, 204)
-    call_admin_api("DELETE", string.format("/consumers/%s", consumer_id), nil, 204)
-    call_admin_api("DELETE", "/plugins/" .. key_auth_plugin_id, nil, 204)
+    call_admin_api("DELETE", string.format("/consumers/%s/key-auth/%s", consumer_id, credential_id), nil, 204, headers)
+    call_admin_api("DELETE", string.format("/consumers/%s", consumer_id), nil, 204, headers)
+    call_admin_api("DELETE", "/plugins/" .. key_auth_plugin_id, nil, 204, headers)
   end
 
   if override_rl then
-    call_admin_api("DELETE", "/plugins/" .. rl_plugin_id, nil, 204)
+    call_admin_api("DELETE", "/plugins/" .. rl_plugin_id, nil, 204, headers)
   end
 
-  call_admin_api("DELETE", "/routes/" .. route_id, nil, 204)
-  call_admin_api("DELETE", "/services/" .. service_id, nil, 204)
-  call_admin_api("DELETE", string.format("/upstreams/%s/targets/%s", upstream_id, target_id), nil, 204)
-  call_admin_api("DELETE", "/upstreams/" .. upstream_id, nil, 204)
+  call_admin_api("DELETE", "/routes/" .. route_id, nil, 204, headers)
+  call_admin_api("DELETE", "/services/" .. service_id, nil, 204, headers)
+  call_admin_api("DELETE", string.format("/upstreams/%s/targets/%s", upstream_id, target_id), nil, 204, headers)
+  call_admin_api("DELETE", "/upstreams/" .. upstream_id, nil, 204, headers)
 
   if stream_enabled then
-    call_admin_api("DELETE", "/routes/" .. stream_route_id, nil, 204)
-    call_admin_api("DELETE", "/services/" .. stream_service_id, nil, 204)
-    call_admin_api("DELETE", string.format("/upstreams/%s/targets/%s", stream_upstream_id, stream_target_id), nil, 204)
-    call_admin_api("DELETE", "/upstreams/" .. stream_upstream_id, nil, 204)
+    call_admin_api("DELETE", "/routes/" .. stream_route_id, nil, 204, headers)
+    call_admin_api("DELETE", "/services/" .. stream_service_id, nil, 204, headers)
+    call_admin_api("DELETE", string.format("/upstreams/%s/targets/%s", stream_upstream_id, stream_target_id), nil, 204, headers)
+    call_admin_api("DELETE", "/upstreams/" .. stream_upstream_id, nil, 204, headers)
   end
 
   ok, err = pcall(function ()
@@ -2402,9 +2402,17 @@ local function res_status(state, args)
         return false -- no err logs to read in this prefix
       end
 
-      local str_t = pl_stringx.splitlines(str)
+      local lines_t = pl_stringx.splitlines(str)
+      local str_t = {}
+      -- filter out debugs as they are not usually useful in this context
+      for i = 1, #lines_t do
+        if not lines_t[i]:match(" %[debug%] ") then
+          table.insert(str_t, lines_t[i])
+        end
+      end
+
       local first_line = #str_t - math.min(60, #str_t) + 1
-      local msg_t = {"\nError logs (" .. conf.nginx_err_logs .. "):"}
+      local msg_t = {"\nError logs (" .. conf.nginx_err_logs .. "), only last 60 non-debug logs are displayed:"}
       for i = first_line, #str_t do
         msg_t[#msg_t+1] = str_t[i]
       end
@@ -3135,14 +3143,14 @@ end
 -- used on an assertion.
 -- @function execute
 -- @param cmd command string to execute
--- @param pl_returns (optional) boolean: if true, this function will
+-- @param returns (optional) boolean: if true, this function will
 -- return the same values as Penlight's executeex.
--- @return if `pl_returns` is true, returns four return values
--- (ok, code, stdout, stderr); if `pl_returns` is false,
+-- @return if `returns` is true, returns four return values
+-- (ok, code, stdout, stderr); if `returns` is false,
 -- returns either (false, stderr) or (true, stderr, stdout).
-function exec(cmd, pl_returns)
-  local ok, code, stdout, stderr = pl_utils.executeex(cmd)
-  if pl_returns then
+function exec(cmd, returns)
+  local ok, stdout, stderr, _, code = shell.run(cmd, nil, 0)
+  if returns then
     return ok, code, stdout, stderr
   end
   if not ok then
@@ -3158,14 +3166,14 @@ end
 -- @param env (optional) table with kong parameters to set as environment
 -- variables, overriding the test config (each key will automatically be
 -- prefixed with `KONG_` and be converted to uppercase)
--- @param pl_returns (optional) boolean: if true, this function will
+-- @param returns (optional) boolean: if true, this function will
 -- return the same values as Penlight's `executeex`.
 -- @param env_vars (optional) a string prepended to the command, so
 -- that arbitrary environment variables may be passed
--- @return if `pl_returns` is true, returns four return values
--- (ok, code, stdout, stderr); if `pl_returns` is false,
+-- @return if `returns` is true, returns four return values
+-- (ok, code, stdout, stderr); if `returns` is false,
 -- returns either (false, stderr) or (true, stderr, stdout).
-function kong_exec(cmd, env, pl_returns, env_vars)
+function kong_exec(cmd, env, returns, env_vars)
   cmd = cmd or ""
   env = env or {}
 
@@ -3202,7 +3210,7 @@ function kong_exec(cmd, env, pl_returns, env_vars)
     env_vars = string.format("%s KONG_%s='%s'", env_vars, k:upper(), v)
   end
 
-  return exec(env_vars .. " " .. BIN_PATH .. " " .. cmd, pl_returns)
+  return exec(env_vars .. " " .. BIN_PATH .. " " .. cmd, returns)
 end
 
 
@@ -3222,17 +3230,42 @@ end
 -- configuration will be used
 -- @function clean_prefix
 local function clean_prefix(prefix)
+
+  -- like pl_dir.rmtree, but ignore mount points
+  local function rmtree(fullpath)
+    if pl_path.islink(fullpath) then return false,'will not follow symlink' end
+    for root,dirs,files in pl_dir.walk(fullpath,true) do
+      if pl_path.islink(root) then
+        -- sub dir is a link, remove link, do not follow
+        local res, err = os.remove(root)
+        if not res then
+          return nil, err .. ": " .. root
+        end
+
+      else
+        for i,f in ipairs(files) do
+          f = pl_path.join(root,f)
+          local res, err = os.remove(f)
+          if not res then
+            return nil,err .. ": " .. f
+          end
+        end
+
+        local res, err = pl_path.rmdir(root)
+        -- skip errors when trying to remove mount points
+        if not res and shell.run("findmnt " .. root .. " 2>&1 >/dev/null", nil, 0) == 0 then
+          return nil, err .. ": " .. root
+        end
+      end
+    end
+    return true
+  end
+
   prefix = prefix or conf.prefix
   if pl_path.exists(prefix) then
-    local _, err = pl_dir.rmtree(prefix)
-    -- Note: gojira mount default kong prefix as a volume so itself can't
-    -- be removed; only throw error if the prefix is indeed not empty
+    local _, err = rmtree(prefix)
     if err then
-      local fcnt = #assert(pl_dir.getfiles(prefix))
-      local dcnt = #assert(pl_dir.getdirectories(prefix))
-      if fcnt + dcnt > 0 then
-        error(err)
-      end
+      error(err)
     end
   end
 end
@@ -3257,7 +3290,7 @@ local function pid_dead(pid, timeout)
   local max_time = ngx.now() + (timeout or 10)
 
   repeat
-    if not pl_utils.execute("ps -p " .. pid .. " >/dev/null 2>&1") then
+    if not shell.run("ps -p " .. pid .. " >/dev/null 2>&1", nil, 0) then
       return true
     end
     -- still running, wait some more
@@ -3287,7 +3320,7 @@ local function wait_pid(pid_path, timeout, is_retry)
     end
 
     -- Timeout reached: kill with SIGKILL
-    pl_utils.execute("kill -9 " .. pid .. " >/dev/null 2>&1")
+    shell.run("kill -9 " .. pid .. " >/dev/null 2>&1", nil, 0)
 
     -- Sanity check: check pid again, but don't loop.
     wait_pid(pid_path, timeout, true)
@@ -3394,15 +3427,15 @@ end
 
 local function build_go_plugins(path)
   if pl_path.exists(pl_path.join(path, "go.mod")) then
-    local ok, _, _, stderr = pl_utils.executeex(string.format(
-            "cd %s; go mod tidy; go mod download", path))
+    local ok, _, stderr = shell.run(string.format(
+            "cd %s; go mod tidy; go mod download", path), nil, 0)
     assert(ok, stderr)
   end
   for _, go_source in ipairs(pl_dir.getfiles(path, "*.go")) do
-    local ok, _, _, stderr = pl_utils.executeex(string.format(
+    local ok, _, stderr = shell.run(string.format(
             "cd %s; go build %s",
             path, pl_path.basename(go_source)
-    ))
+    ), nil, 0)
     assert(ok, stderr)
   end
 end
@@ -3425,7 +3458,7 @@ local function make(workdir, specs)
     for _, src in ipairs(spec.src) do
       local srcpath = pl_path.join(workdir, src)
       if isnewer(targetpath, srcpath) then
-        local ok, _, _, stderr = pl_utils.executeex(string.format("cd %s; %s", workdir, spec.cmd))
+        local ok, _, stderr = shell.run(string.format("cd %s; %s", workdir, spec.cmd), nil, 0)
         assert(ok, stderr)
         if isnewer(targetpath, srcpath) then
           error(string.format("couldn't make %q newer than %q", targetpath, srcpath))
@@ -3648,7 +3681,7 @@ local function stop_kong(prefix, preserve_prefix, preserve_dc, signal, nowait)
     return nil, err
   end
 
-  local ok, _, _, err = pl_utils.executeex(string.format("kill -%s %d", signal, pid))
+  local ok, _, err = shell.run(string.format("kill -%s %d", signal, pid), nil, 0)
   if not ok then
     return nil, err
   end
@@ -3776,6 +3809,8 @@ local function clustering_client(opts)
   assert(opts.cert)
   assert(opts.cert_key)
 
+  local inflate_gzip = require("kong.tools.gzip").inflate_gzip
+
   local c = assert(ws_client:new())
   local uri = "wss://" .. opts.host .. ":" .. opts.port ..
               "/v1/outlet?node_id=" .. (opts.node_id or utils.uuid()) ..
@@ -3808,7 +3843,7 @@ local function clustering_client(opts)
   c:close()
 
   if typ == "binary" then
-    local odata = assert(utils.inflate_gzip(data))
+    local odata = assert(inflate_gzip(data))
     local msg = assert(cjson.decode(odata))
     return msg
 
@@ -4094,7 +4129,7 @@ end
     end
 
     local cmd = string.format("pkill %s -P `cat %s`", signal, pid_path)
-    local _, code = pl_utils.execute(cmd)
+    local _, _, _, _, code = shell.run(cmd)
 
     if not pid_dead(pid_path) then
       return false

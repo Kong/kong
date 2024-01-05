@@ -22,7 +22,7 @@ events {
 
 > if wasm then
 wasm {
-> for _, el in ipairs(nginx_wasm_main_shm_directives) do
+> for _, el in ipairs(nginx_wasm_main_shm_kv_directives) do
   shm_kv $(el.name) $(el.value);
 > end
 

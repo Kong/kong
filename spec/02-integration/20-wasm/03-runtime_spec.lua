@@ -2,6 +2,7 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 local HEADER = "X-Proxy-Wasm"
+local FILTER_PATH = assert(helpers.test_conf.wasm_filters_path)
 
 local json = cjson.encode
 
@@ -25,11 +26,15 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
 describe("#wasm filter execution (#" .. strategy .. ")", function()
   lazy_setup(function()
     require("kong.runloop.wasm").enable({
-      { name = "tests" },
-      { name = "response_transformer" },
+      { name = "tests",
+        path = FILTER_PATH .. "/tests.wasm",
+      },
+      { name = "response_transformer",
+        path = FILTER_PATH .. "/response_transformer.wasm",
+      },
     })
 
-    local bp = helpers.get_db_utils("postgres", {
+    local bp = helpers.get_db_utils(strategy, {
       "routes",
       "services",
       "filter_chains",
@@ -353,19 +358,14 @@ describe("#wasm filter execution (#" .. strategy .. ")", function()
 
     assert(helpers.start_kong({
       database = strategy,
-      declarative_config = strategy == "off"
-                       and helpers.make_yaml_file()
-                        or nil,
-
       nginx_conf = "spec/fixtures/custom_nginx.template",
-
       wasm = true,
     }))
   end)
 
 
   lazy_teardown(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
 

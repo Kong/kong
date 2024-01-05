@@ -8,7 +8,6 @@ local config_helper = require("kong.clustering.config_helper")
 local clustering_utils = require("kong.clustering.utils")
 local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
-local utils = require("kong.tools.utils")
 local pl_stringx = require("pl.stringx")
 
 
@@ -25,8 +24,8 @@ local cjson_decode = cjson.decode
 local cjson_encode = cjson.encode
 local exiting = ngx.worker.exiting
 local ngx_time = ngx.time
-local inflate_gzip = utils.inflate_gzip
-local yield = utils.yield
+local inflate_gzip = require("kong.tools.gzip").inflate_gzip
+local yield = require("kong.tools.yield").yield
 
 
 local ngx_ERR = ngx.ERR
@@ -91,7 +90,7 @@ local function send_ping(c, log_suffix)
 
   local hash = declarative.get_current_hash()
 
-  if hash == true then
+  if hash == "" or type(hash) ~= "string" then
     hash = DECLARATIVE_EMPTY_CONFIG_HASH
   end
 
@@ -143,7 +142,7 @@ function _M:communicate(premature)
   -- connection established
   -- first, send out the plugin list and DP labels to CP
   -- The CP will make the decision on whether sync will be allowed
-  -- based no the received information
+  -- based on the received information
   local _
   _, err = c:send_binary(cjson_encode({ type = "basic_info",
                                         plugins = self.plugins_list,
@@ -213,10 +212,7 @@ function _M:communicate(premature)
                          msg.timestamp and " with timestamp: " .. msg.timestamp or "",
                          log_suffix)
 
-      local config_table = assert(msg.config_table)
-
-      local pok, res, err = pcall(config_helper.update, self.declarative_config,
-                                  config_table, msg.config_hash, msg.hashes)
+      local pok, res, err = pcall(config_helper.update, self.declarative_config, msg)
       if pok then
         ping_immediately = true
       end

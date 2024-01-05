@@ -247,6 +247,18 @@ local function compile_conf(kong_config, conf_template, template_env_inject)
     }
   }
 
+  local kong_proxy_access_log = kong_config.proxy_access_log
+  if kong_proxy_access_log ~= "off" then
+    compile_env.proxy_access_log_enabled = true
+  end
+  if kong_proxy_access_log then
+    -- example: proxy_access_log = 'logs/some-file.log apigw_json'
+    local _, custom_format_name = string.match(kong_proxy_access_log, "^(%S+)%s(%S+)")
+    if custom_format_name then
+      compile_env.custom_proxy_access_log = true
+    end
+  end
+
   compile_env = pl_tablex.merge(compile_env, template_env_inject or {}, true)
 
   do

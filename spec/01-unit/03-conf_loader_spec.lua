@@ -1,5 +1,6 @@
+local kong_meta = require "kong.meta"
 local conf_loader = require "kong.conf_loader"
-local utils = require "kong.tools.utils"
+local log = require "kong.cmd.utils.log"
 local helpers = require "spec.helpers"
 local tablex = require "pl.tablex"
 local pl_path = require "pl.path"
@@ -13,6 +14,11 @@ ffi.cdef([[
   struct group *getgrnam(const char *name);
   struct passwd *getpwnam(const char *name);
 ]])
+
+
+local KONG_VERSION = string.format("%d.%d",
+                                   kong_meta._VERSION_TABLE.major,
+                                   kong_meta._VERSION_TABLE.minor)
 
 
 local function kong_user_group_exists()
@@ -64,7 +70,10 @@ describe("Configuration loader", function()
     assert.same({}, conf.admin_gui_ssl_cert_key)
     assert.same({}, conf.status_ssl_cert)
     assert.same({}, conf.status_ssl_cert_key)
+    assert.same(nil, conf.privileged_agent)
+    assert.same(true, conf.dedicated_config_processing)
     assert.same(false, conf.allow_debug_header)
+    assert.same(KONG_VERSION, conf.lmdb_validation_tag)
     assert.is_nil(getmetatable(conf))
   end)
   it("loads a given file, with higher precedence", function()
@@ -82,6 +91,7 @@ describe("Configuration loader", function()
     assert.same({"127.0.0.1:9001"}, conf.admin_listen)
     assert.same({"0.0.0.0:9000", "0.0.0.0:9443 http2 ssl",
                  "0.0.0.0:9002 http2"}, conf.proxy_listen)
+    assert.same(KONG_VERSION, conf.lmdb_validation_tag)
     assert.is_nil(getmetatable(conf))
   end)
   it("preserves default properties if not in given file", function()
@@ -230,27 +240,27 @@ describe("Configuration loader", function()
   it("extracts ssl flags properly when hostnames contain them", function()
     local conf
     conf = assert(conf_loader(nil, {
-      proxy_listen = "ssl.myname.com:8000",
-      admin_listen = "ssl.myname.com:8001",
-      admin_gui_listen = "ssl.myname.com:8002",
+      proxy_listen = "ssl.myname.test:8000",
+      admin_listen = "ssl.myname.test:8001",
+      admin_gui_listen = "ssl.myname.test:8002",
     }))
-    assert.equal("ssl.myname.com", conf.proxy_listeners[1].ip)
+    assert.equal("ssl.myname.test", conf.proxy_listeners[1].ip)
     assert.equal(false, conf.proxy_listeners[1].ssl)
-    assert.equal("ssl.myname.com", conf.admin_listeners[1].ip)
+    assert.equal("ssl.myname.test", conf.admin_listeners[1].ip)
     assert.equal(false, conf.admin_listeners[1].ssl)
-    assert.equal("ssl.myname.com", conf.admin_gui_listeners[1].ip)
+    assert.equal("ssl.myname.test", conf.admin_gui_listeners[1].ip)
     assert.equal(false, conf.admin_gui_listeners[1].ssl)
 
     conf = assert(conf_loader(nil, {
-      proxy_listen = "ssl_myname.com:8000 ssl",
-      admin_listen = "ssl_myname.com:8001 ssl",
-      admin_gui_listen = "ssl_myname.com:8002 ssl",
+      proxy_listen = "ssl_myname.test:8000 ssl",
+      admin_listen = "ssl_myname.test:8001 ssl",
+      admin_gui_listen = "ssl_myname.test:8002 ssl",
     }))
-    assert.equal("ssl_myname.com", conf.proxy_listeners[1].ip)
+    assert.equal("ssl_myname.test", conf.proxy_listeners[1].ip)
     assert.equal(true, conf.proxy_listeners[1].ssl)
-    assert.equal("ssl_myname.com", conf.admin_listeners[1].ip)
+    assert.equal("ssl_myname.test", conf.admin_listeners[1].ip)
     assert.equal(true, conf.admin_listeners[1].ssl)
-    assert.equal("ssl_myname.com", conf.admin_gui_listeners[1].ip)
+    assert.equal("ssl_myname.test", conf.admin_gui_listeners[1].ip)
     assert.equal(true, conf.admin_gui_listeners[1].ssl)
   end)
   it("extracts 'off' from proxy_listen/admin_listen/admin_gui_listen", function()
@@ -274,13 +284,13 @@ describe("Configuration loader", function()
     assert.same({}, conf.admin_gui_listeners)
     -- not off with names containing 'off'
     conf = assert(conf_loader(nil, {
-      proxy_listen = "offshore.com:9000",
-      admin_listen = "offshore.com:9001",
-      admin_gui_listen = "offshore.com:9002",
+      proxy_listen = "offshore.test:9000",
+      admin_listen = "offshore.test:9001",
+      admin_gui_listen = "offshore.test:9002",
     }))
-    assert.same("offshore.com", conf.proxy_listeners[1].ip)
-    assert.same("offshore.com", conf.admin_listeners[1].ip)
-    assert.same("offshore.com", conf.admin_gui_listeners[1].ip)
+    assert.same("offshore.test", conf.proxy_listeners[1].ip)
+    assert.same("offshore.test", conf.admin_listeners[1].ip)
+    assert.same("offshore.test", conf.admin_gui_listeners[1].ip)
   end)
   it("attaches prefix paths", function()
     local conf = assert(conf_loader())
@@ -972,6 +982,8 @@ describe("Configuration loader", function()
           assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
         end)
         it("expands the `system` property in lua_ssl_trusted_certificate", function()
+          local utils = require "kong.tools.system"
+
           local old_gstcf = utils.get_system_trusted_certs_filepath
           local old_exists = pl_path.exists
           finally(function()
@@ -1230,7 +1242,7 @@ describe("Configuration loader", function()
         it("defines ssl_ciphers by default", function()
           local conf, err = conf_loader(nil, {})
           assert.is_nil(err)
-          assert.equal("ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384", conf.ssl_ciphers)
+          assert.equal("ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305", conf.ssl_ciphers)
         end)
         it("explicitly defines ssl_ciphers", function()
           local conf, err = conf_loader(nil, {
@@ -1607,6 +1619,7 @@ describe("Configuration loader", function()
       finally(function()
         os.getenv = _os_getenv -- luacheck: ignore
         package.loaded["kong.conf_loader"] = nil
+        package.loaded["kong.conf_loader.constants"] = nil
         conf_loader = require "kong.conf_loader"
       end)
       os.getenv = function() end -- luacheck: ignore
@@ -1621,12 +1634,61 @@ describe("Configuration loader", function()
       finally(function()
         os.getenv = _os_getenv -- luacheck: ignore
         package.loaded["kong.conf_loader"] = nil
+        package.loaded["kong.conf_loader.constants"] = nil
         conf_loader = require "kong.conf_loader"
       end)
       os.getenv = function() end -- luacheck: ignore
 
       local conf = assert(conf_loader(helpers.test_conf_path))
       assert.equal(DATABASE, conf.database)
+    end)
+    it("should warns user if kong manager is enabled but admin API is not enabled", function ()
+      local spy_log = spy.on(log, "warn")
+
+      finally(function()
+        log.warn:revert()
+        assert:unregister("matcher", "str_match")
+      end)
+
+      assert:register("matcher", "str_match", function (_state, arguments)
+        local expected = arguments[1]
+        return function(value)
+          return string.match(value, expected) ~= nil
+        end
+      end)
+
+      local conf, err = conf_loader(nil, {
+        admin_listen = "off",
+        admin_gui_listen = "off",
+      })
+      assert.is_nil(err)
+      assert.is_table(conf)
+      assert.spy(spy_log).was_called(0)
+
+      conf, err = conf_loader(nil, {
+        admin_listen = "localhost:8001",
+        admin_gui_listen = "off",
+      })
+      assert.is_nil(err)
+      assert.is_table(conf)
+      assert.spy(spy_log).was_called(0)
+
+      conf, err = conf_loader(nil, {
+        admin_listen = "localhost:8001",
+        admin_gui_listen = "localhost:8002",
+      })
+      assert.is_nil(err)
+      assert.is_table(conf)
+      assert.spy(spy_log).was_called(0)
+
+      conf, err = conf_loader(nil, {
+        admin_listen = "off",
+        admin_gui_listen = "localhost:8002",
+      })
+      assert.is_nil(err)
+      assert.is_table(conf)
+      assert.spy(spy_log).was_called(1)
+      assert.spy(spy_log).was_called_with("Kong Manager won't be functional because the Admin API is not listened on any interface")
     end)
   end)
 
@@ -2010,6 +2072,48 @@ describe("Configuration loader", function()
         worker_consistency = "strict"
       }))
       assert.equal("strict", conf.worker_consistency)
+      assert.equal(nil, err)
+    end)
+
+    it("privileged_agent -> dedicated_config_processing", function()
+      local conf, err = assert(conf_loader(nil, {
+        privileged_agent = "on",
+      }))
+      assert.same(nil, conf.privileged_agent)
+      assert.same(true, conf.dedicated_config_processing)
+      assert.equal(nil, err)
+
+      -- no clobber
+      conf, err = assert(conf_loader(nil, {
+        privileged_agent = "on",
+        dedicated_config_processing = "on",
+      }))
+      assert.same(true, conf.dedicated_config_processing)
+      assert.same(nil, conf.privileged_agent)
+      assert.equal(nil, err)
+
+      conf, err = assert(conf_loader(nil, {
+        privileged_agent = "off",
+        dedicated_config_processing = "on",
+      }))
+      assert.same(true, conf.dedicated_config_processing)
+      assert.same(nil, conf.privileged_agent)
+      assert.equal(nil, err)
+
+      conf, err = assert(conf_loader(nil, {
+        privileged_agent = "on",
+        dedicated_config_processing = "off",
+      }))
+      assert.same(false, conf.dedicated_config_processing)
+      assert.same(nil, conf.privileged_agent)
+      assert.equal(nil, err)
+
+      conf, err = assert(conf_loader(nil, {
+        privileged_agent = "off",
+        dedicated_config_processing = "off",
+      }))
+      assert.same(false, conf.dedicated_config_processing)
+      assert.same(nil, conf.privileged_agent)
       assert.equal(nil, err)
     end)
 

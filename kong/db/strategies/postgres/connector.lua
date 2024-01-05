@@ -6,6 +6,7 @@ local stringx      = require "pl.stringx"
 local semaphore    = require "ngx.semaphore"
 local kong_global = require "kong.global"
 local constants = require "kong.constants"
+local db_utils  = require "kong.db.utils"
 
 
 local setmetatable = setmetatable
@@ -28,7 +29,7 @@ local log          = ngx.log
 local match        = string.match
 local fmt          = string.format
 local sub          = string.sub
-local utils_toposort = utils.topological_sort
+local utils_toposort = db_utils.topological_sort
 local insert       = table.insert
 local table_merge  = utils.table_merge
 
@@ -529,6 +530,7 @@ function _mt:query(sql, operation)
     operation = "write"
   end
 
+  local conn, is_new_conn
   local res, err, partial, num_queries
 
   local ok
@@ -537,24 +539,37 @@ function _mt:query(sql, operation)
     return nil, "error acquiring query semaphore: " .. err
   end
 
-  local conn = self:get_stored_connection(operation)
-  if conn then
-    res, err, partial, num_queries = conn:query(sql)
-
-  else
-    local connection
+  conn = self:get_stored_connection(operation)
+  if not conn then
     local config = operation == "write" and self.config or self.config_ro
 
-    connection, err = connect(config)
-    if not connection then
+    conn, err = connect(config)
+    if not conn then
       self:release_query_semaphore_resource(operation)
       return nil, err
     end
+    is_new_conn = true
+  end
 
-    res, err, partial, num_queries = connection:query(sql)
+  res, err, partial, num_queries = conn:query(sql)
 
+  -- if err is string then either it is a SQL error
+  -- or it is a socket error, here we abort connections
+  -- that encounter errors instead of reusing them, for
+  -- safety reason
+  if err and type(err) == "string" then
+    ngx.log(ngx.DEBUG, "SQL query throw error: ", err, ", close connection")
+    local _, err = conn:disconnect()
+    if err then
+      -- We're at the end of the query - just logging if
+      -- we cannot cleanup the connection
+      ngx.log(ngx.ERR, "failed to disconnect: ", err)
+    end
+    self:store_connection(nil, operation)
+
+  elseif is_new_conn then
     local keepalive_timeout = self:get_keepalive_timeout(operation)
-    setkeepalive(connection, keepalive_timeout)
+    setkeepalive(conn, keepalive_timeout)
   end
 
   self:release_query_semaphore_resource(operation)

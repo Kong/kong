@@ -28,7 +28,7 @@ describe("PDK: kong.ctx", function()
 
   it("isolates kong.ctx.plugin per-plugin", function()
     local route = bp.routes:insert({
-      hosts = { "ctx-plugin.com" }
+      hosts = { "ctx-plugin.test" }
     })
 
     bp.plugins:insert({
@@ -65,7 +65,7 @@ describe("PDK: kong.ctx", function()
     proxy_client = helpers.proxy_client()
 
     local res = proxy_client:get("/request", {
-      headers = { Host = "ctx-plugin.com" }
+      headers = { Host = "ctx-plugin.test" }
     })
 
     assert.status(200, res)
@@ -77,7 +77,7 @@ describe("PDK: kong.ctx", function()
 
   it("can share values using kong.ctx.shared", function()
     local route = bp.routes:insert({
-      hosts = { "ctx-shared.com" }
+      hosts = { "ctx-shared.test" }
     })
 
     bp.plugins:insert({
@@ -108,7 +108,7 @@ describe("PDK: kong.ctx", function()
     proxy_client = helpers.proxy_client()
 
     local res = proxy_client:get("/request", {
-      headers = { Host = "ctx-shared.com" }
+      headers = { Host = "ctx-shared.test" }
     })
 
     assert.status(200, res)

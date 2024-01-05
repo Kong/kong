@@ -2,6 +2,7 @@ local kong = kong
 local find = string.find
 local fmt  = string.format
 local utils = require "kong.tools.utils"
+local request_id = require "kong.tracing.request_id"
 
 
 local CONTENT_TYPE    = "Content-Type"
@@ -58,13 +59,21 @@ return function(ctx)
   local status = kong.response.get_status()
   local message = get_body(status)
 
+  -- Nginx 494 status code is used internally when the client sends
+  -- too large or invalid HTTP headers. Kong is obliged to convert
+  -- it back to `400 Bad Request`.
+  if status == 494 then
+    status = 400
+  end
+
   local headers
   if find(accept_header, TYPE_GRPC, nil, true) == 1 then
     message = { message = message }
 
   else
     local mime_type = utils.get_response_type(accept_header)
-    message = fmt(utils.get_error_template(mime_type), message)
+    local rid = request_id.get() or ""
+    message = fmt(utils.get_error_template(mime_type), message, rid)
     headers = { [CONTENT_TYPE] = mime_type }
 
   end

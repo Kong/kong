@@ -1,34 +1,36 @@
-local meta = require "kong.meta"
 local utils = require "kong.admin_gui.utils"
+
+local fmt = string.format
+local insert = table.insert
+local concat = table.concat
+
+local select_listener = utils.select_listener
+local prepare_variable = utils.prepare_variable
 
 local _M = {}
 
 function _M.generate_kconfig(kong_config)
-  local api_listen = utils.select_listener(kong_config.admin_listeners, {ssl = false})
+  local api_listen = select_listener(kong_config.admin_listeners, {ssl = false})
   local api_port = api_listen and api_listen.port
-  local api_ssl_listen = utils.select_listener(kong_config.admin_listeners, {ssl = true})
+
+  local api_ssl_listen = select_listener(kong_config.admin_listeners, {ssl = true})
   local api_ssl_port = api_ssl_listen and api_ssl_listen.port
 
   local configs = {
-    ADMIN_GUI_URL = utils.prepare_variable(kong_config.admin_gui_url),
-    ADMIN_GUI_PATH = utils.prepare_variable(kong_config.admin_gui_path),
-    ADMIN_API_URL = utils.prepare_variable(kong_config.admin_gui_api_url),
-    ADMIN_API_PORT = utils.prepare_variable(api_port),
-    ADMIN_API_SSL_PORT = utils.prepare_variable(api_ssl_port),
-    KONG_VERSION = utils.prepare_variable(meta.version),
-    KONG_EDITION = meta._VERSION:match("enterprise") and "enterprise" or "community",
-    ANONYMOUS_REPORTS = utils.prepare_variable(kong_config.anonymous_reports),
+    ADMIN_GUI_URL = prepare_variable(kong_config.admin_gui_url),
+    ADMIN_GUI_PATH = prepare_variable(kong_config.admin_gui_path),
+    ADMIN_API_URL = prepare_variable(kong_config.admin_gui_api_url),
+    ADMIN_API_PORT = prepare_variable(api_port),
+    ADMIN_API_SSL_PORT = prepare_variable(api_ssl_port),
+    ANONYMOUS_REPORTS = prepare_variable(kong_config.anonymous_reports),
   }
 
-  local kconfig_str = "window.K_CONFIG = {\n"
+  local out = {}
   for config, value in pairs(configs) do
-    kconfig_str = kconfig_str .. "  '" .. config .. "': '" .. value .. "',\n"
+    insert(out, fmt("  '%s': '%s'", config, value))
   end
 
-  -- remove trailing comma
-  kconfig_str = kconfig_str:sub(1, -3)
-
-  return kconfig_str .. "\n}\n"
+  return "window.K_CONFIG = {\n" .. concat(out, ",\n") .. "\n}\n"
 end
 
 return _M

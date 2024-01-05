@@ -487,16 +487,18 @@ describe("Utils", function()
     end)
 
     describe("load_module_if_exists()", function()
+      local load_module_if_exists = require "kong.tools.module".load_module_if_exists
+
       it("should return false if the module does not exist", function()
         local loaded, mod
         assert.has_no.errors(function()
-          loaded, mod = utils.load_module_if_exists("kong.does.not.exist")
+          loaded, mod = load_module_if_exists("kong.does.not.exist")
         end)
         assert.False(loaded)
         assert.is.string(mod)
       end)
       it("should throw an error with a traceback if the module is invalid", function()
-        local pok, perr = pcall(utils.load_module_if_exists, "spec.fixtures.invalid-module")
+        local pok, perr = pcall(load_module_if_exists, "spec.fixtures.invalid-module")
         assert.falsy(pok)
         assert.match("error loading module 'spec.fixtures.invalid-module'", perr, 1, true)
         assert.match("./spec/fixtures/invalid-module.lua:", perr, 1, true)
@@ -504,7 +506,7 @@ describe("Utils", function()
       it("should load a module if it was found and valid", function()
         local loaded, mod
         assert.has_no.errors(function()
-          loaded, mod = utils.load_module_if_exists("spec.fixtures.valid-module")
+          loaded, mod = load_module_if_exists("spec.fixtures.valid-module")
         end)
         assert.True(loaded)
         assert.truthy(mod)
@@ -595,14 +597,14 @@ describe("Utils", function()
         assert.are.same({host = "0000:0000:0000:0000:0000:0000:0000:0001", type = "ipv6", port = 80}, utils.normalize_ip("[::1]:80"))
         assert.are.same({host = "0000:0000:0000:0000:0000:0000:0000:0001", type = "ipv6", port = nil}, utils.normalize_ip("::1"))
         assert.are.same({host = "localhost", type = "name", port = 80}, utils.normalize_ip("localhost:80"))
-        assert.are.same({host = "mashape.com", type = "name", port = nil}, utils.normalize_ip("mashape.com"))
+        assert.are.same({host = "mashape.test", type = "name", port = nil}, utils.normalize_ip("mashape.test"))
 
         assert.is_nil((utils.normalize_ip("1.2.3.4:8x0")))
         assert.is_nil((utils.normalize_ip("1.2.3.400")))
         assert.is_nil((utils.normalize_ip("[::1]:8x0")))
         assert.is_nil((utils.normalize_ip(":x:1")))
         assert.is_nil((utils.normalize_ip("localhost:8x0")))
-        assert.is_nil((utils.normalize_ip("mashape..com")))
+        assert.is_nil((utils.normalize_ip("mashape..test")))
       end)
     end)
     describe("formatting", function()
@@ -612,21 +614,21 @@ describe("Utils", function()
         assert.are.equal("[0000:0000:0000:0000:0000:0000:0000:0001]", utils.format_host("::1"))
         assert.are.equal("[0000:0000:0000:0000:0000:0000:0000:0001]:80", utils.format_host("::1", 80))
         assert.are.equal("localhost", utils.format_host("localhost"))
-        assert.are.equal("mashape.com:80", utils.format_host("mashape.com", 80))
+        assert.are.equal("mashape.test:80", utils.format_host("mashape.test", 80))
         -- passthrough (string)
         assert.are.equal("1.2.3.4", utils.format_host(utils.normalize_ipv4("1.2.3.4")))
         assert.are.equal("1.2.3.4:80", utils.format_host(utils.normalize_ipv4("1.2.3.4:80")))
         assert.are.equal("[0000:0000:0000:0000:0000:0000:0000:0001]", utils.format_host(utils.normalize_ipv6("::1")))
         assert.are.equal("[0000:0000:0000:0000:0000:0000:0000:0001]:80", utils.format_host(utils.normalize_ipv6("[::1]:80")))
         assert.are.equal("localhost", utils.format_host(utils.check_hostname("localhost")))
-        assert.are.equal("mashape.com:80", utils.format_host(utils.check_hostname("mashape.com:80")))
+        assert.are.equal("mashape.test:80", utils.format_host(utils.check_hostname("mashape.test:80")))
         -- passthrough general (table)
         assert.are.equal("1.2.3.4", utils.format_host(utils.normalize_ip("1.2.3.4")))
         assert.are.equal("1.2.3.4:80", utils.format_host(utils.normalize_ip("1.2.3.4:80")))
         assert.are.equal("[0000:0000:0000:0000:0000:0000:0000:0001]", utils.format_host(utils.normalize_ip("::1")))
         assert.are.equal("[0000:0000:0000:0000:0000:0000:0000:0001]:80", utils.format_host(utils.normalize_ip("[::1]:80")))
         assert.are.equal("localhost", utils.format_host(utils.normalize_ip("localhost")))
-        assert.are.equal("mashape.com:80", utils.format_host(utils.normalize_ip("mashape.com:80")))
+        assert.are.equal("mashape.test:80", utils.format_host(utils.normalize_ip("mashape.test:80")))
         -- passthrough errors
         local one, two = utils.format_host(utils.normalize_ipv4("1.2.3.4.5"))
         assert.are.equal("nilstring", type(one) .. type(two))
@@ -634,7 +636,7 @@ describe("Utils", function()
         assert.are.equal("nilstring", type(one) .. type(two))
         local one, two = utils.format_host(utils.check_hostname("//bad..name\\:123"))
         assert.are.equal("nilstring", type(one) .. type(two))
-        local one, two = utils.format_host(utils.normalize_ip("m a s h a p e.com:80"))
+        local one, two = utils.format_host(utils.normalize_ip("m a s h a p e.test:80"))
         assert.are.equal("nilstring", type(one) .. type(two))
       end)
     end)
@@ -656,12 +658,12 @@ describe("Utils", function()
     end
   end)
   it("validate_cookie_name() validates cookie names", function()
-    local header_chars = [[_-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz]]
+    local cookie_chars = [[~`|!#$%&'*+-._-^0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz]]
 
     for i = 1, 255 do
       local c = string.char(i)
 
-      if string.find(header_chars, c, nil, true) then
+      if string.find(cookie_chars, c, nil, true) then
         assert(utils.validate_cookie_name(c) == c,
           "ascii character '" .. c .. "' (" .. i .. ") should have been allowed")
       else
@@ -754,6 +756,8 @@ describe("Utils", function()
   end)
 
   describe("gzip_[de_in]flate()", function()
+    local utils = require "kong.tools.gzip"
+
     it("empty string", function()
       local gz = assert(utils.deflate_gzip(""))
       assert.equal(utils.inflate_gzip(gz), "")
@@ -829,7 +833,7 @@ describe("Utils", function()
 
   describe("topological_sort", function()
     local get_neighbors = function(x) return x end
-    local ts = utils.topological_sort
+    local ts = require("kong.db.utils").topological_sort
 
     it("it puts destinations first", function()
       local a = { id = "a" }

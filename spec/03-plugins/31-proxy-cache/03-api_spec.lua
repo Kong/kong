@@ -10,7 +10,7 @@ describe("Plugin: proxy-cache", function()
     bp = helpers.get_db_utils(nil, nil, {"proxy-cache"})
 
     route1 = assert(bp.routes:insert {
-      hosts = { "route-1.com" },
+      hosts = { "route-1.test" },
     })
     plugin1 = assert(bp.plugins:insert {
       name = "proxy-cache",
@@ -32,7 +32,7 @@ describe("Plugin: proxy-cache", function()
     })
 
     local route2 = assert(bp.routes:insert {
-      hosts = { "route-2.com" },
+      hosts = { "route-2.test" },
     })
 
     assert(bp.plugins:insert {
@@ -205,7 +205,7 @@ describe("Plugin: proxy-cache", function()
       it("delete a cache entry", function()
         local res = assert(proxy_client:get("/get", {
           headers = {
-            host = "route-1.com",
+            host = "route-1.test",
             ["kong-debug"] = 1,
           }
         }))
@@ -221,7 +221,7 @@ describe("Plugin: proxy-cache", function()
 
         res = assert(proxy_client:get("/get", {
           headers = {
-            host = "route-1.com",
+            host = "route-1.test",
             ["kong-debug"] = 1,
           }
         }))
@@ -237,7 +237,7 @@ describe("Plugin: proxy-cache", function()
 
         local res = assert(proxy_client:get("/get", {
           headers = {
-            host = "route-1.com",
+            host = "route-1.test",
             ["kong-debug"] = 1,
           }
         }))
@@ -251,7 +251,7 @@ describe("Plugin: proxy-cache", function()
 
         local res = assert(proxy_client:get("/get", {
           headers = {
-            host = "route-1.com",
+            host = "route-1.test",
             ["kong-debug"] = 1,
           }
         }))
@@ -263,7 +263,7 @@ describe("Plugin: proxy-cache", function()
         -- make a `Hit` request to `route-1`
         local res = assert(proxy_client:get("/get", {
           headers = {
-            host = "route-1.com",
+            host = "route-1.test",
             ["kong-debug"] = 1,
           }
         }))
@@ -273,7 +273,7 @@ describe("Plugin: proxy-cache", function()
         -- make a `Miss` request to `route-2`
         local res = assert(proxy_client:get("/get", {
           headers = {
-            host = "route-2.com",
+            host = "route-2.test",
             ["kong-debug"] = 1,
           }
         }))
@@ -289,7 +289,7 @@ describe("Plugin: proxy-cache", function()
         -- make a `Hit` request to `route-1`
         res = assert(proxy_client:get("/get", {
           headers = {
-            host = "route-2.com",
+            host = "route-2.test",
             ["kong-debug"] = 1,
           }
         }))
@@ -305,7 +305,7 @@ describe("Plugin: proxy-cache", function()
 
         local res = assert(proxy_client:get("/get", {
           headers = {
-            host = "route-1.com",
+            host = "route-1.test",
             ["kong-debug"] = 1,
           }
         }))
@@ -315,7 +315,7 @@ describe("Plugin: proxy-cache", function()
 
         local res = assert(proxy_client:get("/get", {
           headers = {
-            host = "route-2.com",
+            host = "route-2.test",
             ["kong-debug"] = 1,
           }
         }))
@@ -357,7 +357,7 @@ describe("Plugin: proxy-cache", function()
         -- add request to cache
         local res = assert(proxy_client:get("/get", {
           headers = {
-            host = "route-1.com",
+            host = "route-1.test",
             ["kong-debug"] = 1,
           }
         }))

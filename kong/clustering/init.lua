@@ -63,32 +63,32 @@ end
 
 
 function _M:handle_cp_websocket()
-  local ok, err = self:validate_client_cert()
-  if not ok then
+  local cert, err = self:validate_client_cert()
+  if not cert then
     ngx_log(ngx_ERR, _log_prefix, err)
     return ngx_exit(444)
   end
 
-  return self.instance:handle_cp_websocket()
+  return self.instance:handle_cp_websocket(cert)
 end
 
 
-function _M:init_cp_worker(plugins_list)
+function _M:init_cp_worker(basic_info)
 
   events.init()
 
   self.instance = require("kong.clustering.control_plane").new(self)
-  self.instance:init_worker(plugins_list)
+  self.instance:init_worker(basic_info)
 end
 
 
-function _M:init_dp_worker(plugins_list)
+function _M:init_dp_worker(basic_info)
   if not is_dp_worker_process() then
     return
   end
 
   self.instance = require("kong.clustering.data_plane").new(self)
-  self.instance:init_worker(plugins_list)
+  self.instance:init_worker(basic_info)
 end
 
 

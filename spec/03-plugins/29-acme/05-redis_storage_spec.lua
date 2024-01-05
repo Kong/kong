@@ -106,6 +106,37 @@ describe("Plugin: acme (storage.redis)", function()
       assert.equal(0, #keys)
     end)
 
+    it("redis namespace list with scan count", function()
+      local config1 = {
+        host = helpers.redis_host,
+        port = helpers.redis_port,
+        database = 0,
+        namespace = "namespace1",
+        scan_count = 20,
+      }
+
+      local storage1, err = redis_storage.new(config1)
+      assert.is_nil(err)
+      assert.not_nil(storage1)
+
+      for i=1,50 do
+        local err = storage1:set(string.format("scan-count:%02d", i), i, 10)
+        assert.is_nil(err)
+      end
+
+
+      local keys, err = storage1:list("scan-count")
+      assert.is_nil(err)
+      assert.is_table(keys)
+      assert.equal(50, #keys)
+
+      table.sort(keys)
+
+      for i=1,50 do
+        assert.equal(string.format("scan-count:%02d", i), keys[i])
+      end
+    end)
+
     it("redis namespace isolation", function()
       local config0 = {
         host = helpers.redis_host,
@@ -258,7 +289,7 @@ describe("Plugin: acme (storage.redis)", function()
 
   describe("Plugin: acme (handler.access) [#postgres]", function()
     local bp
-    local domain = "mydomain.com"
+    local domain = "mydomain.test"
     local dummy_id = "ZR02iVO6PFywzFLj6igWHd6fnK2R07C-97dkQKC7vJo"
     local namespace = "namespace1"
     local plugin

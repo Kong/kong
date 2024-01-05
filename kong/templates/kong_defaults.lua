@@ -65,11 +65,12 @@ admin_gui_ssl_cert = NONE
 admin_gui_ssl_cert_key = NONE
 status_ssl_cert = NONE
 status_ssl_cert_key = NONE
-headers = server_tokens, latency_tokens
+headers = server_tokens, latency_tokens, x-kong-request-id
+headers_upstream = x-kong-request-id
 trusted_ips = NONE
 error_default_type = text/plain
-upstream_keepalive_pool_size = 60
-upstream_keepalive_max_requests = 100
+upstream_keepalive_pool_size = 512
+upstream_keepalive_max_requests = 10000
 upstream_keepalive_idle_timeout = 60
 allow_debug_header = off
 
@@ -90,6 +91,9 @@ nginx_http_ssl_prefer_server_ciphers = NONE
 nginx_http_ssl_dhparam = NONE
 nginx_http_ssl_session_tickets = NONE
 nginx_http_ssl_session_timeout = NONE
+nginx_http_lua_regex_match_limit = 100000
+nginx_http_lua_regex_cache_max_entries = 8192
+nginx_http_keepalive_requests = 10000
 nginx_stream_ssl_protocols = NONE
 nginx_stream_ssl_prefer_server_ciphers = NONE
 nginx_stream_ssl_dhparam = NONE
@@ -99,8 +103,6 @@ nginx_proxy_real_ip_header = X-Real-IP
 nginx_proxy_real_ip_recursive = off
 nginx_admin_client_max_body_size = 10m
 nginx_admin_client_body_buffer_size = 10m
-nginx_http_lua_regex_match_limit = 100000
-nginx_http_lua_regex_cache_max_entries = 8192
 
 client_body_buffer_size = 8k
 real_ip_header = X-Real-IP
@@ -153,13 +155,13 @@ dns_resolver = NONE
 dns_hostsfile = /etc/hosts
 dns_order = LAST,SRV,A,CNAME
 dns_valid_ttl = NONE
-dns_stale_ttl = 4
+dns_stale_ttl = 3600
 dns_cache_size = 10000
 dns_not_found_ttl = 30
 dns_error_ttl = 1
 dns_no_sync = off
 
-privileged_agent = off
+dedicated_config_processing = on
 worker_consistency = eventual
 worker_state_update_frequency = 5
 
@@ -199,4 +201,7 @@ tracing_sampling_rate = 0.01
 wasm = off
 wasm_filters_path = NONE
 wasm_dynamic_module = NONE
+
+request_debug = on
+request_debug_token =
 ]]

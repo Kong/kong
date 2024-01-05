@@ -12,6 +12,9 @@ local _M = {
 
   ---@type string[]
   filter_names = {},
+
+  ---@type table<string, kong.runloop.wasm.filter_meta>
+  filter_meta = {},
 }
 
 
@@ -23,11 +26,22 @@ local _M = {
 ---@field name string
 ---@field path string
 
+---@class kong.configuration.wasm_filter.meta
+---
+---@field config_schema kong.db.schema.json.schema_doc|nil
+
 
 local utils = require "kong.tools.utils"
 local dns = require "kong.tools.dns"
 local reports = require "kong.reports"
 local clear_tab = require "table.clear"
+local cjson = require "cjson.safe"
+local json_schema = require "kong.db.schema.json"
+local pl_file = require "pl.file"
+local pl_path = require "pl.path"
+local constants = require "kong.constants"
+local properties = require "kong.runloop.wasm.properties"
+
 
 ---@module 'resty.wasmx.proxy_wasm'
 local proxy_wasm
@@ -42,13 +56,25 @@ local tostring = tostring
 local ipairs = ipairs
 local type = type
 local assert = assert
-local concat = table.concat
 local insert = table.insert
-local sha256 = utils.sha256_bin
+local cjson_encode = cjson.encode
+local cjson_decode = cjson.decode
+local fmt = string.format
 
 
 local VERSION_KEY = "filter_chains:version"
 local TTL_ZERO = { ttl = 0 }
+
+---@class kong.runloop.wasm.filter_meta
+---
+---@field config_schema table|nil
+
+local FILTER_META_SCHEMA = {
+  type = "object",
+  properties = {
+    config_schema = json_schema.metaschema,
+  },
+}
 
 
 ---
@@ -79,10 +105,14 @@ local STATUS = STATUS_DISABLED
 
 local hash_chain
 do
+  local buffer = require "string.buffer"
+
+  local sha256 = require("kong.tools.sha256").sha256_bin
+
   local HASH_DISABLED = sha256("disabled")
   local HASH_NONE     = sha256("none")
 
-  local buf = {}
+  local buf = buffer.new()
 
   ---@param chain kong.db.schema.entities.filter_chain
   ---@return string
@@ -94,16 +124,18 @@ do
       return HASH_DISABLED
     end
 
-    local n = 0
-    for _, filter in ipairs(chain.filters) do
-      buf[n + 1] = filter.name
-      buf[n + 2] = tostring(filter.enabled)
-      buf[n + 3] = tostring(filter.enabled and sha256(filter.config))
-      n = n + 3
+    local filters = chain.filters
+    for i = 1, #filters do
+      local filter = filters[i]
+
+      buf:put(filter.name)
+      buf:put(tostring(filter.enabled))
+      buf:put(tostring(filter.enabled and sha256(filter.config)))
     end
 
-    local s = concat(buf, "", 1, n)
-    clear_tab(buf)
+    local s = buf:get()
+
+    buf:reset()
 
     return sha256(s)
   end
@@ -369,6 +401,24 @@ local function rebuild_state(db, version, old_state)
 
       local chain_type = service_id and TYPE_SERVICE or TYPE_ROUTE
 
+      for _, filter in ipairs(chain.filters) do
+        if filter.enabled then
+          -- Serialize all JSON configurations up front
+          --
+          -- NOTE: there is a subtle difference between a raw, non-JSON filter
+          -- configuration which requires no encoding (e.g. `my config bytes`)
+          -- and a JSON filter configuration of type=string, which should be
+          -- JSON-encoded (e.g. `"my config string"`).
+          --
+          -- Properly disambiguating between the two cases requires an
+          -- inspection of the filter metadata, which is not guaranteed to be
+          -- present on data-plane/proxy nodes.
+          if filter.config ~= nil and type(filter.config) ~= "string" then
+            filter.config = cjson_encode(filter.config)
+          end
+        end
+      end
+
       insert(all_chain_refs, {
         type           = chain_type,
 
@@ -526,7 +576,6 @@ local function update_in_place(new_version)
 end
 
 
-
 ---@param route?    { id: string }
 ---@param service?  { id: string }
 ---@return kong.runloop.wasm.filter_chain_reference?
@@ -542,10 +591,74 @@ end
 
 
 ---@param filters kong.configuration.wasm_filter[]|nil
+local function discover_filter_metadata(filters)
+  if not filters then return end
+
+  local errors = {}
+
+  for _, filter in ipairs(filters) do
+    local meta_path = (filter.path:gsub("%.wasm$", "")) .. ".meta.json"
+
+    local function add_error(reason, err)
+      table.insert(errors, fmt("* %s (%s) %s: %s", filter.name, meta_path, reason, err))
+    end
+
+    if pl_path.exists(meta_path) then
+      if pl_path.isfile(meta_path) then
+        local data, err = pl_file.read(meta_path)
+
+        if data then
+          local meta
+          meta, err = cjson_decode(data)
+
+          if err then
+            add_error("JSON decode error", err)
+
+          else
+            local ok
+            ok, err = json_schema.validate(meta, FILTER_META_SCHEMA)
+            if ok then
+              _M.filter_meta[filter.name] = meta
+
+            else
+              add_error("file contains invalid metadata", err)
+            end
+          end
+
+        else
+          add_error("I/O error", err)
+        end
+
+      else
+        add_error("invalid type", "path exists but is not a file")
+      end
+    end
+  end
+
+  if #errors > 0 then
+    local err = "\nFailed to load metadata for one or more filters:\n"
+                .. table.concat(errors, "\n") .. "\n"
+
+    error(err)
+  end
+
+  local namespace = constants.SCHEMA_NAMESPACES.PROXY_WASM_FILTERS
+  for name, meta in pairs(_M.filter_meta) do
+    if meta.config_schema then
+      local schema_name = namespace .. "/" .. name
+      meta.config_schema["$schema"] = json_schema.DRAFT_4
+      json_schema.add_schema(schema_name, meta.config_schema)
+    end
+  end
+end
+
+
+---@param filters kong.configuration.wasm_filter[]|nil
 local function set_available_filters(filters)
   clear_tab(_M.filters)
   clear_tab(_M.filters_by_name)
   clear_tab(_M.filter_names)
+  clear_tab(_M.filter_meta)
 
   if filters then
     for i, filter in ipairs(filters) do
@@ -553,6 +666,8 @@ local function set_available_filters(filters)
       _M.filters_by_name[filter.name] = filter
       _M.filter_names[i] = filter.name
     end
+
+    discover_filter_metadata(filters)
   end
 end
 
@@ -568,6 +683,155 @@ local function disable(reason)
 end
 
 
+local function register_property_handlers()
+  properties.reset()
+
+  properties.add_getter("kong.client.protocol", function(kong)
+    return true, kong.client.get_protocol(), true
+  end)
+
+  properties.add_getter("kong.nginx.subsystem", function(kong)
+    return true, kong.nginx.get_subsystem(), true
+  end)
+
+  properties.add_getter("kong.node.id", function(kong)
+    return true, kong.node.get_id(), true
+  end)
+
+  properties.add_getter("kong.node.memory_stats", function(kong)
+    local stats = kong.node.get_memory_stats()
+    if not stats then
+      return false
+    end
+    return true, cjson_encode(stats), false
+  end)
+
+  properties.add_getter("kong.request.forwarded_host", function(kong)
+    return true, kong.request.get_forwarded_host(), true
+  end)
+
+  properties.add_getter("kong.request.forwarded_port", function(kong)
+    return true, kong.request.get_forwarded_port(), true
+  end)
+
+  properties.add_getter("kong.request.forwarded_scheme", function(kong)
+    return true, kong.request.get_forwarded_scheme(), true
+  end)
+
+  properties.add_getter("kong.request.port", function(kong)
+    return true, kong.request.get_port(), true
+  end)
+
+  properties.add_getter("kong.response.source", function(kong)
+    return true, kong.request.get_source(), false
+  end)
+
+  properties.add_setter("kong.response.status", function(kong, _, _, status)
+    return true, kong.response.set_status(tonumber(status)), false
+  end)
+
+  properties.add_getter("kong.router.route", function(kong)
+    local route = kong.router.get_route()
+    if not route then
+      return true, nil, true
+    end
+    return true, cjson_encode(route), true
+  end)
+
+  properties.add_getter("kong.router.service", function(kong)
+    local service = kong.router.get_service()
+    if not service then
+      return true, nil, true
+    end
+    return true, cjson_encode(service), true
+  end)
+
+  properties.add_setter("kong.service.target", function(kong, _, _, target)
+    local host, port = target:match("^(.*):([0-9]+)$")
+    port = tonumber(port)
+    if not (host and port) then
+      return false
+    end
+
+    kong.service.set_target(host, port)
+    return true, target, false
+  end)
+
+  properties.add_setter("kong.service.upstream", function(kong, _, _, upstream)
+    local ok, err = kong.service.set_upstream(upstream)
+    if not ok then
+      kong.log.err(err)
+      return false
+    end
+
+    return true, upstream, false
+  end)
+
+  properties.add_setter("kong.service.request.scheme", function(kong, _, _, scheme)
+    kong.service.request.set_scheme(scheme)
+    return true, scheme, false
+  end)
+
+  properties.add_getter("kong.route_id", function(_, _, ctx)
+    local value = ctx.route and ctx.route.id
+    local ok = value ~= nil
+    local const = ok
+    return ok, value, const
+  end)
+
+  properties.add_getter("kong.service.response.status", function(kong)
+    return true, kong.service.response.get_status(), false
+  end)
+
+  properties.add_getter("kong.service_id", function(_, _, ctx)
+    local value = ctx.service and ctx.service.id
+    local ok = value ~= nil
+    local const = ok
+    return ok, value, const
+  end)
+
+  properties.add_getter("kong.version", function(kong)
+    return true, kong.version, true
+  end)
+
+  properties.add_namespace_handlers("kong.ctx.shared",
+    function(kong, _, _, key)
+      local value = kong.ctx.shared[key]
+      local ok = value ~= nil
+      value = ok and tostring(value) or nil
+      return ok, value, false
+    end,
+
+    function(kong, _, _, key, value)
+      kong.ctx.shared[key] = value
+      return true
+    end
+  )
+
+  properties.add_namespace_handlers("kong.configuration",
+    function(kong, _, _, key)
+      local value = kong.configuration[key]
+      if value ~= nil then
+        if type(value) == "table" then
+          value = cjson_decode(value)
+        else
+          value = tostring(value)
+        end
+
+        return true, value, true
+      end
+
+      return false
+    end,
+
+    function()
+      -- kong.configuration is read-only: setter rejects all
+      return false
+    end
+  )
+end
+
+
 local function enable(kong_config)
   set_available_filters(kong_config.wasm_modules_parsed)
 
@@ -575,6 +839,8 @@ local function enable(kong_config)
   _G.dns_client = _G.dns_client or dns(kong_config)
 
   proxy_wasm = proxy_wasm or require "resty.wasmx.proxy_wasm"
+
+  register_property_handlers()
 
   ENABLED = true
   STATUS = STATUS_ENABLED
@@ -632,18 +898,6 @@ function _M.init_worker()
 end
 
 
-local function set_proxy_wasm_property(property, value)
-  if not value then
-    return
-  end
-
-  local ok, err = proxy_wasm.set_property(property, value)
-  if not ok then
-    log(ERR, "failed to set proxy-wasm '", property, "' property: ", err)
-  end
-end
-
-
 ---
 -- Lookup and execute the filter chain that applies to the current request
 -- (if any).
@@ -674,9 +928,14 @@ function _M.attach(ctx)
     return kong.response.error(500)
   end
 
-  set_proxy_wasm_property("kong.route_id", ctx.route and ctx.route.id)
-  set_proxy_wasm_property("kong.service_id", ctx.service and ctx.service.id)
+  ok, err = proxy_wasm.set_host_properties_handlers(properties.get,
+                                                    properties.set)
+  if not ok then
+    log(CRIT, "failed setting host property handlers: ", err)
+    return kong.response.error(500)
+  end
 
+  jit.off(proxy_wasm.start)
   ok, err = proxy_wasm.start()
   if not ok then
     log(CRIT, "failed to execute ", chain.label, " filter chain for request: ", err)

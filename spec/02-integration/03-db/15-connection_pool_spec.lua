@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
-for pool_size, backlog_size in ipairs({ 0, 3 }) do
+for pool_size, backlog_size in ipairs({ 2, 3 }) do
   describe("#postgres Postgres connection pool with pool=" .. pool_size .. "and backlog=" .. backlog_size, function()
     local client
     lazy_setup(function()
@@ -22,6 +22,7 @@ for pool_size, backlog_size in ipairs({ 0, 3 }) do
         nginx_worker_processes = 1,
         pg_pool_size = pool_size,
         pg_backlog = backlog_size,
+        log_level = "info",
       }))
       client = helpers.admin_client()
     end)

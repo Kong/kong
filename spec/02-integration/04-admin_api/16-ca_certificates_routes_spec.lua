@@ -42,6 +42,7 @@ for _, strategy in helpers.each_strategy() do
     lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy, {
         "ca_certificates",
+        "services",
       })
 
       assert(helpers.start_kong {
@@ -146,6 +147,32 @@ for _, strategy in helpers.each_strategy() do
       lazy_setup(function()
         db:truncate("ca_certificates")
         ca = assert(bp.ca_certificates:insert())
+      end)
+
+      it("not allowed to delete if it is referenced by other entities", function()
+        -- add a service that references the ca
+        local res = client:post("/services/", {
+          body = {
+            url = "https://" .. helpers.mock_upstream_host .. ":" .. helpers.mock_upstream_port,
+            protocol = "https",
+            ca_certificates = { ca.id },
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        local body = assert.res_status(201, res)
+        local service = cjson.decode(body)
+
+        helpers.wait_for_all_config_update()
+
+        local res = client:delete("/ca_certificates/" .. ca.id)
+
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+
+        assert.equal("ca certificate " .. ca.id .. " is still referenced by services (id = " .. service.id .. ")", json.message)
+
+        local res = client:delete("/services/" .. service.id)
+        assert.res_status(204, res)
       end)
 
       it("works", function()

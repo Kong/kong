@@ -6,8 +6,10 @@
 -- @see https://github.com/x25/luajwt
 
 local json = require "cjson"
+local b64 = require "ngx.base64"
+local buffer = require "string.buffer"
 local openssl_digest = require "resty.openssl.digest"
-local openssl_hmac = require "resty.openssl.hmac"
+local openssl_mac = require "resty.openssl.mac"
 local openssl_pkey = require "resty.openssl.pkey"
 
 
@@ -19,22 +21,21 @@ local time = ngx.time
 local pairs = pairs
 local error = error
 local pcall = pcall
-local concat = table.concat
 local insert = table.insert
 local unpack = unpack
 local assert = assert
 local tostring = tostring
 local setmetatable = setmetatable
 local getmetatable = getmetatable
-local encode_base64 = ngx.encode_base64
-local decode_base64 = ngx.decode_base64
+local encode_base64url = b64.encode_base64url
+local decode_base64url = b64.decode_base64url
 
 
 --- Supported algorithms for signing tokens.
 local alg_sign = {
-  HS256 = function(data, key) return openssl_hmac.new(key, "sha256"):final(data) end,
-  HS384 = function(data, key) return openssl_hmac.new(key, "sha384"):final(data) end,
-  HS512 = function(data, key) return openssl_hmac.new(key, "sha512"):final(data) end,
+  HS256 = function(data, key) return openssl_mac.new(key, "HMAC", nil, "sha256"):final(data) end,
+  HS384 = function(data, key) return openssl_mac.new(key, "HMAC", nil, "sha384"):final(data) end,
+  HS512 = function(data, key) return openssl_mac.new(key, "HMAC", nil, "sha512"):final(data) end,
   RS256 = function(data, key)
     local digest = openssl_digest.new("sha256")
     assert(digest:update(data))
@@ -126,8 +127,7 @@ local alg_verify = {
 -- @param input String to base64 encode
 -- @return Base64 encoded string
 local function base64_encode(input)
-  local result = encode_base64(input, true)
-  result = result:gsub("+", "-"):gsub("/", "_")
+  local result = encode_base64url(input)
   return result
 end
 
@@ -143,8 +143,7 @@ local function base64_decode(input)
     input = input .. rep("=", padlen)
   end
 
-  input = input:gsub("-", "+"):gsub("_", "/")
-  return decode_base64(input)
+  return decode_base64url(input)
 end
 
 
@@ -155,14 +154,15 @@ end
 -- @param len Number of parts to retrieve
 -- @return A table of strings
 local function tokenize(str, div, len)
-  local result, pos = {}, 0
+  local result, idx, pos = {}, 1, 0
 
   local iter = function()
     return find(str, div, pos, true)
   end
 
   for st, sp in iter do
-    result[#result + 1] = sub(str, pos, st-1)
+    result[idx] = sub(str, pos, st - 1)
+    idx = idx + 1
     pos = sp + 1
     len = len - 1
     if len <= 1 then
@@ -170,7 +170,7 @@ local function tokenize(str, div, len)
     end
   end
 
-  result[#result + 1] = sub(str, pos)
+  result[idx] = sub(str, pos)
   return result
 end
 
@@ -237,17 +237,17 @@ local function encode_token(data, key, alg, header)
   end
 
   local header = header or { typ = "JWT", alg = alg }
-  local segments = {
-    base64_encode(json.encode(header)),
-    base64_encode(json.encode(data))
-  }
+  local buf = buffer.new()
 
-  local signing_input = concat(segments, ".")
-  local signature = alg_sign[alg](signing_input, key)
+  buf:put(base64_encode(json.encode(header))):put(".")
+     :put(base64_encode(json.encode(data)))
 
-  segments[#segments+1] = base64_encode(signature)
+  local signature = alg_sign[alg](buf:tostring(), key)
 
-  return concat(segments, ".")
+  buf:put(".")
+     :put(base64_encode(signature))
+
+  return buf:get()
 end
 
 

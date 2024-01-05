@@ -37,19 +37,60 @@ describe("Plugin: Session - session.lua", function()
     local session = mock("POST")
     local conf = {
       logout_methods = { "POST" },
-      logout_post_arg = "session_logout"
+      logout_post_arg = "session_logout",
+      read_body_for_logout = true,
     }
     assert.truthy(session.logout(conf))
+  end)
+
+  it("doesn't log out with POST request with body (by default)", function()
+    local session = mock("POST")
+    local conf = {
+      logout_methods = { "POST" },
+      logout_post_arg = "session_logout",
+    }
+    assert.falsy(session.logout(conf))
+  end)
+
+  it("doesn't log out with POST request with body (read_body_for_logout=false)", function()
+    local session = mock("POST")
+    local conf = {
+      logout_methods = { "POST" },
+      logout_post_arg = "session_logout",
+      read_body_for_logout = false,
+    }
+    assert.falsy(session.logout(conf))
   end)
 
   it("logs out with DELETE request with body", function()
     local session = mock("DELETE")
     local conf = {
       logout_methods = { "DELETE" },
-      logout_post_arg = "session_logout"
+      logout_post_arg = "session_logout",
+      read_body_for_logout = true,
     }
     assert.truthy(session.logout(conf))
   end)
+
+  it("doesn't log out with DELETE request with body (by default)", function()
+    local session = mock("DELETE")
+    local conf = {
+      logout_methods = { "DELETE" },
+      logout_post_arg = "session_logout",
+    }
+    assert.falsy(session.logout(conf))
+  end)
+
+  it("doesn't log out with DELETE request with body (read_body_for_logout=false)", function()
+    local session = mock("DELETE")
+    local conf = {
+      logout_methods = { "DELETE" },
+      logout_post_arg = "session_logout",
+      read_body_for_logout = false,
+    }
+    assert.falsy(session.logout(conf))
+  end)
+
 
   it("logs out with DELETE request with query params", function()
     local session = mock("DELETE")

@@ -1,13 +1,11 @@
 local resty_lock = require "resty.lock"
 local ngx_semaphore = require "ngx.semaphore"
+local in_yieldable_phase = require("kong.tools.yield").in_yieldable_phase
 
 
 local type  = type
 local error = error
 local pcall = pcall
-
-
-local get_phase = ngx.get_phase
 
 
 local concurrency = {}
@@ -24,18 +22,25 @@ function concurrency.with_worker_mutex(opts, fn)
 
   local opts_name    = opts.name
   local opts_timeout = opts.timeout
+  local opts_exptime = opts.exptime
 
   if type(opts_name) ~= "string" then
     error("opts.name is required and must be a string", 2)
   end
+
   if opts_timeout and type(opts_timeout) ~= "number" then
     error("opts.timeout must be a number", 2)
   end
 
+  if opts_exptime and type(opts_exptime) ~= "number" then
+    error("opts.exptime must be a number", 2)
+  end
+
   local timeout = opts_timeout or 60
+  local exptime = opts_exptime or timeout
 
   local rlock, err = resty_lock:new("kong_locks", {
-    exptime = timeout,
+    exptime = exptime,
     timeout = timeout,
   })
   if not rlock then
@@ -84,7 +89,7 @@ function concurrency.with_coroutine_mutex(opts, fn)
     error("invalid value for opts.on_timeout", 2)
   end
 
-  if get_phase() == "init_worker" then
+  if not in_yieldable_phase() then
     return fn()
   end
 

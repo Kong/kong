@@ -20,6 +20,7 @@ return function(plugin_name)
   local phase_functions = Schema.define {
     required = true,
     default = {},
+    description = "Custom functions, which can be user-defined, are cached and executed sequentially during specific phases: `certificate`, `rewrite`, `access`, `header_filter`, `body_filter`, and `log`.",
     type = "array",
     elements = {
       type = "string",

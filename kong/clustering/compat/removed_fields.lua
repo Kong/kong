@@ -96,4 +96,24 @@ return {
       "response_headers",
     },
   },
+
+  -- Any dataplane older than 3.5.0
+  [3005000000] = {
+    acme = {
+      "storage_config.redis.scan_count",
+    },
+    cors = {
+      "private_network",
+    },
+    session = {
+      "read_body_for_logout",
+    },
+  },
+
+  -- Any dataplane older than 3.6.0
+  [3006000000] = {
+    opentelemetry = {
+      "sampling_rate",
+    },
+  },
 }

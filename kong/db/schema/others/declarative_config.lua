@@ -13,12 +13,13 @@ local null = ngx.null
 local type = type
 local next = next
 local pairs = pairs
-local yield = utils.yield
+local yield = require("kong.tools.yield").yield
 local ipairs = ipairs
 local insert = table.insert
 local concat = table.concat
 local tostring = tostring
 local cjson_encode = require("cjson.safe").encode
+local load_module_if_exists = require("kong.tools.module").load_module_if_exists
 
 
 local DeclarativeConfig = {}
@@ -830,6 +831,10 @@ local function flatten(self, input)
         end
       end
 
+      if schema.ttl and entry.ttl and entry.ttl ~= null then
+        flat_entry.ttl = entry.ttl
+      end
+
       entities[entity][id] = flat_entry
     end
   end
@@ -843,7 +848,7 @@ end
 
 
 local function load_entity_subschemas(entity_name, entity)
-  local ok, subschemas = utils.load_module_if_exists("kong.db.schema.entities." .. entity_name .. "_subschemas")
+  local ok, subschemas = load_module_if_exists("kong.db.schema.entities." .. entity_name .. "_subschemas")
   if ok then
     for name, subschema in pairs(subschemas) do
       local ok, err = entity:new_subschema(name, subschema)

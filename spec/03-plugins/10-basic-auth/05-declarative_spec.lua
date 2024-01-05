@@ -127,19 +127,19 @@ for _, strategy in helpers.each_strategy() do
         assert.equals("andru", consumer_def.username)
         assert.equals("donalds", consumer_def.custom_id)
 
-        local plugin = assert(db.plugins:select({ id = plugin_def.id }))
+        local plugin = assert(db.plugins:select(plugin_def))
         assert.equals(plugin_def.id, plugin.id)
         assert.equals(service.id, plugin.service.id)
         assert.equals("basic-auth", plugin.name)
         assert.same(plugin_def.config, plugin.config)
 
-        local basicauth_credential = assert(db.basicauth_credentials:select({ id = basicauth_credential_def.id }))
+        local basicauth_credential = assert(db.basicauth_credentials:select(basicauth_credential_def))
         assert.equals(basicauth_credential_def.id, basicauth_credential.id)
         assert.equals(consumer.id, basicauth_credential.consumer.id)
         assert.equals("james", basicauth_credential.username)
         assert.equals(crypto.hash(consumer.id, "secret"), basicauth_credential.password)
 
-        local basicauth_hashed_credential = assert(db.basicauth_credentials:select({ id = basicauth_hashed_credential_def.id }))
+        local basicauth_hashed_credential = assert(db.basicauth_credentials:select(basicauth_hashed_credential_def))
         assert.equals(basicauth_hashed_credential_def.id, basicauth_hashed_credential.id)
         assert.equals(consumer.id, basicauth_hashed_credential.consumer.id)
         assert.equals("bond", basicauth_hashed_credential.username)
@@ -177,7 +177,8 @@ for _, strategy in helpers.each_strategy() do
           }))
           local body = assert.res_status(401, res)
           local json = cjson.decode(body)
-          assert.same({ message = "Invalid authentication credentials" }, json)
+          assert.not_nil(json)
+          assert.matches("Invalid authentication credentials", json.message)
         end)
       end)
 
@@ -223,5 +224,3 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 end
-
-

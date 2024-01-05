@@ -3,6 +3,7 @@ local openssl_bignum = require "resty.openssl.bn"
 local table_merge = require "kong.tools.utils".table_merge
 local split = require "kong.tools.utils".split
 local strip = require "kong.tools.utils".strip
+local tracing_context = require "kong.tracing.tracing_context"
 local unescape_uri = ngx.unescape_uri
 local char = string.char
 local match = string.match
@@ -562,34 +563,17 @@ local function parse(headers, conf_header_type)
 end
 
 
-local function get_propagated()
-  return ngx.ctx.propagated_span
-end
-
-
-local function set_propagated(span)
-  ngx.ctx.propagated_span = span
-end
-
-
 -- set outgoing propagation headers
 --
 -- @tparam string conf_header_type type of tracing header to use
 -- @tparam string found_header_type type of tracing header found in request
 -- @tparam table proxy_span span to be propagated
 -- @tparam string conf_default_header_type used when conf_header_type=ignore
--- @tparam bool reuse if true any existing propagated_span is reused instead of proxy_span
-local function set(conf_header_type, found_header_type, proxy_span, conf_default_header_type, reuse)
-  if reuse then
-    proxy_span = get_propagated() or proxy_span
-  end
+local function set(conf_header_type, found_header_type, proxy_span, conf_default_header_type)
   -- proxy_span can be noop, in which case it should not be propagated.
   if proxy_span.is_recording == false then
     kong.log.debug("skipping propagation of noop span")
     return
-  end
-  if reuse then
-    set_propagated(proxy_span)
   end
 
   local set_header = kong.service.request.set_header
@@ -606,9 +590,24 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
 
   found_header_type = found_header_type or conf_default_header_type or "b3"
 
+  -- contains all the different formats of the current trace ID, with zero or
+  -- more of the following entries:
+  -- {
+  --   ["b3"] = "<b3_trace_id>", -- the trace_id when the request has a b3 or X-B3-TraceId (zipkin) header
+  --   ["w3c"] = "<w3c_trace_id>", -- the trace_id when the request has a W3C header
+  --   ["jaeger"] = "<jaeger_trace_id>", -- the trace_id when the request has a jaeger tracing header
+  --   ["ot"] = "<ot_trace_id>", -- the trace_id when the request has an OpenTelemetry tracing header
+  --   ["aws"] = "<aws_trace_id>", -- the trace_id when the request has an aws tracing header
+  --   ["gcp"] = "<gcp_trace_id>", -- the trace_id when the request has a gcp tracing header
+  -- }
+  local trace_id_formats = {}
+
   if conf_header_type == "b3" or found_header_type == "b3"
   then
-    set_header("x-b3-traceid", to_hex(proxy_span.trace_id))
+    local trace_id = to_hex(proxy_span.trace_id)
+    trace_id_formats.b3 = trace_id
+
+    set_header("x-b3-traceid", trace_id)
     set_header("x-b3-spanid", to_hex(proxy_span.span_id))
     if proxy_span.parent_id then
       set_header("x-b3-parentspanid", to_hex(proxy_span.parent_id))
@@ -622,7 +621,10 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
   end
 
   if conf_header_type == "b3-single" or found_header_type == "b3-single" then
-    set_header("b3", to_hex(proxy_span.trace_id) ..
+    local trace_id = to_hex(proxy_span.trace_id)
+    trace_id_formats.b3 = trace_id
+
+    set_header("b3", trace_id ..
         "-" .. to_hex(proxy_span.span_id) ..
         "-" .. (proxy_span.should_sample and "1" or "0") ..
         (proxy_span.parent_id and "-" .. to_hex(proxy_span.parent_id) or ""))
@@ -630,15 +632,21 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
 
   if conf_header_type == "w3c" or found_header_type == "w3c" then
     -- OTEL uses w3c trace context format so to_ot_trace_id works here
+    local trace_id = to_hex(to_w3c_trace_id(proxy_span.trace_id))
+    trace_id_formats.w3c = trace_id
+
     set_header("traceparent", fmt("00-%s-%s-%s",
-        to_hex(to_w3c_trace_id(proxy_span.trace_id)),
+        trace_id,
         to_hex(proxy_span.span_id),
         proxy_span.should_sample and "01" or "00"))
   end
 
   if conf_header_type == "jaeger" or found_header_type == "jaeger" then
+    local trace_id = to_hex(proxy_span.trace_id)
+    trace_id_formats.jaeger = trace_id
+
     set_header("uber-trace-id", fmt("%s:%s:%s:%s",
-        to_hex(proxy_span.trace_id),
+        trace_id,
         to_hex(proxy_span.span_id),
         proxy_span.parent_id and to_hex(proxy_span.parent_id) or "0",
       proxy_span.should_sample and "01" or "00"))
@@ -646,7 +654,10 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
 
   if conf_header_type == "ot" or found_header_type == "ot" then
     to_ot_trace_id = to_ot_trace_id or require "kong.plugins.opentelemetry.otlp".to_ot_trace_id
-    set_header("ot-tracer-traceid", to_hex(to_ot_trace_id(proxy_span.trace_id)))
+    local trace_id = to_hex(to_ot_trace_id(proxy_span.trace_id))
+    trace_id_formats.ot = trace_id
+
+    set_header("ot-tracer-traceid", trace_id)
     set_header("ot-tracer-spanid", to_hex(proxy_span.span_id))
     set_header("ot-tracer-sampled", proxy_span.should_sample and "1" or "0")
 
@@ -662,6 +673,8 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
 
   if conf_header_type == "aws" or found_header_type == "aws" then
     local trace_id = to_hex(proxy_span.trace_id)
+    trace_id_formats.aws = trace_id
+
     set_header("x-amzn-trace-id", "Root=" .. AWS_TRACE_ID_VERSION .. "-" ..
         sub(trace_id, 1, AWS_TRACE_ID_TIMESTAMP_LEN) .. "-" ..
         sub(trace_id, AWS_TRACE_ID_TIMESTAMP_LEN + 1, #trace_id) ..
@@ -671,11 +684,18 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
   end
 
   if conf_header_type == "gcp" or found_header_type == "gcp" then
-    set_header("x-cloud-trace-context", to_gcp_trace_id(to_hex(proxy_span.trace_id)) .. 
+    local trace_id = to_gcp_trace_id(to_hex(proxy_span.trace_id))
+    trace_id_formats.gcp = trace_id
+
+    set_header("x-cloud-trace-context", trace_id ..
       "/" .. openssl_bignum.from_binary(proxy_span.span_id):to_dec() .. 
       ";o=" .. (proxy_span.should_sample and "1" or "0")
     )
   end
+
+  trace_id_formats = tracing_context.add_trace_id_formats(trace_id_formats)
+  -- add trace IDs to log serializer output
+  kong.log.set_serialize_value("trace_id", trace_id_formats)
 end
 
 
@@ -683,5 +703,4 @@ return {
   parse = parse,
   set = set,
   from_hex = from_hex,
-  get_propagated = get_propagated,
 }

@@ -1,5 +1,4 @@
 local pdk_tracer = require "kong.pdk.tracing".new()
-local propagation = require "kong.tracing.propagation"
 local buffer = require "string.buffer"
 local utils = require "kong.tools.utils"
 local tablepool = require "tablepool"
@@ -7,6 +6,7 @@ local tablex = require "pl.tablex"
 local base = require "resty.core.base"
 local cjson = require "cjson"
 local ngx_re = require "ngx.re"
+local tracing_context = require "kong.tracing.tracing_context"
 
 local ngx = ngx
 local var = ngx.var
@@ -27,6 +27,7 @@ local setmetatable = setmetatable
 local cjson_encode = cjson.encode
 local _log_prefix = "[tracing] "
 local split = ngx_re.split
+local request_id_get = require "kong.tracing.request_id".get
 
 local _M = {}
 local tracer = pdk_tracer
@@ -83,10 +84,10 @@ function _M.balancer(ctx)
 
   local last_try_balancer_span
   do
-    local propagated = propagation.get_propagated()
+    local balancer_span = tracing_context.get_unlinked_span("balancer", ctx)
     -- pre-created balancer span was not linked yet
-    if propagated and not propagated.linked then
-      last_try_balancer_span = propagated
+    if balancer_span and not balancer_span.linked then
+      last_try_balancer_span = balancer_span
     end
   end
 
@@ -244,50 +245,71 @@ function _M.request(ctx)
       ["http.flavor"] = http_flavor,
       ["http.client_ip"] = client.get_forwarded_ip(),
       ["net.peer.ip"] = client.get_ip(),
+      ["kong.request.id"] = request_id_get(),
     },
   })
+
+  -- update the tracing context with the request span trace ID
+  tracing_context.set_raw_trace_id(active_span.trace_id, ctx)
 
   tracer.set_active_span(active_span)
 end
 
 
-local patch_dns_query
+function _M.precreate_balancer_span(ctx)
+  if _M.balancer == NOOP then
+    -- balancer instrumentation not enabled
+    return
+  end
+
+  local root_span = ctx.KONG_SPANS and ctx.KONG_SPANS[1]
+  local balancer_span = tracer.create_span(nil, {
+    span_kind = 3,
+    parent = root_span,
+  })
+  -- The balancer span is created during headers propagation, but is
+  -- linked later when the balancer data is available, so we add it
+  -- to the unlinked spans table to keep track of it.
+  tracing_context.set_unlinked_span("balancer", balancer_span, ctx)
+end
+
+
 do
   local raw_func
-  local patch_callback
 
-  local function wrap(host, port)
-    local span = tracer.start_span("kong.dns", {
-      span_kind = 3, -- client
-    })
-    local ip_addr, res_port, try_list = raw_func(host, port)
+  local function wrap(host, port, ...)
+    local span
+    if _M.dns_query ~= NOOP then
+      span = tracer.start_span("kong.dns", {
+        span_kind = 3, -- client
+      })
+    end
+
+    local ip_addr, res_port, try_list = raw_func(host, port, ...)
     if span then
       span:set_attribute("dns.record.domain", host)
       span:set_attribute("dns.record.port", port)
-      span:set_attribute("dns.record.ip", ip_addr)
+      if ip_addr then
+        span:set_attribute("dns.record.ip", ip_addr)
+      else
+        span:record_error(res_port)
+        span:set_status(2)
+      end
       span:finish()
     end
 
     return ip_addr, res_port, try_list
   end
 
-  --- Patch DNS query
-  -- It will be called before Kong's config loader.
+  --- Get Wrapped DNS Query
+  -- Called before Kong's config loader.
   --
-  -- `callback` is a function that accept a wrap function,
-  -- it could be used to replace the orignal func lazily.
-  --
-  -- e.g. patch_dns_query(func, function(wrap)
-  --   toip = wrap
-  -- end)
-  function _M.set_patch_dns_query_fn(func, callback)
-    raw_func = func
-    patch_callback = callback
-  end
-
-  -- patch lazily
-  patch_dns_query = function()
-    patch_callback(wrap)
+  -- returns a wrapper for the provided input function `f`
+  -- that stores dns info in the `kong.dns` span when the dns
+  -- instrumentation is enabled.
+  function _M.get_wrapped_dns_query(f)
+    raw_func = f
+    return wrap
   end
 
   -- append available_types
@@ -313,8 +335,7 @@ function _M.runloop_log_before(ctx)
   local active_span = tracer.active_span()
   -- check root span type to avoid encounter error
   if active_span and type(active_span.finish) == "function" then
-    local end_time = ctx.KONG_BODY_FILTER_ENDED_AT
-                  and ctx.KONG_BODY_FILTER_ENDED_AT * 1e6
+    local end_time = ctx.KONG_BODY_FILTER_ENDED_AT_NS
     active_span:finish(end_time)
   end
 end
@@ -405,11 +426,6 @@ function _M.init(config)
       sampling_rate = sampling_rate,
     })
     tracer.set_global_tracer(tracer)
-
-    -- global patch
-    if _M.dns_query ~= NOOP then
-      patch_dns_query()
-    end
   end
 end
 
