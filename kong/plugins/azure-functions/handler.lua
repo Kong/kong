@@ -6,8 +6,6 @@ local kong_meta     = require "kong.meta"
 
 local kong          = kong
 local fmt           = string.format
-local sub           = string.sub
-local find          = string.find
 local byte          = string.byte
 local match         = string.match
 local var           = ngx.var
@@ -26,10 +24,6 @@ local azure = {
 
 function azure:access(conf)
   local path do
-    -- strip any query args
-    local upstream_uri = var.upstream_uri or var.request_uri
-    local s = find(upstream_uri, "?", 1, true)
-    upstream_uri = s and sub(upstream_uri, 1, s - 1) or upstream_uri
 
     -- strip pre-/postfix slashes
     path = match(conf.routeprefix or "", STRIP_SLASHES_PATTERN)
@@ -39,24 +33,11 @@ function azure:access(conf)
       path = "/" .. path
     end
 
-    path = path .. "/" .. func
-
-    -- concatenate path with upstream uri
-    local upstream_uri_first_byte = byte(upstream_uri, 1)
-    local path_last_byte = byte(path, -1)
-    if path_last_byte == SLASH then
-      if upstream_uri_first_byte == SLASH then
-        path = path .. sub(upstream_uri, 2, -1)
-      else
-        path = path .. upstream_uri
-      end
-
+    local functionname_first_byte = byte(func, 1)
+    if functionname_first_byte == SLASH then
+      path = path .. func
     else
-      if upstream_uri_first_byte == SLASH then
-        path = path .. upstream_uri
-      elseif upstream_uri ~= "" then
-        path = path .. "/" .. upstream_uri
-      end
+      path = path .. "/" .. func
     end
   end
 

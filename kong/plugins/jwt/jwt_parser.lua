@@ -7,8 +7,9 @@
 
 local json = require "cjson"
 local b64 = require "ngx.base64"
+local buffer = require "string.buffer"
 local openssl_digest = require "resty.openssl.digest"
-local openssl_hmac = require "resty.openssl.hmac"
+local openssl_mac = require "resty.openssl.mac"
 local openssl_pkey = require "resty.openssl.pkey"
 
 
@@ -20,7 +21,6 @@ local time = ngx.time
 local pairs = pairs
 local error = error
 local pcall = pcall
-local concat = table.concat
 local insert = table.insert
 local unpack = unpack
 local assert = assert
@@ -33,9 +33,9 @@ local decode_base64url = b64.decode_base64url
 
 --- Supported algorithms for signing tokens.
 local alg_sign = {
-  HS256 = function(data, key) return openssl_hmac.new(key, "sha256"):final(data) end,
-  HS384 = function(data, key) return openssl_hmac.new(key, "sha384"):final(data) end,
-  HS512 = function(data, key) return openssl_hmac.new(key, "sha512"):final(data) end,
+  HS256 = function(data, key) return openssl_mac.new(key, "HMAC", nil, "sha256"):final(data) end,
+  HS384 = function(data, key) return openssl_mac.new(key, "HMAC", nil, "sha384"):final(data) end,
+  HS512 = function(data, key) return openssl_mac.new(key, "HMAC", nil, "sha512"):final(data) end,
   RS256 = function(data, key)
     local digest = openssl_digest.new("sha256")
     assert(digest:update(data))
@@ -237,17 +237,17 @@ local function encode_token(data, key, alg, header)
   end
 
   local header = header or { typ = "JWT", alg = alg }
-  local segments = {
-    base64_encode(json.encode(header)),
-    base64_encode(json.encode(data))
-  }
+  local buf = buffer.new()
 
-  local signing_input = concat(segments, ".")
-  local signature = alg_sign[alg](signing_input, key)
+  buf:put(base64_encode(json.encode(header))):put(".")
+     :put(base64_encode(json.encode(data)))
 
-  segments[#segments+1] = base64_encode(signature)
+  local signature = alg_sign[alg](buf:tostring(), key)
 
-  return concat(segments, ".")
+  buf:put(".")
+     :put(base64_encode(signature))
+
+  return buf:get()
 end
 
 

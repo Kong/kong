@@ -31,13 +31,13 @@ local time = ngx.now
 local log = ngx.log
 local ERR = ngx.ERR
 local WARN = ngx.WARN
+local ALERT = ngx.ALERT
 local DEBUG = ngx.DEBUG
 --[[
   DEBUG = ngx.WARN
 --]]
 local PREFIX = "[dns-client] "
 local timer_at = ngx.timer.at
-local get_phase = ngx.get_phase
 
 local math_min = math.min
 local math_max = math.max
@@ -639,7 +639,6 @@ _M.init = function(options)
     end
   end
 
-
   -- other options
 
   badTtl = options.badTtl or 1
@@ -651,7 +650,9 @@ _M.init = function(options)
 
   config = options -- store it in our module level global
 
-  resolve_max_wait = options.timeout / 1000 * options.retrans -- maximum time to wait for the dns resolver to hit its timeouts
+  -- maximum time to wait for the dns resolver to hit its timeouts
+  -- + 1s to ensure some delay in timer execution and semaphore return are accounted for
+  resolve_max_wait = options.timeout / 1000 * options.retrans + 1
 
   return true
 end
@@ -709,6 +710,7 @@ local function parseAnswer(qname, qtype, answers, try_list)
   return true
 end
 
+
 -- executes 1 individual query.
 -- This query will not be synchronized, every call will be 1 query.
 -- @param qname the name to query for
@@ -742,46 +744,61 @@ local function individualQuery(qname, r_opts, try_list)
 end
 
 local queue = setmetatable({}, {__mode = "v"})
+
+local function enqueue_query(key, qname, r_opts, try_list)
+  local item = {
+    key = key,
+    semaphore = semaphore(),
+    qname = qname,
+    r_opts = cycle_aware_deep_copy(r_opts),
+    try_list = try_list,
+    expire_time = time() + resolve_max_wait,
+  }
+  queue[key] = item
+  return item
+end
+
+
+local function dequeue_query(item)
+  if queue[item.key] == item then
+    -- query done, but by now many others might be waiting for our result.
+    -- 1) stop new ones from adding to our lock/semaphore
+    queue[item.key] = nil
+    -- 2) release all waiting threads
+    item.semaphore:post(math_max(item.semaphore:count() * -1, 1))
+    item.semaphore = nil
+  end
+end
+
+
+local function queue_get_query(key, try_list)
+  local item = queue[key]
+
+  if not item then
+    return nil
+  end
+
+  -- bug checks: release it actively if the waiting query queue is blocked
+  if item.expire_time < time() then
+    local err = "stale query, key:" ..  key
+    add_status_to_try_list(try_list, err)
+    log(ALERT, PREFIX, err)
+    dequeue_query(item)
+    return nil
+  end
+
+  return item
+end
+
+
 -- to be called as a timer-callback, performs a query and returns the results
 -- in the `item` table.
 local function executeQuery(premature, item)
   if premature then return end
 
-  local r, err = resolver:new(config)
-  if not r then
-    item.result, item.err = r, "failed to create a resolver: " .. err
-  else
-    --[[
-    log(DEBUG, PREFIX, "Query executing: ", item.qname, ":", item.r_opts.qtype, " ", fquery(item))
-    --]]
-    add_status_to_try_list(item.try_list, "querying")
-    item.result, item.err = r:query(item.qname, item.r_opts)
-    if item.result then
-      --[[
-      log(DEBUG, PREFIX, "Query answer: ", item.qname, ":", item.r_opts.qtype, " ", fquery(item),
-              " ", frecord(item.result))
-      --]]
-      parseAnswer(item.qname, item.r_opts.qtype, item.result, item.try_list)
-      --[[
-      log(DEBUG, PREFIX, "Query parsed answer: ", item.qname, ":", item.r_opts.qtype, " ", fquery(item),
-              " ", frecord(item.result))
-    else
-      log(DEBUG, PREFIX, "Query error: ", item.qname, ":", item.r_opts.qtype, " err=", tostring(err))
-      --]]
-    end
-  end
+  item.result, item.err = individualQuery(item.qname, item.r_opts, item.try_list)
 
-  -- query done, but by now many others might be waiting for our result.
-  -- 1) stop new ones from adding to our lock/semaphore
-  queue[item.key] = nil
-  -- 2) release all waiting threads
-  item.semaphore:post(math_max(item.semaphore:count() * -1, 1))
-  item.semaphore = nil
-  ngx.sleep(0)
-  -- 3) destroy the resolver -- ditto in individualQuery
-  if r then
-    r:destroy()
-  end
+  dequeue_query(item)
 end
 
 
@@ -795,7 +812,7 @@ end
 -- the `semaphore` field will be removed). Upon error it returns `nil+error`.
 local function asyncQuery(qname, r_opts, try_list)
   local key = qname..":"..r_opts.qtype
-  local item = queue[key]
+  local item = queue_get_query(key, try_list)
   if item then
     --[[
     log(DEBUG, PREFIX, "Query async (exists): ", key, " ", fquery(item))
@@ -804,14 +821,7 @@ local function asyncQuery(qname, r_opts, try_list)
     return item    -- already in progress, return existing query
   end
 
-  item = {
-    key = key,
-    semaphore = semaphore(),
-    qname = qname,
-    r_opts = cycle_aware_deep_copy(r_opts),
-    try_list = try_list,
-  }
-  queue[key] = item
+  item = enqueue_query(key, qname, r_opts, try_list)
 
   local ok, err = timer_at(0, executeQuery, item)
   if not ok then
@@ -837,39 +847,23 @@ end
 -- @return `result + nil + try_list`, or `nil + err + try_list` in case of errors
 local function syncQuery(qname, r_opts, try_list)
   local key = qname..":"..r_opts.qtype
-  local item = queue[key]
 
-  -- if nothing is in progress, we start a new async query
+  local item = queue_get_query(key, try_list)
+
+  -- If nothing is in progress, we start a new sync query
   if not item then
-    local err
-    item, err = asyncQuery(qname, r_opts, try_list)
-    if not item then
-      return item, err, try_list
-    end
-  else
-    add_status_to_try_list(try_list, "in progress (sync)")
+    item = enqueue_query(key, qname, r_opts, try_list)
+
+    item.result, item.err = individualQuery(qname, item.r_opts, try_list)
+
+    dequeue_query(item)
+
+    return item.result, item.err, try_list
   end
 
-  local supported_semaphore_wait_phases = {
-    rewrite = true,
-    access = true,
-    content = true,
-    timer = true,
-    ssl_cert = true,
-    ssl_session_fetch = true,
-  }
+  -- If the query is already in progress, we wait for it.
 
-  local ngx_phase = get_phase()
-
-  if not supported_semaphore_wait_phases[ngx_phase] then
-    -- phase not supported by `semaphore:wait`
-    -- return existing query (item)
-    --
-    -- this will avoid:
-    -- "dns lookup pool exceeded retries" (second try and subsequent retries)
-    -- "API disabled in the context of init_worker_by_lua" (first try)
-    return item, nil, try_list
-  end
+  add_status_to_try_list(try_list, "in progress (sync)")
 
   -- block and wait for the async query to complete
   local ok, err = item.semaphore:wait(resolve_max_wait)
@@ -881,6 +875,14 @@ local function syncQuery(qname, r_opts, try_list)
            " result: ", json({ result = item.result, err = item.err}))
     --]]
     return item.result, item.err, try_list
+  end
+
+  -- bug checks
+  if not ok and not item.err then
+    item.err = err  -- only first expired wait() reports error
+    log(ALERT, PREFIX, "semaphore:wait(", resolve_max_wait, ") failed: ", err,
+                       ", count: ", item.semaphore and item.semaphore:count(),
+                       ", qname: ", qname)
   end
 
   err = err or item.err or "unknown"
@@ -1043,15 +1045,9 @@ end
 local function search_iter(qname, qtype)
   local _, dots = qname:gsub("%.", "")
 
-  local type_list, type_start, type_end
-  if qtype then
-    type_list = { qtype }
-    type_start = 0
-  else
-    type_list = typeOrder
-    type_start = 0   -- just start at the beginning
-  end
-  type_end = #type_list
+  local type_list = qtype and { qtype } or typeOrder
+  local type_start = 0
+  local type_end = #type_list
 
   local i_type = type_start
   local search do
@@ -1165,9 +1161,6 @@ local function resolve(qname, r_opts, dnsCacheOnly, try_list)
     if try_list then
       -- check for recursion
       if try_list["(short)"..qname..":"..tostring(qtype)] then
-        -- luacheck: push no unused
-        records = nil
-        -- luacheck: pop
         err = "recursion detected"
         add_status_to_try_list(try_list, err)
         return nil, err, try_list
@@ -1178,9 +1171,6 @@ local function resolve(qname, r_opts, dnsCacheOnly, try_list)
     if records.expired then
       -- if the record is already stale/expired we have to traverse the
       -- iterator as that is required to start the async refresh queries
-      -- luacheck: push no unused
-      records = nil
-      -- luacheck: pop
       try_list = add_status_to_try_list(try_list, "stale")
 
     else
@@ -1205,8 +1195,8 @@ local function resolve(qname, r_opts, dnsCacheOnly, try_list)
     if name_type == "ipv4" then
       -- if no qtype is given, we're supposed to search, so forcing TYPE_A is safe
       records, _, try_list = check_ipv4(qname, qtype or _M.TYPE_A, try_list)
-    else
 
+    else
       -- it is 'ipv6'
       -- if no qtype is given, we're supposed to search, so forcing TYPE_AAAA is safe
       records, _, try_list = check_ipv6(qname, qtype or _M.TYPE_AAAA, try_list)
@@ -1226,34 +1216,27 @@ local function resolve(qname, r_opts, dnsCacheOnly, try_list)
   for try_name, try_type in search_iter(qname, qtype) do
     if try_list and try_list[try_name..":"..try_type] then
       -- recursion, been here before
-      records = nil
       err = "recursion detected"
-
-    else
-      -- go look it up
-      opts.qtype = try_type
-      records, err, try_list = lookup(try_name, opts, dnsCacheOnly, try_list)
+      break
     end
 
-    if not records then  -- luacheck: ignore
+    -- go look it up
+    opts.qtype = try_type
+    records, err, try_list = lookup(try_name, opts, dnsCacheOnly, try_list)
+    if not records then
       -- An error has occurred, terminate the lookup process.  We don't want to try other record types because
       -- that would potentially cause us to respond with wrong answers (i.e. the contents of an A record if the
       -- query for the SRV record failed due to a network error).
-      goto failed
+      break
+    end
 
-    elseif records.errcode then
+    if records.errcode then
       -- dns error: fall through to the next entry in our search sequence
       err = ("dns server error: %s %s"):format(records.errcode, records.errstr)
-      -- luacheck: push no unused
-      records = nil
-      -- luacheck: pop
 
     elseif #records == 0 then
       -- empty: fall through to the next entry in our search sequence
       err = ("dns client error: %s %s"):format(101, clientErrors[101])
-      -- luacheck: push no unused
-      records = nil
-      -- luacheck: pop
 
     else
       -- we got some records, update the cache
@@ -1287,16 +1270,13 @@ local function resolve(qname, r_opts, dnsCacheOnly, try_list)
       end
 
       if records then
-        -- we have a result
-
         -- cache it under its shortname
         if not dnsCacheOnly then
           cacheShortInsert(records, qname, qtype)
         end
 
-        -- check if we need to dereference a CNAME
+        -- dereference CNAME
         if records[1].type == _M.TYPE_CNAME and qtype ~= _M.TYPE_CNAME then
-          -- dereference CNAME
           opts.qtype = nil
           add_status_to_try_list(try_list, "dereferencing CNAME")
           return resolve(records[1].cname, opts, dnsCacheOnly, try_list)
@@ -1309,7 +1289,6 @@ local function resolve(qname, r_opts, dnsCacheOnly, try_list)
     -- we had some error, record it in the status list
     add_status_to_try_list(try_list, err)
   end
-  ::failed::
 
   -- we failed, clear cache and return last error
   if not dnsCacheOnly then
@@ -1317,6 +1296,7 @@ local function resolve(qname, r_opts, dnsCacheOnly, try_list)
   end
   return nil, err, try_list
 end
+
 
 -- Create a metadata cache, using weak keys so it follows the dns record cache.
 -- The cache will hold pointers and lists for (weighted) round-robin schemes
@@ -1514,17 +1494,16 @@ local function toip(qname, port, dnsCacheOnly, try_list)
     return nil, err, try_list
   end
 
---print(tostring(try_list))
   if rec[1].type == _M.TYPE_SRV then
     local entry = rec[roundRobinW(rec)]
     -- our SRV entry might still contain a hostname, so recurse, with found port number
     local srvport = (entry.port ~= 0 and entry.port) or port -- discard port if it is 0
     add_status_to_try_list(try_list, "dereferencing SRV")
     return toip(entry.target, srvport, dnsCacheOnly, try_list)
-  else
-    -- must be A or AAAA
-    return rec[roundRobin(rec)].address, port, try_list
   end
+
+  -- must be A or AAAA
+  return rec[roundRobin(rec)].address, port, try_list
 end
 
 
@@ -1548,15 +1527,11 @@ local function connect(sock, host, port, sock_opts)
 
   if not targetIp then
     return nil, tostring(targetPort) .. ". Tried: " .. tostring(tryList)
-  else
-    -- need to do the extra check here: https://github.com/openresty/lua-nginx-module/issues/860
-    if not sock_opts then
-      return sock:connect(targetIp, targetPort)
-    else
-      return sock:connect(targetIp, targetPort, sock_opts)
-    end
   end
+
+  return sock:connect(targetIp, targetPort, sock_opts)
 end
+
 
 --- Implements udp-setpeername method with dns resolution.
 -- This builds on top of `toip`. If the name resolves to an SRV record,
@@ -1578,6 +1553,7 @@ local function setpeername(sock, host, port)
   end
   return sock:connect(targetIp, targetPort)
 end
+
 
 -- export local functions
 _M.resolve = resolve

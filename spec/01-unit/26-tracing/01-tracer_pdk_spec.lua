@@ -49,7 +49,7 @@ end
 local unhook_log_spy = debug.sethook
 
 describe("Tracer PDK", function()
-  local ok, err, _
+  local ok, err, old_ngx_get_phase, _
   local log_spy
 
   lazy_setup(function()
@@ -57,9 +57,15 @@ describe("Tracer PDK", function()
     _G.kong = kong_global.new()
     kong_global.init_pdk(kong)
     log_spy = hook_log_spy()
+    old_ngx_get_phase = ngx.get_phase
+    -- trick the pdk into thinking we are not in the timer context
+    _G.ngx.get_phase = function() return "access" end  -- luacheck: ignore
   end)
 
-  lazy_teardown(unhook_log_spy)
+  lazy_teardown(function()
+    unhook_log_spy()
+    _G.ngx.get_phase = old_ngx_get_phase  -- luacheck: ignore
+  end)
 
   describe("initialize tracer", function()
 
@@ -189,11 +195,20 @@ describe("Tracer PDK", function()
       assert.has_no.error(function () span:finish() end)
     end)
 
-    it("fails set_attribute", function ()
+    it("set_attribute validation", function ()
       local span = c_tracer.start_span("meow")
 
+      -- nil value is allowed as a noop
       span:set_attribute("key1")
-      assert.spy(log_spy).was_called_with(ngx.ERR, match.is_string())
+      assert.spy(log_spy).was_not_called_with(ngx.ERR, match.is_string())
+      assert.is_nil(span.attributes["key1"])
+
+      span:set_attribute("key1", "value1")
+      assert.equal("value1", span.attributes["key1"])
+
+      -- nil value unsets the attribute
+      span:set_attribute("key1")
+      assert.is_nil(span.attributes["key1"])
 
       span:set_attribute("key1", function() end)
       assert.spy(log_spy).was_called_with(ngx.ERR, match.is_string())

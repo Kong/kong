@@ -90,7 +90,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route1 = bp.routes:insert {
-        hosts = { "acl1.com" },
+        hosts = { "acl1.test" },
       }
 
       bp.plugins:insert {
@@ -102,7 +102,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route1b = bp.routes:insert {
-        hosts = { "acl1b.com" },
+        hosts = { "acl1b.test" },
       }
 
       bp.plugins:insert {
@@ -123,7 +123,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route2 = bp.routes:insert {
-        hosts = { "acl2.com" },
+        hosts = { "acl2.test" },
       }
 
       bp.plugins:insert {
@@ -141,7 +141,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route2b = bp.routes:insert {
-        hosts = { "acl2b.com" },
+        hosts = { "acl2b.test" },
       }
 
       bp.plugins:insert {
@@ -163,7 +163,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route2c = bp.routes:insert {
-        hosts = { "acl2c.com" },
+        hosts = { "acl2c.test" },
       }
 
       bp.plugins:insert {
@@ -185,7 +185,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route3 = bp.routes:insert {
-        hosts = { "acl3.com" },
+        hosts = { "acl3.test" },
       }
 
       bp.plugins:insert {
@@ -203,7 +203,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route3b = bp.routes:insert {
-        hosts = { "acl3b.com" },
+        hosts = { "acl3b.test" },
       }
 
       bp.plugins:insert {
@@ -225,7 +225,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route3c = bp.routes:insert {
-        hosts = { "acl3c.com" },
+        hosts = { "acl3c.test" },
       }
 
       bp.plugins:insert {
@@ -247,7 +247,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route3d = bp.routes:insert {
-        hosts = { "acl3d.com" },
+        hosts = { "acl3d.test" },
       }
 
       bp.plugins:insert {
@@ -259,7 +259,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route4 = bp.routes:insert {
-        hosts = { "acl4.com" },
+        hosts = { "acl4.test" },
       }
 
       bp.plugins:insert {
@@ -277,7 +277,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route4b = bp.routes:insert {
-        hosts = { "acl4b.com" },
+        hosts = { "acl4b.test" },
       }
 
       bp.plugins:insert {
@@ -299,7 +299,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route4c = bp.routes:insert {
-        hosts = { "acl4c.com" },
+        hosts = { "acl4c.test" },
       }
 
       bp.plugins:insert {
@@ -321,7 +321,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route5 = bp.routes:insert {
-        hosts = { "acl5.com" },
+        hosts = { "acl5.test" },
       }
 
       bp.plugins:insert {
@@ -339,7 +339,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route5b = bp.routes:insert {
-        hosts = { "acl5b.com" },
+        hosts = { "acl5b.test" },
       }
 
       bp.plugins:insert {
@@ -361,7 +361,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route5c = bp.routes:insert {
-        hosts = { "acl5c.com" },
+        hosts = { "acl5c.test" },
       }
 
       bp.plugins:insert {
@@ -383,7 +383,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route6 = bp.routes:insert {
-        hosts = { "acl6.com" },
+        hosts = { "acl6.test" },
       }
 
       bp.plugins:insert {
@@ -401,7 +401,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route6b = bp.routes:insert {
-        hosts = { "acl6b.com" },
+        hosts = { "acl6b.test" },
       }
 
       bp.plugins:insert {
@@ -423,7 +423,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route6c = bp.routes:insert {
-        hosts = { "acl6c.com" },
+        hosts = { "acl6c.test" },
       }
 
       bp.plugins:insert {
@@ -445,7 +445,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route7 = bp.routes:insert {
-        hosts = { "acl7.com" },
+        hosts = { "acl7.test" },
       }
 
       bp.plugins:insert {
@@ -463,7 +463,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route7b = bp.routes:insert {
-        hosts = { "acl7b.com" },
+        hosts = { "acl7b.test" },
       }
 
       bp.plugins:insert {
@@ -485,7 +485,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route8 = bp.routes:insert {
-        hosts = { "acl8.com" },
+        hosts = { "acl8.test" },
       }
 
       bp.plugins:insert {
@@ -505,7 +505,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route8b = bp.routes:insert {
-        hosts = { "acl8b.com" },
+        hosts = { "acl8b.test" },
       }
 
       bp.plugins:insert {
@@ -535,7 +535,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route9 = bp.routes:insert {
-        hosts = { "acl9.com" },
+        hosts = { "acl9.test" },
       }
 
       bp.plugins:insert {
@@ -554,7 +554,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route9b = bp.routes:insert {
-        hosts = { "acl9b.com" },
+        hosts = { "acl9b.test" },
       }
 
       bp.plugins:insert {
@@ -577,7 +577,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route10 = bp.routes:insert {
-        hosts = { "acl10.com" },
+        hosts = { "acl10.test" },
       }
 
       bp.plugins:insert {
@@ -596,7 +596,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route10b = bp.routes:insert {
-        hosts = { "acl10b.com" },
+        hosts = { "acl10b.test" },
       }
 
       bp.plugins:insert {
@@ -619,7 +619,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route11 = bp.routes:insert {
-        hosts = { "acl11.com" },
+        hosts = { "acl11.test" },
       }
 
       bp.plugins:insert {
@@ -650,7 +650,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route12 = bp.routes:insert {
-        hosts = { "acl12.com" },
+        hosts = { "acl12.test" },
       }
 
       bp.plugins:insert {
@@ -681,7 +681,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route13 = bp.routes:insert {
-        hosts = { "acl13.com" },
+        hosts = { "acl13.test" },
       }
 
       bp.plugins:insert {
@@ -712,7 +712,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route14 = bp.routes:insert({
-        hosts = { "acl14.com" }
+        hosts = { "acl14.test" }
       })
 
       local acl_prefunction_code = "        local consumer_id = \"" .. tostring(consumer2.id) .. "\"\n" .. [[
@@ -766,7 +766,7 @@ for _, strategy in helpers.each_strategy() do
       it("should work with consumer with credentials", function()
         local res = assert(proxy_client:get("/request?apikey=apikey124", {
           headers = {
-            ["Host"] = "acl2.com"
+            ["Host"] = "acl2.test"
           }
         }))
 
@@ -778,7 +778,7 @@ for _, strategy in helpers.each_strategy() do
       it("should work with authenticated groups", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
-            ["Host"] = "acl2b.com"
+            ["Host"] = "acl2b.test"
           }
         }))
 
@@ -790,7 +790,7 @@ for _, strategy in helpers.each_strategy() do
       it("should work with consumer without credentials", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
-            ["Host"] = "acl8.com"
+            ["Host"] = "acl8.test"
           }
         }))
 
@@ -802,7 +802,7 @@ for _, strategy in helpers.each_strategy() do
       it("should work with authenticated groups without credentials", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
-            ["Host"] = "acl8b.com"
+            ["Host"] = "acl8b.test"
           }
         }))
 
@@ -817,7 +817,7 @@ for _, strategy in helpers.each_strategy() do
       it("should fail when an authentication plugin is missing", function()
         local res = assert(proxy_client:get("/status/200", {
           headers = {
-            ["Host"] = "acl1.com"
+            ["Host"] = "acl1.test"
           }
         }))
         local body = assert.res_status(401, res)
@@ -829,7 +829,7 @@ for _, strategy in helpers.each_strategy() do
       it("should fail when an authentication plugin is missing (with credential)", function()
         local res = assert(proxy_client:get("/status/200", {
           headers = {
-            ["Host"] = "acl1b.com"
+            ["Host"] = "acl1b.test"
           }
         }))
         local body = assert.res_status(403, res)
@@ -841,7 +841,7 @@ for _, strategy in helpers.each_strategy() do
       it("should fail when not allowed", function()
         local res = assert(proxy_client:get("/status/200?apikey=apikey123", {
           headers = {
-            ["Host"] = "acl2.com"
+            ["Host"] = "acl2.test"
           }
         }))
         local body = assert.res_status(403, res)
@@ -853,7 +853,7 @@ for _, strategy in helpers.each_strategy() do
       it("should fail when not allowed with authenticated groups", function()
         local res = assert(proxy_client:get("/status/200", {
           headers = {
-            ["Host"] = "acl2c.com"
+            ["Host"] = "acl2c.test"
           }
         }))
         local body = assert.res_status(403, res)
@@ -865,7 +865,7 @@ for _, strategy in helpers.each_strategy() do
       it("should work when allowed", function()
         local res = assert(proxy_client:get("/request?apikey=apikey124", {
           headers = {
-            ["Host"] = "acl2.com"
+            ["Host"] = "acl2.test"
           }
         }))
         local body = cjson.decode(assert.res_status(200, res))
@@ -876,7 +876,7 @@ for _, strategy in helpers.each_strategy() do
       it("should work when allowed with authenticated groups", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
-            ["Host"] = "acl2b.com"
+            ["Host"] = "acl2b.test"
           }
         }))
         local body = cjson.decode(assert.res_status(200, res))
@@ -887,7 +887,7 @@ for _, strategy in helpers.each_strategy() do
       it("should not send x-consumer-groups header when hide_groups_header flag true", function()
         local res = assert(proxy_client:get("/request?apikey=apikey124", {
           headers = {
-            ["Host"] = "acl9.com"
+            ["Host"] = "acl9.test"
           }
         }))
         local body = cjson.decode(assert.res_status(200, res))
@@ -898,7 +898,7 @@ for _, strategy in helpers.each_strategy() do
       it("should not send x-authenticated-groups header when hide_groups_header flag true", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
-            ["Host"] = "acl9b.com"
+            ["Host"] = "acl9b.test"
           }
         }))
         local body = cjson.decode(assert.res_status(200, res))
@@ -909,7 +909,7 @@ for _, strategy in helpers.each_strategy() do
       it("should send x-consumer-groups header when hide_groups_header flag false", function()
         local res = assert(proxy_client:get("/request?apikey=apikey124", {
           headers = {
-            ["Host"] = "acl10.com"
+            ["Host"] = "acl10.test"
           }
         }))
         local body = cjson.decode(assert.res_status(200, res))
@@ -920,7 +920,7 @@ for _, strategy in helpers.each_strategy() do
       it("should send x-authenticated-groups header when hide_groups_header flag false", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
-            ["Host"] = "acl10b.com"
+            ["Host"] = "acl10b.test"
           }
         }))
         local body = cjson.decode(assert.res_status(200, res))
@@ -931,7 +931,7 @@ for _, strategy in helpers.each_strategy() do
       it("should work when not denied", function()
         local res = assert(proxy_client:get("/request?apikey=apikey123", {
           headers = {
-            ["Host"] = "acl3.com"
+            ["Host"] = "acl3.test"
           }
         }))
         assert.res_status(200, res)
@@ -940,7 +940,7 @@ for _, strategy in helpers.each_strategy() do
       it("should work when not denied with authenticated groups", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
-            ["Host"] = "acl3b.com"
+            ["Host"] = "acl3b.test"
           }
         }))
         assert.res_status(200, res)
@@ -949,7 +949,7 @@ for _, strategy in helpers.each_strategy() do
       it("should fail when denied", function()
         local res = assert(proxy_client:get("/request?apikey=apikey124", {
           headers = {
-            ["Host"] = "acl3.com"
+            ["Host"] = "acl3.test"
           }
         }))
         local body = assert.res_status(403, res)
@@ -961,7 +961,7 @@ for _, strategy in helpers.each_strategy() do
       it("should fail when denied with authenticated groups", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
-            ["Host"] = "acl3c.com"
+            ["Host"] = "acl3c.test"
           }
         }))
         local body = assert.res_status(403, res)
@@ -973,7 +973,7 @@ for _, strategy in helpers.each_strategy() do
       it("should fail denied and with no authenticated groups", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
-            ["Host"] = "acl3d.com"
+            ["Host"] = "acl3d.test"
           }
         }))
         local body = assert.res_status(401, res)
@@ -987,7 +987,7 @@ for _, strategy in helpers.each_strategy() do
       it("should work when allowed", function()
         local res = assert(proxy_client:get("/request?apikey=apikey125", {
           headers = {
-            ["Host"] = "acl4.com"
+            ["Host"] = "acl4.test"
           }
         }))
         local body = cjson.decode(assert.res_status(200, res))
@@ -998,7 +998,7 @@ for _, strategy in helpers.each_strategy() do
       it("should work when allowed with authenticated groups", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
-            ["Host"] = "acl4b.com"
+            ["Host"] = "acl4b.test"
           }
         }))
         local body = cjson.decode(assert.res_status(200, res))
@@ -1009,7 +1009,7 @@ for _, strategy in helpers.each_strategy() do
       it("should fail when not allowed", function()
         local res = assert(proxy_client:get("/request?apikey=apikey126", {
           headers = {
-            ["Host"] = "acl4.com"
+            ["Host"] = "acl4.test"
           }
         }))
         local body = assert.res_status(403, res)
@@ -1021,7 +1021,7 @@ for _, strategy in helpers.each_strategy() do
       it("should fail when not allowed with authenticated groups", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
-            ["Host"] = "acl4c.com"
+            ["Host"] = "acl4c.test"
           }
         }))
         local body = assert.res_status(403, res)
@@ -1033,7 +1033,7 @@ for _, strategy in helpers.each_strategy() do
       it("should fail when denied", function()
         local res = assert(proxy_client:get("/request?apikey=apikey125", {
           headers = {
-            ["Host"] = "acl5.com"
+            ["Host"] = "acl5.test"
           }
         }))
         local body = assert.res_status(403, res)
@@ -1045,7 +1045,7 @@ for _, strategy in helpers.each_strategy() do
       it("should fail when denied with authenticated groups", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
-            ["Host"] = "acl5b.com"
+            ["Host"] = "acl5b.test"
           }
         }))
         local body = assert.res_status(403, res)
@@ -1058,7 +1058,7 @@ for _, strategy in helpers.each_strategy() do
       it("should work when not denied", function()
         local res = assert(proxy_client:get("/request?apikey=apikey126", {
           headers = {
-            ["Host"] = "acl5.com"
+            ["Host"] = "acl5.test"
           }
         }))
         assert.res_status(200, res)
@@ -1067,7 +1067,7 @@ for _, strategy in helpers.each_strategy() do
       it("should work when not denied with authenticated groups", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
-            ["Host"] = "acl5c.com"
+            ["Host"] = "acl5c.test"
           }
         }))
         assert.res_status(200, res)
@@ -1076,7 +1076,7 @@ for _, strategy in helpers.each_strategy() do
       it("should not work when one of the ACLs denied", function()
         local res = assert(proxy_client:get("/request?apikey=apikey126", {
           headers = {
-            ["Host"] = "acl6.com"
+            ["Host"] = "acl6.test"
           }
         }))
         local body = assert.res_status(403, res)
@@ -1088,7 +1088,7 @@ for _, strategy in helpers.each_strategy() do
       it("should not work when one of the ACLs denied with authenticated groups", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
-            ["Host"] = "acl6b.com"
+            ["Host"] = "acl6b.test"
           }
         }))
         local body = assert.res_status(403, res)
@@ -1100,7 +1100,7 @@ for _, strategy in helpers.each_strategy() do
       it("should work when one of the ACLs is allowed", function()
         local res = assert(proxy_client:get("/request?apikey=apikey126", {
           headers = {
-            ["Host"] = "acl7.com"
+            ["Host"] = "acl7.test"
           }
         }))
         assert.res_status(200, res)
@@ -1109,7 +1109,7 @@ for _, strategy in helpers.each_strategy() do
       it("should work when one of the ACLs is allowed with authenticated groups", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
-            ["Host"] = "acl7b.com"
+            ["Host"] = "acl7b.test"
           }
         }))
         assert.res_status(200, res)
@@ -1118,7 +1118,7 @@ for _, strategy in helpers.each_strategy() do
       it("should not work when at least one of the ACLs denied", function()
         local res = assert(proxy_client:get("/request?apikey=apikey125", {
           headers = {
-            ["Host"] = "acl6.com"
+            ["Host"] = "acl6.test"
           }
         }))
         local body = assert.res_status(403, res)
@@ -1130,7 +1130,7 @@ for _, strategy in helpers.each_strategy() do
       it("should not work when at least one of the ACLs denied with authenticated groups", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
-            ["Host"] = "acl6c.com"
+            ["Host"] = "acl6c.test"
           }
         }))
         local body = assert.res_status(403, res)
@@ -1174,7 +1174,7 @@ for _, strategy in helpers.each_strategy() do
               ["Content-Type"] = "application/json"
             },
             body = {
-              hosts     = { "acl_test" .. i .. ".com" },
+              hosts     = { "acl_test" .. i .. ".test" },
               protocols = { "http", "https" },
               service   = {
                 id = service.id
@@ -1233,7 +1233,7 @@ for _, strategy in helpers.each_strategy() do
           helpers.wait_until(function()
             res = assert(proxy_client:get("/status/200?apikey=secret123", {
               headers = {
-                ["Host"] = "acl_test" .. i .. ".com"
+                ["Host"] = "acl_test" .. i .. ".test"
               }
             }))
             res:read_body()
@@ -1253,7 +1253,7 @@ for _, strategy in helpers.each_strategy() do
               ["Content-Type"] = "application/json"
             },
             body = {
-              hosts     = { "acl_test" .. i .. "b.com" },
+              hosts     = { "acl_test" .. i .. "b.test" },
               protocols = { "http", "https" },
               service   = {
                 id = service.id
@@ -1300,7 +1300,7 @@ for _, strategy in helpers.each_strategy() do
           helpers.wait_until(function()
             res = assert(proxy_client:get("/status/200", {
               headers = {
-                ["Host"] = "acl_test" .. i .. "b.com"
+                ["Host"] = "acl_test" .. i .. "b.test"
               }
             }))
             res:read_body()
@@ -1316,7 +1316,7 @@ for _, strategy in helpers.each_strategy() do
       it("authenticated consumer even when authorized groups are present", function()
         local res = assert(proxy_client:get("/request?apikey=apikey124", {
           headers = {
-            ["Host"] = "acl11.com"
+            ["Host"] = "acl11.test"
           }
         }))
         local body = cjson.decode(assert.res_status(200, res))
@@ -1327,7 +1327,7 @@ for _, strategy in helpers.each_strategy() do
       it("authorized groups even when anonymous consumer is present", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
-            ["Host"] = "acl11.com"
+            ["Host"] = "acl11.test"
           }
         }))
         local body = cjson.decode(assert.res_status(200, res))
@@ -1340,7 +1340,7 @@ for _, strategy in helpers.each_strategy() do
       it("authenticated consumer even when authorized groups are present", function()
         local res = assert(proxy_client:get("/request?apikey=apikey124", {
           headers = {
-            ["Host"] = "acl12.com"
+            ["Host"] = "acl12.test"
           }
         }))
         local body = assert.res_status(403, res)
@@ -1352,7 +1352,7 @@ for _, strategy in helpers.each_strategy() do
       it("authorized groups even when anonymous consumer is present", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
-            ["Host"] = "acl13.com"
+            ["Host"] = "acl13.test"
           }
         }))
         local body = assert.res_status(403, res)
@@ -1374,7 +1374,7 @@ for _, strategy in helpers.each_strategy() do
         proxy_client = helpers.proxy_client()
         local res = assert(proxy_client:get("/request", {
           headers = {
-            ["Host"] = "acl14.com"
+            ["Host"] = "acl14.test"
           }
         }))
         assert.res_status(200, res)

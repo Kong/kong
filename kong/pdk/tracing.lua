@@ -9,9 +9,9 @@ local require = require
 local ffi = require "ffi"
 local tablepool = require "tablepool"
 local new_tab = require "table.new"
-local base = require "resty.core.base"
 local utils = require "kong.tools.utils"
 local phase_checker = require "kong.pdk.private.phases"
+local tracing_context = require "kong.tracing.tracing_context"
 
 local ngx = ngx
 local type = type
@@ -64,34 +64,29 @@ local function generate_span_id()
   return rand_bytes(8)
 end
 
---- Build-in sampler
-local function always_on_sampler()
-  return true
-end
-
-local function always_off_sampler()
-  return false
-end
-
 -- Fractions >= 1 will always sample. Fractions < 0 are treated as zero.
 -- spec: https://github.com/c24t/opentelemetry-specification/blob/3b3d321865cf46364bdfb292c179b6444dc96bf9/specification/sdk-tracing.md#probability-sampler-algorithm
-local function get_trace_id_based_sampler(rate)
-  if type(rate) ~= "number" then
-    error("invalid fraction", 2)
-  end
+local function get_trace_id_based_sampler(options_sampling_rate)
+  return function(trace_id, sampling_rate)
+    sampling_rate = sampling_rate or options_sampling_rate
 
-  if rate >= 1 then
-    return always_on_sampler
-  end
+    if type(sampling_rate) ~= "number" then
+      error("invalid fraction", 2)
+    end
 
-  if rate <= 0 then
-    return always_off_sampler
-  end
+    -- always on sampler
+    if sampling_rate >= 1 then
+      return true
+    end
 
-  local bound = rate * BOUND_MAX
+    -- always off sampler
+    if sampling_rate <= 0 then
+      return false
+    end
 
-  -- TODO: is this a sound method to sample?
-  return function(trace_id)
+    -- probability sampler
+    local bound = sampling_rate * BOUND_MAX
+
     if #trace_id < SAMPLING_BYTE then
       error(TOO_SHORT_MESSAGE, 2)
     end
@@ -201,6 +196,10 @@ local function create_span(tracer, options)
   span.span_id = generate_span_id()
   span.trace_id = trace_id
   span.kind = options.span_kind or SPAN_KIND.INTERNAL
+  -- get_sampling_decision() can be used to dynamically run the sampler's logic
+  -- and obtain the sampling decision for the span. This way plugins can apply
+  -- their configured sampling rate dynamically. The sampled flag can then be
+  -- overwritten by set_should_sample.
   span.should_sample = sampled
 
   setmetatable(span, span_mt)
@@ -208,10 +207,6 @@ local function create_span(tracer, options)
 end
 
 local function link_span(tracer, span, name, options)
-  if not span.should_sample then
-    kong.log.debug("skipping non-sampled span")
-    return
-  end
   if tracer and type(tracer) ~= "table" then
     error("invalid tracer", 2)
   end
@@ -271,8 +266,8 @@ end
 -- local time = ngx.now()
 -- span:finish(time * 100000000)
 function span_mt:finish(end_time_ns)
-  if self.end_time_ns ~= nil or not self.should_sample then
-    -- span is finished, and already processed or not sampled
+  if self.end_time_ns ~= nil then
+    -- span is finished, and already processed
     return
   end
 
@@ -296,11 +291,12 @@ end
 --
 -- @function span:set_attribute
 -- @tparam string key
--- @tparam string|number|boolean value
+-- @tparam string|number|boolean|nil value
 -- @usage
 -- span:set_attribute("net.transport", "ip_tcp")
 -- span:set_attribute("net.peer.port", 443)
 -- span:set_attribute("exception.escaped", true)
+-- span:set_attribute("unset.this", nil)
 function span_mt:set_attribute(key, value)
   -- key is decided by the programmer, so if it is not a string, we should
   -- error out.
@@ -308,8 +304,14 @@ function span_mt:set_attribute(key, value)
     error("invalid key", 2)
   end
 
-  local vtyp = type(value)
-  if vtyp ~= "string" and vtyp ~= "number" and vtyp ~= "boolean" then
+  local vtyp
+  if value == nil then
+   vtyp = value
+  else
+   vtyp = type(value)
+  end
+
+  if vtyp ~= "string" and vtyp ~= "number" and vtyp ~= "boolean" and vtyp ~= nil then
     -- we should not error out here, as most of the caller does not catch
     -- errors, and they are hooking to core facilities, which may cause
     -- unexpected behavior.
@@ -420,6 +422,16 @@ noop_tracer.active_span = NOOP
 noop_tracer.set_active_span = NOOP
 noop_tracer.process_span = NOOP
 noop_tracer.set_should_sample = NOOP
+noop_tracer.get_sampling_decision = NOOP
+
+local VALID_TRACING_PHASES = {
+  rewrite = true,
+  access = true,
+  header_filter = true,
+  body_filter = true,
+  log = true,
+  content = true,
+}
 
 --- New Tracer
 local function new_tracer(name, options)
@@ -450,7 +462,7 @@ local function new_tracer(name, options)
   -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
   -- @treturn table span
   function self.active_span()
-    if not base.get_request() then
+    if not VALID_TRACING_PHASES[ngx.get_phase()] then
       return
     end
 
@@ -463,7 +475,7 @@ local function new_tracer(name, options)
   -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
   -- @tparam table span
   function self.set_active_span(span)
-    if not base.get_request() then
+    if not VALID_TRACING_PHASES[ngx.get_phase()] then
       return
     end
 
@@ -482,7 +494,7 @@ local function new_tracer(name, options)
   -- @tparam table options TODO(mayo)
   -- @treturn table span
   function self.start_span(...)
-    if not base.get_request() then
+    if not VALID_TRACING_PHASES[ngx.get_phase()] then
       return noop_span
     end
 
@@ -537,6 +549,51 @@ local function new_tracer(name, options)
         span.should_sample = should_sample
       end
     end
+  end
+
+  --- Get the sampling decision result
+  --
+  -- Uses a parent-based sampler when the parent has sampled flag == false
+  -- to inherit the non-recording decision from the parent span, or when 
+  -- trace_id is not available.
+  --
+  -- Else, apply the probability-based should_sample decision.
+  --
+  -- @function kong.tracing:get_sampling_decision
+  -- @tparam bool parent_should_sample value of the parent span sampled flag
+  -- extracted from the incoming tracing headers
+  -- @tparam number sampling_rate the sampling rate to apply for the
+  -- probability sampler
+  -- @treturn bool sampled value of sampled for this trace
+  function self:get_sampling_decision(parent_should_sample, sampling_rate)
+    local ctx = ngx.ctx
+
+    local sampled
+    local root_span = ctx.KONG_SPANS and ctx.KONG_SPANS[1]
+    local trace_id = tracing_context.get_raw_trace_id(ctx)
+
+    if not root_span or root_span.attributes["kong.propagation_only"] then
+      -- should not sample if there is no root span or if the root span is
+      -- a dummy created only to propagate headers
+      sampled = false
+
+    elseif parent_should_sample == false or not trace_id then
+      -- trace_id can be nil when tracing instrumentations are disabled
+      -- and Kong is configured to only do headers propagation
+      sampled = parent_should_sample
+
+    elseif not sampling_rate then
+      -- no custom sampling_rate was passed:
+      -- reuse the sampling result of the root_span
+      sampled = root_span.should_sample == true
+
+    else
+      -- use probability-based sampler
+      sampled = self.sampler(trace_id, sampling_rate)
+    end
+
+    -- enforce boolean
+    return not not sampled
   end
 
   tracer_memo[name] = setmetatable(self, tracer_mt)

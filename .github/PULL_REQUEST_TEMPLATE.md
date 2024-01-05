@@ -18,10 +18,6 @@ https://github.com/Kong/kong/blob/master/COMMUNITY_PLEDGE.md
 - [ ] A changelog file has been created under `changelog/unreleased/kong` or `skip-changelog` label added on PR if changelog is unnecessary. [README.md](https://github.com/Kong/gateway-changelog/README.md)
 - [ ] There is a user-facing docs PR against https://github.com/Kong/docs.konghq.com - PUT DOCS PR HERE
 
-### Full changelog
-
-* [Implement ...]
-
 ### Issue reference
 
 <!--- If it fixes an open issue, please link to the issue here. -->

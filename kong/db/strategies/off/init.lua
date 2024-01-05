@@ -2,7 +2,7 @@ local declarative_config = require "kong.db.schema.others.declarative_config"
 local workspaces = require "kong.workspaces"
 local lmdb = require("resty.lmdb")
 local marshaller = require("kong.db.declarative.marshaller")
-local yield = require("kong.tools.utils").yield
+local yield = require("kong.tools.yield").yield
 local unique_field_key = require("kong.db.declarative").unique_field_key
 
 local kong = kong

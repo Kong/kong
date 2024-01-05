@@ -40,6 +40,7 @@ local json_schema = require "kong.db.schema.json"
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 local constants = require "kong.constants"
+local properties = require "kong.runloop.wasm.properties"
 
 
 ---@module 'resty.wasmx.proxy_wasm'
@@ -106,7 +107,7 @@ local hash_chain
 do
   local buffer = require "string.buffer"
 
-  local sha256 = utils.sha256_bin
+  local sha256 = require("kong.tools.sha256").sha256_bin
 
   local HASH_DISABLED = sha256("disabled")
   local HASH_NONE     = sha256("none")
@@ -682,6 +683,155 @@ local function disable(reason)
 end
 
 
+local function register_property_handlers()
+  properties.reset()
+
+  properties.add_getter("kong.client.protocol", function(kong)
+    return true, kong.client.get_protocol(), true
+  end)
+
+  properties.add_getter("kong.nginx.subsystem", function(kong)
+    return true, kong.nginx.get_subsystem(), true
+  end)
+
+  properties.add_getter("kong.node.id", function(kong)
+    return true, kong.node.get_id(), true
+  end)
+
+  properties.add_getter("kong.node.memory_stats", function(kong)
+    local stats = kong.node.get_memory_stats()
+    if not stats then
+      return false
+    end
+    return true, cjson_encode(stats), false
+  end)
+
+  properties.add_getter("kong.request.forwarded_host", function(kong)
+    return true, kong.request.get_forwarded_host(), true
+  end)
+
+  properties.add_getter("kong.request.forwarded_port", function(kong)
+    return true, kong.request.get_forwarded_port(), true
+  end)
+
+  properties.add_getter("kong.request.forwarded_scheme", function(kong)
+    return true, kong.request.get_forwarded_scheme(), true
+  end)
+
+  properties.add_getter("kong.request.port", function(kong)
+    return true, kong.request.get_port(), true
+  end)
+
+  properties.add_getter("kong.response.source", function(kong)
+    return true, kong.request.get_source(), false
+  end)
+
+  properties.add_setter("kong.response.status", function(kong, _, _, status)
+    return true, kong.response.set_status(tonumber(status)), false
+  end)
+
+  properties.add_getter("kong.router.route", function(kong)
+    local route = kong.router.get_route()
+    if not route then
+      return true, nil, true
+    end
+    return true, cjson_encode(route), true
+  end)
+
+  properties.add_getter("kong.router.service", function(kong)
+    local service = kong.router.get_service()
+    if not service then
+      return true, nil, true
+    end
+    return true, cjson_encode(service), true
+  end)
+
+  properties.add_setter("kong.service.target", function(kong, _, _, target)
+    local host, port = target:match("^(.*):([0-9]+)$")
+    port = tonumber(port)
+    if not (host and port) then
+      return false
+    end
+
+    kong.service.set_target(host, port)
+    return true, target, false
+  end)
+
+  properties.add_setter("kong.service.upstream", function(kong, _, _, upstream)
+    local ok, err = kong.service.set_upstream(upstream)
+    if not ok then
+      kong.log.err(err)
+      return false
+    end
+
+    return true, upstream, false
+  end)
+
+  properties.add_setter("kong.service.request.scheme", function(kong, _, _, scheme)
+    kong.service.request.set_scheme(scheme)
+    return true, scheme, false
+  end)
+
+  properties.add_getter("kong.route_id", function(_, _, ctx)
+    local value = ctx.route and ctx.route.id
+    local ok = value ~= nil
+    local const = ok
+    return ok, value, const
+  end)
+
+  properties.add_getter("kong.service.response.status", function(kong)
+    return true, kong.service.response.get_status(), false
+  end)
+
+  properties.add_getter("kong.service_id", function(_, _, ctx)
+    local value = ctx.service and ctx.service.id
+    local ok = value ~= nil
+    local const = ok
+    return ok, value, const
+  end)
+
+  properties.add_getter("kong.version", function(kong)
+    return true, kong.version, true
+  end)
+
+  properties.add_namespace_handlers("kong.ctx.shared",
+    function(kong, _, _, key)
+      local value = kong.ctx.shared[key]
+      local ok = value ~= nil
+      value = ok and tostring(value) or nil
+      return ok, value, false
+    end,
+
+    function(kong, _, _, key, value)
+      kong.ctx.shared[key] = value
+      return true
+    end
+  )
+
+  properties.add_namespace_handlers("kong.configuration",
+    function(kong, _, _, key)
+      local value = kong.configuration[key]
+      if value ~= nil then
+        if type(value) == "table" then
+          value = cjson_decode(value)
+        else
+          value = tostring(value)
+        end
+
+        return true, value, true
+      end
+
+      return false
+    end,
+
+    function()
+      -- kong.configuration is read-only: setter rejects all
+      return false
+    end
+  )
+end
+
+
 local function enable(kong_config)
   set_available_filters(kong_config.wasm_modules_parsed)
 
@@ -689,6 +839,8 @@ local function enable(kong_config)
   _G.dns_client = _G.dns_client or dns(kong_config)
 
   proxy_wasm = proxy_wasm or require "resty.wasmx.proxy_wasm"
+
+  register_property_handlers()
 
   ENABLED = true
   STATUS = STATUS_ENABLED
@@ -746,18 +898,6 @@ function _M.init_worker()
 end
 
 
-local function set_proxy_wasm_property(property, value)
-  if not value then
-    return
-  end
-
-  local ok, err = proxy_wasm.set_property(property, value)
-  if not ok then
-    log(ERR, "failed to set proxy-wasm '", property, "' property: ", err)
-  end
-end
-
-
 ---
 -- Lookup and execute the filter chain that applies to the current request
 -- (if any).
@@ -788,9 +928,14 @@ function _M.attach(ctx)
     return kong.response.error(500)
   end
 
-  set_proxy_wasm_property("kong.route_id", ctx.route and ctx.route.id)
-  set_proxy_wasm_property("kong.service_id", ctx.service and ctx.service.id)
+  ok, err = proxy_wasm.set_host_properties_handlers(properties.get,
+                                                    properties.set)
+  if not ok then
+    log(CRIT, "failed setting host property handlers: ", err)
+    return kong.response.error(500)
+  end
 
+  jit.off(proxy_wasm.start)
   ok, err = proxy_wasm.start()
   if not ok then
     log(CRIT, "failed to execute ", chain.label, " filter chain for request: ", err)

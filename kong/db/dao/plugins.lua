@@ -1,10 +1,11 @@
 local constants = require "kong.constants"
-local utils = require "kong.tools.utils"
 local DAO = require "kong.db.dao"
 local plugin_loader = require "kong.db.schema.plugin_loader"
 local reports = require "kong.reports"
 local plugin_servers = require "kong.runloop.plugin_servers"
 local version = require "version"
+local load_module_if_exists = require "kong.tools.module".load_module_if_exists
+
 
 local Plugins = {}
 
@@ -150,7 +151,7 @@ local load_plugin_handler do
     -- NOTE: no version _G.kong (nor PDK) in plugins main chunk
 
     local plugin_handler = "kong.plugins." .. plugin .. ".handler"
-    local ok, handler = utils.load_module_if_exists(plugin_handler)
+    local ok, handler = load_module_if_exists(plugin_handler)
     if not ok then
       ok, handler = plugin_servers.load_plugin(plugin)
       if type(handler) == "table" then
@@ -202,7 +203,7 @@ local function load_plugin_entity_strategy(schema, db, plugin)
 
   local custom_strat = fmt("kong.plugins.%s.strategies.%s.%s",
                            plugin, db.strategy, schema.name)
-  local exists, mod = utils.load_module_if_exists(custom_strat)
+  local exists, mod = load_module_if_exists(custom_strat)
   if exists and mod then
     local parent_mt = getmetatable(strategy)
     local mt = {
@@ -369,6 +370,24 @@ function Plugins:get_handlers()
   table.sort(list, sort_by_handler_priority)
 
   return list
+end
+
+-- @ca_id: the id of ca certificate to be searched
+-- @limit: the maximum number of entities to return (must >= 0)
+-- @plugin_names: the plugin names to filter the entities (must be of type table, string or nil)
+-- @return an array of the plugin entity
+function Plugins:select_by_ca_certificate(ca_id, limit, plugin_names)
+  local param_type = type(plugin_names)
+  if param_type ~= "table" and param_type ~= "string" and param_type ~= "nil" then
+    return nil, "parameter `plugin_names` must be of type table, string, or nil"
+  end
+
+  local plugins, err = self.strategy:select_by_ca_certificate(ca_id, limit, plugin_names)
+  if err then
+    return nil, err
+  end
+
+  return self:rows_to_entities(plugins), nil
 end
 
 

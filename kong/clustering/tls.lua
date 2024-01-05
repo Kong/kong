@@ -13,6 +13,8 @@ local constants = require("kong.constants")
 
 local ngx_log = ngx.log
 local WARN = ngx.WARN
+local tostring = tostring
+
 
 local OCSP_TIMEOUT = constants.CLUSTERING_OCSP_TIMEOUT
 
@@ -187,8 +189,8 @@ end
 ---@param cp_cert      kong.clustering.certinfo # clustering certinfo table
 ---@param dp_cert_pem  string                   # data plane cert text
 ---
----@return boolean? success
----@return string?  error
+---@return table|nil x509 instance
+---@return string?   error
 function tls.validate_client_cert(kong_config, cp_cert, dp_cert_pem)
   if not dp_cert_pem then
     return nil, "data plane failed to present client certificate during handshake"
@@ -226,7 +228,7 @@ function tls.validate_client_cert(kong_config, cp_cert, dp_cert_pem)
     return nil, err
   end
 
-  return true
+  return cert, nil
 end
 
 

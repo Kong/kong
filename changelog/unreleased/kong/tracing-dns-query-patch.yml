@@ -1,0 +1,3 @@
+message: "**Tracing**: dns spans are now correctly generated for upstream dns queries (in addition to cosocket ones)" 
+type: bugfix
+scope: Core

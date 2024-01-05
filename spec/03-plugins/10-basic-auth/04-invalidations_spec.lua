@@ -45,7 +45,7 @@ for _, strategy in helpers.each_strategy() do
 
       if not route then
         route = admin_api.routes:insert {
-          hosts = { "basic-auth.com" },
+          hosts = { "basic-auth.test" },
         }
       end
 
@@ -78,7 +78,7 @@ for _, strategy in helpers.each_strategy() do
         path    = "/",
         headers = {
           ["Authorization"] = "Basic Ym9iOmtvbmc=",
-          ["Host"]          = "basic-auth.com"
+          ["Host"]          = "basic-auth.test"
         }
       })
       assert.res_status(200, res)
@@ -108,7 +108,7 @@ for _, strategy in helpers.each_strategy() do
         path    = "/",
         headers = {
           ["Authorization"] = "Basic Ym9iOmtvbmc=",
-          ["Host"]          = "basic-auth.com"
+          ["Host"]          = "basic-auth.test"
         }
       })
       assert.res_status(401, res)
@@ -121,7 +121,7 @@ for _, strategy in helpers.each_strategy() do
         path    = "/",
         headers = {
           ["Authorization"] = "Basic Ym9iOmtvbmc=",
-          ["Host"]          = "basic-auth.com"
+          ["Host"]          = "basic-auth.test"
         }
       })
       assert.res_status(200, res)
@@ -151,7 +151,7 @@ for _, strategy in helpers.each_strategy() do
         path    = "/",
         headers = {
           ["Authorization"] = "Basic Ym9iOmtvbmc=",
-          ["Host"]          = "basic-auth.com"
+          ["Host"]          = "basic-auth.test"
         }
       })
       assert.res_status(401, res)
@@ -164,7 +164,7 @@ for _, strategy in helpers.each_strategy() do
         path    = "/",
         headers = {
           ["Authorization"] = "Basic Ym9iOmtvbmc=",
-          ["Host"]          = "basic-auth.com"
+          ["Host"]          = "basic-auth.test"
         }
       })
       assert.res_status(200, res)
@@ -201,7 +201,7 @@ for _, strategy in helpers.each_strategy() do
         path    = "/",
         headers = {
           ["Authorization"] = "Basic Ym9iOmtvbmc=",
-          ["Host"]          = "basic-auth.com"
+          ["Host"]          = "basic-auth.test"
         }
       })
       assert.res_status(401, res)
@@ -211,7 +211,7 @@ for _, strategy in helpers.each_strategy() do
         path    = "/",
         headers = {
           ["Authorization"] = "Basic Ym9iOmtvbmctdXBkYXRlZA==",
-          ["Host"]          = "basic-auth.com"
+          ["Host"]          = "basic-auth.test"
         }
       })
       assert.res_status(200, res)

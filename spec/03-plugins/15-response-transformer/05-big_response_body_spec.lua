@@ -22,7 +22,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       local route = bp.routes:insert({
-        hosts   = { "response.com" },
+        hosts   = { "response.test" },
         methods = { "POST" },
       })
 
@@ -63,7 +63,7 @@ for _, strategy in helpers.each_strategy() do
         path    = "/post",
         body    = create_big_data(1024 * 1024),
         headers = {
-          host             = "response.com",
+          host             = "response.test",
           ["content-type"] = "application/json",
         }
       })
@@ -78,7 +78,7 @@ for _, strategy in helpers.each_strategy() do
         path    = "/post",
         body    = create_big_data(1024 * 1024),
         headers = {
-          host             = "response.com",
+          host             = "response.test",
           ["content-type"] = "application/json",
         }
       })

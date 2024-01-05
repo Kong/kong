@@ -1,10 +1,11 @@
 name: Backport
 on:
   pull_request_target:
-    types: [closed]
+    types: [closed, labeled] # runs when the pull request is closed/merged or labeled (to trigger a backport in hindsight)
 permissions:
   contents: write # so it can comment
   pull-requests: write # so it can create pull requests
+  actions: write
 jobs:
   backport:
     name: Backport
@@ -13,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Create backport pull requests
-        uses: korthout/backport-action@cb79e4e5f46c7d7d653dd3d5fa8a9b0a945dfe4b # v2.1.0
+        uses: korthout/backport-action@930286d359d53effaf69607223933cbbb02460eb #v2.2.0
         with:
           github_token: ${{ secrets.PAT }}
           pull_title: '[backport -> ${target_branch}] ${pull_title}'
@@ -25,3 +26,7 @@ jobs:
           copy_assignees: true
           copy_milestone: true
           copy_requested_reviewers: true
+          experimental: >
+            {
+              "detect_merge_method": true
+            }

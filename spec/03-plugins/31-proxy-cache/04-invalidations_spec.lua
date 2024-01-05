@@ -30,11 +30,11 @@ describe("proxy-cache invalidations via: " .. strategy, function()
     bp = helpers.get_db_utils(strategy, nil, {"proxy-cache"})
 
     route1 = assert(bp.routes:insert {
-      hosts = { "route-1.com" },
+      hosts = { "route-1.test" },
     })
 
     route2 = assert(bp.routes:insert {
-      hosts = { "route-2.com" },
+      hosts = { "route-2.test" },
     })
 
     plugin1 = assert(bp.plugins:insert {
@@ -121,38 +121,38 @@ describe("proxy-cache invalidations via: " .. strategy, function()
 
     setup(function()
       -- prime cache entries on both instances
-      local res_1 = get(client_1, "route-1.com")
+      local res_1 = get(client_1, "route-1.test")
 
       assert.res_status(200, res_1)
       assert.same("Miss", res_1.headers["X-Cache-Status"])
       cache_key = res_1.headers["X-Cache-Key"]
 
-      local res_2 = get(client_2, "route-1.com")
+      local res_2 = get(client_2, "route-1.test")
 
       assert.res_status(200, res_2)
       assert.same("Miss", res_2.headers["X-Cache-Status"])
       assert.same(cache_key, res_2.headers["X-Cache-Key"])
 
-      res_1 = get(client_1, "route-2.com")
+      res_1 = get(client_1, "route-2.test")
 
       assert.res_status(200, res_1)
       assert.same("Miss", res_1.headers["X-Cache-Status"])
       cache_key2 = res_1.headers["X-Cache-Key"]
       assert.not_same(cache_key, cache_key2)
 
-      local res_2 = get(client_2, "route-2.com")
+      local res_2 = get(client_2, "route-2.test")
 
       assert.res_status(200, res_2)
       assert.same("Miss", res_2.headers["X-Cache-Status"])
     end)
 
     it("propagates purges via cluster events mechanism", function()
-      local res_1 = get(client_1, "route-1.com")
+      local res_1 = get(client_1, "route-1.test")
 
       assert.res_status(200, res_1)
       assert.same("Hit", res_1.headers["X-Cache-Status"])
 
-      local res_2 = get(client_2, "route-1.com")
+      local res_2 = get(client_2, "route-1.test")
 
       assert.res_status(200, res_2)
       assert.same("Hit", res_2.headers["X-Cache-Status"])
@@ -171,12 +171,12 @@ describe("proxy-cache invalidations via: " .. strategy, function()
       end, 10)
 
       -- refresh and purge with our second endpoint
-      res_1 = get(client_1, "route-1.com")
+      res_1 = get(client_1, "route-1.test")
 
       assert.res_status(200, res_1)
       assert.same("Miss", res_1.headers["X-Cache-Status"])
 
-      res_2 = get(client_2, "route-1.com")
+      res_2 = get(client_2, "route-1.test")
 
       assert.res_status(200, res_2)
       assert.same("Miss", res_2.headers["X-Cache-Status"])

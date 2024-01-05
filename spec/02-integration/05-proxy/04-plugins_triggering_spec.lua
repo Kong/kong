@@ -3,6 +3,7 @@ local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
+local shell = require "resty.shell"
 
 
 local LOG_WAIT_TIMEOUT = 10
@@ -98,7 +99,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.routes:insert {
-        hosts     = { "global1.com" },
+        hosts     = { "global1.test" },
         protocols = { "http" },
         service   = service1,
       }
@@ -120,7 +121,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route1 = bp.routes:insert {
-        hosts     = { "api1.com" },
+        hosts     = { "api1.test" },
         protocols = { "http" },
         service   = service2,
       }
@@ -151,7 +152,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route2 = bp.routes:insert {
-        hosts     = { "api2.com" },
+        hosts     = { "api2.test" },
         protocols = { "http" },
         service   = service3,
       }
@@ -172,7 +173,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route3 = bp.routes:insert {
-        hosts     = { "api3.com" },
+        hosts     = { "api3.test" },
         protocols = { "http" },
         service   = service4,
       }
@@ -238,7 +239,7 @@ for _, strategy in helpers.each_strategy() do
       local res = assert(proxy_client:send {
         method  = "GET",
         path    = "/status/200",
-        headers = { Host = "global1.com" }
+        headers = { Host = "global1.test" }
       })
       assert.res_status(401, res)
     end)
@@ -247,7 +248,7 @@ for _, strategy in helpers.each_strategy() do
       local res = assert(proxy_client:send {
         method  = "GET",
         path    = "/status/200?apikey=secret1",
-        headers = { Host = "global1.com" }
+        headers = { Host = "global1.test" }
       })
       assert.res_status(200, res)
       assert.equal("1", res.headers["x-ratelimit-limit-hour"])
@@ -257,7 +258,7 @@ for _, strategy in helpers.each_strategy() do
       local res = assert(proxy_client:send {
         method  = "GET",
         path    = "/status/200?apikey=secret1",
-        headers = { Host = "api1.com" }
+        headers = { Host = "api1.test" }
       })
       assert.res_status(200, res)
       assert.equal("2", res.headers["x-ratelimit-limit-hour"])
@@ -267,7 +268,7 @@ for _, strategy in helpers.each_strategy() do
       local res = assert(proxy_client:send {
         method  = "GET",
         path    = "/status/200?apikey=secret2",
-        headers = { Host = "global1.com" }
+        headers = { Host = "global1.test" }
       })
       assert.res_status(200, res)
       assert.equal("3", res.headers["x-ratelimit-limit-hour"])
@@ -277,7 +278,7 @@ for _, strategy in helpers.each_strategy() do
       local res = assert(proxy_client:send {
         method  = "GET",
         path    = "/status/200?apikey=secret2",
-        headers = { Host = "api2.com" }
+        headers = { Host = "api2.test" }
       })
       assert.res_status(200, res)
       assert.equal("4", res.headers["x-ratelimit-limit-hour"])
@@ -287,7 +288,7 @@ for _, strategy in helpers.each_strategy() do
       local res = assert(proxy_client:send {
         method  = "GET",
         path    = "/status/200",
-        headers = { Host = "api3.com" }
+        headers = { Host = "api3.test" }
       })
       assert.res_status(200, res)
       assert.equal("5", res.headers["x-ratelimit-limit-hour"])
@@ -410,7 +411,7 @@ for _, strategy in helpers.each_strategy() do
 
       before_each(function()
         helpers.clean_logfile(FILE_LOG_PATH)
-        os.execute("chmod 0777 " .. FILE_LOG_PATH)
+        shell.run("chmod 0777 " .. FILE_LOG_PATH, nil, 0)
       end)
 
       it("execute a log plugin", function()
@@ -750,7 +751,7 @@ for _, strategy in helpers.each_strategy() do
       before_each(function()
         proxy_client = helpers.proxy_client()
         helpers.clean_logfile(FILE_LOG_PATH)
-        os.execute("chmod 0777 " .. FILE_LOG_PATH)
+        shell.run("chmod 0777 " .. FILE_LOG_PATH, nil, 0)
       end)
 
 
@@ -1089,7 +1090,7 @@ for _, strategy in helpers.each_strategy() do
           })
 
           local route = assert(bp.routes:insert {
-            hosts     = { "runs-init-worker.org" },
+            hosts     = { "runs-init-worker.test" },
             protocols = { "http" },
             service   = service,
           })
@@ -1123,7 +1124,7 @@ for _, strategy in helpers.each_strategy() do
         it("is executed", function()
           local res = assert(proxy_client:get("/status/400", {
             headers = {
-              ["Host"] = "runs-init-worker.org",
+              ["Host"] = "runs-init-worker.test",
             }
           }))
 
@@ -1168,7 +1169,7 @@ for _, strategy in helpers.each_strategy() do
             })
 
             route = assert(bp.routes:insert {
-              hosts     = { "runs-init-worker.org" },
+              hosts     = { "runs-init-worker.test" },
               protocols = { "http" },
               service   = service,
             })
@@ -1215,7 +1216,7 @@ for _, strategy in helpers.each_strategy() do
             helpers.wait_until(function()
               res = assert(proxy_client:get("/status/400", {
                 headers = {
-                  ["Host"] = "runs-init-worker.org",
+                  ["Host"] = "runs-init-worker.test",
                 }
               }))
 

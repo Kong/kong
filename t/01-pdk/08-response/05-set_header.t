@@ -77,7 +77,7 @@ invalid header name "127001": got number, expected string
 
 
 
-=== TEST 3: response.set_header() errors if value is not a string
+=== TEST 3: response.set_header() errors if value is not a table contain array of string 
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -89,8 +89,9 @@ invalid header name "127001": got number, expected string
 
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
+            local set_header = { {} }
 
-            local ok, err = pcall(pdk.response.set_header, "foo", {})
+            local ok, err = pcall(pdk.response.set_header, "foo", set_header)
             if not ok then
                 ngx.ctx.err = err
             end
@@ -104,7 +105,7 @@ invalid header name "127001": got number, expected string
 --- request
 GET /t
 --- response_body chop
-invalid header value for "foo": got table, expected string, number or boolean
+invalid header value in array "foo": got table, expected string
 --- no_error_log
 [error]
 
@@ -137,7 +138,7 @@ invalid header value for "foo": got table, expected string, number or boolean
 --- request
 GET /t
 --- response_body chop
-invalid header value for "foo": got nil, expected string, number or boolean
+invalid header value for "foo": got nil, expected array of string, string, number or boolean
 --- no_error_log
 [error]
 
@@ -277,3 +278,37 @@ GET /t
 Transfer-Encoding: chunked
 --- error_log
 manually setting Transfer-Encoding. Ignored.
+
+
+=== TEST 8: response.set_header() with header table
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        content_by_lua_block {
+        }
+
+        header_filter_by_lua_block {
+            ngx.header.content_length = nil
+
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+            local set_header = {"a", "b"}
+
+            pdk.response.set_header("X-Foo", set_header)
+        }
+
+        body_filter_by_lua_block {
+            local new_headers = ngx.resp.get_headers()
+
+            local cjson = require("cjson")
+            ngx.arg[1] = "X-Foo: {" ..  new_headers["X-Foo"][1] .. "," .. new_headers["X-Foo"][2] .. "}"
+
+            ngx.arg[2] = true
+        }
+    }
+--- request
+GET /t
+--- response_body chop
+X-Foo: {a,b}
+--- no_error_log
+[error]
