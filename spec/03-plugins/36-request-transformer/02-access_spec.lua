@@ -234,7 +234,7 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       name = "request-transformer",
       config = {
         rename = {
-          headers = {"x-to-rename:X-Is-Renamed"},
+          headers = {"x-to-rename:x-is-renamed"},
           querystring = {"originalparam:renamedparam"},
           body = {"originalparam:renamedparam"}
         }
@@ -719,7 +719,7 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       assert.response(r).has.status(200)
       assert.response(r).has.jsonbody()
       assert.request(r).has.no.header("x-to-rename")
-      assert.request(r).has.header("X-Is-Renamed")
+      assert.request(r).has.header("x-is-renamed")
       assert.request(r).has.header("x-another-header")
     end)
     it("does not add as new header if header does not exist", function()
@@ -745,13 +745,13 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
         headers = {
           host = "test9.test",
           ["x-to-rename"] = "new-result",
-          ["X-Is-Renamed"] = "old-result",
+          ["x-is-renamed"] = "old-result",
         }
       })
       assert.response(r).has.status(200)
       assert.response(r).has.jsonbody()
       assert.request(r).has.no.header("x-to-rename")
-      local h_is_renamed = assert.request(r).has.header("X-Is-Renamed")
+      local h_is_renamed = assert.request(r).has.header("x-is-renamed")
       assert.equals("new-result", h_is_renamed)
     end)
     for _, seq in ipairs({ 1, 2, 3, 4, 5, 6}) do
@@ -768,7 +768,7 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
         assert.response(r).has.status(200)
         assert.response(r).has.jsonbody()
         assert.request(r).has.no.header("x-to-rename")
-        local h_is_renamed = assert.request(r).has.header("X-Is-Renamed")
+        local h_is_renamed = assert.request(r).has.header("x-is-renamed")
         assert.equals("new-result", h_is_renamed)
       end)
     end
