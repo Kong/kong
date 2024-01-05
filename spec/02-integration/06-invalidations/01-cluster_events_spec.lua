@@ -83,6 +83,9 @@ for _, strategy in helpers.each_strategy() do
 
       before_each(function()
         spy_func = spy.new(function() end)
+        -- time sensitive tests should have accurate time at the start
+        -- and for the later `ngx.sleep()` calls the time will be updated automatically
+        ngx.update_time()
       end)
 
       it("broadcasts on a given channel", function()
@@ -285,6 +288,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("broadcasts an event with a delay", function()
+        ngx.update_time()
         local cluster_events_1 = assert(kong_cluster_events.new {
           db = db,
           node_id = uuid_1,
@@ -332,6 +336,8 @@ for _, strategy in helpers.each_strategy() do
 
         assert(cluster_events_1:subscribe("nbf_channel", cb, false)) -- false to not start auto polling
 
+        -- we need accurate time, otherwise the test would be flaky
+        ngx.update_time()
         assert(cluster_events_2:broadcast("nbf_channel", "hello world"))
 
         assert(cluster_events_1:poll())

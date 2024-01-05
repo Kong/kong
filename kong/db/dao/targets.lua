@@ -70,7 +70,7 @@ function _TARGETS:upsert(pk, entity, options)
     if existent.target == entity.target then
       -- if the upserting entity is newer, update
       if entity.created_at > existent.created_at then
-        local ok, err, err_t = self.super.delete(self, { id = existent.id }, opts)
+        local ok, err, err_t = self.super.delete(self, existent, opts)
         if ok then
           return self.super.insert(self, entity, options)
         end

@@ -4,10 +4,12 @@ local pairs = pairs
 local pcall = pcall
 local error = error
 
+---@class http_mock
 local http_mock = {}
 
 local build_in_checks = {}
 
+---@class http_mock_asserts
 local eventually_MT = {}
 eventually_MT.__index = eventually_MT
 
@@ -114,6 +116,8 @@ local function register_assert(name, impl)
   eventually_MT["not_all_" .. name] = function(self, ...)
     return eventually_has(reverse_impl, self.__mock, ...)
   end
+
+  eventually_MT["has_one_without_" .. name] = eventually_MT["not_all_" .. name]
 end
 
 for name, impl in pairs(build_in_checks) do

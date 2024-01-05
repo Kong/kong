@@ -44,6 +44,7 @@ describe("Admin API listeners", function()
     assert(helpers.start_kong({
       proxy_listen = "0.0.0.0:9000",
       admin_listen = "off",
+      admin_gui_listen = "off",
     }))
     assert.equals(2, count_server_blocks(helpers.test_conf.nginx_kong_conf))
     assert.is_nil(get_listeners(helpers.test_conf.nginx_kong_conf).kong_admin)
@@ -53,6 +54,7 @@ describe("Admin API listeners", function()
     assert(helpers.start_kong({
       proxy_listen = "0.0.0.0:9000",
       admin_listen = "127.0.0.1:9001, 127.0.0.1:9002",
+      admin_gui_listen = "off",
     }))
 
     assert.equals(3, count_server_blocks(helpers.test_conf.nginx_kong_conf))

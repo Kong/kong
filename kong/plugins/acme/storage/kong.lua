@@ -55,9 +55,7 @@ function _M:delete(k)
     return
   end
 
-  local _, err = self.dao:delete({
-    id = v.id
-  })
+  local _, err = self.dao:delete(v)
   return err
 end
 

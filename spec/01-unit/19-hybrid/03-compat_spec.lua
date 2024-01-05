@@ -1,7 +1,7 @@
 local compat = require("kong.clustering.compat")
 local helpers = require ("spec.helpers")
 local declarative = require("kong.db.declarative")
-local inflate_gzip = require("kong.tools.utils").inflate_gzip
+local inflate_gzip = require("kong.tools.gzip").inflate_gzip
 local cjson_decode = require("cjson.safe").decode
 local ssl_fixtures = require ("spec.fixtures.ssl")
 
@@ -160,9 +160,6 @@ describe("kong.clustering.compat", function()
           session = {
             "anything",
           },
-          statsd = {
-            "anything",
-          },
         },
       })
     end)
@@ -312,29 +309,6 @@ describe("kong.clustering.compat", function()
           },
         },
       },
-      {
-        name = "statsd lmdb metrics",
-        version = "1.0.0",
-        plugins = {
-          {
-            name = "statsd",
-            config = {
-              metrics = {"lmdb_usage", "shdict_usage", "status_count_per_user_per_route"}
-            },
-          },
-        },
-        expect = {
-          {
-            name = "statsd",
-            config = {
-              metrics = { "shdict_usage", "status_count_per_user_per_route", },
-              flush_timeout = 2,
-              queue_size = 1,
-              retry_count = 10,
-            },
-          },
-        },
-      },
     }
 
     for _, case in ipairs(cases) do
@@ -416,7 +390,7 @@ describe("kong.clustering.compat", function()
         end
       end)
 
-      it(function()
+      it("has_update", function()
         local config = { config_table = declarative.export_config() }
         local has_update = compat.update_compatible_payload(config, "3.0.0", "test_")
         assert.truthy(has_update)
@@ -587,7 +561,7 @@ describe("kong.clustering.compat", function()
 
       config = { config_table = declarative.export_config() }
     end)
-    it(function()
+    it("plugin.use_srv_name", function()
       local has_update, result = compat.update_compatible_payload(config, "3.0.0", "test_")
       assert.truthy(has_update)
       result = cjson_decode(inflate_gzip(result)).config_table

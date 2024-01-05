@@ -50,6 +50,8 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       res2.headers["Date"] = nil
       res1.headers["X-Kong-Admin-Latency"] = nil
       res2.headers["X-Kong-Admin-Latency"] = nil
+      res1.headers["Kong-Test-Transaction-Id"] = nil
+      res2.headers["Kong-Test-Transaction-Id"] = nil
 
       assert.same(res1.headers, res2.headers)
     end)
@@ -69,7 +71,7 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       assert.not_nil(res.headers["X-Kong-Admin-Latency"])
     end)
 
-    it("returns Kong's version number and tagline", function()
+    it("returns Kong's version number, edition info and tagline", function()
       local res = assert(client:send {
         method = "GET",
         path = "/"
@@ -77,6 +79,7 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
       assert.equal(meta._VERSION, json.version)
+      assert.equal(meta._VERSION:match("enterprise") and "enterprise" or "community", json.edition)
       assert.equal("Welcome to kong", json.tagline)
     end)
     it("returns a UUID as the node_id", function()
@@ -434,6 +437,7 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.is_table(json.fields)
+        assert.is_table(json.entity_checks)
       end
     end)
     it("returns 404 on a missing entity", function()
@@ -458,6 +462,30 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
           assert.is_nil(fdata.schema)
         end
       end
+    end)
+  end)
+
+  describe("/schemas/vaults/:name", function()
+    it("returns schema of all vaults", function()
+      for _, vault in ipairs({"env"}) do
+        local res = assert(client:send {
+          method = "GET",
+          path = "/schemas/vaults/" .. vault,
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.is_table(json.fields)
+      end
+    end)
+
+    it("returns 404 on a non-existent vault", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/schemas/vaults/not-present",
+      })
+      local body = assert.res_status(404, res)
+      local json = cjson.decode(body)
+      assert.same({ message = "No vault named 'not-present'" }, json)
     end)
   end)
 

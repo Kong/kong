@@ -1,10 +1,35 @@
-local helpers = require "spec.helpers"
-local cjson   = require "cjson"
-
+local helpers    = require "spec.helpers"
+local cjson      = require "cjson"
+local pl_file    = require "pl.file"
+local pl_stringx = require "pl.stringx"
 
 local UUID_PATTERN         = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 local UUID_COUNTER_PATTERN = UUID_PATTERN .. "#%d"
 local TRACKER_PATTERN      = "%d+%.%d+%.%d+%.%d+%-%d+%-%d+%-%d+%-%d+%-%d%d%d%d%d%d%d%d%d%d%.%d%d%d"
+local FILE_LOG_PATH        = os.tmpname()
+
+
+local function wait_json_log()
+  local json
+
+  assert
+      .with_timeout(10)
+      .ignore_exceptions(true)
+      .eventually(function()
+        local data = assert(pl_file.read(FILE_LOG_PATH))
+
+        data = pl_stringx.strip(data)
+        assert(#data > 0, "log file is empty")
+
+        data = data:match("%b{}")
+        assert(data, "log file does not contain JSON")
+
+        json = cjson.decode(data)
+      end)
+      .has_no_error("log file contains a valid JSON entry")
+
+  return json
+end
 
 
 for _, strategy in helpers.each_strategy() do
@@ -15,23 +40,23 @@ for _, strategy in helpers.each_strategy() do
       local bp = helpers.get_db_utils(strategy, nil, { "error-generator-last" })
 
       local route1 = bp.routes:insert {
-        hosts = { "correlation1.com" },
+        hosts = { "correlation1.test" },
       }
 
       local route2 = bp.routes:insert {
-        hosts = { "correlation2.com" },
+        hosts = { "correlation2.test" },
       }
 
       local route3 = bp.routes:insert {
-        hosts = { "correlation3.com" },
+        hosts = { "correlation3.test" },
       }
 
       local route4 = bp.routes:insert {
-        hosts = { "correlation-tracker.com" },
+        hosts = { "correlation-tracker.test" },
       }
 
       local route5 = bp.routes:insert {
-        hosts = { "correlation5.com" },
+        hosts = { "correlation5.test" },
       }
 
       local mock_service = bp.services:insert {
@@ -40,12 +65,12 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route6 = bp.routes:insert {
-        hosts     = { "correlation-timeout.com" },
+        hosts     = { "correlation-timeout.test" },
         service   = mock_service,
       }
 
       local route7 = bp.routes:insert {
-        hosts     = { "correlation-error.com" },
+        hosts     = { "correlation-error.test" },
       }
 
       local route_grpc = assert(bp.routes:insert {
@@ -56,6 +81,10 @@ for _, strategy in helpers.each_strategy() do
           url = helpers.grpcbin_url,
         }),
       })
+
+      local route_serializer = bp.routes:insert {
+        hosts = { "correlation-serializer.test" },
+      }
 
       bp.plugins:insert {
         name     = "correlation-id",
@@ -138,6 +167,20 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
+      bp.plugins:insert {
+        name   = "file-log",
+        route = { id = route_serializer.id },
+        config = {
+          path   = FILE_LOG_PATH,
+          reopen = true,
+        },
+      }
+
+      bp.plugins:insert {
+        name  = "correlation-id",
+        route = { id = route_serializer.id },
+      }
+
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -160,7 +203,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "correlation1.com"
+            ["Host"] = "correlation1.test"
           }
         })
         local body = assert.res_status(200, res)
@@ -172,7 +215,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "correlation1.com"
+            ["Host"] = "correlation1.test"
           }
         })
 
@@ -228,7 +271,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "correlation3.com"
+            ["Host"] = "correlation3.test"
           }
         })
         local body = assert.res_status(200, res)
@@ -240,7 +283,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "correlation3.com"
+            ["Host"] = "correlation3.test"
           }
         })
         body = assert.res_status(200, res)
@@ -257,7 +300,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "correlation-tracker.com"
+            ["Host"] = "correlation-tracker.test"
           }
         })
         local body = assert.res_status(200, res)
@@ -269,7 +312,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "correlation-tracker.com"
+            ["Host"] = "correlation-tracker.test"
           }
         })
         body = assert.res_status(200, res)
@@ -286,7 +329,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "correlation3.com"
+            ["Host"] = "correlation3.test"
           }
         })
         local body = assert.res_status(200, res)
@@ -301,7 +344,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "correlation-timeout.com"
+            ["Host"] = "correlation-timeout.test"
           }
         })
         assert.res_status(502, res)
@@ -312,7 +355,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "correlation-error.com"
+            ["Host"] = "correlation-error.test"
           }
         })
         assert.res_status(500, res)
@@ -323,7 +366,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "correlation2.com"
+            ["Host"] = "correlation2.test"
           }
         })
         assert.res_status(200, res)
@@ -334,7 +377,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "correlation2.com"
+            ["Host"] = "correlation2.test"
           }
         })
         local body = assert.res_status(200, res)
@@ -349,7 +392,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request",
         headers = {
-          ["Host"]            = "correlation2.com",
+          ["Host"]            = "correlation2.test",
           ["Kong-Request-ID"] = "foobar"
         }
       })
@@ -364,7 +407,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request",
         headers = {
-          ["Host"]            = "correlation2.com",
+          ["Host"]            = "correlation2.test",
           ["Kong-Request-ID"] = ""
         }
       })
@@ -379,7 +422,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request",
         headers = {
-          ["Host"]            = "correlation2.com",
+          ["Host"]            = "correlation2.test",
           ["Kong-Request-ID"] = " "
         }
       })
@@ -394,7 +437,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request",
         headers = {
-          ["Host"] = "correlation5.com",
+          ["Host"] = "correlation5.test",
         }
       })
       assert.response(res).has.status(418, res)
@@ -407,13 +450,42 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request",
         headers = {
-          ["Host"] = "correlation5.com",
+          ["Host"] = "correlation5.test",
           ["kong-request-id"] = "my very personal id",
         }
       })
       assert.response(res).has.status(418, res)
       local downstream_id = assert.response(res).has.header("kong-request-id")
       assert.equals("my very personal id", downstream_id)
+    end)
+
+    describe("log serializer", function()
+      before_each(function()
+        os.remove(FILE_LOG_PATH)
+      end)
+
+      after_each(function()
+        os.remove(FILE_LOG_PATH)
+      end)
+
+      it("contains the Correlation ID", function()
+        local correlation_id = "1234"
+        local r = proxy_client:get("/", {
+          headers = {
+            host = "correlation-serializer.test",
+            ["Kong-Request-ID"] = correlation_id,
+          },
+        })
+        assert.response(r).has.status(200)
+
+        local json_log = wait_json_log()
+        local request_id = json_log and json_log.request and json_log.request.id
+        assert.matches("^[a-f0-9]+$", request_id)
+        assert.True(request_id:len() == 32)
+
+        local logged_id = json_log and json_log.correlation_id
+        assert.equals(correlation_id, logged_id)
+      end)
     end)
   end)
 end

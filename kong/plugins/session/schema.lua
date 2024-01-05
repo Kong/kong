@@ -196,6 +196,7 @@ return {
           },
           { response_headers = headers },
           { request_headers = headers },
+          { read_body_for_logout = { type = "boolean", default = false } },
           { logout_methods = logout_methods },
           {
             logout_query_arg = {

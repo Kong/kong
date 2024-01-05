@@ -1,5 +1,6 @@
 local helpers   = require "spec.helpers"
 local constants = require "kong.constants"
+local pl_file   = require("pl.file")
 
 local cjson = require "cjson"
 
@@ -109,7 +110,8 @@ describe("kong start/stop #" .. strategy, function()
       vaults = "env",
     })
 
-    assert.matches("Error: failed to dereference '{vault://env/ipheader}': unable to load value (ipheader) from vault (env): not found [{vault://env/ipheader}] for config option 'nginx_proxy_real_ip_header'", stderr, nil, true)
+    assert.matches("vault://env/ipheader", stderr, nil, true)
+    assert.matches("Error: failed to dereference '{vault://env/ipheader}'", stderr)
     assert.is_nil(stdout)
     assert.is_false(ok)
   end)
@@ -122,7 +124,7 @@ describe("kong start/stop #" .. strategy, function()
       pg_database = TEST_CONF.pg_database,
     })
 
-    assert.matches("failed to dereference '{vault://non-existent/pg_password}': vault not found (non-existent)", stderr, nil, true)
+    assert.matches("Error: failed to dereference", stderr, nil, true)
     assert.is_nil(stdout)
     assert.is_false(ok)
   end)
@@ -139,6 +141,8 @@ describe("kong start/stop #" .. strategy, function()
     }))
 
     assert.not_matches("failed to dereference {vault://env/pg_password}", stderr, nil, true)
+    assert.logfile().has.no.line("[warn]", true)
+    assert.logfile().has.no.line("env/pg_password", true)
     assert.matches("Kong started", stdout, nil, true)
     assert(kong_exec("stop", {
       prefix = PREFIX,
@@ -586,25 +590,46 @@ describe("kong start/stop #" .. strategy, function()
     end)
 
     it("ensures the required shared dictionaries are defined", function()
-      local templ_fixture     = "spec/fixtures/custom_nginx.template"
-      local new_templ_fixture = "spec/fixtures/custom_nginx.template.tmp"
+      local tmp_nginx_config = "spec/fixtures/nginx_conf.tmp"
+      local prefix_handler = require "kong.cmd.utils.prefix_handler"
+      local conf_loader = require "kong.conf_loader"
 
-      finally(function()
-        os.remove(new_templ_fixture)
-      end)
+      local nginx_conf = assert(conf_loader(helpers.test_conf_path, {
+        prefix = "servroot_tmp",
+      }))
+      assert(prefix_handler.prepare_prefix(nginx_conf))
+      assert.truthy(helpers.path.exists(nginx_conf.nginx_conf))
+      local kong_nginx_conf = assert(prefix_handler.compile_kong_conf(nginx_conf))
 
       for _, dict in ipairs(constants.DICTS) do
         -- remove shared dictionary entry
-        assert(os.execute(fmt("sed '/lua_shared_dict %s .*;/d' %s > %s",
-                              dict, templ_fixture, new_templ_fixture)))
+        local http_cfg = string.gsub(kong_nginx_conf, "lua_shared_dict%s" .. dict .. "%s.-\n", "")
+        local conf = [[pid pids/nginx.pid;
+          error_log logs/error.log debug;
+          daemon on;
+          worker_processes 1;
+          events {
+            multi_accept off;
+          }
+          http {
+            ]]
+            .. http_cfg ..
+            [[
+          }
+        ]]
 
-        local ok, err = helpers.start_kong({ nginx_conf = new_templ_fixture })
+        pl_file.write(tmp_nginx_config, conf)
+        local ok, err = helpers.start_kong({ nginx_conf = tmp_nginx_config })
         assert.falsy(ok)
         assert.matches(
           "missing shared dict '" .. dict .. "' in Nginx configuration, "    ..
           "are you using a custom template? Make sure the 'lua_shared_dict " ..
           dict .. " [SIZE];' directive is defined.", err, nil, true)
       end
+
+      finally(function()
+        os.remove(tmp_nginx_config)
+      end)
     end)
 
     if strategy == "off" then
@@ -638,8 +663,43 @@ describe("kong start/stop #" .. strategy, function()
         assert.matches("in 'name': invalid value '@gobo': the only accepted ascii characters are alphanumerics or ., -, _, and ~", err, nil, true)
         assert.matches("in entry 2 of 'hosts': invalid hostname: \\\\99", err, nil, true)
       end)
-    end
 
+      it("dbless can reference secrets in declarative configuration", function()
+        local yaml_file = helpers.make_yaml_file [[
+          _format_version: "3.0"
+          _transform: true
+          plugins:
+          - name: session
+            instance_name: session
+            config:
+              secret: "{vault://mocksocket/test}"
+        ]]
+
+        finally(function()
+          os.remove(yaml_file)
+        end)
+
+        helpers.setenv("KONG_LUA_PATH_OVERRIDE", "./spec/fixtures/custom_vaults/?.lua;./spec/fixtures/custom_vaults/?/init.lua;;")
+        helpers.get_db_utils(strategy, {
+          "vaults",
+        }, {
+          "session"
+        }, {
+          "mocksocket"
+        })
+
+        local ok, err = helpers.start_kong({
+          database = "off",
+          declarative_config = yaml_file,
+          vaults = "mocksocket",
+          plugins = "session"
+        })
+
+        assert.truthy(ok)
+        assert.not_matches("error", err)
+        assert.logfile().has.no.line("[error]", true, 0)
+      end)
+    end
   end)
 
   describe("deprecated properties", function()

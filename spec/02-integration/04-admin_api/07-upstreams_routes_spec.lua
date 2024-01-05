@@ -404,7 +404,7 @@ describe("Admin API: #" .. strategy, function()
             })
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.equals("bad cookie name 'not a <> valid <> cookie name', allowed characters are A-Z, a-z, 0-9, '_', and '-'",
+            assert.equals([[contains one or more invalid characters. ASCII control characters (0-31;127), space, tab and the characters ()<>@,;:\"/?={}[] are not allowed.]],
                           json.fields.hash_on_cookie)
 
             -- Invalid cookie path
@@ -437,7 +437,7 @@ describe("Admin API: #" .. strategy, function()
             })
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.equals("bad cookie name 'not a <> valid <> cookie name', allowed characters are A-Z, a-z, 0-9, '_', and '-'",
+            assert.equals([[contains one or more invalid characters. ASCII control characters (0-31;127), space, tab and the characters ()<>@,;:\"/?={}[] are not allowed.]],
                           json.fields.hash_on_cookie)
 
             -- Invalid cookie path in hash fallback

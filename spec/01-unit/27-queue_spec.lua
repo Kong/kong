@@ -88,7 +88,12 @@ describe("plugin queue", function()
           else
             return real_now()
           end
-        end
+        end,
+        worker = {
+          exiting = function()
+            return false
+          end
+        }
       }
     })
   end)
@@ -230,6 +235,40 @@ describe("plugin queue", function()
     assert.equals("Five", last_entry)
   end)
 
+  it("batches messages during shutdown", function()
+    _G.ngx.worker.exiting = function()
+      return true
+    end
+    local process_count = 0
+    local first_entry, last_entry
+    local function enqueue(entry)
+      Queue.enqueue(
+        queue_conf({
+          name = "batch",
+          max_batch_size = 2,
+          max_coalescing_delay = 0.1,
+        }),
+        function(_, batch)
+          first_entry = first_entry or batch[1]
+          last_entry = batch[#batch]
+          process_count = process_count + 1
+          return true
+        end,
+        nil,
+        entry
+      )
+    end
+    enqueue("One")
+    enqueue("Two")
+    enqueue("Three")
+    enqueue("Four")
+    enqueue("Five")
+    wait_until_queue_done("batch")
+    assert.equals(3, process_count)
+    assert.equals("One", first_entry)
+    assert.equals("Five", last_entry)
+  end)
+
   it("observes the `max_coalescing_delay` parameter", function()
     local process_count = 0
     local first_entry, last_entry
@@ -282,19 +321,24 @@ describe("plugin queue", function()
   end)
 
   it("gives up sending after retrying", function()
-    Queue.enqueue(
-      queue_conf({
-        name = "retry-give-up",
-        max_batch_size = 1,
-        max_retry_time = 1,
-        max_coalescing_delay = 0.1,
-      }),
-      function()
-        return false, "FAIL FAIL FAIL"
-      end,
-      nil,
-      "Hello"
-    )
+    local function enqueue(entry)
+      Queue.enqueue(
+        queue_conf({
+          name = "retry-give-up",
+          max_batch_size = 1,
+          max_retry_time = 1,
+          max_coalescing_delay = 0.1,
+        }),
+        function()
+          return false, "FAIL FAIL FAIL"
+        end,
+        nil,
+        entry
+      )
+    end
+
+    enqueue("Hello")
+    enqueue("another value")
     wait_until_queue_done("retry-give-up")
     assert.match_re(log_messages, 'WARN .* handler could not process entries: FAIL FAIL FAIL')
     assert.match_re(log_messages, 'ERR .*1 queue entries were lost')
@@ -364,6 +408,41 @@ describe("plugin queue", function()
     wait_until_queue_done("capacity-exceeded")
     assert.equal("Six", processed[1])
     assert.match_re(log_messages, "INFO .*queue resumed processing")
+  end)
+
+  it("queue does not fail for max batch size = max entries", function()
+    local fail_process = true
+    local function enqueue(entry)
+      Queue.enqueue(
+        queue_conf({
+          name = "capacity-exceeded",
+          max_batch_size = 2,
+          max_entries = 2,
+          max_coalescing_delay = 0.1,
+        }),
+        function(_, batch)
+          ngx.sleep(1)
+          if fail_process then
+            return false, "FAIL FAIL FAIL"
+          end
+          return true
+        end,
+        nil,
+        entry
+      )
+    end
+    -- enqueue 2 entries, enough for first batch
+    for i = 1, 2 do
+      enqueue("initial batch: " .. tostring(i))
+    end
+    -- wait for max_coalescing_delay such that the first batch is processed (and will be stuck in retry loop, as our handler always fails)
+    ngx.sleep(0.1)
+    -- fill in some more entries
+    for i = 1, 2 do
+      enqueue("fill up: " .. tostring(i))
+    end
+    fail_process = false
+    wait_until_queue_done("capacity-exceeded")
   end)
 
   it("drops entries when it reaches its max_bytes", function()
@@ -675,5 +754,37 @@ describe("plugin queue", function()
     local converted_parameters = Queue.get_plugin_params("someplugin", legacy_parameters)
     assert.equals(123, converted_parameters.max_batch_size)
     assert.equals(234, converted_parameters.max_coalescing_delay)
+  end)
+
+  it("continue processing after hard error in handler", function()
+    local processed = {}
+    local function enqueue(entry)
+      Queue.enqueue(
+        queue_conf({
+          name = "continue-processing",
+          max_batch_size = 1,
+          max_entries = 5,
+          max_coalescing_delay = 0.1,
+          max_retry_time = 3,
+        }),
+        function(_, batch)
+          if batch[1] == "Two" then
+            error("hard error")
+          end
+          table.insert(processed, batch[1])
+          return true
+        end,
+        nil,
+        entry
+      )
+    end
+    enqueue("One")
+    enqueue("Two")
+    enqueue("Three")
+    wait_until_queue_done("continue-processing")
+    assert.equal("One", processed[1])
+    assert.equal("Three", processed[2])
+    assert.match_re(log_messages, 'WARN \\[\\] queue continue-processing: handler could not process entries: .*: hard error')
+    assert.match_re(log_messages, 'ERR \\[\\] queue continue-processing: could not send entries, giving up after \\d retries.  1 queue entries were lost')  
   end)
 end)

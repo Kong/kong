@@ -62,7 +62,7 @@ end
 -- @param upstream_id string
 -- @return the upstream table, or nil+error
 local function load_upstream_into_memory(upstream_id)
-  local upstream, err = kong.db.upstreams:select({id = upstream_id}, GLOBAL_QUERY_OPTS)
+  local upstream, err = kong.db.upstreams:select({ id = upstream_id }, GLOBAL_QUERY_OPTS)
   if not upstream then
     return nil, err
   end
@@ -105,7 +105,7 @@ local function load_upstreams_dict_into_memory()
   -- please refer to https://github.com/Kong/kong/pull/4301 and
   -- https://github.com/Kong/kong/pull/8974#issuecomment-1317788871
   if isempty(upstreams_dict) then
-    log(DEBUG, "empty upstreams dict. Could it be an uncatched database error?")
+    log(DEBUG, "no upstreams were specified")
   end
 
   return upstreams_dict

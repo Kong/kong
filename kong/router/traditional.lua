@@ -34,7 +34,7 @@ local type          = type
 local max           = math.max
 local band          = bit.band
 local bor           = bit.bor
-local yield         = require("kong.tools.utils").yield
+local yield         = require("kong.tools.yield").yield
 local server_name   = require("ngx.ssl").server_name
 
 
@@ -1298,6 +1298,10 @@ local function find_match(ctx)
           if matched_route.preserve_host then
             upstream_host = ctx.raw_req_host
           end
+        end
+
+        if matched_route.preserve_host and upstream_host == nil then
+          upstream_host = ctx.sni
         end
 
         return {

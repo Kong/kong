@@ -4,7 +4,7 @@ use Test::Nginx::Socket::Lua;
 use Test::Nginx::Socket::Lua::Stream;
 do "./t/Util.pm";
 
-plan tests => repeat_each() * (blocks() * 4) + 11;
+plan tests => repeat_each() * (blocks() * 4) + 12;
 
 run_tests();
 
@@ -1128,7 +1128,7 @@ finalize stream session: 200
 
 
 
-=== TEST 18: response.exit() does not set transfer-encoding from headers
+=== TEST 44: response.exit() does not set transfer-encoding from headers
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -1148,6 +1148,7 @@ GET /t
 --- response_body
 test
 --- response_headers
+! Transfer-Encoding
 Content-Length: 5
 X-test: test
 --- error_log

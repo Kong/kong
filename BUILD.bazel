@@ -1,6 +1,7 @@
-load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
-load("//build/nfpm:rules.bzl", "nfpm_pkg")
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
 load("@bazel_skylib//lib:selects.bzl", "selects")
+load("//build/nfpm:rules.bzl", "nfpm_pkg")
+load("//build/toolchain:managed_toolchain.bzl", "aarch64_glibc_distros")
 
 filegroup(
     name = "distribution_srcs",
@@ -46,6 +47,15 @@ nfpm_pkg(
     env = nfpm_env,
     packager = "apk",
     pkg_name = "kong",
+    visibility = ["//visibility:public"],
+)
+
+nfpm_pkg(
+    name = "kong_el9",
+    config = "//build:package/nfpm.yaml",
+    env = nfpm_env,
+    packager = "rpm",
+    pkg_name = "kong.el9",
     visibility = ["//visibility:public"],
 )
 
@@ -152,22 +162,90 @@ config_setting(
     visibility = ["//visibility:public"],
 )
 
+# --//:skip_webui=false
+bool_flag(
+    name = "skip_webui",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "skip_webui_flags",
+    flag_values = {
+        ":skip_webui": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
+# --//:wasmx=true
+bool_flag(
+    name = "wasmx",
+    build_setting_default = True,
+    visibility = ["//visibility:public"],
+)
+
+# --//:wasmx_module_flag=dynamic
+string_flag(
+    name = "wasmx_module_flag",
+    build_setting_default = "dynamic",
+    values = [
+        "dynamic",
+        "static",
+    ],
+)
+
+config_setting(
+    name = "wasmx_flag",
+    flag_values = {
+        ":wasmx": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "wasmx_static_mod",
+    flag_values = {
+        ":wasmx": "true",
+        ":wasmx_module_flag": "static",
+    },
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "wasmx_dynamic_mod",
+    flag_values = {
+        ":wasmx": "true",
+        ":wasmx_module_flag": "dynamic",
+    },
+    visibility = ["//visibility:public"],
+)
+
+# --//:wasm_runtime=wasmtime
+string_flag(
+    name = "wasm_runtime",
+    build_setting_default = "wasmtime",
+    values = [
+        "v8",
+        "wasmer",
+        "wasmtime",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+# --//:wasmx_el7_workaround=false
+bool_flag(
+    name = "wasmx_el7_workaround",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "wasmx_el7_workaround_flag",
+    flag_values = {
+        ":wasmx_el7_workaround": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
 ##### constraints, platforms and config_settings for cross-compile
-
-constraint_setting(name = "libc_version")
-
-constraint_value(
-    # use whatever glibc version provided by the system installed cross toolchain
-    name = "glibc_system",
-    constraint_setting = ":libc_version",
-    visibility = ["//visibility:public"],
-)
-
-constraint_value(
-    name = "musl",
-    constraint_setting = ":libc_version",
-    visibility = ["//visibility:public"],
-)
 
 constraint_setting(name = "cross_build_setting")
 
@@ -182,7 +260,7 @@ platform(
     constraint_values = [
         "@platforms//os:linux",
         "@platforms//cpu:x86_64",
-        ":glibc_system",
+        "//build/platforms/distro:generic",
         ":cross_build",
     ],
 )
@@ -192,7 +270,7 @@ platform(
     constraint_values = [
         "@platforms//os:linux",
         "@platforms//cpu:aarch64",
-        ":glibc_system",
+        "//build/platforms/distro:generic",
         ":cross_build",
     ],
 )
@@ -208,7 +286,7 @@ platform(
     constraint_values = [
         "@platforms//os:linux",
         "@platforms//cpu:x86_64",
-        ":musl",
+        "//build/platforms/distro:alpine",
         ":cross_build",
     ],
 )
@@ -224,10 +302,23 @@ platform(
     constraint_values = [
         "@platforms//os:linux",
         "@platforms//cpu:aarch64",
-        ":musl",
+        "//build/platforms/distro:alpine",
         ":cross_build",
     ],
 )
+
+[
+    platform(
+        name = vendor + "-crossbuild-aarch64",
+        constraint_values = [
+            "@platforms//os:linux",
+            "@platforms//cpu:aarch64",
+            "//build/platforms/distro:" + vendor,
+            ":cross_build",
+        ],
+    )
+    for vendor in aarch64_glibc_distros
+]
 
 # config_settings define a select() condition based on user-set constraint_values
 # see https://bazel.build/docs/configurable-attributes
@@ -246,7 +337,7 @@ config_setting(
     constraint_values = [
         "@platforms//os:linux",
         "@platforms//cpu:x86_64",
-        ":musl",
+        "//build/platforms/distro:alpine",
         ":cross_build",
     ],
     visibility = ["//visibility:public"],

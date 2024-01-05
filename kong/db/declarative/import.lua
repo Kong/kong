@@ -6,7 +6,7 @@ local utils = require("kong.tools.utils")
 local declarative_config = require("kong.db.schema.others.declarative_config")
 
 
-local cjson_encode = require("cjson.safe").encode
+local yield = require("kong.tools.yield").yield
 local marshall = require("kong.db.declarative.marshaller").marshall
 local schema_topological_sort = require("kong.db.schema.topological_sort")
 local nkeys = require("table.nkeys")
@@ -17,13 +17,8 @@ local type = type
 local pairs = pairs
 local next = next
 local insert = table.insert
-local min = math.min
 local null = ngx.null
-local md5 = ngx.md5
 local get_phase = ngx.get_phase
-local ngx_socket_tcp = ngx.socket.tcp
-local yield = utils.yield
-local sha256 = utils.sha256_hex
 
 
 local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
@@ -138,10 +133,6 @@ local function unique_field_key(schema_name, ws_id, field, value, unique_across_
   if unique_across_ws then
     ws_id = ""
   end
-
-  -- LMDB imposes a default limit of 511 for keys, but the length of our unique
-  -- value might be unbounded, so we'll use a checksum instead of the raw value
-  value = sha256(value)
 
   return schema_name .. "|" .. ws_id .. "|" .. field .. ":" .. value
 end
@@ -443,8 +434,10 @@ end
 
 local load_into_cache_with_events
 do
-  local IS_HTTP_SUBSYSTEM = ngx.config.subsystem == "http"
-  local STREAM_CONFIG_SOCK = "unix:" .. ngx.config.prefix() .. "/stream_config.sock"
+  local events = require("kong.runloop.events")
+
+  local md5 = ngx.md5
+  local min = math.min
 
   local exiting = ngx.worker.exiting
 
@@ -453,80 +446,50 @@ do
       return nil, "exiting"
     end
 
-    local reconfigure_data
-    local worker_events = kong.worker_events
-
     local ok, err, default_ws = load_into_cache(entities, meta, hash)
-    if ok then
-      local router_hash
-      local plugins_hash
-      local balancer_hash
-      if hashes then
-        if hashes.routes ~= DECLARATIVE_EMPTY_CONFIG_HASH then
-          router_hash = md5(hashes.services .. hashes.routes)
-        else
-          router_hash = DECLARATIVE_EMPTY_CONFIG_HASH
-        end
-
-        plugins_hash = hashes.plugins
-
-        local upstreams_hash = hashes.upstreams
-        local targets_hash   = hashes.targets
-        if upstreams_hash ~= DECLARATIVE_EMPTY_CONFIG_HASH or
-           targets_hash   ~= DECLARATIVE_EMPTY_CONFIG_HASH
-        then
-          balancer_hash = md5(upstreams_hash .. targets_hash)
-
-        else
-          balancer_hash = DECLARATIVE_EMPTY_CONFIG_HASH
-        end
+    if not ok then
+      if err:find("MDB_MAP_FULL", nil, true) then
+        return nil, "map full"
       end
 
-      reconfigure_data = {
-        default_ws,
-        router_hash,
-        plugins_hash,
-        balancer_hash,
-      }
-
-      ok, err = worker_events.post("declarative", "reconfigure", reconfigure_data)
-      if ok ~= "done" then
-        return nil, "failed to broadcast reconfigure event: " .. (err or ok)
-      end
-
-    elseif err:find("MDB_MAP_FULL", nil, true) then
-      return nil, "map full"
-
-    else
       return nil, err
     end
 
-    if IS_HTTP_SUBSYSTEM and #kong.configuration.stream_listeners > 0 then
-      -- update stream if necessary
+    local router_hash
+    local plugins_hash
+    local balancer_hash
 
-      local json, err = cjson_encode(reconfigure_data)
-      if not json then
-        return nil, err
+    if hashes then
+      if hashes.routes ~= DECLARATIVE_EMPTY_CONFIG_HASH then
+        router_hash = md5(hashes.services .. hashes.routes)
+      else
+        router_hash = DECLARATIVE_EMPTY_CONFIG_HASH
       end
 
-      local sock = ngx_socket_tcp()
-      ok, err = sock:connect(STREAM_CONFIG_SOCK)
-      if not ok then
-        return nil, err
+      plugins_hash = hashes.plugins
+
+      local upstreams_hash = hashes.upstreams
+      local targets_hash   = hashes.targets
+      if upstreams_hash ~= DECLARATIVE_EMPTY_CONFIG_HASH or
+         targets_hash   ~= DECLARATIVE_EMPTY_CONFIG_HASH
+      then
+        balancer_hash = md5(upstreams_hash .. targets_hash)
+      else
+        balancer_hash = DECLARATIVE_EMPTY_CONFIG_HASH
       end
-
-      local bytes
-      bytes, err = sock:send(json)
-      sock:close()
-
-      if not bytes then
-        return nil, err
-      end
-
-      assert(bytes == #json,
-             "incomplete reconfigure data sent to the stream subsystem")
     end
 
+    local reconfigure_data = {
+      default_ws,
+      router_hash,
+      plugins_hash,
+      balancer_hash,
+    }
+
+    ok, err = events.declarative_reconfigure_notify(reconfigure_data)
+    if not ok then
+      return nil, err
+    end
 
     if exiting() then
       return nil, "exiting"
@@ -544,7 +507,7 @@ do
   local DECLARATIVE_LOCK_KEY = "declarative:lock"
 
   -- make sure no matter which path it exits, we released the lock.
-  load_into_cache_with_events = function(entities, meta, hash, hashes)
+  load_into_cache_with_events = function(entities, meta, hash, hashes, transaction_id)
     local kong_shm = ngx.shared.kong
 
     local ok, err = kong_shm:add(DECLARATIVE_LOCK_KEY, 0, DECLARATIVE_LOCK_TTL)
@@ -559,6 +522,11 @@ do
     end
 
     ok, err = load_into_cache_with_events_no_lock(entities, meta, hash, hashes)
+
+    if ok and transaction_id then
+      ok, err = kong_shm:set("declarative:current_transaction_id", transaction_id)
+    end
+
     kong_shm:delete(DECLARATIVE_LOCK_KEY)
 
     return ok, err

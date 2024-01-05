@@ -158,6 +158,7 @@ local exposed_api = {
 
 local get_instance_id
 local reset_instance
+local reset_instances_for_plugin
 
 local protocol_implementations = {
   ["MsgPack:1"] = "kong.runloop.plugin_servers.mp_rpc",
@@ -200,10 +201,11 @@ function get_instance_id(plugin_name, conf)
     -- some other thread is already starting an instance
     -- prevent busy-waiting
     ngx_sleep(SLEEP_STEP)
-  
+
     -- to prevent a potential dead loop when someone failed to release the ID
     wait_count = wait_count + 1
     if wait_count > MAX_WAIT_STEPS then
+      running_instances[key] = nil
       return nil, "Could not claim instance_id for " .. plugin_name .. " (key: " .. key .. ")"
     end
     instance_info = running_instances[key]
@@ -211,7 +213,7 @@ function get_instance_id(plugin_name, conf)
 
   if instance_info
     and instance_info.id
-    and instance_info.seq == conf.__seq__
+    and instance_info.conf and instance_info.conf.__plugin_id == key
   then
     -- exact match, return it
     return instance_info.id
@@ -222,7 +224,6 @@ function get_instance_id(plugin_name, conf)
     -- we're the first, put something to claim
     instance_info          = {
       conf = conf,
-      seq = conf.__seq__,
     }
     running_instances[key] = instance_info
   else
@@ -232,16 +233,6 @@ function get_instance_id(plugin_name, conf)
   end
 
   local plugin_info = get_plugin_info(plugin_name)
-  local server_def = plugin_info.server_def
-
-  if server_def.socket_err then
-    return nil, server_def.socket_err
-  end
-
-  if not server_def.ready then
-    return nil, "not ready"
-  end
-
   local server_rpc  = get_server_rpc(plugin_info.server_def)
 
   local new_instance_info, err = server_rpc:call_start_instance(plugin_name, conf)
@@ -253,8 +244,8 @@ function get_instance_id(plugin_name, conf)
   end
 
   instance_info.id = new_instance_info.id
+  instance_info.plugin_name = plugin_name
   instance_info.conf = new_instance_info.conf
-  instance_info.seq = new_instance_info.seq
   instance_info.Config = new_instance_info.Config
   instance_info.rpc = new_instance_info.rpc
 
@@ -267,10 +258,29 @@ function get_instance_id(plugin_name, conf)
   return instance_info.id
 end
 
+function reset_instances_for_plugin(plugin_name)
+  for k, instance in pairs(running_instances) do
+    if instance.plugin_name == plugin_name then
+      running_instances[k] = nil
+    end
+  end
+end
+
 --- reset_instance: removes an instance from the table.
 function reset_instance(plugin_name, conf)
-  local key = type(conf) == "table" and kong.plugin.get_id() or plugin_name
-  running_instances[key] = nil
+  --
+  -- the same plugin (which acts as a plugin server) is shared among
+  -- instances of the plugin; for example, the same plugin can be applied
+  -- to many routes
+  -- `reset_instance` is called when (but not only) the plugin server died;
+  -- in such case, all associated instances must be removed, not only the current
+  --
+  reset_instances_for_plugin(plugin_name)
+
+  local ok, err = kong.worker_events.post("plugin_server", "reset_instances", { plugin_name = plugin_name })
+  if not ok then
+    kong.log.err("failed to post plugin_server reset_instances event: ", err)
+  end
 end
 
 
@@ -373,23 +383,22 @@ end
 
 
 function plugin_servers.start()
-  if worker_id() == 0 then
-    local pluginserver_timer = proc_mgmt.pluginserver_timer
-
-    for _, server_def in ipairs(proc_mgmt.get_server_defs()) do
-      if server_def.start_command then
-        native_timer_at(0, pluginserver_timer, server_def)
-      end
-    end
+  if worker_id() ~= 0 then
+    return
   end
 
-  local connection_check_timer = proc_mgmt.connection_check_timer
+  local pluginserver_timer = proc_mgmt.pluginserver_timer
 
   for _, server_def in ipairs(proc_mgmt.get_server_defs()) do
     if server_def.start_command then
-      native_timer_at(0, connection_check_timer, server_def)
+      native_timer_at(0, pluginserver_timer, server_def)
     end
   end
+
+  -- in case plugin server restarts, all workers need to update their defs
+  kong.worker_events.register(function (data)
+    reset_instances_for_plugin(data.plugin_name)
+  end, "plugin_server", "reset_instances")
 end
 
 function plugin_servers.stop()

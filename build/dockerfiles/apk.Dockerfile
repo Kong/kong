@@ -1,5 +1,5 @@
 ARG KONG_BASE_IMAGE=alpine:3.16
-FROM $KONG_BASE_IMAGE
+FROM --platform=$TARGETPLATFORM $KONG_BASE_IMAGE
 
 LABEL maintainer="Kong Docker Maintainers <docker@konghq.com> (@team-gateway-bot)"
 
@@ -17,7 +17,8 @@ ARG KONG_ARTIFACT=kong.${TARGETARCH}.apk.tar.gz
 ARG KONG_ARTIFACT_PATH=
 COPY ${KONG_ARTIFACT_PATH}${KONG_ARTIFACT} /tmp/kong.apk.tar.gz
 
-RUN apk add --virtual .build-deps tar gzip \
+RUN apk upgrade --update-cache \
+    && apk add --virtual .build-deps tar gzip \
     && tar -C / -xzf /tmp/kong.apk.tar.gz \
     && apk add --no-cache libstdc++ libgcc pcre perl tzdata libcap zlib zlib-dev bash yaml \
     && adduser -S kong \

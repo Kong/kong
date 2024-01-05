@@ -40,19 +40,25 @@ local fixtures = {
                       ngx.header["Content-Length"] = 0
 
                     elseif string.match(ngx.var.uri, "functionWithBase64EncodedResponse") then
+                      ngx.header["Content-Type"] = "application/json"
                       ngx.say("{\"statusCode\": 200, \"body\": \"dGVzdA==\", \"isBase64Encoded\": true}")
 
                     elseif string.match(ngx.var.uri, "functionWithNotBase64EncodedResponse") then
+                      ngx.header["Content-Type"] = "application/json"
                       ngx.say("{\"statusCode\": 200, \"body\": \"dGVzdA=\", \"isBase64Encoded\": false}")
 
                     elseif string.match(ngx.var.uri, "functionWithIllegalBase64EncodedResponse") then
                       ngx.say("{\"statusCode\": 200, \"body\": \"dGVzdA=\", \"isBase64Encoded\": \"abc\"}")
 
                     elseif string.match(ngx.var.uri, "functionWithMultiValueHeadersResponse") then
+                      ngx.header["Content-Type"] = "application/json"
                       ngx.say("{\"statusCode\": 200, \"headers\": { \"Age\": \"3600\"}, \"multiValueHeaders\": {\"Access-Control-Allow-Origin\": [\"site1.com\", \"site2.com\"]}}")
 
                     elseif string.match(ngx.var.uri, "functionEcho") then
                       require("spec.fixtures.mock_upstream").send_default_json_response()
+
+                    elseif string.match(ngx.var.uri, "functionWithTransferEncodingHeader") then
+                      ngx.say("{\"statusCode\": 200, \"headers\": { \"Transfer-Encoding\": \"chunked\", \"transfer-encoding\": \"chunked\"}}")
 
                     elseif type(res) == 'string' then
                       ngx.header["Content-Length"] = #res + 1

@@ -22,7 +22,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
 
     assert(bp.routes:insert {
       protocols     = { "http" },
-      hosts         = { "mockbin.com" },
+      hosts         = { "mockbin.test" },
       paths         = { "/" },
       service       = service_mockbin,
     })
@@ -148,11 +148,11 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         method  = "GET",
         path    = "/",
         headers = {
-          Host  = "mockbin.com",
+          Host  = "mockbin.test",
         },
       })
       body = assert.res_status(502, res)
-      assert.equal("An invalid response was received from the upstream server", body)
+      assert.matches("An invalid response was received from the upstream server", body)
       assert.logfile().has.no.line([[upstream SSL certificate does not match]] ..
         [[ "127.0.0.1" while SSL handshaking to upstream]], true, 2)
 
@@ -162,7 +162,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         method  = "GET",
         path    = "/",
         headers = {
-          Host  = "mockbin.com",
+          Host  = "mockbin.test",
         },
       })
       assert.res_status(502, res)
@@ -199,11 +199,11 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         method  = "GET",
         path    = "/",
         headers = {
-          Host  = "mockbin.com",
+          Host  = "mockbin.test",
         },
       })
       body = assert.res_status(502, res)
-      assert.equal("An invalid response was received from the upstream server", body)
+      assert.matches("An invalid response was received from the upstream server", body)
       assert.logfile().has.line([[upstream SSL certificate does not match]] ..
         [[ "127.0.0.1" while SSL handshaking to upstream]], true, 2)
 
@@ -213,7 +213,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         method  = "GET",
         path    = "/",
         headers = {
-          Host  = "mockbin.com",
+          Host  = "mockbin.test",
         },
       })
       assert.res_status(502, res)
@@ -578,11 +578,11 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         method  = "GET",
         path    = "/",
         headers = {
-          Host  = "mockbin.com",
+          Host  = "mockbin.test",
         },
       })
       body = assert.res_status(502, res)
-      assert.equal("An invalid response was received from the upstream server", body)
+      assert.matches("An invalid response was received from the upstream server", body)
       assert.logfile().has.no.line([[upstream SSL certificate does not match]] ..
         [[ "127.0.0.1" while SSL handshaking to upstream]], true, 2)
 
@@ -592,7 +592,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         method  = "GET",
         path    = "/",
         headers = {
-          Host  = "mockbin.com",
+          Host  = "mockbin.test",
         },
       })
       assert.res_status(502, res)
@@ -617,11 +617,11 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         method  = "GET",
         path    = "/",
         headers = {
-          Host  = "mockbin.com",
+          Host  = "mockbin.test",
         },
       })
       body = assert.res_status(502, res)
-      assert.equal("An invalid response was received from the upstream server", body)
+      assert.matches("An invalid response was received from the upstream server", body)
       assert.logfile().has.line([[upstream SSL certificate does not match]] ..
         [[ "127.0.0.1" while SSL handshaking to upstream]], true, 2)
 
@@ -631,7 +631,7 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
         method  = "GET",
         path    = "/",
         headers = {
-          Host  = "mockbin.com",
+          Host  = "mockbin.test",
         },
       })
       assert.res_status(502, res)

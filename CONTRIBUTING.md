@@ -6,27 +6,46 @@ document is for you! It intends to be both an entry point for newcomers to
 the community (with various technical backgrounds), and a guide/reference for
 contributors and maintainers.
 
+Please have a look at our [Community Pledge](./COMMUNITY_PLEDGE.md) to
+understand how we work with our open source contributors!
+
 Consult the Table of Contents below, and jump to the desired section.
 
-## Table of Contents
+# Table of Contents
 
-- [Where to seek for help?](#where-to-seek-for-help)
-  - [Enterprise Edition](#enterprise-edition)
-  - [Community Edition](#community-edition)
-- [Where to report bugs?](#where-to-report-bugs)
-- [Where to submit feature requests?](#where-to-submit-feature-requests)
-- [Contributing](#contributing)
-  - [Improving the documentation](#improving-the-documentation)
-  - [Proposing a new plugin](#proposing-a-new-plugin)
-  - [Submitting a patch](#submitting-a-patch)
-    - [Git branches](#git-branches)
-    - [Commit atomicity](#commit-atomicity)
-    - [Commit message format](#commit-message-format)
-    - [Static linting](#static-linting)
-    - [Writing tests](#writing-tests)
-    - [Writing performant code](#writing-performant-code)
-  - [Contributor T-shirt](#contributor-t-shirt)
-- [Code style](#code-style)
+* [Contributing to Kong :monkey_face:](#contributing-to-kong-monkey_face)
+    * [Where to seek for help?](#where-to-seek-for-help)
+        * [Enterprise Edition](#enterprise-edition)
+        * [Community Edition](#community-edition)
+    * [Where to report bugs?](#where-to-report-bugs)
+    * [Where to submit feature requests?](#where-to-submit-feature-requests)
+    * [Contributing](#contributing)
+        * [Improving the documentation](#improving-the-documentation)
+        * [Proposing a new plugin](#proposing-a-new-plugin)
+        * [Submitting a patch](#submitting-a-patch)
+            * [Git branches](#git-branches)
+            * [Commit atomicity](#commit-atomicity)
+            * [Commit message format](#commit-message-format)
+                * [Type](#type)
+                * [Scope](#scope)
+                * [Subject](#subject)
+                * [Body](#body)
+                * [Footer](#footer)
+                * [Examples](#examples)
+            * [Static linting](#static-linting)
+            * [Writing tests](#writing-tests)
+            * [Writing changelog](#writing-changelog)
+            * [Writing performant code](#writing-performant-code)
+            * [Adding Changelog](#adding-changelog)
+        * [Contributor T-shirt](#contributor-t-shirt)
+    * [Code style](#code-style)
+        * [Table of Contents - Code style](#table-of-contents---code-style)
+        * [Modules](#modules)
+        * [Variables](#variables)
+        * [Tables](#tables)
+        * [Strings](#strings)
+        * [Functions](#functions)
+        * [Conditional expressions](#conditional-expressions)
 
 ## Where to seek for help?
 
@@ -48,21 +67,18 @@ https://konghq.com/kong-enterprise-edition/ or contact us at
 
 ### Community Edition
 
-There are multiple channels where you can get answers from the community
-or the maintainers of this project:
-
-- Our public forum, [Kong Nation](https://discuss.konghq.com) is great for
-  asking questions, giving advice, and staying up-to-date with the latest
-  announcements. Kong Nation is frequented by Kong maintainers.
-- Two chat channels are used by the community, but are rarely visited by Kong
-  maintainers:
-  - [Gitter](https://gitter.im/Kong/kong)
-  - IRC, registered on freenode as
-    [#kong](https://webchat.freenode.net/?channels=kong)
+For questions around the use of the Community Edition, please use
+[GitHub Discussions](https://github.com/Kong/kong/discussions).  You
+can also join our [Community Slack](http://kongcommunity.slack.com/)
+for real-time conversations around Kong Gateway.
 
 **Please avoid opening GitHub issues for general questions or help**, as those
 should be reserved for actual bug reports. The Kong community is welcoming and
 more than willing to assist you on those channels!
+
+Our public forum, [Kong Nation](https://discuss.konghq.com) is great
+for asking questions, giving advice, and staying up-to-date with the
+latest announcements.
 
 [Back to TOC](#table-of-contents)
 
@@ -95,9 +111,7 @@ on [Submitting a patch](#submitting-a-patch) for details.
 
 ## Contributing
 
-We welcome contributions of all kinds, there is no need to do code to be helpful!
-All of the following tasks are noble and worthy contributions that you can
-make without coding:
+In addition to code enhancements and bug fixes, you can contribute by
 
 - Reporting a bug (see the [report bugs](#where-to-report-bugs) section)
 - Helping other members of the community on the support channels
@@ -126,13 +140,15 @@ https://github.com/Kong/docs.konghq.com/
 
 ### Proposing a new plugin
 
-We **do not** accept new plugins into the core repository. The plugins that are
-currently part of this repository are there because of historical reasons, but
-will be pushed into separate repositories in the foreseeable future.
+We **do not** generally accept new plugins into this repository. The
+plugins that are currently part of it form the foundational set of
+plugins which is available to all installations of Kong Gateway.
+Specialized functionality should be implemented in plugins residing in
+separate repository.
 
-If you are interested in writing a new plugin for your own needs, you should begin by
-reading the [Plugin Development
-Guide](https://docs.konghq.com/latest/plugin-development).
+If you are interested in writing a new plugin for your own needs, you
+should begin by reading the
+[Plugin Development Guide](https://docs.konghq.com/latest/plugin-development).
 
 If you already wrote a plugin, and are thinking about making it available to
 the community, we strongly encourage you to host it on a publicly available
@@ -152,9 +168,12 @@ To give visibility to your plugin, we advise that you:
 
 ### Submitting a patch
 
-Feel free to contribute fixes or minor features, we love to receive Pull
-Requests! If you are planning to develop a larger feature, come talk to us
-first!
+Feel free to contribute fixes or minor features by opening a Pull
+Request.  Small contributions are more likely to be merged quicker
+than changes which require a lot of time to review.  If you are
+planning to develop a larger feature, please talk to us first in the
+[GitHub Discussions](https://github.com/Kong/kong/discussions)
+section!
 
 When contributing, please follow the guidelines provided in this document. They
 will cover topics such as the different Git branches we use, the commit message
@@ -172,8 +191,8 @@ to verify a few things:
   development documentation for additional details)
 - The tests are passing: run `make test`, `make test-all`, or whichever is
   appropriate for your change
-- Do not update CHANGELOG.md yourself. Your change will be included therein
-  due time if it is accepted, no worries!
+- Do not update `CHANGELOG.md` inside your Pull Request. This file is automatically regenerated
+  and maintained during the release process.
 
 If the above guidelines are respected, your Pull Request has all its chances
 to be considered and will be reviewed by a maintainer.
@@ -256,6 +275,8 @@ Here is a template of what your commit message should look like:
 <footer>
 ```
 
+[Back to TOC](#table-of-contents)
+
 ##### Type
 
 The type of your commit indicates what type of change this commit is about. The
@@ -274,7 +295,9 @@ accepted types are:
   is too big to be considered just `perf`
 - **chore**: Maintenance changes related to code cleaning that isn't
   considered part of a refactor, build process updates, dependency bumps, or
-  auxiliary tools and libraries updates (LuaRocks, Travis-ci, etc...).
+  auxiliary tools and libraries updates (LuaRocks, GitHub Actions, etc...).
+
+[Back to TOC](#table-of-contents)
 
 ##### Scope
 
@@ -298,6 +321,8 @@ it is at your discretion, but here are some of the most frequent ones:
 - `*`: When the change affects too many parts of the codebase at once (this
   should be rare and avoided)
 
+[Back to TOC](#table-of-contents)
+
 ##### Subject
 
 Your subject should contain a succinct description of the change. It should be
@@ -306,6 +331,8 @@ written so that:
 - It uses the present, imperative tense: "fix typo", and not "fixed" or "fixes"
 - It is **not** capitalized: "fix typo", and not "Fix typo"
 - It does **not** include a period. :smile:
+
+[Back to TOC](#table-of-contents)
 
 ##### Body
 
@@ -316,10 +343,14 @@ motivation, the chosen implementation, and justify it.
 As previously mentioned, lines in the commit messages should not exceed 72
 characters.
 
+[Back to TOC](#table-of-contents)
+
 ##### Footer
 
 The footer is the ideal place to link to related material about the change:
 related GitHub issues, Pull Requests, fixed bug reports, etc...
+
+[Back to TOC](#table-of-contents)
 
 ##### Examples
 
@@ -373,7 +404,7 @@ $ luacheck .
 
 #### Writing tests
 
-We use [busted](https://olivinelabs.com/busted/) to write our tests. Your patch
+We use [busted](https://lunarmodules.github.io/busted/) to write our tests. Your patch
 must include the related test updates or additions, in the appropriate test
 suite.
 
@@ -415,6 +446,13 @@ assert.equal(t1, t2)
 -- good
 assert.same(t1, t2)
 ```
+
+[Back to TOC](#table-of-contents)
+
+#### Writing changelog
+
+Please follow the guidelines in [Changelog Readme](https://github.com/Kong/kong/blob/master/CHANGELOG/README.md)
+on how to write changelog for your change.
 
 [Back to TOC](#table-of-contents)
 
@@ -502,6 +540,16 @@ language you are using. :smile:
 
 [Back to TOC](#table-of-contents)
 
+#### Adding Changelog
+
+Every patch, except those 
+documentation-only changes, requires a changelog entry to be present inside your Pull Request.
+
+Please follow [the changelog instructions](https://github.com/Kong/gateway-changelog)
+to create the appropriate changelog file your Pull Request.
+
+[Back to TOC](#table-of-contents)
+
 ### Contributor T-shirt
 
 If your Pull Request to [Kong/kong](https://github.com/Kong/kong) was
@@ -546,6 +594,8 @@ the recommended style are welcome!**
 - [Functions](#functions)
 - [Conditional expressions](#conditional-expressions)
 
+[Back to TOC](#table-of-contents)
+
 ### Modules
 
 When writing a module (a Lua file), separate logical blocks of code with
@@ -573,6 +623,8 @@ return _M
 
 [Back to code style TOC](#table-of-contents---code-style)
 
+[Back to TOC](#table-of-contents)
+
 ### Variables
 
 When naming a variable or function, **do** use snake_case:
@@ -596,6 +648,8 @@ local MAX_LEN = 100
 ```
 
 [Back to code style TOC](#table-of-contents---code-style)
+
+[Back to TOC](#table-of-contents)
 
 ### Tables
 
@@ -625,7 +679,24 @@ local t = {foo="hello",bar="world"}
 local t = { foo = "hello", bar = "world" }
 ```
 
+Perfer `ipairs()` to `for` loop when iterating an array,
+which gives us more readability:
+
+```lua
+-- bad
+for i = 1, #t do
+  ...
+end
+
+-- good
+for _, v in ipairs(t) do
+  ...
+end
+```
+
 [Back to code style TOC](#table-of-contents---code-style)
+
+[Back to TOC](#table-of-contents)
 
 ### Strings
 
@@ -673,6 +744,8 @@ local str = "It is a very very very long string, " ..
 ```
 
 [Back to code style TOC](#table-of-contents---code-style)
+
+[Back to TOC](#table-of-contents)
 
 ### Functions
 
@@ -754,6 +827,8 @@ local str = string.format("SELECT * FROM users WHERE first_name = '%s'",
 ```
 
 [Back to code style TOC](#table-of-contents---code-style)
+
+[Back to TOC](#table-of-contents)
 
 ### Conditional expressions
 
@@ -882,3 +957,6 @@ end
 ```
 
 [Back to code style TOC](#table-of-contents---code-style)
+
+[Back to TOC](#table-of-contents)
+

@@ -2,18 +2,23 @@ local typedefs = require("kong.db.schema.typedefs")
 local router = require("resty.router.router")
 local deprecation = require("kong.deprecation")
 
-local CACHED_SCHEMA = require("kong.router.atc").schema
-local get_expression = require("kong.router.compat").get_expression
+local validate_route
+do
+  local get_schema     = require("kong.router.atc").schema
+  local get_expression = require("kong.router.compat").get_expression
 
-local function validate_expression(id, exp)
-  local r = router.new(CACHED_SCHEMA)
+  -- works with both `traditional_compatiable` and `expressions` routes`
+  validate_route = function(entity)
+    local schema = get_schema(entity.protocols)
+    local exp = entity.expression or get_expression(entity)
 
-  local res, err = r:add_matcher(0, id, exp)
-  if not res then
-    return nil, "Router Expression failed validation: " .. err
+    local ok, err = router.validate(schema, exp)
+    if not ok then
+      return nil, "Router Expression failed validation: " .. err
+    end
+
+    return true
   end
-
-  return true
 end
 
 local kong_router_flavor = kong and kong.configuration and kong.configuration.router_flavor
@@ -60,21 +65,57 @@ if kong_router_flavor == "expressions" then
 
     entity_checks = {
       { custom_entity_check = {
-        field_sources = { "expression", "id", },
-        fn = function(entity)
-          local ok, err = validate_expression(entity.id, entity.expression)
-          if not ok then
-            return nil, err
-          end
-
-          return true
-        end,
+        field_sources = { "expression", "id", "protocols", },
+        fn = validate_route,
       } },
     },
   }
 
 -- router_flavor in ('traditional_compatible', 'traditional')
 else
+  local PATH_V1_DEPRECATION_MSG
+
+  if kong_router_flavor == "traditional" then
+    PATH_V1_DEPRECATION_MSG =
+      "path_handling='v1' is deprecated and " ..
+      "will be removed in future version, " ..
+      "please use path_handling='v0' instead"
+
+  elseif kong_router_flavor == "traditional_compatible" then
+    PATH_V1_DEPRECATION_MSG =
+      "path_handling='v1' is deprecated and " ..
+      "will not work under 'traditional_compatible' router_flavor, " ..
+      "please use path_handling='v0' instead"
+  end
+
+  local entity_checks = {
+    { conditional = { if_field = "protocols",
+                      if_match = { elements = { type = "string", not_one_of = { "grpcs", "https", "tls", "tls_passthrough" }}},
+                      then_field = "snis",
+                      then_match = { len_eq = 0 },
+                      then_err = "'snis' can only be set when 'protocols' is 'grpcs', 'https', 'tls' or 'tls_passthrough'",
+                    }},
+    { custom_entity_check = {
+      field_sources = { "path_handling" },
+      fn = function(entity)
+        if entity.path_handling == "v1" then
+          deprecation(PATH_V1_DEPRECATION_MSG, { after = "3.0", })
+        end
+
+        return true
+      end,
+    }},
+  }
+
+  if kong_router_flavor == "traditional_compatible" then
+    table.insert(entity_checks,
+      { custom_entity_check = {
+        run_with_missing_fields = true,
+        fn = validate_route,
+      }}
+    )
+  end
+
   return {
     name         = "routes",
     primary_key  = { "id" },
@@ -134,46 +175,6 @@ else
       type = "foreign", reference = "services" }, },
     },
 
-    entity_checks = {
-      { conditional = { if_field = "protocols",
-                        if_match = { elements = { type = "string", not_one_of = { "grpcs", "https", "tls", "tls_passthrough" }}},
-                        then_field = "snis",
-                        then_match = { len_eq = 0 },
-                        then_err = "'snis' can only be set when 'protocols' is 'grpcs', 'https', 'tls' or 'tls_passthrough'",
-                      }},
-      { custom_entity_check = {
-        field_sources = { "path_handling" },
-        fn = function(entity)
-          if entity.path_handling == "v1" then
-            if kong_router_flavor == "traditional" then
-              deprecation("path_handling='v1' is deprecated and will be removed in future version, " ..
-                          "please use path_handling='v0' instead", { after = "3.0", })
-
-            elseif kong_router_flavor == "traditional_compatible" then
-              deprecation("path_handling='v1' is deprecated and will not work under traditional_compatible " ..
-                          "router_flavor, please use path_handling='v0' instead", { after = "3.0", })
-            end
-          end
-
-          return true
-        end,
-      }},
-      { custom_entity_check = {
-        run_with_missing_fields = true,
-        field_sources = { "id", "paths", },
-        fn = function(entity)
-          if kong_router_flavor == "traditional_compatible" and
-             type(entity.paths) == "table" and #entity.paths > 0 then
-            local exp = get_expression(entity)
-            local ok, err = validate_expression(entity.id, exp)
-            if not ok then
-              return nil, err
-            end
-          end
-
-          return true
-        end,
-      }},
-    },
+    entity_checks = entity_checks,
   }
 end

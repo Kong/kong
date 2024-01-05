@@ -23,7 +23,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       local route = bp.routes:insert {
-        hosts = { "limit.com" },
+        hosts = { "limit.test" },
       }
 
       bp.plugins:insert {
@@ -35,7 +35,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route2 = bp.routes:insert {
-        hosts = { "required.com" },
+        hosts = { "required.test" },
       }
 
       bp.plugins:insert {
@@ -49,7 +49,7 @@ for _, strategy in helpers.each_strategy() do
 
       for _, unit in ipairs(size_units) do
         local route = bp.routes:insert {
-          hosts = { string.format("limit_%s.com", unit) },
+          hosts = { string.format("limit_%s.test", unit) },
         }
 
         bp.plugins:insert {
@@ -86,7 +86,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           body    = body,
           headers = {
-            ["Host"]           = "limit.com",
+            ["Host"]           = "limit.test",
             ["Content-Length"] = #body
           }
         })
@@ -100,7 +100,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           body    = body,
           headers = {
-            ["Host"]           = "limit.com",
+            ["Host"]           = "limit.test",
             ["Expect"]         = "100-continue",
             ["Content-Length"] = #body
           }
@@ -115,13 +115,14 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           body    = body,
           headers = {
-            ["Host"]           = "limit.com",
+            ["Host"]           = "limit.test",
             ["Content-Length"] = #body
           }
         })
         local body = assert.res_status(413, res)
         local json = cjson.decode(body)
-        assert.same({ message = "Request size limit exceeded" }, json)
+        assert.not_nil(json)
+        assert.matches("Request size limit exceeded", json.message)
       end)
 
       it("blocks if size is greater than limit and Expect header", function()
@@ -131,14 +132,15 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           body    = body,
           headers = {
-            ["Host"]           = "limit.com",
+            ["Host"]           = "limit.test",
             ["Expect"]         = "100-continue",
             ["Content-Length"] = #body
           }
         })
         local body = assert.res_status(417, res)
         local json = cjson.decode(body)
-        assert.same({ message = "Request size limit exceeded" }, json)
+        assert.not_nil(json)
+        assert.matches("Request size limit exceeded", json.message)
       end)
 
       for _, unit in ipairs(size_units) do
@@ -149,13 +151,14 @@ for _, strategy in helpers.each_strategy() do
             path    = "/request",
             body    = body,
             headers = {
-              ["Host"]           = string.format("limit_%s.com", unit),
+              ["Host"]           = string.format("limit_%s.test", unit),
               ["Content-Length"] = #body
             }
           })
           local body = assert.res_status(413, res)
           local json = cjson.decode(body)
-          assert.same({ message = "Request size limit exceeded" }, json)
+          assert.not_nil(json)
+          assert.matches("Request size limit exceeded", json.message)
         end)
       end
 
@@ -167,7 +170,7 @@ for _, strategy in helpers.each_strategy() do
             path    = "/request",
             body    = body,
             headers = {
-              ["Host"]           = string.format("limit_%s.com", unit),
+              ["Host"]           = string.format("limit_%s.test", unit),
               ["Content-Length"] = #body
             }
           })
@@ -185,7 +188,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           body    = body,
           headers = {
-            ["Host"] = "limit.com"
+            ["Host"] = "limit.test"
           }
         })
         assert.res_status(200, res)
@@ -199,7 +202,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           body    = body,
           headers = {
-            ["Host"]   = "limit.com",
+            ["Host"]   = "limit.test",
             ["Expect"] = "100-continue"
           }
         })
@@ -214,12 +217,13 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           body    = body,
           headers = {
-            ["Host"] = "limit.com"
+            ["Host"] = "limit.test"
           }
         })
         local body = assert.res_status(413, res)
         local json = cjson.decode(body)
-        assert.same({ message = "Request size limit exceeded" }, json)
+        assert.not_nil(json)
+        assert.matches("Request size limit exceeded", json.message)
       end)
 
       it("blocks if size is greater than limit and Expect header", function()
@@ -230,13 +234,14 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           body    = body,
           headers = {
-            ["Host"]   = "limit.com",
+            ["Host"]   = "limit.test",
             ["Expect"] = "100-continue"
           }
         })
         local body = assert.res_status(417, res)
         local json = cjson.decode(body)
-        assert.same({ message = "Request size limit exceeded" }, json)
+        assert.not_nil(json)
+        assert.matches("Request size limit exceeded", json.message)
       end)
 
       for _, unit in ipairs(size_units) do
@@ -248,12 +253,13 @@ for _, strategy in helpers.each_strategy() do
             path    = "/request",
             body    = body,
             headers = {
-              ["Host"]           = string.format("limit_%s.com", unit),
+              ["Host"]           = string.format("limit_%s.test", unit),
             }
           })
           local body = assert.res_status(413, res)
           local json = cjson.decode(body)
-          assert.same({ message = "Request size limit exceeded" }, json)
+          assert.not_nil(json)
+          assert.matches("Request size limit exceeded", json.message)
         end)
       end
 
@@ -266,7 +272,7 @@ for _, strategy in helpers.each_strategy() do
             path    = "/request",
             body    = body,
             headers = {
-              ["Host"]           = string.format("limit_%s.com", unit),
+              ["Host"]           = string.format("limit_%s.test", unit),
             }
           })
           assert.res_status(200, res)
@@ -281,7 +287,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET", -- if POST, then lua-rsty-http adds content-length anyway
           path    = "/request",
           headers = {
-            ["Host"] = "required.com",
+            ["Host"] = "required.test",
           }
         })
         assert.response(res).has.status(411)

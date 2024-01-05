@@ -1,4 +1,5 @@
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
+load("@bazel_skylib//lib:selects.bzl", "selects")
 load("//build:build_system.bzl", "kong_directory_genrule", "kong_rules_group", "kong_template_file")
 
 exports_files([
@@ -7,6 +8,7 @@ exports_files([
 
 lib_deps = [
     "@openssl",  #TODO: select over fips (but select doesn't work in list comprehension)
+    "@libexpat",
 ]
 
 install_lib_deps_cmd = "\n".join([
@@ -29,22 +31,77 @@ lualib_deps = [
 install_lualib_deps_cmd = "\n".join([
     """
     DEP=$(pwd)/external/%s
-    # TODO: fix atc_router makefile so that we can choose to only install lualib
-    sed -i -e '/libatc_router.so/d' ${DEP}/Makefile
-    INSTALL=/usr/bin/install make --silent -C ${DEP} LUA_LIB_DIR=${BUILD_DESTDIR}/openresty/lualib install
+    if [[ ${DEP} == */atc_router ]]; then
+        INSTALL=/usr/bin/install make --silent -C ${DEP} LUA_LIB_DIR=${BUILD_DESTDIR}/openresty/lualib install-lualib
+    else
+        INSTALL=/usr/bin/install make --silent -C ${DEP} LUA_LIB_DIR=${BUILD_DESTDIR}/openresty/lualib install
+    fi
 """ % dep.lstrip("@").split("/")[0]
     for dep in lualib_deps
 ])
 
+install_webui_cmd = select({
+    "//conditions:default": """
+        cp -r $(location @kong_admin_gui//:dist_files) ${BUILD_DESTDIR}/kong/gui
+    """,
+    "@kong//:skip_webui_flags": "\n",
+})
+
+install_wasm_deps_cmd = select({
+    "@kong//:wasmx_flag": """
+    for fname in $(locations @ngx_wasm_module//:lua_libs); do
+        base=${fname##*/ngx_wasm_module/lib/}
+        dest="${BUILD_DESTDIR}/openresty/lualib/$base"
+        mkdir -p "$(dirname "$dest")"
+        cp -v "$fname" "$dest"
+    done
+
+    if [[ -d ${BUILD_DESTDIR}/openresty/nginx/lib ]]; then
+        # both v8 and wasmer currently depend on openresty/nginx/lib/libngx_wasm_rs.so,
+        # but in the case of wasmtime it is statically linked and thus not needed in
+        # the final package
+        if [[ -e ${BUILD_DESTDIR}/openresty/nginx/lib/libngx_wasm_rs.so ]]; then
+            copy_with_filter ${BUILD_DESTDIR}/openresty/nginx/lib ${BUILD_DESTDIR}/kong/lib
+        fi
+        rm -rf ${BUILD_DESTDIR}/openresty/nginx/lib
+    fi
+""",
+    "//conditions:default": "\n",
+})
+
+##### dynamic modules
+selects.config_setting_group(
+    name = "nginx_dynamic_module_support",
+    match_any = ["@kong//:wasmx_dynamic_mod"],
+)
+
+link_modules_dir = select({
+    ":nginx_dynamic_module_support": """
+    LN ${BUILD_DESTDIR}/openresty/nginx/modules ${BUILD_DESTDIR}/kong/modules
+""",
+    "//conditions:default": "",
+})
+
 kong_directory_genrule(
     name = "kong",
     srcs = [
-        "@openresty//:openresty",
-        "@openresty//:luajit",
         "@luarocks//:luarocks_make",
         "@luarocks//:luarocks_target",
+        "@openresty",
+        "@openresty//:luajit",
         "@protoc//:all_srcs",
-    ] + lib_deps + lualib_deps,
+    ] + select({
+        "@kong//:skip_webui_flags": [],
+        "//conditions:default": [
+            "@kong_admin_gui//:dist_files",
+        ],
+    }) + select({
+        "@kong//:wasmx_flag": [
+            "@ngx_wasm_module//:lua_libs",
+            "@openresty//:wasm_runtime",
+        ],
+        "//conditions:default": [],
+    }) + lib_deps + lualib_deps,
     cmd =
         """ set -e
         function copy_with_filter {
@@ -84,15 +141,13 @@ kong_directory_genrule(
 
         LUAROCKS=${WORKSPACE_PATH}/$(dirname '$(location @luarocks//:luarocks_make)')/luarocks_tree
         cp -r ${LUAROCKS}/. ${BUILD_DESTDIR}/.
-        rm ${BUILD_DESTDIR}/bin/lapis ${BUILD_DESTDIR}/bin/luarocks-admin
 
         ATC_ROUTER=${WORKSPACE_PATH}/$(location @atc_router)
         cp $ATC_ROUTER ${BUILD_DESTDIR}/openresty/lualib/.
 
         cp -r $(locations @protoc//:all_srcs) ${BUILD_DESTDIR}/kong/.
 
-    """ + install_lib_deps_cmd + install_lualib_deps_cmd +
-        """
+    """ + install_lib_deps_cmd + install_lualib_deps_cmd + install_webui_cmd + link_modules_dir + install_wasm_deps_cmd + """
         mkdir -p ${BUILD_DESTDIR}/etc/kong
         cp kong.conf.default ${BUILD_DESTDIR}/etc/kong/kong.conf.default
 

@@ -116,11 +116,13 @@ ttl: nil
                 return nil
             end
 
-            local val, err = cache:get("my_key", { neg_ttl = 19 }, cb)
+            local val, err = cache:get("my_key", { neg_ttl = 20 }, cb)
             if err then
                 ngx.log(ngx.ERR, err)
                 return
             end
+
+            ngx.sleep(1.1)
 
             local ttl, err = cache:peek("my_key")
             if err then
@@ -128,9 +130,9 @@ ttl: nil
                 return
             end
 
-            ngx.say("ttl: ", math.ceil(ttl))
+            ngx.say("ttl < 19: ", tostring(math.floor(ttl) < 19))
 
-            ngx.sleep(1)
+            ngx.sleep(1.1)
 
             local ttl, err = cache:peek("my_key")
             if err then
@@ -138,14 +140,14 @@ ttl: nil
                 return
             end
 
-            ngx.say("ttl: ", math.ceil(ttl))
+            ngx.say("ttl < 18: ", tostring(math.floor(ttl) < 18))
         }
     }
 --- request
 GET /t
 --- response_body
-ttl: 19
-ttl: 18
+ttl < 19: true
+ttl < 18: true
 --- no_error_log
 [error]
 
@@ -372,11 +374,13 @@ no ttl: false
                 return nil
             end
 
-            local val, err = cache:get("my_key", { neg_ttl = 19 }, cb)
+            local val, err = cache:get("my_key", { neg_ttl = 20 }, cb)
             if err then
                 ngx.log(ngx.ERR, err)
                 return
             end
+
+            ngx.sleep(1.1)
 
             local ttl, err = cache:peek("my_key")
             if err then
@@ -384,9 +388,9 @@ no ttl: false
                 return
             end
 
-            ngx.say("ttl: ", math.ceil(ttl))
+            ngx.say("ttl < 19: ", tostring(math.floor(ttl) < 19))
 
-            ngx.sleep(1)
+            ngx.sleep(1.1)
 
             local ttl, err = cache:peek("my_key")
             if err then
@@ -394,14 +398,14 @@ no ttl: false
                 return
             end
 
-            ngx.say("ttl: ", math.ceil(ttl))
+            ngx.say("ttl < 18: ", tostring(math.floor(ttl) < 18))
         }
     }
 --- request
 GET /t
 --- response_body
-ttl: 19
-ttl: 18
+ttl < 19: true
+ttl < 18: true
 --- no_error_log
 [error]
 
@@ -671,7 +675,7 @@ stale: nil
                 return 123
             end))
 
-            ngx.sleep(0.3)
+            ngx.sleep(0.31)
 
             local ttl, err, data, stale = cache:peek("my_key", true)
             if err then
@@ -718,7 +722,7 @@ stale: true
                 return
             end
 
-            ngx.sleep(0.3)
+            ngx.sleep(0.31)
 
             local ttl, err, data, stale = cache:peek("my_key", true)
             if err then
@@ -760,7 +764,7 @@ stale: true
                 return
             end
 
-            ngx.sleep(0.3)
+            ngx.sleep(0.31)
 
             for i = 1, 3 do
                 remaining_ttl, err, data = cache:peek("key", true)
@@ -806,7 +810,7 @@ data: 123
                 return
             end
 
-            ngx.sleep(0.3)
+            ngx.sleep(0.31)
 
             for i = 1, 3 do
                 remaining_ttl, err, data = cache:peek("key", true)

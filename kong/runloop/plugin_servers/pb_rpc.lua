@@ -3,8 +3,6 @@ local cjson = require "cjson.safe"
 local grpc_tools = require "kong.tools.grpc"
 local pb = require "pb"
 local lpack = require "lua_pack"
-local handle_not_ready = require("kong.runloop.plugin_servers.process").handle_not_ready
-local str_find = string.find
 
 local ngx = ngx
 local kong = kong
@@ -12,6 +10,7 @@ local cjson_encode = cjson.encode
 local t_unpack = table.unpack       -- luacheck: ignore table
 local st_pack = lpack.pack
 local st_unpack = lpack.unpack
+local str_find = string.find
 
 local proto_fname = "kong/pluginsocket.proto"
 
@@ -372,6 +371,9 @@ function Rpc:call_start_instance(plugin_name, conf)
     return nil, err
   end
 
+  kong.log.debug("started plugin server: seq ", conf.__seq__, ", worker ", ngx.worker.id(), ", instance id ",
+    status.instance_status.instance_id)
+
   return {
     id = status.instance_status.instance_id,
     conf = conf,
@@ -400,17 +402,20 @@ function Rpc:handle_event(plugin_name, conf, phase)
   end
 
   if not res or res == "" then
-    if err == "not ready" then
-      self.reset_instance(plugin_name, conf)
-      return handle_not_ready(plugin_name)
+    if err then
+      local err_lowered = err and err:lower() or ""
+
+      kong.log.err(err_lowered)
+
+      if err_lowered == "not ready" then
+        self.reset_instance(plugin_name, conf)
+      end
+      if str_find(err_lowered, "no plugin instance")
+        or str_find(err_lowered, "closed")  then
+        self.reset_instance(plugin_name, conf)
+        return self:handle_event(plugin_name, conf, phase)
+      end
     end
-    if err and (str_find(err:lower(), "no plugin instance", 1, true)
-      or str_find(err:lower(), "closed", 1, true)) then
-      kong.log.warn(err)
-      self.reset_instance(plugin_name, conf)
-      return self:handle_event(plugin_name, conf, phase)
-    end
-    kong.log.err(err)
   end
 end
 

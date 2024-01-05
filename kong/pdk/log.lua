@@ -10,13 +10,15 @@
 -- @module kong.log
 
 
+local buffer = require "string.buffer"
 local errlog = require "ngx.errlog"
 local ngx_re = require "ngx.re"
 local inspect = require "inspect"
 local ngx_ssl = require "ngx.ssl"
 local phase_checker = require "kong.pdk.private.phases"
 local utils = require "kong.tools.utils"
-
+local cycle_aware_deep_copy = utils.cycle_aware_deep_copy
+local constants = require "kong.constants"
 
 local sub = string.sub
 local type = type
@@ -36,6 +38,7 @@ local kong = kong
 local check_phase = phase_checker.check
 local split = utils.split
 local byte = string.byte
+local request_id_get = require "kong.tracing.request_id".get
 
 
 local _PREFIX = "[kong] "
@@ -44,6 +47,7 @@ local _DEFAULT_NAMESPACED_FORMAT = "%file_src:%line_src [%namespace] %message"
 local PHASES = phase_checker.phases
 local PHASES_LOG = PHASES.log
 local QUESTION_MARK = byte("?")
+local TYPE_NAMES = constants.RESPONSE_SOURCE.NAMES
 
 local phases_with_ctx =
     phase_checker.new(PHASES.rewrite,
@@ -136,34 +140,34 @@ end
 
 
 local serializers = {
-  [1] = function(buf, to_string, ...)
-    buf[1] = to_string((select(1, ...)))
+  [1] = function(buf, sep, to_string, ...)
+    buf:put(to_string((select(1, ...))))
   end,
 
-  [2] = function(buf, to_string, ...)
-    buf[1] = to_string((select(1, ...)))
-    buf[2] = to_string((select(2, ...)))
+  [2] = function(buf, sep, to_string, ...)
+    buf:put(to_string((select(1, ...)))):put(sep)
+       :put(to_string((select(2, ...))))
   end,
 
-  [3] = function(buf, to_string, ...)
-    buf[1] = to_string((select(1, ...)))
-    buf[2] = to_string((select(2, ...)))
-    buf[3] = to_string((select(3, ...)))
+  [3] = function(buf, sep, to_string, ...)
+    buf:put(to_string((select(1, ...)))):put(sep)
+       :put(to_string((select(2, ...)))):put(sep)
+       :put(to_string((select(3, ...))))
   end,
 
-  [4] = function(buf, to_string, ...)
-    buf[1] = to_string((select(1, ...)))
-    buf[2] = to_string((select(2, ...)))
-    buf[3] = to_string((select(3, ...)))
-    buf[4] = to_string((select(4, ...)))
+  [4] = function(buf, sep, to_string, ...)
+    buf:put(to_string((select(1, ...)))):put(sep)
+       :put(to_string((select(2, ...)))):put(sep)
+       :put(to_string((select(3, ...)))):put(sep)
+       :put(to_string((select(4, ...))))
   end,
 
-  [5] = function(buf, to_string, ...)
-    buf[1] = to_string((select(1, ...)))
-    buf[2] = to_string((select(2, ...)))
-    buf[3] = to_string((select(3, ...)))
-    buf[4] = to_string((select(4, ...)))
-    buf[5] = to_string((select(5, ...)))
+  [5] = function(buf, sep, to_string, ...)
+    buf:put(to_string((select(1, ...)))):put(sep)
+       :put(to_string((select(2, ...)))):put(sep)
+       :put(to_string((select(3, ...)))):put(sep)
+       :put(to_string((select(4, ...)))):put(sep)
+       :put(to_string((select(5, ...))))
   end,
 }
 
@@ -281,7 +285,7 @@ local function gen_log_func(lvl_const, imm_buf, to_string, stack_level, sep)
   to_string = to_string or tostring
   stack_level = stack_level or 2
 
-  local variadic_buf = {}
+  local variadic_buf = buffer.new()
 
   return function(...)
     local sys_log_level = nil
@@ -319,15 +323,16 @@ local function gen_log_func(lvl_const, imm_buf, to_string, stack_level, sep)
     end
 
     if serializers[n] then
-      serializers[n](variadic_buf, to_string, ...)
+      serializers[n](variadic_buf, sep or "" , to_string, ...)
 
     else
-      for i = 1, n do
-        variadic_buf[i] = to_string((select(i, ...)))
+      for i = 1, n - 1 do
+        variadic_buf:put(to_string((select(i, ...)))):put(sep or "")
       end
+      variadic_buf:put(to_string((select(n, ...))))
     end
 
-    local msg = concat(variadic_buf, sep, 1, n)
+    local msg = variadic_buf:get()
 
     for i = 1, imm_buf.n_messages do
       imm_buf[imm_buf.message_idxs[i]] = msg
@@ -735,6 +740,7 @@ do
   -- The following fields are included in the returned table:
   -- * `client_ip` - client IP address in textual format.
   -- * `latencies` - request/proxy latencies.
+  -- * `request.id` - request id.
   -- * `request.headers` - request headers.
   -- * `request.method` - request method.
   -- * `request.querystring` - request query strings.
@@ -758,6 +764,12 @@ do
   -- * `request.tls.version` - TLS/SSL version used by the connection.
   -- * `request.tls.cipher` - TLS/SSL cipher used by the connection.
   -- * `request.tls.client_verify` - mTLS validation result. Contents are the same as described in [$ssl_client_verify](https://nginx.org/en/docs/http/ngx_http_ssl_module.html#var_ssl_client_verify).
+  --
+  -- The following field is only present in requests where a tracing plugin (OpenTelemetry or Zipkin) is executed:
+  -- * `trace_id` - trace ID.
+  --
+  -- The following field is only present in requests where the Correlation ID plugin is executed:
+  -- * `correlation_id` - correlation ID.
   --
   -- **Warning:** This function may return sensitive data (e.g., API keys).
   -- Consider filtering before writing it to unsecured locations.
@@ -802,13 +814,17 @@ do
         end
       end
 
-      -- The value of upstream_status is a string, and status codes may be 
+      -- The value of upstream_status is a string, and status codes may be
       -- seperated by comma or grouped by colon, according to
       -- the nginx doc: http://nginx.org/en/docs/http/ngx_http_upstream_module.html#upstream_status
       local upstream_status = var.upstream_status or ""
 
+      local response_source = okong.response.get_source(ongx.ctx)
+      local response_source_name = TYPE_NAMES[response_source]
+
       local root = {
         request = {
+          id = request_id_get() or "",
           uri = request_uri,
           url = var.scheme .. "://" .. var.host .. ":" .. host_port .. request_uri,
           querystring = okong.request.get_query(), -- parameters, as a table
@@ -832,11 +848,12 @@ do
         },
         tries = (ctx.balancer_data or {}).tries,
         authenticated_entity = build_authenticated_entity(ctx),
-        route = ctx.route,
-        service = ctx.service,
-        consumer = ctx.authenticated_consumer,
+        route = cycle_aware_deep_copy(ctx.route),
+        service = cycle_aware_deep_copy(ctx.service),
+        consumer = cycle_aware_deep_copy(ctx.authenticated_consumer),
         client_ip = var.remote_addr,
         started_at = okong.request.get_start_time(),
+        source = response_source_name,
       }
 
       return edit_result(ctx, root)
@@ -873,9 +890,9 @@ do
         },
         tries = (ctx.balancer_data or {}).tries,
         authenticated_entity = build_authenticated_entity(ctx),
-        route = ctx.route,
-        service = ctx.service,
-        consumer = ctx.authenticated_consumer,
+        route = cycle_aware_deep_copy(ctx.route),
+        service = cycle_aware_deep_copy(ctx.service),
+        consumer = cycle_aware_deep_copy(ctx.authenticated_consumer),
         client_ip = var.remote_addr,
         started_at = okong.request.get_start_time(),
       }

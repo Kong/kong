@@ -75,7 +75,6 @@ local semaphore_new = semaphore.new
 local math_min = math.min
 local now = ngx.now
 local sleep = ngx.sleep
-local worker_exiting = ngx.worker.exiting
 local null = ngx.null
 
 
@@ -236,11 +235,17 @@ function Queue:process_once()
   -- We've got our first entry from the queue.  Collect more entries until max_coalescing_delay expires or we've collected
   -- max_batch_size entries to send
   while entry_count < self.max_batch_size
-    and self.max_coalescing_delay - (now() - data_started) >= COALESCE_MIN_TIME and not worker_exiting()
+    and self.max_coalescing_delay - (now() - data_started) >= COALESCE_MIN_TIME
   do
     -- Instead of waiting for the coalesce time to expire, we cap the semaphore wait to COALESCE_POLL_TIME
     -- so that we can check for worker shutdown periodically.
     local wait_time = math_min(self.max_coalescing_delay - (now() - data_started), COALESCE_POLL_TIME)
+
+    if ngx.worker.exiting() then
+      -- minimize coalescing delay during shutdown to quickly process remaining entries
+      self.max_coalescing_delay = COALESCE_MIN_TIME
+      wait_time = COALESCE_MIN_TIME
+    end
 
     ok, err = self.semaphore:wait(wait_time)
     if not ok and err ~= "timeout" then
@@ -251,15 +256,32 @@ function Queue:process_once()
     end
   end
 
+  local batch = {unpack(self.entries, self.front, self.front + entry_count - 1)}
+  for _ = 1, entry_count do
+    self:delete_frontmost_entry()
+  end
+  if self.queue_full then
+    self:log_info('queue resumed processing')
+    self.queue_full = false
+  end
+
   local start_time = now()
   local retry_count = 0
   while true do
     self:log_debug("passing %d entries to handler", entry_count)
-    ok, err = self.handler(self.handler_conf, {unpack(self.entries, self.front, self.front + entry_count - 1)})
-    if ok then
-      self:log_debug("handler processed %d entries sucessfully", entry_count)
+    local status
+    status, ok, err = pcall(self.handler, self.handler_conf, batch)
+    if status and ok == true then
+      self:log_debug("handler processed %d entries successfully", entry_count)
       break
     end
+
+    if not status then
+      -- protected call failed, ok is the error message
+      err = ok
+    end
+
+    self:log_warn("handler could not process entries: %s", tostring(err or "no error details returned by handler"))
 
     if not err then
       self:log_err("handler returned falsy value but no error information")
@@ -272,22 +294,11 @@ function Queue:process_once()
       break
     end
 
-    self:log_warn("handler could not process entries: %s", tostring(err))
-
     -- Delay before retrying.  The delay time is calculated by multiplying the configured initial_retry_delay with
     -- 2 to the power of the number of retries, creating an exponential increase over the course of each retry.
     -- The maximum time between retries is capped by the max_retry_delay configuration parameter.
     sleep(math_min(self.max_retry_delay, 2 ^ retry_count * self.initial_retry_delay))
     retry_count = retry_count + 1
-  end
-
-  -- Guard against queue shrinkage during handler invocation by using math.min below.
-  for _ = 1, math.min(entry_count, self:count()) do
-    self:delete_frontmost_entry()
-  end
-  if self.queue_full then
-    self:log_info('queue resumed processing')
-    self.queue_full = false
   end
 end
 

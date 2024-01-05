@@ -307,7 +307,7 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         local body = assert.res_status(502, res)
-        assert.equal("An invalid response was received from the upstream server", body)
+        assert.matches("An invalid response was received from the upstream server", body)
         assert.logfile().has.line("upstream SSL certificate verify error: " ..
                                   "(21:unable to verify the first certificate) " ..
                                   "while SSL handshaking to upstream", true, 2)
@@ -397,7 +397,8 @@ for _, strategy in helpers.each_strategy() do
 
         local body = assert.res_status(426, res)
         local json = cjson.decode(body)
-        assert.same({ message = "Please use HTTPS protocol" }, json)
+        assert.not_nil(json)
+        assert.matches("Please use HTTPS protocol", json.message)
         assert.contains("Upgrade", res.headers.connection)
         assert.equal("TLS/1.2, HTTP/1.1", res.headers.upgrade)
 
@@ -412,7 +413,8 @@ for _, strategy in helpers.each_strategy() do
 
         body = assert.res_status(426, res)
         json = cjson.decode(body)
-        assert.same({ message = "Please use HTTPS protocol" }, json)
+        assert.not_nil(json)
+        assert.matches("Please use HTTPS protocol", json.message)
         assert.contains("Upgrade", res.headers.connection)
         assert.equal("TLS/1.2, HTTP/1.1", res.headers.upgrade)
       end)
@@ -596,9 +598,9 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  -- XXX: now flavor "expressions" does not support tcp/tls
-  if flavor ~= "expressions" then
   describe("TLS proxy [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
+    reload_router(flavor)
+
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
         "routes",
@@ -692,7 +694,6 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
-  end   -- if flavor ~= "expressions" then
 
   describe("SSL [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
 

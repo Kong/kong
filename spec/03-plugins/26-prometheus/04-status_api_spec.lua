@@ -1,4 +1,5 @@
 local helpers = require "spec.helpers"
+local shell = require "resty.shell"
 
 local tcp_service_port = helpers.get_available_port()
 local tcp_proxy_port = helpers.get_available_port()
@@ -260,7 +261,7 @@ describe("Plugin: prometheus (access via status API)", function()
 
   it("does not log error if no service was matched", function()
     -- cleanup logs
-    os.execute(":> " .. helpers.test_conf.nginx_err_logs)
+    shell.run(":> " .. helpers.test_conf.nginx_err_logs, nil, 0)
 
     local res = assert(proxy_client:send {
       method  = "POST",
@@ -274,7 +275,7 @@ describe("Plugin: prometheus (access via status API)", function()
 
   it("does not log error during a scrape", function()
     -- cleanup logs
-    os.execute(":> " .. helpers.test_conf.nginx_err_logs)
+    shell.run(":> " .. helpers.test_conf.nginx_err_logs, nil, 0)
 
     get_metrics()
 

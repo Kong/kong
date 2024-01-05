@@ -1,6 +1,7 @@
 -- TODO: get rid of 'kong.meta'; this module is king
 local meta = require "kong.meta"
 local PDK = require "kong.pdk"
+local process = require "ngx.process"
 local phase_checker = require "kong.pdk.private.phases"
 local kong_cache = require "kong.cache"
 local kong_cluster_events = require "kong.cluster_events"
@@ -67,7 +68,8 @@ end
 
 
 local _GLOBAL = {
-  phases = phase_checker.phases,
+  phases                 = phase_checker.phases,
+  CURRENT_TRANSACTION_ID = 0,
 }
 
 
@@ -177,21 +179,31 @@ function _GLOBAL.init_worker_events()
 
   -- `kong.configuration.prefix` is already normalized to an absolute path,
   -- but `ngx.config.prefix()` is not
-  local prefix = configuration
-                 and configuration.prefix
-                 or require("pl.path").abspath(ngx.config.prefix())
+  local prefix = configuration and
+                 configuration.prefix or
+                 require("pl.path").abspath(ngx.config.prefix())
 
-  local sock = ngx.config.subsystem == "stream"
-               and "stream_worker_events.sock"
-               or "worker_events.sock"
+  local sock = ngx.config.subsystem == "stream" and
+               "stream_worker_events.sock" or
+               "worker_events.sock"
 
   local listening = "unix:" .. prefix .. "/" .. sock
+
+  local max_payload_len = configuration and
+                          configuration.worker_events_max_payload
+
+  if max_payload_len and max_payload_len > 65535 then   -- default is 64KB
+    ngx.log(ngx.WARN,
+            "Increasing 'worker_events_max_payload' value has potential " ..
+            "negative impact on Kong's response latency and memory usage")
+  end
 
   opts = {
     unique_timeout = 5,     -- life time of unique event data in lrucache
     broker_id = 0,          -- broker server runs in nginx worker #0
     listening = listening,  -- unix socket for broker listening
     max_queue_len = 1024 * 50,  -- max queue len for events buffering
+    max_payload_len = max_payload_len,  -- max payload size in bytes
   }
 
   worker_events = require "resty.events.compat"
@@ -216,7 +228,8 @@ end
 
 
 local function get_lru_size(kong_config)
-  if (kong_config.role == "control_plane")
+  if (process.type() == "privileged agent")
+  or (kong_config.role == "control_plane")
   or (kong_config.role == "traditional" and #kong_config.proxy_listeners  == 0
                                         and #kong_config.stream_listeners == 0)
   then
@@ -274,6 +287,21 @@ function _GLOBAL.init_core_cache(kong_config, cluster_events, worker_events)
     resty_lock_opts = LOCK_OPTS,
     lru_size        = get_lru_size(kong_config),
   })
+end
+
+
+function _GLOBAL.init_timing()
+  return require("kong.timing")
+end
+
+
+function _GLOBAL.get_current_transaction_id()
+  local rows, err = kong.db.connector:query("select txid_current() as _pg_transaction_id")
+  if not rows then
+    return nil, "could not query postgres for current transaction id: " .. err
+  else
+    return tonumber(rows[1]._pg_transaction_id)
+  end
 end
 
 

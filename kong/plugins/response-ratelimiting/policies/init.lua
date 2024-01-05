@@ -85,9 +85,13 @@ local function get_redis_connection(conf)
     if is_present(conf.redis_password) then
       local ok, err
       if is_present(conf.redis_username) then
-        ok, err = red:auth(conf.redis_username, conf.redis_password)
+        ok, err = kong.vault.try(function(cfg)
+          return red:auth(cfg.redis_username, cfg.redis_password)
+        end, conf)
       else
-        ok, err = red:auth(conf.redis_password)
+        ok, err = kong.vault.try(function(cfg)
+          return red:auth(cfg.redis_password)
+        end, conf)
       end
       if not ok then
         kong.log.err("failed to auth Redis: ", err)

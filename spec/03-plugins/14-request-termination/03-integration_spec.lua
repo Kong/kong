@@ -17,7 +17,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       bp.routes:insert({
-        hosts = { "api1.request-termination.com" },
+        hosts = { "api1.request-termination.test" },
       })
 
       bp.plugins:insert {
@@ -71,7 +71,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"]   = "api1.request-termination.com",
+            ["Host"]   = "api1.request-termination.test",
             ["apikey"] = "kong",
           },
         })

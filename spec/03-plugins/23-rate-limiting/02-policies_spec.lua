@@ -5,7 +5,7 @@ local timestamp = require "kong.tools.timestamp"
 local SYNC_RATE_REALTIME = -1
 
 --[[
-  basically a copy of `get_local_key()` 
+  basically a copy of `get_local_key()`
   in `kong/plugins/rate-limiting/policies/init.lua`
 --]]
 local EMPTY_UUID = "00000000-0000-0000-0000-000000000000"
@@ -41,7 +41,7 @@ describe("Plugin: rate-limiting (policies)", function()
   lazy_setup(function()
     package.loaded["kong.plugins.rate-limiting.policies"] = nil
     policies = require "kong.plugins.rate-limiting.policies"
-    
+
     if not _G.kong then
       _G.kong.db = {}
     end
@@ -80,15 +80,24 @@ describe("Plugin: rate-limiting (policies)", function()
     end)
 
     it("expires after due time", function ()
-      local timestamp = 569000048000
+      local current_timestamp = 1553263548
+      local periods = timestamp.get_timestamps(current_timestamp)
 
-      assert(policies['local'].increment(conf, {second=100}, identifier, timestamp+20, 1))
-      local v = assert(shm:ttl(get_local_key(conf, identifier, 'second', timestamp)))
+      local limits = {
+        second = 100,
+      }
+      local cache_key = get_local_key(conf, identifier, 'second', periods.second)
+
+      assert(policies['local'].increment(conf, limits, identifier, current_timestamp, 1))
+      local v = assert(shm:ttl(cache_key))
       assert(v > 0, "wrong value")
       ngx.sleep(1.020)
 
-      v = shm:ttl(get_local_key(conf, identifier, 'second', timestamp))
+      shm:flush_expired()
+      local err
+      v, err = shm:ttl(cache_key)
       assert(v == nil, "still there")
+      assert.matches("not found", err)
     end)
   end)
 
@@ -176,53 +185,63 @@ describe("Plugin: rate-limiting (policies)", function()
     end)
   end
 
-  for _, sync_rate in ipairs{1, SYNC_RATE_REALTIME} do
-    describe("redis with sync rate: " .. sync_rate, function()
-      local identifier = uuid()
-      local conf       = {
-        route_id = uuid(),
-        service_id = uuid(),
-        redis_host = helpers.redis_host,
-        redis_port = helpers.redis_port,
-        redis_database = 0,
-        sync_rate = sync_rate,
-      }
+  for _, sync_rate in ipairs{0.5, SYNC_RATE_REALTIME} do
+    local current_timestamp = 1424217600
+    local periods = timestamp.get_timestamps(current_timestamp)
 
-      before_each(function()
-        local red = require "resty.redis"
-        local redis = assert(red:new())
-        redis:set_timeout(1000)
-        assert(redis:connect(conf.redis_host, conf.redis_port))
-        redis:flushall()
-        redis:close()
-      end)
+    for period in pairs(periods) do
+      describe("redis with sync rate: " .. sync_rate .. " period: " .. period, function()
+        local identifier = uuid()
+        local conf       = {
+          route_id = uuid(),
+          service_id = uuid(),
+          redis_host = helpers.redis_host,
+          redis_port = helpers.redis_port,
+          redis_database = 0,
+          sync_rate = sync_rate,
+        }
 
-      it("increase & usage", function()
-        --[[
-          Just a simple test:
-          - increase 1
-          - check usage == 1
-          - increase 1
-          - check usage == 2
-          - increase 1 (beyond the limit)
-          - check usage == 3
-        --]]
+        before_each(function()
+          local red = require "resty.redis"
+          local redis = assert(red:new())
+          redis:set_timeout(1000)
+          assert(redis:connect(conf.redis_host, conf.redis_port))
+          redis:flushall()
+          redis:close()
+        end)
 
-        local current_timestamp = 1424217600
-        local periods = timestamp.get_timestamps(current_timestamp)
-
-        for period in pairs(periods) do
+        it("increase & usage", function()
+          --[[
+            Just a simple test:
+            - increase 1
+            - check usage == 1
+            - increase 1
+            - check usage == 2
+            - increase 1 (beyond the limit)
+            - check usage == 3
+          --]]
 
           local metric = assert(policies.redis.usage(conf, identifier, period, current_timestamp))
           assert.equal(0, metric)
 
           for i = 1, 3 do
-            assert(policies.redis.increment(conf, { [period] = 2 }, identifier, current_timestamp, 1))
-            metric = assert(policies.redis.usage(conf, identifier, period, current_timestamp))
-            assert.equal(i, metric)
+            -- "second" keys expire too soon to check the async increment.
+            -- Let's verify all the other scenarios:
+            if not (period == "second" and sync_rate ~= SYNC_RATE_REALTIME) then
+              assert(policies.redis.increment(conf, { [period] = 2 }, identifier, current_timestamp, 1))
+
+              -- give time to the async increment to happen
+              if sync_rate ~= SYNC_RATE_REALTIME then
+                local sleep_time = 1 + (sync_rate > 0 and sync_rate or 0)
+                ngx.sleep(sleep_time)
+              end
+
+              metric = assert(policies.redis.usage(conf, identifier, period, current_timestamp))
+              assert.equal(i, metric)
+            end
           end
-        end
+        end)
       end)
-    end)
+    end
   end
 end)

@@ -51,11 +51,19 @@ function checks.validate_header(name, value)
 
   local tvalue = type(value)
   if tvalue ~= "string" then
-    if tvalue == "number" or tvalue == "boolean" then
+    if tvalue == "table" then
+      for _, vv in ipairs(value) do
+        local tvv = type(vv)
+        if tvv ~= "string" then
+          error(fmt("invalid header value in array %q: got %s, " ..
+                              "expected string", name, tvv), 3)
+        end
+      end
+    elseif tvalue == "number" or tvalue == "boolean" then
       value = tostring(value)
     else
       error(fmt("invalid header value for %q: got %s, expected " ..
-                          "string, number or boolean", name, tvalue), 3)
+                          "array of string, string, number or boolean", name, tvalue), 3)
     end
   end
   return value

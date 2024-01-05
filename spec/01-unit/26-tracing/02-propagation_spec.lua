@@ -6,6 +6,8 @@ local table_merge = require "kong.tools.utils".table_merge
 
 local fmt  = string.format
 
+local openssl_bignumber = require "resty.openssl.bn"
+
 local function to_hex_ids(arr)
   return { arr[1],
            arr[2] and to_hex(arr[2]) or nil,
@@ -719,6 +721,113 @@ describe("propagation.parse", function()
       end)
     end)
   end)
+
+  describe("GCP header parsing", function()
+    local warn
+    setup(function()
+      warn = spy.on(kong.log, "warn")
+    end)
+    before_each(function()
+      warn:clear()
+    end)
+    teardown(function()
+      warn:revert()
+    end)
+
+    it("valid header with sampling", function()
+      local cloud_trace_context = fmt("%s/%s;o=1", trace_id_32, span_id)
+      local t = { parse({ ["x-cloud-trace-context"] = cloud_trace_context }) }
+      assert.same(
+        { "gcp", trace_id_32, tostring(tonumber(span_id)), nil, true },
+        { t[1], to_hex(t[2]), openssl_bignumber.from_binary(t[3]):to_dec(), t[4], t[5] }
+      )
+      assert.spy(warn).not_called()
+    end)
+
+    it("valid header without sampling", function()
+      local cloud_trace_context = fmt("%s/%s;o=0", trace_id_32, span_id)
+      local t = { parse({ ["x-cloud-trace-context"] = cloud_trace_context }) }
+      assert.same(
+        { "gcp", trace_id_32, tostring(tonumber(span_id)), nil, false },
+        { t[1], to_hex(t[2]), openssl_bignumber.from_binary(t[3]):to_dec(), t[4], t[5] }
+      )
+      assert.spy(warn).not_called()
+    end)
+
+    it("valid header without trace flag", function()
+      local cloud_trace_context = fmt("%s/%s", trace_id_32, span_id)
+      local t = { parse({ ["x-cloud-trace-context"] = cloud_trace_context }) }
+      assert.same(
+        { "gcp", trace_id_32, tostring(tonumber(span_id)), nil, false },
+        { t[1], to_hex(t[2]), openssl_bignumber.from_binary(t[3]):to_dec(), t[4], t[5] }
+      )
+      assert.spy(warn).not_called()
+    end)
+
+    describe("errors", function()
+      it("rejects invalid trace IDs", function()
+        local cloud_trace_context = fmt("%s/%s;o=0", too_short_id, span_id)
+        local t = { parse({ ["x-cloud-trace-context"] = cloud_trace_context }) }
+        assert.same({ "gcp" }, t)
+        assert.spy(warn).was_called_with("invalid GCP header; ignoring.")
+
+        cloud_trace_context = fmt("%s/%s;o=0", too_long_id, span_id)
+        t = { parse({ ["x-cloud-trace-context"] = cloud_trace_context }) }
+        assert.same({ "gcp" }, t)
+        assert.spy(warn).was_called_with("invalid GCP header; ignoring.")
+
+        -- non hex characters in trace id
+        cloud_trace_context = fmt("abcdefghijklmnopqrstuvwxyz123456/%s;o=0", span_id)
+        t = { parse({ ["x-cloud-trace-context"] = cloud_trace_context }) }
+        assert.same({ "gcp" }, t)
+        assert.spy(warn).was_called_with("invalid GCP header; ignoring.")
+      end)
+
+      it("rejects invalid span IDs", function()
+        -- missing
+        local cloud_trace_context = fmt("%s/;o=0", trace_id_32)
+        local t = { parse({ ["x-cloud-trace-context"] = cloud_trace_context }) }
+        assert.same({ "gcp" }, t)
+        assert.spy(warn).was_called_with("invalid GCP header; ignoring.")
+
+        -- decimal value too large
+        cloud_trace_context = fmt("%s/%s;o=0", trace_id_32, too_long_id)
+        t = { parse({ ["x-cloud-trace-context"] = cloud_trace_context }) }
+        assert.same({ "gcp" }, t)
+        assert.spy(warn).was_called_with("invalid GCP header; ignoring.")
+
+        -- non digit characters in span id
+        cloud_trace_context = fmt("%s/abcdefg;o=0", trace_id_32)
+        t = { parse({ ["x-cloud-trace-context"] = cloud_trace_context }) }
+        assert.same({ "gcp" }, t)
+        assert.spy(warn).was_called_with("invalid GCP header; ignoring.")
+      end)
+
+      it("rejects invalid sampling value", function()
+        local cloud_trace_context = fmt("%s/%s;o=01", trace_id_32, span_id)
+        local t = { parse({ ["x-cloud-trace-context"] = cloud_trace_context }) }
+        assert.same({ "gcp" }, t)
+        assert.spy(warn).was_called_with("invalid GCP header; ignoring.")
+
+        cloud_trace_context = fmt("%s/%s;o=", trace_id_32, span_id)
+        t = { parse({ ["x-cloud-trace-context"] = cloud_trace_context }) }
+        assert.same({ "gcp" }, t)
+        assert.spy(warn).was_called_with("invalid GCP header; ignoring.")
+
+        cloud_trace_context = fmt("%s/%s;o=v", trace_id_32, span_id)
+        t = { parse({ ["x-cloud-trace-context"] = cloud_trace_context }) }
+        assert.same({ "gcp" }, t)
+        assert.spy(warn).was_called_with("invalid GCP header; ignoring.")
+      end)
+
+      it("reports all invalid header values", function()
+        local cloud_trace_context = "vvvv/vvvv;o=v"
+        local t = { parse({ ["x-cloud-trace-context"] = cloud_trace_context }) }
+        assert.same({ "gcp" }, t)
+        assert.spy(warn).was_called_with("invalid GCP header; ignoring.")
+      end)
+    end)
+  end)
 end)
 
 
@@ -742,7 +851,8 @@ describe("propagation.set", function()
     log = {
       warn = function(msg)
         warnings[#warnings + 1] = msg
-      end
+      end,
+      set_serialize_value = function() end,
     }
   }
 
@@ -756,6 +866,7 @@ describe("propagation.set", function()
 
     local w3c_trace_id = to_id_len(trace_id, 32)
     local ot_trace_id = to_id_len(trace_id, 32)
+    local gcp_trace_id = to_id_len(trace_id, 32)
 
     local proxy_span = {
       trace_id = from_hex(trace_id),
@@ -799,6 +910,9 @@ describe("propagation.set", function()
       )
     }
 
+    -- hex values are not valid span id inputs, translate to decimal
+    local gcp_headers = {["x-cloud-trace-context"] = gcp_trace_id .. "/" .. openssl_bignumber.from_hex(span_id):to_dec() .. ";o=1"}
+
     before_each(function()
       headers = {}
       warnings = {}
@@ -828,6 +942,11 @@ describe("propagation.set", function()
 
         set("preserve", "aws", proxy_span)
         assert.same(aws_headers, headers)
+
+        headers = {}
+
+        set("preserve", "gcp", proxy_span)
+        assert.same(gcp_headers, headers)
 
         assert.same({}, warnings)
       end)
@@ -865,6 +984,10 @@ describe("propagation.set", function()
 
         set("preserve", "aws", proxy_span, "aws")
         assert.same(aws_headers, headers)
+
+        headers = {}
+        set("preserve", "gcp", proxy_span, "gcp")
+        assert.same(gcp_headers, headers)
       end)
     end)
 
@@ -907,6 +1030,15 @@ describe("propagation.set", function()
         assert.equals(1, #warnings)
         assert.matches("Mismatched header types", warnings[1])
       end)
+
+      it("sets both the b3 and gcp headers when a gcp header is encountered.", function()
+        set("b3", "gcp", proxy_span)
+        assert.same(table_merge(b3_headers, gcp_headers), headers)
+
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
     end)
 
     describe("conf.header_type = 'b3-single', ids group #", function()
@@ -942,6 +1074,15 @@ describe("propagation.set", function()
         assert.equals(1, #warnings)
         assert.matches("Mismatched header types", warnings[1])
       end)
+
+      it("sets both the b3 and gcp headers when a gcp header is encountered.", function()
+        set("b3-single", "gcp", proxy_span)
+        assert.same(table_merge(b3_single_headers, gcp_headers), headers)
+
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
     end)
 
     describe("conf.header_type = 'w3c', ids group #", function()
@@ -972,6 +1113,15 @@ describe("propagation.set", function()
       it("sets both the jaeger and w3c headers when a jaeger header is encountered.", function()
         set("w3c", "jaeger", proxy_span)
         assert.same(table_merge(jaeger_headers, w3c_headers), headers)
+
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
+
+      it("sets both the gcp and w3c headers when a gcp header is encountered.", function()
+        set("w3c", "gcp", proxy_span)
+        assert.same(table_merge(gcp_headers, w3c_headers), headers)
 
         -- but it generates a warning
         assert.equals(1, #warnings)
@@ -1030,6 +1180,15 @@ describe("propagation.set", function()
         assert.equals(1, #warnings)
         assert.matches("Mismatched header types", warnings[1])
       end)
+
+      it("sets both the jaeger and gcp headers when a gcp header is encountered.", function()
+        set("jaeger", "gcp", proxy_span)
+        assert.same(table_merge(jaeger_headers, gcp_headers), headers)
+
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
     end)
 
     describe("conf.header_type = 'ot', ids group #", function()
@@ -1083,6 +1242,15 @@ describe("propagation.set", function()
         assert.equals(1, #warnings)
         assert.matches("Mismatched header types", warnings[1])
       end)
+
+      it("sets both the ot and gcp headers when a gcp header is encountered.", function()
+        set("ot", "gcp", proxy_span)
+        assert.same(table_merge(ot_headers, gcp_headers), headers)
+
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
     end)
 
     describe("conf.header_type = 'aws', ids group #", function()
@@ -1122,6 +1290,77 @@ describe("propagation.set", function()
       it("sets both the aws and jaeger headers when a jaeger header is encountered.", function()
         set("aws", "jaeger", proxy_span)
         assert.same(table_merge(aws_headers, jaeger_headers), headers)
+
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
+
+      it("sets both the aws and gcp headers when a gcp header is encountered.", function()
+        set("aws", "gcp", proxy_span)
+        assert.same(table_merge(aws_headers, gcp_headers), headers)
+
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
+    end)
+
+    describe("conf.header_type = 'gcp', ids group #", function()
+      it("sets headers to gcp when conf.header_type = gcp", function()
+        set("gcp", "gcp", proxy_span)
+        assert.same(gcp_headers, headers)
+        assert.same({}, warnings)
+      end)
+
+      it("sets both the b3 and gcp headers when a b3 header is encountered.", function()
+        set("gcp", "b3", proxy_span)
+        assert.same(table_merge(b3_headers, gcp_headers), headers)
+
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
+
+      it("sets both the b3-single and gcp headers when a b3-single header is encountered.", function()
+        set("gcp", "b3-single", proxy_span)
+        assert.same(table_merge(b3_single_headers, gcp_headers), headers)
+
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
+
+      it("sets both the gcp and ot headers when a ot header is encountered.", function()
+        set("gcp", "ot", proxy_span)
+        assert.same(table_merge(gcp_headers, ot_headers), headers)
+
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
+
+      it("sets both the w3c and gcp headers when a w3c header is encountered.", function()
+        set("gcp", "w3c", proxy_span)
+        assert.same(table_merge(w3c_headers, gcp_headers), headers)
+
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
+
+      it("sets both the gcp and jaeger headers when a jaeger header is encountered.", function()
+        set("gcp", "jaeger", proxy_span)
+        assert.same(table_merge(gcp_headers, jaeger_headers), headers)
+
+        -- but it generates a warning
+        assert.equals(1, #warnings)
+        assert.matches("Mismatched header types", warnings[1])
+      end)
+
+      it("sets both the gcp and aws headers when an aws header is encountered.", function()
+        set("gcp", "aws", proxy_span)
+        assert.same(table_merge(gcp_headers, aws_headers), headers)
 
         -- but it generates a warning
         assert.equals(1, #warnings)

@@ -64,6 +64,25 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
+      local route1 = bp.routes:insert{
+        name = "serverless",
+        protocols = {"https"},
+        hosts = {"status.example.com"},
+        paths = {"/serverless"},
+        no_service = true,
+      }
+
+      assert(bp.plugins:insert {
+        name = "request-termination",
+        route = { id = route1.id },
+        config = {
+          status_code = 200,
+          message = "request terminated by request-termination plugin",
+          echo = true,
+        },
+      })
+
+
       bp.plugins:insert{
         name = "prometheus", -- globally enabled
         config = {
@@ -158,41 +177,38 @@ for _, strategy in helpers.each_strategy() do
       assert.matches('kong_nginx_connections_total{node_id="' .. UUID_PATTERN .. '",subsystem="' .. ngx.config.subsystem .. '",state="%w+"} %d+', body)
     end)
 
+    it("expose metrics in no service route", function()
+      local res = assert(proxy_ssl_client:send{
+        method = "GET",
+        path = "/serverless",
+        headers = {
+          ["Host"] = "status.example.com"
+        }
+      })
+      assert.res_status(200, res)
+
+      local res = assert(proxy_ssl_client:send{
+        method = "GET",
+        path = "/metrics",
+        headers = {
+          ["Host"] = "status.example.com"
+        }
+      })
+      assert.res_status(200, res)
+
+      helpers.wait_until(function()
+        local res = assert(admin_ssl_client:send{
+          method = "GET",
+          path = "/metrics"
+        })
+        local body = assert.res_status(200, res)
+
+        assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+
+        return body:find('kong_http_requests_total{service="",route="serverless",code="200",source="kong",consumer=""} 1',
+          nil, true)
+      end)
+    end)
+
   end)
 end
-
-describe("Plugin: prometheus (metrics) #off", function()
-  local admin_client
-
-  lazy_setup(function()
-    assert(helpers.start_kong({
-      database   = "off",
-      nginx_conf = "spec/fixtures/custom_nginx.template",
-      plugins = "bundled,prometheus",
-      status_listen = '127.0.0.1:' .. status_api_port .. ' ssl', -- status api does not support h2
-      status_access_log = "logs/status_access.log",
-      status_error_log = "logs/status_error.log"
-    }))
-
-    admin_client = assert(helpers.admin_client())
-  end)
-
-  lazy_teardown(function()
-    admin_client:close()
-    helpers.stop_kong(nil, true)
-  end)
-
-  it("expose lmdb metrics by status API", function()
-    local res = assert(admin_client:send{
-      method = "GET",
-      path = "/metrics",
-      headers = {
-        ["Host"] = "status.example.com"
-      }
-    })
-    local body = assert.res_status(200, res)
-
-    assert.matches('kong_memory_lmdb_used_bytes{node_id="' .. UUID_PATTERN .. '"} %d+', body)
-    assert.matches('kong_memory_lmdb_total_bytes{node_id="' .. UUID_PATTERN .. '"} %d+', body)
-  end)
-end)

@@ -9,10 +9,8 @@ lua_socket_pool_size   ${{LUA_SOCKET_POOL_SIZE}};
 lua_socket_log_errors  off;
 lua_max_running_timers 4096;
 lua_max_pending_timers 16384;
-lua_ssl_verify_depth   ${{LUA_SSL_VERIFY_DEPTH}};
-> if lua_ssl_trusted_certificate_combined then
-lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE_COMBINED}}';
-> end
+
+include 'nginx-kong-inject.conf';
 
 lua_shared_dict kong                        5m;
 lua_shared_dict kong_locks                  8m;
@@ -23,6 +21,7 @@ lua_shared_dict kong_core_db_cache          ${{MEM_CACHE_SIZE}};
 lua_shared_dict kong_core_db_cache_miss     12m;
 lua_shared_dict kong_db_cache               ${{MEM_CACHE_SIZE}};
 lua_shared_dict kong_db_cache_miss          12m;
+lua_shared_dict kong_secrets                5m;
 
 underscores_in_headers on;
 > if ssl_ciphers then
@@ -35,6 +34,10 @@ $(el.name) $(el.value);
 > end
 
 init_by_lua_block {
+> if test and coverage then
+    require 'luacov'
+    jit.off()
+> end -- test and coverage
     Kong = require 'kong'
     Kong.init()
 }
@@ -48,8 +51,16 @@ exit_worker_by_lua_block {
 }
 
 > if (role == "traditional" or role == "data_plane") and #proxy_listeners > 0 then
+log_format kong_log_format '$remote_addr - $remote_user [$time_local] '
+                           '"$request" $status $body_bytes_sent '
+                           '"$http_referer" "$http_user_agent" '
+                           'kong_request_id: "$kong_request_id"';
+
 # Load variable indexes
 lua_kong_load_var_index default;
+lua_kong_load_var_index $http_x_kong_request_debug;
+lua_kong_load_var_index $http_x_kong_request_debug_token;
+lua_kong_load_var_index $http_x_kong_request_debug_log;
 
 upstream kong_upstream {
     server 0.0.0.1;
@@ -70,10 +81,24 @@ server {
     listen $(entry.listener);
 > end
 
-    error_page 400 404 405 408 411 412 413 414 417 494 /kong_error_handler;
+    error_page 400 404 405 408 411 412 413 414 417 /kong_error_handler;
+    error_page 494 =494                            /kong_error_handler;
     error_page 500 502 503 504                     /kong_error_handler;
 
+    # Append the kong request id to the error log
+    # https://github.com/Kong/lua-kong-nginx-module#lua_kong_error_log_request_id
+    lua_kong_error_log_request_id $kong_request_id;
+
+> if proxy_access_log_enabled then
+>   if custom_proxy_access_log then
     access_log ${{PROXY_ACCESS_LOG}};
+>   else
+    access_log ${{PROXY_ACCESS_LOG}} kong_log_format;
+>   end
+> else
+    access_log off;
+> end
+
     error_log  ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
 > if proxy_ssl_enabled then
@@ -137,6 +162,11 @@ server {
         proxy_buffering          on;
         proxy_request_buffering  on;
 
+        # injected nginx_location_* directives
+> for _, el in ipairs(nginx_location_directives) do
+        $(el.name) $(el.value);
+> end
+
         proxy_set_header      TE                 $upstream_te;
         proxy_set_header      Host               $upstream_host;
         proxy_set_header      Upgrade            $upstream_upgrade;
@@ -148,6 +178,9 @@ server {
         proxy_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
         proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
         proxy_set_header      X-Real-IP          $remote_addr;
+> if enabled_headers_upstream["X-Kong-Request-Id"] then
+        proxy_set_header      X-Kong-Request-Id  $kong_request_id;
+> end
         proxy_pass_header     Server;
         proxy_pass_header     Date;
         proxy_ssl_name        $upstream_host;
@@ -179,6 +212,9 @@ server {
         proxy_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
         proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
         proxy_set_header      X-Real-IP          $remote_addr;
+> if enabled_headers_upstream["X-Kong-Request-Id"] then
+        proxy_set_header      X-Kong-Request-Id  $kong_request_id;
+> end
         proxy_pass_header     Server;
         proxy_pass_header     Date;
         proxy_ssl_name        $upstream_host;
@@ -210,6 +246,9 @@ server {
         proxy_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
         proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
         proxy_set_header      X-Real-IP          $remote_addr;
+> if enabled_headers_upstream["X-Kong-Request-Id"] then
+        proxy_set_header      X-Kong-Request-Id  $kong_request_id;
+> end
         proxy_pass_header     Server;
         proxy_pass_header     Date;
         proxy_ssl_name        $upstream_host;
@@ -241,6 +280,9 @@ server {
         proxy_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
         proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
         proxy_set_header      X-Real-IP          $remote_addr;
+> if enabled_headers_upstream["X-Kong-Request-Id"] then
+        proxy_set_header      X-Kong-Request-Id  $kong_request_id;
+> end
         proxy_pass_header     Server;
         proxy_pass_header     Date;
         proxy_ssl_name        $upstream_host;
@@ -265,6 +307,9 @@ server {
         grpc_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
         grpc_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
         grpc_set_header      X-Real-IP          $remote_addr;
+> if enabled_headers_upstream["X-Kong-Request-Id"] then
+        grpc_set_header      X-Kong-Request-Id  $kong_request_id;
+> end
         grpc_pass_header     Server;
         grpc_pass_header     Date;
         grpc_ssl_name        $upstream_host;
@@ -281,7 +326,16 @@ server {
         default_type         '';
         set $kong_proxy_mode 'http';
 
-        rewrite_by_lua_block       {;}
+        rewrite_by_lua_block       {
+          -- ngx.localtion.capture will create a new nginx request,
+          -- so the upstream ssl-related info attached to the `r` gets lost.
+          -- we need to re-set them here to the new nginx request.
+          local ctx = ngx.ctx
+          local upstream_ssl = require("kong.runloop.upstream_ssl")
+
+          upstream_ssl.set_service_ssl(ctx)
+          upstream_ssl.fallback_upstream_client_cert(ctx)
+        }
         access_by_lua_block        {;}
         header_filter_by_lua_block {;}
         body_filter_by_lua_block   {;}
@@ -299,6 +353,9 @@ server {
         proxy_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
         proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
         proxy_set_header      X-Real-IP          $remote_addr;
+> if enabled_headers_upstream["X-Kong-Request-Id"] then
+        proxy_set_header      X-Kong-Request-Id  $kong_request_id;
+> end
         proxy_pass_header     Server;
         proxy_pass_header     Date;
         proxy_ssl_name        $upstream_host;
@@ -405,6 +462,51 @@ server {
     }
 }
 > end
+
+> if (role == "control_plane" or role == "traditional") and #admin_listeners > 0 and #admin_gui_listeners > 0 then
+server {
+    server_name kong_gui;
+> for i = 1, #admin_gui_listeners do
+    listen $(admin_gui_listeners[i].listener);
+> end
+
+> if admin_gui_ssl_enabled then
+> for i = 1, #admin_gui_ssl_cert do
+    ssl_certificate     $(admin_gui_ssl_cert[i]);
+    ssl_certificate_key $(admin_gui_ssl_cert_key[i]);
+> end
+    ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+> end
+
+    client_max_body_size 10m;
+    client_body_buffer_size 10m;
+
+    types {
+        text/html                             html htm shtml;
+        text/css                              css;
+        text/xml                              xml;
+        image/gif                             gif;
+        image/jpeg                            jpeg jpg;
+        application/javascript                js;
+        application/json                      json;
+        image/png                             png;
+        image/tiff                            tif tiff;
+        image/x-icon                          ico;
+        image/x-jng                           jng;
+        image/x-ms-bmp                        bmp;
+        image/svg+xml                         svg svgz;
+        image/webp                            webp;
+    }
+
+    access_log ${{ADMIN_GUI_ACCESS_LOG}};
+    error_log ${{ADMIN_GUI_ERROR_LOG}};
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript;
+
+    include nginx-kong-gui-include.conf;
+}
+> end -- of the (role == "control_plane" or role == "traditional") and #admin_listeners > 0 and #admin_gui_listeners > 0
 
 > if role == "control_plane" then
 server {

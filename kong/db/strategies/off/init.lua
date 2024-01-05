@@ -2,7 +2,7 @@ local declarative_config = require "kong.db.schema.others.declarative_config"
 local workspaces = require "kong.workspaces"
 local lmdb = require("resty.lmdb")
 local marshaller = require("kong.db.declarative.marshaller")
-local yield = require("kong.tools.utils").yield
+local yield = require("kong.tools.yield").yield
 local unique_field_key = require("kong.db.declarative").unique_field_key
 
 local kong = kong
@@ -51,6 +51,19 @@ local function ws(schema, options)
   end
 
   return get_workspace_id()
+end
+
+
+local function process_ttl_field(entity)
+  if entity and entity.ttl and entity.ttl ~= null then
+    local ttl_value = entity.ttl - ngx.time()
+    if ttl_value > 0 then
+      entity.ttl = ttl_value
+    else
+      entity = nil  -- do not return the expired entity
+    end
+  end
+  return entity
 end
 
 
@@ -157,6 +170,7 @@ local function page_for_key(self, key, size, offset, options)
   yield()
 
   local ret = {}
+  local ret_idx = 1
   local schema = self.schema
   local schema_name = schema.name
 
@@ -194,7 +208,14 @@ local function page_for_key(self, key, size, offset, options)
       return nil, "stale data detected while paginating"
     end
 
-    ret[i - offset + 1] = schema:process_auto_fields(item, "select", true, PROCESS_AUTO_FIELDS_OPTS)
+    if schema.ttl then
+      item = process_ttl_field(item)
+    end
+
+    if item then
+      ret[ret_idx] = schema:process_auto_fields(item, "select", true, PROCESS_AUTO_FIELDS_OPTS)
+      ret_idx = ret_idx + 1
+    end
   end
 
   if offset then
@@ -209,6 +230,13 @@ local function select_by_key(schema, key)
   local entity, err = unmarshall(lmdb_get(key))
   if not entity then
     return nil, err
+  end
+
+  if schema.ttl then
+    entity = process_ttl_field(entity)
+    if not entity then
+      return nil
+    end
   end
 
   entity = schema:process_auto_fields(entity, "select", true, PROCESS_AUTO_FIELDS_OPTS)

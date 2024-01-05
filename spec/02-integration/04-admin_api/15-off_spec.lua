@@ -82,7 +82,7 @@ describe("Admin API #off", function()
           local res = client:post("/routes", {
             body = {
               protocols = { "http" },
-              hosts     = { "my.route.com" },
+              hosts     = { "my.route.test" },
               service   = { id = utils.uuid() },
             },
             headers = { ["Content-Type"] = content_type }
@@ -108,7 +108,7 @@ describe("Admin API #off", function()
             body    = {
               protocols = { "http" },
               methods   = { "GET", "POST", "PATCH" },
-              hosts     = { "foo.api.com", "bar.api.com" },
+              hosts     = { "foo.api.test", "bar.api.test" },
               paths     = { "/foo", "/bar" },
               service   = { id =  utils.uuid() },
             },
@@ -599,6 +599,152 @@ describe("Admin API #off", function()
         }, json)
       end)
 
+      it("returns 400 on an primary key uniqueness error", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            config = [[
+            _format_version: "1.1"
+            services:
+            - id: 0855b320-0dd2-547d-891d-601e9b38647f
+              name: foo
+              host: example.com
+              protocol: https
+              routes:
+              - name: foo
+                methods: ["GET"]
+                plugins:
+                  - name: key-auth
+                  - name: http-log
+                    config:
+                      http_endpoint: https://example.com
+            - id: 0855b320-0dd2-547d-891d-601e9b38647f
+              name: bar
+              host: example.test
+              port: 3000
+              routes:
+              - name: bar
+                paths:
+                - /
+                plugins:
+                - name: basic-auth
+                - name: tcp-log
+                  config:
+                    host: 127.0.0.1
+                    port: 10000
+            ]],
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+
+        local body = assert.response(res).has.status(400)
+        local json = cjson.decode(body)
+        assert.same({
+          code = 14,
+          fields = {
+            services = {
+              cjson.null,
+              "uniqueness violation: 'services' entity with primary key set to '0855b320-0dd2-547d-891d-601e9b38647f' already declared",
+            }
+          },
+          message = [[declarative config is invalid: ]] ..
+                    [[{services={[2]="uniqueness violation: 'services' entity with primary key set to '0855b320-0dd2-547d-891d-601e9b38647f' already declared"}}]],
+          name = "invalid declarative configuration",
+        }, json)
+      end)
+
+      it("returns 400 on an endpoint key uniqueness error", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            config = [[
+            _format_version: "1.1"
+            services:
+            - name: foo
+              host: example.com
+              protocol: https
+              routes:
+              - name: foo
+                methods: ["GET"]
+                plugins:
+                  - name: key-auth
+                  - name: http-log
+                    config:
+                      http_endpoint: https://example.com
+            - name: foo
+              host: example.test
+              port: 3000
+              routes:
+              - name: bar
+                paths:
+                - /
+                plugins:
+                - name: basic-auth
+                - name: tcp-log
+                  config:
+                    host: 127.0.0.1
+                    port: 10000
+            ]],
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+
+        local body = assert.response(res).has.status(400)
+        local json = cjson.decode(body)
+        assert.same({
+          code = 14,
+          fields = {
+            services = {
+              cjson.null,
+              "uniqueness violation: 'services' entity with name set to 'foo' already declared",
+            }
+          },
+          message = [[declarative config is invalid: ]] ..
+                    [[{services={[2]="uniqueness violation: 'services' entity with name set to 'foo' already declared"}}]],
+          name = "invalid declarative configuration",
+        }, json)
+      end)
+
+      it("returns 400 on a regular key uniqueness error", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            config = [[
+            _format_version: "1.1"
+            consumers:
+            - username: foo
+              custom_id: conflict
+            - username: bar
+              custom_id: conflict
+            ]],
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+
+        local body = assert.response(res).has.status(400)
+        local json = cjson.decode(body)
+        assert.same({
+          code = 14,
+          fields = {
+            consumers = {
+              bar = "uniqueness violation: 'consumers' entity with custom_id set to 'conflict' already declared",
+            }
+          },
+          message = [[declarative config is invalid: ]] ..
+                    [[{consumers={bar="uniqueness violation: 'consumers' entity with custom_id set to 'conflict' already declared"}}]],
+          name = "invalid declarative configuration",
+        }, json)
+      end)
+
       it("returns 400 when given no input", function()
         local res = assert(client:send {
           method = "POST",
@@ -822,10 +968,21 @@ describe("Admin API #off", function()
 
       assert.response(res).has.status(201)
 
+
+      res = client:get("/upstreams/foo/targets")
+      assert.response(res).has.status(200)
+
+      local json = assert.response(res).has.jsonbody()
+      assert.is_table(json.data)
+      assert.same(1, #json.data)
+      assert.is_table(json.data[1])
+
+      local id = assert.is_string(json.data[1].id)
+
       helpers.wait_until(function()
         local res = assert(client:send {
           method = "PUT",
-          path = "/upstreams/foo/targets/c830b59e-59cc-5392-adfd-b414d13adfc4/10.20.30.40/unhealthy",
+          path = "/upstreams/foo/targets/" .. id .. "/10.20.30.40/unhealthy",
         })
 
         return pcall(function()
@@ -1595,7 +1752,7 @@ R6InCcH2Wh8wSeY5AuDXvu2tv9g/PW9wIJmPuKSHMA==
         entity_type = "certificate",
         errors = { {
             field = "cert",
-            message = "invalid certificate: x509.new: asn1/tasn_dec.c:349:error:0688010A:asn1 encoding routines::nested asn1 error",
+            message = "invalid certificate: x509.new: error:688010A:asn1 encoding routines:asn1_item_embed_d2i:nested asn1 error:asn1/tasn_dec.c:349:",
             type = "field"
           } }
       },
@@ -2540,6 +2697,43 @@ R6InCcH2Wh8wSeY5AuDXvu2tv9g/PW9wIJmPuKSHMA==
       },
     }, flattened)
   end)
+  it("origin error do not loss when enable flatten_errors - (#12167)", function()
+    local input = {
+      _format_version = "3.0",
+      consumers = {
+        {
+          id = "a73dc9a7-93df-584d-97c0-7f41a1bbce3d",
+          username = "test-consumer-1",
+          tags =  { "consumer-1" },
+        },
+        {
+          id = "a73dc9a7-93df-584d-97c0-7f41a1bbce32",
+          username = "test-consumer-1",
+          tags =  { "consumer-2" },
+        },
+      },
+    }
+    local flattened = post_config(input)
+    validate({
+      {
+        entity_type = "consumer",
+        entity_id   = "a73dc9a7-93df-584d-97c0-7f41a1bbce32",
+        entity_name = nil,
+        entity_tags = { "consumer-2" },
+        entity      =  {
+          id = "a73dc9a7-93df-584d-97c0-7f41a1bbce32",
+          username = "test-consumer-1",
+          tags =  { "consumer-2" },
+        },
+        errors = {
+          {
+            type    = "entity",
+            message = "uniqueness violation: 'consumers' entity with username set to 'test-consumer-1' already declared",
+          }
+        },
+      },
+    }, flattened)
+  end)
 end)
 
 
@@ -2806,6 +3000,72 @@ describe("Admin API #off with Unique Foreign #unique", function()
     -- assert.equal(references.data[1].note, unique_reference.note)
     -- assert.equal(references.data[1].unique_foreign.id, unique_reference.unique_foreign.id)
   end)
+end)
+
+describe("Admin API #off with cache key vs endpoint key #unique", function()
+  local client
+
+  lazy_setup(function()
+    assert(helpers.start_kong({
+      database = "off",
+      plugins = "cache-key-vs-endpoint-key",
+      nginx_worker_processes = 1,
+      lmdb_map_size = LMDB_MAP_SIZE,
+    }))
+  end)
+
+  lazy_teardown(function()
+    helpers.stop_kong(nil, true)
+  end)
+
+  before_each(function()
+    client = assert(helpers.admin_client())
+  end)
+
+  after_each(function()
+    if client then
+      client:close()
+    end
+  end)
+
+  it("prefers cache key rather than endpoint key from primary key uniqueness", function()
+    local res = assert(client:send {
+      method = "POST",
+      path = "/config",
+      body = {
+        config = [[
+        _format_version: "1.1"
+        ck_vs_ek_testcase:
+        - name: foo
+          service: my_service
+        - name: bar
+          service: my_service
+
+        services:
+        - name: my_service
+          url: http://example.com
+          path: /
+        ]],
+      },
+      headers = {
+        ["Content-Type"] = "application/json"
+      }
+    })
+
+    local body = assert.response(res).has.status(400)
+    local json = cjson.decode(body)
+    assert.same(14, json.code)
+    assert.same("invalid declarative configuration", json.name)
+    assert.matches("uniqueness violation: 'ck_vs_ek_testcase' entity " ..
+                   "with primary key set to '.*' already declared",
+                   json.fields.ck_vs_ek_testcase[2])
+    assert.matches([[declarative config is invalid: ]] ..
+                   [[{ck_vs_ek_testcase={%[2%]="uniqueness violation: ]] ..
+                   [['ck_vs_ek_testcase' entity with primary key set to ]] ..
+                   [['.*' already declared"}}]],
+                   json.message)
+  end)
+
 end)
 
 describe("Admin API #off worker_consistency=eventual", function()

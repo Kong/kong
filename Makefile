@@ -1,7 +1,7 @@
 OS := $(shell uname | awk '{print tolower($$0)}')
 MACHINE := $(shell uname -m)
 
-DEV_ROCKS = "busted 2.1.2" "busted-htest 1.0.0" "luacheck 1.1.1" "lua-llthreads2 0.1.6" "ldoc 1.5.0" "luacov 0.15.0"
+DEV_ROCKS = "busted 2.2.0" "busted-htest 1.0.0" "luacheck 1.1.1" "lua-llthreads2 0.1.6" "ldoc 1.5.0" "luacov 0.15.0"
 WIN_SCRIPTS = "bin/busted" "bin/kong" "bin/kong-health"
 BUSTED_ARGS ?= -v
 TEST_CMD ?= bin/busted $(BUSTED_ARGS)
@@ -12,10 +12,12 @@ ifeq ($(OS), darwin)
 OPENSSL_DIR ?= $(shell brew --prefix)/opt/openssl
 GRPCURL_OS ?= osx
 YAML_DIR ?= $(shell brew --prefix)/opt/libyaml
+EXPAT_DIR ?= $(HOMEBREW_DIR)/opt/expat
 else
 OPENSSL_DIR ?= /usr
 GRPCURL_OS ?= $(OS)
 YAML_DIR ?= /usr
+EXPAT_DIR ?= $(LIBRARY_PREFIX)
 endif
 
 ifeq ($(MACHINE), aarch64)
@@ -37,12 +39,12 @@ endif
 .PHONY: install dev \
 	lint test test-integration test-plugins test-all \
 	pdk-phase-check functional-tests \
-	fix-windows release
+	fix-windows release wasm-test-filters
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 KONG_SOURCE_LOCATION ?= $(ROOT_DIR)
 GRPCURL_VERSION ?= 1.8.5
-BAZLISK_VERSION ?= 1.17.0
+BAZLISK_VERSION ?= 1.18.0
 H2CLIENT_VERSION ?= 0.4.0
 BAZEL := $(shell command -v bazel 2> /dev/null)
 VENV = /dev/null # backward compatibility when no venv is built
@@ -67,12 +69,16 @@ bin/grpcurl:
 bin/h2client:
 	@curl -s -S -L \
 		https://github.com/Kong/h2client/releases/download/v$(H2CLIENT_VERSION)/h2client_$(H2CLIENT_VERSION)_$(OS)_$(H2CLIENT_MACHINE).tar.gz | tar xz -C bin;
+	@$(RM) bin/README.md
 
 
 check-bazel: bin/bazel
 ifndef BAZEL
 	$(eval BAZEL := bin/bazel)
 endif
+
+wasm-test-filters:
+	./scripts/build-wasm-test-filters.sh
 
 build-kong: check-bazel
 	$(BAZEL) build //build:kong --verbose_failures --action_env=BUILD_NAME=$(BUILD_NAME)
@@ -96,7 +102,7 @@ install-dev-rocks: build-venv
 	  fi \
 	done;
 
-dev: build-venv install-dev-rocks bin/grpcurl bin/h2client
+dev: build-venv install-dev-rocks bin/grpcurl bin/h2client wasm-test-filters
 
 build-release: check-bazel
 	$(BAZEL) clean --expunge
@@ -131,6 +137,9 @@ lint: dev
 	@$(VENV) luacheck -q .
 	@!(grep -R -E -I -n -w '#only|#o' spec && echo "#only or #o tag detected") >&2
 	@!(grep -R -E -I -n -- '---\s+ONLY' t && echo "--- ONLY block detected") >&2
+
+update-copyright: build-venv
+	bash -c 'OPENSSL_DIR=$(OPENSSL_DIR) EXPAT_DIR=$(EXPAT_DIR) $(VENV) luajit $(KONG_SOURCE_LOCATION)/scripts/update-copyright'
 
 test: dev
 	@$(VENV) $(TEST_CMD) spec/01-unit

@@ -283,6 +283,12 @@ local function validate_options_value(self, options)
     end
   end
 
+  if options.export ~= nil then
+    if type(options.export) ~= "boolean" then
+      errors.export = "must be a boolean"
+    end
+  end
+
   if next(errors) then
     return nil, errors
   end
@@ -967,13 +973,14 @@ function DAO:truncate()
 end
 
 
-function DAO:select(primary_key, options)
-  validate_primary_key_type(primary_key)
+function DAO:select(pk_or_entity, options)
+  validate_primary_key_type(pk_or_entity)
 
   if options ~= nil then
     validate_options_type(options)
   end
 
+  local primary_key = self.schema:extract_pk_values(pk_or_entity)
   local ok, errors = self.schema:validate_primary_key(primary_key)
   if not ok then
     local err_t = self.errors:invalid_primary_key(errors)
@@ -1103,6 +1110,21 @@ function DAO:each(size, options)
 end
 
 
+function DAO:each_for_export(size, options)
+  if self.strategy.schema.ttl then
+    if not options then
+      options = get_pagination_options(self, options)
+    else
+      options = utils.cycle_aware_deep_copy(options, true)
+    end
+
+    options.export = true
+  end
+
+  return self:each(size, options)
+end
+
+
 function DAO:insert(entity, options)
   validate_entity_type(entity)
 
@@ -1142,14 +1164,15 @@ function DAO:insert(entity, options)
 end
 
 
-function DAO:update(primary_key, entity, options)
-  validate_primary_key_type(primary_key)
+function DAO:update(pk_or_entity, entity, options)
+  validate_primary_key_type(pk_or_entity)
   validate_entity_type(entity)
 
   if options ~= nil then
     validate_options_type(options)
   end
 
+  local primary_key = self.schema:extract_pk_values(pk_or_entity)
   local ok, errors = self.schema:validate_primary_key(primary_key)
   if not ok then
     local err_t = self.errors:invalid_primary_key(errors)
@@ -1194,14 +1217,15 @@ function DAO:update(primary_key, entity, options)
 end
 
 
-function DAO:upsert(primary_key, entity, options)
-  validate_primary_key_type(primary_key)
+function DAO:upsert(pk_or_entity, entity, options)
+  validate_primary_key_type(pk_or_entity)
   validate_entity_type(entity)
 
   if options ~= nil then
     validate_options_type(options)
   end
 
+  local primary_key = self.schema:extract_pk_values(pk_or_entity)
   local ok, errors = self.schema:validate_primary_key(primary_key)
   if not ok then
     local err_t = self.errors:invalid_primary_key(errors)
@@ -1251,13 +1275,14 @@ function DAO:upsert(primary_key, entity, options)
 end
 
 
-function DAO:delete(primary_key, options)
-  validate_primary_key_type(primary_key)
+function DAO:delete(pk_or_entity, options)
+  validate_primary_key_type(pk_or_entity)
 
   if options ~= nil then
     validate_options_type(options)
   end
 
+  local primary_key = self.schema:extract_pk_values(pk_or_entity)
   local ok, errors = self.schema:validate_primary_key(primary_key)
   if not ok then
     local err_t = self.errors:invalid_primary_key(errors)

@@ -1,4 +1,5 @@
 local http_mock = require "spec.helpers.http_mock"
+local tapping = require "spec.helpers.http_mock.tapping"
 local pl_file = require "pl.file"
 
 for _, tls in ipairs {true, false} do
@@ -26,7 +27,7 @@ for _, tls in ipairs {true, false} do
           resp_body = true
         }
       }))
-      
+
       assert(mock:start())
     end)
 
@@ -218,5 +219,88 @@ describe("http_mock config", function()
     local pid_filename = mock_prefix .. "/logs/nginx.pid"
 
     assert(pl_file.access_time(pid_filename) ~= nil, "mocking not in the correct place")
+  end)
+
+  it("init_by_lua_block inject", function ()
+    local mock = assert(http_mock.new(nil, {
+      ["/test"] = {
+        access = [[
+          ngx.print(test_value)
+        ]],
+      },
+    }, {
+      init = [[
+        -- Test that the mock is injected
+        test_value = "hello world"
+      ]]
+    }))
+    mock:start()
+    finally(function()
+      assert(mock:stop())
+    end)
+
+    local client = mock:get_client()
+    local res = assert(client:send({
+      path = "/test"
+    }))
+    assert.response(res).has.status(200)
+    assert.same(res:read_body(), "hello world")
+  end)
+end)
+
+local function remove_volatile_headers(req_t)
+  req_t.headers["Connection"] = nil
+  req_t.headers["Host"] = nil
+  req_t.headers["User-Agent"] = nil
+  req_t.headers["Content-Length"] = nil
+end
+
+describe("http_mock.tapping", function()
+  local tapped, tapped_port
+  lazy_setup(function()
+    tapped, tapped_port = http_mock.new(nil, nil, {
+      log_opts = {
+        req = true,
+        req_body = true,
+        req_body_large = true,
+      }
+    })
+    tapped:start()
+  end)
+  lazy_teardown(function()
+    tapped:stop(true)
+  end)
+
+  it("works", function()
+    local tapping_mock = tapping.new(tapped_port)
+    tapping_mock:start()
+    finally(function()
+      tapping_mock:stop(true)
+    end)
+    local client = tapping_mock:get_client()
+    local request = {
+      headers = {
+        ["test"] = "mock_debug"
+      },
+      method = "POST",
+      path = "/test!",
+      body = "hello world",
+    }
+    local res = assert(client:send(request))
+    assert.response(res).has.status(200)
+    assert.same(res:read_body(), "ok")
+
+    request.uri = request.path
+    request.path = nil
+
+    local record = tapping_mock:retrieve_mocking_logs()
+    local req_t = assert(record[1].req)
+    remove_volatile_headers(req_t)
+    assert.same(request, req_t)
+
+    local upstream_record = tapped:retrieve_mocking_logs()
+    local upstream_req_t = assert(upstream_record[1].req)
+    remove_volatile_headers(upstream_req_t)
+    assert.same(request, upstream_req_t)
   end)
 end)

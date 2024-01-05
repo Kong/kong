@@ -3,7 +3,6 @@ local conf_loader = require "kong.conf_loader"
 
 
 describe("Environment Variables Vault", function()
-  local vaults
   local get
 
   before_each(function()
@@ -14,19 +13,12 @@ describe("Environment Variables Vault", function()
     kong_global.init_pdk(kong, conf)
 
     get = _G.kong.vault.get
-
-    vaults = {}
-
-    for vault in pairs(conf.loaded_vaults) do
-      local init = require("kong.vaults." .. vault)
-      table.insert(vaults, init)
-    end
   end)
 
   it("get undefined", function()
-    helpers.unsetenv("TEST_ENV")
-    local res, err = get("{vault://env/test_env}")
-    assert.is_equal("unable to load value (test_env) from vault (env): not found [{vault://env/test_env}]", err)
+    helpers.unsetenv("TEST_ENV_NA")
+    local res, err = get("{vault://env/test_env_na}")
+    assert.matches("could not get value from external vault", err)
     assert.is_nil(res)
   end)
 
@@ -82,6 +74,4 @@ describe("Environment Variables Vault", function()
     assert.is_nil(pw_err)
     assert.is_equal(pw_res, "pass")
   end)
-
-
 end)

@@ -5,6 +5,8 @@ on:
     # ignore markdown files (CHANGELOG.md, README.md, etc.)
     - '**/*.md'
     - '.github/workflows/release.yml'
+    - 'changelog/**'
+    - 'kong.conf.default'
   push:
     paths-ignore:
     # ignore markdown files (CHANGELOG.md, README.md, etc.)
@@ -56,15 +58,14 @@ jobs:
 
     steps:
     - name: Checkout Kong source code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Lookup build cache
       id: cache-deps
       uses: actions/cache@v3
       with:
-        path: |
-          ${{ env.BUILD_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+        path: ${{ env.BUILD_ROOT }}
+        key: ${{ needs.build.outputs.cache-key }}
 
     - name: Check test-helpers doc generation
       run: |
@@ -105,7 +106,7 @@ jobs:
           $TEST_CMD
 
     - name: Archive coverage stats file
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
       with:
         name: luacov-stats-out-${{ github.job }}-${{ github.run_id }}
@@ -113,16 +114,20 @@ jobs:
         path: |
           luacov.stats.out
 
+    - name: Get kernel message
+      if: failure()
+      run: |
+        sudo dmesg -T
+
   integration-tests-postgres:
     name: Postgres ${{ matrix.suite }} - ${{ matrix.split }} tests
     runs-on: ubuntu-22.04
     needs: build
-
     strategy:
       fail-fast: false
       matrix:
         suite: [integration, plugins]
-        split: [first (01-04), second (>= 05)]
+        split: [first, second]
 
     services:
       postgres:
@@ -150,22 +155,23 @@ jobs:
           --name kong_redis
 
       zipkin:
-        image: openzipkin/zipkin:2.19
+        image: openzipkin/zipkin:2
         ports:
           - 9411:9411
 
     steps:
     - name: Checkout Kong source code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Lookup build cache
       id: cache-deps
       uses: actions/cache@v3
       with:
-        path: |
-          ${{ env.BUILD_ROOT }}
+        path: ${{ env.BUILD_ROOT }}
+        key: ${{ needs.build.outputs.cache-key }}
 
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+    - name: Build WASM Test Filters
+      uses: ./.github/actions/build-wasm-test-filters
 
     - name: Add gRPC test host names
       run: |
@@ -202,6 +208,40 @@ jobs:
           unzip -o /tmp/aws-sam-cli.zip -d /tmp/aws-sam-cli
           sudo /tmp/aws-sam-cli/install --update
 
+    - name: Update PATH
+      run: |
+        echo "$BUILD_ROOT/kong-dev/bin" >> $GITHUB_PATH
+        echo "$BUILD_ROOT/kong-dev/openresty/nginx/sbin" >> $GITHUB_PATH
+        echo "$BUILD_ROOT/kong-dev/openresty/bin" >> $GITHUB_PATH
+
+    - name: Debug (nginx)
+      run: |
+        echo nginx: $(which nginx)
+        nginx -V 2>&1 | sed -re 's/ --/\n--/g'
+        ldd $(which nginx)
+
+    - name: Debug (luarocks)
+      run: |
+        echo luarocks: $(which luarocks)
+        luarocks --version
+        luarocks config
+
+    - name: Tune up postgres max_connections
+      run: |
+        # arm64 runners may use more connections due to more worker cores
+        psql -hlocalhost -Ukong kong -tAc 'alter system set max_connections = 5000;'
+
+    - name: Generate test rerun filename
+      run: |
+           echo FAILED_TEST_FILES_FILE=$(echo '${{ github.run_id }}-${{ matrix.suite }}-${{ matrix.split }}' | tr A-Z a-z | sed -Ee 's/[^a-z0-9]+/-/g').txt >> $GITHUB_ENV
+
+
+    - name: Download test rerun information
+      uses: actions/download-artifact@v4
+      continue-on-error: true
+      with:
+        name: ${{ env.FAILED_TEST_FILES_FILE }}
+
     - name: Tests
       env:
         KONG_TEST_PG_DATABASE: kong
@@ -217,14 +257,27 @@ jobs:
           source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           .ci/run_tests.sh
 
+    - name: Upload test rerun information
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.FAILED_TEST_FILES_FILE }}
+        path: ${{ env.FAILED_TEST_FILES_FILE }}
+        retention-days: 2
+
     - name: Archive coverage stats file
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
       with:
         name: luacov-stats-out-${{ github.job }}-${{ github.run_id }}-${{ matrix.suite }}-${{ contains(matrix.split, 'first') && '1' || '2' }}
         retention-days: 1
         path: |
           luacov.stats.out
+
+    - name: Get kernel message
+      if: failure()
+      run: |
+        sudo dmesg -T
 
   integration-tests-dbless:
     name: DB-less integration tests
@@ -233,23 +286,24 @@ jobs:
 
     services:
       grpcbin:
-        image: moul/grpcbin
+        image: kong/grpcbin
         ports:
           - 15002:9000
           - 15003:9001
 
     steps:
     - name: Checkout Kong source code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Lookup build cache
       id: cache-deps
       uses: actions/cache@v3
       with:
-        path: |
-          ${{ env.BUILD_ROOT }}
+        path: ${{ env.BUILD_ROOT }}
+        key: ${{ needs.build.outputs.cache-key }}
 
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+    - name: Build WASM Test Filters
+      uses: ./.github/actions/build-wasm-test-filters
 
     - name: Add gRPC test host names
       run: |
@@ -285,13 +339,18 @@ jobs:
           .ci/run_tests.sh
 
     - name: Archive coverage stats file
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
       with:
         name: luacov-stats-out-${{ github.job }}-${{ github.run_id }}
         retention-days: 1
         path: |
           luacov.stats.out
+
+    - name: Get kernel message
+      if: failure()
+      run: |
+        sudo dmesg -T
 
   pdk-tests:
     name: PDK tests
@@ -300,15 +359,14 @@ jobs:
 
     steps:
     - name: Checkout Kong source code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Lookup build cache
       id: cache-deps
       uses: actions/cache@v3
       with:
-        path: |
-          ${{ env.BUILD_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+        path: ${{ env.BUILD_ROOT }}
+        key: ${{ needs.build.outputs.cache-key }}
 
     - name: Install Test::Nginx
       run: |
@@ -333,13 +391,18 @@ jobs:
           .ci/run_tests.sh
 
     - name: Archive coverage stats file
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
       with:
         name: luacov-stats-out-${{ github.job }}-${{ github.run_id }}
         retention-days: 1
         path: |
           luacov.stats.out
+
+    - name: Get kernel message
+      if: failure()
+      run: |
+        sudo dmesg -T
 
   aggregator:
     needs: [lint-doc-and-unit-tests,pdk-tests,integration-tests-postgres,integration-tests-dbless]
@@ -349,7 +412,7 @@ jobs:
 
     steps:
     - name: Checkout source code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Install requirements
       run: |
@@ -358,7 +421,7 @@ jobs:
         sudo luarocks install luafilesystem
 
     # Download all archived coverage stats files
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
 
     - name: Stats aggregation
       shell: bash

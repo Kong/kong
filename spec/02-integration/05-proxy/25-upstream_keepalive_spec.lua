@@ -55,7 +55,7 @@ describe("#postgres upstream keepalive", function()
 
     -- upstream TLS
     bp.routes:insert {
-      hosts = { "one.com" },
+      hosts = { "one.test" },
       preserve_host = true,
       service = bp.services:insert {
         protocol = helpers.mock_upstream_ssl_protocol,
@@ -65,7 +65,7 @@ describe("#postgres upstream keepalive", function()
     }
 
     bp.routes:insert {
-      hosts = { "two.com" },
+      hosts = { "two.test" },
       preserve_host = true,
       service = bp.services:insert {
         protocol = helpers.mock_upstream_ssl_protocol,
@@ -97,7 +97,7 @@ describe("#postgres upstream keepalive", function()
 
     -- upstream mTLS
     bp.routes:insert {
-      hosts = { "example.com", },
+      hosts = { "example.test", },
       service = bp.services:insert {
         url = "https://127.0.0.1:16798/",
         client_certificate = bp.certificates:insert {
@@ -108,7 +108,7 @@ describe("#postgres upstream keepalive", function()
     }
 
     bp.routes:insert {
-      hosts = { "example2.com", },
+      hosts = { "example2.test", },
       service = bp.services:insert {
         url = "https://127.0.0.1:16798/",
         client_certificate = bp.certificates:insert {
@@ -136,19 +136,19 @@ describe("#postgres upstream keepalive", function()
       method = "GET",
       path = "/echo_sni",
       headers = {
-        Host = "one.com",
+        Host = "one.test",
       }
     })
     local body = assert.res_status(200, res)
-    assert.equal("SNI=one.com", body)
+    assert.equal("SNI=one.test", body)
     assert.errlog()
           .has
-          .line([[enabled connection keepalive \(pool=[A-F0-9.:]+\|\d+\|one.com]])
+          .line([[enabled connection keepalive \(pool=[A-F0-9.:]+\|\d+\|one.test]])
 
     assert.errlog()
-          .has.line([[keepalive get pool, name: [A-F0-9.:]+\|\d+\|one.com, cpool: 0+]])
+          .has.line([[keepalive get pool, name: [A-F0-9.:]+\|\d+\|one.test, cpool: 0+]])
     assert.errlog()
-          .has.line([[keepalive create pool, name: [A-F0-9.:]+\|\d+\|one.com, size: \d+]])
+          .has.line([[keepalive create pool, name: [A-F0-9.:]+\|\d+\|one.test, size: \d+]])
     assert.errlog()
           .has.line([[lua balancer: keepalive no free connection, cpool: [A-F0-9]+]])
     assert.errlog()
@@ -160,19 +160,19 @@ describe("#postgres upstream keepalive", function()
       method = "GET",
       path = "/echo_sni",
       headers = {
-        Host = "two.com",
+        Host = "two.test",
       }
     })
     local body = assert.res_status(200, res)
-    assert.equal("SNI=two.com", body)
+    assert.equal("SNI=two.test", body)
     assert.errlog()
           .has
-          .line([[enabled connection keepalive \(pool=[A-F0-9.:]+\|\d+\|two.com]])
+          .line([[enabled connection keepalive \(pool=[A-F0-9.:]+\|\d+\|two.test]])
 
     assert.errlog()
-          .has.line([[keepalive get pool, name: [A-F0-9.:]+\|\d+\|two.com, cpool: 0+]])
+          .has.line([[keepalive get pool, name: [A-F0-9.:]+\|\d+\|two.test, cpool: 0+]])
     assert.errlog()
-          .has.line([[keepalive create pool, name: [A-F0-9.:]+\|\d+\|two.com, size: \d+]])
+          .has.line([[keepalive create pool, name: [A-F0-9.:]+\|\d+\|two.test, size: \d+]])
     assert.errlog()
           .has.line([[lua balancer: keepalive no free connection, cpool: [A-F0-9]+]])
     assert.errlog()
@@ -206,7 +206,7 @@ describe("#postgres upstream keepalive", function()
       method = "GET",
       path = "/",
       headers = {
-        Host = "example.com",
+        Host = "example.test",
       }
     })
     local fingerprint_1 = assert.res_status(200, res)
@@ -216,7 +216,7 @@ describe("#postgres upstream keepalive", function()
       method = "GET",
       path = "/",
       headers = {
-        Host = "example2.com",
+        Host = "example2.test",
       }
     })
     local fingerprint_2 = assert.res_status(200, res)
@@ -249,11 +249,11 @@ describe("#postgres upstream keepalive", function()
       method = "GET",
       path = "/echo_sni",
       headers = {
-        Host = "one.com",
+        Host = "one.test",
       }
     })
     local body = assert.res_status(200, res)
-    assert.equal("SNI=one.com", body)
+    assert.equal("SNI=one.test", body)
     assert.errlog()
           .not_has
           .line("enabled connection keepalive", true)
@@ -267,11 +267,11 @@ describe("#postgres upstream keepalive", function()
       method = "GET",
       path = "/echo_sni",
       headers = {
-        Host = "two.com",
+        Host = "two.test",
       }
     })
     local body = assert.res_status(200, res)
-    assert.equal("SNI=two.com", body)
+    assert.equal("SNI=two.test", body)
     assert.errlog()
           .not_has
           .line("enabled connection keepalive", true)
@@ -292,19 +292,19 @@ describe("#postgres upstream keepalive", function()
       method = "GET",
       path = "/echo_sni",
       headers = {
-        Host = "one.com",
+        Host = "one.test",
       }
     })
     local body = assert.res_status(200, res)
-    assert.equal("SNI=one.com", body)
+    assert.equal("SNI=one.test", body)
     assert.errlog()
           .has
-          .line([[enabled connection keepalive \(pool=[A-F0-9.:]+\|\d+\|one.com]])
+          .line([[enabled connection keepalive \(pool=[A-F0-9.:]+\|\d+\|one.test]])
 
     assert.errlog()
-          .has.line([[keepalive get pool, name: [A-F0-9.:]+\|\d+\|one.com, cpool: 0+]])
+          .has.line([[keepalive get pool, name: [A-F0-9.:]+\|\d+\|one.test, cpool: 0+]])
     assert.errlog()
-          .has.line([[keepalive create pool, name: [A-F0-9.:]+\|\d+\|one.com, size: \d+]])
+          .has.line([[keepalive create pool, name: [A-F0-9.:]+\|\d+\|one.test, size: \d+]])
     assert.errlog()
           .has.line([[keepalive no free connection, cpool: [A-F0-9]+]])
     assert.errlog()
@@ -323,17 +323,17 @@ describe("#postgres upstream keepalive", function()
       method = "GET",
       path = "/echo_sni",
       headers = {
-        Host = "one.com",
+        Host = "one.test",
       }
     })
     local body = assert.res_status(200, res)
-    assert.equal("SNI=one.com", body)
+    assert.equal("SNI=one.test", body)
     assert.errlog()
           .has
-          .line([[enabled connection keepalive \(pool=[A-F0-9.:]+\|\d+\|one.com]])
+          .line([[enabled connection keepalive \(pool=[A-F0-9.:]+\|\d+\|one.test]])
 
     assert.errlog()
-          .has.line([[keepalive get pool, name: [A-F0-9.:]+\|\d+\|one.com, ]] .. upool_ptr)
+          .has.line([[keepalive get pool, name: [A-F0-9.:]+\|\d+\|one.test, ]] .. upool_ptr)
     assert.errlog()
           .has.line([[keepalive reusing connection [A-F0-9]+, requests: \d+, ]] .. upool_ptr)
     assert.errlog()
@@ -350,25 +350,25 @@ describe("#postgres upstream keepalive", function()
       method = "GET",
       path = "/echo_sni",
       headers = {
-        Host = "one.com",
+        Host = "one.test",
       }
     })
     local body = assert.res_status(200, res)
-    assert.equal("SNI=one.com", body)
+    assert.equal("SNI=one.test", body)
     assert.errlog()
           .has
-          .line([[enabled connection keepalive \(pool=[A-F0-9.:]+\|\d+\|one.com]])
+          .line([[enabled connection keepalive \(pool=[A-F0-9.:]+\|\d+\|one.test]])
 
     assert.errlog()
-          .has.line([[keepalive get pool, name: [A-F0-9.:]+\|\d+\|one.com, cpool: 0+]])
+          .has.line([[keepalive get pool, name: [A-F0-9.:]+\|\d+\|one.test, cpool: 0+]])
     assert.errlog()
-          .has.line([[keepalive create pool, name: [A-F0-9.:]+\|\d+\|one.com, size: \d+]])
+          .has.line([[keepalive create pool, name: [A-F0-9.:]+\|\d+\|one.test, size: \d+]])
     assert.errlog()
           .has.line([[keepalive no free connection, cpool: [A-F0-9]+]])
     assert.errlog()
           .has.line([[keepalive not saving connection [A-F0-9]+, cpool: [A-F0-9]+]])
     assert.errlog()
-          .has.line([[keepalive free pool, name: [A-F0-9.:]+\|\d+\|one.com, cpool: [A-F0-9]+]])
+          .has.line([[keepalive free pool, name: [A-F0-9.:]+\|\d+\|one.test, cpool: [A-F0-9]+]])
 
     assert.errlog()
           .not_has.line([[keepalive saving connection]], true)

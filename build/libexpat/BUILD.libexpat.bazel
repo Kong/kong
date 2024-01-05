@@ -1,0 +1,58 @@
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make")
+load("@kong_bindings//:variables.bzl", "KONG_VAR")
+
+filegroup(
+    name = "all_srcs",
+    srcs = glob(
+        include = ["**"],
+        exclude = ["*.bazel"],
+    ),
+)
+
+configure_make(
+    name = "libexpat",
+    configure_command = "configure",
+    configure_in_place = True,
+    configure_options = [
+        # configure a miminal feature set at first so that we don't
+        # end up depend to a lot of dependencies; do not when turning
+        # on any of the feature below, we need to add it o kong package's
+        # dependencies, and compile it (under build/cross_deps) for
+        # cross build platforms
+        "--enable-static=no",
+        "--without-xmlwf",
+        "--without-examples",
+        "--without-docbook",
+    ] + select({
+        "@kong//:aarch64-linux-anylibc-cross": [
+            "--host=aarch64-linux",
+        ],
+        "@kong//:x86_64-linux-musl-cross": [
+            "--host=x86_64-linux-musl",
+        ],
+        "//conditions:default": [],
+    }),
+    env = select({
+        "@platforms//os:macos": {
+            # don't use rule_foreign_cc's libtool as archiver as it seems to be a bug
+            # see https://github.com/bazelbuild/rules_foreign_cc/issues/947
+            "AR": "/usr/bin/ar",
+        },
+        "//conditions:default": {},
+    }),
+    lib_source = ":all_srcs",
+    # out_lib_dir = "lib",
+    out_shared_libs = select({
+        "@platforms//os:macos": [
+            "libexpat.1.dylib",
+        ],
+        "//conditions:default": [
+            "libexpat.so.1",
+        ],
+    }),
+    targets = [
+        "-j" + KONG_VAR["NPROC"],
+        "install -j" + KONG_VAR["NPROC"],
+    ],
+    visibility = ["//visibility:public"],
+)

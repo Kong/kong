@@ -1,5 +1,5 @@
 ARG KONG_BASE_IMAGE=redhat/ubi8
-FROM $KONG_BASE_IMAGE
+FROM --platform=$TARGETPLATFORM $KONG_BASE_IMAGE
 
 LABEL maintainer="Kong Docker Maintainers <docker@konghq.com> (@team-gateway-bot)"
 
@@ -32,7 +32,8 @@ ARG KONG_ARTIFACT_PATH=
 COPY ${KONG_ARTIFACT_PATH}${KONG_ARTIFACT} /tmp/kong.rpm
 
 # hadolint ignore=DL3015
-RUN yum install -y /tmp/kong.rpm \
+RUN yum update -y \
+    && yum install -y /tmp/kong.rpm \
     && rm /tmp/kong.rpm \
     && chown kong:0 /usr/local/bin/kong \
     && chown -R kong:0 /usr/local/kong \

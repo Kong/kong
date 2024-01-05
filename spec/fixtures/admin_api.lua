@@ -47,6 +47,20 @@ for name, dao in pairs(helpers.db.daos) do
     update = function(_, id, tbl)
       return api_send("PATCH", "/" .. admin_api_name .. "/" .. id, tbl)
     end,
+    truncate = function()
+      repeat
+        local res = api_send("GET", "/" .. admin_api_name)
+        assert(type(res) == "table" and type(res.data) == "table")
+        for _, entity in ipairs(res.data) do
+          local _, err = admin_api_as_db[name]:remove(entity)
+          if err then
+            return nil, err
+          end
+        end
+      until #res.data == 0
+
+      return true
+    end,
   }
 end
 

@@ -1,5 +1,5 @@
 load(":cc_toolchain_config.bzl", "cc_toolchain_config")
-load(":managed_toolchain.bzl", "define_managed_toolchain")
+load(":managed_toolchain.bzl", "aarch64_glibc_distros", "define_managed_toolchain")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -17,7 +17,7 @@ toolchain(
     target_compatible_with = [
         "@platforms//os:linux",
         "@platforms//cpu:aarch64",
-        "//:glibc_system",
+        "//build/platforms/distro:generic",
     ],
     toolchain = ":local_aarch64-linux-gnu_cc_toolchain",
     toolchain_type = "@bazel_tools//tools/cpp:toolchain_type",
@@ -51,7 +51,7 @@ define_managed_toolchain(
     arch = "x86_64",
     gcc_version = "11",
     libc = "musl",
-    target_compatible_with = ["//:musl"],
+    target_compatible_with = ["//build/platforms/distro:alpine"],
     vendor = "alpine",
 )
 
@@ -59,6 +59,17 @@ define_managed_toolchain(
     arch = "aarch64",
     gcc_version = "11",
     libc = "musl",
-    target_compatible_with = ["//:musl"],
+    target_compatible_with = ["//build/platforms/distro:alpine"],
     vendor = "alpine",
 )
+
+[
+    define_managed_toolchain(
+        arch = "aarch64",
+        gcc_version = aarch64_glibc_distros[vendor],
+        libc = "gnu",
+        target_compatible_with = ["//build/platforms/distro:" + vendor],
+        vendor = vendor,
+    )
+    for vendor in aarch64_glibc_distros
+]

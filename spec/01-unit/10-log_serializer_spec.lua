@@ -20,18 +20,20 @@ describe("kong.log.serialize", function()
               },
             },
           },
+          KONG_PROXIED = true,
         },
         var = {
+          kong_request_id = "1234",
           request_uri = "/request_uri",
           upstream_uri = "/upstream_uri",
           scheme = "http",
-          host = "test.com",
+          host = "test.test",
           server_port = "80",
           request_length = "200",
           bytes_sent = "99",
           request_time = "2",
           remote_addr = "1.1.1.1",
-          -- may be a non-numeric string, 
+          -- may be a non-numeric string,
           -- see http://nginx.org/en/docs/http/ngx_http_upstream_module.html#var_upstream_addr
           upstream_status = "500, 200 : 200, 200",
         },
@@ -42,12 +44,17 @@ describe("kong.log.serialize", function()
           get_uri_args = function() return {"arg1", "arg2"} end,
           get_method = function() return "POST" end,
           get_headers = function() return {header1 = "header1", header2 = "header2", authorization = "authorization"} end,
-          start_time = function() return 3 end
+          start_time = function() return 3 end,
         },
         resp = {
           get_headers = function() return {header1 = "respheader1", header2 = "respheader2", ["set-cookie"] = "delicious=delicacy"} end
         },
+        get_phase = function() return "access" end,
       }
+
+      package.loaded["kong.tracing.request_id"] = nil
+      package.loaded["kong.pdk.log"] = nil
+      kong.log = require "kong.pdk.log".new(kong)
 
       package.loaded["kong.pdk.request"] = nil
       local pdk_request = require "kong.pdk.request"
@@ -75,11 +82,12 @@ describe("kong.log.serialize", function()
         assert.same({header1 = "header1", header2 = "header2", authorization = "REDACTED"}, res.request.headers)
         assert.equal("POST", res.request.method)
         assert.same({"arg1", "arg2"}, res.request.querystring)
-        assert.equal("http://test.com:80/request_uri", res.request.url)
+        assert.equal("http://test.test:80/request_uri", res.request.url)
         assert.equal("/upstream_uri", res.upstream_uri)
         assert.equal("500, 200 : 200, 200", res.upstream_status)
         assert.equal(200, res.request.size)
         assert.equal("/request_uri", res.request.uri)
+        assert.equal("1234", res.request.id)
 
         -- Response
         assert.is_table(res.response)
@@ -92,6 +100,8 @@ describe("kong.log.serialize", function()
 
         -- Tries
         assert.is_table(res.tries)
+
+        assert.equal("upstream", res.source)
       end)
 
       it("uses port map (ngx.ctx.host_port) for request url ", function()
@@ -99,7 +109,7 @@ describe("kong.log.serialize", function()
         local res = kong.log.serialize({ngx = ngx, kong = kong, })
         assert.is_table(res)
         assert.is_table(res.request)
-        assert.equal("http://test.com:5000/request_uri", res.request.url)
+        assert.equal("http://test.test:5000/request_uri", res.request.url)
       end)
 
       it("serializes the matching Route and Services", function()
@@ -116,7 +126,7 @@ describe("kong.log.serialize", function()
       end)
 
       it("serializes the Consumer object", function()
-        ngx.ctx.authenticated_consumer = {id = "someconsumer"}
+        ngx.ctx.authenticated_consumer = { id = "someconsumer" }
 
         local res = kong.log.serialize({ngx = ngx, kong = kong, })
         assert.is_table(res)
@@ -166,6 +176,24 @@ describe("kong.log.serialize", function()
           }, res.tries)
       end)
 
+      it("serializes the response.source", function()
+        ngx.ctx.KONG_EXITED = true
+        ngx.ctx.KONG_PROXIED = nil
+        ngx.ctx.KONG_UNEXPECTED = nil
+
+        local res = kong.log.serialize({ngx = ngx, kong = kong, })
+        assert.is_table(res)
+        assert.same("kong", res.source)
+
+        ngx.ctx.KONG_UNEXPECTED = nil
+        ngx.ctx.KONG_EXITED = nil
+        ngx.ctx.KONG_PROXIED = nil
+
+        local res = kong.log.serialize({ngx = ngx, kong = kong, })
+        assert.is_table(res)
+        assert.same("kong", res.source)
+      end)
+
       it("does not fail when the 'balancer_data' structure is missing", function()
         ngx.ctx.balancer_data = nil
 
@@ -185,6 +213,20 @@ describe("kong.log.serialize", function()
         assert.is_table(res)
 
         assert.equal("/upstream_uri" .. "?" .. args, res.upstream_uri)
+      end)
+
+      it("use the deep copies of the Route, Service, Consumer object avoid " ..
+         "modify ctx.authenticated_consumer, ctx.route, ctx.service", function()
+        ngx.ctx.authenticated_consumer = { id = "someconsumer" }
+        ngx.ctx.route = { id = "my_route" }
+        ngx.ctx.service = { id = "my_service" }
+        local res = kong.log.serialize({ngx = ngx, kong = kong, })
+        assert.not_equal(tostring(ngx.ctx.authenticated_consumer),
+                         tostring(res.consumer))
+        assert.not_equal(tostring(ngx.ctx.route),
+                         tostring(res.route))
+        assert.not_equal(tostring(ngx.ctx.service),
+                         tostring(res.service))
       end)
     end)
   end)
@@ -283,7 +325,7 @@ describe("kong.log.serialize", function()
       end)
 
       it("serializes the Consumer object", function()
-        ngx.ctx.authenticated_consumer = {id = "someconsumer"}
+        ngx.ctx.authenticated_consumer = { id = "someconsumer" }
 
         local res = kong.log.serialize({ngx = ngx, kong = kong, })
         assert.is_table(res)
@@ -340,6 +382,20 @@ describe("kong.log.serialize", function()
         assert.is_table(res)
 
         assert.is_nil(res.tries)
+      end)
+
+      it("use the deep copies of the Route, Service, Consumer object avoid " ..
+         "modify ctx.authenticated_consumer, ctx.route, ctx.service", function()
+        ngx.ctx.authenticated_consumer = { id = "someconsumer "}
+        ngx.ctx.route = { id = "my_route" }
+        ngx.ctx.service = { id = "my_service" }
+        local res = kong.log.serialize({ngx = ngx, kong = kong, })
+        assert.not_equal(tostring(ngx.ctx.authenticated_consumer),
+                         tostring(res.consumer))
+        assert.not_equal(tostring(ngx.ctx.route),
+                         tostring(res.route))
+        assert.not_equal(tostring(ngx.ctx.service),
+                         tostring(res.service))
       end)
     end)
   end)

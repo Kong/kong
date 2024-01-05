@@ -45,7 +45,11 @@ local TLS_STREAM_COUNT_KEY    = "events:streams:tls"
 local UDP_STREAM_COUNT_KEY    = "events:streams:udp"
 
 
+local KM_VISIT_COUNT_KEY      = "events:km:visit"
+
+
 local GO_PLUGINS_REQUEST_COUNT_KEY = "events:requests:go_plugins"
+local WASM_REQUEST_COUNT_KEY = "events:requests:wasm"
 
 
 local ROUTE_CACHE_HITS_KEY = "route_cache_hits"
@@ -311,6 +315,7 @@ local function send_ping(host, port)
     _ping_infos.udp_streams = get_counter(UDP_STREAM_COUNT_KEY)
     _ping_infos.tls_streams = get_counter(TLS_STREAM_COUNT_KEY)
     _ping_infos.go_plugin_reqs = get_counter(GO_PLUGINS_REQUEST_COUNT_KEY)
+    _ping_infos.wasm_reqs = get_counter(WASM_REQUEST_COUNT_KEY)
 
     _ping_infos.stream_route_cache_hit_pos = get_counter(STEAM_ROUTE_CACHE_HITS_KEY_POS)
     _ping_infos.stream_route_cache_hit_neg = get_counter(STEAM_ROUTE_CACHE_HITS_KEY_NEG)
@@ -322,6 +327,7 @@ local function send_ping(host, port)
     reset_counter(UDP_STREAM_COUNT_KEY, _ping_infos.udp_streams)
     reset_counter(TLS_STREAM_COUNT_KEY, _ping_infos.tls_streams)
     reset_counter(GO_PLUGINS_REQUEST_COUNT_KEY, _ping_infos.go_plugin_reqs)
+    reset_counter(WASM_REQUEST_COUNT_KEY, _ping_infos.wasm_reqs)
     reset_counter(STEAM_ROUTE_CACHE_HITS_KEY_POS, _ping_infos.stream_route_cache_hit_pos)
     reset_counter(STEAM_ROUTE_CACHE_HITS_KEY_NEG, _ping_infos.stream_route_cache_hit_neg)
     return
@@ -336,7 +342,9 @@ local function send_ping(host, port)
   _ping_infos.grpcs_reqs     = get_counter(GRPCS_REQUEST_COUNT_KEY)
   _ping_infos.ws_reqs        = get_counter(WS_REQUEST_COUNT_KEY)
   _ping_infos.wss_reqs       = get_counter(WSS_REQUEST_COUNT_KEY)
+  _ping_infos.km_visits      = get_counter(KM_VISIT_COUNT_KEY)
   _ping_infos.go_plugin_reqs = get_counter(GO_PLUGINS_REQUEST_COUNT_KEY)
+  _ping_infos.wasm_reqs      = get_counter(WASM_REQUEST_COUNT_KEY)
 
   _ping_infos.request_route_cache_hit_pos = get_counter(REQUEST_ROUTE_CACHE_HITS_KEY_POS)
   _ping_infos.request_route_cache_hit_neg = get_counter(REQUEST_ROUTE_CACHE_HITS_KEY_NEG)
@@ -352,7 +360,9 @@ local function send_ping(host, port)
   reset_counter(GRPCS_REQUEST_COUNT_KEY, _ping_infos.grpcs_reqs)
   reset_counter(WS_REQUEST_COUNT_KEY,    _ping_infos.ws_reqs)
   reset_counter(WSS_REQUEST_COUNT_KEY,   _ping_infos.wss_reqs)
+  reset_counter(KM_VISIT_COUNT_KEY,      _ping_infos.km_visits)
   reset_counter(GO_PLUGINS_REQUEST_COUNT_KEY, _ping_infos.go_plugin_reqs)
+  reset_counter(WASM_REQUEST_COUNT_KEY,  _ping_infos.wasm_reqs)
   reset_counter(REQUEST_ROUTE_CACHE_HITS_KEY_POS, _ping_infos.request_route_cache_hit_pos)
   reset_counter(REQUEST_ROUTE_CACHE_HITS_KEY_NEG, _ping_infos.request_route_cache_hit_neg)
 end
@@ -398,6 +408,7 @@ local function configure_ping(kong_conf)
   add_immutable_value("role", kong_conf.role)
   add_immutable_value("kic", kong_conf.kic)
   add_immutable_value("_admin", #kong_conf.admin_listeners > 0 and 1 or 0)
+  add_immutable_value("_admin_gui", #kong_conf.admin_gui_listeners > 0 and 1 or 0)
   add_immutable_value("_proxy", #kong_conf.proxy_listeners > 0 and 1 or 0)
   add_immutable_value("_stream", #kong_conf.stream_listeners > 0 and 1 or 0)
 end
@@ -474,6 +485,10 @@ return {
       incr_counter(GO_PLUGINS_REQUEST_COUNT_KEY)
     end
 
+    if ctx.ran_wasm then
+      incr_counter(WASM_REQUEST_COUNT_KEY)
+    end
+
     local suffix = get_current_suffix(ctx)
     if suffix then
       incr_counter(count_key .. ":" .. suffix)
@@ -484,6 +499,13 @@ return {
     if route_match_cached then
       incr_counter(count_key .. ":" .. ROUTE_CACHE_HITS_KEY .. ":" .. route_match_cached)
     end
+  end,
+  admin_gui_log = function(ctx)
+    if not _enabled then
+      return
+    end
+
+    incr_counter(KM_VISIT_COUNT_KEY)
   end,
 
   -- custom methods

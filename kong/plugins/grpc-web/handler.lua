@@ -44,7 +44,7 @@ function grpc_web:access(conf)
 
   local uri
   if conf.pass_stripped_path then
-    uri = ngx.var.upstream_uri
+    uri = ngx_var.upstream_uri
     ngx.req.set_uri(uri)
   else
     uri = kong_request_get_path()

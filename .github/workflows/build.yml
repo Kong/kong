@@ -5,6 +5,10 @@ on:
       relative-build-root:
         required: true
         type: string
+    outputs:
+      cache-key:
+        description: 'Computed cache key, used for restoring cache in other workflows'
+        value: ${{ jobs.build.outputs.cache-key }}
 
 env:
   BUILD_ROOT: ${{ github.workspace }}/${{ inputs.relative-build-root }}
@@ -14,17 +18,29 @@ jobs:
     name: Build dependencies
     runs-on: ubuntu-22.04
 
+    outputs:
+      cache-key: ${{ steps.cache-key.outputs.cache-key }}
+
     steps:
     - name: Checkout Kong source code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
+
+    # these aren't necessarily used by all tests, but building them here will
+    # ensures that we have a warm cache when other tests _do_ need to build the
+    # filters
+    - name: Build WASM Test Filters
+      uses: ./.github/actions/build-wasm-test-filters
+
+    - name: Generate cache key
+      id: cache-key
+      uses: ./.github/actions/build-cache-key
 
     - name: Lookup build cache
       id: cache-deps
       uses: actions/cache@v3
       with:
-        path: |
-          ${{ env.BUILD_ROOT }}
-        key: ${{ hashFiles('.requirements', 'kong-*.rockspec', '.bazelversion', '.bazelrc', 'build/**', 'BUILD.bazel', 'WORKSPACE', '.github/workflows/build_and_test.yml') }}
+        path: ${{ env.BUILD_ROOT }}
+        key: ${{ steps.cache-key.outputs.cache-key }}
 
     - name: Install packages
       if: steps.cache-deps.outputs.cache-hit != 'true'
@@ -32,17 +48,32 @@ jobs:
 
     - name: Build Kong
       if: steps.cache-deps.outputs.cache-hit != 'true'
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: |
         make build-kong
-        BUILD_PREFIX=$BUILD_ROOT/kong-dev
-        export PATH="$BUILD_PREFIX/bin:$BUILD_PREFIX/openresty/nginx/sbin:$BUILD_PREFIX/openresty/bin:$PATH"
-        chmod +rw -R $BUILD_PREFIX
-        nginx -V
+        chmod +rw -R "$BUILD_ROOT/kong-dev"
+
+    - name: Update PATH
+      run: |
+        echo "$BUILD_ROOT/kong-dev/bin" >> $GITHUB_PATH
+        echo "$BUILD_ROOT/kong-dev/openresty/nginx/sbin" >> $GITHUB_PATH
+        echo "$BUILD_ROOT/kong-dev/openresty/bin" >> $GITHUB_PATH
+
+    - name: Debug (nginx)
+      run: |
+        echo nginx: $(which nginx)
+        nginx -V 2>&1 | sed -re 's/ --/\n--/g'
         ldd $(which nginx)
-        luarocks
+
+    - name: Debug (luarocks)
+      run: |
+        echo luarocks: $(which luarocks)
+        luarocks --version
+        luarocks config
 
     - name: Bazel Outputs
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: failure()
       with:
         name: bazel-outputs

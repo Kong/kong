@@ -2,6 +2,7 @@ local constants = require("kong.constants")
 local ws_client = require("resty.websocket.client")
 local ws_server = require("resty.websocket.server")
 local parse_url = require("socket.url").parse
+local process_type = require("ngx.process").type
 
 local type = type
 local table_insert = table.insert
@@ -29,9 +30,9 @@ local CLUSTER_PROXY_SSL_TERMINATOR_SOCK = fmt("unix:%s/cluster_proxy_ssl_termina
 local _M = {}
 
 
-local function parse_proxy_url(conf)
+local function parse_proxy_url(proxy_server)
   local ret = {}
-  local proxy_server = conf.proxy_server
+
   if proxy_server then
     -- assume proxy_server is validated in conf_loader
     local parsed = parse_url(proxy_server)
@@ -80,7 +81,7 @@ function _M.connect_cp(dp, endpoint, protocols)
   }
 
   if conf.cluster_use_proxy then
-    local proxy_opts = parse_proxy_url(conf)
+    local proxy_opts = parse_proxy_url(conf.proxy_server)
     opts.proxy_opts = {
       wss_proxy = proxy_opts.proxy_url,
       wss_proxy_authorization = proxy_opts.proxy_authorization,
@@ -154,10 +155,13 @@ function _M.connect_dp(dp_id, dp_hostname, dp_ip, dp_version)
   return wb, log_suffix
 end
 
-
 function _M.is_dp_worker_process()
+  if kong.configuration.role == "data_plane"
+      and kong.configuration.dedicated_config_processing == true then
+    return process_type() == "privileged agent"
+  end
+
   return worker_id() == 0
 end
-
 
 return _M

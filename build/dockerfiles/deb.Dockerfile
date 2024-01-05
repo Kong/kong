@@ -1,5 +1,5 @@
-ARG KONG_BASE_IMAGE=debian:bullseye-slim
-FROM $KONG_BASE_IMAGE
+ARG KONG_BASE_IMAGE=debian:bookworm-slim
+FROM --platform=$TARGETPLATFORM $KONG_BASE_IMAGE
 
 LABEL maintainer="Kong Docker Maintainers <docker@konghq.com> (@team-gateway-bot)"
 
@@ -18,6 +18,8 @@ ARG KONG_ARTIFACT_PATH=
 COPY ${KONG_ARTIFACT_PATH}${KONG_ARTIFACT} /tmp/kong.deb
 
 RUN apt-get update \
+    && apt-get -y upgrade \
+    && apt-get -y autoremove \
     && apt-get install -y --no-install-recommends /tmp/kong.deb \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /tmp/kong.deb \

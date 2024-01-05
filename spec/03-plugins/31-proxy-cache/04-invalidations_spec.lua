@@ -1,8 +1,17 @@
-local helpers      = require "spec.helpers"
+local helpers = require "spec.helpers"
+
 
 
 local POLL_INTERVAL = 0.3
 
+local function get(client, host)
+  return assert(client:get("/get", {
+    headers = {
+      Host = host,
+      ["kong-debug"] = 1,
+    },
+  }))
+end
 
 for _, strategy in helpers.each_strategy() do
 describe("proxy-cache invalidations via: " .. strategy, function()
@@ -21,11 +30,11 @@ describe("proxy-cache invalidations via: " .. strategy, function()
     bp = helpers.get_db_utils(strategy, nil, {"proxy-cache"})
 
     route1 = assert(bp.routes:insert {
-      hosts = { "route-1.com" },
+      hosts = { "route-1.test" },
     })
 
     route2 = assert(bp.routes:insert {
-      hosts = { "route-2.com" },
+      hosts = { "route-2.test" },
     })
 
     plugin1 = assert(bp.plugins:insert {
@@ -112,125 +121,69 @@ describe("proxy-cache invalidations via: " .. strategy, function()
 
     setup(function()
       -- prime cache entries on both instances
-      local res_1 = assert(client_1:send {
-        method = "GET",
-        path = "/get",
-        headers = {
-          Host = "route-1.com",
-        },
-      })
+      local res_1 = get(client_1, "route-1.test")
 
       assert.res_status(200, res_1)
       assert.same("Miss", res_1.headers["X-Cache-Status"])
       cache_key = res_1.headers["X-Cache-Key"]
 
-      local res_2 = assert(client_2:send {
-        method = "GET",
-        path = "/get",
-        headers = {
-          host = "route-1.com",
-        },
-      })
+      local res_2 = get(client_2, "route-1.test")
 
       assert.res_status(200, res_2)
       assert.same("Miss", res_2.headers["X-Cache-Status"])
       assert.same(cache_key, res_2.headers["X-Cache-Key"])
 
-      res_1 = assert(client_1:send {
-        method = "GET",
-        path = "/get",
-        headers = {
-          host = "route-2.com",
-        },
-      })
+      res_1 = get(client_1, "route-2.test")
 
       assert.res_status(200, res_1)
       assert.same("Miss", res_1.headers["X-Cache-Status"])
       cache_key2 = res_1.headers["X-Cache-Key"]
       assert.not_same(cache_key, cache_key2)
 
-      res_2 = assert(client_2:send {
-        method = "GET",
-        path = "/get",
-        headers = {
-          host = "route-2.com",
-        },
-      })
+      local res_2 = get(client_2, "route-2.test")
 
       assert.res_status(200, res_2)
       assert.same("Miss", res_2.headers["X-Cache-Status"])
     end)
 
     it("propagates purges via cluster events mechanism", function()
-      local res_1 = assert(client_1:send {
-        method = "GET",
-        path = "/get",
-        headers = {
-          host = "route-1.com",
-        },
-      })
+      local res_1 = get(client_1, "route-1.test")
 
       assert.res_status(200, res_1)
       assert.same("Hit", res_1.headers["X-Cache-Status"])
 
-      local res_2 = assert(client_2:send {
-        method = "GET",
-        path = "/get",
-        headers = {
-          host = "route-1.com",
-        },
-      })
+      local res_2 = get(client_2, "route-1.test")
 
       assert.res_status(200, res_2)
       assert.same("Hit", res_2.headers["X-Cache-Status"])
 
       -- now purge the entry
-      local res = assert(admin_client_1:send {
-        method = "DELETE",
-        path = "/proxy-cache/" .. plugin1.id .. "/caches/" .. cache_key,
-      })
+      local res = assert(admin_client_1:delete("/proxy-cache/" .. plugin1.id .. "/caches/" .. cache_key))
 
       assert.res_status(204, res)
 
       helpers.wait_until(function()
         -- assert that the entity was purged from the second instance
-        res = assert(admin_client_2:send {
-          method = "GET",
-          path = "/proxy-cache/" .. plugin1.id .. "/caches/" .. cache_key,
-        })
+        res = assert(admin_client_2:get("/proxy-cache/" .. plugin1.id .. "/caches/" .. cache_key, {
+        }))
         res:read_body()
         return res.status == 404
       end, 10)
 
       -- refresh and purge with our second endpoint
-      res_1 = assert(client_1:send {
-        method = "GET",
-        path = "/get",
-        headers = {
-          Host = "route-1.com",
-        },
-      })
+      res_1 = get(client_1, "route-1.test")
 
       assert.res_status(200, res_1)
       assert.same("Miss", res_1.headers["X-Cache-Status"])
 
-      res_2 = assert(client_2:send {
-        method = "GET",
-        path = "/get",
-        headers = {
-          host = "route-1.com",
-        },
-      })
+      res_2 = get(client_2, "route-1.test")
 
       assert.res_status(200, res_2)
       assert.same("Miss", res_2.headers["X-Cache-Status"])
       assert.same(cache_key, res_2.headers["X-Cache-Key"])
 
       -- now purge the entry
-      res = assert(admin_client_1:send {
-        method = "DELETE",
-        path = "/proxy-cache/" .. cache_key,
-      })
+      res = assert(admin_client_1:delete("/proxy-cache/" .. cache_key))
 
       assert.res_status(204, res)
 
@@ -239,55 +192,42 @@ describe("proxy-cache invalidations via: " .. strategy, function()
 
       helpers.wait_until(function()
         -- assert that the entity was purged from the second instance
-        res = assert(admin_client_2:send {
-          method = "GET",
-          path = "/proxy-cache/" .. cache_key,
-        })
+        res = assert(admin_client_2:get("/proxy-cache/" .. cache_key, {
+        }))
         res:read_body()
         return res.status == 404
       end, 10)
     end)
 
     it("does not affect cache entries under other plugin instances", function()
-      local res = assert(admin_client_1:send {
-        method = "GET",
-        path = "/proxy-cache/" .. plugin2.id .. "/caches/" .. cache_key2,
-      })
+      local res = assert(admin_client_1:get("/proxy-cache/" .. plugin2.id .. "/caches/" .. cache_key2, {
+      }))
 
       assert.res_status(200, res)
 
-      res = assert(admin_client_2:send {
-        method = "GET",
-        path = "/proxy-cache/" .. plugin2.id .. "/caches/" .. cache_key2,
-      })
+      res = assert(admin_client_2:get("/proxy-cache/" .. plugin2.id .. "/caches/" .. cache_key2, {
+      }))
 
       assert.res_status(200, res)
     end)
 
     it("propagates global purges", function()
       do
-        local res = assert(admin_client_1:send {
-          method = "DELETE",
-          path = "/proxy-cache/",
-        })
-  
+        local res = assert(admin_client_1:delete("/proxy-cache/"))
+
         assert.res_status(204, res)
       end
 
       helpers.wait_until(function()
-        local res = assert(admin_client_1:send {
-          method = "GET",
-          path = "/proxy-cache/" .. plugin2.id .. "/caches/" .. cache_key2,
-        })
+        local res = assert(admin_client_1:get("/proxy-cache/" .. plugin2.id .. "/caches/" .. cache_key2, {
+        }))
         res:read_body()
         return res.status == 404
       end, 10)
 
       helpers.wait_until(function()
-        local res = assert(admin_client_2:send {
-          method = "GET",
-          path = "/proxy-cache/" .. plugin2.id .. "/caches/" .. cache_key2,
-        })
+        local res = assert(admin_client_2:get("/proxy-cache/" .. plugin2.id .. "/caches/" .. cache_key2, {
+        }))
         res:read_body()
         return res.status == 404
       end, 10)

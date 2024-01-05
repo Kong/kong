@@ -1,5 +1,6 @@
 local blueprints = require "spec.fixtures.blueprints"
 local utils = require "kong.tools.utils"
+local assert = require "luassert"
 
 
 local dc_blueprints = {}
@@ -8,7 +9,7 @@ local dc_blueprints = {}
 local null = ngx.null
 
 
-local function reset()
+local function new_config()
   return {
     _format_version = "3.0"
   }
@@ -27,18 +28,17 @@ local function remove_nulls(tbl)
 end
 
 
-function dc_blueprints.new(db)
+local function wrap_db(db)
   local dc_as_db = {}
 
-  local save_dc
-  local dc = reset()
+  local config = new_config()
 
   for name, _ in pairs(db.daos) do
     dc_as_db[name] = {
       insert = function(_, tbl)
         tbl = utils.cycle_aware_deep_copy(tbl)
-        if not dc[name] then
-          dc[name] = {}
+        if not config[name] then
+          config[name] = {}
         end
         local schema = db.daos[name].schema
         tbl = schema:process_auto_fields(tbl, "insert")
@@ -49,16 +49,16 @@ function dc_blueprints.new(db)
                          or nil
           end
         end
-        table.insert(dc[name], remove_nulls(tbl))
+        table.insert(config[name], remove_nulls(tbl))
         return utils.cycle_aware_deep_copy(tbl)
       end,
       update = function(_, id, tbl)
-        if not dc[name] then
+        if not config[name] then
           return nil, "not found"
         end
         tbl = utils.cycle_aware_deep_copy(tbl)
         local element
-        for _, e in ipairs(dc[name]) do
+        for _, e in ipairs(config[name]) do
           if e.id == id then
             element = e
             break
@@ -71,25 +71,142 @@ function dc_blueprints.new(db)
           element[k] = v
         end
         return element
-      end
+      end,
+      remove = function(_, id)
+        assert(id, "id is required")
+        if type(id) == "table" then
+          id = assert(type(id.id) == "string" and id.id)
+        end
+
+        if not config[name] then
+          return nil, "not found"
+        end
+
+        for idx, entity in ipairs(config[name]) do
+          if entity.id == id then
+            table.remove(config[name], idx)
+            return entity
+          end
+        end
+
+        return nil, "not found"
+      end,
     }
   end
+
+  dc_as_db.export = function()
+    return utils.cycle_aware_deep_copy(config)
+  end
+
+  dc_as_db.import = function(input)
+    config = utils.cycle_aware_deep_copy(input)
+  end
+
+  dc_as_db.reset = function()
+    config = new_config()
+  end
+
+  return dc_as_db
+end
+
+
+function dc_blueprints.new(db)
+  local dc_as_db = wrap_db(db)
+
+  local save_dc = new_config()
 
   local bp = blueprints.new(dc_as_db)
 
   bp.done = function()
-    local ret = dc
-    save_dc = dc
-    dc = reset()
+    local ret = dc_as_db.export()
+    save_dc = ret
+    dc_as_db.reset()
     return ret
   end
 
   bp.reset_back = function()
-    dc = save_dc
+    dc_as_db.import(save_dc)
   end
 
   return bp
 end
 
+
+function dc_blueprints.admin_api(db, forced_port)
+  -- lazy import to avoid cyclical dependency
+  local helpers = require "spec.helpers"
+
+  db = db or helpers.db
+
+  local dc_as_db = wrap_db(db)
+  local api = {}
+
+  local function update_config()
+    local client = helpers.admin_client(nil, forced_port)
+
+    local res = client:post("/config", {
+      headers = {
+        ["Content-Type"] = "application/json",
+      },
+      body = dc_as_db.export(),
+    })
+
+    assert.response(res).has.status(201)
+    client:close()
+    return assert.response(res).has.jsonbody()
+  end
+
+  for name in pairs(db.daos) do
+    local dao = dc_as_db[name]
+
+    api[name] = {
+      insert = function(_, entity)
+        local res, err = dao:insert(entity)
+
+        if not res then
+          return nil, err
+        end
+
+        update_config()
+
+        return res
+      end,
+
+      update = function(_, id, updates)
+        local res, err = dao:update(id, updates)
+        if not res then
+          return nil, err
+        end
+
+        update_config()
+
+        return res
+      end,
+
+      remove = function(_, id)
+        local res, err = dao:remove(id)
+        if not res then
+          return nil, err
+        end
+
+        update_config()
+
+        return res
+      end,
+
+      truncate = function()
+        local config = dc_as_db.export()
+        config[name] = {}
+
+        dc_as_db.import(config)
+        update_config()
+
+        return true
+      end,
+    }
+  end
+
+  return blueprints.new(api)
+end
 
 return dc_blueprints

@@ -7,6 +7,11 @@ local function unindent(s)
 end
 
 
+local lock_shm
+local lock_opts
+
+
+
 local function setup_it_block()
 
   -- keep track of created semaphores
@@ -57,7 +62,24 @@ local function setup_it_block()
           table.insert(semaphores, s)
           return s
         end,
+
       }},
+
+      { "resty.lock",  {
+        new = function(_, shm, opts)
+          lock_shm = shm
+          lock_opts = opts
+          return {
+            lock = function()
+              return true
+            end,
+            unlock = function()
+              return true
+            end
+          }
+        end,
+      }},
+
 
       { "kong.concurrency", {} },
     }
@@ -326,5 +348,68 @@ describe("kong.concurrency", function()
       ]]), table.concat(output, "\n"))
     end)
   end)
-end)
 
+  describe("with_worker_mutex", function()
+    it("opts must be a table", function()
+      local concurrency = require("kong.concurrency")
+      assert.error_matches(function()
+        concurrency.with_worker_mutex(nil, function()
+          return true
+        end)
+      end, "opts must be a table", nil, true)
+    end)
+    it("opts.name is required and must be a string", function()
+      local concurrency = require("kong.concurrency")
+      assert.error_matches(function()
+        concurrency.with_worker_mutex({}, function()
+          return true
+        end)
+      end, "opts.name is required and must be a string", nil, true)
+      local concurrency = require("kong.concurrency")
+      assert.error_matches(function()
+        concurrency.with_worker_mutex({ name = 123 }, function()
+          return true
+        end)
+      end, "opts.name is required and must be a string", nil, true)
+    end)
+    it("opts.timeout must be a number", function()
+      local concurrency = require("kong.concurrency")
+      assert.error_matches(function()
+        concurrency.with_worker_mutex({ name = "test", timeout = "year" }, function()
+          return true
+        end)
+      end, "opts.timeout must be a number", nil, true)
+    end)
+    it("opts.exptime must be a number", function()
+      local concurrency = require("kong.concurrency")
+      assert.error_matches(function()
+        concurrency.with_worker_mutex({ name = "test", exptime = "year" }, function()
+          return true
+        end)
+      end, "opts.exptime must be a number", nil, true)
+    end)
+
+    it("opts are passed to resty.lock", function()
+      package.loaded["resty.lock"] = nil
+      package.loaded["kong.concurrency"] = nil
+
+      setup_it_block()
+
+      local concurrency = require("kong.concurrency")
+      local ok, err = concurrency.with_worker_mutex({
+        name = "test",
+        timeout = 0,
+        exptime = 60
+      }, function()
+        return true
+      end)
+
+      assert.is_nil(err)
+      assert.is_true(ok)
+
+      assert.equal("kong_locks", lock_shm)
+      assert.equal(0, lock_opts.timeout)
+      assert.equal(60, lock_opts.exptime)
+    end)
+  end)
+end)

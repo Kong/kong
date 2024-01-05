@@ -1,8 +1,10 @@
 local lapis       = require "lapis"
-local utils       = require "kong.tools.utils"
 local api_helpers = require "kong.api.api_helpers"
 local Endpoints   = require "kong.api.endpoints"
 local hooks       = require "kong.hooks"
+
+
+local load_module_if_exists = require "kong.tools.module".load_module_if_exists
 
 
 local ngx      = ngx
@@ -17,6 +19,7 @@ local app = lapis.Application()
 app.default_route = api_helpers.default_route
 app.handle_404 = api_helpers.handle_404
 app.handle_error = api_helpers.handle_error
+app:before_filter(api_helpers.cors_filter)
 app:before_filter(api_helpers.before_filter)
 
 
@@ -94,7 +97,7 @@ do
   -- Custom Routes
   for _, dao in pairs(kong.db.daos) do
     local schema = dao.schema
-    local ok, custom_endpoints = utils.load_module_if_exists("kong.api.routes." .. schema.name)
+    local ok, custom_endpoints = load_module_if_exists("kong.api.routes." .. schema.name)
     if ok then
       customize_routes(routes, custom_endpoints, schema)
     end
@@ -103,7 +106,7 @@ do
   -- Plugin Routes
   if kong.configuration and kong.configuration.loaded_plugins then
     for k in pairs(kong.configuration.loaded_plugins) do
-      local loaded, custom_endpoints = utils.load_module_if_exists("kong.plugins." .. k .. ".api")
+      local loaded, custom_endpoints = load_module_if_exists("kong.plugins." .. k .. ".api")
       if loaded then
         ngx.log(ngx.DEBUG, "Loading API endpoints for plugin: ", k)
         if api_helpers.is_new_db_routes(custom_endpoints) then

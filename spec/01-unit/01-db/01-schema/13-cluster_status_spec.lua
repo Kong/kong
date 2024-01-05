@@ -45,11 +45,36 @@ describe("plugins", function()
     local ok, err = validate({ sync_status = "aaa", })
     assert.is_nil(ok)
 
-    assert.equal("expected one of: unknown, normal, kong_version_incompatible, plugin_set_incompatible, plugin_version_incompatible", err.sync_status)
+    assert.equal("expected one of: unknown, normal, kong_version_incompatible, plugin_set_incompatible, plugin_version_incompatible, filter_set_incompatible", err.sync_status)
   end)
 
   it("accepts correct value", function()
     local ok, err = validate({ ip = "127.0.0.1", hostname = "dp.example.com", })
+    assert.is_true(ok)
+    assert.is_nil(err)
+  end)
+
+  it("accepts labels", function()
+    local ok, err = validate({
+      ip = "127.0.0.1",
+      hostname = "dp.example.com",
+      labels = {
+        deployment = "mycloud",
+        region = "us-east-1"
+      }
+    })
+    assert.is_true(ok)
+    assert.is_nil(err)
+  end)
+
+  it("accepts cert details", function()
+    local ok, err = validate({
+      ip = "127.0.0.1",
+      hostname = "dp.example.com",
+      cert_details = {
+        expiry_timestamp = 1897136778,
+      }
+    })
     assert.is_true(ok)
     assert.is_nil(err)
   end)

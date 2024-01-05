@@ -3,9 +3,10 @@ local ipmatcher = require "resty.ipmatcher"
 local kong_meta = require "kong.meta"
 
 
-local ngx_var = ngx.var
-local kong = kong
 local error = error
+local kong = kong
+local log = kong.log
+local ngx_var = ngx.var
 
 
 local IPMATCHER_COUNT = 512
@@ -26,6 +27,17 @@ do
   isempty = function(t)
     return t == nil or tb_isempty(t)
   end
+end
+
+
+local function do_exit(status, message)
+  status = status or 403
+  message = message or
+            string.format("IP address not allowed: %s", ngx_var.remote_addr)
+
+  log.warn(message)
+
+  return kong.response.error(status, message)
 end
 
 
@@ -52,30 +64,41 @@ local function match_bin(list, binary_remote_addr)
 end
 
 
-function IpRestrictionHandler:access(conf)
+local function do_restrict(conf)
   local binary_remote_addr = ngx_var.binary_remote_addr
   if not binary_remote_addr then
-    return kong.response.error(403, "Cannot identify the client IP address, unix domain sockets are not supported.")
+    return do_exit(403,
+                   "Cannot identify the client IP address, " ..
+                   "unix domain sockets are not supported.")
   end
 
   local deny = conf.deny
-  local allow = conf.allow
-  local status = conf.status or 403
-  local message = conf.message or "Your IP address is not allowed"
 
   if not isempty(deny) then
     local blocked = match_bin(deny, binary_remote_addr)
     if blocked then
-      return kong.response.error(status, message)
+      return do_exit(conf.status, conf.message)
     end
   end
+
+  local allow = conf.allow
 
   if not isempty(allow) then
     local allowed = match_bin(allow, binary_remote_addr)
     if not allowed then
-      return kong.response.error(status, message)
+      return do_exit(conf.status, conf.message)
     end
   end
+end
+
+
+function IpRestrictionHandler:access(conf)
+  return do_restrict(conf)
+end
+
+
+function IpRestrictionHandler:preread(conf)
+  return do_restrict(conf)
 end
 
 

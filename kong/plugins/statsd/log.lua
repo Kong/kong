@@ -2,7 +2,6 @@ local Queue = require "kong.tools.queue"
 local constants = require "kong.plugins.statsd.constants"
 local statsd_logger = require "kong.plugins.statsd.statsd_logger"
 local ws = require "kong.workspaces"
-local lmdb = require "resty.lmdb"
 
 local ngx = ngx
 local kong = kong
@@ -16,7 +15,6 @@ local ipairs = ipairs
 local tonumber = tonumber
 local knode = kong and kong.node or require "kong.pdk.node".new()
 local null = ngx.null
-local lmdb_get_env_info = lmdb.get_env_info
 
 local START_RANGE_IDX = 1
 local END_RANGE_IDX   = 2
@@ -99,8 +97,6 @@ local hostname = re_gsub(knode.get_hostname(), [[\.]], "_", "oj")
 -- downsample timestamp
 local shdict_metrics_last_sent = 0
 local SHDICT_METRICS_SEND_THRESHOLD = 60
-local lmdb_metrics_last_sent = 0
-local LMDB_METRICS_SEND_THRESHOLD = 60
 
 
 local get_consumer_id = {
@@ -136,8 +132,7 @@ local get_workspace_id = {
     return ws.get_workspace_id()
   end,
   workspace_name = function()
-    local workspace = ws.get_workspace()
-    return workspace.name
+    return ws.get_workspace_name()
   end
 }
 
@@ -275,47 +270,6 @@ if ngx.config.ngx_lua_version >= 10011 then
           end
         end
 
-      end
-    end
-  end
-  metrics.lmdb_usage = function (_, message, metric_config, logger, conf, tags)
-    -- we don't need this for every request, send every 1 minute
-    -- also only one worker needs to send this because it's shared
-    if worker_id ~= 0 then
-      return
-    end
-    if kong.configuration.database ~= "off" then
-      return
-    end
-
-    local now = ngx_time()
-    if lmdb_metrics_last_sent + LMDB_METRICS_SEND_THRESHOLD < now then
-      lmdb_metrics_last_sent = now
-      local lmdb_info, err = lmdb_get_env_info()
-      if err then
-        kong.log.err("failed to get lmdb info: ", err)
-        return
-      end
-      if conf.tag_style then
-        local tags = {
-          ["node"] = hostname,
-        }
-        logger:send_statsd("lmdb.used_space",
-          lmdb_info.last_used_page * lmdb_info.page_size, logger.stat_types.gauge,
-          metric_config.sample_rate, tags, conf.tag_style)
-        logger:send_statsd("lmdb.capacity",
-          lmdb_info.map_size, logger.stat_types.gauge,
-          metric_config.sample_rate, tags, conf.tag_style)
-
-      else
-        local lmdb_used_space_metric_name = conf.hostname_in_prefix and "lmdb.used_space" or string_format("node.%s.lmdb.used_space", hostname)
-        local lmdb_capacity_metric_name = conf.hostname_in_prefix and "lmdb.capacity" or string_format("node.%s.lmdb.capacity", hostname)
-        logger:send_statsd(lmdb_used_space_metric_name,
-            lmdb_info.last_used_page * lmdb_info.page_size, logger.stat_types.gauge,
-            metric_config.sample_rate)
-        logger:send_statsd(lmdb_capacity_metric_name,
-            lmdb_info.last_used_page * lmdb_info.page_size, logger.stat_types.gauge,
-            metric_config.sample_rate)
       end
     end
   end

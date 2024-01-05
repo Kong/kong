@@ -1,6 +1,7 @@
 -- Copyright (c) Kong Inc. 2020
 
 local cjson = require "cjson"
+local buffer = require "string.buffer"
 local pb = require "pb"
 local grpc_tools = require "kong.tools.grpc"
 local grpc_frame = grpc_tools.frame
@@ -14,6 +15,7 @@ local re_match = ngx.re.match
 local re_gmatch = ngx.re.gmatch
 
 local encode_json = cjson.encode
+local decode_json = cjson.decode
 local pcall = pcall
 
 local deco = {}
@@ -225,7 +227,7 @@ function deco:upstream(body)
   local body_variable = self.endpoint.body_variable
   if body_variable then
     if body and #body > 0 then
-      local body_decoded = cjson.decode(body)
+      local body_decoded = decode_json(body)
       if body_variable ~= "*" then
         --[[
           // For HTTP methods that allow a request body, the `body` field
@@ -285,19 +287,18 @@ end
 function deco:downstream(chunk)
   local body = (self.downstream_body or "") .. chunk
 
-  local out, n = {}, 1
+  local out = buffer.new()
   local msg, body = grpc_unframe(body)
 
   while msg do
     msg = encode_json(pb.decode(self.endpoint.output_type, msg))
 
-    out[n] = msg
-    n = n + 1
+    out:put(msg)
     msg, body = grpc_unframe(body)
   end
 
   self.downstream_body = body
-  chunk = table.concat(out)
+  chunk = out:get()
 
   return chunk
 end

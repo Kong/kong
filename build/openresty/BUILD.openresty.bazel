@@ -1,6 +1,8 @@
 load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make", "make")
-load("@kong_bindings//:variables.bzl", "KONG_VAR")
+load("@bazel_skylib//lib:selects.bzl", "selects")
+load("@kong//build/openresty/wasmx:rules.bzl", "wasm_runtime", "wasmx_configure_options", "wasmx_env")
 load("@openresty_binding//:variables.bzl", "LUAJIT_VERSION")
+load("@kong_bindings//:variables.bzl", "KONG_VAR")
 
 filegroup(
     name = "luajit_srcs",
@@ -49,12 +51,21 @@ genrule(
     echo "$$flags" >$@
 
     """.format(luajit_version = LUAJIT_VERSION),
+    # make sure to include `toolchain` so that this rule executes in target configuration
+    toolchains = [
+        "@bazel_tools//tools/cpp:current_cc_toolchain",
+    ],
+)
+
+rpath_flags = "-Wl,-rpath,%s/kong/lib -Wl,-rpath,%s/openresty/lualib" % (
+    KONG_VAR["INSTALL_DESTDIR"],
+    KONG_VAR["INSTALL_DESTDIR"],
 )
 
 make(
     name = "luajit",
     args = [
-        "LDFLAGS=\"-Wl,-rpath,%s/kong/lib\"" % KONG_VAR["INSTALL_DESTDIR"],  # make ffi.load happy, even when it's invoked without nginx
+        "LDFLAGS=\"%s\"" % rpath_flags,  # make ffi.load happy, even when it's invoked without nginx
         "XCFLAGS=\"$(cat $$EXT_BUILD_ROOT$$/$(execpath :luajit_xcflags))\"",
         "LUA_ROOT=%s/openresty/luajit" % KONG_VAR["INSTALL_DESTDIR"].rstrip("/"),
         "MACOSX_DEPLOYMENT_TARGET=" + KONG_VAR["MACOSX_DEPLOYMENT_TARGET"],
@@ -68,7 +79,7 @@ make(
         "//conditions:default": [
         ],
     }),
-    build_data = [
+    data = [
         ":luajit_xcflags",
     ],
     lib_source = ":luajit_srcs",
@@ -88,6 +99,25 @@ make(
         "install",
     ],
     visibility = ["//visibility:public"],
+)
+
+selects.config_setting_group(
+    name = "nogroup-name-as-nobody",
+    match_any = [
+        "@kong//build/platforms/distro:rhel9",
+        "@kong//build/platforms/distro:rhel8",
+        "@kong//build/platforms/distro:aws2023",
+        "@kong//build/platforms/distro:aws2",
+    ],
+)
+
+selects.config_setting_group(
+    name = "needs-xcrypt2",
+    match_any = [
+        "@kong//build/platforms/distro:generic",
+        "@kong//build/platforms/distro:rhel9",
+        "@kong//build/platforms/distro:aws2023",
+    ],
 )
 
 CONFIGURE_OPTIONS = [
@@ -112,7 +142,6 @@ CONFIGURE_OPTIONS = [
     "--without-http_redis_module",
     "--without-http_rds_json_module",
     "--without-http_rds_csv_module",
-    "--without-ngx_devel_kit_module",
     "--with-luajit=$$EXT_BUILD_DEPS$$/luajit",
     "--with-cc-opt=\"-I$$EXT_BUILD_DEPS$$/pcre/include\"",
     "--with-cc-opt=\"-I$$EXT_BUILD_DEPS$$/openssl/include\"",
@@ -120,12 +149,12 @@ CONFIGURE_OPTIONS = [
     "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/pcre/lib\"",
     "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/openssl/lib\"",
     "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/luajit/lib\"",
-    # here let's try not having --disable-new-dtags; --disable-new-dtags creates runpath instead of rpath
-    # note runpath can't handle indirect dependency (nginx -> luajit -> dlopen("other")), so each indirect
+    # Here let's try not having --disable-new-dtags; --disable-new-dtags creates rpath instead of runpath
+    # note rpath can't handle indirect dependency (nginx -> luajit -> dlopen("other")), so each indirect
     # dependency should have its rpath set (luajit, libxslt etc); on the other side, rpath is not
-    # overridable by LD_LIBRARY_PATH and it may cause trouble debugging, so we _should_ prefer runpath.
-    # if it doesn't work, then add --disable-new-dtags back
-    "--with-ld-opt=\"-Wl,-rpath,%s/kong/lib\"" % KONG_VAR["INSTALL_DESTDIR"],
+    # overridable by LD_LIBRARY_PATH and it may cause trouble debugging, so we _should_ prefer runpath
+    # whenever available.
+    "--with-ld-opt=\"%s\"" % rpath_flags,
     "-j%s" % KONG_VAR["NPROC"],
 
     # options from our customed patch
@@ -176,7 +205,7 @@ CONFIGURE_OPTIONS = [
 }) + select({
     # any cross build that migrated to use libxcrypt needs those flags
     # alpine uses different libc so doesn't need it
-    "@kong//:aarch64-linux-anylibc-cross": [
+    ":needs-xcrypt2": [
         "--with-cc-opt=\"-I$$EXT_BUILD_DEPS$$/libxcrypt/include\"",
         "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/libxcrypt/lib\"",
     ],
@@ -185,7 +214,7 @@ CONFIGURE_OPTIONS = [
     "@kong//:debug_flag": [
         "--with-debug",
         "--with-no-pool-patch",
-        "--with-cc-opt=\"-DNGX_LUA_USE_ASSERT -DNGX_LUA_ABORT_AT_PANIC\"",
+        "--with-cc-opt=\"-DNGX_LUA_USE_ASSERT -DNGX_LUA_ABORT_AT_PANIC -g -O0\"",
     ],
     "//conditions:default": [],
 }) + select({
@@ -194,7 +223,13 @@ CONFIGURE_OPTIONS = [
         "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/lib -Wl,-Bsymbolic-functions -Wl,-z,relro\"",
     ],
     "//conditions:default": [],
-})
+}) + select({
+    # some distros name "nogroup" group name as "nobody"
+    ":nogroup-name-as-nobody": [
+        "--group=nobody",
+    ],
+    "//conditions:default": [],
+}) + wasmx_configure_options
 
 # TODO: set prefix to populate pid_path, conf_path, log_path etc
 
@@ -211,17 +246,31 @@ filegroup(
     ),
 )
 
+wasm_runtime(
+    name = "wasm_runtime",
+    visibility = ["//visibility:public"],
+)
+
 configure_make(
     name = "openresty",
-    build_data = [
+    configure_command = "configure",
+    configure_in_place = True,
+    configure_options = CONFIGURE_OPTIONS,
+    data = [
         "@lua-kong-nginx-module//:all_srcs",
         "@lua-resty-lmdb//:all_srcs",
         "@lua-resty-events//:all_srcs",
         "@openresty_binding//:all_srcs",
-    ],
-    configure_command = "configure",
-    configure_in_place = True,
-    configure_options = CONFIGURE_OPTIONS,
+    ] + select({
+        "@kong//:wasmx_flag": [
+            "@ngx_wasm_module//:all_srcs",
+            # wasm_runtime has to be a "data" (target) instead of "build_data" (exec)
+            # to be able to lookup by its path (relative to INSTALLDIR)
+            ":wasm_runtime",
+        ],
+        "//conditions:default": [],
+    }),
+    env = wasmx_env,
     lib_source = ":all_srcs",
     out_bin_dir = "",
     out_binaries = [
@@ -244,7 +293,7 @@ configure_make(
     }) + select({
         # any cross build that migrated to use libxcrypt needs those flags
         # alpine uses different libc so doesn't need it
-        "@kong//:aarch64-linux-anylibc-cross": [
+        ":needs-xcrypt2": [
             "@cross_deps_libxcrypt//:libxcrypt",
         ],
         "//conditions:default": [],

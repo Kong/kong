@@ -1,5 +1,7 @@
 local helpers       = require "spec.helpers"
 local pl_file       = require "pl.file"
+local pl_dir        = require "pl.dir"
+local pl_path       = require "pl.path"
 
 local get_hostname = require("kong.pdk.node").new().get_hostname
 
@@ -17,16 +19,33 @@ local uuid_pattern = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-4%x%x%x%-%x%x%x%x%-%x%x%x%x%x%
 local workspace_name_pattern = "default"
 
 
-local function get_shdicts()
+local function count_shdicts(conf_file)
   local prefix = helpers.test_conf.prefix
-  local ngxconf = helpers.utils.readfile(prefix .. "/nginx.conf")
-  local pattern = "\n%s*lua_shared_dict%s+(.-)[%s;\n]"
-  local shdicts = {}
-  for dict_name in ngxconf:gmatch(pattern) do
-    table.insert(shdicts, dict_name)
-    --print(#shdicts, "-", dict_name)
+  local counter = 0
+
+  -- count in matched `*` files
+  if conf_file:find("*") then
+    for _, file in ipairs(pl_dir.getallfiles(prefix, conf_file)) do
+      local basename = pl_path.basename(file)
+      counter = counter + count_shdicts(basename)
+    end
+    return counter
   end
-  return shdicts
+
+  -- count in the current file
+  local ngx_conf = helpers.utils.readfile(prefix .. "/" .. conf_file)
+  local dict_ptrn = "%s*lua_shared_dict%s+(.-)[%s;\n]"
+  for _ in ngx_conf:gmatch(dict_ptrn) do
+    counter = counter + 1
+  end
+
+  -- count in other included files
+  local include_ptrn = "%s*include%s+'(.-%.conf)'[;\n]"
+  for include_file in ngx_conf:gmatch(include_ptrn) do
+    counter = counter + count_shdicts(include_file)
+  end
+
+  return counter
 end
 
 
@@ -64,7 +83,7 @@ for _, strategy in helpers.each_strategy() do
           name     = fmt("statsd%s", i)
         }
         routes[i] = bp.routes:insert {
-          hosts   = { fmt("logging%d.com", i) },
+          hosts   = { fmt("logging%d.test", i) },
           service = service
         }
       end
@@ -673,7 +692,7 @@ for _, strategy in helpers.each_strategy() do
           port     = helpers.mock_upstream_port,
         }
         routes[i] = bp.routes:insert {
-          hosts   = { fmt("logging%d.com", i) },
+          hosts   = { fmt("logging%d.test", i) },
           service = service
         }
       end
@@ -827,7 +846,7 @@ for _, strategy in helpers.each_strategy() do
           name     = fmt("grpc_statsd%s", i)
         }
         grpc_routes[i] = bp.routes:insert {
-          hosts   = { fmt("grpc_logging%d.com", i) },
+          hosts   = { fmt("grpc_logging%d.test", i) },
           service = service
         }
       end
@@ -862,7 +881,7 @@ for _, strategy in helpers.each_strategy() do
 
       proxy_client = helpers.proxy_client()
       proxy_client_grpc = helpers.proxy_client_grpc()
-      shdict_count = #get_shdicts()
+      shdict_count = count_shdicts("nginx.conf")
     end)
 
     lazy_teardown(function()
@@ -894,7 +913,7 @@ for _, strategy in helpers.each_strategy() do
   
         proxy_client = helpers.proxy_client()
         proxy_client_grpc = helpers.proxy_client_grpc()
-        shdict_count = #get_shdicts()
+        shdict_count = count_shdicts("nginx.conf")
       end)
 
       it("logs over UDP with default metrics", function()
@@ -905,7 +924,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging1.com"
+            host  = "logging1.test"
           }
         })
         assert.res_status(200, response)
@@ -935,7 +954,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging25.com"
+            host  = "logging25.test"
           }
         })
         assert.res_status(200, response)
@@ -958,7 +977,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging26.com"
+            host  = "logging26.test"
           }
         })
         assert.res_status(200, response)
@@ -981,7 +1000,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging27.com"
+            host  = "logging27.test"
           }
         })
         assert.res_status(200, response)
@@ -1004,7 +1023,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging28.com"
+            host  = "logging28.test"
           }
         })
         assert.res_status(200, response)
@@ -1031,7 +1050,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging13.com"
+            host  = "logging13.test"
           }
         })
         assert.res_status(200, response)
@@ -1061,7 +1080,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging31.com"
+            host  = "logging31.test"
           }
         })
         assert.res_status(200, response)
@@ -1084,7 +1103,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging32.com"
+            host  = "logging32.test"
           }
         })
         assert.res_status(200, response)
@@ -1107,7 +1126,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging33.com"
+            host  = "logging33.test"
           }
         })
         assert.res_status(200, response)
@@ -1130,7 +1149,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging34.com"
+            host  = "logging34.test"
           }
         })
         assert.res_status(200, response)
@@ -1153,7 +1172,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/request?apikey=kong",
           headers = {
-            host = "logging35.com"
+            host = "logging35.test"
           }
         })
         assert.res_status(200, response)
@@ -1173,7 +1192,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/request?apikey=kong",
           headers = {
-            host = "logging36.com"
+            host = "logging36.test"
           }
         })
         assert.res_status(200, response)
@@ -1193,7 +1212,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/request?apikey=kong",
           headers = {
-            host = "logging37.com"
+            host = "logging37.test"
           }
         })
         assert.res_status(200, response)
@@ -1213,7 +1232,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/request?apikey=kong",
           headers = {
-            host = "logging38.com"
+            host = "logging38.test"
           }
         })
         assert.res_status(200, response)
@@ -1233,7 +1252,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            host  = "logging5.com"
+            host  = "logging5.test"
           }
         })
         assert.res_status(200, response)
@@ -1251,7 +1270,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            host  = "logging3.com"
+            host  = "logging3.test"
           }
         })
         assert.res_status(200, response)
@@ -1268,7 +1287,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            host  = "logging4.com"
+            host  = "logging4.test"
           }
         })
         assert.res_status(200, response)
@@ -1285,7 +1304,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            host  = "logging2.com"
+            host  = "logging2.test"
           }
         })
         assert.res_status(200, response)
@@ -1302,7 +1321,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            host  = "logging6.com"
+            host  = "logging6.test"
           }
         })
         assert.res_status(200, response)
@@ -1319,7 +1338,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            host  = "logging7.com"
+            host  = "logging7.test"
           }
         })
         assert.res_status(200, response)
@@ -1336,7 +1355,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            host  = "logging8.com"
+            host  = "logging8.test"
           }
         })
         assert.res_status(200, response)
@@ -1353,7 +1372,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/request?apikey=kong",
           headers = {
-            host = "logging9.com"
+            host = "logging9.test"
           }
         })
         assert.res_status(200, response)
@@ -1369,7 +1388,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging10.com"
+            host  = "logging10.test"
           }
         })
         assert.res_status(200, response)
@@ -1387,7 +1406,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging11.com"
+            host  = "logging11.test"
           }
         })
         assert.res_status(200, response)
@@ -1405,7 +1424,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging12.com"
+            host  = "logging12.test"
           }
         })
         assert.res_status(200, response)
@@ -1422,7 +1441,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging14.com"
+            host  = "logging14.test"
           }
         })
         assert.res_status(200, response)
@@ -1440,7 +1459,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging15.com"
+            host  = "logging15.test"
           }
         })
         assert.res_status(200, response)
@@ -1458,7 +1477,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging16.com"
+            host  = "logging16.test"
           }
         })
         assert.res_status(200, response)
@@ -1476,7 +1495,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging17.com"
+            host  = "logging17.test"
           }
         })
         assert.res_status(200, response)
@@ -1494,7 +1513,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging18.com"
+            host  = "logging18.test"
           }
         })
         assert.res_status(200, response)
@@ -1512,7 +1531,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging19.com"
+            host  = "logging19.test"
           }
         })
         assert.res_status(200, response)
@@ -1537,7 +1556,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging20.com"
+            host  = "logging20.test"
           }
         })
         assert.res_status(200, response)
@@ -1564,7 +1583,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging21.com"
+            host  = "logging21.test"
           }
         })
         assert.res_status(200, response)
@@ -1588,7 +1607,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging22.com"
+            host  = "logging22.test"
           }
         })
         assert.res_status(200, response)
@@ -1607,7 +1626,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging23.com"
+            host  = "logging23.test"
           }
         })
         assert.res_status(200, response)
@@ -1626,7 +1645,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging24.com"
+            host  = "logging24.test"
           }
         })
         assert.res_status(200, response)
@@ -1647,7 +1666,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging100.com"
+            host  = "logging100.test"
           }
         })
         assert.res_status(200, response)
@@ -1668,7 +1687,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging101.com"
+            host  = "logging101.test"
           }
         })
         assert.res_status(200, response)
@@ -1703,7 +1722,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging1.com"
+            host  = "logging1.test"
           }
         })
         assert.res_status(200, response)
@@ -1739,7 +1758,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging25.com"
+            host  = "logging25.test"
           }
         })
         assert.res_status(200, response)
@@ -1775,7 +1794,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging26.com"
+            host  = "logging26.test"
           }
         })
         assert.res_status(200, response)
@@ -1811,7 +1830,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging27.com"
+            host  = "logging27.test"
           }
         })
         assert.res_status(200, response)
@@ -1847,7 +1866,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging28.com"
+            host  = "logging28.test"
           }
         })
         assert.res_status(200, response)
@@ -1874,7 +1893,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging102.com"
+            host  = "logging102.test"
           }
         })
         assert.res_status(200, response)
@@ -1903,7 +1922,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging103.com"
+            host  = "logging103.test"
           }
         })
         assert.res_status(200, response)
@@ -1935,7 +1954,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging104.com"
+            host  = "logging104.test"
           }
         })
         assert.res_status(200, response)
@@ -1967,7 +1986,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging105.com"
+            host  = "logging105.test"
           }
         })
         assert.res_status(200, response)
@@ -1999,7 +2018,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging106.com"
+            host  = "logging106.test"
           }
         })
         assert.res_status(200, response)
@@ -2031,7 +2050,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging107.com"
+            host  = "logging107.test"
           }
         })
         assert.res_status(200, response)
@@ -2054,7 +2073,7 @@ for _, strategy in helpers.each_strategy() do
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
   
-        shdict_count = #get_shdicts()
+        shdict_count = count_shdicts("nginx.conf")
 
         local metrics_count = expected_metrics_count(8)
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
@@ -2065,7 +2084,7 @@ for _, strategy in helpers.each_strategy() do
             greeting = "world!"
           },
           opts = {
-            ["-authority"] = "grpc_logging1.com",
+            ["-authority"] = "grpc_logging1.test",
           }
         })
         assert.truthy(ok)
@@ -2090,7 +2109,7 @@ for _, strategy in helpers.each_strategy() do
             greeting = "world!"
           },
           opts = {
-            ["-authority"] = "grpc_logging2.com",
+            ["-authority"] = "grpc_logging2.test",
           }
         })
         assert.truthy(ok)
@@ -2158,7 +2177,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging1.com"
+            host  = "logging1.test"
           }
         })
         assert.res_status(404, response)
@@ -2240,7 +2259,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging1.com"
+            host  = "logging1.test"
           }
         })
         assert.res_status(404, response)
@@ -2295,7 +2314,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "statsd"
       }
       local route = bp.routes:insert {
-        hosts   = { "logging.com" },
+        hosts   = { "logging.test" },
         service = service
       }
       bp.key_auth_plugins:insert { route = { id = route.id } }
@@ -2312,7 +2331,7 @@ for _, strategy in helpers.each_strategy() do
       }))
 
       proxy_client = helpers.proxy_client()
-      shdict_count = #get_shdicts()
+      shdict_count = count_shdicts("nginx.conf")
     end)
 
     lazy_teardown(function()
@@ -2332,7 +2351,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request?apikey=kong",
         headers = {
-          host  = "logging.com"
+          host  = "logging.test"
         }
       })
       assert.res_status(200, response)
@@ -2343,79 +2362,3 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 end
-
-local SERVICE_YML = [[
-- name: my-service-%d
-  url: %s
-  plugins:
-  - name: statsd
-    config: 
-      host: 127.0.0.1
-      port: 20000
-  routes:
-  - name: my-route-%d
-    paths:
-    - /
-    hosts: 
-    - logging%d.com
-]]
-
-
-describe("Plugin: statsd (log) #off", function()
-  local admin_client
-  local proxy_client
-  
-  lazy_setup(function()
-    assert(helpers.start_kong({
-      database   = "off",
-      nginx_conf = "spec/fixtures/custom_nginx.template",
-    }))
-    proxy_client = assert(helpers.proxy_client())
-    admin_client = assert(helpers.admin_client())
-  end)
-
-  lazy_teardown(function()
-    admin_client:close()
-    proxy_client:close()
-    helpers.stop_kong(nil, true)
-  end)
-
-  it("expose lmdb metrics by statsd", function()
-    local buffer = {"_format_version: '1.1'", "services:"}
-    for i = 1, 10 do
-      local url = fmt("%s://%s:%s", helpers.mock_upstream_protocol,
-        helpers.mock_upstream_host, helpers.mock_upstream_port)
-      buffer[#buffer + 1] = fmt(SERVICE_YML, i, url, i, i)
-    end
-    local config = table.concat(buffer, "\n")
-
-    local admin_client = assert(helpers.admin_client())
-    local res = admin_client:post("/config",{
-      body = { config = config },
-      headers = {
-        ["Content-Type"] = "application/json",
-      }
-    })
-
-    assert.res_status(201, res)
-    admin_client:close()
-    local shdict_count = #get_shdicts()
-
-    local metrics_count = DEFAULT_METRICS_COUNT + shdict_count * 2 - 2
-    local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
-    local response = assert(proxy_client:send {
-      method  = "GET",
-      path    = "/request?apikey=kong",
-      headers = {
-        host  = "logging1.com"
-      }
-    })
-    assert.res_status(200, response)
-
-    local ok, metrics, err = thread:join()
-    assert(ok, metrics)
-    assert(#metrics == metrics_count, err)
-    assert.contains("kong.node..*.lmdb.used_space:%d+|g", metrics, true)
-    assert.contains("kong.node..*.lmdb.capacity:%d+|g", metrics, true)
-  end)
-end)

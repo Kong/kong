@@ -346,7 +346,7 @@ describe("Admin API: #" .. strategy, function()
       end)
 
       it("returns 404 for a random non-existing sni", function()
-        local res = client:get("/certificates/doesntexist.com")
+        local res = client:get("/certificates/doesntexist.test")
         assert.res_status(404, res)
       end)
     end)
@@ -397,7 +397,7 @@ describe("Admin API: #" .. strategy, function()
         assert.same({ n1, n2 }, json.snis)
         json.snis = nil
 
-        local in_db = assert(db.certificates:select({ id = json.id }, { nulls = true }))
+        local in_db = assert(db.certificates:select(json, { nulls = true }))
         assert.same(json, in_db)
       end)
 
@@ -422,7 +422,7 @@ describe("Admin API: #" .. strategy, function()
         assert.same({ n1, n2 }, json.snis)
         json.snis = nil
 
-        local in_db = assert(db.certificates:select({ id = json.id }, { nulls = true }))
+        local in_db = assert(db.certificates:select(json, { nulls = true }))
         assert.same(json, in_db)
       end)
 
@@ -446,7 +446,7 @@ describe("Admin API: #" .. strategy, function()
 
         json.snis = nil
 
-        local in_db = assert(db.certificates:select({ id = certificate.id }, { nulls = true }))
+        local in_db = assert(db.certificates:select(certificate, { nulls = true }))
         assert.same(json, in_db)
       end)
 
@@ -472,7 +472,7 @@ describe("Admin API: #" .. strategy, function()
 
         json.snis = nil
 
-        local in_db = assert(db.certificates:select({ id = certificate.id }, { nulls = true }))
+        local in_db = assert(db.certificates:select(certificate, { nulls = true }))
         assert.same(json, in_db)
       end)
 
@@ -1165,14 +1165,14 @@ describe("Admin API: #" .. strategy, function()
           local certificate = add_certificate()
 
           bp.snis:insert({
-            name = "*.wildcard.com",
+            name = "*.wildcard.test",
             certificate = { id = certificate.id },
           })
 
-          local res = client:get("/snis/%2A.wildcard.com")
+          local res = client:get("/snis/%2A.wildcard.test")
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.equal("*.wildcard.com", json.name)
+          assert.equal("*.wildcard.test", json.name)
         end)
       end)
     end)
@@ -1244,7 +1244,7 @@ describe("Admin API: #" .. strategy, function()
         local json = cjson.decode(body)
         assert.same(n2, json.name)
 
-        local in_db = assert(db.snis:select({ id = sni.id }, { nulls = true }))
+        local in_db = assert(db.snis:select(sni, { nulls = true }))
         assert.same(json, in_db)
         assert.truthy(sni.updated_at < json.updated_at)
       end)

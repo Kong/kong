@@ -1,6 +1,6 @@
 local MetaSchema = require "kong.db.schema.metaschema"
 local Entity = require "kong.db.schema.entity"
-local utils = require "kong.tools.utils"
+local load_module_if_exists = require "kong.tools.module".load_module_if_exists
 
 
 local tostring = tostring
@@ -11,7 +11,7 @@ local vault_loader = {}
 
 function vault_loader.load_subschema(parent_schema, vault, errors)
   local vault_schema = "kong.vaults." .. vault .. ".schema"
-  local ok, schema = utils.load_module_if_exists(vault_schema)
+  local ok, schema = load_module_if_exists(vault_schema)
   if not ok then
     return nil, "no configuration schema found for vault: " .. vault
   end

@@ -1,3 +1,10 @@
+- Path      : /etc/kong/kong.logrotate
+
+- Path      : /lib/systemd/system/kong.service
+
+- Path      : /usr/local/kong/gui
+  Type      : directory
+
 - Path      : /usr/local/kong/include/google
   Type      : directory
 
@@ -48,6 +55,12 @@
   - libc.so.6
   Runpath   : /usr/local/kong/lib
 
+- Path      : /usr/local/kong/lib/libexpat.so.1.8.10
+  Needed    :
+  - libstdc++.so.6
+  - libm.so.6
+  - libc.so.6
+
 - Path      : /usr/local/kong/lib/libssl.so.3
   Needed    :
   - libstdc++.so.6
@@ -88,6 +101,12 @@
 
 - Path      : /usr/local/lib/lua/5.1/lua_system_constants.so
   Needed    :
+  - libc.so.6
+  Runpath   : /usr/local/kong/lib
+
+- Path      : /usr/local/lib/lua/5.1/lxp.so
+  Needed    :
+  - libexpat.so.1
   - libc.so.6
   Runpath   : /usr/local/kong/lib
 
@@ -155,6 +174,16 @@
   Needed    :
   - libc.so.6
 
+- Path      : /usr/local/openresty/nginx/modules/ngx_wasm_module.so
+  Needed    :
+  - libdl.so.2
+  - libm.so.6
+  - libpthread.so.0
+  - libgcc_s.so.1
+  - libc.so.6
+  - ld-linux-x86-64.so.2
+  Runpath   : /usr/local/openresty/luajit/lib:/usr/local/kong/lib:/usr/local/openresty/lualib
+
 - Path      : /usr/local/openresty/nginx/sbin/nginx
   Needed    :
   - libdl.so.2
@@ -166,13 +195,14 @@
   - libcrypto.so.3
   - libz.so.1
   - libc.so.6
-  Runpath   : /usr/local/openresty/luajit/lib:/usr/local/kong/lib
+  Runpath   : /usr/local/openresty/luajit/lib:/usr/local/kong/lib:/usr/local/openresty/lualib
   Modules   :
   - lua-kong-nginx-module
   - lua-kong-nginx-module/stream
   - lua-resty-events
   - lua-resty-lmdb
-  OpenSSL   : OpenSSL 3.1.1 30 May 2023
+  - ngx_wasm_module
+  OpenSSL   : OpenSSL 3.2.0 23 Nov 2023
   DWARF     : True
   DWARF - ngx_http_request_t related DWARF DIEs: True
 

@@ -8,10 +8,9 @@ local type = type
 local ipairs = ipairs
 local table_insert = table.insert
 local table_sort = table.sort
-local table_remove = table.remove
 local gsub = string.gsub
 local split = utils.split
-local deflate_gzip = utils.deflate_gzip
+local deflate_gzip = require("kong.tools.gzip").deflate_gzip
 local cjson_encode = cjson.encode
 
 local ngx = ngx
@@ -29,6 +28,8 @@ local REMOVED_FIELDS = require("kong.clustering.compat.removed_fields")
 local COMPATIBILITY_CHECKERS = require("kong.clustering.compat.checkers")
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local KONG_VERSION = meta.version
+
+local EMPTY = {}
 
 
 local _M = {}
@@ -177,6 +178,24 @@ function _M.check_configuration_compatibility(cp, dp)
     end
   end
 
+  if cp.conf.wasm then
+    local dp_filters = dp.filters or EMPTY
+    local missing
+    for name in pairs(cp.filters or EMPTY) do
+      if not dp_filters[name] then
+        missing = missing or {}
+        table.insert(missing, name)
+      end
+    end
+
+    if missing then
+      local msg = "data plane is missing one or more wasm filters "
+                  .. "(" .. table.concat(missing, ", ") .. ")"
+      return nil, msg, CLUSTERING_SYNC_STATUS.FILTER_SET_INCOMPATIBLE
+    end
+  end
+
+
   return true, nil, CLUSTERING_SYNC_STATUS.NORMAL
 end
 
@@ -245,20 +264,6 @@ local function rename_field(config, name_from, name_to, has_update)
   return has_update
 end
 
-local function remove_field_array_value(config, remove_val, has_update)
-  if config then
-    local iterate_table = config
-    for i, v in ipairs(iterate_table) do
-      if v == remove_val then
-        table_remove(config, i)
-        has_update = true
-      end
-    end
-  end
-
-  return has_update
-end
-
 
 local function invalidate_keys_from_config(config_plugins, keys, log_suffix, dp_version_num)
   if not config_plugins then
@@ -285,15 +290,6 @@ local function invalidate_keys_from_config(config_plugins, keys, log_suffix, dp_
 
             if config["cookie_samesite"] == "Default" then
               config["cookie_samesite"] = "Lax"
-            end
-          end
-        end
-
-        if dp_version_num < 3003000000 then
-          -- OSS
-          if name == "statsd" then
-            if utils.table_contains(config.metrics, "lmdb_usage") then
-              has_update = remove_field_array_value(config.metrics, "lmdb_usage", has_update)
             end
           end
         end

@@ -881,6 +881,7 @@ for _, strategy in helpers.each_strategy() do
         routes = insert_routes(bp, {
           {
             hosts = { "mock_upstream" },
+            paths = { "/" },
           },
         })
       end)
@@ -1301,6 +1302,7 @@ for _, strategy in helpers.each_strategy() do
         routes = insert_routes(bp, {
           {
             protocols = { "https" },
+            paths = { "/" },
             snis = { "www.example.org" },
             service = {
               name = "service_behind_www.example.org"
@@ -1410,7 +1412,7 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
 
-      it_trad_only("matches a Route based on its 'snis' attribute", function()
+      it("matches a Route based on its 'snis' attribute", function()
         -- config propagates to stream subsystems not instantly
         -- try up to 10 seconds with step of 2 seconds
         -- in vagrant it takes around 6 seconds
@@ -1484,7 +1486,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/",
             headers = {
-              ["Host"]       = "domain.org",
+              ["Host"]       = "domain.test",
               ["version"]    = "v1",
               ["kong-debug"] = 1,
             }
@@ -1502,7 +1504,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/",
           headers = {
-            ["Host"]       = "domain.org",
+            ["Host"]       = "domain.test",
             ["version"]    = "v3",
             ["kong-debug"] = 1,
           }
@@ -1531,7 +1533,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/",
             headers = {
-              ["Host"]       = "domain.org",
+              ["Host"]       = "domain.test",
               ["version"]    = "v1",
               ["kong-debug"] = 1,
             }
@@ -1553,7 +1555,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/",
           headers = {
-            ["Host"]       = "domain.org",
+            ["Host"]       = "domain.test",
             ["Version"]    = "v3",
             ["kong-debug"] = 1,
           }
@@ -1592,7 +1594,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/",
             headers = {
-              ["Host"]       = "domain.org",
+              ["Host"]       = "domain.test",
               ["version"]    = "v3",
               ["location"]   = "us-east",
               ["kong-debug"] = 1,
@@ -1611,7 +1613,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/",
           headers = {
-            ["Host"]       = "domain.org",
+            ["Host"]       = "domain.test",
             ["version"]    = "v3",
             ["kong-debug"] = 1,
           }
@@ -2343,22 +2345,17 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("no Service found with those values", json.message)
       end)
 
-      it("#db rebuilds router correctly after passing invalid route", function()
+      it("#db rebuilds router correctly after passing route with special escape", function()
         local admin_client = helpers.admin_client()
 
         local res = assert(admin_client:post("/routes", {
           headers = { ["Content-Type"] = "application/json" },
           body = {
-            -- this is a invalid regex path
+            -- this is a valid regex path in Rust.regex 1.8
             paths = { "~/delay/(?<delay>[^\\/]+)$", },
           },
         }))
-        if flavor == "traditional" then
-          assert.res_status(201, res)
-
-        else
-          assert.res_status(400, res)
-        end
+        assert.res_status(201, res)
 
         helpers.wait_for_all_config_update()
 
@@ -2458,3 +2455,149 @@ for _, strategy in helpers.each_strategy() do
 end
 end
 end
+
+
+-- http expression 'http.queries.*'
+do
+  local function reload_router(flavor)
+    _G.kong = {
+      configuration = {
+        router_flavor = flavor,
+      },
+    }
+
+    helpers.setenv("KONG_ROUTER_FLAVOR", flavor)
+
+    package.loaded["spec.helpers"] = nil
+    package.loaded["kong.global"] = nil
+    package.loaded["kong.cache"] = nil
+    package.loaded["kong.db"] = nil
+    package.loaded["kong.db.schema.entities.routes"] = nil
+    package.loaded["kong.db.schema.entities.routes_subschemas"] = nil
+
+    helpers = require "spec.helpers"
+
+    helpers.unsetenv("KONG_ROUTER_FLAVOR")
+  end
+
+
+  local flavor = "expressions"
+
+  for _, strategy in helpers.each_strategy() do
+    describe("Router [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
+      local proxy_client
+
+      reload_router(flavor)
+
+      lazy_setup(function()
+        local bp = helpers.get_db_utils(strategy, {
+          "routes",
+          "services",
+        })
+
+        local service = bp.services:insert {
+          name = "global-cert",
+        }
+
+        bp.routes:insert {
+          protocols = { "http" },
+          expression = [[http.path == "/foo/bar" && http.queries.a == "1"]],
+          priority = 100,
+          service   = service,
+        }
+
+        bp.routes:insert {
+          protocols = { "http" },
+          expression = [[http.path == "/foo" && http.queries.a == ""]],
+          priority = 100,
+          service   = service,
+        }
+
+        bp.routes:insert {
+          protocols = { "http" },
+          expression = [[http.path == "/foobar" && any(http.queries.a) == "2"]],
+          priority = 100,
+          service   = service,
+        }
+
+        assert(helpers.start_kong({
+          router_flavor = flavor,
+          database    = strategy,
+          nginx_conf  = "spec/fixtures/custom_nginx.template",
+        }))
+
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+      end)
+
+      before_each(function()
+        proxy_client = helpers.proxy_client()
+      end)
+
+      after_each(function()
+        if proxy_client then
+          proxy_client:close()
+        end
+      end)
+
+      it("query has wrong value", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/foo/bar",
+          query   = "a=x",
+        })
+        assert.res_status(404, res)
+      end)
+
+      it("query has one value", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/foo/bar",
+          query   = "a=1",
+        })
+        assert.res_status(200, res)
+      end)
+
+      it("query value is empty string", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/foo",
+          query   = "a=",
+        })
+        assert.res_status(200, res)
+      end)
+
+      it("query has no value", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/foo",
+          query   = "a&b=999",
+        })
+        assert.res_status(200, res)
+      end)
+
+      it("query has multiple values", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/foobar",
+          query   = "a=2&a=10",
+        })
+        assert.res_status(200, res)
+      end)
+
+      it("query does not match multiple values", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/foobar",
+          query   = "a=10&a=20",
+        })
+        assert.res_status(404, res)
+      end)
+
+    end)
+
+  end   -- strategy
+
+end -- http expression 'http.queries.*'

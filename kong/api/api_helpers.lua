@@ -9,6 +9,7 @@ local hooks = require "kong.hooks"
 
 
 local ngx = ngx
+local header = ngx.header
 local sub = string.sub
 local find = string.find
 local type = type
@@ -223,7 +224,8 @@ do
 
   schema_to_jsonable = function(schema)
     local fields = fields_to_jsonable(schema.fields)
-    return { fields = fields }
+    local entity_checks = fields_to_jsonable(schema.entity_checks or {})
+    return { entity_checks = entity_checks, fields = fields,  }
   end
   _M.schema_to_jsonable = schema_to_jsonable
 end
@@ -265,6 +267,23 @@ function _M.before_filter(self)
   return kong.response.exit(415)
 end
 
+function _M.cors_filter(self)
+  local origin = self.req.headers["Origin"]
+
+  if kong.configuration.admin_gui_origin then
+    origin = kong.configuration.admin_gui_origin
+  end
+
+  ngx.header["Access-Control-Allow-Origin"] = origin or "*"
+  ngx.header["Access-Control-Allow-Credentials"] = "true"
+
+  if ngx.req.get_method() == "OPTIONS" then
+    local request_allow_headers = self.req.headers["Access-Control-Request-Headers"]
+    if request_allow_headers then
+      ngx.header["Access-Control-Allow-Headers"] = request_allow_headers
+    end
+  end
+end
 
 local function parse_params(fn)
   return app_helpers.json_params(function(self, ...)
@@ -385,9 +404,9 @@ end
 local function options_method(methods)
   return function()
     kong.response.exit(204, nil, {
-      ["Allow"] = methods,
-      ["Access-Control-Allow-Methods"] = methods,
-      ["Access-Control-Allow-Headers"] = "Content-Type",
+      ["Allow"] = header["Access-Control-Allow-Methods"] or methods,
+      ["Access-Control-Allow-Methods"] = header["Access-Control-Allow-Methods"] or methods,
+      ["Access-Control-Allow-Headers"] = header["Access-Control-Allow-Headers"] or "Content-Type"
     })
   end
 end

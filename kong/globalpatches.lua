@@ -17,7 +17,7 @@ return function(options)
 
   local cjson = require("cjson.safe")
   cjson.encode_sparse_array(nil, nil, 2^15)
-  
+
   local pb = require "pb"
 
   -- let pb decode arrays to table cjson.empty_array_mt metatable
@@ -246,11 +246,22 @@ return function(options)
       -- See https://github.com/openresty/resty-cli/pull/12
       -- for a definitive solution of using shms in CLI
       local SharedDict = {}
-      local function set(data, key, value, expire_at)
+      local function set(data, key, value, expire_at, flags)
         data[key] = {
           value = value,
-          info = {expire_at = expire_at}
+          info = {expire_at = expire_at, flags=flags}
         }
+        return data[key]
+      end
+      local function is_stale(item)
+        return item.info.expire_at and item.info.expire_at <= ngx.now()
+      end
+      local function get(data, key)
+        local item = data[key]
+        if item and is_stale(item) then
+          item = nil
+        end
+        return item
       end
       function SharedDict:new()
         return setmetatable({data = {}}, {__index = self})
@@ -262,34 +273,35 @@ return function(options)
         return 0
       end
       function SharedDict:get(key)
-        return self.data[key] and self.data[key].value, nil
+        local item = get(self.data, key)
+        if item then
+          return item.value, item.info.flags
+        end
+        return nil
       end
-      SharedDict.get_stale = SharedDict.get
-      function SharedDict:set(key, value)
-        set(self.data, key, value)
+      function SharedDict:get_stale(key)
+        local item = self.data[key]
+        if item then
+          return item.value, item.info.flags, is_stale(item)
+        end
+        return nil
+      end
+      function SharedDict:set(key, value, exptime)
+        local expire_at = (exptime and exptime ~= 0) and (ngx.now() + exptime)
+        set(self.data, key, value, expire_at)
         return true, nil, false
       end
       SharedDict.safe_set = SharedDict.set
       function SharedDict:add(key, value, exptime)
-        if self.data[key] ~= nil then
+        if get(self.data, key) then
           return false, "exists", false
         end
 
-        local expire_at = nil
-
-        if exptime then
-          ngx.timer.at(exptime, function()
-            self.data[key] = nil
-          end)
-          expire_at = ngx.now() + exptime
-        end
-
-        set(self.data, key, value, expire_at)
-        return true, nil, false
+        return self:set(key, value, exptime)
       end
       SharedDict.safe_add = SharedDict.add
       function SharedDict:replace(key, value)
-        if self.data[key] == nil then
+        if not get(key) then
           return false, "not found", false
         end
         set(self.data, key, value)
@@ -302,23 +314,17 @@ return function(options)
         return true
       end
       function SharedDict:incr(key, value, init, init_ttl)
-        if not self.data[key] then
+        local item = get(self.data, key)
+        if not item then
           if not init then
             return nil, "not found"
-          else
-            self.data[key] = { value = init, info = {} }
-            if init_ttl then
-              self.data[key].info.expire_at = ngx.now() + init_ttl
-              ngx.timer.at(init_ttl, function()
-                self.data[key] = nil
-              end)
-            end
           end
-        elseif type(self.data[key].value) ~= "number" then
+          item = set(self.data, key, init, init_ttl and ngx.now() + init_ttl)
+        elseif type(item.value) ~= "number" then
           return nil, "not a number"
         end
-        self.data[key].value = self.data[key].value + value
-        return self.data[key].value, nil
+        item.value = item.value + value
+        return item.value, nil
       end
       function SharedDict:flush_all()
         for _, item in pairs(self.data) do
@@ -330,7 +336,7 @@ return function(options)
         local flushed = 0
 
         for key, item in pairs(self.data) do
-          if item.info.expire_at and item.info.expire_at <= ngx.now() then
+          if is_stale(item) then
             data[key] = nil
             flushed = flushed + 1
             if n and flushed == n then
@@ -345,11 +351,13 @@ return function(options)
         n = n or 1024
         local i = 0
         local keys = {}
-        for k in pairs(self.data) do
-          keys[#keys+1] = k
-          i = i + 1
-          if n ~= 0 and i == n then
-            break
+        for k, item in pairs(self.data) do
+          if not is_stale(item) then
+            keys[#keys+1] = k
+            i = i + 1
+            if n ~= 0 and i == n then
+              break
+            end
           end
         end
         return keys
@@ -358,19 +366,15 @@ return function(options)
         local item = self.data[key]
         if item == nil then
           return nil, "not found"
-        else
-          local expire_at = item.info.expire_at
-          if expire_at == nil then
-            return 0
-          else
-            local remaining = expire_at - ngx.now()
-            if remaining < 0 then
-              return nil, "not found"
-            else
-              return remaining
-            end
-          end
         end
+        local expire_at = item.info.expire_at
+        if expire_at == nil then
+          return 0
+        end
+        -- There is a problem that also exists in the official OpenResty:
+        -- 0 means the key never expires. So it's hard to distinguish between a
+        -- never-expired key and an expired key with a TTL value of 0.
+        return expire_at - ngx.now()
       end
 
       -- hack
@@ -508,10 +512,13 @@ return function(options)
     end
   end
 
-
-
   do -- cosockets connect patch for dns resolution for: cli, rbusted and OpenResty
     local sub = string.sub
+
+    local client = package.loaded["kong.resty.dns.client"]
+    if not client then
+      client = require("kong.tools.dns")()
+    end
 
     --- Patch the TCP connect and UDP setpeername methods such that all
     -- connections will be resolved first by the internal DNS resolver.
@@ -519,7 +526,6 @@ return function(options)
     require "resty.dns.resolver" -- will cache TCP and UDP functions
 
     -- STEP 2: forward declaration of locals to hold stuff loaded AFTER patching
-    local toip
 
     -- STEP 3: store original unpatched versions
     local old_tcp = ngx.socket.tcp
@@ -540,7 +546,7 @@ return function(options)
     local function resolve_connect(f, sock, host, port, opts)
       if sub(host, 1, 5) ~= "unix:" then
         local try_list
-        host, port, try_list = toip(host, port)
+        host, port, try_list = client.toip(host, port)
         if not host then
           return nil, "[cosocket] DNS resolution failed: " .. tostring(port) ..
                       ". Tried: " .. tostring(try_list)
@@ -583,23 +589,17 @@ return function(options)
       return sock
     end
 
+    if not options.cli and not options.rbusted then
+      local timing = require "kong.timing"
+      timing.register_hooks()
+    end
+
     -- STEP 5: load code that should be using the patched versions, if any (because of dependency chain)
     do
-      local client = package.loaded["kong.resty.dns.client"]
-      if not client then
-        client = require("kong.tools.dns")()
-      end
-
-      toip = client.toip
-
-      -- DNS query is lazily patched, it will only be wrapped
-      -- when instrumentation module is initialized later and
-      -- `tracing_instrumentations` includes "dns_query" or set
-      -- to "all".
+      -- dns query patch
       local instrumentation = require "kong.tracing.instrumentation"
-      instrumentation.set_patch_dns_query_fn(toip, function(wrap)
-        toip = wrap
-      end)
+      client.toip = instrumentation.get_wrapped_dns_query(client.toip)
+
       -- patch request_uri to record http_client spans
       instrumentation.http_client()
     end

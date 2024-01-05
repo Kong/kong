@@ -1,0 +1,3 @@
+message: Cache the AWS lambda service by those lambda service related fields
+type: bugfix
+scope: Plugin
