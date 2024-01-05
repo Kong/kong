@@ -1,0 +1,10 @@
+kong 5m
+kong_locks 8m
+kong_healthchecks 5m
+kong_cluster_events 5m
+kong_rate_limiting_counters 12m
+kong_core_db_cache 16m
+kong_core_db_cache_miss 12m
+kong_db_cache 16m
+kong_db_cache_miss 12m
+kong_secrets 5m

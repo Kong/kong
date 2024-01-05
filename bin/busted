@@ -41,6 +41,11 @@ if not os.getenv("KONG_BUSTED_RESPAWNED") then
     end
   end
 
+  -- create shared dict
+  for line in io.lines("./spec/fixtures/lua_shared_dict") do
+    resty_flags = resty_flags .. '--shdict "' .. line .. '" '
+  end
+
   if resty_flags then
     table.insert(cmd, cmd_prefix_count+1, resty_flags)
   end
