@@ -379,6 +379,7 @@ build = {
     ["kong.plugins.rate-limiting.daos"] = "kong/plugins/rate-limiting/daos.lua",
     ["kong.plugins.rate-limiting.policies"] = "kong/plugins/rate-limiting/policies/init.lua",
     ["kong.plugins.rate-limiting.policies.cluster"] = "kong/plugins/rate-limiting/policies/cluster.lua",
+    ["kong.plugins.rate-limiting.clustering.compat.redis_translation"] = "kong/plugins/rate-limiting/clustering/compat/redis_translation.lua",
 
     ["kong.plugins.response-ratelimiting.migrations"] = "kong/plugins/response-ratelimiting/migrations/init.lua",
     ["kong.plugins.response-ratelimiting.migrations.000_base_response_rate_limiting"] = "kong/plugins/response-ratelimiting/migrations/000_base_response_rate_limiting.lua",
@@ -391,6 +392,7 @@ build = {
     ["kong.plugins.response-ratelimiting.schema"] = "kong/plugins/response-ratelimiting/schema.lua",
     ["kong.plugins.response-ratelimiting.policies"] = "kong/plugins/response-ratelimiting/policies/init.lua",
     ["kong.plugins.response-ratelimiting.policies.cluster"] = "kong/plugins/response-ratelimiting/policies/cluster.lua",
+    ["kong.plugins.response-ratelimiting.clustering.compat.redis_translation"] = "kong/plugins/response-ratelimiting/clustering/compat/redis_translation.lua",
 
     ["kong.plugins.request-size-limiting.handler"] = "kong/plugins/request-size-limiting/handler.lua",
     ["kong.plugins.request-size-limiting.schema"] = "kong/plugins/request-size-limiting/schema.lua",
@@ -482,6 +484,7 @@ build = {
 
     ["kong.plugins.acme.api"] = "kong/plugins/acme/api.lua",
     ["kong.plugins.acme.client"] = "kong/plugins/acme/client.lua",
+    ["kong.plugins.acme.clustering.compat.redis_translation"] = "kong/plugins/acme/clustering/compat/redis_translation.lua",
     ["kong.plugins.acme.daos"] = "kong/plugins/acme/daos.lua",
     ["kong.plugins.acme.handler"] = "kong/plugins/acme/handler.lua",
     ["kong.plugins.acme.migrations.000_base_acme"] = "kong/plugins/acme/migrations/000_base_acme.lua",
