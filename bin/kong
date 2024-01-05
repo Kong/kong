@@ -142,7 +142,7 @@ require("kong.cmd.init")("%s", %s)
 ]], cmd_name, args_str)
 
 local resty_cmd = string.format(
-  "resty --main-conf \"%s\" --http-conf \"%s\" --stream-conf \"%s\" -e '%s'",
+  "resty --shdict 'kong 5m' --main-conf \"%s\" --http-conf \"%s\" --stream-conf \"%s\" -e '%s'",
   main_conf, http_conf, stream_conf, inline_code)
 
 local _, code = pl_utils.execute(resty_cmd)
