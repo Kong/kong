@@ -1,5 +1,5 @@
 local constants = require "kong.constants"
-local openssl_hmac = require "resty.openssl.hmac"
+local openssl_mac = require "resty.openssl.mac"
 
 
 local sha256_base64 = require("kong.tools.sha256").sha256_base64
@@ -37,13 +37,13 @@ local hmac = {
     return hmac_sha1(secret, data)
   end,
   ["hmac-sha256"] = function(secret, data)
-    return openssl_hmac.new(secret, "sha256"):final(data)
+    return openssl_mac.new(secret, "HMAC", nil, "sha256"):final(data)
   end,
   ["hmac-sha384"] = function(secret, data)
-    return openssl_hmac.new(secret, "sha384"):final(data)
+    return openssl_mac.new(secret, "HMAC", nil, "sha384"):final(data)
   end,
   ["hmac-sha512"] = function(secret, data)
-    return openssl_hmac.new(secret, "sha512"):final(data)
+    return openssl_mac.new(secret, "HMAC", nil, "sha512"):final(data)
   end,
 }
 
