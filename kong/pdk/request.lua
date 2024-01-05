@@ -6,7 +6,7 @@
 -- @module kong.request
 
 
-local cjson = require "cjson.safe".new()
+local cjson = require "kong.tools.cjson"
 local multipart = require "multipart"
 local phase_checker = require "kong.pdk.private.phases"
 local normalize = require("kong.tools.uri").normalize
@@ -43,10 +43,6 @@ local decode_args = ngx.decode_args
 
 local PHASES = phase_checker.phases
 
-
-cjson.decode_array_with_array_mt(true)
-cjson.encode_sparse_array(nil, nil, 2^15)
-cjson.encode_number_precision(16)
 
 
 local function new(self)
@@ -834,7 +830,7 @@ local function new(self)
         return nil, err, CONTENT_TYPE_JSON
       end
 
-      local json = cjson.decode(body)
+      local json = cjson.decode_with_array_mt(body)
       if type(json) ~= "table" then
         return nil, "invalid json body", CONTENT_TYPE_JSON
       end

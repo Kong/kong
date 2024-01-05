@@ -2,7 +2,7 @@
 -- Module for manipulating the request sent to the Service.
 -- @module kong.service.request
 
-local cjson = require "cjson.safe".new()
+local cjson = require "cjson.safe"
 local buffer = require "string.buffer"
 local checks = require "kong.pdk.private.checks"
 local phase_checker = require "kong.pdk.private.phases"
@@ -23,9 +23,6 @@ local validate_header = checks.validate_header
 local validate_headers = checks.validate_headers
 local check_phase = phase_checker.check
 local escape = require("kong.tools.uri").escape
-
-cjson.encode_sparse_array(nil, nil, 2^15)
-cjson.encode_number_precision(16)
 
 
 local PHASES = phase_checker.phases

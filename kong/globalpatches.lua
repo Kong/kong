@@ -1,3 +1,5 @@
+local constants = require "kong.constants"
+
 local ran_before
 
 
@@ -15,8 +17,12 @@ return function(options)
   local meta = require "kong.meta"
 
 
-  local cjson = require("cjson.safe")
+  local cjson = require("cjson")
+  local cjson_safe = require("cjson.safe")
   cjson.encode_sparse_array(nil, nil, 2^15)
+  cjson.encode_number_precision(constants.CJSON_MAX_PRECISION)
+  cjson_safe.encode_sparse_array(nil, nil, 2^15)
+  cjson_safe.encode_number_precision(constants.CJSON_MAX_PRECISION)
 
   local pb = require "pb"
 

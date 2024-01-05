@@ -3,7 +3,7 @@
 -- @module kong.service.response
 
 
-local cjson = require "cjson.safe".new()
+local cjson = require "kong.tools.cjson"
 local multipart = require "multipart"
 local phase_checker = require "kong.pdk.private.phases"
 local string_tools = require "kong.tools.string"
@@ -22,10 +22,6 @@ local getmetatable = getmetatable
 local setmetatable = setmetatable
 local check_phase = phase_checker.check
 
-
-cjson.decode_array_with_array_mt(true)
-cjson.encode_sparse_array(nil, nil, 2^15)
-cjson.encode_number_precision(16)
 
 
 local replace_dashes       = string_tools.replace_dashes
@@ -358,7 +354,7 @@ local function new(pdk, major_version)
 
     elseif find(content_type_lower, CONTENT_TYPE_JSON, 1, true) == 1 then
       local body = response.get_raw_body()
-      local json = cjson.decode(body)
+      local json = cjson.decode_with_array_mt(body)
       if type(json) ~= "table" then
         return nil, "invalid json body", CONTENT_TYPE_JSON
       end
