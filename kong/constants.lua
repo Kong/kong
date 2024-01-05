@@ -253,6 +253,19 @@ local constants = {
   SCHEMA_NAMESPACES = {
     PROXY_WASM_FILTERS = "proxy-wasm-filters",
   },
+
+  RESPONSE_SOURCE = {
+    TYPES = {
+      ERROR = "error",
+      EXIT = "exit",
+      SERVICE = "service",
+    },
+    NAMES = {
+      error = "kong",
+      exit = "kong",
+      service = "upstream",
+    }
+  }
 }
 
 for _, v in ipairs(constants.CLUSTERING_SYNC_STATUS) do

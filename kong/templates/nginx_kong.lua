@@ -81,7 +81,8 @@ server {
     listen $(entry.listener);
 > end
 
-    error_page 400 404 405 408 411 412 413 414 417 494 /kong_error_handler;
+    error_page 400 404 405 408 411 412 413 414 417 /kong_error_handler;
+    error_page 494 =494                            /kong_error_handler;
     error_page 500 502 503 504                     /kong_error_handler;
 
     # Append the kong request id to the error log

@@ -5,7 +5,7 @@ local timestamp = require "kong.tools.timestamp"
 local SYNC_RATE_REALTIME = -1
 
 --[[
-  basically a copy of `get_local_key()` 
+  basically a copy of `get_local_key()`
   in `kong/plugins/rate-limiting/policies/init.lua`
 --]]
 local EMPTY_UUID = "00000000-0000-0000-0000-000000000000"
@@ -41,7 +41,7 @@ describe("Plugin: rate-limiting (policies)", function()
   lazy_setup(function()
     package.loaded["kong.plugins.rate-limiting.policies"] = nil
     policies = require "kong.plugins.rate-limiting.policies"
-    
+
     if not _G.kong then
       _G.kong.db = {}
     end
@@ -80,15 +80,24 @@ describe("Plugin: rate-limiting (policies)", function()
     end)
 
     it("expires after due time", function ()
-      local timestamp = 569000048000
+      local current_timestamp = 1553263548
+      local periods = timestamp.get_timestamps(current_timestamp)
 
-      assert(policies['local'].increment(conf, {second=100}, identifier, timestamp+20, 1))
-      local v = assert(shm:ttl(get_local_key(conf, identifier, 'second', timestamp)))
+      local limits = {
+        second = 100,
+      }
+      local cache_key = get_local_key(conf, identifier, 'second', periods.second)
+
+      assert(policies['local'].increment(conf, limits, identifier, current_timestamp, 1))
+      local v = assert(shm:ttl(cache_key))
       assert(v > 0, "wrong value")
       ngx.sleep(1.020)
 
-      v = shm:ttl(get_local_key(conf, identifier, 'second', timestamp))
+      shm:flush_expired()
+      local err
+      v, err = shm:ttl(cache_key)
       assert(v == nil, "still there")
+      assert.matches("not found", err)
     end)
   end)
 

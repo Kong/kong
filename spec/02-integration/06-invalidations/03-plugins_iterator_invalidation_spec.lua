@@ -88,7 +88,7 @@ for _, strategy in helpers.each_strategy() do
         path    = "/routes",
         body    = {
           protocols = { "http" },
-          hosts     = { "dummy.com" },
+          hosts     = { "dummy.test" },
           service   = {
             id = service_fixture.id,
           }
@@ -176,7 +176,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            host = "dummy.com",
+            host = "dummy.test",
           }
         })
         assert.res_status(200, res_1)
@@ -201,7 +201,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            host = "dummy.com",
+            host = "dummy.test",
           }
         })
         assert.res_status(200, res_2)

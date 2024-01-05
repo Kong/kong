@@ -15,25 +15,29 @@ license: "Apache-2.0"
 contents:
 - src: nfpm-prefix/bin
   dst: /usr/local/bin
+- src: kong/include
+  dst: /usr/local/kong/include
+  type: tree
 - src: nfpm-prefix/kong
   dst: /usr/local/kong
   type: tree
 - src: nfpm-prefix/lib
   dst: /usr/local/lib
+  type: tree
 - src: nfpm-prefix/etc/luarocks
   dst: /usr/local/etc/luarocks
 - src: nfpm-prefix/openresty
   dst: /usr/local/openresty
+  type: tree
 - src: nfpm-prefix/share
   dst: /usr/local/share
+  type: tree
 - src: nfpm-prefix/etc/kong
   dst: /etc/kong
 - src: bin/kong
   dst: /usr/local/bin/kong
 - src: bin/kong-health
   dst: /usr/local/bin/kong-health
-- src: kong/include
-  dst: /usr/local/kong/include
 - src: build/package/kong.service
   dst: /lib/systemd/system/kong.service
 - src: build/package/kong.logrotate

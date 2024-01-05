@@ -17,7 +17,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       })
 
       local r = bp.routes:insert {
-        hosts = { "key-ttl-hybrid.com" },
+        hosts = { "key-ttl-hybrid.test" },
       }
 
       bp.plugins:insert {
@@ -89,7 +89,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           method  = "GET",
           path  = "/status/200",
           headers = {
-            ["Host"] = "key-ttl-hybrid.com",
+            ["Host"] = "key-ttl-hybrid.test",
             ["apikey"] = "kong",
           }
         })
@@ -109,7 +109,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
           method  = "GET",
           path  = "/status/200",
           headers = {
-            ["Host"] = "key-ttl-hybrid.com",
+            ["Host"] = "key-ttl-hybrid.test",
             ["apikey"] = "kong",
           }
         })

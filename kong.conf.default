@@ -1187,7 +1187,7 @@
                                                 # not make use of the PCRE library and their behavior
                                                 # is unaffected by this setting.
 
-#nginx_http_keepalive_requests = 1000  # Sets the maximum number of client requests that can be served through one
+#nginx_http_keepalive_requests = 10000 # Sets the maximum number of client requests that can be served through one
                                        # keep-alive connection. After the maximum number of requests are made,
                                        # the connection is closed.
                                        # Closing connections periodically is necessary to free per-connection
@@ -1529,7 +1529,7 @@
                                  # property receives a value (in seconds), it
                                  # will override the TTL for all records.
 
-#dns_stale_ttl = 4               # Defines, in seconds, how long a record will
+#dns_stale_ttl = 3600            # Defines, in seconds, how long a record will
                                  # remain in cache past its TTL. This value
                                  # will be used while the new DNS record is
                                  # fetched in the background.
@@ -1537,6 +1537,8 @@
                                  # record until either the refresh query
                                  # completes, or the `dns_stale_ttl` number of
                                  # seconds have passed.
+                                 # This configuration enables Kong to be more
+                                 # resilient during resolver downtime.
 
 #dns_cache_size = 10000          # Defines the maximum allowed number of
                                  # DNS records stored in memory cache.

@@ -40,7 +40,7 @@ if sam.get_os_architecture() ~= "aarch64" then
         }, { "aws-lambda" })
 
         local route1 = bp.routes:insert {
-          hosts = { "lambda.com" },
+          hosts = { "lambda.test" },
         }
 
         bp.plugins:insert {
@@ -59,7 +59,7 @@ if sam.get_os_architecture() ~= "aarch64" then
         }
 
         local route2 = bp.routes:insert {
-          hosts = { "lambda2.com" },
+          hosts = { "lambda2.test" },
         }
 
         bp.plugins:insert {
@@ -111,7 +111,7 @@ if sam.get_os_architecture() ~= "aarch64" then
             method  = "GET",
             path    = "/",
             headers = {
-              host = "lambda.com"
+              host = "lambda.test"
             }
           })
           assert.res_status(200, res)
@@ -122,7 +122,7 @@ if sam.get_os_architecture() ~= "aarch64" then
             method  = "GET",
             path    = "/",
             headers = {
-              host = "lambda2.com"
+              host = "lambda2.test"
             }
           })
           assert.res_status(201, res)

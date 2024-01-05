@@ -18,6 +18,7 @@ local ngx_ssl = require "ngx.ssl"
 local phase_checker = require "kong.pdk.private.phases"
 local utils = require "kong.tools.utils"
 local cycle_aware_deep_copy = utils.cycle_aware_deep_copy
+local constants = require "kong.constants"
 
 local sub = string.sub
 local type = type
@@ -46,6 +47,7 @@ local _DEFAULT_NAMESPACED_FORMAT = "%file_src:%line_src [%namespace] %message"
 local PHASES = phase_checker.phases
 local PHASES_LOG = PHASES.log
 local QUESTION_MARK = byte("?")
+local TYPE_NAMES = constants.RESPONSE_SOURCE.NAMES
 
 local phases_with_ctx =
     phase_checker.new(PHASES.rewrite,
@@ -817,6 +819,9 @@ do
       -- the nginx doc: http://nginx.org/en/docs/http/ngx_http_upstream_module.html#upstream_status
       local upstream_status = var.upstream_status or ""
 
+      local response_source = okong.response.get_source(ongx.ctx)
+      local response_source_name = TYPE_NAMES[response_source]
+
       local root = {
         request = {
           id = request_id_get() or "",
@@ -848,6 +853,7 @@ do
         consumer = cycle_aware_deep_copy(ctx.authenticated_consumer),
         client_ip = var.remote_addr,
         started_at = okong.request.get_start_time(),
+        source = response_source_name,
       }
 
       return edit_result(ctx, root)
