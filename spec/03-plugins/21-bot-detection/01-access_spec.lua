@@ -17,15 +17,15 @@ for _, strategy in helpers.each_strategy() do
       })
 
       local route1 = bp.routes:insert {
-        hosts = { "bot.com" },
+        hosts = { "bot.test" },
       }
 
       local route2 = bp.routes:insert {
-        hosts = { "bot2.com" },
+        hosts = { "bot2.test" },
       }
 
       local route3 = bp.routes:insert {
-        hosts = { "bot3.com" },
+        hosts = { "bot3.test" },
       }
 
       local grpc_service = bp.services:insert {
@@ -36,21 +36,21 @@ for _, strategy in helpers.each_strategy() do
       local route_grpc1 = assert(bp.routes:insert {
         protocols = { "grpc" },
         paths = { "/hello.HelloService/" },
-        hosts = { "bot-grpc1.com" },
+        hosts = { "bot-grpc1.test" },
         service = grpc_service,
       })
 
       local route_grpc2 = assert(bp.routes:insert {
         protocols = { "grpc" },
         paths = { "/hello.HelloService/" },
-        hosts = { "bot-grpc2.com" },
+        hosts = { "bot-grpc2.test" },
         service = grpc_service,
       })
 
       local route_grpc3 = assert(bp.routes:insert {
         protocols = { "grpc" },
         paths = { "/hello.HelloService/" },
-        hosts = { "bot-grpc3.com" },
+        hosts = { "bot-grpc3.test" },
         service = grpc_service,
       })
 
@@ -122,7 +122,7 @@ for _, strategy in helpers.each_strategy() do
       local res = assert( proxy_client:send {
         method  = "GET",
         path    = "/request",
-        headers =  { host = "bot.com" }
+        headers =  { host = "bot.test" }
       })
       assert.response(res).has.status(200)
 
@@ -130,7 +130,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request",
         headers =  {
-          host           = "bot.com",
+          host           = "bot.test",
           ["user-agent"] = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36"
         }
       })
@@ -140,7 +140,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request",
         headers =  {
-          host           = "bot.com",
+          host           = "bot.test",
           ["user-agent"] = HELLOWORLD
         }
       })
@@ -150,7 +150,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request",
         headers =  {
-          host           = "bot.com",
+          host           = "bot.test",
           ["user-agent"] = "curl/7.43.0"
         }
       })
@@ -161,7 +161,7 @@ for _, strategy in helpers.each_strategy() do
       local ok = helpers.proxy_client_grpc(){
         service = "hello.HelloService.SayHello",
         opts = {
-          ["-authority"] = "bot-grpc1.com",
+          ["-authority"] = "bot-grpc1.test",
           ["-v"] = true,
         },
       }
@@ -170,7 +170,7 @@ for _, strategy in helpers.each_strategy() do
       local ok = helpers.proxy_client_grpc(){
         service = "hello.HelloService.SayHello",
         opts = {
-          ["-authority"] = "bot-grpc1.com",
+          ["-authority"] = "bot-grpc1.test",
           ["-user-agent"] = "'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'",
           ["-v"] = true,
         },
@@ -180,7 +180,7 @@ for _, strategy in helpers.each_strategy() do
       local ok = helpers.proxy_client_grpc(){
         service = "hello.HelloService.SayHello",
         opts = {
-          ["-authority"] = "bot-grpc1.com",
+          ["-authority"] = "bot-grpc1.test",
           ["-user-agent"] = HELLOWORLD,
           ["-v"] = true,
         },
@@ -190,7 +190,7 @@ for _, strategy in helpers.each_strategy() do
       local ok = helpers.proxy_client_grpc(){
         service = "hello.HelloService.SayHello",
         opts = {
-          ["-authority"] = "bot-grpc1.com",
+          ["-authority"] = "bot-grpc1.test",
           ["-user-agent"] = "curl/7.43.0",
           ["-v"] = true,
         },
@@ -203,7 +203,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request",
         headers = {
-          host           = "bot.com",
+          host           = "bot.test",
           ["user-agent"] = "Googlebot/2.1 (+http://www.google.com/bot.html)"
         },
       })
@@ -213,7 +213,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request",
         headers = {
-          host           = "bot.com",
+          host           = "bot.test",
           ["user-agent"] = FACEBOOK,
         }
       })
@@ -224,7 +224,7 @@ for _, strategy in helpers.each_strategy() do
       local ok, err = helpers.proxy_client_grpc(){
         service = "hello.HelloService.SayHello",
         opts = {
-          ["-authority"] = "bot-grpc1.com",
+          ["-authority"] = "bot-grpc1.test",
           ["-user-agent"] = "'Googlebot/2.1 (+http://www.google.com/bot.html)'",
           ["-v"] = true,
         },
@@ -235,7 +235,7 @@ for _, strategy in helpers.each_strategy() do
       local ok, err = helpers.proxy_client_grpc(){
         service = "hello.HelloService.SayHello",
         opts = {
-          ["-authority"] = "bot-grpc1.com",
+          ["-authority"] = "bot-grpc1.test",
           ["-user-agent"] = FACEBOOK,
           ["-v"] = true,
         },
@@ -249,7 +249,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request",
         headers = {
-          host           = "bot2.com",
+          host           = "bot2.test",
           ["user-agent"] = HELLOWORLD,
         }
       })
@@ -260,7 +260,7 @@ for _, strategy in helpers.each_strategy() do
       local ok, err = helpers.proxy_client_grpc(){
         service = "hello.HelloService.SayHello",
         opts = {
-          ["-authority"] = "bot-grpc2.com",
+          ["-authority"] = "bot-grpc2.test",
           ["-user-agent"] = HELLOWORLD,
           ["-v"] = true,
         },
@@ -274,7 +274,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request",
         headers = {
-          host           = "bot3.com",
+          host           = "bot3.test",
           ["user-agent"] = FACEBOOK
         }
       })
@@ -285,7 +285,7 @@ for _, strategy in helpers.each_strategy() do
       local ok = helpers.proxy_client_grpc(){
         service = "hello.HelloService.SayHello",
         opts = {
-          ["-authority"] = "bot-grpc3.com",
+          ["-authority"] = "bot-grpc3.test",
           ["-user-agent"] = FACEBOOK,
           ["-v"] = true,
         },
@@ -305,7 +305,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       bp.routes:insert {
-        hosts = { "bot.com" },
+        hosts = { "bot.test" },
       }
 
       bp.plugins:insert {
@@ -338,7 +338,7 @@ for _, strategy in helpers.each_strategy() do
       local res = assert(proxy_client:send {
         method  = "GET",
         path    = "/request",
-        headers =  { host = "bot.com" }
+        headers =  { host = "bot.test" }
       })
       assert.response(res).has.status(200)
 
@@ -346,7 +346,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request",
         headers =  {
-          host           = "bot.com",
+          host           = "bot.test",
           ["user-agent"] = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36"
         }
       })
@@ -356,7 +356,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request",
         headers =  {
-          host           = "bot.com",
+          host           = "bot.test",
           ["user-agent"] = HELLOWORLD
         }
       })
@@ -366,7 +366,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request",
         headers =  {
-          host           = "bot.com",
+          host           = "bot.test",
           ["user-agent"] = "curl/7.43.0"
         }
       })

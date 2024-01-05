@@ -1,0 +1,3 @@
+message: "Ensure Kong-owned directories are cleaned up after an uninstall using the system's package manager."
+type: feature
+scope: Core

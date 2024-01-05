@@ -784,4 +784,120 @@ describe("CP/DP labels #" .. strategy, function()
   end)
 end)
 
+describe("CP/DP cert details(cluster_mtls = shared) #" .. strategy, function()
+  lazy_setup(function()
+    helpers.get_db_utils(strategy) -- runs migrations
+
+    assert(helpers.start_kong({
+      role = "control_plane",
+      cluster_cert = "spec/fixtures/kong_clustering.crt",
+      cluster_cert_key = "spec/fixtures/kong_clustering.key",
+      database = strategy,
+      db_update_frequency = 0.1,
+      cluster_listen = "127.0.0.1:9005",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
+
+    assert(helpers.start_kong({
+      role = "data_plane",
+      database = "off",
+      prefix = "servroot2",
+      cluster_cert = "spec/fixtures/kong_clustering.crt",
+      cluster_cert_key = "spec/fixtures/kong_clustering.key",
+      cluster_control_plane = "127.0.0.1:9005",
+      proxy_listen = "0.0.0.0:9002",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      cluster_dp_labels="deployment:mycloud,region:us-east-1",
+    }))
+  end)
+
+  lazy_teardown(function()
+    helpers.stop_kong("servroot2")
+    helpers.stop_kong()
+  end)
+
+  describe("status API", function()
+    it("shows DP cert details", function()
+      helpers.wait_until(function()
+        local admin_client = helpers.admin_client()
+        finally(function()
+          admin_client:close()
+        end)
+
+        local res = assert(admin_client:get("/clustering/data-planes"))
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        for _, v in pairs(json.data) do
+          if v.ip == "127.0.0.1" then
+            assert.equal(1888983905, v.cert_details.expiry_timestamp)
+            return true
+          end
+        end
+      end, 3)
+    end)
+  end)
+end)
+
+describe("CP/DP cert details(cluster_mtls = pki) #" .. strategy, function()
+  lazy_setup(function()
+    helpers.get_db_utils(strategy) -- runs migrations
+
+    assert(helpers.start_kong({
+      role = "control_plane",
+      cluster_cert = "spec/fixtures/kong_clustering.crt",
+      cluster_cert_key = "spec/fixtures/kong_clustering.key",
+      db_update_frequency = 0.1,
+      database = strategy,
+      cluster_listen = "127.0.0.1:9005",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      -- additional attributes for PKI:
+      cluster_mtls = "pki",
+      cluster_ca_cert = "spec/fixtures/kong_clustering_ca.crt",
+    }))
+
+    assert(helpers.start_kong({
+      role = "data_plane",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      database = "off",
+      prefix = "servroot2",
+      cluster_cert = "spec/fixtures/kong_clustering_client.crt",
+      cluster_cert_key = "spec/fixtures/kong_clustering_client.key",
+      cluster_control_plane = "127.0.0.1:9005",
+      proxy_listen = "0.0.0.0:9002",
+      -- additional attributes for PKI:
+      cluster_mtls = "pki",
+      cluster_server_name = "kong_clustering",
+      cluster_ca_cert = "spec/fixtures/kong_clustering.crt",
+    }))
+  end)
+
+  lazy_teardown(function()
+    helpers.stop_kong("servroot2")
+    helpers.stop_kong()
+  end)
+
+  describe("status API", function()
+    it("shows DP cert details", function()
+      helpers.wait_until(function()
+        local admin_client = helpers.admin_client()
+        finally(function()
+          admin_client:close()
+        end)
+
+        local res = admin_client:get("/clustering/data-planes")
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        for _, v in pairs(json.data) do
+          if v.ip == "127.0.0.1" then
+            assert.equal(1897136778, v.cert_details.expiry_timestamp)
+            return true
+          end
+        end
+      end, 3)
+    end)
+  end)
+end)
+
 end

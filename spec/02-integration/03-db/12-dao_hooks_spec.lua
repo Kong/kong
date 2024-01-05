@@ -183,7 +183,7 @@ for _, strategy in helpers.each_strategy() do
           hooks.clear_hooks()
         end)
 
-        assert(db.routes:select( {id = r1.id} ))
+        assert(db.routes:select(r1))
         assert.spy(pre_hook).was_called(1)
         assert.spy(post_hook).was_called(1)
       end)
@@ -266,7 +266,7 @@ for _, strategy in helpers.each_strategy() do
           hooks.clear_hooks()
         end)
 
-        assert(db.routes:update({ id = r1.id }, {
+        assert(db.routes:update(r1, {
           protocols = { "http" },
           hosts = { "host1" },
           service = s1,

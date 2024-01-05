@@ -62,7 +62,7 @@ end
 -- @param upstream_id string
 -- @return the upstream table, or nil+error
 local function load_upstream_into_memory(upstream_id)
-  local upstream, err = kong.db.upstreams:select({id = upstream_id}, GLOBAL_QUERY_OPTS)
+  local upstream, err = kong.db.upstreams:select({ id = upstream_id }, GLOBAL_QUERY_OPTS)
   if not upstream then
     return nil, err
   end

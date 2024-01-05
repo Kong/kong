@@ -1,5 +1,5 @@
 local constants = require "kong.constants"
-local utils = require "kong.tools.utils"
+local utils = require "kong.db.utils"
 
 
 local utils_toposort = utils.topological_sort

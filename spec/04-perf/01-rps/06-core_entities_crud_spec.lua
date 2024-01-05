@@ -4,6 +4,7 @@ local utils = require "spec.helpers.perf.utils"
 local workspaces = require "kong.workspaces"
 local stringx = require "pl.stringx"
 local tablex = require "pl.tablex"
+local shell = require "resty.shell"
 
 local fmt = string.format
 
@@ -346,7 +347,7 @@ local gen_wrk_script = function(entity, action)
   return script
 end
 
-os.execute("mkdir -p output")
+shell.run("mkdir -p output", nil, 0)
 
 for _, mode in ipairs(KONG_MODES) do
 for _, version in ipairs(versions) do

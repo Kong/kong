@@ -2,7 +2,7 @@ local helpers = require "spec.helpers"
 
 for _, strategy in helpers.each_strategy({"postgres"}) do
   describe("Plugin: acme (handler.access) worked with [#" .. strategy .. "]", function()
-    local domain = "mydomain.com"
+    local domain = "mydomain.test"
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {

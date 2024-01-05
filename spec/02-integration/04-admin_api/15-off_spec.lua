@@ -82,7 +82,7 @@ describe("Admin API #off", function()
           local res = client:post("/routes", {
             body = {
               protocols = { "http" },
-              hosts     = { "my.route.com" },
+              hosts     = { "my.route.test" },
               service   = { id = utils.uuid() },
             },
             headers = { ["Content-Type"] = content_type }
@@ -108,7 +108,7 @@ describe("Admin API #off", function()
             body    = {
               protocols = { "http" },
               methods   = { "GET", "POST", "PATCH" },
-              hosts     = { "foo.api.com", "bar.api.com" },
+              hosts     = { "foo.api.test", "bar.api.test" },
               paths     = { "/foo", "/bar" },
               service   = { id =  utils.uuid() },
             },
@@ -1752,7 +1752,7 @@ R6InCcH2Wh8wSeY5AuDXvu2tv9g/PW9wIJmPuKSHMA==
         entity_type = "certificate",
         errors = { {
             field = "cert",
-            message = "invalid certificate: x509.new: asn1/tasn_dec.c:349:error:0688010A:asn1 encoding routines::nested asn1 error",
+            message = "invalid certificate: x509.new: error:688010A:asn1 encoding routines:asn1_item_embed_d2i:nested asn1 error:asn1/tasn_dec.c:349:",
             type = "field"
           } }
       },
@@ -2692,6 +2692,43 @@ R6InCcH2Wh8wSeY5AuDXvu2tv9g/PW9wIJmPuKSHMA==
             field   = "consumer.id",
             message = "missing primary key",
             type    = "field",
+          }
+        },
+      },
+    }, flattened)
+  end)
+  it("origin error do not loss when enable flatten_errors - (#12167)", function()
+    local input = {
+      _format_version = "3.0",
+      consumers = {
+        {
+          id = "a73dc9a7-93df-584d-97c0-7f41a1bbce3d",
+          username = "test-consumer-1",
+          tags =  { "consumer-1" },
+        },
+        {
+          id = "a73dc9a7-93df-584d-97c0-7f41a1bbce32",
+          username = "test-consumer-1",
+          tags =  { "consumer-2" },
+        },
+      },
+    }
+    local flattened = post_config(input)
+    validate({
+      {
+        entity_type = "consumer",
+        entity_id   = "a73dc9a7-93df-584d-97c0-7f41a1bbce32",
+        entity_name = nil,
+        entity_tags = { "consumer-2" },
+        entity      =  {
+          id = "a73dc9a7-93df-584d-97c0-7f41a1bbce32",
+          username = "test-consumer-1",
+          tags =  { "consumer-2" },
+        },
+        errors = {
+          {
+            type    = "entity",
+            message = "uniqueness violation: 'consumers' entity with username set to 'test-consumer-1' already declared",
           }
         },
       },

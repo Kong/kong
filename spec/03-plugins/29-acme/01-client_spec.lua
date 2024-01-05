@@ -259,7 +259,7 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: acme (client.save) [#" .. strategy .. "]", function()
     local bp, db
     local cert, sni
-    local host = "test1.com"
+    local host = "test1.test"
 
     lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy, {
@@ -285,7 +285,7 @@ for _, strategy in helpers.each_strategy() do
     describe("creates new cert", function()
       local key, crt = new_cert_key_pair()
       local new_sni, new_cert, err
-      local new_host = "test2.com"
+      local new_host = "test2.test"
 
       it("returns no error", function()
         err = client._save_dao(new_host, key, crt)
@@ -299,7 +299,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("create new certificate", function()
-        new_cert, err = db.certificates:select({ id = new_sni.certificate.id })
+        new_cert, err = db.certificates:select(new_sni.certificate)
         assert.is_nil(err)
         assert.same(new_cert.key, key)
         assert.same(new_cert.cert, crt)
@@ -324,14 +324,14 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("creates new certificate", function()
-        new_cert, err = db.certificates:select({ id = new_sni.certificate.id })
+        new_cert, err = db.certificates:select(new_sni.certificate)
         assert.is_nil(err)
         assert.same(new_cert.key, key)
         assert.same(new_cert.cert, crt)
       end)
 
       it("deletes old certificate", function()
-        new_cert, err = db.certificates:select({ id = cert.id })
+        new_cert, err = db.certificates:select(cert)
         assert.is_nil(err)
         assert.is_nil(new_cert)
       end)
@@ -343,8 +343,8 @@ for _, strategy in ipairs({"off"}) do
   describe("Plugin: acme (client.renew) [#" .. strategy .. "]", function()
     local bp
     local cert
-    local host = "test1.com"
-    local host_not_expired = "test2.com"
+    local host = "test1.test"
+    local host_not_expired = "test2.test"
     -- make it due for renewal
     local key, crt = new_cert_key_pair(ngx.time() - 23333)
     -- make it not due for renewal

@@ -7,7 +7,7 @@ local pl_path = require "pl.path"
 local pl_dir = require "pl.dir"
 local pl_file = require "pl.file"
 local pl_utils = require "pl.utils"
-local os = require "os"
+local shell = require "resty.shell"
 
 local print = print
 local error = error
@@ -60,7 +60,7 @@ function http_mock:stop(no_clean, signal, timeout)
   pid_file:close()
 
   local kill_nginx_cmd = "kill -s " .. signal .. " " .. pid
-  if not os.execute(kill_nginx_cmd) then
+  if not shell.run(kill_nginx_cmd, nil, 0) then
     error("failed to kill nginx at " .. self.prefix, 2)
   end
 

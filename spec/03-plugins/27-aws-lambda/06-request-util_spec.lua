@@ -16,7 +16,7 @@ for _, strategy in helpers.each_strategy() do
 
 
       local route1 = bp.routes:insert {
-        hosts = { "gw.skipfile.com" },
+        hosts = { "gw.skipfile.test" },
       }
       bp.plugins:insert {
         name     = "aws-lambda",
@@ -34,7 +34,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route2 = bp.routes:insert {
-        hosts = { "gw.readfile.com" },
+        hosts = { "gw.readfile.test" },
       }
       bp.plugins:insert {
         name     = "aws-lambda",
@@ -52,7 +52,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route3 = bp.routes:insert {
-        hosts = { "plain.skipfile.com" },
+        hosts = { "plain.skipfile.test" },
       }
       bp.plugins:insert {
         name     = "aws-lambda",
@@ -70,7 +70,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route4 = bp.routes:insert {
-        hosts = { "plain.readfile.com" },
+        hosts = { "plain.readfile.test" },
       }
       bp.plugins:insert {
         name     = "aws-lambda",
@@ -126,7 +126,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route7 = db.routes:insert {
-        hosts = { "gw.serviceless.com" },
+        hosts = { "gw.serviceless.test" },
       }
       db.plugins:insert {
         name     = "aws-lambda",
@@ -154,7 +154,8 @@ for _, strategy in helpers.each_strategy() do
     before_each(function()
       proxy_client = helpers.proxy_client()
       admin_client = helpers.admin_client()
-      os.execute(":> " .. helpers.test_conf.nginx_err_logs) -- clean log files
+      local shell = require "resty.shell"
+      shell.run(":> " .. helpers.test_conf.nginx_err_logs, nil, 0) -- clean log files
     end)
 
     after_each(function ()
@@ -177,7 +178,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
             headers = {
-              ["Host"] = "plain.skipfile.com"
+              ["Host"] = "plain.skipfile.test"
             },
             body = request_body
           })
@@ -195,7 +196,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
             headers = {
-              ["Host"] = "plain.skipfile.com"
+              ["Host"] = "plain.skipfile.test"
             },
             body = request_body,
           })
@@ -218,7 +219,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
             headers = {
-              ["Host"] = "plain.readfile.com"
+              ["Host"] = "plain.readfile.test"
             },
             body = request_body
           })
@@ -236,7 +237,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
             headers = {
-              ["Host"] = "plain.readfile.com"
+              ["Host"] = "plain.readfile.test"
             },
             body = request_body,
           })
@@ -262,7 +263,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
             headers = {
-              ["Host"] = "gw.skipfile.com"
+              ["Host"] = "gw.skipfile.test"
             },
             body = request_body
           })
@@ -280,7 +281,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
             headers = {
-              ["Host"] = "gw.skipfile.com"
+              ["Host"] = "gw.skipfile.test"
             },
             body = request_body,
           })
@@ -303,7 +304,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
             headers = {
-              ["Host"] = "gw.readfile.com"
+              ["Host"] = "gw.readfile.test"
             },
             body = request_body
           })
@@ -321,7 +322,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
             headers = {
-              ["Host"] = "gw.readfile.com"
+              ["Host"] = "gw.readfile.test"
             },
             body = request_body,
           })
@@ -380,7 +381,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
           headers = {
-            ["Host"] = "gw.serviceless.com"
+            ["Host"] = "gw.serviceless.test"
           },
           body = request_body,
         })

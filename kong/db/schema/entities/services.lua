@@ -23,6 +23,7 @@ return {
   primary_key = { "id" },
   workspaceable = true,
   endpoint_key = "name",
+  dao = "kong.db.dao.services",
 
   fields = {
     { id                 = typedefs.uuid, },

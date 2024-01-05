@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 local fmt = string.format
 local lower = string.lower
-local sha256_hex = require "kong.tools.utils".sha256_hex
+local sha256_hex = require("kong.tools.sha256").sha256_hex
 
 local ldap_host_aws = "ec2-54-172-82-117.compute-1.amazonaws.com"
 
@@ -26,7 +26,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           })
 
           local route = bp.routes:insert {
-            hosts = { "ldapauth.com" },
+            hosts = { "ldapauth.test" },
           }
 
           plugin = bp.plugins:insert {
@@ -86,7 +86,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               path = "/requests",
               body = {},
               headers = {
-                ["HOST"] = "ldapauth.com",
+                ["HOST"] = "ldapauth.test",
                 authorization = "ldap " .. ngx.encode_base64("einstein:wrongpassword")
               }
             })
@@ -112,7 +112,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               path = "/requests",
               body = {},
               headers = {
-                ["HOST"] = "ldapauth.com",
+                ["HOST"] = "ldapauth.test",
                 authorization = "ldap " .. ngx.encode_base64("einstein:password")
               }
             })

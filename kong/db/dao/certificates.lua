@@ -69,7 +69,7 @@ function _Certificates:insert(cert, options)
   cert.snis = name_list or cjson.empty_array
 
   if name_list then
-    local ok, err, err_t = self.db.snis:insert_list({ id = cert.id }, name_list, options)
+    local ok, err, err_t = self.db.snis:insert_list(cert, name_list, options)
     if not ok then
       return nil, err, err_t
     end
@@ -196,7 +196,7 @@ function _Certificates:page(size, offset, options)
 
   for i=1, #certs do
     local cert = certs[i]
-    local snis, err, err_t = self.db.snis:list_for_certificate({ id = cert.id })
+    local snis, err, err_t = self.db.snis:list_for_certificate(cert)
     if not snis then
       return nil, err, err_t
     end

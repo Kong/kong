@@ -19,11 +19,11 @@ for _, strategy in helpers.each_strategy() do
       })
 
       route1 = bp.routes:insert {
-        hosts = { "bot1.com" },
+        hosts = { "bot1.test" },
       }
 
       route2 = bp.routes:insert {
-        hosts = { "bot2.com" },
+        hosts = { "bot2.test" },
       }
 
       assert(helpers.start_kong({

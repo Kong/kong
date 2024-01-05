@@ -35,6 +35,7 @@ local ERRORS_HTTP_CODES = {
   [Errors.codes.INVALID_OPTIONS]         = 400,
   [Errors.codes.OPERATION_UNSUPPORTED]   = 405,
   [Errors.codes.FOREIGN_KEYS_UNRESOLVED] = 400,
+  [Errors.codes.REFERENCED_BY_OTHERS]    = 400,
 }
 
 local TAGS_AND_REGEX

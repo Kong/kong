@@ -1,0 +1,3 @@
+message: prevent ca to be deleted when it's still referenced by other entities and invalidate the related ca store caches when a ca cert is updated.
+type: bugfix
+scope: Core
