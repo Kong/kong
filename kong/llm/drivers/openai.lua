@@ -3,9 +3,12 @@ local _M = {}
 -- imports
 local cjson = require("cjson.safe")
 local fmt = string.format
-local ai_shared = require("kong.plugins.ai-proxy.drivers.shared")
+local ai_shared = require("kong.llm.drivers.shared")
 local socket_url = require "socket.url"
-local http = require("resty.http")
+--
+
+-- globals
+local DRIVER_NAME = "openai"
 --
 
 local transformers_to = {
@@ -38,7 +41,7 @@ local transformers_to = {
       max_tokens = max_tokens,
       temperature = temperature,
     }
-  
+
     return this, "application/json", nil
   end,
 }
@@ -118,43 +121,54 @@ function _M.to_format(request_table, model_info, route_type)
   return response_object, content_type, nil
 end
 
-function _M.subrequest(body_table, route_type, auth)
-  local body_string, err = cjson.encode(body_table)
-  if err then return nil, "failed to parse body to json: " .. err end
+function _M.subrequest(body, conf, http_opts, return_res_table)
+  -- use shared/standard subrequest routine
+  local body_string, err
 
-  local httpc = http.new()
+  if type(body) == "table" then
+    body_string, err = cjson.encode(body)
+    if err then return nil, nil, "failed to parse body to json: " .. err end
+  elseif type(body) == "string" then
+    body_string = body
+  else
+    return nil, nil, "body must be table or string"
+  end
 
-  local request_url = fmt(
+  -- may be overridden
+  local url = (conf.model.options and conf.model.options.upstream_url)
+    or fmt(
     "%s%s",
-    ai_shared.upstream_url_format.openai,
-    ai_shared.operation_map.openai[route_type]
+    ai_shared.upstream_url_format[DRIVER_NAME],
+    ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
   )
 
-  local res, err = httpc:request_uri(
-    request_url,
-    {
-      method = "POST",
-      body = body_string,
-      headers = {
-        ["Accept"] = "application/json",
-        ["Content-Type"] = "application/json",
-        [auth.header_name] = auth.header_value,
-      },
-    })
-  if not res then
-    return nil, "request failed: " .. err
+  local method = ai_shared.operation_map[DRIVER_NAME][conf.route_type].method
+
+  local headers = {
+    ["Accept"] = "application/json",
+    ["Content-Type"] = "application/json",
+    [conf.auth.header_name] = conf.auth.header_value,
+  }
+
+  local res, err = ai_shared.http_request(url, body_string, method, headers, http_opts)
+  if err then
+    return nil, nil, "request to ai service failed: " .. err
   end
 
-  -- At this point, the entire request / response is complete and the connection
-  -- will be closed or back on the connection pool.
-  local status = res.status
-  local body   = res.body
+  if return_res_table then
+    return res, res.status, nil
+  else
+    -- At this point, the entire request / response is complete and the connection
+    -- will be closed or back on the connection pool.
+    local status = res.status
+    local body   = res.body
 
-  if status ~= 200 then
-    return body, "status code not 200"
+    if status > 299 then
+      return body, res.status, "status code not 2xx"
+    end
+
+    return body, res.status, nil
   end
-
-  return body, nil
 end
 
 function _M.header_filter_hooks(body)
@@ -162,8 +176,8 @@ function _M.header_filter_hooks(body)
 end
 
 function _M.post_request(conf)
-  if ai_shared.clear_response_headers.openai then
-    for i, v in ipairs(ai_shared.clear_response_headers.openai) do
+  if ai_shared.clear_response_headers[DRIVER_NAME] then
+    for i, v in ipairs(ai_shared.clear_response_headers[DRIVER_NAME]) do
       kong.response.clear_header(v)
     end
   end
@@ -186,12 +200,12 @@ function _M.configure_request(conf)
     if (conf.model.options and conf.model.options.upstream_url) then
       parsed_url = socket_url.parse(conf.model.options.upstream_url)
     else
-      local path = ai_shared.operation_map.openai[conf.route_type]
+      local path = ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
       if not path then
         return false, fmt("operation %s is not supported for openai provider", conf.route_type)
       end
       
-      parsed_url = socket_url.parse(ai_shared.upstream_url_format.openai)
+      parsed_url = socket_url.parse(ai_shared.upstream_url_format[DRIVER_NAME])
       parsed_url.path = path
     end
 

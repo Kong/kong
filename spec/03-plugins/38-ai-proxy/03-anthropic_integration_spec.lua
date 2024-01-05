@@ -421,7 +421,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
         -- check this is in the 'kong' response format
         assert.is_truthy(json.error)
-        assert.equals(json.message, "cannot use own model for this instance")
+        assert.equals(json.error.message, "cannot use own model for this instance")
       end)
     end)
 
@@ -479,7 +479,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         local json = cjson.decode(body)
 
         -- check this is in the 'kong' response format
-        assert.equals(json.message, "error transforming to anthropic://llm/v1/chat")
+        assert.equals(json.error.message, "error transforming to anthropic://llm/v1/chat")
       end)
 
     describe("anthropic llm/v1/completions", function()
@@ -517,7 +517,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         local json = cjson.decode(body)
 
         -- check this is in the 'kong' response format
-        assert.equals(json.message, "error transforming to anthropic://llm/v1/completions")
+        assert.equals(json.error.message, "error transforming to anthropic://llm/v1/completions")
       end)
     end)
   end)

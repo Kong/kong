@@ -4,8 +4,13 @@ local _M = {}
 local cjson = require("cjson.safe")
 local split = require("pl.stringx").split
 local fmt = string.format
-local ai_shared = require("kong.plugins.ai-proxy.drivers.shared")
+local ai_shared = require("kong.llm.drivers.shared")
 local socket_url = require "socket.url"
+local string_gsub = string.gsub
+--
+
+-- globals
+local DRIVER_NAME = "llama2"
 --
 
 -- parser built from model docs reference:
@@ -118,7 +123,7 @@ local transformers_from = {
         choices = {
           [1] = {
             message = {
-              content = split_response[#split_response],
+              content = string_gsub(split_response[#split_response], '^%s*(.-)%s*$', '%1'),
               role = "assistant",
             },
             index = 0,
@@ -132,7 +137,7 @@ local transformers_from = {
         choices = {
           [1] = {
             index = 0,
-            text = split_response[#split_response],
+            text = string_gsub(split_response[#split_response], '^%s*(.-)%s*$', '%1'),
           }
         },
         object = "text_completion",
@@ -170,7 +175,7 @@ local transformers_from = {
         choices = {
           [1] = {
             message = {
-              content = split_response[#split_response],
+              content = string_gsub(split_response[#split_response], '^%s*(.-)%s*$', '%1'),
               role = "assistant",
             },
             index = 0,
@@ -184,7 +189,7 @@ local transformers_from = {
         choices = {
           [1] = {
             index = 0,
-            text = split_response[#split_response],
+            text = string_gsub(split_response[#split_response], '^%s*(.-)%s*$', '%1'),
           }
         },
         object = "text_completion",
@@ -238,7 +243,7 @@ function _M.to_format(request_table, model_info, route_type)
     return response_object, content_type, nil
 
   elseif model_info.options.llama2_format == "openai" then
-    local openai_driver = require("kong.plugins.ai-proxy.drivers.openai")
+    local openai_driver = require("kong.llm.drivers.openai")
     return openai_driver.to_format(request_table, model_info, route_type)
 
   else
@@ -247,13 +252,57 @@ function _M.to_format(request_table, model_info, route_type)
   end 
 end
 
+function _M.subrequest(body, conf, http_opts, return_res_table)
+  -- use shared/standard subrequest routine
+  local body_string, err
+
+  if type(body) == "table" then
+    body_string, err = cjson.encode(body)
+    if err then return nil, nil, "failed to parse body to json: " .. err end
+  elseif type(body) == "string" then
+    body_string = body
+  else
+    return nil, nil, "body must be table or string"
+  end
+
+  local url = conf.model.options.upstream_url
+
+  local method = "POST"
+
+  local headers = {
+    ["Accept"] = "application/json",
+    ["Content-Type"] = "application/json",
+    [conf.auth.header_name] = conf.auth.header_value,
+  }
+
+  local res, err = ai_shared.http_request(url, body_string, method, headers, http_opts)
+  if err then
+    return nil, nil, "request to ai service failed: " .. err
+  end
+
+  if return_res_table then
+    return res, res.status, nil
+  else
+    -- At this point, the entire request / response is complete and the connection
+    -- will be closed or back on the connection pool.
+    local status = res.status
+    local body   = res.body
+
+    if status > 299 then
+      return body, res.status, "status code not 2xx"
+    end
+
+    return body, res.status, nil
+  end
+end
+
 function _M.header_filter_hooks(body)
   -- nothing to parse in header_filter phase
 end
 
 function _M.post_request(conf)
-  if ai_shared.clear_response_headers.llama2 then
-    for i, v in ipairs(ai_shared.clear_response_headers.llama2) do
+  if ai_shared.clear_response_headers[DRIVER_NAME] then
+    for i, v in ipairs(ai_shared.clear_response_headers[DRIVER_NAME]) do
       kong.response.clear_header(v)
     end
   end

@@ -554,13 +554,14 @@ build = {
 
     ["kong.plugins.ai-proxy.handler"] = "kong/plugins/ai-proxy/handler.lua",
     ["kong.plugins.ai-proxy.schema"] = "kong/plugins/ai-proxy/schema.lua",
-    ["kong.plugins.ai-proxy.drivers.shared"] = "kong/plugins/ai-proxy/drivers/shared.lua",
-    ["kong.plugins.ai-proxy.drivers.openai"] = "kong/plugins/ai-proxy/drivers/openai.lua",
-    ["kong.plugins.ai-proxy.drivers.azure"] = "kong/plugins/ai-proxy/drivers/azure.lua",
-    ["kong.plugins.ai-proxy.drivers.cohere"] = "kong/plugins/ai-proxy/drivers/cohere.lua",
-    ["kong.plugins.ai-proxy.drivers.anthropic"] = "kong/plugins/ai-proxy/drivers/anthropic.lua",
-    ["kong.plugins.ai-proxy.drivers.mistral"] = "kong/plugins/ai-proxy/drivers/mistral.lua",
-    ["kong.plugins.ai-proxy.drivers.llama2"] = "kong/plugins/ai-proxy/drivers/llama2.lua",
+
+    ["kong.llm.drivers.shared"] = "kong/llm/drivers/shared.lua",
+    ["kong.llm.drivers.openai"] = "kong/llm/drivers/openai.lua",
+    ["kong.llm.drivers.azure"] = "kong/llm/drivers/azure.lua",
+    ["kong.llm.drivers.cohere"] = "kong/llm/drivers/cohere.lua",
+    ["kong.llm.drivers.anthropic"] = "kong/llm/drivers/anthropic.lua",
+    ["kong.llm.drivers.mistral"] = "kong/llm/drivers/mistral.lua",
+    ["kong.llm.drivers.llama2"] = "kong/llm/drivers/llama2.lua",
 
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",

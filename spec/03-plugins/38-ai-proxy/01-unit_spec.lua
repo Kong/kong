@@ -129,7 +129,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
         describe(k .. " format test", function()
 
           local actual_request_table
-          local driver = require("kong.plugins.ai-proxy.drivers." .. i)
+          local driver = require("kong.llm.drivers." .. i)
 
 
           -- what we do is first put the SAME request message from the user, through the converter, for this provider/format
@@ -190,7 +190,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
   end
 
   it("throws correct error when format is not supported", function()
-    local driver = require("kong.plugins.ai-proxy.drivers.mistral")  -- one-shot, random example of provider with only prompt support
+    local driver = require("kong.llm.drivers.mistral")  -- one-shot, random example of provider with only prompt support
     
     local model_config = {
       route_type = "llm/v1/chatnopenotsupported",

@@ -181,7 +181,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         local body = assert.res_status(200, r)
         local json = cjson.decode(body)
 
-        assert.equals(json.choices[1].message.content, "\n\nMissingno. is a glitch from a well-known video game.")
+        assert.equals(json.choices[1].message.content, "Is a well known font.")
       end)
 
       it("runs good request in completions format", function()
@@ -196,8 +196,154 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         local body = assert.res_status(200, r)
         local json = cjson.decode(body)
 
-        assert.equals(json.choices[1].text, "\n\nMissingno. is a glitch from a well-known video game.")
+        assert.equals(json.choices[1].text, "Is a well known font.")
       end)
+    end)
+
+    describe("one-shot request", function()
+      it("success", function()
+        local ai_driver = require("kong.llm.drivers.llama2")
+  
+        local plugin_conf = {
+          route_type = "llm/v1/chat",
+          auth = {
+            header_name = "Authorization",
+            header_value = "Bearer llama2-key",
+          },
+          model = {
+            name = "llama-2-7b-chat-hf",
+            provider = "llama2",
+            options = {
+              max_tokens = 1024,
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/raw/llm/v1/chat",
+              llama2_format = "raw",
+            },
+          },
+        }
+  
+        local request = {
+          messages = {
+            [1] = {
+              role = "system",
+              content = "Some system prompt",
+            },
+            [2] = {
+              role = "user",
+              content = "Some question",
+            }
+          }
+        }
+
+        -- convert it to the specified driver format
+        local ai_request, content_type, err = ai_driver.to_format(request, plugin_conf.model, "llm/v1/chat")
+        assert.is_nil(err)
+        assert.is_not_nil(content_type)
+
+        -- send it to the ai service
+        local ai_response, status_code, err = ai_driver.subrequest(ai_request, plugin_conf, {}, false)
+        assert.equal(200, status_code)
+        assert.is_nil(err)
+
+        -- parse and convert the response
+        local ai_response, _, err = ai_driver.from_format(ai_response, plugin_conf.model, plugin_conf.route_type)
+        assert.is_nil(err)
+
+        -- check it
+        local response_table, err = cjson.decode(ai_response)
+        assert.is_nil(err)
+        assert.same(response_table.choices[1].message,
+          {
+            content = "Is a well known font.",
+            role = "assistant",
+          })
+      end)
+
+      it("404", function()
+        local ai_driver = require("kong.llm.drivers.llama2")
+  
+        local plugin_conf = {
+          route_type = "llm/v1/chat",
+          auth = {
+            header_name = "Authorization",
+            header_value = "Bearer llama2-key",
+          },
+          model = {
+            name = "llama-2-7b-chat-hf",
+            provider = "llama2",
+            options = {
+              max_tokens = 1024,
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/raw/llm/v1/nowhere",
+              llama2_format = "raw",
+            },
+          },
+        }
+
+        local request = {
+          messages = {
+            [1] = {
+              role = "system",
+              content = "Some system prompt",
+            },
+            [2] = {
+              role = "user",
+              content = "Some question",
+            }
+          }
+        }
+
+        -- convert it to the specified driver format
+        local ai_request = ai_driver.to_format(request, plugin_conf.model, "llm/v1/chat")
+
+        -- send it to the ai service
+        local ai_response, status_code, err = ai_driver.subrequest(ai_request, plugin_conf, {}, false)
+        assert.is_not_nil(err)
+        assert.is_not_nil(ai_response)
+        assert.equal(404, status_code)
+      end)
+
+      it("401", function()
+        local ai_driver = require("kong.llm.drivers.llama2")
+  
+        local plugin_conf = {
+          route_type = "llm/v1/chat",
+          auth = {
+            header_name = "Authorization",
+            header_value = "Bearer wrong-key",
+          },
+          model = {
+            name = "llama-2-7b-chat-hf",
+            provider = "llama2",
+            options = {
+              max_tokens = 1024,
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/raw/llm/v1/chat",
+              llama2_format = "raw",
+            },
+          },
+        }
+
+        local request = {
+          messages = {
+            [1] = {
+              role = "system",
+              content = "Some system prompt",
+            },
+            [2] = {
+              role = "user",
+              content = "Some question",
+            }
+          }
+        }
+
+        -- convert it to the specified driver format
+        local ai_request = ai_driver.to_format(request, plugin_conf.model, "llm/v1/chat")
+
+        -- send it to the ai service
+        local ai_response, status_code, err = ai_driver.subrequest(ai_request, plugin_conf, {}, false)
+        assert.is_not_nil(err)
+        assert.is_not_nil(ai_response)
+        assert.equal(401, status_code)
+      end)
+
     end)
   end)
 

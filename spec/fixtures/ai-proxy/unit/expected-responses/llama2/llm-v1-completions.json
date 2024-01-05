@@ -2,7 +2,7 @@
   "choices": [
     {
       "index": 0,
-      "text": "\n\nYou cannot divide by zero because it is not a valid operation in mathematics."
+      "text": "You cannot divide by zero because it is not a valid operation in mathematics."
     }
   ],
   "object": "text_completion"
