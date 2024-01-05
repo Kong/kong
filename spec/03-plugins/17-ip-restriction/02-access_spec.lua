@@ -19,51 +19,51 @@ for _, strategy in helpers.each_strategy() do
       })
 
       local route1 = bp.routes:insert {
-        hosts = { "ip-restriction1.com" },
+        hosts = { "ip-restriction1.test" },
       }
 
       local route2 = bp.routes:insert {
-        hosts = { "ip-restriction2.com" },
+        hosts = { "ip-restriction2.test" },
       }
 
       local route3 = bp.routes:insert {
-        hosts = { "ip-restriction3.com" },
+        hosts = { "ip-restriction3.test" },
       }
 
       local route4 = bp.routes:insert {
-        hosts = { "ip-restriction4.com" },
+        hosts = { "ip-restriction4.test" },
       }
 
       local route5 = bp.routes:insert {
-        hosts = { "ip-restriction5.com" },
+        hosts = { "ip-restriction5.test" },
       }
 
       local route6 = bp.routes:insert {
-        hosts = { "ip-restriction6.com" },
+        hosts = { "ip-restriction6.test" },
       }
 
       local route7 = bp.routes:insert {
-        hosts = { "ip-restriction7.com" },
+        hosts = { "ip-restriction7.test" },
       }
 
       local route8 = bp.routes:insert {
-        hosts = { "ip-restriction8.com" },
+        hosts = { "ip-restriction8.test" },
       }
 
       local route9 = bp.routes:insert {
-        hosts = { "ip-restriction9.com" },
+        hosts = { "ip-restriction9.test" },
       }
 
       local route10 = bp.routes:insert {
-        hosts = { "ip-restriction10.com" },
+        hosts = { "ip-restriction10.test" },
       }
 
       local route11 = bp.routes:insert {
-        hosts = { "ip-restriction11.com" },
+        hosts = { "ip-restriction11.test" },
       }
 
       local route12 = bp.routes:insert {
-        hosts = { "ip-restriction12.com" },
+        hosts = { "ip-restriction12.test" },
       }
 
       local grpc_service = bp.services:insert {
@@ -74,21 +74,21 @@ for _, strategy in helpers.each_strategy() do
       local route_grpc_deny = assert(bp.routes:insert {
         protocols = { "grpc" },
         paths = { "/hello.HelloService/" },
-        hosts = { "ip-restriction-grpc1.com" },
+        hosts = { "ip-restriction-grpc1.test" },
         service = grpc_service,
       })
 
       local route_grpc_allow = assert(bp.routes:insert {
         protocols = { "grpc" },
         paths = { "/hello.HelloService/" },
-        hosts = { "ip-restriction-grpc2.com" },
+        hosts = { "ip-restriction-grpc2.test" },
         service = grpc_service,
       })
 
       local route_grpc_xforwarded_deny = assert(bp.routes:insert {
         protocols = { "grpc" },
         paths = { "/hello.HelloService/" },
-        hosts = { "ip-restriction-grpc3.com" },
+        hosts = { "ip-restriction-grpc3.test" },
         service = grpc_service,
       })
 
@@ -301,7 +301,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"] = "ip-restriction1.com"
+            ["Host"] = "ip-restriction1.test"
           }
         })
         local body = assert.res_status(403, res)
@@ -313,7 +313,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"] = "ip-restriction12.com"
+            ["Host"] = "ip-restriction12.test"
           }
         })
         local body = assert.res_status(401, res)
@@ -327,7 +327,7 @@ for _, strategy in helpers.each_strategy() do
         local ok, err =   helpers.proxy_client_grpc(){
           service = "hello.HelloService.SayHello",
           opts = {
-            ["-authority"] = "ip-restriction-grpc1.com",
+            ["-authority"] = "ip-restriction-grpc1.test",
             ["-v"] = true,
           },
         }
@@ -351,7 +351,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "ip-restriction2.com"
+            ["Host"] = "ip-restriction2.test"
           }
         })
         local body = assert.res_status(200, res)
@@ -363,7 +363,7 @@ for _, strategy in helpers.each_strategy() do
         local ok = helpers.proxy_client_grpc(){
           service = "hello.HelloService.SayHello",
           opts = {
-            ["-authority"] = "ip-restriction-grpc2.com",
+            ["-authority"] = "ip-restriction-grpc2.test",
             ["-v"] = true,
           },
         }
@@ -385,7 +385,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"] = "ip-restriction5.com"
+            ["Host"] = "ip-restriction5.test"
           }
         })
         local body = assert.res_status(403, res)
@@ -396,7 +396,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"] = "ip-restriction10.com"
+            ["Host"] = "ip-restriction10.test"
           }
         })
         local body = assert.res_status(403, res)
@@ -407,7 +407,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"] = "ip-restriction9.com"
+            ["Host"] = "ip-restriction9.test"
           }
         })
         local body = assert.res_status(403, res)
@@ -418,7 +418,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"] = "ip-restriction11.com"
+            ["Host"] = "ip-restriction11.test"
           }
         })
         local body = assert.res_status(403, res)
@@ -431,7 +431,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/request",
             headers = {
-              ["Host"] = "ip-restriction7.com"
+              ["Host"] = "ip-restriction7.test"
             }
           })
           local body = assert.res_status(200, res)
@@ -443,7 +443,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/request",
             headers = {
-              ["Host"]            = "ip-restriction7.com",
+              ["Host"]            = "ip-restriction7.test",
               ["X-Forwarded-For"] = "127.0.0.3"
             }
           })
@@ -456,7 +456,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/status/200",
             headers = {
-              ["Host"]            = "ip-restriction7.com",
+              ["Host"]            = "ip-restriction7.test",
               ["X-Forwarded-For"] = "127.0.0.4"
             }
           })
@@ -472,7 +472,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"] = "ip-restriction3.com"
+            ["Host"] = "ip-restriction3.test"
           }
         })
         local body = assert.res_status(403, res)
@@ -483,7 +483,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"] = "ip-restriction4.com"
+            ["Host"] = "ip-restriction4.test"
           }
         })
         assert.res_status(200, res)
@@ -495,7 +495,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/status/200",
             headers = {
-              ["Host"] = "ip-restriction6.com"
+              ["Host"] = "ip-restriction6.test"
             }
           })
           local body = assert.res_status(403, res)
@@ -506,7 +506,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/status/200",
             headers = {
-              ["Host"]            = "ip-restriction6.com",
+              ["Host"]            = "ip-restriction6.test",
               ["X-Forwarded-For"] = "127.0.0.3"
             }
           })
@@ -517,7 +517,7 @@ for _, strategy in helpers.each_strategy() do
           local ok, err = helpers.proxy_client_grpc(){
             service = "hello.HelloService.SayHello",
             opts = {
-              ["-authority"] = "ip-restriction-grpc3.com",
+              ["-authority"] = "ip-restriction-grpc3.test",
               ["-v"] = true,
             },
           }
@@ -529,7 +529,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/status/200",
             headers = {
-              ["Host"]            = "ip-restriction6.com",
+              ["Host"]            = "ip-restriction6.test",
               ["X-Forwarded-For"] = "127.0.0.4"
             }
           })
@@ -539,7 +539,7 @@ for _, strategy in helpers.each_strategy() do
           assert.truthy(helpers.proxy_client_grpc(){
             service = "hello.HelloService.SayHello",
             opts = {
-              ["-authority"] = "ip-restriction-grpc3.com",
+              ["-authority"] = "ip-restriction-grpc3.test",
               ["-v"] = true,
               ["-H"] = "'X-Forwarded-For: 127.0.0.4'",
             },
@@ -550,7 +550,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/status/200",
             headers = {
-              ["Host"]            = "ip-restriction6.com",
+              ["Host"]            = "ip-restriction6.test",
               ["X-Forwarded-For"] = "127.0.0.4, 127.0.0.3"
             }
           })
@@ -564,7 +564,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request",
         headers = {
-          ["Host"] = "ip-restriction2.com"
+          ["Host"] = "ip-restriction2.test"
         }
       })
       assert.res_status(200, res)
@@ -581,19 +581,17 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(200, res)
 
-      local cache_key = db.plugins:cache_key(plugin)
-
-      helpers.wait_for_invalidation(cache_key)
-
-      local res = assert(proxy_client:send {
-        method  = "GET",
-        path    = "/request",
-        headers = {
-          ["Host"] = "ip-restriction2.com"
-        }
-      })
-      local body = assert.res_status(403, res)
-      assert.matches("IP address not allowed", body)
+      helpers.pwait_until(function()
+        res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Host"] = "ip-restriction2.test"
+          }
+        })
+        local body = assert.res_status(403, res)
+        assert.matches("IP address not allowed", body)
+      end)
 
       res = assert(admin_client:send {
         method  = "PATCH",
@@ -607,18 +605,16 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(200, res)
 
-      local cache_key = db.plugins:cache_key(plugin)
-
-      helpers.wait_for_invalidation(cache_key)
-
-      local res = assert(proxy_client:send {
-        method  = "GET",
-        path    = "/request",
-        headers = {
-          ["Host"] = "ip-restriction2.com"
-        }
-      })
-      assert.res_status(200, res)
+      helpers.pwait_until(function()
+        res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Host"] = "ip-restriction2.test"
+          }
+        })
+        assert.res_status(200, res)
+      end)
     end)
 
     describe("#regression", function()
@@ -627,7 +623,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"] = "ip-restriction8.com"
+            ["Host"] = "ip-restriction8.test"
           }
         })
         assert.res_status(200, res)
@@ -650,39 +646,39 @@ for _, strategy in helpers.each_strategy() do
       })
 
       local route1 = bp.routes:insert {
-        hosts = { "ip-restriction1.com" },
+        hosts = { "ip-restriction1.test" },
       }
 
       local route2 = bp.routes:insert {
-        hosts = { "ip-restriction2.com" },
+        hosts = { "ip-restriction2.test" },
       }
 
       local route3 = bp.routes:insert {
-        hosts = { "ip-restriction3.com" },
+        hosts = { "ip-restriction3.test" },
       }
 
       local route4 = bp.routes:insert {
-        hosts = { "ip-restriction4.com" },
+        hosts = { "ip-restriction4.test" },
       }
 
       local route5 = bp.routes:insert {
-        hosts = { "ip-restriction5.com" },
+        hosts = { "ip-restriction5.test" },
       }
 
       local route6 = bp.routes:insert {
-        hosts = { "ip-restriction6.com" },
+        hosts = { "ip-restriction6.test" },
       }
 
       local route7 = bp.routes:insert {
-        hosts = { "ip-restriction7.com" },
+        hosts = { "ip-restriction7.test" },
       }
 
       local route8 = bp.routes:insert {
-        hosts = { "ip-restriction8.com" },
+        hosts = { "ip-restriction8.test" },
       }
 
       local route9 = bp.routes:insert {
-        hosts = { "ip-restriction9.com" },
+        hosts = { "ip-restriction9.test" },
       }
 
       bp.plugins:insert {
@@ -787,7 +783,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"] = "ip-restriction1.com",
+            ["Host"] = "ip-restriction1.test",
             ["X-Real-IP"] = "::1",
           }
         })
@@ -799,7 +795,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"] = "ip-restriction2.com",
+            ["Host"] = "ip-restriction2.test",
             ["X-Real-IP"] = "::1",
           }
         })
@@ -812,7 +808,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"] = "ip-restriction3.com",
+            ["Host"] = "ip-restriction3.test",
             ["X-Real-IP"] = "fe80::1",
           }
         })
@@ -824,7 +820,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"] = "ip-restriction8.com",
+            ["Host"] = "ip-restriction8.test",
             ["X-Real-IP"] = "::1",
           }
         })
@@ -836,7 +832,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"] = "ip-restriction7.com",
+            ["Host"] = "ip-restriction7.test",
             ["X-Real-IP"] = "::1",
           }
         })
@@ -848,7 +844,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"] = "ip-restriction9.com"
+            ["Host"] = "ip-restriction9.test"
           }
         })
         local body = assert.res_status(403, res)
@@ -862,7 +858,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"] = "ip-restriction4.com",
+            ["Host"] = "ip-restriction4.test",
             ["X-Real-IP"] = "::1",
           }
         })
@@ -874,7 +870,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"] = "ip-restriction5.com",
+            ["Host"] = "ip-restriction5.test",
             ["X-Real-IP"] = "::1",
           }
         })
@@ -889,7 +885,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request",
         headers = {
-          ["Host"] = "ip-restriction2.com",
+          ["Host"] = "ip-restriction2.test",
           ["X-Real-IP"] = "::1",
         }
       })
@@ -924,7 +920,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request",
         headers = {
-          ["Host"] = "ip-restriction2.com",
+          ["Host"] = "ip-restriction2.test",
           ["X-Real-IP"] = "::1",
         }
       })
@@ -958,7 +954,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request",
         headers = {
-          ["Host"] = "ip-restriction2.com",
+          ["Host"] = "ip-restriction2.test",
           ["X-Real-IP"] = "::1",
         }
       })
@@ -973,7 +969,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"] = "ip-restriction6.com",
+            ["Host"] = "ip-restriction6.test",
             ["X-Real-IP"] = "::1",
           }
         })
@@ -997,11 +993,11 @@ for _, strategy in helpers.each_strategy() do
       })
 
       local route1 = bp.routes:insert {
-        hosts = { "ip-restriction1.com" },
+        hosts = { "ip-restriction1.test" },
       }
 
       local route2 = bp.routes:insert {
-        hosts = { "ip-restriction2.com" },
+        hosts = { "ip-restriction2.test" },
       }
 
       bp.plugins:insert {
@@ -1047,7 +1043,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            ["Host"]            = "ip-restriction1.com",
+            ["Host"]            = "ip-restriction1.test",
             ["X-Forwarded-For"] = "::3",
           }
         })
@@ -1060,7 +1056,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"]            = "ip-restriction1.com",
+            ["Host"]            = "ip-restriction1.test",
             ["X-Forwarded-For"] = "::4"
           }
         })
@@ -1072,7 +1068,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"]            = "ip-restriction1.com",
+            ["Host"]            = "ip-restriction1.test",
             ["X-Forwarded-For"] = "::4, ::3"
           }
         })
@@ -1084,7 +1080,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"]            = "ip-restriction1.com",
+            ["Host"]            = "ip-restriction1.test",
             ["X-Forwarded-For"] = "::3, ::4"
           }
         })
@@ -1100,7 +1096,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"]            = "ip-restriction2.com",
+            ["Host"]            = "ip-restriction2.test",
             ["X-Forwarded-For"] = "::3"
           }
         })
@@ -1112,7 +1108,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"]            = "ip-restriction2.com",
+            ["Host"]            = "ip-restriction2.test",
             ["X-Forwarded-For"] = "::4"
           }
         })
@@ -1125,7 +1121,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"]            = "ip-restriction2.com",
+            ["Host"]            = "ip-restriction2.test",
             ["X-Forwarded-For"] = "::4, ::3"
           }
         })
@@ -1138,7 +1134,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            ["Host"]            = "ip-restriction2.com",
+            ["Host"]            = "ip-restriction2.test",
             ["X-Forwarded-For"] = "::3, ::4"
           }
         })

@@ -346,7 +346,7 @@ describe("Admin API: #" .. strategy, function()
       end)
 
       it("returns 404 for a random non-existing sni", function()
-        local res = client:get("/certificates/doesntexist.com")
+        local res = client:get("/certificates/doesntexist.test")
         assert.res_status(404, res)
       end)
     end)
@@ -1165,14 +1165,14 @@ describe("Admin API: #" .. strategy, function()
           local certificate = add_certificate()
 
           bp.snis:insert({
-            name = "*.wildcard.com",
+            name = "*.wildcard.test",
             certificate = { id = certificate.id },
           })
 
-          local res = client:get("/snis/%2A.wildcard.com")
+          local res = client:get("/snis/%2A.wildcard.test")
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.equal("*.wildcard.com", json.name)
+          assert.equal("*.wildcard.test", json.name)
         end)
       end)
     end)

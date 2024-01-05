@@ -18,17 +18,17 @@ for _, strategy in helpers.each_strategy() do
 
       local route1 = bp.routes:insert {
         paths = {"/test1"},
-        hosts = {"konghq.com"}
+        hosts = {"konghq.test"}
       }
 
       local route2 = bp.routes:insert {
         paths = {"/test2"},
-        hosts = {"konghq.com"}
+        hosts = {"konghq.test"}
       }
 
       local route3 = bp.routes:insert {
         paths = {"/headers"},
-        hosts = {"konghq.com"},
+        hosts = {"konghq.test"},
       }
 
       assert(bp.plugins:insert {
@@ -145,7 +145,7 @@ for _, strategy in helpers.each_strategy() do
         local request = {
           method = "GET",
           path = "/test1/status/200",
-          headers = { host = "konghq.com", },
+          headers = { host = "konghq.test", },
         }
 
         -- make sure the anonymous consumer can't get in (request termination)
@@ -188,7 +188,7 @@ for _, strategy in helpers.each_strategy() do
         local request = {
           method = "GET",
           path = "/test2/status/200",
-          headers = { host = "konghq.com", },
+          headers = { host = "konghq.test", },
         }
 
         local function send_requests(request, number, step)
@@ -245,7 +245,7 @@ for _, strategy in helpers.each_strategy() do
         local request = {
           method = "GET",
           path = "/test2/status/200",
-          headers = { host = "konghq.com", },
+          headers = { host = "konghq.test", },
         }
 
         -- make sure the anonymous consumer can't get in (request termination)
@@ -284,7 +284,7 @@ for _, strategy in helpers.each_strategy() do
           path = "/test2/status/200?session_logout=true",
           headers = {
             cookie = cookie,
-            host = "konghq.com",
+            host = "konghq.test",
           }
         }))
         assert.response(res).has.status(200)
@@ -302,7 +302,7 @@ for _, strategy in helpers.each_strategy() do
         local request = {
           method = "GET",
           path = "/headers",
-          headers = { host = "konghq.com", },
+          headers = { host = "konghq.test", },
         }
 
         client = helpers.proxy_ssl_client()

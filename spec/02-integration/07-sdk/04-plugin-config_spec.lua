@@ -12,7 +12,7 @@ describe("Plugin configuration", function()
       "plugin-config-dump",
     })
 
-    local route = bp.routes:insert({ hosts = { "test.com" } })
+    local route = bp.routes:insert({ hosts = { "test.test" } })
 
     bp.plugins:insert({
       name = "plugin-config-dump",
@@ -43,7 +43,7 @@ describe("Plugin configuration", function()
 
   it("conf", function()
     local res = proxy_client:get("/request", {
-      headers = { Host = "test.com" }
+      headers = { Host = "test.test" }
     })
 
     local body = assert.status(200, res)

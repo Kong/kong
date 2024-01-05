@@ -22,7 +22,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       route = bp.routes:insert {
-        hosts = { "jwt.com" },
+        hosts = { "jwt.test" },
       }
 
       consumer = bp.consumers:insert {
@@ -80,7 +80,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = get_authorization("key123", "secret123"),
-            ["Host"]          = "jwt.com"
+            ["Host"]          = "jwt.test"
           }
         })
         assert.res_status(200, res)
@@ -118,7 +118,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = get_authorization("key123", "secret123"),
-            ["Host"]          = "jwt.com"
+            ["Host"]          = "jwt.test"
           }
         })
         assert.res_status(401, res)
@@ -130,7 +130,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = get_authorization("key123", "secret123"),
-            ["Host"]          = "jwt.com"
+            ["Host"]          = "jwt.test"
           }
         })
         assert.res_status(200, res)
@@ -141,7 +141,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = get_authorization("keyhello", "secret123"),
-            ["Host"]          = "jwt.com"
+            ["Host"]          = "jwt.test"
           }
         })
         assert.res_status(401, res)
@@ -185,7 +185,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = get_authorization("keyhello", "secret123"),
-            ["Host"]          = "jwt.com"
+            ["Host"]          = "jwt.test"
           }
         })
         assert.res_status(200, res)
@@ -196,7 +196,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = get_authorization("key123", "secret123"),
-            ["Host"]          = "jwt.com"
+            ["Host"]          = "jwt.test"
           }
         })
         assert.res_status(401, res)
@@ -210,7 +210,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = get_authorization("key123", "secret123"),
-            ["Host"]          = "jwt.com"
+            ["Host"]          = "jwt.test"
           }
         })
         assert.res_status(200, res)
@@ -239,7 +239,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/request",
           headers = {
             ["Authorization"] = get_authorization("key123", "secret123"),
-            ["Host"]          = "jwt.com"
+            ["Host"]          = "jwt.test"
           }
         })
         assert.res_status(401, res)

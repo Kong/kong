@@ -59,6 +59,7 @@ for _, strategy in helpers.each_strategy() do
 
       local route1 = bp.routes:insert {
         hosts   = { "http_logging.test" },
+        paths   = { "/" },
         service = service1
       }
 
@@ -478,7 +479,8 @@ for _, strategy in helpers.each_strategy() do
 
     it("gracefully handles layer 4 failures", function()
       -- setup: cleanup logs
-      os.execute(":> " .. helpers.test_conf.nginx_err_logs)
+      local shell = require "resty.shell"
+      shell.run(":> " .. helpers.test_conf.nginx_err_logs, nil, 0)
 
       local res = proxy_client:get("/status/200", {
         headers = {
@@ -626,6 +628,7 @@ for _, strategy in helpers.each_strategy() do
 
         local route = bp.routes:insert {
           hosts   = { "http_queue_logging.test" },
+          paths   = { "/" },
           service = service
         }
 

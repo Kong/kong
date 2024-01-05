@@ -225,7 +225,8 @@ local function clear_loaded_package()
 end
 
 local function print_and_save(s, path)
-  os.execute("mkdir -p output")
+  local shell = require "resty.shell"
+  shell.run("mkdir -p output", nil, 0)
   print(s)
   local f = io.open(path or "output/result.txt", "a")
   f:write(s)

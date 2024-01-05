@@ -19,7 +19,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       local route = bp.routes:insert {
-        hosts = { "tcp_logging.com" },
+        hosts = { "tcp_logging.test" },
       }
 
       bp.plugins:insert {
@@ -45,7 +45,7 @@ for _, strategy in helpers.each_strategy() do
 
 
       local route2 = bp.routes:insert {
-        hosts = { "tcp_logging_tls.com" },
+        hosts = { "tcp_logging_tls.test" },
       }
 
       bp.plugins:insert {
@@ -99,7 +99,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route5 = bp.routes:insert {
-        hosts = { "early_termination.example.com" },
+        hosts = { "early_termination.example.test" },
       }
 
       bp.plugins:insert {
@@ -174,7 +174,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route6 = bp.routes:insert {
-        hosts = { "custom_tcp_logging.com" },
+        hosts = { "custom_tcp_logging.test" },
       }
 
       bp.plugins:insert {
@@ -219,7 +219,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request",
         headers = {
-          host  = "tcp_logging.com",
+          host  = "tcp_logging.test",
         },
       })
       assert.response(r).has.status(200)
@@ -246,7 +246,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            host  = "custom_tcp_logging.com",
+            host  = "custom_tcp_logging.test",
           },
         })
         assert.response(r).has.status(200)
@@ -272,7 +272,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            host  = "custom_tcp_logging.com",
+            host  = "custom_tcp_logging.test",
           },
         })
         assert.response(r).has.status(200)
@@ -329,7 +329,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/delay/1",
         headers = {
-          host  = "tcp_logging.com",
+          host  = "tcp_logging.test",
         },
       })
 
@@ -437,7 +437,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request",
         headers = {
-          host = "tcp_logging_tls.com",
+          host = "tcp_logging_tls.test",
         },
       })
       assert.response(r).has.status(200)
@@ -460,7 +460,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request",
         headers = {
-          host  = "tcp_logging.com",
+          host  = "tcp_logging.test",
         },
       })
 
@@ -486,7 +486,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request",
         headers = {
-          host  = "tcp_logging.com",
+          host  = "tcp_logging.test",
           ["x-ssl-client-verify"] = "SUCCESS",
         },
       })
@@ -543,7 +543,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request",
         headers = {
-          host  = "early_termination.example.com",
+          host  = "early_termination.example.test",
         },
       })
       assert.response(r).has.status(200)

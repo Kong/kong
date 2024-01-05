@@ -24,12 +24,12 @@ for _, consistency in ipairs(bu.consistencies) do
         }
 
         fixtures.dns_mock:SRV {
-          name = "my.srv.test.com",
-          target = "a.my.srv.test.com",
+          name = "my.srv.test.test",
+          target = "a.my.srv.test.test",
           port = 80,  -- port should fail to connect
         }
         fixtures.dns_mock:A {
-          name = "a.my.srv.test.com",
+          name = "a.my.srv.test.test",
           address = "127.0.0.1",
         }
 

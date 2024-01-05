@@ -6,6 +6,7 @@ local utils = require("kong.tools.utils")
 local declarative_config = require("kong.db.schema.others.declarative_config")
 
 
+local yield = require("kong.tools.yield").yield
 local marshall = require("kong.db.declarative.marshaller").marshall
 local schema_topological_sort = require("kong.db.schema.topological_sort")
 local nkeys = require("table.nkeys")
@@ -18,7 +19,6 @@ local next = next
 local insert = table.insert
 local null = ngx.null
 local get_phase = ngx.get_phase
-local yield = utils.yield
 
 
 local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY

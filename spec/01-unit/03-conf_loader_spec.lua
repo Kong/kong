@@ -1,6 +1,5 @@
 local kong_meta = require "kong.meta"
 local conf_loader = require "kong.conf_loader"
-local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
 local helpers = require "spec.helpers"
 local tablex = require "pl.tablex"
@@ -241,27 +240,27 @@ describe("Configuration loader", function()
   it("extracts ssl flags properly when hostnames contain them", function()
     local conf
     conf = assert(conf_loader(nil, {
-      proxy_listen = "ssl.myname.com:8000",
-      admin_listen = "ssl.myname.com:8001",
-      admin_gui_listen = "ssl.myname.com:8002",
+      proxy_listen = "ssl.myname.test:8000",
+      admin_listen = "ssl.myname.test:8001",
+      admin_gui_listen = "ssl.myname.test:8002",
     }))
-    assert.equal("ssl.myname.com", conf.proxy_listeners[1].ip)
+    assert.equal("ssl.myname.test", conf.proxy_listeners[1].ip)
     assert.equal(false, conf.proxy_listeners[1].ssl)
-    assert.equal("ssl.myname.com", conf.admin_listeners[1].ip)
+    assert.equal("ssl.myname.test", conf.admin_listeners[1].ip)
     assert.equal(false, conf.admin_listeners[1].ssl)
-    assert.equal("ssl.myname.com", conf.admin_gui_listeners[1].ip)
+    assert.equal("ssl.myname.test", conf.admin_gui_listeners[1].ip)
     assert.equal(false, conf.admin_gui_listeners[1].ssl)
 
     conf = assert(conf_loader(nil, {
-      proxy_listen = "ssl_myname.com:8000 ssl",
-      admin_listen = "ssl_myname.com:8001 ssl",
-      admin_gui_listen = "ssl_myname.com:8002 ssl",
+      proxy_listen = "ssl_myname.test:8000 ssl",
+      admin_listen = "ssl_myname.test:8001 ssl",
+      admin_gui_listen = "ssl_myname.test:8002 ssl",
     }))
-    assert.equal("ssl_myname.com", conf.proxy_listeners[1].ip)
+    assert.equal("ssl_myname.test", conf.proxy_listeners[1].ip)
     assert.equal(true, conf.proxy_listeners[1].ssl)
-    assert.equal("ssl_myname.com", conf.admin_listeners[1].ip)
+    assert.equal("ssl_myname.test", conf.admin_listeners[1].ip)
     assert.equal(true, conf.admin_listeners[1].ssl)
-    assert.equal("ssl_myname.com", conf.admin_gui_listeners[1].ip)
+    assert.equal("ssl_myname.test", conf.admin_gui_listeners[1].ip)
     assert.equal(true, conf.admin_gui_listeners[1].ssl)
   end)
   it("extracts 'off' from proxy_listen/admin_listen/admin_gui_listen", function()
@@ -285,13 +284,13 @@ describe("Configuration loader", function()
     assert.same({}, conf.admin_gui_listeners)
     -- not off with names containing 'off'
     conf = assert(conf_loader(nil, {
-      proxy_listen = "offshore.com:9000",
-      admin_listen = "offshore.com:9001",
-      admin_gui_listen = "offshore.com:9002",
+      proxy_listen = "offshore.test:9000",
+      admin_listen = "offshore.test:9001",
+      admin_gui_listen = "offshore.test:9002",
     }))
-    assert.same("offshore.com", conf.proxy_listeners[1].ip)
-    assert.same("offshore.com", conf.admin_listeners[1].ip)
-    assert.same("offshore.com", conf.admin_gui_listeners[1].ip)
+    assert.same("offshore.test", conf.proxy_listeners[1].ip)
+    assert.same("offshore.test", conf.admin_listeners[1].ip)
+    assert.same("offshore.test", conf.admin_gui_listeners[1].ip)
   end)
   it("attaches prefix paths", function()
     local conf = assert(conf_loader())
@@ -983,6 +982,8 @@ describe("Configuration loader", function()
           assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
         end)
         it("expands the `system` property in lua_ssl_trusted_certificate", function()
+          local utils = require "kong.tools.system"
+
           local old_gstcf = utils.get_system_trusted_certs_filepath
           local old_exists = pl_path.exists
           finally(function()
@@ -1241,7 +1242,7 @@ describe("Configuration loader", function()
         it("defines ssl_ciphers by default", function()
           local conf, err = conf_loader(nil, {})
           assert.is_nil(err)
-          assert.equal("ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384", conf.ssl_ciphers)
+          assert.equal("ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305", conf.ssl_ciphers)
         end)
         it("explicitly defines ssl_ciphers", function()
           local conf, err = conf_loader(nil, {
