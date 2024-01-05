@@ -1,3 +1,0 @@
-message: "**request-transformer**: now the plugin respect the letter case of new names when renaming headers."
-type: bugfix
-scope: Plugin
