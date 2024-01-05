@@ -35,7 +35,7 @@ env:
   # official release repo
   DOCKER_REPOSITORY: kong/kong
   PRERELEASE_DOCKER_REPOSITORY: kong/kong
-  FULL_RELEASE: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+  FULL_RELEASE: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.actor == 'dependabot[bot]'}}
 
   # only for pr
   GHA_CACHE: ${{ github.event_name == 'pull_request' }}

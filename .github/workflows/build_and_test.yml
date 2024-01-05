@@ -33,7 +33,6 @@ concurrency:
 env:
   BUILD_ROOT: ${{ github.workspace }}/bazel-bin/build
   KONG_TEST_COVERAGE: ${{ inputs.coverage == true || github.event_name == 'schedule' }}
-  RUNNER_COUNT: 7
 
 jobs:
   build:
@@ -41,10 +40,21 @@ jobs:
     with:
       relative-build-root: bazel-bin/build
 
-  lint-and-doc-tests:
-    name: Lint and Doc tests
+  lint-doc-and-unit-tests:
+    name: Lint, Doc and Unit tests
     runs-on: ubuntu-22.04
     needs: build
+
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: kong
+          POSTGRES_DB: kong
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
 
     steps:
     - name: Checkout Kong source code
@@ -83,56 +93,41 @@ jobs:
     - name: Check labeler configuration
       run: scripts/check-labeler.pl .github/labeler.yml
 
-  schedule:
-    name: Schedule busted tests to run
+    - name: Unit tests
+      env:
+        KONG_TEST_PG_DATABASE: kong
+        KONG_TEST_PG_USER: kong
+      run: |
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+          TEST_CMD="bin/busted -v -o htest spec/01-unit"
+          if [[ $KONG_TEST_COVERAGE = true ]]; then
+            TEST_CMD="$TEST_CMD --coverage"
+          fi
+          $TEST_CMD
+
+    - name: Archive coverage stats file
+      uses: actions/upload-artifact@v4
+      if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
+      with:
+        name: luacov-stats-out-${{ github.job }}-${{ github.run_id }}
+        retention-days: 1
+        path: |
+          luacov.stats.out
+
+    - name: Get kernel message
+      if: failure()
+      run: |
+        sudo dmesg -T
+
+  integration-tests-postgres:
+    name: Postgres ${{ matrix.suite }} - ${{ matrix.split }} tests
     runs-on: ubuntu-22.04
     needs: build
-
-    env:
-      WORKFLOW_ID: ${{ github.run_id }}
-
-    outputs:
-      runners: ${{ steps.generate-runner-array.outputs.RUNNERS }}
-
-    steps:
-    - name: Checkout source code
-      uses: actions/checkout@v4
-
-    - name: Download runtimes file
-      uses: Kong/gh-storage/download@main
-      with:
-        repo-path: Kong/gateway-action-storage/main/.ci/runtimes.json
-
-    - name: Schedule tests
-      uses: Kong/gateway-test-scheduler/schedule@main
-      with:
-        test-suites-file: .ci/test_suites.json
-        test-file-runtime-file: .ci/runtimes.json
-        output-prefix: test-chunk.
-        runner-count: ${{ env.RUNNER_COUNT }}
-
-    - name: Upload schedule files
-      uses: actions/upload-artifact@v3
-      continue-on-error: true
-      with:
-        name: schedule-test-files
-        path: test-chunk.*
-        retention-days: 7
-
-    - name: Generate runner array
-      id: generate-runner-array
-      run: |
-        echo "RUNNERS=[$(echo $(seq 1 $(( $RUNNER_COUNT ))))]" | sed -e 's/ /, /g' >> $GITHUB_OUTPUT
-
-  busted-tests:
-    name: Busted test runner ${{ matrix.runner }}
-    runs-on: ubuntu-22.04
-    needs: [build,schedule]
-
     strategy:
       fail-fast: false
       matrix:
-        runner: ${{ fromJSON(needs.schedule.outputs.runners) }}
+        suite: [integration, plugins]
+        split: [first, second]
 
     services:
       postgres:
@@ -184,6 +179,7 @@ jobs:
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
 
     - name: Enable SSL for Redis
+      if: ${{ matrix.suite == 'plugins' }}
       run: |
           docker cp ${{ github.workspace }} kong_redis:/workspace
           docker cp ${{ github.workspace }}/spec/fixtures/redis/docker-entrypoint.sh kong_redis:/usr/local/bin/docker-entrypoint.sh
@@ -206,54 +202,47 @@ jobs:
           docker logs opentelemetry-collector
 
     - name: Install AWS SAM cli tool
+      if: ${{ matrix.suite == 'plugins' }}
       run: |
           curl -L -s -o /tmp/aws-sam-cli.zip https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip
           unzip -o /tmp/aws-sam-cli.zip -d /tmp/aws-sam-cli
           sudo /tmp/aws-sam-cli/install --update
 
-    - name: Create kong_ro user in Postgres
+    - name: Update PATH
       run: |
-        psql -v ON_ERROR_STOP=1 -h localhost --username kong <<\EOD
-                CREATE user kong_ro;
-                GRANT CONNECT ON DATABASE kong TO kong_ro;
-                \c kong;
-                GRANT USAGE ON SCHEMA public TO kong_ro;
-                ALTER DEFAULT PRIVILEGES FOR ROLE kong IN SCHEMA public GRANT SELECT ON TABLES TO kong_ro;
-        EOD
+        echo "$BUILD_ROOT/kong-dev/bin" >> $GITHUB_PATH
+        echo "$BUILD_ROOT/kong-dev/openresty/nginx/sbin" >> $GITHUB_PATH
+        echo "$BUILD_ROOT/kong-dev/openresty/bin" >> $GITHUB_PATH
+
+    - name: Debug (nginx)
+      run: |
+        echo nginx: $(which nginx)
+        nginx -V 2>&1 | sed -re 's/ --/\n--/g'
+        ldd $(which nginx)
+
+    - name: Debug (luarocks)
+      run: |
+        echo luarocks: $(which luarocks)
+        luarocks --version
+        luarocks config
 
     - name: Tune up postgres max_connections
       run: |
         # arm64 runners may use more connections due to more worker cores
         psql -hlocalhost -Ukong kong -tAc 'alter system set max_connections = 5000;'
 
-    - name: Download test schedule file
-      uses: actions/download-artifact@v3
-      continue-on-error: true
-      with:
-        name: schedule-test-files
-
-    - name: Generate helper environment variables
+    - name: Generate test rerun filename
       run: |
-           echo FAILED_TEST_FILES_FILE=failed-tests.json >> $GITHUB_ENV
-           echo TEST_FILE_RUNTIME_FILE=test-runtime.json >> $GITHUB_ENV
+           echo FAILED_TEST_FILES_FILE=$(echo '${{ github.run_id }}-${{ matrix.suite }}-${{ matrix.split }}' | tr A-Z a-z | sed -Ee 's/[^a-z0-9]+/-/g').txt >> $GITHUB_ENV
 
-    - name: Build & install dependencies
-      run: |
-        make dev
 
     - name: Download test rerun information
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       continue-on-error: true
       with:
-        name: test-rerun-info-${{ matrix.runner }}
+        name: ${{ env.FAILED_TEST_FILES_FILE }}
 
-    - name: Download test runtime statistics from previous runs
-      uses: actions/download-artifact@v3
-      continue-on-error: true
-      with:
-        name: test-runtime-statistics-${{ matrix.runner }}
-
-    - name: Run Tests
+    - name: Tests
       env:
         KONG_TEST_PG_DATABASE: kong
         KONG_TEST_PG_USER: kong
@@ -261,43 +250,107 @@ jobs:
         KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
         KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
         KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
-        DD_ENV: ci
-        DD_SERVICE: kong-ce-ci
-        DD_CIVISIBILITY_MANUAL_API_ENABLED: 1
-        DD_CIVISIBILITY_AGENTLESS_ENABLED: true
-        DD_TRACE_GIT_METADATA_ENABLED: true
-        DD_API_KEY: ${{ secrets.DATADOG_API_KEY }}
-      uses: Kong/gateway-test-scheduler/runner@main
-      with:
-        tests-to-run-file: test-chunk.${{ matrix.runner }}.json
-        failed-test-files-file: ${{ env.FAILED_TEST_FILES_FILE }}
-        test-file-runtime-file: ${{ env.TEST_FILE_RUNTIME_FILE }}
-        setup-venv: . ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+        TEST_SUITE: ${{ matrix.suite }}
+        TEST_SPLIT: ${{ matrix.split }}
+      run: |
+          make dev # required to install other dependencies like bin/grpcurl
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+          .ci/run_tests.sh
 
     - name: Upload test rerun information
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: test-rerun-info-${{ matrix.runner }}
+        name: ${{ env.FAILED_TEST_FILES_FILE }}
         path: ${{ env.FAILED_TEST_FILES_FILE }}
         retention-days: 2
 
-    - name: Upload test runtime statistics for offline scheduling
-      if: always()
-      uses: actions/upload-artifact@v3
-      with:
-        name: test-runtime-statistics-${{ matrix.runner }}
-        path: ${{ env.TEST_FILE_RUNTIME_FILE }}
-        retention-days: 7
-
     - name: Archive coverage stats file
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
       with:
-        name: luacov-stats-out-${{ github.job }}-${{ github.run_id }}-${{ matrix.runner }}
+        name: luacov-stats-out-${{ github.job }}-${{ github.run_id }}-${{ matrix.suite }}-${{ contains(matrix.split, 'first') && '1' || '2' }}
         retention-days: 1
         path: |
           luacov.stats.out
+
+    - name: Get kernel message
+      if: failure()
+      run: |
+        sudo dmesg -T
+
+  integration-tests-dbless:
+    name: DB-less integration tests
+    runs-on: ubuntu-22.04
+    needs: build
+
+    services:
+      grpcbin:
+        image: kong/grpcbin
+        ports:
+          - 15002:9000
+          - 15003:9001
+
+    steps:
+    - name: Checkout Kong source code
+      uses: actions/checkout@v4
+
+    - name: Lookup build cache
+      id: cache-deps
+      uses: actions/cache@v3
+      with:
+        path: ${{ env.BUILD_ROOT }}
+        key: ${{ needs.build.outputs.cache-key }}
+
+    - name: Build WASM Test Filters
+      uses: ./.github/actions/build-wasm-test-filters
+
+    - name: Add gRPC test host names
+      run: |
+          echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
+          echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
+
+    - name: Run OpenTelemetry Collector
+      run: |
+          mkdir -p ${{ github.workspace }}/tmp/otel
+          touch ${{ github.workspace }}/tmp/otel/file_exporter.json
+          sudo chmod 777 -R ${{ github.workspace }}/tmp/otel
+          docker run -p 4317:4317 -p 4318:4318 -p 55679:55679 \
+              -v ${{ github.workspace }}/spec/fixtures/opentelemetry/otelcol.yaml:/etc/otel-collector-config.yaml \
+              -v ${{ github.workspace }}/tmp/otel:/etc/otel \
+              --name opentelemetry-collector -d \
+              otel/opentelemetry-collector-contrib:0.52.0 \
+              --config=/etc/otel-collector-config.yaml
+          sleep 2
+          docker logs opentelemetry-collector
+
+    - name: Tests
+      env:
+        KONG_TEST_PG_DATABASE: kong
+        KONG_TEST_PG_USER: kong
+        KONG_TEST_DATABASE: 'off'
+        KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
+        KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
+        KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
+        TEST_SUITE: dbless
+      run: |
+          make dev # required to install other dependencies like bin/grpcurl
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+          .ci/run_tests.sh
+
+    - name: Archive coverage stats file
+      uses: actions/upload-artifact@v4
+      if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
+      with:
+        name: luacov-stats-out-${{ github.job }}-${{ github.run_id }}
+        retention-days: 1
+        path: |
+          luacov.stats.out
+
+    - name: Get kernel message
+      if: failure()
+      run: |
+        sudo dmesg -T
 
   pdk-tests:
     name: PDK tests
@@ -335,10 +388,10 @@ jobs:
             export PDK_LUACOV=1
           fi
           eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
-          prove -I. -r t
+          .ci/run_tests.sh
 
     - name: Archive coverage stats file
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
       with:
         name: luacov-stats-out-${{ github.job }}-${{ github.run_id }}
@@ -351,9 +404,9 @@ jobs:
       run: |
         sudo dmesg -T
 
-  cleanup-and-aggregate-stats:
-    needs: [lint-and-doc-tests,pdk-tests,busted-tests]
-    name: Cleanup and Luacov stats aggregator
+  aggregator:
+    needs: [lint-doc-and-unit-tests,pdk-tests,integration-tests-postgres,integration-tests-dbless]
+    name: Luacov stats aggregator
     if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
     runs-on: ubuntu-22.04
 
@@ -368,7 +421,7 @@ jobs:
         sudo luarocks install luafilesystem
 
     # Download all archived coverage stats files
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
 
     - name: Stats aggregation
       shell: bash
