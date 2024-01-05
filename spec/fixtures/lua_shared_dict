@@ -8,3 +8,4 @@ kong_core_db_cache_miss 12m
 kong_db_cache 16m
 kong_db_cache_miss 12m
 kong_secrets 5m
+prometheus_metrics 5m
