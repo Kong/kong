@@ -3,6 +3,7 @@ local openssl_bignum = require "resty.openssl.bn"
 local table_merge = require "kong.tools.utils".table_merge
 local split = require "kong.tools.utils".split
 local strip = require "kong.tools.utils".strip
+local tracing_context = require "kong.tracing.tracing_context"
 local unescape_uri = ngx.unescape_uri
 local char = string.char
 local match = string.match
@@ -520,52 +521,6 @@ local function find_header_type(headers)
 end
 
 
--- Performs a table merge to add trace ID formats to the current request's
--- trace ID and returns a table containing all the formats.
---
--- Plugins can handle different formats of trace ids depending on their headers
--- configuration, multiple plugins executions may result in additional formats
--- of the current request's trace id.
---
--- The `propagation_trace_id_all_fmt` table is stored in `ngx.ctx` to keep the
--- list of formats updated for the current request.
---
--- Each item in the resulting `propagation_trace_id_all_fmt` table represents a
--- format associated with the trace ID for the current request.
---
--- @param trace_id_new_fmt table containing the trace ID formats to be added
--- @returns propagation_trace_id_all_fmt table contains all the formats for
--- the current request
---
--- @example
---
---    propagation_trace_id_all_fmt = { datadog = "1234",
---                                     w3c     = "abcd" }
---
---    trace_id_new_fmt             = { ot = "abcd",
---                                     w3c = "abcd" }
---
---    propagation_trace_id_all_fmt = { datadog = "1234",
---                                     ot = "abcd",
---                                     w3c = "abcd" }
---
-local function add_trace_id_formats(trace_id_new_fmt)
-  -- TODO: @samugi - move trace ID table in the unified tracing context
-  local trace_id_all_fmt = ngx.ctx.propagation_trace_id_all_fmt
-  if not trace_id_all_fmt then
-    ngx.ctx.propagation_trace_id_all_fmt = trace_id_new_fmt
-    return trace_id_new_fmt
-  end
-
-  -- add new formats to trace ID formats table
-  for format, value in pairs(trace_id_new_fmt) do
-    trace_id_all_fmt[format] = value
-  end
-
-  return trace_id_all_fmt
-end
-
-
 local function parse(headers, conf_header_type)
   if conf_header_type == "ignore" then
     return nil
@@ -738,7 +693,7 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
     )
   end
 
-  trace_id_formats = add_trace_id_formats(trace_id_formats)
+  trace_id_formats = tracing_context.add_trace_id_formats(trace_id_formats)
   -- add trace IDs to log serializer output
   kong.log.set_serialize_value("trace_id", trace_id_formats)
 end

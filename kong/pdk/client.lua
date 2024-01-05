@@ -192,7 +192,7 @@ local function new(self)
     end
 
     if utils.is_valid_uuid(consumer_id) then
-      local result, err = kong.db.consumers:select { id = consumer_id }
+      local result, err = kong.db.consumers:select({ id = consumer_id })
 
       if result then
         return result

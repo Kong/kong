@@ -81,7 +81,8 @@ server {
     listen $(entry.listener);
 > end
 
-    error_page 400 404 405 408 411 412 413 414 417 494 /kong_error_handler;
+    error_page 400 404 405 408 411 412 413 414 417 /kong_error_handler;
+    error_page 494 =494                            /kong_error_handler;
     error_page 500 502 503 504                     /kong_error_handler;
 
     # Append the kong request id to the error log
@@ -89,7 +90,11 @@ server {
     lua_kong_error_log_request_id $kong_request_id;
 
 > if proxy_access_log_enabled then
+>   if custom_proxy_access_log then
+    access_log ${{PROXY_ACCESS_LOG}};
+>   else
     access_log ${{PROXY_ACCESS_LOG}} kong_log_format;
+>   end
 > else
     access_log off;
 > end
@@ -156,6 +161,11 @@ server {
         proxy_http_version      1.1;
         proxy_buffering          on;
         proxy_request_buffering  on;
+
+        # injected nginx_location_* directives
+> for _, el in ipairs(nginx_location_directives) do
+        $(el.name) $(el.value);
+> end
 
         proxy_set_header      TE                 $upstream_te;
         proxy_set_header      Host               $upstream_host;

@@ -83,7 +83,7 @@ for _, strategy in helpers.each_strategy() do
           name     = fmt("statsd%s", i)
         }
         routes[i] = bp.routes:insert {
-          hosts   = { fmt("logging%d.com", i) },
+          hosts   = { fmt("logging%d.test", i) },
           service = service
         }
       end
@@ -692,7 +692,7 @@ for _, strategy in helpers.each_strategy() do
           port     = helpers.mock_upstream_port,
         }
         routes[i] = bp.routes:insert {
-          hosts   = { fmt("logging%d.com", i) },
+          hosts   = { fmt("logging%d.test", i) },
           service = service
         }
       end
@@ -846,7 +846,7 @@ for _, strategy in helpers.each_strategy() do
           name     = fmt("grpc_statsd%s", i)
         }
         grpc_routes[i] = bp.routes:insert {
-          hosts   = { fmt("grpc_logging%d.com", i) },
+          hosts   = { fmt("grpc_logging%d.test", i) },
           service = service
         }
       end
@@ -924,7 +924,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging1.com"
+            host  = "logging1.test"
           }
         })
         assert.res_status(200, response)
@@ -954,7 +954,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging25.com"
+            host  = "logging25.test"
           }
         })
         assert.res_status(200, response)
@@ -977,7 +977,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging26.com"
+            host  = "logging26.test"
           }
         })
         assert.res_status(200, response)
@@ -1000,7 +1000,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging27.com"
+            host  = "logging27.test"
           }
         })
         assert.res_status(200, response)
@@ -1023,7 +1023,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging28.com"
+            host  = "logging28.test"
           }
         })
         assert.res_status(200, response)
@@ -1050,7 +1050,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging13.com"
+            host  = "logging13.test"
           }
         })
         assert.res_status(200, response)
@@ -1080,7 +1080,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging31.com"
+            host  = "logging31.test"
           }
         })
         assert.res_status(200, response)
@@ -1103,7 +1103,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging32.com"
+            host  = "logging32.test"
           }
         })
         assert.res_status(200, response)
@@ -1126,7 +1126,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging33.com"
+            host  = "logging33.test"
           }
         })
         assert.res_status(200, response)
@@ -1149,7 +1149,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging34.com"
+            host  = "logging34.test"
           }
         })
         assert.res_status(200, response)
@@ -1172,7 +1172,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/request?apikey=kong",
           headers = {
-            host = "logging35.com"
+            host = "logging35.test"
           }
         })
         assert.res_status(200, response)
@@ -1192,7 +1192,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/request?apikey=kong",
           headers = {
-            host = "logging36.com"
+            host = "logging36.test"
           }
         })
         assert.res_status(200, response)
@@ -1212,7 +1212,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/request?apikey=kong",
           headers = {
-            host = "logging37.com"
+            host = "logging37.test"
           }
         })
         assert.res_status(200, response)
@@ -1232,7 +1232,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/request?apikey=kong",
           headers = {
-            host = "logging38.com"
+            host = "logging38.test"
           }
         })
         assert.res_status(200, response)
@@ -1252,7 +1252,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            host  = "logging5.com"
+            host  = "logging5.test"
           }
         })
         assert.res_status(200, response)
@@ -1270,7 +1270,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            host  = "logging3.com"
+            host  = "logging3.test"
           }
         })
         assert.res_status(200, response)
@@ -1287,7 +1287,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            host  = "logging4.com"
+            host  = "logging4.test"
           }
         })
         assert.res_status(200, response)
@@ -1304,7 +1304,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            host  = "logging2.com"
+            host  = "logging2.test"
           }
         })
         assert.res_status(200, response)
@@ -1321,7 +1321,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            host  = "logging6.com"
+            host  = "logging6.test"
           }
         })
         assert.res_status(200, response)
@@ -1338,7 +1338,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            host  = "logging7.com"
+            host  = "logging7.test"
           }
         })
         assert.res_status(200, response)
@@ -1355,7 +1355,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request",
           headers = {
-            host  = "logging8.com"
+            host  = "logging8.test"
           }
         })
         assert.res_status(200, response)
@@ -1372,7 +1372,7 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/request?apikey=kong",
           headers = {
-            host = "logging9.com"
+            host = "logging9.test"
           }
         })
         assert.res_status(200, response)
@@ -1388,7 +1388,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging10.com"
+            host  = "logging10.test"
           }
         })
         assert.res_status(200, response)
@@ -1406,7 +1406,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging11.com"
+            host  = "logging11.test"
           }
         })
         assert.res_status(200, response)
@@ -1424,7 +1424,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging12.com"
+            host  = "logging12.test"
           }
         })
         assert.res_status(200, response)
@@ -1441,7 +1441,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging14.com"
+            host  = "logging14.test"
           }
         })
         assert.res_status(200, response)
@@ -1459,7 +1459,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging15.com"
+            host  = "logging15.test"
           }
         })
         assert.res_status(200, response)
@@ -1477,7 +1477,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging16.com"
+            host  = "logging16.test"
           }
         })
         assert.res_status(200, response)
@@ -1495,7 +1495,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging17.com"
+            host  = "logging17.test"
           }
         })
         assert.res_status(200, response)
@@ -1513,7 +1513,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging18.com"
+            host  = "logging18.test"
           }
         })
         assert.res_status(200, response)
@@ -1531,7 +1531,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging19.com"
+            host  = "logging19.test"
           }
         })
         assert.res_status(200, response)
@@ -1556,7 +1556,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging20.com"
+            host  = "logging20.test"
           }
         })
         assert.res_status(200, response)
@@ -1583,7 +1583,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging21.com"
+            host  = "logging21.test"
           }
         })
         assert.res_status(200, response)
@@ -1607,7 +1607,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging22.com"
+            host  = "logging22.test"
           }
         })
         assert.res_status(200, response)
@@ -1626,7 +1626,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging23.com"
+            host  = "logging23.test"
           }
         })
         assert.res_status(200, response)
@@ -1645,7 +1645,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging24.com"
+            host  = "logging24.test"
           }
         })
         assert.res_status(200, response)
@@ -1666,7 +1666,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging100.com"
+            host  = "logging100.test"
           }
         })
         assert.res_status(200, response)
@@ -1687,7 +1687,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging101.com"
+            host  = "logging101.test"
           }
         })
         assert.res_status(200, response)
@@ -1722,7 +1722,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging1.com"
+            host  = "logging1.test"
           }
         })
         assert.res_status(200, response)
@@ -1758,7 +1758,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging25.com"
+            host  = "logging25.test"
           }
         })
         assert.res_status(200, response)
@@ -1794,7 +1794,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging26.com"
+            host  = "logging26.test"
           }
         })
         assert.res_status(200, response)
@@ -1830,7 +1830,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging27.com"
+            host  = "logging27.test"
           }
         })
         assert.res_status(200, response)
@@ -1866,7 +1866,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging28.com"
+            host  = "logging28.test"
           }
         })
         assert.res_status(200, response)
@@ -1893,7 +1893,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging102.com"
+            host  = "logging102.test"
           }
         })
         assert.res_status(200, response)
@@ -1922,7 +1922,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging103.com"
+            host  = "logging103.test"
           }
         })
         assert.res_status(200, response)
@@ -1954,7 +1954,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging104.com"
+            host  = "logging104.test"
           }
         })
         assert.res_status(200, response)
@@ -1986,7 +1986,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging105.com"
+            host  = "logging105.test"
           }
         })
         assert.res_status(200, response)
@@ -2018,7 +2018,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging106.com"
+            host  = "logging106.test"
           }
         })
         assert.res_status(200, response)
@@ -2050,7 +2050,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging107.com"
+            host  = "logging107.test"
           }
         })
         assert.res_status(200, response)
@@ -2084,7 +2084,7 @@ for _, strategy in helpers.each_strategy() do
             greeting = "world!"
           },
           opts = {
-            ["-authority"] = "grpc_logging1.com",
+            ["-authority"] = "grpc_logging1.test",
           }
         })
         assert.truthy(ok)
@@ -2109,7 +2109,7 @@ for _, strategy in helpers.each_strategy() do
             greeting = "world!"
           },
           opts = {
-            ["-authority"] = "grpc_logging2.com",
+            ["-authority"] = "grpc_logging2.test",
           }
         })
         assert.truthy(ok)
@@ -2177,7 +2177,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging1.com"
+            host  = "logging1.test"
           }
         })
         assert.res_status(404, response)
@@ -2259,7 +2259,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/request?apikey=kong",
           headers = {
-            host  = "logging1.com"
+            host  = "logging1.test"
           }
         })
         assert.res_status(404, response)
@@ -2314,7 +2314,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "statsd"
       }
       local route = bp.routes:insert {
-        hosts   = { "logging.com" },
+        hosts   = { "logging.test" },
         service = service
       }
       bp.key_auth_plugins:insert { route = { id = route.id } }
@@ -2351,7 +2351,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/request?apikey=kong",
         headers = {
-          host  = "logging.com"
+          host  = "logging.test"
         }
       })
       assert.res_status(200, response)

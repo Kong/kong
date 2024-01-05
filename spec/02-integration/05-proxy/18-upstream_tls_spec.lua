@@ -3,6 +3,37 @@ local ssl_fixtures = require "spec.fixtures.ssl"
 local atc_compat = require "kong.router.compat"
 
 
+local other_ca_cert = [[
+-----BEGIN CERTIFICATE-----
+MIIEvjCCAqagAwIBAgIJALabx/Nup200MA0GCSqGSIb3DQEBCwUAMBMxETAPBgNV
+BAMMCFlvbG80Mi4xMCAXDTE5MDkxNTE2Mjc1M1oYDzIxMTkwODIyMTYyNzUzWjAT
+MREwDwYDVQQDDAhZb2xvNDIuMTCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoC
+ggIBANIW67Ay0AtTeBY2mORaGet/VPL5jnBRz0zkZ4Jt7fEq3lbxYaJBnFI8wtz3
+bHLtLsxkvOFujEMY7HVd+iTqbJ7hLBtK0AdgXDjf+HMmoWM7x0PkZO+3XSqyRBbI
+YNoEaQvYBNIXrKKJbXIU6higQaXYszeN8r3+RIbcTIlZxy28msivEGfGTrNujQFc
+r/eyf+TLHbRqh0yg4Dy/U/T6fqamGhFrjupRmOMugwF/BHMH2JHhBYkkzuZLgV2u
+7Yh1S5FRlh11am5vWuRSbarnx72hkJ99rUb6szOWnJKKew8RSn3CyhXbS5cb0QRc
+ugRc33p/fMucJ4mtCJ2Om1QQe83G1iV2IBn6XJuCvYlyWH8XU0gkRxWD7ZQsl0bB
+8AFTkVsdzb94OM8Y6tWI5ybS8rwl8b3r3fjyToIWrwK4WDJQuIUx4nUHObDyw+KK
++MmqwpAXQWbNeuAc27FjuJm90yr/163aGuInNY5Wiz6CM8WhFNAi/nkEY2vcxKKx
+irSdSTkbnrmLFAYrThaq0BWTbW2mwkOatzv4R2kZzBUOiSjRLPnbyiPhI8dHLeGs
+wMxiTXwyPi8iQvaIGyN4DPaSEiZ1GbexyYFdP7sJJD8tG8iccbtJYquq3cDaPTf+
+qv5M6R/JuMqtUDheLSpBNK+8vIe5e3MtGFyrKqFXdynJtfHVAgMBAAGjEzARMA8G
+A1UdEwQIMAYBAf8CAQAwDQYJKoZIhvcNAQELBQADggIBAK0BmL5B1fPSMbFy8Hbc
+/ESEunt4HGaRWmZZSa/aOtTjhKyDXLLJZz3C4McugfOf9BvvmAOZU4uYjfHTnNH2
+Z3neBkdTpQuJDvrBPNoCtJns01X/nuqFaTK/Tt9ZjAcVeQmp51RwhyiD7nqOJ/7E
+Hp2rC6gH2ABXeexws4BDoZPoJktS8fzGWdFBCHzf4mCJcb4XkI+7GTYpglR818L3
+dMNJwXeuUsmxxKScBVH6rgbgcEC/6YwepLMTHB9VcH3X5VCfkDIyPYLWmvE0gKV7
+6OU91E2Rs8PzbJ3EuyQpJLxFUQp8ohv5zaNBlnMb76UJOPR6hXfst5V+e7l5Dgwv
+Dh4CeO46exmkEsB+6R3pQR8uOFtubH2snA0S3JA1ji6baP5Y9Wh9bJ5McQUgbAPE
+sCRBFoDLXOj3EgzibohC5WrxN3KIMxlQnxPl3VdQvp4gF899mn0Z9V5dAsGPbxRd
+quE+DwfXkm0Sa6Ylwqrzu2OvSVgbMliF3UnWbNsDD5KcHGIaFxVC1qkwK4cT3pyS
+58i/HAB2+P+O+MltQUDiuw0OSUFDC0IIjkDfxLVffbF+27ef9C5NG81QlwTz7TuN
+zeigcsBKooMJTszxCl6dtxSyWTj7hJWXhy9pXsm1C1QulG6uT4RwCa3m0QZoO7G+
+6Wu6lP/kodPuoNubstIuPdi2
+-----END CERTIFICATE-----
+]]
+
 local fixtures = {
   http_mock = {
     upstream_mtls = [[
@@ -952,6 +983,129 @@ for _, strategy in helpers.each_strategy() do
             assert.equals("it works", body)
           end
         end)
+
+        it("#db request is not allowed through once the CA certificate is updated to other ca", function()
+          local res = assert(admin_client:patch("/ca_certificates/" .. ca_certificate.id, {
+            body = {
+              cert = other_ca_cert,
+            },
+            headers = { ["Content-Type"] = "application/json" },
+          }))
+
+          assert.res_status(200, res)
+
+          wait_for_all_config_update(subsystems)
+
+          local body
+          helpers.wait_until(function()
+            local proxy_client = get_proxy_client(subsystems, 19001)
+            local path
+            if subsystems == "http" then
+              path = "/tls"
+            else
+              path = "/"
+            end
+            local res, err = proxy_client:send {
+              path    = path,
+              headers = {
+                ["Host"] = "example.com",
+              }
+            }
+
+            if subsystems == "http" then
+              return pcall(function()
+                body = assert.res_status(502, res)
+                assert(proxy_client:close())
+              end)
+            else
+              return pcall(function()
+                assert.equals("connection reset by peer", err)
+                assert(proxy_client:close())
+              end)
+            end
+          end, 10)
+
+          if subsystems == "http" then
+            assert.matches("An invalid response was received from the upstream server", body)
+          end
+
+          -- buffered_proxying
+          if subsystems == "http" then
+            helpers.wait_until(function()
+              local proxy_client = get_proxy_client(subsystems, 19001)
+              local path = "/tls-buffered-proxying"
+              local res = proxy_client:send {
+                path    = path,
+                headers = {
+                  ["Host"] = "example.com",
+                }
+              }
+
+              return pcall(function()
+                 body = assert.res_status(502, res)
+                 assert(proxy_client:close())
+              end)
+            end, 10)
+            assert.matches("An invalid response was received from the upstream server", body)
+          end
+        end)
+
+        it("#db request is allowed through once the CA certificate is updated back to the correct ca", function()
+          local res = assert(admin_client:patch("/ca_certificates/" .. ca_certificate.id, {
+            body = {
+              cert = ssl_fixtures.cert_ca,
+            },
+            headers = { ["Content-Type"] = "application/json" },
+          }))
+
+          assert.res_status(200, res)
+
+          wait_for_all_config_update(subsystems)
+
+          local body
+          helpers.wait_until(function()
+            local proxy_client = get_proxy_client(subsystems, 19001)
+            local path
+            if subsystems == "http" then
+              path = "/tls"
+            else
+              path = "/"
+            end
+            local res = proxy_client:send {
+              path    = path,
+              headers = {
+                ["Host"] = "example.com",
+              }
+            }
+
+            return pcall(function()
+              body = assert.res_status(200, res)
+              assert(proxy_client:close())
+            end)
+          end, 10)
+
+          assert.equals("it works", body)
+
+          -- buffered_proxying
+          if subsystems == "http" then
+            helpers.wait_until(function()
+              local proxy_client = get_proxy_client(subsystems, 19001)
+              local path = "/tls-buffered-proxying"
+              local res = proxy_client:send {
+                path    = path,
+                headers = {
+                  ["Host"] = "example.com",
+                }
+              }
+
+              return pcall(function()
+                body = assert.res_status(200, res)
+                assert(proxy_client:close())
+              end)
+            end, 10)
+            assert.equals("it works", body)
+          end
+        end)
       end)
 
       describe("#db tls_verify_depth", function()
@@ -1004,19 +1158,17 @@ for _, strategy in helpers.each_strategy() do
               }
             }
 
-            return pcall(function()
-              if subsystems == "http" then
-                return pcall(function()
-                  body = assert.res_status(502, res)
-                  assert(proxy_client:close())
-                end)
-              else
-                return pcall(function()
-                  assert.equals("connection reset by peer", err)
-                  assert(proxy_client:close())
-                end)
-              end
-            end)
+            if subsystems == "http" then
+              return pcall(function()
+                body = assert.res_status(502, res)
+                assert(proxy_client:close())
+              end)
+            else
+              return pcall(function()
+                assert.equals("connection reset by peer", err)
+                assert(proxy_client:close())
+              end)
+            end
           end, 10)
           if subsystems == "http" then
             assert.matches("An invalid response was received from the upstream server", body)

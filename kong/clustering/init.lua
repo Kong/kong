@@ -63,13 +63,13 @@ end
 
 
 function _M:handle_cp_websocket()
-  local ok, err = self:validate_client_cert()
-  if not ok then
+  local cert, err = self:validate_client_cert()
+  if not cert then
     ngx_log(ngx_ERR, _log_prefix, err)
     return ngx_exit(444)
   end
 
-  return self.instance:handle_cp_websocket()
+  return self.instance:handle_cp_websocket(cert)
 end
 
 

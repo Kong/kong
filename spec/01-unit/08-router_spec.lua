@@ -12,6 +12,7 @@ local function reload_router(flavor, subsystem)
 
   ngx.config.subsystem = subsystem or "http" -- luacheck: ignore
 
+  package.loaded["kong.router.fields"] = nil
   package.loaded["kong.router.atc"] = nil
   package.loaded["kong.router.compat"] = nil
   package.loaded["kong.router.expressions"] = nil
@@ -92,6 +93,8 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
     local it_trad_only = (flavor == "traditional") and it or pending
 
     describe("split_port()", function()
+      local split_port = require("kong.router.traditional").split_port
+
       it("splits port number", function()
         for _, case in ipairs({
           { { "" }, { "", "", false } },
@@ -120,7 +123,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
           { { "[::1]:80b", 88 }, { "[::1]:80b", "[::1]:80b:88", false } },
           { { "[::1]/96", 88 }, { "[::1]/96", "[::1]/96:88", false } },
         }) do
-          assert.same(case[2], { Router.split_port(unpack(case[1])) })
+          assert.same(case[2], { split_port(unpack(case[1])) })
         end
       end)
     end)
@@ -365,6 +368,10 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
           },
         }
         router = assert(new_router(use_case))
+
+        -- let atc-router happy
+        local _ngx = mock_ngx("GET", "/", { a = "1" })
+        router._set_ngx(_ngx)
       end)
 
 
@@ -2743,6 +2750,11 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
 
           it("matches correct route", function()
             local router = assert(new_router(use_case))
+
+            -- let atc-router happy
+            local _ngx = mock_ngx("GET", "/", { a = "1" })
+            router._set_ngx(_ngx)
+
             local match_t = router:select("GET", "/my-target-uri", "domain.org")
             assert.truthy(match_t)
             assert.same(use_case[#use_case].route, match_t.route)
@@ -4336,6 +4348,10 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             }
 
             router = assert(new_router(use_case))
+
+            -- let atc-router happy
+            local _ngx = mock_ngx("GET", "/", { a = "1" })
+            router._set_ngx(_ngx)
           end)
 
           it("[src_ip]", function()

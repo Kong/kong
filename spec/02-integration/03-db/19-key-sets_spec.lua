@@ -27,7 +27,7 @@ for _, strategy in helpers.all_strategies() do
     end)
 
     it(":select returns an item", function()
-      local key_set, err = kong.db.key_sets:select({ id = keyset.id })
+      local key_set, err = kong.db.key_sets:select(keyset)
       assert.is_nil(err)
       assert(key_set.name == keyset.name)
     end)
@@ -46,15 +46,13 @@ for _, strategy in helpers.all_strategies() do
       }
       assert.is_nil(err)
       assert(key_set.name == "that")
-      local ok, d_err = kong.db.key_sets:delete {
-        id = key_set.id
-      }
+      local ok, d_err = kong.db.key_sets:delete(key_set)
       assert.is_nil(d_err)
       assert.is_truthy(ok)
     end)
 
     it(":update updates a keyset's fields", function()
-      local key_set, err = kong.db.key_sets:update({ id = keyset.id }, {
+      local key_set, err = kong.db.key_sets:update(keyset, {
         name = "changed"
       })
       assert.is_nil(err)
@@ -75,17 +73,15 @@ for _, strategy in helpers.all_strategies() do
       }
       assert.is_nil(ins_err)
       -- verify creation
-      local key_select, select_err = kong.db.keys:select({ id = key.id })
+      local key_select, select_err = kong.db.keys:select(key)
       assert.is_nil(select_err)
       assert.is_not_nil(key_select)
       -- delete the set
-      local ok, d_err = kong.db.key_sets:delete {
-        id = key_set.id
-      }
+      local ok, d_err = kong.db.key_sets:delete(key_set)
       assert.is_true(ok)
       assert.is_nil(d_err)
       -- verify if key is gone
-      local key_select_deleted, select_deleted_err = kong.db.keys:select({ id = key.id })
+      local key_select_deleted, select_deleted_err = kong.db.keys:select(key)
       assert.is_nil(select_deleted_err)
       assert.is_nil(key_select_deleted)
     end)
@@ -119,7 +115,7 @@ for _, strategy in helpers.all_strategies() do
 
       local rows = {}
       local i = 1
-      for row, err_t in kong.db.keys:each_for_set({id = key_set.id}) do
+      for row, err_t in kong.db.keys:each_for_set(key_set) do
         assert.is_nil(err_t)
         rows[i] = row
         i = i + 1

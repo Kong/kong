@@ -32,7 +32,7 @@ for _, strategy in helpers.each_strategy() do
 
       for i = 1, test_entity_count do
         local service = {
-          host = "example-" .. i .. ".com",
+          host = "example-" .. i .. ".test",
           name = "service" .. i,
           tags = { "team_ a", "level "..fmod(i, 5), "service"..i }
         }
@@ -109,7 +109,7 @@ for _, strategy in helpers.each_strategy() do
         it(func, function()
           local tags = { "team_b_" .. func, "team_ a" }
           local row, err, err_t = db.services[func](db.services,
-          key, { tags = tags, host = 'whatever.com' })
+          key, { tags = tags, host = 'whatever.test' })
 
           assert.is_nil(err)
           assert.is_nil(err_t)
@@ -198,7 +198,7 @@ for _, strategy in helpers.each_strategy() do
 
         it(func, function()
           local row, err, err_t = db.services[func](db.services,
-          key, { tags = tags, host = 'whatever.com' })
+          key, { tags = tags, host = 'whatever.test' })
 
           assert.is_nil(err)
           assert.is_nil(err_t)
@@ -221,7 +221,7 @@ for _, strategy in helpers.each_strategy() do
       local total_entities_count = 100
       for i = 1, total_entities_count do
         local service = {
-          host = "anotherexample-" .. i .. ".org",
+          host = "anotherexample-" .. i .. ".test",
           name = "service-paging" .. i,
           tags = { "paging", "team_paging_" .. fmod(i, 5), "irrelevant_tag" }
         }
@@ -351,7 +351,7 @@ for _, strategy in helpers.each_strategy() do
 
     it("#db errors if tag value is invalid", function()
       local ok, err = pcall(bp.services.insert, bp.services, {
-        host = "invalid-tag.com",
+        host = "invalid-tag.test",
         name = "service-invalid-tag",
         tags = { "tag,with,commas" }
       })
@@ -359,7 +359,7 @@ for _, strategy in helpers.each_strategy() do
       assert.matches("invalid tag", err)
 
       local ok, err = pcall(bp.services.insert, bp.services, {
-        host = "invalid-tag.com",
+        host = "invalid-tag.test",
         name = "service-invalid-tag",
         tags = { "tag/with/slashes" }
       })
@@ -367,7 +367,7 @@ for _, strategy in helpers.each_strategy() do
       assert.matches("invalid tag", err)
 
       local ok, err = pcall(bp.services.insert, bp.services, {
-        host = "invalid-tag.com",
+        host = "invalid-tag.test",
         name = "service-invalid-tag",
         tags = { "tag-with-invalid-utf8" .. string.char(255) }
       })

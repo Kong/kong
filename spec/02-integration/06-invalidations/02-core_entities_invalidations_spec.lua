@@ -114,7 +114,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            host = "example.com",
+            host = "example.test",
           }
         })
         assert.res_status(404, res_1)
@@ -123,7 +123,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            host = "example.com",
+            host = "example.test",
           }
         })
         assert.res_status(404, res)
@@ -137,7 +137,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/routes",
           body    = {
             protocols = { "http" },
-            hosts     = { "example.com" },
+            hosts     = { "example.test" },
             service   = {
               id = service_fixture.id,
             }
@@ -162,7 +162,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            host = "example.com",
+            host = "example.test",
           }
         })
         assert.res_status(200, res)
@@ -171,7 +171,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            host = "example.com",
+            host = "example.test",
           }
         }, 200)
       end)
@@ -182,7 +182,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/routes/" .. route_fixture_id,
           body    = {
             methods = cjson.null,
-            hosts   = { "updated-example.com" },
+            hosts   = { "updated-example.test" },
             paths   = cjson.null,
           },
           headers = {
@@ -205,7 +205,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/",
           headers = {
-            host = "updated-example.com",
+            host = "updated-example.test",
           }
         })
         assert.res_status(200, res_1)
@@ -216,7 +216,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/",
           headers = {
-            host = "example.com",
+            host = "example.test",
           }
         })
         assert.res_status(404, res_1_old)
@@ -227,7 +227,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/",
           headers = {
-            host = "updated-example.com",
+            host = "updated-example.test",
           }
         }, 200)
 
@@ -237,7 +237,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/",
           headers = {
-            host = "example.com",
+            host = "example.test",
           }
         }, 404)
       end)
@@ -261,7 +261,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/",
           headers = {
-            host = "updated-example.com",
+            host = "updated-example.test",
           }
         })
         assert.res_status(404, res_1)
@@ -270,7 +270,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/",
           headers = {
-            host = "updated-example.com",
+            host = "updated-example.test",
           }
         }, 404)
       end)
@@ -289,7 +289,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/routes",
           body    = {
             protocols = { "http" },
-            hosts     = { "service.com" },
+            hosts     = { "service.test" },
             service   = {
               id = service_fixture.id,
             }
@@ -311,7 +311,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            host = "service.com",
+            host = "service.test",
           }
         })
         assert.res_status(200, res_1)
@@ -320,7 +320,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            host = "service.com",
+            host = "service.test",
           }
         }, 200)
 
@@ -350,7 +350,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/",
           headers = {
-            host = "service.com",
+            host = "service.test",
           }
         })
         assert.res_status(418, res_1)
@@ -359,7 +359,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/",
           headers = {
-            host = "service.com",
+            host = "service.test",
           }
         }, 418)
       end)
@@ -387,7 +387,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/",
           headers = {
-            host = "service.com",
+            host = "service.test",
           }
         })
         assert.res_status(404, res_1)
@@ -396,7 +396,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/",
           headers = {
-            host = "service.com",
+            host = "service.test",
           }
         }, 404)
       end)
@@ -409,7 +409,7 @@ for _, strategy in helpers.each_strategy() do
     describe("ssl_certificates / snis", function()
 
       local function get_cert(port, sn)
-        local pl_utils = require "pl.utils"
+        local shell = require "resty.shell"
 
         local cmd = [[
           echo "" | openssl s_client \
@@ -418,7 +418,7 @@ for _, strategy in helpers.each_strategy() do
           -servername %s \
         ]]
 
-        local _, _, stderr = pl_utils.executeex(string.format(cmd, port, sn))
+        local _, _, stderr = shell.run(string.format(cmd, port, sn), nil, 0)
 
         return stderr
       end
@@ -857,7 +857,7 @@ for _, strategy in helpers.each_strategy() do
           path    = "/routes",
           body    = {
             protocols = { "http" },
-            hosts     = { "dummy.com" },
+            hosts     = { "dummy.test" },
             service   = {
               id = service_fixture.id,
             }
@@ -883,7 +883,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            host = "dummy.com",
+            host = "dummy.test",
           }
         })
         assert.res_status(200, res_1)
@@ -894,7 +894,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            host = "dummy.com",
+            host = "dummy.test",
           }
         }, 200, { ["Dummy-Plugin"] = ngx.null })
 
@@ -902,7 +902,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            host = "dummy.com",
+            host = "dummy.test",
           }
         }, 200, { ["Dummy-Plugin"] = ngx.null })
 
@@ -935,7 +935,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            host = "dummy.com",
+            host = "dummy.test",
           }
         })
         assert.res_status(200, res_1)
@@ -945,7 +945,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            host = "dummy.com",
+            host = "dummy.test",
           }
         }, 200, { ["Dummy-Plugin"] = "1" })
       end)
@@ -977,7 +977,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            host = "dummy.com",
+            host = "dummy.test",
           }
         })
         assert.res_status(200, res_1)
@@ -987,7 +987,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            host = "dummy.com",
+            host = "dummy.test",
           }
         }, 200, { ["Dummy-Plugin"] = "2" })
       end)
@@ -1011,7 +1011,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            host = "dummy.com",
+            host = "dummy.test",
           }
         })
         assert.res_status(200, res_1)
@@ -1021,7 +1021,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            host = "dummy.com",
+            host = "dummy.test",
           }
         }, 200, { ["Dummy-Plugin"] = ngx.null })
       end)
@@ -1039,7 +1039,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            host = "dummy.com",
+            host = "dummy.test",
           }
         })
         assert.res_status(200, res_1)
@@ -1050,7 +1050,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/status/200",
             headers = {
-              host = "dummy.com",
+              host = "dummy.test",
             }
           })
           assert.res_status(200, res)
@@ -1083,7 +1083,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            host = "dummy.com",
+            host = "dummy.test",
           }
         })
         assert.res_status(200, res_1)
@@ -1093,7 +1093,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            host = "dummy.com",
+            host = "dummy.test",
           }
         }, 200, { ["Dummy-Plugin"] = "1" })
       end)
@@ -1103,7 +1103,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            host = "dummy.com",
+            host = "dummy.test",
           }
         })
         assert.res_status(200, res_1)
@@ -1127,7 +1127,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            host = "dummy.com",
+            host = "dummy.test",
           }
         })
         assert.res_status(200, res_1)
@@ -1137,7 +1137,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/status/200",
           headers = {
-            host = "dummy.com",
+            host = "dummy.test",
           }
         }, 200, { ["Dummy-Plugin"] = ngx.null })
       end)

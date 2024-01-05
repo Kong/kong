@@ -148,7 +148,7 @@ You can follow [Managing your personal access token](https://docs.github.com/en/
 Finally, we start the build process:
 
 ```
-# Build the virutual environment for developing Kong
+# Build the virtual environment for developing Kong
 make build-venv
 ```
 

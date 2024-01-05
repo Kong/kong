@@ -261,9 +261,7 @@ function ProxyCacheHandler:init_worker()
     kong.log.err("handling purge of '", data, "'")
 
     local plugin_id, cache_key = unpack(utils.split(data, ":"))
-    local plugin, err = kong.db.plugins:select({
-      id = plugin_id,
-    })
+    local plugin, err = kong.db.plugins:select({ id = plugin_id })
     if err then
       kong.log.err("error in retrieving plugins: ", err)
       return

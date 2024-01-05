@@ -189,31 +189,31 @@ for _, strategy in helpers.each_strategy() do
           service = { id = service.id },
         })
 
-        token, err = db.oauth2_tokens:select({ id = token.id })
+        token, err = db.oauth2_tokens:select(token)
         assert.falsy(err)
         assert.truthy(token)
 
-        code, err = db.oauth2_authorization_codes:select({ id = code.id })
+        code, err = db.oauth2_authorization_codes:select(code)
         assert.falsy(err)
         assert.truthy(code)
 
-        ok, err, err_t = db.services:delete({ id = service.id })
+        ok, err, err_t = db.services:delete(service)
         assert.truthy(ok)
         assert.is_falsy(err_t)
         assert.is_falsy(err)
 
         -- no more service
-        service, err = db.services:select({ id = service.id })
+        service, err = db.services:select(service)
         assert.falsy(err)
         assert.falsy(service)
 
         -- no more token
-        token, err = db.oauth2_tokens:select({ id = token.id })
+        token, err = db.oauth2_tokens:select(token)
         assert.falsy(err)
         assert.falsy(token)
 
         -- no more code
-        code, err = db.oauth2_authorization_codes:select({ id = code.id })
+        code, err = db.oauth2_authorization_codes:select(code)
         assert.falsy(err)
         assert.falsy(code)
       end)

@@ -106,7 +106,7 @@ jobs:
           $TEST_CMD
 
     - name: Archive coverage stats file
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
       with:
         name: luacov-stats-out-${{ github.job }}-${{ github.run_id }}
@@ -123,12 +123,11 @@ jobs:
     name: Postgres ${{ matrix.suite }} - ${{ matrix.split }} tests
     runs-on: ubuntu-22.04
     needs: build
-
     strategy:
       fail-fast: false
       matrix:
         suite: [integration, plugins]
-        split: [first (01-04), second (>= 05)]
+        split: [first, second]
 
     services:
       postgres:
@@ -156,7 +155,7 @@ jobs:
           --name kong_redis
 
       zipkin:
-        image: openzipkin/zipkin:2.19
+        image: openzipkin/zipkin:2
         ports:
           - 9411:9411
 
@@ -227,6 +226,22 @@ jobs:
         luarocks --version
         luarocks config
 
+    - name: Tune up postgres max_connections
+      run: |
+        # arm64 runners may use more connections due to more worker cores
+        psql -hlocalhost -Ukong kong -tAc 'alter system set max_connections = 5000;'
+
+    - name: Generate test rerun filename
+      run: |
+           echo FAILED_TEST_FILES_FILE=$(echo '${{ github.run_id }}-${{ matrix.suite }}-${{ matrix.split }}' | tr A-Z a-z | sed -Ee 's/[^a-z0-9]+/-/g').txt >> $GITHUB_ENV
+
+
+    - name: Download test rerun information
+      uses: actions/download-artifact@v4
+      continue-on-error: true
+      with:
+        name: ${{ env.FAILED_TEST_FILES_FILE }}
+
     - name: Tests
       env:
         KONG_TEST_PG_DATABASE: kong
@@ -242,8 +257,16 @@ jobs:
           source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
           .ci/run_tests.sh
 
+    - name: Upload test rerun information
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.FAILED_TEST_FILES_FILE }}
+        path: ${{ env.FAILED_TEST_FILES_FILE }}
+        retention-days: 2
+
     - name: Archive coverage stats file
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
       with:
         name: luacov-stats-out-${{ github.job }}-${{ github.run_id }}-${{ matrix.suite }}-${{ contains(matrix.split, 'first') && '1' || '2' }}
@@ -263,7 +286,7 @@ jobs:
 
     services:
       grpcbin:
-        image: moul/grpcbin
+        image: kong/grpcbin
         ports:
           - 15002:9000
           - 15003:9001
@@ -316,7 +339,7 @@ jobs:
           .ci/run_tests.sh
 
     - name: Archive coverage stats file
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
       with:
         name: luacov-stats-out-${{ github.job }}-${{ github.run_id }}
@@ -368,7 +391,7 @@ jobs:
           .ci/run_tests.sh
 
     - name: Archive coverage stats file
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
       with:
         name: luacov-stats-out-${{ github.job }}-${{ github.run_id }}
@@ -398,7 +421,7 @@ jobs:
         sudo luarocks install luafilesystem
 
     # Download all archived coverage stats files
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
 
     - name: Stats aggregation
       shell: bash

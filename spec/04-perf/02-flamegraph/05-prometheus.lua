@@ -1,6 +1,7 @@
 local perf = require("spec.helpers.perf")
 local split = require("pl.stringx").split
 local utils = require("spec.helpers.perf.utils")
+local shell = require "resty.shell"
 
 perf.enable_charts(false) -- don't generate charts, we need flamegraphs only
 perf.use_defaults()
@@ -37,7 +38,7 @@ local wrk_script = [[
   end
 ]]
 
-os.execute("mkdir -p output")
+shell.run("mkdir -p output", nil, 0)
 
 local function scrape(helpers, scrape_interval)
   local starting = ngx.now()

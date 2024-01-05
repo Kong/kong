@@ -28,6 +28,10 @@ build-packages:
   image: debian:11
   package: deb
   check-manifest-suite: debian-11-amd64
+- label: debian-12
+  image: debian:12
+  package: deb
+  check-manifest-suite: debian-12-amd64
 
 # RHEL
 - label: rhel-7
@@ -89,9 +93,9 @@ build-images:
 
 # Debian
 - label: debian
-  base-image: debian:11-slim
+  base-image: debian:12-slim
   package: deb
-  artifact-from: debian-11
+  artifact-from: debian-12
 
 # RHEL
 - label: rhel
@@ -144,6 +148,12 @@ release-packages:
   package: deb
   artifact-from: debian-11
   artifact-version: 11
+  artifact-type: debian
+  artifact: kong.amd64.deb
+- label: debian-12
+  package: deb
+  artifact-from: debian-12
+  artifact-version: 12
   artifact-type: debian
   artifact: kong.amd64.deb
 

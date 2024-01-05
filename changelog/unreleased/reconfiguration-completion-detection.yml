@@ -1,0 +1,3 @@
+message: Provide mechanism to detect completion of reconfiguration on the proxy path. This is for internal testing only.
+type: feature
+scope: Core

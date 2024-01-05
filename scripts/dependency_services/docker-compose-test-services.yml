@@ -33,14 +33,15 @@ services:
       timeout: 10s
       retries: 10
   grpcbin:
-    image: moul/grpcbin
+    image: kong/grpcbin
     ports:
       - 127.0.0.1::9000
       - 127.0.0.1::9001
   zipkin:
-    image: openzipkin/zipkin:2.19
+    image: openzipkin/zipkin:2
     ports:
       - 127.0.0.1::9411
+    command: --logging.level.zipkin2=DEBUG
 
 volumes:
   postgres-data:

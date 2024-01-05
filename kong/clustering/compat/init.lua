@@ -10,7 +10,7 @@ local table_insert = table.insert
 local table_sort = table.sort
 local gsub = string.gsub
 local split = utils.split
-local deflate_gzip = utils.deflate_gzip
+local deflate_gzip = require("kong.tools.gzip").deflate_gzip
 local cjson_encode = cjson.encode
 
 local ngx = ngx

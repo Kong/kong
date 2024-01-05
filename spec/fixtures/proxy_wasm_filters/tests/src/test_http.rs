@@ -20,6 +20,11 @@ impl TestHttp {
         }
     }
 
+    fn set_prop(&self, ns: &str, prop: &str, value: Option<&str>) {
+        let value: Option<&[u8]> = value.map(|v| v.as_bytes());
+        self.set_property(vec![ns, prop], value);
+    }
+
     fn send_http_dispatch(&mut self, config: TestConfig) -> Action {
         let mut timeout = Duration::from_secs(0);
         let mut headers = Vec::new();
@@ -111,6 +116,17 @@ impl TestHttp {
                         let value = self.get_prop("kong", name);
                         info!("[proxy-wasm] kong.{}: \"{:?}\"", name, value);
                         self.send_plain_response(StatusCode::OK, Some(&value))
+                    }
+                    "set_kong_property" => {
+                        if let Some(input) = opt_input {
+                            let (key, value) = match input.split_once('=') {
+                                Some((key, value)) => (key, Some(value)),
+                                None => (input.as_ref(), None),
+                            };
+
+                            self.set_prop("kong", key, value);
+                            info!("[proxy-wasm] kong.{} = \"{:?}\"", key, value);
+                        }
                     }
                     "echo_http_dispatch" => {
                         let config = TestConfig::from_str(&opt_input.unwrap_or("".to_string()))

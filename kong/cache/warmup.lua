@@ -2,7 +2,10 @@ local utils = require "kong.tools.utils"
 local constants = require "kong.constants"
 local buffer = require "string.buffer"
 local acl_groups
-if utils.load_module_if_exists("kong.plugins.acl.groups") then
+
+
+local load_module_if_exists = require "kong.tools.module".load_module_if_exists
+if load_module_if_exists("kong.plugins.acl.groups") then
   acl_groups = require "kong.plugins.acl.groups"
 end
 

@@ -38,12 +38,12 @@ for _, strategy in helpers.each_strategy() do
       }
 
       fixtures.dns_mock:SRV {
-        name = "my.srv.test.com",
-        target = "a.my.srv.test.com",
+        name = "my.srv.test.test",
+        target = "a.my.srv.test.test",
         port = 80,  -- port should fail to connect
       }
       fixtures.dns_mock:A {
-        name = "a.my.srv.test.com",
+        name = "a.my.srv.test.test",
         address = "127.0.0.1",
       }
 
@@ -114,7 +114,7 @@ for _, strategy in helpers.each_strategy() do
       })
       -- the following port will not be used, will be overwritten by
       -- the mocked SRV record.
-      bu.add_target(bp, upstream_id, "my.srv.test.com", 80)
+      bu.add_target(bp, upstream_id, "my.srv.test.test", 80)
       local api_host = bu.add_api(bp, upstream_name)
       bu.end_testcase_setup(strategy, bp)
 
