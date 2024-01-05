@@ -32,7 +32,7 @@ return {
                     )
                 )
             )
-            WHERE name = 'rate-limiting';
+            WHERE name = 'response-ratelimiting';
         EXCEPTION WHEN UNDEFINED_COLUMN OR UNDEFINED_TABLE THEN
           -- Do nothing, accept existing state
         END$$;
