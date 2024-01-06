@@ -67,16 +67,19 @@ function _M:body_filter(conf)
   if not kong.ctx.shared.skip_response_transformer then
     -- all errors MUST be checked and returned in header_filter
     -- we should receive a replacement response body from the same thread
-    if kong.ctx.plugin.parsed_response then
+    
+    local original_request = kong.ctx.plugin.parsed_response or kong.response.get_raw_body()
+    local deflated_request = kong.ctx.plugin.parsed_response or kong.response.get_raw_body()
+    if deflated_request then
       local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
       if is_gzip then
-        kong.ctx.plugin.parsed_response = kong_utils.deflate_gzip(kong.ctx.plugin.parsed_response)
+        deflated_request = kong_utils.deflate_gzip(deflated_request)
       end
-      kong.response.set_raw_body(kong.ctx.plugin.parsed_response)
+      kong.response.set_raw_body(deflated_request)
     end
 
     -- call with replacement body, or original body if nothing changed
-    ai_shared.post_request(conf, kong.ctx.plugin.parsed_response or kong.response.get_raw_body())
+    ai_shared.post_request(conf, original_request)
   end
 end
 
