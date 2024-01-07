@@ -250,9 +250,9 @@ return function(options)
   end
 
 
-  do  -- implement a Lua based shm for: cli (and hence rbusted)
+  do  -- implement a Lua based shm for: cli
 
-    if options.cli then
+    if options.cli and not options.rbusted then
       -- ngx.shared.DICT proxy
       -- https://github.com/bsm/fakengx/blob/master/fakengx.lua
       -- with minor fixes and additions such as exptime

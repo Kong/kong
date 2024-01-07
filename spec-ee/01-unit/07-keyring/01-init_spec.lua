@@ -328,7 +328,7 @@ describe("keyring", function()
       local MOCK_BUF = {}
 
       setup(function()
-        keyring.keyring_add(NEW_MOCK_ID)
+        keyring.keyring_add(NEW_MOCK_ID, "bar")
         ref = ngx.log
         ngx.log = function(lvl, ...) -- luacheck: ignore
           local t = table.pack(...)
