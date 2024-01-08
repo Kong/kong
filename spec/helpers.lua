@@ -3133,6 +3133,59 @@ do
   end
 end
 
+---
+-- Assertion to partially compare two lua tables.
+-- @function partial_match
+-- @param partial_table the table with subset of fields expect to match
+-- @param full_table the full table that should contain partial_table and potentially other fields
+local function partial_match(state, arguments)
+
+  local function deep_matches(t1, t2, parent_keys)
+    for key, v in pairs(t1) do
+        local compound_key = (parent_keys and parent_keys .. "." .. key) or key
+        if type(v) == "table" then
+          local ok, compound_key, v1, v2 = deep_matches(t1[key], t2[key], compound_key)
+            if not ok then
+              return ok, compound_key, v1, v2
+            end
+        else
+          if (state.mod == true and t1[key] ~= t2[key]) or (state.mod == false and t1[key] == t2[key]) then
+            return false, compound_key, t1[key], t2[key]
+          end
+        end
+    end
+
+    return true
+  end
+
+  local partial_table = arguments[1]
+  local full_table = arguments[2]
+
+  local ok, compound_key, v1, v2 = deep_matches(partial_table, full_table)
+
+  if not ok then
+    arguments[1] = compound_key
+    arguments[2] = v1
+    arguments[3] = v2
+    arguments.n = 3
+
+    return not state.mod
+  end
+
+  return state.mod
+end
+
+say:set("assertion.partial_match.negative", [[
+Values at key %s should not be equal
+]])
+say:set("assertion.partial_match.positive", [[
+Values at key %s should be equal but are not.
+Expected: %s, given: %s
+]])
+luassert:register("assertion", "partial_match", partial_match,
+                  "assertion.partial_match.positive",
+                  "assertion.partial_match.negative")
+
 
 ----------------
 -- Shell helpers

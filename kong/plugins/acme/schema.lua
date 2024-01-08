@@ -1,5 +1,9 @@
 local typedefs = require "kong.db.schema.typedefs"
 local reserved_words = require "kong.plugins.acme.reserved_words"
+local redis_schema = require "kong.tools.redis.schema"
+local deprecation = require("kong.deprecation")
+
+local tablex = require "pl.tablex"
 
 local CERT_TYPES = { "rsa", "ecc" }
 
@@ -34,13 +38,9 @@ local SHM_STORAGE_SCHEMA = {
 local KONG_STORAGE_SCHEMA = {
 }
 
-local REDIS_STORAGE_SCHEMA = {
-  { host = typedefs.host, },
-  { port = typedefs.port, },
-  { database = { type = "number", description = "The index of the Redis database to use.", } },
+-- deprecated old schema
+local REDIS_LEGACY_SCHEMA_FIELDS = {
   { auth = { type = "string", referenceable = true, description = "The Redis password to use for authentication. " } },
-  { ssl = { type = "boolean", required = true, default = false, description = "Whether to use SSL/TLS encryption when connecting to the Redis server."} },
-  { ssl_verify = { type = "boolean", required = true, default = false, description = "Whether to verify the SSL/TLS certificate presented by the Redis server. This should be a boolean value." } },
   { ssl_server_name = typedefs.sni { required = false, description = "The expected server name for the SSL/TLS certificate presented by the Redis server." }},
   {
     namespace = {
@@ -54,6 +54,29 @@ local REDIS_STORAGE_SCHEMA = {
   },
   { scan_count = { type = "number", required = false, default = 10, description = "The number of keys to return in Redis SCAN calls." } },
 }
+
+local REDIS_STORAGE_SCHEMA = tablex.copy(redis_schema.config_schema.fields)
+for _,v in ipairs(REDIS_LEGACY_SCHEMA_FIELDS) do
+  table.insert(REDIS_STORAGE_SCHEMA, v)
+end
+
+table.insert(REDIS_STORAGE_SCHEMA, { extra_options = {
+  description = "Custom ACME Redis options",
+  type = "record",
+  fields = {
+    {
+      namespace = {
+        type = "string",
+        description = "A namespace to prepend to all keys stored in Redis.",
+        required = true,
+        default = "",
+        len_min = 0,
+        custom_validator = validate_namespace
+      }
+    },
+    { scan_count = { type = "number", required = false, default = 10, description = "The number of keys to return in Redis SCAN calls." } },
+  }
+} })
 
 local CONSUL_STORAGE_SCHEMA = {
   { https = { type = "boolean", default = false, description = "Boolean representation of https."}, },
@@ -248,6 +271,28 @@ local schema = {
         end
       }
     },
+    { custom_entity_check = {
+      field_sources = { "config.storage_config.redis.namespace", "config.storage_config.redis.scan_count", "config.storage_config.redis.auth", "config.storage_config.redis.ssl_server_name" },
+      fn = function(entity)
+        if (entity.config.storage_config.redis.namespace or ngx.null) ~= ngx.null and entity.config.storage_config.redis.namespace ~= "" then
+          deprecation("acme: config.storage_config.redis.namespace is deprecated, please use config.storage_config.redis.extra_options.namespace instead",
+            { after = "4.0", })
+        end
+        if (entity.config.storage_config.redis.scan_count or ngx.null) ~= ngx.null and entity.config.storage_config.redis.scan_count ~= 10 then
+          deprecation("acme: config.storage_config.redis.scan_count is deprecated, please use config.storage_config.redis.extra_options.scan_count instead",
+            { after = "4.0", })
+        end
+        if (entity.config.storage_config.redis.auth or ngx.null) ~= ngx.null  then
+          deprecation("acme: config.storage_config.redis.auth is deprecated, please use config.storage_config.redis.password instead",
+            { after = "4.0", })
+        end
+        if (entity.config.storage_config.redis.ssl_server_name or ngx.null) ~= ngx.null  then
+          deprecation("acme: config.storage_config.redis.ssl_server_name is deprecated, please use config.storage_config.redis.server_name instead",
+            { after = "4.0", })
+        end
+        return true
+      end
+    } }
   },
 }
 

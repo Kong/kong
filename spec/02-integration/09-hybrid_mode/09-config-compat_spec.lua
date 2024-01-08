@@ -108,10 +108,14 @@ describe("CP/DP config compat transformations #" .. strategy, function()
   end)
 
   describe("plugin config fields", function()
-    local rate_limit, cors, opentelemetry, zipkin
+    local function do_assert(node_id, node_version, expected_entity)
+      local plugin = get_plugin(node_id, node_version, expected_entity.name)
+      assert.same(expected_entity.config, plugin.config)
+      assert.equals(CLUSTERING_SYNC_STATUS.NORMAL, get_sync_status(node_id))
+    end
 
-    lazy_setup(function()
-      rate_limit = admin.plugins:insert {
+    it("removes new fields before sending them to older DP nodes", function()
+      local rate_limit = admin.plugins:insert {
         name = "rate-limiting",
         enabled = true,
         config = {
@@ -125,29 +129,6 @@ describe("CP/DP config compat transformations #" .. strategy, function()
           -- ]]
         },
       }
-
-      cors = admin.plugins:insert {
-        name = "cors",
-        enabled = true,
-        config = {
-          -- [[ new fields 3.5.0
-          private_network = false
-          -- ]]
-        }
-      }
-    end)
-
-    lazy_teardown(function()
-      admin.plugins:remove({ id = rate_limit.id })
-    end)
-
-    local function do_assert(node_id, node_version, expected_entity)
-      local plugin = get_plugin(node_id, node_version, expected_entity.name)
-      assert.same(expected_entity.config, plugin.config)
-      assert.equals(CLUSTERING_SYNC_STATUS.NORMAL, get_sync_status(node_id))
-    end
-
-    it("removes new fields before sending them to older DP nodes", function()
       --[[
         For 3.0.x
         should not have: error_code, error_message, sync_rate
@@ -177,29 +158,75 @@ describe("CP/DP config compat transformations #" .. strategy, function()
       expected = utils.cycle_aware_deep_copy(rate_limit)
       expected.config.sync_rate = nil
       do_assert(utils.uuid(), "3.3.0", expected)
+
+      -- cleanup
+      admin.plugins:remove({ id = rate_limit.id })
     end)
 
     it("does not remove fields from DP nodes that are already compatible", function()
+      local rate_limit = admin.plugins:insert {
+        name = "rate-limiting",
+        enabled = true,
+        config = {
+          second = 1,
+          policy = "local",
+
+          -- [[ new fields
+          error_code = 403,
+          error_message = "go away!",
+          sync_rate = -1,
+          -- ]]
+        },
+      }
+
       do_assert(utils.uuid(), "3.4.0", rate_limit)
+
+      -- cleanup
+      admin.plugins:remove({ id = rate_limit.id })
     end)
 
     describe("compatibility test for cors plugin", function()
       it("removes `config.private_network` before sending them to older(less than 3.5.0.0) DP nodes", function()
+        local cors = admin.plugins:insert {
+          name = "cors",
+          enabled = true,
+          config = {
+            -- [[ new fields 3.5.0
+            private_network = false
+            -- ]]
+          }
+        }
+
         assert.not_nil(cors.config.private_network)
         local expected_cors = utils.cycle_aware_deep_copy(cors)
         expected_cors.config.private_network = nil
         do_assert(utils.uuid(), "3.4.0", expected_cors)
+
+        -- cleanup
+        admin.plugins:remove({ id = cors.id })
       end)
 
       it("does not remove `config.private_network` from DP nodes that are already compatible", function()
+        local cors = admin.plugins:insert {
+          name = "cors",
+          enabled = true,
+          config = {
+            -- [[ new fields 3.5.0
+            private_network = false
+            -- ]]
+          }
+        }
         do_assert(utils.uuid(), "3.5.0", cors)
+
+        -- cleanup
+        admin.plugins:remove({ id = cors.id })
       end)
     end)
 
     describe("compatibility tests for opentelemetry plugin", function()
       it("replaces `aws` values of `header_type` property with default `preserve`", function()
         -- [[ 3.5.x ]] --
-        opentelemetry = admin.plugins:insert {
+        local opentelemetry = admin.plugins:insert {
           name = "opentelemetry",
           enabled = true,
           config = {
@@ -244,7 +271,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
     describe("compatibility tests for zipkin plugin", function()
       it("replaces `aws` and `gcp` values of `header_type` property with default `preserve`", function()
         -- [[ 3.5.x ]] --
-        zipkin = admin.plugins:insert {
+        local zipkin = admin.plugins:insert {
           name = "zipkin",
           enabled = true,
           config = {
@@ -282,6 +309,58 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
         -- cleanup
         admin.plugins:remove({ id = zipkin.id })
+      end)
+    end)
+
+    describe("compatibility tests for redis standarization", function()
+      describe("acme plugin", function()
+        it("translates standardized redis config to older acme structure", function()
+          -- [[ 3.6.x ]] --
+          local acme = admin.plugins:insert {
+            name = "acme",
+            enabled = true,
+            config = {
+              account_email = "test@example.com",
+              storage = "redis",
+              storage_config = {
+                -- [[ new structure redis
+                redis = {
+                  host = "localhost",
+                  port = 57198,
+                  username = "test",
+                  password = "secret",
+                  database = 2,
+                  timeout = 1100,
+                  ssl = true,
+                  ssl_verify = true,
+                  server_name = "example.test",
+                  extra_options = {
+                    namespace = "test_namespace",
+                    scan_count = 13
+                  }
+                }
+                -- ]]
+              }
+            }
+          }
+
+          local expected_acme_prior_36 = utils.cycle_aware_deep_copy(acme)
+          expected_acme_prior_36.config.storage_config.redis = {
+            host = "localhost",
+            port = 57198,
+            auth = "secret",
+            database = 2,
+            ssl = true,
+            ssl_verify = true,
+            ssl_server_name = "example.test",
+            namespace = "test_namespace",
+            scan_count = 13
+          }
+          do_assert(utils.uuid(), "3.5.0", expected_acme_prior_36)
+
+          -- cleanup
+          admin.plugins:remove({ id = acme.id })
+        end)
       end)
     end)
   end)
