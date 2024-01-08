@@ -1466,19 +1466,19 @@ local config = {
             },
           },
           {
-            logout_revoke = { description = "Revoke tokens as part of the logout.", required = false,
+            logout_revoke = { description = "Revoke tokens as part of the logout.\n\nFor more granular token revocation, you can also adjust the `logout_revoke_access_token` and `logout_revoke_refresh_token` parameters.", required = false,
               type     = "boolean",
               default  = false,
             },
           },
           {
-            logout_revoke_access_token = { description = "Revoke the access token as part of the logout.", required = false,
+            logout_revoke_access_token = { description = "Revoke the access token as part of the logout. Requires `logout_revoke` to be set to `true`.", required = false,
               type     = "boolean",
               default  = true,
             },
           },
           {
-            logout_revoke_refresh_token = { description = "Revoke the refresh token as part of the logout.", required = false,
+            logout_revoke_refresh_token = { description = "Revoke the refresh token as part of the logout. Requires `logout_revoke` to be set to `true`.", required = false,
               type     = "boolean",
               default  = true,
             },
