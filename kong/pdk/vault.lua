@@ -799,12 +799,9 @@ local function new(self)
   local function get_from_vault(reference, strategy, config, cache_key, parsed_reference)
     local value, err, ttl = invoke_strategy(strategy, config, parsed_reference)
     local cache_value, shdict_ttl, lru_ttl = get_cache_value_and_ttl(value, config, ttl)
-
-    if SECRETS_CACHE then
-      local ok, cache_err = SECRETS_CACHE:safe_set(cache_key, cache_value, shdict_ttl)
-      if not ok then
-        return nil, cache_err
-      end
+    local ok, cache_err = SECRETS_CACHE:safe_set(cache_key, cache_value, shdict_ttl)
+    if not ok then
+      return nil, cache_err
     end
 
     if cache_value == NEGATIVELY_CACHED_VALUE then
@@ -846,15 +843,13 @@ local function new(self)
       return nil, err
     end
 
-    if SECRETS_CACHE then
-      value = SECRETS_CACHE:get(cache_key)
-      if cache_only and not value then
-        return nil, "could not find cached value"
-      end
+    value = SECRETS_CACHE:get(cache_key)
+    if cache_only and not value then
+      return nil, "could not find cached value"
+    end
 
-      if value == NEGATIVELY_CACHED_VALUE then
-        return nil
-      end
+    if value == NEGATIVELY_CACHED_VALUE then
+      return nil
     end
 
     if not value then
