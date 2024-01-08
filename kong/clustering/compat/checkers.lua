@@ -27,7 +27,8 @@ local compatible_checkers = {
     function(config_table, dp_version, log_suffix)
       local has_update
       local redis_plugins_update = {
-        acme = require("kong.plugins.acme.clustering.compat.redis_translation").adapter
+        acme = require("kong.plugins.acme.clustering.compat.redis_translation").adapter,
+        ['rate-limiting'] = require("kong.plugins.rate-limiting.clustering.compat.redis_translation").adapter,
       }
 
       for _, plugin in ipairs(config_table.plugins or {}) do

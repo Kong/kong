@@ -474,13 +474,15 @@ describe(desc, function()
       limit_by            = limit_by,
       path                = test_path,                  -- only for limit_by = "path"
       header_name         = test_header,                -- only for limit_by = "header"
-      redis_host          = REDIS_HOST,
-      redis_port          = ssl_conf.redis_port,
-      redis_password      = REDIS_PASSWORD,
-      redis_database      = REDIS_DATABASE,
-      redis_ssl           = ssl_conf.redis_ssl,
-      redis_ssl_verify    = ssl_conf.redis_ssl_verify,
-      redis_server_name   = ssl_conf.redis_server_name,
+      redis = {
+        host          = REDIS_HOST,
+        port          = ssl_conf.redis_port,
+        password      = REDIS_PASSWORD,
+        database      = REDIS_DATABASE,
+        ssl           = ssl_conf.redis_ssl,
+        ssl_verify    = ssl_conf.redis_ssl_verify,
+        server_name   = ssl_conf.redis_server_name,
+      }
     }, service)
 
     local auth_plugin
@@ -545,13 +547,15 @@ if limit_by == "ip" then
       minute              = 6,
       policy              = policy,
       limit_by            = "ip",
-      redis_host          = REDIS_HOST,
-      redis_port          = ssl_conf.redis_port,
-      redis_password      = REDIS_PASSWORD,
-      redis_database      = REDIS_DATABASE,
-      redis_ssl           = ssl_conf.redis_ssl,
-      redis_ssl_verify    = ssl_conf.redis_ssl_verify,
-      redis_server_name   = ssl_conf.redis_server_name,
+      redis = {
+        host          = REDIS_HOST,
+        port          = ssl_conf.redis_port,
+        password      = REDIS_PASSWORD,
+        database      = REDIS_DATABASE,
+        ssl           = ssl_conf.redis_ssl,
+        ssl_verify    = ssl_conf.redis_ssl_verify,
+        server_name   = ssl_conf.redis_server_name,
+      }
     }, service)
 
     finally(function()
@@ -583,13 +587,15 @@ if limit_by == "ip" then
       minute              = 6,
       policy              = policy,
       limit_by            = "ip",
-      redis_host          = REDIS_HOST,
-      redis_port          = ssl_conf.redis_port,
-      redis_password      = REDIS_PASSWORD,
-      redis_database      = REDIS_DATABASE,
-      redis_ssl           = ssl_conf.redis_ssl,
-      redis_ssl_verify    = ssl_conf.redis_ssl_verify,
-      redis_server_name   = ssl_conf.redis_server_name,
+      redis = {
+        host          = REDIS_HOST,
+        port          = ssl_conf.redis_port,
+        password      = REDIS_PASSWORD,
+        database      = REDIS_DATABASE,
+        ssl           = ssl_conf.redis_ssl,
+        ssl_verify    = ssl_conf.redis_ssl_verify,
+        server_name   = ssl_conf.redis_server_name,
+      }
     }, service)
 
     finally(function()
@@ -657,13 +663,15 @@ if limit_by == "ip" then
       policy              = policy,
       limit_by            = "ip",
       hide_client_headers = true,
-      redis_host          = REDIS_HOST,
-      redis_port          = ssl_conf.redis_port,
-      redis_password      = REDIS_PASSWORD,
-      redis_database      = REDIS_DATABASE,
-      redis_ssl           = ssl_conf.redis_ssl,
-      redis_ssl_verify    = ssl_conf.redis_ssl_verify,
-      redis_server_name   = ssl_conf.redis_server_name,
+      redis = {
+        host          = REDIS_HOST,
+        port          = ssl_conf.redis_port,
+        password      = REDIS_PASSWORD,
+        database      = REDIS_DATABASE,
+        ssl           = ssl_conf.redis_ssl,
+        ssl_verify    = ssl_conf.redis_ssl_verify,
+        server_name   = ssl_conf.redis_server_name,
+      }
     }, service)
 
     finally(function()
@@ -700,13 +708,15 @@ if limit_by == "ip" then
       limit_by            = limit_by,
       path                = test_path,
       header_name         = test_header,
-      redis_host          = REDIS_HOST,
-      redis_port          = ssl_conf.redis_port,
-      redis_password      = REDIS_PASSWORD,
-      redis_database      = REDIS_DATABASE,
-      redis_ssl           = ssl_conf.redis_ssl,
-      redis_ssl_verify    = ssl_conf.redis_ssl_verify,
-      redis_server_name   = ssl_conf.redis_server_name,
+      redis = {
+        host          = REDIS_HOST,
+        port          = ssl_conf.redis_port,
+        password      = REDIS_PASSWORD,
+        database      = REDIS_DATABASE,
+        ssl           = ssl_conf.redis_ssl,
+        ssl_verify    = ssl_conf.redis_ssl_verify,
+        server_name   = ssl_conf.redis_server_name,
+      }
     }, service)
 
     finally(function()
@@ -739,13 +749,15 @@ if limit_by == "ip" then
       second              = 1,
       policy              = policy,
       limit_by            = "ip",
-      redis_host          = REDIS_HOST,
-      redis_port          = ssl_conf.redis_port,
-      redis_password      = REDIS_PASSWORD,
-      redis_database      = REDIS_DATABASE,
-      redis_ssl           = ssl_conf.redis_ssl,
-      redis_ssl_verify    = ssl_conf.redis_ssl_verify,
-      redis_server_name   = ssl_conf.redis_server_name,
+      redis = {
+        host          = REDIS_HOST,
+        port          = ssl_conf.redis_port,
+        password      = REDIS_PASSWORD,
+        database      = REDIS_DATABASE,
+        ssl           = ssl_conf.redis_ssl,
+        ssl_verify    = ssl_conf.redis_ssl_verify,
+        server_name   = ssl_conf.redis_server_name,
+      }
     }, service)
 
     finally(function()
@@ -797,13 +809,15 @@ if limit_by == "ip" then
       policy              = policy,
       limit_by            = limit_by,
       path                = test_path,
-      redis_host          = REDIS_HOST,
-      redis_port          = ssl_conf.redis_port,
-      redis_password      = REDIS_PASSWORD,
-      redis_database      = REDIS_DATABASE,
-      redis_ssl           = ssl_conf.redis_ssl,
-      redis_ssl_verify    = ssl_conf.redis_ssl_verify,
-      redis_server_name   = ssl_conf.redis_server_name,
+      redis = {
+        host          = REDIS_HOST,
+        port          = ssl_conf.redis_port,
+        password      = REDIS_PASSWORD,
+        database      = REDIS_DATABASE,
+        ssl           = ssl_conf.redis_ssl,
+        ssl_verify    = ssl_conf.redis_ssl_verify,
+        server_name   = ssl_conf.redis_server_name,
+      },
       error_code          = 404,
       error_message       = "Fake Not Found",
     }, service)
@@ -843,13 +857,15 @@ if limit_by == "service" then
       minute              = 6,
       policy              = policy,
       limit_by            = "service",
-      redis_host          = REDIS_HOST,
-      redis_port          = ssl_conf.redis_port,
-      redis_password      = REDIS_PASSWORD,
-      redis_database      = REDIS_DATABASE,
-      redis_ssl           = ssl_conf.redis_ssl,
-      redis_ssl_verify    = ssl_conf.redis_ssl_verify,
-      redis_server_name   = ssl_conf.redis_server_name,
+      redis = {
+        host          = REDIS_HOST,
+        port          = ssl_conf.redis_port,
+        password      = REDIS_PASSWORD,
+        database      = REDIS_DATABASE,
+        ssl           = ssl_conf.redis_ssl,
+        ssl_verify    = ssl_conf.redis_ssl_verify,
+        server_name   = ssl_conf.redis_server_name,
+      }
     })
 
     finally(function()
@@ -887,13 +903,15 @@ if limit_by == "path" then
       policy              = policy,
       limit_by            = "path",
       path                = test_path_1,
-      redis_host          = REDIS_HOST,
-      redis_port          = ssl_conf.redis_port,
-      redis_password      = REDIS_PASSWORD,
-      redis_database      = REDIS_DATABASE,
-      redis_ssl           = ssl_conf.redis_ssl,
-      redis_ssl_verify    = ssl_conf.redis_ssl_verify,
-      redis_server_name   = ssl_conf.redis_server_name,
+      redis = {
+        host          = REDIS_HOST,
+        port          = ssl_conf.redis_port,
+        password      = REDIS_PASSWORD,
+        database      = REDIS_DATABASE,
+        ssl           = ssl_conf.redis_ssl,
+        ssl_verify    = ssl_conf.redis_ssl_verify,
+        server_name   = ssl_conf.redis_server_name,
+      }
     }, service)
 
     finally(function()
@@ -931,13 +949,15 @@ if limit_by == "header" then
       policy              = policy,
       limit_by            = "header",
       header_name         = test_header_1,
-      redis_host          = REDIS_HOST,
-      redis_port          = ssl_conf.redis_port,
-      redis_password      = REDIS_PASSWORD,
-      redis_database      = REDIS_DATABASE,
-      redis_ssl           = ssl_conf.redis_ssl,
-      redis_ssl_verify    = ssl_conf.redis_ssl_verify,
-      redis_server_name   = ssl_conf.redis_server_name,
+      redis = {
+        host          = REDIS_HOST,
+        port          = ssl_conf.redis_port,
+        password      = REDIS_PASSWORD,
+        database      = REDIS_DATABASE,
+        ssl           = ssl_conf.redis_ssl,
+        ssl_verify    = ssl_conf.redis_ssl_verify,
+        server_name   = ssl_conf.redis_server_name,
+      }
     }, service)
 
     finally(function()
@@ -974,13 +994,15 @@ if limit_by == "consumer" or limit_by == "credential" then
       minute              = 6,
       policy              = policy,
       limit_by            = limit_by,
-      redis_host          = REDIS_HOST,
-      redis_port          = ssl_conf.redis_port,
-      redis_password      = REDIS_PASSWORD,
-      redis_database      = REDIS_DATABASE,
-      redis_ssl           = ssl_conf.redis_ssl,
-      redis_ssl_verify    = ssl_conf.redis_ssl_verify,
-      redis_server_name   = ssl_conf.redis_server_name,
+      redis = {
+        host          = REDIS_HOST,
+        port          = ssl_conf.redis_port,
+        password      = REDIS_PASSWORD,
+        database      = REDIS_DATABASE,
+        ssl           = ssl_conf.redis_ssl,
+        ssl_verify    = ssl_conf.redis_ssl_verify,
+        server_name   = ssl_conf.redis_server_name,
+      }
     }, service)
     local auth_plugin = setup_key_auth_plugin(admin_client, {
       key_names = { test_key_name },
@@ -1181,9 +1203,11 @@ if policy == "redis" then
       minute              = 6,
       policy              = "redis",
       limit_by            = "ip",
-      redis_host          = "127.0.0.1",
-      redis_port          = 80,                   -- bad redis port
-      redis_ssl           = false,
+      redis = {
+        host          = "127.0.0.1",
+        port          = 80,                     -- bad redis port
+        ssl           = false,
+      },
       fault_tolerant      = false,
     }, service)
 
@@ -1210,9 +1234,11 @@ if policy == "redis" then
       minute              = 6,
       policy              = "redis",
       limit_by            = "ip",
-      redis_host          = "127.0.0.1",
-      redis_port          = 80,                   -- bad redis port
-      redis_ssl           = false,
+      redis = {
+        host          = "127.0.0.1",
+        port          = 80,                     -- bad redis port
+        ssl           = false,
+      },
       fault_tolerant      = true,
     }, service)
 
@@ -1284,11 +1310,13 @@ describe(desc, function ()
       minute              = 6,
       policy              = "redis",
       limit_by            = "ip",
-      redis_host          = REDIS_HOST,
-      redis_port          = REDIS_PORT,
-      redis_password      = REDIS_PASSWORD,
-      redis_database      = REDIS_DATABASE,
-      redis_ssl           = false,
+      redis = {
+        host          = REDIS_HOST,
+        port          = REDIS_PORT,
+        password      = REDIS_PASSWORD,
+        database      = REDIS_DATABASE,
+        ssl           = false,
+      },
       sync_rate           = 10,
     }, service)
     local red = redis_connect()
@@ -1397,11 +1425,13 @@ describe(desc, function ()
       minute              = 6,
       policy              = "local",
       limit_by            = "credential",
-      redis_host          = REDIS_HOST,
-      redis_port          = REDIS_PORT,
-      redis_password      = REDIS_PASSWORD,
-      redis_database      = REDIS_DATABASE,
-      redis_ssl           = false,
+      redis = {
+        host          = REDIS_HOST,
+        port          = REDIS_PORT,
+        password      = REDIS_PASSWORD,
+        database      = REDIS_DATABASE,
+        ssl           = false,
+      }
     })
     local credential = setup_credential(admin_client, consumer, test_credential)
 

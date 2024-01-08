@@ -78,31 +78,48 @@ local sock_opts = {}
 
 local EXPIRATION = require "kong.plugins.rate-limiting.expiration"
 
+local function get_redis_configuration(plugin_conf)
+  return {
+     host = plugin_conf.redis.host or plugin_conf.redis_host,
+     port = plugin_conf.redis.port or plugin_conf.redis_port,
+     username = plugin_conf.redis.username or plugin_conf.redis_username,
+     password = plugin_conf.redis.password or plugin_conf.redis_password,
+     database = plugin_conf.redis.database or plugin_conf.redis_database,
+     timeout = plugin_conf.redis.timeout or plugin_conf.redis_timeout,
+     ssl = plugin_conf.redis.ssl or plugin_conf.redis_ssl,
+     ssl_verify = plugin_conf.redis.ssl_verify or plugin_conf.redis_ssl_verify,
+     server_name = plugin_conf.redis.server_name or plugin_conf.redis_server_name,
+  }
+end
+
+
 local function get_db_key(conf)
+  local redis_config = get_redis_configuration(conf)
   return fmt("%s:%d;%d",
-             conf.redis_host,
-             conf.redis_port,
-             conf.redis_database)
+             redis_config.host,
+             redis_config.port,
+             redis_config.database)
 end
 
 
 local function get_redis_connection(conf)
   local red = redis:new()
-  red:set_timeout(conf.redis_timeout)
+  local redis_config = get_redis_configuration(conf)
+  red:set_timeout(redis_config.timeout)
 
-  sock_opts.ssl = conf.redis_ssl
-  sock_opts.ssl_verify = conf.redis_ssl_verify
-  sock_opts.server_name = conf.redis_server_name
+  sock_opts.ssl = redis_config.ssl
+  sock_opts.ssl_verify = redis_config.ssl_verify
+  sock_opts.server_name = redis_config.server_name
 
   local db_key = get_db_key(conf)
 
-  -- use a special pool name only if redis_database is set to non-zero
+  -- use a special pool name only if redis_config.database is set to non-zero
   -- otherwise use the default pool name host:port
-  if conf.redis_database ~= 0 then
+  if redis_config.database ~= 0 then
     sock_opts.pool = db_key
   end
 
-  local ok, err = red:connect(conf.redis_host, conf.redis_port,
+  local ok, err = red:connect(redis_config.host, redis_config.port,
                               sock_opts)
   if not ok then
     kong.log.err("failed to connect to Redis: ", err)
@@ -116,16 +133,16 @@ local function get_redis_connection(conf)
   end
 
   if times == 0 then
-    if is_present(conf.redis_password) then
+    if is_present(redis_config.password) then
       local ok, err
-      if is_present(conf.redis_username) then
+      if is_present(redis_config.username) then
         ok, err = kong.vault.try(function(cfg)
-          return red:auth(cfg.redis_username, cfg.redis_password)
-        end, conf)
+          return red:auth(cfg.username, cfg.password)
+        end, redis_config)
       else
         ok, err = kong.vault.try(function(cfg)
-          return red:auth(cfg.redis_password)
-        end, conf)
+          return red:auth(cfg.password)
+        end, redis_config)
       end
       if not ok then
         kong.log.err("failed to auth Redis: ", err)
@@ -133,11 +150,11 @@ local function get_redis_connection(conf)
       end
     end
 
-    if conf.redis_database ~= 0 then
+    if redis_config.database ~= 0 then
       -- Only call select first time, since we know the connection is shared
       -- between instances that use the same redis database
 
-      local ok, err = red:select(conf.redis_database)
+      local ok, err = red:select(redis_config.database)
       if not ok then
         kong.log.err("failed to change Redis database: ", err)
         return nil, db_key, err
@@ -213,6 +230,8 @@ local plugin_sync_running = {}
 --    will be sync to Redis at most sync_rate interval
 local function rate_limited_sync(conf, sync_func)
   local cache_key = conf.__key__ or conf.__plugin_id or "rate-limiting"
+  local redis_config = get_redis_configuration(conf)
+
   -- a timer is pending. The change will be picked up by the pending timer
   if plugin_sync_pending[cache_key] then
     return true
@@ -231,7 +250,7 @@ local function rate_limited_sync(conf, sync_func)
     -- a "pending" state is never touched before the timer is started
     assert(plugin_sync_pending[cache_key])
 
-    
+
     local tries = 0
     -- a timer is already running.
     -- the sleep time is picked to a seemingly reasonable value
@@ -245,8 +264,8 @@ local function rate_limited_sync(conf, sync_func)
         kong.log.emerg("A Redis sync is blocked by a previous try. " ..
           "The previous try should have timed out but it didn't for unknown reasons.")
       end
-      
-      ngx.sleep(conf.redis_timeout / 2)
+
+      ngx.sleep(redis_config.timeout / 2)
       tries = tries + 1
     end
 
