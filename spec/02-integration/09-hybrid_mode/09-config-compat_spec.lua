@@ -407,6 +407,55 @@ describe("CP/DP config compat transformations #" .. strategy, function()
           admin.plugins:remove({ id = rl.id })
         end)
       end)
+
+      describe("response-ratelimiting plugin", function()
+        it("translates standardized redis config to older response-ratelimiting structure", function()
+          -- [[ 3.6.x ]] --
+          local response_rl = admin.plugins:insert {
+            name = "response-ratelimiting",
+            enabled = true,
+            config = {
+              limits = {
+                video = {
+                  minute = 300,
+                }
+              },
+              policy = "redis",
+              -- [[ new structure redis
+              redis = {
+                host = "localhost",
+                port = 57198,
+                username = "test",
+                password = "secret",
+                database = 2,
+                timeout = 1100,
+                ssl = true,
+                ssl_verify = true,
+                server_name = "example.test"
+              }
+              -- ]]
+            }
+          }
+
+          local expected_response_rl_prior_36 = utils.cycle_aware_deep_copy(response_rl)
+          expected_response_rl_prior_36.config.redis = nil
+          expected_response_rl_prior_36.config.redis_host = "localhost"
+          expected_response_rl_prior_36.config.redis_port = 57198
+          expected_response_rl_prior_36.config.redis_username = "test"
+          expected_response_rl_prior_36.config.redis_password = "secret"
+          expected_response_rl_prior_36.config.redis_database = 2
+          expected_response_rl_prior_36.config.redis_timeout = 1100
+          expected_response_rl_prior_36.config.redis_ssl = true
+          expected_response_rl_prior_36.config.redis_ssl_verify = true
+          expected_response_rl_prior_36.config.redis_server_name = "example.test"
+
+
+          do_assert(utils.uuid(), "3.5.0", expected_response_rl_prior_36)
+
+          -- cleanup
+          admin.plugins:remove({ id = response_rl.id })
+        end)
+      end)
     end)
   end)
 end)

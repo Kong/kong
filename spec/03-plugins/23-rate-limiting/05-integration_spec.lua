@@ -371,7 +371,6 @@ describe("Plugin: rate-limiting (integration)", function()
       lazy_setup(function()
         assert(helpers.start_kong({
           nginx_conf = "spec/fixtures/custom_nginx.template",
-          lua_ssl_trusted_certificate = config.lua_ssl_trusted_certificate,
         }))
 
         route3 = assert(bp.routes:insert {
