@@ -1,5 +1,0 @@
-message: |
-  deprecate the expression field `net.port`, convert it to `net.dst.port`
-  and make `net.src.*` and `net.dst.*` accessible in http routes as well.
-type: feature
-scope: Core
