@@ -1,6 +1,5 @@
 local arrays        = require "pgmoon.arrays"
 local json          = require "pgmoon.json"
-local cjson         = require "cjson"
 local cjson_safe    = require "cjson.safe"
 local utils         = require "kong.tools.utils"
 local new_tab       = require "table.new"
@@ -215,7 +214,7 @@ local function escape_literal(connector, literal, field)
       elseif et == "map" or et == "record" or et == "json" then
         local jsons = {}
         for i, v in ipairs(literal) do
-          jsons[i] = cjson.encode(v)
+          jsons[i] = cjson_safe.encode(v)
         end
         return encode_array(jsons) .. '::JSONB[]'
 
@@ -526,7 +525,7 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
         insert(offset, row[field_name])
       end
 
-      offset = cjson.encode(offset)
+      offset = cjson_safe.encode(offset)
       offset = encode_base64(offset, true)
 
       return rows, nil, offset
