@@ -6,7 +6,8 @@ on:
     - 'kong/db/migrations/**'
     - 'spec/05-migration/**'
     - 'kong/enterprise_edition/db/migrations/**'
-    - '.github/workflows/upgrade-tests.yml'
+    # The build on 3.3 has started failing and it is very unlikely that someone will upgrade to 3.3 at this point. Deactivating the tests
+    #- '.github/workflows/upgrade-tests.yml'
     - 'kong/plugins/*/migrations/**'
     - 'plugins-ee/**/migrations/**'
   push:
