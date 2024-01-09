@@ -6,8 +6,15 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 return {
-  "000_base_konnect_applications",
-  "001_consumer_group_addition",
-  "002_strategy_id_addition",
-  "003_application_context",
+  postgres = {
+    up = [[
+      DO $$
+        BEGIN
+          ALTER TABLE IF EXISTS ONLY "konnect_applications" ADD "application_context" jsonb;
+        EXCEPTION WHEN DUPLICATE_COLUMN THEN
+          -- Do nothing, accept existing state
+        END;
+      $$;
+    ]]
+  },
 }

@@ -312,6 +312,12 @@ function _M:create_payload(message)
     },
     upstream_status = "",
     source = "",
+    application_context = {
+      application_id = "",
+      portal_id = "",
+      organization_id = "",
+      developer_id = "",
+    },
   }
 
   payload.client_ip = message.client_ip
@@ -450,6 +456,14 @@ function _M:create_payload(message)
     payload.source = message.source
   end
 
+  local app_context = kong.ctx.shared.kaa_application_context
+  if app_context then
+    local app = payload.application_context
+    app.application_id = app_context.application_id or ""
+    app.portal_id = app_context.portal_id or ""
+    app.organization_id = app_context.organization_id or ""
+    app.developer_id = app_context.developer_id or ""
+  end
   return payload
 end
 

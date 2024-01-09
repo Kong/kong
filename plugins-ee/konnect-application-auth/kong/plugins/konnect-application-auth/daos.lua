@@ -20,6 +20,38 @@ return {
       { consumer_groups = { default = {}, type = "array", elements = { type = "string" }, }, },
       { scopes = { type = "array", elements = { type = "string", }, }, },
       { auth_strategy_id = { type = "string", required = false }, },
+      {
+        application_context = {
+          type = "record",
+          required = false,
+          fields = {
+            {
+              portal_id = {
+                type = "string",
+                required = false
+              },
+            },
+            {
+              application_id = {
+                type = "string",
+                required = false
+              },
+            },
+            {
+              developer_id = {
+                type = "string",
+                required = false
+              },
+            },
+            {
+              organization_id = {
+                type = "string",
+                required = false
+              }
+            },
+          }
+        },
+      },
       { tags = typedefs.tags },
     },
   },

@@ -115,6 +115,12 @@ local request_log = {
   started_at = 1614232668342,
   upstream_status = "200",
   source = "upstream",
+  application_context = {
+    application_id = "app_id",
+    portal_id = "p_id",
+    organization_id = "org_id",
+    developer_id = "dev_id",
+  },
 }
 
 local request_log_with_user_agent_table = {
@@ -213,6 +219,12 @@ local request_log_with_user_agent_table = {
   started_at = 1614232668342,
   upstream_status = "200",
   source = "upstream",
+  application_context = {
+    application_id = "app_id",
+    portal_id = "p_id",
+    organization_id = "org_id",
+    developer_id = "dev_id",
+  },
 }
 
 local request_log_rate_limit = {
@@ -327,6 +339,12 @@ local request_log_rate_limit = {
   started_at = 1614232668342,
   upstream_status = "200",
   source = "upstream",
+  application_context = {
+    application_id = "app_id",
+    portal_id = "p_id",
+    organization_id = "org_id",
+    developer_id = "dev_id",
+  },
 }
 
 
@@ -349,6 +367,17 @@ local function set_context(trace_bytes, request_id)
   _G.kong.log = {
     notice = function() end,
     info = function() end,
+  }
+
+  _G.kong.ctx = {
+    shared = {
+      kaa_application_context = {
+        application_id = "app_id",
+        portal_id = "p_id",
+        organization_id = "org_id",
+        developer_id = "dev_id",
+      },
+    }
   }
 
   -- make sure to reload the module
@@ -441,6 +470,12 @@ describe("extract request log properly", function()
       },
       upstream_status = "200",
       source = "upstream",
+      application_context = {
+        application_id = "app_id",
+        portal_id = "p_id",
+        organization_id = "org_id",
+        developer_id = "dev_id",
+      },
     }
     assert.are.same(expected, payload)
   end)
@@ -507,6 +542,12 @@ describe("extract request log properly", function()
       },
       upstream_status = "200",
       source = "upstream",
+      application_context = {
+        application_id = "app_id",
+        portal_id = "p_id",
+        organization_id = "org_id",
+        developer_id = "dev_id",
+      },
     }
     assert.are.same(expected, payload)
   end)
@@ -573,6 +614,12 @@ describe("extract request log properly", function()
       },
       upstream_status = "200",
       source = "upstream",
+      application_context = {
+        application_id = "app_id",
+        portal_id = "p_id",
+        organization_id = "org_id",
+        developer_id = "dev_id",
+      },
     }
     assert.are.same(expected, payload)
   end)
@@ -654,6 +701,12 @@ describe("extract request log properly", function()
       },
       upstream_status = "200",
       source = "upstream",
+      application_context = {
+        application_id = "app_id",
+        portal_id = "p_id",
+        organization_id = "org_id",
+        developer_id = "dev_id",
+      },
     }
     assert.are.same(expected, payload)
 
@@ -785,6 +838,12 @@ describe("proto buffer", function()
       tries = {},
       upstream_status = "",
       source = "",
+      application_context = {
+        application_id = "app_id",
+        portal_id = "p_id",
+        organization_id = "org_id",
+        developer_id = "dev_id",
+      },
     }
     assert.are.same(expected, decoded.data[1])
   end)
@@ -830,6 +889,12 @@ describe("proto buffer", function()
       tries = {},
       upstream_status = "",
       source = "",
+      application_context = {
+        application_id = "app_id",
+        portal_id = "p_id",
+        organization_id = "org_id",
+        developer_id = "dev_id",
+      },
     }
     assert.are.same(default, decoded)
   end)

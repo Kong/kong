@@ -1,0 +1,4 @@
+message: |
+  **Konnect Application Auth**: add application_context support
+type: feature
+scope: Plugin

@@ -216,6 +216,12 @@ for _, strategy in helpers.each_strategy() do
                 kong.response.set_header("x-consumer-groups-kaa", table.concat(names,","))
               end
               kong.response.set_header("x-test", "kaa")
+
+              local app_ctx = kong.ctx.shared.kaa_application_context
+              kong.response.set_header("x-app-id", app_ctx and app_ctx.application_id or "nil")
+              kong.response.set_header("x-dev-id", app_ctx and app_ctx.developer_id or "nil")
+              kong.response.set_header("x-org-id", app_ctx and app_ctx.organization_id or "nil")
+              kong.response.set_header("x-portal-id", app_ctx and app_ctx.portal_id or "nil")
             ]]}
           }
       }
@@ -223,7 +229,13 @@ for _, strategy in helpers.each_strategy() do
       db.konnect_applications:insert({
         client_id = sha256_hex("opendadoor"),
         scopes = { scope },
-        consumer_groups = {"imindaband1","imindaband2"}
+        consumer_groups = {"imindaband1","imindaband2"},
+        application_context = {
+          application_id = "app_id",
+          organization_id = "org_id",
+          developer_id = "dev_id",
+          portal_id = "portal_id",
+        }
       })
 
       db.konnect_applications:insert({
@@ -446,6 +458,56 @@ for _, strategy in helpers.each_strategy() do
         assert.are.same("kaa", res.headers["x-test"])
       end)
 
+    end)
+
+    describe("Key-auth application context", function()
+      it("maps the application context when found", function()
+        local res = client:get("/request?apikey=opendadoor", {
+            headers = {
+                host = "keyauthconsumergroup.konghq.test"
+            }
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.are.same("kaa", res.headers["x-test"])
+
+        -- post Function mapped headers
+        assert.are.same("app_id", res.headers["x-app-id"])
+        assert.are.same("dev_id", res.headers["x-dev-id"])
+        assert.are.same("org_id", res.headers["x-org-id"])
+        assert.are.same("portal_id", res.headers["x-portal-id"])
+
+        -- proxyied headers
+        assert.are.same("app_id", json.headers["x-application-id"])
+        assert.are.same("dev_id", json.headers["x-application-developer-id"])
+        assert.are.same("org_id", json.headers["x-application-org-id"])
+        assert.are.same("portal_id", json.headers["x-application-portal-id"])
+      end)
+      it("doesnt map the application context when not found", function()
+        local res = client:get("/request?apikey=opendadoor2", {
+            headers = {
+                host = "keyauthconsumergroup.konghq.test"
+            }
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.are.same("kaa", res.headers["x-test"])
+
+        -- post Function mapped headers
+        assert.are.same("nil", res.headers["x-app-id"])
+        assert.are.same("nil", res.headers["x-dev-id"])
+        assert.are.same("nil", res.headers["x-org-id"])
+        assert.are.same("nil", res.headers["x-portal-id"])
+
+        -- proxyied headers
+        assert.are.same(nil, json.headers["x-application-id"])
+        assert.are.same(nil, json.headers["x-application-developer-id"])
+        assert.are.same(nil, json.headers["x-application-org-id"])
+        assert.are.same(nil, json.headers["x-application-portal-id"])
+      end)
     end)
   end)
 end

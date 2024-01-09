@@ -35,9 +35,11 @@ build = {
     ["kong.plugins."..plugin_name..".schema"] = "kong/plugins/"..plugin_name.."/schema.lua",
     ["kong.plugins."..plugin_name..".daos"] = "kong/plugins/"..plugin_name.."/daos.lua",
     ["kong.plugins."..plugin_name..".oidc"] = "kong/plugins/"..plugin_name.."/oidc.lua",
+    ["kong.plugins."..plugin_name..".application_context"] = "kong/plugins/"..plugin_name.."/application_context.lua",
     ["kong.plugins."..plugin_name..".migrations"] = "kong/plugins/"..plugin_name.."/migrations/init.lua",
     ["kong.plugins."..plugin_name..".migrations.000_base_"..dao_name] = "kong/plugins/"..plugin_name.."/migrations/000_base_"..dao_name..".lua",
     ["kong.plugins."..plugin_name..".migrations.001_consumer_group_addition"] = "kong/plugins/"..plugin_name.."/migrations/001_consumer_group_addition.lua",
     ["kong.plugins."..plugin_name..".migrations.002_strategy_id_addition"] = "kong/plugins/"..plugin_name.."/migrations/002_strategy_id_addition.lua",
+    ["kong.plugins."..plugin_name..".migrations.003_application_context"] = "kong/plugins/"..plugin_name.."/migrations/003_application_context.lua",
   }
 }

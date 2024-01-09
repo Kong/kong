@@ -10,7 +10,9 @@ local oidc_plugin = require "kong.plugins.openid-connect.handler"
 local kaa_oidc = require "kong.plugins.konnect-application-auth.oidc"
 local arguments = require "kong.plugins.openid-connect.arguments"
 local sha256_hex = require "kong.tools.sha256".sha256_hex
+local set_context = require("kong.plugins.konnect-application-auth.application_context").set_context
 
+local tostring = tostring
 local ngx = ngx
 local kong = kong
 local table = table
@@ -315,6 +317,26 @@ local function v2_access_phase(plugin_conf)
   return application
 end
 
+local function apply_application_context(application)
+  local app_context = application and application.application_context
+  if app_context then
+    set_context(app_context)
+
+    if app_context.application_id then
+      kong.service.request.set_header("X-Application-ID", app_context.application_id)
+    end
+    if app_context.developer_id then
+      kong.service.request.set_header("X-Application-Developer-ID", app_context.developer_id)
+    end
+    if app_context.portal_id then
+      kong.service.request.set_header("X-Application-Portal-ID", app_context.portal_id)
+    end
+    if app_context.organization_id then
+      kong.service.request.set_header("X-Application-Org-ID", app_context.organization_id)
+    end
+  end
+end
+
 --- Access phase for "openid-connect" and "key-auth" auth_type
 ---@param plugin_conf table the KAA plugin configuration
 local function kaa_access_phase(plugin_conf)
@@ -352,6 +374,8 @@ function KonnectApplicationAuthHandler:access(plugin_conf)
   end
 
   map_consumer_groups(application)
+  apply_application_context(application)
+
 end
 
 function KonnectApplicationAuthHandler:configure(configs)

@@ -24,6 +24,7 @@ message RequestMetadata {
   string request_id = 13;
   string upstream_status = 14;
   string source = 15;
+  ApplicationContext application_context = 16;
 }
 
 message RequestInfo {
@@ -102,3 +103,9 @@ message UpstreamInfo {
   string upstream_uri = 1;
 }
 
+message ApplicationContext {
+  string application_id = 1;
+  string organization_id = 2;
+  string portal_id = 3;
+  string developer_id = 4;
+}
