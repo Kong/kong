@@ -17,6 +17,7 @@ local auth_schema = {
         type = "string",
         description = "Specify the full auth header value for 'header_name', for example 'Bearer key' or just 'key'.",
         required = false,
+        encrypted = true,  -- [[ ee declaration ]]
         referenceable = true }},
     { param_name = {
         type = "string",
@@ -27,6 +28,7 @@ local auth_schema = {
         type = "string",
         description = "Specify the full parameter value for 'param_name'.",
         required = false,
+        encrypted = true,  -- [[ ee declaration ]]
         referenceable = true }},
     { param_location = {
         type = "string",
@@ -137,6 +139,7 @@ _M.config_schema = {
                                       if_match = { one_of = { "openai", "azure", "anthropic", "cohere" } },
                                       then_at_least_one_of = { "auth.header_name", "auth.param_name" },
                                       then_err = "must set one of %s, and its respective options, when provider is not self-hosted" }},
+
     { mutually_required = { "auth.header_name", "auth.header_value" }, },
     { mutually_required = { "auth.param_name", "auth.param_value", "auth.param_location" }, },
 
