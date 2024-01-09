@@ -13,15 +13,18 @@ services:
     - "/fixture.rego"
     restart: on-failure
     stop_signal: SIGKILL
+    ports:
+      - "127.0.0.1::8181"
+      - "127.0.0.1::8282"
     networks:
       - ${NETWORK_NAME}
     volumes:
     - type: bind
-      source: ${PWD}/fixture.rego
+      source: ${PWD}/.pongo/fixture.rego
       target: /fixture.rego
     - type: bind
-      source: ${PWD}/fixture_private.key
+      source: ${PWD}/.pongo/fixture_private.key
       target: /fixture_private.key
     - type: bind
-      source: ${PWD}/fixture_public.crt
+      source: ${PWD}/.pongo/fixture_public.crt
       target: /fixture_public.crt

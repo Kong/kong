@@ -11,6 +11,9 @@ local cjson = require "cjson"
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
 local PLUGIN_NAME = "opa"
+local OPA_HOST = os.getenv("KONG_SPEC_TEST_OPA_HOST") or "opa"
+local OPA_PORT = tonumber(os.getenv("KONG_SPEC_TEST_OPA_PORT_8181")) or 8181
+local OPA_SSL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_OPA_PORT_8282")) or 8282
 
 
 for _, strategy in strategies() do
@@ -32,8 +35,8 @@ for _, strategy in strategies() do
         route = { id = route.id },
         config = {
           opa_path = "/v1/data/example/allow1",
-          opa_host = "opa",
-          opa_port = 8181,
+          opa_host = OPA_HOST,
+          opa_port = OPA_PORT,
         },
       }
 
@@ -45,8 +48,8 @@ for _, strategy in strategies() do
         route = { id = route.id },
         config = {
           opa_path = "/v1/data/example/deny1",
-          opa_host = "opa",
-          opa_port = 8181,
+          opa_host = OPA_HOST,
+          opa_port = OPA_PORT,
         },
       }
 
@@ -58,8 +61,8 @@ for _, strategy in strategies() do
         route = { id = route.id },
         config = {
           opa_path = "/v1/data/example/err1",
-          opa_host = "opa",
-          opa_port = 8181,
+          opa_host = OPA_HOST,
+          opa_port = OPA_PORT,
         },
       }
 
@@ -71,8 +74,8 @@ for _, strategy in strategies() do
         route = { id = route.id },
         config = {
           opa_path = "/v1/data/example/err1",
-          opa_host = "opa",
-          opa_port = 8181,
+          opa_host = OPA_HOST,
+          opa_port = OPA_PORT,
         },
       }
 
@@ -84,8 +87,8 @@ for _, strategy in strategies() do
         route = { id = route.id },
         config = {
           opa_path = "/v1/data/example/allow2",
-          opa_host = "opa",
-          opa_port = 8181,
+          opa_host = OPA_HOST,
+          opa_port = OPA_PORT,
         },
       }
 
@@ -97,8 +100,8 @@ for _, strategy in strategies() do
         route = { id = route.id },
         config = {
           opa_path = "/v1/data/example/deny2",
-          opa_host = "opa",
-          opa_port = 8181,
+          opa_host = OPA_HOST,
+          opa_port = OPA_PORT,
         },
       }
 
@@ -110,8 +113,8 @@ for _, strategy in strategies() do
         route = { id = route.id },
         config = {
           opa_path = "/v1/data/example/err2",
-          opa_host = "opa",
-          opa_port = 8181,
+          opa_host = OPA_HOST,
+          opa_port = OPA_PORT,
         },
       }
 
@@ -123,8 +126,8 @@ for _, strategy in strategies() do
         route = { id = route.id },
         config = {
           opa_path = "/v1/data/example/allow3",
-          opa_host = "opa",
-          opa_port = 8181,
+          opa_host = OPA_HOST,
+          opa_port = OPA_PORT,
         },
       }
 
@@ -136,8 +139,8 @@ for _, strategy in strategies() do
         route = { id = route.id },
         config = {
           opa_path = "/v1/data/example/allow4",
-          opa_host = "opa",
-          opa_port = 8181,
+          opa_host = OPA_HOST,
+          opa_port = OPA_PORT,
           include_body_in_opa_input = true,
         },
       }
@@ -150,8 +153,8 @@ for _, strategy in strategies() do
         route = { id = route.id },
         config = {
           opa_path = "/v1/data/example/allow5",
-          opa_host = "opa",
-          opa_port = 8181,
+          opa_host = OPA_HOST,
+          opa_port = OPA_PORT,
           include_parsed_json_body_in_opa_input = true,
         },
       }
@@ -164,8 +167,8 @@ for _, strategy in strategies() do
         route = { id = route.id },
         config = {
           opa_protocol = "https",
-          opa_host = "opa",
-          opa_port = 8282,
+          opa_host = OPA_HOST,
+          opa_port = OPA_SSL_PORT,
           opa_path = "/v1/data/example/allow3",
           ssl_verify = false,
         }
@@ -181,8 +184,8 @@ for _, strategy in strategies() do
         route = { id = route.id },
         config = {
           opa_path = "/v1/data/example/allow_uri_captures",
-          opa_host = "opa",
-          opa_port = 8181,
+          opa_host = OPA_HOST,
+          opa_port = OPA_PORT,
           include_uri_captures_in_opa_input = true,
         },
       }
@@ -196,8 +199,8 @@ for _, strategy in strategies() do
         config = {
           opa_path = "/v1/data/example/opa_message",
           opa_protocol = "http",
-          opa_host = "opa",
-          opa_port = 8181,
+          opa_host = OPA_HOST,
+          opa_port = OPA_PORT,
         },
       }
 
