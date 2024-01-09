@@ -404,12 +404,11 @@ local get_upstream_uri_v0  = utils.get_upstream_uri_v0
 
 local function get_upstream_uri(req_uri, match_t)
   local matched_route = match_t.route
-  local matched_path = match_t.matches.path
 
   local request_prefix = match_t.prefix
   local service_path = match_t.upstream_url_t.path
 
-  local request_postfix = request_prefix and req_uri:sub(#matched_path + 1) or req_uri:sub(2, -1)
+  local request_postfix = request_prefix and req_uri:sub(#request_prefix + 1) or req_uri:sub(2, -1)
   request_postfix = sanitize_uri_postfix(request_postfix) or ""
 
   local upstream_base = service_path or "/"
@@ -464,7 +463,6 @@ function _M:matching(params)
     service         = service,
     prefix          = request_prefix,
     matches = {
-      path = matched_path,
       uri_captures = (captures and captures[1]) and captures or nil,
     },
     upstream_url_t = {
