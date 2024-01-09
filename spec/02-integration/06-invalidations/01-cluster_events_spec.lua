@@ -319,7 +319,8 @@ for _, strategy in helpers.each_strategy() do
         assert.spy(spy_func).was_called(1) -- called
       end)
 
-      it("broadcasts an event with a polling delay for subscribers", function()
+      for i = 1, 1000 do
+      it("broadcasts an event with a polling delay for subscribers#test"..i, function()
         local delay = 1
 
         local cluster_events_1 = assert(kong_cluster_events.new {
@@ -353,6 +354,7 @@ for _, strategy in helpers.each_strategy() do
         assert(cluster_events_1:poll())
         assert.spy(spy_func).was_called(1) -- called
       end)
+    end
     end)
   end)
 end

@@ -18,7 +18,7 @@ function get_failed {
     fi
 }
 
-BUSTED_ARGS="--keep-going -o htest -v --exclude-tags=flaky,ipv6"
+BUSTED_ARGS="--no-k -t test -o htest -v --exclude-tags=flaky,ipv6"
 if [ ! -z "$FAILED_TEST_FILES_FILE" ]
 then
     BUSTED_ARGS="--helper=spec/busted-log-failed.lua $BUSTED_ARGS"
