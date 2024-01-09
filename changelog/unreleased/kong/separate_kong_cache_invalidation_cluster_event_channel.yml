@@ -1,0 +1,4 @@
+message: |
+  Every kong cache instance now uses separate cluster event channel for invalidating caches, to avoid generating useless worker events.
+type: bugfix
+scope: Core
