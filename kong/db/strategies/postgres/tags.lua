@@ -1,4 +1,3 @@
-local cjson         = require "cjson"
 local cjson_safe    = require "cjson.safe"
 
 
@@ -118,7 +117,7 @@ local function page(self, size, token, options, tag)
         last_ordinality
       }
 
-      offset = cjson.encode(offset)
+      offset = cjson_safe.encode(offset)
       offset = encode_base64(offset, true)
 
       return rows, nil, offset

@@ -180,6 +180,7 @@ build = {
     ["kong.tools.module"] = "kong/tools/module.lua",
     ["kong.tools.ip"] = "kong/tools/ip.lua",
     ["kong.tools.http"] = "kong/tools/http.lua",
+    ["kong.tools.cjson"] = "kong/tools/cjson.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.events"] = "kong/runloop/events.lua",

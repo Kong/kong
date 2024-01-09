@@ -92,6 +92,7 @@ for k in pairs(key_formats_map) do
 end
 
 local constants = {
+  CJSON_MAX_PRECISION = 16,
   BUNDLED_PLUGINS = plugin_map,
   DEPRECATED_PLUGINS = deprecated_plugin_map,
   BUNDLED_VAULTS = vault_map,
