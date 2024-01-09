@@ -1,10 +1,10 @@
 local cjson = require "cjson.safe".new()
-local constants = require "kong.constants"
+local CJSON_MAX_PRECISION = require "kong.constants".CJSON_MAX_PRECISION
 
 
 cjson.decode_array_with_array_mt(true)
-cjson.encode_sparse_array(nil, nil, 2^15)
-cjson.encode_number_precision(constants.CJSON_MAX_PRECISION)
+cjson.encode_sparse_array(nil, nil, 2^(CJSON_MAX_PRECISION - 1))
+cjson.encode_number_precision(CJSON_MAX_PRECISION)
 
 
 local _M = {}
