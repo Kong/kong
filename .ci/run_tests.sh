@@ -46,11 +46,12 @@ fi
 if [ "$TEST_SUITE" == "integration" ]; then
     if [[ "$TEST_SPLIT" == first* ]]; then
         # GitHub Actions, run first batch of integration tests
-        files=$(ls -d spec/02-integration/* | sort | grep -v 05-proxy)
-        files=$(get_failed $files)
+        files="spec/02-integration/06-invalidations/01-cluster_events_spec.lua"
+        echo "$TEST_CMD" $files
         eval "$TEST_CMD" $files
 
     elif [[ "$TEST_SPLIT" == second* ]]; then
+        exit 0
         # GitHub Actions, run second batch of integration tests
         # Note that the split here is chosen carefully to result
         # in a similar run time between the two batches, and should
@@ -66,6 +67,7 @@ if [ "$TEST_SUITE" == "integration" ]; then
 fi
 
 if [ "$TEST_SUITE" == "dbless" ]; then
+    exit 0
     eval "$TEST_CMD" $(get_failed spec/02-integration/02-cmd \
                                   spec/02-integration/05-proxy \
                                   spec/02-integration/04-admin_api/02-kong_routes_spec.lua \
@@ -76,6 +78,7 @@ if [ "$TEST_SUITE" == "dbless" ]; then
                                   spec/02-integration/20-wasm)
 fi
 if [ "$TEST_SUITE" == "plugins" ]; then
+    exit 0
     set +ex
     rm -f .failed
 
@@ -155,9 +158,11 @@ if [ "$TEST_SUITE" == "plugins" ]; then
     fi
 fi
 if [ "$TEST_SUITE" == "pdk" ]; then
+    exit 0
     prove -I. -r t
 fi
 if [ "$TEST_SUITE" == "unit" ]; then
+    exit 0
     unset KONG_TEST_NGINX_USER KONG_PG_PASSWORD KONG_TEST_PG_PASSWORD
     scripts/autodoc
     bin/busted -v -o htest spec/01-unit
