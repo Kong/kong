@@ -402,21 +402,16 @@ local add_debug_headers    = utils.add_debug_headers
 local get_upstream_uri_v0  = utils.get_upstream_uri_v0
 
 
-local function get_upstream_uri(req_uri, match_t)
+local function set_upstream_uri(req_uri, match_t)
   local matched_route = match_t.route
 
-  local request_prefix = match_t.prefix
-  local service_path = match_t.upstream_url_t.path
+  local request_prefix = match_t.prefix or "/"
+  local request_postfix = sanitize_uri_postfix(req_uri:sub(#request_prefix + 1))
 
-  local request_postfix = request_prefix and req_uri:sub(#request_prefix + 1) or req_uri:sub(2, -1)
-  request_postfix = sanitize_uri_postfix(request_postfix) or ""
+  local upstream_base = match_t.upstream_url_t.path or "/"
 
-  local upstream_base = service_path or "/"
-
-  local upstream_uri = get_upstream_uri_v0(matched_route, request_postfix, req_uri,
-                                           upstream_base)
-
-  return upstream_uri
+  match_t.upstream_uri = get_upstream_uri_v0(matched_route, request_postfix,
+                                             req_uri, upstream_base)
 end
 
 
@@ -559,7 +554,7 @@ function _M:exec(ctx)
   -- found a match
 
   -- update upstream_uri in cache result
-  match_t.upstream_uri = get_upstream_uri(req_uri, match_t)
+  set_upstream_uri(req_uri, match_t)
 
   -- debug HTTP request header logic
   add_debug_headers(var, header, match_t)
