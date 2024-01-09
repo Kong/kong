@@ -1,5 +1,10 @@
 -- imports
 local typedefs = require("kong.db.schema.typedefs")
+local fmt      = string.format
+local cjson    = require("cjson.safe")
+local re_match = ngx.re.match
+
+local ai_shared = require("kong.llm.drivers.shared")
 --
 
 local _M = {}
@@ -91,3 +96,107 @@ _M.config_schema = {
                                       then_err = "must set %s for self-hosted providers/models" }},
   },
 }
+
+function _M:ai_introspect_body(request, system_prompt, http_opts, response_regex_match)
+  -- set up the request
+  local ai_request = {
+    messages = {
+      [1] = {
+        role = "system",
+        content = system_prompt,
+      },
+      [2] = {
+        role = "user",
+        content = request,
+      }
+    }
+  }
+
+  -- convert it to the specified driver format
+  ai_request = self.driver.to_format(ai_request, self.conf.model, "llm/v1/chat")
+
+  -- run the shared logging/analytics/auth function
+  ai_shared.pre_request(self.conf, ai_request)
+
+  -- send it to the ai service
+  local ai_response, status_code, err = self.driver.subrequest(ai_request, self.conf, http_opts, false)
+  if err then
+    return nil, "failed to introspect request with AI service: " .. err
+  end
+
+  -- parse and convert the response
+  local ai_response, content_type, err = self.driver.from_format(ai_response, self.conf.model, self.conf.route_type)
+  if err then
+    return nil, "failed to convert AI response to Kong format: " .. err
+  end
+
+  -- run the shared logging/analytics function
+  ai_shared.post_request(self.conf, ai_response)
+
+  local ai_response, err = cjson.decode(ai_response)
+  if err then
+    return nil, "failed to convert AI response to JSON: " .. err
+  end
+
+  local new_request_body = ai_response.choices
+                       and #ai_response.choices > 0
+                       and ai_response.choices[1]
+                       and ai_response.choices[1].message.content
+  if not new_request_body then
+    return nil, "no response choices received from upstream AI service"
+  end
+
+  -- if specified, extract the first regex match from the AI response
+  -- this is useful for AI models that pad with assistant text, even when
+  -- we ask them NOT to.
+  if response_regex_match then
+    local matches, err = re_match(new_request_body, response_regex_match, "ijm")
+    if err then return nil, "failed regex matching ai response: " .. err end
+
+    if matches then
+      new_request_body = matches[0]  -- this array DOES start at 0, for some reason
+
+    else
+      return nil, "AI response did not match specified regular expression"
+
+    end
+  end
+
+  return new_request_body
+end
+
+function _M:parse_json_instructions(body_string)
+  local instructions, err = cjson.decode(body_string)
+  if err then return nil, err end
+
+  return 
+    instructions.headers or {},
+    instructions.body or body_string,
+    instructions.status or 200
+end
+
+function _M:new(conf, http_opts)
+  local o = o or {}
+  setmetatable(o, self)
+  self.__index = self
+
+  self.conf = conf or {}
+  self.http_opts = http_opts or {}
+
+  local driver = fmt("kong.llm.drivers.%s", conf
+                                        and conf.model
+                                        and conf.model.provider
+                                         or "NONE_SET")
+
+  self.driver = require(driver)
+
+  if not self.driver then
+    return nil, fmt("could not instantiate %s package", driver)
+  end
+
+
+
+  return o
+end
+
+return _M
