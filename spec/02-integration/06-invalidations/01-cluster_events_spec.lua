@@ -348,7 +348,7 @@ for _, strategy in helpers.each_strategy() do
         assert(cluster_events_1:poll())
         assert.spy(spy_func).was_not_called() -- still not called
 
-        ngx.sleep(delay) -- go past our desired `nbf` delay
+        ngx.sleep(delay + 0.1) -- go past our desired `nbf` delay
 
         assert(cluster_events_1:poll())
         assert.spy(spy_func).was_called(1) -- called
