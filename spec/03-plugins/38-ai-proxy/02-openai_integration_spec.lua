@@ -498,8 +498,6 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       }
       --
 
-
-
       -- start kong
       assert(helpers.start_kong({
         -- set the strategy
@@ -654,7 +652,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
         -- check this is in the 'kong' response format
         assert.is_truthy(json.error)
-        assert.equals(json.message, "cannot use own model for this instance")
+        assert.equals(json.error.message, "cannot use own model for this instance")
       end)
     end)
 
@@ -696,7 +694,8 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         
         -- check we got internal server error
         local body = assert.res_status(500 , r)
-        local json = cjson.decode(body) 
+        local json = cjson.decode(body)
+        assert.is_truthy(json.error)
         assert.equals(json.error.message, "transformation failed from type openai://llm/v1/chat: 'choices' not in llm/v1/chat response")
       end)
 
@@ -803,6 +802,104 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.is_table(json.choices)
         assert.is_table(json.choices[1])
         assert.same("\n\nI am a language model AI created by OpenAI. I can answer questions", json.choices[1].text)
+      end)
+    end)
+
+    describe("one-shot request", function()
+      it("success", function()
+        local ai_driver = require("kong.llm.drivers.openai")
+  
+        local plugin_conf = {
+          route_type = "llm/v1/chat",
+          auth = {
+            header_name = "Authorization",
+            header_value = "Bearer openai-key",
+          },
+          model = {
+            name = "gpt-3.5-turbo",
+            provider = "openai",
+            options = {
+              max_tokens = 1024,
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/chat/good"
+            },
+          },
+        }
+  
+        local request = {
+          messages = {
+            [1] = {
+              role = "system",
+              content = "Some system prompt",
+            },
+            [2] = {
+              role = "user",
+              content = "Some question",
+            }
+          }
+        }
+  
+        -- convert it to the specified driver format
+        local ai_request = ai_driver.to_format(request, plugin_conf.model, "llm/v1/chat")
+  
+        -- send it to the ai service
+        local ai_response, status_code, err = ai_driver.subrequest(ai_request, plugin_conf, {}, false)
+        assert.is_nil(err)
+        assert.equal(200, status_code)
+  
+        -- parse and convert the response
+        local ai_response, _, err = ai_driver.from_format(ai_response, plugin_conf.model, plugin_conf.route_type)
+        assert.is_nil(err)
+
+        -- check it
+        local response_table, err = cjson.decode(ai_response)
+        assert.is_nil(err)
+        assert.same(response_table.choices[1].message,
+          {
+            content = "The sum of 1 + 1 is 2.",
+            role = "assistant",
+          })
+      end)
+
+      it("404", function()
+        local ai_driver = require("kong.llm.drivers.openai")
+  
+        local plugin_conf = {
+          route_type = "llm/v1/chat",
+          auth = {
+            header_name = "Authorization",
+            header_value = "Bearer openai-key",
+          },
+          model = {
+            name = "gpt-3.5-turbo",
+            provider = "openai",
+            options = {
+              max_tokens = 1024,
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/chat/nowhere"
+            },
+          },
+        }
+  
+        local request = {
+          messages = {
+            [1] = {
+              role = "system",
+              content = "Some system prompt",
+            },
+            [2] = {
+              role = "user",
+              content = "Some question",
+            }
+          }
+        }
+  
+        -- convert it to the specified driver format
+        local ai_request = ai_driver.to_format(request, plugin_conf.model, "llm/v1/chat")
+
+        -- send it to the ai service
+        local ai_response, status_code, err = ai_driver.subrequest(ai_request, plugin_conf, {}, false)
+        assert.is_not_nil(err)
+        assert.is_not_nil(ai_response)
+        assert.equal(404, status_code)
       end)
     end)
   end)

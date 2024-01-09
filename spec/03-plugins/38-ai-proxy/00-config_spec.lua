@@ -51,9 +51,9 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
       local ok, err = validate(config)
 
-      assert.not_nil(err["@entity"])
-      assert.not_nil(err["@entity"][1])
-      assert.equal(err["@entity"][1], "must set 'config.model.options.upstream_url' for self-hosted providers/models")
+      assert.not_nil(err["config"]["@entity"])
+      assert.not_nil(err["config"]["@entity"][1])
+      assert.equal(err["config"]["@entity"][1], "must set 'model.options.upstream_url' for self-hosted providers/models")
       assert.is_falsy(ok)
     end)
 
@@ -101,9 +101,9 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
     local ok, err = validate(config)
 
-    assert.not_nil(err["@entity"])
-    assert.not_nil(err["@entity"][1])
-    assert.equal(err["@entity"][1], "must set 'config.model.options.anthropic_version' for anthropic provider")
+    assert.not_nil(err["config"]["@entity"])
+    assert.not_nil(err["config"]["@entity"][1])
+    assert.equal(err["config"]["@entity"][1], "must set 'model.options.anthropic_version' for anthropic provider")
     assert.is_falsy(ok)
   end)
 
@@ -126,9 +126,9 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
     local ok, err = validate(config)
 
-    assert.not_nil(err["@entity"])
-    assert.not_nil(err["@entity"][1])
-    assert.equal(err["@entity"][1], "must set 'config.model.options.azure_instance' for azure provider")
+    assert.not_nil(err["config"]["@entity"])
+    assert.not_nil(err["config"]["@entity"][1])
+    assert.equal(err["config"]["@entity"][1], "must set 'model.options.azure_instance' for azure provider")
     assert.is_falsy(ok)
   end)
 
@@ -137,7 +137,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
       local config = {
         route_type = "llm/v1/chat",
         model = {
-          name = "llama-2-7b-chat-hf",
+          name = "command",
           provider = v,
           options = {
             max_tokens = 256,
@@ -153,10 +153,10 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
       local ok, err = validate(config)
 
-      assert.not_nil(err["@entity"])
-      assert.not_nil(err["@entity"][1])
-      assert.equal(err["@entity"][1], "must set one of 'config.auth.header_name', 'config.auth.param_name', "
-                                   .. "and its respective options, when provider is not self-hosted")
+      assert.not_nil(err["config"]["@entity"])
+      assert.not_nil(err["config"]["@entity"][1])
+      assert.equal(err["config"]["@entity"][1], "must set one of 'auth.header_name', 'auth.param_name', "
+                                             .. "and its respective options, when provider is not self-hosted")
       assert.is_falsy(ok)
     end)
   end
@@ -177,7 +177,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
     local ok, err = validate(config)
     
-    assert.equal(err["@entity"][1], "must set one of 'config.auth.header_name', 'config.auth.param_name', "
+    assert.equal(err["config"]["@entity"][1], "must set one of 'auth.header_name', 'auth.param_name', "
                                  .. "and its respective options, when provider is not self-hosted")
     assert.is_falsy(ok)
   end)
@@ -201,7 +201,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
     local ok, err = validate(config)
     
-    assert.equals(err["@entity"][1], "all or none of these fields must be set: 'config.auth.header_name', 'config.auth.header_value'")
+    assert.equals(err["config"]["@entity"][1], "all or none of these fields must be set: 'auth.header_name', 'auth.header_value'")
     assert.is_falsy(ok)
   end)
 
@@ -248,9 +248,9 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     }
 
     local ok, err = validate(config)
-    
+
     assert.is_falsy(ok)
-    assert.equals(err["@entity"][1], "all or none of these fields must be set: 'config.auth.param_name', 'config.auth.param_value', 'config.auth.param_location'")
+    assert.equals(err["config"]["@entity"][1], "all or none of these fields must be set: 'auth.param_name', 'auth.param_value', 'auth.param_location'")
   end)
 
   it("requires all of [config.auth.param_name] and [config.auth.param_value] and [config.auth.param_location] to be set", function()

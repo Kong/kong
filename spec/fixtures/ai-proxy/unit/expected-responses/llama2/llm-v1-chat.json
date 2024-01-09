@@ -3,7 +3,7 @@
     {
       "index": 0,
       "message": {
-        "content": "\n\nYou cannot divide by zero because it is not a valid operation in mathematics.",
+        "content": "You cannot divide by zero because it is not a valid operation in mathematics.",
         "role": "assistant"
       }
     }

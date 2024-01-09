@@ -1,8 +1,8 @@
 local _M = {}
 
 -- imports
-local ai_shared = require("kong.plugins.ai-proxy.drivers.shared")
-local fmt = string.format
+local ai_shared = require("kong.llm.drivers.shared")
+local cjson = require("cjson.safe")
 local kong_utils = require("kong.tools.utils")
 local kong_meta = require "kong.meta"
 --
@@ -10,16 +10,14 @@ local kong_meta = require "kong.meta"
 _M.PRIORITY = 770
 _M.VERSION = kong_meta.version
 
-local INTERNAL_SERVER_ERROR_TEMPLATE = '{"error":{"message":"%s"}}'
-
 local function bad_request(msg)
   kong.log.warn(msg)
-  return kong.response.exit(400, { message = msg, error = true })
+  return kong.response.exit(400, { error = { message = msg } })
 end
 
 local function internal_server_error(msg)
   kong.log.err(msg)
-  return kong.response.exit(500, { message = msg, error = true })
+  return kong.response.exit(500, { error = { message = msg } })
 end
 
 function _M:header_filter(conf)
@@ -31,7 +29,7 @@ function _M:header_filter(conf)
 
     -- only act on 200 in first release - pass the unmodifed response all the way through if any failure
     if kong.response.get_status() == 200 then
-      local ai_driver = require("kong.plugins.ai-proxy.drivers." .. conf.model.provider)
+      local ai_driver = require("kong.llm.drivers." .. conf.model.provider)
       local route_type = conf.route_type
       
       local response_body = kong.service.response.get_raw_body()
@@ -45,13 +43,21 @@ function _M:header_filter(conf)
         local new_response_string, err = ai_driver.from_format(response_body, conf.model, route_type)
         if err then
           ngx.status = 500
-          kong.ctx.plugin.parsed_response = fmt(INTERNAL_SERVER_ERROR_TEMPLATE, err)
-        end
-        if new_response_string then
+          local message = {
+            error = {
+              message = err,
+            },
+          }
+
+          kong.ctx.plugin.parsed_response = cjson.encode(message)
+        
+        elseif new_response_string then
           -- preserve the same response content type; assume the from_format function
           -- has returned the body in the appropriate response output format
           kong.ctx.plugin.parsed_response = new_response_string
         end
+
+        ai_driver.post_request(conf)
       end
     end
   end
@@ -61,16 +67,19 @@ function _M:body_filter(conf)
   if not kong.ctx.shared.skip_response_transformer then
     -- all errors MUST be checked and returned in header_filter
     -- we should receive a replacement response body from the same thread
-    if kong.ctx.plugin.parsed_response then
+    
+    local original_request = kong.ctx.plugin.parsed_response or kong.response.get_raw_body()
+    local deflated_request = kong.ctx.plugin.parsed_response or kong.response.get_raw_body()
+    if deflated_request then
       local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
       if is_gzip then
-        kong.ctx.plugin.parsed_response = kong_utils.deflate_gzip(kong.ctx.plugin.parsed_response)
+        deflated_request = kong_utils.deflate_gzip(deflated_request)
       end
-      kong.response.set_raw_body(kong.ctx.plugin.parsed_response)
+      kong.response.set_raw_body(deflated_request)
     end
 
     -- call with replacement body, or original body if nothing changed
-    ai_shared.post_request(conf, kong.ctx.plugin.parsed_response or kong.response.get_raw_body())
+    ai_shared.post_request(conf, original_request)
   end
 end
 
@@ -81,7 +90,7 @@ function _M:access(conf)
   local route_type = conf.route_type
   kong.ctx.plugin.operation = route_type
 
-  local ai_driver = require("kong.plugins.ai-proxy.drivers." .. conf.model.provider)
+  local ai_driver = require("kong.llm.drivers." .. conf.model.provider)
 
   local request_table
   -- we may have received a replacement / decorated request body from another AI plugin
@@ -98,8 +107,6 @@ function _M:access(conf)
       return bad_request("content-type header does not match request body")
     end
   end
-
-  -- TODO: decision: validate directly within this plugin?
 
   -- execute pre-request hooks for this driver
   local ok, err = ai_driver.pre_request(conf, request_table)
