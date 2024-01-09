@@ -404,8 +404,6 @@ local get_upstream_uri_v0  = utils.get_upstream_uri_v0
 
 local function get_upstream_uri(matched_route, matched_path,
                                 request_prefix, req_uri, service_path)
-  --local matched_route = match_t.route
-  --local matched_path = match_t.matches.path
 
   local request_postfix = request_prefix and req_uri:sub(#matched_path + 1) or req_uri:sub(2, -1)
   request_postfix = sanitize_uri_postfix(request_postfix) or ""
@@ -466,11 +464,13 @@ function _M:matching(params)
     prefix          = request_prefix,
     matches = {
       uri_captures = (captures and captures[1]) and captures or nil,
+      path = matched_path,
     },
     upstream_url_t = {
       type = service_hostname_type,
       host = service_host,
       port = service_port,
+      path = service_path,
     },
     upstream_scheme = service_protocol,
     upstream_uri    = upstream_uri,
@@ -556,6 +556,13 @@ function _M:exec(ctx)
     if match_t.route.preserve_host then
       match_t.upstream_host = req_host
     end
+
+    -- update upstream_uri in cache result
+    --[[
+    match_t.upstream_uri = get_upstream_uri(match_t.route, match_t.matches.path,
+                                            match_t.request_prefix, req_uri,
+                                            match_t.upstream_url_t.path)
+    --]]
   end
 
   -- found a match
