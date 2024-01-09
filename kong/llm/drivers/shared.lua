@@ -150,7 +150,7 @@ function _M.http_request(url, body, method, headers, http_opts)
   local httpc = http.new()
 
   if http_opts.http_timeout then
-    httpc:set_timeout(http_opts.http_timeout)
+    httpc:set_timeouts(http_opts.http_timeout)
   end
 
   if http_opts.proxy_opts then
@@ -163,6 +163,7 @@ function _M.http_request(url, body, method, headers, http_opts)
       method = method,
       body = body,
       headers = headers,
+      ssl_verify = http_opts.ssl_verify or true,
     })
   if not res then
     return nil, "request failed: " .. err

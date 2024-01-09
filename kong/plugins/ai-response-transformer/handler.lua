@@ -147,10 +147,9 @@ local function create_http_opts(conf)
     if not http_opts.proxy_opts then http_opts.proxy_opts = {} end
     proxy_opts.https_proxy = fmt("http://%s:%d", conf.https_proxy_host, conf.https_proxy_port)
   end
-
-  if conf.http_timeout then
-    http_opts.http_timeout = conf.http_timeout
-  end
+  
+  http_opts.http_timeout = conf.http_timeout
+  http_opts.ssl_verify = conf.ssl_verify
 
   return http_opts
 end
@@ -167,78 +166,44 @@ function _M:access(conf)
     return internal_server_error(err)
   end
 
-  -- if asked, introspect the request before proxying
-  local new_request_body = kong.request.get_raw_body()
-  local err
-  if conf.transform_request then
-    kong.log.debug("introspecting request with LLM")
-    new_request_body, err = llm:ai_introspect_body(
-      new_request_body,
-      conf.request_prompt,
-      http_opts,
-      conf.request_transform_success_pattern
-    )
-
-    if err then return bad_request(err) end
-  end
-
-  -- send upstream
+  kong.log.debug("intercepting plugin flow with one-shot request")
   local httpc = http.new()
-  local res = subrequest(httpc, new_request_body, http_opts)
-  if res.headers then res.headers["content-length"] = nil end
-
-  -- if asked, introspect the response AFTER proxying (we become the webserver here)
-  if conf.transform_response then
-    kong.log.debug("introspecting response with LLM")
-    local new_response_body = res:read_body()
-    new_response_body, err = llm:ai_introspect_body(
-      new_response_body,
-      conf.response_prompt,
-      http_opts,
-      conf.response_transform_success_pattern
-    )
-
-    local headers, body, status
-    if conf.parse_response_json_instructions then
-      headers, body, status, err = llm:parse_json_instructions(new_response_body)
-      if err then return internal_server_error(
-        "failed to parse JSON response instructions from AI backend: " .. err)
-      end
-
-      for k, v in pairs(headers) do
-        res.headers[k] = v  -- override e.g. ['content-type']
-      end
-
-      headers = res.headers
-    else
-      headers = res.headers     -- headers from upstream
-      body = new_response_body  -- replacement body from AI
-      status = res.status       -- status from upstream
-    end
-
-    return kong.response.exit(status, body, headers)
-
-  else
-    -- exit
-    local callback = function()
-      send_proxied_response(res)
-
-      local ok, err = httpc:set_keepalive()
-      -- We should always exit the process with status 200 here
-      -- It means this plugin finishes its task successfully and asks nginx to exit normally
-      -- The real status code the client receives is setted in send_proxied_response
-      return ngx.exit(200)
-    end
-
-    if ngx.ctx.delay_response and not ngx.ctx.delayed_response then
-      ngx.ctx.delayed_response = {}
-      ngx.ctx.delayed_response_callback = callback
-
-      return
-    end
-
-    return callback()
+  local res, err = subrequest(httpc, kong.request.get_raw_body(), http_opts)
+  if err then
+    return internal_server_error(err)
   end
+
+  -- if asked, introspect the request before proxying
+  kong.log.debug("introspecting response with LLM")
+  local new_response_body, err = llm:ai_introspect_body(
+    res:read_body(),
+    conf.prompt,
+    http_opts,
+    conf.transformation_extract_pattern
+  )
+
+  if err then return bad_request(err) end
+
+  if res.headers then res.headers["content-length"] = nil end
+  local headers, body, status
+  if conf.parse_llm_response_json_instructions then
+    headers, body, status, err = llm:parse_json_instructions(new_response_body)
+    if err then return internal_server_error(
+      "failed to parse JSON response instructions from AI backend: " .. err)
+    end
+
+    for k, v in pairs(headers) do
+      res.headers[k] = v  -- override e.g. ['content-type']
+    end
+
+    headers = res.headers
+  else
+    headers = res.headers     -- headers from upstream
+    body = new_response_body  -- replacement body from AI
+    status = res.status       -- status from upstream
+  end
+
+  return kong.response.exit(status, body, headers)
 
 end
 
