@@ -254,6 +254,7 @@ function OICHandler.access(_, conf)
       pushed_authorization_request_endpoint = args.get_conf_arg("pushed_authorization_request_endpoint"),
       pushed_authorization_request_endpoint_auth_method = args.get_conf_arg("pushed_authorization_request_endpoint_auth_method"),
       require_pushed_authorization_requests = args.get_conf_arg("require_pushed_authorization_requests"),
+      require_proof_key_for_code_exchange = args.get_conf_arg("require_proof_key_for_code_exchange"),
     })
 
     log("initializing library")

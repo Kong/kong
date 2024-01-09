@@ -321,6 +321,7 @@ for _, strategy in helpers.all_strategies() do
             },
             upstream_refresh_token_header = "refresh_token",
             refresh_token_param_name      = "refresh_token",
+            require_proof_key_for_code_exchange = true,
           },
         }
 
@@ -455,7 +456,7 @@ for _, strategy in helpers.all_strategies() do
             auth_methods = {
               "introspection",
             },
-	    introspection_endpoint = MOCK_ISSUER_URL .. "/protocol/openid-connect/token/introspect",
+	          introspection_endpoint = MOCK_ISSUER_URL .. "/protocol/openid-connect/token/introspect",
             introspection_token_param_name = "mytoken",
           },
         }
@@ -746,6 +747,10 @@ for _, strategy in helpers.all_strategies() do
           assert.is_nil(url.args.request_uri)
           assert.is_string(url.args.redirect_uri)
           assert.not_equal("", url.args.redirect_uri)
+          assert.is_string(url.args.code_challenge)
+          assert.not_equal("", url.args.code_challenge)
+          assert.is_string(url.args.code_challenge_method)
+          assert.not_equal("", url.args.code_challenge_method)
 
           -- get authorization=...; cookie
           local auth_cookie = res.headers["Set-Cookie"]

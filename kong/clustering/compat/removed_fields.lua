@@ -230,6 +230,7 @@ return {
       "pushed_authorization_request_endpoint",
       "pushed_authorization_request_endpoint_auth_method",
       "require_pushed_authorization_requests",
+      "require_proof_key_for_code_exchange",
     },
     acl = {
       "include_consumer_groups"

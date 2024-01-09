@@ -1,0 +1,3 @@
+message: "**Openid-Connect**: add support for explicit proof key for code exchange (PKCE)."
+type: feature
+scope: Plugin

@@ -598,6 +598,13 @@ local config = {
             },
           },
           {
+            require_proof_key_for_code_exchange = {
+              description = "Forcibly enable or disable the proof key for code exchange. When not set the value is determined through the discovery using the value of `code_challenge_methods_supported`, and enabled automatically (in case the `code_challenge_methods_supported` is missing, the PKCE will not be enabled).",
+              required = false,
+              type = "boolean",
+            },
+          },
+          {
             authorization_endpoint = typedefs.url {
               description = "The authorization endpoint. If set it overrides the value in `authorization_endpoint` returned by the discovery endpoint.",
               required = false,
