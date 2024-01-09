@@ -110,6 +110,21 @@ local routes = {
       return handle_put_log_level(self, NODE_LEVEL_BROADCAST)
     end
   },
+  ["/debug/node/:node_id/node/log-level"] = {
+    GET = function(self)
+      return kong.response.exit(200, { level = LOG_LEVELS[kong.rpc:call(self.params.node_id, "kong.debug.v1.get_log_level")] })
+    end,
+  },
+  ["/debug/node/:node_id/node/log-level/:log_level"] = {
+    PUT = function(self)
+      local res, err = kong.rpc:call(self.params.node_id, "kong.debug.v1.set_log_level", LOG_LEVELS[self.params.log_level], self.params.timeout)
+      if not res then
+        return kong.response.exit(500, { message = err, })
+      end
+
+      return kong.response.exit(200, { result = res,  })
+    end,
+  },
 }
 
 

@@ -6,7 +6,11 @@ local server = require("resty.websocket.server")
 local client = require("resty.websocket.client")
 local socket = require("kong.clustering.rpc.socket")
 local future = require("kong.clustering.rpc.future")
+local utils = require("kong.clustering.rpc.utils")
 local callbacks = require("kong.clustering.rpc.callbacks")
+local queue = require("kong.clustering.rpc.queue")
+local constants = require("kong.constants")
+local table_isempty = require("table.isempty")
 
 
 local ngx_var = ngx.var
@@ -26,15 +30,17 @@ local KONG_VERSION = kong.version
 -- create a new RPC manager, node_id is own node_id
 function _M.new(conf, node_id)
   local self = {
-    clients = setmetatable({}, { __mode = "k", }),
+    -- node_id: { socket1 => true, socket2 => true, ... }
+    clients = {},
+    client_capabilities = {},
     node_id = node_id,
     conf = conf,
     callbacks = callbacks.new(),
+    incoming = queue.new(4096),
   }
 
-  callbacks:register("kong.meta.v1", function(node_id, capabilities)
-    self.clients[node_id].capabilities = capabilities
-
+  self.callbacks:register("kong.meta.v1.capability_advertisement", function(node_id, capabilities)
+    self.client_capabilities[node_id] = capabilities
 
     return self.callbacks:get_capabilities()
   end)
@@ -43,14 +49,58 @@ function _M.new(conf, node_id)
 end
 
 
-function _M:call(node_id, method, params)
-  local sock = self.clients[node_id]
-  if not sock then
-    return nil, "unknown node: " .. tostring(node_id)
+function _M:_add_socket(socket)
+  local sockets = self.clients[socket.node_id] or setmetatable({}, { __mode = "k", })
+
+  assert(not sockets[socket])
+
+  sockets[socket] = true
+
+  self.clients[socket.node_id] = sockets
+end
+
+
+function _M:_remove_socket(socket)
+  local sockets = assert(self.clients[socket.node_id])
+
+  assert(sockets[socket])
+
+  sockets[socket] = nil
+
+  if table_isempty(sockets) then
+    self.clients[socket.node_id] = nil
+    self.client_capabilities[socket.node_id] = nil
+  end
+end
+
+
+function _M:call(node_id, method, ...)
+  local cap = utils.parse_method_name(method)
+
+  if not self.client_capabilities[node_id] then
+    return nil, "node is not connected, node_id: " .. node_id
   end
 
-  local fut = sock:call(method, params)
-  return fut:wait()
+  if not self.client_capabilities[node_id][cap] then
+    return nil, "requested capability does not exist, capability: " ..
+                cap .. ", node_id: " .. node_id
+  end
+
+  local s = next(self.clients[node_id])
+
+  local fut = future.new(s, method, { ... })
+  assert(fut:start())
+
+  local ok, err = fut:wait(5)
+  if err then
+    return nil, err
+  end
+
+  if ok then
+    return fut.result
+  end
+
+  return fut.error.message
 end
 
 
@@ -83,11 +133,12 @@ function _M:handle_websocket()
     return ngx_exit(ngx.HTTP_CLOSE)
   end
 
-  local s = socket.new(wb, node_id)
-  self.clients[node_id] = s
+  local s = socket.new(self, wb, node_id)
+  self:_add_socket(s)
 
-  local res, err = s:start()
-  self.clients[node_id] = nil
+  assert(s:start())
+  local res, err = s:join()
+  self:_remove_socket(s)
 
   if not res then
     ngx_log(ngx_ERR, "[rpc] RPC connection broken: ", err, " node_id: ", node_id)
@@ -111,12 +162,12 @@ function _M:connect(premature, node_id, host, path, cert, key)
     client_priv_key = key,
     protocols = "kong.meta.v1",
     headers = {
-      ["X-Kong-Version"] = KONG_VERSION,
-      ["X-Kong-Node-Id"] = kong.node.get_id(),
+      "X-Kong-Version: " .. KONG_VERSION,
+      "X-Kong-Node-Id: " .. self.node_id,
     },
   }
 
-  if conf.cluster_mtls == "shared" then
+  if self.conf.cluster_mtls == "shared" then
     opts.server_name = "kong_clustering"
 
   else
@@ -126,37 +177,40 @@ function _M:connect(premature, node_id, host, path, cert, key)
     end
   end
 
+  local reconnection_delay = math.random(5, 10)
+
   local c = assert(client:new(WS_OPTS))
   local ok, err = c:connect(uri, opts)
   if not ok then
     goto err
   end
 
-  local s = socket.new(c, node_id)
+  do
+    local s = socket.new(self, c, node_id)
 
-  -- capability advertisement
-  local fut = future.new(s, "kong.meta.v1", self.callbacks:get_capabilities())
-  assert(fut:start())
-  assert(s:start())
+    -- capability advertisement
+    local fut = future.new(s, "kong.meta.v1.capability_advertisement", { self.callbacks:get_capabilities(), })
+    assert(fut:start())
+    assert(s:start())
 
-  ok, err = fut:wait(5)
-  if not ok then
-    s:stop()
-    goto err
+    ok, err = fut:wait(5)
+    if not ok then
+      s:stop()
+      goto err
+    end
+
+    s.capabilities = ok
+    ngx.log(ngx.ERR, "kong.meta.v1 resp: ", node_id, " cap: ", require("inspect")(ok))
+
+    self:_add_socket(s)
+
+    ok, err = s:join()
+    self:_remove_socket(s)
   end
-
-  s.capabilities = ok
-
-  self.clients[node_id] = s
-
-  ok, err = s:join()
-  self.clients[node_id] = nil
-
-  local reconnection_delay = math.random(5, 10)
 
   if not ok then
     ngx_log(ngx_ERR, "[rpc] connection to node_id: ", node_id, " broken, err: ",
-            err, ", reconnecting in " .. reconnection_delay " seconds")
+            err, ", reconnecting in ", reconnection_delay, " seconds")
   end
 
   ::err::

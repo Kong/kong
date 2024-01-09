@@ -86,11 +86,12 @@ build = {
 
     ["kong.clustering.rpc.callbacks"] = "kong/clustering/rpc/callbacks.lua",
     ["kong.clustering.rpc.future"] = "kong/clustering/rpc/future.lua",
-    ["kong.clustering.rpc.json_rpc"] = "kong/clustering/rpc/json_rpc.lua",
+    ["kong.clustering.rpc.json_rpc_v2"] = "kong/clustering/rpc/json_rpc_v2.lua",
     ["kong.clustering.rpc.manager"] = "kong/clustering/rpc/manager.lua",
     ["kong.clustering.rpc.queue"] = "kong/clustering/rpc/queue.lua",
     ["kong.clustering.rpc.socket"] = "kong/clustering/rpc/socket.lua",
     ["kong.clustering.rpc.utils"] = "kong/clustering/rpc/utils.lua",
+    ["kong.clustering.services.debug"] = "kong/clustering/services/debug.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.postgres"] = "kong/cluster_events/strategies/postgres.lua",

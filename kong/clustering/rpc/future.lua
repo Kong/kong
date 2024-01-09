@@ -43,6 +43,8 @@ function _M:start()
     end
 
     self.sema:post()
+
+    return true
   end
 
   local res, err = self.socket.outgoing:push({

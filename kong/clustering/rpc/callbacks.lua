@@ -28,16 +28,6 @@ function _M:register(method, func)
 end
 
 
-function _M:invoke(method, params)
-  local cb = self.callbacks[method]
-  if not cb then
-    return nil, "not found"
-  end
-
-  return cb(unpack(params))
-end
-
-
 function _M:get_capabilities()
   local capabilities = {}
 

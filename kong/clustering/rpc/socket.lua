@@ -11,6 +11,8 @@ local cjson = require("cjson.safe")
 local future = require("kong.clustering.rpc.future")
 local utils = require("kong.clustering.rpc.utils")
 local queue = require("kong.clustering.rpc.queue")
+local jsonrpc = require("kong.clustering.rpc.json_rpc_v2")
+local constants = require("kong.constants")
 
 
 local assert = assert
@@ -23,8 +25,6 @@ local ngx_time = ngx.time
 local ngx_log = ngx.log
 
 
-local JSONRPC_SERVER_ERROR = -32000
-local JSONRPC_UNKNOWN_METHOD = -32601
 local PING_WAIT = constants.CLUSTERING_PING_INTERVAL * 1.5
 local PONG_TYPE = "PONG"
 local ngx_WARN = ngx.WARN
@@ -34,14 +34,14 @@ local ngx_DEBUG = ngx.DEBUG
 -- create a new socket wrapper, wb is the WebSocket object to use
 -- timeout and max_payload_len must already been set by caller when
 -- creating the `wb` object
-function _M.new(wb, node_id)
+function _M.new(manager, wb, node_id)
   local self = {
     wb = wb,
     interest = {}, -- id: callback pair
     outgoing = queue.new(4096), -- write queue
-    incoming = queue.new(4096), -- new call queue
-    node_id = node_id,
+    manager = manager,
     sequence = 0,
+    node_id = node_id,
   }
 
   return setmetatable(self, _MT)
@@ -49,7 +49,7 @@ end
 
 
 function _M:get_next_id()
-  local res = sequence
+  local res = self.sequence
   self.sequence = res + 1
 
   return res
@@ -90,17 +90,74 @@ function _M:start()
         goto continue
       end
 
+      if typ == "close" then
+        return true
+      end
+
       assert(typ == "binary")
+      ngx.log(ngx.ERR, "read: ", data)
 
       local payload = cjson_decode(data)
       assert(payload.jsonrpc == "2.0")
 
       if payload.method then
         -- invoke
-        local res, err = self.incoming:push(payload)
-        if not res then
-          return nil, "unable to incoming RPC call: " .. err
+
+        local cb = self.manager.callbacks.callbacks[payload.method]
+        if not cb then
+          local res, err = self.outgoing:push({
+            jsonrpc = "2.0",
+            id = payload.id,
+            ["error"] = {
+              code = jsonrpc.METHOD_NOT_FOUND,
+              message = "Method not found",
+            }
+          })
+          if not res then
+            return nil, "unable to handle ping: " .. err
+          end
+
+          goto continue
         end
+
+        -- call dispatch
+
+        assert(ngx.timer.at(0, function(premature)
+          if premature then
+            return
+          end
+
+          local res, err = cb(self.node_id, unpack(payload.params))
+          if not res then
+            ngx_log(ngx_WARN, "[rpc] RPC callback failed: ", err)
+
+            res, err = self.outgoing:push({
+              jsonrpc = "2.0",
+              id = payload.id,
+              ["error"] = {
+                code = jsonrpc.SERVER_ERROR,
+                message = tostring(err),
+              }
+            })
+            if not res then
+              ngx_log(ngx_WARN, "[rpc] unable to push RPC call error: ", err)
+            end
+
+            return
+          end
+
+          ngx.log(ngx.ERR, "method timer: ", require("inspect")(res))
+
+          -- success
+          res, err = self.outgoing:push({
+            jsonrpc = "2.0",
+            id = payload.id,
+            result = res,
+          })
+          if not res then
+            ngx_log(ngx_WARN, "[rpc] unable to push RPC call result: ", err)
+          end
+        end))
 
       else
         -- response
@@ -124,7 +181,7 @@ function _M:start()
 
   self.write_thread = ngx.thread.spawn(function()
     while not exiting() do
-      local payload, err = self.outgoing.pop(5)
+      local payload, err = self.outgoing:pop(5)
       if err then
         return nil, err
       end
@@ -147,6 +204,7 @@ function _M:start()
           goto continue
         end
 
+        ngx.log(ngx.ERR, "write: ", cjson_encode(payload))
         local bytes, err = self.wb:send_binary(cjson_encode(payload))
         if not bytes then
           return nil, err
@@ -180,7 +238,13 @@ end
 function _M:stop()
   ngx.thread.kill(self.write_thread)
   ngx.thread.kill(self.read_thread)
-  self.wb:send_close()
+
+  if self.wb.close then
+    self.wb:close()
+
+  else
+    self.wb:send_close()
+  end
 end
 
 
