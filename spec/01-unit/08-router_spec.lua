@@ -4945,10 +4945,8 @@ do
   describe("Router (flavor = " .. flavor .. ")", function()
     reload_router(flavor)
 
-    local use_case, router
-
-    lazy_setup(function()
-      use_case = {
+    it("[cache hit should be case sensitive]", function()
+      local use_case = {
         {
           service = service,
           route   = {
@@ -4962,10 +4960,8 @@ do
           },
         },
       }
-    end)
 
-    it("[cache hit should be case sensitive]", function()
-      router = assert(new_router(use_case))
+      local router = assert(new_router(use_case))
 
       local ctx = {}
       local _ngx = mock_ngx("GET", "/foo", { test1 = "QUOTE", })
@@ -4994,6 +4990,46 @@ do
 
       -- cache miss, case sensitive
       assert.falsy(ctx.route_match_cached)
+    end)
+
+    it("[cache hit should have correct match_t.upstream_uri]", function()
+      local host = "example.com"
+      local use_case = {
+        {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+            hosts = { host },
+            preserve_host = true,
+          },
+        },
+      }
+
+      local router = assert(new_router(use_case))
+
+      local ctx = {}
+      local _ngx = mock_ngx("GET", "/foo", { host = host, })
+      router._set_ngx(_ngx)
+
+      -- first match
+      local match_t = router:exec(ctx)
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+      assert.falsy(ctx.route_match_cached)
+      assert.equal(host, match_t.upstream_host)
+      assert.same("/foo", match_t.upstream_uri)
+
+      local ctx = {}
+      local _ngx = mock_ngx("GET", "/bar", { host = host, })
+      router._set_ngx(_ngx)
+
+      -- cache hit
+      local match_t = router:exec(ctx)
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+      assert.same(ctx.route_match_cached, "pos")
+      assert.equal(host, match_t.upstream_host)
+      assert.same("/bar", match_t.upstream_uri)
     end)
   end)
 end   -- local flavor = "traditional_compatible"
