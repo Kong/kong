@@ -13,18 +13,19 @@ local spawn = ngx.thread.spawn
 local wait = ngx.thread.wait
 local kill = ngx.thread.kill
 
-local KAFKA_HOST = "broker"
-local KAFKA_PORT = 9092
+local KAFKA_HOST = os.getenv("KONG_SPEC_TEST_KAFKA_HOST") or "broker"
+local KAFKA_PORT = tonumber(os.getenv("KONG_SPEC_TEST_KAFKA_PORT_9092")) or 9092
 local BOOTSTRAP_SERVERS = { { host = KAFKA_HOST, port = KAFKA_PORT } }
 
-local KAFKA_SASL_PORT = 19093
+local KAFKA_SASL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REST_PROXY_PORT_19093")) or 19093
 local BOOTSTRAP_SASL_SERVERS = { { host = KAFKA_HOST, port = KAFKA_SASL_PORT } }
 
-local KAFKA_SSL_PORT = 29093
+local KAFKA_SSL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REST_PROXY_PORT_29093")) or 29093
 local BOOTSTRAP_SSL_SERVERS = { { host = KAFKA_HOST, port = KAFKA_SSL_PORT } }
 
-local KAFKA_SASL_SSL_PORT = 9093
+local KAFKA_SASL_SSL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REST_PROXY_PORT_9093")) or 9093
 local BOOTSTRAP_SASL_SSL_SERVERS = { { host = KAFKA_HOST, port = KAFKA_SASL_SSL_PORT } }
+
 
 -- We use kafka's command-line utilities on these specs. As a result,
 -- this timeout must be higher than the time it takes to load up the Kafka
@@ -302,10 +303,22 @@ for _, strategy in helpers.all_strategies() do
         }
       }
 
-      assert(helpers.start_kong {
+      local fixtures = {
+        dns_mock = helpers.dns_mock.new(),
+      }
+
+      if KAFKA_HOST ~= "broker" then
+        -- dns mock needed to always redirect advertised host
+        fixtures.dns_mock:A {
+          name = "broker",
+          address = KAFKA_HOST,
+        }
+      end
+
+      assert(helpers.start_kong({
         nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins = "bundled,kafka-upstream",
-      })
+      }, nil, nil, fixtures))
       proxy_client = helpers.proxy_client()
     end)
     before_each(function()

@@ -44,7 +44,9 @@ services:
     healthcheck:
       test: nc -z broker 9092
     ports:
+      # random ports are not supported as kafka advertise harded coded ports
       - "29092:29092"
+      - "29093:29093"
       - "19093:19093"
       - "9092:9092"
       - "9093:9093"
@@ -108,7 +110,7 @@ services:
   rest-proxy:
     image: confluentinc/cp-kafka-rest:${PONGO_KAFKA_VERSION:-7.2.6}
     ports:
-      - 8082:8082
+      - 127.0.0.1::8082
     hostname: rest-proxy
     healthcheck:
       test: ["CMD", "curl" ,"http://0.0.0.0:8082/topics"]

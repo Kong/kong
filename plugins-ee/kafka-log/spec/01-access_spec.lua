@@ -10,20 +10,20 @@ local http = require "resty.http"
 local cjson = require "cjson"
 local pl_path = require "pl.path"
 
-local KAFKA_HOST = "broker"
-local KAFKA_PORT = 9092
-local RESTY_PROXY_HOST = "rest-proxy"
-local RESTY_PROXY_PORT = 8082
+local KAFKA_HOST = os.getenv("KONG_SPEC_TEST_KAFKA_HOST") or "broker"
+local KAFKA_PORT = tonumber(os.getenv("KONG_SPEC_TEST_KAFKA_PORT_9092")) or 9092
+local REST_PROXY_HOST = os.getenv("KONG_SPEC_TEST_REST_PROXY_HOST") or "rest-proxy"
+local REST_PROXY_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REST_PROXY_PORT_8082")) or 8082
 
 local BOOTSTRAP_SERVERS = { { host = KAFKA_HOST, port = KAFKA_PORT } }
 
-local KAFKA_SASL_PORT = 19093
+local KAFKA_SASL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REST_PROXY_PORT_19093")) or 19093
 local BOOTSTRAP_SASL_SERVERS = { { host = KAFKA_HOST, port = KAFKA_SASL_PORT } }
 
-local KAFKA_SSL_PORT = 29093
+local KAFKA_SSL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REST_PROXY_PORT_29093")) or 29093
 local BOOTSTRAP_SSL_SERVERS = { { host = KAFKA_HOST, port = KAFKA_SSL_PORT } }
 
-local KAFKA_SASL_SSL_PORT = 9093
+local KAFKA_SASL_SSL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REST_PROXY_PORT_9093")) or 9093
 local BOOTSTRAP_SASL_SSL_SERVERS = { { host = KAFKA_HOST, port = KAFKA_SASL_SSL_PORT } }
 
 -- We use kafka's command-line utilities on these specs. As a result,
@@ -57,7 +57,7 @@ end
 ssl_helpers = ssl_helpers()
 
 local function create_consumer(group_name, name)
-  local client = helpers.http_client(RESTY_PROXY_HOST, RESTY_PROXY_PORT)
+  local client = helpers.http_client(REST_PROXY_HOST, REST_PROXY_PORT)
 
   local res = assert(client:send {
     method = "POST",
@@ -401,10 +401,22 @@ for _, strategy in helpers.all_strategies() do
         }
       }
 
-      assert(helpers.start_kong {
+      local fixtures = {
+        dns_mock = helpers.dns_mock.new(),
+      }
+
+      if KAFKA_HOST ~= "broker" then
+        -- dns mock needed to always redirect advertised host
+        fixtures.dns_mock:A {
+          name = "broker",
+          address = KAFKA_HOST,
+        }
+      end
+
+      assert(helpers.start_kong({
         nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins = "bundled,kafka-log",
-      })
+      }, nil, nil, fixtures))
       proxy_client = helpers.proxy_client()
     end)
     before_each(function()
@@ -734,6 +746,8 @@ for _, strategy in helpers.all_strategies() do
       before_each(function()
         local my_consumer = create_consumer("my_group", "my_consumer")
         base_uri = my_consumer.base_uri
+        -- replace the hardcoded host:port with actual host:port to work outside of container as well
+        base_uri = base_uri:gsub("://rest%-proxy:8082", "://" .. REST_PROXY_HOST .. ":" .. REST_PROXY_PORT)
         subscribe_topic(base_uri, "custom_log_sync_topic")
       end)
       after_each(function()
