@@ -25,19 +25,19 @@ return {
             required = false,
         }},
         { ssl_verify = {
-            description = "Verify the TLS certificate of the Kong service URL and AI upstream services.",
+            description = "Verify the TLS certificate of the AI upstream service.",
             type = "boolean",
             required = true,
             default = true,
         }},
         { http_timeout = {
-            description = "Timeout in milliseconds for the Kong service URL, and the AI upstream service.",
+            description = "Timeout in milliseconds for the AI upstream service.",
             type = "integer",
             required = true,
             default = 60000,
         }},
         { ssl_verify = {
-            description = "Verify the TLS certificate of the Kong service URL, and the AI upstream service.",
+            description = "Verify the TLS certificate of the AI upstream service.",
             type = "boolean",
             required = true,
             default = true,
