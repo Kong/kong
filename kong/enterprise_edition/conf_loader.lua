@@ -1080,11 +1080,6 @@ local function validate(conf, errors)
   end
 
   if (conf.cluster_fallback_config_import or conf.cluster_fallback_config_export) and conf.role ~= "traditional" then
-    if conf.cluster_fallback_config_import and conf.cluster_fallback_config_export then
-      errors[#errors + 1] =
-        "node cannot enable `cluster_fallback_config_import` and `cluster_fallback_config_export` simultaneously"
-    end
-
     if conf.cluster_fallback_config_import and conf.role ~= "data_plane" then
       errors[#errors + 1] = "cluster_fallback_config_import can only be enabled when role = \"data_plane\""
     end

@@ -1,0 +1,3 @@
+message: Resilience support for homogeneous Dataplane deployments. Now Dataplanes can act as importer and exporter at the same time, and Kong will try to control the concurrency when export the config.
+type: feature
+scope: Clustering

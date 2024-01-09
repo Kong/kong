@@ -37,7 +37,7 @@ dependencies = {
   "lua-resty-healthcheck == 3.0.0",
   "lua-messagepack == 0.5.4",
   "lua-resty-azure == 1.4.1",
-  "lua-resty-aws == 1.3.5",
+  "lua-resty-aws == 1.3.6",
   "lua-resty-openssl == 1.2.0",
   "lua-resty-mail == 1.0.2",
   "lua-resty-redis-connector == 0.11.0",
@@ -101,6 +101,7 @@ build = {
     ["kong.clustering.tls"] = "kong/clustering/tls.lua",
     ["kong.clustering.telemetry"] = "kong/clustering/telemetry.lua",
     ["kong.clustering.config_sync_backup"] = "kong/clustering/config_sync_backup/init.lua",
+    ["kong.clustering.config_sync_backup.election"] = "kong/clustering/config_sync_backup/election.lua",
     ["kong.clustering.config_sync_backup.strategies.s3"] = "kong/clustering/config_sync_backup/strategies/s3.lua",
     ["kong.clustering.config_sync_backup.strategies.gcs"] = "kong/clustering/config_sync_backup/strategies/gcs.lua",
 

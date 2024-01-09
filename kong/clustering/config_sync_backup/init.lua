@@ -26,6 +26,7 @@ local type = type
 local error = error
 local assert = assert
 
+local ELECTION_INTERVAL = os.getenv("DP_RESILIENCE_ELECTION_INTERVAL") or (60 * 10)
 
 local FALLBACK_CONFIG_PREFIX = "[fallback config] "
 local WAIT_TIMEOUT = 60
@@ -34,6 +35,9 @@ local EXPORT_DELAY = 60
 local declarative_config
 local storage
 local export_smph
+local export_enabled = false
+-- the semaphore to block until export_enabled is true
+local export_enabled_smph
 -- when config is exported by control plane, we directly pass the config exported by config sync
 -- to avoid exporting the config twice
 local exported_config
@@ -58,6 +62,14 @@ function _M.init(conf)
   end
 
   storage = module.new(kong_version, url)
+end
+
+
+local function set_enable_export(enable)
+  export_enabled = enable
+  if enable and export_enabled_smph and export_enabled_smph:count() <= 0 then
+    export_enabled_smph:post()
+  end
 end
 
 
@@ -109,6 +121,18 @@ local export_config_loop do
     if not storage then
       -- we should have already logged an error about this
       return
+    end
+
+    -- block until export_enabled is true
+    if not export_enabled then
+      local ok, err = export_enabled_smph:wait(WAIT_TIMEOUT)
+      if not ok and err ~= "timeout" then
+        ngx_log(ngx_ERR, FALLBACK_CONFIG_PREFIX, "failed to acquire semaphore: ", err)
+      end
+
+      if not ok then
+        return export_config_loop()
+      end
     end
 
     local ok, err = export_smph:wait(WAIT_TIMEOUT)
@@ -213,7 +237,10 @@ local function export(conf)
   EXPORT_DELAY = conf.cluster_fallback_config_export_delay or 60
 
   export_smph = semaphore_new(0)
+  export_enabled_smph = semaphore_new(0)
   export_config_loop()
+
+  storage:start_election_timer(ELECTION_INTERVAL, set_enable_export)
 
   -- initial export for control plane start up
   if conf.role == "control_plane" then
