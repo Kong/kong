@@ -402,11 +402,10 @@ local add_debug_headers    = utils.add_debug_headers
 local get_upstream_uri_v0  = utils.get_upstream_uri_v0
 
 
-local function get_upstream_uri(matched_route, matched_path, req_uri, service_path)
+local function get_upstream_uri(matched_route, matched_path,
+                                request_prefix, req_uri, service_path)
   --local matched_route = match_t.route
   --local matched_path = match_t.matches.path
-
-  local request_prefix = matched_route.strip_path and matched_path or nil
 
   local request_postfix = request_prefix and req_uri:sub(#matched_path + 1) or req_uri:sub(2, -1)
   request_postfix = sanitize_uri_postfix(request_postfix) or ""
@@ -456,8 +455,10 @@ function _M:matching(params)
         service_host, service_port,
         service_hostname_type, service_path = get_service_info(service)
 
-  local upstream_uri = get_upstream_uri(matched_route, matched_path, req_uri,
-                                        service_path)
+  local request_prefix = matched_route.strip_path and matched_path or nil
+
+  local upstream_uri = get_upstream_uri(matched_route, matched_path,
+                                        request_prefix, req_uri, service_path)
 
   return {
     route           = matched_route,
@@ -465,7 +466,6 @@ function _M:matching(params)
     prefix          = request_prefix,
     matches = {
       uri_captures = (captures and captures[1]) and captures or nil,
-      path = matched_path,
     },
     upstream_url_t = {
       type = service_hostname_type,
