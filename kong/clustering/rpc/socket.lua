@@ -95,7 +95,6 @@ function _M:start()
       end
 
       assert(typ == "binary")
-      ngx.log(ngx.ERR, "read: ", data)
 
       local payload = cjson_decode(data)
       assert(payload.jsonrpc == "2.0")
@@ -145,8 +144,6 @@ function _M:start()
 
             return
           end
-
-          ngx.log(ngx.ERR, "method timer: ", require("inspect")(res))
 
           -- success
           res, err = self.outgoing:push({
@@ -204,7 +201,6 @@ function _M:start()
           goto continue
         end
 
-        ngx.log(ngx.ERR, "write: ", cjson_encode(payload))
         local bytes, err = self.wb:send_binary(cjson_encode(payload))
         if not bytes then
           return nil, err

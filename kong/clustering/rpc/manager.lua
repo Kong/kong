@@ -200,7 +200,6 @@ function _M:connect(premature, node_id, host, path, cert, key)
     end
 
     s.capabilities = ok
-    ngx.log(ngx.ERR, "kong.meta.v1 resp: ", node_id, " cap: ", require("inspect")(ok))
 
     self:_add_socket(s)
 
