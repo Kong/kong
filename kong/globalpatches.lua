@@ -5,8 +5,9 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local ran_before
+local constants = require "kong.constants"
 
+local ran_before
 
 
 return function(options)
@@ -27,15 +28,16 @@ return function(options)
   local meta = require "kong.meta"
 
 
-  local cjson = require("cjson.safe")
-  cjson.encode_sparse_array(nil, nil, 2^15)
+  local cjson_safe = require("cjson.safe")
+  cjson_safe.encode_sparse_array(nil, nil, 2^15)
+  cjson_safe.encode_number_precision(constants.CJSON_MAX_PRECISION)
 
   local pb = require "pb"
 
   -- let pb decode arrays to table cjson.empty_array_mt metatable
   -- so empty arrays are encoded as `[]` instead of `nil` or `{}` by cjson.
   pb.option("decode_default_array")
-  pb.defaults("*array", cjson.empty_array_mt)
+  pb.defaults("*array", cjson_safe.empty_array_mt)
 
   if options.cli then
     -- disable the _G write guard alert log introduced in OpenResty 1.15.8.1

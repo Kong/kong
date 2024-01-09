@@ -131,6 +131,7 @@ for k in pairs(key_formats_map) do
 end
 
 local constants = {
+  CJSON_MAX_PRECISION = 16,
   BUNDLED_PLUGINS = plugin_map,
   EE_PLUGINS = dist_constants.plugins,
   EE_PLUGINS_MAP = ee_plugin_map,

@@ -292,6 +292,7 @@ build = {
     ["kong.tools.module"] = "kong/tools/module.lua",
     ["kong.tools.ip"] = "kong/tools/ip.lua",
     ["kong.tools.http"] = "kong/tools/http.lua",
+    ["kong.tools.cjson"] = "kong/tools/cjson.lua",
     ["kong.tools.ssl"] = "kong/tools/ssl.lua",
 
     ["kong.tools.channel"] = "kong/tools/channel.lua",
