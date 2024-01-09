@@ -402,8 +402,12 @@ local add_debug_headers    = utils.add_debug_headers
 local get_upstream_uri_v0  = utils.get_upstream_uri_v0
 
 
-local function get_upstream_uri(matched_route, matched_path,
-                                request_prefix, req_uri, service_path)
+local function get_upstream_uri(req_uri, match_t)
+  local matched_route = match_t.route
+  local matched_path = match_t.matches.path
+
+  local request_prefix = match_t.prefix
+  local service_path = match_t.upstream_url_t.path
 
   local request_postfix = request_prefix and req_uri:sub(#matched_path + 1) or req_uri:sub(2, -1)
   request_postfix = sanitize_uri_postfix(request_postfix) or ""
@@ -455,16 +459,13 @@ function _M:matching(params)
 
   local request_prefix = matched_route.strip_path and matched_path or nil
 
-  local upstream_uri = get_upstream_uri(matched_route, matched_path,
-                                        request_prefix, req_uri, service_path)
-
   return {
     route           = matched_route,
     service         = service,
     prefix          = request_prefix,
     matches = {
-      uri_captures = (captures and captures[1]) and captures or nil,
       path = matched_path,
+      uri_captures = (captures and captures[1]) and captures or nil,
     },
     upstream_url_t = {
       type = service_hostname_type,
@@ -473,7 +474,6 @@ function _M:matching(params)
       path = service_path,
     },
     upstream_scheme = service_protocol,
-    upstream_uri    = upstream_uri,
     upstream_host   = matched_route.preserve_host and req_host or nil,
   }
 end
@@ -556,16 +556,12 @@ function _M:exec(ctx)
     if match_t.route.preserve_host then
       match_t.upstream_host = req_host
     end
-
-    -- update upstream_uri in cache result
-    --[[
-    match_t.upstream_uri = get_upstream_uri(match_t.route, match_t.matches.path,
-                                            match_t.request_prefix, req_uri,
-                                            match_t.upstream_url_t.path)
-    --]]
   end
 
   -- found a match
+
+  -- update upstream_uri in cache result
+  match_t.upstream_uri = get_upstream_uri(req_uri, match_t)
 
   -- debug HTTP request header logic
   add_debug_headers(var, header, match_t)
