@@ -2,10 +2,10 @@ version: '3.5'
 
 services:
   ocspserver:
-    build: $PWD/spec/fixtures/ocsp-responder-docker
-    # image: alpine:3.11
+    hostname: ocspserver
+    build: ${PONGO_WD}/spec/fixtures/ocsp-responder-docker
     volumes:
-      - $PWD/spec/fixtures/ocsp-responder-docker/certificates:/data
+      - ${PONGO_WD}/spec/fixtures/ocsp-responder-docker/certificates:/data
     restart: on-failure
     stop_signal: SIGKILL
     networks:

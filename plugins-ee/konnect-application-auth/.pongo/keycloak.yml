@@ -14,10 +14,10 @@ services:
         --https-certificate-key-file=/tmp/server.key
         --import-realm
     volumes:
-      - $PWD/../openid-connect/.pongo/demo.json:/opt/keycloak/data/import/demo.json
-      - $PWD/../openid-connect/.pongo/truststore.jks:/tmp/truststore.jks
-      - $PWD/../openid-connect/.pongo/server.crt:/tmp/server.crt
-      - $PWD/../openid-connect/.pongo/server.key:/tmp/server.key
+      - ${PONGO_WD}/../openid-connect/.pongo/demo.json:/opt/keycloak/data/import/demo.json
+      - ${PONGO_WD}/../openid-connect/.pongo/truststore.jks:/tmp/truststore.jks
+      - ${PONGO_WD}/../openid-connect/.pongo/server.crt:/tmp/server.crt
+      - ${PONGO_WD}/../openid-connect/.pongo/server.key:/tmp/server.key
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: test

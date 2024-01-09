@@ -5,11 +5,11 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local swagger_parser = require "kong.enterprise_edition.openapi.plugins.swagger-parser.parser"
 local validation_utils = require "kong.plugins.oas-validation.utils.validation"
 local utils = require "kong.plugins.oas-validation.utils"
-local fixture_path  = require "spec.fixtures.fixture_path"
 
 
 describe("validation utils spec", function ()
@@ -433,7 +433,7 @@ describe("validation utils spec", function ()
   end)
 
   it("can fetch request body content schema", function ()
-    local spec_str = fixture_path.read_fixture("petstore-simple.json")
+    local spec_str = assert(io.open(helpers.get_fixtures_path() .. "/resources/petstore-simple.json"):read("*a"))
     local spec, err = swagger_parser.parse(spec_str)
     assert.truthy(spec)
     assert.is_nil(err)
@@ -448,7 +448,7 @@ describe("validation utils spec", function ()
   end)
 
   it("can fetch response body content schema", function ()
-    local spec_str = fixture_path.read_fixture("petstore-simple.json")
+    local spec_str = assert(io.open(helpers.get_fixtures_path() .. "/resources/petstore-simple.json"):read("*a"))
     local spec, err = swagger_parser.parse(spec_str)
     assert.truthy(spec)
     assert.is_nil(err)

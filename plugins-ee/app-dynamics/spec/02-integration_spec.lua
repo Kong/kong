@@ -113,7 +113,7 @@ for _, strategy in helpers.all_strategies() do
         -- write & load declarative config, only if 'strategy=off'
         declarative_config = declarative_config,
         -- Set package path to make Kong load the mocked AppDynamics SDK FFI module
-        lua_package_path = '/kong-plugin/spec/fixtures/?.lua',
+        lua_package_path = helpers.get_fixtures_path() .. '/?.lua',
         appd_mock_trace_filename = MOCK_TRACE_FILENAME,
         -- AppDynamics SDK parameters
 

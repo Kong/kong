@@ -7,21 +7,11 @@
 
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local pl_path = require "pl.path"
 local escape_uri = ngx.escape_uri
 
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
-local fixture_path do
-  -- this code will get debug info and from that determine the file
-  -- location, so fixtures can be found based of this path
-  local info = debug.getinfo(function() end)
-  fixture_path = info.source
-  if fixture_path:sub(1,1) == "@" then
-    fixture_path = fixture_path:sub(2, -1)
-  end
-  fixture_path = pl_path.splitpath(fixture_path) .. "/fixtures/"
-end
+local fixture_path = helpers.get_fixtures_path()
 
 
 local function read_fixture(filename)
@@ -37,8 +27,8 @@ local tls_fixtures = { http_mock = {
         listen 10121;
 
         location = /good_client {
-            proxy_ssl_certificate /kong-plugin/spec/fixtures/good_tls_client.crt;
-            proxy_ssl_certificate_key /kong-plugin/spec/fixtures/good_tls_client.key;
+            proxy_ssl_certificate ]] .. fixture_path .. [[/good_tls_client.crt;
+            proxy_ssl_certificate_key ]] .. fixture_path .. [[/good_tls_client.key;
             proxy_ssl_name tls.test;
             # enable send the SNI sent to server
             proxy_ssl_server_name on;
@@ -48,8 +38,8 @@ local tls_fixtures = { http_mock = {
         }
 
         location = /bad_client {
-            proxy_ssl_certificate /kong-plugin/spec/fixtures/bad_tls_client.crt;
-            proxy_ssl_certificate_key /kong-plugin/spec/fixtures/bad_tls_client.key;
+            proxy_ssl_certificate ]] .. fixture_path .. [[/bad_tls_client.crt;
+            proxy_ssl_certificate_key ]] .. fixture_path .. [[/bad_tls_client.key;
             proxy_ssl_name tls.test;
             proxy_set_header Host tls.test;
 
@@ -57,8 +47,8 @@ local tls_fixtures = { http_mock = {
         }
 
         location = /mtls-auth-good_client {
-          proxy_ssl_certificate /kong-plugin/spec/fixtures/client_example.com.crt;
-          proxy_ssl_certificate_key /kong-plugin/spec/fixtures/client_example.com.key;
+          proxy_ssl_certificate ]] .. fixture_path .. [[/client_example.com.crt;
+          proxy_ssl_certificate_key ]] .. fixture_path .. [[/client_example.com.key;
           proxy_ssl_name example.com;
           # enable send the SNI sent to server
           proxy_ssl_server_name on;
@@ -68,8 +58,8 @@ local tls_fixtures = { http_mock = {
       }
 
         location = /another {
-          proxy_ssl_certificate /kong-plugin/spec/fixtures/good_tls_client.crt;
-          proxy_ssl_certificate_key /kong-plugin/spec/fixtures/good_tls_client.key;
+          proxy_ssl_certificate ]] .. fixture_path .. [[/good_tls_client.crt;
+          proxy_ssl_certificate_key ]] .. fixture_path .. [[/good_tls_client.key;
           proxy_ssl_name tls.test;
           proxy_set_header Host tls.test;
 

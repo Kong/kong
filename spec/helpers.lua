@@ -4033,6 +4033,20 @@ local function tmpdir()
   return path:sub(1, #path - 1)
 end
 
+--- Gets the path to the fixtures directory calculating from the calling script.
+--- Useful for plugins-ee tests where `spec/fixtures` is not bundled for each plugin.
+-- @function get_fixtures_path
+-- @return string path to the fixtures directory
+local function get_fixtures_path()
+  local str = debug.getinfo(2, "S").source:sub(2)
+  local path = str:match("(.*/)") .. "fixtures/"
+  if path:sub(1, 1) ~= "/" then -- relative path
+    return lfs.currentdir() .. "/" .. path
+  end
+
+  return path
+end
+
 
 --- Generate asymmetric keys
 -- @function generate_keys
@@ -4233,6 +4247,7 @@ end
   tmpdir = tmpdir,
   https_server = https_server,
   stress_generator = stress_generator,
+  get_fixtures_path = get_fixtures_path,
 
   -- miscellaneous
   intercept = intercept,

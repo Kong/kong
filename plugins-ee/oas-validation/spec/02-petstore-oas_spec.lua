@@ -7,7 +7,6 @@
 
 local helpers   = require "spec.helpers"
 local cjson     = require("cjson.safe").new()
-local fixture_path  = require("spec.fixtures.fixture_path")
 
 local PLUGIN_NAME = "oas-validation"
 
@@ -20,7 +19,7 @@ local fixtures = {
 
           location ~ "/findByStatus-request-good" {
             content_by_lua_block {
-              local body = require("pl.file").read(ngx.config.prefix() .. "/../spec/fixtures/petstore-findByStatus-response.json")
+              local body = require("pl.file").read("]] .. helpers.get_fixtures_path() .. [[/petstore-findByStatus-response.json")
               ngx.status = 200
               ngx.header["Content-Type"] = "application/json"
               ngx.header["Content-Length"] = #body
@@ -30,7 +29,7 @@ local fixtures = {
 
           location ~ "/pet" {
             content_by_lua_block {
-              local body = require("pl.file").read(ngx.config.prefix() .. "/../spec/fixtures/petstore-pet-response.json")
+              local body = require("pl.file").read("]] .. helpers.get_fixtures_path() .. [[/petstore-pet-response.json")
               ngx.status = 200
               ngx.header["Content-Type"] = "application/json"
               ngx.header["Content-Length"] = #body
@@ -40,7 +39,7 @@ local fixtures = {
 
           location ~ "/store/order-good" {
             content_by_lua_block {
-              local body = require("pl.file").read(ngx.config.prefix() .. "/../spec/fixtures/petstore-store-order-response.json")
+              local body = require("pl.file").read("]] .. helpers.get_fixtures_path() .. [[/petstore-store-order-response.json")
               ngx.status = 200
               ngx.header["Content-Type"] = "application/json"
               ngx.header["Content-Length"] = #body
@@ -50,7 +49,7 @@ local fixtures = {
 
           location ~ "/store/order-bad" {
             content_by_lua_block {
-              local body = require("pl.file").read(ngx.config.prefix() .. "/../spec/fixtures/petstore-store-order-invalid-response.json")
+              local body = require("pl.file").read("]] .. helpers.get_fixtures_path() .. [[/petstore-store-order-invalid-response.json")
               ngx.status = 200
               ngx.header["Content-Type"] = "application/json"
               ngx.header["Content-Length"] = #body
@@ -137,7 +136,7 @@ for _, strategy in helpers.each_strategy() do
         service = { id = service1.id },
         route = { id = route1.id },
         config = {
-          api_spec = fixture_path.read_fixture("petstore-oas.json"),
+          api_spec = assert(io.open(helpers.get_fixtures_path() .. "/resources/petstore-oas.json"):read("*a")),
           validate_response_body = true,
           verbose_response = true
         },
@@ -148,7 +147,7 @@ for _, strategy in helpers.each_strategy() do
         service = { id = service2.id },
         route = { id = route2.id },
         config = {
-          api_spec = fixture_path.read_fixture("petstore-oas.json"),
+          api_spec = assert(io.open(helpers.get_fixtures_path() .. "/resources/petstore-oas.json"):read("*a")),
           validate_response_body = true,
           verbose_response = true
         },
@@ -159,7 +158,7 @@ for _, strategy in helpers.each_strategy() do
         service = { id = service3.id },
         route = { id = route3.id },
         config = {
-          api_spec = fixture_path.read_fixture("petstore-oas.json"),
+          api_spec = assert(io.open(helpers.get_fixtures_path() .. "/resources/petstore-oas.json"):read("*a")),
           validate_response_body = true,
           validate_request_header_params = true,
           validate_request_query_params = true,
@@ -175,7 +174,7 @@ for _, strategy in helpers.each_strategy() do
         service = { id = service4.id },
         route = { id = route4.id },
         config = {
-          api_spec = fixture_path.read_fixture("petstore-oas.json"),
+          api_spec = assert(io.open(helpers.get_fixtures_path() .. "/resources/petstore-oas.json"):read("*a")),
           validate_response_body = true,
           verbose_response = true
         },
@@ -186,7 +185,7 @@ for _, strategy in helpers.each_strategy() do
         service = { id = service5.id },
         route = { id = route5.id },
         config = {
-          api_spec = fixture_path.read_fixture("petstore-oas.json"),
+          api_spec = assert(io.open(helpers.get_fixtures_path() .. "/resources/petstore-oas.json"):read("*a")),
           validate_response_body = true,
           verbose_response = true,
           validate_request_body = false

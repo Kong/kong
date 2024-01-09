@@ -4,8 +4,8 @@ services:
   squidcustom:
     image: ${SQUID_IMAGE:-ubuntu/squid:5.2-22.04_beta}
     volumes:
-      - $PWD/spec/fixtures/squidcustom/squid.conf:/etc/squid/squid.conf
-      - $PWD/spec/fixtures/squidcustom/passwords:/etc/squid/passwords
+      - ${PONGO_WD}/spec/fixtures/squidcustom/squid.conf:/etc/squid/squid.conf
+      - ${PONGO_WD}/spec/fixtures/squidcustom/passwords:/etc/squid/passwords
     healthcheck:
       interval: 5s
       retries: 10

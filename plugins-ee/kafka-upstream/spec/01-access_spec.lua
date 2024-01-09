@@ -7,7 +7,7 @@
 
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local ssl_helpers = require "spec.cert_helpers"
+local pl_path = require "pl.path"
 
 local spawn = ngx.thread.spawn
 local wait = ngx.thread.wait
@@ -33,6 +33,28 @@ local BOOTSTRAP_SASL_SSL_SERVERS = { { host = KAFKA_HOST, port = KAFKA_SASL_SSL_
 local FLUSH_TIMEOUT_MS = 8000 -- milliseconds
 
 local FLUSH_BATCH_SIZE = 3
+
+local function ssl_helpers()
+  local fpath = require("spec.helpers").get_fixtures_path()
+  -- two levels up
+  local plugin_dir = pl_path.dirname(pl_path.dirname(pl_path.normpath(fpath)))
+
+  -- Load certificate
+  local f = assert(io.open(plugin_dir .. "/.pongo/kafka/keystore/certchain.crt"))
+  local cert_data = f:read("*a")
+  f:close()
+
+  -- Load private key
+  local f = assert(io.open(plugin_dir .. "/.pongo/kafka/keystore/privkey.key"))
+  local key_data = f:read("*a")
+  f:close()
+
+  return {
+    cert = cert_data,
+    key = key_data
+  }
+end
+ssl_helpers = ssl_helpers()
 
 for _, strategy in helpers.all_strategies() do
   describe("Plugin: kafka-upstream (access) [#" .. strategy .. "]", function()

@@ -22,6 +22,8 @@ local function log_match(fname, str)
   end
 end
 
+local fixtures_path = helpers.get_fixtures_path()
+
 local fixtures = {
   dns_mock = helpers.dns_mock.new(),
   stream_mock = {
@@ -44,9 +46,9 @@ local fixtures = {
           server_name example.com;
           listen 16798 ssl;
 
-          ssl_certificate        /kong/spec/fixtures/mtls_certs/example.com.crt;
-          ssl_certificate_key    /kong/spec/fixtures/mtls_certs/example.com.key;
-          ssl_client_certificate /kong/spec/fixtures/mtls_certs/ca.crt;
+          ssl_certificate        ]] .. fixtures_path .. [[/mtls_certs/example.com.crt;
+          ssl_certificate_key    ]] .. fixtures_path .. [[/mtls_certs/example.com.key;
+          ssl_client_certificate ]] .. fixtures_path .. [[/mtls_certs/ca.crt;
           ssl_verify_client      on;
           ssl_session_tickets    off;
           ssl_session_cache      off;

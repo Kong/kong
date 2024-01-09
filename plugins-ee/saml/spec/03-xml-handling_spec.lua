@@ -14,6 +14,8 @@ local xmlschema  = require "kong.plugins.saml.utils.xmlschema"
 local timestamp  = require "kong.plugins.saml.utils.timestamp"
 local saml       = require "kong.plugins.saml.saml"
 
+local helpers    = require "spec.helpers"
+
 
 local PLUGIN_NAME = "saml"
 
@@ -99,7 +101,7 @@ end
 
 
 local function make_fixture_xml_path(name)
-  return "/kong-plugin/spec/fixtures/saml/" .. name .. ".xml"
+  return helpers.get_fixtures_path() .. "/saml/" .. name .. ".xml"
 end
 
 

@@ -6,7 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
-local fixture_path = require("spec.fixtures.fixture_path")
 local cjson = require "cjson"
 
 local PLUGIN_NAME = "oas-validation"
@@ -57,7 +56,7 @@ for _, strategy in helpers.each_strategy() do
         name = PLUGIN_NAME,
         route = { id = route1.id },
         config = {
-          api_spec = fixture_path.read_fixture("reference-swagger.yaml"),
+          api_spec = assert(io.open(helpers.get_fixtures_path() .. "/resources/reference-swagger.yaml"):read("*a")),
           validate_response_body = true,
           validate_request_header_params = true,
           validate_request_query_params = true,
@@ -76,7 +75,7 @@ for _, strategy in helpers.each_strategy() do
         name = PLUGIN_NAME,
         route = { id = route2.id },
         config = {
-          api_spec = fixture_path.read_fixture("reference-oas.yaml"),
+          api_spec = assert(io.open(helpers.get_fixtures_path() .. "/resources/reference-oas.yaml"):read("*a")),
           validate_response_body = true,
           validate_request_header_params = true,
           validate_request_query_params = true,

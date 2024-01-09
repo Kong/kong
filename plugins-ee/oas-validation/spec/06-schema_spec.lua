@@ -9,7 +9,7 @@ local plugin_name = "oas-validation"
 
 local validation_schema = require "kong.plugins.oas-validation.schema"
 local v = require("spec.helpers").validate_plugin_config_schema
-local fixture_path = require("spec.fixtures.fixture_path")
+local helpers = require "spec.helpers"
 
 describe("Plugin: " .. plugin_name .. "(schema)", function()
 
@@ -22,7 +22,7 @@ describe("Plugin: " .. plugin_name .. "(schema)", function()
 
     it("accepts a valid json api_spec", function()
         local ok, err = v({
-            api_spec = fixture_path.read_fixture("petstore-swagger.json"),
+            api_spec = assert(io.open(helpers.get_fixtures_path() .. "/resources/petstore-swagger.json"):read("*a")),
         }, validation_schema)
         assert.is_truthy(ok)
         assert.is_nil(err)
@@ -30,7 +30,7 @@ describe("Plugin: " .. plugin_name .. "(schema)", function()
 
     it("accepts a valid yaml api_spec", function()
         local ok, err = v({
-            api_spec = fixture_path.read_fixture("xero-finance-oas.yaml"),
+            api_spec = assert(io.open(helpers.get_fixtures_path() .. "/resources/xero-finance-oas.yaml"):read("*a")),
         }, validation_schema)
         assert.is_truthy(ok)
         assert.is_nil(err)

@@ -17,8 +17,8 @@ local tls_fixtures = { http_mock = {
 
         location = /example_client {
             # Combined cert, contains client first and intermediate second
-            proxy_ssl_certificate ../spec/fixtures/client_example.com.crt;
-            proxy_ssl_certificate_key ../spec/fixtures/client_example.com.key;
+            proxy_ssl_certificate ]] .. helpers.get_fixtures_path() .. [[/client_example.com.crt;
+            proxy_ssl_certificate_key ]] .. helpers.get_fixtures_path() .. [[/client_example.com.key;
             proxy_ssl_name example.com;
             # enable send the SNI sent to server
             proxy_ssl_server_name on;
@@ -28,8 +28,8 @@ local tls_fixtures = { http_mock = {
         }
 
         location = /bad_client {
-            proxy_ssl_certificate ../spec/fixtures/bad_client.crt;
-            proxy_ssl_certificate_key ../spec/fixtures/bad_client.key;
+            proxy_ssl_certificate ]] .. helpers.get_fixtures_path() .. [[/bad_client.crt;
+            proxy_ssl_certificate_key ]] .. helpers.get_fixtures_path() .. [[/bad_client.key;
             proxy_ssl_name example.com;
             proxy_set_header Host example.com;
 

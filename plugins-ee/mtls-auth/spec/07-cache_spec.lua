@@ -13,8 +13,8 @@ local http_mock = require "spec.helpers.http_mock"
 
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
-local CA1 = pl_file.read("/kong-plugin/spec/fixtures/ca1.crt")
-local CA2 = pl_file.read("/kong-plugin/spec/fixtures/ca2.crt")
+local CA1 = pl_file.read(helpers.get_fixtures_path() .. "/ca1.crt")
+local CA2 = pl_file.read(helpers.get_fixtures_path() .. "/ca2.crt")
 local Other_CA = pl_file.read("./spec/fixtures/mtls_certs/ca.crt")
 
 local HTTP_SERVER_PORT = helpers.get_available_port()
@@ -90,8 +90,8 @@ for _, strategy in strategies() do
       })
 
       local format = [[
-      proxy_ssl_certificate /kong-plugin/spec/fixtures/%s.crt;
-      proxy_ssl_certificate_key /kong-plugin/spec/fixtures/%s.key;
+      proxy_ssl_certificate ]] .. helpers.get_fixtures_path() .. [[/%s.crt;
+      proxy_ssl_certificate_key ]] .. helpers.get_fixtures_path() .. [[/%s.key;
       proxy_ssl_name example.com;
       proxy_ssl_server_name on;
       proxy_set_header Host example.com;

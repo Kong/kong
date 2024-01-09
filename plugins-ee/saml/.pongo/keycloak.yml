@@ -7,7 +7,7 @@ services:
       - start-dev
       - --import-realm
     volumes:
-      - $PWD/.pongo/demo-realm.json:/opt/keycloak/data/import/demo-realm.json
+      - ${PONGO_WD}/.pongo/demo-realm.json:/opt/keycloak/data/import/demo-realm.json
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: test

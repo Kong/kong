@@ -38,7 +38,9 @@ local PASSWORD_CREDENTIALS = "Basic " .. ngx.encode_base64(USERNAME .. ":" .. PA
 
 
 -- Certificates:
-local CERT_ROOT_FOLDER = "/kong-plugin/.pongo/"
+local current_file = debug.getinfo(1, "S").source:sub(2)
+local plugin_dir = current_file:match("(.*/)") .. "../../"
+local CERT_ROOT_FOLDER = plugin_dir .. "/.pongo/"
 
 local ROOT_CA_CERT = fixtures_certificates.ROOT_CA_CERT
 local INTERMEDIATE_CA_CERT = fixtures_certificates.INTERMEDIATE_CA_CERT

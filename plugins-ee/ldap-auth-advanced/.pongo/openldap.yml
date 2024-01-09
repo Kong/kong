@@ -6,6 +6,6 @@ services:
     networks:
       - ${NETWORK_NAME}
     volumes:
-      - $PWD/.pongo/openldap:/setup
+      - ${PONGO_WD}/.pongo/openldap:/setup
     command: /setup/run.sh
 

@@ -9,15 +9,22 @@ local cost = require "kong.plugins.graphql-rate-limiting-advanced.cost"
 local build_ast = require "kong.gql.query.build_ast"
 local cjson = require "cjson.safe"
 local Schema = require "kong.gql.schema"
+local helpers = require "spec.helpers"
 
 describe("Function cost(query_ast, default): ", function ()
     local schema
+    local old_package_path = package.path
     setup(function ()
         -- See file for full type definitions
-        local raw_body = require "spec.fixtures.schema-json-01"
+        package.path = helpers.get_fixtures_path() .. "/?.lua;" .. old_package_path
+        local raw_body = require "schema-json-01"
         local json_data = cjson.decode(raw_body)
 
         schema = Schema.deserialize_json_data(json_data)
+    end)
+
+    teardown(function ()
+        package.path = old_package_path
     end)
 
     describe("for multi-level nested query, it", function ()
@@ -80,11 +87,17 @@ end)
 
 describe("Function cost(query_ast, node_quantifier): ", function ()
     local schema
+    local old_package_path = package.path
     setup(function ()
         -- See file for full type definitions
-        local raw_body = require "spec.fixtures.schema-json-02"
+        package.path = helpers.get_fixtures_path() .. "/?.lua;" .. old_package_path
+        local raw_body = require "schema-json-02"
         local json_data = cjson.decode(raw_body)
         schema = Schema.deserialize_json_data(json_data)
+    end)
+
+    teardown(function ()
+        package.path = old_package_path
     end)
 
     describe("queries with no arguments", function()

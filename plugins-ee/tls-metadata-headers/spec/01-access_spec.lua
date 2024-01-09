@@ -20,8 +20,8 @@ local tls_fixtures = { http_mock = {
 
         location = /example_client {
             # Combined cert, contains client first and intermediate second
-            proxy_ssl_certificate /kong-plugin/spec/fixtures/good_tls_client.crt;
-            proxy_ssl_certificate_key /kong-plugin/spec/fixtures/good_tls_client.key;
+            proxy_ssl_certificate ]] .. helpers.get_fixtures_path() .. [[/good_tls_client.crt;
+            proxy_ssl_certificate_key ]] .. helpers.get_fixtures_path() .. [[/good_tls_client.key;
             proxy_ssl_name example.com;
             # enable send the SNI sent to server
             proxy_ssl_server_name on;
@@ -31,8 +31,8 @@ local tls_fixtures = { http_mock = {
         }
 
         location = /bad_client {
-            proxy_ssl_certificate /kong-plugin/spec/fixtures/bad_tls_client.crt;
-            proxy_ssl_certificate_key /kong-plugin/spec/fixtures/bad_tls_client.key;
+            proxy_ssl_certificate ]] .. helpers.get_fixtures_path() .. [[/bad_tls_client.crt;
+            proxy_ssl_certificate_key ]] .. helpers.get_fixtures_path() .. [[/bad_tls_client.key;
             proxy_ssl_name example.com;
             proxy_set_header Host example.com;
 

@@ -13,8 +13,8 @@ local http_mock = require "spec.helpers.http_mock"
 
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
-local CA = pl_file.read("/kong-plugin/spec/fixtures/ocsp-responder-docker/certificates/ca.pem")
-local SUBCA = pl_file.read("/kong-plugin/spec/fixtures/ocsp-responder-docker/certificates/intermediate.pem")
+local CA = pl_file.read(helpers.get_fixtures_path() .. "/ocsp-responder-docker/certificates/ca.pem")
+local SUBCA = pl_file.read(helpers.get_fixtures_path() .. "/ocsp-responder-docker/certificates/intermediate.pem")
 
 local HTTP_SERVER_PORT = helpers.get_available_port()
 
@@ -172,8 +172,8 @@ for _, strategy in strategies() do
       })
 
       local format = [[
-      proxy_ssl_certificate /kong-plugin/spec/fixtures/ocsp-responder-docker/certificates/%s.pem;
-      proxy_ssl_certificate_key /kong-plugin/spec/fixtures/ocsp-responder-docker/certificates/%s.pem.key;
+      proxy_ssl_certificate ]] .. helpers.get_fixtures_path() .. [[/ocsp-responder-docker/certificates/%s.pem;
+      proxy_ssl_certificate_key ]] .. helpers.get_fixtures_path() .. [[/ocsp-responder-docker/certificates/%s.pem.key;
       proxy_ssl_name %s.test;
       proxy_ssl_server_name on;
       proxy_set_header Host %s.test;

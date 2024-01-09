@@ -7,7 +7,6 @@
 
 local helpers   = require "spec.helpers"
 local cjson     = require("cjson.safe").new()
-local fixture_path  = require("spec.fixtures.fixture_path")
 
 local PLUGIN_NAME = "oas-validation"
 
@@ -70,7 +69,7 @@ for _, strategy in helpers.each_strategy() do
         service = { id = service1.id },
         route = { id = route1.id },
         config = {
-          api_spec = fixture_path.read_fixture("petstore-expanded.json"),
+          api_spec = assert(io.open(helpers.get_fixtures_path() .. "/resources/petstore-expanded.json"):read("*a")),
           validate_request_query_params = true,
           validate_request_body = true,
           verbose_response = true
@@ -82,7 +81,7 @@ for _, strategy in helpers.each_strategy() do
         service = { id = service2.id },
         route = { id = route2.id },
         config = {
-          api_spec = fixture_path.read_fixture("petstore-expanded.json"),
+          api_spec = assert(io.open(helpers.get_fixtures_path() .. "/resources/petstore-expanded.json"):read("*a")),
           validate_response_body = true,
           verbose_response = true
         },
