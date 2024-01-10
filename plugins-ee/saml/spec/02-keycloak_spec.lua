@@ -19,8 +19,8 @@ local split   = require("kong.tools.utils").split
 local PLUGIN_NAME        = "saml"
 local USERNAME           = "samluser1"
 local PASSWORD           = "pass1234#"
-local KEYCLOAK_HOST      = "keycloak"
-local KEYCLOAK_PORT      = 8080
+local KEYCLOAK_HOST      = os.getenv("KONG_SPEC_TEST_KEYCLOAK_HOST") or "keycloak"
+local KEYCLOAK_PORT      = tonumber(os.getenv("KONG_SPEC_TEST_KEYCLOAK_PORT_8080")) or 8080
 local REALM_PATH         = "/realms/demo"
 local SESSION_SECRET     = "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii"
 
@@ -30,10 +30,11 @@ local IDP_SSO_URL        = "http://" .. KEYCLOAK_HOST .. ":" .. KEYCLOAK_PORT ..
 local ISSUER_URL         = "http://keycloaksamldemo"
 
 local REDIS_HOST         = helpers.redis_host
-local REDIS_PORT         = 6379
+local REDIS_PORT         = helpers.redis_port
 local REDIS_USER_VALID   = "saml-user"
 local REDIS_PASSWORD     = "secret"
-local MEMCACHED_HOST     = "memcached"
+local MEMCACHED_HOST     = os.getenv("KONG_SPEC_TEST_MEMCACHED_HOST") or "memcached"
+local MEMCACHED_PORT     = tonumber(os.getenv("KONG_SPEC_TEST_MEMCACHED_PORT_11211")) or 11211
 
 
 -- Updates the cookie stored in `current_cookies` (k-v pairs) in-place
@@ -154,7 +155,7 @@ local function sp_init_flow(res, username, password)
         -- impersonate as browser
         ["Content-Type"] = "application/x-www-form-urlencoded",
         ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", -- luacheck: ignore
-        ["Host"] = "keycloak:8080",
+        ["Host"] = KEYCLOAK_HOST .. ":" .. KEYCLOAK_PORT,
       },
       body = "SAMLRequest=" .. ngx.escape_uri(saml_assertion) .. "&RelayState=" .. ngx.escape_uri(relay_state),
   })
@@ -267,9 +268,11 @@ for _, strategy in helpers.all_strategies() do
                 {
                   session_secret = SESSION_SECRET,
                   session_redis_host = REDIS_HOST,
+                  session_redis_port = REDIS_PORT,
                   session_redis_username = REDIS_USER_VALID,
                   session_redis_password = REDIS_PASSWORD,
                   session_memcached_host = MEMCACHED_HOST,
+                  session_memcached_port = MEMCACHED_PORT,
                   session_storage = session_storage,
                   validate_assertion_signature = false,
                   issuer    = ISSUER_URL,

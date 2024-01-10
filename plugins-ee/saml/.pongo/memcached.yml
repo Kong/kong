@@ -5,7 +5,7 @@ services:
     container_name: memcached
     image: memcached:1.6-alpine
     ports:
-      - "11211:11211"
+      - "127.0.0.1::11211"
     healthcheck:
       test: echo stats | nc 127.0.0.1 11211
       interval: 10s

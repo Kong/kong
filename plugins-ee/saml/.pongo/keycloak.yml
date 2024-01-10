@@ -15,9 +15,8 @@ services:
       DB_VENDOR: h2
       JAVA_OPTS_APPEND: -Dkeycloak.migration.strategy=OVERWRITE_EXISTING
     ports:
-      # temporary exposure of port, Pongo should not need this
-      - "8080:8080"
-      - "8543:8443"
+      - "127.0.0.1::8080"
+      - "127.0.0.1::8443"
     healthcheck:
       interval: 5s
       retries: 10
