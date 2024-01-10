@@ -7,14 +7,14 @@
 
 local cjson     = require "cjson"
 local helpers   = require "spec.helpers"
-local parse_url = require("socket.url").parse
 
 
-local VAULT_TOKEN    = assert(os.getenv("VAULT_TOKEN"), "please set Vault Token in env var VAULT_TOKEN")
-local VAULT_ADDR     = assert(parse_url((assert(os.getenv("VAULT_ADDR"), "please set Vault URL in env var VAULT_ADDR"))))
-local VAULT_MOUNT    = assert(os.getenv("VAULT_MOUNT"), "please set Vault mount path in env var VAULT_MOUNT")
-local VAULT_MOUNT_2  = assert(os.getenv("VAULT_MOUNT_2"), "please set Vault mount path in env var VAULT_MOUNT_2")
-local VAULT_MOUNT_V2 = assert(os.getenv("VAULT_MOUNT_V2"), "please set Vault mount path in env var VAULT_MOUNT_V2")
+local VAULT_TOKEN = "vault-plaintext-root-token"
+local VAULT_HOST = os.getenv("KONG_SPEC_TEST_VAULT_HOST") or "vault"
+local VAULT_PORT = tonumber(os.getenv("KONG_SPEC_TEST_VAULT_PORT_8200")) or 8200
+local VAULT_MOUNT = "kong-auth"
+local VAULT_MOUNT_2 = "kong-auth-2"
+local VAULT_MOUNT_V2 = "kong-auth-v2"
 
 
 local PLUGIN_NAME = "vault-auth"
@@ -35,10 +35,10 @@ local function vault_setup(admin_client, vault_items)
         ["Content-Type"] = "application/json"
       },
       body = {
-        host        = VAULT_ADDR.host,
-        port        = tonumber(VAULT_ADDR.port),
+        host        = VAULT_HOST,
+        port        = VAULT_PORT,
         mount       = mount,
-        protocol    = VAULT_ADDR.scheme,
+        protocol    = "http",
         vault_token = VAULT_TOKEN,
         kv          = kv
       }

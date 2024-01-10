@@ -1,0 +1,46 @@
+version: '3.8'
+services:
+  vault:
+    image: hashicorp/vault:latest
+    hostname: vault
+    restart: on-failure:10
+    ports:
+      - "127.0.0.1::8200"
+    environment:
+      VAULT_ADDR: 'http://0.0.0.0:8200'
+      VAULT_DEV_ROOT_TOKEN_ID: 'vault-plaintext-root-token'
+      VAULT_TOKEN: 'vault-plaintext-root-token'
+    cap_add:
+      - IPC_LOCK
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    command: server -dev
+    networks:
+      - ${NETWORK_NAME}
+  vault-create-mount:
+    image: hashicorp/vault:latest
+    environment:
+      VAULT_ADDR: 'http://vault:8200'
+      VAULT_TOKEN: 'vault-plaintext-root-token'
+    command: vault secrets enable -path=kong-auth -description="Test Kong vault-auth plugin" kv
+    depends_on:
+    - vault
+  vault-create-mount-2:
+    image: hashicorp/vault:latest
+    environment:
+      VAULT_ADDR: 'http://vault:8200'
+      VAULT_TOKEN: 'vault-plaintext-root-token'
+    command: vault secrets enable -path=kong-auth-2 -description="Test Kong vault-auth plugin 2" kv
+    depends_on:
+    - vault
+  vault-create-mount-v2:
+    image: hashicorp/vault:latest
+    environment:
+      VAULT_ADDR: 'http://vault:8200'
+      VAULT_TOKEN: 'vault-plaintext-root-token'
+    command: vault secrets enable -path=kong-auth-v2 -description="Test Kong vault-auth plugin kv-v2" kv-v2
+    depends_on:
+    - vault
