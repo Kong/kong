@@ -54,7 +54,7 @@ function deactivate -d 'Exit Kong\'s venv and return to the normal environment.'
 end
 
 function start_services -d 'Start dependency services of Kong'
-    source $workspace_path/scripts/dependency_services/up.fish
+    source $workspace_path/scripts/dependency_services/up.fish $argv[1..-1]
     # stop_services is defined by the script above
 end
 

@@ -4,7 +4,7 @@ set cwd (dirname (status --current-filename))
 
 set -xg KONG_SERVICE_ENV_FILE (mktemp)
 
-bash "$cwd/common.sh" $KONG_SERVICE_ENV_FILE up
+bash "$cwd/common.sh" $KONG_SERVICE_ENV_FILE up $argv[1..-1]
 
 if test $status -ne 0
     echo "Something goes wrong, please check common.sh output"
@@ -31,5 +31,5 @@ function stop_services -d 'Stop dependency services of Kong and clean up environ
     functions -e stop_services
 end
 
-echo 'Services are up! Use "stop_services" to stop services and cleanup environment variables,
-or use "deactivate" to cleanup the venv.'
+echo 'Services are up! Use "stop_services" to stop service containers and cleanup environment variables,
+or use "deactivate" to cleanup the venv alongside with service containers.'

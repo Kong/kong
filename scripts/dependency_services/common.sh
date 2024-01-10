@@ -1,8 +1,36 @@
 #!/usr/bin/env bash
 
-if [ "$#" -ne 2 ]; then
-    echo "Usage: $0 KONG_SERVICE_ENV_FILE [up|down]"
+if [ "$#" -lt 2 ]; then
+    echo "Usage: $0 KONG_SERVICE_ENV_FILE <extra_plugins_ee_directory>"
     exit 1
+fi
+
+if [ -d $3/.pongo ]; then
+    plugins_ee_directory=$3
+elif [ ! -z $3 ]; then
+    echo "Requested to start extra plugins-ee services at $3, but it doesn't contain a .pongo directory"
+fi
+
+cwd=$(realpath $(dirname $(readlink -f ${BASH_SOURCE[0]})))
+PATH=$PATH:$cwd
+
+if ! test -z $plugins_ee_directory && ! yq --version >/dev/null 2>&1; then
+    binary_name=""
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        binary_name="yq_linux_"
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        binary_name="yq_darwin_"
+    else
+        echo "Unsupported OS for yq: $OSTYPE"
+        exit 1
+    fi
+    if [[ $(uname -m) == "x86_64" ]]; then
+        binary_name="${binary_name}_amd64"
+    else
+        binary_name="${binary_name}_arm64"
+    fi
+    wget https://github.com/mikefarah/yq/releases/download/v4.40.5/${binary_name} -qO $cwd/yq
+    chmod +x $cwd/yq
 fi
 
 if docker compose version >/dev/null 2>&1; then
@@ -15,7 +43,7 @@ else
 fi
 
 if [ "$2" == "down" ]; then
-  $DOCKER_COMPOSE down -v
+  NETWORK_NAME="default" $DOCKER_COMPOSE down -v --remove-orphans
   exit 0
 fi
 
@@ -23,23 +51,58 @@ KONG_SERVICE_ENV_FILE=$1
 # clear the file
 > $KONG_SERVICE_ENV_FILE
 
-cwd=$(realpath $(dirname $(readlink -f ${BASH_SOURCE[0]})))
+# Initialize parallel arrays for service names and port definitions
+services=()
+port_defs=()
 
-export COMPOSE_FILE=$cwd/docker-compose-test-services.yml
+ptemp=$cwd/.pongo-compat
+
+compose_file=$cwd/docker-compose-test-services.yml
+
+if [ ! -z "$plugins_ee_directory" ]; then
+    echo "Starting extra plugins-ee services at $plugins_ee_directory"
+    rm -rf $ptemp
+    mkdir -p $ptemp
+
+    pushd $plugins_ee_directory/.pongo >/dev/null
+    for f in $(ls *.yml *.yaml 2>/dev/null); do
+        compose_file="$compose_file:$(pwd)/$f"
+        for service in $(yq '.services | keys| .[]' <$f); do
+            # rest-proxy -> rest_proxy
+            services+=( "$service" )
+            service_normalized="${service//-/_}"
+            ports=""
+            for port in $(yq ".services.$service.ports.[]" <$f | rev |cut -d: -f1 |rev); do
+                # KEYCLOAK_PORT_8080:8080
+                ports="$ports ${service_normalized^^}_PORT_${port}:${port}"
+            done
+            port_defs+=( "$ports" )
+        done
+    done
+    popd >/dev/null
+
+    ln -sf $(pwd)/$plugins_ee_directory/.pongo $ptemp/.pongo
+    ln -sf $(pwd)/$plugins_ee_directory/spec $ptemp/spec
+    export PONGO_WD=$(realpath $plugins_ee_directory)
+    pushd $ptemp >/dev/null
+fi
+
+export COMPOSE_FILE="$compose_file"
 export COMPOSE_PROJECT_NAME="$(basename $(realpath $cwd/../../))-$(basename ${KONG_VENV:-kong-dev})"
 echo "export COMPOSE_FILE=$COMPOSE_FILE" >> $KONG_SERVICE_ENV_FILE
 echo "export COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" >> $KONG_SERVICE_ENV_FILE
 
-$DOCKER_COMPOSE up -d
+NETWORK_NAME="default" $DOCKER_COMPOSE up -d --build --wait --remove-orphans
+
+if [ ! -z "$plugins_ee_directory" ]; then
+    unset PONGO_WD
+    popd >/dev/null
+fi
 
 if [ $? -ne 0 ]; then
     echo "Something goes wrong, please check $DOCKER_COMPOSE output"
     exit 1
 fi
-
-# Initialize parallel arrays for service names and port definitions
-services=()
-port_defs=()
 
 # Add elements to the parallel arrays
 services+=("postgres")
@@ -76,5 +139,11 @@ for ((i = 0; i < ${#services[@]}; i++)); do
             _kong_added_envs="$_kong_added_envs ${prefix}${env_name}"
             echo "export ${prefix}${env_name}=$exposed_port" >> "$KONG_SERVICE_ENV_FILE"
         done
+    done
+
+    # all services go to localhost
+    for prefix in $env_prefixes; do
+        svcn="${svc//-/_}"
+        echo "export ${prefix}${svcn^^}_HOST=127.0.0.1" >> "$KONG_SERVICE_ENV_FILE"
     done
 done

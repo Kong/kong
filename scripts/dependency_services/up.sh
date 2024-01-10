@@ -13,7 +13,7 @@ else
     cwd=$(dirname $(readlink -f ${BASH_SOURCE[0]}))
 fi
 
-/usr/bin/env bash "$cwd/common.sh" $KONG_SERVICE_ENV_FILE up
+/usr/bin/env bash "$cwd/common.sh" $KONG_SERVICE_ENV_FILE up $@
 if [ $? -ne 0 ]; then
     echo "Something goes wrong, please check common.sh output"
     exit 1
@@ -36,5 +36,5 @@ stop_services () {
     unset -f stop_services
 }
 
-echo 'Services are up! Use "stop_services" to stop services and cleanup environment variables,
-or use "deactivate" to cleanup the venv.'
+echo 'Services are up! Use "stop_services" to stop service containers and cleanup environment variables,
+or use "deactivate" to cleanup the venv alongside with service containers.'
