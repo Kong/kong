@@ -14,7 +14,7 @@ local utils = require "kong.tools.utils"
 local version = require "version"
 
 local REDIS_HOST = helpers.redis_host
-local REDIS_PORT = 6379
+local REDIS_PORT = helpers.redis_port
 local REDIS_CLUSTER_ADDRESSES = ee_helpers.redis_cluster_addresses
 local REDIS_DATABASE = 1
 

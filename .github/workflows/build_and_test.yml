@@ -492,7 +492,6 @@ jobs:
         KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
         KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
         KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
-        KONG_SPEC_TEST_REDIS_CLUSTER_ADDRESSES: localhost:6381,localhost:6382,localhost:6383
         TEST_SUITE: ${{ matrix.suite }}
         TEST_SPLIT: ${{ matrix.split }}
         DT_TEST: ${{ inputs.dt-test }}
@@ -623,7 +622,6 @@ jobs:
         KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
         KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
         KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
-        KONG_SPEC_TEST_REDIS_CLUSTER_ADDRESSES: localhost:6381,localhost:6382,localhost:6383
         TEST_SUITE: dbless
       run: |
         mkdir $TEST_RESULTS_XML_OUTPUT

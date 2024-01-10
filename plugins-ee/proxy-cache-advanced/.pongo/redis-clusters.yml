@@ -12,6 +12,13 @@ services:
     - ${PONGO_WD}/.pongo/create-rc:/create-rc
     networks:
     - ${NETWORK_NAME}
+    ports:
+    - "7000:7000"
+    - "7001:7001"
+    - "7002:7002"
+    - "7003:7003"
+    - "7004:7004"
+    - "7005:7005"
     command: >-
       /bin/bash -c "
         /bin/chmod a+x /create-rc &&

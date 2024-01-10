@@ -38,7 +38,7 @@ function _M.parsed_redis_cluster_addresses()
 
   -- default
   if not env_cluster_addresses then
-    return {  "localhost:6381", "localhost:6382", "localhost:6383" }
+    return {  "localhost:7000", "localhost:7001", "localhost:7002" }
   end
 
   local redis_cluster_addresses = {}
