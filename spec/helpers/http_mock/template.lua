@@ -24,6 +24,10 @@ events {
 http {
   lua_shared_dict mock_logs $(shm_size);
 
+# for dict, size in pairs(dicts or {}) do
+  lua_shared_dict $(dict) $(size);
+# end
+
   init_by_lua_block {
 # if log_opts.err then
     -- disable warning of global variable
@@ -148,18 +152,20 @@ $(init)
 # if log_opts.req_body then
         -- collect body
         body = ngx.req.get_body_data()
-# if log_opts.req_large_body then
         if not body then
           local file = ngx.req.get_body_file()
           if file then
+# if log_opts.req_large_body then
             local f = io.open(file, "r")
             if f then
               body = f:read("*a")
               f:close()
             end
+# else
+            body = { "body is too large" }
+# end -- if log_opts.req_large_body
           end
         end
-# end -- if log_opts.req_large_body
 # end -- if log_opts.req_body
         ngx.ctx.req = {
           method = method,
