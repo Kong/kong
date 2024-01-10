@@ -3,9 +3,9 @@ version: '3.5'
 services:
   ad-server:
     image: ad-server
-    # build:
-    #   context: ../ad-server/
-    #   dockerfile: ad-server/Dockerfile
+    build:
+      context: ${PWD}/.pongo/ad-server/
+      dockerfile: Dockerfile
     # needs priv due to a bug described in the Dockerfile
     privileged: true
     # healthcheck:
@@ -16,7 +16,10 @@ services:
     #   - 'true'
       # TODO, how to verify if samba is ready..!
       # timeout: 10s
-    restart: 'no'
+    restart: on-failure
     stop_signal: SIGKILL
+    ports:
+      - 127.0.0.1::389
+      - 127.0.0.1::636
     networks:
       - ${NETWORK_NAME}

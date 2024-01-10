@@ -11,10 +11,17 @@ local ldap_groups = require "kong.plugins.ldap-auth-advanced.groups"
 local ldap_access = require "kong.plugins.ldap-auth-advanced.access"
 local ldap = require "kong.plugins.ldap-auth-advanced.ldap"
 
+local AD_SERVER_HOST = os.getenv("KONG_SPEC_TEST_AD_SERVER_HOST") or "ad-server"
+local AD_SERVER_PORT = tonumber(os.getenv("KONG_SPEC_TEST_AD_SERVER_PORT_389")) or 389
+local AD_SERVER_PORT_LDAPS = tonumber(os.getenv("KONG_SPEC_TEST_AD_SERVER_PORT_636")) or 636
+local OPENLDAP_HOST = os.getenv("KONG_SPEC_TEST_OPENLDAP_HOST") or "openldap"
+local OPENLDAP_PORT = tonumber(os.getenv("KONG_SPEC_TEST_OPENLDAP_PORT_389")) or 389
+
 local ngx_socket_tcp = ngx.socket.tcp
 
 local ldap_base_config = {
-  ldap_host              = "ad-server",
+  ldap_host              = AD_SERVER_HOST,
+  ldap_port              = AD_SERVER_PORT,
   ldap_password          = "pass:w2rd1111A$",
   attribute              = "cn",
   base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",
@@ -25,7 +32,8 @@ local ldap_base_config = {
 }
 
 local ldap_base_config2 = {
-  ldap_host              = "ad-server",
+  ldap_host              = AD_SERVER_HOST,
+  ldap_port              = AD_SERVER_PORT,
   ldap_password          = "pass:w2rd1111A$",
   attribute              = "cn",
   base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",
@@ -37,7 +45,8 @@ local ldap_base_config2 = {
 }
 
 local ldap_base_config3 = {
-  ldap_host              = "ad-server",
+  ldap_host              = AD_SERVER_HOST,
+  ldap_port              = AD_SERVER_PORT,
   ldap_password          = "pass:w2rd1111A$",
   attribute              = "cn",
   base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",
@@ -49,7 +58,8 @@ local ldap_base_config3 = {
 }
 
 local ldap_base_config4 = {
-  ldap_host              = "ad-server",
+  ldap_host              = AD_SERVER_HOST,
+  ldap_port              = AD_SERVER_PORT,
   ldap_password          = "pass:w2rd1111A$",
   attribute              = "cn",
   base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",
@@ -61,7 +71,8 @@ local ldap_base_config4 = {
 }
 
 local ldap_base_config5 = {
-  ldap_host              = "ad-server",
+  ldap_host              = AD_SERVER_HOST,
+  ldap_port              = AD_SERVER_PORT,
   ldap_password          = "pass:w2rd1111A$",
   attribute              = "cn",
   base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",
@@ -73,7 +84,8 @@ local ldap_base_config5 = {
 }
 
 local ldap_base_config6 = {
-  ldap_host              = "ad-server",
+  ldap_host              = AD_SERVER_HOST,
+  ldap_port              = AD_SERVER_PORT,
   ldap_password          = "pass:w2rd1111A$",
   attribute              = "cn",
   base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",
@@ -85,7 +97,8 @@ local ldap_base_config6 = {
 }
 
 local ldap_base_config7 = {
-  ldap_host              = "ad-server",
+  ldap_host              = AD_SERVER_HOST,
+  ldap_port              = AD_SERVER_PORT,
   ldap_password          = "pass:w2rd1111A$",
   attribute              = "cn",
   base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",
@@ -97,7 +110,8 @@ local ldap_base_config7 = {
 }
 
 local ldap_base_config8 = {
-  ldap_host              = "ad-server",
+  ldap_host              = AD_SERVER_HOST,
+  ldap_port              = AD_SERVER_PORT,
   ldap_password          = "pass:w2rd1111A$",
   attribute              = "cn",
   base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",
@@ -109,7 +123,8 @@ local ldap_base_config8 = {
 }
 
 local ldap_base_config9= {
-  ldap_host              = "ad-server",
+  ldap_host              = AD_SERVER_HOST,
+  ldap_port              = AD_SERVER_PORT,
   ldap_password          = "pass:w2rd1111A$",
   attribute              = "cn",
   base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",
@@ -121,7 +136,8 @@ local ldap_base_config9= {
 }
 
 local ldap_base_config10 = {
-  ldap_host              = "ad-server",
+  ldap_host              = AD_SERVER_HOST,
+  ldap_port              = AD_SERVER_PORT,
   ldap_password          = "pass:w2rd1111A$",
   attribute              = "cn",
   base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",
@@ -132,8 +148,8 @@ local ldap_base_config10 = {
 }
 
 local openldap_config= {
-  ldap_host              = "openldap",
-  ldap_port              = "389",
+  ldap_host              = OPENLDAP_HOST,
+  ldap_port              = OPENLDAP_PORT,
   ldap_password          = "admin",
   attribute              = "uid",
   base_dn                = "ou=people,dc=example,dc=org",
@@ -719,7 +735,7 @@ for _, strategy in strategies() do
           method  = "PATCH",
           path    = "/plugins/" .. plugin.id,
           body    = {
-            config = { ldap_port = 636, ldaps = true }
+            config = { ldap_port = AD_SERVER_PORT_LDAPS, ldaps = true }
           },
           headers = {
             ["Content-Type"] = "application/json"
@@ -727,7 +743,7 @@ for _, strategy in strategies() do
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal(636, json.config.ldap_port)
+        assert.equal(AD_SERVER_PORT_LDAPS, json.config.ldap_port)
         assert.equal(true, json.config.ldaps)
 
         local res = assert(proxy_client:send {
@@ -748,7 +764,7 @@ for _, strategy in strategies() do
           method  = "PATCH",
           path    = "/plugins/" .. plugin.id,
           body    = {
-            config = { ldap_port = 389, ldaps = false }
+            config = { ldap_port = AD_SERVER_PORT, ldaps = false }
           },
           headers = {
             ["Content-Type"] = "application/json"
@@ -757,7 +773,7 @@ for _, strategy in strategies() do
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal(389, json.config.ldap_port)
+        assert.equal(AD_SERVER_PORT, json.config.ldap_port)
         assert.equal(false, json.config.ldaps)
       end)
 

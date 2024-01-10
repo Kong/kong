@@ -8,4 +8,8 @@ services:
     volumes:
       - ${PONGO_WD}/.pongo/openldap:/setup
     command: /setup/run.sh
-
+    restart: on-failure
+    stop_signal: SIGKILL
+    ports:
+      - 127.0.0.1::389
+      - 127.0.0.1::636
