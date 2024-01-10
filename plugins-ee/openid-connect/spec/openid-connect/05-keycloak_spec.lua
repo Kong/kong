@@ -19,9 +19,10 @@ local find = string.find
 
 
 local PLUGIN_NAME = "openid-connect"
-local KEYCLOAK_HOST = "keycloak"
-local KEYCLOAK_PORT = 8080
-local KEYCLOAK_SSL_PORT = 8443
+local KEYCLOAK_HOST = os.getenv("KONG_SPEC_TEST_KEYCLOAK_HOST") or "keycloak"
+local KEYCLOAK_PORT = tonumber(os.getenv("KONG_SPEC_TEST_KEYCLOAK_PORT_8080")) or 8080
+local KEYCLOAK_SSL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_KEYCLOAK_PORT_8443")) or 8443
+local KEYCLOAK_HOST_HEADER = KEYCLOAK_HOST .. ":" .. KEYCLOAK_PORT
 local REALM_PATH = "/realms/demo"
 local DISCOVERY_PATH = "/.well-known/openid-configuration"
 local ISSUER_URL = "http://" .. KEYCLOAK_HOST .. ":" .. KEYCLOAK_PORT .. REALM_PATH
@@ -42,13 +43,14 @@ local PASSWORD_CREDENTIALS = "Basic " .. encode_base64(USERNAME .. ":" .. PASSWO
 local USERNAME2_PASSWORD_CREDENTIALS = "Basic " .. encode_base64(USERNAME2 .. ":" .. PASSWORD)
 local CLIENT_CREDENTIALS = "Basic " .. encode_base64(CLIENT_ID .. ":" .. CLIENT_SECRET)
 
+local KONG_HOST = "localhost" -- only use other names and when it's resolvable by resty.http
 local KONG_CLIENT_ID = "kong-client-secret"
 local KONG_CLIENT_SECRET = "38beb963-2786-42b8-8e14-a5f391b4ba93"
 
 local PUBLIC_CLIENT_ID = "kong-public"
 
 local REDIS_HOST = helpers.redis_host
-local REDIS_PORT = 6379
+local REDIS_PORT = helpers.redis_port
 local REDIS_PORT_ERR = 6480
 local REDIS_USER_VALID = "openid-connect-user"
 local REDIS_PASSWORD = "secret"
@@ -696,7 +698,7 @@ for _, strategy in helpers.all_strategies() do
         it("initial request, expect redirect to login page", function()
           local res = proxy_client:get("/code-flow", {
             headers = {
-              ["Host"] = "kong"
+              ["Host"] = "localhost"
             }
           })
           assert.response(res).has.status(302)
@@ -708,7 +710,7 @@ for _, strategy in helpers.all_strategies() do
             headers = {
               -- impersonate as browser
               ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", -- luacheck: ignore
-              ["Host"] = "keycloak:8080",
+              ["Host"] = KEYCLOAK_HOST_HEADER,
             }
           })
           assert.is_nil(err)
@@ -737,7 +739,7 @@ for _, strategy in helpers.all_strategies() do
             headers = {
               -- impersonate as browser
               ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", --luacheck: ignore
-              ["Host"] = "keycloak:8080",
+              ["Host"] = KEYCLOAK_HOST_HEADER,
               -- due to form_data
               ["Content-Type"] = "application/x-www-form-urlencoded",
               Cookie = user_session_header_table,
@@ -787,7 +789,7 @@ for _, strategy in helpers.all_strategies() do
         it("post wrong login credentials", function()
           local res = proxy_client:get("/code-flow", {
             headers = {
-              ["Host"] = "kong"
+              ["Host"] = "localhost"
             }
           })
           assert.response(res).has.status(302)
@@ -800,7 +802,7 @@ for _, strategy in helpers.all_strategies() do
             headers = {
               -- impersonate as browser
               ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", --luacheck: ignore
-              ["Host"] = "keycloak:8080",
+              ["Host"] = KEYCLOAK_HOST_HEADER,
             }
           })
           assert.is_nil(err)
@@ -829,7 +831,7 @@ for _, strategy in helpers.all_strategies() do
             headers = {
               -- impersonate as browser
               ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", --luacheck: ignore
-              ["Host"] = "keycloak:8080",
+              ["Host"] = KEYCLOAK_HOST_HEADER,
               -- due to form_data
               ["Content-Type"] = "application/x-www-form-urlencoded",
               Cookie = user_session_header_table,
@@ -853,7 +855,7 @@ for _, strategy in helpers.all_strategies() do
         it("is not allowed with invalid session-cookie", function()
           local res = proxy_client:get("/code-flow", {
             headers = {
-              ["Host"] = "kong",
+              ["Host"] = KONG_HOST,
             }
           })
           assert.response(res).has.status(302)
@@ -865,7 +867,7 @@ for _, strategy in helpers.all_strategies() do
             headers = {
               -- impersonate as browser
               ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", -- luacheck: ignore
-              ["Host"] = "keycloak:8080",
+              ["Host"] = KEYCLOAK_HOST_HEADER,
             }
           })
           assert.is_nil(err)
@@ -894,7 +896,7 @@ for _, strategy in helpers.all_strategies() do
             headers = {
               -- impersonate as browser
               ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", -- luacheck: ignore
-              ["Host"] = "keycloak:8080",
+              ["Host"] = KEYCLOAK_HOST_HEADER,
               -- due to form_data
               ["Content-Type"] = "application/x-www-form-urlencoded",
               Cookie = user_session_header_table,
@@ -3111,7 +3113,7 @@ for _, strategy in helpers.all_strategies() do
       it("authorization query args from the client are always passed to authorization endpoint", function ()
           local res = proxy_client:get("/", {
             headers = {
-              ["Host"] = "kong",
+              ["Host"] = KONG_HOST,
             }
           })
           assert.response(res).has.status(302)
@@ -3122,7 +3124,7 @@ for _, strategy in helpers.all_strategies() do
 
           res = proxy_client:get("/", {
             headers = {
-              ["Host"] = "kong",
+              ["Host"] = KONG_HOST,
               Cookie = auth_cookie_cleaned
             }
           })
@@ -3137,7 +3139,7 @@ for _, strategy in helpers.all_strategies() do
               ["test-query"] = "test",
             },
             headers = {
-              ["Host"] = "kong",
+              ["Host"] = KONG_HOST,
               Cookie = auth_cookie_cleaned,
             }
           })
@@ -3156,7 +3158,7 @@ for _, strategy in helpers.all_strategies() do
 
           res = proxy_client:get("/", {
             headers = {
-              ["Host"] = "kong",
+              ["Host"] = KONG_HOST,
               Cookie = auth_cookie_cleaned2,
             }
           })
@@ -3169,7 +3171,7 @@ for _, strategy in helpers.all_strategies() do
               ["test-query"] = "test2",
             },
             headers = {
-              ["Host"] = "kong",
+              ["Host"] = KONG_HOST,
               Cookie = auth_cookie_cleaned2,
             }
           })
@@ -3576,7 +3578,7 @@ for _, strategy in helpers.all_strategies() do
               method = "GET",
               path = "/scope1",
               headers = {
-                ["Host"] = "kong",
+                ["Host"] = KONG_HOST,
                 ["Authorization"] = PASSWORD_CREDENTIALS,
               }
             }))
@@ -3586,7 +3588,7 @@ for _, strategy in helpers.all_strategies() do
               method = "GET",
               path = "/scope2",
               headers = {
-                ["Host"] = "kong",
+                ["Host"] = KONG_HOST,
                 ["Authorization"] = PASSWORD_CREDENTIALS,
               }
             }))
@@ -3657,7 +3659,7 @@ for _, strategy in helpers.all_strategies() do
               method = "GET",
               path = "/",
               headers = {
-                ["Host"] = "kong",
+                ["Host"] = KONG_HOST,
                 ["Authorization"] = PASSWORD_CREDENTIALS,
               }
             }))
@@ -3815,7 +3817,7 @@ for _, strategy in helpers.all_strategies() do
               method = "GET",
               path = "/" .. v,
               headers = {
-                ["Host"] = "kong",
+                ["Host"] = KONG_HOST,
                 ["Authorization"] = PASSWORD_CREDENTIALS,
               }
             }))
@@ -3827,7 +3829,7 @@ for _, strategy in helpers.all_strategies() do
               method = "GET",
               path = "/" .. invalids[i],
               headers = {
-                ["Host"] = "kong",
+                ["Host"] = KONG_HOST,
                 ["Cookie"] = valid_session,
               }
             }))
@@ -4092,7 +4094,7 @@ for _, strategy in helpers.all_strategies() do
           method = "GET",
           path = "/test",
           headers = {
-            ["Host"] = "kong",
+            ["Host"] = KONG_HOST,
             ["Authorization"] = PASSWORD_CREDENTIALS,
           }
         }))
@@ -4104,7 +4106,7 @@ for _, strategy in helpers.all_strategies() do
           method = "GET",
           path = "/test?scope=openid",
           headers = {
-            ["Host"] = "kong",
+            ["Host"] = KONG_HOST,
             ["Authorization"] = PASSWORD_CREDENTIALS,
           }
         }))
@@ -4116,7 +4118,7 @@ for _, strategy in helpers.all_strategies() do
           method = "GET",
           path = "/test",
           headers = {
-            ["Host"] = "kong",
+            ["Host"] = KONG_HOST,
             ["Authorization"] = PASSWORD_CREDENTIALS,
             ["Content-Type"] = "application/x-www-form-urlencoded",
           },
@@ -4130,7 +4132,7 @@ for _, strategy in helpers.all_strategies() do
           method = "GET",
           path = "/test",
           headers = {
-            ["Host"] = "kong",
+            ["Host"] = KONG_HOST,
             ["Authorization"] = PASSWORD_CREDENTIALS,
             ["Scope"] = "openid",
           }

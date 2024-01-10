@@ -17,16 +17,18 @@ local cjson = require "cjson"
 
 
 local PLUGIN_NAME = "openid-connect"
-local KONG_HOSTNAME = "kong"
+local KONG_HOSTNAME = "localhost" -- only use other names and when it's resolvable by resty.http
 local PROXY_PORT_HTTPS = 8000
 local UPSTREAM_PORT = helpers.get_available_port()
 local USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36" -- luacheck: ignore
 
 -- Keycloak:
-local KEYCLOAK_HOST = "keycloak"
-local KEYCLOAK_SSL_PORT = 8443
+-- in this test in order to pass ssl verify, we always set the host to keycloak, and use dns_mock to redirect the host
+-- to send request in busted, use KEYCLOAK_LISTEN_HOST instead
+local KEYCLOAK_SNI_HOST = "keycloak"
+local KEYCLOAK_SSL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_KEYCLOAK_PORT_8443")) or 8443
 local REALM_PATH = "/realms/demo"
-local ISSUER_SSL_URL = "https://" .. KEYCLOAK_HOST .. ":" .. KEYCLOAK_SSL_PORT .. REALM_PATH .. "/.well-known/openid-configuration"
+local ISSUER_SSL_URL = "https://" .. KEYCLOAK_SNI_HOST .. ":" .. KEYCLOAK_SSL_PORT .. REALM_PATH .. "/.well-known/openid-configuration"
 ---- Clients:
 local KONG_CLIENT_ID = "kong"
 local KONG_CLIENT_SECRET = "X5DGMNBb6NjEp595L9h5Wb2x7DC4jvwE"
@@ -67,13 +69,26 @@ local RANDOM_KEY = fixtures_certificates.RANDOM_KEY
 local RANDOM_SSL_CLIENT_CERT = ngx_ssl.parse_pem_cert(RANDOM_CERT)
 local RANDOM_SSL_CLIENT_PRIV_KEY = ngx_ssl.parse_pem_priv_key(RANDOM_KEY)
 
+local KEYCLOAK_LISTEN_HOST = os.getenv("KONG_SPEC_TEST_KEYCLOAK_HOST") or "keycloak"
+local kong_fixtures = {
+  dns_mock = helpers.dns_mock.new(),
+}
+
+if KEYCLOAK_LISTEN_HOST ~= "keycloak" then
+  -- dns mock needed to always redirect advertised host
+  kong_fixtures.dns_mock:A {
+    name = KEYCLOAK_SNI_HOST,
+    address = KEYCLOAK_LISTEN_HOST,
+  }
+end
+
 
 local function get_jwt_from_token_endpoint()
   local path = REALM_PATH .. "/protocol/openid-connect/token"
 
   local keycloak_client = helpers.http_client({
     scheme = "https",
-    host = KEYCLOAK_HOST,
+    host = KEYCLOAK_LISTEN_HOST,
     port = KEYCLOAK_SSL_PORT,
     ssl_verify = false,
     ssl_client_cert = USER_CERT,
@@ -84,6 +99,7 @@ local function get_jwt_from_token_endpoint()
     method = "POST",
     path = path,
     headers = {
+      ["Host"] = KEYCLOAK_SNI_HOST .. ":" .. KEYCLOAK_SSL_PORT,
       ["Content-Type"] = "application/x-www-form-urlencoded",
     },
     body = ngx.encode_args({
@@ -104,6 +120,7 @@ end
 
 
 local function request_uri(uri, opts)
+  uri = uri:gsub("://" .. KEYCLOAK_SNI_HOST, "://" .. KEYCLOAK_LISTEN_HOST)
   return require("resty.http").new():request_uri(uri, opts)
 end
 
@@ -192,7 +209,7 @@ for _, auth_method in ipairs({ "bearer", "introspection" }) do
         lua_ssl_trusted_certificate = mtls_plugin == "mtls-auth" and
           CERT_ROOT_FOLDER .. "root_ca.crt," ..
           CERT_ROOT_FOLDER .. "intermediate_ca.crt" or nil,
-      }))
+      }, nil, nil, kong_fixtures))
 
       clients = {}
       clients.valid_client = helpers.http_client({
@@ -382,7 +399,7 @@ describe("mTLS Client Authentication strategy: #" .. strategy, function()
       database = strategy,
       plugins = "bundled," .. PLUGIN_NAME,
       nginx_conf = "spec/fixtures/custom_nginx.template",
-    }, kong_config or {}, true)))
+    }, kong_config or {}, true), nil, nil, kong_fixtures))
   end
 
 
@@ -455,7 +472,7 @@ describe("mTLS Client Authentication strategy: #" .. strategy, function()
       local rres, err = request_uri(redirect, {
         headers = {
           ["User-Agent"] = USER_AGENT,
-          ["Host"] = KEYCLOAK_HOST .. ":" .. KEYCLOAK_SSL_PORT,
+          ["Host"] = KEYCLOAK_SNI_HOST .. ":" .. KEYCLOAK_SSL_PORT,
         },
         ssl_verify = false,
       })
@@ -485,7 +502,7 @@ describe("mTLS Client Authentication strategy: #" .. strategy, function()
         ssl_verify = false,
         headers = {
           ["User-Agent"] = USER_AGENT,
-          ["Host"] = KEYCLOAK_HOST .. ":" .. KEYCLOAK_SSL_PORT,
+          ["Host"] = KEYCLOAK_SNI_HOST .. ":" .. KEYCLOAK_SSL_PORT,
           ["Content-Type"] = "application/x-www-form-urlencoded",
           Cookie = user_session_header_table,
       }}
@@ -881,7 +898,7 @@ describe("mTLS Client Authentication strategy: #" .. strategy, function()
         lua_ssl_trusted_certificate = CERT_ROOT_FOLDER .. "root_ca.crt," ..
                                       CERT_ROOT_FOLDER .. "intermediate_ca.crt",
         lua_ssl_verify_depth = 2,
-      }))
+      }, nil, nil, kong_fixtures))
     end)
 
     lazy_teardown(function()

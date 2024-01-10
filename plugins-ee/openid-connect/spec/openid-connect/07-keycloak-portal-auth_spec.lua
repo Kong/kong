@@ -15,7 +15,7 @@ local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vita
 
 local portal_client
 local PLUGIN_NAME = "openid-connect"
-local KEYCLOAK_HOST = "keycloak:8080"
+local KEYCLOAK_HOST = (os.getenv("KONG_SPEC_TEST_KEYCLOAK_HOST") or "keycloak") .. ":" .. (os.getenv("KONG_SPEC_TEST_KEYCLOAK_PORT_8080") or "8080")
 local ISSUER_URL = "http://" .. KEYCLOAK_HOST .. "/realms/demo/"
 local USERNAME = "john.doe@konghq.com"
 local PASSWORD = "doe"

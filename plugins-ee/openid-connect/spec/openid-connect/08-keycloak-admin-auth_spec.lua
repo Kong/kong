@@ -13,13 +13,13 @@ local http = require "resty.http".new()
 
 local admin_client
 local PLUGIN_NAME = "openid-connect"
-local KEYCLOAK_HOST = "keycloak:8080"
+local KEYCLOAK_HOST = (os.getenv("KONG_SPEC_TEST_KEYCLOAK_HOST") or "keycloak") .. ":" .. (os.getenv("KONG_SPEC_TEST_KEYCLOAK_PORT_8080") or "8080")
 local ISSUER_URL = "http://" .. KEYCLOAK_HOST .. "/realms/demo/"
 local USERNAME = "john.doe@konghq.com"
 local PASSWORD = "doe"
 local KONG_CLIENT_ID = "kong-client-secret"
 local KONG_CLIENT_SECRET = "38beb963-2786-42b8-8e14-a5f391b4ba93"
-local KONG_HOST = "kong"
+local KONG_HOST = "localhost" -- only use other names and when it's resolvable by resty.http
 local WORKSPACE_NAME = "default"
 local ROLE_NAME = "super-admin"
 
