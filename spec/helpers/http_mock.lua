@@ -187,6 +187,7 @@ function http_mock.new(listens, routes, opts)
     listens = listens,
     routes = routes,
     directives = directives,
+    dicts = opts.dicts,
     init = opts.init,
     log_opts = log_opts,
     logs = {},
