@@ -1,0 +1,5 @@
+{
+  "completion": "{\n    \"persons\": [\n      {\n        \"name\": \"Kong A\",\n        \"age\": 62\n      },\n      {\n        \"name\": \"Kong B\",\n        \"age\": 84\n      }\n    ]\n  }\n",
+  "stop_reason": "stop_sequence",
+  "model": "claude-2"
+}
