@@ -45,6 +45,10 @@ void appd_config_set_logging_min_level(struct appd_config* cfg, enum appd_config
 void appd_config_set_init_timeout_ms(struct appd_config* cfg, const int time);
 void appd_config_set_flush_metrics_on_shutdown(struct appd_config* cfg, int enable);
 void appd_config_set_logging_log_dir(struct appd_config* cfg, const char* dir);
+
+void appd_config_set_controller_certificate_file(struct appd_config* cfg, const char* file);
+void appd_config_set_controller_certificate_dir(struct appd_config* cfg, const char* dir);
+
 void appd_config_set_controller_http_proxy_host(struct appd_config* cfg, const char* host);
 void appd_config_set_controller_http_proxy_port(struct appd_config* cfg,const unsigned short port);
 void appd_config_set_controller_http_proxy_username(struct appd_config* cfg,const char* user);
@@ -95,3 +99,4 @@ if not ok then
 end
 
 return appdynamics
+

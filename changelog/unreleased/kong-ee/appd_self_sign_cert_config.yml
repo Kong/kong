@@ -1,0 +1,3 @@
+message: "Add CONTROLLER_CERTIFICATE_FILE and CONTROLLER_CERTIFICATE_DIR env config for AppDynamics plugin to use self-signed certificate"
+type: "feature"
+scope: "Plugin"

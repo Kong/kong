@@ -104,6 +104,8 @@ if appd then
   -- fixme: Currently, the plugin never shuts down orderly - atexit handler would be needed.  Thus, the metrics
   -- collected in the agent are lost when Kong is stopped or the worker exits for whatever reason.
   fetch_config_variable("FLUSH_METRICS_ON_SHUTDOWN", TYPE_BOOLEAN, true)
+  fetch_config_variable("CONTROLLER_CERTIFICATE_FILE", TYPE_STRING, "")
+  fetch_config_variable("CONTROLLER_CERTIFICATE_DIR", TYPE_STRING, "")
 end
 
 
@@ -117,6 +119,9 @@ local function appd_sdk_initialize()
 
   appd.appd_config_set_logging_min_level(appd_conf, envs.LOGGING_LEVEL)
   appd.appd_config_set_logging_log_dir(appd_conf, envs.LOGGING_LOG_DIR)
+
+  appd.appd_config_set_controller_certificate_dir(appd_conf, envs.CONTROLLER_CERTIFICATE_DIR)
+  appd.appd_config_set_controller_certificate_file(appd_conf, envs.CONTROLLER_CERTIFICATE_FILE)
 
   appd.appd_config_set_controller_host(appd_conf, envs.CONTROLLER_HOST)
   appd.appd_config_set_controller_port(appd_conf, envs.CONTROLLER_PORT)
@@ -341,3 +346,4 @@ end
 
 -- return Appd plugin object
 return AppDynamicsHandler
+
