@@ -25,7 +25,9 @@ local ngx_time = ngx.time
 local ngx_log = ngx.log
 
 
-local PING_WAIT = constants.CLUSTERING_PING_INTERVAL * 1.5
+local CLUSTERING_PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
+local PING_WAIT = CLUSTERING_PING_INTERVAL * 1.5
+local PING_TYPE = "PING"
 local PONG_TYPE = "PONG"
 local ngx_WARN = ngx.WARN
 local ngx_DEBUG = ngx.DEBUG
@@ -70,6 +72,13 @@ function _M:start()
         end
 
         local waited = ngx_time() - last_seen
+        if waited > CLUSTERING_PING_INTERVAL then
+          local res, err = self.outgoing:push(PING_TYPE)
+          if not res then
+            return nil, "unable to send ping: " .. err
+          end
+        end
+
         if waited > PING_WAIT then
           return nil, "did not receive ping frame from other end within " ..
                       PING_WAIT .. " seconds"
@@ -86,6 +95,12 @@ function _M:start()
         if not res then
           return nil, "unable to handle ping: " .. err
         end
+
+        goto continue
+      end
+
+      if typ == "pong" then
+        ngx_log(ngx_DEBUG, "[rpc] got PONG frame")
 
         goto continue
       end
@@ -184,30 +199,33 @@ function _M:start()
       end
 
       if payload then
-        if payload == PONG_TYPE then
+        if payload == PING_TYPE then
+          local _, err = self.wb:send_ping()
+          if err then
+            return nil, "failed to send PING frame to peer: " .. err
+
+          else
+            ngx_log(ngx_DEBUG, "[rpc] sent PING frame to peer")
+          end
+
+        elseif payload == PONG_TYPE then
           local _, err = self.wb:send_pong()
           if err then
-            if not is_timeout(err) then
-              return nil, "failed to send pong frame to data plane: " .. err
-            end
-
-            ngx_log(ngx_WARN, "[rpc] failed to send PONG frame to peer: ", err)
+            return nil, "failed to send PONG frame to peer: " .. err
 
           else
             ngx_log(ngx_DEBUG, "[rpc] sent PONG frame to peer")
           end
 
-          -- pong ok
-          goto continue
-        end
+        else
+          assert(type(payload) == "table")
 
-        local bytes, err = self.wb:send_binary(cjson_encode(payload))
-        if not bytes then
-          return nil, err
+          local bytes, err = self.wb:send_binary(cjson_encode(payload))
+          if not bytes then
+            return nil, err
+          end
         end
       end
-
-      ::continue::
     end
   end)
 

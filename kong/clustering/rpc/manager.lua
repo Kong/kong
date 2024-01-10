@@ -187,11 +187,11 @@ function _M:connect(premature, node_id, host, path, cert, key)
 
   do
     local s = socket.new(self, c, node_id)
+    assert(s:start())
 
     -- capability advertisement
     local fut = future.new(s, "kong.meta.v1.capability_advertisement", { self.callbacks:get_capabilities(), })
     assert(fut:start())
-    assert(s:start())
 
     ok, err = fut:wait(5)
     if not ok then
