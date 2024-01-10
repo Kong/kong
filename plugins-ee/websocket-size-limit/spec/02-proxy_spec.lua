@@ -64,7 +64,7 @@ describe("Plugin: websocket-size-limit (ws_proxy)", function()
       database = "off",
       nginx_conf = "spec/fixtures/custom_nginx.template",
       plugins = "websocket-size-limit",
-    }, nil, nil, { http_mock = { ws = ws.mock_upstream("/kong") } }))
+    }, nil, nil, { http_mock = { ws = ws.mock_upstream() } }))
   end)
 
   lazy_teardown(function()

@@ -12,7 +12,16 @@ local fmt = string.format
 local PORTS = const.ports
 
 local function mock_upstream(root_path)
-  root_path = root_path or ".."
+  if not root_path then
+    local str = debug.getinfo(1, "S").source:sub(2)
+    local path = str:match("(.*/)")
+    if path:sub(1, 1) ~= "/" then -- relative path
+      path = lfs.currentdir() .. "/" .. path
+    end
+    -- spec-ee/fixtures/../../
+    root_path = path .. "../../"
+  end
+
   return fmt([[
     lua_shared_dict kong_test_websocket_fixture 64m;
 

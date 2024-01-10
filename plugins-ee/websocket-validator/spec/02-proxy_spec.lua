@@ -79,7 +79,7 @@ describe("websocket-validator", function()
       nginx_conf = "spec/fixtures/custom_nginx.template",
       log_level = "debug",
       plugins = "websocket-validator",
-    }, nil, nil, { http_mock = { ws = ws.mock_upstream("/kong") } }))
+    }, nil, nil, { http_mock = { ws = ws.mock_upstream() } }))
   end)
 
   lazy_teardown(function()
