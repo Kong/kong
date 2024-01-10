@@ -12,6 +12,8 @@ services:
       test: ["CMD", "kill", "-0", "1"]
       timeout: 10s
     restart: on-failure
+    ports:
+      - 127.0.0.1::3128
     stop_signal: SIGKILL
     networks:
       - ${NETWORK_NAME}

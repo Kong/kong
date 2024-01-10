@@ -8,5 +8,8 @@ services:
       - ${PONGO_WD}/spec/fixtures/ocsp-responder-docker/certificates:/data
     restart: on-failure
     stop_signal: SIGKILL
+    ports:
+      - 2560:2560 # ocsp
+      - 10080:10080 # nginx
     networks:
       - ${NETWORK_NAME}

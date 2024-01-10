@@ -18,6 +18,11 @@ local SUBCA = pl_file.read(helpers.get_fixtures_path() .. "/ocsp-responder-docke
 
 local HTTP_SERVER_PORT = helpers.get_available_port()
 
+local SQUID_HOST = os.getenv("KONG_SPEC_TEST_SQUIDCUSTOM_HOST") or "squidcustom"
+local SQUID_PORT = tonumber(os.getenv("KONG_SPEC_TEST_SQUIDCUSTOM_PORT_3128")) or 3128
+
+local OCSPSERVER_HOST = os.getenv("KONG_SPEC_TEST_OCSPSERVER_HOST") or "ocspserver"
+
 --[[
 What does pongo do in .pongo/ocspserver.yml:
 cd plugins-ee/mtls-auth/spec/fixtures/ocsp-responder-docker
@@ -127,8 +132,8 @@ for _, strategy in strategies() do
         config = {
           ca_certificates = { ca_cert.id, sub_ca_cert.id},
           revocation_check_mode = "STRICT",
-          http_proxy_host = "squidcustom",
-          http_proxy_port = 3128,
+          http_proxy_host = SQUID_HOST,
+          http_proxy_port = SQUID_PORT,
           cert_cache_ttl = 0,
           cache_ttl = 0,
         },
@@ -140,7 +145,7 @@ for _, strategy in strategies() do
         config = {
           ca_certificates = { ca_cert.id, sub_ca_cert.id},
           revocation_check_mode = "STRICT",
-          http_proxy_host = "squidcustom",
+          http_proxy_host = SQUID_HOST,
           http_proxy_port = 3129, -- this port is not open so HTTP CONNECT will fail
           cert_cache_ttl = 0,
           cache_ttl = 0,
@@ -164,7 +169,7 @@ for _, strategy in strategies() do
         config = {
           ca_certificates = { ca_cert.id, sub_ca_cert.id},
           revocation_check_mode = "IGNORE_CA_ERROR",
-          http_proxy_host = "squidcustom",
+          http_proxy_host = SQUID_HOST,
           http_proxy_port = 3129, -- this port is not open so HTTP CONNECT will fail
           cert_cache_ttl = 0,
           cache_ttl = 0,
@@ -257,11 +262,23 @@ for _, strategy in strategies() do
       })
       assert(mock:start())
 
+      local fixtures = {
+        dns_mock = helpers.dns_mock.new(),
+      }
+
+      if OCSPSERVER_HOST ~= "ocspserver" then
+        -- dns mock needed to always redirect advertised host
+        fixtures.dns_mock:A {
+          name = "ocspserver",
+          address = OCSPSERVER_HOST,
+        }
+      end
+
       assert(helpers.start_kong({
         database   = db_strategy,
         plugins = "bundled,mtls-auth",
         nginx_conf = "spec/fixtures/custom_nginx.template",
-      }))
+      }, nil, nil, fixtures))
     end)
 
     lazy_teardown(function()
