@@ -33,7 +33,7 @@ local function redis_connect(conf)
     }))
   end
 
-  local red_version = string.match(red:info("server"), 'redis_version:([%g]+)\r\n')
+  local red_version = string.match(assert(red:info("server")), 'redis_version:([%g]+)\r\n')
   return red, assert(version(red_version))
 end
 
