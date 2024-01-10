@@ -16,8 +16,8 @@ local encode_base64 = ngx.encode_base64
 local PLUGIN_NAME = "konnect-application-auth"
 local OIDC_PLUGIN_NAME = "openid-connect"
 
-local KEYCLOAK_HOST = "keycloak"
-local KEYCLOAK_PORT = 8080
+local KEYCLOAK_HOST = os.getenv("KONG_SPEC_TEST_KEYCLOAK_HOST") or "keycloak"
+local KEYCLOAK_PORT = tonumber(os.getenv("KONG_SPEC_TEST_KEYCLOAK_PORT_8080")) or 8080
 local REALM_PATH = "/realms/demo"
 local DISCOVERY_PATH = "/.well-known/openid-configuration"
 local ISSUER_URL = "http://" .. KEYCLOAK_HOST .. ":" .. KEYCLOAK_PORT .. REALM_PATH

@@ -35,6 +35,9 @@ services:
       - -c
       - ':> /dev/tcp/127.0.0.1/8080'
       timeout: 10s
+    ports:
+      - "127.0.0.1::8080"
+      - "127.0.0.1::8443"
     restart: on-failure
     stop_signal: SIGKILL
     networks:
