@@ -1,5 +1,3 @@
-local constants = require "kong.constants"
-
 local ran_before
 
 
@@ -15,6 +13,7 @@ return function(options)
 
   options = options or {}
   local meta = require "kong.meta"
+  local constants = require "kong.constants"
 
 
   local cjson_safe = require("cjson.safe")
