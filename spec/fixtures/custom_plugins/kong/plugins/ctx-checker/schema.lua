@@ -15,6 +15,9 @@ return {
       { ctx_set_value   = { type = "string", default = "set_by_ctx_checker" } },
       { ctx_set_array   = { type = "array", elements = { type = "string" } } },
       { ctx_set_map     = { type = "map", keys = { type = "string" }, values = { type = "string" } } },
+      { ctx_set_array_of_maps = { type = "array", elements =
+                                  { type = "map", keys = { type = "string" },
+                                                  values = { type = "string"}} }},
       { ctx_check_field = { type = "string" } },
       { ctx_check_value = { type = "string" } },
       { ctx_check_array = { type = "array", elements = { type = "string" } } },

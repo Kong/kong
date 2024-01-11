@@ -1657,7 +1657,7 @@ for _, strategy in helpers.each_strategy() do
         "plugins",
         "consumer_groups",
         "consumers",
-      })
+      }, { "ip-restriction", "ctx-checker" })
 
       local a_cg = "group-a"
 
@@ -1728,6 +1728,7 @@ for _, strategy in helpers.each_strategy() do
         real_ip_recursive = "on",
         trusted_ips       = "0.0.0.0/0, ::/0",
         nginx_conf        = "spec/fixtures/custom_nginx.template",
+        plugins           = "bundled, ctx-checker",
       })
 
       proxy_client = helpers.proxy_client()
@@ -1854,6 +1855,197 @@ for _, strategy in helpers.each_strategy() do
           headers = {
             ["Host"]            = "ip-restriction2.com",
             ["apikey"] = "b_mouse",
+            ["X-Forwarded-For"] = "::3, ::4"
+          }
+        })
+        local body = assert.res_status(403, res)
+        assert.matches("IP address not allowed", body)
+      end)
+    end)
+  end)
+
+  describe("Plugin: ip-restriction [#pdkconsumergroups] (access) [#" .. strategy .. "]", function()
+    local proxy_client
+    local admin_client
+
+    lazy_setup(function()
+      local bp, db
+      bp, db = helpers.get_db_utils(strategy, {
+        "routes",
+        "plugins",
+        "consumer_groups",
+        "consumers",
+      }, { "ip-restriction", "ctx-checker" })
+
+      local a_cg = "group-a"
+      local a_consumer_group = assert(db.consumer_groups:insert { name = a_cg })
+
+      local b_cg = "group-b"
+      local b_consumer_group = assert(db.consumer_groups:insert { name = b_cg })
+
+      -- Pretend that the ctx.authenticated_consumer_groups is set
+      -- via a authentication plugin
+      bp.plugins:insert {
+        name = "ctx-checker",
+        config = {
+          ctx_set_field = "authenticated_consumer_groups",
+          ctx_set_array_of_maps = { {id = a_consumer_group.id}, {id = b_consumer_group.id} },
+          ctx_set_value = nil,
+        }
+      }
+
+      local r1 = bp.routes:insert {
+        hosts = { "ip-restriction1.com" },
+      }
+
+      local r2 = bp.routes:insert {
+        hosts = { "ip-restriction2.com" },
+      }
+
+      bp.plugins:insert {
+        name     = "ip-restriction",
+        route = r1,
+        consumer_group = a_consumer_group,
+        config   = {
+          deny = { "::4" }
+        },
+      }
+
+      bp.plugins:insert {
+        name     = "ip-restriction",
+        route = r2,
+        consumer_group = b_consumer_group,
+        config   = {
+          allow = { "::4" }
+        },
+      }
+
+      assert(helpers.start_kong {
+        database          = strategy,
+        real_ip_header    = "X-Forwarded-For",
+        real_ip_recursive = "on",
+        trusted_ips       = "0.0.0.0/0, ::/0",
+        nginx_conf        = "spec/fixtures/custom_nginx.template",
+        plugins           = "bundled, ctx-checker",
+      })
+
+      proxy_client = helpers.proxy_client()
+      admin_client = helpers.admin_client()
+    end)
+
+    lazy_teardown(function()
+      if proxy_client and admin_client then
+        proxy_client:close()
+        admin_client:close()
+      end
+
+      helpers.stop_kong()
+    end)
+
+    describe("deny", function()
+      it("allows with allowed X-Forwarded-For header", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Host"]            = "ip-restriction1.com",
+            ["X-Forwarded-For"] = "::3",
+          }
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal("::3", json.vars.remote_addr)
+      end)
+
+      it("blocks with not allowed X-Forwarded-For header", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Host"]            = "ip-restriction1.com",
+            ["X-Forwarded-For"] = "::4"
+          }
+        })
+        local body = assert.res_status(403, res)
+        local json = cjson.decode(body)
+        assert.not_nil(json)
+        assert.same("IP address not allowed: ::4", json.message)
+      end)
+
+      it("blocks with blocked complex X-Forwarded-For header", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"]            = "ip-restriction1.com",
+            ["X-Forwarded-For"] = "::4, ::3",
+          }
+        })
+        local body = assert.res_status(403, res)
+        assert.matches("IP address not allowed", body)
+      end)
+      it("allows with allowed complex X-Forwarded-For header", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"]            = "ip-restriction1.com",
+            ["X-Forwarded-For"] = "::3, ::4"
+          }
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal("::3", json.vars.remote_addr)
+      end)
+    end)
+
+    describe("allow", function()
+      it("block with not allowed X-Forwarded-For header", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"]            = "ip-restriction2.com",
+            ["X-Forwarded-For"] = "::3"
+          }
+        })
+        local body = assert.res_status(403, res)
+        local json = cjson.decode(body)
+        assert.not_nil(json)
+        assert.same("IP address not allowed: ::3", json.message)
+      end)
+      it("allows with allowed X-Forwarded-For header", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"]            = "ip-restriction2.com",
+            ["X-Forwarded-For"] = "::4"
+          }
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal("::4", json.vars.remote_addr)
+      end)
+      it("allows with allowed complex X-Forwarded-For header", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"]            = "ip-restriction2.com",
+            ["X-Forwarded-For"] = "::4, ::3"
+          }
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal("::4", json.vars.remote_addr)
+      end)
+      it("blocks with blocked complex X-Forwarded-For header", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"]            = "ip-restriction2.com",
             ["X-Forwarded-For"] = "::3, ::4"
           }
         })
