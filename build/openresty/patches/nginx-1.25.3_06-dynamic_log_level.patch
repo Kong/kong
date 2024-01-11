@@ -1,7 +1,7 @@
-diff --git a/bundle/nginx-1.21.4/src/core/ngx_log.c b/bundle/nginx-1.21.4/src/core/ngx_log.c
+diff --git a/bundle/nginx-1.25.3/src/core/ngx_log.c b/bundle/nginx-1.25.3/src/core/ngx_log.c
 index eb7a989..0862d4d 100644
---- a/bundle/nginx-1.21.4/src/core/ngx_log.c
-+++ b/bundle/nginx-1.21.4/src/core/ngx_log.c
+--- a/bundle/nginx-1.25.3/src/core/ngx_log.c
++++ b/bundle/nginx-1.25.3/src/core/ngx_log.c
 @@ -171,8 +171,12 @@ ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
      debug_connection = (log->log_level & NGX_LOG_DEBUG_CONNECTION) != 0;
 
@@ -28,10 +28,10 @@ index eb7a989..0862d4d 100644
          va_start(args, fmt);
          ngx_log_error_core(level, log, err, fmt, args);
          va_end(args);
-diff --git a/bundle/nginx-1.21.4/src/core/ngx_log.h b/bundle/nginx-1.21.4/src/core/ngx_log.h
+diff --git a/bundle/nginx-1.25.3/src/core/ngx_log.h b/bundle/nginx-1.25.3/src/core/ngx_log.h
 index da81cf0..8fd3348 100644
---- a/bundle/nginx-1.21.4/src/core/ngx_log.h
-+++ b/bundle/nginx-1.21.4/src/core/ngx_log.h
+--- a/bundle/nginx-1.25.3/src/core/ngx_log.h
++++ b/bundle/nginx-1.25.3/src/core/ngx_log.h
 @@ -72,6 +72,13 @@ struct ngx_log_s {
      ngx_log_t           *next;
  };
