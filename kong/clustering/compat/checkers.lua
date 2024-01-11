@@ -36,7 +36,7 @@ local compatible_checkers = {
           has_update = adapt_fn(plugin.config)
           if has_update then
             log_warn_message('adapts ' .. plugin.name .. ' plugin redis configuration to older version',
-            'reverted to older schema',
+            'revert to older schema',
             dp_version, log_suffix)
           end
         end
