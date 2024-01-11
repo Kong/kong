@@ -5,8 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local constants = require "kong.constants"
-
 local ran_before
 
 
@@ -26,6 +24,7 @@ return function(options)
   package.path = package.path .. ";/usr/local/share/lua/5.1/?.ljbc;/usr/local/share/lua/5.1/?/init.ljbc"
 
   local meta = require "kong.meta"
+  local constants = require "kong.constants"
 
 
   local cjson_safe = require("cjson.safe")
