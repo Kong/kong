@@ -251,6 +251,7 @@ describe("WebSocket admin API #" .. strategy .. " (worker_consistency = " .. con
       return assert(session({
         host = host,
         idle_timeout = 60000,
+        timeout = 100000,
       }))
     end
 
