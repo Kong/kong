@@ -1,7 +1,7 @@
-diff --git a/bundle/ngx_lua-0.10.25/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-0.10.25/src/ngx_http_lua_balancer.c
+diff --git a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_balancer.c
 index af4da73..407c115 100644
---- a/bundle/ngx_lua-0.10.25/src/ngx_http_lua_balancer.c
-+++ b/bundle/ngx_lua-0.10.25/src/ngx_http_lua_balancer.c
+--- a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_balancer.c
++++ b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_balancer.c
 @@ -16,46 +16,104 @@
  #include "ngx_http_lua_directive.h"
  
@@ -1149,11 +1149,11 @@ index af4da73..407c115 100644
  
      if (r->upstream_states && r->upstream_states->nelts > 1) {
          state = r->upstream_states->elts;
-diff --git a/bundle/ngx_lua-0.10.25/src/ngx_http_lua_common.h b/bundle/ngx_lua-0.10.25/src/ngx_http_lua_common.h
-index 8435045..ea45f3a 100644
---- a/bundle/ngx_lua-0.10.25/src/ngx_http_lua_common.h
-+++ b/bundle/ngx_lua-0.10.25/src/ngx_http_lua_common.h
-@@ -247,13 +247,6 @@ struct ngx_http_lua_main_conf_s {
+diff --git a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_common.h b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_common.h
+index 4c94629..bec484e 100644
+--- a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_common.h
++++ b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_common.h
+@@ -258,13 +258,6 @@ struct ngx_http_lua_main_conf_s {
      ngx_str_t                            exit_worker_src;
      u_char                              *exit_worker_chunkname;
  
@@ -1167,7 +1167,7 @@ index 8435045..ea45f3a 100644
      ngx_chain_t                            *body_filter_chain;
                      /* neither yielding nor recursion is possible in
                       * body_filter_by_lua*, so there cannot be any races among
-@@ -348,6 +341,10 @@ union ngx_http_lua_srv_conf_u {
+@@ -359,6 +352,10 @@ union ngx_http_lua_srv_conf_u {
      } srv;
  
      struct {
@@ -1178,13 +1178,13 @@ index 8435045..ea45f3a 100644
          ngx_http_lua_srv_conf_handler_pt     handler;
          ngx_str_t                            src;
          u_char                              *src_key;
-diff --git a/bundle/ngx_lua-0.10.25/src/ngx_http_lua_module.c b/bundle/ngx_lua-0.10.25/src/ngx_http_lua_module.c
-index 16f4424..b3b0d72 100644
---- a/bundle/ngx_lua-0.10.25/src/ngx_http_lua_module.c
-+++ b/bundle/ngx_lua-0.10.25/src/ngx_http_lua_module.c
-@@ -1158,6 +1158,9 @@ ngx_http_lua_create_srv_conf(ngx_conf_t *cf)
-      *      lscf->srv.ssl_session_fetch_chunkname = NULL;
-      *      lscf->srv.ssl_session_fetch_src_key = NULL;
+diff --git a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_module.c b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_module.c
+index fb10bf9..c2f085b 100644
+--- a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_module.c
++++ b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_module.c
+@@ -1188,6 +1188,9 @@ ngx_http_lua_create_srv_conf(ngx_conf_t *cf)
+      *      lscf->srv.ssl_sess_fetch_chunkname = NULL;
+      *      lscf->srv.ssl_sess_fetch_src_key = NULL;
       *
 +     *      lscf->balancer.original_init_upstream = NULL;
 +     *      lscf->balancer.original_init_peer = NULL;

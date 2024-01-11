@@ -1,7 +1,7 @@
 diff --git a/bundle/nginx-1.19.3/src/http/modules/ngx_http_grpc_module.c b/bundle/nginx-1.19.3/src/http/modules/ngx_http_grpc_module.c
 index d4af66db..10d3aaed 100644
---- a/bundle/nginx-1.21.4/src/http/modules/ngx_http_grpc_module.c
-+++ b/bundle/nginx-1.21.4/src/http/modules/ngx_http_grpc_module.c
+--- a/bundle/nginx-1.25.3/src/http/modules/ngx_http_grpc_module.c
++++ b/bundle/nginx-1.25.3/src/http/modules/ngx_http_grpc_module.c
 @@ -8,6 +8,9 @@
  #include <ngx_config.h>
  #include <ngx_core.h>

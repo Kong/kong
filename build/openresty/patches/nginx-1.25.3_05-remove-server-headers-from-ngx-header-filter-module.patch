@@ -4,13 +4,13 @@ Date: Tue, 15 Jun 2021 16:04:06 +0300
 Subject: [PATCH] remove server headers from nginx header filter module
 
 ---
- nginx-1.21.4/src/http/ngx_http_header_filter_module.c  | 34 -------------------
+ nginx-1.25.3/src/http/ngx_http_header_filter_module.c  | 34 -------------------
  1 file changed, 34 deletions(-)
 
-diff --git a/bundle/nginx-1.21.4/src/http/ngx_http_header_filter_module.c b/bundle/nginx-1.21.4/src/http/ngx_http_header_filter_module.c
+diff --git a/bundle/nginx-1.25.3/src/http/ngx_http_header_filter_module.c b/bundle/nginx-1.25.3/src/http/ngx_http_header_filter_module.c
 index ca13f2a..1a07dac 100644
---- a/bundle/nginx-1.21.4/src/http/ngx_http_header_filter_module.c
-+++ b/bundle/nginx-1.21.4/src/http/ngx_http_header_filter_module.c
+--- a/bundle/nginx-1.25.3/src/http/ngx_http_header_filter_module.c
++++ b/bundle/nginx-1.25.3/src/http/ngx_http_header_filter_module.c
 @@ -46,11 +46,6 @@ ngx_module_t  ngx_http_header_filter_module = {
  };
  
