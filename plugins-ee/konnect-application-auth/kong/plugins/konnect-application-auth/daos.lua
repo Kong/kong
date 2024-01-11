@@ -52,6 +52,7 @@ return {
           }
         },
       },
+      { exhausted_scopes = { default = {}, type = "array", elements = { type = "string", }, }, },
       { tags = typedefs.tags },
     },
   },

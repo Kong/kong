@@ -1,0 +1,4 @@
+message: |
+  **Konnect Application Auth**: add exhausted applications handling to rate limit
+type: feature
+scope: Plugin

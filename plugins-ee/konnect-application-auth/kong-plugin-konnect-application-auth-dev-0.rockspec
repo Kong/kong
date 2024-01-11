@@ -41,5 +41,6 @@ build = {
     ["kong.plugins."..plugin_name..".migrations.001_consumer_group_addition"] = "kong/plugins/"..plugin_name.."/migrations/001_consumer_group_addition.lua",
     ["kong.plugins."..plugin_name..".migrations.002_strategy_id_addition"] = "kong/plugins/"..plugin_name.."/migrations/002_strategy_id_addition.lua",
     ["kong.plugins."..plugin_name..".migrations.003_application_context"] = "kong/plugins/"..plugin_name.."/migrations/003_application_context.lua",
+    ["kong.plugins."..plugin_name..".migrations.004_exhausted_scopes_addition"] = "kong/plugins/"..plugin_name.."/migrations/004_exhausted_scopes_addition.lua",
   }
 }

@@ -244,6 +244,18 @@ for _, strategy in helpers.each_strategy() do
         consumer_groups = {"idontexist"}
       })
 
+      db.konnect_applications:insert({
+        client_id = sha256_hex("exhausted"),
+        scopes = { scope },
+        exhausted_scopes = { scope },
+      })
+
+      db.konnect_applications:insert({
+        client_id = sha256_hex("not_exhausted"),
+        scopes = { scope },
+        exhausted_scopes = { "something_else" },
+      })
+
       consumer_group1 = db.consumer_groups:insert({
         name = "imindaband1"
       })
@@ -507,6 +519,29 @@ for _, strategy in helpers.each_strategy() do
         assert.are.same(nil, json.headers["x-application-developer-id"])
         assert.are.same(nil, json.headers["x-application-org-id"])
         assert.are.same(nil, json.headers["x-application-portal-id"])
+      end)
+    end)
+    describe("exhausted applications", function()
+      it("rate limit the metered application", function()
+        local res = client:get("/request", {
+          headers = {
+            apikey = "exhausted",
+            host = "keyauth.konghq.test"
+          }
+        })
+
+        assert.res_status(429, res)
+      end)
+
+      it("doesnt rate limit the application when exhausted on another service", function()
+        local res = client:get("/request", {
+          headers = {
+            apikey = "not_exhausted",
+            host = "keyauth.konghq.test"
+          }
+        })
+
+        assert.res_status(200, res)
       end)
     end)
   end)

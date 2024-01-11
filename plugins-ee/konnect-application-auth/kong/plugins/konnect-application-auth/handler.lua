@@ -360,6 +360,14 @@ local function kaa_access_phase(plugin_conf)
   return application
 end
 
+--- Checks if the application is exhausted
+---@param application table
+---@param  scope string
+---@return boolean
+local function is_exhausted(application, scope)
+  return application and application.exhausted_scopes and has_value(application.exhausted_scopes, scope)
+end
+
 function KonnectApplicationAuthHandler:access(plugin_conf)
   local application
 
@@ -373,6 +381,9 @@ function KonnectApplicationAuthHandler:access(plugin_conf)
     return kong.response.error(403, "You cannot consume this service")
   end
 
+  if is_exhausted(application, plugin_conf.scope) then
+    return kong.response.error(429, "The consumption of this api has been rate-limited. Please check the developer portal for more informations")
+  end
   map_consumer_groups(application)
   apply_application_context(application)
 
