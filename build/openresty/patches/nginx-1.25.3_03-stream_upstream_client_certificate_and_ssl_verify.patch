@@ -1,5 +1,5 @@
 diff --git a/bundle/nginx-1.25.3/src/stream/ngx_stream_proxy_module.c b/bundle/nginx-1.25.3/src/stream/ngx_stream_proxy_module.c
-index b11c288..4ae9e7b 100644
+index 82dca1e..f12cda2 100644
 --- a/bundle/nginx-1.25.3/src/stream/ngx_stream_proxy_module.c
 +++ b/bundle/nginx-1.25.3/src/stream/ngx_stream_proxy_module.c
 @@ -8,6 +8,9 @@
@@ -12,7 +12,7 @@ index b11c288..4ae9e7b 100644
  
  
  typedef struct {
-@@ -821,8 +824,18 @@ ngx_stream_proxy_init_upstream(ngx_stream_session_t *s)
+@@ -823,8 +826,18 @@ ngx_stream_proxy_init_upstream(ngx_stream_session_t *s)
  
  #if (NGX_STREAM_SSL)
  
@@ -31,7 +31,7 @@ index b11c288..4ae9e7b 100644
          if (u->proxy_protocol) {
              if (ngx_stream_proxy_send_proxy_protocol(s) != NGX_OK) {
                  return;
-@@ -1085,7 +1098,16 @@ ngx_stream_proxy_ssl_init_connection(ngx_stream_session_t *s)
+@@ -1089,7 +1102,16 @@ ngx_stream_proxy_ssl_init_connection(ngx_stream_session_t *s)
          return;
      }
  
@@ -49,7 +49,7 @@ index b11c288..4ae9e7b 100644
          if (ngx_stream_proxy_ssl_name(s) != NGX_OK) {
              ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
              return;
-@@ -1110,6 +1132,10 @@ ngx_stream_proxy_ssl_init_connection(ngx_stream_session_t *s)
+@@ -1116,6 +1138,10 @@ ngx_stream_proxy_ssl_init_connection(ngx_stream_session_t *s)
          }
      }
  
@@ -60,7 +60,7 @@ index b11c288..4ae9e7b 100644
      s->connection->log->action = "SSL handshaking to upstream";
  
      rc = ngx_ssl_handshake(pc);
-@@ -1142,7 +1168,15 @@ ngx_stream_proxy_ssl_handshake(ngx_connection_t *pc)
+@@ -1148,7 +1174,15 @@ ngx_stream_proxy_ssl_handshake(ngx_connection_t *pc)
  
      if (pc->ssl->handshaked) {
  
