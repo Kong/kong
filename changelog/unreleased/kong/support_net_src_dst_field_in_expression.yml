@@ -1,4 +1,4 @@
 message: |
-  make `net.src.*` and `net.dst.*` accessible in http routes as well.
+  `net.src.*` and `net.dst.*` match fields are now accessible in HTTP routes defined using expressions.
 type: feature
 scope: Core
