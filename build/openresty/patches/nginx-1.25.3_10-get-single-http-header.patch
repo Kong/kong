@@ -1,0 +1,74 @@
+diff --git a/bundle/nginx-1.25.3/src/http/ngx_http_variables.c b/bundle/nginx-1.25.3/src/http/ngx_http_variables.c
+index 4f0bd0e..ea3a2d5 100644
+--- a/bundle/nginx-1.25.3/src/http/ngx_http_variables.c
++++ b/bundle/nginx-1.25.3/src/http/ngx_http_variables.c
+@@ -27,6 +27,8 @@ static ngx_int_t ngx_http_variable_header(ngx_http_request_t *r,
+ 
+ static ngx_int_t ngx_http_variable_cookies(ngx_http_request_t *r,
+     ngx_http_variable_value_t *v, uintptr_t data);
++static ngx_int_t ngx_http_variable_headers(ngx_http_request_t *r,
++    ngx_http_variable_value_t *v, uintptr_t data);
+ static ngx_int_t ngx_http_variable_headers_internal(ngx_http_request_t *r,
+     ngx_http_variable_value_t *v, uintptr_t data, u_char sep);
+ 
+@@ -178,7 +180,7 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
+ #endif
+ 
+ #if (NGX_HTTP_X_FORWARDED_FOR)
+-    { ngx_string("http_x_forwarded_for"), NULL, ngx_http_variable_header,
++    { ngx_string("http_x_forwarded_for"), NULL, ngx_http_variable_headers,
+       offsetof(ngx_http_request_t, headers_in.x_forwarded_for), 0, 0 },
+ #endif
+ 
+@@ -331,10 +333,10 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
+     { ngx_string("sent_http_transfer_encoding"), NULL,
+       ngx_http_variable_sent_transfer_encoding, 0, 0, 0 },
+ 
+-    { ngx_string("sent_http_cache_control"), NULL, ngx_http_variable_header,
++    { ngx_string("sent_http_cache_control"), NULL, ngx_http_variable_headers,
+       offsetof(ngx_http_request_t, headers_out.cache_control), 0, 0 },
+ 
+-    { ngx_string("sent_http_link"), NULL, ngx_http_variable_header,
++    { ngx_string("sent_http_link"), NULL, ngx_http_variable_headers,
+       offsetof(ngx_http_request_t, headers_out.link), 0, 0 },
+ 
+     { ngx_string("limit_rate"), ngx_http_variable_set_limit_rate,
+@@ -811,7 +813,22 @@ static ngx_int_t
+ ngx_http_variable_header(ngx_http_request_t *r, ngx_http_variable_value_t *v,
+     uintptr_t data)
+ {
+-    return ngx_http_variable_headers_internal(r, v, data, ',');
++    ngx_table_elt_t  *h;
++
++    h = *(ngx_table_elt_t **) ((char *) r + data);
++
++    if (h) {
++        v->len = h->value.len;
++        v->valid = 1;
++        v->no_cacheable = 0;
++        v->not_found = 0;
++        v->data = h->value.data;
++
++    } else {
++        v->not_found = 1;
++    }
++
++    return NGX_OK;
+ }
+ 
+ 
+@@ -823,6 +840,14 @@ ngx_http_variable_cookies(ngx_http_request_t *r,
+ }
+ 
+ 
++static ngx_int_t
++ngx_http_variable_headers(ngx_http_request_t *r,
++    ngx_http_variable_value_t *v, uintptr_t data)
++{
++    return ngx_http_variable_headers_internal(r, v, data, ',');
++}
++
++
+ static ngx_int_t
+ ngx_http_variable_headers_internal(ngx_http_request_t *r,
+     ngx_http_variable_value_t *v, uintptr_t data, u_char sep)
