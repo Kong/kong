@@ -146,15 +146,17 @@ end
 function _M.parse_node_information(prefix, name)
   local prefix_len = #prefix
   local file_name = name:sub(prefix_len + 1)
-  local register_time, node_id = file_name:match("^(%d+.?%d*)-(.+)$")
+  local register_time, node_id = file_name:match("^(%d+%.?%d*)%-(.+)$")
+  register_time = register_time and tonumber(register_time)
+
   if not node_id or not register_time then
-    ngx_log(ngx_ERR, FALLBACK_CONFIG_PREFIX, "failed to parse a registion object key: ", file_name)
+    ngx_log(ngx_ERR, FALLBACK_CONFIG_PREFIX, "failed to parse a registration object key: ", file_name)
     return nil
   end
 
   return {
     node_id = node_id,
-    register_time = tonumber(register_time),
+    register_time = register_time,
   }
 end
 

@@ -30,21 +30,50 @@ describe("kong.clustering.config_sync_backup.election", function()
     end
   end)
 
-  it("to_file_name and parse_file_name", function()
+  describe("to_file_name and parse_file_name", function()
     local prefix = "s3://test_prefix/"
-    local e = election:new()
-    for _ = 1, 100 do
-      e.register_time = os.time() + math.random(1000)/100
-      e.node_id = uuid()
+    local e
 
+    lazy_setup(function()
+      e = election:new()
+    end)
+
+    it("sanity", function()
+      for _ = 1, 100 do
+        e.register_time = os.time() + math.random(1000)/100
+        e.node_id = uuid()
+
+        local filename = e:to_file_name(prefix)
+        local parsed = e.parse_node_information(prefix, filename)
+
+        assert.same({
+          node_id = e.node_id,
+          register_time = e.register_time,
+        }, parsed)
+      end
+    end)
+
+    it("parses integer timestamps", function()
+      e.register_time = 1704921469
+      e.node_id = "30128332-39a4-4bc5-8435-9230693f4bec"
       local filename = e:to_file_name(prefix)
       local parsed = e.parse_node_information(prefix, filename)
-
       assert.same({
         node_id = e.node_id,
         register_time = e.register_time,
       }, parsed)
-    end
+    end)
+
+    it("parses float timestamps", function()
+      e.register_time = 1704921469.1
+      e.node_id = "30128332-39a4-4bc5-8435-9230693f4bec"
+      local filename = e:to_file_name(prefix)
+      local parsed = e.parse_node_information(prefix, filename)
+      assert.same({
+        node_id = e.node_id,
+        register_time = e.register_time,
+      }, parsed)
+    end)
   end)
 
   it("is_fresh", function()
