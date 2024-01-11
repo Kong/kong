@@ -107,7 +107,6 @@ lua_shared_dict kong_mock_upstream_loggers  10m;
                 header["Proxy-Connection"]    = "close"
                 header["Proxy-Authenticate"]  = "Basic"
                 header["Proxy-Authorization"] = "Basic YWxhZGRpbjpvcGVuc2VzYW1l"
-                header["Transfer-Encoding"]   = "chunked"
                 header["Content-Length"]      = nil
                 header["TE"]                  = "trailers, deflate;q=0.5"
                 header["Trailer"]             = "Expires"
