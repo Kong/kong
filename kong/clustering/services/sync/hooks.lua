@@ -14,40 +14,59 @@ function _M.new(strategy)
 end
 
 
-function _M:register_dao_hooks()
-  hooks.register_hook("dao:insert:post", function(row, name, options, ws_id)
-    local deltas = {
-      {
-        ["type"] = name,
-        id = row.id,
-        ws_id = ws_id,
-        row = row, },
-    }
+function _M:register_dao_hooks(is_cp)
+  if is_cp then
+    hooks.register_hook("dao:insert:post", function(row, name, options, ws_id)
+      local deltas = {
+        {
+          ["type"] = name,
+          id = row.id,
+          ws_id = ws_id,
+          row = row, },
+      }
 
-    local res, err = self.strategy:insert_delta(deltas)
-    if not res then
-      return nil, err
-    end
+      local res, err = self.strategy:insert_delta(deltas)
+      if not res then
+        return nil, err
+      end
 
-    return row, name, options, ws_id
-  end)
+      local latest_version = self.strategy:get_latest_version()
 
-  hooks.register_hook("dao:delete:post", function(row, name, options, ws_id, cascade_entries)
-    local deltas = {
-      {
-        ["type"] = name,
-        id = row.id,
-        ws_id = ws_id,
-        row = ngx.null, },
-    }
+      for node, cap in pairs(kong.rpc:get_peers()) do
+        if cap["kong.sync.v2"] then
+          ngx.log(ngx.ERR, "notified ", node, " ", latest_version)
+          assert(kong.rpc:call(node, "kong.sync.v2.notify_new_version", latest_version))
+        end
+      end
 
-    local res, err = self.strategy:insert_delta(deltas)
-    if not res then
-      return nil, err
-    end
+      return row, name, options, ws_id
+    end)
 
-    return row, name, options, ws_id, cascade_entries
-  end)
+    hooks.register_hook("dao:delete:post", function(row, name, options, ws_id, cascade_entries)
+      local deltas = {
+        {
+          ["type"] = name,
+          id = row.id,
+          ws_id = ws_id,
+          row = ngx.null, },
+      }
+
+      local res, err = self.strategy:insert_delta(deltas)
+      if not res then
+        return nil, err
+      end
+
+      local latest_version = self.strategy:get_latest_version()
+
+      for node, cap in pairs(kong.rpc:get_peers()) do
+        if cap["kong.sync.v2"] then
+          assert(kong.rpc:call(node, "kong.sync.v2.notify_new_version", latest_version))
+        end
+      end
+
+      return row, name, options, ws_id, cascade_entries
+    end)
+  end
 end
 
 

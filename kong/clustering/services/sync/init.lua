@@ -22,13 +22,15 @@ end
 
 
 function _M:init(manager, is_cp)
-  self.hooks:register_dao_hooks()
+  self.hooks:register_dao_hooks(is_cp)
   self.rpc:init(manager, is_cp)
 end
 
 
 function _M:init_worker_dp()
-  self.rpc:init_worker_dp()
+  if ngx.worker.id() == 0 then
+    assert(self.rpc:sync_once(5))
+  end
 end
 
 

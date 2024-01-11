@@ -192,6 +192,12 @@ server {
         proxy_pass            $upstream_scheme://kong_upstream$upstream_uri;
     }
 
+    location = /debug_peer {
+      rewrite_by_lua_block {
+        ngx.say(require("cjson.safe").encode(kong.rpc:get_peers()))
+      }
+    }
+
     location @unbuffered {
         internal;
         default_type         '';

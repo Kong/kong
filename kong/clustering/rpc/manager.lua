@@ -196,14 +196,16 @@ function _M:connect(premature, node_id, host, path, cert, key)
     ok, err = fut:wait(5)
     if not ok then
       s:stop()
+      ngx_log(ngx_ERR, "[rpc] unable to advertise capability to peer: ", err)
       goto err
     end
 
-    s.capabilities = ok
+    self.client_capabilities[node_id] = fut.result
 
     self:_add_socket(s)
 
     ok, err = s:join()
+
     self:_remove_socket(s)
   end
 
@@ -219,6 +221,11 @@ function _M:connect(premature, node_id, host, path, cert, key)
       self:connect(premature, node_id, host, path, cert, key)
     end)
   end
+end
+
+
+function _M:get_peers()
+  return self.client_capabilities
 end
 
 

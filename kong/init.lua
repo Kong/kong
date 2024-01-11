@@ -968,9 +968,6 @@ function Kong.init_worker()
   --if kong.clustering then
   --  kong.clustering:init_worker()
   --end
-  if is_not_control_plane and worker_id() == 0 then
-    kong.sync:init_worker_dp()
-  end
 
   local cluster_tls = require("kong.clustering.tls")
 
@@ -982,6 +979,7 @@ function Kong.init_worker()
                        cluster_tls.get_cluster_cert(kong.configuration).cdata,
                        cluster_tls.get_cluster_cert_key(kong.configuration))
     end)
+    kong.sync:init_worker_dp()
   end
 
   ok, err = wasm.init_worker()

@@ -51,6 +51,12 @@ function _M:insert_delta(deltas)
 end
 
 
+function _M:get_latest_version()
+  local sql = "SELECT currval(pg_get_serial_sequence('clustering_sync_version', 'version'))"
+  return self.connector:query(sql)[1].currval
+end
+
+
 function _M:get_delta(version)
   local sql = "SELECT * FROM clustering_sync_delta WHERE version > " .. self.connector:escape_literal(version) .. " ORDER BY version ASC"
   return self.connector:query(sql)
