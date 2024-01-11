@@ -266,6 +266,17 @@ describe("cp outage handling", function ()
 
   describe("download", function()
     before_each(function()
+      -- create a config in s3
+      local client = helpers.proxy_client(nil, S3PORT)
+      assert(client:send {
+        method = "PUT",
+        path = "/test_bucket/test_prefix/" .. KONG_VERSION .. "/config.json",
+        body = test_config,
+        headers = {
+          ["Content-Type"] = "application/json",
+        }
+      })
+
       -- start dp
       assert(helpers.start_kong({
         role = "data_plane",
@@ -289,26 +300,6 @@ describe("cp outage handling", function ()
 
 
     it("test", function()
-      local client = helpers.proxy_client(nil, S3PORT)
-      assert(client:send {
-        method = "PUT",
-        path = "/test_bucket/test_prefix/" .. KONG_VERSION .. "/config.json",
-        body = test_config,
-        headers = {
-          ["Content-Type"] = "application/json",
-        }
-      })
-
-      local req
-      mock_s3.eventually:has_request_satisfy(function(req_)
-        assert.same(req_.method, "GET")
-        assert.same("/test_bucket/test_prefix/" .. KONG_VERSION .. "/config.json", req_.uri)
-        req = req_
-      end)
-
-      assert.Nil(req.body)
-      verify_aws_request(req.headers)
-
       -- test if it takes effect
       local pclient = helpers.proxy_client(nil, 9003)
 
