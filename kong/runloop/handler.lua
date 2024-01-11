@@ -13,7 +13,8 @@ local concurrency  = require "kong.concurrency"
 local lrucache     = require "resty.lrucache"
 local ktls         = require "resty.kong.tls"
 local request_id   = require "kong.tracing.request_id"
-local global       = require "kong.global"
+
+
 
 
 local PluginsIterator = require "kong.runloop.plugins_iterator"
@@ -748,8 +749,6 @@ do
         wasm.set_state(wasm_state)
       end
 
-      global.CURRENT_TRANSACTION_ID = kong_shm:get("declarative:current_transaction_id") or 0
-
       return true
     end)  -- concurrency.with_coroutine_mutex
 
@@ -764,6 +763,11 @@ do
                " ms on worker #", worker_id, ": ", err)
     end
   end -- reconfigure_handler
+end
+
+
+local function register_events()
+  events.register_events(reconfigure_handler)
 end
 
 
@@ -918,7 +922,7 @@ return {
         return
       end
 
-      events.register_events(reconfigure_handler)
+      register_events()
 
       -- initialize balancers for active healthchecks
       timer_at(0, function()
@@ -964,55 +968,76 @@ return {
       --if strategy ~= "off" then
         local worker_state_update_frequency = kong.configuration.worker_state_update_frequency or 1
 
-        local function rebuild_timer(premature)
+        local router_async_opts = {
+          name = "router",
+          timeout = 0,
+          on_timeout = "return_true",
+        }
+
+        local function rebuild_router_timer(premature)
           if premature then
             return
           end
 
-          -- Before rebuiding the internal structures, retrieve the current PostgreSQL transaction ID to make it the
-          -- current transaction ID after the rebuild has finished.
-          local rebuild_transaction_id, err = global.get_current_transaction_id()
-          if not rebuild_transaction_id then
-            log(ERR, err)
-          end
-
-          local router_update_status, err = rebuild_router({
-            name = "router",
-            timeout = 0,
-            on_timeout = "return_true",
-          })
-          if not router_update_status then
+          -- Don't wait for the semaphore (timeout = 0) when updating via the
+          -- timer.
+          -- If the semaphore is locked, that means that the rebuild is
+          -- already ongoing.
+          local ok, err = rebuild_router(router_async_opts)
+          if not ok then
             log(ERR, "could not rebuild router via timer: ", err)
           end
+        end
 
-          local plugins_iterator_update_status, err = rebuild_plugins_iterator({
-            name = "plugins_iterator",
-            timeout = 0,
-            on_timeout = "return_true",
-          })
-          if not plugins_iterator_update_status then
-            log(ERR, "could not rebuild plugins iterator via timer: ", err)
+        local _, err = kong.timer:named_every("router-rebuild",
+                                         worker_state_update_frequency,
+                                         rebuild_router_timer)
+        if err then
+          log(ERR, "could not schedule timer to rebuild router: ", err)
+        end
+
+        local plugins_iterator_async_opts = {
+          name = "plugins_iterator",
+          timeout = 0,
+          on_timeout = "return_true",
+        }
+
+        local function rebuild_plugins_iterator_timer(premature)
+          if premature then
+            return
           end
 
-          if wasm.enabled() then
-            local wasm_update_status, err = rebuild_wasm_state({
-              name = "wasm",
-              timeout = 0,
-              on_timeout = "return_true",
-            })
-            if not wasm_update_status then
+          local _, err = rebuild_plugins_iterator(plugins_iterator_async_opts)
+          if err then
+            log(ERR, "could not rebuild plugins iterator via timer: ", err)
+          end
+        end
+
+        local _, err = kong.timer:named_every("plugins-iterator-rebuild",
+                                         worker_state_update_frequency,
+                                         rebuild_plugins_iterator_timer)
+        if err then
+          log(ERR, "could not schedule timer to rebuild plugins iterator: ", err)
+        end
+
+
+        if wasm.enabled() then
+          local wasm_async_opts = {
+            name = "wasm",
+            timeout = 0,
+            on_timeout = "return_true",
+          }
+
+          local function rebuild_wasm_filter_chains_timer(premature)
+            if premature then
+              return
+            end
+
+            local _, err = rebuild_wasm_state(wasm_async_opts)
+            if err then
               log(ERR, "could not rebuild wasm filter chains via timer: ", err)
             end
           end
-
-          if rebuild_transaction_id then
-            -- Yield to process any pending invalidations
-            yield()
-
-            log(DEBUG, "configuration processing completed for transaction ID " .. rebuild_transaction_id)
-            global.CURRENT_TRANSACTION_ID = rebuild_transaction_id
-          end
-        end
 
         local _, err = kong.timer:named_every("rebuild",
                                          worker_state_update_frequency,
@@ -1020,7 +1045,7 @@ return {
         if err then
           log(ERR, "could not schedule timer to rebuild: ", err)
         end
-      --end
+      end
     end,
   },
   preread = {
@@ -1109,25 +1134,6 @@ return {
   },
   access = {
     before = function(ctx)
-      if kong.configuration.log_level == "debug" then
-        -- If this is a version-conditional request, abort it if this dataplane has not processed at least the
-        -- specified configuration version yet.
-        local if_kong_transaction_id = kong.request and kong.request.get_header('if-kong-transaction-id')
-        if if_kong_transaction_id then
-          if_kong_transaction_id = tonumber(if_kong_transaction_id)
-          if if_kong_transaction_id and if_kong_transaction_id >= global.CURRENT_TRANSACTION_ID then
-            return kong.response.error(
-                    503,
-                    "Service Unavailable",
-                    {
-                      ["X-Kong-Reconfiguration-Status"] = "pending",
-                      ["Retry-After"] = tostring(kong.configuration.worker_state_update_frequency or 1),
-                    }
-            )
-          end
-        end
-      end
-
       -- if there is a gRPC service in the context, don't re-execute the pre-access
       -- phase handler - it has been executed before the internal redirect
       if ctx.service and (ctx.service.protocol == "grpc" or
