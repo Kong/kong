@@ -127,7 +127,7 @@ stream_listen = off
 
 admin_listen = 127.0.0.1:8001 reuseport backlog=16384, 127.0.0.1:8444 http2 ssl reuseport backlog=16384
 admin_gui_listen = 0.0.0.0:8002, 0.0.0.0:8445 ssl
-status_listen = off
+status_listen = 127.0.0.1:8007 reuseport backlog=16384
 debug_listen = off
 debug_listen_local = on
 cluster_listen = 0.0.0.0:8005
