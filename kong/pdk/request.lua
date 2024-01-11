@@ -625,7 +625,17 @@ local function new(self)
       error("header name must be a string", 2)
     end
 
-    return var["http_" .. replace_dashes(name)]
+    local value = var["http_" .. replace_dashes(name)]
+
+    if value then
+      local p = find(value, ",", 1, true)  -- changed since nginx 1.23.0
+
+      if p then
+        value = sub(value, 1, p - 1)
+      end
+    end
+
+    return value
   end
 
 
