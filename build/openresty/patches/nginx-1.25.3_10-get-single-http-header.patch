@@ -1,5 +1,5 @@
 diff --git a/bundle/nginx-1.25.3/src/http/ngx_http_variables.c b/bundle/nginx-1.25.3/src/http/ngx_http_variables.c
-index 4f0bd0e..ea3a2d5 100644
+index 4f0bd0e..cd20e88 100644
 --- a/bundle/nginx-1.25.3/src/http/ngx_http_variables.c
 +++ b/bundle/nginx-1.25.3/src/http/ngx_http_variables.c
 @@ -27,6 +27,8 @@ static ngx_int_t ngx_http_variable_header(ngx_http_request_t *r,
@@ -72,3 +72,27 @@ index 4f0bd0e..ea3a2d5 100644
  static ngx_int_t
  ngx_http_variable_headers_internal(ngx_http_request_t *r,
      ngx_http_variable_value_t *v, uintptr_t data, u_char sep)
+@@ -990,6 +1015,15 @@ ngx_http_variable_unknown_header(ngx_http_request_t *r,
+         return NGX_OK;
+     }
+ 
++    /* only return one header value */
++
++    v->len = h->value.len;
++    v->valid = 1;
++    v->no_cacheable = 0;
++    v->not_found = 0;
++    v->data = h->value.data;
++
++#if 0
+     len -= 2;
+ 
+     if (h->next == NULL) {
+@@ -1026,6 +1060,7 @@ ngx_http_variable_unknown_header(ngx_http_request_t *r,
+ 
+         h = h->next;
+     }
++#endif
+ 
+     return NGX_OK;
+ }
