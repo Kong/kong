@@ -291,7 +291,6 @@ describe("headers [#" .. strategy .. "]", function()
       return function()
         bp.routes:insert {
           hosts = { "headers-inspect.test" },
-          paths = { "/" },
         }
 
         local service = bp.services:insert({
