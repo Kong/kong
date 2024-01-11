@@ -91,7 +91,11 @@ build = {
     ["kong.clustering.rpc.queue"] = "kong/clustering/rpc/queue.lua",
     ["kong.clustering.rpc.socket"] = "kong/clustering/rpc/socket.lua",
     ["kong.clustering.rpc.utils"] = "kong/clustering/rpc/utils.lua",
+
     ["kong.clustering.services.debug"] = "kong/clustering/services/debug.lua",
+    ["kong.clustering.services.sync"] = "kong/clustering/services/sync/init.lua",
+    ["kong.clustering.services.sync.hooks"] = "kong/clustering/services/sync/hooks.lua",
+    ["kong.clustering.services.sync.strategies.postgres"] = "kong/clustering/services/sync/strategies/postgres.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.postgres"] = "kong/cluster_events/strategies/postgres.lua",

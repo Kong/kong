@@ -694,6 +694,11 @@ function Kong.init()
     require("kong.clustering.services.debug").init(kong.rpc)
   end
 
+  if is_http_module and is_control_plane(config) then
+    kong.sync = require("kong.clustering.services.sync").new(db)
+    kong.sync:init()
+  end
+
   assert(db.vaults:load_vault_schemas(config.loaded_vaults))
 
   -- Load plugins as late as possible so that everything is set up
