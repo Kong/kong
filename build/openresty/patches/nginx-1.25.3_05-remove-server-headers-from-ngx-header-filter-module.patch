@@ -1,14 +1,5 @@
-From 42a44843445e9db12a8fc5eaf1f3e10b22a0065b Mon Sep 17 00:00:00 2001
-From: Aapo Talvensaari <aapo.talvensaari@gmail.com>
-Date: Tue, 15 Jun 2021 16:04:06 +0300
-Subject: [PATCH] remove server headers from nginx header filter module
-
----
- nginx-1.25.3/src/http/ngx_http_header_filter_module.c  | 34 -------------------
- 1 file changed, 34 deletions(-)
-
 diff --git a/bundle/nginx-1.25.3/src/http/ngx_http_header_filter_module.c b/bundle/nginx-1.25.3/src/http/ngx_http_header_filter_module.c
-index ca13f2a..1a07dac 100644
+index 90525ef..2c75594 100644
 --- a/bundle/nginx-1.25.3/src/http/ngx_http_header_filter_module.c
 +++ b/bundle/nginx-1.25.3/src/http/ngx_http_header_filter_module.c
 @@ -46,11 +46,6 @@ ngx_module_t  ngx_http_header_filter_module = {
@@ -23,7 +14,7 @@ index ca13f2a..1a07dac 100644
  static ngx_str_t ngx_http_status_lines[] = {
  
      ngx_string("200 OK"),
-@@ -279,18 +274,6 @@ ngx_http_header_filter(ngx_http_request_t *r)
+@@ -283,18 +278,6 @@ ngx_http_header_filter(ngx_http_request_t *r)
  
      clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
  
@@ -42,7 +33,7 @@ index ca13f2a..1a07dac 100644
      if (r->headers_out.date == NULL) {
          len += sizeof("Date: Mon, 28 Sep 1970 06:00:00 GMT" CRLF) - 1;
      }
-@@ -448,23 +431,6 @@ ngx_http_header_filter(ngx_http_request_t *r)
+@@ -452,23 +435,6 @@ ngx_http_header_filter(ngx_http_request_t *r)
      }
      *b->last++ = CR; *b->last++ = LF;
  
@@ -66,5 +57,3 @@ index ca13f2a..1a07dac 100644
      if (r->headers_out.date == NULL) {
          b->last = ngx_cpymem(b->last, "Date: ", sizeof("Date: ") - 1);
          b->last = ngx_cpymem(b->last, ngx_cached_http_time.data,
--- 
-2.31.1
