@@ -1,7 +1,7 @@
-diff --git a/bundle/nginx-1.21.4/src/stream/ngx_stream_proxy_module.c b/bundle/nginx-1.21.4/src/stream/ngx_stream_proxy_module.c
+diff --git a/bundle/nginx-1.25.3/src/stream/ngx_stream_proxy_module.c b/bundle/nginx-1.25.3/src/stream/ngx_stream_proxy_module.c
 index b11c288..4ae9e7b 100644
---- a/bundle/nginx-1.21.4/src/stream/ngx_stream_proxy_module.c
-+++ b/bundle/nginx-1.21.4/src/stream/ngx_stream_proxy_module.c
+--- a/bundle/nginx-1.25.3/src/stream/ngx_stream_proxy_module.c
++++ b/bundle/nginx-1.25.3/src/stream/ngx_stream_proxy_module.c
 @@ -8,6 +8,9 @@
  #include <ngx_config.h>
  #include <ngx_core.h>
@@ -18,13 +18,13 @@ index b11c288..4ae9e7b 100644
  
 +#if (NGX_STREAM_LUA_KONG)
 +
-+    if (pc->type == SOCK_STREAM && pscf->ssl
++    if (pc->type == SOCK_STREAM && pscf->ssl_enable
 +        && !ngx_stream_lua_kong_get_proxy_ssl_disable(s))
 +    {
 +
 +#else
 +
-     if (pc->type == SOCK_STREAM && pscf->ssl) {
+     if (pc->type == SOCK_STREAM && pscf->ssl_enable) {
  
 +#endif
 +

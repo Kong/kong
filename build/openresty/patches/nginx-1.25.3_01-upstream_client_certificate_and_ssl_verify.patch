@@ -1,7 +1,7 @@
-diff --git a/bundle/nginx-1.21.4/src/http/ngx_http_upstream.c b/bundle/nginx-1.21.4/src/http/ngx_http_upstream.c
+diff --git a/bundle/nginx-1.25.3/src/http/ngx_http_upstream.c b/bundle/nginx-1.25.3/src/http/ngx_http_upstream.c
 index 90710557..539a4db9 100644
---- a/bundle/nginx-1.21.4/src/http/ngx_http_upstream.c
-+++ b/bundle/nginx-1.21.4/src/http/ngx_http_upstream.c
+--- a/bundle/nginx-1.25.3/src/http/ngx_http_upstream.c
++++ b/bundle/nginx-1.25.3/src/http/ngx_http_upstream.c
 @@ -8,6 +8,9 @@
  #include <ngx_config.h>
  #include <ngx_core.h>

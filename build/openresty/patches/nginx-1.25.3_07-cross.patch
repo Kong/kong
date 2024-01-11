@@ -2,10 +2,10 @@ Rebased from http://cgit.openembedded.org/meta-openembedded/tree/meta-webserver/
 
 
 ===================================================================
-diff --git a/bundle/nginx-1.21.4/auto/feature b/bundle/nginx-1.21.4/auto/feature
+diff --git a/bundle/nginx-1.25.3/auto/feature b/bundle/nginx-1.25.3/auto/feature
 index 3561f59..d6a2889 100644
---- a/bundle/nginx-1.21.4/auto/feature
-+++ b/bundle/nginx-1.21.4/auto/feature
+--- a/bundle/nginx-1.25.3/auto/feature
++++ b/bundle/nginx-1.25.3/auto/feature
 @@ -49,12 +49,20 @@ eval "/bin/sh -c \"$ngx_test\" >> $NGX_AUTOCONF_ERR 2>&1"
  
  if [ -x $NGX_AUTOTEST ]; then
@@ -70,10 +70,10 @@ index 3561f59..d6a2889 100644
                  echo " not found"
  
              else
-diff --git a/bundle/nginx-1.21.4/auto/options b/bundle/nginx-1.21.4/auto/options
+diff --git a/bundle/nginx-1.25.3/auto/options b/bundle/nginx-1.25.3/auto/options
 index 182c799..e9eb7b8 100644
---- a/bundle/nginx-1.21.4/auto/options
-+++ b/bundle/nginx-1.21.4/auto/options
+--- a/bundle/nginx-1.25.3/auto/options
++++ b/bundle/nginx-1.25.3/auto/options
 @@ -400,6 +400,18 @@ $0: warning: the \"--with-sha1-asm\" option is deprecated"
          --test-build-epoll)              NGX_TEST_BUILD_EPOLL=YES   ;;
          --test-build-solaris-sendfilev)  NGX_TEST_BUILD_SOLARIS_SENDFILEV=YES ;;
@@ -120,10 +120,10 @@ index 182c799..e9eb7b8 100644
  fi
  
  
-diff --git a/bundle/nginx-1.21.4/auto/types/sizeof b/bundle/nginx-1.21.4/auto/types/sizeof
+diff --git a/bundle/nginx-1.25.3/auto/types/sizeof b/bundle/nginx-1.25.3/auto/types/sizeof
 index 480d8cf..23c5171 100644
---- a/bundle/nginx-1.21.4/auto/types/sizeof
-+++ b/bundle/nginx-1.21.4/auto/types/sizeof
+--- a/bundle/nginx-1.25.3/auto/types/sizeof
++++ b/bundle/nginx-1.25.3/auto/types/sizeof
 @@ -12,9 +12,12 @@ checking for $ngx_type size
  
  END
@@ -162,10 +162,10 @@ index 480d8cf..23c5171 100644
  fi
  
  
-diff --git a/bundle/nginx-1.21.4/auto/unix b/bundle/nginx-1.21.4/auto/unix
+diff --git a/bundle/nginx-1.25.3/auto/unix b/bundle/nginx-1.25.3/auto/unix
 index b41c70f..febbf3c 100644
---- a/bundle/nginx-1.21.4/auto/unix
-+++ b/bundle/nginx-1.21.4/auto/unix
+--- a/bundle/nginx-1.25.3/auto/unix
++++ b/bundle/nginx-1.25.3/auto/unix
 @@ -592,13 +592,13 @@ ngx_feature_libs=
  
  # C types
