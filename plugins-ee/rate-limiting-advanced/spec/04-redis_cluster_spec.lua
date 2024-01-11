@@ -6,9 +6,15 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
+local ee_helpers = require "spec-ee.helpers"
+local REDIS_CLUSTER_ADDRESSES = ee_helpers.redis_cluster_addresses
+local REDIS_CLUSTER_NODE_ADDRESS = REDIS_CLUSTER_ADDRESSES[1]
+local REDIS_CLUSTER_NODE_HOST, REDIS_CLUSTER_NODE_PORT =
+      REDIS_CLUSTER_NODE_ADDRESS:match("([^:]+):([^:]+)")
+REDIS_CLUSTER_NODE_PORT = tonumber(REDIS_CLUSTER_NODE_PORT)
 
 for _, strategy in helpers.all_strategies() do
-  describe("rate-limiting-advanced redis cluster", function()
+  describe("rate-limiting-advanced redis cluster #" .. strategy, function()
     local bp
     local route
     lazy_setup(function()
@@ -27,10 +33,10 @@ for _, strategy in helpers.all_strategies() do
           window_size = { 1 },
           limit = { 10 },
           sync_rate = 0.1,
-          -- actually it's a redis cluster
+          -- deliberately simulate a user configuring a redis cluster node to host/port
           redis = {
-            host = "localhost",
-            port = 6381,
+            host = REDIS_CLUSTER_NODE_HOST,
+            port = REDIS_CLUSTER_NODE_PORT,
           },
         }
       })
@@ -46,7 +52,6 @@ for _, strategy in helpers.all_strategies() do
     end)
 
     it("errors of the queries in pipeline show in error log", function()
-      assert.logfile().has.line("in the get counters pipeline failed: MOVED", true, 5)
 
       local proxy_client = helpers.proxy_client()
       assert
@@ -60,6 +65,8 @@ for _, strategy in helpers.all_strategies() do
           }
         }
         assert(res.status == 200 or res.status == 429)
+
+        assert.logfile().has.line("in the get counters pipeline failed: MOVED", true, 0.1)
         assert.logfile().has.line("in the push diffs pipeline failed: MOVED", true, 0.1)
       end)
 
