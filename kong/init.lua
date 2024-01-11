@@ -686,17 +686,14 @@ function Kong.init()
 
   if is_http_module and (is_data_plane(config) or is_control_plane(config))
   then
-    kong.clustering = require("kong.clustering").new(config)
+    --kong.clustering = require("kong.clustering").new(config)
     kong.rpc = require("kong.clustering.rpc.manager").new(config, kong.node.get_id())
+    kong.sync = require("kong.clustering.services.sync").new(db)
+    kong.sync:init(kong.rpc, is_control_plane(config))
   end
 
   if is_http_module and is_data_plane(config) then
     require("kong.clustering.services.debug").init(kong.rpc)
-  end
-
-  if is_http_module and is_control_plane(config) then
-    kong.sync = require("kong.clustering.services.sync").new(db)
-    kong.sync:init()
   end
 
   assert(db.vaults:load_vault_schemas(config.loaded_vaults))
@@ -755,13 +752,13 @@ function Kong.init()
 
   require("resty.kong.var").patch_metatable()
 
-  if config.dedicated_config_processing and is_data_plane(config) then
-    -- TODO: figure out if there is better value than 2048
-    local ok, err = process.enable_privileged_agent(2048)
-    if not ok then
-      error(err)
-    end
-  end
+  --if config.dedicated_config_processing and is_data_plane(config) then
+  --  -- TODO: figure out if there is better value than 2048
+  --  local ok, err = process.enable_privileged_agent(2048)
+  --  if not ok then
+  --    error(err)
+  --  end
+  --end
 
   if config.request_debug and config.role ~= "control_plane" and is_http_module then
     local token = config.request_debug_token or utils.uuid()
@@ -868,12 +865,12 @@ function Kong.init_worker()
     kong.cache:invalidate_local(constants.ADMIN_GUI_KCONFIG_CACHE_KEY)
   end
 
-  if process.type() == "privileged agent" then
-    if kong.clustering then
-      kong.clustering:init_worker()
-    end
-    return
-  end
+  --if process.type() == "privileged agent" then
+  --  if kong.clustering then
+  --    kong.clustering:init_worker()
+  --  end
+  --  return
+  --end
 
   kong.vault.init_worker()
 
@@ -968,8 +965,11 @@ function Kong.init_worker()
     plugin_servers.start()
   end
 
-  if kong.clustering then
-    kong.clustering:init_worker()
+  --if kong.clustering then
+  --  kong.clustering:init_worker()
+  --end
+  if is_not_control_plane and worker_id() == 0 then
+    kong.sync:init_worker_dp()
   end
 
   local cluster_tls = require("kong.clustering.tls")
