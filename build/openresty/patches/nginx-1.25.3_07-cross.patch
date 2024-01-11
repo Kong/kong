@@ -1,7 +1,3 @@
-Rebased from http://cgit.openembedded.org/meta-openembedded/tree/meta-webserver/recipes-httpd/nginx/files/nginx-cross.patch
-
-
-===================================================================
 diff --git a/bundle/nginx-1.25.3/auto/feature b/bundle/nginx-1.25.3/auto/feature
 index 3561f59..d6a2889 100644
 --- a/bundle/nginx-1.25.3/auto/feature
@@ -71,10 +67,10 @@ index 3561f59..d6a2889 100644
  
              else
 diff --git a/bundle/nginx-1.25.3/auto/options b/bundle/nginx-1.25.3/auto/options
-index 182c799..e9eb7b8 100644
+index e6e0cd3..5117342 100644
 --- a/bundle/nginx-1.25.3/auto/options
 +++ b/bundle/nginx-1.25.3/auto/options
-@@ -400,6 +400,18 @@ $0: warning: the \"--with-sha1-asm\" option is deprecated"
+@@ -411,6 +411,18 @@ $0: warning: the \"--with-sha1-asm\" option is deprecated"
          --test-build-epoll)              NGX_TEST_BUILD_EPOLL=YES   ;;
          --test-build-solaris-sendfilev)  NGX_TEST_BUILD_SOLARIS_SENDFILEV=YES ;;
  
@@ -93,7 +89,7 @@ index 182c799..e9eb7b8 100644
          *)
              echo "$0: error: invalid option \"$option\""
              exit 1
-@@ -590,6 +602,17 @@ cat << END
+@@ -605,6 +617,17 @@ cat << END
  
    --with-debug                       enable debug logging
  
@@ -111,7 +107,7 @@ index 182c799..e9eb7b8 100644
  END
  
      exit 1
-@@ -598,6 +621,8 @@ fi
+@@ -613,6 +636,8 @@ fi
  
  if [ ".$NGX_PLATFORM" = ".win32" ]; then
      NGX_WINE=$WINE
@@ -163,10 +159,10 @@ index 480d8cf..23c5171 100644
  
  
 diff --git a/bundle/nginx-1.25.3/auto/unix b/bundle/nginx-1.25.3/auto/unix
-index b41c70f..febbf3c 100644
+index 6b44fc9..7410746 100644
 --- a/bundle/nginx-1.25.3/auto/unix
 +++ b/bundle/nginx-1.25.3/auto/unix
-@@ -592,13 +592,13 @@ ngx_feature_libs=
+@@ -640,13 +640,13 @@ ngx_feature_libs=
  
  # C types
  
@@ -184,7 +180,7 @@ index b41c70f..febbf3c 100644
  ngx_param=NGX_PTR_SIZE; ngx_value=$ngx_size; . auto/types/value
  
  
-@@ -609,7 +609,7 @@ NGX_INCLUDE_AUTO_CONFIG_H="#include \"ngx_auto_config.h\""
+@@ -657,7 +657,7 @@ NGX_INCLUDE_AUTO_CONFIG_H="#include \"ngx_auto_config.h\""
  ngx_type="uint32_t"; ngx_types="u_int32_t"; . auto/types/typedef
  ngx_type="uint64_t"; ngx_types="u_int64_t"; . auto/types/typedef
  
@@ -193,7 +189,7 @@ index b41c70f..febbf3c 100644
  . auto/types/sizeof
  ngx_param=NGX_SIG_ATOMIC_T_SIZE; ngx_value=$ngx_size; . auto/types/value
  
-@@ -625,15 +625,15 @@ ngx_type="rlim_t"; ngx_types="int"; . auto/types/typedef
+@@ -673,15 +673,15 @@ ngx_type="rlim_t"; ngx_types="int"; . auto/types/typedef
  
  . auto/endianness
  

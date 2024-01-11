@@ -1,8 +1,8 @@
 diff --git a/bundle/LuaJIT-2.1-20231117/src/Makefile b/bundle/LuaJIT-2.1-20231117/src/Makefile
-index 68a9a7c..8d2de33 100644
+index d80e45a..f87762e 100644
 --- a/bundle/LuaJIT-2.1-20231117/src/Makefile
 +++ b/bundle/LuaJIT-2.1-20231117/src/Makefile
-@@ -27,7 +27,8 @@ NODOTABIVER= 51
+@@ -26,7 +26,8 @@ NODOTABIVER= 51
  DEFAULT_CC = gcc
  #
  # LuaJIT builds as a native 32 or 64 bit binary by default.
@@ -12,18 +12,18 @@ index 68a9a7c..8d2de33 100644
  #
  # Use this if you want to force a 32 bit build on a 64 bit multilib OS.
  #CC= $(DEFAULT_CC) -m32
-@@ -211,7 +212,7 @@ TARGET_CC= $(STATIC_CC)
+@@ -210,7 +211,7 @@ TARGET_CC= $(STATIC_CC)
  TARGET_STCC= $(STATIC_CC)
  TARGET_DYNCC= $(DYNAMIC_CC)
  TARGET_LD= $(CROSS)$(CC)
 -TARGET_AR= $(CROSS)ar rcus
 +TARGET_AR= $(CROSS)$(AR) rcus
  TARGET_STRIP= $(CROSS)strip
-
+ 
  TARGET_LIBPATH= $(or $(PREFIX),/usr/local)/$(or $(MULTILIB),lib)
-@@ -291,11 +292,11 @@ TARGET_XCFLAGS+= $(CCOPT_$(TARGET_LJARCH))
+@@ -290,11 +291,11 @@ TARGET_XCFLAGS+= $(CCOPT_$(TARGET_LJARCH))
  TARGET_ARCH+= $(patsubst %,-DLUAJIT_TARGET=LUAJIT_ARCH_%,$(TARGET_LJARCH))
-
+ 
  ifneq (,$(PREFIX))
 -ifneq (/usr/local,$(PREFIX))
 -  TARGET_XCFLAGS+= -DLUA_ROOT=\"$(PREFIX)\"
