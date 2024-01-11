@@ -181,6 +181,7 @@ build = {
     ["kong.tools.ip"] = "kong/tools/ip.lua",
     ["kong.tools.http"] = "kong/tools/http.lua",
     ["kong.tools.cjson"] = "kong/tools/cjson.lua",
+    ["kong.tools.redis.schema"] = "kong/tools/redis/schema.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.events"] = "kong/runloop/events.lua",
@@ -478,14 +479,18 @@ build = {
 
     ["kong.plugins.acme.api"] = "kong/plugins/acme/api.lua",
     ["kong.plugins.acme.client"] = "kong/plugins/acme/client.lua",
+    ["kong.plugins.acme.clustering.compat.redis_translation"] = "kong/plugins/acme/clustering/compat/redis_translation.lua",
     ["kong.plugins.acme.daos"] = "kong/plugins/acme/daos.lua",
     ["kong.plugins.acme.handler"] = "kong/plugins/acme/handler.lua",
     ["kong.plugins.acme.migrations.000_base_acme"] = "kong/plugins/acme/migrations/000_base_acme.lua",
     ["kong.plugins.acme.migrations.001_280_to_300"] = "kong/plugins/acme/migrations/001_280_to_300.lua",
     ["kong.plugins.acme.migrations.002_320_to_330"] = "kong/plugins/acme/migrations/002_320_to_330.lua",
+    ["kong.plugins.acme.migrations.003_350_to_360"] = "kong/plugins/acme/migrations/003_350_to_360.lua",
     ["kong.plugins.acme.migrations"] = "kong/plugins/acme/migrations/init.lua",
     ["kong.plugins.acme.schema"] = "kong/plugins/acme/schema.lua",
     ["kong.plugins.acme.storage.kong"] = "kong/plugins/acme/storage/kong.lua",
+    ["kong.plugins.acme.storage.config_adapters"] = "kong/plugins/acme/storage/config_adapters/init.lua",
+    ["kong.plugins.acme.storage.config_adapters.redis"] = "kong/plugins/acme/storage/config_adapters/redis.lua",
     ["kong.plugins.acme.reserved_words"] = "kong/plugins/acme/reserved_words.lua",
 
     ["kong.plugins.prometheus.api"] = "kong/plugins/prometheus/api.lua",
