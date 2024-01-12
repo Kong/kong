@@ -37,7 +37,6 @@ for _, strategy in helpers.each_strategy() do
 
       local route1 = bp.routes:insert {
         hosts   = { "http_logging.test" },
-        paths   = { "/" },
         service = service1
       }
 
@@ -746,7 +745,6 @@ for _, strategy in helpers.each_strategy() do
 
         local route = bp.routes:insert {
           hosts   = { "http_queue_logging.test" },
-          paths   = { "/" },
           service = service
         }
 
