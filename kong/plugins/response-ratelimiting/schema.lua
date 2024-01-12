@@ -1,5 +1,6 @@
 local typedefs = require "kong.db.schema.typedefs"
-
+local redis_schema = require "kong.tools.redis.schema"
+local deprecation = require "kong.deprecation"
 
 local ORDERED_PERIODS = { "second", "minute", "hour", "day", "month", "year" }
 
@@ -94,6 +95,7 @@ return {
               default = true
             },
           },
+          { redis = redis_schema.config_schema },
           {
             redis_host = typedefs.redis_host,
           },
@@ -202,29 +204,73 @@ return {
     },
   },
   entity_checks = {
-    {
-      conditional = {
-        if_field = "config.policy",
-        if_match = { eq = "redis" },
-        then_field = "config.redis_host",
-        then_match = { required = true },
-      }
-    },
-    {
-      conditional = {
-        if_field = "config.policy",
-        if_match = { eq = "redis" },
-        then_field = "config.redis_port",
-        then_match = { required = true },
-      }
-    },
-    {
-      conditional = {
-        if_field = "config.policy",
-        if_match = { eq = "redis" },
-        then_field = "config.redis_timeout",
-        then_match = { required = true },
-      }
-    },
+    { conditional_at_least_one_of = {
+      if_field = "config.policy", if_match = { eq = "redis" },
+      then_at_least_one_of = { "config.redis.host", "config.redis_host" },
+      then_err = "must set one of %s when 'policy' is 'redis'",
+    } },
+    { conditional_at_least_one_of = {
+      if_field = "config.policy", if_match = { eq = "redis" },
+      then_at_least_one_of = { "config.redis.port", "config.redis_port" },
+      then_err = "must set one of %s when 'policy' is 'redis'",
+    } },
+    { conditional_at_least_one_of = {
+      if_field = "config.policy", if_match = { eq = "redis" },
+      then_at_least_one_of = { "config.redis.timeout", "config.redis_timeout" },
+      then_err = "must set one of %s when 'policy' is 'redis'",
+    } },
+    { custom_entity_check = {
+      field_sources = {
+        "config.redis_host",
+        "config.redis_port",
+        "config.redis_password",
+        "config.redis_username",
+        "config.redis_ssl",
+        "config.redis_ssl_verify",
+        "config.redis_server_name",
+        "config.redis_timeout",
+        "config.redis_database"
+      },
+      fn = function(entity)
+        if (entity.config.redis_host or ngx.null) ~= ngx.null then
+          deprecation("response-ratelimiting: config.redis_host is deprecated, please use config.redis.host instead",
+            { after = "4.0", })
+        end
+        if (entity.config.redis_port or ngx.null) ~= ngx.null and entity.config.redis_port ~= 6379 then
+          deprecation("response-ratelimiting: config.redis_port is deprecated, please use config.redis.port instead",
+            { after = "4.0", })
+        end
+        if (entity.config.redis_password or ngx.null) ~= ngx.null then
+          deprecation("response-ratelimiting: config.redis_password is deprecated, please use config.redis.password instead",
+            { after = "4.0", })
+        end
+        if (entity.config.redis_username or ngx.null) ~= ngx.null then
+          deprecation("response-ratelimiting: config.redis_username is deprecated, please use config.redis.username instead",
+            { after = "4.0", })
+        end
+        if (entity.config.redis_ssl or ngx.null) ~= ngx.null and entity.config.redis_ssl ~= false then
+          deprecation("response-ratelimiting: config.redis_ssl is deprecated, please use config.redis.ssl instead",
+            { after = "4.0", })
+        end
+        if (entity.config.redis_ssl_verify or ngx.null) ~= ngx.null and entity.config.redis_ssl_verify ~= false then
+          deprecation("response-ratelimiting: config.redis_ssl_verify is deprecated, please use config.redis.ssl_verify instead",
+            { after = "4.0", })
+        end
+        if (entity.config.redis_server_name or ngx.null) ~= ngx.null then
+          deprecation("response-ratelimiting: config.redis_server_name is deprecated, please use config.redis.server_name instead",
+            { after = "4.0", })
+        end
+        if (entity.config.redis_timeout or ngx.null) ~= ngx.null and entity.config.redis_timeout ~= 2000 then
+          deprecation("response-ratelimiting: config.redis_timeout is deprecated, please use config.redis.timeout instead",
+            { after = "4.0", })
+        end
+        if (entity.config.redis_database or ngx.null) ~= ngx.null and entity.config.redis_database ~= 0 then
+          deprecation("response-ratelimiting: config.redis_database is deprecated, please use config.redis.database instead",
+            { after = "4.0", })
+        end
+
+        return true
+      end
+    } }
   },
 }

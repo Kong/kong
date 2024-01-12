@@ -4,6 +4,7 @@ local DEFAULT_TIMEOUT = 2000
 return {
     config_schema = {
         type = "record",
+        description = "Redis configuration",
         fields = {
             { host = typedefs.host },
             { port = typedefs.port },
