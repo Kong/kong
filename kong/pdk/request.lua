@@ -628,7 +628,7 @@ local function new(self)
     local value = var["http_" .. replace_dashes(name)]
 
     if value then
-      local p = find(value, ",", 1, true)  -- changed since nginx 1.23.0
+      local p = find(value, ", ", 1, true)  -- changed since nginx 1.23.0
 
       if p then
         local GMT_TIME_FMT_LEN = 29   --"Mon, 28 Sep 1970 06:00:00 GMT"
