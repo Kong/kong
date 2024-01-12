@@ -77,10 +77,12 @@ http {
     listen [::1]:${http_port};
 #end
 # else
-    listen 127.0.0.1:${http_port} ssl http2;
+    listen 127.0.0.1:${http_port} ssl;
 # if not disable_ipv6 then
-    listen [::1]:${http_port} ssl http2;
+    listen [::1]:${http_port} ssl;
 #end
+    http2 on;
+
     ssl_certificate     ${cert_path}/kong_spec.crt;
     ssl_certificate_key ${cert_path}/kong_spec.key;
     ssl_protocols TLSv1 TLSv1.1 TLSv1.2;

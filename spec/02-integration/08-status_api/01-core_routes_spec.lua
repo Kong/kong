@@ -290,7 +290,7 @@ for _, strategy in helpers.all_strategies() do
     lazy_setup(function()
       helpers.get_db_utils(strategy, {}) -- runs migrations
       assert(helpers.start_kong {
-        status_listen = "127.0.0.1:9500 ssl http2",
+        status_listen = "127.0.0.1:9500 ssl",
         plugins = "admin-api-method",
         database = strategy,
       })
