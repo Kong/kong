@@ -1,0 +1,3 @@
+message: Fix a bug that GCP backend vault hides the error message when secrets cannot be fetched
+type: bugfix
+scope: Core

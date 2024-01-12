@@ -75,7 +75,7 @@ local function get(conf, resource, version)
 
   local ok, res, err = pcall(GCP.secretmanager_v1.versions.access, GCP_ACCESS_TOKEN, params)
   if not ok then
-    return nil, err
+    return nil, res
   end
 
   if not res then
