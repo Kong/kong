@@ -5478,13 +5478,13 @@ do
       assert.same(use_case[2].route, match_t.route)
     end)
 
-    it("select() accepts but does not match invalid http.segments.*", function()
+    it("select() accepts but does not match wrong http.segments.*", function()
       local use_case = {
         {
           service = service,
           route   = {
             id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
-            expression = [[http.path.segments.a == r#"foo"#]],
+            expression = [[http.path.segments.4_1 == r#"foo"#]],
             priority = 100,
           },
         },

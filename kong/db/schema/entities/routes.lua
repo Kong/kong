@@ -13,7 +13,7 @@ do
 
   local HTTP_PATH_SEGMENTS_PREFIX = "http.path.segments."
   local HTTP_PATH_SEGMENTS_REG = [[http\.path\.segments\.(\w*)]]
-  local HTTP_PATH_SEGMENTS_SUFFIX_REG = [[[\d+_?\d+?]]
+  local HTTP_PATH_SEGMENTS_SUFFIX_REG = [[^(\d+)_?(\d+)?$]]
 
   local function verify_http_path_segments(exp)
     if not exp:find(HTTP_PATH_SEGMENTS_PREFIX, 1, true) then

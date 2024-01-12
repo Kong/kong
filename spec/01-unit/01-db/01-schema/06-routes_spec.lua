@@ -1561,4 +1561,47 @@ describe("routes schema (flavor = expressions)", function()
     route = Routes:process_auto_fields(route, "insert")
     assert.truthy(Routes:validate(route))
   end)
+
+  it("http route supports http.path.segments.* fields", function()
+    local route = {
+      id             = a_valid_uuid,
+      name           = "my_route",
+      protocols      = { "grpcs" },
+      expression     = [[http.path.segments.0 == "foo" && http.path.segments.1 ^= "bar" && http.path.segments.2_3 ~ r#"x/y"#]],
+      priority       = 100,
+      service        = { id = another_uuid },
+    }
+    route = Routes:process_auto_fields(route, "insert")
+    assert.truthy(Routes:validate(route))
+  end)
+
+  it("fails if http route has invalid http.path.segments.* fields", function()
+    local r = {
+      id             = a_valid_uuid,
+      name           = "my_route",
+      protocols      = { "http" },
+      expression     = [[http.path.segments. == "foo"]],
+      priority       = 100,
+      service        = { id = another_uuid },
+    }
+
+    route = Routes:process_auto_fields(r, "insert")
+    local ok, errs = Routes:validate_insert(route)
+    assert.falsy(ok)
+    assert.truthy(errs["@entity"])
+
+    r.expression = [[http.path.segments.abc == "foo"]]
+
+    route = Routes:process_auto_fields(r, "insert")
+    local ok, errs = Routes:validate_insert(route)
+    assert.falsy(ok)
+    assert.truthy(errs["@entity"])
+
+    r.expression = [[http.path.segments.1_2_3 == "foo"]]
+
+    route = Routes:process_auto_fields(r, "insert")
+    local ok, errs = Routes:validate_insert(route)
+    assert.falsy(ok)
+    assert.truthy(errs["@entity"])
+  end)
 end)
