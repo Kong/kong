@@ -24,9 +24,9 @@ error_template_xml = NONE
 error_template_plain = NONE
 node_id = NONE
 
-proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 http2 ssl reuseport backlog=16384
+proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 ssl reuseport backlog=16384
 stream_listen = off
-admin_listen = 127.0.0.1:8001 reuseport backlog=16384, 127.0.0.1:8444 http2 ssl reuseport backlog=16384
+admin_listen = 127.0.0.1:8001 reuseport backlog=16384, 127.0.0.1:8444 ssl reuseport backlog=16384
 admin_gui_listen = 0.0.0.0:8002, 0.0.0.0:8445 ssl
 status_listen = 127.0.0.1:8007 reuseport backlog=16384
 cluster_listen = 0.0.0.0:8005
