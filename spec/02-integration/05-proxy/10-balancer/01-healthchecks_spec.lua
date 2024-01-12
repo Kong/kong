@@ -20,8 +20,8 @@ for _, strategy in helpers.each_strategy() do
   local admin_port_1 = 9001
   local default_admin_listen = "127.0.0.1:".. admin_port_1 .. ",[::1]:" .. admin_port_1
   local default_proxy_listen = "127.0.0.1:".. proxy_port_1 .. ",[::1]:" .. proxy_port_1 .. ", " ..
-                               "127.0.0.1:".. proxy_port_ssl .. " http2 ssl,[::1]:" .. proxy_port_ssl .. " http2 ssl, " ..
-                               "127.0.0.1:".. proxy_port_grpc .. " http2,[::1]:" .. proxy_port_grpc .. " http2"
+                               "127.0.0.1:".. proxy_port_ssl .. " ssl,[::1]:" .. proxy_port_ssl .. " ssl, " ..
+                               "127.0.0.1:".. proxy_port_grpc .. ",[::1]:" .. proxy_port_grpc
 
   describe("Healthcheck #" .. strategy, function()
     lazy_setup(function()
