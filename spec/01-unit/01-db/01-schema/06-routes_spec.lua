@@ -1585,7 +1585,7 @@ describe("routes schema (flavor = expressions)", function()
       service        = { id = another_uuid },
     }
 
-    route = Routes:process_auto_fields(r, "insert")
+    local route = Routes:process_auto_fields(r, "insert")
     local ok, errs = Routes:validate_insert(route)
     assert.falsy(ok)
     assert.truthy(errs["@entity"])
