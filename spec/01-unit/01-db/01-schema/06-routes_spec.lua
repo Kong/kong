@@ -1510,4 +1510,55 @@ describe("routes schema (flavor = expressions)", function()
     -- verified by `schema/typedefs.lua`
     assert.truthy(errs["@entity"])
   end)
+
+  it("http route still supports net.port but with warning", function()
+    local ngx_log = ngx.log
+    local log = spy.on(ngx, "log")
+
+    finally(function()
+      ngx.log = ngx_log  -- luacheck: ignore
+    end)
+
+    local route = {
+      id             = a_valid_uuid,
+      name           = "my_route",
+      protocols      = { "grpc" },
+      expression     = [[http.method == "GET" && net.port == 8000]],
+      priority       = 100,
+      service        = { id = another_uuid },
+    }
+    route = Routes:process_auto_fields(route, "insert")
+    assert.truthy(Routes:validate(route))
+
+    assert.spy(log).was.called_with(ngx.WARN,
+                                    "The field 'net.port' of expression is deprecated " ..
+                                    "and will be removed in the upcoming major release, " ..
+                                    "please use 'net.dst.port' instead.")
+  end)
+
+  it("http route supports net.src.* fields", function()
+    local route = {
+      id             = a_valid_uuid,
+      name           = "my_route",
+      protocols      = { "https" },
+      expression     = [[http.method == "GET" && net.src.ip == 1.2.3.4 && net.src.port == 80]],
+      priority       = 100,
+      service        = { id = another_uuid },
+    }
+    route = Routes:process_auto_fields(route, "insert")
+    assert.truthy(Routes:validate(route))
+  end)
+
+  it("http route supports net.dst.* fields", function()
+    local route = {
+      id             = a_valid_uuid,
+      name           = "my_route",
+      protocols      = { "grpcs" },
+      expression     = [[http.method == "GET" && net.dst.ip == 1.2.3.4 && net.dst.port == 80]],
+      priority       = 100,
+      service        = { id = another_uuid },
+    }
+    route = Routes:process_auto_fields(route, "insert")
+    assert.truthy(Routes:validate(route))
+  end)
 end)
