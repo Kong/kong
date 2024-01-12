@@ -1670,7 +1670,11 @@ function Schema:process_auto_fields(data, context, nulls, opts)
           local new_values = sdata.func(value)
           if new_values then
             for k, v in pairs(new_values) do
-              data[k] = v
+              if type(v) == "table" then
+                data[k] = tablex.merge(data[k] or {}, v, true)
+              else
+                data[k] = v
+              end
             end
           end
         end

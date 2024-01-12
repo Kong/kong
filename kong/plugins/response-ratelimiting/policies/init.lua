@@ -27,15 +27,15 @@ end
 
 local function get_redis_configuration(plugin_conf)
   return {
-     host = plugin_conf.redis.host or plugin_conf.redis_host,
-     port = plugin_conf.redis.port or plugin_conf.redis_port,
-     username = plugin_conf.redis.username or plugin_conf.redis_username,
-     password = plugin_conf.redis.password or plugin_conf.redis_password,
-     database = plugin_conf.redis.database or plugin_conf.redis_database,
-     timeout = plugin_conf.redis.timeout or plugin_conf.redis_timeout,
-     ssl = plugin_conf.redis.ssl or plugin_conf.redis_ssl,
-     ssl_verify = plugin_conf.redis.ssl_verify or plugin_conf.redis_ssl_verify,
-     server_name = plugin_conf.redis.server_name or plugin_conf.redis_server_name,
+     host = plugin_conf.redis.host,
+     port = plugin_conf.redis.port,
+     username = plugin_conf.redis.username,
+     password = plugin_conf.redis.password,
+     database = plugin_conf.redis.database,
+     timeout = plugin_conf.redis.timeout,
+     ssl = plugin_conf.redis.ssl,
+     ssl_verify = plugin_conf.redis.ssl_verify,
+     server_name = plugin_conf.redis.server_name,
   }
 end
 

@@ -38,28 +38,42 @@ local SHM_STORAGE_SCHEMA = {
 local KONG_STORAGE_SCHEMA = {
 }
 
--- deprecated old schema
-local REDIS_LEGACY_SCHEMA_FIELDS = {
-  { auth = { type = "string", referenceable = true, description = "The Redis password to use for authentication. " } },
-  { ssl_server_name = typedefs.sni { required = false, description = "The expected server name for the SSL/TLS certificate presented by the Redis server." }},
-  {
-    namespace = {
-      type = "string",
-      description = "A namespace to prepend to all keys stored in Redis.",
-      required = true,
-      default = "",
-      len_min = 0,
-      custom_validator = validate_namespace
-    }
-  },
-  { scan_count = { type = "number", required = false, default = 10, description = "The number of keys to return in Redis SCAN calls." } },
+local LEGACY_SCHEMA_TRANSLATIONS = {
+  { auth = {
+    type = "string",
+    func = function(value)
+      deprecation("acme: config.storage_config.redis.auth is deprecated, please use config.storage_config.redis.password instead",
+        { after = "4.0", })
+      return { password = value }
+    end
+  }},
+  { ssl_server_name = {
+    type = "string",
+    func = function(value)
+      deprecation("acme: config.storage_config.redis.ssl_server_name is deprecated, please use config.storage_config.redis.server_name instead",
+        { after = "4.0", })
+      return { server_name = value }
+    end
+  }},
+  { namespace = {
+    type = "string",
+    func = function(value)
+      deprecation("acme: config.storage_config.redis.namespace is deprecated, please use config.storage_config.redis.extra_options.namespace instead",
+        { after = "4.0", })
+      return { extra_options = { namespace = value } }
+    end
+  }},
+  { scan_count = {
+    type = "integer",
+    func = function(value)
+      deprecation("acme: config.storage_config.redis.scan_count is deprecated, please use config.storage_config.redis.extra_options.scan_count instead",
+        { after = "4.0", })
+      return { extra_options = { scan_count = value } }
+    end
+  }},
 }
 
 local REDIS_STORAGE_SCHEMA = tablex.copy(redis_schema.config_schema.fields)
-for _,v in ipairs(REDIS_LEGACY_SCHEMA_FIELDS) do
-  table.insert(REDIS_STORAGE_SCHEMA, v)
-end
-
 table.insert(REDIS_STORAGE_SCHEMA, { extra_options = {
   description = "Custom ACME Redis options",
   type = "record",
@@ -217,7 +231,7 @@ local schema = {
               fields = {
                 { shm = { type = "record", fields = SHM_STORAGE_SCHEMA, } },
                 { kong = { type = "record", fields = KONG_STORAGE_SCHEMA, } },
-                { redis = { type = "record", fields = REDIS_STORAGE_SCHEMA, } },
+                { redis = { type = "record", fields = REDIS_STORAGE_SCHEMA, shorthand_fields = LEGACY_SCHEMA_TRANSLATIONS } },
                 { consul = { type = "record", fields = CONSUL_STORAGE_SCHEMA, } },
                 { vault = { type = "record", fields = VAULT_STORAGE_SCHEMA, } },
               },
@@ -271,28 +285,6 @@ local schema = {
         end
       }
     },
-    { custom_entity_check = {
-      field_sources = { "config.storage_config.redis.namespace", "config.storage_config.redis.scan_count", "config.storage_config.redis.auth", "config.storage_config.redis.ssl_server_name" },
-      fn = function(entity)
-        if (entity.config.storage_config.redis.namespace or ngx.null) ~= ngx.null and entity.config.storage_config.redis.namespace ~= "" then
-          deprecation("acme: config.storage_config.redis.namespace is deprecated, please use config.storage_config.redis.extra_options.namespace instead",
-            { after = "4.0", })
-        end
-        if (entity.config.storage_config.redis.scan_count or ngx.null) ~= ngx.null and entity.config.storage_config.redis.scan_count ~= 10 then
-          deprecation("acme: config.storage_config.redis.scan_count is deprecated, please use config.storage_config.redis.extra_options.scan_count instead",
-            { after = "4.0", })
-        end
-        if (entity.config.storage_config.redis.auth or ngx.null) ~= ngx.null  then
-          deprecation("acme: config.storage_config.redis.auth is deprecated, please use config.storage_config.redis.password instead",
-            { after = "4.0", })
-        end
-        if (entity.config.storage_config.redis.ssl_server_name or ngx.null) ~= ngx.null  then
-          deprecation("acme: config.storage_config.redis.ssl_server_name is deprecated, please use config.storage_config.redis.server_name instead",
-            { after = "4.0", })
-        end
-        return true
-      end
-    } }
   },
 }
 

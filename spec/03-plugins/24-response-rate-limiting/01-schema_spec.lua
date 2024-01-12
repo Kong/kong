@@ -129,7 +129,7 @@ describe("Plugin: response-rate-limiting (schema)", function()
       } }
       local ok, err = v(config, schema_def)
       assert.falsy(ok)
-      assert.contains("must set one of 'config.redis.host', 'config.redis_host' when 'policy' is 'redis'", err["@entity"])
+      assert.equal("required field missing", err.config.redis.host)
     end)
   end)
 end)
