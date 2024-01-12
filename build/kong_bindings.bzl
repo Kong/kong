@@ -110,6 +110,7 @@ load_bindings = repository_rule(
         "INSTALL_DESTDIR",
         "RPM_SIGNING_KEY_FILE",
         "NFPM_RPM_PASSPHRASE",
+        "NGX_WASM_MODULE_BRANCH",
         "NGX_WASM_MODULE_REMOTE",
     ],
 )
