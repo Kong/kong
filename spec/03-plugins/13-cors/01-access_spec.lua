@@ -237,7 +237,6 @@ for _, strategy in helpers.each_strategy() do
 
       local route1 = bp.routes:insert({
         hosts = { "cors1.test" },
-        paths = { "/" },
       })
 
       local route2 = bp.routes:insert({
