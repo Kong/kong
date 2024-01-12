@@ -363,123 +363,151 @@ describe("Plugin: rate-limiting (integration)", function()
           end
         end)
       end)
-    end -- for each redis strategy
+    end
+  end -- for each redis strategy
 
-    describe("creating rate-limiting plugins using api", function ()
-      local route3, admin_client
+  describe("creating rate-limiting plugins using api", function ()
+    local route3, admin_client
 
-      lazy_setup(function()
-        assert(helpers.start_kong({
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
+    lazy_setup(function()
+      assert(helpers.start_kong({
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
 
-        route3 = assert(bp.routes:insert {
-          hosts        = { "redistest3.test" },
-        })
+      route3 = assert(bp.routes:insert {
+        hosts        = { "redistest3.test" },
+      })
 
-        admin_client = helpers.admin_client()
-      end)
+      admin_client = helpers.admin_client()
+    end)
 
-      lazy_teardown(function()
-        if admin_client then
-          admin_client:close()
-        end
-
-        helpers.stop_kong()
-      end)
-
-      before_each(function()
-        helpers.clean_logfile()
-      end)
-
-      local function delete_plugin(admin_client, plugin)
-        local res = assert(admin_client:send({
-          method = "DELETE",
-          path = "/plugins/" .. plugin.id,
-        }))
-
-        assert.res_status(204, res)
+    lazy_teardown(function()
+      if admin_client then
+        admin_client:close()
       end
 
-      it("allows to create a plugin with new redis configuration", function()
-        local res = assert(admin_client:send {
-          method = "POST",
-          route = {
-            id = route3.id
-          },
-          path = "/plugins",
-          headers = { ["Content-Type"] = "application/json" },
-          body = {
-            name = "rate-limiting",
-            config = {
-              minute = 100,
-              policy = "redis",
-              redis = {
-                host = helpers.redis_host,
-                port = helpers.redis_port,
-                username = "test1",
-                password = "testX",
-                database = 1,
-                timeout = 1100,
-                ssl = true,
-                ssl_verify = true,
-                server_name = "example.test",
-              },
-            },
-          },
-        })
-
-        local json = cjson.decode(assert.res_status(201, res))
-        delete_plugin(admin_client, json)
-        assert.logfile().has.no.line("rate-limiting: config.redis_host is deprecated, please use config.redis.host instead (deprecated after 4.0)", true)
-        assert.logfile().has.no.line("rate-limiting: config.redis_port is deprecated, please use config.redis.port instead (deprecated after 4.0)", true)
-        assert.logfile().has.no.line("rate-limiting: config.redis_password is deprecated, please use config.redis.password instead (deprecated after 4.0)", true)
-        assert.logfile().has.no.line("rate-limiting: config.redis_username is deprecated, please use config.redis.username instead (deprecated after 4.0)", true)
-        assert.logfile().has.no.line("rate-limiting: config.redis_ssl is deprecated, please use config.redis.ssl instead (deprecated after 4.0)", true)
-        assert.logfile().has.no.line("rate-limiting: config.redis_ssl_verify is deprecated, please use config.redis.ssl_verify instead (deprecated after 4.0)", true)
-        assert.logfile().has.no.line("rate-limiting: config.redis_server_name is deprecated, please use config.redis.server_name instead (deprecated after 4.0)", true)
-        assert.logfile().has.no.line("rate-limiting: config.redis_timeout is deprecated, please use config.redis.timeout instead (deprecated after 4.0)", true)
-        assert.logfile().has.no.line("rate-limiting: config.redis_database is deprecated, please use config.redis.database instead (deprecated after 4.0)", true)
-      end)
-
-      it("allows to create a plugin with legacy redis configuration", function()
-        local res = assert(admin_client:send {
-          method = "POST",
-          route = {
-            id = route3.id
-          },
-          path = "/plugins",
-          headers = { ["Content-Type"] = "application/json" },
-          body = {
-            name = "rate-limiting",
-            config = {
-              minute = 100,
-              policy = "redis",
-              redis_host = "custom-host.example.test",
-              redis_port = 55000,
-              redis_username = "test1",
-              redis_password = "testX",
-              redis_database = 1,
-              redis_timeout = 1100,
-              redis_ssl = true,
-              redis_ssl_verify = true,
-              redis_server_name = "example.test",
-            },
-          },
-        })
-
-        local json = cjson.decode(assert.res_status(201, res))
-        delete_plugin(admin_client, json)
-        assert.logfile().has.line("rate-limiting: config.redis_host is deprecated, please use config.redis.host instead (deprecated after 4.0)", true)
-        assert.logfile().has.line("rate-limiting: config.redis_port is deprecated, please use config.redis.port instead (deprecated after 4.0)", true)
-        assert.logfile().has.line("rate-limiting: config.redis_password is deprecated, please use config.redis.password instead (deprecated after 4.0)", true)
-        assert.logfile().has.line("rate-limiting: config.redis_username is deprecated, please use config.redis.username instead (deprecated after 4.0)", true)
-        assert.logfile().has.line("rate-limiting: config.redis_ssl is deprecated, please use config.redis.ssl instead (deprecated after 4.0)", true)
-        assert.logfile().has.line("rate-limiting: config.redis_ssl_verify is deprecated, please use config.redis.ssl_verify instead (deprecated after 4.0)", true)
-        assert.logfile().has.line("rate-limiting: config.redis_server_name is deprecated, please use config.redis.server_name instead (deprecated after 4.0)", true)
-        assert.logfile().has.line("rate-limiting: config.redis_timeout is deprecated, please use config.redis.timeout instead (deprecated after 4.0)", true)
-        assert.logfile().has.line("rate-limiting: config.redis_database is deprecated, please use config.redis.database instead (deprecated after 4.0)", true)
-      end)
+      helpers.stop_kong()
     end)
-  end
+
+    before_each(function()
+      helpers.clean_logfile()
+    end)
+
+    local function delete_plugin(admin_client, plugin)
+      local res = assert(admin_client:send({
+        method = "DELETE",
+        path = "/plugins/" .. plugin.id,
+      }))
+
+      assert.res_status(204, res)
+    end
+
+    it("allows to create a plugin with new redis configuration", function()
+      local redis_config = {
+        host = helpers.redis_host,
+        port = helpers.redis_port,
+        username = "test1",
+        password = "testX",
+        database = 1,
+        timeout = 1100,
+        ssl = true,
+        ssl_verify = true,
+        server_name = "example.test",
+      }
+
+      local res = assert(admin_client:send {
+        method = "POST",
+        route = {
+          id = route3.id
+        },
+        path = "/plugins",
+        headers = { ["Content-Type"] = "application/json" },
+        body = {
+          name = "rate-limiting",
+          config = {
+            minute = 100,
+            policy = "redis",
+            redis = redis_config,
+          },
+        },
+      })
+
+      local json = cjson.decode(assert.res_status(201, res))
+
+      -- verify that legacy defaults don't ovewrite new structure when they were not defined
+      assert.same(redis_config.host, json.config.redis.host)
+      assert.same(redis_config.port, json.config.redis.port)
+      assert.same(redis_config.username, json.config.redis.username)
+      assert.same(redis_config.password, json.config.redis.password)
+      assert.same(redis_config.database, json.config.redis.database)
+      assert.same(redis_config.timeout, json.config.redis.timeout)
+      assert.same(redis_config.ssl, json.config.redis.ssl)
+      assert.same(redis_config.ssl_verify, json.config.redis.ssl_verify)
+      assert.same(redis_config.server_name, json.config.redis.server_name)
+
+      delete_plugin(admin_client, json)
+      assert.logfile().has.no.line("rate-limiting: config.redis_host is deprecated, please use config.redis.host instead (deprecated after 4.0)", true)
+      assert.logfile().has.no.line("rate-limiting: config.redis_port is deprecated, please use config.redis.port instead (deprecated after 4.0)", true)
+      assert.logfile().has.no.line("rate-limiting: config.redis_password is deprecated, please use config.redis.password instead (deprecated after 4.0)", true)
+      assert.logfile().has.no.line("rate-limiting: config.redis_username is deprecated, please use config.redis.username instead (deprecated after 4.0)", true)
+      assert.logfile().has.no.line("rate-limiting: config.redis_ssl is deprecated, please use config.redis.ssl instead (deprecated after 4.0)", true)
+      assert.logfile().has.no.line("rate-limiting: config.redis_ssl_verify is deprecated, please use config.redis.ssl_verify instead (deprecated after 4.0)", true)
+      assert.logfile().has.no.line("rate-limiting: config.redis_server_name is deprecated, please use config.redis.server_name instead (deprecated after 4.0)", true)
+      assert.logfile().has.no.line("rate-limiting: config.redis_timeout is deprecated, please use config.redis.timeout instead (deprecated after 4.0)", true)
+      assert.logfile().has.no.line("rate-limiting: config.redis_database is deprecated, please use config.redis.database instead (deprecated after 4.0)", true)
+    end)
+
+    it("allows to create a plugin with legacy redis configuration", function()
+      local plugin_config = {
+        minute = 100,
+        policy = "redis",
+        redis_host = "custom-host.example.test",
+        redis_port = 55000,
+        redis_username = "test1",
+        redis_password = "testX",
+        redis_database = 1,
+        redis_timeout = 1100,
+        redis_ssl = true,
+        redis_ssl_verify = true,
+        redis_server_name = "example.test",
+      }
+      local res = assert(admin_client:send {
+        method = "POST",
+        route = {
+          id = route3.id
+        },
+        path = "/plugins",
+        headers = { ["Content-Type"] = "application/json" },
+        body = {
+          name = "rate-limiting",
+          config = plugin_config,
+        },
+      })
+
+      local json = cjson.decode(assert.res_status(201, res))
+
+      -- verify that legacy config got written into new structure
+      assert.same(plugin_config.redis_host, json.config.redis.host)
+      assert.same(plugin_config.redis_port, json.config.redis.port)
+      assert.same(plugin_config.redis_username, json.config.redis.username)
+      assert.same(plugin_config.redis_password, json.config.redis.password)
+      assert.same(plugin_config.redis_database, json.config.redis.database)
+      assert.same(plugin_config.redis_timeout, json.config.redis.timeout)
+      assert.same(plugin_config.redis_ssl, json.config.redis.ssl)
+      assert.same(plugin_config.redis_ssl_verify, json.config.redis.ssl_verify)
+      assert.same(plugin_config.redis_server_name, json.config.redis.server_name)
+
+      delete_plugin(admin_client, json)
+
+      assert.logfile().has.line("rate-limiting: config.redis_host is deprecated, please use config.redis.host instead (deprecated after 4.0)", true)
+      assert.logfile().has.line("rate-limiting: config.redis_port is deprecated, please use config.redis.port instead (deprecated after 4.0)", true)
+      assert.logfile().has.line("rate-limiting: config.redis_password is deprecated, please use config.redis.password instead (deprecated after 4.0)", true)
+      assert.logfile().has.line("rate-limiting: config.redis_username is deprecated, please use config.redis.username instead (deprecated after 4.0)", true)
+      assert.logfile().has.line("rate-limiting: config.redis_ssl is deprecated, please use config.redis.ssl instead (deprecated after 4.0)", true)
+      assert.logfile().has.line("rate-limiting: config.redis_ssl_verify is deprecated, please use config.redis.ssl_verify instead (deprecated after 4.0)", true)
+      assert.logfile().has.line("rate-limiting: config.redis_server_name is deprecated, please use config.redis.server_name instead (deprecated after 4.0)", true)
+      assert.logfile().has.line("rate-limiting: config.redis_timeout is deprecated, please use config.redis.timeout instead (deprecated after 4.0)", true)
+      assert.logfile().has.line("rate-limiting: config.redis_database is deprecated, please use config.redis.database instead (deprecated after 4.0)", true)
+    end)
+  end)
 end)

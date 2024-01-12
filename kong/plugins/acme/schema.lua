@@ -240,6 +240,32 @@ local schema = {
       },
     },
   },
+  transformations = {
+    {
+      input = { "config.storage_config.redis.auth"},
+      on_write = function(auth)
+        return { config = { storage_config = { redis = { password = auth } } } }
+      end,
+    },
+    {
+      input = { "config.storage_config.redis.ssl_server_name"},
+      on_write = function(ssl_server_name)
+        return { config = { storage_config = { redis = { server_name = ssl_server_name } } } }
+      end,
+    },
+    {
+      input = { "config.storage_config.redis.scan_count"},
+      on_write = function(scan_count)
+        return { config = { storage_config = { redis = { extra_options = { scan_count = scan_count } } } } }
+      end,
+    },
+    {
+      input = { "config.storage_config.redis.namespace"},
+      on_write = function(namespace)
+        return { config = { storage_config = { redis = { extra_options = { namespace = namespace } } } } }
+      end,
+    }
+  },
   entity_checks = {
     {
       conditional = {

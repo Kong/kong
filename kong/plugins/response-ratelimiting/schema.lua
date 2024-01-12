@@ -60,6 +60,14 @@ else
   }
 end
 
+local function transform_legacy_redis_cfg_to_new(old_field_name, new_field_name)
+  return {
+    input = { "config." .. old_field_name },
+    on_write = function(configured_value)
+      return { config = { redis = { [new_field_name] = configured_value }} }
+    end,
+  }
+end
 
 return {
   name = "response-ratelimiting",
@@ -202,6 +210,17 @@ return {
         },
       },
     },
+  },
+  transformations = {
+    transform_legacy_redis_cfg_to_new("redis_host", "host"),
+    transform_legacy_redis_cfg_to_new("redis_port", "port"),
+    transform_legacy_redis_cfg_to_new("redis_password", "password"),
+    transform_legacy_redis_cfg_to_new("redis_username", "username"),
+    transform_legacy_redis_cfg_to_new("redis_ssl", "ssl"),
+    transform_legacy_redis_cfg_to_new("redis_ssl_verify", "ssl_verify"),
+    transform_legacy_redis_cfg_to_new("redis_server_name", "server_name"),
+    transform_legacy_redis_cfg_to_new("redis_timeout", "timeout"),
+    transform_legacy_redis_cfg_to_new("redis_database", "database"),
   },
   entity_checks = {
     { conditional_at_least_one_of = {
