@@ -98,6 +98,10 @@ plugins/ai-prompt-decorator:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/ai-prompt-decorator/**/*
 
+plugins/ai-prompt-template:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/ai-prompt-template/**/*
+
 plugins/aws-lambda:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/aws-lambda/**/*
