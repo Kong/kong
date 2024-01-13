@@ -163,6 +163,12 @@ local function new(self)
     if is_trusted_ip() then
       local scheme = _REQUEST.get_header(X_FORWARDED_PROTO)
       if scheme then
+        local p = find(scheme, ",", 1, true)
+
+        if p then
+          scheme = sub(scheme, 1, p - 1)
+        end
+
         return lower(scheme)
       end
     end
@@ -243,7 +249,16 @@ local function new(self)
     check_phase(PHASES.request)
 
     if is_trusted_ip() then
-      local port = tonumber(_REQUEST.get_header(X_FORWARDED_PORT), 10)
+      local port = _REQUEST.get_header(X_FORWARDED_PORT)
+      if port then
+        local p = find(port, ",", 1, true)
+
+        if p then
+          port = sub(port, 1, p - 1)
+        end
+      end
+
+      local port = tonumber(port or "", 10)
       if port and port >= MIN_PORT and port <= MAX_PORT then
         return port
       end
@@ -300,6 +315,12 @@ local function new(self)
     if is_trusted_ip() then
       local path = _REQUEST.get_header(X_FORWARDED_PATH)
       if path then
+        local p = find(path, ",", 1, true)
+
+        if p then
+          path = sub(path, 1, p - 1)
+        end
+
         return path
       end
     end
@@ -343,6 +364,12 @@ local function new(self)
     if is_trusted_ip() then
       prefix = _REQUEST.get_header(X_FORWARDED_PREFIX)
       if prefix then
+        local p = find(prefix, ",", 1, true)
+
+        if p then
+          prefix = sub(prefix, 1, p - 1)
+        end
+
         return prefix
       end
     end
@@ -597,7 +624,7 @@ local function new(self)
   -- The returned value is either a `string`, or can be `nil` if a header with
   -- `name` was not found in the request. If a header with the same name is
   -- present multiple times in the request, this function returns the value
-  -- of the first occurrence of this header.
+  -- of the all occurrences of this header (since nginx 1.23.0).
   --
   -- Header names in are case-insensitive and are normalized to lowercase, and
   -- dashes (`-`) can be written as underscores (`_`); that is, the header
@@ -617,7 +644,7 @@ local function new(self)
   --
   -- kong.request.get_header("Host")            -- "foo.com"
   -- kong.request.get_header("x-custom-header") -- "bla"
-  -- kong.request.get_header("X-Another")       -- "foo bar"
+  -- kong.request.get_header("X-Another")       -- "foo bar, baz"
   function _REQUEST.get_header(name)
     check_phase(PHASES.request)
 
