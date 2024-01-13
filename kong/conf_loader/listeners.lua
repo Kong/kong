@@ -75,7 +75,7 @@ end
 
 -- Parses a listener address line.
 -- Supports multiple (comma separated) addresses, with flags such as
--- 'ssl' and 'http2' added to the end.
+-- 'ssl' and 'proxy_protocol' added to the end.
 -- Pre- and postfixed whitespace as well as comma's are allowed.
 -- "off" as a first entry will return empty tables.
 -- @param values list of entries (strings)
