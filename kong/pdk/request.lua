@@ -625,23 +625,7 @@ local function new(self)
       error("header name must be a string", 2)
     end
 
-    local value = var["http_" .. replace_dashes(name)]
-
-    if value then
-      local p = find(value, ", ", 1, true)  -- changed since nginx 1.23.0
-
-      if p then
-        local GMT_TIME_FMT_LEN = 29   --"Mon, 28 Sep 1970 06:00:00 GMT"
-
-        if p == 4 and #value == GMT_TIME_FMT_LEN and sub(value, -3) == "GMT" then
-          return value
-        end
-
-        return sub(value, 1, p - 1)
-      end
-    end
-
-    return value
+    return var["http_" .. replace_dashes(name)]
   end
 
 
