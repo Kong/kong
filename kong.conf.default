@@ -485,7 +485,7 @@
 # NGINX
 #------------------------------------------------------------------------------
 
-#proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 http2 ssl reuseport backlog=16384
+#proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 ssl reuseport backlog=16384
                          # Comma-separated list of addresses and ports on
                          # which the proxy server should listen for
                          # HTTP/HTTPS traffic.
@@ -499,8 +499,6 @@
                          # - `ssl` will require that all connections made
                          #   through a particular address/port be made with TLS
                          #   enabled.
-                         # - `http2` will allow for clients to open HTTP/2
-                         #   connections to Kong's proxy server.
                          # - `proxy_protocol` will enable usage of the
                          #   PROXY protocol for a given address/port.
                          # - `deferred` instructs to use a deferred accept on
@@ -546,7 +544,7 @@
                          # nodes connected to the same datastore.
                          #
                          # Example:
-                         # `proxy_listen = 0.0.0.0:443 ssl, 0.0.0.0:444 http2 ssl`
+                         # `proxy_listen = 0.0.0.0:443 ssl, 0.0.0.0:444 ssl`
                          #
                          # See http://nginx.org/en/docs/http/ngx_http_core_module.html#listen
                          # for a description of the accepted formats for this
@@ -615,7 +613,7 @@
 # See http://nginx.org/en/docs/stream/ngx_stream_core_module.html#listen
 # for a description of the formats that Kong might accept in stream_listen.
 
-#admin_listen = 127.0.0.1:8001 reuseport backlog=16384, 127.0.0.1:8444 http2 ssl reuseport backlog=16384
+#admin_listen = 127.0.0.1:8001 reuseport backlog=16384, 127.0.0.1:8444 ssl reuseport backlog=16384
                          # Comma-separated list of addresses and ports on
                          # which the Admin interface should listen.
                          # The Admin interface is the API allowing you to
@@ -635,8 +633,6 @@
                          # - `ssl` will require that all connections made
                          #   through a particular address/port be made with TLS
                          #   enabled.
-                         # - `http2` will allow for clients to open HTTP/2
-                         #   connections to Kong's proxy server.
                          # - `proxy_protocol` will enable usage of the
                          #   PROXY protocol for a given address/port.
                          # - `deferred` instructs to use a deferred accept on
@@ -678,7 +674,7 @@
                          # capabilities) pulling its configuration changes
                          # from the database.
                          #
-                         # Example: `admin_listen = 127.0.0.1:8444 http2 ssl`
+                         # Example: `admin_listen = 127.0.0.1:8444 ssl`
 
 #status_listen = 127.0.0.1:8007 reuseport backlog=16384
                          # Comma-separated list of addresses and ports on
@@ -693,13 +689,11 @@
                          # - `ssl` will require that all connections made
                          #   through a particular address/port be made with TLS
                          #   enabled.
-                         # - `http2` will allow for clients to open HTTP/2
-                         #   connections to Kong's proxy server.
                          #
                          # This value can be set to `off`, disabling
                          # the Status API for this node.
                          #
-                         # Example: `status_listen = 0.0.0.0:8100 ssl http2`
+                         # Example: `status_listen = 0.0.0.0:8100 ssl`
 
 
 #nginx_user = kong kong          # Defines user and group credentials used by
