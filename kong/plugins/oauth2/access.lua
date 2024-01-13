@@ -844,6 +844,11 @@ local function parse_access_token(conf)
 
   local access_token = kong.request.get_header(conf.auth_header_name)
   if access_token then
+    local p = access_token:find(",", 1, true)
+    if p then
+      access_token = access_token:sub(1, p - 1)
+    end
+
     local parts = {}
     for v in access_token:gmatch("%S+") do -- Split by space
       table.insert(parts, v)
