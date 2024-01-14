@@ -12,6 +12,7 @@ local is_not_debug_mode
 
 local error        = error
 local rawset       = rawset
+local rawget       = rawget
 local setmetatable = setmetatable
 
 
