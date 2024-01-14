@@ -258,7 +258,7 @@ local function new(self)
         end
       end
 
-      local port = tonumber(port or "", 10)
+      port = tonumber(port or "", 10)
       if port and port >= MIN_PORT and port <= MAX_PORT then
         return port
       end
