@@ -80,9 +80,6 @@ local function new(self)
     end
   end
 
-  local replace_dashes = require("kong.tools.string").replace_dashes
-
-
   ---
   -- Returns the scheme component of the request's URL. The returned value is
   -- normalized to lowercase form.
@@ -625,7 +622,7 @@ local function new(self)
       error("header name must be a string", 2)
     end
 
-    return var["http_" .. replace_dashes(name)]
+    return var["http_" .. name]
   end
 
 
