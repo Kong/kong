@@ -57,6 +57,10 @@ core/tracing:
 - kong/tracing/**/*
 - kong/pdk/tracing.lua
 
+core/wasm:
+- changed-files:
+  - any-glob-to-any-file: ['kong/runloop/wasm.lua', 'kong/runloop/wasm/**/*']
+
 chore:
 - .github/**/*
 - .devcontainer/**/*
