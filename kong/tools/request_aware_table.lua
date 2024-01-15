@@ -13,11 +13,13 @@ local table_clear = require("table.clear")
 local get_request_id = require("kong.tracing.request_id").get
 
 
-local is_not_debug_mode = (kong.configuration.log_level ~= "debug")
+-- set in new()
+local is_not_debug_mode
 
 
 local error        = error
 local rawset       = rawset
+local rawget       = rawget
 local setmetatable = setmetatable
 
 
@@ -105,6 +107,10 @@ local __direct_mt = {
 -- @return The newly created table with request-aware access
 local function new(narr, nrec)
   local data = table_new(narr or 0, nrec or 0)
+
+  if is_not_debug_mode == nil then
+    is_not_debug_mode = (kong.configuration.log_level ~= "debug")
+  end
 
   -- return table without proxy when debug_mode is disabled
   if is_not_debug_mode then
