@@ -930,7 +930,7 @@ function Schema:validate_field(field, value)
     local field_schema = get_field_schema(field)
     -- TODO return nested table or string?
     local copy = field_schema:process_auto_fields(value, "insert")
-    -- Changes in custom entity check only applies to copy, not to value
+    -- TODO: explain why we need to make a copy?
     local ok, err = field_schema:validate(copy)
     if not ok then
       return nil, err
