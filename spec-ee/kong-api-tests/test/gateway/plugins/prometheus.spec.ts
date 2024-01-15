@@ -20,9 +20,8 @@ import {
   updateGatewayService,
   addTargetToUpstream,
   deletePlugin,
-  isGwNative,
   deleteConsumer,
-  reloadGateway
+  wait
 } from '@support';
 
 
@@ -194,6 +193,7 @@ describe('Gateway Plugins: Prometheus', function () {
   });
 
   it(`should see the new kong_bandwidth_bytes metric after request to upstream`, async function () {
+    this.retries(1)
     // send request to upstream to log request bandwidth_metrics
     const resp = await axios(`${proxyUrl}/${routePath}`)
     logResponse(resp);
@@ -211,7 +211,7 @@ describe('Gateway Plugins: Prometheus', function () {
     });
   });
 
-  // skipped due to https://konghq.atlassian.net/browse/KAG-3332
+  // skipped due to non-reliable way of testing stream responses
   it.skip(`should see the new kong_stream_session_total bandwidth metric after request to upstream`, async function () {
     await eventually(async () => {
       const resp = await queryPrometheusMetrics('kong_stream_session_total')
@@ -219,6 +219,7 @@ describe('Gateway Plugins: Prometheus', function () {
     });
   });
 
+  
   it('should enable the prometheus plugin status_code_metrics', async function () {
     pluginPayload = { ...pluginPayload, config: { status_code_metrics: true } }
 
@@ -256,11 +257,6 @@ describe('Gateway Plugins: Prometheus', function () {
     const totalExists = Array.from(totalValues).some((value) => Number(value) >= 2)
     expect(totalExists, 'should see correct kong_http_requests_total value').to.be.true
   });
-
-  // 
-  // TODO add a test for stream_session_total (status_code_metrics) metric after the issue in kong is resolved and metric is exported
-  // https://konghq.atlassian.net/browse/KAG-3332
-  // 
 
   it('should enable the prometheus plugin per_consumer metric', async function () {
     // Note that for per_consumer metric to work we need status_code_metrics and bandwidth_metrics enabled as well
@@ -325,13 +321,7 @@ describe('Gateway Plugins: Prometheus', function () {
     });
   })
 
-  // 
-  // TODO find a way to make the below tests less flkay, currently they fail often
-  // Enable test run for native gateway after https://konghq.atlassian.net/browse/KAG-3333 is resolved
-  // 
-
-  if(!isGwNative()) {
-    it.skip('should enable the prometheus plugin upstream_health_metrics', async function () {
+    it('should enable the prometheus plugin upstream_health_metrics', async function () {
       pluginPayload = { ...pluginPayload, consumer: null, config: { upstream_health_metrics: true } }
 
       // change service host to point to upstream
@@ -351,12 +341,11 @@ describe('Gateway Plugins: Prometheus', function () {
       // delete basic-auth plugin and consumer
       await deletePlugin(basicAuthPluginId)
       await deleteConsumer(consumer.id)
-      // for the kong_upstream_target_health metric to start appear and avoid flakiness
-      reloadGateway()
       await waitForConfigRebuild();
     });
   
-    it.skip(`should see the new kong_upstream_target_health metric after requests to upstream`, async function () {
+    it(`should see the new kong_upstream_target_health metric after requests to upstream`, async function () {
+      this.retries(1)
       // send request to upstream to log the request's upstream_target_health metric
       for(let i = 1; i <= 2; i++) {
         const resp = await axios({
@@ -364,11 +353,16 @@ describe('Gateway Plugins: Prometheus', function () {
         })
         logResponse(resp);
         expect(resp.status, 'Status should be 200').to.equal(200);
+        // eslint-disable-next-line no-restricted-syntax
+        await wait(1000)
       }
   
       const promTargetResults = new Set()
     
       await eventually(async () => {
+        const kongDpData = await getAllMetrics(isGwHybrid() ? "dp" : "cp")
+        expect(kongDpData.includes('kong_upstream_target_health'), `should see kong_upstream_target_health in kong ${isGwHybrid() ? "dp" : "cp"} metrics`).to.be.true
+
         const resp = await queryPrometheusMetrics('kong_upstream_target_health')
         expect(resp.result.length, 'should see 4 results for target health').to.be.gte(4)
         expect(resp.result[0].metric.upstream, 'should see correct upstream name in metrics').to.equal(upstreamName)
@@ -377,13 +371,12 @@ describe('Gateway Plugins: Prometheus', function () {
         resp.result.forEach((result) => {
           promTargetResults.add(result.metric.state)
         })
-      });
+      }, 35000, 5000);
   
       targetStates.every((state) => {
         expect(promTargetResults.has(state), `Should see ${state} state in the target health array`).to.be.true
       })
     });
-  }
 
   it('should delete the prometheus plugin', async function () {
     const resp = await axios({
