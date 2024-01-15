@@ -10,6 +10,7 @@ local lrucache = require("resty.lrucache")
 local tb_new = require("table.new")
 local fields = require("kong.router.fields")
 local utils = require("kong.router.utils")
+local rat = require("kong.tools.request_aware_table")
 local yield = require("kong.tools.yield").yield
 
 
@@ -506,8 +507,7 @@ function _M:exec(ctx)
   -- cache key calculation
 
   if not CACHE_PARAMS then
-    -- access `kong.configuration.log_level` here
-    CACHE_PARAMS = require("kong.tools.request_aware_table").new()
+    CACHE_PARAMS = rat.new()
   end
 
   CACHE_PARAMS:clear()
@@ -631,8 +631,7 @@ function _M:exec(ctx)
   -- cache key calculation
 
   if not CACHE_PARAMS then
-    -- access `kong.configuration.log_level` here
-    CACHE_PARAMS = require("kong.tools.request_aware_table").new()
+    CACHE_PARAMS = rat.new()
   end
 
   CACHE_PARAMS:clear()
