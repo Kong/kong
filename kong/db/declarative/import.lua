@@ -311,7 +311,6 @@ local function load_into_cache(entities, meta, hash)
       assert(type(ws_id) == "string")
 
       local cache_key = dao:cache_key(id, nil, nil, nil, nil, item.ws_id)
-      -- only do transformations if have definitions
       if transform and schema:has_transformations(item) then
         local transformed_item = utils.cycle_aware_deep_copy(item)
         remove_nulls(transformed_item)
