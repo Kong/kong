@@ -111,12 +111,13 @@ jobs:
         repo-path: Kong/gateway-action-storage/main/.ci/runtimes.json
 
     - name: Schedule tests
-      uses: Kong/gateway-test-scheduler/schedule@b91bd7aec42bd13748652929f087be81d1d40843 # v1
+      uses: Kong/gateway-test-scheduler/schedule@69f0c2a562ac44fc3650b8bfa62106b34094b5ce # v3
       with:
         test-suites-file: .ci/test_suites.json
         test-file-runtime-file: .ci/runtimes.json
         output-prefix: test-chunk.
         runner-count: ${{ env.RUNNER_COUNT }}
+        static-mode: ${{ github.run_attempt > 1 }}
 
     - name: Upload schedule files
       uses: actions/upload-artifact@v3
@@ -225,6 +226,24 @@ jobs:
           unzip -o /tmp/aws-sam-cli.zip -d /tmp/aws-sam-cli
           sudo /tmp/aws-sam-cli/install --update
 
+    - name: Update PATH
+      run: |
+        echo "$BUILD_ROOT/kong-dev/bin" >> $GITHUB_PATH
+        echo "$BUILD_ROOT/kong-dev/openresty/nginx/sbin" >> $GITHUB_PATH
+        echo "$BUILD_ROOT/kong-dev/openresty/bin" >> $GITHUB_PATH
+
+    - name: Debug (nginx)
+      run: |
+        echo nginx: $(which nginx)
+        nginx -V 2>&1 | sed -re 's/ --/\n--/g'
+        ldd $(which nginx)
+
+    - name: Debug (luarocks)
+      run: |
+        echo luarocks: $(which luarocks)
+        luarocks --version
+        luarocks config
+
     - name: Create kong_ro user in Postgres
       run: |
         psql -v ON_ERROR_STOP=1 -h localhost --username kong <<\EOD
@@ -280,12 +299,12 @@ jobs:
         DD_CIVISIBILITY_AGENTLESS_ENABLED: true
         DD_TRACE_GIT_METADATA_ENABLED: true
         DD_API_KEY: ${{ secrets.DATADOG_API_KEY }}
-      uses: Kong/gateway-test-scheduler/runner@b91bd7aec42bd13748652929f087be81d1d40843 # v1
+      uses: Kong/gateway-test-scheduler/runner@69f0c2a562ac44fc3650b8bfa62106b34094b5ce # v3
       with:
         tests-to-run-file: test-chunk.${{ matrix.runner }}.json
         failed-test-files-file: ${{ env.FAILED_TEST_FILES_FILE }}
         test-file-runtime-file: ${{ env.TEST_FILE_RUNTIME_FILE }}
-        setup-venv: . ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+        setup-venv-path: ${{ env.BUILD_ROOT }}
 
     - name: Upload test rerun information
       if: always()
@@ -311,6 +330,11 @@ jobs:
         retention-days: 1
         path: |
           luacov.stats.out
+
+    - name: Get kernel message
+      if: failure()
+      run: |
+        sudo dmesg -T
 
   pdk-tests:
     name: PDK tests
