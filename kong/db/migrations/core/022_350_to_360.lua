@@ -6,13 +6,21 @@ return {
       ALTER TABLE IF EXISTS ONLY "clustering_data_planes" ADD "cert_details" JSONB;
       EXCEPTION WHEN DUPLICATE_COLUMN THEN
         -- Do nothing, accept existing state
-        --
+      END;
+      $$;
+
+      DO $$
+      BEGIN
       ALTER TABLE IF EXISTS ONLY "clustering_data_planes" ADD "version" INTEGER;
       EXCEPTION WHEN DUPLICATE_COLUMN THEN
         -- Do nothing, accept existing state
       END;
+      $$;
 
+      DO $$
+      BEGIN
       ALTER TABLE IF EXISTS ONLY "clustering_data_planes" DROP COLUMN "config_hash";
+      END;
       $$;
 
       DO $$
