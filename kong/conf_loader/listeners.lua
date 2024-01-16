@@ -1,5 +1,6 @@
 local pl_stringx = require "pl.stringx"
 local utils = require "kong.tools.utils"
+local conf_constants = require "kong.conf_loader.constants"
 
 
 local type = type
@@ -20,19 +21,6 @@ local subsystem_flags = {
   stream = { "udp", "ssl", "proxy_protocol", "bind", "reuseport", "backlog=%d+",
              "ipv6only=on", "ipv6only=off", "so_keepalive=on", "so_keepalive=off",
              "so_keepalive=%w*:%w*:%d*" },
-}
-
-
--- This meta table will prevent the parsed table to be passed on in the
--- intermediate Kong config file in the prefix directory.
--- We thus avoid 'table: 0x41c3fa58' from appearing into the prefix
--- hidden configuration file.
--- This is only to be applied to values that are injected into the
--- configuration object, and not configuration properties themselves,
--- otherwise we would prevent such properties from being specifiable
--- via environment variables.
-local _nop_tostring_mt = {
-  __tostring = function() return "" end,
 }
 
 
@@ -154,7 +142,7 @@ function listeners.parse(conf, listener_configs)
     if err then
       return nil, l.name .. " " .. err
     end
-    setmetatable(conf[plural], _nop_tostring_mt)
+    setmetatable(conf[plural], conf_constants._NOP_TOSTRING_MT)
 
     if l.ssl_flag then
       conf[l.ssl_flag] = false
