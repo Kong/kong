@@ -164,10 +164,11 @@ describe("NGINX conf compiler", function()
       }))
       local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.matches("listen%s+0%.0%.0%.0:9000;", kong_nginx_conf)
-      assert.matches("listen%s+0%.0%.0%.0:9443 ssl http2;", kong_nginx_conf)
+      assert.matches("listen%s+0%.0%.0%.0:9443 ssl;", kong_nginx_conf)
       assert.matches("listen%s+127%.0%.0%.1:9001;", kong_nginx_conf)
-      assert.matches("listen%s+127%.0%.0%.1:9444 ssl http2;", kong_nginx_conf)
-      assert.matches("listen%s+127%.0%.0%.1:9445 ssl http2;", kong_nginx_conf)
+      assert.matches("listen%s+127%.0%.0%.1:9444 ssl;", kong_nginx_conf)
+      assert.matches("listen%s+127%.0%.0%.1:9445 ssl;", kong_nginx_conf)
+      assert.matches("http2 on;", kong_nginx_conf)
 
       conf = assert(conf_loader(helpers.test_conf_path, {
         proxy_listen = "0.0.0.0:9000, 0.0.0.0:9443 http2 ssl",
@@ -176,10 +177,11 @@ describe("NGINX conf compiler", function()
       }))
       kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.matches("listen%s+0%.0%.0%.0:9000;", kong_nginx_conf)
-      assert.matches("listen%s+0%.0%.0%.0:9443 ssl http2;", kong_nginx_conf)
+      assert.matches("listen%s+0%.0%.0%.0:9443 ssl;", kong_nginx_conf)
       assert.matches("listen%s+127%.0%.0%.1:9001;", kong_nginx_conf)
       assert.matches("listen%s+127%.0%.0%.1:8444 ssl;", kong_nginx_conf)
       assert.matches("listen%s+127%.0%.0%.1:8445 ssl;", kong_nginx_conf)
+      assert.matches("http2 on;", kong_nginx_conf)
 
       conf = assert(conf_loader(helpers.test_conf_path, {
         proxy_listen = "0.0.0.0:9000, 0.0.0.0:9443 ssl",
@@ -190,8 +192,9 @@ describe("NGINX conf compiler", function()
       assert.matches("listen%s+0%.0%.0%.0:9000;", kong_nginx_conf)
       assert.matches("listen%s+0%.0%.0%.0:9443 ssl;", kong_nginx_conf)
       assert.matches("listen%s+127%.0%.0%.1:9001;", kong_nginx_conf)
-      assert.matches("listen%s+127%.0%.0%.1:8444 ssl http2;", kong_nginx_conf)
+      assert.matches("listen%s+127%.0%.0%.1:8444 ssl;", kong_nginx_conf)
       assert.matches("listen%s+127%.0%.0%.1:8445 ssl;", kong_nginx_conf)
+      assert.matches("http2 on;", kong_nginx_conf)
 
       conf = assert(conf_loader(helpers.test_conf_path, {
         proxy_listen = "0.0.0.0:9000, 0.0.0.0:9443 ssl",
@@ -203,7 +206,8 @@ describe("NGINX conf compiler", function()
       assert.matches("listen%s+0%.0%.0%.0:9443 ssl;", kong_nginx_conf)
       assert.matches("listen%s+127%.0%.0%.1:9001;", kong_nginx_conf)
       assert.matches("listen%s+127%.0%.0%.1:8444 ssl;", kong_nginx_conf)
-      assert.matches("listen%s+127%.0%.0%.1:8445 ssl http2;", kong_nginx_conf)
+      assert.matches("listen%s+127%.0%.0%.1:8445 ssl;", kong_nginx_conf)
+      assert.matches("http2 on;", kong_nginx_conf)
     end)
     it("enables proxy_protocol", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {

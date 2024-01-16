@@ -62,7 +62,10 @@ local function parse_option_flags(value, flags)
 
     if count > 0 then
       result[flag] = true
-      sanitized = sanitized .. " " .. flag
+
+      if flag ~= "http2" then
+        sanitized = sanitized .. " " .. flag
+      end
 
     else
       result[flag] = false
@@ -161,6 +164,16 @@ function listeners.parse(conf, listener_configs)
       for _, listener in ipairs(conf[plural]) do
         if listener.ssl == true then
           conf[l.ssl_flag] = true
+          break
+        end
+      end
+    end
+
+    if l.http2_flag then
+      conf[l.http2_flag] = false
+      for _, listener in ipairs(conf[plural]) do
+        if listener.http2 == true then
+          conf[l.http2_flag] = true
           break
         end
       end
