@@ -67,6 +67,8 @@ function _M:_remove_socket(socket)
 
   sockets[socket] = nil
 
+  ngx.log(ngx.ERR, "removed")
+
   if table_isempty(sockets) then
     self.clients[socket.node_id] = nil
     self.client_capabilities[socket.node_id] = nil
@@ -76,6 +78,8 @@ end
 
 function _M:call(node_id, method, ...)
   local cap = utils.parse_method_name(method)
+
+  ngx.log(ngx.ERR, "client_cap ", require("inspect")(self.client_capabilities))
 
   if not self.client_capabilities[node_id] then
     return nil, "node is not connected, node_id: " .. node_id
@@ -184,6 +188,8 @@ function _M:connect(premature, node_id, host, path, cert, key)
   if not ok then
     goto err
   end
+
+  ngx.log(ngx.ERR, "dp to cp connected")
 
   do
     local s = socket.new(self, c, node_id)

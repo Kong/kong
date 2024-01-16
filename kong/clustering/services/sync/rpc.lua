@@ -45,6 +45,7 @@ function _M:init(manager, is_cp)
   else
     -- DP
     manager.callbacks:register("kong.sync.v2.notify_new_version", function(node_id, version)
+      ngx.log(ngx.ERR, "notify new version")
       local lmdb_ver = tonumber(declarative.get_current_hash()) or 0
       if lmdb_ver < version then
         return self:sync_once()

@@ -19,12 +19,6 @@ return {
 
       DO $$
       BEGIN
-      ALTER TABLE IF EXISTS ONLY "clustering_data_planes" DROP COLUMN "config_hash";
-      END;
-      $$;
-
-      DO $$
-      BEGIN
       CREATE TABLE clustering_sync_version (
         "version" SERIAL PRIMARY KEY
       );

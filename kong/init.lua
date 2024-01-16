@@ -690,6 +690,8 @@ function Kong.init()
     kong.rpc = require("kong.clustering.rpc.manager").new(config, kong.node.get_id())
     kong.sync = require("kong.clustering.services.sync").new(db)
     kong.sync:init(kong.rpc, is_control_plane(config))
+
+    require("kong.clustering.services.plugin_streaming").init(kong.rpc)
   end
 
   if is_http_module and is_data_plane(config) then

@@ -618,6 +618,12 @@ function PluginsIterator.new(version)
   }
 end
 
+PluginsIterator.clear_loaded = function()
+  ENABLED_PLUGINS = nil
+  LOADED_PLUGINS = nil
+  CONFIGURABLE_PLUGINS = nil
+end
+
 
 -- for testing
 PluginsIterator.lookup_cfg = lookup_cfg

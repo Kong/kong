@@ -24,6 +24,10 @@ function _M:register(method, func)
     error("duplicate registration of " .. method)
   end
 
+  if not func then
+    error("missing callback function for " .. method)
+  end
+
   self.callbacks[method] = func
 end
 

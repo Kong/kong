@@ -114,6 +114,8 @@ function _M:start()
       local payload = cjson_decode(data)
       assert(payload.jsonrpc == "2.0")
 
+      -- ngx.log(ngx.ERR, "received payload ", require("inspect")(payload))
+
       if payload.method then
         -- invoke
 
@@ -124,7 +126,7 @@ function _M:start()
             id = payload.id,
             ["error"] = {
               code = jsonrpc.METHOD_NOT_FOUND,
-              message = "Method not found",
+              message = "Method " .. payload.method .. " not found",
             }
           })
           if not res then
@@ -143,7 +145,7 @@ function _M:start()
 
           local res, err = cb(self.node_id, unpack(payload.params))
           if not res then
-            ngx_log(ngx_WARN, "[rpc] RPC callback failed: ", err)
+            ngx_log(ngx_WARN, "[rpc] RPC callback ", payload.method, " failed: ", err)
 
             res, err = self.outgoing:push({
               jsonrpc = "2.0",
