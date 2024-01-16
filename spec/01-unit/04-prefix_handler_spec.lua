@@ -169,9 +169,9 @@ describe("NGINX conf compiler", function()
       assert.matches("listen%s+127%.0%.0%.1:9444 ssl;", kong_nginx_conf)
       assert.matches("listen%s+127%.0%.0%.1:9445 ssl;", kong_nginx_conf)
 
-      assert.matches("server_name kong;.+http2 on;", kong_nginx_conf)
-      assert.matches("server_name kong_admin;.+http2 on;", kong_nginx_conf)
-      assert.matches("server_name kong_gui;.+http2 on;", kong_nginx_conf)
+      assert.match_re(kong_nginx_conf, [[server_name kong;\n.+\n.+\n\n\s+http2 on;]])
+      assert.match_re(kong_nginx_conf, [[server_name kong_admin;\n.+\n.+\n\n\s+http2 on;]])
+      assert.match_re(kong_nginx_conf, [[server_name kong_gui;\n.+\n.+\n\n\s+http2 on;]])
 
       conf = assert(conf_loader(helpers.test_conf_path, {
         proxy_listen = "0.0.0.0:9000, 0.0.0.0:9443 http2 ssl",
@@ -185,7 +185,7 @@ describe("NGINX conf compiler", function()
       assert.matches("listen%s+127%.0%.0%.1:8444 ssl;", kong_nginx_conf)
       assert.matches("listen%s+127%.0%.0%.1:8445 ssl;", kong_nginx_conf)
 
-      assert.matches("server_name kong;.+http2 on;", kong_nginx_conf)
+      assert.match_re(kong_nginx_conf, [[server_name kong;\n.+\n.+\n\n\s+http2 on;]])
 
       conf = assert(conf_loader(helpers.test_conf_path, {
         proxy_listen = "0.0.0.0:9000, 0.0.0.0:9443 ssl",
@@ -199,7 +199,7 @@ describe("NGINX conf compiler", function()
       assert.matches("listen%s+127%.0%.0%.1:8444 ssl;", kong_nginx_conf)
       assert.matches("listen%s+127%.0%.0%.1:8445 ssl;", kong_nginx_conf)
 
-      assert.matches("server_name kong_admin;.+http2 on;", kong_nginx_conf)
+      assert.match_re(kong_nginx_conf, [[server_name kong_admin;\n.+\n.+\n\n\s+http2 on;]])
 
       conf = assert(conf_loader(helpers.test_conf_path, {
         proxy_listen = "0.0.0.0:9000, 0.0.0.0:9443 ssl",
@@ -213,7 +213,7 @@ describe("NGINX conf compiler", function()
       assert.matches("listen%s+127%.0%.0%.1:8444 ssl;", kong_nginx_conf)
       assert.matches("listen%s+127%.0%.0%.1:8445 ssl;", kong_nginx_conf)
 
-      assert.matches("server_name kong_gui;.+http2 on;", kong_nginx_conf)
+      assert.match_re(kong_nginx_conf, [[server_name kong_gui;\n.+\n.+\n\n\s+http2 on;]])
     end)
     it("enables proxy_protocol", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
