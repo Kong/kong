@@ -4,6 +4,7 @@ local deprecation = require("kong.deprecation")
 
 local validate_route
 do
+  local tonumber = tonumber
   local re_match = ngx.re.match
   local re_gmatch = ngx.re.gmatch
 
@@ -13,7 +14,7 @@ do
 
   local HTTP_PATH_SEGMENTS_PREFIX = "http.path.segments."
   local HTTP_PATH_SEGMENTS_REG = [[http\.path\.segments\.(\w*)]]
-  local HTTP_PATH_SEGMENTS_SUFFIX_REG = [[^(\d+)_?(\d+)?$]]
+  local HTTP_PATH_SEGMENTS_SUFFIX_REG = [[^(\d+)(_(\d+))?$]]
 
   local function verify_http_path_segments(exp)
     if not exp:find(HTTP_PATH_SEGMENTS_PREFIX, 1, true) then
@@ -35,10 +36,11 @@ do
         break
       end
 
-      if not re_match(m[1], HTTP_PATH_SEGMENTS_SUFFIX_REG, "jo") then
+      local m = re_match(m[1], HTTP_PATH_SEGMENTS_SUFFIX_REG, "jo")
+      if not m or ( m[2] and tonumber(m[1]) >= tonumber(m[3])) then
         return nil, "illformed http.path.segments.* field"
       end
-    end
+    end   -- while true
 
     return true
   end

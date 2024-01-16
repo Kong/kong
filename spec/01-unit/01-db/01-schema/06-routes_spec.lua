@@ -1603,5 +1603,26 @@ describe("routes schema (flavor = expressions)", function()
     local ok, errs = Routes:validate_insert(route)
     assert.falsy(ok)
     assert.truthy(errs["@entity"])
+
+    r.expression = [[http.path.segments.1_ == "foo"]]
+
+    route = Routes:process_auto_fields(r, "insert")
+    local ok, errs = Routes:validate_insert(route)
+    assert.falsy(ok)
+    assert.truthy(errs["@entity"])
+
+    r.expression = [[http.path.segments.2_1 == "foo"]]
+
+    route = Routes:process_auto_fields(r, "insert")
+    local ok, errs = Routes:validate_insert(route)
+    assert.falsy(ok)
+    assert.truthy(errs["@entity"])
+
+    r.expression = [[http.path.segments.1_1 == "foo"]]
+
+    route = Routes:process_auto_fields(r, "insert")
+    local ok, errs = Routes:validate_insert(route)
+    assert.falsy(ok)
+    assert.truthy(errs["@entity"])
   end)
 end)
