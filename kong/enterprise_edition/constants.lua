@@ -46,6 +46,7 @@ return {
     "kong_counters",
     "kong_vitals_counters",
     "kong_vitals_lists",
+    "kong_vaults_hcv",
   },
 
   -- the remaining entities are inserted as-in into the kong.constants table:

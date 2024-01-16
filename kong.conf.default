@@ -1818,8 +1818,8 @@
 
 #vault_hcv_auth_method = token   # Defines the authentication mechanism when
                                  # connecting to the Hashicorp Vault service.
-                                 # Accepted values are: `token`, or
-                                 # `kubernetes`.
+                                 # Accepted values are: `token`,
+                                 # `kubernetes` or `approle`.
 
 #vault_hcv_kube_role =           # Defines the HashiCorp Vault role for the
                                  # Kubernetes service account of the running
@@ -1834,6 +1834,23 @@
                                  # token should be read from the pod's
                                  # filesystem, if using a non-standard
                                  # container platform setup.
+
+#vault_hcv_approle_auth_path = approle
+                                 # Place where the Approle auth method will be
+                                 # accessible: /v1/auth/<vault_hcv_approle_auth_path>
+
+#vault_hcv_approle_role_id =     # The Role ID of the Approle in HashiCorp Vault.
+
+#vault_hcv_approle_secret_id =   # The Secret ID of the Approle in HashiCorp Vault.
+
+#vault_hcv_approle_secret_id_file = # Defines where the Secret ID should be read from
+                                    # the pod's filesystem. This is usually used with
+                                    # HashiCorp Vault's response wrapping.
+
+#vault_hcv_approle_response_wrapping = false # Defines whether the Secret ID read from configuration
+                                             # or file is actually a response-wrapping token instead
+                                             # of a real Secret ID.
+
 
 #vault_hcv_ttl = 0               # Time-to-live (in seconds) of a secret from
                                  # the HashiCorp vault when cached by this node.
@@ -3238,13 +3255,13 @@
                                     # - `off` disables any check.
                                     # - `path` enforces routes to comply with the pattern
                                     #   described in config `enforce_route_path_pattern`.
-                                    # - `static` relies on the PostgreSQL database. 
-                                    # Before creating a new route, it checks if the 
-                                    # route is unique across all workspaces based on 
-                                    # the following params: `paths`, `methods`, and 
-                                    # `hosts`. If all fields of the new route overlap 
-                                    # with an existing one, a 409 is returned with the 
-                                    # route of the collision. The array order is not 
+                                    # - `static` relies on the PostgreSQL database.
+                                    # Before creating a new route, it checks if the
+                                    # route is unique across all workspaces based on
+                                    # the following params: `paths`, `methods`, and
+                                    # `hosts`. If all fields of the new route overlap
+                                    # with an existing one, a 409 is returned with the
+                                    # route of the collision. The array order is not
                                     # important for the overlap filter.
 
 #enforce_route_path_pattern =   # Specifies the Lua pattern which will

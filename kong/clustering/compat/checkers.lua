@@ -40,6 +40,7 @@ local compatible_checkers = {
     3006000000, -- [[ 3.6.0.0 ]]
     function(config_table, dp_version, log_suffix)
       local has_update
+
       for _, plugin in ipairs(config_table.plugins or {}) do
         if plugin.name == 'rate-limiting-advanced' then
           local config = plugin.config
@@ -97,10 +98,24 @@ local compatible_checkers = {
           end
         end
       end
+
+      for _, vault in ipairs(config_table.vaults or {}) do
+        -- test
+        local name = vault.name
+        if name == "hcv" then
+          for _, parameter in ipairs({"approle_auth_path", "approle_role_id", "approle_secret_id", "approle_secret_id_file", "approle_response_wrapping"}) do
+            log_warn_message('contains configuration vaults.hcv.' .. parameter,
+                             'be removed', dp_version, log_suffix)
+            vault.config[parameter] = nil
+            has_update = true
+          end
+        end
+      end
+
       return has_update
     end
-
   },
+
   { 3005000000, --[[ 3.5.0.0 ]]
     function(config_table, dp_version, log_suffix)
       local has_update

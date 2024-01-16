@@ -10,7 +10,7 @@ import {
   getNegative,
   randomString,
   wait,
-  createHcvVault,
+  createHcvVaultInKong,
   createHcvVaultSecrets,
   getHcvVaultSecret,
   deleteVaultEntity,
@@ -137,7 +137,7 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
   });
 
   it('should create hcv vault entity and secrets', async function () {
-    await createHcvVault();
+    await createHcvVaultInKong();
 
     await createHcvVaultSecrets({
       redisHcvPassword: redisHcvPassword,

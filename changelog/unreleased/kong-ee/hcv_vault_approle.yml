@@ -1,0 +1,3 @@
+message: HashiCorp Vault backend now supports using Approle authentication method
+type: feature
+scope: Core

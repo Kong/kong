@@ -50,6 +50,7 @@ http {
     lua_shared_dict kong_cluster_events 5m;
     lua_shared_dict kong_healthchecks   5m;
     lua_shared_dict kong_rate_limiting_counters 12m;
+    lua_shared_dict kong_vaults_hcv 1m;
     lua_socket_log_errors off;
 > if lua_ssl_trusted_certificate_combined then
     lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE_COMBINED}}';
@@ -487,6 +488,7 @@ stream {
     lua_shared_dict stream_kong_healthchecks   5m;
     lua_shared_dict stream_kong_rate_limiting_counters 12m;
     lua_shared_dict stream_prometheus_metrics  5m;
+    lua_shared_dict stream_kong_vaults_hcv 1m;
 
     # injected nginx_stream_* directives
 > for _, el in ipairs(nginx_stream_directives) do

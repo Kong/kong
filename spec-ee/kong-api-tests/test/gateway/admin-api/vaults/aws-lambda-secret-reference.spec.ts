@@ -7,9 +7,15 @@ import {
   createGatewayService,
   createRouteForService,
   randomString,
-  wait,
-  createHcvVault,
+  waitForConfigRebuild,
+  createHcvVaultInKong,
+  createHcvVaultWithApproleInKong,
   createHcvVaultSecrets,
+  enableHcvApproleAuth,
+  createHcvAppRole,
+  getHcvApproleID,
+  createHcvApproleSecretID,
+  createHcvApproleWrappedSecretId,
   getHcvVaultSecret,
   createAwsVaultEntity,
   createEnvVaultEntity,
@@ -44,11 +50,18 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
   const proxyUrl = getBasePath({ environment: isGateway() ? Environment.gateway.proxy : undefined });
   const gcpProjectId = 'gcp-sdet-test';
   const hcvPrefix = 'my-hcv'
+  const hcvPrefixWithApprole = 'my-hcv1'
+  const hcvPrefixWithApproleAndResponseWrapping = 'my-hcv2'
   const hcvMount = 'secret'
   const hcvSecretPath = 'aws-secret'
+  const hcvApproleAuthPath = "approle"
+  const hcvRoleName = "test-role"
+
+  let hcvApproleID = '';
+  let hcvSecretID = '';
+  let hcvWrappedSecretID = '';
 
   const awsFunctionName = 'gateway-awsplugin-test';
-  const waitTime = 3000;
   // aws credentials to be created in hcv vault
   const awsAccessKey = vars.aws.AWS_ACCESS_KEY_ID;
   const awsSecretKey = vars.aws.AWS_SECRET_ACCESS_KEY;
@@ -99,13 +112,27 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
     routeId = route.id;
     const plugin = await createPlugin(serviceId, routeId)
     awsPluginId = plugin.id
-    // creatting hcv vault entity
+    // creating hcv vault secret
     await createHcvVaultSecrets({
       aws_access_key: awsAccessKey,
       aws_secret_key: awsSecretKey,
     }, hcvMount, hcvSecretPath);
 
-    await createHcvVault();
+    //creating hcv vault entity
+    await createHcvVaultInKong();
+
+    // creating hcv vault entity with approle;
+    await enableHcvApproleAuth();
+    await createHcvAppRole(hcvApproleAuthPath, hcvRoleName);
+    hcvApproleID = await getHcvApproleID(hcvApproleAuthPath, hcvRoleName);
+    hcvSecretID = await createHcvApproleSecretID(hcvApproleAuthPath, hcvRoleName);
+    hcvWrappedSecretID = await createHcvApproleWrappedSecretId(hcvApproleAuthPath, hcvRoleName);
+
+    // creating hcv vault entity with approle & secret id;
+    await createHcvVaultWithApproleInKong(hcvMount, hcvPrefixWithApprole, hcvApproleID, hcvSecretID, false);
+    // creating hcv vault entity with approle & wrapped secret id;
+    await createHcvVaultWithApproleInKong(hcvMount, hcvPrefixWithApproleAndResponseWrapping, hcvApproleID, hcvWrappedSecretID, true);
+
     //  creating my-env vault entity with varaible reference prefix 'aws_'
     await createEnvVaultEntity('my-env', { prefix: 'aws_' });
     // creating my-aws vault entity
@@ -137,13 +164,13 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
       },
     });
     logResponse(patchResp);
-   
+
     expect(patchResp.status, 'Status should be 200').to.equal(200);
     expect(patchResp.data.config.aws_key, 'Should have aws_key referenced').to.equal(
       `{vault://${hcvPrefix}/${hcvSecretPath}/aws_access_key}`
     );
 
-    await wait(waitTime + 3000); // eslint-disable-line no-restricted-syntax
+    await waitForConfigRebuild();
     await doBasicRequestCheck();
   });
 
@@ -167,7 +194,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
       'Should replace aws_secret with secret key reference'
     ).to.equal(`{vault://${hcvPrefix}/${hcvSecretPath}/aws_secret_key}`);
 
-    await wait(waitTime); // eslint-disable-line no-restricted-syntax
+    await waitForConfigRebuild();
     await doBasicRequestCheck();
   });
 
@@ -192,7 +219,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
       'Should replace aws_secret with hcv secret key reference'
     ).to.equal(`{vault://hcv/${hcvSecretPath}/aws_secret_key}`);
 
-    await wait(waitTime); // eslint-disable-line no-restricted-syntax
+    await waitForConfigRebuild();
     await doBasicRequestCheck();
   });
 
@@ -217,7 +244,57 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
       'Should replace aws_secret with hcv secret key reference'
     ).to.equal(`{vault://${hcvPrefix}/${hcvSecretPath}/aws_secret_key}`);
 
-    await wait(waitTime); // eslint-disable-line no-restricted-syntax
+    await waitForConfigRebuild();
+    await doBasicRequestCheck();
+  });
+
+  it('should reference with aws_access_key hcv and secret_key hcv vault entity secret with approle', async function () {
+    // changing aws-lambda plaintext aws_secret to hcv vault enittiy secret reference
+    const patchResp = await axios({
+      method: 'patch',
+      url: `${pluginUrl}/${awsPluginId}`,
+      data: {
+        name: 'aws-lambda',
+        config: {
+          aws_key: `{vault://${hcvPrefixWithApprole}/${hcvSecretPath}/aws_access_key}`,
+          aws_secret: `{vault://${hcvPrefixWithApprole}/${hcvSecretPath}/aws_secret_key}`,
+        },
+      },
+    });
+    logResponse(patchResp);
+
+    expect(patchResp.status, 'Status should be 200').to.equal(200);
+    expect(
+      patchResp.data.config.aws_secret,
+      'Should replace aws_secret with hcv secret key reference'
+    ).to.equal(`{vault://${hcvPrefixWithApprole}/${hcvSecretPath}/aws_secret_key}`);
+
+    await waitForConfigRebuild();
+    await doBasicRequestCheck();
+  });
+
+  it('should reference with aws_access_key hcv and secret_key hcv vault entity secret with approle and response wrapping', async function () {
+    // changing aws-lambda plaintext aws_secret to hcv vault enittiy secret reference
+    const patchResp = await axios({
+      method: 'patch',
+      url: `${pluginUrl}/${awsPluginId}`,
+      data: {
+        name: 'aws-lambda',
+        config: {
+          aws_key: `{vault://${hcvPrefixWithApproleAndResponseWrapping}/${hcvSecretPath}/aws_access_key}`,
+          aws_secret: `{vault://${hcvPrefixWithApproleAndResponseWrapping}/${hcvSecretPath}/aws_secret_key}`,
+        },
+      },
+    });
+    logResponse(patchResp);
+
+    expect(patchResp.status, 'Status should be 200').to.equal(200);
+    expect(
+      patchResp.data.config.aws_secret,
+      'Should replace aws_secret with hcv secret key reference'
+    ).to.equal(`{vault://${hcvPrefixWithApproleAndResponseWrapping}/${hcvSecretPath}/aws_secret_key}`);
+
+    await waitForConfigRebuild();
     await doBasicRequestCheck();
   });
 
@@ -230,6 +307,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
         name: 'aws-lambda',
         config: {
           aws_key: '{vault://env/aws_access_key_id}',
+          aws_secret: `{vault://${hcvPrefix}/${hcvSecretPath}/aws_secret_key}`,
         },
       },
     });
@@ -237,7 +315,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
 
     expect(patchResp.status, 'Status should be 200').to.equal(200);
 
-    await wait(waitTime); // eslint-disable-line no-restricted-syntax
+    await waitForConfigRebuild();
     await doBasicRequestCheck();
   });
 
@@ -261,7 +339,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
       'Should replace aws_secret with secret key reference'
     ).to.equal('{vault://aws/gateway-secret-test/aws_secret_key}');
 
-    await wait(waitTime); // eslint-disable-line no-restricted-syntax
+    await waitForConfigRebuild();
     await doBasicRequestCheck();
   });
 
@@ -283,7 +361,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
 
     expect(patchResp.status, 'Status should be 200').to.equal(200);
 
-    await wait(waitTime); // eslint-disable-line no-restricted-syntax
+    await waitForConfigRebuild();
     await doBasicRequestCheck();
   });
 
@@ -323,7 +401,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
 
     expect(patchResp.status, 'Status should be 200').to.equal(200);
 
-    await wait(waitTime); // eslint-disable-line no-restricted-syntax
+    await waitForConfigRebuild();
     await doBasicRequestCheck();
   });
 
@@ -343,7 +421,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
 
     expect(patchResp.status, 'Status should be 200').to.equal(200);
 
-    await wait(waitTime); // eslint-disable-line no-restricted-syntax
+    await waitForConfigRebuild();
     await doBasicRequestCheck();
   });
 
@@ -363,7 +441,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
 
     expect(patchResp.status, 'Status should be 200').to.equal(200);
 
-    await wait(waitTime); // eslint-disable-line no-restricted-syntax
+    await waitForConfigRebuild();
     await doBasicRequestCheck();
   });
 
@@ -383,7 +461,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
 
     expect(patchResp.status, 'Status should be 200').to.equal(200);
 
-    await wait(waitTime); // eslint-disable-line no-restricted-syntax
+    await waitForConfigRebuild();
     await doBasicRequestCheck();
   });
 
@@ -402,7 +480,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
 
     expect(patchResp.status, 'Status should be 200').to.equal(200);
 
-    await wait(waitTime); // eslint-disable-line no-restricted-syntax
+    await waitForConfigRebuild();
     await doBasicRequestCheck();
   });
 
@@ -422,7 +500,7 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
 
     expect(patchResp.status, 'Status should be 200').to.equal(200);
 
-    await wait(waitTime); // eslint-disable-line no-restricted-syntax
+    await waitForConfigRebuild();
     await doBasicRequestCheck();
   });
 

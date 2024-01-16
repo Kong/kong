@@ -15,6 +15,7 @@ describe('Vaults: Hashicorp', function () {
 
   const vaultPrefix = 'hcvprefix';
   const vaultPrefix2 = 'hcvprefix2';
+  const vaultPrefix3 = 'hcvprefix3';
   const updatedPrefix = 'updatedhcvprefix';
   const vaultName = 'hcv';
   const hcvHost = 'localhost';
@@ -267,18 +268,72 @@ describe('Vaults: Hashicorp', function () {
     );
   });
 
+  it('should not create hcv vault with approle auth method and without role id', async function () {
+    const resp = await postNegative(
+      `${url}/${vaultPrefix3}`,
+      {
+        name: vaultName,
+        prefix: vaultPrefix3,
+        config: {
+          auth_method: 'approle',
+          kv: 'v1',
+          host: hcvHost,
+          approle_secret_id: '00000000-0000-0000-0000-000000000000',
+        },
+      }, 'put'
+    );
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 400').to.equal(400);
+    expect(resp.data.message, 'Should have correct error message').to.include(
+      'config.approle_role_id: required field missing'
+    );
+  });
+
+  it('should create hcv vault with approle auth method', async function () {
+    const resp = await axios({
+      method: 'put',
+      url: `${url}/${vaultPrefix3}`,
+      data: {
+        name: vaultName,
+        prefix: vaultPrefix3,
+        config: {
+          auth_method: 'approle',
+          kv: 'v1',
+          host: hcvHost,
+          approle_role_id: '00000000-0000-0000-0000-000000000000',
+          approle_secret_id: '00000000-0000-0000-0000-000000000000',
+        },
+      },
+    });
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 200').to.equal(200);
+    expect(resp.data.config.port, 'Should see config port').to.equal(8200);
+    expect(resp.data.config.host, 'Should see config host').to.equal(hcvHost);
+    expect(resp.data.config.auth_method, 'Should see correct config auth method').to.equal(
+      'approle'
+    );
+    expect(resp.data.config.approle_role_id, 'Should see correct config approle role id').to.equal(
+      '00000000-0000-0000-0000-000000000000'
+    );
+    expect(resp.data.config.approle_secret_id, 'Should see correct config approle secret id').to.equal(
+      '00000000-0000-0000-0000-000000000000'
+    );
+  });
+
   it('should list all hcv vaults', async function () {
     const resp = await axios(url);
     logResponse(resp);
 
     expect(resp.status, 'Status should be 200').to.equal(200);
-    expect(resp.data.data, 'Should all 2 items in the list').to.have.lengthOf(
-      2
+    expect(resp.data.data, 'Should all 3 items in the list').to.have.lengthOf(
+      3
     );
     expect(
       resp.data.data.map((vault) => vault.prefix),
       'Should see all vault prefixes'
-    ).to.have.members([updatedPrefix, vaultPrefix2]);
+    ).to.have.members([updatedPrefix, vaultPrefix2, vaultPrefix3]);
   });
 
   it('should delete hcv vaults', async function () {

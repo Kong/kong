@@ -2,6 +2,7 @@ import axios from 'axios';
 import { expect } from '../assert/chai-expect';
 import { Environment, getBasePath } from '../config/environment';
 import { postNegative } from './negative-axios';
+import { logResponse } from './logging';
 
 const getUrl = (endpoint = '') => {
   const basePath = getBasePath({
@@ -41,6 +42,152 @@ export const getHcvKvVersion = async (targetMount = 'secret') => {
 };
 
 /**
+ * Enable Approle auth method in HCV
+ * @param {string} path - path of the enabled approle auth method, default is 'approle'
+ */
+export const enableHcvApproleAuth = async (path = "approle") => {
+  const resp = await axios({
+    method: 'POST',
+    url: `http://${getHost()}:8200/v1/sys/auth/${path}`,
+    headers: {
+      'X-Vault-Token': hcvToken,
+    },
+    data: {
+      type: 'approle',
+    },
+  });
+
+  logResponse(resp);
+
+  expect(resp.status, 'Status should be 204').to.equal(204);
+  return resp.data;
+};
+
+/**
+ * Create an HCV policy for reading all secrets
+ * @param {string} policy_name - name of the policy
+ */
+export const createHcvSecretReadPolicy = async (policy_name = "hcv-secret-read") => {
+  const resp = await axios({
+    method: 'POST',
+    url: `http://${getHost()}:8200/v1/sys/policies/acl/${policy_name}`,
+    headers: {
+      'X-Vault-Token': hcvToken,
+    },
+    data: {
+      policy: `path "secret/*" {
+        capabilities = ["read"]
+      }`,
+    },
+  });
+
+  logResponse(resp);
+
+  expect(resp.status, 'Status should be 204').to.equal(204);
+  return resp.data;
+}
+
+/**
+ * Create a new Approle in HCV
+ * @param {string} path - path of the enabled approle auth method, default is 'approle'
+ * @param {string} role_name - name of the approle to create, default is 'test-role'
+ */
+export const createHcvAppRole = async (path = "approle", role_name = "test-role") => {
+
+  const policy_name = "hcv-secret-read";
+  await createHcvSecretReadPolicy(policy_name);
+
+  const resp = await axios({
+    method: 'POST',
+    url: `http://${getHost()}:8200/v1/auth/${path}/role/${role_name}`,
+    headers: {
+      'X-Vault-Token': hcvToken,
+    },
+    data: {
+      secret_id_ttl: 0,
+      token_ttl: 0,
+      token_max_ttl: 0,
+      token_policies: [policy_name],
+    },
+  });
+
+  logResponse(resp);
+
+  expect(resp.status, 'Status should be 204').to.equal(204);
+  return resp.data;
+};
+
+/**
+ * Fetch Approle ID from HCV
+ * @param {string} role_name - name of the approle to fetch, default is 'test-role'
+ * @param {string} path - path of the enabled approle auth method, default is 'approle'
+ * @returns {string} - approle id
+ */
+export const getHcvApproleID = async (path = "approle", role_name = "test-role") => {
+  const resp = await axios({
+    method: 'GET',
+    url: `http://${getHost()}:8200/v1/auth/${path}/role/${role_name}/role-id`,
+    headers: {
+      'X-Vault-Token': hcvToken,
+    },
+  });
+
+  logResponse(resp);
+
+  expect(resp.status, 'Status should be 200').to.equal(200);
+  return resp.data.data.role_id;
+};
+
+/**
+ * Create a new Approle Secret ID in HCV
+ * @param {string} path - path of the enabled approle auth method, default is 'approle'
+ * @param {string} role_name - name of the approle to fetch, default is 'test-role'
+ * @returns {string} - approle secret id
+ */
+export const createHcvApproleSecretID = async (path = "approle", role_name = "test-role") => {
+  const resp = await axios({
+    method: 'POST',
+    url: `http://${getHost()}:8200/v1/auth/${path}/role/${role_name}/secret-id`,
+    headers: {
+      'X-Vault-Token': hcvToken,
+    },
+    data: {
+      ttl: 0,
+    },
+  });
+
+  logResponse(resp);
+
+  expect(resp.status, 'Status should be 200').to.equal(200);
+  return resp.data.data.secret_id;
+}
+
+/**
+ * Create a new Approle Wrapped Secret ID in HCV
+ * @param {string} path - path of the enabled approle auth method, default is 'approle'
+ * @param {string} role_name - name of the approle to fetch, default is 'test-role'
+ * @returns {string} - wrapped approle secret id
+ */
+export const createHcvApproleWrappedSecretId = async (path = "approle", role_name = "test-role") => {
+  const resp = await axios({
+    method: 'POST',
+    url: `http://${getHost()}:8200/v1/auth/${path}/role/${role_name}/secret-id`,
+    headers: {
+      'X-Vault-Token': hcvToken,
+      'X-Vault-Wrap-TTL': '60m',
+    },
+    data: {
+      ttl: 0,
+    },
+  });
+
+  logResponse(resp);
+
+  expect(resp.status, 'Status should be 200').to.equal(200);
+  return resp.data.wrap_info.token;
+}
+
+/**
  * Constracts hcv secret url
  * @param {string} targetMount - name of the target hcv mount
  * @param {string} pathName - path of the secret in HCV vault
@@ -60,12 +207,12 @@ export const getHcvSecretUrl = async (
 };
 
 /**
- * Creates hcv backend vault
+ * Creates hcv backend vault in Kong
  * @param {string} targetMount - name of the target hcv mount
  * @param {string} targetHcvToken - hcv root token
  * @param {string} vaultPrefix - hcv vault prefix (not config prefix for variables), default is 'my-hcv'
  */
-export const createHcvVault = async (
+export const createHcvVaultInKong = async (
   targetMount = 'secret',
   targetHcvToken = hcvToken,
   vaultPrefix = 'my-hcv'
@@ -87,6 +234,49 @@ export const createHcvVault = async (
       },
     },
   });
+
+  expect(resp.status, 'Status should be 200').to.equal(200);
+
+  return resp.data;
+};
+
+/**
+ * Creates hcv backend vault using Approle auth method in Kong
+ * @param {string} targetMount - name of the target hcv mount
+ * @param {string} vaultPrefix - hcv vault prefix (not config prefix for variables), default is 'my-hcv'
+ * @param {string} targetApproleRoleID - ID of the Approle
+ * @param {string} targetApproleSecretID - Secret ID of the Approle
+ * @param {boolean} approleResponseWrapping - whether the secret id is a response wrapping token
+ */
+export const createHcvVaultWithApproleInKong = async (
+  targetMount = 'secret',
+  vaultPrefix = 'my-hcv',
+  targetApproleRoleID: string,
+  targetApproleSecretID: string,
+  approleResponseWrapping = false,
+) => {
+  const kvVersion = await getHcvKvVersion(targetMount);
+
+  const resp = await axios({
+    method: 'put',
+    url: `${getUrl('vaults')}/${vaultPrefix}`,
+    data: {
+      name: 'hcv',
+      config: {
+        protocol: 'http',
+        host: 'host.docker.internal',
+        port: 8200,
+        mount: targetMount,
+        kv: kvVersion === '2' ? 'v2' : 'v1',
+        auth_method: 'approle',
+        approle_role_id: targetApproleRoleID,
+        approle_secret_id: targetApproleSecretID,
+        approle_response_wrapping: approleResponseWrapping,
+      },
+    },
+  });
+
+  logResponse(resp);
 
   expect(resp.status, 'Status should be 200').to.equal(200);
 

@@ -8,6 +8,7 @@
 
 local meta = require "kong.meta"
 local kube = require "kong.vaults.hcv.kube"
+local approle = require "kong.vaults.hcv.approle"
 local utils = require "kong.tools.utils"
 local cjson = require("cjson.safe").new()
 local http = require "resty.luasocket.http"
@@ -26,58 +27,10 @@ local ERR = ngx.ERR
 local LOG_PREFIX = "[hcv] "
 
 
-local function kube_vault_token_exchange(config)
-  log(DEBUG, "no vault token in cache - getting one")
-
-  local kube_role = config.kube_role or "default"
-  log(DEBUG, LOG_PREFIX, "using kubernetes service account vault authentication mechanism for role: ", kube_role)
-
-  -- get the current kube service account context JWT
-  local kube_jwt, err = kube.get_service_account_token(config.kube_api_token_file)
-  if err then
-    log(ERR, LOG_PREFIX, "error loading kubernetes service account jwt from filesystem: ", err)
-    return
-  end
-
-  -- exchange the jwt for a vault token
-  local c = http.new()
-
-  local kube_auth_path = config.kube_auth_path
-  if kube_auth_path then
-    kube_auth_path = kube_auth_path:gsub("^/", ""):gsub("/$", "")
-  else
-    kube_auth_path = "kubernetes"
-  end
-
-  local req_path = config.vault_host .. "/v1/auth/" .. kube_auth_path .. "/login"
-  local req_data = {
-    jwt = kube_jwt,
-    role = kube_role,
-  }
-
-  local res, err = c:request_uri(req_path, {
-    -- add a namespace to authenticate to, else use root.
-    headers = {
-      ["X-Vault-Namespace"] = config.auth_namespace or "root",
-    },
-    method = "POST",
-    body = cjson.encode(req_data),
-  })
-
-  if err then
-    log(ERR, LOG_PREFIX, "failure when exchanging kube service account jwt for vault token: ", err)
-    return
-  end
-
-  if res.status ~= 200 then
-    log(ERR, LOG_PREFIX, "invalid response code ", res.status, " received when exchanging kube service account jwt for vault token: ", res.body)
-    return
-  end
-
-  -- capture the current token and ttl
-  local vault_response = cjson.decode(res.body)
-  return vault_response.auth.client_token, nil, vault_response.auth.lease_duration
-end
+local vault_auth_method_handler = {
+  ["kubernetes"] = kube,
+  ["approle"] = approle,
+}
 
 
 local function get_vault_token(config)
@@ -85,15 +38,16 @@ local function get_vault_token(config)
     log(DEBUG, LOG_PREFIX, "using static env token vault authentication mechanism")
     return config.token
 
-  elseif config.auth_method == "kubernetes" then
-    local cache_key = fmt("vaults:credentials:hcv:%s:%s", config.vault_host, config.kube_role)
+  elseif vault_auth_method_handler[config.auth_method] then
+    local handler = vault_auth_method_handler[config.auth_method]
+    local cache_key = handler.cache_key(config)
 
     local cache = kong.cache
     local token
     if cache then
-      token = cache:get(cache_key, nil, kube_vault_token_exchange, config)
+      token = cache:get(cache_key, nil, handler.vault_token_exchange, config)
     else
-      token = kube_vault_token_exchange(config)
+      token = handler.vault_token_exchange(config)
     end
 
     if not token then
@@ -157,6 +111,11 @@ local function request(conf, resource, version, request_conf)
     kube_api_token_file = conf.kube_api_token_file,
     kube_role           = conf.kube_role,
     kube_auth_path      = conf.kube_auth_path,
+    approle_auth_path   = conf.approle_auth_path,
+    approle_role_id     = conf.approle_role_id,
+    approle_secret_id   = conf.approle_secret_id,
+    approle_secret_id_file = conf.approle_secret_id_file,
+    approle_response_wrapping = conf.approle_response_wrapping,
   }
 
   local token = get_vault_token(token_params)

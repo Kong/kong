@@ -40,6 +40,7 @@ lua_shared_dict kong_reports_services        1m;
 lua_shared_dict kong_reports_workspaces 1m;
 lua_shared_dict kong_keyring 5m;
 lua_shared_dict kong_profiling_state 1536k;  # 1.5 MBytes
+lua_shared_dict kong_vaults_hcv 1m;
 
 underscores_in_headers on;
 > if ssl_ciphers then

@@ -6,7 +6,7 @@ export const vars = {
     AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
   },
   azure: {
-    AZURE_FUNCTION_KEY:  process.env.AZURE_FUNCTION_KEY 
+    AZURE_FUNCTION_KEY:  process.env.AZURE_FUNCTION_KEY
   }
 };
 /**

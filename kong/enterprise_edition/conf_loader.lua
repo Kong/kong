@@ -251,6 +251,7 @@ local EE_CONF_SENSITIVE = {
   keyring_recovery_public_key = true,
   vault_hcv_token = true,
   portal_and_vitals_key = true,
+  vault_hcv_approle_secret_id = true,
 }
 
 
@@ -278,7 +279,13 @@ local EE_CONF_BASIC = {
   vault_hcv_token = true,
   vault_hcv_auth_method = true,
   vault_hcv_kube_role = true,
+  vault_hcv_kube_auth_path = true,
   vault_hcv_kube_api_token_file = true,
+  vault_hcv_approle_auth_path = true,
+  vault_hcv_approle_role_id = true,
+  vault_hcv_approle_secret_id = true,
+  vault_hcv_approle_secret_id_file = true,
+  vault_hcv_approle_response_wrapping = true,
   vault_azure_client_id = true,
   vault_azure_tenant_id = true,
   vault_azure_type = true,

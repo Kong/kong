@@ -36,6 +36,7 @@ lua_shared_dict stream_kong_counters 50m;
 lua_shared_dict stream_kong_vitals_lists     1m;
 lua_shared_dict stream_kong_vitals 1m;
 lua_shared_dict stream_kong_keyring 5m;
+lua_shared_dict stream_kong_vaults_hcv 1m;
 
 > if ssl_ciphers then
 ssl_ciphers ${{SSL_CIPHERS}};

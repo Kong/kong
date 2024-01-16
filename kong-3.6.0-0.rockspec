@@ -850,6 +850,7 @@ build = {
     ["kong.vaults.hcv"] = "kong/vaults/hcv/init.lua",
     ["kong.vaults.hcv.schema"] = "kong/vaults/hcv/schema.lua",
     ["kong.vaults.hcv.kube"] = "kong/vaults/hcv/kube.lua",
+    ["kong.vaults.hcv.approle"] = "kong/vaults/hcv/approle.lua",
 
     ["kong.tracing.instrumentation"] = "kong/tracing/instrumentation.lua",
     ["kong.tracing.propagation"] = "kong/tracing/propagation.lua",
