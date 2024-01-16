@@ -223,7 +223,7 @@
   - lua-resty-openssl-aux-module
   - lua-resty-openssl-aux-module/stream
   - ngx_wasm_module
-  OpenSSL   : OpenSSL 3.1.4 24 Oct 2023
+  OpenSSL   : OpenSSL 3.2.0 23 Nov 2023
   DWARF     : True
   DWARF - ngx_http_request_t related DWARF DIEs: True
 
