@@ -63,6 +63,7 @@ local function parse_option_flags(value, flags)
     if count > 0 then
       result[flag] = true
 
+      -- since nginx 1.25.1 the flag "http2" is deprecated
       if flag ~= "http2" then
         sanitized = sanitized .. " " .. flag
       end
@@ -169,6 +170,7 @@ function listeners.parse(conf, listener_configs)
       end
     end
 
+    -- since nginx 1.25.1 we should use directive "http2 on;"
     if l.http2_flag then
       conf[l.http2_flag] = false
       for _, listener in ipairs(conf[plural]) do
