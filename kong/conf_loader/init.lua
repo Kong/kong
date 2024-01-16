@@ -714,11 +714,11 @@ local function load(path, custom_conf, opts)
   end
 
   ok, err = listeners.parse(conf, {
-    { name = "proxy_listen",   subsystem = "http",   ssl_flag = "proxy_ssl_enabled" },
+    { name = "proxy_listen",   subsystem = "http",   ssl_flag = "proxy_ssl_enabled", http2_flag = "proxy_http2_enabled" },
     { name = "stream_listen",  subsystem = "stream", ssl_flag = "stream_proxy_ssl_enabled" },
-    { name = "admin_listen",   subsystem = "http",   ssl_flag = "admin_ssl_enabled" },
-    { name = "admin_gui_listen", subsystem = "http", ssl_flag = "admin_gui_ssl_enabled" },
-    { name = "status_listen",  subsystem = "http",   ssl_flag = "status_ssl_enabled" },
+    { name = "admin_listen",   subsystem = "http",   ssl_flag = "admin_ssl_enabled", http2_flag = "admin_http2_enabled" },
+    { name = "admin_gui_listen", subsystem = "http", ssl_flag = "admin_gui_ssl_enabled", http2_flag = "admin_gui_http2_enabled" },
+    { name = "status_listen",  subsystem = "http",   ssl_flag = "status_ssl_enabled", http2_flag = "status_http2_enabled" },
     { name = "cluster_listen", subsystem = "http" },
   })
   if not ok then
