@@ -146,8 +146,7 @@ for _, strategy in helpers.each_strategy() do
       fixtures.http_mock.my_server_block = [[
         server {
           server_name myserver;
-          listen 8765;
-          http2 on;
+          listen 8765 http2;
 
           location ~ / {
             content_by_lua_block {

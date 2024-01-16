@@ -56,8 +56,8 @@ describe("Configuration loader", function()
     end
     assert.equal("auto", conf.nginx_main_worker_processes)
     assert.equal("eventual", conf.worker_consistency)
-    assert.same({"127.0.0.1:8001 reuseport backlog=16384", "127.0.0.1:8444 ssl reuseport backlog=16384"}, conf.admin_listen)
-    assert.same({"0.0.0.0:8000 reuseport backlog=16384", "0.0.0.0:8443 ssl reuseport backlog=16384"}, conf.proxy_listen)
+    assert.same({"127.0.0.1:8001 reuseport backlog=16384", "127.0.0.1:8444 http2 ssl reuseport backlog=16384"}, conf.admin_listen)
+    assert.same({"0.0.0.0:8000 reuseport backlog=16384", "0.0.0.0:8443 http2 ssl reuseport backlog=16384"}, conf.proxy_listen)
     assert.same({"0.0.0.0:8002", "0.0.0.0:8445 ssl"}, conf.admin_gui_listen)
     assert.equal("/", conf.admin_gui_path)
     assert.equal("logs/admin_gui_access.log", conf.admin_gui_access_log)
@@ -89,8 +89,8 @@ describe("Configuration loader", function()
     end
     assert.equal("1", conf.nginx_main_worker_processes)
     assert.same({"127.0.0.1:9001"}, conf.admin_listen)
-    assert.same({"0.0.0.0:9000", "0.0.0.0:9443 ssl",
-                 "0.0.0.0:9002"}, conf.proxy_listen)
+    assert.same({"0.0.0.0:9000", "0.0.0.0:9443 http2 ssl",
+                 "0.0.0.0:9002 http2"}, conf.proxy_listen)
     assert.same(KONG_VERSION, conf.lmdb_validation_tag)
     assert.is_nil(getmetatable(conf))
   end)
@@ -113,8 +113,8 @@ describe("Configuration loader", function()
     end
     assert.equal("auto", conf.nginx_main_worker_processes)
     assert.same({"127.0.0.1:9001"}, conf.admin_listen)
-    assert.same({"0.0.0.0:9000", "0.0.0.0:9443 ssl",
-                 "0.0.0.0:9002"}, conf.proxy_listen)
+    assert.same({"0.0.0.0:9000", "0.0.0.0:9443 http2 ssl",
+                 "0.0.0.0:9002 http2"}, conf.proxy_listen)
     assert.is_nil(getmetatable(conf))
   end)
   it("strips extraneous properties (not in defaults)", function()
@@ -162,32 +162,38 @@ describe("Configuration loader", function()
     assert.equal("127.0.0.1", conf.admin_listeners[1].ip)
     assert.equal(8001, conf.admin_listeners[1].port)
     assert.equal(false, conf.admin_listeners[1].ssl)
+    assert.equal(false, conf.admin_listeners[1].http2)
     assert.equal("127.0.0.1:8001 reuseport backlog=16384", conf.admin_listeners[1].listener)
 
     assert.equal("127.0.0.1", conf.admin_listeners[2].ip)
     assert.equal(8444, conf.admin_listeners[2].port)
     assert.equal(true, conf.admin_listeners[2].ssl)
-    assert.equal("127.0.0.1:8444 ssl reuseport backlog=16384", conf.admin_listeners[2].listener)
+    assert.equal(true, conf.admin_listeners[2].http2)
+    assert.equal("127.0.0.1:8444 ssl http2 reuseport backlog=16384", conf.admin_listeners[2].listener)
 
     assert.equal("0.0.0.0", conf.admin_gui_listeners[1].ip)
     assert.equal(8002, conf.admin_gui_listeners[1].port)
     assert.equal(false, conf.admin_gui_listeners[1].ssl)
+    assert.equal(false, conf.admin_gui_listeners[1].http2)
     assert.equal("0.0.0.0:8002", conf.admin_gui_listeners[1].listener)
 
     assert.equal("0.0.0.0", conf.admin_gui_listeners[2].ip)
     assert.equal(8445, conf.admin_gui_listeners[2].port)
     assert.equal(true, conf.admin_gui_listeners[2].ssl)
+    assert.equal(false, conf.admin_gui_listeners[2].http2)
     assert.equal("0.0.0.0:8445 ssl", conf.admin_gui_listeners[2].listener)
 
     assert.equal("0.0.0.0", conf.proxy_listeners[1].ip)
     assert.equal(8000, conf.proxy_listeners[1].port)
     assert.equal(false, conf.proxy_listeners[1].ssl)
+    assert.equal(false, conf.proxy_listeners[1].http2)
     assert.equal("0.0.0.0:8000 reuseport backlog=16384", conf.proxy_listeners[1].listener)
 
     assert.equal("0.0.0.0", conf.proxy_listeners[2].ip)
     assert.equal(8443, conf.proxy_listeners[2].port)
     assert.equal(true, conf.proxy_listeners[2].ssl)
-    assert.equal("0.0.0.0:8443 ssl reuseport backlog=16384", conf.proxy_listeners[2].listener)
+    assert.equal(true, conf.proxy_listeners[2].http2)
+    assert.equal("0.0.0.0:8443 ssl http2 reuseport backlog=16384", conf.proxy_listeners[2].listener)
   end)
   it("parses IPv6 from proxy_listen/admin_listen/admin_gui_listen", function()
     local conf = assert(conf_loader(nil, {
@@ -198,31 +204,37 @@ describe("Configuration loader", function()
     assert.equal("[0000:0000:0000:0000:0000:0000:0000:0001]", conf.admin_listeners[1].ip)
     assert.equal(8001, conf.admin_listeners[1].port)
     assert.equal(false, conf.admin_listeners[1].ssl)
+    assert.equal(false, conf.admin_listeners[1].http2)
     assert.equal("[0000:0000:0000:0000:0000:0000:0000:0001]:8001", conf.admin_listeners[1].listener)
 
     assert.equal("[0000:0000:0000:0000:0000:0000:0000:0001]", conf.admin_listeners[2].ip)
     assert.equal(8444, conf.admin_listeners[2].port)
     assert.equal(true, conf.admin_listeners[2].ssl)
+    assert.equal(false, conf.admin_listeners[2].http2)
     assert.equal("[0000:0000:0000:0000:0000:0000:0000:0001]:8444 ssl", conf.admin_listeners[2].listener)
 
     assert.equal("[0000:0000:0000:0000:0000:0000:0000:0001]", conf.admin_gui_listeners[1].ip)
     assert.equal(8002, conf.admin_gui_listeners[1].port)
     assert.equal(false, conf.admin_gui_listeners[1].ssl)
+    assert.equal(false, conf.admin_gui_listeners[1].http2)
     assert.equal("[0000:0000:0000:0000:0000:0000:0000:0001]:8002", conf.admin_gui_listeners[1].listener)
 
     assert.equal("[0000:0000:0000:0000:0000:0000:0000:0001]", conf.admin_gui_listeners[2].ip)
     assert.equal(8445, conf.admin_gui_listeners[2].port)
     assert.equal(true, conf.admin_gui_listeners[2].ssl)
+    assert.equal(false, conf.admin_gui_listeners[2].http2)
     assert.equal("[0000:0000:0000:0000:0000:0000:0000:0001]:8445 ssl", conf.admin_gui_listeners[2].listener)
 
     assert.equal("[0000:0000:0000:0000:0000:0000:0000:0000]", conf.proxy_listeners[1].ip)
     assert.equal(8000, conf.proxy_listeners[1].port)
     assert.equal(false, conf.proxy_listeners[1].ssl)
+    assert.equal(false, conf.proxy_listeners[1].http2)
     assert.equal("[0000:0000:0000:0000:0000:0000:0000:0000]:8000", conf.proxy_listeners[1].listener)
 
     assert.equal("[0000:0000:0000:0000:0000:0000:0000:0000]", conf.proxy_listeners[2].ip)
     assert.equal(8443, conf.proxy_listeners[2].port)
     assert.equal(true, conf.proxy_listeners[2].ssl)
+    assert.equal(false, conf.proxy_listeners[2].http2)
     assert.equal("[0000:0000:0000:0000:0000:0000:0000:0000]:8443 ssl", conf.proxy_listeners[2].listener)
   end)
   it("extracts ssl flags properly when hostnames contain them", function()
@@ -681,38 +693,38 @@ describe("Configuration loader", function()
         admin_listen = "127.0.0.1"
       })
       assert.is_nil(conf)
-      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+] [ipv6only=on] [ipv6only=off] [so_keepalive=on] [so_keepalive=off] [so_keepalive=%w*:%w*:%d*], [... next entry ...]", err)
+      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+] [ipv6only=on] [ipv6only=off] [so_keepalive=on] [so_keepalive=off] [so_keepalive=%w*:%w*:%d*], [... next entry ...]", err)
 
       conf, err = conf_loader(nil, {
         proxy_listen = "127.0.0.1"
       })
       assert.is_nil(conf)
-      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+] [ipv6only=on] [ipv6only=off] [so_keepalive=on] [so_keepalive=off] [so_keepalive=%w*:%w*:%d*], [... next entry ...]", err)
+      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+] [ipv6only=on] [ipv6only=off] [so_keepalive=on] [so_keepalive=off] [so_keepalive=%w*:%w*:%d*], [... next entry ...]", err)
 
       conf, err = conf_loader(nil, {
         admin_gui_listen = "127.0.0.1"
       })
       assert.is_nil(conf)
-      assert.equal("admin_gui_listen must be of form: [off] | <ip>:<port> [ssl] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+] [ipv6only=on] [ipv6only=off] [so_keepalive=on] [so_keepalive=off] [so_keepalive=%w*:%w*:%d*], [... next entry ...]", err)
+      assert.equal("admin_gui_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+] [ipv6only=on] [ipv6only=off] [so_keepalive=on] [so_keepalive=off] [so_keepalive=%w*:%w*:%d*], [... next entry ...]", err)
     end)
     it("rejects empty string in listen addresses", function()
       local conf, err = conf_loader(nil, {
         admin_listen = ""
       })
       assert.is_nil(conf)
-      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+] [ipv6only=on] [ipv6only=off] [so_keepalive=on] [so_keepalive=off] [so_keepalive=%w*:%w*:%d*], [... next entry ...]", err)
+      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+] [ipv6only=on] [ipv6only=off] [so_keepalive=on] [so_keepalive=off] [so_keepalive=%w*:%w*:%d*], [... next entry ...]", err)
 
       conf, err = conf_loader(nil, {
         proxy_listen = ""
       })
       assert.is_nil(conf)
-      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+] [ipv6only=on] [ipv6only=off] [so_keepalive=on] [so_keepalive=off] [so_keepalive=%w*:%w*:%d*], [... next entry ...]", err)
+      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+] [ipv6only=on] [ipv6only=off] [so_keepalive=on] [so_keepalive=off] [so_keepalive=%w*:%w*:%d*], [... next entry ...]", err)
 
       conf, err = conf_loader(nil, {
         admin_gui_listen = ""
       })
       assert.is_nil(conf)
-      assert.equal("admin_gui_listen must be of form: [off] | <ip>:<port> [ssl] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+] [ipv6only=on] [ipv6only=off] [so_keepalive=on] [so_keepalive=off] [so_keepalive=%w*:%w*:%d*], [... next entry ...]", err)
+      assert.equal("admin_gui_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol] [deferred] [bind] [reuseport] [backlog=%d+] [ipv6only=on] [ipv6only=off] [so_keepalive=on] [so_keepalive=off] [so_keepalive=%w*:%w*:%d*], [... next entry ...]", err)
     end)
     it("enforces admin_gui_path values", function()
       local conf, _, errors = conf_loader(nil, {
@@ -1558,11 +1570,11 @@ describe("Configuration loader", function()
         end)
         it("supports HTTP/2", function()
           local conf, err = conf_loader(nil, {
-            status_listen = "127.0.0.1:123 ssl",
+            status_listen = "127.0.0.1:123 ssl http2",
           })
           assert.is_nil(err)
           assert.is_table(conf)
-          assert.same({ "127.0.0.1:123 ssl" }, conf.status_listen)
+          assert.same({ "127.0.0.1:123 ssl http2" }, conf.status_listen)
         end)
       end)
 
