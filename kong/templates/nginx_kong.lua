@@ -435,8 +435,6 @@ server {
     listen $(entry.listener);
 > end
 
-    http2 on;
-
     access_log ${{STATUS_ACCESS_LOG}};
     error_log  ${{STATUS_ERROR_LOG}} ${{LOG_LEVEL}};
 
