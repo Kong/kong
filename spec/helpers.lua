@@ -885,7 +885,7 @@ end
 local function get_proxy_port(ssl, http2)
   if ssl == nil then ssl = false end
   for _, entry in ipairs(conf.proxy_listeners) do
-    if entry.ssl == ssl then
+    if entry.ssl == ssl and (http2 == nil or entry.http2 == http2) then
       return entry.port
     end
   end
@@ -900,7 +900,7 @@ end
 local function get_proxy_ip(ssl, http2)
   if ssl == nil then ssl = false end
   for _, entry in ipairs(conf.proxy_listeners) do
-    if entry.ssl == ssl then
+    if entry.ssl == ssl and (http2 == nil or entry.http2 == http2) then
       return entry.ip
     end
   end
