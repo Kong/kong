@@ -1,0 +1,3 @@
+message: add `reuseport` option to listeners
+type: feature
+scope: Configuration

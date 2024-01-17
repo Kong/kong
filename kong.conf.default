@@ -427,7 +427,7 @@
 # HYBRID MODE CONTROL PLANE
 #------------------------------------------------------------------------------
 
-#cluster_listen = 0.0.0.0:8005
+#cluster_listen = 0.0.0.0:8005 reuseport
                          # Comma-separated list of addresses and ports on
                          # which the cluster control plane server should listen
                          # for data plane connections.
@@ -731,7 +731,7 @@
 
 #mem_cache_size = 128m           # Size of each of the two shared memory caches
                                  # for traditional mode database entities
-                                 # and runtime data, `kong_core_cache` and 
+                                 # and runtime data, `kong_core_cache` and
                                  # `kong_cache`.
                                  #
                                  # The accepted units are `k` and `m`, with a minimum
@@ -1910,7 +1910,7 @@
 
 # The Admin GUI for Kong Gateway.
 
-#admin_gui_listen = 0.0.0.0:8002, 0.0.0.0:8445 ssl
+#admin_gui_listen = 0.0.0.0:8002 reuseport, 0.0.0.0:8445 ssl reuseport
                         # Kong Manager Listeners
                         #
                         # Comma-separated list of addresses and ports on which
