@@ -1,6 +1,5 @@
 local pl_stringx = require "pl.stringx"
-local ip_tools = require "kong.tools.ip"
-local conf_constants = require "kong.conf_loader.constants"
+local utils = require "kong.tools.utils"
 
 
 local type = type
@@ -21,6 +20,19 @@ local subsystem_flags = {
   stream = { "udp", "ssl", "proxy_protocol", "bind", "reuseport", "backlog=%d+",
              "ipv6only=on", "ipv6only=off", "so_keepalive=on", "so_keepalive=off",
              "so_keepalive=%w*:%w*:%d*" },
+}
+
+
+-- This meta table will prevent the parsed table to be passed on in the
+-- intermediate Kong config file in the prefix directory.
+-- We thus avoid 'table: 0x41c3fa58' from appearing into the prefix
+-- hidden configuration file.
+-- This is only to be applied to values that are injected into the
+-- configuration object, and not configuration properties themselves,
+-- otherwise we would prevent such properties from being specifiable
+-- via environment variables.
+local _nop_tostring_mt = {
+  __tostring = function() return "" end,
 }
 
 
@@ -93,14 +105,14 @@ local function parse_listeners(values, flags)
     -- verify IP for remainder
     local ip
 
-    if ip_tools.hostname_type(remainder) == "name" then
+    if utils.hostname_type(remainder) == "name" then
       -- it's not an IP address, so a name/wildcard/regex
       ip = {}
       ip.host, ip.port = remainder:match("(.+):([%d]+)$")
 
     else
       -- It's an IPv4 or IPv6, normalize it
-      ip = ip_tools.normalize_ip(remainder)
+      ip = utils.normalize_ip(remainder)
       -- nginx requires brackets in IPv6 addresses, but normalize_ip does
       -- not include them (due to backwards compatibility with its other uses)
       if ip and ip.type == "ipv6" then
@@ -142,7 +154,7 @@ function listeners.parse(conf, listener_configs)
     if err then
       return nil, l.name .. " " .. err
     end
-    setmetatable(conf[plural], conf_constants._NOP_TOSTRING_MT)
+    setmetatable(conf[plural], _nop_tostring_mt)
 
     if l.ssl_flag then
       conf[l.ssl_flag] = false
