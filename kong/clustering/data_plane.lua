@@ -9,12 +9,11 @@ local clustering_utils = require("kong.clustering.utils")
 local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
 local pl_stringx = require("pl.stringx")
-
+local inspect = require("inspect")
 
 local assert = assert
 local setmetatable = setmetatable
 local math = math
-local pcall = pcall
 local tostring = tostring
 local sub = string.sub
 local ngx = ngx
@@ -66,6 +65,10 @@ function _M.new(clustering)
     conf = clustering.conf,
     cert = clustering.cert,
     cert_key = clustering.cert_key,
+
+    -- in konnect_mode, reconfigure errors will be reported to the control plane
+    -- via WebSocket message
+    error_reporting = clustering.conf.konnect_mode,
   }
 
   return setmetatable(self, _MT)
@@ -101,6 +104,40 @@ local function send_ping(c, log_suffix)
 
   else
     ngx_log(ngx_DEBUG, _log_prefix, "sent ping frame to control plane", log_suffix)
+  end
+end
+
+
+---@param c resty.websocket.client
+---@param err_t kong.clustering.config_helper.update.err_t
+---@param log_suffix? string
+local function send_error(c, err_t, log_suffix)
+  local payload, json_err = cjson_encode({
+    type = "error",
+    error = err_t,
+  })
+
+  if json_err then
+    json_err = tostring(json_err)
+    ngx_log(ngx_ERR, _log_prefix, "failed to JSON-encode error payload for ",
+            "control plane: ", json_err, ", payload: ", inspect(err_t), log_suffix)
+
+    payload = assert(cjson_encode({
+      type = "error",
+      error = {
+        name = constants.CLUSTERING_DATA_PLANE_ERROR.GENERIC,
+        message = "failed to encode JSON error payload: " .. json_err,
+        source = "kong.clustering.data_plane.send_error",
+        config_hash = err_t and err_t.config_hash
+                      or DECLARATIVE_EMPTY_CONFIG_HASH,
+      }
+    }))
+  end
+
+  local ok, err = c:send_binary(payload)
+  if not ok then
+    ngx_log(ngx_ERR, _log_prefix, "failed to send error report to control plane: ",
+            err, log_suffix)
   end
 end
 
@@ -181,6 +218,7 @@ function _M:communicate(premature)
   local ping_immediately
   local config_exit
   local next_data
+  local config_err_t
 
   local config_thread = ngx.thread.spawn(function()
     while not exiting() and not config_exit do
@@ -212,14 +250,14 @@ function _M:communicate(premature)
                          msg.timestamp and " with timestamp: " .. msg.timestamp or "",
                          log_suffix)
 
-      local pok, res, err = pcall(config_helper.update, self.declarative_config, msg)
-      if pok then
-        ping_immediately = true
-      end
+      local err_t
+      ok, err, err_t = config_helper.update(self.declarative_config, msg)
 
-      if not pok or not res then
-        ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ",
-                         (not pok and res) or err)
+      if not ok then
+        if self.error_reporting then
+          config_err_t = err_t
+        end
+        ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)
       end
 
       if next_data == data then
@@ -239,6 +277,12 @@ function _M:communicate(premature)
         counter = PING_INTERVAL
 
         send_ping(c, log_suffix)
+      end
+
+      if config_err_t then
+        local err_t = config_err_t
+        config_err_t = nil
+        send_error(c, err_t, log_suffix)
       end
 
       counter = counter - 1
