@@ -74,6 +74,10 @@ core/tracing:
 - changed-files:
   - any-glob-to-any-file: ['kong/tracing/**/*', 'kong/pdk/tracing.lua']
 
+core/wasm:
+- changed-files:
+  - any-glob-to-any-file: ['kong/runloop/wasm.lua', 'kong/runloop/wasm/**/*']
+
 chore:
 - changed-files:
   - any-glob-to-any-file: ['.github/**/*', '.devcontainer/**/*']
