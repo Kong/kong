@@ -275,7 +275,10 @@ function _M:communicate(premature)
       local err_t
       ok, err, err_t = config_helper.update(self.declarative_config, msg)
 
-      if not ok then
+      if ok then
+        ping_immediately = true
+
+      else
         if self.error_reporting then
           config_err_t = err_t
         end
