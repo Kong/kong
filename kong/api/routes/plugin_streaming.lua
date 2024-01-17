@@ -12,6 +12,7 @@ local hasher = digest.new("sha256")
 local to_hex = require("resty.string").to_hex
 local reload_plugins = require "kong.clustering.services.plugin_streaming".reload_plugins
 
+local assets_prefix = (kong.configuration.prefix or require("pl.path").abspath(ngx.config.prefix())) .. "/streamed_assets/"
 
 local routes = {
   ["/plugin_streaming/register_assets"] = {
@@ -47,9 +48,9 @@ local routes = {
 
       assert(ngx.shared.kong:set("plugin_streaming_assets::" .. self.params.name, cjson.encode(metadata)))
 
-      os.execute("mkdir -p /tmp/cp_plugin_streaming ; tar zxvf " .. downloaded_file .. " -C /tmp/cp_plugin_streaming")
+      os.execute("mkdir -p " .. assets_prefix .. " ; tar zxvf " .. downloaded_file .. " -C " .. assets_prefix)
       ngx.log(ngx.ERR, ">> file extracts")
-      local ok, err = reload_plugins(nil, self.params.plugin_name, "/tmp/cp_plugin_streaming")
+      local ok, err = reload_plugins(nil, self.params.plugin_name)
       if not ok then
         return kong.response.exit(400, { message = "Failed to load new plugin " .. err })
       end
@@ -58,6 +59,21 @@ local routes = {
         name = self.params.name,
         metadata = metadata,
       },  })
+    end,
+  },
+
+  ["/plugin_streaming/register_assets/:asset_id"] = {
+    GET = function(self)
+      local name = self.params.asset_id
+      local metadata = ngx.shared.kong:get("plugin_streaming_assets::" .. name)
+      if not metadata then
+        return kong.response.exit(400, { message = "Not registered asset" .. name, })
+      end
+
+      return kong.response.exit(200, { result = {
+        name = self.params.asset_id,
+        metadata = cjson.decode(metadata),
+      }}  )
     end,
   },
 

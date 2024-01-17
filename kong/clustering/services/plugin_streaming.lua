@@ -8,6 +8,9 @@ local to_hex = require("resty.string").to_hex
 local build_plugins_iterator = require("kong.runloop.handler").build_plugins_iterator
 local clear_loaded_plugins = require("kong.runloop.plugins_iterator").clear_loaded
 
+local assets_prefix = (kong.configuration.prefix or require("pl.path").abspath(ngx.config.prefix())) .. "/streamed_assets/"
+package.path = package.path .. ";" .. assets_prefix .. "/?.lua;" .. assets_prefix .. "/?/init.lua;"
+
 local function from_hex(s)
   local hex_to_char = {}
   for idx = 0, 255 do
@@ -58,7 +61,7 @@ local function stream_asset_content(_node_id, asset_id, content, seq)
       return false, "checksum mismatch: got " .. to_hex(got) .. ", expected " .. metadata.sha256sum
     end
     ngx.log(ngx.ERR, ">> file verifies")
-    os.execute("mkdir -p /tmp/plugin_streaming ; tar zxvf " .. metadata.tmpname .. " -C /tmp/plugin_streaming")
+    os.execute("mkdir -p " .. assets_prefix .. " ; tar zxvf " .. metadata.tmpname .. " -C " .. assets_prefix)
     ngx.log(ngx.ERR, ">> file extracts")
   else
     ngx.log(ngx.ERR, ">> file download ", metadata.consumed_bytes, " / ", metadata.size)
@@ -69,10 +72,7 @@ local function stream_asset_content(_node_id, asset_id, content, seq)
   return true
 end
 
-local function reload_plugins(_node_id, plugin_name, lpath)
-  local old_package_path = package.path
-  lpath = lpath or "/tmp/plugin_streaming"
-  package.path = lpath .. "/?.lua;" .. lpath .. "/?/init.lua;" .. package.path
+local function reload_plugins(_node_id, plugin_name)
   ngx.log(ngx.ERR, "> request to reload now ", plugin_name)
 
   local pkg_prefix = "kong.plugins." .. plugin_name .. "."
@@ -83,7 +83,7 @@ local function reload_plugins(_node_id, plugin_name, lpath)
   end
 
   kong.configuration.loaded_plugins[plugin_name] = true
-  kong.db.plugins:load_plugin_schemas(kong.configuration.loaded_plugins)
+  assert(kong.db.plugins:load_plugin_schemas(kong.configuration.loaded_plugins))
 
   clear_loaded_plugins()
   local ok, err = build_plugins_iterator("newnew")
@@ -91,7 +91,6 @@ local function reload_plugins(_node_id, plugin_name, lpath)
     return false, "failed to update plugins iterator: " .. err
   end
 
-  package.path = old_package_path
   return true
 end
 
