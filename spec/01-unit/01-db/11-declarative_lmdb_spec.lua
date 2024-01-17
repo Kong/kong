@@ -34,6 +34,7 @@ do
       end
     },
   }))
+  lmdb_mlcache:purge(true)
 
   _G.lmdb_mlcache = lmdb_mlcache
 end
