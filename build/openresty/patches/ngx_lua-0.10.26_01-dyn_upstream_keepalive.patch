@@ -1,8 +1,33 @@
+diff --git a/bundle/nginx-1.25.3/src/http/ngx_http_upstream.c b/bundle/nginx-1.25.3/src/http/ngx_http_upstream.c
+index 2be233c..5ad6340 100644
+--- a/bundle/nginx-1.25.3/src/http/ngx_http_upstream.c
++++ b/bundle/nginx-1.25.3/src/http/ngx_http_upstream.c
+@@ -4365,6 +4365,7 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
+     if (u->peer.cached && ft_type == NGX_HTTP_UPSTREAM_FT_ERROR) {
+         /* TODO: inform balancer instead */
+         u->peer.tries++;
++        u->peer.notify(&u->peer, u->peer.data, NGX_HTTP_UPSTREAM_NOFITY_CACHED_CONNECTION_ERROR);
+     }
+ 
+     switch (ft_type) {
+diff --git a/bundle/nginx-1.25.3/src/http/ngx_http_upstream.h b/bundle/nginx-1.25.3/src/http/ngx_http_upstream.h
+index 15a35d9..c4209f4 100644
+--- a/bundle/nginx-1.25.3/src/http/ngx_http_upstream.h
++++ b/bundle/nginx-1.25.3/src/http/ngx_http_upstream.h
+@@ -56,6 +56,8 @@
+ #define NGX_HTTP_UPSTREAM_IGN_VARY           0x00000200
+ 
+ 
++#define NGX_HTTP_UPSTREAM_NOFITY_CACHED_CONNECTION_ERROR    0x1
++
+ typedef struct {
+     ngx_uint_t                       status;
+     ngx_msec_t                       response_time;
 diff --git a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_balancer.c
-index af4da73..407c115 100644
+index af4da73..99d073a 100644
 --- a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_balancer.c
 +++ b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_balancer.c
-@@ -16,46 +16,104 @@
+@@ -16,46 +16,106 @@
  #include "ngx_http_lua_directive.h"
  
  
