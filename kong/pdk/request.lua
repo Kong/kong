@@ -163,6 +163,12 @@ local function new(self)
     if is_trusted_ip() then
       local scheme = _REQUEST.get_header(X_FORWARDED_PROTO)
       if scheme then
+        local p = find(scheme, ",", 1, true)
+
+        if p then
+          scheme = sub(scheme, 1, p - 1)
+        end
+
         return lower(scheme)
       end
     end
@@ -243,7 +249,16 @@ local function new(self)
     check_phase(PHASES.request)
 
     if is_trusted_ip() then
-      local port = tonumber(_REQUEST.get_header(X_FORWARDED_PORT), 10)
+      local port = _REQUEST.get_header(X_FORWARDED_PORT)
+      if port then
+        local p = find(port, ",", 1, true)
+
+        if p then
+          port = sub(port, 1, p - 1)
+        end
+      end
+
+      port = tonumber(port or "", 10)
       if port and port >= MIN_PORT and port <= MAX_PORT then
         return port
       end
@@ -300,6 +315,12 @@ local function new(self)
     if is_trusted_ip() then
       local path = _REQUEST.get_header(X_FORWARDED_PATH)
       if path then
+        local p = find(path, ",", 1, true)
+
+        if p then
+          path = sub(path, 1, p - 1)
+        end
+
         return path
       end
     end
@@ -343,6 +364,12 @@ local function new(self)
     if is_trusted_ip() then
       prefix = _REQUEST.get_header(X_FORWARDED_PREFIX)
       if prefix then
+        local p = find(prefix, ",", 1, true)
+
+        if p then
+          prefix = sub(prefix, 1, p - 1)
+        end
+
         return prefix
       end
     end
