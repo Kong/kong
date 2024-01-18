@@ -35,7 +35,7 @@ local dicts = {
 }
 
 for i, v in ipairs(dicts) do
-  dicts[i] = "--shdict '" .. v .. "'"
+  dicts[i] = " --shdict '" .. v .. "' "
 end
 
 return table.concat(dicts, " ")
