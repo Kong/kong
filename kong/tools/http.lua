@@ -531,14 +531,6 @@ do
   local get_headers = ngx.req.get_headers
 
   function _M.get_header(ctx, name)
-    if type(ctx) ~= "table" then
-      return nil, "ctx must be a table"
-    end
-
-    if type(name) ~= "string" then
-      return nil, "header name must be a string"
-    end
-
     if not ctx.headers then
       ctx.headers = get_headers()
     end
