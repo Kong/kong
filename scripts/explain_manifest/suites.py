@@ -34,8 +34,11 @@ def common_suites(expect, libxcrypt_no_obsolete_api: bool = False):
         .has_ngx_http_request_t_DW.equals(True)
 
     expect("/usr/local/openresty/nginx/sbin/nginx", "nginx binary should link pcre statically") \
-        .exported_symbols.contain("pcre_free") \
-        .needed_libraries.do_not().contain_match("libpcre.so.+")
+        .exported_symbols.contain("pcre2_general_context_free_8") \
+        .exported_symbols.do_not().contain("pcre_free") \
+        .needed_libraries.do_not().contain_match("libpcre.so.+") \
+        .needed_libraries.do_not().contain_match("libpcre.+.so.+") \
+        .needed_libraries.do_not().contain_match("libpcre2\-(8|16|32).so.+") \
 
     expect("/usr/local/openresty/nginx/sbin/nginx", "nginx should not be compiled with debug flag") \
         .nginx_compile_flags.do_not().match("with\-debug")

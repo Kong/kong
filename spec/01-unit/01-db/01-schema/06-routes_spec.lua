@@ -313,7 +313,7 @@ describe("routes schema (flavor = traditional/traditional_compatible)", function
         local ok, err = Routes:validate(route)
         assert.falsy(ok)
         assert.equal(u([[invalid regex: '/users/(foo/profile' (PCRE returned:
-                         pcre_compile() failed: missing ) in
+                         pcre2_compile() failed: missing closing parenthesis in
                          "/users/(foo/profile")]], true, true), err.paths[1])
       end
     end)
