@@ -1,6 +1,0 @@
-message: >
-  **BREAKING:** Now `ngx.var` and `kong.request.get_header` will
-  return the value of the all occurrences of a header with
-  the same name, joined by `, `
-type: breaking_change
-scope: Core
