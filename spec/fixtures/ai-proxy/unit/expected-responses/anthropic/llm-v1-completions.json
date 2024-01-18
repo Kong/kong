@@ -1,0 +1,11 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop_sequence",
+      "index": 0,
+      "text": "You cannot divide by zero because it is not a valid operation in mathematics."
+    }
+  ],
+  "model": "claude-2",
+  "object": "text_completion"
+}

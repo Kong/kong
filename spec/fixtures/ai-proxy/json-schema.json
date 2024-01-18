@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "oneOf": [
+    {
+      "$ref": "#/definitions/llm-v1-completions"
+    },
+    {
+      "$ref": "#/definitions/llm-v1-chat"
+    }
+  ],
+  "definitions": {
+    "llm-v1-completions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "prompt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "prompt"
+      ],
+      "title": "llm-v1-completions"
+    },
+    "llm-v1-chat": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "messages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/message"
+          }
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "messages"
+      ],
+      "title": "llm-v1-chat"
+    },
+    "message": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "content",
+        "role"
+      ],
+      "title": "message"
+    }
+  }
+}

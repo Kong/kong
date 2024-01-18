@@ -1,0 +1,9 @@
+{
+  "model": "llama2",
+  "prompt": "Explain why you can't divide by zero?",
+  "stream": false,
+  "options": {
+    "num_predict": 512,
+    "temperature": 0.5
+  }
+}
