@@ -1,0 +1,3 @@
+message: Regex header values in traditional router are now validated.
+type: bugfix
+scope: Core

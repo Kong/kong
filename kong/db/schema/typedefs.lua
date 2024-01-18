@@ -497,6 +497,21 @@ local function validate_host_with_wildcards(host)
   return typedefs.host_with_optional_port.custom_validator(no_wildcards)
 end
 
+
+local function is_valid_regex(regex)
+  -- the value will be interpreted as a regex by the router; but is it a
+  -- valid one? Let's dry-run it with the same options as our router.
+  local _, _, err = ngx.re.find("", regex, "aj")
+  if err then
+    return nil,
+           string.format("invalid regex: '%s' (PCRE returned: %s)",
+                         regex, err)
+  end
+
+  return true
+end
+
+
 local function validate_path_with_regexes(path)
 
   local ok, err, err_code = typedefs.path.custom_validator(path)
@@ -515,18 +530,16 @@ local function validate_path_with_regexes(path)
     return true
   end
 
-  path = path:sub(2)
+  return is_valid_regex(path:sub(2))
+end
 
-  -- the value will be interpreted as a regex by the router; but is it a
-  -- valid one? Let's dry-run it with the same options as our router.
-  local _, _, err = ngx.re.find("", path, "aj")
-  if err then
-    return nil,
-           string.format("invalid regex: '%s' (PCRE returned: %s)",
-                         path, err)
+
+local function validate_regex_or_plain_pattern(pattern)
+  if pattern:sub(1, 1) ~= "~" then
+    return true
   end
 
-  return true
+  return is_valid_regex(pattern:sub(2))
 end
 
 
@@ -626,6 +639,12 @@ typedefs.headers = Schema.define {
     },
   },
   description = "A map of header names to arrays of header values."
+}
+
+typedefs.regex_or_plain_pattern = Schema.define {
+  type = "string",
+  custom_validator = validate_regex_or_plain_pattern,
+  description = "A string representing a regex or plain pattern."
 }
 
 typedefs.no_headers = Schema.define(typedefs.headers { eq = null, description = "A null value representing no headers." })
