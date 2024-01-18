@@ -114,10 +114,12 @@ local STREAM_TLS_TERMINATE_SOCK
 local STREAM_TLS_PASSTHROUGH_SOCK
 
 
+local get_header
 local set_authority
 local set_service_ssl = upstream_ssl.set_service_ssl
 
 if is_http_module then
+  get_header = require("kong.tools.http").get_header
   set_authority = require("resty.kong.grpc").set_authority
 end
 
@@ -1208,11 +1210,11 @@ return {
 
       local trusted_ip = kong.ip.is_trusted(realip_remote_addr)
       if trusted_ip then
-        forwarded_proto  = var.http_x_forwarded_proto  or ctx.scheme
-        forwarded_host   = var.http_x_forwarded_host   or host
-        forwarded_port   = var.http_x_forwarded_port   or port
-        forwarded_path   = var.http_x_forwarded_path
-        forwarded_prefix = var.http_x_forwarded_prefix
+        forwarded_proto  = get_header(ctx, "x_forwarded_proto")  or ctx.scheme
+        forwarded_host   = get_header(ctx, "x_forwarded_host")   or host
+        forwarded_port   = get_header(ctx, "x_forwarded_port")   or port
+        forwarded_path   = get_header(ctx, "x_forwarded_path")
+        forwarded_prefix = get_header(ctx, "x_forwarded_prefix")
 
       else
         forwarded_proto  = ctx.scheme
@@ -1302,7 +1304,7 @@ return {
       end
 
       -- Keep-Alive and WebSocket Protocol Upgrade Headers
-      local upgrade = var.http_upgrade
+      local upgrade = get_header(ctx, "upgrade")
       if upgrade and lower(upgrade) == "websocket" then
         var.upstream_connection = "keep-alive, Upgrade"
         var.upstream_upgrade    = "websocket"
@@ -1312,7 +1314,7 @@ return {
       end
 
       -- X-Forwarded-* Headers
-      local http_x_forwarded_for = var.http_x_forwarded_for
+      local http_x_forwarded_for = get_header(ctx, "x_forwarded_for")
       if http_x_forwarded_for then
         var.upstream_x_forwarded_for = http_x_forwarded_for .. ", " ..
                                        realip_remote_addr
@@ -1399,7 +1401,7 @@ return {
       end
 
       -- clear hop-by-hop request headers:
-      local http_connection = var.http_connection
+      local http_connection = get_header(ctx, "connection")
       if http_connection ~= "keep-alive" and
          http_connection ~= "close"      and
          http_connection ~= "upgrade"
@@ -1420,7 +1422,7 @@ return {
       end
 
       -- add te header only when client requests trailers (proxy removes it)
-      local http_te = var.http_te
+      local http_te = get_header(ctx, "te")
       if http_te then
         if http_te == "trailers" then
           var.upstream_te = "trailers"
