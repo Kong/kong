@@ -7,7 +7,7 @@ describe("reports", function()
   local expected_data = "version"
   local port = 8189
 
-  setup(function()
+  lazy_setup(function()
     -- start the echo server
     assert(helpers.start_kong({
                nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -23,7 +23,7 @@ describe("reports", function()
     assert(helpers.is_echo_server_ready())
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
     helpers.echo_server_reset()
   end)
