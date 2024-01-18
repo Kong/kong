@@ -200,6 +200,7 @@
   - lua-kong-nginx-module
   - lua-kong-nginx-module/stream
   - lua-resty-events
+  - ngx_brotli
   - lua-resty-lmdb
   - ngx_wasm_module
   OpenSSL   : OpenSSL 3.2.0 23 Nov 2023

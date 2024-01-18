@@ -178,6 +178,7 @@
   - lua-kong-nginx-module/stream
   - lua-resty-events
   - lua-resty-lmdb
+  - ngx_brotli
   - ngx_wasm_module
   OpenSSL   : OpenSSL 3.2.0 23 Nov 2023
   DWARF     : True

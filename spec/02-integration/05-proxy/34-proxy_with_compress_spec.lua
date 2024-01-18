@@ -1,8 +1,5 @@
 local helpers = require "spec.helpers"
 
-local TCP_PORT = helpers.get_available_port()
-
-
 for _, strategy in helpers.each_strategy() do
   describe("Proxy with compressor [#" .. strategy .. "]", function()
 
@@ -20,7 +17,7 @@ for _, strategy in helpers.each_strategy() do
           name = "service0",
         }
 
-        local r0 = bp.routes:insert {
+        bp.routes:insert {
           paths = { "/0" },
           service = s0,
         }
