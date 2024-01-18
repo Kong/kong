@@ -17,6 +17,7 @@ local dicts = {
   "kong_secrets 5m",
   "test_vault 5m",
   "prometheus_metrics 5m",
+  "lmdb_mlcache 1m",
 
   -- stream shared dicts
   "stream_kong 5m",
