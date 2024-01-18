@@ -888,7 +888,6 @@ for _, strategy in helpers.each_strategy() do
         routes = insert_routes(bp, {
           {
             hosts = { "mock_upstream" },
-            paths = { "/" },
           },
         })
       end)
@@ -1309,7 +1308,6 @@ for _, strategy in helpers.each_strategy() do
         routes = insert_routes(bp, {
           {
             protocols = { "https" },
-            paths = { "/" },
             snis = { "www.example.org" },
             service = {
               name = "service_behind_www.example.org"

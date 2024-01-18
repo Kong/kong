@@ -50,7 +50,6 @@ for _, strategy in helpers.each_strategy() do
       route = assert(admin_api.routes:insert {
         hosts     = { "oauth2.com" },
         protocols = { "http", "https" },
-        paths = { "/" },
         service   = service,
       })
 
