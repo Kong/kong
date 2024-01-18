@@ -81,8 +81,11 @@ server {
     listen $(entry.listener);
 > end
 
-> if proxy_http2_enabled then
+> for _, entry in ipairs(proxy_listeners) do
+> if entry.http2 then
     http2 on;
+> break
+> end
 > end
 
     error_page 400 404 405 408 411 412 413 414 417 /kong_error_handler;
@@ -395,8 +398,11 @@ server {
     listen $(entry.listener);
 > end
 
-> if admin_http2_enabled then
+> for _, entry in ipairs(admin_listeners) do
+> if entry.http2 then
     http2 on;
+> break
+> end
 > end
 
     access_log ${{ADMIN_ACCESS_LOG}};
@@ -439,8 +445,11 @@ server {
     listen $(entry.listener);
 > end
 
-> if status_http2_enabled then
+> for _, entry in ipairs(status_listeners) do
+> if entry.http2 then
     http2 on;
+> break
+> end
 > end
 
     access_log ${{STATUS_ACCESS_LOG}};
@@ -482,8 +491,11 @@ server {
     listen $(admin_gui_listeners[i].listener);
 > end
 
-> if admin_gui_http2_enabled then
+> for _, entry in ipairs(admin_gui_listeners) do
+> if entry.http2 then
     http2 on;
+> break
+> end
 > end
 
 > if admin_gui_ssl_enabled then

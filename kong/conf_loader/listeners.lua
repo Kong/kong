@@ -169,17 +169,6 @@ function listeners.parse(conf, listener_configs)
         end
       end
     end
-
-    -- since nginx 1.25.1 we should use directive "http2 on;"
-    if l.http2_flag then
-      conf[l.http2_flag] = false
-      for _, listener in ipairs(conf[plural]) do
-        if listener.http2 == true then
-          conf[l.http2_flag] = true
-          break
-        end
-      end
-    end
   end
 
   return true
