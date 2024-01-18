@@ -102,18 +102,76 @@ local function load_into_db(entities, meta)
 end
 
 
+--- Remove all nulls from declarative config.
+-- Declarative config is a huge table. Use iteration
+-- instead of recursion to improve performance.
 local function remove_nulls(tbl)
-  for k,v in pairs(tbl) do
-    if v == null then
-      tbl[k] = nil
+  local stk = { tbl }
+  local n = #stk
 
-    elseif type(v) == "table" then
-      tbl[k] = remove_nulls(v)
+  local cur
+  while n > 0 do
+    cur = stk[n]
+
+    stk[n] = nil
+    n = n - 1
+
+    if type(cur) == "table" then
+      for k, v in pairs(cur) do
+        if v == null then
+          cur[k] = nil
+
+        elseif type(v) == "table" then
+          n = n + 1
+          stk[n] = v
+        end
+      end
     end
   end
+
   return tbl
 end
 
+--- Restore all nulls for declarative config.
+-- Declarative config is a huge table. Use iteration
+-- instead of recursion to improve performance.
+local function restore_nulls(original_tbl, transformed_tbl)
+  local o_stk = { original_tbl }
+  local o_n = #o_stk
+
+  local t_stk = { transformed_tbl }
+  local t_n = #t_stk
+
+  local o_cur, t_cur
+  while o_n > 0 and o_n == t_n do
+    o_cur = o_stk[o_n]
+    o_stk[o_n] = nil
+    o_n = o_n - 1
+
+    t_cur = t_stk[t_n]
+    t_stk[t_n] = nil
+    t_n = t_n - 1
+
+    for k, v in pairs(o_cur) do
+      if v == null and
+         t_cur[k] == nil
+      then
+        t_cur[k] = null
+
+      elseif type(v) == "table" and
+             type(t_cur[k]) == "table"
+      then
+        o_n = o_n + 1
+        o_stk[o_n] = v
+
+        t_n = t_n + 1
+        t_stk[t_n] = t_cur[k]
+      end
+    end
+  end
+
+  return transformed_tbl
+end
 
 local function get_current_hash()
   return lmdb.get(DECLARATIVE_HASH_KEY)
@@ -185,10 +243,11 @@ local function load_into_cache(entities, meta, hash)
   t:db_drop(false)
 
   local phase = get_phase()
+  yield(false, phase)   -- XXX
   local transform = meta._transform == nil and true or meta._transform
 
   for entity_name, items in pairs(entities) do
-    yield(false, phase)
+    yield(true, phase)
 
     local dao = db[entity_name]
     if not dao then
@@ -252,11 +311,17 @@ local function load_into_cache(entities, meta, hash)
       assert(type(ws_id) == "string")
 
       local cache_key = dao:cache_key(id, nil, nil, nil, nil, item.ws_id)
+      if transform and schema:has_transformations(item) then
+        local transformed_item = utils.cycle_aware_deep_copy(item)
+        remove_nulls(transformed_item)
 
-      item = remove_nulls(item)
-      if transform then
         local err
-        item, err = schema:transform(item)
+        transformed_item, err = schema:transform(transformed_item)
+        if not transformed_item then
+          return nil, err
+        end
+
+        item = restore_nulls(item, transformed_item)
         if not item then
           return nil, err
         end
@@ -290,7 +355,7 @@ local function load_into_cache(entities, meta, hash)
       for i = 1, #uniques do
         local unique = uniques[i]
         local unique_key = item[unique]
-        if unique_key then
+        if unique_key and unique_key ~= null then
           if type(unique_key) == "table" then
             local _
             -- this assumes that foreign keys are not composite
@@ -306,7 +371,7 @@ local function load_into_cache(entities, meta, hash)
 
       for fname, ref in pairs(foreign_fields) do
         local item_fname = item[fname]
-        if item_fname then
+        if item_fname and item_fname ~= null then
           local fschema = db[ref].schema
 
           local fid = declarative_config.pk_string(fschema, item_fname)
@@ -324,7 +389,7 @@ local function load_into_cache(entities, meta, hash)
       end
 
       local item_tags = item.tags
-      if item_tags then
+      if item_tags and item_tags ~= null then
         local ws = schema.workspaceable and ws_id or ""
         for i = 1, #item_tags do
           local tag_name = item_tags[i]

@@ -457,8 +457,6 @@ describe("filter metadata [#off] yaml config", function()
                 append:
                   headers:
                   - x-response-transformer-2:TEST
-                rename: ~
-                remove: null
     ]]):format(helpers.mock_upstream_port))
 
     assert(helpers.start_kong({
