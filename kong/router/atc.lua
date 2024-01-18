@@ -74,7 +74,10 @@ do
                   "http.queries.*",
                  },
 
-    ["Int"]    = {"net.port",
+    ["Int"]    = {"net.src.port", "net.dst.port",
+                 },
+
+    ["IpAddr"] = {"net.src.ip", "net.dst.ip",
                  },
   }
 
@@ -425,8 +428,8 @@ function _M:matching(params)
   local req_host = params.host
 
   check_select_params(params.method, req_uri, req_host, params.scheme,
-                      nil, nil,
-                      nil, nil,
+                      params.src_ip, params.src_port,
+                      params.dst_ip, params.dst_port,
                       params.sni, params.headers, params.queries)
 
   local host, port = split_host_port(req_host)
@@ -479,8 +482,8 @@ end
 
 -- only for unit-testing
 function _M:select(req_method, req_uri, req_host, req_scheme,
-                   _, _,
-                   _, _,
+                   src_ip, src_port,
+                   dst_ip, dst_port,
                    sni, req_headers, req_queries)
 
   local params = {
@@ -491,6 +494,11 @@ function _M:select(req_method, req_uri, req_host, req_scheme,
     sni     = sni,
     headers = req_headers,
     queries = req_queries,
+
+    src_ip   = src_ip,
+    src_port = src_port,
+    dst_ip   = dst_ip,
+    dst_port = dst_port,
   }
 
   return self:matching(params)

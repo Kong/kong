@@ -11,6 +11,7 @@ local buffer = require("string.buffer")
 local type = type
 local ipairs = ipairs
 local assert = assert
+local tonumber = tonumber
 local tb_sort = table.sort
 local tb_concat = table.concat
 local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
@@ -76,11 +77,6 @@ local FIELDS_FUNCS = {
     function(params)
       return params.scheme
     end,
-
-    ["net.port"] =
-    function(params)
-      return params.port
-    end,
 }
 
 
@@ -112,6 +108,10 @@ if is_http then
 
     FIELDS_FUNCS["net.dst.port"] =
     function(params, ctx)
+      if params.port then
+        return params.port
+      end
+
       if not params.dst_port then
         params.dst_port = tonumber((ctx or ngx.ctx).host_port, 10) or
                           tonumber(var.server_port, 10)
@@ -261,7 +261,7 @@ local function get_cache_key(fields, params, ctx)
   fields_visitor(fields, params, ctx, function(field, value)
 
     -- these fields were not in cache key
-    if field == "net.protocol" or field == "net.port" then
+    if field == "net.protocol" then
       return true
     end
 
