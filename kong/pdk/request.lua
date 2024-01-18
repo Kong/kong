@@ -624,7 +624,7 @@ local function new(self)
   -- The returned value is either a `string`, or can be `nil` if a header with
   -- `name` was not found in the request. If a header with the same name is
   -- present multiple times in the request, this function returns the value
-  -- of the all occurrences of this header (since nginx 1.23.0).
+  -- of the first occurrence of this header.
   --
   -- Header names in are case-insensitive and are normalized to lowercase, and
   -- dashes (`-`) can be written as underscores (`_`); that is, the header
@@ -644,7 +644,7 @@ local function new(self)
   --
   -- kong.request.get_header("Host")            -- "foo.com"
   -- kong.request.get_header("x-custom-header") -- "bla"
-  -- kong.request.get_header("X-Another")       -- "foo bar, baz"
+  -- kong.request.get_header("X-Another")       -- "foo bar"
   function _REQUEST.get_header(name)
     check_phase(PHASES.request)
 
