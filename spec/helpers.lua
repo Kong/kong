@@ -1393,7 +1393,6 @@ local function kill_tcp_server(port)
   return tonumber(oks), tonumber(fails)
 end
 
-
 local code_status = {
   [200] = "OK",
   [201] = "Created",
@@ -3847,6 +3846,91 @@ local function reload_kong(strategy, ...)
   return ok, err
 end
 
+local is_echo_server_ready, get_echo_server_received_data, echo_server_reset
+do
+  -- Message id is maintained within echo server context and not
+  -- needed for echo server user.
+  -- This id is extracted from the number in nginx error.log at each
+  -- line of log. i.e.:
+  --  2023/12/15 14:10:12 [info] 718291#0: *303 stream [lua] content_by_lua ...
+  -- in above case, the id is 303.
+  local msg_id = -1
+  local prefix_dir = "servroot"
+  
+  --- Check if echo server is ready.
+  --
+  -- @function is_echo_server_ready
+  -- @return boolean
+  function is_echo_server_ready()
+    -- ensure server is ready.
+    local sock = ngx.socket.tcp()
+    sock:settimeout(0.1)
+    local retry = 0
+    local test_port = 8188
+
+    while true do
+      if sock:connect("localhost", test_port) then
+        sock:send("START\n")
+        local ok = sock:receive()
+        sock:close()
+        if ok == "START" then
+          return true
+        end
+      else
+        retry = retry + 1
+        if retry > 10 then
+          return false
+        end
+      end
+    end
+  end
+
+  --- Get the echo server's received data.
+  -- This function check the part of expected data with a timeout.
+  --
+  -- @function get_echo_server_received_data
+  -- @param expected part of the data expected.
+  -- @param timeout (optional) timeout in seconds, default is 0.5.
+  -- @return  the data the echo server received. If timeouts, return "timeout".
+  function get_echo_server_received_data(expected, timeout)
+    if timeout == nil then
+      timeout = 0.5
+    end
+
+    local extract_cmd = "grep content_by_lua "..prefix_dir.."/logs/error.log | tail -1"
+    local _, _, log = assert(exec(extract_cmd))
+    local pattern = "%*(%d+)%s.*received data: (.*)"
+    local cur_msg_id, data = string.match(log, pattern)
+
+    -- unit is second.
+    local t = 0.1
+    local time_acc = 0
+
+    -- retry it when data is not available. because sometime,
+    -- the error.log has not been flushed yet.
+    while string.find(data, expected) == nil or cur_msg_id == msg_id  do
+      ngx.sleep(t)
+      time_acc = time_acc + t
+      if time_acc >= timeout then
+        return "timeout"
+      end
+
+      _, _, log = assert(exec(extract_cmd))
+      cur_msg_id, data = string.match(log, pattern)
+    end
+
+    -- update the msg_id, it persists during a cycle from echo server
+    -- start to stop.
+    msg_id = cur_msg_id
+
+    return data
+  end
+
+  function echo_server_reset()
+    stop_kong(prefix_dir)
+    msg_id = -1
+  end
+end
 
 --- Simulate a Hybrid mode DP and connect to the CP specified in `opts`.
 -- @function clustering_client
@@ -4084,6 +4168,9 @@ end
   tcp_server = tcp_server,
   udp_server = udp_server,
   kill_tcp_server = kill_tcp_server,
+  is_echo_server_ready = is_echo_server_ready,
+  echo_server_reset = echo_server_reset,
+  get_echo_server_received_data = get_echo_server_received_data,
   http_mock = http_mock,
   get_proxy_ip = get_proxy_ip,
   get_proxy_port = get_proxy_port,
