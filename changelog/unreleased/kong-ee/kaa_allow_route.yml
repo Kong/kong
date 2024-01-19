@@ -1,0 +1,4 @@
+message: |
+  **Konnect Application Auth**: allow route support
+type: feature
+scope: Plugin

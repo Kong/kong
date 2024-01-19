@@ -97,7 +97,6 @@ local schema = {
   name = PLUGIN_NAME,
   fields = {
     { consumer = typedefs.no_consumer },
-    { route = typedefs.no_route },
     { protocols = typedefs.protocols_http },
     { consumer_group = typedefs.no_consumer_group },
     {
