@@ -1,0 +1,5 @@
+message: |
+  Support `http.path.segments.*` field in expressions router flavor
+  which allows matching incoming request path by individual segment or ranges of segments.
+type: feature
+scope: Core

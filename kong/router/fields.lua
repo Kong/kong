@@ -174,6 +174,15 @@ end -- is_http
 if is_http then
 
   local fmt = string.format
+  local ngx_null = ngx.null
+  local re_split = require("ngx.re").split
+
+
+  local HTTP_SEGMENTS_PREFIX = "http.path.segments."
+  local HTTP_SEGMENTS_PREFIX_LEN = #HTTP_SEGMENTS_PREFIX
+  local HTTP_SEGMENTS_REG_CTX = { pos = 2, }  -- skip first '/'
+  local HTTP_SEGMENTS_OFFSET = 1
+
 
   -- func => get_headers or get_uri_args
   -- name => "headers" or "queries"
@@ -216,7 +225,67 @@ if is_http then
 
         return params.queries[field:sub(PREFIX_LEN + 1)]
       end
-    end
+
+    elseif field:sub(1, HTTP_SEGMENTS_PREFIX_LEN) == HTTP_SEGMENTS_PREFIX then
+      return function(params)
+        if not params.segments then
+          HTTP_SEGMENTS_REG_CTX.pos = 2 -- reset ctx, skip first '/'
+          params.segments = re_split(params.uri, "/", "jo", HTTP_SEGMENTS_REG_CTX)
+        end
+
+        local segments = params.segments
+
+        local range = field:sub(HTTP_SEGMENTS_PREFIX_LEN + 1)
+        local value = segments[range]
+
+        if value then
+          return value ~= ngx_null and value or nil
+        end
+
+        -- "/a/b/c" => 1="a", 2="b", 3="c"
+        -- http.path.segments.0 => params.segments[1 + 0] => a
+        -- http.path.segments.1_2 => b/c
+
+        local p = range:find("_", 1, true)
+
+        -- only one segment, e.g. http.path.segments.1
+
+        if not p then
+          local pos = tonumber(range)
+
+          value = pos and segments[HTTP_SEGMENTS_OFFSET + pos] or nil
+          segments[range] = value or ngx_null
+
+          return value
+        end
+
+        -- (pos1, pos2) defines a segment range, e.g. http.path.segments.1_2
+
+        local pos1 = tonumber(range:sub(1, p - 1))
+        local pos2 = tonumber(range:sub(p + 1))
+        local segs_count = #segments - HTTP_SEGMENTS_OFFSET
+
+        if not pos1 or not pos2 or
+           pos1 >= pos2 or pos1 > segs_count or pos2 > segs_count
+        then
+          segments[range] = ngx_null
+          return nil
+        end
+
+        local buf = buffer.new()
+
+        for p = pos1, pos2 - 1 do
+          buf:put(segments[HTTP_SEGMENTS_OFFSET + p], "/")
+        end
+        buf:put(segments[HTTP_SEGMENTS_OFFSET + pos2])
+
+        value = buf:get()
+        segments[range] = value
+
+        return value
+      end
+
+    end -- if prefix
 
     -- others return nil
   end
