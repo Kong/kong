@@ -1,0 +1,3 @@
+message: "fix a bug where workload identity does not work for dataplane resilience"
+type: "bugfix"
+scope: "Core"

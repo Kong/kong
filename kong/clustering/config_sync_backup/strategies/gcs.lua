@@ -39,11 +39,14 @@ ffi.cdef [[
 local function get_token()
   -- First time. Initialize the token
   if not GCP_ACCESS_TOKEN then
-    assert(GCP_ACCESS_TOKEN_ENV, "GCP access token is not available")
-    -- to be compatible with older version of resty.gcp
-    C.setenv("GCP_SERVICE_ACCOUNT", GCP_ACCESS_TOKEN_ENV, 1)
-    -- this call will throw an error if the token is invalid
-    GCP_ACCESS_TOKEN = access_token:new(GCP_ACCESS_TOKEN_ENV)
+    if GCP_ACCESS_TOKEN_ENV then
+      -- to be compatible with older version of resty.gcp
+      C.setenv("GCP_SERVICE_ACCOUNT", GCP_ACCESS_TOKEN_ENV, 1)
+      -- this call will throw an error if the token is invalid
+      GCP_ACCESS_TOKEN = access_token:new(GCP_ACCESS_TOKEN_ENV)
+    else
+      GCP_ACCESS_TOKEN = access_token:new()
+    end
   end
 
   if GCP_ACCESS_TOKEN:needsRefresh() then
