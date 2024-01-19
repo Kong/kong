@@ -117,7 +117,6 @@ local function up(schema_state, db, opts)
       }))
 
       schema_state = assert(db:schema_state())
-      reinitialize_entity_counters(db, opts.conf.loaded_plugins)
       if schema_state.pending_migrations then
         log("\nDatabase has pending migrations; run 'kong migrations finish' when ready")
         return
@@ -139,7 +138,6 @@ local function up(schema_state, db, opts)
     }))
 
     schema_state = assert(db:schema_state())
-    reinitialize_entity_counters(db, opts.conf.loaded_plugins)
     if schema_state.pending_migrations then
       log("\nDatabase has pending migrations; run 'kong migrations finish' when ready")
       return
@@ -174,16 +172,15 @@ local function finish(schema_state, db, opts)
       }))
 
       schema_state = assert(db:schema_state())
-      reinitialize_entity_counters(db, opts.conf.loaded_plugins)
     end
 
     if schema_state.pending_migrations then
-    log.debug("pending migrations to finish:\n%s",
-              schema_state.pending_migrations)
+      log.debug("pending migrations to finish:\n%s",
+                schema_state.pending_migrations)
 
-    assert(db:run_migrations(schema_state.pending_migrations, {
-      run_teardown = true,
-    }))
+      assert(db:run_migrations(schema_state.pending_migrations, {
+        run_teardown = true,
+      }))
 
       schema_state = assert(db:schema_state())
       reinitialize_entity_counters(db, opts.conf.loaded_plugins)
@@ -197,9 +194,8 @@ local function finish(schema_state, db, opts)
     if not opts.force and not schema_state.pending_migrations then
       log("No pending migrations to finish")
     end
-
-    return
   end)
+
   if err then
     error(err)
   end

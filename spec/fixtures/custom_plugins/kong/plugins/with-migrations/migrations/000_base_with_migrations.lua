@@ -12,7 +12,7 @@ return {
         "color" TEXT PRIMARY KEY
       );
 
-      INSERT INTO foos (color) values ('red');
+      INSERT INTO foos (color) values ('red') ON CONFLICT DO NOTHING;
     ]],
   },
 }

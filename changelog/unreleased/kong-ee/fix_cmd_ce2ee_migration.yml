@@ -1,0 +1,4 @@
+message: |
+  Do not reinitialize workspace entity counters when migrating from CE to EE.
+type: bugfix
+scope: CLI Command

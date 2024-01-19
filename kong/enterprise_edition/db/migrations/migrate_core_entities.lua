@@ -231,7 +231,10 @@ local function migrate_core_entities(db, opts)
     local schema = db.daos[model].schema
     local composite_cache_key = schema.cache_key and #schema.cache_key > 1
 
-    for row in queries.entities(model) do
+    for row, row_err in queries.entities(model) do
+      if not row then
+        return nil, "failed to get entity row: " .. row_err
+      end
       -- Add workspace_entity for this model
       local update_counter = false
       local entity_id = row[relation.primary_key]

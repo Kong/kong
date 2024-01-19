@@ -288,24 +288,6 @@ for _, strategy in helpers.each_strategy() do
         assert.same(1, pending)
       end)
 
-      it("#db migration up can reinitialize the workspace entity counters automatically", function()
-        run_kong("migrations reset --yes")
-        local code = run_kong("migrations bootstrap")
-        assert.same(0, code)
-
-        local db = init_db()
-        local rows = db.connector:query([[SELECT count(*) FROM workspace_entity_counters;]])
-        assert.same(1, rows[1].count)
-
-        code = run_kong("migrations up", {
-          plugins = "with-migrations",
-        })
-        assert.same(0, code)
-
-        rows = db.connector:query([[SELECT count(*) FROM workspace_entity_counters;]])
-        assert.same(2, rows[1].count)
-      end)
-
       it("#db non-proxy consumers should not count in workspace entity counters", function()
         run_kong("migrations reset --yes")
 
@@ -404,7 +386,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same(0, code)
 
         rows = db.connector:query([[SELECT count(*) FROM workspace_entity_counters;]])
-        assert.same(2, rows[1].count)
+        assert.same(1, rows[1].count)
 
         code = run_kong("migrations finish", {
           plugins = "with-migrations",
