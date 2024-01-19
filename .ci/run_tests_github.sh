@@ -75,6 +75,7 @@ else
     export TEST_CMD="bin/busted $BUSTED_ARGS,postgres,db"
 fi
 
+
 ### DEBUG: print memory usage to adjust self-runner VM memory
 watch -n 30 -t -w bash -c "free -m > /tmp/memusage.txt" 2>&1 >/dev/null &
 function print_memusage {
@@ -82,65 +83,6 @@ function print_memusage {
     killall watch || true
 }
 trap print_memusage EXIT
-
-
-if [ "$TEST_SPLIT" == "first-fips" ]; then
-    # we test 05-fips first as a sanity check
-    eval "$TEST_CMD" \
-                     spec-ee/05-fips \
-                     spec/03-plugins/16-jwt \
-                     spec/03-plugins/19-hmac-auth \
-                     spec/03-plugins/20-ldap-auth \
-                     spec/03-plugins/25-oauth2 \
-                     spec/03-plugins/29-acme \
-                     spec/01-unit \
-                     spec-ee/01-unit \
-                     spec-ee/03-plugins/01-prometheus \
-                     spec-ee/03-plugins/10-key-auth \
-                     spec-ee/03-plugins/11-basic-auth \
-                     spec-ee/03-plugins/01-plugins_order_spec.lua \
-                     spec-ee/03-plugins/02-websocket-log-plugins_spec.lua
-fi
-
-
-if [ "$TEST_SPLIT" == "second-fips" ]; then
-    pushd .ci/ad-server && make build-ad-server && popd
-    eval "$TEST_CMD" \
-                     spec-ee/02-integration/03-vitals \
-                     spec-ee/02-integration/05-admin-gui \
-                     spec-ee/02-integration/06-rate-limiting-library \
-                     spec-ee/02-integration/07-audit-log \
-                     spec-ee/02-integration/08-new-dao \
-                     spec-ee/02-integration/09-tracing \
-                     spec-ee/02-integration/10-groups \
-                     spec-ee/02-integration/11-cmd \
-                     spec-ee/02-integration/12-counters \
-                     spec-ee/02-integration/13-event_hooks \
-                     spec-ee/02-integration/14-hybrid_mode \
-                     spec-ee/02-integration/15-consumer-groups
-fi
-
-if [ "$TEST_SPLIT" == "third-fips" ]; then
-    pushd .ci/ad-server && make build-ad-server && popd
-    eval "$TEST_CMD" \
-                     spec-ee/02-integration/00-kong \
-                     spec-ee/02-integration/01-rbac \
-                     spec-ee/02-integration/02-workspaces \
-                     spec-ee/02-integration/04-dev-portal \
-                     spec-ee/02-integration/16-plugins-ordering \
-                     spec-ee/02-integration/17-keyring
-fi
-
-if [ "$TEST_SPLIT" == "fourth-fips" ]; then
-    eval "$TEST_CMD" \
-                     spec-ee/02-integration/21-profiling \
-                     spec-ee/02-integration/22-analytics \
-                     spec-ee/02-integration/22-plugins-iterator \
-                     spec-ee/02-integration/19-vaults \
-                     spec-ee/02-integration/18-websockets \
-                     spec-ee/02-integration/20-dp-resilience
-fi
-
 
 
 if [ "$TEST_SUITE" == "plugins-ee" ]; then

@@ -8,6 +8,9 @@ on:
       label:
         type: string
         default: normal
+      build-name:
+        type: string
+        default: 'kong-dev'
       fips:
         type: boolean
         default: false
@@ -66,7 +69,7 @@ jobs:
         path: |
           artifacts
           ${{ env.RELATIVE_BUILD_ROOT }}
-          !${{ env.RELATIVE_BUILD_ROOT }}/kong-dev/**/*
+          !${{ env.RELATIVE_BUILD_ROOT }}/${{ inputs.build-name }}/**/*
         key: ${{ steps.cache-key.outputs.cache-key }}
 
     - name: Set .requirements into environment variables
@@ -94,6 +97,10 @@ jobs:
           bazel_args="$bazel_args --//:fips=true"
         fi
 
+        if [ "${{ inputs.build-name }}" != 'kong-dev' ]; then
+          bazel_args="$bazel_args --action_env=BUILD_NAME=${{ inputs.build-name }}"
+        fi
+
         bazel build //build:kong $bazel_args
         bazel build //build:venv $bazel_args
         # debian package for Pongo
@@ -114,8 +121,13 @@ jobs:
         mkdir artifacts
         cp bazel-bin/pkg/kong.*.deb artifacts/
 
+        BUILD_TAR="build"
+        if [ "${{ inputs.build-name }}" != 'kong-dev' ]; then
+          BUILD_TAR="build-${{ inputs.build-name }}"
+        fi
+
         # bazel output directory without write access, we add it when creating archive
-        tar -zcvf artifacts/build.tar.gz -C bazel-bin/build/kong-dev --mode="a+rw" .
+        tar -zcvf artifacts/$BUILD_TAR.tar.gz -C bazel-bin/build/${{ inputs.build-name }} --mode="a+rw" .
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
@@ -124,14 +136,14 @@ jobs:
         path: |
           artifacts
           ${{ env.RELATIVE_BUILD_ROOT }}
-          !${{ env.RELATIVE_BUILD_ROOT }}/kong-dev/**/*
+          !${{ env.RELATIVE_BUILD_ROOT }}/${{ inputs.build-name }}/**/*
         retention-days: 3
 
     - name: Update PATH
       run: |
-        echo "$BUILD_ROOT/kong-dev/bin" >> $GITHUB_PATH
-        echo "$BUILD_ROOT/kong-dev/openresty/nginx/sbin" >> $GITHUB_PATH
-        echo "$BUILD_ROOT/kong-dev/openresty/bin" >> $GITHUB_PATH
+        echo "$BUILD_ROOT/${{ inputs.build-name }}/bin" >> $GITHUB_PATH
+        echo "$BUILD_ROOT/${{ inputs.build-name }}/openresty/nginx/sbin" >> $GITHUB_PATH
+        echo "$BUILD_ROOT/${{ inputs.build-name }}/openresty/bin" >> $GITHUB_PATH
 
     - name: Debug (nginx)
       run: |

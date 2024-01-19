@@ -47,8 +47,10 @@ env:
   # if this is a push event, or it is pull request but not from a fork, and not from dependabot (dependabot does not use forks), then this PR will have access to secrets
   HAS_ACCESS_TO_SECRETS: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && !contains(github.actor, 'dependabot')) }}
   TEST_RESULTS_XML_OUTPUT: test-results
-  RELATIVE_BUILD_ROOT: bazel-bin/build
   BUILD_ROOT: ${{ github.workspace }}/bazel-bin/build
+  BUILD_NAME: kong-dev-normal
+  BUILD_NAME_NORMAL: kong-dev-normal
+  BUILD_NAME_FIPS: kong-dev-fips
   KONG_TEST_COVERAGE: ${{ inputs.coverage == true || github.event_name == 'schedule' }}
   AWS_EC2_METADATA_DISABLED: true
   ENABLE_COREDUMP_DEBUG: true
@@ -75,6 +77,7 @@ jobs:
     with:
       relative-build-root: bazel-bin/build
       label: "${{ matrix.label }}"
+      build-name: "${{ matrix.label == 'normal' && 'kong-dev-normal' || 'kong-dev-fips' }}"
       fips: ${{ matrix.fips }}
       aarch64: ${{ inputs.arm64 == true }}
 
@@ -114,9 +117,9 @@ jobs:
 
     - name: Extract the artifact contents
       run: |
-        sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
-        sudo mkdir -p ${{ env.BUILD_ROOT }}/kong-dev
-        sudo tar -C ${{ env.BUILD_ROOT }}/kong-dev -xzvf artifacts/build.tar.gz
+        sudo tar -C /usr/local/ -xzvf artifacts/build-${{ env.BUILD_NAME_NORMAL }}.tar.gz
+        sudo mkdir -p ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }}
+        sudo tar -C ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }} -xzvf artifacts/build-${{ env.BUILD_NAME_NORMAL }}.tar.gz
 
     - name: Install Kong dev
       env:
@@ -188,7 +191,7 @@ jobs:
           exit 1
         fi
 
-        source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+        source ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }}-venv.sh
         make dev LIBRARY_PREFIX=/usr/local/kong
 
   sca-and-doc-tests:
@@ -221,23 +224,23 @@ jobs:
 
     - name: Extract the artifact contents
       run: |
-        sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
-        sudo mkdir -p ${{ env.BUILD_ROOT }}/kong-dev
-        sudo tar -C ${{ env.BUILD_ROOT }}/kong-dev -xzvf artifacts/build.tar.gz
+        sudo tar -C /usr/local/ -xzvf artifacts/build-${{ env.BUILD_NAME_NORMAL }}.tar.gz
+        sudo mkdir -p ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }}
+        sudo tar -C ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }} -xzvf artifacts/build-${{ env.BUILD_NAME_NORMAL }}.tar.gz
 
     - name: Install Kong dev
       env:
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
-      run: make dev LIBRARY_PREFIX=/usr/local/kong
+      run: make dev LIBRARY_PREFIX=${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }}/kong
 
     - name: Check test-helpers doc generation
       run: |
-        source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+        source ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }}-venv.sh
         pushd ./spec && ldoc .
 
     - name: Check autodoc generation
       run: |
-        source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+        source ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }}-venv.sh
         scripts/autodoc
 
     - name: Check spec file misspelling
@@ -249,6 +252,7 @@ jobs:
 
     - name: Check EE bundled plugin list coverage
       run: |
+        source ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }}-venv.sh
         scripts/check_ee_bundled_plugin_list_coverage.sh
   
   schedule:
@@ -274,7 +278,7 @@ jobs:
         repo-path: Kong/gateway-action-storage/main/.ci/runtimes-ee.json
 
     - name: Schedule tests
-      uses: Kong/gateway-test-scheduler/schedule@5d27a0bf1acc78fab865eafb41d60e0c7625d261 # v2
+      uses: Kong/gateway-test-scheduler/schedule@69f0c2a562ac44fc3650b8bfa62106b34094b5ce # v3
       with:
         test-suites-file: .ci/test_suites.json
         test-file-runtime-file: .ci/runtimes-ee.json
@@ -359,22 +363,39 @@ jobs:
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
-    - name: Download artifacts
+    - name: Download normal build artifacts
       uses: actions/download-artifact@v3
       with:
         name: build-normal
         path: .
 
+    - name: Download fips build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: build-fips
+        path: .
+
     - name: Extract the artifact contents
       run: |
-        sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
-        sudo mkdir -p ${{ env.BUILD_ROOT }}/kong-dev
-        sudo tar -C ${{ env.BUILD_ROOT }}/kong-dev -xzvf artifacts/build.tar.gz
+        sudo tar -C /usr/local/ -xzvf artifacts/build-${{ env.BUILD_NAME_NORMAL }}.tar.gz
+        sudo mkdir -p ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }}
+        sudo tar -C ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }} -xzvf artifacts/build-${{ env.BUILD_NAME_NORMAL }}.tar.gz
 
     - name: Install Kong dev
       env:
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
-      run: make dev LIBRARY_PREFIX=/usr/local/kong
+      run: make dev LIBRARY_PREFIX=${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }}/kong
+    
+    - name: Extract FIPS artifact contents
+      run: |
+        sudo tar -C /usr/local/ -xzvf artifacts/build-${{ env.BUILD_NAME_FIPS }}.tar.gz
+        sudo mkdir -p ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_FIPS }}
+        sudo tar -C ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_FIPS }} -xzvf artifacts/build-${{ env.BUILD_NAME_FIPS }}.tar.gz
+
+    - name: Install Kong dev FIPS
+      env:
+        GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+      run: BUILD_NAME=${{ env.BUILD_NAME_FIPS }} make dev LIBRARY_PREFIX=${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_FIPS }}/kong
 
     - name: Build WASM Test Filters
       uses: ./.github/actions/build-wasm-test-filters
@@ -427,9 +448,9 @@ jobs:
 
     - name: Update PATH
       run: |
-        echo "$BUILD_ROOT/kong-dev/bin" >> $GITHUB_PATH
-        echo "$BUILD_ROOT/kong-dev/openresty/nginx/sbin" >> $GITHUB_PATH
-        echo "$BUILD_ROOT/kong-dev/openresty/bin" >> $GITHUB_PATH
+        echo "$BUILD_ROOT/${{ env.BUILD_NAME_NORMAL }}/bin" >> $GITHUB_PATH
+        echo "$BUILD_ROOT/${{ env.BUILD_NAME_NORMAL }}/openresty/nginx/sbin" >> $GITHUB_PATH
+        echo "$BUILD_ROOT/${{ env.BUILD_NAME_NORMAL }}/openresty/bin" >> $GITHUB_PATH
 
     - name: Debug (nginx)
       run: |
@@ -516,12 +537,13 @@ jobs:
         DT_ENV_ID: ${{ secrets.DT_ENV_ID }}
         DT_API_TOKEN: ${{ secrets.DT_API_TOKEN }}
         KONG_TEST_LICENSE_DATA: ${{ env.KONG_LICENSE_DATA }}
-      uses: Kong/gateway-test-scheduler/runner@5d27a0bf1acc78fab865eafb41d60e0c7625d261 # v2
+      uses: Kong/gateway-test-scheduler/runner@69f0c2a562ac44fc3650b8bfa62106b34094b5ce # v3
       with:
         tests-to-run-file: test-chunk.${{ matrix.runner }}.json
         failed-test-files-file: ${{ env.FAILED_TEST_FILES_FILE }}
         test-file-runtime-file: ${{ env.TEST_FILE_RUNTIME_FILE }}
-        setup-venv: . ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+        xml-output-file: ${{ env.TEST_RESULTS_XML_OUTPUT }}
+        setup-venv-path: ${{ env.BUILD_ROOT }}
 
     - name: Upload test rerun information
       if: always()
@@ -612,14 +634,14 @@ jobs:
 
     - name: Extract the artifact contents
       run: |
-        sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
-        sudo mkdir -p ${{ env.BUILD_ROOT }}/kong-dev
-        sudo tar -C ${{ env.BUILD_ROOT }}/kong-dev -xzvf artifacts/build.tar.gz
+        sudo tar -C /usr/local/ -xzvf artifacts/build-${{ env.BUILD_NAME_NORMAL }}.tar.gz
+        sudo mkdir -p ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }}
+        sudo tar -C ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }} -xzvf artifacts/build-${{ env.BUILD_NAME_NORMAL }}.tar.gz
 
     - name: Install Kong dev
       env:
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
-      run: make dev LIBRARY_PREFIX=/usr/local/kong
+      run: make dev LIBRARY_PREFIX=${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }}/kong
 
     - name: Install Test::Nginx
       run: |
@@ -638,7 +660,7 @@ jobs:
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
         TEST_SUITE: pdk
       run: |
-        source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+        source ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }}-venv.sh
         if [[ $KONG_TEST_COVERAGE = true ]]; then
           export PDK_LUACOV=1
         fi
@@ -758,10 +780,10 @@ jobs:
 
       - name: Extract the artifact contents
         run: |
-          sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
-          sudo mkdir -p ${{ env.BUILD_ROOT }}/kong-dev
-          sudo tar -C ${{ env.BUILD_ROOT }}/kong-dev -xzvf artifacts/build.tar.gz
-
+          sudo tar -C /usr/local/ -xzvf artifacts/build-${{ env.BUILD_NAME_NORMAL }}.tar.gz
+          sudo mkdir -p ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }}
+          sudo tar -C ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }} -xzvf artifacts/build-${{ env.BUILD_NAME_NORMAL }}.tar.gz
+    
       - name: Install Kong dev
         env:
           GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
@@ -769,7 +791,7 @@ jobs:
 
       - name: Run upgrade tests
         run: |
-          bash ./scripts/upgrade-tests/test-upgrade-path.sh -i ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+          bash ./scripts/upgrade-tests/test-upgrade-path.sh -i ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }}-venv.sh
 
 
   plugins-ee-tests:
