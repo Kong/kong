@@ -528,19 +528,17 @@ end
 
 
 do
-  local var = ngx.var
-  local get_headers = ngx.req.get_headers
   local replace_dashes = require("kong.tools.string").replace_dashes
 
   function _M.get_header(ctx, name)
-    local value = var["http_" .. replace_dashes(name)]
+    local value = ngx.var["http_" .. replace_dashes(name)]
 
     if not value or not value:find(", ", 1, true) then
       return value
     end
 
     if not ctx.headers then
-      ctx.headers = get_headers()
+      ctx.headers = ngx.req.get_headers()
     end
 
     value = ctx.headers[name]
