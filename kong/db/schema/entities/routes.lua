@@ -13,7 +13,7 @@ do
   local transform_expression = require("kong.router.expressions").transform_expression
 
   local HTTP_PATH_SEGMENTS_PREFIX = "http.path.segments."
-  local HTTP_PATH_SEGMENTS_SUFFIX_REG = [[^(\d+)(_(\d+))?$]]
+  local HTTP_PATH_SEGMENTS_SUFFIX_REG = [[^(0|[1-9]\d*)(_([1-9]\d*))?$]]
 
   -- works with both `traditional_compatiable` and `expressions` routes`
   validate_route = function(entity)

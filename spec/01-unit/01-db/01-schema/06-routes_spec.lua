@@ -1567,7 +1567,7 @@ describe("routes schema (flavor = expressions)", function()
       id             = a_valid_uuid,
       name           = "my_route",
       protocols      = { "grpcs" },
-      expression     = [[http.path.segments.0 == "foo" && http.path.segments.1 ^= "bar" && http.path.segments.2_3 ~ r#"x/y"#]],
+      expression     = [[http.path.segments.0 == "foo" && http.path.segments.1 ^= "bar" && http.path.segments.20_30 ~ r#"x/y"#]],
       priority       = 100,
       service        = { id = another_uuid },
     }
@@ -1593,6 +1593,9 @@ describe("routes schema (flavor = expressions)", function()
       [[http.path.segments._1     == "foo"]],
       [[http.path.segments.2_1    == "foo"]],
       [[http.path.segments.1_1    == "foo"]],
+      [[http.path.segments.01_2   == "foo"]],
+      [[http.path.segments.001_2  == "foo"]],
+      [[http.path.segments.1_03   == "foo"]],
     }
 
     for _, exp in ipairs(wrong_expressions) do
