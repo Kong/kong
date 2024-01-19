@@ -1011,7 +1011,7 @@ return {
             -- Yield to process any pending invalidations
             yield()
 
-            log(DEBUG, "configuration processing completed for transaction ID " .. rebuild_transaction_id)
+            log(DEBUG, "configuration processing completed for transaction ID ", rebuild_transaction_id)
             global.CURRENT_TRANSACTION_ID = rebuild_transaction_id
           end
         end
