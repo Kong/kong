@@ -179,6 +179,7 @@
   - libpthread.so.0
   - libcrypt.so.1
   - libluajit-5.1.so.2
+  - libm.so.6
   - libssl.so.3
   - libcrypto.so.3
   - libz.so.1
