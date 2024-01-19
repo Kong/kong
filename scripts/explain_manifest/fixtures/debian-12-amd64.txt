@@ -166,6 +166,7 @@
   Needed    :
   - libcrypt.so.1
   - libluajit-5.1.so.2
+  - libm.so.6
   - libssl.so.3
   - libcrypto.so.3
   - libz.so.1
@@ -176,6 +177,7 @@
   - lua-kong-nginx-module/stream
   - lua-resty-events
   - lua-resty-lmdb
+  - ngx_brotli
   - ngx_wasm_module
   OpenSSL   : OpenSSL 3.2.0 23 Nov 2023
   DWARF     : True
