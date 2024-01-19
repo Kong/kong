@@ -1,110 +1,24 @@
 # please see matrix-full.yml for meaning of each field
 build-packages:
-  # label: used to distinguish artifacts for later use
-  # image: docker image name if the build is running in side a container
-  # package: package type
-  # package-type: the nfpm packaging target, //:kong_{package} target; only used when package is rpm
-  # bazel-args: additional bazel build flags
-  # check-manifest-suite: the check manifest suite as defined in scripts/explain_manifest/config.py
+- label: ubuntu-22.04
+  os: ubuntu-22.04
+  package: deb
+  check-manifest-suite: ubuntu-22.04-amd64
 
-  # Ubuntu
-  - label: ubuntu-20.04
-    image: ubuntu:20.04
-    package: deb
-    check-manifest-suite: ubuntu-20.04-amd64
-  - label: ubuntu-22.04
-    package: deb
-    check-manifest-suite: ubuntu-22.04-amd64
-  - label: ubuntu-22.04-arm64
-    package: deb
-    bazel-args: --platforms=//:generic-crossbuild-aarch64
-    check-manifest-suite: ubuntu-22.04-arm64
-  # Debian
-  - label: debian-10
-    image: debian:10
-    package: deb
-    check-manifest-suite: debian-10-amd64
-  - label: debian-11
-    image: debian:11
-    package: deb
-    check-manifest-suite: debian-11-amd64
-  - label: debian-12
-    image: debian:12
-    package: deb
-    check-manifest-suite: debian-12-amd64
-  # RHEL
-  - label: rhel-7
-    image: centos:7
-    package: rpm
-    package-type: el7
-    bazel-args: --//:wasmx_el7_workaround=true
-    check-manifest-suite: el7-amd64
-  - label: rhel-8
-    image: rockylinux:8
-    package: rpm
-    package-type: el8
-    check-manifest-suite: el8-amd64
-  - label: rhel-9
-    image: rockylinux:9
-    package: rpm
-    package-type: el9
-    check-manifest-suite: el9-amd64
-  - label: rhel-9-arm64
-    package: rpm
-    package-type: el9
-    bazel-args: --platforms=//:rhel9-crossbuild-aarch64
-    check-manifest-suite: el9-arm64
-    # Amazon Linux
-  - label: amazonlinux-2
-    image: amazonlinux:2
-    package: rpm
-    package-type: aws2
-    check-manifest-suite: amazonlinux-2-amd64
-  - label: amazonlinux-2023
-    image: amazonlinux:2023
-    package: rpm
-    package-type: aws2023
-    check-manifest-suite: amazonlinux-2023-amd64
-  - label: amazonlinux-2023-arm64
-    package: rpm
-    package-type: aws2023
-    bazel-args: --platforms=//:aws2023-crossbuild-aarch64
-    check-manifest-suite: amazonlinux-2023-arm64
 build-images:
-  # Only build images for the latest version of each major release.
+- label: ubuntu
+  base-image: ubuntu:22.04
+  package: deb
+  artifact-from: ubuntu-22.04
 
-  # label: used as compose docker image label ${github.sha}-${label}
-  # base-image: docker image to use as base
-  # package: package type
-  # artifact-from: label of build-packages to use
-  # artifact-from-alt: another label of build-packages to use for downloading package (to build multi-arch image)
-  # docker-platforms: comma separated list of docker buildx platforms to build for
-
-  # Ubuntu
-  - label: ubuntu
-    base-image: ubuntu:22.04
-    package: deb
-    artifact-from: ubuntu-22.04
-    artifact-from-alt: ubuntu-22.04-arm64
-    docker-platforms: linux/amd64, linux/arm64
-  # Debian
-  - label: debian
-    base-image: debian:12-slim
-    package: deb
-    artifact-from: debian-12
-  # RHEL
-  - label: rhel
-    base-image: registry.access.redhat.com/ubi9
-    package: rpm
-    rpm_platform: el9
-    artifact-from: rhel-9
-    artifact-from-alt: rhel-9-arm64
-    docker-platforms: linux/amd64, linux/arm64
 smoke-tests:
-  - label: ubuntu
+- label: ubuntu
+
 scan-vulnerabilities:
-  - label: ubuntu
+- label: ubuntu
+
 release-packages:
+
 release-images:
-  - label: ubuntu
-    package: deb
+- label: ubuntu
+  package: deb
