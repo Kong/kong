@@ -48,7 +48,7 @@ local function post_process(data)
 end
 
 
-local function post_plugin(_, _, _, parent)
+local function post_plugin(self, db, _, parent)
   return parent(post_process)
 end
 

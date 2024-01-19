@@ -254,7 +254,6 @@ local function query_entity(context, self, db, schema, method)
       end
     end
   end
-
   if is_update then
     return dao[method or context](dao, key, args, opts)
   end

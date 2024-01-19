@@ -510,7 +510,11 @@ function PluginsIterator.new(version)
 
     local name = plugin.name
     if not ENABLED_PLUGINS[name] then
-      return nil, name .. " plugin is in use but not enabled"
+      if plugin.asset and kong.db.assets:load(plugin.asset, plugin.name) then
+        -- is ok
+      else
+        return nil, name .. " plugin is in use but not enabled"
+      end
     end
 
     if is_not_dbless and counter > 0 and counter % page_size == 0 and kong.core_cache then

@@ -16,12 +16,14 @@ end
 
 function _M:register_dao_hooks(is_cp)
   if is_cp then
-    hooks.register_hook("dao:insert:post", function(row, name, options, ws_id)
+    local update = function(row, name, options, ws_id)
+      row = assert(kong.db[name]:select({ id = row.id }))
+      ngx.log(ngx.ERR, " %%%%% update hook ", name, " ", require("inspect")(row))
       local deltas = {
         {
           ["type"] = name,
           id = row.id,
-          ws_id = ws_id,
+          ws_id = ws_id or require("kong.workspaces").get_workspace_id(),
           row = row, },
       }
 
@@ -40,7 +42,11 @@ function _M:register_dao_hooks(is_cp)
       end
 
       return row, name, options, ws_id
-    end)
+    end
+
+    hooks.register_hook("dao:insert:post", update)
+    hooks.register_hook("dao:upsert:post", update)
+    hooks.register_hook("dao:update:post", update)
 
     hooks.register_hook("dao:delete:post", function(row, name, options, ws_id, cascade_entries)
       local deltas = {

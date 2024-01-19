@@ -76,9 +76,9 @@ function _M:sync_once(delay)
 
         for _, d in ipairs(delta) do
           if d.row ~= ngx.null then
-            assert(kong.db[d.type]:delete({
+            kong.db[d.type]:delete({
               id = d.id,
-            }))
+            })
             assert(kong.db[d.type]:insert(d.row))
 
           else

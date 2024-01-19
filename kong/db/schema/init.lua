@@ -2006,9 +2006,26 @@ function Schema:validate(input, full_check, original_input, rbw_entity)
 
     if not get_subschema(self, input) then
       local errmsg = self.subschema_error or validation_errors.SUBSCHEMA_UNKNOWN
-      return nil, {
-        [self.subschema_key] = errmsg:format(type(key) == "string" and key or key[1])
-      }
+      ngx.log(ngx.ERR, " name is ", self.name, " input.asset is ", require("inspect")(input.asset))
+      if self.name == "plugins" and input.asset then
+        local ok, err = kong.db.assets:load(input.asset, input.name)
+        if err then
+          return nil, {
+            [self.subschema_key] = errmsg:format(err)
+          }
+        elseif ok and get_subschema(self, input) then
+          if not input.config then
+            input.config = {}
+          end
+          errmsg = nil
+        end
+      end
+
+      if errmsg then
+        return nil, {
+          [self.subschema_key] = errmsg:format(type(key) == "string" and key or key[1])
+        }
+      end
     end
   end
 

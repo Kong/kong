@@ -171,7 +171,6 @@ end
 
 
 local function dao_crud_handler(data)
-    ngx.log(ngx.ERR, "dao_crud_handler")
   local schema = data.schema
   if not schema then
     log(ERR, "[events] missing schema in crud subscriber")
@@ -188,6 +187,8 @@ local function dao_crud_handler(data)
   -- caching key
 
   local schema_name = schema.name
+
+  ngx.log(ngx.ERR, "dao_crud_handler ", schema_name, " payload: ", require("inspect")(entity))
 
   local cache_key = db[schema_name]:cache_key(entity)
   local cache_obj = kong[ENTITY_CACHE_STORE[schema_name]]

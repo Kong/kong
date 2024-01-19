@@ -127,6 +127,7 @@ local constants = {
   -- This table doubles as a set (e.g. CORE_ENTITIES["routes"] = true)
   -- (see below where the set entries are populated)
   CORE_ENTITIES = {
+    "assets",
     "workspaces",
     "consumers",
     "certificates",
@@ -159,6 +160,7 @@ local constants = {
     vaults = "core_cache",
     key_sets = "core_cache",
     keys = "core_cache",
+    assets = "core_cache",
   }, {
     __index = function()
       return "cache"

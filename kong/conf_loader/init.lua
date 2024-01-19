@@ -18,6 +18,7 @@ local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
 local env = require "kong.cmd.utils.env"
 local ffi = require "ffi"
+local cjson = require "cjson"
 
 
 local fmt = string.format

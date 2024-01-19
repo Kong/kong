@@ -3,6 +3,7 @@ local DAO = require "kong.db.dao"
 local plugin_loader = require "kong.db.schema.plugin_loader"
 local reports = require "kong.reports"
 local plugin_servers = require "kong.runloop.plugin_servers"
+local utils = require "kong.tools.utils"
 local version = require "version"
 local load_module_if_exists = require "kong.tools.module".load_module_if_exists
 
@@ -79,11 +80,42 @@ local function check_protocols_match(self, plugin)
   return true
 end
 
+local function check_asset(asset_id_or_name, plugin_name)
+  ngx.log(ngx.ERR, "--> check_asset for plugin ", plugin_name, " asset pkey ", require("inspect")(asset_id_or_name))
+  if type(asset_id_or_name) ~= "table" then
+    return true
+  end
+
+  local asset, err
+  if utils.is_valid_uuid(asset_id_or_name.id) then
+    -- donothing
+    return true
+  else
+    asset, err = kong.db.assets:select_by_name(asset_id_or_name.name)
+  end
+
+  if err then
+    return false, "Failed to load assets: " .. err
+  end
+
+  asset_id_or_name.id = asset and asset.id or asset_id_or_name.id
+
+  ngx.log(ngx.ERR, require("inspect")(asset_id_or_name))
+
+  return true
+end
+
 function Plugins:insert(entity, options)
   local ok, err, err_t = check_protocols_match(self, entity)
   if not ok then
     return nil, err, err_t
   end
+
+  local ok, err = check_asset(entity.asset, entity.name)
+  if not ok then
+    return nil, err, err
+  end
+
   return self.super.insert(self, entity, options)
 end
 
@@ -98,6 +130,11 @@ function Plugins:update(primary_key, entity, options)
     return nil, err, err_t
   end
 
+  local ok, err = check_asset(entity.asset, entity.name)
+  if not ok then
+    return nil, err, err
+  end
+
   return self.super.update(self, primary_key, entity, options)
 end
 
@@ -107,6 +144,12 @@ function Plugins:upsert(primary_key, entity, options)
   if not ok then
     return nil, err, err_t
   end
+
+  local ok, err = check_asset(entity.asset, entity.name)
+  if not ok then
+    return nil, err, err
+  end
+
   return self.super.upsert(self, primary_key, entity, options)
 end
 

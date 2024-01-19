@@ -25,6 +25,7 @@ return {
     { config = { description = "The configuration properties for the Plugin.", type = "record", abstract = true, }, },
     { protocols = typedefs.protocols },
     { enabled = { description = "Whether the plugin is applied.", type = "boolean", required = true, default = true }, },
+    { asset  = { description = "The id (a UUID) of the asset that plugin relies upon", type = "foreign", reference = "assets", default = null, on_delete = "cascade", }, },
     { tags           = typedefs.tags },
   },
 }
