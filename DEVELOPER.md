@@ -195,13 +195,14 @@ might be in your system.
 
 #### Tests
 
-Install the development dependencies ([busted], [luacheck]) with:
+Install the development dependencies ([busted](https://github.com/lunarmodules/busted),
+[luacheck](https://github.com/mpeterv/luacheck)) with:
 
 ```shell
 make dev
 ```
 
-Kong relies on three test suites using the [busted] testing library:
+Kong relies on three test suites using the [busted](https://github.com/lunarmodules/busted) testing library:
 
 * Unit tests
 * Integration tests, which require Postgres and Cassandra to be up and running
@@ -242,7 +243,8 @@ Consult the [run_tests.sh](.ci/run_tests.sh) script for more advanced example
 usage of the test suites and the Makefile.
 
 Finally, a very useful tool in Lua development (as with many other dynamic
-languages) is performing static linting of your code. You can use [luacheck]
+languages) is performing static linting of your code. You can use
+[luacheck](https://github.com/mpeterv/luacheck)
 \(installed with `make dev`\) for this:
 
 ```
@@ -294,7 +296,8 @@ as follows:
  * NEW: The `new_after_finish` phase of all applicable migration tests
    is run.
 
-Upgrade tests are run using [busted].  To support the specific testing
+Upgrade tests are run using [busted](https://github.com/lunarmodules/busted).
+To support the specific testing
 method of upgrade testing, a number of helper functions are defined in
 the [spec/upgrade_helpers.lua](spec/upgrade_helpers.lua) module.
 Migration tests use functions from this module to define test cases
