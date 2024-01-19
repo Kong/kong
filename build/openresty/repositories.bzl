@@ -69,6 +69,15 @@ def openresty_repositories():
         recursive_init_submodules = True,
     )
 
+    maybe(
+        new_git_repository,
+        name = "ngx_brotli",
+        branch = KONG_VAR["NGX_BROTLI"],
+        remote = "https://github.com/google/ngx_brotli",
+        build_file_content = _NGINX_MODULE_DUMMY_FILE,
+        recursive_init_submodules = True,
+    )
+
 def _openresty_binding_impl(ctx):
     ctx.file("BUILD.bazel", _NGINX_MODULE_DUMMY_FILE)
     ctx.file("WORKSPACE", "workspace(name = \"openresty_patch\")")
