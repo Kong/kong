@@ -41,7 +41,7 @@
     "@types/chai-string": "^1.4.2",
     "@types/uuid": "^9.0.3",
     "@types/mocha": "^10.0.5",
-    "@types/node": "^18.19.7",
+    "@types/node": "^18.19.8",
     "@typescript-eslint/eslint-plugin": "^5.60.0",
     "@typescript-eslint/parser": "^5.60.1",
     "eslint": "^8.56.0",
