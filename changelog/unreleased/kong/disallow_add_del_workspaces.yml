@@ -1,0 +1,4 @@
+message: |
+  Disallow creating or deleting workspaces.
+type: bugfix
+scope: Admin API
