@@ -57,6 +57,13 @@ jobs:
         options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
 
     steps:
+    - name: Bump max open files
+      run: |
+          sudo echo 'kong soft nofile 65536' | sudo tee -a /etc/security/limits.d/kong-ci.conf
+          sudo echo 'kong hard nofile 65536' | sudo tee -a /etc/security/limits.d/kong-ci.conf
+          sudo echo "$(whoami) soft nofile 65536" | sudo tee -a /etc/security/limits.d/kong-ci.conf
+          sudo echo "$(whoami) hard nofile 65536" | sudo tee -a /etc/security/limits.d/kong-ci.conf
+
     - name: Checkout Kong source code
       uses: actions/checkout@v4
 
@@ -160,6 +167,13 @@ jobs:
           - 9411:9411
 
     steps:
+    - name: Bump max open files
+      run: |
+          sudo echo 'kong soft nofile 65536' | sudo tee -a /etc/security/limits.d/kong-ci.conf
+          sudo echo 'kong hard nofile 65536' | sudo tee -a /etc/security/limits.d/kong-ci.conf
+          sudo echo "$(whoami) soft nofile 65536" | sudo tee -a /etc/security/limits.d/kong-ci.conf
+          sudo echo "$(whoami) hard nofile 65536" | sudo tee -a /etc/security/limits.d/kong-ci.conf
+
     - name: Checkout Kong source code
       uses: actions/checkout@v4
 
@@ -292,6 +306,13 @@ jobs:
           - 15003:9001
 
     steps:
+    - name: Bump max open files
+      run: |
+          sudo echo 'kong soft nofile 65536' | sudo tee -a /etc/security/limits.d/kong-ci.conf
+          sudo echo 'kong hard nofile 65536' | sudo tee -a /etc/security/limits.d/kong-ci.conf
+          sudo echo "$(whoami) soft nofile 65536" | sudo tee -a /etc/security/limits.d/kong-ci.conf
+          sudo echo "$(whoami) hard nofile 65536" | sudo tee -a /etc/security/limits.d/kong-ci.conf
+
     - name: Checkout Kong source code
       uses: actions/checkout@v4
 
@@ -358,6 +379,13 @@ jobs:
     needs: build
 
     steps:
+    - name: Bump max open files
+      run: |
+          sudo echo 'kong soft nofile 65536' | sudo tee -a /etc/security/limits.d/kong-ci.conf
+          sudo echo 'kong hard nofile 65536' | sudo tee -a /etc/security/limits.d/kong-ci.conf
+          sudo echo "$(whoami) soft nofile 65536" | sudo tee -a /etc/security/limits.d/kong-ci.conf
+          sudo echo "$(whoami) hard nofile 65536" | sudo tee -a /etc/security/limits.d/kong-ci.conf
+
     - name: Checkout Kong source code
       uses: actions/checkout@v4
 
