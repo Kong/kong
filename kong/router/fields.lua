@@ -228,8 +228,8 @@ if is_http then
 
         local segments = params.segments
 
-        local name = field:sub(HTTP_SEGMENTS_PREFIX_LEN + 1)
-        local value = segments[name]
+        local range = field:sub(HTTP_SEGMENTS_PREFIX_LEN + 1)
+        local value = segments[range]
 
         if value then
           return value ~= ngx_null and value or nil
@@ -239,29 +239,29 @@ if is_http then
         -- http.path.segments.0 => params.segments[1 + 0] => a
         -- http.path.segments.1_2 => b/c
 
-        local p = name:find("_", 1, true)
+        local p = range:find("_", 1, true)
 
-        -- only one segment
+        -- only one segment, e.g. http.path.segments.1
 
         if not p then
-          local pos = tonumber(name)
+          local pos = tonumber(range)
 
           value = pos and segments[HTTP_SEGMENTS_OFFSET + pos] or nil
-          segments[name] = value or ngx_null
+          segments[range] = value or ngx_null
 
           return value
         end
 
-        -- (pos1, pos2) defines a segment range
+        -- (pos1, pos2) defines a segment range, e.g. http.path.segments.1_2
 
-        local pos1 = tonumber(name:sub(1, p - 1))
-        local pos2 = tonumber(name:sub(p + 1))
+        local pos1 = tonumber(range:sub(1, p - 1))
+        local pos2 = tonumber(range:sub(p + 1))
         local segs_count = #segments - HTTP_SEGMENTS_OFFSET
 
         if not pos1 or not pos2 or
            pos1 >= pos2 or pos1 > segs_count or pos2 > segs_count
         then
-          segments[name] = ngx_null
+          segments[range] = ngx_null
           return nil
         end
 
@@ -273,7 +273,7 @@ if is_http then
         buf:put(segments[HTTP_SEGMENTS_OFFSET + pos2])
 
         value = buf:get()
-        segments[name] = value
+        segments[range] = value
 
         return value
       end
