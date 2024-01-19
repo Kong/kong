@@ -95,9 +95,6 @@ function _M.configure_request(conf)
     parsed_url = socket_url.parse(url)
   end
 
-  kong.log.inspect(parsed_url.host)
-  kong.log.inspect(parsed_url.path)
-
   kong.service.request.set_path(parsed_url.path)
   kong.service.request.set_scheme(parsed_url.scheme)
   kong.service.set_target(parsed_url.host, tonumber(parsed_url.port))
