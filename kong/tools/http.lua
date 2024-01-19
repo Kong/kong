@@ -12,8 +12,6 @@ local setmetatable  = setmetatable
 local sort          = table.sort
 local concat        = table.concat
 local fmt           = string.format
-local var           = ngx.var
-local get_headers   = ngx.req.get_headers
 local re_match      = ngx.re.match
 local join          = tools_str.join
 local split         = tools_str.split
@@ -200,7 +198,7 @@ end
 -- @param allow_terminated if truthy, the `X-Forwarded-Proto` header will be checked as well.
 -- @return boolean or nil+error in case the header exists multiple times
 _M.check_https = function(trusted_ip, allow_terminated)
-  if var.scheme:lower() == "https" then
+  if ngx.var.scheme:lower() == "https" then
     return true
   end
 
@@ -212,7 +210,7 @@ _M.check_https = function(trusted_ip, allow_terminated)
   -- otherwise, we fall back to relying on the client scheme
   -- (which was either validated earlier, or we fall through this block)
   if trusted_ip then
-    local scheme = get_headers()["x-forwarded-proto"]
+    local scheme = ngx.req.get_headers()["x-forwarded-proto"]
 
     -- we could use the first entry (lower security), or check the contents of
     -- each of them (slow). So for now defensive, and error
@@ -530,6 +528,8 @@ end
 
 
 do
+  local var = ngx.var
+  local get_headers = ngx.req.get_headers
   local replace_dashes = require("kong.tools.string").replace_dashes
 
   function _M.get_header(ctx, name)
