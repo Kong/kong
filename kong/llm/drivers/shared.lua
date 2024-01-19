@@ -22,7 +22,7 @@ _M.upstream_url_format = {
   openai = "https://api.openai.com:443",
   anthropic = "https://api.anthropic.com:443",
   cohere = "https://api.cohere.com:443",
-  azure = "https://%s.openai.azure.com:443/deployments/%s",
+  azure = "https://%s.openai.azure.com:443/openai/deployments/%s",
 }
 
 _M.operation_map = {
