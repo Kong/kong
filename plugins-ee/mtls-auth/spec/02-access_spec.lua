@@ -933,13 +933,19 @@ for _, strategy in strategies() do
           return res.status == 404
         end)
 
-        local res = assert(proxy_ssl_client_bar:send {
-          method  = "GET",
-          path    = "/get",
-          headers = {
-            ["Host"] = "all.test"
-          }
-        })
+        -- wait until the route take effect
+        helpers.wait_until(function()
+          res = assert(proxy_ssl_client_bar:send {
+            method  = "GET",
+            path    = "/get",
+            headers = {
+              ["Host"] = "all.test"
+            }
+          })
+
+          return res.status ~= 404
+        end)
+        
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.same({ message = "No required TLS certificate was sent" }, json)
