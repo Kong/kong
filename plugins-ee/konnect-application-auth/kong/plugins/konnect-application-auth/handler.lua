@@ -317,10 +317,16 @@ local function v2_access_phase(plugin_conf)
   return application
 end
 
-local function apply_application_context(application)
+--- Apply the application context and its execution context to the kong request context
+--- @param plugin_conf table configuration of the plugin
+--- @param application table
+local function apply_application_context(plugin_conf, application)
   local app_context = application and application.application_context
   if app_context then
-    set_context(app_context)
+    local execution_context = {
+      product_version_id = plugin_conf.scope
+    }
+    set_context(app_context, execution_context)
 
     if app_context.application_id then
       kong.service.request.set_header("X-Application-ID", app_context.application_id)
@@ -385,7 +391,7 @@ function KonnectApplicationAuthHandler:access(plugin_conf)
     return kong.response.error(429, "The consumption of this api has been rate-limited. Please check the developer portal for more informations")
   end
   map_consumer_groups(application)
-  apply_application_context(application)
+  apply_application_context(plugin_conf, application)
 
 end
 

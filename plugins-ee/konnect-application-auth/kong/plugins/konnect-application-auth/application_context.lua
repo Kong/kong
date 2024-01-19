@@ -14,14 +14,18 @@ local kong = kong
 --- set_context inserts the KAA application context in the kong
 --- shared context to be reused accross plugins
 --- @param application_context table
-local function set_context(application_context)
+--- @param execution_context table
+local function set_context(application_context, execution_context)
   if not application_context then return end
+
+  local exec_context = execution_context or {}
 
   kong.ctx.shared.kaa_application_context = {
     application_id = application_context.application_id,
     portal_id = application_context.portal_id,
     developer_id = application_context.developer_id,
     organization_id = application_context.organization_id,
+    product_version_id = exec_context.product_version_id,
   }
 end
 

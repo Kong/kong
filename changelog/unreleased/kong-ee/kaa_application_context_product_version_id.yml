@@ -1,0 +1,4 @@
+message: |
+  **Konnect Application Auth**: add application_context product version id
+type: feature
+scope: Plugin

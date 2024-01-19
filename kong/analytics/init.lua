@@ -317,6 +317,7 @@ function _M:create_payload(message)
       portal_id = "",
       organization_id = "",
       developer_id = "",
+      product_version_id = "",
     },
   }
 
@@ -463,6 +464,7 @@ function _M:create_payload(message)
     app.portal_id = app_context.portal_id or ""
     app.organization_id = app_context.organization_id or ""
     app.developer_id = app_context.developer_id or ""
+    app.product_version_id = app_context.product_version_id or ""
   end
   return payload
 end

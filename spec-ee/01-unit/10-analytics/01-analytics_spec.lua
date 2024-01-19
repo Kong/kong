@@ -120,6 +120,7 @@ local request_log = {
     portal_id = "p_id",
     organization_id = "org_id",
     developer_id = "dev_id",
+    product_version_id = "pv_id",
   },
 }
 
@@ -224,6 +225,7 @@ local request_log_with_user_agent_table = {
     portal_id = "p_id",
     organization_id = "org_id",
     developer_id = "dev_id",
+    product_version_id = "pv_id",
   },
 }
 
@@ -344,6 +346,7 @@ local request_log_rate_limit = {
     portal_id = "p_id",
     organization_id = "org_id",
     developer_id = "dev_id",
+    product_version_id = "pv_id",
   },
 }
 
@@ -376,6 +379,7 @@ local function set_context(trace_bytes, request_id)
         portal_id = "p_id",
         organization_id = "org_id",
         developer_id = "dev_id",
+        product_version_id = "pv_id",
       },
     }
   }
@@ -475,6 +479,7 @@ describe("extract request log properly", function()
         portal_id = "p_id",
         organization_id = "org_id",
         developer_id = "dev_id",
+        product_version_id = "pv_id",
       },
     }
     assert.are.same(expected, payload)
@@ -547,6 +552,7 @@ describe("extract request log properly", function()
         portal_id = "p_id",
         organization_id = "org_id",
         developer_id = "dev_id",
+        product_version_id = "pv_id",
       },
     }
     assert.are.same(expected, payload)
@@ -619,6 +625,7 @@ describe("extract request log properly", function()
         portal_id = "p_id",
         organization_id = "org_id",
         developer_id = "dev_id",
+        product_version_id = "pv_id",
       },
     }
     assert.are.same(expected, payload)
@@ -706,6 +713,7 @@ describe("extract request log properly", function()
         portal_id = "p_id",
         organization_id = "org_id",
         developer_id = "dev_id",
+        product_version_id = "pv_id",
       },
     }
     assert.are.same(expected, payload)
@@ -843,6 +851,7 @@ describe("proto buffer", function()
         portal_id = "p_id",
         organization_id = "org_id",
         developer_id = "dev_id",
+        product_version_id = "pv_id",
       },
     }
     assert.are.same(expected, decoded.data[1])
@@ -894,6 +903,7 @@ describe("proto buffer", function()
         portal_id = "p_id",
         organization_id = "org_id",
         developer_id = "dev_id",
+        product_version_id = "pv_id",
       },
     }
     assert.are.same(default, decoded)

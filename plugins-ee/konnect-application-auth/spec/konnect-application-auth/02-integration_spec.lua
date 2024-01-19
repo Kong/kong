@@ -222,6 +222,7 @@ for _, strategy in helpers.each_strategy() do
               kong.response.set_header("x-dev-id", app_ctx and app_ctx.developer_id or "nil")
               kong.response.set_header("x-org-id", app_ctx and app_ctx.organization_id or "nil")
               kong.response.set_header("x-portal-id", app_ctx and app_ctx.portal_id or "nil")
+              kong.response.set_header("x-product-version-id", app_ctx and app_ctx.product_version_id or "nil")
             ]]}
           }
       }
@@ -490,6 +491,7 @@ for _, strategy in helpers.each_strategy() do
         assert.are.same("dev_id", res.headers["x-dev-id"])
         assert.are.same("org_id", res.headers["x-org-id"])
         assert.are.same("portal_id", res.headers["x-portal-id"])
+        assert.are.same(scope, res.headers["x-product-version-id"])
 
         -- proxyied headers
         assert.are.same("app_id", json.headers["x-application-id"])
@@ -513,6 +515,7 @@ for _, strategy in helpers.each_strategy() do
         assert.are.same("nil", res.headers["x-dev-id"])
         assert.are.same("nil", res.headers["x-org-id"])
         assert.are.same("nil", res.headers["x-portal-id"])
+        assert.are.same("nil", res.headers["x-product-version-id"])
 
         -- proxyied headers
         assert.are.same(nil, json.headers["x-application-id"])
