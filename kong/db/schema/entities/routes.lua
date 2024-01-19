@@ -4,18 +4,37 @@ local deprecation = require("kong.deprecation")
 
 local validate_route
 do
+  local ipairs = ipairs
+  local tonumber = tonumber
+  local re_match = ngx.re.match
+
   local get_schema = require("kong.router.atc").schema
   local get_expression = require("kong.router.compat").get_expression
   local transform_expression = require("kong.router.expressions").transform_expression
+
+  local HTTP_PATH_SEGMENTS_PREFIX = "http.path.segments."
+  local HTTP_PATH_SEGMENTS_SUFFIX_REG = [[^(0|[1-9]\d*)(_([1-9]\d*))?$]]
 
   -- works with both `traditional_compatiable` and `expressions` routes`
   validate_route = function(entity)
     local schema = get_schema(entity.protocols)
     local exp = transform_expression(entity) or get_expression(entity)
 
-    local ok, err = router.validate(schema, exp)
-    if not ok then
+    local fields, err = router.validate(schema, exp)
+    if not fields then
       return nil, "Router Expression failed validation: " .. err
+    end
+
+    for _, f in ipairs(fields) do
+      if f:find(HTTP_PATH_SEGMENTS_PREFIX, 1, true) then
+        local m = re_match(f:sub(#HTTP_PATH_SEGMENTS_PREFIX + 1),
+                           HTTP_PATH_SEGMENTS_SUFFIX_REG, "jo")
+
+        if not m or (m[2] and tonumber(m[1]) >= tonumber(m[3])) then
+          return nil, "Router Expression failed validation: " ..
+                      "illformed http.path.segments.* field"
+        end
+      end
     end
 
     return true
