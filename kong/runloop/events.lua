@@ -320,6 +320,20 @@ local function crud_consumers_handler(data)
 end
 
 
+local function crud_groups_handler(data)
+  workspaces.set_workspace(data.workspace)
+
+  local old_entity = data.old_entity
+  if old_entity then
+    kong_cache:invalidate(db.groups:cache_key(old_entity.id))
+  end
+
+  local entity = data.entity
+  if entity then
+    kong_cache:invalidate(db.groups:cache_key(entity.id))
+  end
+end
+
 local function crud_wasm_handler(data, schema_name)
   if not wasm.enabled() then
     return
@@ -414,6 +428,7 @@ local LOCAL_HANDLERS = {
 
   -- ca certificate store caches invalidations
   { "crud"    , "ca_certificates" , crud_ca_certificates_handler },
+  { "crud"    , "groups", crud_groups_handler },
 }
 
 

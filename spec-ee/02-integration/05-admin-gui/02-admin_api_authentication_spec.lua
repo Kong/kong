@@ -75,7 +75,7 @@ local function authentication(client, username, username2, password, retry, meth
     headers = {
       ["Authorization"] = "Basic " .. ngx.encode_base64(username .. ":"
         .. password),
-      ["Kong-Admin-User"] = username2,
+      ["Kong-Admin-User"] = username,
     }
   })
 
@@ -991,6 +991,16 @@ for _, strategy in helpers.each_strategy() do
             local cookie = get_admin_cookie_basic_auth(client, super_admin.username, skeleton_key)
             local res = client:send {
               method = "GET",
+              path = "/userinfo",
+              headers = {
+                ["cookie"] = cookie,
+                ["Kong-Admin-User"] = super_admin.username,
+              }
+            }
+            assert.res_status(200, res)
+
+            local res = client:send {
+              method = "GET",
               path = "/services/default-example.test",
               headers = {
                 ["cookie"] = cookie,
@@ -998,7 +1008,7 @@ for _, strategy in helpers.each_strategy() do
               }
             }
 
-            assert.res_status(403, res)
+            assert.res_status(200, res)
           end)
 
           it("groups with roles in another workspace are applied", function()
@@ -1054,8 +1064,11 @@ for _, strategy in helpers.each_strategy() do
               }))
             end
 
+            local res = req("/userinfo")
+            assert.res_status(200, res)
+            ngx.sleep(0.5)
             -- can only access entities in their workspace
-            local res = req("/default/kong")
+            res = req("/default/kong")
             assert.res_status(200, res)
 
             res = req("/ws2/kong")
@@ -1094,6 +1107,57 @@ for _, strategy in helpers.each_strategy() do
             -- but "admin" role from group-4 is applied, meaning no access to rbac
             res = req("/rbac/roles")
             assert.res_status(rbac_mode ~= "entity" and 403 or 200, res)
+          end)
+
+          it("remove the group `test-group-1`", function()
+            local super_admin_cookie = get_admin_cookie_basic_auth(client,
+              super_admin.username,
+              skeleton_key)
+
+            local m_admin_cookie = get_admin_cookie_basic_auth(client,
+              multiple_groups_admin.username,
+              skeleton_key)
+
+            local req = function(path, cookie, username)
+              return assert(client:send({
+                method = "GET",
+                path = path,
+                headers = {
+                  ["cookie"] = cookie,
+                  ["Kong-Admin-User"] = username,
+                }
+              }))
+            end
+
+            local res = req("/userinfo", super_admin_cookie, super_admin.username)
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.same({ "test-group-1", "test-group-3" }, json.groups)
+
+
+            -- user can do things super-admins can from group-1
+            local res = req("/services", super_admin_cookie, super_admin.username)
+            assert.res_status(200, res)
+
+            local deleteReq = function(group)
+              return assert(client:send({
+                method = "DELETE",
+                path = "/groups/" .. group,
+                headers = {
+                  ["cookie"] = m_admin_cookie,
+                  ["Kong-Admin-User"] = multiple_groups_admin.username,
+                }
+              }))
+            end
+
+            local res = req("/userinfo", m_admin_cookie, multiple_groups_admin.username)
+            assert.res_status(200, res)
+            res = deleteReq("test-group-1")
+            assert.res_status(204, res)
+            ngx.sleep(0.5)
+            -- should return 403
+            res = req("/services", super_admin_cookie, super_admin.username)
+            assert.equal(rbac_mode ~= "entity" and 403 or 200, res.status)
           end)
         end)
       end)
@@ -1473,7 +1537,7 @@ for _, strategy in helpers.each_strategy() do
 
       describe("attempt login after CRUD", function()
         lazy_setup(function()
-          helpers.kong_exec("migrations reset -y")
+          helpers.kong_exec("migrations reset --yes")
           helpers.kong_exec("migrations bootstrap", { password = "kong" })
 
           assert(helpers.start_kong({

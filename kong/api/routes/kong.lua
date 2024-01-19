@@ -17,6 +17,7 @@ local Schema = require "kong.db.schema"
 local Errors = require "kong.db.errors"
 local process = require "ngx.process"
 local wasm = require "kong.runloop.wasm"
+local null = ngx.null
 -- Add JWT decoder to decode id_token
 local jwt_decoder = require "kong.plugins.jwt.jwt_parser"
 
@@ -94,9 +95,13 @@ local function ws_and_rbac_helper(self)
     },
   }
 
+  --invalidate rbac_user_groups cache
+  local cache_key = kong.db.rbac_user_groups:cache_key(ngx.ctx.rbac.user.id)
+  kong.cache:invalidate(cache_key)
+
   -- get roles across all workspaces
-  local roles, err = rbac.get_user_roles(kong.db, ngx.ctx.rbac.user, ngx.null)
-  local group_roles = rbac.get_groups_roles(kong.db, ngx.ctx.authenticated_groups)
+  local roles, err = rbac.get_user_roles(kong.db, ngx.ctx.rbac.user, null)
+  local group_roles = rbac.get_groups_roles(kong.db, ngx.ctx.rbac.user, null)
   roles = rbac.merge_roles(roles, group_roles)
   ee_api.attach_workspaces_roles(self, roles)
 
@@ -595,24 +600,27 @@ return {
           end
 
           admin = auth_plugin_helpers.validate_admin_and_attach_ctx(
-                    self,
-                    by_username_ignore_case,
-                    admin_claim_value,
-                    admin_by == "custom_id" and admin_claim_value or nil,
-                    admin_auto_create,
-                    true,
-                    not (gui_auth_conf_origin and gui_auth_conf_origin.admin_auto_create_rbac_token_disabled)
-                  )
+            self,
+            by_username_ignore_case,
+            admin_claim_value,
+            admin_by == "custom_id" and admin_claim_value or nil,
+            admin_auto_create,
+            true,
+            not (gui_auth_conf_origin and gui_auth_conf_origin.admin_auto_create_rbac_token_disabled)
+          )
 
-          -- role mapping
+          -- role mapping or group mapping
           local role_claim = gui_auth_conf and
                              gui_auth_conf.authenticated_groups_claim and
                              gui_auth_conf.authenticated_groups_claim[1]
           -- use claims in id_token or acces_token or userinfo to map groups here
           local role_claim_values = claims and claims[role_claim] or ngx.ctx.authenticated_groups
+
           if role_claim_values then
+            auth_plugin_helpers.map_admin_groups_by_idp_claim(admin, role_claim_values)
             auth_plugin_helpers.map_admin_roles_by_idp_claim(admin, role_claim_values)
           elseif role_claim then
+            auth_plugin_helpers.delete_admin_groups_or_roles(admin)
             -- only logs an error if kong-ee can not find the claims
             ngx.log(ERR, role_claim .. " not found from the id_token or access_token or userinfo claims.", gui_auth)
           end
@@ -622,6 +630,7 @@ return {
         if gui_auth == "ldap-auth-advanced" then
           -- since the OIDC create if admin not exists improvement,
           -- plugin not longer handle conusmer mapping.
+          auth_plugin_helpers.map_admin_groups_by_idp_claim(admin, ngx.ctx.authenticated_groups)
           auth_plugin_helpers.set_admin_consumer_to_ctx(admin)
         end
 

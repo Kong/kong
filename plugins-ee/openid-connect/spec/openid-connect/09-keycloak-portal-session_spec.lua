@@ -16,15 +16,13 @@ local fmt                 = string.format
 local cookie_helper       = require "spec-ee.fixtures.cookie_helper"
 local clear_license_env   = require("spec-ee.helpers").clear_license_env
 local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
+local keycloak_api              = require "spec-ee.fixtures.keycloak_api"
 
 local portal_client
 local PLUGIN_NAME         = "openid-connect"
-local KEYCLOAK_HOST       = (os.getenv("KONG_SPEC_TEST_KEYCLOAK_HOST") or "keycloak") .. ":" .. (os.getenv("KONG_SPEC_TEST_KEYCLOAK_PORT_8080") or "8080")
-local ISSUER_URL          = fmt("http://%s/realms/demo/", KEYCLOAK_HOST)
+local cloak_settings      = keycloak_api.cloak_settings()
 local USERNAME            = "john.doe@konghq.com"
 local PASSWORD            = "doe"
-local KONG_CLIENT_ID      = "kong-client-secret"
-local KONG_CLIENT_SECRET  = "38beb963-2786-42b8-8e14-a5f391b4ba93"
 local KONG_HOST           = "localhost"
 
 local PORTAL_SESSION_CONF = [[
@@ -47,10 +45,10 @@ local function auth_conf(workspace)
       .. redirect_uri ..
       [["],
       "client_secret": ["]]
-      .. KONG_CLIENT_SECRET ..
+      .. cloak_settings.client_secret ..
       [["],
       "issuer": "]]
-      .. ISSUER_URL ..
+      .. cloak_settings.issuer ..
       [[",
       "logout_methods": [
           "GET",
@@ -79,7 +77,7 @@ local function auth_conf(workspace)
           "session"
       ],
       "client_id": ["]]
-      .. KONG_CLIENT_ID ..
+      .. cloak_settings.client_id ..
       [["],
       "ssl_verify": false,
       "consumer_claim": [
@@ -138,7 +136,7 @@ local function authentication(workspace)
     headers = {
       -- impersonate as browser
       ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", -- luacheck: ignore
-      ["Host"] = KEYCLOAK_HOST,
+      ["Host"] = cloak_settings.host,
     }
   })
   assert.is_nil(err)
@@ -162,7 +160,7 @@ local function authentication(workspace)
     headers = {
       -- impersonate as browser
       ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", --luacheck: ignore
-      ["Host"] = KEYCLOAK_HOST,
+      ["Host"] = cloak_settings.host,
       -- due to form_data
       ["Content-Type"] = "application/x-www-form-urlencoded",
       Cookie = keycloak_cookie_jar:to_header(),

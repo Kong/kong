@@ -69,6 +69,7 @@ c.featureset = {
       ["rbac_roles"] = true,
       ["rbac_user_roles"] = true,
       ["rbac_users"] = true,
+      ["rbac_user_groups"] = true,
     },
   },
   free = {
@@ -107,6 +108,7 @@ c.featureset = {
       ["rbac_roles"] = true,
       ["rbac_user_roles"] = true,
       ["rbac_users"] = true,
+      ["rbac_user_groups"] = true,
     },
   }
 }

@@ -1,0 +1,4 @@
+message: Adding new features When ldap or oidc is enabled and roles are mapped by groups, the Admin API can be accessed using rbac_token.
+type: feature
+scope: Core
+

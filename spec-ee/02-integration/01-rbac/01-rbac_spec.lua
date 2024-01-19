@@ -1123,37 +1123,5 @@ for _, strategy in spec_helpers.each_strategy() do
         assert(db.rbac_role_entities:cache_key(entity))
       end)
     end)
-    
-    describe("get_groups_roles", function ()
-      
-      teardown(function()
-        db:truncate()
-      end)
-      
-      it("retrieve groups roles with the group name that type is number", function ()
-        local foo = bp.workspaces:insert { name = "foo" }
-        local role = bp.rbac_roles:insert()
-        kong.db.rbac_role_endpoints:insert({
-          role = { id = role.id },
-          workspace = "foo",
-          actions = 0x01,
-          endpoint = "/foo"
-        })
-        db.groups:insert { name = "exist_group_name" }
-        local group = db.groups:insert { name = "202390" }
-        assert(db.group_rbac_roles:insert { group = group, rbac_role = role, workspace = { id = foo.id }, })
-        local relationship_objs = rbac.get_groups_roles(db, { "exist_group_name", 202390 })
-        assert.equal(1, #relationship_objs)
-        assert.same(relationship_objs[1].name, role.name)
-        
-        local relationship_objs = rbac.get_groups_roles(db, { nil, "exist_group_name", 202390 })
-        assert.equal(1, #relationship_objs)
-        assert.same(relationship_objs[1].name, role.name)
-        
-        local relationship_objs = rbac.get_groups_roles(db, { "not_exist_group", 202390 })
-        assert.equal(1, #relationship_objs)
-        assert.same(relationship_objs[1].name, role.name)
-      end)
-    end)
   end)
 end

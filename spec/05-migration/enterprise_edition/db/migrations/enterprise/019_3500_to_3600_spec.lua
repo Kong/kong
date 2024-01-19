@@ -16,6 +16,8 @@ local WS_ROLES = {
 describe("database migration", function()
   uh.all_phases("has created the expected new columns", function()
     assert.table_has_column("audit_objects", "removed_from_entity", "text")
+    assert.table_has_column("rbac_user_groups", "user_id", "uuid")
+    assert.table_has_column("rbac_user_groups", "group_id", "uuid")
   end)
   uh.new_after_finish("the default role `admin` should has missing endpoints", function()
     local db = uh.get_database()

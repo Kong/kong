@@ -453,6 +453,29 @@
     "groups" : [ "default:super-admin", "/employees", "/test group" ]
   },
   {
+    "id" : "99fa9873-cad4-4637-9adf-d9fed13c75bf",
+    "createdTimestamp" : 1628676021583,
+    "username" : "sam",
+    "enabled" : true,
+    "totp" : false,
+    "emailVerified" : true,
+    "firstName" : "Sam",
+    "lastName" : "stark",
+    "email" : "sam.stark@konghq.com",
+    "credentials" : [ {
+      "id" : "90218019-13d1-4bb1-99c2-1a08bb596d36",
+      "type" : "password",
+      "createdDate" : 1628676035270,
+      "secretData" : "{\"value\":\"CsTBttTniJG3uzuFtaJXKq5ezKa/UaBXiuP2nFizaNdVlzwDMJqzKudtcSR/BI7wZYl0QslYg20v3guqAwV2ig==\",\"salt\":\"Q+lfM8ILDHw+mSMLEGXVPQ==\",\"additionalParameters\":{}}",
+      "credentialData" : "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
+    }],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "default-roles-demo" ],
+    "notBefore" : 0,
+    "groups" : []
+  },
+  {
     "id" : "668be670-c0b7-4286-936d-83e60dc5ac06",
     "createdTimestamp" : 1628675906320,
     "username" : "service-account-service",

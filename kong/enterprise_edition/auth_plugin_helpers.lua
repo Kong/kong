@@ -97,6 +97,47 @@ function _M.retrieve_credentials(authorization_header_value, header_type)
   return username, password
 end
 
+function _M.delete_admin_groups_or_roles(admin)
+  -- delete rbac_user_groups
+  local cache_key = kong.db.rbac_user_groups:cache_key(admin.rbac_user.id)
+  kong.cache:invalidate(cache_key)
+  for group, _ in kong.db.rbac_user_groups:each_for_user({ id = admin.rbac_user.id }) do
+    kong.db.rbac_user_groups:delete(group)
+  end
+
+  -- delete rbac_user_roles
+  local cache_key = kong.db.rbac_user_roles:cache_key(admin.rbac_user.id)
+  kong.cache:invalidate(cache_key)
+
+  for rbac_user_role, _ in kong.db.rbac_user_roles:each_for_user({ id = admin.rbac_user.id }) do
+    kong.db.rbac_user_roles:delete(rbac_user_role)
+  end
+
+end
+
+function _M.map_admin_groups_by_idp_claim(admin, claim_values)
+  -- first, delete all groups and all roles of the admin
+  _M.delete_admin_groups_or_roles(admin)
+  --second, always insert rbac_user_groups
+  for _, group_name in ipairs(claim_values or {}) do
+    if group_name and (type(group_name) == "string" or type(group_name) == "number") then
+
+      local group = kong.db.groups:select_by_name(tostring(group_name))
+      if not group then
+        kong.log.warn(string.format("group '%s' does not exist", group_name))
+        goto continue
+      end
+
+      local _, err = kong.db.rbac_user_groups:insert({ user = admin.rbac_user, group = group })
+      if err then
+        kong.log.err("failed insert rbac_user_groups: user = ", admin.rbac_user.id, ", group = ", group_name,
+          ", err: ", err)
+      end
+    end
+    ::continue::
+  end
+end
+
 function _M.map_admin_roles_by_idp_claim(admin, claim_values)
   local delimiter = ":"
 
@@ -135,7 +176,6 @@ function _M.map_admin_roles_by_idp_claim(admin, claim_values)
   end
   
   local existing_roles, _ = rbac.get_user_roles(kong.db, admin.rbac_user, ngx.null)
-
   -- assign roles to admin by each ws
   for ws_id, ws_roles in pairs(roles_by_ws) do
     -- Todo: rbac.set_user_role improvment.

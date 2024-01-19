@@ -481,6 +481,7 @@ build = {
     ["kong.db.schema.entities.event_hooks_subschemas"] = "kong/db/schema/entities/event_hooks_subschemas.lua",
     ["kong.db.schema.entities.parameters"] = "kong/db/schema/entities/parameters.lua",
     ["kong.db.schema.entities.filter_chains"] = "kong/db/schema/entities/filter_chains.lua",
+    ["kong.db.schema.entities.rbac_user_groups"] = "kong/db/schema/entities/rbac_user_groups.lua",
 
     -- [[XXX EE
     ["kong.db.schema.entities.licenses"] = "kong/db/schema/entities/licenses.lua",

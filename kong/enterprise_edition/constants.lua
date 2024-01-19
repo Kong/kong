@@ -39,6 +39,7 @@ return {
     { "consumer_groups", ahead_of = "plugins" },
     "consumer_group_plugins",
     "consumer_group_consumers",
+    "rbac_user_groups",
   },
 
   -- this list is joined into the DICTS list in kong.constants

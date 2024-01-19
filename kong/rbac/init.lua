@@ -463,8 +463,8 @@ end
 _M.get_role_endpoints = get_role_endpoints
 
 
-local function retrieve_group(dao, name)
-  local entity, err = dao:select_by_name(name, { skip_rbac = true })
+local function retrieve_group(dao, id)
+  local entity, err = dao:select({ id = id }, { skip_rbac = true })
 
   if err then
     return nil, err
@@ -560,31 +560,42 @@ local function get_user_roles(db, user, workspace)
 end
 _M.get_user_roles = get_user_roles
 
+local function retrieve_user_groups(rbac_user)
+  local rbac_user_groups = {}
+  for rbac_user_group, _ in kong.db.rbac_user_groups:each_for_user({ id = rbac_user.id }) do
+    table.insert(rbac_user_groups, rbac_user_group)
+  end
 
-function _M.get_groups_roles(db, groups)
-  if not groups then
-    return nil
+  return rbac_user_groups
+end
+
+function _M.get_groups_roles(db, rbac_user, workspace)
+  assert(workspace == null or (type(workspace) == "string" and workspace ~= "*"),
+    "workspace must be an id (string uuid) or ngx.null to mean global")
+
+  if type(workspace) == "string" and not utils.is_valid_uuid(workspace) then
+    local ws, err = workspaces.select_workspace_by_name_with_cache(workspace)
+    if not ws then
+      return nil, err
+    end
+    workspace = ws.id
   end
 
   local cache = kong.cache
   local relationship_objs = {}
 
-  for _, group_name in pairs(groups) do
-    if type(group_name) == "number" then
-      group_name = tostring(group_name)
-    end
-    local group, err = select_from_cache(db.groups, group_name, retrieve_group)
-    if err then
-      kong.log.err("err retrieving group by name: ", group_name, err)
-      return nil, err
-    end
+  local cache_key = db.rbac_user_groups:cache_key(rbac_user.id)
+  local rbac_user_groups = kong.cache:get(cache_key, nil, retrieve_user_groups, rbac_user)
+  for _, rbac_user_group in ipairs(rbac_user_groups or {}) do
+    local group = rbac_user_group and rbac_user_group.group
 
+    group = select_from_cache(db.groups, group.id, retrieve_group)
     if group then
 
       local relationship_cache_key = db.group_rbac_roles:cache_key(group.id)
       local relationship_ids, err = cache:get(relationship_cache_key, nil,
                                               retrieve_group_roles_ids, db,
-                                              group.id)
+        group.id)
 
       if err then
         kong.log.err("err retrieving group_rbac_roles for group: ", group.id,
@@ -1549,7 +1560,7 @@ load_rbac_ctx = function(rbac_user)
   local _roles = {}
   local _entities_perms = {}
   local _endpoints_perms = {}
-  local group_roles, err = _M.get_groups_roles(kong.db, ngx.ctx.authenticated_groups)
+  local group_roles, err = _M.get_groups_roles(kong.db, user, null)
   if err then
     kong.log.err("error getting groups roles", err)
     return kong.response.exit(500, { message = "An unexpected error occurred" })
@@ -1809,7 +1820,7 @@ function _M.find_all_ws_for_rbac_user(rbac_user, workspace)
     return nil, err
   end
 
-  local group_roles, err = _M.get_groups_roles(kong.db, ngx.ctx.authenticated_groups)
+  local group_roles, err = _M.get_groups_roles(kong.db, rbac_user, workspace)
 
   if err then
     return nil, err

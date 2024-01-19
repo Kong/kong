@@ -49,6 +49,12 @@ return {
         -- Do nothing, accept existing state
       END;
       $$;
+
+      CREATE TABLE IF NOT EXISTS rbac_user_groups(
+        user_id uuid NOT NULL REFERENCES rbac_users(id) ON DELETE CASCADE,
+        group_id uuid NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+        PRIMARY KEY(user_id, group_id)
+      );
     ]],
     teardown = function(connector)
       -- retrieve all workspace
