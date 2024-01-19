@@ -122,6 +122,9 @@ local request_log = {
     developer_id = "dev_id",
     product_version_id = "pv_id",
   },
+  consumer_groups = {
+    { name = "c_group1" },
+  },
 }
 
 local request_log_with_user_agent_table = {
@@ -226,6 +229,9 @@ local request_log_with_user_agent_table = {
     organization_id = "org_id",
     developer_id = "dev_id",
     product_version_id = "pv_id",
+  },
+  consumer_groups = {
+    { id = "1" },
   },
 }
 
@@ -348,6 +354,9 @@ local request_log_rate_limit = {
     developer_id = "dev_id",
     product_version_id = "pv_id",
   },
+  consumer_groups = {
+    { id = "1" },
+  },
 }
 
 
@@ -382,6 +391,14 @@ local function set_context(trace_bytes, request_id)
         product_version_id = "pv_id",
       },
     }
+  }
+
+  _G.kong.client = {
+    get_consumer_groups = function()
+      return {
+        { id = "1" },
+      }
+    end
   }
 
   -- make sure to reload the module
@@ -481,6 +498,9 @@ describe("extract request log properly", function()
         developer_id = "dev_id",
         product_version_id = "pv_id",
       },
+      consumer_groups = {
+        { id = "1" },
+      },
     }
     assert.are.same(expected, payload)
   end)
@@ -554,6 +574,9 @@ describe("extract request log properly", function()
         developer_id = "dev_id",
         product_version_id = "pv_id",
       },
+      consumer_groups = {
+        { id = "1" },
+      },
     }
     assert.are.same(expected, payload)
   end)
@@ -626,6 +649,9 @@ describe("extract request log properly", function()
         organization_id = "org_id",
         developer_id = "dev_id",
         product_version_id = "pv_id",
+      },
+      consumer_groups = {
+        { id = "1" },
       },
     }
     assert.are.same(expected, payload)
@@ -714,6 +740,9 @@ describe("extract request log properly", function()
         organization_id = "org_id",
         developer_id = "dev_id",
         product_version_id = "pv_id",
+      },
+      consumer_groups = {
+        { id = "1" },
       },
     }
     assert.are.same(expected, payload)
@@ -853,6 +882,9 @@ describe("proto buffer", function()
         developer_id = "dev_id",
         product_version_id = "pv_id",
       },
+      consumer_groups = {
+        { id = "1" },
+      },
     }
     assert.are.same(expected, decoded.data[1])
   end)
@@ -904,6 +936,9 @@ describe("proto buffer", function()
         organization_id = "org_id",
         developer_id = "dev_id",
         product_version_id = "pv_id",
+      },
+      consumer_groups = {
+        { id = "1" },
       },
     }
     assert.are.same(default, decoded)

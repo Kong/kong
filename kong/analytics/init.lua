@@ -319,6 +319,7 @@ function _M:create_payload(message)
       developer_id = "",
       product_version_id = "",
     },
+    consumer_groups = {},
   }
 
   payload.client_ip = message.client_ip
@@ -465,6 +466,11 @@ function _M:create_payload(message)
     app.organization_id = app_context.organization_id or ""
     app.developer_id = app_context.developer_id or ""
     app.product_version_id = app_context.product_version_id or ""
+  end
+
+  local consumer_groups = kong.client.get_consumer_groups()
+  for _, v in ipairs(consumer_groups or {}) do
+    table_insert(payload.consumer_groups, { id = v.id })
   end
   return payload
 end
