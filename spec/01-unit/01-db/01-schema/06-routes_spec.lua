@@ -1580,49 +1580,28 @@ describe("routes schema (flavor = expressions)", function()
       id             = a_valid_uuid,
       name           = "my_route",
       protocols      = { "http" },
-      expression     = [[http.path.segments. == "foo"]],
       priority       = 100,
       service        = { id = another_uuid },
     }
 
-    local route = Routes:process_auto_fields(r, "insert")
-    local ok, errs = Routes:validate_insert(route)
-    assert.falsy(ok)
-    assert.truthy(errs["@entity"])
+    local wrong_expressions = {
+      [[http.path.segments.       == "foo"]],
+      [[http.path.segments.abc    == "foo"]],
+      [[http.path.segments.a_c    == "foo"]],
+      [[http.path.segments.1_2_3  == "foo"]],
+      [[http.path.segments.1_     == "foo"]],
+      [[http.path.segments._1     == "foo"]],
+      [[http.path.segments.2_1    == "foo"]],
+      [[http.path.segments.1_1    == "foo"]],
+    }
 
-    r.expression = [[http.path.segments.abc == "foo"]]
+    for _, exp in ipairs(wrong_expressions) do
+      r.expression = exp
 
-    route = Routes:process_auto_fields(r, "insert")
-    local ok, errs = Routes:validate_insert(route)
-    assert.falsy(ok)
-    assert.truthy(errs["@entity"])
-
-    r.expression = [[http.path.segments.1_2_3 == "foo"]]
-
-    route = Routes:process_auto_fields(r, "insert")
-    local ok, errs = Routes:validate_insert(route)
-    assert.falsy(ok)
-    assert.truthy(errs["@entity"])
-
-    r.expression = [[http.path.segments.1_ == "foo"]]
-
-    route = Routes:process_auto_fields(r, "insert")
-    local ok, errs = Routes:validate_insert(route)
-    assert.falsy(ok)
-    assert.truthy(errs["@entity"])
-
-    r.expression = [[http.path.segments.2_1 == "foo"]]
-
-    route = Routes:process_auto_fields(r, "insert")
-    local ok, errs = Routes:validate_insert(route)
-    assert.falsy(ok)
-    assert.truthy(errs["@entity"])
-
-    r.expression = [[http.path.segments.1_1 == "foo"]]
-
-    route = Routes:process_auto_fields(r, "insert")
-    local ok, errs = Routes:validate_insert(route)
-    assert.falsy(ok)
-    assert.truthy(errs["@entity"])
+      local route = Routes:process_auto_fields(r, "insert")
+      local ok, errs = Routes:validate_insert(route)
+      assert.falsy(ok)
+      assert.truthy(errs["@entity"])
+    end
   end)
 end)
