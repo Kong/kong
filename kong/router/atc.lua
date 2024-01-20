@@ -56,35 +56,6 @@ local CACHED_SCHEMA
 local HTTP_SCHEMA
 local STREAM_SCHEMA
 do
-  local HTTP_FIELDS = {
-
-    ["String"] = {"net.protocol", "tls.sni",
-                  "http.method", "http.host",
-                  "http.path",
-                  "http.path.segments.*",
-                  "http.headers.*",
-                  "http.queries.*",
-                 },
-
-    ["Int"]    = {"net.src.port", "net.dst.port",
-                 },
-
-    ["IpAddr"] = {"net.src.ip", "net.dst.ip",
-                 },
-  }
-
-  local STREAM_FIELDS = {
-
-    ["String"] = {"net.protocol", "tls.sni",
-                 },
-
-    ["Int"]    = {"net.src.port", "net.dst.port",
-                 },
-
-    ["IpAddr"] = {"net.src.ip", "net.dst.ip",
-                 },
-  }
-
   local function generate_schema(fields)
     local s = schema.new()
 
@@ -98,8 +69,8 @@ do
   end
 
   -- used by validation
-  HTTP_SCHEMA   = generate_schema(HTTP_FIELDS)
-  STREAM_SCHEMA = generate_schema(STREAM_FIELDS)
+  HTTP_SCHEMA   = generate_schema(fields.HTTP_FIELDS)
+  STREAM_SCHEMA = generate_schema(fields.STREAM_FIELDS)
 
   -- used by running router
   CACHED_SCHEMA = is_http and HTTP_SCHEMA or STREAM_SCHEMA

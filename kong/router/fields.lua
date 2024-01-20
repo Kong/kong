@@ -23,6 +23,37 @@ local HTTP_HEADERS_PREFIX = "http.headers."
 local HTTP_QUERIES_PREFIX = "http.queries."
 
 
+local HTTP_FIELDS = {
+
+  ["String"] = {"net.protocol", "tls.sni",
+                "http.method", "http.host",
+                "http.path",
+                "http.path.segments.*",
+                "http.headers.*",
+                "http.queries.*",
+               },
+
+  ["Int"]    = {"net.src.port", "net.dst.port",
+               },
+
+  ["IpAddr"] = {"net.src.ip", "net.dst.ip",
+               },
+}
+
+
+local STREAM_FIELDS = {
+
+  ["String"] = {"net.protocol", "tls.sni",
+               },
+
+  ["Int"]    = {"net.src.port", "net.dst.port",
+               },
+
+  ["IpAddr"] = {"net.src.ip", "net.dst.ip",
+               },
+}
+
+
 local FIELDS_FUNCS = {
     -- http.*
 
@@ -318,6 +349,10 @@ end -- is_http
 
 local _M = {}
 local _MT = { __index = _M, }
+
+
+_M.HTTP_FIELDS = HTTP_FIELDS
+_M.STREAM_FIELDS = STREAM_FIELDS
 
 
 function _M.new(fields)
