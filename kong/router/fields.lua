@@ -208,24 +208,32 @@ if is_http then
 
 
   lazy_generate_func = function(funcs, field)
-  end
+    local f = funcs[field]
+    if f then
+      return f
+    end
 
-
-  setmetatable(FIELDS_FUNCS, {
-  __index = function(_, field)
     local prefix = field:sub(1, PREFIX_LEN)
 
     if prefix == HTTP_HEADERS_PREFIX then
-      return function(params)
+      local name = field:sub(PREFIX_LEN + 1)
+
+      f = function(params)
         if not params.headers then
           params.headers = get_http_params(get_headers, "headers", "lua_max_req_headers")
         end
 
-        return params.headers[field:sub(PREFIX_LEN + 1)]
+        return params.headers[name]
       end
 
-    elseif prefix == HTTP_QUERIES_PREFIX then
-      return function(params)
+      funcs[field] = f
+      return f
+    end -- if prefix == HTTP_HEADERS_PREFIX
+
+    if prefix == HTTP_QUERIES_PREFIX then
+      local name = field:sub(PREFIX_LEN + 1)
+
+      f = function(params)
         if not params.queries then
           params.queries = get_http_params(get_uri_args, "queries", "lua_max_uri_args")
         end
@@ -233,7 +241,17 @@ if is_http then
         return params.queries[field:sub(PREFIX_LEN + 1)]
       end
 
-    elseif field:sub(1, HTTP_SEGMENTS_PREFIX_LEN) == HTTP_SEGMENTS_PREFIX then
+      funcs[field] = f
+      return f
+    end -- if prefix == HTTP_HEADERS_PREFIX
+
+  end
+
+
+  setmetatable(FIELDS_FUNCS, {
+  __index = function(_, field)
+
+    if field:sub(1, HTTP_SEGMENTS_PREFIX_LEN) == HTTP_SEGMENTS_PREFIX then
       return function(params)
         if not params.segments then
           HTTP_SEGMENTS_REG_CTX.pos = 2 -- reset ctx, skip first '/'
