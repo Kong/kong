@@ -39,7 +39,7 @@ dependencies = {
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-acme == 0.12.0",
   "lua-resty-session == 4.0.5",
-  "lua-resty-timer-ng == 0.2.5",
+  "lua-resty-timer-ng == 0.2.6",
   "lpeg == 1.1.0",
   "lua-resty-ljsonschema == 1.1.6-2",
 }
@@ -561,6 +561,18 @@ build = {
     ["kong.plugins.opentelemetry.schema"]  = "kong/plugins/opentelemetry/schema.lua",
     ["kong.plugins.opentelemetry.proto"]  = "kong/plugins/opentelemetry/proto.lua",
     ["kong.plugins.opentelemetry.otlp"]  = "kong/plugins/opentelemetry/otlp.lua",
+
+    ["kong.plugins.ai-proxy.handler"] = "kong/plugins/ai-proxy/handler.lua",
+    ["kong.plugins.ai-proxy.schema"] = "kong/plugins/ai-proxy/schema.lua",
+
+    ["kong.llm"] = "kong/llm/init.lua",
+    ["kong.llm.drivers.shared"] = "kong/llm/drivers/shared.lua",
+    ["kong.llm.drivers.openai"] = "kong/llm/drivers/openai.lua",
+    ["kong.llm.drivers.azure"] = "kong/llm/drivers/azure.lua",
+    ["kong.llm.drivers.cohere"] = "kong/llm/drivers/cohere.lua",
+    ["kong.llm.drivers.anthropic"] = "kong/llm/drivers/anthropic.lua",
+    ["kong.llm.drivers.mistral"] = "kong/llm/drivers/mistral.lua",
+    ["kong.llm.drivers.llama2"] = "kong/llm/drivers/llama2.lua",
 
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
