@@ -1,7 +1,3 @@
-local _M = {}
-local _MT = { __index = _M, }
-
-
 local buffer = require("string.buffer")
 
 
@@ -225,7 +221,7 @@ if is_http then
         end
 
         return params.headers[name]
-      end
+      end -- f
 
       funcs[field] = f
       return f
@@ -241,8 +237,8 @@ if is_http then
           params.queries = get_http_params(get_uri_args, "queries", "lua_max_uri_args")
         end
 
-        return params.queries[field:sub(PREFIX_LEN + 1)]
-      end
+        return params.queries[name]
+      end -- f
 
       funcs[field] = f
       return f
@@ -308,7 +304,7 @@ if is_http then
         segments[range] = value
 
         return value
-      end
+      end -- f
 
       funcs[field] = f
       return f
@@ -318,6 +314,10 @@ if is_http then
   end
 
 end -- is_http
+
+
+local _M = {}
+local _MT = { __index = _M, }
 
 
 function _M.new(fields)
