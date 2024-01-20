@@ -170,8 +170,7 @@ end -- is_http
 
 
 -- stream subsystem need not to generate func
-local function lazy_generate_func(funcs, field)
-end
+local lazy_generate_func = function(funcs, field) end
 
 
 if is_http then
@@ -215,6 +214,8 @@ if is_http then
 
     local prefix = field:sub(1, PREFIX_LEN)
 
+    -- generate for http.headers.*
+
     if prefix == HTTP_HEADERS_PREFIX then
       local name = field:sub(PREFIX_LEN + 1)
 
@@ -230,6 +231,8 @@ if is_http then
       return f
     end -- if prefix == HTTP_HEADERS_PREFIX
 
+    -- generate for http.queries.*
+
     if prefix == HTTP_QUERIES_PREFIX then
       local name = field:sub(PREFIX_LEN + 1)
 
@@ -243,16 +246,14 @@ if is_http then
 
       funcs[field] = f
       return f
-    end -- if prefix == HTTP_HEADERS_PREFIX
+    end -- if prefix == HTTP_QUERIES_PREFIX
 
-  end
-
-
-  setmetatable(FIELDS_FUNCS, {
-  __index = function(_, field)
+    -- generate for http.path.segments.*
 
     if field:sub(1, HTTP_SEGMENTS_PREFIX_LEN) == HTTP_SEGMENTS_PREFIX then
-      return function(params)
+      local range = field:sub(HTTP_SEGMENTS_PREFIX_LEN + 1)
+
+      f = function(params)
         if not params.segments then
           HTTP_SEGMENTS_REG_CTX.pos = 2 -- reset ctx, skip first '/'
           params.segments = re_split(params.uri, "/", "jo", HTTP_SEGMENTS_REG_CTX)
@@ -260,7 +261,6 @@ if is_http then
 
         local segments = params.segments
 
-        local range = field:sub(HTTP_SEGMENTS_PREFIX_LEN + 1)
         local value = segments[range]
 
         if value then
@@ -310,11 +310,12 @@ if is_http then
         return value
       end
 
-    end -- if prefix
+      funcs[field] = f
+      return f
+    end -- if field:sub(1, HTTP_SEGMENTS_PREFIX_LEN)
 
     -- others return nil
   end
-  })
 
 end -- is_http
 
