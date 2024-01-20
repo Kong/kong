@@ -36,8 +36,6 @@ local ngx_ERR       = ngx.ERR
 local check_select_params  = utils.check_select_params
 local get_service_info     = utils.get_service_info
 local route_match_stat     = utils.route_match_stat
-local get_cache_key        = fields.get_cache_key
-local fill_atc_context      = fields.fill_atc_context
 
 
 local DEFAULT_MATCH_LRUCACHE_SIZE = utils.DEFAULT_MATCH_LRUCACHE_SIZE
@@ -226,14 +224,12 @@ local function new_from_scratch(routes, get_exp_and_priority)
     yield(true, phase)
   end
 
-  local fields = inst:get_fields()
-
   return setmetatable({
       context = context.new(CACHED_SCHEMA),
+      fields = fields.new(inst:get_fields()),
       router = inst,
       routes = routes_t,
       services = services_t,
-      fields = fields,
       updated_at = new_updated_at,
       rebuilding = false,
     }, _MT)
@@ -315,9 +311,7 @@ local function new_from_previous(routes, get_exp_and_priority, old_router)
     yield(true, phase)
   end
 
-  local fields = inst:get_fields()
-
-  old_router.fields = fields
+  old_router.fields = fields.new(inst:get_fields())
   old_router.updated_at = new_updated_at
   old_router.rebuilding = false
 
@@ -433,7 +427,7 @@ function _M:matching(params)
 
   self.context:reset()
 
-  local c, err = fill_atc_context(self.context, self.fields, params)
+  local c, err = self.fields:fill_atc_context(self.context, params)
 
   if not c then
     return nil, err
@@ -516,7 +510,7 @@ function _M:exec(ctx)
   CACHE_PARAMS.uri  = req_uri
   CACHE_PARAMS.host = req_host
 
-  local cache_key = get_cache_key(self.fields, CACHE_PARAMS)
+  local cache_key = self.fields:get_cache_key(CACHE_PARAMS)
 
   -- cache lookup
 
@@ -576,7 +570,7 @@ function _M:matching(params)
 
   self.context:reset()
 
-  local c, err = fill_atc_context(self.context, self.fields, params)
+  local c, err = self.fields:fill_atc_context(self.context, params)
   if not c then
     return nil, err
   end
@@ -637,7 +631,7 @@ function _M:exec(ctx)
 
   CACHE_PARAMS:clear()
 
-  local cache_key = get_cache_key(self.fields, CACHE_PARAMS, ctx)
+  local cache_key = self.fields:get_cache_key(CACHE_PARAMS, ctx)
 
   -- cache lookup
 
@@ -676,7 +670,7 @@ function _M:exec(ctx)
 
     -- preserve_host logic, modify cache result
     if match_t.route.preserve_host then
-      match_t.upstream_host = fields.get_value("tls.sni", CACHE_PARAMS)
+      match_t.upstream_host = self.fields:get_value("tls.sni", CACHE_PARAMS)
     end
   end
 

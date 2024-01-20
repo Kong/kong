@@ -1,3 +1,7 @@
+local _M = {}
+local _MT = { __index = _M, }
+
+
 local buffer = require("string.buffer")
 
 
@@ -5,6 +9,7 @@ local type = type
 local ipairs = ipairs
 local assert = assert
 local tonumber = tonumber
+local setmetatable = setmetatable
 local tb_sort = table.sort
 local tb_concat = table.concat
 local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
@@ -287,7 +292,15 @@ if is_http then
 end -- is_http
 
 
-local function get_value(field, params, ctx)
+function _M.new(fields)
+  return setmetatable({
+      fields = fields,
+      funcs = {},
+    }, _MT)
+end
+
+
+function _M:get_value(field, params, ctx)
   local func = FIELDS_FUNCS[field]
 
   if not func then  -- unknown field
@@ -298,9 +311,9 @@ local function get_value(field, params, ctx)
 end
 
 
-local function fields_visitor(fields, params, ctx, cb)
-  for _, field in ipairs(fields) do
-    local value = get_value(field, params, ctx)
+function _M:fields_visitor(params, ctx, cb)
+  for _, field in ipairs(self.fields) do
+    local value = self:get_value(field, params, ctx)
 
     local res, err = cb(field, value)
     if not res then
@@ -316,11 +329,11 @@ end
 local str_buf = buffer.new(64)
 
 
-local function get_cache_key(fields, params, ctx)
+function _M:get_cache_key(params, ctx)
   str_buf:reset()
 
   local res =
-  fields_visitor(fields, params, ctx, function(field, value)
+  self:fields_visitor(params, ctx, function(field, value)
 
     -- these fields were not in cache key
     if field == "net.protocol" then
@@ -361,11 +374,11 @@ local function get_cache_key(fields, params, ctx)
 end
 
 
-local function fill_atc_context(context, fields, params)
+function _M:fill_atc_context(context, params)
   local c = context
 
   local res, err =
-  fields_visitor(fields, params, nil, function(field, value)
+  self:fields_visitor(params, nil, function(field, value)
 
     local prefix = field:sub(1, PREFIX_LEN)
 
@@ -404,7 +417,7 @@ local function fill_atc_context(context, fields, params)
 end
 
 
-local function _set_ngx(mock_ngx)
+function _M._set_ngx(mock_ngx)
   if mock_ngx.var then
     var = mock_ngx.var
   end
@@ -425,11 +438,4 @@ local function _set_ngx(mock_ngx)
 end
 
 
-return {
-  get_value = get_value,
-
-  get_cache_key = get_cache_key,
-  fill_atc_context = fill_atc_context,
-
-  _set_ngx = _set_ngx,
-}
+return _M
