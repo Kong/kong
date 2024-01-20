@@ -1210,11 +1210,11 @@ return {
 
       local trusted_ip = kong.ip.is_trusted(realip_remote_addr)
       if trusted_ip then
-        forwarded_proto  = get_header(ctx, "x_forwarded_proto")  or ctx.scheme
-        forwarded_host   = get_header(ctx, "x_forwarded_host")   or host
-        forwarded_port   = get_header(ctx, "x_forwarded_port")   or port
-        forwarded_path   = get_header(ctx, "x_forwarded_path")
-        forwarded_prefix = get_header(ctx, "x_forwarded_prefix")
+        forwarded_proto  = get_header("x_forwarded_proto", ctx)  or ctx.scheme
+        forwarded_host   = get_header("x_forwarded_host", ctx)   or host
+        forwarded_port   = get_header("x_forwarded_port", ctx)   or port
+        forwarded_path   = get_header("x_forwarded_path", ctx)
+        forwarded_prefix = get_header("x_forwarded_prefix", ctx)
 
       else
         forwarded_proto  = ctx.scheme
@@ -1304,7 +1304,7 @@ return {
       end
 
       -- Keep-Alive and WebSocket Protocol Upgrade Headers
-      local upgrade = get_header(ctx, "upgrade")
+      local upgrade = get_header("upgrade", ctx)
       if upgrade and lower(upgrade) == "websocket" then
         var.upstream_connection = "keep-alive, Upgrade"
         var.upstream_upgrade    = "websocket"
@@ -1314,7 +1314,7 @@ return {
       end
 
       -- X-Forwarded-* Headers
-      local http_x_forwarded_for = get_header(ctx, "x_forwarded_for")
+      local http_x_forwarded_for = get_header("x_forwarded_for", ctx)
       if http_x_forwarded_for then
         var.upstream_x_forwarded_for = http_x_forwarded_for .. ", " ..
                                        realip_remote_addr
@@ -1401,7 +1401,7 @@ return {
       end
 
       -- clear hop-by-hop request headers:
-      local http_connection = get_header(ctx, "connection")
+      local http_connection = get_header("connection", ctx)
       if http_connection ~= "keep-alive" and
          http_connection ~= "close"      and
          http_connection ~= "upgrade"
@@ -1422,7 +1422,7 @@ return {
       end
 
       -- add te header only when client requests trailers (proxy removes it)
-      local http_te = get_header(ctx, "te")
+      local http_te = get_header("te", ctx)
       if http_te then
         if http_te == "trailers" then
           var.upstream_te = "trailers"

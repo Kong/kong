@@ -537,11 +537,20 @@ do
       return value
     end
 
-    if not ctx.headers then
-      ctx.headers = ngx.req.get_headers()
+    local headers
+
+    if ctx then
+      if not ctx.headers then
+        ctx.headers = ngx.req.get_headers()
+      end
+
+      headers = ctx.headers
+
+    else
+      headers = ngx.req.get_headers()
     end
 
-    value = ctx.headers[name]
+    value = headers[name]
 
     return type(value) == "table" and
            value[1] or value
