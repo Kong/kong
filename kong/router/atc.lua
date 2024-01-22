@@ -465,6 +465,8 @@ end
 
 
 function _M:exec(ctx)
+  local fields = self.fields
+
   local req_uri = ctx and ctx.request_uri or var.request_uri
   local req_host = var.http_host
 
@@ -481,7 +483,7 @@ function _M:exec(ctx)
   CACHE_PARAMS.uri  = req_uri
   CACHE_PARAMS.host = req_host
 
-  local cache_key = self.fields:get_cache_key(CACHE_PARAMS)
+  local cache_key = fields:get_cache_key(CACHE_PARAMS)
 
   -- cache lookup
 
@@ -594,6 +596,8 @@ end
 
 
 function _M:exec(ctx)
+  local fields = self.fields
+
   -- cache key calculation
 
   if not CACHE_PARAMS then
@@ -602,7 +606,7 @@ function _M:exec(ctx)
 
   CACHE_PARAMS:clear()
 
-  local cache_key = self.fields:get_cache_key(CACHE_PARAMS, ctx)
+  local cache_key = fields:get_cache_key(CACHE_PARAMS, ctx)
 
   -- cache lookup
 
@@ -641,7 +645,7 @@ function _M:exec(ctx)
 
     -- preserve_host logic, modify cache result
     if match_t.route.preserve_host then
-      match_t.upstream_host = self.fields:get_value("tls.sni", CACHE_PARAMS)
+      match_t.upstream_host = fields:get_value("tls.sni", CACHE_PARAMS)
     end
   end
 
