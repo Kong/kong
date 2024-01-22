@@ -22,6 +22,7 @@ WASMER=3.1.1
 WASMTIME=14.0.3
 V8=10.5.18
 
+NGX_BROTLI=25f86f0bac1101b6512135eac5f93c49c63609e3 # v1.0.0rc
 # < EE dependencies
 
 KONG_ADMIN=nightly
@@ -42,3 +43,4 @@ CA_CERTS=2023-08-22
 NGHTTP2=1.57.0
 
 # EE dependencies >
+

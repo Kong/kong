@@ -171,6 +171,7 @@ CONFIGURE_OPTIONS = [
     "--add-module=$$EXT_BUILD_ROOT$$/external/lua-kong-nginx-module/stream",
     "--add-module=$$EXT_BUILD_ROOT$$/external/lua-resty-lmdb",
     "--add-module=$$EXT_BUILD_ROOT$$/external/lua-resty-events",
+    "--add-module=$$EXT_BUILD_ROOT$$/external/ngx_brotli",
     # EE
     "--add-module=$$EXT_BUILD_ROOT$$/distribution/lua-resty-openssl-aux-module",
     "--add-module=$$EXT_BUILD_ROOT$$/distribution/lua-resty-openssl-aux-module/stream",
@@ -267,6 +268,7 @@ configure_make(
         "@lua-resty-lmdb//:all_srcs",
         "@lua-resty-events//:all_srcs",
         "@openresty_binding//:all_srcs",
+        "@ngx_brotli//:all_srcs",
     ] + select({
         "@kong//:wasmx_flag": [
             "@ngx_wasm_module//:all_srcs",
