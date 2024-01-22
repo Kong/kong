@@ -1,4 +1,4 @@
 message: |
-  Return `-1` as worker id for privileged agent.
+  Return `-1` as worker id for privileged agent in the Clustering analytics.
 type: bugfix
-scope: Core
+scope: Clustering
