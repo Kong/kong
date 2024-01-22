@@ -5,7 +5,6 @@ local _MT = { __index = _M, }
 local buffer = require("string.buffer")
 local lrucache = require("resty.lrucache")
 local tb_new = require("table.new")
-local fields = require("kong.router.fields")
 local utils = require("kong.router.utils")
 local rat = require("kong.tools.request_aware_table")
 local yield = require("kong.tools.yield").yield
@@ -51,10 +50,12 @@ local values_buf = buffer.new(64)
 
 local get_atc_context
 local get_atc_router
+local get_atc_fields
 do
   local schema = require("resty.router.schema")
   local context = require("resty.router.context")
   local router = require("resty.router.router")
+  local fields = require("kong.router.fields")
 
   local function generate_schema(fields)
     local s = schema.new()
@@ -81,6 +82,10 @@ do
 
   get_atc_router = function(routes_n)
     return router.new(CACHED_SCHEMA, routes_n)
+  end
+
+  get_atc_fields = function(inst)
+    return fields.new(inst:get_fields())
   end
 
   local protocol_to_schema = {
@@ -188,7 +193,6 @@ local function new_from_scratch(routes, get_exp_and_priority)
 
   local routes_n = #routes
 
-  local context = get_atc_context()
   local inst = get_atc_router(routes_n)
 
   local routes_t   = tb_new(0, routes_n)
@@ -223,8 +227,8 @@ local function new_from_scratch(routes, get_exp_and_priority)
   end
 
   return setmetatable({
-      fields = fields.new(inst:get_fields()),
-      context = context,
+      context = get_atc_context(),
+      fields = get_atc_fields(inst),
       router = inst,
       routes = routes_t,
       services = services_t,
@@ -309,7 +313,7 @@ local function new_from_previous(routes, get_exp_and_priority, old_router)
     yield(true, phase)
   end
 
-  old_router.fields = fields.new(inst:get_fields())
+  old_router.fields = get_atc_fields(inst)
   old_router.updated_at = new_updated_at
   old_router.rebuilding = false
 
