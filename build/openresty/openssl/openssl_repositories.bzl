@@ -6,6 +6,9 @@ load("@kong_bindings//:variables.bzl", "KONG_VAR")
 
 def openssl_repositories():
     version = KONG_VAR["OPENSSL"]
+    version_github = version.replace(".", "_")
+    parts = version.split(".")
+    major_minor_version = ".".join(parts[:2])
 
     maybe(
         http_archive,
@@ -15,6 +18,8 @@ def openssl_repositories():
         strip_prefix = "openssl-" + version,
         urls = [
             "https://www.openssl.org/source/openssl-" + version + ".tar.gz",
+            "https://www.openssl.org/source/old/" + major_minor_version + "/openssl-" + version + ".tar.gz",
             "https://github.com/openssl/openssl/releases/download/openssl-" + version + "/openssl-" + version + ".tar.gz",
+            "https://github.com/openssl/openssl/archive/OpenSSL_" + version_github + ".tar.gz",
         ],
     )
