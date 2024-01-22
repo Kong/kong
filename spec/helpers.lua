@@ -76,6 +76,7 @@ local https_server = require "spec.fixtures.https_server"
 local stress_generator = require "spec.fixtures.stress_generator"
 local resty_signal = require "resty.signal"
 local lfs = require "lfs"
+local luassert = require "luassert.assert"
 
 ffi.cdef [[
   int setenv(const char *name, const char *value, int overwrite);
@@ -1255,6 +1256,116 @@ end
 
 
 ---
+-- Reconfiguration completion detection helpers
+--
+
+local MAX_RETRY_TIME = 10
+
+--- Set up admin client and proxy client to so that interactions with the proxy client
+-- wait for preceding admin API client changes to have completed.
+
+-- @function make_synchronized_clients
+-- @param clients table with admin_client and proxy_client fields (both optional)
+-- @return admin_client, proxy_client
+
+local function make_synchronized_clients(clients)
+  clients = clients or {}
+  local synchronized_proxy_client = clients.proxy_client or proxy_client()
+  local synchronized_admin_client = clients.admin_client or admin_client()
+
+  -- Install the reconfiguration completion detection plugin
+  local res = synchronized_admin_client:post("/plugins", {
+    headers = { ["Content-Type"] = "application/json" },
+    body = {
+      name = "reconfiguration-completion",
+      config = {
+        version = "0",
+      }
+    },
+  })
+  local body = luassert.res_status(201, res)
+  local plugin = cjson.decode(body)
+  local plugin_id = plugin.id
+
+  -- Wait until the plugin is active on the proxy path, indicated by the presence of the X-Kong-Reconfiguration-Status header
+  luassert.eventually(function()
+    res = synchronized_proxy_client:get("/non-existent-proxy-path")
+    luassert.res_status(404, res)
+    luassert.equals("unknown", res.headers['x-kong-reconfiguration-status'])
+  end)
+          .has_no_error()
+
+  -- Save the original request functions for the admin and proxy client
+  local proxy_request = synchronized_proxy_client.request
+  local admin_request = synchronized_admin_client.request
+
+  local current_version = 0 -- incremented whenever a configuration change is made through the admin API
+  local last_configured_version = 0 -- current version of the reconfiguration-completion plugin's configuration
+
+  -- Wrap the admin API client request
+  function synchronized_admin_client.request(client, opts)
+    -- Whenever the configuration is changed through the admin API, increment the current version number
+    if opts.method == "POST" or opts.method == "PUT" or opts.method == "PATCH" or opts.method == "DELETE" then
+      current_version = current_version + 1
+    end
+    return admin_request(client, opts)
+  end
+
+  function synchronized_admin_client.synchronize_sibling(self, sibling)
+    sibling.request = self.request
+  end
+
+  -- Wrap the proxy client request
+  function synchronized_proxy_client.request(client, opts)
+    -- If the configuration has been changed through the admin API, update the version number in the
+    -- reconfiguration-completion plugin.
+    if current_version > last_configured_version then
+      last_configured_version = current_version
+      res = admin_request(synchronized_admin_client, {
+        method = "PATCH",
+        path = "/plugins/" .. plugin_id,
+        headers = { ["Content-Type"] = "application/json" },
+        body = cjson.encode({
+          config = {
+            version = tostring(current_version),
+          }
+        }),
+      })
+      luassert.res_status(200, res)
+    end
+
+    -- Retry the request until the reconfiguration is complete and the reconfiguration completion
+    -- plugin on the database has been updated to the current version.
+    if not opts.headers then
+      opts.headers = {}
+    end
+    opts.headers["If-Kong-Configuration-Version"] = tostring(current_version)
+    local retry_until = ngx.now() + MAX_RETRY_TIME
+    local err
+    :: retry ::
+    res, err = proxy_request(client, opts)
+    if err then
+      return res, err
+    end
+    if res.headers['x-kong-reconfiguration-status'] ~= "complete" then
+      res:read_body()
+      ngx.sleep(res.headers['retry-after'] or 1)
+      if ngx.now() < retry_until then
+        goto retry
+      end
+      return nil, "reconfiguration did not occur within " .. MAX_RETRY_TIME .. " seconds"
+    end
+    return res, err
+  end
+
+  function synchronized_proxy_client.synchronize_sibling(self, sibling)
+    sibling.request = self.request
+  end
+
+  return synchronized_proxy_client, synchronized_admin_client
+end
+
+---
 -- TCP/UDP server helpers
 --
 -- @section servers
@@ -1652,7 +1763,6 @@ end
 -- @section assertions
 
 local say = require "say"
-local luassert = require "luassert.assert"
 require("spec.helpers.wait")
 
 --- Waits until a specific condition is met.
@@ -3856,7 +3966,7 @@ do
   -- in above case, the id is 303.
   local msg_id = -1
   local prefix_dir = "servroot"
-  
+
   --- Check if echo server is ready.
   --
   -- @function is_echo_server_ready
@@ -4158,6 +4268,7 @@ end
   http_client = http_client,
   grpc_client = grpc_client,
   http2_client = http2_client,
+  make_synchronized_clients = make_synchronized_clients,
   wait_until = wait_until,
   pwait_until = pwait_until,
   wait_pid = wait_pid,
