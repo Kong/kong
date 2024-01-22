@@ -34,14 +34,13 @@ for _, strategy in helpers.each_strategy() do
         database = strategy,
         prefix = helpers.test_conf.prefix,
         nginx_conf = "spec/fixtures/custom_nginx.template",
-        plugins = "dummy",
+        plugins = "dummy,reconfiguration-completion",
         vaults = "env",
       })
     end)
 
     before_each(function()
-      admin_client = assert(helpers.admin_client())
-      proxy_client = assert(helpers.proxy_client())
+      proxy_client, admin_client = helpers.make_synchronized_clients()
     end)
 
     after_each(function()
@@ -76,15 +75,13 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(200, res)
 
-      assert
-          .with_timeout(10)
-          .eventually(function()
-            local res = proxy_client:send {
-              method = "GET",
-              path = "/",
-            }
-            return res and res.status == 200 and res.headers["Dummy-Plugin"] == "MONSTER" and res.headers["X-Test-This"] == "SPIRIT"
-          end).is_truthy("Could not find header in request")
+      local res = proxy_client:send {
+        method = "GET",
+        path = "/",
+      }
+      assert.res_status(200, res)
+      assert.is_same("MONSTER", res.headers["Dummy-Plugin"])
+      assert.is_same("SPIRIT", res.headers["X-Test-This"])
     end)
   end)
 end
