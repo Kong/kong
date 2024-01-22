@@ -86,6 +86,7 @@ for _, strategy in helpers.each_strategy() do
       name = "basic-auth",
       config = {
         hide_credentials = true,
+        realm = "service",
       }
     }
 
