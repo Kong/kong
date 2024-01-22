@@ -41,6 +41,9 @@ if not os.getenv("KONG_BUSTED_RESPAWNED") then
     end
   end
 
+  -- create shared dict
+  resty_flags = resty_flags .. require("spec.fixtures.shared_dict")
+
   if resty_flags then
     table.insert(cmd, cmd_prefix_count+1, resty_flags)
   end
