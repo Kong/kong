@@ -122,7 +122,7 @@ function _M:export_deflated_reconfigure_payload()
   -- store serialized plugins map for troubleshooting purposes
   local shm_key_name = "clustering:cp_plugins_configured:worker_" .. worker_id()
   kong_dict:set(shm_key_name, cjson_encode(self.plugins_configured))
-  ngx_log(ngx_DEBUG, "plugin configuration map key: " .. shm_key_name .. " configuration: ", kong_dict:get(shm_key_name))
+  ngx_log(ngx_DEBUG, "plugin configuration map key: ", shm_key_name, " configuration: ", kong_dict:get(shm_key_name))
 
   local config_hash, hashes = calculate_config_hash(config_table)
 
@@ -161,7 +161,7 @@ function _M:export_deflated_reconfigure_payload()
   self.deflated_reconfigure_payload = payload
 
   if kong.configuration.log_level == "debug" then
-    ngx_log(ngx_DEBUG, _log_prefix, "exported configuration with transaction id " .. current_transaction_id)
+    ngx_log(ngx_DEBUG, _log_prefix, "exported configuration with transaction id ", current_transaction_id)
   end
 
   return payload, nil, config_hash
@@ -186,7 +186,7 @@ function _M:push_config()
 
   ngx_update_time()
   local duration = ngx_now() - start
-  ngx_log(ngx_DEBUG, _log_prefix, "config pushed to ", n, " data-plane nodes in " .. duration .. " seconds")
+  ngx_log(ngx_DEBUG, _log_prefix, "config pushed to ", n, " data-plane nodes in ", duration, " seconds")
 end
 
 

@@ -81,8 +81,8 @@ local function http_export(conf, spans)
 
   ngx_update_time()
   local duration = ngx_now() - start
-  ngx_log(ngx_DEBUG, _log_prefix, "exporter sent " .. #spans ..
-    " traces to " .. conf.endpoint .. " in " .. duration .. " seconds")
+  ngx_log(ngx_DEBUG, _log_prefix, "exporter sent ", #spans,
+          " traces to ", conf.endpoint, " in ", duration, " seconds")
 
   if not ok then
     ngx_log(ngx_ERR, _log_prefix, err)

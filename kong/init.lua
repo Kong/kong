@@ -924,7 +924,7 @@ function Kong.init_worker()
   if is_not_control_plane then
     ok, err = execute_cache_warmup(kong.configuration)
     if not ok then
-      ngx_log(ngx_ERR, "failed to warm up the DB cache: " .. err)
+      ngx_log(ngx_ERR, "failed to warm up the DB cache: ", err)
     end
   end
 

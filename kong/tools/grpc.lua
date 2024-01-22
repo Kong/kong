@@ -26,7 +26,7 @@ local _MT = { __index = _M, }
 
 local function safe_set_type_hook(typ, dec, enc)
   if not pcall(pb.hook, typ) then
-    ngx_log(ngx_DEBUG, "no type '" .. typ .. "' defined")
+    ngx_log(ngx_DEBUG, "no type '", typ, "' defined")
     return
   end
 
