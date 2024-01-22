@@ -1,0 +1,14 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop_sequence",
+      "index": 0,
+      "message": {
+        "content": "You cannot divide by zero because it is not a valid operation in mathematics.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "model": "claude-2",
+  "object": "chat.completion"
+}

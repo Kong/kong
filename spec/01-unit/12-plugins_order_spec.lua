@@ -80,6 +80,7 @@ describe("Plugins", function()
       "response-ratelimiting",
       "request-transformer",
       "response-transformer",
+      "ai-proxy",
       "aws-lambda",
       "azure-functions",
       "proxy-cache",

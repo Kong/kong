@@ -1,0 +1,207 @@
+openapi: 3.0.1
+info:
+  title: AI-Proxy Plugin Schema
+  description: AI-Proxy Plugin objects (and samples) for Kong Gateway LLM integration.
+  version: 0.0.1
+servers:
+- url: 'https://localhost:9000'
+  description: Null Service for AI-Proxy
+tags:
+- name: llm
+  description: LLM Methods
+paths:
+  /{provider}/completions:
+    post:
+      tags:
+      - llm
+      summary: Provider Completions
+      operationId: provider-prompt-completions
+      description: Provider Prompt Completions
+      parameters:
+      - name: provider
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        description: Specific Kong-Conforming Post Body 
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Prompt'
+        required: true
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptResponse'
+  /{provider}}/chat:
+    post:
+      tags:
+      - llm
+      summary: Provider Chat
+      operationId: provider-chat
+      description: Provider Chat
+      parameters:
+      - name: provider
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        description: Specific Kong-Conforming Post Body 
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Chat'
+        required: true
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+
+components:
+  schemas:
+    Prompt:
+      required:
+      - prompt
+      type: object
+      description: 'Single-line prompt, sets up the entire question or completion prefix'
+      properties:
+        prompt:
+          type: string
+    Chat:
+      required:
+      - messages
+      type: object
+      description: 'Array of messages, or single-line template reference string'
+      properties:
+        messages:
+          anyOf:
+          - type: array
+            description: 'Array of role/content style chat messages'
+            minLength: 1
+            items:
+              $ref: '#/components/schemas/Message'
+          - type: string
+            description: 'Template reference, in the form {template://name}'
+    Message:
+      required:
+      - role
+      - content
+      type: object
+      description: 'Single chat message block'
+      properties:
+        role:
+          type: string
+          enum:
+          - "system"
+          - "user"
+          - "assistant"
+        content:
+          type: string
+    PromptResponse:
+      required:
+      - prompt
+      type: object
+      properties:
+        choices:
+          type: array
+          items:
+            type: object
+            properties:
+              finish_reason:
+                type: string
+              index:
+                type: integer
+              logprobs:
+                type: number
+                format: float
+              text:
+                type: string
+            required:
+            - finish_reason
+            - index
+            - logprobs
+            - text
+        created:
+          type: integer
+        id:
+          type: string
+        model:
+          type: string
+        object:
+          type: string
+        usage:
+          type: object
+          properties:
+            completion_tokens:
+              type: integer
+            prompt_tokens:
+              type: integer
+            total_tokens:
+              type: integer
+
+    ChatResponse:
+      required:
+      - messages
+      type: object
+      description: 'OpenAI-style chat response'
+
+      properties:
+        choices:
+          type: array
+          items:
+            type: object
+            properties:
+              finish_reason:
+                type: string
+              index:
+                type: integer
+              logprobs:
+                type: number
+                format: float
+              message:
+                type: object
+                properties:
+                  content:
+                    type: string
+                  role:
+                    type: string
+                required:
+                - content
+                - role
+            required:
+            - finish_reason
+            - index
+            - logprobs
+            - message
+        created:
+          type: integer
+        id:
+          type: string
+        model:
+          type: string
+        object:
+          type: string
+        system_fingerprint:
+          type: number
+          format: float
+        usage:
+          type: object
+          properties:
+            completion_tokens:
+              type: integer
+            prompt_tokens:
+              type: integer
+            total_tokens:
+              type: integer
+          required:
+          - completion_tokens
+          - prompt_tokens
+          - total_tokens

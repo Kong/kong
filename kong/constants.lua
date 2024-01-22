@@ -46,6 +46,7 @@ local plugins = {
   "azure-functions",
   "zipkin",
   "opentelemetry",
+  "ai-proxy",
 }
 
 -- XXX EE

@@ -1,0 +1,5 @@
+{
+    "completion": "The sum of 1 + 1 is 2.",
+    "stop_reason": "stop_sequence",
+    "model": "claude-2"
+}

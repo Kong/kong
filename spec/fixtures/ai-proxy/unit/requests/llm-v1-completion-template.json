@@ -1,0 +1,8 @@
+{
+	"prompt": {
+		"name": "python-chat",
+		"properties": {
+			"program": "fibonacci sequence"
+		}
+	}
+}

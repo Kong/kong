@@ -1,0 +1,34 @@
+{
+    "id": "string",
+    "prompt": "string",
+    "generations": [
+        {
+            "id": "123",
+            "text": "1 + 1 is 2.",
+            "index": 0,
+            "likelihood": 0,
+            "token_likelihoods": [
+                {
+                    "token": "string",
+                    "likelihood": 1.0
+                }
+            ]
+        }
+    ],
+    "meta": {
+        "api_version": {
+            "version": "string",
+            "is_deprecated": true,
+            "is_experimental": true
+        },
+        "billed_units": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "search_units": 0,
+            "classifications": 0
+        },
+        "warnings": [
+            "string"
+        ]
+    }
+}
