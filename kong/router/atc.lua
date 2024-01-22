@@ -3,9 +3,6 @@ local _MT = { __index = _M, }
 
 
 local buffer = require("string.buffer")
-local schema = require("resty.router.schema")
-local context = require("resty.router.context")
-local router = require("resty.router.router")
 local lrucache = require("resty.lrucache")
 local tb_new = require("table.new")
 local fields = require("kong.router.fields")
@@ -52,10 +49,13 @@ local is_http = ngx.config.subsystem == "http"
 local values_buf = buffer.new(64)
 
 
-local CACHED_SCHEMA
-local HTTP_SCHEMA
-local STREAM_SCHEMA
+local get_atc_context
+local get_atc_router
 do
+  local schema = require("resty.router.schema")
+  local context = require("resty.router.context")
+  local router = require("resty.router.router")
+
   local function generate_schema(fields)
     local s = schema.new()
 
@@ -69,11 +69,37 @@ do
   end
 
   -- used by validation
-  HTTP_SCHEMA   = generate_schema(fields.HTTP_FIELDS)
-  STREAM_SCHEMA = generate_schema(fields.STREAM_FIELDS)
+  local HTTP_SCHEMA   = generate_schema(fields.HTTP_FIELDS)
+  local STREAM_SCHEMA = generate_schema(fields.STREAM_FIELDS)
 
   -- used by running router
-  CACHED_SCHEMA = is_http and HTTP_SCHEMA or STREAM_SCHEMA
+  local CACHED_SCHEMA = is_http and HTTP_SCHEMA or STREAM_SCHEMA
+
+  get_atc_context = function()
+    return context.new(CACHED_SCHEMA)
+  end
+
+  get_atc_router = function(routes_n)
+    return router.new(CACHED_SCHEMA, routes_n)
+  end
+
+  local protocol_to_schema = {
+    http  = HTTP_SCHEMA,
+    https = HTTP_SCHEMA,
+    grpc  = HTTP_SCHEMA,
+    grpcs = HTTP_SCHEMA,
+
+    tcp   = STREAM_SCHEMA,
+    udp   = STREAM_SCHEMA,
+    tls   = STREAM_SCHEMA,
+
+    tls_passthrough = STREAM_SCHEMA,
+  }
+
+  -- for db schema validation
+  function _M.schema(protocols)
+    return assert(protocol_to_schema[protocols[1]])
+  end
 end
 
 
@@ -162,7 +188,8 @@ local function new_from_scratch(routes, get_exp_and_priority)
 
   local routes_n = #routes
 
-  local inst = router.new(CACHED_SCHEMA, routes_n)
+  local context = get_atc_context()
+  local inst = get_atc_router(routes_n)
 
   local routes_t   = tb_new(0, routes_n)
   local services_t = tb_new(0, routes_n)
@@ -196,8 +223,8 @@ local function new_from_scratch(routes, get_exp_and_priority)
   end
 
   return setmetatable({
-      context = context.new(CACHED_SCHEMA),
       fields = fields.new(inst:get_fields()),
+      context = context,
       router = inst,
       routes = routes_t,
       services = services_t,
@@ -674,27 +701,6 @@ function _M._set_ngx(mock_ngx)
 
   -- unit testing
   fields._set_ngx(mock_ngx)
-end
-
-
-do
-  local protocol_to_schema = {
-    http  = HTTP_SCHEMA,
-    https = HTTP_SCHEMA,
-    grpc  = HTTP_SCHEMA,
-    grpcs = HTTP_SCHEMA,
-
-    tcp   = STREAM_SCHEMA,
-    udp   = STREAM_SCHEMA,
-    tls   = STREAM_SCHEMA,
-
-    tls_passthrough = STREAM_SCHEMA,
-  }
-
-  -- for db schema validation
-  function _M.schema(protocols)
-    return assert(protocol_to_schema[protocols[1]])
-  end
 end
 
 
