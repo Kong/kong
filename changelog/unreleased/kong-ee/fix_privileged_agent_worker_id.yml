@@ -1,0 +1,4 @@
+message: |
+  Return `-1` as worker id for privileged agent.
+type: bugfix
+scope: Core

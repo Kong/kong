@@ -115,11 +115,11 @@ function _M:init_worker()
 
   assert(ngx.timer.at(0, clustering.telemetry_communicate, clustering, uri, server_name, function(connected, send_func)
     if connected then
-      ngx.log(ngx.INFO, _log_prefix, "worker id: " .. ngx.worker.id() .. ". analytics websocket is connected: " .. uri)
+      ngx.log(ngx.INFO, _log_prefix, "worker id: ", (ngx.worker.id() or -1), ". analytics websocket is connected: ", uri)
       self.ws_send_func = send_func
 
     else
-      ngx.log(ngx.INFO, _log_prefix, "worker id: " .. ngx.worker.id() .. ". analytics websocket is disconnected: " .. uri)
+      ngx.log(ngx.INFO, _log_prefix, "worker id: ", (ngx.worker.id() or -1), ". analytics websocket is disconnected: ", uri)
       self.ws_send_func = nil
     end
   end), nil)
