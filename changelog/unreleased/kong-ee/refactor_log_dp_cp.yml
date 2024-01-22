@@ -1,0 +1,4 @@
+message: |
+  Print to log possible config options that causing DP to CP connection error.
+type: feature
+scope: Clustering

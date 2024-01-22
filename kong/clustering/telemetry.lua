@@ -222,7 +222,8 @@ local function telemetry_communicate(premature, self, uri, server_name, on_conne
     local delay = math.random(5, 10)
 
     ngx_log(ngx_ERR, "connection to control plane ", uri, " broken: ", err,
-            " retrying after ", delay , " seconds")
+                     " retrying after ", delay , " seconds.",
+                     [[ please check configs "cluster_telemetry_endpoint", "cluster_telemetry_server_name", "cluster_server_name" or "cluster_mtls".]])
 
     assert(reconnect(delay))
     return
