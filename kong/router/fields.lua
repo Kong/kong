@@ -197,7 +197,7 @@ end -- is_http
 
 
 -- stream subsystem need not to generate func
-local lazy_generate_func = function(funcs, field) end
+local get_field_accessor = function(funcs, field) end
 
 
 if is_http then
@@ -233,7 +233,7 @@ if is_http then
   end
 
 
-  lazy_generate_func = function(funcs, field)
+  get_field_accessor = function(funcs, field)
     local f = funcs[field]
     if f then
       return f
@@ -365,11 +365,9 @@ end
 
 function _M:get_value(field, params, ctx)
   local func = FIELDS_FUNCS[field] or
-               lazy_generate_func(self.funcs, field)
+               get_field_accessor(self.funcs, field)
 
-  if not func then  -- unknown field
-    error("unknown router matching schema field: " .. field)
-  end -- if func
+  assert(func, "unknown router matching schema field: " .. field)
 
   return func(params, ctx)
 end
