@@ -33,7 +33,7 @@ local prompts_record = {
 }
 
 return {
-  name = "ai-prompt-injector",
+  name = "ai-prompt-decorator",
   fields = {
     { protocols = typedefs.protocols_http },
     { config = {
