@@ -5,6 +5,7 @@ local _MT = { __index = _M, }
 local buffer = require("string.buffer")
 local lrucache = require("resty.lrucache")
 local tb_new = require("table.new")
+local fields = require("kong.router.fields")
 local utils = require("kong.router.utils")
 local rat = require("kong.tools.request_aware_table")
 local yield = require("kong.tools.yield").yield
@@ -55,7 +56,6 @@ do
   local schema = require("resty.router.schema")
   local context = require("resty.router.context")
   local router = require("resty.router.router")
-  local fields = require("kong.router.fields")
 
   local function generate_schema(fields)
     local s = schema.new()
