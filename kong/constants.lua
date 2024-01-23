@@ -38,6 +38,7 @@ local plugins = {
   "opentelemetry",
   "ai-proxy",
   "ai-prompt-decorator",
+  "ai-prompt-template",
 }
 
 local plugin_map = {}

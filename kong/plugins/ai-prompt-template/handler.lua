@@ -1,12 +1,14 @@
 local _M = {}
 
 -- imports
-local kong_meta      = require "kong.meta"
-local templater      = require("kong.plugins.ai-prompt-template.templater"):new()
-local fmt            = string.format
-local parse_url      = require("socket.url").parse
-local byte           = string.byte
-local sub            = string.sub
+local kong_meta = require "kong.meta"
+local templater = require("kong.plugins.ai-prompt-template.templater"):new()
+local fmt       = string.format
+local parse_url = require("socket.url").parse
+local byte      = string.byte
+local sub       = string.sub
+local type      = type
+local byte      = byte
 --
 
 _M.PRIORITY = 773
