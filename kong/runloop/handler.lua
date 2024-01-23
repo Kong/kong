@@ -22,7 +22,6 @@ local lrucache     = require "resty.lrucache"
 local ktls         = require "resty.kong.tls"
 local workspaces   = require "kong.workspaces"
 local request_id   = require "kong.tracing.request_id"
-local global       = require "kong.global"
 
 
 local PluginsIterator = require "kong.runloop.plugins_iterator"
@@ -60,7 +59,6 @@ local http_version      = ngx.req.http_version
 local request_id_get    = request_id.get
 local escape            = require("kong.tools.uri").escape
 local encode            = require("string.buffer").encode
-local yield             = require("kong.tools.yield").yield
 
 local req_dyn_hook_run_hooks = req_dyn_hook.run_hooks
 
@@ -97,7 +95,6 @@ local QUESTION_MARK = byte("?")
 local ARRAY_MT = require("cjson.safe").array_mt
 
 local HOST_PORTS = {}
-local IS_DEBUG = false
 
 
 local SUBSYSTEMS = constants.PROTOCOLS_WITH_SUBSYSTEM
@@ -857,8 +854,6 @@ do
         wasm.set_state(wasm_state)
       end
 
-      global.CURRENT_TRANSACTION_ID = kong_shm:get("declarative:current_transaction_id") or 0
-
       return true
     end)  -- concurrency.with_coroutine_mutex
 
@@ -1007,7 +1002,6 @@ return {
 
   init_worker = {
     before = function()
-      IS_DEBUG = (kong.configuration.log_level == "debug")
       -- TODO: PR #9337 may affect the following line
       local prefix = kong.configuration.prefix or ngx.config.prefix()
 
@@ -1083,13 +1077,6 @@ return {
             return
           end
 
-          -- Before rebuiding the internal structures, retrieve the current PostgreSQL transaction ID to make it the
-          -- current transaction ID after the rebuild has finished.
-          local rebuild_transaction_id, err = global.get_current_transaction_id()
-          if not rebuild_transaction_id then
-            log(ERR, err)
-          end
-
           local router_update_status, err = rebuild_router({
             name = "router",
             timeout = 0,
@@ -1117,14 +1104,6 @@ return {
             if not wasm_update_status then
               log(ERR, "could not rebuild wasm filter chains via timer: ", err)
             end
-          end
-
-          if rebuild_transaction_id then
-            -- Yield to process any pending invalidations
-            yield()
-
-            log(DEBUG, "configuration processing completed for transaction ID " .. rebuild_transaction_id)
-            global.CURRENT_TRANSACTION_ID = rebuild_transaction_id
           end
         end
 
@@ -1223,25 +1202,6 @@ return {
   },
   access = {
     before = function(ctx)
-      if IS_DEBUG then
-        -- If this is a version-conditional request, abort it if this dataplane has not processed at least the
-        -- specified configuration version yet.
-        local if_kong_transaction_id = kong.request and kong.request.get_header('if-kong-test-transaction-id')
-        if if_kong_transaction_id then
-          if_kong_transaction_id = tonumber(if_kong_transaction_id)
-          if if_kong_transaction_id and if_kong_transaction_id >= global.CURRENT_TRANSACTION_ID then
-            return kong.response.error(
-                    503,
-                    "Service Unavailable",
-                    {
-                      ["X-Kong-Reconfiguration-Status"] = "pending",
-                      ["Retry-After"] = tostring(kong.configuration.worker_state_update_frequency or 1),
-                    }
-            )
-          end
-        end
-      end
-
       -- if there is a gRPC service in the context, don't re-execute the pre-access
       -- phase handler - it has been executed before the internal redirect
       if ctx.service and (ctx.service.protocol == "grpc" or
@@ -1279,6 +1239,7 @@ return {
           span:set_status(2)
           span:finish()
         end
+
 
         return kong.response.error(404, "no Route matched with those values")
       end
