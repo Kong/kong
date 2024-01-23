@@ -1,0 +1,3 @@
+message: address CVE-2022-31129 by updating moment.js to 2.29.4
+type: bugfix
+githubs: [280]

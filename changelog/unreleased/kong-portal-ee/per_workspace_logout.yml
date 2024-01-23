@@ -1,0 +1,3 @@
+message: perform logout under specific workspace namespace
+type: bugfix
+githubs: [282]

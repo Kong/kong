@@ -1,0 +1,3 @@
+message: improve page accessibility by correcting the tab-index and adding aria labels
+type: bugfix
+githubs: [283]

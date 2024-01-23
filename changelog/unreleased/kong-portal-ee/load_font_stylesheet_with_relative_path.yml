@@ -1,0 +1,3 @@
+message: force loading font stylesheet under the workspace namespace
+type: bugfix
+githubs: [281]
