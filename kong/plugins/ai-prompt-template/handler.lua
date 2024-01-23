@@ -7,7 +7,6 @@ local fmt            = string.format
 local parse_url      = require("socket.url").parse
 local byte           = string.byte
 local sub            = string.sub
-local cjson          = require("cjson.safe")
 --
 
 _M.PRIORITY = 773
@@ -19,8 +18,8 @@ local log_entry_keys = {
 }
 
 local function bad_request(msg)
-  kong.log.warn(msg)
-  return kong.response.exit(400, { error = { message = msg } })
+  kong.log.debug(msg)
+  return kong.response.exit(ngx.HTTP_BAD_REQUEST, { error = { message = msg } })
 end
 
 local BRACE_START = byte("{")
@@ -62,9 +61,9 @@ local function find_template(reference_string, templates)
     end
 
     return nil, "could not find template name [" .. parts.host .. "]"
-  else
-    return nil, "'messages' template reference should be a single string, in format '{template://template_name}'"
   end
+
+  return nil, "'messages' template reference should be a single string, in format '{template://template_name}'"
 end
 
 function _M:access(conf)
@@ -75,20 +74,13 @@ function _M:access(conf)
     kong.log.set_serialize_value(log_entry_keys.REQUEST_BODY, kong.request.get_raw_body())
   end
 
-  -- if plugin ordering was altered from a previous AI-family plugin, use the replacement request
-  local request, err
-  if not kong.ctx.replacement_request then
-    request, err = kong.request.get_body("application/json")
-
-    if err then
-      return bad_request("ai-prompt-template only supports application/json requests")
-    end
-  else
-    request = kong.ctx.replacement_request
+  local request, err = kong.request.get_body("application/json")
+  if err then
+    return bad_request("this LLM route only supports application/json requests")
   end
 
   if (not request.messages) and (not request.prompt) then
-    return bad_request("ai-prompt-template only support llm/chat or llm/completions type requests")
+    return bad_request("this LLM route only supports llm/chat or llm/completions type requests")
   end
 
   if request.messages and request.prompt then
@@ -112,19 +104,12 @@ function _M:access(conf)
   if not err then
     -- try to render the replacement request
     local rendered_template, err = templater:render(requested_template, request.properties or {})
-    if err then return bad_request(err) end
+    if err then
+      return bad_request(err)
+    end
 
-    local result, err = cjson.decode(rendered_template)
-    if err then bad_request("failed to parse template to JSON: " .. err) end
-
-    -- stash the result for parsing later (in ai-proxy etcetera)
-    kong.log.inspect("template-rendered request: ", rendered_template)
     kong.service.request.set_raw_body(rendered_template)
-
-    kong.ctx.shared.replacement_request = result
   end
-
-  -- all good
 end
 
 

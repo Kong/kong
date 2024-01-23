@@ -214,6 +214,31 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.same(json, { error = { message = "'messages' template reference should be a single string, in format '{template://template_name}'" }})
       end)
 
+      it("doesn't block when 'allow_untemplated_requests' is ON", function()
+        local r = client:get("/request", {
+          headers = {
+            host = "test1.com",
+            ["Content-Type"] = "application/json",
+          },
+          body = [[
+            {
+              "messages": [
+                {
+                  "role": "system",
+                  "content": "Arbitrary content"
+                }
+              ]
+            }  
+          ]],
+          method = "POST",
+        })
+        
+        local body = assert.res_status(200, r)
+        local json = cjson.decode(body)
+
+        assert.same(json.post_data.params, { messages = { [1] = { role = "system", content = "Arbitrary content" }}})
+      end)
+
       it("errors with a not found template", function()
         local r = client:get("/request", {
           headers = {
@@ -282,6 +307,62 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         local json = cjson.decode(body)
 
         assert.matches_regex(json.error.message, "^missing template parameters: \\[.*\\], \\[.*\\]")
+      end)
+
+      it("fails with non-json request", function()
+        local r = client:get("/request", {
+          headers = {
+            host = "test1.com",
+            ["Content-Type"] = "text/plain",
+          },
+          body = [[template: programmer, property: hi]],
+          method = "POST",
+        })
+        
+        local body = assert.res_status(400, r)
+        local json = cjson.decode(body)
+
+        assert.same(json, { error = { message = "this LLM route only supports application/json requests" }})
+      end)
+
+      it("fails with non llm/v1/chat or llm/v1/completions request", function()
+        local r = client:get("/request", {
+          headers = {
+            host = "test1.com",
+            ["Content-Type"] = "application/json",
+          },
+          body = [[{
+            "programmer": "hi"
+          }]],
+          method = "POST",
+        })
+
+        local body = assert.res_status(400, r)
+        local json = cjson.decode(body)
+
+        assert.same(json, { error = { message = "this LLM route only supports llm/chat or llm/completions type requests" }})
+      end)
+
+      it("fails with multiple types of prompt", function()
+        local r = client:get("/request", {
+          headers = {
+            host = "test1.com",
+            ["Content-Type"] = "application/json",
+          },
+          body = [[{
+            "messages": "{template://developer-chat}",
+            "prompt": "{template://developer-prompt}",
+            "properties": {
+              "nothing": "no"
+            }
+          }]],
+          method = "POST",
+        })
+
+        local body = assert.res_status(400, r)
+        local json = cjson.decode(body)
+
+        assert.same(json, { error = { message = "cannot run 'messages' and 'prompt' templates at the same time" }})
       end)
     end)
   end)
