@@ -15,6 +15,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Create backport pull requests
         uses: korthout/backport-action@6e72f987c115430f6abc2fa92a74cdbf3e14b956 # v2.4.1
+        id: backport
         with:
           github_token: ${{ secrets.PAT }}
           pull_title: '[backport -> ${target_branch}] ${pull_title}'
@@ -34,3 +35,8 @@ jobs:
             {
               "detect_merge_method": true
             }
+      - name: add label
+        if: steps.backport.outputs.was_successful == 'false'
+        uses: actions-ecosystem/action-add-labels@18f1af5e3544586314bbe15c0273249c770b2daf # v1.1.0
+        with:
+          labels: incomplete-backport
