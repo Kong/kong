@@ -195,9 +195,6 @@ time to control how the ngx_wasm_module repository is sourced:
     tells bazel to build from a branch rather than using the tag found in our
     `.requirements` file
 
-**NOTE:** these environment variables currently do not integrate very well with
-bazel's cache mechanism, so you may need to clear cache after changing their value.
-
 ## Cross compiling
 
 Cross compiling is currently only tested on Ubuntu 22.04 x86_64 with following targeting platforms:
