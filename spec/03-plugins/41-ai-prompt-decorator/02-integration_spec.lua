@@ -86,7 +86,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         local body = assert.res_status(400, r)
         local json = cjson.decode(body)
 
-        assert.same(json, { error = { message = "ai-prompt-decorator only supports llm/chat type requests" }})
+        assert.same(json, { error = { message = "this LLM route only supports llm/chat type requests" }})
       end)
 
       it("sends in an empty messages array", function()
@@ -105,7 +105,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         local body = assert.res_status(400, r)
         local json = cjson.decode(body)
 
-        assert.same(json, { error = { message = "ai-prompt-decorator only supports llm/chat type requests" }})
+        assert.same(json, { error = { message = "this LLM route only supports llm/chat type requests" }})
       end)
     end)
 
