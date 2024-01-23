@@ -86,7 +86,7 @@ function _M:send(emails, base_options, res)
                               and not error.emails[email] then
       local ok, err = enterprise_utils.validate_email(email)
       if not ok then
-        log(INFO, _M.LOG_PREFIX, _M.INVALID_EMAIL .. ": " .. email .. ": " .. err)
+        log(INFO, _M.LOG_PREFIX, _M.INVALID_EMAIL, ": ", email, ": ", err)
         error.emails[email] = _M.INVALID_EMAIL .. ": " .. err
         error.count = error.count + 1
       else
@@ -111,7 +111,7 @@ function _M:send(emails, base_options, res)
   for _, email in pairs(emails_to_send) do
     if not ok then
       -- log the full error, only return generic SEND_ERR msg
-      log(INFO, _M.LOG_PREFIX, _M.SEND_ERR .. ": " .. email .. ": " .. err)
+      log(INFO, _M.LOG_PREFIX, _M.SEND_ERR, ": ", email, ": ", err)
       error.emails[email] = _M.SEND_ERR
       error.count = error.count + 1
     else

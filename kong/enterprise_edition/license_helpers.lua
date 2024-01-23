@@ -83,7 +83,7 @@ function _M.decode_license(str)
 
   local license, err = cjson.decode(str)
   if err then
-    ngx.log(ngx.ERR, "[license-helpers] could not decode license JSON: " .. err)
+    ngx.log(ngx.ERR, "[license-helpers] could not decode license JSON: ", err)
     return nil
   end
 

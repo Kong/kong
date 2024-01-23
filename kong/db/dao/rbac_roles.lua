@@ -68,7 +68,7 @@ function rbac_roles:filter_page(_, size, offset, options)
   until (not offset or iterations >= MAX_ITERATIONS)
 
   if iterations >= MAX_ITERATIONS  then
-    log(WARN, "unable to retrieve full page of rbac_roles after " .. MAX_ITERATIONS .. " iterations")
+    log(WARN, "unable to retrieve full page of rbac_roles after ", MAX_ITERATIONS, " iterations")
   end
 
   return rows

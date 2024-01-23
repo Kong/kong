@@ -303,7 +303,7 @@ function _M:increment(key)
 
   if bucket then
     if not self.counters.metrics[key] then
-      log(ERR, _log_prefix, "key does not exist: " .. key)
+      log(ERR, _log_prefix, "key does not exist: ", key)
       return
     end
 

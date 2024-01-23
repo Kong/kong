@@ -49,7 +49,7 @@ local function find_admin_ignore_case(user_name)
   local admins, err = kong.db.admins:select_by_username_ignore_case(user_name)
 
   if err then
-    log(DEBUG, _log_prefix, "Admin not found with user_name=" .. user_name)
+    log(DEBUG, _log_prefix, "Admin not found with user_name=", user_name)
     return nil, err
   end
 
@@ -89,7 +89,7 @@ end
 function _M.retrieve_consumer(consumer_id)
   local consumer, err = kong.db.consumers:select({ id = consumer_id }, { show_ws_id = true })
   if err then
-    log(ERR, "error in retrieving consumer:" .. consumer_id, err)
+    log(ERR, "error in retrieving consumer:", consumer_id, err)
     return nil, err
   end
 
@@ -199,7 +199,7 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
   end
 
   if not rbac_user then
-    log(DEBUG, _log_prefix, "no rbac_user found for name: " .. admin.username)
+    log(DEBUG, _log_prefix, "no rbac_user found for name: ", admin.username)
     return kong.response.exit(401, { message = "Unauthorized" })
   end
 
@@ -490,7 +490,7 @@ function _M.splatify_entity_route(entity, routes)
   local entity_pattern = "/" .. entity .. "/:" .. entity
   local entity_endpoint = routes[entity_pattern]
   if not entity_endpoint then
-    log(ERR, _log_prefix, "entity endpoint: " .. entity_pattern .. "not found")
+    log(ERR, _log_prefix, "entity endpoint: ", entity_pattern, "not found")
     return
   end
 

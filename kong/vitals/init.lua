@@ -459,7 +459,7 @@ persistence_handler = function(premature, self)
   -- a gazillion timers and run out of memory.
   when = when < 1 and delay or when
 
-  log(DEBUG, _log_prefix, "starting vitals timer (2) in " .. when .. " seconds")
+  log(DEBUG, _log_prefix, "starting vitals timer (2) in ", when, " seconds")
 
 
   local ok, err = timer_at(when, persistence_handler, self)

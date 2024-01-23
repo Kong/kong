@@ -45,7 +45,7 @@ template.caching(false)
 template.safe = function(cb)
   local ok, res = pcall(cb)
   if not ok then
-    ngx.log(ngx.DEBUG, "Portal Renderer: " .. res)
+    ngx.log(ngx.DEBUG, "Portal Renderer: ", res)
     return nil
   end
 

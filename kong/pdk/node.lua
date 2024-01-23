@@ -298,7 +298,7 @@ local function new(self)
       node_id = _NODE.get_id()
     end
     if node_id then
-      ngx.log(ngx.INFO, "kong node-id: " .. node_id)
+      ngx.log(ngx.INFO, "kong node-id: ", node_id)
     end
   end
 

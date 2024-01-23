@@ -136,7 +136,7 @@ local function validate_route_for_ws(router, method, uri, host, sni,
                                      headers, ws)
   local selected_route = match_route(router, method, uri, host, sni, headers)
 
-  ngx_log(DEBUG, "selected route is " .. tostring(selected_route))
+  ngx_log(DEBUG, "selected route is ", tostring(selected_route))
   if selected_route == nil then -- no match ,no conflict
     ngx_log(DEBUG, "no selected_route")
     return true
@@ -237,12 +237,12 @@ local function is_route_crud_allowed_smart(req, router)
 
     if utils.is_valid_uuid(route_id_or_name) then
       route, route_err = kong.db.routes:select({ id = route_id_or_name })
-      
+
     else
       route, route_err = kong.db.routes:select_by_name(route_id_or_name, { workspace = ws.id })
     end
     if route_err then
-      ngx_log(DEBUG, "error selecting route: " .. route_err)
+      ngx_log(DEBUG, "error selecting route: ", route_err)
       return false, {
         code = 404,
         message = "route not found with id or name = '" .. route_id_or_name .. "'",

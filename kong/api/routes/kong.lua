@@ -622,7 +622,7 @@ return {
           elseif role_claim then
             auth_plugin_helpers.delete_admin_groups_or_roles(admin)
             -- only logs an error if kong-ee can not find the claims
-            ngx.log(ERR, role_claim .. " not found from the id_token or access_token or userinfo claims.", gui_auth)
+            ngx.log(ERR, role_claim, " not found from the id_token or access_token or userinfo claims.", gui_auth)
           end
 
         end

@@ -424,7 +424,7 @@ function _M.new()
 
   local client, err = smtp_client.new_smtp_client(conf)
   if err then
-    log(INFO, _M.LOG_PREFIX, "unable to initialize smtp client: " .. err)
+    log(INFO, _M.LOG_PREFIX, "unable to initialize smtp client: ", err)
   end
 
   local self = {

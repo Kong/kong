@@ -333,7 +333,7 @@ delete_handler = function(premature, self)
       })
 
       if err then
-        log(WARN, _log_prefix, "delete_status_codes() " .. entity_type .. " threw an error: ", err)
+        log(WARN, _log_prefix, "delete_status_codes() ", entity_type, " threw an error: ", err)
       end
     end
 
@@ -349,7 +349,7 @@ delete_handler = function(premature, self)
   end
 
   -- start the next delete timer
-  log(DEBUG, _log_prefix, "starting recurring postgres delete timer in " .. when .. " seconds")
+  log(DEBUG, _log_prefix, "starting recurring postgres delete timer in ", when, " seconds")
   local ok, err = timer_at(when, delete_handler, self)
   if not ok then
     return nil, "failed to start recurring postgres delete timer: " .. err

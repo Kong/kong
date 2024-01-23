@@ -151,7 +151,7 @@ local export_config_loop do
       ngx_log(ngx_INFO, FALLBACK_CONFIG_PREFIX, "successfully exported config to fallback storage")
 
     else
-      ngx_log(ngx_ERR, FALLBACK_CONFIG_PREFIX, "failed to export config to fallback storage: " .. err)
+      ngx_log(ngx_ERR, FALLBACK_CONFIG_PREFIX, "failed to export config to fallback storage: ", err)
     end
 
     export_config_loop(EXPORT_DELAY)

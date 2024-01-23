@@ -160,14 +160,14 @@ function SAMLHandler:access(config)
     -- We're processing a callback initiated by the IdP
     local xml_text, relay_state, err = decode_login_response_body(config)
     if not xml_text then
-      log.notice("cannot decode body: " .. err)
+      log.notice("cannot decode body: ", err)
       return kong.response.exit(400, { message = "Invalid request" })
     end
 
     local assertion
     assertion, err = saml.parse_and_validate_login_response(xml_text, nil, relay_state.request_id, config)
     if not assertion then
-      log.notice("user is unauthorized with error: " .. err)
+      log.notice("user is unauthorized with error: ", err)
       return kong.response.exit(401, { message = "Unauthorized" })
     end
 
@@ -188,11 +188,11 @@ function SAMLHandler:access(config)
     local ok, err = session:save()
     if not ok then
       local message = "Cannot save session data"
-      log.err(message .. ": " .. err or "(no error information provided)")
+      log.err(message, ": ", err or "(no error information provided)")
       return kong.response.exit(500, { message = message })
     end
 
-    log("forwarding client to original " .. relay_state.verb .. " " .. relay_state.uri)
+    log("forwarding client to original ", relay_state.verb, " ", relay_state.uri)
 
     if relay_state.verb == "POST" then
       log("redirecting as POST using form")
@@ -215,9 +215,9 @@ function SAMLHandler:access(config)
       local consumer, err = consumers.find(consumer_id)
       if not consumer then
         if err then
-          log.err("consumer " .. consumer_id .. " not found: " .. err)
+          log.err("consumer ", consumer_id, " not found: ", err)
         else
-          log.err("consumer " .. consumer_id .. " not found")
+          log.err("consumer ", consumer_id, " not found")
         end
 
         -- TODO: should we start a flow in this case uf the Accept header has text/html?

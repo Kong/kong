@@ -119,7 +119,7 @@ function _M.balancer(ctx)
         span:set_attribute("http.status_code", try.code)
         span:set_status(2)
       end
-      
+
       if balancer_data.hostname ~= nil then
         span:set_attribute("net.peer.name", balancer_data.hostname)
       end
@@ -140,7 +140,7 @@ function _M.balancer(ctx)
         span:set_attribute("http.status_code", try.code)
         span:set_status(2)
       end
-      
+
       if balancer_data.hostname ~= nil then
         span:set_attribute("net.peer.name", balancer_data.hostname)
       end
@@ -382,7 +382,7 @@ function _M.runloop_log_after(ctx)
   -- this avoids reallocation.
   -- The span table MUST NOT be used after released.
   if type(ctx.KONG_SPANS) == "table" then
-    ngx_log(ngx_DEBUG, _log_prefix, "collected " .. #ctx.KONG_SPANS .. " spans: ", lazy_format_spans(ctx.KONG_SPANS))
+    ngx_log(ngx_DEBUG, _log_prefix, "collected ", #ctx.KONG_SPANS, " spans: ", lazy_format_spans(ctx.KONG_SPANS))
 
     for i = 1, #ctx.KONG_SPANS do
       local span = ctx.KONG_SPANS[i]

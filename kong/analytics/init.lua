@@ -190,7 +190,7 @@ persistence_handler = function(premature, self)
   end
 
   local when = self.flush_interval + self:random(DELAY_LOWER_BOUND, DELAY_UPPER_BOUND)
-  log(DEBUG, _log_prefix, "starting recurring analytics timer in " .. when .. " seconds for worker " .. ngx.worker.id())
+  log(DEBUG, _log_prefix, "starting recurring analytics timer in ", when, " seconds for worker ", ngx.worker.id())
 
   local ok, err = timer_at(when, persistence_handler, self)
   if not ok then
@@ -212,10 +212,10 @@ function _M:flush_data()
   end
 
   if kong.configuration.analytics_debug then
-    log(INFO, _log_prefix, "analytics_debug: " .. cjson.encode(self.requests_buffer))
+    log(INFO, _log_prefix, "analytics_debug: ", cjson.encode(self.requests_buffer))
   end
 
-  log(DEBUG, _log_prefix, "flushing analytics request log data: " .. #self.requests_buffer .. ". worker id: " .. ngx.worker.id())
+  log(DEBUG, _log_prefix, "flushing analytics request log data: ", #self.requests_buffer, ". worker id: ", ngx.worker.id())
 
   local bytes = pb.encode("kong.model.analytics.Payload", {
     data = self.requests_buffer,
@@ -494,8 +494,8 @@ function _M:log_request()
   end
 
   if self.requests_count > self.buffer_size_limit then
-    log(WARN, _log_prefix, "Local buffer size limit reached for the analytics request log. " ..
-      "The current limit is " .. self.buffer_size_limit)
+    log(WARN, _log_prefix, "Local buffer size limit reached for the analytics request log. ",
+        "The current limit is ", self.buffer_size_limit)
     table_remove(self.requests_buffer, 1)
     self.requests_count = self.requests_count - 1
   end

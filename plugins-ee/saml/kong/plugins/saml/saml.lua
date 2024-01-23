@@ -109,7 +109,7 @@ local function decrypt_assertion(encrypted_assertion, response_encryption_key)
 
   local encrypted_data = evaluate_xpath_base64(encrypted_assertion, "xenc:EncryptedData/xenc:CipherData/xenc:CipherValue/text()")
   local encryption_algorithm = xpath.evaluate(encrypted_assertion, "xenc:EncryptedData/xenc:EncryptionMethod/@Algorithm")
-  log("encryption_algorithm: " .. encryption_algorithm)
+  log("encryption_algorithm: ", encryption_algorithm)
 
   local decrypter = make_decrypter(encryption_algorithm)
   local decrypted_data, err = decrypter:decrypt(
@@ -304,13 +304,13 @@ _M.parse_and_validate_login_response = function(xml_text, invoked_consume_url, r
       -- The receipient matching is optional as we don't always know
       -- the URL with which we have been invoked, given that
       -- additional proxies may be sitting in front of us.
-      log.notice("subject confirmation lists recipient URL as " .. recipient .. " but " .. invoked_consume_url .. " was invoked")
+      log.notice("subject confirmation lists recipient URL as ", recipient, " but ", invoked_consume_url, " was invoked")
       return false, "subject recipient does not match"
     end
 
     local in_response_to = xpath.evaluate(subject_confirmation_data, "@InResponseTo")
     if in_response_to and in_response_to ~= request_id then
-      log.notice("subject confirmation is for request " .. in_response_to .. " but was sent in response to request " .. request_id)
+      log.notice("subject confirmation is for request ", in_response_to, " but was sent in response to request ", request_id)
       return false, "subject request ID does not match"
     end
 
@@ -325,7 +325,7 @@ _M.parse_and_validate_login_response = function(xml_text, invoked_consume_url, r
   if conditions then
     local audience_restriction = xpath.evaluate(assertion, "saml:AudienceRestriction/saml:Audience/text()")
     if audience_restriction and audience_restriction ~= config.issuer then
-      log.notice("received assertion for wrong audience, expected " .. (config.issuer or "<not set>") .. " got " .. audience_restriction)
+      log.notice("received assertion for wrong audience, expected ", (config.issuer or "<not set>"), " got ", audience_restriction)
       return false, "audience restriction mismatch"
     end
 
