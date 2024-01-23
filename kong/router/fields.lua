@@ -34,6 +34,7 @@ local HTTP_FIELDS = {
                },
 
   ["Int"]    = {"net.src.port", "net.dst.port",
+                "http.path.segments.len",
                },
 
   ["IpAddr"] = {"net.src.ip", "net.dst.ip",
@@ -297,6 +298,13 @@ if is_http then
         -- "/a/b/c" => 1="a", 2="b", 3="c"
         -- http.path.segments.0 => params.segments[1 + 0] => a
         -- http.path.segments.1_2 => b/c
+
+        if range == "len" then
+          value = #segments
+          segments[range] = value
+
+          return value
+        end
 
         local p = range:find("_", 1, true)
 
