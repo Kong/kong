@@ -415,7 +415,6 @@ function off.new(connector, schema, errors)
       self[method] = function(_, foreign_key, size, offset, options)
         local ws_id = ws(schema, options)
         local prefix = foreign_field_key(name, ws_id, fname, foreign_key.id)
-        ngx.log(ngx.ERR, method, " ", prefix)
         return page_for_prefix(self, prefix, size, offset, options, true)
       end
     end

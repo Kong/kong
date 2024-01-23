@@ -29,6 +29,9 @@ return {
         "row" JSON,
         FOREIGN KEY (version) REFERENCES clustering_sync_version(version)
       );
+
+      CREATE INDEX clustering_sync_delta_version_idx ON clustering_sync_delta (version);
+
       END;
       $$;
     ]]
