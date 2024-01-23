@@ -214,6 +214,24 @@ if is_http then
   local HTTP_SEGMENTS_OFFSET = 1
 
 
+  local function get_http_segments(params)
+    if not params.segments then
+      HTTP_SEGMENTS_REG_CTX.pos = 2 -- reset ctx, skip first '/'
+      params.segments = re_split(params.uri, "/", "jo", HTTP_SEGMENTS_REG_CTX)
+    end
+
+    return params.segments
+  end
+
+
+  FIELDS_FUNCS["http.path.segments.len"] =
+  function(params)
+    local segments = get_http_segments(params)
+
+    return #segments
+  end
+
+
   -- func => get_headers or get_uri_args
   -- name => "headers" or "queries"
   -- max_config_option => "lua_max_req_headers" or "lua_max_uri_args"
@@ -282,16 +300,7 @@ if is_http then
       local range = field:sub(HTTP_SEGMENTS_PREFIX_LEN + 1)
 
       f = function(params)
-        if not params.segments then
-          HTTP_SEGMENTS_REG_CTX.pos = 2 -- reset ctx, skip first '/'
-          params.segments = re_split(params.uri, "/", "jo", HTTP_SEGMENTS_REG_CTX)
-        end
-
-        local segments = params.segments
-
-        if range == "len" then
-          return #segments
-        end
+        local segments = get_http_segments(params)
 
         local value = segments[range]
 
