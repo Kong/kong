@@ -540,11 +540,11 @@ do
     local headers
 
     if ctx then
-      if not ctx.headers then
-        ctx.headers = ngx.req.get_headers()
+      if not ctx.cached_request_headers then
+        ctx.cached_request_headers = ngx.req.get_headers()
       end
 
-      headers = ctx.headers
+      headers = ctx.cached_request_headers
 
     else
       headers = ngx.req.get_headers()
