@@ -956,6 +956,17 @@ then
 end
 ```
 
+When invoking `ngx.log()` with some variable as input, prefer vararg-style
+calls rather than using the string concatenation operator (`..`):
+
+```lua
+-- bad
+ngx.log(ngx.DEBUG, "if `my_var` is nil, this code throws an exception: " .. my_var)
+
+-- good
+ngx.log(ngx.DEBUG, "if `my_var` is nil, this code is fine: ", my_var)
+```
+
 [Back to code style TOC](#table-of-contents---code-style)
 
 [Back to TOC](#table-of-contents)
