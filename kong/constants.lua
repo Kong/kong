@@ -36,8 +36,8 @@ local plugins = {
   "azure-functions",
   "zipkin",
   "opentelemetry",
-  "ai-prompt-decorator",
   "ai-proxy",
+  "ai-prompt-decorator",
 }
 
 local plugin_map = {}
