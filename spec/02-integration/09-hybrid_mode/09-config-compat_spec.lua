@@ -341,6 +341,58 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         admin.plugins:remove({ id = zipkin.id })
       end)
     end)
+
+    describe("compatibility tests for redis standarization", function()
+      describe("acme plugin", function()
+        it("translates standardized redis config to older acme structure", function()
+          -- [[ 3.6.x ]] --
+          local acme = admin.plugins:insert {
+            name = "acme",
+            enabled = true,
+            config = {
+              account_email = "test@example.com",
+              storage = "redis",
+              storage_config = {
+                -- [[ new structure redis
+                redis = {
+                  host = "localhost",
+                  port = 57198,
+                  username = "test",
+                  password = "secret",
+                  database = 2,
+                  timeout = 1100,
+                  ssl = true,
+                  ssl_verify = true,
+                  server_name = "example.test",
+                  extra_options = {
+                    namespace = "test_namespace",
+                    scan_count = 13
+                  }
+                }
+                -- ]]
+              }
+            }
+          }
+
+          local expected_acme_prior_36 = utils.cycle_aware_deep_copy(acme)
+          expected_acme_prior_36.config.storage_config.redis = {
+            host = "localhost",
+            port = 57198,
+            auth = "secret",
+            database = 2,
+            ssl = true,
+            ssl_verify = true,
+            ssl_server_name = "example.test",
+            namespace = "test_namespace",
+            scan_count = 13
+          }
+          do_assert(utils.uuid(), "3.5.0", expected_acme_prior_36)
+
+          -- cleanup
+          admin.plugins:remove({ id = acme.id })
+        end)
+      end)
+    end)
   end)
 
   -- fixme: azure not tested (test needs to be added when it azure is added)
