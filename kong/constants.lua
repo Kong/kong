@@ -47,6 +47,7 @@ local plugins = {
   "zipkin",
   "opentelemetry",
   "ai-proxy",
+  "ai-prompt-decorator",
 }
 
 -- XXX EE
