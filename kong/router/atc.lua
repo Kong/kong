@@ -5,7 +5,6 @@ local _MT = { __index = _M, }
 local buffer = require("string.buffer")
 local lrucache = require("resty.lrucache")
 local tb_new = require("table.new")
-local fields = require("kong.router.fields")
 local utils = require("kong.router.utils")
 local rat = require("kong.tools.request_aware_table")
 local yield = require("kong.tools.yield").yield
@@ -56,6 +55,7 @@ do
   local schema = require("resty.router.schema")
   local context = require("resty.router.context")
   local router = require("resty.router.router")
+  local fields = require("kong.router.fields")
 
   local function generate_schema(fields)
     local s = schema.new()
@@ -104,6 +104,27 @@ do
   -- for db schema validation
   function _M.schema(protocols)
     return assert(protocol_to_schema[protocols[1]])
+  end
+
+  -- for unit testing
+  function _M._set_ngx(mock_ngx)
+    if type(mock_ngx) ~= "table" then
+      return
+    end
+
+    if mock_ngx.header then
+      header = mock_ngx.header
+    end
+
+    if mock_ngx.var then
+      var = mock_ngx.var
+    end
+
+    if mock_ngx.log then
+      ngx_log = mock_ngx.log
+    end
+
+    fields._set_ngx(mock_ngx)
   end
 end
 
@@ -684,28 +705,6 @@ function _M:exec(ctx)
 end
 
 end   -- if is_http
-
-
-function _M._set_ngx(mock_ngx)
-  if type(mock_ngx) ~= "table" then
-    return
-  end
-
-  if mock_ngx.header then
-    header = mock_ngx.header
-  end
-
-  if mock_ngx.var then
-    var = mock_ngx.var
-  end
-
-  if mock_ngx.log then
-    ngx_log = mock_ngx.log
-  end
-
-  -- unit testing
-  fields._set_ngx(mock_ngx)
-end
 
 
 _M.LOGICAL_OR      = LOGICAL_OR
