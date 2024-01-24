@@ -39,23 +39,6 @@ return {
   entity_checks = {
     {
       at_least_one_of = { "config.allow_patterns", "config.deny_patterns" },
-      -- custom_entity_check = {
-      --   field_sources = { "config" },
-      --   fn = function(entity)
-      --     local config = entity.config
-  
-      --     if config then
-      --       local allow_patterns_set = (config.allow_patterns) and (#config.allow_patterns > 0)
-      --       local deny_patterns_set = (config.deny_patterns) and (#config.deny_patterns > 0)
-
-      --       if (not allow_patterns_set) and (not deny_patterns_set) then
-      --         return nil, "must set one item in either [allow_patterns] or [deny_patterns]"
-      --       end
-      --     end
-
-      --     return true
-      --   end
-      -- }
     }
   }
 }
