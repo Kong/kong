@@ -2158,7 +2158,7 @@ local config = {
           },
           {
             ssl_verify = {
-              description = "Verify identity provider server certificate.",
+              description = "Verify identity provider server certificate. If set to `true`, the plugin uses the CA certificate set in the `kong.conf` config parameter `lua_ssl_trusted_certificate`.",
               required = false,
               type = "boolean",
               default = false,
