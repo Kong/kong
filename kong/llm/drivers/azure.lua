@@ -42,9 +42,10 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
   -- azure has non-standard URL format
   local url = (conf.model.options and conf.model.options.upstream_url)
   or fmt(
-    "%s%s",
+    "%s%s?api-version=%s",
     ai_shared.upstream_url_format[DRIVER_NAME]:format(conf.model.options.azure_instance, conf.model.options.azure_deployment_id),
-    ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
+    ai_shared.operation_map[DRIVER_NAME][conf.route_type].path,
+    conf.model.options.azure_api_version or "2023-05-15"
   )
 
   local method = ai_shared.operation_map[DRIVER_NAME][conf.route_type].method
