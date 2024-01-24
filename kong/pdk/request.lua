@@ -625,7 +625,7 @@ local function new(self)
       error("header name must be a string", 2)
     end
 
-    return http_get_header(name, ngx.ctx)
+    return http_get_header(name)
   end
 
 
