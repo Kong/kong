@@ -314,9 +314,9 @@ for _, strategy in helpers.each_strategy() do
             status = "available"
           }
         })
-       local body = assert.response(res).has.status(400)
-       local json = cjson.decode(body)
-       assert.same("validation failed: content-type 'application/json+1' is not supported", json.message)
+
+        assert.response(res).has.status(200)
+        assert.logfile().has.line("request body content-type 'application/json\\+1' is not supported yet, ignore validation")
       end)
 
       it("should pass the validation when passing a unallowed content-type while validate_request_body is disabled", function()

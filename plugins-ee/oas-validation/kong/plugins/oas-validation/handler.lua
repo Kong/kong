@@ -422,6 +422,11 @@ function OASValidationPlugin:response(conf)
   local resp_status_code = kong.service.response.get_status()
 
   local content_type = extract_media_type(kong.service.response.get_header("Content-Type"))
+  if content_type ~= "application/json" then
+    local msg = "response body content-type '" .. content_type .. "' is not supported yet, ignore validation"
+    kong.log.info(msg)
+    return
+  end
 
   local schema, err = locate_response_body_schema(data.spec_version or OPEN_API, data.spec_method, resp_status_code, content_type)
 
@@ -593,6 +598,12 @@ function OASValidationPlugin:access(conf)
 
   -- check content-type matches the spec
   local content_type = extract_media_type(request_get_header("Content-Type"))
+  if content_type ~= "application/json" then
+    local msg = "request body content-type '" .. content_type .. "' is not supported yet, ignore validation"
+    kong.log.info(msg)
+    return
+  end
+
   -- vars are lazy used
   local content_type_check, content_type_check_err = content_type_allowed(content_type, request_method, method_spec)
 

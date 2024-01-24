@@ -26,6 +26,15 @@ local fixtures = {
               ngx.print('{"key": "string"}')
             }
           }
+
+          location = "/multiple-content-types" {
+            content_by_lua_block {
+              ngx.status = 200
+              ngx.header["Content-Type"] = "text/plain"
+              ngx.print("world")
+            }
+          }
+
         }
     ]]
   }
@@ -75,6 +84,19 @@ for _, strategy in helpers.each_strategy() do
         },
       })
 
+      local route3 = assert(db.routes:insert({
+        hosts = { "test3.test" },
+        service = service1,
+      }))
+      assert(db.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = route3.id },
+        config = {
+          api_spec = assert(io.open(helpers.get_fixtures_path() .. "/resources/request-body-oas.yaml"):read("*a")),
+          validate_request_body = true,
+          validate_response_body = true,
+        },
+      })
 
       assert(helpers.start_kong({
         database = strategy,
@@ -137,6 +159,23 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.response(res).has.status(200)
+      end)
+
+      it("multiple-content-types", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/multiple-content-types",
+          headers = {
+            host = "test3.test",
+            ["Content-Type"] = "text/plain",
+          },
+          body = "hello"
+        })
+        assert.response(res).has.status(200)
+        local body = res:read_body()
+        assert.equal("world", body)
+        assert.logfile().has.line("request body content-type 'text/plain' is not supported yet, ignore validation")
+        assert.logfile().has.line("response body content-type 'text/plain' is not supported yet, ignore validation")
       end)
     end)
   end)

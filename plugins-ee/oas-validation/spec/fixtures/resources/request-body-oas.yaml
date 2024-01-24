@@ -30,3 +30,20 @@ paths:
                 properties:
                   key:
                     type: string
+
+  /multiple-content-types:
+    post:
+      requestBody:
+        content:
+          "*/*":
+            schema:
+              type: object
+              format: byte
+      required: true
+      responses:
+        "200":
+          content:
+            text/plain:
+              schema:
+                type: object
+          description: OK

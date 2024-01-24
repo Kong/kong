@@ -211,10 +211,6 @@ end
 
 
 function _M.content_type_allowed(content_type, method, method_spec)
-  if content_type ~= "application/json" then
-    return false, "content-type '" .. content_type .. "' is not supported"
-  end
-
   if CONTENT_METHODS[method] then
     if method_spec.consumes then
       local content_types = method_spec.consumes
