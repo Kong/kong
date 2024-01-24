@@ -210,17 +210,21 @@ if is_http then
 
   local HTTP_SEGMENTS_PREFIX = "http.path.segments."
   local HTTP_SEGMENTS_PREFIX_LEN = #HTTP_SEGMENTS_PREFIX
-  local HTTP_SEGMENTS_REG_CTX = { pos = 2, }  -- skip first '/'
   local HTTP_SEGMENTS_OFFSET = 1
 
 
-  local function get_http_segments(params)
-    if not params.segments then
-      HTTP_SEGMENTS_REG_CTX.pos = 2 -- reset ctx, skip first '/'
-      params.segments = re_split(params.uri, "/", "jo", HTTP_SEGMENTS_REG_CTX)
-    end
+  local get_http_segments
+  do
+    local HTTP_SEGMENTS_REG_CTX = { pos = 2, }  -- skip first '/'
 
-    return params.segments
+    get_http_segments = function(params)
+      if not params.segments then
+        HTTP_SEGMENTS_REG_CTX.pos = 2 -- reset ctx, skip first '/'
+        params.segments = re_split(params.uri, "/", "jo", HTTP_SEGMENTS_REG_CTX)
+      end
+
+      return params.segments
+    end
   end
 
 
