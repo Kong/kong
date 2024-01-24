@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Create backport pull requests
-        uses: korthout/backport-action@930286d359d53effaf69607223933cbbb02460eb #v2.2.0
+        uses: korthout/backport-action@6e72f987c115430f6abc2fa92a74cdbf3e14b956 # v2.4.1
         with:
           github_token: ${{ secrets.PAT }}
           pull_title: '[backport -> ${target_branch}] ${pull_title}'
@@ -23,6 +23,10 @@ jobs:
           label_pattern: ^backport (release\/[^ ]+)$ # filters for labels starting with "backport " and extracts the branch name
           pull_description: |-
             Automated backport to `${target_branch}`, triggered by a label in #${pull_number}.
+
+            ## Original description
+
+            #{pull_description}
           copy_assignees: true
           copy_milestone: true
           copy_requested_reviewers: true
