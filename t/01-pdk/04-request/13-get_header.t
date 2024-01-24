@@ -9,7 +9,7 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: request.get_header() returns all headers when multiple is given with same name
+=== TEST 1: request.get_header() returns first header when multiple is given with same name
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -26,7 +26,7 @@ GET /t
 Accept: application/json
 Accept: text/html
 --- response_body
-accept header value: application/json, text/html
+accept header value: application/json
 --- no_error_log
 [error]
 

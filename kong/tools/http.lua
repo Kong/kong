@@ -534,4 +534,35 @@ do
 end
 
 
+do
+  local replace_dashes = require("kong.tools.string").replace_dashes
+
+  function _M.get_header(name, ctx)
+    local value = ngx.var["http_" .. replace_dashes(name)]
+
+    if not value or not value:find(", ", 1, true) then
+      return value
+    end
+
+    local headers
+
+    if ctx then
+      if not ctx.cached_request_headers then
+        ctx.cached_request_headers = ngx.req.get_headers()
+      end
+
+      headers = ctx.cached_request_headers
+
+    else
+      headers = ngx.req.get_headers()
+    end
+
+    value = headers[name]
+
+    return type(value) == "table" and
+           value[1] or value
+  end
+end
+
+
 return _M
