@@ -49,23 +49,19 @@ local function is_reference(reference)
 end
 
 local function find_template(reference_string, templates)
-  if is_reference(reference_string) then
-    local parts, err = parse_url(sub(reference_string, 2, -2))
-    if not parts then
-      return nil, fmt("template reference is not in format '{template://template_name}' (%s) [%s]", err, reference_string)
-    end
-
-    -- iterate templates to find it
-    for i, v in ipairs(templates) do
-      if v.name == parts.host then
-        return v, nil
-      end
-    end
-
-    return nil, "could not find template name [" .. parts.host .. "]"
+  local parts, err = parse_url(sub(reference_string, 2, -2))
+  if not parts then
+    return nil, fmt("template reference is not in format '{template://template_name}' (%s) [%s]", err, reference_string)
   end
 
-  return nil, "'messages' template reference should be a single string, in format '{template://template_name}'"
+  -- iterate templates to find it
+  for i, v in ipairs(templates) do
+    if v.name == parts.host then
+      return v, nil
+    end
+  end
+
+  return nil, fmt("could not find template name [%s]", parts.host)
 end
 
 function _M:access(conf)
@@ -100,10 +96,12 @@ function _M:access(conf)
     return bad_request("only 'llm/v1/chat' and 'llm/v1/completions' formats are supported for templating")
   end
 
-  local requested_template, err = find_template(reference, conf.templates)
-  if err and (not conf.allow_untemplated_requests) then bad_request(err) end
+  if is_reference(reference) then
+    local requested_template, err = find_template(reference, conf.templates)
+    if not requested_template then
+      return bad_request(err)
+    end
 
-  if not err then
     -- try to render the replacement request
     local rendered_template, err = templater:render(requested_template, request.properties or {})
     if err then
@@ -111,6 +109,9 @@ function _M:access(conf)
     end
 
     kong.service.request.set_raw_body(rendered_template)
+
+  elseif not (conf.allow_untemplated_requests) then
+    return bad_request("this LLM route only supports templated requests")
   end
 end
 

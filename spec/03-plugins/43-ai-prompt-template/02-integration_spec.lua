@@ -99,6 +99,14 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                 }
               ]],
             },
+            [2] = {
+              name = "developer-completions",
+              template = [[
+                {
+                  "prompt": "You are a {{language}} programming expert. Make me a {{program}} program."
+                }
+              ]],
+            },
           },
         },
       }
@@ -211,7 +219,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         local body = assert.res_status(400, r)
         local json = cjson.decode(body)
 
-        assert.same(json, { error = { message = "'messages' template reference should be a single string, in format '{template://template_name}'" }})
+        assert.same(json, { error = { message = "this LLM route only supports templated requests" }})
       end)
 
       it("doesn't block when 'allow_untemplated_requests' is ON", function()
@@ -232,7 +240,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           ]],
           method = "POST",
         })
-        
+
         local body = assert.res_status(200, r)
         local json = cjson.decode(body)
 
@@ -256,11 +264,31 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           ]],
           method = "POST",
         })
-        
+
         local body = assert.res_status(400, r)
         local json = cjson.decode(body)
 
         assert.same(json, { error = { message = "could not find template name [developer-doesnt-exist]" }} )
+      end)
+
+      it("still errors with a not found template when 'allow_untemplated_requests' is ON", function()
+        local r = client:get("/request", {
+          headers = {
+            host = "test1.com",
+            ["Content-Type"] = "application/json",
+          },
+          body = [[
+            {
+              "messages": "{template://not_found}"
+            }  
+          ]],
+          method = "POST",
+        })
+        
+        local body = assert.res_status(400, r)
+        local json = cjson.decode(body)
+
+        assert.same(json, { error = { message = "could not find template name [not_found]" }} )
       end)
 
       it("errors with missing template parameter", function()
@@ -279,7 +307,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           ]],
           method = "POST",
         })
-        
+
         local body = assert.res_status(400, r)
         local json = cjson.decode(body)
 
