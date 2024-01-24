@@ -29,6 +29,7 @@ local find        = string.find
 local type        = type
 local null        = ngx.null
 local kong        = kong
+local fmt         = string.format
 
 
 local KEYS = {}
@@ -142,147 +143,129 @@ end
 
 local function rotate_keys(name, row, update, force, ret_err)
   local now = time()
+  local is_uri = find(name, "https://", 1, true) == 1 or find(name, "http://", 1, true) == 1
+  local need_load
+  local action
+  local current_keys, err, err_str
+  local stored_data
 
-  if find(name, "https://", 1, true) == 1 or find(name, "http://", 1, true) == 1 then
-    if not row then
-      log("loading jwks from ", name)
+  if is_uri then
+    action = "loading jwks from "
+  else
+    action = "creating jwks for "
+  end
 
-      local current_keys, err = keys.load(name, { ssl_verify = false, unwrap = true, json = false })
-      if not current_keys then
-        if ret_err then
-          return nil, err
-        end
+  if not row then
+    log(action, name)
+    need_load = true
 
-        if kong.configuration.database == "off" and KEYS[name] then
-          log.notice("loading jwks from ", name, " failed: ", err or "unknown error",
-                     " (falling back to cached jwks)")
-          row = KEYS[name]
+  elseif update ~= false then
+    local updated_at = row.updated_at or 0
 
-        else
-          log.notice("loading jwks from ", name, " failed: ", err or "unknown error",
-                     " (falling back to empty jwks)")
-          current_keys = {}
-        end
+    if is_uri and not force and now - updated_at < 300 then
+      if ret_err then
+        return nil, "jwks were rotated less than 5 minutes ago (skipping)"
       end
 
+      log.notice("jwks were rotated less than 5 minutes ago (skipping)")
+
+    else
+      log("rotating jwks for ", name)
+
+      need_load = true
+    end
+  end
+
+  if need_load then
+    if is_uri then
+      current_keys, err = keys.load(name, { ssl_verify = false, unwrap = true, json = false })
+    else
+      current_keys, err = jwks.new({ unwrap = true, json = false })
+    end
+
+    if current_keys then
+      local id = row and row.id
+
+      row = {
+        name = name,
+        keys = current_keys,
+        previous = row and row.keys,
+        created_at = row and row.created_at or now,
+        updated_at = now,
+      }
+
       if kong.configuration.database == "off" then
-        if not row then
-          row = {
-            id = utils.uuid(),
-            name = name,
-            keys = current_keys,
-            created_at = now,
-            updated_at = now
-          }
-        end
+        row.id = id or utils.uuid()
+        KEYS[name] = row
+        local cache_key = kong.db.jwt_signer_jwks:cache_key(name)
+        kong.cache:invalidate_local(cache_key)
+        kong.cache:get(cache_key, nil, cache_jwks, row)
 
       else
-        local stored_data
-        if not err then
-          stored_data, err = kong.db.jwt_signer_jwks:upsert_by_name(name, {
-            keys = current_keys,
-          })
-        end
+        stored_data, err = kong.db.jwt_signer_jwks:upsert_by_name(name, row)
         if stored_data then
           row = stored_data
 
         else
+          err_str = fmt("unable to upsert %s jwks to database (%s)", name, err or "unknown error")
+
           if ret_err then
-            return nil, err
+            return nil, err_str
           end
 
-          log.warn("unable to upsert ", name, " jwks to database (", err
-                   or "unknown error", ")")
-
-          stored_data, err = kong.db.jwt_signer_jwks:select_by_name(name)
-          if stored_data then
-            row = stored_data
-
-          else
-            if err then
-              if ret_err then
-                return nil, err
-              end
-
-              log.warn("failed to load ", name, " jwks from database (", err, ")")
-            end
-
-            if not row then
-              row = {
-                id = utils.uuid(),
-                name = name,
-                keys = current_keys,
-                created_at = now,
-                updated_at = now
-              }
-            end
-          end
+          log.warn(err_str)
+          row.id = id or utils.uuid()
         end
       end
 
-    elseif update ~= false then
-      local updated_at = row.updated_at or 0
+    else
+      err_str = fmt("%s%s failed: %s", action, name, err or "unknown error")
 
-      if not force and now - updated_at < 300 then
-        if ret_err then
-          return nil, "jwks were rotated less than 5 minutes ago (skipping)"
-        end
+      if ret_err then
+        return nil, err_str
+      end
 
-        log.notice("jwks were rotated less than 5 minutes ago (skipping)")
+      log.warn(err_str)
 
-      else
-        log("rotating jwks for ", name)
-
-        local previous_keys = row.keys
-        local current_keys, err = keys.load(name, { ssl_verify = false, unwrap = true, json = false })
-        if current_keys then
-          local id = {
-            id = row.id
-          }
-
-          row = {
-            name = name,
-            keys = current_keys,
-            previous = previous_keys,
-            created_at = row.created_at or now,
-            updated_at = now,
-          }
-
-          if kong.configuration.database == "off" then
-            row.id = id.id or utils.uuid()
-            KEYS[name] = row
-            local cache_key = kong.db.jwt_signer_jwks:cache_key(name)
-            kong.cache:invalidate_local(cache_key)
-            kong.cache:get(cache_key, nil, cache_jwks, row)
-
-          else
-            local stored_data
-            stored_data, err = kong.db.jwt_signer_jwks:upsert(id, row)
-            if stored_data then
-              row = stored_data
-
-            else
-              if ret_err then
-                return nil, err
-              end
-
-              log.warn("unable to upsert ", name, " jwks to database (", err
-                       or "unknown error", ")")
-
-              row.id = id.id
-            end
+      if not row then
+        if kong.configuration.database == "off" then
+          if KEYS[name] then
+            log.notice("falling back to cached jwks")
+            row = KEYS[name]
           end
 
         else
-          if ret_err then
-            return nil, err
-          end
+          stored_data, err = kong.db.jwt_signer_jwks:select_by_name(name)
+          if stored_data then
+            log.notice("falling back to stored jwks")
+            row = stored_data
 
-          log.warn("failed to load ", name, " jwks from database (", err, ")")
+          elseif err then
+            err_str = fmt("failed to load %s jwks from database (%s)", name, err)
+
+            if ret_err then
+              return nil, err_str
+            end
+
+            log.warn(err_str)
+          end
+        end
+
+        if not row then
+          log.warn("falling back to empty jwks")
+          row = {
+            id = utils.uuid(),
+            name = name,
+            keys = {},
+            created_at = now,
+            updated_at = now,
+          }
         end
       end
     end
+  end
 
+  if is_uri then
     local options = {
       rediscover_keys = rediscover_keys(name, row)
     }
@@ -290,132 +273,6 @@ local function rotate_keys(name, row, update, force, ret_err)
     return keys.new({ jwks_uri = name, options = options }, row.keys, row.previous)
 
   else
-    if not row then
-      log("creating jwks for ", name)
-
-      local current_keys, err = jwks.new({ unwrap = true, json = false })
-      if not current_keys then
-        if ret_err then
-          return nil, err
-        end
-
-        if kong.configuration.database == "off" and KEYS[name] then
-          log.notice("creating jwks for ", name, " failed: ", err or "unknown error",
-                     " (falling back to cached jwks)")
-          row = KEYS[name]
-
-        else
-          log.warn("creating jwks for ", name, " failed: ", err or "unknown error",
-                   " (falling back to empty configuration)")
-
-          current_keys = {}
-        end
-      end
-
-      if kong.configuration.database == "off" then
-        if not row then
-          row = {
-            id   = utils.uuid(),
-            name = name,
-            keys = current_keys,
-            created_at = now,
-            updated_at = now,
-          }
-        end
-
-      else
-        local stored_data
-        if not err then
-          stored_data, err = kong.db.jwt_signer_jwks:upsert_by_name(name, {
-            keys = current_keys,
-          })
-        end
-        if stored_data then
-          row = stored_data
-
-        else
-          if ret_err then
-            return nil, err
-          end
-
-          log.warn("unable to upsert ", name, " jwks to database (", err
-                   or "unknown error", ")")
-
-          stored_data, err = kong.db.jwt_signer_jwks:select_by_name(name)
-          if stored_data then
-            row = stored_data
-
-          else
-            if err then
-              if ret_err then
-                return nil, err
-              end
-
-              log.warn("failed to load issuer ", name, " jwks from database (", err, ")")
-            end
-
-            if not row then
-              row = {
-                id = utils.uuid(),
-                name = name,
-                keys = current_keys,
-                created_at = now,
-                updated_at = now
-              }
-            end
-          end
-        end
-      end
-
-    elseif update ~= false then
-      log("rotating jwks for ", name)
-
-      local previous_keys = row.keys
-      local current_keys, err = jwks.new({ unwrap = true, json = false })
-      if current_keys then
-        local id = {
-          id = row.id
-        }
-
-        row = {
-          name = name,
-          keys = current_keys,
-          previous = previous_keys,
-          created_at = row.created_at or now,
-          updated_at = now,
-        }
-
-        if kong.configuration.database == "off" then
-          row.id = id.id or utils.uuid()
-          KEYS[name] = row
-
-        else
-          local stored_data
-          stored_data, err = kong.db.jwt_signer_jwks:upsert(id, row)
-          if stored_data then
-            row = stored_data
-
-          else
-            if ret_err then
-              return nil, err
-            end
-
-            log.warn("unable to upsert ", name, " jwks to database (", err
-                     or "unknown error", ")")
-
-            row.id = id.id
-          end
-        end
-
-      else
-        if ret_err then
-          return nil, err
-        end
-
-        log.warn("failed to create keys for ", name, " (", err, ")")
-      end
-    end
-
     return keys.new({}, row.keys, row.previous)
   end
 end
