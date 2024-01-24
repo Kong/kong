@@ -486,7 +486,7 @@ describe("WebSockets [db #" .. strategy .. "]", function()
     assert(helpers.start_kong({
       database      = strategy,
       plugins       = "bundled",
-      nginx_events_worker_connections = 2048,
+      nginx_events_worker_connections = 4096,
       nginx_conf    = "spec/fixtures/custom_nginx.template",
       headers       = "server_tokens,latency_tokens",
       untrusted_lua = "on",
