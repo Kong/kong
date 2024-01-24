@@ -35,7 +35,7 @@ The build system requires the following tools to be installed:
   - `curl https://sh.rustup.rs -sSf | sh`
   - This is required to build the Rust router.
 - EE Build Dependencies
-  - dependencies: `sudo apt install libgmp-dev libtool libssl-dev`
+  - dependencies: `sudo apt install libtool libssl-dev`
 
 The below tools are only required for building the official Kong Enterprise packages:
 

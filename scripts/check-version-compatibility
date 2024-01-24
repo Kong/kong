@@ -522,21 +522,11 @@ function kong_version() {
       if [[ -f /kong/.requirements ]]; then
         KONG_TYPE=enterprise-source
         KONG_DISTRIBUTIONS_VERSION="$(dependency_version KONG_DISTRIBUTIONS_VERSION)"
-        GMP_VERSION="$(dependency_version KONG_GMP_VERSION)"
-        GMP_URL="https://ftp.gnu.org/gnu/gmp/gmp-${GMP_VERSION}.tar.bz2"
-        GMP_DIRECTORY="$(basename "$GMP_URL" .tar.bz2)"
-        GMP_FILENAME="$(basename "$GMP_URL")"
-        NETTLE_VERSION="$(dependency_version KONG_DEP_NETTLE_VERSION)"
-        NETTLE_URL="https://ftp.gnu.org/gnu/nettle/nettle-${NETTLE_VERSION}.tar.gz"
-        NETTLE_DIRECTORY="$(basename "$NETTLE_URL" .tar.gz)"
-        NETTLE_FILENAME="$(basename "$NETTLE_URL")"
         JQ_VERSION="$(dependency_version KONG_DEP_LIBJQ_VERSION)"
         JQ_URL="https://github.com/stedolan/jq/releases/download/jq-${JQ_VERSION}/jq-${JQ_VERSION}.tar.gz"
         JQ_DIRECTORY="$(basename "$JQ_URL" .tar.gz)"
         JQ_FILENAME="$(basename "$JQ_URL")"
         export KONG_DISTRIBUTIONS_VERSION \
-          GMP_VERSION GMP_URL GMP_DIRECTORY GMP_FILENAME \
-          NETTLE_VERSION NETTLE_URL NETTLE_DIRECTORY NETTLE_FILENAME \
           JQ_VERSION JQ_URL JQ_DIRECTORY JQ_FILENAME
       fi
     fi
