@@ -5611,7 +5611,7 @@ do
           service = service,
           route   = {
             id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
-            expression = [[!(http.path. ^= r#"/foo"#)]],
+            expression = [[!(http.path ^= r#"/foo"#)]],
             priority = 100,
           },
         },
