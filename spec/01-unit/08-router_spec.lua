@@ -5631,5 +5631,35 @@ do
       assert.same(ctx.route_match_cached, "pos")
     end)
   end)
+
+  describe("Router (flavor = " .. flavor .. ") [http]", function()
+    reload_router(flavor)
+
+    it("select() should match not expression", function()
+      local use_case = {
+        {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+            expression = [[!(http.path ^= r#"/foo"#)]],
+            priority = 100,
+          },
+        },
+      }
+
+      local router = assert(new_router(use_case))
+
+      local match_t = router:select("GET", "/123/foo/bar")
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+
+      local match_t = router:select("GET", "/xyz/hello-world/bar")
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+
+      local match_t = router:select("GET", "/foo/bar")
+      assert.falsy(match_t)
+    end)
+  end)
 end   -- local flavor = "expressions"
 
