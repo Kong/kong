@@ -1425,6 +1425,25 @@ describe("routes schema (flavor = expressions)", function()
   reload_flavor("expressions")
   setup_global_env()
 
+  it("validates a 'not' expression", function()
+    local route = {
+      id             = a_valid_uuid,
+      name           = "my_route",
+      protocols      = { "http" },
+      expression     = [[!(http.method == "GET") && !(http.host == "example.com") && !(http.path ^= "/foo")]],
+      priority       = 100,
+      strip_path     = false,
+      preserve_host  = true,
+      service        = { id = another_uuid },
+    }
+    route = Routes:process_auto_fields(route, "insert")
+    assert.truthy(route.created_at)
+    assert.truthy(route.updated_at)
+    assert.same(route.created_at, route.updated_at)
+    assert.truthy(Routes:validate(route))
+    assert.falsy(route.strip_path)
+  end)
+
   it("validates a valid http route", function()
     local route = {
       id             = a_valid_uuid,
