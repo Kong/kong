@@ -8,6 +8,7 @@ local context = require("resty.router.context")
 local router = require("resty.router.router")
 local lrucache = require("resty.lrucache")
 local tb_new = require("table.new")
+local tb_clear = require("table.clear")
 local fields = require("kong.router.fields")
 local utils = require("kong.router.utils")
 local yield = require("kong.tools.utils").yield
@@ -478,11 +479,10 @@ function _M:exec(ctx)
   -- cache key calculation
 
   if not CACHE_PARAMS then
-    -- access `kong.configuration.log_level` here
-    CACHE_PARAMS = require("kong.tools.request_aware_table").new()
+    CACHE_PARAMS = {}
   end
 
-  CACHE_PARAMS:clear()
+  tb_clear(CACHE_PARAMS)
 
   CACHE_PARAMS.uri  = req_uri
   CACHE_PARAMS.host = req_host
@@ -605,11 +605,10 @@ function _M:exec(ctx)
   -- cache key calculation
 
   if not CACHE_PARAMS then
-    -- access `kong.configuration.log_level` here
-    CACHE_PARAMS = require("kong.tools.request_aware_table").new()
+    CACHE_PARAMS = {}
   end
 
-  CACHE_PARAMS:clear()
+  tb_clear(CACHE_PARAMS)
 
   local cache_key = fields:get_cache_key(CACHE_PARAMS, ctx)
 
