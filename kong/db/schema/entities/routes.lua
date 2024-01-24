@@ -27,10 +27,11 @@ do
 
     for _, f in ipairs(fields) do
       if f:find(HTTP_PATH_SEGMENTS_PREFIX, 1, true) then
-        local m = re_match(f:sub(#HTTP_PATH_SEGMENTS_PREFIX + 1),
-                           HTTP_PATH_SEGMENTS_SUFFIX_REG, "jo")
+        local suffix = f:sub(#HTTP_PATH_SEGMENTS_PREFIX + 1)
+        local m = re_match(suffix, HTTP_PATH_SEGMENTS_SUFFIX_REG, "jo")
 
-        if not m or (m[2] and tonumber(m[1]) >= tonumber(m[3])) then
+        if (suffix ~= "len") and
+           (not m or (m[2] and tonumber(m[1]) >= tonumber(m[3]))) then
           return nil, "Router Expression failed validation: " ..
                       "illformed http.path.segments.* field"
         end
