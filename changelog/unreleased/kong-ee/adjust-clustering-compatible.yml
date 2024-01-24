@@ -1,0 +1,3 @@
+message: Adjust clustering compatible check related to HCV kube auth path
+type: bugfix
+scope: Clustering

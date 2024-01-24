@@ -177,6 +177,13 @@ local compatible_checkers = {
         end
       end
 
+      return has_update
+    end
+  },
+
+  { 3004003004, --[[3.4.3.4]]
+    function(config_table, dp_version, log_suffix)
+      local has_update
       for _, vault in ipairs(config_table.vaults or {}) do
         local name = vault.name
         if name == "hcv" then
