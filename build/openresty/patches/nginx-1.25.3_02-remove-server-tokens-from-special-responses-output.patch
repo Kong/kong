@@ -4,13 +4,13 @@ Date: Fri, 16 Aug 2019 13:41:49 +0300
 Subject: [PATCH] remove server tokens from special responses output
 
 ---
- nginx-1.21.4/src/http/ngx_http_special_response.c | 3 ---
+ nginx-1.25.3/src/http/ngx_http_special_response.c | 3 ---
  1 file changed, 3 deletions(-)
 
-diff --git a/bundle/nginx-1.21.4/src/http/ngx_http_special_response.c b/bundle/nginx-1.21.4/src/http/ngx_http_special_response.c
+diff --git a/bundle/nginx-1.25.3/src/http/ngx_http_special_response.c b/bundle/nginx-1.25.3/src/http/ngx_http_special_response.c
 index 4b8bbf5..524cc7b 100644
---- a/bundle/nginx-1.21.4/src/http/ngx_http_special_response.c
-+++ b/bundle/nginx-1.21.4/src/http/ngx_http_special_response.c
+--- a/bundle/nginx-1.25.3/src/http/ngx_http_special_response.c
++++ b/bundle/nginx-1.25.3/src/http/ngx_http_special_response.c
 @@ -19,21 +19,18 @@ static ngx_int_t ngx_http_send_refresh(ngx_http_request_t *r);
 
 

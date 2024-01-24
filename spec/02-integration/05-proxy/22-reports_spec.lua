@@ -249,7 +249,9 @@ for _, strategy in helpers.each_strategy() do
       proxy_ssl_client:close()
     end)
 
-    it("reports h2c requests #h2_client", function()
+    -- TODO: need to fix the h2client content-length issue first
+    -- (already fixed in 0.4.3 but causes issues in other tests)
+    pending("reports h2c requests #h2_client", function()
       local h2c_client = assert(helpers.proxy_client_h2c())
       local body, headers = h2c_client({
         headers = { [":authority"] = "http-service.test" }
@@ -272,7 +274,9 @@ for _, strategy in helpers.each_strategy() do
       assert.match("wss_reqs=0", reports_data)
     end)
 
-    it("reports h2 requests #h2_client", function()
+    -- TODO: need to fix the h2client content-length issue first
+    -- (already fixed in 0.4.3 but causes issues in other tests)
+    pending("reports h2 requests #h2_client", function()
       local h2_client = assert(helpers.proxy_client_h2())
       local body, headers = h2_client({
         headers = { [":authority"] = "https-service.test" }

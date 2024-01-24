@@ -92,7 +92,7 @@ kong_ljbc_directories = [
         src=$$LUAROCKS/share/lua/5.1/kong/{source_dir}
 
         LUAJIT={workspace_path}/$$(echo $(locations @openresty//:luajit) | awk '{{print $$1}}')
-        export LUA_PATH="$$LUAJIT/share/luajit-2.1.0-beta3/?.lua;;"
+        export LUA_PATH="$$LUAJIT/share/luajit-2.1/?.lua;;"
         luajit=$$LUAJIT/bin/luajit 2>> $$cwd/$@.tmp
 
         pushd $$src 2>&1 >> $$cwd/$@.tmp

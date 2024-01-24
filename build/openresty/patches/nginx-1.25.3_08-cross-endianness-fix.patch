@@ -15,8 +15,8 @@ Signed-off-by: Derek Straka <derek@asterius.io>
 
 diff --git a/auto/endianness b/auto/endianness
 index 1b552b6..be84487 100644
---- a/bundle/nginx-1.21.4/endianness
-+++ b/bundle/nginx-1.21.4/auto/endianness
+--- a/bundle/nginx-1.25.3/endianness
++++ b/bundle/nginx-1.25.3/auto/endianness
 @@ -13,7 +13,13 @@ checking for system byte ordering
  END
  

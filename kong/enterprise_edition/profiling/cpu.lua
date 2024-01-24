@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local jit                       = require("jit")
-assert(jit.version_num == 20100, "LuaJIT core/library version mismatch")
+assert(jit.version_num == 20199, "LuaJIT core/library version mismatch")
 local profile                   = require("jit.profile")
 local resty_lock                = require("resty.lock")
 local pl_path                   = require("pl.path")
