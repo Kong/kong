@@ -1,0 +1,3 @@
+message: The expressions route now supports the `!` (not) operator, which allows creating routes like `!(http.path =^)` and `!(http.path == "/a" || http.path == "/b")`
+type: "feature"
+scope: "Core"
