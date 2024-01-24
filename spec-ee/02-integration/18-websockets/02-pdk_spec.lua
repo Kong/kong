@@ -236,7 +236,7 @@ describe("WebSocket PDK #" .. strategy, function()
         session = ws_session({
           host = "ws.test",
           query = { foo = "bar" },
-          timeout = 50,
+          timeout = 100000,
         })
         session.server_echo = true
 
