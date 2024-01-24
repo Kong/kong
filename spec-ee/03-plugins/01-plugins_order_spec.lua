@@ -172,6 +172,7 @@ describe("Plugins", function()
       'response-transformer-advanced',
       'response-transformer',
       'route-transformer-advanced',
+      'ai-prompt-decorator',
       'ai-proxy',
       'kafka-upstream',
       'aws-lambda',
