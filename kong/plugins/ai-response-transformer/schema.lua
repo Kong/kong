@@ -70,7 +70,7 @@ return {
         then_err = "'config.llm.route_type' must be 'llm/v1/chat' for AI transformer plugins",
       },
     },
-    { mutually_required = { "http_proxy_host", "http_proxy_port" } },
-    { mutually_required = { "https_proxy_host", "https_proxy_port" } },
+    { mutually_required = { "config.http_proxy_host", "config.http_proxy_port" } },
+    { mutually_required = { "config.https_proxy_host", "config.https_proxy_port" } },
   },
 }
