@@ -34,6 +34,7 @@ local HTTP_FIELDS = {
                },
 
   ["Int"]    = {"net.src.port", "net.dst.port",
+                "http.path.segments.len",
                },
 
   ["IpAddr"] = {"net.src.ip", "net.dst.ip",
@@ -209,8 +210,30 @@ if is_http then
 
   local HTTP_SEGMENTS_PREFIX = "http.path.segments."
   local HTTP_SEGMENTS_PREFIX_LEN = #HTTP_SEGMENTS_PREFIX
-  local HTTP_SEGMENTS_REG_CTX = { pos = 2, }  -- skip first '/'
   local HTTP_SEGMENTS_OFFSET = 1
+
+
+  local get_http_segments
+  do
+    local HTTP_SEGMENTS_REG_CTX = { pos = 2, }  -- skip first '/'
+
+    get_http_segments = function(params)
+      if not params.segments then
+        HTTP_SEGMENTS_REG_CTX.pos = 2 -- reset ctx, skip first '/'
+        params.segments = re_split(params.uri, "/", "jo", HTTP_SEGMENTS_REG_CTX)
+      end
+
+      return params.segments
+    end
+  end
+
+
+  FIELDS_FUNCS["http.path.segments.len"] =
+  function(params)
+    local segments = get_http_segments(params)
+
+    return #segments
+  end
 
 
   -- func => get_headers or get_uri_args
@@ -281,12 +304,7 @@ if is_http then
       local range = field:sub(HTTP_SEGMENTS_PREFIX_LEN + 1)
 
       f = function(params)
-        if not params.segments then
-          HTTP_SEGMENTS_REG_CTX.pos = 2 -- reset ctx, skip first '/'
-          params.segments = re_split(params.uri, "/", "jo", HTTP_SEGMENTS_REG_CTX)
-        end
-
-        local segments = params.segments
+        local segments = get_http_segments(params)
 
         local value = segments[range]
 
