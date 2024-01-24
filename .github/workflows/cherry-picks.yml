@@ -26,7 +26,7 @@ jobs:
         with:
           token: ${{ secrets.CHERRY_PICK_TOKEN }}
       - name: Create backport pull requests
-        uses: jschmid1/cross-repo-cherrypick-action@1182bef0772280407550496e3cceaecb7c0102d0 #v1.1.0
+        uses: jschmid1/cross-repo-cherrypick-action@2d2a475d31b060ac21521b5eda0a78876bbae94e #v1.1.0
         with:
           token: ${{ secrets.CHERRY_PICK_TOKEN }}
           pull_title: '[cherry-pick -> ${target_branch}] ${pull_title}'
@@ -34,6 +34,10 @@ jobs:
           trigger_label: 'cherry-pick kong-ee' # trigger based on this label
           pull_description: |-
             Automated cherry-pick to `${target_branch}`, triggered by a label in https://github.com/${owner}/${repo}/pull/${pull_number} :robot:.
+
+            ## Original description
+
+            #{pull_description}
           upstream_repo: 'kong/kong-ee'
           branch_map: |-
             {
