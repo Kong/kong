@@ -341,6 +341,8 @@
   Previously, the `header_type` was hardcoded to `preserve`, now it can be set to one of the
   following values: `preserve`, `ignore`, `b3`, `b3-single`, `w3c`, `jaeger`, `ot`.
   [#10620](https://github.com/Kong/kong/pull/10620)
+- **StatsD**: allow using credential id as consumer id
+  [#12412](https://github.com/Kong/kong/pull/12412)
 
 #### PDK
 
