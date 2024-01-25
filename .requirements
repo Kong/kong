@@ -18,4 +18,5 @@ WASMER=3.1.1
 WASMTIME=14.0.3
 V8=10.5.18
 
-NGX_BROTLI=25f86f0bac1101b6512135eac5f93c49c63609e3 # v1.0.0rc
+NGX_BROTLI=a71f9312c2deb28875acc7bacfdd5695a111aa53 # master branch of Jan 23, 2024
+BROTLI=ed738e842d2fbdf2d6459e39267a633c4a9b2f5d # master branch of brotli deps submodule of Jan 23, 2024
