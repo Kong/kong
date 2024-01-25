@@ -173,16 +173,6 @@ local FORMATS = {
       },
     },
   },
-  -- mistral = {
-  --   ["llm/v1/chat"] = {
-  --     name = "mistral-tiny",
-  --     provider = "mistral",
-  --     options = {
-  --       max_tokens = 512,
-  --       temperature = 0.5,
-  --     },
-  --   },
-  -- },
 }
 
 
