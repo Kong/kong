@@ -50,7 +50,6 @@ describe('@smoke @koko: Gateway Admin API: Services', function () {
       60000
     );
     expect(resp.retries, 'Should have 5 retries').equal(5);
-    // expect(resp.tags, 'Should not have tags').to.be.null;
     // *** HANDLES NULL OR UNDEFINED **
     expect(resp.tags == null, 'Should not have tags').to.be.true;
     expect(resp.id, 'Should have id of type string').to.be.a('string');
@@ -64,7 +63,6 @@ describe('@smoke @koko: Gateway Admin API: Services', function () {
       url,
       data: servicePayload
     });
-
     logResponse(resp);
     expect(resp.status, 'Status should be 201').equal(201);
     expect(resp.data.name, 'Should have correct service name').equal(
@@ -173,7 +171,7 @@ describe('@smoke @koko: Gateway Admin API: Services', function () {
       expect(resp.status, 'Status should be 200').to.equal(200);
       expect(resp.data.path, 'Should have correct path').equal(newPath);
       expect(resp.data.port, 'Should have port 8080').equal(8080);
-      expect(resp.data.protocol, 'Should have protocol "http"').equal('https');
+      expect(resp.data.protocol, 'Should have protocol "https"').equal('https');
     });
   }
 
@@ -251,7 +249,7 @@ describe('@smoke @koko: Gateway Admin API: Services', function () {
   });
 
   // *** KOKO DOES NOT DELETE SERVICES BY NAME ***
-  it('should delete the service by name', async function () {
+  it('should delete the service', async function () {
     const resp = await axios({
       method: 'delete',
       url: `${url}/${isGateway() ? servicePayload.name : serviceId}`
