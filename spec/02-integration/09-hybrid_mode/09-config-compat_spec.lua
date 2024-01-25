@@ -135,21 +135,6 @@ describe("CP/DP config compat transformations #" .. strategy, function()
     local rate_limit, response_transformer, cors, opentelemetry, zipkin
 
     lazy_setup(function()
-      rate_limit = admin.plugins:insert {
-        name = "rate-limiting",
-        enabled = true,
-        config = {
-          second = 1,
-          policy = "local",
-
-          -- [[ new fields
-          error_code = 403,
-          error_message = "go away!",
-          sync_rate = -1,
-          -- ]]
-        },
-      }
-
       response_transformer = admin.plugins:insert {
         name = "response-transformer",
         enabled = true,
@@ -182,6 +167,21 @@ describe("CP/DP config compat transformations #" .. strategy, function()
     end
 
     it("removes new fields before sending them to older DP nodes", function()
+      rate_limit = admin.plugins:insert {
+        name = "rate-limiting",
+        enabled = true,
+        config = {
+          second = 1,
+          policy = "local",
+
+          -- [[ new fields
+          error_code = 403,
+          error_message = "go away!",
+          sync_rate = -1,
+          -- ]]
+        },
+      }
+
       --[[
         For 3.0.x
         should not have: error_code, error_message, sync_rate
@@ -211,10 +211,31 @@ describe("CP/DP config compat transformations #" .. strategy, function()
       expected = utils.cycle_aware_deep_copy(rate_limit)
       expected.config.sync_rate = nil
       do_assert(utils.uuid(), "3.3.0", expected)
+
+      -- cleanup
+      admin.plugins:remove({ id = rate_limit.id })
     end)
 
     it("does not remove fields from DP nodes that are already compatible", function()
+      rate_limit = admin.plugins:insert {
+        name = "rate-limiting",
+        enabled = true,
+        config = {
+          second = 1,
+          policy = "local",
+
+          -- [[ new fields
+          error_code = 403,
+          error_message = "go away!",
+          sync_rate = -1,
+          -- ]]
+        },
+      }
+
       do_assert(utils.uuid(), "3.4.0", rate_limit)
+
+      -- cleanup
+      admin.plugins:remove({ id = rate_limit.id })
     end)
 
     it("consumer_group scoped plugins should not be present in 3.3 dataplanes", function()
@@ -233,11 +254,29 @@ describe("CP/DP config compat transformations #" .. strategy, function()
     end)
 
     it("plugins with inherit `nil` consumer-group should be present in 3.4 dataplanes", function()
+      rate_limit = admin.plugins:insert {
+        name = "rate-limiting",
+        enabled = true,
+        config = {
+          second = 1,
+          policy = "local",
+
+          -- [[ new fields
+          error_code = 403,
+          error_message = "go away!",
+          sync_rate = -1,
+          -- ]]
+        },
+      }
+
       local id = utils.uuid()
       local plugin = get_plugin(id, "3.4.0", rate_limit.name, true)
       assert.is_not_nil(plugin)
       assert.same(rate_limit.config, plugin.config)
       assert.equals(CLUSTERING_SYNC_STATUS.NORMAL, get_sync_status(id))
+
+      -- cleanup
+      admin.plugins:remove({ id = rate_limit.id })
     end)
 
     describe("compatibility test for cors plugin", function()
@@ -390,6 +429,100 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
           -- cleanup
           admin.plugins:remove({ id = acme.id })
+        end)
+      end)
+
+      describe("rate-limiting plugin", function()
+        it("translates standardized redis config to older rate-limiting structure", function()
+          -- [[ 3.6.x ]] --
+          rate_limit = admin.plugins:insert {
+            name = "rate-limiting",
+            enabled = true,
+            config = {
+              minute = 300,
+              policy = "redis",
+              -- [[ new structure redis
+              redis = {
+                  host = "localhost",
+                  port = 57198,
+                  username = "test",
+                  password = "secret",
+                  database = 2,
+                  timeout = 1100,
+                  ssl = true,
+                  ssl_verify = true,
+                  server_name = "example.test"
+              }
+              -- ]]
+            }
+          }
+
+          local expected_rl_prior_36 = utils.cycle_aware_deep_copy(rate_limit)
+          expected_rl_prior_36.config.redis = nil
+          expected_rl_prior_36.config.redis_host = "localhost"
+          expected_rl_prior_36.config.redis_port = 57198
+          expected_rl_prior_36.config.redis_username = "test"
+          expected_rl_prior_36.config.redis_password = "secret"
+          expected_rl_prior_36.config.redis_database = 2
+          expected_rl_prior_36.config.redis_timeout = 1100
+          expected_rl_prior_36.config.redis_ssl = true
+          expected_rl_prior_36.config.redis_ssl_verify = true
+          expected_rl_prior_36.config.redis_server_name = "example.test"
+
+
+          do_assert(utils.uuid(), "3.5.0", expected_rl_prior_36)
+
+          -- cleanup
+          admin.plugins:remove({ id = rate_limit.id })
+        end)
+      end)
+
+      describe("response-ratelimiting plugin", function()
+        it("translates standardized redis config to older response-ratelimiting structure", function()
+          -- [[ 3.6.x ]] --
+          local response_rl = admin.plugins:insert {
+            name = "response-ratelimiting",
+            enabled = true,
+            config = {
+              limits = {
+                video = {
+                  minute = 300,
+                }
+              },
+              policy = "redis",
+              -- [[ new structure redis
+              redis = {
+                host = "localhost",
+                port = 57198,
+                username = "test",
+                password = "secret",
+                database = 2,
+                timeout = 1100,
+                ssl = true,
+                ssl_verify = true,
+                server_name = "example.test"
+              }
+              -- ]]
+            }
+          }
+
+          local expected_response_rl_prior_36 = utils.cycle_aware_deep_copy(response_rl)
+          expected_response_rl_prior_36.config.redis = nil
+          expected_response_rl_prior_36.config.redis_host = "localhost"
+          expected_response_rl_prior_36.config.redis_port = 57198
+          expected_response_rl_prior_36.config.redis_username = "test"
+          expected_response_rl_prior_36.config.redis_password = "secret"
+          expected_response_rl_prior_36.config.redis_database = 2
+          expected_response_rl_prior_36.config.redis_timeout = 1100
+          expected_response_rl_prior_36.config.redis_ssl = true
+          expected_response_rl_prior_36.config.redis_ssl_verify = true
+          expected_response_rl_prior_36.config.redis_server_name = "example.test"
+
+
+          do_assert(utils.uuid(), "3.5.0", expected_response_rl_prior_36)
+
+          -- cleanup
+          admin.plugins:remove({ id = response_rl.id })
         end)
       end)
     end)
