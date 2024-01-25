@@ -5443,6 +5443,32 @@ do
       assert.falsy(match_t)
     end)
 
+    it("select() should match http.segments.* with len", function()
+      local use_case = {
+        {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+            expression = [[http.path.segments.0 == "foo" && http.path.segments.len == 1]],
+            priority = 100,
+          },
+        },
+      }
+
+      local router = assert(new_router(use_case))
+
+      local match_t = router:select("GET", "/foo")
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+
+      local match_t = router:select("GET", "/foo/")
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+
+      local match_t = router:select("GET", "/foo/xxx")
+      assert.falsy(match_t)
+    end)
+
     it("select() should match range http.segments.*", function()
       local use_case = {
         {
@@ -5461,6 +5487,14 @@ do
             priority = 100,
           },
         },
+        {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8103",
+            expression = [[http.path.segments.1_2 == r#"xxx/yyy"# && http.path.segments.len == 3]],
+            priority = 100,
+          },
+        },
       }
 
       local router = assert(new_router(use_case))
@@ -5476,6 +5510,14 @@ do
       local match_t = router:select("GET", "/foo/xxx/yyy/zzz/bar")
       assert.truthy(match_t)
       assert.same(use_case[2].route, match_t.route)
+
+      local match_t = router:select("GET", "/foo/xxx/yyy")
+      assert.truthy(match_t)
+      assert.same(use_case[3].route, match_t.route)
+
+      local match_t = router:select("GET", "/foo/xxx/yyy/")
+      assert.truthy(match_t)
+      assert.same(use_case[3].route, match_t.route)
     end)
 
     it("select() accepts but does not match wrong http.segments.*", function()
@@ -5502,6 +5544,38 @@ do
 
       local match_t = router:select("GET", "/foo/bar")
       assert.falsy(match_t)
+    end)
+
+    it("exec() should normalize uri with http.segments.*", function()
+      local use_case = {
+        {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+            expression = [[http.path.segments.0 == "foo" && http.path.segments.1 == "bar" && http.path.segments.2 == "baz" && ]] ..
+                         [[http.path.segments.len == 3]],
+            priority = 100,
+          },
+        },
+      }
+
+      local router = assert(new_router(use_case))
+
+      local ctx = {}
+      local _ngx = mock_ngx("GET", "/foo/bar/baz", { a = "1", })
+      router._set_ngx(_ngx)
+
+      local match_t = router:exec(ctx)
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+
+      local ctx = {}
+      local _ngx = mock_ngx("GET", "/foo//bar///baz//", { a = "1", })
+      router._set_ngx(_ngx)
+
+      local match_t = router:exec(ctx)
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
     end)
 
     it("exec() should hit cache with http.segments.*", function()
@@ -5557,6 +5631,36 @@ do
       assert.truthy(match_t)
       assert.same(use_case[2].route, match_t.route)
       assert.same(ctx.route_match_cached, "pos")
+    end)
+  end)
+
+  describe("Router (flavor = " .. flavor .. ") [http]", function()
+    reload_router(flavor)
+
+    it("select() should match not expression", function()
+      local use_case = {
+        {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+            expression = [[!(http.path ^= r#"/foo"#)]],
+            priority = 100,
+          },
+        },
+      }
+
+      local router = assert(new_router(use_case))
+
+      local match_t = router:select("GET", "/123/foo/bar")
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+
+      local match_t = router:select("GET", "/xyz/hello-world/bar")
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+
+      local match_t = router:select("GET", "/foo/bar")
+      assert.falsy(match_t)
     end)
   end)
 end   -- local flavor = "expressions"

@@ -1425,6 +1425,25 @@ describe("routes schema (flavor = expressions)", function()
   reload_flavor("expressions")
   setup_global_env()
 
+  it("validates a 'not' expression", function()
+    local route = {
+      id             = a_valid_uuid,
+      name           = "my_route",
+      protocols      = { "http" },
+      expression     = [[!(http.method == "GET") && !(http.host == "example.com") && !(http.path ^= "/foo")]],
+      priority       = 100,
+      strip_path     = false,
+      preserve_host  = true,
+      service        = { id = another_uuid },
+    }
+    route = Routes:process_auto_fields(route, "insert")
+    assert.truthy(route.created_at)
+    assert.truthy(route.updated_at)
+    assert.same(route.created_at, route.updated_at)
+    assert.truthy(Routes:validate(route))
+    assert.falsy(route.strip_path)
+  end)
+
   it("validates a valid http route", function()
     local route = {
       id             = a_valid_uuid,
@@ -1563,16 +1582,28 @@ describe("routes schema (flavor = expressions)", function()
   end)
 
   it("http route supports http.path.segments.* fields", function()
-    local route = {
+    local r = {
       id             = a_valid_uuid,
       name           = "my_route",
       protocols      = { "grpcs" },
-      expression     = [[http.path.segments.0 == "foo" && http.path.segments.1 ^= "bar" && http.path.segments.20_30 ~ r#"x/y"#]],
       priority       = 100,
       service        = { id = another_uuid },
     }
-    route = Routes:process_auto_fields(route, "insert")
-    assert.truthy(Routes:validate(route))
+
+    local expressions = {
+      [[http.path.segments.0 == "foo"]],
+      [[http.path.segments.1 ^= "bar"]],
+      [[http.path.segments.20_30 ~ r#"x/y"#]],
+      [[http.path.segments.len == 10]],
+    }
+
+    for _, exp in ipairs(expressions) do
+      r.expression = exp
+
+      local route = Routes:process_auto_fields(r, "insert")
+      assert.truthy(Routes:validate(route))
+    end
+
   end)
 
   it("fails if http route has invalid http.path.segments.* fields", function()
@@ -1585,6 +1616,10 @@ describe("routes schema (flavor = expressions)", function()
     }
 
     local wrong_expressions = {
+      [[http.path.segments.len0   == 10]],
+      [[http.path.segments.len_a  == 10]],
+      [[http.path.segments.len    == "10"]],
+
       [[http.path.segments.       == "foo"]],
       [[http.path.segments.abc    == "foo"]],
       [[http.path.segments.a_c    == "foo"]],

@@ -37,9 +37,9 @@ env:
   PRERELEASE_DOCKER_REPOSITORY: kong/kong
   FULL_RELEASE: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.actor == 'dependabot[bot]'}}
 
-  # only for pr
+  # only for PR
   GHA_CACHE: ${{ github.event_name == 'pull_request' }}
-
+  # PRs opened from fork and from dependabot don't have access to repo secrets
   HAS_ACCESS_TO_GITHUB_TOKEN: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') }}
 
 jobs:
@@ -581,7 +581,7 @@ jobs:
     name: Release Images - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-images]
     runs-on: ubuntu-22.04
-    if: github.repository_owner == 'Kong' && fromJSON(needs.metadata.outputs.matrix)['release-images'] != ''
+    if: fromJSON(needs.metadata.outputs.matrix)['release-images'] != ''
 
     strategy:
       # limit to 3 jobs at a time
@@ -592,6 +592,7 @@ jobs:
 
     steps:
     - name: Login to Docker Hub
+      if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' }}
       uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d # v2.1.0
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
@@ -626,6 +627,7 @@ jobs:
       uses: regclient/actions/regctl-installer@b6614f5f56245066b533343a85f4109bdc38c8cc
 
     - name: Push Images
+      if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' }}
       env:
         TAGS: "${{ steps.meta.outputs.tags }}"
       run: |

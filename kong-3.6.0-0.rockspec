@@ -574,6 +574,13 @@ build = {
     ["kong.llm.drivers.mistral"] = "kong/llm/drivers/mistral.lua",
     ["kong.llm.drivers.llama2"] = "kong/llm/drivers/llama2.lua",
 
+    ["kong.plugins.ai-prompt-decorator.handler"] = "kong/plugins/ai-prompt-decorator/handler.lua",
+    ["kong.plugins.ai-prompt-decorator.schema"]  = "kong/plugins/ai-prompt-decorator/schema.lua",
+
+    ["kong.plugins.ai-prompt-template.handler"] = "kong/plugins/ai-prompt-template/handler.lua",
+    ["kong.plugins.ai-prompt-template.schema"]  = "kong/plugins/ai-prompt-template/schema.lua",
+    ["kong.plugins.ai-prompt-template.templater"]  = "kong/plugins/ai-prompt-template/templater.lua",
+
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
 
