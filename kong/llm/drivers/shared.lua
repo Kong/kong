@@ -178,7 +178,7 @@ function _M.pre_request(conf, request_table)
   end
 
   -- if enabled AND request type is compatible, capture the input for analytics
-  if conf.logging.log_payloads then
+  if conf.logging and conf.logging.log_payloads then
     kong.log.set_serialize_value(log_entry_keys.REQUEST_BODY, kong.request.get_raw_body())
   end
 
@@ -186,12 +186,12 @@ function _M.pre_request(conf, request_table)
 end
 
 function _M.post_request(conf, response_string)
-  if conf.logging.log_payloads then
+  if conf.logging and conf.logging.log_payloads then
     kong.log.set_serialize_value(log_entry_keys.RESPONSE_BODY, response_string)
   end
 
   -- analytics and logging
-  if conf.logging.log_statistics then
+  if conf.logging and conf.logging.log_statistics then
     -- check if we already have analytics in this context
     local request_analytics = kong.ctx.shared.analytics
 
@@ -253,7 +253,7 @@ function _M.http_request(url, body, method, headers, http_opts)
       method = method,
       body = body,
       headers = headers,
-      ssl_verify = http_opts.https_verify or true,
+      ssl_verify = http_opts.https_verify,
     })
   if not res then
     return nil, "request failed: " .. err

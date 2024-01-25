@@ -183,7 +183,7 @@ function _M.to_format(request_table, model_info, route_type)
     model_info
   )
   if err or (not ok) then
-    return nil, nil, fmt("error transforming to %s://%s", model_info.provider, route_type)
+    return nil, nil, fmt("error transforming to %s://%s/%s", model_info.provider, route_type, model_info.options.llama2_format)
   end
 
   return response_object, content_type, nil
@@ -231,7 +231,7 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
     local body   = res.body
 
     if status > 299 then
-      return body, res.status, "status code not 2xx"
+      return body, res.status, "status code " .. status
     end
 
     return body, res.status, nil
