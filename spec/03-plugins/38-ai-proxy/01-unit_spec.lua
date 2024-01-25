@@ -118,7 +118,7 @@ local FORMATS = {
       options = {
         max_tokens = 512,
         temperature = 0.5,
-        llama2_format = "raw",
+        llama2_format = "ollama",
       },
     },
     ["llm/v1/completions"] = {
@@ -190,6 +190,13 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
     assert.is_falsy(compatible)
     assert.same("[llm/v1/chat] message format is not compatible with [llm/v1/completions] route type", err)
+  end)
+
+  it("double-format message is denied", function()
+    local compatible, err = llm.is_compatible(SAMPLE_DOUBLE_FORMAT, "llm/v1/completions")
+
+    assert.is_falsy(compatible)
+    assert.same("request matches multiple LLM request formats", err)
   end)
 
   it("double-format message is denied", function()

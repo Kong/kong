@@ -40,10 +40,12 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
   end
 
   -- azure has non-standard URL format
-  local url = fmt(
-    "%s%s",
+  local url = (conf.model.options and conf.model.options.upstream_url)
+  or fmt(
+    "%s%s?api-version=%s",
     ai_shared.upstream_url_format[DRIVER_NAME]:format(conf.model.options.azure_instance, conf.model.options.azure_deployment_id),
-    ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
+    ai_shared.operation_map[DRIVER_NAME][conf.route_type].path,
+    conf.model.options.azure_api_version or "2023-05-15"
   )
 
   local method = ai_shared.operation_map[DRIVER_NAME][conf.route_type].method
@@ -71,7 +73,7 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
     local body   = res.body
 
     if status > 299 then
-      return body, res.status, "status code not 2xx"
+      return body, res.status, "status code " .. status
     end
 
     return body, res.status, nil
@@ -111,7 +113,9 @@ function _M.configure_request(conf)
   end
 
   local query_table = kong.request.get_query()
-  query_table["api-version"] = conf.model.options.azure_api_version
+
+  -- technically min supported version
+  query_table["api-version"] = conf.model.options and conf.model.options.azure_api_version or "2023-05-15"
   
   if auth_param_name and auth_param_value and auth_param_location == "query" then
     query_table[auth_param_name] = auth_param_value

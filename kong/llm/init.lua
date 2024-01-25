@@ -301,6 +301,7 @@ function _M:ai_introspect_body(request, system_prompt, http_opts, response_regex
   local new_request_body = ai_response.choices
                        and #ai_response.choices > 0
                        and ai_response.choices[1]
+                       and ai_response.choices[1].message
                        and ai_response.choices[1].message.content
   if not new_request_body then
     return nil, "no response choices received from upstream AI service"
@@ -327,16 +328,23 @@ function _M:ai_introspect_body(request, system_prompt, http_opts, response_regex
   return new_request_body
 end
 
-function _M:parse_json_instructions(body_string)
-  local instructions, err = cjson.decode(body_string)
-  if err then
-    return nil, nil, nil, err
+function _M:parse_json_instructions(in_body)
+  local err
+  if type(in_body) == "string" then
+    in_body, err = cjson.decode(in_body)
+    if err then
+      return nil, nil, nil, err
+    end
+  end
+
+  if type(in_body) ~= "table" then
+    return nil, nil, nil, "input not table or string"
   end
 
   return 
-    instructions.headers,
-    instructions.body or body_string,
-    instructions.status or 200
+    in_body.headers,
+    in_body.body or in_body,
+    in_body.status or 200
 end
 
 function _M:new(conf, http_opts)

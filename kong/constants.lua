@@ -39,6 +39,8 @@ local plugins = {
   "ai-proxy",
   "ai-prompt-decorator",
   "ai-prompt-template",
+  "ai-request-transformer",
+  "ai-response-transformer",
 }
 
 local plugin_map = {}
