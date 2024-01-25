@@ -169,7 +169,7 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
     local body   = res.body
 
     if status > 299 then
-      return body, res.status, "status code not 2xx"
+      return body, res.status, "status code " .. status
     end
 
     return body, res.status, nil

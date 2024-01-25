@@ -5,7 +5,6 @@ local cjson = require("cjson.safe")
 local fmt = string.format
 local ai_shared = require("kong.llm.drivers.shared")
 local socket_url = require "socket.url"
-local http = require("resty.http")
 local table_new = require("table.new")
 --
 
@@ -290,52 +289,6 @@ function _M.to_format(request_table, model_info, route_type)
   return response_object, content_type, nil
 end
 
-function _M.subrequest(body_table, route_type, auth)
-  local body_string, err = cjson.encode(body_table)
-  if err then
-    return nil, nil, "failed to parse body to json: " .. err
-  end
-
-  local httpc = http.new()
-
-  local request_url = fmt(
-    "%s%s",
-    ai_shared.upstream_url_format[DRIVER_NAME],
-    ai_shared.operation_map[DRIVER_NAME][route_type].path
-  )
-
-  local headers = {
-    ["Accept"] = "application/json",
-    ["Content-Type"] = "application/json",
-  }
-
-  if auth and auth.header_name then
-    headers[auth.header_name] = auth.header_value
-  end
-
-  local res, err = httpc:request_uri(
-    request_url,
-    {
-      method = "POST",
-      body = body_string,
-      headers = headers,
-    })
-  if not res then
-    return nil, "request failed: " .. err
-  end
-
-  -- At this point, the entire request / response is complete and the connection
-  -- will be closed or back on the connection pool.
-  local status = res.status
-  local body   = res.body
-
-  if status ~= 200 then
-    return body, "status code not 200"
-  end
-
-  return body, res.status, nil
-end
-
 function _M.header_filter_hooks(body)
   -- nothing to parse in header_filter phase
 end
@@ -372,7 +325,9 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
     return nil, nil, "body must be table or string"
   end
 
-  local url = fmt(
+  -- may be overridden
+  local url = (conf.model.options and conf.model.options.upstream_url)
+    or fmt(
     "%s%s",
     ai_shared.upstream_url_format[DRIVER_NAME],
     ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
@@ -403,7 +358,7 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
     local body   = res.body
 
     if status > 299 then
-      return body, res.status, "status code not 2xx"
+      return body, res.status, "status code " .. status
     end
 
     return body, res.status, nil
