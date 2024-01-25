@@ -404,30 +404,26 @@ end
 
 
 local function visit_for_context(field, value, ctx)
-  local prefix = field:sub(1, PREFIX_LEN)
+  local v_type = type(value)
 
-  if prefix == HTTP_HEADERS_PREFIX or prefix == HTTP_QUERIES_PREFIX then
-    local v_type = type(value)
-
-    -- multiple values for a single query parameter, like /?foo=bar&foo=baz
-    if v_type == "table" then
-      for _, v in ipairs(value) do
-        local res, err = ctx:add_value(field, v)
-        if not res then
-          return nil, err
-        end
+  -- multiple values for a single header/query parameter, like /?foo=bar&foo=baz
+  if v_type == "table" then
+    for _, v in ipairs(value) do
+      local res, err = ctx:add_value(field, v)
+      if not res then
+        return nil, err
       end
-
-      return true
-    end -- if v_type
-
-    -- the query parameter has only one value, like /?foo=bar
-    -- the query parameter has no value, like /?foo,
-    -- get_uri_arg will get a boolean `true`
-    -- we think it is equivalent to /?foo=
-    if v_type == "boolean" then
-      value = ""
     end
+
+    return true
+  end -- if v_type
+
+  -- the header/query parameter has only one value, like /?foo=bar
+  -- the query parameter has no value, like /?foo,
+  -- get_uri_arg will get a boolean `true`
+  -- we think it is equivalent to /?foo=
+  if v_type == "boolean" then
+    value = ""
   end
 
   return ctx:add_value(field, value)
