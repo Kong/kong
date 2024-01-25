@@ -285,7 +285,6 @@ end
 ---@field config_table            table
 ---@field config_hash             string
 ---@field hashes                  table<string, string>
----@field current_transaction_id? string|number
 
 
 ---@param declarative_config table
@@ -343,7 +342,7 @@ local function update(declarative_config, msg)
   -- executed by worker 0
 
   local res
-  res, err = declarative.load_into_cache_with_events(entities, meta, new_hash, hashes, msg.current_transaction_id)
+  res, err = declarative.load_into_cache_with_events(entities, meta, new_hash, hashes)
   if not res then
     ---@type kong.clustering.config_helper.update.err_t.reload
     err_t = {
@@ -353,11 +352,6 @@ local function update(declarative_config, msg)
     }
 
     return nil, err, err_t
-  end
-
-  if kong.configuration.log_level == "debug" then
-     ngx_log(ngx.DEBUG, _log_prefix, "loaded configuration with transaction ID ",
-             msg.current_transaction_id)
   end
 
   return true
