@@ -2,7 +2,7 @@ diff --git a/bundle/nginx-1.25.3/src/http/ngx_http_upstream.c b/bundle/nginx-1.2
 index 2be233c..5ad6340 100644
 --- a/bundle/nginx-1.25.3/src/http/ngx_http_upstream.c
 +++ b/bundle/nginx-1.25.3/src/http/ngx_http_upstream.c
-@@ -4365,6 +4365,7 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
+@@ -4383,6 +4383,7 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
      if (u->peer.cached && ft_type == NGX_HTTP_UPSTREAM_FT_ERROR) {
          /* TODO: inform balancer instead */
          u->peer.tries++;
