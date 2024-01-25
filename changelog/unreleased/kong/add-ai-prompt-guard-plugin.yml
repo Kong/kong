@@ -1,0 +1,3 @@
+message: Introduced the new **AI Prompt Guard** which can allow and/or block  LLM requests based on pattern matching.
+type: feature
+scope: Plugin
