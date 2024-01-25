@@ -18,8 +18,9 @@ return {
     { metadata     = { description = "The metadata of this assets.", type = "record", 
       fields = {
         { sha256sum = { description = "Checksum of the artifacts in SHA256", type = "string" } },
-        { type = { description = "Type of the artifact", type = "string" } },
-        { size = { description = "Size of the artifact", type = "number" } },
+        { type =      { description = "Type of the artifact", type = "string" } },
+        { size =      { description = "Size of the artifact", type = "number" } },
+        { plugin_name = { description = "Size of the artifact", type = "string" } },
       },}, },
   },
 

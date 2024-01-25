@@ -2007,7 +2007,7 @@ function Schema:validate(input, full_check, original_input, rbw_entity)
     if not get_subschema(self, input) then
       local errmsg = self.subschema_error or validation_errors.SUBSCHEMA_UNKNOWN
       ngx.log(ngx.ERR, " name is ", self.name, " input.asset is ", require("inspect")(input.asset))
-      if self.name == "plugins" and input.asset then
+      if self.name == "plugins" and input.asset ~= ngx.null then
         local ok, err = kong.db.assets:load(input.asset, input.name)
         if err then
           return nil, {

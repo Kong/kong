@@ -61,6 +61,14 @@ local function prepare_assets(self, db)
   ngx.log(ngx.ERR, "--> self ", require("inspect")(args))
 
   os.execute("mkdir -p " .. assets_prefix .. " ; tar zxvf " .. downloaded_file .. " -C " .. assets_prefix)
+  -- XXX for KM demo
+  -- note to strip the LF
+  metadata.plugin_name = io.popen("tar ztf " .. downloaded_file .. "|grep -oP 'kong/plugins/([^/]+)/'|head -n1| cut -d/ -f3"):read("*l") or "unknown"
+
+  if metadata.plugin_name == "unknown" then
+    return kong.response.exit(400, { message = "Invalid asset, does it include a kong plugin?" })
+  end
+
   ngx.log(ngx.ERR, ">> file extracts")
 end
 

@@ -14,7 +14,7 @@ function Assets:load(asset_id_or_name, plugin_name)
   if asset_id_or_name.id then
     asset, err = self.db.assets:select(asset_id_or_name)
   elseif asset_id_or_name.name then
-    ngx.log(ngx.ERR, "n mae")
+    ngx.log(ngx.ERR, "name")
     asset, err = self.db.assets:select_by_name(asset_id_or_name.name)
   else
     return false, nil -- fall through
@@ -50,7 +50,7 @@ function Assets:load(asset_id_or_name, plugin_name)
   kong.configuration.loaded_plugins[plugin_name] = true
   local ok, err = kong.db.plugins:load_plugin_schemas(kong.configuration.loaded_plugins)
   if not ok then
-    return false, err
+    return false, "load_plugin_schemas: " .. err
   end
 
   clear_loaded_plugins()
@@ -89,7 +89,13 @@ function Assets:each(size, options)
 end
 
 function Assets:insert(entity, options)
-  return self.super.insert(self, entity, options)
+  local a, b, c = self.super.insert(self, entity, options)
+  -- XXX for KM demo
+  if a then
+    assert(kong.db.assets:load(entity, entity.metadata.plugin_name or entity.name))
+  end
+
+  return a, b, c
 end
 
 function Assets:update(primary_key, entity, options)
