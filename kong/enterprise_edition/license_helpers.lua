@@ -167,9 +167,6 @@ end
 
 function _M.read_license_info()
   local license_data = get_license_string()
-  if kong and kong.configuration and kong.configuration.fips then
-    hooks.run_hook("fips:kong:validate", _M.get_type(license_data and cjson.decode(license_data) or {}))
-  end
   if not license_data or (license_data == "") then
     ngx.log(ngx.NOTICE, "[license-helpers] could not decode license JSON: No license found")
     return nil

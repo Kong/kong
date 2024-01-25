@@ -20,6 +20,7 @@ local wasm = require "kong.runloop.wasm"
 local null = ngx.null
 -- Add JWT decoder to decode id_token
 local jwt_decoder = require "kong.plugins.jwt.jwt_parser"
+local openssl = require "resty.openssl"
 
 local endpoints  = require "kong.api.endpoints"
 local hooks = require "kong.hooks"
@@ -691,6 +692,15 @@ return {
           verbose = true,
           flamegraph = true,
         })
+      }
+      return kong.response.exit(200, body)
+    end
+  },
+  ["/fips-status"] = {
+    GET = function (self, db, helpers)
+      local body = {
+        active = openssl.get_fips_mode() or false,
+        version = openssl.get_fips_version_text() or "unknown",
       }
       return kong.response.exit(200, body)
     end

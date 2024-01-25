@@ -38,6 +38,19 @@ local _M = {}
 
 require "kong.enterprise_edition.debug_info_patch"
 
+function _M.init_fips()
+  if kong and kong.configuration and kong.configuration.fips then
+    local ok, err = openssl.set_fips_mode(true)
+    if not ok or not openssl.get_fips_mode() then
+      kong.log.err("cannot enable FIPS mode: " .. (err or "nil"))
+      return
+    end
+
+    kong.log.warn("enabling FIPS mode on ", openssl_version.version_text,
+                  " (", openssl_version.version(openssl_version.CFLAGS), ")")
+  end
+end
+
 _M.handlers = {
   init = {
     after = function()
@@ -133,6 +146,9 @@ _M.handlers = {
       kong.worker_events.register(function(data, event, source, pid)
         kong.cache:invalidate_local(constants.ADMIN_GUI_KCONFIG_CACHE_KEY)
         kong.cache:invalidate_local(ee_constants.PORTAL_VITALS_ALLOWED_CACHE_KEY)
+
+        -- reinit fips
+        _M.init_fips()
       end, "kong:configuration", "change")
 
       -- register event_hooks hooks
@@ -230,24 +246,6 @@ function _M.license_hooks(config)
     app:before_filter(license_helpers.license_can_proceed)
 
     return true
-  end)
-
-  -- fips validation
-  hooks.register_hook("fips:kong:validate", function(l_type)
-    if l_type == 'free' then
-      kong.log.warn("FIPS mode is not supported in Free mode. Please reach out to " ..
-                    "Kong if you are interested in using Kong FIPS compliant artifacts")
-      return
-    end
-
-    local ok, err = openssl.set_fips_mode(true)
-    if not ok or not openssl.get_fips_mode() then
-      kong.log.err("cannot enable FIPS mode: " .. (err or "nil"))
-      return
-    end
-
-    kong.log.warn("enabling FIPS mode on ", openssl_version.version_text,
-                  " (", openssl_version.version(openssl_version.CFLAGS), ")")
   end)
 
   -- add license info

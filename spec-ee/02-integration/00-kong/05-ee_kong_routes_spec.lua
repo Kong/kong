@@ -517,4 +517,36 @@ for _, strategy in helpers.each_strategy() do
       assert.same(10, json.session.cookie.discard) -- fetches default
     end)
   end)
+
+  describe('Admin API - ee-specific Kong routes fips enablement status #' .. strategy, function ()
+    local client
+
+    lazy_teardown(function()
+      if client then
+        client:close()
+      end
+      helpers.stop_kong()
+    end)
+
+    lazy_setup(function ()
+      assert(helpers.start_kong({
+        database = strategy,
+        fips = "off",
+      }))
+
+      client = assert(helpers.admin_client())
+    end)
+
+    it("fips enablement status should be off", function()
+      local res, err = client:send({
+        method = "GET",
+        path = "/fips-status",
+      })
+      assert.is_nil(err)
+      assert.res_status(200, res)
+
+      local json = assert.response(res).has.jsonbody()
+      assert.is_falsy(json.active)
+    end)
+  end)
 end

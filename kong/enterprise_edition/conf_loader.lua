@@ -18,6 +18,7 @@ local openssl = require "resty.openssl"
 local openssl_version = require "resty.openssl.version"
 local openssl_x509 = require "resty.openssl.x509"
 local openssl_pkey = require "resty.openssl.pkey"
+local license_helpers = require "kong.enterprise_edition.license_helpers"
 
 local re_match = ngx.re.match
 local concat = table.concat
@@ -846,21 +847,19 @@ local function validate_fips(conf, errors)
     return
   end
 
-  local licensing = require "kong.enterprise_edition.licensing"
-
-  local license = licensing(conf)
-
   conf.ssl_cipher_suite = "fips"
 
-  if conf.fips and license.l_type == "free" then
+  -- since the db connection has not been established at this point,
+  -- so the license can only be loaded from an environment variable or file.
+  local lic = license_helpers.read_license_info()
+  if license_helpers.get_type(lic) == "free" then
     ngx.log(ngx.WARN, "Kong is started without a valid license while FIPS mode is set. " ..
                       "Kong will not operate in FIPS mode until a license is received from " ..
                       "Control Plane. Please reach out to Kong if you are interested in " ..
                       "using Kong FIPS compliant artifacts. ")
   else
-    log.debug("enabling FIPS mode on %s (%s)",
-              openssl_version.version_text,
-              openssl_version.version(openssl_version.CFLAGS))
+    log.debug("enabling FIPS mode on ", openssl_version.version_text,
+              " (", openssl_version.version(openssl_version.CFLAGS), ")")
 
     local ok, err = openssl.set_fips_mode(true)
     if not ok or not openssl.get_fips_mode() then

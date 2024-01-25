@@ -1,0 +1,4 @@
+message: |
+  Make fips enablement status responding to license conf changes. Also, introduces a new endpoint `/fips-status` to show its current status.
+type: feature
+scope: Admin API

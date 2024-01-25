@@ -714,6 +714,8 @@ function Kong.init()
   kong.configuration       = kong.licensing.configuration
   -- EE licensing ]]
 
+  -- ensure that fips are properly enabled when the license is loaded from the db
+  ee.init_fips()
 
   local err = ee.feature_flags_init(config)
   if err then

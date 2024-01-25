@@ -45,6 +45,7 @@ c.featureset = {
       vitals = false,
       anonymous_reports = true,
       portal = false,
+      fips = false,
       event_hooks_enabled = false,
       -- NOOP (unset it)
       admin_gui_auth = function() end,
