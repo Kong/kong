@@ -123,6 +123,19 @@ config_setting(
     visibility = ["//visibility:public"],
 )
 
+bool_flag(
+    name = "brotli",
+    build_setting_default = True,
+)
+
+config_setting(
+    name = "brotli_flag",
+    flag_values = {
+        ":brotli": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
 config_setting(
     name = "debug_linux_flag",
     constraint_values = [
