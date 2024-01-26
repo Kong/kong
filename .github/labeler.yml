@@ -102,6 +102,14 @@ plugins/ai-prompt-template:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/ai-prompt-template/**/*
 
+plugins/ai-request-transformer:
+- changed-files:
+  - any-glob-to-any-file: ['kong/plugins/ai-request-transformer/**/*', 'kong/llm/**/*']
+
+plugins/ai-response-transformer:
+- changed-files:
+  - any-glob-to-any-file: ['kong/plugins/ai-response-transformer/**/*', 'kong/llm/**/*']
+
 plugins/aws-lambda:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/aws-lambda/**/*

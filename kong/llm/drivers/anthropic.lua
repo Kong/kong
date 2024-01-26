@@ -216,7 +216,9 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
     error("body must be table or string")
   end
 
-  local url = fmt(
+  -- may be overridden
+  local url = (conf.model.options and conf.model.options.upstream_url)
+    or fmt(
     "%s%s",
     ai_shared.upstream_url_format[DRIVER_NAME],
     ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
@@ -248,7 +250,7 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
     local body   = res.body
 
     if status > 299 then
-      return body, res.status, "status code not 2xx"
+      return body, res.status, "status code " .. status
     end
 
     return body, res.status, nil

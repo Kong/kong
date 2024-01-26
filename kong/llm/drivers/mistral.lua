@@ -100,11 +100,11 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
 
   local url = conf.model.options.upstream_url
 
-  local method = ai_shared.operation_map[DRIVER_NAME][conf.route_type].method
+  local method = "POST"
 
   local headers = {
     ["Accept"] = "application/json",
-    ["Content-Type"] = "application/json",
+    ["Content-Type"] = "application/json"
   }
 
   if conf.auth and conf.auth.header_name then
@@ -125,7 +125,7 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
     local body   = res.body
 
     if status > 299 then
-      return body, res.status, "status code not 2xx"
+      return body, res.status, "status code " .. status
     end
 
     return body, res.status, nil

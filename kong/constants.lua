@@ -49,6 +49,8 @@ local plugins = {
   "ai-proxy",
   "ai-prompt-template",
   "ai-prompt-decorator",
+  "ai-request-transformer",
+  "ai-response-transformer",
 }
 
 -- XXX EE
