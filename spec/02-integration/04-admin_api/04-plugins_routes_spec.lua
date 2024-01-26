@@ -22,13 +22,14 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "plugins",
       }, {
-        "key-auth"
+        "key-auth",
+        "openid-connect"
       })
 
       assert(helpers.start_kong({
         database = strategy,
         plugins =
-        "bundled,dummy,cache,rewriter,error-handler-log,error-generator,error-generator-last,short-circuit,oauth2-introspection"
+        "bundled,dummy,cache,rewriter,error-handler-log,error-generator,error-generator-last,short-circuit,oauth2-introspection,openid-connect"
       }))
     end)
 
@@ -452,6 +453,45 @@ for _, strategy in helpers.each_strategy() do
           assert.match('"encrypted":true', body, 1, true)
           assert.match('"referenceable":true', body, 1, true)
         end)
+
+        it("returns the schema should include encrypted attribute of the introspection_headers_values in plugin openid-connect",
+          function()
+            local res = assert(client:send {
+              method = "GET",
+              path = "/schemas/plugins/openid-connect",
+            })
+
+            assert.response(res).has.status(200)
+            local body = assert.response(res).has.jsonbody()
+            local config = nil
+            for _, value in ipairs(body.fields) do
+              if value.config then
+                config = value.config
+                break
+              end
+            end
+            assert.is_not_nil(config)
+            local json_values = nil
+            for _, value in ipairs(config.fields) do
+              if value.introspection_headers_values then
+                json_values = value.introspection_headers_values
+                break
+              end
+            end
+
+            assert.is_not_nil(json_values)
+            local introspection_headers_values = {
+              description = "Extra header values passed to the introspection endpoint.",
+              elements = {
+                referenceable = true,
+                type = "string"
+              },
+              encrypted = true,
+              required = false,
+              type = "array"
+            }
+            assert.same(introspection_headers_values, json_values)
+          end)
 
         it("returns the schema of all bundled plugins", function()
           for plugin, _ in pairs(helpers.test_conf.loaded_plugins) do

@@ -887,9 +887,11 @@ local config = {
             introspection_headers_values = {
               description = "Extra header values passed to the introspection endpoint.",
               required = false,
+              encrypted = true,
               type = "array",
               elements = {
                 type = "string",
+                referenceable = true,
               },
             },
           },

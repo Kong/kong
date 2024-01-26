@@ -1,0 +1,3 @@
+message: "Mark the `introspection_headers_values` in the `openid-connect` plugin as an encrypted and referenceable field"
+type: "bugfix"
+scope: "Plugin"
