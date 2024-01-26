@@ -1,0 +1,3 @@
+message: Fix a bug that the error_handler can not provide the meaningful response body when the internal error code 494 is triggered.
+type: bugfix
+scope: Core
