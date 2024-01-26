@@ -503,7 +503,7 @@ server {
     ssl_certificate     $(admin_gui_ssl_cert[i]);
     ssl_certificate_key $(admin_gui_ssl_cert_key[i]);
 > end
-    ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+    ssl_protocols TLSv1.2 TLSv1.3;
 > end
 
     client_max_body_size 10m;

@@ -432,6 +432,13 @@ local function check_and_parse(conf, opts)
         conf.ssl_dhparam = suite.dhparams
         conf.nginx_http_ssl_dhparam = suite.dhparams
         conf.nginx_stream_ssl_dhparam = suite.dhparams
+      else
+        conf.nginx_http_ssl_conf_command = "CipherString DEFAULT:@SECLEVEL=0"
+        conf.nginx_http_proxy_ssl_conf_command = "CipherString DEFAULT:@SECLEVEL=0"
+        conf.nginx_http_lua_ssl_conf_command = "CipherString DEFAULT:@SECLEVEL=0"
+        conf.nginx_stream_ssl_conf_command = "CipherString DEFAULT:@SECLEVEL=0"
+        conf.nginx_stream_proxy_ssl_conf_command = "CipherString DEFAULT:@SECLEVEL=0"
+        conf.nginx_stream_lua_ssl_conf_command = "CipherString DEFAULT:@SECLEVEL=0"
       end
 
     else
