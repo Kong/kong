@@ -1,0 +1,14 @@
+diff --git a/configure b/configure
+index 969b075..23322a9 100755
+--- a/configure
++++ b/configure
+@@ -557,9 +557,6 @@ _END_
+             "\n";
+     }
+ 
+-    # disable pcre2 by default
+-    push @ngx_opts, '--without-pcre2';
+-
+     if (!$opts->{no_stream}
+         && ! $opts->{no_stream_ssl}
+         && ! $opts->{stream_ssl})
