@@ -175,6 +175,7 @@ describe("Plugins", function()
       'ai-request-transformer',
       'ai-prompt-template',
       'ai-prompt-decorator',
+      'ai-prompt-guard',
       'ai-proxy',
       'ai-response-transformer',
       'kafka-upstream',
