@@ -107,6 +107,83 @@ nfpm_pkg(
     visibility = ["//visibility:public"],
 )
 
+#### debug package
+
+nfpm_pkg(
+    name = "kong-debuginfo_deb",
+    config = "//build:package/nfpm-debuginfo.yaml",
+    env = nfpm_env,
+    packager = "deb",
+    pkg_name = "kong-debuginfo",
+    visibility = ["//visibility:public"],
+)
+
+nfpm_pkg(
+    name = "kong-debuginfo_apk",
+    config = "//build:package/nfpm-debuginfo.yaml",
+    env = nfpm_env,
+    packager = "apk",
+    pkg_name = "kong-debuginfo",
+    visibility = ["//visibility:public"],
+)
+
+nfpm_pkg(
+    name = "kong-debuginfo_el9",
+    config = "//build:package/nfpm-debuginfo.yaml",
+    env = nfpm_env,
+    packager = "rpm",
+    pkg_name = "kong-debuginfo.el9",
+    visibility = ["//visibility:public"],
+)
+
+nfpm_pkg(
+    name = "kong-debuginfo_el8",
+    config = "//build:package/nfpm-debuginfo.yaml",
+    env = nfpm_env,
+    packager = "rpm",
+    pkg_name = "kong-debuginfo.el8",
+    visibility = ["//visibility:public"],
+)
+
+nfpm_pkg(
+    name = "kong-debuginfo_el7",
+    config = "//build:package/nfpm-debuginfo.yaml",
+    env = nfpm_env,
+    extra_env = {
+        "RPM_EXTRA_DEPS": "hostname",
+    },
+    packager = "rpm",
+    pkg_name = "kong-debuginfo.el7",
+    visibility = ["//visibility:public"],
+)
+
+nfpm_pkg(
+    name = "kong-debuginfo_aws2",
+    config = "//build:package/nfpm-debuginfo.yaml",
+    env = nfpm_env,
+    extra_env = {
+        "RPM_EXTRA_DEPS": "/usr/sbin/useradd",
+        "RPM_EXTRA_DEPS_2": "/usr/sbin/groupadd",
+    },
+    packager = "rpm",
+    pkg_name = "kong-debuginfo.aws2",
+    visibility = ["//visibility:public"],
+)
+
+nfpm_pkg(
+    name = "kong-debuginfo_aws2023",
+    config = "//build:package/nfpm-debuginfo.yaml",
+    env = nfpm_env,
+    extra_env = {
+        "RPM_EXTRA_DEPS": "/usr/sbin/useradd",
+        "RPM_EXTRA_DEPS_2": "/usr/sbin/groupadd",
+        "RPM_EXTRA_DEPS_3": "libxcrypt-compat",
+    },
+    packager = "rpm",
+    pkg_name = "kong-debuginfo.aws2023",
+    visibility = ["//visibility:public"],
+)
+
 ###### flags
 
 # --//:debug=true
@@ -241,6 +318,20 @@ config_setting(
     name = "wasmx_el7_workaround_flag",
     flag_values = {
         ":wasmx_el7_workaround": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
+# --//:debug_symbols_package=false
+bool_flag(
+    name = "debug_symbols_package",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "debug_symbols_package_flag",
+    flag_values = {
+        ":debug_symbols_package": "true",
     },
     visibility = ["//visibility:public"],
 )
