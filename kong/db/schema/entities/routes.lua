@@ -3,7 +3,7 @@ local deprecation = require("kong.deprecation")
 
 local kong_router_flavor = kong and kong.configuration and kong.configuration.router_flavor
 
--- works with both `traditional_compatible` and `expressions` routes`
+-- works with both `traditional_compatible` and `expressions` routes
 local validate_route
 if kong_router_flavor ~= "traditional" then
   local ipairs = ipairs
