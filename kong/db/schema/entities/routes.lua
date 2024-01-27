@@ -38,8 +38,8 @@ if kong_router_flavor ~= "traditional" then
           return nil, "Router Expression failed validation: " ..
                       "illformed http.path.segments.* field"
         end
-      end
-    end
+      end -- if f:find
+    end -- for fields
 
     return true
   end
