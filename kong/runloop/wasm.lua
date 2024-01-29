@@ -668,14 +668,19 @@ function _M.attach(ctx)
 
   ctx.ran_wasm = true
 
-  local ok, err = proxy_wasm.attach(chain.c_plan)
-  if not ok then
-    log(CRIT, "failed attaching ", chain.label, " filter chain to request: ", err)
-    return kong.response.error(500)
-  end
+  local ok, err
+  if not ctx.wasm_attached then
+    ctx.wasm_attached = true
 
-  set_proxy_wasm_property("kong.route_id", ctx.route and ctx.route.id)
-  set_proxy_wasm_property("kong.service_id", ctx.service and ctx.service.id)
+    ok, err = proxy_wasm.attach(chain.c_plan)
+    if not ok then
+      log(CRIT, "failed attaching ", chain.label, " filter chain to request: ", err)
+      return kong.response.error(500)
+    end
+
+    set_proxy_wasm_property("kong.route_id", ctx.route and ctx.route.id)
+    set_proxy_wasm_property("kong.service_id", ctx.service and ctx.service.id)
+  end
 
   ok, err = proxy_wasm.start()
   if not ok then

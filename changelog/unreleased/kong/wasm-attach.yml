@@ -1,0 +1,5 @@
+message: >
+  **proxy-wasm**: Fixed "previous plan already attached" error thrown when a
+  filter triggers re-entrancy of the access handler.
+type: bugfix
+scope: Core
