@@ -25,6 +25,7 @@ local checks = require "kong.pdk.private.checks"
 local phase_checker = require "kong.pdk.private.phases"
 local utils = require "kong.tools.utils"
 local request_id = require "kong.tracing.request_id"
+local constants = require "kong.constants"
 
 
 local ngx = ngx
@@ -46,6 +47,7 @@ local is_http_subsystem = ngx and ngx.config.subsystem == "http"
 if is_http_subsystem then
   add_header = require("ngx.resp").add_header
 end
+local RESPONSE_SOURCE_TYPES = constants.RESPONSE_SOURCE.TYPES
 
 
 local PHASES = phase_checker.phases
@@ -363,15 +365,15 @@ local function new(self, major_version)
     end
 
     if ctx.KONG_UNEXPECTED then
-      return "error"
+      return RESPONSE_SOURCE_TYPES.ERROR
     end
 
     if ctx.KONG_EXITED then
-      return "exit"
+      return RESPONSE_SOURCE_TYPES.EXIT
     end
 
     if ctx.KONG_PROXIED then
-      return "service"
+      return RESPONSE_SOURCE_TYPES.SERVICE
     end
 
     return "error"

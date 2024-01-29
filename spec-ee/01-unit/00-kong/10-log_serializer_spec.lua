@@ -73,6 +73,10 @@ describe("Log Serializer", function()
     local pdk_request = require "kong.pdk.request"
     kong.request = pdk_request.new(kong)
 
+    package.loaded["kong.pdk.response"] = nil
+    local pdk_response = require "kong.pdk.response"
+    kong.response = pdk_response.new(kong)
+
     utils = require "kong.tools.utils"
   end)
 

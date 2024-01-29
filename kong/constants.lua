@@ -309,6 +309,19 @@ local constants = {
   SCHEMA_NAMESPACES = {
     PROXY_WASM_FILTERS = "proxy-wasm-filters",
   },
+
+  RESPONSE_SOURCE = {
+    TYPES = {
+      ERROR = "error",
+      EXIT = "exit",
+      SERVICE = "service",
+    },
+    NAMES = {
+      error = "kong",
+      exit = "kong",
+      service = "upstream",
+    }
+  }
 }
 
 -- XXX EE: add enterprise-specific CLUSTERING_SYNC_STATUS enum values before

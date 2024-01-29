@@ -64,6 +64,9 @@ qq{
                           get_headers = function() return {} end,
                           get_start_time = function() return 1 end,
                         },
+                       response = {
+                          get_source = function() return "service" end,
+                       },
                      }
                   }
                 },
