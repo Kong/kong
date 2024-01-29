@@ -14,7 +14,7 @@ return {
         description = "Redis configuration",
         fields = {
             { host = typedefs.host },
-            { port = typedefs.port },
+            { port = typedefs.port({ default = 6379 }), },
             { timeout = typedefs.timeout { default = DEFAULT_TIMEOUT } },
             { username = { description = "Username to use for Redis connections. If undefined, ACL authentication won't be performed. This requires Redis v6.0.0+. To be compatible with Redis v5.x.y, you can set it to `default`.", type = "string",
                 referenceable = true
@@ -38,9 +38,6 @@ return {
                 default = false
                 } },
             { server_name = typedefs.sni { required = false } }
-        },
-        entity_checks = {
-            { mutually_required = { "host", "port" }, },
-        },
+        }
     }
 }
