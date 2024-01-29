@@ -103,6 +103,34 @@ for _, strategy in helpers.each_strategy() do
           http_proxy_port = 17777,
         },
       })
+      assert(bp.plugins:insert {
+        route = { id = route.id },
+        name = "pre-function",
+        config = {
+          access = {
+            [[
+            local function read_request_body()
+              ngx.req.read_body()
+              local body = ngx.req.get_body_data()
+
+              if not body then
+                local body_filepath = ngx.req.get_body_file()
+                if body_filepath then
+                    local file = io.open(body_filepath, "rb")
+                    body = file:read("*all")
+                    file:close()
+                end
+              end
+
+              return body
+            end
+            if ngx.var.http_x_read_body == "true" then
+              read_request_body()
+            end
+            ]]
+          }
+        },
+      })
 
       local route_patch = assert(bp.routes:insert {
         hosts = { "service-patch.com" },
@@ -234,6 +262,45 @@ end
     end)
 
     describe("non-streaming proxy", function()
+      it("reads request bodies with small payloads", function()
+        local req_body = {
+          key = string.rep("a", 10)
+        }
+        local payload = cjson.encode(req_body)
+        local res = assert(proxy_client:send {
+          method = "POST",
+          path = "/post",
+          headers = {
+            host = "service.com",
+            ["Content-Type"] = "application/json",
+            ["X-Read-Body"] = "true",
+          },
+          body = payload
+        })
+        assert.res_status(200, res)
+        assert.equal(ngx.md5(payload), res.headers["X-Paylod-Md5"])
+        assert.logfile().has.line("forwarding request in a non-streaming manner")
+      end)
+
+      it("reads request bodies with large payloads", function()
+        local req_body = {
+          key = string.rep("a", 1024 * 4)
+        }
+        local payload = cjson.encode(req_body)
+        local res = assert(proxy_client:send {
+          method = "POST",
+          path = "/post",
+          headers = {
+            host = "service.com",
+            ["Content-Type"] = "application/json",
+            ["X-Read-Body"] = "true",
+          },
+          body = payload
+        })
+        assert.res_status(200, res)
+        assert.equal(ngx.md5(payload), res.headers["X-Paylod-Md5"])
+        assert.logfile().has.line("forwarding request in a non-streaming manner")
+      end)
 
       it("chunked encoding", function()
         local res = assert(proxy_client:send {

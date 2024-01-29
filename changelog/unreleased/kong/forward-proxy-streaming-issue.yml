@@ -1,0 +1,3 @@
+message: '**Forward Proxy:** fallback to the non-streaming proxy when the request body has already been read'
+type: bugfix
+scope: Plugin

@@ -293,22 +293,17 @@ local function nonstreaming_proxy(httpc, headers)
   return res, err
 end
 
-local function streaming_proxy(httpc, headers)
+local function streaming_proxy(httpc, headers, body_reader)
   log(DEBUG, _prefix_log, "forwarding request in a streaming manner")
 
   headers["transfer-encoding"] = nil -- transfer-encoding is hop-by-hop, strip
                                      -- it out
 
-  local reader, err = httpc:get_client_body_reader()
-  if err then
-    return nil, err
-  end
-
   return httpc:request({
     method  = ngx_req_get_method(),
     path    = ngx.var.upstream_uri,
     headers = headers,
-    body    = reader,
+    body    = body_reader,
   })
 end
 
@@ -408,9 +403,14 @@ function ForwardProxyHandler:access(conf)
     headers["host"] = var.upstream_host
   end
 
-  local res, err
+  local reader
   if can_streaming_proxy(ngx.req.http_version(), headers["Transfer-Encoding"]) then
-    res, err = streaming_proxy(httpc, headers)
+    reader = httpc:get_client_body_reader() -- try to get client body reader
+  end
+
+  local res, err
+  if reader then
+    res, err = streaming_proxy(httpc, headers, reader)
   else
     res, err = nonstreaming_proxy(httpc, headers)
   end
