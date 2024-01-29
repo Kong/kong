@@ -6,7 +6,7 @@ Add the `changelog` directory to your environment variable `PATH`.
 ~ $ pwd
 /Users/zachary/workspace/kong-ee/changelog
 
-~ $ PATH="$(realpath ./changelog):$PATH"
+~ $ PATH="$(realpath .):$PATH"
 ```
 
 Enure `golang` is available on your local system.
