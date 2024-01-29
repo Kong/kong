@@ -1,52 +1,49 @@
-.PHONY: changelog-generate changelog-regenerate
+.PHONY: generate
 
-CHANGELOG_VERSION=1.0.0
-CHANGELOG_FOLDER=unreleased
-debug=false
+VERSION=3.x.y
+FOLDER=unreleased
+DEBUG=false
+INCLUDE_UNRELEASED=false
 
-changelog-generate:
-	@rm -f $(CHANGELOG_FOLDER)/$(CHANGELOG_VERSION).md
-	@touch $(CHANGELOG_FOLDER)/$(CHANGELOG_VERSION).md
-	@if [ -d "$(CHANGELOG_FOLDER)/kong" ]; then \
-		changelog --debug=$(DEBUG) generate \
-			--repo-path . \
-			--changelog-paths $(CHANGELOG_FOLDER)/kong \
-			--title Kong \
-			--github-issue-repo Kong/kong \
-			--github-api-repo Kong/kong \
-			>> $(CHANGELOG_FOLDER)/$(CHANGELOG_VERSION).md; \
+generate:
+	@rm -f $(VERSION).md
+	@touch $(VERSION).md
+	@if [ -d "$(FOLDER)/kong" ]; then \
+		if [ "$(INCLUDE_UNRELEASED)" = "true" ]; then \
+			changelog --debug=$(DEBUG) generate \
+            	--repo-path . \
+            	--changelog-paths $(FOLDER)/kong,unreleased/kong \
+            	--title Kong \
+            	--github-issue-repo Kong/kong \
+            	--github-api-repo Kong/kong \
+            	>> $(VERSION).md; \
+		else \
+			changelog --debug=$(DEBUG) generate \
+            	--repo-path . \
+            	--changelog-paths $(FOLDER)/kong \
+            	--title Kong \
+            	--github-issue-repo Kong/kong \
+            	--github-api-repo Kong/kong \
+            	>> $(VERSION).md; \
+        fi \
     fi
-	@if [ -d "$(CHANGELOG_FOLDER)/kong-manager" ]; then \
-		changelog --debug=$(DEBUG) generate \
-			--repo-path . \
-			--changelog-paths $(CHANGELOG_FOLDER)/kong-manager \
-			--title Kong-Manager \
-			--github-issue-repo Kong/kong-manager \
-			--github-api-repo Kong/kong \
-			>> $(CHANGELOG_FOLDER)/$(CHANGELOG_VERSION).md; \
+	@if [ -d "$(FOLDER)/kong-manager" ]; then \
+		if [ "$(INCLUDE_UNRELEASED)" = "true" ]; then \
+			changelog --debug=$(DEBUG) generate \
+				--repo-path . \
+				--changelog-paths $(FOLDER)/kong-manager,unreleased/manager \
+				--title Kong-Manager \
+				--github-issue-repo Kong/kong-manager \
+				--github-api-repo Kong/kong \
+				>> $(VERSION).md; \
+		else \
+			changelog --debug=$(DEBUG) generate \
+				--repo-path . \
+				--changelog-paths $(FOLDER)/kong-manager \
+				--title Kong-Manager \
+				--github-issue-repo Kong/kong-manager \
+				--github-api-repo Kong/kong \
+				>> $(VERSION).md; \
+		fi \
     fi
-	@echo "Successfully genreate changelog $(CHANGELOG_FOLDER)/$(CHANGELOG_VERSION).md"
-
-CHANGELOG_VERSION=1.0.0
-changelog-regenerate:
-	@rm -f $(CHANGELOG_VERSION)/$(CHANGELOG_VERSION).md
-	@touch $(CHANGELOG_VERSION)/$(CHANGELOG_VERSION).md
-	@if [ -d "$(CHANGELOG_VERSION)/kong" ]; then \
-		changelog --debug=$(DEBUG) generate \
-			--repo-path . \
-			--changelog-paths $(CHANGELOG_VERSION)/kong,unreleased/kong \
-			--title Kong \
-			--github-issue-repo Kong/kong \
-			--github-api-repo Kong/kong \
-			>> $(CHANGELOG_VERSION)/$(CHANGELOG_VERSION).md; \
-    fi
-	@if [ -d "$(CHANGELOG_VERSION)/kong-manager" ]; then \
-		changelog --debug=$(DEBUG) generate \
-			--repo-path . \
-			--changelog-paths $(CHANGELOG_VERSION)/kong-manager,unreleased/kong-manager \
-			--title Kong-Manager \
-			--github-issue-repo Kong/kong-manager \
-			--github-api-repo Kong/kong \
-			>> $(CHANGELOG_VERSION)/$(CHANGELOG_VERSION).md; \
-    fi
-	@echo "Successfully re-genreate changelog $(CHANGELOG_VERSION)/$(CHANGELOG_VERSION).md"
+	@echo "Successfully genreate changelog $(VERSION).md"
