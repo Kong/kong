@@ -2,11 +2,13 @@
 
 CHANGELOG_VERSION=1.0.0
 CHANGELOG_FOLDER=unreleased
+debug=false
+
 changelog-generate:
 	@rm -f $(CHANGELOG_FOLDER)/$(CHANGELOG_VERSION).md
 	@touch $(CHANGELOG_FOLDER)/$(CHANGELOG_VERSION).md
 	@if [ -d "$(CHANGELOG_FOLDER)/kong" ]; then \
-		changelog generate \
+		changelog --debug=$(DEBUG) generate \
 			--repo-path . \
 			--changelog-paths $(CHANGELOG_FOLDER)/kong \
 			--title Kong \
@@ -15,7 +17,7 @@ changelog-generate:
 			>> $(CHANGELOG_FOLDER)/$(CHANGELOG_VERSION).md; \
     fi
 	@if [ -d "$(CHANGELOG_FOLDER)/kong-manager" ]; then \
-		changelog generate \
+		changelog --debug=$(DEBUG) generate \
 			--repo-path . \
 			--changelog-paths $(CHANGELOG_FOLDER)/kong-manager \
 			--title Kong-Manager \
@@ -30,7 +32,7 @@ changelog-regenerate:
 	@rm -f $(CHANGELOG_VERSION)/$(CHANGELOG_VERSION).md
 	@touch $(CHANGELOG_VERSION)/$(CHANGELOG_VERSION).md
 	@if [ -d "$(CHANGELOG_VERSION)/kong" ]; then \
-		changelog generate \
+		changelog --debug=$(DEBUG) generate \
 			--repo-path . \
 			--changelog-paths $(CHANGELOG_VERSION)/kong,unreleased/kong \
 			--title Kong \
@@ -39,7 +41,7 @@ changelog-regenerate:
 			>> $(CHANGELOG_VERSION)/$(CHANGELOG_VERSION).md; \
     fi
 	@if [ -d "$(CHANGELOG_VERSION)/kong-manager" ]; then \
-		changelog generate \
+		changelog --debug=$(DEBUG) generate \
 			--repo-path . \
 			--changelog-paths $(CHANGELOG_VERSION)/kong-manager,unreleased/kong-manager \
 			--title Kong-Manager \
