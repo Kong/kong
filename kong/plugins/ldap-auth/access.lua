@@ -232,25 +232,28 @@ local function set_consumer(consumer, credential)
   end
 end
 
+local function unauthorized(message, authorization_scheme)
+  return {
+    status = 401,
+    message = message,
+    headers = { ["WWW-Authenticate"] = authorization_scheme }
+  }
+end
 
 local function do_authentication(conf)
   local authorization_value = kong.request.get_header(AUTHORIZATION)
   local proxy_authorization_value = kong.request.get_header(PROXY_AUTHORIZATION)
 
+  local scheme = conf.header_type
+  if scheme == "ldap" then
+    -- ensure backwards compatibility (see GH PR #3656)
+    -- TODO: provide migration to capitalize older configurations
+    scheme = upper(scheme)
+  end
+
   -- If both headers are missing, return 401
   if not (authorization_value or proxy_authorization_value) then
-    local scheme = conf.header_type
-    if scheme == "ldap" then
-      -- ensure backwards compatibility (see GH PR #3656)
-      -- TODO: provide migration to capitalize older configurations
-      scheme = upper(scheme)
-    end
-
-    return false, {
-      status = 401,
-      message = "Unauthorized",
-      headers = { ["WWW-Authenticate"] = scheme .. ' realm="kong"' }
-    }
+    return false, unauthorized("Unauthorized", scheme)
   end
 
   local is_authorized, credential
@@ -263,7 +266,7 @@ local function do_authentication(conf)
   end
 
   if not is_authorized then
-    return false, {status = 401, message = "Invalid authentication credentials" }
+    return false, unauthorized("Invalid authentication credentials", scheme)
   end
 
   if conf.hide_credentials then
