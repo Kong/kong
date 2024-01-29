@@ -287,7 +287,11 @@ function _M.import(conf)
 end
 
 
-function _M.init_worker(conf, backup_role)
+function _M.init_worker(conf)
+  if not (conf.cluster_fallback_config_export or conf.cluster_fallback_config_import) then
+    return
+  end
+
   if not clustering_utils.is_dp_worker_process() then
     return
   end
@@ -298,15 +302,13 @@ function _M.init_worker(conf, backup_role)
     return
   end
 
-  if backup_role == "exporter" then
+  if conf.cluster_fallback_config_export then
     export(conf)
+  end
 
-  elseif backup_role == "importer" then
+  if conf.cluster_fallback_config_import then
     declarative_config = assert(kong.db.declarative_config,
                                 "kong.db.declarative_config was not initialized")
-
-  else
-    ngx_log(ngx_ERR, FALLBACK_CONFIG_PREFIX, "unknown role: ", backup_role)
   end
 end
 

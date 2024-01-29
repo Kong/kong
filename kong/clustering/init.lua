@@ -143,12 +143,7 @@ function _M:init_worker()
 
   -- This must be initialized before clustering config sync.
   -- Otherwise the import/export may be triggered before state is ready.
-  if self.conf.cluster_fallback_config_export then
-    config_sync_backup.init_worker(self.conf, "exporter")
-
-  elseif self.conf.cluster_fallback_config_import then
-    config_sync_backup.init_worker(self.conf, "importer")
-  end
+  config_sync_backup.init_worker(self.conf)
 
   --[= XXX EE
   local role = self.conf.role

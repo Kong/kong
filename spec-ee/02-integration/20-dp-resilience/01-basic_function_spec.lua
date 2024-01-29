@@ -287,6 +287,7 @@ describe("cp outage handling", function ()
         lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
         cluster_fallback_config_storage = cluster_fallback_config_storage,
         cluster_fallback_config_import = "on",
+        cluster_fallback_config_export = "on", -- to ensure it also work when export is enabled
         cluster_control_plane = "127.0.0.1:9005",
         proxy_listen = "0.0.0.0:9003",
         nginx_conf = "spec/fixtures/custom_nginx.template",
