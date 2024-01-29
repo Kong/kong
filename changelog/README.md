@@ -31,7 +31,8 @@ Take EE repo for example, check operations below. To enable debug, please add `D
 ~ $ pwd
 /Users/zachary/workspace/kong-ee
 
-~ $ make -f changelog/Makefile CHANGELOG_VERSION=3.6.0.0 generate
+~ $ cd changelog
+~ $ make generate VERSION=3.6.0.0
 
 ~ $ git mv changelog/unreleased changelog/3.6.0.0
 ~ $ mkdir -p changelog/unreleased/{kong,kong-ee,kong-manager-ee,kong-portal}
@@ -47,8 +48,8 @@ Suppose a new PR is merged after the changelog PR is created, we can regenerate 
 ```bash
 ~ $ pwd
 /Users/zachary/workspace/kong-ee
-
-~ $ make -f changelog/Makefile CHANGELOG_VERSION=3.6.0.0 regenerate
+~ $ cd changelog
+~ $ make generate FOLDER=3.6.0.0 INCLUDE_UNRELEASED=true  VERSION=3.6.0.0
 
 ~ $ git mv changelog/unreleased/* changelog/3.6.0.0/
 ~ $ mkdir -p changelog/unreleased/{kong,kong-ee,kong-manager-ee,kong-portal}
