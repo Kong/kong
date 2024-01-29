@@ -1004,6 +1004,60 @@ for _, strategy in strategies() do
         })
         assert.response(res).has.status(200)
       end)
+
+      it("should not cache the result of groups_required check", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            host          = "ldap2.test",
+            authorization = "ldap " .. ngx.encode_base64("Katherina:pass:w2rd1111A$"),
+          }
+        })
+
+        assert.res_status(200, res)
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            host          = "ldap3.test",
+            authorization = "ldap " .. ngx.encode_base64("Katherina:pass:w2rd1111A$"),
+          }
+        })
+
+        local body = assert.res_status(403, res)
+        local json = cjson.decode(body)
+        assert.equal(json.message, "User not in authorized LDAP Group")
+      end)
+
+      it("still works normally after 403 User not in authorized LDAP Group", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            host          = "ldap2.test",
+            authorization = "ldap " .. ngx.encode_base64("Othello:pass:w2rd1111A$"),
+          }
+        })
+
+        local body = assert.res_status(403, res)
+        local json = cjson.decode(body)
+        assert.equal(json.message, "User not in authorized LDAP Group")
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            host          = "ldap2.test",
+            authorization = "ldap " .. ngx.encode_base64("Othello:pass:w2rd1111A$"),
+          }
+        })
+
+        local body = assert.res_status(403, res)
+        local json = cjson.decode(body)
+        assert.equal(json.message, "User not in authorized LDAP Group")
+      end)
     end)
   end)
 end

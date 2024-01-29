@@ -30,6 +30,7 @@ local sha256_hex = require "kong.tools.sha256".sha256_hex
 
 local AUTHORIZATION = "authorization"
 local PROXY_AUTHORIZATION = "proxy-authorization"
+local RETURN_CODE = ldap.RETURN_CODE
 
 
 local ldap_config_cache = setmetatable({}, { __mode = "k" })
@@ -79,6 +80,7 @@ local function ldap_authenticate(given_username, given_password, conf)
   local is_authenticated
   local groups = nil
   local err, suppressed_err, ok
+  local formated_err
 
   local sock = ngx_socket_tcp()
   sock:settimeout(conf.timeout)
@@ -95,7 +97,7 @@ local function ldap_authenticate(given_username, given_password, conf)
   if not ok then
     kong.log.err("failed to connect to ", conf.ldap_host, ":",
                  tostring(conf.ldap_port),": ", err)
-    return nil, nil, err
+    return nil, nil, "failed to connect to ldap server: " .. err
   end
 
   if conf.ldaps or conf.start_tls then
@@ -103,28 +105,31 @@ local function ldap_authenticate(given_username, given_password, conf)
     if conf.start_tls and sock:getreusedtimes() == 0 then
       local success, err = ldap.start_tls(sock)
       if not success then
-        return false, nil, err
+        formated_err = "failed to establish a StartTLS connection: " .. err
+        kong.log.err(formated_err)
+        return nil, nil, formated_err
       end
     end
 
     local _, err = sock:sslhandshake(true, conf.ldap_host, conf.verify_ldap_host)
     if err ~= nil then
-      return false, nil, fmt("failed to do SSL handshake with %s:%s: %s",
-                             conf.ldap_host, tostring(conf.ldap_port), err)
+      kong.log.err(fmt("failed to do SSL handshake with %s:%s: %s",
+                       conf.ldap_host, tostring(conf.ldap_port), err))
+      return nil, nil, fmt("failed to do SSL handshake with ldap server: %s", err)
     end
   end
 
   if conf.bind_dn then
-    is_authenticated = false
     kong.log.debug("binding with ", conf.bind_dn, " and conf.ldap_password")
     ok, err = ldap.bind_request(sock, conf.bind_dn, conf.ldap_password)
 
     if err then
-      kong.log.err("Error during bind request. ", err)
-      return kong.response.exit(500, { message = "An unexpected error occurred" })
+      formated_err = "error during bind request: " .. err
+      kong.log.err(formated_err)
+      return nil, nil, formated_err
     end
 
-    if ok then
+    if ok == RETURN_CODE.OK then
       kong.log.debug("ldap bind successful, performing search request with base_dn:",
         conf.base_dn, ", scope='sub', and filter=", conf.attribute .. "=" .. given_username)
 
@@ -144,10 +149,10 @@ local function ldap_authenticate(given_username, given_password, conf)
       end
 
       if err then
-        kong.log.err("failed ldap search for "..
-                     conf.attribute .. "=" .. given_username .. " base_dn=" ..
-                     conf.base_dn)
-        return kong.response.exit(500, { message = "An unexpected error occurred" })
+        formated_err = fmt("failed ldap search for %s=%s, base_dn=%s: %s",
+                          conf.attribute, given_username, conf.base_dn)
+        kong.log.err(formated_err)
+        return nil, nil, formated_err
       end
 
       kong.log.debug("finding groups with member attribute: " ..
@@ -156,10 +161,11 @@ local function ldap_authenticate(given_username, given_password, conf)
       local user_dn, search_result
       for dn, result in pairs(search_results) do
         if user_dn then
-          kong.log.err("more than one user found in ldap_search with" ..
-                       " attribute = " .. conf.attribute ..
-                       " and given_username=" .. given_username)
-          return kong.response.exit(500)
+          formated_err = fmt("more than one user found in ldap_search with" ..
+                             " attribute = " .. conf.attribute ..
+                             " and given_username=" .. given_username)
+          kong.log.err(formated_err)
+          return nil, nil, formated_err
         end
 
         user_dn = dn
@@ -167,22 +173,25 @@ local function ldap_authenticate(given_username, given_password, conf)
       end
 
       if not user_dn then
-        return false, nil, "User not found"
+        kong.log.err("user not found")
+        return false
       end
 
       is_authenticated, err = ldap.bind_request(sock, user_dn, given_password)
 
       if err then
-        kong.log.err("bind request failed for user " .. given_username)
-        return false, nil, err
+        formated_err = fmt("bind request failed for user %s: %s", given_username, err)
+        kong.log.err(formated_err)
       end
 
-      if not is_authenticated then
-        return false, nil, nil
+      if is_authenticated == RETURN_CODE.ERROR then
+        return nil, nil, formated_err
+
+      elseif is_authenticated == RETURN_CODE.FAIL then
+        return false
       end
 
       local raw_groups = search_result[conf.group_member_attribute]
-      local groups_required = conf.groups_required
       if raw_groups and #raw_groups then
         kong.log.debug("found groups")
 
@@ -190,38 +199,35 @@ local function ldap_authenticate(given_username, given_password, conf)
         local group_attr = conf.group_name_attribute or conf.attribute
 
         groups = ldap_groups.validate_groups(raw_groups, group_dn, group_attr)
-        ldap_groups.set_groups(groups)
 
         if groups == nil then
           kong.log.debug("user has groups, but they are invalid. " ..
                  "group must include group_base_dn with group_name_attribute")
         end
-
-        if groups_required and next(groups_required) then
-          local ok = check_group_membership(conf, groups)
-          if not ok then
-            return kong.response.exit(403, {
-              message = "User not in authorized LDAP Group"
-            })
-          end
-        end
       else
         kong.log.debug("did not find groups for ldap search result")
-        clear_header(constants.HEADERS.AUTHENTICATED_GROUPS)
-
-        if groups_required and next(groups_required) then
-          return kong.response.exit(403, {
-            message = "User not in authorized LDAP Group"
-          })
-        end
       end
     end
   else
-    kong.log.debug("bind_dn failed to bind with given ldap_password," ..
+    kong.log.debug("bind_dn is not configurated," ..
       "attempting to bind with username and base_dn:",
       conf.attribute .. "=" .. given_username .. "," .. conf.base_dn)
     local who = conf.attribute .. "=" .. given_username .. "," .. conf.base_dn
     is_authenticated, err = ldap.bind_request(sock, who, given_password)
+
+    if err then
+      formated_err = fmt("bind request (without bind_dn) failed for user %s: %s",
+                         given_username, err)
+      kong.log.err(formated_err)
+    end
+
+    if is_authenticated == RETURN_CODE.ERROR then
+      return nil, nil, formated_err
+    end
+
+    if is_authenticated == RETURN_CODE.FAIL then
+      return false
+    end
   end
 
   ok, suppressed_err = sock:setkeepalive(conf.keepalive)
@@ -229,17 +235,14 @@ local function ldap_authenticate(given_username, given_password, conf)
     kong.log.err("failed to keepalive to ", conf.ldap_host, ":",
                  tostring(conf.ldap_port), ": ", suppressed_err)
   end
-  return is_authenticated, groups, err
+  return true, groups
 end
 
 local function load_credential(given_username, given_password, conf)
   local ok, groups, err = ldap_authenticate(given_username, given_password, conf)
-  if err ~= nil then
-    kong.log.err(err)
-  end
 
   if ok == nil then
-    return nil
+    return nil, err
   end
   if ok == false then
     return false
@@ -251,11 +254,15 @@ end
 local function cache_key(conf, username, password)
   local err
   if not ldap_config_cache[conf] then
-    ldap_config_cache[conf], err = sha256_hex(fmt("%s:%u:%s:%s:%u",
+    ldap_config_cache[conf], err = sha256_hex(fmt("%s:%u:%s:%s:%s:%s:%s:%s:%u",
       lower(conf.ldap_host),
       conf.ldap_port,
       conf.base_dn,
+      conf.bind_dn or "",
       conf.attribute,
+      conf.group_member_attribute,
+      conf.group_base_dn or conf.base_dn,
+      conf.group_name_attribute or conf.attribute,
       conf.cache_ttl
     ))
   end
@@ -427,12 +434,12 @@ local function do_authentication(conf)
     return false, { status = 401, message = "Unauthorized" }
   end
 
-  local is_authorized, credential = authenticate(conf, proxy_authorization_value)
-  if not is_authorized then
-    is_authorized, credential = authenticate(conf, authorization_value)
+  local is_authenticated, credential = authenticate(conf, proxy_authorization_value)
+  if not is_authenticated then
+    is_authenticated, credential = authenticate(conf, authorization_value)
   end
 
-  if not is_authorized then
+  if not is_authenticated then
     if anonymous ~= "" then
       local consumer_cache_key = kong.db.consumers:cache_key(anonymous)
       consumer, err = kong.cache:get(consumer_cache_key, nil,
@@ -451,6 +458,27 @@ local function do_authentication(conf)
     end
 
     return false, { status = 401, message = "Unauthorized" }
+  end
+
+  if conf.bind_dn then
+    local groups_required = conf.groups_required
+    local groups = credential and credential.groups
+    if groups then
+      ldap_groups.set_groups(groups)
+
+    else
+      clear_header(constants.HEADERS.AUTHENTICATED_GROUPS)
+    end
+
+    if groups_required and next(groups_required) then
+      local ok
+      if groups then
+        ok = check_group_membership(conf, groups)
+      end
+      if not ok then
+        return false, { status = 403, message = "User not in authorized LDAP Group" }
+      end
+    end
   end
 
   if conf.hide_credentials then
@@ -487,7 +515,6 @@ local function do_authentication(conf)
     end
   end
 
-  ldap_groups.set_groups(credential.groups)
   set_consumer(consumer, credential, anonymous)
 
   return true

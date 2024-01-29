@@ -1,0 +1,3 @@
+message: "**Ldap-auth-advanced**: fix some cache-related issues which cause groups_required to not work properly and unexpected return codes after a non-200 response"
+type: bugfix
+scope: Plugin

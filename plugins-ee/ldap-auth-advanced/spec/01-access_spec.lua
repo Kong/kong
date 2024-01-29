@@ -17,12 +17,19 @@ local ee_helpers = require "spec-ee.helpers"
 local lower   = string.lower
 local fmt     = string.format
 
+local AD_SERVER_HOST = os.getenv("KONG_SPEC_TEST_AD_SERVER_HOST") or "ad-server"
+local AD_SERVER_PORT = tonumber(os.getenv("KONG_SPEC_TEST_AD_SERVER_PORT_389")) or 389
+
 local function cache_key(conf, username, password)
-  local prefix = sha256.sha256_hex(fmt("%s:%u:%s:%s:%u",
+  local prefix = sha256.sha256_hex(fmt("%s:%u:%s:%s:%s:%s:%s:%s:%u",
     lower(conf.ldap_host),
     conf.ldap_port,
     conf.base_dn,
+    conf.bind_dn or "",
     conf.attribute,
+    conf.group_member_attribute,
+    conf.group_base_dn or conf.base_dn,
+    conf.group_name_attribute or conf.attribute,
     conf.cache_ttl
   ))
 
@@ -45,7 +52,7 @@ for proto, conf in ee_helpers.each_protocol() do
   describe("Plugin: ldap-auth-advanced (access) [#" .. strategy .. "] (#" .. proto .. ")", function()
     local proxy_client
     local admin_client
-    local plugin
+    local plugin, plugin2
 
     local db_strategy = strategy ~= "off" and strategy or nil
 
@@ -62,6 +69,10 @@ for proto, conf in ee_helpers.each_protocol() do
         hosts = { "ldap.test" }
       }
 
+      local route2 = bp.routes:insert {
+        hosts = { "ldap2.test" }
+      }
+
       plugin = bp.plugins:insert {
         route = { id = route.id },
         name     = "ldap-auth-advanced",
@@ -75,6 +86,22 @@ for proto, conf in ee_helpers.each_protocol() do
            attribute         = "uid",
            hide_credentials  = true,
            cache_ttl         = 2,
+        }
+      }
+
+      plugin2 = bp.plugins:insert {
+        route = { id = route2.id },
+        name     = "ldap-auth-advanced",
+        config = {
+          ldap_host          = AD_SERVER_HOST,
+          ldap_port          = AD_SERVER_PORT,
+          ldap_password      = "wrongpassword",
+          attribute          = "cn",
+          base_dn            = "cn=Users,dc=ldap,dc=mashape,dc=com",
+          bind_dn            = "cn=Ophelia,cn=Users,dc=ldap,dc=mashape,dc=com",
+          consumer_optional  = true,
+          hide_credentials   = true,
+          cache_ttl          = 5,
         }
       }
 
@@ -155,6 +182,50 @@ for proto, conf in ee_helpers.each_protocol() do
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.equal(false, json.config.start_tls)
+      end)
+
+      it("should not cache the value when an undesired error occurs", function()
+        helpers.clean_logfile()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          body    = {},
+          headers = {
+            host             = "ldap2.test",
+            authorization    = "ldap " .. ngx.encode_base64("User1:pass:w2rd1111A$"),
+          }
+        })
+        assert.response(res).has.status(500)
+        assert.logfile().has.line("error during bind request", true)
+
+        local res = assert(admin_client:send {
+          method  = "PATCH",
+          path    = "/plugins/" .. plugin2.id,
+          body    = {
+            config = { ldap_password = "pass:w2rd1111A$" }
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal("pass:w2rd1111A$", json.config.ldap_password)
+
+        helpers.wait_for_all_config_update({
+          disable_ipv6 = true,
+        })
+
+        res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          body    = {},
+          headers = {
+            host             = "ldap2.test",
+            authorization    = "ldap " .. ngx.encode_base64("User1:pass:w2rd1111A$"),
+          }
+        })
+        assert.response(res).has.status(200)
       end)
     end)
   end)

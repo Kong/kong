@@ -39,6 +39,14 @@ local APPNO = {
   ExtendedResponse = 24
 }
 
+local RETURN_CODE = {
+  OK = 0,     -- success
+  FAIL = 1,   -- fail
+  ERROR = 2,  -- unexpected error
+}
+
+_M.RETURN_CODE = RETURN_CODE
+
 local function calculate_payload_length(encStr, pos, socket)
   local elen
   pos, elen = bunpack(encStr, 'C', pos)
@@ -93,27 +101,27 @@ function _M.bind_request(socket, username, password)
 
   local _, protocol_op, packet, pos, err = receive_ldap_message(socket)
   if err then
-    return false, err
+    return RETURN_CODE.ERROR, err
   end
 
   if protocol_op ~= APPNO.BindResponse then
-    return false, fmt("Received incorrect Op in packet: %d, expected %d",
+    return RETURN_CODE.ERROR, fmt("Received incorrect Op in packet: %d, expected %d",
                                 protocol_op, APPNO.BindResponse)
   end
 
   local res
   res, err = asn1_parse_ldap_result(packet, pos)
   if err then
-    return false, err
+    return RETURN_CODE.ERROR, err
   end
 
   if res.result_code ~= 0 then
     local error_msg = ERROR_MSG[res.result_code]
-    return false, fmt("\n  Error: %s\n  Details: %s",
+    return RETURN_CODE.FAIL, fmt("\n  Error: %s\n  Details: %s",
       error_msg or "Unknown error occurred (code: " .. res.result_code ..
       ")", res.diagnostic_msg or "")
   else
-    return true
+    return RETURN_CODE.OK
   end
 end
 

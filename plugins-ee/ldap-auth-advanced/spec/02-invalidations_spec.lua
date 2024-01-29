@@ -79,11 +79,15 @@ for _, ldap_strategy in pairs(ldap_strategies) do
         end)
 
         local function cache_key(conf, username, password)
-          local ldap_config_cache = sha256.sha256_hex(fmt("%s:%u:%s:%s:%u",
+          local ldap_config_cache = sha256.sha256_hex(fmt("%s:%u:%s:%s:%s:%s:%s:%s:%u",
             lower(conf.ldap_host),
             conf.ldap_port,
             conf.base_dn,
+            conf.bind_dn or "",
             conf.attribute,
+            conf.group_member_attribute,
+            conf.group_base_dn or conf.base_dn,
+            conf.group_name_attribute or conf.attribute,
             conf.cache_ttl
           ))
 
