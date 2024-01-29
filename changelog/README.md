@@ -4,7 +4,8 @@ Add the `changelog` directory to your environment variable `PATH`.
 
 ```bash
 ~ $ pwd
-/Users/zachary/workspace/kong-ee/changelog
+/Users/zachary/workspace/kong-ee
+~ $ cd changelog
 
 ~ $ PATH="$(realpath .):$PATH"
 ```
@@ -25,42 +26,29 @@ Ensure binaries are executable.
 
 # Generate changelog
 
-Take EE repo for example, check operations below. To enable debug, please add `DEBUG=true`.
+Take EE repo and `3.6.0.0` for example, check the operations below. To enable debug,
+add option `DEBUG=true`.
 
 ```bash
 ~ $ pwd
 /Users/zachary/workspace/kong-ee
 
-~ $ cd changelog
-~ $ make generate VERSION=3.6.0.0
+~ $ git fetch --all
+~ $ git checkout -b geneerate-3.6.0.0-changelog origin/master
 
-~ $ mv 3.6.0.0.md unreleased/3.6.0.0.md
-~ $ git add unreleased/3.6.0.0.md
-~ $ git mv unreleased 3.6.0.0
-~ $ mkdir -p unreleased/{kong,kong-ee,kong-manager-ee,kong-portal}
-~ $ touch unreleased/{kong,kong-ee,kong-manager-ee,kong-portal}/.gitkeep
+~ $ cd changelog
+~ $ make VERSION=3.6.0.0
+
+~ $ git status
+~ $ ls 3.6.0.0/3.6.0.0.md
 
 ~ $ git add .
 ~ $ git commit -m "docs(release): genereate 3.6.0.0 changelog"
 ~ $ git push -u origin HEAD
 ```
 
-Suppose a new PR is merged after the changelog PR is created, we can regenerate changelog as follows.
-
-```bash
-~ $ pwd
-/Users/zachary/workspace/kong-ee
-~ $ cd changelog
-~ $ make generate FOLDER=3.6.0.0 INCLUDE_UNRELEASED=true  VERSION=3.6.0.0
-
-~ $ git mv unreleased/* 3.6.0.0/
-~ $ mkdir -p unreleased/{kong,kong-ee,kong-manager-ee,kong-portal}
-~ $ touch unreleased/{kong,kong-ee,kong-manager-ee,kong-portal}/.gitkeep
-
-~ $ git add .
-~ $ git commit --amend --no-edit
-~ $ git push -f origin head
-```
+Suppose a new PR is merged after the changelog PR is created, please rerun
+`make VERSION=3.6.0.0` to update changelog.
 
 # Verify PRs
 

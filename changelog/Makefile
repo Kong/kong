@@ -1,18 +1,18 @@
 .PHONY: generate
 
 VERSION=3.x.y.z
-FOLDER=unreleased
+UNRELEASED_DIR=unreleased
 DEBUG=false
-INCLUDE_UNRELEASED=false
 
 generate:
 	@rm -f $(VERSION).md
 	@touch $(VERSION).md
-	@if [ -d "$(FOLDER)/kong" ]; then \
-		if [ "$(INCLUDE_UNRELEASED)" = "true" ]; then \
+
+	@if [ -d "$(UNRELEASED_DIR)/kong" ]; then \
+		if [ -f "$(VERSION)/$(VERSION).md" ]; then \
 			changelog --debug=$(DEBUG) generate \
 				--repo-path . \
-				--changelog-paths $(FOLDER)/kong,unreleased/kong \
+				--changelog-paths $(VERSION)/kong,$(UNRELEASED_DIR)/kong \
 				--title Kong \
 				--github-issue-repo Kong/kong \
 				--github-api-repo Kong/kong-ee \
@@ -21,7 +21,7 @@ generate:
 		else \
 			changelog --debug=$(DEBUG) generate \
 				--repo-path . \
-				--changelog-paths $(FOLDER)/kong \
+				--changelog-paths $(UNRELEASED_DIR)/kong \
 				--title Kong \
 				--github-issue-repo Kong/kong \
 				--github-api-repo Kong/kong-ee \
@@ -29,32 +29,11 @@ generate:
 				>> $(VERSION).md; \
 		fi \
 	fi
-	@if [ -d "$(FOLDER)/kong-manager" ]; then \
-		if [ "$(INCLUDE_UNRELEASED)" = "true" ]; then \
+	@if [ -d "$(UNRELEASED_DIR)/kong-ee" ]; then \
+		if [ -f "$(VERSION)/$(VERSION).md" ]; then \
 			changelog --debug=$(DEBUG) generate \
 				--repo-path . \
-				--changelog-paths $(FOLDER)/kong-manager,unreleased/manager \
-				--title Kong-Manager \
-				--github-issue-repo Kong/kong-manager \
-				--github-api-repo Kong/kong-ee \
-				--with-jiras \
-				>> $(VERSION).md; \
-		else \
-			changelog --debug=$(DEBUG) generate \
-				--repo-path . \
-				--changelog-paths $(FOLDER)/kong-manager \
-				--title Kong-Manager \
-				--github-issue-repo Kong/kong-manager \
-				--github-api-repo Kong/kong-ee \
-				--with-jiras \
-				>> $(VERSION).md; \
-		fi \
-	fi
-	@if [ -d "$(FOLDER)/kong-ee" ]; then \
-		if [ "$(INCLUDE_UNRELEASED)" = "true" ]; then \
-			changelog --debug=$(DEBUG) generate \
-				--repo-path . \
-				--changelog-paths $(FOLDER)/kong-ee,unreleased/kong-ee \
+				--changelog-paths $(VERSION)/kong-ee,$(UNRELEASED_DIR)/kong-ee \
 				--title Kong-Enterprise \
 				--github-issue-repo Kong/kong-ee \
 				--github-api-repo Kong/kong-ee \
@@ -63,7 +42,7 @@ generate:
 		else \
 			changelog --debug=$(DEBUG) generate \
 				--repo-path . \
-				--changelog-paths $(FOLDER)/kong-ee \
+				--changelog-paths $(UNRELEASED_DIR)/kong-ee \
 				--title Kong-Enterprise \
 				--github-issue-repo Kong/kong-ee \
 				--github-api-repo Kong/kong-ee \
@@ -71,11 +50,11 @@ generate:
 				>> $(VERSION).md; \
 		fi \
     fi
-	@if [ -d "$(FOLDER)/kong-manager-ee" ]; then \
-		if [ "$(INCLUDE_UNRELEASED)" = "true" ]; then \
+	@if [ -d "$(UNRELEASED_DIR)/kong-manager-ee" ]; then \
+		if [ -f "$(VERSION)/$(VERSION).md" ]; then \
 			changelog --debug=$(DEBUG) generate \
 				--repo-path . \
-				--changelog-paths $(FOLDER)/kong-manager-ee,unreleased/kong-manager-ee \
+				--changelog-paths $(VERSION)/kong-manager-ee,$(UNRELEASED_DIR)/kong-manager-ee \
 				--title Kong-Manager-Enterprise \
 				--github-issue-repo Kong/kong-admin \
 				--github-api-repo Kong/kong-ee \
@@ -84,7 +63,7 @@ generate:
 		else \
 			changelog --debug=$(DEBUG) generate \
 				--repo-path . \
-				--changelog-paths $(FOLDER)/kong-manager-ee \
+				--changelog-paths $(UNRELEASED_DIR)/kong-manager-ee \
 				--title Kong-Manager-Enterprise \
 				--github-issue-repo Kong/kong-admin \
 				--github-api-repo Kong/kong-ee \
@@ -92,11 +71,11 @@ generate:
 				>> $(VERSION).md; \
 		fi \
     fi
-	@if [ -d "$(FOLDER)/kong-portal-ee" ]; then \
-		if [ "$(INCLUDE_UNRELEASED)" = "true" ]; then \
+	@if [ -d "$(UNRELEASED_DIR)/kong-portal-ee" ]; then \
+		if [ -f "$(VERSION)/$(VERSION).md" ]; then \
 			changelog --debug=$(DEBUG) generate \
 				--repo-path . \
-				--changelog-paths $(FOLDER)/kong-portal-ee,unreleased/kong-portal-ee \
+				--changelog-paths $(VERSION)/kong-portal-ee,$(UNRELEASED_DIR)/kong-portal-ee \
 				--title Kong-Portal \
 				--github-issue-repo Kong/kong-portal-templates \
 				--github-api-repo Kong/kong-ee \
@@ -105,7 +84,7 @@ generate:
 		else \
 			changelog --debug=$(DEBUG) generate \
 				--repo-path . \
-				--changelog-paths $(FOLDER)/kong-portal-ee \
+				--changelog-paths $(UNRELEASED_DIR)/kong-portal-ee \
 				--title Kong-Portal \
 				--github-issue-repo Kong/kong-portal-templates \
 				--github-api-repo Kong/kong-ee \
@@ -113,4 +92,9 @@ generate:
 				>> $(VERSION).md; \
 		fi \
     fi
-	@echo "Successfully genreate changelog $(VERSION).md"
+
+	@mv $(VERSION).md $(UNRELEASED_DIR)/
+	@git mv $(UNRELEASED_DIR) $(VERSION)
+	@mkdir -p $(UNRELEASED_DIR)/{kong,kong-ee,kong-manager-ee,kong-portal-ee}
+	@touch $(UNRELEASED_DIR)/{kong,kong-ee,kong-manager-ee,kong-portal-ee}/.gitkeep
+	@echo "Done! Please check $(VERSION)/$(VERSION).md"
