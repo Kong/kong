@@ -1,0 +1,3 @@
+message: Degraphql plugin now uses new configure handler to update graphql router with better error handling
+type: bugfix
+scope: Plugin

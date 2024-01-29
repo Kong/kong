@@ -7,12 +7,13 @@
 
 local cjson = require "cjson"
 local tablex = require "pl.tablex"
-local workspaces = require "kong.workspaces"
 
 local Router = require("lapis.router").Router
 
 local arguments  = require "kong.api.arguments"
 local meta = require "kong.meta"
+local workspaces = require "kong.workspaces"
+local FORCE = true
 
 local DeGraphQLHandler = {
   PRIORITY = 1500,
@@ -40,22 +41,6 @@ local function format(text, args)
 end
 
 
--- XXX Look at how kong router is built, invalidated, etc
--- semaphores and stuff
-function DeGraphQLHandler:init_worker()
-  self:init_router()
-
-  if kong.configuration.database == "off" or not (kong.worker_events and kong.worker_events.register) then
-    return
-  end
-
-  kong.worker_events.register(function(data)
-    workspaces.set_workspace(data.workspace)
-    self:init_router()
-  end, "crud", "degraphql_routes")
-end
-
-
 local function default_router()
   local router = Router()
   router.default_route = function()
@@ -65,13 +50,28 @@ local function default_router()
 end
 
 
--- XXX Look at how kong router is built, invalidated, etc
--- semaphores and stuff
-function DeGraphQLHandler:init_router()
+function DeGraphQLHandler:router_is_empty()
+  return not self.routers or (type(self.routers) == "table" and tablex.size(self.routers) == 0)
+end
+
+
+function DeGraphQLHandler:update_router(force)
+  local force = (not not force) or false
+
+  -- Early exit when router is not empty and not forced
+  if not force and not self:router_is_empty() then
+    return
+  end
 
   local routers = {}
 
   for route, err in kong.db.degraphql_routes:each(1000) do
+    if err then
+      kong.log.err("Degraphql plugin could not load routes: ", err)
+      -- Break when error and try again on the next update_router
+      break
+    end
+
     if not routers[route.service.id] then
       routers[route.service.id] = default_router()
       Router()
@@ -115,11 +115,26 @@ function DeGraphQLHandler:get_query()
 end
 
 
-function DeGraphQLHandler:access(conf)
-
-  if not self.router then
-    self:init_router()
+function DeGraphQLHandler:init_worker()
+  if kong.configuration.database == "off" or not (kong.worker_events and kong.worker_events.register) then
+    return
   end
+
+  kong.worker_events.register(function(data)
+    workspaces.set_workspace(data.workspace)
+    self:update_router(true)
+  end, "crud", "degraphql_routes")
+end
+
+
+function DeGraphQLHandler:configure(conf)
+  -- Force rebuild router in init_worker or config update
+  self:update_router(FORCE)
+end
+
+
+function DeGraphQLHandler:access(conf)
+  self:update_router()
 
   local query, variables = self:get_query()
 
