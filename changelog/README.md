@@ -5,8 +5,8 @@ Add the `changelog` directory to your environment variable `PATH`.
 ```bash
 ~ $ pwd
 /Users/zachary/workspace/kong-ee
-~ $ cd changelog
 
+~ $ cd changelog
 ~ $ PATH="$(realpath .):$PATH"
 ```
 
