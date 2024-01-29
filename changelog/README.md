@@ -29,16 +29,27 @@ Ensure binaries are executable.
 Take EE repo and `3.6.0.0` for example, check the operations below. To enable debug,
 add option `DEBUG=true`.
 
+Prepare changelog branch.
+
 ```bash
 ~ $ pwd
 /Users/zachary/workspace/kong-ee
 
 ~ $ git fetch --all
 ~ $ git checkout -b geneerate-3.6.0.0-changelog origin/master
+```
 
+Generate changelog. Suppose a new PR is merged after the changelog PR is created,
+please repeat this part.
+
+```bash
 ~ $ cd changelog
 ~ $ make VERSION=3.6.0.0
+```
 
+Commit changelog updates.
+
+```bash
 ~ $ git status
 ~ $ ls 3.6.0.0/3.6.0.0.md
 
@@ -46,9 +57,6 @@ add option `DEBUG=true`.
 ~ $ git commit -m "docs(release): genereate 3.6.0.0 changelog"
 ~ $ git push -u origin HEAD
 ```
-
-Suppose a new PR is merged after the changelog PR is created, please rerun
-`make VERSION=3.6.0.0` to update changelog.
 
 # Verify PRs
 
