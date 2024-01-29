@@ -4,7 +4,7 @@ Add the `changelog` directory to your environment variable `PATH`.
 
 ```bash
 ~ $ pwd
-/Users/zachary/workspace/kong-ee
+/Users/zachary/workspace/kong-ee/changelog
 
 ~ $ PATH="$(realpath ./changelog):$PATH"
 ```
@@ -18,9 +18,9 @@ Enure `golang` is available on your local system.
 Ensure binaries are executable.
 
 ```bash
-~ $ chmod +x ./changelog/changelog
+~ $ chmod +x ./changelog
 
-~ $ chmod +x ./changelog/verify-prs
+~ $ chmod +x ./verify-prs
 ```
 
 # Generate changelog
@@ -34,9 +34,11 @@ Take EE repo for example, check operations below. To enable debug, please add `D
 ~ $ cd changelog
 ~ $ make generate VERSION=3.6.0.0
 
-~ $ git mv changelog/unreleased changelog/3.6.0.0
-~ $ mkdir -p changelog/unreleased/{kong,kong-ee,kong-manager-ee,kong-portal}
-~ $ touch changelog/unreleased/{kong,kong-ee,kong-manager-ee,kong-portal}/.gitkeep
+~ $ mv 3.6.0.0.md unreleased/3.6.0.0.md
+~ $ git add unreleased/3.6.0.0.md
+~ $ git mv unreleased 3.6.0.0
+~ $ mkdir -p unreleased/{kong,kong-ee,kong-manager-ee,kong-portal}
+~ $ touch unreleased/{kong,kong-ee,kong-manager-ee,kong-portal}/.gitkeep
 
 ~ $ git add .
 ~ $ git commit -m "docs(release): genereate 3.6.0.0 changelog"
@@ -51,9 +53,9 @@ Suppose a new PR is merged after the changelog PR is created, we can regenerate 
 ~ $ cd changelog
 ~ $ make generate FOLDER=3.6.0.0 INCLUDE_UNRELEASED=true  VERSION=3.6.0.0
 
-~ $ git mv changelog/unreleased/* changelog/3.6.0.0/
-~ $ mkdir -p changelog/unreleased/{kong,kong-ee,kong-manager-ee,kong-portal}
-~ $ touch changelog/unreleased/{kong,kong-ee,kong-manager-ee,kong-portal}/.gitkeep
+~ $ git mv unreleased/* 3.6.0.0/
+~ $ mkdir -p unreleased/{kong,kong-ee,kong-manager-ee,kong-portal}
+~ $ touch unreleased/{kong,kong-ee,kong-manager-ee,kong-portal}/.gitkeep
 
 ~ $ git add .
 ~ $ git commit --amend --no-edit
@@ -83,7 +85,7 @@ Version: 0.1
  Script: Compare between two revisions (e.g. tags and branches), and output
          commits, PRs, PRs without changelog and CE PRs without CE2EE (experimental).
 
-         A PR should have an associated YML file under 'changelog/unreleased', otherwise
+         A PR should have an associated YML file under 'unreleased', otherwise
          it is printed for verification.
 
          Regarding CE2EE, if a CE PR has any cross-referenced EE PRs, it is regarded synced
