@@ -24,6 +24,11 @@ lua_shared_dict kong_db_cache_miss          12m;
 lua_shared_dict kong_secrets                5m;
 
 underscores_in_headers on;
+> if ssl_cipher_suite == 'old' then
+lua_ssl_conf_command CipherString DEFAULT:@SECLEVEL=0;
+proxy_ssl_conf_command CipherString DEFAULT:@SECLEVEL=0;
+ssl_conf_command CipherString DEFAULT:@SECLEVEL=0;
+> end
 > if ssl_ciphers then
 ssl_ciphers ${{SSL_CIPHERS}};
 > end

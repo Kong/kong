@@ -433,12 +433,19 @@ local function check_and_parse(conf, opts)
         conf.nginx_http_ssl_dhparam = suite.dhparams
         conf.nginx_stream_ssl_dhparam = suite.dhparams
       else
-        conf.nginx_http_ssl_conf_command = "CipherString DEFAULT:@SECLEVEL=0"
-        conf.nginx_http_proxy_ssl_conf_command = "CipherString DEFAULT:@SECLEVEL=0"
-        conf.nginx_http_lua_ssl_conf_command = "CipherString DEFAULT:@SECLEVEL=0"
-        conf.nginx_stream_ssl_conf_command = "CipherString DEFAULT:@SECLEVEL=0"
-        conf.nginx_stream_proxy_ssl_conf_command = "CipherString DEFAULT:@SECLEVEL=0"
-        conf.nginx_stream_lua_ssl_conf_command = "CipherString DEFAULT:@SECLEVEL=0"
+        for _, key in ipairs({
+          "nginx_http_ssl_conf_command",
+          "nginx_http_proxy_ssl_conf_command",
+          "nginx_http_lua_ssl_conf_command",
+          "nginx_stream_ssl_conf_command",
+          "nginx_stream_proxy_ssl_conf_command",
+          "nginx_stream_lua_ssl_conf_command"}) do
+
+          local _, _, seclevel = string.find(conf[key] or "", "@SECLEVEL=(%d+)")
+          if conf[key] and seclevel ~= "0" then
+            ngx.log(ngx.WARN, key .. ": Default @SECLEVEL=0 overridden, TLSv1.1 unavailable")
+          end
+        end
       end
 
     else
