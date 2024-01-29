@@ -1,4 +1,4 @@
 message: |
-  Consistently set worker ID of privileged agent to `-1`.
+  Use `-1` as the worker ID of privileged agent to avoid access issues.
 type: bugfix
 scope: Core
