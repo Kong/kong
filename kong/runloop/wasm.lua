@@ -841,9 +841,11 @@ end
 local function enable(kong_config)
   set_available_filters(kong_config.wasm_modules_parsed)
 
-  proxy_wasm = proxy_wasm or require "resty.wasmx.proxy_wasm"
+  if not ngx.IS_CLI then
+    proxy_wasm = proxy_wasm or require "resty.wasmx.proxy_wasm"
 
-  register_property_handlers()
+    register_property_handlers()
+  end
 
   ENABLED = true
   STATUS = STATUS_ENABLED
@@ -892,10 +894,12 @@ function _M.init_worker()
     return true
   end
 
-  _G.dns_client = kong and kong.dns
+  if not ngx.IS_CLI then
+    _G.dns_client = kong and kong.dns
 
-  if not _G.dns_client then
-    return nil, "global kong.dns client is not initialized"
+    if not _G.dns_client then
+      return nil, "global kong.dns client is not initialized"
+    end
   end
 
   local ok, err = update_in_place()
