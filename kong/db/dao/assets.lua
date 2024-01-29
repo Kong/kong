@@ -91,8 +91,8 @@ end
 function Assets:insert(entity, options)
   local a, b, c = self.super.insert(self, entity, options)
   -- XXX for KM demo
-  if a then
-    assert(kong.db.assets:load(entity, entity.metadata.plugin_name or entity.name))
+  if a and (entity.metadata.plugin_name and entity.metadata.plugin_name ~= "unknown") then
+    assert(kong.db.assets:load(entity, entity.metadata.plugin_name))
   end
 
   return a, b, c

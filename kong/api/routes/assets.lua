@@ -32,7 +32,7 @@ local function prepare_assets(self, db)
 
   local metadata = args.metadata or {}
 
-  if args.content then
+  if args.content and #args.content > 4 then
     url = "kong://" .. name
     content = args.content
 
@@ -47,6 +47,14 @@ local function prepare_assets(self, db)
     local f = io.open(downloaded_file, "w")
     assert(f:write(content))
     assert(f:close())
+  elseif args.url and args.url ~= "" then
+      args.metadata = {
+          type = "plugin",
+          plugin_name = "unknown",
+          size = 100,
+      }
+      args.content = nil
+      return true
   else
     return kong.response.exit(400, { message = "Content is required" })
   end
