@@ -929,17 +929,22 @@ function _M.attach(ctx)
 
   ctx.ran_wasm = true
 
-  local ok, err = proxy_wasm.attach(chain.c_plan)
-  if not ok then
-    log(CRIT, "failed attaching ", chain.label, " filter chain to request: ", err)
-    return kong.response.error(500)
-  end
+  local ok, err
+  if not ctx.wasm_attached then
+    ctx.wasm_attached = true
 
-  ok, err = proxy_wasm.set_host_properties_handlers(properties.get,
-                                                    properties.set)
-  if not ok then
-    log(CRIT, "failed setting host property handlers: ", err)
-    return kong.response.error(500)
+    ok, err = proxy_wasm.attach(chain.c_plan)
+    if not ok then
+      log(CRIT, "failed attaching ", chain.label, " filter chain to request: ", err)
+      return kong.response.error(500)
+    end
+
+    ok, err = proxy_wasm.set_host_properties_handlers(properties.get,
+                                                      properties.set)
+    if not ok then
+      log(CRIT, "failed setting host property handlers: ", err)
+      return kong.response.error(500)
+    end
   end
 
   jit.off(proxy_wasm.start)
