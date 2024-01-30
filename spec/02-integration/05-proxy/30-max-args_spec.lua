@@ -139,7 +139,7 @@ local function validate_truncated(client_args_count, params, body, headers)
 end
 
 
-local function validate_proxy(params, body)
+local function validate_proxy(params, body, truncated)
   assert.same(params.query, body.uri_args)
 
   local request_headers = body.headers
@@ -157,7 +157,11 @@ local function validate_proxy(params, body)
   assert.same(params.query, body.uri_args)
   assert.same(params.query, body.post_data.params)
 
-  assert.logfile().has.no.line("truncated", true, 0.5)
+  if truncated then
+    assert.logfile().has.line("truncated", true, 0.5)
+  else
+    assert.logfile().has.no.line("truncated", true, 0.5)
+  end
 end
 
 
@@ -242,7 +246,7 @@ for _, strategy in helpers.each_strategy() do
         local res = client:post("/proxy", params)
         assert.response(res).has.status(200)
         local body = assert.response(res).has.jsonbody()
-        validate_proxy(params, body, res.headers)
+        validate_proxy(params, body, false)
       end)
 
       it("no truncation when using " .. n + 1 .. " parameters when proxying", function()
@@ -250,7 +254,7 @@ for _, strategy in helpers.each_strategy() do
         local res = client:post("/proxy", params)
         assert.response(res).has.status(200)
         local body = assert.response(res).has.jsonbody()
-        validate_proxy(params, body, res.headers)
+        validate_proxy(params, body, true)
       end)
     end)
   end
