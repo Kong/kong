@@ -1,8 +1,16 @@
-.PHONY: generate push_changelog
+.PHONY: all create_branch generate push_changelog
 
-VERSION = 3.x.y.z
-UNRELEASED_DIR = unreleased
-DEBUG = false
+VERSION := 3.x.y.z
+BASE_BRANCH := origin/next/3.x.x.x
+UNRELEASED_DIR := unreleased
+DEBUG := false
+
+all: create_branch generate push_changelog
+
+BRANCH_NAME := generate-$(VERSION)-changelog
+create_branch:
+	@git fetch
+	@git checkout -b $(BRANCH_NAME) $(BASE_BRANCH)
 
 generate:
 	@rm -f $(VERSION).md
@@ -101,12 +109,10 @@ generate:
 	@echo
 	@echo "Done! Please check $(VERSION)/$(VERSION).md"
 
-BRANCH_BASE = origin/next/3.x.x.x
 push_changelog:
-	@git checkout -b generate-$(VERSION)-changelog $(BRANCH_BASE)
 	@git add .
 	@git commit -m "docs(release): genereate $(VERSION) changelog"
 	@git push -u origin HEAD
 
 	@echo
-	@echo "Successfully push changelog Github. Please create PR overthere."
+	@echo "Successfully pushed to Github. Please create changelog PR overthere."

@@ -37,7 +37,7 @@ please repeat the next two parts.
 Push changelog.
 
 ```bash
-~ $ make VERSION=3.6.0.0 BRANCH_BASE=origin/next/3.6.x.x push_changelog
+~ $ make VERSION=3.6.0.0 push_changelog
 ```
 
 Please go to GitHub creating changelog PR.
