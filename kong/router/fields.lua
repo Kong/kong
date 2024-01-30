@@ -365,6 +365,72 @@ if is_http then
 end -- is_http
 
 
+local function visit_for_cache_key(field, value, str_buf)
+  -- these fields were not in cache key
+  if field == "net.protocol" then
+    return true
+  end
+
+  local headers_or_queries = field:sub(1, PREFIX_LEN)
+
+  if headers_or_queries == HTTP_HEADERS_PREFIX then
+    headers_or_queries = true
+    field = replace_dashes_lower(field)
+
+  elseif headers_or_queries == HTTP_QUERIES_PREFIX then
+    headers_or_queries = true
+
+  else
+    headers_or_queries = false
+  end
+
+  if not headers_or_queries then
+    str_buf:put(value or "", "|")
+
+  else  -- headers or queries
+    if type(value) == "table" then
+      tb_sort(value)
+      value = tb_concat(value, ",")
+    end
+
+    str_buf:putf("%s=%s|", field, value or "")
+  end
+
+  return true
+end
+
+
+local function visit_for_context(field, value, ctx)
+  local prefix = field:sub(1, PREFIX_LEN)
+
+  if prefix == HTTP_HEADERS_PREFIX or prefix == HTTP_QUERIES_PREFIX then
+    local v_type = type(value)
+
+    -- multiple values for a single query parameter, like /?foo=bar&foo=baz
+    if v_type == "table" then
+      for _, v in ipairs(value) do
+        local res, err = ctx:add_value(field, v)
+        if not res then
+          return nil, err
+        end
+      end
+
+      return true
+    end -- if v_type
+
+    -- the query parameter has only one value, like /?foo=bar
+    -- the query parameter has no value, like /?foo,
+    -- get_uri_arg will get a boolean `true`
+    -- we think it is equivalent to /?foo=
+    if v_type == "boolean" then
+      value = ""
+    end
+  end
+
+  return ctx:add_value(field, value)
+end
+
+
 local _M = {}
 local _MT = { __index = _M, }
 
@@ -391,11 +457,11 @@ function _M:get_value(field, params, ctx)
 end
 
 
-function _M:fields_visitor(params, ctx, cb)
+function _M:fields_visitor(params, ctx, cb, cb_arg)
   for _, field in ipairs(self.fields) do
     local value = self:get_value(field, params, ctx)
 
-    local res, err = cb(field, value)
+    local res, err = cb(field, value, cb_arg)
     if not res then
       return nil, err
     end
@@ -412,82 +478,17 @@ local str_buf = buffer.new(64)
 function _M:get_cache_key(params, ctx)
   str_buf:reset()
 
-  local res =
-  self:fields_visitor(params, ctx, function(field, value)
-
-    -- these fields were not in cache key
-    if field == "net.protocol" then
-      return true
-    end
-
-    local headers_or_queries = field:sub(1, PREFIX_LEN)
-
-    if headers_or_queries == HTTP_HEADERS_PREFIX then
-      headers_or_queries = true
-      field = replace_dashes_lower(field)
-
-    elseif headers_or_queries == HTTP_QUERIES_PREFIX then
-      headers_or_queries = true
-
-    else
-      headers_or_queries = false
-    end
-
-    if not headers_or_queries then
-      str_buf:put(value or ""):put("|")
-
-    else  -- headers or queries
-      if type(value) == "table" then
-        tb_sort(value)
-        value = tb_concat(value, ",")
-      end
-
-      str_buf:putf("%s=%s|", field, value or "")
-    end
-
-    return true
-  end)  -- fields_visitor
-
+  local res = self:fields_visitor(params, ctx,
+                                  visit_for_cache_key, str_buf)
   assert(res)
 
   return str_buf:get()
 end
 
 
-function _M:fill_atc_context(context, params)
-  local c = context
-
-  local res, err =
-  self:fields_visitor(params, nil, function(field, value)
-
-    local prefix = field:sub(1, PREFIX_LEN)
-
-    if prefix == HTTP_HEADERS_PREFIX or prefix == HTTP_QUERIES_PREFIX then
-      local v_type = type(value)
-
-      -- multiple values for a single query parameter, like /?foo=bar&foo=baz
-      if v_type == "table" then
-        for _, v in ipairs(value) do
-          local res, err = c:add_value(field, v)
-          if not res then
-            return nil, err
-          end
-        end
-
-        return true
-      end -- if v_type
-
-      -- the query parameter has only one value, like /?foo=bar
-      -- the query parameter has no value, like /?foo,
-      -- get_uri_arg will get a boolean `true`
-      -- we think it is equivalent to /?foo=
-      if v_type == "boolean" then
-        value = ""
-      end
-    end
-
-    return c:add_value(field, value)
-  end)  -- fields_visitor
+function _M:fill_atc_context(c, params)
+  local res, err = self:fields_visitor(params, nil,
+                                       visit_for_context, c)
 
   if not res then
     return nil, err
