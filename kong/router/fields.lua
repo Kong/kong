@@ -365,32 +365,6 @@ if is_http then
 end -- is_http
 
 
-local _M = {}
-local _MT = { __index = _M, }
-
-
-_M.HTTP_FIELDS = HTTP_FIELDS
-_M.STREAM_FIELDS = STREAM_FIELDS
-
-
-function _M.new(fields)
-  return setmetatable({
-      fields = fields,
-      funcs = {},
-    }, _MT)
-end
-
-
-function _M:get_value(field, params, ctx)
-  local func = FIELDS_FUNCS[field] or
-               get_field_accessor(self.funcs, field)
-
-  assert(func, "unknown router matching schema field: " .. field)
-
-  return func(params, ctx)
-end
-
-
 local function visit_for_context(field, value, ctx)
   local prefix = field:sub(1, PREFIX_LEN)
 
@@ -454,6 +428,32 @@ local function visit_for_cache_key(field, value, str_buf)
   end
 
   return true
+end
+
+
+local _M = {}
+local _MT = { __index = _M, }
+
+
+_M.HTTP_FIELDS = HTTP_FIELDS
+_M.STREAM_FIELDS = STREAM_FIELDS
+
+
+function _M.new(fields)
+  return setmetatable({
+      fields = fields,
+      funcs = {},
+    }, _MT)
+end
+
+
+function _M:get_value(field, params, ctx)
+  local func = FIELDS_FUNCS[field] or
+               get_field_accessor(self.funcs, field)
+
+  assert(func, "unknown router matching schema field: " .. field)
+
+  return func(params, ctx)
 end
 
 
