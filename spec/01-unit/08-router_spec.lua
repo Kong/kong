@@ -45,7 +45,12 @@ local spy_stub = {
   nop = function() end
 }
 
-local function mock_ngx(method, request_uri, headers, queries)
+local function mock_ngx(method, request_uri, headers, queries, vars)
+  method = method or "GET"
+  request_uri = request_uri or "/"
+  headers = headers or {}
+  queries = queries or {}
+  vars = vars or {}
   local _ngx
   _ngx = {
     log = ngx.log,
@@ -55,11 +60,12 @@ local function mock_ngx(method, request_uri, headers, queries)
       http_kong_debug = headers.kong_debug
     }, {
       __index = function(_, key)
-        if key == "http_host" then
+        if key:sub(1, 5) == "http_" then
           spy_stub.nop()
-          return headers.host
+          return headers[key:sub(6)] or vars[key]
         end
-      end
+        return vars[key]
+      end,
     }),
     req = {
       get_method = function()
@@ -71,7 +77,7 @@ local function mock_ngx(method, request_uri, headers, queries)
       get_uri_args = function()
         return queries
       end,
-    }
+    },
   }
 
   return _ngx
@@ -5156,22 +5162,18 @@ for _, flavor in ipairs({ "traditional_compatible", "expressions" }) do
 
       local router = assert(new_router(use_case))
 
-      local _ngx = {
-        var = {
-          ssl_preread_server_name = "www.example.com",
-        },
-      }
+      local _ngx = mock_ngx(nil, nil, nil, nil, {
+        ssl_preread_server_name = "www.example.com",
+      })
       router._set_ngx(_ngx)
       local match_t = router:exec()
 
       assert.truthy(match_t)
       assert.same(use_case[1].route, match_t.route)
 
-      local _ngx = {
-        var = {
-          ssl_preread_server_name = "www.example.org",
-        },
-      }
+      local _ngx =  mock_ngx(nil, nil, nil, nil, {
+        ssl_preread_server_name = "www.example.org",
+      })
       router._set_ngx(_ngx)
       local match_t = router:exec()
 
@@ -5221,13 +5223,11 @@ do
     end)
 
     it("exec() should match tls with tls.sni", function()
-      local _ngx = {
-        var = {
-          remote_port = 1000,
-          server_port = 1000,
-          ssl_preread_server_name = "www.example.com",
-        },
-      }
+      local _ngx = mock_ngx(nil, nil, nil, nil, {
+        remote_port = 1000,
+        server_port = 1000,
+        ssl_preread_server_name = "www.example.com",
+      })
       router._set_ngx(_ngx)
       local match_t = router:exec()
       assert.truthy(match_t)
@@ -5236,13 +5236,11 @@ do
     end)
 
     it("exec() should match tls_passthrough with tls.sni", function()
-      local _ngx = {
-        var = {
-          remote_port = 1000,
-          server_port = 1000,
-          ssl_preread_server_name = "www.example.org",
-        },
-      }
+      local _ngx = mock_ngx(nil, nil, nil, nil, {
+        remote_port = 1000,
+        server_port = 1000,
+        ssl_preread_server_name = "www.example.org",
+      })
       router._set_ngx(_ngx)
       local match_t = router:exec()
       assert.truthy(match_t)
@@ -5903,4 +5901,3 @@ do
     end)
   end)
 end   -- local flavor = "expressions"
-
