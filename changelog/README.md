@@ -10,6 +10,12 @@ and add it to environment variable `PATH`.
 changelog version 0.0.2
 ```
 
+Ensure `GITHUB_TOKEN` is set in your environment.
+
+```bash
+~ $ echo $GITHUB_TOKEN
+```
+
 # Generate changelog
 
 Take EE repo and `3.6.0.0` for example, check the operations below.
@@ -35,12 +41,6 @@ Given two arbitrary revisions, list commits, PRs, PRs without changelog and PRs 
 If a CE PR has neither the 'cherry-pick kong-ee' label nor has cross-referenced EE PRs with 'cherry'
 in the title, it is HIGHLY PROBABLY not synced to EE. This is only experimental as developers may not
 follow the CE2EE guideline. However, it is a quick shortcut for us to validate the majority of CE PRs.
-
-Ensure `GITHUB_TOKEN` is set in your environment.
-
-```bash
-~ $ echo $GITHUB_TOKEN
-```
 
 Show the usage.
 
