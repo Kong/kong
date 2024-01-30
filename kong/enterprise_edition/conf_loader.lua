@@ -19,6 +19,7 @@ local openssl_version = require "resty.openssl.version"
 local openssl_x509 = require "resty.openssl.x509"
 local openssl_pkey = require "resty.openssl.pkey"
 local license_helpers = require "kong.enterprise_edition.license_helpers"
+local parse_url = require("socket.url").parse
 
 local re_match = ngx.re.match
 local concat = table.concat
@@ -352,44 +353,152 @@ local function validate_admin_gui_authentication(conf, errors)
       errors[#errors+1] = "admin_gui_auth_conf must be valid json or not set: "
         .. err .. " - " .. conf.admin_gui_auth_conf
     else
-       -- validate admin_gui_auth_conf for OIDC Auth
+      -- validate admin_gui_auth_conf for OIDC Auth
       if conf.admin_gui_auth == "openid-connect" then
-
+        -- admin_claim type checking
         if not auth_config.admin_claim then
-          errors[#errors+1] = "admin_gui_auth_conf must contains 'admin_claim' "
-                              .. "when admin_gui_auth='openid-connect'"
-        end
-
-         -- admin_claim type checking
-         if auth_config.admin_claim and type(auth_config.admin_claim) ~= "string" then
-          errors[#errors+1] = "admin_claim must be a string"
+          auth_config.admin_claim = "email" -- default value
+        elseif auth_config.admin_claim and type(auth_config.admin_claim) ~= "string" then
+          errors[#errors + 1] = "admin_claim must be a string"
         end
 
         -- only allow customers to map admin with 'username' temporary
         -- also ensured admin_by is a string value
         if auth_config.admin_by and auth_config.admin_by ~= "username" then
-          errors[#errors+1] = "admin_by only supports value with 'username'"
+          errors[#errors + 1] = "admin_by only supports value with 'username'"
         end
 
         -- only allow customers to specify 1 claim to map with rbac roles
-        if auth_config.authenticated_groups_claim and
-           #auth_config.authenticated_groups_claim > 1
+        if not auth_config.authenticated_groups_claim then
+          auth_config.authenticated_groups_claim = { "groups" }
+        elseif auth_config.authenticated_groups_claim and
+            #auth_config.authenticated_groups_claim > 1
         then
-          errors[#errors+1] = "authenticated_groups_claim only supports 1 claim"
+          errors[#errors + 1] = "authenticated_groups_claim only supports 1 claim"
         end
 
         -- admin_auto_create_rbac_token_disabled type checking
         if auth_config.admin_auto_create_rbac_token_disabled and
-          type(auth_config.admin_auto_create_rbac_token_disabled) ~= "boolean"
+            type(auth_config.admin_auto_create_rbac_token_disabled) ~= "boolean"
         then
-          errors[#errors+1] = "admin_auto_create_rbac_token_disabled must be a boolean"
+          errors[#errors + 1] = "admin_auto_create_rbac_token_disabled must be a boolean"
         end
 
         -- admin_auto_create type checking
         if auth_config.admin_auto_create and type(auth_config.admin_auto_create) ~= "boolean" then
-          errors[#errors+1] = "admin_auto_create must be boolean"
+          errors[#errors + 1] = "admin_auto_create must be boolean"
         end
 
+        -- Admin API cannot get parameters in URL fragment
+        if auth_config.response_mode and
+            auth_config.response_mode ~= "query" and
+            auth_config.response_mode ~= "form_post" then
+          errors[#errors + 1] = [[admin_gui_auth_conf.response_mode must be "query" or "form_post" ]] ..
+              [[while admin_gui_auth is set to "openid-connect"]]
+        end
+
+        if not auth_config.redirect_uri or
+            (type(auth_config.redirect_uri) == "table" and #auth_config.redirect_uri == 0) then
+          errors[#errors + 1] =
+          "admin_gui_auth_conf.redirect_uri is required when admin_gui_auth is set to openid-connect"
+        elseif type(auth_config.redirect_uri) ~= "table" then
+          errors[#errors + 1] = "admin_gui_auth_conf.redirect_uri must be an array"
+        else
+          local parsed = parse_url(auth_config.redirect_uri[1])
+          if parsed.path ~= "/auth" then
+            log.warn(string.format(
+              [[admin_gui_auth_conf.redirect_uri should be configured to point to Admin API's auth endpoint ]] ..
+              [[(e.g., http://localhost:8001/auth), but its first URL is "%s". You might need to manually double check if it's correct]],
+              auth_config.redirect_uri[1]
+            ))
+          end
+        end
+        for _, parameter in ipairs({ "login_redirect_uri", "logout_redirect_uri" }) do
+          if not auth_config[parameter] or
+              (type(auth_config[parameter]) == "table" and #auth_config[parameter] == 0) then
+            errors[#errors + 1] = string.format(
+              "admin_gui_auth_conf.%s is required when admin_gui_auth is set to openid-connect", parameter)
+          elseif type(auth_config[parameter]) ~= "table" then
+            errors[#errors + 1] = string.format("admin_gui_auth_conf.%s must be an array", parameter)
+          else
+            local parsed = parse_url(auth_config[parameter][1])
+            if parsed.port == "8001" or parsed.path == "/auth" then
+              log.warn(string.format(
+                [[admin_gui_auth_conf.%s should be configured to point to Admin GUI's endpoint (e.g., http://localhost:8002), ]] ..
+                [[but its first URL is "%s". You might need to manually double check if it's correct]],
+                parameter,
+                auth_config[parameter][1]
+              ))
+            end
+          end
+        end
+
+        -- Print warnings for the following overridden parameters
+        -- See `prepare_openid_connect_config` in kong/enterprise_edition/auth_plugin_helpers.lua
+        do
+          local overridden_admin_gui_auth_conf_parameters = {
+            "auth_methods",
+            "consumer_optional",
+            "login_action",
+            "login_methods",
+            "login_tokens",
+            "logout_methods",
+            "logout_query_arg",
+            "logout_revoke",
+            "logout_revoke_access_token",
+            "logout_revoke_refresh_token",
+            "refresh_tokens",
+            "upstream_access_token_header",
+            "upstream_id_token_header",
+            "upstream_user_info_header",
+          }
+  
+          for _, parameter in ipairs(overridden_admin_gui_auth_conf_parameters) do
+            if auth_config[parameter] ~= nil then
+              log.warn(string.format(
+                "admin_gui_auth_conf.%s will be managed automatically while admin_gui_auth is set to " ..
+                [["openid-connect", specified value will be ignored]],
+                parameter
+              ))
+            end
+          end
+        end
+
+        if not auth_config.session_storage or auth_config.session_storage == "cookie" then
+          log.warn([[configuring admin_gui_auth_conf.session_storage to use storages other than "cookie" ]] ..
+            [[makes it more secure with RP-initiated logout when admin_gui_auth is set to "openid-connect"]])
+        end
+
+        -- Print warnings when openid or offline_access scope is missing from scopes
+        do
+          local scopes
+
+          if not auth_config.scopes then
+            -- openid-connect default: { "openid" }
+            scopes = { openid = true, email = true, offline_access = true }
+          else
+            scopes = {}
+            for _, scope in ipairs(auth_config.scopes) do
+              scopes[scope] = true
+            end
+          end
+
+          -- mandatory scopes
+          for _, scope in ipairs({ "openid", "offline_access" }) do
+            if not scopes[scope] then
+              errors[#errors + 1] = string.format(
+                [["%s" is missing from admin_gui_auth_conf.scopes, which is required when ]] ..
+                [[admin_gui_auth is set to "openid-connect" to allow the RP-initiated logout to work correctly]],
+                scope
+              )
+            end
+          end
+
+          if auth_config.admin_claim == "email" and not scopes["email"] then
+            log.warn([["email" is missing from admin_gui_auth_conf.scopes but admin_gui_auth_conf.admin_claim ]] ..
+              [[is set to "email". You might need to manually double check if it's correct]])
+          end
+        end
       end
 
       conf.admin_gui_auth_conf = auth_config
@@ -431,6 +540,10 @@ local function validate_admin_gui_session(conf, errors)
   if conf.admin_gui_session_conf then
     if not conf.admin_gui_auth or conf.admin_gui_auth == "" then
       errors[#errors+1] = "admin_gui_session_conf is set with no admin_gui_auth"
+    elseif conf.admin_gui_auth == "openid-connect" then
+      log.warn(
+        [[admin_gui_session_conf will be ignored while admin_gui_auth is set to "openid-connect"]]
+      )
     end
 
     local session_config, err = cjson.decode(tostring(conf.admin_gui_session_conf))
@@ -452,9 +565,10 @@ local function validate_admin_gui_session(conf, errors)
         end
       })
     end
-  elseif conf.admin_gui_auth or conf.admin_gui_auth == "" then
-    errors[#errors+1] =
-      "admin_gui_session_conf must be set when admin_gui_auth is enabled"
+  elseif conf.admin_gui_auth and conf.admin_gui_auth ~= "openid-connect" then
+    errors[#errors + 1] =
+        "admin_gui_session_conf must be set when admin_gui_auth is enabled " ..
+        [[(except when admin_gui_auth is set to "openid-connect")]]
   end
 end
 

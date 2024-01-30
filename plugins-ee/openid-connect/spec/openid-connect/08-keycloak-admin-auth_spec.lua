@@ -8,14 +8,15 @@
 local cjson          = require "cjson.safe"
 local helpers        = require "spec.helpers"
 local ee_helpers     = require "spec-ee.helpers"
-local sub            = string.sub
-local find           = string.find
 local utils          = require "kong.tools.utils"
 local rbac           = require "kong.rbac"
 local http           = require "resty.http".new()
 local keycloak_api   = require "spec-ee.fixtures.keycloak_api"
 
-local admin_client
+local sub            = string.sub
+local gsub           = string.gsub
+local find           = string.find
+
 local PLUGIN_NAME    = "openid-connect"
 local PASSWORD       = "doe"
 local cloak_settings = keycloak_api.cloak_settings()
@@ -56,131 +57,307 @@ local function get_group_by_name(client, name)
   return nil
 end
 
-local function default_login_handler(res, cookie)
-  assert.equal(302, res.status)
-  -- after sending login data to the login action page, expect a redirect
-  local upstream_url = res.headers["Location"]
-  local ures, err = http:request_uri(upstream_url, {
-    headers = {
-      -- authenticate using the cookie from the initial request
-      Cookie = cookie,
-    }
-  })
-  assert.is_nil(err)
-  assert.equal(200, ures.status)
+local ADMIN_API_PORT = 9001
+local ADMIN_GUI_PORT = 9008
+local ADMIN_API_LISTEN = "0.0.0.0:" .. ADMIN_API_PORT
+local ADMIN_GUI_LISTEN = "0.0.0.0:" .. ADMIN_GUI_PORT
 
+local ADMIN_API_BASE = "http://" .. KONG_HOST .. ":" .. ADMIN_API_PORT
+local ADMIN_GUI_BASE = "http://" .. KONG_HOST .. ":" .. ADMIN_GUI_PORT
+
+local REDIRECT_URL = ADMIN_API_BASE .. "/auth"
+local LOGIN_REDIRECT_URL = ADMIN_GUI_BASE .. "/kconfig.js"
+local LOGOUT_REDIRECT_URL = ADMIN_GUI_BASE .. "/kconfig.js?logout"
+
+local startswith = function(s, start)
+  return s and start and start ~= "" and s:sub(1, #start) == start
 end
 
-local function authentication(username, login_handler)
-  local res = assert(admin_client:send {
-    method = "POST",
-    path = "/auth",
-  })
+local function get_cookie_table(res)
+  local t = res.headers["Set-Cookie"]
+  if not t then
+    return nil
+  end
 
+  return type(t) == "table" and t or { t }
+end
+
+local function init_auth(admin_client, username, password)
+  -- Initiate the authentication flow via the /auth route
+  local res, err = assert(admin_client:send {
+    method = "POST",
+    path = "/auth"
+  })
+  assert.is_nil(err)
   assert.response(res).has.status(302)
-  local redirect = res.headers["Location"]
-  -- get authorization=...; cookie
-  local auth_cookie = res.headers["Set-Cookie"]
-  local auth_cookie_cleaned = sub(auth_cookie, 0, find(auth_cookie, ";") - 1)
-  local rres, err = http:request_uri(redirect, {
+
+  local idp_auth_url = res.headers["Location"]
+
+  local authorization_cookie
+  -- Save the authorization cookie (set by the openid-connect plugin)
+  for _, cookie in ipairs(assert(get_cookie_table(res))) do
+    cookie = sub(cookie, 0, find(cookie, ";") - 1)
+    if startswith(cookie, "authorization=") then
+      authorization_cookie = cookie
+      break
+    end
+  end
+
+  -- Redirect to IdP (login form page)
+  res, err = http:request_uri(idp_auth_url, {
     headers = {
-      -- impersonate as browser
       ["User-Agent"] =
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", -- luacheck: ignore
       ["Host"] = cloak_settings.host,
     }
   })
   assert.is_nil(err)
-  assert.equal(200, rres.status)
+  assert.equal(200, res.status)
 
-  local cookies = rres.headers["Set-Cookie"]
-  local user_session
-  local user_session_header_table = {}
-  for _, cookie in ipairs(cookies) do
-    user_session = sub(cookie, 0, find(cookie, ";") - 1)
-    if find(user_session, 'AUTH_SESSION_ID=', 1, true) ~= 1 then
-      -- auth_session_id is dropped by the browser for non-https connections
-      table.insert(user_session_header_table, user_session)
+  -- Get action url from <form />
+  local action_t = [[action="]]
+  local action_start = find(res.body, action_t, 1, true)
+  local action_end = find(res.body, '"', action_start + #action_t, true)
+  local idp_auth_action_url = sub(res.body, action_start + #action_t, action_end - 1)
+  -- (Simply) decode the URL-encoded action URL
+  idp_auth_action_url = gsub(idp_auth_action_url, "&amp;", "&")
+
+  local idp_cookie = {}
+  for _, cookie in ipairs(assert(get_cookie_table(res))) do
+    cookie = sub(cookie, 0, find(cookie, ";") - 1)
+    -- Drop AUTH_SESSION_ID because we are using plain HTTP endpoints
+    if not startswith(cookie, "AUTH_SESSION_ID=") then
+      table.insert(idp_cookie, cookie)
     end
   end
-  -- get the action_url from submit button and post username:password
-  local action_start = find(rres.body, 'action="', 0, true)
-  local action_end = find(rres.body, '"', action_start + 8, true)
-  local login_button_url = string.sub(rres.body, action_start + 8, action_end - 1)
-  -- the login_button_url is endcoded. decode it
-  login_button_url = string.gsub(login_button_url, "&amp;", "&")
-  -- build form_data
-  local form_data = "username=" .. username .. "&password=" .. PASSWORD .. "&credentialId="
-  local opts = {
+
+  -- Perform the form POST action
+  res, err = http:request_uri(idp_auth_action_url, {
     method = "POST",
-    body = form_data,
+    body = "username=" .. username .. "&password=" .. password .. "&credentialId=",
     headers = {
-      -- impersonate as browser
       ["User-Agent"] =
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36",                  --luacheck: ignore
       ["Host"] = cloak_settings.host,
       -- due to form_data
       ["Content-Type"] = "application/x-www-form-urlencoded",
-      Cookie = user_session_header_table,
+      Cookie = idp_cookie,
     }
-  }
-  local loginres, rerr = http:request_uri(login_button_url, opts)
-  assert.is_nil(rerr)
-  login_handler = login_handler or default_login_handler
-  login_handler(loginres, auth_cookie_cleaned)
+  })
+  assert.is_nil(err)
+
+  return res, authorization_cookie
 end
 
-local function get_admin_auth_conf(mixin)
+-- Complete the authorization_code flow and get the session cookie
+local function finalize_auth(url, auth_cookie, post_body)
+  -- We will use the admin client
+  assert(startswith(url, REDIRECT_URL))
+
+  local opts = {
+    method = "GET",
+    headers = {
+      ["Cookie"] = auth_cookie,
+    },
+  }
+
+  if post_body then
+    opts.method = "POST"
+    opts.body = post_body
+    opts.headers["Content-Type"] = "application/x-www-form-urlencoded"
+  end
+
+  -- Finalize the authorization_code flow
+  local res, err = http:request_uri(url, opts)
+  -- Should be a 302 response to LOGIN_REDIRECT_URL
+  assert.is_nil(err)
+  assert.equal(302, res.status)
+  local redirect_url = res.headers["Location"]
+  assert.equal(LOGIN_REDIRECT_URL, redirect_url)
+
+  local session_cookie
+  -- Save the session cookie (set by the openid-connect plugin)
+  for _, cookie in ipairs(assert(get_cookie_table(res))) do
+    cookie = sub(cookie, 0, find(cookie, ";") - 1)
+    if startswith(cookie, "session=") then
+      session_cookie = cookie
+      break
+    end
+  end
+  assert.is_not_nil(session_cookie)
+
+  -- The admin is not created yet by this point because we have not sent requests with the
+  -- session cookie
+
+  return session_cookie
+end
+
+local function logout(session_cookie, admin_client)
+  local res, err = admin_client:send {
+    method = "GET",
+    path = "/auth?openid_logout=true",
+    headers = {
+      Cookie = session_cookie,
+    }
+  }
+  assert.is_nil(err)
+  assert.equal(302, res.status)
+
+  -- Ensure the session cookie is cleared via the Set-Cookie header
+  local session_cleared = false
+  for _, cookie in ipairs(assert(get_cookie_table(res))) do
+    if startswith(cookie, "session=;") then
+      session_cleared = true
+      break
+    end
+  end
+  assert.is_true(session_cleared)
+
+  res, err = http:request_uri(res.headers["Location"], {
+    method = "GET",
+  })
+
+  assert.is_nil(err)
+  assert.equal(302, res.status)
+  assert.equal(LOGOUT_REDIRECT_URL, res.headers["Location"])
+end
+
+local function compose_openid_conf(overrides)
   local conf = {
     issuer = cloak_settings.issuer,
     client_id = { cloak_settings.client_id },
     client_secret = { cloak_settings.client_secret },
     authenticated_groups_claim = { "groups" },
     admin_claim = "email",
+    auth_methods = { "authorization_code", "session" },
+    redirect_uri = { REDIRECT_URL },
+    login_redirect_uri = { LOGIN_REDIRECT_URL },
+    logout_methods = { "GET" },
+    logout_query_arg = "openid_logout",
+    logout_redirect_uri = { LOGOUT_REDIRECT_URL },
   }
 
-  for key, value in pairs(mixin or {}) do
+  for key, value in pairs(overrides or {}) do
     conf[key] = value
   end
 
   return cjson.encode(conf)
 end
 
+local function check_ws_rbac(db, username, workspace, role)
+  local admins, err = assert(db.admins:select_by_username(username))
+  assert.is_nil(err)
+  assert.is_not_nil(admins)
+  assert(username, admins.username)
+
+  local rbac_user_id = assert(admins.rbac_user and admins.rbac_user.id)
+
+  local ws
+  ws, err = db.workspaces:select_by_name(workspace)
+  assert.is_nil(err)
+  assert.is_not_nil(ws)
+
+  local rbac_role
+  rbac_role, err = db.rbac_roles:select_by_name(role, { workspace = ws.id })
+  assert.is_nil(err)
+  assert.is_not_nil(rbac_role)
+
+  local rbac_user_roles
+  rbac_user_roles, err = db.rbac_user_roles:select({
+    user = { id = rbac_user_id },
+    role = { id = rbac_role.id }
+  })
+  assert.is_nil(err)
+  assert.is_not_nil(rbac_user_roles)
+end
+
+local function authenticate(db, admin_client, username)
+  local res, auth_cookie = init_auth(admin_client, username, PASSWORD)
+  -- Should be a 302 response to REDIRECT_URL
+  assert.equal(302, res.status)
+
+  local session_cookie = finalize_auth(assert(res.headers["Location"]), auth_cookie)
+
+  local err
+  res, err = assert(admin_client:send {
+    method  = "GET",
+    path    = "/userinfo",
+    headers = {
+      ['Cookie'] = session_cookie,
+    }
+  })
+  assert.is_nil(err)
+
+  -- Expect the new admin to be created
+  local body = assert.res_status(200, res)
+  local userinfo = cjson.decode(body)
+  assert.equal(username, userinfo.admin.username)
+  assert.is_not_nil(userinfo.session)
+
+  local admins
+  admins, err = assert(db.admins:select_by_username(username))
+  assert.is_nil(err)
+  assert.is_not_nil(admins)
+  assert(username, admins.username)
+
+  return session_cookie
+end
+
+local TEST_TABLES = {
+  "admins",
+  "plugins",
+  "groups",
+  "rbac_roles",
+  "rbac_user_roles",
+  "rbac_user_groups",
+  "rbac_role_endpoints",
+  "workspaces"
+}
+
+local function truncate_test_tables(db)
+  for _, table_name in ipairs(TEST_TABLES) do
+    db:truncate(table_name)
+  end
+end
+
 for _, strategy in helpers.each_strategy() do
   describe("Admin auth API authentication on #" .. strategy, function()
-    describe("#openid-connect - authentication", function()
-      local _, db
+    describe("#openid-connect - simple configuration", function ()
+      local USERNAME = "john.doe@konghq.com"
+      local WORKSPACE_NAME = "default"
       local ROLE_NAME = "super-admin"
+
+      local _, db, admin_client
+
       lazy_setup(function()
-        _, db = helpers.get_db_utils(strategy, {
-          "admins",
-          "plugins",
-        }, { PLUGIN_NAME })
-        local redirect_uri = string.format("http://%s:9001/auth", KONG_HOST)
+        _, db = helpers.get_db_utils(strategy, TEST_TABLES, { PLUGIN_NAME })
+
         assert(helpers.start_kong({
-          plugins                = "bundled," .. PLUGIN_NAME,
-          database               = strategy,
-          nginx_conf             = "spec/fixtures/custom_nginx.template",
-          enforce_rbac           = "on",
-          admin_gui_auth         = PLUGIN_NAME,
-          admin_listen           = "0.0.0.0:9001",
-          admin_gui_session_conf = [[
-            {"secret":"Y29vbGJlYW5z","storage":"kong","cookie_secure":false}
-          ]],
-          admin_gui_auth_conf    = get_admin_auth_conf({
-            redirect_uri = { redirect_uri },
-          })
+          plugins             = "bundled," .. PLUGIN_NAME,
+          database            = strategy,
+          nginx_conf          = "spec/fixtures/custom_nginx.template",
+          enforce_rbac        = "on",
+          admin_gui_auth      = PLUGIN_NAME,
+          admin_listen        = ADMIN_API_LISTEN,
+          admin_gui_listen    = ADMIN_GUI_LISTEN,
+          admin_gui_auth_conf = cjson.encode({
+            issuer = cloak_settings.issuer,
+            client_id = { cloak_settings.client_id },
+            client_secret = { cloak_settings.client_secret },
+            authenticated_groups_claim = { "groups" },
+            admin_claim = "email",
+            redirect_uri = { REDIRECT_URL },
+            login_redirect_uri = { LOGIN_REDIRECT_URL },
+            logout_redirect_uri = { LOGOUT_REDIRECT_URL },
+          }),
         }))
 
-        local default_ws = db.workspaces:select_by_name("default")
-        assert(kong.db.rbac_roles:insert({
-          name = ROLE_NAME,
-          comment = "super Administrator role"
-        }, { workspace = default_ws.id }))
+        ee_helpers.register_rbac_resources(db, "default")
       end)
 
       lazy_teardown(function()
         helpers.stop_kong()
+        truncate_test_tables(db)
       end)
 
       before_each(function()
@@ -193,60 +370,44 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
 
-      it("The new admin first login success and correct mapping role", function()
-        local username = "john.doe@konghq.com"
-        -- begin auth via openid-connect
-        authentication(username)
-        -- login success
-        local admins = db.admins:select_by_username(username)
-        assert(username, admins.username)
-        local rbac_user_id = admins.rbac_user and admins.rbac_user.id
-        assert.is_not_nil(rbac_user_id)
-        local ws = db.workspaces:select_by_name("default")
-        local role = assert(db.rbac_roles:select_by_name(ROLE_NAME, { workspace = ws.id }))
-        local rbac_user_roles = assert(db.rbac_user_roles:select({
-          user = { id = rbac_user_id },
-          role = { id = role.id }
-        }))
-        assert.is_not_nil(rbac_user_roles)
+      it("should log in successfully", function()
+        -- Ensure there are no admins
+        local admins, err = db.admins:select_by_username(USERNAME)
+        assert.is_nil(err)
+        assert.is_nil(admins)
+
+        authenticate(db, admin_client, USERNAME)
+        check_ws_rbac(db, USERNAME, WORKSPACE_NAME, ROLE_NAME)
       end)
     end)
 
-    describe("#openid-connect - with response_mode = form_post", function()
-      local redirect_uri = string.format("http://%s:9001/auth", KONG_HOST)
+    describe("#openid-connect - response_mode = query", function()
+      local USERNAME = "john.doe@konghq.com"
+      local WORKSPACE_NAME = "default"
+      local ROLE_NAME = "super-admin"
+
+      local _, db, admin_client, session_cookie
 
       lazy_setup(function()
-        local config = {
-          plugins                = "bundled," .. PLUGIN_NAME,
-          database               = strategy,
-          prefix                 = helpers.test_conf.prefix,
-          enforce_rbac           = "on",
-          admin_gui_auth         = PLUGIN_NAME,
-          admin_listen           = "0.0.0.0:9001",
-          admin_gui_listen       = "0.0.0.0:9008",
-          admin_gui_url          = "http://localhost:9008",
-          admin_gui_session_conf = [[
-            {"secret":"Y29vbGJlYW5z","storage":"kong","cookie_secure":false}
-          ]],
-          admin_gui_auth_conf    = get_admin_auth_conf({
-            response_mode = "form_post",
-            auth_methods = { "authorization_code", "session" },
-            redirect_uri = { redirect_uri },
-          })
-        }
+        _, db = helpers.get_db_utils(strategy, TEST_TABLES, { PLUGIN_NAME })
 
-        local _, stderr, stdout = assert(helpers.start_kong(config))
-        assert.matches("Kong started", stdout)
-        assert.matches(
-          [[[warn] admin_gui_auth_conf.response_mode only accept "query" when admin_gui_auth is "openid-connect"]],
-          stderr, nil, true)
-        assert.matches(
-          [[[warn] admin_gui_auth_conf.auth_methods only accept "authorization_code" when admin_gui_auth is "openid-connect"]],
-          stderr, nil, true)
+        assert(helpers.start_kong({
+          plugins             = "bundled," .. PLUGIN_NAME,
+          database            = strategy,
+          nginx_conf          = "spec/fixtures/custom_nginx.template",
+          enforce_rbac        = "on",
+          admin_gui_auth      = PLUGIN_NAME,
+          admin_listen        = ADMIN_API_LISTEN,
+          admin_gui_listen    = ADMIN_GUI_LISTEN,
+          admin_gui_auth_conf = compose_openid_conf(),
+        }))
+
+        ee_helpers.register_rbac_resources(db, "default")
       end)
 
       lazy_teardown(function()
         helpers.stop_kong()
+        truncate_test_tables(db)
       end)
 
       before_each(function()
@@ -259,42 +420,109 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
 
-      it("it should be login successfully", function()
-        -- begin auth via openid-connect
-        authentication("john.doe@konghq.com", function(res, auth_cookie_cleaned)
-          assert.equal(302, res.status)
+      it("should log in successfully and map to the correct role", function()
+        -- Ensure there are no admins
+        local admins, err = db.admins:select_by_username(USERNAME)
+        assert.is_nil(err)
+        assert.is_nil(admins)
 
-          -- after sending login data to the login action page, expect a redirect
-          local upstream_url = res.headers["Location"]
-          local ures, err = http:request_uri(upstream_url, {
-            headers = {
-              -- authenticate using the cookie from the initial request
-              Cookie = auth_cookie_cleaned,
-            }
-          })
-          assert.is_nil(err)
-          assert.equal(200, ures.status)
-        end)
+        session_cookie = authenticate(db, admin_client, USERNAME)
+        check_ws_rbac(db, USERNAME, WORKSPACE_NAME, ROLE_NAME)
+      end)
+
+      it("should perform RP-initiated logout", function()
+        logout(session_cookie, admin_client)
+      end)
+    end)
+
+    describe("#openid-connect - response_mode = form_post", function()
+      local USERNAME = "john.doe@konghq.com"
+
+      local _, db, admin_client, session_cookie
+
+      lazy_setup(function()
+        _, db = helpers.get_db_utils(strategy, TEST_TABLES, { PLUGIN_NAME })
+
+        assert(helpers.start_kong({
+          plugins             = "bundled," .. PLUGIN_NAME,
+          database            = strategy,
+          prefix              = helpers.test_conf.prefix,
+          enforce_rbac        = "on",
+          admin_gui_auth      = PLUGIN_NAME,
+          admin_listen        = ADMIN_API_LISTEN,
+          admin_gui_listen    = ADMIN_GUI_LISTEN,
+          admin_gui_auth_conf = compose_openid_conf { response_mode = "form_post" },
+        }))
+
+        ee_helpers.register_rbac_resources(db, "default")
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+        truncate_test_tables(db)
+      end)
+
+      before_each(function()
+        admin_client = helpers.admin_client()
+      end)
+
+      after_each(function()
+        if admin_client then
+          admin_client:close()
+        end
+      end)
+
+      it("should log in successfully", function()
+        -- Ensure there are no admins
+        local admins, err = db.admins:select_by_username(USERNAME)
+        assert.is_nil(err)
+        assert.is_nil(admins)
+
+        -- begin auth via openid-connect
+        local res, auth_cookie = init_auth(admin_client, USERNAME, PASSWORD)
+        -- Should be a 200 response
+        assert.equal(200, res.status)
+
+        -- Extract the action URL and parameters from the <form /> element
+        local action_start_t = [[<FORM METHOD="POST" ACTION="]]
+        local action_start = assert(find(res.body, action_start_t, 1, true))
+        local action_end = assert(find(res.body, [["]], action_start + #action_start_t, true))
+
+        local field_names = {
+          "code",
+          "state",
+          "session_state",
+        }
+        local fields = {}
+        local field_start_t, field_start, field_end
+        for _, name in ipairs(field_names) do
+          field_start_t = [[NAME="]] .. name .. [[" VALUE="]]
+          field_start = assert(find(res.body, field_start_t, action_end, true))
+          field_end = assert(find(res.body, [["]], field_start + #field_start_t, true))
+
+          table.insert(fields, name .. "=" .. sub(res.body, field_start + #field_start_t, field_end - 1))
+        end
+
+        local action = sub(res.body, action_start + #action_start_t, action_end - 1)
+        assert.equal(REDIRECT_URL, action)
+
+        session_cookie = finalize_auth(action, auth_cookie, table.concat(fields, "&"))
+      end)
+
+      it("should perform RP-initiated logout", function()
+        logout(session_cookie, admin_client)
       end)
     end)
 
     describe("#openid-connect - mapping role with group", function()
-      local _, db, keycloak_client
-      local user, group_ws1, group_ws2, default_super_admin_group
-      local username = "sam.stark@konghq.com"
-      lazy_setup(function()
-        _, db = helpers.get_db_utils(strategy, {
-          "admins",
-          "plugins",
-          "groups",
-          "rbac_roles",
-          "rbac_user_roles",
-          "rbac_user_groups",
-          "rbac_role_endpoints",
-          "workspaces"
-        }, { PLUGIN_NAME })
+      local USERNAME = "sam.stark@konghq.com"
 
-        local redirect_uri = string.format("http://%s:9001/auth", KONG_HOST)
+      local _, db, admin_client, keycloak_client
+      local user, group_ws1, group_ws2, default_super_admin_group
+
+      lazy_setup(function()
+        _, db = helpers.get_db_utils(strategy, TEST_TABLES, { PLUGIN_NAME })
+
         assert(helpers.start_kong({
           plugins                = "bundled," .. PLUGIN_NAME,
           database               = strategy,
@@ -305,9 +533,7 @@ for _, strategy in helpers.each_strategy() do
           admin_gui_session_conf = [[
             {"secret":"Y29vbGJlYW5z","storage":"kong","cookie_secure":false}
           ]],
-          admin_gui_auth_conf    = get_admin_auth_conf({
-            redirect_uri = { redirect_uri },
-          })
+          admin_gui_auth_conf    = compose_openid_conf(),
         }))
 
         ee_helpers.register_rbac_resources(db, "default")
@@ -352,6 +578,8 @@ for _, strategy in helpers.each_strategy() do
 
       lazy_teardown(function()
         helpers.stop_kong()
+        truncate_test_tables(db)
+
         if admin_client then
           admin_client:close()
         end
@@ -379,10 +607,16 @@ for _, strategy in helpers.each_strategy() do
       end
 
       it("the admin doesn't have any permissions for all workspaces", function()
-        authentication(username)
+        -- Ensure there are no admins
+        local admins, err = db.admins:select_by_username(USERNAME)
+        assert.is_nil(err)
+        assert.is_nil(admins)
+
+        authenticate(db, admin_client, USERNAME)
+
         -- login success
-        local admin = db.admins:select_by_username(username)
-        assert(username, admin.username)
+        local admin = db.admins:select_by_username(USERNAME)
+        assert(USERNAME, admin.username)
         local rbac_user_id = admin.rbac_user and admin.rbac_user.id
         assert.is_not_nil(rbac_user_id)
         local user_token = update_rbac_token(rbac_user_id)
@@ -405,10 +639,10 @@ for _, strategy in helpers.each_strategy() do
         -- add default:super-admin to admin
         do_cloak_request(keycloak_api.add_group_to_user, keycloak_client, false, 204, user.id,
           default_super_admin_group.id)
-        authentication(username)
+        authenticate(db, admin_client, USERNAME)
         -- login success
-        local admin = db.admins:select_by_username(username)
-        assert(username, admin.username)
+        local admin = db.admins:select_by_username(USERNAME)
+        assert(USERNAME, admin.username)
         local rbac_user_id = admin.rbac_user and admin.rbac_user.id
         assert.is_not_nil(rbac_user_id)
         local user_token = update_rbac_token(rbac_user_id)
@@ -432,10 +666,10 @@ for _, strategy in helpers.each_strategy() do
         -- add readonly_group_ws1 to the admin
         do_cloak_request(keycloak_api.add_group_to_user, keycloak_client, false, 204, user.id, group_ws1.id)
         -- begin auth via openid-connect
-        authentication(username)
+        authenticate(db, admin_client, USERNAME)
         -- login success
-        local admin = db.admins:select_by_username(username)
-        assert(username, admin.username)
+        local admin = db.admins:select_by_username(USERNAME)
+        assert(USERNAME, admin.username)
         local rbac_user_id = admin.rbac_user and admin.rbac_user.id
         assert.is_not_nil(rbac_user_id)
         local ws = db.workspaces:select_by_name("ws1")
@@ -470,10 +704,10 @@ for _, strategy in helpers.each_strategy() do
         do_cloak_request(keycloak_api.add_group_to_user, keycloak_client, false, 204, user.id, group_ws2.id)
 
         -- begin auth via openid-connect
-        authentication(username)
+        authenticate(db, admin_client, USERNAME)
         -- login success
-        local admin = db.admins:select_by_username(username)
-        assert(username, admin.username)
+        local admin = db.admins:select_by_username(USERNAME)
+        assert(USERNAME, admin.username)
         local rbac_user_id = admin.rbac_user and admin.rbac_user.id
         assert.is_not_nil(rbac_user_id)
         for _, ws_name in ipairs({ "ws1", "ws2" }) do
@@ -512,10 +746,10 @@ for _, strategy in helpers.each_strategy() do
       it("the admin has readonly permissions of the workspace ws2 when remove the group `readonly_group_ws1` of IDP", function()
         do_cloak_request(keycloak_api.delete_group_from_user, keycloak_client, false, 204, user.id, group_ws1.id)
         -- begin auth via openid-connect
-        authentication(username)
+        authenticate(db, admin_client, USERNAME)
         -- login success
-        local admin = db.admins:select_by_username(username)
-        assert(username, admin.username)
+        local admin = db.admins:select_by_username(USERNAME)
+        assert(USERNAME, admin.username)
         local rbac_user_id = admin.rbac_user and admin.rbac_user.id
         assert.is_not_nil(rbac_user_id)
 
@@ -546,10 +780,10 @@ for _, strategy in helpers.each_strategy() do
         do_cloak_request(keycloak_api.delete_group_from_user, keycloak_client, false, 204, user.id, group_ws2.id)
 
         -- begin auth via openid-connect
-        authentication(username)
+        authenticate(db, admin_client, USERNAME)
         -- login success
-        local admin = db.admins:select_by_username(username)
-        assert(username, admin.username)
+        local admin = db.admins:select_by_username(USERNAME)
+        assert(USERNAME, admin.username)
         local rbac_user_id = admin.rbac_user and admin.rbac_user.id
         assert.is_not_nil(rbac_user_id)
 
@@ -577,10 +811,10 @@ for _, strategy in helpers.each_strategy() do
         do_cloak_request(keycloak_api.add_group_to_user, keycloak_client, false, 204, user.id, group_ws2.id)
 
         -- begin auth via openid-connect
-        authentication(username)
+        authenticate(db, admin_client, USERNAME)
         -- login success
-        local admin = db.admins:select_by_username(username)
-        assert(username, admin.username)
+        local admin = db.admins:select_by_username(USERNAME)
+        assert(USERNAME, admin.username)
         local rbac_user_id = admin.rbac_user and admin.rbac_user.id
         assert.is_not_nil(rbac_user_id)
 
@@ -608,7 +842,7 @@ for _, strategy in helpers.each_strategy() do
         assert(kong.db.groups:delete(group))
 
         -- begin auth via openid-connect
-        authentication(username)
+        authenticate(db, admin_client, USERNAME)
 
         rbac_user_groups = {}
         for rbac_user_group, _ in db.rbac_user_groups:each_for_user({ id = rbac_user_id }) do
@@ -633,10 +867,10 @@ for _, strategy in helpers.each_strategy() do
         -- add default:super-admin to admin
         do_cloak_request(keycloak_api.add_group_to_user, keycloak_client, false, 204, user.id,
           default_super_admin_group.id)
-        authentication(username)
+        authenticate(db, admin_client, USERNAME)
         -- login success
-        local admin = db.admins:select_by_username(username)
-        assert(username, admin.username)
+        local admin = db.admins:select_by_username(USERNAME)
+        assert(USERNAME, admin.username)
         local rbac_user_id = admin.rbac_user and admin.rbac_user.id
         assert.is_not_nil(rbac_user_id)
         local user_token = update_rbac_token(rbac_user_id)
@@ -656,7 +890,7 @@ for _, strategy in helpers.each_strategy() do
         -- remove default:super-admin from admin
         do_cloak_request(keycloak_api.delete_group_from_user, keycloak_client, false, 204, user.id,
           default_super_admin_group.id)
-        authentication(username)
+        authenticate(db, admin_client, USERNAME)
         -- login success
 
         -- should access ws1/services

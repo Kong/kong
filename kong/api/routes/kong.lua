@@ -5,7 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local utils = require "kong.tools.utils"
 local ee_api = require "kong.enterprise_edition.api_helpers"
 local admins = require "kong.enterprise_edition.admins_helpers"
 local auth_plugin_helpers = require "kong.enterprise_edition.auth_plugin_helpers"
@@ -18,8 +17,6 @@ local Errors = require "kong.db.errors"
 local process = require "ngx.process"
 local wasm = require "kong.runloop.wasm"
 local null = ngx.null
--- Add JWT decoder to decode id_token
-local jwt_decoder = require "kong.plugins.jwt.jwt_parser"
 local openssl = require "resty.openssl"
 
 local endpoints  = require "kong.api.endpoints"
@@ -36,6 +33,8 @@ local errors = Errors.new()
 local get_sys_filter_level = require "ngx.errlog".get_sys_filter_level
 local LOG_LEVELS = require "kong.constants".LOG_LEVELS
 
+local prepare_openid_config = auth_plugin_helpers.prepare_openid_config
+local handle_openid_response = auth_plugin_helpers.handle_openid_response
 
 local tagline = "Welcome to " .. _KONG._NAME
 local version = meta.version
@@ -417,20 +416,12 @@ return {
         return kong.response.exit(404, { message = "Not found" })
       end
 
-      if gui_auth == "openid-connect" then
-        gui_auth_conf = utils.shallow_copy(kong.configuration.admin_gui_auth_conf)
-        gui_auth_conf.admin_claim = nil
-        gui_auth_conf.admin_by = nil
-        gui_auth_conf.admin_auto_create_rbac_token_disabled = nil
-        gui_auth_conf.admin_auto_create = nil
-      end
-
       local admin
       local by_username_ignore_case =
               gui_auth_conf and gui_auth_conf.by_username_ignore_case
+      local session_conf = kong.configuration.admin_gui_session_conf
 
-      -- Defer admin valdition and ctx attachement after Auth Plugin execution,
-      -- when using OIDC AUTH
+      -- Run the following block only when NOT authenticating with openid-connect
       if gui_auth ~= "openid-connect" then
         local user_header = kong.configuration.admin_gui_auth_header
         local args = ngx.req.get_uri_args()
@@ -458,183 +449,68 @@ return {
                   by_username_ignore_case,
                   user_name
                 )
+
+        -- run the session plugin access to see if we have a current session
+        -- with a valid authenticated consumer.
+        local ok, err = invoke_plugin({
+          name = "session",
+          config = session_conf,
+          phases = { "access" },
+          api_type = ee_api.apis.ADMIN,
+          db = kong.db,
+        })
+
+        if err or not ok then
+          log(ERR, _log_prefix, err)
+          return kong.response.exit(500, { message = "An unexpected error occurred" })
+        end
+
+        -- logging out
+        if kong.request.get_method() == 'DELETE' then
+          return
+        end
       end
 
-      local session_conf = kong.configuration.admin_gui_session_conf
+      local plugin_auth_response, err
 
-      -- run the session plugin access to see if we have a current session
-      -- with a valid authenticated consumer.
-      local ok, err = invoke_plugin({
-        name = "session",
-        config = session_conf,
-        phases = { "access" },
-        api_type = ee_api.apis.ADMIN,
-        db = kong.db,
-      })
-
-      if err or not ok then
-        log(ERR, _log_prefix, err)
-        return kong.response.exit(500, { message = "An unexpected error occurred" })
-      end
-
-      -- logging out
-      if kong.request.get_method() == 'DELETE' then
-        return
-      end
-
-      -- apply auth plugin
-      local plugin_auth_response
-      local id_token_claim_name = "id_token"
-      local access_token_claim_name = "access_token"
-      local userinfo_claim_name = "user_info"
-
+      -- Execute the auth plugin if no authenticated consumer is set (by session plugin for now)
       if not ngx.ctx.authenticated_consumer then
-        -- Before Auth Plugin execution.
-        if gui_auth == "openid-connect" then
-          gui_auth_conf.consumer_optional = true
-          -- by default id_token contains data the auth flow required
-          gui_auth_conf.upstream_id_token_header = id_token_claim_name
-          gui_auth_conf.upstream_access_token_header = access_token_claim_name
-          -- fallback to fetch admin_claim from 'user_info'
-          if gui_auth_conf.search_user_info then
-            gui_auth_conf.upstream_user_info_header = userinfo_claim_name
-          end
-        end
-
-        if gui_auth == "ldap-auth-advanced" then
-          -- since the OIDC create if admin not exists improvement,
-          -- the admin.username no longer as same as consumer.username
-          gui_auth_conf.consumer_optional = true
-        end
-
-        plugin_auth_response, err = invoke_plugin({
+        local invoke_plugin_opts = {
           name = gui_auth,
           config = gui_auth_conf,
           phases = { "access" },
           api_type = ee_api.apis.ADMIN,
           db = kong.db,
           exit_handler = function (res) return res end,
-        })
+        }
 
+        if gui_auth == "openid-connect" then
+          -- Specify a cache key as we also use openid-connect with different config in another place.
+          -- See: authenticate() in kong/enterprise_edition/api_helpers.lua
+          invoke_plugin_opts.variant = "auth" -- for "the /auth route" (a special case)
+          -- Pass a function here to avoid calling prepare_openid_config() multiple times
+          invoke_plugin_opts.config = function()
+            return prepare_openid_config(gui_auth_conf, true)
+          end
+        elseif gui_auth == "ldap-auth-advanced" then
+          -- Enable consumer_optional because we will handle the mapping after the plugin execution
+          ---@diagnostic disable-next-line: inject-field: opts.config must be a table here
+          invoke_plugin_opts.config.consumer_optional = true
+        end
+
+        plugin_auth_response, err = invoke_plugin(invoke_plugin_opts)
         if err or not plugin_auth_response then
           log(ERR, _log_prefix, err)
           return kong.response.exit(500, err)
         end
 
-        -- After Auth Plugin execution.
         if gui_auth == "openid-connect" then
-          local id_token_claims = function ()
-            local id_token_header = ngx.req.get_headers()[id_token_claim_name]
-            if not id_token_header then
-              log(DEBUG, _log_prefix, "failed to get id_token from upstream header")
-              return nil
-            end
-            -- decode id_token
-            local jwt, err = jwt_decoder:new(id_token_header)
-            if err then
-              log(ERR, _log_prefix, "failed to decode id token.", err)
-              return nil
-            end
-
-            return jwt.claims
-          end
-
-          local access_token_claims = function()
-            local access_token_header = ngx.req.get_headers()[access_token_claim_name]
-            if not access_token_header then
-              log(DEBUG, _log_prefix, "failed to get access_token from upstream header")
-              return nil
-            end
-            -- decode id_token
-            local jwt, err = jwt_decoder:new(access_token_header)
-            if err then
-              log(ERR, _log_prefix, "failed to decode access token.", err)
-              return nil
-            end
-
-            return jwt.claims
-          end
-
-          local user_info_claims = function ()
-            local userinfo_header = ngx.req.get_headers()[userinfo_claim_name]
-            if not userinfo_header then
-              log(DEBUG, _log_prefix, "failed to get user_info from upstream header")
-              return nil
-            end
-            local userinfo_json, base64_err = ngx.decode_base64(userinfo_header)
-            local userinfo, json_err = cjson.decode(userinfo_json)
-            if base64_err or json_err then
-              log(ERR, _log_prefix, "failed to decode userinfo.", base64_err or json_err)
-              return nil
-            end
-
-            return userinfo
-          end
-
-          local default_admin_by = "username"
-          local gui_auth_conf_origin = kong.configuration.admin_gui_auth_conf
-          local admin_claim = gui_auth_conf_origin
-                              and gui_auth_conf_origin.admin_claim
-
-          local admin_by = gui_auth_conf_origin and gui_auth_conf_origin.admin_by
-                           or default_admin_by
-          local search_user_info = gui_auth_conf_origin and gui_auth_conf_origin.search_user_info
-          -- use admin_auto_create to control admin auto creation, it is true if it is not set
-          local admin_auto_create = gui_auth_conf_origin and gui_auth_conf_origin.admin_auto_create
-                            or gui_auth_conf_origin.admin_auto_create == nil
-
-          -- use claims to map kong admin
-          local claims = id_token_claims()
-
-          if not (claims and claims[admin_claim]) then
-            claims = access_token_claims()
-          end
-
-          if search_user_info and not (claims and claims[admin_claim]) then
-            claims = user_info_claims()
-          end
-
-          local admin_claim_value = claims and claims[admin_claim]
-          if not admin_claim_value then
-            log(ERR, _log_prefix, "the 'admin_claim' not found from the claims.", gui_auth)
-            return kong.response.exit(401, { message = "Unauthorized" })
-          end
-
-          admin = auth_plugin_helpers.validate_admin_and_attach_ctx(
-            self,
-            by_username_ignore_case,
-            admin_claim_value,
-            admin_by == "custom_id" and admin_claim_value or nil,
-            admin_auto_create,
-            true,
-            not (gui_auth_conf_origin and gui_auth_conf_origin.admin_auto_create_rbac_token_disabled)
-          )
-
-          -- role mapping or group mapping
-          local role_claim = gui_auth_conf and
-                             gui_auth_conf.authenticated_groups_claim and
-                             gui_auth_conf.authenticated_groups_claim[1]
-          -- use claims in id_token or acces_token or userinfo to map groups here
-          local role_claim_values = claims and claims[role_claim] or ngx.ctx.authenticated_groups
-
-          if role_claim_values then
-            auth_plugin_helpers.map_admin_groups_by_idp_claim(admin, role_claim_values)
-            auth_plugin_helpers.map_admin_roles_by_idp_claim(admin, role_claim_values)
-          elseif role_claim then
-            auth_plugin_helpers.delete_admin_groups_or_roles(admin)
-            -- only logs an error if kong-ee can not find the claims
-            ngx.log(ERR, role_claim, " not found from the id_token or access_token or userinfo claims.", gui_auth)
-          end
-
-        end
-
-        if gui_auth == "ldap-auth-advanced" then
-          -- since the OIDC create if admin not exists improvement,
-          -- plugin not longer handle conusmer mapping.
+          admin = handle_openid_response(self, gui_auth_conf, true)
+        elseif gui_auth == "ldap-auth-advanced" then
+          -- Manually handle the consumer mapping outside the ldap-auth-advanced plugin
           auth_plugin_helpers.map_admin_groups_by_idp_claim(admin, ngx.ctx.authenticated_groups)
           auth_plugin_helpers.set_admin_consumer_to_ctx(admin)
         end
-
       end
 
       -- Plugin ran but consumer was not created on context
@@ -654,17 +530,19 @@ return {
         return kong.response.exit(401, { message = "Unauthorized" })
       end
 
-      local ok, err = invoke_plugin({
-        name = "session",
-        config = session_conf,
-        phases = { "header_filter" },
-        api_type = ee_api.apis.ADMIN,
-        db = kong.db,
-      })
-
-      if err or not ok then
-        log(ERR, _log_prefix, err)
-        return kong.response.exit(500, err)
+      if gui_auth ~= "openid-connect" then
+        local ok, err = invoke_plugin({
+          name = "session",
+          config = session_conf,
+          phases = { "header_filter" },
+          api_type = ee_api.apis.ADMIN,
+          db = kong.db,
+        })
+  
+        if err or not ok then
+          log(ERR, _log_prefix, err)
+          return kong.response.exit(500, err)
+        end
       end
     end,
 

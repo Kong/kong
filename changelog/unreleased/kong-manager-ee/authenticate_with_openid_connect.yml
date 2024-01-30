@@ -1,0 +1,3 @@
+message: "Fix issues with Admin GUI authentication using OpenID Connect, including session, response_mode, and RP-initiated logout."
+type: "bugfix"
+githubs: [3055]

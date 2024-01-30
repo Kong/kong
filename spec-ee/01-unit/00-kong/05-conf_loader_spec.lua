@@ -6,9 +6,11 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local conf_loader = require "kong.conf_loader"
-local ee_conf_loader = require("kong.enterprise_edition.conf_loader")
+local ee_conf_loader = require "kong.enterprise_edition.conf_loader"
+local log = require "kong.cmd.utils.log"
 local helpers = require "spec.helpers"
 local pl_file = require "pl.file"
+local cjson = require "cjson"
 
 local openssl = require "resty.openssl"
 
@@ -464,13 +466,353 @@ describe("ee conf loader", function()
     end)
   end)
 
+  describe("loads openid-connect admin_gui_auth_conf and", function()
+    local log_warn
+    local warnings = {}
+
+    local function openid_conf(overrides, remove_fields)
+      local conf = {
+        issuer = "http://openid-issuer",
+        admin_claim = "email",
+        client_id = { "client_id" },
+        client_secret = { "client_secret" },
+        redirect_uri = { "http://kong-admin:8001/auth" },
+        login_redirect_uri = { "http://kong-manager" },
+        logout_redirect_uri = { "http://kong-manager" },
+        session_storage = "redis",
+      }
+
+      for key, value in pairs(overrides or {}) do
+        conf[key] = value
+      end
+
+      for _, field in ipairs(remove_fields or {}) do
+        conf[field] = nil
+      end
+
+      return conf
+    end
+
+    local function in_warnings(s)
+      local strings
+      if type(s) == "string" then
+        strings = { s }
+      elseif type(s) ~= "table" then
+        error("expected string or table")
+      else
+        strings = s
+      end
+
+      local matches
+      for _, warning in ipairs(warnings) do
+        matches = true
+
+        for _, ss in ipairs(strings) do
+          if not string.find(warning, ss) then
+            matches = false
+            break
+          end
+        end
+
+        if matches then
+          return true
+        end
+      end
+
+      return false
+    end
+
+    setup(function()
+      log_warn = log.warn
+
+      log.warn = function(...)
+        local args = { ... }
+        for i = 1, #args do
+          args[i] = tostring(args[i])
+        end
+
+        local format = table.remove(args, 1)
+        if type(format) == "string" then
+          local msg = string.format(format, unpack(args))
+          table.insert(warnings, msg)
+        end
+
+        log_warn(...)
+      end
+    end)
+
+    before_each(function()
+      warnings = {}
+    end)
+
+    teardown(function()
+      log.warn = log_warn
+    end)
+
+    it("prints session warnings when using session_storage = cookie", function()
+      conf_loader(nil, {
+        enforce_rbac = "on",
+        admin_gui_url = "http://localhost:8002",
+        admin_gui_auth = "openid-connect",
+        admin_gui_auth_conf = openid_conf({
+          session_storage = "cookie",
+        })
+      })
+
+      local has_session_warnings
+      local has_other_warnings
+      for _, warning in ipairs(warnings) do
+        if string.find(warning, [[admin_gui_auth_conf.session_storage]]) then
+          has_session_warnings = true
+        elseif string.find(warning, [[admin_gui_auth_conf]]) then
+          has_other_warnings = true
+        end
+      end
+
+      assert.is_true(has_session_warnings)
+      assert.is_falsy(has_other_warnings)
+    end)
+
+    it("prints no warnings when using session_storage = redis", function()
+      conf_loader(nil, {
+        enforce_rbac = "on",
+        admin_gui_url = "http://localhost:8002",
+        admin_gui_auth = "openid-connect",
+        admin_gui_auth_conf = openid_conf()
+      })
+
+      assert.same({}, warnings)
+    end)
+
+    it("prints warnings if redirect URIs are missing", function()
+      local _, err
+      for _, parameter in ipairs({ "redirect_uri", "login_redirect_uri", "logout_redirect_uri" }) do
+        _, err = conf_loader(nil, {
+          enforce_rbac = "on",
+          admin_gui_url = "http://localhost:8002",
+          admin_gui_auth = "openid-connect",
+          admin_gui_auth_conf = openid_conf({ [parameter] = {} })
+        })
+
+        assert.matches(string.format("admin_gui_auth_conf.%s is required", parameter), err)
+      end
+    end)
+
+    it("prints warnings when redirect_uri does not look like Admin API's auth endpoint", function()
+      conf_loader(nil, {
+        enforce_rbac = "on",
+        admin_gui_url = "http://localhost:8002",
+        admin_gui_auth = "openid-connect",
+        admin_gui_auth_conf = openid_conf({
+          redirect_uri = { "http://kong-admin:8001" }, -- this is potentially wrong
+        })
+      })
+
+      assert.is_true(in_warnings({
+        "admin_gui_auth_conf.redirect_uri",
+        "need to manually double check",
+      }))
+    end)
+
+    it("prints warnings when login_redirect_uri looks like Admin API's auth endpoint", function()
+      conf_loader(nil, {
+        enforce_rbac = "on",
+        admin_gui_url = "http://localhost:8002",
+        admin_gui_auth = "openid-connect",
+        admin_gui_auth_conf = openid_conf({
+          login_redirect_uri = { "http://kong-admin:8001" }, -- this is potentially wrong
+        })
+      })
+
+      local has_uri_warning
+      for _, warning in ipairs(warnings) do
+        if string.find(warning, "admin_gui_auth_conf.login_redirect_uri")
+        and string.find(warning, "need to manually double check") then
+          has_uri_warning = true
+        end
+      end
+
+      assert.is_true(has_uri_warning)
+    end)
+
+    it("prints warnings when logout_redirect_uri looks like Admin API's auth endpoint", function()
+      conf_loader(nil, {
+        enforce_rbac = "on",
+        admin_gui_url = "http://localhost:8002",
+        admin_gui_auth = "openid-connect",
+        admin_gui_auth_conf = openid_conf({
+          logout_redirect_uri = { "http://kong-admin:8001" }, -- this is potentially wrong
+        })
+      })
+
+      local has_uri_warning
+      for _, warning in ipairs(warnings) do
+        if string.find(warning, "admin_gui_auth_conf.logout_redirect_uri")
+        and string.find(warning, "need to manually double check") then
+          has_uri_warning = true
+        end
+      end
+
+      assert.is_true(has_uri_warning)
+    end)
+
+    it("prints warnings when openid is missing from scopes", function()
+      local _, err = conf_loader(nil, {
+        enforce_rbac = "on",
+        admin_gui_url = "http://localhost:8002",
+        admin_gui_auth = "openid-connect",
+        admin_gui_auth_conf = openid_conf({
+          scopes = { "offline_access" },
+        })
+      })
+
+      assert.matches([["openid" is missing from admin_gui_auth_conf.scopes]], err)
+    end)
+
+    it("prints warnings when offline_access is missing from scopes", function()
+      local _, err = conf_loader(nil, {
+        enforce_rbac = "on",
+        admin_gui_url = "http://localhost:8002",
+        admin_gui_auth = "openid-connect",
+        admin_gui_auth_conf = openid_conf({
+          scopes = { "openid" },
+        })
+      })
+
+      assert.matches([["offline_access" is missing from admin_gui_auth_conf.scopes]], err)
+    end)
+
+    it("prints warnings when admin_claim = email and email is missing from scopes", function()
+      conf_loader(nil, {
+        enforce_rbac = "on",
+        admin_gui_url = "http://localhost:8002",
+        admin_gui_auth = "openid-connect",
+        admin_gui_auth_conf = openid_conf({
+          scopes = { "openid", "offline_access" },
+        })
+      })
+
+      local has_email_scope_warning
+      for _, warning in ipairs(warnings) do
+        if string.find(warning, [["email" is missing from admin_gui_auth_conf.scopes]]) then
+          has_email_scope_warning = true
+        end
+      end
+
+      assert.is_true(has_email_scope_warning)
+    end)
+
+    it("prints warnings when admin_claim is unset (use email as default) and email is missing from scopes", function()
+      conf_loader(nil, {
+        enforce_rbac = "on",
+        admin_gui_url = "http://localhost:8002",
+        admin_gui_auth = "openid-connect",
+        admin_gui_auth_conf = openid_conf(
+          {
+            scopes = { "openid", "offline_access" },
+          },
+          { "admin_claim" }   -- remove (unset) this field
+        )
+      })
+
+      local has_email_scope_warning
+      for _, warning in ipairs(warnings) do
+        if string.find(warning, [["email" is missing from admin_gui_auth_conf.scopes]]) then
+          has_email_scope_warning = true
+        end
+      end
+
+      assert.is_true(has_email_scope_warning)
+    end)
+
+    it("prints warnings when admin_gui_session_conf is set", function()
+      conf_loader(nil, {
+        enforce_rbac = "on",
+        admin_gui_url = "http://localhost:8002",
+        admin_gui_auth = "openid-connect",
+        admin_gui_auth_conf = openid_conf({
+          scopes = { "openid", "offline_access" },
+        }),
+        admin_gui_session_conf = {}, -- this is ignored
+      })
+
+      assert.is_true(in_warnings("admin_gui_session_conf will be ignored"))
+    end)
+
+    it("prints warnings when auto-managed parameters are set", function()
+      conf_loader(nil, {
+        enforce_rbac = "on",
+        admin_gui_url = "http://localhost:8002",
+        admin_gui_auth = "openid-connect",
+        admin_gui_auth_conf = openid_conf {
+          search_user_info = true, -- to test upstream_user_info_header
+          auth_methods = {},
+          consumer_optional = true,
+          login_action = "redirect",
+          login_methods = {},
+          login_tokens = {},
+          logout_methods = {},
+          logout_query_arg = "logout",
+          logout_revoke = true,
+          logout_revoke_access_token = true,
+          logout_revoke_refresh_token = true,
+          refresh_tokens = true,
+          upstream_id_token_header = "id_token",
+          upstream_access_token_header = "access_token",
+          upstream_user_info_header = "user_info"
+        },
+      })
+
+      for _, param in ipairs({
+        "auth_methods",
+        "consumer_optional",
+        "login_action",
+        "login_methods",
+        "login_tokens",
+        "logout_methods",
+        "logout_query_arg",
+        "logout_revoke",
+        "logout_revoke_access_token",
+        "logout_revoke_refresh_token",
+        "refresh_tokens",
+        "upstream_access_token_header",
+        "upstream_id_token_header",
+        "upstream_user_info_header",
+      }) do
+        assert.is_true(in_warnings("admin_gui_auth_conf." .. param .. " will be managed automatically"))
+      end
+    end)
+
+    it("returns errors if response_mode is fragment", function()
+      ee_conf_loader.validate_admin_gui_authentication({
+        enforce_rbac = "on",
+        admin_gui_url = "http://localhost:8002",
+        admin_gui_auth = "openid-connect",
+        admin_gui_auth_conf = cjson.encode(openid_conf({
+          response_mode = "fragment", -- not allowed because we cannot obtain tokens from URL fragment
+          scopes = { "openid", "offline_access" },
+        }))
+      }, msgs)
+
+      local expected = {
+        [[admin_gui_auth_conf.response_mode must be "query" or "form_post" while admin_gui_auth ]] ..
+        [[is set to "openid-connect"]]
+      }
+      assert.same(expected, msgs)
+    end)
+  end)
+
+
   describe("validate_admin_gui_session()", function()
     it("returns error if admin_gui_auth is set without admin_gui_session_conf", function()
       ee_conf_loader.validate_admin_gui_session({
         admin_gui_auth = "basic-auth",
       }, msgs)
 
-      local expected = { "admin_gui_session_conf must be set when admin_gui_auth is enabled" }
+      local expected = {
+        "admin_gui_session_conf must be set when admin_gui_auth is enabled " ..
+        [[(except when admin_gui_auth is set to "openid-connect")]]
+      }
       assert.same(expected, msgs)
     end)
 

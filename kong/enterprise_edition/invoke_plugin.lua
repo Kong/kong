@@ -17,7 +17,7 @@ local SERVICE_IDS = {
   admin =  "00000000-0000-0000-0000-000000000001",
 }
 
-local loaded_plugins_map = {}
+local loaded_plugins_map  = {}
 local admin_plugin_models = {}
 local PHASES, set_named_ctx
 
@@ -38,6 +38,10 @@ local function apply_plugin(plugin, phase, opts)
   return res or true
 end
 
+-- @param opts.variant (optional) Set a variant name. Useful when preparing plugins with the same
+--                     name but different configs.
+-- @param opts.config  The config to use for the plugin. If it is a function, it will be called when
+--                     the plugin model is absent from the cache.
 local function prepare_plugin(opts)
   local model, err
 
@@ -46,17 +50,22 @@ local function prepare_plugin(opts)
     return nil, "plugin: " .. opts.name .. " not found."
   end
 
-  local fields = {
-    name = opts.name,
-    service = { id = SERVICE_IDS[opts.api_type], },
-    config = utils.cycle_aware_deep_copy(opts.config) or {},
-  }
-
+  local admin_plugin_model_key
   if opts.api_type == "admin" then
-    model = admin_plugin_models[opts.name]
+    admin_plugin_model_key = opts.variant and opts.name .. "::".. opts.variant or opts.name
+    model = admin_plugin_models[admin_plugin_model_key]
   end
+  
 
   if not model then
+    local config = type(opts.config) == "function" and opts.config() or opts.config
+
+    local fields = {
+      name = opts.name,
+      service = { id = SERVICE_IDS[opts.api_type] },
+      config = utils.cycle_aware_deep_copy(config) or {},
+    }
+
     -- convert plugin configuration over to model to obtain defaults
     local plugins_entity = opts.db.plugins
     model, err = plugins_entity.schema:process_auto_fields(fields, "insert")
@@ -69,7 +78,7 @@ local function prepare_plugin(opts)
       model.config = cjson.decode(model.config)
     end
 
-     -- only cache valid models
+    -- only cache valid models
     local ok, errors = plugins_entity.schema:validate_insert(model)
     if not ok then
       -- this config is invalid -- return errors until the user fixes
@@ -94,7 +103,7 @@ local function prepare_plugin(opts)
     end
 
     if opts.api_type == "admin" then
-      admin_plugin_models[opts.name] = model
+      admin_plugin_models[admin_plugin_model_key] = model
     end
   end
 
@@ -135,7 +144,7 @@ local function validate(opts)
     return nil, err
   end
 
-    -- only cache valid models
+  -- only cache valid models
   local ok, err = plugins_entity.schema:validate_insert(model)
   if not ok then
     -- this config is invalid -- return errors until the user fixes

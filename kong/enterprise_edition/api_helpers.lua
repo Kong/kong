@@ -26,6 +26,8 @@ local DEBUG = ngx.DEBUG
 local NOTICE = ngx.NOTICE
 local unescape_uri = ngx.unescape_uri
 local get_with_cache = rbac.get_with_cache
+local get_request_header = ngx.req.get_headers
+local set_request_header = ngx.req.set_header
 
 local _M = {}
 
@@ -175,12 +177,46 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
 
   local gui_auth_conf = kong.configuration.admin_gui_auth_conf
   local by_username_ignore_case = gui_auth_conf and gui_auth_conf.by_username_ignore_case
+  local session_conf = kong.configuration.admin_gui_session_conf
 
-  local admin, err = _M.validate_admin(by_username_ignore_case)
+  local admin
 
-  if err then
-    log(ERR, _log_prefix, err)
-    return kong.response.exit(401, { message = "Unauthorized" })
+  if gui_auth == "openid-connect" then
+    local auth_plugin_helpers = require("kong.enterprise_edition.auth_plugin_helpers")
+
+    local ok, err = invoke_plugin({
+      name = "openid-connect",
+      -- No need for a variant here for non-auth routes (most cases)
+      -- Pass a function here to avoid calling prepare_openid_config() multiple times
+      config = function()
+        return auth_plugin_helpers.prepare_openid_config(gui_auth_conf)
+      end,
+      phases = { "access" },
+      api_type = _M.apis.ADMIN,
+      db = kong.db,
+      exit_handler = function(res) return res end,
+    })
+
+    if err or not ok then
+      log(ERR, _log_prefix, err)
+      return kong.response.exit(500, err)
+    end
+
+    local _admin, _, err_resp = auth_plugin_helpers.handle_openid_response(self, gui_auth_conf)
+    if err then
+      return err_resp
+    end
+
+    admin = _admin
+  else
+    local _admin, err = _M.validate_admin(by_username_ignore_case)
+
+    if err then
+      log(ERR, _log_prefix, err)
+      return kong.response.exit(401, { message = "Unauthorized" })
+    end
+
+    admin = _admin
   end
 
   if not admin then
@@ -223,21 +259,21 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
   -- sets self.workspaces, ngx.ctx.workspace, and self.consumer
   _M.attach_consumer_and_workspaces(self, consumer_id)
 
-  local session_conf = kong.configuration.admin_gui_session_conf
+  if gui_auth ~= "openid-connect" then
+    -- run the session plugin access to see if we have a current session
+    -- with a valid authenticated consumer.
+    local ok, err = invoke_plugin({
+      name = "session",
+      config = session_conf,
+      phases = { "access" },
+      api_type = _M.apis.ADMIN,
+      db = kong.db,
+    })
 
-  -- run the session plugin access to see if we have a current session
-  -- with a valid authenticated consumer.
-  local ok, err = invoke_plugin({
-    name = "session",
-    config = session_conf,
-    phases = { "access" },
-    api_type = _M.apis.ADMIN,
-    db = kong.db,
-  })
-
-  if not ok then
-    log(ERR, _log_prefix, err)
-    return endpoints.handle_error(err)
+    if not ok then
+      log(ERR, _log_prefix, err)
+      return endpoints.handle_error(err)
+    end
   end
 
   if not ctx.authenticated_consumer then
@@ -250,17 +286,19 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
     return kong.response.exit(401, { message = "Unauthorized" })
   end
 
-  local ok, err = invoke_plugin({
-    name = "session",
-    config = session_conf,
-    phases = { "header_filter" },
-    api_type = _M.apis.ADMIN,
-    db = kong.db,
-  })
+  if gui_auth ~= "openid-connect" then
+    local ok, err = invoke_plugin({
+      name = "session",
+      config = session_conf,
+      phases = { "header_filter" },
+      api_type = _M.apis.ADMIN,
+      db = kong.db,
+    })
 
-  if not ok then
-    log(ERR, _log_prefix, err)
-    return endpoints.handle_error(err)
+    if not ok then
+      log(ERR, _log_prefix, err)
+      return endpoints.handle_error(err)
+    end
   end
 
   self.consumer = ctx.authenticated_consumer
@@ -611,9 +649,20 @@ function _M.before_filter(self)
     local rbac_token = ngx.req.get_headers()[rbac_auth_header]
 
     if not rbac_token then
+      -- FIXME: As mentioned above, this block will be executed twice. Save the cookie header here
+      -- to prevent it from being cleared by the openid-connect plugin, thus avoiding failures in
+      -- subsequent executions.
+      -- Might need to find a better way to handle this.
+      local req_cookie_header
+      if kong.configuration.admin_gui_auth == "openid-connect" then
+        req_cookie_header = get_request_header()["Cookie"]
+      end
       _M.authenticate(self,
                       kong.configuration.enforce_rbac ~= "off",
                       kong.configuration.admin_gui_auth)
+      if kong.configuration.admin_gui_auth == "openid-connect" then
+        set_request_header("Cookie", req_cookie_header)
+      end
     end
     -- ngx.var.uri is used to look for exact matches
     -- self.route_name is used to look for wildcard matches,

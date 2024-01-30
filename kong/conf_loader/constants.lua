@@ -628,18 +628,6 @@ local LMDB_VALIDATION_TAG = string.format("%d.%d",
 
 --- XXX EE
 
-local ADMIN_GUI_AUTH_CONFIGS = {
-  ["openid-connect"] = {
-    response_mode = { default_value = "query", override = true },
-    logout_methods = { default_value = { "DELETE" }, override = true },
-    auth_methods = { default_value = { "authorization_code" }, override = true },
-    authenticated_groups_claim = { default_value = { "groups" }, override = false },
-    scopes = { default_value = { "openid", "profile", "email" }, override = false },
-    admin_auto_create = { default_value = true, override = false },
-    leeway = { default_value = 60, override = false },
-  }
-}
-
 ee_conf_loader.add(PREFIX_PATHS, ee_conf_loader.EE_PREFIX_PATHS)
 ee_conf_loader.add(CONF_PARSERS, ee_conf_loader.EE_CONF_INFERENCES)
 ee_conf_loader.add(CONF_SENSITIVE, ee_conf_loader.EE_CONF_SENSITIVE)
@@ -670,7 +658,4 @@ return {
   _NOP_TOSTRING_MT = _NOP_TOSTRING_MT,
 
   LMDB_VALIDATION_TAG = LMDB_VALIDATION_TAG,
-
-  --- XXX EE
-  ADMIN_GUI_AUTH_CONFIGS = ADMIN_GUI_AUTH_CONFIGS,
 }
