@@ -31,7 +31,7 @@ please repeat the next two parts.
 /Users/zachary/workspace/kong-ee
 ~ $ cd changelog
 
-~ $ make VERSION=3.6.0.0 generate_changelog
+~ $ make VERSION=3.6.0.0 generate
 ```
 
 Push changelog.

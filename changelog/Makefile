@@ -1,10 +1,10 @@
-.PHONY: generate_changelog push_changelog
+.PHONY: generate push_changelog
 
 VERSION = 3.x.y.z
 UNRELEASED_DIR = unreleased
 DEBUG = false
 
-generate_changelog:
+generate:
 	@rm -f $(VERSION).md
 	@touch $(VERSION).md
 
