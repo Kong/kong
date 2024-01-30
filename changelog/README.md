@@ -1,6 +1,6 @@
 # Setup
 
-Ensure binary `changelog` is available and executable.
+Ensure binary `changelog` is available and executable on your local system.
 
 ```bash
 ~ $ changelog
@@ -18,8 +18,8 @@ Prepare branch.
 ~ $ pwd
 /Users/zachary/workspace/kong-ee
 
-~ $ git fetch --all
-~ $ git checkout -b geneerate-3.6.0.0-changelog origin/master
+~ $ git fetch
+~ $ git checkout -b geneerate-3.6.0.0-changelog origin/next/3.6.x.x
 ```
 
 Generate changelog. Add option `DEBUG=true` to enable debug.
@@ -37,8 +37,10 @@ please repeat the next two parts.
 Push changelog.
 
 ```bash
-~ $ make VERSION=3.6.0.0 BRANCH_BASE=origin/master push_changelog
+~ $ make VERSION=3.6.0.0 BRANCH_BASE=origin/next/3.6.x.x push_changelog
 ```
+
+Please go to GitHub creating changelog PR.
 
 # Verify PRs
 

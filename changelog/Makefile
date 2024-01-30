@@ -101,7 +101,7 @@ generate_changelog:
 	@echo
 	@echo "Done! Please check $(VERSION)/$(VERSION).md"
 
-BRANCH_BASE = next/3.x.x.x
+BRANCH_BASE = origin/next/3.x.x.x
 push_changelog:
 	@git checkout -b generate-$(VERSION)-changelog $(BRANCH_BASE)
 	@git add .
