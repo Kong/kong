@@ -1,8 +1,11 @@
 # Setup
 
-Ensure binary `changelog` is available and executable on your local system.
+Download binary `changelog` from [Kong/gateway-changelog](https://github.com/Kong/gateway-changelog),
+and add it to environment variable `PATH`.
 
 ```bash
+~ $ PATH="/path/to/changelog:$PATH"
+
 ~ $ changelog
 changelog version 0.0.2
 ```
@@ -18,26 +21,9 @@ Prepare branch.
 ~ $ pwd
 /Users/zachary/workspace/kong-ee
 
-~ $ git fetch
-~ $ git checkout -b geneerate-3.6.0.0-changelog origin/next/3.6.x.x
-```
-
-Generate changelog. Add option `DEBUG=true` to enable debug.
-Suppose a new PR is merged after the changelog PR is created,
-please repeat the next two parts.
-
-```bash
-~ $ pwd
-/Users/zachary/workspace/kong-ee
 ~ $ cd changelog
 
-~ $ make VERSION=3.6.0.0 generate
-```
-
-Push changelog.
-
-```bash
-~ $ make VERSION=3.6.0.0 push_changelog
+~ $ make VERSION=3.6.0.0 BASE_BRANCH=origin/next/3.6.x.x
 ```
 
 Please go to GitHub creating changelog PR.
