@@ -202,6 +202,7 @@ local get_field_accessor = function(funcs, field) end
 
 
 if is_http then
+
   local fmt = string.format
   local ngx_null = ngx.null
   local re_split = require("ngx.re").split
@@ -390,7 +391,7 @@ function _M:get_value(field, params, ctx)
 end
 
 
-local function visit_for_context(ctx, field, value)
+local function visit_for_context(field, value, ctx)
   local prefix = field:sub(1, PREFIX_LEN)
 
   if prefix == HTTP_HEADERS_PREFIX or prefix == HTTP_QUERIES_PREFIX then
@@ -425,7 +426,7 @@ end
 local str_buf = buffer.new(64)
 
 
-local function visit_for_cache_key(_, field, value)
+local function visit_for_cache_key(field, value)
   -- these fields were not in cache key
   if field == "net.protocol" then
     return true
@@ -445,7 +446,7 @@ local function visit_for_cache_key(_, field, value)
   end
 
   if not headers_or_queries then
-    str_buf:put(value or ""):put("|")
+    str_buf:put(value or "", "|")
 
   else  -- headers or queries
     if type(value) == "table" then
@@ -460,10 +461,11 @@ local function visit_for_cache_key(_, field, value)
 end
 
 
-function _M:fields_visitor(params, ctx, cb)
+function _M:fields_visitor(params, ctx, cb, cb_arg)
   for _, field in ipairs(self.fields) do
     local value = self:get_value(field, params, ctx)
-    local res, err = cb(ctx, field, value)
+
+    local res, err = cb(field, value, cb_arg)
     if not res then
       return nil, err
     end
@@ -482,7 +484,7 @@ end
 
 
 function _M:fill_atc_context(ctx, params)
-  local res, err = self:fields_visitor(params, ctx, visit_for_context)
+  local res, err = self:fields_visitor(params, nil, visit_for_context, ctx)
   if not res then
     return nil, err
   end
