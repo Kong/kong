@@ -184,7 +184,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.not_nil(json)
-        assert.matches("Invalid authentication credentials", json.message)
+        assert.matches("Unauthorized", json.message)
         assert.equal('Basic realm="test-realm"', res.headers["WWW-Authenticate"])
       end)
 
@@ -200,7 +200,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.not_nil(json)
-        assert.matches("Invalid authentication credentials", json.message)
+        assert.matches("Unauthorized", json.message)
         assert.equal('Basic realm="test-realm"', res.headers["WWW-Authenticate"])
       end)
 
@@ -216,7 +216,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.not_nil(json)
-        assert.matches("Invalid authentication credentials", json.message)
+        assert.matches("Unauthorized", json.message)
         assert.equal('Basic realm="test-realm"', res.headers["WWW-Authenticate"])
       end)
 
@@ -232,7 +232,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.not_nil(json)
-        assert.matches("Invalid authentication credentials", json.message)
+        assert.matches("Unauthorized", json.message)
         assert.equal('Basic realm="test-realm"', res.headers["WWW-Authenticate"])
       end)
 
@@ -308,7 +308,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.not_nil(json)
-        assert.matches("Invalid authentication credentials", json.message)
+        assert.matches("Unauthorized", json.message)
         assert.equal('Basic realm="test-realm"', res.headers["WWW-Authenticate"])
       end)
 
