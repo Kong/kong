@@ -1,8 +1,8 @@
-.PHONY: generate
+.PHONY: generate github_pr
 
-VERSION=3.x.y.z
-UNRELEASED_DIR=unreleased
-DEBUG=false
+VERSION = 3.x.y.z
+UNRELEASED_DIR = unreleased
+DEBUG = false
 
 generate:
 	@rm -f $(VERSION).md
@@ -98,3 +98,11 @@ generate:
 	@mkdir -p $(UNRELEASED_DIR)/{kong,kong-ee,kong-manager-ee,kong-portal-ee}
 	@touch $(UNRELEASED_DIR)/{kong,kong-ee,kong-manager-ee,kong-portal-ee}/.gitkeep
 	@echo "Done! Please check $(VERSION)/$(VERSION).md"
+
+PR_BASE = origin/master
+github_pr:
+	@git checkout -b geneerate-$(VERSION)-changelog $(PR_BASE)
+	@git add .
+	@git commit -m "docs(release): genereate $(VERSION) changelog"
+	@git push -u origin HEAD
+	@echo "Changelog branch pushed to Github. Please create PR overthere."
