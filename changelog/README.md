@@ -25,8 +25,8 @@ Add `DEBUG=true` to show more detailed output.
 ~ $ make VERSION=3.6.0.0 BASE_BRANCH=origin/next/3.6.x.x
 ```
 
-If a PR is merged after the changelog PR is created or merged,
-please repeat this section.
+If a PR with changelog is merged after the changelog PR is created
+or merged, please repeat this section.
 
 # Verify PRs
 
