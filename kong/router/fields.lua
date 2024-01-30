@@ -383,7 +383,7 @@ local function visit_for_cache_key(field, value, str_buf)
     value = tb_concat(value, ",")
   end
 
-  str_buf:putf("%s=%s|", field, value or "")
+  str_buf:put(value or "", "|")
 
   return true
 end
