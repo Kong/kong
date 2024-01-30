@@ -63,15 +63,10 @@ return {
     end,
 
     GET = function(self, db, _, parent)
-      local args = self.args.uri
-      if not args.counter then
-        return parent()
-      end
 
       local next_url = {}
       local next_page = null
-
-      local data, _, err_t, offset = endpoints.page_collection(self, db, kong.db.workspaces.schema)
+      local data, _, err_t, offset = endpoints.page_collection(self, db, kong.db.workspaces.schema, "page_by_rbac")
       if err_t then
         return endpoints.handle_error(err_t)
       end
@@ -84,8 +79,11 @@ return {
         next_page = "/workspaces?" .. table.concat(next_url, "&")
       end
 
-      for _, workspace in pairs(data) do
-        workspace['counters'] = counters.entity_counts(workspace.id)
+      local args = self.args.uri
+      if args.counter then
+        for _, workspace in pairs(data) do
+          workspace['counters'] = counters.entity_counts(workspace.id)
+        end
       end
 
       setmetatable(data, cjson.empty_array_mt)

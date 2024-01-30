@@ -6,6 +6,9 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers     = require "spec.helpers"
+local ee_helpers  = require "spec-ee.helpers"
+local enums       = require "kong.enterprise_edition.dao.enums"
+local rbac        = require "kong.rbac"
 local cjson       = require "cjson"
 local utils       = require "kong.tools.utils"
 local workspaces  = require "kong.workspaces"
@@ -17,6 +20,22 @@ local PORTAL_SESSION_CONF = {
   cookie_name = "portal_cookie",
   secret = "shh"
 }
+
+local function insert_read_only_roles(db, workspace)
+  local role = assert(db.rbac_roles:insert({
+    id = utils.uuid(),
+    name = "workspaces-read-only",
+    comment = "Read-only access initial RBAC resources",
+  }, { workspace = workspace.id }))
+  
+  assert( db.rbac_role_endpoints:insert({
+    role = { id = role.id, },
+    workspace = workspace.name,
+    endpoint = "*",
+    actions = rbac.actions_bitfields.read,
+  }))
+end
+
 for _, strategy in helpers.each_strategy() do
 
 describe("Workspaces Admin API (#" .. strategy .. "): ", function()
@@ -364,7 +383,92 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
       end)
     end)
 
-    describe("GET", function()
+    describe("GET with rbac", function()
+      local workspaces_num = 20
+      lazy_setup(function()
+        helpers.stop_kong()
+        db:truncate("workspaces")
+        db:truncate("services")
+        db:truncate("consumers")
+        assert(helpers.start_kong({
+          database               = strategy,
+          admin_gui_auth         = "basic-auth",
+          admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
+          nginx_conf             = "spec/fixtures/custom_nginx.template",
+          enforce_rbac           = "on",
+        }))
+        ee_helpers.register_rbac_resources(db)
+        for i = 1, workspaces_num, 1 do
+          local ws_name = "ws" .. i
+          local ws = assert(db.workspaces:insert({
+            name = ws_name,
+          }))
+          insert_read_only_roles(db, ws)
+        end
+      end)
+
+      it("the super-admin should retrieve all workspaces", function()
+        local token = "letmein-default"
+        local res = assert(client:send {
+          method  = "GET",
+          path    = "/workspaces",
+          headers = {
+            ["Content-Type"] = "application/json",
+            ["Kong-Admin-Token"] = token,
+          }
+        })
+        
+        local response = cjson.decode(assert.res_status(200, res))
+        assert.equals(1 + workspaces_num, #response.data)
+      end)
+      
+        it("the non-super-admin should retrieve have permission of the workpsace", function()
+          local token = "non_super_admin_token"
+          local rbac_user = db.rbac_users:insert({
+            name = "non-super-admin",
+            user_token = token,
+          })
+
+          local workspaces_num = 5
+          for i = 1, workspaces_num, 1 do
+            local workspace = db.workspaces:select_by_name("ws" .. i)
+            local admin_role = db.rbac_roles:select_by_name("workspaces-read-only", { workspace = workspace.id })
+
+            assert(db.rbac_user_roles:insert({
+              user = rbac_user,
+              role = admin_role,
+            }))
+          end
+          
+          local res = assert(client:send {
+            method  = "GET",
+            path    = "/workspaces?size=4",
+            headers = {
+              ["Content-Type"] = "application/json",
+              ["Kong-Admin-Token"] = token,
+            }
+          })
+
+          local response = cjson.decode(assert.res_status(200, res))
+          assert.equals(4, #response.data)
+          assert.is_not_nil(response.offset)
+          
+          res = assert(client:send {
+            method  = "GET",
+            path    = "/workspaces?offset="..response.offset,
+            headers = {
+              ["Content-Type"] = "application/json",
+              ["Kong-Admin-Token"] = token,
+            }
+          })
+
+          response = cjson.decode(assert.res_status(200, res))
+          assert.equals(1, #response.data)
+          assert.is_nil(response.offset)
+      end)
+    end)
+
+    describe("GET without rbac", function()
       lazy_setup(function()
         helpers.stop_kong()
         db:truncate("workspaces")

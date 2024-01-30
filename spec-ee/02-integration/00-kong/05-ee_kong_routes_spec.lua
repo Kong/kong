@@ -304,8 +304,14 @@ for _, strategy in helpers.each_strategy() do
 
           -- includes workspace admin is not "linked" in
           assert.equal(2, #json.workspaces)
-          assert.equal("test-ws", json.workspaces[1].name)
-          assert.equal("test-ws-1", json.workspaces[2].name)
+          local workspaces = json.workspaces
+          table.sort(workspaces, function(a, b)
+            if a.name == b.name then
+              return false
+            end
+            return a.name > b.name
+          end)
+          assert.same({ "test-ws-1", "test-ws" }, { workspaces[1].name, workspaces[2].name })
         end
       end)
     end)

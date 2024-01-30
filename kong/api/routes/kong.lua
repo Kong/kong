@@ -52,6 +52,7 @@ local strip_foreign_schemas = function(fields)
 end
 
 local function ws_and_rbac_helper(self)
+  self.workspaces = {}
   local admin_auth = kong.configuration.admin_gui_auth
 
   if not admin_auth and not ngx.ctx.rbac then
@@ -99,11 +100,9 @@ local function ws_and_rbac_helper(self)
   local cache_key = kong.db.rbac_user_groups:cache_key(ngx.ctx.rbac.user.id)
   kong.cache:invalidate(cache_key)
 
-  -- get roles across all workspaces
-  local roles, err = rbac.get_user_roles(kong.db, ngx.ctx.rbac.user, null)
-  local group_roles = rbac.get_groups_roles(kong.db, ngx.ctx.rbac.user, null)
-  roles = rbac.merge_roles(roles, group_roles)
-  ee_api.attach_workspaces_roles(self, roles)
+  -- get roles across all workspaces (except for the wildcard "*" one, the 3rd argument)
+  local wss, roles = rbac.find_all_ws_for_rbac_user(ngx.ctx.rbac.user, ngx.null, false)
+  self.workspaces = wss
 
   if err then
     log(ERR, "[userinfo] ", err)

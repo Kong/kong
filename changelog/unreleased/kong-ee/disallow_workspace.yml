@@ -1,0 +1,4 @@
+message: "The workspace listing API only shows workspaces that the current user has endpoints associated with"
+type: "bugfix"
+scope: "Admin API"
+

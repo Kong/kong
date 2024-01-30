@@ -1298,6 +1298,10 @@ function _M.authorize_request_endpoint(map, workspace, endpoint, route_name, act
     endpoint = ngx.re.gsub(endpoint, "^/" .. workspace, "")
   end
 
+  if action == actions_bitfields.read and endpoint == "/workspaces" then
+    return true
+  end
+
   for _, workspace in ipairs{workspace, "*"} do
     if map[workspace] then
       for _, endpoint in ipairs(get_endpoints(workspace, endpoint, route_name)) do
@@ -1547,61 +1551,28 @@ load_rbac_ctx = function(rbac_user)
     end
   end
 
-  local user_ws_scope, err = _M.find_all_ws_for_rbac_user(user, null)
+  local user_ws_scope, _roles, err = _M.find_all_ws_for_rbac_user(user, null, true)
   if err then
     kong.log.err(err)
     return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   if not user_ws_scope or #user_ws_scope == 0 then
-    return kong.response.exit(401, {message = "Invalid RBAC credentials"})
+    return kong.response.exit(401, { message = "Invalid RBAC credentials" })
   end
 
-  local _roles = {}
   local _entities_perms = {}
   local _endpoints_perms = {}
-  local group_roles, err = _M.get_groups_roles(kong.db, user, null)
-  if err then
-    kong.log.err("error getting groups roles", err)
-    return kong.response.exit(500, { message = "An unexpected error occurred" })
-  end
-
-  for _, workspace in ipairs(user_ws_scope) do
-    if workspace and workspace ~= null and workspace.name == '*' then
-      workspace = null
-    else
-      workspace = workspace.id
-    end
-
-    local roles, err = get_user_roles(kong.db, user, workspace)
-    if err then
-      kong.log.err("error getting user roles", err)
-      return kong.response.exit(500, { message = "An unexpected error occurred" })
-    end
-
-    roles = _M.merge_roles(roles, group_roles)
-
-    if err then
-      return nil, err
-    end
-    for _, role in pairs(roles) do
-      _roles[#_roles + 1] = role
-    end
-  end
-
-  local entities_perms = {}
   if kong.configuration and
-    (kong.configuration.rbac == "both" or
-    kong.configuration.rbac == "entity") then
-    local err, _
-    entities_perms, _, err = resolve_role_entity_permissions(_roles)
+      (kong.configuration.rbac == "both" or
+        kong.configuration.rbac == "entity") then
+    local entities_perms, _, err = resolve_role_entity_permissions(_roles)
     if err then
       return nil, err
     end
-  end
-
-  for id, perm in pairs(entities_perms) do
-    _entities_perms[id] = perm
+    for id, perm in pairs(entities_perms or {}) do
+      _entities_perms[id] = perm
+    end
   end
 
   local endpoints_perms, _, err = resolve_role_endpoint_permissions(_roles)
@@ -1609,7 +1580,7 @@ load_rbac_ctx = function(rbac_user)
     return nil, err
   end
 
-  for id, perm in pairs(endpoints_perms) do
+  for id, perm in pairs(endpoints_perms or {}) do
     _endpoints_perms[id] = perm
   end
 
@@ -1813,65 +1784,74 @@ function _M.check_cascade(entities, rbac_ctx)
   return true
 end
 
-function _M.find_all_ws_for_rbac_user(rbac_user, workspace)
+function _M.find_all_ws_for_rbac_user(rbac_user, workspace, with_wildcard_workspace)
     -- get roles across all workspaces
   local roles, err = _M.get_user_roles(kong.db, rbac_user, workspace)
   if err then
-    return nil, err
+    return nil, nil, err
   end
 
   local group_roles, err = _M.get_groups_roles(kong.db, rbac_user, workspace)
 
   if err then
-    return nil, err
+    return nil, nil, err
   end
 
   roles = _M.merge_roles(roles, group_roles)
 
   local wss = {}
-  local wsNameMap = {}
+  local ws_map = {}
 
   local opts = { workspace = null, show_ws_id = true }
   for _, role in ipairs(roles) do
-    for _, role_endpoint in ipairs(_M.get_role_endpoints(kong.db, role, opts)) do
-      local wsName = role_endpoint.workspace
-      if wsName == "*" then
-        if not wsNameMap[wsName] then
-          wss[#wss + 1] = { name = "*" }
-          wsNameMap["*"] = true
-        end
-      else
-        if not wsNameMap[wsName] then
-          local ws = workspaces.select_workspace_by_name_with_cache(wsName)
-          if ws then
-            wsNameMap[wsName] = true
-            ws.meta = nil
-            wss[#wss + 1] = ws
-          end
+    if role.is_default then
+      goto continue
+    end
+
+    local workspace_id = role.ws_id
+
+    if with_wildcard_workspace and not ws_map["*"] then
+      local rbac_endpoints = _M.get_role_endpoints(kong.db, role, opts)
+      if rbac_endpoints and tablex.size(rbac_endpoints) > 0 then
+        -- As we are selecting rbac_endpoints with a specific `role`, and then sorting them by their
+        -- `workspace` column, alphabetically, we can determine if the role contains endpoints scoped
+        -- to the wildcard "*" workspace.
+        if rbac_endpoints[1].workspace == "*" then
+          workspace_id = "*"
         end
       end
     end
-  end
 
-  local rbac_user_ws_id = assert(rbac_user.ws_id)
-  local ws, err = workspaces.select_workspace_by_id_with_cache(rbac_user_ws_id)
-  if not ws then
-    return nil, err
+    if not ws_map[workspace_id] then
+      ws_map[workspace_id] = true
+      if workspace_id == "*" then
+        wss[#wss + 1] = { name = "*" }
+      else
+        local ws = workspaces.select_workspace_by_id_with_cache(workspace_id)
+        if ws then
+          ws.meta = nil
+          wss[#wss + 1] = ws
+        end
+      end
+    end
+
+    ::continue::
   end
-  ws.meta = nil
 
   -- hide the workspace associated with the admin's rbac_user most of the time,
   -- but if there is no known workspace or the only workspace is '*', mark it as
   -- belonging to the admin
-  local numberOfWorkspaces = tablex.size(wsNameMap)
-  if not wsNameMap[ws.name] and
-    ((numberOfWorkspaces == 1 and next(wsNameMap) == '*') or numberOfWorkspaces == 0)
-  then
-    ws.is_admin_workspace = true
-    wss[#wss + 1] = ws
+  local ws_count = tablex.size(ws_map)
+  if (ws_count == 1 and ws_map["*"]) or ws_count == 0 then
+    local rbac_user_ws_id = assert(rbac_user.ws_id)
+    local ws = utils.shallow_copy(workspaces.select_workspace_by_id_with_cache(rbac_user_ws_id))
+    if not ws_map[ws and ws.id] then
+      ws.is_admin_workspace = true
+      wss[#wss + 1] = ws
+    end
   end
 
-  return wss
+  return wss, roles, nil
 end
 
 do

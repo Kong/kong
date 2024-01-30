@@ -105,7 +105,7 @@ function _M.find_all(all_workspaces)
   setmetatable(ws_admins, cjson.empty_array_mt)
   for _, v in ipairs(all_admins) do
     local rbac_user = kong.db.rbac_users:select(v.rbac_user, { workspace = null, show_ws_id = true })
-    v.workspaces = rbac.find_all_ws_for_rbac_user(rbac_user, null)
+    v.workspaces = rbac.find_all_ws_for_rbac_user(rbac_user, null, true)
 
     for _, ws in ipairs(v.workspaces) do
       if all_workspaces or ws.id == ngx.ctx.workspace then
@@ -570,7 +570,7 @@ function _M.find_by_username_or_id(username_or_id, raw, require_workspace_ctx)
 
   local rbac_user = kong.db.rbac_users:select(admin.rbac_user, { workspace = null, show_ws_id = true })
 
-  local wss, err = rbac.find_all_ws_for_rbac_user(rbac_user, null)
+  local wss, _, err = rbac.find_all_ws_for_rbac_user(rbac_user, null, true)
 
   admin.workspaces = wss
 
@@ -611,11 +611,11 @@ function _M.workspaces_for_admin(username_or_id)
   end
 
   if not admin then
-    return { code = 404, body = { message = "not found" }}
+    return { code = 404, body = { message = "not found" } }
   end
 
   local rbac_user = kong.db.rbac_users:select(admin.rbac_user, { workspace = null, show_ws_id = true })
-  local wss = rbac.find_all_ws_for_rbac_user(rbac_user, null)
+  local wss = rbac.find_all_ws_for_rbac_user(rbac_user, null, true)
 
   return {
     code = 200,

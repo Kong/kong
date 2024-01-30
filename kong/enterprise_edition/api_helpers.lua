@@ -359,31 +359,6 @@ function _M.attach_consumer(self, consumer_id)
   self.consumer = consumer
 end
 
-function _M.attach_workspaces_roles(self, roles)
-  if not roles then
-    return
-  end
-
-  for _, role in ipairs(roles) do
-    local rbac_role, err = get_with_cache("rbac_roles", role.id, ngx.null)
-    if err then
-      kong.log.err("Error fetching role: ", role.id, ": ", err)
-      return endpoints.handle_error()
-    end
-
-    if not self.workspaces_hash[rbac_role.ws_id] then
-      local ws, err = workspaces.select_workspace_by_id_with_cache(rbac_role.ws_id)
-      if err then
-        kong.log.err("Error fetching workspace for role: ", role.id, ": ", err)
-        return endpoints.handle_error()
-      end
-
-      table.insert(self.workspaces, ws)
-      self.workspaces_hash[ws.id] = ws
-    end
-  end
-end
-
 
 function _M.attach_workspaces(self, consumer_id)
   local consumer, ws, err

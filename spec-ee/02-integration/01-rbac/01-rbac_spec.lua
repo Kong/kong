@@ -1050,30 +1050,33 @@ for _, strategy in spec_helpers.each_strategy() do
 
 
       it("returns only single workspace associated with rbac_user when role endpoint is '*'", function()
-        local wss, err = rbac.find_all_ws_for_rbac_user(users[1].user, null)
+        local wss, roles, err = rbac.find_all_ws_for_rbac_user(users[1].user, null, true)
 
         assert.is_nil(err)
         assert.not_nil(wss)
         assert.equal(2, #wss)
+        assert.not_nil(roles)
         assert.is_true(includes(wss, {name = "*"}, 'name'))
         assert.is_true(includes(wss, default_ws, 'name'))
       end)
 
       it("returns workspaces of roles associated with rbac_user in another ws only", function()
-        local wss, err = rbac.find_all_ws_for_rbac_user(users[2].user, null)
+        local wss, roles, err = rbac.find_all_ws_for_rbac_user(users[2].user, null, true)
 
         assert.is_nil(err)
         assert.not_nil(wss)
         assert.equal(1, #wss)
+        assert.not_nil(roles)
         assert.equal(wss[1].name, another_ws.name)
       end)
 
       it("returns workspaces of roles associated with rbac_user", function()
-        local wss, err = rbac.find_all_ws_for_rbac_user(users[3].user, null)
+        local wss, roles, err = rbac.find_all_ws_for_rbac_user(users[3].user, null, true)
 
         assert.is_nil(err)
         assert.not_nil(wss)
         assert.equal(2, #wss)
+        assert.not_nil(roles)
         assert.is_true(includes(wss, another_ws, 'name'))
         assert.is_true(includes(wss, {name = "*"}, 'name'))
         assert.is_false(includes(wss, {name = "nope"}, 'name'))
@@ -1081,21 +1084,23 @@ for _, strategy in spec_helpers.each_strategy() do
       end)
 
       it("returns workspaces of rbac_user when no roles are defined", function()
-        local wss, err = rbac.find_all_ws_for_rbac_user(users[4].user, null)
+        local wss, roles, err = rbac.find_all_ws_for_rbac_user(users[4].user, null, true)
 
         assert.is_nil(err)
         assert.not_nil(wss)
         assert.equal(1, #wss)
+        assert.not_nil(roles)
         assert.is_nil(users[4].role)
         assert.equal(wss[1].name, default_ws.name)
       end)
 
       it("returns '*' workspaces of rbac_user only once", function()
-        local wss, err = rbac.find_all_ws_for_rbac_user(users[5].user, null)
+        local wss, roles, err = rbac.find_all_ws_for_rbac_user(users[5].user, null, true)
 
         assert.is_nil(err)
         assert.not_nil(wss)
         assert.equal(#wss, 2)
+        assert.not_nil(roles)
         assert.is_true(includes(wss, default_ws, "name"))
         assert.is_true(includes(wss, { name = "*" }, "name"))
       end)
