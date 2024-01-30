@@ -1,0 +1,4 @@
+message: reduce message push error log when cluster_telemetry_endpoint config is disabled
+type: bugfix
+scope: Clustering
+

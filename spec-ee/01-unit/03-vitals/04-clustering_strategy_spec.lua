@@ -18,6 +18,7 @@ describe("Hybrid vitals", function()
         kong.configuration = {
             role = "control_plane",
             vitals = true,
+            cluster_telemetry_endpoint = "http://localhost:9006",
             license_path = "spec-ee/fixtures/mock_license.json",
             portal_and_vitals_key = get_portal_and_vitals_key(),
         }

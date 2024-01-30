@@ -297,17 +297,23 @@ function _M.new(opts)
   local hybrid_cp = false
 
   if kong.configuration.role ~= "traditional" then
-    local db_strategy = require "kong.enterprise_edition.counters.sales.strategies.clustering"
-    local err
-    strategy, err = db_strategy.new(strategy, {
-      node_id = opts.node_id
-    })
-    if not strategy then
-      log(ERR, _log_prefix, "failed to initialize strategy, check: ", err)
-      return
+    if kong.configuration.cluster_telemetry_endpoint and kong.configuration.cluster_telemetry_endpoint ~= "NONE" then
+      local db_strategy = require "kong.enterprise_edition.counters.sales.strategies.clustering"
+      local err
+      strategy, err = db_strategy.new(strategy, {
+        node_id = opts.node_id
+      })
+      if not strategy then
+        log(ERR, _log_prefix, "failed to initialize strategy, check: ", err)
+        return
+      end
+      hybrid_cp = kong.configuration.role == "control_plane"
+      log(DEBUG, _log_prefix, "loading clustering strategy, is CP: ", hybrid_cp)
+
+    else
+      log(DEBUG, _log_prefix, "loading off strategy")
+      strategy = require "kong.enterprise_edition.counters.sales.strategies.off":new()
     end
-    hybrid_cp = kong.configuration.role == "control_plane"
-    log(DEBUG, _log_prefix, "loading clustering strategy, is CP: ", hybrid_cp)
   end
 
   local self = {
@@ -329,6 +335,11 @@ function _M:init()
   local node_id, err = knode.get_id()
   if err then
     log(ERR, _log_prefix, "failed to get node_id ", err)
+    return
+  end
+
+    if kong.configuration.cluster_telemetry_endpoint == nil or kong.configuration.cluster_telemetry_endpoint == "NONE" then
+    log(ERR, _log_prefix, "cluster_telemetry_endpoint is NONE, bypass initializing strategy")
     return
   end
 
