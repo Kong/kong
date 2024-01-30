@@ -595,7 +595,7 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
   describe(fmt("%s - signing consumers with consumer mapping", plugin_name), function()
     local consumer
     lazy_setup(function()
-      bp = helpers.get_db_utils(strategy, nil, { plugin_name })
+      bp = helpers.get_db_utils(strategy, nil, { plugin_name , "ctx-checker-last" })
       local route = bp.routes:insert({ paths = { "/no-consumer-no-consumer-claim" }, })
       assert(bp.plugins:insert({
         name = plugin_name,
@@ -652,9 +652,18 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
       consumer = assert(bp.consumers:insert({
         username = "John Doe"
       }))
+
+      assert(bp.plugins:insert({
+        name     = "ctx-checker-last",
+        route = { id = route4.id },
+        config   = {
+          ctx_check_field = "authenticated_consumer",
+        }
+      }))
+
       assert(helpers.start_kong({
         database   = strategy,
-        plugins    = plugin_name,
+        plugins    = "bundled, ctx-checker-last, " .. plugin_name,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
       admin_client = helpers.admin_client()
@@ -740,6 +749,27 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
       assert.logfile().has.line("access token jws")
       assert.logfile().has_not.line("consumer claim could not be found")
       assert.logfile().has_not.line("consumer could not be found")
+    end)
+    it("check ctx when returns auth success", function()
+      local res = assert(proxy_client:send {
+        method = "get",
+        path = "/consumer-claims-consumer-found",
+        headers = {
+          ["authorization"] = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+        }
+      })
+      assert.response(res).has.status(200)
+      local username = assert.request(res).has.header("X-Consumer-Username")
+      local id = assert.request(res).has.header("X-Consumer-ID")
+      assert.equal(username, consumer.username)
+      assert.equal(id, consumer.id)
+      assert.request(res).has_not.header("X-Anonymous-Consumer")
+      assert.logfile().has.line("access token present")
+      assert.logfile().has.line("access token jws")
+      assert.logfile().has_not.line("consumer claim could not be found")
+      assert.logfile().has_not.line("consumer could not be found")
+      assert.not_nil(res.headers["ctx-checker-last-authenticated-consumer"])
+      assert.matches(consumer.username, res.headers["ctx-checker-last-authenticated-consumer"])
     end)
   end)
 

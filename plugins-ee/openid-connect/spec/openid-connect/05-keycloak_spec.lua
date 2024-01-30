@@ -2034,7 +2034,8 @@ for _, strategy in helpers.all_strategies() do
           "plugins",
           "consumers",
         }, {
-          PLUGIN_NAME
+          PLUGIN_NAME,
+          "ctx-checker-last"
         })
         local service = bp.services:insert {
           name = PLUGIN_NAME,
@@ -2320,6 +2321,14 @@ for _, strategy in helpers.all_strategies() do
           paths   = { "/consumer" },
         }
 
+        bp.plugins:insert({
+          name     = "ctx-checker-last",
+          route = { id = consumer_route.id },
+          config   = {
+            ctx_check_field = "authenticated_consumer",
+          }
+        })
+
         bp.plugins:insert {
           route   = consumer_route,
           name    = PLUGIN_NAME,
@@ -2402,7 +2411,7 @@ for _, strategy in helpers.all_strategies() do
         assert(helpers.start_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
-          plugins    = "bundled," .. PLUGIN_NAME,
+          plugins    = "bundled,ctx-checker-last," .. PLUGIN_NAME,
         }))
       end)
 
@@ -2572,6 +2581,22 @@ for _, strategy in helpers.all_strategies() do
           local h2 = assert.request(res).has.header("x-consumer-username")
           assert.equals("consumer-id-1", h1)
           assert.equals("john", h2)
+        end)
+
+        it("grants access for existing consumer with consumer ctx check", function ()
+          local res = proxy_client:get("/consumer", {
+            headers = {
+              Authorization = PASSWORD_CREDENTIALS
+            },
+          })
+          assert.response(res).has.status(200)
+          local h1 = assert.request(res).has.header("x-consumer-custom-id")
+          assert.request(res).has.header("x-consumer-id")
+          local h2 = assert.request(res).has.header("x-consumer-username")
+          assert.equals("consumer-id-1", h1)
+          assert.equals("john", h2)
+          assert.not_nil(res.headers["ctx-checker-last-authenticated-consumer"])
+          assert.matches("john", res.headers["ctx-checker-last-authenticated-consumer"])
         end)
 
 
@@ -3116,6 +3141,7 @@ for _, strategy in helpers.all_strategies() do
         local anon = bp.consumers:insert {
           username = "anonymous"
         }
+
         bp.plugins:insert {
           route   = anon_route,
           name    = PLUGIN_NAME,

@@ -1,0 +1,3 @@
+message: "**oauth2-introspection**: support for consumer group scoping by using pdk `kong.client.authenticate` function"
+type: bugfix
+scope: Plugin

@@ -59,20 +59,19 @@ local function set_consumer(ctx, consumer, credential)
   if consumer then
     log("setting kong consumer context and headers")
 
-    ctx.authenticated_consumer = consumer
-
     if credential and credential ~= null then
-      ctx.authenticated_credential = credential
+      kong.client.authenticate(consumer, credential)
 
     else
       set_header(head.ANONYMOUS, nil)
 
       if consumer.id and consumer.id ~= null then
-        ctx.authenticated_credential = {
+        local lcredential = {
           consumer_id = consumer.id
         }
+        kong.client.authenticate(consumer, lcredential)
       else
-        ctx.authenticated_credential = nil
+        kong.client.authenticate(consumer)
       end
     end
 

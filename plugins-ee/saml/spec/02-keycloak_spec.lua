@@ -235,7 +235,7 @@ for _, strategy in helpers.all_strategies() do
                 "services",
                 "plugins",
                                                       }, {
-                PLUGIN_NAME
+                PLUGIN_NAME, "ctx-checker-last",
             })
 
             local service = bp.services:insert {
@@ -248,7 +248,7 @@ for _, strategy in helpers.all_strategies() do
             }
 
             bp.consumers:insert {
-              username = "samluser1",
+              username = "samluser1@konghq.com",
             }
 
             local route_anon = bp.routes:insert {
@@ -260,6 +260,14 @@ for _, strategy in helpers.all_strategies() do
               service = service,
               paths   = { "/non-anon" },
             }
+
+            bp.plugins:insert({
+              name     = "ctx-checker-last",
+              route = { id = route_non_anon.id },
+              config   = {
+                ctx_check_field = "authenticated_consumer",
+              }
+            })
 
             local idp_cert = retrieve_cert_from_idp()
 
@@ -336,7 +344,7 @@ for _, strategy in helpers.all_strategies() do
             assert(helpers.start_kong({
                   database   = db_strategy,
                   nginx_conf = "spec/fixtures/custom_nginx.template",
-                  plugins    = "bundled," .. PLUGIN_NAME,
+                  plugins    = "bundled,ctx-checker-last," .. PLUGIN_NAME,
             }))
         end)
 
@@ -441,6 +449,44 @@ for _, strategy in helpers.all_strategies() do
             assert.equal(302, response.status)
 
         end)
+
+        it("check authenticated_consumer ctx when SP request with consumer is successful", function()
+          local res = proxy_client:get("/non-anon", {
+              headers = {
+                ["Host"] = "kong",
+                ["Accept"] = "text/html",
+              }
+          })
+          local saml_response, relay_state = sp_init_flow(res, USERNAME, PASSWORD)
+          local response, err = proxy_client:post("/non-anon/consume", {
+              headers = {
+                ["Host"] = "kong",
+                ["Content-Type"] = "application/x-www-form-urlencoded",
+              },
+              body = "SAMLResponse=" .. ngx.escape_uri(saml_response) .. "&RelayState=" .. ngx.escape_uri(relay_state),
+          })
+          assert.is_nil(err)
+          assert.equal(302, response.status)
+          local redirect_uri = response.headers["Location"]
+          assert.not_nil(redirect_uri)
+          local cookie = response.headers["Set-Cookie"]
+
+          -- reinit proxy_client
+          proxy_client:close()
+          proxy_client = helpers.proxy_client()
+
+          local redirect_res, err = proxy_client:get(redirect_uri, {
+            headers = {
+              ["Host"] = "kong",
+              ["Accept"] = "text/html",
+              ["Cookie"] = cookie,
+            }
+          })
+
+          assert.is_nil(err)
+          assert.equal(200, redirect_res.status)
+          assert.matches("samluser1", redirect_res.headers["ctx-checker-last-authenticated-consumer"])
+      end)
 
         it("invalid SAMLResponse posted to /consume callback results in 400 error", function()
             local response, err = proxy_client:post("/anon/consume", {

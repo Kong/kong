@@ -302,7 +302,6 @@ end
 
 -- in case of auth plugins concatenation, remove remnants of anonymous
 local function remove_headers(consumer)
-  ngx.ctx.authenticated_consumer = nil
   ngx_set_header(constants.HEADERS.ANONYMOUS, nil)
 
   if not consumer then
@@ -315,8 +314,10 @@ end
 
 local function set_consumer(consumer, credential, anonymous)
   if credential then
+    kong.client.authenticate(consumer, credential)
     ngx_set_header(constants.HEADERS.CREDENTIAL_IDENTIFIER, credential.username)
-    ngx.ctx.authenticated_credential = credential
+  else
+    kong.client.authenticate(consumer)
   end
 
   if consumer and not anonymous then
@@ -325,7 +326,6 @@ local function set_consumer(consumer, credential, anonymous)
     ngx_set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
     remove_headers(consumer)
 
-    ngx.ctx.authenticated_consumer = consumer
     return
   end
 
@@ -334,7 +334,7 @@ local function set_consumer(consumer, credential, anonymous)
     ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
     ngx_set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
     ngx_set_header(constants.HEADERS.ANONYMOUS, true)
-    ngx.ctx.authenticated_consumer = consumer
+
     return
   end
 

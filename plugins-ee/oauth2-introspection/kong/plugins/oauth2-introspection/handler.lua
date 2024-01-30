@@ -249,9 +249,10 @@ local function do_authentication(conf)
   local consumer_by = conf.consumer_by or CONSUMER_BY_DEFAULT
 
   local credential_obj = credential.res
+  local consumer, err
   if credential_obj and credential_obj[consumer_by] then
     cache_key = consumers_username_key(credential_obj[consumer_by])
-    local consumer, err = cache:get(cache_key, nil, load_consumer,
+    consumer, err = cache:get(cache_key, nil, load_consumer,
                                       credential_obj[consumer_by],
                                       consumer_by)
 
@@ -281,7 +282,7 @@ local function do_authentication(conf)
     end
   end
 
-  ngx.ctx.authenticated_credential = credential_obj
+  kong.client.authenticate(consumer, credential_obj)
 
   -- Set upstream headers
   ngx_set_header("x-credential-scope", credential_obj.scope)

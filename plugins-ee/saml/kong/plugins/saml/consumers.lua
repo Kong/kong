@@ -26,7 +26,7 @@ local function set_consumer(ctx, consumer)
   if consumer then
     log("setting kong consumer context and headers")
 
-    ctx.authenticated_consumer = consumer
+    kong.client.authenticate(consumer)
 
     if consumer.id and consumer.id ~= null then
       set_header(headers.CONSUMER_ID, consumer.id)

@@ -98,7 +98,7 @@ for _ , strategy in strategies() do
     local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(db_strategy, nil, {"oauth2-introspection"})
+      local bp = helpers.get_db_utils(db_strategy, nil, {"oauth2-introspection", "ctx-checker-last"})
 
       local route1 = bp.routes:insert {
         name = "route-1",
@@ -113,6 +113,14 @@ for _ , strategy in strategies() do
           ttl = 1
         }
       }
+
+      assert(bp.plugins:insert({
+        name     = "ctx-checker-last",
+        route = { id = route1.id },
+        config   = {
+          ctx_check_field = "authenticated_consumer",
+        }
+      }))
 
       local route1_cid = bp.routes:insert {
         name = "route-1cid",
@@ -244,7 +252,7 @@ for _ , strategy in strategies() do
 
       assert(helpers.start_kong({
         database = db_strategy,
-        plugins = "bundled,oauth2-introspection",
+        plugins = "bundled,oauth2-introspection,ctx-checker-last",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }, nil, nil, fixtures))
 
@@ -382,6 +390,23 @@ for _ , strategy in strategies() do
           assert.equal("bob" , body.headers["x-consumer-username"])
           assert.is_string(body.headers["x-consumer-id"])
           assert.is_nil(res.headers["x-ratelimit-limit-minute"])
+        end)
+
+        it("associates a consumer by oauth2 username and check ctx" , function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/request?access_token=valid_consumer",
+            headers = {
+              ["Host"] = "introspection.test"
+            }
+          })
+
+          local body = cjson.decode(assert.res_status(200 , res))
+          assert.equal("bob" , body.headers["x-consumer-username"])
+          assert.is_string(body.headers["x-consumer-id"])
+          assert.is_nil(res.headers["x-ratelimit-limit-minute"])
+          assert.not_nil(res.headers["ctx-checker-last-authenticated-consumer"])
+          assert.matches("bob", res.headers["ctx-checker-last-authenticated-consumer"])
         end)
 
         it("associates oauth2 client_id to consumer #custom_id", function()

@@ -724,11 +724,11 @@ function JwtSignerHandler.access(_, conf)
     local username  = args.get_value(consumer.username)
     local custom_id = args.get_value(consumer.custom_id)
 
-    local ctx = ngx.ctx
-    ctx.authenticated_consumer = consumer
-    ctx.authenticated_credential = {
+    local credential = {
       consumer_id = id,
     }
+
+    kong.client.authenticate(consumer, credential)
 
     local head = constants.HEADERS
 

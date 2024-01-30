@@ -842,7 +842,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
         local db_strategy = strategy ~= "off" and strategy or nil
 
         setup(function()
-          local bp = helpers.get_db_utils(db_strategy, nil, { "ldap-auth-advanced" })
+          local bp = helpers.get_db_utils(db_strategy, nil, { "ldap-auth-advanced", "ctx-checker-last" })
 
           if proto == "websocket" then
             bp.services:defaults({ protocol = conf.service_proto })
@@ -896,6 +896,14 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             service = service2
           }
 
+          bp.plugins:insert({
+            name     = "ctx-checker-last",
+            route = { id = route2.id },
+            config   = {
+              ctx_check_field = "authenticated_consumer",
+            }
+          })
+
           bp.plugins:insert {
             route = { id = route2.id },
             name     = "ldap-auth-advanced",
@@ -925,7 +933,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           }
 
           assert(helpers.start_kong({
-            plugins = "ldap-auth-advanced,key-auth",
+            plugins = "ldap-auth-advanced,key-auth,ctx-checker-last",
             database   = db_strategy,
             nginx_conf = "spec/fixtures/custom_nginx.template",
           }, nil, nil, { http_mock = { ws = ws.mock_upstream() } }))
@@ -1060,6 +1068,25 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             local id = assert.request(res).has.header("x-consumer-id")
             assert.equal(id, anonymous.id)
           end)
+          if proto ~= "websocket" then
+          it("check authenticated_consumer ctx", function()
+            local res = assert(proxy_client:send {
+              method  = "GET",
+              path    = "/request",
+              headers = {
+                ["Host"]   = "logical-or.test",
+                ["apikey"] = "Mouse",
+              }
+            })
+            assert.response(res).has.status(200)
+            assert.request(res).has.no.header("x-anonymous-consumer")
+            local id = assert.request(res).has.header("x-consumer-id")
+            assert.not_equal(id, anonymous.id)
+            assert.equal(user.id, id)
+            assert.not_nil(res.headers["ctx-checker-last-authenticated-consumer"])
+            assert.matches(user.username, res.headers["ctx-checker-last-authenticated-consumer"])
+          end)
+          end
         end)
       end)
 
