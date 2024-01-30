@@ -176,12 +176,12 @@ local function do_authentication(conf)
     if given_username and given_password then
       credential = load_credential_from_db(given_username)
     else
-      return false, unauthorized("Invalid authentication credentials", www_authenticate)
+      return false, unauthorized("Unauthorized", www_authenticate)
     end
   end
 
   if not credential or not validate_credentials(credential, given_password) then
-    return false, unauthorized("Invalid authentication credentials", www_authenticate)
+    return false, unauthorized("Unauthorized", www_authenticate)
   end
 
   -- Retrieve consumer
