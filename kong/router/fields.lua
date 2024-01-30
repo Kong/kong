@@ -422,11 +422,7 @@ local function visit_for_context(field, value, ctx)
 end
 
 
--- cache key string
-local str_buf = buffer.new(64)
-
-
-local function visit_for_cache_key(field, value)
+local function visit_for_cache_key(field, value, str_buf)
   -- these fields were not in cache key
   if field == "net.protocol" then
     return true
@@ -475,20 +471,30 @@ function _M:fields_visitor(params, ctx, cb, cb_arg)
 end
 
 
+-- cache key string
+local str_buf = buffer.new(64)
+
+
 function _M:get_cache_key(params, ctx)
   str_buf:reset()
-  local res = self:fields_visitor(params, ctx, visit_for_cache_key)
+
+  local res = self:fields_visitor(params, ctx,
+                                  visit_for_cache_key, str_buf)
   assert(res)
+
   return str_buf:get()
 end
 
 
-function _M:fill_atc_context(ctx, params)
-  local res, err = self:fields_visitor(params, nil, visit_for_context, ctx)
+function _M:fill_atc_context(c, params)
+  local res, err = self:fields_visitor(params, nil,
+                                       visit_for_context, c)
+
   if not res then
     return nil, err
   end
-  return ctx
+
+  return c
 end
 
 
