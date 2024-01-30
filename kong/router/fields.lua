@@ -8,7 +8,6 @@ local tonumber = tonumber
 local setmetatable = setmetatable
 local tb_sort = table.sort
 local tb_concat = table.concat
-local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
 
 
 local var           = ngx.var
@@ -379,30 +378,12 @@ local function visit_for_cache_key(field, value, str_buf)
     return true
   end
 
-  local headers_or_queries = field:sub(1, PREFIX_LEN)
-
-  if headers_or_queries == HTTP_HEADERS_PREFIX then
-    headers_or_queries = true
-    field = replace_dashes_lower(field)
-
-  elseif headers_or_queries == HTTP_QUERIES_PREFIX then
-    headers_or_queries = true
-
-  else
-    headers_or_queries = false
+  if type(value) == "table" then
+    tb_sort(value)
+    value = tb_concat(value, ",")
   end
 
-  if not headers_or_queries then
-    str_buf:put(value or "", "|")
-
-  else  -- headers or queries
-    if type(value) == "table" then
-      tb_sort(value)
-      value = tb_concat(value, ",")
-    end
-
-    str_buf:putf("%s=%s|", field, value or "")
-  end
+  str_buf:putf("%s=%s|", field, value or "")
 
   return true
 end
