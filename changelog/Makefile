@@ -97,12 +97,16 @@ generate:
 	@git mv $(UNRELEASED_DIR) $(VERSION)
 	@mkdir -p $(UNRELEASED_DIR)/{kong,kong-ee,kong-manager-ee,kong-portal-ee}
 	@touch $(UNRELEASED_DIR)/{kong,kong-ee,kong-manager-ee,kong-portal-ee}/.gitkeep
+
+	@echo
 	@echo "Done! Please check $(VERSION)/$(VERSION).md"
 
-PR_BASE = origin/master
+PR_BASE = next/3.x.x.x
 github_pr:
 	@git checkout -b geneerate-$(VERSION)-changelog $(PR_BASE)
 	@git add .
 	@git commit -m "docs(release): genereate $(VERSION) changelog"
 	@git push -u origin HEAD
-	@echo "Changelog branch pushed to Github. Please create PR overthere."
+
+	@echo
+	@echo "Successfully push changelog Github. Please create PR overthere."
