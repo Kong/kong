@@ -53,9 +53,13 @@ wasm_runtimes = {
 }
 
 def wasmx_repositories():
+    wasm_module_branch = KONG_VAR["NGX_WASM_MODULE_BRANCH"]
+    if wasm_module_branch == "":
+        wasm_module_branch = KONG_VAR["NGX_WASM_MODULE"]
+
     new_git_repository(
         name = "ngx_wasm_module",
-        branch = KONG_VAR["NGX_WASM_MODULE"],
+        branch = wasm_module_branch,
         remote = KONG_VAR["NGX_WASM_MODULE_REMOTE"],
         build_file_content = """
 filegroup(

@@ -64,6 +64,9 @@ def _load_vars(ctx):
     ngx_wasm_module_remote = ctx.os.environ.get("NGX_WASM_MODULE_REMOTE", "https://github.com/Kong/ngx_wasm_module.git")
     content += '"NGX_WASM_MODULE_REMOTE": "%s",' % ngx_wasm_module_remote
 
+    ngx_wasm_module_branch = ctx.os.environ.get("NGX_WASM_MODULE_BRANCH", "")
+    content += '"NGX_WASM_MODULE_BRANCH": "%s",' % ngx_wasm_module_branch
+
     ctx.file("BUILD.bazel", "")
     ctx.file("variables.bzl", "KONG_VAR = {\n" + content + "\n}")
 
@@ -118,5 +121,7 @@ load_bindings = repository_rule(
         "RPM_SIGNING_KEY_FILE",
         "NFPM_RPM_PASSPHRASE",
         "GITHUB_TOKEN",
+        "NGX_WASM_MODULE_BRANCH",
+        "NGX_WASM_MODULE_REMOTE",
     ],
 )
