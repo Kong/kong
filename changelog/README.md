@@ -1,35 +1,18 @@
 # Setup
 
-Add the `changelog` directory to your environment variable `PATH`.
+Ensure binary `changelog` is available and executable.
 
 ```bash
-~ $ pwd
-/Users/zachary/workspace/kong-ee
-
-~ $ cd changelog
-~ $ PATH="$(realpath .):$PATH"
-```
-
-Enure `golang` is available on your local system.
-
-```bash
-~ $ go env
-```
-
-Ensure binaries are executable.
-
-```bash
-~ $ chmod +x ./changelog
-
-~ $ chmod +x ./verify-prs
+~ $ changelog
+changelog version 0.0.2
 ```
 
 # Generate changelog
 
-Take EE repo and `3.6.0.0` for example, check the operations below. To enable debug,
-add option `DEBUG=true`.
+Take EE repo and `3.6.0.0` for example, check the operations below.
+Please change the version number and the base branch accordinly.
 
-Prepare changelog branch.
+Prepare branch.
 
 ```bash
 ~ $ pwd
@@ -39,23 +22,22 @@ Prepare changelog branch.
 ~ $ git checkout -b geneerate-3.6.0.0-changelog origin/master
 ```
 
-Generate changelog. Suppose a new PR is merged after the changelog PR is created,
-please repeat this part.
+Generate changelog. Add option `DEBUG=true` to enable debug.
+Suppose a new PR is merged after the changelog PR is created,
+please repeat the next two parts.
 
 ```bash
+~ $ pwd
+/Users/zachary/workspace/kong-ee
 ~ $ cd changelog
-~ $ make VERSION=3.6.0.0
+
+~ $ make VERSION=3.6.0.0 generate_changelog
 ```
 
-Commit changelog updates.
+Push changelog.
 
 ```bash
-~ $ git status
-~ $ ls 3.6.0.0/3.6.0.0.md
-
-~ $ git add .
-~ $ git commit -m "docs(release): genereate 3.6.0.0 changelog"
-~ $ git push -u origin HEAD
+~ $ make VERSION=3.6.0.0 BRANCH_BASE=origin/master push_changelog
 ```
 
 # Verify PRs
@@ -72,16 +54,19 @@ Ensure `GITHUB_TOKEN` is set in your environment.
 ~ $ echo $GITHUB_TOKEN
 ```
 
-Run the script. Both `--base-commit` and `--head-commit` can be set to branch names.
+Show the usage.
 
 ```bash
-~ $ verify-prs -h
+~ $ pwd
+/Users/zachary/workspace/kong-ee
+
+~ $ changelog/verify-prs -h
 Version: 0.1
  Author: Zachary Hu (zhucac AT outlook.com)
  Script: Compare between two revisions (e.g. tags and branches), and output
          commits, PRs, PRs without changelog and CE PRs without CE2EE (experimental).
 
-         A PR should have an associated YML file under 'unreleased', otherwise
+         A PR should have an associated YML file under 'changelog/unreleased', otherwise
          it is printed for verification.
 
          Regarding CE2EE, if a CE PR has any cross-referenced EE PRs, it is regarded synced
@@ -89,7 +74,7 @@ Version: 0.1
          in the title. If a CE PR is labelled with 'cherry-pick kong-ee', it is regarded synced
          to EE. If a CE PR is not synced to EE, it is printed for verification.
 
-  Usage: verify-prs -h
+  Usage: changelog/verify-prs -h
 
          -v, --verbose       Print debug info.
 
@@ -102,11 +87,19 @@ Version: 0.1
          --bulk N            Number of jobs ran concurrency. Default is '5'.
                              Adjust this value to your CPU cores.
 
-         verify-prs --org-repo kong/kong-ee --base-commit 3.4.2.0 --head-commit 3.4.2.1 [--strict-filter] [--bulk 5] [--safe-mode] [-v]
+Example:
+         changelog/verify-prs --org-repo kong/kong-ee --base-commit 3.4.2.0 --head-commit 3.4.2.1 [--strict-filter] [--bulk 5] [--safe-mode] [-v]
 
-         ORG_REPO=kong/kong-ee BASE_COMMIT=3.4.2.0 HEAD_COMMIT=3.4.2.1 verify-prs
+         ORG_REPO=kong/kong-ee BASE_COMMIT=3.4.2.0 HEAD_COMMIT=3.4.2.1 changelog/verify-prs
+```
 
-~ $ verify-prs --org-repo kong/kong --base-commit 3.4.0 --head-commit 3.5.0
+Run the script. Both `--base-commit` and `--head-commit` can be set to branch names.
+
+```bash
+~ $ pwd
+/Users/zachary/workspace/kong-ee
+
+~ $ changelog/verify-prs --org-repo kong/kong --base-commit 3.4.0 --head-commit 3.5.0
 Org Repo: kong/kong
 Base Commit: 3.4.0
 Head Commit: 3.5.0

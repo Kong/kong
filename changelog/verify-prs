@@ -22,7 +22,7 @@ function die () {
 
 function show_help () {
     local prg
-    prg=$(basename "$0")
+    prg="${BASH_SOURCE[0]}"
     cat <<-EOF
 Version: 0.1
  Author: Zachary Hu (zhucac AT outlook.com)

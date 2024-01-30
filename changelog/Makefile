@@ -1,10 +1,10 @@
-.PHONY: generate github_pr
+.PHONY: generate_changelog push_changelog
 
 VERSION = 3.x.y.z
 UNRELEASED_DIR = unreleased
 DEBUG = false
 
-generate:
+generate_changelog:
 	@rm -f $(VERSION).md
 	@touch $(VERSION).md
 
@@ -101,9 +101,9 @@ generate:
 	@echo
 	@echo "Done! Please check $(VERSION)/$(VERSION).md"
 
-PR_BASE = next/3.x.x.x
-github_pr:
-	@git checkout -b geneerate-$(VERSION)-changelog $(PR_BASE)
+BRANCH_BASE = next/3.x.x.x
+push_changelog:
+	@git checkout -b generate-$(VERSION)-changelog $(BRANCH_BASE)
 	@git add .
 	@git commit -m "docs(release): genereate $(VERSION) changelog"
 	@git push -u origin HEAD
