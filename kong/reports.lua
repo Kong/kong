@@ -68,6 +68,12 @@ local REQUEST_ROUTE_CACHE_HITS_KEY_POS = REQUEST_COUNT_KEY .. ":" .. ROUTE_CACHE
 local REQUEST_ROUTE_CACHE_HITS_KEY_NEG = REQUEST_COUNT_KEY .. ":" .. ROUTE_CACHE_HITS_KEY .. ":neg"
 
 
+local get_header
+if subsystem == "http" then
+  get_header = require("kong.tools.http").get_header
+end
+
+
 local _buffer = {}
 local _ping_infos = {}
 local _enabled = false
@@ -285,7 +291,7 @@ function get_current_suffix(ctx)
        proxy_mode == "unbuffered" or
        proxy_mode == "websocket"
     then
-      local http_upgrade = var.http_upgrade
+      local http_upgrade = get_header("upgrade", ctx)
       if http_upgrade and lower(http_upgrade) == "websocket" then
         if scheme == "http" then
           return "ws"

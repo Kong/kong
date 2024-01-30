@@ -1532,11 +1532,11 @@ return {
         end
       end
 
-      if var.http_proxy then
+      if get_header("proxy", ctx) then
         clear_header("Proxy")
       end
 
-      if var.http_proxy_connection then
+      if get_header("proxy_connection", ctx) then
         clear_header("Proxy-Connection")
       end
     end
