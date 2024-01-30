@@ -14,8 +14,7 @@ changelog version 0.0.2
 
 Take EE repo and `3.6.0.0` for example, check the operations below.
 Please change the version number and the base branch accordinly.
-
-Prepare branch.
+Add `DEBUG=true` to show more detailed output.
 
 ```bash
 ~ $ pwd
@@ -26,7 +25,8 @@ Prepare branch.
 ~ $ make VERSION=3.6.0.0 BASE_BRANCH=origin/next/3.6.x.x
 ```
 
-Please go to GitHub creating changelog PR.
+If a PR is merged after the changelog PR is created or merged,
+please repeat this section.
 
 # Verify PRs
 
