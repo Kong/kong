@@ -62,3 +62,19 @@ paths:
       responses:
         201:
           description: Created
+  /escape/{a}|.-+*{b}:
+    get:
+      parameters:
+      - name: a
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: b
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        201:
+          description: Created

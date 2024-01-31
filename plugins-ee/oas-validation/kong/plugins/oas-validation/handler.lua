@@ -279,6 +279,16 @@ local function validate_parameter_value(parameter, spec_ver)
   end
 end
 
+local function compile_pattern(path)
+  local escapes = { '|', '?', '%.', '-', '+', '*' }
+
+  local pattern = path
+  for _, char in ipairs(escapes) do
+    pattern = pattern:gsub(char, '\\' .. char)
+  end
+
+  return gsub(pattern, "{(.-)}", function(s) return "(?<" .. s .. ">[^/]+)" end)
+end
 
 local function check_required_parameter(parameter, path_spec)
   local template_environment = kong.ctx.plugin.template_environment
@@ -289,10 +299,7 @@ local function check_required_parameter(parameter, path_spec)
 
   elseif location == "path" then
     local request_path = normalize(kong.request.get_path(), true)
-    local path_pattern = gsub(path_spec, "/", "\\/")
-    path_pattern = gsub(path_pattern, "{(.-)}", function(str)
-      return "(?<" .. str .. ">[^/]+)"
-    end)
+    local path_pattern = compile_pattern(path_spec)
     local m, err = re_match(request_path, path_pattern)
     if err then
       kong.log.err("failed to match regular expression path: ", path_pattern)
