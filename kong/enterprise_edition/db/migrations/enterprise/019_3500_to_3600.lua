@@ -50,6 +50,14 @@ return {
       END;
       $$;
 
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS ONLY "rbac_user_roles" ADD role_source TEXT;
+      EXCEPTION WHEN duplicate_column THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
+
       CREATE TABLE IF NOT EXISTS rbac_user_groups(
         user_id uuid NOT NULL REFERENCES rbac_users(id) ON DELETE CASCADE,
         group_id uuid NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
