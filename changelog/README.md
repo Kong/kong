@@ -1,6 +1,7 @@
 # Setup
 
-Download binary `changelog 0.0.2` from [Kong/gateway-changelog](https://github.com/Kong/gateway-changelog),
+Download binary `changelog 0.0.2` from [Kong/gateway-changelog](https://github.com/Kong/gateway-changelog/releases),
+or [release-helper](https://github.com/outsinre/release-helper/blob/main/changelog),
 and add it to environment variable `PATH`.
 
 ```bash
