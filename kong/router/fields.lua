@@ -261,6 +261,7 @@ if is_http then
     return params
   end
 
+
   local function gen_http_headers_field_accessor(name)
     return function(params)
       if not params.headers then
@@ -271,6 +272,7 @@ if is_http then
     end
   end
 
+
   local function gen_http_queries_field_accessor(name)
     return function(params)
       if not params.queries then
@@ -280,6 +282,7 @@ if is_http then
       return params.queries[name]
     end
   end
+
 
   local function gen_http_segments_field_accessor(range)
     return function(params)
@@ -334,6 +337,7 @@ if is_http then
         return value
     end
   end
+
 
   get_field_accessor = function(funcs, field)
     local f = FIELDS_FUNCS[field] or funcs[field]
