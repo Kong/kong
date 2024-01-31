@@ -32,7 +32,8 @@ Add `DEBUG=true` to show more detailed output.
 ```
 
 If a PR with changelog is merged after the changelog PR is created
-or merged, please repeat this section.
+or merged, please repeat this section. You might need to delete local
+PR branch first.
 
 # Verify PRs
 

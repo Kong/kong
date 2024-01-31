@@ -112,7 +112,7 @@ generate:
 push_changelog:
 	@git add .
 	@git commit -m "docs(release): genereate $(VERSION) changelog"
-	@git push -u origin HEAD
+	@git push -fu origin HEAD
 
 	@echo
 	@echo "Successfully pushed to Github. Please create changelog PR overthere."
