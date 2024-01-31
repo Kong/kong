@@ -1,13 +1,14 @@
 .PHONY: all create_branch generate push_changelog
 
-VERSION := 3.x.y.z
-BASE_BRANCH := origin/next/3.x.x.x
+VERSION ?= 3.6.0.0
+BASE_BRANCH ?= origin/next/3.6.x.x
+DEBUG ?= false
 UNRELEASED_DIR := unreleased
-DEBUG := false
+
+BRANCH_NAME := generate-$(VERSION)-changelog
 
 all: create_branch generate push_changelog
 
-BRANCH_NAME := generate-$(VERSION)-changelog
 create_branch:
 	@git fetch
 	@git checkout -B $(BRANCH_NAME) $(BASE_BRANCH)
