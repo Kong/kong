@@ -10,7 +10,7 @@ all: create_branch generate push_changelog
 BRANCH_NAME := generate-$(VERSION)-changelog
 create_branch:
 	@git fetch
-	@git checkout -b $(BRANCH_NAME) $(BASE_BRANCH)
+	@git checkout -B $(BRANCH_NAME) $(BASE_BRANCH)
 
 generate:
 	@rm -f $(VERSION).md

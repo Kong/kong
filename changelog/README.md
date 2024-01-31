@@ -18,9 +18,9 @@ Ensure `GITHUB_TOKEN` is set in your environment.
 
 # Generate changelog
 
-Take EE repo and `3.6.0.0` for example, check the operations below.
-Please change the version number and the base branch accordinly.
-Add `DEBUG=true` to show more detailed output.
+The section takes EE repo and `3.6.0.0` for example, please change
+`VERSION` and `BASE_BRANCH` accordingly. Add `DEBUG=true` to show
+debug output.
 
 ```bash
 ~ $ pwd
@@ -31,9 +31,8 @@ Add `DEBUG=true` to show more detailed output.
 ~ $ make VERSION=3.6.0.0 BASE_BRANCH=origin/next/3.6.x.x
 ```
 
-If a PR with changelog is merged after the changelog PR is created
-or merged, please repeat this section. You might need to delete local
-PR branch first.
+If a functional PR with changelog is merged after the changelog PR is created
+or merged, please repeat the commands.
 
 # Verify PRs
 
