@@ -1,0 +1,3 @@
+message: "**Rate Limiting Advanced:** fix some timer-related issues where the counter syncing timer can't be created or destroyed properly"
+type: bugfix
+scope: Plugin

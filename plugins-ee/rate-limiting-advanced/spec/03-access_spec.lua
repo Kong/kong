@@ -1099,10 +1099,10 @@ for _, strategy in strategies() do
             assert.logfile("node2/logs/error.log").has.no.line("[error]", true)
             --[= flaky on CI/CD but succeed locally
             helpers.pwait_until(function()
-              assert.logfile("node1/logs/error.log").has.line("killing 046F4FC717A147C2A446A4BEA763CF1E", true, 20)
+              assert.logfile("node1/logs/error.log").has.line("stale timer of namespace 046F4FC717A147C2A446A4BEA763CF1E", true, 20)
             end, 60)
             helpers.pwait_until(function()
-              assert.logfile("node2/logs/error.log").has.line("killing 046F4FC717A147C2A446A4BEA763CF1E", true, 20)
+              assert.logfile("node2/logs/error.log").has.line("stale timer of namespace 046F4FC717A147C2A446A4BEA763CF1E", true, 20)
             end, 60)
             --]=]
           end)
@@ -2373,7 +2373,17 @@ for _, strategy in strategies() do
 
         it("we are NOT leaking any timers after DELETE on hybrid mode", function()
           helpers.clean_logfile("dp1/logs/error.log")
+          local res = assert(helpers.proxy_client(nil, PROXY_PORT):send {
+            method = "GET",
+            path = "/get",
+            headers = {
+              ["Host"] = "test18.test",
+            }
+          })
+          assert.res_status(200, res)
+          assert.logfile("dp1/logs/error.log").has.line("creating timer for namespace Ck1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
 
+          helpers.clean_logfile("dp1/logs/error.log")
           -- DELETE the plugin
           local res = assert(helpers.admin_client(nil, 9103):send {
             method = "DELETE",
@@ -2383,7 +2393,7 @@ for _, strategy in strategies() do
 
           helpers.wait_for_file_contents("dp1/logs/error.log")
           helpers.pwait_until(function()
-            assert.logfile("dp1/logs/error.log").has.line("killing Ck1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
+            assert.logfile("dp1/logs/error.log").has.line("stale timer of namespace Ck1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
           end, 180)
         end)
 

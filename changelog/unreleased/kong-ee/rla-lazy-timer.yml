@@ -1,0 +1,3 @@
+message: "**Rate Limiting Advanced:** The plugin now creates counter syncing timers when being executed instead of being created to reduce some meaningless error logs"
+type: bugfix
+scope: Plugin

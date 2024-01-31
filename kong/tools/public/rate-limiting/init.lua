@@ -70,7 +70,7 @@ local function window_floor(size, time)
 end
 
 
-local function fetch(premature, namespace, time, timeout)
+local function fetch(premature, namespace, time, timeout, is_initial)
   if premature then
     return
   end
@@ -126,14 +126,14 @@ local function fetch(premature, namespace, time, timeout)
     end
   end
 
-  if not timeout then
+  if not timeout or is_initial then
     locks_shm:delete(lock_key)
   end
 end
 _M.fetch = fetch
 
 
-function _M.sync(premature, namespace)
+function _M.sync(premature, namespace, timer_id)
   if premature then
     return
   end
@@ -149,6 +149,11 @@ function _M.sync(premature, namespace)
 
   local dict = ngx.shared[cfg.dict]
 
+  if cfg.timer_id ~= timer_id then
+    log(DEBUG, "stale timer of namespace ", namespace, ", timer_id: ", timer_id, ", skipping sync")
+    return
+  end
+
   if cfg.kill then
     log(DEBUG, "killing ", namespace)
     return
@@ -160,7 +165,7 @@ function _M.sync(premature, namespace)
   local sync_start_time = time()
 
   do
-    local _, err = timer_at(cfg.sync_rate, _M.sync, namespace)
+    local _, err = timer_at(cfg.sync_rate, _M.sync, namespace, timer_id)
     if err then
       log(ERR, "error starting new sync timer: ", err)
     end
@@ -563,6 +568,7 @@ function _M.new(opts)
     seen_map_ctr = 1,
     window_sizes = opts.window_sizes,
     exptime      = math_max(opts.sync_rate + TIME_DELTA, 2),    --- min TTL is 2s
+    timer_id     = opts.timer_id,
   }
 
   -- start maintenance timer

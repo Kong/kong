@@ -11,6 +11,7 @@ local schema = require "kong.plugins.rate-limiting-advanced.schema"
 local event_hooks = require "kong.enterprise_edition.event_hooks"
 local helpers = require "kong.enterprise_edition.consumer_groups_helpers"
 local meta = require "kong.meta"
+local uuid = require "kong.tools.uuid"
 
 
 local ngx = ngx
@@ -19,6 +20,7 @@ local kong = kong
 local ceil = math.ceil
 local floor = math.floor
 local max = math.max
+local min = math.min
 local rand = math.random
 local time = ngx.time
 local pcall = pcall
@@ -95,7 +97,26 @@ local id_lookup = {
 }
 
 
-local function new_namespace(config, init_timer)
+local function create_timer(config)
+  local rate = config.sync_rate
+  local namespace = config.namespace
+  local timer_id = uuid.uuid()
+  local now = ngx.now()
+
+  -- 0 <= when <= sync_rate, depends on timestamp
+  local when = rate - (now - (floor(now / rate) * rate))
+  kong.log.debug("creating timer for namespace ", namespace, ", timer_id: ",
+                 timer_id, ", initial sync in ", when, " seconds")
+  ngx.timer.at(when, ratelimiting.sync, namespace, timer_id)
+  ratelimiting.config[namespace].timer_id = timer_id
+
+  -- add a timeout to avoid situations where the lock can
+  -- never be released when an exception happens
+  ratelimiting.fetch(nil, namespace, now, min(rate - 0.001, 2), true)
+end
+
+
+local function new_namespace(config, timer_id)
   if not config then
     kong.log.warn("[rate-limiting-advanced] no config was specified.",
                   " Skipping the namespace creation.")
@@ -146,33 +167,16 @@ local function new_namespace(config, init_timer)
       dict          = dict_name,
       window_sizes  = config.window_size,
       db            = kong.db,
+      timer_id      = timer_id,
     })
   end)
 
-  local ret = true
-
-  -- if we created a new namespace, start the recurring sync timer and
-  -- run an intial sync to fetch our counter values from the data store
-  -- (if applicable)
-  if ok then
-    if init_timer and config.sync_rate > 0 then
-      local rate = config.sync_rate
-      -- 0 <= when <= sync_rate, depends on timestamp
-      local when = rate - (ngx.now() - (floor(ngx.now() / rate) * rate))
-      kong.log.debug("initial sync in ", when, " seconds")
-      ngx.timer.at(when, ratelimiting.sync, config.namespace)
-
-      -- run the fetch from a timer because it uses cosockets
-      -- kong patches this for psql and c*, but not redis
-      ngx.timer.at(0, ratelimiting.fetch, config.namespace, ngx.now())
-    end
-
-  else
+  if not ok then
     kong.log.err("err in creating new ratelimit namespace: ", err)
-    ret = false
+    return false
   end
 
-  return ret
+  return true
 end
 
 
@@ -205,32 +209,24 @@ function NewRLHandler:configure(configs)
       -- previous config doesn't exist for this worker
       -- create a namespace for the new config and return, similar to "rl:create"
       if not ratelimiting.config[namespace] then
-        new_namespace(config, true)
+        new_namespace(config)
 
       else
-        -- if the previous config did not have a background timer,
-        -- we need to start one
-        local start_timer = false
-        if ratelimiting.config[namespace].sync_rate <= 0 and sync_rate > 0 then
-          start_timer = true
+        local timer_id
+
+        -- if the previous config has a timer_id, i.e., a background timer already exists,
+        -- and the current config still needs a timer, we pass the timer_id to reuse the
+        -- existing timer
+        if sync_rate > 0 then
+          timer_id = ratelimiting.config[namespace].timer_id
         end
 
         ratelimiting.clear_config(namespace)
-        new_namespace(config, start_timer)
+        new_namespace(config, timer_id)
 
         -- recommendation have changed with FT-928
         if sync_rate > 0 and sync_rate < 1 then
           kong.log.warn("Config option 'sync_rate' " .. sync_rate .. " is between 0 and 1; a config update is recommended")
-        end
-
-        -- clear the timer if we dont need it
-        if sync_rate <= 0 then
-          if ratelimiting.config[namespace] then
-            ratelimiting.config[namespace].kill = true
-
-          else
-            kong.log.warn("did not find namespace ", namespace, " to kill")
-          end
         end
       end
     end
@@ -240,12 +236,14 @@ function NewRLHandler:configure(configs)
     if not namespaces[namespace] then
       kong.log.debug("clearing old namespace ", namespace)
       ratelimiting.config[namespace].kill = true
+      ratelimiting.config[namespace].timer_id = nil
     end
   end
 end
 
 
 function NewRLHandler:access(conf)
+  local namespace = conf.namespace
   local now = time()
   local key = id_lookup[conf.identifier](conf)
 
@@ -267,8 +265,24 @@ function NewRLHandler:access(conf)
   --
   -- changes in https://github.com/Kong/kong-plugin-enterprise-rate-limiting/pull/35
   -- currently rely on this in scenarios where workers initialize without database availability
-  if not ratelimiting.config[conf.namespace] then
-    new_namespace(conf, true)
+  if not ratelimiting.config[namespace] then
+    new_namespace(conf)
+  end
+
+  -- create the timer lazily so that no timers are created for zombie plugins.
+  -- Let's say we have two RLA plugins. Plugin 1 is in workspace A and plugin 2
+  -- is in workspace B. DP 1 serves workspace A and DP 2 serves workspace B.
+  -- DP 1 and DP 2 are in different network enviorments. They each have their own
+  -- redis service. DP 1 can never get access to the redis of DP 2, and vice versa.
+  --
+  -- If we don't create timers lazily, some timers will fail to connect to the
+  -- redis forever which leads to error log flooding.
+  --
+  -- Even if there were no network isolation issues, it would be a waste to let
+  -- the timers run empty there which will degrade the performance.
+  -- https://konghq.atlassian.net/browse/FTI-5246
+  if conf.sync_rate > 0 and not ratelimiting.config[namespace].timer_id then
+    create_timer(conf)
   end
 
   local config
@@ -302,7 +316,6 @@ function NewRLHandler:access(conf)
   local window
   local remaining
   local reset
-  local namespace = conf.namespace
   local window_type = config.window_type
   local shm = ngx.shared[conf.dictionary_name]
   local headers_rl = {}
