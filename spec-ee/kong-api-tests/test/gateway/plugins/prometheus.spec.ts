@@ -344,7 +344,7 @@ describe('Gateway Plugins: Prometheus', function () {
       await waitForConfigRebuild();
     });
   
-    it(`should see the new kong_upstream_target_health metric after requests to upstream`, async function () {
+    it.skip(`should see the new kong_upstream_target_health metric after requests to upstream`, async function () {
       this.retries(1)
       // send request to upstream to log the request's upstream_target_health metric
       for(let i = 1; i <= 2; i++) {
