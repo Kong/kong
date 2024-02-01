@@ -51,5 +51,5 @@ def curl_repositories():
         urls = [
             "https://curl.se/ca/cacert-%s.pem" % version,
         ],
-        sha256 = "23c2469e2a568362a62eecf1b49ed90a15621e6fa30e29947ded3436422de9b9",
+        sha256 = "ccbdfc2fe1a0d7bbbb9cc15710271acf1bb1afe4c8f1725fe95c4c7733fcbe5a",
     )
