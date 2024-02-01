@@ -112,13 +112,14 @@ function _M.delete_admin_groups_or_roles(admin)
     kong.db.rbac_user_groups:delete(group)
   end
 
+  -- FIXME: should delete roles from IdPs only
   -- delete rbac_user_roles
-  local cache_key = kong.db.rbac_user_roles:cache_key(admin.rbac_user.id)
-  kong.cache:invalidate(cache_key)
+  -- local cache_key = kong.db.rbac_user_roles:cache_key(admin.rbac_user.id)
+  -- kong.cache:invalidate(cache_key)
 
-  for rbac_user_role, _ in kong.db.rbac_user_roles:each_for_user({ id = admin.rbac_user.id }) do
-    kong.db.rbac_user_roles:delete(rbac_user_role)
-  end
+  -- for rbac_user_role, _ in kong.db.rbac_user_roles:each_for_user({ id = admin.rbac_user.id }) do
+  --   kong.db.rbac_user_roles:delete(rbac_user_role)
+  -- end
 
 end
 

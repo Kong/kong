@@ -1,4 +1,3 @@
-message: Adding new features When ldap or oidc is enabled and roles are mapped by groups, the Admin API can be accessed using rbac_token.
+message: Allow using RBAC token to authenticate while using group mapping feature (e.g., OIDC, LDAP) with Kong Manager, and also fix some issue with the group mapping feature.
 type: feature
 scope: Core
-
