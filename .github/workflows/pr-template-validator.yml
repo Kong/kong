@@ -1,0 +1,19 @@
+name: Pull Request Template Validation
+on:
+  pull_request:
+    types: [opened, edited, synchronize, labeled, unlabeled]
+
+jobs:
+  pr-template-validation:
+    name: Validates if PR body contains ticket number
+    runs-on: ubuntu-latest
+    # Don't run on PRs labeled as exception or from special users
+    if: |
+      !contains(github.event.*.labels.*.name, 'skip-pr-template-validation') &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      github.event.pull_request.user.login != 'team-gateway-bot'
+    steps:
+      - name: Validate PR Body
+        uses: Kong/pr-template-validator@aecdf87d003b1b67e9bf32528a572aeb86c5d4ed
+        with:
+          body-regex: '(KAG|FTI)-\d+'
