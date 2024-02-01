@@ -989,8 +989,6 @@ for _, strategy in helpers.each_strategy() do
 
           it("super-admin user - user defined roles are applied", function()
             local cookie = get_admin_cookie_basic_auth(client, super_admin.username, skeleton_key)
-            assert.res_status(403, res)
-
             local res = client:send {
               method = "GET",
               path = "/services/default-example.test",
@@ -1000,7 +998,7 @@ for _, strategy in helpers.each_strategy() do
               }
             }
 
-            assert.res_status(200, res)
+            assert.res_status(403, res)
           end)
 
           it("groups with roles in another workspace are applied", function()
