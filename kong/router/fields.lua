@@ -5,6 +5,7 @@ local type = type
 local ipairs = ipairs
 local assert = assert
 local tonumber = tonumber
+local tostring = tostring
 local setmetatable = setmetatable
 local tb_sort = table.sort
 local tb_concat = table.concat
@@ -383,7 +384,7 @@ local function visit_for_cache_key(field, value, str_buf)
     value = tb_concat(value, ",")
   end
 
-  str_buf:put(value or "", "|")
+  str_buf:put(tostring(value or ""), "|")
 
   return true
 end
