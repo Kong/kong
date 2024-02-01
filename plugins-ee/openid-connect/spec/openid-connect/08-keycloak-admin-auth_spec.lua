@@ -518,7 +518,7 @@ for _, strategy in helpers.each_strategy() do
       local USERNAME = "sam.stark@konghq.com"
 
       local _, db, admin_client, keycloak_client
-      local user, group_ws1, group_ws2, default_super_admin_group
+      local user, group_ws1, group_ws2 -- , default_super_admin_group
 
       lazy_setup(function()
         _, db = helpers.get_db_utils(strategy, TEST_TABLES, { PLUGIN_NAME })
