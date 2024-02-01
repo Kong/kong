@@ -75,7 +75,7 @@ local function authentication(client, username, username2, password, retry, meth
     headers = {
       ["Authorization"] = "Basic " .. ngx.encode_base64(username .. ":"
         .. password),
-      ["Kong-Admin-User"] = username,
+      ["Kong-Admin-User"] = username2,
     }
   })
 
@@ -989,15 +989,7 @@ for _, strategy in helpers.each_strategy() do
 
           it("super-admin user - user defined roles are applied", function()
             local cookie = get_admin_cookie_basic_auth(client, super_admin.username, skeleton_key)
-            local res = client:send {
-              method = "GET",
-              path = "/userinfo",
-              headers = {
-                ["cookie"] = cookie,
-                ["Kong-Admin-User"] = super_admin.username,
-              }
-            }
-            assert.res_status(200, res)
+            assert.res_status(403, res)
 
             local res = client:send {
               method = "GET",
