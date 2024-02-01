@@ -550,18 +550,13 @@ to create the appropriate changelog file your Pull Request.
 
 [Back to TOC](#table-of-contents)
 
-### Contributor T-shirt
+### Contributor Badge
 
 If your Pull Request to [Kong/kong](https://github.com/Kong/kong) was
 accepted, and it fixes a bug, adds functionality, or makes it significantly
-easier to use or understand Kong, congratulations! You are eligible to
-receive the very special Contributor T-shirt! Go ahead and fill out the
-[Contributors Submissions form](https://goo.gl/forms/5w6mxLaE4tz2YM0L2).
+easier to use or understand Kong, congratulations! You are eligible to receive a digital Contributor Badge! Go ahead and fill out the [Contributors Submissions form](https://goo.gl/forms/5w6mxLaE4tz2YM0L2).
 
-Proudly wear your T-shirt and show it to us by tagging
-[@thekonginc](https://twitter.com/thekonginc) on Twitter!
-
-![Kong Contributor T-shirt](https://konghq.com/wp-content/uploads/2018/04/100-contributor-t-shirt-1024x768.jpg)
+*Badges expire after 1 year, at which point you may submit a new contribution to renew the badge.* 
 
 [Back to TOC](#table-of-contents)
 
