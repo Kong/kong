@@ -523,7 +523,7 @@ function kong_version() {
         KONG_TYPE=enterprise-source
         KONG_DISTRIBUTIONS_VERSION="$(dependency_version KONG_DISTRIBUTIONS_VERSION)"
         JQ_VERSION="$(dependency_version KONG_DEP_LIBJQ_VERSION)"
-        JQ_URL="https://github.com/stedolan/jq/releases/download/jq-${JQ_VERSION}/jq-${JQ_VERSION}.tar.gz"
+        JQ_URL="https://github.com/jqlang/jq/releases/download/jq-${JQ_VERSION}/jq-${JQ_VERSION}.tar.gz"
         JQ_DIRECTORY="$(basename "$JQ_URL" .tar.gz)"
         JQ_FILENAME="$(basename "$JQ_URL")"
         export KONG_DISTRIBUTIONS_VERSION \
