@@ -1,0 +1,3 @@
+message: Adds telemetry collection for AI Proxy, AI Request Transformer, and AI Response Transformer, pertaining to model and provider usage.
+type: feature
+scope: Core
