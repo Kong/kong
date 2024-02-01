@@ -38,6 +38,27 @@ local function reports_timer(premature, data)
     r_data.e = "c"
   end
 
+  if data.name == "ai-proxy" then
+    r_data.config = {
+      llm = {
+        model = {}
+      }
+    }
+
+    r_data.config.llm.model.name = data.config.model.name
+    r_data.config.llm.model.provider = data.config.model.provider
+
+  elseif data.name == "ai-request-transformer" or data.name == "ai-response-transformer" then
+    r_data.config = {
+      llm = {
+        model = {}
+      }
+    }
+
+    r_data.config.llm.model.name = data.config.llm.model.name
+    r_data.config.llm.model.provider = data.config.llm.model.provider
+  end
+
   reports.send("api", r_data)
 end
 
