@@ -130,7 +130,9 @@ local function gen_for_field(name, op, vals, val_transform)
   end
 
   -- consume the whole buffer
-  return values_buf:put(")"):get()
+  local str = values_buf:put(")"):get()
+
+  return str
 end
 
 
