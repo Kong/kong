@@ -38,7 +38,7 @@ def curl_repositories():
             "https://github.com/nghttp2/nghttp2/releases/download/%s/%s" % (tag, tarball),
         ],
         type = "tar.gz",
-        sha256 = "1e3258453784d3b7e6cc48d0be087b168f8360b5d588c66bfeda05d07ad39ffd",
+        sha256 = "90fd27685120404544e96a60ed40398a3457102840c38e7215dc6dec8684470f",
         strip_prefix = prefix,
         build_file = Label("//build/curl:BUILD.nghttp2.bazel"),
     )
