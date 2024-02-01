@@ -542,7 +542,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- retrieve user from keycloak
         user = get_user_by_username(keycloak_client, "sam")
-        default_super_admin_group = get_group_by_name(keycloak_client, "default:super-admin")
+        -- default_super_admin_group = get_group_by_name(keycloak_client, "default:super-admin")
         -- add two workspaces
         for i = 1, 2, 1 do
           local ws_name = "ws" .. i
