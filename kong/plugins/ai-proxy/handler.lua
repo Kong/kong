@@ -50,6 +50,8 @@ function _M:header_filter(conf)
 
         local new_response_string, err = ai_driver.from_format(response_body, conf.model, route_type)
         if err then
+          kong.ctx.plugin.ai_parser_error = true
+
           ngx.status = 500
           local message = {
             error = {
@@ -73,21 +75,24 @@ end
 
 function _M:body_filter(conf)
   if not kong.ctx.shared.skip_response_transformer then
-    -- all errors MUST be checked and returned in header_filter
-    -- we should receive a replacement response body from the same thread
-    
-    local original_request = kong.ctx.plugin.parsed_response or kong.response.get_raw_body()
-    local deflated_request = kong.ctx.plugin.parsed_response or kong.response.get_raw_body()
-    if deflated_request then
-      local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
-      if is_gzip then
-        deflated_request = kong_utils.deflate_gzip(deflated_request)
-      end
-      kong.response.set_raw_body(deflated_request)
-    end
+    if (kong.response.get_status() == 200) or (kong.ctx.plugin.ai_parser_error) then
+      -- all errors MUST be checked and returned in header_filter
+      -- we should receive a replacement response body from the same thread
 
-    -- call with replacement body, or original body if nothing changed
-    ai_shared.post_request(conf, original_request)
+      local original_request = kong.ctx.plugin.parsed_response
+      local deflated_request = kong.ctx.plugin.parsed_response
+      if deflated_request then
+        local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
+        if is_gzip then
+          deflated_request = kong_utils.deflate_gzip(deflated_request)
+        end
+
+        kong.response.set_raw_body(deflated_request)
+      end
+
+      -- call with replacement body, or original body if nothing changed
+      ai_shared.post_request(conf, original_request)
+    end
   end
 end
 
