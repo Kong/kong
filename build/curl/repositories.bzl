@@ -21,7 +21,7 @@ def curl_repositories():
             "https://mirror.bazel.build/curl.haxx.se/download/" + tarball,
         ],
         type = "tar.gz",
-        sha256 = "816e41809c043ff285e8c0f06a75a1fa250211bbfb2dc0a037eeef39f1a9e427",
+        sha256 = "9c6db808160015f30f3c656c0dec125feb9dc00753596bf858a272b5dd8dc398",
         strip_prefix = prefix,
         build_file = "//build/curl:BUILD.curl.bazel",
     )
