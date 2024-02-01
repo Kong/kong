@@ -1,44 +1,32 @@
-From 2d12ac3e4045258b7a174b0505d92f63c26d82fc Mon Sep 17 00:00:00 2001
-From: Thibault Charbonnier <thibaultcha@me.com>
-Date: Tue, 17 Sep 2019 11:43:44 -0700
-Subject: [PATCH 1/3] feature: implemented keepalive pooling in
- 'balancer_by_lua*'.
-
----
- .../nginx-1.19.9/src/http/ngx_http_upstream.c |   1 +
- .../nginx-1.19.9/src/http/ngx_http_upstream.h |   2 +
- .../src/ngx_http_lua_balancer.c               | 848 ++++++++++++++----
- .../ngx_lua-0.10.20/src/ngx_http_lua_common.h |  11 +-
- .../ngx_lua-0.10.20/src/ngx_http_lua_module.c |   3 +
- 5 files changed, 689 insertions(+), 176 deletions(-)
-
 diff --git a/bundle/nginx-1.19.9/src/http/ngx_http_upstream.c b/bundle/nginx-1.19.9/src/http/ngx_http_upstream.c
-index 4a6db93..98a8cfc 100644
+index 4a6db93..374d3ba 100644
 --- a/bundle/nginx-1.19.9/src/http/ngx_http_upstream.c
 +++ b/bundle/nginx-1.19.9/src/http/ngx_http_upstream.c
-@@ -4244,6 +4244,7 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
+@@ -4244,6 +4244,9 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
      if (u->peer.cached && ft_type == NGX_HTTP_UPSTREAM_FT_ERROR) {
          /* TODO: inform balancer instead */
          u->peer.tries++;
-+        u->peer.notify(&u->peer, u->peer.data, NGX_HTTP_UPSTREAM_NOFITY_CACHED_CONNECTION_ERROR);
++        if (u->peer.notify) {
++            u->peer.notify(&u->peer, u->peer.data, NGX_HTTP_UPSTREAM_NOTIFY_CACHED_CONNECTION_ERROR);
++        }
      }
 
      switch (ft_type) {
 diff --git a/bundle/nginx-1.19.9/src/http/ngx_http_upstream.h b/bundle/nginx-1.19.9/src/http/ngx_http_upstream.h
-index 0432617..50a10cb 100644
+index 0432617..0fdb45e 100644
 --- a/bundle/nginx-1.19.9/src/http/ngx_http_upstream.h
 +++ b/bundle/nginx-1.19.9/src/http/ngx_http_upstream.h
 @@ -56,6 +56,8 @@
  #define NGX_HTTP_UPSTREAM_IGN_VARY           0x00000200
 
 
-+#define NGX_HTTP_UPSTREAM_NOFITY_CACHED_CONNECTION_ERROR 0x1
++#define NGX_HTTP_UPSTREAM_NOTIFY_CACHED_CONNECTION_ERROR 0x1
 +
  typedef struct {
      ngx_uint_t                       status;
      ngx_msec_t                       response_time;
 diff --git a/bundle/ngx_lua-0.10.20/src/ngx_http_lua_balancer.c b/bundle/ngx_lua-0.10.20/src/ngx_http_lua_balancer.c
-index e4ac57a..44e01cb 100644
+index e4ac57a..f00c676 100644
 --- a/bundle/ngx_lua-0.10.20/src/ngx_http_lua_balancer.c
 +++ b/bundle/ngx_lua-0.10.20/src/ngx_http_lua_balancer.c
 @@ -16,46 +16,105 @@
@@ -718,7 +706,7 @@ index e4ac57a..44e01cb 100644
 +ngx_http_lua_balancer_notify_peer(ngx_peer_connection_t *pc, void *data,
 +    ngx_uint_t type)
 +{
-+    if (type == NGX_HTTP_UPSTREAM_NOFITY_CACHED_CONNECTION_ERROR) {
++    if (type == NGX_HTTP_UPSTREAM_NOTIFY_CACHED_CONNECTION_ERROR) {
 +        pc->tries--;
 +    }
 +}
@@ -1208,5 +1196,3 @@ index 7358a95..21bf8f1 100644
       *      lscf->balancer.handler = NULL;
       *      lscf->balancer.src = { 0, NULL };
       *      lscf->balancer.src_key = NULL;
---
-2.34.1

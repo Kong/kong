@@ -121,4 +121,45 @@ for _, strategy in helpers.each_strategy() do
       assert.equal(#entries[2].tries, 6)
     end)
   end)
+
+  describe("Balancer: ensure Nginx's balancer retry work without Kong's lua balancer [#" .. strategy .. "]", function()
+    lazy_setup(function()
+      assert(helpers.start_kong({
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        nginx_http_include = "../spec/fixtures/balancer/pure_nginx_balancer.conf",
+      }))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("Nginx's balancer work well", function()
+      local proxy_client = helpers.proxy_client(nil, 62340)
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/pure_ngx_balancer",
+      })
+
+      assert.res_status(200, res)
+      local body = res:read_body()
+      local up_port = tonumber(body)
+      assert.same(62341, up_port)
+
+      res = assert(proxy_client:send {
+        method = "GET",
+        path = "/pure_ngx_balancer",
+      })
+
+      assert.res_status(502, res)
+      proxy_client:close()
+
+      assert.logfile().has.line("free keepalive peer: saving connection")
+      assert.logfile().has.line("get keepalive peer: using connection")
+      assert.logfile().has.line("get rr peer")
+      assert.logfile().has.line("free rr peer")
+      assert.logfile().has.no.line("core dumped")
+    end)
+  end)
 end
