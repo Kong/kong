@@ -19,17 +19,16 @@ Ensure `GITHUB_TOKEN` is set in your environment.
 
 # Generate changelog
 
-The section takes EE repo and `3.6.0.0` for example, please change
-`VERSION` and `BASE_BRANCH` accordingly. Add `DEBUG=true` to show
-debug output.
+The section takes `Kong/kong` and `3.6.0` for demo, please change arguments
+`VERSION` and `BASE_BRANCH` accordingly. Add `DEBUG=true` to show debug output.
 
 ```bash
 ~ $ pwd
-/Users/zachary/workspace/kong-ee
+/Users/zachary/workspace/kong
 
 ~ $ cd changelog
 
-~ $ make VERSION=3.6.0.0 BASE_BRANCH=origin/next/3.6.x.x
+~ $ make VERSION=3.6.0 BASE_BRANCH=origin/release/3.6.x
 ```
 
 If a functional PR with changelog is merged after the changelog PR is created
@@ -47,7 +46,7 @@ Show the usage.
 
 ```bash
 ~ $ pwd
-/Users/zachary/workspace/kong-ee
+/Users/zachary/workspace/kong
 
 ~ $ changelog/verify-prs -h
 Version: 0.1
@@ -86,7 +85,7 @@ Run the script. Both `--base-commit` and `--head-commit` can be set to branch na
 
 ```bash
 ~ $ pwd
-/Users/zachary/workspace/kong-ee
+/Users/zachary/workspace/kong
 
 ~ $ changelog/verify-prs --org-repo kong/kong --base-commit 3.4.0 --head-commit 3.5.0
 Org Repo: kong/kong

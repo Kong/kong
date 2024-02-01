@@ -1,7 +1,7 @@
 .PHONY: all create_branch generate push_changelog
 
-VERSION ?= 3.6.0.0
-BASE_BRANCH ?= origin/next/3.6.x.x
+VERSION ?= 3.6.0
+BASE_BRANCH ?= origin/release/3.6.x
 DEBUG ?= false
 UNRELEASED_DIR := unreleased
 
@@ -24,7 +24,7 @@ generate:
 				--changelog-paths $(VERSION)/kong,$(UNRELEASED_DIR)/kong \
 				--title Kong \
 				--github-issue-repo Kong/kong \
-				--github-api-repo Kong/kong-ee \
+				--github-api-repo Kong/kong \
 				--with-jiras \
 				>> $(VERSION).md; \
 		else \
@@ -33,70 +33,28 @@ generate:
 				--changelog-paths $(UNRELEASED_DIR)/kong \
 				--title Kong \
 				--github-issue-repo Kong/kong \
-				--github-api-repo Kong/kong-ee \
+				--github-api-repo Kong/kong \
 				--with-jiras \
 				>> $(VERSION).md; \
 		fi \
 	fi
-	@if [ -d "$(UNRELEASED_DIR)/kong-ee" ]; then \
+	@if [ -d "$(UNRELEASED_DIR)/kong-manager" ]; then \
 		if [ -f "$(VERSION)/$(VERSION).md" ]; then \
 			changelog --debug=$(DEBUG) generate \
 				--repo-path . \
-				--changelog-paths $(VERSION)/kong-ee,$(UNRELEASED_DIR)/kong-ee \
-				--title Kong-Enterprise \
-				--github-issue-repo Kong/kong-ee \
-				--github-api-repo Kong/kong-ee \
+				--changelog-paths $(VERSION)/kong-manager,$(UNRELEASED_DIR)/kong-manager \
+				--title Kong-Manager \
+				--github-issue-repo Kong/kong-manager \
+				--github-api-repo Kong/kong \
 				--with-jiras \
 				>> $(VERSION).md; \
 		else \
 			changelog --debug=$(DEBUG) generate \
 				--repo-path . \
-				--changelog-paths $(UNRELEASED_DIR)/kong-ee \
-				--title Kong-Enterprise \
-				--github-issue-repo Kong/kong-ee \
-				--github-api-repo Kong/kong-ee \
-				--with-jiras \
-				>> $(VERSION).md; \
-		fi \
-    fi
-	@if [ -d "$(UNRELEASED_DIR)/kong-manager-ee" ]; then \
-		if [ -f "$(VERSION)/$(VERSION).md" ]; then \
-			changelog --debug=$(DEBUG) generate \
-				--repo-path . \
-				--changelog-paths $(VERSION)/kong-manager-ee,$(UNRELEASED_DIR)/kong-manager-ee \
-				--title Kong-Manager-Enterprise \
-				--github-issue-repo Kong/kong-admin \
-				--github-api-repo Kong/kong-ee \
-				--with-jiras \
-				>> $(VERSION).md; \
-		else \
-			changelog --debug=$(DEBUG) generate \
-				--repo-path . \
-				--changelog-paths $(UNRELEASED_DIR)/kong-manager-ee \
-				--title Kong-Manager-Enterprise \
-				--github-issue-repo Kong/kong-admin \
-				--github-api-repo Kong/kong-ee \
-				--with-jiras \
-				>> $(VERSION).md; \
-		fi \
-    fi
-	@if [ -d "$(UNRELEASED_DIR)/kong-portal-ee" ]; then \
-		if [ -f "$(VERSION)/$(VERSION).md" ]; then \
-			changelog --debug=$(DEBUG) generate \
-				--repo-path . \
-				--changelog-paths $(VERSION)/kong-portal-ee,$(UNRELEASED_DIR)/kong-portal-ee \
-				--title Kong-Portal \
-				--github-issue-repo Kong/kong-portal-templates \
-				--github-api-repo Kong/kong-ee \
-				--with-jiras \
-				>> $(VERSION).md; \
-		else \
-			changelog --debug=$(DEBUG) generate \
-				--repo-path . \
-				--changelog-paths $(UNRELEASED_DIR)/kong-portal-ee \
-				--title Kong-Portal \
-				--github-issue-repo Kong/kong-portal-templates \
-				--github-api-repo Kong/kong-ee \
+				--changelog-paths $(UNRELEASED_DIR)/kong-manager \
+				--title Kong-Manager \
+				--github-issue-repo Kong/kong-manager \
+				--github-api-repo Kong/kong \
 				--with-jiras \
 				>> $(VERSION).md; \
 		fi \
@@ -104,8 +62,8 @@ generate:
 
 	@mv $(VERSION).md $(UNRELEASED_DIR)/
 	@git mv $(UNRELEASED_DIR) $(VERSION)
-	@mkdir -p $(UNRELEASED_DIR)/{kong,kong-ee,kong-manager-ee,kong-portal-ee}
-	@touch $(UNRELEASED_DIR)/{kong,kong-ee,kong-manager-ee,kong-portal-ee}/.gitkeep
+	@mkdir -p $(UNRELEASED_DIR)/{kong,kong-manager}
+	@touch $(UNRELEASED_DIR)/{kong,kong-manager}/.gitkeep
 
 	@echo
 	@echo "Done! Please check $(VERSION)/$(VERSION).md"
@@ -116,4 +74,4 @@ push_changelog:
 	@git push -fu origin HEAD
 
 	@echo
-	@echo "Successfully pushed to Github. Please create changelog PR overthere."
+	@echo "Successfully pushed $(BRANCH_NAME) to Github. Please create changelog PR overthere."
