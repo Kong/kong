@@ -47,7 +47,11 @@ return {
         { resource_attributes = resource_attributes },
         { batch_span_count = { type = "integer" } },
         { batch_flush_delay = { type = "integer" } },
-        { queue = typedefs.queue },
+        { queue = typedefs.queue {
+          default = {
+            max_batch_size = 200,
+          },
+        } },
         { connect_timeout = typedefs.timeout { default = 1000 } },
         { send_timeout = typedefs.timeout { default = 5000 } },
         { read_timeout = typedefs.timeout { default = 5000 } },
