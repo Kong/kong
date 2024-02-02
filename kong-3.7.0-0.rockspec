@@ -39,7 +39,7 @@ dependencies = {
   "lua-resty-azure == 1.4.1",
   "lua-resty-aws == 1.3.6",
   "lua-resty-openssl == 1.2.0",
-  "lua-resty-mail == 1.0.2",
+  "lua-resty-mail == 1.1.0",
   "lua-resty-redis-connector == 0.11.0",
   "kong-redis-cluster == 1.5.3",
   "bcrypt == 2.3",
