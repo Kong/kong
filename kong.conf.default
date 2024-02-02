@@ -735,6 +735,7 @@
 #ssl_cipher_suite = intermediate # Defines the TLS ciphers served by Nginx.
                                  # Accepted values are `modern`,
                                  # `intermediate`, `old`, `fips` or `custom`.
+                                 # If you want to enable TLSv1.1, this value has to be `old`.
                                  #
                                  # See https://wiki.mozilla.org/Security/Server_Side_TLS
                                  # for detailed descriptions of each cipher
@@ -747,13 +748,15 @@
                                  # This value is ignored if `ssl_cipher_suite`
                                  # is not `custom`.
 
-#ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
+#ssl_protocols = TLSv1.2 TLSv1.3
                                  # Enables the specified protocols for
                                  # client-side connections. The set of
                                  # supported protocol versions also depends
                                  # on the version of OpenSSL Kong was built
                                  # with. This value is ignored if
                                  # `ssl_cipher_suite` is not `custom`.
+                                 # If you want to enable TLSv1.1, you should
+                                 # set `ssl_cipher_suite` to `old`.
                                  #
                                  # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_protocols
 
@@ -1743,7 +1746,7 @@
                                  #
                                  # See https://github.com/openresty/lua-nginx-module#lua_ssl_verify_depth
 
-#lua_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3   # Defines the TLS versions supported
+#lua_ssl_protocols = TLSv1.2 TLSv1.3   # Defines the TLS versions supported
                                                # when handshaking with OpenResty's
                                                # TCP cosocket APIs.
                                                #
