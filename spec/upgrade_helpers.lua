@@ -179,6 +179,42 @@ local function all_phases(phrase, f)
   return it_when("all_phases", phrase, f)
 end
 
+
+--- Get a Busted test handler for migration tests.
+--
+-- This convenience function determines the appropriate Busted handler
+-- (`busted.describe` or `busted.pending`) based on the "old Kong version"
+-- that migrations are running on and the specified version range.
+--
+-- @function get_busted_handler
+-- @param min_version The minimum Kong version (inclusive)
+-- @param max_version The maximum Kong version (inclusive)
+-- @return `busted.describe` if Kong's version is within the specified range,
+--         `busted.pending` otherwise.
+-- @usage
+-- local handler = get_busted_handler("3.3.0", "3.6.0")
+-- handler("some migration test", function() ... end)
+local get_busted_handler
+do
+  local function get_version_num(v1, v2)
+    if v2 then
+      assert(#v2 == #v1, string.format("different version format: %s and %s", v1, v2))
+    end
+    return assert(tonumber((v1:gsub("%.", ""))), "invalid version: " .. v1)
+  end
+
+  function get_busted_handler(min_version, max_version)
+    local old_version_var = assert(os.getenv("OLD_KONG_VERSION"), "old version not set")
+    local old_version = string.match(old_version_var, "[^/]+$")
+
+    local old_version_num = get_version_num(old_version)
+    local min_v_num = min_version and get_version_num(min_version, old_version) or 0
+    local max_v_num = max_version and get_version_num(max_version, old_version) or math.huge
+
+    return old_version_num >= min_v_num and old_version_num <= max_v_num and busted.describe or busted.pending
+  end
+end
+
 return {
   database_type = database_type,
   get_database = get_database,
@@ -192,5 +228,6 @@ return {
   old_after_up = old_after_up,
   new_after_up = new_after_up,
   new_after_finish = new_after_finish,
-  all_phases = all_phases
+  all_phases = all_phases,
+  get_busted_handler = get_busted_handler,
 }
