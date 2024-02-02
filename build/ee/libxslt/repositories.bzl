@@ -17,7 +17,7 @@ def libxslt_repositories():
             "https://download.gnome.org/sources/libxslt/" + version_major_minor + "/libxslt-" + version + ".tar.xz",
             "https://ftp.osuosl.org/pub/blfs/conglomeration/libxslt/" + "/libxslt-" + version + ".tar.xz",
         ],
-        sha256 = "3a4b27dc8027ccd6146725950336f1ec520928f320f144eb5fa7990ae6123ab4",
+        sha256 = "2a20ad621148339b0759c4d4e96719362dee64c9a096dbba625ba053846349f0",
         strip_prefix = "libxslt-" + version,
         build_file = "//build/ee/libxslt:BUILD.libxslt.bazel",
     )
