@@ -4,7 +4,7 @@ local _M = {}
 local ai_shared = require("kong.llm.drivers.shared")
 local llm = require("kong.llm")
 local cjson = require("cjson.safe")
-local kong_utils = require("kong.tools.utils")
+local kong_utils = require("kong.tools.gzip")
 local kong_meta = require "kong.meta"
 --
 
@@ -37,6 +37,7 @@ function _M:header_filter(conf)
 
       if response_body then
         local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
+
         if is_gzip then
           response_body = kong_utils.inflate_gzip(response_body)
         end
