@@ -85,7 +85,7 @@ http {
 
     ssl_certificate     ${cert_path}/kong_spec.crt;
     ssl_certificate_key ${cert_path}/kong_spec.key;
-    ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+    ssl_protocols TLSv1.2;
     ssl_ciphers   HIGH:!aNULL:!MD5;
 #end
 # if check_hostname then
