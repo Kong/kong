@@ -18,10 +18,13 @@ cmake(
     ],
     cache_entries = {
         "BUILD_SHARED_LIBS": "OFF",
+        "MSGPACK_GEN_COVERAGE": "OFF",
+        "MSGPACK_BUILD_TESTS": "OFF",
+        "MSGPACK_BUILD_EXAMPLES": "OFF",
     },
     lib_source = ":all_srcs",
     out_static_libs = [
-        "libmsgpackc.a",
+        "libmsgpack-c.a",
     ],
     visibility = ["//visibility:public"],
 )

@@ -153,8 +153,8 @@ index d80e45a8..1c818a9a 100644
  TARGET_XCFLAGS= $(TARGET_LFSFLAGS) -U_FORTIFY_SOURCE
  TARGET_XLDFLAGS=
 -TARGET_XLIBS= -lm
-+TARGET_XLIBS= -lm -lmsgpackc  # We don't generate the dynamic lib during the building process,
-+                              # so the linker will use the static lib instead.
++TARGET_XLIBS= -lm -lmsgpack-c  # We don't generate the dynamic lib during the building process,
++                               # so the linker will use the static lib instead.
  TARGET_TCFLAGS= $(CCOPTIONS) $(TARGET_XCFLAGS) $(TARGET_FLAGS) $(TARGET_CFLAGS)
  TARGET_ACFLAGS= $(CCOPTIONS) $(TARGET_XCFLAGS) $(TARGET_FLAGS) $(TARGET_CFLAGS)
  TARGET_ASFLAGS= $(ASOPTIONS) $(TARGET_XCFLAGS) $(TARGET_FLAGS) $(TARGET_CFLAGS)

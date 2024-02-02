@@ -12,6 +12,6 @@ def msgpack_c_repositories():
         name = "msgpack_c",
         build_file = "//build/openresty/msgpack_c:BUILD.msgpack_c.bazel",
         strip_prefix = "msgpack-" + version,
-        sha256 = "420fe35e7572f2a168d17e660ef981a589c9cbe77faa25eb34a520e1fcc032c8",
+        sha256 = "3654f5e2c652dc52e0a993e270bb57d5702b262703f03771c152bba51602aeba",
         url = "https://github.com/msgpack/msgpack-c/releases/download/" + version + "/msgpack-" + version + ".tar.gz",
     )
