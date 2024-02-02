@@ -18,12 +18,12 @@ lmdb_map_size         2048m;
       local http_conf = fmt([[
 lua_ssl_verify_depth   1;
 lua_ssl_trusted_certificate '%s/servroot/.ca_combined';
-lua_ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+lua_ssl_protocols TLSv1.2 TLSv1.3;
 ]], cwd)
       local stream_conf = fmt([[
 lua_ssl_verify_depth   1;
 lua_ssl_trusted_certificate '%s/servroot/.ca_combined';
-lua_ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+lua_ssl_protocols TLSv1.2 TLSv1.3;
 ]], cwd)
 
       local args = {
