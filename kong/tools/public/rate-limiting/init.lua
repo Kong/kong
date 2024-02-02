@@ -293,7 +293,10 @@ function _M.sync(premature, namespace, timer_id)
   end
 
   -- push these diffs to the appropriate data store
-  cfg.strategy:push_diffs(diffs)
+  local ok, err = cfg.strategy:push_diffs(diffs)
+  if not ok then
+    log(ERR, "error in pushing diffs for namespace ", namespace, ": ", err)
+  end
 
   -- sleep for a bit to allow each node in the cluster to update,
   -- and the data store to reach consistency. once that's done
@@ -444,11 +447,15 @@ function _M.increment(key, window_size, value, namespace, prev_window_weight)
     dict:incr(incr_key .. "|diff", -newval)
     dict:incr(incr_key .. "|sync", newval)
 
-    cfg.strategy:push_diffs(diffs)
+    local ok, err = cfg.strategy:push_diffs(diffs)
+    if not ok then
+      log(ERR, "error in pushing diffs for namespace ", namespace, ": ", err)
+    end
 
     log(DEBUG, "current window_size ", window_size)
     local window_count, err = cfg.strategy:get_window(key, namespace, window, window_size)
     if err then
+      log(ERR, "error in getting window for namespace ", namespace, ": ", err)
       window_count = 0
     end
     dict:set(incr_key .. "|sync", window_count, exptime)
@@ -496,9 +503,9 @@ local function namespace_maintenance_cycle(namespace, period)
     return
   end
 
-  local ok = cfg.strategy:purge(namespace, cfg.window_sizes, window_start)
+  local ok, err = cfg.strategy:purge(namespace, cfg.window_sizes, window_start)
   if not ok then
-    log(ERR, "rate-limiting strategy maintenance cycle failed")
+    log(ERR, "rate-limiting strategy maintenance cycle failed: ", err)
   end
 end
 

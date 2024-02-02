@@ -160,7 +160,7 @@ for _, strategy in helpers.all_strategies() do
       end
 
       assert.logfile().has.no.line("creating timer for namespace foo", true, 5)
-      assert.logfile().has.no.line("failed to connect to redis under namespace foo", true, 5)
+      assert.logfile().has.no.line("error in fetching counters for namespace foo", true, 5)
     end)
 
     it("create the timer when the plugin is first executed", function()
@@ -172,7 +172,7 @@ for _, strategy in helpers.all_strategies() do
       assert.res_status(200, res)
       proxy_client:close()
       assert.logfile().has.line("creating timer for namespace foo", true, 10)
-      assert.logfile().has.line("failed to connect to redis under namespace foo", true, 10)
+      assert.logfile().has.line("error in fetching counters for namespace foo", true, 10)
     end)
 
     it("won't re-create a timer when the limit is updated", function()
@@ -197,7 +197,7 @@ for _, strategy in helpers.all_strategies() do
 
       helpers.pwait_until(function()
         helpers.clean_logfile()
-        assert.logfile().has.no.line("failed to connect to redis under namespace foo", true, 5)
+        assert.logfile().has.no.line("error in fetching counters for namespace foo", true, 5)
       end, 20)
     end)
 
@@ -210,7 +210,7 @@ for _, strategy in helpers.all_strategies() do
       end
 
       assert.logfile().has.no.line("creating timer for namespace foo", true, 5)
-      assert.logfile().has.no.line("failed to connect to redis under namespace foo", true, 5)
+      assert.logfile().has.no.line("error in fetching counters for namespace foo", true, 5)
     end)
 
     it("create the timer again when the plugin is first executed", function()
@@ -222,7 +222,7 @@ for _, strategy in helpers.all_strategies() do
       assert.res_status(200, res)
       proxy_client:close()
       assert.logfile().has.line("creating timer for namespace foo", true, 10)
-      assert.logfile().has.line("failed to connect to redis under namespace foo", true, 10)
+      assert.logfile().has.line("error in fetching counters for namespace foo", true, 10)
     end)
 
 

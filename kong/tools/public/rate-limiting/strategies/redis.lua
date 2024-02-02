@@ -53,13 +53,12 @@ function _M:push_diffs(diffs)
   end
 
   if #diffs == 0 then
-    return
+    return true
   end
 
   local red, err = redis.connection(self.config)
   if not red then
-    log(ERR, "failed to connect to redis: ", err)
-    return nil, err
+    return nil, fmt("failed to connect to redis: %s", err)
   end
 
   red:init_pipeline()
@@ -79,8 +78,7 @@ function _M:push_diffs(diffs)
 
   local results, err = red:commit_pipeline()
   if not results then
-    log(ERR, "failed to push diff pipeline: ", err)
-    return nil, err
+    return nil, fmt("failed to push diff pipeline: %s", err)
   end
 
   -- redis cluster library handles keepalive itself
@@ -97,18 +95,17 @@ function _M:push_diffs(diffs)
   end
 
   if next(err_tab) then
-    local err_msg = tb_concat(err_tab, ", ")
-    log(ERR, err_msg)
-    return nil, err_msg
+    return nil, tb_concat(err_tab, ", ")
   end
+
+  return true
 end
 
 
 function _M:get_counters(namespace, window_sizes, time)
   local red, err = redis.connection(self.config)
   if not red then
-    log(ERR, "failed to connect to redis under namespace ", namespace, ": ", err)
-    return nil, err
+    return nil, fmt("failed to connect to redis: %s", err)
   end
 
   time = time or ngx_time()
@@ -124,8 +121,7 @@ function _M:get_counters(namespace, window_sizes, time)
 
   local res, err = red:commit_pipeline()
   if not res then
-    log(ERR, "failed to retrieve keys under namespace ", namespace, ": ", err)
-    return nil, err
+    return nil, fmt("failed to retrieve keys: %s", err)
   end
 
   -- redis cluster library handles keepalive itself
@@ -196,16 +192,14 @@ end
 function _M:get_window(key, namespace, window_start, window_size)
   local red, err = redis.connection(self.config)
   if not red then
-    log(ERR, "failed to connect to redis under namespace ", namespace, ": ", err)
-    return nil, err
+    return nil, fmt("failed to connect to redis: %s", err)
   end
 
   local rkey = window_start .. ":" .. window_size .. ":" .. namespace
 
   local res, err = red:hget(rkey, key)
   if not res then
-    log(ERR, "failed to retrieve ", key, " under namespace ", namespace, ": ", err)
-    return nil, err
+    return nil, fmt("failed to retrieve %s : %s", key, err)
   end
 
   -- redis cluster library handles keepalive itself

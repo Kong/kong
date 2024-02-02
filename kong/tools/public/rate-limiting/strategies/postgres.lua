@@ -13,6 +13,7 @@ local ERR          = ngx.ERR
 local type         = type
 local setmetatable = setmetatable
 local new_tab      = require("table.new")
+local fmt          = string.format
 
 
 local DELETE_COUNTER_QUERY = [[
@@ -108,7 +109,7 @@ function _M:push_diffs(diffs)
 
   -- if no diffs, nothing to do, return...
   if num_diffs == 0 then
-    return
+    return true
   end
 
   do
@@ -138,9 +139,10 @@ function _M:push_diffs(diffs)
   -- each of these are individual queries, but we can batch them together
   local res, err = self.db:query(concat(query_tab, '; '))
   if not res then
-    log(ERR, "failed to upsert counter values: ", err)
-    return nil, err
+    return nil, fmt("failed to upsert counter values: %s", err)
   end
+
+  return true
 end
 
 
@@ -175,8 +177,7 @@ function _M:get_counters(namespace, window_sizes, time)
 
   local rows, err = self.db:query(q)
   if not rows then
-    log(ERR, "failed to select sync keys for namespace ", namespace, ": ", err)
-    return nil, err
+    return nil, fmt("failed to select sync keys: %s", err)
   end
 
   local row_idx = 0
@@ -241,8 +242,7 @@ function _M:purge(namespace, window_sizes, window_start)
   -- each of these are individual queries, but we can batch them together
   local res, err = self.db:query(concat(query_tab, '; '))
   if not res then
-    log(ERR, "failed to delete counters: ", err)
-    return nil, err
+    return nil, fmt("failed to delete counters: %s", err)
   end
 
   return true

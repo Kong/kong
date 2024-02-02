@@ -268,7 +268,6 @@ function _M.connection(conf)
       connect_opts    = connect_opts,
     })
     if not red or err then
-      log(ERR, "failed to connect to redis cluster: ", err)
       return nil, err
     end
   else
@@ -299,12 +298,8 @@ function _M.connection(conf)
     red, err, previous_errors = rc:connect()
     if not red or err then
       if previous_errors then
-        local err_msg = string_format("failed to connect to redis: %s, previous errors: %s",
+        err = string_format("current errors: %s, previous errors: %s",
                                       err, table_concat(previous_errors, ", "))
-        log(ERR, "failed to connect to redis: ", err_msg)
-        err = err_msg
-      else
-        log(ERR, "failed to connect to redis: ", err)
       end
 
       return nil, err
