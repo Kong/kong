@@ -293,6 +293,7 @@ build = {
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",
     ["kong.db.migrations.operations.280_to_300"] = "kong/db/migrations/operations/280_to_300.lua",
+    ["kong.db.migrations.operations.331_to_332"] = "kong/db/migrations/operations/331_to_332.lua",
     ["kong.db.migrations.migrate_path_280_300"] = "kong/db/migrations/migrate_path_280_300.lua",
     ["kong.db.declarative.migrations"] = "kong/db/declarative/migrations/init.lua",
     ["kong.db.declarative.migrations.route_path"] = "kong/db/declarative/migrations/route_path.lua",
@@ -557,6 +558,8 @@ build = {
     ["kong.plugins.azure-functions.handler"] = "kong/plugins/azure-functions/handler.lua",
     ["kong.plugins.azure-functions.schema"]  = "kong/plugins/azure-functions/schema.lua",
 
+    ["kong.plugins.opentelemetry.migrations"] = "kong/plugins/opentelemetry/migrations/init.lua",
+    ["kong.plugins.opentelemetry.migrations.001_331_to_332"] = "kong/plugins/opentelemetry/migrations/001_331_to_332.lua",
     ["kong.plugins.opentelemetry.handler"] = "kong/plugins/opentelemetry/handler.lua",
     ["kong.plugins.opentelemetry.schema"]  = "kong/plugins/opentelemetry/schema.lua",
     ["kong.plugins.opentelemetry.proto"]  = "kong/plugins/opentelemetry/proto.lua",
