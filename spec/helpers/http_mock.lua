@@ -118,8 +118,15 @@ end
 -- client:send({})
 -- local logs = mock:retrieve_mocking_logs() -- get all the logs of HTTP sessions
 -- mock:stop()
--- @usage
--- -- routes can be a table like this:
+--
+-- listens can be a number, which will be used as the port of the mock server;
+-- or a string, which will be used as the param of listen directive of the mock server;
+-- or a table represents multiple listen ports.
+-- if the port is not specified, a random port will be used.
+-- call mock:get_default_port() to get the first port the mock server listens to.
+-- if the port is a number and opts.tls is set to ture, ssl will be appended.
+--
+-- routes can be a table like this:
 -- routes = {
 --   ["/"] = {
 --     access = [[
@@ -234,11 +241,11 @@ end
 
 --- make assertions on HTTP requests.
 -- with a timeout to wait for the requests to arrive
--- @class http_mock.eventually
+-- @table http_mock.eventually
 
 --- assert if the condition is true for one of the logs.
--- Replace "session" in the name of the function to assert on fields of the log.
--- The field can be one of "session", "request", "response", "error".
+--- Replace "session" in the name of the function to assert on fields of the log.
+--- The field can be one of "session", "request", "response", "error".
 -- @function http_mock.eventually:has_session_satisfy
 -- @tparam function check the check function, accept a log and throw error if the condition is not satisfied
 
