@@ -98,7 +98,7 @@ http {
         ssl_certificate     $(ssl_cert[i]);
         ssl_certificate_key $(ssl_cert_key[i]);
 > end
-        ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+        ssl_protocols TLSv1.2 TLSv1.3;
         ssl_certificate_by_lua_block {
             Kong.ssl_certificate()
         }
@@ -200,7 +200,7 @@ http {
         ssl_certificate     $(admin_ssl_cert[i]);
         ssl_certificate_key $(admin_ssl_cert_key[i]);
 > end
-        ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+        ssl_protocols TLSv1.2 TLSv1.3;
 > end
 
         # injected nginx_admin_* directives
@@ -237,7 +237,7 @@ http {
         ssl_certificate     $(ssl_cert[i]);
         ssl_certificate_key $(ssl_cert_key[i]);
 > end
-        ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+        ssl_protocols TLSv1.2 TLSv1.3;
 
         set_real_ip_from 127.0.0.1;
 
@@ -557,7 +557,7 @@ stream {
         ssl_certificate     $(ssl_cert[i]);
         ssl_certificate_key $(ssl_cert_key[i]);
 > end
-        ssl_protocols TLSv1.1 TLSv1.2;
+        ssl_protocols TLSv1.2;
 
         content_by_lua_block {
             local sock = assert(ngx.req.socket(true))

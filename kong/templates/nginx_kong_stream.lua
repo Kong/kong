@@ -33,6 +33,12 @@ ssl_ciphers ${{SSL_CIPHERS}};
 $(el.name) $(el.value);
 > end
 
+> if ssl_cipher_suite == 'old' then
+lua_ssl_conf_command CipherString DEFAULT:@SECLEVEL=0;
+proxy_ssl_conf_command CipherString DEFAULT:@SECLEVEL=0;
+ssl_conf_command CipherString DEFAULT:@SECLEVEL=0;
+> end
+
 init_by_lua_block {
 > if test and coverage then
     require 'luacov'
