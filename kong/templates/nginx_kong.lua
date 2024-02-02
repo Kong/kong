@@ -24,6 +24,11 @@ lua_shared_dict kong_db_cache_miss          12m;
 lua_shared_dict kong_secrets                5m;
 
 underscores_in_headers on;
+> if ssl_cipher_suite == 'old' then
+lua_ssl_conf_command CipherString DEFAULT:@SECLEVEL=0;
+proxy_ssl_conf_command CipherString DEFAULT:@SECLEVEL=0;
+ssl_conf_command CipherString DEFAULT:@SECLEVEL=0;
+> end
 > if ssl_ciphers then
 ssl_ciphers ${{SSL_CIPHERS}};
 > end
@@ -462,7 +467,7 @@ server {
     ssl_certificate     $(admin_gui_ssl_cert[i]);
     ssl_certificate_key $(admin_gui_ssl_cert_key[i]);
 > end
-    ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+    ssl_protocols TLSv1.2 TLSv1.3;
 > end
 
     client_max_body_size 10m;

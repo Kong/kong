@@ -33,6 +33,12 @@ ssl_ciphers ${{SSL_CIPHERS}};
 $(el.name) $(el.value);
 > end
 
+> if ssl_cipher_suite == 'old' then
+lua_ssl_conf_command CipherString DEFAULT:@SECLEVEL=0;
+proxy_ssl_conf_command CipherString DEFAULT:@SECLEVEL=0;
+ssl_conf_command CipherString DEFAULT:@SECLEVEL=0;
+> end
+
 init_by_lua_block {
     -- shared dictionaries conflict between stream/http modules. use a prefix.
     local shared = ngx.shared
