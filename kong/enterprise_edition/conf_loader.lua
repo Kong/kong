@@ -217,13 +217,13 @@ local EE_CONF_INFERENCES = {
   debug_error_log = { typ = "string" },
 
   pg_ssl_required = { typ = "boolean" },
-  pg_ssl_version = { enum = { "tlsv1_1", "tlsv1_2", "tlsv1_3", "any" } },
+  pg_ssl_version = { enum = { "tlsv1_2", "tlsv1_3", "any" } },
   pg_ssl_cert = { typ = "string" },
   pg_ssl_cert_key = { typ = "string" },
 
   pg_ro_ssl_required = { typ = "boolean" },
   -- allow nil because it uses pg_ssl_version by default
-  pg_ro_ssl_version = { enum = { nil, "tlsv1_1", "tlsv1_2", "tlsv1_3", "any" } },
+  pg_ro_ssl_version = { enum = { nil, "tlsv1_2", "tlsv1_3", "any" } },
   pg_ro_ssl_cert = { typ = "string" },
   pg_ro_ssl_cert_key = { typ = "string" },
 

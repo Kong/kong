@@ -24,7 +24,7 @@ local fixtures = {
           ssl_certificate ${{SSL_CERT}};
           ssl_certificate_key ${{SSL_CERT_KEY}};
 > end
-          ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+          ssl_protocols TLSv1.2 TLSv1.3;
 
           location ~ "/graphql" {
             content_by_lua_block {

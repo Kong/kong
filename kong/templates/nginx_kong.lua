@@ -43,6 +43,11 @@ lua_shared_dict kong_profiling_state 1536k;  # 1.5 MBytes
 lua_shared_dict kong_vaults_hcv 1m;
 
 underscores_in_headers on;
+> if ssl_cipher_suite == 'old' then
+lua_ssl_conf_command CipherString DEFAULT:@SECLEVEL=0;
+proxy_ssl_conf_command CipherString DEFAULT:@SECLEVEL=0;
+ssl_conf_command CipherString DEFAULT:@SECLEVEL=0;
+> end
 > if ssl_ciphers then
 ssl_ciphers ${{SSL_CIPHERS}};
 > end
