@@ -44,6 +44,7 @@ function _M:header_filter(conf)
 
       if response_body then
         local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
+
         if is_gzip then
           response_body = kong_utils.inflate_gzip(response_body)
         end

@@ -11,6 +11,7 @@ local _M = {}
 local cjson = require("cjson.safe")
 local http  = require("resty.http")
 local fmt   = string.format
+local os    = os
 --
 
 local log_entry_keys = {
@@ -25,8 +26,10 @@ local log_entry_keys = {
   PROVIDER_NAME = "ai.meta.provider_name",
 }
 
+local openai_override = os.getenv("OPENAI_TEST_PORT")
+
 _M.upstream_url_format = {
-  openai = "https://api.openai.com:443",
+  openai = fmt("%s://api.openai.com:%s", (openai_override and "http") or "https", (openai_override) or "443"),
   anthropic = "https://api.anthropic.com:443",
   cohere = "https://api.cohere.com:443",
   azure = "https://%s.openai.azure.com:443/openai/deployments/%s",
