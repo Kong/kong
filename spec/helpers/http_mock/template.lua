@@ -124,7 +124,7 @@ $(init)
 # if tls then
     ssl_certificate        ../../spec/fixtures/kong_spec.crt;
     ssl_certificate_key    ../../spec/fixtures/kong_spec.key;
-    ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+    ssl_protocols TLSv1.2;
     ssl_ciphers   HIGH:!aNULL:!MD5;
 
 # end
