@@ -689,12 +689,7 @@ for _, strategy in strategies() do
         assert(bp.plugins:insert(
           build_plugin(
             route_for_consumer_group_no_config.id, 5, MOCK_ORIGINAL_LIMIT, 2, nil,
-            nil, {
-              host = REDIS_HOST,
-              port = REDIS_PORT,
-              database = REDIS_DATABASE,
-              password = REDIS_PASSWORD_VALID,
-            }, {
+            nil, redis_configuration, {
               namespace = "Dk1krkTWBqmcKEQVW5cQNLgikuKygjnu",
               enforce_consumer_groups = true,
               consumer_groups = { "test_consumer_group_no_config" }

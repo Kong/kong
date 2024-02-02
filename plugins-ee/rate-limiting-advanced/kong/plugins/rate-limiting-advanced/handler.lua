@@ -12,6 +12,7 @@ local event_hooks = require "kong.enterprise_edition.event_hooks"
 local helpers = require "kong.enterprise_edition.consumer_groups_helpers"
 local meta = require "kong.meta"
 local uuid = require "kong.tools.uuid"
+local pl_tablex = require "pl.tablex"
 
 
 local ngx = ngx
@@ -180,6 +181,25 @@ local function new_namespace(config, timer_id)
 end
 
 
+-- fields that are required for synchronizing counters for a namespace
+local sync_fields = {
+  "window_size", "sync_rate", "strategy", "dictionary_name", "redis",
+}
+
+local function get_sync_conf(conf)
+  local sync_conf = {}
+  for _, k in ipairs(sync_fields) do
+    sync_conf[k] = conf[k]
+  end
+
+  return sync_conf
+end
+
+local function are_same_config(conf1, conf2)
+  return pl_tablex.deepcompare(conf1, conf2)
+end
+
+
 function NewRLHandler:init_worker()
   event_hooks.publish("rate-limiting-advanced", "rate-limit-exceeded", {
     fields = { "consumer", "ip", "service", "rate", "limit", "window" },
@@ -202,7 +222,15 @@ function NewRLHandler:configure(configs)
         sync_rate = -1
       end
 
-      namespaces[namespace] = true
+      if namespaces[namespace] then
+        if not are_same_config(namespaces[namespace], get_sync_conf(config)) then
+          kong.log.err("multiple rate-limiting-advanced plugins with the namespace '", namespace,
+            "' have different counter syncing configurations. Please correct them to use the same configuration.")
+        end
+      else
+
+        namespaces[namespace] = get_sync_conf(config)
+      end
 
       kong.log.debug("clear and reset ", namespace)
 

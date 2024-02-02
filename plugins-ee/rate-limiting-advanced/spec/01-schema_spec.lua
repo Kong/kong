@@ -7,6 +7,11 @@
 
 local rate_limiting_schema = require "kong.plugins.rate-limiting-advanced.schema"
 local v = require("spec.helpers").validate_plugin_config_schema
+local helpers = require "spec.helpers"
+local cjson = require "cjson"
+local fmt = string.format
+local pl_utils = require "pl.utils"
+local plugin_name = "rate-limiting-advanced"
 
 local kong = kong
 local concat = table.concat
@@ -15,6 +20,49 @@ local conf_err = concat{ "[rate-limiting-advanced] ",
                          "strategy 'cluster' is not supported with Hybrid deployments or DB-less mode. ",
                          "If you did not specify the strategy, please use 'redis' strategy, 'local' strategy ",
                          "or set 'sync_rate' to -1.", }
+
+
+local function post_config(admin_client, yaml_file)
+   local res = assert(admin_client:send {
+     method = "POST",
+     path = "/config",
+     body = {
+       config = pl_utils.readfile(yaml_file),
+     },
+     headers = {
+       ["Content-Type"] = "application/json",
+     }
+   })
+   return cjson.decode(assert.res_status(201, res))
+end
+
+local function post_plugin(admin_client, config)
+  local res = assert(admin_client:send {
+    method = "POST",
+    path = "/plugins/",
+    body = config,
+    headers = {
+      ["Content-Type"] = "application/json",
+    },
+  })
+  return cjson.decode(assert.res_status(201, res))
+end
+
+local function patch_plugin(admin_client, plugin_id, config)
+  local res = assert(admin_client:send {
+    method = "PATCH",
+    path = "/plugins/" .. plugin_id,
+    body = {
+      config = config,
+    },
+    headers = {
+      ["Content-Type"] = "application/json",
+    },
+  })
+
+  return cjson.decode(assert.res_status(200, res))
+end
+
 
 describe("rate-limiting-advanced schema", function()
   it("accepts a minimal config", function()
@@ -512,3 +560,126 @@ describe("Hybrid mode schema validation", function()
     assert.is_nil(err)
   end)
 end)
+
+for _, strategy in helpers.all_strategies() do
+  describe(fmt("%s - namespace configuration consistency [#%s]", plugin_name, strategy), function()
+    local bp, admin_client, plugin_id
+    local config1, config2, config3
+    local yaml_file_0, yaml_file_1, yaml_file_2
+    lazy_setup(function()
+      bp = helpers.get_db_utils(strategy == "off" and "postgres" or strategy, {
+        "routes",
+        "services",
+        "plugins",
+      }, { plugin_name })
+
+      local route1 = bp.routes:insert({ paths = { "/test1" } })
+      local route2 = bp.routes:insert({ paths = { "/test2" } })
+
+      -- two plugins with the same namespace but different configs
+      config1 = {
+        name = plugin_name,
+        route = { id = route1.id },
+        config = {
+          namespace = "foo",
+          strategy = "redis",
+          window_size = { 5 },
+          limit = { 3 },
+          sync_rate = 0.5,
+          redis = {
+            host = "invalid.test",  -- different
+            port = helpers.redis_port,
+            database = 1,
+          },
+        },
+      }
+
+      config2 = {
+        name = plugin_name,
+        route = { id = route2.id },
+        config = {
+          namespace = "foo",
+          strategy = "redis",
+          window_size = { 5 },
+          limit = { 3 },
+          sync_rate = 0.5,
+          redis = {
+            host = "invalid2.test", -- different
+            port = helpers.redis_port,
+            database = 1,
+          },
+        },
+      }
+
+      config3 = {
+        redis = {
+          host = "invalid.test", -- same as in config1
+          port = helpers.redis_port,
+          database = 1,
+        },
+      }
+
+      if strategy == "off" then
+        yaml_file_0 = helpers.make_yaml_file()
+
+        bp.plugins:insert(config1)
+        local plugin = bp.plugins:insert(config2)
+
+        yaml_file_1 = helpers.make_yaml_file()
+
+        bp.plugins:update({id = plugin.id}, {
+          config = config3,
+        })
+
+        yaml_file_2 = helpers.make_yaml_file()
+      end
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        plugins    = plugin_name,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        declarative_config = strategy == "off" and yaml_file_0 or nil,
+        pg_host = strategy == "off" and "unknownhost.konghq.com" or nil,
+      }))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+    before_each(function()
+      admin_client = helpers.admin_client()
+    end)
+
+    after_each(function()
+      helpers.clean_logfile()
+      if admin_client then
+        admin_client:close()
+      end
+    end)
+
+    it("should have error log when multiple plugins with the same namespace have different counter syncing configurations", function()
+      if strategy == "off" then
+        post_config(admin_client, yaml_file_1)
+
+      else
+        post_plugin(admin_client, config1)
+        local plugin = post_plugin(admin_client, config2)
+        plugin_id = plugin.id
+      end
+
+      assert.logfile().has.line("multiple rate-limiting-advanced plugins with the namespace 'foo' have different counter syncing configurations", true, 10)
+    end)
+
+    it("should not have error log after changing to the same configuration", function()
+      if strategy == "off" then
+        post_config(admin_client, yaml_file_2)
+
+      else
+        patch_plugin(admin_client, plugin_id, config3)
+      end
+
+      assert.logfile().has.no.line("multiple rate-limiting-advanced plugins with the namespace 'foo' have different counter syncing configurations", true, 5)
+    end)
+  end)
+end

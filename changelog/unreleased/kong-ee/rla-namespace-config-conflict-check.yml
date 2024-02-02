@@ -1,0 +1,3 @@
+message: "**Rate Limiting Advanced:** Print error log when multiple plugins with the same namespace have different configurations"
+type: bugfix
+scope: Plugin
