@@ -257,20 +257,14 @@ jobs:
         echo "vers=$vers" >> $GITHUB_OUTPUT
 
     - name: Obtain License
-      env:
-        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
-      run: |
-        KONG_LICENSE_URL="https://download.konghq.com/internal/kong-gateway/license.json"
-        KONG_LICENSE_DATA=$(curl -s -L -u"$PULP_USERNAME:$PULP_PASSWORD" $KONG_LICENSE_URL)
-        echo "KONG_LICENSE_DATA=$KONG_LICENSE_DATA" >> $GITHUB_ENV
+      uses: Kong/kong-license@master
+      id: license
+      with:
+        op-token: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
 
-        if [[ ! $KONG_LICENSE_DATA == *"signature"* || ! $KONG_LICENSE_DATA == *"payload"* ]]; then
-          # the check above is a bit lame, but the best we can do without requiring
-          # yet more additional dependenies like jq or similar.
-          echo "failed to download the Kong Enterprise license file!
-            $KONG_LICENSE_DATA"
-          exit 1
-        fi
+    - name: Set License Env
+      run: |
+        echo 'KONG_LICENSE_DATA=${{ steps.license.outputs.license }}' >> $GITHUB_ENV
 
     - name: Run Tests
       env:

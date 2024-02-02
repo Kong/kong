@@ -127,23 +127,20 @@ jobs:
         cd $GITHUB_WORKSPACE
         kong hybrid gen_cert
 
+    - name: Collect Kong License
+      uses: Kong/kong-license@master
+      id: license
+      with:
+        op-token: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+
     - name: Check version compatibility
       env:
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
         PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
+        KONG_LICENSE_DATA: ${{ steps.license.outputs.license }}
       run: |
-        KONG_LICENSE_URL="https://download.konghq.com/internal/kong-gateway/license.json"
-        export KONG_LICENSE_DATA=$(curl \
-          --silent \
-          --location \
-          --retry 3 \
-          --retry-delay 3 \
-          --user "$PULP_USERNAME:$PULP_PASSWORD" \
-          --url "$KONG_LICENSE_URL"
-        )
-
-        if [[ -z $KONG_LICENSE_DATA ]]; then
-          echo "failed downloading license from $KONG_LICENSE_URL"
+        if [[ -z "$KONG_LICENSE_DATA" ]]; then
+          echo 'failed getting license'
           exit 1
         fi
 
