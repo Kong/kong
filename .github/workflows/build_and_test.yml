@@ -37,12 +37,14 @@ env:
 
 jobs:
   build:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     uses: ./.github/workflows/build.yml
     with:
       relative-build-root: bazel-bin/build
 
   lint-and-doc-tests:
     name: Lint and Doc tests
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     runs-on: ubuntu-22.04
     needs: build
 
@@ -92,6 +94,7 @@ jobs:
 
   schedule:
     name: Schedule busted tests to run
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     runs-on: ubuntu-22.04
     needs: build
 
@@ -136,6 +139,7 @@ jobs:
 
   busted-tests:
     name: Busted test runner ${{ matrix.runner }}
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     runs-on: ubuntu-22.04
     needs: [build,schedule]
 
@@ -328,6 +332,7 @@ jobs:
         sudo dmesg -T
 
   pdk-tests:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     name: PDK tests
     runs-on: ubuntu-22.04
     needs: build
@@ -389,6 +394,7 @@ jobs:
   cleanup-and-aggregate-stats:
     needs: [lint-and-doc-tests,pdk-tests,busted-tests]
     name: Cleanup and Luacov stats aggregator
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
     runs-on: ubuntu-22.04
 
