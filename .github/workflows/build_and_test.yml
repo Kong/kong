@@ -36,11 +36,13 @@ env:
 
 jobs:
   build:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     uses: ./.github/workflows/build.yml
     with:
       relative-build-root: bazel-bin/build
 
   lint-doc-and-unit-tests:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     name: Lint, Doc and Unit tests
     runs-on: ubuntu-22.04
     needs: build
@@ -127,6 +129,7 @@ jobs:
         sudo dmesg -T
 
   integration-tests-postgres:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     name: Postgres ${{ matrix.suite }} - ${{ matrix.split }} tests
     runs-on: ubuntu-22.04
     needs: build
@@ -294,6 +297,7 @@ jobs:
         sudo dmesg -T
 
   integration-tests-dbless:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     name: DB-less integration tests
     runs-on: ubuntu-22.04
     needs: build
@@ -374,6 +378,7 @@ jobs:
         sudo dmesg -T
 
   pdk-tests:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     name: PDK tests
     runs-on: ubuntu-22.04
     needs: build
@@ -433,6 +438,7 @@ jobs:
         sudo dmesg -T
 
   aggregator:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     needs: [lint-doc-and-unit-tests,pdk-tests,integration-tests-postgres,integration-tests-dbless]
     name: Luacov stats aggregator
     if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
