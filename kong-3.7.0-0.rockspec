@@ -29,7 +29,7 @@ dependencies = {
   "lyaml == 6.2.8",
   "luasyslog == 2.0.1",
   "lua_pack == 2.0.0",
-  "xmlua == 1.2.0",
+  "xmlua == 1.2.1",
   "luaexpat == 1.5.1",
   "binaryheap >= 0.4",
   "luaxxhash >= 1.0",
