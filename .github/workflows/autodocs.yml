@@ -13,6 +13,7 @@ on:
         description: "Target Branch in kong/docs.konghq.com (e.g. release/2.4)"
         required: true
       force_build:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
         description: "Ignore the build cache and build dependencies from scratch"
         type: boolean
         default: false
@@ -70,6 +71,7 @@ jobs:
           source .ci/setup_env_github.sh
           make dev
   autodoc:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     runs-on: ubuntu-22.04
     needs: [build]
     steps:
