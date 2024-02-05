@@ -55,7 +55,10 @@ local function http_server(port, opts)
   return thread:start()
 end
 
-describe("http-log plugin migration", function()
+local OLD_KONG_VERSION = os.getenv("OLD_KONG_VERSION")
+local handler = OLD_KONG_VERSION:sub(1,3) == "2.8" and describe or pending
+
+handler("http-log plugin migration", function()
 
     lazy_setup(function()
       assert(uh.start_kong())
