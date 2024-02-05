@@ -25,45 +25,33 @@ concurrency:
   cancel-in-progress: true
 env:
   GH_TOKEN: ${{ github.token }}
+  BUILD_ROOT: ${{ github.workspace }}/bazel-bin/build
 
 jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      relative-build-root: bazel-bin/build
+
   upgrade-test:
     name: Run migration tests
     runs-on: ubuntu-22.04
+    needs: build
 
     steps:
-      - name: Install Prerequisites
-        run: |
-          sudo apt-get -y update
-          sudo apt-get -y install ca-certificates curl gnupg lsb-release jq libyaml-dev net-tools
-          sudo mkdir -p /etc/apt/keyrings
-          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-          sudo apt-get update
-          sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
-
       - name: Clone Source Code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           submodules: recursive
 
-      - name: Build Debian Package
-        run: |
-          make package/deb
-          mv bazel-bin/pkg/kong.amd64.deb .
-
-      - name: Build Docker Image
-        uses: docker/build-push-action@v3
+      - name: Lookup build cache
+        id: cache-deps
+        uses: actions/cache@v3
         with:
-          file: build/dockerfiles/deb.Dockerfile
-          context: .
-          push: false
-          tags: "kong-local/kong:latest"
-          build-args: |
-            KONG_BASE_IMAGE=ubuntu:22.04
-            KONG_ARTIFACT_PATH=./
+          path: ${{ env.BUILD_ROOT }}
+          key: ${{ needs.build.outputs.cache-key }}
 
       - name: Run Upgrade Tests
         run: |
-          bash ./scripts/upgrade-tests/test-upgrade-path.sh -i kong-local/kong:latest
+          bash ./scripts/upgrade-tests/test-upgrade-path.sh -i ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
