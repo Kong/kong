@@ -510,6 +510,17 @@ describe("Plugin: rate-limiting (integration)", function()
       assert.same(plugin_config.redis_ssl_verify, json.config.redis.ssl_verify)
       assert.same(plugin_config.redis_server_name, json.config.redis.server_name)
 
+      -- verify that legacy fields are present for backwards compatibility
+      assert.same(plugin_config.redis_host, json.config.redis_host)
+      assert.same(plugin_config.redis_port, json.config.redis_port)
+      assert.same(plugin_config.redis_username, json.config.redis_username)
+      assert.same(plugin_config.redis_password, json.config.redis_password)
+      assert.same(plugin_config.redis_database, json.config.redis_database)
+      assert.same(plugin_config.redis_timeout, json.config.redis_timeout)
+      assert.same(plugin_config.redis_ssl, json.config.redis_ssl)
+      assert.same(plugin_config.redis_ssl_verify, json.config.redis_ssl_verify)
+      assert.same(plugin_config.redis_server_name, json.config.redis_server_name)
+
       delete_plugin(admin_client, json)
 
       assert.logfile().has.line("response-ratelimiting: config.redis_host is deprecated, please use config.redis.host instead (deprecated after 4.0)", true)
