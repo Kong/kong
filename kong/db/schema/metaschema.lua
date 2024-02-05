@@ -683,6 +683,8 @@ local function make_shorthand_field_schema()
   shorthand_field_schema[1] = { type = { type = "string", one_of = shorthand_field_types, required = true }, }
 
   insert(shorthand_field_schema, { func = { type = "function", required = true } })
+  insert(shorthand_field_schema, { translate_backwards = { type = "function", required = false } })
+  insert(shorthand_field_schema, { include_in_output = { type = "boolean", required = false, default = false } })
   return shorthand_field_schema
 end
 
