@@ -739,7 +739,7 @@ do
   local CURRENT_BALANCER_HASH = 0
 
   reconfigure_handler = function(data)
-    local worker_id = ngx_worker_id()
+    local worker_id = ngx_worker_id() or -1
 
     if exiting() then
       log(NOTICE, "declarative reconfigure was canceled on worker #", worker_id,

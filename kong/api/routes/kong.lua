@@ -562,7 +562,7 @@ return {
     GET = function (self, db, helpers)
       local body = {
         worker = {
-          id = ngx.worker.id(),
+          id = ngx.worker.id() or -1,
           count = ngx.worker.count(),
         },
         stats = kong.timer:stats({
