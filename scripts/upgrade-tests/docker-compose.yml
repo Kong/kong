@@ -14,38 +14,14 @@ services:
       timeout: 1s
       retries: 10
     environment:
-      KONG_PG_HOST: db_postgres
-      KONG_CASSANDRA_CONTACT_POINTS: db_cassandra
-      KONG_TEST_PG_HOST: db_postgres
-      KONG_TEST_CASSANDRA_CONTACT_POINTS: db_cassandra
+      KONG_PG_HOST: localhost
+      KONG_CASSANDRA_CONTACT_POINTS: localhost
+      KONG_TEST_PG_HOST: localhost
+      KONG_TEST_CASSANDRA_CONTACT_POINTS: localhost
     volumes:
       - ../../worktree/${OLD_KONG_VERSION}:/kong
     restart: on-failure
-    networks:
-      upgrade_tests:
-
-  kong_new:
-    image: ${NEW_KONG_IMAGE}
-    command: "tail -f /dev/null"
-    user: root
-    depends_on:
-      - db_postgres
-      - db_cassandra
-    healthcheck:
-      test: ["CMD", "true"]
-      interval: 1s
-      timeout: 1s
-      retries: 10
-    environment:
-      KONG_PG_HOST: db_postgres
-      KONG_CASSANDRA_CONTACT_POINTS: db_cassandra
-      KONG_TEST_PG_HOST: db_postgres
-      KONG_TEST_CASSANDRA_CONTACT_POINTS: db_cassandra
-    volumes:
-      - ../..:/kong
-    restart: on-failure
-    networks:
-      upgrade_tests:
+    network_mode: "host"
 
   db_postgres:
     image: postgres:9.5
@@ -61,8 +37,8 @@ services:
     restart: on-failure
     stdin_open: true
     tty: true
-    networks:
-      upgrade_tests:
+    network_mode: "host"
+
 
   db_cassandra:
     image: cassandra:3.11
@@ -75,8 +51,5 @@ services:
       timeout: 10s
       retries: 10
     restart: on-failure
-    networks:
-      upgrade_tests:
+    network_mode: "host"
 
-networks:
-  upgrade_tests:
