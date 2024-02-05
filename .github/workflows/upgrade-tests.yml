@@ -23,32 +23,34 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
+env:
+  GH_TOKEN: ${{ github.token }}
+  BUILD_ROOT: ${{ github.workspace }}/bazel-bin/build
 
 jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      relative-build-root: bazel-bin/build
+
   upgrade-test:
     name: Run migration tests
     runs-on: ubuntu-22.04
+    needs: build
 
     steps:
-      - name: Install Docker
-        run: |
-          sudo apt-get -y update
-          sudo apt-get -y install ca-certificates curl gnupg lsb-release
-          sudo mkdir -p /etc/apt/keyrings
-          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-          sudo apt-get update
-          sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
-
-      - name: Install prerequisites
-        run: |
-          sudo apt-get -y install jq
-
-      - name: Clone Kong source code
-        uses: actions/checkout@v3
+      - name: Clone Source Code
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Run upgrade tests
+      - name: Lookup build cache
+        id: cache-deps
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.BUILD_ROOT }}
+          key: ${{ needs.build.outputs.cache-key }}
+
+      - name: Run Upgrade Tests
         run: |
-          bash ./scripts/upgrade-tests/test-upgrade-path.sh
+          bash ./scripts/upgrade-tests/test-upgrade-path.sh -i ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
