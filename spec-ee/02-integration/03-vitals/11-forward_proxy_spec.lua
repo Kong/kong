@@ -11,6 +11,7 @@ local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local clear_license_env = require("spec-ee.helpers").clear_license_env
 local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
+local random_string = require("kong.tools.utils").random_string
 
 local fixtures = {
   stream_mock = {
@@ -140,50 +141,53 @@ for _, strategy in helpers.each_strategy() do
         reset_license_data()
       end)
 
-      before_each(function()
-        db:truncate("services")
-        db:truncate("routes")
-      end)
-
       describe("sync works", function()
         it("proxy on DP follows CP config", function()
-          local res, body, json_body, service_id, route_id
+          db:truncate("services")
+          db:truncate("routes")
 
+          local svc_name, rt_name, res, body, json_body, service_id, route_id
           local admin_client = helpers.admin_client(10000)
+
           finally(function()
             admin_client:close()
           end)
 
+          svc_name = random_string()
           res = assert(admin_client:post("/services", {
-            body = { name = "mockbin-service", url = "https://127.0.0.1:15556/request", },
+            body = { name = svc_name, url = "https://127.0.0.1:15556/request", },
             headers = {["Content-Type"] = "application/json"}
           }))
           body = assert.res_status(201, res)
           json_body = cjson.decode(body)
           service_id = json_body.id
 
-          res = assert(admin_client:post("/services/mockbin-service/routes", {
-            body = { paths = { "/" }, },
+          rt_name = random_string()
+          res = assert(admin_client:post("/services/" .. service_id .. "/routes", {
+            body = { name = rt_name, paths = { "/" }, },
             headers = {["Content-Type"] = "application/json"}
           }))
           body = assert.res_status(201, res)
           json_body = cjson.decode(body)
           route_id = json_body.id
 
-          helpers.wait_until(function()
-            local proxy_client = helpers.http_client("127.0.0.1", 9002)
+          assert
+          .with_timeout(61)
+          .with_max_tries(30)
+          .with_step(0.05)
+          .ignore_exceptions(true)
+          .eventually(function()
+            local proxy_client = helpers.proxy_client(nil, 9002, "127.0.0.1")
 
-            res = proxy_client:send({
+            res = assert(proxy_client:send {
               method  = "GET",
               path    = "/",
             })
+            assert.are_equal(200, res.status)
 
-            local status = res and res.status
             proxy_client:close()
-            if status == 200 then
-              return true
-            end
-          end, 10)
+          end)
+          .has_no_error("services or routes are not synced from CP to DP")
 
           res = assert(admin_client:delete("/routes/" .. route_id, {
             headers = {["Content-Type"] = "application/json"}
@@ -193,6 +197,45 @@ for _, strategy in helpers.each_strategy() do
             headers = {["Content-Type"] = "application/json"}
           }))
           assert.res_status(204, res)
+
+          db:truncate("services")
+          db:truncate("routes")
+          res = assert(admin_client:delete("/cache"))
+          assert.res_status(204, res)
+
+          assert
+          .with_timeout(60)
+          .with_max_tries(30)
+          .with_step(0.05)
+          .ignore_exceptions(true)
+          .eventually(function()
+            local res, client
+            client = helpers.admin_client(10000)
+            res = assert(client:send {
+              method  = "GET",
+              path    = "/services/" .. service_id,
+            })
+            assert.are_equal(404, res.status)
+            client:close()
+          end)
+          .has_no_error("services is not cleared from CP")
+
+          assert
+          .with_timeout(60)
+          .with_max_tries(30)
+          .with_step(0.05)
+          .ignore_exceptions(true)
+          .eventually(function()
+            local res, client
+            client = helpers.admin_client(10000)
+            res = assert(client:send {
+              method  = "GET",
+              path    = "/routes/" .. route_id,
+            })
+            assert.are_equal(404, res.status)
+            client:close()
+          end)
+          .has_no_error("routes is not cleared from CP")
         end)
 
         it("#flaky sends back vitals metrics to DP", function()
