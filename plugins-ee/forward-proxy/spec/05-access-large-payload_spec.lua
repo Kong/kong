@@ -319,9 +319,7 @@ end
         assert.logfile().has.line("a client request body is buffered to a temporary file")
       end)
 
-      -- TODO: need to fix the h2client content-length issue first
-      -- (already fixed in 0.4.3 but causes issues in other tests)
-      pending("HTTP/2", function()
+      it("HTTP/2", function()
         local payload = string.rep("a", 1024 * 1024)
         local body, headers = assert(proxy_http2_client {
           headers = {
