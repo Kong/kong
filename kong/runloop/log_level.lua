@@ -41,7 +41,7 @@ local function init_handler()
                   - ngx.time()
 
   if shm_log_level and cur_log_level ~= shm_log_level and timeout > 0 then
-    set_log_level(ngx.worker.id(), shm_log_level, timeout)
+    set_log_level(ngx.worker.id() or -1, shm_log_level, timeout)
   end
 end
 
@@ -68,7 +68,7 @@ end
 
 -- log level worker event updates
 local function worker_handler(data)
-  local worker = ngx.worker.id()
+  local worker = ngx.worker.id() or -1
 
   log(NOTICE, "log level worker event received for worker ", worker)
 

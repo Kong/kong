@@ -188,7 +188,7 @@ describe("#wasm filter chain cache " .. mode_suffix, function()
         rewrite = {[[
           kong.response.set_header(
             "]] .. WORKER_ID_HEADER .. [[",
-            ngx.worker.id()
+            ngx.worker.id() or -1
           )
         ]]}
       }
