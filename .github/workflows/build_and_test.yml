@@ -851,20 +851,9 @@ jobs:
     name: Database migration and upgrade tests
     runs-on: ubuntu-latest-kong
     timeout-minutes: 60
-    needs: build-image
+    needs: build
     # enable this step if migration starts to be architecture-dependent
     if: ${{ inputs.arm64 != true }}
-
-    services:
-      postgres:
-        image: postgres:13
-        env:
-          POSTGRES_USER: kong
-          POSTGRES_DB: kong
-          POSTGRES_HOST_AUTH_METHOD: trust
-        ports:
-          - 5432:5432
-        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
 
     steps:
       - name: Clone Kong source code

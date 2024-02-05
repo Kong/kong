@@ -23,19 +23,6 @@ set -e
 
 trap "echo exiting because of error" 0
 
-function get_current_version() {
-    local image_tag=$1
-    local version_from_rockspec=$(perl -ne 'print "$1\n" if (/^\s*tag = "(.*)"/)' kong*.rockspec)
-    if docker pull $image_tag:$version_from_rockspec >/dev/null 2>/dev/null
-    then
-        echo $version_from_rockspec-ubuntu
-    else
-        echo master-ubuntu
-    fi
-}
-
-export OLD_KONG_VERSION=2.8.0
-export OLD_KONG_IMAGE=kong:$OLD_KONG_VERSION-ubuntu
 export KONG_PG_HOST=localhost
 export KONG_TEST_PG_HOST=localhost
 
@@ -91,13 +78,19 @@ function prepare_container() {
 }
 
 function build_containers() {
+    # Kong version >= 3.3 moved non Bazel-built dev setup to make dev-legacy
+    if [[ "$OLD_KONG_VERSION" == "next/2.8.x.x" ]]; then
+        old_make_target="dev"
+    else
+        old_make_target="dev-legacy"
+    fi
+
     echo "Building containers"
 
     [ -d worktree/$OLD_KONG_VERSION ] || git worktree add worktree/$OLD_KONG_VERSION $OLD_KONG_VERSION
     $COMPOSE up --wait
     prepare_container $OLD_CONTAINER
-    docker exec -w /kong $OLD_CONTAINER make dev CRYPTO_DIR=/usr/local/kong
-    # Kong version >= 3.3 moved non Bazel-built dev setup to make dev-legacy
+    docker exec -w /kong $OLD_CONTAINER make $old_make_target CRYPTO_DIR=/usr/local/kong
     make dev-legacy CRYPTO_DIR=/usr/local/kong
 }
 
@@ -155,7 +148,7 @@ function initialize_test_list() {
 
 function run_tests() {
     # Run the tests
-    BUSTED_ENV="env KONG_DATABASE=$1 KONG_DNS_RESOLVER= KONG_TEST_PG_DATABASE=kong" 
+    BUSTED_ENV="env KONG_DATABASE=$1 KONG_DNS_RESOLVER= KONG_TEST_PG_DATABASE=kong OLD_KONG_VERSION=$OLD_KONG_VERSION"
 
     shift
 
@@ -186,15 +179,30 @@ function run_tests() {
 }
 
 function cleanup() {
-    git worktree remove worktree/$OLD_KONG_VERSION --force
+    sudo git worktree remove worktree/$OLD_KONG_VERSION --force
     $COMPOSE down
-    deactivate
 }
 
+
 source $venv_script
-build_containers
-initialize_test_list
-run_tests postgres
-[ -z "$UPGRADE_ENV_PREFIX" ] && cleanup
+
+# Load supported "old" versions to run migration tests against
+old_versions=()
+mapfile -t old_versions < "scripts/upgrade-tests/source-versions"
+
+for old_version in "${old_versions[@]}"; do
+    export OLD_KONG_VERSION=$old_version
+    old_kong_tag=$(echo $OLD_KONG_VERSION | sed 's/\//-/g')
+    export OLD_KONG_IMAGE=kong/kong-gateway-dev:$old_kong_tag-ubuntu
+
+    echo "Running tests using $OLD_KONG_VERSION as \"old version\" of Kong"
+
+    build_containers
+    initialize_test_list
+    run_tests postgres
+    [ -z "$UPGRADE_ENV_PREFIX" ] && cleanup
+done
+
+deactivate
 
 trap "" 0
