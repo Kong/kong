@@ -1,0 +1,6 @@
+message: >-
+  The listing endpoints for consumer groups (`/consumer_groups`) and consumers (`/consumers`) now respond
+  with paginated results. The JSON key for the list has been changed to `data` instead of `consumer_groups`
+  or `consumers`.
+type: breaking_change
+scope: Admin API

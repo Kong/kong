@@ -1,0 +1,3 @@
+message: Corrected UI descriptions under Teams when mapping roles from external sources (e.g., OIDC, LDAP).
+type: bugfix
+githubs: [3000,3184]

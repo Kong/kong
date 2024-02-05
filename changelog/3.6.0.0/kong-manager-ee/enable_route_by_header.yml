@@ -1,0 +1,3 @@
+message: Added support for creating/editing the route-by-header plugin from the UI.
+type: feature
+githubs: [3049]

@@ -1,0 +1,3 @@
+message: Kong Manager now supports operating keys scoped to a specific keyset without permissions on the `/keys/*` endpoint.
+type: bugfix
+githubs: [3035]

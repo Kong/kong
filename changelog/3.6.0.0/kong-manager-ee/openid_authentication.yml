@@ -1,0 +1,3 @@
+message: Fixed various issues while authenticating the Admin API via OpenID Connect.
+type: bugfix
+githubs: [3055]
