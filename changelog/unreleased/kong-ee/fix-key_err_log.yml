@@ -1,0 +1,4 @@
+message: |
+  **ACME**: fix a bug where the wrong error log is printed, regarding private keys.
+type: bugfix
+scope: Plugin

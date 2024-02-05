@@ -248,7 +248,7 @@ local function get_account_key(conf)
   local key, key_err = kong.db.keys:select_by_cache_key(cache_key)
 
   if key_err then
-    return nil, "could not load keys: " .. key_set_err
+    return nil, "could not load keys: " .. key_err
   end
 
   return kong.db.keys:get_privkey(key)
