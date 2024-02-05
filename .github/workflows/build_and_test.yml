@@ -867,28 +867,32 @@ jobs:
         options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
 
     steps:
-      - name: Install packages
-        run: sudo apt update && sudo apt install -y jq net-tools
-
-      - name: Download docker image
-        uses: actions/download-artifact@v3
-        with:
-          name: docker-image-normal
-          path: docker-images
-
-      - name: Import docker image
-        run: |
-          docker load --input docker-images/image.tar
-
       - name: Clone Kong source code
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
           token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+      
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: build-normal
+          path: .
+
+      - name: Extract the artifact contents
+        run: |
+          sudo tar -C /usr/local/ -xzvf artifacts/build.tar.gz
+          sudo mkdir -p ${{ env.BUILD_ROOT }}/kong-dev
+          sudo tar -C ${{ env.BUILD_ROOT }}/kong-dev -xzvf artifacts/build.tar.gz
+
+      - name: Install Kong dev
+        env:
+          GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+        run: make dev LIBRARY_PREFIX=/usr/local/kong
 
       - name: Run upgrade tests
         run: |
-          bash ./scripts/upgrade-tests/test-upgrade-path.sh -i kong-local/kong-ee:normal
+          bash ./scripts/upgrade-tests/test-upgrade-path.sh -i ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
 
 
   plugins-ee-tests:
