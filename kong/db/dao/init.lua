@@ -1072,6 +1072,10 @@ function DAO:select(pk_or_entity, options)
   end
 
   local err
+  if options == nil or options.expand_shorthands == nil then
+    options = options or {}
+    options.expand_shorthands = true
+  end
   row, err, err_t = self:row_to_entity(row, options)
   if not row then
     return nil, err, err_t
@@ -1125,6 +1129,10 @@ function DAO:page(size, offset, options)
   end
 
   local entities, err
+  if options == nil or options.expand_shorthands == nil then
+    options = options or {}
+    options.expand_shorthands = true
+  end
   entities, err, err_t = self:rows_to_entities(rows, options)
   if not entities then
     return nil, err, err_t
@@ -1209,6 +1217,8 @@ function DAO:insert(entity, options)
   end
 
   local ws_id = row.ws_id
+  options = options or {}
+  options.expand_shorthands = true
   row, err, err_t = self:row_to_entity(row, options)
   if not row then
     return nil, err, err_t
@@ -1262,6 +1272,8 @@ function DAO:update(pk_or_entity, entity, options)
   end
 
   local ws_id = row.ws_id
+  options = options or {}
+  options.expand_shorthands = true
   row, err, err_t = self:row_to_entity(row, options)
   if not row then
     return nil, err, err_t
@@ -1315,6 +1327,8 @@ function DAO:upsert(pk_or_entity, entity, options)
   end
 
   local ws_id = row.ws_id
+  options = options or {}
+  options.expand_shorthands = true
   row, err, err_t = self:row_to_entity(row, options)
   if not row then
     return nil, err, err_t
@@ -1513,7 +1527,7 @@ function DAO:row_to_entity(row, options)
     end
   end
 
-  local entity, errors = self.schema:process_auto_fields(transformed_entity or row, "select", nulls)
+  local entity, errors = self.schema:process_auto_fields(transformed_entity or row, "select", nulls, options)
   if not entity then
     local err_t = self.errors:schema_violation(errors)
     return nil, tostring(err_t), err_t

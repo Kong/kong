@@ -1655,4 +1655,40 @@ describe("Utils", function()
       assert.equal(meta, getmetatable(t3.b.a))
     end)
   end)
+
+  describe("table_path(t, path)", function()
+    local t = {
+      x = 1,
+      a = {
+        b = {
+          c = 200
+        },
+      },
+      z = 2
+    }
+
+    it("retrieves value from table based on path - single level", function()
+      local path = { "x" }
+
+      assert.equal(1, utils.table_path(t, path))
+    end)
+
+    it("retrieves value from table based on path - deep value", function()
+      local path = { "a", "b", "c" }
+
+      assert.equal(200, utils.table_path(t, path))
+    end)
+
+    it("returns nil if element is not found - leaf not found", function()
+      local path = { "a", "b", "x" }
+
+      assert.equal(nil, utils.table_path(t, path))
+    end)
+
+    it("returns nil if element is not found - root branch not found", function()
+      local path = { "o", "j", "k" }
+
+      assert.equal(nil, utils.table_path(t, path))
+    end)
+  end)
 end)

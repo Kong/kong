@@ -1694,6 +1694,10 @@ function Schema:process_auto_fields(data, context, nulls, opts)
           end
         end
       end
+
+      if is_select and sdata.translate_backwards and opts.expand_shorthands then
+        data[sname] = utils.table_path(data, sdata.translate_backwards)
+      end
     end
     if has_errs then
       return nil, errs
@@ -1926,7 +1930,20 @@ function Schema:process_auto_fields(data, context, nulls, opts)
 
     elseif not ((key == "ttl"   and self.ttl) or
                 (key == "ws_id" and show_ws)) then
-      data[key] = nil
+
+      local should_be_in_ouput = false
+
+      if self.shorthand_fields then
+        for _, shorthand_field in ipairs(self.shorthand_fields) do
+          if shorthand_field[key] and shorthand_field[key].translate_backwards then
+            should_be_in_ouput = is_select
+          end
+        end
+      end
+
+      if not should_be_in_ouput then
+        data[key] = nil
+      end
     end
   end
 

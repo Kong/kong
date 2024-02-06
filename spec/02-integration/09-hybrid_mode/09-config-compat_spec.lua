@@ -172,7 +172,10 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         enabled = true,
         config = {
           second = 1,
-          policy = "local",
+          policy = "redis",
+          redis = {
+            host = "localhost"
+          },
 
           -- [[ new fields
           error_code = 403,
@@ -187,6 +190,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         should not have: error_code, error_message, sync_rate
       --]]
       local expected = utils.cycle_aware_deep_copy(rate_limit)
+      expected.config.redis = nil
       expected.config.error_code = nil
       expected.config.error_message = nil
       expected.config.sync_rate = nil
@@ -199,6 +203,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         should not have: sync_rate
       --]]
       expected = utils.cycle_aware_deep_copy(rate_limit)
+      expected.config.redis = nil
       expected.config.sync_rate = nil
       do_assert(utils.uuid(), "3.2.0", expected)
 
@@ -209,6 +214,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         should not have: sync_rate
       --]]
       expected = utils.cycle_aware_deep_copy(rate_limit)
+      expected.config.redis = nil
       expected.config.sync_rate = nil
       do_assert(utils.uuid(), "3.3.0", expected)
 
@@ -222,7 +228,10 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         enabled = true,
         config = {
           second = 1,
-          policy = "local",
+          policy = "redis",
+          redis = {
+            host = "localhost"
+          },
 
           -- [[ new fields
           error_code = 403,
@@ -232,7 +241,9 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         },
       }
 
-      do_assert(utils.uuid(), "3.4.0", rate_limit)
+      local expected = utils.cycle_aware_deep_copy(rate_limit)
+      expected.config.redis = nil
+      do_assert(utils.uuid(), "3.4.0", expected)
 
       -- cleanup
       admin.plugins:remove({ id = rate_limit.id })
@@ -259,7 +270,10 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         enabled = true,
         config = {
           second = 1,
-          policy = "local",
+          policy = "redis",
+          redis = {
+            host = "localhost"
+          },
 
           -- [[ new fields
           error_code = 403,
@@ -269,11 +283,9 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         },
       }
 
-      local id = utils.uuid()
-      local plugin = get_plugin(id, "3.4.0", rate_limit.name, true)
-      assert.is_not_nil(plugin)
-      assert.same(rate_limit.config, plugin.config)
-      assert.equals(CLUSTERING_SYNC_STATUS.NORMAL, get_sync_status(id))
+      local expected = utils.cycle_aware_deep_copy(rate_limit)
+      expected.config.redis = nil
+      do_assert(utils.uuid(), "3.4.0", expected)
 
       -- cleanup
       admin.plugins:remove({ id = rate_limit.id })
