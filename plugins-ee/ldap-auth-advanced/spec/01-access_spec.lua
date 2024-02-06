@@ -563,6 +563,45 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           local json = assert.response(res).has.jsonbody()
           assert.equal("Unauthorized", json.message)
         end)
+        it("returns 'invalid credentials' when credential value is not a username-password pair in authorization header", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/get",
+            headers = {
+              host  = "ldap8.test",
+              authorization = "ldap " .. ngx.encode_base64("abcd"),
+            }
+          })
+          assert.response(res).has.status(401)
+          local json = assert.response(res).has.jsonbody()
+          assert.equal("Unauthorized", json.message)
+        end)
+        it("returns 'invalid credentials' when credential value doesn't contain username in authorization header", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/get",
+            headers = {
+              host  = "ldap8.test",
+              authorization = "ldap " .. ngx.encode_base64(":password"),
+            }
+          })
+          assert.response(res).has.status(401)
+          local json = assert.response(res).has.jsonbody()
+          assert.equal("Unauthorized", json.message)
+        end)
+        it("returns 'invalid credentials' when credential value doesn't contain password in authorization header", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/get",
+            headers = {
+              host  = "ldap8.test",
+              authorization = "ldap " .. ngx.encode_base64("einstein:"),
+            }
+          })
+          assert.response(res).has.status(401)
+          local json = assert.response(res).has.jsonbody()
+          assert.equal("Unauthorized", json.message)
+        end)
         if proto ~= "websocket" then
         it("passes if credential is valid in post request", function()
           local res = assert(proxy_client:send {

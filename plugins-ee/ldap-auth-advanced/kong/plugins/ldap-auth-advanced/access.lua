@@ -46,6 +46,10 @@ local function retrieve_credentials(authorization_header_value, conf)
       local cred = sub(authorization_header_value, e + 1)
       local decoded_cred = decode_base64(cred)
       username, password = match(decoded_cred, "(.-):(.+)")
+
+      if username == "" then  -- exclude credentials like ':password'
+        return nil
+      end
     end
   end
   return username, password

@@ -1,0 +1,3 @@
+message: "**LDAP AUTH Advanced:** fix an issue where if the credential is encoded with no username kong will throw an error and return 500"
+type: bugfix
+scope: Plugin
