@@ -97,7 +97,7 @@
   - libc.so.6
   Runpath   : /usr/local/kong/lib
 
-- Path      : /usr/local/kong/lib/libpasswdqc.so.0
+- Path      : /usr/local/kong/lib/libpasswdqc.so.1
   Needed    :
   - libc.so.6
 

@@ -1,11 +1,11 @@
 diff --git Makefile Makefile
-index f5c7cb3..fca4f6f 100644
+index 404f036..86b2d21 100644
 --- Makefile
 +++ Makefile
-@@ -35,7 +35,7 @@ INCLUDEDIR = /usr/include
- MANDIR = /usr/share/man
- DESTDIR =
-
+@@ -55,7 +55,7 @@ LOCALEMODE = 644
+ 
+ LANGUAGES = ru
+ 
 -CC = gcc
 +CC ?= gcc
  LD = $(CC)

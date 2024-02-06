@@ -38,28 +38,15 @@ describe("ee auth helpers", function()
 
     it("preset: password length limitation", function()
       local invalid_lengths = {
-        min_8         = { "$Pa27Ss", 7 },
-        min_12        = { "$hortPa11ss", 11 },
-        min_20        = { "$hortPa9sssSsssssss", 19 },
-        too_long_pwd  = { "ThisIsA$uperLongPa$$Word", 39 },
+        min_8         = "$Pa27Ss",
+        min_12        = "$hortPa11ss",
+        min_20        = "$hortPa9sssSsssssss",
+        too_long_pwd  = "ThisIsA$uperLongPa$$WordThisIsA$uperLongPa$$WordThisIsA$uperLongPa$$Word!",
       }
 
-      -- gernerate a max length password
-      while #invalid_lengths.too_long_pwd[1] <= invalid_lengths.too_long_pwd[2] do
-        invalid_lengths.too_long_pwd[1] = invalid_lengths.too_long_pwd[1] .. 
-                                          invalid_lengths.too_long_pwd[1]
-      end
-
       -- expect password invalid
-      for k, v in pairs(invalid_lengths) do
-        local preset = "min_12"
-
-        if k ~= "too_long_pwd" then
-          preset = k
-          assert.same(#v[1], v[2])
-        end
-
-        assert.is_nil(check(v[1], { ["kong-preset"] = preset }))
+      for preset, v in pairs(invalid_lengths) do
+        assert.is_nil(check(v, { ["kong-preset"] = preset }))
       end
     end)
 

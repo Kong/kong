@@ -15,21 +15,21 @@ make(
     out_lib_dir = "",
     out_shared_libs = select({
         "@platforms//os:macos": [
-            "libpasswdqc.0.dylib",
+            "libpasswdqc.1.dylib",
         ],
         "//conditions:default": [
-            "libpasswdqc.so.0",
+            "libpasswdqc.so.1",
         ],
     }),
     # -a preserve links
     postfix_script = select({
-        "@platforms//os:macos": "cp -a libpasswdqc.0.dylib libpasswdqc.dylib $$INSTALLDIR$$/",
-        "//conditions:default": "cp -a libpasswdqc.so.0 libpasswdqc.so $$INSTALLDIR$$/",
+        "@platforms//os:macos": "cp -a libpasswdqc.1.dylib libpasswdqc.dylib $$INSTALLDIR$$/",
+        "//conditions:default": "cp -a libpasswdqc.so.1 libpasswdqc.so $$INSTALLDIR$$/",
     }),
     targets =
         select({
             "@platforms//os:macos": [
-                "libpasswdqc.dylib -j" + KONG_VAR["NPROC"] + " SHARED_LIB=libpasswdqc.0.dylib DEVEL_LIB=libpasswdqc.dylib",
+                "libpasswdqc.dylib -j" + KONG_VAR["NPROC"] + " SHARED_LIB=libpasswdqc.1.dylib DEVEL_LIB=libpasswdqc.dylib",
             ],
             "//conditions:default": [
                 "libpasswdqc.so -j" + KONG_VAR["NPROC"],
