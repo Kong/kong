@@ -137,7 +137,7 @@ describe('Gateway Plugins: http-log', function () {
     await eventually(async () => {
       serverLogs = await getHttpLogServerLogs()
       expect(
-        serverLogs[0].reqMethod,
+        serverLogs[0]?.reqMethod,
         'Should use POST method to log request data'
       ).to.eq('POST');
     });
@@ -155,22 +155,22 @@ describe('Gateway Plugins: http-log', function () {
     await eventually(async () => {
       serverLogs = await getHttpLogServerLogs();
       // always take the last item of http-log server entries as it represents the last request logs
-      const requestDetails = serverLogs[serverLogs.length - 1].reqBody
+      const requestDetails = serverLogs[serverLogs.length - 1]?.reqBody
 
       expect(
-        requestDetails.request.method,
+        requestDetails?.request.method,
         'Should see correct kong request method in logs'
       ).to.eq('GET');
       expect(
-        requestDetails.request.headers.test,
+        requestDetails?.request.headers.test,
         'Should see correct kong request header in logs'
       ).to.eq('test');
       expect(
-        requestDetails.route.paths[0],
+        requestDetails?.route.paths[0],
         'Should see correct kong request route path in logs'
       ).to.eq(path);
       expect(
-        requestDetails.service.path,
+        requestDetails?.service.path,
         'Should see correct kong request service path in logs'
       ).to.eq('/anything');
     });
@@ -210,7 +210,7 @@ describe('Gateway Plugins: http-log', function () {
         serverLogs = await getHttpLogServerLogs();
 
         expect(
-          serverLogs[serverLogs.length - 1].reqMethod,
+          serverLogs[serverLogs.length - 1]?.reqMethod,
           `Should use ${pluginConfigHeader} method to log request data`
         ).to.eq(pluginConfigHeader);
       });
@@ -246,10 +246,10 @@ describe('Gateway Plugins: http-log', function () {
 
     await eventually(async () => {
       serverLogs = await getHttpLogServerLogs();
-      const requestDetails =  serverLogs[serverLogs.length - 1].reqBody
+      const requestDetails =  serverLogs[serverLogs.length - 1]?.reqBody
 
       expect(
-        requestDetails.kong,
+        requestDetails?.kong,
         'Should see return value of custom_fields_by_lua'
       ).to.eq('http-log plugin api test');
     });
@@ -259,10 +259,10 @@ describe('Gateway Plugins: http-log', function () {
   it.skip('should see http-log plugin X-header log in http_endpoint', async function () {
     serverLogs = await getHttpLogServerLogs();
     // always take the last item of http-log entries as it represents the last request logs
-    const logHeaders = serverLogs[serverLogs.length - 1].reqBody.request.headers;
+    const logHeaders = serverLogs[serverLogs.length - 1]?.reqBody.request.headers;
 
     expect(
-      logHeaders.some((headerObject) => {
+      logHeaders?.some((headerObject) => {
         return (
           headerObject.name === customHeaderName.toLowerCase() &&
           headerObject.value === 'test2'
