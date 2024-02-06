@@ -88,7 +88,7 @@
   - ld-linux-aarch64.so.1
   Runpath   : /usr/local/kong/lib
 
-- Path      : /usr/local/kong/lib/libxml2.so.2.12.4
+- Path      : /usr/local/kong/lib/libxml2.so.2.12.5
   Needed    :
   - libz.so.1
   - libm.so.6
@@ -269,4 +269,3 @@
 
 - Path      : /usr/local/share/xml/xsd
   Type      : directory
-
