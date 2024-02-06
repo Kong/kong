@@ -45,7 +45,7 @@ dependencies = {
   "bcrypt == 2.3",
   "lpeg_patterns == 0.5",
   --"http == 0.3",
-  "lua-resty-cookie == 0.1.0",
+  "lua-resty-cookie == 0.2.0",
   "lua-resty-counter == 0.2.1",
   "lua-resty-template == 1.9",
   "lua-resty-passwdqc == 2.0",
