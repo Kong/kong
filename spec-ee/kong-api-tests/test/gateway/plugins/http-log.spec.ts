@@ -155,7 +155,7 @@ describe('Gateway Plugins: http-log', function () {
     await eventually(async () => {
       serverLogs = await getHttpLogServerLogs();
       // always take the last item of http-log server entries as it represents the last request logs
-      const requestDetails = serverLogs[serverLogs.length - 1]?.reqBody
+      const requestDetails = serverLogs?.pop()?.reqBody
 
       expect(
         requestDetails?.request.method,
@@ -210,7 +210,7 @@ describe('Gateway Plugins: http-log', function () {
         serverLogs = await getHttpLogServerLogs();
 
         expect(
-          serverLogs[serverLogs.length - 1]?.reqMethod,
+          serverLogs?.pop()?.reqMethod,
           `Should use ${pluginConfigHeader} method to log request data`
         ).to.eq(pluginConfigHeader);
       });
@@ -246,7 +246,7 @@ describe('Gateway Plugins: http-log', function () {
 
     await eventually(async () => {
       serverLogs = await getHttpLogServerLogs();
-      const requestDetails =  serverLogs[serverLogs.length - 1]?.reqBody
+      const requestDetails = serverLogs?.pop()?.reqBody
 
       expect(
         requestDetails?.kong,
