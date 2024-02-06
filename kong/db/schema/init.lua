@@ -1681,8 +1681,8 @@ function Schema:process_auto_fields(data, context, nulls, opts)
         end
       end
 
-      if is_select and sdata.include_in_output and opts.expand_shorthands then
-        data[sname] = sdata.translate_backwards(data)
+      if is_select and sdata.translate_backwards and opts.expand_shorthands then
+        data[sname] = utils.table_path(data, sdata.translate_backwards)
       end
     end
     if has_errs then
@@ -1917,7 +1917,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
 
       if self.shorthand_fields then
         for _, shorthand_field in ipairs(self.shorthand_fields) do
-          if shorthand_field[key] and shorthand_field[key].include_in_output then
+          if shorthand_field[key] and shorthand_field[key].translate_backwards then
             should_be_in_ouput = is_select
           end
         end

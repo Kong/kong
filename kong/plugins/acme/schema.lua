@@ -42,10 +42,7 @@ local LEGACY_SCHEMA_TRANSLATIONS = {
   { auth = {
     type = "string",
     len_min = 0,
-    include_in_output = true,
-    translate_backwards = function(instance)
-      return instance.password
-    end,
+    translate_backwards = {'password'},
     func = function(value)
       deprecation("acme: config.storage_config.redis.auth is deprecated, please use config.storage_config.redis.password instead",
         { after = "4.0", })
@@ -54,10 +51,7 @@ local LEGACY_SCHEMA_TRANSLATIONS = {
   }},
   { ssl_server_name = {
     type = "string",
-    include_in_output = true,
-    translate_backwards = function(instance)
-      return instance.server_name
-    end,
+    translate_backwards = {'server_name'},
     func = function(value)
       deprecation("acme: config.storage_config.redis.ssl_server_name is deprecated, please use config.storage_config.redis.server_name instead",
         { after = "4.0", })
@@ -67,10 +61,7 @@ local LEGACY_SCHEMA_TRANSLATIONS = {
   { namespace = {
     type = "string",
     len_min = 0,
-    include_in_output = true,
-    translate_backwards = function(instance)
-      return instance.extra_options.namespace
-    end,
+    translate_backwards = {'extra_options', 'namespace'},
     func = function(value)
       deprecation("acme: config.storage_config.redis.namespace is deprecated, please use config.storage_config.redis.extra_options.namespace instead",
         { after = "4.0", })
@@ -79,10 +70,7 @@ local LEGACY_SCHEMA_TRANSLATIONS = {
   }},
   { scan_count = {
     type = "integer",
-    include_in_output = true,
-    translate_backwards = function(instance)
-      return instance.extra_options.scan_count
-    end,
+    translate_backwards = {'extra_options', 'scan_count'},
     func = function(value)
       deprecation("acme: config.storage_config.redis.scan_count is deprecated, please use config.storage_config.redis.extra_options.scan_count instead",
         { after = "4.0", })
