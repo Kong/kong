@@ -158,7 +158,6 @@ return {
           } },
           { redis_password = {
             type = "string",
-            len_min = 0,
             func = function(value)
               deprecation("response-ratelimiting: config.redis_password is deprecated, please use config.redis.password instead",
                 { after = "4.0", })

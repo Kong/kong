@@ -41,7 +41,6 @@ local KONG_STORAGE_SCHEMA = {
 local LEGACY_SCHEMA_TRANSLATIONS = {
   { auth = {
     type = "string",
-    len_min = 0,
     func = function(value)
       deprecation("acme: config.storage_config.redis.auth is deprecated, please use config.storage_config.redis.password instead",
         { after = "4.0", })
@@ -58,7 +57,6 @@ local LEGACY_SCHEMA_TRANSLATIONS = {
   }},
   { namespace = {
     type = "string",
-    len_min = 0,
     func = function(value)
       deprecation("acme: config.storage_config.redis.namespace is deprecated, please use config.storage_config.redis.extra_options.namespace instead",
         { after = "4.0", })
