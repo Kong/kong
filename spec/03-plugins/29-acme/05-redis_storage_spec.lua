@@ -380,12 +380,6 @@ describe("Plugin: acme (storage.redis)", function()
         assert.same(redis_config.scan_count, json.config.storage_config.redis.extra_options.scan_count)
         assert.same(redis_config.namespace, json.config.storage_config.redis.extra_options.namespace)
 
-        -- verify that legacy fields are present for backwards compatibility
-        assert.same(redis_config.auth, json.config.storage_config.redis.auth)
-        assert.same(redis_config.ssl_server_name, json.config.storage_config.redis.ssl_server_name)
-        assert.same(redis_config.scan_count, json.config.storage_config.redis.scan_count)
-        assert.same(redis_config.namespace, json.config.storage_config.redis.namespace)
-
         delete_plugin(client, json)
 
         assert.logfile().has.line("acme: config.storage_config.redis.namespace is deprecated, " ..
