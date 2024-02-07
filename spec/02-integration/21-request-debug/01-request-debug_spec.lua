@@ -625,12 +625,10 @@ describe(desc, function()
     local plugin_id = setup_plugin(route_id, "rate-limiting", {
       second            = 9999,
       policy            = "redis",
+      redis_host        = helpers.redis_host,
+      redis_port        = helpers.redis_port,
       fault_tolerant    = false,
-      redis = {
-        host        = helpers.redis_host,
-        port        = helpers.redis_port,
-        timeout     = 10000,
-      }
+      redis_timeout     = 10000,
     })
 
     finally(function()

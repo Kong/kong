@@ -195,11 +195,9 @@ describe("Plugin: rate-limiting (policies)", function()
         local conf       = {
           route_id = uuid(),
           service_id = uuid(),
-          redis = {
-            host = helpers.redis_host,
-            port = helpers.redis_port,
-            database = 0,
-          },
+          redis_host = helpers.redis_host,
+          redis_port = helpers.redis_port,
+          redis_database = 0,
           sync_rate = sync_rate,
         }
 
@@ -207,7 +205,7 @@ describe("Plugin: rate-limiting (policies)", function()
           local red = require "resty.redis"
           local redis = assert(red:new())
           redis:set_timeout(1000)
-          assert(redis:connect(conf.redis.host, conf.redis.port))
+          assert(redis:connect(conf.redis_host, conf.redis_port))
           redis:flushall()
           redis:close()
         end)
