@@ -134,7 +134,7 @@ end
 
 function Plugins:update(primary_key, entity, options)
   options = options or {}
-  options.expand_shorthands = false
+  options.hide_shorthands = true
   local rbw_entity = self.super.select(self, primary_key, options) -- ignore errors
   if rbw_entity then
     entity = self.schema:merge_values(entity, rbw_entity)
@@ -147,6 +147,8 @@ function Plugins:update(primary_key, entity, options)
   if not ok_o then
     return nil, err_o, err_t_o
   end
+
+  options.hide_shorthands = false
   return self.super.update(self, primary_key, entity, options)
 end
 

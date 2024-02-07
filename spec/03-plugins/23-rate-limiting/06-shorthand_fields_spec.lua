@@ -160,6 +160,7 @@ describe("Plugin: rate-limiting (shorthand fields)", function()
       local routes_count = 100
       for i=1,routes_count do
         local route = assert(bp.routes:insert {
+          name = "route-" .. tostring(i),
           hosts = { "redis" .. tostring(i) .. ".test" },
         })
         assert(bp.plugins:insert {
@@ -208,6 +209,30 @@ describe("Plugin: rate-limiting (shorthand fields)", function()
     it('get paginated collection', function ()
       local res = assert(admin_client:send {
         path = "/plugins",
+        query = { size = 50 }
+      })
+
+      local json = cjson.decode(assert.res_status(200, res))
+      for _,plugin in ipairs(json.data) do
+        local i = plugin.config.redis.port - redis1_port
+        local expected_config = {
+          redis_host = "custom-host" .. tostring(i) .. ".example.test",
+          redis_port =  redis1_port + i,
+          redis_username =  "test1",
+          redis_password =  "testX",
+          redis_database =  1,
+          redis_timeout =  1100,
+          redis_ssl =  true,
+          redis_ssl_verify =  true,
+          redis_server_name =  "example" .. tostring(i) .. ".test",
+        }
+        assert_redis_config_same(expected_config, plugin.config)
+      end
+    end)
+
+    it('get plugins by route', function ()
+      local res = assert(admin_client:send {
+        path = "/routes/route-1/plugins",
         query = { size = 50 }
       })
 
