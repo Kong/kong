@@ -103,7 +103,10 @@ return {
           -- TODO: deprecated forms, to be removed in Kong 4.0
           { redis_host = {
             type = "string",
-            translate_backwards = {'redis', 'host'},
+            include_in_output = true,
+            translate_backwards = function(instance)
+              return instance.redis.host
+            end,
             func = function(value)
               deprecation("rate-limiting: config.redis_host is deprecated, please use config.redis.host instead",
                 { after = "4.0", })
@@ -112,7 +115,10 @@ return {
           } },
           { redis_port = {
             type = "integer",
-            translate_backwards = {'redis', 'port'},
+            include_in_output = true,
+            translate_backwards = function(instance)
+              return instance.redis.port
+            end,
             func = function(value)
               deprecation("rate-limiting: config.redis_port is deprecated, please use config.redis.port instead",
                 { after = "4.0", })
@@ -122,7 +128,10 @@ return {
           { redis_password = {
             type = "string",
             len_min = 0,
-            translate_backwards = {'redis', 'password'},
+            include_in_output = true,
+            translate_backwards = function(instance)
+              return instance.redis.password
+            end,
             func = function(value)
               deprecation("rate-limiting: config.redis_password is deprecated, please use config.redis.password instead",
                 { after = "4.0", })
@@ -131,7 +140,10 @@ return {
           } },
           { redis_username = {
             type = "string",
-            translate_backwards = {'redis', 'username'},
+            include_in_output = true,
+            translate_backwards = function(instance)
+              return instance.redis.username
+            end,
             func = function(value)
               deprecation("rate-limiting: config.redis_username is deprecated, please use config.redis.username instead",
                 { after = "4.0", })
@@ -140,7 +152,10 @@ return {
           } },
           { redis_ssl = {
             type = "boolean",
-            translate_backwards = {'redis', 'ssl'},
+            include_in_output = true,
+            translate_backwards = function(instance)
+              return instance.redis.ssl
+            end,
             func = function(value)
               deprecation("rate-limiting: config.redis_ssl is deprecated, please use config.redis.ssl instead",
                 { after = "4.0", })
@@ -149,7 +164,10 @@ return {
           } },
           { redis_ssl_verify = {
             type = "boolean",
-            translate_backwards = {'redis', 'ssl_verify'},
+            include_in_output = true,
+            translate_backwards = function(instance)
+              return instance.redis.ssl_verify
+            end,
             func = function(value)
               deprecation("rate-limiting: config.redis_ssl_verify is deprecated, please use config.redis.ssl_verify instead",
                 { after = "4.0", })
@@ -158,7 +176,10 @@ return {
           } },
           { redis_server_name = {
             type = "string",
-            translate_backwards = {'redis', 'server_name'},
+            include_in_output = true,
+            translate_backwards = function(instance)
+              return instance.redis.server_name
+            end,
             func = function(value)
               deprecation("rate-limiting: config.redis_server_name is deprecated, please use config.redis.server_name instead",
                 { after = "4.0", })
@@ -167,7 +188,10 @@ return {
           } },
           { redis_timeout = {
             type = "integer",
-            translate_backwards = {'redis', 'timeout'},
+            include_in_output = true,
+            translate_backwards = function(instance)
+              return instance.redis.timeout
+            end,
             func = function(value)
               deprecation("rate-limiting: config.redis_timeout is deprecated, please use config.redis.timeout instead",
                 { after = "4.0", })
@@ -176,7 +200,10 @@ return {
           } },
           { redis_database = {
             type = "integer",
-            translate_backwards = {'redis', 'database'},
+            include_in_output = true,
+            translate_backwards = function(instance)
+              return instance.redis.database
+            end,
             func = function(value)
               deprecation("rate-limiting: config.redis_database is deprecated, please use config.redis.database instead",
                 { after = "4.0", })
