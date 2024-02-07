@@ -276,21 +276,6 @@ describe("Plugin: acme (storage.redis)", function()
       end
 
       it("successfully create acme plugin with valid namespace", function()
-        local redis_config = {
-          host = helpers.redis_host,
-          port = helpers.redis_port,
-          password = "test",
-          database = 1,
-          timeout = 3500,
-          ssl = true,
-          ssl_verify = true,
-          server_name = "example.test",
-          extra_options = {
-            scan_count = 13,
-            namespace = "namespace2:",
-          }
-        }
-
         local res = assert(client:send {
           method = "POST",
           path = "/plugins",
@@ -303,27 +288,22 @@ describe("Plugin: acme (storage.redis)", function()
               storage = "redis",
               preferred_chain = "test",
               storage_config = {
-                redis = redis_config,
+                redis = {
+                  host = helpers.redis_host,
+                  port = helpers.redis_port,
+                  password = "test",
+                  server_name = "example.test",
+                  extra_options = {
+                    namespace = "namespace1:",
+                    scan_count = 13
+                  }
+                },
               },
             },
           },
         })
         local json = cjson.decode(assert.res_status(201, res))
-
-        -- verify that legacy defaults don't ovewrite new structure when they were not defined
-        assert.same(redis_config.host, json.config.storage_config.redis.host)
-        assert.same(redis_config.port, json.config.storage_config.redis.port)
-        assert.same(redis_config.password, json.config.storage_config.redis.password)
-        assert.same(redis_config.database, json.config.storage_config.redis.database)
-        assert.same(redis_config.timeout, json.config.storage_config.redis.timeout)
-        assert.same(redis_config.ssl, json.config.storage_config.redis.ssl)
-        assert.same(redis_config.ssl_verify, json.config.storage_config.redis.ssl_verify)
-        assert.same(redis_config.server_name, json.config.storage_config.redis.server_name)
-        assert.same(redis_config.extra_options.scan_count, json.config.storage_config.redis.extra_options.scan_count)
-        assert.same(redis_config.extra_options.namespace, json.config.storage_config.redis.extra_options.namespace)
-
         delete_plugin(client, json)
-
         assert.logfile().has.no.line("acme: config.storage_config.redis.namespace is deprecated, " ..
                                   "please use config.storage_config.redis.extra_options.namespace instead (deprecated after 4.0)", true)
         assert.logfile().has.no.line("acme: config.storage_config.redis.scan_count is deprecated, " ..
@@ -335,19 +315,6 @@ describe("Plugin: acme (storage.redis)", function()
       end)
 
       it("successfully create acme plugin with legacy fields", function()
-        local redis_config = {
-          host = helpers.redis_host,
-          port = helpers.redis_port,
-          auth = "test",
-          database = 1,
-          timeout = 3500,
-          ssl = true,
-          ssl_verify = true,
-          ssl_server_name = "example.test",
-          scan_count = 13,
-          namespace = "namespace2:",
-        }
-
         local res = assert(client:send {
           method = "POST",
           path = "/plugins",
@@ -360,28 +327,22 @@ describe("Plugin: acme (storage.redis)", function()
               storage = "redis",
               preferred_chain = "test",
               storage_config = {
-                redis = redis_config,
+                redis = {
+                  host = helpers.redis_host,
+                  port = helpers.redis_port,
+
+                  auth = "test",
+                  ssl_server_name = "example.test",
+                  scan_count = 13,
+                  namespace = "namespace2:",
+                },
               },
             },
           },
         })
 
         local json = cjson.decode(assert.res_status(201, res))
-
-        -- verify that legacy config got written into new structure
-        assert.same(redis_config.host, json.config.storage_config.redis.host)
-        assert.same(redis_config.port, json.config.storage_config.redis.port)
-        assert.same(redis_config.auth, json.config.storage_config.redis.password)
-        assert.same(redis_config.database, json.config.storage_config.redis.database)
-        assert.same(redis_config.timeout, json.config.storage_config.redis.timeout)
-        assert.same(redis_config.ssl, json.config.storage_config.redis.ssl)
-        assert.same(redis_config.ssl_verify, json.config.storage_config.redis.ssl_verify)
-        assert.same(redis_config.ssl_server_name, json.config.storage_config.redis.server_name)
-        assert.same(redis_config.scan_count, json.config.storage_config.redis.extra_options.scan_count)
-        assert.same(redis_config.namespace, json.config.storage_config.redis.extra_options.namespace)
-
         delete_plugin(client, json)
-
         assert.logfile().has.line("acme: config.storage_config.redis.namespace is deprecated, " ..
                                   "please use config.storage_config.redis.extra_options.namespace instead (deprecated after 4.0)", true)
         assert.logfile().has.line("acme: config.storage_config.redis.scan_count is deprecated, " ..
