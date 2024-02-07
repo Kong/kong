@@ -955,6 +955,38 @@ local function load(path, custom_conf, opts)
     conf.cluster_rpc = "off"
   end
 
+  -- parse and validate pluginserver directives
+  if conf.pluginserver_names then
+    local pluginservers = {}
+    for i, name in ipairs(conf.pluginserver_names) do
+      name = name:lower()
+      local env_prefix = "pluginserver_" .. name:gsub("-", "_")
+      local socket = conf[env_prefix .. "_socket"] or (conf.prefix .. "/" .. name .. ".socket")
+      local start_command = conf[env_prefix .. "_start_cmd"] or exists("/usr/local/bin/" .. name)
+      local query_command = conf[env_prefix .. "_query_cmd"] or exists("/usr/local/bin/" .. name .. " -dump")
+
+      -- if start_command is unset, we assume the pluginserver process is
+      -- managed externally
+      if not start_command then
+        log.warn("start_command undefined for pluginserver " .. name .. "; assuming external process management")
+      end
+
+      -- query_command is required
+      if not query_command then
+        return nil, "query_command undefined for pluginserver " .. name
+      end
+
+      pluginservers[i] = {
+        name = name,
+        socket = socket,
+        start_command = start_command,
+        query_command = query_command,
+      }
+    end
+
+    conf.pluginservers = setmetatable(pluginservers, conf_constants._NOP_TOSTRING_MT)
+  end
+
   -- initialize the dns client, so the globally patched tcp.connect method
   -- will work from here onwards.
   assert(require("kong.tools.dns")(conf))

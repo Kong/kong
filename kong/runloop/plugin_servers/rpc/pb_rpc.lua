@@ -3,6 +3,7 @@ local cjson = require "cjson.safe"
 local grpc_tools = require "kong.tools.grpc"
 local pb = require "pb"
 local lpack = require "lua_pack"
+local rpc_util = require "kong.runloop.plugin_servers.rpc.util"
 
 local ngx = ngx
 local kong = kong
@@ -13,10 +14,8 @@ local st_unpack = lpack.unpack
 local str_find = string.find
 
 local proto_fname = "kong/pluginsocket.proto"
-
 local Rpc = {}
 Rpc.__index = Rpc
-
 
 local pb_unwrap
 do
@@ -176,24 +175,7 @@ do
   }
 end
 
-
-local function index_table(table, field)
-  if table[field] then
-    return table[field]
-  end
-
-  local res = table
-  for segment, e in ngx.re.gmatch(field, "\\w+", "jo") do
-    if res[segment[0]] then
-      res = res[segment[0]]
-    else
-      return nil
-    end
-  end
-  return res
-end
-
-local function load_service()
+local function load_service(pdk)
   local p = grpc_tools.new()
   local protoc_instance = p.protoc_instance
 
@@ -212,7 +194,7 @@ local function load_service()
 
       service[lower_name] = {
         method_name = method_name,
-        method = index_table(Rpc.exposed_api, lower_name),
+        method = rpc_util.index_table(pdk, lower_name),
         input_type = m.input_type,
         output_type = m.output_type,
       }
@@ -233,13 +215,13 @@ local function identity_function(x)
 end
 
 
-local function call_pdk(method_name, arg)
+local function call_pdk(pdk, method_name, arg)
   local method = rpc_service[method_name]
   if not method then
     return nil, ("method %q not found"):format(method_name)
   end
 
-  local saved = Rpc.save_for_later[coroutine.running()]
+  local saved = pdk.get_saved_req_data()
   if saved and saved.plugin_name then
     kong_global.set_namespaced_log(kong, saved.plugin_name)
   end
@@ -283,25 +265,10 @@ local function write_frame(c, msg)
   assert (c:send(msg))
 end
 
-function Rpc.new(socket_path, notifications)
-
-  if not rpc_service then
-    rpc_service = load_service()
-  end
-
-  --kong.log.debug("pb_rpc.new: ", socket_path)
-  return setmetatable({
-    socket_path = socket_path,
-    msg_id = 0,
-    notifications_callbacks = notifications,
-  }, Rpc)
-end
-
-
 function Rpc:call(method, data, do_bridge_loop)
   self.msg_id = self.msg_id + 1
   local msg_id = self.msg_id
-  local c, err = ngx.socket.connect("unix:" .. self.socket_path)
+  local c, err = ngx.socket.connect("unix:" .. self.plugin.server_def.socket)
   if not c then
     kong.log.err("trying to connect: ", err)
     return nil, err
@@ -336,7 +303,7 @@ function Rpc:call(method, data, do_bridge_loop)
     end
 
     local reply
-    reply, err = call_pdk(method_name, args)
+    reply, err = call_pdk(self.plugin.exposed_api, method_name, args)
     if not reply then
       return nil, err
     end
@@ -371,7 +338,7 @@ function Rpc:call_start_instance(plugin_name, conf)
     return nil, err
   end
 
-  kong.log.debug("started plugin server: seq ", conf.__seq__, ", worker ", ngx.worker.id() or -1, ", instance id ",
+  kong.log.debug("started plugin server: seq ", conf.__seq__, ", worker ", ngx.worker.id(), ", instance id ",
     status.instance_status.instance_id)
 
   return {
@@ -390,9 +357,10 @@ function Rpc:call_close_instance(instance_id)
 end
 
 
+function Rpc:handle_event(conf, phase)
+  local plugin_name = self.plugin.name
 
-function Rpc:handle_event(plugin_name, conf, phase)
-  local instance_id, err = self.get_instance_id(plugin_name, conf)
+  local instance_id, err = self.plugin.instance_callbacks.get_instance_id(self.plugin, conf)
   local res
   if not err then
     res, err = self:call("cmd_handle_event", {
@@ -406,9 +374,9 @@ function Rpc:handle_event(plugin_name, conf, phase)
 
     if str_find(err_lowered, "no plugin instance", nil, true)
       or str_find(err_lowered, "closed", nil, true) then
-      self.reset_instance(plugin_name, conf)
+      self.plugin.instance_callbacks.reset_instance(plugin_name, conf)
       kong.log.warn(err)
-      return self:handle_event(plugin_name, conf, phase)
+      return self:handle_event(conf, phase)
 
     else
       kong.log.err("pluginserver error: ", err or "unknown error")
@@ -417,5 +385,19 @@ function Rpc:handle_event(plugin_name, conf, phase)
   end
 end
 
+local function new(plugin)
+  if not rpc_service then
+    rpc_service = load_service(plugin.exposed_api)
+  end
 
-return Rpc
+  local self = setmetatable({
+    msg_id = 0,
+    plugin = plugin,
+  }, Rpc)
+
+  return self
+end
+
+return {
+  new = new,
+}
