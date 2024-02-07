@@ -502,17 +502,21 @@ local function check_update(self, key, entity, options, name)
     return nil, nil, tostring(err_t), err_t
   end
 
-  options.expand_shorthands = false
   local rbw_entity
   local err, err_t
   if name then
-     rbw_entity, err, err_t = self["select_by_" .. name](self, key, options)
+    options.hide_shorthands = true
+    rbw_entity, err, err_t = self["select_by_" .. name](self, key, options)
+    options.hide_shorthands = false
   else
-     rbw_entity, err, err_t = self:select(key, options)
+    options.hide_shorthands = true
+    rbw_entity, err, err_t = self:select(key, options)
+    options.hide_shorthands = false
   end
   if err then
     return nil, nil, err, err_t
   end
+
 
   if rbw_entity and check_immutable_fields then
     local ok, errors = self.schema:validate_immutable_fields(entity_to_update, rbw_entity)
@@ -711,9 +715,6 @@ local function generate_foreign_key_methods(schema)
         end
 
         local entities, err
-        if options.expand_shorthands ~= false then
-          options.expand_shorthands = true
-        end
         entities, err, err_t = self:rows_to_entities(rows, options)
         if err then
           return nil, err, err_t
@@ -773,9 +774,6 @@ local function generate_foreign_key_methods(schema)
         end
 
         local err
-        if options.expand_shorthands ~= false then
-          options.expand_shorthands = true
-        end
         row, err, err_t = self:row_to_entity(row, options)
         if not row then
           return nil, err, err_t
@@ -821,7 +819,6 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
-        options.expand_shorthands = true
         row, err, err_t = self:row_to_entity(row, options)
         if not row then
           return nil, err, err_t
@@ -873,7 +870,6 @@ local function generate_foreign_key_methods(schema)
         end
 
         local ws_id = row.ws_id
-        options.expand_shorthands = true
         row, err, err_t = self:row_to_entity(row, options)
         if not row then
           return nil, err, err_t
@@ -1021,9 +1017,6 @@ function DAO:select(pk_or_entity, options)
   end
 
   local err
-  if options.expand_shorthands ~= false then
-    options.expand_shorthands = true
-  end
   row, err, err_t = self:row_to_entity(row, options)
   if not row then
     return nil, err, err_t
@@ -1077,9 +1070,6 @@ function DAO:page(size, offset, options)
   end
 
   local entities, err
-  if options.expand_shorthands ~= false then
-    options.expand_shorthands = true
-  end
   entities, err, err_t = self:rows_to_entities(rows, options)
   if not entities then
     return nil, err, err_t
@@ -1162,7 +1152,6 @@ function DAO:insert(entity, options)
   end
 
   local ws_id = row.ws_id
-  options.expand_shorthands = true
   row, err, err_t = self:row_to_entity(row, options)
   if not row then
     return nil, err, err_t
@@ -1214,7 +1203,6 @@ function DAO:update(pk_or_entity, entity, options)
   end
 
   local ws_id = row.ws_id
-  options.expand_shorthands = true
   row, err, err_t = self:row_to_entity(row, options)
   if not row then
     return nil, err, err_t
@@ -1266,7 +1254,6 @@ function DAO:upsert(pk_or_entity, entity, options)
   end
 
   local ws_id = row.ws_id
-  options.expand_shorthands = true
   row, err, err_t = self:row_to_entity(row, options)
   if not row then
     return nil, err, err_t
@@ -1389,9 +1376,6 @@ function DAO:select_by_cache_key(cache_key, options)
 
   local err
   local ws_id = row.ws_id
-  if options.expand_shorthands ~= false then
-    options.expand_shorthands = true
-  end
   row, err, err_t = self:row_to_entity(row, options)
   if not row then
     return nil, err, err_t
