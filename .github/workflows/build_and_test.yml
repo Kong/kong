@@ -319,6 +319,8 @@ jobs:
     - name: Build & install dependencies
       run: |
         make dev
+        # python pluginserver tests dependency
+        pip install kong-pdk
 
     - name: Download test rerun information
       uses: actions/download-artifact@v4
