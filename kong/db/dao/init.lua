@@ -710,6 +710,10 @@ local function generate_foreign_key_methods(schema)
         end
 
         local entities, err
+        if options == nil or options.expand_shorthands == nil then
+          options = options or {}
+          options.expand_shorthands = true
+        end
         entities, err, err_t = self:rows_to_entities(rows, options)
         if err then
           return nil, err, err_t
@@ -768,6 +772,10 @@ local function generate_foreign_key_methods(schema)
         end
 
         local err
+        if options == nil or options.expand_shorthands == nil then
+          options = options or {}
+          options.expand_shorthands = true
+        end
         row, err, err_t = self:row_to_entity(row, options)
         if not row then
           return nil, err, err_t
@@ -812,6 +820,8 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
+        options = options or {}
+        options.expand_shorthands = true
         row, err, err_t = self:row_to_entity(row, options)
         if not row then
           return nil, err, err_t
@@ -862,6 +872,8 @@ local function generate_foreign_key_methods(schema)
         end
 
         local ws_id = row.ws_id
+        options = options or {}
+        options.expand_shorthands = true
         row, err, err_t = self:row_to_entity(row, options)
         if not row then
           return nil, err, err_t
@@ -1389,6 +1401,10 @@ function DAO:select_by_cache_key(cache_key, options)
 
   local err
   local ws_id = row.ws_id
+  if options == nil or options.expand_shorthands == nil then
+    options = options or {}
+    options.expand_shorthands = true
+  end
   row, err, err_t = self:row_to_entity(row, options)
   if not row then
     return nil, err, err_t
