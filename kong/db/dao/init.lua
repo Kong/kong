@@ -712,7 +712,7 @@ local function generate_foreign_key_methods(schema)
         end
 
         local entities, err
-        if options == nil or options.expand_shorthands ~= false then
+        if options == nil or options.expand_shorthands == nil then
           options = options or {}
           options.expand_shorthands = true
         end
@@ -774,7 +774,7 @@ local function generate_foreign_key_methods(schema)
         end
 
         local err
-        if options == nil or options.expand_shorthands ~= false then
+        if options == nil or options.expand_shorthands == nil then
           options = options or {}
           options.expand_shorthands = true
         end
@@ -1025,7 +1025,7 @@ function DAO:select(pk_or_entity, options)
   end
 
   local err
-  if options == nil or options.expand_shorthands ~= false then
+  if options == nil or options.expand_shorthands == nil then
     options = options or {}
     options.expand_shorthands = true
   end
@@ -1082,7 +1082,7 @@ function DAO:page(size, offset, options)
   end
 
   local entities, err
-  if options == nil or options.expand_shorthands ~= false then
+  if options == nil or options.expand_shorthands == nil then
     options = options or {}
     options.expand_shorthands = true
   end
@@ -1403,7 +1403,7 @@ function DAO:select_by_cache_key(cache_key, options)
 
   local err
   local ws_id = row.ws_id
-  if options == nil or options.expand_shorthands ~= false then
+  if options == nil or options.expand_shorthands == nil then
     options = options or {}
     options.expand_shorthands = true
   end
