@@ -482,14 +482,15 @@ end
 
 
 local function check_update(self, key, entity, options, name)
-  options = options or {}
-  local ok, errors = validate_options_value(self, options)
-  if not ok then
-    local err_t = self.errors:invalid_options(errors)
-    return nil, nil, tostring(err_t), err_t
+  local transform
+  if options ~= nil then
+    local ok, errors = validate_options_value(self, options)
+    if not ok then
+      local err_t = self.errors:invalid_options(errors)
+      return nil, nil, tostring(err_t), err_t
+    end
+    transform = options.transform
   end
-  local transform = options.transform
-
 
   if transform == nil then
     transform = true
@@ -502,6 +503,7 @@ local function check_update(self, key, entity, options, name)
     return nil, nil, tostring(err_t), err_t
   end
 
+  options = options or {}
   options.expand_shorthands = false
   local rbw_entity
   local err, err_t
@@ -684,7 +686,6 @@ local function generate_foreign_key_methods(schema)
 
       local page_method_name = "page_for_" .. name
       methods[page_method_name] = function(self, foreign_key, size, offset, options)
-        options = options or {}
         local size, err, err_t = validate_pagination_method(self, field,
                                    foreign_key, size, offset, options)
         if not size then
@@ -711,7 +712,8 @@ local function generate_foreign_key_methods(schema)
         end
 
         local entities, err
-        if options.expand_shorthands ~= false then
+        if options == nil or options.expand_shorthands ~= false then
+          options = options or {}
           options.expand_shorthands = true
         end
         entities, err, err_t = self:rows_to_entities(rows, options)
@@ -749,7 +751,6 @@ local function generate_foreign_key_methods(schema)
 
     if field.unique or schema.endpoint_key == name then
       methods["select_by_" .. name] = function(self, unique_value, options)
-        options = options or {}
         local ok, err, err_t = validate_unique_row_method(self, name, field, unique_value, options)
         if not ok then
           return nil, err, err_t
@@ -773,7 +774,8 @@ local function generate_foreign_key_methods(schema)
         end
 
         local err
-        if options.expand_shorthands ~= false then
+        if options == nil or options.expand_shorthands ~= false then
+          options = options or {}
           options.expand_shorthands = true
         end
         row, err, err_t = self:row_to_entity(row, options)
@@ -793,7 +795,6 @@ local function generate_foreign_key_methods(schema)
       end
 
       methods["update_by_" .. name] = function(self, unique_value, entity, options)
-        options = options or {}
         local ok, err, err_t = validate_unique_row_method(self, name, field, unique_value, options)
         if not ok then
           return nil, err, err_t
@@ -821,6 +822,7 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
+        options = options or {}
         options.expand_shorthands = true
         row, err, err_t = self:row_to_entity(row, options)
         if not row then
@@ -841,7 +843,6 @@ local function generate_foreign_key_methods(schema)
       end
 
       methods["upsert_by_" .. name] = function(self, unique_value, entity, options)
-        options = options or {}
         local ok, err, err_t = validate_unique_row_method(self, name, field, unique_value, options)
         if not ok then
           return nil, err, err_t
@@ -873,6 +874,7 @@ local function generate_foreign_key_methods(schema)
         end
 
         local ws_id = row.ws_id
+        options = options or {}
         options.expand_shorthands = true
         row, err, err_t = self:row_to_entity(row, options)
         if not row then
@@ -986,9 +988,11 @@ end
 
 
 function DAO:select(pk_or_entity, options)
-  options = options or {}
   validate_primary_key_type(pk_or_entity)
-  validate_options_type(options)
+
+  if options ~= nil then
+    validate_options_type(options)
+  end
 
   local primary_key = self.schema:extract_pk_values(pk_or_entity)
   local ok, errors = self.schema:validate_primary_key(primary_key)
@@ -1021,7 +1025,8 @@ function DAO:select(pk_or_entity, options)
   end
 
   local err
-  if options.expand_shorthands ~= false then
+  if options == nil or options.expand_shorthands ~= false then
+    options = options or {}
     options.expand_shorthands = true
   end
   row, err, err_t = self:row_to_entity(row, options)
@@ -1077,7 +1082,8 @@ function DAO:page(size, offset, options)
   end
 
   local entities, err
-  if options.expand_shorthands ~= false then
+  if options == nil or options.expand_shorthands ~= false then
+    options = options or {}
     options.expand_shorthands = true
   end
   entities, err, err_t = self:rows_to_entities(rows, options)
@@ -1142,9 +1148,11 @@ end
 
 
 function DAO:insert(entity, options)
-  options = options or {}
   validate_entity_type(entity)
-  validate_options_type(options)
+
+  if options ~= nil then
+    validate_options_type(options)
+  end
 
   local entity_to_insert, err, err_t = check_insert(self, entity, options)
   if not entity_to_insert then
@@ -1162,6 +1170,7 @@ function DAO:insert(entity, options)
   end
 
   local ws_id = row.ws_id
+  options = options or {}
   options.expand_shorthands = true
   row, err, err_t = self:row_to_entity(row, options)
   if not row then
@@ -1180,10 +1189,12 @@ end
 
 
 function DAO:update(pk_or_entity, entity, options)
-  options = options or {}
   validate_primary_key_type(pk_or_entity)
   validate_entity_type(entity)
-  validate_options_type(options)
+
+  if options ~= nil then
+    validate_options_type(options)
+  end
 
   local primary_key = self.schema:extract_pk_values(pk_or_entity)
   local ok, errors = self.schema:validate_primary_key(primary_key)
@@ -1214,6 +1225,7 @@ function DAO:update(pk_or_entity, entity, options)
   end
 
   local ws_id = row.ws_id
+  options = options or {}
   options.expand_shorthands = true
   row, err, err_t = self:row_to_entity(row, options)
   if not row then
@@ -1232,10 +1244,12 @@ end
 
 
 function DAO:upsert(pk_or_entity, entity, options)
-  options = options or {}
   validate_primary_key_type(pk_or_entity)
   validate_entity_type(entity)
-  validate_options_type(options)
+
+  if options ~= nil then
+    validate_options_type(options)
+  end
 
   local primary_key = self.schema:extract_pk_values(pk_or_entity)
   local ok, errors = self.schema:validate_primary_key(primary_key)
@@ -1266,6 +1280,7 @@ function DAO:upsert(pk_or_entity, entity, options)
   end
 
   local ws_id = row.ws_id
+  options = options or {}
   options.expand_shorthands = true
   row, err, err_t = self:row_to_entity(row, options)
   if not row then
@@ -1356,7 +1371,6 @@ end
 
 
 function DAO:select_by_cache_key(cache_key, options)
-  options = options or {}
   local ck_definition = self.schema.cache_key
   if not ck_definition then
     error("entity does not have a cache_key defined", 2)
@@ -1389,7 +1403,8 @@ function DAO:select_by_cache_key(cache_key, options)
 
   local err
   local ws_id = row.ws_id
-  if options.expand_shorthands ~= false then
+  if options == nil or options.expand_shorthands ~= false then
+    options = options or {}
     options.expand_shorthands = true
   end
   row, err, err_t = self:row_to_entity(row, options)
