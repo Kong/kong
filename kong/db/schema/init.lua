@@ -1681,7 +1681,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
         end
       end
 
-      if is_select and sdata.translate_backwards and opts and not(opts.hide_shorthands) then
+      if is_select and sdata.translate_backwards and opts and opts.expand_shorthands then
         data[sname] = utils.table_path(data, sdata.translate_backwards)
       end
     end
