@@ -503,6 +503,8 @@ local function check_update(self, key, entity, options, name)
     return nil, nil, tostring(err_t), err_t
   end
 
+  options = options or {}
+  options.expand_shorthands = false
   local rbw_entity
   local err, err_t
   if name then
