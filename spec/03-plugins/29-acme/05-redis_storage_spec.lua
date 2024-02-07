@@ -1,9 +1,7 @@
 local redis_storage = require("resty.acme.storage.redis")
 local reserved_words = require "kong.plugins.acme.reserved_words"
-local cjson = require "cjson"
 
 local helpers = require "spec.helpers"
-local config_adapters = require "kong.plugins.acme.storage.config_adapters"
 
 describe("Plugin: acme (storage.redis)", function()
   it("should successfully connect to the Redis SSL port", function()
@@ -24,37 +22,6 @@ describe("Plugin: acme (storage.redis)", function()
     local value, err = storage:get("foo")
     assert.is_nil(err)
     assert.equal("bar", value)
-  end)
-
-  describe("when using config adapter", function()
-    it("should successfully connect to the Redis SSL port", function()
-      local storage_type = "redis"
-      local new_config = {
-        redis = {
-          host = helpers.redis_host,
-          port = helpers.redis_port,
-          database = 0,
-          password = nil,
-          ssl = false,
-          ssl_verify = false,
-          server_name = nil,
-          extra_options = {
-            namespace = "test",
-            scan_count = 13
-          }
-        }
-      }
-      local storage_config = config_adapters.adapt_config(storage_type, new_config)
-
-      local storage, err = redis_storage.new(storage_config)
-      assert.is_nil(err)
-      assert.not_nil(storage)
-      local err = storage:set("foo", "bar", 10)
-      assert.is_nil(err)
-      local value, err = storage:get("foo")
-      assert.is_nil(err)
-      assert.equal("bar", value)
-    end)
   end)
 
   describe("redis namespace", function()
@@ -257,7 +224,6 @@ describe("Plugin: acme (storage.redis)", function()
 
       before_each(function()
         client = helpers.admin_client()
-        helpers.clean_logfile()
       end)
 
       after_each(function()
@@ -265,15 +231,6 @@ describe("Plugin: acme (storage.redis)", function()
           client:close()
         end
       end)
-
-      local function delete_plugin(admin_client, plugin)
-        local res = assert(admin_client:send({
-          method = "DELETE",
-          path = "/plugins/" .. plugin.id,
-        }))
-
-        assert.res_status(204, res)
-      end
 
       it("successfully create acme plugin with valid namespace", function()
         local res = assert(client:send {
@@ -291,66 +248,13 @@ describe("Plugin: acme (storage.redis)", function()
                 redis = {
                   host = helpers.redis_host,
                   port = helpers.redis_port,
-                  password = "test",
-                  server_name = "example.test",
-                  extra_options = {
-                    namespace = "namespace1:",
-                    scan_count = 13
-                  }
+                  namespace = "namespace1:",
                 },
               },
             },
           },
         })
-        local json = cjson.decode(assert.res_status(201, res))
-        delete_plugin(client, json)
-        assert.logfile().has.no.line("acme: config.storage_config.redis.namespace is deprecated, " ..
-                                  "please use config.storage_config.redis.extra_options.namespace instead (deprecated after 4.0)", true)
-        assert.logfile().has.no.line("acme: config.storage_config.redis.scan_count is deprecated, " ..
-                                  "please use config.storage_config.redis.extra_options.scan_count instead (deprecated after 4.0)", true)
-        assert.logfile().has.no.line("acme: config.storage_config.redis.auth is deprecated, " ..
-                                  "please use config.storage_config.redis.password instead (deprecated after 4.0)", true)
-        assert.logfile().has.no.line("acme: config.storage_config.redis.ssl_server_name is deprecated, " ..
-                                  "please use config.storage_config.redis.server_name instead (deprecated after 4.0)", true)
-      end)
-
-      it("successfully create acme plugin with legacy fields", function()
-        local res = assert(client:send {
-          method = "POST",
-          path = "/plugins",
-          headers = { ["Content-Type"] = "application/json" },
-          body = {
-            name = "acme",
-            config = {
-              account_email = "test@test.com",
-              api_uri = "https://api.acme.org",
-              storage = "redis",
-              preferred_chain = "test",
-              storage_config = {
-                redis = {
-                  host = helpers.redis_host,
-                  port = helpers.redis_port,
-
-                  auth = "test",
-                  ssl_server_name = "example.test",
-                  scan_count = 13,
-                  namespace = "namespace2:",
-                },
-              },
-            },
-          },
-        })
-
-        local json = cjson.decode(assert.res_status(201, res))
-        delete_plugin(client, json)
-        assert.logfile().has.line("acme: config.storage_config.redis.namespace is deprecated, " ..
-                                  "please use config.storage_config.redis.extra_options.namespace instead (deprecated after 4.0)", true)
-        assert.logfile().has.line("acme: config.storage_config.redis.scan_count is deprecated, " ..
-                                  "please use config.storage_config.redis.extra_options.scan_count instead (deprecated after 4.0)", true)
-        assert.logfile().has.line("acme: config.storage_config.redis.auth is deprecated, " ..
-                                  "please use config.storage_config.redis.password instead (deprecated after 4.0)", true)
-        assert.logfile().has.line("acme: config.storage_config.redis.ssl_server_name is deprecated, " ..
-                                  "please use config.storage_config.redis.server_name instead (deprecated after 4.0)", true)
+        assert.res_status(201, res)
       end)
 
       it("fail to create acme plugin with invalid namespace", function()
@@ -370,9 +274,7 @@ describe("Plugin: acme (storage.redis)", function()
                   redis = {
                     host = helpers.redis_host,
                     port = helpers.redis_port,
-                    extra_options = {
-                      namespace = v,
-                    }
+                    namespace = v,
                   },
                 },
               },
@@ -427,9 +329,7 @@ describe("Plugin: acme (storage.redis)", function()
             redis = {
               host = helpers.redis_host,
               port = helpers.redis_port,
-              -- extra_options = {
-              --   namespace: "", default to empty
-              -- }
+              -- namespace: "", default to empty
             },
           },
         },
@@ -479,9 +379,7 @@ describe("Plugin: acme (storage.redis)", function()
               redis = {
                 host = helpers.redis_host,
                 port = helpers.redis_port,
-                extra_options = {
-                  namespace = namespace,    -- change namespace
-                }
+                namespace = namespace,    -- change namespace
               },
             },
           },
