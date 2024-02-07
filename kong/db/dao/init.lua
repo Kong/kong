@@ -517,7 +517,6 @@ local function check_update(self, key, entity, options, name)
     return nil, nil, err, err_t
   end
 
-
   if rbw_entity and check_immutable_fields then
     local ok, errors = self.schema:validate_immutable_fields(entity_to_update, rbw_entity)
     if not ok then
@@ -688,7 +687,6 @@ local function generate_foreign_key_methods(schema)
 
       local page_method_name = "page_for_" .. name
       methods[page_method_name] = function(self, foreign_key, size, offset, options)
-        options = options or {}
         local size, err, err_t = validate_pagination_method(self, field,
                                    foreign_key, size, offset, options)
         if not size then
@@ -750,7 +748,6 @@ local function generate_foreign_key_methods(schema)
 
     if field.unique or schema.endpoint_key == name then
       methods["select_by_" .. name] = function(self, unique_value, options)
-        options = options or {}
         local ok, err, err_t = validate_unique_row_method(self, name, field, unique_value, options)
         if not ok then
           return nil, err, err_t
@@ -791,7 +788,6 @@ local function generate_foreign_key_methods(schema)
       end
 
       methods["update_by_" .. name] = function(self, unique_value, entity, options)
-        options = options or {}
         local ok, err, err_t = validate_unique_row_method(self, name, field, unique_value, options)
         if not ok then
           return nil, err, err_t
@@ -838,7 +834,6 @@ local function generate_foreign_key_methods(schema)
       end
 
       methods["upsert_by_" .. name] = function(self, unique_value, entity, options)
-        options = options or {}
         local ok, err, err_t = validate_unique_row_method(self, name, field, unique_value, options)
         if not ok then
           return nil, err, err_t
@@ -982,9 +977,11 @@ end
 
 
 function DAO:select(pk_or_entity, options)
-  options = options or {}
   validate_primary_key_type(pk_or_entity)
-  validate_options_type(options)
+
+  if options ~= nil then
+    validate_options_type(options)
+  end
 
   local primary_key = self.schema:extract_pk_values(pk_or_entity)
   local ok, errors = self.schema:validate_primary_key(primary_key)
@@ -1132,9 +1129,11 @@ end
 
 
 function DAO:insert(entity, options)
-  options = options or {}
   validate_entity_type(entity)
-  validate_options_type(options)
+
+  if options ~= nil then
+    validate_options_type(options)
+  end
 
   local entity_to_insert, err, err_t = check_insert(self, entity, options)
   if not entity_to_insert then
@@ -1169,10 +1168,12 @@ end
 
 
 function DAO:update(pk_or_entity, entity, options)
-  options = options or {}
   validate_primary_key_type(pk_or_entity)
   validate_entity_type(entity)
-  validate_options_type(options)
+
+  if options ~= nil then
+    validate_options_type(options)
+  end
 
   local primary_key = self.schema:extract_pk_values(pk_or_entity)
   local ok, errors = self.schema:validate_primary_key(primary_key)
@@ -1220,10 +1221,12 @@ end
 
 
 function DAO:upsert(pk_or_entity, entity, options)
-  options = options or {}
   validate_primary_key_type(pk_or_entity)
   validate_entity_type(entity)
-  validate_options_type(options)
+
+  if options ~= nil then
+    validate_options_type(options)
+  end
 
   local primary_key = self.schema:extract_pk_values(pk_or_entity)
   local ok, errors = self.schema:validate_primary_key(primary_key)
@@ -1343,7 +1346,6 @@ end
 
 
 function DAO:select_by_cache_key(cache_key, options)
-  options = options or {}
   local ck_definition = self.schema.cache_key
   if not ck_definition then
     error("entity does not have a cache_key defined", 2)
