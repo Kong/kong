@@ -271,14 +271,6 @@ local schema = {
         then_err = "terms of service must be accepted, see https://letsencrypt.org/repository/",
       }
     },
-    { conditional = {
-      if_field = "config.storage", if_match = { eq = "redis" },
-      then_field = "config.storage_config.redis.host", then_match = { required = true },
-    } },
-    { conditional = {
-      if_field = "config.storage", if_match = { eq = "redis" },
-      then_field = "config.storage_config.redis.port", then_match = { required = true },
-    } },
     {
       custom_entity_check = {
         field_sources = { "config.storage", },
