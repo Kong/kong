@@ -14,7 +14,7 @@
     "test-koko": "TEST_APP=koko TEST_ENV=dev mocha -g @koko --recursive"
   },
   "dependencies": {
-    "@kong/kauth-test-utils": "^0.0.18",
+    "@kong/kauth-test-utils": "^0.0.19",
     "axios": "^1.6.7",
     "chai": "^4.4.1",
     "@kong/khcp-api-client": "^0.1.1674",
