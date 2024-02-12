@@ -9,6 +9,7 @@ env:
 
 jobs:
   run-tests:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     name: end-to-end test lint checks
     runs-on: ubuntu-latest
     steps:
