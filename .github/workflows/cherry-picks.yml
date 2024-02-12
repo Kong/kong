@@ -37,7 +37,7 @@ jobs:
 
             ## Original description
 
-            #{pull_description}
+            ${pull_description}
           upstream_repo: 'kong/kong-ee'
           branch_map: |-
             {
