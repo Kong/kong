@@ -2,10 +2,10 @@
 
 # This script runs the database upgrade tests from the
 # spec/05-migration directory.  It uses docker compose to stand up a
-# simple environment with postgres database server and
-# two Kong nodes.  One node contains the oldest supported version, the
-# other has the current version of Kong.  The testing is then done as
-# described in https://docs.google.com/document/d/1Df-iq5tNyuPj1UNG7bkhecisJFPswOfFqlOS3V4wXSc/edit?usp=sharing
+# simple environment with postgres database server and a Kong node.
+# The node contains the oldest supported version, the current version
+# of Kong is accessed via the local virtual environment. The testing is then
+# done as described in https://docs.google.com/document/d/1Df-iq5tNyuPj1UNG7bkhecisJFPswOfFqlOS3V4wXSc/edit?usp=sharing
 
 # Normally, the testing environment and the git worktree that is
 # required by this script are removed when the tests have run.  By
@@ -23,27 +23,14 @@ set -e
 
 trap "echo exiting because of error" 0
 
-function get_current_version() {
-    local image_tag=$1
-    local version_from_rockspec=$(perl -ne 'print "$1\n" if (/^\s*tag = "(.*)"/)' kong*.rockspec)
-    if docker pull $image_tag:$version_from_rockspec >/dev/null 2>/dev/null
-    then
-        echo $version_from_rockspec-ubuntu
-    else
-        echo master-ubuntu
-    fi
-}
-
-export OLD_KONG_VERSION=2.8.0
-export OLD_KONG_IMAGE=kong:$OLD_KONG_VERSION-ubuntu
-export NEW_KONG_IMAGE=kong/kong:$(get_current_version kong)
+export KONG_PG_HOST=localhost
+export KONG_TEST_PG_HOST=localhost
 
 function usage() {
     cat 1>&2 <<EOF
-usage: $0 [ -i <new-kong-image> ] [ <test> ... ]
+usage: $0 [ -i <venv-script> ] [ <test> ... ]
 
- <new-kong-image> must be the name of a kong image to use as the base image for the
-                  new kong version, based on this repository.
+ <venv-script> Script to source to set up Kong's virtual environment.
 EOF
 }
 
@@ -58,7 +45,7 @@ set -- $args
 while :; do
     case "$1" in
         -i)
-            export NEW_KONG_IMAGE=$2
+            venv_script=$2
             shift
             shift
             ;;
@@ -82,7 +69,6 @@ COMPOSE="docker compose -p $ENV_PREFIX -f scripts/upgrade-tests/docker-compose.y
 NETWORK_NAME=$ENV_PREFIX
 
 OLD_CONTAINER=$ENV_PREFIX-kong_old-1
-NEW_CONTAINER=$ENV_PREFIX-kong_new-1
 
 function prepare_container() {
     docker exec $1 apt-get update
@@ -92,16 +78,20 @@ function prepare_container() {
 }
 
 function build_containers() {
+    # Kong version >= 3.3 moved non Bazel-built dev setup to make dev-legacy
+    if (( $(echo "$OLD_KONG_VERSION" | sed 's/\.//g') >= 330 )); then
+        old_make_target="dev-legacy"
+    else
+        old_make_target="dev"
+    fi
+
     echo "Building containers"
 
     [ -d worktree/$OLD_KONG_VERSION ] || git worktree add worktree/$OLD_KONG_VERSION $OLD_KONG_VERSION
     $COMPOSE up --wait
     prepare_container $OLD_CONTAINER
-    prepare_container $NEW_CONTAINER
-    docker exec -w /kong $OLD_CONTAINER make dev CRYPTO_DIR=/usr/local/kong
-    # Kong version >= 3.3 moved non Bazel-built dev setup to make dev-legacy
-    docker exec -w /kong $NEW_CONTAINER make dev-legacy CRYPTO_DIR=/usr/local/kong
-    docker exec ${NEW_CONTAINER} ln -sf /kong/bin/kong /usr/local/bin/kong
+    docker exec -w /kong $OLD_CONTAINER make $old_make_target CRYPTO_DIR=/usr/local/kong
+    make dev-legacy CRYPTO_DIR=/usr/local/kong
 }
 
 function initialize_test_list() {
@@ -115,7 +105,7 @@ function initialize_test_list() {
 
         docker exec $OLD_CONTAINER kong migrations reset --yes || true
         docker exec $OLD_CONTAINER kong migrations bootstrap
-        docker exec $NEW_CONTAINER kong migrations status \
+        kong migrations status \
             | jq -r '.new_migrations | .[] | (.namespace | gsub("[.]"; "/")) as $namespace | .migrations[] | "\($namespace)/\(.)_spec.lua" | gsub("^kong"; "spec/05-migration")' \
             | sort > $all_tests_file
         ls 2>/dev/null $(cat $all_tests_file) \
@@ -158,7 +148,8 @@ function initialize_test_list() {
 
 function run_tests() {
     # Run the tests
-    BUSTED="env KONG_DATABASE=$1 KONG_DNS_RESOLVER= KONG_TEST_PG_DATABASE=kong /kong/bin/busted"
+    BUSTED_ENV="env KONG_DATABASE=$1 KONG_DNS_RESOLVER= KONG_TEST_PG_DATABASE=kong OLD_KONG_VERSION=$OLD_KONG_VERSION"
+
     shift
 
     set $TESTS
@@ -173,28 +164,44 @@ function run_tests() {
         echo Running $TEST
 
         echo ">> Setting up tests"
-        docker exec -w /upgrade-test $OLD_CONTAINER $BUSTED -t setup $TEST
+        docker exec -w /upgrade-test $OLD_CONTAINER $BUSTED_ENV /kong/bin/busted -t setup $TEST
         echo ">> Running migrations"
-        docker exec $NEW_CONTAINER kong migrations up
+        kong migrations up
         echo ">> Testing old_after_up,all_phases"
-        docker exec -w /upgrade-test $OLD_CONTAINER $BUSTED -t old_after_up,all_phases $TEST
+        docker exec -w /upgrade-test $OLD_CONTAINER $BUSTED_ENV /kong/bin/busted -t old_after_up,all_phases $TEST
         echo ">> Testing new_after_up,all_phases"
-        docker exec -w /kong $NEW_CONTAINER $BUSTED -t new_after_up,all_phases $TEST
+        $BUSTED_ENV bin/busted -t new_after_up,all_phases $TEST
         echo ">> Finishing migrations"
-        docker exec $NEW_CONTAINER kong migrations finish
+        kong migrations finish
         echo ">> Testing new_after_finish,all_phases"
-        docker exec -w /kong $NEW_CONTAINER $BUSTED -t new_after_finish,all_phases $TEST
+        $BUSTED_ENV bin/busted -t new_after_finish,all_phases $TEST
     done
 }
 
 function cleanup() {
-    git worktree remove worktree/$OLD_KONG_VERSION --force
+    sudo git worktree remove worktree/$OLD_KONG_VERSION --force
     $COMPOSE down
 }
 
-build_containers
-initialize_test_list
-run_tests postgres
-[ -z "$UPGRADE_ENV_PREFIX" ] && cleanup
+
+source $venv_script
+
+# Load supported "old" versions to run migration tests against
+old_versions=()
+mapfile -t old_versions < "scripts/upgrade-tests/source-versions"
+
+for old_version in "${old_versions[@]}"; do
+    export OLD_KONG_VERSION=$old_version
+    export OLD_KONG_IMAGE=kong:$OLD_KONG_VERSION-ubuntu
+
+    echo "Running tests using $OLD_KONG_VERSION as \"old version\" of Kong"
+
+    build_containers
+    initialize_test_list
+    run_tests postgres
+    [ -z "$UPGRADE_ENV_PREFIX" ] && cleanup
+done
+
+deactivate
 
 trap "" 0

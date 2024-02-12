@@ -13,33 +13,12 @@ services:
       timeout: 1s
       retries: 10
     environment:
-      KONG_PG_HOST: db_postgres
-      KONG_TEST_PG_HOST: db_postgres
+      KONG_PG_HOST: localhost
+      KONG_TEST_PG_HOST: localhost
     volumes:
       - ../../worktree/${OLD_KONG_VERSION}:/kong
     restart: on-failure
-    networks:
-      upgrade_tests:
-
-  kong_new:
-    image: ${NEW_KONG_IMAGE}
-    command: "tail -f /dev/null"
-    user: root
-    depends_on:
-      - db_postgres
-    healthcheck:
-      test: ["CMD", "true"]
-      interval: 1s
-      timeout: 1s
-      retries: 10
-    environment:
-      KONG_PG_HOST: db_postgres
-      KONG_TEST_PG_HOST: db_postgres
-    volumes:
-      - ../..:/kong
-    restart: on-failure
-    networks:
-      upgrade_tests:
+    network_mode: "host"
 
   db_postgres:
     image: postgres:9.5
@@ -55,8 +34,4 @@ services:
     restart: on-failure
     stdin_open: true
     tty: true
-    networks:
-      upgrade_tests:
-
-networks:
-  upgrade_tests:
+    network_mode: "host"
