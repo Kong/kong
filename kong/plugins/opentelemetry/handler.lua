@@ -158,8 +158,10 @@ function OpenTelemetryHandler:header_filter(conf)
       local root_span = ngx.ctx.KONG_SPANS and ngx.ctx.KONG_SPANS[1]
       trace_id = root_span and root_span.trace_id
     end
-    trace_id = to_hex(trace_id)
-    kong.response.add_header(conf.http_response_header_for_traceid, trace_id)
+    if trace_id then
+      trace_id = to_hex(trace_id)
+      kong.response.add_header(conf.http_response_header_for_traceid, trace_id)
+    end
   end
 end
 
