@@ -8,6 +8,7 @@ return {
     endpoint_key = "key",
     cache_key = { "key" },
     workspaceable = true,
+    unique_key = { "ws_id", "key" },
     admin_api_name = "key-auths",
     admin_api_nested_name = "key-auth",
     fields = {

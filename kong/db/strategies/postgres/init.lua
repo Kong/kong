@@ -825,6 +825,8 @@ function _M.new(connector, schema, errors)
 
   local unique_fields                 = {}
 
+  local unique_key                    = schema.unique_key
+
 
   for field_name, field in schema:each_field() do
     if field.type == "foreign" then
@@ -1005,6 +1007,7 @@ function _M.new(connector, schema, errors)
   insert(page_next_names, LIMIT)
 
   local pk_escaped = concat(primary_key_escaped, ", ")
+  local unique_escaped = concat(unique_key or primary_key_escaped, ", ")
 
   select_expressions       = concat(select_expressions, ", ")
   primary_key_placeholders = concat(primary_key_placeholders, ", ")
@@ -1153,7 +1156,7 @@ function _M.new(connector, schema, errors)
     code =  {
       "INSERT INTO ",  table_name_escaped, " (", insert_columns, ")\n",
       "     VALUES (", insert_expressions, ")\n",
-      "ON CONFLICT (", pk_escaped, ") DO UPDATE\n",
+     "ON CONFLICT (", unique_escaped, ") DO UPDATE\n",
       "        SET ",  upsert_expressions, "\n",
       "  RETURNING ", select_expressions, ";",
     }
