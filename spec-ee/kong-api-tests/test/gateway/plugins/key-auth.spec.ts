@@ -14,6 +14,7 @@ import {
   waitForConfigRebuild,
   retryRequest,
   getKonnectControlPlaneId,
+  eventually,
 } from '@support';
 import axios from 'axios';
 
@@ -170,13 +171,16 @@ describe('@smoke @koko: Gateway Plugins: key-auth', function () {
       const validTokenHeaders = {
         api_key: keyId,
       };
-      const resp = await getNegative(`${proxyUrl}${path}`, validTokenHeaders);
-      logResponse(resp);
 
-      expect(resp.status, 'Status should be 401').to.equal(401);
-      expect(resp.data.message, 'Should indicate invalid credentials').to.equal(
-        'Unauthorized'
-      );
+      await eventually(async () => {
+        const resp = await getNegative(`${proxyUrl}${path}`, validTokenHeaders);
+        logResponse(resp);
+  
+        expect(resp.status, 'Status should be 401').to.equal(401);
+        expect(resp.data.message, 'Should indicate invalid credentials').to.equal(
+          'Unauthorized'
+        );
+      });
     });
 
     // This test case captures:
@@ -184,13 +188,15 @@ describe('@smoke @koko: Gateway Plugins: key-auth', function () {
     it('should not proxy request with apiKey in query param after ttl expiration', async function () {
       const queryUrl = `${proxyUrl}${path}?api_key=${keyId}`;
 
-      const resp = await getNegative(`${queryUrl}`);
-      logResponse(resp);
-
-      expect(resp.status, 'Status should be 401').to.equal(401);
-      expect(resp.data.message, 'Should indicate invalid credentials').to.equal(
-        'Unauthorized'
-      );
+      await eventually(async () => {
+        const resp = await getNegative(`${queryUrl}`);
+        logResponse(resp);
+  
+        expect(resp.status, 'Status should be 401').to.equal(401);
+        expect(resp.data.message, 'Should indicate invalid credentials').to.equal(
+          'Unauthorized'
+        );
+      });
     });
   }
 

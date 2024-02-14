@@ -12,6 +12,7 @@ import {
   waitForConfigRebuild,
   postNegative,
   isGateway,
+  eventually,
 } from '@support';
 
 describe('Gateway Plugins: CORS', function () {
@@ -252,21 +253,23 @@ describe('Gateway Plugins: CORS', function () {
 
     await waitForConfigRebuild();
 
-    const proxyResp = await axios({
-      url: `${proxyUrl}${path}`,
-      method: 'OPTIONS',
-      headers: {
-        Origin: 'https://example.com',
-        'access-control-request-method': 'OPTIONS',
-      },
+    await eventually(async () => {
+      const proxyResp = await axios({
+        url: `${proxyUrl}${path}`,
+        method: 'OPTIONS',
+        headers: {
+          Origin: 'https://example.com',
+          'access-control-request-method': 'OPTIONS',
+        },
+      });
+  
+      logResponse(proxyResp);
+      expect(proxyResp.status).to.equal(200);
+      expect(proxyResp.headers['access-control-allow-origin']).to.equal(
+        'https://example.com'
+      );
+      expect(proxyResp.headers['access-control-max-age']).to.equal('999');
     });
-
-    logResponse(proxyResp);
-    expect(proxyResp.status).to.equal(200);
-    expect(proxyResp.headers['access-control-allow-origin']).to.equal(
-      'https://example.com'
-    );
-    expect(proxyResp.headers['access-control-max-age']).to.equal('999');
   });
 
   after(async function () {
