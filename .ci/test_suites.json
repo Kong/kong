@@ -67,6 +67,9 @@
   {
     "name": "dbless",
     "exclude_tags": "flaky,ipv6,ce,postgres,db",
+    "environment": {
+      "KONG_TEST_DATABASE": "off"
+    },
     "venv_script": "kong-dev-normal-venv.sh",
     "specs": [
       "spec/02-integration/02-cmd/",
