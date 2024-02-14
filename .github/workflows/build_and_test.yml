@@ -59,7 +59,7 @@ jobs:
 
     - name: Lookup build cache
       id: cache-deps
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ${{ env.BUILD_ROOT }}
         key: ${{ needs.build.outputs.cache-key }}
@@ -187,7 +187,7 @@ jobs:
 
     - name: Lookup build cache
       id: cache-deps
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ${{ env.BUILD_ROOT }}
         key: ${{ needs.build.outputs.cache-key }}
@@ -345,7 +345,7 @@ jobs:
 
     - name: Lookup build cache
       id: cache-deps
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ${{ env.BUILD_ROOT }}
         key: ${{ needs.build.outputs.cache-key }}
