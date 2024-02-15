@@ -305,6 +305,8 @@ local CONF_PARSERS = {
     },
   },
 
+  nginx_wasm_main_shm_kv = { typ = "string" },
+
   worker_events_max_payload = { typ = "number" },
 
   upstream_keepalive_pool_size = { typ = "number" },
