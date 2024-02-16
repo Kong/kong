@@ -60,6 +60,9 @@ local COLON = byte(":")
 local SLASH = byte("/")
 
 
+local VAULT_QUERY_OPTS = { workspace = ngx.null }
+
+
 ---
 -- Checks if the passed in reference looks like a reference.
 -- Valid references start with '{vault://' and end with '}'.
@@ -606,10 +609,10 @@ local function new(self)
 
     if cache then
       local vault_cache_key = vaults:cache_key(prefix)
-      vault, err = cache:get(vault_cache_key, nil, vaults.select_by_prefix, vaults, prefix)
+      vault, err = cache:get(vault_cache_key, nil, vaults.select_by_prefix, vaults, prefix, VAULT_QUERY_OPTS)
 
     else
-      vault, err = vaults:select_by_prefix(prefix)
+      vault, err = vaults:select_by_prefix(prefix, VAULT_QUERY_OPTS)
     end
 
     if not vault then
