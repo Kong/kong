@@ -28,6 +28,7 @@ underscores_in_headers on;
 lua_ssl_conf_command CipherString DEFAULT:@SECLEVEL=0;
 proxy_ssl_conf_command CipherString DEFAULT:@SECLEVEL=0;
 ssl_conf_command CipherString DEFAULT:@SECLEVEL=0;
+grpc_ssl_conf_command CipherString DEFAULT:@SECLEVEL=0;
 > end
 > if ssl_ciphers then
 ssl_ciphers ${{SSL_CIPHERS}};
