@@ -1,0 +1,3 @@
+message: "**Vault**: do not use incorrect (default) workspace identifier when retrieving vault entity by prefix"
+type: bugfix
+scope: Core
