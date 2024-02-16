@@ -199,6 +199,7 @@ nginx_http_ssl_session_timeout = NONE
 nginx_http_ssl_conf_command = NONE
 nginx_http_proxy_ssl_conf_command = NONE
 nginx_http_lua_ssl_conf_command = NONE
+nginx_http_grpc_ssl_conf_command = NONE
 nginx_http_lua_regex_match_limit = 100000
 nginx_http_lua_regex_cache_max_entries = 8192
 nginx_http_keepalive_requests = 10000
