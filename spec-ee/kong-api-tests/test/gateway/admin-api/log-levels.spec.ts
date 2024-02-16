@@ -171,7 +171,6 @@ describe('Dynamic Log Level Tests', function () {
   });
 
   it('should not see debug logs in container after log is set to notice', async function () {
-    await wait(isKongNative ? 10000 : 8000); // eslint-disable-line no-restricted-syntax
     // read the last 2 lines of logs for package tests to avoid flakiness
 
     await eventually(async () => {

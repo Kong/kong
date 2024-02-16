@@ -96,14 +96,14 @@ export const getGatewayContainerLogs = (
   const isKongNative = isGwNative();
   const logFile = path.resolve(process.cwd(), 'error.log');
 
+  // using | cat as simple redirection like &> or >& doesn't work in CI Ubuntu
   const command = isKongNative
     ? `docker cp "${containerName}":/var/error.log ${logFile}`
     : `docker logs $(docker ps -aqf name="${containerName}") --tail ${numberOfLinesToRead} 2>&1 | cat > error.log`;
 
   try {
-    // using | cat as simple redirection like &> or >& doesn't work in CI Ubuntu
     execSync(command);
-    const logs = execSync(`tail -n ${numberOfLinesToRead} ${logFile}`);
+    const logs = execSync(`tail -n ${numberOfLinesToRead} ${logFile}`).toString();
     console.log(`Printing current log slice of kong container: \n${logs}`);
 
     // remove logs file
