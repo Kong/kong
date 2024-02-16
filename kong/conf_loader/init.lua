@@ -987,6 +987,7 @@ local function check_and_parse(conf, opts)
           "nginx_http_ssl_conf_command",
           "nginx_http_proxy_ssl_conf_command",
           "nginx_http_lua_ssl_conf_command",
+          "nginx_http_grpc_ssl_conf_command",
           "nginx_stream_ssl_conf_command",
           "nginx_stream_proxy_ssl_conf_command",
           "nginx_stream_lua_ssl_conf_command"}) do
