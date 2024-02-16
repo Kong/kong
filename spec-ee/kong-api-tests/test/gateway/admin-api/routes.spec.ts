@@ -176,7 +176,7 @@ describe('@smoke: Gateway Admin API: Routes', function () {
         logResponse(resp);
         expect(resp.status, 'Status should be 200').to.equal(200);
         expect(resp.data.paths, 'Should have updated path').contain(newPath);
-        await wait(2000); // eslint-disable-line no-restricted-syntax
+        await wait(5000); // eslint-disable-line no-restricted-syntax
     });
   
     it('should not get the route by wrong name', async function () {

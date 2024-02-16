@@ -162,17 +162,32 @@ describe('Gateway Plugins: Prometheus', function () {
     expect(resp.status, 'Status should be 200').to.equal(200);
   });
 
-  ['kong_kong_latency_ms_count', 'kong_request_latency_ms_count', 'kong_upstream_latency_ms_count', 'kong_kong_latency_ms_bucket', 'kong_request_latency_ms_bucket', 'kong_upstream_latency_ms_bucket'].forEach((metric) => {
+  // count statistics first
+  ['kong_kong_latency_ms_count', 'kong_request_latency_ms_count', 'kong_upstream_latency_ms_count'].forEach((metric) => {
+    it(`should see the new ${metric}_bucket metric after request to upstream`, async function () {
+      await eventually(async () => {
+        const resp = await queryPrometheusMetrics(metric)
+        expect(resp.result[0].metric.service, 'should see correct service name in metrics').to.equal(serviceName)
+        expect(JSON.parse(resp.result[0].value[1]), 'should see the value of count').to.be.gte(1)
+
+        if(metric.includes("upstream")) {
+          // if last one send request to upstream to log request latency metrics
+          const resp = await axios(`${proxyUrl}/${routePath}`)
+          logResponse(resp);
+          expect(resp.status, 'Status should be 200').to.equal(200);
+
+        }
+      });
+    });
+  });
+
+  // bucket statistcs next
+  ['kong_kong_latency_ms_bucket', 'kong_request_latency_ms_bucket', 'kong_upstream_latency_ms_bucket'].forEach((metric) => {
     it(`should see the new ${metric} metric after request to upstream`, async function () {
       await eventually(async () => {
         const resp = await queryPrometheusMetrics(metric)
         expect(resp.result[0].metric.service, 'should see correct service name in metrics').to.equal(serviceName)
-
-        if(metric.includes("bucket")) {
-          expect(resp.result.length, 'should see multiple latency metadata for buckets').to.be.gte(12)
-        } else {
-          expect(JSON.parse(resp.result[0].value[1]), 'should see the value of count').to.be.gte(1)
-        }
+        expect(resp.result.length, 'should see multiple latency metadata for buckets').to.be.gte(12)
       });
     });
   })
