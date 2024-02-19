@@ -1590,6 +1590,11 @@
                                  # necessary to repeat them in Vault
                                  # references.
 
+#vault_fs_prefix =               # Defines the file system vault's default
+                                 # path prefix. For security reasons it is
+                                 # required to configure this when using the
+                                 # file system vault, otherwise it won't work.
+
 #------------------------------------------------------------------------------
 # TUNING & BEHAVIOR
 #------------------------------------------------------------------------------

@@ -595,6 +595,9 @@ build = {
 
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
+    ["kong.vaults.fs"] = "kong/vaults/fs/init.lua",
+    ["kong.vaults.fs.schema"] = "kong/vaults/fs/schema.lua",
+
 
     ["kong.tracing.instrumentation"] = "kong/tracing/instrumentation.lua",
     ["kong.tracing.propagation"] = "kong/tracing/propagation.lua",
