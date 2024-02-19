@@ -15,17 +15,20 @@ for _, strategy in helpers.each_strategy() do
       local admin_gui_url = "http://manager.konghq.test"
 
       lazy_setup(function()
-        helpers.start_kong({
+        -- reset and bootstrap DB
+        helpers.get_db_utils(strategy)
+
+        assert(helpers.start_kong({
           database = strategy,
           admin_gui_url = admin_gui_url,
           admin_gui_auth = "basic-auth",
           admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
           enforce_rbac = "on",
-        })
+        }))
       end)
 
       lazy_teardown(function()
-        helpers.stop_kong()
+        assert(helpers.stop_kong())
       end)
 
       before_each(function()
