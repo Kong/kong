@@ -154,7 +154,10 @@ end)
 describe("when CP exits before DP", function()
   local need_exit = true
 
-  setup(function()
+  lazy_setup(function()
+    -- reset and bootstrap DB before starting CP
+    helpers.get_db_utils(nil)
+
     assert(helpers.start_kong({
       role = "control_plane",
       prefix = "servroot1",
@@ -179,7 +182,7 @@ describe("when CP exits before DP", function()
     }))
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if need_exit then
       helpers.stop_kong("servroot1")
     end
