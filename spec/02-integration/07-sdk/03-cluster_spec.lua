@@ -1,4 +1,6 @@
 local helpers = require("spec.helpers")
+local CP_MOCK_PORT = helpers.get_available_port()
+local DP_MOCK_PORT = helpers.get_available_port()
 
 local uuid_pattern = "^" .. ("%x"):rep(8) .. "%-" .. ("%x"):rep(4) .. "%-"
                          .. ("%x"):rep(4) .. "%-" .. ("%x"):rep(4) .. "%-"
@@ -10,7 +12,7 @@ local fixtures_dp = {
 fixtures_dp.http_mock.my_server_block = [[
   server {
       server_name my_server;
-      listen 62349;
+      listen ]] .. DP_MOCK_PORT .. [[;
 
       location = "/hello" {
         content_by_lua_block {
@@ -28,7 +30,7 @@ local fixtures_cp = {
 fixtures_cp.http_mock.my_server_block = [[
   server {
       server_name my_server;
-      listen 62350;
+      listen ]] .. CP_MOCK_PORT .. [[;
 
       location = "/hello" {
         content_by_lua_block {
@@ -83,7 +85,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("kong.cluster.get_id() in Hybrid mode", function()
-      proxy_client = helpers.http_client(helpers.get_proxy_ip(false), 62350)
+      proxy_client = helpers.http_client(helpers.get_proxy_ip(false), CP_MOCK_PORT)
 
       local res = proxy_client:get("/hello")
       local cp_cluster_id = assert.response(res).has_status(200)
@@ -93,7 +95,7 @@ for _, strategy in helpers.each_strategy() do
       proxy_client:close()
 
       helpers.wait_until(function()
-        proxy_client = helpers.http_client(helpers.get_proxy_ip(false), 62349)
+        proxy_client = helpers.http_client(helpers.get_proxy_ip(false), DP_MOCK_PORT)
         local res = proxy_client:get("/hello")
         local body = assert.response(res).has_status(200)
         proxy_client:close()
