@@ -10,7 +10,7 @@ local cjson = require "cjson"
 local pl_file = require "pl.file"
 
 local PLUGIN_NAME = "ai-proxy"
-local MOCK_PORT = 62349
+local MOCK_PORT = helpers.get_available_port()
 
 for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()

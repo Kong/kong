@@ -10,7 +10,7 @@ local cjson = require "cjson"
 local inflate_gzip = require("kong.tools.gzip").inflate_gzip
 
 local PLUGIN_NAME = "ai-proxy"
-local MOCK_PORT = 62349
+local MOCK_PORT = helpers.get_available_port()
 
 local openai_driver = require("kong.llm.drivers.openai")
 
