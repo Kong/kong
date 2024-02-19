@@ -2,7 +2,7 @@ local llm_class = require("kong.llm")
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
-local MOCK_PORT = 62349
+local MOCK_PORT = helpers.get_available_port()
 local PLUGIN_NAME = "ai-request-transformer"
 
 local FORMATS = {
