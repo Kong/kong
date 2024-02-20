@@ -47,6 +47,7 @@ env:
 
 jobs:
   metadata:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     name: Metadata
     runs-on: ubuntu-latest-kong
     outputs:
@@ -124,6 +125,7 @@ jobs:
         echo '```' >> $GITHUB_STEP_SUMMARY
 
   build-packages:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     needs: metadata
     name: Build & Package - ${{ matrix.label }}
     environment: ${{ needs.metadata.outputs.deploy-environment }}
@@ -313,6 +315,7 @@ jobs:
         retention-days: 3
 
   verify-manifest-packages:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     needs: [metadata, build-packages]
     name: Verify Manifest - Package ${{ matrix.label }}
     runs-on: ${{ needs.metadata.outputs.release-runs-on }}
@@ -346,6 +349,7 @@ jobs:
         python ./main.py -f filelist.txt -p $pkg -o test.txt -s ${{ matrix.check-manifest-suite }}
 
   test-packages:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     name: API Test Packages - ${{ matrix.label }}
     needs: [metadata, build-packages]
     # cancel previous runs if new commits are pushed to the PR, but run for each commit on master
@@ -367,6 +371,7 @@ jobs:
     secrets: inherit
 
   build-images:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
 
     permissions:
       pull-requests: write
@@ -504,6 +509,7 @@ jobs:
           Artifacts available https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
   verify-manifest-images:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     needs: [metadata, build-images]
     name: Verify Manifest - Image ${{ matrix.label }}
     runs-on: ${{ needs.metadata.outputs.release-runs-on }}
@@ -538,6 +544,7 @@ jobs:
         fi
 
   scan-images:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     name: Scan Images - ${{ matrix.label }}
     needs: [metadata, build-images]
     runs-on: ${{ needs.metadata.outputs.release-runs-on }}
@@ -614,6 +621,7 @@ jobs:
             kong-*-${{ matrix.label }}-linux-*-sbom.spdx.json
 
   test-images-smoke:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     name: Smoke Test Images - ${{ matrix.label }}
     needs: [metadata, build-images]
     # cancel previous runs if new commits are pushed to the PR, but run for each commit on master
@@ -632,6 +640,7 @@ jobs:
     secrets: inherit
 
   test-images-e2e:
+    timeout-minutes: 30
     name: E2E Tests - ${{ matrix.label }}
     needs: [metadata, build-images]
     # cancel previous runs if new commits are pushed to the PR, but run for each commit on master
@@ -737,6 +746,7 @@ jobs:
         scripts/release-kong.sh
 
   release-images:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     permissions:
       contents: write # Comment on Commit
       id-token: write # needed for signing the images
@@ -878,6 +888,7 @@ jobs:
   # GHA limitations don't allow dynamic output keys / expressions
   # Note: The `job` names for pre-release and release are hardcoded to collect matrix outputs
   provenance-metadata:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     name: Read provenance metadata
     needs: [metadata, build-images, release-images]
     runs-on: ${{ needs.metadata.outputs.release-runs-on }}
@@ -907,6 +918,7 @@ jobs:
   # ENV option is [not supported](https://github.com/orgs/community/discussions/26671)
   # Reusable workflow doesn't support exrernal COSIGN_REPOSITORY via input / env variable
   build-images-provenance:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     name: Build Images Provenance - ${{matrix.label}}
     needs: [metadata, provenance-metadata, build-images]
     if: >
@@ -941,6 +953,7 @@ jobs:
   # ENV option is [not supported](https://github.com/orgs/community/discussions/26671)
   # Reusable workflow doesn't support exrernal COSIGN_REPOSITORY via input / env variable
   release-images-provenance:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     name: Release Images Provenance - ${{matrix.label}}
     needs: [metadata, provenance-metadata, release-images]
     if: >

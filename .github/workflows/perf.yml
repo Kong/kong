@@ -23,6 +23,7 @@ concurrency:
 
 jobs:
   build-packages:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     name: Build dependencies
     runs-on: ${{ vars.RUNS_ON }}
     if: |
@@ -128,6 +129,7 @@ jobs:
         make install-dev-rocks
 
   perf:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     name: RPS, latency and flamegraphs
     runs-on: ${{ vars.RUNS_ON }}
     needs: build-packages

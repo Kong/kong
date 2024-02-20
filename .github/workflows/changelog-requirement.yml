@@ -12,6 +12,7 @@ on:
 
 jobs:
   require-changelog:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     if: ${{ !contains(github.event.*.labels.*.name, 'skip-changelog') }}
     name: Requires changelog
     runs-on: ${{ vars.RUNS_ON }}

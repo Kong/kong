@@ -39,6 +39,7 @@ concurrency:
 
 jobs:
   build:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     uses: ./.github/workflows/build.yml
     secrets: inherit
 

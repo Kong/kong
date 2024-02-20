@@ -63,6 +63,7 @@ concurrency:
 
 jobs:
   build:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     uses: ./.github/workflows/build.yml
     secrets: inherit
 
@@ -196,6 +197,7 @@ jobs:
 
   sca-and-doc-tests:
     name: Static Code Analysis and Doc tests
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     runs-on: ${{ inputs.arm64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
     needs: build
 
@@ -694,6 +696,7 @@ jobs:
           /tmp/cores
 
   build-image:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     name: Build Kong Base Image - ${{ matrix.label }}
     needs: build
     runs-on: ${{ inputs.arm64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
@@ -922,6 +925,7 @@ jobs:
   cleanup-and-aggregate-stats:
     needs: [sca-and-doc-tests, pdk-tests, busted-tests]
     name: Cleanup and Luacov stats aggregator
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
     runs-on: 'ubuntu-latest-kong'
 

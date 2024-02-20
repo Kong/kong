@@ -4,6 +4,7 @@ on:
     types: [opened, edited, synchronize, labeled, unlabeled]
 jobs:
   schema-change-labels:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     if: "${{ contains(github.event.*.labels.*.name, 'schema-change-noteworthy') }}"
     runs-on: ${{ vars.RUNS_ON }}
     steps:

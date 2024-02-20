@@ -19,6 +19,7 @@ permissions: read-all
 
 jobs:
   analysis:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     name: Scorecards analysis
     runs-on: ${{ vars.RUNS_ON }}
     permissions:
