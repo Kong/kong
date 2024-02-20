@@ -1769,7 +1769,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
               if err then
                 kong.log.warn("unable to resolve reference ", value, " (", err, ")")
               else
-                kong.log.warn("unable to resolve reference ", value)
+                kong.log.notice("unable to resolve reference ", value)
               end
 
               value = ""
@@ -1808,7 +1808,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
                     if err then
                       kong.log.warn("unable to resolve reference ", value[i], " (", err, ")")
                     else
-                      kong.log.warn("unable to resolve reference ", value[i])
+                      kong.log.notice("unable to resolve reference ", value[i])
                     end
 
                     value[i] = ""
@@ -1854,7 +1854,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
                     if err then
                       kong.log.warn("unable to resolve reference ", v, " (", err, ")")
                     else
-                      kong.log.warn("unable to resolve reference ", v)
+                      kong.log.notice("unable to resolve reference ", v)
                     end
 
                     value[k] = ""
