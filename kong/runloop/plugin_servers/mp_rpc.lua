@@ -1,5 +1,7 @@
 local kong_global = require "kong.global"
 local cjson = require "cjson.safe"
+local _
+
 local msgpack do
   msgpack = require "MessagePack"
   local nil_pack = msgpack.packers["nil"]
@@ -326,20 +328,20 @@ end
 
 
 function Rpc:handle_event(plugin_name, conf, phase)
-  local instance_id = self.get_instance_id(plugin_name, conf)
-  local _, err = bridge_loop(self, instance_id, phase)
+  local instance_id, err = self.get_instance_id(plugin_name, conf)
+  if not err then
+    _, err = bridge_loop(self, instance_id, phase)
+  end
 
   if err then
-    local ok, err2 = kong.worker_events.post("plugin_server", "reset_instances",
-    { plugin_name = plugin_name, conf = conf })
-    if not ok then
-      kong.log.err("failed to post plugin_server reset_instances event: ", err2)
-    end
+    local err_lowered = err:lower()
 
-    if str_find(err:lower(), "no plugin instance") then
+    if str_find(err_lowered, "no plugin instance") then
+      self.reset_instance(plugin_name, conf)
       kong.log.warn(err)
       return self:handle_event(plugin_name, conf, phase)
     end
+
     kong.log.err(err)
   end
 end
