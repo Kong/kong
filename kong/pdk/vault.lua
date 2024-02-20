@@ -196,6 +196,8 @@ local function new(self)
   local SECRETS_CACHE = ngx.shared.kong_secrets
   local SECRETS_CACHE_MIN_TTL = ROTATION_INTERVAL * 2
 
+  local INIT_SECRETS = {}
+  local INIT_WORKER_SECRETS = {}
   local STRATEGIES = {}
   local SCHEMAS = {}
   local CONFIGS = {}
@@ -615,7 +617,7 @@ local function new(self)
 
     if not vault then
       if err then
-        self.log.notice("could not find vault (", prefix, "): ", err)
+        return nil, fmt("could not find vault (%s): %s", prefix, err)
       end
 
       return nil, fmt("could not find vault (%s)", prefix)
@@ -820,10 +822,15 @@ local function new(self)
   -- If the value is not found in these caches and `cache_only` is not `truthy`,
   -- it attempts to retrieve the value from a vault.
   --
+  -- On init worker phase the resolving of the secrets is postponed to a timer,
+  -- and in this case the function returns `""` when it fails to find a value
+  -- in a cache. This is because of current limitations in platform that disallows
+  -- using cosockets/coroutines in that phase.
+  --
   -- @local
   -- @function get
   -- @tparam string reference the reference key to lookup
-  -- @tparam boolean cache_only optional boolean flag (if set to `true`,
+  -- @tparam[opt] boolean cache_only optional boolean flag (if set to `true`,
   -- the function will not attempt to retrieve the value from the vault)
   -- @treturn string the retrieved value corresponding to the provided reference,
   -- or `nil` (when found negatively cached, or in case of an error)
@@ -840,19 +847,40 @@ local function new(self)
 
     local strategy, err, config, cache_key, parsed_reference = get_strategy(reference)
     if not strategy then
+      -- this can fail on init as the lmdb cannot be accessed and secondly,
+      -- because the data is not yet inserted into LMDB when using KONG_DECLARATIVE_CONFIG.
+      if get_phase() == "init" then
+        if not INIT_SECRETS[cache_key] then
+          INIT_SECRETS[reference] = true
+          INIT_SECRETS[#INIT_SECRETS + 1] = reference
+        end
+
+        return ""
+      end
+
       return nil, err
     end
 
     value = SECRETS_CACHE:get(cache_key)
-    if cache_only and not value then
-      return nil, "could not find cached value"
-    end
-
     if value == NEGATIVELY_CACHED_VALUE then
       return nil
     end
 
     if not value then
+      if cache_only then
+        return nil, "could not find cached value"
+      end
+
+      -- this can fail on init worker as there is no cosockets / coroutines available
+      if  get_phase() == "init_worker" then
+        if not INIT_WORKER_SECRETS[cache_key] then
+          INIT_WORKER_SECRETS[cache_key] = true
+          INIT_WORKER_SECRETS[#INIT_WORKER_SECRETS + 1] = cache_key
+        end
+
+        return ""
+      end
+
       return get_from_vault(reference, strategy, config, cache_key, parsed_reference)
     end
 
@@ -882,7 +910,7 @@ local function new(self)
   -- update_from_cache("{vault://env/example}", record, "field" })
   local function update_from_cache(reference, record, field)
     local value, err = get(reference, true)
-    if not value then
+    if err then
       self.log.warn("error updating secret reference ", reference, ": ", err)
     end
 
@@ -1235,19 +1263,20 @@ local function new(self)
 
 
   ---
-  -- Function `rotate_secrets` rotates the secrets in the shared dictionary cache (SHDICT).
+  -- Function `rotate_secrets` rotates the secrets.
   --
-  -- It iterates over all keys in the SHDICT and, if a key corresponds to a reference and the
+  -- It iterates over all keys in the secrets and, if a key corresponds to a reference and the
   -- ttl of the key is less than or equal to the resurrection period, it refreshes the value
   -- associated with the reference.
   --
   -- @local
   -- @function rotate_secrets
-  -- @treturn boolean `true` after it has finished iterating over all keys in the SHDICT
-  local function rotate_secrets()
+  -- @tparam table secrets the secrets to rotate
+  -- @treturn boolean `true` after it has finished iterating over all keys in the secrets
+  local function rotate_secrets(secrets)
     local phase = get_phase()
     local caching_strategy = get_caching_strategy()
-    for _, cache_key in ipairs(SECRETS_CACHE:get_keys(0)) do
+    for _, cache_key in ipairs(secrets) do
       yield(true, phase)
 
       local ok, err = rotate_secret(cache_key, caching_strategy)
@@ -1261,20 +1290,69 @@ local function new(self)
 
 
   ---
-  -- A recurring secrets rotation timer handler.
+  -- Function `rotate_secrets_cache` rotates the secrets in the shared dictionary cache.
+  --
+  -- @local
+  -- @function rotate_secrets_cache
+  -- @treturn boolean `true` after it has finished iterating over all keys in the shared dictionary cache
+  local function rotate_secrets_cache()
+    return rotate_secrets(SECRETS_CACHE:get_keys(0))
+  end
+
+
+  ---
+  -- Function `rotate_secrets_init_worker` rotates the secrets in init worker cache
+  --
+  -- On init worker the secret resolving is postponed to a timer because init worker
+  -- cannot cosockets / coroutines, and there is no other workaround currently.
+  --
+  -- @local
+  -- @function rotate_secrets_init_worker
+  -- @treturn boolean `true` after it has finished iterating over all keys in the init worker cache
+  local function rotate_secrets_init_worker()
+    local _, err, err2
+    if INIT_SECRETS then
+      _, err = rotate_references(INIT_SECRETS)
+    end
+
+    if INIT_WORKER_SECRETS then
+      _, err2 = rotate_secrets(INIT_WORKER_SECRETS)
+    end
+
+    if err or err2 then
+      return nil, err or err2
+    end
+
+    return true
+  end
+
+
+  ---
+  -- A secrets rotation timer handler.
+  --
+  -- Uses a node-level mutex to prevent multiple threads/workers running it the same time.
   --
   -- @local
   -- @function rotate_secrets_timer
-  -- @tparam boolean premature `true` if server is shutting down.
-  local function rotate_secrets_timer(premature)
+  -- @tparam boolean premature `true` if server is shutting down
+  -- @tparam[opt] boolean init `true` when this is a one of init_worker timer run
+  -- By default rotates the secrets in shared dictionary cache.
+  local function rotate_secrets_timer(premature, init)
     if premature then
-      return
+      return true
     end
 
-    local ok, err = concurrency.with_worker_mutex(ROTATION_MUTEX_OPTS, rotate_secrets)
+    local ok, err = concurrency.with_worker_mutex(ROTATION_MUTEX_OPTS, init and rotate_secrets_init_worker or rotate_secrets_cache)
     if not ok and err ~= "timeout" then
       self.log.err("rotating secrets failed (", err, ")")
     end
+
+    if init then
+      INIT_SECRETS = nil
+      INIT_WORKER_SECRETS = nil
+    end
+
+    return true
   end
 
 
@@ -1313,7 +1391,7 @@ local function new(self)
     -- refresh all the secrets
     local _, err = self.timer:named_at("secret-rotation-on-crud-event", 0, rotate_secrets_timer)
     if err then
-      self.log.err("could not schedule timer to rotate vault secret references: ", err)
+      self.log.err("could not schedule timer to rotate vault secret references on crud event: ", err)
     end
   end
 
@@ -1341,6 +1419,11 @@ local function new(self)
     local _, err = self.timer:named_every("secret-rotation", ROTATION_INTERVAL, rotate_secrets_timer)
     if err then
       self.log.err("could not schedule timer to rotate vault secret references: ", err)
+    end
+
+    local _, err = self.timer:named_at("secret-rotation-on-init", 0, rotate_secrets_timer, true)
+    if err then
+      self.log.err("could not schedule timer to rotate vault secret references on init: ", err)
     end
   end
 
