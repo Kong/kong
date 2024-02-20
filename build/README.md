@@ -3,6 +3,7 @@
 This directory contains the build system for the project.
 The build system is designed to be used with the [Bazel](https://bazel.build/).
 It is designed to be running on Linux without root privileges, and no virtualization technology is required.
+However, you need to match exactly the version of Bazel as configured [here](https://github.com/Kong/kong/blob/master/.bazelversion). 
 
 The build system is tested on Linux (x86_64 and aarch64) and macOS (Intel chip and AppleSilicon Chip).
 
@@ -252,3 +253,4 @@ Note:
 
 - On macOS, the build may not work with only Command Line Tools installed, you will typically see errors like `../libtool: line 154: -s: command not found`. In such case, installing Xcode should fix the issue.
 - If you have configure `git` to use SSH protocol to replace HTTPS protocol, but haven't setup SSH agent, you might see errors like `error: Unable to update registry crates-io`. In such case, set `export CARGO_NET_GIT_FETCH_WITH_CLI=true` to use `git` command line to fetch the repository.
+- There are problems with [ccache](https://ccache.dev/) on Fedora. You can solve this by removing the path pointing to ccache from that `PATH` variable in you shell.
