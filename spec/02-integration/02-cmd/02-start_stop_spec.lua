@@ -130,6 +130,7 @@ describe("kong start/stop #" .. strategy, function()
   end)
 
   it("resolves referenced secrets", function()
+    helpers.clean_logfile()
     helpers.setenv("PG_PASSWORD", "dummy")
 
     local _, stderr, stdout = assert(kong_exec("start", {
@@ -169,7 +170,7 @@ describe("kong start/stop #" .. strategy, function()
     assert(kong_exec("stop", { prefix = PREFIX }))
   end)
 
-  it("start/stop stops without error when references cannot be resolved #test", function()
+  it("start/stop stops without error when references cannot be resolved", function()
     helpers.setenv("PG_PASSWORD", "dummy")
 
     local _, stderr, stdout = assert(kong_exec("start", {
@@ -226,6 +227,7 @@ describe("kong start/stop #" .. strategy, function()
   end)
 
   it("should not add [emerg], [alert], [crit], [error] or [warn] lines to error log", function()
+    helpers.clean_logfile()
     assert(helpers.kong_exec("start ", {
       prefix = helpers.test_conf.prefix,
       stream_listen = "127.0.0.1:9022",
@@ -634,6 +636,8 @@ describe("kong start/stop #" .. strategy, function()
 
     if strategy == "off" then
       it("does not start with an invalid declarative config file", function()
+        helpers.clean_logfile()
+
         local yaml_file = helpers.make_yaml_file [[
           _format_version: "1.1"
           services:
@@ -665,6 +669,9 @@ describe("kong start/stop #" .. strategy, function()
       end)
 
       it("dbless can reference secrets in declarative configuration", function()
+        helpers.clean_logfile()
+        helpers.setenv("SESSION_SECRET", "top-secret-value")
+
         local yaml_file = helpers.make_yaml_file [[
           _format_version: "3.0"
           _transform: true
@@ -672,7 +679,94 @@ describe("kong start/stop #" .. strategy, function()
           - name: session
             instance_name: session
             config:
-              secret: "{vault://mocksocket/test}"
+              secret: "{vault://mocksocket/session-secret}"
+        ]]
+
+        finally(function()
+          helpers.unsetenv("SESSION_SECRET")
+          os.remove(yaml_file)
+        end)
+
+        helpers.setenv("KONG_LUA_PATH_OVERRIDE", "./spec/fixtures/custom_vaults/?.lua;./spec/fixtures/custom_vaults/?/init.lua;;")
+        helpers.get_db_utils(strategy, {
+          "vaults",
+        }, {
+          "session"
+        }, {
+          "mocksocket"
+        })
+
+        local ok, err = helpers.start_kong({
+          database = "off",
+          declarative_config = yaml_file,
+          vaults = "mocksocket",
+          plugins = "session",
+        })
+
+        proxy_client = helpers.proxy_client()
+
+        local res = proxy_client:get("/")
+        assert.res_status(404, res)
+        local body = assert.response(res).has.jsonbody()
+        assert.equal("no Route matched with those values", body.message)
+
+        assert.truthy(ok)
+        assert.not_matches("error", err)
+        assert.logfile().has.no.line("[error]", true, 0)
+        assert.logfile().has.no.line("traceback", true, 0)
+        assert.logfile().has.no.line(" {vault://mocksocket/session-secret}", true, 0)
+        assert.logfile().has.no.line("could not find vault", true, 0)
+
+        assert(helpers.restart_kong({
+          database = "off",
+          vaults = "mocksocket",
+          plugins = "session",
+          declarative_config = "",
+        }))
+
+        assert.logfile().has.no.line("[error]", true, 0)
+        assert.logfile().has.no.line("traceback", true, 0)
+        assert.logfile().has.no.line(" {vault://mocksocket/session-secret}", true, 0)
+        assert.logfile().has.no.line("could not find vault", true, 0)
+
+        proxy_client = helpers.proxy_client()
+
+        local res = proxy_client:get("/")
+        assert.res_status(404, res)
+        local body = assert.response(res).has.jsonbody()
+        assert.equal("no Route matched with those values", body.message)
+
+        assert(helpers.reload_kong("off", "reload --prefix " .. helpers.test_conf.prefix, {
+          database = "off",
+          vaults = "mocksocket",
+          plugins = "session",
+          declarative_config = "",
+        }))
+
+        assert.logfile().has.no.line("traceback", true, 0)
+        assert.logfile().has.no.line(" {vault://mocksocket/session-secret}", true, 0)
+        assert.logfile().has.no.line("could not find vault", true, 0)
+
+        proxy_client = helpers.proxy_client()
+
+        local res = proxy_client:get("/")
+        assert.res_status(404, res)
+        local body = assert.response(res).has.jsonbody()
+        assert.equal("no Route matched with those values", body.message)
+
+      end)
+
+      it("dbless does not fail fatally when referencing secrets doesn't work in declarative configuration", function()
+        helpers.clean_logfile()
+
+        local yaml_file = helpers.make_yaml_file [[
+          _format_version: "3.0"
+          _transform: true
+          plugins:
+          - name: session
+            instance_name: session
+            config:
+              secret: "{vault://mocksocket/session-secret-unknown}"
         ]]
 
         finally(function()
@@ -692,12 +786,239 @@ describe("kong start/stop #" .. strategy, function()
           database = "off",
           declarative_config = yaml_file,
           vaults = "mocksocket",
-          plugins = "session"
+          plugins = "session",
+        })
+
+        proxy_client = helpers.proxy_client()
+
+        local res = proxy_client:get("/")
+        assert.res_status(404, res)
+        local body = assert.response(res).has.jsonbody()
+        assert.equal("no Route matched with those values", body.message)
+
+        assert.truthy(ok)
+        assert.not_matches("error", err)
+        assert.logfile().has.no.line("[error]", true, 0)
+        assert.logfile().has.no.line("traceback", true, 0)
+        assert.logfile().has.line(" {vault://mocksocket/session-secret-unknown}", true, 0)
+        assert.logfile().has.no.line("could not find vault", true, 0)
+
+        assert(helpers.restart_kong({
+          database = "off",
+          vaults = "mocksocket",
+          plugins = "session",
+          declarative_config = "",
+        }))
+
+        assert.logfile().has.no.line("[error]", true, 0)
+        assert.logfile().has.no.line("traceback", true, 0)
+        assert.logfile().has.line(" {vault://mocksocket/session-secret-unknown}", true, 0)
+        assert.logfile().has.no.line("could not find vault", true, 0)
+
+        proxy_client = helpers.proxy_client()
+
+        local res = proxy_client:get("/")
+        assert.res_status(404, res)
+        local body = assert.response(res).has.jsonbody()
+        assert.equal("no Route matched with those values", body.message)
+
+        assert(helpers.reload_kong("off", "reload --prefix " .. helpers.test_conf.prefix, {
+          database = "off",
+          vaults = "mocksocket",
+          plugins = "session",
+          declarative_config = "",
+        }))
+
+        assert.logfile().has.no.line("traceback", true, 0)
+        assert.logfile().has.line(" {vault://mocksocket/session-secret-unknown}", true, 0)
+        assert.logfile().has.no.line("could not find vault", true, 0)
+
+        proxy_client = helpers.proxy_client()
+
+        local res = proxy_client:get("/")
+        assert.res_status(404, res)
+        local body = assert.response(res).has.jsonbody()
+        assert.equal("no Route matched with those values", body.message)
+      end)
+
+      it("dbless can reference secrets in declarative configuration using vault entities", function()
+        helpers.clean_logfile()
+        helpers.setenv("SESSION_SECRET_AGAIN", "top-secret-value")
+
+        local yaml_file = helpers.make_yaml_file [[
+          _format_version: "3.0"
+          _transform: true
+          plugins:
+          - name: session
+            instance_name: session
+            config:
+              secret: "{vault://mock/session-secret-again}"
+          vaults:
+          - description: my vault
+            name: mocksocket
+            prefix: mock
+        ]]
+
+        finally(function()
+          helpers.unsetenv("SESSION_SECRET_AGAIN")
+          os.remove(yaml_file)
+        end)
+
+        helpers.setenv("KONG_LUA_PATH_OVERRIDE", "./spec/fixtures/custom_vaults/?.lua;./spec/fixtures/custom_vaults/?/init.lua;;")
+        helpers.get_db_utils(strategy, {
+          "vaults",
+        }, {
+          "session"
+        }, {
+          "mocksocket"
+        })
+
+        local ok, err = helpers.start_kong({
+          database = "off",
+          declarative_config = yaml_file,
+          vaults = "mocksocket",
+          plugins = "session",
         })
 
         assert.truthy(ok)
         assert.not_matches("error", err)
         assert.logfile().has.no.line("[error]", true, 0)
+        assert.logfile().has.no.line("traceback", true, 0)
+        assert.logfile().has.no.line(" {vault://mock/session-secret-again}", true, 0)
+        assert.logfile().has.no.line("could not find vault", true, 0)
+
+        proxy_client = helpers.proxy_client()
+
+        local res = proxy_client:get("/")
+        assert.res_status(404, res)
+        local body = assert.response(res).has.jsonbody()
+        assert.equal("no Route matched with those values", body.message)
+
+        assert(helpers.restart_kong({
+          database = "off",
+          vaults = "mocksocket",
+          plugins = "session",
+          declarative_config = "",
+        }))
+
+        assert.logfile().has.no.line("[error]", true, 0)
+        assert.logfile().has.no.line("traceback", true, 0)
+        assert.logfile().has.no.line(" {vault://mock/session-secret-again}", true, 0)
+        assert.logfile().has.no.line("could not find vault", true, 0)
+
+        proxy_client = helpers.proxy_client()
+
+        local res = proxy_client:get("/")
+        assert.res_status(404, res)
+        local body = assert.response(res).has.jsonbody()
+        assert.equal("no Route matched with those values", body.message)
+
+        assert(helpers.reload_kong("off", "reload --prefix " .. helpers.test_conf.prefix, {
+          database = "off",
+          vaults = "mocksocket",
+          plugins = "session",
+          declarative_config = "",
+        }))
+
+        assert.logfile().has.no.line("traceback", true, 0)
+        assert.logfile().has.no.line(" {vault://mock/session-secret-again}", true, 0)
+        assert.logfile().has.no.line("could not find vault", true, 0)
+
+        proxy_client = helpers.proxy_client()
+
+        local res = proxy_client:get("/")
+        assert.res_status(404, res)
+        local body = assert.response(res).has.jsonbody()
+        assert.equal("no Route matched with those values", body.message)
+      end)
+
+      it("dbless does not fail fatally when referencing secrets doesn't work in declarative configuration using vault entities", function()
+        helpers.clean_logfile()
+
+        local yaml_file = helpers.make_yaml_file [[
+          _format_version: "3.0"
+          _transform: true
+          plugins:
+          - name: session
+            instance_name: session
+            config:
+              secret: "{vault://mock/session-secret-unknown-again}"
+          vaults:
+          - description: my vault
+            name: mocksocket
+            prefix: mock
+        ]]
+
+        finally(function()
+          os.remove(yaml_file)
+        end)
+
+        helpers.setenv("KONG_LUA_PATH_OVERRIDE", "./spec/fixtures/custom_vaults/?.lua;./spec/fixtures/custom_vaults/?/init.lua;;")
+        helpers.get_db_utils(strategy, {
+          "vaults",
+        }, {
+          "session"
+        }, {
+          "mocksocket"
+        })
+
+        local ok, err = helpers.start_kong({
+          database = "off",
+          declarative_config = yaml_file,
+          vaults = "mocksocket",
+          plugins = "session",
+        })
+
+        assert.truthy(ok)
+        assert.not_matches("error", err)
+        assert.logfile().has.no.line("[error]", true, 0)
+        assert.logfile().has.no.line("traceback", true, 0)
+        assert.logfile().has.line(" {vault://mock/session-secret-unknown-again}", true, 0)
+        assert.logfile().has.no.line("could not find vault", true, 0)
+
+        proxy_client = helpers.proxy_client()
+
+        local res = proxy_client:get("/")
+        assert.res_status(404, res)
+        local body = assert.response(res).has.jsonbody()
+        assert.equal("no Route matched with those values", body.message)
+
+        assert(helpers.restart_kong({
+          database = "off",
+          vaults = "mocksocket",
+          plugins = "session",
+          declarative_config = "",
+        }))
+
+        assert.logfile().has.no.line("[error]", true, 0)
+        assert.logfile().has.no.line("traceback", true, 0)
+        assert.logfile().has.line(" {vault://mock/session-secret-unknown-again}", true, 0)
+        assert.logfile().has.no.line("could not find vault", true, 0)
+
+        proxy_client = helpers.proxy_client()
+
+        local res = proxy_client:get("/")
+        assert.res_status(404, res)
+        local body = assert.response(res).has.jsonbody()
+        assert.equal("no Route matched with those values", body.message)
+
+        assert(helpers.reload_kong("off", "reload --prefix " .. helpers.test_conf.prefix, {
+          database = "off",
+          vaults = "mocksocket",
+          plugins = "session",
+          declarative_config = "",
+        }))
+
+        assert.logfile().has.no.line("traceback", true, 0)
+        assert.logfile().has.line(" {vault://mock/session-secret-unknown-again}", true, 0)
+        assert.logfile().has.no.line("could not find vault", true, 0)
+
+        proxy_client = helpers.proxy_client()
+
+        local res = proxy_client:get("/")
+        assert.res_status(404, res)
+        local body = assert.response(res).has.jsonbody()
+        assert.equal("no Route matched with those values", body.message)
       end)
     end
   end)
