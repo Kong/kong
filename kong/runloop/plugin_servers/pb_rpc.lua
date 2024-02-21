@@ -378,7 +378,7 @@ function Rpc:call_start_instance(plugin_name, conf)
     return nil, err
   end
 
-  kong.log.debug("started plugin server: seq ", conf.__seq__, ", worker ", ngx.worker.id(), ", instance id ",
+  kong.log.debug("started plugin server: seq ", conf.__seq__, ", worker ", ngx.worker.id() or -1, ", instance id ",
     status.instance_status.instance_id)
 
   return {
