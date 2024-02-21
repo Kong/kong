@@ -57,9 +57,6 @@ describe('Gateway Plugins: Prometheus', function () {
     serviceId = service.id;
     const route = await createRouteForService(serviceId, [routePath], { name: routeName});
     routeId = route.id;
-    const upstream = await createUpstream(upstreamName)
-    upstreamId = upstream.id
-    await addTargetToUpstream(upstreamId, target)
 
     const consumerReq = await createConsumer();
     consumer = {
@@ -356,28 +353,48 @@ describe('Gateway Plugins: Prometheus', function () {
       // delete basic-auth plugin and consumer
       await deletePlugin(basicAuthPluginId)
       await deleteConsumer(consumer.id)
+
+      // create upstream and add target for the subsequent tests
+      const upstream = await createUpstream(upstreamName)
+      upstreamId = upstream.id
+      await addTargetToUpstream(upstreamId, target)
+
       await waitForConfigRebuild();
     });
   
-    it.skip(`should see the new kong_upstream_target_health metric after requests to upstream`, async function () {
-      this.retries(1)
+    it(`should see the new kong_upstream_target_health metric exported from kong`, async function () {
       // send request to upstream to log the request's upstream_target_health metric
       for(let i = 1; i <= 2; i++) {
+        // eslint-disable-next-line no-restricted-syntax
+        await wait(3000)
         const resp = await axios({
           url: `${proxyUrl}/${routePath}`
         })
         logResponse(resp);
         expect(resp.status, 'Status should be 200').to.equal(200);
+      }
+    
+      await eventually(async () => {
+        const kongDpData = await getAllMetrics(isGwHybrid() ? "dp" : "cp")
+        expect(kongDpData.includes('kong_upstream_target_health'), `should see kong_upstream_target_health in kong ${isGwHybrid() ? "dp" : "cp"} metrics`).to.be.true
+      });
+    });
+
+    it(`should see the new kong_upstream_target_health metric in prometheus`, async function () {
+      // send request to upstream to log the request's upstream_target_health metric
+      for(let i = 1; i <= 2; i++) {
         // eslint-disable-next-line no-restricted-syntax
-        await wait(1000)
+        await wait(3000)
+        const resp = await axios({
+          url: `${proxyUrl}/${routePath}`
+        })
+        logResponse(resp);
+        expect(resp.status, 'Status should be 200').to.equal(200);
       }
   
       const promTargetResults = new Set()
     
       await eventually(async () => {
-        const kongDpData = await getAllMetrics(isGwHybrid() ? "dp" : "cp")
-        expect(kongDpData.includes('kong_upstream_target_health'), `should see kong_upstream_target_health in kong ${isGwHybrid() ? "dp" : "cp"} metrics`).to.be.true
-
         const resp = await queryPrometheusMetrics('kong_upstream_target_health')
         expect(resp.result.length, 'should see 4 results for target health').to.be.gte(4)
         expect(resp.result[0].metric.upstream, 'should see correct upstream name in metrics').to.equal(upstreamName)
@@ -386,7 +403,7 @@ describe('Gateway Plugins: Prometheus', function () {
         resp.result.forEach((result) => {
           promTargetResults.add(result.metric.state)
         })
-      }, 35000, 5000);
+      });
   
       targetStates.every((state) => {
         expect(promTargetResults.has(state), `Should see ${state} state in the target health array`).to.be.true
