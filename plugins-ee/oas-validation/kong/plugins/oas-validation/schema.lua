@@ -20,7 +20,7 @@ return {
     { config = {
       type = "record",
       fields = {
-          { api_spec = { description = "The API specification defined using either Swagger or the OpenAPI. This can be either a JSON or YAML based file. If using a YAML file, the spec needs to be URL encoded to preserve the YAML format.", type = "string", custom_validator = validate_spec, required = true } },
+          { api_spec = { description = "The API specification defined using either Swagger or the OpenAPI. This can be either a JSON or YAML based file.", type = "string", custom_validator = validate_spec, required = true } },
           { verbose_response = { description = "If set to true, returns a detailed error message for invalid requests & responses. This is useful while testing.", type = "boolean", default = false, required = false } },
           { validate_request_body = { description = "If set to true, validates the request body content against the API specification.", type = "boolean", default = true, required = false } },
           { notify_only_request_validation_failure = { description = "If set to true, notifications via event hooks are enabled, but request based validation failures don't affect the request flow.", type = "boolean", default = false, required = false } },
