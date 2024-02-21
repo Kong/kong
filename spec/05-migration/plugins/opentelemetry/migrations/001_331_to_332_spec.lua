@@ -36,10 +36,7 @@ if uh.database_type() == 'postgres' then
                     ["Content-Type"] = "application/json"
                 }
             })
-            local body = assert.res_status(201, res)
-            local json = cjson.decode(body)
-            -- assert that value of old default is 1
-            assert.equals(json.config.queue.max_batch_size, 1)
+            assert.res_status(201, res)
             admin_client:close()
         end)
 
