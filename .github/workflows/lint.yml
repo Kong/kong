@@ -16,7 +16,6 @@ concurrency:
 
 jobs:
   lua-check:
-    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     name: Lua Check
     runs-on: ubuntu-latest-kong
     permissions:

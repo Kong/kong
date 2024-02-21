@@ -6,7 +6,6 @@ on:
 
 jobs:
   validate-changelog:
-    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     name: Validate changelog
     runs-on: ${{ vars.RUNS_ON }}
     steps:

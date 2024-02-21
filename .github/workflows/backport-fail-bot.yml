@@ -6,7 +6,6 @@ on:
 
 jobs:
   check_comment:
-    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     runs-on: ${{ vars.RUNS_ON }}
     if: github.event.issue.pull_request != null && contains(github.event.comment.body, 'cherry-pick the changes locally and resolve any conflicts')
 

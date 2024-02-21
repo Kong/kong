@@ -13,7 +13,6 @@ on:
 
 jobs:
   check-manager-approvals:
-    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     name: Did manager approve this backport?
     runs-on: ${{ vars.RUNS_ON }}
 

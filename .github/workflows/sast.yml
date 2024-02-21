@@ -13,7 +13,6 @@ on:
 
 jobs:
   semgrep:
-    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     name: Semgrep SAST
     runs-on: ubuntu-latest
     permissions:

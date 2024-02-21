@@ -28,7 +28,6 @@ env:
 
 jobs:
   build:
-    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     name: Build Kong - ${{ inputs.label }} - ${{ inputs.aarch64 && 'aarch64' || 'x86_64' }}
     runs-on: ${{ vars.RUNS_ON }}
 

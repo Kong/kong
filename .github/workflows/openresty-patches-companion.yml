@@ -9,7 +9,6 @@ permissions:
 
 jobs:
   create-pr:
-    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     runs-on: ubuntu-latest
     steps:
       - name: Dispatch the workflow

@@ -4,7 +4,6 @@ on:
     types: [opened, edited, synchronize, labeled, unlabeled]
 jobs:
   check-labels:
-    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     name: prevent merge labels
     runs-on: ${{ vars.RUNS_ON }}
 

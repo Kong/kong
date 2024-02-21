@@ -93,7 +93,6 @@ env:
 
 jobs:
   construct_docker_image_matrix:
-    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     name: Construct Gateway docker images for docker matrix test run
     if: ${{ github.event.inputs.target_matrix  == 'all' || github.event.inputs.target_matrix  == 'docker' }}
     runs-on: ${{ vars.RUNS_ON }}
@@ -157,7 +156,6 @@ jobs:
           fi
 
   define_package_matrix:
-    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     runs-on: ${{ vars.RUNS_ON }}
     if: ${{ inputs.target_matrix  == 'package' }}
     outputs:
@@ -198,7 +196,6 @@ jobs:
         cat $GITHUB_OUTPUT
 
   gateway_tests_for_docker:
-    timeout-minutes: 50
     name: Gateway API Test Matrix for Docker images
     # github doesn't accept env context in if conditional, hence using .inputs
     if: ${{ github.event.inputs.target_matrix  == 'all' || github.event.inputs.target_matrix  == 'docker' }}
@@ -331,7 +328,6 @@ jobs:
           retention-days: 31
 
   gateway_tests_for_postgres:
-    timeout-minutes: 50
     name: Gateway API Test Matrix for Postgres versions
     if: ${{ github.event.inputs.target_matrix  == 'all' || github.event.inputs.target_matrix  == 'postgres' }}
     runs-on: ${{ vars.RUNS_ON }}
