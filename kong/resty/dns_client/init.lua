@@ -51,7 +51,7 @@ local hitstrs = {
 
 local errstrs = {     -- client specific errors
     [100] = "cache only lookup failed",
-    [101] = "empty record received",
+    [101] = "no available records",
 }
 
 local EMPTY_ANSWERS = { errcode = 3, errstr = "name error" }
@@ -427,7 +427,7 @@ local function resolve_name_type(self, name, qtype, opts, tries)
     end
 
     if err or answers.errcode then
-        err = err or "DNS server replied error: " .. answers.errstr
+        err = err or ("dns server error: %s %s"):format(answers.errcode, answers.errstr)
         table_insert(tries, { name, qtype, err })
     end
 
@@ -478,9 +478,10 @@ local function resolve_names_and_types(self, name, opts, tries)
     local types = get_search_types(self, name, opts.qtype)
     local names = utils.search_names(name, self.resolv, self.hosts)
 
+    local err
     for _, qtype in ipairs(types) do
         for _, qname in ipairs(names) do
-            local answers, err = resolve_name_type(self, qname, qtype, opts, tries)
+            answers, err = resolve_name_type(self, qname, qtype, opts, tries)
 
             -- severe error occurred
             if not answers then
@@ -495,7 +496,7 @@ local function resolve_names_and_types(self, name, opts, tries)
     end
 
     -- not found in the search iteration
-    return nil, "no available records", tries
+    return nil, err, tries
 end
 
 

@@ -1821,7 +1821,7 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
               {
                 host = "notachanceinhell.this.name.exists.konghq.test",
                 port = 4321,
-                dns = "no available records",
+                dns = "dns server error: 3 name error",
                 nodeWeight = 100,
                 weight = {
                   total = 0,

@@ -297,9 +297,7 @@ describe("[DNS client cache]", function()
 
       local answers, err = cli:resolve("myhost7", { qtype = resolver.TYPE_A })
       assert.is_nil(answers)
-      -- TODO: check tries for detailed error
-      --assert.equal("dns server error: 4 server failure", err)
-      assert.equal("no available records", err)
+      assert.equal("dns server error: 4 server failure", err)
       assert.is_nil(cli.cache:get("fast:myhost7:" .. resolver.TYPE_A))
     end)
 
@@ -315,9 +313,7 @@ describe("[DNS client cache]", function()
 
       local answers, err = cli:resolve("myhost8", { qtype = resolver.TYPE_A })
       assert.is_nil(answers)
-      -- TODO
-      --assert.equal("dns server error: 3 name error", err)
-      assert.equal("no available records", err)
+      assert.equal("dns server error: 3 name error", err)
       assert.is_nil(cli.cache:get("fast:myhost8:" .. resolver.TYPE_A))
     end)
 
@@ -589,27 +585,27 @@ describe("[DNS client cache]", function()
         }
       }
       local _, err, tries = cli:resolve("demo.service.consul", { return_random = true })
-      assert.same(err, "no available records")
+      assert.same(err, "dns server error: 3 name error")
       assert.same({
         {
           "192.168.5.232.node.api_test.consul",
           33,
-          "DNS server replied error: name error"
+          "dns server error: 3 name error",
         },
         {
           "192.168.5.232.node.api_test.consul",
           1,
-          "DNS server replied error: name error"
+          "dns server error: 3 name error",
         },
         {
           "192.168.5.232.node.api_test.consul",
           28,
-          "DNS server replied error: name error"
+          "dns server error: 3 name error",
         },
         {
           "192.168.5.232.node.api_test.consul",
           5,
-          "DNS server replied error: name error"
+          "dns server error: 3 name error",
         }
       }, tries)
     end)
