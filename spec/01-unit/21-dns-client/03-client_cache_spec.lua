@@ -22,6 +22,7 @@ describe("[DNS client cache]", function()
   local client, resolver, query_func
 
   before_each(function()
+    _G.legacy_dns_client = true
     client = require("kong.resty.dns.client")
     resolver = require("resty.dns.resolver")
 
