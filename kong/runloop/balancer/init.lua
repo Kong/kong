@@ -370,6 +370,7 @@ local function execute(balancer_data, ctx)
     if not ip then
       log(ERR, "DNS resolution failed: ", port, ". Tried: ", tostring(try_list))
       if port == "dns server error: 3 name error" or
+         port == "dns server error: 101 no available records" or
          port == "dns client error: 101 empty record received" then
         return nil, "name resolution failed", 503
       end

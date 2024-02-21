@@ -11,7 +11,7 @@ local TEST_NS = "192.51.100.0"
 
 local TEST_NSS = { TEST_NS }
 
-local NOT_FOUND_ERROR = 'no available records'
+local NOT_FOUND_ERROR = 'dns server error: 3 name error'
 
 local function assert_same_answers(a1, a2)
   a1 = cycle_aware_deep_copy(a1)
@@ -203,7 +203,7 @@ describe("[DNS client]", function()
         local answers, err = cli:resolve("host")
 
         assert.same(answers, nil)
-        assert.same(err, "no available records")
+        assert.same(err, "dns server error: 101 no available records")
         assert.same({
           'host.one.com:33',
           'host.two.com:33',
@@ -232,7 +232,7 @@ describe("[DNS client]", function()
         local answers, err = cli:resolve("host")
 
         assert.same(answers, nil)
-        assert.same(err, "no available records")
+        assert.same(err, "dns server error: 101 no available records")
         assert.same({
           'host:33',
           'host:1',
@@ -253,7 +253,7 @@ describe("[DNS client]", function()
         local answers, err = cli:resolve("host")
 
         assert.same(answers, nil)
-        assert.same(err, "no available records")
+        assert.same(err, "dns server error: 101 no available records")
         assert.same({
           'host.local.domain.com:33',
           'host:33',
@@ -730,7 +730,7 @@ describe("[DNS client]", function()
       },
       ["kong-gateway-testing.link:33"] = {
 	query = 1,
-	["query_err:empty record received"] = 1
+	["query_err:no available records"] = 1
       },
       ["smtp.kong-gateway-testing.link"] = {
 	cname = 1,
@@ -805,7 +805,7 @@ describe("[DNS client]", function()
     local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf"}))
     local answers, err = cli:resolve(host, { qtype = typ })
     assert.is_nil(answers)  -- returns nil
-    assert.same("no available records", err)
+    assert.equal("dns server error: 101 no available records", err)
   end)
 
   it("fetching non-existing answerss", function()
@@ -815,7 +815,7 @@ describe("[DNS client]", function()
     local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf"}))
     local answers, err = cli:resolve(host)
     assert.is_nil(answers)
-    assert.equal("no available records", err)
+    assert.equal("dns server error: 3 name error", err)
   end)
 
   it("fetching IP address", function()
@@ -1385,7 +1385,7 @@ describe("[DNS client]", function()
     answers1, err1, _ = cli:resolve(qname, { qtype = resolver.TYPE_A })
     assert.is_nil(answers1)
     assert.are.equal(call_count, 1)
-    assert.are.equal("no available records", err1)
+    assert.are.equal("dns server error: 5 refused", err1)
     answers1 = assert(cli.cache:get(qname .. ":" .. resolver.TYPE_A))
 
     -- try again, HIT from cache, not stale
