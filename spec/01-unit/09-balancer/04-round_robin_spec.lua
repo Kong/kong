@@ -19,6 +19,7 @@ local sleep = helpers.sleep
 local dnsSRV = function(...) return helpers.dnsSRV(client, ...) end
 local dnsA = function(...) return helpers.dnsA(client, ...) end
 local dnsAAAA = function(...) return helpers.dnsAAAA(client, ...) end
+local dnsExpire = helpers.dnsExpire
 
 
 local unset_register = {}
@@ -1039,6 +1040,7 @@ describe("[round robin balancer]", function()
       -- expire the existing record
       record.expire = 0
       record.expired = true
+      dnsExpire(client, record)
       -- do a lookup to trigger the async lookup
       client.resolve("really.really.really.does.not.exist.hostname.test", {qtype = client.TYPE_A})
       sleep(0.5) -- provide time for async lookup to complete
@@ -1149,6 +1151,7 @@ describe("[round robin balancer]", function()
       })
       local state = copyWheel(b)
       record.expire = gettime() -1 -- expire current dns cache record
+      dnsExpire(client, record)
       dnsAAAA({   -- create a new record (identical)
         { name = "mashape.test", address = "::1" },
         { name = "mashape.test", address = "::2" },
@@ -1282,6 +1285,7 @@ describe("[round robin balancer]", function()
       local test_name = "really.really.really.does.not.exist.hostname.test"
       local ttl = 0.1
       local staleTtl = 0   -- stale ttl = 0, force lookup upon expiring
+      client.getobj().stale_ttl = 0
       local record = dnsA({
         { name = test_name, address = "1.2.3.4", ttl = ttl },
       }, staleTtl)
@@ -1304,6 +1308,7 @@ describe("[round robin balancer]", function()
         assert.is_nil(ip)
         assert.equal(port, "Balancer is unhealthy")
       end
+      client.getobj().stale_ttl = 4
     end)
     it("renewed DNS A record; unhealthy entries remain unhealthy after renewal", function()
       local record = dnsA({

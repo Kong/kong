@@ -21,6 +21,7 @@ local sleep = helpers.sleep
 local dnsSRV = function(...) return helpers.dnsSRV(client, ...) end
 local dnsA = function(...) return helpers.dnsA(client, ...) end
 local dnsAAAA = function(...) return helpers.dnsAAAA(client, ...) end
+local dnsExpire = helpers.dnsExpire
 
 
 
@@ -844,6 +845,7 @@ describe("[consistent_hashing]", function()
       -- expire the existing record
       record.expire = 0
       record.expired = true
+      dnsExpire(client, record)
       -- do a lookup to trigger the async lookup
       client.resolve("really.really.really.does.not.exist.host.test", {qtype = client.TYPE_A})
       sleep(1) -- provide time for async lookup to complete
