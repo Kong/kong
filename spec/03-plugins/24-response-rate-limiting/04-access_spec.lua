@@ -7,7 +7,7 @@
 
 local cjson          = require "cjson"
 local helpers        = require "spec.helpers"
-
+local redis_helper   = require "spec.helpers.redis_helper"
 
 local REDIS_HOST     = helpers.redis_host
 local REDIS_PORT      = helpers.redis_port
@@ -31,33 +31,6 @@ local function wait()
   local millis = (now - math.floor(now))
   ngx.sleep(1 - millis)
 end
-
-
-local function flush_redis()
-  local redis = require "resty.redis"
-  local red = redis:new()
-  red:set_timeout(2000)
-  local ok, err = red:connect(REDIS_HOST, REDIS_PORT)
-  if not ok then
-    error("failed to connect to Redis: " .. err)
-  end
-
-  if REDIS_PASSWORD and REDIS_PASSWORD ~= "" then
-    local ok, err = red:auth(REDIS_PASSWORD)
-    if not ok then
-      error("failed to connect to Redis: " .. err)
-    end
-  end
-
-  local ok, err = red:select(REDIS_DATABASE)
-  if not ok then
-    error("failed to change Redis database: " .. err)
-  end
-
-  red:flushall()
-  red:close()
-end
-
 
 local redis_confs = {
   no_ssl = {
@@ -109,7 +82,7 @@ local function init_db(strategy, policy)
   })
 
   if policy == "redis" then
-    flush_redis()
+    redis_helper.reset_redis(REDIS_HOST, REDIS_PORT)
   end
 
   return bp
