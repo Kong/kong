@@ -44,6 +44,24 @@ local function kong_messages_to_claude_prompt(messages)
   return buf:get()
 end
 
+-- reuse the messages structure of prompt
+-- extract messages and system from kong request
+local function kong_messages_to_claude_messages(messages)
+  local msgs, system, n = {}, nil, 1
+
+  for _, v in ipairs(messages) do
+    if v.role ~= "assistant" and v.role ~= "user" then
+      system = v.content
+
+    else
+      msgs[n] = v
+      n = n + 1
+    end
+  end
+
+  return msgs, system
+end
+
 
 local function to_claude_prompt(req)
   if req.prompt then
@@ -57,22 +75,29 @@ local function to_claude_prompt(req)
   return nil, "request is missing .prompt and .messages commands"
 end
 
+local function to_claude_messages(req)
+  if req.messages then
+    return kong_messages_to_claude_messages(req.messages)
+  end
+
+  return nil, nil, "request is missing .messages command"
+end
 
 local transformers_to = {
   ["llm/v1/chat"] = function(request_table, model)
-    local prompt = {}
+    local messages = {}
     local err
 
-    prompt.prompt, err = to_claude_prompt(request_table)
-    if err then 
+    messages.messages, messages.system, err = to_claude_messages(request_table)
+    if err then
       return nil, nil, err
     end
-    
-    prompt.temperature = (model.options and model.options.temperature) or nil
-    prompt.max_tokens_to_sample = (model.options and model.options.max_tokens) or nil
-    prompt.model = model.name
 
-    return prompt, "application/json", nil
+    messages.temperature = (model.options and model.options.temperature) or nil
+    messages.max_tokens = (model.options and model.options.max_tokens) or nil
+    messages.model = model.name
+
+    return messages, "application/json", nil
   end,
 
   ["llm/v1/completions"] = function(request_table, model)

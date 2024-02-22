@@ -156,7 +156,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             header_value = "anthropic-key",
           },
           model = {
-            name = "gpt-3.5-turbo",
+            name = "claude-2.1",
             provider = "anthropic",
             options = {
               max_tokens = 256,
@@ -186,7 +186,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             header_value = "anthropic-key",
           },
           model = {
-            name = "gpt-3.5-turbo",
+            name = "claude-2.1",
             provider = "anthropic",
             options = {
               max_tokens = 256,
@@ -216,7 +216,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             header_value = "anthropic-key",
           },
           model = {
-            name = "gpt-3.5-turbo-instruct",
+            name = "claude-2.1",
             provider = "anthropic",
             options = {
               max_tokens = 256,
@@ -246,7 +246,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             header_value = "wrong-key",
           },
           model = {
-            name = "gpt-3.5-turbo",
+            name = "claude-2.1",
             provider = "anthropic",
             options = {
               max_tokens = 256,
@@ -276,7 +276,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             header_value = "anthropic-key",
           },
           model = {
-            name = "gpt-3.5-turbo",
+            name = "claude-2.1",
             provider = "anthropic",
             options = {
               max_tokens = 256,
@@ -306,7 +306,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             header_value = "anthropic-key",
           },
           model = {
-            name = "gpt-3.5-turbo-instruct",
+            name = "claude-2.1",
             provider = "anthropic",
             options = {
               max_tokens = 256,
@@ -336,7 +336,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             header_value = "anthropic-key",
           },
           model = {
-            name = "gpt-3.5-turbo",
+            name = "claude-2.1",
             provider = "anthropic",
             options = {
               max_tokens = 256,
@@ -440,10 +440,10 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
         -- check this is in the 'kong' response format
         -- assert.equals(json.id, "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2")
-        assert.equals(json.model, "claude-2")
+        assert.equals(json.model, "claude-2.1")
         assert.equals(json.object, "chat.completion")
 
-        assert.is_table(json.choices)
+        assert.is_table(json.content)
         assert.is_table(json.choices[1].message)
         assert.same({
           content = "The sum of 1 + 1 is 2.",
@@ -496,7 +496,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         local json = cjson.decode(body)
 
         -- check this is in the 'kong' response format
-        assert.equals(json.model, "claude-2")
+        assert.equals(json.model, "claude-2.1")
         assert.equals(json.object, "text_completion")
 
         assert.is_table(json.choices)

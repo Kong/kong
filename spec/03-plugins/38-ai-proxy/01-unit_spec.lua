@@ -73,7 +73,7 @@ local FORMATS = {
   },
   anthropic = {
     ["llm/v1/chat"] = {
-      name = "claude-2",
+      name = "claude-2.1",
       provider = "anthropic",
       options = {
         max_tokens = 512,
@@ -82,7 +82,7 @@ local FORMATS = {
       },
     },
     ["llm/v1/completions"] = {
-      name = "claude-2",
+      name = "claude-2.1",
       provider = "anthropic",
       options = {
         max_tokens = 512,
