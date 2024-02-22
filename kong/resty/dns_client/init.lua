@@ -501,7 +501,7 @@ end
 
 
 local function resolve_all(self, name, opts, tries)
-    local key = "fast:" .. name .. ":" .. (opts.qtype or "all")
+    local key = "short:" .. name .. ":" .. (opts.qtype or "all")
     -- logt(tries, key)
 
     stats_init(self.stats, name)
@@ -512,7 +512,7 @@ local function resolve_all(self, name, opts, tries)
         return nil, "recursion detected for name: " .. name
     end
 
-    -- lookup fastly with the key `fast:<qname>:<qtype>/all`
+    -- lookup fastly with the key `short:<qname>:<qtype>/all`
     local answers, err, hit_level = self.cache:get(key)
     if not answers or answers.expired then
         stats_count(self.stats, name, "miss")
