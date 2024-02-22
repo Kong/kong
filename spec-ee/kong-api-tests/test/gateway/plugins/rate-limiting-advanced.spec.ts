@@ -16,7 +16,8 @@ import {
   postNegative,
   resetRedisDB,
   wait,
-  isGateway
+  isGateway,
+  expectRedisFieldsInPlugins
 } from '@support';
 import axios from 'axios';
 
@@ -166,9 +167,6 @@ describe('Gateway RLA Plugin Tests', function () {
       'number'
     );
     expect(resp.data.enabled, 'Should have enabled=true').to.be.true;
-    expect(resp.data.config.redis, 'Should have redis object').to.be.a(
-      'object'
-    );
     expect(resp.data.config.sync_rate, 'sync_rate should be 0').to.eq(0);
     expect(resp.data.config.strategy, 'Should have strategy cluster').to.eq(
       'redis'
@@ -187,6 +185,14 @@ describe('Gateway RLA Plugin Tests', function () {
         'Should have consumer groups disabled'
       ).to.be.false;
     }
+  });
+
+  it('should see correct redis configuration fields in the RLA plugin response', async function () {
+    const resp: any = await axios(url);
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 200').to.equal(200);
+    expectRedisFieldsInPlugins(resp.data.data[0])
   });
 
   it('should rate limit on 2nd request', async function () {
