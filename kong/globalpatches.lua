@@ -99,8 +99,8 @@ return function(options)
 
     else
       _timerng = require("resty.timerng").new({
-        min_threads = 512,
-        max_threads = 2048,
+        min_threads = 256,
+        max_threads = 1024,
       })
     end
 
