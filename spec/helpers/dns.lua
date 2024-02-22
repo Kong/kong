@@ -40,7 +40,7 @@ end
 function _M.dnsExpire(client, record)
   local dnscache = client.getcache()
   dnscache:set(record[1].name .. ":" .. record[1].type, nil)
-  dnscache:set("fast:" .. record[1].name .. ":" .. "all", nil)
+  dnscache:set("short:" .. record[1].name .. ":" .. "all", nil)
   record.expire = gettime() - 1
 end
 

@@ -155,7 +155,7 @@ describe("[DNS client cache]", function()
       }
 
       local answers = cli:resolve("myhost1")
-      assert.equal(answers, cli.cache:get("fast:myhost1:all"))
+      assert.equal(answers, cli.cache:get("short:myhost1:all"))
     end)
 
     it("are stored in cache with type", function()
@@ -170,12 +170,12 @@ describe("[DNS client cache]", function()
       }
 
       local answers = cli:resolve("myhost2", { qtype = resolver.TYPE_A })
-      assert.equal(answers, cli.cache:get("fast:myhost2:" .. resolver.TYPE_A))
+      assert.equal(answers, cli.cache:get("short:myhost2:" .. resolver.TYPE_A))
     end)
 
     it("are resolved from cache without type", function()
       mock_records = {}
-      cli.cache:set("fast:myhost3:all", {ttl=30+4}, {{
+      cli.cache:set("short:myhost3:all", {ttl=30+4}, {{
           type = resolver.TYPE_A,
           address = "1.2.3.4",
           class = 1,
@@ -187,13 +187,13 @@ describe("[DNS client cache]", function()
       })
 
       local answers = cli:resolve("myhost3")
-      assert.same(answers, cli.cache:get("fast:myhost3:all"))
+      assert.same(answers, cli.cache:get("short:myhost3:all"))
     end)
 
     it("are resolved from cache with type", function()
       mock_records = {}
       local cli = client_new()
-      cli.cache:set("fast:myhost4:" .. resolver.TYPE_A, {ttl=30+4}, {{
+      cli.cache:set("short:myhost4:" .. resolver.TYPE_A, {ttl=30+4}, {{
           type = resolver.TYPE_A,
           address = "1.2.3.4",
           class = 1,
@@ -205,7 +205,7 @@ describe("[DNS client cache]", function()
       })
 
       local answers = cli:resolve("myhost4", { qtype = resolver.TYPE_A })
-      assert.equal(answers, cli.cache:get("fast:myhost4:" .. resolver.TYPE_A))
+      assert.equal(answers, cli.cache:get("short:myhost4:" .. resolver.TYPE_A))
     end)
 
     it("of dereferenced CNAME are stored in cache", function()
@@ -230,7 +230,7 @@ describe("[DNS client cache]", function()
 
       -- the type un-specificc query was the CNAME, so that should be in the
       -- shorname cache
-      answers = cli.cache:get("fast:myhost5:all")
+      answers = cli.cache:get("short:myhost5:all")
       assert_same_answers(mock_records["myhost5.domain.com:"..resolver.TYPE_CNAME], answers)
     end)
 
@@ -298,7 +298,7 @@ describe("[DNS client cache]", function()
       local answers, err = cli:resolve("myhost7", { qtype = resolver.TYPE_A })
       assert.is_nil(answers)
       assert.equal("dns server error: 4 server failure", err)
-      assert.is_nil(cli.cache:get("fast:myhost7:" .. resolver.TYPE_A))
+      assert.is_nil(cli.cache:get("short:myhost7:" .. resolver.TYPE_A))
     end)
 
     it("name errors are not stored", function()
@@ -314,7 +314,7 @@ describe("[DNS client cache]", function()
       local answers, err = cli:resolve("myhost8", { qtype = resolver.TYPE_A })
       assert.is_nil(answers)
       assert.equal("dns server error: 3 name error", err)
-      assert.is_nil(cli.cache:get("fast:myhost8:" .. resolver.TYPE_A))
+      assert.is_nil(cli.cache:get("short:myhost8:" .. resolver.TYPE_A))
     end)
 
   end)
