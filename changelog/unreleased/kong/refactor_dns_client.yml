@@ -1,0 +1,3 @@
+message: refactor and implement a new DNS client library
+type: feature
+scope: Core
