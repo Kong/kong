@@ -8,7 +8,7 @@
 local helpers = require "spec.helpers"
 local http_mock = require "spec.helpers.http_mock"
 local cjson = require "cjson"
-local redis = require "kong.enterprise_edition.redis"
+local redis_helper = require "spec.helpers.redis_helper"
 local version = require "version"
 
 
@@ -72,47 +72,6 @@ local function build_plugin_fn(strategy)
   end
 end
 
-local function redis_connect()
-  local red = assert(redis.connection({
-    host = REDIS_HOST,
-    port = REDIS_PORT,
-  }))
-  local red_version = string.match(red:info(), 'redis_version:([%g]+)\r\n')
-  return red, assert(version(red_version))
-end
-
-local function redis_version(policy)
-  local red, red_version = redis_connect()
-  red:close()
-  return red_version
-end
-
-local function add_redis_user(policy)
-  if policy == "redis" then
-    local red, red_version = redis_connect()
-    if red_version >= version("6.0.0") then
-      assert(red:acl("setuser", REDIS_USERNAME_VALID, "on", "allkeys", "+@all", ">" .. REDIS_PASSWORD_VALID))
-    end
-    red:close()
-  end
-end
-
-local function remove_redis_user(policy)
-  if policy == "redis" then
-    local red, red_version = redis_connect()
-    if red_version >= version("6.0.0") then
-      if REDIS_USERNAME_VALID == "default" then
-        assert(red:acl("setuser", REDIS_USERNAME_VALID, "nopass"))
-
-      else
-
-        assert(red:acl("deluser", REDIS_USERNAME_VALID))
-      end
-    end
-    red:close()
-  end
-end
-
 local function redis_test_configurations(policy)
   local redis_configurations = {
     no_acl =  {
@@ -124,14 +83,17 @@ local function redis_test_configurations(policy)
     },
   }
 
-  if policy == "redis" and redis_version() >= version("6.0.0") then
-    redis_configurations.acl = {
-      host = REDIS_HOST,
-      port = REDIS_PORT,
-      database = REDIS_DATABASE,
-      username = REDIS_USERNAME_VALID,
-      password = REDIS_PASSWORD_VALID,
-    }
+  if policy == "redis" then
+    local _, redis_version = redis_helper.connect(REDIS_HOST, REDIS_PORT)
+    if redis_version >= version("6.0.0") then
+      redis_configurations.acl = {
+        host = REDIS_HOST,
+        port = REDIS_PORT,
+        database = REDIS_DATABASE,
+        username = REDIS_USERNAME_VALID,
+        password = REDIS_PASSWORD_VALID,
+      }
+    end
   end
 
   return redis_configurations
@@ -172,10 +134,14 @@ for _, strategy in strategies() do
       local bp, db, consumer1, consumer2, plugin3, plugin5, plugin6, plugin10, plugin15, consumer_in_group
       local consumer_in_group_no_config
       local proxy_client
+      local redis_client
 
       lazy_setup(function()
-        redis.flush_redis(REDIS_HOST, REDIS_PORT, REDIS_DATABASE, nil, nil)
-        add_redis_user(policy)
+        if policy == "redis" then
+          redis_client = redis_helper.connect(REDIS_HOST, REDIS_PORT)
+          redis_client:flush_all()
+          redis_helper.add_admin_user(redis_client, REDIS_USERNAME_VALID, REDIS_PASSWORD_VALID)
+        end
 
         bp, db = helpers.get_db_utils(strategy ~= "off" and strategy or nil,
                                   nil,
@@ -740,7 +706,9 @@ for _, strategy in strategies() do
         helpers.stop_kong("node1")
         helpers.stop_kong("node2")
 
-        remove_redis_user(policy)
+        if policy == "redis" then
+          redis_helper.remove_user(redis_client, REDIS_USERNAME_VALID)
+        end
       end)
 
       before_each(function()
@@ -2246,10 +2214,14 @@ for _, strategy in strategies() do
       describe("rate-limiting-advanced Hybrid Mode with strategy #" .. strategy .. "#", function()
         local plugin2, plugin4, plugin20, plugin21
         local proxy_client
+        local redis_client
 
         lazy_setup(function()
-          redis.flush_redis(REDIS_HOST, REDIS_PORT, REDIS_DATABASE, nil, nil)
-          add_redis_user(policy)
+          if policy == "redis" then
+            redis_client = redis_helper.connect(REDIS_HOST, REDIS_PORT)
+            redis_client:flush_all()
+            redis_helper.add_admin_user(redis_client, REDIS_USERNAME_VALID, REDIS_PASSWORD_VALID)
+          end
 
           local bp = helpers.get_db_utils(strategy ~= "off" and strategy or nil,
                                           nil, {"rate-limiting-advanced"})

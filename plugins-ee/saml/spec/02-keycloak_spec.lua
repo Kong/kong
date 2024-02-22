@@ -6,12 +6,11 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local xmlua   = require "xmlua"
-local redis   = require "resty.redis"
 local http    = require "resty.http"
 local xpath   = require "kong.plugins.saml.utils.xpath"
 local tablex  = require "pl.tablex"
+local redis_helper = require "spec.helpers.redis_helper"
 
-local version = require "version"
 local helpers = require "spec.helpers"
 local split   = require("kong.tools.utils").split
 
@@ -64,45 +63,6 @@ local function extract_and_update_cookies(current_cookies, set_cookie_headers)
   return make_cookie_str(current_cookies)
 end
 
-
-local function redis_connect()
-  local redis = redis:new()
-  redis:set_timeout(2000)
-  assert(redis:connect(REDIS_HOST, REDIS_PORT))
-  local redis_password = os.getenv("REDIS_PASSWORD") or nil -- This will allow for testing with a secured redis instance
-  if redis_password then
-    assert(redis:auth(redis_password))
-  end
-  local redis_version = string.match(redis:info(), 'redis_version:([%g]+)\r\n')
-  return redis, assert(version(redis_version))
-end
-
-
-local function add_redis_user(redis, redis_version)
-  if redis_version >= version("6.0.0") then
-    assert(redis:acl(
-        "setuser",
-        REDIS_USER_VALID,
-        "on", "allkeys", "+@all",
-        ">" .. REDIS_PASSWORD
-    ))
-  end
-end
-
-
-local function remove_redis_user(redis, redis_version)
-  if redis_version >= version("6.0.0") then
-    if REDIS_USER_VALID == "default" then
-      assert(redis:acl("setuser", REDIS_USER_VALID, "nopass"))
-
-    else
-
-      assert(redis:acl("deluser", REDIS_USER_VALID))
-    end
-  end
-end
-
-
 local extract_from_html
 
 do
@@ -120,7 +80,7 @@ do
     quot = '"',
     apos = "'",
   }
-  
+
   local function decode_html_entities(string)
     return ngx.re.gsub(string, "&([a-z]+);", function(match) return ENTITIES[match[1]] or "" end)
   end
@@ -214,16 +174,14 @@ for _, strategy in helpers.all_strategies() do
   for _, session_storage in ipairs {"memcached", "redis", "cookie"} do
     describe(PLUGIN_NAME .. ": #" .. strategy .. "_" .. session_storage, function()
         local redis
-        local redis_version
 
         setup(function()
-            redis, redis_version = redis_connect()
-            add_redis_user(redis, redis_version)
-
+            redis = redis_helper.connect(REDIS_HOST, REDIS_PORT)
+            redis_helper.add_admin_user(redis, REDIS_USER_VALID, REDIS_PASSWORD)
         end)
 
         teardown(function()
-            remove_redis_user(redis, redis_version)
+            redis_helper.remove_user(redis, REDIS_USER_VALID)
         end)
 
         local proxy_client

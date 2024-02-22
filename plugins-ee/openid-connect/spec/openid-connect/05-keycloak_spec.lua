@@ -9,9 +9,9 @@
 local uri = require "kong.openid-connect.uri"
 local cjson = require "cjson.safe"
 local helpers = require "spec.helpers"
-local redis = require "resty.redis"
 local version = require "version"
 local http_mock = require "spec.helpers.http_mock"
+local redis_helper = require "spec.helpers.redis_helper"
 
 
 local encode_base64 = ngx.encode_base64
@@ -112,46 +112,6 @@ local function extract_cookie(cookie)
   return user_session_header_table
 end
 
-local function redis_connect()
-  local red = redis:new()
-  red:set_timeout(2000)
-  assert(red:connect(REDIS_HOST, REDIS_PORT))
-  local red_password = os.getenv("REDIS_PASSWORD") or nil -- This will allow for testing with a secured redis instance
-  if red_password then
-    assert(red:auth(red_password))
-  end
-  local red_version = string.match(red:info(), 'redis_version:([%g]+)\r\n')
-  return red, assert(version(red_version))
-end
-
--- local function flush_redis(red, db)
---   assert(red:select(db))
---   red:flushall()
--- end
-
-local function add_redis_user(red, red_version)
-  if red_version >= version("6.0.0") then
-    assert(red:acl(
-      "setuser",
-      REDIS_USER_VALID,
-      "on", "allkeys", "+incrby", "+select", "+info", "+expire", "+get", "+exists",
-      ">" .. REDIS_PASSWORD
-    ))
-  end
-end
-
-local function remove_redis_user(red, red_version)
-  if red_version >= version("6.0.0") then
-    if REDIS_USER_VALID == "default" then
-      assert(red:acl("setuser", REDIS_USER_VALID, "nopass"))
-
-    else
-
-      assert(red:acl("deluser", REDIS_USER_VALID))
-    end
-  end
-end
-
 
 for _, strategy in helpers.all_strategies() do
   describe(PLUGIN_NAME .. ": (keycloak) with strategy: #" .. strategy .. " ->", function()
@@ -159,12 +119,12 @@ for _, strategy in helpers.all_strategies() do
     local red_version
 
     setup(function()
-      red, red_version = redis_connect()
-      add_redis_user(red, red_version)
+      red, red_version = redis_helper.connect(REDIS_HOST, REDIS_PORT)
+      redis_helper.add_admin_user(red, REDIS_USER_VALID, REDIS_PASSWORD)
     end)
 
     teardown(function()
-      remove_redis_user(red, red_version)
+      redis_helper.remove_user(red, REDIS_USER_VALID)
     end)
 
     it("can access openid connect discovery endpoint on demo realm with http", function()

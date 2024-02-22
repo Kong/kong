@@ -15,6 +15,12 @@ local function connect(host, port)
   local redis_client = redis:new()
   redis_client:set_timeout(DEFAULT_TIMEOUT)
   assert(redis_client:connect(host, port))
+
+  local red_password = os.getenv("REDIS_PASSWORD") or nil -- This will allow for testing with a secured redis instance
+  if red_password then
+    assert(redis_client:auth(red_password))
+  end
+
   local red_version = string.match(redis_client:info(), 'redis_version:([%g]+)\r\n')
   return redis_client, assert(version(red_version))
 end
