@@ -485,6 +485,16 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       local json = cjson.decode(body)
       assert.same({ message = "No vault named 'not-present'" }, json)
     end)
+
+    it("does not return 405 on /schemas/vaults/validate", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/schemas/vaults/validate",
+      })
+      local body = assert.res_status(400, res)
+      local json = cjson.decode(body)
+      assert.same("schema violation (name: required field missing)", json.message)
+    end)
   end)
 
   describe("/schemas/:entity", function()
