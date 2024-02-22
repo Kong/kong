@@ -130,7 +130,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         name = "cors",
         enabled = true,
         config = {
-          -- [[ new fields 3.5.0
+          -- [[ new fields in 3.4.3
           private_network = false
           -- ]]
         }
@@ -188,11 +188,11 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         assert.not_nil(cors.config.private_network)
         local expected_cors = utils.cycle_aware_deep_copy(cors)
         expected_cors.config.private_network = nil
-        do_assert(utils.uuid(), "3.4.0", expected_cors)
+        do_assert(utils.uuid(), "3.4.2", expected_cors)
       end)
 
       it("does not remove `config.private_network` from DP nodes that are already compatible", function()
-        do_assert(utils.uuid(), "3.5.0", cors)
+        do_assert(utils.uuid(), "3.4.3", cors)
       end)
     end)
 
