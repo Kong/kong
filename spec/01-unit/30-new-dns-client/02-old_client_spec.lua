@@ -661,7 +661,7 @@ describe("[DNS client]", function()
     local answers2 = assert(cli:resolve(host))
     assert.are.equal(answers, answers2) -- same table from L1 cache
 
-    local ttl, _, value = cli.cache:peek("fast:" .. host .. ":all")
+    local ttl, _, value = cli.cache:peek("short:" .. host .. ":all")
     assert.same(answers, value)
     local ttl_diff = answers.ttl - ttl
     assert(math.abs(ttl_diff - wait_time) < 1,
@@ -1295,7 +1295,7 @@ describe("[DNS client]", function()
     local answers, _, _ = cli:resolve(qname, { qtype = resolver.TYPE_A })
     assert.equal(valid_ttl, answers.ttl)
 
-    local ttl = cli.cache:peek("fast:" .. qname .. ":1")
+    local ttl = cli.cache:peek("short:" .. qname .. ":1")
     assert.is_near(valid_ttl, ttl, 0.1)
   end)
 
