@@ -1,3 +1,10 @@
+-- Use the new dns client library instead. If you want to switch to the original
+-- one, you can set `legacy_dns_client = on` in kong.conf.
+if ngx.shared.kong_dns_cache and not _G.busted_legacy_dns_client then
+  package.loaded["kong.resty.dns_client"] = nil
+  return require("kong.resty.dns_client")
+end
+
 --------------------------------------------------------------------------
 -- DNS client.
 --
@@ -18,13 +25,6 @@
 -- @copyright 2016-2017 Kong Inc.
 -- @author Thijs Schreijer
 -- @license Apache 2.0
-
--- Use the new dns client library instead. If you want to switch to the original
--- one, you can set `legacy_dns_client = on` in kong.conf.
-if ngx.shared.kong_dns_cache and not _G.legacy_dns_client then
-  package.loaded["kong.resty.dns_client"] = nil
-  return require("kong.resty.dns_client")
-end
 
 local _
 local utils = require("kong.resty.dns.utils")
