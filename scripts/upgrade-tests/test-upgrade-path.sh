@@ -192,6 +192,10 @@ mapfile -t old_versions < "scripts/upgrade-tests/source-versions"
 
 for old_version in "${old_versions[@]}"; do
     export OLD_KONG_VERSION=$old_version
+    if git diff --quiet HEAD..origin/"$OLD_KONG_VERSION"; then
+        echo "Skipping $OLD_KONG_VERSION as it is the same as the current version"
+        continue
+    fi
     old_kong_tag=$(echo $OLD_KONG_VERSION | sed 's/\//-/g')
     export OLD_KONG_IMAGE=kong/kong-gateway-dev:$old_kong_tag-ubuntu
 
