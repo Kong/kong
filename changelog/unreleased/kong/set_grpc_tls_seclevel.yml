@@ -1,0 +1,3 @@
+message: Set security level of gRPC's TLS to 0 when ssl_cipher_suite is set to old
+type: bugfix
+scope: Configuration
