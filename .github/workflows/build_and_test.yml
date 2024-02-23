@@ -108,7 +108,7 @@ jobs:
     - name: Download runtimes file
       uses: Kong/gh-storage/download@v1
       env:
-        GITHUB_TOKEN: ${{ secrets.PAT }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         repo-path: Kong/gateway-action-storage/main/.ci/runtimes.json
 
