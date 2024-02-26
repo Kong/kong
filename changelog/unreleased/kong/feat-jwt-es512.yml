@@ -1,0 +1,4 @@
+message: |
+  Addded support for ES512 algorithm in JWT plugin
+type: feature
+scope: Plugin
