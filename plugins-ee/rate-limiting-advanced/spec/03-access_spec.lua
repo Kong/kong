@@ -9,7 +9,6 @@ local helpers = require "spec.helpers"
 local http_mock = require "spec.helpers.http_mock"
 local cjson = require "cjson"
 local redis_helper = require "spec.helpers.redis_helper"
-local version = require "version"
 
 
 local HTTP_SERVER_PORT_16 = helpers.get_available_port()
@@ -84,16 +83,13 @@ local function redis_test_configurations(policy)
   }
 
   if policy == "redis" then
-    local _, redis_version = redis_helper.connect(REDIS_HOST, REDIS_PORT)
-    if redis_version >= version("6.0.0") then
-      redis_configurations.acl = {
-        host = REDIS_HOST,
-        port = REDIS_PORT,
-        database = REDIS_DATABASE,
-        username = REDIS_USERNAME_VALID,
-        password = REDIS_PASSWORD_VALID,
-      }
-    end
+    redis_configurations.acl = {
+      host = REDIS_HOST,
+      port = REDIS_PORT,
+      database = REDIS_DATABASE,
+      username = REDIS_USERNAME_VALID,
+      password = REDIS_PASSWORD_VALID,
+    }
   end
 
   return redis_configurations

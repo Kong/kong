@@ -37,24 +37,14 @@ local function redis_connect(conf)
   return red, assert(version(red_version))
 end
 
-local function add_redis_user(red, red_version)
-  if red_version >= version("6.0.0") then
-    assert(red:acl("setuser", REDIS_USERNAME_VALID, "on", "allkeys", "allcommands", "allchannels", ">" .. REDIS_PASSWORD_VALID))
-    assert(red:save())
-  end
+local function add_redis_user(red)
+  assert(red:acl("setuser", REDIS_USERNAME_VALID, "on", "allkeys", "allcommands", "allchannels", ">" .. REDIS_PASSWORD_VALID))
+  assert(red:save())
 end
 
-local function remove_redis_user(red, red_version)
-  if red_version >= version("6.0.0") then
-    if REDIS_USERNAME_VALID == "default" then
-      assert(red:acl("setuser", REDIS_USERNAME_VALID, "nopass"))
-
-    else
-
-      assert(red:acl("deluser", REDIS_USERNAME_VALID))
-    end
-    assert(red:save())
-  end
+local function remove_redis_user(red)
+  assert(red:acl("setuser", REDIS_USERNAME_VALID, "nopass"))
+  assert(red:save())
 end
 
 local function redis_test_configurations()
@@ -90,25 +80,23 @@ require"kong.resty.dns.client".init(nil)
 for redis_description, redis_configuration in pairs(redis_test_configurations()) do
   describe("proxy-cache-advanced: Redis #" .. redis_description, function()
     local strategy
-    local red, red_version
+    local red
 
     lazy_setup(function()
       strategy = redis_strategy.new(redis_configuration)
-      red, red_version = redis_connect(strategy.conf)
+      red = redis_connect(strategy.conf)
 
-      if red_version >= version("6.0.0") and redis_description ~= "no_auth" then
-        add_redis_user(red, red_version)
+      add_redis_user(red)
 
-        strategy.conf.username = REDIS_USERNAME_VALID
-        strategy.conf.password = REDIS_PASSWORD_VALID
+      strategy.conf.username = REDIS_USERNAME_VALID
+      strategy.conf.password = REDIS_PASSWORD_VALID
 
-        red:close()
-        red, red_version = redis_connect(strategy.conf)
-      end
+      red:close()
+      red = redis_connect(strategy.conf)
     end)
 
     lazy_teardown(function()
-      remove_redis_user(red, red_version)
+      remove_redis_user(red)
       strategy:flush(true)
       red:close()
     end)

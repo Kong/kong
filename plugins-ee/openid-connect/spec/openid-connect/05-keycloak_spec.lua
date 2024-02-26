@@ -9,7 +9,6 @@
 local uri = require "kong.openid-connect.uri"
 local cjson = require "cjson.safe"
 local helpers = require "spec.helpers"
-local version = require "version"
 local http_mock = require "spec.helpers.http_mock"
 local redis_helper = require "spec.helpers.redis_helper"
 local keycloak_api = require "spec-ee.fixtures.keycloak_api".new()
@@ -117,10 +116,9 @@ end
 for _, strategy in helpers.all_strategies() do
   describe(PLUGIN_NAME .. ": (keycloak) with strategy: #" .. strategy .. " ->", function()
     local red
-    local red_version
 
     setup(function()
-      red, red_version = redis_helper.connect(REDIS_HOST, REDIS_PORT)
+      red = redis_helper.connect(REDIS_HOST, REDIS_PORT)
       redis_helper.add_admin_user(red, REDIS_USER_VALID, REDIS_PASSWORD)
     end)
 
@@ -452,37 +450,35 @@ for _, strategy in helpers.all_strategies() do
           },
         }
 
-        if red_version >= version("6.0.0") then
-          local route_redis_session_acl = bp.routes:insert {
-            service = service,
-            paths   = { "/redis-session-acl" },
-          }
+        local route_redis_session_acl = bp.routes:insert {
+          service = service,
+          paths   = { "/redis-session-acl" },
+        }
 
-          bp.plugins:insert {
-            route   = route_redis_session_acl,
-            name    = PLUGIN_NAME,
-            config  = {
-              issuer    = ISSUER_URL,
-              scopes = {
-                -- this is the default
-                "openid",
-              },
-              client_id = {
-                KONG_CLIENT_ID,
-              },
-              client_secret = {
-                KONG_CLIENT_SECRET,
-              },
-              upstream_refresh_token_header = "refresh_token",
-              refresh_token_param_name      = "refresh_token",
-              session_storage = "redis",
-              session_redis_host = REDIS_HOST,
-              session_redis_port = REDIS_PORT,
-              session_redis_username = REDIS_USER_VALID,
-              session_redis_password = REDIS_PASSWORD,
+        bp.plugins:insert {
+          route   = route_redis_session_acl,
+          name    = PLUGIN_NAME,
+          config  = {
+            issuer    = ISSUER_URL,
+            scopes = {
+              -- this is the default
+              "openid",
             },
-          }
-        end
+            client_id = {
+              KONG_CLIENT_ID,
+            },
+            client_secret = {
+              KONG_CLIENT_SECRET,
+            },
+            upstream_refresh_token_header = "refresh_token",
+            refresh_token_param_name      = "refresh_token",
+            session_storage = "redis",
+            session_redis_host = REDIS_HOST,
+            session_redis_port = REDIS_PORT,
+            session_redis_username = REDIS_USER_VALID,
+            session_redis_password = REDIS_PASSWORD,
+          },
+        }
 
         local userinfo = bp.routes:insert {
           service = service,
@@ -1741,28 +1737,26 @@ for _, strategy in helpers.all_strategies() do
 
           redis_client_token = sub(redisjson.headers.authorization, 8, -1)
 
-          if red_version >= version("6.0.0") then
-            res = client:get("/redis-session-acl", {
-              headers = {
-                Authorization = CLIENT_CREDENTIALS,
-              },
-            })
-            assert.response(res).has.status(200)
-            rediscookies = res.headers["Set-Cookie"]
-            redisjson = assert.response(res).has.jsonbody()
-            if type(rediscookies) == "table" then
-              -- multiple cookies can be expected
-              for i, cookie in ipairs(rediscookies) do
-                redis_client_session_acl = sub(cookie, 0, find(cookie, ";") -1)
-                redis_client_session_header_table_acl[i] = redis_client_session_acl
-              end
-            else
-              redis_client_session_acl = sub(rediscookies, 0, find(rediscookies, ";") -1)
-              redis_client_session_header_table_acl[1] = redis_client_session_acl
+          res = client:get("/redis-session-acl", {
+            headers = {
+              Authorization = CLIENT_CREDENTIALS,
+            },
+          })
+          assert.response(res).has.status(200)
+          rediscookies = res.headers["Set-Cookie"]
+          redisjson = assert.response(res).has.jsonbody()
+          if type(rediscookies) == "table" then
+            -- multiple cookies can be expected
+            for i, cookie in ipairs(rediscookies) do
+              redis_client_session_acl = sub(cookie, 0, find(cookie, ";") -1)
+              redis_client_session_header_table_acl[i] = redis_client_session_acl
             end
-
-            redis_client_token_acl = sub(redisjson.headers.authorization, 8, -1)
+          else
+            redis_client_session_acl = sub(rediscookies, 0, find(rediscookies, ";") -1)
+            redis_client_session_header_table_acl[1] = redis_client_session_acl
           end
+
+          redis_client_token_acl = sub(redisjson.headers.authorization, 8, -1)
         end)
 
         it("refreshing a token that is not yet expired due to leeway", function()
@@ -1926,22 +1920,18 @@ for _, strategy in helpers.all_strategies() do
           assert.equal(redis_client_token, sub(json.headers.authorization, 8))
         end)
 
+        it("is allowed with valid client session [redis] using ACL", function()
+          local res = proxy_client:get("/redis-session-acl", {
+            headers = {
+              Cookie = redis_client_session_header_table_acl,
+            },
+          })
 
-        if red_version >= version("6.0.0") then
-          it("is allowed with valid client session [redis] using ACL", function()
-            local res = proxy_client:get("/redis-session-acl", {
-              headers = {
-                Cookie = redis_client_session_header_table_acl,
-              },
-            })
-
-            assert.response(res).has.status(200)
-            local json = assert.response(res).has.jsonbody()
-            assert.is_not_nil(json.headers.authorization)
-            assert.equal(redis_client_token_acl, sub(json.headers.authorization, 8))
-          end)
-        end
-
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          assert.is_not_nil(json.headers.authorization)
+          assert.equal(redis_client_token_acl, sub(json.headers.authorization, 8))
+        end)
 
         it("is allowed with valid client session", function()
           local res = proxy_client:get("/session", {
