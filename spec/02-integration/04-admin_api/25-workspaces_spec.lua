@@ -33,18 +33,18 @@ for _, strategy in helpers.each_strategy() do
         headers = {["Content-Type"] = "application/json"},
       }))
 
-      local body = assert.res_status(405, res)
+      local body = assert.res_status(404, res)
       body = cjson.decode(body)
-      assert.match("Method not allowed", body.message)
+      assert.match("Not found", body.message)
     end)
 
     it("disallow deletion", function()
       finally(function() db:truncate("workspaces") end)
 
       local res = assert(admin_client:delete("/workspaces/default"))
-      local body = assert.res_status(405, res)
+      local body = assert.res_status(404, res)
       body = cjson.decode(body)
-      assert.match("Method not allowed", body.message)
+      assert.match("Not found", body.message)
     end)
   end)
 end
