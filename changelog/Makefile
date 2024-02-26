@@ -48,7 +48,7 @@ generate:
 	@rm -f $(VERSION).md
 	@touch $(VERSION).md
 
-	@if [ -d "$(UNRELEASED_DIR)/kong" ]; then \
+	@if [ -d "$(UNRELEASED_DIR)/kong" ] && [ -n "$$(shopt -s nullglob; echo $(UNRELEASED_DIR)/kong/*.yml)" ] ; then \
 		if [ -f "$(VERSION)/$(VERSION).md" ]; then \
 			changelog --debug=$(DEBUG) generate \
 				--repo-path . \
@@ -69,7 +69,7 @@ generate:
 				>> $(VERSION).md; \
 		fi \
 	fi
-	@if [ -d "$(UNRELEASED_DIR)/kong-ee" ]; then \
+	@if [ -d "$(UNRELEASED_DIR)/kong-ee" ] && [ -n "$$(shopt -s nullglob; echo $(UNRELEASED_DIR)/kong-ee/*.yml)" ] ; then \
 		if [ -f "$(VERSION)/$(VERSION).md" ]; then \
 			changelog --debug=$(DEBUG) generate \
 				--repo-path . \
@@ -90,7 +90,7 @@ generate:
 				>> $(VERSION).md; \
 		fi \
     fi
-	@if [ -d "$(UNRELEASED_DIR)/kong-manager-ee" ]; then \
+	@if [ -d "$(UNRELEASED_DIR)/kong-manager-ee" ] && [ -n "$$(shopt -s nullglob; echo $(UNRELEASED_DIR)/kong-manager-ee/*.yml)" ] ; then \
 		if [ -f "$(VERSION)/$(VERSION).md" ]; then \
 			changelog --debug=$(DEBUG) generate \
 				--repo-path . \
@@ -111,7 +111,7 @@ generate:
 				>> $(VERSION).md; \
 		fi \
     fi
-	@if [ -d "$(UNRELEASED_DIR)/kong-portal-ee" ]; then \
+	@if [ -d "$(UNRELEASED_DIR)/kong-portal-ee" ] && [ -n "$$(shopt -s nullglob; echo $(UNRELEASED_DIR)/kong-portal-ee/*.yml)" ] ; then \
 		if [ -f "$(VERSION)/$(VERSION).md" ]; then \
 			changelog --debug=$(DEBUG) generate \
 				--repo-path . \
