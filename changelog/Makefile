@@ -54,7 +54,7 @@ generate:
 				--repo-path . \
 				--changelog-paths $(VERSION)/kong,$(UNRELEASED_DIR)/kong \
 				--title Kong \
-				--github-issue-repo Kong/kong \
+				--github-issue-repo $(OWNER_REPO) \
 				--github-api-repo $(OWNER_REPO) \
 				--with-jiras \
 				>> $(VERSION).md; \
@@ -63,7 +63,7 @@ generate:
 				--repo-path . \
 				--changelog-paths $(UNRELEASED_DIR)/kong \
 				--title Kong \
-				--github-issue-repo Kong/kong \
+				--github-issue-repo $(OWNER_REPO) \
 				--github-api-repo $(OWNER_REPO) \
 				--with-jiras \
 				>> $(VERSION).md; \
