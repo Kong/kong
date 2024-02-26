@@ -144,6 +144,7 @@ push_changelog:
 		mkdir -p $(VERSION)/$$i ; \
 		git mv -k $(UNRELEASED_DIR)/$$i/*.yml $(VERSION)/$$i/ ; \
 		touch $(UNRELEASED_DIR)/$$i/.gitkeep ; \
+		touch $(VERSION)/$$i/.gitkeep ; \
 	done
 	@git add .
 	@git commit -m "docs(release): genereate $(VERSION) changelog"
