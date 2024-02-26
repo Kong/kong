@@ -7,6 +7,7 @@ return {
   cache_key = { "name" },
   endpoint_key = "name",
   dao          = "kong.db.dao.workspaces",
+  generate_admin_api = false,
 
   fields = {
     { id          = typedefs.uuid },
