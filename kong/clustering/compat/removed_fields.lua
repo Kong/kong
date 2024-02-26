@@ -93,4 +93,10 @@ return {
       "sync_rate",
     },
   },
+
+  [3004003000] = {
+    cors = {
+      "private_network",
+    }
+  }
 }
