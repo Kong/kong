@@ -1,0 +1,3 @@
+message: Adjusted a clustering compatible check related to Hashicorp Vault Approle authentication.
+type: bugfix
+scope: Clustering

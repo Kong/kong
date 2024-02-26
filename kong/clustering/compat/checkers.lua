@@ -9,6 +9,8 @@ local ipairs = ipairs
 local table_remove = table.remove
 local type = type
 local cjson = require "cjson"
+local version = require("kong.clustering.compat.version")
+local version_num = version.string_to_number
 
 
 local null = ngx.null
@@ -36,8 +38,7 @@ end
 
 
 local compatible_checkers = {
-  {
-    3006000000, -- [[ 3.6.0.0 ]]
+  { 3006000000, -- [[ 3.6.0.0 ]]
     function(config_table, dp_version, log_suffix)
       local has_update
       local redis_plugins_update = {
@@ -115,15 +116,27 @@ local compatible_checkers = {
         end
       end
 
-      for _, vault in ipairs(config_table.vaults or {}) do
-        -- test
-        local name = vault.name
-        if name == "hcv" then
-          for _, parameter in ipairs({"approle_auth_path", "approle_role_id", "approle_secret_id", "approle_secret_id_file", "approle_response_wrapping"}) do
-            log_warn_message('contains configuration vaults.hcv.' .. parameter,
-                             'be removed', dp_version, log_suffix)
-            vault.config[parameter] = nil
-            has_update = true
+      return has_update
+    end
+  },
+
+  { 3005000004, -- [[ 3.5.0.4 ]]
+    function(config_table, dp_version, log_suffix)
+      local has_update
+
+      local dp_version_num = version_num(dp_version)
+      -- remove approle fields from hcv vault when 3.5.0.0 <= dp_version < 3.5.0.4
+      if dp_version_num >= 3005000000 then
+        for _, vault in ipairs(config_table.vaults or {}) do
+          -- test
+          local name = vault.name
+          if name == "hcv" then
+            for _, parameter in ipairs({"approle_auth_path", "approle_role_id", "approle_secret_id", "approle_secret_id_file", "approle_response_wrapping"}) do
+              log_warn_message('contains configuration vaults.hcv.' .. parameter,
+                              'be removed', dp_version, log_suffix)
+              vault.config[parameter] = nil
+              has_update = true
+            end
           end
         end
       end
@@ -189,6 +202,27 @@ local compatible_checkers = {
         if name == "hcv" then
           if vault.config.kube_auth_path then
             vault.config.kube_auth_path = nil
+            has_update = true
+          end
+        end
+      end
+
+      return has_update
+    end
+  },
+
+  { 3004003005, --[[ 3.4.3.5 ]]
+    function (config_table, dp_version, log_suffix)
+      local has_update
+
+      for _, vault in ipairs(config_table.vaults or {}) do
+        -- test
+        local name = vault.name
+        if name == "hcv" then
+          for _, parameter in ipairs({"approle_auth_path", "approle_role_id", "approle_secret_id", "approle_secret_id_file", "approle_response_wrapping"}) do
+            log_warn_message('contains configuration vaults.hcv.' .. parameter,
+                            'be removed', dp_version, log_suffix)
+            vault.config[parameter] = nil
             has_update = true
           end
         end
