@@ -12,7 +12,6 @@ local math_min = math.min
 local timer_at = ngx.timer.at
 local table_insert = table.insert
 local ipv6_bracket = utils.ipv6_bracket
--- local deep_copy = function (t) return t end -- TODO require("kong.tools.utils").deep_copy
 
 -- debug
 --[[
@@ -25,8 +24,6 @@ local logt = function (...) end
 local DEFAULT_ERROR_TTL = 1     -- unit: second
 local DEFAULT_STALE_TTL = 4
 local DEFAULT_EMPTY_TTL = 30
-
-local DEFAULT_IP_TTL = 10 * 365 * 24 * 60 * 60  -- 10 years
 
 local DEFAULT_ORDER = { "LAST", "SRV", "A", "AAAA", "CNAME" }
 
@@ -57,7 +54,7 @@ local errstrs = {     -- client specific errors
 local EMPTY_ANSWERS = { errcode = 3, errstr = "name error" }
 
 
---- APIs
+-- APIs
 local _M = {}
 local mt = { __index = _M }
 
@@ -82,13 +79,14 @@ local function stats_count(stats, name, key)
 end
 
 
--- For TYPE_LAST: the DNS record from the last successful query
+-- lookup or set TYPE_LAST (the DNS record type from the last successful query)
 local valid_types = {
     [ TYPE_SRV ] = true,
     [ TYPE_A ] = true,
     [ TYPE_AAAA ] = true,
     [ TYPE_CNAME ] = true,
 }
+
 
 local function insert_last_type(cache, name, qtype)
     if valid_types[qtype] then
@@ -122,19 +120,21 @@ local function init_hosts(cache, path, preferred_ip_type)
             return
         end
 
+        local ttl = 10 * 365 * 24 * 60 * 60 -- 10 years ttl for hosts entries
+
         local key = name .. ":" .. qtype
         local answers = {
-            ttl = DEFAULT_IP_TTL,
-            expire = now() + DEFAULT_IP_TTL,
+            ttl = ttl,
+            expire = now() + ttl,
             {
                 name = name,
                 type = qtype,
                 address = address,
                 class = 1,
-                ttl = DEFAULT_IP_TTL,
+                ttl = ttl,
             },
         }
-        cache:set(key, { ttl = DEFAULT_IP_TTL }, answers)
+        cache:set(key, { ttl = ttl }, answers)
     end
 
     for name, address in pairs(hosts) do
@@ -238,6 +238,7 @@ function _M.new(opts)
         error_ttl = opts.error_ttl or DEFAULT_ERROR_TTL,
         stale_ttl = opts.stale_ttl or DEFAULT_STALE_TTL,
         empty_ttl = opts.empty_ttl or DEFAULT_EMPTY_TTL,
+        stale_refresh_interval = opts.stale_refresh_interval or 5,
         resolv = opts._resolv or resolv,
         hosts = hosts,
         enable_ipv6 = enable_ipv6,
@@ -358,13 +359,23 @@ local function resolve_name_type_callback(self, name, qtype, opts, tries)
     local key = name .. ":" .. qtype
 
     local ttl, _, answers = self.cache:peek(key, true)
-    if answers and not answers.expired then
-        ttl = (ttl or 0) + self.stale_ttl
+    if answers and ttl then
+        if not answers.expired then
+            ttl = ttl + self.stale_ttl
+            answers.expire = now() + ttl
+            answers.expired = true
+
+        else
+            ttl = ttl + (answers.expire - now())
+        end
+
+        -- automatically refresh the stale-but-in-use record after this interval
+        -- to avoid the need for inter-process communication
+        ttl = math_min(ttl, self.stale_refresh_interval)
+
         if ttl > 0 then
             start_stale_update_task(self, key, name, qtype)
-            answers.expired = true
             answers.ttl = ttl
-            answers.expire = now() + ttl
             return answers, nil, ttl
         end
     end
