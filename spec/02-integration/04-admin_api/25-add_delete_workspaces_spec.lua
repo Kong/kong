@@ -25,7 +25,7 @@ for _, strategy in helpers.each_strategy() do
       if admin_client then admin_client:close() end
     end)
 
-    it("disallow creation", function()
+    it("has no admin api", function()
       finally(function() db:truncate("workspaces") end)
 
       local res = assert(admin_client:post("/workspaces", {
