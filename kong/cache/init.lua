@@ -140,23 +140,25 @@ function _M.new(opts)
     neg_ttl        = neg_ttl,
   }
 
-  local ok, err = cluster_events:subscribe("invalidations_" .. shm_name, function(key)
-    log(DEBUG, self.shm_name .. " received invalidate event from cluster for key: '", key, "'")
-    self:invalidate_local(key)
-  end)
-  if not ok then
-    return nil, "failed to subscribe to invalidations cluster events " ..
-                "channel: " .. err
-  end
+  if self.shm_name == "kong_db_cache" then
+    local ok, err = cluster_events:subscribe("invalidations", function(key)
+      log(DEBUG, self.shm_name .. " received invalidate event from cluster for key: '", key, "'")
+      self:invalidate_local(key)
+    end)
+    if not ok then
+      return nil, "failed to subscribe to invalidations cluster events " ..
+                  "channel: " .. err
+    end
 
-  -- Compatible with old invalidations channel
-  local ok, err = cluster_events:subscribe("invalidations", function(key)
-    log(DEBUG, self.shm_name .. " received invalidate event from old cluster invalidations channel for key: '", key, "'")
-    self:invalidate_local(key)
-  end)
-  if not ok then
-    return nil, "failed to subscribe to invalidations cluster events " ..
-                "channel: " .. err
+  else
+    local ok, err = cluster_events:subscribe("invalidations_" .. self.shm_name, function(key)
+      log(DEBUG, self.shm_name .. " received invalidate event from cluster for key: '", key, "'")
+      self:invalidate_local(key)
+    end)
+    if not ok then
+      return nil, "failed to subscribe to invalidations cluster events " ..
+                  "channel: " .. err
+    end
   end
 
   _init[shm_name] = true
@@ -258,9 +260,17 @@ function _M:invalidate(key)
 
   log(DEBUG, "broadcasting (cluster) invalidation for key: '", key, "'")
 
-  local ok, err = self.cluster_events:broadcast("invalidations_" .. self.shm_name, key)
-  if not ok then
-    log(ERR, "failed to broadcast cached entity invalidation: ", err)
+  if self.shm_name == "kong_db_cache" then
+    local ok, err = self.cluster_events:broadcast("invalidations", key)
+    if not ok then
+      log(ERR, "failed to broadcast cached entity invalidation: ", err)
+    end
+
+  else
+    local ok, err = self.cluster_events:broadcast("invalidations_" .. self.shm_name, key)
+    if not ok then
+      log(ERR, "failed to broadcast cached entity invalidation: ", err)
+    end
   end
 end
 

@@ -1,0 +1,3 @@
+message: From this version, the "invalidation" cluster event channel will be deprecated and removed in future versions.
+type: deprecation
+scope: Core

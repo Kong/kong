@@ -12,7 +12,7 @@ local Invalidations = {
 
 
 function Invalidations:init_worker()
-  assert(kong.cluster_events:subscribe("invalidations_kong_db_cache", function(key)
+  assert(kong.cluster_events:subscribe("invalidations", function(key)
     counts[key] = (counts[key] or 0) + 1
   end))
 
