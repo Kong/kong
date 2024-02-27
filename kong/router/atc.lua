@@ -130,7 +130,7 @@ local function gen_for_field(name, op, vals, val_transform)
   end
 
   -- consume the whole buffer
-  -- returns a local variable instead uses a tail call
+  -- returns a local variable instead of using a tail call
   -- to avoid NYI
   local str = values_buf:put(")"):get()
 
