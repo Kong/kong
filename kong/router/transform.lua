@@ -108,6 +108,7 @@ local ASTERISK         = byte("*")
 
 -- reuse buffer objects
 local values_buf        = buffer.new(64)
+local nets_buf          = buffer.new(64)
 local expr_buf          = buffer.new(128)
 local hosts_buf         = buffer.new(64)
 local headers_buf       = buffer.new(128)
@@ -186,7 +187,7 @@ local function gen_for_nets(ip_field, port_field, vals)
     return nil
   end
 
-  local nets_buf = buffer.new(64):put("(")
+  nets_buf:reset():put("(")
 
   for i = 1, #vals do
     local v = vals[i]
