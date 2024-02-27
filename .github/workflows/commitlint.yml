@@ -1,12 +1,19 @@
-name: commit-lint
+name: Verify Commit Format
 
-on: [push, pull_request]
+on: [push]
 
 jobs:
   lint:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: ahmadnassri/action-commit-lint@v2
+      - name: Run commit linter
+        uses: ahmadnassri/action-commit-lint@c46b910837381d1b39c7b7ede72666d7f3e83222 #v2
         with:
           config: conventional
+      - name: Point to contributing guide
+        if: failure()
+        run: |
+          echo "Commit message does not follow the contributing guidelines"
+          echo "  https://github.com/Kong/kong/blob/master/CONTRIBUTING.md#commit-message-format"
+          exit 1
