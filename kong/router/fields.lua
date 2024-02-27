@@ -197,8 +197,10 @@ else  -- stream
 end -- is_http
 
 
--- stream subsystem need not to generate func
-local get_field_accessor = function(funcs, field) end
+-- stream subsystem needs not to generate func
+local function get_field_accessor(funcs, field)
+  error("unknown router matching schema field: " .. field)
+end
 
 
 if is_http then
@@ -359,7 +361,8 @@ if is_http then
       return f
     end -- if field:sub(1, HTTP_SEGMENTS_PREFIX_LEN)
 
-    -- others return nil
+    -- others are error
+    error("unknown router matching schema field: " .. field)
   end
 
 end -- is_http
@@ -450,8 +453,6 @@ end
 function _M:get_value(field, params, ctx)
   local func = FIELDS_FUNCS[field] or
                get_field_accessor(self.funcs, field)
-
-  assert(func, "unknown router matching schema field: " .. field)
 
   return func(params, ctx)
 end
