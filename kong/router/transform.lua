@@ -248,17 +248,22 @@ local function gen_for_nets(ip_field, port_field, vals)
 end
 
 
-local function is_stream_route(r)
-  if not r.protocols then
-    return false
+local is_stream_route
+do
+  local is_stream_protocol = {
+    tcp = true,
+    udp = true,
+    tls = true,
+    tls_passthrough = true,
+  }
+
+  is_stream_route = function(r)
+    if not r.protocols then
+      return false
+    end
+
+    return is_stream_protocol[r.protocols[1]]
   end
-
-  local protocol = r.protocols[1]
-
-  return protocol == "tcp" or
-         protocol == "udp" or
-         protocol == "tls" or
-         protocol == "tls_passthrough"
 end
 
 
