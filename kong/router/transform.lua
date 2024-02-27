@@ -252,6 +252,20 @@ local function gen_for_nets(ip_field, port_field, vals)
 end
 
 
+local function is_stream_route(r)
+  if not r.protocols then
+    return false
+  end
+
+  local protocol = r.protocols[1]
+
+  return protocol == "tcp" or
+         protocol == "udp" or
+         protocol == "tls" or
+         protocol == "tls_passthrough"
+end
+
+
 local function get_expression(route)
   local methods = route.methods
   local hosts   = route.hosts
@@ -284,29 +298,29 @@ local function get_expression(route)
     expression_append(expr_buf, LOGICAL_AND, gen)
   end
 
-  -- stream expression
+  -- now http route support net.src.* and net.dst.*
 
-  do
-    local src_gen = gen_for_nets("net.src.ip", "net.src.port", srcs)
-    local dst_gen = gen_for_nets("net.dst.ip", "net.dst.port", dsts)
+  local src_gen = gen_for_nets("net.src.ip", "net.src.port", srcs)
+  local dst_gen = gen_for_nets("net.dst.ip", "net.dst.port", dsts)
 
-    if src_gen then
-      expression_append(expr_buf, LOGICAL_AND, src_gen)
-    end
-
-    if dst_gen then
-      expression_append(expr_buf, LOGICAL_AND, dst_gen)
-    end
-
-    if src_gen or dst_gen then
-      -- returns a local variable instead of using a tail call
-      -- to avoid NYI
-      local str = expr_buf:get()
-      return str
-    end
+  if src_gen then
+    expression_append(expr_buf, LOGICAL_AND, src_gen)
   end
 
-  -- http expression
+  if dst_gen then
+    expression_append(expr_buf, LOGICAL_AND, dst_gen)
+  end
+
+  -- stream expression, protocol = tcp/udp/tls/tls_passthrough
+
+  if is_stream_route(route) then
+    -- returns a local variable instead of using a tail call
+    -- to avoid NYI
+    local str = expr_buf:get()
+    return str
+  end
+
+  -- http expression, protocol = http/https/grpc/grpcs
 
   local gen = gen_for_field("http.method", OP_EQUAL, methods)
   if gen then
