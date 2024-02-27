@@ -5,7 +5,10 @@ local re_gsub = ngx.re.gsub
 
 
 local atc = require("kong.router.atc")
-local gen_for_field = atc.gen_for_field
+local transform = require("kong.router.transform")
+
+
+local gen_for_field = transform.gen_for_field
 
 
 local OP_EQUAL    = "=="
@@ -13,7 +16,7 @@ local NET_PORT_REG = [[(net\.port)(\s*)([=><!])]]
 local NET_PORT_REPLACE = [[net.dst.port$2$3]]
 
 
-local LOGICAL_AND = atc.LOGICAL_AND
+local LOGICAL_AND = transform.LOGICAL_AND
 
 
 -- map to normal protocol

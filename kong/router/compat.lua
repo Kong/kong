@@ -2,26 +2,21 @@ local _M = {}
 
 
 local bit = require("bit")
-local buffer = require("string.buffer")
 local atc = require("kong.router.atc")
 local utils = require("kong.router.utils")
+local transform = require("kong.router.transform")
 local tb_new = require("table.new")
 local tb_nkeys = require("table.nkeys")
 local uuid = require("resty.jit-uuid")
 
 
 local shallow_copy          = require("kong.tools.utils").shallow_copy
-local replace_dashes_lower  = require("kong.tools.string").replace_dashes_lower
 
 
 local is_regex_magic  = utils.is_regex_magic
-local parse_ip_addr   = utils.parse_ip_addr
 
 
-local escape_str      = atc.escape_str
-local is_empty_field  = atc.is_empty_field
-local gen_for_field   = atc.gen_for_field
-local split_host_port = atc.split_host_port
+local is_empty_field  = transform.is_empty_field
 
 
 local type = type
@@ -29,48 +24,13 @@ local pairs = pairs
 local ipairs = ipairs
 local assert = assert
 local tb_insert = table.insert
-local byte = string.byte
 local bor, band, lshift = bit.bor, bit.band, bit.lshift
 
 
 local is_http = ngx.config.subsystem == "http"
 
 
-local DOT              = byte(".")
-local TILDE            = byte("~")
-local ASTERISK         = byte("*")
 local MAX_HEADER_COUNT = 255
-
-
--- reuse buffer objects
-local expr_buf          = buffer.new(128)
-local hosts_buf         = buffer.new(64)
-local headers_buf       = buffer.new(128)
-local single_header_buf = buffer.new(64)
-
-
--- sep: a seperator of expressions, like '&&'
--- idx: indicate whether or not to add 'sep'
---      for example, we should not add 'sep' for the first element in array
-local function expression_append(buf, sep, str, idx)
-  if #buf > 0 and
-     (idx == nil or idx > 1)
-  then
-    buf:put(sep)
-  end
-  buf:put(str)
-end
-
-
-local OP_EQUAL    = "=="
-local OP_PREFIX   = "^="
-local OP_POSTFIX  = "=^"
-local OP_REGEX    = "~"
-local OP_IN       = "in"
-
-
-local LOGICAL_OR  = atc.LOGICAL_OR
-local LOGICAL_AND = atc.LOGICAL_AND
 
 
 -- When splitting routes, we need to assign new UUIDs to the split routes.  We use uuid v5 to generate them from
@@ -79,224 +39,8 @@ local LOGICAL_AND = atc.LOGICAL_AND
 local uuid_generator = assert(uuid.factory_v5('7f145bf9-0dce-4f91-98eb-debbce4b9f6b'))
 
 
-local function gen_for_nets(ip_field, port_field, vals)
-  if is_empty_field(vals) then
-    return nil
-  end
-
-  local nets_buf = buffer.new(64):put("(")
-
-  for i = 1, #vals do
-    local v = vals[i]
-
-    if type(v) ~= "table" then
-      ngx.log(ngx.ERR, "sources/destinations elements must be a table")
-      return nil
-    end
-
-    if is_empty_field(v) then
-      ngx.log(ngx.ERR, "sources/destinations elements must not be empty")
-      return nil
-    end
-
-    local ip = v.ip
-    local port = v.port
-
-    local exp_ip, exp_port
-
-    if ip then
-      local addr, mask = parse_ip_addr(ip)
-
-      if mask then  -- ip in cidr
-        exp_ip = ip_field .. " " .. OP_IN ..  " " ..
-                 addr .. "/" .. mask
-
-      else          -- ip == addr
-        exp_ip = ip_field .. " " .. OP_EQUAL .. " " ..
-                 addr
-      end
-    end
-
-    if port then
-      exp_port = port_field .. " " .. OP_EQUAL .. " " .. port
-    end
-
-    if not ip then
-      expression_append(nets_buf, LOGICAL_OR, exp_port, i)
-      goto continue
-    end
-
-    if not port then
-      expression_append(nets_buf, LOGICAL_OR, exp_ip, i)
-      goto continue
-    end
-
-    expression_append(nets_buf, LOGICAL_OR,
-                      "(" .. exp_ip .. LOGICAL_AND .. exp_port .. ")", i)
-
-    ::continue::
-  end   -- for
-
-  local str = nets_buf:put(")"):get()
-
-  -- returns a local variable instead of using a tail call
-  -- to avoid NYI
-  return str
-end
-
-
-local function get_expression(route)
-  local methods = route.methods
-  local hosts   = route.hosts
-  local paths   = route.paths
-  local headers = route.headers
-  local snis    = route.snis
-
-  local srcs    = route.sources
-  local dsts    = route.destinations
-
-  expr_buf:reset()
-
-  local gen = gen_for_field("tls.sni", OP_EQUAL, snis, function(_, p)
-    if #p > 1 and byte(p, -1) == DOT then
-      -- last dot in FQDNs must not be used for routing
-      return p:sub(1, -2)
-    end
-
-    return p
-  end)
-  if gen then
-    -- See #6425, if `net.protocol` is not `https`
-    -- then SNI matching should simply not be considered
-    if srcs or dsts then
-      gen = "(net.protocol != r#\"tls\"#"   .. LOGICAL_OR .. gen .. ")"
-    else
-      gen = "(net.protocol != r#\"https\"#" .. LOGICAL_OR .. gen .. ")"
-    end
-
-    expression_append(expr_buf, LOGICAL_AND, gen)
-  end
-
-  -- stream expression
-
-  do
-    local src_gen = gen_for_nets("net.src.ip", "net.src.port", srcs)
-    local dst_gen = gen_for_nets("net.dst.ip", "net.dst.port", dsts)
-
-    if src_gen then
-      expression_append(expr_buf, LOGICAL_AND, src_gen)
-    end
-
-    if dst_gen then
-      expression_append(expr_buf, LOGICAL_AND, dst_gen)
-    end
-
-    if src_gen or dst_gen then
-      -- returns a local variable instead of using a tail call
-      -- to avoid NYI
-      local str = expr_buf:get()
-      return str
-    end
-  end
-
-  -- http expression
-
-  local gen = gen_for_field("http.method", OP_EQUAL, methods)
-  if gen then
-    expression_append(expr_buf, LOGICAL_AND, gen)
-  end
-
-  if not is_empty_field(hosts) then
-    hosts_buf:reset():put("(")
-
-    for i, h in ipairs(hosts) do
-      local host, port = split_host_port(h)
-
-      local op = OP_EQUAL
-      if byte(host) == ASTERISK then
-        -- postfix matching
-        op = OP_POSTFIX
-        host = host:sub(2)
-
-      elseif byte(host, -1) == ASTERISK then
-        -- prefix matching
-        op = OP_PREFIX
-        host = host:sub(1, -2)
-      end
-
-      local exp = "http.host ".. op .. " r#\"" .. host .. "\"#"
-      if port then
-        exp = "(" .. exp .. LOGICAL_AND ..
-              "net.dst.port ".. OP_EQUAL .. " " .. port .. ")"
-      end
-      expression_append(hosts_buf, LOGICAL_OR, exp, i)
-    end -- for route.hosts
-
-    expression_append(expr_buf, LOGICAL_AND,
-                      hosts_buf:put(")"):get())
-  end
-
-  gen = gen_for_field("http.path", function(path)
-    return is_regex_magic(path) and OP_REGEX or OP_PREFIX
-  end, paths, function(op, p)
-    if op == OP_REGEX then
-      -- 1. strip leading `~`
-      -- 2. prefix with `^` to match the anchored behavior of the traditional router
-      -- 3. update named capture opening tag for rust regex::Regex compatibility
-      return "^" .. p:sub(2):gsub("?<", "?P<")
-    end
-
-    return p
-  end)
-  if gen then
-    expression_append(expr_buf, LOGICAL_AND, gen)
-  end
-
-  if not is_empty_field(headers) then
-    headers_buf:reset()
-
-    for h, v in pairs(headers) do
-      single_header_buf:reset():put("(")
-
-      for i, value in ipairs(v) do
-        local name = "any(lower(http.headers." .. replace_dashes_lower(h) .. "))"
-        local op = OP_EQUAL
-
-        -- value starts with "~*"
-        if byte(value, 1) == TILDE and byte(value, 2) == ASTERISK then
-          value = value:sub(3)
-          op = OP_REGEX
-        end
-
-        expression_append(single_header_buf, LOGICAL_OR,
-                          name .. " " .. op .. " " .. escape_str(value:lower()), i)
-      end
-
-      expression_append(headers_buf, LOGICAL_AND,
-                        single_header_buf:put(")"):get())
-    end
-
-    expression_append(expr_buf, LOGICAL_AND, headers_buf:get())
-  end
-
-  local str = expr_buf:get()
-
-  -- returns a local variable instead of using a tail call
-  -- to avoid NYI
-  return str
-end
-
-
-local lshift_uint64
-do
-  local ffi = require("ffi")
-  local ffi_uint = ffi.new("uint64_t")
-
-  lshift_uint64 = function(v, offset)
-    ffi_uint = v
-    return lshift(ffi_uint, offset)
-  end
-end
+local get_expression = transform.get_expression
+local lshift_uint64 = transform.lshift_uint64
 
 
 local stream_get_priority
