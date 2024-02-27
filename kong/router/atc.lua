@@ -15,8 +15,6 @@ local assert = assert
 local setmetatable = setmetatable
 local pairs = pairs
 local ipairs = ipairs
-
-
 local max = math.max
 
 
@@ -31,12 +29,10 @@ local ngx_ERR       = ngx.ERR
 local check_select_params  = utils.check_select_params
 local get_service_info     = utils.get_service_info
 local route_match_stat     = utils.route_match_stat
+local split_host_port      = transform.split_host_port
 
 
 local DEFAULT_MATCH_LRUCACHE_SIZE = utils.DEFAULT_MATCH_LRUCACHE_SIZE
-
-
-local split_host_port = transform.split_host_port
 
 
 local is_http = ngx.config.subsystem == "http"
