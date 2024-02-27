@@ -290,7 +290,7 @@ local function get_expression(route)
   if gen then
     -- See #6425, if `net.protocol` is not `https`
     -- then SNI matching should simply not be considered
-    if srcs or dsts then
+    if is_stream_route(route) then
       gen = "(net.protocol != r#\"tls\"#"   .. LOGICAL_OR .. gen .. ")"
     else
       gen = "(net.protocol != r#\"https\"#" .. LOGICAL_OR .. gen .. ")"
