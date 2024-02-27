@@ -1,0 +1,3 @@
+message: Fix the missing router section for the output of the request-debugging
+type: bugfix
+scope: Core
