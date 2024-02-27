@@ -139,6 +139,8 @@ local function gen_for_nets(ip_field, port_field, vals)
 
   local str = nets_buf:put(")"):get()
 
+  -- returns a local variable instead uses a tail call
+  -- to avoid NYI
   return str
 end
 
@@ -190,6 +192,8 @@ local function get_expression(route)
     end
 
     if src_gen or dst_gen then
+      -- returns a local variable instead uses a tail call
+      -- to avoid NYI
       local str = expr_buf:get()
       return str
     end
@@ -277,6 +281,8 @@ local function get_expression(route)
 
   local str = expr_buf:get()
 
+  -- returns a local variable instead uses a tail call
+  -- to avoid NYI
   return str
 end
 
