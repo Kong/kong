@@ -582,7 +582,6 @@ function _M.init(opts)
     opts.error_ttl = opts.badTtl
     opts.stale_ttl = opts.staleTtl
     opts.cache_size = opts.cacheSize
-    opts.cache_purge = true
 
     local client, err = _M.new(opts)
     if not client then
@@ -628,6 +627,12 @@ if package.loaded.busted then
     end
     function _M:get_last_type(name)
         return get_last_type(self.cache, name)
+    end
+    _M._init = _M.init
+    function _M.init(opts)
+        opts = opts or {}
+        opts.cache_purge = true
+        return _M._init(opts)
     end
 end
 
