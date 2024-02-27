@@ -238,7 +238,6 @@ function _M.new(opts)
         error_ttl = opts.error_ttl or DEFAULT_ERROR_TTL,
         stale_ttl = opts.stale_ttl or DEFAULT_STALE_TTL,
         empty_ttl = opts.empty_ttl or DEFAULT_EMPTY_TTL,
-        stale_refresh_interval = opts.stale_refresh_interval or 5,
         resolv = opts._resolv or resolv,
         hosts = hosts,
         enable_ipv6 = enable_ipv6,
@@ -359,22 +358,12 @@ local function resolve_name_type_callback(self, name, qtype, opts, tries)
     local key = name .. ":" .. qtype
 
     local ttl, _, answers = self.cache:peek(key, true)
-    if answers and ttl then
-        if not answers.expired then
-            ttl = ttl + self.stale_ttl
-            answers.expire = now() + ttl
-            answers.expired = true
-
-        else
-            ttl = ttl + (answers.expire - now())
-        end
-
-        -- automatically refresh the stale-but-in-use record after this interval
-        -- to avoid the need for inter-process communication
-        ttl = math_min(ttl, self.stale_refresh_interval)
-
+    if answers and ttl and not answers.expired then
+        ttl = ttl + self.stale_ttl
         if ttl > 0 then
             start_stale_update_task(self, key, name, qtype)
+            answers.expire = now() + ttl
+            answers.expired = true
             answers.ttl = ttl
             return answers, nil, ttl
         end
