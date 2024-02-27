@@ -535,6 +535,7 @@ describe(desc, function()
     assert.truthy(header_output.child.rewrite)
     assert.truthy(header_output.child.access)
     assert.truthy(header_output.child.access.child.dns) -- upstream is resolved in access phase
+    assert.truthy(header_output.child.access.child.router) -- router is executed in access phase
     assert(header_output.child.access.child.dns.child.localhost.child.resolve.cache_hit ~= nil, "dns cache hit should be recorded")
     assert.truthy(header_output.child.balancer)
     assert.truthy(header_output.child.header_filter)
@@ -542,6 +543,7 @@ describe(desc, function()
     assert.truthy(log_output.child.rewrite)
     assert.truthy(log_output.child.access)
     assert.truthy(log_output.child.access.child.dns) -- upstream is resolved in access phase
+    assert.truthy(log_output.child.access.child.router) -- router is executed in access phase
     assert(log_output.child.access.child.dns.child.localhost.child.resolve.cache_hit ~= nil, "dns cache hit should be recorded")
     assert.truthy(log_output.child.balancer)
     assert.truthy(log_output.child.header_filter)
@@ -573,11 +575,13 @@ describe(desc, function()
     assert.truthy(header_output.child.rewrite)
     assert.truthy(header_output.child.access)
     assert.truthy(header_output.child.access.child.dns) -- upstream is resolved in access phase
+    assert.truthy(header_output.child.access.child.router) -- router is executed in access phase
     assert.truthy(header_output.child.response)
 
     assert.truthy(log_output.child.rewrite)
     assert.truthy(log_output.child.access)
     assert.truthy(log_output.child.access.child.dns) -- upstream is resolved in access phase
+    assert.truthy(header_output.child.access.child.router) -- router is executed in access phase
     assert.truthy(log_output.child.body_filter)
     assert.truthy(log_output.child.log)
 
