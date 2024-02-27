@@ -22,7 +22,7 @@ set -euo pipefail
 readonly BUILD_TARGET=wasm32-wasi
 readonly FIXTURE_PATH=${PWD}/spec/fixtures/proxy_wasm_filters
 
-readonly INSTALL_ROOT=${PWD}/bazel-bin/build/kong-dev
+readonly INSTALL_ROOT=${PWD}/bazel-bin/build/${BUILD_NAME:-kong-dev}
 readonly TARGET_DIR=${INSTALL_ROOT}/wasm-cargo-target
 
 readonly KONG_TEST_USER_CARGO_DISABLED=${KONG_TEST_USER_CARGO_DISABLED:-0}
