@@ -372,6 +372,9 @@ if is_http then
 end -- is_http
 
 
+-- the fields returned from atc-router have fixed order and name
+-- traversing these fields will always get a decided result (for one router)
+-- so we need not to add field's name in cache key now
 local function visit_for_cache_key(field, value, str_buf)
   -- these fields were not in cache key
   if field == "net.protocol" then
