@@ -10,12 +10,8 @@ local _MT = { __index = _M, }
 
 
 local buffer = require("string.buffer")
-local schema = require("resty.router.schema")
-local context = require("resty.router.context")
-local router = require("resty.router.router")
 local lrucache = require("resty.lrucache")
 local tb_new = require("table.new")
-local fields = require("kong.router.fields")
 local utils = require("kong.router.utils")
 local rat = require("kong.tools.request_aware_table")
 local yield = require("kong.tools.yield").yield
@@ -59,10 +55,15 @@ local is_http = ngx.config.subsystem == "http"
 local values_buf = buffer.new(64)
 
 
-local CACHED_SCHEMA
-local HTTP_SCHEMA
-local STREAM_SCHEMA
+local get_atc_context
+local get_atc_router
+local get_atc_fields
 do
+  local schema = require("resty.router.schema")
+  local context = require("resty.router.context")
+  local router = require("resty.router.router")
+  local fields = require("kong.router.fields")
+
   local function generate_schema(fields)
     local s = schema.new()
 
@@ -76,11 +77,62 @@ do
   end
 
   -- used by validation
-  HTTP_SCHEMA   = generate_schema(fields.HTTP_FIELDS)
-  STREAM_SCHEMA = generate_schema(fields.STREAM_FIELDS)
+  local HTTP_SCHEMA   = generate_schema(fields.HTTP_FIELDS)
+  local STREAM_SCHEMA = generate_schema(fields.STREAM_FIELDS)
 
   -- used by running router
-  CACHED_SCHEMA = is_http and HTTP_SCHEMA or STREAM_SCHEMA
+  local CACHED_SCHEMA = is_http and HTTP_SCHEMA or STREAM_SCHEMA
+
+  get_atc_context = function()
+    return context.new(CACHED_SCHEMA)
+  end
+
+  get_atc_router = function(routes_n)
+    return router.new(CACHED_SCHEMA, routes_n)
+  end
+
+  get_atc_fields = function(inst)
+    return fields.new(inst:get_fields())
+  end
+
+  local protocol_to_schema = {
+    http  = HTTP_SCHEMA,
+    https = HTTP_SCHEMA,
+    grpc  = HTTP_SCHEMA,
+    grpcs = HTTP_SCHEMA,
+
+    tcp   = STREAM_SCHEMA,
+    udp   = STREAM_SCHEMA,
+    tls   = STREAM_SCHEMA,
+
+    tls_passthrough = STREAM_SCHEMA,
+  }
+
+  -- for db schema validation
+  function _M.schema(protocols)
+    return assert(protocol_to_schema[protocols[1]])
+  end
+
+  -- for unit testing
+  function _M._set_ngx(mock_ngx)
+    if type(mock_ngx) ~= "table" then
+      return
+    end
+
+    if mock_ngx.header then
+      header = mock_ngx.header
+    end
+
+    if mock_ngx.var then
+      var = mock_ngx.var
+    end
+
+    if mock_ngx.log then
+      ngx_log = mock_ngx.log
+    end
+
+    fields._set_ngx(mock_ngx)
+  end
 end
 
 
@@ -173,7 +225,7 @@ local function new_from_scratch(routes, get_exp_and_priority)
 
   local routes_n = #routes
 
-  local inst = router.new(CACHED_SCHEMA, routes_n)
+  local inst = get_atc_router(routes_n)
 
   local routes_t   = tb_new(0, routes_n)
   local services_t = tb_new(0, routes_n)
@@ -207,8 +259,8 @@ local function new_from_scratch(routes, get_exp_and_priority)
   end
 
   return setmetatable({
-      context = context.new(CACHED_SCHEMA),
-      fields = fields.new(inst:get_fields()),
+      context = get_atc_context(),
+      fields = get_atc_fields(inst),
       router = inst,
       routes = routes_t,
       services = services_t,
@@ -293,7 +345,7 @@ local function new_from_previous(routes, get_exp_and_priority, old_router)
     yield(true, phase)
   end
 
-  old_router.fields = fields.new(inst:get_fields())
+  old_router.fields = get_atc_fields(inst)
   old_router.updated_at = new_updated_at
   old_router.rebuilding = false
 
@@ -664,49 +716,6 @@ function _M:exec(ctx)
 end
 
 end   -- if is_http
-
-
-function _M._set_ngx(mock_ngx)
-  if type(mock_ngx) ~= "table" then
-    return
-  end
-
-  if mock_ngx.header then
-    header = mock_ngx.header
-  end
-
-  if mock_ngx.var then
-    var = mock_ngx.var
-  end
-
-  if mock_ngx.log then
-    ngx_log = mock_ngx.log
-  end
-
-  -- unit testing
-  fields._set_ngx(mock_ngx)
-end
-
-
-do
-  local protocol_to_schema = {
-    http  = HTTP_SCHEMA,
-    https = HTTP_SCHEMA,
-    grpc  = HTTP_SCHEMA,
-    grpcs = HTTP_SCHEMA,
-
-    tcp   = STREAM_SCHEMA,
-    udp   = STREAM_SCHEMA,
-    tls   = STREAM_SCHEMA,
-
-    tls_passthrough = STREAM_SCHEMA,
-  }
-
-  -- for db schema validation
-  function _M.schema(protocols)
-    return assert(protocol_to_schema[protocols[1]])
-  end
-end
 
 
 _M.LOGICAL_OR      = LOGICAL_OR
