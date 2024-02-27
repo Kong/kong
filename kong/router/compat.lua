@@ -24,7 +24,7 @@ local pairs = pairs
 local ipairs = ipairs
 local assert = assert
 local tb_insert = table.insert
-local bor, band, lshift = bit.bor, bit.band, bit.lshift
+local bor, band = bit.bor, bit.band
 
 
 local is_http = ngx.config.subsystem == "http"
@@ -96,7 +96,7 @@ do
     local dst_bits = calc_ip_weight(dsts)
 
     local priority = bor(match_weight,
-                         lshift(src_bits, 4),
+                         lshift_uint64(src_bits, 4),
                          dst_bits)
 
     return priority
