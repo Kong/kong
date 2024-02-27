@@ -1,0 +1,12 @@
+name: commit-lint
+
+on: [push, pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: ahmadnassri/action-commit-lint@v2
+        with:
+          config: conventional
