@@ -1,6 +1,7 @@
 local bit = require("bit")
 local buffer = require("string.buffer")
 local lrucache = require("resty.lrucache")
+local ipmatcher = require("resty.ipmatcher")
 local utils = require("kong.router.utils")
 
 
@@ -155,34 +156,28 @@ local function gen_for_field(name, op, vals, val_transform)
 end
 
 
-local parse_ip_addr
-do
-  local ipmatcher = require("resty.ipmatcher")
+local function parse_ip_addr(ip)
+  local addr, mask = ipmatcher.split_ip(ip)
 
-
-  parse_ip_addr = function(ip)
-    local addr, mask = ipmatcher.split_ip(ip)
-
-    if not mask then
-      return addr
-    end
-
-    local ipv4 = ipmatcher.parse_ipv4(addr)
-
-    -- FIXME: support ipv6
-    if not ipv4 then
-      return addr, mask
-    end
-
-    local cidr = lshift(rshift(ipv4, 32 - mask), 32 - mask)
-
-    local n1 = band(       cidr     , 0xff)
-    local n2 = band(rshift(cidr,  8), 0xff)
-    local n3 = band(rshift(cidr, 16), 0xff)
-    local n4 = band(rshift(cidr, 24), 0xff)
-
-    return n4 .. "." .. n3 .. "." .. n2 .. "." .. n1, mask
+  if not mask then
+    return addr
   end
+
+  local ipv4 = ipmatcher.parse_ipv4(addr)
+
+  -- FIXME: support ipv6
+  if not ipv4 then
+    return addr, mask
+  end
+
+  local cidr = lshift(rshift(ipv4, 32 - mask), 32 - mask)
+
+  local n1 = band(       cidr     , 0xff)
+  local n2 = band(rshift(cidr,  8), 0xff)
+  local n3 = band(rshift(cidr, 16), 0xff)
+  local n4 = band(rshift(cidr, 24), 0xff)
+
+  return n4 .. "." .. n3 .. "." .. n2 .. "." .. n1, mask
 end
 
 
