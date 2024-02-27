@@ -9,11 +9,10 @@ local assert = assert
 local tonumber = tonumber
 local ipairs = ipairs
 local byte = string.byte
-local lshift = bit.lshift
+local band, lshift, rshift = bit.band, bit.lshift, bit.rshift
 
 
 local is_regex_magic  = utils.is_regex_magic
-local parse_ip_addr   = utils.parse_ip_addr
 local replace_dashes_lower  = require("kong.tools.string").replace_dashes_lower
 
 
@@ -154,6 +153,37 @@ local function gen_for_field(name, op, vals, val_transform)
   local str = values_buf:put(")"):get()
 
   return str
+end
+
+
+local parse_ip_addr
+do
+  local ipmatcher = require("resty.ipmatcher")
+
+
+  parse_ip_addr = function(ip)
+    local addr, mask = ipmatcher.split_ip(ip)
+
+    if not mask then
+      return addr
+    end
+
+    local ipv4 = ipmatcher.parse_ipv4(addr)
+
+    -- FIXME: support ipv6
+    if not ipv4 then
+      return addr, mask
+    end
+
+    local cidr = lshift(rshift(ipv4, 32 - mask), 32 - mask)
+
+    local n1 = band(       cidr     , 0xff)
+    local n2 = band(rshift(cidr,  8), 0xff)
+    local n3 = band(rshift(cidr, 16), 0xff)
+    local n4 = band(rshift(cidr, 24), 0xff)
+
+    return n4 .. "." .. n3 .. "." .. n2 .. "." .. n1, mask
+  end
 end
 
 
