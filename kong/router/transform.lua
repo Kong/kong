@@ -91,6 +91,8 @@ end
 
 local LOGICAL_OR  = " || "
 local LOGICAL_AND = " && "
+
+
 local OP_EQUAL    = "=="
 local OP_PREFIX   = "^="
 local OP_POSTFIX  = "=^"
@@ -104,7 +106,7 @@ local ASTERISK         = byte("*")
 
 
 -- reuse buffer objects
-local values_buf = buffer.new(64)
+local values_buf        = buffer.new(64)
 local expr_buf          = buffer.new(128)
 local hosts_buf         = buffer.new(64)
 local headers_buf       = buffer.new(128)

@@ -14,9 +14,9 @@ local shallow_copy          = require("kong.tools.utils").shallow_copy
 
 
 local is_regex_magic  = utils.is_regex_magic
-
-
 local is_empty_field  = transform.is_empty_field
+local get_expression  = transform.get_expression
+local lshift_uint64   = transform.lshift_uint64
 
 
 local type = type
@@ -37,10 +37,6 @@ local MAX_HEADER_COUNT = 255
 -- the original route id and the path index so that incremental rebuilds see stable IDs for routes that have not
 -- changed.
 local uuid_generator = assert(uuid.factory_v5('7f145bf9-0dce-4f91-98eb-debbce4b9f6b'))
-
-
-local get_expression = transform.get_expression
-local lshift_uint64 = transform.lshift_uint64
 
 
 local stream_get_priority
