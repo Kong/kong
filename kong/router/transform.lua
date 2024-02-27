@@ -8,6 +8,7 @@ local type = type
 local assert = assert
 local tonumber = tonumber
 local ipairs = ipairs
+local fmt = string.format
 local byte = string.byte
 local band, lshift, rshift = bit.band, bit.lshift, bit.rshift
 
@@ -139,12 +140,10 @@ local function gen_for_field(name, op, vals, val_transform)
     local p = vals[i]
     local op = (type(op) == "string") and op or op(p)
 
-    if i > 1 then
-      values_buf:put(LOGICAL_OR)
-    end
-
-    values_buf:putf("%s %s %s", name, op,
+    local expr = fmt("%s %s %s", name, op,
                     escape_str(val_transform and val_transform(op, p) or p))
+
+    expression_append(values_buf, LOGICAL_OR, expr, i)
   end
 
   -- consume the whole buffer
