@@ -561,7 +561,7 @@ receive the very special Contributor T-shirt! Go ahead and fill out the
 Proudly wear your T-shirt and show it to us by tagging
 [@thekonginc](https://twitter.com/thekonginc) on Twitter!
 
-![Kong Contributor T-shirt](https://konghq.com/wp-content/uploads/2018/04/100-contributor-t-shirt-1024x768.jpg)
+![Kong Contributor T-shirt](https://github.com/Nikhil8557/kong/assets/71388692/df754f5f-5286-489a-9051-4f5f07e7cfd4)
 
 [Back to TOC](#table-of-contents)
 
@@ -970,4 +970,3 @@ ngx.log(ngx.DEBUG, "if `my_var` is nil, this code is fine: ", my_var)
 [Back to code style TOC](#table-of-contents---code-style)
 
 [Back to TOC](#table-of-contents)
-
