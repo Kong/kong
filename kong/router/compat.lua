@@ -144,7 +144,11 @@ local function gen_for_nets(ip_field, port_field, vals)
     ::continue::
   end   -- for
 
-  return nets_buf:put(")"):get()
+  local str = nets_buf:put(")"):get()
+
+  -- returns a local variable instead of using a tail call
+  -- to avoid NYI
+  return str
 end
 
 
@@ -195,7 +199,10 @@ local function get_expression(route)
     end
 
     if src_gen or dst_gen then
-      return expr_buf:get()
+      -- returns a local variable instead of using a tail call
+      -- to avoid NYI
+      local str = expr_buf:get()
+      return str
     end
   end
 
@@ -279,7 +286,11 @@ local function get_expression(route)
     expression_append(expr_buf, LOGICAL_AND, headers_buf:get())
   end
 
-  return expr_buf:get()
+  local str = expr_buf:get()
+
+  -- returns a local variable instead of using a tail call
+  -- to avoid NYI
+  return str
 end
 
 
