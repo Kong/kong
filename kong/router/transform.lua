@@ -8,7 +8,6 @@ local utils = require("kong.router.utils")
 
 local type = type
 local assert = assert
-local tonumber = tonumber
 local ipairs = ipairs
 local fmt = string.format
 local byte = string.byte
@@ -54,6 +53,8 @@ end
 -- example.*:123 => example.*, 123
 local split_host_port
 do
+  local tonumber = tonumber
+
   local DEFAULT_HOSTS_LRUCACHE_SIZE = utils.DEFAULT_MATCH_LRUCACHE_SIZE
 
   local memo_hp = lrucache.new(DEFAULT_HOSTS_LRUCACHE_SIZE)
@@ -110,9 +111,9 @@ local ASTERISK         = byte("*")
 -- reuse buffer objects
 local values_buf        = buffer.new(64)
 local nets_buf          = buffer.new(64)
-local expr_buf          = buffer.new(128)
+local expr_buf          = buffer.new(64)
 local hosts_buf         = buffer.new(64)
-local headers_buf       = buffer.new(128)
+local headers_buf       = buffer.new(64)
 local single_header_buf = buffer.new(64)
 
 
