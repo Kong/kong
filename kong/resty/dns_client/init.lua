@@ -14,6 +14,8 @@ local timer_at = ngx.timer.at
 local table_insert = table.insert
 local ipv6_bracket = utils.ipv6_bracket
 
+local req_dyn_hook_run_hooks = require("kong.dynamic_hook").run_hooks
+
 -- Constants and default values
 local DEFAULT_ERROR_TTL = 1     -- unit: second
 local DEFAULT_STALE_TTL = 4
@@ -424,12 +426,18 @@ local function resolve_name_type(self, name, qtype, opts, tries)
     local answers, err, hit_level = self.cache:get(key, nil,
                                                 resolve_name_type_callback,
                                                 self, name, qtype, opts, tries)
-    if err and err:sub(1, #"callback") == "callback" then
+    if err and err:sub(1, 8) == "callback" then
         log(ALERT, err)
     end
 
     if not answers and not err then
         answers = EMPTY_ANSWERS
+    end
+
+    local ctx = ngx.ctx
+    if ctx and ctx.has_timing then
+        req_dyn_hook_run_hooks(ctx, "timing", "dns:cache_lookup",
+                               (hit_level and hit_level < 3))
     end
 
     if hit_level and hit_level < 3 then
@@ -534,6 +542,12 @@ local function resolve_all(self, name, opts, tries)
         end
 
     else
+        local ctx = ngx.ctx
+        if ctx and ctx.has_timing then
+            req_dyn_hook_run_hooks(ctx, "timing", "dns:cache_lookup",
+                                   (hit_level and hit_level < 3))
+        end
+
         stats_count(self.stats, name, hitstrs[hit_level])
     end
 
