@@ -10,13 +10,11 @@ local transform = require("kong.router.transform")
 
 local gen_for_field = transform.gen_for_field
 local OP_EQUAL      = transform.OP_EQUAL
+local LOGICAL_AND   = transform.LOGICAL_AND
 
 
 local NET_PORT_REG = [[(net\.port)(\s*)([=><!])]]
 local NET_PORT_REPLACE = [[net.dst.port$2$3]]
-
-
-local LOGICAL_AND = transform.LOGICAL_AND
 
 
 -- map to normal protocol
