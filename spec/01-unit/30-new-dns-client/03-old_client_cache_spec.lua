@@ -588,23 +588,19 @@ describe("[DNS client cache]", function()
       assert.same(err, "dns server error: 3 name error")
       assert.same({
         {
-          "192.168.5.232.node.api_test.consul",
-          33,
+          "192.168.5.232.node.api_test.consul:SRV",
           "dns server error: 3 name error",
         },
         {
-          "192.168.5.232.node.api_test.consul",
-          1,
+          "192.168.5.232.node.api_test.consul:A",
           "dns server error: 3 name error",
         },
         {
-          "192.168.5.232.node.api_test.consul",
-          28,
+          "192.168.5.232.node.api_test.consul:AAAA",
           "dns server error: 3 name error",
         },
         {
-          "192.168.5.232.node.api_test.consul",
-          5,
+          "192.168.5.232.node.api_test.consul:CNAME",
           "dns server error: 3 name error",
         }
       }, tries)
