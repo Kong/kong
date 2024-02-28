@@ -12,16 +12,18 @@ local cookie_helper = require "spec-ee.fixtures.cookie_helper"
 local find = string.find
 local clear_license_env = require("spec-ee.helpers").clear_license_env
 local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
+local keycloak_api = require "spec-ee.fixtures.keycloak_api".new()
 
 local portal_client
 local PLUGIN_NAME = "openid-connect"
-local KEYCLOAK_HOST = (os.getenv("KONG_SPEC_TEST_KEYCLOAK_HOST") or "keycloak") .. ":" .. (os.getenv("KONG_SPEC_TEST_KEYCLOAK_PORT_8080") or "8080")
-local ISSUER_URL = "http://" .. KEYCLOAK_HOST .. "/realms/demo/"
+local keycloak_config = keycloak_api.config
+local KEYCLOAK_HOST = keycloak_config.host
+local ISSUER_URL = keycloak_config.issuer
 local USERNAME = "john.doe@konghq.com"
 local PASSWORD = "doe"
-local KONG_CLIENT_ID = "kong-client-secret"
-local KONG_CLIENT_SECRET = "38beb963-2786-42b8-8e14-a5f391b4ba93"
-local KONG_HOST ="localhost"
+local KONG_CLIENT_ID = keycloak_config.client_id
+local KONG_CLIENT_SECRET = keycloak_config.client_secret
+local KONG_HOST = "localhost"
 
 local function auth_conf(workspace_name, subdomain_mode, mixin)
   local login_redirect_uri = subdomain_mode

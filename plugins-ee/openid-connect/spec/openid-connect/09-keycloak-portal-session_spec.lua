@@ -16,11 +16,11 @@ local fmt                 = string.format
 local cookie_helper       = require "spec-ee.fixtures.cookie_helper"
 local clear_license_env   = require("spec-ee.helpers").clear_license_env
 local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
-local keycloak_api              = require "spec-ee.fixtures.keycloak_api"
+local keycloak_api        = require "spec-ee.fixtures.keycloak_api".new()
 
 local portal_client
 local PLUGIN_NAME         = "openid-connect"
-local cloak_settings      = keycloak_api.cloak_settings()
+local keycloak_config     = keycloak_api.config
 local USERNAME            = "john.doe@konghq.com"
 local PASSWORD            = "doe"
 local KONG_HOST           = "localhost"
@@ -45,10 +45,10 @@ local function auth_conf(workspace)
       .. redirect_uri ..
       [["],
       "client_secret": ["]]
-      .. cloak_settings.client_secret ..
+      .. keycloak_config.client_secret ..
       [["],
       "issuer": "]]
-      .. cloak_settings.issuer ..
+      .. keycloak_config.issuer ..
       [[",
       "logout_methods": [
           "GET",
@@ -77,7 +77,7 @@ local function auth_conf(workspace)
           "session"
       ],
       "client_id": ["]]
-      .. cloak_settings.client_id ..
+      .. keycloak_config.client_id ..
       [["],
       "ssl_verify": false,
       "consumer_claim": [
@@ -136,7 +136,7 @@ local function authentication(workspace)
     headers = {
       -- impersonate as browser
       ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", -- luacheck: ignore
-      ["Host"] = cloak_settings.host,
+      ["Host"] = keycloak_config.host,
     }
   })
   assert.is_nil(err)
@@ -160,7 +160,7 @@ local function authentication(workspace)
     headers = {
       -- impersonate as browser
       ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", --luacheck: ignore
-      ["Host"] = cloak_settings.host,
+      ["Host"] = keycloak_config.host,
       -- due to form_data
       ["Content-Type"] = "application/x-www-form-urlencoded",
       Cookie = keycloak_cookie_jar:to_header(),

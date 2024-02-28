@@ -10,17 +10,18 @@ local helpers = require "spec.helpers"
 local uuid = require("kong.tools.utils").uuid
 -- local http_mock = require "spec.helpers.http_mock"
 local sub = string.sub
+local keycloak_api = require "spec-ee.fixtures.keycloak_api".new()
 
 local encode_base64 = ngx.encode_base64
 
 local PLUGIN_NAME = "konnect-application-auth"
 local OIDC_PLUGIN_NAME = "openid-connect"
-
-local KEYCLOAK_HOST = os.getenv("KONG_SPEC_TEST_KEYCLOAK_HOST") or "keycloak"
-local KEYCLOAK_PORT = tonumber(os.getenv("KONG_SPEC_TEST_KEYCLOAK_PORT_8080")) or 8080
-local REALM_PATH = "/realms/demo"
+local keycloak_config = keycloak_api.config
+local KEYCLOAK_HOST = keycloak_config.host_name
+local KEYCLOAK_PORT = tonumber(keycloak_config.port)
+local REALM_PATH = keycloak_config.realm_path
 local DISCOVERY_PATH = "/.well-known/openid-configuration"
-local ISSUER_URL = "http://" .. KEYCLOAK_HOST .. ":" .. KEYCLOAK_PORT .. REALM_PATH
+local ISSUER_URL = keycloak_config.issuer
 
 local CLIENT_ID = "service"
 local CLIENT_SECRET = "7adf1a21-6b9e-45f5-a033-d0e8f47b1dbc"

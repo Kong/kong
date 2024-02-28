@@ -12,7 +12,7 @@ local helpers = require "spec.helpers"
 local version = require "version"
 local http_mock = require "spec.helpers.http_mock"
 local redis_helper = require "spec.helpers.redis_helper"
-
+local keycloak_api = require "spec-ee.fixtures.keycloak_api".new()
 
 local encode_base64 = ngx.encode_base64
 local sub = string.sub
@@ -20,14 +20,15 @@ local find = string.find
 
 
 local PLUGIN_NAME = "openid-connect"
-local KEYCLOAK_HOST = os.getenv("KONG_SPEC_TEST_KEYCLOAK_HOST") or "keycloak"
-local KEYCLOAK_PORT = tonumber(os.getenv("KONG_SPEC_TEST_KEYCLOAK_PORT_8080")) or 8080
-local KEYCLOAK_SSL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_KEYCLOAK_PORT_8443")) or 8443
-local KEYCLOAK_HOST_HEADER = KEYCLOAK_HOST .. ":" .. KEYCLOAK_PORT
-local REALM_PATH = "/realms/demo"
+local keycloak_config = keycloak_api.config
+local KEYCLOAK_HOST = keycloak_config.host_name
+local KEYCLOAK_PORT = tonumber(keycloak_config.port)
+local KEYCLOAK_SSL_PORT = tonumber(keycloak_config.ssl_port)
+local KEYCLOAK_HOST_HEADER = keycloak_config.host
+local REALM_PATH = keycloak_config.realm_path
 local DISCOVERY_PATH = "/.well-known/openid-configuration"
-local ISSUER_URL = "http://" .. KEYCLOAK_HOST .. ":" .. KEYCLOAK_PORT .. REALM_PATH
-local ISSUER_SSL_URL = "https://" .. KEYCLOAK_HOST .. ":" .. KEYCLOAK_SSL_PORT .. REALM_PATH
+local ISSUER_URL = keycloak_config.issuer
+local ISSUER_SSL_URL = keycloak_config.ssl_issuer
 
 local USERNAME = "john"
 local USERNAME2 = "bill"
@@ -45,8 +46,8 @@ local USERNAME2_PASSWORD_CREDENTIALS = "Basic " .. encode_base64(USERNAME2 .. ":
 local CLIENT_CREDENTIALS = "Basic " .. encode_base64(CLIENT_ID .. ":" .. CLIENT_SECRET)
 
 local KONG_HOST = "localhost" -- only use other names and when it's resolvable by resty.http
-local KONG_CLIENT_ID = "kong-client-secret"
-local KONG_CLIENT_SECRET = "38beb963-2786-42b8-8e14-a5f391b4ba93"
+local KONG_CLIENT_ID = keycloak_config.client_id
+local KONG_CLIENT_SECRET = keycloak_config.client_secret
 
 local PUBLIC_CLIENT_ID = "kong-public"
 

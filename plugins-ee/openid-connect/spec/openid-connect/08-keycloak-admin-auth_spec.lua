@@ -11,7 +11,7 @@ local ee_helpers     = require "spec-ee.helpers"
 local utils          = require "kong.tools.utils"
 local rbac           = require "kong.rbac"
 local http           = require "resty.http".new()
-local keycloak_api   = require "spec-ee.fixtures.keycloak_api"
+local keycloak_api   = require "spec-ee.fixtures.keycloak_api".new()
 
 local sub            = string.sub
 local gsub           = string.gsub
@@ -19,11 +19,11 @@ local find           = string.find
 
 local PLUGIN_NAME    = "openid-connect"
 local PASSWORD       = "doe"
-local cloak_settings = keycloak_api.cloak_settings()
+local cloak_settings = keycloak_api.config
 local KONG_HOST      = "localhost"
 
 local function get_access_token(client)
-  local res = keycloak_api.auth(client)
+  local res = keycloak_api:auth(client)
   assert.response(res).has.status(200)
   local json = assert.response(res).has.jsonbody()
   assert.is_not_nil(json)
@@ -33,7 +33,7 @@ local function get_access_token(client)
 end
 
 local function do_cloak_request(handler, client, has_body, status, ...)
-  local res = handler(client, get_access_token(client), ...)
+  local res = handler(keycloak_api, client, get_access_token(client), ...)
   status = status or 200
   assert.response(res).has.status(status)
   if has_body then
@@ -538,7 +538,7 @@ for _, strategy in helpers.each_strategy() do
 
         ee_helpers.register_rbac_resources(db, "default")
         admin_client = helpers.admin_client()
-        keycloak_client = helpers.http_client(cloak_settings.ip, cloak_settings.port)
+        keycloak_client = helpers.http_client(cloak_settings.host_name, cloak_settings.port)
 
         -- retrieve user from keycloak
         user = get_user_by_username(keycloak_client, "sam")

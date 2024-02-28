@@ -13,14 +13,15 @@ local redis_helper = require "spec.helpers.redis_helper"
 
 local helpers = require "spec.helpers"
 local split   = require("kong.tools.utils").split
+local keycloak_api = require "spec-ee.fixtures.keycloak_api".new()
 
-
+local keycloak_config    = keycloak_api.config
 local PLUGIN_NAME        = "saml"
 local USERNAME           = "samluser1"
 local PASSWORD           = "pass1234#"
-local KEYCLOAK_HOST      = os.getenv("KONG_SPEC_TEST_KEYCLOAK_HOST") or "keycloak"
-local KEYCLOAK_PORT      = tonumber(os.getenv("KONG_SPEC_TEST_KEYCLOAK_PORT_8080")) or 8080
-local REALM_PATH         = "/realms/demo"
+local KEYCLOAK_HOST      = keycloak_config.host_name
+local KEYCLOAK_PORT      = tonumber(keycloak_config.port)
+local REALM_PATH         = keycloak_config.realm_path
 local SESSION_SECRET     = "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii"
 
 local IDP_DESCRIPTOR_URL = "http://" .. KEYCLOAK_HOST .. ":" .. KEYCLOAK_PORT .. REALM_PATH .. "/protocol/saml/descriptor"

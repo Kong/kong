@@ -10,9 +10,10 @@
 
 local fmt = string.format
 
-local KEYCLOAK_IP         = os.getenv("KONG_SPEC_TEST_KEYCLOAK_HOST") or "keycloak"
+local KEYCLOAK_CONTEXT_PATH = ""
+local KEYCLOAK_HOSTNAME   = os.getenv("KONG_SPEC_TEST_KEYCLOAK_HOST") or "keycloak"
 local KEYCLOAK_PORT       = os.getenv("KONG_SPEC_TEST_KEYCLOAK_PORT_8080") or "8080"
-local KEYCLOAK_SSL_PORT   = "8443"
+local KEYCLOAK_SSL_PORT   = os.getenv("KONG_SPEC_TEST_KEYCLOAK_PORT_8443") or "8443"
 local KEYCLOAK_CLIENT_ID  = "admin-cli"
 local KEYCLOAK_USERNAME   = "admin"
 local KEYCLOAK_PASSWORD   = "test" -- retrieve the password from the openid-connect/.pongo/keycloak.yml
@@ -22,37 +23,16 @@ local KEYCLOAK_REALM      = "demo"
 local KONG_CLIENT_ID      = "kong-client-secret"
 local KONG_CLIENT_SECRET  = "38beb963-2786-42b8-8e14-a5f391b4ba93"
 
-local function api_uri(path, ...)
-  local prefix = fmt("/admin/realms/%s", KEYCLOAK_REALM)
+local _keycloak   = {}
+
+local function api_uri(self, path, ...)
+  local prefix = fmt("%s/admin/realms/%s", self.config.context_path, self.config.realm)
   return prefix .. fmt(path, ...)
 end
 
-local function cloak_settings()
-  return {
-    realm = KEYCLOAK_REALM,
-    issuer = fmt("http://%s:%s/realms/%s/.well-known/openid-configuration",
-      KEYCLOAK_IP,
-      KEYCLOAK_PORT,
-      KEYCLOAK_REALM
-    ),
-    ssl_issuer = fmt("https://%s:%s/realms/%s/.well-known/openid-configuration",
-      KEYCLOAK_IP,
-      KEYCLOAK_SSL_PORT,
-      KEYCLOAK_REALM
-    ),
-    ip = KEYCLOAK_IP,
-    port = KEYCLOAK_PORT,
-    ssl_port = KEYCLOAK_SSL_PORT,
-    host = KEYCLOAK_IP .. ":" .. KEYCLOAK_PORT,
-    ssl_host = KEYCLOAK_IP .. ":" .. KEYCLOAK_SSL_PORT,
-    client_id = KONG_CLIENT_ID,
-    client_secret = KONG_CLIENT_SECRET,
-  }
-end
-
 -- return 200
-local function auth(client)
-  local url = "/realms/master/protocol/openid-connect/token"
+function _keycloak:auth(client)
+  local url = fmt("%s/realms/master/protocol/openid-connect/token", self.config.context_path)
   return client:send {
     method = "POST",
     path = url,
@@ -69,11 +49,11 @@ local function auth(client)
 end
 
 -- return 201
-local function add_user(client, access_token, body)
+function _keycloak:add_user(client, access_token, body)
   return client:send {
     method = "POST",
     body = body,
-    path = api_uri("/users"),
+    path = api_uri(self, "/users"),
     headers = {
       ["Content-Type"] = "application/json",
       ["Authorization"] = access_token,
@@ -82,10 +62,10 @@ local function add_user(client, access_token, body)
 end
 
 -- return 204
-local function delete_user(client, access_token, user_id)
+function _keycloak:delete_user(client, access_token, user_id)
   return client:send {
     method = "DELETE",
-    path = api_uri("/users/%s", user_id),
+    path = api_uri(self, "/users/%s", user_id),
     headers = {
       ["Authorization"] = access_token,
     }
@@ -95,10 +75,10 @@ end
 -- return 200,
 -- return userList
 -- https://www.keycloak.org/docs-api/23.0.4/rest-api/index.html#_users
-local function get_users(client, access_token, username)
+function _keycloak:get_users(client, access_token, username)
   return client:send {
     method = "GET",
-    path = api_uri("/users?exact=true&max=10&username=%s", username),
+    path = api_uri(self, "/users?exact=true&max=10&username=%s", username),
     headers = {
       ["Authorization"] = access_token,
     }
@@ -107,10 +87,10 @@ end
 
 -- return 201, no body
 -- https://www.keycloak.org/docs-api/23.0.4/rest-api/index.html#_groups
-local function add_group(client, access_token, body)
+function _keycloak:add_group(client, access_token, body)
   return client:send {
     method = "POST",
-    path = api_uri("/groups"),
+    path = api_uri(self, "/groups"),
     body = body,
     headers = {
       ["Content-Type"] = "application/json",
@@ -120,10 +100,10 @@ local function add_group(client, access_token, body)
 end
 
 -- return 204, no body
-local function delete_group(client, access_token, group_id)
+function _keycloak:delete_group(client, access_token, group_id)
   return client:send {
     method = "DELETE",
-    path = api_uri("/groups/%s", group_id),
+    path = api_uri(self, "/groups/%s", group_id),
     headers = {
       ["Content-Type"] = "application/json",
       ["Authorization"] = access_token,
@@ -133,10 +113,10 @@ end
 
 -- return 200
 -- return groups
-local function get_groups(client, access_token, name)
+function _keycloak:get_groups(client, access_token, name)
   return client:send {
     method = "GET",
-    path = api_uri("/groups?exact=true&max=10&search=%s", name),
+    path = api_uri(self, "/groups?exact=true&max=10&search=%s", name),
     headers = {
       ["Authorization"] = access_token,
     }
@@ -144,10 +124,10 @@ local function get_groups(client, access_token, name)
 end
 
 -- return 204, no body
-local function add_group_to_user(client, access_token, user_id, group_id)
+function _keycloak:add_group_to_user(client, access_token, user_id, group_id)
   return client:send {
     method = "PUT",
-    path = api_uri("/users/%s/groups/%s", user_id, group_id),
+    path = api_uri(self, "/users/%s/groups/%s", user_id, group_id),
     headers = {
       ["Authorization"] = access_token,
     }
@@ -155,25 +135,51 @@ local function add_group_to_user(client, access_token, user_id, group_id)
 end
 
 -- return 204, no body
-local function delete_group_from_user(client, access_token, user_id, group_id)
+function _keycloak:delete_group_from_user(client, access_token, user_id, group_id)
   return client:send {
     method = "DELETE",
-    path = api_uri("/users/%s/groups/%s", user_id, group_id),
+    path = api_uri(self, "/users/%s/groups/%s", user_id, group_id),
     headers = {
       ["Authorization"] = access_token,
     }
   }
 end
 
-return {
-  cloak_settings = cloak_settings,
-  auth = auth,
-  add_user = add_user,
-  delete_user = delete_user,
-  add_group = add_group,
-  delete_group = delete_group,
-  get_users = get_users,
-  get_groups = get_groups,
-  add_group_to_user = add_group_to_user,
-  delete_group_from_user = delete_group_from_user
-}
+local _M = {}
+
+function _M.new(keycloak_config)
+  keycloak_config = keycloak_config or {}
+  local config = {
+    context_path = keycloak_config.context_path or KEYCLOAK_CONTEXT_PATH,
+    realm = keycloak_config.realm or KEYCLOAK_REALM,
+    host_name = keycloak_config.host_name or KEYCLOAK_HOSTNAME,
+    port = keycloak_config.port or KEYCLOAK_PORT,
+    ssl_port = keycloak_config.ssl_port or KEYCLOAK_SSL_PORT,
+    client_id = keycloak_config.client_id or KONG_CLIENT_ID,
+    client_secret = keycloak_config.client_secret or KONG_CLIENT_SECRET,
+  }
+
+  config.realm_path = fmt("%s/realms/%s", config.context_path, config.realm)
+  config.host = config.host_name .. ":" .. config.port
+  config.ssl_host = config.host_name .. ":" .. config.ssl_port
+  config.issuer = fmt("http://%s%s/realms/%s", config.host, config.context_path, config.realm)
+  config.ssl_issuer = fmt("https://%s%s/realms/%s", config.ssl_host, config.context_path, config.realm)
+  config.issuer_discovery = fmt("http://%s%s/realms/%s/.well-known/openid-configuration",
+    config.host,
+    config.context_path,
+    config.realm
+  )
+  config.ssl_issuer_discovery = fmt("https://%s%s/realms/%s/.well-known/openid-configuration",
+    config.ssl_host,
+    config.context_path,
+    config.realm
+  )
+
+  local self = {
+    config = config
+  }
+
+  return setmetatable(self, { __index = _keycloak })
+end
+
+return _M

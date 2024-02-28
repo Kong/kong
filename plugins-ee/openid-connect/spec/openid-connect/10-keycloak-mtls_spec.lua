@@ -14,9 +14,10 @@ local fixtures_certificates = require "spec.openid-connect.fixtures.certificates
 
 local pl_file = require "pl.file"
 local cjson = require "cjson"
-
+local keycloak_api = require "spec-ee.fixtures.keycloak_api".new()
 
 local PLUGIN_NAME = "openid-connect"
+local keycloak_config = keycloak_api.config
 local KONG_HOSTNAME = "localhost" -- only use other names and when it's resolvable by resty.http
 local PROXY_PORT_HTTPS = 8000
 local UPSTREAM_PORT = helpers.get_available_port()
@@ -25,10 +26,10 @@ local USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
 -- Keycloak:
 -- in this test in order to pass ssl verify, we always set the host to keycloak, and use dns_mock to redirect the host
 -- to send request in busted, use KEYCLOAK_LISTEN_HOST instead
-local KEYCLOAK_SNI_HOST = "keycloak"
-local KEYCLOAK_SSL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_KEYCLOAK_PORT_8443")) or 8443
-local REALM_PATH = "/realms/demo"
-local ISSUER_SSL_URL = "https://" .. KEYCLOAK_SNI_HOST .. ":" .. KEYCLOAK_SSL_PORT .. REALM_PATH .. "/.well-known/openid-configuration"
+local KEYCLOAK_SNI_HOST = keycloak_config.host_name
+local KEYCLOAK_SSL_PORT = keycloak_config.ssl_port
+local REALM_PATH = keycloak_config.realm_path
+local ISSUER_SSL_URL = keycloak_config.ssl_issuer_discovery
 ---- Clients:
 local KONG_CLIENT_ID = "kong"
 local KONG_CLIENT_SECRET = "X5DGMNBb6NjEp595L9h5Wb2x7DC4jvwE"
