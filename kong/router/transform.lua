@@ -1,9 +1,9 @@
 local bit = require("bit")
 local buffer = require("string.buffer")
+local tb_nkeys = require("table.nkeys")
 local lrucache = require("resty.lrucache")
 local ipmatcher = require("resty.ipmatcher")
 local utils = require("kong.router.utils")
-local tb_nkeys = require("table.nkeys")
 
 
 local type = type
