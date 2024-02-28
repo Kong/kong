@@ -613,6 +613,8 @@ end
 
 
 return {
+  OP_EQUAL    = OP_EQUAL,
+
   LOGICAL_OR  = LOGICAL_OR,
   LOGICAL_AND = LOGICAL_AND,
 
@@ -624,7 +626,5 @@ return {
 
   get_expression = get_expression,
   get_priority = get_priority,
-
-  lshift_uint64 = lshift_uint64,
 }
 

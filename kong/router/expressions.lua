@@ -9,9 +9,9 @@ local transform = require("kong.router.transform")
 
 
 local gen_for_field = transform.gen_for_field
+local OP_EQUAL      = transform.OP_EQUAL
 
 
-local OP_EQUAL    = "=="
 local NET_PORT_REG = [[(net\.port)(\s*)([=><!])]]
 local NET_PORT_REPLACE = [[net.dst.port$2$3]]
 
