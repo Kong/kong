@@ -14,13 +14,6 @@ local timer_at = ngx.timer.at
 local table_insert = table.insert
 local ipv6_bracket = utils.ipv6_bracket
 
--- debug
---[[
-local json = require("cjson").encode
-local logt = table_insert
-local logt = function (...) end
-]]
-
 -- Constants and default values
 local DEFAULT_ERROR_TTL = 1     -- unit: second
 local DEFAULT_STALE_TTL = 4
@@ -329,8 +322,6 @@ end
 
 
 local function resolve_query(self, name, qtype, tries)
-    -- logt(tries, "query")
-
     local key = name .. ":" .. qtype
     stats_count(self.stats, key, "query")
 
@@ -354,8 +345,6 @@ local function resolve_query(self, name, qtype, tries)
 
     stats_count(self.stats, key, answers.errstr and
                                  "query_err:" .. answers.errstr or "query_succ")
-
-    -- logt(tries, answers.errstr or #answers)
 
     return answers, nil, answers.ttl
 end
@@ -426,7 +415,6 @@ local function resolve_name_type(self, name, qtype, opts, tries)
     local key = name .. ":" .. qtype
 
     stats_init(self.stats, key)
-    -- logt(tries, key)
 
     if detect_recursion(opts, key) then
         stats_count(self.stats, key, "fail_recur")
@@ -446,7 +434,6 @@ local function resolve_name_type(self, name, qtype, opts, tries)
 
     if hit_level and hit_level < 3 then
         stats_count(self.stats, key, hitstrs[hit_level])
-        -- logt(tries, "2nd-get-" .. hitstrs[hit_level])
     end
 
     if err or answers.errcode then
@@ -525,7 +512,6 @@ end
 
 local function resolve_all(self, name, opts, tries)
     local key = "short:" .. name .. ":" .. (opts.qtype or "all")
-    -- logt(tries, key)
 
     stats_init(self.stats, name)
     stats_count(self.stats, name, "runs")
@@ -538,7 +524,6 @@ local function resolve_all(self, name, opts, tries)
     -- lookup fastly with the key `short:<qname>:<qtype>/all`
     local answers, err, hit_level = self.cache:get(key)
     if not answers or answers.expired then
-        -- logt(tries, "miss")
         stats_count(self.stats, name, "miss")
 
         answers, err, tries = resolve_names_and_types(self, name, opts, tries)
@@ -550,12 +535,10 @@ local function resolve_all(self, name, opts, tries)
 
     else
         stats_count(self.stats, name, hitstrs[hit_level])
-        -- logt(tries, "short-get-" .. hitstrs[hit_level])
     end
 
     -- dereference CNAME
     if opts.qtype ~= TYPE_CNAME and answers and answers[1].type == TYPE_CNAME then
-        -- logt(tries, "cname")
         stats_count(self.stats, name, "cname")
         return resolve_all(self, answers[1].cname, opts, tries)
     end
