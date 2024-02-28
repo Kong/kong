@@ -226,16 +226,19 @@ local function gen_for_nets(ip_field, port_field, vals)
       exp_port = port_field .. " " .. OP_EQUAL .. " " .. port
     end
 
+    -- only add port expression
     if not ip then
       expression_append(nets_buf, LOGICAL_OR, exp_port, i)
       goto continue
     end
 
+    -- only add ip address expression
     if not port then
       expression_append(nets_buf, LOGICAL_OR, exp_ip, i)
       goto continue
     end
 
+    -- add port and ip address expression with '()'
     expression_append(nets_buf, LOGICAL_OR,
                       "(" .. exp_ip .. LOGICAL_AND .. exp_port .. ")", i)
 
