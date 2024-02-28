@@ -1,3 +1,3 @@
-message: revert the openresty upstream hardcode limitation of ngx.read_body() API in HTTP2 stream mode case
+message: revert the hardcoded limitation in the ngx.read_body() API from OpenResty upstreams when dowstream in HTTP2 or HTTP3 stream mode.
 type: bugfix
 scope: Core
