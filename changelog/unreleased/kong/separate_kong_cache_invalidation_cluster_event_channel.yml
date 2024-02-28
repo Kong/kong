@@ -1,4 +1,4 @@
 message: |
-  Every kong cache instance now uses separate cluster event channel for invalidating caches, to avoid generating useless worker events.
+  Each Kong cache instance now utilizes its own cluster event channel. This approach isolates cache invalidation events and reducing the generation of unnecessary worker events.
 type: bugfix
 scope: Core
