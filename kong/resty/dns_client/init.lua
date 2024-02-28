@@ -6,6 +6,7 @@ local resolver = require("resty.dns.resolver")
 
 local now = ngx.now
 local log = ngx.log
+local ERR = ngx.ERR
 local WARN = ngx.WARN
 local ALERT = ngx.ALERT
 local math_min = math.min
@@ -186,13 +187,38 @@ function _M.new(opts)
     -- init the mlcache
     local lock_timeout = r_opts.timeout / 1000 * r_opts.retrans + 1 -- s
 
+    local resty_lock_opts = {
+        timeout = lock_timeout,
+        exptimeout = lock_timeout + 1,
+    }
+
+    local ipc_source = "dns_client_mlcache"
+    local ipc = {
+        register_listeners = function(events)
+            if not kong or not kong.worker_events then
+                return
+            end
+            for _, ev in pairs(events) do
+                kong.worker_events.register(function(data) ev.handler(data) end,
+                                            ipc_source, ev.channel)
+            end
+        end,
+        broadcast = function(channel, data)
+            if not kong or not kong.worker_events then
+                return
+            end
+            local ok, err = kong.worker_events.post(ipc_source, channel, data)
+            if not ok then
+                log(ERR, "failed to post event '", ipc_source, "', '", channel,
+                    "': ", err)
+            end
+        end,
+    }
+
     local cache, err = mlcache.new("dns_cache", "kong_dns_cache", {
         lru_size = opts.cache_size or 10000,
-        ipc_shm = "kong_dns_cache_ipc",
-        resty_lock_opts = {
-            timeout = lock_timeout,
-            exptimeout = lock_timeout + 1,
-        },
+        ipc = ipc,
+        resty_lock_opts = resty_lock_opts,
         -- miss cache
         shm_miss = "kong_dns_cache_miss",
         neg_ttl = opts.empty_ttl or DEFAULT_EMPTY_TTL,
@@ -204,9 +230,6 @@ function _M.new(opts)
     if opts.cache_purge then
         cache:purge(true)
     end
-
-    -- TODO: add an async task to call cache:update() to update L1/LRU-cache
-    -- for the inserted value from other workers
 
     -- parse order
     local search_types = {}
@@ -423,7 +446,7 @@ local function resolve_name_type(self, name, qtype, opts, tries)
 
     if hit_level and hit_level < 3 then
         stats_count(self.stats, key, hitstrs[hit_level])
-        -- logt(tries, hitstrs[hit_level])
+        -- logt(tries, "2nd-get-" .. hitstrs[hit_level])
     end
 
     if err or answers.errcode then
@@ -515,6 +538,7 @@ local function resolve_all(self, name, opts, tries)
     -- lookup fastly with the key `short:<qname>:<qtype>/all`
     local answers, err, hit_level = self.cache:get(key)
     if not answers or answers.expired then
+        -- logt(tries, "miss")
         stats_count(self.stats, name, "miss")
 
         answers, err, tries = resolve_names_and_types(self, name, opts, tries)
@@ -526,7 +550,7 @@ local function resolve_all(self, name, opts, tries)
 
     else
         stats_count(self.stats, name, hitstrs[hit_level])
-        -- logt(tries, hitstrs[hit_level])
+        -- logt(tries, "short-get-" .. hitstrs[hit_level])
     end
 
     -- dereference CNAME
@@ -616,8 +640,11 @@ if package.loaded.busted then
     end
     function _M.getcache()
         return {
-            set = function (self, k, v, ttl)
+            set = function(self, k, v, ttl)
                 self.cache:set(k, {ttl = ttl or 0}, v)
+            end,
+            delete = function(self, k)
+                self.cache:delete(k)
             end,
             cache = dns_client.cache,
         }
