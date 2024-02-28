@@ -9,6 +9,7 @@ local log = ngx.log
 local ERR = ngx.ERR
 local WARN = ngx.WARN
 local ALERT = ngx.ALERT
+local cjson_encode = require("cjson.safe").encode
 local math_min = math.min
 local timer_at = ngx.timer.at
 local table_insert = table.insert
@@ -37,6 +38,13 @@ local valid_type_names = {
     LAST    = TYPE_LAST,
 }
 
+local typstrs = {
+    [TYPE_SRV]      = "SRV",
+    [TYPE_A]        = "A",
+    [TYPE_AAAA]     = "AAAA",
+    [TYPE_CNAME]    = "CNAME",
+}
+
 local hitstrs = {
     [1] = "hit_lru",
     [2] = "hit_shm",
@@ -63,6 +71,9 @@ end
 _M.TYPE_LAST = -1
 
 
+local tries_mt = { __tostring = cjson_encode }
+
+
 local function stats_init(stats, name)
     if not stats[name] then
         stats[name] = {}
@@ -76,16 +87,8 @@ end
 
 
 -- lookup or set TYPE_LAST (the DNS record type from the last successful query)
-local valid_types = {
-    [ TYPE_SRV ] = true,
-    [ TYPE_A ] = true,
-    [ TYPE_AAAA ] = true,
-    [ TYPE_CNAME ] = true,
-}
-
-
 local function insert_last_type(cache, name, qtype)
-    if valid_types[qtype] then
+    if typstrs[qtype] then
         cache:set("last:" .. name, { ttl = 0 }, qtype)
     end
 end
@@ -404,10 +407,6 @@ local function detect_recursion(opts, key)
         opts.resolved_names = rn
     end
     local detected = rn[key]
-    -- TODO delete
-    if detected then
-        log(ALERT, "detect recursion for name:", key)
-    end
     rn[key] = true
     return detected
 end
@@ -446,7 +445,7 @@ local function resolve_name_type(self, name, qtype, opts, tries)
 
     if err or answers.errcode then
         err = err or ("dns server error: %s %s"):format(answers.errcode, answers.errstr)
-        table_insert(tries, { name, qtype, err })
+        table_insert(tries, { name .. ":" .. typstrs[qtype], err })
     end
 
     return answers, err
@@ -529,7 +528,7 @@ local function resolve_all(self, name, opts, tries)
         return nil, "recursion detected for name: " .. name
     end
 
-    -- lookup fastly with the key `short:<qname>:<qtype>/all`
+    -- quickly lookup with the key `short:<name>:all` or `short:<name>:<qtype>`
     local answers, err, hit_level = self.cache:get(key)
     if not answers or answers.expired then
         stats_count(self.stats, name, "miss")
@@ -574,7 +573,7 @@ end
 function _M:resolve(name, opts, tries)
     name = name:lower()
     opts = opts or {}
-    tries = tries or {}
+    tries = setmetatable(tries or {}, tries_mt)
 
     local answers, err, tries = resolve_all(self, name, opts, tries)
     if not answers or not opts.return_random then
