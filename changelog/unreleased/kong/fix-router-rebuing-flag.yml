@@ -1,0 +1,5 @@
+message: |
+  Fix an issue where router's rebuilding flag is not reset correctly
+  if a route has no proper id
+type: bugfix
+scope: Core

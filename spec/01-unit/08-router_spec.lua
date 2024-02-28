@@ -2131,6 +2131,46 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             assert.spy(add_matcher).was_called(2)
             assert.spy(remove_matcher).was_called(2)
           end)
+
+          it("works well if route has no proper id", function()
+            local wrong_use_case = {
+              {
+                service = service,
+                route = {
+                  id = nil,   -- no id here
+                  paths = { "/foo", },
+                  updated_at = 100,
+                },
+              },
+            }
+
+            local nrouter = new_router(wrong_use_case, router)
+            assert.is_nil(nrouter)
+            assert.falsy(router.rebuilding)
+
+            local use_case = {
+              {
+                service = service,
+                route = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  paths = { "/foo1", },
+                  updated_at = 100,
+                },
+              },
+            }
+
+            local nrouter = assert(new_router(use_case, router))
+
+            assert.equal(nrouter, router)
+            assert.falsy(router.rebuilding)
+
+            local match_t = nrouter:select("GET", "/foo1")
+            assert.truthy(match_t)
+            assert.same(use_case[1].route, match_t.route)
+
+            match_t = nrouter:select("GET", "/bar")
+            assert.falsy(match_t)
+          end)
         end)
 
         describe("check empty route fields", function()

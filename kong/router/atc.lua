@@ -285,6 +285,7 @@ local function new_from_previous(routes, get_exp_and_priority, old_router)
     local route_id = route.id
 
     if not route_id then
+      old_router.rebuilding = false
       return nil, "could not categorize route"
     end
 
