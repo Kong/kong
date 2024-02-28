@@ -108,7 +108,7 @@ local transformers_to = {
     if err then
       return nil, nil, err
     end
-    
+
     prompt.temperature = (model.options and model.options.temperature) or nil
     prompt.max_tokens_to_sample = (model.options and model.options.max_tokens) or nil
     prompt.model = model.name
@@ -121,36 +121,50 @@ local transformers_from = {
   ["llm/v1/chat"] = function(response_string)
     local response_table, err = cjson.decode(response_string)
     if err then
-      return nil, "failed to decode cohere response"
+      return nil, "failed to decode anthropic response"
     end
 
-    if response_table.completion then
+    local function extract_text_from_content(content)
+      local buf = buffer:new()
+      buf:reset()
+      for i, v in ipairs(content) do
+        if i ~= 1 then
+          buf:put("\n")
+        end
+
+        buf:put(v.text)
+      end
+
+      return buf:tostring()
+    end
+
+    if response_table.content then
       local res = {
         choices = {
           {
             index = 0,
             message = {
               role = "assistant",
-              content = response_table.completion,
+              content = extract_text_from_content(response_table.content),
             },
             finish_reason = response_table.stop_reason,
           },
         },
         model = response_table.model,
-        object = "chat.completion",
+        object = "chat.content",
       }
         
       return cjson.encode(res)
     else
       -- it's probably an error block, return generic error
-      return nil, "'completion' not in anthropic://llm/v1/chat response"
+      return nil, "'content' not in anthropic://llm/v1/chat response"
     end
   end,
 
   ["llm/v1/completions"] = function(response_string)
     local response_table, err = cjson.decode(response_string)
     if err then
-      return nil, "failed to decode cohere response"
+      return nil, "failed to decode anthropic response"
     end
 
     if response_table.completion then

@@ -300,7 +300,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
             assert.is_nil(err)
 
             -- compare the tables
-            assert.same(actual_response_table.choices[1].message, expected_response_table.choices[1].message)
+            assert.same(expected_response_table.choices[1].message, actual_response_table.choices[1].message)
             assert.same(actual_response_table.model, expected_response_table.model)
           end)
 

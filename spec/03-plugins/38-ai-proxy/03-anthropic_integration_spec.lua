@@ -36,7 +36,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                   local body, err = ngx.req.get_body_data()
                   body, err = json.decode(body)
                   
-                  if err or (not body.prompt) then
+                  if err or (not body.messages) then
                     ngx.status = 400
                     ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/responses/bad_request.json"))
                   else
@@ -61,7 +61,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                   local body, err = ngx.req.get_body_data()
                   body, err = json.decode(body)
                   
-                  if err or (not body.prompt) then
+                  if err or (not body.messages) then
                     ngx.status = 400
                     ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/responses/bad_request.json"))
                   else
@@ -441,9 +441,9 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         -- check this is in the 'kong' response format
         -- assert.equals(json.id, "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2")
         assert.equals(json.model, "claude-2.1")
-        assert.equals(json.object, "chat.completion")
+        assert.equals(json.object, "chat.content")
 
-        assert.is_table(json.content)
+        assert.is_table(json.choices)
         assert.is_table(json.choices[1].message)
         assert.same({
           content = "The sum of 1 + 1 is 2.",
@@ -463,7 +463,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         -- check we got internal server error
         local body = assert.res_status(500 , r)
         local json = cjson.decode(body) 
-        assert.equals(json.error.message, "transformation failed from type anthropic://llm/v1/chat: 'completion' not in anthropic://llm/v1/chat response")
+        assert.equals(json.error.message, "transformation failed from type anthropic://llm/v1/chat: 'content' not in anthropic://llm/v1/chat response")
       end)
 
       it("bad request", function()
