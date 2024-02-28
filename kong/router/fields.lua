@@ -63,53 +63,53 @@ local STREAM_FIELDS = {
 
 
 local FIELDS_FUNCS = {
-    -- http.*
+  -- http.*
 
-    ["http.method"] =
-    function(params)
-      if not params.method then
-        params.method = get_method()
-      end
+  ["http.method"] =
+  function(params)
+    if not params.method then
+      params.method = get_method()
+    end
 
-      return params.method
-    end,
+    return params.method
+  end,
 
-    ["http.path"] =
-    function(params)
-      return params.uri
-    end,
+  ["http.path"] =
+  function(params)
+    return params.uri
+  end,
 
-    ["http.host"] =
-    function(params)
-      return params.host
-    end,
+  ["http.host"] =
+  function(params)
+    return params.host
+  end,
 
-    -- net.*
+  -- net.*
 
-    ["net.src.ip"] =
-    function(params)
-      if not params.src_ip then
-        params.src_ip = var.remote_addr
-      end
+  ["net.src.ip"] =
+  function(params)
+    if not params.src_ip then
+      params.src_ip = var.remote_addr
+    end
 
-      return params.src_ip
-    end,
+    return params.src_ip
+  end,
 
-    ["net.src.port"] =
-    function(params)
-      if not params.src_port then
-        params.src_port = tonumber(var.remote_port, 10)
-      end
+  ["net.src.port"] =
+  function(params)
+    if not params.src_port then
+      params.src_port = tonumber(var.remote_port, 10)
+    end
 
-      return params.src_port
-    end,
+    return params.src_port
+  end,
 
-    -- below are atc context only
+  -- below are atc context only
 
-    ["net.protocol"] =
-    function(params)
-      return params.scheme
-    end,
+  ["net.protocol"] =
+  function(params)
+    return params.scheme
+  end,
 }
 
 
@@ -117,89 +117,89 @@ local is_http = ngx.config.subsystem == "http"
 
 
 if is_http then
-    -- tls.*
+  -- tls.*
 
-    FIELDS_FUNCS["tls.sni"] =
-    function(params)
-      if not params.sni then
-        params.sni = server_name()
-      end
-
-      return params.sni
+  FIELDS_FUNCS["tls.sni"] =
+  function(params)
+    if not params.sni then
+      params.sni = server_name()
     end
 
-    -- net.*
+    return params.sni
+  end
 
-    FIELDS_FUNCS["net.dst.ip"] =
-    function(params)
-      if not params.dst_ip then
-        params.dst_ip = var.server_addr
-      end
+  -- net.*
 
-      return params.dst_ip
+  FIELDS_FUNCS["net.dst.ip"] =
+  function(params)
+    if not params.dst_ip then
+      params.dst_ip = var.server_addr
     end
 
-    FIELDS_FUNCS["net.dst.port"] =
-    function(params, ctx)
-      if params.port then
-        return params.port
-      end
+    return params.dst_ip
+  end
 
-      if not params.dst_port then
-        params.dst_port = tonumber((ctx or ngx.ctx).host_port, 10) or
-                          tonumber(var.server_port, 10)
-      end
-
-      return params.dst_port
+  FIELDS_FUNCS["net.dst.port"] =
+  function(params, ctx)
+    if params.port then
+      return params.port
     end
+
+    if not params.dst_port then
+      params.dst_port = tonumber((ctx or ngx.ctx).host_port, 10) or
+                        tonumber(var.server_port, 10)
+    end
+
+    return params.dst_port
+  end
 
 else  -- stream
 
-    -- tls.*
-    -- error value for non-TLS connections ignored intentionally
-    -- fallback to preread SNI if current connection doesn't terminate TLS
+  -- tls.*
+  -- error value for non-TLS connections ignored intentionally
+  -- fallback to preread SNI if current connection doesn't terminate TLS
 
-    FIELDS_FUNCS["tls.sni"] =
-    function(params)
-      if not params.sni then
-        params.sni = server_name() or var.ssl_preread_server_name
-      end
-
-      return params.sni
+  FIELDS_FUNCS["tls.sni"] =
+  function(params)
+    if not params.sni then
+      params.sni = server_name() or var.ssl_preread_server_name
     end
 
-    -- net.*
-    -- when proxying TLS request in second layer or doing TLS passthrough
-    -- rewrite the dst_ip, port back to what specified in proxy_protocol
+    return params.sni
+  end
 
-    FIELDS_FUNCS["net.dst.ip"] =
-    function(params)
-      if not params.dst_ip then
-        if var.kong_tls_passthrough_block == "1" or var.ssl_protocol then
-          params.dst_ip = var.proxy_protocol_server_addr
+  -- net.*
+  -- when proxying TLS request in second layer or doing TLS passthrough
+  -- rewrite the dst_ip, port back to what specified in proxy_protocol
 
-        else
-          params.dst_ip = var.server_addr
-        end
+  FIELDS_FUNCS["net.dst.ip"] =
+  function(params)
+    if not params.dst_ip then
+      if var.kong_tls_passthrough_block == "1" or var.ssl_protocol then
+        params.dst_ip = var.proxy_protocol_server_addr
+
+      else
+        params.dst_ip = var.server_addr
       end
-
-      return params.dst_ip
     end
 
-    FIELDS_FUNCS["net.dst.port"] =
-    function(params, ctx)
-      if not params.dst_port then
-        if var.kong_tls_passthrough_block == "1" or var.ssl_protocol then
-          params.dst_port = tonumber(var.proxy_protocol_server_port)
+    return params.dst_ip
+  end
 
-        else
-          params.dst_port = tonumber((ctx or ngx.ctx).host_port, 10) or
-                            tonumber(var.server_port, 10)
-        end
+  FIELDS_FUNCS["net.dst.port"] =
+  function(params, ctx)
+    if not params.dst_port then
+      if var.kong_tls_passthrough_block == "1" or var.ssl_protocol then
+        params.dst_port = tonumber(var.proxy_protocol_server_port)
+
+      else
+        params.dst_port = tonumber((ctx or ngx.ctx).host_port, 10) or
+                          tonumber(var.server_port, 10)
       end
-
-      return params.dst_port
     end
+
+    return params.dst_port
+  end
 
 end -- is_http
 
@@ -411,30 +411,26 @@ end
 
 
 local function visit_for_context(field, value, ctx)
-  local prefix = field:sub(1, PREFIX_LEN)
+  local v_type = type(value)
 
-  if prefix == HTTP_HEADERS_PREFIX or prefix == HTTP_QUERIES_PREFIX then
-    local v_type = type(value)
-
-    -- multiple values for a single query parameter, like /?foo=bar&foo=baz
-    if v_type == "table" then
-      for _, v in ipairs(value) do
-        local res, err = ctx:add_value(field, v)
-        if not res then
-          return nil, err
-        end
+  -- multiple values for a single header/query parameter, like /?foo=bar&foo=baz
+  if v_type == "table" then
+    for _, v in ipairs(value) do
+      local res, err = ctx:add_value(field, v)
+      if not res then
+        return nil, err
       end
-
-      return true
-    end -- if v_type
-
-    -- the query parameter has only one value, like /?foo=bar
-    -- the query parameter has no value, like /?foo,
-    -- get_uri_arg will get a boolean `true`
-    -- we think it is equivalent to /?foo=
-    if v_type == "boolean" then
-      value = ""
     end
+
+    return true
+  end -- if v_type
+
+  -- the header/query parameter has only one value, like /?foo=bar
+  -- the query parameter has no value, like /?foo,
+  -- get_uri_arg will get a boolean `true`
+  -- we think it is equivalent to /?foo=
+  if v_type == "boolean" then
+    value = ""
   end
 
   return ctx:add_value(field, value)
