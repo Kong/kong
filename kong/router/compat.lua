@@ -28,6 +28,12 @@ local tb_insert = table.insert
 local is_http = ngx.config.subsystem == "http"
 
 
+-- When splitting routes, we need to assign new UUIDs to the split routes.  We use uuid v5 to generate them from
+-- the original route id and the path index so that incremental rebuilds see stable IDs for routes that have not
+-- changed.
+local uuid_generator = assert(uuid.factory_v5('7f145bf9-0dce-4f91-98eb-debbce4b9f6b'))
+
+
 local function get_exp_and_priority(route)
   if route.expression then
     ngx.log(ngx.ERR, "expecting a traditional route while it's not (probably an expressions route). ",
@@ -39,12 +45,6 @@ local function get_exp_and_priority(route)
 
   return exp, priority
 end
-
-
--- When splitting routes, we need to assign new UUIDs to the split routes.  We use uuid v5 to generate them from
--- the original route id and the path index so that incremental rebuilds see stable IDs for routes that have not
--- changed.
-local uuid_generator = assert(uuid.factory_v5('7f145bf9-0dce-4f91-98eb-debbce4b9f6b'))
 
 
 -- group array-like table t by the function f, returning a table mapping from
