@@ -74,6 +74,31 @@ local alg_sign = {
       return nil
     end
     return sig
+  end,
+
+  PS256 = function(data, key)
+    local pkey = openssl_pkey.new(key)
+    local sig = assert(pkey:sign(data, "sha256", openssl_pkey.PADDINGS.RSA_PKCS1_PSS_PADDING))
+    if not sig then
+      return nil
+    end
+    return sig
+  end,
+  PS384 = function(data, key)
+    local pkey = openssl_pkey.new(key)
+    local sig = assert(pkey:sign(data, "sha384", openssl_pkey.PADDINGS.RSA_PKCS1_PSS_PADDING))
+    if not sig then
+      return nil
+    end
+    return sig
+  end,
+  PS512 = function(data, key)
+    local pkey = openssl_pkey.new(key)
+    local sig = assert(pkey:sign(data, "sha512", openssl_pkey.PADDINGS.RSA_PKCS1_PSS_PADDING))
+    if not sig then
+      return nil
+    end
+    return sig
   end
 }
 
@@ -140,7 +165,27 @@ local alg_verify = {
     local pkey, _ = openssl_pkey.new(key)
     assert(#signature == 132, "Signature must be 132 bytes.")
     return pkey:verify(signature, data, "sha512", nil, { ecdsa_use_raw = true })
-  end
+  end,
+
+  PS256 = function(data, signature, key)
+    local pkey, _ = openssl_pkey.new(key)
+    assert(pkey, "Consumer Public Key is Invalid")
+    assert(#signature == 256, "Signature must be 256 bytes")
+    return pkey:verify(signature, data, "sha256", openssl_pkey.PADDINGS.RSA_PKCS1_PSS_PADDING)
+  end,
+  PS384 = function(data, signature, key)
+    local pkey, _ = openssl_pkey.new(key)
+    assert(pkey, "Consumer Public Key is Invalid")
+    assert(#signature == 256, "Signature must be 256 bytes")
+    return pkey:verify(signature, data, "sha384", openssl_pkey.PADDINGS.RSA_PKCS1_PSS_PADDING)
+  end,
+  PS512 = function(data, signature, key)
+    local pkey, _ = openssl_pkey.new(key)
+    assert(pkey, "Consumer Public Key is Invalid")
+    assert(#signature == 256, "Signature must be 256 bytes")
+    return pkey:verify(signature, data, "sha512", openssl_pkey.PADDINGS.RSA_PKCS1_PSS_PADDING)
+  end,
+
 }
 
 

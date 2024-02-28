@@ -39,6 +39,9 @@ return {
             "ES256",
             "ES384",
             "ES512",
+            "PS256",
+            "PS384",
+            "PS512",
           },
       }, },
       { tags = typedefs.tags },
@@ -46,7 +49,13 @@ return {
     entity_checks = {
       { conditional = { if_field = "algorithm",
                         if_match = {
-                          match_any = { patterns = { "^RS256$", "^RS384$", "^RS512$" }, },
+                          match_any = { patterns = { "^RS256$",
+                                                     "^RS384$",
+                                                     "^RS512$",
+                                                     "^PS256$",
+                                                     "^PS384$",
+                                                     "^PS512$",
+                                                     }, },
                         },
                         then_field = "rsa_public_key",
                         then_match = {
