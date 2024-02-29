@@ -125,7 +125,6 @@ function _M.dnsA(client, records, staleTtl)
 
   -- create key, and insert it
   local key = records[1].name..":"..records[1].type
-  --dnscache:set(key, records, records[1].ttl + (staleTtl or 4))
   dnscache:set(key, records, records[1].ttl)
   -- insert last-succesful lookup type
   client.getobj():insert_last_type(records[1].name, records[1].type)

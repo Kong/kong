@@ -425,8 +425,8 @@ describe("[DNS client cache]", function()
       -- wait again for the background query to complete
       sleep(0.1)
       -- background resolve is now complete, check the cache, it should now have been
-      -- replaced by the name error
-      assert.equal(rec2, cli.cache:get("myhost9.domain.com:" .. resolver.TYPE_A))
+      -- replaced by `nil` value (the name error is saved into mlcache miss_shm)
+      assert.equal(nil, cli.cache:get("myhost9.domain.com:" .. resolver.TYPE_A))
     end)
 
     it("empty records do not replace stale records", function()
