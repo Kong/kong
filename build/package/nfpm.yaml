@@ -42,6 +42,9 @@ contents:
   dst: /lib/systemd/system/kong.service
 - src: build/package/kong.logrotate
   dst: /etc/kong/kong.logrotate
+  file_info:
+    mode: 0644
+
 scripts:
   postinstall: ./build/package/postinstall.sh
 replaces:
