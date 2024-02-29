@@ -20,7 +20,9 @@ local function load_conf(args)
 
   if pl_path.exists(conf.kong_env) then
     -- load <PREFIX>/kong.conf containing running node's config
-    conf = assert(conf_loader(conf.kong_env))
+    conf = assert(conf_loader(conf.kong_env, {
+      prefix = conf.prefix
+    }))
   end
 
   -- make sure necessary files like `.ca_combined` exist
