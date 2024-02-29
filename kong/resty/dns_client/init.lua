@@ -209,8 +209,14 @@ function _M.new(opts)
       if not kong or not kong.worker_events then
         return
       end
+      local cwid = ngx.worker.id()
       for _, ev in pairs(events) do
-        kong.worker_events.register(ev.handler, ipc_source, ev.channel)
+        local handler = function(data, event, source, wid)
+          if cwid ~= wid then
+            ev.handler(data)
+          end
+        end
+        kong.worker_events.register(handler, ipc_source, ev.channel)
       end
     end,
     broadcast = function(channel, data)
