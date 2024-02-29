@@ -19,6 +19,8 @@ def common_suites(expect, libxcrypt_no_obsolete_api: bool = False):
 
     expect("/etc/kong/kong.logrotate", "includes logrotate config").exists()
 
+    expect("/etc/kong/kong.logrotate", "logrotate config should have 0644 permissions").file_mode.equals("0644")
+
     expect("/usr/local/kong/include/openssl/**.h", "includes OpenSSL headers").exists()
 
     # binary correctness
