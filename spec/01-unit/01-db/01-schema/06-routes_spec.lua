@@ -43,14 +43,17 @@ local function reload_flavor(flavor)
 end
 
 
-describe("routes schema (flavor = traditional/traditional_compatible)", function()
+for _, flavor in ipairs({ "traditional", "traditional_compatible", }) do
+describe("routes schema (flavor = " .. flavor .. ")", function()
   local a_valid_uuid = "cbb297c0-a956-486d-ad1d-f9b42df9465a"
   local another_uuid = "64a8670b-900f-44e7-a900-6ec7ef5aa4d3"
   local uuid_pattern = "^" .. ("%x"):rep(8) .. "%-" .. ("%x"):rep(4) .. "%-"
                            .. ("%x"):rep(4) .. "%-" .. ("%x"):rep(4) .. "%-"
                            .. ("%x"):rep(12) .. "$"
 
-  reload_flavor("traditional")
+  local it_trad_only = (flavor == "traditional") and it or pending
+
+  reload_flavor(flavor)
   setup_global_env()
 
   it("validates a valid route", function()
@@ -354,7 +357,7 @@ describe("routes schema (flavor = traditional/traditional_compatible)", function
       assert.is_true(ok)
     end)
 
-    it("accepts properly percent-encoded values", function()
+    it_trad_only("accepts properly percent-encoded values", function()
       local valid_paths = { "/abcd\xaa\x10\xff\xAA\xFF" }
 
       for i = 1, #valid_paths do
@@ -1264,6 +1267,7 @@ describe("routes schema (flavor = traditional/traditional_compatible)", function
 
   end)
 end)
+end   -- for flavor
 
 
 describe("routes schema (flavor = expressions)", function()
@@ -1492,7 +1496,6 @@ describe("routes schema (flavor = expressions)", function()
     local ok, errs = Routes:validate_insert(route)
     assert.falsy(ok)
 
-    -- verified by `schema/typedefs.lua`
     assert.truthy(errs["@entity"])
   end)
 
@@ -1509,7 +1512,6 @@ describe("routes schema (flavor = expressions)", function()
     local ok, errs = Routes:validate_insert(route)
     assert.falsy(ok)
 
-    -- verified by `schema/typedefs.lua`
     assert.truthy(errs["@entity"])
   end)
 
@@ -1526,7 +1528,6 @@ describe("routes schema (flavor = expressions)", function()
     local ok, errs = Routes:validate_insert(route)
     assert.falsy(ok)
 
-    -- verified by `schema/typedefs.lua`
     assert.truthy(errs["@entity"])
   end)
 
