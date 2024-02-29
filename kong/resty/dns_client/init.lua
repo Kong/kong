@@ -301,7 +301,7 @@ local function process_answers(self, qname, qtype, answers)
         answer.target = ipv6_bracket(answer.target)
       end
 
-      table.insert(processed_answers, answer)
+      table_insert(processed_answers, answer)
     end
 
     if self.valid_ttl then
@@ -467,7 +467,7 @@ local function get_search_types(self, name, qtype)
       qtype = get_last_type(self.cache, name)
     end
     if qtype and not checked_types[qtype] then
-      table.insert(types, qtype)
+      table_insert(types, qtype)
       checked_types[qtype] = true
     end
   end

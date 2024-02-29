@@ -50,7 +50,7 @@ local function get_lines(path)
   if type(path) == "table" then
     return path
   end
-  return readlines(path or DEFAULT_HOSTS_FILE)
+  return readlines(path)
 end
 
 
