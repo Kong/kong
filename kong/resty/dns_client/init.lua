@@ -368,8 +368,7 @@ local function start_stale_update_task(self, key, name, qtype)
 
     local answers = resolve_query(self, name, qtype, {})
     if answers and (not answers.errcode or answers.errcode == 3) then
-      self.cache:set(key, { ttl = answers.ttl },
-      answers.errcode == 3 and nil or answers)
+      self.cache:set(key, { ttl = answers.ttl }, answers.errcode ~= 3 and answers or nil)
       insert_last_type(self.cache, name, qtype)
     end
   end)
@@ -428,8 +427,8 @@ local function resolve_name_type(self, name, qtype, opts, tries)
   end
 
   local answers, err, hit_level = self.cache:get(key, nil,
-  resolve_name_type_callback,
-  self, name, qtype, opts, tries)
+                                                 resolve_name_type_callback,
+                                                 self, name, qtype, opts, tries)
   if err and err:sub(1, 8) == "callback" then
     log(ALERT, err)
   end
