@@ -1,0 +1,3 @@
+message: "Bumped lua-resty-openssl to 1.2.1"
+type: dependency
+scope: Core
