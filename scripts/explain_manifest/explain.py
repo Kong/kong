@@ -69,7 +69,7 @@ class FileInfo():
 
         if not Path(path).is_symlink():
             self.size = os.stat(path).st_size
-        
+
         self._lazy_evaluate_attrs.update({
             "binary_content": lambda: open(path, "rb").read(),
             "text_content": lambda: open(path, "rb").read().decode('utf-8'),
@@ -129,7 +129,7 @@ class ElfFileInfo(FileInfo):
         binary = lief.parse(path)
         if not binary:  # not an ELF file, malformed, etc
             return
-    
+
         self.arch = binary.header.machine_type.name
 
         for d in binary.dynamic_entries:
@@ -152,7 +152,7 @@ class ElfFileInfo(FileInfo):
             self.version_requirement[f.name] = [LooseVersion(
                 a.name) for a in f.get_auxiliary_symbols()]
             self.version_requirement[f.name].sort()
-        
+
         self._lazy_evaluate_attrs.update({
             "exported_symbols": self.get_exported_symbols,
             "imported_symbols": self.get_imported_symbols,
