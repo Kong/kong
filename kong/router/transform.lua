@@ -636,7 +636,9 @@ return {
 
   split_host_port = split_host_port,
 
+  is_null = is_null,
   is_empty_field = is_empty_field,
+
   gen_for_field = gen_for_field,
 
   get_expression = get_expression,
