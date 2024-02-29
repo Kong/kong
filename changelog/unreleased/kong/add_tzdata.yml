@@ -1,0 +1,3 @@
+message: |
+  Add package `tzdata` to DEB Docker image for convenient timezone setting.
+type: dependency
