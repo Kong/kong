@@ -1,4 +1,5 @@
--- This test case file originates from the old version of the DNS client and has                                                  -- been modified to adapt to the new version of the DNS client.
+-- This test case file originates from the old version of the DNS client and has
+-- been modified to adapt to the new version of the DNS client.
 
 local utils = require("kong.tools.utils")
 local _writefile = require("pl.utils").writefile
@@ -259,11 +260,12 @@ describe("[DNS client cache]", function()
       sleep(0.1 + config.stale_ttl / 2)
 
       -- fresh result, but it should not affect answers2
-      mock_records["myhost6.domain.com:"..resolver.TYPE_A][1].tag = "new" -- TODO flakyness
+      mock_records["myhost6.domain.com:"..resolver.TYPE_A][1].tag = "new"
 
       -- resolve again, now getting same record, but stale, this will trigger
       -- background refresh query
       local answers2 = cli:resolve("myhost6")
+      assert.falsy(answers2[1].tag)
       assert.is_true(answers2.expired)  -- stale; marked as expired
       answers2.expired = nil
       assert_same_answers(answers2, answers)
@@ -274,6 +276,8 @@ describe("[DNS client cache]", function()
 
       -- resolve and check whether we got the new record from the mock copy
       local answers3 = cli:resolve("myhost6")
+      assert.equal(answers3[1].tag, "new")
+      assert.falsy(answers3.expired)
       assert.not_equal(answers, answers3)  -- must be a different record now
       assert_same_answers(answers3, mock_records["myhost6.domain.com:"..resolver.TYPE_A])
 
