@@ -1,0 +1,3 @@
+message: "**Rate Limiting Advanced:** Falling back to local strategy if sync_rate = 0 when redis goes down"
+type: bugfix
+scope: Plugin

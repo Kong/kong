@@ -445,7 +445,7 @@ function _M.increment(key, window_size, value, namespace, prev_window_weight)
     -- this needs a refactor to avoid so many shm operations
     -- this currently a bottleneck with this policy (sync_rate == 0)
     dict:incr(incr_key .. "|diff", -newval)
-    dict:incr(incr_key .. "|sync", newval)
+    local cur_sync = dict:incr(incr_key .. "|sync", newval, 0)
 
     local ok, err = cfg.strategy:push_diffs(diffs)
     if not ok then
@@ -456,7 +456,7 @@ function _M.increment(key, window_size, value, namespace, prev_window_weight)
     local window_count, err = cfg.strategy:get_window(key, namespace, window, window_size)
     if err then
       log(ERR, "error in getting window for namespace ", namespace, ": ", err)
-      window_count = 0
+      window_count = cur_sync or 0 -- fall back to local counter
     end
     dict:set(incr_key .. "|sync", window_count, exptime)
 

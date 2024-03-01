@@ -674,6 +674,26 @@ for _, strategy in strategies() do
           )
         ))
 
+        -- This way when connecting to redis it always refused immediately
+        -- to fail quickly, reducing the time consuming
+        local invalid_redis_configuration = {
+          host = "localhost",
+          port = helpers.get_available_port(),
+          database = REDIS_DATABASE,
+          username = nil,
+          password = nil,
+        }
+        local route26 = assert(bp.routes:insert {
+          name = "route-26",
+          hosts = { "route-26.test" },
+        })
+        assert(bp.plugins:insert(
+          build_plugin_fn("redis")(
+            route26.id, 5, 3, 0, nil,
+            nil, invalid_redis_configuration
+          )
+        ))
+
         assert(helpers.start_kong{
           plugins = "rate-limiting-advanced,key-auth,exit-transformer",
           nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -775,6 +795,46 @@ for _, strategy in strategies() do
           rate = tonumber(res.headers["ratelimit-remaining"])
           assert.is_true(0 < rate and rate <= 6)
           assert.is_true(tonumber(res.headers["ratelimit-reset"]) > 0)
+        end)
+
+        it("falling back to local strategy if sync_rate = 0 when redis goes down", function()
+          for i = 1, 3 do
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
+              method = "GET",
+              path = "/get",
+              headers = {
+                ["Host"] = "route-26.test"
+              }
+            })
+            assert.res_status(200, res)
+            proxy_client:close()
+
+            assert.are.same(3, tonumber(res.headers["x-ratelimit-limit-5"]))
+            assert.are.same(3, tonumber(res.headers["ratelimit-limit"]))
+            assert.are.same(3 - i, tonumber(res.headers["x-ratelimit-remaining-5"]))
+            assert.are.same(3 - i, tonumber(res.headers["ratelimit-remaining"]))
+            assert.is_true(tonumber(res.headers["ratelimit-reset"]) > 0)
+            assert.is_nil(res.headers["retry-after"])
+          end
+
+          -- Additonal request, while limit is 3/window
+          proxy_client = helpers.proxy_client()
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/get",
+            headers = {
+              ["Host"] = "route-26.test"
+            }
+          })
+          local body = assert.res_status(429, res)
+          proxy_client:close()
+
+          local json = cjson.decode(body)
+          assert.same({ message = "API rate limit exceeded" }, json)
+          local retry_after = tonumber(res.headers["retry-after"])
+          assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
+          assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
         end)
 
         -- traditional mode but use redis strategy
