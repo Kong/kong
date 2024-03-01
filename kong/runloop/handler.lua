@@ -1092,6 +1092,7 @@ return {
   },
   access = {
     before = function(ctx)
+      error("boom!")
       -- if there is a gRPC service in the context, don't re-execute the pre-access
       -- phase handler - it has been executed before the internal redirect
       if ctx.service and (ctx.service.protocol == "grpc" or
