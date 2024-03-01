@@ -297,6 +297,13 @@ function _M.post_request(conf, response_object)
     -- check if we already have analytics in this context
     local request_analytics = kong.ctx.shared.analytics
 
+    -- create a new try context
+    local current_try= {
+      meta = {},
+      usage = {},
+      [log_entry_keys.TOKENS_CONTAINER] = {},
+    }
+
     -- create a new structure if not
     if not request_analytics then
       request_analytics = {}
@@ -323,14 +330,6 @@ function _M.post_request(conf, response_object)
     local response_object, err = cjson.decode(response_string)
     if err then
       return nil, "failed to decode response from JSON"
-    end
-
-    -- create a new try context
-    if not current_try then
-      current_try= {
-        meta = {},
-        usage = {},
-      }
     end
 
     current_try[log_entry_keys.REQUEST_MODEL] = conf.model.name
@@ -360,7 +359,8 @@ function _M.post_request(conf, response_object)
     request_analytics_provider.instances[try_count] = split_table_key(current_try)
 
     -- update context with changed values
-    kong.ctx.shared.analytics = request_analytics_provider
+    request_analytics[conf.model.provider] = request_analytics_provider
+    kong.ctx.shared.analytics = request_analytics
 
     -- kong.log.set_serialize_value(conf.model.provider, request_analytics_provider)
     kong.log.set_serialize_value(fmt("%s.%s", "ai", conf.model.provider), request_analytics_provider)
