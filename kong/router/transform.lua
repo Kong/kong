@@ -18,10 +18,15 @@ local is_regex_magic  = utils.is_regex_magic
 local replace_dashes_lower  = require("kong.tools.string").replace_dashes_lower
 
 
+local is_null
 local is_empty_field
 do
   local null    = ngx.null
   local isempty = require("table.isempty")
+
+  is_null = function(v)
+    return v == nil or v == null
+  end
 
   is_empty_field = function(f)
     return f == nil or f == null or isempty(f)
@@ -209,7 +214,7 @@ local function gen_for_nets(ip_field, port_field, vals)
 
     local exp_ip, exp_port
 
-    if ip then
+    if not is_null(ip) then
       local addr, mask = parse_ip_addr(ip)
 
       if mask then  -- ip in cidr
@@ -222,18 +227,18 @@ local function gen_for_nets(ip_field, port_field, vals)
       end
     end
 
-    if port then
+    if not is_null(port) then
       exp_port = port_field .. " " .. OP_EQUAL .. " " .. port
     end
 
     -- only add port expression
-    if not ip then
+    if is_null(ip) then
       expression_append(nets_buf, LOGICAL_OR, exp_port, i)
       goto continue
     end
 
     -- only add ip address expression
-    if not port then
+    if is_null(port) then
       expression_append(nets_buf, LOGICAL_OR, exp_ip, i)
       goto continue
     end
@@ -447,7 +452,7 @@ do
       local ip   = ips[i].ip
       local port = ips[i].port
 
-      if ip then
+      if not is_null(ip) then
         if ip:find("/", 1, true) then
           weight = bor(weight, CIDR_BIT)
 
@@ -456,7 +461,7 @@ do
         end
       end
 
-      if port then
+      if not is_null(port) then
         weight = bor(weight, PORT_BIT)
       end
     end
