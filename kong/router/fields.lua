@@ -467,7 +467,11 @@ function _M:get_cache_key(params, ctx)
                                   visit_for_cache_key, str_buf)
   assert(res)
 
-  return str_buf:get()
+  local str = str_buf:get()
+
+  -- returns a local variable instead of using a tail call
+  -- to avoid NYI
+  return str
 end
 
 
