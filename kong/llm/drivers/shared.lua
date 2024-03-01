@@ -27,7 +27,6 @@ _M.streaming_has_token_counts = {
   ["llama2"] = true,
 }
 local function split_table_key(obj)
-
   local result = {}
 
   for key, value in pairs(obj) do
