@@ -7,7 +7,7 @@ the community (with various technical backgrounds), and a guide/reference for
 contributors and maintainers.
 
 Please have a look at our [Community Pledge](./COMMUNITY_PLEDGE.md) to
-understand how we work with our open source contributors!
+understand how we work with our open-source contributors!
 
 Consult the Table of Contents below, and jump to the desired section.
 
@@ -55,11 +55,11 @@ If you are a Kong Enterprise customer, you may contact the Enterprise Support ch
 by opening an Enterprise support ticket on
 [https://support.konghq.com](https://support.konghq.com/).
 
-If you are experiencing a P1 issue, please call at the [24/7 Enterprise Support
+If you are experiencing a P1 issue, please call the [24/7 Enterprise Support
 phone line](https://support.konghq.com/hc/en-us/articles/115004921808-Telephone-Support)
 for immediate assistance, as published in the Customer Success Reference Guide.
 
-If you are interested in becoming a Kong Enterprise customer, please to visit
+If you are interested in becoming a Kong Enterprise customer, please visit
 https://konghq.com/kong-enterprise-edition/ or contact us at
 [sales@konghq.com](mailto:sales@konghq.com).
 
@@ -67,7 +67,7 @@ https://konghq.com/kong-enterprise-edition/ or contact us at
 
 ### Community Edition
 
-For questions around the use of the Community Edition, please use
+For questions about the use of the Community Edition, please use
 [GitHub Discussions](https://github.com/Kong/kong/discussions).  You
 can also join our [Community Slack](http://kongcommunity.slack.com/)
 for real-time conversations around Kong Gateway.
@@ -152,7 +152,7 @@ should begin by reading the
 
 If you already wrote a plugin, and are thinking about making it available to
 the community, we strongly encourage you to host it on a publicly available
-repository (like GitHub), and to distribute it via
+repository (like GitHub), and distribute it via
 [LuaRocks](https://luarocks.org/search?q=kong). A good resource on how to do
 so is the [Distribution
 Section](https://docs.konghq.com/latest/plugin-development/distribution/#distributing-your-plugin)
@@ -198,7 +198,7 @@ If the above guidelines are respected, your Pull Request has all its chances
 to be considered and will be reviewed by a maintainer.
 
 If you are asked to update your patch by a reviewer, please do so! Remember:
-**you are responsible for pushing your patch forward**. If you contributed it,
+**You are responsible for pushing your patch forward**. If you contributed it,
 you are probably the one in need of it. You must be ready to apply changes
 to it if necessary.
 
@@ -207,7 +207,7 @@ makes it significantly easier to use or understand Kong, congratulations!
 You are now an official contributor to Kong. Get in touch with us to receive
 your very own [Contributor T-shirt](#contributor-t-shirt)!
 
-Your change will be included in the subsequent release Changelog, and we will
+Your change will be included in the subsequent release of Changelog, and we will
 not forget to include your name if you are an external contributor. :wink:
 
 [Back to TOC](#table-of-contents)
@@ -338,7 +338,7 @@ written so that:
 
 The body of your commit message should contain a detailed description of your
 changes. Ideally, if the change is significant, you should explain its
-motivation, the chosen implementation, and justify it.
+motivation, and the chosen implementation, and justify it.
 
 As previously mentioned, lines in the commit messages should not exceed 72
 characters.
@@ -360,7 +360,7 @@ Here are a few examples of good commit messages to take inspiration from:
 fix(admin): send HTTP 405 on unsupported method
 
 The appropriate status code when the request method is not supported
-on an endpoint it 405. We previously used to send HTTP 404, which
+on an endpoint is 405. We previously used to send HTTP 404, which
 is not appropriate. This updates the Admin API helpers to properly
 return 405 on such user errors.
 
@@ -415,11 +415,11 @@ suite.
   output
 - `spec/03-plugins` contains tests (both unit and integration) for the bundled
   plugins (those plugins still live in the core repository as of now, but will
-  eventually be externalized)
+  eventually, be externalized)
 
 A few guidelines when writing tests:
 
-- Make sure to use appropriate `describe` and `it` blocks, so it's obvious to what is being
+- Make sure to use appropriate `describe` and `it` blocks, so it's obvious what is being
   tested exactly
 - Ensure the atomicity of your tests: no test should be asserting two
   unrelated behaviors at the same time
@@ -452,7 +452,7 @@ assert.same(t1, t2)
 #### Writing changelog
 
 Please follow the guidelines in [Changelog Readme](https://github.com/Kong/kong/blob/master/CHANGELOG/README.md)
-on how to write changelog for your change.
+on how to write a changelog for your change.
 
 [Back to TOC](#table-of-contents)
 
@@ -502,17 +502,17 @@ practices:
   end
   ```
 
-  For OpenResty built-in APIs we may drop `ngx.` in the localized version
+  For OpenResty built-in APIs, we may drop `ngx.` in the localized version
 
   ```lua
   local req_get_post_args = ngx.req.get_post_args
   ```
 
-  Non-hot paths are localization optional
+  Non-hot paths are localization-optional
 
   ```lua
   if err then
-    ngx.log(ngx.ERR, ...) -- this is fine as error condition is not on the hot path
+    ngx.log(ngx.ERR, ...) -- this is fine as the error condition is not on the hot path
   end
   ```
 
@@ -535,7 +535,7 @@ practices:
 
 And finally, most importantly: use your best judgment to design an
 efficient algorithm. Doing so will always be more performant than a
-poorly-designed algorithm, even following all the performance tricks of the
+poorly designed algorithm, even following all the performance tricks of the
 language you are using. :smile:
 
 [Back to TOC](#table-of-contents)
@@ -543,10 +543,10 @@ language you are using. :smile:
 #### Adding Changelog
 
 Every patch, except those 
-documentation-only changes, requires a changelog entry to be present inside your Pull Request.
+documentation-only changes require a changelog entry to be present inside your Pull Request.
 
 Please follow [the changelog instructions](https://github.com/Kong/gateway-changelog)
-to create the appropriate changelog file your Pull Request.
+to create the appropriate changelog file for your Pull Request.
 
 [Back to TOC](#table-of-contents)
 
@@ -679,7 +679,7 @@ local t = {foo="hello",bar="world"}
 local t = { foo = "hello", bar = "world" }
 ```
 
-Perfer `ipairs()` to `for` loop when iterating an array,
+Prefer `ipairs()` to `for` loop when iterating an array,
 which gives us more readability:
 
 ```lua
@@ -970,4 +970,3 @@ ngx.log(ngx.DEBUG, "if `my_var` is nil, this code is fine: ", my_var)
 [Back to code style TOC](#table-of-contents---code-style)
 
 [Back to TOC](#table-of-contents)
-
