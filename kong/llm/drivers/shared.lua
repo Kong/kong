@@ -298,7 +298,7 @@ function _M.post_request(conf, response_object)
     local request_analytics = kong.ctx.shared.analytics
 
     -- create a new try context
-    local current_try= {
+    local current_try = {
       meta = {},
       usage = {},
       [log_entry_keys.TOKENS_CONTAINER] = {},
@@ -309,7 +309,7 @@ function _M.post_request(conf, response_object)
       request_analytics = {}
     end
 
-    -- check if we already have anylytics for this provider
+    -- check if we already have analytics for this provider
     local request_analytics_provider = request_analytics[conf.model.provider]
 
     -- create a new structure if not
@@ -323,20 +323,24 @@ function _M.post_request(conf, response_object)
       }
     end
 
+    -- Increment the number of instances
     request_analytics_provider.number_of_instances = request_analytics_provider.number_of_instances + 1
     
+    -- Get the current try count
     local try_count = request_analytics_provider.number_of_instances
 
+    -- Decode the response string
     local response_object, err = cjson.decode(response_string)
     if err then
       return nil, "failed to decode response from JSON"
     end
 
+    -- Set the model, response, and provider names in the current try context
     current_try[log_entry_keys.REQUEST_MODEL] = conf.model.name
     current_try[log_entry_keys.RESPONSE_MODEL] = response_object.model or conf.model.name
     current_try[log_entry_keys.PROVIDER_NAME] = conf.model.provider
 
-    -- this captures the openai-format usage stats from the transformed response body
+    -- Capture openai-format usage stats from the transformed response body
     if response_object.usage then
       if response_object.usage.prompt_tokens then
         request_analytics_provider.request_prompt_tokens = (request_analytics_provider.request_prompt_tokens + response_object.usage.prompt_tokens)
@@ -352,17 +356,19 @@ function _M.post_request(conf, response_object)
       end
     end
 
+    -- Log response body if logging payloads is enabled
     if conf.logging and conf.logging.log_payloads then
       current_try[log_entry_keys.RESPONSE_BODY] = response_string
     end
 
+    -- Store the split key data in instances
     request_analytics_provider.instances[try_count] = split_table_key(current_try)
 
-    -- update context with changed values
+    -- Update context with changed values
     request_analytics[conf.model.provider] = request_analytics_provider
     kong.ctx.shared.analytics = request_analytics
 
-    -- kong.log.set_serialize_value(conf.model.provider, request_analytics_provider)
+    -- Log analytics data
     kong.log.set_serialize_value(fmt("%s.%s", "ai", conf.model.provider), request_analytics_provider)
   end
 
