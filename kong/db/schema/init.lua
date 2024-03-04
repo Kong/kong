@@ -14,6 +14,8 @@ local nkeys        = require "table.nkeys"
 local is_reference = require "kong.pdk.vault".is_reference
 local json         = require "kong.db.schema.json"
 local cjson_safe   = require "cjson.safe"
+local deprecation  = require "kong.deprecation"
+local deepcompare  = require "pl.tablex".deepcompare
 
 
 local setmetatable = setmetatable
@@ -887,6 +889,16 @@ function Schema:validate_field(field, value)
 
   if field.abstract then
     return nil, validation_errors.SUBSCHEMA_ABSTRACT_FIELD
+  end
+
+  if field.deprecation then
+    local old_default = field.deprecation.old_default
+    local should_warn = old_default == nil
+                        or not deepcompare(value, old_default)
+    if should_warn then
+      deprecation(field.deprecation.message,
+          { after = field.deprecation.removal_in_version, })
+    end
   end
 
   if field.type == "array" then

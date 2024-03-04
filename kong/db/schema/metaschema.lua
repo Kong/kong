@@ -202,6 +202,20 @@ local field_schema = {
   { db_export = { type = "boolean" }, },
   { indexed = { type = "boolean" }, },
   { json_schema = json_metaschema },
+  -- Deprecation attribute: used to mark a field as deprecated
+  -- Results in `message` and `removal_in_version` to be printed in a warning
+  -- (via kong.deprecation) when the field is used.
+  -- If `old_default` is not set, the warning message is always printed.
+  -- If `old_default` is set, the warning message is only printed when the
+  -- field's value is different from the value of `old_default`.
+  { deprecation = {
+    type = "record",
+    fields = {
+      { message = { type = "string", required = true } },
+      { removal_in_version = { type = "string", required = true } },
+      { old_default = { type = "any", required = false } },
+    },
+  } },
 }
 
 
