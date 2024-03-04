@@ -86,6 +86,10 @@ function _M.new(opts)
     error("opts.resty_lock_opts must be a table", 2)
   end
 
+  if opts.invalidation_channel and type(opts.invalidation_channel) ~= "string" then
+    error("opts.invalidation_channel must be a string", 2)
+  end
+
   local shm_name = opts.shm_name
   if not shared[shm_name] then
     log(ERR, "shared dictionary ", shm_name, " not found")
@@ -131,6 +135,8 @@ function _M.new(opts)
   end
 
   local cluster_events = opts.cluster_events
+  local invalidation_channel = opts.invalidation_channel
+                               or ("invalidations_" .. shm_name)
   local self       = {
     cluster_events = cluster_events,
     mlcache        = mlcache,
@@ -138,27 +144,17 @@ function _M.new(opts)
     shm_name       = shm_name,
     ttl            = ttl,
     neg_ttl        = neg_ttl,
+    invalidation_channel = invalidation_channel,
   }
 
-  if self.shm_name == "kong_db_cache" then
-    local ok, err = cluster_events:subscribe("invalidations", function(key)
-      log(DEBUG, self.shm_name .. " received invalidate event from cluster for key: '", key, "'")
-      self:invalidate_local(key)
-    end)
-    if not ok then
-      return nil, "failed to subscribe to invalidations cluster events " ..
-                  "channel: " .. err
-    end
 
-  else
-    local ok, err = cluster_events:subscribe("invalidations_" .. self.shm_name, function(key)
-      log(DEBUG, self.shm_name .. " received invalidate event from cluster for key: '", key, "'")
-      self:invalidate_local(key)
-    end)
-    if not ok then
-      return nil, "failed to subscribe to invalidations cluster events " ..
-                  "channel: " .. err
-    end
+  local ok, err = cluster_events:subscribe(self.invalidation_channel, function(key)
+    log(DEBUG, self.shm_name .. " received invalidate event from cluster for key: '", key, "'")
+    self:invalidate_local(key)
+  end)
+  if not ok then
+    return nil, "failed to subscribe to invalidations cluster events " ..
+                "channel: " .. err
   end
 
   _init[shm_name] = true
@@ -260,17 +256,9 @@ function _M:invalidate(key)
 
   log(DEBUG, "broadcasting (cluster) invalidation for key: '", key, "'")
 
-  if self.shm_name == "kong_db_cache" then
-    local ok, err = self.cluster_events:broadcast("invalidations", key)
-    if not ok then
-      log(ERR, "failed to broadcast cached entity invalidation: ", err)
-    end
-
-  else
-    local ok, err = self.cluster_events:broadcast("invalidations_" .. self.shm_name, key)
-    if not ok then
-      log(ERR, "failed to broadcast cached entity invalidation: ", err)
-    end
+  local ok, err = self.cluster_events:broadcast(self.invalidation_channel, key)
+  if not ok then
+    log(ERR, "failed to broadcast cached entity invalidation: ", err)
   end
 end
 
