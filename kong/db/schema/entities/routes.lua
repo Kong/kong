@@ -152,10 +152,29 @@ else
   }
 
   if kong_router_flavor == "traditional_compatible" then
+    local is_empty_field = require("kong.router.transform").is_empty_field
+
     table.insert(entity_checks,
       { custom_entity_check = {
+        field_sources = { "id", "protocols",
+                          "snis", "sources", "destinations",
+                          "methods", "hosts", "paths", "headers",
+                        },
         run_with_missing_fields = true,
-        fn = validate_route,
+        fn = function(entity)
+          if is_empty_field(entity.snis) and
+             is_empty_field(entity.sources) and
+             is_empty_field(entity.destinations) and
+             is_empty_field(entity.methods) and
+             is_empty_field(entity.hosts) and
+             is_empty_field(entity.paths) and
+             is_empty_field(entity.headers)
+          then
+            return true
+          end
+
+          return validate_route(entity)
+        end,
       }}
     )
   end

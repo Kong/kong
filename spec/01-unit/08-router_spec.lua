@@ -4353,6 +4353,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
                 service = service,
                 route = {
                   id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  protocols = { "tcp", },
                   sources = {
                     { ip = "127.0.0.1" },
                     { ip = "127.0.0.2" },
@@ -4363,6 +4364,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
                 service = service,
                 route = {
                   id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+                  protocols = { "tcp", },
                   sources = {
                     { port = 65001 },
                     { port = 65002 },
@@ -4374,6 +4376,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
                 service = service,
                 route = {
                   id = "e8fb37f1-102d-461e-9c51-6608a6bb8103",
+                  protocols = { "tcp", },
                   sources = {
                     { ip = "127.168.0.0/8" },
                   }
@@ -4384,6 +4387,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
                 service = service,
                 route = {
                   id = "e8fb37f1-102d-461e-9c51-6608a6bb8104",
+                  protocols = { "tcp", },
                   sources = {
                     { ip = "127.0.0.1", port = 65001 },
                   }
@@ -4393,6 +4397,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
                 service = service,
                 route = {
                   id = "e8fb37f1-102d-461e-9c51-6608a6bb8105",
+                  protocols = { "tcp", },
                   sources = {
                     { ip = "127.0.0.2", port = 65300 },
                     { ip = "127.168.0.0/16", port = 65301 },
@@ -4462,6 +4467,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
                 service = service,
                 route = {
                   id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  protocols = { "tcp", },
                   destinations = {
                     { ip = "127.0.0.1" },
                     { ip = "127.0.0.2" },
@@ -4472,6 +4478,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
                 service = service,
                 route = {
                   id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+                  protocols = { "tcp", },
                   destinations = {
                     { port = 65001 },
                     { port = 65002 },
@@ -4483,6 +4490,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
                 service = service,
                 route = {
                   id = "e8fb37f1-102d-461e-9c51-6608a6bb8103",
+                  protocols = { "tcp", },
                   destinations = {
                     { ip = "127.168.0.0/8" },
                   }
@@ -4493,6 +4501,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
                 service = service,
                 route = {
                   id = "e8fb37f1-102d-461e-9c51-6608a6bb8104",
+                  protocols = { "tcp", },
                   destinations = {
                     { ip = "127.0.0.1", port = 65001 },
                   }
@@ -4502,6 +4511,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
                 service = service,
                 route = {
                   id = "e8fb37f1-102d-461e-9c51-6608a6bb8105",
+                  protocols = { "tcp", },
                   destinations = {
                     { ip = "127.0.0.2", port = 65300 },
                     { ip = "127.168.0.0/16", port = 65301 },
@@ -4659,6 +4669,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
               service = service,
               route = {
                 id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                protocols = { "tls", },
                 snis = { "www.example.org" },
               }
             },
@@ -4666,6 +4677,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
               service = service,
               route = {
                 id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+                protocols = { "tls", },
                 sources = {
                   { ip = "127.0.0.1" },
                 }
@@ -4675,6 +4687,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
               service = service,
               route = {
                 id = "e8fb37f1-102d-461e-9c51-6608a6bb8103",
+                protocols = { "tls", },
                 destinations = {
                   { ip = "172.168.0.1" },
                 }
@@ -4701,6 +4714,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
               service = service,
               route = {
                 id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                protocols = { "tls", },
                 snis = { "www.example.org" },
               }
             },
@@ -4708,6 +4722,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
               service = service,
               route = {
                 id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+                protocols = { "tls", },
                 sources = {
                   { ip = "127.0.0.1" },
                 },
@@ -5077,6 +5092,57 @@ do
       assert.same(ctx.route_match_cached, "pos")
       assert.equal(host, match_t.upstream_host)
       assert.same("/bar", match_t.upstream_uri)
+    end)
+  end)
+
+  describe("Router (flavor = " .. flavor .. ")", function()
+    reload_router(flavor, "stream")
+
+    it("[#stream SNI-based routing does work using tls_passthrough]", function()
+      local use_case = {
+        {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+            protocols = { "tls_passthrough", },
+            snis = { "www.example.com" },
+            preserve_host = true,
+          },
+        },
+        {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+            protocols = { "tls_passthrough", },
+            snis = { "www.example.org" },
+            preserve_host = true,
+          },
+        },
+      }
+
+      local router = assert(new_router(use_case))
+
+      local _ngx = {
+        var = {
+          ssl_preread_server_name = "www.example.com",
+        },
+      }
+      router._set_ngx(_ngx)
+      local match_t = router:exec()
+
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+
+      local _ngx = {
+        var = {
+          ssl_preread_server_name = "www.example.org",
+        },
+      }
+      router._set_ngx(_ngx)
+      local match_t = router:exec()
+
+      assert.truthy(match_t)
+      assert.same(use_case[2].route, match_t.route)
     end)
   end)
 end   -- local flavor = "traditional_compatible"
