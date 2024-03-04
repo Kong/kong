@@ -652,6 +652,13 @@ build = {
     ["kong.timing.hooks.redis"] = "kong/timing/hooks/redis.lua",
     ["kong.timing.hooks.socket"] = "kong/timing/hooks/socket.lua",
 
+    ["kong.etrace"] = "kong/etrace/init.lua",
+    ["kong.etrace.queue"] = "kong/etrace/queue.lua",
+    ["kong.etrace.hooks"] = "kong/etrace/hooks/init.lua",
+    ["kong.etrace.hooks.dns"] = "kong/etrace/hooks/dns.lua",
+    ["kong.etrace.hooks.redis"] = "kong/etrace/hooks/redis.lua",
+
     ["kong.dynamic_hook"] = "kong/dynamic_hook/init.lua",
   }
 }
+

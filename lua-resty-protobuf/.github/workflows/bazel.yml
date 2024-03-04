@@ -1,0 +1,40 @@
+name: Bazel build
+
+on:
+  pull_request:
+    paths-ignore:
+    # ignore markdown files (CHANGELOG.md, README.md, etc.)
+    - '**/*.md'
+  push:
+    paths-ignore:
+    # ignore markdown files (CHANGELOG.md, README.md, etc.)
+    - '**/*.md'
+    branches:
+    - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  tests:
+    name: Tests
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout source code
+      uses: actions/checkout@v4
+
+    - name: Build
+      run: bazel build :resty_protobuf --verbose_failures
+
+    - name: Ensure `ffi` feature is present (Linux)
+      if: ${{ matrix.os == 'ubuntu-latest' }}
+      run: readelf -Ws --dyn-syms bazel-bin/libresty_protobuf.so | grep lua_resty_protobuf_
+
+    - name: Ensure `ffi` feature is present (macOS)
+      if: ${{ matrix.os == 'macos-latest' }}
+      run: nm -gU bazel-bin/libresty_protobuf.dylib | grep lua_resty_protobuf_

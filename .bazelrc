@@ -40,6 +40,10 @@ build --features=-debug_prefix_map_pwd_is_dot
 build --action_env=BUILD_NAME=kong-dev
 build --action_env=INSTALL_DESTDIR=MANAGED
 build --strip=never
+build --compilation_mode=opt
+build --copt="-g"
+build --//:debug=false
+build --//:licensing=false
 
 # Release flags
 build:release --//:debug=false

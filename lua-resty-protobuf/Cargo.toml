@@ -1,0 +1,20 @@
+[package]
+name = "prost_test"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bytes = "1.6.0"
+prost = "0.12.3"
+rand = "0.8.5"
+opentelemetry-proto = { version = "0.5.0", features = ["gen-tonic", "trace", "logs", "metrics"] }
+snap = "1.1.1"
+
+[lib]
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[features]
+default = ["ffi"]
+ffi = []
