@@ -1115,6 +1115,8 @@ return {
         req_dyn_hook_run_hooks("timing", "before:router")
       end
 
+      req_dyn_hook_run_hooks("etrace", "before:router", ctx)
+
       -- routing request
       local router = get_updated_router()
       local match_t = router:exec(ctx)
@@ -1122,6 +1124,8 @@ return {
       if has_timing then
         req_dyn_hook_run_hooks("timing", "after:router")
       end
+
+      req_dyn_hook_run_hooks("etrace", "after:router", ctx)
 
       if not match_t then
         -- tracing

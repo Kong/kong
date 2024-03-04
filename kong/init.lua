@@ -95,6 +95,7 @@ local wasm = require "kong.runloop.wasm"
 local reports = require "kong.reports"
 local pl_file = require "pl.file"
 local req_dyn_hook = require "kong.dynamic_hook"
+local etrace = require "kong.etrace"
 
 
 local kong             = kong
@@ -318,8 +319,11 @@ local function execute_global_plugins_iterator(plugins_iterator, phase, ctx)
     return
   end
 
+  req_dyn_hook_run_hooks("etrace", "before:plugin_iterator", ctx)
+
   local old_ws = ctx.workspace
   local has_timing = ctx.has_timing
+  local old_ctx = ctx
 
   if has_timing then
     req_dyn_hook_run_hooks("timing", "before:plugin_iterator")
@@ -337,11 +341,15 @@ local function execute_global_plugins_iterator(plugins_iterator, phase, ctx)
       req_dyn_hook_run_hooks("timing", "before:plugin", plugin.name, ctx.plugin_id)
     end
 
+    req_dyn_hook_run_hooks(old_ctx, "etrace", "before:a_plugin", ctx, plugin.name, ctx.plugin_id)
+
     plugin.handler[phase](plugin.handler, configuration)
 
     if has_timing then
       req_dyn_hook_run_hooks("timing", "after:plugin")
     end
+
+    req_dyn_hook_run_hooks(old_ctx, "etrace", "after:a_plugin", ctx, plugin.name, ctx.plugin_id)
 
     reset_plugin_context(ctx, old_ws)
 
@@ -353,6 +361,8 @@ local function execute_global_plugins_iterator(plugins_iterator, phase, ctx)
   if has_timing then
     req_dyn_hook_run_hooks("timing", "after:plugin_iterator")
   end
+
+  req_dyn_hook_run_hooks(old_ctx, "etrace", "after:plugin_iterator", ctx)
 end
 
 
@@ -367,6 +377,8 @@ local function execute_collecting_plugins_iterator(plugins_iterator, phase, ctx)
   end
 
   ctx.delay_response = true
+
+  req_dyn_hook_run_hooks("etrace", "before:plugin_iterator", ctx)
 
   local old_ws = ctx.workspace
   local has_timing = ctx.has_timing
@@ -388,12 +400,16 @@ local function execute_collecting_plugins_iterator(plugins_iterator, phase, ctx)
         req_dyn_hook_run_hooks( "timing", "before:plugin", plugin.name, ctx.plugin_id)
       end
 
+      req_dyn_hook_run_hooks("etrace", "before:a_plugin", ctx, plugin.name, ctx.plugin_id)
+
       local co = coroutine.create(plugin.handler[phase])
       local cok, cerr = coroutine.resume(co, plugin.handler, configuration)
 
       if has_timing then
         req_dyn_hook_run_hooks("timing", "after:plugin")
       end
+
+      req_dyn_hook_run_hooks("etrace", "after:a_plugin", ctx, plugin.name, ctx.plugin_id)
 
       if not cok then
         -- set tracing error
@@ -425,6 +441,8 @@ local function execute_collecting_plugins_iterator(plugins_iterator, phase, ctx)
     req_dyn_hook_run_hooks("timing", "after:plugin_iterator")
   end
 
+  req_dyn_hook_run_hooks("etrace", "after:plugin_iterator", ctx)
+
   ctx.delay_response = nil
 end
 
@@ -439,8 +457,11 @@ local function execute_collected_plugins_iterator(plugins_iterator, phase, ctx)
     return
   end
 
+  req_dyn_hook_run_hooks("etrace", "before:plugin_iterator", ctx)
+
   local old_ws = ctx.workspace
   local has_timing = ctx.has_timing
+  local old_ctx = ctx
 
   if has_timing then
     req_dyn_hook_run_hooks("timing", "before:plugin_iterator")
@@ -458,11 +479,15 @@ local function execute_collected_plugins_iterator(plugins_iterator, phase, ctx)
       req_dyn_hook_run_hooks("timing", "before:plugin", plugin.name, ctx.plugin_id)
     end
 
+    req_dyn_hook_run_hooks(old_ctx, "etrace", "before:a_plugin", ctx, plugin.name, ctx.plugin_id)
+
     plugin.handler[phase](plugin.handler, configuration)
 
     if has_timing then
       req_dyn_hook_run_hooks("timing", "after:plugin")
     end
+
+    req_dyn_hook_run_hooks(old_ctx, "etrace", "after:a_plugin", ctx, plugin.name, ctx.plugin_id)
 
     reset_plugin_context(ctx, old_ws)
 
@@ -474,6 +499,8 @@ local function execute_collected_plugins_iterator(plugins_iterator, phase, ctx)
   if has_timing then
     req_dyn_hook_run_hooks("timing", "after:plugin_iterator")
   end
+
+  req_dyn_hook_run_hooks(old_ctx, "etrace", "after:plugin_iterator", ctx)
 end
 
 
@@ -778,6 +805,8 @@ function Kong.init()
             " token for request debugging: ",
             kong.request_debug_token)
   end
+
+  etrace.init(config)
 end
 
 
@@ -870,6 +899,7 @@ function Kong.init_worker()
 
   kong.timing = kong_global.init_timing()
   kong.timing.init_worker(kong.configuration.request_debug)
+  etrace.init_worker()
 
   if is_dbless(kong.configuration) then
     -- databases in LMDB need to be explicitly created, otherwise `get`
@@ -1087,7 +1117,8 @@ function Kong.rewrite()
   ctx.KONG_PHASE = PHASES.rewrite
   local has_timing
 
-  req_dyn_hook_run_hooks("timing:auth", "auth")
+  req_dyn_hook_run_hooks(ctx, "timing:auth", "auth")
+  req_dyn_hook_run_hooks("etrace", "before:rewrite", ctx)
 
   if req_dyn_hook_is_group_enabled("timing") then
     ctx.has_timing = true
@@ -1126,6 +1157,8 @@ function Kong.rewrite()
   if has_timing then
     req_dyn_hook_run_hooks("timing", "after:rewrite")
   end
+
+  req_dyn_hook_run_hooks("etrace", "after:rewrite", ctx)
 end
 
 
@@ -1136,6 +1169,8 @@ function Kong.access()
   if has_timing then
     req_dyn_hook_run_hooks("timing", "before:access")
   end
+
+  req_dyn_hook_run_hooks("etrace", "before:access", ctx)
 
   if not ctx.KONG_ACCESS_START then
     ctx.KONG_ACCESS_START = get_now_ms()
@@ -1163,6 +1198,8 @@ function Kong.access()
       req_dyn_hook_run_hooks("timing", "after:access")
     end
 
+    req_dyn_hook_run_hooks("etrace", "after:access", ctx)
+
     return flush_delayed_response(ctx)
   end
 
@@ -1178,6 +1215,8 @@ function Kong.access()
     if has_timing then
       req_dyn_hook_run_hooks("timing", "after:access")
     end
+
+    req_dyn_hook_run_hooks("etrace", "after:access", ctx)
 
     return kong.response.error(503, "no Service found with those values")
   end
@@ -1200,6 +1239,8 @@ function Kong.access()
         req_dyn_hook_run_hooks("timing", "after:access")
       end
 
+      req_dyn_hook_run_hooks("etrace", "after:access", ctx)
+
       return Kong.response()
     end
 
@@ -1215,6 +1256,8 @@ function Kong.access()
   if has_timing then
     req_dyn_hook_run_hooks("timing", "after:access")
   end
+
+  req_dyn_hook_run_hooks("etrace", "after:access", ctx)
 end
 
 
@@ -1225,6 +1268,8 @@ function Kong.balancer()
   if has_timing then
     req_dyn_hook_run_hooks("timing", "before:balancer")
   end
+
+  req_dyn_hook_run_hooks("etrace", "before:balancer", ctx)
 
   -- This may be called multiple times, and no yielding here!
   local now_ms = get_now_ms()
@@ -1308,6 +1353,8 @@ function Kong.balancer()
         req_dyn_hook_run_hooks("timing", "after:balancer")
       end
 
+      req_dyn_hook_run_hooks("etrace", "after:balancer", ctx)
+
       return ngx.exit(errcode)
     end
 
@@ -1319,6 +1366,8 @@ function Kong.balancer()
         if has_timing then
           req_dyn_hook_run_hooks("timing", "after:balancer")
         end
+
+        req_dyn_hook_run_hooks("etrace", "after:balancer", ctx)
 
         return ngx.exit(500)
       end
@@ -1375,6 +1424,8 @@ function Kong.balancer()
       req_dyn_hook_run_hooks("timing", "after:balancer")
     end
 
+    req_dyn_hook_run_hooks("etrace", "after:balancer", ctx)
+
     return ngx.exit(500)
   end
 
@@ -1414,6 +1465,8 @@ function Kong.balancer()
   if has_timing then
     req_dyn_hook_run_hooks("timing", "after:balancer")
   end
+
+  req_dyn_hook_run_hooks("etrace", "after:balancer", ctx)
 end
 
 
@@ -1444,6 +1497,8 @@ do
       req_dyn_hook_run_hooks("timing", "before:response")
     end
 
+    req_dyn_hook_run_hooks("etrace", "before:response", ctx)
+
     local plugins_iterator = runloop.get_plugins_iterator()
 
     -- buffered proxying (that also executes the balancer)
@@ -1464,6 +1519,8 @@ do
       if has_timing then
         req_dyn_hook_run_hooks("timing", "after:response")
       end
+
+      req_dyn_hook_run_hooks("etrace", "after:response", ctx)
 
       return kong_error_handlers(ctx)
     end
@@ -1519,6 +1576,8 @@ do
       req_dyn_hook_run_hooks("timing", "after:response")
     end
 
+    req_dyn_hook_run_hooks("etrace", "after:response", ctx)
+
     -- jump over the balancer to header_filter
     ngx.exit(status)
   end
@@ -1532,6 +1591,8 @@ function Kong.header_filter()
   if has_timing then
     req_dyn_hook_run_hooks("timing", "before:header_filter")
   end
+
+  req_dyn_hook_run_hooks("etrace", "before:header_filter", ctx)
 
   if not ctx.KONG_PROCESSING_START then
     ctx.KONG_PROCESSING_START = get_start_time_ms()
@@ -1604,6 +1665,8 @@ function Kong.header_filter()
   if has_timing then
     req_dyn_hook_run_hooks("timing", "after:header_filter")
   end
+
+  req_dyn_hook_run_hooks("etrace", "after:header_filter", ctx)
 end
 
 
@@ -1614,6 +1677,8 @@ function Kong.body_filter()
   if has_timing then
     req_dyn_hook_run_hooks("timing", "before:body_filter")
   end
+
+  req_dyn_hook_run_hooks("etrace", "before:body_filter", ctx)
 
   if not ctx.KONG_BODY_FILTER_START then
     ctx.KONG_BODY_FILTER_START = get_now_ms()
@@ -1674,6 +1739,8 @@ function Kong.body_filter()
       req_dyn_hook_run_hooks("timing", "after:body_filter")
     end
 
+    req_dyn_hook_run_hooks("etrace", "after:body_filter", ctx)
+
     return
   end
 
@@ -1695,6 +1762,8 @@ function Kong.body_filter()
   if has_timing then
     req_dyn_hook_run_hooks("timing", "after:body_filter")
   end
+
+  req_dyn_hook_run_hooks("etrace", "after:body_filter", ctx)
 end
 
 
@@ -1705,6 +1774,8 @@ function Kong.log()
   if has_timing then
     req_dyn_hook_run_hooks("timing", "before:log")
   end
+
+  req_dyn_hook_run_hooks("etrace", "before:log", ctx)
 
   if not ctx.KONG_LOG_START then
     ctx.KONG_LOG_START = get_now_ms()
@@ -1800,6 +1871,8 @@ function Kong.log()
   if has_timing then
     req_dyn_hook_run_hooks("timing", "after:log")
   end
+
+  req_dyn_hook_run_hooks("etrace", "after:log", ctx)
 
   release_table(CTX_NS, ctx)
 

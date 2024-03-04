@@ -1,0 +1,13 @@
+workspace(name = "resty_protobuf")
+
+load("//build:repos.bzl", "resty_protobuf_repositories")
+
+resty_protobuf_repositories()
+
+load("//build:deps.bzl", "resty_protobuf_dependencies")
+
+resty_protobuf_dependencies(cargo_home_isolated = False)  # use system `$CARGO_HOME` to speed up builds
+
+load("//build:crates.bzl", "resty_protobuf_crates")
+
+resty_protobuf_crates()
