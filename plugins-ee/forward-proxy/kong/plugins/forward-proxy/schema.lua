@@ -52,12 +52,18 @@ return {
           -- deprecated forms, to be removed in Kong 3.0
           { proxy_host = {
               type = "string",
+              deprecation = {
+                message = "forward-proxy: config.proxy_host is deprecated, please use config.http_proxy_host instead",
+                removal_in_version = "4.0", },
               func = function(value)
                 return { http_proxy_host = value }
               end,
           }, },
           { proxy_port = {
               type = "integer",
+              deprecation = {
+                message = "forward-proxy: config.proxy_port is deprecated, please use config.http_proxy_port instead",
+                removal_in_version = "4.0", },
               func = function(value)
                 return { http_proxy_port = value }
               end,

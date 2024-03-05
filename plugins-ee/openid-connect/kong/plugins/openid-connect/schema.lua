@@ -2292,6 +2292,9 @@ local config = {
           {
             authorization_cookie_lifetime = {
               type = "number",
+              deprecation = {
+                message = "openid-connect: config.authorization_cookie_lifetime is deprecated, please use config.authorization_rolling_timeout instead",
+                removal_in_version = "4.0", },
               func = function(value)
                 return { authorization_rolling_timeout = value }
               end,
@@ -2300,6 +2303,9 @@ local config = {
           {
             authorization_cookie_samesite = {
               type = "string",
+              deprecation = {
+                message = "openid-connect: config.authorization_cookie_samesite is deprecated, please use config.authorization_cookie_same_site instead",
+                removal_in_version = "4.0", },
               func = function(value)
                 if value == "off" then
                   value = "Default"
@@ -2311,6 +2317,9 @@ local config = {
           {
             authorization_cookie_httponly = {
               type = "boolean",
+              deprecation = {
+                message = "openid-connect: config.authorization_cookie_httponly is deprecated, please use config.authorization_cookie_http_only instead",
+                removal_in_version = "4.0", },
               func = function(value)
                 return { authorization_cookie_http_only = value }
               end,
@@ -2319,6 +2328,9 @@ local config = {
           {
             session_cookie_lifetime = {
               type = "number",
+              deprecation = {
+                message = "openid-connect: config.session_cookie_lifetime is deprecated, please use config.session_rolling_timeout instead",
+                removal_in_version = "4.0", },
               func = function(value)
                 return { session_rolling_timeout = value }
               end,
@@ -2327,6 +2339,9 @@ local config = {
           {
             session_cookie_idletime = {
               type = "number",
+              deprecation = {
+                message = "openid-connect: config.session_cookie_idletime is deprecated, please use config.session_idling_timeout instead",
+                removal_in_version = "4.0", },
               func = function(value)
                 return { session_idling_timeout = value }
               end,
@@ -2335,6 +2350,9 @@ local config = {
           {
             session_cookie_samesite = {
               type = "string",
+              deprecation = {
+                message = "openid-connect: config.session_cookie_samesite is deprecated, please use config.session_cookie_same_site instead",
+                removal_in_version = "4.0", },
               func = function(value)
                 if value == "off" then
                   value = "Lax"
@@ -2346,6 +2364,9 @@ local config = {
           {
             session_cookie_httponly = {
               type = "boolean",
+              deprecation = {
+                message = "openid-connect: config.session_cookie_httponly is deprecated, please use config.session_cookie_http_only instead",
+                removal_in_version = "4.0", },
               func = function(value)
                 return { session_cookie_http_only = value }
               end,
@@ -2354,6 +2375,9 @@ local config = {
           {
             session_memcache_prefix = {
               type = "string",
+              deprecation = {
+                message = "openid-connect: config.session_memcache_prefix is deprecated, please use config.session_memcached_prefix instead",
+                removal_in_version = "4.0", },
               func = function(value)
                 return { session_memcached_prefix = value }
               end,
@@ -2362,6 +2386,9 @@ local config = {
           {
             session_memcache_socket = {
               type = "string",
+              deprecation = {
+                message = "openid-connect: config.session_memcache_socket is deprecated, please use config.session_memcached_socket instead",
+                removal_in_version = "4.0", },
               func = function(value)
                 return { session_memcached_socket = value }
               end,
@@ -2370,6 +2397,9 @@ local config = {
           {
             session_memcache_host = {
               type = "string",
+              deprecation = {
+                message = "openid-connect: config.session_memcache_host is deprecated, please use config.session_memcached_host instead",
+                removal_in_version = "4.0", },
               func = function(value)
                 return { session_memcached_host = value }
               end,
@@ -2378,6 +2408,9 @@ local config = {
           {
             session_memcache_port = {
               type = "integer",
+              deprecation = {
+                message = "openid-connect: config.session_memcache_port is deprecated, please use config.session_memcached_port instead",
+                removal_in_version = "4.0", },
               func = function(value)
                 return { session_memcached_port = value }
               end,
@@ -2386,6 +2419,9 @@ local config = {
           {
             session_redis_cluster_maxredirections = {
               type = "integer",
+              deprecation = {
+                message = "openid-connect: config.session_redis_cluster_maxredirections is deprecated, please use config.session_redis_cluster_max_redirections instead",
+                removal_in_version = "4.0", },
               func = function(value)
                 return { session_redis_cluster_max_redirections = value }
               end,
@@ -2394,37 +2430,37 @@ local config = {
           {
             session_cookie_renew = {
               type = "number",
-              func = function()
-                -- new library calculates this
-                ngx.log(ngx.INFO, "[openid-connect] session_cookie_renew option does not exist anymore")
-              end,
+              deprecation = {
+                message = "openid-connect: config.session_cookie_renew option does not exist anymore",
+                removal_in_version = "4.0", },
+              func = function() end,
             },
           },
           {
             session_cookie_maxsize = {
               type = "integer",
-              func = function()
-                -- new library has this hard coded
-                ngx.log(ngx.INFO, "[openid-connect] session_cookie_maxsize option does not exist anymore")
-              end,
+              deprecation = {
+                message = "openid-connect: config.session_cookie_maxsize option does not exist anymore",
+                removal_in_version = "4.0", },
+              func = function() end,
             },
           },
           {
             session_strategy = {
               type = "string",
-              func = function()
-                -- new library supports only the so called regenerate strategy
-                ngx.log(ngx.INFO, "[openid-connect] session_strategy option does not exist anymore")
-              end,
+              deprecation = {
+                message = "openid-connect: config.session_strategy option does not exist anymore",
+                removal_in_version = "4.0", },
+              func = function() end,
             },
           },
           {
             session_compressor = {
               type = "string",
-              func = function()
-                -- new library decides this based on data size
-                ngx.log(ngx.INFO, "[openid-connect] session_compressor option does not exist anymore")
-              end,
+              deprecation = {
+                message = "openid-connect: config.session_compressor option does not exist anymore",
+                removal_in_version = "4.0", },
+              func = function() end,
             },
           },
         },
