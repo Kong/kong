@@ -381,7 +381,8 @@ local function is_valid_license(license)
 end
 
 local function check_portal_and_vitals_allowed(portal_and_vitals_key)
-  local license_info = _M.read_license_info()
+  -- read_license_info for some CI jobs that don't have a global kong.license
+  local license_info = kong.license or _M.read_license_info()
 
   if not license_info or not license_info.license or
      not license_info.license.payload

@@ -1,0 +1,4 @@
+message: |
+  Fix a problem that a new DP cannot resolve the license required Vault reference after the first configuration push.
+type: bugfix
+scope: Core

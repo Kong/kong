@@ -218,8 +218,7 @@ local function preload_license(licenses_t)
     local lic = license_helpers.decode_license(license.payload)
 
     if lic then
-      licensing:update(lic)
-      licensing:post_conf_change_worker_event()
+      licensing:update_license(lic)
     end
   end
 end

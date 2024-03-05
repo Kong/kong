@@ -372,7 +372,7 @@ for _, strategy in helpers.each_strategy() do
       local pg_port = "5432"
       local api_server_port, trigger_server_port  = "16000", "18000"
       local reset_license_data
-      setup(function()
+      lazy_setup(function()
         reset_license_data = clear_license_env()
         local fixtures = {
           http_mock = {
@@ -511,7 +511,7 @@ for _, strategy in helpers.each_strategy() do
         }))
       end)
 
-      teardown(function()
+      lazy_teardown(function()
         helpers.unsetenv("KONG_TEST_PG_PORT")
         assert(helpers.stop_kong("servroot2", true))  -- dp
         assert(helpers.stop_kong("servroot", true))   -- cp
