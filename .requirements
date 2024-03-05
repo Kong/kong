@@ -42,6 +42,6 @@ KONGROCKS=v1.2.36
 # EE Debugging tools
 CURL=8.6.0
 CA_CERTS=2023-12-12
-NGHTTP2=1.59.0
+NGHTTP2=1.60.0
 
 # EE dependencies >
