@@ -1,5 +1,6 @@
 local url = require "socket.url"
 local utils = require "kong.tools.utils"
+local kong_table = require "kong.tools.table"
 local constants = require "kong.constants"
 local timestamp = require "kong.tools.timestamp"
 local secret = require "kong.plugins.oauth2.secret"
@@ -21,7 +22,7 @@ local string_byte = string.byte
 local check_https = utils.check_https
 local encode_args = utils.encode_args
 local random_string = utils.random_string
-local table_contains = utils.table_contains
+local table_contains = kong_table.table_contains
 
 
 local ngx_decode_args = ngx.decode_args

@@ -1,6 +1,6 @@
 local to_hex = require "resty.string".to_hex
 local openssl_bignum = require "resty.openssl.bn"
-local table_merge = require "kong.tools.utils".table_merge
+local table_merge = require "kong.tools.table".table_merge
 local split = require "kong.tools.utils".split
 local strip = require "kong.tools.utils".strip
 local tracing_context = require "kong.tracing.tracing_context"

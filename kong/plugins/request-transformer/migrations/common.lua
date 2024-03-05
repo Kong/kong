@@ -1,4 +1,4 @@
-local utils = require "kong.tools.utils"
+local kong_table = require "kong.tools.table"
 
 
 local _M = {}
@@ -18,7 +18,7 @@ function _M.rt_rename(_, _, dao)
       api_id = plugin.api_id,
       consumer_id = plugin.consumer_id,
       enabled = plugin.enabled,
-      config = utils.cycle_aware_deep_copy(plugin.config),
+      config = kong_table.cycle_aware_deep_copy(plugin.config),
     })
     if err then
       return err

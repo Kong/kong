@@ -14,7 +14,7 @@ local pl_config = require "pl.config"
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 local tablex = require "pl.tablex"
-local utils = require "kong.tools.utils"
+local kong_table = require "kong.tools.table"
 local log = require "kong.cmd.utils.log"
 local env = require "kong.cmd.utils.env"
 local ffi = require "ffi"
@@ -871,7 +871,7 @@ return setmetatable({
   end,
 
   remove_sensitive = function(conf)
-    local purged_conf = utils.cycle_aware_deep_copy(conf)
+    local purged_conf = kong_table.cycle_aware_deep_copy(conf)
 
     local refs = purged_conf["$refs"]
     if type(refs) == "table" then

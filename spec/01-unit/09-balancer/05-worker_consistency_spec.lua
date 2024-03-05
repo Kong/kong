@@ -1,8 +1,8 @@
-local utils = require "kong.tools.utils"
+local kong_table = require "kong.tools.table"
 local mocker = require "spec.fixtures.mocker"
 
 
-local ws_id = utils.uuid()
+local ws_id = require("kong.tools.utils").uuid()
 
 
 local function setup_it_block(consistency)
@@ -187,7 +187,7 @@ for _, consistency in ipairs({"strict", "eventual"}) do
         },
       }
 
-      local passive_hc = utils.cycle_aware_deep_copy(hc_defaults)
+      local passive_hc = kong_table.cycle_aware_deep_copy(hc_defaults)
       passive_hc.passive.healthy.successes = 1
       passive_hc.passive.unhealthy.http_failures = 1
 

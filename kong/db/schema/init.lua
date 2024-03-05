@@ -1,6 +1,7 @@
 local tablex       = require "pl.tablex"
 local pretty       = require "pl.pretty"
 local utils        = require "kong.tools.utils"
+local kong_table   = require "kong.tools.table"
 local cjson        = require "cjson"
 local new_tab      = require "table.new"
 local nkeys        = require "table.nkeys"
@@ -1013,7 +1014,7 @@ end
 local function handle_missing_field(field, value, opts)
   local no_defaults = opts and opts.no_defaults
   if field.default ~= nil and not no_defaults then
-    local copy = utils.cycle_aware_deep_copy(field.default)
+    local copy = kong_table.cycle_aware_deep_copy(field.default)
     if (field.type == "array" or field.type == "set")
       and type(copy) == "table"
       and not getmetatable(copy)
@@ -1651,7 +1652,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
 
   local is_select = context == "select"
   if not is_select then
-    data = utils.cycle_aware_deep_copy(data)
+    data = kong_table.cycle_aware_deep_copy(data)
   end
 
   local shorthand_fields = self.shorthand_fields
@@ -1682,7 +1683,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
       end
 
       if is_select and sdata.translate_backwards and not(opts and opts.hide_shorthands) then
-        data[sname] = utils.table_path(data, sdata.translate_backwards)
+        data[sname] = kong_table.table_path(data, sdata.translate_backwards)
       end
     end
     if has_errs then
@@ -2066,7 +2067,7 @@ function Schema:validate_immutable_fields(input, entity)
   local errors = {}
 
   for key, field in self:each_field(input) do
-    local compare = utils.is_array(input[key]) and tablex.compare_no_order or tablex.deepcompare
+    local compare = kong_table.is_array(input[key]) and tablex.compare_no_order or tablex.deepcompare
 
     if field.immutable and entity[key] ~= nil and not compare(input[key], entity[key]) then
       errors[key] = validation_errors.IMMUTABLE
@@ -2425,7 +2426,7 @@ function Schema.new(definition, is_subschema)
     return nil, validation_errors.SCHEMA_NO_FIELDS
   end
 
-  local self = utils.cycle_aware_deep_copy(definition)
+  local self = kong_table.cycle_aware_deep_copy(definition)
   setmetatable(self, Schema)
 
   local cache_key = self.cache_key

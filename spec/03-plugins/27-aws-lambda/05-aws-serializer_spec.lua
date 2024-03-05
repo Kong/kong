@@ -1,4 +1,4 @@
-local utils = require "kong.tools.utils"
+local kong_table = require "kong.tools.table"
 local date = require "date"
 
 describe("[AWS Lambda] aws-gateway input", function()
@@ -21,8 +21,8 @@ describe("[AWS Lambda] aws-gateway input", function()
     local body_data
     _G.ngx = setmetatable({
       req = {
-        get_headers = function() return utils.cycle_aware_deep_copy(mock_request.headers) end,
-        get_uri_args = function() return utils.cycle_aware_deep_copy(mock_request.query) end,
+        get_headers = function() return kong_table.cycle_aware_deep_copy(mock_request.headers) end,
+        get_uri_args = function() return kong_table.cycle_aware_deep_copy(mock_request.query) end,
         read_body = function() body_data = mock_request.body end,
         get_body_data = function() return body_data end,
         http_version = function() return mock_request.http_version end,

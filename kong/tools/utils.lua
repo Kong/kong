@@ -18,7 +18,6 @@ local _M = {}
 
 do
   local modules = {
-    "kong.tools.table",
     "kong.tools.string",
     "kong.tools.uuid",
     "kong.tools.rand",

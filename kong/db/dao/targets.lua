@@ -1,5 +1,6 @@
 local balancer = require "kong.runloop.balancer"
 local utils = require "kong.tools.utils"
+local kong_table = require "kong.tools.table"
 local cjson = require "cjson"
 local workspaces   = require "kong.workspaces"
 
@@ -10,7 +11,7 @@ local ipairs = ipairs
 local table = table
 local type = type
 local min = math.min
-local table_merge = utils.table_merge
+local table_merge = kong_table.table_merge
 
 
 local _TARGETS = {}

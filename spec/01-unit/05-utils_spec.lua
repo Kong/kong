@@ -1,4 +1,5 @@
 local utils = require "kong.tools.utils"
+local kong_table = require "kong.tools.table"
 local pl_path = require "pl.path"
 
 describe("Utils", function()
@@ -374,74 +375,74 @@ describe("Utils", function()
   describe("table", function()
     describe("table_contains()", function()
       it("should return false if a value is not contained in a nil table", function()
-        assert.False(utils.table_contains(nil, "foo"))
+        assert.False(kong_table.table_contains(nil, "foo"))
       end)
       it("should return true if a value is contained in a table", function()
         local t = { foo = "hello", bar = "world" }
-        assert.True(utils.table_contains(t, "hello"))
+        assert.True(kong_table.table_contains(t, "hello"))
       end)
       it("should return false if a value is not contained in a table", function()
         local t = { foo = "hello", bar = "world" }
-        assert.False(utils.table_contains(t, "foo"))
+        assert.False(kong_table.table_contains(t, "foo"))
       end)
     end)
 
     describe("is_array()", function()
       it("should know when an array (strict)", function()
-        assert.True(utils.is_array({ "a", "b", "c", "d" }))
-        assert.False(utils.is_array({ "a", "b", nil, "c", "d" }))
-        assert.False(utils.is_array({ [-1] = "a", [0] = "b", [1] = "c", [2] = "d" }))
-        assert.False(utils.is_array({ [0] = "a", [1] = "b", [2] = "c", [3] = "d" }))
-        assert.True(utils.is_array({ [1] = "a", [2] = "b", [3] = "c", [4] = "d" }))
-        assert.True(utils.is_array({ [1.0] = "a", [2.0] = "b", [3.0] = "c", [4.0] = "d" }))
-        assert.False(utils.is_array({ [1] = "a", [2] = "b", nil, [3] = "c", [4] = "d" })) --luacheck: ignore
-        assert.False(utils.is_array({ [1] = "a", [2] = "b", nil, [4] = "c", [5] = "d" })) --luacheck: ignore
-        assert.False(utils.is_array({ [1.1] = "a", [2.1] = "b", [3.1] = "c", [4.1] = "d" }))
-        assert.False(utils.is_array({ ["1"] = "a", ["2"] = "b", ["3"] = "c", ["4"] = "d" }))
-        assert.False(utils.is_array({ "a", "b", "c", foo = "d" }))
-        assert.False(utils.is_array())
-        assert.False(utils.is_array(false))
-        assert.False(utils.is_array(true))
+        assert.True(kong_table.is_array({ "a", "b", "c", "d" }))
+        assert.False(kong_table.is_array({ "a", "b", nil, "c", "d" }))
+        assert.False(kong_table.is_array({ [-1] = "a", [0] = "b", [1] = "c", [2] = "d" }))
+        assert.False(kong_table.is_array({ [0] = "a", [1] = "b", [2] = "c", [3] = "d" }))
+        assert.True(kong_table.is_array({ [1] = "a", [2] = "b", [3] = "c", [4] = "d" }))
+        assert.True(kong_table.is_array({ [1.0] = "a", [2.0] = "b", [3.0] = "c", [4.0] = "d" }))
+        assert.False(kong_table.is_array({ [1] = "a", [2] = "b", nil, [3] = "c", [4] = "d" })) --luacheck: ignore
+        assert.False(kong_table.is_array({ [1] = "a", [2] = "b", nil, [4] = "c", [5] = "d" })) --luacheck: ignore
+        assert.False(kong_table.is_array({ [1.1] = "a", [2.1] = "b", [3.1] = "c", [4.1] = "d" }))
+        assert.False(kong_table.is_array({ ["1"] = "a", ["2"] = "b", ["3"] = "c", ["4"] = "d" }))
+        assert.False(kong_table.is_array({ "a", "b", "c", foo = "d" }))
+        assert.False(kong_table.is_array())
+        assert.False(kong_table.is_array(false))
+        assert.False(kong_table.is_array(true))
       end)
 
       it("should know when an array (fast)", function()
-        assert.True(utils.is_array({ "a", "b", "c", "d" }, "fast"))
-        assert.True(utils.is_array({ "a", "b", nil, "c", "d" }, "fast"))
-        assert.True(utils.is_array({ [-1] = "a", [0] = "b", [1] = "c", [2] = "d" }, "fast"))
-        assert.True(utils.is_array({ [0] = "a", [1] = "b", [2] = "c", [3] = "d" }, "fast"))
-        assert.True(utils.is_array({ [1] = "a", [2] = "b", [3] = "c", [4] = "d" }, "fast"))
-        assert.True(utils.is_array({ [1.0] = "a", [2.0] = "b", [3.0] = "c", [4.0] = "d" }, "fast"))
-        assert.True(utils.is_array({ [1] = "a", [2] = "b", nil, [3] = "c", [4] = "d" }, "fast")) --luacheck: ignore
-        assert.True(utils.is_array({ [1] = "a", [2] = "b", nil, [4] = "c", [5] = "d" }, "fast")) --luacheck: ignore
-        assert.False(utils.is_array({ [1.1] = "a", [2.1] = "b", [3.1] = "c", [4.1] = "d" }, "fast"))
-        assert.False(utils.is_array({ ["1"] = "a", ["2"] = "b", ["3"] = "c", ["4"] = "d" }, "fast"))
-        assert.False(utils.is_array({ "a", "b", "c", foo = "d" }, "fast"))
-        assert.False(utils.is_array(nil, "fast"))
-        assert.False(utils.is_array(false, "fast"))
-        assert.False(utils.is_array(true, "fast"))
+        assert.True(kong_table.is_array({ "a", "b", "c", "d" }, "fast"))
+        assert.True(kong_table.is_array({ "a", "b", nil, "c", "d" }, "fast"))
+        assert.True(kong_table.is_array({ [-1] = "a", [0] = "b", [1] = "c", [2] = "d" }, "fast"))
+        assert.True(kong_table.is_array({ [0] = "a", [1] = "b", [2] = "c", [3] = "d" }, "fast"))
+        assert.True(kong_table.is_array({ [1] = "a", [2] = "b", [3] = "c", [4] = "d" }, "fast"))
+        assert.True(kong_table.is_array({ [1.0] = "a", [2.0] = "b", [3.0] = "c", [4.0] = "d" }, "fast"))
+        assert.True(kong_table.is_array({ [1] = "a", [2] = "b", nil, [3] = "c", [4] = "d" }, "fast")) --luacheck: ignore
+        assert.True(kong_table.is_array({ [1] = "a", [2] = "b", nil, [4] = "c", [5] = "d" }, "fast")) --luacheck: ignore
+        assert.False(kong_table.is_array({ [1.1] = "a", [2.1] = "b", [3.1] = "c", [4.1] = "d" }, "fast"))
+        assert.False(kong_table.is_array({ ["1"] = "a", ["2"] = "b", ["3"] = "c", ["4"] = "d" }, "fast"))
+        assert.False(kong_table.is_array({ "a", "b", "c", foo = "d" }, "fast"))
+        assert.False(kong_table.is_array(nil, "fast"))
+        assert.False(kong_table.is_array(false, "fast"))
+        assert.False(kong_table.is_array(true, "fast"))
       end)
 
       it("should know when an array (lapis)", function()
-        assert.True(utils.is_array({ "a", "b", "c", "d" }, "lapis"))
-        assert.False(utils.is_array({ "a", "b", nil, "c", "d" }, "lapis"))
-        assert.False(utils.is_array({ [-1] = "a", [0] = "b", [1] = "c", [2] = "d" }, "lapis"))
-        assert.False(utils.is_array({ [0] = "a", [1] = "b", [2] = "c", [3] = "d" }, "lapis"))
-        assert.True(utils.is_array({ [1] = "a", [2] = "b", [3] = "c", [4] = "d" }, "lapis"))
-        assert.True(utils.is_array({ [1.0] = "a", [2.0] = "b", [3.0] = "c", [4.0] = "d" }, "lapis"))
-        assert.False(utils.is_array({ [1] = "a", [2] = "b", nil, [3] = "c", [4] = "d" }, "lapis")) --luacheck: ignore
-        assert.False(utils.is_array({ [1] = "a", [2] = "b", nil, [4] = "c", [5] = "d" }, "lapis")) --luacheck: ignore
-        assert.False(utils.is_array({ [1.1] = "a", [2.1] = "b", [3.1] = "c", [4.1] = "d" }, "lapis"))
-        assert.True(utils.is_array({ ["1"] = "a", ["2"] = "b", ["3"] = "c", ["4"] = "d" }, "lapis"))
-        assert.False(utils.is_array({ "a", "b", "c", foo = "d" }, "lapis"))
-        assert.False(utils.is_array(nil, "lapis"))
-        assert.False(utils.is_array(false, "lapis"))
-        assert.False(utils.is_array(true, "lapis"))
+        assert.True(kong_table.is_array({ "a", "b", "c", "d" }, "lapis"))
+        assert.False(kong_table.is_array({ "a", "b", nil, "c", "d" }, "lapis"))
+        assert.False(kong_table.is_array({ [-1] = "a", [0] = "b", [1] = "c", [2] = "d" }, "lapis"))
+        assert.False(kong_table.is_array({ [0] = "a", [1] = "b", [2] = "c", [3] = "d" }, "lapis"))
+        assert.True(kong_table.is_array({ [1] = "a", [2] = "b", [3] = "c", [4] = "d" }, "lapis"))
+        assert.True(kong_table.is_array({ [1.0] = "a", [2.0] = "b", [3.0] = "c", [4.0] = "d" }, "lapis"))
+        assert.False(kong_table.is_array({ [1] = "a", [2] = "b", nil, [3] = "c", [4] = "d" }, "lapis")) --luacheck: ignore
+        assert.False(kong_table.is_array({ [1] = "a", [2] = "b", nil, [4] = "c", [5] = "d" }, "lapis")) --luacheck: ignore
+        assert.False(kong_table.is_array({ [1.1] = "a", [2.1] = "b", [3.1] = "c", [4.1] = "d" }, "lapis"))
+        assert.True(kong_table.is_array({ ["1"] = "a", ["2"] = "b", ["3"] = "c", ["4"] = "d" }, "lapis"))
+        assert.False(kong_table.is_array({ "a", "b", "c", foo = "d" }, "lapis"))
+        assert.False(kong_table.is_array(nil, "lapis"))
+        assert.False(kong_table.is_array(false, "lapis"))
+        assert.False(kong_table.is_array(true, "lapis"))
       end)
 
     end)
 
     describe("add_error()", function()
-      local add_error = utils.add_error
+      local add_error = kong_table.add_error
 
       it("should create a table if given `errors` is nil", function()
         assert.same({hello = "world"}, add_error(nil, "hello", "world"))
@@ -673,14 +674,14 @@ describe("Utils", function()
     end
   end)
   it("pack() stores results, including nils, properly", function()
-    assert.same({ n = 0 }, utils.pack())
-    assert.same({ n = 1 }, utils.pack(nil))
-    assert.same({ n = 3, "1", "2", "3" }, utils.pack("1", "2", "3"))
-    assert.same({ n = 3, [1] = "1", [3] = "3" }, utils.pack("1", nil, "3"))
+    assert.same({ n = 0 }, kong_table.pack())
+    assert.same({ n = 1 }, kong_table.pack(nil))
+    assert.same({ n = 3, "1", "2", "3" }, kong_table.pack("1", "2", "3"))
+    assert.same({ n = 3, [1] = "1", [3] = "3" }, kong_table.pack("1", nil, "3"))
   end)
   it("unpack() unwraps results, including nils, properly", function()
     local a,b,c
-    a,b,c = utils.unpack({})
+    a,b,c = kong_table.unpack({})
     assert.is_nil(a)
     assert.is_nil(b)
     assert.is_nil(c)
@@ -690,12 +691,12 @@ describe("Utils", function()
     assert.is_nil(b)
     assert.is_nil(c)
 
-    a,b,c = utils.unpack({ n = 3, "1", "2", "3" })
+    a,b,c = kong_table.unpack({ n = 3, "1", "2", "3" })
     assert.equal("1", a)
     assert.equal("2", b)
     assert.equal("3", c)
 
-    a,b,c = utils.unpack({ n = 3, [1] = "1", [3] = "3" })
+    a,b,c = kong_table.unpack({ n = 3, [1] = "1", [3] = "3" })
     assert.equal("1", a)
     assert.is_nil(b)
     assert.equal("3", c)
@@ -893,7 +894,7 @@ describe("Utils", function()
         b = ref,
       }
 
-      local c = utils.deep_copy(b)
+      local c = kong_table.deep_copy(b)
 
       assert.not_same(b, c)
       assert.not_equal(b, c)
@@ -1014,7 +1015,7 @@ describe("Utils", function()
         b = ref,
       }
 
-      local c = utils.deep_copy(b, false)
+      local c = kong_table.deep_copy(b, false)
 
       assert.not_same(b, c)
       assert.not_equal(b, c)
@@ -1135,7 +1136,7 @@ describe("Utils", function()
         b = ref,
       }
 
-      local c = utils.cycle_aware_deep_copy(b)
+      local c = kong_table.cycle_aware_deep_copy(b)
 
       assert.same(b, c)
       assert.not_equal(b, c)
@@ -1245,7 +1246,7 @@ describe("Utils", function()
         b = ref,
       }
 
-      local c = utils.cycle_aware_deep_copy(b, true)
+      local c = kong_table.cycle_aware_deep_copy(b, true)
 
       assert.same(b, c)
       assert.not_equal(b, c)
@@ -1355,7 +1356,7 @@ describe("Utils", function()
         b = ref,
       }
 
-      local c = utils.cycle_aware_deep_copy(b, nil, true)
+      local c = kong_table.cycle_aware_deep_copy(b, nil, true)
 
       assert.not_same(b, c)
       assert.not_equal(b, c)
@@ -1475,7 +1476,7 @@ describe("Utils", function()
         b = ref,
       }
 
-      local c = utils.cycle_aware_deep_copy(b, nil, nil, cache)
+      local c = kong_table.cycle_aware_deep_copy(b, nil, nil, cache)
 
       assert.same(b, c)
       assert.not_equal(b, c)
@@ -1586,7 +1587,7 @@ describe("Utils", function()
         c = "t2",
       }
 
-      local t3 = utils.deep_merge(t1, t2)
+      local t3 = kong_table.deep_merge(t1, t2)
 
       assert.not_equal(t3, t1)
       assert.not_equal(t3, t2)
@@ -1631,7 +1632,7 @@ describe("Utils", function()
         c = "t2",
       }
 
-      local t3 = utils.cycle_aware_deep_merge(t1, t2)
+      local t3 = kong_table.cycle_aware_deep_merge(t1, t2)
 
       assert.not_equal(t3, t1)
       assert.not_equal(t3, t2)

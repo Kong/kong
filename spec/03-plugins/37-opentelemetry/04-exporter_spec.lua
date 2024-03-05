@@ -1,6 +1,7 @@
 require "kong.plugins.opentelemetry.proto"
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
+local kong_table = require "kong.tools.table"
 local pb = require "pb"
 local pl_file = require "pl.file"
 local ngx_re = require "ngx.re"
@@ -25,7 +26,7 @@ local function sort_by_key(tbl)
   end)
 end
 
-local table_merge = utils.table_merge
+local table_merge = kong_table.table_merge
 local HTTP_SERVER_PORT = helpers.get_available_port()
 local PROXY_PORT = 9000
 

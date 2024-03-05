@@ -1,5 +1,6 @@
 local Queue = require "kong.tools.queue"
 local utils = require "kong.tools.utils"
+local kong_table = require "kong.tools.table"
 local helpers = require "spec.helpers"
 local mocker = require "spec.fixtures.mocker"
 local timerng = require "resty.timerng"
@@ -8,7 +9,7 @@ local queue_num = 1
 
 
 local function queue_conf(conf)
-  local defaulted_conf = utils.cycle_aware_deep_copy(conf)
+  local defaulted_conf = kong_table.cycle_aware_deep_copy(conf)
   if not conf.name then
     defaulted_conf.name = "test-" .. tostring(queue_num)
     queue_num = queue_num + 1

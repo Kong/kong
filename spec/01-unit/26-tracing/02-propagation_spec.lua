@@ -2,7 +2,7 @@ local propagation = require "kong.tracing.propagation"
 
 local to_hex = require "resty.string".to_hex
 
-local table_merge = require "kong.tools.utils".table_merge
+local table_merge = require "kong.tools.table".table_merge
 
 local fmt  = string.format
 

@@ -1,7 +1,7 @@
 local Entity = require("kong.db.schema.entity")
 local DAO = require("kong.db.dao.init")
 local errors = require("kong.db.errors")
-local utils = require("kong.tools.utils")
+local kong_table = require("kong.tools.table")
 
 local basic_schema_definition = {
   name = "basic",
@@ -28,7 +28,7 @@ describe("option no_broadcast_crud_event", function()
           return data
         end,
         update = function(_, _, value)
-          data = utils.cycle_aware_deep_merge(data, value)
+          data = kong_table.cycle_aware_deep_merge(data, value)
           return data
         end,
       }
@@ -60,7 +60,7 @@ describe("option no_broadcast_crud_event", function()
           return data
         end,
         update = function(_, _, value)
-          data = utils.cycle_aware_deep_merge(data, value)
+          data = kong_table.cycle_aware_deep_merge(data, value)
           return data
         end,
       }

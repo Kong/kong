@@ -10,7 +10,7 @@ local tb_nkeys = require("table.nkeys")
 local uuid = require("resty.jit-uuid")
 
 
-local shallow_copy          = require("kong.tools.utils").shallow_copy
+local shallow_copy          = require("kong.tools.table").shallow_copy
 local replace_dashes_lower  = require("kong.tools.string").replace_dashes_lower
 
 

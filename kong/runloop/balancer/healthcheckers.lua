@@ -1,4 +1,4 @@
-local utils = require "kong.tools.utils"
+local kong_table = require "kong.tools.table"
 local get_certificate = require "kong.runloop.certificate".get_certificate
 
 local balancers = require "kong.runloop.balancer.balancers"
@@ -245,7 +245,7 @@ function healthcheckers_M.create_healthchecker(balancer, upstream)
   if (ngx.config.subsystem == "stream" and checks.active.type ~= "tcp")
     or (ngx.config.subsystem == "http" and checks.active.type == "tcp")
   then
-    checks = utils.cycle_aware_deep_copy(checks)
+    checks = kong_table.cycle_aware_deep_copy(checks)
     checks.active.healthy.interval = 0
     checks.active.unhealthy.interval = 0
   end

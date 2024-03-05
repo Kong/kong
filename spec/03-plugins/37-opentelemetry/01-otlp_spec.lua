@@ -2,6 +2,7 @@ require "spec.helpers"
 require "kong.plugins.opentelemetry.proto"
 local otlp = require "kong.plugins.opentelemetry.otlp"
 local utils = require "kong.tools.utils"
+local kong_table = require "kong.tools.table"
 local pb = require "pb"
 
 local fmt = string.format
@@ -152,8 +153,8 @@ describe("Plugin: opentelemetry (otlp)", function()
     }
 
     local test_spans = {}
-    local span1 = utils.deep_copy(default_span)
-    local span2 = utils.deep_copy(default_span)
+    local span1 = kong_table.deep_copy(default_span)
+    local span2 = kong_table.deep_copy(default_span)
     span1.trace_id = rand_bytes(17)
     span1.expected_tid = span1.trace_id:sub(-TRACE_ID_LEN)
     span1.parent_id = rand_bytes(9)
