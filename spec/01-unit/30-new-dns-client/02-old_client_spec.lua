@@ -86,22 +86,12 @@ describe("[DNS client]", function()
     package.loaded["resty.dns.resolver"] = nil
     resolver = require("resty.dns.resolver")
 
-    -- replace this `query_func` upvalue to spy on resolver query calls.
+    local original_query_func = resolver.query
     query_func = function(self, original_query_func, name, options)
       return original_query_func(self, name, options)
     end
-
-    local old_new = resolver.new
-    resolver.new = function(...)
-      local r, err = old_new(...)
-      if not r then
-        return nil, err
-      end
-      local original_query_func = r.query
-      r.query = function(self, ...)
-        return query_func(self, original_query_func, ...)
-      end
-      return r
+    resolver.query = function(self, ...)
+      return query_func(self, original_query_func, ...)
     end
 
     -- restore its API overlapped by the compatible layer
