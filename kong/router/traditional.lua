@@ -74,6 +74,12 @@ do
 end
 
 
+local get_header
+if is_http then
+  get_header = require("kong.tools.http").get_header
+end
+
+
 local split_port
 do
   local ZERO, NINE, LEFTBRACKET, RIGHTBRACKET = ("09[]"):byte(1, -1)
@@ -1743,7 +1749,7 @@ function _M.new(routes, cache, cache_neg)
     exec = function(ctx)
       local req_method = get_method()
       local req_uri = ctx and ctx.request_uri or var.request_uri
-      local req_host = var.http_host
+      local req_host = get_header("host", ctx)
       local req_scheme = ctx and ctx.scheme or var.scheme
       local sni = server_name()
 
@@ -1759,7 +1765,7 @@ function _M.new(routes, cache, cache_neg)
                     "(currently at ", lua_max_req_headers, ")")
         end
 
-        headers["host"] = nil
+        headers.host = nil
       end
 
       req_uri = strip_uri_args(req_uri)
@@ -1770,7 +1776,7 @@ function _M.new(routes, cache, cache_neg)
                                  sni, headers)
       if match_t then
         -- debug HTTP request header logic
-        add_debug_headers(var, header, match_t)
+        add_debug_headers(ctx, header, match_t)
       end
 
       return match_t

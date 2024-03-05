@@ -44,6 +44,12 @@ local LOGICAL_AND = " && "
 local is_http = ngx.config.subsystem == "http"
 
 
+local get_header
+if is_http then
+  get_header = require("kong.tools.http").get_header
+end
+
+
 -- reuse buffer object
 local values_buf = buffer.new(64)
 
@@ -524,7 +530,7 @@ function _M:exec(ctx)
   local fields = self.fields
 
   local req_uri = ctx and ctx.request_uri or var.request_uri
-  local req_host = var.http_host
+  local req_host = get_header("host", ctx)
 
   req_uri = strip_uri_args(req_uri)
 
@@ -581,7 +587,7 @@ function _M:exec(ctx)
   set_upstream_uri(req_uri, match_t)
 
   -- debug HTTP request header logic
-  add_debug_headers(var, header, match_t)
+  add_debug_headers(ctx, header, match_t)
 
   return match_t
 end

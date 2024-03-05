@@ -104,12 +104,18 @@ local function check_select_params(req_method, req_uri, req_host, req_scheme,
 end
 
 
-local function add_debug_headers(var, header, match_t)
-  if not var.http_kong_debug then
+local get_header
+if ngx.config.subsystem == "http" then
+  get_header = require("kong.tools.http").get_header
+end
+
+
+local function add_debug_headers(ctx, header, match_t)
+  if not kong.configuration.allow_debug_header then
     return
   end
-
-  if not kong.configuration.allow_debug_header then
+  
+  if not get_header("kong_debug", ctx) then
     return
   end
 
