@@ -20,6 +20,8 @@ local log_level       = require "kong.runloop.log_level"
 local instrumentation = require "kong.tracing.instrumentation"
 local req_dyn_hook   = require "kong.dynamic_hook"
 
+local fastrace = require "kong.fastrace"
+
 
 local kong              = kong
 local type              = type
@@ -1104,10 +1106,7 @@ return {
       ctx.request_uri = var.request_uri
 
       -- trace router
-      local span = instrumentation.router()
-      -- create the balancer span "in advance" so its ID is available
-      -- to plugins in the access phase for doing headers propagation
-      instrumentation.precreate_balancer_span(ctx)
+      fastrace.enter_scope(ctx.trace_buffer, "kong.router")
 
       local has_timing = ctx.has_timing
 
@@ -1123,19 +1122,10 @@ return {
         req_dyn_hook_run_hooks(ctx, "timing", "after:router")
       end
 
+      fastrace.exit_scope(ctx.trace_buffer)
+
       if not match_t then
-        -- tracing
-        if span then
-          span:set_status(2)
-          span:finish()
-        end
-
         return kong.response.error(404, "no Route matched with those values")
-      end
-
-      -- ends tracing span
-      if span then
-        span:finish()
       end
 
       ctx.workspace = match_t.route and match_t.route.ws_id
