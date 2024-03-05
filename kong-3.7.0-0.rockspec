@@ -883,6 +883,12 @@ build = {
     ["kong.plugins.ai-prompt-guard.handler"] = "kong/plugins/ai-prompt-guard/handler.lua",
     ["kong.plugins.ai-prompt-guard.schema"]  = "kong/plugins/ai-prompt-guard/schema.lua",
 
+    ["kong.plugins.canary.migrations"] = "kong/plugins/canary/migrations/init.lua",
+    ["kong.plugins.canary.migrations.001_200_to_210"] = "kong/plugins/canary/migrations/001_200_to_210.lua",
+    ["kong.plugins.canary.groups"]  = "kong/plugins/canary/groups.lua",
+    ["kong.plugins.canary.handler"] = "kong/plugins/canary/handler.lua",
+    ["kong.plugins.canary.schema"]  = "kong/plugins/canary/schema.lua",
+
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
     ["kong.vaults.aws"] = "kong/vaults/aws/init.lua",

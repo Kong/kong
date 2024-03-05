@@ -90,7 +90,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
     rm -f .failed
 
     declare -A plugins_to_test=(
-        ["first"]="forward-proxy application-registration canary jwe-decrypt websocket-size-limit"
+        ["first"]="forward-proxy application-registration jwe-decrypt websocket-size-limit"
         ["second"]="mocking proxy-cache-advanced upstream-timeout app-dynamics"
         ["third"]="jwt-signer kafka-upstream kafka-log statsd-advanced graphql-proxy-cache-advanced websocket-validator"
         ["fourth"]="openid-connect jq tls-metadata-headers"

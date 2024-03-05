@@ -89,6 +89,7 @@ describe("Plugins", function()
       "aws-lambda",
       "azure-functions",
       "proxy-cache",
+      "canary",
       "opentelemetry",
       "prometheus",
       "http-log",

@@ -258,9 +258,9 @@ plugins-ee/application-registration:
 - changed-files:
   - any-glob-to-any-file: plugins-ee/application-registration/**/*
 
-plugins-ee/canary:
+plugins/canary:
 - changed-files:
-  - any-glob-to-any-file: plugins-ee/canary/**/*
+  - any-glob-to-any-file: kong/plugins/canary/**/*
 
 plugins-ee/degraphql:
 - changed-files:

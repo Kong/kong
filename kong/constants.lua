@@ -52,6 +52,9 @@ local plugins = {
   "ai-prompt-guard",
   "ai-request-transformer",
   "ai-response-transformer",
+  -- XXX EE [[
+  "canary",
+  -- ]]
 }
 
 -- XXX EE
