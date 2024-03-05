@@ -15,7 +15,6 @@ local tonumber = tonumber
 local setmetatable = setmetatable
 local tb_sort = table.sort
 local tb_concat = table.concat
-local replace_dashes_lower = require("kong.tools.string").replace_dashes_lower
 
 
 local var           = ngx.var
@@ -380,36 +379,21 @@ if is_http then
 end -- is_http
 
 
+-- the fields returned from atc-router have fixed order and name
+-- traversing these fields will always get a decided result (for one router instance)
+-- so we need not to add field's name in cache key now
 local function visit_for_cache_key(field, value, str_buf)
   -- these fields were not in cache key
   if field == "net.protocol" then
     return true
   end
 
-  local headers_or_queries = field:sub(1, PREFIX_LEN)
-
-  if headers_or_queries == HTTP_HEADERS_PREFIX then
-    headers_or_queries = true
-    field = replace_dashes_lower(field)
-
-  elseif headers_or_queries == HTTP_QUERIES_PREFIX then
-    headers_or_queries = true
-
-  else
-    headers_or_queries = false
+  if type(value) == "table" then
+    tb_sort(value)
+    value = tb_concat(value, ",")
   end
 
-  if not headers_or_queries then
-    str_buf:put(value or "", "|")
-
-  else  -- headers or queries
-    if type(value) == "table" then
-      tb_sort(value)
-      value = tb_concat(value, ",")
-    end
-
-    str_buf:putf("%s=%s|", field, value or "")
-  end
+  str_buf:putf("%s|", value or "")
 
   return true
 end
@@ -490,7 +474,11 @@ function _M:get_cache_key(params, ctx)
                                   visit_for_cache_key, str_buf)
   assert(res)
 
-  return str_buf:get()
+  local str = str_buf:get()
+
+  -- returns a local variable instead of using a tail call
+  -- to avoid NYI
+  return str
 end
 
 
