@@ -147,7 +147,6 @@ function _M.new(opts)
     invalidation_channel = invalidation_channel,
   }
 
-
   local ok, err = cluster_events:subscribe(self.invalidation_channel, function(key)
     log(DEBUG, self.shm_name .. " received invalidate event from cluster for key: '", key, "'")
     self:invalidate_local(key)
