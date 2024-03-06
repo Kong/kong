@@ -897,6 +897,13 @@ build = {
     ["kong.plugins.canary.handler"] = "kong/plugins/canary/handler.lua",
     ["kong.plugins.canary.schema"]  = "kong/plugins/canary/schema.lua",
 
+    ["kong.plugins.degraphql.migrations"] = "kong/plugins/degraphql/migrations/init.lua",
+    ["kong.plugins.degraphql.migrations.000_base"] = "kong/plugins/degraphql/migrations/000_base.lua",
+    ["kong.plugins.degraphql.api"] = "kong/plugins/degraphql/api.lua",
+    ["kong.plugins.degraphql.daos"] = "kong/plugins/degraphql/daos.lua",
+    ["kong.plugins.degraphql.handler"] = "kong/plugins/degraphql/handler.lua",
+    ["kong.plugins.degraphql.schema"] = "kong/plugins/degraphql/schema.lua",
+
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
     ["kong.vaults.aws"] = "kong/vaults/aws/init.lua",

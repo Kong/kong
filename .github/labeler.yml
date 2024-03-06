@@ -262,9 +262,9 @@ plugins/canary:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/canary/**/*
 
-plugins-ee/degraphql:
+plugins/degraphql:
 - changed-files:
-  - any-glob-to-any-file: plugins-ee/degraphql/**/*
+  - any-glob-to-any-file: kong/plugins/degraphql/**/*
 
 plugins-ee/exit-transformer:
 - changed-files:

@@ -56,6 +56,7 @@ local plugins = {
   --"app-dynamics", -- not part of the 'bundled' set due to system-level configuration requirements
   "application-registration",
   "canary",
+  "degraphql",
   -- ]]
 }
 
