@@ -32,7 +32,7 @@
 --
 -- @field kong.version_num
 -- @usage
--- if kong.version_num < 13000 then -- 000.130.00 -> 0.13.0
+-- if kong.version_num < 3004001 then -- 300.40.1 -> 3.4.1
 --   -- no support for Routes & Services
 -- end
 

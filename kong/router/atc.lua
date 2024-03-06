@@ -2,10 +2,10 @@ local _M = {}
 local _MT = { __index = _M, }
 
 
-local buffer = require("string.buffer")
 local lrucache = require("resty.lrucache")
 local tb_new = require("table.new")
 local utils = require("kong.router.utils")
+local transform = require("kong.router.transform")
 local rat = require("kong.tools.request_aware_table")
 local yield = require("kong.tools.yield").yield
 
@@ -15,9 +15,6 @@ local assert = assert
 local setmetatable = setmetatable
 local pairs = pairs
 local ipairs = ipairs
-local tonumber = tonumber
-
-
 local max = math.max
 
 
@@ -32,20 +29,13 @@ local ngx_ERR       = ngx.ERR
 local check_select_params  = utils.check_select_params
 local get_service_info     = utils.get_service_info
 local route_match_stat     = utils.route_match_stat
+local split_host_port      = transform.split_host_port
 
 
 local DEFAULT_MATCH_LRUCACHE_SIZE = utils.DEFAULT_MATCH_LRUCACHE_SIZE
 
 
-local LOGICAL_OR  = " || "
-local LOGICAL_AND = " && "
-
-
 local is_http = ngx.config.subsystem == "http"
-
-
--- reuse buffer object
-local values_buf = buffer.new(64)
 
 
 local get_atc_context
@@ -126,67 +116,6 @@ do
 
     fields._set_ngx(mock_ngx)
   end
-end
-
-
-local is_empty_field
-do
-  local null    = ngx.null
-  local isempty = require("table.isempty")
-
-  is_empty_field = function(f)
-    return f == nil or f == null or isempty(f)
-  end
-end
-
-
-local function escape_str(str)
-  -- raw string
-  if not str:find([["#]], 1, true) then
-    return "r#\"" .. str .. "\"#"
-  end
-
-  -- standard string escaping (unlikely case)
-  if str:find([[\]], 1, true) then
-    str = str:gsub([[\]], [[\\]])
-  end
-
-  if str:find([["]], 1, true) then
-    str = str:gsub([["]], [[\"]])
-  end
-
-  return "\"" .. str .. "\""
-end
-
-
-local function gen_for_field(name, op, vals, val_transform)
-  if is_empty_field(vals) then
-    return nil
-  end
-
-  local vals_n = #vals
-  assert(vals_n > 0)
-
-  values_buf:reset():put("(")
-
-  for i = 1, vals_n do
-    local p = vals[i]
-    local op = (type(op) == "string") and op or op(p)
-
-    if i > 1 then
-      values_buf:put(LOGICAL_OR)
-    end
-
-    values_buf:putf("%s %s %s", name, op,
-                    escape_str(val_transform and val_transform(op, p) or p))
-  end
-
-  -- consume the whole buffer
-  -- returns a local variable instead of using a tail call
-  -- to avoid NYI
-  local str = values_buf:put(")"):get()
-
-  return str
 end
 
 
@@ -371,48 +300,6 @@ function _M.new(routes, cache, cache_neg, old_router, get_exp_and_priority)
 end
 
 
--- split port in host, ignore form '[...]'
--- example.com:123 => example.com, 123
--- example.*:123 => example.*, 123
-local split_host_port
-do
-  local DEFAULT_HOSTS_LRUCACHE_SIZE = DEFAULT_MATCH_LRUCACHE_SIZE
-
-  local memo_hp = lrucache.new(DEFAULT_HOSTS_LRUCACHE_SIZE)
-
-  split_host_port = function(key)
-    if not key then
-      return nil, nil
-    end
-
-    local m = memo_hp:get(key)
-
-    if m then
-      return m[1], m[2]
-    end
-
-    local p = key:find(":", nil, true)
-    if not p then
-      memo_hp:set(key, { key, nil })
-      return key, nil
-    end
-
-    local port = tonumber(key:sub(p + 1))
-
-    if not port then
-      memo_hp:set(key, { key, nil })
-      return key, nil
-    end
-
-    local host = key:sub(1, p - 1)
-
-    memo_hp:set(key, { host, port })
-
-    return host, port
-  end
-end
-
-
 local CACHE_PARAMS
 
 
@@ -586,6 +473,7 @@ function _M:exec(ctx)
   return match_t
 end
 
+
 else  -- is stream subsystem
 
 
@@ -708,16 +596,8 @@ function _M:exec(ctx)
   return match_t
 end
 
+
 end   -- if is_http
-
-
-_M.LOGICAL_OR      = LOGICAL_OR
-_M.LOGICAL_AND     = LOGICAL_AND
-
-_M.escape_str      = escape_str
-_M.is_empty_field  = is_empty_field
-_M.gen_for_field   = gen_for_field
-_M.split_host_port = split_host_port
 
 
 return _M

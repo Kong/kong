@@ -42,7 +42,7 @@ $KONG_VENV/openresty/site/lualib/?.lua;$KONG_VENV/openresty/site/lualib/?.ljbc;\
 $KONG_VENV/openresty/site/lualib/?/init.lua;$KONG_VENV/openresty/site/lualib/?/init.ljbc;\
 $KONG_VENV/openresty/lualib/?.lua;$KONG_VENV/openresty/lualib/?.ljbc;\
 $KONG_VENV/openresty/lualib/?/init.lua;$KONG_VENV/openresty/lualib/?/init.ljbc;\
-$KONG_VENV/openresty/luajit/share/luajit-2.1.0-beta3/?.lua"
+$KONG_VENV/openresty/luajit/share/luajit-2.1/?.lua"
 
 # support custom plugin development
 if [ -n $KONG_PLUGIN_PATH ] ; then

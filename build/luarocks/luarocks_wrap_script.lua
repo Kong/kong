@@ -20,8 +20,8 @@ if install_dest:sub(-1) ~= "/" then
     install_dest = install_dest .. "/"
 end
 -- HACK
-cfg.lua_interpreter = "luajit"
 cfg.sysconfdir = install_dest .. "etc/luarocks"
+cfg.variables["LUA"] = install_dest .. "openresty/luajit/bin/luajit"
 cfg.variables["LUA_DIR"] = install_dest .. "openresty/luajit"
 cfg.variables["LUA_INCDIR"] = install_dest .. "openresty/luajit/include/luajit-2.1" 
 cfg.variables["LUA_BINDIR"] = install_dest .. "openresty/luajit/bin"

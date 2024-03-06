@@ -15,6 +15,10 @@ function Invalidations:init_worker()
   assert(kong.cluster_events:subscribe("invalidations", function(key)
     counts[key] = (counts[key] or 0) + 1
   end))
+
+  assert(kong.cluster_events:subscribe("invalidations_kong_core_db_cache", function(key)
+    counts[key] = (counts[key] or 0) + 1
+  end))
 end
 
 

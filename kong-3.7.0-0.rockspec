@@ -65,6 +65,7 @@ build = {
     ["kong.router.expressions"] = "kong/router/expressions.lua",
     ["kong.router.atc"] = "kong/router/atc.lua",
     ["kong.router.fields"] = "kong/router/fields.lua",
+    ["kong.router.transform"] = "kong/router/transform.lua",
     ["kong.router.utils"] = "kong/router/utils.lua",
 
     ["kong.conf_loader"] = "kong/conf_loader/init.lua",
@@ -610,6 +611,5 @@ build = {
     ["kong.timing.hooks.socket"] = "kong/timing/hooks/socket.lua",
 
     ["kong.dynamic_hook"] = "kong/dynamic_hook/init.lua",
-    ["kong.dynamic_hook.wrap_function_gen"] = "kong/dynamic_hook/wrap_function_gen.lua",
   }
 }
