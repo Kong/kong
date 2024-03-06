@@ -128,7 +128,6 @@ local compatible_checkers = {
       -- remove approle fields from hcv vault when 3.5.0.0 <= dp_version < 3.5.0.4
       if dp_version_num >= 3005000000 then
         for _, vault in ipairs(config_table.vaults or {}) do
-          -- test
           local name = vault.name
           if name == "hcv" then
             for _, parameter in ipairs({"approle_auth_path", "approle_role_id", "approle_secret_id", "approle_secret_id_file", "approle_response_wrapping"}) do
@@ -148,21 +147,6 @@ local compatible_checkers = {
   { 3005000000, --[[ 3.5.0.0 ]]
     function(config_table, dp_version, log_suffix)
       local has_update
-
-      for _, vault in ipairs(config_table.vaults or {}) do
-        local name = vault.name
-        if name == "aws" then
-          for _, parameter in ipairs({ "endpoint_url", "assume_role_arn", "role_session_name" }) do
-            if vault.config[parameter] then
-              log_warn_message('contains configuration vaults.aws.' .. parameter,
-                               'be removed',
-                               dp_version, log_suffix)
-              vault.config[parameter] = nil
-              has_update = true
-            end
-          end
-        end
-      end
 
       for _, plugin in ipairs(config_table.plugins or {}) do
         if plugin.name == 'opentelemetry' or plugin.name == 'zipkin' then
@@ -194,14 +178,32 @@ local compatible_checkers = {
     end
   },
 
-  { 3004003004, --[[3.4.3.4]]
-    function(config_table, dp_version, log_suffix)
+  { 3004003005, --[[ 3.4.3.5 ]]
+    function (config_table, dp_version, log_suffix)
       local has_update
+
+      for _, vault in ipairs(config_table.vaults or {}) do
+        local name = vault.name
+        if name == "aws" then
+          for _, parameter in ipairs({ "endpoint_url", "assume_role_arn", "role_session_name" }) do
+            if vault.config[parameter] then
+              log_warn_message('contains configuration vaults.aws.' .. parameter,
+                               'be removed',
+                               dp_version, log_suffix)
+              vault.config[parameter] = nil
+              has_update = true
+            end
+          end
+        end
+      end
+
       for _, vault in ipairs(config_table.vaults or {}) do
         local name = vault.name
         if name == "hcv" then
-          if vault.config.kube_auth_path then
-            vault.config.kube_auth_path = nil
+          for _, parameter in ipairs({"approle_auth_path", "approle_role_id", "approle_secret_id", "approle_secret_id_file", "approle_response_wrapping"}) do
+            log_warn_message('contains configuration vaults.hcv.' .. parameter,
+                            'be removed', dp_version, log_suffix)
+            vault.config[parameter] = nil
             has_update = true
           end
         end
@@ -211,18 +213,14 @@ local compatible_checkers = {
     end
   },
 
-  { 3004003005, --[[ 3.4.3.5 ]]
-    function (config_table, dp_version, log_suffix)
+  { 3004003004, --[[3.4.3.4]]
+    function(config_table, dp_version, log_suffix)
       local has_update
-
       for _, vault in ipairs(config_table.vaults or {}) do
-        -- test
         local name = vault.name
         if name == "hcv" then
-          for _, parameter in ipairs({"approle_auth_path", "approle_role_id", "approle_secret_id", "approle_secret_id_file", "approle_response_wrapping"}) do
-            log_warn_message('contains configuration vaults.hcv.' .. parameter,
-                            'be removed', dp_version, log_suffix)
-            vault.config[parameter] = nil
+          if vault.config.kube_auth_path then
+            vault.config.kube_auth_path = nil
             has_update = true
           end
         end

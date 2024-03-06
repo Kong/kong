@@ -1,0 +1,3 @@
+message: Adjust clustering compatible check related to AWS Secrets Manager
+type: bugfix
+scope: Clustering
