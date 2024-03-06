@@ -1,4 +1,5 @@
 import { constants } from './constants';
+import { execSync } from 'child_process';
 
 export const vars = {
   aws: {
@@ -70,6 +71,14 @@ export const isGwNative = (): boolean => {
 };
 
 /**
+ * Check if tests are runing for custom plugins
+ * @returns {string}
+ */
+export const isCustomPlugin = (): string => {
+  return process.env.CUSTOM_PLUGIN ? process.env.CUSTOM_PLUGIN : 'false'
+}
+
+/**
  * Get running kong container name based on which test suite is running
  * @returns {string} - the name of the container
  */
@@ -91,6 +100,23 @@ export const getKongVersion = (): string | undefined => {
  */
 export const getDataPlaneDockerImage = (): string | undefined => {
   return process.env.KONNECT_DP_IMAGE ? process.env.KONNECT_DP_IMAGE : 'kong/kong-gateway-dev:nightly-ubuntu'
+}
+
+/**
+ * Get the Control Pane Docker image name from GW_IMAGE
+ * @returns {string}
+ */
+export const getControlPlaneDockerImage = (): string => {
+  if(process.env.GW_IMAGE) {
+    return process.env.GW_IMAGE 
+  } else {
+    try{
+      return execSync(`docker ps --filter "name=kong-cp" --format '{{.Image}}'`).toString().trim();
+    } catch(e) {
+      console.error(`Error getting control plane docker image: ${e}`)
+      return ''
+    }
+  }
 }
 
 /**

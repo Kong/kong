@@ -135,6 +135,8 @@ jobs:
           AZURE_TENANT_ID: ${{ secrets.TEST_API_AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.TEST_API_AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.TEST_API_AZURE_CLIENT_SECRET }}
+          # set CUSTOM_PLUGIN to false in case of amazonlinux-2 image or non-smoke tests
+          CUSTOM_PLUGIN: ${{ (endsWith(env.GW_IMAGE, 'amazonlinux-2') || env.RUN_SPEC == 'non-smoke') && 'false' || 'true' }}
 
       - name: Logs from Gateway Start
         if: failure()

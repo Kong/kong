@@ -34,7 +34,9 @@ export {
   isGwNative,
   getKongContainerName,
   getKongVersion,
-  getDataPlaneDockerImage
+  getDataPlaneDockerImage,
+  isCustomPlugin,
+  getControlPlaneDockerImage
 } from './config/gateway-vars';
 export {
   createUuidEmail,
