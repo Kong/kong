@@ -95,8 +95,9 @@ end
 
 -- lookup or set TYPE_LAST (the DNS record type from the last successful query)
 local function insert_last_type(cache, name, qtype)
-  if typstrs[qtype] then
-    cache:set("last:" .. name, { ttl = 0 }, qtype)
+  local key = "last:" .. name
+  if typstrs[qtype] and cache:get(key) ~= qtype then
+    cache:set(key, { ttl = 0 }, qtype)
   end
 end
 
@@ -140,7 +141,10 @@ local function init_hosts(cache, path, preferred_ip_type)
         ttl = ttl,
       },
     }
-    cache:set(key, { ttl = ttl }, answers)
+    -- insert via the `:get` callback to prevent inter-process communication
+    cache:get(key, nil, function()
+      return answers, nil, ttl
+    end)
   end
 
   for name, address in pairs(hosts) do
@@ -160,6 +164,9 @@ local function init_hosts(cache, path, preferred_ip_type)
   return hosts
 end
 
+
+-- distinguish the worker_events sources registered by different new() instances
+local ipc_counter = 0
 
 function _M.new(opts)
   if not opts then
@@ -195,15 +202,15 @@ function _M.new(opts)
     exptimeout = lock_timeout + 1,
   }
 
-  local ipc_source = "dns_client_mlcache"
+  ipc_counter = ipc_counter + 1
+  local ipc_source = "dns_client_mlcache#" .. ipc_counter
   local ipc = {
     register_listeners = function(events)
       if not kong or not kong.worker_events then
         return
       end
       for _, ev in pairs(events) do
-        kong.worker_events.register(function(data) ev.handler(data) end,
-        ipc_source, ev.channel)
+        kong.worker_events.register(ev.handler, ipc_source, ev.channel)
       end
     end,
     broadcast = function(channel, data)
