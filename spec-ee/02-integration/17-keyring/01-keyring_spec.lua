@@ -62,15 +62,61 @@ for _, strategy in strategies() do
       }
 
       assert(helpers.start_kong(conf))
-    end)
 
-    lazy_teardown(function()
-      if proxy_client and admin_client then
-        proxy_client:close()
-        admin_client:close()
-      end
+      -- Add Plugins
 
-      helpers.stop_kong(nil, true)
+      proxy_client = helpers.proxy_client()
+      admin_client = helpers.admin_client()
+
+      local res = assert(admin_client:send {
+        method = "POST",
+        path = "/services/service_a/plugins",
+        body = { name = "encrypted-field", config = { message = "a" } },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      })
+      local body = assert.res_status(201, res)
+      assert.same({ message = "a" }, cjson.decode(body).config)
+
+      local res = assert(admin_client:send {
+        method = "POST",
+        path = "/services/service_b/plugins",
+        body = { name = "encrypted-field", config = { message = "b" } },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      })
+      local body = assert.res_status(201, res)
+      assert.same({ message = "b" }, cjson.decode(body).config)
+
+      -- Add Consumer and basic-auth
+      local res = assert(admin_client:send {
+        method = "POST",
+        path = "/consumers",
+        body = { username = "bob" },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      })
+      assert.res_status(201, res)
+
+      local res = assert(admin_client:send {
+        method = "POST",
+        path = "/consumers/bob/basic-auth",
+        body = {
+          username = "bob",
+          password = "supersecretpassword",
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      })
+      local body = assert.res_status(201, res)
+      consumer_basicauth_credentials = cjson.decode(body)
+
+      admin_client:close()
+      helpers.wait_for_all_config_update()
     end)
 
     before_each(function()
@@ -78,58 +124,18 @@ for _, strategy in strategies() do
       admin_client = helpers.admin_client()
     end)
 
-    describe("Admin API", function()
-      it("Add Plugins", function()
-        local res = assert(admin_client:send {
-          method = "POST",
-          path = "/services/service_a/plugins",
-          body = { name = "encrypted-field", config = { message = "a" } },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        local body = assert.res_status(201, res)
-        assert.same({ message = "a" }, cjson.decode(body).config)
-
-        local res = assert(admin_client:send {
-          method = "POST",
-          path = "/services/service_b/plugins",
-          body = { name = "encrypted-field", config = { message = "b" } },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        local body = assert.res_status(201, res)
-        assert.same({ message = "b" }, cjson.decode(body).config)
-      end)
-      it("Add Consumer and basic-auth", function()
-        local res = assert(admin_client:send {
-          method = "POST",
-          path = "/consumers",
-          body = { username = "bob" },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        assert.res_status(201, res)
-
-        local res = assert(admin_client:send {
-          method = "POST",
-          path = "/consumers/bob/basic-auth",
-          body = {
-            username = "bob",
-            password = "supersecretpassword",
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        local body = assert.res_status(201, res)
-        consumer_basicauth_credentials = cjson.decode(body)
-      end)
+    after_each(function()
+      if proxy_client and admin_client then
+        proxy_client:close()
+        admin_client:close()
+      end
     end)
 
-    describe("#flaky Keyring after Kong reloaded", function()
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+    describe("Keyring after Kong reloaded", function()
       lazy_setup(function()
         local workers = helpers.get_kong_workers()
         assert(helpers.kong_exec("reload --conf " .. helpers.test_conf_path, conf))

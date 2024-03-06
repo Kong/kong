@@ -74,9 +74,115 @@ for _, strategy in strategies() do
 
       assert(helpers.start_kong(conf))
       assert(helpers.start_kong(conf2))
+
+      -- Add Plugins
+      admin_client = helpers.admin_client()
+      proxy_client = helpers.proxy_client()
+      proxy_client2 = helpers.proxy_client(nil, 9100)
+      admin_client2 = helpers.admin_client(nil, 9101)
+
+      local res = assert(admin_client:send {
+        method = "POST",
+        path = "/services/service_a/plugins",
+        body = { name = "encrypted-field", config = { message = "a" } },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      })
+      local body = assert.res_status(201, res)
+      assert.same({ message = "a" }, cjson.decode(body).config)
+
+      local res = assert(admin_client:send {
+        method = "POST",
+        path = "/services/service_b/plugins",
+        body = { name = "encrypted-field", config = { message = "b" } },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      })
+      local body = assert.res_status(201, res)
+      assert.same({ message = "b" }, cjson.decode(body).config)
+
+      local res = assert(admin_client:send {
+        method = "POST",
+        path = "/consumers",
+        body = { username = "bob" },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      })
+      assert.res_status(201, res)
+
+      local res = assert(admin_client:send {
+        method = "POST",
+        path = "/consumers/bob/basic-auth",
+        body = {
+          username = "bob",
+          password = "supersecretpassword",
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      })
+      local body = assert.res_status(201, res)
+      consumer_basicauth_credentials = cjson.decode(body)
+
+      -- Make sure both nodes get the keyring material and can decrypt the fields
+      helpers.pwait_until(function ()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/a",
+        })
+        local body = assert.res_status(200, res)
+        assert.same({ message = "a" }, cjson.decode(body))
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/b",
+        })
+        local body = assert.res_status(200, res)
+        assert.same({ message = "b" }, cjson.decode(body))
+
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/consumers/bob/basic-auth/" .. consumer_basicauth_credentials.id,
+        })
+        local body = assert.res_status(200, res)
+        assert.equal(consumer_basicauth_credentials.password, cjson.decode(body).password)
+
+        local res = assert(proxy_client2:send {
+          method = "GET",
+          path = "/a",
+        })
+        local body = assert.res_status(200, res)
+        assert.same({ message = "a" }, cjson.decode(body))
+
+        local res = assert(proxy_client2:send {
+          method = "GET",
+          path = "/b",
+        })
+        local body = assert.res_status(200, res)
+        assert.same({ message = "b" }, cjson.decode(body))
+
+        local res = assert(admin_client2:send {
+          method = "GET",
+          path = "/consumers/bob/basic-auth/" .. consumer_basicauth_credentials.id,
+        })
+        local body = assert.res_status(200, res)
+        assert.equal(consumer_basicauth_credentials.password, cjson.decode(body).password)
+      end, 30)
+
+      proxy_client:close()
+      proxy_client = nil
+      admin_client:close()
+      admin_client = nil
+      proxy_client2:close()
+      proxy_client2 = nil
+      admin_client2:close()
+      admin_client2 = nil
     end)
 
-    lazy_teardown(function() 
+    lazy_teardown(function()
       if proxy_client then
         proxy_client:close()
       end
@@ -102,109 +208,6 @@ for _, strategy in strategies() do
         admin_client:close()
         admin_client = nil
       end
-    end)
-
-    describe("Admin API", function()
-      before_each(function()
-        proxy_client2 = helpers.proxy_client(nil, 9100)
-        admin_client2 = helpers.admin_client(nil, 9101)
-      end)
-
-      it("Add Plugins", function()
-        local res = assert(admin_client:send {
-          method = "POST",
-          path = "/services/service_a/plugins",
-          body = { name = "encrypted-field", config = { message = "a" } },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        local body = assert.res_status(201, res)
-        assert.same({ message = "a" }, cjson.decode(body).config)
-
-        local res = assert(admin_client:send {
-          method = "POST",
-          path = "/services/service_b/plugins",
-          body = { name = "encrypted-field", config = { message = "b" } },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        local body = assert.res_status(201, res)
-        assert.same({ message = "b" }, cjson.decode(body).config)
-      end)
-
-      it("Add Consumer and basic-auth", function()
-        local res = assert(admin_client:send {
-          method = "POST",
-          path = "/consumers",
-          body = { username = "bob" },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        assert.res_status(201, res)
-
-        local res = assert(admin_client:send {
-          method = "POST",
-          path = "/consumers/bob/basic-auth",
-          body = {
-            username = "bob",
-            password = "supersecretpassword",
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        local body = assert.res_status(201, res)
-        consumer_basicauth_credentials = cjson.decode(body)
-      end)
-
-      it("Make sure both nodes get the keyring material and can decrypt the fields", function()
-        helpers.pwait_until(function ()
-          local res = assert(proxy_client:send {
-            method = "GET",
-            path = "/a",
-          })
-          local body = assert.res_status(200, res)
-          assert.same({ message = "a" }, cjson.decode(body))
-
-          local res = assert(proxy_client:send {
-            method = "GET",
-            path = "/b",
-          })
-          local body = assert.res_status(200, res)
-          assert.same({ message = "b" }, cjson.decode(body))
-
-          local res = assert(admin_client:send {
-            method = "GET",
-            path = "/consumers/bob/basic-auth/" .. consumer_basicauth_credentials.id,
-          })
-          local body = assert.res_status(200, res)
-          assert.equal(consumer_basicauth_credentials.password, cjson.decode(body).password)
-
-          local res = assert(proxy_client2:send {
-            method = "GET",
-            path = "/a",
-          })
-          local body = assert.res_status(200, res)
-          assert.same({ message = "a" }, cjson.decode(body))
-
-          local res = assert(proxy_client2:send {
-            method = "GET",
-            path = "/b",
-          })
-          local body = assert.res_status(200, res)
-          assert.same({ message = "b" }, cjson.decode(body))
-
-          local res = assert(admin_client2:send {
-            method = "GET",
-            path = "/consumers/bob/basic-auth/" .. consumer_basicauth_credentials.id,
-          })
-          local body = assert.res_status(200, res)
-          assert.equal(consumer_basicauth_credentials.password, cjson.decode(body).password)
-        end, 30)
-      end)
     end)
 
     describe("Keyring after Kong node restarted", function()

@@ -61,15 +61,63 @@ for _, strategy in strategies() do
       }
 
       assert(helpers.start_kong(conf))
+
+      admin_client = helpers.admin_client()
+
+      -- Add Plugins
+      local res = assert(admin_client:send {
+        method = "POST",
+        path = "/services/service_a/plugins",
+        body = { name = "encrypted-field", config = { message = "a" } },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      })
+      local body = assert.res_status(201, res)
+      assert.same({ message = "a" }, cjson.decode(body).config)
+
+      local res = assert(admin_client:send {
+        method = "POST",
+        path = "/services/service_b/plugins",
+        body = { name = "encrypted-field", config = { message = "b" } },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      })
+      local body = assert.res_status(201, res)
+      assert.same({ message = "b" }, cjson.decode(body).config)
+
+      -- Add Consumer and basic-auth
+      local res = assert(admin_client:send {
+        method = "POST",
+        path = "/consumers",
+        body = { username = "bob" },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      })
+      assert.res_status(201, res)
+
+      local res = assert(admin_client:send {
+        method = "POST",
+        path = "/consumers/bob/basic-auth",
+        body = {
+          username = "bob",
+          password = "supersecretpassword",
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      })
+      local body = assert.res_status(201, res)
+      consumer_basicauth_credentials = cjson.decode(body)
+
+      admin_client:close()
+      helpers.wait_for_all_config_update()
     end)
 
     lazy_teardown(function()
-      if proxy_client and admin_client then
-        proxy_client:close()
-        admin_client:close()
-      end
-
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     before_each(function()
@@ -77,55 +125,11 @@ for _, strategy in strategies() do
       admin_client = helpers.admin_client()
     end)
 
-    describe("Admin API", function()
-      it("Add Plugins", function()
-        local res = assert(admin_client:send {
-          method = "POST",
-          path = "/services/service_a/plugins",
-          body = { name = "encrypted-field", config = { message = "a" } },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        local body = assert.res_status(201, res)
-        assert.same({ message = "a" }, cjson.decode(body).config)
-
-        local res = assert(admin_client:send {
-          method = "POST",
-          path = "/services/service_b/plugins",
-          body = { name = "encrypted-field", config = { message = "b" } },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        local body = assert.res_status(201, res)
-        assert.same({ message = "b" }, cjson.decode(body).config)
-      end)
-      it("Add Consumer and basic-auth", function()
-        local res = assert(admin_client:send {
-          method = "POST",
-          path = "/consumers",
-          body = { username = "bob" },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        assert.res_status(201, res)
-
-        local res = assert(admin_client:send {
-          method = "POST",
-          path = "/consumers/bob/basic-auth",
-          body = {
-            username = "bob",
-            password = "supersecretpassword",
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
-        local body = assert.res_status(201, res)
-        consumer_basicauth_credentials = cjson.decode(body)
-      end)
+    after_each(function()
+      if proxy_client and admin_client then
+        proxy_client:close()
+        admin_client:close()
+      end
     end)
 
     describe("Keyring after Kong reloaded", function()
@@ -193,6 +197,7 @@ for _, strategy in strategies() do
 
       describe("Kerying after importing recovery private key", function()
         lazy_setup(function()
+          admin_client = helpers.admin_client()
           local privkey_pem, err = pl_file.read("spec-ee/fixtures/keyring/crypto_key.pem")
           assert.is_nil(err)
           local res = assert(admin_client:send {
@@ -208,6 +213,7 @@ for _, strategy in strategies() do
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
           assert.equal(1, #json.recovered)
+          admin_client:close()
         end)
 
         it("Plugin should return decrypted field after importing recovery private key", function()
