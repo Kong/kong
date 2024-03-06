@@ -4156,6 +4156,192 @@ do
   end
 end
 
+--------------
+-- database proxy
+-- These function are used to create a database proxy, which can be used to change the database behavior,
+-- such as imitate a database outage, or a performance decrease.
+
+local db_proxy = {}
+local db_proxy_mt = {
+  __index = db_proxy,
+}
+
+function db_proxy.new(opts)
+  opts = opts or {}
+
+  if type(opts.db_port) ~= "number" then
+    error("db_port must be a number")
+  end
+
+  local self = {
+    db_port = opts.db_port,
+    db_proxy_port = get_available_port(),
+    api_port = get_available_port(),
+    tcp_port = get_available_port(),
+  }
+
+  return setmetatable(self, db_proxy_mt)
+end
+
+function db_proxy:start(opts)
+  local kong_conf = type(opts) == "table" and opts or {
+    prefix = "servroot_db_proxy",
+    database = "off",
+    role = "data_plane",
+    nginx_conf = "spec/fixtures/custom_nginx.template",
+    -- this is unused, but required for the the template to include a stream {} block
+    stream_listen = "0.0.0.0:5555",
+    proxy_listen = "0.0.0.0:16666",
+    cluster_cert = "spec/fixtures/kong_clustering.crt",
+    cluster_cert_key = "spec/fixtures/kong_clustering.key",
+  }
+
+  self.prefix = kong_conf.prefix
+
+  return start_kong(kong_conf, nil, nil, self:get_fixtures())
+end
+
+function db_proxy:stop()
+  if self.client then
+    self.client:close()
+  end
+
+  return stop_kong(self.prefix, true)
+end
+
+function db_proxy:get_fixtures()
+  return {
+    http_mock = {
+      db_proxy_api_server = [[
+        server {
+          error_log logs/db_proxy_http_error.log;
+          listen 127.0.0.1:]] .. self.api_port .. [[;
+          location /db_proxy_conf {
+            content_by_lua_block {
+              local cjson = require "cjson.safe"
+
+              local function toboolean(value)
+                if value == "true" then
+                  return true
+                else
+                  return false
+                end
+              end
+
+              ngx.req.read_body()
+              local args, err = ngx.req.get_post_args()
+              if not args then
+                ngx.say("cannot get args in req: " .. err)
+                ngx.exit(ngx.ERROR)
+              end
+
+              args.delay = args.delay and tonumber(args.delay) or 0
+              if args.status then
+                args.status = toboolean(args.status)
+
+              else
+                args.status = true
+              end
+
+              local sock = assert(ngx.socket.tcp())
+              sock:settimeout(3000)
+              local ok, err = sock:connect('127.0.0.1', ']] .. self.tcp_port .. [[')
+              if not ok then
+                ngx.say("failed to connect to db_proxy_server: " .. err)
+                ngx.exit(ngx.ERROR)
+              end
+
+              local bytes, err = sock:send(cjson.encode(args))
+              if err then
+                ngx.say("failed to send data to db_proxy: " .. err)
+                ngx.exit(ngx.ERROR)
+              end
+
+              sock:close()
+            }
+          }
+        }
+      ]],
+    },
+
+    stream_mock = {
+      db_proxy_server = [[
+        upstream backend {
+          server 0.0.0.1:1234;
+          balancer_by_lua_block {
+            local balancer = require "ngx.balancer"
+
+            local function sleep(n)
+              local t = os.clock()
+              while os.clock() - t <= n do end
+            end
+
+            if status == false then
+              ngx.exit(ngx.ERROR)
+            end
+
+            if delay and delay > 0 then
+                sleep(delay)
+            end
+
+            local ok, err = balancer.set_current_peer("127.0.0.1", ]] .. self.db_port .. [[)
+            if not ok then
+              ngx.log(ngx.ERR, "failed to set the current peer: ", err)
+              ngx.exit(ngx.ERROR)
+            end
+          }
+        }
+
+        server {
+          listen ]] .. self.db_proxy_port .. [[;
+          error_log logs/db_proxy_error.log;
+          proxy_pass backend;
+        }
+
+        server {
+          listen ]] .. self.tcp_port .. [[;
+          error_log logs/db_proxy_error.log;
+          content_by_lua_block {
+            local cjson = require "cjson.safe"
+            local sock = assert(ngx.req.socket())
+            local data, err = sock:receive("*a")
+            if data then
+              local opts = cjson.decode(data)
+              if opts then
+                _G.delay = opts.delay
+                _G.status = opts.status
+              end
+            end
+          }
+        }
+      ]],
+    },
+  }
+end
+
+function db_proxy:delay(delay)
+  if type(delay) ~= "number" then
+    error("delay must be a number and greater than 0")
+  end
+
+  if not self.client then
+    self.client = proxy_client(3000, self.api_port)
+  end
+
+  return self.client:post("/db_proxy_conf", { delay = delay })
+end
+
+function db_proxy:status(on_off)
+  if type(on_off) ~= 'boolean' then
+    error("on_off must be a boolean")
+  end
+
+  if not self.client then
+    self.client = proxy_client(3000, self.api_port)
+  end
+
+  return self.client:post("/db_proxy_conf", { status = on_off })
+end
 
 ----------------
 -- Variables/constants
