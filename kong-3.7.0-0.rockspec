@@ -1,10 +1,10 @@
 package = "kong"
-version = "3.6.0-0"
+version = "3.7.0-0"
 rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git+https://github.com/Kong/kong.git",
-  tag = "3.6.0"
+  tag = "3.7.0"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -34,7 +34,7 @@ dependencies = {
   "lua-resty-healthcheck == 3.0.1",
   "lua-messagepack == 0.5.4",
   "lua-resty-aws == 1.3.6",
-  "lua-resty-openssl == 1.2.0",
+  "lua-resty-openssl == 1.2.1",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-acme == 0.12.0",
@@ -65,6 +65,7 @@ build = {
     ["kong.router.expressions"] = "kong/router/expressions.lua",
     ["kong.router.atc"] = "kong/router/atc.lua",
     ["kong.router.fields"] = "kong/router/fields.lua",
+    ["kong.router.transform"] = "kong/router/transform.lua",
     ["kong.router.utils"] = "kong/router/utils.lua",
 
     ["kong.conf_loader"] = "kong/conf_loader/init.lua",
@@ -293,6 +294,7 @@ build = {
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",
     ["kong.db.migrations.operations.280_to_300"] = "kong/db/migrations/operations/280_to_300.lua",
+    ["kong.db.migrations.operations.331_to_332"] = "kong/db/migrations/operations/331_to_332.lua",
     ["kong.db.migrations.migrate_path_280_300"] = "kong/db/migrations/migrate_path_280_300.lua",
     ["kong.db.declarative.migrations"] = "kong/db/declarative/migrations/init.lua",
     ["kong.db.declarative.migrations.route_path"] = "kong/db/declarative/migrations/route_path.lua",
@@ -557,6 +559,8 @@ build = {
     ["kong.plugins.azure-functions.handler"] = "kong/plugins/azure-functions/handler.lua",
     ["kong.plugins.azure-functions.schema"]  = "kong/plugins/azure-functions/schema.lua",
 
+    ["kong.plugins.opentelemetry.migrations"] = "kong/plugins/opentelemetry/migrations/init.lua",
+    ["kong.plugins.opentelemetry.migrations.001_331_to_332"] = "kong/plugins/opentelemetry/migrations/001_331_to_332.lua",
     ["kong.plugins.opentelemetry.handler"] = "kong/plugins/opentelemetry/handler.lua",
     ["kong.plugins.opentelemetry.schema"]  = "kong/plugins/opentelemetry/schema.lua",
     ["kong.plugins.opentelemetry.proto"]  = "kong/plugins/opentelemetry/proto.lua",
@@ -607,6 +611,5 @@ build = {
     ["kong.timing.hooks.socket"] = "kong/timing/hooks/socket.lua",
 
     ["kong.dynamic_hook"] = "kong/dynamic_hook/init.lua",
-    ["kong.dynamic_hook.wrap_function_gen"] = "kong/dynamic_hook/wrap_function_gen.lua",
   }
 }

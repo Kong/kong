@@ -89,6 +89,40 @@ describe("Plugin: acme (schema)", function()
           }
         },
     },
+    ----------------------------------------
+    {
+      name = "accepts valid redis config",
+      input = {
+        account_email = "example@example.com",
+        storage = "redis",
+        storage_config = {
+          redis = {
+            host = "localhost"
+          },
+        }
+      },
+    },
+    ----------------------------------------
+    {
+      name = "rejects invalid redis config",
+      input = {
+        account_email = "example@example.com",
+        storage = "redis",
+        storage_config = {
+          redis = { },
+        }
+      },
+      error = {
+        ["@entity"] = { "failed conditional validation given value of field 'config.storage'" },
+        config = {
+          storage_config = {
+            redis = {
+              host = "required field missing",
+            }
+          }
+        },
+      },
+    },
   }
 
   for _, t in ipairs(tests) do

@@ -132,7 +132,7 @@ jobs:
     - name: Cache Git
       id: cache-git
       if: (matrix.package == 'rpm' || matrix.image == 'debian:10') && matrix.image != ''
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: /usr/local/git
         key: ${{ matrix.label }}-git-2.41.0
@@ -193,7 +193,7 @@ jobs:
     - name: Cache Packages
       id: cache-deps
       if: env.GHA_CACHE == 'true'
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: bazel-bin/pkg
         key: ${{ steps.cache-key.outputs.cache-key }}
@@ -401,7 +401,6 @@ jobs:
     - name: Comment on commit
       if: github.event_name == 'push' && matrix.label == 'ubuntu'
       uses: peter-evans/commit-comment@5a6f8285b8f2e8376e41fe1b563db48e6cf78c09 # v3.0.0
-      continue-on-error: true # TODO: temporary fix until the token is back
       with:
         token: ${{ secrets.GHA_COMMENT_TOKEN }}
         body: |

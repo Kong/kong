@@ -200,6 +200,11 @@ return {
       return validate_schema("plugins", self.params)
     end
   },
+  ["/schemas/vaults/validate"] = {
+    POST = function(self, db, helpers)
+      return validate_schema("vaults", self.params)
+    end
+  },
   ["/schemas/:db_entity_name/validate"] = {
     POST = function(self, db, helpers)
       local db_entity_name = self.params.db_entity_name
@@ -254,7 +259,7 @@ return {
     GET = function (self, db, helpers)
       local body = {
         worker = {
-          id = ngx.worker.id(),
+          id = ngx.worker.id() or -1,
           count = ngx.worker.count(),
         },
         stats = kong.timer:stats({

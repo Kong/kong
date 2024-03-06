@@ -4699,6 +4699,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
                 service = service,
                 route = {
                   id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  protocols = { "tls" },
                   snis = { "www.example.org" },
                   sources = {
                     { ip = "127.0.0.1" },

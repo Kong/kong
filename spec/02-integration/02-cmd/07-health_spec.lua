@@ -12,6 +12,7 @@ end
 for _, health_cmd in ipairs({"health", "bin/kong-health"}) do
   describe("kong health-check: " .. health_cmd, function()
     lazy_setup(function()
+      helpers.get_db_utils(nil, {}) -- runs migrations
       helpers.prepare_prefix()
     end)
     lazy_teardown(function()

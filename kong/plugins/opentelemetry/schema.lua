@@ -45,7 +45,11 @@ return {
           },
         } },
         { resource_attributes = resource_attributes },
-        { queue = typedefs.queue },
+        { queue = typedefs.queue {
+          default = {
+            max_batch_size = 200,
+          },
+        } },
         { batch_span_count = { description = "The number of spans to be sent in a single batch.", type = "integer" } },
         { batch_flush_delay = { description = "The delay, in seconds, between two consecutive batches.", type = "integer" } },
         { connect_timeout = typedefs.timeout { default = 1000 } },

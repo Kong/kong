@@ -9,10 +9,22 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client, admin_client
 
     lazy_setup(function()
-      helpers.get_db_utils(strategy, {
+      local _, db = helpers.get_db_utils(strategy, {
         "routes",
         "services",
       }) -- runs migrations
+
+      -- db RO permissions setup
+      local pg_ro_user = helpers.test_conf.pg_ro_user
+      local pg_db = helpers.test_conf.pg_database
+      db:schema_reset()
+      db.connector:query(string.format("CREATE user %s;", pg_ro_user))
+      db.connector:query(string.format([[
+        GRANT CONNECT ON DATABASE %s TO %s;
+        GRANT USAGE ON SCHEMA public TO %s;
+        ALTER DEFAULT PRIVILEGES FOR ROLE kong IN SCHEMA public GRANT SELECT ON TABLES TO %s;
+      ]], pg_db, pg_ro_user, pg_ro_user, pg_ro_user))
+      helpers.bootstrap_database(db)
 
       assert(helpers.start_kong({
         database = strategy,

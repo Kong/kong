@@ -4,12 +4,10 @@ local pairs = pairs
 local pcall = pcall
 local error = error
 
----@class http_mock
 local http_mock = {}
 
 local build_in_checks = {}
 
----@class http_mock_asserts
 local eventually_MT = {}
 eventually_MT.__index = eventually_MT
 
@@ -147,7 +145,7 @@ end
 -- a session means a request/response pair.
 -- The impl callback throws error if the assertion is not true
 -- and returns a string to tell what condition is satisfied
--- This design is to allow the user to use lua asserts in the callback 
+-- This design is to allow the user to use lua asserts in the callback
 -- (or even callback the registered assertion accept as argument), like the example;
 -- and for has_no/not_all assertions, we can construct an error message for it like:
 -- "we don't expect that: has header foo"

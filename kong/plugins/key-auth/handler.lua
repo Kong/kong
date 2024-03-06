@@ -30,7 +30,7 @@ local _realm = 'Key realm="' .. _KONG._NAME .. '"'
 
 local ERR_DUPLICATE_API_KEY   = { status = 401, message = "Duplicate API key found" }
 local ERR_NO_API_KEY          = { status = 401, message = "No API key found in request" }
-local ERR_INVALID_AUTH_CRED   = { status = 401, message = "Invalid authentication credentials" }
+local ERR_INVALID_AUTH_CRED   = { status = 401, message = "Unauthorized" }
 local ERR_INVALID_PLUGIN_CONF = { status = 500, message = "Invalid plugin configuration" }
 local ERR_UNEXPECTED          = { status = 500, message = "An unexpected error occurred" }
 

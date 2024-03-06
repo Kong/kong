@@ -27,6 +27,7 @@ jobs:
           token: ${{ secrets.CHERRY_PICK_TOKEN }}
       - name: Create backport pull requests
         uses: jschmid1/cross-repo-cherrypick-action@2d2a475d31b060ac21521b5eda0a78876bbae94e #v1.1.0
+        id: cherry_pick
         with:
           token: ${{ secrets.CHERRY_PICK_TOKEN }}
           pull_title: '[cherry-pick -> ${target_branch}] ${pull_title}'
@@ -37,9 +38,14 @@ jobs:
 
             ## Original description
 
-            #{pull_description}
+            ${pull_description}
           upstream_repo: 'kong/kong-ee'
           branch_map: |-
             {
               "master": "master"
             }
+      - name: add label
+        if: steps.cherry_pick.outputs.was_successful == 'false'
+        uses: actions-ecosystem/action-add-labels@18f1af5e3544586314bbe15c0273249c770b2daf # v1.1.0
+        with:
+          labels: incomplete-cherry-pick

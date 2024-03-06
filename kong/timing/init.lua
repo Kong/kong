@@ -7,6 +7,8 @@ local ngx                 = ngx
 local ngx_var             = ngx.var
 local ngx_req_set_header  = ngx.req.set_header
 
+local assert              = assert 
+local ipairs              = ipairs
 local string_format       = string.format
 
 local request_id_get      = require("kong.tracing.request_id").get
@@ -62,7 +64,9 @@ function _M.auth()
     return
   end
 
-  assert(ngx.ctx.req_trace_id == nil)
+  local ngx_ctx = ngx.ctx
+  
+  assert(ngx_ctx.req_trace_id == nil)
 
   local http_x_kong_request_debug = ngx_var.http_x_kong_request_debug
   local http_x_kong_request_debug_token = ngx_var.http_x_kong_request_debug_token
@@ -100,8 +104,8 @@ function _M.auth()
     loopback = loopback,
   })
   ctx:set_context_prop("request_id", request_id_get())
-  ngx.ctx.req_trace_ctx = ctx
-  req_dyn_hook.enable_on_this_request("timing")
+  ngx_ctx.req_trace_ctx = ctx
+  req_dyn_hook.enable_on_this_request("timing", ngx_ctx)
 end
 
 
@@ -147,7 +151,8 @@ end
 
 
 function _M.header_filter()
-  local req_tr_ctx = ngx.ctx.req_trace_ctx
+  local ngx_ctx = ngx.ctx
+  local req_tr_ctx = ngx_ctx.req_trace_ctx
 
   req_tr_ctx:mock_upstream_phase()
   local output = req_tr_ctx:to_json()
@@ -155,11 +160,11 @@ function _M.header_filter()
   if #output >= HEADER_JSON_TRUNCATE_LENGTH and not req_tr_ctx:from_loopback() then
     output = assert(cjson.encode({
       truncated = true,
-      request_id = ngx.ctx.req_trace_ctx:get_root_context_kv("request_id"),
+      request_id = ngx_ctx.req_trace_ctx:get_root_context_kv("request_id"),
       message = "Output is truncated, please check the error_log for full output by filtering with the request_id.",
     }))
 
-    ngx.ctx.req_trace_ctx.log = true
+    ngx_ctx.req_trace_ctx.log = true
   end
 
   ngx.header["X-Kong-Request-Debug-Output"] = output
@@ -305,6 +310,14 @@ function _M.register_hooks()
   req_dyn_hook.hook("timing", "after:plugin", function()
     _M.leave_context() -- leave plugin_id
     _M.leave_context() -- leave plugin_name
+  end)
+
+  req_dyn_hook.hook("timing", "before:router", function()
+    _M.enter_context("router")
+  end)
+
+  req_dyn_hook.hook("timing", "after:router", function()
+    _M.leave_context() -- leave router
   end)
 end
 

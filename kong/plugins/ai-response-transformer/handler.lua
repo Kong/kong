@@ -4,7 +4,7 @@ local _M = {}
 local kong_meta     = require "kong.meta"
 local http          = require("resty.http")
 local fmt           = string.format
-local kong_utils    = require("kong.tools.utils")
+local kong_utils    = require("kong.tools.gzip")
 local llm           = require("kong.llm")
 --
 
