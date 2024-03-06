@@ -4395,6 +4395,7 @@ end
 
   -- Kong testing properties
   db = db,
+  db_proxy = db_proxy,
   blueprints = blueprints,
   get_db_utils = get_db_utils,
   get_cache = get_cache,
