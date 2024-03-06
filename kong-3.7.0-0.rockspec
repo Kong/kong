@@ -904,6 +904,10 @@ build = {
     ["kong.plugins.degraphql.handler"] = "kong/plugins/degraphql/handler.lua",
     ["kong.plugins.degraphql.schema"] = "kong/plugins/degraphql/schema.lua",
 
+    ["kong.plugins.exit-transformer"] = "kong/plugins/exit-transformer/init.lua",
+    ["kong.plugins.exit-transformer.handler"] = "kong/plugins/exit-transformer/handler.lua",
+    ["kong.plugins.exit-transformer.schema"] = "kong/plugins/exit-transformer/schema.lua",
+
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
     ["kong.vaults.aws"] = "kong/vaults/aws/init.lua",

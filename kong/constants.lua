@@ -57,6 +57,7 @@ local plugins = {
   "application-registration",
   "canary",
   "degraphql",
+  "exit-transformer",
   -- ]]
 }
 
