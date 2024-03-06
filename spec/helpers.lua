@@ -4192,8 +4192,6 @@ function db_proxy:start(opts)
     -- this is unused, but required for the the template to include a stream {} block
     stream_listen = "0.0.0.0:5555",
     proxy_listen = "0.0.0.0:16666",
-    cluster_cert = "spec/fixtures/kong_clustering.crt",
-    cluster_cert_key = "spec/fixtures/kong_clustering.key",
   }
 
   self.prefix = kong_conf.prefix
