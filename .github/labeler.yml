@@ -254,9 +254,9 @@ plugins/app-dynamics:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/app-dynamics/**/*
 
-plugins-ee/application-registration:
+plugins/application-registration:
 - changed-files:
-  - any-glob-to-any-file: plugins-ee/application-registration/**/*
+  - any-glob-to-any-file: kong/plugins/application-registration/**/*
 
 plugins/canary:
 - changed-files:

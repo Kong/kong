@@ -883,6 +883,10 @@ build = {
     ["kong.plugins.ai-prompt-guard.handler"] = "kong/plugins/ai-prompt-guard/handler.lua",
     ["kong.plugins.ai-prompt-guard.schema"]  = "kong/plugins/ai-prompt-guard/schema.lua",
 
+    ["kong.plugins.application-registration.api"]     = "kong/plugins/application-registration/api.lua",
+    ["kong.plugins.application-registration.handler"] = "kong/plugins/application-registration/handler.lua",
+    ["kong.plugins.application-registration.schema"]  = "kong/plugins/application-registration/schema.lua",
+
     ["kong.plugins.app-dynamics.appdynamics"] = "kong/plugins/app-dynamics/appdynamics.lua",
     ["kong.plugins.app-dynamics.handler"]     = "kong/plugins/app-dynamics/handler.lua",
     ["kong.plugins.app-dynamics.schema"]      = "kong/plugins/app-dynamics/schema.lua",
