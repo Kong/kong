@@ -70,7 +70,7 @@ local function plugin_callback(phase)
       name_memo[plugin_name] = name
     end
 
-    -- fastrace.enter_scope(ngx.ctx.trace_buffer, name)
+    fastrace.enter_scope(ngx.ctx.trace_buffer, name)
   end
 end
 
@@ -154,7 +154,7 @@ do
 
   local function wrap(host, port, ...)
     if _M.dns_query ~= NOOP then
-      -- fastrace.enter_scope(ngx.ctx.trace_buffer, "kong.dns")
+      fastrace.enter_scope(ngx.ctx.trace_buffer, "kong.dns")
     end
 
     local trace_buffer = ngx.ctx.trace_buffer
