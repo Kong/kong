@@ -59,7 +59,7 @@ jobs:
 
     - name: Lookup build cache
       id: cache-deps
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ${{ env.BUILD_ROOT }}
         key: ${{ needs.build.outputs.cache-key }}
@@ -108,7 +108,7 @@ jobs:
     - name: Download runtimes file
       uses: Kong/gh-storage/download@v1
       env:
-        GITHUB_TOKEN: ${{ secrets.PAT }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         repo-path: Kong/gateway-action-storage/main/.ci/runtimes.json
 
@@ -187,7 +187,7 @@ jobs:
 
     - name: Lookup build cache
       id: cache-deps
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ${{ env.BUILD_ROOT }}
         key: ${{ needs.build.outputs.cache-key }}
@@ -345,7 +345,7 @@ jobs:
 
     - name: Lookup build cache
       id: cache-deps
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ${{ env.BUILD_ROOT }}
         key: ${{ needs.build.outputs.cache-key }}

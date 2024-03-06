@@ -1,0 +1,59 @@
+From f1499e3b06f698dc2813e0686aa0cc257299fcd7 Mon Sep 17 00:00:00 2001
+From: swananan <jt26wzz@gmail.com>
+Date: Thu, 11 Jan 2024 08:46:17 +0800
+Subject: [PATCH] changes: remove the useless pcre config.
+
+---
+ config | 39 ---------------------------------------
+ 1 file changed, 39 deletions(-)
+
+diff --git a/bundle/ngx_stream_lua-0.0.14/config b/bundle/ngx_stream_lua-0.0.14/config
+index 8db90628..e1470b7a 100644
+--- a/bundle/ngx_stream_lua-0.0.14/config
++++ b/bundle/ngx_stream_lua-0.0.14/config
+@@ -405,45 +405,6 @@ fi
+ 
+ # ----------------------------------------
+ 
+-if [ $USE_PCRE = YES -o $PCRE != NONE ] && [ $PCRE != NO -a $PCRE != YES ] && [ $PCRE2 != YES ]; then
+-    # force pcre_version symbol to be required when PCRE is statically linked
+-    case "$NGX_PLATFORM" in
+-        Darwin:*)
+-            ngx_feature="require defined symbols (-u)"
+-            ngx_feature_name=
+-            ngx_feature_path=
+-            ngx_feature_libs="-Wl,-u,_strerror"
+-            ngx_feature_run=no
+-            ngx_feature_incs="#include <stdio.h>"
+-            ngx_feature_test='printf("hello");'
+-
+-            . auto/feature
+-
+-            if [ $ngx_found = yes ]; then
+-                CORE_LIBS="-Wl,-u,_pcre_version $CORE_LIBS"
+-            fi
+-        ;;
+-
+-        *)
+-            ngx_feature="require defined symbols (--require-defined)"
+-            ngx_feature_name=
+-            ngx_feature_path=
+-            ngx_feature_libs="-Wl,--require-defined=strerror"
+-            ngx_feature_run=no
+-            ngx_feature_incs="#include <stdio.h>"
+-            ngx_feature_test='printf("hello");'
+-
+-            . auto/feature
+-
+-            if [ $ngx_found = yes ]; then
+-                CORE_LIBS="-Wl,--require-defined=pcre_version $CORE_LIBS"
+-            fi
+-        ;;
+-    esac
+-fi
+-
+-# ----------------------------------------
+-
+ USE_MD5=YES
+ USE_SHA1=YES
+ 
