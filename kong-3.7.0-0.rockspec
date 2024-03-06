@@ -65,6 +65,7 @@ build = {
     ["kong.router.expressions"] = "kong/router/expressions.lua",
     ["kong.router.atc"] = "kong/router/atc.lua",
     ["kong.router.fields"] = "kong/router/fields.lua",
+    ["kong.router.transform"] = "kong/router/transform.lua",
     ["kong.router.utils"] = "kong/router/utils.lua",
 
     ["kong.conf_loader"] = "kong/conf_loader/init.lua",
