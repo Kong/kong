@@ -274,9 +274,9 @@ plugins/forward-proxy:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/forward-proxy/**/*
 
-plugins-ee/graphql-proxy-cache-advanced:
+plugins/graphql-proxy-cache-advanced:
 - changed-files:
-  - any-glob-to-any-file: plugins-ee/graphql-proxy-cache-advanced/**/*
+  - any-glob-to-any-file: kong/plugins/graphql-proxy-cache-advanced/**/*
 
 plugins-ee/graphql-rate-limiting-advanced:
 - changed-files:

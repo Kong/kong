@@ -59,6 +59,7 @@ local plugins = {
   "degraphql",
   "exit-transformer",
   "forward-proxy",
+  "graphql-proxy-cache-advanced",
   -- ]]
 }
 

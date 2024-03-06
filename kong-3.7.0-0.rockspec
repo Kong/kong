@@ -911,6 +911,13 @@ build = {
     ["kong.plugins.forward-proxy.handler"] = "kong/plugins/forward-proxy/handler.lua",
     ["kong.plugins.forward-proxy.schema"]  = "kong/plugins/forward-proxy/schema.lua",
 
+    ["kong.plugins.graphql-proxy-cache-advanced.handler"] = "kong/plugins/graphql-proxy-cache-advanced/handler.lua",
+    ["kong.plugins.graphql-proxy-cache-advanced.schema"] = "kong/plugins/graphql-proxy-cache-advanced/schema.lua",
+    ["kong.plugins.graphql-proxy-cache-advanced.strategies"] = "kong/plugins/graphql-proxy-cache-advanced/strategies/init.lua",
+    ["kong.plugins.graphql-proxy-cache-advanced.strategies.memory"] = "kong/plugins/graphql-proxy-cache-advanced/strategies/memory.lua",
+    ["kong.plugins.graphql-proxy-cache-advanced.api"] = "kong/plugins/graphql-proxy-cache-advanced/api.lua",
+    ["kong.plugins.graphql-proxy-cache-advanced.cache_key"] = "kong/plugins/graphql-proxy-cache-advanced/cache_key.lua",
+
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
     ["kong.vaults.aws"] = "kong/vaults/aws/init.lua",

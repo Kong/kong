@@ -21,7 +21,6 @@ c.plugins = {
   "vault-auth",  -- built-in in kong-ee
   "request-validator",  -- built-in in kong-ee
   "mtls-auth",  -- built-in in kong-ee
-  "graphql-proxy-cache-advanced",  -- built-in in kong-ee
   "graphql-rate-limiting-advanced",  -- built-in in kong-ee
   "route-transformer-advanced",  -- built-in in kong-ee
   "kafka-log",  -- built-in in kong-ee
