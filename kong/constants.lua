@@ -58,6 +58,7 @@ local plugins = {
   "canary",
   "degraphql",
   "exit-transformer",
+  "forward-proxy",
   -- ]]
 }
 

@@ -22,7 +22,7 @@ local function log_match(fname, str)
   end
 end
 
-local fixtures_path = helpers.get_fixtures_path()
+local fixtures_path = "../spec/fixtures/forward-proxy"
 
 local fixtures = {
   dns_mock = helpers.dns_mock.new(),

@@ -908,6 +908,9 @@ build = {
     ["kong.plugins.exit-transformer.handler"] = "kong/plugins/exit-transformer/handler.lua",
     ["kong.plugins.exit-transformer.schema"] = "kong/plugins/exit-transformer/schema.lua",
 
+    ["kong.plugins.forward-proxy.handler"] = "kong/plugins/forward-proxy/handler.lua",
+    ["kong.plugins.forward-proxy.schema"]  = "kong/plugins/forward-proxy/schema.lua",
+
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
     ["kong.vaults.aws"] = "kong/vaults/aws/init.lua",

@@ -11,7 +11,6 @@ c.plugins = {
   "oauth2-introspection", -- built-in in kong-ee
   "proxy-cache-advanced", -- built-in in kong-ee
   "openid-connect",  -- built-in in kong-ee
-  "forward-proxy", -- built-in in kong-ee
   "request-transformer-advanced",  -- built-in in kong-ee
   "response-transformer-advanced",  -- built-in in kong-ee
   "rate-limiting-advanced",  -- built-in in kong-ee
