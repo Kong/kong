@@ -4,7 +4,7 @@ echo "Stopping previously running Kong"
 
 kong stop
 
-pid_file=/kong-plugin/servroot/pids/nginx.pid
+pid_file=servroot/pids/nginx.pid
 while [ -f $pid_file ]
 do
     if kill -0 "$(cat $pid_file)" >/dev/null 2>&1
@@ -17,7 +17,7 @@ done
 
 set -e
 
-rm -f /tmp/appd/* /kong-plugin/servroot/logs/error.log
+rm -f /tmp/appd/* servroot/logs/error.log
 
 if [ "$KONG_APPD_CONTROLLER_ACCESS_KEY" = "" ]
 then
@@ -29,7 +29,7 @@ fi
 NORMAL_TRANSACTION_COUNT=100
 
 export KONG_APPD_NODE_NAME=${KONG_APPD_NODE_NAME:-$(hostname)}          \
-       LD_LIBRARY_PATH=/kong-plugin                                     \
+       LD_LIBRARY_PATH=ld_lib                                           \
        KONG_APPD_LOGGING_LEVEL=0                                        \
        KONG_APPD_CONTROLLER_HOST=kong-nfr.saas.appdynamics.com          \
        KONG_APPD_CONTROLLER_ACCOUNT=kong-nfr                            \

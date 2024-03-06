@@ -53,6 +53,7 @@ local plugins = {
   "ai-request-transformer",
   "ai-response-transformer",
   -- XXX EE [[
+  --"app-dynamics", -- not part of the 'bundled' set due to system-level configuration requirements
   "canary",
   -- ]]
 }

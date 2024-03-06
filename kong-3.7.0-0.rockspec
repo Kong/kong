@@ -883,6 +883,10 @@ build = {
     ["kong.plugins.ai-prompt-guard.handler"] = "kong/plugins/ai-prompt-guard/handler.lua",
     ["kong.plugins.ai-prompt-guard.schema"]  = "kong/plugins/ai-prompt-guard/schema.lua",
 
+    ["kong.plugins.app-dynamics.appdynamics"] = "kong/plugins/app-dynamics/appdynamics.lua",
+    ["kong.plugins.app-dynamics.handler"]     = "kong/plugins/app-dynamics/handler.lua",
+    ["kong.plugins.app-dynamics.schema"]      = "kong/plugins/app-dynamics/schema.lua",
+
     ["kong.plugins.canary.migrations"] = "kong/plugins/canary/migrations/init.lua",
     ["kong.plugins.canary.migrations.001_200_to_210"] = "kong/plugins/canary/migrations/001_200_to_210.lua",
     ["kong.plugins.canary.groups"]  = "kong/plugins/canary/groups.lua",

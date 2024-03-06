@@ -40,7 +40,6 @@ c.plugins = {
   "konnect-application-auth",  -- built-in in kong-ee
   "tls-handshake-modifier", -- built-in in kong-ee
   "tls-metadata-headers", -- built-in in kong-ee
-  -- "app-dynamics",  -- built-in in kong-ee, not part of the 'bundled' set due to system-level configuration requirements
   "saml", -- built-in in kong-ee
   "xml-threat-protection", -- built-in in kong-ee
   "jwe-decrypt", -- built-in in kong-ee

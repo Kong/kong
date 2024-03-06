@@ -12,7 +12,9 @@ local stringx = require "pl.stringx"
 local constants = require "kong.constants"
 local utils = require "spec.helpers.perf.utils"
 
-local NON_BUDLED_PLUGINS = {}
+local NON_BUDLED_PLUGINS = {
+  ["app-dynamics"] = true,
+}
 
 describe("Plugins conf property" , function()
 

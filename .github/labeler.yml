@@ -250,9 +250,9 @@ plugins/opentelemetry:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/opentelemetry/**/*
 
-plugins-ee/app-dynamics:
+plugins/app-dynamics:
 - changed-files:
-  - any-glob-to-any-file: plugins-ee/app-dynamics/**/*
+  - any-glob-to-any-file: kong/plugins/app-dynamics/**/*
 
 plugins-ee/application-registration:
 - changed-files:
