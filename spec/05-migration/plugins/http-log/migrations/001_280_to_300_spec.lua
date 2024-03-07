@@ -18,7 +18,7 @@ handler("http-log plugin migration", function()
     end)
 
     lazy_teardown(function ()
-      assert(uh.stop_kong(nil, true))
+      assert(uh.stop_kong())
     end)
 
     local log_server_url = "http://localhost:" .. HTTP_PORT .. "/"
