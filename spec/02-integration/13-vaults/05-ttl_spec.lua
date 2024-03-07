@@ -183,7 +183,7 @@ describe("vault ttl and rotation (#" .. strategy .. ") #" .. vault.name, functio
       client:close()
     end
 
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
     vault:teardown()
 
     helpers.unsetenv("KONG_LUA_PATH_OVERRIDE")
