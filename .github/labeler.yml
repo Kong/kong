@@ -354,9 +354,9 @@ plugins-ee/request-validator:
 - changed-files:
   - any-glob-to-any-file: plugins-ee/request-validator/**/*
 
-plugins-ee/response-transformer-advanced:
+plugins/response-transformer-advanced:
 - changed-files:
-  - any-glob-to-any-file: plugins-ee/response-transformer-advanced/**/*
+  - any-glob-to-any-file: kong/plugins/response-transformer-advanced/**/*
 
 plugins-ee/route-by-header:
 - changed-files:

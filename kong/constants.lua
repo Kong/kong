@@ -66,6 +66,7 @@ local plugins = {
   "mocking",
   "oauth2-introspection",
   "request-transformer-advanced",
+  "response-transformer-advanced",
   -- ]]
 }
 

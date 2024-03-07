@@ -960,6 +960,16 @@ build = {
     ["kong.plugins.request-transformer-advanced.access"] = "kong/plugins/request-transformer-advanced/access.lua",
     ["kong.plugins.request-transformer-advanced.schema"] = "kong/plugins/request-transformer-advanced/schema.lua",
 
+    ["kong.plugins.response-transformer-advanced.migrations.enterprise"] = "kong/plugins/response-transformer-advanced/migrations/enterprise/init.lua",
+    ["kong.plugins.response-transformer-advanced.migrations.enterprise.001_1500_to_2100"] = "kong/plugins/response-transformer-advanced/migrations/enterprise/001_1500_to_2100.lua",
+    ["kong.plugins.response-transformer-advanced.handler"] = "kong/plugins/response-transformer-advanced/handler.lua",
+    ["kong.plugins.response-transformer-advanced.body_transformer"] = "kong/plugins/response-transformer-advanced/body_transformer.lua",
+    ["kong.plugins.response-transformer-advanced.header_transformer"] = "kong/plugins/response-transformer-advanced/header_transformer.lua",
+    ["kong.plugins.response-transformer-advanced.schema"] = "kong/plugins/response-transformer-advanced/schema.lua",
+    ["kong.plugins.response-transformer-advanced.feature_flags.limit_body"] = "kong/plugins/response-transformer-advanced/feature_flags/limit_body.lua",
+    ["kong.plugins.response-transformer-advanced.transform_utils"] = "kong/plugins/response-transformer-advanced/transform_utils.lua",
+    ["kong.plugins.response-transformer-advanced.constants"] = "kong/plugins/response-transformer-advanced/constants.lua",
+
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
     ["kong.vaults.aws"] = "kong/vaults/aws/init.lua",

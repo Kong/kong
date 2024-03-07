@@ -10,7 +10,6 @@ local c = {}
 c.plugins = {
   "proxy-cache-advanced", -- built-in in kong-ee
   "openid-connect",  -- built-in in kong-ee
-  "response-transformer-advanced",  -- built-in in kong-ee
   "rate-limiting-advanced",  -- built-in in kong-ee
   "ldap-auth-advanced",  -- built-in in kong-ee
   "statsd-advanced", -- built-in in kong-ee
