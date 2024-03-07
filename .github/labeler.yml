@@ -390,9 +390,9 @@ plugins-ee/vault-auth:
 - changed-files:
   - any-glob-to-any-file: plugins-ee/vault-auth/**/*
 
-plugins-ee/websocket-size-limit:
+plugins/websocket-size-limit:
 - changed-files:
-  - any-glob-to-any-file: plugins-ee/websocket-size-limit/**/*
+  - any-glob-to-any-file: kong/plugins/websocket-size-limit/**/*
 
 plugins-ee/websocket-validator:
 - changed-files:

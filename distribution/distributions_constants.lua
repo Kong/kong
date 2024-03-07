@@ -20,7 +20,6 @@ c.plugins = {
   "kafka-log",  -- built-in in kong-ee
   "kafka-upstream",  -- built-in in kong-ee
   "opa",  -- built-in in kong-ee
-  "websocket-size-limit",  -- built-in in kong-ee
   "websocket-validator",  -- built-in in kong-ee
   "konnect-application-auth",  -- built-in in kong-ee
   "saml", -- built-in in kong-ee

@@ -989,6 +989,9 @@ build = {
     ["kong.plugins.upstream-timeout.handler"] = "kong/plugins/upstream-timeout/handler.lua",
     ["kong.plugins.upstream-timeout.schema"] = "kong/plugins/upstream-timeout/schema.lua",
 
+    ["kong.plugins.websocket-size-limit.handler"] = "kong/plugins/websocket-size-limit/handler.lua",
+    ["kong.plugins.websocket-size-limit.schema"]  = "kong/plugins/websocket-size-limit/schema.lua",
+
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
     ["kong.vaults.aws"] = "kong/vaults/aws/init.lua",
