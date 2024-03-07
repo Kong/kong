@@ -468,7 +468,7 @@ local function resolve_name_type(self, name, qtype, opts, tries)
 
   local ctx = ngx.ctx
   if ctx and ctx.has_timing then
-    req_dyn_hook_run_hooks(ctx, "timing", "dns:cache_lookup",
+    req_dyn_hook_run_hooks("timing", "dns:cache_lookup",
                            (hit_level and hit_level < HIT_L3))
   end
 
@@ -581,7 +581,7 @@ local function resolve_all(self, name, opts, tries)
   else
     local ctx = ngx.ctx
     if ctx and ctx.has_timing then
-      req_dyn_hook_run_hooks(ctx, "timing", "dns:cache_lookup",
+      req_dyn_hook_run_hooks("timing", "dns:cache_lookup",
                              (hit_level and hit_level < HIT_L3))
     end
 
