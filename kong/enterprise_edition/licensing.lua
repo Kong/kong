@@ -134,22 +134,6 @@ local function get_license_event_type(license)
 end
 
 
--- propagate license load event to self worker
-local function post_load_license_event_local(worker_events)
-  local license = get_license_changed()
-
-  if not license then
-    return
-  end
-
-  ngx.log(ngx.DEBUG, "[licensing] post license reload event to self worker. license: ", get_license_event_type(license))
-  local ok, err = worker_events.post_local("license", "load", { license = license })
-  if not ok then
-    ngx.log(ngx.ERR, "[licensing] failed to post license load event to self worker: ", err)
-  end
-end
-
-
 -- propagate license load event to all workers
 local function post_load_license_event(worker_events)
   local license = get_license_changed()

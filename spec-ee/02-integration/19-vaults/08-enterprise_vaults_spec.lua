@@ -6,7 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
-local fmt = string.format
 
 local CUSTOM_VAULTS = "./spec-ee/fixtures/custom_vaults"
 local CUSTOM_PLUGINS = "./spec/fixtures/custom_plugins"
