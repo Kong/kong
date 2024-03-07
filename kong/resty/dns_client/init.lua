@@ -3,11 +3,11 @@ local utils = require("kong.resty.dns_client.utils")
 local mlcache = require("kong.resty.mlcache")
 local resolver = require("resty.dns.resolver")
 
-local get_rr_ans    = utils.get_rr_ans
-local get_wrr_ans   = utils.get_wrr_ans
 local parse_hosts   = utils.parse_hosts
 local ipv6_bracket  = utils.ipv6_bracket
 local search_names  = utils.search_names
+local get_round_robin_answers          = utils.get_round_robin_answers
+local get_weighted_round_robin_answers = utils.get_weighted_round_robin_answers
 
 local now       = ngx.now
 local log       = ngx.log
@@ -52,17 +52,24 @@ local typstrs = {
   [TYPE_CNAME]    = "CNAME",
 }
 
+local HIT_L3 = 3 -- L1 lru, L2 shm, L3 callback, L4 stale
+
 local hitstrs = {
   [1] = "hit_lru",
   [2] = "hit_shm",
+  [3] = "hit_cb",
+  [4] = "hit_stale",
 }
 
-local errstrs = {     -- client specific errors
-  [100] = "cache only lookup failed",
-  [101] = "no available records",
-}
-
-local EMPTY_ANSWERS = { errcode = 3, errstr = "name error" }
+-- server replied error from the DNS protocol
+local NAME_ERROR_CODE    = 3 -- response code 3 as "Name Error" or "NXDOMAIN"
+local NAME_ERROR_ANSWERS = { errcode = NAME_ERROR_CODE, errstr = "name error" }
+-- client specific error
+local CACHE_ONLY_EC      = 100
+local CACHE_ONLY_ESTR    = "cache only lookup failed"
+local CACHE_ONLY_ANSWERS = { errcode = CACHE_ONLY_EC, errstr = CACHE_ONLY_ESTR }
+local EMPTY_RECORD_EC    = 101
+local EMPTY_RECORD_ESTR  = "empty record received"
 
 
 -- APIs
@@ -206,6 +213,8 @@ function _M.new(opts)
   local ipc_source = "dns_client_mlcache#" .. ipc_counter
   local ipc = {
     register_listeners = function(events)
+      -- The DNS client library will be required in globalpatches before Kong
+      -- initializes worker_events.
       if not kong or not kong.worker_events then
         return
       end
@@ -289,7 +298,7 @@ end
 local function process_answers(self, qname, qtype, answers)
   local errcode = answers.errcode
   if errcode then
-    answers.ttl = errcode == 3 and self.empty_ttl or self.error_ttl
+    answers.ttl = errcode == NAME_ERROR_CODE and self.empty_ttl or self.error_ttl
     -- compatible with balancer, which needs this field
     answers.expire = now() + answers.ttl
     return answers
@@ -327,9 +336,9 @@ local function process_answers(self, qname, qtype, answers)
   if #processed_answers == 0 then
     if not cname_answer then
       return {
-        errcode = 101,
-        errstr = errstrs[101],
-        ttl = self.empty_ttl,
+        errcode = EMPTY_RECORD_EC,
+        errstr  = EMPTY_RECORD_ESTR,
+        ttl     = self.empty_ttl,
         -- expire = now() + self.empty_ttl,
       }
     end
@@ -337,8 +346,8 @@ local function process_answers(self, qname, qtype, answers)
     table_insert(processed_answers, cname_answer)
   end
 
-  processed_answers.ttl = ttl
   processed_answers.expire = now() + ttl
+  processed_answers.ttl = ttl
 
   return processed_answers
 end
@@ -377,11 +386,14 @@ local function start_stale_update_task(self, key, name, qtype)
   stats_count(self.stats, key, "stale")
 
   timer_at(0, function (premature)
-    if premature then return end
+    if premature then
+      return
+    end
 
     local answers = resolve_query(self, name, qtype, {})
-    if answers and (not answers.errcode or answers.errcode == 3) then
-      self.cache:set(key, { ttl = answers.ttl }, answers.errcode ~= 3 and answers or nil)
+    if answers and (not answers.errcode or answers.errcode == NAME_ERROR_CODE) then
+      self.cache:set(key, { ttl = answers.ttl },
+                     answers.errcode ~= NAME_ERROR_CODE and answers or nil)
       insert_last_type(self.cache, name, qtype)
     end
   end)
@@ -391,6 +403,8 @@ end
 local function resolve_name_type_callback(self, name, qtype, opts, tries)
   local key = name .. ":" .. qtype
 
+  -- `:peek(stale=true)` verifies if the expired key remains in L2 shm, then
+  -- initiates an asynchronous background updating task to refresh it.
   local ttl, _, answers = self.cache:peek(key, true)
   if answers and ttl and not answers.expired then
     ttl = ttl + self.stale_ttl
@@ -404,12 +418,12 @@ local function resolve_name_type_callback(self, name, qtype, opts, tries)
   end
 
   if opts.cache_only then
-    return { errcode = 100, errstr = errstrs[100] }, nil, -1
+    return CACHE_ONLY_MISS_ANSWERS, nil, -1
   end
 
   local answers, err, ttl = resolve_query(self, name, qtype, tries)
 
-  if answers and answers.errcode == 3 then
+  if answers and answers.errcode == NAME_ERROR_CODE then
     return nil  -- empty record for shm_miss cache
   end
 
@@ -442,26 +456,32 @@ local function resolve_name_type(self, name, qtype, opts, tries)
   local answers, err, hit_level = self.cache:get(key, nil,
                                                  resolve_name_type_callback,
                                                  self, name, qtype, opts, tries)
+  -- check for runtime errors in the callback
   if err and err:sub(1, 8) == "callback" then
     log(ALERT, err)
   end
 
+  -- restore the nil value in mlcache shm_miss to "name error" answers
   if not answers and not err then
-    answers = EMPTY_ANSWERS
+    answers = NAME_ERROR_ANSWERS
   end
 
   local ctx = ngx.ctx
   if ctx and ctx.has_timing then
     req_dyn_hook_run_hooks(ctx, "timing", "dns:cache_lookup",
-                           (hit_level and hit_level < 3))
+                           (hit_level and hit_level < HIT_L3))
   end
 
-  if hit_level and hit_level < 3 then
+  -- hit L1 lru or L2 shm
+  if hit_level and hit_level < HIT_L3 then
     stats_count(self.stats, key, hitstrs[hit_level])
   end
 
   if err or answers.errcode then
-    err = err or ("dns server error: %s %s"):format(answers.errcode, answers.errstr)
+    if not err then
+      local src = answers.errcode < CACHE_ONLY_EC and "server" or "client"
+      err = ("dns %s error: %s %s"):format(src, answers.errcode, answers.errstr)
+    end
     table_insert(tries, { name .. ":" .. typstrs[qtype], err })
   end
 
@@ -509,6 +529,8 @@ local function resolve_names_and_types(self, name, opts, tries)
     return answers, nil, tries
   end
 
+  -- TODO: For better performance, it may be necessary to rewrite it as an
+  --       iterative function.
   local types = get_search_types(self, name, opts.qtype)
   local names = search_names(name, self.resolv, self.hosts)
 
@@ -535,6 +557,7 @@ end
 
 
 local function resolve_all(self, name, opts, tries)
+  -- key like "short:example.com:all" or "short:example.com:5"
   local key = "short:" .. name .. ":" .. (opts.qtype or "all")
 
   stats_init(self.stats, name)
@@ -545,7 +568,7 @@ local function resolve_all(self, name, opts, tries)
     return nil, "recursion detected for name: " .. name
   end
 
-  -- quickly lookup with the key `short:<name>:all` or `short:<name>:<qtype>`
+  -- quickly lookup with the key "short:<name>:all" or "short:<name>:<qtype>"
   local answers, err, hit_level = self.cache:get(key)
   if not answers or answers.expired then
     stats_count(self.stats, name, "miss")
@@ -559,7 +582,7 @@ local function resolve_all(self, name, opts, tries)
     local ctx = ngx.ctx
     if ctx and ctx.has_timing then
       req_dyn_hook_run_hooks(ctx, "timing", "dns:cache_lookup",
-      (hit_level and hit_level < 3))
+                             (hit_level and hit_level < HIT_L3))
     end
 
     stats_count(self.stats, name, hitstrs[hit_level])
@@ -597,12 +620,12 @@ function _M:resolve(name, opts, tries)
 
   -- option: return_random
   if answers[1].type == TYPE_SRV then
-    local answer = get_wrr_ans(answers)
+    local answer = get_weighted_round_robin_answers(answers)
     opts.port = answer.port ~= 0 and answer.port or opts.port
     return self:resolve(answer.target, opts, tries)
   end
 
-  return get_rr_ans(answers).address, opts.port, tries
+  return get_round_robin_answers(answers).address, opts.port, tries
 end
 
 
