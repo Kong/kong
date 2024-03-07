@@ -36,6 +36,7 @@ env:
 
   HAS_ACCESS_TO_GITHUB_TOKEN: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') }}
 
+
 jobs:
   metadata:
     name: Metadata
@@ -302,6 +303,10 @@ jobs:
     needs: [metadata, build-packages]
     runs-on: ubuntu-22.04
 
+    permissions:
+      # create comments on commits for docker images needs the `write` permission
+      contents: write
+
     strategy:
       fail-fast: false
       matrix:
@@ -388,7 +393,7 @@ jobs:
       if: github.event_name == 'push' && matrix.label == 'ubuntu'
       uses: peter-evans/commit-comment@76d2ae14b83cd171cd38507097b9616bb9ca7cb6 # v2.0.1
       with:
-        token: ${{ secrets.GHA_COMMENT_TOKEN }}
+        token: ${{ secrets.GITHUB_TOKEN }}
         body: |
           ### Bazel Build
           Docker image available `${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ github.sha }}`
