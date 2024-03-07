@@ -382,7 +382,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         lazy_teardown(function()
-          helpers.stop_kong(nil, true)
+          helpers.stop_kong()
         end)
 
         describe("Without authentication (IP address)", function()
@@ -624,7 +624,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         lazy_teardown(function()
-          helpers.stop_kong(nil, true)
+          helpers.stop_kong()
         end)
 
         it("expires a counter", function()
@@ -699,7 +699,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         lazy_teardown(function()
-          helpers.stop_kong(nil, true)
+          helpers.stop_kong()
         end)
 
         it("blocks when the consumer exceeds their quota, no matter what service/route used", function()
@@ -740,7 +740,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         lazy_teardown(function()
-          helpers.stop_kong(nil, true)
+          helpers.stop_kong()
         end)
 
         before_each(function()
@@ -825,7 +825,7 @@ for _, strategy in helpers.each_strategy() do
             end)
 
             after_each(function()
-              helpers.stop_kong(nil, true)
+              helpers.stop_kong()
             end)
 
             it("does not work if an error occurs", function()
@@ -921,7 +921,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           after_each(function()
-            helpers.stop_kong(nil, true)
+            helpers.stop_kong()
           end)
 
           it("does not work if an error occurs", function()

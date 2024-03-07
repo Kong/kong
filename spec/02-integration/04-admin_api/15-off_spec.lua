@@ -57,7 +57,7 @@ describe("Admin API #off", function()
   end)
 
   lazy_teardown(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
   before_each(function()
@@ -2557,7 +2557,7 @@ describe("Admin API (concurrency tests) #off", function()
   end)
 
   after_each(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
 
     if client then
       client:close()
@@ -2678,7 +2678,7 @@ describe("Admin API #off with Unique Foreign #unique", function()
   end)
 
   lazy_teardown(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
   before_each(function()
@@ -2823,7 +2823,7 @@ describe("Admin API #off worker_consistency=eventual", function()
   end)
 
   lazy_teardown(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
   before_each(function()
