@@ -374,9 +374,9 @@ plugins/statsd-advanced:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/statsd-advanced/**/*
 
-plugins-ee/tls-handshake-modifier:
+plugins/tls-handshake-modifier:
 - changed-files:
-  - any-glob-to-any-file: plugins-ee/tls-handshake-modifier/**/*
+  - any-glob-to-any-file: kong/plugins/tls-handshake-modifier/**/*
 
 plugins-ee/tls-metadata-headers:
 - changed-files:

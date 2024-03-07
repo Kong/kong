@@ -979,6 +979,10 @@ build = {
     ["kong.plugins.statsd-advanced.handler"] = "kong/plugins/statsd-advanced/handler.lua",
     ["kong.plugins.statsd-advanced.schema"]  = "kong/plugins/statsd-advanced/schema.lua",
 
+    ["kong.plugins.tls-handshake-modifier.handler"] = "kong/plugins/tls-handshake-modifier/handler.lua",
+    ["kong.plugins.tls-handshake-modifier.schema"] = "kong/plugins/tls-handshake-modifier/schema.lua",
+    ["kong.plugins.tls-handshake-modifier.cache"] = "kong/plugins/tls-handshake-modifier/cache.lua",
+
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
     ["kong.vaults.aws"] = "kong/vaults/aws/init.lua",

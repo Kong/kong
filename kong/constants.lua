@@ -70,6 +70,7 @@ local plugins = {
   "route-by-header",
   "route-transformer-advanced",
   "statsd-advanced",
+  "tls-handshake-modifier",
   -- ]]
 }
 
