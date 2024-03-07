@@ -67,6 +67,7 @@ local plugins = {
   "oauth2-introspection",
   "request-transformer-advanced",
   "response-transformer-advanced",
+  "route-by-header",
   -- ]]
 }
 

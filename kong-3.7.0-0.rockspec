@@ -970,6 +970,9 @@ build = {
     ["kong.plugins.response-transformer-advanced.transform_utils"] = "kong/plugins/response-transformer-advanced/transform_utils.lua",
     ["kong.plugins.response-transformer-advanced.constants"] = "kong/plugins/response-transformer-advanced/constants.lua",
 
+    ["kong.plugins.route-by-header.handler"] = "kong/plugins/route-by-header/handler.lua",
+    ["kong.plugins.route-by-header.schema"] = "kong/plugins/route-by-header/schema.lua",
+
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
     ["kong.vaults.aws"] = "kong/vaults/aws/init.lua",

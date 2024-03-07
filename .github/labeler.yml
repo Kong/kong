@@ -358,9 +358,9 @@ plugins/response-transformer-advanced:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/response-transformer-advanced/**/*
 
-plugins-ee/route-by-header:
+plugins/route-by-header:
 - changed-files:
-  - any-glob-to-any-file: plugins-ee/route-by-header/**/*
+  - any-glob-to-any-file: kong/plugins/route-by-header/**/*
 
 plugins-ee/route-transformer-advanced:
 - changed-files:
