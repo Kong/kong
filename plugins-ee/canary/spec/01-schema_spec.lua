@@ -253,7 +253,7 @@ describe("canary schema", function()
       end)
 
       teardown(function()
-        helpers.stop_kong(nil, true)
+        helpers.stop_kong()
       end)
 
 

@@ -50,7 +50,7 @@ for _, strategy in helpers.each_strategy() do
 
         lazy_teardown(function()
           if admin_client then admin_client:close() end
-          helpers.stop_kong(nil, true)
+          helpers.stop_kong()
         end)
 
         it("runs", function()
@@ -108,7 +108,7 @@ for _, strategy in helpers.each_strategy() do
 
         lazy_teardown(function()
           if admin_client then admin_client:close() end
-          helpers.stop_kong(nil, true)
+          helpers.stop_kong()
         end)
 
         it("doesn't run", function()
@@ -181,7 +181,7 @@ for _, strategy in helpers.each_strategy() do
 
         lazy_teardown(function()
           if admin_client then admin_client:close() end
-          helpers.stop_kong(nil, true)
+          helpers.stop_kong()
         end)
 
         it("doesn't run", function()

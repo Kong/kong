@@ -27,7 +27,7 @@ for _, vault in ipairs({"env", "aws", "hcv"}) do
     end)
 
     lazy_teardown(function()
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     it("Starts Kong successfully when plugins use references", function()

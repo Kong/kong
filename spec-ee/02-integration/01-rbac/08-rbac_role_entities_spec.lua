@@ -161,7 +161,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     teardown(function()
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     it("rbac_role_entities should be removed after a consumer is deleted", function()

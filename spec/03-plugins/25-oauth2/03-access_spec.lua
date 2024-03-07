@@ -175,7 +175,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
   end)
 
   lazy_teardown(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
   describe("access", function()

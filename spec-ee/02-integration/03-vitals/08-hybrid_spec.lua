@@ -513,9 +513,9 @@ for _, strategy in helpers.each_strategy() do
 
       lazy_teardown(function()
         helpers.unsetenv("KONG_TEST_PG_PORT")
-        assert(helpers.stop_kong("servroot2", true))  -- dp
-        assert(helpers.stop_kong("servroot", true))   -- cp
-        assert(helpers.stop_kong("servroot3", true))  -- proxy
+        assert(helpers.stop_kong("servroot2"))  -- dp
+        assert(helpers.stop_kong("servroot"))   -- cp
+        assert(helpers.stop_kong("servroot3"))  -- proxy
         reset_license_data()
       end)
 

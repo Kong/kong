@@ -146,7 +146,7 @@ for _, strategy in helpers.all_strategies() do
         client:close()
       end
       os.remove(MOCK_TRACE_FILENAME)
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     describe("Plugin and SDK initialization", function()

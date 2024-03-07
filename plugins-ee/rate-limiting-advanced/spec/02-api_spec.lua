@@ -30,7 +30,7 @@ describe("rate-limiting-advanced API", function()
     if admin_client then
       admin_client:close()
     end
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
   describe("POST", function()

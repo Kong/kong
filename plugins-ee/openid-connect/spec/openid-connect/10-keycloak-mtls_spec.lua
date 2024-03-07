@@ -250,7 +250,7 @@ for _, auth_method in ipairs({ "bearer", "introspection" }) do
     end)
 
     lazy_teardown(function()
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
       upstream:stop()
       for _, client in pairs(clients) do
         client:close()
@@ -550,7 +550,7 @@ describe("mTLS Client Authentication strategy: #" .. strategy, function()
       if proxy_client then
         proxy_client:close()
       end
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     it("Authorizes a valid client certificate", function()
@@ -620,7 +620,7 @@ describe("mTLS Client Authentication strategy: #" .. strategy, function()
       if proxy_client then
         proxy_client:close()
       end
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     it("Authorizes a valid client certificate", function()
@@ -691,7 +691,7 @@ describe("mTLS Client Authentication strategy: #" .. strategy, function()
       if proxy_client then
         proxy_client:close()
       end
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     it("Authorizes a valid client certificate with valid token", function()
@@ -795,7 +795,7 @@ describe("mTLS Client Authentication strategy: #" .. strategy, function()
       if proxy_client then
         proxy_client:close()
       end
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     it("Authorizes a valid client certificate with valid token", function()
@@ -1027,7 +1027,7 @@ describe("mTLS Client Authentication strategy: #" .. strategy, function()
       if proxy_client then
         proxy_client:close()
       end
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     it("notifies in the logs", function()
@@ -1085,7 +1085,7 @@ describe("mTLS Client Authentication strategy: #" .. strategy, function()
       if proxy_client then
         proxy_client:close()
       end
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     it("Authorizes a valid client certificate", function()

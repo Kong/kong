@@ -855,7 +855,7 @@ for _, strategy in strategies() do
         admin_client:close()
       end
 
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     describe("request certs for specific routes", function()
@@ -1066,7 +1066,7 @@ for _, strategy in strategies() do
         admin_client:close()
       end
 
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     describe("filter cache is isolated per workspace", function()
@@ -1173,7 +1173,7 @@ for _, strategy in strategies() do
     end)
 
     lazy_teardown(function()
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     describe("valid partial chain", function()

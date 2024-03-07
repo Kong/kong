@@ -201,7 +201,7 @@ for _, strategy in strategies() do
       if proxy_client then
         proxy_client:close()
       end
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
 
     end)
 

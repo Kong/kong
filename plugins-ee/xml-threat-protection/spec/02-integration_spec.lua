@@ -76,7 +76,7 @@ for _, strategy in helpers.all_strategies() do
 
 
     lazy_teardown(function()
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
 

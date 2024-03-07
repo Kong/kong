@@ -280,7 +280,7 @@ for _, strategy in strategies() do
 
 
     teardown(function()
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
 

@@ -26,7 +26,7 @@ for _, strategy in helpers.each_strategy() do
 
     after_each(function()
       if proxy_client then proxy_client:close() end
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     it("only runs plugins on default ws in early phases. not in ws1", function()
@@ -130,7 +130,7 @@ for _, strategy in helpers.each_strategy() do
 
     after_each(function()
       if admin_client then admin_client:close() end
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     it("can delete an empty workspace", function()

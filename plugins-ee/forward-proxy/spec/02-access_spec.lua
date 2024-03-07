@@ -103,7 +103,7 @@ for _, x_headers_mode in ipairs{ "append", "transparent", "delete", } do
         client:close()
       end
 
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     before_each(function()

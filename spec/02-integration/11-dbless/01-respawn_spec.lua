@@ -64,7 +64,7 @@ describe("#off worker respawn", function()
   end)
 
   lazy_teardown(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
   before_each(function()

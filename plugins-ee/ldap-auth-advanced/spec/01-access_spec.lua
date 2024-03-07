@@ -128,7 +128,7 @@ for proto, conf in ee_helpers.each_protocol() do
     end)
 
     teardown(function()
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     describe("authenticated LDAP user", function()

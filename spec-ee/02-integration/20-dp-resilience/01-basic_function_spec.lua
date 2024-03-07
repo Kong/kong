@@ -246,9 +246,9 @@ describe("cp outage handling", function ()
         end)
 
         after_each(function ()
-          helpers.stop_kong(nil, true)
-          helpers.stop_kong("servroot2", true)
-          helpers.stop_kong("servroot3", true)
+          helpers.stop_kong()
+          helpers.stop_kong("servroot2")
+          helpers.stop_kong("servroot3")
         end)
 
         it("test", function()
@@ -296,7 +296,7 @@ describe("cp outage handling", function ()
 
 
     after_each(function ()
-      helpers.stop_kong("servroot3", true)
+      helpers.stop_kong("servroot3")
     end)
 
 

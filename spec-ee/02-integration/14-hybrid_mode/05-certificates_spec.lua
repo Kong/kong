@@ -113,7 +113,7 @@ describe("cluster_mtls(pki_check_cn) #" .. strategy, function()
     end)
 
     lazy_teardown(function()
-      helpers.stop_kong(cp.prefix, true)
+      helpers.stop_kong(cp.prefix)
     end)
 
     before_each(function()
@@ -162,7 +162,7 @@ describe("cluster_mtls(pki_check_cn) #" .. strategy, function()
     end)
 
     lazy_teardown(function()
-      helpers.stop_kong(cp.prefix, true)
+      helpers.stop_kong(cp.prefix)
     end)
 
     before_each(function()

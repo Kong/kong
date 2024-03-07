@@ -185,7 +185,7 @@ describe("CP/DP config compat #" .. strategy, function()
   end)
 
   lazy_teardown(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
   describe("3.4.x.y", function()

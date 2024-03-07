@@ -116,7 +116,7 @@ for _, strategy in strategies() do
       if admin_client then
         admin_client:close()
       end
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     it("GET requests should route to default upstram server", function()

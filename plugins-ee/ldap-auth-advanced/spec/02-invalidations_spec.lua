@@ -75,7 +75,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
         end)
 
         teardown(function()
-          helpers.stop_kong(nil, true)
+          helpers.stop_kong()
         end)
 
         local function cache_key(conf, username, password)

@@ -163,7 +163,7 @@ for _, workspace in ipairs({ "default", "doggos"}) do
       end)
 
       teardown(function()
-        helpers.stop_kong(nil, true)
+        helpers.stop_kong()
         reset_license_data()
       end)
 

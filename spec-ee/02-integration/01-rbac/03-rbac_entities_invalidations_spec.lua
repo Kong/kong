@@ -92,8 +92,8 @@ describe("rbac entities are invalidated with db: #" .. strategy .. ", role: #" .
   end)
 
   teardown(function()
-    helpers.stop_kong("servroot1", true)
-    helpers.stop_kong("servroot2", true)
+    helpers.stop_kong("servroot1")
+    helpers.stop_kong("servroot2")
   end)
 
   before_each(function()

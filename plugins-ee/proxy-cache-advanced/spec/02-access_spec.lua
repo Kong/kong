@@ -421,7 +421,7 @@ for _, policy in ipairs({"memory", "redis"}) do
         admin_client:close()
       end
 
-      helpers.stop_kong(nil, false)
+      helpers.stop_kong()
     end)
 
 
@@ -1853,7 +1853,7 @@ for _, policy in ipairs({"memory", "redis"}) do
         admin_client:close()
       end
 
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     it("caches a simple request", function()

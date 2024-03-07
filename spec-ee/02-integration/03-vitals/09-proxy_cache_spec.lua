@@ -119,7 +119,7 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_teardown(function()
       helpers.stop_kong("servroot2")
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong(nil)
       reset_license_data()
     end)
 

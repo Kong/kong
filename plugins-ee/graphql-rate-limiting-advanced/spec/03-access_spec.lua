@@ -129,7 +129,7 @@ for _, db_strategy in strategies() do
                 client:close()
             end
 
-            helpers.stop_kong(nil, true)
+            helpers.stop_kong()
         end)
 
         if db_strategy ~= "off" then
@@ -252,7 +252,7 @@ for _, db_strategy in strategies() do
               client:close()
           end
 
-          helpers.stop_kong(nil, true)
+          helpers.stop_kong()
       end)
 
       if db_strategy ~= "off" then

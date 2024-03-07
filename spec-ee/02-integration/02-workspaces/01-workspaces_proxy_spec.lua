@@ -66,7 +66,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     teardown(function()
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     it("Triggers plugin if it's in current request's workspaces", function()
@@ -150,7 +150,7 @@ for _, strategy in helpers.each_strategy() do
       admin_client:close()
     end)
     teardown(function()
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     before_each(function()
@@ -657,7 +657,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     lazy_teardown(function()
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
       mock:stop()
     end)
 

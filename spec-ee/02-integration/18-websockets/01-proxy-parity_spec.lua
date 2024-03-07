@@ -499,7 +499,7 @@ describe("WebSockets [db #" .. strategy .. "]", function()
   end)
 
   teardown(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
   for _, case in ipairs(CASES) do

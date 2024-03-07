@@ -14,11 +14,11 @@ describe("kong starts with proxy-cache-advanced plugin", function()
   end)
 
   after_each(function()
-    assert.True(helpers.stop_kong(nil, false))
+    assert.True(helpers.stop_kong())
   end)
 
   teardown(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
   it("starts with default conf", function()
@@ -37,11 +37,11 @@ describe("kong starts with proxy-cache-advanced plugin for stream listening", fu
   end)
 
   after_each(function()
-    assert.True(helpers.stop_kong(nil, false))
+    assert.True(helpers.stop_kong())
   end)
 
   teardown(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
   it("starts with stream listen", function()
