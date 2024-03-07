@@ -370,9 +370,9 @@ plugins-ee/saml:
 - changed-files:
   - any-glob-to-any-file: plugins-ee/saml/**/*
 
-plugins-ee/statsd-advanced:
+plugins/statsd-advanced:
 - changed-files:
-  - any-glob-to-any-file: plugins-ee/statsd-advanced/**/*
+  - any-glob-to-any-file: kong/plugins/statsd-advanced/**/*
 
 plugins-ee/tls-handshake-modifier:
 - changed-files:

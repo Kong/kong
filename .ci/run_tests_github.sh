@@ -92,7 +92,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
     declare -A plugins_to_test=(
         ["first"]="websocket-size-limit"
         ["second"]="proxy-cache-advanced upstream-timeout"
-        ["third"]="jwt-signer  kafka-upstream kafka-log statsd-advanced websocket-validator"
+        ["third"]="jwt-signer  kafka-upstream kafka-log websocket-validator"
         ["fourth"]="openid-connect tls-metadata-headers"
         ["fifth"]="mtls-auth request-validator tls-handshake-modifier"
         ["sixth"]="saml graphql-rate-limiting-advanced"

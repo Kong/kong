@@ -69,6 +69,7 @@ local plugins = {
   "response-transformer-advanced",
   "route-by-header",
   "route-transformer-advanced",
+  "statsd-advanced",
   -- ]]
 }
 

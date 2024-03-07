@@ -976,6 +976,9 @@ build = {
     ["kong.plugins.route-transformer-advanced.handler"] = "kong/plugins/route-transformer-advanced/handler.lua",
     ["kong.plugins.route-transformer-advanced.schema"] = "kong/plugins/route-transformer-advanced/schema.lua",
 
+    ["kong.plugins.statsd-advanced.handler"] = "kong/plugins/statsd-advanced/handler.lua",
+    ["kong.plugins.statsd-advanced.schema"]  = "kong/plugins/statsd-advanced/schema.lua",
+
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
     ["kong.vaults.aws"] = "kong/vaults/aws/init.lua",
