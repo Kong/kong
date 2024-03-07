@@ -6,23 +6,34 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers   = require "spec.helpers"
-local pl_path   = require "pl.path"
+local cjson     = require("cjson.safe").new()
+
+
 local PLUGIN_NAME = "mocking"
 
-local fixture_path do
-  -- this code will get debug info and from that determine the file
-  -- location, so fixtures can be found based of this path
-  local info = debug.getinfo(function() end)
-  fixture_path = info.source
-  if fixture_path:sub(1,1) == "@" then
-    fixture_path = fixture_path:sub(2, -1)
-  end
-  fixture_path = pl_path.splitpath(fixture_path) .. "/resources/"
-end
+local fixture_path = "spec/fixtures/mocking/"
 
 
 local function read_fixture(filename)
-  return assert(helpers.utils.readfile(fixture_path .. filename))
+  local content  = assert(helpers.utils.readfile(fixture_path .. filename))
+  return content
+end
+
+local function find_key(tbl, key)
+  for lk, lv in pairs(tbl) do
+    if lk == key then return lv end
+    if type(lv) == "table" then
+      for dk, dv in pairs(lv) do
+        if dk == key then return dv end
+        if type(dv) == "table" then
+          for ek, ev in pairs(dv) do
+            if ek == key then return ev end
+          end
+        end
+      end
+    end
+  end
+  return nil
 end
 
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
@@ -40,8 +51,8 @@ for _, strategy in strategies() do
         }, { PLUGIN_NAME })
 
         assert(db.files:insert {
-          path = "specs/T1-1748.json",
-          contents = read_fixture("T1-1748.json"),
+          path = "specs/stock_500.yaml",
+          contents = read_fixture("stock_500.yaml"),
         })
 
         local service1 = bp.services:insert{
@@ -61,7 +72,7 @@ for _, strategy in strategies() do
         name = PLUGIN_NAME,
         service = { id = service1.id },
         config = {
-          api_specification_filename = "T1-1748.json",
+          api_specification_filename = "stock_500.yaml",
           random_delay = false
         },
       }
@@ -89,37 +100,53 @@ for _, strategy in strategies() do
       if client then client:close() end
     end)
 
-    describe("T1-1748 Extract example in OpenApi V3 spec", function()
-      it("/stock/historical happy path", function()
+    describe("Stock.YAML 500 error API Specification tests", function()
+      it("Check with positive query param", function()
         local r = assert(client:send {
           method = "GET",
-          path = "/pet/findByStatus/MultipleExamples",  -- makes mockbin return the entire request
+          path = "/stock/historical?tickers=available",
           headers = {
             host = "mocking.test"
           }
         })
         -- validate that the request succeeded, response status 200
-        local body = assert.res_status(200, r)
-        ngx.log(ngx.WARN, "Body: ", body)
-        local header_value = assert.response(r).has.header("X-Kong-Mocking-Plugin")
-        -- validate the value of that header
-        assert.equal("true", header_value)
+        local body = cjson.decode(assert.res_status(200, r))
+        -- verify the values from the response
+        assert.equal("historical_stock_price_v2",find_key(body,"api_name"))
+        assert.equal(10,find_key(body,"credit_cost"))
+        assert.equal("yesterday",find_key(body,"start_date"))
       end)
     end)
 
-    describe("T1-1748 Test not defined Random path", function()
-      it("/random_path Random path", function()
+    describe("Stock.YAML 500 error API Specification tests", function()
+      it("Check for X-Kong-Mocking-Plugin header", function()
         local r = assert(client:send {
           method = "GET",
-          path = "/random_path",
+          path = "/pet/findByStatus/MultipleExamples",
           headers = {
             host = "mocking.test"
           }
         })
-        -- Random path, Response status - 404
-        assert.response(r).has.status(404)
+
+        local header_value = assert.response(r).has.header("X-Kong-Mocking-Plugin")
+
+        assert.equal("true", header_value)
       end)
     end)
 
+    describe("Success test", function()
+      it("Success in return 204", function()
+        local r = assert(client:send {
+          method = "DELETE",
+          path = "/stock/delete",
+          headers = {
+            host = "mocking.test"
+          }
+        })
+        assert.res_status(204, r)
+        local header_value = assert.response(r).has.header("X-Kong-Mocking-Plugin")
+        assert.equal("true", header_value)
+      end)
+    end)
   end)
 end

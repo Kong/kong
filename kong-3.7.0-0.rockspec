@@ -938,6 +938,17 @@ build = {
     ["kong.plugins.key-auth-enc.strategies.postgres.keyauth_enc_credentials"] = "kong/plugins/key-auth-enc/strategies/postgres/keyauth_enc_credentials.lua",
     ["kong.plugins.key-auth-enc.strategies.off.keyauth_enc_credentials"] = "kong/plugins/key-auth-enc/strategies/off/keyauth_enc_credentials.lua",
 
+    ["kong.plugins.mocking.handler"] = "kong/plugins/mocking/handler.lua",
+    ["kong.plugins.mocking.schema"] = "kong/plugins/mocking/schema.lua",
+    ["kong.plugins.mocking.mime_parse"] = "kong/plugins/mocking/mime_parse.lua",
+    ["kong.plugins.mocking.constants"] = "kong/plugins/mocking/constants.lua",
+    ["kong.plugins.mocking.jsonschema-mocker.type.boolean"] = "kong/plugins/mocking/jsonschema-mocker/type/boolean.lua",
+    ["kong.plugins.mocking.jsonschema-mocker.type.integer"] = "kong/plugins/mocking/jsonschema-mocker/type/integer.lua",
+    ["kong.plugins.mocking.jsonschema-mocker.type.number"] = "kong/plugins/mocking/jsonschema-mocker/type/number.lua",
+    ["kong.plugins.mocking.jsonschema-mocker.type.string"] = "kong/plugins/mocking/jsonschema-mocker/type/string.lua",
+    ["kong.plugins.mocking.jsonschema-mocker.constants"] = "kong/plugins/mocking/jsonschema-mocker/constants.lua",
+    ["kong.plugins.mocking.jsonschema-mocker.mocker"] = "kong/plugins/mocking/jsonschema-mocker/mocker.lua",
+
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
     ["kong.vaults.aws"] = "kong/vaults/aws/init.lua",

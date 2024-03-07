@@ -26,7 +26,6 @@ c.plugins = {
   "kafka-log",  -- built-in in kong-ee
   "kafka-upstream",  -- built-in in kong-ee
   "upstream-timeout",  -- built-in in kong-ee
-  "mocking",  -- built-in in kong-ee
   "opa",  -- built-in in kong-ee
   "websocket-size-limit",  -- built-in in kong-ee
   "websocket-validator",  -- built-in in kong-ee

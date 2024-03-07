@@ -90,9 +90,9 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
     rm -f .failed
 
     declare -A plugins_to_test=(
-        ["first"]="jwe-decrypt websocket-size-limit"
-        ["second"]="mocking proxy-cache-advanced upstream-timeout"
-        ["third"]="jwt-signer kafka-upstream kafka-log statsd-advanced websocket-validator"
+        ["first"]="websocket-size-limit"
+        ["second"]="proxy-cache-advanced upstream-timeout"
+        ["third"]="jwt-signer  kafka-upstream kafka-log statsd-advanced websocket-validator"
         ["fourth"]="openid-connect tls-metadata-headers"
         ["fifth"]="mtls-auth request-validator tls-handshake-modifier route-by-header"
         ["sixth"]="request-transformer-advanced saml graphql-rate-limiting-advanced"

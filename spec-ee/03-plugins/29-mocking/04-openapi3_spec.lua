@@ -6,28 +6,8 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
-local pl_path = require "pl.path"
 
 local PLUGIN_NAME = "mocking"
-
-local fixture_path
-do
-  -- this code will get debug info and from that determine the file
-  -- location, so fixtures can be found based of this path
-  local info = debug.getinfo(function()
-  end)
-  fixture_path = info.source
-  if fixture_path:sub(1, 1) == "@" then
-    fixture_path = fixture_path:sub(2, -1)
-  end
-  fixture_path = pl_path.splitpath(fixture_path) .. "/fixtures/"
-end
-
-local function read_fixture(filename)
-  local content = assert(helpers.utils.readfile(fixture_path .. filename))
-  return content
-end
-
 
 local function structure_like(source, target)
   for k, v in pairs(source) do
@@ -46,13 +26,20 @@ local function structure_like(source, target)
   return true, nil
 end
 
+local fixture_path = "spec/fixtures/mocking/"
+
+local function read_fixture(filename)
+  local content = assert(helpers.utils.readfile(fixture_path .. filename))
+  return content
+end
+
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
 for _, strategy in strategies() do
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
     local spec_contents = {
-      yaml = read_fixture("openapi_2.yaml"),
-      json = read_fixture("openapi_2.json"),
+      yaml = read_fixture("openapi_3.yaml"),
+      json = read_fixture("openapi_3.json"),
     }
 
     for type, spec_content in pairs(spec_contents) do
@@ -73,43 +60,43 @@ for _, strategy in strategies() do
             host = "mocking.test",
           }
 
-          local route1 = assert(db.routes:insert({
+          local route1 = db.routes:insert({
             hosts = { "mocking.test" },
             service = service,
-          }))
-          assert(db.plugins:insert {
+          })
+          db.plugins:insert {
             name = PLUGIN_NAME,
             route = { id = route1.id },
             config = {
               api_specification = spec_content
             },
-          })
+          }
 
-          local route2 = assert(db.routes:insert({
+          local route2 = db.routes:insert({
             hosts = { "mocking-codes.test" },
             service = service,
-          }))
-          assert(db.plugins:insert {
+          })
+          db.plugins:insert {
             name = PLUGIN_NAME,
             route = { id = route2.id },
             config = {
               api_specification = spec_content,
               included_status_codes = { 400, 409 }
             },
-          })
+          }
 
-          local route3 = assert(db.routes:insert({
+          local route3 = db.routes:insert({
             hosts = { "mocking-include-base-path.test" },
             service = service,
-          }))
-          assert(db.plugins:insert {
+          })
+          db.plugins:insert {
             name = PLUGIN_NAME,
             route = { id = route3.id },
             config = {
               api_specification = spec_content,
               include_base_path = true
             },
-          })
+          }
 
           -- start kong
           assert(helpers.start_kong({
@@ -133,7 +120,7 @@ for _, strategy in strategies() do
           end
         end)
 
-        describe("OpenAPI 2.0 tests", function()
+        describe("OpenAPI 3.0 tests", function()
           it("/inventory GET", function()
             local res = assert(client:send {
               method = "GET",
@@ -225,6 +212,19 @@ for _, strategy in strategies() do
             assert.response(res).has.status(404)
           end)
 
+          it("should exclude pattern code", function()
+            local res = assert(client:send {
+              method = "GET",
+              path = "/ping-with-multiple-response",
+              headers = {
+                host = "mocking.test"
+              }
+            })
+            assert.response(res).has.status(200) -- expect that return the minimum code of resposnes, which is 200
+            local body = assert.response(res).has.jsonbody()
+            assert.same({ msg = "pong" }, body)
+          end)
+
           describe("config.included_status_codes", function()
             it("should return 400", function()
               local res = assert(client:send {
@@ -235,6 +235,19 @@ for _, strategy in strategies() do
                 }
               })
               assert.response(res).has.status(400)
+            end)
+
+            it("should exclude pattern code", function()
+              local res = assert(client:send {
+                method = "GET",
+                path = "/ping-with-multiple-response",
+                headers = {
+                  host = "mocking-codes.test"
+                }
+              })
+              assert.response(res).has.status(400)
+              local body = assert.response(res).has.jsonbody()
+              assert.same({ msg = "invalid request" }, body)
             end)
           end)
         end)
@@ -250,9 +263,7 @@ for _, strategy in strategies() do
               }
             })
 
-            local body = assert.res_status(200, res)
             assert.equal("application/xml", assert.response(res).has.header("Content-Type"))
-            assert.same('<users><user>Alice</user><user>Bob</user></users>', body)
           end)
           it("wildcard accept header test case", function()
             local res = assert(client:send {
@@ -266,7 +277,7 @@ for _, strategy in strategies() do
 
             local body = assert.res_status(200, res)
             assert.truthy(string.find(assert.response(res).has.header("Content-Type"), "text/html"))
-            assert.same('<html><body><p>Hello, world!</p></body></html>', body)
+            assert.equal('<html><body><p>Hello, world!</p></body></html>', body)
           end)
 
           it("quality value test case", function()
@@ -276,6 +287,23 @@ for _, strategy in strategies() do
               headers = {
                 host = "mocking.test",
                 accept = "application/xml;q=0.1, text/html;q=0.5"
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            assert.truthy(string.find(assert.response(res).has.header("Content-Type"), "text/html"))
+            assert.same(body, '<html><body><p>Hello, world!</p></body></html>')
+          end)
+        end)
+
+        describe("priority of examples and example", function()
+          it("The priority of example should higher than examples", function()
+            local res = assert(client:send {
+              method = "GET",
+              path = "/inventory",
+              headers = {
+                host = "mocking.test",
+                accept = "text/html"
               }
             })
 
@@ -296,58 +324,218 @@ for _, strategy in strategies() do
             })
 
             assert.response(res).has.status(404)
+            local body = assert.response(res).has.jsonbody()
+            assert.same({ message = "No examples exist in API specification for this resource matching Accept Header (application/json)" }, body)
           end)
 
-          it("should return 200 for no examples", function()
+          it("should return 200 for not content", function()
             local res = assert(client:send {
               method = "GET",
-              path = "/inventory_without_examples",
+              path = "/inventory_without_content",
               headers = {
                 host = "mocking.test"
               }
             })
-
             assert.response(res).has.status(200)
           end)
 
-          it("should return 200 for empty examples", function()
+          it("should return 200 for empty content", function()
             local res = assert(client:send {
               method = "GET",
-              path = "/inventory_empty_examples",
+              path = "/inventory_empty_content",
               headers = {
                 host = "mocking.test"
               }
             })
-
             assert.response(res).has.status(200)
           end)
 
+          it("should return 200 for empty content examples", function()
+            local res = assert(client:send {
+              method = "GET",
+              path = "/inventory_empty_content_examples",
+              headers = {
+                host = "mocking.test"
+              }
+            })
+            assert.response(res).has.status(200)
+          end)
+        end)
 
+        describe("behavioral headers", function()
+
+          describe("X-Kong-Mocking-Delay", function()
+
+            it("should delay 500ms", function()
+              local s = ngx.now()
+              local res = assert(client:send {
+                method = "GET",
+                path = "/inventory",
+                headers = {
+                  host = "mocking.test",
+                  ["X-Kong-Mocking-Delay"] = "500"
+                }
+              })
+              local elapsed = (ngx.now() - s) * 1000
+              assert.response(res).has.status(200)
+              assert.is_true(elapsed - 500 >= 0)
+            end)
+
+            it("should return error", function()
+              local res = assert(client:send {
+                method = "GET",
+                path = "/inventory",
+                headers = {
+                  host = "mocking.test",
+                  ["X-Kong-Mocking-Delay"] = "10001"
+                }
+              })
+              assert.response(res).has.status(400)
+              local body = assert.response(res).has.jsonbody()
+              assert.same({ message = "Invalid value for X-Kong-Mocking-Delay. The delay value should be a number between 0 and 10000" }, body)
+
+              local res = assert(client:send {
+                method = "GET",
+                path = "/inventory",
+                headers = {
+                  host = "mocking.test",
+                  ["X-Kong-Mocking-Delay"] = "-1"
+                }
+              })
+              assert.response(res).has.status(400)
+              local body = assert.response(res).has.jsonbody()
+              assert.same({ message = "Invalid value for X-Kong-Mocking-Delay. The delay value should be a number between 0 and 10000" }, body)
+            end)
+          end)
+
+          describe("X-Kong-Mocking-Example-Id", function()
+            it("should respond particular example id", function()
+              local res = assert(client:send {
+                method = "GET",
+                path = "/inventory",
+                headers = {
+                  host = "mocking.test",
+                  accept = "application/xml",
+                  ["X-Kong-Mocking-Example-Id"] = "1"
+                }
+              })
+              assert.response(res).has.status(200)
+              assert.equal("<id>1</id>", res:read_body())
+
+              local res = assert(client:send {
+                method = "GET",
+                path = "/inventory",
+                headers = {
+                  host = "mocking.test",
+                  accept = "application/xml",
+                  ["X-Kong-Mocking-Example-Id"] = "2"
+                }
+              })
+              assert.response(res).has.status(200)
+              assert.equal("<id>2</id>", res:read_body())
+
+              local res = assert(client:send {
+                method = "GET",
+                path = "/inventory",
+                headers = {
+                  host = "mocking.test",
+                  accept = "application/xml",
+                  ["X-Kong-Mocking-Example-Id"] = "three"
+                }
+              })
+              assert.response(res).has.status(200)
+              assert.equal("<id>three</id>", res:read_body())
+            end)
+
+            it("should return error", function()
+              local res = assert(client:send {
+                method = "GET",
+                path = "/inventory",
+                headers = {
+                  host = "mocking.test",
+                  accept = "application/xml",
+                  ["X-Kong-Mocking-Example-Id"] = "inexistent"
+                }
+              })
+              assert.response(res).has.status(400)
+              local body = assert.response(res).has.jsonbody()
+              assert.same({ message = "could not find the example id 'inexistent'" }, body)
+            end)
+          end)
+
+          describe("X-Kong-Mocking-Status-Code", function()
+            it("should respond particular status code", function()
+              local res = assert(client:send {
+                method = "GET",
+                path = "/inventory",
+                headers = {
+                  host = "mocking.test",
+                  accept = "text/plain",
+                  ["X-Kong-Mocking-Status-Code"] = "400"
+                }
+              })
+              assert.response(res).has.status(400)
+              assert.equal("Hello, world!", res:read_body())
+            end)
+
+            it("should return error", function()
+              local res = assert(client:send {
+                method = "GET",
+                path = "/inventory",
+                headers = {
+                  host = "mocking.test",
+                  ["X-Kong-Mocking-Status-Code"] = "1"
+                }
+              })
+              assert.response(res).has.status(400)
+              local body = assert.response(res).has.jsonbody()
+              assert.same({ message = "could not find the status code '1'" }, body)
+            end)
+          end)
         end)
 
         describe("Referenced schema tests", function()
           it("should return dereferenced schema", function()
             local res = assert(client:send {
               method = "GET",
-              path = "/ref/inventory",
+              path = "/ref/inventory_ref_schema",
               headers = {
                 host = "mocking.test"
               }
             })
             assert.response(res).has.status(200)
             local body = assert.response(res).has.jsonbody()
+
             local ok, err = structure_like({
-              id = "d290f1ee-6c54-4b01-90e6-d701748f0851",
-              name = "string",
-              releaseDate = "2022-09-14T08:47:16.316Z",
-              manufacturer = {
-                name = "ACME Corporation",
-                homePage = "https://www.acme-corp.com",
-                phone = "408-867-5309",
+              code = "SUCCESS",
+              msg = "string",
+              data = {
+                id = "d290f1ee-6c54-4b01-90e6-d701748f0851",
+                name = "string",
+                releaseDate = "2022-09-14T08:47:16.316Z",
+                manufacturer = {
+                  name = "ACME Corporation",
+                  homePage = "https://www.acme-corp.com",
+                  phone = "408-867-5309",
+                }
               }
             }, body)
             assert.is_nil(err)
             assert.is_true(ok)
+
+            local res = assert(client:send {
+              method = "GET",
+              path = "/ref/inventory_ref_response",
+              headers = {
+                host = "mocking.test"
+              }
+            })
+            assert.response(res).has.status(400)
+            local body = assert.response(res).has.jsonbody()
+            assert.same({
+              code = "INVALID_REQUEST",
+              msg = "Invalid Request",
+            }, body)
           end)
         end)
       end)

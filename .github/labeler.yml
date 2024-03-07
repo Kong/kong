@@ -314,9 +314,9 @@ plugins-ee/ldap-auth-advanced:
 - changed-files:
   - any-glob-to-any-file: plugins-ee/ldap-auth-advanced/**/*
 
-plugins-ee/mocking:
+plugins/mocking:
 - changed-files:
-  - any-glob-to-any-file: plugins-ee/mocking/**/*
+  - any-glob-to-any-file: kong/plugins/mocking/**/*
 
 plugins-ee/mtls-auth:
 - changed-files:

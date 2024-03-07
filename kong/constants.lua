@@ -63,6 +63,7 @@ local plugins = {
   "jq",
   "jwe-decrypt",
   "key-auth-enc",
+  "mocking",
   -- ]]
 }
 

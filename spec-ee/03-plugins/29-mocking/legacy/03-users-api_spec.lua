@@ -6,22 +6,12 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers   = require "spec.helpers"
-local pl_path   = require "pl.path"
 local cjson     = require("cjson.safe").new()
 
 
 local PLUGIN_NAME = "mocking"
 
-local fixture_path do
-  -- this code will get debug info and from that determine the file
-  -- location, so fixtures can be found based of this path
-  local info = debug.getinfo(function() end)
-  fixture_path = info.source
-  if fixture_path:sub(1,1) == "@" then
-    fixture_path = fixture_path:sub(2, -1)
-  end
-  fixture_path = pl_path.splitpath(fixture_path) .. "/resources/"
-end
+local fixture_path = "spec/fixtures/mocking/"
 
 
 local function read_fixture(filename)
