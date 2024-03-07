@@ -75,6 +75,7 @@ local plugins = {
   "upstream-timeout",
   "websocket-size-limit",
   "websocket-validator",
+  "xml-threat-protection",
   -- ]]
 }
 

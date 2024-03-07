@@ -995,6 +995,9 @@ build = {
     ["kong.plugins.websocket-validator.handler"] = "kong/plugins/websocket-validator/handler.lua",
     ["kong.plugins.websocket-validator.schema"]  = "kong/plugins/websocket-validator/schema.lua",
 
+    ["kong.plugins.xml-threat-protection.handler"] = "kong/plugins/xml-threat-protection/handler.lua",
+    ["kong.plugins.xml-threat-protection.schema"] = "kong/plugins/xml-threat-protection/schema.lua",
+
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
     ["kong.vaults.aws"] = "kong/vaults/aws/init.lua",

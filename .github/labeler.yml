@@ -398,9 +398,9 @@ plugins/websocket-validator:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/websocket-validator/**/*
 
-plugins-ee/xml-threat-protection:
+plugins/xml-threat-protection:
 - changed-files:
-  - any-glob-to-any-file: plugins-ee/xml-threat-protection/**/*
+  - any-glob-to-any-file: kong/plugins/xml-threat-protection/**/*
 
 copyright:
 - changed-files:
