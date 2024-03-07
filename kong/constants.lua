@@ -72,6 +72,7 @@ local plugins = {
   "statsd-advanced",
   "tls-handshake-modifier",
   "tls-metadata-headers",
+  "upstream-timeout",
   -- ]]
 }
 

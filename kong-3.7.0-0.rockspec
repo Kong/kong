@@ -986,6 +986,9 @@ build = {
     ["kong.plugins.tls-metadata-headers.handler"] = "kong/plugins/tls-metadata-headers/handler.lua",
     ["kong.plugins.tls-metadata-headers.schema"] = "kong/plugins/tls-metadata-headers/schema.lua",
 
+    ["kong.plugins.upstream-timeout.handler"] = "kong/plugins/upstream-timeout/handler.lua",
+    ["kong.plugins.upstream-timeout.schema"] = "kong/plugins/upstream-timeout/schema.lua",
+
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
     ["kong.vaults.aws"] = "kong/vaults/aws/init.lua",

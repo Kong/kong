@@ -382,9 +382,9 @@ plugins/tls-metadata-headers:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/tls-metadata-headers/**/*
 
-plugins-ee/upstream-timeout:
+plugins/upstream-timeout:
 - changed-files:
-  - any-glob-to-any-file: plugins-ee/upstream-timeout/**/*
+  - any-glob-to-any-file: kong/plugins/upstream-timeout/**/*
 
 plugins-ee/vault-auth:
 - changed-files:

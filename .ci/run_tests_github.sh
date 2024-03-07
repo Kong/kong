@@ -91,7 +91,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
 
     declare -A plugins_to_test=(
         ["first"]="websocket-size-limit"
-        ["second"]="proxy-cache-advanced upstream-timeout"
+        ["second"]="proxy-cache-advanced"
         ["third"]="jwt-signer  kafka-upstream kafka-log websocket-validator"
         ["fourth"]="openid-connect"
         ["fifth"]="mtls-auth request-validator"
