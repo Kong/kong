@@ -11,7 +11,8 @@ local escape_uri = ngx.escape_uri
 
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
-local fixture_path = helpers.get_fixtures_path()
+local fixture_path = "spec/fixtures/tls-metadata-headers/"
+local fixture_path_from_prefix = "../" .. fixture_path
 
 
 local function read_fixture(filename)
@@ -27,8 +28,8 @@ local tls_fixtures = { http_mock = {
         listen 10121;
 
         location = /good_client {
-            proxy_ssl_certificate ]] .. fixture_path .. [[/good_tls_client.crt;
-            proxy_ssl_certificate_key ]] .. fixture_path .. [[/good_tls_client.key;
+            proxy_ssl_certificate ]] .. fixture_path_from_prefix .. [[/good_tls_client.crt;
+            proxy_ssl_certificate_key ]] .. fixture_path_from_prefix .. [[/good_tls_client.key;
             proxy_ssl_name tls.test;
             # enable send the SNI sent to server
             proxy_ssl_server_name on;
@@ -38,8 +39,8 @@ local tls_fixtures = { http_mock = {
         }
 
         location = /bad_client {
-            proxy_ssl_certificate ]] .. fixture_path .. [[/bad_tls_client.crt;
-            proxy_ssl_certificate_key ]] .. fixture_path .. [[/bad_tls_client.key;
+            proxy_ssl_certificate ]] .. fixture_path_from_prefix .. [[/bad_tls_client.crt;
+            proxy_ssl_certificate_key ]] .. fixture_path_from_prefix .. [[/bad_tls_client.key;
             proxy_ssl_name tls.test;
             proxy_set_header Host tls.test;
 
@@ -47,8 +48,8 @@ local tls_fixtures = { http_mock = {
         }
 
         location = /mtls-auth-good_client {
-          proxy_ssl_certificate ]] .. fixture_path .. [[/client_example.com.crt;
-          proxy_ssl_certificate_key ]] .. fixture_path .. [[/client_example.com.key;
+          proxy_ssl_certificate ]] .. fixture_path_from_prefix .. [[/client_example.com.crt;
+          proxy_ssl_certificate_key ]] .. fixture_path_from_prefix .. [[/client_example.com.key;
           proxy_ssl_name example.com;
           # enable send the SNI sent to server
           proxy_ssl_server_name on;
@@ -58,8 +59,8 @@ local tls_fixtures = { http_mock = {
       }
 
         location = /another {
-          proxy_ssl_certificate ]] .. fixture_path .. [[/good_tls_client.crt;
-          proxy_ssl_certificate_key ]] .. fixture_path .. [[/good_tls_client.key;
+          proxy_ssl_certificate ]] .. fixture_path_from_prefix .. [[/good_tls_client.crt;
+          proxy_ssl_certificate_key ]] .. fixture_path_from_prefix .. [[/good_tls_client.key;
           proxy_ssl_name tls.test;
           proxy_set_header Host tls.test;
 

@@ -378,9 +378,9 @@ plugins/tls-handshake-modifier:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/tls-handshake-modifier/**/*
 
-plugins-ee/tls-metadata-headers:
+plugins/tls-metadata-headers:
 - changed-files:
-  - any-glob-to-any-file: plugins-ee/tls-metadata-headers/**/*
+  - any-glob-to-any-file: kong/plugins/tls-metadata-headers/**/*
 
 plugins-ee/upstream-timeout:
 - changed-files:

@@ -983,6 +983,9 @@ build = {
     ["kong.plugins.tls-handshake-modifier.schema"] = "kong/plugins/tls-handshake-modifier/schema.lua",
     ["kong.plugins.tls-handshake-modifier.cache"] = "kong/plugins/tls-handshake-modifier/cache.lua",
 
+    ["kong.plugins.tls-metadata-headers.handler"] = "kong/plugins/tls-metadata-headers/handler.lua",
+    ["kong.plugins.tls-metadata-headers.schema"] = "kong/plugins/tls-metadata-headers/schema.lua",
+
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
     ["kong.vaults.aws"] = "kong/vaults/aws/init.lua",

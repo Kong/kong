@@ -71,6 +71,7 @@ local plugins = {
   "route-transformer-advanced",
   "statsd-advanced",
   "tls-handshake-modifier",
+  "tls-metadata-headers",
   -- ]]
 }
 

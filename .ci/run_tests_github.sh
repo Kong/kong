@@ -93,7 +93,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         ["first"]="websocket-size-limit"
         ["second"]="proxy-cache-advanced upstream-timeout"
         ["third"]="jwt-signer  kafka-upstream kafka-log websocket-validator"
-        ["fourth"]="openid-connect tls-metadata-headers"
+        ["fourth"]="openid-connect"
         ["fifth"]="mtls-auth request-validator"
         ["sixth"]="saml graphql-rate-limiting-advanced"
         ["seventh"]="rate-limiting-advanced vault-auth"

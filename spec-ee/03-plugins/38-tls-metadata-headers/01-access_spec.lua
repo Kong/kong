@@ -12,6 +12,8 @@ local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or h
 
 local PLUGIN_NAME = "tls-metadata-headers"
 
+local fixtures_path = "../spec/fixtures/tls-metadata-headers"
+
 local tls_fixtures = { http_mock = {
   tls_server_block = [[
     server {
@@ -20,8 +22,8 @@ local tls_fixtures = { http_mock = {
 
         location = /example_client {
             # Combined cert, contains client first and intermediate second
-            proxy_ssl_certificate ]] .. helpers.get_fixtures_path() .. [[/good_tls_client.crt;
-            proxy_ssl_certificate_key ]] .. helpers.get_fixtures_path() .. [[/good_tls_client.key;
+            proxy_ssl_certificate ]] .. fixtures_path .. [[/good_tls_client.crt;
+            proxy_ssl_certificate_key ]] .. fixtures_path .. [[/good_tls_client.key;
             proxy_ssl_name example.com;
             # enable send the SNI sent to server
             proxy_ssl_server_name on;
@@ -31,8 +33,8 @@ local tls_fixtures = { http_mock = {
         }
 
         location = /bad_client {
-            proxy_ssl_certificate ]] .. helpers.get_fixtures_path() .. [[/bad_tls_client.crt;
-            proxy_ssl_certificate_key ]] .. helpers.get_fixtures_path() .. [[/bad_tls_client.key;
+            proxy_ssl_certificate ]] .. fixtures_path .. [[/bad_tls_client.crt;
+            proxy_ssl_certificate_key ]] .. fixtures_path .. [[/bad_tls_client.key;
             proxy_ssl_name example.com;
             proxy_set_header Host example.com;
 
