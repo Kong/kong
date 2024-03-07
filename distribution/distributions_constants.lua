@@ -8,7 +8,6 @@
 local c = {}
 
 c.plugins = {
-  "oauth2-introspection", -- built-in in kong-ee
   "proxy-cache-advanced", -- built-in in kong-ee
   "openid-connect",  -- built-in in kong-ee
   "request-transformer-advanced",  -- built-in in kong-ee

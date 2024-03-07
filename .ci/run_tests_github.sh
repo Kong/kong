@@ -97,11 +97,10 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         ["fifth"]="mtls-auth request-validator tls-handshake-modifier route-by-header"
         ["sixth"]="request-transformer-advanced saml graphql-rate-limiting-advanced"
         ["seventh"]="rate-limiting-advanced route-transformer-advanced vault-auth"
-        ["eighth"]="response-transformer-advanced oas-validation opa konnect-application-auth oauth2-introspection"
+        ["eighth"]="response-transformer-advanced oas-validation opa konnect-application-auth"
         ["ninth"]="ldap-auth-advanced"
         ["fips-first"]="jwe-decrypt jwt-signer openid-connect saml"
         ["fips-second"]="mtls-auth"
-        ["fips-third"]="oauth2-introspection"
     )
 
     plugins=${plugins_to_test["$TEST_SPLIT"]}

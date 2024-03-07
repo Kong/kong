@@ -326,9 +326,9 @@ plugins-ee/oas-validation:
 - changed-files:
   - any-glob-to-any-file: plugins-ee/oas-validation/**/*
 
-plugins-ee/oauth2-introspection:
+plugins/oauth2-introspection:
 - changed-files:
-  - any-glob-to-any-file: plugins-ee/oauth2-introspection/**/*
+  - any-glob-to-any-file: kong/plugins/oauth2-introspection/**/*
 
 plugins-ee/opa:
 - changed-files:

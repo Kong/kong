@@ -64,6 +64,7 @@ local plugins = {
   "jwe-decrypt",
   "key-auth-enc",
   "mocking",
+  "oauth2-introspection",
   -- ]]
 }
 

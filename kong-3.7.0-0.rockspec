@@ -949,6 +949,9 @@ build = {
     ["kong.plugins.mocking.jsonschema-mocker.constants"] = "kong/plugins/mocking/jsonschema-mocker/constants.lua",
     ["kong.plugins.mocking.jsonschema-mocker.mocker"] = "kong/plugins/mocking/jsonschema-mocker/mocker.lua",
 
+    ["kong.plugins.oauth2-introspection.handler"] = "kong/plugins/oauth2-introspection/handler.lua",
+    ["kong.plugins.oauth2-introspection.schema"] = "kong/plugins/oauth2-introspection/schema.lua",
+
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
     ["kong.vaults.aws"] = "kong/vaults/aws/init.lua",
