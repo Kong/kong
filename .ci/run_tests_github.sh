@@ -91,7 +91,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
 
     declare -A plugins_to_test=(
         ["second"]="proxy-cache-advanced"
-        ["third"]="jwt-signer  kafka-upstream kafka-log websocket-validator"
+        ["third"]="jwt-signer  kafka-upstream kafka-log"
         ["fourth"]="openid-connect"
         ["fifth"]="mtls-auth request-validator"
         ["sixth"]="saml graphql-rate-limiting-advanced"

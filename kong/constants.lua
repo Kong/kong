@@ -74,6 +74,7 @@ local plugins = {
   "tls-metadata-headers",
   "upstream-timeout",
   "websocket-size-limit",
+  "websocket-validator",
   -- ]]
 }
 

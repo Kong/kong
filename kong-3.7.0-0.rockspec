@@ -992,6 +992,9 @@ build = {
     ["kong.plugins.websocket-size-limit.handler"] = "kong/plugins/websocket-size-limit/handler.lua",
     ["kong.plugins.websocket-size-limit.schema"]  = "kong/plugins/websocket-size-limit/schema.lua",
 
+    ["kong.plugins.websocket-validator.handler"] = "kong/plugins/websocket-validator/handler.lua",
+    ["kong.plugins.websocket-validator.schema"]  = "kong/plugins/websocket-validator/schema.lua",
+
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
     ["kong.vaults.aws"] = "kong/vaults/aws/init.lua",
