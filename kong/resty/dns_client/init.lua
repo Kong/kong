@@ -418,7 +418,7 @@ local function resolve_name_type_callback(self, name, qtype, opts, tries)
   end
 
   if opts.cache_only then
-    return CACHE_ONLY_MISS_ANSWERS, nil, -1
+    return CACHE_ONLY_ANSWERS, nil, -1
   end
 
   local answers, err, ttl = resolve_query(self, name, qtype, tries)
