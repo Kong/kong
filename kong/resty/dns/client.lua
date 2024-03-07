@@ -713,10 +713,7 @@ local function individualQuery(qname, r_opts, try_list)
 
   local result
   result, err = r:query(qname, r_opts)
-  -- Manually destroy the resolver.
-  -- When resovler is initialized, some socket resources are also created inside
-  -- resolver. As the resolver is created in timer-ng, the socket resources are
-  -- not released automatically, we have to destroy the resolver manually.
+  -- Manually destroy the resolver to avoid socket leak
   -- resolver:destroy is patched in build phase, more information can be found in
   -- build/openresty/patches/lua-resty-dns-0.22_01-destory_resolver.patch
   r:destroy()
