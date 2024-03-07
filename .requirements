@@ -16,7 +16,7 @@ KONG_MANAGER=nightly
 NGX_WASM_MODULE=d5e4c698c51a6ef39551184f99eb4d1605f671d9
 WASMER=3.1.1
 WASMTIME=14.0.3
-V8=10.5.18
+V8=12.0.267.17
 
 NGX_BROTLI=a71f9312c2deb28875acc7bacfdd5695a111aa53 # master branch of Jan 23, 2024
 BROTLI=ed738e842d2fbdf2d6459e39267a633c4a9b2f5d # master branch of brotli deps submodule of Jan 23, 2024
