@@ -60,6 +60,7 @@ local plugins = {
   "exit-transformer",
   "forward-proxy",
   "graphql-proxy-cache-advanced",
+  "jq",
   -- ]]
 }
 

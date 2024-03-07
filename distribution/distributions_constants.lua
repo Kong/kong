@@ -29,7 +29,6 @@ c.plugins = {
   "upstream-timeout",  -- built-in in kong-ee
   "mocking",  -- built-in in kong-ee
   "opa",  -- built-in in kong-ee
-  "jq",  -- built-in in kong-ee
   "websocket-size-limit",  -- built-in in kong-ee
   "websocket-validator",  -- built-in in kong-ee
   "konnect-application-auth",  -- built-in in kong-ee

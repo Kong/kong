@@ -282,9 +282,9 @@ plugins-ee/graphql-rate-limiting-advanced:
 - changed-files:
   - any-glob-to-any-file: plugins-ee/graphql-rate-limiting-advanced/**/*
 
-plugins-ee/jq:
+plugins/jq:
 - changed-files:
-  - any-glob-to-any-file: plugins-ee/jq/**/*
+  - any-glob-to-any-file: kong/plugins/jq/**/*
 
 plugins-ee/jwe-decrypt:
 - changed-files:

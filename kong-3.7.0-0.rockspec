@@ -58,6 +58,7 @@ dependencies = {
   "lua-resty-timer-ng == 0.2.6",
   "lpeg == 1.1.0",
   "lua-resty-ljsonschema == 1.1.6-2",
+  "lua-resty-jq == 0.1.0",
 }
 build = {
   type = "builtin",
@@ -917,6 +918,11 @@ build = {
     ["kong.plugins.graphql-proxy-cache-advanced.strategies.memory"] = "kong/plugins/graphql-proxy-cache-advanced/strategies/memory.lua",
     ["kong.plugins.graphql-proxy-cache-advanced.api"] = "kong/plugins/graphql-proxy-cache-advanced/api.lua",
     ["kong.plugins.graphql-proxy-cache-advanced.cache_key"] = "kong/plugins/graphql-proxy-cache-advanced/cache_key.lua",
+
+    ["kong.plugins.jq.cache"] = "kong/plugins/jq/cache.lua",
+    ["kong.plugins.jq.handler"] = "kong/plugins/jq/handler.lua",
+    ["kong.plugins.jq.schema"] = "kong/plugins/jq/schema.lua",
+    ["kong.plugins.jq.typedefs"] = "kong/plugins/jq/typedefs.lua",
 
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
