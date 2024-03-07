@@ -65,6 +65,7 @@ local plugins = {
   "key-auth-enc",
   "mocking",
   "oauth2-introspection",
+  "request-transformer-advanced",
   -- ]]
 }
 

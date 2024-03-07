@@ -95,7 +95,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         ["third"]="jwt-signer  kafka-upstream kafka-log statsd-advanced websocket-validator"
         ["fourth"]="openid-connect tls-metadata-headers"
         ["fifth"]="mtls-auth request-validator tls-handshake-modifier route-by-header"
-        ["sixth"]="request-transformer-advanced saml graphql-rate-limiting-advanced"
+        ["sixth"]="saml graphql-rate-limiting-advanced"
         ["seventh"]="rate-limiting-advanced route-transformer-advanced vault-auth"
         ["eighth"]="response-transformer-advanced oas-validation opa konnect-application-auth"
         ["ninth"]="ldap-auth-advanced"

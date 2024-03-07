@@ -346,9 +346,9 @@ plugins-ee/rate-limiting-advanced:
 - changed-files:
   - any-glob-to-any-file: plugins-ee/rate-limiting-advanced/**/*
 
-plugins-ee/request-transformer-advanced:
+plugins/request-transformer-advanced:
 - changed-files:
-  - any-glob-to-any-file: plugins-ee/request-transformer-advanced/**/*
+  - any-glob-to-any-file: kong/plugins/request-transformer-advanced/**/*
 
 plugins-ee/request-validator:
 - changed-files:
