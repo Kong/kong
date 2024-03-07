@@ -193,7 +193,7 @@ describe("[DNS client]", function()
         local answers, err = cli:resolve("host")
 
         assert.same(answers, nil)
-        assert.same(err, "dns server error: 101 no available records")
+        assert.same(err, "dns client error: 101 empty record received")
         assert.same({
           'host.one.com:33',
           'host.two.com:33',
@@ -222,7 +222,7 @@ describe("[DNS client]", function()
         local answers, err = cli:resolve("host")
 
         assert.same(answers, nil)
-        assert.same(err, "dns server error: 101 no available records")
+        assert.same(err, "dns client error: 101 empty record received")
         assert.same({
           'host:33',
           'host:1',
@@ -243,7 +243,7 @@ describe("[DNS client]", function()
         local answers, err = cli:resolve("host")
 
         assert.same(answers, nil)
-        assert.same(err, "dns server error: 101 no available records")
+        assert.same(err, "dns client error: 101 empty record received")
         assert.same({
           'host.local.domain.com:33',
           'host:33',
@@ -720,7 +720,7 @@ describe("[DNS client]", function()
       },
       ["kong-gateway-testing.link:33"] = {
 	query = 1,
-	["query_err:no available records"] = 1
+	["query_err:empty record received"] = 1
       },
       ["smtp.kong-gateway-testing.link"] = {
 	cname = 1,
@@ -795,7 +795,7 @@ describe("[DNS client]", function()
     local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf"}))
     local answers, err = cli:resolve(host, { qtype = typ })
     assert.is_nil(answers)  -- returns nil
-    assert.equal("dns server error: 101 no available records", err)
+    assert.equal("dns client error: 101 empty record received", err)
   end)
 
   it("fetching non-existing answerss", function()
