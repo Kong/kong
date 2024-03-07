@@ -96,7 +96,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         ["fourth"]="openid-connect tls-metadata-headers"
         ["fifth"]="mtls-auth request-validator tls-handshake-modifier"
         ["sixth"]="saml graphql-rate-limiting-advanced"
-        ["seventh"]="rate-limiting-advanced route-transformer-advanced vault-auth"
+        ["seventh"]="rate-limiting-advanced vault-auth"
         ["eighth"]="opa konnect-application-auth"
         ["ninth"]="ldap-auth-advanced"
         ["fips-first"]="jwe-decrypt jwt-signer openid-connect saml"

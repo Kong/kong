@@ -18,7 +18,6 @@ c.plugins = {
   "request-validator",  -- built-in in kong-ee
   "mtls-auth",  -- built-in in kong-ee
   "graphql-rate-limiting-advanced",  -- built-in in kong-ee
-  "route-transformer-advanced",  -- built-in in kong-ee
   "kafka-log",  -- built-in in kong-ee
   "kafka-upstream",  -- built-in in kong-ee
   "upstream-timeout",  -- built-in in kong-ee

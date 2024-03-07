@@ -68,6 +68,7 @@ local plugins = {
   "request-transformer-advanced",
   "response-transformer-advanced",
   "route-by-header",
+  "route-transformer-advanced",
   -- ]]
 }
 

@@ -362,9 +362,9 @@ plugins/route-by-header:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/route-by-header/**/*
 
-plugins-ee/route-transformer-advanced:
+plugins/route-transformer-advanced:
 - changed-files:
-  - any-glob-to-any-file: plugins-ee/route-transformer-advanced/**/*
+  - any-glob-to-any-file: kong/plugins/route-transformer-advanced/**/*
 
 plugins-ee/saml:
 - changed-files:
