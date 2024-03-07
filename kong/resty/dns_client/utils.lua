@@ -160,7 +160,7 @@ end
 
 -- util APIs to balance @answers
 
-function _M.get_rr_ans(answers)
+function _M.get_round_robin_answers(answers)
   answers.last = (answers.last or 0) % #answers + 1
   return answers[answers.last]
 end
@@ -197,11 +197,10 @@ local function swrr_init(answers)
 end
 
 
--- gather all records with the lowest priority into one array (answers.l)
--- and return it
+-- gather records with the lowest priority in SRV record
 local function filter_lowest_priority_answers(answers)
   local lowest_priority = answers[1].priority
-  local l = {}    -- lowest priority list
+  local l = {}    -- lowest priority records list
 
   for _, answer in ipairs(answers) do
     if answer.priority < lowest_priority then
@@ -213,13 +212,13 @@ local function filter_lowest_priority_answers(answers)
     end
   end
 
-  answers.l = l
+  answers.lowest_prio_records = l
   return l
 end
 
 
-function _M.get_wrr_ans(answers)
-  local l = answers.l or filter_lowest_priority_answers(answers)
+function _M.get_weighted_round_robin_answers(answers)
+  local l = answers.lowest_prio_records or filter_lowest_priority_answers(answers)
 
   -- perform round robin selection on lowest priority answers @l
   if not l[1].cw then
