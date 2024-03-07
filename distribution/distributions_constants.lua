@@ -25,7 +25,6 @@ c.plugins = {
   "route-transformer-advanced",  -- built-in in kong-ee
   "kafka-log",  -- built-in in kong-ee
   "kafka-upstream",  -- built-in in kong-ee
-  "key-auth-enc",  -- built-in in kong-ee
   "upstream-timeout",  -- built-in in kong-ee
   "mocking",  -- built-in in kong-ee
   "opa",  -- built-in in kong-ee

@@ -14,18 +14,7 @@ local http_mock = require "spec.helpers.http_mock"
 -- the port is hardcoded in the yaml config, so we can't use a random port
 local MOCK_PORT = 9036
 
-local fixture_path
-do
-  -- this code will get debug info and from that determine the file
-  -- location, so fixtures can be found based of this path
-  local info = debug.getinfo(function()
-  end)
-  fixture_path = info.source
-  if fixture_path:sub(1, 1) == "@" then
-    fixture_path = fixture_path:sub(2, -1)
-  end
-  fixture_path = pl_path.splitpath(fixture_path) .. "/fixtures/"
-end
+local fixture_path = "spec/fixtures/key-auth-enc/"
 
 -- https://konghq.atlassian.net/browse/FTI-4592
 describe("Plugin: key-auth-enc (access) [#off]", function()

@@ -302,9 +302,9 @@ plugins-ee/kafka-upstream:
 - changed-files:
   - any-glob-to-any-file: plugins-ee/kafka-upstream/**/*
 
-plugins-ee/key-auth-enc:
+plugins/key-auth-enc:
 - changed-files:
-  - any-glob-to-any-file: plugins-ee/key-auth-enc/**/*
+  - any-glob-to-any-file: kong/plugins/key-auth-enc/**/*
 
 plugins-ee/konnect-application-auth:
 - changed-files:

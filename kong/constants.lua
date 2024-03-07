@@ -61,6 +61,8 @@ local plugins = {
   "forward-proxy",
   "graphql-proxy-cache-advanced",
   "jq",
+  "jwe-decrypt",
+  "key-auth-enc",
   -- ]]
 }
 
