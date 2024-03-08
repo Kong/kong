@@ -42,6 +42,33 @@ return {
     "rbac_user_groups",
   },
 
+  -- the following EE plugins exist in the `kong/plugins` directory
+  BUNDLED_EE_PLUGINS = {
+    --"app-dynamics", -- not part of the 'bundled' set due to system-level configuration requirements
+    "application-registration",
+    "canary",
+    "degraphql",
+    "exit-transformer",
+    "forward-proxy",
+    "graphql-proxy-cache-advanced",
+    "jq",
+    "jwe-decrypt",
+    "key-auth-enc",
+    "mocking",
+    "oauth2-introspection",
+    "request-transformer-advanced",
+    "response-transformer-advanced",
+    "route-by-header",
+    "route-transformer-advanced",
+    "statsd-advanced",
+    "tls-handshake-modifier",
+    "tls-metadata-headers",
+    "upstream-timeout",
+    "websocket-size-limit",
+    "websocket-validator",
+    "xml-threat-protection",
+  },
+
   -- this list is joined into the DICTS list in kong.constants
   EE_DICTS = {
     "kong_counters",

@@ -8,6 +8,17 @@
 local State = require "kong.db.migrations.state"
 local helpers = require "spec.helpers"
 
+local function sort_migration_ns(a, b)
+  local mod_pattern = "^kong%.(.*)%.migrations"
+  local a_mod = a:match(mod_pattern)
+  local b_mod = b:match(mod_pattern)
+
+  assert.is_string(a_mod)
+  assert.is_string(b_mod)
+
+  return a_mod < b_mod
+end
+
 for _, strategy in helpers.each_strategy() do
   describe("db.migrations.State", function()
     describe("load", function()
@@ -25,20 +36,6 @@ for _, strategy in helpers.each_strategy() do
           The reason for this is some core plugin enterprise migrations inspect
           values from enterprise base tables that are not present in the core
           base tables.
-
-          Note: If the enterprise plugins were bundled similar to the core
-                plugins this test will fail due to namespace sorting; similar
-                to if a customer brought in custom plugins that effected
-                sorting:
-
-                Example:
-                === Original Order ===
-                  kong.plugins.jwt.migrations
-                  kong.plugins.jwt-signer.migrations
-
-                === Order after table.sort() ===
-                  kong.plugins.jwt-signer.migrations
-                  kong.plugins.jwt.migrations
         -- EE ]]
         local _, db = helpers.get_db_utils(strategy)
         local state = State.load(db)
@@ -56,8 +53,9 @@ for _, strategy in helpers.each_strategy() do
             sorted_namespaces[#sorted_namespaces + 1] = subsystem.namespace
           end
         end
-        table.sort(sorted_namespaces)
-        table.sort(sorted_enterprise_namespaces)
+
+        table.sort(sorted_namespaces, sort_migration_ns)
+        table.sort(sorted_enterprise_namespaces, sort_migration_ns)
 
         assert.same(namespaces, sorted_namespaces)
         assert.same(enterprise_namespaces, sorted_enterprise_namespaces)

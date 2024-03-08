@@ -7,6 +7,7 @@
 
 local dist_constants = require "kong.enterprise_edition.distributions_constants"
 local ee_constants = require "kong.enterprise_edition.constants"
+local utils_table_concat = require "kong.tools.utils".concat
 
 local plugins = {
   "jwt",
@@ -52,34 +53,8 @@ local plugins = {
   "ai-prompt-guard",
   "ai-request-transformer",
   "ai-response-transformer",
-  -- XXX EE [[
-  --"app-dynamics", -- not part of the 'bundled' set due to system-level configuration requirements
-  "application-registration",
-  "canary",
-  "degraphql",
-  "exit-transformer",
-  "forward-proxy",
-  "graphql-proxy-cache-advanced",
-  "jq",
-  "jwe-decrypt",
-  "key-auth-enc",
-  "mocking",
-  "oauth2-introspection",
-  "request-transformer-advanced",
-  "response-transformer-advanced",
-  "route-by-header",
-  "route-transformer-advanced",
-  "statsd-advanced",
-  "tls-handshake-modifier",
-  "tls-metadata-headers",
-  "upstream-timeout",
-  "websocket-size-limit",
-  "websocket-validator",
-  "xml-threat-protection",
-  -- ]]
 }
 
--- XXX EE
 local ce_plugin_map = {}
 for i = 1, #plugins do
   ce_plugin_map[plugins[i]] = true
@@ -89,14 +64,18 @@ for _, plugin in ipairs(dist_constants.plugins) do
   table.insert(plugins, plugin)
 end
 
+local ee_plugin_map = {}
+for _, plugin in ipairs(ee_constants.BUNDLED_EE_PLUGINS) do
+  table.insert(plugins, plugin)
+  ee_plugin_map[plugin] = true
+end
+for i = 1, #dist_constants.plugins do
+  ee_plugin_map[dist_constants.plugins[i]] = true
+end
+
 local plugin_map = {}
 for i = 1, #plugins do
   plugin_map[plugins[i]] = true
-end
-
-local ee_plugin_map = {}
-for i = 1, #dist_constants.plugins do
-  ee_plugin_map[dist_constants.plugins[i]] = true
 end
 
 local deprecated_plugins = {} -- no currently deprecated plugin
@@ -164,7 +143,7 @@ end
 local constants = {
   CJSON_MAX_PRECISION = 16,
   BUNDLED_PLUGINS = plugin_map,
-  EE_PLUGINS = dist_constants.plugins,
+  EE_PLUGINS = utils_table_concat(dist_constants.plugins, ee_constants.BUNDLED_EE_PLUGINS),
   EE_PLUGINS_MAP = ee_plugin_map,
   CE_PLUGINS_MAP = ce_plugin_map,
   DEPRECATED_PLUGINS = deprecated_plugin_map,

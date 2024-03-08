@@ -47,9 +47,7 @@ local constants = {
     },
   },
 
-  plugins = {
-    "application-registration"
-  },
+  plugins = {},
 
   release = false,
 }
