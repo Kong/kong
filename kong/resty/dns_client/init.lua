@@ -25,10 +25,14 @@ local get_weighted_round_robin_answers = utils.get_weighted_round_robin_answers
 local req_dyn_hook_run_hooks = require("kong.dynamic_hook").run_hooks
 local cycle_aware_deep_copy  = require("kong.tools.utils").cycle_aware_deep_copy
 
+
 -- Constants and default values
+
 local DEFAULT_ERROR_TTL = 1     -- unit: second
 local DEFAULT_STALE_TTL = 4
 local DEFAULT_EMPTY_TTL = 30
+-- long-lasting TTL of 10 years for hosts or static IP addresses in cache settings
+local LONG_LASTING_TTL  = 10 * 365 * 24 * 60 * 60
 
 local DEFAULT_ORDER = { "LAST", "SRV", "A", "AAAA", "CNAME" }
 
@@ -74,6 +78,7 @@ local EMPTY_RECORD_ESTR  = "empty record received"
 
 
 -- APIs
+
 local _M = {}
 local mt = { __index = _M }
 
@@ -135,7 +140,7 @@ local function init_hosts(cache, path, preferred_ip_type)
       return
     end
 
-    local ttl = 10 * 365 * 24 * 60 * 60 -- 10 years ttl for hosts entries
+    local ttl = LONG_LASTING_TTL
 
     local key = name .. ":" .. qtype
     local answers = {
@@ -528,7 +533,7 @@ end
 local function resolve_names_and_types(self, name, opts, tries)
   local answers = check_and_get_ip_answers(name)
   if answers then
-    answers.ttl = 10 * 365 * 24 * 60 * 60
+    answers.ttl = LONG_LASTING_TTL
     answers.expire = now() + answers.ttl
     return answers, nil, tries
   end
