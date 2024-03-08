@@ -383,21 +383,27 @@ local function resolve_query(self, name, qtype, tries)
 end
 
 
+local function stale_update_task(premature, self, key, name, qtype)
+  if premature then
+    return
+  end
+
+  local answers = resolve_query(self, name, qtype, {})
+  if answers and (not answers.errcode or answers.errcode == NAME_ERROR_CODE) then
+    self.cache:set(key, { ttl = answers.ttl },
+                   answers.errcode ~= NAME_ERROR_CODE and answers or nil)
+    insert_last_type(self.cache, name, qtype)
+  end
+end
+
+
 local function start_stale_update_task(self, key, name, qtype)
   stats_count(self.stats, key, "stale")
 
-  timer_at(0, function (premature)
-    if premature then
-      return
-    end
-
-    local answers = resolve_query(self, name, qtype, {})
-    if answers and (not answers.errcode or answers.errcode == NAME_ERROR_CODE) then
-      self.cache:set(key, { ttl = answers.ttl },
-                     answers.errcode ~= NAME_ERROR_CODE and answers or nil)
-      insert_last_type(self.cache, name, qtype)
-    end
-  end)
+  local ok, err = timer_at(0, stale_update_task, self, key, name, qtype)
+  if not ok then
+    log(ALERT, "failed to start a timer for update a stale DNS record: ", err)
+  end
 end
 
 
