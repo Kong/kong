@@ -83,7 +83,7 @@ jobs:
       fail-fast: false
       matrix:
         gateway_mode: ['hybrid']
-        runs_on: ["${{ vars.RUNS_ON }}", "${{ fromJSON(inputs.multiarch && '[\"ubuntu-22.04-arm64\"]' || '[]') }}" ]
+        runs_on: ["${{ vars.RUNS_ON }}", "${{ fromJSON(inputs.multiarch && '[\"ubuntu-latest-arm64-kong\"]' || '[]') }}" ]
     name: ${{ inputs.target_test }} Konnect API test - ${{ inputs.target_mode }} ${{ matrix.gateway_mode }} mode on ${{ matrix.runs_on }} for ${{ inputs.data_plane_image }}
 
     steps:

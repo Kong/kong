@@ -106,19 +106,19 @@ jobs:
           default_image_matrix="[\"kong/kong-gateway-internal:nightly-ubuntu\", \"kong/kong-gateway-internal:nightly-debian\", \"kong/kong-gateway-internal:nightly-rhel\", \"kong/kong-gateway-internal:nightly-ubuntu-fips\", \"kong/kong-gateway-internal:nightly-amazonlinux-2023\", \"kong/kong-gateway-internal:nightly-amazonlinux-2\"]"
 
           # include arm64 os to the matrix for ubuntu and amazonlinux images
-          default_arm64_matrix="[{\"os\": \"ubuntu-22.04-arm64\", \"gateway_image\": \"kong/kong-gateway-internal:nightly-ubuntu\", \"gateway_mode\": \"classic\"}, \
-          {\"os\":\"ubuntu-22.04-arm64\",\"gateway_image\":\"kong/kong-gateway-internal:nightly-ubuntu\",\"gateway_mode\":\"hybrid\"}, \
-          {\"os\":\"ubuntu-22.04-arm64\",\"gateway_image\":\"kong/kong-gateway-internal:nightly-amazonlinux-2\",\"gateway_mode\":\"classic\"}, \
-          {\"os\":\"ubuntu-22.04-arm64\",\"gateway_image\":\"kong/kong-gateway-internal:nightly-amazonlinux-2\",\"gateway_mode\":\"hybrid\"}, \
-          {\"os\":\"ubuntu-22.04-arm64\",\"gateway_image\":\"kong/kong-gateway-internal:nightly-amazonlinux-2023\",\"gateway_mode\":\"classic\"}, \
-          {\"os\":\"ubuntu-22.04-arm64\",\"gateway_image\":\"kong/kong-gateway-internal:nightly-amazonlinux-2023\",\"gateway_mode\":\"hybrid\"}]"
+          default_arm64_matrix="[{\"os\": \"ubuntu-latest-arm64-kong\", \"gateway_image\": \"kong/kong-gateway-internal:nightly-ubuntu\", \"gateway_mode\": \"classic\"}, \
+          {\"os\":\"ubuntu-latest-arm64-kong\",\"gateway_image\":\"kong/kong-gateway-internal:nightly-ubuntu\",\"gateway_mode\":\"hybrid\"}, \
+          {\"os\":\"ubuntu-latest-arm64-kong\",\"gateway_image\":\"kong/kong-gateway-internal:nightly-amazonlinux-2\",\"gateway_mode\":\"classic\"}, \
+          {\"os\":\"ubuntu-latest-arm64-kong\",\"gateway_image\":\"kong/kong-gateway-internal:nightly-amazonlinux-2\",\"gateway_mode\":\"hybrid\"}, \
+          {\"os\":\"ubuntu-latest-arm64-kong\",\"gateway_image\":\"kong/kong-gateway-internal:nightly-amazonlinux-2023\",\"gateway_mode\":\"classic\"}, \
+          {\"os\":\"ubuntu-latest-arm64-kong\",\"gateway_image\":\"kong/kong-gateway-internal:nightly-amazonlinux-2023\",\"gateway_mode\":\"hybrid\"}]"
 
           IFS='-' read -ra parts <<< "$GW_INPUT_IMAGE"
           current_image_tag=${parts[-1]}
 
           # if current image tag is ubuntu or amazonlnux - include in the arm64 matrix
           if [[ "$current_image_tag" == *"ubuntu"* || "$current_image_tag" == *"2"* ]]; then
-            custom_arm64_matrix=("{\"os\": \"ubuntu-22.04-arm64\", \"gateway_image\": \"$GW_INPUT_IMAGE\", \"gateway_mode\": \"classic\"},{\"os\": \"ubuntu-22.04-arm64\", \"gateway_image\": \"$GW_INPUT_IMAGE\", \"gateway_mode\": \"hybrid\"}")
+            custom_arm64_matrix=("{\"os\": \"ubuntu-latest-arm64-kong\", \"gateway_image\": \"$GW_INPUT_IMAGE\", \"gateway_mode\": \"classic\"},{\"os\": \"ubuntu-latest-arm64-kong\", \"gateway_image\": \"$GW_INPUT_IMAGE\", \"gateway_mode\": \"hybrid\"}")
           else
             # placeholder os value which won't affect the matrix
             custom_arm64_matrix=("{\"os\": \"${{ vars.RUNS_ON }}\"}")
@@ -137,7 +137,7 @@ jobs:
               docker_images+=,\"$image\"
 
               if [[ $tag == "ubuntu" || $tag == *"amazonlinux"* ]]; then
-                custom_arm64_matrix+=",{\"os\": \"ubuntu-22.04-arm64\", \"gateway_image\": \"$image\", \"gateway_mode\": \"classic\"},{\"os\": \"ubuntu-22.04-arm64\", \"gateway_image\": \"$image\", \"gateway_mode\": \"hybrid\"}"
+                custom_arm64_matrix+=",{\"os\": \"ubuntu-latest-arm64-kong\", \"gateway_image\": \"$image\", \"gateway_mode\": \"classic\"},{\"os\": \"ubuntu-latest-arm64-kong\", \"gateway_image\": \"$image\", \"gateway_mode\": \"hybrid\"}"
               fi
           done
 
@@ -490,7 +490,7 @@ jobs:
     # using if condition to skip arm64 and alpine runs because gh matrix exclude somehow is not working
     # skip centos package test runs untill it is removed from matrix-full.yml
     if: (inputs.target_matrix == 'all' || inputs.target_matrix == 'package')
-    runs-on: ${{ endsWith(matrix.package_name, '-arm64') && 'ubuntu-22.04-arm64' || vars.RUNS_ON }}
+    runs-on: ${{ endsWith(matrix.package_name, '-arm64') && 'ubuntu-latest-arm64-kong' || vars.RUNS_ON }}
     timeout-minutes: 50
     env:
       KONG_VERSION: ${{ inputs.gateway_version || '3.6.0.0' }}
