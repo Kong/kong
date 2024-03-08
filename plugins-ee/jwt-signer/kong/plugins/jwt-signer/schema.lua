@@ -19,43 +19,33 @@ local function validate_tokens(conf)
   if phase == "access" or phase == "content" then
     local args = arguments(conf)
 
-    local access_token_jwks_uri = args.get_conf_arg("access_token_jwks_uri")
-    if access_token_jwks_uri then
-      local ok, err = cache.load_keys(access_token_jwks_uri)
-      if not ok then
-        log.notice("unable to load access token jwks (", err, ")")
-        return false, "unable to load access token jwks"
+    for prefix, desc in pairs({
+      access_token_jwks_uri = "access token jwks",
+      channel_token_jwks_uri = "channel token jwks",
+      access_token_keyset = "access token keyset",
+      channel_token_keyset = "channel token keyset",
+    }) do
+
+      local name = args.get_conf_arg(prefix)
+      if name then
+        local username = args.get_conf_arg(prefix .. "_client_username")
+        local password = args.get_conf_arg(prefix .. "_client_password")
+        local certificate = args.get_conf_arg(prefix .. "_client_certificate")
+
+        local ok, err = cache.load_keys(name, {
+          client_username = username,
+          client_password = password,
+          client_certificate = certificate,
+        })
+        if not ok then
+          log.notice("unable to load ", desc, " (", err, ")")
+          return false, "unable to load " .. desc
+        end
       end
     end
 
-    local channel_token_jwks_uri = args.get_conf_arg("channel_token_jwks_uri")
-    if channel_token_jwks_uri then
-      local ok, err = cache.load_keys(channel_token_jwks_uri)
-      if not ok then
-        log.notice("unable to load channel token jwks (", err, ")")
-        return false, "unable to load channel token jwks"
-      end
-    end
-
-    local access_token_keyset = args.get_conf_arg("access_token_keyset")
-    if access_token_keyset then
-      local ok, err = cache.load_keys(access_token_keyset)
-      if not ok then
-        log.notice("unable to load access token keyset (", err, ")")
-        return false, "unable to load access token keyset"
-      end
-    end
-
-    local channel_token_keyset = args.get_conf_arg("channel_token_keyset")
-    if channel_token_keyset and channel_token_keyset ~= access_token_keyset then
-      local ok, err = cache.load_keys(channel_token_keyset)
-      if not ok then
-        log.notice("unable to load channel token keyset (", err, ")")
-        return false, "unable to load channel token keyset"
-      end
-    end
-
-    if access_token_keyset ~= "kong" and channel_token_keyset ~= "kong" then
+    if args.get_conf_arg("access_token_keyset") ~= "kong" and
+      args.get_conf_arg("channel_token_keyset") ~= "kong" then
       local ok, err = cache.load_keys("kong")
       if not ok then
         log.notice("unable to load kong keyset (", err, ")")
@@ -108,9 +98,47 @@ local config = {
             },
           },
           {
+            access_token_keyset_client_username = { description = "The client username that will be used to authenticate Kong if `access_token_keyset` is a uri that requires Basic Auth. Should be configured together with `access_token_keyset_client_password`", type = "string",
+              referenceable = true,
+              required = false,
+            },
+          },
+          {
+            access_token_keyset_client_password = { description = "The client password that will be used to authenticate Kong if `access_token_keyset` is a uri that requires Basic Auth. Should be configured together with `access_token_keyset_client_username`", type = "string",
+              referenceable = true,
+              encrypted = true,
+              required = false,
+            },
+          },
+          {
+            access_token_keyset_client_certificate = { description = "The client certificate that will be used to authenticate Kong if `access_token_keyset` is an https uri that requires mTLS Auth.", type = "foreign",
+              reference = "certificates",
+              required = false,
+            },
+          },
+          {
             access_token_jwks_uri =
               typedefs.url {
               required = false, description = "Specify the URI where the plugin can fetch the public keys (JWKS) to verify the signature of the access token."
+            },
+          },
+          {
+            access_token_jwks_uri_client_username = { description = "The client username that will be used to authenticate Kong if `access_token_jwks_uri` is a uri that requires Basic Auth. Should be configured together with `access_token_jwks_uri_client_password`", type = "string",
+              referenceable = true,
+              required = false,
+            },
+          },
+          {
+            access_token_jwks_uri_client_password = { description = "The client password that will be used to authenticate Kong if `access_token_jwks_uri` is a uri that requires Basic Auth. Should be configured together with `access_token_jwks_uri_client_username`", type = "string",
+              referenceable = true,
+              encrypted = true,
+              required = false,
+            },
+          },
+          {
+            access_token_jwks_uri_client_certificate = { description = "The client certificate that will be used to authenticate Kong if `access_token_jwks_uri` is an https uri that requires mTLS Auth.", type = "foreign",
+              reference = "certificates",
+              required = false,
             },
           },
           {
@@ -325,8 +353,46 @@ local config = {
             },
           },
           {
+            channel_token_keyset_client_username = { description = "The client username that will be used to authenticate Kong if `channel_token_keyset` is a uri that requires Basic Auth. Should be configured together with `channel_token_keyset_client_password`", type = "string",
+              referenceable = true,
+              required = false,
+            },
+          },
+          {
+            channel_token_keyset_client_password = { description = "The client password that will be used to authenticate Kong if `channel_token_keyset` is a uri that requires Basic Auth. Should be configured together with `channel_token_keyset_client_username`", type = "string",
+              referenceable = true,
+              encrypted = true,
+              required = false,
+            },
+          },
+          {
+            channel_token_keyset_client_certificate = { description = "The client certificate that will be used to authenticate Kong if `channel_token_keyset` is an https uri that requires mTLS Auth.", type = "foreign",
+              reference = "certificates",
+              required = false,
+            },
+          },
+          {
             channel_token_jwks_uri = typedefs.url {
               required = false, description = "If you want to use `config.verify_channel_token_signature`, you must specify the URI where the plugin can fetch the public keys (JWKS) to verify the signature of the channel token. If you don't specify a URI and you pass a JWT token to the plugin, then the plugin responds with `401 Unauthorized`."
+            },
+          },
+          {
+            channel_token_jwks_uri_client_username = { description = "The client username that will be used to authenticate Kong if `channel_token_jwks_uri` is a uri that requires Basic Auth. Should be configured together with `channel_token_jwks_uri_client_password`", type = "string",
+              referenceable = true,
+              required = false,
+            },
+          },
+          {
+            channel_token_jwks_uri_client_password = { description = "The client password that will be used to authenticate Kong if `channel_token_jwks_uri` is a uri that requires Basic Auth. Should be configured together with `channel_token_jwks_uri_client_username`", type = "string",
+              referenceable = true,
+              encrypted = true,
+              required = false,
+            },
+          },
+          {
+            channel_token_jwks_uri_client_certificate = { description = "The client certificate that will be used to authenticate Kong if `access_token_jwks_uri` is an https uri that requires mTLS Auth.", type = "foreign",
+              reference = "certificates",
+              required = false,
             },
           },
           {
@@ -549,6 +615,13 @@ local config = {
               description = "Set customized claims. If a claim is already present, it will be overwritten.",
             },
           },
+        },
+
+        entity_checks = {
+          { mutually_required = { "access_token_jwks_uri_client_username", "access_token_jwks_uri_client_password" } },
+          { mutually_required = { "access_token_keyset_client_username", "access_token_keyset_client_password" } },
+          { mutually_required = { "channel_token_jwks_uri_client_username", "channel_token_jwks_uri_client_password" } },
+          { mutually_required = { "channel_token_keyset_client_username", "channel_token_keyset_client_password" } },
         },
       },
     },

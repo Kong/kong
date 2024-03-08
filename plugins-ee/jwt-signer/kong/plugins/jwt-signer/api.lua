@@ -165,7 +165,13 @@ return {
 
         local ok
 
-        ok, err = cache.rotate_keys(row.name, row, true, true, true)
+        local opts = {
+          client_username = self.params.client_username,
+          client_password = self.params.client_password,
+          client_certificate = self.params.client_certificate,
+        }
+
+        ok, err = cache.rotate_keys(row.name, row, true, true, true, opts)
         if not ok then return endpoints.handle_error(err) end
 
         row, _, err = endpoints.select_entity(self, db, jwks_schema)

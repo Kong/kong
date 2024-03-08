@@ -14,6 +14,7 @@ local keys        = require "kong.openid-connect.keys"
 local hash        = require "kong.openid-connect.hash"
 local log         = require "kong.plugins.jwt-signer.log"
 local workspaces  = require "kong.workspaces"
+local certificate = require "kong.runloop.certificate"
 
 
 local worker_id   = ngx.worker.id
@@ -23,12 +24,14 @@ local timer_at    = ngx.timer.at
 local tonumber    = tonumber
 local concat      = table.concat
 local base64      = codec.base64
+local credentials = codec.credentials
 local ipairs      = ipairs
 local time        = ngx.time
 local find        = string.find
 local type        = type
 local null        = ngx.null
 local kong        = kong
+local get_cert    = certificate.get_certificate
 local fmt         = string.format
 
 
@@ -141,9 +144,11 @@ local function load_keys_db(name)
 end
 
 
-local function rotate_keys(name, row, update, force, ret_err)
+local function rotate_keys(name, row, update, force, ret_err, opts)
   local now = time()
-  local is_uri = find(name, "https://", 1, true) == 1 or find(name, "http://", 1, true) == 1
+  local is_http = find(name, "http://", 1, true) == 1
+  local is_https = find(name, "https://", 1, true) == 1
+  local is_uri = is_http or is_https
   local need_load
   local action
   local current_keys, err, err_str
@@ -170,15 +175,54 @@ local function rotate_keys(name, row, update, force, ret_err)
       log.notice("jwks were rotated less than 5 minutes ago (skipping)")
 
     else
-      log("rotating jwks for ", name)
+      action = "rotating jwks for "
 
+      log(action, name)
       need_load = true
     end
   end
 
   if need_load then
     if is_uri then
-      current_keys, err = keys.load(name, { ssl_verify = false, unwrap = true, json = false })
+      local headers, client_cert, client_key
+      if opts and opts.client_username and opts.client_password then
+        local cred
+        cred, err = credentials.encode(opts.client_username, opts.client_password)
+        if cred then
+          headers = {
+            Authorization = "Basic " .. cred
+          }
+        else
+          err_str = fmt("failed to encode credentials: %s", err or "unknown error")
+
+          if ret_err then
+            return nil, err_str
+          end
+
+          log.warn(err_str)
+        end
+      end
+
+      if is_https and opts and opts.client_certificate then
+        local cert
+        cert, err = get_cert(opts.client_certificate)
+        if cert then
+          client_cert = cert.cert
+          client_key = cert.key
+
+        else
+          err_str = fmt("failed to get client certificate: %s", err or "unknown error")
+
+          if ret_err then
+            return nil, err_str
+          end
+
+          log.warn(err_str)
+        end
+      end
+
+      current_keys, err = keys.load(name, { ssl_verify = false, unwrap = true, json = false, headers = headers,
+                                            ssl_client_cert = client_cert, ssl_client_priv_key = client_key })
     else
       current_keys, err = jwks.new({ unwrap = true, json = false })
     end
@@ -267,7 +311,7 @@ local function rotate_keys(name, row, update, force, ret_err)
 
   if is_uri then
     local options = {
-      rediscover_keys = rediscover_keys(name, row)
+      rediscover_keys = rediscover_keys(name, row, opts)
     }
 
     return keys.new({ jwks_uri = name, options = options }, row.keys, row.previous)
@@ -278,22 +322,22 @@ local function rotate_keys(name, row, update, force, ret_err)
 end
 
 
-rediscover_keys = function(name, row)
+rediscover_keys = function(name, row, opts)
   return function()
     log("rediscovering keys for ", name)
-    return rotate_keys(name, row)
+    return rotate_keys(name, row, nil, nil, nil, opts)
   end
 end
 
 
-local function load_keys(name)
+local function load_keys(name, opts)
   local cache_key = kong.db.jwt_signer_jwks:cache_key(name)
   local row, err = kong.cache:get(cache_key, nil, load_keys_db, name)
   if err then
     log(err)
   end
 
-  return rotate_keys(name, row, false)
+  return rotate_keys(name, row, false, nil, nil, opts)
 end
 
 

@@ -70,7 +70,13 @@ do
     for key, value in pairs {
       issuer                         = "%s_issuer",
       keyset                         = "%s_keyset",
+      keyset_client_username         = "%s_keyset_client_username",
+      keyset_client_password         = "%s_keyset_client_password",
+      keyset_client_certificate      = "%s_keyset_client_certificate",
       jwks_uri                       = "%s_jwks_uri",
+      jwks_uri_client_username       = "%s_jwks_uri_client_username",
+      jwks_uri_client_password       = "%s_jwks_uri_client_password",
+      jwks_uri_client_certificate    = "%s_jwks_uri_client_certificate",
       request_header                 = "%s_request_header",
       leeway                         = "%s_leeway",
       scopes_required                = "%s_scopes_required",
@@ -328,7 +334,11 @@ function JwtSignerHandler.access(_, conf)
             local jwks_uri = args.get_conf_arg(config.jwks_uri)
             if jwks_uri then
               local public_keys
-              public_keys, err = load_keys(jwks_uri)
+              public_keys, err = load_keys(jwks_uri, {
+                client_username = args.get_conf_arg(config.jwks_uri_client_username),
+                client_password = args.get_conf_arg(config.jwks_uri_client_password),
+                client_certificate = args.get_conf_arg(config.jwks_uri_client_certificate),
+              })
               if not public_keys then
                 log(logs.jwks)
                 ins(logs.jwks)
@@ -682,7 +692,11 @@ function JwtSignerHandler.access(_, conf)
 
         local keyset = args.get_conf_arg(config.keyset, "kong")
         local private_keys
-        private_keys, err = load_keys(keyset)
+        private_keys, err = load_keys(keyset, {
+          client_username = args.get_conf_arg(config.keyset_client_username),
+          client_password = args.get_conf_arg(config.keyset_client_password),
+          client_certificate = args.get_conf_arg(config.keyset_client_certificate),
+        })
         if not private_keys then
           ins(err)
           return unexpected(realm, "unexpected", errs.keys_load, err)

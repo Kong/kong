@@ -178,7 +178,7 @@ for _, strategy in helpers.all_strategies() do
         assert.logfile().has.line("loading jwks from " .. bad_jwks_uri, true)
       end)
 
-      it("use the cached jwks, won't load new jkws", function()
+      it("use the cached jwks, won't load new jwks", function()
         local res = assert(proxy_client:send {
           method = "GET",
           path = "/bad_uri",

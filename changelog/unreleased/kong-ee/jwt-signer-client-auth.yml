@@ -1,0 +1,3 @@
+message: "**JWT-Signer:** supports basic auth and mtls auth to external jwks services"
+type: feature
+scope: Plugin
