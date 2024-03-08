@@ -221,7 +221,8 @@ describe("[DNS client cache]", function()
       assert_same_answers(mock_records["myhost5.domain.com:"..resolver.TYPE_CNAME], answers)
     end)
 
-    it("ttl in cache is honored for short name entries", function()
+    it("ttl in cache is honored for short name entries #ttt", function()
+      local ttl = 0.2
       -- in the short name case the same record is inserted again in the cache
       -- and the lru-ttl has to be calculated, make sure it is correct
       mock_records = {
@@ -230,7 +231,7 @@ describe("[DNS client cache]", function()
           address = "1.2.3.4",
           class = 1,
           name = "myhost6.domain.com",
-          ttl = 0.1,
+          ttl = ttl,
         }}
       }
       local mock_copy = utils.cycle_aware_deep_copy(mock_records)
@@ -243,7 +244,7 @@ describe("[DNS client cache]", function()
       mock_records = mock_copy
 
       -- wait for expiring
-      sleep(0.1 + config.stale_ttl / 2)
+      sleep(ttl + config.stale_ttl / 2)
 
       -- fresh result, but it should not affect answers2
       mock_records["myhost6.domain.com:"..resolver.TYPE_A][1].tag = "new"
@@ -257,8 +258,9 @@ describe("[DNS client cache]", function()
       assert_same_answers(answers2, answers)
       answers2.expired = true
 
-      -- wait for refresh to complete
-      sleep(0.1)
+      -- wait for the refresh to complete. Ensure that the sleeping time is less
+      -- than ttl, avoiding the updated record from becoming stale again.
+      sleep(ttl / 2)
 
       -- resolve and check whether we got the new record from the mock copy
       local answers3 = cli:resolve("myhost6")
