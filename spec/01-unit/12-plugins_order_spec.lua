@@ -7,6 +7,7 @@
 
 local helpers = require "spec.helpers" -- initializes 'kong' global for plugins
 local conf_loader = require "kong.conf_loader"
+local dao_plugins = require "kong.db.dao.plugins"
 
 local fmt = string.format
 
@@ -43,8 +44,12 @@ describe("Plugins", function()
       assert.not_nil(priority)
 
       if priorities[priority] then
-        assert.fail(fmt("plugins have the same priority: '%s' and '%s' (%d)",
+        -- ignore colliding priorities for "advanced" and "enc" plugins
+        if plugin.name:gsub("%-advanced", "") ~= priorities[priority]:gsub("%-advanced", "")
+           and plugin.name:gsub("%-enc", "") ~= priorities[priority]:gsub("%-enc", "") then
+            assert.fail(fmt("plugins have the same priority: '%s' and '%s' (%d)",
                         priorities[priority], plugin.name, priority))
+        end
       end
 
       priorities[priority] = plugin.name
@@ -62,24 +67,40 @@ describe("Plugins", function()
       "pre-function",
       "correlation-id",
       "zipkin",
+      "exit-transformer",
       "bot-detection",
       "cors",
+      "jwe-decrypt",
       "session",
       "acme",
+      "oauth2-introspection",
+      "degraphql",
       "jwt",
       "oauth2",
+      "key-auth-enc",
       "key-auth",
       "ldap-auth",
       "basic-auth",
       "hmac-auth",
+      "xml-threat-protection",
+      "websocket-validator",
+      "websocket-size-limit",
       "grpc-gateway",
+      "tls-handshake-modifier",
+      "tls-metadata-headers",
+      "application-registration",
       "ip-restriction",
       "request-size-limiting",
       "acl",
       "rate-limiting",
       "response-ratelimiting",
+      "route-by-header",
+      "jq",
+      "request-transformer-advanced",
       "request-transformer",
+      "response-transformer-advanced",
       "response-transformer",
+      "route-transformer-advanced",
       "ai-request-transformer",
       "ai-prompt-template",
       "ai-prompt-decorator",
@@ -88,11 +109,15 @@ describe("Plugins", function()
       "ai-response-transformer",
       "aws-lambda",
       "azure-functions",
+      "upstream-timeout",
       "proxy-cache",
+      "graphql-proxy-cache-advanced",
+      "forward-proxy",
       "canary",
       "opentelemetry",
       "prometheus",
       "http-log",
+      "statsd-advanced",
       "statsd",
       "datadog",
       "file-log",
@@ -102,15 +127,11 @@ describe("Plugins", function()
       "syslog",
       "grpc-web",
       "request-termination",
+      "mocking",
       "post-function",
     }
 
-    table.sort(plugins, function(a, b)
-      local priority_a = a.handler.PRIORITY or 0
-      local priority_b = b.handler.PRIORITY or 0
-
-      return priority_a > priority_b
-    end)
+    table.sort(plugins, dao_plugins.sort_by_handler_priority)
 
     local sorted_plugins = {}
 

@@ -66,7 +66,7 @@ local CONTENT_METHODS = constants.CONTENT_METHODS
 
 local OASValidationPlugin = {
   VERSION  = meta.core_version,
-  PRIORITY = 850, -- priority after security & rate limiting plugins
+  PRIORITY = 840, -- priority after security & rate limiting plugins
 }
 
 local function resolve_schema(schema)

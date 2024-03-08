@@ -77,7 +77,7 @@ end
 
 ---@class kong.plugin.websocket-validator.handler
 local WebSocketValidator = {
-  PRIORITY = 999,
+  PRIORITY = 1006,
   VERSION = require("kong.meta").core_version,
 }
 

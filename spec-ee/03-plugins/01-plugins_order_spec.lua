@@ -10,38 +10,26 @@ local dao_plugins = require "kong.db.dao.plugins"
 
 local fmt = string.format
 
-local ee_plugins = {
+-- List of all bundled plugins + plugins from the /plugins-ee folder.
+-- This is needed because EE plugins from `/plugins-ee`, defined in
+-- distribution_constants, are only included in the `bundled` list
+-- when the distribution_constants file is replaced/overwritten during the
+-- build / package process (this does not happen in the local dev env).
+local all_plugins = {
   "bundled",
-  "canary",
-  "degraphql",
-  "exit-transformer",
-  "forward-proxy",
-  "graphql-proxy-cache-advanced",
   "graphql-rate-limiting-advanced",
-  "jq",
   "jwt-signer",
   "kafka-log",
   "kafka-upstream",
-  "key-auth-enc",
   "ldap-auth-advanced",
-  "mocking",
   "mtls-auth",
-  "oauth2-introspection",
+  "oas-validation",
   "opa",
   "openid-connect",
   "proxy-cache-advanced",
   "rate-limiting-advanced",
-  "request-transformer-advanced",
   "request-validator",
-  "response-transformer-advanced",
-  "route-by-header",
-  "route-transformer-advanced",
-  "statsd-advanced",
-  "tls-handshake-modifier",
-  "tls-metadata-headers",
-  "upstream-timeout",
   "vault-auth",
-  "jwe-decrypt"
 }
 
 describe("Plugins", function()
@@ -49,7 +37,7 @@ describe("Plugins", function()
 
   lazy_setup(function()
     local conf = assert(conf_loader(nil, {
-      plugins = ee_plugins,
+      plugins = all_plugins,
     }))
 
     local kong_global = require "kong.global"
@@ -148,6 +136,9 @@ describe("Plugins", function()
       'hmac-auth',
       'jwt-signer',
       -- authn end
+      'xml-threat-protection',
+      'websocket-validator',
+      'websocket-size-limit',
       'request-validator',
       'grpc-gateway',
       -- handshake before tls-metadata-headers
@@ -166,6 +157,7 @@ describe("Plugins", function()
       'graphql-rate-limiting-advanced',
       'response-ratelimiting',
       'route-by-header',
+      'oas-validation',
       'jq',
       'request-transformer-advanced',
       'request-transformer',

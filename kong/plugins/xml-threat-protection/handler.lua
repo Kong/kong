@@ -14,7 +14,7 @@ local kb = 1024
 local mb = kb * kb
 
 local xml_threat = {
-  PRIORITY = 999,
+  PRIORITY = 1008,
   VERSION = require("kong.meta").core_version,
 }
 

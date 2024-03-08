@@ -71,8 +71,12 @@ describe("Plugins", function()
       assert.not_nil(priority)
 
       if priorities[priority] then
-        assert.fail(fmt("plugins have the same priority: '%s' and '%s' (%d)",
-          priorities[priority], plugin.name, priority))
+        -- ignore colliding priorities for "advanced" and "enc" plugins
+        if plugin.name:gsub("%-advanced", "") ~= priorities[priority]:gsub("%-advanced", "")
+           and plugin.name:gsub("%-enc", "") ~= priorities[priority]:gsub("%-enc", "") then
+            assert.fail(fmt("plugins have the same priority: '%s' and '%s' (%d)",
+                        priorities[priority], plugin.name, priority))
+        end
       end
 
       priorities[priority] = plugin.name
