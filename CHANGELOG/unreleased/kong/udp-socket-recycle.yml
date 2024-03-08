@@ -1,0 +1,3 @@
+message: "Fixed the UDP socket leaking issue of the DNS module."
+scope: Core
+type: bugfix
