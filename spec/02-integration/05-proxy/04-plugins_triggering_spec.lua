@@ -312,7 +312,7 @@ for _, strategy in helpers.each_strategy() do
           proxy_client:close()
         end
 
-        helpers.stop_kong(nil, true)
+        helpers.stop_kong()
         db:truncate("routes")
         db:truncate("services")
         db:truncate("consumers")
@@ -405,7 +405,7 @@ for _, strategy in helpers.each_strategy() do
 
         os.remove(FILE_LOG_PATH)
 
-        helpers.stop_kong(nil, true)
+        helpers.stop_kong()
       end)
 
       before_each(function()
@@ -516,7 +516,7 @@ for _, strategy in helpers.each_strategy() do
           proxy_client:close()
         end
 
-        helpers.stop_kong(nil, true)
+        helpers.stop_kong()
 
         db:truncate("routes")
         db:truncate("services")
@@ -563,7 +563,7 @@ for _, strategy in helpers.each_strategy() do
           proxy_client:close()
         end
 
-        helpers.stop_kong(nil, true)
+        helpers.stop_kong()
       end)
 
       it("runs without causing an internal error", function()
@@ -1073,7 +1073,7 @@ for _, strategy in helpers.each_strategy() do
             proxy_client:close()
           end
 
-          helpers.stop_kong(nil, true)
+          helpers.stop_kong()
         end)
 
         it("is executed", function()
@@ -1147,7 +1147,7 @@ for _, strategy in helpers.each_strategy() do
               admin_client:close()
             end
 
-            helpers.stop_kong(nil, true)
+            helpers.stop_kong()
           end)
 
           it("is executed", function()
