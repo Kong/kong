@@ -313,7 +313,7 @@ local function process_answers(self, qname, qtype, answers)
   local processed_answers = {}
   local cname_answer
 
-  local ttl = self.valid_ttl or 0xffffffff
+  local ttl = self.valid_ttl or 0xffffffff  -- 0xffffffff for maximum TTL value
 
   for _, answer in ipairs(answers) do
     answer.name = answer.name:lower()
