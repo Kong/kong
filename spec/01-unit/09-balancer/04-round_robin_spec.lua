@@ -1121,7 +1121,6 @@ describe("[round robin balancer]", function()
       local state = copyWheel(b)
       record.expire = gettime() -1 -- expire current dns cache record
       sleep(0.2)  -- wait for record expiration
-
       dnsA({   -- create a new record (identical)
         { name = "mashape.test", address = "1.2.3.4" },
         { name = "mashape.test", address = "1.2.3.5" },
