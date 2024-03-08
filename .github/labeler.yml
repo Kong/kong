@@ -286,9 +286,9 @@ plugins/jq:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/jq/**/*
 
-plugins-ee/jwe-decrypt:
+plugins/jwe-decrypt:
 - changed-files:
-  - any-glob-to-any-file: plugins-ee/jwe-decrypt/**/*
+  - any-glob-to-any-file: kong/plugins/jwe-decrypt/**/*
 
 plugins-ee/jwt-signer:
 - changed-files:

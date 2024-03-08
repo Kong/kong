@@ -924,6 +924,9 @@ build = {
     ["kong.plugins.jq.schema"] = "kong/plugins/jq/schema.lua",
     ["kong.plugins.jq.typedefs"] = "kong/plugins/jq/typedefs.lua",
 
+    ["kong.plugins.jwe-decrypt.handler"] = "kong/plugins/jwe-decrypt/handler.lua",
+    ["kong.plugins.jwe-decrypt.schema"] = "kong/plugins/jwe-decrypt/schema.lua",
+
     ["kong.plugins.key-auth-enc.migrations"] = "kong/plugins/key-auth-enc/migrations/init.lua",
     ["kong.plugins.key-auth-enc.migrations.000_base_key_auth_enc"] = "kong/plugins/key-auth-enc/migrations/000_base_key_auth_enc.lua",
     ["kong.plugins.key-auth-enc.migrations.001_200_to_210"] = "kong/plugins/key-auth-enc/migrations/001_200_to_210.lua",

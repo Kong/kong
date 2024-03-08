@@ -22,7 +22,6 @@ c.plugins = {
   "opa",  -- built-in in kong-ee
   "konnect-application-auth",  -- built-in in kong-ee
   "saml", -- built-in in kong-ee
-  "jwe-decrypt", -- built-in in kong-ee
   "oas-validation", -- built-in in kong-ee
 }
 
