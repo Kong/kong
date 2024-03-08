@@ -3,12 +3,6 @@ local utils = require("kong.resty.dns_client.utils")
 local mlcache = require("kong.resty.mlcache")
 local resolver = require("resty.dns.resolver")
 
-local parse_hosts   = utils.parse_hosts
-local ipv6_bracket  = utils.ipv6_bracket
-local search_names  = utils.search_names
-local get_round_robin_answers          = utils.get_round_robin_answers
-local get_weighted_round_robin_answers = utils.get_weighted_round_robin_answers
-
 local now       = ngx.now
 local log       = ngx.log
 local ERR       = ngx.ERR
@@ -22,7 +16,14 @@ local ipairs        = ipairs
 local math_min      = math.min
 local table_insert  = table.insert
 
+local parse_hosts   = utils.parse_hosts
+local ipv6_bracket  = utils.ipv6_bracket
+local search_names  = utils.search_names
+local get_round_robin_answers          = utils.get_round_robin_answers
+local get_weighted_round_robin_answers = utils.get_weighted_round_robin_answers
+
 local req_dyn_hook_run_hooks = require("kong.dynamic_hook").run_hooks
+local cycle_aware_deep_copy  = require("kong.tools.utils").cycle_aware_deep_copy
 
 -- Constants and default values
 local DEFAULT_ERROR_TTL = 1     -- unit: second
@@ -431,12 +432,9 @@ local function resolve_name_type_callback(self, name, qtype, opts, tries)
 end
 
 
+-- detect circular references in DNS CNAME or SRV records
 local function detect_recursion(opts, key)
   local rn = opts.resolved_names
-  if not rn then
-    rn = {}
-    opts.resolved_names = rn
-  end
   local detected = rn[key]
   rn[key] = true
   return detected
@@ -600,6 +598,16 @@ local function resolve_all(self, name, opts, tries)
 end
 
 
+local function copy_options(opts)
+  if opts.resolved_names then
+    return opts
+  end
+  opts = cycle_aware_deep_copy(opts)
+  opts.resolved_names = {}  -- for detecting circular references in DNS records
+  return opts
+end
+
+
 -- resolve all `name`s and `type`s combinations and return first usable answers
 --   `name`s: produced by resolv.conf options: `search`, `ndots` and `domain`
 --   `type`s: SRV, A, AAAA, CNAME
@@ -610,7 +618,7 @@ end
 --   `qtype`: specified query type instead of its own search types
 function _M:resolve(name, opts, tries)
   name = name:lower()
-  opts = opts or {}
+  opts = copy_options(opts or {})
   tries = setmetatable(tries or {}, tries_mt)
 
   local answers, err, tries = resolve_all(self, name, opts, tries)
