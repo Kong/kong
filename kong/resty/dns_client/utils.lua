@@ -68,7 +68,7 @@ function _M.parse_hosts(path, enable_ipv6)
       if part:sub(1, 1) == '#' then
         break
       end
-      table.insert(parts, part:lower())
+      table_insert(parts, part:lower())
     end
 
     -- Check if the line contains an IP address followed by hostnames
@@ -115,7 +115,8 @@ function _M.parse_resolv_conf(path, enable_ipv6)
     for _, address in ipairs(resolv.nameserver) do
       local ip, port, t = utils.parseHostname(address)
       if t == "ipv4" or
-        (t == "ipv6" and not ip:find([[%]], nil, true) and enable_ipv6) then
+        (t == "ipv6" and not ip:find([[%]], nil, true) and enable_ipv6)
+      then
         table_insert(nameservers, port and { ip, port } or ip)
       end
     end
@@ -172,7 +173,8 @@ local function swrr_next(answers)
   local best = nil    -- best answer in answers[]
 
   for _, answer in ipairs(answers) do
-    local w = (answer.weight == 0) and 0.1 or answer.weight   -- rfc 2782
+    -- 0.1 gives weight 0 record a minimal chance of being chosen (rfc 2782)
+    local w = (answer.weight == 0) and 0.1 or answer.weight
     local cw = answer.cw + w
     answer.cw = cw
     if not best or cw > best.cw then
@@ -208,7 +210,7 @@ local function filter_lowest_priority_answers(answers)
       l = { answer }
 
     elseif answer.priority == lowest_priority then
-      table.insert(l, answer)
+      table_insert(l, answer)
     end
   end
 
