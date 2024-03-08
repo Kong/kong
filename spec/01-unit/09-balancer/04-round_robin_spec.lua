@@ -625,7 +625,7 @@ describe("[round robin balancer]", function()
         wheelSize = 10,
       })
       record.expire = gettime() - 1 -- expire current dns cache record
-      sleep(0.2)
+      sleep(0.2)  -- wait for record expiration
       dnsA({   -- create a new record
         { name = "mashape.test", address = "5.6.7.8" },
       })
@@ -1040,7 +1040,7 @@ describe("[round robin balancer]", function()
       -- expire the existing record
       record.expire = 0
       record.expired = true
-      sleep(0.2)
+      sleep(0.2)  -- wait for record expiration
       -- do a lookup to trigger the async lookup
       client.resolve("really.really.really.does.not.exist.hostname.test", {qtype = client.TYPE_A})
       sleep(0.5) -- provide time for async lookup to complete
@@ -1120,7 +1120,7 @@ describe("[round robin balancer]", function()
       })
       local state = copyWheel(b)
       record.expire = gettime() -1 -- expire current dns cache record
-      sleep(0.2)
+      sleep(0.2)  -- wait for record expiration
 
       dnsA({   -- create a new record (identical)
         { name = "mashape.test", address = "1.2.3.4" },
@@ -1153,7 +1153,7 @@ describe("[round robin balancer]", function()
       })
       local state = copyWheel(b)
       record.expire = gettime() -1 -- expire current dns cache record
-      sleep(0.2)
+      sleep(0.2)  -- wait for record expiration
       dnsAAAA({   -- create a new record (identical)
         { name = "mashape.test", address = "::1" },
         { name = "mashape.test", address = "::2" },
@@ -1185,7 +1185,7 @@ describe("[round robin balancer]", function()
       })
       local state = copyWheel(b)
       record.expire = gettime() -1 -- expire current dns cache record
-      sleep(0.2)
+      sleep(0.2)  -- wait for record expiration
       dnsSRV({    -- create a new record (identical)
         { name = "gelato.test", target = "1.2.3.6", port = 8001, weight = 5 },
         { name = "gelato.test", target = "1.2.3.6", port = 8002, weight = 5 },
@@ -1218,7 +1218,7 @@ describe("[round robin balancer]", function()
       })
       local state = copyWheel(b)
       record.expire = gettime() -1 -- expire current dns cache record
-      sleep(0.2)
+      sleep(0.2)  -- wait for record expiration
       dnsA({                       -- insert an updated record
         { name = "mashape.test", address = "1.2.3.4" },
         { name = "mashape.test", address = "1.2.3.6" },  -- target updated
@@ -1260,7 +1260,7 @@ describe("[round robin balancer]", function()
         },
       })
       record.expire = gettime() -1 -- expire current dns cache record
-      sleep(0.2)
+      sleep(0.2)  -- wait for record expiration
       -- run entire wheel to make sure the expired one is requested, so it can fail
       for _ = 1, b.wheelSize do b:getPeer() end
       -- the only indice is now getkong.test
@@ -1352,7 +1352,7 @@ describe("[round robin balancer]", function()
       local state = copyWheel(b)
 
       record.expire = gettime() -1 -- expire current dns cache record
-      sleep(0.2)
+      sleep(0.2)  -- wait for record expiration
       dnsA({   -- create a new record (identical)
         { name = "mashape.test", address = "1.2.3.4" },
         { name = "mashape.test", address = "1.2.3.5" },
