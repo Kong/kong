@@ -58,7 +58,7 @@ def wasmx_repositories():
         wasm_module_branch = KONG_VAR["NGX_WASM_MODULE"]
 
     new_git_repository(
-        name = "ngx_wasm_module",
+        name = "ngx_wasmx_module",
         branch = wasm_module_branch,
         remote = KONG_VAR["NGX_WASM_MODULE_REMOTE"],
         build_file_content = """
