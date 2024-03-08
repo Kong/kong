@@ -75,7 +75,7 @@ describe("proxy-wasm filters (#wasm)", function()
   end)
 
   lazy_teardown(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
     os.remove(hosts_file)
   end)
 

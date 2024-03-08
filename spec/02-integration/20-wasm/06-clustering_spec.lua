@@ -100,7 +100,7 @@ describe("#wasm - hybrid mode", function()
   end)
 
   lazy_teardown(function()
-    helpers.stop_kong(cp_prefix, true)
+    helpers.stop_kong(cp_prefix)
   end)
 
   describe("[happy path]", function()
@@ -248,7 +248,7 @@ describe("#wasm - hybrid mode", function()
 
 
     lazy_teardown(function()
-      helpers.stop_kong(dp_prefix, true)
+      helpers.stop_kong(dp_prefix)
     end)
 
     it("does not sync configuration", function()

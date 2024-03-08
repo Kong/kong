@@ -270,7 +270,7 @@ describe("#wasm filter chain cache " .. mode_suffix, function()
 
 
   lazy_teardown(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
 
