@@ -42,6 +42,7 @@ env:
   # PRs opened from fork and from dependabot don't have access to repo secrets
   HAS_ACCESS_TO_GITHUB_TOKEN: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') }}
 
+
 jobs:
   metadata:
     name: Metadata
@@ -313,6 +314,10 @@ jobs:
     needs: [metadata, build-packages]
     runs-on: ubuntu-22.04
 
+    permissions:
+      # create comments on commits for docker images needs the `write` permission
+      contents: write
+
     strategy:
       fail-fast: false
       matrix:
@@ -402,7 +407,7 @@ jobs:
       if: github.event_name == 'push' && matrix.label == 'ubuntu'
       uses: peter-evans/commit-comment@5a6f8285b8f2e8376e41fe1b563db48e6cf78c09 # v3.0.0
       with:
-        token: ${{ secrets.GHA_COMMENT_TOKEN }}
+        token: ${{ secrets.GITHUB_TOKEN }}
         body: |
           ### Bazel Build
           Docker image available `${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}`
