@@ -105,7 +105,7 @@ for _, strategy in helpers.each_strategy() do
           proxy_server_ssl_verify = proxy_opts.proxy_server_ssl_verify,
           lua_ssl_trusted_certificate = proxy_opts.lua_ssl_trusted_certificate,
 
-          -- this is unused, but required for the the template to include a stream {} block
+          -- this is unused, but required for the template to include a stream {} block
           stream_listen = "0.0.0.0:5555",
         }, nil, nil, fixtures))
 

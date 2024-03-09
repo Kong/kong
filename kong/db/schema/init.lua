@@ -1694,7 +1694,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
   local now_ms
 
   -- We don't want to resolve references on control planes
-  -- and and admin api requests, admin api request could be
+  -- and admin api requests, admin api request could be
   -- detected with ngx.ctx.KONG_PHASE, but to limit context
   -- access we use nulls that admin api sets to true.
   local kong = kong

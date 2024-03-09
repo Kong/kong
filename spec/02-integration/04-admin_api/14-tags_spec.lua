@@ -4,7 +4,7 @@ local cjson = require "cjson"
 -- We already test the functionality of page() when filtering by tag in
 -- spec/02-integration/03-db/07-tags_spec.lua.
 -- This test we test on the correctness of the admin API response so that
--- we can ensure the the right function (page()) is executed.
+-- we can ensure the right function (page()) is executed.
 describe("Admin API - tags", function()
   for _, strategy in helpers.each_strategy() do
     describe("/entities?tags= with DB: #" .. strategy, function()
