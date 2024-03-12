@@ -14,6 +14,7 @@ local type          = type
 local pairs         = pairs
 local ipairs        = ipairs
 local math_min      = math.min
+local math_random   = math.random
 local table_insert  = table.insert
 
 local parse_hosts   = utils.parse_hosts
@@ -28,11 +29,12 @@ local cycle_aware_deep_copy  = require("kong.tools.utils").cycle_aware_deep_copy
 
 -- Constants and default values
 
-local DEFAULT_ERROR_TTL = 1     -- unit: second
-local DEFAULT_STALE_TTL = 4
-local DEFAULT_EMPTY_TTL = 30
+local DEFAULT_ERROR_TTL   = 1     -- unit: second
+local DEFAULT_STALE_TTL   = 4
+local DEFAULT_EMPTY_TTL   = 30
 -- long-lasting TTL of 10 years for hosts or static IP addresses in cache settings
-local LONG_LASTING_TTL  = 10 * 365 * 24 * 60 * 60
+local LONG_LASTING_TTL    = 10 * 365 * 24 * 60 * 60
+local STALE_UPDATE_DELAY  = 5
 
 local DEFAULT_ORDER = { "LAST", "SRV", "A", "AAAA", "CNAME" }
 
@@ -388,24 +390,43 @@ local function resolve_query(self, name, qtype, tries)
 end
 
 
-local function stale_update_task(premature, self, key, name, qtype)
+local function stale_update_task(premature, self, key, name, qtype, short_key, ttl)
   if premature then
     return
   end
 
   local answers = resolve_query(self, name, qtype, {})
-  if answers and (not answers.errcode or answers.errcode == NAME_ERROR_CODE) then
-    self.cache:set(key, { ttl = answers.ttl },
-                   answers.errcode ~= NAME_ERROR_CODE and answers or nil)
+  if not answers then
+    -- retry update after failure
+    local retry_delay = math_random(STALE_UPDATE_DELAY, STALE_UPDATE_DELAY * 2)
+    ttl = ttl - retry_delay
+    if ttl < 0 then
+      return  -- no need to retry if it exceeds the stale_ttl
+    end
+    local ok, err = timer_at(retry_delay, stale_update_task, self, key, name,
+                             qtype, short_key, ttl)
+    if not ok then
+      log(ALERT, "failed to start a timer to re-update stale DNS records: ", err)
+    end
+    return
+  end
+
+  if not answers.errcode or answers.errcode == NAME_ERROR_CODE then
+    local value = answers.errcode ~= NAME_ERROR_CODE and answers or nil
+    self.cache:set(key, { ttl = answers.ttl }, value)
     insert_last_type(self.cache, name, qtype)
+
+    -- simply invalidate it and let the search iteration choose the correct one
+    self.cache:delete(short_key)
   end
 end
 
 
-local function start_stale_update_task(self, key, name, qtype)
+local function start_stale_update_task(self, key, name, qtype, short_key, ttl)
   stats_count(self.stats, key, "stale")
 
-  local ok, err = timer_at(0, stale_update_task, self, key, name, qtype)
+  local ok, err = timer_at(0, stale_update_task, self, key, name, qtype,
+                           short_key, ttl)
   if not ok then
     log(ALERT, "failed to start a timer to update stale DNS records: ", err)
   end
@@ -421,7 +442,7 @@ local function resolve_name_type_callback(self, name, qtype, opts, tries)
   if answers and ttl and not answers.expired then
     ttl = ttl + self.stale_ttl
     if ttl > 0 then
-      start_stale_update_task(self, key, name, qtype)
+      start_stale_update_task(self, key, name, qtype, opts.short_key, ttl)
       answers.expire = now() + ttl
       answers.expired = true
       answers.ttl = ttl
@@ -568,6 +589,7 @@ end
 local function resolve_all(self, name, opts, tries)
   -- key like "short:example.com:all" or "short:example.com:5"
   local key = "short:" .. name .. ":" .. (opts.qtype or "all")
+  opts.short_key = key  -- save for later use in the stale update task
 
   stats_init(self.stats, name)
   stats_count(self.stats, name, "runs")
@@ -579,12 +601,14 @@ local function resolve_all(self, name, opts, tries)
 
   -- quickly lookup with the key "short:<name>:all" or "short:<name>:<qtype>"
   local answers, err, hit_level = self.cache:get(key)
-  if not answers or answers.expired then
+  if not answers then
     stats_count(self.stats, name, "miss")
-
     answers, err, tries = resolve_names_and_types(self, name, opts, tries)
     if not opts.cache_only and answers then
-      self.cache:set(key, { ttl = answers.ttl }, answers)
+      -- insert via the `:get` callback to prevent inter-process communication
+      self.cache:get(key, nil, function()
+        return answers, nil, answers.ttl
+      end)
     end
 
   else
