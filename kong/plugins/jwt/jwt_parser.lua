@@ -99,6 +99,10 @@ local alg_sign = {
       return nil
     end
     return sig
+  end,
+  EdDSA = function(data, key)
+    local pkey = assert(openssl_pkey.new(key))
+    return assert(pkey:sign(data))
   end
 }
 
@@ -185,7 +189,13 @@ local alg_verify = {
     assert(#signature == 256, "Signature must be 256 bytes")
     return pkey:verify(signature, data, "sha512", openssl_pkey.PADDINGS.RSA_PKCS1_PSS_PADDING)
   end,
-
+  EdDSA = function(data, signature, key)
+    -- Support of EdDSA alg typ according to RFC 8037
+    -- https://www.rfc-editor.org/rfc/rfc8037
+    local pkey, _ = openssl_pkey.new(key)
+    assert(pkey, "Consumer Public Key is Invalid")
+    return pkey:verify(signature, data)
+  end
 }
 
 
