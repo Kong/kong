@@ -149,6 +149,30 @@ describe("Plugin: jwt (parser)", function()
       assert.True(jwt:verify_signature(fixtures.ps512_public_key))
     end)
 
+    it("should encode using EdDSA with Ed25519 key", function()
+      local token = jwt_parser.encode({
+        sub   = "5656565656",
+        name  = "Jane Doe",
+        admin = true
+      }, fixtures.ed25519_private_key, 'EdDSA')
+
+      assert.truthy(token)
+      local jwt = assert(jwt_parser:new(token))
+      assert.True(jwt:verify_signature(fixtures.ed25519_public_key))
+    end)
+
+    it("should encode using EdDSA with Ed448 key", function()
+      local token = jwt_parser.encode({
+        sub   = "5656565656",
+        name  = "Jane Doe",
+        admin = true
+      }, fixtures.ed448_private_key, 'EdDSA')
+
+      assert.truthy(token)
+      local jwt = assert(jwt_parser:new(token))
+      assert.True(jwt:verify_signature(fixtures.ed448_public_key))
+    end)
+
   end)
   describe("Decoding", function()
     it("throws an error if not given a string", function()

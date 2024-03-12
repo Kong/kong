@@ -323,6 +323,28 @@ Vv1PBULdZ0AMZzzBFW77zIA3kxthcBLB3C0N8mvPLjgfimyD4dK9j8v7lZoheCKC
 5QIDAQAB
 -----END PUBLIC KEY-----
 ]],
+ed448_private_key = [[
+-----BEGIN PRIVATE KEY-----
+MEcCAQAwBQYDK2VxBDsEOV3hg//s9c2Ahjrhrf4Wz2u16RyZm7xKj9bTreD7z3Hr
+ravo3fvLad9VY0eUjuhfplE7PJ8HVnInaw==
+-----END PRIVATE KEY-----
+]],
+ed448_public_key = [[
+-----BEGIN PUBLIC KEY-----
+MEMwBQYDK2VxAzoAeFbeVK5Kv6jnE06XuaQk7aUCV+TjyyB1PI4cHWxCEuWZMHrw
++Q2jl6VsEZ1h792RxRE8E0OBJjmA
+-----END PUBLIC KEY-----
+]],
+ed25519_private_key = [[
+-----BEGIN PRIVATE KEY-----
+MC4CAQAwBQYDK2VwBCIEIPojZUis9iVUYwbo+PMs7CeF294UmQqW417VNgaZ2AZ3
+-----END PRIVATE KEY-----
+]],
+ed25519_public_key = [[
+-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEAoJ7Hm7fVc7IQh6RqgR9+Dw0pvB0iqEaGXZex6FlwyGk=
+-----END PUBLIC KEY-----
+]],    
 hs384_secret = u([[
 zxhk1H1Y11ax99xO20EGf00FDAOuPb9kEOmOQZMpR1BElx7sWjBIX2okAJiqjulH
 OZpsjcgbzfCq69apm6f2K28PTvIvS8ni_CG46_huUTBqosCmdEr-kZDvKBLsppfG
