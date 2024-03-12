@@ -21,7 +21,7 @@ describe("dbless persistence #off", function()
   end)
 
   lazy_teardown(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
   it("loads the lmdb config on restarts", function()
@@ -113,7 +113,7 @@ describe("dbless persistence with a declarative config #off", function()
   end)
 
   after_each(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
   lazy_teardown(function()
     os.remove(yaml_file)
