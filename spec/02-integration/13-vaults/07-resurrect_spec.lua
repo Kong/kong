@@ -188,7 +188,7 @@ describe("vault resurrect_ttl and rotation (#" .. strategy .. ") #" .. vault.nam
       client:close()
     end
 
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
     vault:teardown()
 
     helpers.unsetenv("KONG_LUA_PATH_OVERRIDE")

@@ -364,7 +364,7 @@ do
         admin_client:close()
       end
 
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     it("caches a simple request", function()
