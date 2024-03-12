@@ -41,7 +41,7 @@ describe("[utils]", function ()
       assert.same(names, { "www.example.com." })
     end)
 
-    it("name dots number >= ndots, not apply the search list", function ()
+    it("dots number in the name >= ndots, not apply the search list", function ()
       local resolv = {
         ndots = 1,
         search = { "example.net" },
@@ -53,7 +53,7 @@ describe("[utils]", function ()
       assert.same(names, { "example.com" })
     end)
 
-    it("name dots number <= ndots, apply the search list", function ()
+    it("dots number in the name < ndots, apply the search list", function ()
       local resolv = {
         ndots = 2,
         search = { "example.net" },
@@ -82,8 +82,7 @@ describe("[utils]", function ()
     end)
   end)
 
-  describe("round robin getion", function ()
-
+  describe("answer selection", function ()
     local function get_and_count(answers, n, get_ans)
       local count = {}
       for _ = 1, n do
@@ -93,7 +92,7 @@ describe("[utils]", function ()
       return count
     end
 
-    it("rr", function ()
+    it("round-robin", function ()
       local answers = {
         { target = "1" },   -- 25%
         { target = "2" },   -- 25%
@@ -104,7 +103,7 @@ describe("[utils]", function ()
       assert.same(count, { ["1"] = 25, ["2"] = 25, ["3"] = 25, ["4"] = 25 })
     end)
 
-    it("swrr", function ()
+    it("slight weight round-robin", function ()
       -- simple one
       local answers = {
         { target = "w5-p10-a", weight = 5, priority = 10, },  -- hit 100%
