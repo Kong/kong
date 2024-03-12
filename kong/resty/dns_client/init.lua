@@ -407,7 +407,7 @@ local function start_stale_update_task(self, key, name, qtype)
 
   local ok, err = timer_at(0, stale_update_task, self, key, name, qtype)
   if not ok then
-    log(ALERT, "failed to start a timer for update a stale DNS record: ", err)
+    log(ALERT, "failed to start a timer to update stale DNS records: ", err)
   end
 end
 
