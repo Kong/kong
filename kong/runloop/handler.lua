@@ -1224,7 +1224,7 @@ return {
       local has_timing = ctx.has_timing
 
       if has_timing then
-        req_dyn_hook_run_hooks(ctx, "timing", "before:router")
+        req_dyn_hook_run_hooks("timing", "before:router")
       end
 
       -- routing request
@@ -1232,7 +1232,7 @@ return {
       local match_t = router:exec(ctx)
 
       if has_timing then
-        req_dyn_hook_run_hooks(ctx, "timing", "after:router")
+        req_dyn_hook_run_hooks("timing", "after:router")
       end
 
       if not match_t then
@@ -1257,7 +1257,7 @@ return {
       ctx.workspace_name   = WORKSPACE_NAMES[ctx.workspace]
 
       if has_timing then
-        req_dyn_hook_run_hooks(ctx, "timing", "workspace_id:got", ctx.workspace)
+        req_dyn_hook_run_hooks("timing", "workspace_id:got", ctx.workspace)
       end
 
       local host           = var.host

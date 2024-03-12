@@ -915,6 +915,5 @@ build = {
     -- XXX EE ]]
 
     ["kong.dynamic_hook"] = "kong/dynamic_hook/init.lua",
-    ["kong.dynamic_hook.wrap_function_gen"] = "kong/dynamic_hook/wrap_function_gen.lua",
   }
 }

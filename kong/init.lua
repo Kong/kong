@@ -340,7 +340,7 @@ local function execute_global_plugins_iterator(plugins_iterator, phase, ctx)
   local has_timing = ctx.has_timing
 
   if has_timing then
-    req_dyn_hook_run_hooks(ctx, "timing", "before:plugin_iterator")
+    req_dyn_hook_run_hooks("timing", "before:plugin_iterator")
   end
 
   for _, plugin, configuration in iterator, plugins, 0 do
@@ -352,13 +352,13 @@ local function execute_global_plugins_iterator(plugins_iterator, phase, ctx)
     setup_plugin_context(ctx, plugin, configuration)
 
     if has_timing then
-      req_dyn_hook_run_hooks(ctx, "timing", "before:plugin", plugin.name, ctx.plugin_id)
+      req_dyn_hook_run_hooks("timing", "before:plugin", plugin.name, ctx.plugin_id)
     end
 
     plugin.handler[phase](plugin.handler, configuration)
 
     if has_timing then
-      req_dyn_hook_run_hooks(ctx, "timing", "after:plugin")
+      req_dyn_hook_run_hooks("timing", "after:plugin")
     end
 
     reset_plugin_context(ctx, old_ws)
@@ -369,7 +369,7 @@ local function execute_global_plugins_iterator(plugins_iterator, phase, ctx)
   end
 
   if has_timing then
-    req_dyn_hook_run_hooks(ctx, "timing", "after:plugin_iterator")
+    req_dyn_hook_run_hooks("timing", "after:plugin_iterator")
   end
 end
 
@@ -390,7 +390,7 @@ local function execute_collecting_plugins_iterator(plugins_iterator, phase, ctx)
   local has_timing = ctx.has_timing
 
   if has_timing then
-    req_dyn_hook_run_hooks(ctx, "timing", "before:plugin_iterator")
+    req_dyn_hook_run_hooks("timing", "before:plugin_iterator")
   end
 
   for _, plugin, configuration in iterator, plugins, 0 do
@@ -403,14 +403,14 @@ local function execute_collecting_plugins_iterator(plugins_iterator, phase, ctx)
       setup_plugin_context(ctx, plugin, configuration)
 
       if has_timing then
-        req_dyn_hook_run_hooks(ctx, "timing", "before:plugin", plugin.name, ctx.plugin_id)
+        req_dyn_hook_run_hooks( "timing", "before:plugin", plugin.name, ctx.plugin_id)
       end
 
       local co = coroutine.create(plugin.handler[phase])
       local cok, cerr = coroutine.resume(co, plugin.handler, configuration)
 
       if has_timing then
-        req_dyn_hook_run_hooks(ctx, "timing", "after:plugin")
+        req_dyn_hook_run_hooks("timing", "after:plugin")
       end
 
       if not cok then
@@ -446,7 +446,7 @@ local function execute_collecting_plugins_iterator(plugins_iterator, phase, ctx)
   end
 
   if has_timing then
-    req_dyn_hook_run_hooks(ctx, "timing", "after:plugin_iterator")
+    req_dyn_hook_run_hooks("timing", "after:plugin_iterator")
   end
 
   ctx.delay_response = nil
@@ -463,7 +463,7 @@ local function execute_collected_plugins_iterator(plugins_iterator, phase, ctx)
   local has_timing = ctx.has_timing
 
   if has_timing then
-    req_dyn_hook_run_hooks(ctx, "timing", "before:plugin_iterator")
+    req_dyn_hook_run_hooks("timing", "before:plugin_iterator")
   end
 
   for _, plugin, configuration in iterator, plugins, 0 do
@@ -475,13 +475,13 @@ local function execute_collected_plugins_iterator(plugins_iterator, phase, ctx)
     setup_plugin_context(ctx, plugin, configuration)
 
     if has_timing then
-      req_dyn_hook_run_hooks(ctx, "timing", "before:plugin", plugin.name, ctx.plugin_id)
+      req_dyn_hook_run_hooks("timing", "before:plugin", plugin.name, ctx.plugin_id)
     end
 
     plugin.handler[phase](plugin.handler, configuration)
 
     if has_timing then
-      req_dyn_hook_run_hooks(ctx, "timing", "after:plugin")
+      req_dyn_hook_run_hooks("timing", "after:plugin")
     end
 
     reset_plugin_context(ctx, old_ws)
@@ -492,7 +492,7 @@ local function execute_collected_plugins_iterator(plugins_iterator, phase, ctx)
   end
 
   if has_timing then
-    req_dyn_hook_run_hooks(ctx, "timing", "after:plugin_iterator")
+    req_dyn_hook_run_hooks("timing", "after:plugin_iterator")
   end
 end
 
@@ -1198,7 +1198,7 @@ function Kong.rewrite()
   ctx.KONG_PHASE = PHASES.rewrite
   local has_timing
 
-  req_dyn_hook_run_hooks(ctx, "timing:auth", "auth")
+  req_dyn_hook_run_hooks("timing:auth", "auth")
 
   if req_dyn_hook_is_group_enabled("timing") then
     ctx.has_timing = true
@@ -1206,7 +1206,7 @@ function Kong.rewrite()
   end
 
   if has_timing then
-    req_dyn_hook_run_hooks(ctx, "timing", "before:rewrite")
+    req_dyn_hook_run_hooks("timing", "before:rewrite")
   end
 
   kong_resty_ctx.stash_ref(ctx)
@@ -1235,7 +1235,7 @@ function Kong.rewrite()
   ctx.KONG_REWRITE_TIME = ctx.KONG_REWRITE_ENDED_AT - ctx.KONG_REWRITE_START
 
   if has_timing then
-    req_dyn_hook_run_hooks(ctx, "timing", "after:rewrite")
+    req_dyn_hook_run_hooks("timing", "after:rewrite")
   end
 end
 
@@ -1245,7 +1245,7 @@ function Kong.access()
   local has_timing = ctx.has_timing
 
   if has_timing then
-    req_dyn_hook_run_hooks(ctx, "timing", "before:access")
+    req_dyn_hook_run_hooks("timing", "before:access")
   end
 
   ctx.is_proxy_request = true
@@ -1272,7 +1272,7 @@ function Kong.access()
     ctx.KONG_RESPONSE_LATENCY = ctx.KONG_ACCESS_ENDED_AT - ctx.KONG_PROCESSING_START
 
     if has_timing then
-      req_dyn_hook_run_hooks(ctx, "timing", "after:access")
+      req_dyn_hook_run_hooks("timing", "after:access")
     end
 
     return flush_delayed_response(ctx)
@@ -1288,7 +1288,7 @@ function Kong.access()
     ctx.buffered_proxying = nil
 
     if has_timing then
-      req_dyn_hook_run_hooks(ctx, "timing", "after:access")
+      req_dyn_hook_run_hooks("timing", "after:access")
     end
 
     return kong.response.error(503, "no Service found with those values")
@@ -1309,7 +1309,7 @@ function Kong.access()
     local upgrade = var.upstream_upgrade or ""
     if version < 2 and upgrade == "" then
       if has_timing then
-        req_dyn_hook_run_hooks(ctx, "timing", "after:access")
+        req_dyn_hook_run_hooks("timing", "after:access")
       end
 
       return Kong.response()
@@ -1325,7 +1325,7 @@ function Kong.access()
   end
 
   if has_timing then
-    req_dyn_hook_run_hooks(ctx, "timing", "after:access")
+    req_dyn_hook_run_hooks("timing", "after:access")
   end
 end
 
@@ -1337,7 +1337,7 @@ function Kong.balancer()
   local trace = tracing.trace("balancer")
 
   if has_timing then
-    req_dyn_hook_run_hooks(ctx, "timing", "before:balancer")
+    req_dyn_hook_run_hooks("timing", "before:balancer")
   end
 
   -- This may be called multiple times, and no yielding here!
@@ -1422,7 +1422,7 @@ function Kong.balancer()
       ctx.KONG_PROXY_LATENCY = ctx.KONG_BALANCER_ENDED_AT - ctx.KONG_PROCESSING_START
 
       if has_timing then
-        req_dyn_hook_run_hooks(ctx, "timing", "after:balancer")
+        req_dyn_hook_run_hooks("timing", "after:balancer")
       end
 
       return ngx.exit(errcode)
@@ -1434,7 +1434,7 @@ function Kong.balancer()
         ngx_log(ngx_ERR, "failed to set balancer Host header: ", err)
 
         if has_timing then
-          req_dyn_hook_run_hooks(ctx, "timing", "after:balancer")
+          req_dyn_hook_run_hooks("timing", "after:balancer")
         end
 
         return ngx.exit(500)
@@ -1489,7 +1489,7 @@ function Kong.balancer()
     ctx.KONG_PROXY_LATENCY = ctx.KONG_BALANCER_ENDED_AT - ctx.KONG_PROCESSING_START
 
     if has_timing then
-      req_dyn_hook_run_hooks(ctx, "timing", "after:balancer")
+      req_dyn_hook_run_hooks("timing", "after:balancer")
     end
 
     return ngx.exit(500)
@@ -1533,7 +1533,7 @@ function Kong.balancer()
   trace:finish()
 
   if has_timing then
-    req_dyn_hook_run_hooks(ctx, "timing", "after:balancer")
+    req_dyn_hook_run_hooks("timing", "after:balancer")
   end
 end
 
@@ -1562,7 +1562,7 @@ do
     local has_timing = ctx.has_timing
 
     if has_timing then
-      req_dyn_hook_run_hooks(ctx, "timing", "before:response")
+      req_dyn_hook_run_hooks("timing", "before:response")
     end
 
     local plugins_iterator = runloop.get_plugins_iterator()
@@ -1583,7 +1583,7 @@ do
       ngx.status = res.status or 502
 
       if has_timing then
-        req_dyn_hook_run_hooks(ctx, "timing", "after:response")
+        req_dyn_hook_run_hooks("timing", "after:response")
       end
 
       return kong_error_handlers(ctx)
@@ -1637,7 +1637,7 @@ do
     ngx.print(body)
 
     if has_timing then
-      req_dyn_hook_run_hooks(ctx, "timing", "after:response")
+      req_dyn_hook_run_hooks("timing", "after:response")
     end
 
     -- jump over the balancer to header_filter
@@ -1651,7 +1651,7 @@ function Kong.header_filter()
   local has_timing = ctx.has_timing
 
   if has_timing then
-    req_dyn_hook_run_hooks(ctx, "timing", "before:header_filter")
+    req_dyn_hook_run_hooks("timing", "before:header_filter")
   end
 
   ctx.is_proxy_request = true
@@ -1725,7 +1725,7 @@ function Kong.header_filter()
   ctx.KONG_HEADER_FILTER_TIME = ctx.KONG_HEADER_FILTER_ENDED_AT - ctx.KONG_HEADER_FILTER_START
 
   if has_timing then
-    req_dyn_hook_run_hooks(ctx, "timing", "after:header_filter")
+    req_dyn_hook_run_hooks("timing", "after:header_filter")
   end
 end
 
@@ -1735,7 +1735,7 @@ function Kong.body_filter()
   local has_timing = ctx.has_timing
 
   if has_timing then
-    req_dyn_hook_run_hooks(ctx, "timing", "before:body_filter")
+    req_dyn_hook_run_hooks("timing", "before:body_filter")
   end
 
   if not ctx.KONG_BODY_FILTER_START then
@@ -1794,7 +1794,7 @@ function Kong.body_filter()
 
   if not arg[2] then
     if has_timing then
-      req_dyn_hook_run_hooks(ctx, "timing", "after:body_filter")
+      req_dyn_hook_run_hooks("timing", "after:body_filter")
     end
 
     return
@@ -1816,7 +1816,7 @@ function Kong.body_filter()
   end
 
   if has_timing then
-    req_dyn_hook_run_hooks(ctx, "timing", "after:body_filter")
+    req_dyn_hook_run_hooks("timing", "after:body_filter")
   end
 end
 
@@ -1826,7 +1826,7 @@ function Kong.log()
   local has_timing = ctx.has_timing
 
   if has_timing then
-    req_dyn_hook_run_hooks(ctx, "timing", "before:log")
+    req_dyn_hook_run_hooks("timing", "before:log")
   end
 
   if not ctx.KONG_LOG_START then
@@ -1923,7 +1923,7 @@ function Kong.log()
   ee.handlers.log.after(ctx, ngx.status)
 
   if has_timing then
-    req_dyn_hook_run_hooks(ctx, "timing", "after:log")
+    req_dyn_hook_run_hooks("timing", "after:log")
   end
 
   release_table(CTX_NS, ctx)
