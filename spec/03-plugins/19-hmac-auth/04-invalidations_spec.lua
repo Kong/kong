@@ -58,7 +58,7 @@ for _, strategy in helpers.each_strategy() do
         admin_client:close()
       end
 
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     local function hmac_sha1_binary(secret, data)

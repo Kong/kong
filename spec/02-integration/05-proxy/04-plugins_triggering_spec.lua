@@ -231,7 +231,7 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_teardown(function()
       if proxy_client then proxy_client:close() end
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     it("checks global configuration without credentials", function()
@@ -312,7 +312,7 @@ for _, strategy in helpers.each_strategy() do
           proxy_client:close()
         end
 
-        helpers.stop_kong(nil, true)
+        helpers.stop_kong()
         db:truncate("routes")
         db:truncate("services")
         db:truncate("consumers")
@@ -405,7 +405,7 @@ for _, strategy in helpers.each_strategy() do
 
         os.remove(FILE_LOG_PATH)
 
-        helpers.stop_kong(nil, true)
+        helpers.stop_kong()
       end)
 
       before_each(function()
@@ -516,7 +516,7 @@ for _, strategy in helpers.each_strategy() do
           proxy_client:close()
         end
 
-        helpers.stop_kong(nil, true)
+        helpers.stop_kong()
 
         db:truncate("routes")
         db:truncate("services")
@@ -563,7 +563,7 @@ for _, strategy in helpers.each_strategy() do
           proxy_client:close()
         end
 
-        helpers.stop_kong(nil, true)
+        helpers.stop_kong()
       end)
 
       it("runs without causing an internal error", function()
@@ -712,7 +712,7 @@ for _, strategy in helpers.each_strategy() do
 
       lazy_teardown(function()
         helpers.stop_kong("servroot2")
-        helpers.stop_kong(nil, true)
+        helpers.stop_kong()
       end)
 
 
@@ -1073,7 +1073,7 @@ for _, strategy in helpers.each_strategy() do
             proxy_client:close()
           end
 
-          helpers.stop_kong(nil, true)
+          helpers.stop_kong()
         end)
 
         it("is executed", function()
@@ -1147,7 +1147,7 @@ for _, strategy in helpers.each_strategy() do
               admin_client:close()
             end
 
-            helpers.stop_kong(nil, true)
+            helpers.stop_kong()
           end)
 
           it("is executed", function()
@@ -1227,7 +1227,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     lazy_teardown(function()
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     it("certificate phase clears context, fix #7054", function()
