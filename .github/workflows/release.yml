@@ -45,6 +45,7 @@ env:
 
   HAS_ACCESS_TO_GITHUB_TOKEN: ${{ github.repository_owner == 'Kong' }}
 
+
 jobs:
   metadata:
     name: Metadata
@@ -376,6 +377,7 @@ jobs:
     name: Build Images - ${{ matrix.label }}
     needs: [metadata, build-packages]
     runs-on: ${{ needs.metadata.outputs.release-runs-on }}
+
     strategy:
       fail-fast: false
       matrix:
@@ -497,7 +499,7 @@ jobs:
       if: github.event_name == 'push' && matrix.label == 'ubuntu'
       uses: peter-evans/commit-comment@5a6f8285b8f2e8376e41fe1b563db48e6cf78c09 # v3.0.0
       with:
-        token: ${{ secrets.GHA_COMMENT_TOKEN }}
+        token: ${{ secrets.GITHUB_TOKEN }}
         body: |
           ### Bazel Build
           Docker image available `${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ needs.metadata.outputs.commit-sha }}`
