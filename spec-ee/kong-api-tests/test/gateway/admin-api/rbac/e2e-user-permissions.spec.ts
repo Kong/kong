@@ -366,13 +366,17 @@ describe('Gateway RBAC: E2E User Permissions', function () {
   it('should not have permission to read the routes endpoint after deleting the role', async function () {
     await deleteRole(role.id);
 
-    const resp = await getNegative(
+    const req = () =>
+    getNegative(
       `${url}/routes/${routeEntity.id}`,
       userHeader
     );
-    logResponse(resp);
 
-    expect(resp.status, 'Status should be 403').to.equal(403);
+    const assertions = (resp) => {
+      expect(resp.status, 'Status should be 403').to.equal(403);
+    };
+
+    await retryRequest(req, assertions);
   });
 
   it('should not have update permission on consumers endpoint after deleting the role', async function () {
