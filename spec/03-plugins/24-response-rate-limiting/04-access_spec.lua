@@ -329,7 +329,7 @@ describe(fmt("#flaky Plugin: response-ratelimiting (access) with policy: #%s [#%
   end)
 
   lazy_teardown(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
   describe("Without authentication (IP address)", function()
@@ -567,7 +567,7 @@ describe(fmt("#flaky Plugin: response-ratelimiting (expirations) with policy: #%
   end)
 
   lazy_teardown(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
   it("expires a counter", function()
@@ -638,7 +638,7 @@ describe(fmt("#flaky Plugin: response-ratelimiting (access - global for single c
   end)
 
   lazy_teardown(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
   it("blocks when the consumer exceeds their quota, no matter what service/route used", function()
@@ -675,7 +675,7 @@ describe(fmt("#flaky Plugin: response-ratelimiting (access - global) with policy
   end)
 
   lazy_teardown(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
   before_each(function()
@@ -753,7 +753,7 @@ describe(fmt("#flaky Plugin: response-ratelimiting (fault tolerance) with policy
       end)
 
       after_each(function()
-        helpers.stop_kong(nil, true)
+        helpers.stop_kong()
       end)
 
       it("does not work if an error occurs", function()
@@ -848,7 +848,7 @@ describe(fmt("#flaky Plugin: response-ratelimiting (fault tolerance) with policy
     end)
 
     after_each(function()
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     it("does not work if an error occurs", function()
