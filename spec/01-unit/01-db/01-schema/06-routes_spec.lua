@@ -357,6 +357,7 @@ describe("routes schema (flavor = " .. flavor .. ")", function()
       assert.is_true(ok)
     end)
 
+    -- TODO: bump atc-router to fix it
     it_trad_only("accepts properly percent-encoded values", function()
       local valid_paths = { "/abcd\xaa\x10\xff\xAA\xFF" }
 
