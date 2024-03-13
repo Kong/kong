@@ -14,7 +14,7 @@ local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vita
 local num_iterations = 5
 
 -- used to wait for the plugin iterator rebuild finish
-local extra_iterations = 0
+local req_200_count = 0
 
 local function wait_until_admin_client_2_finds(total_sent,
  params)
@@ -47,7 +47,7 @@ local function wait_until_admin_client_2_finds(total_sent,
         total_200s = total_200s + num
       end
     end
-    return total_200s == total_sent, inspect(metrics)
+    return total_200s == total_sent, inspect{metrics, total_sent}
   end, 30)
 end
 
@@ -170,9 +170,9 @@ for _, strategy in helpers.each_strategy() do
                    headers = {["Host"] = "mock_upstream"},
                  })
                 assert.res_status(200, res)
+                req_200_count = req_200_count + 1
 
                 if not res.headers["X-Cache-Status"] and i == 1 then
-                  extra_iterations = extra_iterations + 1
                   return false, "falied to to wait plugin iterator to be rebuilt"
                 end
 
@@ -194,7 +194,7 @@ for _, strategy in helpers.each_strategy() do
       it(
        "returns the expected number of 200s with interval seconds",
        function()
-         wait_until_admin_client_2_finds(num_iterations + extra_iterations, {
+         wait_until_admin_client_2_finds(req_200_count, {
            method = "GET",
            path = "/vitals/status_codes/by_route",
            query = {
@@ -209,7 +209,7 @@ for _, strategy in helpers.each_strategy() do
       it(
        "returns the expected number of 200s with interval minutes",
        function()
-         wait_until_admin_client_2_finds(num_iterations + extra_iterations, {
+         wait_until_admin_client_2_finds(req_200_count, {
            method = "GET",
            path = "/vitals/status_codes/by_route",
            query = {
