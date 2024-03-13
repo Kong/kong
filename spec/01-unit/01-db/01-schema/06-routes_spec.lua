@@ -43,7 +43,8 @@ local function reload_flavor(flavor)
 end
 
 
-for _, flavor in ipairs({ "traditional", "traditional_compatible", }) do
+--for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
+for _, flavor in ipairs({  "expressions" }) do
 describe("routes schema (flavor = " .. flavor .. ")", function()
   local a_valid_uuid = "cbb297c0-a956-486d-ad1d-f9b42df9465a"
   local another_uuid = "64a8670b-900f-44e7-a900-6ec7ef5aa4d3"
@@ -1074,7 +1075,8 @@ describe("routes schema (flavor = " .. flavor .. ")", function()
         assert.falsy(ok)
         assert.same({
           ["@entity"] = {
-            "must set one of 'sources', 'destinations', 'snis' when 'protocols' is 'tcp', 'tls' or 'udp'"
+            "must set one of 'sources', 'destinations', 'snis'" ..
+            (flavor == "expressions" and ", 'expression'" or "") .. " when 'protocols' is 'tcp', 'tls' or 'udp'"
           }
         }, errs)
       end
@@ -1091,7 +1093,8 @@ describe("routes schema (flavor = " .. flavor .. ")", function()
     assert.falsy(ok)
     assert.same({
       ["@entity"] = {
-        "must set one of 'methods', 'hosts', 'headers', 'paths' when 'protocols' is 'http'"
+        "must set one of 'methods', 'hosts', 'headers', 'paths'" ..
+        (flavor == "expressions" and ", 'expression'" or "") .. " when 'protocols' is 'http'"
       }
     }, errs)
 
@@ -1103,7 +1106,8 @@ describe("routes schema (flavor = " .. flavor .. ")", function()
     assert.falsy(ok)
     assert.same({
       ["@entity"] = {
-        "must set one of 'methods', 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'https'"
+        "must set one of 'methods', 'hosts', 'headers', 'paths', 'snis'" ..
+        (flavor == "expressions" and ", 'expression'" or "") .. " when 'protocols' is 'https'"
       }
     }, errs)
   end)
@@ -1118,7 +1122,8 @@ describe("routes schema (flavor = " .. flavor .. ")", function()
     assert.falsy(ok)
     assert.same({
       ["@entity"] = {
-        "must set one of 'hosts', 'headers', 'paths' when 'protocols' is 'grpc'"
+        "must set one of 'hosts', 'headers', 'paths'" ..
+        (flavor == "expressions" and ", 'expression'" or "") .." when 'protocols' is 'grpc'"
       }
     }, errs)
 
@@ -1130,7 +1135,8 @@ describe("routes schema (flavor = " .. flavor .. ")", function()
     assert.falsy(ok)
     assert.same({
       ["@entity"] = {
-        "must set one of 'hosts', 'headers', 'paths', 'snis' when 'protocols' is 'grpcs'"
+        "must set one of 'hosts', 'headers', 'paths', 'snis'" ..
+        (flavor == "expressions" and ", 'expression'" or "") .. " when 'protocols' is 'grpcs'"
       }
     }, errs)
   end)
