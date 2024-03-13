@@ -1,0 +1,6 @@
+message: |
+  **OAS Validation**, **WebSocket Size Limit**, **WebSocket Validator**, **XML Threat Protection**:
+  priorities have been updated to prevent collisions between plugins.
+  The relative priority (and the order of execution) of bundled plugins remained unchanged.
+type: bugfix
+scope: Plugin
