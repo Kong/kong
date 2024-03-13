@@ -82,49 +82,48 @@ end
 function _M:body_filter(conf)
   -- if body_filter is called twice, then return
   if kong.ctx.plugin.body_called then
-    return
-  end
-
-  if kong.ctx.shared.skip_response_transformer then
-    local response_body, status
-    if kong.ctx.shared.parsed_response then
-      response_body = kong.ctx.shared.parsed_response
-    elseif kong.response.get_status() == 200 then
-      status, response_body = pcall( function()
-        return kong.service.response.get_raw_body()
-      end)
-      if status and response_body then
-        local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
-
-        if is_gzip then
-          response_body = kong_utils.inflate_gzip(response_body)
+    if kong.ctx.shared.skip_response_transformer then
+      local response_body, status
+      if kong.ctx.shared.parsed_response then
+        response_body = kong.ctx.shared.parsed_response
+      elseif kong.response.get_status() == 200 then
+        status, response_body = pcall( function()
+          return kong.service.response.get_raw_body()
+        end)
+        if status and response_body then
+          local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
+  
+          if is_gzip then
+            response_body = kong_utils.inflate_gzip(response_body)
+          end
+        else
+          kong.log.warn("issue when retrieve the response body for analytics in the body filter phase.",
+                        " Please check AI request transformer plugin response")
         end
-      else
-        kong.log.warn("issue when retrieve the response body for analytics in the body filter phase.",
-                      " Please check AI request transformer plugin response")
+      end
+  
+    if not kong.ctx.shared.skip_response_transformer then
+      if (kong.response.get_status() == 200) or (kong.ctx.plugin.ai_parser_error) then
+        -- all errors MUST be checked and returned in header_filter
+        -- we should receive a replacement response body from the same thread
+  
+        local original_request = kong.ctx.plugin.parsed_response
+        local deflated_request = kong.ctx.plugin.parsed_response
+        if deflated_request then
+          local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
+          if is_gzip then
+            deflated_request = kong_utils.deflate_gzip(deflated_request)
+          end
+  
+          kong.response.set_raw_body(deflated_request)
+        end
+  
+        -- call with replacement body, or original body if nothing changed
+        ai_shared.post_request(conf, original_request)
       end
     end
-
-  if not kong.ctx.shared.skip_response_transformer then
-    if (kong.response.get_status() == 200) or (kong.ctx.plugin.ai_parser_error) then
-      -- all errors MUST be checked and returned in header_filter
-      -- we should receive a replacement response body from the same thread
-
-      local original_request = kong.ctx.plugin.parsed_response
-      local deflated_request = kong.ctx.plugin.parsed_response
-      if deflated_request then
-        local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
-        if is_gzip then
-          deflated_request = kong_utils.deflate_gzip(deflated_request)
-        end
-
-        kong.response.set_raw_body(deflated_request)
-      end
-
-      -- call with replacement body, or original body if nothing changed
-      ai_shared.post_request(conf, original_request)
-    end
   end
+
   kong.ctx.plugin.body_called = true
 end
 
