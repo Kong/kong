@@ -104,6 +104,7 @@ end
 
 
 local function gen_route(flavor, r)
+  --[[
   if flavor ~= "expressions" then
     return r
   end
@@ -116,6 +117,7 @@ local function gen_route(flavor, r)
   r.snis  = nil
 
   r.destinations = nil
+  --]]
 
   return r
 end
