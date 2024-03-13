@@ -68,14 +68,22 @@ local grpc_subschema = {
 
 if kong and kong.configuration and  kong.configuration.router_flavor == "expressions" then
 
+  -- now http route in flavor 'expressions' accepts 'sources' 'and destinations'
+
   http_subschema.fields[1] = nil  -- sources
   http_subschema.fields[2] = nil  -- destinations
+
+  -- the route should have the field 'expression' if no others
 
   table.insert(http_subschema.entity_checks[1].conditional_at_least_one_of.then_at_least_one_of, "expression")
   table.insert(http_subschema.entity_checks[1].conditional_at_least_one_of.else_then_at_least_one_of, "expression")
 
+  -- now grpc route in flavor 'expressions' accepts 'sources' 'and destinations'
+
   grpc_subschema.fields[3] = nil  -- sources
   grpc_subschema.fields[4] = nil  -- destinations
+
+  -- the route should have the field 'expression' if no others
 
   table.insert(grpc_subschema.entity_checks[1].conditional_at_least_one_of.then_at_least_one_of, "expression")
   table.insert(grpc_subschema.entity_checks[1].conditional_at_least_one_of.else_then_at_least_one_of, "expression")
