@@ -121,7 +121,7 @@ local function gen_plugin(route)
 end
 
 
-for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
+for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
 for _, strategy in helpers.each_strategy() do
   describe("overriding upstream TLS parameters for database [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
     local admin_client
