@@ -72,7 +72,8 @@ for _, strategy in helpers.each_strategy() do
           validate_request_uri_params = true,
           header_parameter_check = true,
           query_parameter_check = true,
-          verbose_response = true
+          verbose_response = true,
+          api_spec_encoded = false,
         },
       })
 

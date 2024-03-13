@@ -41,9 +41,9 @@ describe("Plugin: " .. plugin_name .. "(schema)", function()
             api_spec = '[{"name": {"type": "string}}',
         }, validation_schema)
         assert.is_nil(ok)
-        assert.same("api specification is neither valid json ('Expected value " ..
+        assert.same("api_spec: api specification is neither valid json ('Expected value " ..
             "but found unexpected end of string at character 29') nor " ..
-            "valid yaml ('1:1: found unexpected end of stream')", err.config["api_spec"])
+            "valid yaml ('1:1: found unexpected end of stream')", err.config)
     end)
 
     it("errors with invalid yaml api_spec", function()
@@ -51,9 +51,9 @@ describe("Plugin: " .. plugin_name .. "(schema)", function()
             api_spec = "not a valid yaml spec",
         }, validation_schema)
         assert.is_nil(ok)
-        assert.same("api specification is neither valid json ('Expected value " ..
+        assert.same("api_spec: api specification is neither valid json ('Expected value " ..
             "but found invalid token at character 1') nor valid yaml ('not " ..
-            "a valid yaml spec')", err.config["api_spec"])
+            "a valid yaml spec')", err.config)
     end)
 
 end)

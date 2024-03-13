@@ -8,8 +8,18 @@
 local typedefs = require "kong.db.schema.typedefs"
 local swagger_parser = require "kong.enterprise_edition.openapi.plugins.swagger-parser.parser"
 
-local function validate_spec(entity)
-  return swagger_parser.parse(entity)
+
+local function check_for_config(config)
+  local api_spec = config.api_spec
+  if config.api_spec_encoded then
+    api_spec = ngx.unescape_uri(api_spec)
+  end
+
+  local ok ,err = swagger_parser.parse(api_spec)
+  if not ok then
+    return false, "api_spec: " .. err
+  end
+  return true
 end
 
 return {
@@ -20,7 +30,7 @@ return {
     { config = {
       type = "record",
       fields = {
-          { api_spec = { description = "The API specification defined using either Swagger or the OpenAPI. This can be either a JSON or YAML based file.", type = "string", custom_validator = validate_spec, required = true } },
+          { api_spec = { description = "The API specification defined using either Swagger or the OpenAPI. This can be either a JSON or YAML based file. If using a YAML file, the spec needs to be URI-Encoded to preserve the YAML format.", type = "string", required = true } },
           { verbose_response = { description = "If set to true, returns a detailed error message for invalid requests & responses. This is useful while testing.", type = "boolean", default = false, required = false } },
           { validate_request_body = { description = "If set to true, validates the request body content against the API specification.", type = "boolean", default = true, required = false } },
           { notify_only_request_validation_failure = { description = "If set to true, notifications via event hooks are enabled, but request based validation failures don't affect the request flow.", type = "boolean", default = false, required = false } },
@@ -34,7 +44,9 @@ return {
           { allowed_header_parameters = { description = "List of header parameters in the request that will be ignored when performing HTTP header validation. These are additional headers added to an API request beyond those defined in the API specification.  For example, you might include the HTTP header `User-Agent`, which lets servers and network peers identify the application, operating system, vendor, and/or version of the requesting user agent.", type = "string",
               default = "Host,Content-Type,User-Agent,Accept,Content-Length", required = false } },
           { include_base_path = { description = "Indicates whether to include the base path when performing path match evaluation.", type = "boolean", default = false, required = true } },
+          { api_spec_encoded = { description = "Indicates whether the api_spec is URI-Encoded.", type = "boolean", default = true, required = true } }
         },
+      custom_validator = check_for_config,
       },
     },
   },

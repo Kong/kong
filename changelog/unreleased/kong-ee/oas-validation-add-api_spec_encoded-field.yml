@@ -1,0 +1,3 @@
+message: "**OAS-Validation**: Add a new field `api_spec_encoded` to indicate whether the `api_spec` is URI-Encoded."
+type: feature
+scope: Plugin

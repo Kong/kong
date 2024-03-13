@@ -235,5 +235,13 @@ return {
     acl = {
       "include_consumer_groups"
     }
+  },
+
+  -- Any dataplane older than 3.7.0
+  [3007000000] = {
+    -- Enterprise plugins
+    oas_validation = {
+      "api_spec_encoded"
+    }
   }
 }

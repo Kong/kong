@@ -473,6 +473,9 @@ end
 
 local function parse_spec(conf)
   local spec_content = conf.api_spec
+  if conf.api_spec_encoded then
+    spec_content = ngx.unescape_uri(spec_content)
+  end
   -- includes conf.include_base_path as part of the cache key
   -- as it could lead to a different parsed result.
   local spec_cache_key = fmt("%s:%s",

@@ -160,7 +160,7 @@ describe("CP/DP config compat #" .. strategy, function()
       "services",
       "plugins",
       "clustering_data_planes",
-    }, {'graphql-rate-limiting-advanced', 'rate-limiting-advanced', 'openid-connect'})
+    }, {'graphql-rate-limiting-advanced', 'rate-limiting-advanced', 'openid-connect', "oas-validation"})
 
     PLUGIN_LIST = helpers.get_plugins_list()
 
@@ -180,7 +180,7 @@ describe("CP/DP config compat #" .. strategy, function()
       db_update_frequency = 0.1,
       cluster_listen = CP_HOST .. ":" .. CP_PORT,
       nginx_conf = "spec/fixtures/custom_nginx.template",
-      plugins = "bundled,graphql-rate-limiting-advanced,rate-limiting-advanced,openid-connect",
+      plugins = "bundled,graphql-rate-limiting-advanced,rate-limiting-advanced,openid-connect,oas-validation",
     }))
   end)
 
@@ -297,6 +297,20 @@ describe("CP/DP config compat #" .. strategy, function()
           config.introspection_endpoint_auth_method == nil and
           config.revocation_endpoint_auth_method    == nil
         end
+      },
+      {
+        plugin = "oas-validation",
+        label = "w/ api_spec_encoded unsupported",
+        pending = false,
+        config = {
+          api_spec = '{}',
+          api_spec_encoded = true
+        },
+        status = STATUS.NORMAL,
+        removed = FIELDS[3007000000].oas_validation,
+        validator = function(config)
+          return config.api_spec_encoded == nil
+        end
       }
     }
 
@@ -308,6 +322,7 @@ describe("CP/DP config compat #" .. strategy, function()
       end)
     end
   end)
+
 end)
 
 end -- each strategy

@@ -63,6 +63,7 @@ for _, strategy in helpers.each_strategy() do
           header_parameter_check = false,
           query_parameter_check = true,
           verbose_response = true,
+          api_spec_encoded = false,
         },
       })
       assert(helpers.start_kong({
