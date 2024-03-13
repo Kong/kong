@@ -23,6 +23,7 @@ local set        = require "kong.openid-connect.set"
 local jwt_ee     = require "kong.enterprise_edition.jwt"
 
 local get_request_id = require("kong.tracing.request_id").get
+local cjson          = require("cjson.safe").new()
 
 local find_claim = jwt_ee.find_claim
 local ngx        = ngx
@@ -106,7 +107,10 @@ do
       cache_introspection            = "cache_%s_introspection",
       trust_introspection            = "trust_%s_introspection",
       enable_introspection           = "enable_%s_introspection",
-      enable_hs_signatures           = "enable_hs_signatures"
+      enable_hs_signatures           = "enable_hs_signatures",
+      add_claims                     = "add_%s_claims",
+      set_claims                     = "set_%s_claims",
+      remove_claims                  = "remove_%s_claims",
     } do
       CONF[token_type][key] = fmt(value, token_type)
     end
@@ -263,16 +267,43 @@ local function instrument()
 end
 
 
-local function add_set_claims(payload, add_claims, set_claims)
-  for k, v in pairs(add_claims) do
-    if payload[k] == nil then
-      payload[k] = v
+local function update_claims(payload, add_global_claims,
+                             set_global_claims, add_claims,
+                             set_claims, remove_claims)
+  local new_payload = {}
+  local remove_claims_map = {}
+
+  for _, v in ipairs(remove_claims) do
+    remove_claims_map[v] = true
+  end
+
+  for k, v in pairs(payload) do
+    if remove_claims_map[k] == nil then
+      new_payload[k] = v
     end
   end
 
-  for k, v in pairs(set_claims) do
-    payload[k] = v
+  for k, v in pairs(set_global_claims) do
+    new_payload[k] = cjson.decode(v) or v
   end
+
+  for k, v in pairs(set_claims) do
+    new_payload[k] = cjson.decode(v) or v
+  end
+
+  for k, v in pairs(add_claims) do
+    if new_payload[k] == nil then
+      new_payload[k] = cjson.decode(v) or v
+    end
+  end
+
+  for k, v in pairs(add_global_claims) do
+    if new_payload[k] == nil then
+      new_payload[k] = cjson.decode(v) or v
+    end
+  end
+
+  return new_payload
 end
 
 
@@ -709,7 +740,10 @@ function JwtSignerHandler.access(_, conf)
           return unexpected(realm, "unexpected", errs.key_not_found, logs.key_not_found)
         end
 
-        add_set_claims(payload, conf.add_claims, conf.set_claims)
+        payload = update_claims(payload, conf.add_claims, conf.set_claims,
+                                args.get_conf_arg(config.add_claims, {}),
+                                args.get_conf_arg(config.set_claims, {}),
+                                args.get_conf_arg(config.remove_claims, {}))
 
         local signed_token
         signed_token, err = jws.encode({

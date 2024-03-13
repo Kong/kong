@@ -1,0 +1,8 @@
+message: >-
+  Support pseudo json value in add_claims and set_claims for JWT-Signer.
+  We can achieve the goal of passing multiple values to a key by passing a JSON string as the value.
+  And add add_access_token_claims, set_access_token_claims, add_channel_token_claims,
+  set_channel_token_claims for individually adding claims to access tokens and channel tokens.
+  Additionally, add remove_access_token_claims and remove_channel_token_claims to support the removal of claims.
+type: feature
+scope: Plugin

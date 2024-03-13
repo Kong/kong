@@ -319,7 +319,7 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
       end)
   end)
 
-  describe(fmt("%s - introspection - adding claims", plugin_name), function()
+  describe(fmt("%s - introspection - adding, setting and removing claims", plugin_name), function()
 
     lazy_setup(function()
       bp = helpers.get_db_utils(strategy, nil, { plugin_name })
@@ -340,10 +340,20 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
           add_claims = {
             foo = "bar2",
             test = "test",
+            arr1 = "{\"val1\", \"val2\"}",
           },
           set_claims = {
             bar = "qux",
-          }
+            arr2 = "{\"val1\", \"val2\"}",
+          },
+          add_access_token_claims = {
+            foo = "bar1",
+            arr1 = "{\"val0\", \"val1\"}",
+          },
+          set_access_token_claims = {
+            bar = "xuq",
+          },
+          remove_access_token_claims = {"username", "foo"},
         }
       }))
 
@@ -385,16 +395,17 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
           client_id = "some_client_id",
           iss = "kong",
           exp = "99999999999",
-          bar = "qux",
+          bar = "xuq",
           iat = "some_iat",
           aud = "some_aud",
-          username = "some_username",
           test = "test",
           scope = "some_scope",
           original_iss = "some_iss",
           sub = "some_sub",
-          foo = "bar",
+          foo = "bar1",
           baz = "baaz",
+          arr1 = "{\"val0\", \"val1\"}",
+          arr2 = "{\"val1\", \"val2\"}",
         }, decoded.payload)
       end)
   end)

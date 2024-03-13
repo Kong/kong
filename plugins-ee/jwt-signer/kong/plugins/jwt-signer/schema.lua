@@ -286,6 +286,35 @@ local config = {
             },
           },
           {
+            add_access_token_claims = {
+              type = "map",
+              keys = { type = "string" },
+              values = { type = "string" },
+              required = false,
+              default = {},
+              description = "Add customized claims if they are not present yet. Value can be a regular or JSON string; if JSON, decoded data is used as the claim's value.",
+            },
+          },
+          {
+            set_access_token_claims = {
+              type = "map",
+              keys = { type = "string" },
+              values = { type = "string" },
+              required = false,
+              default = {},
+              description = "Set customized claims. If a claim is already present, it will be overwritten. Value can be a regular or JSON string; if JSON, decoded data is used as the claim's value.",
+            },
+          },
+          {
+            remove_access_token_claims = {
+              type = "array",
+              elements = { type = "string" },
+              required = false,
+              default = {},
+              description = "remove claims. It should be an array, and each element is a claim key string.",
+            },
+          },
+          {
             access_token_optional = { description = "If an access token is not provided or no `config.access_token_request_header` is specified, the plugin cannot verify the access token. In that case, the plugin normally responds with `401 Unauthorized` (client didn't send a token) or `500 Unexpected` (a configuration error). Use this parameter to allow the request to proceed even when there is no token to check. If the token is provided, then this parameter has no effect", type = "boolean",
               default = false,
               required = false,
@@ -541,6 +570,35 @@ local config = {
             },
           },
           {
+            add_channel_token_claims = {
+              type = "map",
+              keys = { type = "string" },
+              values = { type = "string" },
+              required = false,
+              default = {},
+              description = "Add customized claims if they are not present yet. Value can be a regular or JSON string; if JSON, decoded data is used as the claim's value.",
+            },
+          },
+          {
+            set_channel_token_claims = {
+              type = "map",
+              keys = { type = "string" },
+              values = { type = "string" },
+              required = false,
+              default = {},
+              description = "Set customized claims. If a claim is already present, it will be overwritten. Value can be a regular or JSON string; if JSON, decoded data is used as the claim's value.",
+            },
+          },
+          {
+            remove_channel_token_claims = {
+              type = "array",
+              elements = { type = "string" },
+              required = false,
+              default = {},
+              description = "remove claims. It should be an array, and each element is a claim key string.",
+            },
+          },
+          {
             channel_token_optional = { description = "If a channel token is not provided or no `config.channel_token_request_header` is specified, the plugin cannot verify the channel token. In that case, the plugin normally responds with `401 Unauthorized` (client didn't send a token) or `500 Unexpected` (a configuration error). Enable this parameter to allow the request to proceed even when there is no channel token to check. If the channel token is provided, then this parameter has no effect", type = "boolean",
               default = false,
               required = false,
@@ -602,7 +660,7 @@ local config = {
               values = { type = "string" },
               required = false,
               default = {},
-              description = "Add customized claims if they are not present yet.",
+              description = "Add customized claims to both tokens if they are not present yet. Value can be a regular or JSON string; if JSON, decoded data is used as the claim's value.",
             },
           },
           {
@@ -612,7 +670,7 @@ local config = {
               values = { type = "string" },
               required = false,
               default = {},
-              description = "Set customized claims. If a claim is already present, it will be overwritten.",
+              description = "Set customized claims to both tokens. If a claim is already present, it will be overwritten. Value can be a regular or JSON string; if JSON, decoded data is used as the claim's value.",
             },
           },
         },

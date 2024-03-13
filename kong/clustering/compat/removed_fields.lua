@@ -242,6 +242,14 @@ return {
     -- Enterprise plugins
     oas_validation = {
       "api_spec_encoded"
+    },
+    jwt_signer = {
+      "add_access_token_claims",
+      "add_channel_token_claims",
+      "set_access_token_claims",
+      "set_channel_token_claims",
+      "remove_access_token_claims",
+      "remove_channel_token_claims",
     }
   }
 }
