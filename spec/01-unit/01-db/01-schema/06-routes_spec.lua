@@ -43,8 +43,7 @@ local function reload_flavor(flavor)
 end
 
 
---for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
-for _, flavor in ipairs({  "expressions" }) do
+for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
 describe("routes schema (flavor = " .. flavor .. ")", function()
   local a_valid_uuid = "cbb297c0-a956-486d-ad1d-f9b42df9465a"
   local another_uuid = "64a8670b-900f-44e7-a900-6ec7ef5aa4d3"
