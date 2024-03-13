@@ -305,6 +305,11 @@ end
 
 
 local function get_expression(route)
+  -- we perfer the field 'expression', ignore others
+  if not is_null(route.expression) then
+    return route.expression
+  end
+
   local methods = route.methods
   local hosts   = route.hosts
   local paths   = route.paths
@@ -512,6 +517,10 @@ local PLAIN_HOST_ONLY_BIT = lshift_uint64(0x01ULL, 60)
 local REGEX_URL_BIT       = lshift_uint64(0x01ULL, 51)
 
 
+-- expression only route has higher priority than traditional route
+local EXPRESSION_ONLY_BIT = lshift_uint64(0xFFULL, 55)
+
+
 -- convert a route to a priority value for use in the ATC router
 -- priority must be a 64-bit non negative integer
 -- format (big endian):
@@ -527,6 +536,11 @@ local REGEX_URL_BIT       = lshift_uint64(0x01ULL, 51)
 -- |                         |                                     |
 -- +-------------------------+-------------------------------------+
 local function get_priority(route)
+  -- we perfer the fields 'expression' and 'priority'
+  if not is_null(route.expression) then
+    return bor(EXPRESSION_ONLY_BIT, route.priority or 0)
+  end
+
   local snis = route.snis
   local srcs = route.sources
   local dsts = route.destinations

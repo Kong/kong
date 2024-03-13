@@ -23,6 +23,7 @@ end
 
 local function new_router(cases, old_router)
   -- add fields expression/priority only for flavor expressions
+  --[[
   if kong.configuration.router_flavor == "expressions" then
     for _, v in ipairs(cases) do
       local r = v.route
@@ -31,6 +32,7 @@ local function new_router(cases, old_router)
       r.priority = r.priority or atc_compat._get_priority(r)
     end
   end
+  --]]
 
   return Router.new(cases, nil, nil, old_router)
 end
