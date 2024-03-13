@@ -331,7 +331,11 @@ local function process_answers(self, qname, qtype, answers)
         answer.target = ipv6_bracket(answer.target)
       end
 
-      table_insert(processed_answers, answer)
+      -- skip the SRV record pointing to itself,
+      -- see https://github.com/Kong/lua-resty-dns-client/pull/3
+      if not (answer.type == TYPE_SRV and answer.target == qname) then
+        table_insert(processed_answers, answer)
+      end
     end
 
     if self.valid_ttl then

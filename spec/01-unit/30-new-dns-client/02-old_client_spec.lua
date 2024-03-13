@@ -1170,22 +1170,21 @@ describe("[DNS client]", function()
 
     it("recursive SRV pointing to itself",function()
       local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf"}))
-      local answers, port, host, err, _
+      local ip, answers, port, host, err, _
       host = "srvrecurse."..TEST_DOMAIN
 
-      -- resolve SRV specific should return the answers including its
+      -- resolve SRV specific should _not_ return the answers including its
       -- recursive entry
       answers, err, _ = cli:resolve(host, { qtype = resolver.TYPE_SRV })
-      assert.is_table(answers)
-      assert.equal(1, #answers)
-      assert.equal(host, answers[1].target)
-      assert.equal(host, answers[1].name)
-      assert.is_nil(err)
+      assert.same(answers, nil)
+      assert.same(err, "dns client error: 101 empty record received")
 
       -- default order, SRV, A; the recursive SRV answers fails, and it falls
       -- back to the IP4 address
-      _, port, _ = cli:resolve(host, { return_random = true })
-      assert.same(port, "recursion detected for name: srvrecurse.kong-gateway-testing.link")
+      ip, port, _ = cli:resolve(host, { return_random = true })
+      assert.is_string(ip)
+      assert.is_equal("10.0.0.44", ip)
+      assert.is_nil(port)
     end)
 
     it("resolving in correct answers-type order",function()
