@@ -80,7 +80,7 @@ jobs:
       matrix:
         gateway_mode: ['classic', 'hybrid']
         runs_on: ["${{ vars.RUNS_ON }}", "${{ fromJSON(inputs.multiarch && '[\"ubuntu-latest-arm64-kong\"]' || '[]') }}" ]
-    name: ${{ inputs.target_test }} API test - ${{ inputs.target_mode }} ${{ matrix.gateway_mode }} mode on ${{ matrix.runs_on }} for ${{ inputs.control_plane_image }}
+    name: ${{ inputs.target_test }} API test - ${{ matrix.gateway_mode }} mode on ${{ matrix.runs_on }} for ${{ inputs.control_plane_image }}
 
     steps:
       - name: Overwrite environment variables if workflow dispatch

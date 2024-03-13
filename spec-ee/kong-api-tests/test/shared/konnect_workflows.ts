@@ -33,33 +33,38 @@ const getControlPlanesUrl = (endpoint = 'control-planes') => {
 };
 
 export const getDefaultRuntimeGroup = async () => {
+  let runtimeGroupId;
   const config = getApiConfig(App.konnect);
   const api = new RuntimeGroupsApi(config);
 
   const team = teams.DefaultTeamNames.ORGANIZATION_ADMIN;
   const options = getAuthOptions(team);
 
-  const response = await api.getManyBase(
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    options
-  );
-  logResponse(response);
+  const request: any = () => api.getManyBase(
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      options
+    );
 
-  expect(response.status, 'response status should be 200').to.equal(200);
+  const assertions = (resp) => {
+    expect(resp.status, 'response status should be 200').to.equal(200);
 
-  const runtimeGroupId = response.data.data[0].id;
-  expect(uuidValidate(runtimeGroupId), 'runtime group id is a UUID').to.be.true;
+    runtimeGroupId = resp.data.data[0].id;
+    expect(uuidValidate(runtimeGroupId), 'runtime group id is a UUID').to.be.true;
+  };
+
+  // the runtime group creation is now async process, need to retry to get the id
+  await retryRequest(request, assertions);
+
   setRuntimeGroupId(runtimeGroupId);
-
   console.info(`\nCurrent Runtime Group id is  >>>   ${runtimeGroupId}  <<<`)
   console.info(`Current Organization name is >>>   ${getOrgName()}    <<<`)
   console.info(`You can access the organization with current user credentials at https://cloud.konghq.tech/us\n`)

@@ -84,7 +84,7 @@ jobs:
       matrix:
         gateway_mode: ['hybrid']
         runs_on: ["${{ vars.RUNS_ON }}", "${{ fromJSON(inputs.multiarch && '[\"ubuntu-latest-arm64-kong\"]' || '[]') }}" ]
-    name: ${{ inputs.target_test }} Konnect API test - ${{ inputs.target_mode }} ${{ matrix.gateway_mode }} mode on ${{ matrix.runs_on }} for ${{ inputs.data_plane_image }}
+    name: ${{ inputs.target_test }} Konnect API test - ${{ matrix.gateway_mode }} mode on ${{ matrix.runs_on }} for ${{ inputs.data_plane_image }}
 
     steps:
       - name: Checkout Source Code
