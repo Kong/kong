@@ -380,13 +380,13 @@ local function resolve_query(self, name, qtype, tries)
   end
 
   if not answers then
-    stats_count(self.stats, key, "query_fail")
+    stats_count(self.stats, key, "query_fail_nameserver")
     return nil, "DNS server error: " .. (err or "unknown")
   end
 
   answers = process_answers(self, name, qtype, answers)
 
-  stats_count(self.stats, key, answers.errstr and "query_err:" .. answers.errstr
+  stats_count(self.stats, key, answers.errstr and "query_fail:" .. answers.errstr
                                                or "query_succ")
 
   return answers, nil, answers.ttl
@@ -595,7 +595,6 @@ local function resolve_all(self, name, opts, tries)
   -- quickly lookup with the key "short:<name>:all" or "short:<name>:<qtype>"
   local answers, err, hit_level = self.cache:get(key)
   if not answers then
-    stats_count(self.stats, name, "miss")
     answers, err, tries = resolve_names_and_types(self, name, opts, tries)
     if not opts.cache_only and answers then
       -- insert via the `:get` callback to prevent inter-process communication
@@ -604,6 +603,7 @@ local function resolve_all(self, name, opts, tries)
       end)
     end
 
+    stats_count(self.stats, name, answers and "miss" or "fail")
   else
     local ctx = ngx.ctx
     if ctx and ctx.has_timing then
@@ -619,8 +619,6 @@ local function resolve_all(self, name, opts, tries)
     stats_count(self.stats, name, "cname")
     return resolve_all(self, answers[1].cname, opts, tries)
   end
-
-  stats_count(self.stats, name, answers and "succ" or "fail")
 
   return answers, err, tries
 end
@@ -698,6 +696,23 @@ end
 function _M.toip(name, port, cache_only, tries)
   local opts = { cache_only = cache_only, return_random = true , port = port }
   return dns_client:_resolve(name, opts, tries)
+end
+
+
+-- for example, "example.com:33" -> "example.com:SRV"
+local function format_key(key)
+  local qname, qtype = key:match("([^:]+):(%d+)")  -- match "(qname):(qtype)"
+  return qtype and qname .. ":" .. (typstrs[tonumber(qtype)] or qtype)
+               or  key
+end
+
+
+function _M.stats()
+  local stats = {}
+  for k, v in pairs(dns_client.stats) do
+    stats[format_key(k)] = v
+  end
+  return stats
 end
 
 
