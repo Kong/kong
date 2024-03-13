@@ -1321,7 +1321,7 @@ describe("routes schema (flavor = expressions)", function()
     route = Routes:process_auto_fields(route, "insert")
     local ok, errs = Routes:validate_insert(route)
     assert.falsy(ok)
-    assert.truthy(errs["expression"])
+    assert.truthy(errs["@entity"])
   end)
 
   it("fails given an invalid expression", function()

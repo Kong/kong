@@ -25,6 +25,7 @@ end
 
 
 local function gen_route(flavor, r)
+  --[[
   if flavor ~= "expressions" then
     return r
   end
@@ -33,6 +34,7 @@ local function gen_route(flavor, r)
   r.priority = tonumber(atc_compat._get_priority(r))
 
   r.destinations = nil
+  --]]
 
   return r
 end
