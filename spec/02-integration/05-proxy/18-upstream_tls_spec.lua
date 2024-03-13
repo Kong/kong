@@ -1,6 +1,5 @@
 local helpers = require "spec.helpers"
 local ssl_fixtures = require "spec.fixtures.ssl"
---local atc_compat = require "kong.router.compat"
 
 
 local other_ca_cert = [[
@@ -104,21 +103,6 @@ end
 
 
 local function gen_route(flavor, r)
-  --[[
-  if flavor ~= "expressions" then
-    return r
-  end
-
-  r.expression = atc_compat.get_expression(r)
-  r.priority = tonumber(atc_compat._get_priority(r))
-
-  r.hosts = nil
-  r.paths = nil
-  r.snis  = nil
-
-  r.destinations = nil
-  --]]
-
   return r
 end
 
