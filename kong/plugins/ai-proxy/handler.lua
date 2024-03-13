@@ -26,21 +26,6 @@ function _M:rewrite(conf)
 end
 
 function _M:header_filter(conf)
-  if kong.ctx.shared.skip_response_transformer then
-    local response_body
-    if kong.ctx.shared.parsed_response then
-      response_body = kong.ctx.shared.parsed_response
-    elseif kong.response.get_status() == 200 then
-      response_body = kong.service.response.get_raw_body()
-      if response_body then
-        local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
-
-        if is_gzip then
-          response_body = kong_utils.inflate_gzip(response_body)
-        end
-      end
-    end
-
     local ai_driver = require("kong.llm.drivers." .. conf.model.provider)
     local route_type = conf.route_type
     local new_response_string, err = ai_driver.from_format(kong.ctx.shared.parsed_response, conf.model, route_type)
@@ -95,6 +80,26 @@ function _M:header_filter(conf)
 end
 
 function _M:body_filter(conf)
+  -- if body_filter is called twice, then return
+  if kong.ctx.plugin.body_called then
+    return
+  end
+
+  if kong.ctx.shared.skip_response_transformer then
+    local response_body
+    if kong.ctx.shared.parsed_response then
+      response_body = kong.ctx.shared.parsed_response
+    elseif kong.response.get_status() == 200 then
+      response_body = kong.service.response.get_raw_body()
+      if response_body then
+        local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
+
+        if is_gzip then
+          response_body = kong_utils.inflate_gzip(response_body)
+        end
+      end
+    end
+
   if not kong.ctx.shared.skip_response_transformer then
     if (kong.response.get_status() == 200) or (kong.ctx.plugin.ai_parser_error) then
       -- all errors MUST be checked and returned in header_filter
@@ -115,6 +120,7 @@ function _M:body_filter(conf)
       ai_shared.post_request(conf, original_request)
     end
   end
+  kong.ctx.plugin.body_called = true
 end
 
 function _M:access(conf)
