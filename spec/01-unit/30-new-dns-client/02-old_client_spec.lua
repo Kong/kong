@@ -712,7 +712,6 @@ describe("[DNS client]", function()
       ["kong-gateway-testing.link"] = {
 	miss = 1,
 	runs = 1,
-	succ = 1
       },
       ["kong-gateway-testing.link:1"] = {
 	query = 1,
@@ -720,7 +719,7 @@ describe("[DNS client]", function()
       },
       ["kong-gateway-testing.link:33"] = {
 	query = 1,
-	["query_err:empty record received"] = 1
+	["query_fail:empty record received"] = 1
       },
       ["smtp.kong-gateway-testing.link"] = {
 	cname = 1,
@@ -772,7 +771,6 @@ describe("[DNS client]", function()
       ["cname2srv.kong-gateway-testing.link"] = {
         miss = 1,
         runs = 1,
-        succ = 1
       },
       ["cname2srv.kong-gateway-testing.link:33"] = {
         query = 1,
