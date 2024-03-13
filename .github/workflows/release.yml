@@ -888,13 +888,13 @@ jobs:
       build-images-provenance-result: ${{ steps.build-images-provenance-metadata.outputs.result }}
       release-images-provenance-result: ${{ steps.release-images-provenance-metadata.outputs.result }}
     steps:
-      - uses: cloudposse/github-action-matrix-outputs-read@5690ce6664e0dcdf06e27e4ba27e7a424951da56
+      - uses: cloudposse/github-action-matrix-outputs-read@33cac12fa9282a7230a418d859b93fdbc4f27b5a
         id: build-images-provenance-metadata
         with:
           matrix-step-name: build-images
       - run: |
           echo ${{ steps.build-images-provenance-metadata.outputs.result }}
-      - uses: cloudposse/github-action-matrix-outputs-read@5690ce6664e0dcdf06e27e4ba27e7a424951da56
+      - uses: cloudposse/github-action-matrix-outputs-read@33cac12fa9282a7230a418d859b93fdbc4f27b5a
         if: ${{ github.event.inputs.official  == 'true' }}
         id: release-images-provenance-metadata
         with:
