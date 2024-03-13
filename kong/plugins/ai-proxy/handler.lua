@@ -86,17 +86,22 @@ function _M:body_filter(conf)
   end
 
   if kong.ctx.shared.skip_response_transformer then
-    local response_body
+    local response_body, status
     if kong.ctx.shared.parsed_response then
       response_body = kong.ctx.shared.parsed_response
     elseif kong.response.get_status() == 200 then
-      response_body = kong.service.response.get_raw_body()
-      if response_body then
+      status, response_body = pcall( function()
+        return kong.service.response.get_raw_body()
+      end)
+      if status and response_body then
         local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
 
         if is_gzip then
           response_body = kong_utils.inflate_gzip(response_body)
         end
+      else
+        kong.log.warn("issue when retrieve the response body for analytics in the body filter phase.",
+                      " Please check AI request transformer plugin response")
       end
     end
 
