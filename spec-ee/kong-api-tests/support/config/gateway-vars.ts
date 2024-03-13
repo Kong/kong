@@ -8,7 +8,10 @@ export const vars = {
   },
   azure: {
     AZURE_FUNCTION_KEY:  process.env.AZURE_FUNCTION_KEY
-  }
+  },
+  app_dynamics: {
+    APPD_PASSWORD: process.env.APPD_PASSWORD,
+  },
 };
 /**
  * Check that all necessary environment variables are defined before test execution

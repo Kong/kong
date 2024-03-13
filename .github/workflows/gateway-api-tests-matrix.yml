@@ -260,9 +260,11 @@ jobs:
           STATUS_LISTEN: true
           PROMETHEUS: true
           AZURE_VAULT: true
+          APP_D: true
           AZURE_TENANT_ID: ${{ secrets.TEST_API_AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.TEST_API_AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.TEST_API_AZURE_CLIENT_SECRET }}
+          APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
           WASM: true
           # set CUSTOM_PLUGIN to false in case of amazonlinux-2 image
           CUSTOM_PLUGIN: ${{ (endsWith(env.GW_IMAGE, 'amazonlinux-2') || env.RUN_SPEC == 'non-smoke') && 'false' || 'true' }}
@@ -417,9 +419,11 @@ jobs:
           STATUS_LISTEN: true
           PROMETHEUS: true
           AZURE_VAULT: true
+          APP_D: true
           AZURE_TENANT_ID: ${{ secrets.TEST_API_AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.TEST_API_AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.TEST_API_AZURE_CLIENT_SECRET }}
+          APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
           WASM: true
           # set CUSTOM_PLUGIN to false in case of amazonlinux-2 image
           CUSTOM_PLUGIN: ${{ (endsWith(env.GW_IMAGE, 'amazonlinux-2') || env.RUN_SPEC == 'non-smoke') && 'false' || 'true' }}
@@ -574,9 +578,11 @@ jobs:
           CUSTOM_CONFIG_ALL: "RLA_REDISU: redisuser; RLA_REDISP: redispassword; AWS_REGION: us-east-2; AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID }}; AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY }}; GCP_SERVICE_ACCOUNT: '${{ secrets.TEST_API_GCP_SERVICE_ACCOUNT }}'"
           WASM: true
           AZURE_VAULT: true
+          APP_D: true
           AZURE_TENANT_ID: ${{ secrets.TEST_API_AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.TEST_API_AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.TEST_API_AZURE_CLIENT_SECRET }}
+          APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
 
       - name: Logs from Gateway Start
         if: failure()

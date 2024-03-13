@@ -62,6 +62,9 @@ There are tests which rely on specific gateway environment variables, make sure 
 
   [AZURE_FUNCTION_KEY](https://start.1password.com/open/i?a=KJVYOL2OTVGRPAAAHEVOL6MXZE&v=q7r4hh4465zentymwtoonxxp3m&i=e7vip43g3nucwsrb44ijs6qsfa&h=team-kong.1password.com)`="<azure_function_key>"`
 
+- `app-dynamics test`
+  [APPD_PASSWORD](https://start.1password.com/open/i?a=KJVYOL2OTVGRPAAAHEVOL6MXZE&v=q7r4hh4465zentymwtoonxxp3m&i=syw6avr7bddbconfzep6o6jokq&h=team-kong.1password.com) `="<appd_password>"`
+
 - `rla-secret-referene` test
 
   `RLA_REDISU=redisuser`

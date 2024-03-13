@@ -100,6 +100,7 @@ export {
   waitForConfigHashUpdate,
   waitForDictUpdate,
   queryPrometheusMetrics,
+  queryAppdynamicsMetrics,
   getAllMetrics
 } from './utilities/metrics';
 export { eventually } from './utilities/eventually';

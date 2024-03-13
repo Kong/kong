@@ -1,13 +1,19 @@
 import axios from 'axios';
 import { wait } from './random';
 import { expect } from '../assert/chai-expect';
-import { getBasePath, Environment, isGateway, getNegative } from '@support';
+import { getBasePath, Environment, isGateway, getNegative, logResponse, logDebug, vars } from '@support';
 import https from 'https';
+
 
 const host = getBasePath({ environment: isGateway() ? Environment.gateway.hostName : undefined });
 const metricsUrl = `https://${host}:8100/metrics`;
 const dataPlaneMetricsUrl =`https://${host}:8101/metrics`;
 const prometheusQueryUrl = `http://${host}:9090/api/v1/query`
+const appDynamicsMetricUrl = 'https://kong-nfr.saas.appdynamics.com/controller/rest/applications'
+
+const appDUser = 'kong-nfr@kong-nfr'
+const appDPassword = vars.app_dynamics.APPD_PASSWORD || ''
+
 
 const agent = new https.Agent({
   rejectUnauthorized: false,
@@ -97,7 +103,7 @@ export const waitForConfigHashUpdate = async (
 
 /**
  * Return the shared dict byte value from the metrics API
- * @param {string }dict_name - name of the shared dict to check
+ * @param {string} dict_name - name of the shared dict to check
  * @returns shared dict byte value
  */
 export const getSharedDictValue = async (dict_name) => {
@@ -141,4 +147,63 @@ export const queryPrometheusMetrics = async (query) => {
   expect(resp.data.data.result, `Should receive prometheus query results for ${query}`).to.not.be.empty;
 
   return resp.data.data
+}
+
+/**
+ * Wait for the given service to appear in AppDynamics
+ * @param {string} serviceName - name of the service to wait for
+ * @param {string} appName - name of the app to wait for
+ * @returns {object} - response from AppDynamics
+*/
+export const waitForAppDMetrics = async (serviceName, appName) => {
+  const timeout = 150000
+  let timeWaited = 0
+  let resp
+  while (timeWaited <= timeout) {
+    resp = await axios({
+      url: `${appDynamicsMetricUrl}/${appName}/metric-data?metric-path=Business%20Transaction%20Performance%7CBusiness%20Transactions%7CSdetTier%7C${serviceName}%7CAverage%20Response%20Time%20%28ms%29&time-range-type=BEFORE_NOW&duration-in-mins=10&output=JSON`, 
+      auth: { username: appDUser, password: appDPassword},
+      validateStatus: null,
+    });
+    if (resp.data.length > 0 && resp.data[0].metricName != 'METRIC DATA NOT FOUND') {
+      logResponse(resp)
+      break;
+    }
+    // eslint-disable-next-line no-restricted-syntax
+    await wait(5000)
+    timeWaited += 5000
+  }
+  logResponse(resp)
+  if (resp.data.length === 0) {
+    logDebug(`Service ${serviceName} could not be found in AppDynamics`)
+  }
+  else if(resp.data[0].metricName == 'METRIC DATA NOT FOUND') {
+    logDebug(`Service ${serviceName} exists but no metric data was found`)
+  }
+  return resp;
+}
+
+/**
+ * Querys the target metrics data from appdynamics
+ * @param {string} serviceName - name of the service to query
+ * @param {string} appName - name of the app to query
+ * @param {number} expectedRequestNum - expected number of requests
+* @returns {object} - response from AppDynamics
+ */
+export const queryAppdynamicsMetrics = async (serviceName, appName, expectedRequestNum) => {
+  await waitForAppDMetrics(serviceName, appName)
+  const resp = await axios({
+    url: `${appDynamicsMetricUrl}/${appName}/metric-data?metric-path=Business%20Transaction%20Performance%7CBusiness%20Transactions%7CSdetTier%7C${serviceName}%7CAverage%20Response%20Time%20%28ms%29&time-range-type=BEFORE_NOW&duration-in-mins=10&output=JSON`, 
+    auth: { username: appDUser, password: appDPassword},
+    validateStatus: null,
+  });
+  logResponse(resp)
+  expect(resp.status, 'Status should be 200').to.equal(200)
+  expect(resp.data, `Should receive AppDynamics query results for Average Response Time`).to.not.be.empty
+  expect(resp.data[0].metricName, 'Should see correct metric name').to.contain('Average Response Time (ms)')
+  expect(resp.data[0].metricPath, 'Should see service name in metric path').to.contain(serviceName)
+  expect(resp.data[0].metricValues, 'Should see expected metric values').to.not.be.empty
+  expect(resp.data[0].metricValues[0].count, 'Should see expected metric values').to.equal(expectedRequestNum)
+
+  return resp.data
 }

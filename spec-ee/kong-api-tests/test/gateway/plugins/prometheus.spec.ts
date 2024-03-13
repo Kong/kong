@@ -231,7 +231,6 @@ describe('Gateway Plugins: Prometheus', function () {
     });
   });
 
-  
   it('should enable the prometheus plugin status_code_metrics', async function () {
     pluginPayload = { ...pluginPayload, config: { status_code_metrics: true } }
 
@@ -333,7 +332,7 @@ describe('Gateway Plugins: Prometheus', function () {
     });
   })
 
-    it('should enable the prometheus plugin upstream_health_metrics', async function () {
+  it('should enable the prometheus plugin upstream_health_metrics', async function () {
       pluginPayload = { ...pluginPayload, consumer: null, config: { upstream_health_metrics: true } }
 
       // change service host to point to upstream
@@ -360,27 +359,27 @@ describe('Gateway Plugins: Prometheus', function () {
       await addTargetToUpstream(upstreamId, target)
 
       await waitForConfigRebuild();
-    });
+  });
   
-    it(`should see the new kong_upstream_target_health metric exported from kong`, async function () {
-      // send request to upstream to log the request's upstream_target_health metric
-      for(let i = 1; i <= 2; i++) {
-        // eslint-disable-next-line no-restricted-syntax
-        await wait(3000)
-        const resp = await axios({
-          url: `${proxyUrl}/${routePath}`
-        })
-        logResponse(resp);
-        expect(resp.status, 'Status should be 200').to.equal(200);
-      }
-    
-      await eventually(async () => {
-        const kongDpData = await getAllMetrics(isGwHybrid() ? "dp" : "cp")
-        expect(kongDpData.includes('kong_upstream_target_health'), `should see kong_upstream_target_health in kong ${isGwHybrid() ? "dp" : "cp"} metrics`).to.be.true
-      });
+  it(`should see the new kong_upstream_target_health metric exported from kong`, async function () {
+    // send request to upstream to log the request's upstream_target_health metric
+    for(let i = 1; i <= 2; i++) {
+      // eslint-disable-next-line no-restricted-syntax
+      await wait(3000)
+      const resp = await axios({
+        url: `${proxyUrl}/${routePath}`
+      })
+      logResponse(resp);
+      expect(resp.status, 'Status should be 200').to.equal(200);
+    }
+  
+    await eventually(async () => {
+      const kongDpData = await getAllMetrics(isGwHybrid() ? "dp" : "cp")
+      expect(kongDpData.includes('kong_upstream_target_health'), `should see kong_upstream_target_health in kong ${isGwHybrid() ? "dp" : "cp"} metrics`).to.be.true
     });
+  });
 
-    it(`should see the new kong_upstream_target_health metric in prometheus`, async function () {
+  it(`should see the new kong_upstream_target_health metric in prometheus`, async function () {
       // send request to upstream to log the request's upstream_target_health metric
       for(let i = 1; i <= 2; i++) {
         // eslint-disable-next-line no-restricted-syntax
@@ -408,7 +407,7 @@ describe('Gateway Plugins: Prometheus', function () {
       targetStates.every((state) => {
         expect(promTargetResults.has(state), `Should see ${state} state in the target health array`).to.be.true
       })
-    });
+  });
 
   it('should delete the prometheus plugin', async function () {
     const resp = await axios({
