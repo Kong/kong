@@ -178,7 +178,7 @@ local routes = {
 if kong_router_flavor == "expressions" then
 
   local special_fields = {
-    { expression = { description = "The route expression.", type = "string" }, },
+    { expression = { description = "The route expression.", type = "string" }, },   -- not required now
     { priority = { description = "A number used to choose which route resolves a given request when several routes match it using expression simultaneously.", type = "integer", required = true, default = 0 }, },
   }
 

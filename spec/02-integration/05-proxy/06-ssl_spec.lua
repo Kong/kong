@@ -2,7 +2,7 @@ local ssl_fixtures = require "spec.fixtures.ssl"
 local helpers      = require "spec.helpers"
 local cjson        = require "cjson"
 local fmt          = string.format
-local atc_compat = require "kong.router.compat"
+--local atc_compat = require "kong.router.compat"
 
 
 local function get_cert(server_name)

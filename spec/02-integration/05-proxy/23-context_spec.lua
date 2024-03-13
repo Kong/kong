@@ -1,6 +1,6 @@
 local helpers = require "spec.helpers"
 local null = ngx.null
-local atc_compat = require "kong.router.compat"
+--local atc_compat = require "kong.router.compat"
 
 
 local function reload_router(flavor)

@@ -1,6 +1,6 @@
 local helpers = require "spec.helpers"
 local ssl_fixtures = require "spec.fixtures.ssl"
-local atc_compat = require "kong.router.compat"
+--local atc_compat = require "kong.router.compat"
 
 
 local other_ca_cert = [[

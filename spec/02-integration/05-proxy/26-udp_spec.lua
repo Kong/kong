@@ -1,5 +1,5 @@
 local helpers = require "spec.helpers"
-local atc_compat = require "kong.router.compat"
+--local atc_compat = require "kong.router.compat"
 
 
 local UDP_PROXY_PORT = 26001

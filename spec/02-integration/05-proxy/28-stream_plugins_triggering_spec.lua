@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 local pl_file = require "pl.file"
 local cjson = require "cjson"
-local atc_compat = require "kong.router.compat"
+--local atc_compat = require "kong.router.compat"
 
 
 local TEST_CONF = helpers.test_conf

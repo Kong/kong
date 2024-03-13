@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local pl_path = require "pl.path"
-local atc_compat = require "kong.router.compat"
+--local atc_compat = require "kong.router.compat"
 
 local FILE_LOG_PATH = os.tmpname()
 
