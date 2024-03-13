@@ -100,34 +100,43 @@ function initialize_test_list() {
     # Prepare list of tests to run
     if [ -z "$TESTS" ]
     then
-        all_tests_file=$(mktemp)
         available_tests_file=$(mktemp)
+        missing_tests=()
 
         docker exec $OLD_CONTAINER kong migrations reset --yes || true
         docker exec $OLD_CONTAINER kong migrations bootstrap
-        kong migrations status \
-            | jq -r '.new_migrations | .[] | (.namespace | gsub("[.]"; "/")) as $namespace | .migrations[] | "\($namespace)/\(.)_spec.lua" | gsub("^kong"; "spec/05-migration")' \
-            | sort > $all_tests_file
-        ls 2>/dev/null $(cat $all_tests_file) \
-            | sort > $available_tests_file
+        all_migrations=$(kong migrations status \
+            | jq -r '.new_migrations | .[] | (.namespace | gsub("kong."; "") | gsub("[.]"; "/")) as $namespace | .migrations[] | "\($namespace)/\(.)"' | sort)
+
+        for migration in $all_migrations; do
+            ce_test=spec/05-migration/"$migration"_spec.lua
+            ee_test=spec-ee/06-migration/"$migration"_spec.lua
+
+            if [ -e "$ce_test" ]; then
+                echo $ce_test >> $available_tests_file
+            elif [ -e "$ee_test" ]; then
+                echo $ee_test >> $available_tests_file
+            else
+                missing_tests+=("$migration")
+            fi
+        done
 
         if [ "$IGNORE_MISSING_TESTS" = "1" ]
         then
             TESTS=$(cat $available_tests_file)
         else
-            if ! cmp -s $available_tests_file $all_tests_file
+            if [ ${#missing_tests[@]} -ne 0 ];
             then
-                echo "Not all migrations have corresponding tests, cannot continue.  Missing test(s):"
+                echo "Not all migrations have corresponding tests, cannot continue.  Tests missing for migration(s):"
                 echo
-                comm -13 $available_tests_file $all_tests_file \
-                     | perl -pe 's/^/    /g'
+                printf "%s\n" "${missing_tests[@]}"
                 echo
-                rm $available_tests_file $all_tests_file
+                rm $available_tests_file
                 exit 1
             fi
-            TESTS=$(cat $all_tests_file)
+            TESTS=$(cat $available_tests_file)
         fi
-        rm $available_tests_file $all_tests_file
+        rm $available_tests_file
     fi
 
     echo "Going to run:"
