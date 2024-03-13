@@ -484,7 +484,7 @@ jobs:
     #   GHA limiatations doesn't allow aggregated output list:
     #     https://github.com/actions/runner/pull/2477?
     #   GHA limiatations doesn't support dynamic output keys for matrix jobs
-    - uses: cloudposse/github-action-matrix-outputs-write@928e2a2d3d6ae4eb94010827489805c17c81181f
+    - uses: cloudposse/github-action-matrix-outputs-write@ed06cf3a6bf23b8dce36d1cf0d63123885bb8375
       id: write-prerelease-provenance-metadata
       with:
         matrix-step-name: ${{ github.job }}
@@ -853,7 +853,7 @@ jobs:
     # Workaround to aggregate the tags output from the image build step
     # GHA limiatations doesn't allow aggregated output list: https://github.com/actions/runner/pull/2477?
     # GHA limiatations doesn't support dynamic output keys for matrix jobs
-    - uses: cloudposse/github-action-matrix-outputs-write@928e2a2d3d6ae4eb94010827489805c17c81181f
+    - uses: cloudposse/github-action-matrix-outputs-write@ed06cf3a6bf23b8dce36d1cf0d63123885bb8375
       if: >
         github.event.inputs.official  == 'true'
         && steps.attestation_metadata.outputs.release_tags != ''
