@@ -2,7 +2,7 @@ local helpers = require "spec.helpers"
 local utils = require "pl.utils"
 local stringx = require "pl.stringx"
 local http = require "resty.http"
-local atc_compat = require "kong.router.compat"
+--local atc_compat = require "kong.router.compat"
 
 
 local function count_server_blocks(filename)
