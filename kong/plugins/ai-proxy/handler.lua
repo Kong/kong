@@ -21,7 +21,34 @@ local function internal_server_error(msg)
   return kong.response.exit(500, { error = { message = msg } })
 end
 
+function _M:rewrite(conf)
+  kong.ctx.shared.ai_request = true
+end
+
 function _M:header_filter(conf)
+  if kong.ctx.shared.skip_response_transformer then
+    local response_body
+    if kong.ctx.shared.parsed_response then
+      response_body = kong.ctx.shared.parsed_response
+    elseif kong.response.get_status() == 200 then
+      response_body = kong.service.response.get_raw_body()
+      if response_body then
+        local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
+
+        if is_gzip then
+          response_body = kong_utils.inflate_gzip(response_body)
+        end
+      end
+    end
+
+    local ai_driver = require("kong.llm.drivers." .. conf.model.provider)
+    local route_type = conf.route_type
+    local new_response_string, err = ai_driver.from_format(kong.ctx.shared.parsed_response, conf.model, route_type)
+    if new_response_string then
+      ai_shared.post_request(conf, new_response_string)
+    end
+  end
+
   if not kong.ctx.shared.skip_response_transformer then
     -- clear shared restricted headers
     for i, v in ipairs(ai_shared.clear_response_headers.shared) do
