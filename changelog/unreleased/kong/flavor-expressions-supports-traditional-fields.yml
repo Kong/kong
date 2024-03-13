@@ -1,0 +1,4 @@
+message: |
+  The router flavor `expressions` now supports the definition of traditional routes.
+type: feature
+scope: Core
