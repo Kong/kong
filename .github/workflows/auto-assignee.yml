@@ -11,5 +11,5 @@ jobs:
       - name: assign-author
         # ignore the pull requests opened from PR because token is not correct
         if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
-        uses: toshimaru/auto-author-assign@c1ffd6f64e20f8f5f61f4620a1e5f0b0908790ef
+        uses: toshimaru/auto-author-assign@ebd30f10fb56e46eb0759a14951f36991426fed0
 

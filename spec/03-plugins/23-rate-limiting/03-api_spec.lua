@@ -21,7 +21,7 @@ for _, strategy in helpers.each_strategy() do
         admin_client:close()
       end
 
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     describe("POST", function()

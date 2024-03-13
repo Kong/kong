@@ -1,7 +1,6 @@
 local typedefs = require "kong.db.schema.typedefs"
 local reserved_words = require "kong.plugins.acme.reserved_words"
 local redis_schema = require "kong.tools.redis.schema"
-local deprecation = require("kong.deprecation")
 
 local tablex = require "pl.tablex"
 
@@ -43,18 +42,20 @@ local LEGACY_SCHEMA_TRANSLATIONS = {
     type = "string",
     len_min = 0,
     translate_backwards = {'password'},
+    deprecation = {
+      message = "acme: config.storage_config.redis.auth is deprecated, please use config.storage_config.redis.password instead",
+      removal_in_version = "4.0", },
     func = function(value)
-      deprecation("acme: config.storage_config.redis.auth is deprecated, please use config.storage_config.redis.password instead",
-        { after = "4.0", })
       return { password = value }
     end
   }},
   { ssl_server_name = {
     type = "string",
     translate_backwards = {'server_name'},
+    deprecation = {
+      message = "acme: config.storage_config.redis.ssl_server_name is deprecated, please use config.storage_config.redis.server_name instead",
+      removal_in_version = "4.0", },
     func = function(value)
-      deprecation("acme: config.storage_config.redis.ssl_server_name is deprecated, please use config.storage_config.redis.server_name instead",
-        { after = "4.0", })
       return { server_name = value }
     end
   }},
@@ -62,18 +63,20 @@ local LEGACY_SCHEMA_TRANSLATIONS = {
     type = "string",
     len_min = 0,
     translate_backwards = {'extra_options', 'namespace'},
+    deprecation = {
+      message = "acme: config.storage_config.redis.namespace is deprecated, please use config.storage_config.redis.extra_options.namespace instead",
+      removal_in_version = "4.0", },
     func = function(value)
-      deprecation("acme: config.storage_config.redis.namespace is deprecated, please use config.storage_config.redis.extra_options.namespace instead",
-        { after = "4.0", })
       return { extra_options = { namespace = value } }
     end
   }},
   { scan_count = {
     type = "integer",
     translate_backwards = {'extra_options', 'scan_count'},
+    deprecation = {
+      message = "acme: config.storage_config.redis.scan_count is deprecated, please use config.storage_config.redis.extra_options.scan_count instead",
+      removal_in_version = "4.0", },
     func = function(value)
-      deprecation("acme: config.storage_config.redis.scan_count is deprecated, please use config.storage_config.redis.extra_options.scan_count instead",
-        { after = "4.0", })
       return { extra_options = { scan_count = value } }
     end
   }},

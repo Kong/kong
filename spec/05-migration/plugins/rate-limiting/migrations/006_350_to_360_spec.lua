@@ -10,7 +10,7 @@ if uh.database_type() == 'postgres' then
         end)
 
         lazy_teardown(function ()
-            assert(uh.stop_kong(nil, true))
+            assert(uh.stop_kong())
         end)
 
         uh.setup(function ()

@@ -2,7 +2,7 @@ use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 
-plan tests => 2;
+plan tests => 5;
 
 run_tests();
 
@@ -25,3 +25,20 @@ GET /t
 --- response_body
 127.0.0.1
 --- no_error_log
+
+
+
+=== TEST 2: load lua-resty-dns-client
+--- config
+    location = /t {
+        access_by_lua_block {
+            local client = require("kong.resty.dns.client")
+            assert(client.init({ timeout = 0 }))
+            ngx.exit(200)
+        }
+    }
+--- request
+GET /t
+--- error_log
+[notice]
+timeout = 2000 ms (a non-positive timeout of 0 configured - using default timeout)

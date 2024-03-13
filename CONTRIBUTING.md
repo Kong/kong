@@ -37,7 +37,7 @@ Consult the Table of Contents below, and jump to the desired section.
             * [Writing changelog](#writing-changelog)
             * [Writing performant code](#writing-performant-code)
             * [Adding Changelog](#adding-changelog)
-        * [Contributor T-shirt](#contributor-t-shirt)
+        * [Contributor Badge](#contributor-badge)
     * [Code style](#code-style)
         * [Table of Contents - Code style](#table-of-contents---code-style)
         * [Modules](#modules)
@@ -205,7 +205,7 @@ to it if necessary.
 If your Pull Request was accepted and fixes a bug, adds functionality, or
 makes it significantly easier to use or understand Kong, congratulations!
 You are now an official contributor to Kong. Get in touch with us to receive
-your very own [Contributor T-shirt](#contributor-t-shirt)!
+your very own [Contributor Badge](#contributor-badge)!
 
 Your change will be included in the subsequent release Changelog, and we will
 not forget to include your name if you are an external contributor. :wink:
@@ -542,7 +542,7 @@ language you are using. :smile:
 
 #### Adding Changelog
 
-Every patch, except those 
+Every patch, except those
 documentation-only changes, requires a changelog entry to be present inside your Pull Request.
 
 Please follow [the changelog instructions](https://github.com/Kong/gateway-changelog)
@@ -550,18 +550,19 @@ to create the appropriate changelog file your Pull Request.
 
 [Back to TOC](#table-of-contents)
 
-### Contributor T-shirt
+### Contributor Badge
 
 If your Pull Request to [Kong/kong](https://github.com/Kong/kong) was
 accepted, and it fixes a bug, adds functionality, or makes it significantly
 easier to use or understand Kong, congratulations! You are eligible to
-receive the very special Contributor T-shirt! Go ahead and fill out the
+receive the very special digital Contributor Badge! Go ahead and fill out the
 [Contributors Submissions form](https://goo.gl/forms/5w6mxLaE4tz2YM0L2).
 
-Proudly wear your T-shirt and show it to us by tagging
+Proudly display your Badge and show it to us by tagging
 [@thekonginc](https://twitter.com/thekonginc) on Twitter!
 
-![Kong Contributor T-shirt](https://konghq.com/wp-content/uploads/2018/04/100-contributor-t-shirt-1024x768.jpg)
+*Badges expire after 1 year, at which point you may submit a new contribution
+to renew the badge.*
 
 [Back to TOC](#table-of-contents)
 

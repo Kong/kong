@@ -32,6 +32,7 @@ local log = ngx.log
 local ERR = ngx.ERR
 local WARN = ngx.WARN
 local ALERT = ngx.ALERT
+local NOTICE = ngx.NOTICE
 local DEBUG = ngx.DEBUG
 --[[
   DEBUG = ngx.WARN
@@ -54,6 +55,8 @@ local req_dyn_hook_run_hooks = req_dyn_hook.run_hooks
 
 local DOT   = string_byte(".")
 local COLON = string_byte(":")
+local DEFAULT_TIMEOUT = 2000 -- 2000 is openresty default
+
 
 local EMPTY = setmetatable({},
   {__newindex = function() error("The 'EMPTY' table is read-only") end})
@@ -621,10 +624,15 @@ _M.init = function(options)
     if resolv.options.timeout then
       options.timeout = resolv.options.timeout * 1000
     else
-      options.timeout = 2000  -- 2000 is openresty default
+      options.timeout = DEFAULT_TIMEOUT
     end
   end
-  log(DEBUG, PREFIX, "timeout = ", options.timeout, " ms")
+  if options.timeout > 0 then
+    log(DEBUG, PREFIX, "timeout = ", options.timeout, " ms")
+  else
+    log(NOTICE, PREFIX, "timeout = ", DEFAULT_TIMEOUT, " ms (a non-positive timeout of ", options.timeout, " configured - using default timeout)")
+    options.timeout = DEFAULT_TIMEOUT
+  end
 
   -- setup the search order
   options.ndots = options.ndots or resolv.options.ndots or 1

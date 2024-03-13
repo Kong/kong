@@ -213,6 +213,7 @@ function get_instance_id(plugin_name, conf)
 
   if instance_info
     and instance_info.id
+    and instance_info.seq == conf.__seq__
     and instance_info.conf and instance_info.conf.__plugin_id == key
   then
     -- exact match, return it
@@ -224,6 +225,7 @@ function get_instance_id(plugin_name, conf)
     -- we're the first, put something to claim
     instance_info          = {
       conf = conf,
+      seq = conf.__seq__,
     }
     running_instances[key] = instance_info
   else
@@ -246,6 +248,7 @@ function get_instance_id(plugin_name, conf)
   instance_info.id = new_instance_info.id
   instance_info.plugin_name = plugin_name
   instance_info.conf = new_instance_info.conf
+  instance_info.seq = new_instance_info.seq
   instance_info.Config = new_instance_info.Config
   instance_info.rpc = new_instance_info.rpc
 

@@ -524,9 +524,7 @@ local function get_priority(route)
 
   -- stream expression
 
-  if not is_empty_field(srcs) or
-     not is_empty_field(dsts)
-  then
+  if is_stream_route(route) then
     return stream_get_priority(snis, srcs, dsts)
   end
 

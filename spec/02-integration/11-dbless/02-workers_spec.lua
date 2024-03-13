@@ -29,7 +29,7 @@ describe("Workers initialization #off", function()
   lazy_teardown(function()
     admin_client:close()
     proxy_client:close()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
   it("restarts worker correctly without issues on the init_worker phase when config includes 1000+ plugins", function()
