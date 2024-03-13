@@ -269,5 +269,20 @@ return {
       }
       return kong.response.exit(200, body)
     end
-  }
+  },
+  ["/dns"] = {
+    GET = function (self, db, helpers)
+      if not kong.dns.stats then
+        return kong.response.exit(404, { message = "not support for legacy DNS client" })
+      end
+      local body = {
+        worker = {
+          id = ngx.worker.id() or -1,
+          count = ngx.worker.count(),
+        },
+        stats = kong.dns.stats(),
+      }
+      return kong.response.exit(200, body)
+    end
+  },
 }
