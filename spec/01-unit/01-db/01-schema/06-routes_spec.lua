@@ -1282,9 +1282,20 @@ describe("routes schema (flavor = expressions)", function()
     local route = {
       id             = a_valid_uuid,
       name           = "my_route",
-      protocols      = { "http" },
+      protocols      = { "https" },
+
+      methods        = { "GET", "POST" },
+      hosts          = { "example.com" },
+      headers        = { location = { "location-1" } },
+      paths          = { "/ovo" },
+
+      snis           = { "example.org" },
+      sources        = {{ ip = "127.0.0.1" }},
+      destinations   = {{ ip = "127.0.0.1" }},
+
       expression     = [[(http.method == "GET")]],
       priority       = 100,
+
       strip_path     = false,
       preserve_host  = true,
       service        = { id = another_uuid },
