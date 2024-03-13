@@ -99,6 +99,10 @@ local alg_sign = {
       return nil
     end
     return sig
+  end,
+  EdDSA = function(data, key)
+    local pkey = assert(openssl_pkey.new(key))
+    return assert(pkey:sign(data))
   end
 }
 
@@ -111,23 +115,17 @@ local alg_verify = {
   RS256 = function(data, signature, key)
     local pkey, _ = openssl_pkey.new(key)
     assert(pkey, "Consumer Public Key is Invalid")
-    local digest = openssl_digest.new("sha256")
-    assert(digest:update(data))
-    return pkey:verify(signature, digest)
+    return pkey:verify(signature, data, "sha256")
   end,
   RS384 = function(data, signature, key)
     local pkey, _ = openssl_pkey.new(key)
     assert(pkey, "Consumer Public Key is Invalid")
-    local digest = openssl_digest.new("sha384")
-    assert(digest:update(data))
-    return pkey:verify(signature, digest)
+    return pkey:verify(signature, data, "sha384")
   end,
   RS512 = function(data, signature, key)
     local pkey, _ = openssl_pkey.new(key)
     assert(pkey, "Consumer Public Key is Invalid")
-    local digest = openssl_digest.new("sha512")
-    assert(digest:update(data))
-    return pkey:verify(signature, digest)
+    return pkey:verify(signature, data, "sha512")
   end,
   -- https://www.rfc-editor.org/rfc/rfc7518#section-3.4
   ES256 = function(data, signature, key)
@@ -150,6 +148,7 @@ local alg_verify = {
     --  ECDSA P-521 SHA-512, R and S will be 521 bits each, resulting in a
     --  132-octet sequence.
     local pkey, _ = openssl_pkey.new(key)
+    assert(pkey, "Consumer Public Key is Invalid")
     assert(#signature == 96, "Signature must be 96 bytes.")
     return pkey:verify(signature, data, "sha384", nil, { ecdsa_use_raw = true })
   end,
@@ -163,6 +162,7 @@ local alg_verify = {
     --  ECDSA P-521 SHA-512, R and S will be 521 bits each, resulting in a
     --  132-octet sequence.
     local pkey, _ = openssl_pkey.new(key)
+    assert(pkey, "Consumer Public Key is Invalid")
     assert(#signature == 132, "Signature must be 132 bytes.")
     return pkey:verify(signature, data, "sha512", nil, { ecdsa_use_raw = true })
   end,
@@ -185,7 +185,13 @@ local alg_verify = {
     assert(#signature == 256, "Signature must be 256 bytes")
     return pkey:verify(signature, data, "sha512", openssl_pkey.PADDINGS.RSA_PKCS1_PSS_PADDING)
   end,
-
+  EdDSA = function(data, signature, key)
+    -- Support of EdDSA alg typ according to RFC 8037
+    -- https://www.rfc-editor.org/rfc/rfc8037
+    local pkey, _ = openssl_pkey.new(key)
+    assert(pkey, "Consumer Public Key is Invalid")
+    return pkey:verify(signature, data)
+  end
 }
 
 

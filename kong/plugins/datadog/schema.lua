@@ -1,5 +1,4 @@
 local typedefs = require "kong.db.schema.typedefs"
-local deprecation = require("kong.deprecation")
 
 local STAT_NAMES = {
   "kong_latency",
@@ -89,17 +88,30 @@ return {
               consumer_tag = { description = "String to be attached as tag of the consumer.", type = "string",
               default = "consumer" }, },
           {
-              retry_count = { description = "Number of times to retry when sending data to the upstream server.",
-              type = "integer" }, },
+              retry_count = {
+                description = "Number of times to retry when sending data to the upstream server.",
+                type = "integer",
+                deprecation = {
+                  message = "datadog: config.retry_count no longer works, please use config.queue.max_retry_time instead",
+                  removal_in_version = "4.0",
+                  old_default = 10 }, }, },
           {
               queue_size = {
-              description = "Maximum number of log entries to be sent on each message to the upstream server.",
-              type = "integer" }, },
+                description = "Maximum number of log entries to be sent on each message to the upstream server.",
+                type = "integer",
+                deprecation = {
+                  message = "datadog: config.queue_size is deprecated, please use config.queue.max_batch_size instead",
+                  removal_in_version = "4.0",
+                  old_default = 1 }, }, },
           {
               flush_timeout = {
-              description =
-              "Optional time in seconds. If `queue_size` > 1, this is the max idle time before sending a log with less than `queue_size` records.",
-              type = "number" }, },
+                description =
+                  "Optional time in seconds. If `queue_size` > 1, this is the max idle time before sending a log with less than `queue_size` records.",
+                type = "number",
+                deprecation = {
+                  message = "datadog: config.flush_timeout is deprecated, please use config.queue.max_coalescing_delay instead",
+                  removal_in_version = "4.0",
+                  old_default = 2 }, }, },
           { queue = typedefs.queue },
           {
             metrics = {
@@ -133,29 +145,6 @@ return {
                   }, },
               },
             },
-          },
-        },
-
-        entity_checks = {
-          {
-            custom_entity_check = {
-              field_sources = { "retry_count", "queue_size", "flush_timeout" },
-              fn = function(entity)
-                if (entity.retry_count or ngx.null) ~= ngx.null and entity.retry_count ~= 10 then
-                  deprecation("datadog: config.retry_count no longer works, please use config.queue.max_retry_time instead",
-                    { after = "4.0", })
-                end
-                if (entity.queue_size or ngx.null) ~= ngx.null and entity.queue_size ~= 1 then
-                  deprecation("datadog: config.queue_size is deprecated, please use config.queue.max_batch_size instead",
-                    { after = "4.0", })
-                end
-                if (entity.flush_timeout or ngx.null) ~= ngx.null and entity.flush_timeout ~= 2 then
-                  deprecation("datadog: config.flush_timeout is deprecated, please use config.queue.max_coalescing_delay instead",
-                    { after = "4.0", })
-                end
-                return true
-              end
-            }
           },
         },
       },
