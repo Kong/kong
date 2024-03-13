@@ -26,14 +26,6 @@ function _M:rewrite(conf)
 end
 
 function _M:header_filter(conf)
-    local ai_driver = require("kong.llm.drivers." .. conf.model.provider)
-    local route_type = conf.route_type
-    local new_response_string, err = ai_driver.from_format(kong.ctx.shared.parsed_response, conf.model, route_type)
-    if new_response_string then
-      ai_shared.post_request(conf, new_response_string)
-    end
-  end
-
   if not kong.ctx.shared.skip_response_transformer then
     -- clear shared restricted headers
     for i, v in ipairs(ai_shared.clear_response_headers.shared) do
@@ -81,7 +73,7 @@ end
 
 function _M:body_filter(conf)
   -- if body_filter is called twice, then return
-  if kong.ctx.plugin.body_called then
+  if not kong.ctx.plugin.body_called then
     if kong.ctx.shared.skip_response_transformer then
       local response_body, status
       if kong.ctx.shared.parsed_response then
@@ -98,9 +90,17 @@ function _M:body_filter(conf)
           end
         else
           kong.log.warn("issue when retrieve the response body for analytics in the body filter phase.",
-                        " Please check AI request transformer plugin response")
+                        " Please check AI request transformer plugin response.")
         end
       end
+
+      local ai_driver = require("kong.llm.drivers." .. conf.model.provider)
+      local route_type = conf.route_type
+      local new_response_string, err = ai_driver.from_format(response_body, conf.model, route_type)
+      if new_response_string then
+        ai_shared.post_request(conf, new_response_string)
+      end
+    end
   
     if not kong.ctx.shared.skip_response_transformer then
       if (kong.response.get_status() == 200) or (kong.ctx.plugin.ai_parser_error) then
