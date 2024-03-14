@@ -25,7 +25,7 @@ local cjson_encode = cjson.encode
 
 
 -- The correct identifier for draft-4 is 'http://json-schema.org/draft-04/schema#'
--- with the the fragment (#) intact. Newer editions use an identifier _without_
+-- with the fragment (#) intact. Newer editions use an identifier _without_
 -- the fragment (e.g. 'https://json-schema.org/draft/2020-12/schema'), so we
 -- will be lenient when comparing these strings.
 assert(type(metaschema.id) == "string",
