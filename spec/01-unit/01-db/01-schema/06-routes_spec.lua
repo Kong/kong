@@ -1343,11 +1343,12 @@ describe("routes schema (flavor = expressions)", function()
 end)
 
 
-describe("routes schema (flavor = traditional_compatible)", function()
+for _, flavor in ipairs({ "traditional_compatible", "expressions" }) do
+describe("routes schema (flavor = " .. flavor .. ")", function()
   local a_valid_uuid = "cbb297c0-a956-486d-ad1d-f9b42df9465a"
   local another_uuid = "64a8670b-900f-44e7-a900-6ec7ef5aa4d3"
 
-  reload_flavor("traditional_compatible")
+  reload_flavor(flavor)
   setup_global_env()
 
   it("validates a valid http route", function()
@@ -1437,6 +1438,7 @@ describe("routes schema (flavor = traditional_compatible)", function()
     assert.is_nil(errs)
   end)
 end)
+end   -- flavor in ipairs({ "traditional_compatible", "expressions" })
 
 
 describe("routes schema (flavor = expressions)", function()

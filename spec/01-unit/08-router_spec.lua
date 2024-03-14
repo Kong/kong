@@ -4985,8 +4985,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
   end)
 end
 
-do
-  local flavor = "traditional_compatible"
+for _, flavor in ipairs({ "traditional_compatible", "expressions" }) do
 
   describe("Router (flavor = " .. flavor .. ")", function()
     reload_router(flavor)
@@ -5129,7 +5128,8 @@ do
       assert.same(use_case[2].route, match_t.route)
     end)
   end)
-end   -- local flavor = "traditional_compatible"
+end   -- for flavor
+
 
 do
   local flavor = "expressions"
