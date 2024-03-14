@@ -54,7 +54,7 @@ env:
   KONG_TEST_COVERAGE: ${{ inputs.coverage == true || github.event_name == 'schedule' }}
   AWS_EC2_METADATA_DISABLED: true
   ENABLE_COREDUMP_DEBUG: true
-  RUNNER_COUNT: 7
+  RUNNER_COUNT: 12
 
 # cancel previous runs if new commits are pushed to the PR, but run for each commit on master
 concurrency:
@@ -808,14 +808,8 @@ jobs:
         - second
         - third
         - fourth
-        - fifth
-        - sixth
-        - seventh
-        - eighth
-        - ninth
         - fips-first
         - fips-second
-        - fips-third
 
         label:
         - normal

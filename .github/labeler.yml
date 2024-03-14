@@ -290,69 +290,21 @@ plugins/jwe-decrypt:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/jwe-decrypt/**/*
 
-plugins-ee/jwt-signer:
-- changed-files:
-  - any-glob-to-any-file: plugins-ee/jwt-signer/**/*
-
-plugins-ee/kafka-log:
-- changed-files:
-  - any-glob-to-any-file: plugins-ee/kafka-log/**/*
-
-plugins-ee/kafka-upstream:
-- changed-files:
-  - any-glob-to-any-file: plugins-ee/kafka-upstream/**/*
-
 plugins/key-auth-enc:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/key-auth-enc/**/*
-
-plugins-ee/konnect-application-auth:
-- changed-files:
-  - any-glob-to-any-file: plugins-ee/konnect-application-auth/**/*
-
-plugins-ee/ldap-auth-advanced:
-- changed-files:
-  - any-glob-to-any-file: plugins-ee/ldap-auth-advanced/**/*
 
 plugins/mocking:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/mocking/**/*
 
-plugins-ee/mtls-auth:
-- changed-files:
-  - any-glob-to-any-file: plugins-ee/mtls-auth/**/*
-
-plugins-ee/oas-validation:
-- changed-files:
-  - any-glob-to-any-file: plugins-ee/oas-validation/**/*
-
 plugins/oauth2-introspection:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/oauth2-introspection/**/*
 
-plugins-ee/opa:
-- changed-files:
-  - any-glob-to-any-file: plugins-ee/opa/**/*
-
-plugins-ee/openid-connect:
-- changed-files:
-  - any-glob-to-any-file: plugins-ee/openid-connect/**/*
-
-plugins-ee/proxy-cache-advanced:
-- changed-files:
-  - any-glob-to-any-file: plugins-ee/proxy-cache-advanced/**/*
-
-plugins-ee/rate-limiting-advanced:
-- changed-files:
-  - any-glob-to-any-file: plugins-ee/rate-limiting-advanced/**/*
-
 plugins/request-transformer-advanced:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/request-transformer-advanced/**/*
-
-plugins-ee/request-validator:
-- changed-files:
-  - any-glob-to-any-file: plugins-ee/request-validator/**/*
 
 plugins/response-transformer-advanced:
 - changed-files:
@@ -365,10 +317,6 @@ plugins/route-by-header:
 plugins/route-transformer-advanced:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/route-transformer-advanced/**/*
-
-plugins-ee/saml:
-- changed-files:
-  - any-glob-to-any-file: plugins-ee/saml/**/*
 
 plugins/statsd-advanced:
 - changed-files:
@@ -386,10 +334,6 @@ plugins/upstream-timeout:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/upstream-timeout/**/*
 
-plugins-ee/vault-auth:
-- changed-files:
-  - any-glob-to-any-file: plugins-ee/vault-auth/**/*
-
 plugins/websocket-size-limit:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/websocket-size-limit/**/*
@@ -401,6 +345,62 @@ plugins/websocket-validator:
 plugins/xml-threat-protection:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/xml-threat-protection/**/*
+
+plugins-ee/oas-validation:
+- changed-files:
+  - any-glob-to-any-file: plugins-ee/oas-validation/**/*
+
+plugins-ee/jwt-signer:
+- changed-files:
+  - any-glob-to-any-file: plugins-ee/jwt-signer/**/*
+
+plugins-ee/kafka-log:
+- changed-files:
+  - any-glob-to-any-file: plugins-ee/kafka-log/**/*
+
+plugins-ee/kafka-upstream:
+- changed-files:
+  - any-glob-to-any-file: plugins-ee/kafka-upstream/**/*
+
+plugins-ee/konnect-application-auth:
+- changed-files:
+  - any-glob-to-any-file: plugins-ee/konnect-application-auth/**/*
+
+plugins-ee/ldap-auth-advanced:
+- changed-files:
+  - any-glob-to-any-file: plugins-ee/ldap-auth-advanced/**/*
+
+plugins-ee/mtls-auth:
+- changed-files:
+  - any-glob-to-any-file: plugins-ee/mtls-auth/**/*
+
+plugins-ee/opa:
+- changed-files:
+  - any-glob-to-any-file: plugins-ee/opa/**/*
+
+plugins-ee/openid-connect:
+- changed-files:
+  - any-glob-to-any-file: plugins-ee/openid-connect/**/*
+
+plugins-ee/proxy-cache-advanced:
+- changed-files:
+  - any-glob-to-any-file: plugins-ee/proxy-cache-advanced/**/*
+
+plugins-ee/rate-limiting-advanced:
+- changed-files:
+  - any-glob-to-any-file: plugins-ee/rate-limiting-advanced/**/*
+
+plugins-ee/request-validator:
+- changed-files:
+  - any-glob-to-any-file: plugins-ee/request-validator/**/*
+
+plugins-ee/saml:
+- changed-files:
+  - any-glob-to-any-file: plugins-ee/saml/**/*
+
+plugins-ee/vault-auth:
+- changed-files:
+  - any-glob-to-any-file: plugins-ee/vault-auth/**/*
 
 copyright:
 - changed-files:

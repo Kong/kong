@@ -90,11 +90,12 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
     rm -f .failed
 
     declare -A plugins_to_test=(
-        ["first"]="proxy-cache-advanced jwt-signer kafka-upstream kafka-log opa ldap-auth-advanced"
-        ["second"]="openid-connect konnect-application-auth"
-        ["third"]="mtls-auth request-validator saml graphql-rate-limiting-advanced rate-limiting-advanced vault-auth"
-        ["fips-first"]="jwt-signer openid-connect"
-        ["fips-second"]="mtls-auth saml"
+        ["first"]="openid-connect"
+        ["second"]="ldap-auth-advanced proxy-cache-advanced"
+        ["third"]="rate-limiting-advanced kafka-log oas-validation saml vault-auth"
+        ["fourth"]="mtls-auth jwt-signer request-validator kafka-upstream konnect-application-auth opa graphql-rate-limiting-advanced"
+        ["fips-first"]="openid-connect"
+        ["fips-second"]="jwt-signer mtls-auth saml"
     )
 
     plugins=${plugins_to_test["$TEST_SPLIT"]}
