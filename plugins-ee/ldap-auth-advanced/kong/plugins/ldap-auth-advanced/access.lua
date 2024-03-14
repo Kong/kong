@@ -154,7 +154,7 @@ local function ldap_authenticate(given_username, given_password, conf)
 
       if err then
         formated_err = fmt("failed ldap search for %s=%s, base_dn=%s: %s",
-                          conf.attribute, given_username, conf.base_dn)
+                          conf.attribute, given_username, conf.base_dn, err)
         kong.log.err(formated_err)
         return nil, nil, formated_err
       end
