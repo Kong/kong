@@ -39,8 +39,8 @@ end
 -- @param record a DNS record previously created
 function _M.dnsExpire(client, record)
   local dnscache = client.getcache()
-  dnscache:set(record[1].name .. ":" .. record[1].type, nil)
-  dnscache:set("short:" .. record[1].name .. ":" .. "all", nil)
+  dnscache:delete(record[1].name .. ":" .. record[1].type)
+  dnscache:delete("short:" .. record[1].name .. ":" .. "all")
   record.expire = gettime() - 1
 end
 

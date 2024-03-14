@@ -251,7 +251,6 @@ function _M.new(opts)
     ipc             = ipc,
     neg_ttl         = opts.empty_ttl or DEFAULT_EMPTY_TTL,
     lru_size        = opts.cache_size or 10000,
-    shm_miss        = "kong_dns_cache_miss",
     resty_lock_opts = resty_lock_opts,
   })
 
@@ -416,8 +415,7 @@ local function stale_update_task(premature, self, key, name, qtype, short_key, t
   end
 
   if not answers.errcode or answers.errcode == NAME_ERROR_CODE then
-    local value = answers.errcode ~= NAME_ERROR_CODE and answers or nil
-    self.cache:set(key, { ttl = answers.ttl }, value)
+    self.cache:set(key, { ttl = answers.ttl }, answers)
     insert_last_type(self.cache, name, qtype)
 
     -- simply invalidate it and let the search iteration choose the correct one
@@ -460,10 +458,6 @@ local function resolve_name_type_callback(self, name, qtype, opts, tries)
 
   local answers, err, ttl = resolve_query(self, name, qtype, tries)
 
-  if answers and answers.errcode == NAME_ERROR_CODE then
-    return nil  -- empty record for shm_miss cache
-  end
-
   return answers, err, ttl
 end
 
@@ -493,11 +487,6 @@ local function resolve_name_type(self, name, qtype, opts, tries)
   -- check for runtime errors in the callback
   if err and err:sub(1, 8) == "callback" then
     log(ALERT, err)
-  end
-
-  -- restore the nil value in mlcache shm_miss to "name error" answers
-  if not answers and not err then
-    answers = NAME_ERROR_ANSWERS
   end
 
   local ctx = ngx.ctx

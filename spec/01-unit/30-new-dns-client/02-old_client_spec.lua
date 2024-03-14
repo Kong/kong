@@ -1312,31 +1312,26 @@ describe("[DNS client]", function()
     assert.is_nil(answers1)
     assert.are.equal(1, call_count)
     assert.are.equal(NOT_FOUND_ERROR, err1)
-    answers1, err1 = cli.cache:get(qname .. ":" .. resolver.TYPE_A)
-    assert.is_nil(answers1)
-    assert.is_nil(err1) -- nil, nil for cache miss
+    answers1 = assert(cli.cache:get(qname .. ":" .. resolver.TYPE_A))
 
     -- make a second request, result from cache, still called only once
     answers2, err2, _ = cli:resolve(qname, { qtype = resolver.TYPE_A })
     assert.is_nil(answers2)
     assert.are.equal(1, call_count)
     assert.are.equal(NOT_FOUND_ERROR, err2)
-    answers2, err2 = cli.cache:get(qname .. ":" .. resolver.TYPE_A)
-    assert.is_nil(answers2)
-    assert.is_nil(err2) -- nil, nil for cache miss
+    answers2 = assert(cli.cache:get(qname .. ":" .. resolver.TYPE_A))
+    assert.equal(answers1, answers2)
+    assert.falsy(answers2.expired)
 
-    -- wait for expiry of _ttl and retry, still called only once
+    -- wait for expiry of ttl and retry, still called only once
     ngx.sleep(empty_ttl+0.5 * stale_ttl)
-
-    -- we cant start stale-updating task for cache missed empty answers
     answers2, err2 = cli:resolve(qname, { qtype = resolver.TYPE_A })
     assert.is_nil(answers2)
+    assert.are.equal(1, call_count)
     assert.are.equal(NOT_FOUND_ERROR, err2)
-    assert.are.equal(2, call_count)
 
-    answers2, err2 = cli.cache:get(qname .. ":" .. resolver.TYPE_A)
-    assert.is_nil(answers2)
-    assert.is_nil(err2) -- nil, nil for cache miss
+    answers2 = assert(cli.cache:get(qname .. ":" .. resolver.TYPE_A))
+    assert.is_true(answers2.expired)  -- by now, record is marked as expired
 
     -- wait for expiry of stale_ttl and retry, should be called twice now
     ngx.sleep(0.75 * stale_ttl)
@@ -1346,9 +1341,9 @@ describe("[DNS client]", function()
     assert.are.equal(NOT_FOUND_ERROR, err2)
     assert.are.equal(2, call_count)
 
-    answers2, err2 = cli.cache:get(qname .. ":" .. resolver.TYPE_A)
-    assert.is_nil(answers2)
-    assert.is_nil(err2) -- nil, nil for cache miss
+    answers2 = assert(cli.cache:get(qname .. ":" .. resolver.TYPE_A))
+    assert.not_equal(answers1, answers2)
+    assert.falsy(answers2.expired)  -- new answers, not expired
   end)
 
   it("verifies ttl and caching of (other) dns errors", function()
