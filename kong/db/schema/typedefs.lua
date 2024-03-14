@@ -498,7 +498,13 @@ local function validate_host_with_wildcards(host)
 end
 
 
-local function is_valid_regex(regex)
+local function is_regex_pattern(pattern)
+  return pattern:sub(1, 1) == "~"
+end
+
+
+local function is_valid_regex_pattern(pattern)
+  local regex = pattern:sub(2) -- remove the leading "~"
   -- the value will be interpreted as a regex by the router; but is it a
   -- valid one? Let's dry-run it with the same options as our router.
   local _, _, err = ngx.re.find("", regex, "aj")
@@ -513,33 +519,32 @@ end
 
 
 local function validate_path_with_regexes(path)
-
   local ok, err, err_code = typedefs.path.custom_validator(path)
 
   if err_code == "percent" then
     return ok, err, err_code
   end
 
-  if path:sub(1, 1) ~= "~" then
-    -- prefix matching. let's check if it's normalized form
-    local normalized = normalize(path, true)
-    if path ~= normalized then
-      return nil, "non-normalized path, consider use '" .. normalized .. "' instead"
-    end
-
-    return true
+  if is_regex_pattern(path) then
+    return is_valid_regex_pattern(path)
   end
 
-  return is_valid_regex(path:sub(2))
+  -- prefix matching. let's check if it's normalized form
+  local normalized = normalize(path, true)
+  if path ~= normalized then
+    return nil, "non-normalized path, consider use '" .. normalized .. "' instead"
+  end
+
+  return true
 end
 
 
 local function validate_regex_or_plain_pattern(pattern)
-  if pattern:sub(1, 1) ~= "~" then
+  if not is_regex_pattern(pattern) then
     return true
   end
 
-  return is_valid_regex(pattern:sub(2))
+  return is_valid_regex_pattern(pattern)
 end
 
 
