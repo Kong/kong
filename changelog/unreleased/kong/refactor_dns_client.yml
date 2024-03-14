@@ -1,3 +1,8 @@
-message: refactor and implement a new DNS client library
+message: >
+  Refactor and implement a new DNS client library
+  1. Utilize mlcache as the DNS record cache
+  2. Introduce observable statistics and admin API `/dns` to retrieve them
+  3. Introduce the `legacy_dns_client` option to toggle whether to use the new library
+  4. Deprecate the `dns_no_sync` option; it always uses synchronous queries
 type: feature
 scope: Core
