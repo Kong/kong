@@ -197,7 +197,8 @@ end
 
 local function query_entity(context, self, db, schema, method)
   local is_insert = context == "insert"
-  local is_update = context == "update" or context == "upsert"
+  local is_upsert = context == "upsert"
+  local is_update = context == "update" or is_upsert
 
   local args
   if is_update or is_insert then
@@ -241,8 +242,44 @@ local function query_entity(context, self, db, schema, method)
       end
     end
 
-    if key.id and not utils.is_valid_uuid(key.id) then
+    if key.id then
       local endpoint_key = schema.endpoint_key
+      if utils.is_valid_uuid(key.id) then
+        -- If key is a valid uuid we need to check the entity both by it's primary key and endpoint_key.
+        -- However it's possible that the endpoint key does not support uuid as name and by looking it up
+        -- we might encounter "worse" error. Therefore if the key is uuid and there's no such entity with
+        -- this id we just want to "try" querying it by endpoint_key but if we do not succed we want to
+        -- fallback to the response we received by qurying it via primary key.
+        -- Note:
+        -- This excludes upsert path - if a user used uuid and this is upsert request type then we treat it
+        -- as preferred id.
+        local res, err, err_t, offset
+        if is_upsert then
+          return dao[method or context](dao, key, args, opts)
+        elseif is_update then
+          res, err, err_t, offset = dao[method or context](dao, key, args, opts)
+        else
+          res, err, err_t, offset = dao[method or context](dao, key, opts)
+        end
+
+        if (not res or (err_t and err_t.code == Errors.codes.NOT_FOUND)) and endpoint_key then
+          local field = schema.fields[endpoint_key]
+          local inferred_value = arguments.infer_value(key.id, field)
+          local res_endpoint_key, err_endpoint_key, err_t_endpoint_key, offset_endpoint_key
+          if is_update then
+            res_endpoint_key, err_endpoint_key, err_t_endpoint_key, offset_endpoint_key = dao[method or context .. "_by_" .. endpoint_key](dao, inferred_value, args, opts)
+          else
+            res_endpoint_key, err_endpoint_key, err_t_endpoint_key, offset_endpoint_key = dao[method or context .. "_by_" .. endpoint_key](dao, inferred_value, opts)
+          end
+
+          if res_endpoint_key then
+            return res_endpoint_key, err_endpoint_key, err_t_endpoint_key, offset_endpoint_key
+          end
+        end
+
+        return res, err, err_t, offset
+      end
+
       if endpoint_key then
         local field = schema.fields[endpoint_key]
         local inferred_value = arguments.infer_value(key.id, field)
