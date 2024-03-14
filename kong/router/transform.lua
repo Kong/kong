@@ -20,7 +20,7 @@ local bor, band, lshift, rshift = bit.bor, bit.band, bit.lshift, bit.rshift
 
 local is_regex_magic  = utils.is_regex_magic
 local replace_dashes_lower  = require("kong.tools.string").replace_dashes_lower
-local shallow_copy    = require("kong.tools.utils").shallow_copy
+local shallow_copy = require("kong.tools.utils").shallow_copy
 
 
 local is_null
@@ -682,7 +682,7 @@ local function split_route_by_path_into(route_and_service, routes_and_services_s
   local original_route = route_and_service.route
 
   if is_empty_field(original_route.paths) or #original_route.paths == 1 or
-     not is_null(original_route.expression)
+     not is_null(original_route.expression) -- expression will ignore paths
   then
     tb_insert(routes_and_services_split, route_and_service)
     return
