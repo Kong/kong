@@ -1,4 +1,3 @@
-local helpers = require "spec.helpers"
 local sleep = ngx.sleep
 
 describe("[DNS client stats]", function()
