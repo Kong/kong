@@ -278,7 +278,7 @@ end
 
 
 function _M.new(routes, cache, cache_neg, old_router, get_exp_and_priority)
-  -- route_and_service argument is a table with [route] and [service]
+  -- routes argument is a table with [route] and [service]
   if type(routes) ~= "table" then
     return error("expected arg #1 routes to be a table")
   end
