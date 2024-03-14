@@ -70,7 +70,6 @@ local hitstrs = {
 
 -- server replied error from the DNS protocol
 local NAME_ERROR_CODE    = 3 -- response code 3 as "Name Error" or "NXDOMAIN"
-local NAME_ERROR_ANSWERS = { errcode = NAME_ERROR_CODE, errstr = "name error" }
 -- client specific error
 local CACHE_ONLY_EC      = 100
 local CACHE_ONLY_ESTR    = "cache only lookup failed"
