@@ -1283,7 +1283,26 @@ describe("routes schema (flavor = expressions)", function()
   reload_flavor("expressions")
   setup_global_env()
 
-  it("validates a valid route", function()
+  it("validates a valid route with only expression field", function()
+    local route = {
+      id             = a_valid_uuid,
+      name           = "my_route",
+      protocols      = { "http" },
+      expression     = [[(http.method == "GET")]],
+      priority       = 100,
+      strip_path     = false,
+      preserve_host  = true,
+      service        = { id = another_uuid },
+    }
+    route = Routes:process_auto_fields(route, "insert")
+    assert.truthy(route.created_at)
+    assert.truthy(route.updated_at)
+    assert.same(route.created_at, route.updated_at)
+    assert.truthy(Routes:validate(route))
+    assert.falsy(route.strip_path)
+  end)
+
+  it("validates a valid route without expression field", function()
     local route = {
       id             = a_valid_uuid,
       name           = "my_route",
@@ -1297,9 +1316,6 @@ describe("routes schema (flavor = expressions)", function()
       snis           = { "example.org" },
       sources        = {{ ip = "127.0.0.1" }},
       destinations   = {{ ip = "127.0.0.1" }},
-
-      expression     = [[(http.method == "GET")]],
-      priority       = 100,
 
       strip_path     = false,
       preserve_host  = true,
@@ -1321,7 +1337,7 @@ describe("routes schema (flavor = expressions)", function()
     assert.truthy(errs["priority"])
   end)
 
-  it("fails when expression is missing", function()
+  it("fails when all fields is missing", function()
     local route = { expression = ngx.null }
     route = Routes:process_auto_fields(route, "insert")
     local ok, errs = Routes:validate_insert(route)
