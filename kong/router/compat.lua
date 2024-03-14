@@ -2,27 +2,28 @@ local _M = {}
 
 
 local atc = require("kong.router.atc")
-local utils = require("kong.router.utils")
+--local utils = require("kong.router.utils")
 local transform = require("kong.router.transform")
-local tb_new = require("table.new")
-local tb_nkeys = require("table.nkeys")
-local uuid = require("resty.jit-uuid")
+--local tb_new = require("table.new")
+--local tb_nkeys = require("table.nkeys")
+--local uuid = require("resty.jit-uuid")
 
 
-local shallow_copy    = require("kong.tools.utils").shallow_copy
+--local shallow_copy    = require("kong.tools.utils").shallow_copy
 
 
-local is_regex_magic  = utils.is_regex_magic
-local is_empty_field  = transform.is_empty_field
+--local is_regex_magic  = utils.is_regex_magic
+--local is_empty_field  = transform.is_empty_field
 local get_expression  = transform.get_expression
 local get_priority    = transform.get_priority
+local split_routes_and_services_by_path = transform.split_routes_and_services_by_path
 
 
 local type = type
-local pairs = pairs
-local ipairs = ipairs
-local assert = assert
-local tb_insert = table.insert
+--local pairs = pairs
+--local ipairs = ipairs
+--local assert = assert
+--local tb_insert = table.insert
 
 
 local is_http = ngx.config.subsystem == "http"
@@ -31,7 +32,7 @@ local is_http = ngx.config.subsystem == "http"
 -- When splitting routes, we need to assign new UUIDs to the split routes.  We use uuid v5 to generate them from
 -- the original route id and the path index so that incremental rebuilds see stable IDs for routes that have not
 -- changed.
-local uuid_generator = assert(uuid.factory_v5('7f145bf9-0dce-4f91-98eb-debbce4b9f6b'))
+--local uuid_generator = assert(uuid.factory_v5('7f145bf9-0dce-4f91-98eb-debbce4b9f6b'))
 
 
 local function get_exp_and_priority(route)
@@ -47,6 +48,7 @@ local function get_exp_and_priority(route)
 end
 
 
+--[[
 -- group array-like table t by the function f, returning a table mapping from
 -- the result of invoking f on one of the elements to the actual elements.
 local function group_by(t, f)
@@ -106,6 +108,7 @@ local function split_routes_and_services_by_path(routes_and_services)
 
   return routes_and_services_split
 end
+--]]
 
 
 function _M.new(routes_and_services, cache, cache_neg, old_router)
