@@ -845,9 +845,11 @@ local function check_and_parse(conf, opts)
     errors[#errors + 1] = err
   end
 
+  -- this name must match the repository name: ngx_wasm_module
   if conf.wasm and check_dynamic_module("ngx_wasm_module") then
     local err
-    conf.wasm_dynamic_module, err = lookup_dynamic_module_so("ngx_wasm_module", conf)
+    -- this name must match the .so file name: ngx_wasmx_module.so
+    conf.wasm_dynamic_module, err = lookup_dynamic_module_so("ngx_wasmx_module", conf)
     if err then
       errors[#errors + 1] = err
     end
