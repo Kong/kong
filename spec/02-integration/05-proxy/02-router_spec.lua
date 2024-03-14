@@ -122,8 +122,7 @@ local function remove_routes(strategy, routes)
   admin_api.plugins:remove(enable_buffering_plugin)
 end
 
---for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
-for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
+for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
 for _, b in ipairs({ false, true }) do enable_buffering = b
 for _, strategy in helpers.each_strategy() do
   describe("Router [#" .. strategy .. ", flavor = " .. flavor .. "] with buffering [" .. (b and "on]" or "off]") , function()

@@ -10,6 +10,7 @@ local utils = require("kong.router.utils")
 
 local type = type
 local assert = assert
+local pairs = pairs
 local ipairs = ipairs
 local tb_insert = table.insert
 local fmt = string.format

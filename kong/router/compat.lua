@@ -16,17 +16,17 @@ local transform = require("kong.router.transform")
 --local is_empty_field  = transform.is_empty_field
 local get_expression  = transform.get_expression
 local get_priority    = transform.get_priority
-local split_routes_and_services_by_path = transform.split_routes_and_services_by_path
+--local split_routes_and_services_by_path = transform.split_routes_and_services_by_path
 
 
-local type = type
+--local type = type
 --local pairs = pairs
 --local ipairs = ipairs
 --local assert = assert
 --local tb_insert = table.insert
 
 
-local is_http = ngx.config.subsystem == "http"
+--local is_http = ngx.config.subsystem == "http"
 
 
 -- When splitting routes, we need to assign new UUIDs to the split routes.  We use uuid v5 to generate them from
@@ -113,6 +113,7 @@ end
 
 function _M.new(routes_and_services, cache, cache_neg, old_router)
   -- route_and_service argument is a table with [route] and [service]
+  --[[
   if type(routes_and_services) ~= "table" then
     return error("expected arg #1 routes to be a table", 2)
   end
@@ -120,6 +121,7 @@ function _M.new(routes_and_services, cache, cache_neg, old_router)
   if is_http then
     routes_and_services = split_routes_and_services_by_path(routes_and_services)
   end
+  --]]
 
   return atc.new(routes_and_services, cache, cache_neg, old_router, get_exp_and_priority)
 end
