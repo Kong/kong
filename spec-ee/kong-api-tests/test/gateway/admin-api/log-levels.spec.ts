@@ -22,11 +22,10 @@ import {
   getNegative,
   deleteRole,
   createPlugin,
-  isGwNative,
   getKongContainerName,
   retryRequest,
   isGateway,
-  eventually
+  eventually,
 } from '@support';
 
 describe('Dynamic Log Level Tests', function () {
@@ -42,7 +41,6 @@ describe('Dynamic Log Level Tests', function () {
   let currentLogs: any;
   const path = `/${randomString()}`;
   const isHybrid = isGwHybrid();
-  const isKongNative = isGwNative();
   const kongContainerName = getKongContainerName();
 
   const logUrl = isHybrid
@@ -170,29 +168,17 @@ describe('Dynamic Log Level Tests', function () {
     );
   });
 
-  it('should not see debug logs in container after log is set to notice', async function () {
-    // read the last 2 lines of logs for package tests to avoid flakiness
-
+  it('should see notice logs after log is set to notice', async function () {
     await eventually(async () => {
       currentLogs = getGatewayContainerLogs(
-        kongContainerName,
-        isKongNative ? 2 : 4
+        kongContainerName
       );
-  
-      const isLogFound = findRegex('\\[debug\\]', currentLogs);
+      const isLogFound = findRegex('\\[notice\\]', currentLogs);
       expect(
         isLogFound,
-        'Should not see debug logs after setting log-level to notice'
-      ).to.be.false;
+        'Should see notice logs after setting log-level to notice'
+      ).to.be.true;
     });
-  });
-
-  it('should see notice logs after log is set to notice', async function () {
-    const isLogFound = findRegex('\\[notice\\]', currentLogs);
-    expect(
-      isLogFound,
-      'Should see notice logs after setting log-level to notice'
-    ).to.be.true;
   });
 
   wrongLogLevels.forEach((wrongLogLevel) => {
@@ -208,6 +194,19 @@ describe('Dynamic Log Level Tests', function () {
       expect(resp.data.message, 'Should have correct message').to.include(
         `Unknown log level: ${wrongLogLevel}`
       );
+    });
+  });
+
+  it('should not see debug logs in container after log is set to notice', async function () {
+    await eventually(async () => {
+      currentLogs = getGatewayContainerLogs(
+        kongContainerName
+      );
+      const isLogFound = findRegex('\\[debug\\]', currentLogs);
+      expect(
+        isLogFound,
+        'Should not see debug logs after setting log-level to notice'
+      ).to.be.false;
     });
   });
 
