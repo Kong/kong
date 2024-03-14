@@ -21,10 +21,6 @@ local function internal_server_error(msg)
   return kong.response.exit(500, { error = { message = msg } })
 end
 
-function _M:rewrite(conf)
-  kong.ctx.shared.ai_request = true
-end
-
 function _M:header_filter(conf)
   if not kong.ctx.shared.skip_response_transformer then
     -- clear shared restricted headers
