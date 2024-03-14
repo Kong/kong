@@ -116,9 +116,8 @@ function _M:access(conf)
     res_body = kong_utils.inflate_gzip(res_body)
   end
 
-  if kong.ctx.shared.ai_request then
-    kong.ctx.shared.parsed_response = res_body
-  end
+  -- pass res body for analytics
+  kong.ctx.shared.parsed_response = res_body
 
   -- if asked, introspect the request before proxying
   kong.log.debug("introspecting response with LLM")
