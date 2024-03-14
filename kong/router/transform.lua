@@ -518,7 +518,7 @@ local REGEX_URL_BIT       = lshift_uint64(0x01ULL, 51)
 
 
 -- expression only route has higher priority than traditional route
-local EXPRESSION_ONLY_BIT = lshift_uint64(0xFFULL, 55)
+local EXPRESSION_ONLY_BIT = lshift_uint64(0xFFULL, 56)
 
 
 -- convert a route to a priority value for use in the ATC router
@@ -559,6 +559,14 @@ local function get_priority(route)
   local headers = route.headers
 
   local match_weight = 0  -- 0x0ULL
+
+  if not is_empty_field(srcs) then
+    match_weight = match_weight + 1
+  end
+
+  if not is_empty_field(dsts) then
+    match_weight = match_weight + 1
+  end
 
   if not is_empty_field(methods) then
     match_weight = match_weight + 1
