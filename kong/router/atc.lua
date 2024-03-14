@@ -30,6 +30,7 @@ local check_select_params  = utils.check_select_params
 local get_service_info     = utils.get_service_info
 local route_match_stat     = utils.route_match_stat
 local split_host_port      = transform.split_host_port
+local split_routes_and_services_by_path = transform.split_routes_and_services_by_path
 
 
 local DEFAULT_MATCH_LRUCACHE_SIZE = utils.DEFAULT_MATCH_LRUCACHE_SIZE
@@ -277,8 +278,13 @@ end
 
 
 function _M.new(routes, cache, cache_neg, old_router, get_exp_and_priority)
+  -- route_and_service argument is a table with [route] and [service]
   if type(routes) ~= "table" then
     return error("expected arg #1 routes to be a table")
+  end
+
+  if is_http then
+    routes = split_routes_and_services_by_path(routes)
   end
 
   local router, err
