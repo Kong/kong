@@ -96,6 +96,11 @@ do
     tls   = STREAM_SCHEMA,
 
     tls_passthrough = STREAM_SCHEMA,
+
+    -- XXX EE [[
+    ws    = HTTP_SCHEMA,
+    wss   = HTTP_SCHEMA,
+    -- EE ]]
   }
 
   -- for db schema validation
