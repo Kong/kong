@@ -1,0 +1,5 @@
+message: |
+  Fixed an issue where router may not work correctly
+  when the routes configuration changed.
+type: bugfix
+scope: Core
