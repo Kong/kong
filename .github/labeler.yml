@@ -1,3 +1,7 @@
+'cherry-pick kong-ee':
+- changed-files:
+  - any-glob-to-any-file: ['kong/**/*', 'spec/**/*', 'build/**/*', 'bin/**/*', 'scripts/**/*', 'changelog/**/*']
+
 core/admin-api:
 - changed-files:
   - any-glob-to-any-file: kong/api/**/*
