@@ -89,7 +89,7 @@ for k,v in pairs(resolver) do
     _M[k] = v
   end
 end
-_M.TYPE_LAST = -1
+_M.TYPE_LAST = TYPE_LAST
 
 
 local tries_mt = { __tostring = cjson.encode }
