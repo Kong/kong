@@ -175,7 +175,8 @@ function jws.decode(token, options, oic)
       enable_hs_signatures = not not oic.options.enable_hs_signatures
     end
 
-    if jwa.HMAC[alg] and not enable_hs_signatures then
+    if (jwa.HMAC[alg] and not enable_hs_signatures)
+       or (options.disabled_algs and options.disabled_algs[alg]) then
       return nil, "jws algorithm (" .. alg .. ") is disabled"
     end
 

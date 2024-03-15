@@ -50,6 +50,11 @@ local OFFLINE_FIX = {
 }
 
 
+local DISABLED_ALGS = {
+  none = true
+}
+
+
 local authorization = {}
 
 
@@ -925,45 +930,70 @@ function authorization:verify(options)
     end
   end
 
-  if not args.code then
-    return nil, "authorization code not present"
-  end
-
-  if not args.state then
-    return nil, "authorization state not present"
-  end
-
-  if args.state ~= options.state then
-    return nil, "invalid authorization state"
-  end
-
-  local iss = args.iss
-  if iss and conf.issuer and iss ~= conf.issuer then
-    return nil, "issuer mismatch"
-  end
-
-  if args.client_id then
-    local client_id = options.client_id or opts.client_id
-    if args.client_id ~= client_id then
-      return nil, "client mismatch"
-    end
-  end
-
-  args.nonce         = options.nonce
-  args.code_verifier = options.code_verifier
-
-  if args.id_token or args.access_token then
-    options.code = args.code
-
-    local decoded, err = self.oic.token:verify(args, options)
+  local auth_info
+  if args.response then
+    -- decode with options to verify the signature and claims as specified in:
+    -- https://openid.net/specs/oauth-v2-jarm.html#name-processing-rules
+    local decoded, err = self.oic.token:decode(args.response, {
+      verify_claims = true,
+      verify_signature = true,
+      disabled_algs = DISABLED_ALGS
+    })
     if not decoded then
       return nil, err
     end
 
-    return args, decoded
+    local payload = decoded.payload
+    auth_info = {}
+
+    auth_info.code          = payload.code
+    auth_info.iss           = payload.iss
+    auth_info.session_state = payload.session_state
+    auth_info.state         = payload.state
+
+  else
+    auth_info = args
   end
 
-  return args
+  if not auth_info.code then
+    return nil, "authorization code not present"
+  end
+
+  if not auth_info.state then
+    return nil, "authorization state not present"
+  end
+
+  if auth_info.state ~= options.state then
+    return nil, "invalid authorization state"
+  end
+
+  local iss = auth_info.iss
+  if iss and conf.issuer and iss ~= conf.issuer then
+    return nil, "issuer mismatch"
+  end
+
+  if auth_info.client_id then
+    local client_id = options.client_id or opts.client_id
+    if auth_info.client_id ~= client_id then
+      return nil, "client mismatch"
+    end
+  end
+
+  auth_info.nonce         = options.nonce
+  auth_info.code_verifier = options.code_verifier
+
+  if auth_info.id_token or auth_info.access_token then
+    options.code = auth_info.code
+
+    local decoded, err = self.oic.token:verify(auth_info, options)
+    if not decoded then
+      return nil, err
+    end
+
+    return auth_info, decoded
+  end
+
+  return auth_info
 end
 
 

@@ -340,6 +340,75 @@ describe("CP/DP config compat #" .. strategy, function()
     end
   end)
 
+  describe("3.7.x.y", function()
+    local CASES = {
+      {
+        plugin = "openid-connect",
+        label = "w/ unsupported response_mode: query.jwt",
+        pending = false,
+        config = {
+          issuer = "https://test.test",
+          response_mode = "query.jwt"
+        },
+        status = STATUS.NORMAL,
+        checker = CHECKERS,
+        validator = function(config)
+          return config.response_mode == "query"
+        end
+      },
+      {
+        plugin = "openid-connect",
+        label = "w/ unsupported response_mode: form_post.jwt",
+        pending = false,
+        config = {
+          issuer = "https://test.test",
+          response_mode = "form_post.jwt"
+        },
+        status = STATUS.NORMAL,
+        checker = CHECKERS,
+        validator = function(config)
+          return config.response_mode == "form_post"
+        end
+      },
+      {
+        plugin = "openid-connect",
+        label = "w/ unsupported response_mode: fragment.jwt",
+        pending = false,
+        config = {
+          issuer = "https://test.test",
+          response_mode = "fragment.jwt"
+        },
+        status = STATUS.NORMAL,
+        checker = CHECKERS,
+        validator = function(config)
+          return config.response_mode == "fragment"
+        end
+      },
+      {
+        plugin = "openid-connect",
+        label = "w/ unsupported response_mode: jwt",
+        pending = false,
+        config = {
+          issuer = "https://test.test",
+          response_mode = "jwt"
+        },
+        status = STATUS.NORMAL,
+        checker = CHECKERS,
+        validator = function(config)
+          return config.response_mode == "query"
+        end
+      }
+    }
+
+    for _, case in ipairs(CASES) do
+      local test = case.pending and pending or it
+
+      test(fmt("%s - %s", case.plugin, case.label), function()
+        do_assert(case, "3.6.0.0")
+      end)
+    end
+  end)
+
 end)
 
 end -- each strategy

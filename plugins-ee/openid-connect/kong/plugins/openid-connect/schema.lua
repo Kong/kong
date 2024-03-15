@@ -399,7 +399,7 @@ local config = {
           },
           {
             response_mode = {
-              description = "The response mode passed to the authorization endpoint: - `query`: Instructs the identity provider to pass parameters in query string - `form_post`: Instructs the identity provider to pass parameters in request body - `fragment`: Instructs the identity provider to pass parameters in uri fragment (rarely useful as the plugin itself cannot read it).",
+              description = "Response mode passed to the authorization endpoint: - `query`: for parameters in query string - `form_post`: for parameters in request body - `fragment`: for parameters in uri fragment (rarely useful as the plugin itself cannot read it) - `query.jwt`, `form_post.jwt`, `fragment.jwt`: similar to `query`, `form_post` and `fragment` but the parameters are encoded in a JWT - `jwt`: shortcut that indicates the default encoding for the requested response type.",
               required = false,
               type = "string",
               default = "query",
@@ -407,6 +407,10 @@ local config = {
                 "query",
                 "form_post",
                 "fragment",
+                "query.jwt",
+                "form_post.jwt",
+                "fragment.jwt",
+                "jwt",
               },
             },
           },

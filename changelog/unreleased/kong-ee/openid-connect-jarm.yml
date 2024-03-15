@@ -1,0 +1,3 @@
+message: "**OpenID Connect**: Add support for JARM response modes: `query.jwt`, `form_post.jwt`, `fragment.jwt`, `jwt`"
+type: feature
+scope: Plugin

@@ -38,6 +38,45 @@ end
 
 
 local compatible_checkers = {
+  { 3007000000, -- [[ 3.7.0.0 ]]
+    function(config_table, dp_version, log_suffix)
+      local has_update
+
+      for _, plugin in ipairs(config_table.plugins or {}) do
+        if plugin.name == 'openid-connect' then
+          local config = plugin.config
+          if config.response_mode == 'query.jwt' or
+             config.response_mode == 'jwt'       then
+            config.response_mode = 'query'
+            log_warn_message('configures ' .. plugin.name .. ' plugin with:' ..
+                             ' response_mode == query.jwt or jwt',
+                             'overwritten with default value `query`',
+                             dp_version, log_suffix)
+            has_update = true
+
+          elseif config.response_mode == 'form_post.jwt' then
+            config.response_mode = 'form_post'
+            log_warn_message('configures ' .. plugin.name .. ' plugin with:' ..
+                             ' response_mode == form_post.jwt',
+                             'overwritten with default value `form_post`',
+                             dp_version, log_suffix)
+            has_update = true
+          
+          elseif config.response_mode == 'fragment.jwt' then
+            config.response_mode = 'fragment'
+            log_warn_message('configures ' .. plugin.name .. ' plugin with:' ..
+                             ' response_mode == fragment.jwt',
+                             'overwritten with default value `fragment`',
+                             dp_version, log_suffix)
+            has_update = true
+          end
+        end
+      end
+
+      return has_update
+    end
+  },
+
   { 3006000000, -- [[ 3.6.0.0 ]]
     function(config_table, dp_version, log_suffix)
       local has_update
@@ -77,14 +116,16 @@ local compatible_checkers = {
 
           for _, config_val in ipairs({ "tls_client_auth", "self_signed_tls_client_auth" }) do
 
-            for i = #config.client_auth, 1, -1 do
-              if config.client_auth[i] == config_val then
-                log_warn_message('configures ' .. plugin.name .. ' plugin with:' ..
-                                 ' client_auth containing: ' .. config_val,
-                                 'removed',
-                                 dp_version, log_suffix)
-                table_remove(config.client_auth, i)
-                has_update = true
+            if type(config.client_auth) == "table" then
+              for i = #config.client_auth, 1, -1 do
+                if config.client_auth[i] == config_val then
+                  log_warn_message('configures ' .. plugin.name .. ' plugin with:' ..
+                                   ' client_auth containing: ' .. config_val,
+                                   'removed',
+                                   dp_version, log_suffix)
+                  table_remove(config.client_auth, i)
+                  has_update = true
+                end
               end
             end
 
