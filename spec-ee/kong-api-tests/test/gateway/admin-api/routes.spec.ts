@@ -13,7 +13,7 @@ import {
 } from '@support';
 import axios, { AxiosResponse } from 'axios';
   
-describe('@smoke: Gateway Admin API: Routes', function () {
+describe('@smoke @gke: Gateway Admin API: Routes', function () {
     let serviceId: string
     let routeId: string;
 

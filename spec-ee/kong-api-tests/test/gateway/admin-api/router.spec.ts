@@ -47,7 +47,7 @@ const currentHost = getGatewayHost();
 
 const isLocalDb = isLocalDatabase();
 
-describe('@smoke @koko: Router Functionality Tests', function () {
+describe('@smoke @koko @gke: Router Functionality Tests', function () {
   const proxyUrl = `${getBasePath({
     app: 'gateway',
     environment: Environment.gateway.proxySec,
@@ -375,6 +375,10 @@ describe('@smoke @koko: Router Functionality Tests', function () {
     });
 
     it('should not panic and create a route with long regex path', async function () {
+      // Skip this test for GKE deployment
+      if (process.env.GKE) {
+        this.skip();
+      }
       // generate string longer than 2048 bytes
       // *** KOKO MAX BYTES IS 1024 AND IT DOESN'T RECOGNIZE "\\/" ESCAPE SEQUENCE ***
       const path = 'x'.repeat(3072);

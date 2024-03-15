@@ -15,7 +15,7 @@ import {
 } from '@support';
 import axios from 'axios';
 
-describe('Gateway Plugins: key-auth-enc', function () {
+describe('@gke: Gateway Plugins: key-auth-enc', function () {
   const path = '/key-auth-enc';
   const serviceName = 'key-auth-enc-service';
   const waitTime = 5000;

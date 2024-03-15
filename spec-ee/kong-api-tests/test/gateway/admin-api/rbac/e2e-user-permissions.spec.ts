@@ -27,7 +27,7 @@ import {
   isGateway,
 } from '@support';
 
-describe('Gateway RBAC: E2E User Permissions', function () {
+describe('@gke: Gateway RBAC: E2E User Permissions', function () {
   const isHybrid = isGwHybrid();
   const url = `${getBasePath({
     environment: isGateway() ? Environment.gateway.admin : undefined,

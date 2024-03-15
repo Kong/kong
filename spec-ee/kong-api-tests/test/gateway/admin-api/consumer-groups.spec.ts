@@ -12,7 +12,7 @@ import {
   isGateway,
 } from '@support';
 
-describe('Gateway Consumer Groups with RLA', function () {
+describe('@gke: Gateway Consumer Groups with RLA', function () {
   const url = `${getBasePath({
     environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/consumer_groups`;

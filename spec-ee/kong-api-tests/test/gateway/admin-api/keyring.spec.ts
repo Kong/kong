@@ -11,7 +11,7 @@ import {
   isGateway,
 } from '@support';
 
-describe('Gateway Admin API: Keyring', function () {
+describe('@gke: Gateway Admin API: Keyring', function () {
   const url = `${getBasePath({
     environment: isGateway() ? Environment.gateway.admin : undefined
   })}/keyring`;

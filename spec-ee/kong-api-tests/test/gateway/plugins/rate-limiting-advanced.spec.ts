@@ -21,7 +21,7 @@ import {
 } from '@support';
 import axios from 'axios';
 
-describe('Gateway RLA Plugin Tests', function () {
+describe('@gke: Gateway RLA Plugin Tests', function () {
   this.timeout(30000);
   const isHybrid = isGwHybrid();
   const redisNamespace = 'apiRedisTest';

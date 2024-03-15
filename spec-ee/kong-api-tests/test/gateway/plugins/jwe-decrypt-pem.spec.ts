@@ -20,7 +20,7 @@ import {
 } from '@support';
 import axios from 'axios';
 
-describe('Gateway Plugins: jwe-decrypt PEM', function () {
+describe('@gke: Gateway Plugins: jwe-decrypt PEM', function () {
   const pemPath = '/jwedecryptpem';
   const serviceName = 'jwe-decrypt-service';
   const pemKeySetsName = 'pem-key-sets';

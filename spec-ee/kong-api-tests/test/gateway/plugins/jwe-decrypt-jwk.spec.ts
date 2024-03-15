@@ -20,7 +20,7 @@ import {
 } from '@support';
 import axios from 'axios';
 
-describe('Gateway Plugins: jwe-decrypt JWK', function () {
+describe('@gke: Gateway Plugins: jwe-decrypt JWK', function () {
   const jwkPath = '/jwedecryptjwk';
   const serviceName = 'jwe-decrypt-service';
   const jwkKeySetsName = 'jwk-key-sets';

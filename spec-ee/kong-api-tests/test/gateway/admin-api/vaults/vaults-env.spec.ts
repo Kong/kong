@@ -9,7 +9,7 @@ import {
   isGateway,
 } from '@support';
 
-describe('Vaults: Environment Variables', function () {
+describe('@gke: Vaults: Environment Variables', function () {
   const url = `${getBasePath({
     environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/vaults`;

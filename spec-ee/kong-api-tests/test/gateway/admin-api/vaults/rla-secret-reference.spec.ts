@@ -34,7 +34,7 @@ import {
 // GCP_SERVICE_ACCOUNT: ${{actualGcpAccountKey}}
 // ********* End **********
 
-describe('Vaults: Secret referencing in RLA Plugin', function () {
+describe('@gke: Vaults: Secret referencing in RLA Plugin', function () {
   let serviceId = '';
   let routeId = '';
   let rlaPluginId = '';
@@ -128,6 +128,11 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
     }
   };
 
+  function skipIfIt(title, test) {
+    const condition = process.env.HCV!=='false';
+    return condition ? it(title, test) : it.skip(title, test);
+  }
+
   before(async function () {
     checkGwVars('aws');
     const service = await createGatewayService('VaultSecretService');
@@ -136,7 +141,7 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
     routeId = route.id;
   });
 
-  it('should create hcv vault entity and secrets', async function () {
+  skipIfIt('should create hcv vault entity and secrets', async function () {
     await createHcvVaultInKong();
 
     await createHcvVaultSecrets({
@@ -151,7 +156,7 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
     );
   });
 
-  it('should create RLA plugin with hcv secret reference', async function () {
+  it('should create RLA plugin with aws secret reference and do rate limiting', async function () {
     const pluginPayload = {
       name: 'rate-limiting-advanced',
       service: {
@@ -168,8 +173,8 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
         redis: {
           host: 'redis',
           port: 6379,
-          username: '{vault://my-hcv/secret/redisHcvUser}',
-          password: redisHcvPassword,
+          username: '{vault://aws/gateway-secret-test/rla_redisu}',
+          password: '{vault://aws/gateway-secret-test/rla_redisp}'
         },
       },
     };
@@ -189,15 +194,79 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
     expect(
       resp.data.config.redis.username,
       'Should have redis username referenced'
-    ).to.equal('{vault://my-hcv/secret/redisHcvUser}');
-  });
+    ).to.equal('{vault://aws/gateway-secret-test/rla_redisu}');
 
-  it('should rate limit with redis password hcv vault entity referenced', async function () {
+    expect(
+      resp.data.config.redis.password,
+      'Should have passport referenced'
+    ).to.equal('{vault://aws/gateway-secret-test/rla_redisp}');
+
     await wait(waitTime); // eslint-disable-line no-restricted-syntax
     await doBasicRateLimitCheck();
   });
 
-  it('should rate limit with redis password and username hcv vault entity referenced', async function () {
+  it('should rate limit with redis password gcp and username gcp vault secret referenced', async function () {
+
+    // changing RLA Plugin plaintext redis password to gcp reference
+     const patchResp = await axios({
+       method: 'patch',
+       url: `${pluginUrl}/${rlaPluginId}`,
+       data: {
+         name: 'rate-limiting-advanced',
+         config: {
+           redis: {
+             username: `{vault://gcp/rla_redisu?project_id=${gcpProjectId}}`,
+             password: `{vault://gcp/rla_redisp?project_id=${gcpProjectId}}`,
+           },
+         },
+       },
+     });
+     logResponse(patchResp);
+ 
+     expect(patchResp.status, 'Status should be 200').to.equal(200);
+     expect(
+       patchResp.data.config.redis.password,
+       'Should replace redis password with aws reference'
+     ).to.equal(`{vault://gcp/rla_redisp?project_id=${gcpProjectId}}`);
+ 
+     await wait(waitTime); // eslint-disable-line no-restricted-syntax
+     await doBasicRateLimitCheck();
+   });
+
+  skipIfIt('should patch RLA plugin with hcv secret reference', async function () {
+    const patchResp = await axios({
+      method: 'patch',
+      url: `${pluginUrl}/${rlaPluginId}`,
+      data: {
+        name: 'rate-limiting-advanced',
+        config: {
+          redis: {
+            username: '{vault://my-hcv/secret/redisHcvUser}',
+            password: redisHcvPassword
+          },
+        },
+      },
+    });
+    logResponse(patchResp);
+
+    expect(patchResp.status, 'Status should be 200').to.equal(200);
+    expect(
+      patchResp.data.config.redis.username,
+      'Should replace redis user with reference'
+    ).to.equal('{vault://my-hcv/secret/redisHcvUser}');
+
+    expect(
+      patchResp.data.config.redis.password,
+      'Should replace redis password with reference'
+    ).to.equal(redisHcvPassword);
+  });
+
+  skipIfIt('should rate limit with redis password hcv vault entity referenced', async function () {
+    await wait(waitTime); // eslint-disable-line no-restricted-syntax
+    await doBasicRateLimitCheck();
+  });
+
+  skipIfIt('should rate limit with redis password and username hcv vault entity referenced', async function () {
     // changing RLA Plugin plaintext redis password to hcv reference
     const patchResp = await axios({
       method: 'patch',
@@ -223,8 +292,8 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
     await doBasicRateLimitCheck();
   });
 
-  it('should rate limit with redis password and username hcv vault secret referenced', async function () {
-    // changing RLA Plugin plaintext redis password to hcv reference
+  skipIfIt('should rate limit with redis password and username hcv vault secret referenced', async function () {
+   // changing RLA Plugin plaintext redis password to hcv reference
     const patchResp = await axios({
       method: 'patch',
       url: `${pluginUrl}/${rlaPluginId}`,
@@ -250,7 +319,7 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
     await doBasicRateLimitCheck();
   });
 
-  it('should rate limit with redis password hcv and username hcv vault entity secret referenced', async function () {
+  skipIfIt('should rate limit with redis password hcv and username hcv vault entity secret referenced', async function () {
     // changing RLA Plugin plaintext redis password to hcv reference
     const patchResp = await axios({
       method: 'patch',
@@ -273,7 +342,7 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
     await doBasicRateLimitCheck();
   });
 
-  it('should rate limit with redis password env and username hcv vault entity referenced', async function () {
+  skipIfIt('should rate limit with redis password env and username hcv vault entity referenced', async function () {
     // changing RLA Plugin hcv redis password to env reference
     const patchResp = await axios({
       method: 'patch',
@@ -299,7 +368,7 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
     await doBasicRateLimitCheck();
   });
 
-  it('should rate limit with redis password aws and username hcv vault entity referenced', async function () {
+  skipIfIt('should rate limit with redis password aws and username hcv vault entity referenced', async function () {
     // changing RLA Plugin hcv redis password to env reference
     const patchResp = await axios({
       method: 'patch',
@@ -325,7 +394,7 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
     await doBasicRateLimitCheck();
   });
 
-  it('should rate limit with redis password aws and username env vault referenced', async function () {
+  skipIfIt('should rate limit with redis password aws and username env vault referenced', async function () {
     // changing RLA Plugin hcv redis password to env reference
     const patchResp = await axios({
       method: 'patch',
@@ -424,7 +493,7 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
     await doBasicRateLimitCheck();
   });
 
-  it('should rate limit with redis password gcp vault and username hcv vault entity referenced', async function () {
+  skipIfIt('should rate limit with redis password gcp vault and username hcv vault entity referenced', async function () {
     // changing RLA Plugin redis username reference to hcv vault entity and password to gcp vault reference
 
     const patchResp = await axios({
@@ -494,7 +563,10 @@ describe('Vaults: Secret referencing in RLA Plugin', function () {
     ['my-hcv', 'my-env', 'my-aws', 'my-gcp'].forEach(async (backendVault) => {
       await deleteVaultEntity(backendVault);
     });
-    await deleteHcvSecret('secret', 'secret');
+    // SKIP HCV deletion if HCV is disabled
+    if (process.env.HCV!=='false') {
+      await deleteHcvSecret('secret', 'secret');
+    }
     await deleteGatewayRoute(routeId);
     await deleteGatewayService(serviceId);
   });

@@ -11,7 +11,7 @@ import {
 } from '@support';
 import axios, { AxiosResponse } from 'axios';
 
-describe('Gateway Admin API: Keys For jwe-decrypt plugin', function () {
+describe('@gke: Gateway Admin API: Keys For jwe-decrypt plugin', function () {
   const url = `${getBasePath({
     environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/keys`;

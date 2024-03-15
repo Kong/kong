@@ -9,7 +9,7 @@ import {
   isGateway,
 } from '@support';
 
-describe('@smoke: Gateway RBAC: Users', function () {
+describe('@smoke @gke: Gateway RBAC: Users', function () {
   const url = `${getBasePath({
     environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/rbac/users`;

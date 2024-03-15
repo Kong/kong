@@ -19,7 +19,7 @@ import {
 } from '@support';
 import axios from 'axios';
 
-describe('Gateway Plugins: basic-auth using plugin instance name', function () {
+describe('@gke: Gateway Plugins: basic-auth using plugin instance name', function () {
   const path = '/basic-auth';
   const serviceName = 'basic-auth-service';
   const isHybrid = isGwHybrid();

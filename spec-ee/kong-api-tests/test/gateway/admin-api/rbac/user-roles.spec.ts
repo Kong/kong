@@ -14,7 +14,7 @@ import {
   isGateway,
 } from '@support';
 
-describe(`Gateway RBAC: User's Roles`, function () {
+describe(`@gke: Gateway RBAC: User's Roles`, function () {
   const url = `${getBasePath({
     environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/rbac`;

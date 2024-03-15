@@ -15,7 +15,7 @@ import {
   isGateway,
 } from '@support';
 
-describe('@smoke: Gateway RBAC: Role Endpoint Permissions', function () {
+describe('@smoke @gke: Gateway RBAC: Role Endpoint Permissions', function () {
   const url = `${getBasePath({
     environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/rbac/roles`;

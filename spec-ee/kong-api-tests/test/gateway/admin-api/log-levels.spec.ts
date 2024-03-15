@@ -181,6 +181,14 @@ describe('Dynamic Log Level Tests', function () {
     });
   });
 
+  it('should see notice logs after log is set to notice', async function () {
+    const isLogFound = findRegex('\\[notice\\]', currentLogs);
+    expect(
+      isLogFound,
+      'Should see notice logs after setting log-level to notice'
+    ).to.be.true;
+  });
+
   wrongLogLevels.forEach((wrongLogLevel) => {
     it(`should not change log-level to wrong level ${wrongLogLevel}`, async function () {
       const resp = await postNegative(

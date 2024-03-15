@@ -16,7 +16,7 @@ import {
 } from '@support';
 import axios from 'axios';
 
-describe('Gateway RBAC: Role Entity Permissions', function () {
+describe('@gke: Gateway RBAC: Role Entity Permissions', function () {
   const url = `${getBasePath({
     environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/rbac/roles`;

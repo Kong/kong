@@ -23,7 +23,7 @@ import {
   isGateway,
 } from '@support';
 
-describe('Gateway Consumer Groups with RLA', function () {
+describe('@gke: Gateway Consumer Groups with RLA', function () {
   this.timeout(45000);
 
   const url = `${getBasePath({

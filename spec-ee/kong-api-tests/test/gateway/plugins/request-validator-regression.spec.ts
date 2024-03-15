@@ -21,7 +21,7 @@ import {
   isGateway
 } from '@support';
 
-describe('Gateway Plugins: Request Validator Regression Tests', function () {
+describe('@gke: Gateway Plugins: Request Validator Regression Tests', function () {
   const path = `/${randomString()}`;
   const isHybrid = isGwHybrid();
   const isLocalDb = isLocalDatabase();

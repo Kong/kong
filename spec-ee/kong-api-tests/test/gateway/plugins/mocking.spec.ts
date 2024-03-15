@@ -17,7 +17,7 @@ import {
 } from '@support';
 import axios from 'axios';
 
-describe('Mocking Plugin Tests', function () {
+describe('@gke: Mocking Plugin Tests', function () {
   this.timeout(25000);
   const isHybrid = isGwHybrid();
   const isLocalDb = isLocalDatabase();
