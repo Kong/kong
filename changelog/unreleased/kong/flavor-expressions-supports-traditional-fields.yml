@@ -1,4 +1,7 @@
 message: |
-  The router flavor `expressions` now supports the definition of traditional routes.
+  Supported fields `methods`, `hosts`, `paths`, `headers`,
+  `snis`, `sources`, `destinations` and `regex_priority`
+  for the `route` entity when the `router_flavor` is `expressions`.
+  The meaning of these fields are consistent with the traditional route entity.
 type: feature
 scope: Core
