@@ -20,7 +20,7 @@ local bor, band, lshift, rshift = bit.bor, bit.band, bit.lshift, bit.rshift
 
 local is_regex_magic  = utils.is_regex_magic
 local replace_dashes_lower  = require("kong.tools.string").replace_dashes_lower
-local shallow_copy = require("kong.tools.utils").shallow_copy
+local shallow_copy = require("kong.tools.table").shallow_copy
 
 
 local is_null
