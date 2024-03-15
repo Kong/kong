@@ -17,9 +17,6 @@ local ee_helpers = require "spec-ee.helpers"
 local lower   = string.lower
 local fmt     = string.format
 
-local AD_SERVER_HOST = os.getenv("KONG_SPEC_TEST_AD_SERVER_HOST") or "ad-server"
-local AD_SERVER_PORT = tonumber(os.getenv("KONG_SPEC_TEST_AD_SERVER_PORT_389")) or 389
-
 local function cache_key(conf, username, password)
   local prefix = sha256.sha256_hex(fmt("%s:%u:%s:%s:%s:%s:%s:%s:%u",
     lower(conf.ldap_host),
@@ -93,15 +90,15 @@ for proto, conf in ee_helpers.each_protocol() do
         route = { id = route2.id },
         name     = "ldap-auth-advanced",
         config = {
-          ldap_host          = AD_SERVER_HOST,
-          ldap_port          = AD_SERVER_PORT,
-          ldap_password      = "wrongpassword",
-          attribute          = "cn",
-          base_dn            = "cn=Users,dc=ldap,dc=mashape,dc=com",
-          bind_dn            = "cn=Ophelia,cn=Users,dc=ldap,dc=mashape,dc=com",
-          consumer_optional  = true,
-          hide_credentials   = true,
-          cache_ttl          = 5,
+          ldap_host         = ldap_host_aws,
+          ldap_password     = "wrongpassword",
+          ldap_port         = 389,
+          bind_dn           = "uid=einstein,ou=scientists,dc=ldap,dc=mashape,dc=com",
+          base_dn           = "dc=ldap,dc=mashape,dc=com",
+          attribute         = "uid",
+          consumer_optional = true,
+          hide_credentials  = true,
+          cache_ttl         = 5, -- use a different ttl to avoid cache key conflict with the above plugin
         }
       }
 
@@ -192,7 +189,7 @@ for proto, conf in ee_helpers.each_protocol() do
           body    = {},
           headers = {
             host             = "ldap2.test",
-            authorization    = "ldap " .. ngx.encode_base64("User1:pass:w2rd1111A$"),
+            authorization    = "ldap " .. ngx.encode_base64("euclid:password"),
           }
         })
         assert.response(res).has.status(500)
@@ -202,7 +199,7 @@ for proto, conf in ee_helpers.each_protocol() do
           method  = "PATCH",
           path    = "/plugins/" .. plugin2.id,
           body    = {
-            config = { ldap_password = "pass:w2rd1111A$" }
+            config = { ldap_password = "password" }
           },
           headers = {
             ["Content-Type"] = "application/json"
@@ -210,7 +207,7 @@ for proto, conf in ee_helpers.each_protocol() do
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal("pass:w2rd1111A$", json.config.ldap_password)
+        assert.equal("password", json.config.ldap_password)
 
         helpers.wait_for_all_config_update({
           disable_ipv6 = true,
@@ -222,7 +219,7 @@ for proto, conf in ee_helpers.each_protocol() do
           body    = {},
           headers = {
             host             = "ldap2.test",
-            authorization    = "ldap " .. ngx.encode_base64("User1:pass:w2rd1111A$"),
+            authorization    = "ldap " .. ngx.encode_base64("euclid:password"),
           }
         })
         assert.response(res).has.status(200)
