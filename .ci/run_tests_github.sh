@@ -85,6 +85,11 @@ function print_memusage {
 trap print_memusage EXIT
 
 
+if [ "$TEST_SUITE" == "aws-integration" ]; then
+    eval "$TEST_CMD" spec-ee/thirdparty-integration/aws
+fi
+
+
 if [ "$TEST_SUITE" == "plugins-ee" ]; then
     scripts/enterprise_plugin.sh build-deps
     rm -f .failed
