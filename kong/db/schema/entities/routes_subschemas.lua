@@ -71,7 +71,10 @@ if kong and kong.configuration and  kong.configuration.router_flavor == "express
 
   -- now http route in flavor 'expressions' accepts `sources` and `destinations`
 
+  assert(http_subschema.fields[1].sources)
   http_subschema.fields[1] = nil  -- sources
+
+  assert(http_subschema.fields[2].destinations)
   http_subschema.fields[2] = nil  -- destinations
 
   -- the route should have the field 'expression' if no others
@@ -81,7 +84,10 @@ if kong and kong.configuration and  kong.configuration.router_flavor == "express
 
   -- now grpc route in flavor 'expressions' accepts `sources` and `destinations`
 
+  assert(grpc_subschema.fields[3].sources)
   grpc_subschema.fields[3] = nil  -- sources
+
+  assert(grpc_subschema.fields[4].destinations)
   grpc_subschema.fields[4] = nil  -- destinations
 
   -- the route should have the field 'expression' if no others
