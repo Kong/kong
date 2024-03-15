@@ -66,7 +66,7 @@ local grpc_subschema = {
 }
 
 
--- NOTICE: make sure we have correct scheam constraion for flavor 'expressions'
+-- NOTICE: make sure we have correct schema constraion for flavor 'expressions'
 if kong and kong.configuration and  kong.configuration.router_flavor == "expressions" then
 
   -- now http route in flavor 'expressions' accepts `sources` and `destinations`
