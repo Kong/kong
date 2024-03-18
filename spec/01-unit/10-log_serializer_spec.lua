@@ -84,6 +84,7 @@ describe("kong.log.serialize", function()
         assert.equal(0, res.latencies.kong)
         assert.equal(-1, res.latencies.proxy)
         assert.equal(2000, res.latencies.request)
+        assert.equal(0, res.latencies.receive)
 
         -- Request
         assert.is_table(res.request)

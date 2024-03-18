@@ -862,6 +862,7 @@ do
                  (ctx.KONG_RECEIVE_TIME or 0),
           proxy = ctx.KONG_WAITING_TIME or -1,
           request = tonumber(var.request_time) * 1000,
+          receive = ctx.KONG_RECEIVE_TIME or 0,
         },
         auth_type = ctx.auth_type,
         tries = (ctx.balancer_data or {}).tries,
