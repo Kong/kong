@@ -847,7 +847,7 @@ function _M:renew(key, opts, cb, ...)
         if shmerr then
             -- shmerr can be 'flags' upon successful get_stale() calls, so we
             -- also check v == nil
-            return nil, "could not read from lua_shared_dict: " .. shmerr
+            return unlock_and_ret(lock, nil, "could not read from lua_shared_dict: " .. shmerr)
         end
 
         -- if we specified shm_miss, it might be a negative hit cached
@@ -860,7 +860,7 @@ function _M:renew(key, opts, cb, ...)
             elseif shmerr then
                 -- shmerr can be 'flags' upon successful get_stale() calls, so we
                 -- also check v == nil
-                return nil, "could not read from lua_shared_dict (miss): " .. shmerr
+                return unlock_and_ret(lock, nil, "could not read from lua_shared_dict (miss): " .. shmerr)
             end
         end
     end
