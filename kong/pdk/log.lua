@@ -845,6 +845,7 @@ do
                  (ctx.KONG_RECEIVE_TIME or 0),
           proxy = ctx.KONG_WAITING_TIME or -1,
           request = tonumber(var.request_time) * 1000,
+          receive = ctx.KONG_RECEIVE_TIME or 0,
         },
         tries = (ctx.balancer_data or {}).tries,
         authenticated_entity = build_authenticated_entity(ctx),
