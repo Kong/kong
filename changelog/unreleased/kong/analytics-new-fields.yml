@@ -1,0 +1,3 @@
+message: '**Analytics**: Add `latencies.receive_ms` and `websocket` fields'
+type: feature
+scope: Core

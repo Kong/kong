@@ -2172,6 +2172,7 @@ function Kong.ws_proxy()
 
   ctx.KONG_WS_PROXY_ENDED_AT = get_updated_now_ms()
   ctx.KONG_WS_PROXY_TIME = ctx.KONG_WS_PROXY_ENDED_AT - ctx.KONG_WS_PROXY_START
+  ctx.KONG_RECEIVE_TIME = ctx.KONG_WS_PROXY_RECEIVE_TIME
 
   ee.handlers.ws_proxy.after(ctx)
 end

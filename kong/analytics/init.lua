@@ -300,7 +300,8 @@ function _M:create_payload(message)
     latencies = {
       kong_gateway_ms = 0,
       upstream_ms = 0,
-      response_ms = 0
+      response_ms = 0,
+      receive_ms = 0,
     },
     tries = {},
     consumer = {
@@ -320,6 +321,7 @@ function _M:create_payload(message)
       product_version_id = "",
     },
     consumer_groups = {},
+    websocket = false,
   }
 
   payload.client_ip = message.client_ip
@@ -398,6 +400,16 @@ function _M:create_payload(message)
     if resp.headers["x-ratelimit-limit-year"] ~= nil then
       response.ratelimit_enabled_year = true
     end
+
+    local upgrade = resp.headers["upgrade"]
+    local connection = resp.headers["connection"]
+    if type(upgrade) == "string"
+       and upgrade:lower() == "websocket"
+       and type(connection) == "string"
+       and connection:lower() == "upgrade"
+    then
+      payload.websocket = true
+    end
   end
 
   if message.route ~= nil then
@@ -418,9 +430,10 @@ function _M:create_payload(message)
   if message.latencies ~= nil then
     local latencies = payload.latencies
     local ml = message.latencies
-    latencies.kong_gateway_ms = ml.kong
+    latencies.kong_gateway_ms = (ml.kong or 0) - (ml.receive or 0)
     latencies.upstream_ms = ml.proxy
     latencies.response_ms = ml.request
+    latencies.receive_ms = ml.receive
   end
 
   if message.tries ~= nil then

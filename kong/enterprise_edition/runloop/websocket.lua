@@ -783,6 +783,8 @@ return {
         -- back to ws_proxy here
         ctx.KONG_PHASE = PHASES.ws_proxy
 
+        ctx.KONG_WS_PROXY_RECEIVE_START = get_updated_now_ms()
+
         -- per-frame state is only needed for plugin frame handlers
         if frame_handler then
           pdk.init_state(ctx)
@@ -800,6 +802,10 @@ return {
         end
 
         kill(janitor_thread)
+
+        ctx.KONG_WS_PROXY_RECEIVE_ENDED_AT = get_updated_now_ms()
+        ctx.KONG_WS_PROXY_RECEIVE_TIME = ctx.KONG_WS_PROXY_RECEIVE_ENDED_AT
+                                       - ctx.KONG_WS_PROXY_RECEIVE_START
       end,
 
       after = NOOP,

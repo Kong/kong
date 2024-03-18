@@ -28,7 +28,8 @@ local request_log = {
   latencies = {
     request = 515,
     kong = 58,
-    proxy = 457
+    proxy = 457,
+    receive = 0,
   },
   service = {
     host = "konghq.com",
@@ -136,7 +137,8 @@ local request_log_with_user_agent_table = {
   latencies = {
     request = 515,
     kong = 58,
-    proxy = 457
+    proxy = 457,
+    receive = 0,
   },
   service = {
     host = "konghq.com",
@@ -244,7 +246,8 @@ local request_log_rate_limit = {
   latencies = {
     request = 515,
     kong = 58,
-    proxy = 457
+    proxy = 457,
+    receive = 0,
   },
   service = {
     host = "konghq.com",
@@ -475,7 +478,8 @@ describe("extract request log properly", function()
       latencies = {
         kong_gateway_ms = 58,
         upstream_ms = 457,
-        response_ms = 515
+        response_ms = 515,
+        receive_ms = 0,
       },
       trace_id = "",
       request_id = request_id_value,
@@ -501,6 +505,7 @@ describe("extract request log properly", function()
       consumer_groups = {
         { id = "1" },
       },
+      websocket = false,
     }
     assert.are.same(expected, payload)
   end)
@@ -551,7 +556,8 @@ describe("extract request log properly", function()
       latencies = {
         kong_gateway_ms = 58,
         upstream_ms = 457,
-        response_ms = 515
+        response_ms = 515,
+        receive_ms = 0,
       },
       trace_id = trace_bytes,
       request_id = request_id_value,
@@ -577,6 +583,7 @@ describe("extract request log properly", function()
       consumer_groups = {
         { id = "1" },
       },
+      websocket = false,
     }
     assert.are.same(expected, payload)
   end)
@@ -627,7 +634,8 @@ describe("extract request log properly", function()
       latencies = {
         kong_gateway_ms = 58,
         upstream_ms = 457,
-        response_ms = 515
+        response_ms = 515,
+        receive_ms = 0,
       },
       trace_id = trace_bytes,
       request_id = request_id_value,
@@ -653,6 +661,7 @@ describe("extract request log properly", function()
       consumer_groups = {
         { id = "1" },
       },
+      websocket = false,
     }
     assert.are.same(expected, payload)
   end)
@@ -718,7 +727,8 @@ describe("extract request log properly", function()
       latencies = {
         kong_gateway_ms = 58,
         upstream_ms = 457,
-        response_ms = 515
+        response_ms = 515,
+        receive_ms = 0,
       },
       trace_id = trace_bytes,
       request_id = request_id_value,
@@ -744,9 +754,66 @@ describe("extract request log properly", function()
       consumer_groups = {
         { id = "1" },
       },
+      websocket = false,
     }
     assert.are.same(expected, payload)
 
+  end)
+
+  describe("WebSocket requests", function()
+    it("aren't detected by default", function()
+      local payload = analytics:create_payload(request_log)
+      assert.is_false(payload.websocket)
+    end)
+
+    it("are detected by upgrade/connection response headers", function()
+      local input = utils.deep_copy(request_log)
+      input.response.headers["upgrade"] = "websocket"
+      input.response.headers["connection"] = "upgrade"
+
+      local payload = analytics:create_payload(input)
+      assert.is_true(payload.websocket)
+    end)
+
+    it("are detected by upgrade/connection response headers (case insensitive)", function()
+      local input = utils.deep_copy(request_log)
+      input.response.headers["upgrade"] = "WebSocket"
+      input.response.headers["connection"] = "Upgrade"
+
+      local payload = analytics:create_payload(input)
+      assert.is_true(payload.websocket)
+    end)
+  end)
+
+  it("records receive time if available", function()
+    local input = utils.deep_copy(request_log)
+    input.latencies = {
+      kong = 10,
+      proxy = 5,
+      request = 20,
+      receive = 4,
+    }
+
+    local payload = analytics:create_payload(input)
+    assert.equals(4, payload.latencies.receive_ms)
+  end)
+
+  it("subtracts receive time from kong latency", function()
+    local input = utils.deep_copy(request_log)
+    input.latencies = {
+      kong = 10,
+      proxy = 5,
+      request = 20,
+      receive = 4,
+    }
+
+    local payload = analytics:create_payload(input)
+    assert.same({
+      kong_gateway_ms = (input.latencies.kong - input.latencies.receive),
+      upstream_ms = 5,
+      response_ms = 20,
+      receive_ms = 4,
+    }, payload.latencies)
   end)
 end)
 
@@ -885,6 +952,7 @@ describe("proto buffer", function()
       consumer_groups = {
         { id = "1" },
       },
+      websocket = false,
     }
     assert.are.same(expected, decoded.data[1])
   end)
@@ -940,6 +1008,7 @@ describe("proto buffer", function()
       consumer_groups = {
         { id = "1" },
       },
+      websocket = false,
     }
     assert.are.same(default, decoded)
   end)

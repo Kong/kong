@@ -1,0 +1,3 @@
+message: '**Analytics**: `latencies.kong_gateway_ms` no longer includes receive time/latency'
+type: feature
+scope: Core

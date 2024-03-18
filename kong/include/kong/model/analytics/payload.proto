@@ -26,6 +26,7 @@ message RequestMetadata {
   string source = 15;
   ApplicationContext application_context = 16;
   repeated ConsumerGroupInfo consumer_groups = 17;
+  bool websocket = 18;
 }
 
 message RequestInfo {
@@ -83,6 +84,7 @@ message LatencyInfo {
   uint32 kong_gateway_ms = 1;
   uint32 upstream_ms = 2;
   uint32 response_ms = 3;
+  uint32 receive_ms = 4;
 }
 
 message BalancerInfo {
