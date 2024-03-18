@@ -452,6 +452,8 @@ local function resolve_name_type_callback(self, name, qtype, opts, tries)
   if answers and ttl and not answers.expired then
     ttl = ttl + self.stale_ttl
     if ttl > 0 then
+      -- The asynchronous task's concurrent control is ensured by mlcache,
+      -- which utilizes lua-resty-lock before executing this callback.
       start_stale_update_task(self, key, name, qtype, opts.short_key, ttl)
       answers.expire = now() + ttl
       answers.expired = true
