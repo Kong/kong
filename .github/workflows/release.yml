@@ -602,7 +602,7 @@ jobs:
         github.event.inputs.version == 'nightly'
       env:
         GITHUB_TOKEN: ${{ secrets.PAT }}
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         name: "${{ needs.metadata.outputs.gh-release-name }}"
         body: "${{ needs.metadata.outputs.gh-release-name }} ${{ needs.metadata.outputs.release-label }}"
