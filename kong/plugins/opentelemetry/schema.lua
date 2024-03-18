@@ -1,6 +1,5 @@
 local typedefs = require "kong.db.schema.typedefs"
 local Schema = require "kong.db.schema"
-local deprecation = require("kong.deprecation")
 
 local function custom_validator(attributes)
   for _, v in pairs(attributes) do
@@ -50,8 +49,20 @@ return {
             max_batch_size = 200,
           },
         } },
-        { batch_span_count = { description = "The number of spans to be sent in a single batch.", type = "integer" } },
-        { batch_flush_delay = { description = "The delay, in seconds, between two consecutive batches.", type = "integer" } },
+        { batch_span_count = {
+            description = "The number of spans to be sent in a single batch.",
+            type = "integer",
+            deprecation = {
+              message = "opentelemetry: config.batch_span_count is deprecated, please use config.queue.max_batch_size instead",
+              removal_in_version = "4.0",
+              old_default = 200 }, }, },
+        { batch_flush_delay = {
+            description = "The delay, in seconds, between two consecutive batches.",
+            type = "integer",
+            deprecation = {
+              message = "opentelemetry: config.batch_flush_delay is deprecated, please use config.queue.max_coalescing_delay instead",
+              removal_in_version = "4.0",
+              old_default = 3, }, }, },
         { connect_timeout = typedefs.timeout { default = 1000 } },
         { send_timeout = typedefs.timeout { default = 5000 } },
         { read_timeout = typedefs.timeout { default = 5000 } },
@@ -69,22 +80,6 @@ return {
           between = {0, 1},
           required = false,
           default = nil,
-        } },
-      },
-      entity_checks = {
-        { custom_entity_check = {
-          field_sources = { "batch_span_count", "batch_flush_delay" },
-          fn = function(entity)
-            if (entity.batch_span_count or ngx.null) ~= ngx.null and entity.batch_span_count ~= 200 then
-              deprecation("opentelemetry: config.batch_span_count is deprecated, please use config.queue.max_batch_size instead",
-                          { after = "4.0", })
-            end
-            if (entity.batch_flush_delay or ngx.null) ~= ngx.null and entity.batch_flush_delay ~= 3 then
-              deprecation("opentelemetry: config.batch_flush_delay is deprecated, please use config.queue.max_coalescing_delay instead",
-                          { after = "4.0", })
-            end
-            return true
-          end
         } },
       },
     }, },

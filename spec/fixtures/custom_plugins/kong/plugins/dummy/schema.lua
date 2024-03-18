@@ -18,7 +18,13 @@ return {
           }},
           { append_body = { type = "string" } },
           { resp_code = { type = "number" } },
-          { test_try = { type = "boolean", default = false}}
+          { test_try = { type = "boolean", default = false}},
+          { old_field = {
+              type = "number",
+              deprecation = {
+                message = "dummy: old_field is deprecated",
+                removal_in_version = "x.y.z",
+                old_default = 42 }, }, }
         },
       },
     },

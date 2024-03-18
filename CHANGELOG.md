@@ -1092,7 +1092,7 @@ configuration changes are needed when upgrading.
   use that before upgrading.
   [#8898](https://github.com/Kong/kong/pull/8898)
 - We bumped the version number (`_format_version`) of declarative configuration to "3.0" because of changes on `route.path`.
-  Declarative configuration with older version shoudl be upgraded to "3.0" on the fly.
+  Declarative configuration with older version should be upgraded to "3.0" on the fly.
   [#9078](https://github.com/Kong/kong/pull/9078)
 
 #### Migrations
