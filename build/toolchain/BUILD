@@ -44,6 +44,45 @@ cc_toolchain(
     toolchain_identifier = "local_aarch64-linux-gnu_cc_toolchain",
 )
 
+###
+
+toolchain(
+    name = "local_s390x-linux-gnu_toolchain",
+    exec_compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+    target_compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:s390x",
+        "//build/platforms/distro:generic",
+    ],
+    toolchain = ":local_s390x-linux-gnu_cc_toolchain",
+    toolchain_type = "@bazel_tools//tools/cpp:toolchain_type",
+)
+
+cc_toolchain_config(
+    name = "local_s390x-linux-gnu_cc_toolchain_config",
+    compiler_configuration = {},
+    target_cpu = "s390x",
+    toolchain_path_prefix = "/usr/s390x-linux-gnu/",  # is this required?
+    tools_path_prefix = "/usr/bin/s390x-linux-gnu-",
+)
+
+cc_toolchain(
+    name = "local_s390x-linux-gnu_cc_toolchain",
+    all_files = ":empty",
+    compiler_files = ":empty",
+    dwp_files = ":empty",
+    linker_files = ":empty",
+    objcopy_files = ":empty",
+    strip_files = ":empty",
+    supports_param_files = 0,
+    toolchain_config = ":local_s390x-linux-gnu_cc_toolchain_config",
+    toolchain_identifier = "local_s390x-linux-gnu_cc_toolchain",
+)
+
+
 ###################
 # managed toolchains (downloaded by Bazel)
 

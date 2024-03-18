@@ -29,6 +29,9 @@ configure_make(
         "@kong//:aarch64-linux-anylibc-cross": [
             "--host=aarch64-linux",
         ],
+        "@kong//:s390x-linux-anylibc-cross": [
+            "--host=s390x-linux",
+        ],
         "@kong//:x86_64-linux-musl-cross": [
             "--host=x86_64-linux-musl",
         ],

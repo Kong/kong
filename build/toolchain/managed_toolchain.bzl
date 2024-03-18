@@ -128,6 +128,7 @@ def register_managed_toolchain(name = None, arch = "x86_64", vendor = "unknown",
 
 def register_all_toolchains(name = None):
     native.register_toolchains("//build/toolchain:local_aarch64-linux-gnu_toolchain")
+    native.register_toolchains("//build/toolchain:local_s390x-linux-gnu_toolchain")
 
     register_managed_toolchain(
         arch = "x86_64",

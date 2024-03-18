@@ -288,6 +288,17 @@ platform(
     ],
 )
 
+platform(
+    name = "generic-crossbuild-s390x",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:s390x",
+        "//build/platforms/distro:generic",
+        ":cross_build",
+    ],
+)
+
+
 # backward compatibility
 alias(
     name = "ubuntu-22.04-arm64",
@@ -333,6 +344,7 @@ platform(
     for vendor in aarch64_glibc_distros
 ]
 
+
 # config_settings define a select() condition based on user-set constraint_values
 # see https://bazel.build/docs/configurable-attributes
 config_setting(
@@ -344,6 +356,17 @@ config_setting(
     ],
     visibility = ["//visibility:public"],
 )
+
+config_setting(
+    name = "s390x-linux-anylibc-cross",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:s390x",
+        ":cross_build",
+    ],
+    visibility = ["//visibility:public"],
+)
+
 
 config_setting(
     name = "x86_64-linux-musl-cross",
@@ -362,6 +385,7 @@ selects.config_setting_group(
     match_any = [
         ":aarch64-linux-anylibc-cross",
         ":x86_64-linux-musl-cross",
+        ":s390x-linux-anylibc-cross",
     ],
     visibility = ["//visibility:public"],
 )
