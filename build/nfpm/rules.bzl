@@ -13,6 +13,8 @@ def _nfpm_pkg_impl(ctx):
         target_arch = "amd64"
     elif target_cpu == "aarch64" or target_cpu == "arm64":
         target_arch = "arm64"
+    elif target_cpu == "s390x":
+        target_arch = "s390x"
     else:
         fail("Unsupported platform cpu: %s" % target_cpu)
     env["ARCH"] = target_arch
