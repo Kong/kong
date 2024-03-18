@@ -290,6 +290,51 @@ describe('@gke: Vaults: Hashicorp', function () {
     );
   });
 
+  it('should not create hcv vault with approle auth method and role id but without secret id and secret id file', async function () {
+    const resp = await postNegative(
+      `${url}/${vaultPrefix3}`,
+      {
+        name: vaultName,
+        prefix: vaultPrefix3,
+        config: {
+          auth_method: 'approle',
+          kv: 'v1',
+          host: hcvHost,
+          approle_role_id: '00000000-0000-0000-0000-000000000000',
+        },
+      }, 'put'
+    );
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 400').to.equal(400);
+    expect(resp.data.message, 'Should have correct error message').to.include(
+      "must set one of 'approle_secret_id', 'approle_secret_id_file' when 'auth_method' is 'approle'"
+    );
+  });
+
+  it('should not create hcv vault with approle auth method and role id and secret id made of spaces', async function () {
+    const resp = await postNegative(
+      `${url}/${vaultPrefix3}`,
+      {
+        name: vaultName,
+        prefix: vaultPrefix3,
+        config: {
+          auth_method: 'approle',
+          kv: 'v1',
+          host: hcvHost,
+          approle_role_id: ' ',
+          approle_secret_id: ' ',
+        },
+      }, 'put'
+    );
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 400').to.equal(400);
+    expect(resp.data.message, 'Should have correct error message').to.include(
+      "config.approle_role_id: invalid value:"
+    );
+  });
+
   it('should create hcv vault with approle auth method', async function () {
     const resp = await axios({
       method: 'put',

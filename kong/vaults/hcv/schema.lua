@@ -31,8 +31,8 @@ return {
           { kube_api_token_file = { type = "string", required = false }},
           -- AppRole Auth
           { approle_auth_path = { type = "string", required = true, default = "approle" } },
-          { approle_role_id     = { type = "string", required = false }},
-          { approle_secret_id   = { type = "string", required = false }},
+          { approle_role_id     = { type = "string", not_match = "^%s+$", required = false }},
+          { approle_secret_id   = { type = "string", not_match = "^%s+$", required = false }},
           { approle_secret_id_file = { type = "string", required = false }},
           { approle_response_wrapping = { type = "boolean", required = true, default = false }},
           -- TTL settings
@@ -57,6 +57,13 @@ return {
             conditional = {
               if_field = "auth_method", if_match = { eq = "approle" },
               then_field = "approle_role_id", then_match = { required = true },
+            },
+          },
+          {
+            conditional_at_least_one_of = {
+              if_field = "auth_method", if_match = { eq = "approle" },
+              then_at_least_one_of = { "approle_secret_id", "approle_secret_id_file" },
+              then_err = "must set one of %s when 'auth_method' is 'approle'",
             },
           },
         },
