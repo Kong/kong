@@ -3,6 +3,6 @@ message: >
   - The new library now leverages `lua-resty-mlcache` for DNS record caching.
   - Introduced observable statistics for the new DNS client, and a new Admin API `/dns` to retrieve them.
   - Introduced a new option `legacy_dns_client` to toggle whether to use the new DNS client library.
-  - Deprecated the `dns_no_sync` option in the context of the new DNS client library. With the new library, DNS queries will always be executed synchronously. The `dns_no_sync` option remains functional with the legacy DNS client library.
+  - Deprecated the `dns_no_sync` option in the context of the new DNS client library. With the new library, multiple DNS queries for the same name will always be synchronized (even across workers). The `dns_no_sync` option remains functional with the legacy DNS client library.
 type: feature
 scope: Core
