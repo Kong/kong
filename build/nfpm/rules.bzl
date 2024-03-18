@@ -26,7 +26,7 @@ def _nfpm_pkg_impl(ctx):
     if pkg_ext == "apk":
         pkg_ext = "apk.tar.gz"
 
-    # create like kong.amd64.deb
+    # create like kong.<target_arch>.deb
     out = ctx.actions.declare_file("%s/%s.%s.%s" % (
         ctx.attr.out_dir,
         ctx.attr.pkg_name,
