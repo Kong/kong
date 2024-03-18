@@ -1548,7 +1548,7 @@ end
 -- @param opts the options table
 -- @return `success`, or `nil + error`
 local function connect(sock, host, port, sock_opts)
-  local targetIp, targetPort, tryList = execute_toip(host, port)
+  local targetIp, targetPort, tryList = toip(host, port)
 
   if not targetIp then
     return nil, tostring(targetPort) .. ". Tried: " .. tostring(tryList)
@@ -1571,7 +1571,7 @@ local function setpeername(sock, host, port)
   if host:sub(1,5) == "unix:" then
     targetIp = host  -- unix domain socket, nothing to resolve
   else
-    targetIp, targetPort, tryList = execute_toip(host, port)
+    targetIp, targetPort, tryList = toip(host, port)
     if not targetIp then
       return nil, tostring(targetPort) .. ". Tried: " .. tostring(tryList)
     end
