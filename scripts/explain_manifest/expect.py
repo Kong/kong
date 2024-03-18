@@ -139,7 +139,7 @@ class ExpectChain():
 
         if self._all_failures:
             self._print_error(
-                "Following failure(s) occured:\n" + "\n".join(self._all_failures))
+                "Following failure(s) occurred:\n" + "\n".join(self._all_failures))
             os._exit(1)
 
     def _compare(self, attr, fn):
@@ -149,7 +149,7 @@ class ExpectChain():
                 continue  # accept missing attribute for now
             v = getattr(f, attr)
             if self._key_name and isinstance(v, dict):
-                # TODO: explict flag to accept missing key
+                # TODO: explicit flag to accept missing key
                 if self._key_name not in v:
                     return True
                 v = v[self._key_name]

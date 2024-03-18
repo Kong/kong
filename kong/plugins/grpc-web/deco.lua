@@ -83,7 +83,7 @@ local function rpc_types(path, protofile)
   local info = get_proto_info(protofile)
   local types = info[path]
   if not types then
-    return nil, ("Unkown path %q"):format(path)
+    return nil, ("Unknown path %q"):format(path)
   end
 
   return types[1], types[2]
