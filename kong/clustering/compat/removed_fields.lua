@@ -184,13 +184,17 @@ return {
     },
   },
 
+  -- Any dataplane older than 3.4.0
+  [3004003005] = {
+    cors = {
+      "private_network",
+    },
+  },
+
   -- Any dataplane older than 3.5.0
   [3005000000] = {
     acme = {
       "storage_config.redis.scan_count",
-    },
-    cors = {
-      "private_network",
     },
     -- Enterprise plugins
     session = {
