@@ -56,7 +56,7 @@ jobs:
           sleep $delay
 
       - name: Daily build Dispatch
-        uses: benc-uk/workflow-dispatch@798e70c97009500150087d30d9f11c5444830385 # v1
+        uses: benc-uk/workflow-dispatch@25b02cc069be46d637e8fe2f1e8484008e9e9609 # v1
         if: matrix.active_branch == 'yes' || steps.date.outputs.dmod == '1'
         with:
           workflow: release.yml
