@@ -1,0 +1,4 @@
+message: |
+  Fixed a bug that caused the `kong` command line tool to ignore the `lua_ssl_trusted_certificate` configuration option.
+type: bugfix
+scope: CLI Command

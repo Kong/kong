@@ -74,8 +74,6 @@ local function request(conf, resource, version, request_conf)
     headers = {
       ["X-Vault-Namespace"] = conf.namespace,
     },
-    -- TODO: turned off because CLI does not currently support trusted certificates
-    ssl_verify = false,
   }
 
   for k, v in pairs(request_conf or {}) do

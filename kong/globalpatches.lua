@@ -629,20 +629,5 @@ return function(options)
     end
   end
 
-  -- [[ XXX EE: patch luasocket global config for: cli
-  do
-    if options.cli then
-      local resty_luasocket = require "resty.luasocket"
-      -- Force luasocket to fallback to lua socket because the kong
-      -- command is running in a vanilla resty shell that lacks the ssl
-      -- related configs. It's hard for us to set the corresponding config
-      -- to let vanilla resty shell to use, so we force lua socket in timer
-      -- phase to let ssl verify work correctly. Having this config helps
-      -- to let vault work correctly.
-      resty_luasocket.force_luasocket("timer", true)
-    end
-  end
--- ]] XXX EE
-
   require "kong.deprecation".init(options.cli)
 end
