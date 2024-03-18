@@ -57,15 +57,19 @@ if kong_router_flavor == "traditional_compatible" or kong_router_flavor == "expr
   local HTTP_PATH_SEGMENTS_SUFFIX_REG = [[^(0|[1-9]\d*)(_([1-9]\d*))?$]]
 
   validate_route = function(entity)
-    if is_empty_field(entity.snis) and
-       is_empty_field(entity.sources) and
-       is_empty_field(entity.destinations) and
-       is_empty_field(entity.methods) and
-       is_empty_field(entity.hosts) and
-       is_empty_field(entity.paths) and
-       is_empty_field(entity.headers) and
-       is_null(entity.expression)   -- expression is not a table
-    then
+    local is_expression_empty =
+      is_null(entity.expression)   -- expression is not a table
+
+    local is_others_empty =
+      is_empty_field(entity.snis) and
+      is_empty_field(entity.sources) and
+      is_empty_field(entity.destinations) and
+      is_empty_field(entity.methods) and
+      is_empty_field(entity.hosts) and
+      is_empty_field(entity.paths) and
+      is_empty_field(entity.headers)
+
+    if is_expression_empty and is_others_empty then
       return true
     end
 
