@@ -1,0 +1,5 @@
+message: |
+  Fixed an issue where the lock isn't released upon exiting the mlcache:renew
+  function.
+type: bugfix
+scope: Core
