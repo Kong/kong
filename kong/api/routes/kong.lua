@@ -275,6 +275,7 @@ return {
       if not kong.dns.stats then
         return kong.response.exit(404, { message = "not support for legacy DNS client" })
       end
+
       local body = {
         worker = {
           id = ngx.worker.id() or -1,
