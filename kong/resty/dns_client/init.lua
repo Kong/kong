@@ -1,5 +1,6 @@
 local cjson = require("cjson.safe")
 local utils = require("kong.resty.dns_client.utils")
+local tablex = require("pl.tablex")
 local mlcache = require("kong.resty.mlcache")
 local resolver = require("resty.dns.resolver")
 
@@ -73,7 +74,7 @@ local NAME_ERROR_CODE    = 3 -- response code 3 as "Name Error" or "NXDOMAIN"
 -- client specific error
 local CACHE_ONLY_EC      = 100
 local CACHE_ONLY_ESTR    = "cache only lookup failed"
-local CACHE_ONLY_ANSWERS = { errcode = CACHE_ONLY_EC, errstr = CACHE_ONLY_ESTR }
+local CACHE_ONLY_ANSWERS = tablex.readonly({ errcode = CACHE_ONLY_EC, errstr = CACHE_ONLY_ESTR })
 local EMPTY_RECORD_EC    = 101
 local EMPTY_RECORD_ESTR  = "empty record received"
 
@@ -92,7 +93,7 @@ end
 _M.TYPE_LAST = TYPE_LAST
 
 
-local tries_mt = { __tostring = cjson.encode }
+local tries_mt = { __tostring = cjson.encode, }
 
 
 local function stats_init(stats, name)
@@ -163,10 +164,12 @@ local function init_hosts(cache, path, preferred_ip_type)
 
   for name, address in pairs(hosts) do
     name = name:lower()
+
     if address.ipv4 then
       insert_answer(name, TYPE_A, address.ipv4)
       insert_last_type(cache, name, TYPE_A)
     end
+
     if address.ipv6 then
       insert_answer(name, TYPE_AAAA, address.ipv6)
       if not address.ipv4 or preferred_ip_type == TYPE_AAAA then
@@ -225,6 +228,7 @@ function _M.new(opts)
       if not kong or not kong.worker_events then
         return
       end
+
       local cwid = ngx.worker.id()
       for _, ev in pairs(events) do
         local handler = function(data, event, source, wid)
@@ -232,13 +236,16 @@ function _M.new(opts)
             ev.handler(data)
           end
         end
+
         kong.worker_events.register(handler, ipc_source, ev.channel)
       end
     end,
+
     broadcast = function(channel, data)
       if not kong or not kong.worker_events then
         return
       end
+
       local ok, err = kong.worker_events.post(ipc_source, channel, data)
       if not ok then
         log(ERR, "failed to post event '", ipc_source, "', '", channel, "': ", err)
@@ -325,6 +332,7 @@ local function process_answers(self, qname, qtype, answers)
       -- compatible with balancer, see https://github.com/Kong/kong/pull/3088
       if answer.type == TYPE_AAAA then
         answer.address = ipv6_bracket(answer.address)
+
       elseif answer.type == TYPE_SRV then
         answer.target = ipv6_bracket(answer.target)
       end
@@ -405,6 +413,7 @@ local function stale_update_task(premature, self, key, name, qtype, short_key, t
     if ttl < 0 then
       return  -- no need to retry if it exceeds the stale_ttl
     end
+
     local ok, err = timer_at(retry_delay, stale_update_task, self, key, name,
                              qtype, short_key, ttl)
     if not ok then
@@ -504,6 +513,7 @@ local function resolve_name_type(self, name, qtype, opts, tries)
       local src = answers.errcode < CACHE_ONLY_EC and "server" or "client"
       err = ("dns %s error: %s %s"):format(src, answers.errcode, answers.errstr)
     end
+
     table_insert(tries, { name .. ":" .. typstrs[qtype], err })
   end
 
@@ -520,6 +530,7 @@ local function get_search_types(self, name, qtype)
     if qtype == TYPE_LAST then
       qtype = get_last_type(self.cache, name)
     end
+
     if qtype and not checked_types[qtype] then
       table_insert(types, qtype)
       checked_types[qtype] = true
@@ -532,11 +543,15 @@ end
 
 local function check_and_get_ip_answers(name)
   if name:match("^%d+%.%d+%.%d+%.%d+$") then  -- IPv4
-    return {{ name = name, class = 1, type = TYPE_A, address = name }}
+    return {
+      { name = name, class = 1, type = TYPE_A, address = name },
+    }
   end
 
-  if name:match(":") then                     -- IPv6
-    return {{ name = name, class = 1, type = TYPE_AAAA, address = ipv6_bracket(name) }}
+  if name:find(":", 1, true) then             -- IPv6
+    return {
+      { name = name, class = 1, type = TYPE_AAAA, address = ipv6_bracket(name) },
+    }
   end
 
   return nil
@@ -545,7 +560,7 @@ end
 
 local function resolve_names_and_types(self, name, opts, tries)
   local answers = check_and_get_ip_answers(name)
-  if answers then
+  if answers then -- domain name is IP literal
     answers.ttl = LONG_LASTING_TTL
     answers.expire = now() + answers.ttl
     return answers, nil, tries
@@ -596,6 +611,9 @@ local function resolve_all(self, name, opts, tries)
   if not answers then
     answers, err, tries = resolve_names_and_types(self, name, opts, tries)
     if not opts.cache_only and answers then
+      -- If another worker resolved the name between these two `:get`, it can
+      -- work as expected and will not introduce a race condition.
+      --
       -- insert via the `:get` callback to prevent inter-process communication
       self.cache:get(key, nil, function()
         return answers, nil, answers.ttl
@@ -627,6 +645,7 @@ local function copy_options(opts)
   if opts.resolved_names then
     return opts
   end
+
   opts = cycle_aware_deep_copy(opts)
   opts.resolved_names = {}  -- for detecting circular references in DNS records
   return opts
@@ -721,23 +740,29 @@ if package.loaded.busted then
   function _M.getobj()
     return dns_client
   end
+
   function _M.getcache()
     return {
       set = function(self, k, v, ttl)
         self.cache:set(k, {ttl = ttl or 0}, v)
       end,
+
       delete = function(self, k)
         self.cache:delete(k)
       end,
+
       cache = dns_client.cache,
     }
   end
+
   function _M:insert_last_type(name, qtype)
     insert_last_type(self.cache, name, qtype)
   end
+
   function _M:get_last_type(name)
     return get_last_type(self.cache, name)
   end
+
   _M._init = _M.init
   function _M.init(opts)
     opts = opts or {}
