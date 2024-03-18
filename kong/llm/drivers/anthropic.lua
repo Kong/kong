@@ -148,6 +148,12 @@ local transformers_from = {
             finish_reason = response_table.stop_reason,
           },
         },
+        usage = {
+          prompt_tokens = response_table.usage.input_tokens or 0,
+          completion_tokens = response_table.usage.output_tokens or 0,
+          total_tokens = response_table.usage.input_tokens and response_table.usage.output_tokens and
+            response_table.usage.input_tokens + response_table.usage.output_tokens or 0,
+        },
         model = response_table.model,
         object = "chat.content",
       }
