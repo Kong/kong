@@ -73,7 +73,7 @@ const currentDockerImage = getControlPlaneDockerImage();
             id: pluginsData[customPlugin].routeId,
           },
         };
-    
+
         const resp = await postNegative(url, payload );
         logResponse(resp);
         expect(resp.status, 'should see 400 status').to.equal(400);
@@ -95,7 +95,7 @@ const currentDockerImage = getControlPlaneDockerImage();
         },
         protocols: []
       };
-  
+
       const resp = await postNegative(url, payload);
       logResponse(resp);
       expect(resp.status, 'should see 400 status').to.equal(400);
@@ -111,12 +111,12 @@ const currentDockerImage = getControlPlaneDockerImage();
         },
         protocols: []
       };
-  
+
       const resp = await postNegative(url, payload);
       logResponse(resp);
       expect(resp.status, 'should see 400 status').to.equal(400);
     });
-  
+
     it(`should create ${customPlugin} custom plugin with valid config`, async function () {
       message = `hey ${customPlugin}`;
 
@@ -132,7 +132,7 @@ const currentDockerImage = getControlPlaneDockerImage();
           message
         },
       };
-  
+
       const resp = await axios.post(url, payload);
       expect(resp.status, 'should see 201 status').to.equal(201);
       expect(resp.data.config.message, 'should see correct plugin configuration').to.equal(message);
@@ -141,7 +141,7 @@ const currentDockerImage = getControlPlaneDockerImage();
 
       await waitForConfigRebuild()
     });
-  
+
     it(`should see the ${customPlugin} custom plugin in /plugins list`, async function () {
       const resp = await axios(url);
       logResponse(resp);
@@ -155,7 +155,7 @@ const currentDockerImage = getControlPlaneDockerImage();
         }
       }
     });
-  
+
     it('should send request to upstream and see the custom plugin header', async function () {
       const headerName = `x-hello-from-${pluginsData[customPlugin].fullName.toLowerCase()}`;
 
@@ -163,7 +163,7 @@ const currentDockerImage = getControlPlaneDockerImage();
         url: `${proxyUrl}${[pluginsData[customPlugin].path]}`,
       });
       logResponse(resp);
-      
+
       expect(resp.status, 'Status should be 200').to.equal(200);
 
       if(customPlugin === 'js-hello') {
@@ -180,7 +180,7 @@ const currentDockerImage = getControlPlaneDockerImage();
 
     it(`should not patch the ${customPlugin} custom plugin with empty protocols configuration`, async function () {
       const resp = await postNegative(`${url}/${pluginsData[customPlugin].id}`, { protocols: []}, 'patch')
-  
+
       expect(resp.status, 'Status should be 400').to.equal(400);
       expect(resp.data.message, 'Should see correct error mesasge for protocol schema error').to.contain(`protocols: must match the associated route's protocols`)
     });
@@ -196,22 +196,21 @@ const currentDockerImage = getControlPlaneDockerImage();
           }
         }
       });
-  
+
       expect(resp.status, 'Status should be 200').to.equal(200);
       expect(resp.data.config.message, 'Should see the updated mesasge configuration field').to.equal(message)
 
       await waitForConfigRebuild()
     });
 
-    // unskip after https://konghq.atlassian.net/browse/KAG-3949 is resolved
-    it.skip('should send request to upstream and see the custom plugin header with updated message', async function () {
+    it('should send request to upstream and see the custom plugin header with updated message', async function () {
       const headerName = `x-hello-from-${pluginsData[customPlugin].fullName.toLowerCase()}`;
 
       const resp = await axios({
         url: `${proxyUrl}${[pluginsData[customPlugin].path]}`,
       });
       logResponse(resp);
-      
+
       expect(resp.status, 'Status should be 200').to.equal(200);
 
       if(customPlugin === 'js-hello') {
@@ -225,17 +224,17 @@ const currentDockerImage = getControlPlaneDockerImage();
         );
       }
     });
-  
+
     it(`should delete the ${customPlugin} custom plugin`, async function () {
       const resp = await axios({
         method: 'delete',
         url: `${url}/${pluginsData[customPlugin].id}`,
       });
       logResponse(resp);
-  
+
       expect(resp.status, 'Status should be 204').to.equal(204);
     });
-  
+
     after(async function () {
       await deleteGatewayRoute(pluginsData[customPlugin].routeId);
       await deleteGatewayService(pluginsData[customPlugin].serviceId);
