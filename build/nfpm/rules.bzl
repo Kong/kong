@@ -13,6 +13,8 @@ def _nfpm_pkg_impl(ctx):
         target_arch = "amd64"
     elif target_cpu == "aarch64" or target_cpu == "arm64":
         target_arch = "arm64"
+    elif target_cpu == "s390" or target_cpu == "s390x":
+        target_arch = "s390x"
     else:
         fail("Unsupported platform cpu: %s" % target_cpu)
     env["ARCH"] = target_arch
@@ -41,7 +43,7 @@ def _nfpm_pkg_impl(ctx):
     ctx.actions.run_shell(
         inputs = ctx.files._nfpm_bin,
         mnemonic = "nFPM",
-        command = "ln -sf %s nfpm-prefix; external/nfpm/nfpm $@" % KONG_VAR["BUILD_DESTDIR"],
+        command = "ln -sf %s nfpm-prefix; build/nfpm/nfpm $@" % KONG_VAR["BUILD_DESTDIR"],
         arguments = [nfpm_args],
         outputs = [out],
         env = env,
