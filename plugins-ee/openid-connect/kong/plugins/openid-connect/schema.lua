@@ -1920,7 +1920,7 @@ local config = {
           },
           {
             leeway = {
-              description = "Allow some leeway (in seconds) on the iat claim and ttl / expiry verification.",
+              description = "Defines leeway time (in seconds) for `auth_time`, `exp`, `iat`, and `nbf` claims",
               required = false,
               type = "number",
               default = 0,
