@@ -144,18 +144,15 @@ jobs:
       
       - name: get pod name
         run: |
-        KONG_CP_POD = $(kubectl get pods -n kong -l app=kong-cp-kong -o=jsonpath='{.items[0].metadata.name}' --field-selector=status.phase=Running)
-        echo "KONG_CP_POD=$KONG_CP_POD" >> $GITHUB_ENV
-        KONG_DP_POD = $(kubectl get pods -n kong -l app=kong-dp1-kong -o=jsonpath='{.items[0].metadata.name}' --field-selector=status.phase=Running)
-        echo "KONG_DP_POD=$KONG_DP_POD" >> $GITHUB_ENV
-        REDIS_POD = $(kubectl get pods -n kong -l app=redis -o=jsonpath='{.items[0].metadata.name}' --field-selector=status.phase=Running)
-        echo "REDIS_POD=$REDIS_POD" >> $GITHUB_ENV
+          echo "KONG_CP_POD = $(kubectl get pods -n kong -l app=kong-cp-kong -o=jsonpath='{.items[0].metadata.name}' --field-selector=status.phase=Running)" >> $GITHUB_ENV
+          echo "KONG_DP_POD = $(kubectl get pods -n kong -l app=kong-dp1-kong -o=jsonpath='{.items[0].metadata.name}' --field-selector=status.phase=Running)" >> $GITHUB_ENV
+          echo "REDIS_POD = $(kubectl get pods -n kong -l app=redis -o=jsonpath='{.items[0].metadata.name}' --field-selector=status.phase=Running)" >> $GITHUB_ENV
 
       - name: portforward pod to local with kubectl
         run: |
-        kubectl port-forward $KONG_CP_POD 8001:8001 8002:8002 -n kong
-        kubectl port-forward $KONG_DP_POD 8000:8000 8443:8443 -n kong
-        kubectl port-forward $REDIS_POD 6379:6379 -n kong
+          kubectl port-forward $KONG_CP_POD 8001:8001 8002:8002 -n kong
+          kubectl port-forward $KONG_DP_POD 8000:8000 8443:8443 -n kong
+          kubectl port-forward $REDIS_POD 6379:6379 -n kong
 
       - name: Copy .npmrc
         run: cp .npmrc.ci .npmrc
