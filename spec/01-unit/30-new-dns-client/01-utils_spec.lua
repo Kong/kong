@@ -275,6 +275,12 @@ search domaina.com domainb.com
       assert.is.same({ "domaina.com", "domainb.com" }, resolv.search)
     end)
 
+    it("tests parsing 'resolv.conf' with 'timeout = 0'", function()
+      local file = splitlines("options timeout:0")
+      local resolv = utils.parse_resolv_conf(file)
+      assert.equal(2000, resolv.options.timeout)
+    end)
+
     it("tests parsing 'resolv.conf' with max search entries MAXSEARCH", function()
       local file = splitlines(
 [[

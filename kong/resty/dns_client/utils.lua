@@ -1,5 +1,8 @@
 local utils = require("kong.resty.dns.utils")
 
+local log = ngx.log
+local NOTICE = ngx.NOTICE
+
 local math_random   = math.random
 local table_insert  = table.insert
 local table_remove  = table.remove
@@ -101,6 +104,11 @@ function _M.parse_resolv_conf(path, enable_ipv6)
   resolv.options = resolv.options or {}
   resolv.ndots = resolv.options.ndots or 1
   resolv.search = resolv.search or (resolv.domain and { resolv.domain })
+  -- check if timeout is 0s
+  if resolv.options.timeout and resolv.options.timeout == 0 then
+    resolv.options.timeout = 2000 -- 2000ms is lua-resty-dns default
+    log(NOTICE, "A non-positive timeout of 0s is configured in resolv.conf. Setting it to 2000ms.")
+  end
   -- remove special domain like "."
   if resolv.search then
     for i = #resolv.search, 1, -1 do
