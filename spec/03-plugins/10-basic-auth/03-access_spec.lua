@@ -7,7 +7,6 @@
 
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
-local meta    = require "kong.meta"
 local utils   = require "kong.tools.utils"
 
 local ws = require "spec-ee.fixtures.websocket"
@@ -591,7 +590,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.response(res).has.status(401)
-        assert.equal('Key realm="' .. meta._NAME .. '"', res.headers["WWW-Authenticate"])
+        assert.equal('Key', res.headers["WWW-Authenticate"])
       end)
 
       it("fails 401, with no credential provided", function()
@@ -603,7 +602,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.response(res).has.status(401)
-        assert.equal('Key realm="' .. meta._NAME .. '"', res.headers["WWW-Authenticate"])
+        assert.equal('Key', res.headers["WWW-Authenticate"])
       end)
 
     end)
