@@ -152,6 +152,7 @@ local function validate_proxy(params, body, truncated)
   request_headers["x-forwarded-prefix"] = nil
   request_headers["x-forwarded-proto"] = nil
   request_headers["x-real-ip"] = nil
+  request_headers["via"] = nil
 
   assert.same(params.headers, request_headers)
   assert.same(params.query, body.uri_args)

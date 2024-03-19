@@ -20,7 +20,7 @@ local meta = require "kong.meta"
 local constants = require "kong.constants"
 local aws_config = require "resty.aws.config" -- reads environment variables, thus specified here
 local VIA_HEADER = constants.HEADERS.VIA
-local VIA_HEADER_VALUE = meta._NAME .. "/" .. meta._VERSION
+local server_tokens = meta._SERVER_TOKENS
 
 local request_util = require "kong.plugins.aws-lambda.request-util"
 local build_request_payload = request_util.build_request_payload
@@ -245,7 +245,9 @@ function AWSLambdaHandler:access(conf)
   headers = kong.table.merge(headers) -- create a copy of headers
 
   if kong.configuration.enabled_headers[VIA_HEADER] then
-    headers[VIA_HEADER] = VIA_HEADER_VALUE
+    local outbound_via = (ngx_var.http2 and "2 " or "1.1 ") .. server_tokens
+    headers[VIA_HEADER] = headers[VIA_HEADER] and headers[VIA_HEADER] .. ", " .. outbound_via
+                          or outbound_via
   end
 
   -- TODO: remove this in the next major release

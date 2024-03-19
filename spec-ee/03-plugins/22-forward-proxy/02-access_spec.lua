@@ -463,7 +463,7 @@ for _, x_headers_mode in ipairs{ "append", "transparent", "delete", } do
         },
       })
 
-      assert.equal(server_header, res.headers["Via"])
+      assert.equal("1.1 " .. server_header, res.headers["Via"])
     end)
 
   end)

@@ -44,6 +44,7 @@ local gsub              = string.gsub
 local find              = string.find
 local lower             = string.lower
 local fmt               = string.format
+
 local ngx               = ngx
 local var               = ngx.var
 local log               = ngx.log
@@ -79,6 +80,9 @@ local ROUTERS_REBUILD_COUNTER_KEY =
 local ROUTER_CACHE_SIZE = DEFAULT_MATCH_LRUCACHE_SIZE
 local ROUTER_CACHE = lrucache.new(ROUTER_CACHE_SIZE)
 local ROUTER_CACHE_NEG = lrucache.new(ROUTER_CACHE_SIZE)
+
+
+local DEFAULT_PROXY_HTTP_VERSION = "1.1"
 
 
 local NOOP = function() end
@@ -1412,6 +1416,14 @@ return {
       var.upstream_x_forwarded_path   = forwarded_path
       var.upstream_x_forwarded_prefix = forwarded_prefix
 
+      do
+        local req_via = get_header(constants.HEADERS.VIA, ctx)
+        local kong_inbound_via = protocol_version and protocol_version .. " " .. SERVER_HEADER
+                                 or SERVER_HEADER
+        var.upstream_via = req_via and req_via .. ", " .. kong_inbound_via
+                           or kong_inbound_via
+      end
+
       -- At this point, the router and `balancer_setup_stage1` have been
       -- executed; detect requests that need to be redirected from `proxy_pass`
       -- to `grpc_pass`. After redirection, this function will return early
@@ -1613,7 +1625,31 @@ return {
         end
 
         if enabled_headers[headers.VIA] then
-          header[headers.VIA] = SERVER_HEADER
+          -- Kong does not support injected directives like 'nginx_location_proxy_http_version',
+          -- so we skip checking them.
+
+          local proxy_http_version
+
+          local upstream_scheme = var.upstream_scheme
+          if upstream_scheme == "grpc" or upstream_scheme == "grpcs" then
+            proxy_http_version = "2"
+          end
+          if not proxy_http_version then
+            proxy_http_version = ctx.proxy_http_version or
+                                 kong.configuration.proxy_http_version or
+                                 DEFAULT_PROXY_HTTP_VERSION
+          end
+
+          local kong_outbound_via = proxy_http_version .. " " .. SERVER_HEADER
+          local resp_via = var["upstream_http_"..lower(headers.VIA)]
+          header[headers.VIA] = resp_via and resp_via .. ", " .. kong_outbound_via
+                                or kong_outbound_via
+        end
+
+        -- If upstream does not provide the 'Server' header, an 'openresty' header
+        -- would be inserted by default. We override it with the Kong server header.
+        if not header[headers.SERVER] and enabled_headers[headers.SERVER] then
+          header[headers.SERVER] = SERVER_HEADER
         end
 
       else

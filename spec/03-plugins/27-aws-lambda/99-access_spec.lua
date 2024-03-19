@@ -935,7 +935,7 @@ for _, strategy in helpers.each_strategy() do
         })
 
         if server_tokens then
-          assert.equal(server_tokens, res.headers["Via"])
+          assert.equal("2 " .. server_tokens, res.headers["Via"])
         end
       end)
 
