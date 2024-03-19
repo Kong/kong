@@ -15,7 +15,6 @@ local type          = type
 local pairs         = pairs
 local ipairs        = ipairs
 local math_min      = math.min
-local math_random   = math.random
 local table_insert  = table.insert
 
 local parse_hosts   = utils.parse_hosts
@@ -35,7 +34,6 @@ local DEFAULT_STALE_TTL   = 4
 local DEFAULT_EMPTY_TTL   = 30
 -- long-lasting TTL of 10 years for hosts or static IP addresses in cache settings
 local LONG_LASTING_TTL    = 10 * 365 * 24 * 60 * 60
-local STALE_UPDATE_DELAY  = 5
 
 local DEFAULT_ORDER = { "LAST", "SRV", "A", "AAAA", "CNAME" }
 
@@ -70,7 +68,7 @@ local hitstrs = {
 }
 
 -- server replied error from the DNS protocol
-local NAME_ERROR_CODE    = 3 -- response code 3 as "Name Error" or "NXDOMAIN"
+local NAME_ERROR_EC      = 3 -- response code 3 as "Name Error" or "NXDOMAIN"
 -- client specific error
 local CACHE_ONLY_EC      = 100
 local CACHE_ONLY_ESTR    = "cache only lookup failed"
@@ -314,7 +312,7 @@ end
 local function process_answers(self, qname, qtype, answers)
   local errcode = answers.errcode
   if errcode then
-    answers.ttl = errcode == NAME_ERROR_CODE and self.empty_ttl or self.error_ttl
+    answers.ttl = errcode == NAME_ERROR_EC and self.empty_ttl or self.error_ttl
     -- compatible with balancer, which needs this field
     answers.expire = now() + answers.ttl
     return answers
@@ -403,29 +401,13 @@ local function resolve_query(self, name, qtype, tries)
 end
 
 
-local function stale_update_task(premature, self, key, name, qtype, short_key, ttl)
+local function stale_update_task(premature, self, key, name, qtype, short_key)
   if premature then
     return
   end
 
   local answers = resolve_query(self, name, qtype, {})
-  if not answers then
-    -- retry update after failure
-    local retry_delay = math_random(STALE_UPDATE_DELAY, STALE_UPDATE_DELAY * 2)
-    ttl = ttl - retry_delay
-    if ttl < 0 then
-      return  -- no need to retry if it exceeds the stale_ttl
-    end
-
-    local ok, err = timer_at(retry_delay, stale_update_task, self, key, name,
-                             qtype, short_key, ttl)
-    if not ok then
-      log(ALERT, "failed to start a timer to re-update stale DNS records: ", err)
-    end
-    return
-  end
-
-  if not answers.errcode or answers.errcode == NAME_ERROR_CODE then
+  if answers and (not answers.errcode or answers.errcode == NAME_ERROR_EC) then
     self.cache:set(key, { ttl = answers.ttl }, answers)
     insert_last_type(self.cache, name, qtype)
 
@@ -435,11 +417,10 @@ local function stale_update_task(premature, self, key, name, qtype, short_key, t
 end
 
 
-local function start_stale_update_task(self, key, name, qtype, short_key, ttl)
+local function start_stale_update_task(self, key, name, qtype, short_key)
   stats_count(self.stats, key, "stale")
 
-  local ok, err = timer_at(0, stale_update_task, self, key, name, qtype,
-                           short_key, ttl)
+  local ok, err = timer_at(0, stale_update_task, self, key, name, qtype, short_key)
   if not ok then
     log(ALERT, "failed to start a timer to update stale DNS records: ", err)
   end
@@ -452,14 +433,22 @@ local function resolve_name_type_callback(self, name, qtype, opts, tries)
   -- `:peek(stale=true)` verifies if the expired key remains in L2 shm, then
   -- initiates an asynchronous background updating task to refresh it.
   local ttl, _, answers = self.cache:peek(key, true)
-  if answers and ttl and not answers.expired then
-    ttl = ttl + self.stale_ttl
-    if ttl > 0 then
-      -- The asynchronous task's concurrent control is ensured by mlcache,
-      -- which utilizes lua-resty-lock before executing this callback.
-      start_stale_update_task(self, key, name, qtype, opts.short_key, ttl)
+  if answers and ttl then
+    if not answers.expired then
       answers.expire = now() + ttl
       answers.expired = true
+      ttl = ttl + self.stale_ttl
+
+    else
+      ttl = ttl + (answers.expire - now())
+    end
+
+    -- trigger the update task by the upper caller every 60 seconds
+    ttl = math_min(ttl, 60)
+
+    if ttl > 0 then
+      -- mlcache's internal lock mechanism ensures concurrent control
+      start_stale_update_task(self, key, name, qtype, opts.short_key)
       answers.ttl = ttl
       return answers, nil, ttl
     end
@@ -470,7 +459,6 @@ local function resolve_name_type_callback(self, name, qtype, opts, tries)
   end
 
   local answers, err, ttl = resolve_query(self, name, qtype, tries)
-
   return answers, err, ttl
 end
 
