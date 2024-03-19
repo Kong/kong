@@ -73,6 +73,11 @@ if kong_router_flavor == "traditional_compatible" or kong_router_flavor == "expr
       return true
     end
 
+    if not is_expression_empty and not is_others_empty then
+      return nil, "Router Expression failed validation: " ..
+                  "can not set 'expression' field with other fields simultaneously"
+    end
+
     local schema = get_schema(entity.protocols)
     local exp = get_expression(entity)
 
