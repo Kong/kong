@@ -212,7 +212,10 @@ function _M.new(opts)
   }
 
   -- init the mlcache
-  local lock_timeout = r_opts.timeout / 1000 * r_opts.retrans + 1 -- s
+
+  -- maximum timeout for the underlying r:query() operation to complete
+  -- socket timeout * retrans * 2 calls for send and receive + 1s extra delay
+  local lock_timeout = r_opts.timeout / 1000 * r_opts.retrans * 2 + 1 -- s
 
   local resty_lock_opts = {
     timeout = lock_timeout,
