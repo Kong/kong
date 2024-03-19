@@ -32,7 +32,6 @@ local _M = {
 
 
 local utils = require "kong.tools.utils"
-local dns = require "kong.tools.dns"
 local reports = require "kong.reports"
 local clear_tab = require "table.clear"
 local cjson = require "cjson.safe"
@@ -835,12 +834,11 @@ end
 local function enable(kong_config)
   set_available_filters(kong_config.wasm_modules_parsed)
 
-  -- setup a DNS client for ngx_wasm_module
-  _G.dns_client = _G.dns_client or dns(kong_config)
+  if not ngx.IS_CLI then
+    proxy_wasm = proxy_wasm or require "resty.wasmx.proxy_wasm"
 
-  proxy_wasm = proxy_wasm or require "resty.wasmx.proxy_wasm"
-
-  register_property_handlers()
+    register_property_handlers()
+  end
 
   ENABLED = true
   STATUS = STATUS_ENABLED
@@ -887,6 +885,14 @@ end
 function _M.init_worker()
   if not ENABLED then
     return true
+  end
+
+  if not ngx.IS_CLI then
+    _G.dns_client = kong and kong.dns
+
+    if not _G.dns_client then
+      return nil, "global kong.dns client is not initialized"
+    end
   end
 
   local ok, err = update_in_place()

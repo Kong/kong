@@ -1,24 +1,27 @@
 local typedefs = require("kong.db.schema.typedefs")
-local router = require("resty.router.router")
 local deprecation = require("kong.deprecation")
 
+local kong_router_flavor = kong and kong.configuration and kong.configuration.router_flavor
+
+-- works with both `traditional_compatible` and `expressions` routes
 local validate_route
-do
+if kong_router_flavor ~= "traditional" then
   local ipairs = ipairs
   local tonumber = tonumber
   local re_match = ngx.re.match
 
+  local router = require("resty.router.router")
   local get_schema = require("kong.router.atc").schema
-  local get_expression = require("kong.router.compat").get_expression
-  local transform_expression = require("kong.router.expressions").transform_expression
+  local get_expression = kong_router_flavor == "traditional_compatible" and
+                         require("kong.router.compat").get_expression or
+                         require("kong.router.expressions").transform_expression
 
   local HTTP_PATH_SEGMENTS_PREFIX = "http.path.segments."
   local HTTP_PATH_SEGMENTS_SUFFIX_REG = [[^(0|[1-9]\d*)(_([1-9]\d*))?$]]
 
-  -- works with both `traditional_compatiable` and `expressions` routes`
   validate_route = function(entity)
     local schema = get_schema(entity.protocols)
-    local exp = transform_expression(entity) or get_expression(entity)
+    local exp = get_expression(entity)
 
     local fields, err = router.validate(schema, exp)
     if not fields then
@@ -35,14 +38,12 @@ do
           return nil, "Router Expression failed validation: " ..
                       "illformed http.path.segments.* field"
         end
-      end
-    end
+      end -- if f:find
+    end -- for fields
 
     return true
   end
-end
-
-local kong_router_flavor = kong and kong.configuration and kong.configuration.router_flavor
+end   -- if kong_router_flavor ~= "traditional"
 
 if kong_router_flavor == "expressions" then
   return {
@@ -129,10 +130,29 @@ else
   }
 
   if kong_router_flavor == "traditional_compatible" then
+    local is_empty_field = require("kong.router.transform").is_empty_field
+
     table.insert(entity_checks,
       { custom_entity_check = {
+        field_sources = { "id", "protocols",
+                          "snis", "sources", "destinations",
+                          "methods", "hosts", "paths", "headers",
+                        },
         run_with_missing_fields = true,
-        fn = validate_route,
+        fn = function(entity)
+          if is_empty_field(entity.snis) and
+             is_empty_field(entity.sources) and
+             is_empty_field(entity.destinations) and
+             is_empty_field(entity.methods) and
+             is_empty_field(entity.hosts) and
+             is_empty_field(entity.paths) and
+             is_empty_field(entity.headers)
+          then
+            return true
+          end
+
+          return validate_route(entity)
+        end,
       }}
     )
   end

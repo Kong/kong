@@ -2,14 +2,10 @@ local _M = {}
 local _MT = { __index = _M, }
 
 
-local buffer = require("string.buffer")
-local schema = require("resty.router.schema")
-local context = require("resty.router.context")
-local router = require("resty.router.router")
 local lrucache = require("resty.lrucache")
 local tb_new = require("table.new")
-local fields = require("kong.router.fields")
 local utils = require("kong.router.utils")
+local transform = require("kong.router.transform")
 local rat = require("kong.tools.request_aware_table")
 local yield = require("kong.tools.yield").yield
 
@@ -19,9 +15,6 @@ local assert = assert
 local setmetatable = setmetatable
 local pairs = pairs
 local ipairs = ipairs
-local tonumber = tonumber
-
-
 local max = math.max
 
 
@@ -36,26 +29,24 @@ local ngx_ERR       = ngx.ERR
 local check_select_params  = utils.check_select_params
 local get_service_info     = utils.get_service_info
 local route_match_stat     = utils.route_match_stat
+local split_host_port      = transform.split_host_port
 
 
 local DEFAULT_MATCH_LRUCACHE_SIZE = utils.DEFAULT_MATCH_LRUCACHE_SIZE
 
 
-local LOGICAL_OR  = " || "
-local LOGICAL_AND = " && "
-
-
 local is_http = ngx.config.subsystem == "http"
 
 
--- reuse buffer object
-local values_buf = buffer.new(64)
-
-
-local CACHED_SCHEMA
-local HTTP_SCHEMA
-local STREAM_SCHEMA
+local get_atc_context
+local get_atc_router
+local get_atc_fields
 do
+  local schema = require("resty.router.schema")
+  local context = require("resty.router.context")
+  local router = require("resty.router.router")
+  local fields = require("kong.router.fields")
+
   local function generate_schema(fields)
     local s = schema.new()
 
@@ -69,68 +60,62 @@ do
   end
 
   -- used by validation
-  HTTP_SCHEMA   = generate_schema(fields.HTTP_FIELDS)
-  STREAM_SCHEMA = generate_schema(fields.STREAM_FIELDS)
+  local HTTP_SCHEMA   = generate_schema(fields.HTTP_FIELDS)
+  local STREAM_SCHEMA = generate_schema(fields.STREAM_FIELDS)
 
   -- used by running router
-  CACHED_SCHEMA = is_http and HTTP_SCHEMA or STREAM_SCHEMA
-end
+  local CACHED_SCHEMA = is_http and HTTP_SCHEMA or STREAM_SCHEMA
 
-
-local is_empty_field
-do
-  local null    = ngx.null
-  local isempty = require("table.isempty")
-
-  is_empty_field = function(f)
-    return f == nil or f == null or isempty(f)
-  end
-end
-
-
-local function escape_str(str)
-  -- raw string
-  if not str:find([["#]], 1, true) then
-    return "r#\"" .. str .. "\"#"
+  get_atc_context = function()
+    return context.new(CACHED_SCHEMA)
   end
 
-  -- standard string escaping (unlikely case)
-  if str:find([[\]], 1, true) then
-    str = str:gsub([[\]], [[\\]])
+  get_atc_router = function(routes_n)
+    return router.new(CACHED_SCHEMA, routes_n)
   end
 
-  if str:find([["]], 1, true) then
-    str = str:gsub([["]], [[\"]])
+  get_atc_fields = function(inst)
+    return fields.new(inst:get_fields())
   end
 
-  return "\"" .. str .. "\""
-end
+  local protocol_to_schema = {
+    http  = HTTP_SCHEMA,
+    https = HTTP_SCHEMA,
+    grpc  = HTTP_SCHEMA,
+    grpcs = HTTP_SCHEMA,
 
+    tcp   = STREAM_SCHEMA,
+    udp   = STREAM_SCHEMA,
+    tls   = STREAM_SCHEMA,
 
-local function gen_for_field(name, op, vals, val_transform)
-  if is_empty_field(vals) then
-    return nil
+    tls_passthrough = STREAM_SCHEMA,
+  }
+
+  -- for db schema validation
+  function _M.schema(protocols)
+    return assert(protocol_to_schema[protocols[1]])
   end
 
-  local vals_n = #vals
-  assert(vals_n > 0)
-
-  values_buf:reset():put("(")
-
-  for i = 1, vals_n do
-    local p = vals[i]
-    local op = (type(op) == "string") and op or op(p)
-
-    if i > 1 then
-      values_buf:put(LOGICAL_OR)
+  -- for unit testing
+  function _M._set_ngx(mock_ngx)
+    if type(mock_ngx) ~= "table" then
+      return
     end
 
-    values_buf:putf("%s %s %s", name, op,
-                    escape_str(val_transform and val_transform(op, p) or p))
-  end
+    if mock_ngx.header then
+      header = mock_ngx.header
+    end
 
-  -- consume the whole buffer
-  return values_buf:put(")"):get()
+    if mock_ngx.var then
+      var = mock_ngx.var
+    end
+
+    if mock_ngx.log then
+      ngx_log = mock_ngx.log
+    end
+
+    fields._set_ngx(mock_ngx)
+  end
 end
 
 
@@ -162,7 +147,7 @@ local function new_from_scratch(routes, get_exp_and_priority)
 
   local routes_n = #routes
 
-  local inst = router.new(CACHED_SCHEMA, routes_n)
+  local inst = get_atc_router(routes_n)
 
   local routes_t   = tb_new(0, routes_n)
   local services_t = tb_new(0, routes_n)
@@ -196,8 +181,8 @@ local function new_from_scratch(routes, get_exp_and_priority)
   end
 
   return setmetatable({
-      context = context.new(CACHED_SCHEMA),
-      fields = fields.new(inst:get_fields()),
+      context = get_atc_context(),
+      fields = get_atc_fields(inst),
       router = inst,
       routes = routes_t,
       services = services_t,
@@ -229,6 +214,7 @@ local function new_from_previous(routes, get_exp_and_priority, old_router)
     local route_id = route.id
 
     if not route_id then
+      old_router.rebuilding = false
       return nil, "could not categorize route"
     end
 
@@ -282,7 +268,7 @@ local function new_from_previous(routes, get_exp_and_priority, old_router)
     yield(true, phase)
   end
 
-  old_router.fields = fields.new(inst:get_fields())
+  old_router.fields = get_atc_fields(inst)
   old_router.updated_at = new_updated_at
   old_router.rebuilding = false
 
@@ -312,48 +298,6 @@ function _M.new(routes, cache, cache_neg, old_router, get_exp_and_priority)
   router.cache_neg = cache_neg or lrucache.new(DEFAULT_MATCH_LRUCACHE_SIZE)
 
   return router
-end
-
-
--- split port in host, ignore form '[...]'
--- example.com:123 => example.com, 123
--- example.*:123 => example.*, 123
-local split_host_port
-do
-  local DEFAULT_HOSTS_LRUCACHE_SIZE = DEFAULT_MATCH_LRUCACHE_SIZE
-
-  local memo_hp = lrucache.new(DEFAULT_HOSTS_LRUCACHE_SIZE)
-
-  split_host_port = function(key)
-    if not key then
-      return nil, nil
-    end
-
-    local m = memo_hp:get(key)
-
-    if m then
-      return m[1], m[2]
-    end
-
-    local p = key:find(":", nil, true)
-    if not p then
-      memo_hp:set(key, { key, nil })
-      return key, nil
-    end
-
-    local port = tonumber(key:sub(p + 1))
-
-    if not port then
-      memo_hp:set(key, { key, nil })
-      return key, nil
-    end
-
-    local host = key:sub(1, p - 1)
-
-    memo_hp:set(key, { host, port })
-
-    return host, port
-  end
 end
 
 
@@ -530,6 +474,7 @@ function _M:exec(ctx)
   return match_t
 end
 
+
 else  -- is stream subsystem
 
 
@@ -652,59 +597,8 @@ function _M:exec(ctx)
   return match_t
 end
 
+
 end   -- if is_http
-
-
-function _M._set_ngx(mock_ngx)
-  if type(mock_ngx) ~= "table" then
-    return
-  end
-
-  if mock_ngx.header then
-    header = mock_ngx.header
-  end
-
-  if mock_ngx.var then
-    var = mock_ngx.var
-  end
-
-  if mock_ngx.log then
-    ngx_log = mock_ngx.log
-  end
-
-  -- unit testing
-  fields._set_ngx(mock_ngx)
-end
-
-
-do
-  local protocol_to_schema = {
-    http  = HTTP_SCHEMA,
-    https = HTTP_SCHEMA,
-    grpc  = HTTP_SCHEMA,
-    grpcs = HTTP_SCHEMA,
-
-    tcp   = STREAM_SCHEMA,
-    udp   = STREAM_SCHEMA,
-    tls   = STREAM_SCHEMA,
-
-    tls_passthrough = STREAM_SCHEMA,
-  }
-
-  -- for db schema validation
-  function _M.schema(protocols)
-    return assert(protocol_to_schema[protocols[1]])
-  end
-end
-
-
-_M.LOGICAL_OR      = LOGICAL_OR
-_M.LOGICAL_AND     = LOGICAL_AND
-
-_M.escape_str      = escape_str
-_M.is_empty_field  = is_empty_field
-_M.gen_for_field   = gen_for_field
-_M.split_host_port = split_host_port
 
 
 return _M

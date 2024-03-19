@@ -1,0 +1,99 @@
+diff --git a/bundle/ngx_stream_lua-0.0.14/src/ngx_stream_lua_regex.c b/bundle/ngx_stream_lua-0.0.14/src/ngx_stream_lua_regex.c
+index e32744e..080e5dd 100644
+--- a/bundle/ngx_stream_lua-0.0.14/src/ngx_stream_lua_regex.c
++++ b/bundle/ngx_stream_lua-0.0.14/src/ngx_stream_lua_regex.c
+@@ -598,7 +598,11 @@ ngx_stream_lua_ffi_compile_regex(const unsigned char *pat, size_t pat_len,
+         re_comp.captures = 0;
+ 
+     } else {
++#if (NGX_PCRE2)
++        ovecsize = (re_comp.captures + 1) * 2;
++#else
+         ovecsize = (re_comp.captures + 1) * 3;
++#endif
+     }
+ 
+     dd("allocating cap with size: %d", (int) ovecsize);
+@@ -691,21 +695,21 @@ ngx_stream_lua_ffi_exec_regex(ngx_stream_lua_regex_t *re, int flags,
+ {
+     int          rc, exec_opts = 0;
+     size_t      *ov;
+-    ngx_uint_t   ovecsize, n, i;
++    ngx_uint_t   ovecpair, n, i;
+     ngx_pool_t  *old_pool;
+ 
+     if (flags & NGX_LUA_RE_MODE_DFA) {
+-        ovecsize = 2;
++        ovecpair = 1;
+         re->ncaptures = 0;
+ 
+     } else {
+-        ovecsize = (re->ncaptures + 1) * 3;
++        ovecpair = re->ncaptures + 1;
+     }
+ 
+     old_pool = ngx_stream_lua_pcre_malloc_init(NULL);
+ 
+     if (ngx_regex_match_data == NULL
+-        || ovecsize > ngx_regex_match_data_size)
++        || ovecpair > ngx_regex_match_data_size)
+     {
+         /*
+          * Allocate a match data if not yet allocated or smaller than
+@@ -716,8 +720,8 @@ ngx_stream_lua_ffi_exec_regex(ngx_stream_lua_regex_t *re, int flags,
+             pcre2_match_data_free(ngx_regex_match_data);
+         }
+ 
+-        ngx_regex_match_data_size = ovecsize;
+-        ngx_regex_match_data = pcre2_match_data_create(ovecsize / 3, NULL);
++        ngx_regex_match_data_size = ovecpair;
++        ngx_regex_match_data = pcre2_match_data_create(ovecpair, NULL);
+ 
+         if (ngx_regex_match_data == NULL) {
+             rc = PCRE2_ERROR_NOMEMORY;
+@@ -747,7 +751,7 @@ ngx_stream_lua_ffi_exec_regex(ngx_stream_lua_regex_t *re, int flags,
+ #if (NGX_DEBUG)
+     ngx_log_debug4(NGX_LOG_DEBUG_STREAM, ngx_cycle->log, 0,
+                    "pcre2_match failed: flags 0x%05Xd, options 0x%08Xd, rc %d, "
+-                   "ovecsize %ui", flags, exec_opts, rc, ovecsize);
++                   "ovecpair %ui", flags, exec_opts, rc, ovecpair);
+ #endif
+ 
+         goto failed;
+@@ -759,11 +763,11 @@ ngx_stream_lua_ffi_exec_regex(ngx_stream_lua_regex_t *re, int flags,
+ #if (NGX_DEBUG)
+     ngx_log_debug5(NGX_LOG_DEBUG_STREAM, ngx_cycle->log, 0,
+                    "pcre2_match: flags 0x%05Xd, options 0x%08Xd, rc %d, "
+-                   "n %ui, ovecsize %ui", flags, exec_opts, rc, n, ovecsize);
++                   "n %ui, ovecpair %ui", flags, exec_opts, rc, n, ovecpair);
+ #endif
+ 
+-    if (!(flags & NGX_LUA_RE_MODE_DFA) && n > ovecsize / 3) {
+-        n = ovecsize / 3;
++    if (n > ovecpair) {
++        n = ovecpair;
+     }
+ 
+     for (i = 0; i < n; i++) {
+@@ -796,6 +800,21 @@ ngx_stream_lua_ffi_exec_regex(ngx_stream_lua_regex_t *re, int flags,
+         re->ncaptures = 0;
+ 
+     } else {
++        /* How pcre_exec() returns captured substrings
++         * The first two-thirds of the vector is used to pass back captured
++         * substrings, each substring using a pair of integers. The remaining
++         * third of the vector is used as workspace by pcre_exec() while
++         * matching capturing subpatterns, and is not available for passing
++         * back information. The number passed in ovecsize should always be a
++         * multiple of three. If it is not, it is rounded down.
++         *
++         * When a match is successful, information about captured substrings is
++         * returned in pairs of integers, starting at the beginning of ovector,
++         * and continuing up to two-thirds of its length at the most. The first
++         * element of each pair is set to the byte offset of the first character
++         * in a substring, and the second is set to the byte offset of the first
++         * character after the end of a substring.
++         */
+         ovecsize = (re->ncaptures + 1) * 3;
+     }
+ 

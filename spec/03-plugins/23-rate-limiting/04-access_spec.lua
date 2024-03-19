@@ -1,7 +1,6 @@
 local helpers           = require "spec.helpers"
 local cjson             = require "cjson"
-local redis             = require "resty.redis"
-local version           = require "version"
+local redis_helper      = require "spec.helpers.redis_helper"
 
 
 local REDIS_HOST        = helpers.redis_host
@@ -53,41 +52,6 @@ local function GET(url, opt)
   client:close()
 
   return res
-end
-
-
-local function redis_connect()
-  local red = assert(redis:new())
-  red:set_timeout(2000)
-  assert(red:connect(REDIS_HOST, REDIS_PORT))
-  local red_version = string.match(red:info(), 'redis_version:([%g]+)\r\n')
-  return red, assert(version(red_version))
-end
-
-
-local function flush_redis()
-  local redis = require "resty.redis"
-  local red = assert(redis:new())
-  red:set_timeout(2000)
-  local ok, err = red:connect(REDIS_HOST, REDIS_PORT)
-  if not ok then
-    error("failed to connect to Redis: " .. err)
-  end
-
-  if REDIS_PASSWORD and REDIS_PASSWORD ~= "" then
-    local ok, err = red:auth(REDIS_PASSWORD)
-    if not ok then
-      error("failed to connect to Redis: " .. err)
-    end
-  end
-
-  local ok, err = red:select(REDIS_DATABASE)
-  if not ok then
-    error("failed to change Redis database: " .. err)
-  end
-
-  red:flushall()
-  red:close()
 end
 
 
@@ -419,7 +383,7 @@ describe(desc, function()
     _, db = helpers.get_db_utils(strategy, nil, { "rate-limiting", "key-auth" })
 
     if policy == "redis" then
-      flush_redis()
+      redis_helper.reset_redis(REDIS_HOST, REDIS_PORT)
 
     elseif policy == "cluster" then
       db:truncate("ratelimiting_metrics")
@@ -452,7 +416,7 @@ describe(desc, function()
     end
 
     if policy == "redis" then
-      flush_redis()
+      redis_helper.reset_redis(REDIS_HOST, REDIS_PORT)
     end
   end)
 
@@ -1086,7 +1050,7 @@ describe(desc, function ()
     _, db = helpers.get_db_utils(strategy, nil, { "rate-limiting", "key-auth" })
 
     if policy == "redis" then
-      flush_redis()
+      redis_helper.reset_redis(REDIS_HOST, REDIS_PORT)
 
     elseif policy == "cluster" then
       db:truncate("ratelimiting_metrics")
@@ -1293,7 +1257,7 @@ describe(desc, function ()
   end)
 
   before_each(function()
-    flush_redis()
+    redis_helper.reset_redis(REDIS_HOST, REDIS_PORT)
     admin_client = helpers.admin_client()
   end)
 
@@ -1319,7 +1283,7 @@ describe(desc, function ()
       },
       sync_rate           = 10,
     }, service)
-    local red = redis_connect()
+    local red = redis_helper.connect(REDIS_HOST, REDIS_PORT)
     local ok, err = red:select(REDIS_DATABASE)
     if not ok then
       error("failed to change Redis database: " .. err)

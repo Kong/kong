@@ -7,6 +7,8 @@ local nkeys        = require "table.nkeys"
 local is_reference = require "kong.pdk.vault".is_reference
 local json         = require "kong.db.schema.json"
 local cjson_safe   = require "cjson.safe"
+local deprecation  = require "kong.deprecation"
+local deepcompare  = require "pl.tablex".deepcompare
 
 
 local setmetatable = setmetatable
@@ -882,6 +884,16 @@ function Schema:validate_field(field, value)
     return nil, validation_errors.SUBSCHEMA_ABSTRACT_FIELD
   end
 
+  if field.deprecation then
+    local old_default = field.deprecation.old_default
+    local should_warn = old_default == nil
+                        or not deepcompare(value, old_default)
+    if should_warn then
+      deprecation(field.deprecation.message,
+          { after = field.deprecation.removal_in_version, })
+    end
+  end
+
   if field.type == "array" then
     if not is_sequence(value) then
       return nil, validation_errors.ARRAY
@@ -1694,7 +1706,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
   local now_ms
 
   -- We don't want to resolve references on control planes
-  -- and and admin api requests, admin api request could be
+  -- and admin api requests, admin api request could be
   -- detected with ngx.ctx.KONG_PHASE, but to limit context
   -- access we use nulls that admin api sets to true.
   local kong = kong

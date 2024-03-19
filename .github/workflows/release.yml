@@ -42,6 +42,7 @@ env:
   # PRs opened from fork and from dependabot don't have access to repo secrets
   HAS_ACCESS_TO_GITHUB_TOKEN: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') }}
 
+
 jobs:
   metadata:
     name: Metadata
@@ -132,7 +133,7 @@ jobs:
     - name: Cache Git
       id: cache-git
       if: (matrix.package == 'rpm' || matrix.image == 'debian:10') && matrix.image != ''
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: /usr/local/git
         key: ${{ matrix.label }}-git-2.41.0
@@ -193,7 +194,7 @@ jobs:
     - name: Cache Packages
       id: cache-deps
       if: env.GHA_CACHE == 'true'
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: bazel-bin/pkg
         key: ${{ steps.cache-key.outputs.cache-key }}
@@ -313,6 +314,10 @@ jobs:
     needs: [metadata, build-packages]
     runs-on: ubuntu-22.04
 
+    permissions:
+      # create comments on commits for docker images needs the `write` permission
+      contents: write
+
     strategy:
       fail-fast: false
       matrix:
@@ -401,9 +406,8 @@ jobs:
     - name: Comment on commit
       if: github.event_name == 'push' && matrix.label == 'ubuntu'
       uses: peter-evans/commit-comment@5a6f8285b8f2e8376e41fe1b563db48e6cf78c09 # v3.0.0
-      continue-on-error: true # TODO: temporary fix until the token is back
       with:
-        token: ${{ secrets.GHA_COMMENT_TOKEN }}
+        token: ${{ secrets.GITHUB_TOKEN }}
         body: |
           ### Bazel Build
           Docker image available `${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}`
@@ -494,7 +498,7 @@ jobs:
     - name: Scan AMD64 Image digest
       id: sbom_action_amd64
       if: steps.image_manifest_metadata.outputs.amd64_sha != ''
-      uses: Kong/public-shared-actions/security-actions/scan-docker-image@v1
+      uses: Kong/public-shared-actions/security-actions/scan-docker-image@v2
       with:
         asset_prefix: kong-${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}-linux-amd64
         image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
@@ -502,7 +506,7 @@ jobs:
     - name: Scan ARM64 Image digest
       if: steps.image_manifest_metadata.outputs.manifest_list_exists == 'true' && steps.image_manifest_metadata.outputs.arm64_sha != ''
       id: sbom_action_arm64
-      uses: Kong/public-shared-actions/security-actions/scan-docker-image@v1
+      uses: Kong/public-shared-actions/security-actions/scan-docker-image@v2
       with:
         asset_prefix: kong-${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}-linux-arm64
         image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}

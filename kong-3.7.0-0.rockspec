@@ -34,12 +34,12 @@ dependencies = {
   "lua-resty-healthcheck == 3.0.1",
   "lua-messagepack == 0.5.4",
   "lua-resty-aws == 1.3.6",
-  "lua-resty-openssl == 1.2.0",
+  "lua-resty-openssl == 1.2.1",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-acme == 0.12.0",
   "lua-resty-session == 4.0.5",
-  "lua-resty-timer-ng == 0.2.6",
+  "lua-resty-timer-ng == 0.2.7",
   "lpeg == 1.1.0",
   "lua-resty-ljsonschema == 1.1.6-2",
 }
@@ -65,6 +65,7 @@ build = {
     ["kong.router.expressions"] = "kong/router/expressions.lua",
     ["kong.router.atc"] = "kong/router/atc.lua",
     ["kong.router.fields"] = "kong/router/fields.lua",
+    ["kong.router.transform"] = "kong/router/transform.lua",
     ["kong.router.utils"] = "kong/router/utils.lua",
 
     ["kong.conf_loader"] = "kong/conf_loader/init.lua",
@@ -610,6 +611,5 @@ build = {
     ["kong.timing.hooks.socket"] = "kong/timing/hooks/socket.lua",
 
     ["kong.dynamic_hook"] = "kong/dynamic_hook/init.lua",
-    ["kong.dynamic_hook.wrap_function_gen"] = "kong/dynamic_hook/wrap_function_gen.lua",
   }
 }
