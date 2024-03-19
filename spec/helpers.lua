@@ -1210,6 +1210,7 @@ local function grpc_client(host, port, opts)
     __call = function(t, args)
       local service = assert(args.service)
       local body = args.body
+      local arg_opts = args.opts or {}
 
       local t_body = type(body)
       if t_body ~= "nil" then
@@ -1217,11 +1218,12 @@ local function grpc_client(host, port, opts)
           body = cjson.encode(body)
         end
 
-        args.opts["-d"] = string.format("'%s'", body)
+        arg_opts["-d"] = string.format("'%s'", body)
       end
 
-      local opts = gen_grpcurl_opts(pl_tablex.merge(t.opts, args.opts, true))
-      local ok, _, out, err = exec(string.format(t.cmd_template, opts, service), true)
+      local cmd_opts = gen_grpcurl_opts(pl_tablex.merge(t.opts, arg_opts, true))
+      local cmd = string.format(t.cmd_template, cmd_opts, service)
+      local ok, _, out, err = exec(cmd, true)
 
       if ok then
         return ok, ("%s%s"):format(out or "", err or "")

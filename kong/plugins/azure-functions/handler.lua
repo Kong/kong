@@ -1,5 +1,4 @@
 local constants     = require "kong.constants"
-local meta          = require "kong.meta"
 local http          = require "resty.http"
 local kong_meta     = require "kong.meta"
 
@@ -9,7 +8,9 @@ local fmt           = string.format
 local byte          = string.byte
 local match         = string.match
 local var           = ngx.var
-local server_header = meta._SERVER_TOKENS
+
+local server_tokens = kong_meta._SERVER_TOKENS
+local VIA_HEADER    = constants.HEADERS.VIA
 
 
 local SLASH = byte("/")
@@ -77,9 +78,11 @@ function azure:access(conf)
     response_headers["Transfer-Encoding"] = nil
   end
 
-  if kong.configuration.enabled_headers[constants.HEADERS.VIA] then
-    response_headers[constants.HEADERS.VIA] = server_header
-  end
+  if kong.configuration.enabled_headers[VIA_HEADER] then
+    local outbound_via = (var.http2 and "2 " or "1.1 ") .. server_tokens
+    response_headers[VIA_HEADER] = response_headers[VIA_HEADER] and response_headers[VIA_HEADER] .. ", " .. outbound_via
+                                   or outbound_via
+ end
 
   return kong.response.exit(res.status, res.body, response_headers)
 end
