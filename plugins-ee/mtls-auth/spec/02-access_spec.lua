@@ -9,6 +9,7 @@ local helpers = require "spec.helpers"
 local pl_file = require "pl.file"
 local cjson   = require "cjson"
 local utils   = require "kong.tools.utils"
+local ngx_null = ngx.null
 
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
@@ -127,6 +128,31 @@ fs6geD+F2d4dQAUspVmBp1z6nlb/FA==
 -----END CERTIFICATE-----
 ]]
 
+local example_dot_test_CA = [[
+-----BEGIN CERTIFICATE-----
+MIIDlzCCAn+gAwIBAgIUT5Leyi0wONaznFBFod91rGzcatUwDQYJKoZIhvcNAQEL
+BQAwWzELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAkNBMQswCQYDVQQHDAJTRjENMAsG
+A1UECgwEa29uZzEMMAoGA1UECwwDRlRUMRUwEwYDVQQDDAxrb25ndGVzdHJvb3Qw
+HhcNMjQwMzAxMjE1NDMwWhcNMzQwMjI3MjE1NDMwWjBbMQswCQYDVQQGEwJVUzEL
+MAkGA1UECAwCQ0ExCzAJBgNVBAcMAlNGMQ0wCwYDVQQKDARrb25nMQwwCgYDVQQL
+DANGVFQxFTATBgNVBAMMDGtvbmd0ZXN0cm9vdDCCASIwDQYJKoZIhvcNAQEBBQAD
+ggEPADCCAQoCggEBAK9N4qErsI1j+YxXwmorXlGxhBfmONrMt4xspdhHI0JO84os
+apRNys6sObJt0gGGDS2kcwSvhi8aKS0eedjO5nP7VZbw06OebTNdOGa5/TXC5ALf
+KmR660AH9VcPWS/8ArYbiAWdPKsFB5RHiywzi2YrO1+x1v1kDXE+T3QTTJyv6d7Z
+uWJfmIaR2E7UVxZ7KZfxAeUnW4jhnxFvS+vG6hadly78k2NVY6Xdc1YuCuF2tB+Q
+VciKe171X6KGl/WhJyuWcX1Ixn/v/C63iYZQ3bc7S+L6PHQpBZ+6QFGVXry9ohng
+8QTgVUNoPwEPuHflvOoaP90WzMSY6xlc9RJP/lECAwEAAaNTMFEwHQYDVR0OBBYE
+FJu3/dFOcc11+TwBJKBXI/fIKpYLMB8GA1UdIwQYMBaAFJu3/dFOcc11+TwBJKBX
+I/fIKpYLMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEBAITdjzW4
+ERBKwWCSslCLxIYydFwo+PwKe6G0/EPA7h8qYp7JrUOBClwEs0pmb1dNbVPm1svF
+eiafrzGxuFLjBQE2xSOsiZxvtkOx+IY7/TsVLVDaTsRDELzQdAtBtOaWaxnI+OYF
+CK8mflxn67oL3d1jNSDdS1fGXfGauTT71Lg2JFTtHSpYWy8/lSA3ekaqD4IhBbXa
+/Fz6bxxgWlk34U2zhd2ngIhxaU1SpDsHPycgUzkAaEPpQbWT+CJ5EzzWLHacttAv
+j6/KzWk9uCuufr+1CZbv0OT6UywnCHHchxgA/feiZhEzFEfOocCL2RKOqx09wqsh
+KTEH7cRqH+FlGsE=
+-----END CERTIFICATE-----
+]]
+
 local mtls_fixtures = { http_mock = {
   mtls_server_block = [[
     server {
@@ -163,6 +189,18 @@ local mtls_fixtures = { http_mock = {
             proxy_pass https://127.0.0.1:9443/get;
         }
 
+        location = /default_consumer_client {
+          proxy_ssl_certificate ../spec/fixtures/client_example.test.crt;
+          proxy_ssl_certificate_key ../spec/fixtures/client_example.test.key;
+          proxy_ssl_name example.test;
+          proxy_set_header Host example.test;
+
+          # enable send the SNI sent to server
+          proxy_ssl_server_name on;
+
+          proxy_pass https://127.0.0.1:9443/get;
+      }
+
         location = /intermediate_example_client {
           proxy_ssl_certificate ../spec/fixtures/intermediate_client_example.com.crt;
           proxy_ssl_certificate_key ../spec/fixtures/intermediate_client_example.com.key;
@@ -189,8 +227,18 @@ for _, strategy in strategies() do
     local proxy_client, admin_client, proxy_ssl_client, mtls_client
     local bp, db
     local anonymous_user, consumer, customized_consumer, service, route
+    local default_consumer, default_consumer_route
+    local no_default_consumer_route
+    local nameless_default_consumer, nameless_default_consumer_route
+    local no_match_default_consumer_route
+    local bad_config_default_consumer_custom_id_route
+    local default_consumer_by_username_route
+
+    
+    -- a non-existant consumer UUID
+    local NOT_A_CONSUMER_UUID = '1bbbe5fc-4d55-420b-bd8a-298526f288c7'
     local plugin
-    local ca_cert, other_ca_cert
+    local ca_cert, other_ca_cert, example_test_ca_cert
     local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
@@ -215,6 +263,15 @@ for _, strategy in strategies() do
         username = "customized@example.com"
       }
 
+      default_consumer = bp.consumers:insert {
+        username = "default@example.com"
+      }
+
+      nameless_default_consumer  = bp.consumers:insert {
+        custom_id = "i-have-no-name",
+        username = ngx_null,
+      }
+
       service = bp.services:insert{
         protocol = "https",
         port     = helpers.mock_upstream_ssl_port,
@@ -226,6 +283,54 @@ for _, strategy in strategies() do
         service = { id = service.id, },
       }
 
+      default_consumer_route = bp.routes:insert {
+        hosts   = { "example.test" },
+        headers = {
+          defaultconsumerbyuuid = {"true"},
+        },
+        service = { id = service.id, },
+      }
+
+      default_consumer_by_username_route = bp.routes:insert {
+        hosts   = { "example.test" },
+        headers = {
+          defaultconsumerbyusername = {"true"},
+        },
+        service = { id = service.id, },
+      }
+
+      no_default_consumer_route = bp.routes:insert {
+        hosts   = { "example.test" },
+        headers = {
+          noconsumer = {"true"},
+        },
+        service = { id = service.id, },
+      }
+
+      nameless_default_consumer_route = bp.routes:insert {
+        hosts   = { "example.test" },
+        headers = {
+          namelessconsumer = {"true"},
+        },
+        service = { id = service.id, },
+      }
+
+      no_match_default_consumer_route = bp.routes:insert {
+        hosts   = { "example.test" },
+        headers = {
+          nomatchconsumer = {"true"},
+        },
+        service = { id = service.id, },
+      }
+
+      bad_config_default_consumer_custom_id_route = bp.routes:insert {
+        hosts   = { "example.test" },
+        headers = {
+          badconfigcustomid = {"true"},
+        },
+        service = { id = service.id, },
+      }
+
       ca_cert = assert(db.ca_certificates:insert({
         cert = CA,
       }))
@@ -234,10 +339,67 @@ for _, strategy in strategies() do
         cert = other_CA,
       }))
 
+      example_test_ca_cert = assert(db.ca_certificates:insert({
+        cert = example_dot_test_CA,
+      }))
+
       plugin = assert(bp.plugins:insert {
         name = "mtls-auth",
         route = { id = route.id },
         config = { ca_certificates = { ca_cert.id, }, },
+      })
+
+      assert(bp.plugins:insert {
+        name = "mtls-auth",
+        route = { id = default_consumer_route.id },
+        config = {
+          ca_certificates = { example_test_ca_cert.id, },
+          default_consumer = default_consumer.id
+        },
+      })
+
+      assert(bp.plugins:insert {
+        name = "mtls-auth",
+        route = { id = no_default_consumer_route.id },
+        config = {
+          ca_certificates = { example_test_ca_cert.id, },
+        },
+      })
+
+      assert(bp.plugins:insert {
+        name = "mtls-auth",
+        route = { id = nameless_default_consumer_route.id },
+        config = {
+          ca_certificates = { example_test_ca_cert.id, },
+          default_consumer = nameless_default_consumer.id,
+        },
+      })
+
+      assert(bp.plugins:insert {
+        name = "mtls-auth",
+        route = { id = no_match_default_consumer_route.id },
+        config = {
+          ca_certificates = { example_test_ca_cert.id, },
+          default_consumer = NOT_A_CONSUMER_UUID,
+        },
+      })
+
+      assert(bp.plugins:insert {
+        name = "mtls-auth",
+        route = { id = bad_config_default_consumer_custom_id_route.id },
+        config = {
+          ca_certificates = { example_test_ca_cert.id, },
+          default_consumer = "i-have-no-name", -- using custom_id is not supported
+        },
+      })
+
+      assert(bp.plugins:insert {
+        name = "mtls-auth",
+        route = { id = default_consumer_by_username_route.id },
+        config = {
+          ca_certificates = { example_test_ca_cert.id, },
+          default_consumer = "default@example.com",
+        },
       })
 
       bp.plugins:insert({
@@ -349,6 +511,89 @@ for _, strategy in strategies() do
         local res = assert(mtls_client:send {
           method  = "GET",
           path    = "/no_san_client",
+        })
+        assert.res_status(401, res)
+      end)
+
+      it("returns HTTP 200 on https request if certificate validation passed with default_consumer set (using UUID)", function()
+        local res = assert(mtls_client:send {
+          method  = "GET",
+          path    = "/default_consumer_client",
+          headers = {
+            defaultconsumerbyuuid = {"true"},
+          },
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal("default@example.com", json.headers["x-consumer-username"])
+        assert.equal(default_consumer.id, json.headers["x-consumer-id"])
+        assert.equal("example.test,kongclient", json.headers["x-client-cert-san"])
+        assert.equal("CN=kongclient,OU=ENG,O=KONG,L=SF,ST=CA,C=US", json.headers["x-client-cert-dn"])
+      end)
+
+      it("returns HTTP 200 on https request if certificate validation passed with default_consumer set (using username)", function()
+        local res = assert(mtls_client:send {
+          method  = "GET",
+          path    = "/default_consumer_client",
+          headers = {
+            defaultconsumerbyusername = {"true"},
+          },
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal("default@example.com", json.headers["x-consumer-username"])
+        assert.equal(default_consumer.id, json.headers["x-consumer-id"])
+        assert.equal("example.test,kongclient", json.headers["x-client-cert-san"])
+        assert.equal("CN=kongclient,OU=ENG,O=KONG,L=SF,ST=CA,C=US", json.headers["x-client-cert-dn"])
+      end)
+
+
+      it("returns HTTP 401 on https request if certificate validation passed with default_consumer not set", function()
+        local res = assert(mtls_client:send {
+          method  = "GET",
+          path    = "/default_consumer_client",
+          headers = {
+            noconsumer = {"true"},
+          },
+        })
+        assert.res_status(401, res)
+      end)
+
+      it("returns HTTP 200 on https request if certificate validation passed with default_consumer set and the consumer has no username", function()
+        local res = assert(mtls_client:send {
+          method  = "GET",
+          path    = "/default_consumer_client",
+          headers = {
+            namelessconsumer = {"true"},
+          },
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal("i-have-no-name", json.headers["x-consumer-custom-id"])
+        assert.is_nil(json.headers["x-consumer-username"])
+        assert.equal(nameless_default_consumer.id, json.headers["x-consumer-id"])
+        assert.equal("example.test,kongclient", json.headers["x-client-cert-san"])
+        assert.equal("CN=kongclient,OU=ENG,O=KONG,L=SF,ST=CA,C=US", json.headers["x-client-cert-dn"])
+      end)
+
+      it("returns HTTP 401 on https request if certificate validation passed with default_consumer set to non-matching consumer id", function()
+        local res = assert(mtls_client:send {
+          method  = "GET",
+          path    = "/default_consumer_client",
+          headers = {
+            nomatchconsumer = {"true"},
+          },
+        })
+        assert.res_status(401, res)
+      end)
+
+      it("returns HTTP 401 on https request if certificate validation passed with default_consumer set to custom_id", function()
+        local res = assert(mtls_client:send {
+          method  = "GET",
+          path    = "/default_consumer_client",
+          headers = {
+            badconfigcustomid = {"true"},
+          },
         })
         assert.res_status(401, res)
       end)

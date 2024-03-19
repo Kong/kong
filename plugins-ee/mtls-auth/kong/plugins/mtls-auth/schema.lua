@@ -57,6 +57,7 @@ return {
           { send_ca_dn = { description = "Sends the distinguished names (DN) of the configured CA list in the TLS handshake message.", type = "boolean",
             default = false
           }, },
+          { default_consumer = { description = "The UUID or username of the consumer to use when a trusted client certificate is presented but no consumer matches. Note that this value must refer to the consumer `id` or `username` attribute, and **not** its `custom_id`.", type = "string" } },
           { http_proxy_host = typedefs.host },
           { http_proxy_port = typedefs.port },
           { https_proxy_host = typedefs.host },

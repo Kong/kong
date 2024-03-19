@@ -456,6 +456,33 @@ local function do_authentication(conf)
      end
     end
 
+    local default_consumer = conf.default_consumer
+    if default_consumer then
+      kong.log.debug("looking up default consumer")
+
+      local consumer_cache_key = kong.db.consumers:cache_key(default_consumer)
+      local consumer, err = kong.cache:get(consumer_cache_key, nil,
+                                                kong.client.load_consumer,
+                                                default_consumer, true)
+
+      if err then
+        kong.log.err(err)
+        return kong.response.exit(500, { message = "An unexpected error occurred" })
+      end
+
+      if consumer then
+        kong.log.debug("using default consumer: " .. (consumer.username or consumer.id))
+        set_consumer(consumer, { id = consumer.id, })
+        set_cert_headers(names)
+        return true
+      end
+      
+      -- default_consumer is configured but doesn't exist
+      kong.log.err('default consumer not found with conf.default_consumer="',
+                    default_consumer, '"')
+      return kong.response.exit(401, { message = "Unauthorized" })
+    end
+
     kong.log.warn("certificate is valid but consumer matching failed, ",
                   "using cn = ", cn,
                   " fields = ", tb_concat(consumer_by, ", "))

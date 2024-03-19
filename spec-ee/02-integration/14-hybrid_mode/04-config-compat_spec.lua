@@ -160,7 +160,8 @@ describe("CP/DP config compat #" .. strategy, function()
       "services",
       "plugins",
       "clustering_data_planes",
-    }, {'graphql-rate-limiting-advanced', 'rate-limiting-advanced', 'openid-connect', "oas-validation"})
+    }, {'graphql-rate-limiting-advanced', 'rate-limiting-advanced', 'openid-connect',
+         'oas-validation', 'mtls-auth'})
 
     PLUGIN_LIST = helpers.get_plugins_list()
 
@@ -180,7 +181,7 @@ describe("CP/DP config compat #" .. strategy, function()
       db_update_frequency = 0.1,
       cluster_listen = CP_HOST .. ":" .. CP_PORT,
       nginx_conf = "spec/fixtures/custom_nginx.template",
-      plugins = "bundled,graphql-rate-limiting-advanced,rate-limiting-advanced,openid-connect,oas-validation",
+      plugins = "bundled,graphql-rate-limiting-advanced,rate-limiting-advanced,openid-connect,oas-validation,mtls-auth",
     }))
   end)
 
@@ -310,6 +311,22 @@ describe("CP/DP config compat #" .. strategy, function()
         removed = FIELDS[3007000000].oas_validation,
         validator = function(config)
           return config.api_spec_encoded == nil
+        end
+      },
+      {
+        plugin = "mtls-auth",
+        label = "w/ default_consumer is unsupported",
+        pending = false,
+        config = {
+          ca_certificates = {"00e2341e-0835-4d6b-855d-23c92d232bc4"},
+          default_consumer = "281c2046-9480-4bee-8851-69362b1e8894"
+        },
+        status = STATUS.NORMAL,
+        removed = FIELDS[3007000000].mtls_auth,
+        validator = function(config)
+          local ca_certificate = "00e2341e-0835-4d6b-855d-23c92d232bc4"
+          return config.default_consumer == nil and 
+            config.ca_certificates[1] == ca_certificate
         end
       }
     }

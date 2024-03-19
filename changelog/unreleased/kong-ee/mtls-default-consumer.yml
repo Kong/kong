@@ -1,0 +1,3 @@
+message: "**mtls-auth**: Add `default_consumer` option that allows a default consumer to be used when the client certificate is valid but does not match any existing consumers."
+type: feature
+scope: Plugin

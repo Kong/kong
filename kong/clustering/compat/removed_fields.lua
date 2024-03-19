@@ -254,6 +254,9 @@ return {
       "set_channel_token_claims",
       "remove_access_token_claims",
       "remove_channel_token_claims",
+    },
+    mtls_auth = {
+      "default_consumer",
     }
   }
 }
