@@ -207,7 +207,7 @@ makes it significantly easier to use or understand Kong, congratulations!
 You are now an official contributor to Kong. Get in touch with us to receive
 your very own [Contributor Badge](#contributor-badge)!
 
-Your change will be included in the subsequent release of Changelog, and we will
+Your change will be included in the subsequent release and its changelog, and we will
 not forget to include your name if you are an external contributor. :wink:
 
 [Back to TOC](#table-of-contents)
