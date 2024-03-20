@@ -848,8 +848,7 @@ function _M:renew(key, opts, cb, ...)
             -- shmerr can be 'flags' upon successful get_stale() calls, so we
             -- also check v == nil
             if err then
-                return nil, "could not read from lua_shared_dict: " .. shmerr
-                            " and could not acquire callback lock: " .. err
+                return nil, "could not acquire callback lock: " .. err
             end
             return unlock_and_ret(lock, nil, "could not read from lua_shared_dict: " .. shmerr)
         end
@@ -865,8 +864,7 @@ function _M:renew(key, opts, cb, ...)
                 -- shmerr can be 'flags' upon successful get_stale() calls, so we
                 -- also check v == nil
                 if err then
-                    return nil, "could not read from lua_shared_dict: " .. shmerr
-                                " and could not acquire callback lock: " .. err
+                    return nil, "could not acquire callback lock: " .. err
                 end
                 return unlock_and_ret(lock, nil, "could not read from lua_shared_dict (miss): " .. shmerr)
             end
