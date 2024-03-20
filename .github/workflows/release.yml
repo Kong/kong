@@ -911,10 +911,11 @@ jobs:
   build-images-provenance:
     name: Build Images Provenance - ${{matrix.label}}
     needs: [metadata, provenance-metadata, build-images]
-    if: >
-      github.repository_owner == 'Kong'
-      && fromJSON(needs.metadata.outputs.matrix)['build-images'] != ''
-      && github.event_name != 'pull_request'
+    if: false
+    # if: >
+    #   github.repository_owner == 'Kong'
+    #   && fromJSON(needs.metadata.outputs.matrix)['build-images'] != ''
+    #   && github.event_name != 'pull_request'
     strategy:
       # limit to 3 jobs at a time
       max-parallel: 3
@@ -945,11 +946,12 @@ jobs:
   release-images-provenance:
     name: Release Images Provenance - ${{matrix.label}}
     needs: [metadata, provenance-metadata, release-images]
-    if: >
-      github.event.inputs.official  == 'true'
-      && github.repository_owner == 'Kong'
-      && fromJSON(needs.metadata.outputs.matrix)['release-images'] != ''
-      && github.event_name != 'pull_request'
+    if: false
+    # if: >
+    #   github.event.inputs.official  == 'true'
+    #   && github.repository_owner == 'Kong'
+    #   && fromJSON(needs.metadata.outputs.matrix)['release-images'] != ''
+    #   && github.event_name != 'pull_request'
     strategy:
       # limit to 3 jobs at a time
       max-parallel: 3
