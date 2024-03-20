@@ -44,14 +44,14 @@ local function cleanup_dangling_unix_sockets(prefix)
 end
 
 local function execute(args)
-  args.db_timeout = args.db_timeout * 1000
+  args.db_timeout = args.db_timeout and (args.db_timeout * 1000) or nil
   args.lock_timeout = args.lock_timeout
 
   local conf = assert(conf_loader(args.conf, {
     prefix = args.prefix
   }, { starting = true }))
 
-  conf.pg_timeout = args.db_timeout -- connect + send + read
+  conf.pg_timeout = args.db_timeout or conf.pg_timeout -- connect + send + read
 
   assert(not kill.is_running(conf.nginx_pid),
          "Kong is already running in " .. conf.prefix)
@@ -126,7 +126,7 @@ Options:
 
  --run-migrations          (optional boolean)  Run migrations before starting.
 
- --db-timeout              (default 60)        Timeout, in seconds, for all database
+ --db-timeout              (optional number)   Timeout, in seconds, for all database
                                                operations.
 
  --lock-timeout            (default 60)        When --run-migrations is enabled, timeout,
