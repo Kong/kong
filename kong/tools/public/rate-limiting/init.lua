@@ -516,7 +516,7 @@ local function run_maintenance_cycle(premature, self, period)
   end
 
   for namespace, cfg in pairs(self.config) do
-    self:namespace_maintenance_cycle(namespace, cfg, period)
+    namespace_maintenance_cycle(self, namespace, cfg, period)
   end
 
   local err
