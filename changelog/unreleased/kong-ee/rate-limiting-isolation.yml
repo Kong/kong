@@ -1,0 +1,3 @@
+message: "**Rate Limiting Advanced:** Fixed an issue where RLA and other similar plugins using the `rate-limiting` library, when used together, would interfere with each other and thus fail to synchronize counter data to the central data store"
+type: bugfix
+scope: Plugin

@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 
-local ratelimiting = require "kong.tools.public.rate-limiting"
+local ratelimiting = require("kong.tools.public.rate-limiting").new("rate-limiting-advanced")
 local schema = require "kong.plugins.rate-limiting-advanced.schema"
 local event_hooks = require "kong.enterprise_edition.event_hooks"
 local helpers = require "kong.enterprise_edition.consumer_groups_helpers"
@@ -108,12 +108,12 @@ local function create_timer(config)
   local when = rate - (now - (floor(now / rate) * rate))
   kong.log.debug("creating timer for namespace ", namespace, ", timer_id: ",
                  timer_id, ", initial sync in ", when, " seconds")
-  ngx.timer.at(when, ratelimiting.sync, namespace, timer_id)
+  ngx.timer.at(when, ratelimiting.sync, ratelimiting, namespace, timer_id)
   ratelimiting.config[namespace].timer_id = timer_id
 
   -- add a timeout to avoid situations where the lock can
   -- never be released when an exception happens
-  ratelimiting.fetch(nil, namespace, now, min(rate - 0.001, 2), true)
+  ratelimiting.fetch(nil, ratelimiting, namespace, now, min(rate - 0.001, 2), true)
 end
 
 
@@ -160,7 +160,7 @@ local function new_namespace(config, timer_id)
     kong.log.notice("[rate-limiting-advanced] using shared dictionary '"
                          .. dict_name .. "'")
 
-    ratelimiting.new({
+    ratelimiting:new_namespace({
       namespace     = config.namespace,
       sync_rate     = config.sync_rate,
       strategy      = strategy,
@@ -249,7 +249,7 @@ function NewRLHandler:configure(configs)
           timer_id = ratelimiting.config[namespace].timer_id
         end
 
-        ratelimiting.clear_config(namespace)
+        ratelimiting:clear_config(namespace)
         new_namespace(config, timer_id)
 
         -- recommendation have changed with FT-928
@@ -356,9 +356,9 @@ function NewRLHandler:access(conf)
     -- set of response headers regardless of whether we block the request
     local rate
     if deny_window_index then
-      rate = ratelimiting.sliding_window(key, current_window, nil, namespace)
+      rate = ratelimiting:sliding_window(key, current_window, nil, namespace)
     else
-      rate = ratelimiting.increment(key, current_window, 1, namespace,
+      rate = ratelimiting:increment(key, current_window, 1, namespace,
                                     config.window_type == "fixed" and 0 or nil)
     end
 
@@ -452,7 +452,7 @@ function NewRLHandler:access(conf)
         local current_window = tonumber(config.window_size[i])
         -- we don't care about the return value here
         -- so set weight as 0 to speedup the function call
-        ratelimiting.increment(key, current_window, -1, namespace, 0)
+        ratelimiting:increment(key, current_window, -1, namespace, 0)
       end
     end
     return kong.response.exit(conf.error_code, { message = conf.error_message }, headers_rl)

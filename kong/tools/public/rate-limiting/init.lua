@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local _M = {}
+local mt = { __index = _M }
 
 local floor    = math.floor
 local math_max = math.max
@@ -31,29 +32,31 @@ local TIME_DELTA = 0.001
 local new_tab = require("table.new")
 
 
-local function log(lvl, ...)
-  ngx_log(lvl, "[rate-limiting] ", ...)
-end
-
-
 local function calculate_weight(window_size)
   return (window_size - (now() % window_size)) / window_size
 end
 
 
--- namespace configurations
-local config = {
-  -- default = {
-    -- dict,
-    -- sync_rate,
-    -- strategy,
-    -- seen_map,
-    -- seen_map_idx,
-    -- seen_map_ctr,
-    -- window_sizes,
-  -- }
-}
-_M.config = config
+function _M.new(plugin_name)
+  assert(type(plugin_name) == "string", "plugin_name must be a string")
+
+  return setmetatable({name = plugin_name, config = {
+    -- default = {
+      -- dict,
+      -- sync_rate,
+      -- strategy,
+      -- seen_map,
+      -- seen_map_idx,
+      -- seen_map_ctr,
+      -- window_sizes,
+    -- }
+  }}, mt)
+end
+
+
+function _M.log(self, lvl, ...)
+  ngx_log(lvl, "[rate-limiting ", self.name, " ] ", ...)
+end
 
 
 function _M.table_names()
@@ -70,17 +73,17 @@ local function window_floor(size, time)
 end
 
 
-local function fetch(premature, namespace, time, timeout, is_initial)
+function _M.fetch(premature, self, namespace, time, timeout, is_initial)
   if premature then
     return
   end
 
   namespace  = namespace or "default"
-  local cfg  = config[namespace]
+  local cfg  = self.config[namespace]
 
   -- early return. Improve perf
   if cfg.strategy == nil or cfg.sync_rate == -1 then
-    log(DEBUG, "rate-limiting strategy is not enabled: skipping fetch")
+    self:log(DEBUG, "rate-limiting strategy is not enabled: skipping fetch")
     return
   end
 
@@ -97,7 +100,7 @@ local function fetch(premature, namespace, time, timeout, is_initial)
   end
   if not ok then
     if err ~= "exists" then
-      log(ERR, "err in setting initial ratelimit fetch mutex for ",
+      self:log(ERR, "err in setting initial ratelimit fetch mutex for ",
                namespace, ": ", err)
     end
 
@@ -105,23 +108,23 @@ local function fetch(premature, namespace, time, timeout, is_initial)
   end
 
   -- this worker is allowed to fetch and update the sync keys
-  log(DEBUG, "rl fetch mutex established on pid ", ngx.worker.pid())
+  self:log(DEBUG, "rl fetch mutex established on pid ", ngx.worker.pid())
 
   local row_iter, err = cfg.strategy:get_counters(namespace, cfg.window_sizes, time)
   if not row_iter then
-    log(ERR, "error in fetching counters for namespace ", namespace, ": ", err)
+    self:log(ERR, "error in fetching counters for namespace ", namespace, ": ", err)
 
   else
     for row in row_iter do
       local dict_key = namespace .. "|" .. row.window_start ..
                        "|" .. row.window_size .. "|" .. row.key
 
-      log(DEBUG, "setting sync key ", dict_key)
+      self:log(DEBUG, "setting sync key ", dict_key)
 
       local ok, err = dict:set(dict_key .. "|sync", row.count, math_max(cfg.exptime, row.window_size * 2))
 
       if not ok then
-        log(ERR, "err setting sync key: ", err)
+        self:log(ERR, "err setting sync key: ", err)
       end
     end
   end
@@ -130,50 +133,49 @@ local function fetch(premature, namespace, time, timeout, is_initial)
     locks_shm:delete(lock_key)
   end
 end
-_M.fetch = fetch
 
 
-function _M.sync(premature, namespace, timer_id)
+function _M.sync(premature, self, namespace, timer_id)
   if premature then
     return
   end
 
   namespace  = namespace or "default"
-  local cfg  = config[namespace]
+  local cfg  = self.config[namespace]
 
   -- early return. Improve perf
   if cfg.strategy == nil or cfg.sync_rate == -1 then
-    log(DEBUG, "rate-limiting strategy is not enabled: skipping sync")
+    self:log(DEBUG, "rate-limiting strategy is not enabled: skipping sync")
     return
   end
 
   local dict = ngx.shared[cfg.dict]
 
   if cfg.timer_id ~= timer_id then
-    log(DEBUG, "stale timer of namespace ", namespace, ", timer_id: ", timer_id, ", skipping sync")
+    self:log(DEBUG, "stale timer of namespace ", namespace, ", timer_id: ", timer_id, ", skipping sync")
     return
   end
 
   if cfg.kill then
-    log(DEBUG, "killing ", namespace)
+    self:log(DEBUG, "killing ", namespace)
     return
   end
 
-  log(DEBUG, "start sync ", namespace)
+  self:log(DEBUG, "start sync ", namespace)
 
   local sync_start_now  = now()
   local sync_start_time = time()
 
   do
-    local _, err = timer_at(cfg.sync_rate, _M.sync, namespace, timer_id)
+    local _, err = timer_at(cfg.sync_rate, _M.sync, self, namespace, timer_id)
     if err then
-      log(ERR, "error starting new sync timer: ", err)
+      self:log(ERR, "error starting new sync timer: ", err)
     end
   end
 
   if cfg.seen_map_idx == 0 then
-    log(DEBUG, "empty sync, do fetch")
-    fetch(nil, namespace, sync_start_time, cfg.sync_rate - TIME_DELTA)
+    self:log(DEBUG, "empty sync, do fetch")
+    _M.fetch(nil, self, namespace, sync_start_time, cfg.sync_rate - TIME_DELTA)
     return
   end
 
@@ -190,11 +192,11 @@ function _M.sync(premature, namespace, timer_id)
   for i = 1, seen_map_old_idx do
     local key = cfg.seen_map[cfg.seen_map_ctr - 1][i]
 
-    log(DEBUG, "try sync ", key)
+    self:log(DEBUG, "try sync ", key)
 
     local ok, err = locks_shm:add(key .. "|sync-lock", true, cfg.sync_rate - TIME_DELTA)
     if not ok and err ~= "exists" then
-      ngx.log(ngx.WARN, "error in establishing sync-lock for ", key, ": ", err)
+      self:log(WARN, "error in establishing sync-lock for ", key, ": ", err)
     end
 
     -- we have the lock!
@@ -207,16 +209,16 @@ function _M.sync(premature, namespace, timer_id)
       local diff_val, diff_err = dict:get(key .. "|diff")
       if diff_val == nil then
         if diff_err then
-          log(ngx.ERR, "failed to get diff_val: ", diff_err)
+          self.log(ERR, "failed to get diff_val: ", diff_err)
 
         else
-          log(WARN, "key expired")
+          self:log(WARN, "key expired")
         end
 
         diff_val = 0
-        log(WARN, "Setting 'diff_val' to 0")
+        self:log(WARN, "Setting 'diff_val' to 0")
       end
-      log(DEBUG, "neg incr ", -diff_val)
+      self:log(DEBUG, "neg incr ", -diff_val)
       dict:incr(key .. "|diff", -diff_val)
 
       -- mock what we think as the synced value so we dont lose counts
@@ -226,7 +228,7 @@ function _M.sync(premature, namespace, timer_id)
       -- finish the 'read' of the write-then-read strategy used here
       dict:incr(key .. "|sync", diff_val)
 
-      log(DEBUG, "push ", key, ": ", diff_val)
+      self:log(DEBUG, "push ", key, ": ", diff_val)
 
       --[[
         diffs = {
@@ -295,7 +297,7 @@ function _M.sync(premature, namespace, timer_id)
   -- push these diffs to the appropriate data store
   local ok, err = cfg.strategy:push_diffs(diffs)
   if not ok then
-    log(ERR, "error in pushing diffs for namespace ", namespace, ": ", err)
+    self:log(ERR, "error in pushing diffs for namespace ", namespace, ": ", err)
   end
 
   -- sleep for a bit to allow each node in the cluster to update,
@@ -308,14 +310,14 @@ function _M.sync(premature, namespace, timer_id)
   -- update this node's sync counters
   -- consider the amount of time we've already taken when setting
   -- the lock timeout for the next fetch
-  fetch(nil, namespace, sync_start_time, cfg.sync_rate - sync_end_now - TIME_DELTA)
+  _M.fetch(nil, self, namespace, sync_start_time, cfg.sync_rate - sync_end_now - TIME_DELTA)
 
   -- we dont need the old map anymore
   cfg.seen_map[cfg.seen_map_ctr - 1] = nil
 
-  log(ngx.DEBUG, "sync time ", sync_end_now)
+  self:log(DEBUG, "sync time ", sync_end_now)
 
-  log(DEBUG, "end sync")
+  self:log(DEBUG, "end sync")
 end
 
 
@@ -326,9 +328,9 @@ end
 -- third param cur_diff is an optional arg of the current diff of the key
 -- this allows us to save a shm fetch whiling calculating
 -- the sliding window from increment()
-local function sliding_window(key, window_size, cur_diff, namespace, weight)
+function _M.sliding_window(self, key, window_size, cur_diff, namespace, weight)
   namespace  = namespace or "default"
-  local cfg  = config[namespace]
+  local cfg  = self.config[namespace]
   local dict = ngx.shared[cfg.dict]
 
   local cur_window  = window_floor(window_size, time())
@@ -349,19 +351,19 @@ local function sliding_window(key, window_size, cur_diff, namespace, weight)
   local prev_prefix = namespace .. "|" .. prev_window .. "|" .. window_size ..
                       "|" .. key
 
-  log(DEBUG, "cur_prefix ", cur_prefix)
-  log(DEBUG, "prev_prefix ", prev_prefix)
+  self:log(DEBUG, "cur_prefix ", cur_prefix)
+  self:log(DEBUG, "prev_prefix ", prev_prefix)
 
   local cur = cur_diff or dict:incr(cur_prefix .. "|diff", 0, 0, exptime)
-  log(DEBUG, "cur diff: ", cur)
+  self:log(DEBUG, "cur diff: ", cur)
 
   if cur == nil then
     cur = 0
-    log(WARN, "rate limit counters shared dict is possibly out of space.", " Setting 'cur' to 0")
+    self:log(WARN, "rate limit counters shared dict is possibly out of space.", " Setting 'cur' to 0")
   end
 
   cur = cur + (dict:incr(cur_prefix .. "|sync", 0, 0, exptime) or 0)
-  log(DEBUG, "cur sum: ", cur)
+  self:log(DEBUG, "cur sum: ", cur)
 
   local prev = 0
 
@@ -371,29 +373,28 @@ local function sliding_window(key, window_size, cur_diff, namespace, weight)
 
   if weight > 0 then
     prev = dict:incr(prev_prefix .. "|diff", 0, 0, exptime)
-    log(DEBUG, "prev diff: ", prev)
+    self:log(DEBUG, "prev diff: ", prev)
     if prev == nil then
       prev = 0
-      log(WARN, "rate limit counters shared dict is possibly out of space.", " Setting 'prev' to 0")
+      self:log(WARN, "rate limit counters shared dict is possibly out of space.", " Setting 'prev' to 0")
     end
 
     prev = prev + (dict:incr(prev_prefix .. "|sync", 0, 0, exptime) or 0)
-    log(DEBUG, "prev sum: ", prev)
+    self:log(DEBUG, "prev sum: ", prev)
 
     prev = prev * weight
-    log(DEBUG, "weighted prev: ", prev)
+    self:log(DEBUG, "weighted prev: ", prev)
   end
 
   return cur + prev
 end
-_M.sliding_window = sliding_window
 
 
 -- increment our diff counter for this key,window
 -- returns the sliding window value for this key
-function _M.increment(key, window_size, value, namespace, prev_window_weight)
+function _M.increment(self, key, window_size, value, namespace, prev_window_weight)
   namespace  = namespace or "default"
-  local cfg  = config[namespace]
+  local cfg  = self.config[namespace]
   local dict = ngx.shared[cfg.dict]
 
   local window = window_floor(window_size, time())
@@ -408,7 +409,7 @@ function _M.increment(key, window_size, value, namespace, prev_window_weight)
   local newval, err = dict:incr(incr_key .. "|diff", value, 0, exptime)
   if err then
     newval = 0
-    log(WARN, "reset rate-limiting counter after failing to increment value: ", err)
+    self:log(WARN, "reset rate-limiting counter after failing to increment value: ", err)
   end
 
   -- and mark that we've seen it (if we're syncing in the background;
@@ -449,13 +450,13 @@ function _M.increment(key, window_size, value, namespace, prev_window_weight)
 
     local ok, err = cfg.strategy:push_diffs(diffs)
     if not ok then
-      log(ERR, "error in pushing diffs for namespace ", namespace, ": ", err)
+      self:log(ERR, "error in pushing diffs for namespace ", namespace, ": ", err)
     end
 
-    log(DEBUG, "current window_size ", window_size)
+    self:log(DEBUG, "current window_size ", window_size)
     local window_count, err = cfg.strategy:get_window(key, namespace, window, window_size)
     if err then
-      log(ERR, "error in getting window for namespace ", namespace, ": ", err)
+      self:log(ERR, "error in getting window for namespace ", namespace, ": ", err)
       window_count = cur_sync or 0 -- fall back to local counter
     end
     dict:set(incr_key .. "|sync", window_count, exptime)
@@ -467,37 +468,36 @@ function _M.increment(key, window_size, value, namespace, prev_window_weight)
   local weight = prev_window_weight or calculate_weight(window_size)
 
   -- return the current sliding window for this key
-  return sliding_window(key, window_size, newval, namespace, weight)
+  return self:sliding_window(key, window_size, newval, namespace, weight)
 end
 
 
-local function namespace_maintenance_cycle(namespace, period)
-  local cfg = config[namespace]
+local function namespace_maintenance_cycle(self, namespace, cfg, period)
   local window_start = time()
 
   if not cfg then
-    log(DEBUG, "namespace ", namespace, " no longer exists")
+    self:log(DEBUG, "namespace ", namespace, " no longer exists")
     return
   end
 
   if cfg.kill then
     -- run one last maintenance cycle for this namespace
-    log(DEBUG, "terminating maintenance cycles for old namespace: ", namespace)
+    self:log(DEBUG, "terminating maintenance cycles for old namespace: ", namespace)
     -- clean up all data for this namespace: make all counters obsolete
     window_start = time() + 10 * math.max(unpack(cfg.window_sizes))
-    config[namespace] = nil
+    self.config[namespace] = nil
   end
 
   -- early return. Improve perf
   if cfg.strategy == nil or cfg.sync_rate == -1 then
-    log(DEBUG, "rate-limiting strategy is not enabled: skipping namespace_maintenance_cycle")
+    self:log(DEBUG, "rate-limiting strategy is not enabled: skipping namespace_maintenance_cycle")
     return
   end
 
   local ok, err = locks_shm:add("rl-maint-" .. namespace, true, period - 0.1)
   if not ok then
     if err ~= "exists" then
-      log(ERR, "failed to execute lock acquisition: ", err)
+      self:log(ERR, "failed to execute lock acquisition: ", err)
     end
 
     return
@@ -505,28 +505,28 @@ local function namespace_maintenance_cycle(namespace, period)
 
   local ok, err = cfg.strategy:purge(namespace, cfg.window_sizes, window_start)
   if not ok then
-    log(ERR, "rate-limiting strategy maintenance cycle failed: ", err)
+    self:log(ERR, "rate-limiting strategy maintenance cycle failed: ", err)
   end
 end
 
 
-local function run_maintenance_cycle(premature, period)
+local function run_maintenance_cycle(premature, self, period)
   if premature then
     return
   end
 
-  for namespace, _ in pairs(config) do
-    namespace_maintenance_cycle(namespace, period)
+  for namespace, cfg in pairs(self.config) do
+    self:namespace_maintenance_cycle(namespace, cfg, period)
   end
 
   local err
-  timer_handle, err = timer_at(period, run_maintenance_cycle, period)
+  timer_handle, err = timer_at(period, run_maintenance_cycle, self, period)
   if err then
-    log(ERR, "error starting new maintenance timer: ", err)
+    self:log(ERR, "error starting new maintenance timer: ", err)
   end
 end
 
-function _M.new(opts)
+function _M.new_namespace(self, opts)
   if type(opts) ~= "table" then
     error("opts must be a table")
   end
@@ -542,7 +542,7 @@ function _M.new(opts)
     error("namespace must not contain a pipe char")
   end
 
-  if config[namespace] then
+  if self.config[namespace] then
     error("namespace " .. namespace .. " already exists")
   end
 
@@ -562,11 +562,11 @@ function _M.new(opts)
                              "strategies." .. strategy_type)
 
   else
-    log(DEBUG, "rate-limiting strategy is 'off' or sync_rate is '-1'. ",
+    self:log(DEBUG, "rate-limiting strategy is 'off' or sync_rate is '-1'. ",
                "Skipping instantiating strategy")
   end
 
-  config[namespace] = {
+  self.config[namespace] = {
     dict         = opts.dict,
     sync_rate    = opts.sync_rate,
     strategy     = strategy_class and strategy_class.new(opts.db, opts.strategy_opts),
@@ -581,11 +581,11 @@ function _M.new(opts)
   -- start maintenance timer
   if timer_handle == nil then
     local period = 3600
-    log(DEBUG, "starting timer for cleanup at ", time() + period)
+    self:log(DEBUG, "starting timer for cleanup at ", time() + period)
     local err
-    timer_handle, err = timer_at(period, run_maintenance_cycle, period)
+    timer_handle, err = timer_at(period, run_maintenance_cycle, self, period)
     if err then
-      log(ERR, "error starting new maintenance timer: ", err)
+      self:log(ERR, "error starting new maintenance timer: ", err)
     end
   end
 
@@ -593,12 +593,12 @@ function _M.new(opts)
 end
 
 
-function _M.clear_config(namespace)
+function _M.clear_config(self, namespace)
   if namespace then
-    config[namespace] = nil
+    self.config[namespace] = nil
 
   else
-    config = {}
+    self.config = {}
   end
 end
 
