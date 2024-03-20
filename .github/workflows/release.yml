@@ -204,7 +204,7 @@ jobs:
         grep -v '^#' .requirements >> $GITHUB_ENV
 
     - name: Setup Bazel
-      uses: bazelbuild/setup-bazelisk@95c9bf48d0c570bb3e28e57108f3450cd67c1a44 # v2.0.0
+      uses: bazelbuild/setup-bazelisk@b39c379c82683a5f25d34f0d062761f62693e0b2 # v3.0.0
 
     - name: Install Deb Dependencies
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true'
@@ -341,7 +341,7 @@ jobs:
 
     - name: Login to Docker Hub
       if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' }}
-      uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d # v2.1.0
+      uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20 # v2.1.0
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
@@ -468,7 +468,7 @@ jobs:
 
     - name: Login to Docker Hub
       if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN }}
-      uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d # v2.1.0
+      uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20 # v2.1.0
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
@@ -597,7 +597,7 @@ jobs:
     steps:
     - name: Login to Docker Hub
       if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' }}
-      uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d # v2.1.0
+      uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20 # v2.1.0
       with:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
