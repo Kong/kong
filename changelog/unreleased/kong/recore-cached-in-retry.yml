@@ -1,0 +1,3 @@
+message: "**Balancer**: record the cache flag of each connection which used during balancer retry."
+type: feature
+scope: Core
