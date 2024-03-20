@@ -95,7 +95,6 @@ local wasm = require "kong.runloop.wasm"
 local reports = require "kong.reports"
 local pl_file = require "pl.file"
 local req_dyn_hook = require "kong.dynamic_hook"
-local peer_conn = require "resty.kong.peer_conn"
 
 
 local kong             = kong
@@ -1279,6 +1278,7 @@ function Kong.balancer()
     -- record failure data
     local previous_try = tries[try_count - 1]
     previous_try.state, previous_try.code = get_last_failure()
+    local peer_conn = require "resty.kong.peer_conn"
     previous_try.cached = peer_conn.get_last_peer_connection_cached()
 
     -- Report HTTP status for health checks

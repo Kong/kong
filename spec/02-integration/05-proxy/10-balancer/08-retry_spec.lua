@@ -88,7 +88,7 @@ for _, strategy in helpers.each_strategy() do
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         nginx_http_lua_shared_dict = "request_counter 1m",
-        -- log_level  = "info",
+        log_level  = "info",
       }, nil, nil, fixtures))
     end)
 
