@@ -338,7 +338,7 @@ written so that:
 
 The body of your commit message should contain a detailed description of your
 changes. Ideally, if the change is significant, you should explain its
-motivation, and the chosen implementation, and justify it.
+motivation and the chosen implementation, and justify it.
 
 As previously mentioned, lines in the commit messages should not exceed 72
 characters.
