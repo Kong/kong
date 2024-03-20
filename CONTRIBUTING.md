@@ -415,7 +415,7 @@ suite.
   output
 - `spec/03-plugins` contains tests (both unit and integration) for the bundled
   plugins (those plugins still live in the core repository as of now, but will
-  eventually, be externalized)
+  eventually be externalized.)
 
 A few guidelines when writing tests:
 
