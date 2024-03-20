@@ -347,6 +347,17 @@ jobs:
           - 8200:8200
 
     steps:
+    - name: Set up core dumps
+      run: |
+        if [[ $ENABLE_COREDUMP_DEBUG = true ]]; then
+          ulimit -c unlimited
+          mkdir -p /tmp/cores
+          chmod 777 /tmp/cores
+          echo '/tmp/cores/core.%e.%p' | sudo tee /proc/sys/kernel/core_pattern
+          sudo sysctl -w fs.suid_dumpable=2
+          sudo sysctl -p
+        fi
+
     - name: Bump max open files
       run: |
           sudo echo 'kong soft nofile 65536' | sudo tee -a /etc/security/limits.d/kong-ci.conf
@@ -610,6 +621,17 @@ jobs:
     needs: build
 
     steps:
+    - name: Set up core dumps
+      run: |
+        if [[ $ENABLE_COREDUMP_DEBUG = true ]]; then
+          ulimit -c unlimited
+          mkdir -p /tmp/cores
+          chmod 777 /tmp/cores
+          echo '/tmp/cores/core.%e.%p' | sudo tee /proc/sys/kernel/core_pattern
+          sudo sysctl -w fs.suid_dumpable=2
+          sudo sysctl -p
+        fi
+
     - name: Bump max open files
       run: |
           sudo echo 'kong soft nofile 65536' | sudo tee -a /etc/security/limits.d/kong-ci.conf

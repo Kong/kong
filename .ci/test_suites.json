@@ -3,7 +3,10 @@
     "name": "unit",
     "exclude_tags": "flaky,ipv6,ce",
     "venv_script": "kong-dev-normal-venv.sh",
-    "specs": ["spec/01-unit/"]
+    "specs": [
+      "spec/01-unit/",
+      "spec-ee/01-unit/"
+    ]
   },
   {
     "name": "integration",
