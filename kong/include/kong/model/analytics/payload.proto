@@ -27,6 +27,7 @@ message RequestMetadata {
   ApplicationContext application_context = 16;
   repeated ConsumerGroupInfo consumer_groups = 17;
   bool websocket = 18;
+  bool sse = 19;
 }
 
 message RequestInfo {

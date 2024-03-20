@@ -322,6 +322,7 @@ function _M:create_payload(message)
     },
     consumer_groups = {},
     websocket = false,
+    sse = false,
   }
 
   payload.client_ip = message.client_ip
@@ -409,6 +410,13 @@ function _M:create_payload(message)
        and connection:lower() == "upgrade"
     then
       payload.websocket = true
+    end
+
+    local content_type = resp.headers["content-type"]
+    if type(content_type) == "string"
+      and content_type:lower() == "text/event-stream"
+    then
+      payload.sse = true
     end
   end
 

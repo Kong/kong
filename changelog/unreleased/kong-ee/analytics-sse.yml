@@ -1,0 +1,5 @@
+message: >
+  **Analytics**: Add `sse` boolean field to payload, which is set to `true`
+  for Server-Sent Event requests/responses.
+type: feature
+scope: Core

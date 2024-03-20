@@ -506,6 +506,7 @@ describe("extract request log properly", function()
         { id = "1" },
       },
       websocket = false,
+      sse = false,
     }
     assert.are.same(expected, payload)
   end)
@@ -584,6 +585,7 @@ describe("extract request log properly", function()
         { id = "1" },
       },
       websocket = false,
+      sse = false,
     }
     assert.are.same(expected, payload)
   end)
@@ -662,6 +664,7 @@ describe("extract request log properly", function()
         { id = "1" },
       },
       websocket = false,
+      sse = false,
     }
     assert.are.same(expected, payload)
   end)
@@ -755,6 +758,7 @@ describe("extract request log properly", function()
         { id = "1" },
       },
       websocket = false,
+      sse = false,
     }
     assert.are.same(expected, payload)
 
@@ -782,6 +786,21 @@ describe("extract request log properly", function()
 
       local payload = analytics:create_payload(input)
       assert.is_true(payload.websocket)
+    end)
+  end)
+
+  describe("Server-Sent Events / SSE", function()
+    it("aren't detected by default", function()
+      local payload = analytics:create_payload(request_log)
+      assert.is_false(payload.sse)
+    end)
+
+    it("are detected by the content-type response header", function()
+      local input = utils.deep_copy(request_log)
+      input.response.headers["content-type"] = "text/event-stream"
+
+      local payload = analytics:create_payload(input)
+      assert.is_true(payload.sse)
     end)
   end)
 
@@ -935,6 +954,7 @@ describe("proto buffer", function()
         { id = "1" },
       },
       websocket = false,
+      sse = false,
     }
     assert.are.same(expected, decoded.data[1])
   end)
@@ -991,6 +1011,7 @@ describe("proto buffer", function()
         { id = "1" },
       },
       websocket = false,
+      sse = false,
     }
     assert.are.same(default, decoded)
   end)
