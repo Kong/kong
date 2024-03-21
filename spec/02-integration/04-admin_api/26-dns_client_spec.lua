@@ -24,10 +24,10 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
-    it("/dns", function ()
+    it("/status/dns", function ()
       local res = assert(client:send {
         method = "GET",
-        path = "/dns",
+        path = "/status/dns",
         headers = { ["Content-Type"] = "application/json" }
       })
 
