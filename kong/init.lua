@@ -971,13 +971,14 @@ function Kong.init_worker()
     local cluster_tls = require("kong.clustering.tls")
 
     if is_http_module and is_data_plane(kong.configuration) then
-    ngx.timer.at(0, function(premature)
-      kong.rpc:connect(premature,
-                       "control_plane", kong.configuration.cluster_control_plane,
-                       "/v2/outlet",
-                       cluster_tls.get_cluster_cert(kong.configuration).cdata,
-                       cluster_tls.get_cluster_cert_key(kong.configuration))
-    end)
+      ngx.timer.at(0, function(premature)
+        kong.rpc:connect(premature,
+                         "control_plane", kong.configuration.cluster_control_plane,
+                         "/v2/outlet",
+                         cluster_tls.get_cluster_cert(kong.configuration).cdata,
+                         cluster_tls.get_cluster_cert_key(kong.configuration))
+      end)
+    end
   end
 
   ok, err = wasm.init_worker()
