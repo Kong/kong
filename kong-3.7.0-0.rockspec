@@ -51,7 +51,7 @@ dependencies = {
   "lua-resty-passwdqc == 2.0",
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-websocket-proxy == 0.0.1",
-  "lua-resty-luasocket == 1.1.1",
+  "lua-resty-luasocket == 1.1.2",
   "lua-resty-gcp == 0.0.13",
   "lua-resty-acme == 0.12.0",
   "lua-resty-session == 4.0.5",
