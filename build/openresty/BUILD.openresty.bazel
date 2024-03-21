@@ -270,7 +270,7 @@ configure_make(
         "@openresty_binding//:all_srcs",
     ] + select({
         "@kong//:wasmx_flag": [
-            "@ngx_wasm_module//:all_srcs",
+            "@ngx_wasmx_module//:all_srcs",
             # wasm_runtime has to be a "data" (target) instead of "build_data" (exec)
             # to be able to lookup by its path (relative to INSTALLDIR)
             ":wasm_runtime",
