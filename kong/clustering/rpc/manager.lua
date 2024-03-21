@@ -11,6 +11,7 @@ local callbacks = require("kong.clustering.rpc.callbacks")
 local queue = require("kong.clustering.rpc.queue")
 local constants = require("kong.constants")
 local table_isempty = require("table.isempty")
+local pl_tablex = require("pl.tablex")
 
 
 local ngx_var = ngx.var
@@ -18,6 +19,7 @@ local ngx_ERR = ngx.ERR
 local ngx_log = ngx.log
 local ngx_exit = ngx.exit
 local exiting = ngx.worker.exiting
+local pl_tablex_makeset = pl_tablex.makeset
 
 
 local WS_OPTS = {
@@ -40,9 +42,9 @@ function _M.new(conf, node_id)
   }
 
   self.callbacks:register("kong.meta.v1.capability_advertisement", function(node_id, capabilities)
-    self.client_capabilities[node_id] = capabilities
+    self.client_capabilities[node_id] = { set = pl_tablex_makeset(capabilities), list = capabilities, }
 
-    return self.callbacks:get_capabilities()
+    return self.callbacks:get_capabilities_list()
   end)
 
   return setmetatable(self, _MT)
@@ -81,7 +83,7 @@ function _M:call(node_id, method, ...)
     return nil, "node is not connected, node_id: " .. node_id
   end
 
-  if not self.client_capabilities[node_id][cap] then
+  if not self.client_capabilities[node_id].set[cap] then
     return nil, "requested capability does not exist, capability: " ..
                 cap .. ", node_id: " .. node_id
   end
@@ -190,7 +192,7 @@ function _M:connect(premature, node_id, host, path, cert, key)
     assert(s:start())
 
     -- capability advertisement
-    local fut = future.new(s, "kong.meta.v1.capability_advertisement", { self.callbacks:get_capabilities(), })
+    local fut = future.new(s, "kong.meta.v1.capability_advertisement", { self.callbacks:get_capabilities_list(), })
     assert(fut:start())
 
     ok, err = fut:wait(5)
@@ -200,7 +202,8 @@ function _M:connect(premature, node_id, host, path, cert, key)
       goto err
     end
 
-    self.client_capabilities[node_id] = fut.result
+    self.client_capabilities[node_id] = { list = fut.result,
+                                          set = pl_tablex_makeset(fut.result), }
 
     self:_add_socket(s)
 
@@ -225,7 +228,13 @@ end
 
 
 function _M:get_peers()
-  return self.client_capabilities
+  local res = {}
+
+  for node_id, cap in pairs(self.client_capabilities) do
+    res[node_id] = cap.list
+  end
+
+  return res
 end
 
 
