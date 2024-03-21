@@ -17,6 +17,7 @@ local function get_log(typ, n)
     entries = body.entries
     return #entries > 0
   end, 10)
+
   if n then
     assert(#entries == n, "expected " .. n .. " log entries, but got " .. #entries)
   end
@@ -149,8 +150,6 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(try.cached, false)
         ::continue::
       end
-
-
 
       assert.equal(#entries[2].tries, 7)
       assert.equal(entries[2].upstream_status, "502, 502, 502, 502, 502, 502, 502")
