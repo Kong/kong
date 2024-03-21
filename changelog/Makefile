@@ -40,7 +40,7 @@ check_version:
 	fi
 
 create_branch:
-	@git fetch
+	@git fetch --prune
 	@git submodule update --init --recursive
 	@git checkout -B $(BRANCH_NAME) $(ORIGIN_BRANCH)
 
@@ -48,89 +48,49 @@ generate:
 	@rm -f $(VERSION).md
 	@touch $(VERSION).md
 
-	@if [ -d "$(UNRELEASED_DIR)/kong" ] && [ -n "$$(shopt -s nullglob; echo $(UNRELEASED_DIR)/kong/*.yml)" ] ; then \
-		if [ -f "$(VERSION)/$(VERSION).md" ]; then \
-			changelog --debug=$(DEBUG) generate \
-				--repo-path . \
-				--changelog-paths $(VERSION)/kong,$(UNRELEASED_DIR)/kong \
-				--title Kong \
-				--github-issue-repo $(OWNER_REPO) \
-				--github-api-repo $(OWNER_REPO) \
-				--with-jiras \
-				>> $(VERSION).md; \
-		else \
-			changelog --debug=$(DEBUG) generate \
-				--repo-path . \
-				--changelog-paths $(UNRELEASED_DIR)/kong \
-				--title Kong \
-				--github-issue-repo $(OWNER_REPO) \
-				--github-api-repo $(OWNER_REPO) \
-				--with-jiras \
-				>> $(VERSION).md; \
-		fi \
+	@if [ -n "$$(shopt -s nullglob; echo $(UNRELEASED_DIR)/kong/*.yml)" ] || \
+		[ -n "$$(shopt -s nullglob; echo $(VERSION)/kong/*.yml)" ] ; then \
+		changelog --debug=$(DEBUG) generate \
+			--repo-path . \
+			--changelog-paths $(VERSION)/kong,$(UNRELEASED_DIR)/kong \
+			--title Kong \
+			--github-issue-repo $(OWNER_REPO) \
+			--github-api-repo $(OWNER_REPO) \
+			--with-jiras \
+			>> $(VERSION).md; \
 	fi
-	@if [ -d "$(UNRELEASED_DIR)/kong-ee" ] && [ -n "$$(shopt -s nullglob; echo $(UNRELEASED_DIR)/kong-ee/*.yml)" ] ; then \
-		if [ -f "$(VERSION)/$(VERSION).md" ]; then \
-			changelog --debug=$(DEBUG) generate \
-				--repo-path . \
-				--changelog-paths $(VERSION)/kong-ee,$(UNRELEASED_DIR)/kong-ee \
-				--title Kong-Enterprise \
-				--github-issue-repo $(OWNER_REPO) \
-				--github-api-repo $(OWNER_REPO) \
-				--with-jiras \
-				>> $(VERSION).md; \
-		else \
-			changelog --debug=$(DEBUG) generate \
-				--repo-path . \
-				--changelog-paths $(UNRELEASED_DIR)/kong-ee \
-				--title Kong-Enterprise \
-				--github-issue-repo $(OWNER_REPO) \
-				--github-api-repo $(OWNER_REPO) \
-				--with-jiras \
-				>> $(VERSION).md; \
-		fi \
+	@if [ -n "$$(shopt -s nullglob; echo $(UNRELEASED_DIR)/kong-ee/*.yml)" ] || \
+		[ -n "$$(shopt -s nullglob; echo $(VERSION)/kong-ee/*.yml)" ] ; then \
+		changelog --debug=$(DEBUG) generate \
+			--repo-path . \
+			--changelog-paths $(VERSION)/kong-ee,$(UNRELEASED_DIR)/kong-ee \
+			--title Kong-Enterprise \
+			--github-issue-repo $(OWNER_REPO) \
+			--github-api-repo $(OWNER_REPO) \
+			--with-jiras \
+			>> $(VERSION).md; \
     fi
-	@if [ -d "$(UNRELEASED_DIR)/kong-manager-ee" ] && [ -n "$$(shopt -s nullglob; echo $(UNRELEASED_DIR)/kong-manager-ee/*.yml)" ] ; then \
-		if [ -f "$(VERSION)/$(VERSION).md" ]; then \
-			changelog --debug=$(DEBUG) generate \
-				--repo-path . \
-				--changelog-paths $(VERSION)/kong-manager-ee,$(UNRELEASED_DIR)/kong-manager-ee \
-				--title Kong-Manager-Enterprise \
-				--github-issue-repo Kong/kong-admin \
-				--github-api-repo $(OWNER_REPO) \
-				--with-jiras \
-				>> $(VERSION).md; \
-		else \
-			changelog --debug=$(DEBUG) generate \
-				--repo-path . \
-				--changelog-paths $(UNRELEASED_DIR)/kong-manager-ee \
-				--title Kong-Manager-Enterprise \
-				--github-issue-repo Kong/kong-admin \
-				--github-api-repo $(OWNER_REPO) \
-				--with-jiras \
-				>> $(VERSION).md; \
-		fi \
+	@if [ -n "$$(shopt -s nullglob; echo $(UNRELEASED_DIR)/kong-manager-ee/*.yml)" ] || \
+		[ -n "$$(shopt -s nullglob; echo $(VERSION)/kong-manager-ee/*.yml)" ] ; then \
+		changelog --debug=$(DEBUG) generate \
+			--repo-path . \
+			--changelog-paths $(VERSION)/kong-manager-ee,$(UNRELEASED_DIR)/kong-manager-ee \
+			--title Kong-Manager-Enterprise \
+			--github-issue-repo Kong/kong-admin \
+			--github-api-repo $(OWNER_REPO) \
+			--with-jiras \
+			>> $(VERSION).md; \
     fi
-	@if [ -d "$(UNRELEASED_DIR)/kong-portal-ee" ] && [ -n "$$(shopt -s nullglob; echo $(UNRELEASED_DIR)/kong-portal-ee/*.yml)" ] ; then \
-		if [ -f "$(VERSION)/$(VERSION).md" ]; then \
-			changelog --debug=$(DEBUG) generate \
-				--repo-path . \
-				--changelog-paths $(VERSION)/kong-portal-ee,$(UNRELEASED_DIR)/kong-portal-ee \
-				--title Kong-Portal \
-				--github-issue-repo Kong/kong-portal-templates \
-				--github-api-repo $(OWNER_REPO) \
-				--with-jiras \
-				>> $(VERSION).md; \
-		else \
-			changelog --debug=$(DEBUG) generate \
-				--repo-path . \
-				--changelog-paths $(UNRELEASED_DIR)/kong-portal-ee \
-				--title Kong-Portal \
-				--github-issue-repo Kong/kong-portal-templates \
-				--github-api-repo $(OWNER_REPO) \
-				--with-jiras \
-				>> $(VERSION).md; \
-		fi \
+	@if [ -n "$$(shopt -s nullglob; echo $(UNRELEASED_DIR)/kong-portal-ee/*.yml)" ] || \
+		[ -n "$$(shopt -s nullglob; echo $(VERSION)/kong-portal-ee/*.yml)" ] ; then \
+		changelog --debug=$(DEBUG) generate \
+			--repo-path . \
+			--changelog-paths $(VERSION)/kong-portal-ee,$(UNRELEASED_DIR)/kong-portal-ee \
+			--title Kong-Portal \
+			--github-issue-repo Kong/kong-portal-templates \
+			--github-api-repo $(OWNER_REPO) \
+			--with-jiras \
+			>> $(VERSION).md; \
     fi
 
 	@echo
