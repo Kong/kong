@@ -20,7 +20,7 @@ The following APIs are for internal development use only within Kong. In the cur
 **syntax:** *c, err = dns_client.new(opts)*
 **context:** any
 
-** Functionality: **
+**Functionality:**
 
 Creates a dns client object. Returns nil and a message string on error.
 
@@ -31,7 +31,7 @@ Perform a series of initialization operations:
 * initialize multiple TTL options
 * create a mlcache object and initialize it
 
-** Input paramenters: **
+**Input paramenters:**
 
 `@opts` It accepts a options table argument. The following options are supported:
 
@@ -72,9 +72,9 @@ Perform a series of initialization operations:
 ## resolve
 
 **syntax:** *answers, err, tries? = resolve(name, opts?, tries?)*
-**context:** *rewrite_by_lua\*;, access_by_lua\*;, content_by_lua\*;, ngx.timer.\*;*
+**context:** *rewrite_by_lua\*, access_by_lua\*, content_by_lua\*, ngx.timer.\*;*
 
-** Functionality: **
+**Functionality:**
 
 Performs a DNS resolution
 
@@ -89,7 +89,7 @@ Performs a DNS resolution
             1. For example, with a `stale_ttl` of 3600s, if the background task fails to update the record due to network issues during this time, and the upper-level application continues to call resolve to get the domain name result, it will trigger a background task to query the DNS result for that domain name every 60s, resulting in approximately 60 background tasks being triggered (3600s/60s).
 
 
-** Return value: **
+**Return value:**
 
 * Return value `answers, err`
   * Return one array-like Lua table contains all the records
@@ -104,7 +104,7 @@ Performs a DNS resolution
   * If provided as an empty table, it will be returned as a third result. This table will be an array containing the error message for each (if any) failed try.
     * For example, `[["lambda.ab-cdef-1.amazonaws.com:SRV","dns server error: 3 name error"], ["lambda.ab-cdef-1.amazonaws.com:A","dns server error: 3 name error"]]`, both attempts failed due to a DNS server error with error code 3 (NXDOMAIN), indicating a name error.
 
-** Input parameters: **
+**Input parameters:**
 
 * `@name`: the domain name to resolve
 * `@opts`: It accepts a options table argument. The following options are supported:
