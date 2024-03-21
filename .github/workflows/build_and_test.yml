@@ -385,28 +385,43 @@ jobs:
       with:
         name: build-fips
         path: .
+    
+    - name: Set permissions in install destination path
+      run: |
+        sudo chmod 777 /usr/local
 
     - name: Extract the artifact contents
       run: |
-        sudo tar -C /usr/local/ -xzvf artifacts/build-${{ env.BUILD_NAME_NORMAL }}.tar.gz
         sudo mkdir -p ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }}
         sudo tar -C ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }} -xzvf artifacts/build-${{ env.BUILD_NAME_NORMAL }}.tar.gz
 
     - name: Install Kong dev
       env:
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
-      run: make dev LIBRARY_PREFIX=${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }}/kong
-    
+      run: |
+        # backup /usr/local folder
+        rsync -a /usr/local /tmp/usr-local-bkp
+        # install Kong
+        sudo cp -r ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }}/* /usr/local/
+        BUILD_NAME=${{ env.BUILD_NAME_NORMAL }} make dev LIBRARY_PREFIX=${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }}/kong
+        # restore /usr/local folder
+        sudo rsync -a --delete /tmp/usr-local-bkp/local/ /usr/local/
+
     - name: Extract FIPS artifact contents
       run: |
-        sudo tar -C /usr/local/ -xzvf artifacts/build-${{ env.BUILD_NAME_FIPS }}.tar.gz
         sudo mkdir -p ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_FIPS }}
         sudo tar -C ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_FIPS }} -xzvf artifacts/build-${{ env.BUILD_NAME_FIPS }}.tar.gz
 
     - name: Install Kong dev FIPS
       env:
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
-      run: BUILD_NAME=${{ env.BUILD_NAME_FIPS }} make dev LIBRARY_PREFIX=${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_FIPS }}/kong
+      run: |
+        # install Kong FIPS
+        sudo cp -r ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_FIPS }}/* /usr/local/
+        BUILD_NAME=${{ env.BUILD_NAME_FIPS }} make dev LIBRARY_PREFIX=${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_FIPS }}/kong
+        # restore /usr/local folder and cleaup
+        sudo rsync -a --delete /tmp/usr-local-bkp/local/ /usr/local/
+        rm -rf /tmp/usr-local-bkp
 
     - name: Build WASM Test Filters
       uses: ./.github/actions/build-wasm-test-filters
@@ -554,7 +569,8 @@ jobs:
         failed-test-files-file: ${{ env.FAILED_TEST_FILES_FILE }}
         test-file-runtime-file: ${{ env.TEST_FILE_RUNTIME_FILE }}
         xml-output-file: ${{ env.TEST_RESULTS_XML_OUTPUT }}
-        setup-venv-path: ${{ env.BUILD_ROOT }}
+        build-root: ${{ env.BUILD_ROOT }}
+        build-dest-path: "/usr/local"
 
     - name: Upload test rerun information
       if: always()

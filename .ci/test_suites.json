@@ -9,6 +9,14 @@
     ]
   },
   {
+    "name": "normal_build",
+    "exclude_tags": "flaky,ipv6",
+    "venv_script": "kong-dev-normal-venv.sh",
+    "specs": [
+      "spec-ee/07-normal/"
+    ]
+  },
+  {
     "name": "integration",
     "exclude_tags": "flaky,ipv6,ce,off",
     "venv_script": "kong-dev-normal-venv.sh",
