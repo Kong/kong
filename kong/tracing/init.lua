@@ -28,9 +28,12 @@ local tonumber = tonumber
 local http_time = ngx.http_time
 
 
+local function no_op() end
+
+
 local empty = setmetatable({}, {
   __index = function()
-    return function() end
+    return no_op
   end,
   __newindex = function()
     return
@@ -402,20 +405,27 @@ function _M.init(config)
 end
 
 
+local function flush_timer_callback(premature, traces)
+  if premature then
+    return
+  end
+
+  local strategy, endpoint = get_flush_strategy()
+
+  local ok, err = pcall(strategy, traces, endpoint)
+  if not ok then
+    ngx.log(ngx.ERR, __log_prefix, "failed to flush traces: ", err)
+  end
+end
+
+
 function _M.flush()
   local traces = ngx.ctx.kong_trace_traces
   if not traces then
     return
   end
 
-  at(0, function()
-    local strategy, endpoint = get_flush_strategy()
-
-    local ok, err = pcall(strategy, traces, endpoint)
-    if not ok then
-      ngx.log(ngx.ERR, __log_prefix, "failed to flush traces: ", err)
-    end
-  end)
+  at(0, flush_timer_callback, traces)
 end
 
 

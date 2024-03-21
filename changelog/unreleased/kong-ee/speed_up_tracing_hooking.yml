@@ -1,0 +1,3 @@
+message: Speeded up tracing mechanism and internal hooking mechanism.
+type: performance
+scope: Performance
