@@ -564,7 +564,7 @@ describe("[DNS client]", function()
 
       local answers, err = cli:resolve("srv.timeout.com")
       assert.is_nil(answers)
-      assert.match("DNS server error: failed to receive reply from UDP server .*: timeout", err)
+      assert.match("DNS server error: failed to receive reply from UDP server .*: timeout, Query Time: %d+%.%d+ 0.%d+", err)
       assert.same(receive_count, 3)
       assert.same(query_count, 1)
     end)
@@ -708,6 +708,10 @@ describe("[DNS client]", function()
     local entry1 = cli.cache:get(key1)
     assert.same(nil, entry1)
 
+    for k,v in pairs(cli.stats) do
+      v.query_last_time = nil
+    end
+
     assert.same({
       ["kong-gateway-testing.link"] = {
 	miss = 1,
@@ -766,6 +770,10 @@ describe("[DNS client]", function()
     local key = host .. ":" .. resolver.TYPE_CNAME
     local entry = cli.cache:get(key)
     assert.same(nil, entry)
+
+    for k,v in pairs(cli.stats) do
+      v.query_last_time = nil
+    end
 
     assert.same({
       ["cname2srv.kong-gateway-testing.link"] = {

@@ -100,6 +100,16 @@ describe("[DNS client stats]", function()
       sleep(0.2)
       cli:resolve("stale.com")
 
+      local query_last_time
+      for k, v in pairs(cli.stats) do
+        if v.query_last_time then
+          query_last_time = v.query_last_time
+          v.query_last_time = nil
+        end
+      end
+
+      assert.match("^%d+%.%d+ 0%.%d+$", query_last_time)
+
       assert.same({
         ["hit.com"] = {
           ["hit_lru"] = 1,

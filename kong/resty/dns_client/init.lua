@@ -106,6 +106,11 @@ local function stats_count(stats, name, key)
 end
 
 
+local function stats_set(stats, name, key, value)
+  stats[name][key] = value
+end
+
+
 -- lookup or set TYPE_LAST (the DNS record type from the last successful query)
 local function insert_last_type(cache, name, qtype)
   local key = "last:" .. name
@@ -381,15 +386,22 @@ local function resolve_query(self, name, qtype, tries)
     return nil, "failed to instantiate the resolver: " .. err
   end
 
+  local start_time = now()
+
   local options = { additional_section = true, qtype = qtype }
   local answers, err = r:query(name, options)
   if r.destroy then
     r:destroy()
   end
 
+  local query_time = now() - start_time -- the time taken for the DNS query
+  local time_str = ("%.3f %.3f"):format(start_time, query_time)
+
+  stats_set(self.stats, key, "query_last_time", time_str)
+
   if not answers then
     stats_count(self.stats, key, "query_fail_nameserver")
-    return nil, "DNS server error: " .. (err or "unknown")
+    return nil, "DNS server error: " .. err .. ", Query Time: " .. time_str
   end
 
   answers = process_answers(self, name, qtype, answers)
