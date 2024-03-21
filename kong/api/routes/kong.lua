@@ -270,7 +270,7 @@ return {
       return kong.response.exit(200, body)
     end
   },
-  ["/dns"] = {
+  ["/status/dns"] = {
     GET = function (self, db, helpers)
       if not kong.dns.stats then
         return kong.response.exit(404, { message = "not support for legacy DNS client" })
