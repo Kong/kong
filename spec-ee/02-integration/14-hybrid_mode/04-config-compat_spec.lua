@@ -12,6 +12,7 @@ local STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
 local FIELDS = require("kong.clustering.compat.removed_fields")
 local tablex = require "pl.tablex"
 local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
+local join = require("pl.stringx").join
 
 local admin = require "spec.fixtures.admin_api"
 
@@ -125,13 +126,14 @@ describe("CP/DP config compat #" .. strategy, function()
 
   lazy_setup(function()
     local bp
+    local ENABLED_PLUGINS = { 'graphql-rate-limiting-advanced', 'ai-rate-limiting-advanced', 'rate-limiting-advanced', 'openid-connect',
+    'oas-validation', 'mtls-auth', 'application-registration', "jwt-signer", "request-validator", 'proxy-cache-advanced', 'graphql-proxy-cache-advanced' }
     bp, db = helpers.get_db_utils(strategy, {
       "routes",
       "services",
       "plugins",
       "clustering_data_planes",
-    }, { 'graphql-rate-limiting-advanced', 'ai-rate-limiting-advanced', 'rate-limiting-advanced', 'openid-connect',
-        'oas-validation', 'mtls-auth', 'application-registration', "jwt-signer", "request-validator" })
+    }, ENABLED_PLUGINS)
 
     PLUGIN_LIST = helpers.get_plugins_list()
 
@@ -152,12 +154,7 @@ describe("CP/DP config compat #" .. strategy, function()
       cluster_listen = CP_HOST .. ":" .. CP_PORT,
       portal_and_vitals_key = get_portal_and_vitals_key(),
       nginx_conf = "spec/fixtures/custom_nginx.template",
-        plugins =
-        [[
-          bundled,graphql-rate-limiting-advanced,ai-rate-limiting-advanced,rate-limiting-advanced,
-          openid-connect,oas-validation,mtls-auth,application-registration,
-          jwt-signer,request-validator
-        ]],
+        plugins = "bundled," .. join(',', ENABLED_PLUGINS),
     }))
   end)
 
@@ -676,6 +673,99 @@ describe("CP/DP config compat #" .. strategy, function()
     end)
   end)
 
+  describe("3.8.x.y", function()
+    -- When a data-plane lower than the version of the control-plane
+    -- connects, it should receive the config as described in the validator func
+    describe("redis changes - cluster_max_redirections", function()
+      -- Shared redis config is used by:
+      -- rate-limiting-advanced | graphql-rate-limiting-advanced | proxy-cache-advanced | graphql-proxy-cache-advanced
+      local CASES = {
+        {
+          plugin = "rate-limiting-advanced",
+          label = "w/ cluster_max_redirections configured",
+          pending = false,
+          config = {
+            limit = {1},
+            window_size = {2},
+            sync_rate = 0.1,
+            strategy = "redis",
+            redis = {
+              host = helpers.redis_host,
+              port = helpers.redis_port,
+              cluster_max_redirections = 10
+            }
+          },
+          status = STATUS.NORMAL,
+          validator = function(config)
+            return config.redis.cluster_max_redirections == nil
+          end
+        },
+        {
+          plugin = "graphql-rate-limiting-advanced",
+          label = "w/ cluster_max_redirections configured",
+          pending = false,
+          config = {
+            limit = {1},
+            window_size = {2},
+            sync_rate = 0.1,
+            strategy = "redis",
+            redis = {
+              host = helpers.redis_host,
+              port = helpers.redis_port,
+              cluster_max_redirections = 11
+            }
+          },
+          status = STATUS.NORMAL,
+          validator = function(config)
+            return config.redis.cluster_max_redirections == nil
+          end
+        },
+        {
+          plugin = "proxy-cache-advanced",
+          label = "w/ cluster_max_redirections configured",
+          pending = false,
+          config = {
+            strategy = "redis",
+            redis = {
+              host = helpers.redis_host,
+              port = helpers.redis_port,
+              cluster_max_redirections = 12
+            }
+          },
+          status = STATUS.NORMAL,
+          validator = function(config)
+            return config.redis.cluster_max_redirections == nil
+          end
+        },
+        {
+          plugin = "graphql-proxy-cache-advanced",
+          label = "w/ cluster_max_redirections configured",
+          pending = false,
+          config = {
+            strategy = "redis",
+            redis = {
+              host = helpers.redis_host,
+              port = helpers.redis_port,
+              cluster_max_redirections = 13
+            }
+          },
+          status = STATUS.NORMAL,
+          validator = function(config)
+            return config.redis.cluster_max_redirections == nil
+          end
+        },
+
+      }
+
+      for _, case in ipairs(CASES) do
+        local test = case.pending and pending or it
+
+        test(fmt("%s - %s", case.plugin, case.label), function()
+          do_assert(case, "3.7.9.9")
+        end)
+      end
+    end)
+  end)
 end)
 
 end -- each strategy

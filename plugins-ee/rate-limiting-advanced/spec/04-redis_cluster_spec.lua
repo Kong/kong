@@ -69,6 +69,7 @@ for _, strategy in helpers.all_strategies() do
         assert.logfile().has.line("in the get counters pipeline failed: MOVED", true, 0.1)
         assert.logfile().has.line("in the push diffs pipeline failed: MOVED", true, 0.1)
       end)
+      .has_no_error()
 
       proxy_client:close()
     end)

@@ -90,6 +90,7 @@ export const expectRedisFieldsInPlugins = (resp) => {
     'sentinel_username',
     'timeout',
     'cluster_addresses',
+    'cluster_max_redirections',
     'database',
     'keepalive_backlog',
     'keepalive_pool_size',

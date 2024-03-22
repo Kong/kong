@@ -343,5 +343,17 @@ return {
     openid_connect = {
       "claims_forbidden",
     },
+    proxy_cache_advanced = {
+      "redis.cluster_max_redirections",
+    },
+    graphql_proxy_cache_advanced = {
+      "redis.cluster_max_redirections",
+    },
+    graphql_rate_limiting_advanced = {
+      "redis.cluster_max_redirections",
+    },
+    rate_limiting_advanced = {
+      "redis.cluster_max_redirections",
+    },
   },
 }

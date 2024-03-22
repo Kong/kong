@@ -1,0 +1,3 @@
+message: "**GraphQL-Proxy-Cache-Advanced**: Added Redis cluster_max_redirections configuration option."
+type: feature
+scope: Plugin

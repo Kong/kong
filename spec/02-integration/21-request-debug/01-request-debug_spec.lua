@@ -12,6 +12,7 @@ local pl_file             = require "pl.file"
 local http_mock           = require "spec.helpers.http_mock"
 local string_buffer       = require "string.buffer"
 local clear_tab           = require "table.clear"
+local pl_stringx          = require "pl.stringx"
 
 local ee_helpers          = require "spec-ee.helpers"
 local table_nkeys         = require "table.nkeys"
@@ -20,7 +21,9 @@ local CP_PREFIX           = "servroot_cp"
 local DP_PREFIX           = "servroot_dp"
 local TOKEN               = "01dd4c9e-cb5e-4b26-9e49-4eb0509fbd68"
 local TOKEN_FILE          = ".request_debug_token"
-local PLGUINS_ENABLED     = "bundled,enable-buffering-response,muti-external-http-calls,rate-limiting-advanced"
+local PLUGINS_LIST        = { "enable-buffering-response", "muti-external-http-calls", "rate-limiting-advanced" }
+local PLUGINS_ENABLED     = "bundled," .. pl_stringx.join(',', PLUGINS_LIST)
+
 local TIME_TO_FIRST_BYTE  = 250  -- milliseconds
 local STREAMING           = 400  -- seconds
 local DB_INIT             = {}
@@ -305,10 +308,7 @@ local function start_kong(strategy, deployment, disable_req_dbg, token)
   end
 
   if not DB_INIT[strategy] then
-    helpers.get_db_utils(strategy, nil, {
-      "enable-buffering-response",
-      "muti-external-http-calls",
-    })
+    helpers.get_db_utils(strategy, nil, PLUGINS_LIST)
     DB_INIT[strategy] = true
   end
 
@@ -319,7 +319,7 @@ local function start_kong(strategy, deployment, disable_req_dbg, token)
       request_debug = request_debug,
       request_debug_token = token,
       trusted_ips = "0.0.0.0/0",
-      plugins = PLGUINS_ENABLED,
+      plugins = PLUGINS_ENABLED,
       stream_listen = "127.0.0.1:" .. helpers.get_available_port(),
     }))
 
@@ -338,7 +338,7 @@ local function start_kong(strategy, deployment, disable_req_dbg, token)
       nginx_conf = "spec/fixtures/custom_nginx.template",
       request_debug = request_debug,
       proxy_listen = "off",
-      plugins = PLGUINS_ENABLED,
+      plugins = PLUGINS_ENABLED,
     }))
 
     assert(helpers.start_kong({
@@ -352,7 +352,7 @@ local function start_kong(strategy, deployment, disable_req_dbg, token)
       request_debug = request_debug,
       request_debug_token = token,
       trusted_ips = "0.0.0.0/0",
-      plugins = PLGUINS_ENABLED,
+      plugins = PLUGINS_ENABLED,
       stream_listen = "127.0.0.1:" .. helpers.get_available_port(),
     }))
   end

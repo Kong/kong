@@ -17,7 +17,6 @@ local string_format   = string.format
 local table_concat    = table.concat
 
 local log = ngx.log
-local ERR = ngx.ERR
 local WARN = ngx.WARN
 local ngx_null = ngx.null
 
@@ -120,6 +119,11 @@ _M.config_schema = {
         default = false
       } },
     { server_name = typedefs.sni { required = false } },
+    { cluster_max_redirections = { description = "Maximum retry attempts for redirection.",
+        required = false,
+        default = 5,
+        type = "integer",
+      } },
   },
 
   entity_checks = {
@@ -265,6 +269,7 @@ function _M.connection(conf)
       connect_timeout = conf.connect_timeout,
       send_timeout    = conf.send_timeout,
       read_timeout    = conf.read_timeout,
+      max_redirection = conf.cluster_max_redirections,
       connect_opts    = connect_opts,
     })
     if not red or err then
