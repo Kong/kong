@@ -911,10 +911,18 @@ describe("NGINX conf compiler", function()
       it("injects a shm_kv", function()
         assert.matches("wasm {.+shm_kv counters 10m;.+}", ngx_cfg({ wasm = true, nginx_wasm_shm_kv_counters="10m" }, debug))
       end)
+      it("injects a general shm_kv", function()
+        assert.matches("wasm {.+shm_kv %* 10m;.+}", ngx_cfg({ wasm = true, nginx_wasm_shm_kv = "10m" }, debug))
+      end)
       it("injects multiple shm_kvs", function()
         assert.matches(
-          "wasm {.+shm_kv cache 10m.+shm_kv counters 10m;.+}",
-          ngx_cfg({ wasm = true, nginx_wasm_shm_kv_cache="10m", nginx_wasm_shm_kv_counters="10m"}, debug)
+          "wasm {.+shm_kv cache 10m.+shm_kv counters 10m;.+shm_kv %* 5m;.+}",
+          ngx_cfg({
+            wasm = true,
+            nginx_wasm_shm_kv_cache = "10m",
+            nginx_wasm_shm_kv_counters = "10m",
+            nginx_wasm_shm_kv = "5m",
+          }, debug)
         )
       end)
       it("injects default configurations if wasm=on", function()
