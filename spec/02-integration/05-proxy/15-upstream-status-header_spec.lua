@@ -25,7 +25,7 @@ local function setup_db()
     protocol = helpers.mock_upstream_protocol,
   }
 
-  bp.routes:insert {
+  local route1 = bp.routes:insert {
     protocols = { "http" },
     paths = { "/status/200" },
     service = service,
@@ -56,6 +56,19 @@ local function setup_db()
     route = { id = route3.id },
   }
 
+  bp.plugins:insert {
+    name = "proxy-cache",
+    route = { id = route1.id },
+    config = {
+      response_code = { 200 },
+      request_method = { "GET" },
+      content_type = { "application/json" },
+      cache_ttl = 300,
+      storage_ttl = 300,
+      strategy = "memory",
+    }
+  }
+
   return bp
 end
 
@@ -72,8 +85,6 @@ describe(constants.HEADERS.UPSTREAM_STATUS .. " header", function()
         headers = "server_tokens,latency_tokens,x-kong-upstream-status",
         plugins = "bundled,dummy",
       })
-
-      client = helpers.proxy_client()
     end)
 
     lazy_teardown(function()
@@ -82,6 +93,11 @@ describe(constants.HEADERS.UPSTREAM_STATUS .. " header", function()
       end
 
       helpers.stop_kong()
+    end)
+
+    before_each(function()
+      if client then client:close() end
+      client = helpers.proxy_client()
     end)
 
     it("when no plugin changes status code", function()
@@ -106,6 +122,19 @@ describe(constants.HEADERS.UPSTREAM_STATUS .. " header", function()
         }
       })
       assert.res_status(500, res)
+      assert.equal("200", res.headers[constants.HEADERS.UPSTREAM_STATUS])
+    end)
+
+    it("should be set when proxy-cache is enabled", function()
+      local res = assert(client:send {
+        method  = "GET",
+        path    = "/status/200",
+        headers = {
+          host = helpers.mock_upstream_host,
+        }
+      })
+      assert.res_status(200, res)
+      assert.equal("Hit", res.headers["X-Cache-Status"])
       assert.equal("200", res.headers[constants.HEADERS.UPSTREAM_STATUS])
     end)
   end)
