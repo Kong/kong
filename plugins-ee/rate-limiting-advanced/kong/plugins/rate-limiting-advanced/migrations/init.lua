@@ -6,6 +6,5 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 return {
-    "000_base_gql_rate_limiting",
-    "001_370_to_380",
+  "001_370_to_380",
 }

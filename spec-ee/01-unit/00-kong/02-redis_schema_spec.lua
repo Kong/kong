@@ -9,9 +9,19 @@ local redis = require "kong.enterprise_edition.redis".config_schema
 local Entity = require "kong.db.schema.entity"
 local redis_init_conf = require "kong.enterprise_edition.redis".init_conf
 
-describe("redis schema", function()
-  local Redis = assert(Entity.new(redis))
+local Redis = assert(Entity.new(redis))
 
+local function process_auto_fields_and_insert(conf)
+  local processed_configuration, err = Redis:process_auto_fields(conf, "insert")
+  if not processed_configuration then
+    return nil, err
+  end
+  local ok, err = Redis:validate(processed_configuration)
+
+  return ok, err, processed_configuration
+end
+
+describe("redis schema", function()
   it("errors with invalid redis data", function()
     local ok, err  = Redis:validate_insert({
       host = "127.0.0.1",
@@ -222,21 +232,15 @@ describe("redis schema", function()
       " 'sentinel_role', 'sentinel_addresses'), ('cluster_addresses')", err["@entity"][1])
   end)
 
-  it("granular timeouts derive from default timeout", function()
-    local conf = {}
-
-    conf = Redis:process_auto_fields(conf, "insert")
-    local ok, errs = Redis:validate(conf)
+  it("granular timeouts have defaults", function()
+    local ok, errs, processed_configuration = process_auto_fields_and_insert({})
 
     assert.is_nil(errs)
     assert.truthy(ok)
-    assert.same(2000, conf.timeout)
 
-    redis_init_conf(conf)
-
-    assert.same(2000, conf.connect_timeout)
-    assert.same(2000, conf.send_timeout)
-    assert.same(2000, conf.read_timeout)
+    assert.same(2000, processed_configuration.connect_timeout)
+    assert.same(2000, processed_configuration.send_timeout)
+    assert.same(2000, processed_configuration.read_timeout)
   end)
 
   it("accepts deprecated timeout", function()
@@ -244,18 +248,14 @@ describe("redis schema", function()
       timeout = 42,
     }
 
-    conf = Redis:process_auto_fields(conf, "insert")
-    local ok, errs = Redis:validate(conf)
+    local ok, errs, processed_configuration = process_auto_fields_and_insert(conf)
 
     assert.is_nil(errs)
     assert.truthy(ok)
-    assert.same(42, conf.timeout)
 
-    redis_init_conf(conf)
-
-    assert.same(42, conf.connect_timeout)
-    assert.same(42, conf.send_timeout)
-    assert.same(42, conf.read_timeout)
+    assert.same(conf.timeout, processed_configuration.connect_timeout)
+    assert.same(conf.timeout, processed_configuration.send_timeout)
+    assert.same(conf.timeout, processed_configuration.read_timeout)
   end)
 
   it("accepts granular timeouts", function()
@@ -265,32 +265,13 @@ describe("redis schema", function()
       read_timeout = 168,
     }
 
-    conf = Redis:process_auto_fields(conf, "insert")
-    local ok, errs = Redis:validate(conf)
+    local ok, errs, processed_configuration = process_auto_fields_and_insert(conf)
 
     assert.is_nil(errs)
     assert.truthy(ok)
-    assert.same(2000, conf.timeout)
-
-    redis_init_conf(conf)
-
-    assert.same(42, conf.connect_timeout)
-    assert.same(84, conf.send_timeout)
-    assert.same(168, conf.read_timeout)
-  end)
-
-  it("granular timeouts are mutually required", function()
-    local conf = {
-      connect_timeout = 42,
-      read_timeout = 168,
-    }
-
-    conf = Redis:process_auto_fields(conf, "insert")
-    local ok, errs = Redis:validate(conf)
-
-    assert.falsy(ok)
-    assert.same("all or none of these fields must be set: 'connect_timeout'," ..
-      " 'send_timeout', 'read_timeout'", errs["@entity"][1])
+    assert.same(conf.connect_timeout, processed_configuration.connect_timeout)
+    assert.same(conf.send_timeout, processed_configuration.send_timeout)
+    assert.same(conf.read_timeout, processed_configuration.read_timeout)
   end)
 
   it("rejects invalid keepalive_pool_size", function()
@@ -300,7 +281,7 @@ describe("redis schema", function()
       assert.same("value should be between 1 and 2147483646", errs["keepalive_pool_size"])
     end
   end)
-  
+
   it("rejects invalid backlog", function()
     for _, backlog in ipairs({ -1, math.pow(2, 31) }) do
       local ok, errs = Redis:validate({ keepalive_backlog = backlog })

@@ -178,6 +178,8 @@ local function send_proxy_get_request()
 end
 
 local function start_kong(options)
+  local enabled_plugins = os.getenv('KONG_PLUGINS') or "bundled"
+
   return helpers.start_kong(utils.table_merge({
     database = database_type(),
     dns_resolver          = "",
@@ -185,6 +187,7 @@ local function start_kong(options)
     admin_listen          = "0.0.0.0:9001",
     admin_ssl             = false,
     admin_gui_ssl         = false,
+    plugins               = enabled_plugins,
     nginx_conf            = "spec/fixtures/custom_nginx.template",
   }, options))
 end

@@ -16,5 +16,6 @@ build = {
   modules = {
     ["kong.plugins.rate-limiting-advanced.handler"] = "kong/plugins/rate-limiting-advanced/handler.lua",
     ["kong.plugins.rate-limiting-advanced.schema"] = "kong/plugins/rate-limiting-advanced/schema.lua",
+    ["kong.plugins.rate-limiting-advanced.migrations.001_370_to_380"] = "kong/plugins/rate-limiting-advanced/migrations/001_370_to_380.lua",
   }
 }

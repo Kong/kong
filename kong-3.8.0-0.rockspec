@@ -949,6 +949,8 @@ build = {
     ["kong.plugins.graphql-proxy-cache-advanced.strategies.redis"] = "kong/plugins/graphql-proxy-cache-advanced/strategies/redis.lua",
     ["kong.plugins.graphql-proxy-cache-advanced.api"] = "kong/plugins/graphql-proxy-cache-advanced/api.lua",
     ["kong.plugins.graphql-proxy-cache-advanced.cache_key"] = "kong/plugins/graphql-proxy-cache-advanced/cache_key.lua",
+    ["kong.plugins.graphql-proxy-cache-advanced.migrations"] = "kong/plugins/graphql-proxy-cache-advanced/migrations/init.lua",
+    ["kong.plugins.graphql-proxy-cache-advanced.migrations.001_370_to_380"] = "kong/plugins/graphql-proxy-cache-advanced/migrations/001_370_to_380.lua",
 
     ["kong.plugins.jq.cache"] = "kong/plugins/jq/cache.lua",
     ["kong.plugins.jq.handler"] = "kong/plugins/jq/handler.lua",

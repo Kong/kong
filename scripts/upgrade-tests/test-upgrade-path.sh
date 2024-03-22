@@ -25,6 +25,7 @@ trap "echo exiting because of error" 0
 
 export KONG_PG_HOST=localhost
 export KONG_TEST_PG_HOST=localhost
+export KONG_PLUGINS=bundled,rate-limiting-advanced,graphql-rate-limiting-advanced
 
 function usage() {
     cat 1>&2 <<EOF
@@ -157,7 +158,7 @@ function initialize_test_list() {
 
 function run_tests() {
     # Run the tests
-    BUSTED_ENV="env KONG_DATABASE=$1 KONG_DNS_RESOLVER= KONG_TEST_PG_DATABASE=kong OLD_KONG_VERSION=$OLD_KONG_VERSION"
+    BUSTED_ENV="env KONG_DATABASE=$1 KONG_TEST_PLUGINS=$KONG_PLUGINS KONG_DNS_RESOLVER= KONG_TEST_PG_DATABASE=kong OLD_KONG_VERSION=$OLD_KONG_VERSION"
 
     shift
 

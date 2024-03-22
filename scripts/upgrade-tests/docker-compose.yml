@@ -15,6 +15,7 @@ services:
     environment:
       KONG_PG_HOST: localhost
       KONG_TEST_PG_HOST: localhost
+      KONG_PLUGINS: ${KONG_PLUGINS:-bundled}
     volumes:
       - ../../worktree/${OLD_KONG_VERSION}:/kong
     restart: on-failure

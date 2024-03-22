@@ -16,8 +16,6 @@ local reports         = require "kong.reports"
 local string_format   = string.format
 local table_concat    = table.concat
 
-local log = ngx.log
-local WARN = ngx.WARN
 local ngx_null = ngx.null
 
 local DEFAULT_TIMEOUT = 2000
@@ -61,10 +59,9 @@ _M.config_schema = {
   fields = {
     { host = typedefs.host },
     { port = typedefs.port },
-    { timeout = typedefs.timeout { default = DEFAULT_TIMEOUT } },
-    { connect_timeout = typedefs.timeout },
-    { send_timeout = typedefs.timeout },
-    { read_timeout = typedefs.timeout },
+    { connect_timeout = typedefs.timeout { default = DEFAULT_TIMEOUT } },
+    { send_timeout = typedefs.timeout { default = DEFAULT_TIMEOUT } },
+    { read_timeout = typedefs.timeout { default = DEFAULT_TIMEOUT } },
     { username = { description = "Username to use for Redis connections. If undefined, ACL authentication won't be performed. This requires Redis v6.0.0+. To be compatible with Redis v5.x.y, you can set it to `default`.", type = "string",
         referenceable = true
       } },
@@ -155,6 +152,21 @@ _M.config_schema = {
       mutually_required = { "connect_timeout", "send_timeout", "read_timeout" },
     }
   },
+  shorthand_fields = {
+    {
+      timeout = {
+        type = "integer",
+        translate_backwards = {'connect_timeout'},
+        deprecation = {
+          message = "redis schema field `timeout` is deprecated, use `connect_timeout`, `send_timeout` and `read_timeout`",
+          removal_in_version = "4.0",
+        },
+        func = function(value)
+          return { connect_timeout = value, send_timeout = value, read_timeout = value }
+        end
+      }
+    }
+  }
 }
 
 
@@ -176,42 +188,6 @@ local function parse_addresses(addresses, ip_field_name)
 end
 
 
--- Ensures connect, send and read timeouts are individually set if only
--- the (deprecated) `timeout` field is given.
-local function configure_timeouts(conf)
-  local timeout = conf.timeout
-
-  if timeout then
-    -- TODO: Move to a global util once available
-    local deprecation = {
-      msg = "redis schema field `timeout` is deprecated, " ..
-            "use `connect_timeout`, `send_timeout` and `read_timeout`",
-      deprecated_after = "2.5.0.0",
-      version_removed  = "3.0.0.0",
-    }
-
-    log(
-      WARN, deprecation.msg,
-      " (deprecated after ", deprecation.deprecated_after,
-      ", scheduled for removal in ", deprecation.version_removed, ")"
-    )
-
-  else
-
-    timeout = DEFAULT_TIMEOUT
-  end
-
-  conf.connect_timeout =
-    conf.connect_timeout ~= ngx_null and conf.connect_timeout or timeout
-
-  conf.send_timeout =
-    conf.send_timeout ~= ngx_null and conf.send_timeout or timeout
-
-  conf.read_timeout =
-    conf.read_timeout ~= ngx_null and conf.read_timeout or timeout
-end
-
-
 -- Perform any needed Redis configuration; e.g., parse Sentinel addresses
 function _M.init_conf(conf)
   if is_redis_cluster(conf) then
@@ -222,8 +198,6 @@ function _M.init_conf(conf)
     conf.parsed_sentinel_addresses =
       parse_addresses(conf.sentinel_addresses, "host")
   end
-
-  configure_timeouts(conf)
 end
 
 
