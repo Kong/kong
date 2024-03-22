@@ -911,11 +911,10 @@ jobs:
   build-images-provenance:
     name: Build Images Provenance - ${{matrix.label}}
     needs: [metadata, provenance-metadata, build-images]
-    if: false
-    # if: >
-    #   github.repository_owner == 'Kong'
-    #   && fromJSON(needs.metadata.outputs.matrix)['build-images'] != ''
-    #   && github.event_name != 'pull_request'
+    if: >
+      github.repository_owner == 'Kong'
+      && fromJSON(needs.metadata.outputs.matrix)['build-images'] != ''
+      && github.event_name != 'pull_request'
     strategy:
       # limit to 3 jobs at a time
       max-parallel: 3
@@ -926,7 +925,7 @@ jobs:
       id-token: write # needed for signing the images
       actions: read # For getting workflow run info to build provenance
       packages: write # Required for publishing provenance. Issue: https://github.com/slsa-framework/slsa-github-generator/tree/main/internal/builders/container#known-issues
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v1.9.0
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v1.10.0
     with:
       image: "${{ fromJSON(needs.provenance-metadata.outputs.build-images-provenance-result)['image'][matrix.label] }}"
       digest: "${{ fromJSON(needs.provenance-metadata.outputs.build-images-provenance-result)['digest'][matrix.label] }}"
@@ -946,12 +945,11 @@ jobs:
   release-images-provenance:
     name: Release Images Provenance - ${{matrix.label}}
     needs: [metadata, provenance-metadata, release-images]
-    if: false
-    # if: >
-    #   github.event.inputs.official  == 'true'
-    #   && github.repository_owner == 'Kong'
-    #   && fromJSON(needs.metadata.outputs.matrix)['release-images'] != ''
-    #   && github.event_name != 'pull_request'
+    if: >
+      github.event.inputs.official  == 'true'
+      && github.repository_owner == 'Kong'
+      && fromJSON(needs.metadata.outputs.matrix)['release-images'] != ''
+      && github.event_name != 'pull_request'
     strategy:
       # limit to 3 jobs at a time
       max-parallel: 3
@@ -962,7 +960,7 @@ jobs:
       id-token: write # needed for signing the images
       actions: read # For getting workflow run info to build provenance
       packages: write # Required for publishing provenance. Issue: https://github.com/slsa-framework/slsa-github-generator/tree/main/internal/builders/container#known-issues
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v1.9.0
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v1.10.0
     with:
       image: "${{ fromJSON(needs.provenance-metadata.outputs.release-images-provenance-result)['image'][matrix.label] }}"
       digest: "${{ fromJSON(needs.provenance-metadata.outputs.release-images-provenance-result)['digest'][matrix.label] }}"
