@@ -845,9 +845,9 @@ local function check_and_parse(conf, opts)
     errors[#errors + 1] = err
   end
 
-  if conf.wasm and check_dynamic_module("ngx_wasm_module") then
+  if conf.wasm and check_dynamic_module("ngx_wasmx_module") then
     local err
-    conf.wasm_dynamic_module, err = lookup_dynamic_module_so("ngx_wasm_module", conf)
+    conf.wasm_dynamic_module, err = lookup_dynamic_module_so("ngx_wasmx_module", conf)
     if err then
       errors[#errors + 1] = err
     end

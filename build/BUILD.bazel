@@ -49,8 +49,8 @@ install_webui_cmd = select({
 
 install_wasm_deps_cmd = select({
     "@kong//:wasmx_flag": """
-    for fname in $(locations @ngx_wasm_module//:lua_libs); do
-        base=${fname##*/ngx_wasm_module/lib/}
+    for fname in $(locations @ngx_wasmx_module//:lua_libs); do
+        base=${fname##*/ngx_wasmx_module/lib/}
         dest="${BUILD_DESTDIR}/openresty/lualib/$base"
         mkdir -p "$(dirname "$dest")"
         cp -v "$fname" "$dest"
@@ -97,7 +97,7 @@ kong_directory_genrule(
         ],
     }) + select({
         "@kong//:wasmx_flag": [
-            "@ngx_wasm_module//:lua_libs",
+            "@ngx_wasmx_module//:lua_libs",
             "@openresty//:wasm_runtime",
         ],
         "//conditions:default": [],

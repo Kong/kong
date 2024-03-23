@@ -22,7 +22,7 @@ def transform(f: FileInfo):
             f.runpath = expected_rpath
         # otherwise remain unmodified
 
-    if f.path.endswith("/modules/ngx_wasm_module.so"):
+    if f.path.endswith("/modules/ngx_wasmx_module.so"):
         expected_rpath = "/usr/local/openresty/luajit/lib:/usr/local/kong/lib:/usr/local/openresty/lualib"
         if f.rpath and expected_rpath in f.rpath:
             f.rpath = expected_rpath
