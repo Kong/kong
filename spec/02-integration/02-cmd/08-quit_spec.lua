@@ -10,6 +10,7 @@ local helpers = require "spec.helpers"
 describe("kong quit", function()
   lazy_setup(function()
     helpers.get_db_utils(nil, {}) -- runs migrations
+    helpers.clean_prefix()
     helpers.prepare_prefix()
   end)
   after_each(function()

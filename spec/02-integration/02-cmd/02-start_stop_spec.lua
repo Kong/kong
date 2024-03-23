@@ -311,8 +311,15 @@ describe("kong start/stop #" .. strategy, function()
   it("stop honors custom Kong prefix higher than environment variable", function()
     assert(kong_exec("start --conf " .. TEST_CONF_PATH))
 
+    local old_prefix = os.getenv("KONG_PREFIX")
     helpers.setenv("KONG_PREFIX", "/tmp/dne")
-    finally(function() helpers.unsetenv("KONG_PREFIX") end)
+    finally(function()
+      if old_prefix then
+        helpers.setenv("KONG_PREFIX", old_prefix)
+      else
+        helpers.unsetenv("KONG_PREFIX")
+      end
+    end)
 
     assert(kong_exec("stop --prefix " .. PREFIX))
   end)
