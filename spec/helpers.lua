@@ -4157,15 +4157,41 @@ do
 end
 
 --------------
--- database proxy
--- These function are used to create a database proxy, which can be used to change the database behavior,
--- such as imitate a database outage, or a performance decrease.
-
+-- A kong based database proxy class for the simulation of database abnormal behavior.
+-- @section db_proxy
+-- @usage
+-- local helpers = require "spec.helpers"
+-- local db_port = 5432
+-- local db_proxy = helpers.db_proxy.new({ db_port = db_port })
+-- assert(db_proxy:start())
+-- db_proxy:status(false)
+-- db_proxy:delay(5)
+-- db_proxy:stop()
 local db_proxy = {}
 local db_proxy_mt = {
   __index = db_proxy,
 }
 
+--- Creates a db_proxy.
+-- @function db_proxy
+-- @field db_port The actual port of the database.
+-- @field db_proxy_port The proxy port of the database.
+-- @field api_port The port of the api server of the database
+-- proxy by which you can control the behavior of the db proxy 
+-- to simulate abnormal cases.
+-- @field tcp_port The port of the tcp server of the database 
+-- proxy. When invoking the api of the db proxy, it will transfer
+-- the config through this port, so that the config will take
+-- effects. Thus it is used internally.
+-- @param opts (table) Specifies the ports of the database proxy.
+-- The opts.db_port is the only one required, but all the others 
+-- are optional.
+-- @return db proxy
+-- @see db_proxy:start
+-- @see db_proxy:stop
+-- @see db_proxy:get_fixtures
+-- @see db_proxy:delay
+-- @see db_proxy:status
 function db_proxy.new(opts)
   opts = opts or {}
 
@@ -4183,15 +4209,21 @@ function db_proxy.new(opts)
   return setmetatable(self, db_proxy_mt)
 end
 
+-- Start the db proxy.
+-- @function db_proxy:start
+-- @param opts(optional) Same as the opts used in `start_kong`. 
+-- Strongly recommend not feed this parameter.
 function db_proxy:start(opts)
   local kong_conf = type(opts) == "table" and opts or {
     prefix = "servroot_db_proxy",
     database = "off",
     role = "data_plane",
     nginx_conf = "spec/fixtures/custom_nginx.template",
-    -- this is unused, but required for the the template to include a stream {} block
+    -- this is unused, but required for the template to include a http {} block
+    proxy_listen = "0.0.0.0:" .. get_available_port(),
+    -- this is unused, but required for the template to include a stream {} block
+    -- and this won't occupy 5555 port actually.
     stream_listen = "0.0.0.0:5555",
-    proxy_listen = "0.0.0.0:16666",
   }
 
   self.prefix = kong_conf.prefix
@@ -4199,6 +4231,8 @@ function db_proxy:start(opts)
   return start_kong(kong_conf, nil, nil, self:get_fixtures())
 end
 
+-- Stop the db proxy.
+-- @function db_proxy:stop
 function db_proxy:stop()
   if self.client then
     self.client:close()
@@ -4207,6 +4241,8 @@ function db_proxy:stop()
   return stop_kong(self.prefix, true)
 end
 
+-- Get the fixtures of the db proxy.
+-- @function db_proxy:get_fixtures
 function db_proxy:get_fixtures()
   return {
     http_mock = {
@@ -4317,6 +4353,12 @@ function db_proxy:get_fixtures()
   }
 end
 
+-- Set the delay for the db proxy to simulate a slow network.
+-- Notice: you have to assert the success of execution of
+-- this function by yourself like:
+-- `assert.res_status(200, db_proxy:delay(10))`.
+-- @function db_proxy:delay
+-- @param delay (number) The delay in seconds.
 function db_proxy:delay(delay)
   if type(delay) ~= "number" then
     error("delay must be a number and greater than 0")
@@ -4329,6 +4371,13 @@ function db_proxy:delay(delay)
   return self.client:post("/db_proxy_conf", { delay = delay })
 end
 
+-- Set the status for the db proxy to simulate an outage.
+-- Notice: you have to assert the success of execution of
+-- this function by yourself like:
+-- `assert.res_status(200, db_proxy:status(false))`.
+-- @function db_proxy:status
+-- @param status (boolean) The status of the database,
+-- false means an outage.
 function db_proxy:status(on_off)
   if type(on_off) ~= 'boolean' then
     error("on_off must be a boolean")
