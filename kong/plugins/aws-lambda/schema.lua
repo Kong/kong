@@ -42,7 +42,7 @@ return {
         { function_name = {
           type = "string",
           required = false,
-          description = "The AWS Lambda function name to invoke."
+          description = "The AWS Lambda function to invoke. Both function name, function ARN or partial ARN format are supported."
         } },
         { qualifier = {
           type = "string",
