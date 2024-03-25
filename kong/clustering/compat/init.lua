@@ -9,6 +9,7 @@ local ipairs = ipairs
 local table_insert = table.insert
 local table_sort = table.sort
 local gsub = string.gsub
+local floor = math.floor
 local split = utils.split
 local deflate_gzip = require("kong.tools.gzip").deflate_gzip
 local cjson_encode = cjson.encode
@@ -24,7 +25,8 @@ local extract_major_minor = version.extract_major_minor
 
 local _log_prefix = "[clustering] "
 
-local REMOVED_FIELDS = require("kong.clustering.compat.removed_fields")
+local REMOVED_FIELDS_ITERATOR = require("kong.clustering.compat.removed_fields")
+local FIELDS = nil
 local COMPATIBILITY_CHECKERS = require("kong.clustering.compat.checkers")
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local KONG_VERSION = meta.version
@@ -315,25 +317,38 @@ do
 
   function get_removed_fields(dp_version)
     local plugin_fields = cache[dp_version]
-    if plugin_fields ~= nil then
+    if plugin_fields then
       return plugin_fields or nil
     end
 
-    -- Merge dataplane unknown fields; if needed based on DP version
-    for ver, plugins in pairs(REMOVED_FIELDS) do
-      if dp_version < ver then
-        for plugin, items in pairs(plugins) do
-          plugin_fields = plugin_fields or {}
-          plugin_fields[plugin] = plugin_fields[plugin] or {}
+    local seen = {}
+    local inserted = false
 
-          for _, name in ipairs(items) do
+    -- Merge dataplane unknown fields; if needed based on DP version
+    for ver, plugins in REMOVED_FIELDS_ITERATOR(FIELDS) do
+      for plugin, items in pairs(plugins) do
+        for _, name in ipairs(items) do
+          local key = plugin .. ":" .. name
+          if not seen[key] then
+            seen[key] = true
+            -- punchthrough minor version if the plugin is not already in the list
+            if dp_version < ver then
+              plugin_fields = plugin_fields or {}
+              plugin_fields[plugin] = plugin_fields[plugin] or {}
+              table_insert(plugin_fields[plugin], name)
+              inserted = true
+            end
+
+          elseif dp_version < ver and dp_version >= floor(ver/10000)*10000 then
+            -- compare within the minor version if the plugin is already in the list
             table_insert(plugin_fields[plugin], name)
+            inserted = true
           end
         end
       end
     end
 
-    if plugin_fields then
+    if inserted then
       -- sort for consistency
       for _, list in pairs(plugin_fields) do
         table_sort(list)
@@ -350,10 +365,8 @@ do
   -- expose for unit tests
   _M._get_removed_fields = get_removed_fields
   _M._set_removed_fields = function(fields)
-    local saved = REMOVED_FIELDS
-    REMOVED_FIELDS = fields
+    FIELDS = fields
     cache = {}
-    return saved
   end
 end
 
