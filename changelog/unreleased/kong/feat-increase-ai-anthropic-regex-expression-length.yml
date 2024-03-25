@@ -1,4 +1,4 @@
 message: |
-  **AI-Prompt-Guard**: increase the maximum length of regex expression for both allow and deny parameter
+  **AI-Prompt-Guard**: increase the maximum length of regex expression to 500 for both allow and deny parameter
 scope: Plugin
 type: feature
