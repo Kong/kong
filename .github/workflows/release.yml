@@ -689,10 +689,6 @@ jobs:
       env:
         ARCHITECTURE: ${{ steps.pkg-arch.outputs.arch }}
         OFFICIAL_RELEASE: ${{ github.event.inputs.official }}
-        PULP_HOST: https://api.download.konghq.com
-        PULP_USERNAME: admin
-        # PULP_PASSWORD: ${{ secrets.PULP_DEV_PASSWORD }}
-        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
         ARTIFACT_VERSION: ${{ matrix.artifact-version }}
         ARTIFACT_TYPE: ${{ matrix.artifact-type }}
         ARTIFACT: ${{ matrix.artifact }}
@@ -704,7 +700,6 @@ jobs:
         CLOUDSMITH_DRY_RUN: ''
         IGNORE_CLOUDSMITH_FAILURES: ${{ vars.IGNORE_CLOUDSMITH_FAILURES }}
         USE_CLOUDSMITH: ${{ vars.USE_CLOUDSMITH }}
-        USE_PULP: ${{ vars.USE_PULP }}
       run: |
         # uploading package files with filenames that don't match the
         # architecture of their contents is a re-occuring problem for us
