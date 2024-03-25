@@ -43,7 +43,6 @@ on:  # yamllint disable-line rule:truthy
 
 env:
   LIBRARY_PREFIX: /usr/local/kong
-  PULP_USERNAME: admin
   # if this is a push event, or it is pull request but not from a fork, and not from dependabot (dependabot does not use forks), then this PR will have access to secrets
   HAS_ACCESS_TO_SECRETS: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && !contains(github.actor, 'dependabot')) }}
   TEST_RESULTS_XML_OUTPUT: test-results
@@ -81,11 +80,36 @@ jobs:
       fips: ${{ matrix.fips }}
       aarch64: ${{ inputs.arm64 == true }}
 
+  kong-license-data:
+    # Note: use a shared step to avoid hitting 1password rate limits (1000/hour)
+    # and also encrypt in between jobs  as job outputs are sent back to Github server
+    # so it refuse to output secrets
+    name: Get Kong License
+    runs-on: ubuntu-latest-kong
+    timeout-minutes: 5
+    outputs:
+      encrypted: ${{ steps.encrypted.outputs.out }}
+
+    steps:
+    - name: Collect Kong License
+      uses: Kong/kong-license@master
+      id: license
+      with:
+        op-token: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+
+    - uses: cloudposse/github-action-secret-outputs@935a902398ad32ec2c82b7d067e861e180fbdde2 # v0.1
+      id: encrypted
+      with:
+        # use something always available as a PGP passphrase
+        secret: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+        op: encode
+        in: ${{ steps.license.outputs.license }}
+
   cp-dp-compatibility-test:
     name: CP/DP compatibility
     runs-on: ${{ inputs.arm64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
     timeout-minutes: 30
-    needs: build
+    needs: [build, kong-license-data]
     if: false # FIXME(@flrgh): re-enable with FT-3478
 
     services:
@@ -131,17 +155,19 @@ jobs:
         cd $GITHUB_WORKSPACE
         kong hybrid gen_cert
 
-    - name: Collect Kong License
-      uses: Kong/kong-license@master
-      id: license
+    - name: Decrypt the license
+      uses: cloudposse/github-action-secret-outputs@935a902398ad32ec2c82b7d067e861e180fbdde2 # v0.1
+      id: decrypted_license
       with:
-        op-token: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+        # use something always available as a PGP passphrase
+        secret: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+        op: decode
+        in: ${{ needs.kong-license-data.outputs.encrypted }}
 
     - name: Check version compatibility
       env:
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
-        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
-        KONG_LICENSE_DATA: ${{ steps.license.outputs.license }}
+        KONG_LICENSE_DATA: ${{ steps.decrypted_license.outputs.out }}
       run: |
         if [[ -z "$KONG_LICENSE_DATA" ]]; then
           echo 'failed getting license'
@@ -254,7 +280,7 @@ jobs:
       run: |
         source ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }}-venv.sh
         scripts/check_ee_bundled_plugin_list_coverage.sh
-  
+
   schedule:
     name: Schedule busted tests to run
     runs-on: ubuntu-latest-kong
@@ -298,11 +324,11 @@ jobs:
       id: generate-runner-array
       run: |
         echo "RUNNERS=[$(seq -s "," 1 $(( "$RUNNER_COUNT" )))]" >> "$GITHUB_OUTPUT"
-  
+
   busted-tests:
     name: Busted test runner ${{ matrix.runner }}
     runs-on: ${{ inputs.arm64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
-    needs: [build,schedule]
+    needs: [build,schedule, kong-license-data]
 
     strategy:
       fail-fast: false
@@ -522,30 +548,17 @@ jobs:
       with:
         name: test-runtime-statistics-${{ matrix.runner }}
 
-    - name: Set Kong License Data
-      env:
-        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
-      run: |
-        KONG_LICENSE_URL="https://download.konghq.com/internal/kong-gateway/license.json"
-        export KONG_LICENSE_DATA=$(curl \
-          --silent \
-          --location \
-          --retry 3 \
-          --retry-delay 3 \
-          --user "$PULP_USERNAME:$PULP_PASSWORD" \
-          --url "$KONG_LICENSE_URL"
-        )
-
-        if [[ -z $KONG_LICENSE_DATA ]]; then
-          echo "failed downloading license from $KONG_LICENSE_URL"
-          exit 1
-        fi
-
-        echo KONG_LICENSE_DATA=$KONG_LICENSE_DATA >> $GITHUB_ENV
+    - name: Decrypt the license
+      uses: cloudposse/github-action-secret-outputs@935a902398ad32ec2c82b7d067e861e180fbdde2 # v0.1
+      id: decrypted_license
+      with:
+        # use something always available as a PGP passphrase
+        secret: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+        op: decode
+        in: ${{ needs.kong-license-data.outputs.encrypted }}
 
     - name: Run Tests
       env:
-        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
         AWS_ACCESS_KEY_ID: ${{ secrets.TEST_API_AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.TEST_API_AWS_SECRET_ACCESS_KEY }}
         GCP_SERVICE_ACCOUNT: ${{ secrets.TEST_API_GCP_SERVICE_ACCOUNT }}
@@ -559,10 +572,10 @@ jobs:
         KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
         KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
         KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
+        KONG_TEST_LICENSE_DATA: ${{ steps.decrypted_license.outputs.out }}
         DT_TEST: ${{ inputs.dt-test }}
         DT_ENV_ID: ${{ secrets.DT_ENV_ID }}
         DT_API_TOKEN: ${{ secrets.DT_API_TOKEN }}
-        KONG_TEST_LICENSE_DATA: ${{ env.KONG_LICENSE_DATA }}
       uses: Kong/gateway-test-scheduler/runner@00ab5474e9a7d11e21738078ee563856dac2b868 # v4
       with:
         tests-to-run-file: test-chunk.${{ matrix.runner }}.json
@@ -695,7 +708,6 @@ jobs:
 
     - name: Tests
       env:
-        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
         TEST_SUITE: pdk
       run: |
         source ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }}-venv.sh
@@ -799,7 +811,7 @@ jobs:
     name: Database migration and upgrade tests
     runs-on: ubuntu-latest-kong
     timeout-minutes: 60
-    needs: build
+    needs: [build, kong-license-data]
     # enable this step if migration starts to be architecture-dependent
     if: ${{ inputs.arm64 != true }}
 
@@ -809,7 +821,7 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
-      
+
       - name: Download artifacts
         uses: actions/download-artifact@v3
         with:
@@ -821,13 +833,24 @@ jobs:
           sudo tar -C /usr/local/ -xzvf artifacts/build-${{ env.BUILD_NAME_NORMAL }}.tar.gz
           sudo mkdir -p ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }}
           sudo tar -C ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }} -xzvf artifacts/build-${{ env.BUILD_NAME_NORMAL }}.tar.gz
-    
+
       - name: Install Kong dev
         env:
           GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
         run: make dev LIBRARY_PREFIX=/usr/local/kong
 
+      - name: Decrypt the license
+        uses: cloudposse/github-action-secret-outputs@935a902398ad32ec2c82b7d067e861e180fbdde2 # v0.1
+        id: decrypted_license
+        with:
+          # use something always available as a PGP passphrase
+          secret: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+          op: decode
+          in: ${{ needs.kong-license-data.outputs.encrypted }}
+
       - name: Run upgrade tests
+        env:
+          KONG_LICENSE_DATA: ${{ steps.decrypted_license.outputs.out }}
         run: |
           bash ./scripts/upgrade-tests/test-upgrade-path.sh -i ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_NORMAL }}-venv.sh
 
@@ -836,7 +859,7 @@ jobs:
     name: plugins EE - ${{ matrix.split }} tests
     runs-on: ${{ inputs.arm64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
     timeout-minutes: 50
-    needs: build-image
+    needs: [build-image, kong-license-data]
 
     strategy:
       fail-fast: false
@@ -924,14 +947,23 @@ jobs:
       run: |
         docker load --input docker-images/image.tar
 
+    - name: Decrypt the license
+      uses: cloudposse/github-action-secret-outputs@935a902398ad32ec2c82b7d067e861e180fbdde2 # v0.1
+      id: decrypted_license
+      with:
+        # use something always available as a PGP passphrase
+        secret: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+        op: decode
+        in: ${{ needs.kong-license-data.outputs.encrypted }}
+
     - name: Tests
       env:
-        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
         DOCKER_USERNAME: ${{ secrets.GHA_DOCKERHUB_PULL_USER }}
         DOCKER_PASSWORD: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
         TEST_SUITE: plugins-ee
         TEST_SPLIT: ${{ matrix.split }}
+        KONG_LICENSE_DATA: ${{ steps.decrypted_license.outputs.out }}
       run: |
         mkdir $TEST_RESULTS_XML_OUTPUT
         export XML_OUTPUT=$(realpath $TEST_RESULTS_XML_OUTPUT)

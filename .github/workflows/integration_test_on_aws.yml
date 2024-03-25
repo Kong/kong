@@ -24,7 +24,6 @@ on:  # yamllint disable-line rule:truthy
 
 env:
   LIBRARY_PREFIX: /usr/local/kong
-  PULP_USERNAME: admin
   TEST_RESULTS_XML_OUTPUT: test-results
   # if this is a push event, or it is pull request but not from a fork, and not from dependabot (dependabot does not use forks), then this PR will have access to secrets
   HAS_ACCESS_TO_SECRETS: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && !contains(github.actor, 'dependabot')) }}
@@ -47,10 +46,24 @@ jobs:
       label: normal
       aarch64: true
 
+  kong-license-data:
+    name: Get Kong License
+    runs-on: ubuntu-latest-kong
+    timeout-minutes: 5
+    outputs:
+      license: ${{ steps.license.outputs.license }}
+
+    steps:
+    - name: Collect Kong License
+      uses: Kong/kong-license@master
+      id: license
+      with:
+        op-token: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+
   integration-test-aws-ec2:
     name: Gateway AWS Integration test on EC2
     runs-on: [ubuntu-22.04-arm64, ubuntu-22.04-arm64-ec2, self-hosted]
-    needs: build
+    needs: [build, kong-license-data]
     timeout-minutes: 30
     services:
       postgres:
@@ -119,7 +132,7 @@ jobs:
           KONG_TEST_PG_DATABASE: kong
           KONG_TEST_PG_USER: kong
           KONG_TEST_DATABASE: postgres
-          PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
+          KONG_LICENSE_DATA: ${{ needs.kong-license-data.outputs.license }}
           TEST_SUITE: aws-integration
         run: |
           # Fetch runner account and region

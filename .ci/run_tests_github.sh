@@ -40,22 +40,11 @@ create_postgresql_user() {
 EOSQL
 }
 
-
-KONG_LICENSE_URL="https://download.konghq.com/internal/kong-gateway/license.json"
-KONG_LICENSE_DATA=$(curl \
-  --silent \
-  --location \
-  --retry 3 \
-  --retry-delay 3 \
-  --user "$PULP_USERNAME:$PULP_PASSWORD" \
-  --url "$KONG_LICENSE_URL"
-)
-export KONG_LICENSE_DATA
 if [[ ! $KONG_LICENSE_DATA == *"signature"* || ! $KONG_LICENSE_DATA == *"payload"* ]]; then
   # the check above is a bit lame, but the best we can do without requiring
   # yet more additional dependenies like jq or similar.
-  yellow "failed to download the Kong Enterprise license file!
-    $KONG_LICENSE_DATA"
+  yellow "KONG_LICENSE_DATA is not set on invalid. Please use Kong/kong-license action to download."
+  exit 1
 fi
 export KONG_TEST_LICENSE_DATA=$KONG_LICENSE_DATA
 

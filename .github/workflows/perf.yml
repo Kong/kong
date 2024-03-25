@@ -14,8 +14,6 @@ env:
   # only for pr
   GHA_CACHE: ${{ github.event_name == 'pull_request' }}
 
-  PULP_USERNAME: admin
-
 
 # perf test can only run one at a time per repo for now
 concurrency:
@@ -280,7 +278,7 @@ jobs:
         DOCKER_USERNAME: ${{ secrets.GHA_DOCKERHUB_PULL_USER }}
         DOCKER_PASSWORD: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
         # credentials accessible to pulp internal builds is required
-        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
+        # BROKEN
       timeout-minutes: 300
       run: |
         export PERF_TEST_BYO_SSH_KEY_PATH=$(pwd)/ssh_key
