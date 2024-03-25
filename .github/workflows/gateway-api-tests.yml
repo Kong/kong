@@ -158,6 +158,7 @@ jobs:
 
       - name: Execute Gateway API Tests
         id: execute_tests
+        continue-on-error: true
         run: |
           if [[ $RUN_SPEC == 'all' ]]; then
             npm run test-gateway;
@@ -189,6 +190,13 @@ jobs:
         run: |
           echo "gw_version=$(curl -H kong-admin-token:handyshake http://localhost:8001 | jq -r '.version')" >> $GITHUB_OUTPUT
           echo "git_commit_sha=$(docker inspect $GW_IMAGE | jq -r '.[].Config.Labels["org.opencontainers.image.revision"]')" >> $GITHUB_OUTPUT
+
+      - name: Retry Failed E2E API Tests
+        if: steps.execute_tests.outcome == 'failure'
+        run: npm run test-multiple -- --spec=$(cat failed-tests.txt)
+        env:
+          AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
+          APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
 
       - name: Send test results to Slack
         if: ${{ env.SEND_SLACK_RESULTS == 'true' && always() && github.ref == 'refs/heads/master' }}

@@ -408,7 +408,7 @@ export const createAzureVaultEntity = async (vaultPrefix = 'my-azure', ttls?: ob
       name: 'azure',
       config: {
         location: 'us-east',
-        vault_uri: 'https://kong-vault.vault.azure.net/',
+        vault_uri: 'https://sdet-test.vault.azure.net/',
         ...ttls
       },
     },
