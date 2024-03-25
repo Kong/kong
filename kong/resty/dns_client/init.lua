@@ -8,6 +8,7 @@ local now       = ngx.now
 local log       = ngx.log
 local ERR       = ngx.ERR
 local WARN      = ngx.WARN
+local DEBUG     = ngx.DEBUG
 local ALERT     = ngx.ALERT
 local timer_at  = ngx.timer.at
 
@@ -368,6 +369,11 @@ local function process_answers(self, qname, qtype, answers)
     end
 
     table_insert(processed_answers, cname_answer)
+
+    log(DEBUG, "processed cname:", cname_answer.cname)
+
+  else
+    log(DEBUG, "processed ans:", #processed_answers)
   end
 
   processed_answers.expire = now() + ttl
@@ -398,6 +404,8 @@ local function resolve_query(self, name, qtype, tries)
   local time_str = ("%.3f %.3f"):format(start_time, query_time)
 
   stats_set(self.stats, key, "query_last_time", time_str)
+
+  log(DEBUG, "r:query() ans:", answers and #answers or "-", " t:", time_str)
 
   if not answers then
     stats_count(self.stats, key, "query_fail_nameserver")
@@ -459,6 +467,8 @@ local function resolve_name_type_callback(self, name, qtype, opts, tries)
     ttl = math_min(ttl, 60)
 
     if ttl > 0 then
+      log(DEBUG, "start stale update task ", key, " ttl:", ttl)
+
       -- mlcache's internal lock mechanism ensures concurrent control
       start_stale_update_task(self, key, name, qtype, opts.short_key)
       answers.ttl = ttl
@@ -501,6 +511,8 @@ local function resolve_name_type(self, name, qtype, opts, tries)
   if err and err:sub(1, 8) == "callback" then
     log(ALERT, err)
   end
+
+  log(DEBUG, "cache lookup ", key, " ans:", answers and #answers or "-", " hlv:", hit_level or "-")
 
   local ctx = ngx.ctx
   if ctx and ctx.has_timing then
@@ -614,6 +626,8 @@ local function resolve_all(self, name, opts, tries)
   -- quickly lookup with the key "short:<name>:all" or "short:<name>:<qtype>"
   local answers, err, hit_level = self.cache:get(key)
   if not answers then
+    log(DEBUG, "quickly cache lookup ", key, " ans:- hlvl:", hit_level or "-")
+
     answers, err, tries = resolve_names_and_types(self, name, opts, tries)
     if not opts.cache_only and answers then
       -- If another worker resolved the name between these two `:get`, it can
@@ -627,6 +641,8 @@ local function resolve_all(self, name, opts, tries)
 
     stats_count(self.stats, name, answers and "miss" or "fail")
   else
+    log(DEBUG, "quickly cache lookup ", key, " ans:", #answers, " hlv:", hit_level or "-")
+
     local ctx = ngx.ctx
     if ctx and ctx.has_timing then
       req_dyn_hook_run_hooks("timing", "dns:cache_lookup",
