@@ -9,7 +9,7 @@ Table of Contents
 * [Name](#name)
 * [APIs](#apis)
     * [new](#new)
-    * [query](#query)
+    * [resolve](#resolve)
 
 # APIs
 
@@ -17,7 +17,7 @@ The following APIs are for internal development use only within Kong. In the cur
 
 ## new
 
-**syntax:** *c, err = dns_client.new(opts)*
+**syntax:** *c, err = dns_client.new(opts)*  
 **context:** any
 
 **Functionality:**
@@ -71,8 +71,8 @@ Perform a series of initialization operations:
 
 ## resolve
 
-**syntax:** *answers, err, tries? = resolve(name, opts?, tries?)*
-**context:** *rewrite_by_lua\*, access_by_lua\*, content_by_lua\*, ngx.timer.\*;*
+**syntax:** *answers, err, tries? = resolve(name, opts?, tries?)*  
+**context:** *rewrite_by_lua\*, access_by_lua\*, content_by_lua\*, ngx.timer.\**
 
 **Functionality:**
 
