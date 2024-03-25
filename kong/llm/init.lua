@@ -140,8 +140,7 @@ local logging_schema = {
 }
 
 local UNSUPPORTED_LOG_STATISTICS = {
-  ["llm/v1/completions"] = { "anthropic", "azure", "cohere", "llama2", },
-  ["llm/v1/chat"] = { "cohere", "llama2", }
+  ["llm/v1/completions"] = { "anthropic" },
 }
 
 _M.config_schema = {

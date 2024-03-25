@@ -481,6 +481,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         -- check this is in the 'kong' response format
         assert.equals(json.error.message, "request format not recognised")
       end)
+    end)
 
     describe("anthropic llm/v1/completions", function()
       it("good request", function()
@@ -521,6 +522,5 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       end)
     end)
   end)
-end)
 
 end end
