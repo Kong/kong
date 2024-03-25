@@ -4217,6 +4217,7 @@ function db_proxy:start(opts)
   local kong_conf = type(opts) == "table" and opts or {
     prefix = "servroot_db_proxy",
     database = "off",
+    -- the proxy should be in the data plane as this can avoid port conflict with the other kong instances.
     role = "data_plane",
     nginx_conf = "spec/fixtures/custom_nginx.template",
     -- this is unused, but required for the template to include a http {} block
@@ -4224,6 +4225,9 @@ function db_proxy:start(opts)
     -- this is unused, but required for the template to include a stream {} block
     -- and this won't occupy 5555 port actually.
     stream_listen = "0.0.0.0:5555",
+    -- As we specify the proxy working as a data plane, we need to specify the following certs
+    cluster_cert = "spec/fixtures/kong_clustering.crt",
+    cluster_cert_key = "spec/fixtures/kong_clustering.key",
   }
 
   self.prefix = kong_conf.prefix
