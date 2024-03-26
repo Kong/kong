@@ -16,6 +16,7 @@ local type          = type
 local pairs         = pairs
 local ipairs        = ipairs
 local math_min      = math.min
+local string_lower  = string.lower
 local table_insert  = table.insert
 
 local parse_hosts   = utils.parse_hosts
@@ -167,7 +168,7 @@ local function init_hosts(cache, path, preferred_ip_type)
   end
 
   for name, address in pairs(hosts) do
-    name = name:lower()
+    name = string_lower(name)
 
     if address.ipv4 then
       insert_answer(name, TYPE_A, address.ipv4)
@@ -330,7 +331,7 @@ local function process_answers(self, qname, qtype, answers)
   local ttl = self.valid_ttl or 0xffffffff  -- 0xffffffff for maximum TTL value
 
   for _, answer in ipairs(answers) do
-    answer.name = answer.name:lower()
+    answer.name = string_lower(answer.name)
 
     if answer.type == TYPE_CNAME then
       cname_answer = answer   -- use the last one as the real cname
@@ -409,6 +410,7 @@ local function resolve_query(self, name, qtype, tries)
 
   if not answers then
     stats_count(self.stats, key, "query_fail_nameserver")
+    err = err or "unknown"
     return nil, "DNS server error: " .. err .. ", Query Time: " .. time_str
   end
 
@@ -682,7 +684,7 @@ end
 --   `cache_only`: default `false`, retrieve data only from the internal cache
 --   `qtype`: specified query type instead of its own search types
 function _M:resolve(name, opts, tries)
-  name = name:lower()
+  name = string_lower(name)
   opts = copy_options(opts or {})
   tries = setmetatable(tries or {}, tries_mt)
 
