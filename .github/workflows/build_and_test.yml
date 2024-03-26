@@ -563,7 +563,7 @@ jobs:
         DT_ENV_ID: ${{ secrets.DT_ENV_ID }}
         DT_API_TOKEN: ${{ secrets.DT_API_TOKEN }}
         KONG_TEST_LICENSE_DATA: ${{ env.KONG_LICENSE_DATA }}
-      uses: Kong/gateway-test-scheduler/runner@69f0c2a562ac44fc3650b8bfa62106b34094b5ce # v3
+      uses: Kong/gateway-test-scheduler/runner@00ab5474e9a7d11e21738078ee563856dac2b868 # v4
       with:
         tests-to-run-file: test-chunk.${{ matrix.runner }}.json
         failed-test-files-file: ${{ env.FAILED_TEST_FILES_FILE }}
