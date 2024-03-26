@@ -112,7 +112,12 @@ local routes = {
   },
   ["/debug/node/:node_id/node/log-level"] = {
     GET = function(self)
-      return kong.response.exit(200, { level = LOG_LEVELS[kong.rpc:call(self.params.node_id, "kong.debug.v1.get_log_level")] })
+      local res, err = kong.rpc:call(self.params.node_id, "kong.debug.v1.get_log_level")
+      if not res then
+        return kong.response.exit(500, { message = err })
+      end
+
+      return kong.response.exit(200, { level = LOG_LEVELS[res], })
     end,
   },
   ["/debug/node/:node_id/node/log-level/:log_level"] = {
