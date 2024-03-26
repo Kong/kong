@@ -193,7 +193,7 @@ jobs:
 
       - name: Retry Failed E2E API Tests
         if: steps.execute_tests.outcome == 'failure'
-        run: npm run test-multiple -- --spec=$(cat failed-tests.txt)
+        run: TEST_APP=gateway npm run test-multiple -- --spec=$(cat failed-tests.txt)
         env:
           AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
           APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
