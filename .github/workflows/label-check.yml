@@ -8,9 +8,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: do-not-merge label found
-      run: echo "do-not-merge label found, this PR will not be merged"; exit 1
-      if: ${{ contains(github.event.*.labels.*.name, 'pr/do not merge') || contains(github.event.*.labels.*.name, 'DO NOT MERGE') }}
     - name: backport master label found
       run: echo "Please do not backport into master, instead, create a PR targeting master and backport from it instead."; exit 1
       if: ${{ contains(github.event.*.labels.*.name, 'backport master') }}

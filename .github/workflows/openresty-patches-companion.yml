@@ -1,0 +1,21 @@
+name: Openresty patches review companion
+on:
+  pull_request:
+    paths:
+    - 'build/openresty/patches/**'
+
+jobs:
+  create-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch the workflow
+        if: ${{ github.repository_owner == 'Kong' }}
+        uses: benc-uk/workflow-dispatch@25b02cc069be46d637e8fe2f1e8484008e9e9609 # v1
+        with:
+          workflow: create-pr.yml
+          repo: kong/openresty-patches-review
+          ref: master
+          token: ${{ secrets.PAT }}
+          inputs: |
+            {"pr-branch":"${{ github.event.pull_request.head.repo.owner.login }}:${{ github.head_ref }}", "pr-base":"${{ github.base_ref }}", "ee":${{ contains(github.repository, 'kong-ee') && 'true' || 'false' }}, "pr-id":"${{ github.event.pull_request.number }}"}
+

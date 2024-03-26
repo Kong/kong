@@ -18,12 +18,13 @@ cmake(
     ],
     cache_entries = {
         "CMAKE_C_FLAGS": "${CMAKE_C_FLAGS:-} -fPIC",
-        "PCRE_BUILD_PCREGREP": "OFF",  # we don't need the cli binary
-        "PCRE_BUILD_TESTS": "OFF",  # test doesn't compile on aarch64-linux-gnu (cross)
+        "PCRE2_SUPPORT_JIT": "ON",  # enable JIT support for pcre2_jit_compile
+        "PCRE2_BUILD_PCRE2GREP": "OFF",  # we don't need the cli binary
+        "PCRE2_BUILD_TESTS": "OFF",  # test doesn't compile on aarch64-linux-gnu (cross)
         "CMAKE_INSTALL_LIBDIR": "lib",  # force distros that uses lib64 (rhel family) to use lib
     },
     lib_source = ":all_srcs",
-    out_static_libs = ["libpcre.a"],
+    out_static_libs = ["libpcre2-8.a"],
     visibility = ["//visibility:public"],
 )
 

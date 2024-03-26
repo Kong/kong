@@ -2,7 +2,7 @@ local declarative_config = require "kong.db.schema.others.declarative_config"
 local workspaces = require "kong.workspaces"
 local lmdb = require("resty.lmdb")
 local marshaller = require("kong.db.declarative.marshaller")
-local yield = require("kong.tools.utils").yield
+local yield = require("kong.tools.yield").yield
 local unique_field_key = require("kong.db.declarative").unique_field_key
 
 local kong = kong
@@ -21,12 +21,6 @@ local null = ngx.null
 local unmarshall = marshaller.unmarshall
 local lmdb_get = lmdb.get
 local get_workspace_id = workspaces.get_workspace_id
-
-
-local PROCESS_AUTO_FIELDS_OPTS = {
-  no_defaults = true,
-  show_ws_id = true,
-}
 
 
 local off = {}
@@ -213,7 +207,7 @@ local function page_for_key(self, key, size, offset, options)
     end
 
     if item then
-      ret[ret_idx] = schema:process_auto_fields(item, "select", true, PROCESS_AUTO_FIELDS_OPTS)
+      ret[ret_idx] = item
       ret_idx = ret_idx + 1
     end
   end
@@ -238,8 +232,6 @@ local function select_by_key(schema, key)
       return nil
     end
   end
-
-  entity = schema:process_auto_fields(entity, "select", true, PROCESS_AUTO_FIELDS_OPTS)
 
   return entity
 end

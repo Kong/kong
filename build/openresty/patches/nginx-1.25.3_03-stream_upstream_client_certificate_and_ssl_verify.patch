@@ -1,0 +1,78 @@
+diff --git a/bundle/nginx-1.25.3/src/stream/ngx_stream_proxy_module.c b/bundle/nginx-1.25.3/src/stream/ngx_stream_proxy_module.c
+index 82dca1e..f12cda2 100644
+--- a/bundle/nginx-1.25.3/src/stream/ngx_stream_proxy_module.c
++++ b/bundle/nginx-1.25.3/src/stream/ngx_stream_proxy_module.c
+@@ -8,6 +8,9 @@
+ #include <ngx_config.h>
+ #include <ngx_core.h>
+ #include <ngx_stream.h>
++#if (NGX_STREAM_LUA_KONG)
++#include <ngx_stream_lua_kong_module.h>
++#endif
+ 
+ 
+ typedef struct {
+@@ -823,8 +826,18 @@ ngx_stream_proxy_init_upstream(ngx_stream_session_t *s)
+ 
+ #if (NGX_STREAM_SSL)
+ 
++#if (NGX_STREAM_LUA_KONG)
++
++    if (pc->type == SOCK_STREAM && pscf->ssl_enable
++        && !ngx_stream_lua_kong_get_proxy_ssl_disable(s))
++    {
++
++#else
++
+     if (pc->type == SOCK_STREAM && pscf->ssl_enable) {
+ 
++#endif
++
+         if (u->proxy_protocol) {
+             if (ngx_stream_proxy_send_proxy_protocol(s) != NGX_OK) {
+                 return;
+@@ -1089,7 +1102,16 @@ ngx_stream_proxy_ssl_init_connection(ngx_stream_session_t *s)
+         return;
+     }
+ 
+-    if (pscf->ssl_server_name || pscf->ssl_verify) {
++#if (NGX_STREAM_LUA_KONG)
++
++    if (pscf->ssl_server_name || ngx_stream_lua_kong_get_upstream_ssl_verify(s, pscf->ssl_verify)) {    
++
++#else
++
++     if (pscf->ssl_server_name || pscf->ssl_verify) {
++
++#endif
++
+         if (ngx_stream_proxy_ssl_name(s) != NGX_OK) {
+             ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
+             return;
+@@ -1116,6 +1138,10 @@ ngx_stream_proxy_ssl_init_connection(ngx_stream_session_t *s)
+         }
+     }
+ 
++#if (NGX_STREAM_LUA_KONG)
++    ngx_stream_lua_kong_set_upstream_ssl(s, pc);
++#endif
++
+     s->connection->log->action = "SSL handshaking to upstream";
+ 
+     rc = ngx_ssl_handshake(pc);
+@@ -1148,7 +1174,15 @@ ngx_stream_proxy_ssl_handshake(ngx_connection_t *pc)
+ 
+     if (pc->ssl->handshaked) {
+ 
++#if (NGX_STREAM_LUA_KONG)
++
++		if (ngx_stream_lua_kong_get_upstream_ssl_verify(s, pscf->ssl_verify)) {    
++
++#else
++
+         if (pscf->ssl_verify) {
++
++#endif
+             rc = SSL_get_verify_result(pc->ssl->connection);
+ 
+             if (rc != X509_V_OK) {

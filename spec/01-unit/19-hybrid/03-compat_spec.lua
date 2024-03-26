@@ -390,7 +390,7 @@ describe("kong.clustering.compat", function()
         end
       end)
 
-      it(function()
+      it("has_update", function()
         local config = { config_table = declarative.export_config() }
         local has_update = compat.update_compatible_payload(config, "3.0.0", "test_")
         assert.truthy(has_update)
@@ -561,7 +561,7 @@ describe("kong.clustering.compat", function()
 
       config = { config_table = declarative.export_config() }
     end)
-    it(function()
+    it("plugin.use_srv_name", function()
       local has_update, result = compat.update_compatible_payload(config, "3.0.0", "test_")
       assert.truthy(has_update)
       result = cjson_decode(inflate_gzip(result)).config_table

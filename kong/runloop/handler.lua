@@ -13,7 +13,6 @@ local concurrency  = require "kong.concurrency"
 local lrucache     = require "resty.lrucache"
 local ktls         = require "resty.kong.tls"
 local request_id   = require "kong.tracing.request_id"
-local global       = require "kong.global"
 
 
 local PluginsIterator = require "kong.runloop.plugins_iterator"
@@ -86,7 +85,6 @@ local QUESTION_MARK = byte("?")
 local ARRAY_MT = require("cjson.safe").array_mt
 
 local HOST_PORTS = {}
-local IS_DEBUG = false
 
 
 local SUBSYSTEMS = constants.PROTOCOLS_WITH_SUBSYSTEM
@@ -113,10 +111,12 @@ local STREAM_TLS_TERMINATE_SOCK
 local STREAM_TLS_PASSTHROUGH_SOCK
 
 
+local get_header
 local set_authority
 local set_service_ssl = upstream_ssl.set_service_ssl
 
 if is_http_module then
+  get_header = require("kong.tools.http").get_header
   set_authority = require("resty.kong.grpc").set_authority
 end
 
@@ -634,7 +634,7 @@ do
   local CURRENT_BALANCER_HASH = 0
 
   reconfigure_handler = function(data)
-    local worker_id = ngx_worker_id()
+    local worker_id = ngx_worker_id() or -1
 
     if exiting() then
       log(NOTICE, "declarative reconfigure was canceled on worker #", worker_id,
@@ -747,8 +747,6 @@ do
       if wasm_state then
         wasm.set_state(wasm_state)
       end
-
-      global.CURRENT_TRANSACTION_ID = kong_shm:get("declarative:current_transaction_id") or 0
 
       return true
     end)  -- concurrency.with_coroutine_mutex
@@ -894,7 +892,6 @@ return {
 
   init_worker = {
     before = function()
-      IS_DEBUG = (kong.configuration.log_level == "debug")
       -- TODO: PR #9337 may affect the following line
       local prefix = kong.configuration.prefix or ngx.config.prefix()
 
@@ -970,13 +967,6 @@ return {
             return
           end
 
-          -- Before rebuiding the internal structures, retrieve the current PostgreSQL transaction ID to make it the
-          -- current transaction ID after the rebuild has finished.
-          local rebuild_transaction_id, err = global.get_current_transaction_id()
-          if not rebuild_transaction_id then
-            log(ERR, err)
-          end
-
           local router_update_status, err = rebuild_router({
             name = "router",
             timeout = 0,
@@ -1004,14 +994,6 @@ return {
             if not wasm_update_status then
               log(ERR, "could not rebuild wasm filter chains via timer: ", err)
             end
-          end
-
-          if rebuild_transaction_id then
-            -- Yield to process any pending invalidations
-            utils.yield()
-
-            log(DEBUG, "configuration processing completed for transaction ID " .. rebuild_transaction_id)
-            global.CURRENT_TRANSACTION_ID = rebuild_transaction_id
           end
         end
 
@@ -1110,25 +1092,6 @@ return {
   },
   access = {
     before = function(ctx)
-      if IS_DEBUG then
-        -- If this is a version-conditional request, abort it if this dataplane has not processed at least the
-        -- specified configuration version yet.
-        local if_kong_transaction_id = kong.request and kong.request.get_header('if-kong-test-transaction-id')
-        if if_kong_transaction_id then
-          if_kong_transaction_id = tonumber(if_kong_transaction_id)
-          if if_kong_transaction_id and if_kong_transaction_id >= global.CURRENT_TRANSACTION_ID then
-            return kong.response.error(
-                    503,
-                    "Service Unavailable",
-                    {
-                      ["X-Kong-Reconfiguration-Status"] = "pending",
-                      ["Retry-After"] = tostring(kong.configuration.worker_state_update_frequency or 1),
-                    }
-            )
-          end
-        end
-      end
-
       -- if there is a gRPC service in the context, don't re-execute the pre-access
       -- phase handler - it has been executed before the internal redirect
       if ctx.service and (ctx.service.protocol == "grpc" or
@@ -1149,7 +1112,7 @@ return {
       local has_timing = ctx.has_timing
 
       if has_timing then
-        req_dyn_hook_run_hooks(ctx, "timing", "before:router")
+        req_dyn_hook_run_hooks("timing", "before:router")
       end
 
       -- routing request
@@ -1157,7 +1120,7 @@ return {
       local match_t = router:exec(ctx)
 
       if has_timing then
-        req_dyn_hook_run_hooks(ctx, "timing", "after:router")
+        req_dyn_hook_run_hooks("timing", "after:router")
       end
 
       if not match_t then
@@ -1178,7 +1141,7 @@ return {
       ctx.workspace = match_t.route and match_t.route.ws_id
 
       if has_timing then
-        req_dyn_hook_run_hooks(ctx, "timing", "workspace_id:got", ctx.workspace)
+        req_dyn_hook_run_hooks("timing", "workspace_id:got", ctx.workspace)
       end
 
       local host           = var.host
@@ -1207,11 +1170,11 @@ return {
 
       local trusted_ip = kong.ip.is_trusted(realip_remote_addr)
       if trusted_ip then
-        forwarded_proto  = var.http_x_forwarded_proto  or ctx.scheme
-        forwarded_host   = var.http_x_forwarded_host   or host
-        forwarded_port   = var.http_x_forwarded_port   or port
-        forwarded_path   = var.http_x_forwarded_path
-        forwarded_prefix = var.http_x_forwarded_prefix
+        forwarded_proto  = get_header("x_forwarded_proto", ctx)  or ctx.scheme
+        forwarded_host   = get_header("x_forwarded_host", ctx)   or host
+        forwarded_port   = get_header("x_forwarded_port", ctx)   or port
+        forwarded_path   = get_header("x_forwarded_path", ctx)
+        forwarded_prefix = get_header("x_forwarded_prefix", ctx)
 
       else
         forwarded_proto  = ctx.scheme
@@ -1301,7 +1264,7 @@ return {
       end
 
       -- Keep-Alive and WebSocket Protocol Upgrade Headers
-      local upgrade = var.http_upgrade
+      local upgrade = get_header("upgrade", ctx)
       if upgrade and lower(upgrade) == "websocket" then
         var.upstream_connection = "keep-alive, Upgrade"
         var.upstream_upgrade    = "websocket"
@@ -1311,7 +1274,7 @@ return {
       end
 
       -- X-Forwarded-* Headers
-      local http_x_forwarded_for = var.http_x_forwarded_for
+      local http_x_forwarded_for = get_header("x_forwarded_for", ctx)
       if http_x_forwarded_for then
         var.upstream_x_forwarded_for = http_x_forwarded_for .. ", " ..
                                        realip_remote_addr
@@ -1398,7 +1361,7 @@ return {
       end
 
       -- clear hop-by-hop request headers:
-      local http_connection = var.http_connection
+      local http_connection = get_header("connection", ctx)
       if http_connection ~= "keep-alive" and
          http_connection ~= "close"      and
          http_connection ~= "upgrade"
@@ -1419,7 +1382,7 @@ return {
       end
 
       -- add te header only when client requests trailers (proxy removes it)
-      local http_te = var.http_te
+      local http_te = get_header("te", ctx)
       if http_te then
         if http_te == "trailers" then
           var.upstream_te = "trailers"
@@ -1475,7 +1438,7 @@ return {
 
       local upstream_status_header = constants.HEADERS.UPSTREAM_STATUS
       if kong.configuration.enabled_headers[upstream_status_header] then
-        local upstream_status = ctx.buffered_status or tonumber(sub(var.upstream_status or "", -3))
+        local upstream_status = ctx.buffered_status or tonumber(sub(var.upstream_status or "", -3)) or ngx.status
         header[upstream_status_header] = upstream_status
         if not header[upstream_status_header] then
           log(ERR, "failed to set ", upstream_status_header, " header")

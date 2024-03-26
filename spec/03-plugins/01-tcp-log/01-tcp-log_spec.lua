@@ -473,7 +473,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- Making sure it's alright
       local log_message = cjson.decode(res)
-      assert.equal("TLSv1.2", log_message.request.tls.version)
+      assert.equal("TLSv1.3", log_message.request.tls.version)
       assert.is_string(log_message.request.tls.cipher)
       assert.equal("NONE", log_message.request.tls.client_verify)
     end)
@@ -500,7 +500,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- Making sure it's alright
       local log_message = cjson.decode(res)
-      assert.equal("TLSv1.2", log_message.request.tls.version)
+      assert.equal("TLSv1.3", log_message.request.tls.version)
       assert.is_string(log_message.request.tls.cipher)
       assert.equal("SUCCESS", log_message.request.tls.client_verify)
     end)

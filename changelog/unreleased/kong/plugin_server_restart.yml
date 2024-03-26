@@ -1,0 +1,3 @@
+message: "**Plugin Server**: fix an issue where Kong fails to properly restart MessagePack-based pluginservers (used in Python and Javascript plugins, for example)"
+type: bugfix
+scope: Core

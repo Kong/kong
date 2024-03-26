@@ -1,0 +1,22 @@
+{
+  "choices": [
+      {
+          "finish_reason": "stop",
+          "index": 0,
+          "message": {
+              "content": "The sum of 1 + 1 is 2.",
+              "role": "assistant"
+          }
+      }
+  ],
+  "created": 1701947430,
+  "id": "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2",
+  "model": "gpt-3.5-turbo-0613",
+  "object": "chat.completion",
+  "system_fingerprint": null,
+  "usage": {
+      "completion_tokens": 12,
+      "prompt_tokens": 25,
+      "total_tokens": 37
+  }
+}

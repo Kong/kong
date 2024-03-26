@@ -1,24 +1,42 @@
 name: Backport
 on:
   pull_request_target:
-    types:
-      - closed
-      - labeled
-
+    types: [closed, labeled] # runs when the pull request is closed/merged or labeled (to trigger a backport in hindsight)
+permissions:
+  contents: write # so it can comment
+  pull-requests: write # so it can create pull requests
+  actions: write
 jobs:
   backport:
     name: Backport
     runs-on: ubuntu-latest
-    if: >
-      github.event.pull_request.merged
-      && (
-        github.event.action == 'closed'
-        || (
-          github.event.action == 'labeled'
-          && contains(github.event.label.name, 'backport')
-        )
-      )
+    if: github.event.pull_request.merged
     steps:
-      - uses: tibdex/backport@9565281eda0731b1d20c4025c43339fb0a23812e # v2.0.4
+      - uses: actions/checkout@v4
+      - name: Create backport pull requests
+        uses: korthout/backport-action@6e72f987c115430f6abc2fa92a74cdbf3e14b956 # v2.4.1
+        id: backport
         with:
           github_token: ${{ secrets.PAT }}
+          pull_title: '[backport -> ${target_branch}] ${pull_title}'
+          merge_commits: 'skip'
+          copy_labels_pattern: ^(?!backport ).* # copies all labels except those starting with "backport "
+          label_pattern: ^backport (release\/[^ ]+)$ # filters for labels starting with "backport " and extracts the branch name
+          pull_description: |-
+            Automated backport to `${target_branch}`, triggered by a label in #${pull_number}.
+
+            ## Original description
+
+            ${pull_description}
+          copy_assignees: true
+          copy_milestone: true
+          copy_requested_reviewers: true
+          experimental: >
+            {
+              "detect_merge_method": true
+            }
+      - name: add label
+        if: steps.backport.outputs.was_successful == 'false'
+        uses: actions-ecosystem/action-add-labels@18f1af5e3544586314bbe15c0273249c770b2daf # v1.1.0
+        with:
+          labels: incomplete-backport

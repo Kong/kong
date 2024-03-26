@@ -17,9 +17,6 @@ local HEADERS_CREDENTIAL_IDENTIFIER = constants.HEADERS.CREDENTIAL_IDENTIFIER
 local HEADERS_ANONYMOUS             = constants.HEADERS.ANONYMOUS
 
 
-local realm = 'Basic realm="' .. _KONG._NAME .. '"'
-
-
 local _M = {}
 
 
@@ -154,21 +151,17 @@ local function set_consumer(consumer, credential)
 end
 
 
-local function fail_authentication()
-  return false, { status = 401, message = "Invalid authentication credentials" }
+local function unauthorized(message, www_auth_content)
+  return { status = 401, message = message, headers = { ["WWW-Authenticate"] = www_auth_content } }
 end
 
 
 local function do_authentication(conf)
+  local www_authenticate = "Basic realm=\"" .. conf.realm .. "\""
+
   -- If both headers are missing, return 401
   if not (kong.request.get_header("authorization") or kong.request.get_header("proxy-authorization")) then
-    return false, {
-      status = 401,
-      message = "Unauthorized",
-      headers = {
-        ["WWW-Authenticate"] = realm
-      }
-    }
+    return false, unauthorized("Unauthorized", www_authenticate)
   end
 
   local credential
@@ -183,12 +176,12 @@ local function do_authentication(conf)
     if given_username and given_password then
       credential = load_credential_from_db(given_username)
     else
-      return fail_authentication()
+      return false, unauthorized("Unauthorized", www_authenticate)
     end
   end
 
   if not credential or not validate_credentials(credential, given_password) then
-    return fail_authentication()
+    return false, unauthorized("Unauthorized", www_authenticate)
   end
 
   -- Retrieve consumer

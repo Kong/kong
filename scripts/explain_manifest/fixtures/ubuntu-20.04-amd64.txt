@@ -167,7 +167,7 @@
   Needed    :
   - libc.so.6
 
-- Path      : /usr/local/openresty/nginx/modules/ngx_wasm_module.so
+- Path      : /usr/local/openresty/nginx/modules/ngx_wasmx_module.so
   Needed    :
   - libdl.so.2
   - libm.so.6
@@ -183,6 +183,7 @@
   - libpthread.so.0
   - libcrypt.so.1
   - libluajit-5.1.so.2
+  - libm.so.6
   - libssl.so.3
   - libcrypto.so.3
   - libz.so.1
@@ -193,7 +194,8 @@
   - lua-kong-nginx-module/stream
   - lua-resty-events
   - lua-resty-lmdb
-  - ngx_wasm_module
-  OpenSSL   : OpenSSL 3.1.4 24 Oct 2023
+  - ngx_brotli
+  - ngx_wasmx_module
+  OpenSSL   : OpenSSL 3.2.1 30 Jan 2024
   DWARF     : True
   DWARF - ngx_http_request_t related DWARF DIEs: True

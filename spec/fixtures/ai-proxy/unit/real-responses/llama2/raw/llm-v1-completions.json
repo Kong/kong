@@ -1,0 +1,7 @@
+{
+  "data": [
+    {
+      "generated_text": "<s> [INST] <<SYS>> You are a helpful assistant. <<SYS>> Explain why you can't divide by zero? [/INST]\n\nYou cannot divide by zero because it is not a valid operation in mathematics."
+    }
+  ]
+}

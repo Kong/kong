@@ -441,7 +441,7 @@ function _M.execute(conf)
   kong.log.debug("Status code is within given status code ranges")
 
   if not worker_id then
-    worker_id = ngx.worker.id()
+    worker_id = ngx.worker.id() or -1
   end
 
   conf._prefix = conf.prefix

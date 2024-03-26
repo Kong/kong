@@ -1,0 +1,14 @@
+{
+  "model": "llama2",
+  "created_at": "2024-01-15T08:14:21.967358Z",
+  "response": "Because I said so.",
+  "done": true,
+  "context": [
+  ],
+  "total_duration": 613583209,
+  "load_duration": 2220959,
+  "prompt_eval_count": 13,
+  "prompt_eval_duration": 307784000,
+  "eval_count": 12,
+  "eval_duration": 299573000
+}

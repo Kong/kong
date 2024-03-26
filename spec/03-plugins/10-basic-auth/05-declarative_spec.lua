@@ -86,6 +86,7 @@ for _, strategy in helpers.each_strategy() do
       name = "basic-auth",
       config = {
         hide_credentials = true,
+        realm = "service",
       }
     }
 
@@ -178,7 +179,7 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.res_status(401, res)
           local json = cjson.decode(body)
           assert.not_nil(json)
-          assert.matches("Invalid authentication credentials", json.message)
+          assert.matches("Unauthorized", json.message)
         end)
       end)
 

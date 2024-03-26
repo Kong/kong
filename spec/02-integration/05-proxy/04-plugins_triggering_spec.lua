@@ -3,6 +3,7 @@ local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
+local shell = require "resty.shell"
 
 
 local LOG_WAIT_TIMEOUT = 10
@@ -231,7 +232,7 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_teardown(function()
       if proxy_client then proxy_client:close() end
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     it("checks global configuration without credentials", function()
@@ -410,7 +411,7 @@ for _, strategy in helpers.each_strategy() do
 
       before_each(function()
         helpers.clean_logfile(FILE_LOG_PATH)
-        os.execute("chmod 0777 " .. FILE_LOG_PATH)
+        shell.run("chmod 0777 " .. FILE_LOG_PATH, nil, 0)
       end)
 
       it("execute a log plugin", function()
@@ -743,14 +744,14 @@ for _, strategy in helpers.each_strategy() do
 
       lazy_teardown(function()
         helpers.stop_kong("servroot2")
-        helpers.stop_kong(nil, true)
+        helpers.stop_kong()
       end)
 
 
       before_each(function()
         proxy_client = helpers.proxy_client()
         helpers.clean_logfile(FILE_LOG_PATH)
-        os.execute("chmod 0777 " .. FILE_LOG_PATH)
+        shell.run("chmod 0777 " .. FILE_LOG_PATH, nil, 0)
       end)
 
 
@@ -1276,7 +1277,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     lazy_teardown(function()
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     it("certificate phase clears context, fix #7054", function()

@@ -6,7 +6,7 @@
 -- @module kong.request
 
 
-local cjson = require "cjson.safe".new()
+local cjson = require "kong.tools.cjson"
 local multipart = require "multipart"
 local phase_checker = require "kong.pdk.private.phases"
 local normalize = require("kong.tools.uri").normalize
@@ -44,8 +44,6 @@ local decode_args = ngx.decode_args
 local PHASES = phase_checker.phases
 
 
-cjson.decode_array_with_array_mt(true)
-
 
 local function new(self)
   local _REQUEST = {}
@@ -82,7 +80,7 @@ local function new(self)
     end
   end
 
-  local replace_dashes = require("kong.tools.string").replace_dashes
+  local http_get_header = require("kong.tools.http").get_header
 
 
   ---
@@ -627,7 +625,7 @@ local function new(self)
       error("header name must be a string", 2)
     end
 
-    return var["http_" .. replace_dashes(name)]
+    return http_get_header(name)
   end
 
 
@@ -832,7 +830,7 @@ local function new(self)
         return nil, err, CONTENT_TYPE_JSON
       end
 
-      local json = cjson.decode(body)
+      local json = cjson.decode_with_array_mt(body)
       if type(json) ~= "table" then
         return nil, "invalid json body", CONTENT_TYPE_JSON
       end

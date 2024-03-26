@@ -23,6 +23,30 @@ end
 
 
 local compatible_checkers = {
+  { 3006000000, --[[ 3.6.0.0 ]]
+    function(config_table, dp_version, log_suffix)
+      local has_update
+      local redis_plugins_update = {
+        acme = require("kong.plugins.acme.clustering.compat.redis_translation").adapter,
+        ['rate-limiting'] = require("kong.plugins.rate-limiting.clustering.compat.redis_translation").adapter,
+        ['response-ratelimiting'] = require("kong.plugins.response-ratelimiting.clustering.compat.redis_translation").adapter
+      }
+
+      for _, plugin in ipairs(config_table.plugins or {}) do
+        local adapt_fn = redis_plugins_update[plugin.name]
+        if adapt_fn and type(adapt_fn) == "function" then
+          has_update = adapt_fn(plugin.config)
+          if has_update then
+            log_warn_message('adapts ' .. plugin.name .. ' plugin redis configuration to older version',
+            'revert to older schema',
+            dp_version, log_suffix)
+          end
+        end
+      end
+
+      return has_update
+    end,
+  },
   { 3005000000, --[[ 3.5.0.0 ]]
     function(config_table, dp_version, log_suffix)
       local has_update

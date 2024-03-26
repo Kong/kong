@@ -24,6 +24,12 @@ lua_shared_dict kong_db_cache_miss          12m;
 lua_shared_dict kong_secrets                5m;
 
 underscores_in_headers on;
+> if ssl_cipher_suite == 'old' then
+lua_ssl_conf_command CipherString DEFAULT:@SECLEVEL=0;
+proxy_ssl_conf_command CipherString DEFAULT:@SECLEVEL=0;
+ssl_conf_command CipherString DEFAULT:@SECLEVEL=0;
+grpc_ssl_conf_command CipherString DEFAULT:@SECLEVEL=0;
+> end
 > if ssl_ciphers then
 ssl_ciphers ${{SSL_CIPHERS}};
 > end
@@ -58,9 +64,6 @@ log_format kong_log_format '$remote_addr - $remote_user [$time_local] '
 
 # Load variable indexes
 lua_kong_load_var_index default;
-lua_kong_load_var_index $http_x_kong_request_debug;
-lua_kong_load_var_index $http_x_kong_request_debug_token;
-lua_kong_load_var_index $http_x_kong_request_debug_log;
 
 upstream kong_upstream {
     server 0.0.0.1;
@@ -79,6 +82,13 @@ server {
     server_name kong;
 > for _, entry in ipairs(proxy_listeners) do
     listen $(entry.listener);
+> end
+
+> for _, entry in ipairs(proxy_listeners) do
+> if entry.http2 then
+    http2 on;
+> break
+> end
 > end
 
     error_page 400 404 405 408 411 412 413 414 417 /kong_error_handler;
@@ -391,6 +401,13 @@ server {
     listen $(entry.listener);
 > end
 
+> for _, entry in ipairs(admin_listeners) do
+> if entry.http2 then
+    http2 on;
+> break
+> end
+> end
+
     access_log ${{ADMIN_ACCESS_LOG}};
     error_log  ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
 
@@ -429,6 +446,13 @@ server {
     server_name kong_status;
 > for _, entry in ipairs(status_listeners) do
     listen $(entry.listener);
+> end
+
+> for _, entry in ipairs(status_listeners) do
+> if entry.http2 then
+    http2 on;
+> break
+> end
 > end
 
     access_log ${{STATUS_ACCESS_LOG}};
@@ -470,12 +494,19 @@ server {
     listen $(admin_gui_listeners[i].listener);
 > end
 
+> for _, entry in ipairs(admin_gui_listeners) do
+> if entry.http2 then
+    http2 on;
+> break
+> end
+> end
+
 > if admin_gui_ssl_enabled then
 > for i = 1, #admin_gui_ssl_cert do
     ssl_certificate     $(admin_gui_ssl_cert[i]);
     ssl_certificate_key $(admin_gui_ssl_cert_key[i]);
 > end
-    ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+    ssl_protocols TLSv1.2 TLSv1.3;
 > end
 
     client_max_body_size 10m;

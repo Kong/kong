@@ -305,6 +305,8 @@ local CONF_PARSERS = {
     },
   },
 
+  nginx_wasm_main_shm_kv = { typ = "string" },
+
   worker_events_max_payload = { typ = "number" },
 
   upstream_keepalive_pool_size = { typ = "number" },
@@ -562,7 +564,7 @@ local CONF_SENSITIVE = {
   pg_ro_password = true,
   proxy_server = true, -- hide proxy server URL as it may contain credentials
   declarative_config_string = true, -- config may contain sensitive info
-  -- may contain absolute or base64 value of the the key
+  -- may contain absolute or base64 value of the key
   cluster_cert_key = true,
   ssl_cert_key = true,
   client_ssl_cert_key = true,

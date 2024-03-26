@@ -1,6 +1,6 @@
 local resty_lock = require "resty.lock"
 local ngx_semaphore = require "ngx.semaphore"
-local in_yieldable_phase = require("kong.tools.utils").in_yieldable_phase
+local in_yieldable_phase = require("kong.tools.yield").in_yieldable_phase
 
 
 local type  = type

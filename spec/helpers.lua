@@ -67,6 +67,7 @@ local pkey = require "resty.openssl.pkey"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
+local shell = require "resty.shell"
 local ffi = require "ffi"
 local ssl = require "ngx.ssl"
 local ws_client = require "resty.websocket.client"
@@ -75,6 +76,7 @@ local https_server = require "spec.fixtures.https_server"
 local stress_generator = require "spec.fixtures.stress_generator"
 local resty_signal = require "resty.signal"
 local lfs = require "lfs"
+local luassert = require "luassert.assert"
 
 ffi.cdef [[
   int setenv(const char *name, const char *value, int overwrite);
@@ -104,7 +106,7 @@ end
 -- @function openresty_ver_num
 local function openresty_ver_num()
   local nginx_bin = assert(nginx_signals.find_nginx_bin())
-  local _, _, _, stderr = pl_utils.executeex(string.format("%s -V", nginx_bin))
+  local _, _, stderr = shell.run(string.format("%s -V", nginx_bin), nil, 0)
 
   local a, b, c, d = string.match(stderr or "", "openresty/(%d+)%.(%d+)%.(%d+)%.(%d+)")
   if not a then
@@ -203,7 +205,7 @@ do
       if not USED_PORTS[port] then
           USED_PORTS[port] = true
 
-          local ok = os.execute("netstat -lnt | grep \":" .. port .. "\" > /dev/null")
+          local ok = shell.run("netstat -lnt | grep \":" .. port .. "\" > /dev/null", nil, 0)
 
           if not ok then
             -- return code of 1 means `grep` did not found the listening port
@@ -1114,23 +1116,18 @@ local function http2_client(host, port, tls)
       cmd = cmd .. " -http1"
     end
 
-    local body_filename
+    --shell.run does not support '<'
     if body then
-      body_filename = pl_path.tmpname()
-      pl_file.write(body_filename, body)
-      cmd = cmd .. " -post < " .. body_filename
+      cmd = cmd .. " -post"
     end
 
     if http2_debug then
       print("HTTP/2 cmd:\n" .. cmd)
     end
 
-    local ok, _, stdout, stderr = pl_utils.executeex(cmd)
+    --100MB for retrieving stdout & stderr
+    local ok, stdout, stderr = shell.run(cmd, body, 0, 1024*1024*100)
     assert(ok, stderr)
-
-    if body_filename then
-      pl_file.delete(body_filename)
-    end
 
     if http2_debug then
       print("HTTP/2 debug:\n")
@@ -1257,6 +1254,116 @@ local function proxy_client_grpcs(host, port)
   return grpc_client(proxy_ip, proxy_port, {["-insecure"] = true})
 end
 
+
+---
+-- Reconfiguration completion detection helpers
+--
+
+local MAX_RETRY_TIME = 10
+
+--- Set up admin client and proxy client to so that interactions with the proxy client
+-- wait for preceding admin API client changes to have completed.
+
+-- @function make_synchronized_clients
+-- @param clients table with admin_client and proxy_client fields (both optional)
+-- @return admin_client, proxy_client
+
+local function make_synchronized_clients(clients)
+  clients = clients or {}
+  local synchronized_proxy_client = clients.proxy_client or proxy_client()
+  local synchronized_admin_client = clients.admin_client or admin_client()
+
+  -- Install the reconfiguration completion detection plugin
+  local res = synchronized_admin_client:post("/plugins", {
+    headers = { ["Content-Type"] = "application/json" },
+    body = {
+      name = "reconfiguration-completion",
+      config = {
+        version = "0",
+      }
+    },
+  })
+  local body = luassert.res_status(201, res)
+  local plugin = cjson.decode(body)
+  local plugin_id = plugin.id
+
+  -- Wait until the plugin is active on the proxy path, indicated by the presence of the X-Kong-Reconfiguration-Status header
+  luassert.eventually(function()
+    res = synchronized_proxy_client:get("/non-existent-proxy-path")
+    luassert.res_status(404, res)
+    luassert.equals("unknown", res.headers['x-kong-reconfiguration-status'])
+  end)
+          .has_no_error()
+
+  -- Save the original request functions for the admin and proxy client
+  local proxy_request = synchronized_proxy_client.request
+  local admin_request = synchronized_admin_client.request
+
+  local current_version = 0 -- incremented whenever a configuration change is made through the admin API
+  local last_configured_version = 0 -- current version of the reconfiguration-completion plugin's configuration
+
+  -- Wrap the admin API client request
+  function synchronized_admin_client.request(client, opts)
+    -- Whenever the configuration is changed through the admin API, increment the current version number
+    if opts.method == "POST" or opts.method == "PUT" or opts.method == "PATCH" or opts.method == "DELETE" then
+      current_version = current_version + 1
+    end
+    return admin_request(client, opts)
+  end
+
+  function synchronized_admin_client.synchronize_sibling(self, sibling)
+    sibling.request = self.request
+  end
+
+  -- Wrap the proxy client request
+  function synchronized_proxy_client.request(client, opts)
+    -- If the configuration has been changed through the admin API, update the version number in the
+    -- reconfiguration-completion plugin.
+    if current_version > last_configured_version then
+      last_configured_version = current_version
+      res = admin_request(synchronized_admin_client, {
+        method = "PATCH",
+        path = "/plugins/" .. plugin_id,
+        headers = { ["Content-Type"] = "application/json" },
+        body = cjson.encode({
+          config = {
+            version = tostring(current_version),
+          }
+        }),
+      })
+      luassert.res_status(200, res)
+    end
+
+    -- Retry the request until the reconfiguration is complete and the reconfiguration completion
+    -- plugin on the database has been updated to the current version.
+    if not opts.headers then
+      opts.headers = {}
+    end
+    opts.headers["If-Kong-Configuration-Version"] = tostring(current_version)
+    local retry_until = ngx.now() + MAX_RETRY_TIME
+    local err
+    :: retry ::
+    res, err = proxy_request(client, opts)
+    if err then
+      return res, err
+    end
+    if res.headers['x-kong-reconfiguration-status'] ~= "complete" then
+      res:read_body()
+      ngx.sleep(res.headers['retry-after'] or 1)
+      if ngx.now() < retry_until then
+        goto retry
+      end
+      return nil, "reconfiguration did not occur within " .. MAX_RETRY_TIME .. " seconds"
+    end
+    return res, err
+  end
+
+  function synchronized_proxy_client.synchronize_sibling(self, sibling)
+    sibling.request = self.request
+  end
+
+  return synchronized_proxy_client, synchronized_admin_client
+end
 
 ---
 -- TCP/UDP server helpers
@@ -1396,7 +1503,6 @@ local function kill_tcp_server(port)
   local oks, fails = str:match("(%d+):(%d+)")
   return tonumber(oks), tonumber(fails)
 end
-
 
 local code_status = {
   [200] = "OK",
@@ -1657,7 +1763,6 @@ end
 -- @section assertions
 
 local say = require "say"
-local luassert = require "luassert.assert"
 require("spec.helpers.wait")
 
 --- Waits until a specific condition is met.
@@ -3137,6 +3242,59 @@ do
   end
 end
 
+---
+-- Assertion to partially compare two lua tables.
+-- @function partial_match
+-- @param partial_table the table with subset of fields expect to match
+-- @param full_table the full table that should contain partial_table and potentially other fields
+local function partial_match(state, arguments)
+
+  local function deep_matches(t1, t2, parent_keys)
+    for key, v in pairs(t1) do
+        local compound_key = (parent_keys and parent_keys .. "." .. key) or key
+        if type(v) == "table" then
+          local ok, compound_key, v1, v2 = deep_matches(t1[key], t2[key], compound_key)
+            if not ok then
+              return ok, compound_key, v1, v2
+            end
+        else
+          if (state.mod == true and t1[key] ~= t2[key]) or (state.mod == false and t1[key] == t2[key]) then
+            return false, compound_key, t1[key], t2[key]
+          end
+        end
+    end
+
+    return true
+  end
+
+  local partial_table = arguments[1]
+  local full_table = arguments[2]
+
+  local ok, compound_key, v1, v2 = deep_matches(partial_table, full_table)
+
+  if not ok then
+    arguments[1] = compound_key
+    arguments[2] = v1
+    arguments[3] = v2
+    arguments.n = 3
+
+    return not state.mod
+  end
+
+  return state.mod
+end
+
+say:set("assertion.partial_match.negative", [[
+Values at key %s should not be equal
+]])
+say:set("assertion.partial_match.positive", [[
+Values at key %s should be equal but are not.
+Expected: %s, given: %s
+]])
+luassert:register("assertion", "partial_match", partial_match,
+                  "assertion.partial_match.positive",
+                  "assertion.partial_match.negative")
+
 
 ----------------
 -- Shell helpers
@@ -3147,14 +3305,14 @@ end
 -- used on an assertion.
 -- @function execute
 -- @param cmd command string to execute
--- @param pl_returns (optional) boolean: if true, this function will
+-- @param returns (optional) boolean: if true, this function will
 -- return the same values as Penlight's executeex.
--- @return if `pl_returns` is true, returns four return values
--- (ok, code, stdout, stderr); if `pl_returns` is false,
+-- @return if `returns` is true, returns four return values
+-- (ok, code, stdout, stderr); if `returns` is false,
 -- returns either (false, stderr) or (true, stderr, stdout).
-function exec(cmd, pl_returns)
-  local ok, code, stdout, stderr = pl_utils.executeex(cmd)
-  if pl_returns then
+function exec(cmd, returns)
+  local ok, stdout, stderr, _, code = shell.run(cmd, nil, 0)
+  if returns then
     return ok, code, stdout, stderr
   end
   if not ok then
@@ -3170,14 +3328,14 @@ end
 -- @param env (optional) table with kong parameters to set as environment
 -- variables, overriding the test config (each key will automatically be
 -- prefixed with `KONG_` and be converted to uppercase)
--- @param pl_returns (optional) boolean: if true, this function will
+-- @param returns (optional) boolean: if true, this function will
 -- return the same values as Penlight's `executeex`.
 -- @param env_vars (optional) a string prepended to the command, so
 -- that arbitrary environment variables may be passed
--- @return if `pl_returns` is true, returns four return values
--- (ok, code, stdout, stderr); if `pl_returns` is false,
+-- @return if `returns` is true, returns four return values
+-- (ok, code, stdout, stderr); if `returns` is false,
 -- returns either (false, stderr) or (true, stderr, stdout).
-function kong_exec(cmd, env, pl_returns, env_vars)
+function kong_exec(cmd, env, returns, env_vars)
   cmd = cmd or ""
   env = env or {}
 
@@ -3214,7 +3372,7 @@ function kong_exec(cmd, env, pl_returns, env_vars)
     env_vars = string.format("%s KONG_%s='%s'", env_vars, k:upper(), v)
   end
 
-  return exec(env_vars .. " " .. BIN_PATH .. " " .. cmd, pl_returns)
+  return exec(env_vars .. " " .. BIN_PATH .. " " .. cmd, returns)
 end
 
 
@@ -3257,7 +3415,7 @@ local function clean_prefix(prefix)
 
         local res, err = pl_path.rmdir(root)
         -- skip errors when trying to remove mount points
-        if not res and os.execute("findmnt " .. root .. " 2>&1 >/dev/null") == 0 then
+        if not res and shell.run("findmnt " .. root .. " 2>&1 >/dev/null", nil, 0) == 0 then
           return nil, err .. ": " .. root
         end
       end
@@ -3294,7 +3452,7 @@ local function pid_dead(pid, timeout)
   local max_time = ngx.now() + (timeout or 10)
 
   repeat
-    if not pl_utils.execute("ps -p " .. pid .. " >/dev/null 2>&1") then
+    if not shell.run("ps -p " .. pid .. " >/dev/null 2>&1", nil, 0) then
       return true
     end
     -- still running, wait some more
@@ -3324,7 +3482,7 @@ local function wait_pid(pid_path, timeout, is_retry)
     end
 
     -- Timeout reached: kill with SIGKILL
-    pl_utils.execute("kill -9 " .. pid .. " >/dev/null 2>&1")
+    shell.run("kill -9 " .. pid .. " >/dev/null 2>&1", nil, 0)
 
     -- Sanity check: check pid again, but don't loop.
     wait_pid(pid_path, timeout, true)
@@ -3431,15 +3589,15 @@ end
 
 local function build_go_plugins(path)
   if pl_path.exists(pl_path.join(path, "go.mod")) then
-    local ok, _, _, stderr = pl_utils.executeex(string.format(
-            "cd %s; go mod tidy; go mod download", path))
+    local ok, _, stderr = shell.run(string.format(
+            "cd %s; go mod tidy; go mod download", path), nil, 0)
     assert(ok, stderr)
   end
   for _, go_source in ipairs(pl_dir.getfiles(path, "*.go")) do
-    local ok, _, _, stderr = pl_utils.executeex(string.format(
+    local ok, _, stderr = shell.run(string.format(
             "cd %s; go build %s",
             path, pl_path.basename(go_source)
-    ))
+    ), nil, 0)
     assert(ok, stderr)
   end
 end
@@ -3462,7 +3620,7 @@ local function make(workdir, specs)
     for _, src in ipairs(spec.src) do
       local srcpath = pl_path.join(workdir, src)
       if isnewer(targetpath, srcpath) then
-        local ok, _, _, stderr = pl_utils.executeex(string.format("cd %s; %s", workdir, spec.cmd))
+        local ok, _, stderr = shell.run(string.format("cd %s; %s", workdir, spec.cmd), nil, 0)
         assert(ok, stderr)
         if isnewer(targetpath, srcpath) then
           error(string.format("couldn't make %q newer than %q", targetpath, srcpath))
@@ -3555,7 +3713,7 @@ end
 --
 --          ssl_certificate ${{SSL_CERT}};
 --          ssl_certificate_key ${{SSL_CERT_KEY}};
---          ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+--          ssl_protocols TLSv1.2 TLSv1.3;
 --
 --          location ~ "/echobody" {
 --            content_by_lua_block {
@@ -3685,7 +3843,7 @@ local function stop_kong(prefix, preserve_prefix, preserve_dc, signal, nowait)
     return nil, err
   end
 
-  local ok, _, _, err = pl_utils.executeex(string.format("kill -%s %d", signal, pid))
+  local ok, _, err = shell.run(string.format("kill -%s %d", signal, pid), nil, 0)
   if not ok then
     return nil, err
   end
@@ -3798,6 +3956,91 @@ local function reload_kong(strategy, ...)
   return ok, err
 end
 
+local is_echo_server_ready, get_echo_server_received_data, echo_server_reset
+do
+  -- Message id is maintained within echo server context and not
+  -- needed for echo server user.
+  -- This id is extracted from the number in nginx error.log at each
+  -- line of log. i.e.:
+  --  2023/12/15 14:10:12 [info] 718291#0: *303 stream [lua] content_by_lua ...
+  -- in above case, the id is 303.
+  local msg_id = -1
+  local prefix_dir = "servroot"
+
+  --- Check if echo server is ready.
+  --
+  -- @function is_echo_server_ready
+  -- @return boolean
+  function is_echo_server_ready()
+    -- ensure server is ready.
+    local sock = ngx.socket.tcp()
+    sock:settimeout(0.1)
+    local retry = 0
+    local test_port = 8188
+
+    while true do
+      if sock:connect("localhost", test_port) then
+        sock:send("START\n")
+        local ok = sock:receive()
+        sock:close()
+        if ok == "START" then
+          return true
+        end
+      else
+        retry = retry + 1
+        if retry > 10 then
+          return false
+        end
+      end
+    end
+  end
+
+  --- Get the echo server's received data.
+  -- This function check the part of expected data with a timeout.
+  --
+  -- @function get_echo_server_received_data
+  -- @param expected part of the data expected.
+  -- @param timeout (optional) timeout in seconds, default is 0.5.
+  -- @return  the data the echo server received. If timeouts, return "timeout".
+  function get_echo_server_received_data(expected, timeout)
+    if timeout == nil then
+      timeout = 0.5
+    end
+
+    local extract_cmd = "grep content_by_lua "..prefix_dir.."/logs/error.log | tail -1"
+    local _, _, log = assert(exec(extract_cmd))
+    local pattern = "%*(%d+)%s.*received data: (.*)"
+    local cur_msg_id, data = string.match(log, pattern)
+
+    -- unit is second.
+    local t = 0.1
+    local time_acc = 0
+
+    -- retry it when data is not available. because sometime,
+    -- the error.log has not been flushed yet.
+    while string.find(data, expected) == nil or cur_msg_id == msg_id  do
+      ngx.sleep(t)
+      time_acc = time_acc + t
+      if time_acc >= timeout then
+        return "timeout"
+      end
+
+      _, _, log = assert(exec(extract_cmd))
+      cur_msg_id, data = string.match(log, pattern)
+    end
+
+    -- update the msg_id, it persists during a cycle from echo server
+    -- start to stop.
+    msg_id = cur_msg_id
+
+    return data
+  end
+
+  function echo_server_reset()
+    stop_kong(prefix_dir)
+    msg_id = -1
+  end
+end
 
 --- Simulate a Hybrid mode DP and connect to the CP specified in `opts`.
 -- @function clustering_client
@@ -4025,6 +4268,7 @@ end
   http_client = http_client,
   grpc_client = grpc_client,
   http2_client = http2_client,
+  make_synchronized_clients = make_synchronized_clients,
   wait_until = wait_until,
   pwait_until = pwait_until,
   wait_pid = wait_pid,
@@ -4035,6 +4279,9 @@ end
   tcp_server = tcp_server,
   udp_server = udp_server,
   kill_tcp_server = kill_tcp_server,
+  is_echo_server_ready = is_echo_server_ready,
+  echo_server_reset = echo_server_reset,
+  get_echo_server_received_data = get_echo_server_received_data,
   http_mock = http_mock,
   get_proxy_ip = get_proxy_ip,
   get_proxy_port = get_proxy_port,
@@ -4133,7 +4380,7 @@ end
     end
 
     local cmd = string.format("pkill %s -P `cat %s`", signal, pid_path)
-    local _, code = pl_utils.execute(cmd)
+    local _, _, _, _, code = shell.run(cmd)
 
     if not pid_dead(pid_path) then
       return false

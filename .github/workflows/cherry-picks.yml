@@ -26,7 +26,8 @@ jobs:
         with:
           token: ${{ secrets.CHERRY_PICK_TOKEN }}
       - name: Create backport pull requests
-        uses: jschmid1/cross-repo-cherrypick-action@2366f50fd85e8966aa024a4dd6fbf70e7019d7e1
+        uses: jschmid1/cross-repo-cherrypick-action@9d2ead0043acba474373992c8175f2b8ffcdb31c #v1.2.0
+        id: cherry_pick
         with:
           token: ${{ secrets.CHERRY_PICK_TOKEN }}
           pull_title: '[cherry-pick -> ${target_branch}] ${pull_title}'
@@ -34,8 +35,17 @@ jobs:
           trigger_label: 'cherry-pick kong-ee' # trigger based on this label
           pull_description: |-
             Automated cherry-pick to `${target_branch}`, triggered by a label in https://github.com/${owner}/${repo}/pull/${pull_number} :robot:.
+
+            ## Original description
+
+            ${pull_description}
           upstream_repo: 'kong/kong-ee'
           branch_map: |-
             {
               "master": "master"
             }
+      - name: add label
+        if: steps.cherry_pick.outputs.was_successful == 'false'
+        uses: actions-ecosystem/action-add-labels@18f1af5e3544586314bbe15c0273249c770b2daf # v1.1.0
+        with:
+          labels: incomplete-cherry-pick

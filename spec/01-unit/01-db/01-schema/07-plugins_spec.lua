@@ -121,6 +121,7 @@ describe("plugins", function()
       key_names = { "apikey" },
       hide_credentials = false,
       anonymous = ngx.null,
+      realm = ngx.null,
       key_in_header = true,
       key_in_query = true,
       key_in_body = false,

@@ -320,6 +320,7 @@ describe("declarative config: flatten", function()
               config = {
                 anonymous = null,
                 hide_credentials = false,
+                realm = null,
                 key_in_header = true,
                 key_in_query = true,
                 key_in_body = false,
@@ -430,6 +431,7 @@ describe("declarative config: flatten", function()
               config = {
                 anonymous = null,
                 hide_credentials = false,
+                realm = null,
                 key_in_header = true,
                 key_in_query = true,
                 key_in_body = false,
@@ -573,7 +575,8 @@ describe("declarative config: flatten", function()
             plugins = { {
                 config = {
                   anonymous = null,
-                  hide_credentials = false
+                  hide_credentials = false,
+                  realm = "service"
                 },
                 consumer = null,
                 created_at = 1234567890,
@@ -627,6 +630,7 @@ describe("declarative config: flatten", function()
                 config = {
                   anonymous = null,
                   hide_credentials = false,
+                  realm = null,
                   key_in_header = true,
                   key_in_query = true,
                   key_in_body = false,
@@ -1088,7 +1092,8 @@ describe("declarative config: flatten", function()
             plugins = { {
                 config = {
                   anonymous = null,
-                  hide_credentials = false
+                  hide_credentials = false,
+                  realm = "service"
                 },
                 consumer = null,
                 created_at = 1234567890,
@@ -1142,6 +1147,7 @@ describe("declarative config: flatten", function()
                 config = {
                   anonymous = null,
                   hide_credentials = false,
+                  realm = null,
                   key_in_header = true,
                   key_in_query = true,
                   key_in_body = false,

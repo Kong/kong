@@ -13,7 +13,7 @@ local upper = string.upper
 local sub = string.sub
 local fmt = string.format
 local tcp = ngx.socket.tcp
-local sha256_hex = require "kong.tools.utils".sha256_hex
+local sha256_hex = require("kong.tools.sha256").sha256_hex
 
 
 local AUTHORIZATION = "authorization"
@@ -263,7 +263,7 @@ local function do_authentication(conf)
   end
 
   if not is_authorized then
-    return false, {status = 401, message = "Invalid authentication credentials" }
+    return false, {status = 401, message = "Unauthorized" }
   end
 
   if conf.hide_credentials then

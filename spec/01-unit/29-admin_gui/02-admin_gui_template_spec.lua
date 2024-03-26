@@ -57,6 +57,7 @@ describe("admin_gui template", function()
 
     setup(function()
       prefix_handler.prepare_prefixed_interface_dir("/usr/local/kong", "gui", conf)
+      os.execute("mkdir -p " .. mock_prefix)
       assert(pl_path.isdir(mock_prefix))
     end)
 
@@ -138,6 +139,7 @@ describe("admin_gui template", function()
 
     setup(function()
       prefix_handler.prepare_prefixed_interface_dir("/usr/local/kong", "gui", conf)
+      os.execute("mkdir -p " .. mock_prefix)
       assert(pl_path.isdir(mock_prefix))
     end)
 
@@ -183,7 +185,7 @@ describe("admin_gui template", function()
       conf.prefix = mock_prefix
 
       if not pl_path.exists(usr_interface_path) then
-        assert(pl_path.mkdir(usr_interface_path))
+        os.execute("mkdir -p " .. usr_interface_path)
       end
     end)
 

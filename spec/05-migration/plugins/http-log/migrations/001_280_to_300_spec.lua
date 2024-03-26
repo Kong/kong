@@ -8,14 +8,17 @@ local uh = require "spec.upgrade_helpers"
 -- to test the migration process. do not change it to use dynamic port.
 local HTTP_PORT = 29100
 
-describe("http-log plugin migration", function()
+local OLD_KONG_VERSION = os.getenv("OLD_KONG_VERSION")
+local handler = OLD_KONG_VERSION:sub(1,3) == "2.8" and describe or pending
+
+handler("http-log plugin migration", function()
     local mock
     lazy_setup(function()
       assert(uh.start_kong())
     end)
 
     lazy_teardown(function ()
-      assert(uh.stop_kong(nil, true))
+      assert(uh.stop_kong())
     end)
 
     local log_server_url = "http://localhost:" .. HTTP_PORT .. "/"

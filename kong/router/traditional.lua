@@ -34,7 +34,7 @@ local type          = type
 local max           = math.max
 local band          = bit.band
 local bor           = bit.bor
-local yield         = require("kong.tools.utils").yield
+local yield         = require("kong.tools.yield").yield
 local server_name   = require("ngx.ssl").server_name
 
 

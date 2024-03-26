@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 local fmt = string.format
 local lower = string.lower
-local sha256_hex = require "kong.tools.utils".sha256_hex
+local sha256_hex = require("kong.tools.sha256").sha256_hex
 
 local ldap_host_aws = "ec2-54-172-82-117.compute-1.amazonaws.com"
 
@@ -63,7 +63,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
         end)
 
         lazy_teardown(function()
-          helpers.stop_kong(nil, true)
+          helpers.stop_kong()
         end)
 
         local function cache_key(conf, username, password)

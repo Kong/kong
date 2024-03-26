@@ -62,7 +62,11 @@ local function parse_option_flags(value, flags)
 
     if count > 0 then
       result[flag] = true
-      sanitized = sanitized .. " " .. flag
+
+      -- since nginx 1.25.1 the flag "http2" is deprecated
+      if flag ~= "http2" then
+        sanitized = sanitized .. " " .. flag
+      end
 
     else
       result[flag] = false

@@ -149,6 +149,7 @@ CONFIGURE_OPTIONS = [
     "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/pcre/lib\"",
     "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/openssl/lib\"",
     "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/luajit/lib\"",
+    "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/lib\"",
     # Here let's try not having --disable-new-dtags; --disable-new-dtags creates rpath instead of runpath
     # note rpath can't handle indirect dependency (nginx -> luajit -> dlopen("other")), so each indirect
     # dependency should have its rpath set (luajit, libxslt etc); on the other side, rpath is not
@@ -229,6 +230,11 @@ CONFIGURE_OPTIONS = [
         "--group=nobody",
     ],
     "//conditions:default": [],
+}) + select({
+    "@kong//:brotli_flag": [
+        "--add-module=$$EXT_BUILD_ROOT$$/external/ngx_brotli",
+    ],
+    "//conditions:default": [],
 }) + wasmx_configure_options
 
 # TODO: set prefix to populate pid_path, conf_path, log_path etc
@@ -258,12 +264,13 @@ configure_make(
     configure_options = CONFIGURE_OPTIONS,
     data = [
         "@lua-kong-nginx-module//:all_srcs",
-        "@lua-resty-lmdb//:all_srcs",
         "@lua-resty-events//:all_srcs",
+        "@lua-resty-lmdb//:all_srcs",
+        "@ngx_brotli//:all_srcs",
         "@openresty_binding//:all_srcs",
     ] + select({
         "@kong//:wasmx_flag": [
-            "@ngx_wasm_module//:all_srcs",
+            "@ngx_wasmx_module//:all_srcs",
             # wasm_runtime has to be a "data" (target) instead of "build_data" (exec)
             # to be able to lookup by its path (relative to INSTALLDIR)
             ":wasm_runtime",
@@ -282,9 +289,9 @@ configure_make(
     ],
     visibility = ["//visibility:public"],
     deps = [
-        "@pcre",
         "@openresty//:luajit",
-        "@openssl//:openssl",
+        "@openssl",
+        "@pcre",
     ] + select({
         "@kong//:any-cross": [
             "@cross_deps_zlib//:zlib",
@@ -295,6 +302,12 @@ configure_make(
         # alpine uses different libc so doesn't need it
         ":needs-xcrypt2": [
             "@cross_deps_libxcrypt//:libxcrypt",
+        ],
+        "//conditions:default": [],
+    }) + select({
+        "@kong//:brotli_flag": [
+            "@brotli//:brotlicommon",
+            "@brotli//:brotlienc",
         ],
         "//conditions:default": [],
     }),

@@ -1,6 +1,6 @@
 local cjson          = require "cjson"
 local helpers        = require "spec.helpers"
-
+local redis_helper   = require "spec.helpers.redis_helper"
 
 local REDIS_HOST      = helpers.redis_host
 local REDIS_PORT      = helpers.redis_port
@@ -24,33 +24,6 @@ local function wait()
   local millis = (now - math.floor(now))
   ngx.sleep(1 - millis)
 end
-
-
-local function flush_redis()
-  local redis = require "resty.redis"
-  local red = redis:new()
-  red:set_timeout(2000)
-  local ok, err = red:connect(REDIS_HOST, REDIS_PORT)
-  if not ok then
-    error("failed to connect to Redis: " .. err)
-  end
-
-  if REDIS_PASSWORD and REDIS_PASSWORD ~= "" then
-    local ok, err = red:auth(REDIS_PASSWORD)
-    if not ok then
-      error("failed to connect to Redis: " .. err)
-    end
-  end
-
-  local ok, err = red:select(REDIS_DATABASE)
-  if not ok then
-    error("failed to change Redis database: " .. err)
-  end
-
-  red:flushall()
-  red:close()
-end
-
 
 local redis_confs = {
   no_ssl = {
@@ -102,7 +75,7 @@ local function init_db(strategy, policy)
   })
 
   if policy == "redis" then
-    flush_redis()
+    redis_helper.reset_redis(REDIS_HOST, REDIS_PORT)
   end
 
   return bp
@@ -150,13 +123,15 @@ for _, strategy in helpers.each_strategy() do
             config   = {
               fault_tolerant    = false,
               policy            = policy,
-              redis_host        = REDIS_HOST,
-              redis_port        = redis_conf.redis_port,
-              redis_ssl         = redis_conf.redis_ssl,
-              redis_ssl_verify  = redis_conf.redis_ssl_verify,
-              redis_server_name = redis_conf.redis_server_name,
-              redis_password    = REDIS_PASSWORD,
-              redis_database    = REDIS_DATABASE,
+              redis = {
+                host        = REDIS_HOST,
+                port        = redis_conf.redis_port,
+                ssl         = redis_conf.redis_ssl,
+                ssl_verify  = redis_conf.redis_ssl_verify,
+                server_name = redis_conf.redis_server_name,
+                password    = REDIS_PASSWORD,
+                database    = REDIS_DATABASE,
+              },
               limits            = { video = { second = ITERATIONS } },
             },
           })
@@ -171,13 +146,15 @@ for _, strategy in helpers.each_strategy() do
             config   = {
               fault_tolerant    = false,
               policy            = policy,
-              redis_host        = REDIS_HOST,
-              redis_port        = redis_conf.redis_port,
-              redis_ssl         = redis_conf.redis_ssl,
-              redis_ssl_verify  = redis_conf.redis_ssl_verify,
-              redis_server_name = redis_conf.redis_server_name,
-              redis_password    = REDIS_PASSWORD,
-              redis_database    = REDIS_DATABASE,
+              redis = {
+                host        = REDIS_HOST,
+                port        = redis_conf.redis_port,
+                ssl         = redis_conf.redis_ssl,
+                ssl_verify  = redis_conf.redis_ssl_verify,
+                server_name = redis_conf.redis_server_name,
+                password    = REDIS_PASSWORD,
+                database    = REDIS_DATABASE,
+              },
               limits            = { video = { second = ITERATIONS*2, minute = ITERATIONS*4 },
                                     image = { second = ITERATIONS } },
             },
@@ -197,10 +174,12 @@ for _, strategy in helpers.each_strategy() do
             route = { id = route3.id },
             config   = {
               policy = policy,
-              redis_host     = REDIS_HOST,
-              redis_port     = REDIS_PORT,
-              redis_password = REDIS_PASSWORD,
-              redis_database = REDIS_DATABASE,
+              redis = {
+                host        = REDIS_HOST,
+                port        = REDIS_PORT,
+                password    = REDIS_PASSWORD,
+                database    = REDIS_DATABASE,
+              },
               limits = { video = { second = ITERATIONS - 3 }
             } },
           })
@@ -211,13 +190,15 @@ for _, strategy in helpers.each_strategy() do
             config      = {
               fault_tolerant    = false,
               policy            = policy,
-              redis_host        = REDIS_HOST,
-              redis_port        = redis_conf.redis_port,
-              redis_ssl         = redis_conf.redis_ssl,
-              redis_ssl_verify  = redis_conf.redis_ssl_verify,
-              redis_server_name = redis_conf.redis_server_name,
-              redis_password    = REDIS_PASSWORD,
-              redis_database    = REDIS_DATABASE,
+              redis = {
+                host        = REDIS_HOST,
+                port        = redis_conf.redis_port,
+                ssl         = redis_conf.redis_ssl,
+                ssl_verify  = redis_conf.redis_ssl_verify,
+                server_name = redis_conf.redis_server_name,
+                password    = REDIS_PASSWORD,
+                database    = REDIS_DATABASE,
+              },
               limits            = { video = { second = ITERATIONS - 2 } },
             },
           })
@@ -232,13 +213,15 @@ for _, strategy in helpers.each_strategy() do
             config   = {
               fault_tolerant    = false,
               policy            = policy,
-              redis_host        = REDIS_HOST,
-              redis_port        = redis_conf.redis_port,
-              redis_ssl         = redis_conf.redis_ssl,
-              redis_ssl_verify  = redis_conf.redis_ssl_verify,
-              redis_server_name = redis_conf.redis_server_name,
-              redis_password    = REDIS_PASSWORD,
-              redis_database    = REDIS_DATABASE,
+              redis = {
+                host        = REDIS_HOST,
+                port        = redis_conf.redis_port,
+                ssl         = redis_conf.redis_ssl,
+                ssl_verify  = redis_conf.redis_ssl_verify,
+                server_name = redis_conf.redis_server_name,
+                password    = REDIS_PASSWORD,
+                database    = REDIS_DATABASE,
+              },
               limits            = {
                 video = { second = ITERATIONS * 2 + 2 },
                 image = { second = ITERATIONS }
@@ -256,13 +239,15 @@ for _, strategy in helpers.each_strategy() do
             config   = {
               fault_tolerant           = false,
               policy                   = policy,
-              redis_host               = REDIS_HOST,
-              redis_port               = redis_conf.redis_port,
-              redis_ssl                = redis_conf.redis_ssl,
-              redis_ssl_verify         = redis_conf.redis_ssl_verify,
-              redis_server_name        = redis_conf.redis_server_name,
-              redis_password           = REDIS_PASSWORD,
-              redis_database           = REDIS_DATABASE,
+              redis = {
+                host        = REDIS_HOST,
+                port        = redis_conf.redis_port,
+                ssl         = redis_conf.redis_ssl,
+                ssl_verify  = redis_conf.redis_ssl_verify,
+                server_name = redis_conf.redis_server_name,
+                password    = REDIS_PASSWORD,
+                database    = REDIS_DATABASE,
+              },
               block_on_first_violation = true,
               limits                   = {
                 video = {
@@ -286,13 +271,15 @@ for _, strategy in helpers.each_strategy() do
             config   = {
               fault_tolerant    = false,
               policy            = policy,
-              redis_host        = REDIS_HOST,
-              redis_port        = redis_conf.redis_port,
-              redis_ssl         = redis_conf.redis_ssl,
-              redis_ssl_verify  = redis_conf.redis_ssl_verify,
-              redis_server_name = redis_conf.redis_server_name,
-              redis_password    = REDIS_PASSWORD,
-              redis_database    = REDIS_DATABASE,
+              redis = {
+                host        = REDIS_HOST,
+                port        = redis_conf.redis_port,
+                ssl         = redis_conf.redis_ssl,
+                ssl_verify  = redis_conf.redis_ssl_verify,
+                server_name = redis_conf.redis_server_name,
+                password    = REDIS_PASSWORD,
+                database    = REDIS_DATABASE,
+              },
               limits            = { video = { second = ITERATIONS, minute = ITERATIONS*2 },
                                     image = { second = ITERATIONS-1 } },
             }
@@ -309,13 +296,15 @@ for _, strategy in helpers.each_strategy() do
               fault_tolerant      = false,
               policy              = policy,
               hide_client_headers = true,
-              redis_host          = REDIS_HOST,
-              redis_port          = redis_conf.redis_port,
-              redis_ssl           = redis_conf.redis_ssl,
-              redis_ssl_verify    = redis_conf.redis_ssl_verify,
-              redis_server_name   = redis_conf.redis_server_name,
-              redis_password      = REDIS_PASSWORD,
-              redis_database      = REDIS_DATABASE,
+              redis = {
+                host        = REDIS_HOST,
+                port        = redis_conf.redis_port,
+                ssl         = redis_conf.redis_ssl,
+                ssl_verify  = redis_conf.redis_ssl_verify,
+                server_name = redis_conf.redis_server_name,
+                password    = REDIS_PASSWORD,
+                database    = REDIS_DATABASE,
+              },
               limits              = { video = { second = ITERATIONS } },
             }
           })
@@ -336,13 +325,15 @@ for _, strategy in helpers.each_strategy() do
             config = {
               fault_tolerant    = false,
               policy            = policy,
-              redis_host        = REDIS_HOST,
-              redis_port        = redis_conf.redis_port,
-              redis_ssl         = redis_conf.redis_ssl,
-              redis_ssl_verify  = redis_conf.redis_ssl_verify,
-              redis_server_name = redis_conf.redis_server_name,
-              redis_password    = REDIS_PASSWORD,
-              redis_database    = REDIS_DATABASE,
+              redis = {
+                host        = REDIS_HOST,
+                port        = redis_conf.redis_port,
+                ssl         = redis_conf.redis_ssl,
+                ssl_verify  = redis_conf.redis_ssl_verify,
+                server_name = redis_conf.redis_server_name,
+                password    = REDIS_PASSWORD,
+                database    = REDIS_DATABASE,
+              },
               limits            = { video = { second = ITERATIONS } },
             }
           })
@@ -363,13 +354,15 @@ for _, strategy in helpers.each_strategy() do
             config = {
               fault_tolerant    = false,
               policy            = policy,
-              redis_host        = REDIS_HOST,
-              redis_port        = redis_conf.redis_port,
-              redis_ssl         = redis_conf.redis_ssl,
-              redis_ssl_verify  = redis_conf.redis_ssl_verify,
-              redis_server_name = redis_conf.redis_server_name,
-              redis_password    = REDIS_PASSWORD,
-              redis_database    = REDIS_DATABASE,
+              redis = {
+                host        = REDIS_HOST,
+                port        = redis_conf.redis_port,
+                ssl         = redis_conf.redis_ssl,
+                ssl_verify  = redis_conf.redis_ssl_verify,
+                server_name = redis_conf.redis_server_name,
+                password    = REDIS_PASSWORD,
+                database    = REDIS_DATABASE,
+              },
               limits            = { video = { second = ITERATIONS } },
             }
           })
@@ -382,7 +375,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         lazy_teardown(function()
-          helpers.stop_kong(nil, true)
+          helpers.stop_kong()
         end)
 
         describe("Without authentication (IP address)", function()
@@ -605,12 +598,14 @@ for _, strategy in helpers.each_strategy() do
             route = { id = route.id },
             config   = {
               policy            = policy,
-              redis_host        = REDIS_HOST,
-              redis_port        = redis_conf.redis_port,
-              redis_ssl         = redis_conf.redis_ssl,
-              redis_ssl_verify  = redis_conf.redis_ssl_verify,
-              redis_server_name = redis_conf.redis_server_name,
-              redis_password    = REDIS_PASSWORD,
+              redis = {
+                host        = REDIS_HOST,
+                port        = redis_conf.redis_port,
+                ssl         = redis_conf.redis_ssl,
+                ssl_verify  = redis_conf.redis_ssl_verify,
+                server_name = redis_conf.redis_server_name,
+                password    = REDIS_PASSWORD,
+              },
               fault_tolerant    = false,
               limits            = { video = { second = ITERATIONS } },
             }
@@ -624,7 +619,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         lazy_teardown(function()
-          helpers.stop_kong(nil, true)
+          helpers.stop_kong()
         end)
 
         it("expires a counter", function()
@@ -676,13 +671,15 @@ for _, strategy in helpers.each_strategy() do
             config = {
               fault_tolerant    = false,
               policy            = policy,
-              redis_host        = REDIS_HOST,
-              redis_port        = redis_conf.redis_port,
-              redis_ssl         = redis_conf.redis_ssl,
-              redis_ssl_verify  = redis_conf.redis_ssl_verify,
-              redis_server_name = redis_conf.redis_server_name,
-              redis_password    = REDIS_PASSWORD,
-              redis_database    = REDIS_DATABASE,
+              redis = {
+                host        = REDIS_HOST,
+                port        = redis_conf.redis_port,
+                ssl         = redis_conf.redis_ssl,
+                ssl_verify  = redis_conf.redis_ssl_verify,
+                server_name = redis_conf.redis_server_name,
+                password    = REDIS_PASSWORD,
+                database    = REDIS_DATABASE,
+              },
               limits            = { video = { second = ITERATIONS } },
             }
           })
@@ -699,7 +696,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         lazy_teardown(function()
-          helpers.stop_kong(nil, true)
+          helpers.stop_kong()
         end)
 
         it("blocks when the consumer exceeds their quota, no matter what service/route used", function()
@@ -717,13 +714,15 @@ for _, strategy in helpers.each_strategy() do
             config = {
               fault_tolerant = false,
               policy            = policy,
-              redis_host        = REDIS_HOST,
-              redis_port        = redis_conf.redis_port,
-              redis_ssl         = redis_conf.redis_ssl,
-              redis_ssl_verify  = redis_conf.redis_ssl_verify,
-              redis_server_name = redis_conf.redis_server_name,
-              redis_password    = REDIS_PASSWORD,
-              redis_database    = REDIS_DATABASE,
+              redis = {
+                host        = REDIS_HOST,
+                port        = redis_conf.redis_port,
+                ssl         = redis_conf.redis_ssl,
+                ssl_verify  = redis_conf.redis_ssl_verify,
+                server_name = redis_conf.redis_server_name,
+                password    = REDIS_PASSWORD,
+                database    = REDIS_DATABASE,
+              },
               limits            = { video = { second = ITERATIONS } },
             }
           })
@@ -740,7 +739,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         lazy_teardown(function()
-          helpers.stop_kong(nil, true)
+          helpers.stop_kong()
         end)
 
         before_each(function()
@@ -786,12 +785,14 @@ for _, strategy in helpers.each_strategy() do
                 config   = {
                   fault_tolerant    = false,
                   policy            = policy,
-                  redis_host        = REDIS_HOST,
-                  redis_port        = redis_conf.redis_port,
-                  redis_ssl         = redis_conf.redis_ssl,
-                  redis_ssl_verify  = redis_conf.redis_ssl_verify,
-                  redis_server_name = redis_conf.redis_server_name,
-                  redis_password    = REDIS_PASSWORD,
+                  redis = {
+                    host        = REDIS_HOST,
+                    port        = redis_conf.redis_port,
+                    ssl         = redis_conf.redis_ssl,
+                    ssl_verify  = redis_conf.redis_ssl_verify,
+                    server_name = redis_conf.redis_server_name,
+                    password    = REDIS_PASSWORD,
+                  },
                   limits            = { video = { second = ITERATIONS} },
                 }
               }
@@ -805,12 +806,14 @@ for _, strategy in helpers.each_strategy() do
                 config   = {
                   fault_tolerant    = true,
                   policy            = policy,
-                  redis_host        = REDIS_HOST,
-                  redis_port        = redis_conf.redis_port,
-                  redis_ssl         = redis_conf.redis_ssl,
-                  redis_ssl_verify  = redis_conf.redis_ssl_verify,
-                  redis_server_name = redis_conf.redis_server_name,
-                  redis_password    = REDIS_PASSWORD,
+                  redis = {
+                    host        = REDIS_HOST,
+                    port        = redis_conf.redis_port,
+                    ssl         = redis_conf.redis_ssl,
+                    ssl_verify  = redis_conf.redis_ssl_verify,
+                    server_name = redis_conf.redis_server_name,
+                    password    = REDIS_PASSWORD,
+                  },
                   limits            = { video = {second = ITERATIONS} }
                 }
               }
@@ -825,7 +828,7 @@ for _, strategy in helpers.each_strategy() do
             end)
 
             after_each(function()
-              helpers.stop_kong(nil, true)
+              helpers.stop_kong()
             end)
 
             it("does not work if an error occurs", function()
@@ -891,7 +894,10 @@ for _, strategy in helpers.each_strategy() do
               config   = {
                 fault_tolerant = false,
                 policy         = policy,
-                redis_host     = "5.5.5.5",
+                redis = {
+                  host = "5.5.5.5",
+                  port = REDIS_PORT
+                },
                 limits         = { video = { second = ITERATIONS } },
               }
             }
@@ -906,7 +912,10 @@ for _, strategy in helpers.each_strategy() do
               config   = {
                 fault_tolerant = true,
                 policy         = policy,
-                redis_host     = "5.5.5.5",
+                redis = {
+                  host = "5.5.5.5",
+                  port = REDIS_PORT
+                },
                 limits         = { video = { second = ITERATIONS } },
               }
             }
@@ -921,7 +930,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           after_each(function()
-            helpers.stop_kong(nil, true)
+            helpers.stop_kong()
           end)
 
           it("does not work if an error occurs", function()

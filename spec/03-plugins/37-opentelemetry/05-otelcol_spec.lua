@@ -75,7 +75,9 @@ for _, strategy in helpers.each_strategy() do
 
       lazy_setup(function()
         -- clear file
-        os.execute("cat /dev/null > " .. OTELCOL_FILE_EXPORTER_PATH)
+        local shell = require "resty.shell"
+        shell.run("mkdir -p $(dirname " .. OTELCOL_FILE_EXPORTER_PATH .. ")", nil, 0)
+        shell.run("cat /dev/null > " .. OTELCOL_FILE_EXPORTER_PATH, nil, 0)
         setup_instrumentations("all")
       end)
 
@@ -118,6 +120,34 @@ for _, strategy in helpers.each_strategy() do
           return #parts > 0
         end, 10)
       end)
+
+      it("send traces with config http_response_header_for_traceid enable and tracing_sampling_rate option", function()
+        assert(helpers.restart_kong {
+          database = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+          plugins = "opentelemetry",
+          tracing_instrumentations = "all",
+          tracing_sampling_rate = 0.00005,
+        })
+    
+        proxy_url = fmt("http://%s:%s", helpers.get_proxy_ip(), helpers.get_proxy_port())
+        proxy_url_enable_traceid = fmt("http://%s:%s/enable_response_header_traceid", helpers.get_proxy_ip(), helpers.get_proxy_port())
+    
+        local httpc = http.new()
+        for i = 1, 100 do
+          local res, err = httpc:request_uri(proxy_url_enable_traceid)
+          assert.is_nil(err)
+          assert.same(200, res.status)
+          if res.headers["x-trace-id"] then
+            local trace_id = res.headers["x-trace-id"]
+            local trace_id_regex = [[^[a-f0-9]{32}$]]
+            local m = ngx.re.match(trace_id, trace_id_regex, "jo")
+            assert.True(m ~= nil, "trace_id does not match regex: " .. trace_id_regex)
+          end
+        end
+        httpc:close()
+      end)
+
     end)
 
   end)

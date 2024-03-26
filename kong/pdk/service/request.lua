@@ -18,7 +18,6 @@ local string_find = string.find
 local string_sub = string.sub
 local string_byte = string.byte
 local string_lower = string.lower
-local normalize_header = checks.normalize_header
 local normalize_multi_header = checks.normalize_multi_header
 local validate_header = checks.validate_header
 local validate_headers = checks.validate_headers
@@ -288,7 +287,7 @@ local function new(self)
   -- @function kong.service.request.set_header
   -- @phases `rewrite`, `access`, `balancer`
   -- @tparam string header The header name. Example: "X-Foo".
-  -- @tparam string|boolean|number value The header value. Example: "hello world".
+  -- @tparam array of strings|string|boolean|number value The header value. Example: "hello world".
   -- @return Nothing; throws an error on invalid inputs.
   -- @usage
   -- kong.service.request.set_header("X-Foo", "value")
@@ -312,7 +311,7 @@ local function new(self)
       end
     end
 
-    ngx.req.set_header(header, normalize_header(value))
+    ngx.req.set_header(header, normalize_multi_header(value))
   end
 
   ---
@@ -324,7 +323,7 @@ local function new(self)
   -- @function kong.service.request.add_header
   -- @phases `rewrite`, `access`
   -- @tparam string header The header name. Example: "Cache-Control".
-  -- @tparam string|number|boolean value The header value. Example: "no-cache".
+  -- @tparam array of strings|string|number|boolean value The header value. Example: "no-cache".
   -- @return Nothing; throws an error on invalid inputs.
   -- @usage
   -- kong.service.request.add_header("Cache-Control", "no-cache")
@@ -343,7 +342,7 @@ local function new(self)
       headers = { headers }
     end
 
-    table_insert(headers, normalize_header(value))
+    table_insert(headers, normalize_multi_header(value))
 
     ngx.req.set_header(header, headers)
   end

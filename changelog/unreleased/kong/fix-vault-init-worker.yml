@@ -1,0 +1,3 @@
+message: fix vault initialization by postponing vault reference resolving on init_worker
+type: bugfix
+scope: Core

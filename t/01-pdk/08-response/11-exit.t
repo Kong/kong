@@ -1155,3 +1155,28 @@ X-test: test
 manually setting Transfer-Encoding. Ignored.
 
 
+
+=== TEST 45: response.exit() json encoding of numbers with a precision of 16 decimals
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            require("kong.globalpatches")()
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.exit(200, { n = 9007199254740992 })
+        }
+    }
+--- request
+GET /t
+--- error_code: 200
+--- response_headers_like
+Content-Type: application/json; charset=utf-8
+--- response_body chop
+{"n":9007199254740992}
+--- no_error_log
+[error]
+
+

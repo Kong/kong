@@ -35,7 +35,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Lookup build cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         id: cache-deps
         with:
           path: ${{ env.INSTALL_ROOT }}
@@ -94,7 +94,7 @@ jobs:
           ref: ${{ github.event.inputs.target_branch }}
 
       - name: Lookup build cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         id: cache-deps
         with:
           path: ${{ env.INSTALL_ROOT }}

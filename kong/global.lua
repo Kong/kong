@@ -69,7 +69,6 @@ end
 
 local _GLOBAL = {
   phases                 = phase_checker.phases,
-  CURRENT_TRANSACTION_ID = 0,
 }
 
 
@@ -250,16 +249,17 @@ function _GLOBAL.init_cache(kong_config, cluster_events, worker_events)
    end
 
   return kong_cache.new({
-    shm_name        = "kong_db_cache",
-    cluster_events  = cluster_events,
-    worker_events   = worker_events,
-    ttl             = db_cache_ttl,
-    neg_ttl         = db_cache_neg_ttl or db_cache_ttl,
-    resurrect_ttl   = kong_config.resurrect_ttl,
-    page            = page,
-    cache_pages     = cache_pages,
-    resty_lock_opts = LOCK_OPTS,
-    lru_size        = get_lru_size(kong_config),
+    shm_name             = "kong_db_cache",
+    cluster_events       = cluster_events,
+    worker_events        = worker_events,
+    ttl                  = db_cache_ttl,
+    neg_ttl              = db_cache_neg_ttl or db_cache_ttl,
+    resurrect_ttl        = kong_config.resurrect_ttl,
+    page                 = page,
+    cache_pages          = cache_pages,
+    resty_lock_opts      = LOCK_OPTS,
+    lru_size             = get_lru_size(kong_config),
+    invalidation_channel = "invalidations",
   })
 end
 
@@ -292,16 +292,6 @@ end
 
 function _GLOBAL.init_timing()
   return require("kong.timing")
-end
-
-
-function _GLOBAL.get_current_transaction_id()
-  local rows, err = kong.db.connector:query("select txid_current() as _pg_transaction_id")
-  if not rows then
-    return nil, "could not query postgres for current transaction id: " .. err
-  else
-    return tonumber(rows[1]._pg_transaction_id)
-  end
 end
 
 

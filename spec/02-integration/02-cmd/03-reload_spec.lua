@@ -602,6 +602,9 @@ describe("key-auth plugin invalidation on dbless reload #off", function()
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
 
+    -- wait for the worker to be ready
+    helpers.get_kong_workers(1)
+
     proxy_client = helpers.proxy_client()
     local res = assert(proxy_client:send {
       method  = "GET",
@@ -653,6 +656,7 @@ describe("key-auth plugin invalidation on dbless reload #off", function()
         - key: my-new-key
     ]], yaml_file)
     assert(helpers.reload_kong("off", "reload --prefix " .. helpers.test_conf.prefix, {
+      database = "off",
       declarative_config = yaml_file,
     }))
 
@@ -669,8 +673,7 @@ describe("key-auth plugin invalidation on dbless reload #off", function()
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
       admin_client:close()
-      assert.same(1, #json.data)
-      return "my-new-key" == json.data[1].key
+      return #json.data == 1 and "my-new-key" == json.data[1].key
     end, 5)
 
     helpers.wait_until(function()
@@ -697,7 +700,7 @@ describe("key-auth plugin invalidation on dbless reload #off", function()
       })
       local body = res:read_body()
       proxy_client:close()
-      return body ~= [[{"message":"Invalid authentication credentials"}]]
+      return body ~= [[{"message":"Unauthorized"}]]
     end, 5)
 
     admin_client = assert(helpers.admin_client())

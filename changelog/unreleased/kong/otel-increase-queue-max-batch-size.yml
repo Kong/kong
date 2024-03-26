@@ -1,0 +1,3 @@
+message: "**Opentelemetry**: increase queue max batch size to 200"
+type: performance
+scope: Plugin

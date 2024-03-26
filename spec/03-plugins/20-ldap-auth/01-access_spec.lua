@@ -5,7 +5,7 @@ local cjson = require "cjson"
 
 local lower = string.lower
 local fmt = string.format
-local sha256_hex = require "kong.tools.utils".sha256_hex
+local sha256_hex = require("kong.tools.sha256").sha256_hex
 
 
 local function cache_key(conf, username, password)
@@ -237,7 +237,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           })
           assert.response(res).has.status(401)
           local json = assert.response(res).has.jsonbody()
-          assert.equal("Invalid authentication credentials", json.message)
+          assert.equal("Unauthorized", json.message)
         end)
         it("returns 'invalid credentials' when credential value is in wrong format in proxy-authorization header", function()
           local res = assert(proxy_client:send {
@@ -250,7 +250,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           })
           assert.response(res).has.status(401)
           local json = assert.response(res).has.jsonbody()
-          assert.equal("Invalid authentication credentials", json.message)
+          assert.equal("Unauthorized", json.message)
         end)
         it("returns 'invalid credentials' when credential value is missing in authorization header", function()
           local res = assert(proxy_client:send {
@@ -263,7 +263,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           })
           assert.response(res).has.status(401)
           local json = assert.response(res).has.jsonbody()
-          assert.equal("Invalid authentication credentials", json.message)
+          assert.equal("Unauthorized", json.message)
         end)
         it("passes if credential is valid in post request", function()
           local res = assert(proxy_client:send {

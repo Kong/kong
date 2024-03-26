@@ -41,7 +41,11 @@ wasm {
 > end
 
 > for _, el in ipairs(nginx_wasm_main_directives) do
+> if el.name == "shm_kv" then
+  shm_kv * $(el.value);
+> else
   $(el.name) $(el.value);
+> end
 > end
 
 > if #nginx_wasm_wasmtime_directives > 0 then

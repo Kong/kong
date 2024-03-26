@@ -1,7 +1,6 @@
 local pl_file = require "pl.file"
 local lyaml = require "lyaml"
 local cjson = require "cjson.safe"
-local utils = require "kong.tools.utils"
 local declarative_config = require "kong.db.schema.others.declarative_config"
 local on_the_fly_migration = require "kong.db.declarative.migrations.route_path"
 local declarative_import = require "kong.db.declarative.import"
@@ -17,7 +16,7 @@ local type = type
 local null = ngx.null
 local md5 = ngx.md5
 local pairs = pairs
-local yield = utils.yield
+local yield = require("kong.tools.yield").yield
 local cjson_decode = cjson.decode
 local cjson_encode = cjson.encode
 local convert_nulls = declarative_export.convert_nulls

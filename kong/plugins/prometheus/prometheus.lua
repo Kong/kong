@@ -68,7 +68,7 @@ local tostring = tostring
 local tonumber = tonumber
 local table_sort = table.sort
 local tb_new = require("table.new")
-local yield = require("kong.tools.utils").yield
+local yield = require("kong.tools.yield").yield
 
 
 local Prometheus = {}

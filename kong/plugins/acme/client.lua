@@ -2,6 +2,7 @@ local acme = require "resty.acme.client"
 local util = require "resty.acme.util"
 local x509 = require "resty.openssl.x509"
 local reserved_words = require "kong.plugins.acme.reserved_words"
+local config_adapters = require "kong.plugins.acme.storage.config_adapters"
 
 local cjson = require "cjson"
 local ngx_ssl = require "ngx.ssl"
@@ -82,7 +83,7 @@ local function new_storage_adapter(conf)
   if not storage then
     return nil, nil, "storage is nil"
   end
-  local storage_config = conf.storage_config[storage]
+  local storage_config = config_adapters.adapt_config(conf.storage, conf.storage_config)
   if not storage_config then
     return nil, nil, storage .. " is not defined in plugin storage config"
   end
@@ -101,6 +102,7 @@ local function new(conf)
   if err then
     return nil, err
   end
+  local storage_config = config_adapters.adapt_config(conf.storage, conf.storage_config)
   local account_name = account_name(conf)
   local account, err = cached_get(st, account_name, deserialize_account)
   if err then
@@ -125,7 +127,7 @@ local function new(conf)
     account_key = account.key,
     api_uri = url,
     storage_adapter = storage_full_path,
-    storage_config = conf.storage_config[conf.storage],
+    storage_config = storage_config,
     eab_kid = conf.eab_kid,
     eab_hmac_key = conf.eab_hmac_key,
     challenge_start_callback = hybrid_mode and function()

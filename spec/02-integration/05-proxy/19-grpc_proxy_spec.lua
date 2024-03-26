@@ -146,7 +146,8 @@ for _, strategy in helpers.each_strategy() do
       fixtures.http_mock.my_server_block = [[
         server {
           server_name myserver;
-          listen 8765 http2;
+          listen 8765;
+          http2 on;
 
           location ~ / {
             content_by_lua_block {
@@ -402,14 +403,8 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.falsy(ok)
 
-        if flavor == "expressions" then
-          assert.matches("Code: NotFound", resp, nil, true)
-          assert.matches("Message: NotFound", resp, nil, true)
-
-        else
-          assert.matches("Code: Canceled", resp, nil, true)
-          assert.matches("Message: gRPC request matched gRPCs route", resp, nil, true)
-        end
+        assert.matches("Code: Canceled", resp, nil, true)
+        assert.matches("Message: gRPC request matched gRPCs route", resp, nil, true)
       end)
     end)
   end)

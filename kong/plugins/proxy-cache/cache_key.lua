@@ -6,7 +6,7 @@ local sort = table.sort
 local insert = table.insert
 local concat = table.concat
 
-local sha256_hex = require "kong.tools.utils".sha256_hex
+local sha256_hex = require("kong.tools.sha256").sha256_hex
 
 local _M = {}
 

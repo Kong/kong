@@ -102,18 +102,32 @@ function push_package () {
     dist_version="--dist-version jammy"
   fi
 
-  set -x
+  # test for sanitized github actions input
+  if [[ -n "$(echo "$PACKAGE_TAGS" | tr -d 'a-zA-Z0-9._,')" ]]; then
+    echo 'invalid characters in PACKAGE_TAGS'
+    echo "passed to script: ${PACKAGE_TAGS}"
+    tags=''
+  else
+    tags="$PACKAGE_TAGS"
+  fi
 
-  local release_args="--package-type gateway"
+  set -x
+  release_args=''
+
+  if [ -n "${tags:-}" ]; then
+    release_args="${release_args} --tags ${tags}"
+  fi
+
+  release_args="${release_args} --package-type gateway"
   if [[ "$EDITION" == "enterprise" ]]; then
-    release_args="$release_args --enterprise"
+    release_args="${release_args} --enterprise"
   fi
 
   # pre-releases go to `/internal/`
   if [[ "$OFFICIAL_RELEASE" == "true" ]]; then
-    release_args="$release_args --publish"
+    release_args="${release_args} --publish"
   else
-    release_args="$release_args --internal"
+    release_args="${release_args} --internal"
   fi
 
   docker run \

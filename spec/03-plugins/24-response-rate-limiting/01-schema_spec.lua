@@ -1,5 +1,7 @@
 local schema_def = require "kong.plugins.response-ratelimiting.schema"
-local v = require("spec.helpers").validate_plugin_config_schema
+local helpers = require "spec.helpers"
+local v = helpers.validate_plugin_config_schema
+
 local null = ngx.null
 
 
@@ -58,6 +60,76 @@ describe("Plugin: response-rate-limiting (schema)", function()
       local ok, err = v(config, schema_def)
       assert.falsy(ok)
       assert.equal("expected a record", err.config.limits)
+    end)
+
+    it("proper config validates with redis new structure", function()
+      local config = {
+        limits = {
+          video = {
+            second = 10
+          }
+        },
+        policy = "redis",
+        redis = {
+          host = helpers.redis_host,
+          port = helpers.redis_port,
+          database = 0,
+          username = "test",
+          password = "testXXX",
+          ssl = true,
+          ssl_verify = false,
+          timeout = 1100,
+          server_name = helpers.redis_ssl_sni,
+      } }
+      local ok, _, err = v(config, schema_def)
+      assert.truthy(ok)
+      assert.is_nil(err)
+    end)
+
+    it("proper config validates with redis legacy structure", function()
+      local config = {
+        limits = {
+          video = {
+            second = 10
+          }
+        },
+        policy = "redis",
+        redis_host = helpers.redis_host,
+        redis_port = helpers.redis_port,
+        redis_database = 0,
+        redis_username = "test",
+        redis_password = "testXXX",
+        redis_ssl = true,
+        redis_ssl_verify = false,
+        redis_timeout = 1100,
+        redis_server_name = helpers.redis_ssl_sni,
+      }
+      local ok, _, err = v(config, schema_def)
+      assert.truthy(ok)
+      assert.is_nil(err)
+    end)
+
+    it("verifies that redis required fields are supplied", function()
+      local config = {
+        limits = {
+          video = {
+            second = 10
+          }
+        },
+        policy = "redis",
+        redis = {
+          port = helpers.redis_port,
+          database = 0,
+          username = "test",
+          password = "testXXX",
+          ssl = true,
+          ssl_verify = false,
+          timeout = 1100,
+          server_name = helpers.redis_ssl_sni,
+      } }
+      local ok, err = v(config, schema_def)
+      assert.falsy(ok)
+      assert.equal("required field missing", err.config.redis.host)
     end)
   end)
 end)

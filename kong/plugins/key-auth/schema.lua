@@ -20,6 +20,7 @@ return {
           { key_in_query = { description = "If enabled (default), the plugin reads the query parameter in the request and tries to find the key in it.", type = "boolean", required = true, default = true }, },
           { key_in_body = { description = "If enabled, the plugin reads the request body. Supported MIME types: `application/www-form-urlencoded`, `application/json`, and `multipart/form-data`.", type = "boolean", required = true, default = false }, },
           { run_on_preflight = { description = "A boolean value that indicates whether the plugin should run (and try to authenticate) on `OPTIONS` preflight requests. If set to `false`, then `OPTIONS` requests are always allowed.", type = "boolean", required = true, default = true }, },
+          { realm = { description = "When authentication fails the plugin sends `WWW-Authenticate` header with `realm` attribute value.", type = "string", required = false }, },
         },
     }, },
   },

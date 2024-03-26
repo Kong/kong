@@ -1,0 +1,3 @@
+message: "Reuse match context between requests to avoid frequent memory allocation/deallocation"
+type: performance
+scope: Core

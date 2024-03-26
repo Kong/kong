@@ -32,7 +32,6 @@ local _M = {
 
 
 local utils = require "kong.tools.utils"
-local dns = require "kong.tools.dns"
 local reports = require "kong.reports"
 local clear_tab = require "table.clear"
 local cjson = require "cjson.safe"
@@ -107,7 +106,7 @@ local hash_chain
 do
   local buffer = require "string.buffer"
 
-  local sha256 = utils.sha256_bin
+  local sha256 = require("kong.tools.sha256").sha256_bin
 
   local HASH_DISABLED = sha256("disabled")
   local HASH_NONE     = sha256("none")
@@ -835,12 +834,11 @@ end
 local function enable(kong_config)
   set_available_filters(kong_config.wasm_modules_parsed)
 
-  -- setup a DNS client for ngx_wasm_module
-  _G.dns_client = _G.dns_client or dns(kong_config)
+  if not ngx.IS_CLI then
+    proxy_wasm = proxy_wasm or require "resty.wasmx.proxy_wasm"
 
-  proxy_wasm = proxy_wasm or require "resty.wasmx.proxy_wasm"
-
-  register_property_handlers()
+    register_property_handlers()
+  end
 
   ENABLED = true
   STATUS = STATUS_ENABLED
@@ -889,6 +887,14 @@ function _M.init_worker()
     return true
   end
 
+  if not ngx.IS_CLI then
+    _G.dns_client = kong and kong.dns
+
+    if not _G.dns_client then
+      return nil, "global kong.dns client is not initialized"
+    end
+  end
+
   local ok, err = update_in_place()
   if not ok then
     return nil, err
@@ -922,17 +928,22 @@ function _M.attach(ctx)
 
   ctx.ran_wasm = true
 
-  local ok, err = proxy_wasm.attach(chain.c_plan)
-  if not ok then
-    log(CRIT, "failed attaching ", chain.label, " filter chain to request: ", err)
-    return kong.response.error(500)
-  end
+  local ok, err
+  if not ctx.wasm_attached then
+    ctx.wasm_attached = true
 
-  ok, err = proxy_wasm.set_host_properties_handlers(properties.get,
-                                                    properties.set)
-  if not ok then
-    log(CRIT, "failed setting host property handlers: ", err)
-    return kong.response.error(500)
+    ok, err = proxy_wasm.attach(chain.c_plan)
+    if not ok then
+      log(CRIT, "failed attaching ", chain.label, " filter chain to request: ", err)
+      return kong.response.error(500)
+    end
+
+    ok, err = proxy_wasm.set_host_properties_handlers(properties.get,
+                                                      properties.set)
+    if not ok then
+      log(CRIT, "failed setting host property handlers: ", err)
+      return kong.response.error(500)
+    end
   end
 
   jit.off(proxy_wasm.start)

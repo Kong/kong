@@ -28,7 +28,7 @@ proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 http2 ssl reus
 stream_listen = off
 admin_listen = 127.0.0.1:8001 reuseport backlog=16384, 127.0.0.1:8444 http2 ssl reuseport backlog=16384
 admin_gui_listen = 0.0.0.0:8002, 0.0.0.0:8445 ssl
-status_listen = off
+status_listen = 127.0.0.1:8007 reuseport backlog=16384
 cluster_listen = 0.0.0.0:8005
 cluster_control_plane = 127.0.0.1:8005
 cluster_cert = NONE
@@ -53,7 +53,7 @@ client_ssl_cert = NONE
 client_ssl_cert_key = NONE
 ssl_cipher_suite = intermediate
 ssl_ciphers = NONE
-ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
+ssl_protocols = TLSv1.2 TLSv1.3
 ssl_prefer_server_ciphers = on
 ssl_dhparam = NONE
 ssl_session_tickets = on
@@ -70,7 +70,7 @@ headers_upstream = x-kong-request-id
 trusted_ips = NONE
 error_default_type = text/plain
 upstream_keepalive_pool_size = 512
-upstream_keepalive_max_requests = 1000
+upstream_keepalive_max_requests = 10000
 upstream_keepalive_idle_timeout = 60
 allow_debug_header = off
 
@@ -91,9 +91,16 @@ nginx_http_ssl_prefer_server_ciphers = NONE
 nginx_http_ssl_dhparam = NONE
 nginx_http_ssl_session_tickets = NONE
 nginx_http_ssl_session_timeout = NONE
+nginx_http_ssl_conf_command = NONE
+nginx_http_proxy_ssl_conf_command = NONE
+nginx_http_lua_ssl_conf_command = NONE
+nginx_http_grpc_ssl_conf_command = NONE
 nginx_http_lua_regex_match_limit = 100000
 nginx_http_lua_regex_cache_max_entries = 8192
-nginx_http_keepalive_requests = 1000
+nginx_http_keepalive_requests = 10000
+nginx_stream_ssl_conf_command = NONE
+nginx_stream_proxy_ssl_conf_command = NONE
+nginx_stream_lua_ssl_conf_command = NONE
 nginx_stream_ssl_protocols = NONE
 nginx_stream_ssl_prefer_server_ciphers = NONE
 nginx_stream_ssl_dhparam = NONE
@@ -170,7 +177,7 @@ router_flavor = traditional_compatible
 lua_socket_pool_size = 256
 lua_ssl_trusted_certificate = system
 lua_ssl_verify_depth = 1
-lua_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
+lua_ssl_protocols = TLSv1.2 TLSv1.3
 lua_package_path = ./?.lua;./?/init.lua;
 lua_package_cpath = NONE
 

@@ -13,17 +13,19 @@ return function(options)
 
   options = options or {}
   local meta = require "kong.meta"
+  local constants = require "kong.constants"
 
 
-  local cjson = require("cjson.safe")
-  cjson.encode_sparse_array(nil, nil, 2^15)
+  local cjson_safe = require("cjson.safe")
+  cjson_safe.encode_sparse_array(nil, nil, 2^15)
+  cjson_safe.encode_number_precision(constants.CJSON_MAX_PRECISION)
 
   local pb = require "pb"
 
   -- let pb decode arrays to table cjson.empty_array_mt metatable
   -- so empty arrays are encoded as `[]` instead of `nil` or `{}` by cjson.
   pb.option("decode_default_array")
-  pb.defaults("*array", cjson.empty_array_mt)
+  pb.defaults("*array", cjson_safe.empty_array_mt)
 
   if options.cli then
     -- disable the _G write guard alert log introduced in OpenResty 1.15.8.1
@@ -96,7 +98,10 @@ return function(options)
       _timerng:start()
 
     else
-      _timerng = require("resty.timerng").new()
+      _timerng = require("resty.timerng").new({
+        min_threads = 256,
+        max_threads = 1024,
+      })
     end
 
     _G.timerng = _timerng
@@ -236,9 +241,9 @@ return function(options)
   end
 
 
-  do  -- implement a Lua based shm for: cli (and hence rbusted)
+  do  -- implement a Lua based shm for: cli
 
-    if options.cli then
+    if options.cli and not options.rbusted then
       -- ngx.shared.DICT proxy
       -- https://github.com/bsm/fakengx/blob/master/fakengx.lua
       -- with minor fixes and additions such as exptime
@@ -246,11 +251,22 @@ return function(options)
       -- See https://github.com/openresty/resty-cli/pull/12
       -- for a definitive solution of using shms in CLI
       local SharedDict = {}
-      local function set(data, key, value, expire_at)
+      local function set(data, key, value, expire_at, flags)
         data[key] = {
           value = value,
-          info = {expire_at = expire_at}
+          info = {expire_at = expire_at, flags=flags}
         }
+        return data[key]
+      end
+      local function is_stale(item)
+        return item.info.expire_at and item.info.expire_at <= ngx.now()
+      end
+      local function get(data, key)
+        local item = data[key]
+        if item and is_stale(item) then
+          item = nil
+        end
+        return item
       end
       function SharedDict:new()
         return setmetatable({data = {}}, {__index = self})
@@ -262,34 +278,35 @@ return function(options)
         return 0
       end
       function SharedDict:get(key)
-        return self.data[key] and self.data[key].value, nil
+        local item = get(self.data, key)
+        if item then
+          return item.value, item.info.flags
+        end
+        return nil
       end
-      SharedDict.get_stale = SharedDict.get
-      function SharedDict:set(key, value)
-        set(self.data, key, value)
+      function SharedDict:get_stale(key)
+        local item = self.data[key]
+        if item then
+          return item.value, item.info.flags, is_stale(item)
+        end
+        return nil
+      end
+      function SharedDict:set(key, value, exptime)
+        local expire_at = (exptime and exptime ~= 0) and (ngx.now() + exptime)
+        set(self.data, key, value, expire_at)
         return true, nil, false
       end
       SharedDict.safe_set = SharedDict.set
       function SharedDict:add(key, value, exptime)
-        if self.data[key] ~= nil then
+        if get(self.data, key) then
           return false, "exists", false
         end
 
-        local expire_at = nil
-
-        if exptime then
-          ngx.timer.at(exptime, function()
-            self.data[key] = nil
-          end)
-          expire_at = ngx.now() + exptime
-        end
-
-        set(self.data, key, value, expire_at)
-        return true, nil, false
+        return self:set(key, value, exptime)
       end
       SharedDict.safe_add = SharedDict.add
       function SharedDict:replace(key, value)
-        if self.data[key] == nil then
+        if not get(key) then
           return false, "not found", false
         end
         set(self.data, key, value)
@@ -302,23 +319,17 @@ return function(options)
         return true
       end
       function SharedDict:incr(key, value, init, init_ttl)
-        if not self.data[key] then
+        local item = get(self.data, key)
+        if not item then
           if not init then
             return nil, "not found"
-          else
-            self.data[key] = { value = init, info = {} }
-            if init_ttl then
-              self.data[key].info.expire_at = ngx.now() + init_ttl
-              ngx.timer.at(init_ttl, function()
-                self.data[key] = nil
-              end)
-            end
           end
-        elseif type(self.data[key].value) ~= "number" then
+          item = set(self.data, key, init, init_ttl and ngx.now() + init_ttl)
+        elseif type(item.value) ~= "number" then
           return nil, "not a number"
         end
-        self.data[key].value = self.data[key].value + value
-        return self.data[key].value, nil
+        item.value = item.value + value
+        return item.value, nil
       end
       function SharedDict:flush_all()
         for _, item in pairs(self.data) do
@@ -330,7 +341,7 @@ return function(options)
         local flushed = 0
 
         for key, item in pairs(self.data) do
-          if item.info.expire_at and item.info.expire_at <= ngx.now() then
+          if is_stale(item) then
             data[key] = nil
             flushed = flushed + 1
             if n and flushed == n then
@@ -345,11 +356,13 @@ return function(options)
         n = n or 1024
         local i = 0
         local keys = {}
-        for k in pairs(self.data) do
-          keys[#keys+1] = k
-          i = i + 1
-          if n ~= 0 and i == n then
-            break
+        for k, item in pairs(self.data) do
+          if not is_stale(item) then
+            keys[#keys+1] = k
+            i = i + 1
+            if n ~= 0 and i == n then
+              break
+            end
           end
         end
         return keys
@@ -358,19 +371,15 @@ return function(options)
         local item = self.data[key]
         if item == nil then
           return nil, "not found"
-        else
-          local expire_at = item.info.expire_at
-          if expire_at == nil then
-            return 0
-          else
-            local remaining = expire_at - ngx.now()
-            if remaining < 0 then
-              return nil, "not found"
-            else
-              return remaining
-            end
-          end
         end
+        local expire_at = item.info.expire_at
+        if expire_at == nil then
+          return 0
+        end
+        -- There is a problem that also exists in the official OpenResty:
+        -- 0 means the key never expires. So it's hard to distinguish between a
+        -- never-expired key and an expired key with a TTL value of 0.
+        return expire_at - ngx.now()
       end
 
       -- hack

@@ -28,13 +28,17 @@ build-packages:
   image: debian:11
   package: deb
   check-manifest-suite: debian-11-amd64
+- label: debian-12
+  image: debian:12
+  package: deb
+  check-manifest-suite: debian-12-amd64
 
 # RHEL
 - label: rhel-7
   image: centos:7
   package: rpm
   package-type: el7
-  bazel-args: --//:wasmx_el7_workaround=true
+  bazel-args: --//:wasmx_el7_workaround=true --//:brotli=False
   check-manifest-suite: el7-amd64
 - label: rhel-8
   image: rockylinux:8
@@ -49,7 +53,7 @@ build-packages:
 - label: rhel-9-arm64
   package: rpm
   package-type: el9
-  bazel-args: --platforms=//:rhel9-crossbuild-aarch64
+  bazel-args: --platforms=//:rhel9-crossbuild-aarch64 --//:brotli=False
   check-manifest-suite: el9-arm64
 
   # Amazon Linux
@@ -66,7 +70,7 @@ build-packages:
 - label: amazonlinux-2023-arm64
   package: rpm
   package-type: aws2023
-  bazel-args: --platforms=//:aws2023-crossbuild-aarch64
+  bazel-args: --platforms=//:aws2023-crossbuild-aarch64 --//:brotli=False
   check-manifest-suite: amazonlinux-2023-arm64
 
 build-images:
@@ -89,9 +93,9 @@ build-images:
 
 # Debian
 - label: debian
-  base-image: debian:11-slim
+  base-image: debian:12-slim
   package: deb
-  artifact-from: debian-11
+  artifact-from: debian-12
 
 # RHEL
 - label: rhel
@@ -144,6 +148,12 @@ release-packages:
   package: deb
   artifact-from: debian-11
   artifact-version: 11
+  artifact-type: debian
+  artifact: kong.amd64.deb
+- label: debian-12
+  package: deb
+  artifact-from: debian-12
+  artifact-version: 12
   artifact-type: debian
   artifact: kong.amd64.deb
 

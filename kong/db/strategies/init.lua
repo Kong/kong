@@ -1,4 +1,4 @@
-local utils = require("kong.tools.utils")
+local load_module_if_exists = require "kong.tools.module".load_module_if_exists
 
 
 local fmt = string.format
@@ -55,7 +55,7 @@ function _M.new(kong_config, database, schemas, errors)
     end
 
     local custom_strat = fmt("kong.db.strategies.%s.%s", database, schema.name)
-    local exists, mod = utils.load_module_if_exists(custom_strat)
+    local exists, mod = load_module_if_exists(custom_strat)
     if exists and mod then
       local parent_mt = getmetatable(strategy)
       local mt = {

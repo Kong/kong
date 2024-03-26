@@ -1,7 +1,8 @@
 local MetaSchema = require "kong.db.schema.metaschema"
 local Entity = require "kong.db.schema.entity"
-local utils = require "kong.tools.utils"
 local plugin_servers = require "kong.runloop.plugin_servers"
+local is_array = require "kong.tools.table".is_array
+local load_module_if_exists = require "kong.tools.module".load_module_if_exists
 
 
 local fmt = string.format
@@ -13,7 +14,7 @@ local plugin_loader = {}
 
 function plugin_loader.load_subschema(parent_schema, plugin, errors)
   local plugin_schema = "kong.plugins." .. plugin .. ".schema"
-  local ok, schema = utils.load_module_if_exists(plugin_schema)
+  local ok, schema = load_module_if_exists(plugin_schema)
   if not ok then
     ok, schema = plugin_servers.load_schema(plugin)
   end
@@ -56,11 +57,11 @@ end
 
 
 function plugin_loader.load_entities(plugin, errors, loader_fn)
-  local has_daos, daos_schemas = utils.load_module_if_exists("kong.plugins." .. plugin .. ".daos")
+  local has_daos, daos_schemas = load_module_if_exists("kong.plugins." .. plugin .. ".daos")
   if not has_daos then
     return {}
   end
-  if not utils.is_array(daos_schemas, "strict") then
+  if not is_array(daos_schemas, "strict") then
     return nil, fmt("custom plugin '%s' returned non-array daos definition table", plugin)
   end
 

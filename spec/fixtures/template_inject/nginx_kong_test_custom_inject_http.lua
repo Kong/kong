@@ -12,7 +12,7 @@ lua_shared_dict kong_mock_upstream_loggers  10m;
         ssl_certificate     $(ssl_cert[i]);
         ssl_certificate_key $(ssl_cert_key[i]);
 > end
-        ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+        ssl_protocols TLSv1.2 TLSv1.3;
 
         set_real_ip_from 127.0.0.1;
 
@@ -107,7 +107,6 @@ lua_shared_dict kong_mock_upstream_loggers  10m;
                 header["Proxy-Connection"]    = "close"
                 header["Proxy-Authenticate"]  = "Basic"
                 header["Proxy-Authorization"] = "Basic YWxhZGRpbjpvcGVuc2VzYW1l"
-                header["Transfer-Encoding"]   = "chunked"
                 header["Content-Length"]      = nil
                 header["TE"]                  = "trailers, deflate;q=0.5"
                 header["Trailer"]             = "Expires"

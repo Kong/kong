@@ -2,7 +2,6 @@ local ffi = require "ffi"
 local C = ffi.C
 local bit = require "bit"
 local format_error = require("resty.openssl.err").format_error
-local BORINGSSL = require("resty.openssl.version").BORINGSSL
 require "resty.openssl.include.ssl"
 
 ffi.cdef [[
@@ -76,23 +75,17 @@ local errors = {
   SSL_ERROR_WANT_RETRY_VERIFY = 12,
 }
 
+local SOCKET_INVALID = -1
+local SSL_FILETYPE_PEM = 1
+
 local errors_literal = {}
 for k, v in pairs(errors) do
   errors_literal[v] = k
 end
 
-local SOCKET_INVALID = -1
-
-
-local ssl_set_mode
-if BORINGSSL then
-  ssl_set_mode = function(...) return C.SSL_set_mode(...) end
-else
-  local SSL_CTRL_MODE = 33
-  ssl_set_mode = function(ctx, mode) return C.SSL_ctrl(ctx, SSL_CTRL_MODE, mode, nil) end
+local function ssl_set_mode(ctx, mode)
+  return C.SSL_ctrl(ctx, 33, mode, nil)
 end
-
-local SSL_FILETYPE_PEM = 1
 
 local function ssl_ctx_new(cfg)
   if cfg.protocol and cfg.protocol ~= "any" then
@@ -166,10 +159,10 @@ function SSL.wrap(sock, cfg)
       ctx = s,
       fd = fd,
     }, ssl_mt)
-  
+
     return self, nil
    end
-   return nil, err 
+   return nil, err
 end
 
 local function socket_waitfd(fd, events, timeout)

@@ -11,10 +11,9 @@ def pcre_repositories():
         http_archive,
         name = "pcre",
         build_file = "//build/openresty/pcre:BUILD.pcre.bazel",
-        strip_prefix = "pcre-" + version,
-        sha256 = "4e6ce03e0336e8b4a3d6c2b70b1c5e18590a5673a98186da90d4f33c23defc09",
+        strip_prefix = "pcre2-" + version,
+        sha256 = "889d16be5abb8d05400b33c25e151638b8d4bac0e2d9c76e9d6923118ae8a34e",
         urls = [
-            "https://mirror.bazel.build/downloads.sourceforge.net/project/pcre/pcre/" + version + "/pcre-" + version + ".tar.gz",
-            "https://downloads.sourceforge.net/project/pcre/pcre/" + version + "/pcre-" + version + ".tar.gz",
+            "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-" + version + "/pcre2-" + version + ".tar.gz",
         ],
     )

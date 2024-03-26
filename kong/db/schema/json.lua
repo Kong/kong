@@ -7,12 +7,13 @@ local _M = {}
 local lrucache = require "resty.lrucache"
 local jsonschema = require "resty.ljsonschema"
 local metaschema = require "resty.ljsonschema.metaschema"
-local utils = require "kong.tools.utils"
 local cjson = require "cjson"
+
+local sha256_hex = require("kong.tools.sha256").sha256_hex
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 local type = type
 local cjson_encode = cjson.encode
-local sha256_hex = utils.sha256_hex
 
 
 ---@class kong.db.schema.json.schema_doc : table
@@ -24,7 +25,7 @@ local sha256_hex = utils.sha256_hex
 
 
 -- The correct identifier for draft-4 is 'http://json-schema.org/draft-04/schema#'
--- with the the fragment (#) intact. Newer editions use an identifier _without_
+-- with the fragment (#) intact. Newer editions use an identifier _without_
 -- the fragment (e.g. 'https://json-schema.org/draft/2020-12/schema'), so we
 -- will be lenient when comparing these strings.
 assert(type(metaschema.id) == "string",
@@ -156,7 +157,7 @@ end
 ---@param name   string
 ---@param schema kong.db.schema.json.schema_doc
 function _M.add_schema(name, schema)
-  schemas[name] = utils.cycle_aware_deep_copy(schema, true)
+  schemas[name] = cycle_aware_deep_copy(schema, true)
 end
 
 

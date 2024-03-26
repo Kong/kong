@@ -46,7 +46,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     -- helpers
-    local function setup_instrumentations(types, config, fixtures, router_scoped, service_scoped, another_global)
+    local function setup_instrumentations(types, config, fixtures, router_scoped, service_scoped, another_global, global_sampling_rate)
       local http_srv = assert(bp.services:insert {
         name = "mock-service",
         host = helpers.mock_upstream_host,
@@ -93,7 +93,7 @@ for _, strategy in helpers.each_strategy() do
         nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins = "opentelemetry",
         tracing_instrumentations = types,
-        tracing_sampling_rate = 1,
+        tracing_sampling_rate = global_sampling_rate or 1,
       }, nil, nil, fixtures))
     end
 
@@ -131,7 +131,6 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.res_status(200, r)
 
-          -- close client connection
           cli:close()
 
           local lines
@@ -164,6 +163,85 @@ for _, strategy in helpers.each_strategy() do
         assert.is_true(#scope_spans > 0, scope_spans)
       end)
     end)
+
+    -- this test is not meant to check that the sampling rate is applied
+    -- precisely (we have unit tests for that), but rather that the config
+    -- option is properly handled by the plugin and has an effect on the 
+    -- sampling decision.
+    for _, global_sampling_rate in ipairs{ 0, 0.001, 1} do
+      describe("With config.sampling_rate set, using global sampling rate: " .. global_sampling_rate, function ()
+        local mock
+        local sampling_rate = 0.5
+         -- this trace_id is always sampled with 0.5 rate
+        local sampled_trace_id = "92a54b3e1a7c4f2da9e44b8a6f3e1dab"
+         -- this trace_id is never sampled with 0.5 rate
+        local non_sampled_trace_id = "4bf92f3577b34da6a3ce929d0e0e4736"
+
+        lazy_setup(function()
+          bp, _ = assert(helpers.get_db_utils(strategy, {
+            "services",
+            "routes",
+            "plugins",
+          }, { "opentelemetry" }))
+
+          setup_instrumentations("all", {
+            sampling_rate = sampling_rate,
+          }, nil, nil, nil, nil, global_sampling_rate)
+          mock = helpers.http_mock(HTTP_SERVER_PORT, { timeout = HTTP_MOCK_TIMEOUT })
+        end)
+
+        lazy_teardown(function()
+          helpers.stop_kong()
+          if mock then
+            mock("close", true)
+          end
+        end)
+
+        it("does not sample spans when trace_id == non_sampled_trace_id", function()
+          local cli = helpers.proxy_client(7000, PROXY_PORT)
+          local r = assert(cli:send {
+            method  = "GET",
+            path    = "/",
+            headers = {
+              traceparent = "00-" .. non_sampled_trace_id .. "-0123456789abcdef-01"
+            }
+          })
+          assert.res_status(200, r)
+
+          cli:close()
+
+          ngx.sleep(2)
+          local lines = mock()
+          assert.is_falsy(lines)
+        end)
+
+        it("samples spans when trace_id == sampled_trace_id", function ()
+          local body
+          helpers.wait_until(function()
+            local cli = helpers.proxy_client(7000, PROXY_PORT)
+            local r = assert(cli:send {
+              method  = "GET",
+              path    = "/",
+              headers = {
+                traceparent = "00-" .. sampled_trace_id .. "-0123456789abcdef-01"
+              }
+            })
+            assert.res_status(200, r)
+
+            cli:close()
+
+            local lines
+            lines, body = mock()
+            return lines
+          end, 10)
+
+          local decoded = assert(pb.decode("opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest", body))
+          assert.not_nil(decoded)
+          local scope_spans = decoded.resource_spans[1].scope_spans
+          assert.is_true(#scope_spans > 0, scope_spans)
+        end)
+      end)
+    end
 
     for _, case in ipairs{
       {true, true, true},
@@ -208,7 +286,6 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.res_status(200, r)
 
-          -- close client connection
           cli:close()
 
           local lines, err = mock()
@@ -259,7 +336,6 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.res_status(200, r)
 
-          -- close client connection
           cli:close()
 
           local lines
@@ -357,7 +433,6 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, r)
 
-        -- close client connection
         cli:close()
 
         helpers.wait_until(function()
@@ -428,7 +503,6 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.res_status(200, r)
 
-          -- close client connection
           cli:close()
 
           local lines
@@ -510,7 +584,6 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.res_status(200, r)
 
-          -- close client connection
           cli:close()
 
           local lines

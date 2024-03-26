@@ -1,0 +1,5 @@
+message: |
+  Added a new function to bypass the Kong's DNS client synchronization option
+  when resolving hostnames.
+type: feature
+scope: Core

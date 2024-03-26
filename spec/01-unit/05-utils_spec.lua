@@ -487,16 +487,18 @@ describe("Utils", function()
     end)
 
     describe("load_module_if_exists()", function()
+      local load_module_if_exists = require "kong.tools.module".load_module_if_exists
+
       it("should return false if the module does not exist", function()
         local loaded, mod
         assert.has_no.errors(function()
-          loaded, mod = utils.load_module_if_exists("kong.does.not.exist")
+          loaded, mod = load_module_if_exists("kong.does.not.exist")
         end)
         assert.False(loaded)
         assert.is.string(mod)
       end)
       it("should throw an error with a traceback if the module is invalid", function()
-        local pok, perr = pcall(utils.load_module_if_exists, "spec.fixtures.invalid-module")
+        local pok, perr = pcall(load_module_if_exists, "spec.fixtures.invalid-module")
         assert.falsy(pok)
         assert.match("error loading module 'spec.fixtures.invalid-module'", perr, 1, true)
         assert.match("./spec/fixtures/invalid-module.lua:", perr, 1, true)
@@ -504,7 +506,7 @@ describe("Utils", function()
       it("should load a module if it was found and valid", function()
         local loaded, mod
         assert.has_no.errors(function()
-          loaded, mod = utils.load_module_if_exists("spec.fixtures.valid-module")
+          loaded, mod = load_module_if_exists("spec.fixtures.valid-module")
         end)
         assert.True(loaded)
         assert.truthy(mod)
@@ -1644,6 +1646,42 @@ describe("Utils", function()
       }, t3)
 
       assert.equal(meta, getmetatable(t3.b.a))
+    end)
+  end)
+
+  describe("table_path(t, path)", function()
+    local t = {
+      x = 1,
+      a = {
+        b = {
+          c = 200
+        },
+      },
+      z = 2
+    }
+
+    it("retrieves value from table based on path - single level", function()
+      local path = { "x" }
+
+      assert.equal(1, utils.table_path(t, path))
+    end)
+
+    it("retrieves value from table based on path - deep value", function()
+      local path = { "a", "b", "c" }
+
+      assert.equal(200, utils.table_path(t, path))
+    end)
+
+    it("returns nil if element is not found - leaf not found", function()
+      local path = { "a", "b", "x" }
+
+      assert.equal(nil, utils.table_path(t, path))
+    end)
+
+    it("returns nil if element is not found - root branch not found", function()
+      local path = { "o", "j", "k" }
+
+      assert.equal(nil, utils.table_path(t, path))
     end)
   end)
 end)

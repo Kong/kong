@@ -1,5 +1,5 @@
 local typedefs = require "kong.db.schema.typedefs"
-
+local redis_schema = require "kong.tools.redis.schema"
 
 local ORDERED_PERIODS = { "second", "minute", "hour", "day", "month", "year" }
 
@@ -59,7 +59,6 @@ else
   }
 end
 
-
 return {
   name = "response-ratelimiting",
   fields = {
@@ -94,67 +93,7 @@ return {
               default = true
             },
           },
-          {
-            redis_host = typedefs.redis_host,
-          },
-          {
-            redis_port = typedefs.port({
-              default = 6379,
-              description = "When using the `redis` policy, this property specifies the port of the Redis server."
-            }),
-          },
-          {
-            redis_password = {
-              description =
-              "When using the `redis` policy, this property specifies the password to connect to the Redis server.",
-              type = "string",
-              len_min = 0,
-              referenceable = true
-            },
-          },
-          {
-            redis_username = {
-              description =
-              "When using the `redis` policy, this property specifies the username to connect to the Redis server when ACL authentication is desired.\nThis requires Redis v6.0.0+. The username **cannot** be set to `default`.",
-              type = "string",
-              referenceable = true
-            },
-          },
-          {
-            redis_ssl = {
-              description =
-              "When using the `redis` policy, this property specifies if SSL is used to connect to the Redis server.",
-              type = "boolean",
-              required = true,
-              default = false,
-            },
-          },
-          {
-            redis_ssl_verify = {
-              description =
-              "When using the `redis` policy with `redis_ssl` set to `true`, this property specifies if the server SSL certificate is validated. Note that you need to configure the `lua_ssl_trusted_certificate` to specify the CA (or server) certificate used by your Redis server. You may also need to configure `lua_ssl_verify_depth` accordingly.",
-              type = "boolean",
-              required = true,
-              default = false
-            },
-          },
-          {
-            redis_server_name = typedefs.redis_server_name
-          },
-          {
-            redis_timeout = {
-              description = "When using the `redis` policy, this property specifies the timeout in milliseconds of any command submitted to the Redis server.",
-              type = "number",
-              default = 2000
-            },
-          },
-          {
-            redis_database = {
-              description = "When using the `redis` policy, this property specifies Redis database to use.",
-              type = "number",
-              default = 0
-            },
-          },
+          { redis = redis_schema.config_schema },
           {
             block_on_first_violation = {
               description =
@@ -198,33 +137,115 @@ return {
             },
           },
         },
+        shorthand_fields = {
+          -- TODO: deprecated forms, to be removed in Kong 4.0
+          { redis_host = {
+            type = "string",
+            translate_backwards = {'redis', 'host'},
+            deprecation = {
+              message = "response-ratelimiting: config.redis_host is deprecated, please use config.redis.host instead",
+              removal_in_version = "4.0", },
+            func = function(value)
+              return { redis = { host = value } }
+            end
+          } },
+          { redis_port = {
+            type = "integer",
+            translate_backwards = {'redis', 'port'},
+            deprecation = {
+              message = "response-ratelimiting: config.redis_port is deprecated, please use config.redis.port instead",
+              removal_in_version = "4.0", },
+            func = function(value)
+              return { redis = { port = value } }
+            end
+          } },
+          { redis_password = {
+            type = "string",
+            len_min = 0,
+            translate_backwards = {'redis', 'password'},
+            deprecation = {
+              message = "response-ratelimiting: config.redis_password is deprecated, please use config.redis.password instead",
+              removal_in_version = "4.0", },
+            func = function(value)
+              return { redis = { password = value } }
+            end
+          } },
+          { redis_username = {
+            type = "string",
+            translate_backwards = {'redis', 'username'},
+            deprecation = {
+              message = "response-ratelimiting: config.redis_username is deprecated, please use config.redis.username instead",
+              removal_in_version = "4.0", },
+            func = function(value)
+              return { redis = { username = value } }
+            end
+          } },
+          { redis_ssl = {
+            type = "boolean",
+            translate_backwards = {'redis', 'ssl'},
+            deprecation = {
+              message = "response-ratelimiting: config.redis_ssl is deprecated, please use config.redis.ssl instead",
+              removal_in_version = "4.0", },
+            func = function(value)
+              return { redis = { ssl = value } }
+            end
+          } },
+          { redis_ssl_verify = {
+            type = "boolean",
+            translate_backwards = {'redis', 'ssl_verify'},
+            deprecation = {
+              message = "response-ratelimiting: config.redis_ssl_verify is deprecated, please use config.redis.ssl_verify instead",
+              removal_in_version = "4.0", },
+            func = function(value)
+              return { redis = { ssl_verify = value } }
+            end
+          } },
+          { redis_server_name = {
+            type = "string",
+            translate_backwards = {'redis', 'server_name'},
+            deprecation = {
+              message = "response-ratelimiting: config.redis_server_name is deprecated, please use config.redis.server_name instead",
+              removal_in_version = "4.0", },
+            func = function(value)
+              return { redis = { server_name = value } }
+            end
+          } },
+          { redis_timeout = {
+            type = "integer",
+            translate_backwards = {'redis', 'timeout'},
+            deprecation = {
+              message = "response-ratelimiting: config.redis_timeout is deprecated, please use config.redis.timeout instead",
+              removal_in_version = "4.0", },
+            func = function(value)
+              return { redis = { timeout = value } }
+            end
+          } },
+          { redis_database = {
+            type = "integer",
+            translate_backwards = {'redis', 'database'},
+            deprecation = {
+              message = "response-ratelimiting: config.redis_database is deprecated, please use config.redis.database instead",
+              removal_in_version = "4.0", },
+            func = function(value)
+              return { redis = { database = value } }
+            end
+          } },
+        },
       },
     },
   },
   entity_checks = {
-    {
-      conditional = {
-        if_field = "config.policy",
-        if_match = { eq = "redis" },
-        then_field = "config.redis_host",
-        then_match = { required = true },
-      }
-    },
-    {
-      conditional = {
-        if_field = "config.policy",
-        if_match = { eq = "redis" },
-        then_field = "config.redis_port",
-        then_match = { required = true },
-      }
-    },
-    {
-      conditional = {
-        if_field = "config.policy",
-        if_match = { eq = "redis" },
-        then_field = "config.redis_timeout",
-        then_match = { required = true },
-      }
-    },
+    { conditional = {
+      if_field = "config.policy", if_match = { eq = "redis" },
+      then_field = "config.redis.host", then_match = { required = true },
+    } },
+    { conditional = {
+      if_field = "config.policy", if_match = { eq = "redis" },
+      then_field = "config.redis.port", then_match = { required = true },
+    } },
+    { conditional = {
+      if_field = "config.policy", if_match = { eq = "redis" },
+      then_field = "config.redis.timeout", then_match = { required = true },
+    } },
   },
 }

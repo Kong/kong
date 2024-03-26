@@ -10,7 +10,6 @@ local compat = require("kong.clustering.compat")
 local constants = require("kong.constants")
 local events = require("kong.clustering.events")
 local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
-local global = require("kong.global")
 
 
 local string = string
@@ -120,9 +119,9 @@ function _M:export_deflated_reconfigure_payload()
   end
 
   -- store serialized plugins map for troubleshooting purposes
-  local shm_key_name = "clustering:cp_plugins_configured:worker_" .. worker_id()
+  local shm_key_name = "clustering:cp_plugins_configured:worker_" .. (worker_id() or -1)
   kong_dict:set(shm_key_name, cjson_encode(self.plugins_configured))
-  ngx_log(ngx_DEBUG, "plugin configuration map key: " .. shm_key_name .. " configuration: ", kong_dict:get(shm_key_name))
+  ngx_log(ngx_DEBUG, "plugin configuration map key: ", shm_key_name, " configuration: ", kong_dict:get(shm_key_name))
 
   local config_hash, hashes = calculate_config_hash(config_table)
 
@@ -133,12 +132,6 @@ function _M:export_deflated_reconfigure_payload()
     config_hash = config_hash,
     hashes = hashes,
   }
-
-  local current_transaction_id
-  if kong.configuration.log_level == "debug" then
-    current_transaction_id = global.get_current_transaction_id()
-    payload.current_transaction_id = current_transaction_id
-  end
 
   self.reconfigure_payload = payload
 
@@ -159,10 +152,6 @@ function _M:export_deflated_reconfigure_payload()
   self.current_hashes = hashes
   self.current_config_hash = config_hash
   self.deflated_reconfigure_payload = payload
-
-  if kong.configuration.log_level == "debug" then
-    ngx_log(ngx_DEBUG, _log_prefix, "exported configuration with transaction id " .. current_transaction_id)
-  end
 
   return payload, nil, config_hash
 end
@@ -186,7 +175,7 @@ function _M:push_config()
 
   ngx_update_time()
   local duration = ngx_now() - start
-  ngx_log(ngx_DEBUG, _log_prefix, "config pushed to ", n, " data-plane nodes in " .. duration .. " seconds")
+  ngx_log(ngx_DEBUG, _log_prefix, "config pushed to ", n, " data-plane nodes in ", duration, " seconds")
 end
 
 

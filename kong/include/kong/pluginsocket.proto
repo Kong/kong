@@ -328,7 +328,7 @@ service Kong {
     rpc Router_GetRoute(google.protobuf.Empty) returns (Route);
     rpc Router_GetService(google.protobuf.Empty) returns (Service);
 
-    rpc Service_SetUpstream(String) returns (google.protobuf.Empty);
+    rpc Service_SetUpstream(String) returns (Bool);
     rpc Service_SetTarget(Target) returns (google.protobuf.Empty);
 
     rpc Service_Request_SetScheme(String) returns (google.protobuf.Empty);

@@ -1,7 +1,9 @@
 local constants = require "kong.constants"
-local sha256 = require "resty.sha256"
-local openssl_hmac = require "resty.openssl.hmac"
-local utils = require "kong.tools.utils"
+local openssl_mac = require "resty.openssl.mac"
+
+
+local sha256_base64 = require("kong.tools.sha256").sha256_base64
+local string_split = require("kong.tools.string").split
 
 
 local ngx = ngx
@@ -10,7 +12,6 @@ local error = error
 local time = ngx.time
 local abs = math.abs
 local decode_base64 = ngx.decode_base64
-local encode_base64 = ngx.encode_base64
 local parse_time = ngx.parse_http_time
 local re_gmatch = ngx.re.gmatch
 local hmac_sha1 = ngx.hmac_sha1
@@ -36,13 +37,13 @@ local hmac = {
     return hmac_sha1(secret, data)
   end,
   ["hmac-sha256"] = function(secret, data)
-    return openssl_hmac.new(secret, "sha256"):final(data)
+    return openssl_mac.new(secret, "HMAC", nil, "sha256"):final(data)
   end,
   ["hmac-sha384"] = function(secret, data)
-    return openssl_hmac.new(secret, "sha384"):final(data)
+    return openssl_mac.new(secret, "HMAC", nil, "sha384"):final(data)
   end,
   ["hmac-sha512"] = function(secret, data)
-    return openssl_hmac.new(secret, "sha512"):final(data)
+    return openssl_mac.new(secret, "HMAC", nil, "sha512"):final(data)
   end,
 }
 
@@ -115,7 +116,7 @@ local function retrieve_hmac_fields(authorization_header)
     if m and #m >= 4 then
       hmac_params.username = m[1]
       hmac_params.algorithm = m[2]
-      hmac_params.hmac_headers = utils.split(m[3], " ")
+      hmac_params.hmac_headers = string_split(m[3], " ")
       hmac_params.signature = m[4]
     end
   end
@@ -231,9 +232,7 @@ local function validate_body()
     return body == ""
   end
 
-  local digest = sha256:new()
-  digest:update(body or '')
-  local digest_created = "SHA-256=" .. encode_base64(digest:final())
+  local digest_created = "SHA-256=" .. sha256_base64(body or '')
 
   return digest_created == digest_received
 end

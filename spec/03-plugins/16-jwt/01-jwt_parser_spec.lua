@@ -94,6 +94,78 @@ describe("Plugin: jwt (parser)", function()
       local jwt = assert(jwt_parser:new(token))
       assert.True(jwt:verify_signature(fixtures.es384_public_key))
     end)
+
+    it("should encode using ES512", function()
+      local token = jwt_parser.encode({
+        sub   = "5656565656",
+        name  = "Jane Doe",
+        admin = true
+      }, fixtures.es512_private_key, 'ES512')
+
+      assert.truthy(token)
+      local jwt = assert(jwt_parser:new(token))
+      assert.True(jwt:verify_signature(fixtures.es512_public_key))
+    end)
+    it("should encode using PS256", function()
+      local token = jwt_parser.encode({
+        sub   = "5656565656",
+        name  = "Jane Doe",
+        admin = true
+      }, fixtures.ps256_private_key, 'PS256')
+
+      assert.truthy(token)
+      local jwt = assert(jwt_parser:new(token))
+      assert.True(jwt:verify_signature(fixtures.ps256_public_key))
+    end)
+
+    it("should encode using PS384", function()
+      local token = jwt_parser.encode({
+        sub   = "5656565656",
+        name  = "Jane Doe",
+        admin = true
+      }, fixtures.ps384_private_key, 'PS384')
+
+      assert.truthy(token)
+      local jwt = assert(jwt_parser:new(token))
+      assert.True(jwt:verify_signature(fixtures.ps384_public_key))
+    end)
+
+    it("should encode using PS512", function()
+      local token = jwt_parser.encode({
+        sub   = "5656565656",
+        name  = "Jane Doe",
+        admin = true
+      }, fixtures.ps512_private_key, 'PS512')
+
+      assert.truthy(token)
+      local jwt = assert(jwt_parser:new(token))
+      assert.True(jwt:verify_signature(fixtures.ps512_public_key))
+    end)
+
+    it("should encode using EdDSA with Ed25519 key", function()
+      local token = jwt_parser.encode({
+        sub   = "5656565656",
+        name  = "Jane Doe",
+        admin = true
+      }, fixtures.ed25519_private_key, 'EdDSA')
+
+      assert.truthy(token)
+      local jwt = assert(jwt_parser:new(token))
+      assert.True(jwt:verify_signature(fixtures.ed25519_public_key))
+    end)
+
+    it("should encode using EdDSA with Ed448 key", function()
+      local token = jwt_parser.encode({
+        sub   = "5656565656",
+        name  = "Jane Doe",
+        admin = true
+      }, fixtures.ed448_private_key, 'EdDSA')
+
+      assert.truthy(token)
+      local jwt = assert(jwt_parser:new(token))
+      assert.True(jwt:verify_signature(fixtures.ed448_public_key))
+    end)
+
   end)
   describe("Decoding", function()
     it("throws an error if not given a string", function()
@@ -179,6 +251,38 @@ describe("Plugin: jwt (parser)", function()
         local jwt = assert(jwt_parser:new(token))
         assert.True(jwt:verify_signature(fixtures.es384_public_key))
         assert.False(jwt:verify_signature(fixtures.rs256_public_key))
+      end
+    end)
+    it("using ES512", function()
+      for _ = 1, 500 do
+        local token = jwt_parser.encode({sub = "foo"}, fixtures.es512_private_key, 'ES512')
+        local jwt = assert(jwt_parser:new(token))
+        assert.True(jwt:verify_signature(fixtures.es512_public_key))
+        assert.False(jwt:verify_signature(fixtures.rs256_public_key))
+      end
+    end)
+    it("using PS256", function()
+      for _ = 1, 500 do
+        local token = jwt_parser.encode({sub = "foo"}, fixtures.ps256_private_key, 'PS256')
+        local jwt = assert(jwt_parser:new(token))
+        assert.True(jwt:verify_signature(fixtures.ps256_public_key))
+        assert.False(jwt:verify_signature(fixtures.es256_public_key))
+      end
+    end)
+    it("using PS384", function()
+      for _ = 1, 500 do
+        local token = jwt_parser.encode({sub = "foo"}, fixtures.ps384_private_key, 'PS384')
+        local jwt = assert(jwt_parser:new(token))
+        assert.True(jwt:verify_signature(fixtures.ps384_public_key))
+        assert.False(jwt:verify_signature(fixtures.es256_public_key))
+      end
+    end)
+    it("using PS512", function()
+      for _ = 1, 500 do
+        local token = jwt_parser.encode({sub = "foo"}, fixtures.ps512_private_key, 'PS512')
+        local jwt = assert(jwt_parser:new(token))
+        assert.True(jwt:verify_signature(fixtures.ps512_public_key))
+        assert.False(jwt:verify_signature(fixtures.es256_public_key))
       end
     end)
   end)

@@ -14,7 +14,7 @@ local _plugin = {}
 -- @treturn string The ID of the running plugin
 -- @usage
 --
--- kong.request.get_id() -- "123e4567-e89b-12d3-a456-426614174000"
+-- kong.plugin.get_id() -- "123e4567-e89b-12d3-a456-426614174000"
 function _plugin.get_id(self)
   return ngx.ctx.plugin_id
 end

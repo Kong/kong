@@ -1,0 +1,165 @@
+local _M = {}
+
+-- imports
+local kong_meta     = require "kong.meta"
+local http          = require("resty.http")
+local fmt           = string.format
+local kong_utils    = require("kong.tools.gzip")
+local llm           = require("kong.llm")
+--
+
+_M.PRIORITY = 769
+_M.VERSION = kong_meta.version
+
+local function bad_request(msg)
+  kong.log.info(msg)
+  return kong.response.exit(400, { error = { message = msg } })
+end
+
+local function internal_server_error(msg)
+  kong.log.err(msg)
+  return kong.response.exit(500, { error = { message = msg } })
+end
+
+local function subrequest(httpc, request_body, http_opts)
+  httpc:set_timeouts(http_opts.http_timeout or 60000)
+
+  local upstream_uri = ngx.var.upstream_uri
+  if ngx.var.is_args == "?" or string.sub(ngx.var.request_uri, -1) == "?" then
+    ngx.var.upstream_uri = upstream_uri .. "?" .. (ngx.var.args or "")
+  end
+
+  local ok, err = httpc:connect {
+    scheme = ngx.var.upstream_scheme,
+    host = ngx.ctx.balancer_data.host,
+    port = ngx.ctx.balancer_data.port,
+    proxy_opts = http_opts.proxy_opts,
+    ssl_verify = http_opts.https_verify,
+    ssl_server_name = ngx.ctx.balancer_data.host,
+  }
+
+  if not ok then
+    return nil, "failed to connect to upstream: " .. err
+  end
+
+  local headers = kong.request.get_headers()
+  headers["transfer-encoding"] = nil -- transfer-encoding is hop-by-hop, strip
+                                     -- it out
+  headers["content-length"] = nil -- clear content-length - it will be set
+                                  -- later on by resty-http (if not found);
+                                  -- further, if we leave it here it will
+                                  -- cause issues if the value varies (if may
+                                  -- happen, e.g., due to a different transfer
+                                  -- encoding being used subsequently)
+
+  if ngx.var.upstream_host == "" then
+    headers["host"] = nil
+  else
+    headers["host"] = ngx.var.upstream_host
+  end
+
+  local res, err = httpc:request({
+    method  = kong.request.get_method(),
+    path    = ngx.var.upstream_uri,
+    headers = headers,
+    body    = request_body,
+  })
+
+  if not res then
+    return nil, "subrequest failed: " .. err
+  end
+
+  return res
+end
+
+local function create_http_opts(conf)
+  local http_opts = {}
+
+  if conf.http_proxy_host then -- port WILL be set via schema constraint
+    http_opts.proxy_opts = http_opts.proxy_opts or {}
+    http_opts.proxy_opts.http_proxy = fmt("http://%s:%d", conf.http_proxy_host, conf.http_proxy_port)
+  end
+
+  if conf.https_proxy_host then
+    http_opts.proxy_opts = http_opts.proxy_opts or {}
+    http_opts.proxy_opts.https_proxy = fmt("http://%s:%d", conf.https_proxy_host, conf.https_proxy_port)
+  end
+  
+  http_opts.http_timeout = conf.http_timeout
+  http_opts.https_verify = conf.https_verify
+
+  return http_opts
+end
+
+function _M:access(conf)
+  kong.service.request.enable_buffering()
+  kong.ctx.shared.skip_response_transformer = true
+
+  -- first find the configured LLM interface and driver
+  local http_opts = create_http_opts(conf)
+  local ai_driver, err = llm:new(conf.llm, http_opts)
+  
+  if not ai_driver then
+    return internal_server_error(err)
+  end
+
+  kong.log.debug("intercepting plugin flow with one-shot request")
+  local httpc = http.new()
+  local res, err = subrequest(httpc, kong.request.get_raw_body(), http_opts)
+  if err then
+    return internal_server_error(err)
+  end
+
+  local res_body = res:read_body()
+  local is_gzip = res.headers["Content-Encoding"] == "gzip"
+  if is_gzip then
+    res_body = kong_utils.inflate_gzip(res_body)
+  end
+
+  -- if asked, introspect the request before proxying
+  kong.log.debug("introspecting response with LLM")
+
+  local new_response_body, err = llm:ai_introspect_body(
+    res_body,
+    conf.prompt,
+    http_opts,
+    conf.transformation_extract_pattern
+  )
+
+  if err then
+    return bad_request(err)
+  end
+
+  if res.headers then
+    res.headers["content-length"] = nil
+    res.headers["content-encoding"] = nil
+    res.headers["transfer-encoding"] = nil
+  end
+
+  local headers, body, status
+  if conf.parse_llm_response_json_instructions then
+    headers, body, status, err = llm:parse_json_instructions(new_response_body)
+    if err then
+      return internal_server_error("failed to parse JSON response instructions from AI backend: " .. err)
+    end
+
+    if headers then
+      for k, v in pairs(headers) do
+        res.headers[k] = v  -- override e.g. ['content-type']
+      end
+    end
+
+    headers = res.headers
+  else
+
+    headers = res.headers     -- headers from upstream
+    body = new_response_body  -- replacement body from AI
+    status = res.status       -- status from upstream
+  end
+
+  return kong.response.exit(status, body, headers)
+
+end
+
+
+return _M

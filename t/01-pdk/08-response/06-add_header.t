@@ -90,7 +90,7 @@ invalid header name "127001": got number, expected string
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
-            local ok, err = pcall(pdk.response.add_header, "foo", {})
+            local ok, err = pcall(pdk.response.add_header, "foo", {{}})
             if not ok then
                 ngx.ctx.err = err
             end
@@ -104,7 +104,7 @@ invalid header name "127001": got number, expected string
 --- request
 GET /t
 --- response_body chop
-invalid header value for "foo": got table, expected string, number or boolean
+invalid header value in array "foo": got table, expected string
 --- no_error_log
 [error]
 
@@ -137,7 +137,7 @@ invalid header value for "foo": got table, expected string, number or boolean
 --- request
 GET /t
 --- response_body chop
-invalid header value for "foo": got nil, expected string, number or boolean
+invalid header value for "foo": got nil, expected array of string, string, number or boolean
 --- no_error_log
 [error]
 

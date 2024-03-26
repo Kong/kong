@@ -1,6 +1,5 @@
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
-local meta    = require "kong.meta"
 local utils   = require "kong.tools.utils"
 
 
@@ -57,6 +56,9 @@ for _, strategy in helpers.each_strategy() do
       bp.plugins:insert {
         name     = "basic-auth",
         route = { id = route1.id },
+        config = {
+          realm = "test-realm",
+        }
       }
 
       bp.plugins:insert {
@@ -132,33 +134,39 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("Unauthorized", function()
-
-      it("returns Unauthorized on missing credentials", function()
-        local res = assert(proxy_client:send {
-          method  = "GET",
-          path    = "/status/200",
-          headers = {
-            ["Host"] = "basic-auth1.test"
-          }
-        })
-        local body = assert.res_status(401, res)
-        local json = cjson.decode(body)
-        assert.not_nil(json)
-        assert.matches("Unauthorized", json.message)
+      describe("when realm is configured", function()
+        it("returns Unauthorized on missing credentials", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/status/200",
+            headers = {
+              ["Host"] = "basic-auth1.test"
+            }
+          })
+          local body = assert.res_status(401, res)
+          local json = cjson.decode(body)
+          assert.not_nil(json)
+          assert.matches("Unauthorized", json.message)
+          assert.equal('Basic realm="test-realm"', res.headers["WWW-Authenticate"])
+        end)
       end)
 
-      it("returns WWW-Authenticate header on missing credentials", function()
-        local res = assert(proxy_client:send {
-          method  = "GET",
-          path    = "/status/200",
-          headers = {
-            ["Host"] = "basic-auth1.test"
-          }
-        })
-        assert.res_status(401, res)
-        assert.equal('Basic realm="' .. meta._NAME .. '"', res.headers["WWW-Authenticate"])
+      describe("when realm is default", function()
+        it("returns Unauthorized on missing credentials", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/status/200",
+            headers = {
+              ["Host"] = "basic-auth2.test"
+            }
+          })
+          local body = assert.res_status(401, res)
+          local json = cjson.decode(body)
+          assert.not_nil(json)
+          assert.matches("Unauthorized", json.message)
+          assert.equal('Basic realm="service"', res.headers["WWW-Authenticate"])
+        end)
       end)
-
     end)
 
     describe("Unauthorized", function()
@@ -175,7 +183,8 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.not_nil(json)
-        assert.matches("Invalid authentication credentials", json.message)
+        assert.matches("Unauthorized", json.message)
+        assert.equal('Basic realm="test-realm"', res.headers["WWW-Authenticate"])
       end)
 
       it("returns 401 Unauthorized on invalid credentials in Proxy-Authorization", function()
@@ -190,7 +199,8 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.not_nil(json)
-        assert.matches("Invalid authentication credentials", json.message)
+        assert.matches("Unauthorized", json.message)
+        assert.equal('Basic realm="test-realm"', res.headers["WWW-Authenticate"])
       end)
 
       it("returns 401 Unauthorized on password only", function()
@@ -205,7 +215,8 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.not_nil(json)
-        assert.matches("Invalid authentication credentials", json.message)
+        assert.matches("Unauthorized", json.message)
+        assert.equal('Basic realm="test-realm"', res.headers["WWW-Authenticate"])
       end)
 
       it("returns 401 Unauthorized on username only", function()
@@ -220,7 +231,8 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.not_nil(json)
-        assert.matches("Invalid authentication credentials", json.message)
+        assert.matches("Unauthorized", json.message)
+        assert.equal('Basic realm="test-realm"', res.headers["WWW-Authenticate"])
       end)
 
       it("rejects gRPC call without credentials", function()
@@ -295,7 +307,8 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.not_nil(json)
-        assert.matches("Invalid authentication credentials", json.message)
+        assert.matches("Unauthorized", json.message)
+        assert.equal('Basic realm="test-realm"', res.headers["WWW-Authenticate"])
       end)
 
       it("authenticates valid credentials in Proxy-Authorization", function()
@@ -564,6 +577,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.response(res).has.status(401)
+        assert.equal('Key', res.headers["WWW-Authenticate"])
       end)
 
       it("fails 401, with no credential provided", function()
@@ -575,6 +589,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.response(res).has.status(401)
+        assert.equal('Key', res.headers["WWW-Authenticate"])
       end)
 
     end)

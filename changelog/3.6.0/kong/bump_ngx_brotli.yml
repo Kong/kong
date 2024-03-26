@@ -1,0 +1,3 @@
+message: Bumped ngx_brotli to master branch, and disabled it on rhel7 rhel9-arm64 and amazonlinux-2023-arm64 due to toolchain issues
+type: dependency
+scope: Core

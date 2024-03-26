@@ -14,10 +14,6 @@ local ngx_ERR = ngx.ERR
 local ngx_DEBUG = ngx.DEBUG
 local ngx_now = ngx.now
 local ngx_update_time = ngx.update_time
-local ngx_req = ngx.req
-local ngx_get_headers = ngx_req.get_headers
-local propagation_parse = propagation.parse
-local propagation_set = propagation.set
 local null = ngx.null
 local encode_traces = otlp.encode_traces
 local encode_span = otlp.transform_span
@@ -81,8 +77,8 @@ local function http_export(conf, spans)
 
   ngx_update_time()
   local duration = ngx_now() - start
-  ngx_log(ngx_DEBUG, _log_prefix, "exporter sent " .. #spans ..
-    " traces to " .. conf.endpoint .. " in " .. duration .. " seconds")
+  ngx_log(ngx_DEBUG, _log_prefix, "exporter sent ", #spans,
+          " traces to ", conf.endpoint, " in ", duration, " seconds")
 
   if not ok then
     ngx_log(ngx_ERR, _log_prefix, err)
@@ -91,32 +87,34 @@ local function http_export(conf, spans)
   return ok, err
 end
 
-function OpenTelemetryHandler:access(conf)
-  local headers = ngx_get_headers()
-  local root_span = ngx.ctx.KONG_SPANS and ngx.ctx.KONG_SPANS[1]
-  local tracer = kong.tracing.new("otel")
 
-  -- make propagation running with tracing instrumetation not enabled
+local function get_inject_ctx(extracted_ctx, conf)
+  local root_span = ngx.ctx.KONG_SPANS and ngx.ctx.KONG_SPANS[1]
+
+  -- get the global tracer when available, or instantiate a new one
+  local tracer = kong.tracing.name == "noop" and kong.tracing.new("otel")
+                 or kong.tracing
+
+  -- make propagation work with tracing disabled
   if not root_span then
     root_span = tracer.start_span("root")
+    root_span:set_attribute("kong.propagation_only", true)
 
-    -- the span created only for the propagation and will be bypassed to the exporter
+    -- since tracing is disabled, turn off sampling entirely for this trace
     kong.ctx.plugin.should_sample = false
   end
 
   local injected_parent_span = tracing_context.get_unlinked_span("balancer") or root_span
+  local trace_id = extracted_ctx.trace_id
+  local span_id = extracted_ctx.span_id
+  local parent_id = extracted_ctx.parent_id
+  local parent_sampled = extracted_ctx.should_sample
 
-  local header_type, trace_id, span_id, parent_id, should_sample, _ = propagation_parse(headers, conf.header_type)
-  if should_sample == false then
-    tracer:set_should_sample(should_sample)
-    injected_parent_span.should_sample = should_sample
-  end
-
-  -- overwrite trace id
-  -- as we are in a chain of existing trace
+  -- Overwrite trace ids
+  -- with the value extracted from incoming tracing headers
   if trace_id then
     -- to propagate the correct trace ID we have to set it here
-    -- before passing this span to propagation.set()
+    -- before passing this span to propagation
     injected_parent_span.trace_id = trace_id
     -- update the Tracing Context with the trace ID extracted from headers
     tracing_context.set_raw_trace_id(trace_id)
@@ -130,7 +128,41 @@ function OpenTelemetryHandler:access(conf)
     root_span.parent_id = parent_id
   end
 
-  propagation_set(conf.header_type, header_type, injected_parent_span, "w3c")
+  -- Configure the sampled flags
+  local sampled
+  if kong.ctx.plugin.should_sample == false then
+    sampled = false
+
+  else
+    -- Sampling decision for the current trace.
+    local err
+    -- get_sampling_decision() depends on the value of the trace id: call it
+    -- after the trace_id is updated
+    sampled, err = tracer:get_sampling_decision(parent_sampled, conf.sampling_rate)
+    if err then
+      ngx_log(ngx_ERR, _log_prefix, "sampler failure: ", err)
+    end
+  end
+  tracer:set_should_sample(sampled)
+  -- Set the sampled flag for the outgoing header's span
+  injected_parent_span.should_sample = sampled
+
+  extracted_ctx.trace_id      = injected_parent_span.trace_id
+  extracted_ctx.span_id       = injected_parent_span.span_id
+  extracted_ctx.should_sample = injected_parent_span.should_sample
+  extracted_ctx.parent_id     = injected_parent_span.parent_id
+
+  -- return the injected ctx (data to be injected with outgoing tracing headers)
+  return extracted_ctx
+end
+
+
+function OpenTelemetryHandler:access(conf)
+  propagation.propagate(
+    propagation.get_plugin_params(conf),
+    get_inject_ctx,
+    conf
+  )
 end
 
 
@@ -141,8 +173,10 @@ function OpenTelemetryHandler:header_filter(conf)
       local root_span = ngx.ctx.KONG_SPANS and ngx.ctx.KONG_SPANS[1]
       trace_id = root_span and root_span.trace_id
     end
-    trace_id = to_hex(trace_id)
-    kong.response.add_header(conf.http_response_header_for_traceid, trace_id)
+    if trace_id then
+      trace_id = to_hex(trace_id)
+      kong.response.add_header(conf.http_response_header_for_traceid, trace_id)
+    end
   end
 end
 

@@ -236,10 +236,10 @@ end
 
 
 function stream_api.load_handlers()
-  local utils = require "kong.tools.utils"
+  local load_module_if_exists = require "kong.tools.module".load_module_if_exists
 
   for plugin_name in pairs(kong.configuration.loaded_plugins) do
-    local loaded, custom_endpoints = utils.load_module_if_exists("kong.plugins." .. plugin_name .. ".api")
+    local loaded, custom_endpoints = load_module_if_exists("kong.plugins." .. plugin_name .. ".api")
     if loaded and custom_endpoints._stream then
       log(DEBUG, "Register stream api for plugin: ", plugin_name)
       _handlers[plugin_name] = custom_endpoints._stream

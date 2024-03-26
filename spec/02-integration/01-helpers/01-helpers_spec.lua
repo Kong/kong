@@ -1442,4 +1442,91 @@ describe("helpers: utilities", function()
       end, "Is a directory")
     end)
   end)
+
+  describe("partial_match()", function()
+    describe("positive mod", function()
+      it("allows to match to tables paritally", function()
+        local partial_table = {
+          x = 100,
+          y = {
+            z = 200
+          }
+        }
+        local full_table = {
+          x = 100,
+          a = "test1",
+          y = {
+            b = "test2",
+            z = 200
+          }
+        }
+
+        assert.partial_match(partial_table, full_table)
+      end)
+
+      it("fails if tables do not match paritally", function()
+        local partial_table = {
+          x = 100,
+          y = {
+            z = 77
+          }
+        }
+        local full_table = {
+          x = 100,
+          a = "test1",
+          y = {
+            b = "test2",
+            z = 200
+          }
+        }
+
+        local ok, err_actual = pcall(function() assert.partial_match(partial_table, full_table) end)
+        assert.falsy(ok)
+        assert.matches(".*Values at key %(string%) 'y%.z' should be equal but are not.\nExpected: %(number%) 77, given: %(number%) 200\n", err_actual.message)
+      end)
+    end)
+
+    describe("negative mod", function()
+      it("allows to verify if tables do not match", function()
+        local partial_table = {
+          x = 77,
+          y = {
+            z = 88
+          }
+        }
+
+        local full_table = {
+          x = 100,
+          a = "test1",
+          y = {
+            b = "test2",
+            z = 200
+          }
+        }
+
+        assert.does_not.partial_match(partial_table, full_table)
+      end)
+
+      it("fails if tables do match paritally", function()
+        local partial_table = {
+          x = 100,
+          y = {
+            z = 77
+          }
+        }
+        local full_table = {
+          x = 100,
+          a = "test1",
+          y = {
+            b = "test2",
+            z = 200
+          }
+        }
+
+        local ok, err_actual = pcall(function() assert.does_not.partial_match(partial_table, full_table) end)
+        assert.falsy(ok)
+        assert.matches(".*Values at key %(string%) 'x' should not be equal", err_actual.message)
+      end)
+    end)
+  end)
 end)

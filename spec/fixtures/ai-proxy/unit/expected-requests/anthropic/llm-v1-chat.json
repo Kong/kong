@@ -1,0 +1,6 @@
+{
+  "model": "claude-2",
+  "prompt": "You are a mathematician.\n\nHuman: What is 1 + 2?\n\nAssistant: The sum of 1 + 2 is 3. If you have any more math questions or if there's anything else I can help you with, feel free to ask!\n\nHuman: Multiply that by 2\n\nAssistant: Certainly! If you multiply 3 by 2, the result is 6. If you have any more questions or if there's anything else I can help you with, feel free to ask!\n\nHuman: Why can't you divide by zero?\n\nAssistant:",
+  "max_tokens_to_sample": 512,
+  "temperature": 0.5
+}

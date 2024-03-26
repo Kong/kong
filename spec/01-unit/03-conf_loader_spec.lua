@@ -1,6 +1,5 @@
 local kong_meta = require "kong.meta"
 local conf_loader = require "kong.conf_loader"
-local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
 local helpers = require "spec.helpers"
 local tablex = require "pl.tablex"
@@ -170,7 +169,7 @@ describe("Configuration loader", function()
     assert.equal(8444, conf.admin_listeners[2].port)
     assert.equal(true, conf.admin_listeners[2].ssl)
     assert.equal(true, conf.admin_listeners[2].http2)
-    assert.equal("127.0.0.1:8444 ssl http2 reuseport backlog=16384", conf.admin_listeners[2].listener)
+    assert.equal("127.0.0.1:8444 ssl reuseport backlog=16384", conf.admin_listeners[2].listener)
 
     assert.equal("0.0.0.0", conf.admin_gui_listeners[1].ip)
     assert.equal(8002, conf.admin_gui_listeners[1].port)
@@ -194,7 +193,7 @@ describe("Configuration loader", function()
     assert.equal(8443, conf.proxy_listeners[2].port)
     assert.equal(true, conf.proxy_listeners[2].ssl)
     assert.equal(true, conf.proxy_listeners[2].http2)
-    assert.equal("0.0.0.0:8443 ssl http2 reuseport backlog=16384", conf.proxy_listeners[2].listener)
+    assert.equal("0.0.0.0:8443 ssl reuseport backlog=16384", conf.proxy_listeners[2].listener)
   end)
   it("parses IPv6 from proxy_listen/admin_listen/admin_gui_listen", function()
     local conf = assert(conf_loader(nil, {
@@ -983,6 +982,8 @@ describe("Configuration loader", function()
           assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
         end)
         it("expands the `system` property in lua_ssl_trusted_certificate", function()
+          local utils = require "kong.tools.system"
+
           local old_gstcf = utils.get_system_trusted_certs_filepath
           local old_exists = pl_path.exists
           finally(function()
@@ -1583,19 +1584,19 @@ describe("Configuration loader", function()
           assert.is_nil(err)
           assert.is_table(conf)
 
-          assert.equal("TLSv1.1 TLSv1.2 TLSv1.3", conf.nginx_http_lua_ssl_protocols)
-          assert.equal("TLSv1.1 TLSv1.2 TLSv1.3", conf.nginx_stream_lua_ssl_protocols)
+          assert.equal("TLSv1.2 TLSv1.3", conf.nginx_http_lua_ssl_protocols)
+          assert.equal("TLSv1.2 TLSv1.3", conf.nginx_stream_lua_ssl_protocols)
         end)
 
         it("sets lua_ssl_protocols to user specified value", function()
           local conf, err = conf_loader(nil, {
-            lua_ssl_protocols = "TLSv1.1"
+            lua_ssl_protocols = "TLSv1.2"
           })
           assert.is_nil(err)
           assert.is_table(conf)
 
-          assert.equal("TLSv1.1", conf.nginx_http_lua_ssl_protocols)
-          assert.equal("TLSv1.1", conf.nginx_stream_lua_ssl_protocols)
+          assert.equal("TLSv1.2", conf.nginx_http_lua_ssl_protocols)
+          assert.equal("TLSv1.2", conf.nginx_stream_lua_ssl_protocols)
         end)
 
         it("sets nginx_http_lua_ssl_protocols and nginx_stream_lua_ssl_protocols to different values", function()
