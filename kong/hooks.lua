@@ -84,7 +84,7 @@ function _M.run_hook(name, a0, a1, a2, a3, a4, a5, ...)
 
   local acc
 
-  -- `select` only JIT-table when first argument 
+  -- `select` only JIT-able when first argument 
   -- is a constant (Has to be positive if used with varg).
   local extra_argc = select("#", ...)
 
