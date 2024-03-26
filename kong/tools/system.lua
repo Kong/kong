@@ -53,8 +53,8 @@ do
            "Could not find trusted certs file in " ..
            "any of the `system`-predefined locations. " ..
            "Please install a certs file there or set " ..
-           "lua_ssl_trusted_certificate to an " ..
-           "specific filepath instead of `system`"
+           "`lua_ssl_trusted_certificate` to a " ..
+           "specific file path instead of `system`"
   end
 end
 
