@@ -29,7 +29,7 @@ local EMPTY = require("pl.tablex").readonly({})
   ```
   -- let's assume PREFERED_MAX_HOOK_RETS is 4
   if retc <= PREFERED_MAX_HOOK_RETS then
-    local r0, r1, r2, r3= unpack(retv, 1, retc)
+    local r0, r1, r2, r3 = unpack(retv, 1, retc)
     return r0, r1, r2, r3
   end
   ```
