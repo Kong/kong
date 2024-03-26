@@ -34,7 +34,7 @@
     "uuid": "^9.0.0"
   },
   "devDependencies": {
-    "@tsconfig/recommended": "^1.0.3",
+    "@tsconfig/recommended": "^1.0.4",
     "@types/chai": "^4.3.9",
     "@types/chai-arrays": "^2.0.2",
     "@types/chai-as-promised": "^7.1.7",
