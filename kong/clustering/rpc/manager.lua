@@ -9,6 +9,7 @@ local future = require("kong.clustering.rpc.future")
 local utils = require("kong.clustering.rpc.utils")
 local callbacks = require("kong.clustering.rpc.callbacks")
 local queue = require("kong.clustering.rpc.queue")
+local clustering_tls = require("kong.clustering.tls")
 local constants = require("kong.constants")
 local table_isempty = require("table.isempty")
 local pl_tablex = require("pl.tablex")
@@ -20,6 +21,7 @@ local ngx_log = ngx.log
 local ngx_exit = ngx.exit
 local exiting = ngx.worker.exiting
 local pl_tablex_makeset = pl_tablex.makeset
+local validate_client_cert = clustering_tls.validate_client_cert
 
 
 local WS_OPTS = {
@@ -37,6 +39,8 @@ function _M.new(conf, node_id)
     client_capabilities = {},
     node_id = node_id,
     conf = conf,
+    cluster_cert = assert(clustering_tls.get_cluster_cert(conf)),
+    cluster_cert_key = assert(clustering_tls.get_cluster_cert_key(conf)),
     callbacks = callbacks.new(),
     incoming = queue.new(4096),
   }
@@ -127,7 +131,11 @@ function _M:handle_websocket()
     return ngx_exit(ngx.HTTP_CLOSE)
   end
 
-  -- TODO auth
+  local cert, err = validate_client_cert(self.conf, self.cluster_cert, ngx_var.ssl_client_raw_cert)
+  if not cert then
+    ngx_log(ngx_ERR, "[rpc] client's certificate failed validation: ", err)
+    return ngx_exit(ngx.HTTP_CLOSE)
+  end
 
   local wb, err = server:new(WS_OPTS)
   if not wb then
