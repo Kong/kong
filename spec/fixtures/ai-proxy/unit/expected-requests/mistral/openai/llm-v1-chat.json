@@ -27,5 +27,6 @@
   ],
   "model": "mistral-tiny",
   "max_tokens": 512,
+  "stream": false,
   "temperature": 0.5
 }
