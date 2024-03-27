@@ -1279,6 +1279,11 @@ function Kong.balancer()
     local previous_try = tries[try_count - 1]
     previous_try.state, previous_try.code = get_last_failure()
 
+    if ngx.config.subsystem == "http" then
+      local peer_conn = require "resty.kong.peer_conn"
+      previous_try.cached = peer_conn.get_last_peer_connection_cached()
+    end
+
     -- Report HTTP status for health checks
     local balancer_instance = balancer_data.balancer
     if balancer_instance then
