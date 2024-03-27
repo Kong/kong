@@ -665,6 +665,11 @@ end
 local uuid_generator = assert(uuid.factory_v5('7f145bf9-0dce-4f91-98eb-debbce4b9f6b'))
 
 
+local function sort_by_regex_or_length(path)
+  return is_regex_magic(path) or #path
+end
+
+
 -- group array-like table t by the function f, returning a table mapping from
 -- the result of invoking f on one of the elements to the actual elements.
 local function group_by(t, f)
@@ -696,10 +701,7 @@ local function split_route_by_path_into(route_and_service, routes_and_services_s
   assert(tb_nkeys(route_and_service) == 1 or tb_nkeys(route_and_service) == 2)
 
   local grouped_paths = group_by(
-    original_route.paths,
-    function(path)
-      return is_regex_magic(path) or #path
-    end
+    original_route.paths, sort_by_regex_or_length
   )
   for index, paths in pairs(grouped_paths) do
     local cloned_route = {
