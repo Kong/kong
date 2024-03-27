@@ -1,0 +1,3 @@
+message: "**OpenTelemetry**, **Zipkin**: fixed compatibility with older data planes"
+type: bugfix
+scope: Plugin
