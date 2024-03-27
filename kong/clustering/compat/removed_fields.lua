@@ -259,6 +259,12 @@ return {
     },
     mtls_auth = {
       "default_consumer",
-    }
+    },
+    opentelemetry = {
+      "propagation",
+    },
+    zipkin = {
+      "propagation",
+    },
   }
 }
