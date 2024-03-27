@@ -15,7 +15,7 @@ return {
               elements = {
                 type = "string",
                 len_min = 1,
-                len_max = 50,
+                len_max = 500,
               }}},
           { deny_patterns = {
               description = "Array of invalid patterns, or invalid questions from the 'user' role in chat.",
@@ -25,7 +25,7 @@ return {
               elements = {
                 type = "string",
                 len_min = 1,
-                len_max = 50,
+                len_max = 500,
               }}},
           { allow_all_conversation_history = {
               description = "If true, will ignore all previous chat prompts from the conversation history.",
