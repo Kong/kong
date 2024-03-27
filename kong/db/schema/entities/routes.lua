@@ -194,6 +194,10 @@ else
             },
           },
         },
+        values = {
+          type = "array",
+          elements = typedefs.regex_or_plain_pattern,
+        }
       } },
       { https_redirect_status_code = { type = "integer",
                                        description = "The status code Kong responds with when all properties of a Route match except the protocol",

@@ -1,0 +1,3 @@
+message: Fix issue where a regex header value would not be validated if the `traditional` or `traditional_compatible` router flavors were in use.
+type: bugfix
+scope: Core
