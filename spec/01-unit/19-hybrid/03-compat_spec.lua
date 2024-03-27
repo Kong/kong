@@ -6,7 +6,7 @@ local cjson_decode = require("cjson.safe").decode
 local ssl_fixtures = require ("spec.fixtures.ssl")
 
 local function reset_fields()
-  compat._set_removed_fields(require("kong.clustering.compat.removed_fields"))
+  compat._set_removed_fields()
 end
 
 describe("kong.clustering.compat", function()
