@@ -283,10 +283,12 @@ end
 
 
 local function get_expression(route)
-  -- we perfer the field 'expression', ignore others
+  -- we perfer the field 'expression', reject others
   if not is_null(route.expression) then
     return route.expression
   end
+
+  -- transform other fields (methods/hosts/paths/...) to expression
 
   local methods = route.methods
   local hosts   = route.hosts
@@ -536,6 +538,8 @@ local function get_priority(route)
   if not is_null(route.expression) then
     return bor(EXPRESSION_ONLY_BIT, route.priority or 0)
   end
+
+  -- transform other fields (methods/hosts/paths/...) to expression priority
 
   local snis = route.snis
   local srcs = route.sources
