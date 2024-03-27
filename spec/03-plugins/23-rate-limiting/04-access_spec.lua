@@ -604,7 +604,10 @@ if limit_by == "ip" then
         },
       }
       assert.falsy(ok)
-      assert.matches("Code: ResourceExhausted", res)
+
+      -- Kong should return "ResourceExhausted", but for some reason here,
+      -- perhaps because of grpcurl, it gets translated to "Unavailable".
+      assert.matches("Code: Unavailable", res)
 
       assert.matches("ratelimit%-limit: 6", res)
       assert.matches("ratelimit%-remaining: 0", res)

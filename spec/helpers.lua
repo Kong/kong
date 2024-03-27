@@ -1061,7 +1061,7 @@ local function gen_grpcurl_opts(opts_t)
 
   for opt, val in pairs(opts_t) do
     if val ~= false then
-      opts_l[#opts_l + 1] = opt .. " " .. (type(val) == "string" and val or "")
+      opts_l[#opts_l + 1] = opt .. (type(val) == "string" and (" " .. val) or "")
     end
   end
 
