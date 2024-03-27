@@ -45,7 +45,7 @@ local TYPE_AAAA     = resolver.TYPE_AAAA
 local TYPE_CNAME    = resolver.TYPE_CNAME
 local TYPE_LAST     = -1
 
-local valid_type_names = {
+local NAME_TO_TYPE = {
   SRV     = TYPE_SRV,
   A       = TYPE_A,
   AAAA    = TYPE_AAAA,
@@ -53,7 +53,7 @@ local valid_type_names = {
   LAST    = TYPE_LAST,
 }
 
-local typstrs = {
+local TYPE_TO_NAME = {
   [TYPE_SRV]      = "SRV",
   [TYPE_A]        = "A",
   [TYPE_AAAA]     = "AAAA",
@@ -62,7 +62,7 @@ local typstrs = {
 
 local HIT_L3 = 3 -- L1 lru, L2 shm, L3 callback, L4 stale
 
-local hitstrs = {
+local HIT_LEVEL_TO_NAME = {
   [1] = "hit_lru",
   [2] = "hit_shm",
   [3] = "hit_cb",
@@ -70,13 +70,13 @@ local hitstrs = {
 }
 
 -- server replied error from the DNS protocol
-local NAME_ERROR_EC      = 3 -- response code 3 as "Name Error" or "NXDOMAIN"
+local NAME_ERROR_CODE             = 3 -- response code 3 as "Name Error" or "NXDOMAIN"
 -- client specific error
-local CACHE_ONLY_EC      = 100
-local CACHE_ONLY_ESTR    = "cache only lookup failed"
-local CACHE_ONLY_ANSWERS = tablex.readonly({ errcode = CACHE_ONLY_EC, errstr = CACHE_ONLY_ESTR })
-local EMPTY_RECORD_EC    = 101
-local EMPTY_RECORD_ESTR  = "empty record received"
+local CACHE_ONLY_ERROR_CODE       = 100
+local CACHE_ONLY_ERROR_MESSAGE    = "cache only lookup failed"
+local CACHE_ONLY_ANSWERS = tablex.readonly({ errcode = CACHE_ONLY_ERROR_CODE, errstr = CACHE_ONLY_ERROR_MESSAGE })
+local EMPTY_RECORD_ERROR_CODE     = 101
+local EMPTY_RECORD_ERROR_MESSAGE  = "empty record received"
 
 
 -- APIs
@@ -93,7 +93,7 @@ end
 _M.TYPE_LAST = TYPE_LAST
 
 
-local tries_mt = { __tostring = cjson.encode, }
+local TRIES_MT = { __tostring = cjson.encode, }
 
 
 local function stats_init(stats, name)
@@ -116,7 +116,7 @@ end
 -- lookup or set TYPE_LAST (the DNS record type from the last successful query)
 local function insert_last_type(cache, name, qtype)
   local key = "last:" .. name
-  if typstrs[qtype] and cache:get(key) ~= qtype then
+  if TYPE_TO_NAME[qtype] and cache:get(key) ~= qtype then
     cache:set(key, { ttl = 0 }, qtype)
   end
 end
@@ -281,7 +281,7 @@ function _M.new(opts)
   local order = opts.order or DEFAULT_ORDER
   local preferred_ip_type
   for _, typstr in ipairs(order) do
-    local qtype = valid_type_names[typstr:upper()]
+    local qtype = NAME_TO_TYPE[typstr:upper()]
     if not qtype then
       return nil, "Invalid dns record type in order array: " .. typstr
     end
@@ -319,7 +319,7 @@ end
 local function process_answers(self, qname, qtype, answers)
   local errcode = answers.errcode
   if errcode then
-    answers.ttl = errcode == NAME_ERROR_EC and self.empty_ttl or self.error_ttl
+    answers.ttl = errcode == NAME_ERROR_CODE and self.empty_ttl or self.error_ttl
     -- compatible with balancer, which needs this field
     answers.expire = now() + answers.ttl
     return answers
@@ -362,8 +362,8 @@ local function process_answers(self, qname, qtype, answers)
   if #processed_answers == 0 then
     if not cname_answer then
       return {
-        errcode = EMPTY_RECORD_EC,
-        errstr  = EMPTY_RECORD_ESTR,
+        errcode = EMPTY_RECORD_ERROR_CODE,
+        errstr  = EMPTY_RECORD_ERROR_MESSAGE,
         ttl     = self.empty_ttl,
         -- expire = now() + self.empty_ttl,
       }
@@ -429,7 +429,7 @@ local function stale_update_task(premature, self, key, name, qtype, short_key)
   end
 
   local answers = resolve_query(self, name, qtype, {})
-  if answers and (not answers.errcode or answers.errcode == NAME_ERROR_EC) then
+  if answers and (not answers.errcode or answers.errcode == NAME_ERROR_CODE) then
     self.cache:set(key, { ttl = answers.ttl }, answers)
     insert_last_type(self.cache, name, qtype)
 
@@ -524,16 +524,16 @@ local function resolve_name_type(self, name, qtype, opts, tries)
 
   -- hit L1 lru or L2 shm
   if hit_level and hit_level < HIT_L3 then
-    stats_count(self.stats, key, hitstrs[hit_level])
+    stats_count(self.stats, key, HIT_LEVEL_TO_NAME[hit_level])
   end
 
   if err or answers.errcode then
     if not err then
-      local src = answers.errcode < CACHE_ONLY_EC and "server" or "client"
+      local src = answers.errcode < CACHE_ONLY_ERROR_CODE and "server" or "client"
       err = ("dns %s error: %s %s"):format(src, answers.errcode, answers.errstr)
     end
 
-    table_insert(tries, { name .. ":" .. typstrs[qtype], err })
+    table_insert(tries, { name .. ":" .. TYPE_TO_NAME[qtype], err })
   end
 
   return answers, err
@@ -651,7 +651,7 @@ local function resolve_all(self, name, opts, tries)
                              (hit_level and hit_level < HIT_L3))
     end
 
-    stats_count(self.stats, name, hitstrs[hit_level])
+    stats_count(self.stats, name, HIT_LEVEL_TO_NAME[hit_level])
   end
 
   -- dereference CNAME
@@ -686,7 +686,7 @@ end
 function _M:resolve(name, opts, tries)
   name = string_lower(name)
   opts = copy_options(opts or {})
-  tries = setmetatable(tries or {}, tries_mt)
+  tries = setmetatable(tries or {}, TRIES_MT)
 
   local answers, err, tries = resolve_all(self, name, opts, tries)
   if not answers or not opts.return_random then
@@ -743,7 +743,7 @@ end
 -- for example, "example.com:33" -> "example.com:SRV"
 local function format_key(key)
   local qname, qtype = key:match("([^:]+):(%d+)")  -- match "(qname):(qtype)"
-  return qtype and qname .. ":" .. (typstrs[tonumber(qtype)] or qtype)
+  return qtype and qname .. ":" .. (TYPE_TO_NAME[tonumber(qtype)] or qtype)
                or  key
 end
 
