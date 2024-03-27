@@ -1,0 +1,4 @@
+message: |
+  **AI-Proxy**: add support for streaming event-by-event responses back to client on supported providers
+scope: Plugin
+type: feature
