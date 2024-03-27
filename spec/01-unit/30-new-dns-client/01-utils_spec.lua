@@ -357,17 +357,16 @@ nameserver [fe80::1%enp0s20f0u1u1]
   describe("parsing 'hosts':", function()
 
     it("tests parsing when the 'hosts' file does not exist", function()
-      local result, err = utils.parse_hosts("non/existing/file")
-      assert.is.Nil(result)
-      assert.is.string(err)
+      local result = utils.parse_hosts("non/existing/file")
+      assert.same({ localhost = { ipv4 = "127.0.0.1", ipv6 = "[::1]" } }, result)
     end)
 
     it("tests parsing when the 'hosts' file is empty", function()
       local filename = tempfilename()
       writefile(filename, "")
-      local reverse = utils.parse_hosts(filename)
+      local result = utils.parse_hosts(filename)
       os.remove(filename)
-      assert.is.same({}, reverse)
+      assert.same({ localhost = { ipv4 = "127.0.0.1", ipv6 = "[::1]" } }, result)
     end)
 
     it("tests parsing 'hosts'", function()
