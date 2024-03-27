@@ -23,9 +23,11 @@ function _M.hostname_type(name)
   if colons > 1 then
     return "ipv6"
   end
+
   if remainder:match("^[%d%.]+$") then
     return "ipv4"
   end
+
   return "name"
 end
 
@@ -40,11 +42,13 @@ function _M.parse_hostname(name)
     local ip, port = name:match("^([^:]+)%:*(%d*)$")
     return ip, tonumber(port), t
   end
+
   -- ipv6
   if name:match("%[") then  -- brackets, so possibly a port
     local ip, port = name:match("^%[([^%]]+)%]*%:*(%d*)$")
     return "[" .. ip .. "]", tonumber(port), t
   end
+
   return "[" .. name .. "]", nil, t  -- no brackets also means no port
 end
 
@@ -90,6 +94,7 @@ function _M.parse_hosts(path, enable_ipv6)
       end
     end
   end
+
   return hosts
 end
 
@@ -100,15 +105,19 @@ function _M.parse_resolv_conf(path, enable_ipv6)
   if not resolv then
     return nil, err
   end
+
   resolv = utils.applyEnv(resolv)
   resolv.options = resolv.options or {}
   resolv.ndots = resolv.options.ndots or 1
   resolv.search = resolv.search or (resolv.domain and { resolv.domain })
+
   -- check if timeout is 0s
-  if resolv.options.timeout and resolv.options.timeout == 0 then
+  if resolv.options.timeout and resolv.options.timeout <= 0 then
+    log(NOTICE, "A non-positive timeout of ", resolv.options.timeout,
+                "s is configured in resolv.conf. Setting it to 2000ms.")
     resolv.options.timeout = 2000 -- 2000ms is lua-resty-dns default
-    log(NOTICE, "A non-positive timeout of 0s is configured in resolv.conf. Setting it to 2000ms.")
   end
+
   -- remove special domain like "."
   if resolv.search then
     for i = #resolv.search, 1, -1 do
@@ -117,9 +126,11 @@ function _M.parse_resolv_conf(path, enable_ipv6)
       end
     end
   end
+
   -- nameservers
   if resolv.nameserver then
     local nameservers = {}
+
     for _, address in ipairs(resolv.nameserver) do
       local ip, port, t = utils.parseHostname(address)
       if t == "ipv4" or
@@ -128,6 +139,7 @@ function _M.parse_resolv_conf(path, enable_ipv6)
         table_insert(nameservers, port and { ip, port } or ip)
       end
     end
+
     resolv.nameservers = nameservers
   end
   return resolv
@@ -150,11 +162,13 @@ function _M.search_names(name, resolv, hosts)
   for _, suffix in ipairs(resolv.search) do
     table_insert(names, name .. "." .. suffix)
   end
+
   if hosts and hosts[name] then
     table_insert(names, 1, name)
   else
     table_insert(names, name)
   end
+
   return names
 end
 
@@ -200,6 +214,7 @@ local function swrr_init(answers)
   for _, answer in ipairs(answers) do
     answer.cw = 0   -- current weight
   end
+
   -- random start
   for _ = 1, math_random(#answers) do
     swrr_next(answers)
