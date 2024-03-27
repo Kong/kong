@@ -187,9 +187,7 @@ end
 local ipc_counter = 0
 
 function _M.new(opts)
-  if not opts then
-    return nil, "no options table specified"
-  end
+  opts = opts or {}
 
   -- parse resolv.conf
   local resolv, err = utils.parse_resolv_conf(opts.resolv_conf, opts.enable_ipv6)
