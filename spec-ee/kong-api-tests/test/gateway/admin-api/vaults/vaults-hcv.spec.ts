@@ -8,7 +8,7 @@ import {
   isGateway,
 } from '@support';
 
-describe('@gke: Vaults: Hashicorp', function () {
+describe('Vaults: Hashicorp', function () {
   const url = `${getBasePath({
     environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/vaults`;

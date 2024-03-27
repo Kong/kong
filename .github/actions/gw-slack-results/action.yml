@@ -43,6 +43,9 @@ runs:
 
           echo "finalTitle=Gateway API Release Package Tests:  ( $package_name ), Install Method: ($install_method), ${{ inputs.gw_mode }} mode" >> $GITHUB_ENV
 
+        elif [[ "${{ inputs.test_title }}" == *"GKE"* ]]; then
+          echo "finalTitle=Gateway E2E API Tests: GKE" >> $GITHUB_ENV
+
         else
           echo "finalTitle=Gateway API Tests: ${{ inputs.gw_mode }} mode" >> $GITHUB_ENV
         fi

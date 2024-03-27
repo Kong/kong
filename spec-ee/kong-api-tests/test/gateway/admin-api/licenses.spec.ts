@@ -14,7 +14,7 @@ import {
   isGateway,
 } from '@support';
 
-describe('@gke: Gateway /licenses API tests', function () {
+describe('Gateway /licenses API tests', function () {
   const isCIrun = isCI();
   const waitTime = 5000;
   const sampleId = '7ad8a306-cb1f-4b61-8b51-47c3604c3748';
