@@ -139,6 +139,10 @@ local logging_schema = {
   }
 }
 
+local UNSUPPORTED_LOG_STATISTICS = {
+  ["llm/v1/completions"] = { "anthropic" },
+}
+
 _M.config_schema = {
   type = "record",
   fields = {
@@ -201,6 +205,21 @@ _M.config_schema = {
                                       if_match = { one_of = { "mistral", "llama2" } },
                                       then_at_least_one_of = { "model.options.upstream_url" },
                                       then_err = "must set %s for self-hosted providers/models" }},
+
+    {
+      custom_entity_check = {
+        field_sources = { "route_type", "model", "logging" },
+        fn = function(entity)
+          if entity.logging.log_statistics and UNSUPPORTED_LOG_STATISTICS[entity.route_type][entity.model.provider] then
+              return nil, fmt("cannot log statistics for %s provider when route_type is %s",
+                               entity.model.provider, entity.route_type)
+
+          else
+            return true
+          end
+        end,
+      }
+    },
   },
 }
 
