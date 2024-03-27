@@ -110,7 +110,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.equal(meta._VERSION, json.version)
-        assert.equal("{vault://mock/admin-listen}", json.configuration.admin_listen)
+        assert.same({ "127.0.0.1:9001" }, json.configuration.admin_listen)
         assert.falsy(exists(join(helpers.test_conf.prefix, ".kong_process_secrets")))
       end)
     end)
