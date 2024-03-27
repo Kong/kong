@@ -116,4 +116,14 @@ return {
       "sampling_rate",
     },
   },
+
+  -- Any dataplane older than 3.7.0
+  [3007000000] = {
+    opentelemetry = {
+      "propagation",
+    },
+    zipkin = {
+      "propagation",
+    },
+  },
 }
