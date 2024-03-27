@@ -827,6 +827,11 @@ local function retrieve_token(conf, access_token)
         [ERROR] = "invalid_token",
         error_description = "The access token is global, but the current " ..
           "plugin is configured without 'global_credentials'",
+      },
+      {
+        ["WWW-Authenticate"] = 'Bearer realm="service" error=' ..
+                                '"invalid_token" error_description=' ..
+                                '"The access token is invalid or has expired"'
       })
     end
 
