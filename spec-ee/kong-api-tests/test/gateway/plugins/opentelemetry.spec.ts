@@ -30,6 +30,10 @@ describe('Gateway Plugins: OpenTelemetry', function () {
   const jaegerWait = 20000;
   const configEndpoint = 'http://jaeger:4318/v1/traces';
   const paths = ['/jaegertest1', '/jaegertest2', '/jaegertest3'];
+  const b3Header = '80f198ee56343ba864fe8b2a57d3eff7-e457b5a2e4d86bd1-1-05e3ac9a4f6e3b90'
+  const traceparentHeader = '00-80e1afed08e019fc1110464cfa66635c-7a085853722dc6d2-01'
+  const amazonHeader = 'Root=1-63441c4a-abcdef012345678912345678'
+  const otHeader = 'W31SFeJcgC00L0DFXtsjSmwVwgJB0soF'
 
   const host = `${getBasePath({
     app: 'gateway',
@@ -283,6 +287,392 @@ describe('Gateway Plugins: OpenTelemetry', function () {
 
     logResponse(resp);
     expect(resp.status, 'Status should be 200').to.equal(200);
+    expect(resp.data.headers['Traceparent'], 'Should see Traceparent header being sent').to.contain('00-fff379b78684fd43a9e2bba4676ddc90');
+  });
+
+  it('should see only b3 header instead of traceparent when b3 exists in request', async function () {
+    const resp = await axios({
+      url: `${proxyUrl}${paths[1]}`,
+      headers: {
+        b3: b3Header,
+      },
+    });
+
+    logResponse(resp);
+    expect(resp.status, 'Status should be 200').to.equal(200);
+    expect(resp.data.headers['Traceparent'], 'Should not see Traceparent header when b3 header exists').to.not.exist
+    expect(resp.data.headers['B3'], 'Should see B3 header being sent').to.contain(b3Header.split('-')[0]);
+  });
+
+  it('should patch opel plugin header_type to ignore', async function () {
+    const resp = await axios({
+      method: 'patch',
+      url: `${url}/${pluginId}`,
+      data: {
+        config: {
+          resource_attributes: null,
+          header_type: 'ignore'
+        },
+      },
+    });
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 200').to.equal(200);
+    expect(resp.data.config.header_type,'Should see header_type updated').to.equal('ignore')
+
+    await wait( // eslint-disable-line no-restricted-syntax
+      isHybrid
+        ? hybridWaitTime + (isLocalDb ? 0 : hybridWaitTime)
+        : waitTime + (isLocalDb ? 0 : waitTime)
+    );
+  });
+
+  it('should see a different traceparent header id when header_type is ignore', async function () {
+    const resp = await axios({
+      url: `${proxyUrl}${paths[1]}`,
+      headers: {
+        traceparent: traceparentHeader,
+      },
+    });
+
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 200').to.equal(200);
+    expect(resp.data.headers['Traceparent'], 'Should see Traceparent header with different id').to.not.contain(traceparentHeader.split('-')[1]);
+  });
+
+  it('should see the same value for both b3 and traceparent headers with header_type w3c', async function () {
+    let resp = await axios({
+      method: 'patch',
+      url: `${url}/${pluginId}`,
+      data: {
+        config: {
+          header_type: 'w3c'
+        },
+      },
+    });
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 200').to.equal(200);
+    expect(resp.data.config.header_type,'Should see header_type updated').to.equal('w3c')
+
+    await wait( // eslint-disable-line no-restricted-syntax
+      isHybrid
+        ? hybridWaitTime + (isLocalDb ? 0 : hybridWaitTime)
+        : waitTime + (isLocalDb ? 0 : waitTime)
+    );
+
+    resp = await axios({
+      url: `${proxyUrl}${paths[1]}`,
+      headers: {
+        b3: b3Header,
+        traceparent: traceparentHeader,
+      },
+    });
+
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 200').to.equal(200);
+    expect(resp.data.headers['Traceparent'], 'Should see Traceparent header with same value as B3').to.contain(b3Header.split('-')[0]);
+    expect(resp.data.headers['B3'], 'Should see B3 header with given value').to.contain(b3Header.split('-')[0]);
+    expect(resp.data.headers['B3'], 'Should see B3 header id').to.contain(b3Header.split('-')[1]);
+  });
+
+  it('should patch opel plugin propagation configurations', async function () {
+    const resp = await axios({
+      method: 'patch',
+      url: `${url}/${pluginId}`,
+      data: {
+        config: {
+          propagation: {
+            clear: null,
+            default_format: 'w3c',
+            extract: ['w3c'],
+            inject: ['w3c']
+          }
+        },
+      },
+    });
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 200').to.equal(200);
+    expect(resp.data.config.propagation.default_format,'Should see correct propagation.default_format').to.equal('w3c')
+    expect(resp.data.config.propagation.extract,'Should see updated propagation.extract').to.eql(['w3c'])
+    expect(resp.data.config.propagation.inject,'Should see updated propagation.inject').to.eql(['w3c'])
+
+    await wait( // eslint-disable-line no-restricted-syntax
+      isHybrid
+        ? hybridWaitTime + (isLocalDb ? 0 : hybridWaitTime)
+        : waitTime + (isLocalDb ? 0 : waitTime)
+    );
+  });
+
+  it('should both b3 and traceparent headers preserve their values', async function () {
+    const resp = await axios({
+      url: `${proxyUrl}${paths[1]}`,
+      headers: {
+        b3: b3Header,
+        traceparent: traceparentHeader,
+      },
+    });
+
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 200').to.equal(200);
+    expect(resp.data.headers['B3'], 'Should see B3 header with given value').to.contain(b3Header.split('-')[0]);
+    expect(resp.data.headers['B3'], 'Should see B3 header id').to.contain(b3Header.split('-')[1]);
+    expect(resp.data.headers['B3'], 'Should see B3 header parentSpanId').to.contain(b3Header.split('-')[3]);
+    expect(resp.data.headers['Traceparent'], 'Should see Traceparent header with its value').to.contain(traceparentHeader.split('-')[1]);
+  });
+
+  it('should propagation.clear the given b3 header', async function () {
+    let resp = await axios({
+      method: 'patch',
+      url: `${url}/${pluginId}`,
+      data: {
+        config: {
+          propagation: {
+            clear: ['b3'],
+            default_format: 'w3c',
+            extract: ['w3c'],
+            inject: ['w3c']
+          }
+        },
+      },
+    });
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 200').to.equal(200);
+    expect(resp.data.config.propagation.default_format,'Should see correct propagation.default_format').to.equal('w3c')
+    expect(resp.data.config.propagation.extract,'Should see updated propagation.extract').to.eql(['w3c'])
+    expect(resp.data.config.propagation.clear,'Should see updated propagation.clear').to.eql(['b3'])
+
+    await wait( // eslint-disable-line no-restricted-syntax
+      isHybrid
+        ? hybridWaitTime + (isLocalDb ? 0 : hybridWaitTime)
+        : waitTime + (isLocalDb ? 0 : waitTime)
+    );
+
+    resp = await axios({
+      url: `${proxyUrl}${paths[1]}`,
+      headers: {
+        b3: b3Header,
+        traceparent: traceparentHeader,
+      },
+    });
+
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 200').to.equal(200);
+    expect(resp.data.headers['B3'], 'Should not see B3 header').to.not.exist
+    expect(resp.data.headers['Traceparent'], 'Should see Traceparent header with its value').to.contain(traceparentHeader.split('-')[1]);
+  });
+  
+  it('should not replace traceparent value with b3 when propagation.clear contains b3 and both headers exist in the request', async function () {
+    let resp = await axios({
+      method: 'patch',
+      url: `${url}/${pluginId}`,
+      data: {
+        config: {
+          propagation: {
+            clear: ['b3'],
+            default_format: 'w3c',
+            extract: ['w3c', 'b3'],
+            inject: ['w3c']
+          }
+        },
+      },
+    });
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 200').to.equal(200);
+    expect(resp.data.config.propagation.extract,'Should see updated propagation.extract').to.eql(['w3c', 'b3'])
+    expect(resp.data.config.propagation.clear,'Should see updated propagation.clear').to.eql(['b3'])
+
+    await wait( // eslint-disable-line no-restricted-syntax
+      isHybrid
+        ? hybridWaitTime + (isLocalDb ? 0 : hybridWaitTime)
+        : waitTime + (isLocalDb ? 0 : waitTime)
+    );
+
+    resp = await axios({
+      url: `${proxyUrl}${paths[1]}`,
+      headers: {
+        b3: b3Header,
+        traceparent: traceparentHeader,
+      },
+    });
+
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 200').to.equal(200);
+    expect(resp.data.headers['B3'], 'Should not see B3 header').to.not.exist
+    expect(resp.data.headers['Traceparent'], 'Should see Traceparent header with its value').to.contain(traceparentHeader.split('-')[1]);
+  });
+
+  it('should replace traceparent value with b3 when propagation.clear contains b3 and only b3 header exists in the request', async function () {
+    const resp = await axios({
+      url: `${proxyUrl}${paths[1]}`,
+      headers: {
+        b3: b3Header
+      },
+    });
+
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 200').to.equal(200);
+    expect(resp.data.headers['B3'], 'Should not see B3 header').to.not.exist
+    expect(resp.data.headers['Traceparent'], 'Should see Traceparent header with B3 value').to.contain(b3Header.split('-')[0]);
+  });
+
+  it('should extract from given header and inject to the target one', async function () {
+    let resp = await axios({
+      method: 'patch',
+      url: `${url}/${pluginId}`,
+      data: {
+        config: {
+          propagation: {
+            clear: ['b3'],
+            default_format: 'w3c',
+            extract: ['aws'],
+            inject: ['ot']
+          }
+        },
+      },
+    });
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 200').to.equal(200);
+    expect(resp.data.config.propagation.extract,'Should see updated propagation.extract').to.eql(['aws'])
+    expect(resp.data.config.propagation.inject,'Should see updated propagation.inject').to.eql(['ot'])
+
+    await wait( // eslint-disable-line no-restricted-syntax
+      isHybrid
+        ? hybridWaitTime + (isLocalDb ? 0 : hybridWaitTime)
+        : waitTime + (isLocalDb ? 0 : waitTime)
+    );
+
+    resp = await axios({
+      url: `${proxyUrl}${paths[1]}`,
+      headers: {
+        "X-Amzn-Trace-Id": amazonHeader,
+        "Ot-Tracer-Traceid": otHeader,
+      },
+    });
+
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 200').to.equal(200);
+    expect(resp.data.headers['X-Amzn-Trace-Id'], 'Should unchanged X-Amzn-Trace-Id header').to.equal(amazonHeader)
+    expect(resp.data.headers['Ot-Tracer-Traceid'], 'Should see Ot-Tracer-Traceid header with aws value').to.contain(amazonHeader.split('-')[1]);
+  });
+
+  it('should not inject to the target header when extract is not present', async function () {
+    const resp = await axios({
+      url: `${proxyUrl}${paths[1]}`,
+      headers: {
+        "Ot-Tracer-Traceid": otHeader,
+      },
+    });
+
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 200').to.equal(200);
+    expect(resp.data.headers['X-Amzn-Trace-Id'], 'Should not see X-Amzn-Trace-Id header').to.not.exist
+    expect(resp.data.headers['Ot-Tracer-Traceid'], 'Should see Ot-Tracer-Traceid header with non aws value').to.not.contain(amazonHeader.split('-')[1]);
+    expect(resp.data.headers['Ot-Tracer-Sampled'], 'Should see ot sampled header').to.exist
+    expect(resp.data.headers['Ot-Tracer-Spanid'], 'Should see ot Spanid header').to.exist
+  });
+
+  it('should use the default header when extract is not present and inject is preserve', async function () {
+    let resp = await axios({
+      method: 'patch',
+      url: `${url}/${pluginId}`,
+      data: {
+        config: {
+          propagation: {
+            clear: null,
+            default_format: 'ot',
+            extract: ['datadog'],
+            inject: ['preserve']
+          }
+        },
+      },
+    });
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 200').to.equal(200);
+    expect(resp.data.config.propagation.extract,'Should see updated propagation.extract').to.eql(['datadog'])
+    expect(resp.data.config.propagation.inject,'Should see updated propagation.inject').to.eql(['preserve'])
+
+    await wait( // eslint-disable-line no-restricted-syntax
+      isHybrid
+        ? hybridWaitTime + (isLocalDb ? 0 : hybridWaitTime)
+        : waitTime + (isLocalDb ? 0 : waitTime)
+    );
+
+    resp = await axios({
+      url: `${proxyUrl}${paths[1]}`,
+    });
+
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 200').to.equal(200);
+    expect(resp.data.headers['Ot-Tracer-Sampled'], 'Should see ot sampled header').to.exist
+    expect(resp.data.headers['Ot-Tracer-Spanid'], 'Should see ot Spanid header').to.exist
+    expect(resp.data.headers['Ot-Tracer-Traceid'], 'Should see ot Traceid header').to.exist
+  });
+
+  it('should see all specified inject headers added by kong', async function () {
+    let resp = await axios({
+      method: 'patch',
+      url: `${url}/${pluginId}`,
+      data: {
+        config: {
+          propagation: {
+            extract: ['w3c', 'b3'],
+            inject: ['w3c', 'b3', 'datadog', 'aws', 'gcp', 'jaeger', 'ot'],
+            clear: ['b3'],
+            default_format: 'w3c',
+          }
+        },
+      },
+    });
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 200').to.equal(200);
+    expect(resp.data.config.propagation.inject,'Should see updated propagation.inject values').to.eql(['w3c', 'b3', 'datadog', 'aws', 'gcp', 'jaeger', 'ot'])
+
+    await wait( // eslint-disable-line no-restricted-syntax
+      isHybrid
+        ? hybridWaitTime + (isLocalDb ? 0 : hybridWaitTime)
+        : waitTime + (isLocalDb ? 0 : waitTime)
+    );
+
+    resp = await axios({
+      url: `${proxyUrl}${paths[1]}`,
+      headers: {
+        traceparent: traceparentHeader,
+      },
+    });
+
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 200').to.equal(200);
+    expect(resp.data.headers['Ot-Tracer-Sampled'], 'Should see ot sampled header').to.exist
+    expect(resp.data.headers['Ot-Tracer-Spanid'], 'Should see ot Spanid header').to.exist
+    expect(resp.data.headers['Ot-Tracer-Traceid'], 'Should see ot Traceid header').to.exist
+    expect(resp.data.headers['Uber-Trace-Id'], 'Should see Uber-Trace-Id header').to.exist
+    expect(resp.data.headers['X-Amzn-Trace-Id'], 'Should see X-Amzn-Trace-Id header').to.contain('Root=')
+    expect(resp.data.headers['X-B3-Parentspanid'], 'Should see X-B3-Parentspanid header').to.exist
+    expect(resp.data.headers['X-B3-Sampled'], 'Should see X-B3-Sampled header').to.exist
+    expect(resp.data.headers['X-B3-Spanid'], 'Should see X-B3-Spanid header').to.exist
+    expect(resp.data.headers['X-B3-Traceid'], 'Should see X-B3-Traceid header').to.exist
+    expect(resp.data.headers['X-Cloud-Trace-Context'], 'Should see X-Cloud-Trace-Context header').to.exist
+    expect(resp.data.headers['X-Datadog-Parent-Id'], 'Should see X-Datadog-Parent-Id header').to.exist
+    expect(resp.data.headers['X-Datadog-Sampling-Priority'], 'Should see X-Datadog-Sampling-Priority header').to.exist
+    expect(resp.data.headers['X-Datadog-Trace-Id'], 'Should see X-Datadog-Trace-Id header').to.exist
+    expect(resp.data.headers['X-Datadog-Trace-Id'], 'Should see X-Datadog-Trace-Id header').to.exist
   });
 
   after(async function () {
