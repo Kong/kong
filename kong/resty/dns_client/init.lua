@@ -147,23 +147,19 @@ local function init_hosts(cache, path, preferred_ip_type)
       return
     end
 
-    local ttl = LONG_LASTING_TTL
-
-    local key = name .. ":" .. qtype
-    local answers = {
-      ttl = ttl,
-      expire = now() + ttl,
-      {
-        name = name,
-        type = qtype,
-        address = address,
-        class = 1,
-        ttl = ttl,
-      },
-    }
     -- insert via the `:get` callback to prevent inter-process communication
-    cache:get(key, nil, function()
-      return answers, nil, ttl
+    cache:get(name .. ":" .. qtype, nil, function()
+      return {
+        ttl = LONG_LASTING_TTL,
+        expire = now() + LONG_LASTING_TTL,
+        {
+          name = name,
+          type = qtype,
+          address = address,
+          class = 1,
+          ttl = LONG_LASTING_TTL,
+        },
+      }, nil, LONG_LASTING_TTL
     end)
   end
 
