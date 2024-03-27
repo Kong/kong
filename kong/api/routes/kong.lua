@@ -273,7 +273,7 @@ return {
   ["/status/dns"] = {
     GET = function (self, db, helpers)
       if not kong.dns.stats then
-        return kong.response.exit(404, { message = "not support for legacy DNS client" })
+        return kong.response.exit(501, { message = "not implemented with the legacy DNS client" })
       end
 
       return kong.response.exit(200, {
