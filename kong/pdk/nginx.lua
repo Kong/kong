@@ -12,7 +12,7 @@ local arch = ffi.arch
 local ngx  = ngx
 local tonumber = tonumber
 
-if arch == "x64" or arch == "arm64" then
+if arch == "x64" or arch == "s390x" or arch == "arm64" then
   ffi.cdef[[
     uint64_t *ngx_stat_active;
     uint64_t *ngx_stat_reading;
