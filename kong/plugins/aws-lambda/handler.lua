@@ -71,6 +71,9 @@ local AWSLambdaHandler = {
 
 
 function AWSLambdaHandler:access(conf)
+  -- TRACING: set KONG_WAITING_TIME start
+  local kong_wait_time_start = get_now()
+
   if initialize then
     initialize()
   end
@@ -164,9 +167,6 @@ function AWSLambdaHandler:access(conf)
 
   local upstream_body_json = build_request_payload(conf)
 
-  -- TRACING: set KONG_WAITING_TIME start
-  local kong_wait_time_start = get_now()
-
   local res, err = lambda_service:invoke({
     FunctionName = conf.function_name,
     InvocationType = conf.invocation_type,
@@ -186,9 +186,11 @@ function AWSLambdaHandler:access(conf)
 
   -- TRACING: set KONG_WAITING_TIME stop
   local ctx = ngx.ctx
+  local lambda_wait_time_total = get_now() - kong_wait_time_start
   -- setting the latency here is a bit tricky, but because we are not
   -- actually proxying, it will not be overwritten
-  ctx.KONG_WAITING_TIME = get_now() - kong_wait_time_start
+  ctx.KONG_WAITING_TIME = lambda_wait_time_total
+  ctx.KONG_THIRDPARTY_ACCESS_TIME = lambda_wait_time_total
 
   local headers = res.headers
 
