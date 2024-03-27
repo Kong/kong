@@ -8,11 +8,10 @@ source .requirements
 KONG_VERSION=$(bash scripts/grep-kong-version.sh)
 KONG_RELEASE_LABEL=${KONG_RELEASE_LABEL:-$KONG_VERSION}
 
-PULP_HOST=${PULP_HOST:-"https://api.download-dev.konghq.com"}
-PULP_USERNAME=${PULP_USERNAME:-"admin"}
-PULP_PASSWORD=${PULP_PASSWORD:-}
+# allow package name (from .requirements) to be overridden by ENV
+KONG_PACKAGE_NAME="${KONG_PACKAGE_NAME_OVERRIDE:-${KONG_PACKAGE_NAME}}"
 
-PULP_DOCKER_IMAGE="kong/release-script"
+RELEASE_SCRIPT_DOCKER_IMAGE="kong/release-script"
 
 # Variables used by the release script
 ARCHITECTURE=${ARCHITECTURE:-amd64}
@@ -131,17 +130,13 @@ function push_package () {
   fi
 
   docker run \
-    -e PULP_HOST="$PULP_HOST" \
-    -e PULP_USERNAME="$PULP_USERNAME" \
-    -e PULP_PASSWORD="$PULP_PASSWORD" \
     -e VERBOSE \
     -e CLOUDSMITH_API_KEY \
     -e CLOUDSMITH_DRY_RUN \
     -e IGNORE_CLOUDSMITH_FAILURES \
     -e USE_CLOUDSMITH \
-    -e USE_PULP \
     -v "$(pwd)/$KONG_ARTIFACT:/files/$DIST_FILE" \
-    -i $PULP_DOCKER_IMAGE \
+    -i $RELEASE_SCRIPT_DOCKER_IMAGE \
           --file "/files/$DIST_FILE" \
           --dist-name "$ARTIFACT_TYPE" $dist_version \
           --major-version "${KONG_VERSION%%.*}.x" \
