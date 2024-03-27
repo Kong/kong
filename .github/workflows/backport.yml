@@ -8,6 +8,7 @@ permissions:
   actions: write
 jobs:
   backport:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     name: Backport
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged

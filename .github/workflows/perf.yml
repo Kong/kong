@@ -16,6 +16,7 @@ env:
 
 jobs:
   build-packages:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     name: Build dependencies
     runs-on: ubuntu-22.04
     if: |
@@ -79,6 +80,7 @@ jobs:
         make install-dev-rocks
 
   perf:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     name: RPS, latency and flamegraphs
     runs-on: ubuntu-22.04
     needs: build-packages

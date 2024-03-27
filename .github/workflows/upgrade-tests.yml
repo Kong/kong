@@ -34,6 +34,7 @@ jobs:
       relative-build-root: bazel-bin/build
 
   upgrade-test:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     name: Run migration tests
     runs-on: ubuntu-22.04
     needs: build
