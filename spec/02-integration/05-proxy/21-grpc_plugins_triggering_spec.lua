@@ -1,6 +1,5 @@
 local helpers = require "spec.helpers"
 local pl_file = require "pl.file"
-local atc_compat = require "kong.router.compat"
 
 
 local TEST_CONF = helpers.test_conf
@@ -28,18 +27,8 @@ local function reload_router(flavor)
 end
 
 
+-- TODO: remove it when we confirm it is not needed
 local function gen_route(flavor, r)
-  if flavor ~= "expressions" then
-    return r
-  end
-
-  r.expression = atc_compat.get_expression(r)
-  r.priority = tonumber(atc_compat._get_priority(r))
-
-  r.hosts = nil
-  r.paths = nil
-  r.snis  = nil
-
   return r
 end
 

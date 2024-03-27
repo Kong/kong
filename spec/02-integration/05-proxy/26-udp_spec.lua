@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local atc_compat = require "kong.router.compat"
 
 
 local UDP_PROXY_PORT = 26001
@@ -27,16 +26,8 @@ local function reload_router(flavor)
 end
 
 
+-- TODO: remove it when we confirm it is not needed
 local function gen_route(flavor, r)
-  if flavor ~= "expressions" then
-    return r
-  end
-
-  r.expression = atc_compat.get_expression(r)
-  r.priority = tonumber(atc_compat._get_priority(r))
-
-  r.sources = nil
-
   return r
 end
 
