@@ -26,12 +26,13 @@ lualib_deps = [
     "@lua-resty-events//:all_srcs",
     "@lua-resty-websocket//:all_srcs",
     "@atc_router",
+    "@resty_protobuf",
 ]
 
 install_lualib_deps_cmd = "\n".join([
     """
     DEP=$(pwd)/external/%s
-    if [[ ${DEP} == */atc_router ]]; then
+    if [[ ${DEP} == */atc_router || ${DEP} == */resty_protobuf ]]; then
         INSTALL=/usr/bin/install make --silent -C ${DEP} LUA_LIB_DIR=${BUILD_DESTDIR}/openresty/lualib install-lualib
     else
         INSTALL=/usr/bin/install make --silent -C ${DEP} LUA_LIB_DIR=${BUILD_DESTDIR}/openresty/lualib install
@@ -144,6 +145,9 @@ kong_directory_genrule(
 
         ATC_ROUTER=${WORKSPACE_PATH}/$(location @atc_router)
         cp $ATC_ROUTER ${BUILD_DESTDIR}/openresty/lualib/.
+
+        RESTY_PROTOBUF=${WORKSPACE_PATH}/$(location @resty_protobuf)
+        cp $RESTY_PROTOBUF ${BUILD_DESTDIR}/openresty/lualib/.
 
         cp -r $(locations @protoc//:all_srcs) ${BUILD_DESTDIR}/kong/.
 
