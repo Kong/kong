@@ -370,6 +370,7 @@ local CONF_PARSERS = {
   dns_not_found_ttl = { typ = "number" },
   dns_error_ttl = { typ = "number" },
   dns_no_sync = { typ = "boolean" },
+  legacy_dns_client = { typ = "boolean" },
   privileged_worker = {
     typ = "boolean",
     deprecated = {
