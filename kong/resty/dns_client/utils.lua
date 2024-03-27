@@ -12,6 +12,13 @@ local readlines = require("pl.utils").readlines
 local DEFAULT_HOSTS_FILE  = "/etc/hosts"
 local DEFAULT_RESOLV_CONF = "/etc/resolv.conf"
 
+local LOCALHOST = {
+  ipv4 = "127.0.0.1",
+  ipv6 = "[::1]",
+}
+
+local DEFAULT_HOSTS = { localhost = LOCALHOST }
+
 
 local _M = {}
 
@@ -64,10 +71,12 @@ end
 function _M.parse_hosts(path, enable_ipv6)
   local lines, err = get_lines(path or DEFAULT_HOSTS_FILE)
   if not lines then
-    return nil, err
+    log(NOTICE, "Invalid hosts file: ", err)
+    return DEFAULT_HOSTS
   end
 
   local hosts = {}
+
   for _, line in ipairs(lines) do
     -- Remove leading/trailing whitespaces and split by whitespace
     local parts = {}
@@ -93,6 +102,10 @@ function _M.parse_hosts(path, enable_ipv6)
         end
       end
     end
+  end
+
+  if not hosts.localhost then
+    hosts.localhost = LOCALHOST
   end
 
   return hosts
