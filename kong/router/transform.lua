@@ -688,7 +688,7 @@ end
 
 -- split routes into multiple routes, one for each prefix length and one for all
 -- regular expressions
-local function split_route_by_path_into(route_and_service, routes_and_services_split)
+local function split_route_by_path_info(route_and_service, routes_and_services_split)
   local original_route = route_and_service.route
 
   if is_empty_field(original_route.paths) or #original_route.paths == 1 or
@@ -724,7 +724,7 @@ local function split_routes_and_services_by_path(routes_and_services)
   local routes_and_services_split = tb_new(count, 0)
 
   for i = 1, count do
-    split_route_by_path_into(routes_and_services[i], routes_and_services_split)
+    split_route_by_path_info(routes_and_services[i], routes_and_services_split)
   end
 
   return routes_and_services_split
