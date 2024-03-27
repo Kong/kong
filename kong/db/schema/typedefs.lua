@@ -168,14 +168,14 @@ end
 
 
 local function validate_wildcard_host(host)
-  local idx = string.find(host, "*", nil, true)
+  local idx = host:find("*", nil, true)
   if idx then
     if idx ~= 1 and idx ~= #host then
       return nil, "wildcard must be leftmost or rightmost character"
     end
 
     -- substitute wildcard for upcoming host normalization
-    local mock_host, count = string.gsub(host, "%*", "wildcard")
+    local mock_host, count = gsub(host, "%*", "wildcard")
     if count > 1 then
       return nil, "only one wildcard must be specified"
     end
@@ -486,7 +486,7 @@ typedefs.protocols_http = Schema.define {
 -- common for routes and routes subschemas
 
 local function validate_host_with_wildcards(host)
-  local no_wildcards = string.gsub(host, "%*", "abc")
+  local no_wildcards = gsub(host, "%*", "abc")
   return typedefs.host_with_optional_port.custom_validator(no_wildcards)
 end
 
