@@ -1,0 +1,3 @@
+message: Add WWW-Authenticate headers to 401 response in jwt auth plugin.
+type: bugfix
+scope: Plugin

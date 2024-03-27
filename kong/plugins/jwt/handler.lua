@@ -146,6 +146,10 @@ local function set_consumer(consumer, credential, token)
   kong.ctx.shared.authenticated_jwt_token = token -- TODO: wrap in a PDK function?
 end
 
+local function unauthorized(message, errors)
+  return { status = 401, message = message, headers = { ["WWW-Authenticate"] = 'Bearer' }, errors = errors }
+end
+
 
 local function do_authentication(conf)
   local token, err = retrieve_tokens(conf)
@@ -156,18 +160,18 @@ local function do_authentication(conf)
   local token_type = type(token)
   if token_type ~= "string" then
     if token_type == "nil" then
-      return false, { status = 401, message = "Unauthorized" }
+      return false, unauthorized("Unauthorized")
     elseif token_type == "table" then
-      return false, { status = 401, message = "Multiple tokens provided" }
+      return false, unauthorized("Multiple tokens provided")
     else
-      return false, { status = 401, message = "Unrecognizable token" }
+      return false, unauthorized("Unrecognizable token")
     end
   end
 
   -- Decode token to find out who the consumer is
   local jwt, err = jwt_decoder:new(token)
   if err then
-    return false, { status = 401, message = "Bad token; " .. tostring(err) }
+    return false, unauthorized("Bad token; " .. tostring(err))
   end
 
   local claims = jwt.claims
@@ -175,9 +179,9 @@ local function do_authentication(conf)
 
   local jwt_secret_key = claims[conf.key_claim_name] or header[conf.key_claim_name]
   if not jwt_secret_key then
-    return false, { status = 401, message = "No mandatory '" .. conf.key_claim_name .. "' in claims" }
+    return false, unauthorized("No mandatory '" .. conf.key_claim_name .. "' in claims")
   elseif jwt_secret_key == "" then
-    return false, { status = 401, message = "Invalid '" .. conf.key_claim_name .. "' in claims" }
+    return false, unauthorized("Invalid '" .. conf.key_claim_name .. "' in claims")
   end
 
   -- Retrieve the secret
@@ -189,14 +193,14 @@ local function do_authentication(conf)
   end
 
   if not jwt_secret then
-    return false, { status = 401, message = "No credentials found for given '" .. conf.key_claim_name .. "'" }
+    return false, unauthorized("No credentials found for given '" .. conf.key_claim_name .. "'")
   end
 
   local algorithm = jwt_secret.algorithm or "HS256"
 
   -- Verify "alg"
   if jwt.header.alg ~= algorithm then
-    return false, { status = 401, message = "Invalid algorithm" }
+    return false, unauthorized("Invalid algorithm")
   end
 
   local jwt_secret_value = algorithm ~= nil and algorithm:sub(1, 2) == "HS" and
@@ -207,25 +211,25 @@ local function do_authentication(conf)
   end
 
   if not jwt_secret_value then
-    return false, { status = 401, message = "Invalid key/secret" }
+    return false, unauthorized("Invalid key/secret")
   end
 
   -- Now verify the JWT signature
   if not jwt:verify_signature(jwt_secret_value) then
-    return false, { status = 401, message = "Invalid signature" }
+    return false, unauthorized("Invalid signature")
   end
 
   -- Verify the JWT registered claims
   local ok_claims, errors = jwt:verify_registered_claims(conf.claims_to_verify)
   if not ok_claims then
-    return false, { status = 401, errors = errors }
+    return false, unauthorized(nil, errors)
   end
 
   -- Verify the JWT registered claims
   if conf.maximum_expiration ~= nil and conf.maximum_expiration > 0 then
     local ok, errors = jwt:check_maximum_expiration(conf.maximum_expiration)
     if not ok then
-      return false, { status = 401, errors = errors }
+      return false, unauthorized(nil, errors)
     end
   end
 
@@ -279,7 +283,7 @@ function JwtHandler:access(conf)
       set_consumer(consumer)
 
     else
-      return kong.response.exit(err.status, err.errors or { message = err.message })
+      return kong.response.exit(err.status, err.errors or { message = err.message }, err.headers)
     end
   end
 end
