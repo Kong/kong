@@ -1,5 +1,10 @@
 {
-    "completion": "The sum of 1 + 1 is 2.",
+    "content": [
+        {
+            "text": "The sum of 1 + 1 is 2.",
+            "type": "text"
+        }
+    ],
     "stop_reason": "stop_sequence",
-    "model": "claude-2"
+    "model": "claude-2.1"
 }

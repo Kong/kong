@@ -40,10 +40,10 @@ local FORMATS = {
       header_value = "Bearer cohere-key",
     },
   },
-  authropic = {
+  anthropic = {
     route_type = "llm/v1/chat",
     model = {
-      name = "claude-2",
+      name = "claude-2.1",
       provider = "anthropic",
       options = {
         max_tokens = 512,
@@ -185,7 +185,6 @@ describe(PLUGIN_NAME .. ": (unit)", function()
                 if err or (body.messages == ngx.null) then
                   ngx.status = 400
                   ngx.say(pl_file.read(base_dir .. ngx.var.provider .. "/llm-v1-chat/responses/bad_request.json"))
-
                 else
                   ngx.status = 200
                   ngx.say(pl_file.read(base_dir .. ngx.var.provider .. "/request-transformer/response-in-json.json"))
@@ -213,6 +212,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
   lazy_teardown(function()
     assert(mock:stop())
   end)
+
 
   for name, format_options in pairs(FORMATS) do
     describe(name .. " transformer tests, exact json response", function()

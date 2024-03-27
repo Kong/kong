@@ -9,6 +9,6 @@
       }
     }
   ],
-  "model": "claude-2",
+  "model": "claude-2.1",
   "object": "chat.completion"
 }

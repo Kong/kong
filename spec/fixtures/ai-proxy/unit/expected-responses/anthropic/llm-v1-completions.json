@@ -6,6 +6,6 @@
       "text": "You cannot divide by zero because it is not a valid operation in mathematics."
     }
   ],
-  "model": "claude-2",
+  "model": "claude-2.1",
   "object": "text_completion"
 }

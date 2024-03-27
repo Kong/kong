@@ -1,5 +1,5 @@
 {
     "completion": " Hello! My name is Claude.",
     "stop_reason": "stop_sequence",
-    "model": "claude-2"
+    "model": "claude-2.1"
 }
