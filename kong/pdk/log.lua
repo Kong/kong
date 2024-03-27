@@ -841,8 +841,7 @@ do
           size = to_decimal(var.bytes_sent),
         },
         latencies = {
-          kong = (ctx.KONG_PROXY_LATENCY or ctx.KONG_RESPONSE_LATENCY or 0) +
-                 (ctx.KONG_RECEIVE_TIME or 0),
+          kong = ctx.KONG_PROXY_LATENCY or ctx.KONG_RESPONSE_LATENCY or 0,
           proxy = ctx.KONG_WAITING_TIME or -1,
           request = tonumber(var.request_time) * 1000,
           receive = ctx.KONG_RECEIVE_TIME or 0,
