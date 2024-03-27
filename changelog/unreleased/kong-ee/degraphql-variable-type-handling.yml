@@ -1,0 +1,4 @@
+message: |
+  **DegraphQL**: Fixed an issue where GraphQL variables were not being correctly parsed and coerced into their defined types.
+type: bugfix
+scope: Plugin

@@ -39,6 +39,23 @@ local graphql_mock_query = {
      }
    }
   ]],
+
+  fetch_recent_repos = [[
+    query($repoCount: Int!, $rating: Float!, $category: String!, $isActive: Boolean!, $userId: ID!) {
+      user(id: $userId) {
+        id
+        name
+        isActive @include(if: $isActive)
+        repositories(last: $repoCount) {
+          nodes {
+            id
+            name
+            stars(rating: $rating, category: $category)
+          }
+        }
+      }
+    }
+  ]],
 }
 
 for _, strategy in helpers.each_strategy() do
@@ -99,6 +116,12 @@ for _, strategy in helpers.each_strategy() do
         query = graphql_mock_query.repo_owner_name,
       })
 
+      assert(db.degraphql_routes:insert {
+        service = { id = service.id },
+        uri = "/fetch_recent_repos",
+        query = graphql_mock_query.fetch_recent_repos,
+      })
+
       helpers.start_kong({
         database = strategy,
         plugins = "bundled,degraphql",
@@ -152,6 +175,28 @@ for _, strategy in helpers.each_strategy() do
       local json = assert.response(res).has.jsonbody()
       assert.same(graphql_mock_query.repo_owner_name, json.data.query)
       assert.True(compare_no_order({ owner = "test", name = "abc" }, json.data.variables))
+
+
+      local ori_graph_query = {
+        repoCount = 3, -- A signed 32‐bit integer
+        rating = 4.5, -- A signed double-precision floating-point value.
+        category = "technology", -- A UTF‐8 character sequence.
+        isActive = true, -- true or false.
+        userId = "12345" -- ID type, serialized as a String
+      }
+
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/fetch_recent_repos",
+        query   = ori_graph_query,
+        headers = {
+          ["Host"] = "graphql.test"
+        }
+      })
+
+      assert.response(res).has.status(200)
+      local json = assert.response(res).has.jsonbody()
+      assert.same(ori_graph_query, json.data.variables)
     end)
 
     it("can update graphql router when creating new graphql_route entity", function ()

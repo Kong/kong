@@ -13,6 +13,7 @@ local meta = require "kong.meta"
 describe("rockspec/meta", function()
   local rock, lua_srcs = {}
   local rock_filename
+  local distribution = {}
 
   lazy_setup(function()
     lua_srcs = pl_dir.getallfiles("./kong", "*.lua")
@@ -27,6 +28,27 @@ describe("rockspec/meta", function()
     setfenv(f, rock)
 
     f()
+
+    -- XXX EE [[
+    -- initialize the distribution table to store information about
+    -- the modules in the `./distribution` directory
+    -- some ee plugins need to require module from distribution(such as degraphql)
+    -- so we need to check if the module is in the distribution
+    for dir in pl_dir.walk("./distribution") do
+      local specs = pl_dir.getfiles(dir, "*.rockspec")
+      for _, spec in ipairs(specs) do
+        local chunk = assert(loadfile(spec))
+        local env = {}
+        setfenv(chunk, env)
+        chunk()
+
+        for name, path in pairs(env.build.modules) do
+          local dpath = pl_path.join(dir, path):gsub("^%.*/", "")
+          distribution[name] = dpath
+        end
+      end
+    end
+    --]]
   end)
 
   describe("meta", function()
@@ -101,7 +123,7 @@ describe("rockspec/meta", function()
 
         -- PCRE: require\s*\(?\s*(["''])(kong\.[\w_.-]+[\w_.-])(["''])
         for _, mod in string.gmatch(str, "require%s*%(?%s*([\"'])(kong%.[%w_.-]+[%w_-])%1") do
-          if not rock.build.modules[mod] then
+          if not rock.build.modules[mod] and (not distribution[mod]) then
             assert(rock.build.modules[mod] ~= nil,
                    "Invalid module require: \n"                      ..
                    "requiring module '" .. mod .. "' in Lua source " ..

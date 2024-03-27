@@ -7,12 +7,18 @@
 
 local cjson = require "cjson"
 local tablex = require "pl.tablex"
+local graphql_parse = require "kong.gql.query.build_ast.parse"
 
 local Router = require("lapis.router").Router
 
 local arguments  = require "kong.api.arguments"
 local meta = require "kong.meta"
 local workspaces = require "kong.workspaces"
+
+local type = type
+local ipairs = ipairs
+local fmt = string.format
+
 local FORCE = true
 
 local DeGraphQLHandler = {
@@ -91,6 +97,36 @@ function DeGraphQLHandler:update_router(force)
 end
 
 
+local function coerce_query_variable(query_str, args)
+  local parse_tree, err = graphql_parse(query_str)
+  if not parse_tree then
+    kong.log.err("Error parsing graphql query: ", err)
+    return
+  end
+
+  local variable_definition = parse_tree.definitions and parse_tree.definitions[1]
+                              and parse_tree.definitions[1].variableDefinitions
+
+  if variable_definition and type(variable_definition) == "table" then
+    for _, variable in ipairs(variable_definition) do
+      local var_name = variable.variable.name.value
+      local var_type = variable.type.type.name.value
+      local var_value = args[var_name]
+
+      if var_value then
+        if var_type == "Int" then
+          args[var_name] = tonumber(var_value)
+        elseif var_type == "Boolean" then
+          args[var_name] = (var_value == "true")
+        elseif var_type == "Float" then
+          args[var_name] = tonumber(var_value)
+        end
+      end
+    end
+  end
+end
+
+
 function DeGraphQLHandler:get_query()
   local service_id = ngx.ctx.service.id
 
@@ -111,7 +147,9 @@ function DeGraphQLHandler:get_query()
 
   args = tx_union(args, auto_args)
 
-  return format(match[method], args), args
+  local query_str = match[method]
+  coerce_query_variable(query_str, args)
+  return format(query_str, args), args
 end
 
 
