@@ -104,6 +104,15 @@ end
 local function unauthorized(message, www_auth_content)
   return { status = 401, message = message, headers = { ["WWW-Authenticate"] = www_auth_content } }
 end
+local function remove_query_key(raw_query, key)
+  -- Pattern captures a key-value pair in the query string
+  local pattern = key .. "=[^&]*&?"
+  -- Remove key-value pair from query string
+  local new_query = string.gsub(raw_query, pattern, "")
+  -- If the key-value pair was at the end of the string, there might be a trailing &
+  new_query = string.gsub(new_query, "&$", "")
+  return new_query
+end
 
 local function do_authentication(conf)
   if type(conf.key_names) ~= "table" then
@@ -143,9 +152,16 @@ local function do_authentication(conf)
       key = v
 
       if conf.hide_credentials then
-        query[name] = nil
-        kong.service.request.set_query(query)
-        kong.service.request.clear_header(name)
+        if conf.key_in_query then
+          -- hide credentials and mantain the order of the parameters
+          -- https://github.com/Kong/kong/issues/3963
+          local raw_query = kong.request.get_raw_query()
+          local new_query = remove_query_key(raw_query, name)
+          kong.service.request.set_raw_query(new_query)
+        end
+        if conf.key_in_header then
+          kong.service.request.clear_header(name)
+        end
 
         if conf.key_in_body then
           if not body then
@@ -163,7 +179,6 @@ local function do_authentication(conf)
       end
 
       break
-
     elseif type(v) == "table" then
       -- duplicate API key
       return nil, unauthorized(ERR_DUPLICATE_API_KEY, www_auth_content)
@@ -182,7 +197,7 @@ local function do_authentication(conf)
   local credential_cache_key = kong.db.keyauth_credentials:cache_key(key)
   -- hit_level be 1 if stale value is propelled into L1 cache; so set a minimal `resurrect_ttl`
   local credential, err, hit_level = cache:get(credential_cache_key, { resurrect_ttl = 0.001 }, load_credential,
-                                    key)
+    key)
 
   if err then
     return error(err)
@@ -203,8 +218,8 @@ local function do_authentication(conf)
   local consumer_cache_key, consumer
   consumer_cache_key = kong.db.consumers:cache_key(credential.consumer.id)
   consumer, err      = cache:get(consumer_cache_key, nil,
-                                 kong.client.load_consumer,
-                                 credential.consumer.id)
+    kong.client.load_consumer,
+    credential.consumer.id)
   if err then
     kong.log.err(err)
     return nil, server_error(ERR_UNEXPECTED)
@@ -266,6 +281,5 @@ function KeyAuthHandler:access(conf)
     return logical_AND_authentication(conf)
   end
 end
-
 
 return KeyAuthHandler
