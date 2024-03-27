@@ -36,6 +36,7 @@ local gsub              = string.gsub
 local find              = string.find
 local lower             = string.lower
 local fmt               = string.format
+
 local ngx               = ngx
 local var               = ngx.var
 local log               = ngx.log
@@ -70,6 +71,8 @@ local ROUTER_CACHE_SIZE = DEFAULT_MATCH_LRUCACHE_SIZE
 local ROUTER_CACHE = lrucache.new(ROUTER_CACHE_SIZE)
 local ROUTER_CACHE_NEG = lrucache.new(ROUTER_CACHE_SIZE)
 
+local DEFAULT_PROXY_HTTP_VERSION = "1.1"
+local MAX_HEADERS                = 100
 
 local NOOP = function() end
 
@@ -1289,6 +1292,13 @@ return {
       var.upstream_x_forwarded_path   = forwarded_path
       var.upstream_x_forwarded_prefix = forwarded_prefix
 
+      do
+        local req_via = get_header(constants.HEADERS.VIA, ctx)
+        local kong_inbound_via = var.server_protocol .. " " .. SERVER_HEADER
+        var.upstream_via = req_via and req_via .. "," .. kong_inbound_via  or
+                          kong_inbound_via
+      end
+
       -- At this point, the router and `balancer_setup_stage1` have been
       -- executed; detect requests that need to be redirected from `proxy_pass`
       -- to `grpc_pass`. After redirection, this function will return early
@@ -1478,7 +1488,17 @@ return {
         end
 
         if enabled_headers[headers.VIA] then
-          header[headers.VIA] = SERVER_HEADER
+          -- Kong does not support injected directives like 'nginx_location_proxy_http_version',
+          -- so we skip checking them.
+          local proxy_http_version = ctx.proxy_http_version or
+                                     kong.configuration.proxy_http_version or
+                                     DEFAULT_PROXY_HTTP_VERSION
+
+          local kong_outbound_via = proxy_http_version .. " " .. SERVER_HEADER
+
+          local resp_via = ngx.resp.get_headers(MAX_HEADERS)[headers.VIA]
+          header[headers.VIA] = resp_via and resp_via .. "," .. kong_outbound_via or
+                                kong_outbound_via
         end
 
       else
