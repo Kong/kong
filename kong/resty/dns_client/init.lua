@@ -273,26 +273,28 @@ function _M.new(opts)
   end
 
   -- parse order
-  local search_types = {}
+  if opts.order and #opts.order == 0 then
+    return nil, "Invalid order array: empty record types"
+  end
+
   local order = opts.order or DEFAULT_ORDER
+  local search_types = {}
   local preferred_ip_type
-  for _, typstr in ipairs(order) do
+
+  for i, typstr in ipairs(order) do
     local qtype = NAME_TO_TYPE[typstr:upper()]
     if not qtype then
       return nil, "Invalid dns record type in order array: " .. typstr
     end
 
-    table_insert(search_types, qtype)
+    search_types[i] = qtype
 
     if (qtype == TYPE_A or qtype == TYPE_AAAA) and not preferred_ip_type then
       preferred_ip_type = qtype
     end
   end
-  preferred_ip_type = preferred_ip_type or TYPE_A
 
-  if #search_types == 0 then
-    return nil, "Invalid order array: empty record types"
-  end
+  preferred_ip_type = preferred_ip_type or TYPE_A
 
   -- parse hosts
   local hosts = init_hosts(cache, opts.hosts, preferred_ip_type)
@@ -365,7 +367,7 @@ local function process_answers(self, qname, qtype, answers)
       }
     end
 
-    table_insert(processed_answers, cname_answer)
+    processed_answers[1] = cname_answer
 
     log(DEBUG, "processed cname:", cname_answer.cname)
 
