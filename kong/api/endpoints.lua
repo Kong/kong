@@ -241,7 +241,20 @@ local function query_entity(context, self, db, schema, method)
       end
     end
 
-    if key.id and not utils.is_valid_uuid(key.id) then
+    if key.id then
+      if utils.is_valid_uuid(key.id) then
+        local res, err, err_t, offset
+        if is_update then
+          res, err, err_t, offset = dao[method or context](dao, key, args, opts)
+        else
+          res, err, err_t, offset = dao[method or context](dao, key, opts)
+        end
+
+        if res or (err_t and err_t.code ~= Errors.codes.NOT_FOUND) then
+          return res, err, err_t, offset
+        end
+      end
+
       local endpoint_key = schema.endpoint_key
       if endpoint_key then
         local field = schema.fields[endpoint_key]
