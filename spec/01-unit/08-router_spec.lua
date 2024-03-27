@@ -5764,13 +5764,13 @@ do
   describe("Router (flavor = " .. flavor .. ") [http]", function()
     reload_router(flavor)
 
-    it("ignores other fields if expression field exists", function()
+    it("rejects other fields if expression field exists", function()
       local use_case = {
         {
           service = service,
           route   = {
             id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
-            paths = { "/foo" },                       -- ignored
+            paths = { "/foo" },                       -- rejected
             expression = [[http.path ^= r#"/bar"#]],  -- effective
           },
         },
