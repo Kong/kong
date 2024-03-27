@@ -12,6 +12,7 @@ local type = type
 local assert = assert
 local pairs = pairs
 local ipairs = ipairs
+local tostring = tostring
 local tb_insert = table.insert
 local fmt = string.format
 local byte = string.byte
