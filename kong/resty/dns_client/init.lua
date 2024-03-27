@@ -129,18 +129,7 @@ end
 
 -- insert hosts into cache
 local function init_hosts(cache, path, preferred_ip_type)
-  local hosts, err = parse_hosts(path)
-  if not hosts then
-    log(WARN, "Invalid hosts file: ", err)
-    hosts = {}
-  end
-
-  if not hosts.localhost then
-    hosts.localhost = {
-      ipv4 = "127.0.0.1",
-      ipv6 = "[::1]",
-    }
-  end
+  local hosts = parse_hosts(path)
 
   local function insert_answer(name, qtype, address)
     if not address then
@@ -308,6 +297,12 @@ function _M.new(opts)
     stale_ttl     = opts.stale_ttl or DEFAULT_STALE_TTL,
     empty_ttl     = opts.empty_ttl or DEFAULT_EMPTY_TTL,
     search_types  = search_types,
+    -- quickly accessible constant empty answers
+    empty_answers = {
+      errcode = EMPTY_RECORD_ERROR_CODE,
+      errstr  = EMPTY_RECORD_ERROR_MESSAGE,
+      ttl     = opts.empty_ttl or DEFAULT_EMPTY_TTL,
+    },
   }, mt)
 end
 
@@ -316,8 +311,6 @@ local function process_answers(self, qname, qtype, answers)
   local errcode = answers.errcode
   if errcode then
     answers.ttl = errcode == NAME_ERROR_CODE and self.empty_ttl or self.error_ttl
-    -- compatible with balancer, which needs this field
-    answers.expire = now() + answers.ttl
     return answers
   end
 
@@ -357,12 +350,7 @@ local function process_answers(self, qname, qtype, answers)
 
   if #processed_answers == 0 then
     if not cname_answer then
-      return {
-        errcode = EMPTY_RECORD_ERROR_CODE,
-        errstr  = EMPTY_RECORD_ERROR_MESSAGE,
-        ttl     = self.empty_ttl,
-        -- expire = now() + self.empty_ttl,
-      }
+      return self.empty_answers
     end
 
     processed_answers[1] = cname_answer
