@@ -174,7 +174,10 @@ kong_directory_genrule(
             fi
         done
         LN ${BUILD_DESTDIR}/openresty/nginx/sbin/nginx ${BUILD_DESTDIR}/openresty/bin/openresty
-    """,
+    """ + """
+        # Make INSTALL_DESTDIR available to Kong Lua code
+        echo 'return "%s/kong"' > ${BUILD_DESTDIR}/share/lua/5.1/kong/kong_usr_path.lua
+    """ % KONG_VAR["INSTALL_DESTDIR"],
     # XXX: bazel forces 0555 as artifact permission, which is not correct for packagin
     # here we deliberately use a different directory so file permission is preserved
     # see also https://github.com/bazelbuild/bazel/issues/5588
