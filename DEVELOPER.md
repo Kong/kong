@@ -122,6 +122,7 @@ dnf install \
     perl-IPC-Cmd \
     protobuf-devel \
     unzip \
+    tar \
     valgrind \
     valgrind-devel \
     zlib-devel
@@ -144,6 +145,8 @@ You can follow [Managing your personal access token](https://docs.github.com/en/
 ```bash
 # export GITHUB_TOKEN=ghp_xxxxxx_your_access_token
 ```
+
+The build process is based on [Bazel](https://bazel.build/). Please make sure that you have the [required version](https://github.com/Kong/kong/blob/master/.bazelversion) installed. For more details please check out the [the build guide](https://github.com/Kong/kong/blob/master/build/README.md)
 
 Finally, we start the build process:
 
