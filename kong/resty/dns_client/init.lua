@@ -1,6 +1,5 @@
 local cjson = require("cjson.safe")
 local utils = require("kong.resty.dns_client.utils")
-local tablex = require("pl.tablex")
 local mlcache = require("kong.resty.mlcache")
 local resolver = require("resty.dns.resolver")
 
@@ -12,12 +11,14 @@ local DEBUG     = ngx.DEBUG
 local ALERT     = ngx.ALERT
 local timer_at  = ngx.timer.at
 
-local type          = type
-local pairs         = pairs
-local ipairs        = ipairs
-local math_min      = math.min
-local string_lower  = string.lower
-local table_insert  = table.insert
+local type            = type
+local pairs           = pairs
+local ipairs          = ipairs
+local math_min        = math.min
+local string_lower    = string.lower
+local table_insert    = table.insert
+local table_isempty   = require("table.isempty")
+local tablex_readonly = require("pl.tablex").readonly
 
 local parse_hosts   = utils.parse_hosts
 local ipv6_bracket  = utils.ipv6_bracket
@@ -35,6 +36,8 @@ local DEFAULT_STALE_TTL   = 4
 local DEFAULT_EMPTY_TTL   = 30
 -- long-lasting TTL of 10 years for hosts or static IP addresses in cache settings
 local LONG_LASTING_TTL    = 10 * 365 * 24 * 60 * 60
+
+local PERSISTENT_CACHE_TTL = { ttl = 0 }  -- used for mlcache:set
 
 local DEFAULT_ORDER = { "LAST", "SRV", "A", "AAAA", "CNAME" }
 
@@ -57,6 +60,7 @@ local TYPE_TO_NAME = {
   [TYPE_A]        = "A",
   [TYPE_AAAA]     = "AAAA",
   [TYPE_CNAME]    = "CNAME",
+  [TYPE_LAST]     = "LAST",
 }
 
 local HIT_L3 = 3 -- L1 lru, L2 shm, L3 callback, L4 stale
@@ -73,7 +77,7 @@ local NAME_ERROR_CODE             = 3 -- response code 3 as "Name Error" or "NXD
 -- client specific error
 local CACHE_ONLY_ERROR_CODE       = 100
 local CACHE_ONLY_ERROR_MESSAGE    = "cache only lookup failed"
-local CACHE_ONLY_ANSWERS = tablex.readonly({ errcode = CACHE_ONLY_ERROR_CODE, errstr = CACHE_ONLY_ERROR_MESSAGE })
+local CACHE_ONLY_ANSWERS = tablex_readonly({ errcode = CACHE_ONLY_ERROR_CODE, errstr = CACHE_ONLY_ERROR_MESSAGE })
 local EMPTY_RECORD_ERROR_CODE     = 101
 local EMPTY_RECORD_ERROR_MESSAGE  = "empty record received"
 
@@ -116,7 +120,7 @@ end
 local function insert_last_type(cache, name, qtype)
   local key = "last:" .. name
   if TYPE_TO_NAME[qtype] and cache:get(key) ~= qtype then
-    cache:set(key, { ttl = 0 }, qtype)
+    cache:set(key, PERSISTENT_CACHE_TTL, qtype)
   end
 end
 
@@ -185,9 +189,9 @@ function _M.new(opts)
   end
 
   -- init the resolver options for lua-resty-dns
-  local nameservers = (opts.nameservers and #opts.nameservers > 0) and
+  local nameservers = (opts.nameservers and not table_isempty(opts.nameservers)) and
                       opts.nameservers or resolv.nameservers
-  if not nameservers or #nameservers == 0 then
+  if not nameservers or table_isempty(nameservers) then
     log(WARN, "Invalid configuration, no nameservers specified")
   end
 
@@ -259,7 +263,7 @@ function _M.new(opts)
   end
 
   -- parse order
-  if opts.order and #opts.order == 0 then
+  if opts.order and table_isempty(opts.order) then
     return nil, "Invalid order array: empty record types"
   end
 
@@ -297,11 +301,11 @@ function _M.new(opts)
     empty_ttl     = opts.empty_ttl or DEFAULT_EMPTY_TTL,
     search_types  = search_types,
     -- quickly accessible constant empty answers
-    empty_answers = {
+    EMPTY_ANSWERS = tablex_readonly({
       errcode = EMPTY_RECORD_ERROR_CODE,
       errstr  = EMPTY_RECORD_ERROR_MESSAGE,
       ttl     = opts.empty_ttl or DEFAULT_EMPTY_TTL,
-    },
+    }),
   }, mt)
 end
 
@@ -321,6 +325,12 @@ local function process_answers(self, qname, qtype, answers)
   for _, answer in ipairs(answers) do
     answer.name = string_lower(answer.name)
 
+    if self.valid_ttl then
+      answer.ttl = self.valid_ttl
+    else
+      ttl = math_min(ttl, answer.ttl)
+    end
+
     if answer.type == TYPE_CNAME then
       cname_answer = answer   -- use the last one as the real cname
 
@@ -339,17 +349,11 @@ local function process_answers(self, qname, qtype, answers)
         table_insert(processed_answers, answer)
       end
     end
-
-    if self.valid_ttl then
-      answer.ttl = self.valid_ttl
-    else
-      ttl = math_min(ttl, answer.ttl)
-    end
   end
 
-  if #processed_answers == 0 then
+  if table_isempty(processed_answers) then
     if not cname_answer then
-      return self.empty_answers
+      return self.EMPTY_ANSWERS
     end
 
     processed_answers[1] = cname_answer

@@ -4,7 +4,7 @@
 local utils = require("kong.tools.utils")
 local _writefile = require("pl.utils").writefile
 local tmpname = require("pl.path").tmpname
-local cycle_aware_deep_copy = require("kong.tools.utils").cycle_aware_deep_copy
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 -- hosted in Route53 in the AWS sandbox
 local TEST_NS = "198.51.100.0"
