@@ -112,7 +112,7 @@ function _M.parse_hosts(path, enable_ipv6)
 end
 
 
--- TODO: need to rewrite it instead of calling parseResolvConf
+-- TODO: need to rewrite it instead of calling parseResolvConf from the old library
 function _M.parse_resolv_conf(path, enable_ipv6)
   local resolv, err = utils.parseResolvConf(path or DEFAULT_RESOLV_CONF)
   if not resolv then
