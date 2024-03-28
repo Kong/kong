@@ -317,7 +317,7 @@ local function process_answers(self, qname, qtype, answers)
   local processed_answers = {}
   local cname_answer
 
-  local ttl = self.valid_ttl or 0xffffffff  -- 0xffffffff for maximum TTL value
+  local ttl = math_min(self.valid_ttl or 0xffffffff, 0xffffffff)  -- 0xffffffff for maximum TTL value
 
   for _, answer in ipairs(answers) do
     answer.name = string_lower(answer.name)
