@@ -160,8 +160,11 @@ end
 
 
 function _M.is_fqdn(name, ndots)
+  if name:sub(-1) == "." then
+    return true
+  end
   local _, dot_count = name:gsub("%.", "")
-  return (dot_count >= ndots) or (name:sub(-1) == ".")
+  return (dot_count >= ndots)
 end
 
 
