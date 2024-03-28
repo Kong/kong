@@ -94,7 +94,13 @@ describe("[DNS client cache]", function()
     -- restore its API overlapped by the compatible layer
     package.loaded["kong.resty.dns_client"] = nil
     client = require("kong.resty.dns_client")
-    client.resolve = client._resolve
+    client.resolve = function (self, name, opts, tries)
+      if opts and opts.return_random then
+        return self:resolve_address(name, opts.port, opts.cache_only, tries)
+      else
+        return self:_resolve(name, opts and opts.qtype, opts and opts.cache_only, tries)
+      end
+    end
   end)
 
   after_each(function()
