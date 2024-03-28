@@ -5,7 +5,7 @@ local ai_shared = require("kong.llm.drivers.shared")
 local llm = require("kong.llm")
 local cjson = require("cjson.safe")
 local kong_utils = require("kong.tools.gzip")
-local kong_meta = require "kong.meta"
+local kong_meta = require("kong.meta")
 --
 
 
@@ -13,15 +13,23 @@ _M.PRIORITY = 770
 _M.VERSION = kong_meta.version
 
 
+-- reuse this table for error message response
+local ERROR_MSG = { error = { message = "" } }
+
+
 local function bad_request(msg)
   kong.log.warn(msg)
-  return kong.response.exit(400, { error = { message = msg } })
+  ERROR_MSG.error.message = msg
+
+  return kong.response.exit(400, ERROR_MSG)
 end
 
 
 local function internal_server_error(msg)
   kong.log.err(msg)
-  return kong.response.exit(500, { error = { message = msg } })
+  ERROR_MSG.error.message = msg
+
+  return kong.response.exit(500, ERROR_MSG)
 end
 
 
@@ -60,13 +68,9 @@ function _M:header_filter(conf)
     kong.ctx.plugin.ai_parser_error = true
 
     ngx.status = 500
-    local message = {
-      error = {
-        message = err,
-      },
-    }
+    ERROR_MSG.error.message = err
 
-    kong.ctx.plugin.parsed_response = cjson.encode(message)
+    kong.ctx.plugin.parsed_response = cjson.encode(ERROR_MSG)
 
   elseif new_response_string then
     -- preserve the same response content type; assume the from_format function
@@ -137,7 +141,7 @@ function _M:access(conf)
   end
 
   -- check the incoming format is the same as the configured LLM format
-  local compatible, err = llm.is_compatible(request_table, conf.route_type)
+  local compatible, err = llm.is_compatible(request_table, route_type)
   if not compatible then
     kong.ctx.shared.skip_response_transformer = true
     return bad_request(err)
