@@ -452,6 +452,18 @@ for _, strategy in ipairs({"off"}) do
         assert.is_nil(err)
         assert.is_falsy(renew)
       end)
+
+      it("calling handler.renew with a false argument should be successful", function()
+        local handler = require("kong.plugins.acme.handler")
+        handler:configure({{domains = {"example.com"}}})
+
+        local original = client.renew_certificate
+        client.renew_certificate = function (config)
+          print("mock renew_certificate")
+        end
+        handler.renew(false)
+        client.renew_certificate = original
+      end)
     end)
 
   end)
