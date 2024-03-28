@@ -99,7 +99,7 @@ describe("[utils]", function ()
         { target = "3" },   -- 25%
         { target = "4" },   -- 25%
       }
-      local count = get_and_count(answers, 100, utils.get_round_robin_answers)
+      local count = get_and_count(answers, 100, utils.get_next_round_robin_answers)
       assert.same(count, { ["1"] = 25, ["2"] = 25, ["3"] = 25, ["4"] = 25 })
     end)
 

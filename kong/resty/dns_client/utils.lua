@@ -199,7 +199,7 @@ end
 
 -- util APIs to balance @answers
 
-function _M.get_round_robin_answers(answers)
+function _M.get_next_round_robin_answers(answers)
   answers.last = (answers.last or 0) % #answers + 1
   return answers[answers.last]
 end
