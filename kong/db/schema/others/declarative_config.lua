@@ -335,7 +335,7 @@ local function uniqueness_error_msg(entity, key, value)
 end
 
 
-local function populate_references(input, known_entities, by_id, by_key, expected, errs, parent_entity)
+local function populate_references(input, known_entities, by_id, by_key, expected, errs, parent_entity, parent_idx)
   for _, entity in ipairs(known_entities) do
     yield(true)
 
@@ -363,7 +363,7 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
     for i, item in ipairs(input[entity]) do
       yield(true)
 
-      populate_references(item, known_entities, by_id, by_key, expected, errs, entity)
+      populate_references(item, known_entities, by_id, by_key, expected, errs, entity, i)
 
       local item_id = DeclarativeConfig.pk_string(entity_schema, item)
       local key = use_key and item[endpoint_key]
@@ -381,8 +381,23 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
       if item_id then
         by_id[entity] = by_id[entity] or {}
         if (not failed) and by_id[entity][item_id] then
-          errs[entity] = errs[entity] or {}
-          errs[entity][i] = uniqueness_error_msg(entity, "primary key", item_id)
+          local err_t
+
+          if parent_entity and parent_idx then
+            errs[parent_entity]                     = errs[parent_entity] or {}
+            errs[parent_entity][parent_idx]         = errs[parent_entity][parent_idx] or {}
+            errs[parent_entity][parent_idx][entity] = errs[parent_entity][parent_idx][entity] or {}
+
+            -- e.g. errs["upstreams"][5]["targets"]
+            err_t = errs[parent_entity][parent_idx][entity]
+
+          else
+            errs[entity] = errs[entity] or {}
+            err_t = errs[entity]
+          end
+
+          err_t[i] = uniqueness_error_msg(entity, "primary key", item_id)
+
         else
           by_id[entity][item_id] = item
           table.insert(by_id[entity], item_id)
