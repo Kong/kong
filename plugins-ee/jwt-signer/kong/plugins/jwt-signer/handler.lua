@@ -111,6 +111,7 @@ do
       add_claims                     = "add_%s_claims",
       set_claims                     = "set_%s_claims",
       remove_claims                  = "remove_%s_claims",
+      original_upstream_header       = "original_%s_upstream_header",
     } do
       CONF[token_type][key] = fmt(value, token_type)
     end
@@ -349,6 +350,11 @@ function JwtSignerHandler.access(_, conf)
 
         elseif sub(request_token_prefix, 1, 5) == "basic" then
           request_token = sub(request_token, 7)
+        end
+
+        local original_upstream_header = args.get_conf_arg(config.original_upstream_header)
+        if original_upstream_header and original_upstream_header ~= "" then
+          args.set_header(original_upstream_header, request_token)
         end
 
         local jwt_type = jwt.type(request_token)

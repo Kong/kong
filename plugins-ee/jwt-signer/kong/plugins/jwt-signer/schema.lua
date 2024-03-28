@@ -315,6 +315,13 @@ local config = {
             },
           },
           {
+            original_access_token_upstream_header = {
+              type = "string",
+              required = false,
+              description = "The HTTP header name used to store the original access token."
+            },
+          },
+          {
             access_token_optional = { description = "If an access token is not provided or no `config.access_token_request_header` is specified, the plugin cannot verify the access token. In that case, the plugin normally responds with `401 Unauthorized` (client didn't send a token) or `500 Unexpected` (a configuration error). Use this parameter to allow the request to proceed even when there is no token to check. If the token is provided, then this parameter has no effect", type = "boolean",
               default = false,
               required = false,
@@ -596,6 +603,13 @@ local config = {
               required = false,
               default = {},
               description = "remove claims. It should be an array, and each element is a claim key string.",
+            },
+          },
+          {
+            original_channel_token_upstream_header = {
+              type = "string",
+              required = false,
+              description = "The HTTP header name used to store the original channel token."
             },
           },
           {

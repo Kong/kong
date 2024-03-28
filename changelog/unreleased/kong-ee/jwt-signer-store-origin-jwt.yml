@@ -1,0 +1,3 @@
+message: "**JWT-Signer:** The plugin now supports adding the original JWT(s) to the upstream request header by specifying the names of the upstream request header with `original_access_token_upstream_header` and `original_channel_token_upstream_header`."
+type: feature
+scope: Plugin

@@ -410,6 +410,63 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
       end)
   end)
 
+  describe(fmt("%s - introspection - original JWT upstream header", plugin_name), function()
+
+    lazy_setup(function()
+      bp = helpers.get_db_utils(strategy, nil, { plugin_name })
+      local route = bp.routes:insert({ paths = { "/add_claims" }, })
+      assert(bp.plugins:insert({
+        name = plugin_name,
+        route = route,
+        config = {
+          verify_access_token_signature = false,
+          channel_token_optional = true,
+          original_access_token_upstream_header = "Origin-Authorization",
+          -- true is the default, but setting explicitly for clarity
+          enable_access_token_introspection = true,
+          access_token_introspection_endpoint = introspection_url,
+        }
+      }))
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        plugins    = plugin_name,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }, nil, nil, introspection_fixture))
+      proxy_client = helpers.proxy_client()
+    end)
+
+    lazy_teardown(function()
+      if proxy_client then proxy_client:close() end
+      assert(helpers.stop_kong())
+    end)
+
+    after_each(function()
+      helpers.clean_logfile()
+    end)
+
+    it("ensure the access token matches the original JWT in the specified header",
+      function()
+        local acc_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." ..
+                          "eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ." ..
+                          "GciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+        local res = assert(proxy_client:send {
+          method = "get",
+          path = "/add_claims",
+          headers = {
+            ["authorization"] = "Bearer " .. acc_token
+          }
+        })
+        assert.response(res).has.status(200)
+
+        local json_table = assert.response(res).has.jsonbody()
+
+        local oauth = assert(assert(json_table.headers)["origin-authorization"])
+
+        assert.same(acc_token, oauth)
+      end)
+  end)
+
   describe(fmt("%s - introspection - consumer", plugin_name), function()
     -- Sending opaque tokens require introspection. This test involves a fixture to return static
     -- results for introspection.
