@@ -284,6 +284,33 @@ do
 end
 
 
+local function sni_val_transform(_, p)
+  if #p > 1 and byte(p, -1) == DOT then
+    -- last dot in FQDNs must not be used for routing
+    return p:sub(1, -2)
+  end
+
+  return p
+end
+
+
+local function path_op_transform(path)
+  return is_regex_magic(path) and OP_REGEX or OP_PREFIX
+end
+
+
+local function path_val_transform(op, p)
+  if op == OP_REGEX then
+    -- 1. strip leading `~`
+    -- 2. prefix with `^` to match the anchored behavior of the traditional router
+    -- 3. update named capture opening tag for rust regex::Regex compatibility
+    return "^" .. p:sub(2):gsub("?<", "?P<")
+  end
+
+  return p
+end
+
+
 local function get_expression(route)
   local methods = route.methods
   local hosts   = route.hosts
@@ -296,14 +323,7 @@ local function get_expression(route)
 
   expr_buf:reset()
 
-  local gen = gen_for_field("tls.sni", OP_EQUAL, snis, function(_, p)
-    if #p > 1 and byte(p, -1) == DOT then
-      -- last dot in FQDNs must not be used for routing
-      return p:sub(1, -2)
-    end
-
-    return p
-  end)
+  local gen = gen_for_field("tls.sni", OP_EQUAL, snis, sni_val_transform)
   if gen then
     -- See #6425, if `net.protocol` is not `https`
     -- then SNI matching should simply not be considered
@@ -375,18 +395,7 @@ local function get_expression(route)
                       hosts_buf:put(")"):get())
   end
 
-  gen = gen_for_field("http.path", function(path)
-    return is_regex_magic(path) and OP_REGEX or OP_PREFIX
-  end, paths, function(op, p)
-    if op == OP_REGEX then
-      -- 1. strip leading `~`
-      -- 2. prefix with `^` to match the anchored behavior of the traditional router
-      -- 3. update named capture opening tag for rust regex::Regex compatibility
-      return "^" .. p:sub(2):gsub("?<", "?P<")
-    end
-
-    return p
-  end)
+  gen = gen_for_field("http.path", path_op_transform, paths, path_val_transform)
   if gen then
     expression_append(expr_buf, LOGICAL_AND, gen)
   end
