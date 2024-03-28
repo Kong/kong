@@ -18,6 +18,7 @@ local log_entry_keys = {
   REQUEST_MODEL = "meta.request_model",
   RESPONSE_MODEL = "meta.response_model",
   PROVIDER_NAME = "meta.provider_name",
+  PLUGIN_ID = "meta.plugin_id",
 }
 
 local openai_override = os.getenv("OPENAI_TEST_PORT")
@@ -338,6 +339,7 @@ function _M.post_request(conf, response_object)
     current_try[log_entry_keys.REQUEST_MODEL] = conf.model.name
     current_try[log_entry_keys.RESPONSE_MODEL] = response_object.model or conf.model.name
     current_try[log_entry_keys.PROVIDER_NAME] = conf.model.provider
+    current_try[log_entry_keys.PLUGIN_ID] = conf.__plugin_id
 
     -- Capture openai-format usage stats from the transformed response body
     if response_object.usage then
