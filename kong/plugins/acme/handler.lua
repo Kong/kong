@@ -82,6 +82,9 @@ local function renew(premature)
 end
 
 
+ACMEHandler.renew = renew
+
+
 function ACMEHandler:init_worker()
   local worker_id = ngx.worker.id()
   kong.log.info("acme renew timer started on worker ", worker_id)
