@@ -27,7 +27,7 @@
     "dotenv": "^16.4.5",
     "expect": "^29.7.0",
     "influx": "^5.9.3",
-    "mocha": "^10.3.0",
+    "mocha": "^10.4.0",
     "mocha-multi-reporters": "^1.5.1",
     "promise-ws": "^1.0.0-1",
     "redis": "^4.6.13",
