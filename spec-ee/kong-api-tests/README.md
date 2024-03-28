@@ -166,3 +166,44 @@ npm run test-koko
 # for example if you want to run 'service.spec.ts' tests
 npm run test-spec --spec=service
 ```
+
+## Run tests in GKE Cluster
+
+### Run from local setup
+Follow the [instructions](https://github.com/Kong/gateway-docker-compose-generator/tree/main/infrastructure/gateway-terraform-gke) to deploy the Kong gateway hybrid mode in GKE cluster.
+
+After deployment, try portforward `kong-cp`, `kong-dp`, and `redis` pod to your localhost. Before we run any api tests, aside from regular env variables you set before running the tests (e.g. `TEST_APP`,`AWS_ACCESS_KEY_ID`), there are some extra env variables you need to set.
+```
+ export GKE=true
+ export GW_MODE=hybrid
+ export HCV=false
+ export GW_HOST=localhost
+ ```
+
+ We added `tag` like `@gke` to filter through tests that can run against kong deployed in GKE cluster, you can run command below to trigger the e2e api tests.
+
+- All existing tests with `@gke` tag
+
+```bash
+npm run test-gke
+```
+- A single test
+
+```bash
+export TEST_APP=gateway
+# for example if you want to run 'service.spec.ts' tests
+npm run test-spec --spec=service
+```
+
+### Run from github action workflow
+
+You can also trigger the test run from [github Actions workflow](https://github.com/Kong/kong-ee/actions/workflows/gateway-cluster-api-tests.yml). This workflow will conduct all the actions required for running kong e2e api tests against kong deployed in GKE cluster including: 
+
+1. Create/provision the GKE Cluster using `terraform`
+2. Deploy Kong gateway hybrid mode to the GKE Cluster using `terraform`
+3. Portforwarding `kong cp`, `kong dp`, and `redis` pod to github runner localhost
+4. Run the e2e api tests
+5. Send results to slack
+6. Destroy the GKE cluster using `terraform`
+
+There are a couple workflow input variables you need to pay attention when you run the workflow. Usually we bring up kong with images like `kong/kong-gateway-dev:nightly-ubuntu` (⚠️ `kong/kong-gateway-internal` seems not compatible with `k8s`/`terraform`) or `kong/kong-gateway:3.6.0.0`. So we breakdown the `image` to `kong/kong-gateway-dev` as the input for `Kong repository to test`, and `nightly-ubuntu` for `Kong version to test`. We also need to specify the [`Kong effective Semver`](https://github.com/Kong/charts/blob/main/charts/kong/values.yaml#L139) to value like `3.7.0.0` if you are using a non-released version of kong image like `nightly-ubuntu`.
