@@ -22,7 +22,7 @@ local table_insert  = table.insert
 local parse_hosts   = utils.parse_hosts
 local ipv6_bracket  = utils.ipv6_bracket
 local search_names  = utils.search_names
-local get_round_robin_answers          = utils.get_round_robin_answers
+local get_next_round_robin_answers     = utils.get_next_round_robin_answers
 local get_weighted_round_robin_answers = utils.get_weighted_round_robin_answers
 
 local req_dyn_hook_run_hooks = require("kong.dynamic_hook").run_hooks
@@ -684,7 +684,7 @@ function _M:resolve(name, opts, tries)
     return self:resolve(answer.target, opts, tries)
   end
 
-  return get_round_robin_answers(answers).address, opts.port, tries
+  return get_next_round_robin_answers(answers).address, opts.port, tries
 end
 
 
