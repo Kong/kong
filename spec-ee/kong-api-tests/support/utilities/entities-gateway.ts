@@ -206,6 +206,24 @@ export const createConsumer = async (username?: string, payload?: object) => {
 };
 
 /**
+ * PATCH a consumer
+ * @param {string} usernameOrId
+ * @param {object} payload
+ * @returns {AxiosResponse}
+ */
+export const patchConsumer = async (usernameOrId: string, payload: object) => {
+  const resp = await axios({
+    method: 'patch',
+    url: `${getUrl('consumers')}/${usernameOrId}`,
+    data: payload,
+  });
+  logResponse(resp);
+
+  expect(resp.status, 'Status should be 200').to.equal(200);
+  return resp.data;
+};
+
+/**
  * Create a consumer
  * @param {string} usernameOrId
  * @returns {AxiosResponse}
@@ -411,6 +429,68 @@ export const createBasicAuthCredentialForConsumer = async (
   logResponse(resp);
   expect(resp.status, 'Status should be 201').to.equal(201);
   return resp;
+};
+
+/**
+ * Upload a root CA Certificate
+ * @param {string} cert - the root certificate
+ * @returns {AxiosResponse}
+ */
+export const uploadCaCertificate = async (
+  cert: string
+) => {
+  const resp = await axios({
+    method: 'post',
+    url: `${getUrl('ca_certificates')}`,
+    data: {
+      cert
+    },
+  });
+
+  logResponse(resp);
+
+  expect(resp.status, 'Status should be 201').to.equal(201);
+  return resp.data;
+};
+
+/**
+ * Delete CA Certificate
+ * @param {string} certNameOrId
+ * @returns {AxiosResponse}
+ */
+export const deleteCaCertificate = async (
+  certNameOrId: string
+) => {
+  const resp = await axios({
+    method: 'delete',
+    url: `${getUrl('ca_certificates')}/${certNameOrId}`,
+  });
+
+  logResponse(resp);
+  expect(resp.status, 'Status should be 204').to.equal(204);
+
+  return resp
+};
+
+/**
+ * Create a key for a consumer
+ * @param {string} consumerNameorId
+ * @param {string} pluginName - either key-auth or key-auth-enc
+ * @returns {AxiosResponse}
+ */
+export const createKeyCredentialForConsumer = async (
+  consumerNameorId: string,
+  pluginName = 'key-auth'
+) => {
+  const resp = await axios({
+    method: 'post',
+    url: `${getUrl('consumers')}/${consumerNameorId}/${pluginName}`,
+  });
+
+  logResponse(resp);
+
+  expect(resp.status, 'Status should be 201').to.equal(201);
+  return resp.data;
 };
 
 /**
@@ -752,10 +832,10 @@ interface ResponseProps {
 export const clearAllKongResources = async () => {
   await clearKongResource('consumers');
   await clearKongResource('consumer_groups');
+  await clearKongResource('plugins');
   await clearKongResource('certificates');
   await clearKongResource('ca_certificates');
   await clearKongResource('snis');
-  await clearKongResource('plugins');
   await clearKongResource('vaults');
   await clearKongResource('routes');
   await clearKongResource('services');

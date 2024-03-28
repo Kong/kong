@@ -64,7 +64,8 @@ export {
   GatewayRoute,
   GatewayService,
   GrpcConfig,
-  KokoAuthHeaders
+  KokoAuthHeaders,
+  Consumer
 } from './interfaces';
 export { constructDeckCommand, read_deck_config } from './utilities/deck';
 export * from './utilities/entities-gateway';
