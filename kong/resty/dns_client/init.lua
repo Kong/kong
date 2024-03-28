@@ -26,7 +26,6 @@ local get_next_round_robin_answers     = utils.get_next_round_robin_answers
 local get_weighted_round_robin_answers = utils.get_weighted_round_robin_answers
 
 local req_dyn_hook_run_hooks = require("kong.dynamic_hook").run_hooks
-local cycle_aware_deep_copy  = require("kong.tools.utils").cycle_aware_deep_copy
 
 
 -- Constants and default values
@@ -433,7 +432,7 @@ local function start_stale_update_task(self, key, name, qtype, short_key)
 end
 
 
-local function resolve_name_type_callback(self, name, qtype, opts, tries)
+local function resolve_name_type_callback(self, name, qtype, cache_only, short_key, tries)
   local key = name .. ":" .. qtype
 
   -- `:peek(stale=true)` verifies if the expired key remains in L2 shm, then
@@ -456,13 +455,13 @@ local function resolve_name_type_callback(self, name, qtype, opts, tries)
       log(DEBUG, "start stale update task ", key, " ttl:", ttl)
 
       -- mlcache's internal lock mechanism ensures concurrent control
-      start_stale_update_task(self, key, name, qtype, opts.short_key)
+      start_stale_update_task(self, key, name, qtype, short_key)
       answers.ttl = ttl
       return answers, nil, ttl
     end
   end
 
-  if opts.cache_only then
+  if cache_only then
     return CACHE_ONLY_ANSWERS, nil, -1
   end
 
@@ -472,27 +471,27 @@ end
 
 
 -- detect circular references in DNS CNAME or SRV records
-local function detect_recursion(opts, key)
-  local rn = opts.resolved_names
-  local detected = rn[key]
-  rn[key] = true
+local function detect_recursion(resolved_names, key)
+  local detected = resolved_names[key]
+  resolved_names[key] = true
   return detected
 end
 
 
-local function resolve_name_type(self, name, qtype, opts, tries)
+local function resolve_name_type(self, name, qtype, cache_only, short_key, tries, resolved_names)
   local key = name .. ":" .. qtype
 
   stats_init(self.stats, key)
 
-  if detect_recursion(opts, key) then
+  if detect_recursion(resolved_names, key) then
     stats_count(self.stats, key, "fail_recur")
     return nil, "recursion detected for name: " .. key
   end
 
   local answers, err, hit_level = self.cache:get(key, nil,
                                                  resolve_name_type_callback,
-                                                 self, name, qtype, opts, tries)
+                                                 self, name, qtype, cache_only,
+                                                 short_key, tries)
   -- check for runtime errors in the callback
   if err and err:sub(1, 8) == "callback" then
     log(ALERT, err)
@@ -561,7 +560,8 @@ local function check_and_get_ip_answers(name)
 end
 
 
-local function resolve_names_and_types(self, name, opts, tries)
+-- resolve all `name`s and `type`s combinations and return first usable answers
+local function resolve_names_and_types(self, name, typ, cache_only, short_key, tries, resolved_names)
   local answers = check_and_get_ip_answers(name)
   if answers then -- domain name is IP literal
     answers.ttl = LONG_LASTING_TTL
@@ -571,14 +571,14 @@ local function resolve_names_and_types(self, name, opts, tries)
 
   -- TODO: For better performance, it may be necessary to rewrite it as an
   --       iterative function.
-  local types = get_search_types(self, name, opts.qtype)
+  local types = get_search_types(self, name, typ)
   local names = search_names(name, self.resolv, self.hosts)
 
   local err
   for _, qtype in ipairs(types) do
     for _, qname in ipairs(names) do
-      answers, err = resolve_name_type(self, qname, qtype, opts, tries)
-
+      answers, err = resolve_name_type(self, qname, qtype, cache_only,
+                                       short_key, tries, resolved_names)
       -- severe error occurred
       if not answers then
         return nil, err, tries
@@ -596,15 +596,17 @@ local function resolve_names_and_types(self, name, opts, tries)
 end
 
 
-local function resolve_all(self, name, opts, tries)
+local function resolve_all(self, name, qtype, cache_only, tries, resolved_names)
+  name = string_lower(name)
+  tries = setmetatable(tries or {}, TRIES_MT)
+
   -- key like "short:example.com:all" or "short:example.com:5"
-  local key = "short:" .. name .. ":" .. (opts.qtype or "all")
-  opts.short_key = key  -- save for later use in the stale update task
+  local key = "short:" .. name .. ":" .. (qtype or "all")
 
   stats_init(self.stats, name)
   stats_count(self.stats, name, "runs")
 
-  if detect_recursion(opts, key) then
+  if detect_recursion(resolved_names, key) then
     stats_count(self.stats, name, "fail_recur")
     return nil, "recursion detected for name: " .. name
   end
@@ -614,11 +616,12 @@ local function resolve_all(self, name, opts, tries)
   if not answers then
     log(DEBUG, "quickly cache lookup ", key, " ans:- hlvl:", hit_level or "-")
 
-    answers, err, tries = resolve_names_and_types(self, name, opts, tries)
-    if not opts.cache_only and answers then
+    answers, err, tries = resolve_names_and_types(self, name, qtype, cache_only,
+                                                  key, tries, resolved_names)
+    if not cache_only and answers then
       -- If another worker resolved the name between these two `:get`, it can
       -- work as expected and will not introduce a race condition.
-      --
+
       -- insert via the `:get` callback to prevent inter-process communication
       self.cache:get(key, nil, function()
         return answers, nil, answers.ttl
@@ -639,52 +642,36 @@ local function resolve_all(self, name, opts, tries)
   end
 
   -- dereference CNAME
-  if opts.qtype ~= TYPE_CNAME and answers and answers[1].type == TYPE_CNAME then
+  if qtype ~= TYPE_CNAME and answers and answers[1].type == TYPE_CNAME then
     stats_count(self.stats, name, "cname")
-    return resolve_all(self, answers[1].cname, opts, tries)
+    return resolve_all(self, answers[1].cname, qtype, cache_only, tries, resolved_names)
   end
 
   return answers, err, tries
 end
 
 
-local function copy_options(opts)
-  if opts.resolved_names then
-    return opts
-  end
-
-  opts = cycle_aware_deep_copy(opts)
-  opts.resolved_names = {}  -- for detecting circular references in DNS records
-  return opts
+function _M:resolve(name, qtype, cache_only, tries)
+  return resolve_all(self, name, qtype, cache_only, tries, {})
 end
 
 
--- resolve all `name`s and `type`s combinations and return first usable answers
---   `name`s: produced by resolv.conf options: `search`, `ndots` and `domain`
---   `type`s: SRV, A, AAAA, CNAME
---
--- @opts:
---   `return_random`: default `false`, return only one random IP address
---   `cache_only`: default `false`, retrieve data only from the internal cache
---   `qtype`: specified query type instead of its own search types
-function _M:resolve(name, opts, tries)
-  name = string_lower(name)
-  opts = copy_options(opts or {})
-  tries = setmetatable(tries or {}, TRIES_MT)
+function _M:resolve_address(name, port, cache_only, tries, resolved_names)
+  resolved_names = resolved_names or {}
 
-  local answers, err, tries = resolve_all(self, name, opts, tries)
-  if not answers or not opts.return_random then
-    return answers, err, tries
+  local answers, err, tries = resolve_all(self, name, nil, cache_only, tries, resolved_names)
+  if not answers then
+    return nil, err, tries
   end
 
-  -- option: return_random
+  -- non-nil answers and return_random
   if answers[1].type == TYPE_SRV then
     local answer = get_weighted_round_robin_answers(answers)
-    opts.port = answer.port ~= 0 and answer.port or opts.port
-    return self:resolve(answer.target, opts, tries)
+    port = (answer.port ~= 0 and answer.port) or port
+    return self:resolve_address(answer.target, port, cache_only, tries, resolved_names)
   end
 
-  return get_next_round_robin_answers(answers).address, opts.port, tries
+  return get_next_round_robin_answers(answers).address, port, tries
 end
 
 
@@ -713,14 +700,12 @@ end
 _M._resolve = _M.resolve
 
 function _M.resolve(name, r_opts, cache_only, tries)
-  local opts = { cache_only = cache_only }
-  return dns_client:_resolve(name, opts, tries)
+  return dns_client:_resolve(name, r_opts and r_opts.qtype, cache_only, tries)
 end
 
 
 function _M.toip(name, port, cache_only, tries)
-  local opts = { cache_only = cache_only, return_random = true , port = port }
-  return dns_client:_resolve(name, opts, tries)
+  return dns_client:resolve_address(name, port, cache_only, tries)
 end
 
 
