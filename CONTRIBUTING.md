@@ -957,7 +957,7 @@ then
 end
 ```
 
-When invoking `ngx.log()` with some variable as input, prefer vararg-style
+When invoking `ngx.log()` with some variable as input, prefer vararg-style 
 calls rather than using the string concatenation operator (`..`):
 
 ```lua
