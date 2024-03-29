@@ -1,0 +1,3 @@
+message: extend `route.snis` to support wildcard.
+type: feature
+scope: Core

@@ -159,7 +159,7 @@ local routes = {
 
       { snis = { type = "set",
                  description = "A list of SNIs that match this Route.",
-                 elements = typedefs.sni }, },
+                 elements = typedefs.wildcard_host }, },
       { sources = typedefs.sources },
       { destinations = typedefs.destinations },
 
