@@ -748,19 +748,12 @@ if package.loaded.busted then
     }
   end
 
-  function _M:insert_last_type(name, qtype)
+  function _M:_insert_last_type(name, qtype)  -- export as different name!
     insert_last_type(self.cache, name, qtype)
   end
 
-  function _M:get_last_type(name)
+  function _M:_get_last_type(name)            -- export as different name!
     return get_last_type(self.cache, name)
-  end
-
-  _M._init = _M.init
-  function _M.init(opts)
-    opts = opts or {}
-    opts.cache_purge = true
-    return _M._init(opts)
   end
 end
 

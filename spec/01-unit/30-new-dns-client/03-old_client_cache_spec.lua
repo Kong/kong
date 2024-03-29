@@ -625,9 +625,9 @@ describe("[DNS client cache]", function()
           },
         }
       }
-      cli:insert_last_type("another.name.consul", resolver.TYPE_AAAA)
+      cli:_insert_last_type("another.name.consul", resolver.TYPE_AAAA)
       cli:resolve("demo.service.consul", { return_random = true })
-      local success = cli:get_last_type("another.name.consul")
+      local success = cli:_get_last_type("another.name.consul")
       assert.equal(resolver.TYPE_AAAA, success)
     end)
 

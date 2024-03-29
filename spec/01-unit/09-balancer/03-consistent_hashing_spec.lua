@@ -266,6 +266,7 @@ describe("[consistent_hashing]", function()
       -- so that CI and docker can have reliable results
       -- but remove `search` and `domain`
       search = {},
+      cache_purge = true,
     })
     snapshot = assert:snapshot()
   end)

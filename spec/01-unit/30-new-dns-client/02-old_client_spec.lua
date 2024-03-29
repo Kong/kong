@@ -271,7 +271,7 @@ describe("[DNS client]", function()
 
         local list = hook_query_func_get_list()
         local cli = assert(client_new())
-        cli:insert_last_type("host", resolver.TYPE_CNAME)
+        cli:_insert_last_type("host", resolver.TYPE_CNAME)
 
         cli:resolve("host")
 
@@ -359,7 +359,7 @@ describe("[DNS client]", function()
 
         local list = hook_query_func_get_list()
         local cli = assert(client_new())
-        cli:insert_last_type("host.", resolver.TYPE_CNAME)
+        cli:_insert_last_type("host.", resolver.TYPE_CNAME)
 
         cli:resolve("host.")
         assert.same({
@@ -417,7 +417,7 @@ describe("[DNS client]", function()
 
         local list = hook_query_func_get_list()
         local cli = assert(client_new({ order = { "AAAA" } }))  -- IPv6 type
-        cli:insert_last_type("host", resolver.TYPE_CNAME)
+        cli:_insert_last_type("host", resolver.TYPE_CNAME)
 
         cli:resolve("host")
         assert.same({
@@ -470,7 +470,7 @@ describe("[DNS client]", function()
 
         local list = hook_query_func_get_list()
         local cli = assert(client_new({ order = { "AAAA" } }))  -- IPv6 type
-        cli:insert_last_type("host", resolver.TYPE_CNAME)
+        cli:_insert_last_type("host", resolver.TYPE_CNAME)
 
         cli:resolve("host.")
 
@@ -743,7 +743,7 @@ describe("[DNS client]", function()
     }, cli.stats)
 
     -- check last successful lookup references
-    local lastsuccess = cli:get_last_type(answers[1].name)
+    local lastsuccess = cli:_get_last_type(answers[1].name)
     assert.are.equal(resolver.TYPE_A, lastsuccess)
   end)
 
@@ -940,13 +940,13 @@ describe("[DNS client]", function()
       resolv_conf = "/etc/resolv.conf",
       order = {"SRV", "CNAME", "A", "AAAA"}
     }))
-    assert.equal(resolver.TYPE_A, cli:get_last_type("localhost")) -- success set to A as it is the preferred option
+    assert.equal(resolver.TYPE_A, cli:_get_last_type("localhost")) -- success set to A as it is the preferred option
 
     local cli = assert(client_new({
       resolv_conf = "/etc/resolv.conf",
       order = {"SRV", "CNAME", "AAAA", "A"}
     }))
-    assert.equal(resolver.TYPE_AAAA, cli:get_last_type("localhost")) -- success set to AAAA as it is the preferred option
+    assert.equal(resolver.TYPE_AAAA, cli:_get_last_type("localhost")) -- success set to AAAA as it is the preferred option
   end)
 
 

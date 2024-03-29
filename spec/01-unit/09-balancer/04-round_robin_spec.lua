@@ -304,6 +304,7 @@ describe("[round robin balancer]", function()
       -- so that CI and docker can have reliable results
       -- but remove `search` and `domain`
       search = {},
+      cache_purge = true,
     })
     snapshot = assert:snapshot()
   end)
@@ -412,6 +413,7 @@ describe("[round robin balancer]", function()
           resolvConf = {
             "nameserver 127.0.0.1:22000" -- make sure dns query fails
           },
+          cache_purge = true,
         })
         -- create balancer
         local b = check_balancer(new_balancer {
@@ -1257,6 +1259,7 @@ describe("[round robin balancer]", function()
         resolvConf = {
           "nameserver 127.0.0.1:22000" -- make sure dns query fails
         },
+        cache_purge = true,
       })
       record.expire = gettime() -1 -- expire current dns cache record
       sleep(0.2)  -- wait for record expiration
