@@ -49,7 +49,6 @@ function _M:header_filter(conf)
   end
 
   local response_body = kong.service.response.get_raw_body()
-
   if not response_body then
     return
   end
@@ -58,7 +57,6 @@ function _M:header_filter(conf)
   local route_type = conf.route_type
 
   local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
-
   if is_gzip then
     response_body = kong_utils.inflate_gzip(response_body)
   end
