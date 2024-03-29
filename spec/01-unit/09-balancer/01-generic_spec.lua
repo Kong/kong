@@ -214,6 +214,7 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
         -- so that CI and docker can have reliable results
         -- but remove `search` and `domain`
         search = {},
+        cache_purge = true,
       })
       snapshot = assert:snapshot()
       assert:set_parameter("TableFormatLevel", 10)

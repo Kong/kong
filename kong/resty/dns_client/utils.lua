@@ -240,7 +240,7 @@ end
 
 -- gather records with the lowest priority in SRV record
 local function filter_lowest_priority_answers(answers)
-  local lowest_priority = answers[1].priority
+  local lowest_priority = answers[1].priority -- SRV record MUST have `priority` field
   local l = {}    -- lowest priority records list
 
   for _, answer in ipairs(answers) do

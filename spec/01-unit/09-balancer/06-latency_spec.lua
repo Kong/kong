@@ -218,6 +218,7 @@ describe("[latency]", function()
       resolvConf = {
         "nameserver 198.51.100.0"
       },
+      cache_purge = true,
     })
     snapshot = assert:snapshot()
   end)

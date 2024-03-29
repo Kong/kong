@@ -85,7 +85,7 @@ function _M.dnsSRV(client, records, staleTtl)
   local key = records[1].name..":"..records[1].type
   dnscache:set(key, records, records[1].ttl + (staleTtl or 4))
   -- insert last-succesful lookup type
-  client.getobj():insert_last_type(records[1].name, records[1].type)
+  client.getobj():_insert_last_type(records[1].name, records[1].type)
   return records
 end
 
@@ -127,7 +127,7 @@ function _M.dnsA(client, records, staleTtl)
   local key = records[1].name..":"..records[1].type
   dnscache:set(key, records, records[1].ttl)
   -- insert last-succesful lookup type
-  client.getobj():insert_last_type(records[1].name, records[1].type)
+  client.getobj():_insert_last_type(records[1].name, records[1].type)
   return records
 end
 
@@ -168,7 +168,7 @@ function _M.dnsAAAA(client, records, staleTtl)
   local key = records[1].name..":"..records[1].type
   dnscache:set(key, records, records[1].ttl + (staleTtl or 4))
   -- insert last-succesful lookup type
-  client.getobj():insert_last_type(records[1].name, records[1].type)
+  client.getobj():_insert_last_type(records[1].name, records[1].type)
   return records
 end
 
