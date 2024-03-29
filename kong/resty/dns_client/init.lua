@@ -381,9 +381,7 @@ local function resolve_query(self, name, qtype, tries)
 
   local options = { additional_section = true, qtype = qtype }
   local answers, err = r:query(name, options)
-  if r.destroy then
-    r:destroy()
-  end
+  r:destroy()
 
   local query_time = now() - start_time -- the time taken for the DNS query
   local time_str = ("%.3f %.3f"):format(start_time, query_time)
