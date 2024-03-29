@@ -232,6 +232,8 @@ function _M.new(opts)
       end
     end,
 
+    -- @channel: event channel name, such as "mlcache:invalidate:dns_cache"
+    -- @data: mlcache's key name, such as "<qname>:<qtype>"
     broadcast = function(channel, data)
       if not kong or not kong.worker_events then
         return
