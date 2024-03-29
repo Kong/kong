@@ -124,6 +124,7 @@ local values_buf        = buffer.new(64)
 local nets_buf          = buffer.new(64)
 local expr_buf          = buffer.new(64)
 local hosts_buf         = buffer.new(64)
+local snis_buf          = buffer.new(64)
 local headers_buf       = buffer.new(64)
 local single_header_buf = buffer.new(64)
 
@@ -264,6 +265,44 @@ local function gen_for_nets(ip_field, port_field, vals)
 end
 
 
+local function gen_for_snis(snis)
+  if is_empty_field(snis) then
+    return nil
+  end
+
+  snis_buf:reset():put("(")
+
+  for i, sni in ipairs(snis) do
+    local op = OP_EQUAL
+    if #sni > 1 and byte(sni, -1) == DOT then
+      -- last dot in FQDNs must not be used for routing
+      sni = sni:sub(1, -2)
+    end
+
+    if byte(sni) == ASTERISK then
+      -- postfix matching
+      op = OP_POSTFIX
+      sni = sni:sub(2)
+
+    elseif byte(sni, -1) == ASTERISK then
+      -- prefix matching
+      op = OP_PREFIX
+      sni = sni:sub(1, -2)
+    end
+
+    local exp = "tls.sni ".. op .. " r#\"" .. sni .. "\"#"
+    expression_append(snis_buf, LOGICAL_OR, exp, i)
+  end -- for route.snis
+
+  -- consume the whole buffer
+  -- returns a local variable instead of using a tail call
+  -- to avoid NYI
+  local str = snis_buf:put(")"):get()
+
+  return str
+end
+
+
 local is_stream_route
 do
   local is_stream_protocol = {
@@ -280,16 +319,6 @@ do
 
     return is_stream_protocol[r.protocols[1]]
   end
-end
-
-
-local function sni_val_transform(_, p)
-  if #p > 1 and byte(p, -1) == DOT then
-    -- last dot in FQDNs must not be used for routing
-    return p:sub(1, -2)
-  end
-
-  return p
 end
 
 
@@ -329,7 +358,7 @@ local function get_expression(route)
 
   expr_buf:reset()
 
-  local gen = gen_for_field("tls.sni", OP_EQUAL, snis, sni_val_transform)
+  local gen = gen_for_snis(snis)
   if gen then
     -- See #6425, if `net.protocol` is not `https`
     -- then SNI matching should simply not be considered

@@ -204,6 +204,7 @@ local MATCH_SUBRULES = {
   HAS_REGEX_URI          = 0x01,
   PLAIN_HOSTS_ONLY       = 0x02,
   HAS_WILDCARD_HOST_PORT = 0x04,
+  PLAIN_SNIS_ONLY        = 0x08,
 }
 
 
@@ -297,7 +298,7 @@ local function marshall_route(r)
   local methods_t       = {}
   local sources_t       = { [0] = 0 }
   local destinations_t  = { [0] = 0 }
-  local snis_t          = {}
+  local snis_t          = { [0] = 0 }
 
 
   -- hosts
@@ -480,29 +481,54 @@ local function marshall_route(r)
 
   -- snis
 
+
   if snis then
     if type(snis) ~= "table" then
       return nil, "snis field must be a table"
     end
 
-    local count = #snis
-    if count > 0 then
-      match_rules = bor(match_rules, MATCH_RULES.SNI)
-      match_weight = match_weight + 1
+    local has_sni_wildcard
+    local has_sni_plain
 
-      for i = 1, count do
-        local sni = snis[i]
-        if type(sni) ~= "string" then
-          return nil, "sni elements must be strings"
-        end
+    for i = 1, #snis do
+      local sni = snis[i]
+      if type(sni) ~= "string" then
+        return nil, "snis values must be strings"
+      end
 
-        if #sni > 1 and byte(sni, -1) == DOT then
-          -- last dot in FQDNs must not be used for routing
-          sni = sub(sni, 1, -2)
-        end
+      if #sni > 1 and byte(sni, -1) == DOT then
+        -- last dot in FQDNs must not be used for routing
+        sni = sub(sni, 1, -2)
+      end
 
+      if find(sni, "*", nil, true) then
+        -- wildcard sni matching
+        has_sni_wildcard = true
+
+        local wildcard_sni_regex = sni:gsub("%.", "\\.")
+                                      :gsub("%*", ".+") .. "$"
+
+        append(snis_t, {
+          wildcard = true,
+          value    = sni,
+          regex    = wildcard_sni_regex,
+        })
+
+      else
+        -- plain sni matching
+        has_sni_plain = true
+        append(snis_t, { value = sni })
         snis_t[sni] = sni
       end
+    end
+
+    if has_sni_plain or has_sni_wildcard then
+      match_rules = bor(match_rules, MATCH_RULES.SNI)
+      match_weight = match_weight + 1
+    end
+
+    if not has_sni_wildcard then
+      submatch_weight = bor(submatch_weight, MATCH_SUBRULES.PLAIN_SNIS_ONLY)
     end
   end
 
@@ -622,7 +648,7 @@ end
 
 
 local function index_route_t(route_t, plain_indexes, prefix_uris, regex_uris,
-                             wildcard_hosts, src_trust_funcs, dst_trust_funcs)
+                             wildcard_hosts, wildcard_snis, src_trust_funcs, dst_trust_funcs)
   for i = 1, route_t.hosts[0] do
     local host_t = route_t.hosts[i]
     if host_t.wildcard then
@@ -657,8 +683,14 @@ local function index_route_t(route_t, plain_indexes, prefix_uris, regex_uris,
     plain_indexes.methods[method] = true
   end
 
-  for sni in pairs(route_t.snis) do
-    plain_indexes.snis[sni] = true
+  for i = 1, route_t.snis[0] do
+    local sni_t = route_t.snis[i]
+    if sni_t.wildcard then
+      append(wildcard_snis, sni_t)
+
+    else
+      plain_indexes.snis[sni_t.value] = true
+    end
   end
 
   index_src_dst(route_t.sources, plain_indexes.sources, src_trust_funcs)
@@ -776,7 +808,7 @@ local function sort_src_dst(source, func)
 end
 
 
-local function categorize_hosts_headers_uris(route_t, source, category, key)
+local function categorize_hosts_headers_uris_snis(route_t, source, category, key)
   for i = 1, source[0] do
     local value = source[i][key or "value"]
     if category[value] then
@@ -789,7 +821,7 @@ local function categorize_hosts_headers_uris(route_t, source, category, key)
 end
 
 
-local function categorize_methods_snis(route_t, source, category)
+local function categorize_methods(route_t, source, category)
   for key in pairs(source) do
     if category[key] then
       append(category[key], route_t)
@@ -847,7 +879,7 @@ local function categorize_route_t(route_t, bit_category, categories)
       routes_by_methods      = {},
       routes_by_sources      = {},
       routes_by_destinations = {},
-      routes_by_sni          = {},
+      routes_by_snis         = {},
       all                    = { [0] = 0 },
     }
 
@@ -855,11 +887,11 @@ local function categorize_route_t(route_t, bit_category, categories)
   end
 
   append(category.all, route_t)
-  categorize_hosts_headers_uris(route_t, route_t.hosts, category.routes_by_hosts)
-  categorize_hosts_headers_uris(route_t, route_t.headers, category.routes_by_headers, "name")
-  categorize_hosts_headers_uris(route_t, route_t.uris, category.routes_by_uris)
-  categorize_methods_snis(route_t, route_t.methods, category.routes_by_methods)
-  categorize_methods_snis(route_t, route_t.snis, category.routes_by_sni)
+  categorize_hosts_headers_uris_snis(route_t, route_t.hosts, category.routes_by_hosts)
+  categorize_hosts_headers_uris_snis(route_t, route_t.headers, category.routes_by_headers, "name")
+  categorize_hosts_headers_uris_snis(route_t, route_t.uris, category.routes_by_uris)
+  categorize_hosts_headers_uris_snis(route_t, route_t.snis, category.routes_by_snis)
+  categorize_methods(route_t, route_t.methods, category.routes_by_methods)
   categorize_src_dst(route_t, route_t.sources, category.routes_by_sources)
   categorize_src_dst(route_t, route_t.destinations, category.routes_by_destinations)
 end
@@ -1058,9 +1090,27 @@ do
     end,
 
     [MATCH_RULES.SNI] = function(route_t, ctx)
-      if ctx.req_scheme == "http" or route_t.snis[ctx.sni] then
-        ctx.matches.sni = ctx.sni
+      local snis = route_t.snis
+      local sni = ctx.sni
+      if ctx.req_scheme == "http" or snis[sni] then
+        ctx.matches.sni = sni
         return true
+      end
+
+      for i = 1, snis[0] do
+        local sni_t = snis[i]
+        if sni_t.wildcard then
+          local from, _, err = re_find(ctx.sni, sni_t.regex, "ajo")
+          if err then
+            log(ERR, "could not evaluate wildcard sni regex: ", err)
+            return
+          end
+
+          if from then
+            ctx.matches.sni = sni_t.value
+            return true
+          end
+        end
       end
     end,
 
@@ -1131,7 +1181,7 @@ do
     end,
 
     [MATCH_RULES.SNI] = function(category, ctx)
-      return category.routes_by_sni[ctx.sni]
+      return category.routes_by_snis[ctx.hits.sni or ctx.sni]
     end,
 
     [MATCH_RULES.SRC] = function(category, ctx)
@@ -1368,6 +1418,7 @@ function _M.new(routes, cache, cache_neg)
   local prefix_uris     = { [0] = 0 } -- will be sorted by length
   local regex_uris      = { [0] = 0 }
   local wildcard_hosts  = { [0] = 0 }
+  local wildcard_snis   = { [0] = 0 }
   local src_trust_funcs = { [0] = 0 }
   local dst_trust_funcs = { [0] = 0 }
 
@@ -1448,7 +1499,7 @@ function _M.new(routes, cache, cache_neg)
       local route_t = marshalled_routes[i]
       categorize_route_t(route_t, route_t.match_rules, categories)
       index_route_t(route_t, plain_indexes, prefix_uris, regex_uris,
-                    wildcard_hosts, src_trust_funcs, dst_trust_funcs)
+                    wildcard_hosts, wildcard_snis, src_trust_funcs, dst_trust_funcs)
     end
   end
 
@@ -1509,6 +1560,7 @@ function _M.new(routes, cache, cache_neg)
   local match_uris           = not isempty(plain_indexes.uris)
   local match_methods        = not isempty(plain_indexes.methods)
   local match_snis           = not isempty(plain_indexes.snis)
+  local match_wildcard_snis  = not isempty(wildcard_snis)
   local match_sources        = not isempty(plain_indexes.sources)
   local match_destinations   = not isempty(plain_indexes.destinations)
 
@@ -1693,9 +1745,29 @@ function _M.new(routes, cache, cache_neg)
 
     -- sni match
 
-    if match_snis and plain_indexes.snis[sni] then
-      req_category = bor(req_category, MATCH_RULES.SNI)
+    if sni ~= "" then
+      if match_snis and plain_indexes.snis[sni]
+      then
+        req_category = bor(req_category, MATCH_RULES.SNI)
+
+      elseif match_wildcard_snis then
+        for i = 1, wildcard_snis[0] do
+          local sni_t = wildcard_snis[i]
+          local from, _, err = re_find(sni, sni_t.regex, "ajo")
+          if err then
+            log(ERR, "could not match wildcard sni: ", err)
+            return
+          end
+
+          if from then
+            hits.sni     = sni_t.value
+            req_category = bor(req_category, MATCH_RULES.SNI)
+            break
+          end
+        end
+      end
     end
+
 
     -- src match
 

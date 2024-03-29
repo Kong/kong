@@ -1312,6 +1312,20 @@ for _, strategy in helpers.each_strategy() do
               name = "service_behind_example.org"
             },
           },
+          {
+            protocols = { "https" },
+            snis = { "*.foo.test" },
+            service = {
+              name = "service_behind_wild.foo.test"
+            },
+          },
+          {
+            protocols = { "https" },
+            snis = { "bar.*" },
+            service = {
+              name = "service_behind_bar.wild"
+            },
+          },
         })
       end)
 
@@ -1368,6 +1382,40 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("service_behind_example.org",
                      res.headers["kong-service-name"])
       end)
+
+      it("matches a Route based on its leftmost wildcard sni", function()
+        for _, sni in ipairs({"a.foo.test", "a.b.foo.test"}) do
+          proxy_ssl_client = helpers.proxy_ssl_client(nil, sni)
+
+          local res = assert(proxy_ssl_client:send {
+            method  = "GET",
+            path    = "/status/200",
+            headers = { ["kong-debug"] = 1 },
+          })
+          assert.res_status(200, res)
+          assert.equal("service_behind_wild.foo.test",
+                       res.headers["kong-service-name"])
+
+          proxy_ssl_client:close()
+        end
+      end)
+
+      it("matches a Route based on its rightmost wildcard sni", function()
+        for _, sni in ipairs({"bar.x", "bar.y.z"}) do
+          proxy_ssl_client = helpers.proxy_ssl_client(nil, sni)
+
+          local res = assert(proxy_ssl_client:send {
+            method  = "GET",
+            path    = "/status/200",
+            headers = { ["kong-debug"] = 1 },
+          })
+          assert.res_status(200, res)
+          assert.equal("service_behind_bar.wild",
+                       res.headers["kong-service-name"])
+
+          proxy_ssl_client:close()
+        end
+      end)
     end)
 
     describe("tls_passthrough", function()
@@ -1391,6 +1439,26 @@ for _, strategy in helpers.each_strategy() do
             snis = { "example.org" },
             service = {
               name = "service_behind_example.org",
+              host = helpers.mock_upstream_ssl_host,
+              port = helpers.mock_upstream_ssl_port,
+              protocol = "tcp",
+            },
+          },
+          {
+            protocols = { "tls_passthrough" },
+            snis = { "*.foo.test" },
+            service = {
+              name = "service_behind_wild.foo.test",
+              host = helpers.mock_upstream_ssl_host,
+              port = helpers.mock_upstream_ssl_port,
+              protocol = "tcp",
+            },
+          },
+          {
+            protocols = { "tls_passthrough" },
+            snis = { "bar.*" },
+            service = {
+              name = "service_behind_bar.wild",
               host = helpers.mock_upstream_ssl_host,
               port = helpers.mock_upstream_ssl_port,
               protocol = "tcp",
@@ -1457,6 +1525,58 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(201, res)
 
         proxy_ssl_client:close()
+      end)
+
+      it("matches a Route based on its leftmost wildcard sni", function()
+        for _, sni in ipairs({"a.foo.test", "a.b.foo.test"}) do
+          -- config propagates to stream subsystems not instantly
+          -- try up to 10 seconds with step of 2 seconds
+          -- in vagrant it takes around 6 seconds
+          helpers.wait_until(function()
+            proxy_ssl_client = helpers.http_client("127.0.0.1", stream_tls_listen_port)
+            local ok = proxy_ssl_client:ssl_handshake(nil, sni, false) -- explicit no-verify
+            if not ok then
+              proxy_ssl_client:close()
+              return false
+            end
+            return true
+          end, 10, 2)
+
+          local res = assert(proxy_ssl_client:send {
+            method  = "GET",
+            path    = "/status/200",
+            headers = { ["kong-debug"] = 1 },
+          })
+          assert.res_status(200, res)
+
+          proxy_ssl_client:close()
+        end
+      end)
+
+      it("matches a Route based on its rightmost wildcard sni", function()
+        for _, sni in ipairs({"bar.x", "bar.y.z"}) do
+          -- config propagates to stream subsystems not instantly
+          -- try up to 10 seconds with step of 2 seconds
+          -- in vagrant it takes around 6 seconds
+          helpers.wait_until(function()
+            proxy_ssl_client = helpers.http_client("127.0.0.1", stream_tls_listen_port)
+            local ok = proxy_ssl_client:ssl_handshake(nil, sni, false) -- explicit no-verify
+            if not ok then
+              proxy_ssl_client:close()
+              return false
+            end
+            return true
+          end, 10, 2)
+
+          local res = assert(proxy_ssl_client:send {
+            method  = "GET",
+            path    = "/status/200",
+            headers = { ["kong-debug"] = 1 },
+          })
+          assert.res_status(200, res)
+
+          proxy_ssl_client:close()
+        end
       end)
     end)
 
@@ -1787,6 +1907,22 @@ for _, strategy in helpers.each_strategy() do
               url = helpers.grpcbin_ssl_url,
             },
           },
+          {
+            protocols = { "grpcs" },
+            snis = { "*.grpcs_3.test" },
+            service = {
+              name = "grpcs_3",
+              url = helpers.grpcbin_ssl_url,
+            },
+          },
+          {
+            protocols = { "grpcs" },
+            snis = { "grpcs_4.*" },
+            service = {
+              name = "grpcs_4",
+              url = helpers.grpcbin_ssl_url,
+            },
+          },
         })
       end)
 
@@ -1825,6 +1961,46 @@ for _, strategy in helpers.each_strategy() do
         assert.truthy(ok)
         assert.truthy(resp)
         assert.matches("kong-service-name: grpcs_2", resp, nil, true)
+      end)
+
+      it("matches a Route based on its leftmost wildcard sni", function()
+        for _, sni in ipairs({"a.grpcs_3.test", "a.b.grpcs_3.test"}) do
+          grpcs_proxy_ssl_client = helpers.proxy_client_grpcs(sni)
+
+          local ok, resp = assert(grpcs_proxy_ssl_client({
+            service = "hello.HelloService.SayHello",
+            body = {
+              greeting = "world!"
+            },
+            opts = {
+              ["-H"] = "'kong-debug: 1'",
+              ["-v"] = true, -- verbose so we get response headers
+            }
+          }))
+          assert.truthy(ok)
+          assert.truthy(resp)
+          assert.matches("kong-service-name: grpcs_3", resp, nil, true)
+        end
+      end)
+
+      it("matches a Route based on its rightmost wildcard sni", function()
+        for _, sni in ipairs({"grpcs_4.x", "grpcs_4.y.z"}) do
+          grpcs_proxy_ssl_client = helpers.proxy_client_grpcs(sni)
+
+          local ok, resp = assert(grpcs_proxy_ssl_client({
+            service = "hello.HelloService.SayHello",
+            body = {
+              greeting = "world!"
+            },
+            opts = {
+              ["-H"] = "'kong-debug: 1'",
+              ["-v"] = true, -- verbose so we get response headers
+            }
+          }))
+          assert.truthy(ok)
+          assert.truthy(resp)
+          assert.matches("kong-service-name: grpcs_4", resp, nil, true)
+        end
       end)
     end)
     end -- not enable_buffering
