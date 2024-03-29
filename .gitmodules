@@ -4,9 +4,6 @@
 [submodule "distribution/lua-resty-openssl-aux-module"]
 	path = distribution/lua-resty-openssl-aux-module
 	url = git@github.com:fffonion/lua-resty-openssl-aux-module.git
-[submodule "distribution/kong-openid-connect"]
-	path = distribution/kong-openid-connect
-	url = git@github.com:Kong/kong-openid-connect.git
 [submodule "distribution/kong-gql"]
 	path = distribution/kong-gql
 	url = git@github.com:Kong/kong-gql.git

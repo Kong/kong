@@ -13,7 +13,7 @@ genrule(
         touch $@.tmp
 
         cwd=$$(pwd)
-        for dir in kong-openid-connect lua-resty-openapi3-deserializer kong-gql; do
+        for dir in lua-resty-openapi3-deserializer kong-gql; do
             echo "Installing library: $$dir" >> $$cwd/$@.tmp
             pushd distribution/$$dir >> $$cwd/$@.tmp
                 $$cwd/$(location @luarocks//:luarocks_exec) make *.rockspec >> $$cwd/$@.tmp

@@ -94,7 +94,7 @@ def _check_sanity(ctx):
              "Please rerun this build with:\n" +
              "export USER=" + user.replace("@", "_") + " bazel build <target>")
 
-    for sub_dir in ["kong-gql", "kong-openid-connect", "lua-resty-openssl-aux-module", "kong-licensing", "lua-resty-openapi3-deserializer"]:
+    for sub_dir in ["kong-gql", "lua-resty-openssl-aux-module", "kong-licensing", "lua-resty-openapi3-deserializer"]:
         mod = ctx.workspace_root.get_child("./distribution/%s" % sub_dir)
         if not mod.exists:
             continue
