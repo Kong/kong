@@ -16,7 +16,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       local fixtures = {
         http_mock = {},
       }
-      
+
       fixtures.http_mock.mistral = [[
         server {
           server_name mistral;
@@ -335,7 +335,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
         -- check this is in the 'kong' response format
         assert.is_truthy(json.error)
-        assert.equals(json.error.message, "cannot use own model for this instance")
+        assert.equals(json.error.message, "requested model does not match the configured plugin model")
       end)
     end)
 

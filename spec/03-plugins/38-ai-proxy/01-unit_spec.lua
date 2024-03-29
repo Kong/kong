@@ -296,7 +296,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
             assert.is_nil(err)
             
             -- compare the tables
-            assert.same(expected_request_table, actual_request_table)
+            assert.same(actual_request_table, expected_request_table)
           end)
 
 

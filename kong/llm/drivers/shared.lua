@@ -168,7 +168,6 @@ local function handle_stream_event(event_table, model_info, route_type)
   end
 end
 
-
 function _M.to_ollama(request_table, model)
   local input = {}
 
@@ -190,10 +189,10 @@ function _M.to_ollama(request_table, model)
   if model.options then
     input.options = {}
 
-    if model.options.max_tokens then input.options.num_predict = model.options.max_tokens end
-    if model.options.temperature then input.options.temperature = model.options.temperature end
-    if model.options.top_p then input.options.top_p = model.options.top_p end
-    if model.options.top_k then input.options.top_k = model.options.top_k end
+    input.options.num_predict = request_table.max_tokens or model.options.max_tokens
+    input.options.temperature = request_table.temperature or model.options.temperature
+    input.options.top_p = request_table.top_p or model.options.top_p
+    input.options.top_k = request_table.top_k or model.options.top_k
   end
 
   return input, "application/json", nil
@@ -264,6 +263,15 @@ function _M.from_ollama(response_string, model_info, route_type)
 end
 
 function _M.pre_request(conf, request_table)
+  -- check that the user hasn't exceeded the "max" max_tokens
+  if request_table.max_tokens
+       and conf.model.options
+       and conf.model.options.max_tokens
+       and request_table.max_tokens > conf.model.options.max_tokens
+       and (not conf.model.options.allow_exceeding_max_tokens) then
+    return nil, "exceeding max_tokens of " .. conf.model.options.max_tokens .. " is not allowed"
+  end
+
   -- process form/json body auth information
   local auth_param_name = conf.auth and conf.auth.param_name
   local auth_param_value = conf.auth and conf.auth.param_value

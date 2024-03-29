@@ -129,8 +129,8 @@ end
 
 function _M.pre_request(conf, body)
   -- check for user trying to bring own model
-  if body and body.model then
-    return nil, "cannot use own model for this instance"
+  if body and body.model and (body.model ~= conf.model.name) then
+    return nil, "requested model does not match the configured plugin model"
   end
 
   return true, nil

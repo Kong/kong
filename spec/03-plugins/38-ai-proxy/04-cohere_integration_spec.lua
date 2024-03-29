@@ -106,7 +106,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                   local body, err = ngx.req.get_body_data()
                   body, err = json.decode(body)
                   
-                  if err or (not body.prompt) then
+                  if err or (not body.message) then
                     ngx.status = 400
                     ngx.print(pl_file.read("spec/fixtures/ai-proxy/cohere/llm-v1-completions/responses/bad_request.json"))
                   else
@@ -413,7 +413,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
         -- check this is in the 'kong' response format
         assert.is_truthy(json.error)
-        assert.equals(json.error.message, "cannot use own model for this instance")
+        assert.equals(json.error.message, "requested model does not match the configured plugin model")
       end)
     end)
 
@@ -483,7 +483,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = pl_file.read("spec/fixtures/ai-proxy/cohere/llm-v1-completions/requests/good.json"),
         })
-        
+
         local body = assert.res_status(200 , r)
         local json = cjson.decode(body)
 

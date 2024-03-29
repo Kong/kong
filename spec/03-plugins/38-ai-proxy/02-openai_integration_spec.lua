@@ -242,6 +242,36 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       }
       --
 
+      -- 200 chat good with max tokens exceeding blocked
+      local chat_good = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http" },
+        strip_path = true,
+        paths = { "/openai/llm/v1/chat/good-with-max-tokens" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = chat_good.id },
+        config = {
+          route_type = "llm/v1/chat",
+          auth = {
+            header_name = "Authorization",
+            header_value = "Bearer openai-key",
+          },
+          model = {
+            name = "gpt-3.5-turbo",
+            provider = "openai",
+            options = {
+              max_tokens = 256,
+              allow_exceeding_max_tokens = false,
+              temperature = 1.0,
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/chat/good"
+            },
+          },
+        },
+      }
+      --
+
       -- 200 chat good with statistics disabled
       local chat_good_no_stats = assert(bp.routes:insert {
         service = empty_service,
@@ -740,7 +770,44 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
         -- check this is in the 'kong' response format
         assert.is_truthy(json.error)
-        assert.equals(json.error.message, "cannot use own model for this instance")
+        assert.equals(json.error.message, "requested model does not match the configured plugin model")
+      end)
+
+      it("sends in the same configured model via request body", function()
+        local r = client:get("/openai/llm/v1/chat/good", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good_own_model_but_matches.json"),
+        })
+        
+        local body = assert.res_status(200, r)
+        local json = cjson.decode(body)
+
+        assert.is_table(json.choices)
+        assert.is_table(json.choices[1].message)
+        assert.same({
+          content = "The sum of 1 + 1 is 2.",
+          role = "assistant",
+        }, json.choices[1].message)
+      end)
+
+      it("tries to exceed max tokens", function()
+        local r = client:get("/openai/llm/v1/chat/good-with-max-tokens", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good-excessive-tokens.json"),
+        })
+        
+        local body = assert.res_status(400, r)
+        local json = cjson.decode(body)
+
+        -- check this is in the 'kong' response format
+        assert.is_truthy(json.error)
+        assert.equals(json.error.message, "exceeding max_tokens of 256 is not allowed")
       end)
     end)
 

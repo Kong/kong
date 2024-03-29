@@ -62,6 +62,12 @@ local model_options_schema = {
         description = "Defines the max_tokens, if using chat or completion models.",
         required = false,
         default = 256 }},
+    { allow_exceeding_max_tokens = {
+        type = "boolean",
+        description = "If enabled, will allow users to send their own 'max_tokens' parameter, "
+                   .. "larger than the pre-defined option in [model.options.max_tokens].",
+        required = true,
+        default = true }},
     { temperature = {
         type = "number",
         description = "Defines the matching temperature, if using chat or completion models.",

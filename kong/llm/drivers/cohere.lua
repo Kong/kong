@@ -125,102 +125,59 @@ local function handle_stream_event(event_string, model_info, route_type)
   end
 end
 
-local transformers_to = {
-  ["llm/v1/chat"] = function(request_table, model)
-    request_table.model = model.name
+local function handle_all(request_table, model)
+  request_table.model = model.name
 
-    if request_table.prompt and request_table.messages then
-      return kong.response.exit(400, "cannot run a 'prompt' and a history of 'messages' at the same time - refer to schema")
+  if request_table.prompt and request_table.messages then
+    return kong.response.exit(400, "cannot run a 'prompt' and a history of 'messages' at the same time - refer to schema")
+
+  elseif request_table.messages then
+    -- we have to move all BUT THE LAST message into "chat_history" array
+    -- and move the LAST message (from 'user') into "message" string
+    if #request_table.messages > 1 then
+      local chat_history = table_new(#request_table.messages - 1, 0)
+      for i, v in ipairs(request_table.messages) do
+        -- if this is the last message prompt, don't add to history
+        if i < #request_table.messages then
+          local role
+          if v.role == "assistant" or v.role == "CHATBOT" then
+            role = "CHATBOT"
+          else
+            role = "USER"
+          end
   
-    elseif request_table.messages then
-      -- we have to move all BUT THE LAST message into "chat_history" array
-      -- and move the LAST message (from 'user') into "message" string
-      if #request_table.messages > 1 then
-        local chat_history = table_new(#request_table.messages - 1, 0)
-        for i, v in ipairs(request_table.messages) do
-          -- if this is the last message prompt, don't add to history
-          if i < #request_table.messages then
-            local role
-            if v.role == "assistant" or v.role == "CHATBOT" then
-              role = "CHATBOT"
-            else
-              role = "USER"
-            end
-    
-            chat_history[i] = {
-              role = role,
-              message = v.content,
-            }
-          end
+          chat_history[i] = {
+            role = role,
+            message = v.content,
+          }
         end
-
-        request_table.chat_history = chat_history
       end
 
-      request_table.temperature = model.options.temperature
-      request_table.message = request_table.messages[#request_table.messages].content
-      request_table.messages = nil
-
-    elseif request_table.prompt then
-      request_table.temperature = model.options.temperature
-      request_table.max_tokens = model.options.max_tokens
-      request_table.truncate = request_table.truncate or "END"
-      request_table.return_likelihoods = request_table.return_likelihoods or "NONE"
-      request_table.p = model.options.top_p
-      request_table.k = model.options.top_k
-
+      request_table.chat_history = chat_history
     end
 
-    return request_table, "application/json", nil
-  end,
+    request_table.max_tokens = request_table.max_tokens or model.options.max_tokens
+    request_table.p = request_table.top_p or model.options.top_p
+    request_table.k = request_table.top_k or model.options.top_k
+    request_table.message = request_table.messages[#request_table.messages].content
+    request_table.messages = nil
 
-  ["llm/v1/completions"] = function(request_table, model)
-    request_table.model = model.name
+  elseif request_table.prompt then
+    request_table.message = request_table.prompt
+    request_table.prompt = nil
+    request_table.temperature = request_table.temperature or model.options.temperature
+    request_table.max_tokens = request_table.max_tokens or model.options.max_tokens
+    request_table.p = request_table.top_p or model.options.top_p
+    request_table.k = request_table.top_k or model.options.top_k
 
-    if request_table.prompt and request_table.messages then
-      return kong.response.exit(400, "cannot run a 'prompt' and a history of 'messages' at the same time - refer to schema")
+  end
 
-    elseif request_table.messages then
-      -- we have to move all BUT THE LAST message into "chat_history" array
-      -- and move the LAST message (from 'user') into "message" string
-      if #request_table.messages > 1 then
-        local chat_history = table_new(#request_table.messages - 1, 0)
-        for i, v in ipairs(request_table.messages) do
-          -- if this is the last message prompt, don't add to history
-          if i < #request_table.messages then
-            local role
-            if v.role == "assistant" or v.role == "CHATBOT" then
-              role = "CHATBOT"
-            else
-              role = "USER"
-            end
-    
-            chat_history[i] = {
-              role = role,
-              message = v.content,
-            }
-          end
-        end
+  return request_table, "application/json", nil
+end
 
-        request_table.chat_history = chat_history
-      end
-
-      request_table.temperature = model.options.temperature
-      request_table.message = request_table.messages[#request_table.messages].content
-      request_table.messages = nil
-
-    elseif request_table.prompt then
-      request_table.temperature = model.options.temperature
-      request_table.max_tokens = model.options.max_tokens
-      request_table.truncate = request_table.truncate or "END"
-      request_table.return_likelihoods = request_table.return_likelihoods or "NONE"
-      request_table.p = model.options.top_p
-      request_table.k = model.options.top_k
-
-    end
-
-    return request_table, "application/json", nil
-  end,
+local transformers_to = {
+  ["llm/v1/chat"] = handle_all,
+  ["llm/v1/completions"] = handle_all,
 }
 
 local transformers_from = {
@@ -419,8 +376,8 @@ end
 
 function _M.pre_request(conf, body)
   -- check for user trying to bring own model
-  if body and body.model then
-    return false, "cannot use own model for this instance"
+  if body and body.model and (body.model ~= conf.model.name) then
+    return nil, "requested model does not match the configured plugin model"
   end
 
   return true, nil
