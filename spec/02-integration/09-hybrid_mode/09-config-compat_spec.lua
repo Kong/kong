@@ -472,6 +472,46 @@ describe("CP/DP config compat transformations #" .. strategy, function()
           admin.plugins:remove({ id = response_rl.id })
         end)
       end)
+
+      describe("proxy-cache plugin", function()
+        it("rename age field in response_headers config from age to Age", function()
+          -- [[ 3.8.x ]] --
+          local response_rl = admin.plugins:insert {
+            name = "proxy-cache",
+            enabled = true,
+            config = {
+              response_code = { 200, 301, 404 },
+              request_method = { "GET", "HEAD" },
+              content_type = { "text/plain", "application/json" },
+              cache_ttl = 300,
+              strategy = "memory",
+              cache_control = false,
+              memory = {
+                dictionary_name = "kong_db_cache",
+              },
+              -- [[ age field renamed to Age
+              response_headers = {
+                ["Age"] = true,
+                ["X-Cache-Status"] = true,
+                ["X-Cache-Key"] = true
+              }
+              -- ]]
+            }
+          }
+
+          local expected_response_rl_prior_38 = cycle_aware_deep_copy(response_rl)
+          expected_response_rl_prior_38.config.response_headers = {
+            ["age"] = true,
+            ["X-Cache-Status"] = true,
+            ["X-Cache-Key"] = true
+          }
+
+          do_assert(uuid(), "3.7.0", expected_response_rl_prior_38)
+
+          -- cleanup
+          admin.plugins:remove({ id = response_rl.id })
+        end)
+      end)
     end)
 
     describe("ai plugins", function()

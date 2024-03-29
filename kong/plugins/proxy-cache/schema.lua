@@ -78,7 +78,7 @@ return {
             description = "Caching related diagnostic headers that should be included in cached responses",
             type = "record",
             fields = {
-              { age  = {type = "boolean",  default = true} },
+              { ["Age"]  = {type = "boolean",  default = true} },
               { ["X-Cache-Status"]  = {type = "boolean",  default = true} },
               { ["X-Cache-Key"]  = {type = "boolean",  default = true} },
             },

@@ -1,0 +1,3 @@
+message: "proxy-cache response_headers age schema parameter changed from age to Age."
+type: bugfix
+scope: "Plugin"
