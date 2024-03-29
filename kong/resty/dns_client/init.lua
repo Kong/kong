@@ -11,7 +11,6 @@ local DEBUG     = ngx.DEBUG
 local ALERT     = ngx.ALERT
 local timer_at  = ngx.timer.at
 
-local type            = type
 local pairs           = pairs
 local ipairs          = ipairs
 local math_min        = math.min
@@ -23,8 +22,8 @@ local tablex_readonly = require("pl.tablex").readonly
 local parse_hosts   = utils.parse_hosts
 local ipv6_bracket  = utils.ipv6_bracket
 local search_names  = utils.search_names
-local get_next_round_robin_answers     = utils.get_next_round_robin_answers
-local get_weighted_round_robin_answers = utils.get_weighted_round_robin_answers
+local get_next_round_robin_answer           = utils.get_next_round_robin_answer
+local get_next_weighted_round_robin_answer  = utils.get_next_weighted_round_robin_answer
 
 local req_dyn_hook_run_hooks = require("kong.dynamic_hook").run_hooks
 
@@ -97,19 +96,19 @@ local mt = { __index = _M }
 local TRIES_MT = { __tostring = cjson.encode, }
 
 
-local function stats_init(stats, name)
+local function stats_init_name(stats, name)
   if not stats[name] then
     stats[name] = {}
   end
 end
 
 
-local function stats_count(stats, name, key)
+local function stats_increment(stats, name, key)
   stats[name][key] = (stats[name][key] or 0) + 1
 end
 
 
-local function stats_set(stats, name, key, value)
+local function stats_set_count(stats, name, key, value)
   stats[name][key] = value
 end
 
@@ -371,7 +370,7 @@ end
 
 local function resolve_query(self, name, qtype, tries)
   local key = name .. ":" .. qtype
-  stats_count(self.stats, key, "query")
+  stats_increment(self.stats, key, "query")
 
   local r, err = resolver:new(self.r_opts)
   if not r then
@@ -389,20 +388,20 @@ local function resolve_query(self, name, qtype, tries)
   local query_time = now() - start_time -- the time taken for the DNS query
   local time_str = ("%.3f %.3f"):format(start_time, query_time)
 
-  stats_set(self.stats, key, "query_last_time", time_str)
+  stats_set_count(self.stats, key, "query_last_time", time_str)
 
   log(DEBUG, "r:query() ans:", answers and #answers or "-", " t:", time_str)
 
   if not answers then
-    stats_count(self.stats, key, "query_fail_nameserver")
+    stats_increment(self.stats, key, "query_fail_nameserver")
     err = err or "unknown"
     return nil, "DNS server error: " .. err .. ", Query Time: " .. time_str
   end
 
   answers = process_answers(self, name, qtype, answers)
 
-  stats_count(self.stats, key, answers.errstr and "query_fail:" .. answers.errstr
-                                               or "query_succ")
+  stats_increment(self.stats, key, answers.errstr and "query_fail:" .. answers.errstr
+                                                   or "query_succ")
 
   return answers, nil, answers.ttl
 end
@@ -425,7 +424,7 @@ end
 
 
 local function start_stale_update_task(self, key, name, qtype, short_key)
-  stats_count(self.stats, key, "stale")
+  stats_increment(self.stats, key, "stale")
 
   local ok, err = timer_at(0, stale_update_task, self, key, name, qtype, short_key)
   if not ok then
@@ -483,10 +482,10 @@ end
 local function resolve_name_type(self, name, qtype, cache_only, short_key, tries, resolved_names)
   local key = name .. ":" .. qtype
 
-  stats_init(self.stats, key)
+  stats_init_name(self.stats, key)
 
   if detect_recursion(resolved_names, key) then
-    stats_count(self.stats, key, "fail_recur")
+    stats_increment(self.stats, key, "fail_recur")
     return nil, "recursion detected for name: " .. key
   end
 
@@ -509,7 +508,7 @@ local function resolve_name_type(self, name, qtype, cache_only, short_key, tries
 
   -- hit L1 lru or L2 shm
   if hit_level and hit_level < HIT_L3 then
-    stats_count(self.stats, key, HIT_LEVEL_TO_NAME[hit_level])
+    stats_increment(self.stats, key, HIT_LEVEL_TO_NAME[hit_level])
   end
 
   if err or answers.errcode then
@@ -605,11 +604,11 @@ local function resolve_all(self, name, qtype, cache_only, tries, resolved_names)
   -- key like "short:example.com:all" or "short:example.com:5"
   local key = "short:" .. name .. ":" .. (qtype or "all")
 
-  stats_init(self.stats, name)
-  stats_count(self.stats, name, "runs")
+  stats_init_name(self.stats, name)
+  stats_increment(self.stats, name, "runs")
 
   if detect_recursion(resolved_names, key) then
-    stats_count(self.stats, name, "fail_recur")
+    stats_increment(self.stats, name, "fail_recur")
     return nil, "recursion detected for name: " .. name
   end
 
@@ -630,7 +629,7 @@ local function resolve_all(self, name, qtype, cache_only, tries, resolved_names)
       end)
     end
 
-    stats_count(self.stats, name, answers and "miss" or "fail")
+    stats_increment(self.stats, name, answers and "miss" or "fail")
   else
     log(DEBUG, "quickly cache lookup ", key, " ans:", #answers, " hlv:", hit_level or "-")
 
@@ -640,12 +639,12 @@ local function resolve_all(self, name, qtype, cache_only, tries, resolved_names)
                              (hit_level and hit_level < HIT_L3))
     end
 
-    stats_count(self.stats, name, HIT_LEVEL_TO_NAME[hit_level])
+    stats_increment(self.stats, name, HIT_LEVEL_TO_NAME[hit_level])
   end
 
   -- dereference CNAME
   if qtype ~= TYPE_CNAME and answers and answers[1].type == TYPE_CNAME then
-    stats_count(self.stats, name, "cname")
+    stats_increment(self.stats, name, "cname")
     return resolve_all(self, answers[1].cname, qtype, cache_only, tries, resolved_names)
   end
 
@@ -668,12 +667,12 @@ function _M:resolve_address(name, port, cache_only, tries, resolved_names)
 
   -- non-nil answers and return_random
   if answers[1].type == TYPE_SRV then
-    local answer = get_weighted_round_robin_answers(answers)
+    local answer = get_next_weighted_round_robin_answer(answers)
     port = (answer.port ~= 0 and answer.port) or port
     return self:resolve_address(answer.target, port, cache_only, tries, resolved_names)
   end
 
-  return get_next_round_robin_answers(answers).address, port, tries
+  return get_next_round_robin_answer(answers).address, port, tries
 end
 
 

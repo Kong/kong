@@ -199,7 +199,7 @@ end
 
 -- util APIs to balance @answers
 
-function _M.get_next_round_robin_answers(answers)
+function _M.get_next_round_robin_answer(answers)
   answers.last = (answers.last or 0) % #answers + 1
   return answers[answers.last]
 end
@@ -258,7 +258,7 @@ local function filter_lowest_priority_answers(answers)
 end
 
 
-function _M.get_weighted_round_robin_answers(answers)
+function _M.get_next_weighted_round_robin_answer(answers)
   local l = answers.lowest_prio_records or filter_lowest_priority_answers(answers)
 
   -- perform round robin selection on lowest priority answers @l
