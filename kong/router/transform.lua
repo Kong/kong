@@ -290,13 +290,40 @@ do
 end
 
 
-local function sni_val_transform(_, p)
-  if #p > 1 and byte(p, -1) == DOT then
-    -- last dot in FQDNs must not be used for routing
-    return p:sub(1, -2)
+local function sni_op_transform(sni)
+  local op = OP_EQUAL
+
+  if byte(sni) == ASTERISK then
+    -- postfix matching
+    op = OP_POSTFIX
+
+  elseif byte(sni, -1) == ASTERISK then
+    -- prefix matching
+    op = OP_PREFIX
   end
 
-  return p
+  return op
+end
+
+
+local function sni_val_transform(op, sni)
+  -- prefix matching
+  if op == OP_PREFIX then
+    sni = sni:sub(1, -2)
+
+  else
+    if #sni > 1 and byte(sni, -1) == DOT then
+      -- last dot in FQDNs must not be used for routing
+      sni = sni:sub(1, -2)
+    end
+
+    -- postfix matching
+    if op == OP_POSTFIX then
+      sni = sni:sub(2)
+    end
+  end
+
+  return sni
 end
 
 
@@ -336,7 +363,7 @@ local function get_expression(route)
 
   expr_buf:reset()
 
-  local gen = gen_for_field("tls.sni", OP_EQUAL, snis, sni_val_transform)
+  local gen = gen_for_field("tls.sni", sni_op_transform, snis, sni_val_transform)
   if gen then
     -- See #6425, if `net.protocol` is not `https`
     -- then SNI matching should simply not be considered

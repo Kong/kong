@@ -9,6 +9,7 @@ local admin_api = require "spec.fixtures.admin_api"
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
 local path_handling_tests = require "spec.fixtures.router_path_handling_tests"
+local table_insert = table.insert
 
 local tonumber = tonumber
 
@@ -1304,7 +1305,7 @@ for _, strategy in helpers.each_strategy() do
       local proxy_ssl_client
 
       lazy_setup(function()
-        routes = insert_routes(bp, {
+        local configs = {
           {
             protocols = { "https" },
             snis = { "www.example.org" },
@@ -1319,7 +1320,32 @@ for _, strategy in helpers.each_strategy() do
               name = "service_behind_example.org"
             },
           },
-        })
+        }
+
+        if flavor ~= "traditional" then
+          local not_trad_configs = {
+            {
+              protocols = { "https" },
+              snis = { "*.foo.test" },
+              service = {
+                name = "service_behind_wild.foo.test"
+              },
+            },
+            {
+              protocols = { "https" },
+              snis = { "bar.*" },
+              service = {
+                name = "service_behind_bar.wild"
+              },
+            },
+          }
+
+          for _, v in ipairs(not_trad_configs) do
+            table_insert(configs, v)
+          end
+        end
+
+        routes = insert_routes(bp, configs)
       end)
 
       lazy_teardown(function()
@@ -1332,7 +1358,7 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
 
-      it("matches a Route based on its 'snis' attribute", function()
+      it("matches a route based on its 'snis' attribute", function()
         proxy_ssl_client = helpers.proxy_ssl_client(nil, "www.example.org")
 
         local res = assert(proxy_ssl_client:send {
@@ -1375,6 +1401,42 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("service_behind_example.org",
                      res.headers["kong-service-name"])
       end)
+
+      if flavor ~= "traditional" then
+        it("matches a route based on its leftmost wildcard sni", function()
+          for _, sni in ipairs({"a.foo.test", "a.b.foo.test"}) do
+            proxy_ssl_client = helpers.proxy_ssl_client(nil, sni)
+
+            local res = assert(proxy_ssl_client:send {
+              method  = "GET",
+              path    = "/status/200",
+              headers = { ["kong-debug"] = 1 },
+            })
+            assert.res_status(200, res)
+            assert.equal("service_behind_wild.foo.test",
+                         res.headers["kong-service-name"])
+
+            proxy_ssl_client:close()
+          end
+        end)
+
+        it("matches a route based on its rightmost wildcard sni", function()
+          for _, sni in ipairs({"bar.x", "bar.y.z"}) do
+            proxy_ssl_client = helpers.proxy_ssl_client(nil, sni)
+
+            local res = assert(proxy_ssl_client:send {
+              method  = "GET",
+              path    = "/status/200",
+              headers = { ["kong-debug"] = 1 },
+            })
+            assert.res_status(200, res)
+            assert.equal("service_behind_bar.wild",
+                         res.headers["kong-service-name"])
+
+            proxy_ssl_client:close()
+          end
+        end)
+      end -- if flavor ~= "traditional" then
     end)
 
     describe("tls_passthrough", function()
@@ -1382,7 +1444,7 @@ for _, strategy in helpers.each_strategy() do
       local proxy_ssl_client
 
       lazy_setup(function()
-        routes = insert_routes(bp, {
+        local configs = {
           {
             protocols = { "tls_passthrough" },
             snis = { "www.example.org" },
@@ -1403,7 +1465,38 @@ for _, strategy in helpers.each_strategy() do
               protocol = "tcp",
             },
           },
-        })
+        }
+
+        if flavor ~= "traditional" then
+          local not_trad_configs = {
+            {
+              protocols = { "tls_passthrough" },
+              snis = { "*.foo.test" },
+              service = {
+                name = "service_behind_wild.foo.test",
+                host = helpers.mock_upstream_ssl_host,
+                port = helpers.mock_upstream_ssl_port,
+                protocol = "tcp",
+              },
+            },
+            {
+              protocols = { "tls_passthrough" },
+              snis = { "bar.*" },
+              service = {
+                name = "service_behind_bar.wild",
+                host = helpers.mock_upstream_ssl_host,
+                port = helpers.mock_upstream_ssl_port,
+                protocol = "tcp",
+              },
+            },
+          }
+
+          for _, v in ipairs(not_trad_configs) do
+            table_insert(configs, v)
+          end
+        end
+
+        routes = insert_routes(bp, configs)
       end)
 
       lazy_teardown(function()
@@ -1416,7 +1509,7 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
 
-      it("matches a Route based on its 'snis' attribute", function()
+      it("matches a route based on its 'snis' attribute", function()
         -- config propagates to stream subsystems not instantly
         -- try up to 10 seconds with step of 2 seconds
         -- in vagrant it takes around 6 seconds
@@ -1465,6 +1558,60 @@ for _, strategy in helpers.each_strategy() do
 
         proxy_ssl_client:close()
       end)
+
+      if flavor ~= "traditional" then
+        it("matches a route based on its leftmost wildcard sni", function()
+          for _, sni in ipairs({"a.foo.test", "a.b.foo.test"}) do
+            -- config propagates to stream subsystems not instantly
+            -- try up to 10 seconds with step of 2 seconds
+            -- in vagrant it takes around 6 seconds
+            helpers.wait_until(function()
+              proxy_ssl_client = helpers.http_client("127.0.0.1", stream_tls_listen_port)
+              local ok = proxy_ssl_client:ssl_handshake(nil, sni, false) -- explicit no-verify
+              if not ok then
+                proxy_ssl_client:close()
+                return false
+              end
+              return true
+            end, 10, 2)
+
+            local res = assert(proxy_ssl_client:send {
+              method  = "GET",
+              path    = "/status/200",
+              headers = { ["kong-debug"] = 1 },
+            })
+            assert.res_status(200, res)
+
+            proxy_ssl_client:close()
+          end
+        end)
+
+        it("matches a route based on its rightmost wildcard sni", function()
+          for _, sni in ipairs({"bar.x", "bar.y.z"}) do
+            -- config propagates to stream subsystems not instantly
+            -- try up to 10 seconds with step of 2 seconds
+            -- in vagrant it takes around 6 seconds
+            helpers.wait_until(function()
+              proxy_ssl_client = helpers.http_client("127.0.0.1", stream_tls_listen_port)
+              local ok = proxy_ssl_client:ssl_handshake(nil, sni, false) -- explicit no-verify
+              if not ok then
+                proxy_ssl_client:close()
+                return false
+              end
+              return true
+            end, 10, 2)
+
+            local res = assert(proxy_ssl_client:send {
+              method  = "GET",
+              path    = "/status/200",
+              headers = { ["kong-debug"] = 1 },
+            })
+            assert.res_status(200, res)
+
+            proxy_ssl_client:close()
+          end
+        end)
+      end -- if flavor ~= "traditional" then
     end)
 
     describe("[#headers]", function()
@@ -1777,7 +1924,7 @@ for _, strategy in helpers.each_strategy() do
       local grpcs_proxy_ssl_client
 
       lazy_setup(function()
-        routes = insert_routes(bp, {
+        local configs = {
           {
             protocols = { "grpcs" },
             snis = { "grpcs_1.test" },
@@ -1794,14 +1941,41 @@ for _, strategy in helpers.each_strategy() do
               url = helpers.grpcbin_ssl_url,
             },
           },
-        })
+        }
+
+        if flavor ~= "traditional" then
+          local not_trad_configs = {
+            {
+              protocols = { "grpcs" },
+              snis = { "*.grpcs_3.test" },
+              service = {
+                name = "grpcs_3",
+                url = helpers.grpcbin_ssl_url,
+              },
+            },
+            {
+              protocols = { "grpcs" },
+              snis = { "grpcs_4.*" },
+              service = {
+                name = "grpcs_4",
+                url = helpers.grpcbin_ssl_url,
+              },
+            },
+          }
+
+          for _, v in ipairs(not_trad_configs) do
+            table_insert(configs, v)
+          end
+        end
+
+        routes = insert_routes(bp, configs)
       end)
 
       lazy_teardown(function()
         remove_routes(strategy, routes)
       end)
 
-      it("matches a Route based on its 'snis' attribute", function()
+      it("matches a route based on its 'snis' attribute", function()
         grpcs_proxy_ssl_client = helpers.proxy_client_grpcs("grpcs_1.test")
 
         local ok, resp = assert(grpcs_proxy_ssl_client({
@@ -1833,6 +2007,48 @@ for _, strategy in helpers.each_strategy() do
         assert.truthy(resp)
         assert.matches("kong-service-name: grpcs_2", resp, nil, true)
       end)
+
+      if flavor ~= "traditional" then
+        it("matches a route based on its leftmost wildcard sni", function()
+          for _, sni in ipairs({"a.grpcs_3.test", "a.b.grpcs_3.test"}) do
+            grpcs_proxy_ssl_client = helpers.proxy_client_grpcs(sni)
+
+            local ok, resp = assert(grpcs_proxy_ssl_client({
+              service = "hello.HelloService.SayHello",
+              body = {
+                greeting = "world!"
+              },
+              opts = {
+                ["-H"] = "'kong-debug: 1'",
+                ["-v"] = true, -- verbose so we get response headers
+              }
+            }))
+            assert.truthy(ok)
+            assert.truthy(resp)
+            assert.matches("kong-service-name: grpcs_3", resp, nil, true)
+          end
+        end)
+
+        it("matches a route based on its rightmost wildcard sni", function()
+          for _, sni in ipairs({"grpcs_4.x", "grpcs_4.y.z"}) do
+            grpcs_proxy_ssl_client = helpers.proxy_client_grpcs(sni)
+
+            local ok, resp = assert(grpcs_proxy_ssl_client({
+              service = "hello.HelloService.SayHello",
+              body = {
+                greeting = "world!"
+              },
+              opts = {
+                ["-H"] = "'kong-debug: 1'",
+                ["-v"] = true, -- verbose so we get response headers
+              }
+            }))
+            assert.truthy(ok)
+            assert.truthy(resp)
+            assert.matches("kong-service-name: grpcs_4", resp, nil, true)
+          end
+        end)
+      end -- if flavor ~= "traditional" then
     end)
     end -- not enable_buffering
 

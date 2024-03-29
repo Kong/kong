@@ -43,6 +43,11 @@ local entity_checks = {
   }},
 }
 
+local snis_elements_type = typedefs.wildcard_host
+
+if kong_router_flavor == "traditional" then
+  snis_elements_type = typedefs.sni
+end
 
 -- works with both `traditional_compatible` and `expressions` routes
 local validate_route
@@ -173,7 +178,7 @@ local routes = {
 
       { snis = { type = "set",
                  description = "A list of SNIs that match this Route.",
-                 elements = typedefs.sni }, },
+                 elements = snis_elements_type }, },
       { sources = typedefs.sources },
       { destinations = typedefs.destinations },
 
