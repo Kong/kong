@@ -84,16 +84,14 @@ local EMPTY_RECORD_ERROR_MESSAGE  = "empty record received"
 
 -- APIs
 
-local _M = {}
+local _M = {
+  TYPE_SRV     = TYPE_SRV,
+  TYPE_A       = TYPE_A,
+  TYPE_AAAA    = TYPE_AAAA,
+  TYPE_CNAME   = TYPE_CNAME,
+  TYPE_LAST    = TYPE_LAST,
+}
 local mt = { __index = _M }
-
--- copy TYPE_*
-for k,v in pairs(resolver) do
-  if type(k) == "string" and k:sub(1,5) == "TYPE_" then
-    _M[k] = v
-  end
-end
-_M.TYPE_LAST = TYPE_LAST
 
 
 local TRIES_MT = { __tostring = cjson.encode, }
