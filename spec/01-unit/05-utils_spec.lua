@@ -4,6 +4,7 @@ local pl_path = require "pl.path"
 describe("Utils", function()
 
   describe("get_system_infos()", function()
+    local utils = require "kong.tools.system"
     it("retrieves various host infos", function()
       local infos = utils.get_system_infos()
       assert.is_number(infos.cores)
@@ -19,6 +20,7 @@ describe("Utils", function()
   end)
 
   describe("get_system_trusted_certs_filepath()", function()
+    local utils = require "kong.tools.system"
     local old_exists = pl_path.exists
     after_each(function()
       pl_path.exists = old_exists
