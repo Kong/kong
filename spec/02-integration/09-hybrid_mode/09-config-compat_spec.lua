@@ -251,6 +251,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         local expected_otel_prior_35 = utils.cycle_aware_deep_copy(opentelemetry)
         expected_otel_prior_35.config.header_type = "preserve"
         expected_otel_prior_35.config.sampling_rate = nil
+        expected_otel_prior_35.config.propagation = nil
         do_assert(utils.uuid(), "3.4.0", expected_otel_prior_35)
 
         -- cleanup
@@ -271,6 +272,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         local expected_otel_prior_34 = utils.cycle_aware_deep_copy(opentelemetry)
         expected_otel_prior_34.config.header_type = "preserve"
         expected_otel_prior_34.config.sampling_rate = nil
+        expected_otel_prior_34.config.propagation = nil
         do_assert(utils.uuid(), "3.3.0", expected_otel_prior_34)
 
         -- cleanup
@@ -296,6 +298,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         local expected_zipkin_prior_35 = utils.cycle_aware_deep_copy(zipkin)
         expected_zipkin_prior_35.config.header_type = "preserve"
         expected_zipkin_prior_35.config.default_header_type = "b3"
+        expected_zipkin_prior_35.config.propagation = nil
         do_assert(utils.uuid(), "3.4.0", expected_zipkin_prior_35)
 
         -- cleanup
@@ -316,6 +319,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         local expected_zipkin_prior_34 = utils.cycle_aware_deep_copy(zipkin)
         expected_zipkin_prior_34.config.header_type = "preserve"
         expected_zipkin_prior_34.config.default_header_type = "b3"
+        expected_zipkin_prior_34.config.propagation = nil
         do_assert(utils.uuid(), "3.3.0", expected_zipkin_prior_34)
 
         -- cleanup
