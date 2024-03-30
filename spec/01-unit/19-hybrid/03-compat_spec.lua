@@ -630,5 +630,43 @@ describe("kong.clustering.compat", function()
       assert.is_nil(assert(services[3]).ca_certificates)
     end)
 
-  end)
+  end)  -- describe
+
+  describe("route entities compatible changes", function()
+    it("mixed mode routes in expressions flavor", function()
+      local _, db = helpers.get_db_utils(nil, {
+        "routes",
+      })
+      _G.kong.db = db
+      _G.kong.configuration = { router_flavor = "expressions" }
+
+      -- mixed mode routes
+      assert(declarative.load_into_db({
+        routes = {
+          route1 = {
+            id = "00000000-0000-0000-0000-000000000001",
+            hosts = { "example.com" },
+            --expression == ngx.null,
+          },
+          --[[
+          route2 = {
+            id = "00000000-0000-0000-0000-000000000002",
+            expression = "http.path == /foo"
+          },
+          --]]
+        },
+      }, { _transform = true }))
+
+      local config = { config_table = declarative.export_config() }
+
+      local has_update, result = compat.update_compatible_payload(config, "3.6.0", "test_")
+      assert.truthy(has_update)
+
+      result = cjson_decode(inflate_gzip(result)).config_table
+      local routes = assert(assert(assert(result).routes))
+      assert(#routes == 0)
+    end)
+
+  end)  -- describe
+
 end)

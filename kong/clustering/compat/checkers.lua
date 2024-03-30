@@ -33,12 +33,13 @@ local compatible_checkers = {
         return false
       end
 
-      local cur_routes = config_table.routes
+      local cur_routes = config_table.routes or {}
       local count = #cur_routes
 
       local idx = 0
       local routes = {}
 
+      -- get all expression only routes
       for i = 1, count do
         local r = cur_routes[i]
 
@@ -55,11 +56,12 @@ local compatible_checkers = {
       end
 
       -- only pass expression routes to DP
+      -- mixed mode routes will be set to nil
       for i = 1, count do
-        cur_routes[i] = routes[i]
+        cur_routes[i] = routes[i] -- or nil
       end
 
-      log_warn_message("contains incompatible routes", 'remove them',
+      log_warn_message("contains mixed mode route", "be removed",
                        dp_version, log_suffix)
 
       return true
