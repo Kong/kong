@@ -22,8 +22,8 @@ describe("[DNS client stats]", function()
     end
 
     -- restore its API overlapped by the compatible layer
-    package.loaded["kong.resty.dns_client"] = nil
-    client = require("kong.resty.dns_client")
+    package.loaded["kong.dns.client"] = nil
+    client = require("kong.dns.client")
     client.resolve = client._resolve
   end)
 

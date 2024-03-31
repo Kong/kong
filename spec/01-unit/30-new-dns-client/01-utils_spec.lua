@@ -1,4 +1,4 @@
-local utils = require "kong.resty.dns_client.utils"
+local utils = require "kong.dns.utils"
 local tempfilename = require("pl.path").tmpname
 local writefile = require("pl.utils").writefile
 local splitlines = require("pl.stringx").splitlines

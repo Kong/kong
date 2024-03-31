@@ -1,5 +1,5 @@
 local cjson = require("cjson.safe")
-local utils = require("kong.resty.dns_client.utils")
+local utils = require("kong.dns.utils")
 local mlcache = require("kong.resty.mlcache")
 local resolver = require("resty.dns.resolver")
 
