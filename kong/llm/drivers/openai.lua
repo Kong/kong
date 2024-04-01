@@ -66,7 +66,7 @@ local transformers_from = {
     if err then
       return nil, "'choices' not in llm/v1/chat response"
     end
-
+    
     if response_object.choices then
       return response_string, nil
     else

@@ -14,17 +14,17 @@ local DRIVER_NAME = "cohere"
 
 local function handle_stream_event(event_string, model_info, route_type)
   local metadata
-
+  
   local event, err = cjson.decode(event_string)
   if err then
     return nil, "failed to decode event frame from cohere: " .. err, nil
   end
-
+  
   local new_event
-
+  
   if event.event_type == "stream-start" then
     kong.ctx.plugin.ai_proxy_cohere_stream_id = event.generation_id
-
+    
     -- ignore the rest of this one
     new_event = {
       choices = {
@@ -40,7 +40,7 @@ local function handle_stream_event(event_string, model_info, route_type)
       model = model_info.name,
       object = "chat.completion.chunk",
     }
-
+    
   elseif event.event_type == "text-generation" then
     -- this is a token
     if route_type == "stream/llm/v1/chat" then
@@ -51,9 +51,14 @@ local function handle_stream_event(event_string, model_info, route_type)
               content = event.text or "",
             },
             index = 0,
+            finish_reason = cjson.null,
+            logprobs = cjson.null,
           },
         },
-        id = kong.ctx.plugin.ai_proxy_cohere_stream_id,
+        id = kong
+         and kong.ctx
+         and kong.ctx.plugin
+         and kong.ctx.plugin.ai_proxy_cohere_stream_id,
         model = model_info.name,
         object = "chat.completion.chunk",
       }
@@ -64,9 +69,14 @@ local function handle_stream_event(event_string, model_info, route_type)
           [1] = {
             text = event.text or "",
             index = 0,
+            finish_reason = cjson.null,
+            logprobs = cjson.null,
           },
         },
-        id = kong.ctx.plugin.ai_proxy_cohere_stream_id,
+        id = kong
+         and kong.ctx
+         and kong.ctx.plugin
+         and kong.ctx.plugin.ai_proxy_cohere_stream_id,
         model = model_info.name,
         object = "text_completion",
       }

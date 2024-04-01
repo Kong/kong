@@ -4,6 +4,7 @@ local fmt       = string.format
 local cjson     = require("cjson.safe")
 local re_match  = ngx.re.match
 local buf       = require("string.buffer")
+local lower     = string.lower
 local meta      = require "kong.meta"
 local ai_shared = require("kong.llm.drivers.shared")
 --
@@ -232,6 +233,15 @@ _M.config_schema = {
   },
 }
 
+local streaming_skip_headers = {
+  ["connection"]        = true,
+  ["content-type"]      = true,
+  ["keep-alive"]        = true,
+  ["set-cookie"]        = true,
+  ["transfer-encoding"] = true,
+  ["via"]               = true,
+}
+
 local formats_compatible = {
   ["llm/v1/chat"] = {
     ["llm/v1/chat"] = true,
@@ -421,6 +431,12 @@ function _M:handle_streaming_request(body)
   ngx.status = 200
   ngx.header["Content-Type"] = "text/event-stream"
   ngx.header["Via"] = meta._SERVER_TOKENS
+
+  for k, v in pairs(res.headers) do
+    if not streaming_skip_headers[lower(k)] then
+      ngx.header[k] = v
+    end
+  end
 
   -- server-sent events should ALWAYS be chunk encoded.
   -- if they aren't then... we just won't support them.
