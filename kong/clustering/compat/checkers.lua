@@ -38,7 +38,7 @@ local compatible_checkers = {
 
       for _, route in ipairs(config_table.routes or {}) do
         local snis = route.snis
-        if not snis or #snis == 0 then
+        if type(snis) ~= "table" or #snis == 0 then
           break
         end
 
