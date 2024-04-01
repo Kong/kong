@@ -307,10 +307,10 @@ function _M.add_error(errors, k, v)
   return errors
 end
 
+
 --- Retrieves a value from table using path.
 -- @param t The source table to retrieve the value from.
 -- @param path Path table containing keys
--- @param v Value of the error
 -- @return Returns `value` if something was found and `nil` otherwise
 function _M.table_path(t, path)
   local current_value = t
@@ -324,5 +324,6 @@ function _M.table_path(t, path)
 
   return current_value
 end
+
 
 return _M
