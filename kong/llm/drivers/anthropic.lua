@@ -18,7 +18,6 @@ end
 
 local function kong_messages_to_claude_prompt(messages)
   local buf = buffer.new()
-  buf:reset()
 
   -- We need to flatten the messages into an assistant chat history for Claude
   for _, v in ipairs(messages) do
@@ -125,8 +124,7 @@ local transformers_from = {
     end
 
     local function extract_text_from_content(content)
-      local buf = buffer:new()
-      buf:reset()
+      local buf = buffer.new()
       for i, v in ipairs(content) do
         if i ~= 1 then
           buf:put("\n")
