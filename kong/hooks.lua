@@ -36,7 +36,7 @@ local EMPTY = require("pl.tablex").readonly({})
   ```
   -- let's assume PREFERED_MAX_HOOK_RETS is 4
   if retc <= PREFERED_MAX_HOOK_RETS then
-    local r0, r1, r2, r3= unpack(retv, 1, retc)
+    local r0, r1, r2, r3 = unpack(retv, 1, retc)
     return r0, r1, r2, r3
   end
   ```
@@ -91,7 +91,7 @@ function _M.run_hook(name, a0, a1, a2, a3, a4, a5, ...)
 
   local acc
 
-  -- `select` only JIT-table when first argument 
+  -- `select` only JIT-able when first argument 
   -- is a constant (Has to be positive if used with varg).
   local extra_argc = select("#", ...)
 
