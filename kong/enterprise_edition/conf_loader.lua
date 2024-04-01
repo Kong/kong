@@ -483,20 +483,19 @@ local function validate_admin_gui_authentication(conf, errors)
             end
           end
 
-          -- mandatory scopes
-          for _, scope in ipairs({ "openid", "offline_access" }) do
-            if not scopes[scope] then
-              errors[#errors + 1] = string.format(
-                [["%s" is missing from admin_gui_auth_conf.scopes, which is required when ]] ..
-                [[admin_gui_auth is set to "openid-connect" to allow the RP-initiated logout to work correctly]],
-                scope
-              )
-            end
+          -- Warn users about these essential scopes if they are missing
+          -- Don't treat them as errors since the IdPs implementation may vary
+          if not scopes["openid"] then
+            log.warn(
+              [["openid" is missing from admin_gui_auth_conf.scopes, which is essential for OpenID ]] ..
+              [[Connect to work while setting admin_gui_auth to "openid-connect". ]] ..
+              [[You may encounter issues with this scope missing]])
           end
 
           if auth_config.admin_claim == "email" and not scopes["email"] then
-            log.warn([["email" is missing from admin_gui_auth_conf.scopes but admin_gui_auth_conf.admin_claim ]] ..
-              [[is set to "email". You might need to manually double check if it's correct]])
+            log.warn(
+              [["email" is missing from admin_gui_auth_conf.scopes but admin_gui_auth_conf.admin_claim ]] ..
+              [[is set to "email". You may encounter issues with this scope missing]])
           end
         end
       end

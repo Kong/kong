@@ -665,21 +665,16 @@ describe("ee conf loader", function()
           scopes = { "offline_access" },
         })
       })
+      assert.is_nil(err)
 
-      assert.matches([["openid" is missing from admin_gui_auth_conf.scopes]], err)
-    end)
+      local has_openid_scope_warning
+      for _, warning in ipairs(warnings) do
+        if string.find(warning, [["openid" is missing from admin_gui_auth_conf.scopes]]) then
+          has_openid_scope_warning = true
+        end
+      end
 
-    it("prints warnings when offline_access is missing from scopes", function()
-      local _, err = conf_loader(nil, {
-        enforce_rbac = "on",
-        admin_gui_url = "http://localhost:8002",
-        admin_gui_auth = "openid-connect",
-        admin_gui_auth_conf = openid_conf({
-          scopes = { "openid" },
-        })
-      })
-
-      assert.matches([["offline_access" is missing from admin_gui_auth_conf.scopes]], err)
+      assert.is_true(has_openid_scope_warning)
     end)
 
     it("prints warnings when admin_claim = email and email is missing from scopes", function()

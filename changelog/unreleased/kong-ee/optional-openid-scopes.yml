@@ -1,0 +1,4 @@
+message: |
+  Fixing an issue where users were not allowed to start Kong Gateway if `admin_gui_auth_conf.scope` is missing `"openid"` or `"offline_access"` when `admin_gui_auth` is set to `openid-connect`. Kong Gateway will now print warning logs only if `"openid"` is missing from `admin_gui_auth_conf.scope`.
+type: bugfix
+scope: Core
