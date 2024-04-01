@@ -28,14 +28,6 @@ local compatible_checkers = {
     function(config_table, dp_version, log_suffix)
       local has_update
 
-      local flavor = kong and
-                     kong.configuration and
-                     kong.configuration.router_flavor
-      -- remove this once the `expressions` flavor supports `route.snis`
-      if flavor == "expressions" then
-        return nil
-      end
-
       for _, route in ipairs(config_table.routes or {}) do
         local snis = route.snis
         if type(snis) ~= "table" or #snis == 0 then
