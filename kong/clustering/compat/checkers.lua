@@ -39,7 +39,7 @@ local compatible_checkers = {
       for _, route in ipairs(config_table.routes or {}) do
         local snis = route.snis
         if type(snis) ~= "table" or #snis == 0 then
-          break
+          goto continue
         end
 
         local idx = 0
@@ -60,6 +60,8 @@ local compatible_checkers = {
         if local_has_update then
           route.snis = new_snis
         end
+
+        ::continue::
       end
 
       if has_update then

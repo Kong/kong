@@ -633,9 +633,9 @@ describe("kong.clustering.compat", function()
   end)  -- describe
 
 
-  describe("route entities compatible changes", function()
-    it("route.snis contain wildcard", function()
-      for _, flavor in ipairs({"traditional", "traditional_compatible"}) do
+  for _, flavor in ipairs({"traditional", "traditional_compatible"}) do
+    describe("Router (flavor = " .. flavor .. ") route entities compatible changes", function()
+      it("route.snis contain wildcard", function()
         local _, db = helpers.get_db_utils(nil, {
           "routes",
         })
@@ -674,8 +674,8 @@ describe("kong.clustering.compat", function()
             assert.same({"normal.test", "good.test"}, route.snis)
           end
         end
-      end
-    end)
-  end)  -- describe
+      end)
+    end)  -- describe
+  end
 
 end)
