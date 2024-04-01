@@ -1,0 +1,3 @@
+message: Speeded up internal hooking mechanism.
+type: performance
+scope: Performance
