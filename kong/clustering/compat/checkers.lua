@@ -1,5 +1,6 @@
 local ipairs = ipairs
 local type = type
+local string_find = string.find
 
 
 local log_warn_message
@@ -23,6 +24,53 @@ end
 
 
 local compatible_checkers = {
+  { 3007000000, --[[ 3.7.0.0 ]]
+    function(config_table, dp_version, log_suffix)
+      local has_update
+
+      local flavor = kong and
+                     kong.configuration and
+                     kong.configuration.router_flavor
+      -- remove this once the `expressions` flavor supports `route.snis`
+      if flavor == "expressions" then
+        return nil
+      end
+
+      for _, route in ipairs(config_table.routes or {}) do
+        local snis = route.snis
+        if not snis or #snis == 0 then
+          break
+        end
+
+        local idx = 0
+        local new_snis = {}
+        local local_has_update
+        for _, sni in ipairs(snis) do
+          -- remove the sni that contains wildcard
+          if string_find(sni, "*", nil, true) then
+            has_update = true
+            local_has_update = true
+
+          else
+            idx = idx + 1
+            new_snis[idx] = sni
+          end
+        end
+
+        if local_has_update then
+          route.snis = new_snis
+        end
+      end
+
+      if has_update then
+        log_warn_message("configuration 'route.snis' contains elements that contains wildcard character '*'",
+                         "be removed", dp_version, log_suffix)
+      end
+
+      return has_update
+    end
+  },
+
   { 3006000000, --[[ 3.6.0.0 ]]
     function(config_table, dp_version, log_suffix)
       local has_update

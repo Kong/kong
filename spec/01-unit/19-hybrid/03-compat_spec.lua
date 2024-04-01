@@ -630,5 +630,52 @@ describe("kong.clustering.compat", function()
       assert.is_nil(assert(services[3]).ca_certificates)
     end)
 
-  end)
+  end)  -- describe
+
+
+  describe("route entities compatible changes", function()
+    it("route.snis contain wildcard", function()
+      for _, flavor in ipairs({"traditional", "traditional_compatible"}) do
+        local _, db = helpers.get_db_utils(nil, {
+          "routes",
+        })
+        _G.kong.db = db
+        _G.kong.configuration = { router_flavor = flavor }
+
+        assert(declarative.load_into_db({
+          routes = {
+            route1 = {
+              id = "00000000-0000-0000-0000-000000000001",
+              snis = { "*.foo.test", "normal.test", "bar.*", "good.test" },
+            },
+            route2 = {
+              id = "00000000-0000-0000-0000-000000000002",
+              snis = { "normal.test", "good.test" },
+            },
+            route3 = {
+              id = "00000000-0000-0000-0000-000000000003",
+              snis = { "*.foo.test", "bar.*", },
+            },
+          },
+        }, { _transform = true }))
+        local config = { config_table = declarative.export_config() }
+        local has_update, result = compat.update_compatible_payload(config, "3.6.0", "test_")
+        assert.truthy(has_update)
+        result = cjson_decode(inflate_gzip(result)).config_table
+
+        local routes = assert(assert(result).routes)
+        assert.equals(3, #routes)
+        for _, route in ipairs(routes) do
+          if route.id == "00000000-0000-0000-0000-000000000003" then
+            assert.equals(0, #route.snis)
+
+          else
+            assert.equals(2, #route.snis)
+            assert.same({"normal.test", "good.test"}, route.snis)
+          end
+        end
+      end
+    end)
+  end)  -- describe
+
 end)
