@@ -1,7 +1,6 @@
 -- This test case file originates from the old version of the DNS client and has
 -- been modified to adapt to the new version of the DNS client.
 
-local utils = require("kong.tools.utils")
 local _writefile = require("pl.utils").writefile
 local tmpname = require("pl.path").tmpname
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
@@ -240,7 +239,7 @@ describe("[DNS client cache]", function()
           ttl = ttl,
         }}
       }
-      local mock_copy = utils.cycle_aware_deep_copy(mock_records)
+      local mock_copy = cycle_aware_deep_copy(mock_records)
 
       -- resolve and check whether we got the mocked record
       local answers = cli:resolve("myhost6")
@@ -480,7 +479,7 @@ describe("[DNS client cache]", function()
         ttl = 60,
       }
       mock_records = setmetatable({
-        ["myhost9.domain.com:"..resolver.TYPE_CNAME] = { utils.cycle_aware_deep_copy(CNAME1) },  -- copy to make it different
+        ["myhost9.domain.com:"..resolver.TYPE_CNAME] = { cycle_aware_deep_copy(CNAME1) },  -- copy to make it different
         ["myhost9.domain.com:"..resolver.TYPE_A] = { CNAME1, A2 },  -- not there, just a reference and target
         ["myotherhost.domain.com:"..resolver.TYPE_A] = { A2 },
       }, {
