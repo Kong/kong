@@ -82,6 +82,23 @@ describe("[utils]", function ()
     end)
   end)
 
+  describe("ipv6_bracket()", function ()
+    it("IPv6 address", function ()
+      assert.equal(utils.ipv6_bracket("::1"), "[::1]")
+      assert.equal(utils.ipv6_bracket("[::1]"), "[::1]")
+      assert.equal(utils.ipv6_bracket("2001:db8::1"), "[2001:db8::1]")
+      assert.equal(utils.ipv6_bracket("[2001:db8::1]"), "[2001:db8::1]")
+    end)
+
+    it("IPv4 address", function ()
+      assert.equal(utils.ipv6_bracket("127.0.0.1"), "127.0.0.1")
+    end)
+
+    it("host name", function ()
+      assert.equal(utils.ipv6_bracket("example.com"), "example.com")
+    end)
+  end)
+
   describe("answer selection", function ()
     local function get_and_count(answers, n, get_ans)
       local count = {}
