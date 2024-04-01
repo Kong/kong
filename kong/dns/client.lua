@@ -10,6 +10,7 @@ local WARN      = ngx.WARN
 local DEBUG     = ngx.DEBUG
 local ALERT     = ngx.ALERT
 local timer_at  = ngx.timer.at
+local worker_id = ngx.worker.id
 
 local pairs           = pairs
 local ipairs          = ipairs
@@ -90,7 +91,7 @@ local _M = {
   TYPE_CNAME   = TYPE_CNAME,
   TYPE_LAST    = TYPE_LAST,
 }
-local mt = { __index = _M }
+local MT = { __index = _M }
 
 
 local TRIES_MT = { __tostring = cjson.encode, }
@@ -220,7 +221,7 @@ function _M.new(opts)
         return
       end
 
-      local cwid = ngx.worker.id()
+      local cwid = worker_id()
       for _, ev in pairs(events) do
         local handler = function(data, event, source, wid)
           if cwid ~= wid then -- Current worker has handled this event.
@@ -305,7 +306,7 @@ function _M.new(opts)
       errstr  = EMPTY_RECORD_ERROR_MESSAGE,
       ttl     = opts.empty_ttl or DEFAULT_EMPTY_TTL,
     }),
-  }, mt)
+  }, MT)
 end
 
 
@@ -330,21 +331,23 @@ local function process_answers(self, qname, qtype, answers)
       ttl = math_min(ttl, answer.ttl)
     end
 
-    if answer.type == TYPE_CNAME then
+    local answer_type = answer.type
+
+    if answer_type == TYPE_CNAME then
       cname_answer = answer   -- use the last one as the real cname
 
-    elseif answer.type == qtype then
+    elseif answer_type == qtype then
       -- compatible with balancer, see https://github.com/Kong/kong/pull/3088
-      if answer.type == TYPE_AAAA then
+      if answer_type == TYPE_AAAA then
         answer.address = ipv6_bracket(answer.address)
 
-      elseif answer.type == TYPE_SRV then
+      elseif answer_type == TYPE_SRV then
         answer.target = ipv6_bracket(answer.target)
       end
 
       -- skip the SRV record pointing to itself,
       -- see https://github.com/Kong/lua-resty-dns-client/pull/3
-      if not (answer.type == TYPE_SRV and answer.target == qname) then
+      if not (answer_type == TYPE_SRV and answer.target == qname) then
         table_insert(processed_answers, answer)
       end
     end
@@ -370,7 +373,7 @@ local function process_answers(self, qname, qtype, answers)
 end
 
 
-local function resolve_query(self, name, qtype, tries)
+local function resolve_query(self, name, qtype)
   local key = name .. ":" .. qtype
   stats_increment(self.stats, key, "query")
 
@@ -412,7 +415,7 @@ local function stale_update_task(premature, self, key, name, qtype, short_key)
     return
   end
 
-  local answers = resolve_query(self, name, qtype, {})
+  local answers = resolve_query(self, name, qtype)
   if answers and (not answers.errcode or answers.errcode == NAME_ERROR_CODE) then
     self.cache:set(key, { ttl = answers.ttl }, answers)
     insert_last_type(self.cache, name, qtype)
@@ -466,7 +469,7 @@ local function resolve_name_type_callback(self, name, qtype, cache_only, short_k
     return CACHE_ONLY_ANSWERS, nil, -1
   end
 
-  local answers, err, ttl = resolve_query(self, name, qtype, tries)
+  local answers, err, ttl = resolve_query(self, name, qtype)
   return answers, err, ttl
 end
 
@@ -630,6 +633,7 @@ local function resolve_all(self, name, qtype, cache_only, tries, resolved_names)
     end
 
     stats_increment(self.stats, name, answers and "miss" or "fail")
+
   else
     log(DEBUG, "quickly cache lookup ", key, " ans:", #answers, " hlv:", hit_level or "-")
 
