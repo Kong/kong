@@ -179,6 +179,8 @@ function _M.search_names(name, resolv, hosts)
     table_insert(names, name .. "." .. suffix)
   end
 
+  -- Always search for the original name.
+  -- If found in the hosts file, prioritize its search.
   if hosts and hosts[name] then
     table_insert(names, 1, name)
   else

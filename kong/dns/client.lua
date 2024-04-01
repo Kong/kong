@@ -223,7 +223,7 @@ function _M.new(opts)
       local cwid = ngx.worker.id()
       for _, ev in pairs(events) do
         local handler = function(data, event, source, wid)
-          if cwid ~= wid then
+          if cwid ~= wid then -- Current worker has handled this event.
             ev.handler(data)
           end
         end
