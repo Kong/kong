@@ -127,15 +127,8 @@ local function get_last_type(cache, name)
 end
 
 
--- insert hosts into cache
-local function init_hosts(cache, path, preferred_ip_type)
-  local hosts = parse_hosts(path)
-
-  local function insert_answer(name, qtype, address)
-    if not address then
-      return
-    end
-
+local init_hosts do
+  local function insert_answer_into_cache(cache, address, name, qtype)
     -- insert via the `:get` callback to prevent inter-process communication
     cache:get(name .. ":" .. qtype, nil, function()
       return {
@@ -152,23 +145,28 @@ local function init_hosts(cache, path, preferred_ip_type)
     end)
   end
 
-  for name, address in pairs(hosts) do
-    name = string_lower(name)
+  -- insert hosts into cache
+  function init_hosts(cache, path, preferred_ip_type)
+    local hosts = parse_hosts(path)
 
-    if address.ipv4 then
-      insert_answer(name, TYPE_A, address.ipv4)
-      insert_last_type(cache, name, TYPE_A)
-    end
+    for name, address in pairs(hosts) do
+      name = string_lower(name)
 
-    if address.ipv6 then
-      insert_answer(name, TYPE_AAAA, address.ipv6)
-      if not address.ipv4 or preferred_ip_type == TYPE_AAAA then
-        insert_last_type(cache, name, TYPE_AAAA)
+      if address.ipv4 then
+        insert_answer_into_cache(cache, address.ipv4, name, TYPE_A)
+        insert_last_type(cache, name, TYPE_A)
+      end
+
+      if address.ipv6 then
+        insert_answer_into_cache(cache, address.ipv6, name, TYPE_AAAA)
+        if not address.ipv4 or preferred_ip_type == TYPE_AAAA then
+          insert_last_type(cache, name, TYPE_AAAA)
+        end
       end
     end
-  end
 
-  return hosts
+    return hosts
+  end
 end
 
 
