@@ -118,7 +118,9 @@ local FORMATS = {
       options = {
         max_tokens = 512,
         temperature = 0.5,
-        llama2_format = "ollama",
+        llama2_format = "raw",
+        top_p = 1,
+        top_k = 40,
       },
     },
     ["llm/v1/completions"] = {
@@ -296,7 +298,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
             assert.is_nil(err)
             
             -- compare the tables
-            assert.same(actual_request_table, expected_request_table)
+            assert.same(expected_request_table, actual_request_table)
           end)
 
 
@@ -344,7 +346,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
             -- compare the tables
             assert.same(expected_response_table.choices[1].message, actual_response_table.choices[1].message)
-            assert.same(actual_response_table.model, expected_response_table.model)
+            assert.same(expected_response_table.model, actual_response_table.model)
           end)
 
 

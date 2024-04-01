@@ -157,14 +157,16 @@ local function handle_all(request_table, model)
     end
 
     request_table.max_tokens = request_table.max_tokens or model.options.max_tokens
+    request_table.temperature = request_table.temperature or model.options.temperature
     request_table.p = request_table.top_p or model.options.top_p
     request_table.k = request_table.top_k or model.options.top_k
     request_table.message = request_table.messages[#request_table.messages].content
     request_table.messages = nil
 
   elseif request_table.prompt then
-    request_table.message = request_table.prompt
-    request_table.prompt = nil
+    request_table.prompt = request_table.prompt
+    request_table.messages = nil
+    request_table.message = nil
     request_table.temperature = request_table.temperature or model.options.temperature
     request_table.max_tokens = request_table.max_tokens or model.options.max_tokens
     request_table.p = request_table.top_p or model.options.top_p
@@ -375,11 +377,7 @@ function _M.post_request(conf)
 end
 
 function _M.pre_request(conf, body)
-  -- check for user trying to bring own model
-  if body and body.model and (body.model ~= conf.model.name) then
-    return nil, "requested model does not match the configured plugin model"
-  end
-
+  -- noop
   return true, nil
 end
 

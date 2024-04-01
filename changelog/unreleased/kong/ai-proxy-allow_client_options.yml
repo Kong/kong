@@ -1,0 +1,6 @@
+message: |
+  AI Proxy now reads most prompt tuning parameters from the client, which are now 
+  overridden by the plugin config options, as defaults. This fixes support for 
+  using the respective provider's native SDK.
+type: feature
+scope: Plugin

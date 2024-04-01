@@ -106,7 +106,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                   local body, err = ngx.req.get_body_data()
                   body, err = json.decode(body)
                   
-                  if err or (not body.message) then
+                  if err or (not body.prompt) then
                     ngx.status = 400
                     ngx.print(pl_file.read("spec/fixtures/ai-proxy/cohere/llm-v1-completions/responses/bad_request.json"))
                   else
@@ -397,23 +397,6 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
         -- check this is in the 'kong' response format
         assert.equals(json.message, "invalid api token")
-      end)
-
-      it("tries to override model", function()
-        local r = client:get("/cohere/llm/v1/chat/good", {
-          headers = {
-            ["content-type"] = "application/json",
-            ["accept"] = "application/json",
-          },
-          body = pl_file.read("spec/fixtures/ai-proxy/cohere/llm-v1-chat/requests/good_own_model.json"),
-        })
-        
-        local body = assert.res_status(400, r)
-        local json = cjson.decode(body)
-
-        -- check this is in the 'kong' response format
-        assert.is_truthy(json.error)
-        assert.equals(json.error.message, "requested model does not match the configured plugin model")
       end)
     end)
 
