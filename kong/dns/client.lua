@@ -210,6 +210,8 @@ function _M.new(opts)
     exptimeout = lock_timeout + 1,
   }
 
+  -- TODO: convert the ipc a module constant, currently we need to use the
+  --       ipc_source to distinguish sources of different DNS client events.
   ipc_counter = ipc_counter + 1
   local ipc_source = "dns_client_mlcache#" .. ipc_counter
   local ipc = {
