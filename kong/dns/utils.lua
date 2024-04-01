@@ -189,8 +189,9 @@ function _M.search_names(name, resolv, hosts)
 end
 
 
+-- add square brackets around IPv6 addresses if a non-strict check detects them
 function _M.ipv6_bracket(name)
-  if name:match("^[^[].*:") then  -- not rigorous, but sufficient
+  if name:match("^[^[].*:") then  -- not start with '[' and contains ':'
     return "[" .. name .. "]"
   end
   return name
