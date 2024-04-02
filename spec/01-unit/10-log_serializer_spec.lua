@@ -21,6 +21,8 @@ describe("kong.log.serialize", function()
             },
           },
           KONG_PROXIED = true,
+          KONG_RECEIVE_TIME = 100,
+          KONG_PROXY_LATENCY = 200,
         },
         var = {
           kong_request_id = "1234",
@@ -73,10 +75,10 @@ describe("kong.log.serialize", function()
 
         -- Latencies
         assert.is_table(res.latencies)
-        assert.equal(0, res.latencies.kong)
+        assert.equal(200, res.latencies.kong)
         assert.equal(-1, res.latencies.proxy)
         assert.equal(2000, res.latencies.request)
-        assert.equal(0, res.latencies.receive)
+        assert.equal(100, res.latencies.receive)
 
         -- Request
         assert.is_table(res.request)
