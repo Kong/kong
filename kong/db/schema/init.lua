@@ -7,7 +7,7 @@
 
 local tablex       = require "pl.tablex"
 local pretty       = require "pl.pretty"
-local utils        = require "kong.tools.utils"
+local table_tools  = require "kong.tools.table"
 local cjson        = require "cjson"
 local new_tab      = require "table.new"
 local nkeys        = require "table.nkeys"
@@ -44,8 +44,8 @@ local sub          = string.sub
 local safe_decode  = cjson_safe.decode
 
 
-local random_string = utils.random_string
-local uuid = utils.uuid
+local random_string = require("kong.tools.rand").random_string
+local uuid = require("kong.tools.uuid").uuid
 local json_validate = json.validate
 
 
@@ -1032,7 +1032,7 @@ end
 local function handle_missing_field(field, value, opts)
   local no_defaults = opts and opts.no_defaults
   if field.default ~= nil and not no_defaults then
-    local copy = utils.cycle_aware_deep_copy(field.default)
+    local copy = table_tools.cycle_aware_deep_copy(field.default)
     if (field.type == "array" or field.type == "set")
       and type(copy) == "table"
       and not getmetatable(copy)
@@ -1677,7 +1677,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
 
   local is_select = context == "select"
   if not is_select then
-    data = utils.cycle_aware_deep_copy(data)
+    data = table_tools.cycle_aware_deep_copy(data)
   end
 
   local shorthand_fields = self.shorthand_fields
@@ -1708,7 +1708,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
       end
 
       if is_select and sdata.translate_backwards and not(opts and opts.hide_shorthands) then
-        data[sname] = utils.table_path(data, sdata.translate_backwards)
+        data[sname] = table_tools.table_path(data, sdata.translate_backwards)
       end
     end
     if has_errs then
@@ -2096,7 +2096,7 @@ function Schema:validate_immutable_fields(input, entity)
   local errors = {}
 
   for key, field in self:each_field(input) do
-    local compare = utils.is_array(input[key]) and tablex.compare_no_order or tablex.deepcompare
+    local compare = table_tools.is_array(input[key]) and tablex.compare_no_order or tablex.deepcompare
 
     if field.immutable and entity[key] ~= nil and not compare(input[key], entity[key]) then
       errors[key] = validation_errors.IMMUTABLE
@@ -2455,7 +2455,7 @@ function Schema.new(definition, is_subschema)
     return nil, validation_errors.SCHEMA_NO_FIELDS
   end
 
-  local self = utils.cycle_aware_deep_copy(definition)
+  local self = table_tools.cycle_aware_deep_copy(definition)
   setmetatable(self, Schema)
 
   local cache_key = self.cache_key
