@@ -9,7 +9,7 @@ local kong             = kong
 local inspect          = require "inspect"
 local str              = require "resty.string"
 local constants        = require "kong.constants"
-local utils            = require "kong.tools.utils"
+local system           = require "kong.tools.system"
 local counters_service = require "kong.enterprise_edition.counters"
 local workspace_counters = require "kong.workspaces.counters"
 
@@ -422,7 +422,7 @@ function _M:flush_data()
 end
 
 function _M:get_license_report()
-  local sys_info = utils.get_system_infos()
+  local sys_info = system.get_system_infos()
   local entity_counts = get_workspace_entity_counts()
   local license_data = get_license_data()
 

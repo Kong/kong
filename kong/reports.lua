@@ -6,7 +6,8 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local cjson = require "cjson.safe"
-local utils = require "kong.tools.utils"
+local system = require "kong.tools.system"
+local rand = require "kong.tools.rand"
 local constants = require "kong.constants"
 local counter = require "resty.counter"
 local knode = (kong and kong.node) and kong.node or
@@ -70,7 +71,7 @@ local REQUEST_ROUTE_CACHE_HITS_KEY_NEG = REQUEST_COUNT_KEY .. ":" .. ROUTE_CACHE
 local _buffer = {}
 local _ping_infos = {}
 local _enabled = false
-local _unique_str = utils.random_string()
+local _unique_str = rand.random_string()
 local _buffer_immutable_idx
 local _ssl_session
 local _ssl_verify = false
@@ -83,7 +84,7 @@ do
 
   local meta = require "kong.meta"
 
-  local system_infos = utils.get_system_infos()
+  local system_infos = system.get_system_infos()
 
   system_infos.hostname = system_infos.hostname or knode.get_hostname()
 
