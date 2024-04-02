@@ -170,7 +170,7 @@ end
 
 -- construct names from resolv options: search, ndots and domain
 function _M.search_names(name, resolv, hosts)
-  if not resolv.search or _M.is_fqdn(name, resolv.ndots) then
+  if not resolv.search or _M.is_fqdn(name, resolv.ndots) or (hosts and hosts[name]) then
     return { name }
   end
 
@@ -179,13 +179,7 @@ function _M.search_names(name, resolv, hosts)
     table_insert(names, name .. "." .. suffix)
   end
 
-  -- Always search for the original name.
-  -- If found in the hosts file, prioritize its search.
-  if hosts and hosts[name] then
-    table_insert(names, 1, name)
-  else
-    table_insert(names, name)
-  end
+  table_insert(names, name) -- append the original name at last
 
   return names
 end
