@@ -208,68 +208,70 @@ function _M.get_next_round_robin_answer(answers)
 end
 
 
--- based on the Nginx's SWRR algorithm and lua-resty-balancer
-local function swrr_next(answers)
-  local total = 0
-  local best = nil    -- best answer in answers[]
+do
+  -- based on the Nginx's SWRR algorithm and lua-resty-balancer
+  local function swrr_next(answers)
+    local total = 0
+    local best = nil    -- best answer in answers[]
 
-  for _, answer in ipairs(answers) do
-    -- 0.1 gives weight 0 record a minimal chance of being chosen (rfc 2782)
-    local w = (answer.weight == 0) and 0.1 or answer.weight
-    local cw = answer.cw + w
-    answer.cw = cw
-    if not best or cw > best.cw then
-      best = answer
+    for _, answer in ipairs(answers) do
+      -- 0.1 gives weight 0 record a minimal chance of being chosen (rfc 2782)
+      local w = (answer.weight == 0) and 0.1 or answer.weight
+      local cw = answer.cw + w
+      answer.cw = cw
+      if not best or cw > best.cw then
+        best = answer
+      end
+      total = total + w
     end
-    total = total + w
+
+    best.cw = best.cw - total
+    return best
   end
 
-  best.cw = best.cw - total
-  return best
-end
 
+  local function swrr_init(answers)
+    for _, answer in ipairs(answers) do
+      answer.cw = 0   -- current weight
+    end
 
-local function swrr_init(answers)
-  for _, answer in ipairs(answers) do
-    answer.cw = 0   -- current weight
-  end
-
-  -- random start
-  for _ = 1, math_random(#answers) do
-    swrr_next(answers)
-  end
-end
-
-
--- gather records with the lowest priority in SRV record
-local function filter_lowest_priority_answers(answers)
-  local lowest_priority = answers[1].priority -- SRV record MUST have `priority` field
-  local l = {}    -- lowest priority records list
-
-  for _, answer in ipairs(answers) do
-    if answer.priority < lowest_priority then
-      lowest_priority = answer.priority
-      l = { answer }
-
-    elseif answer.priority == lowest_priority then
-      table_insert(l, answer)
+    -- random start
+    for _ = 1, math_random(#answers) do
+      swrr_next(answers)
     end
   end
 
-  answers.lowest_prio_records = l
-  return l
-end
 
+  -- gather records with the lowest priority in SRV record
+  local function filter_lowest_priority_answers(answers)
+    local lowest_priority = answers[1].priority -- SRV record MUST have `priority` field
+    local l = {}    -- lowest priority records list
 
-function _M.get_next_weighted_round_robin_answer(answers)
-  local l = answers.lowest_prio_records or filter_lowest_priority_answers(answers)
+    for _, answer in ipairs(answers) do
+      if answer.priority < lowest_priority then
+        lowest_priority = answer.priority
+        l = { answer }
 
-  -- perform round robin selection on lowest priority answers @l
-  if not l[1].cw then
-    swrr_init(l)
+      elseif answer.priority == lowest_priority then
+        table_insert(l, answer)
+      end
+    end
+
+    answers.lowest_prio_records = l
+    return l
   end
 
-  return swrr_next(l)
+
+  function _M.get_next_weighted_round_robin_answer(answers)
+    local l = answers.lowest_prio_records or filter_lowest_priority_answers(answers)
+
+    -- perform round robin selection on lowest priority answers @l
+    if not l[1].cw then
+      swrr_init(l)
+    end
+
+    return swrr_next(l)
+  end
 end
 
 
