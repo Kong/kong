@@ -18,7 +18,6 @@ local math_min        = math.min
 local string_lower    = string.lower
 local table_insert    = table.insert
 local table_isempty   = require("table.isempty")
-local tablex_readonly = require("pl.tablex").readonly
 
 local parse_hosts   = utils.parse_hosts
 local ipv6_bracket  = utils.ipv6_bracket
@@ -77,7 +76,7 @@ local NAME_ERROR_CODE             = 3 -- response code 3 as "Name Error" or "NXD
 -- client specific error
 local CACHE_ONLY_ERROR_CODE       = 100
 local CACHE_ONLY_ERROR_MESSAGE    = "cache only lookup failed"
-local CACHE_ONLY_ANSWERS = tablex_readonly({ errcode = CACHE_ONLY_ERROR_CODE, errstr = CACHE_ONLY_ERROR_MESSAGE })
+local CACHE_ONLY_ANSWERS = { errcode = CACHE_ONLY_ERROR_CODE, errstr = CACHE_ONLY_ERROR_MESSAGE }
 local EMPTY_RECORD_ERROR_CODE     = 101
 local EMPTY_RECORD_ERROR_MESSAGE  = "empty record received"
 
@@ -300,12 +299,16 @@ function _M.new(opts)
     stale_ttl     = opts.stale_ttl or DEFAULT_STALE_TTL,
     empty_ttl     = opts.empty_ttl or DEFAULT_EMPTY_TTL,
     search_types  = search_types,
+
+    -- TODO: Make the table readonly. But if `string.buffer.encode/decode` and
+    -- `pl.tablex.readonly` are called on it, it will become empty table.
+    --
     -- quickly accessible constant empty answers
-    EMPTY_ANSWERS = tablex_readonly({
+    EMPTY_ANSWERS = {
       errcode = EMPTY_RECORD_ERROR_CODE,
       errstr  = EMPTY_RECORD_ERROR_MESSAGE,
       ttl     = opts.empty_ttl or DEFAULT_EMPTY_TTL,
-    }),
+    },
   }, MT)
 end
 
@@ -355,6 +358,7 @@ local function process_answers(self, qname, qtype, answers)
 
   if table_isempty(processed_answers) then
     if not cname_answer then
+      log(DEBUG, "processed ans:empty")
       return self.EMPTY_ANSWERS
     end
 
@@ -393,7 +397,7 @@ local function resolve_query(self, name, qtype)
 
   stats_set_count(self.stats, key, "query_last_time", time_str)
 
-  log(DEBUG, "r:query() ans:", answers and #answers or "-", " t:", time_str)
+  log(DEBUG, "r:query(", key, ") ans:", answers and #answers or "-", " t:", time_str)
 
   if not answers then
     stats_increment(self.stats, key, "query_fail_nameserver")
