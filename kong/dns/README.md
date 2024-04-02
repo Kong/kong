@@ -1,7 +1,7 @@
 Name
 ====
 
-The module is currently Kong only, and builds on top of the `lua-resty-dns` and the kong's `lua-resty-mlcache` library.
+The module is currently Kong only, and builds on top of the `lua-resty-dns` and kong's `lua-resty-mlcache` library.
 
 Table of Contents
 =================
