@@ -172,6 +172,26 @@ describe("[DNS client]", function()
         answers = cli.cache:get("localhost:1")
         assert.is_nil(answers)
       end)
+
+      it("cache evication", function()
+        writefile(hosts_path, "::1:2:3:4 localhost")
+        local cli = assert(client_new())
+
+        local answers = cli.cache:get("localhost:28")
+        assert.equal("[::1:2:3:4]", answers[1].address)
+
+        -- evict it
+        cli.cache:delete("localhost:28")
+        answers = cli.cache:get("localhost:28")
+        assert.equal(nil, answers)
+
+        -- resolve and re-insert it into cache
+        answers = cli:resolve("localhost")
+        assert.equal("[::1:2:3:4]", answers[1].address)
+
+        answers = cli.cache:get("localhost:28")
+        assert.equal("[::1:2:3:4]", answers[1].address)
+      end)
     end)
   end)
 

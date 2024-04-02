@@ -128,44 +128,51 @@ end
 
 
 local init_hosts do
-  local function insert_answer_into_cache(cache, address, name, qtype)
-    -- insert via the `:get` callback to prevent inter-process communication
-    cache:get(name .. ":" .. qtype, nil, function()
-      return {
+  local function insert_answer_into_cache(cache, hosts_cache, address, name, qtype)
+    local key = name .. ":" .. qtype
+    local answers = {
+      ttl = LONG_LASTING_TTL,
+      expire = now() + LONG_LASTING_TTL,
+      {
+        name = name,
+        type = qtype,
+        address = address,
+        class = 1,
         ttl = LONG_LASTING_TTL,
-        expire = now() + LONG_LASTING_TTL,
-        {
-          name = name,
-          type = qtype,
-          address = address,
-          class = 1,
-          ttl = LONG_LASTING_TTL,
-        },
-      }, nil, LONG_LASTING_TTL
+      },
+    }
+
+    -- insert via the `:get` callback to prevent inter-process communication
+    cache:get(key, nil, function()
+      return answers, nil, LONG_LASTING_TTL
     end)
+
+    -- used for the host entry eviction
+    hosts_cache[key] = answers
   end
 
   -- insert hosts into cache
   function init_hosts(cache, path, preferred_ip_type)
     local hosts = parse_hosts(path)
+    local hosts_cache = {}
 
     for name, address in pairs(hosts) do
       name = string_lower(name)
 
       if address.ipv4 then
-        insert_answer_into_cache(cache, address.ipv4, name, TYPE_A)
+        insert_answer_into_cache(cache, hosts_cache, address.ipv4, name, TYPE_A)
         insert_last_type(cache, name, TYPE_A)
       end
 
       if address.ipv6 then
-        insert_answer_into_cache(cache, address.ipv6, name, TYPE_AAAA)
+        insert_answer_into_cache(cache, hosts_cache, address.ipv6, name, TYPE_AAAA)
         if not address.ipv4 or preferred_ip_type == TYPE_AAAA then
           insert_last_type(cache, name, TYPE_AAAA)
         end
       end
     end
 
-    return hosts
+    return hosts, hosts_cache
   end
 end
 
@@ -286,7 +293,7 @@ function _M.new(opts)
   preferred_ip_type = preferred_ip_type or TYPE_A
 
   -- parse hosts
-  local hosts = init_hosts(cache, opts.hosts, preferred_ip_type)
+  local hosts, hosts_cache = init_hosts(cache, opts.hosts, preferred_ip_type)
 
   return setmetatable({
     cache         = cache,
@@ -298,6 +305,7 @@ function _M.new(opts)
     error_ttl     = opts.error_ttl or DEFAULT_ERROR_TTL,
     stale_ttl     = opts.stale_ttl or DEFAULT_STALE_TTL,
     empty_ttl     = opts.empty_ttl or DEFAULT_EMPTY_TTL,
+    hosts_cache   = hosts_cache,
     search_types  = search_types,
 
     -- TODO: Make the table readonly. But if `string.buffer.encode/decode` and
@@ -442,6 +450,12 @@ end
 
 local function resolve_name_type_callback(self, name, qtype, cache_only, short_key, tries)
   local key = name .. ":" .. qtype
+
+  -- check if this key exists in the hosts file (it maybe evicted from cache)
+  local answers = self.hosts_cache[key]
+  if answers then
+    return answers, nil, answers.ttl
+  end
 
   -- `:peek(stale=true)` verifies if the expired key remains in L2 shm, then
   -- initiates an asynchronous background updating task to refresh it.
