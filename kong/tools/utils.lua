@@ -22,7 +22,6 @@ do
     "kong.tools.string",
     "kong.tools.uuid",
     "kong.tools.rand",
-    "kong.tools.system",
     "kong.tools.time",
     "kong.tools.ip",
     "kong.tools.http",
