@@ -1527,16 +1527,20 @@ for _, strategy in helpers.each_strategy() do
 
       describe("attempt login after CRUD", function()
         lazy_setup(function()
-          helpers.kong_exec("migrations reset --yes")
-          helpers.kong_exec("migrations bootstrap", { password = "kong" })
-
-          assert(helpers.start_kong({
+          local conf = {
             database = strategy,
             admin_gui_auth = "basic-auth",
             admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
             enforce_rbac = rbac_mode,
             smtp_mock = true,
-          }))
+            prefix = helpers.test_conf.prefix,
+            password = "kong",
+          }
+
+          assert(helpers.kong_exec("migrations reset --yes", conf))
+          assert(helpers.kong_exec("migrations bootstrap", conf))
+
+          assert(helpers.start_kong(conf))
         end)
 
         lazy_teardown(function()
