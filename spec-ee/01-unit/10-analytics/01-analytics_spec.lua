@@ -797,24 +797,6 @@ describe("extract request log properly", function()
     local payload = analytics:create_payload(input)
     assert.equals(4, payload.latencies.receive_ms)
   end)
-
-  it("subtracts receive time from kong latency", function()
-    local input = utils.deep_copy(request_log)
-    input.latencies = {
-      kong = 10,
-      proxy = 5,
-      request = 20,
-      receive = 4,
-    }
-
-    local payload = analytics:create_payload(input)
-    assert.same({
-      kong_gateway_ms = (input.latencies.kong - input.latencies.receive),
-      upstream_ms = 5,
-      response_ms = 20,
-      receive_ms = 4,
-    }, payload.latencies)
-  end)
 end)
 
 describe("filter keywords from uri properly", function()

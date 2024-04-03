@@ -430,7 +430,7 @@ function _M:create_payload(message)
   if message.latencies ~= nil then
     local latencies = payload.latencies
     local ml = message.latencies
-    latencies.kong_gateway_ms = (ml.kong or 0) - (ml.receive or 0)
+    latencies.kong_gateway_ms = ml.kong or 0
     latencies.upstream_ms = ml.proxy
     latencies.response_ms = ml.request
     latencies.receive_ms = ml.receive
