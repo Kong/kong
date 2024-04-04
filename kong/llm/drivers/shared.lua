@@ -13,12 +13,19 @@ local log_entry_keys = {
   RESPONSE_BODY = "payload.response",
 
   TOKENS_CONTAINER = "usage",
-  PROCESSING_TIME = "usage.processing_time",
+  META_CONTAINER = "meta",
 
-  REQUEST_MODEL = "meta.request_model",
-  RESPONSE_MODEL = "meta.response_model",
-  PROVIDER_NAME = "meta.provider_name",
-  PLUGIN_ID = "meta.plugin_id",
+  -- meta keys
+  REQUEST_MODEL = "request_model",
+  RESPONSE_MODEL = "response_model",
+  PROVIDER_NAME = "provider_name",
+  PLUGIN_ID = "plugin_id",
+
+  -- usage keys
+  PROCESSING_TIME = "processing_time",
+  PROMPT_TOKEN = "prompt_token",
+  COMPLETION_TOKEN = "completion_token",
+  TOTAL_TOKENS = "total_tokens",
 }
 
 local openai_override = os.getenv("OPENAI_TEST_PORT")
@@ -299,8 +306,7 @@ function _M.post_request(conf, response_object)
 
     -- create a new try context
     local current_try = {
-      meta = {},
-      usage = {},
+      [log_entry_keys.META_CONTAINER] = {},
       [log_entry_keys.TOKENS_CONTAINER] = {},
     }
 
@@ -336,24 +342,24 @@ function _M.post_request(conf, response_object)
     end
 
     -- Set the model, response, and provider names in the current try context
-    current_try[log_entry_keys.REQUEST_MODEL] = conf.model.name
-    current_try[log_entry_keys.RESPONSE_MODEL] = response_object.model or conf.model.name
-    current_try[log_entry_keys.PROVIDER_NAME] = conf.model.provider
-    current_try[log_entry_keys.PLUGIN_ID] = conf.__plugin_id
+    current_try[log_entry_keys.META_CONTAINER][log_entry_keys.REQUEST_MODEL] = conf.model.name
+    current_try[log_entry_keys.META_CONTAINER][log_entry_keys.RESPONSE_MODEL] = response_object.model or conf.model.name
+    current_try[log_entry_keys.META_CONTAINER][log_entry_keys.PROVIDER_NAME] = conf.model.provider
+    current_try[log_entry_keys.META_CONTAINER][log_entry_keys.PLUGIN_ID] = conf.__plugin_id
 
     -- Capture openai-format usage stats from the transformed response body
     if response_object.usage then
       if response_object.usage.prompt_tokens then
         request_analytics_provider.request_prompt_tokens = (request_analytics_provider.request_prompt_tokens + response_object.usage.prompt_tokens)
-        current_try[log_entry_keys.TOKENS_CONTAINER].prompt_tokens = response_object.usage.prompt_tokens
+        current_try[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.PROMPT_TOKEN] = response_object.usage.prompt_tokens
       end
       if response_object.usage.completion_tokens then
         request_analytics_provider.request_completion_tokens = (request_analytics_provider.request_completion_tokens + response_object.usage.completion_tokens)
-        current_try[log_entry_keys.TOKENS_CONTAINER].completion_tokens = response_object.usage.completion_tokens
+        current_try[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.COMPLETION_TOKEN] = response_object.usage.completion_tokens
       end
       if response_object.usage.total_tokens then
         request_analytics_provider.request_total_tokens = (request_analytics_provider.request_total_tokens + response_object.usage.total_tokens)
-        current_try[log_entry_keys.TOKENS_CONTAINER].total_tokens = response_object.usage.total_tokens
+        current_try[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.TOTAL_TOKENS] = response_object.usage.total_tokens
       end
     end
 

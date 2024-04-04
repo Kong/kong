@@ -7,7 +7,7 @@ local llm           = require("kong.llm")
 --
 
 _M.PRIORITY = 777
-_M.VERSION = kong_meta.version
+_M.VERSION = "1.2.0"
 
 local function bad_request(msg)
   kong.log.info(msg)
@@ -44,6 +44,7 @@ function _M:access(conf)
 
   -- first find the configured LLM interface and driver
   local http_opts = create_http_opts(conf)
+  conf.llm.__plugin_id = conf.__plugin_id
   local ai_driver, err = llm:new(conf.llm, http_opts)
   
   if not ai_driver then
