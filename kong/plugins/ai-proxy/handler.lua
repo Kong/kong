@@ -107,6 +107,7 @@ function _M:body_filter(conf)
       local ai_driver = require("kong.llm.drivers." .. conf.model.provider)
       local route_type = conf.route_type
       local new_response_string, err = ai_driver.from_format(response_body, conf.model, route_type)
+      
       if err then
         kong.log.warn("issue when transforming the response body for analytics in the body filter phase, ", err)
       elseif new_response_string then
