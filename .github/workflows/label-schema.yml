@@ -12,3 +12,4 @@ jobs:
       continue-on-error: true
       env:
         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_SCHEMA_CHANGE }}
+        SLACK_FOOTER: ${{ github.event.pull_request.title }}
