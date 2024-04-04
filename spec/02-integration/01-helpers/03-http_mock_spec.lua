@@ -1,6 +1,6 @@
 local http_mock = require "spec.helpers.http_mock"
 local tapping = require "spec.helpers.http_mock.tapping"
-local pl_file = require "pl.file"
+local helpers = require "spec.helpers"
 
 for _, tls in ipairs {true, false} do
   describe("http_mock with " .. (tls and "https" or "http") , function()
@@ -216,9 +216,8 @@ describe("http_mock config", function()
       assert(mock:stop())
     end)
 
-    local pid_filename = mock_prefix .. "/logs/nginx.pid"
 
-    assert(pl_file.access_time(pid_filename) ~= nil, "mocking not in the correct place")
+    helpers.wait_for_file_contents(mock_prefix .. "/logs/nginx.pid")
   end)
 
   it("init_by_lua_block inject", function ()
