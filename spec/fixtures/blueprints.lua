@@ -681,6 +681,14 @@ function _M.new(db)
     }
   end)
 
+  res.audit_requests = new_blueprint(db.audit_requests, function (overrides)
+    return {
+      method = overrides.method or "GET",
+      status = overrides.status or 200,
+      client_ip = overrides.client_ip or "127.0.0.1",
+    }
+  end)
+
   return res
 end
 

@@ -9,13 +9,22 @@ local helpers = require "spec.helpers"
 local ee_helpers = require "spec-ee.helpers"
 local cjson = require "cjson"
 
+local function insert_dummy_audit_request(bp, id, timestamp)
+  return bp.audit_requests:insert({
+    request_id = id,
+    path = "/services",
+    request_timestamp = timestamp,
+  })
+end
 
 for _, strategy in helpers.each_strategy() do
   describe("audit_log API with #" .. strategy, function()
     local admin_client
+    local bp
+    local db
 
     setup(function()
-      helpers.get_db_utils(strategy)
+      bp, db = helpers.get_db_utils(strategy)
 
       assert(helpers.start_kong({
         database   = strategy,
@@ -30,6 +39,8 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     before_each(function()
+      db:truncate("audit_requests")
+      db:truncate("audit_objects")
       admin_client = helpers.admin_client()
     end)
 
@@ -38,13 +49,37 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("audit requests", function()
-      -- Assert paging behavior - given we have custom logic for paging in
-      -- audit endpoints
-      it("#flaky returns paged results", function()
+      before_each(function()
+        insert_dummy_audit_request(bp, "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", os.time({year = 2024, month = 3, day = 12}))
+        insert_dummy_audit_request(bp, "dddddddddddddddddddddddddddddddd", os.time({year = 2024, month = 3, day = 11}))
+        insert_dummy_audit_request(bp, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", os.time({year = 2024, month = 3, day = 10}))
+        insert_dummy_audit_request(bp, "ffffffffffffffffffffffffffffffff", os.time({year = 2024, month = 3, day = 10}))
+        insert_dummy_audit_request(bp, "cccccccccccccccccccccccccccccccc", os.time({year = 2024, month = 3, day = 9}))
+        insert_dummy_audit_request(bp, "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", os.time({year = 2024, month = 3, day = 8}))
+      end)
+
+      it("registers calls to API", function()
+        local res, json
+        local initial_audit_log_size = 6
+
+        res = assert.res_status(200, admin_client:send({path = "/audit/requests"}))
+        json = cjson.decode(res)
+        assert.same(initial_audit_log_size, #json.data) -- some audit logs are already present
+
+        -- make additional calls
         assert.res_status(200, admin_client:get("/services"))
         assert.res_status(200, admin_client:get("/services"))
         assert.res_status(200, admin_client:get("/services"))
 
+        -- expect to have 3 additional audit logs
+        res = assert.res_status(200, admin_client:send({path = "/audit/requests"}))
+        json = cjson.decode(res)
+        assert.same(initial_audit_log_size + 3, #json.data)
+      end)
+
+      -- Assert paging behavior - given we have custom logic for paging in
+      -- audit endpoints
+      it("returns paged results sorted by request_timestamp descending", function()
         local res, json
 
         res = assert.res_status(200, admin_client:send({
@@ -55,19 +90,77 @@ for _, strategy in helpers.each_strategy() do
         assert.same(2, #json.data)
 
         assert.matches("^/audit/requests", json.next)
+        assert.same("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", json.data[1].request_id)
+        assert.same("dddddddddddddddddddddddddddddddd", json.data[2].request_id)
 
         local offset = json.offset
-        helpers.wait_until(function()
-          ngx.sleep(1)
-          res = assert.res_status(200, admin_client:send({
-            path = "/audit/requests",
-            query = {size = 2, offset = offset}
-          }))
-          json = cjson.decode(res)
-          return 1 == #json.data
-        end, 10)
-        assert.same(1, #json.data)
+        res = assert.res_status(200, admin_client:send({
+          path = "/audit/requests",
+          query = {size = 2, offset = offset}
+        }))
+        json = cjson.decode(res)
+        assert.same(2, #json.data)
+        -- with the same timestamp - sorted by request_id (also descending)
+        assert.same("ffffffffffffffffffffffffffffffff", json.data[1].request_id)
+        assert.same("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", json.data[2].request_id)
 
+        offset = json.offset
+        res = assert.res_status(200, admin_client:send({
+          path = "/audit/requests",
+          query = {size = 2, offset = offset}
+        }))
+        json = cjson.decode(res)
+        assert.same(2, #json.data)
+        assert.same("cccccccccccccccccccccccccccccccc", json.data[1].request_id)
+        assert.same("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", json.data[2].request_id)
+      end)
+
+      it("returns results sorted by other column if requested - only sort_by passed", function()
+        local res = assert.res_status(200, admin_client:send({
+          path = "/audit/requests",
+          query = {sort_by = "request_id"}
+        }))
+        local json = cjson.decode(res)
+        assert.same(6, #json.data)
+
+        assert.same("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", json.data[1].request_id)
+        assert.same("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", json.data[2].request_id)
+        assert.same("cccccccccccccccccccccccccccccccc", json.data[3].request_id)
+        assert.same("dddddddddddddddddddddddddddddddd", json.data[4].request_id)
+        assert.same("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", json.data[5].request_id)
+        assert.same("ffffffffffffffffffffffffffffffff", json.data[6].request_id)
+      end)
+
+      it("returns results sorted by other column if requested - both sort_by and sort_desc passed", function()
+        local res = assert.res_status(200, admin_client:send({
+          path = "/audit/requests",
+          query = {sort_by = "request_id", sort_desc = false}
+        }))
+        local json = cjson.decode(res)
+        assert.same(6, #json.data)
+
+        assert.same("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", json.data[1].request_id)
+        assert.same("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", json.data[2].request_id)
+        assert.same("cccccccccccccccccccccccccccccccc", json.data[3].request_id)
+        assert.same("dddddddddddddddddddddddddddddddd", json.data[4].request_id)
+        assert.same("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", json.data[5].request_id)
+        assert.same("ffffffffffffffffffffffffffffffff", json.data[6].request_id)
+      end)
+
+      it("returns results in custom order if requested", function()
+        local res = assert.res_status(200, admin_client:send({
+          path = "/audit/requests",
+          query = {sort_by = "request_id", sort_desc = true}
+        }))
+        local json = cjson.decode(res)
+        assert.same(6, #json.data)
+
+        assert.same("ffffffffffffffffffffffffffffffff", json.data[1].request_id)
+        assert.same("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", json.data[2].request_id)
+        assert.same("dddddddddddddddddddddddddddddddd", json.data[3].request_id)
+        assert.same("cccccccccccccccccccccccccccccccc", json.data[4].request_id)
+        assert.same("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", json.data[5].request_id)
+        assert.same("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", json.data[6].request_id)
       end)
     end)
 

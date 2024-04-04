@@ -15,12 +15,25 @@ if not kong.configuration.audit_log then
   return {}
 end
 
+local function configure_sort_by_time_desc(self)
+  if not self.args.uri.sort_by then
+    self.args.uri.sort_by = "request_timestamp"
+
+    if self.args.uri.sort_desc == nil then
+      self.args.uri.sort_desc = true
+    end
+  end
+end
+
 
 return {
   ["/audit/requests"] = {
     schema = kong.db.audit_requests.schema,
     methods = {
-      GET = endpoints.get_collection_endpoint(kong.db.audit_requests.schema),
+      GET = function(self, db, helpers)
+        configure_sort_by_time_desc(self)
+        return endpoints.get_collection_endpoint(kong.db.audit_requests.schema)(self, db, helpers)
+      end
     }
   },
 

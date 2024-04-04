@@ -1,0 +1,3 @@
+message: "**Audit Log:** change default ordering of audit_requests to sorted by request_timestamp descending"
+type: feature
+scope: Admin API

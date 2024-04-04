@@ -150,6 +150,13 @@ local function handle_error(err_t)
   return kong.response.exit(status, utils.get_default_exit_body(status, err_t))
 end
 
+local function parse_boolean_query_arg(arg)
+  if arg == "false" or arg == "0" then
+    return false
+  end
+
+  return not not arg
+end
 
 local function extract_options(args, schema, context)
   local options = {
@@ -209,7 +216,7 @@ local function extract_options(args, schema, context)
 
     if args.sort_by ~= nil and context == "page" then
       options.sort_by = type(args.sort_by) == "table" and args.sort_by[1] or args.sort_by
-      options.sort_desc = not not args.sort_desc
+      options.sort_desc = parse_boolean_query_arg(args.sort_desc)
 
       args.sort_by = nil
       args.sort_desc = nil
