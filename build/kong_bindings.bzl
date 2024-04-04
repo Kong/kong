@@ -61,11 +61,11 @@ def _load_vars(ctx):
 
     content += '"OPENRESTY_PATCHES": [%s],' % (", ".join(patches))
 
-    ngx_wasm_module_remote = ctx.os.environ.get("NGX_WASM_MODULE_REMOTE", "https://github.com/Kong/ngx_wasm_module.git")
-    content += '"NGX_WASM_MODULE_REMOTE": "%s",' % ngx_wasm_module_remote
+    ngx_wasmx_module_remote = ctx.os.environ.get("NGX_WASM_MODULE_REMOTE", "https://github.com/Kong/ngx_wasm_module.git")
+    content += '"NGX_WASM_MODULE_REMOTE": "%s",' % ngx_wasmx_module_remote
 
-    ngx_wasm_module_branch = ctx.os.environ.get("NGX_WASM_MODULE_BRANCH", "")
-    content += '"NGX_WASM_MODULE_BRANCH": "%s",' % ngx_wasm_module_branch
+    ngx_wasmx_module_branch = ctx.os.environ.get("NGX_WASM_MODULE_BRANCH", "")
+    content += '"NGX_WASM_MODULE_BRANCH": "%s",' % ngx_wasmx_module_branch
 
     ctx.file("BUILD.bazel", "")
     ctx.file("variables.bzl", "KONG_VAR = {\n" + content + "\n}")

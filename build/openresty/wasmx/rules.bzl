@@ -16,11 +16,11 @@ wasmx_configure_options = select({
     "//conditions:default": [],
 }) + select({
     "@kong//:wasmx_static_mod": [
-        "--add-module=$$EXT_BUILD_ROOT$$/external/ngx_wasm_module",
+        "--add-module=$$EXT_BUILD_ROOT$$/external/ngx_wasmx_module",
     ],
     "@kong//:wasmx_dynamic_mod": [
         "--with-compat",
-        "--add-dynamic-module=$$EXT_BUILD_ROOT$$/external/ngx_wasm_module",
+        "--add-dynamic-module=$$EXT_BUILD_ROOT$$/external/ngx_wasmx_module",
     ],
     "//conditions:default": [],
 })
