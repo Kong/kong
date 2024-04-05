@@ -129,7 +129,7 @@ local Consumers = {}
 function Consumers:page_by_type(_, size, offset, options)
   options = options or {}
   options.search_fields = options.search_fields or {}
-  options.search_fields.type = options.type or 0
+  options.search_fields.type = { eq = (options.type or 0) }
 
   if kong.db.strategy == "postgres" then
     return self:page(size, offset, options)

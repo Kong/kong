@@ -197,8 +197,8 @@ local function each_enabled_plugin(entity, plugin_name)
     show_ws_id = true,
     workspace = null,
     search_fields = {
-      name = plugin_name,
-      enabled = true
+      name = { eq = plugin_name },
+      enabled = { eq = true }
     }
   }
 

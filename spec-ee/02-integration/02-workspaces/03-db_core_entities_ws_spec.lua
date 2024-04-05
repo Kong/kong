@@ -1159,7 +1159,7 @@ for _, strategy in helpers.each_strategy() do
 
             -- query routes associated to a Service by search route name `route2`
             rows = {}
-            for row, err in db.routes:each_for_service ({ id = service.id }, nil, { search_fields = { name = "route2" } }) do
+            for row, err in db.routes:each_for_service ({ id = service.id }, nil, { search_fields = { name = { eq = "route2" } } }) do
               rows[#rows + 1] = row
               assert.is_nil(err)
             end
@@ -1167,7 +1167,7 @@ for _, strategy in helpers.each_strategy() do
 
             -- query routes associated to a Service by search route name `route1`
             rows = {}
-            for row, err in db.routes:each_for_service({ id = service.id }, nil, { search_fields = { name = "route1" } }) do
+            for row, err in db.routes:each_for_service({ id = service.id }, nil, { search_fields = { name = { eq = "route1" } } }) do
               rows[#rows + 1] = row
               assert.is_nil(err)
             end

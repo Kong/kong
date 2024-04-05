@@ -22,7 +22,7 @@ local function get_consumer_group(consumer_group_pk)
 end
 
 local function _find_consumer_group_config(consumer_group_pk, plugin_name)
-  for row, err in kong.db.consumer_group_plugins:each_for_consumer_group({ id = consumer_group_pk }, nil, { search_fields = { name = plugin_name } }) do
+  for row, err in kong.db.consumer_group_plugins:each_for_consumer_group({ id = consumer_group_pk }, nil, { search_fields = { name = { eq = plugin_name } } }) do
     if err then
       kong.log.err(err)
       return nil, err

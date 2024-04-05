@@ -337,6 +337,7 @@ local function new_db_on_error(self)
   or err_code == codes.FOREIGN_KEY_VIOLATION
   or err_code == codes.INVALID_OFFSET
   or err_code == codes.FOREIGN_KEYS_UNRESOLVED
+  or err_code == codes.INVALID_SEARCH_QUERY
   then
     return kong.response.exit(400, err)
   end

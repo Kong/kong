@@ -60,6 +60,7 @@ local ERRORS            = {
   INVALID_WORKSPACE       = 17, -- strategy reports a workspace error
   INVALID_UNIQUE_GLOBAL   = 18, -- unique field value is invalid for global query
   REFERENCED_BY_OTHERS    = 19, -- still referenced by other entities
+  INVALID_SEARCH_QUERY    = 20, -- ex. searched_field[unknown] = something -> 'unknown' is invalid (HTTP 400)
 }
 
 
@@ -86,6 +87,7 @@ local ERRORS_NAMES               = {
   [ERRORS.INVALID_WORKSPACE]       = "invalid workspace",
   [ERRORS.INVALID_UNIQUE_GLOBAL]   = "invalid global query",
   [ERRORS.REFERENCED_BY_OTHERS]    = "referenced by others",
+  [ERRORS.INVALID_SEARCH_QUERY]    = "invalid search query",
 }
 
 
@@ -427,6 +429,10 @@ function _M:invalid_offset(offset, err)
   local message = fmt("'%s' is not a valid offset: %s", offset, err)
 
   return new_err_t(self, ERRORS.INVALID_OFFSET, message)
+end
+
+function _M:invalid_search_query(details)
+  return new_err_t(self, ERRORS.INVALID_SEARCH_QUERY, details)
 end
 
 

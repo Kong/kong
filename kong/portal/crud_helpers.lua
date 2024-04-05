@@ -684,7 +684,7 @@ end
 
 local function build_service_display_name(db, row)
   local plugin_name = "application-registration"
-  for plugin, err in db.plugins:each_for_service({ id = row.service.id }, nil, { search_fields = { name = plugin_name } }) do
+  for plugin, err in db.plugins:each_for_service({ id = row.service.id }, nil, { search_fields = { name =  { eq = plugin_name } } }) do
     if err then
       ngx.log(ngx.DEBUG, err)
     end
@@ -718,7 +718,7 @@ local function get_application_instances(self, db, helpers, opts)
         build_developer(db, application, row)
       end
       build_service_display_name(db, row)
-     
+
       return row
     end,
     ["service"] = function(row)
@@ -919,7 +919,7 @@ function _M.get_application_services(self, db, helpers)
   end
 
   local app_reg_plugins = {}
-  for plugin, err in db.plugins:each(nil, { search_fields = { name = "application-registration" } }) do
+  for plugin, err in db.plugins:each(nil, { search_fields = { name = { eq = "application-registration" } } }) do
     if err then
       return kong.response.exit(500, { message = "An unexpected error occurred" })
     end
@@ -932,7 +932,7 @@ function _M.get_application_services(self, db, helpers)
   -- get all instances for the given application
   local app_instances = {}
   if application then
-    
+
     for instance, err in db.application_instances:each_for_application({ id = application.id }) do
       if err then
         return endpoints.handle_error(err)

@@ -1,0 +1,3 @@
+message: Add LHS brackets filtering to search fields
+type: feature
+scope: Admin API

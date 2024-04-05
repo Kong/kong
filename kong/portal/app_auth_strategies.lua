@@ -9,7 +9,7 @@ local cjson = require "cjson"
 
 local function build_auth_config(plugin_name, query_handler, build_handler)
   local auth_config
-  local options = { workspace = ngx.null, show_ws_id = true, search_fields = { name = plugin_name } }
+  local options = { workspace = ngx.null, show_ws_id = true, search_fields = { name = { eq = plugin_name } } }
   for plugin, err in query_handler(options) do
     if err then
       kong.log.err(err)
@@ -58,7 +58,7 @@ local build_plugin_config = {
 return {
   ["kong-oauth2"] = {
     build_service_auth_config = function(service)
-      
+
       return build_auth_config("key-auth", function(options)
             return kong.db.plugins:each_for_service(service, nil, options)
           end, build_plugin_config["key-auth"])

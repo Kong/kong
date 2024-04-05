@@ -14,7 +14,6 @@ local cjson        = require "cjson"
 local nkeys        = require "table.nkeys"
 local new_tab      = require "table.new"
 
-
 local kong         = kong
 local escape_uri   = ngx.escape_uri
 local unescape_uri = ngx.unescape_uri
@@ -47,6 +46,7 @@ local ERRORS_HTTP_CODES = {
   [Errors.codes.OPERATION_UNSUPPORTED]   = 405,
   [Errors.codes.FOREIGN_KEYS_UNRESOLVED] = 400,
   [Errors.codes.REFERENCED_BY_OTHERS]    = 400,
+  [Errors.codes.INVALID_SEARCH_QUERY] = 400,
 }
 
 local TAGS_AND_REGEX
@@ -158,6 +158,17 @@ local function parse_boolean_query_arg(arg)
   return not not arg
 end
 
+local function extract_LHS_query(query_param_key)
+  local bracket_index = query_param_key:find("%[")
+  if not bracket_index then
+    return query_param_key, "eq"
+  end
+
+  local query_param = query_param_key:sub(1, bracket_index - 1)
+  local lhs = query_param_key:sub(bracket_index + 1, -2)
+  return query_param, lhs
+end
+
 local function extract_options(args, schema, context)
   local options = {
     nulls = true,
@@ -225,19 +236,19 @@ local function extract_options(args, schema, context)
     if context == "page" then
       local search_fields = {}
       for k, v in pairs(args) do
-        if v == null then
-          goto continue
-        end
-        v = type(v) == "table" and v[1] or v
-        if schema.fields[k] and schema.fields[k].indexed then
-          if schema.fields[k].type == "array" or schema.fields[k].type == "set" then
-            search_fields[k] = split(v, ",")
-          else
-            search_fields[k] = v
+        if v ~= null then
+          local arg, lhs_operator = extract_LHS_query(k)
+          v = type(v) == "table" and v[1] or v
+          if schema.fields[arg] and schema.fields[arg].indexed then
+            search_fields[arg] = search_fields[arg] or {}
+            if schema.fields[arg].type == "array" or schema.fields[arg].type == "set" then
+              search_fields[arg][lhs_operator] = split(v, ",")
+            else
+              search_fields[arg][lhs_operator] = v
+            end
+            args[k] = nil
           end
-          args[k] = nil
         end
-        ::continue::
       end
 
       if nkeys(search_fields) > 0 then

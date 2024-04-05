@@ -475,6 +475,7 @@ local function execute(strategy, statement_name, attributes, options)
   return connector:query(sql, statement.operation)
 end
 
+local search_operator_query_mappings = { lte = "<=", lt = "<", gt = ">", gte = ">=" }
 
 local function page(self, size, token, foreign_key, foreign_entity_name, options)
   if not size then
@@ -493,29 +494,59 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
   local has_search = options and options.search_fields and nkeys(options.search_fields) > 0
   local function gen_search_query(self, options)
     local where_query = new_tab(nkeys(options.search_fields), 0)
-    for k, v in pairs(options.search_fields) do
+    for k, search_operators in pairs(options.search_fields) do
       local field = self.schema.fields[k]
       local typ = field.type
-      if typ == "integer" then
-        insert(where_query, fmt("%s = %s", k,  self.connector:escape_literal(tonumber(v))))
-      elseif typ == "string" and (field.one_of ~= nil or field.uuid) then
-        insert(where_query, fmt("%s = %s", k, self.connector:escape_literal(v)))
-      elseif typ == "string" then
-        insert(where_query, fmt("%s like %s", k, self.connector:escape_literal("%" .. v .. "%", field)))
-      elseif typ == "boolean" then
-        insert(where_query, fmt("%s = %s", k, self.connector:escape_literal(tostring(v) == "true")))
-      elseif typ == "array" and field.elements ~= nil and field.elements.type == "string" then
-        v = type(v) == "table" and v[1] or v
-        insert(where_query, fmt("%s::text like %s", k, self.connector:escape_literal("%" .. v .. "%")))
-      elseif typ == "array" or typ == "set" then
-        if type(typ) ~= "table" then
-          local tab = new_tab(1, 0)
-          insert(tab, v)
-          v = tab
+      if search_operators["eq"] ~= nil then
+        local v = search_operators["eq"]
+        if typ == "integer" then
+          local number = tonumber(v)
+          if number == nil then
+            return nil, self.errors:invalid_search_query(fmt("searching %s='%s' but expected value of number type", k, v))
+          end
+
+          insert(where_query, fmt("%s = %s", k,  self.connector:escape_literal(number)))
+        elseif typ == "string" and (field.one_of ~= nil or field.uuid) then
+          insert(where_query, fmt("%s = %s", k, self.connector:escape_literal(v)))
+        elseif typ == "string" then
+          insert(where_query, fmt("%s like %s", k, self.connector:escape_literal("%" .. v .. "%", field)))
+        elseif typ == "boolean" then
+          insert(where_query, fmt("%s = %s", k, self.connector:escape_literal(tostring(v) == "true")))
+        elseif typ == "array" and field.elements ~= nil and field.elements.type == "string" then
+          v = type(v) == "table" and v[1] or v
+          insert(where_query, fmt("%s::text like %s", k, self.connector:escape_literal("%" .. v .. "%")))
+        elseif typ == "array" or typ == "set" then
+          if type(typ) ~= "table" then
+            local tab = new_tab(1, 0)
+            insert(tab, v)
+            v = tab
+          end
+          insert(where_query, fmt("%s @> %s", k, escape_literal(self.connector, v, field)))
+        else
+          insert(where_query, fmt("%s = %s", k, escape_literal(self.connector, v, field)))
         end
-        insert(where_query, fmt("%s @> %s", k, escape_literal(self.connector, v, field)))
       else
-        insert(where_query, fmt("%s = %s", k, escape_literal(self.connector, v, field)))
+        for operator, v in pairs(search_operators) do
+          if not search_operator_query_mappings[operator] then
+            return nil, self.errors:invalid_search_query(fmt("'%s' is not a valid search operator", operator))
+          end
+
+          local escaped_value
+          if typ == "integer" then
+            local number = tonumber(v)
+            if number == nil then
+              return nil, self.errors:invalid_search_query(fmt("searching %s[%s]='%s' but expected value of number type", k, operator, v))
+            end
+
+            escaped_value = self.connector:escape_literal(number)
+          elseif typ == "string" then
+            escaped_value = self.connector:escape_literal(v)
+          else
+            escaped_value = escape_literal(self.connector, v, field)
+          end
+
+          insert(where_query, fmt("%s %s %s", k, search_operator_query_mappings[operator], escaped_value))
+        end
       end
     end
     return concat(where_query, " AND ")
@@ -526,7 +557,11 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
   if foreign_entity_name and has_search then
     statement_name = "page_for_" .. foreign_entity_name .. "_search" .. suffix
     attributes[foreign_entity_name] = foreign_key
-    attributes.search_fields = gen_search_query(self, options)
+    local search_query, err = gen_search_query(self, options)
+    if not search_query then
+      return nil, err
+    end
+    attributes.search_fields = search_query
 
   elseif foreign_entity_name then
     statement_name = "page_for_" .. foreign_entity_name .. suffix
@@ -544,7 +579,11 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
                     "page_by_order_asc_search" .. suffix
     order_by_field = options.sort_by
     attributes.sort_by = order_by_field
-    attributes.search_fields = gen_search_query(self, options)
+    local search_query, err = gen_search_query(self, options)
+    if not search_query then
+      return nil, err
+    end
+    attributes.search_fields = search_query
 
   elseif options and options.sort_by then
     statement_name = options.sort_desc and
@@ -555,7 +594,11 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
 
   elseif has_search then
     statement_name = "page_search" .. suffix
-    attributes.search_fields = gen_search_query(self, options)
+    local search_query, err = gen_search_query(self, options)
+    if not search_query then
+      return nil, err
+    end
+    attributes.search_fields = search_query
 
   else
     statement_name = "page" .. suffix
