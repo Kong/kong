@@ -215,14 +215,21 @@ local function do_authentication(conf)
   return true
 end
 
-local function set_anonymous_consumer(anonymous)
+local function set_anonymous_consumer(anonymous, plid)
   local consumer_cache_key = kong.db.consumers:cache_key(anonymous)
   local consumer, err = kong.cache:get(consumer_cache_key, nil,
                                         kong.client.load_consumer,
                                         anonymous, true)
-  if err then
-    return error(err)
-  end
+      if err then
+        kong.log.err("failed to load anonymous consumer:", err)
+        return kong.response.exit(500, { message = "An unexpected error occurred" })
+      end
+
+      if not consumer then
+        kong.log.err("anonymous consumer '", anonymous, "' configured in plugin '",
+                     plid, "' was not found")
+        return kong.response.exit(500, { message = "An unexpected error occurred" })
+      end
 
   set_consumer(consumer)
 end
@@ -239,7 +246,7 @@ local function logical_OR_authentication(conf)
 
   local ok, _ = do_authentication(conf)
   if not ok then
-    set_anonymous_consumer(conf.anonymous)
+    set_anonymous_consumer(conf.anonymous, conf.__plugin_id)
   end
 end
 

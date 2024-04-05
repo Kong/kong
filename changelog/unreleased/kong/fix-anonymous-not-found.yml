@@ -1,0 +1,5 @@
+message: |
+  Better logging if the anonymous user is not found, instead of a hard to
+  troubleshoot error for the end user
+type: bugfix
+scope: Plugin

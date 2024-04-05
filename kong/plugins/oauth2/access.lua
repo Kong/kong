@@ -1103,7 +1103,14 @@ function _M.execute(conf)
                                                 kong.client.load_consumer,
                                                 conf.anonymous, true)
       if err then
-        return error(err)
+        kong.log.err("failed to load anonymous consumer:", err)
+        return kong.response.exit(500, { message = "An unexpected error occurred" })
+      end
+
+      if not consumer then
+        kong.log.err("anonymous consumer '", conf.anonymous, "' configured in plugin '",
+                     conf.__plugin_id, "' was not found")
+        return kong.response.exit(500, { message = "An unexpected error occurred" })
       end
 
       set_consumer(consumer)
