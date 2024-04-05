@@ -8,6 +8,7 @@ local error = error
 local ipairs = ipairs
 local tostring = tostring
 local fmt = string.format
+local ngx_re_gsub = ngx.re.gsub
 
 
 local HEADERS_CONSUMER_ID           = constants.HEADERS.CONSUMER_ID
@@ -105,6 +106,13 @@ local function unauthorized(message, www_auth_content)
   return { status = 401, message = message, headers = { ["WWW-Authenticate"] = www_auth_content } }
 end
 
+local function remove_query_key(raw_query, key)
+  local pattern = key .. "=[^&]*&?"
+  local new_query = ngx_re_gsub(raw_query, pattern, "", "oj")
+  new_query = ngx_re_gsub(new_query, "&$", "", "oj")
+  return new_query
+end
+
 local function do_authentication(conf)
   if type(conf.key_names) ~= "table" then
     kong.log.err("no conf.key_names set, aborting plugin execution")
@@ -143,9 +151,14 @@ local function do_authentication(conf)
       key = v
 
       if conf.hide_credentials then
-        query[name] = nil
-        kong.service.request.set_query(query)
-        kong.service.request.clear_header(name)
+        if conf.key_in_query then
+          local raw_query = kong.request.get_raw_query()
+          local new_query = remove_query_key(raw_query, name)
+          kong.service.request.set_raw_query(new_query)
+        end
+        if conf.key_in_header then
+          kong.service.request.clear_header(name)
+        end
 
         if conf.key_in_body then
           if not body then
@@ -163,7 +176,6 @@ local function do_authentication(conf)
       end
 
       break
-
     elseif type(v) == "table" then
       -- duplicate API key
       return nil, unauthorized(ERR_DUPLICATE_API_KEY, www_auth_content)
