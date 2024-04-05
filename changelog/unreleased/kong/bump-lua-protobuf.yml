@@ -1,0 +1,3 @@
+message: "Bump lua-protobuf to 0.5.1"
+type: dependency
+scope: Core
