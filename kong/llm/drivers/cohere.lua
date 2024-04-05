@@ -14,7 +14,12 @@ local DRIVER_NAME = "cohere"
 
 local function handle_stream_event(event_string, model_info, route_type)
   local metadata
-  
+
+  -- discard empty frames, it should either be a random new line, or comment
+  if #event_string < 1 then
+    return
+  end
+
   local event, err = cjson.decode(event_string)
   if err then
     return nil, "failed to decode event frame from cohere: " .. err, nil
@@ -301,7 +306,7 @@ local transformers_from = {
 
     if response_table.prompt and response_table.generations then
       -- this is a "co.generate"
-      
+
       for i, v in ipairs(response_table.generations) do
         prompt.choices[i] = {
           index = (i-1),

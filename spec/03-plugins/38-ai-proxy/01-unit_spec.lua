@@ -176,16 +176,16 @@ local FORMATS = {
 }
 
 local STREAMS = {
-  -- openai = {
-  --   ["llm/v1/chat"] = {
-  --     name = "gpt-4",
-  --     provider = "openai",
-  --   },
-  --   ["llm/v1/completions"] = {
-  --     name = "gpt-3.5-turbo-instruct",
-  --     provider = "openai",
-  --   },
-  -- },
+  openai = {
+    ["llm/v1/chat"] = {
+      name = "gpt-4",
+      provider = "openai",
+    },
+    ["llm/v1/completions"] = {
+      name = "gpt-3.5-turbo-instruct",
+      provider = "openai",
+    },
+  },
   cohere = {
     ["llm/v1/chat"] = {
       name = "command",
