@@ -1,0 +1,3 @@
+message: |
+  Fix an issue where external plugins using the protobuf-based protocol would fail to call the `kong.Service.SetUpstream` method with an error `bad argument #2 to 'encode' (table expected, got boolean)`.
+type: bugfix
