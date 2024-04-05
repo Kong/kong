@@ -7,7 +7,7 @@ local llm           = require("kong.llm")
 --
 
 _M.PRIORITY = 777
-_M.VERSION = "1.2.0"
+_M.VERSION = kong_meta.version
 
 local function bad_request(msg)
   kong.log.info(msg)
