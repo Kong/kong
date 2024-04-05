@@ -11,7 +11,7 @@ local kong_meta = require("kong.meta")
 
 
 _M.PRIORITY = 770
-_M.VERSION = "1.2.0"
+_M.VERSION = kong_meta.version
 
 
 -- reuse this table for error message response
