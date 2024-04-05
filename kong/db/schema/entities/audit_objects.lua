@@ -23,6 +23,7 @@ return {
       description = "The ID of the request associated with the audit object.",
       type = "string"
     }},
+    { request_timestamp = typedefs.auto_timestamp_s { indexed = true } },
     { entity_key = {
       description = "The key of the entity associated with the audit object.",
       type = "string",

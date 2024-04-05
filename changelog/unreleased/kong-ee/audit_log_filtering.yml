@@ -1,0 +1,3 @@
+message: "**Audit Log:** Allow audit_requests and audit_objects to be filtered by request_timestamp."
+type: feature
+scope: Admin API

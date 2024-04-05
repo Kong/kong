@@ -26,7 +26,7 @@ return {
       description = "The source of the audit request.",
       type = "string"
     }},
-    { request_timestamp = typedefs.auto_timestamp_s },
+    { request_timestamp = typedefs.auto_timestamp_s { indexed = true } },
     { client_ip = {
       description = "The IP address of the client making the request.",
       type = "string",

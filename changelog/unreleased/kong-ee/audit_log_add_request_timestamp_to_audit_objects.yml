@@ -1,0 +1,3 @@
+message: "**Audit Log:** Add request_timestamp to audit_objects."
+type: feature
+scope: Admin API

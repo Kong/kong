@@ -685,7 +685,15 @@ function _M.new(db)
     return {
       method = overrides.method or "GET",
       status = overrides.status or 200,
+      path = overrides.path or "/services",
       client_ip = overrides.client_ip or "127.0.0.1",
+    }
+  end)
+
+  res.audit_objects = new_blueprint(db.audit_objects, function (overrides)
+    return {
+      operation = overrides.operation or "create",
+      dao_name = overrides.dao_name or "services"
     }
   end)
 

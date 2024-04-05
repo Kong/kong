@@ -13,6 +13,7 @@ local busted = require "busted"
 local conf_loader = require "kong.conf_loader"
 local DB = require "kong.db"
 local helpers = require "spec.helpers"
+local utils = require "kong.tools.utils"
 
 local conf = conf_loader()
 
@@ -105,6 +106,32 @@ say:set("assertion.table_has_column.positive", "Expected table %s to have column
 say:set("assertion.table_has_column.negative", "Expected table %s not to have column %s with type %s")
 assert:register("assertion", "table_has_column", table_has_column, "assertion.table_has_column.positive", "assertion.table_has_column.negative")
 
+local function table_has_index(state, arguments)
+  local table = arguments[1]
+  local index_name = arguments[2]
+  local db = get_database()
+  local res, err
+  if database_type() == 'postgres' then
+    res, err = db.connector:query(string.format(
+        "select true"
+        .. " from pg_indexes"
+        .. " where schemaname = 'public'"
+        .. "   and tablename = '%s'"
+        .. "   and indexname = '%s'",
+        table, index_name))
+  else
+    return false
+  end
+  if err then
+    return false
+  end
+  return not(not(res[1]))
+end
+
+say:set("assertion.table_has_index.positive", "Expected table %s to have index %s")
+say:set("assertion.table_has_index.negative", "Expected table %s not to index %s")
+assert:register("assertion", "table_has_index", table_has_index, "assertion.table_has_index.positive", "assertion.table_has_index.negative")
+
 local upstream_server_url = "http://" .. helpers.mock_upstream_host .. ":" .. helpers.mock_upstream_port .. "/"
 
 local function create_example_service()
@@ -150,8 +177,8 @@ local function send_proxy_get_request()
   return res, body
 end
 
-local function start_kong()
-  return helpers.start_kong {
+local function start_kong(options)
+  return helpers.start_kong(utils.table_merge({
     database = database_type(),
     dns_resolver          = "",
     proxy_listen          = "0.0.0.0:9000",
@@ -159,7 +186,7 @@ local function start_kong()
     admin_ssl             = false,
     admin_gui_ssl         = false,
     nginx_conf            = "spec/fixtures/custom_nginx.template",
-  }
+  }, options))
 end
 
 local function it_when(phase, phrase, f)

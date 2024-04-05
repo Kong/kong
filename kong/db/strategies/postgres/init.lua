@@ -505,7 +505,7 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
             return nil, self.errors:invalid_search_query(fmt("searching %s='%s' but expected value of number type", k, v))
           end
 
-          insert(where_query, fmt("%s = %s", k,  self.connector:escape_literal(number)))
+          insert(where_query, fmt("%s = %s", k, escape_literal(self.connector, number, field)))
         elseif typ == "string" and (field.one_of ~= nil or field.uuid) then
           insert(where_query, fmt("%s = %s", k, self.connector:escape_literal(v)))
         elseif typ == "string" then
@@ -538,7 +538,7 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
               return nil, self.errors:invalid_search_query(fmt("searching %s[%s]='%s' but expected value of number type", k, operator, v))
             end
 
-            escaped_value = self.connector:escape_literal(number)
+            escaped_value = escape_literal(self.connector, number, field)
           elseif typ == "string" then
             escaped_value = self.connector:escape_literal(v)
           else

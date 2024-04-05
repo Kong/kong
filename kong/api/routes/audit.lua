@@ -40,7 +40,10 @@ return {
   ["/audit/objects"] = {
     schema = kong.db.audit_objects.schema,
     methods = {
-      GET = endpoints.get_collection_endpoint(kong.db.audit_objects.schema),
+      GET = function(self, db, helpers)
+        configure_sort_by_time_desc(self)
+        return endpoints.get_collection_endpoint(kong.db.audit_objects.schema)(self, db, helpers)
+      end
     }
   },
 }
