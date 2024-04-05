@@ -33,7 +33,7 @@ dependencies = {
   "luaexpat == 1.5.1",
   "binaryheap >= 0.4",
   "luaxxhash >= 1.0",
-  "lua-protobuf == 0.5.0",
+  "lua-protobuf == 0.5.1",
   "lua-resty-healthcheck == 3.0.1",
   "lua-messagepack == 0.5.4",
   "lua-resty-azure == 1.4.1",
