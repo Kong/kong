@@ -643,7 +643,7 @@ local function resolve_all(self, name, qtype, cache_only, tries, resolved_names)
     log(DEBUG, "quickly cache lookup ", key, " ans:- hlvl:", hit_level or "-")
 
     answers, err, tries = resolve_names_and_types(self, name, qtype, cache_only,
-                                                  key, tries, resolve_names or { [key] = true })
+                                                  key, tries, resolved_names or { [key] = true })
 
     if not cache_only and answers then
       -- If another worker resolved the name between these two `:get`, it can
