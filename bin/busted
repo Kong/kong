@@ -13,7 +13,7 @@ local cert_path do
 
   local system_cert_path, err = tools_system.get_system_trusted_certs_filepath()
   if system_cert_path then
-    busted_cert_content = busted_cert_content .. pl_file.read(system_cert_path)
+    busted_cert_content = busted_cert_content .. "\n" .. pl_file.read(system_cert_path)
   end
 
   pl_file.write(busted_cert_file, busted_cert_content)
