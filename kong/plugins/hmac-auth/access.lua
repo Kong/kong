@@ -369,7 +369,7 @@ function _M.execute(conf)
                                                 kong_client.load_consumer,
                                                 conf.anonymous, true)
       if err then
-        kong.log.err("failed to load anonymous consumer:", err)
+        kong.log.err("failed to load anonymous consumer: ", err)
         return kong.response.exit(500, { message = "An unexpected error occurred" })
       end
 

@@ -221,7 +221,7 @@ local function set_anonymous_consumer(anonymous, plid)
                                         kong.client.load_consumer,
                                         anonymous, true)
       if err then
-        kong.log.err("failed to load anonymous consumer:", err)
+        kong.log.err("failed to load anonymous consumer: ", err)
         return kong.response.exit(500, { message = "An unexpected error occurred" })
       end
 
