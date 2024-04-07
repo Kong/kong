@@ -3,63 +3,63 @@ local utils = require("kong.dns.utils")
 local mlcache = require("kong.resty.mlcache")
 local resolver = require("resty.dns.resolver")
 
-local now       = ngx.now
-local log       = ngx.log
-local ERR       = ngx.ERR
-local WARN      = ngx.WARN
-local DEBUG     = ngx.DEBUG
-local ALERT     = ngx.ALERT
-local timer_at  = ngx.timer.at
+local now = ngx.now
+local log = ngx.log
+local ERR = ngx.ERR
+local WARN = ngx.WARN
+local DEBUG = ngx.DEBUG
+local ALERT = ngx.ALERT
+local timer_at = ngx.timer.at
 local worker_id = ngx.worker.id
 
-local pairs           = pairs
-local ipairs          = ipairs
-local math_min        = math.min
-local string_lower    = string.lower
-local table_insert    = table.insert
-local table_isempty   = require("table.isempty")
+local pairs = pairs
+local ipairs = ipairs
+local math_min = math.min
+local string_lower = string.lower
+local table_insert = table.insert
+local table_isempty = require("table.isempty")
 
-local parse_hosts   = utils.parse_hosts
-local ipv6_bracket  = utils.ipv6_bracket
-local search_names  = utils.search_names
-local get_next_round_robin_answer           = utils.get_next_round_robin_answer
-local get_next_weighted_round_robin_answer  = utils.get_next_weighted_round_robin_answer
+local parse_hosts = utils.parse_hosts
+local ipv6_bracket = utils.ipv6_bracket
+local search_names = utils.search_names
+local get_next_round_robin_answer = utils.get_next_round_robin_answer
+local get_next_weighted_round_robin_answer = utils.get_next_weighted_round_robin_answer
 
 local req_dyn_hook_run_hooks = require("kong.dynamic_hook").run_hooks
 
 
 -- Constants and default values
 
-local DEFAULT_ERROR_TTL   = 1     -- unit: second
-local DEFAULT_STALE_TTL   = 4
-local DEFAULT_EMPTY_TTL   = 30
+local DEFAULT_ERROR_TTL = 1     -- unit: second
+local DEFAULT_STALE_TTL = 4
+local DEFAULT_EMPTY_TTL = 30
 -- long-lasting TTL of 10 years for hosts or static IP addresses in cache settings
-local LONG_LASTING_TTL    = 10 * 365 * 24 * 60 * 60
+local LONG_LASTING_TTL = 10 * 365 * 24 * 60 * 60
 
 local PERSISTENT_CACHE_TTL = { ttl = 0 }  -- used for mlcache:set
 
 local DEFAULT_ORDER = { "LAST", "SRV", "A", "AAAA", "CNAME" }
 
-local TYPE_SRV      = resolver.TYPE_SRV
-local TYPE_A        = resolver.TYPE_A
-local TYPE_AAAA     = resolver.TYPE_AAAA
-local TYPE_CNAME    = resolver.TYPE_CNAME
-local TYPE_LAST     = -1
+local TYPE_SRV = resolver.TYPE_SRV
+local TYPE_A = resolver.TYPE_A
+local TYPE_AAAA = resolver.TYPE_AAAA
+local TYPE_CNAME = resolver.TYPE_CNAME
+local TYPE_LAST = -1
 
 local NAME_TO_TYPE = {
-  SRV     = TYPE_SRV,
-  A       = TYPE_A,
-  AAAA    = TYPE_AAAA,
-  CNAME   = TYPE_CNAME,
-  LAST    = TYPE_LAST,
+  SRV = TYPE_SRV,
+  A = TYPE_A,
+  AAAA = TYPE_AAAA,
+  CNAME = TYPE_CNAME,
+  LAST = TYPE_LAST,
 }
 
 local TYPE_TO_NAME = {
-  [TYPE_SRV]      = "SRV",
-  [TYPE_A]        = "A",
-  [TYPE_AAAA]     = "AAAA",
-  [TYPE_CNAME]    = "CNAME",
-  [TYPE_LAST]     = "LAST",
+  [TYPE_SRV] = "SRV",
+  [TYPE_A] = "A",
+  [TYPE_AAAA] = "AAAA",
+  [TYPE_CNAME] = "CNAME",
+  [TYPE_LAST] = "LAST",
 }
 
 local HIT_L3 = 3 -- L1 lru, L2 shm, L3 callback, L4 stale
@@ -72,23 +72,23 @@ local HIT_LEVEL_TO_NAME = {
 }
 
 -- server replied error from the DNS protocol
-local NAME_ERROR_CODE             = 3 -- response code 3 as "Name Error" or "NXDOMAIN"
+local NAME_ERROR_CODE = 3 -- response code 3 as "Name Error" or "NXDOMAIN"
 -- client specific error
-local CACHE_ONLY_ERROR_CODE       = 100
-local CACHE_ONLY_ERROR_MESSAGE    = "cache only lookup failed"
+local CACHE_ONLY_ERROR_CODE = 100
+local CACHE_ONLY_ERROR_MESSAGE = "cache only lookup failed"
 local CACHE_ONLY_ANSWERS = { errcode = CACHE_ONLY_ERROR_CODE, errstr = CACHE_ONLY_ERROR_MESSAGE }
-local EMPTY_RECORD_ERROR_CODE     = 101
-local EMPTY_RECORD_ERROR_MESSAGE  = "empty record received"
+local EMPTY_RECORD_ERROR_CODE = 101
+local EMPTY_RECORD_ERROR_MESSAGE = "empty record received"
 
 
 -- APIs
 
 local _M = {
-  TYPE_SRV     = TYPE_SRV,
-  TYPE_A       = TYPE_A,
-  TYPE_AAAA    = TYPE_AAAA,
-  TYPE_CNAME   = TYPE_CNAME,
-  TYPE_LAST    = TYPE_LAST,
+  TYPE_SRV = TYPE_SRV,
+  TYPE_A = TYPE_A,
+  TYPE_AAAA = TYPE_AAAA,
+  TYPE_CNAME = TYPE_CNAME,
+  TYPE_LAST = TYPE_LAST,
 }
 local MT = { __index = _M }
 
@@ -198,9 +198,9 @@ function _M.new(opts)
   end
 
   local r_opts = {
-    retrans     = opts.retrans or resolv.options.attempts or 5,
-    timeout     = opts.timeout or resolv.options.timeout or 2000, -- ms
-    no_random   = opts.no_random or not resolv.options.rotate,
+    retrans = opts.retrans or resolv.options.attempts or 5,
+    timeout = opts.timeout or resolv.options.timeout or 2000, -- ms
+    no_random = opts.no_random or not resolv.options.rotate,
     nameservers = nameservers,
   }
 
@@ -254,9 +254,9 @@ function _M.new(opts)
   }
 
   local cache, err = mlcache.new("dns_cache", "kong_dns_cache", {
-    ipc             = ipc,
-    neg_ttl         = opts.empty_ttl or DEFAULT_EMPTY_TTL,
-    lru_size        = opts.cache_size or 10000,
+    ipc = ipc,
+    neg_ttl = opts.empty_ttl or DEFAULT_EMPTY_TTL,
+    lru_size = opts.cache_size or 10000,
     resty_lock_opts = resty_lock_opts,
   })
 
@@ -296,17 +296,17 @@ function _M.new(opts)
   local hosts, hosts_cache = init_hosts(cache, opts.hosts, preferred_ip_type)
 
   return setmetatable({
-    cache         = cache,
-    stats         = {},
-    hosts         = hosts,
-    r_opts        = r_opts,
-    resolv        = opts._resolv or resolv,
-    valid_ttl     = opts.valid_ttl,
-    error_ttl     = opts.error_ttl or DEFAULT_ERROR_TTL,
-    stale_ttl     = opts.stale_ttl or DEFAULT_STALE_TTL,
-    empty_ttl     = opts.empty_ttl or DEFAULT_EMPTY_TTL,
-    hosts_cache   = hosts_cache,
-    search_types  = search_types,
+    cache = cache,
+    stats = {},
+    hosts = hosts,
+    r_opts = r_opts,
+    resolv = opts._resolv or resolv,
+    valid_ttl = opts.valid_ttl,
+    error_ttl = opts.error_ttl or DEFAULT_ERROR_TTL,
+    stale_ttl = opts.stale_ttl or DEFAULT_STALE_TTL,
+    empty_ttl = opts.empty_ttl or DEFAULT_EMPTY_TTL,
+    hosts_cache = hosts_cache,
+    search_types = search_types,
 
     -- TODO: Make the table readonly. But if `string.buffer.encode/decode` and
     -- `pl.tablex.readonly` are called on it, it will become empty table.
@@ -314,8 +314,8 @@ function _M.new(opts)
     -- quickly accessible constant empty answers
     EMPTY_ANSWERS = {
       errcode = EMPTY_RECORD_ERROR_CODE,
-      errstr  = EMPTY_RECORD_ERROR_MESSAGE,
-      ttl     = opts.empty_ttl or DEFAULT_EMPTY_TTL,
+      errstr = EMPTY_RECORD_ERROR_MESSAGE,
+      ttl = opts.empty_ttl or DEFAULT_EMPTY_TTL,
     },
   }, MT)
 end
