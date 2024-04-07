@@ -494,6 +494,10 @@ end
 
 -- detect circular references in DNS CNAME or SRV records
 local function detect_recursion(resolved_names, key)
+  if not resolved_names then
+    return
+  end
+
   local detected = resolved_names[key]
   resolved_names[key] = true
   return detected
@@ -639,7 +643,8 @@ local function resolve_all(self, name, qtype, cache_only, tries, resolved_names)
     log(DEBUG, "quickly cache lookup ", key, " ans:- hlvl:", hit_level or "-")
 
     answers, err, tries = resolve_names_and_types(self, name, qtype, cache_only,
-                                                  key, tries, resolved_names)
+                                                  key, tries, resolve_names or { [key] = true })
+
     if not cache_only and answers then
       -- If another worker resolved the name between these two `:get`, it can
       -- work as expected and will not introduce a race condition.
@@ -667,7 +672,8 @@ local function resolve_all(self, name, qtype, cache_only, tries, resolved_names)
   -- dereference CNAME
   if qtype ~= TYPE_CNAME and answers and answers[1].type == TYPE_CNAME then
     stats_increment(self.stats, name, "cname")
-    return resolve_all(self, answers[1].cname, qtype, cache_only, tries, resolved_names)
+    return resolve_all(self, answers[1].cname, qtype, cache_only, tries,
+                       resolved_names or { [key] = true })
   end
 
   return answers, err, tries
@@ -675,7 +681,7 @@ end
 
 
 function _M:resolve(name, qtype, cache_only, tries)
-  return resolve_all(self, name, qtype, cache_only, tries, {})
+  return resolve_all(self, name, qtype, cache_only, tries)
 end
 
 
