@@ -220,16 +220,16 @@ local function set_anonymous_consumer(anonymous, plid)
   local consumer, err = kong.cache:get(consumer_cache_key, nil,
                                         kong.client.load_consumer,
                                         anonymous, true)
-      if err then
-        kong.log.err("failed to load anonymous consumer: ", err)
-        return kong.response.exit(500, { message = "An unexpected error occurred" })
-      end
+  if err then
+    kong.log.err("failed to load anonymous consumer: ", err)
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
+  end
 
-      if not consumer then
-        kong.log.err("anonymous consumer '", anonymous, "' configured in plugin '",
-                     plid, "' was not found")
-        return kong.response.exit(500, { message = "An unexpected error occurred" })
-      end
+  if not consumer then
+    kong.log.err("anonymous consumer '", anonymous, "' configured in plugin '",
+      plid, "' was not found")
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
+  end
 
   set_consumer(consumer)
 end
