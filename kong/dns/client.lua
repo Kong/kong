@@ -14,6 +14,9 @@ local worker_id = ngx.worker.id
 
 local pairs = pairs
 local ipairs = ipairs
+local tonumber = tonumber
+local setmetatable = setmetatable
+
 local math_min = math.min
 local string_lower = string.lower
 local table_insert = table.insert

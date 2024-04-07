@@ -3,6 +3,9 @@ local utils = require("kong.resty.dns.utils")
 local log = ngx.log
 local NOTICE = ngx.NOTICE
 
+local type = type
+local ipairs = ipairs
+local tonumber = tonumber
 local math_random = math.random
 local table_insert = table.insert
 local table_remove = table.remove
