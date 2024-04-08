@@ -7,7 +7,6 @@
 
 local constants = require "kong.constants"
 local DAO = require "kong.db.dao"
-local tracing = require "kong.tracing"
 local plugin_loader = require "kong.db.schema.plugin_loader"
 local reports = require "kong.reports"
 local plugin_servers = require "kong.runloop.plugin_servers"
@@ -243,8 +242,7 @@ local load_plugin_handler do
         "Plugin %q can't be loaded because it implements both `response` " ..
         "and `header_filter` or `body_filter` methods.\n", plugin)
     end
-    -- XXX EE: add tracing to plugins
-    tracing.plugin_wrap(handler, plugin)
+
     return handler
   end
 end

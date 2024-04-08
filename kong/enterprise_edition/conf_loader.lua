@@ -158,15 +158,6 @@ local EE_CONF_INFERENCES = {
   smtp_admin_emails = {typ = "array"},
   smtp_mock = {typ = "boolean"},
 
-  tracing = {typ = "boolean"},
-  tracing_write_strategy = {enum = {"file", "file_raw", "tcp", "tls", "udp",
-                                    "http"}},
-  tracing_write_endpoint = {typ = "string"},
-  tracing_time_threshold = {typ = "number"},
-  tracing_types = {typ = "array"},
-  tracing_debug_header = {typ = "string"},
-  generate_trace_details = {typ = "boolean"},
-
   keyring_enabled = { typ = "boolean" },
   keyring_blob_path = { typ = "string" },
   keyring_public_key = { typ = "string" },
@@ -452,7 +443,7 @@ local function validate_admin_gui_authentication(conf, errors)
             "upstream_id_token_header",
             "upstream_user_info_header",
           }
-  
+
           for _, parameter in ipairs(overridden_admin_gui_auth_conf_parameters) do
             if auth_config[parameter] ~= nil then
               log.warn(string.format(
@@ -919,13 +910,6 @@ local function add_ee_required_plugins(conf)
   end
 end
 
-local function validate_tracing(conf, errors)
-  if conf.tracing and not conf.tracing_write_endpoint then
-    errors[#errors + 1] = "'tracing_write_endpoint' must be defined when " ..
-      "'tracing' is enabled"
-  end
-end
-
 
 local function validate_route_path_pattern(conf, errors)
   local pattern = conf.enforce_route_path_pattern
@@ -1037,7 +1021,6 @@ local function validate(conf, errors)
 
   validate_vitals_tsdb(conf, errors)
   add_ee_required_plugins(conf)
-  validate_tracing(conf, errors)
   validate_route_path_pattern(conf, errors)
 
   if conf.portal then
@@ -1312,7 +1295,6 @@ return {
   validate_smtp_config = validate_smtp_config,
   validate_portal_smtp_config = validate_portal_smtp_config,
   validate_portal_cors_origins = validate_portal_cors_origins,
-  validate_tracing = validate_tracing,
   validate_route_path_pattern = validate_route_path_pattern,
   validate_portal_app_auth = validate_portal_app_auth,
   validate_fips = validate_fips,

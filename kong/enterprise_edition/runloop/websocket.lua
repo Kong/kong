@@ -12,7 +12,6 @@ local cert_utils = require "kong.enterprise_edition.cert_utils"
 local balancers = require "kong.runloop.balancer.balancers"
 local const = require "kong.constants"
 local kong_global = require "kong.global"
-local tracing = require "kong.tracing"
 local runloop = require "kong.runloop.handler"
 local new_tab = require "table.new"
 local nkeys   = require "table.nkeys"
@@ -104,8 +103,6 @@ end
 ---@param opts resty.websocket.client.connect.opts
 ---@param upstream_scheme "ws"|"wss"
 local function get_peer(ctx, opts, upstream_scheme)
-  local trace = tracing.trace("balancer")
-
   ctx.KONG_PHASE = PHASES.balancer
 
   local now_ms = get_updated_now_ms()
@@ -204,8 +201,6 @@ local function get_peer(ctx, opts, upstream_scheme)
   -- time spent in Kong before sending the request to upstream
   -- start_time() is kept in seconds with millisecond resolution.
   ctx.KONG_PROXY_LATENCY = ctx.KONG_BALANCER_ENDED_AT - ctx.KONG_PROCESSING_START
-
-  trace:finish()
 
   return current_try
 end

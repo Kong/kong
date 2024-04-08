@@ -699,7 +699,6 @@ server {
         log_by_lua_block {
             local audit_log = require "kong.enterprise_edition.audit_log"
             audit_log.admin_log_handler()
-            require("kong.tracing").flush()
         }
         header_filter_by_lua_block {
             Kong.admin_header_filter()

@@ -477,7 +477,8 @@ local function new_router(version)
   end
 
   -- XXXCORE replace with a hook
-  new_router = ee.new_router(new_router)
+  -- leave this as a place holder for future spotting
+  -- new_router = ee.new_router(new_router)
 
   if not new_router then
     return nil, "could not create router: " .. err

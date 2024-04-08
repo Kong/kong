@@ -17,7 +17,6 @@ local ee_api = require "kong.enterprise_edition.api_helpers"
 local ee_status_api = require "kong.enterprise_edition.status"
 local app_helpers = require "lapis.application"
 local api_helpers = require "kong.api.api_helpers"
-local tracing = require "kong.tracing"
 local counters = require "kong.workspaces.counters"
 local workspace_config = require "kong.portal.workspace_config"
 local websocket = require "kong.enterprise_edition.runloop.websocket"
@@ -116,22 +115,6 @@ _M.handlers = {
 
       hooks.register_hook("api:helpers:attach_routes", prepend_workspace_prefix)
       hooks.register_hook("api:helpers:attach_new_db_routes", prepend_workspace_prefix)
-
-      hooks.register_hook("balancer:get_peer:pre", function(target_host)
-        return tracing.trace("balancer.getPeer", { qname = target_host })
-      end)
-
-      hooks.register_hook("balancer:get_peer:post", function(trace)
-        trace:finish()
-      end)
-
-      hooks.register_hook("balancer:to_ip:pre", function(target_host)
-        return tracing.trace("balancer.toip", { qname = target_host })
-      end)
-
-      hooks.register_hook("balancer:to-ip:post", function(trace)
-        trace:finish()
-      end)
     end
   },
   init_worker = {
@@ -164,8 +147,6 @@ _M.handlers = {
   },
   log = {
     after = function(ctx, status)
-      tracing.flush()
-
       if not ctx.is_internal then
         kong.sales_counters:log_request()
         if kong.vitals then

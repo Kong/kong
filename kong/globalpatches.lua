@@ -560,17 +560,10 @@ return function(options)
       end
     end
 
-    local tracing = require "kong.tracing"
-
     local function resolve_connect(f, sock, host, port, opts)
       if sub(host, 1, 5) ~= "unix:" then
         local try_list
-        local t = tracing.trace("connect.toip", {
-          host = host,
-          traceback = debug.traceback(),
-        })
         host, port, try_list = client.toip(host, port)
-        t:finish()
         if not host then
           return nil, "[cosocket] DNS resolution failed: " .. tostring(port) ..
                       ". Tried: " .. tostring(try_list)

@@ -897,20 +897,6 @@ describe("ee conf loader", function()
     end)
   end)
 
-  describe("validate_tracing", function()
-    it("requires a write endpoint when enabled", function()
-      ee_conf_loader.validate_tracing({
-        tracing = true,
-      }, msgs)
-
-      local expected = {
-        "'tracing_write_endpoint' must be defined when 'tracing' is enabled"
-      }
-
-      assert.same(expected, msgs)
-    end)
-  end)
-
   describe("portal_app_auth", function()
     it("no errors for unset", function()
       ee_conf_loader.validate_portal_app_auth({

@@ -76,7 +76,6 @@ local dns = require "kong.tools.dns"
 local meta = require "kong.meta"
 local lapis = require "lapis"
 local runloop = require "kong.runloop.handler"
-local tracing = require "kong.tracing"
 local keyring = require "kong.keyring.startup"
 local stream_api = require "kong.tools.stream_api"
 local declarative = require "kong.db.declarative"
@@ -671,15 +670,12 @@ function Kong.init()
   instrumentation.init(config)
   wasm.init(config)
 
-  tracing.init(config)
-
   -- EE **MUST** register license hooks as early as possible.
   -- Hook handlers won't run unless the hook runs (on which case, we want that
   -- to happen).
   ee.license_hooks(config)
 
   local db = assert(DB.new(config))
-  tracing.connector_query_wrap(db.connector)
   instrumentation.db_query(db.connector)
   assert(db:init_connector())
 
@@ -1334,8 +1330,6 @@ function Kong.balancer()
   local ctx = ngx.ctx
   local has_timing = ctx.has_timing
 
-  local trace = tracing.trace("balancer")
-
   if has_timing then
     req_dyn_hook_run_hooks("timing", "before:balancer")
   end
@@ -1530,7 +1524,6 @@ function Kong.balancer()
 
   -- runloop.balancer.after(ctx)
   -- ee.handlers.balancer.after(ctx)
-  trace:finish()
 
   if has_timing then
     req_dyn_hook_run_hooks("timing", "after:balancer")

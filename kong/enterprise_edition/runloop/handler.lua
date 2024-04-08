@@ -7,7 +7,6 @@
 
 local file_helpers = require "kong.portal.file_helpers"
 local workspaces = require "kong.workspaces"
-local tracing = require "kong.tracing"
 local utils = require "kong.tools.utils"
 
 
@@ -122,12 +121,5 @@ function handler.register_events()
   end, "portal", "router")
 
 end
-
-
-function handler.new_router(router)
-  tracing.wrap_router(router)
-  return router
-end
-
 
 return handler
