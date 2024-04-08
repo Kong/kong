@@ -147,6 +147,7 @@ do
 
     if res then
       insert(res, 1, "cluster_events")
+      insert(res, 1, "clustering_rpc_requests")
     end
 
     return res, err
@@ -972,7 +973,7 @@ function _M.new(kong_config)
     --- not used directly by pgmoon, but used internally in connector to set the keepalive timeout
     keepalive_timeout = kong_config.pg_keepalive_timeout,
     --- non user-faced parameters
-    ttl_cleanup_interval = kong_config._debug_pg_ttl_cleanup_interval or 300,
+    ttl_cleanup_interval = kong_config._debug_pg_ttl_cleanup_interval or 3,
   }
 
   local refs = kong_config["$refs"]

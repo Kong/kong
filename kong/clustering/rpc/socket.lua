@@ -42,15 +42,15 @@ function _M.new(manager, wb, node_id)
     interest = {}, -- id: callback pair
     outgoing = queue.new(4096), -- write queue
     manager = manager,
-    sequence = 0,
     node_id = node_id,
+    sequence = 0,
   }
 
   return setmetatable(self, _MT)
 end
 
 
-function _M:get_next_id()
+function _M:_get_next_id()
   local res = self.sequence
   self.sequence = res + 1
 
@@ -178,6 +178,8 @@ function _M:start()
 
         if not cb then
           ngx_log(ngx_WARN, "[rpc] no interest for RPC response id: ", payload.id, ", dropping it")
+
+          goto continue
         end
 
         local res, err = cb(payload)
@@ -259,6 +261,26 @@ function _M:stop()
   else
     self.wb:send_close()
   end
+end
+
+
+-- asynchronously start executing a RPC, _node_id is not
+-- needed for this implementation, but it is important
+-- for concentrator socket, so we include it just to keep
+-- the signature consistent
+function _M:call(_node_id, method, params, callback)
+  assert(_node_id == self.node_id)
+
+  local id = self:_get_next_id()
+
+  self.interest[id] = callback
+
+  return self.outgoing:push({
+    jsonrpc = "2.0",
+    method = method,
+    params = params,
+    id = id,
+  })
 end
 
 

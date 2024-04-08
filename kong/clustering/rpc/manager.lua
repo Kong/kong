@@ -5,6 +5,7 @@ local _MT = { __index = _M, }
 local server = require("resty.websocket.server")
 local client = require("resty.websocket.client")
 local socket = require("kong.clustering.rpc.socket")
+local concentrator = require("kong.clustering.rpc.concentrator")
 local future = require("kong.clustering.rpc.future")
 local utils = require("kong.clustering.rpc.utils")
 local callbacks = require("kong.clustering.rpc.callbacks")
@@ -42,8 +43,9 @@ function _M.new(conf, node_id)
     cluster_cert = assert(clustering_tls.get_cluster_cert(conf)),
     cluster_cert_key = assert(clustering_tls.get_cluster_cert_key(conf)),
     callbacks = callbacks.new(),
-    incoming = queue.new(4096),
   }
+
+  self.concentrator = concentrator.new(self, kong.db)
 
   self.callbacks:register("kong.meta.v1.capability_advertisement", function(node_id, capabilities)
     self.client_capabilities[node_id] = { set = pl_tablex_makeset(capabilities), list = capabilities, }
@@ -56,13 +58,16 @@ end
 
 
 function _M:_add_socket(socket)
-  local sockets = self.clients[socket.node_id] or setmetatable({}, { __mode = "k", })
+  local sockets = self.clients[socket.node_id]
+  if not sockets then
+    assert(self.concentrator:_enqueue_subscribe(socket.node_id))
+    sockets = setmetatable({}, { __mode = "k", })
+    self.clients[socket.node_id] = sockets
+  end
 
   assert(not sockets[socket])
 
   sockets[socket] = true
-
-  self.clients[socket.node_id] = sockets
 end
 
 
@@ -76,11 +81,15 @@ function _M:_remove_socket(socket)
   if table_isempty(sockets) then
     self.clients[socket.node_id] = nil
     self.client_capabilities[socket.node_id] = nil
+    assert(self.concentrator:_enqueue_unsubscribe(socket.node_id))
   end
 end
 
 
-function _M:call(node_id, method, ...)
+-- low level helper used internally by :call() and concentrator
+-- this one does not consider forwarding using concentrator
+-- when node does not exist
+function _M:_call(node_id, method, params)
   local cap = utils.parse_method_name(method)
 
   if not self.client_capabilities[node_id] then
@@ -94,7 +103,7 @@ function _M:call(node_id, method, ...)
 
   local s = next(self.clients[node_id])
 
-  local fut = future.new(s, method, { ... })
+  local fut = future.new(node_id, s, method, params)
   assert(fut:start())
 
   local ok, err = fut:wait(5)
@@ -107,6 +116,36 @@ function _M:call(node_id, method, ...)
   end
 
   return fut.error.message
+end
+
+
+-- public interface, try call on node_id locally first,
+-- if node is not connected, try concentrator next
+function _M:call(node_id, method, ...)
+  local params = {...}
+  local res, err = self:_call(node_id, method, params)
+  if res then
+    return res
+  end
+
+  if err:sub(1, #"node is not connected") == "node is not connected" then
+    -- try concentrator
+    local fut = future.new(node_id, self.concentrator, method, params)
+    assert(fut:start())
+
+    local ok, err = fut:wait(5)
+    if err then
+      return nil, err
+    end
+
+    if ok then
+      return fut.result
+    end
+
+    return fut.error.message
+  end
+
+  return res, err
 end
 
 
@@ -200,7 +239,7 @@ function _M:connect(premature, node_id, host, path, cert, key)
     assert(s:start())
 
     -- capability advertisement
-    local fut = future.new(s, "kong.meta.v1.capability_advertisement", { self.callbacks:get_capabilities_list(), })
+    local fut = future.new(node_id, s, "kong.meta.v1.capability_advertisement", { self.callbacks:get_capabilities_list(), })
     assert(fut:start())
 
     ok, err = fut:wait(5)

@@ -5,12 +5,13 @@ local _MT = { __index = _M, }
 local semaphore = require("ngx.semaphore")
 
 
-function _M.new(socket, method, params)
+function _M.new(node_id, socket, method, params)
   local self = {
     method = method,
     params = params,
     sema = semaphore.new(),
     socket = socket,
+    node_id = node_id,
     id = nil,
     result = nil,
     ["error"] = nil,
@@ -26,9 +27,7 @@ function _M:start()
   assert(self.state == "new")
   self.state = "in_progress"
 
-  self.id = self.socket:get_next_id()
-
-  self.socket.interest[self.id] = function(resp)
+  local callback = function(resp)
     assert(resp.jsonrpc == "2.0")
 
     if resp.result then
@@ -47,17 +46,9 @@ function _M:start()
     return true
   end
 
-  local res, err = self.socket.outgoing:push({
-    jsonrpc = "2.0",
-    method = self.method,
-    params = self.params,
-    id = self.id,
-  })
-  if not res then
-    return nil, err
-  end
-
-  return true
+  return self.socket:call(self.node_id,
+                          self.method,
+                          self.params, callback)
 end
 
 
