@@ -712,11 +712,12 @@ end
 local dns_client
 
 function _M.init(opts)
-  opts = opts or {}
-  opts.valid_ttl = opts.validTtl
-  opts.error_ttl = opts.badTtl
-  opts.stale_ttl = opts.staleTtl
-  opts.cache_size = opts.cacheSize
+  if opts then
+    opts.valid_ttl = opts.valid_ttl or opts.validTtl
+    opts.error_ttl = opts.error_ttl or opts.badTtl
+    opts.stale_ttl = opts.stale_ttl or opts.staleTtl
+    opts.cache_size = opts.cache_size or opts.cacheSize
+  end
 
   local client, err = _M.new(opts)
   if not client then
