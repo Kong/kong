@@ -399,8 +399,7 @@ local function resolve_query(self, name, qtype)
 
   local start_time = now()
 
-  local options = { additional_section = true, qtype = qtype }
-  local answers, err = r:query(name, options)
+  local answers, err = r:query(name, { additional_section = true, qtype = qtype })
   r:destroy()
 
   local query_time = now() - start_time -- the time taken for the DNS query
