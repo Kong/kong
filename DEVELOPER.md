@@ -195,7 +195,7 @@ might be in your system.
 
 #### Tests
 
-Install the development dependencies ([busted](https://github.com/lunarmodules/busted),
+Install the development dependencies ([busted](https://lunarmodules.github.io/busted/),
 [luacheck](https://github.com/mpeterv/luacheck)) with:
 
 ```shell
