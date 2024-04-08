@@ -173,7 +173,9 @@ end
 
 -- construct names from resolv options: search, ndots and domain
 function _M.search_names(name, resolv, hosts)
-  if not resolv.search or _M.is_fqdn(name, resolv.ndots) or (hosts and hosts[name]) then
+  if not resolv.search or _M.is_fqdn(name, resolv.ndots) or
+    (hosts and hosts[name])
+  then
     return { name }
   end
 
@@ -241,7 +243,8 @@ do
 
   -- gather records with the lowest priority in SRV record
   local function filter_lowest_priority_answers(answers)
-    local lowest_priority = answers[1].priority -- SRV record MUST have `priority` field
+    -- SRV record MUST have `priority` field
+    local lowest_priority = answers[1].priority
     local l = {}    -- lowest priority records list
 
     for _, answer in ipairs(answers) do

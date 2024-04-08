@@ -76,10 +76,15 @@ local HIT_LEVEL_TO_NAME = {
 
 -- server replied error from the DNS protocol
 local NAME_ERROR_CODE = 3 -- response code 3 as "Name Error" or "NXDOMAIN"
+
 -- client specific error
 local CACHE_ONLY_ERROR_CODE = 100
 local CACHE_ONLY_ERROR_MESSAGE = "cache only lookup failed"
-local CACHE_ONLY_ANSWERS = { errcode = CACHE_ONLY_ERROR_CODE, errstr = CACHE_ONLY_ERROR_MESSAGE }
+local CACHE_ONLY_ANSWERS = {
+  errcode = CACHE_ONLY_ERROR_CODE,
+  errstr = CACHE_ONLY_ERROR_MESSAGE,
+}
+
 local EMPTY_RECORD_ERROR_CODE = 101
 local EMPTY_RECORD_ERROR_MESSAGE = "empty record received"
 
@@ -194,8 +199,10 @@ function _M.new(opts)
   end
 
   -- init the resolver options for lua-resty-dns
-  local nameservers = (opts.nameservers and not table_isempty(opts.nameservers)) and
-                      opts.nameservers or resolv.nameservers
+  local nameservers = (opts.nameservers and not table_isempty(opts.nameservers))
+                      and opts.nameservers
+                      or resolv.nameservers
+
   if not nameservers or table_isempty(nameservers) then
     log(WARN, "Invalid configuration, no nameservers specified")
   end
@@ -408,7 +415,8 @@ local function resolve_query(self, name, qtype)
 
   stats_set_count(self.stats, key, "query_last_time", time_str)
 
-  log(DEBUG, "r:query(", key, ") ans:", answers and #answers or "-", " t:", time_str)
+  log(DEBUG, "r:query(", key, ") ans:", answers and #answers or "-",
+             " t:", time_str)
 
   if not answers then
     stats_increment(self.stats, key, "query_fail_nameserver")
@@ -418,8 +426,9 @@ local function resolve_query(self, name, qtype)
 
   answers = process_answers(self, name, qtype, answers)
 
-  stats_increment(self.stats, key, answers.errstr and "query_fail:" .. answers.errstr
-                                                   or "query_succ")
+  stats_increment(self.stats, key, answers.errstr and
+                                   "query_fail:" .. answers.errstr or
+                                   "query_succ")
 
   return answers, nil, answers.ttl
 end
@@ -451,7 +460,8 @@ local function start_stale_update_task(self, key, name, qtype, short_key)
 end
 
 
-local function resolve_name_type_callback(self, name, qtype, cache_only, short_key, tries)
+local function resolve_name_type_callback(self, name, qtype, cache_only,
+                                          short_key, tries)
   local key = name .. ":" .. qtype
 
   -- check if this key exists in the hosts file (it maybe evicted from cache)
@@ -507,7 +517,8 @@ local function detect_recursion(resolved_names, key)
 end
 
 
-local function resolve_name_type(self, name, qtype, cache_only, short_key, tries, resolved_names, has_timing)
+local function resolve_name_type(self, name, qtype, cache_only, short_key,
+                                 tries, resolved_names, has_timing)
   local key = name .. ":" .. qtype
 
   stats_init_name(self.stats, key)
@@ -526,7 +537,8 @@ local function resolve_name_type(self, name, qtype, cache_only, short_key, tries
     log(ALERT, err)
   end
 
-  log(DEBUG, "cache lookup ", key, " ans:", answers and #answers or "-", " hlv:", hit_level or "-")
+  log(DEBUG, "cache lookup ", key, " ans:", answers and #answers or "-",
+             " hlv:", hit_level or "-")
 
   if has_timing then
     req_dyn_hook_run_hooks("timing", "dns:cache_lookup",
@@ -589,7 +601,9 @@ end
 
 
 -- resolve all `name`s and `type`s combinations and return first usable answers
-local function resolve_names_and_types(self, name, typ, cache_only, short_key, tries, resolved_names, has_timing)
+local function resolve_names_and_types(self, name, typ, cache_only, short_key,
+                                       tries, resolved_names, has_timing)
+
   local answers = check_and_get_ip_answers(name)
   if answers then -- domain name is IP literal
     answers.ttl = LONG_LASTING_TTL
@@ -606,7 +620,8 @@ local function resolve_names_and_types(self, name, typ, cache_only, short_key, t
   for _, qtype in ipairs(types) do
     for _, qname in ipairs(names) do
       answers, err = resolve_name_type(self, qname, qtype, cache_only,
-                                       short_key, tries, resolved_names, has_timing)
+                                       short_key, tries, resolved_names,
+                                       has_timing)
       -- severe error occurred
       if not answers then
         return nil, err, tries
@@ -624,7 +639,8 @@ local function resolve_names_and_types(self, name, typ, cache_only, short_key, t
 end
 
 
-local function resolve_all(self, name, qtype, cache_only, tries, resolved_names, has_timing)
+local function resolve_all(self, name, qtype, cache_only, tries, resolved_names,
+                           has_timing)
   name = string_lower(name)
   tries = setmetatable(tries or {}, TRIES_MT)
 
@@ -645,9 +661,9 @@ local function resolve_all(self, name, qtype, cache_only, tries, resolved_names,
     log(DEBUG, "quickly cache lookup ", key, " ans:- hlvl:", hit_level or "-")
 
     answers, err, tries = resolve_names_and_types(self, name, qtype, cache_only,
-                                                  key, tries,
-                                                  resolved_names or { [key] = true },
-                                                  has_timing)
+                                             key, tries,
+                                             resolved_names or { [key] = true },
+                                             has_timing)
 
     if not cache_only and answers then
       -- If another worker resolved the name between these two `:get`, it can
@@ -662,7 +678,8 @@ local function resolve_all(self, name, qtype, cache_only, tries, resolved_names,
     stats_increment(self.stats, name, answers and "miss" or "fail")
 
   else
-    log(DEBUG, "quickly cache lookup ", key, " ans:", #answers, " hlv:", hit_level or "-")
+    log(DEBUG, "quickly cache lookup ", key, " ans:", #answers,
+               " hlv:", hit_level or "-")
 
     if has_timing then
       req_dyn_hook_run_hooks("timing", "dns:cache_lookup",
@@ -689,9 +706,11 @@ function _M:resolve(name, qtype, cache_only, tries)
 end
 
 
--- Implement `resolve_address` separately as `_resolve_address` with the `has_timing`
--- parameter so that it avoids checking for `ngx.ctx.has_timing` in recursion.
-local function _resolve_address(self, name, port, cache_only, tries, resolved_names, has_timing)
+-- Implement `resolve_address` separately as `_resolve_address` with the
+-- `has_timing` parameter so that it avoids checking for `ngx.ctx.has_timing`
+-- in recursion.
+local function _resolve_address(self, name, port, cache_only, tries,
+                                resolved_names, has_timing)
   resolved_names = resolved_names or {}
 
   local answers, err, tries = resolve_all(self, name, nil, cache_only, tries,
