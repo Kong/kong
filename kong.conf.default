@@ -2893,9 +2893,16 @@
 # The following namespaces are supported:
 #
 # - `nginx_wasm_<directive>`: Injects `<directive>` into the `wasm {}` block.
+# - `nginx_wasm_shm_kv`: Injects `shm_kv *` into the `wasm {}` block,
+#   allowing operators to define a general memory zone which is usable by
+#   the `get_shared_data`/`set_shared_data` Proxy-Wasm SDK functions as
+#   an in-memory key-value store of data shareable across filters.
 # - `nginx_wasm_shm_kv_<name>`: Injects `shm_kv <name>` into the `wasm {}` block,
 #   allowing operators to define custom shared memory zones which are usable by
-#   the `get_shared_data`/`set_shared_data` Proxy-Wasm SDK functions.
+#   the `get_shared_data`/`set_shared_data` Proxy-Wasm SDK functions as
+#   separate namespaces in the `"<name>/<key>"` format.
+#   For using these functions with non-namespaced keys, the Nginx template needs
+#   a `shm_kv *` entry, which can be defined using `nginx_wasm_shm_kv`.
 # - `nginx_wasm_wasmtime_<flag>`: Injects `flag <flag>` into the `wasmtime {}`
 #   block, allowing various Wasmtime-specific flags to be set.
 # - `nginx_<http|proxy>_<directive>`: Injects `<directive>` into the
