@@ -327,7 +327,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       it("good stream request openai", function()
         local httpc = http.new()
 
-        local ok, err, ssl_session = httpc:connect({
+        local ok, err, _ = httpc:connect({
           scheme = "http",
           host = helpers.mock_upstream_host,
           port = helpers.get_proxy_port(),
@@ -393,7 +393,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       it("good stream request cohere", function()
         local httpc = http.new()
 
-        local ok, err, ssl_session = httpc:connect({
+        local ok, err, _ = httpc:connect({
           scheme = "http",
           host = helpers.mock_upstream_host,
           port = helpers.get_proxy_port(),
@@ -458,7 +458,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       it("bad request is returned to the client not-streamed", function()
         local httpc = http.new()
 
-        local ok, err, ssl_session = httpc:connect({
+        local ok, err, _ = httpc:connect({
           scheme = "http",
           host = helpers.mock_upstream_host,
           port = helpers.get_proxy_port(),
