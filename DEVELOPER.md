@@ -202,7 +202,7 @@ Install the development dependencies ([busted](https://lunarmodules.github.io/bu
 make dev
 ```
 
-Kong relies on three test suites using the [busted](https://github.com/lunarmodules/busted) testing library:
+Kong relies on three test suites using the [busted](https://lunarmodules.github.io/busted/) testing library:
 
 * Unit tests
 * Integration tests, which require Postgres and Cassandra to be up and running
