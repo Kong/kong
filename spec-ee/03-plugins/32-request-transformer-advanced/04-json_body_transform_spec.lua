@@ -126,6 +126,8 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(200, res)
 
+      helpers.wait_for_all_config_update()
+
       assert.eventually(function()
         res = proxy_client:send {
           method = "POST",
