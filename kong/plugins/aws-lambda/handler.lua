@@ -175,6 +175,14 @@ function AWSLambdaHandler:access(conf)
     Qualifier = conf.qualifier,
   })
 
+  -- TRACING: set KONG_WAITING_TIME stop
+  local ctx = ngx.ctx
+  local lambda_wait_time_total = get_now() - kong_wait_time_start
+  -- setting the latency here is a bit tricky, but because we are not
+  -- actually proxying, it will not be overwritten
+  ctx.KONG_WAITING_TIME = lambda_wait_time_total
+  ctx.AWS_LAMBDA_WAIT_TIME = lambda_wait_time_total
+
   if err then
     return error(err)
   end
@@ -183,14 +191,6 @@ function AWSLambdaHandler:access(conf)
   if res.status >= 400 then
     return error(content.Message)
   end
-
-  -- TRACING: set KONG_WAITING_TIME stop
-  local ctx = ngx.ctx
-  local lambda_wait_time_total = get_now() - kong_wait_time_start
-  -- setting the latency here is a bit tricky, but because we are not
-  -- actually proxying, it will not be overwritten
-  ctx.KONG_WAITING_TIME = lambda_wait_time_total
-  ctx.AWS_LAMBDA_WAIT_TIME = lambda_wait_time_total
 
   local headers = res.headers
 
