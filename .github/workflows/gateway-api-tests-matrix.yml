@@ -239,6 +239,9 @@ jobs:
           username: ${{ secrets.GHA_DOCKERHUB_PULL_USER }}
           password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
 
+      - name: Add domain.test to hostnames for ACME Plugin tests
+        run: echo "127.0.0.1 domain.test" | sudo tee -a /etc/hosts
+
       - name: Check for FIPS image
         run: |
           if ${{ contains(env.GW_IMAGE, 'fips') }}; then FIPS_MODE=on; else FIPS_MODE=off; fi;
@@ -276,6 +279,7 @@ jobs:
           WASM: true
           # set CUSTOM_PLUGIN to false in case of amazonlinux-2 image
           CUSTOM_PLUGIN: ${{ endsWith(env.GW_IMAGE, 'amazonlinux-2') && 'false' || env.CUSTOM_PLUGIN_VAR }}
+          ACME: true
 
       - name: Logs from Gateway Start
         if: failure()
@@ -408,6 +412,9 @@ jobs:
         with:
           username: ${{ secrets.GHA_DOCKERHUB_PULL_USER }}
           password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
+      
+      - name: Add domain.test to hostnames for ACME Plugin tests
+        run: echo "127.0.0.1 domain.test" | sudo tee -a /etc/hosts
 
       - name: Set CUSTOM_PLUGIN Variable
         run: |
@@ -445,6 +452,7 @@ jobs:
           WASM: true
           # set CUSTOM_PLUGIN to false in case of amazonlinux-2 image
           CUSTOM_PLUGIN: ${{ endsWith(env.GW_IMAGE, 'amazonlinux-2') && 'false' || env.CUSTOM_PLUGIN_VAR }}
+          ACME: true
 
       - name: Logs from Gateway Start
         if: failure()
@@ -563,6 +571,9 @@ jobs:
         with:
           username: ${{ secrets.GHA_DOCKERHUB_PULL_USER }}
           password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
+      
+      - name: Add domain.test to hostnames for ACME Plugin tests
+        run: echo "127.0.0.1 domain.test" | sudo tee -a /etc/hosts
 
       - name: Finalize Kong Package Name
         run: |
@@ -601,6 +612,7 @@ jobs:
           AZURE_CLIENT_ID: ${{ secrets.TEST_API_AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.TEST_API_AZURE_CLIENT_SECRET }}
           APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
+          ACME: true
 
       - name: Logs from Gateway Start
         if: failure()

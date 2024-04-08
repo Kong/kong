@@ -165,6 +165,38 @@ export const createExpressionRouteForService = async (
 };
 
 /**
+ * Creates a route
+ * @param {string[]} paths - paths of the route
+ * @param {object} payload - optional request body for the route
+ * @param {string} workspace - name of the worksapce
+ * @returns {AxiosResponse}
+ */
+export const createRoute = async (
+  paths: string[],
+  payload?: object,
+  workspace?: string
+) => {
+
+  const endpoint = `${workspace}/routes`;
+  const url = workspace ? `${getUrl(endpoint)}` : getUrl('routes');
+  payload ? (payload = { paths, ...payload }) : null;
+
+  const resp = await axios({
+    method: 'post',
+    url,
+    data: payload || {
+      name: randomString(),
+      paths: paths ? paths : [`/${randomString()}`],
+    },
+  });
+
+  logResponse(resp);
+
+  expect(resp.status, 'Status should be 201').to.equal(201);
+  return resp.data;
+};
+
+/**
  * Delete the target route
  * @param {string} routeIdOrName route id or name
  * @param {object} headers optional headers

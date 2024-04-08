@@ -90,11 +90,14 @@ Make sure to enable these services using [gateway-docker-compose-generator](http
 - `opentelemtry` test requires [JAEGER](https://github.com/Kong/gateway-docker-compose-generator/blob/d9ee692675d4efdb14d0e1b8376b20a290f72b34/docker-compose.yml.sh#L54)
 - `rate-limiting-advanced` test requires [REDIS (standalone)](https://github.com/Kong/gateway-docker-compose-generator/blob/d9ee692675d4efdb14d0e1b8376b20a290f72b34/docker-compose.yml.sh#L29)
 - `oas-validation` test requires [SWAGGER](https://github.com/Kong/gateway-docker-compose-generator/blob/main/docker-compose.yml.sh#L36)
+- `acme` test requires [Pebble](https://github.com/Kong/gateway-docker-compose-generator/blob/main/docker-compose.yml.sh#L1022) which will be automatically enabled when [ACME](https://github.com/Kong/gateway-docker-compose-generator/blob/main/docker-compose.yml.sh#L126) is set to `true`
 
 **Test specific configuration requirements for Gateway**
 
 - `licenses` test requires the gateway to NOT have enterprise license. We `post` the enterprise license at the runtime via API before tests start to run.\
   There will be no harm having the license in kong, the tests will still pass but in order to fully imitate the CI environment you need to set `CI=true` and exclude license from kong locally.
+
+- `ACME` plugin tests require `127.0.0.1 domain.test` mappping to exist in your `/etc/hosts` file.
 
 **Gateway Mode**
 
