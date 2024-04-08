@@ -46,24 +46,10 @@ jobs:
       label: normal
       aarch64: true
 
-  kong-license-data:
-    name: Get Kong License
-    runs-on: ubuntu-latest-kong
-    timeout-minutes: 5
-    outputs:
-      license: ${{ steps.license.outputs.license }}
-
-    steps:
-    - name: Collect Kong License
-      uses: Kong/kong-license@master
-      id: license
-      with:
-        op-token: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
-
   integration-test-aws-ec2:
     name: Gateway AWS Integration test on EC2
     runs-on: [ubuntu-22.04-arm64, ubuntu-22.04-arm64-ec2, self-hosted]
-    needs: [build, kong-license-data]
+    needs: build
     timeout-minutes: 30
     services:
       postgres:
@@ -127,12 +113,18 @@ jobs:
           luarocks --version || true
           luarocks config || true
 
+      - name: Collect Kong License
+        uses: Kong/kong-license@master
+        id: license
+        with:
+          op-token: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+
       - name: Tests
         env:
           KONG_TEST_PG_DATABASE: kong
           KONG_TEST_PG_USER: kong
           KONG_TEST_DATABASE: postgres
-          KONG_LICENSE_DATA: ${{ needs.kong-license-data.outputs.license }}
+          KONG_LICENSE_DATA: ${{ steps.license.outputs.license }}
           TEST_SUITE: aws-integration
         run: |
           # Fetch runner account and region
