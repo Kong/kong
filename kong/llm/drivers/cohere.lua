@@ -24,7 +24,7 @@ local function handle_stream_event(event_string, model_info, route_type)
   if err then
     return nil, "failed to decode event frame from cohere: " .. err, nil
   end
-  
+
   local new_event
   
   if event.event_type == "stream-start" then
