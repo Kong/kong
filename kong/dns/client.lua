@@ -722,6 +722,8 @@ end
 local dns_client
 
 function _M.init(opts)
+  log(DEBUG, "(re)configuring dns client")
+
   if opts then
     opts.valid_ttl = opts.valid_ttl or opts.validTtl
     opts.error_ttl = opts.error_ttl or opts.badTtl
