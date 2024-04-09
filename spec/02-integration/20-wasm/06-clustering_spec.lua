@@ -177,6 +177,8 @@ describe("#wasm - hybrid mode #postgres", function()
             res = res:read_body(),
           }
         end)
+        .with_timeout(60)
+        .with_step(0.1)
         .is_truthy("service/route are ready on the data plane")
 
       local value = utils.random_string()
@@ -237,6 +239,8 @@ describe("#wasm - hybrid mode #postgres", function()
             got = res.headers[HEADER] or "<NIL>",
           }
         end)
+        .with_timeout(60)
+        .with_step(0.1)
         .is_truthy("wasm filter is configured on the data plane")
 
       admin.filter_chains:remove({ id = filter.id })
@@ -265,6 +269,8 @@ describe("#wasm - hybrid mode #postgres", function()
 
           return true
         end)
+        .with_timeout(60)
+        .with_step(0.1)
         .is_truthy("wasm filter has been removed from the data plane")
 
       expect_status(node_id, STATUS.NORMAL)

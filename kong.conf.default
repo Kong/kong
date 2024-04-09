@@ -2053,6 +2053,37 @@
                         #   top level are registered
                         # * This path _may_ be a symlink to a directory.
 
+#wasm_filters = bundled,user        # Comma-separated list of Wasm filters to be made
+                                    # available for use in filter chains.
+                                    #
+                                    # When the `off` keyword is specified as the
+                                    # only value, no filters will be available for use.
+                                    #
+                                    # When the `bundled` keyword is specified, all filters
+                                    # bundled with Kong will be available.
+                                    #
+                                    # When the `user` keyword is specified, all filters
+                                    # within the `wasm_filters_path` will be available.
+                                    #
+                                    # **Examples:**
+                                    #
+                                    # - `wasm_filters = bundled,user` enables _all_ bundled
+                                    #   and user-supplied filters
+                                    # - `wasm_filters = user` enables _only_ user-supplied
+                                    #   filters
+                                    # - `wasm_filters = filter-a,filter-b` enables _only_
+                                    #   filters named `filter-a` or `filter-b` (whether
+                                    #   bundled _or_ user-suppplied)
+                                    #
+                                    # If a conflict occurs where a bundled filter and a
+                                    # user-supplied filter share the same name, Kong will
+                                    # not start. This can be solved by removing `bundled`
+                                    # from `wasm_filters` and adding individual bundled
+                                    # filter names to `wasm_filters` as needed. If both
+                                    # the bundled and user filter are required, change the
+                                    # name of the user filter by renaming the file to work
+                                    # around this limitation.
+
 #------------------------------------------------------------------------------
 # WASM injected directives
 #------------------------------------------------------------------------------
