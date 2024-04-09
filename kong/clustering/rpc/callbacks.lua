@@ -6,9 +6,7 @@ local utils = require("kong.clustering.rpc.utils")
 local pl_tablex = require("pl.tablex")
 
 
-local pairs = pairs
 local parse_method_name = utils.parse_method_name
-local unpack = table.unpack
 local pl_tablex_keys = pl_tablex.keys
 
 

@@ -9,7 +9,6 @@ local concentrator = require("kong.clustering.rpc.concentrator")
 local future = require("kong.clustering.rpc.future")
 local utils = require("kong.clustering.rpc.utils")
 local callbacks = require("kong.clustering.rpc.callbacks")
-local queue = require("kong.clustering.rpc.queue")
 local clustering_tls = require("kong.clustering.tls")
 local constants = require("kong.constants")
 local table_isempty = require("table.isempty")
@@ -231,6 +230,7 @@ function _M:connect(premature, node_id, host, path, cert, key)
   local c = assert(client:new(WS_OPTS))
   local ok, err = c:connect(uri, opts)
   if not ok then
+    ngx_log(ngx_ERR, "[rpc] unable to connect to peer: ", err)
     goto err
   end
 

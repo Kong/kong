@@ -1,5 +1,4 @@
 local _M = {}
-local bit = require("bit")
 local pl_stringx = require("pl.stringx")
 
 

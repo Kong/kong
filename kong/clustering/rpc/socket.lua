@@ -8,7 +8,6 @@ local _MT = { __index = _M, }
 
 
 local cjson = require("cjson.safe")
-local future = require("kong.clustering.rpc.future")
 local utils = require("kong.clustering.rpc.utils")
 local queue = require("kong.clustering.rpc.queue")
 local jsonrpc = require("kong.clustering.rpc.json_rpc_v2")
@@ -19,7 +18,6 @@ local assert = assert
 local cjson_encode = cjson.encode
 local cjson_decode = cjson.decode
 local is_timeout = utils.is_timeout
-local unpack = table.unpack
 local exiting = ngx.worker.exiting
 local ngx_time = ngx.time
 local ngx_log = ngx.log
@@ -268,8 +266,8 @@ end
 -- needed for this implementation, but it is important
 -- for concentrator socket, so we include it just to keep
 -- the signature consistent
-function _M:call(_node_id, method, params, callback)
-  assert(_node_id == self.node_id)
+function _M:call(node_id, method, params, callback)
+  assert(node_id == self.node_id)
 
   local id = self:_get_next_id()
 
