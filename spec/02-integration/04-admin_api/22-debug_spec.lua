@@ -170,6 +170,9 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
       -- from timers pre-created by timer-ng (datadog plugin)
       assert.logfile().has.no.line("failed to send data to", true, 2)
 
+      --[[
+      -- TODO: needs https://github.com/Kong/lua-kong-nginx-module/pull/87
+
       -- can change to Nginx fine-grained debug levels (debug_mail)
       res = assert(helpers.admin_client():send {
         method = "PUT",
@@ -193,6 +196,8 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
       end, 30)
 
       assert.logfile().has.line(fmt("log level changed to %s", ngx.DEBUG_MAIL), true, 2)
+
+      --]]
 
       -- go back to default (debug)
       res = assert(helpers.admin_client():send {
