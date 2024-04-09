@@ -146,8 +146,8 @@ do
     local res, err = utils_toposort(table_names, get_table_name_neighbors)
 
     if res then
-      insert(res, 1, "cluster_events")
       insert(res, 1, "clustering_rpc_requests")
+      insert(res, 1, "cluster_events")
     end
 
     return res, err
