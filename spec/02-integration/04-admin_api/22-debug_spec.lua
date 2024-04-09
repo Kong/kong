@@ -1,6 +1,7 @@
 local helpers = require("spec.helpers")
 local cjson = require("cjson")
 local fmt = string.format
+require("kong.constants")
 
 local strategies = {}
 for _, strategy in helpers.each_strategy() do
@@ -168,6 +169,30 @@ describe("Admin API - Kong debug route with strategy #" .. strategy, function()
       assert.res_status(502, res)
       -- from timers pre-created by timer-ng (datadog plugin)
       assert.logfile().has.no.line("failed to send data to", true, 2)
+
+      -- can change to Nginx fine-grained debug levels (debug_mail)
+      res = assert(helpers.admin_client():send {
+        method = "PUT",
+        path = "/debug/node/log-level/debug_mail",
+      })
+      body = assert.res_status(200, res)
+      json = cjson.decode(body)
+      message = "log level changed"
+      assert(json.message == message)
+
+      -- make sure we changed to debug
+      helpers.wait_until(function()
+        res = assert(helpers.admin_client():send {
+          method = "GET",
+          path = "/debug/node/log-level",
+        })
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+        message = "log level: debug_mail"
+        return json.message == message
+      end, 30)
+
+      assert.logfile().has.line(fmt("log level changed to %s", ngx.DEBUG_MAIL), true, 2)
 
       -- go back to default (debug)
       res = assert(helpers.admin_client():send {

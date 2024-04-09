@@ -97,6 +97,14 @@ for k in pairs(key_formats_map) do
   key_formats[#key_formats + 1] = k
 end
 
+ngx.DEBUG_CORE = 0x010
+ngx.DEBUG_ALLOC = 0x020
+ngx.DEBUG_MUTEX = 0x040
+ngx.DEBUG_EVENT = 0x080
+ngx.DEBUG_HTTP = 0x100
+ngx.DEBUG_MAIL = 0x200
+ngx.DEBUG_STREAM = 0x400
+
 local constants = {
   CJSON_MAX_PRECISION = 16,
   BUNDLED_PLUGINS = plugin_map,
@@ -244,6 +252,20 @@ local constants = {
     crit = ngx.CRIT,
     alert = ngx.ALERT,
     emerg = ngx.EMERG,
+    debug_core = ngx.DEBUG_CORE,
+    debug_alloc = ngx.DEBUG_ALLOC,
+    debug_mutex = ngx.DEBUG_MUTEX,
+    debug_event = ngx.DEBUG_EVENT,
+    debug_http = ngx.DEBUG_HTTP,
+    debug_mail = ngx.DEBUG_MAIL,
+    debug_stream = ngx.DEBUG_STREAM,
+    [ngx.DEBUG_CORE] = "debug_core",
+    [ngx.DEBUG_ALLOC] = "debug_alloc",
+    [ngx.DEBUG_MUTEX] = "debug_mutex",
+    [ngx.DEBUG_EVENT] = "debug_event",
+    [ngx.DEBUG_HTTP] = "debug_http",
+    [ngx.DEBUG_MAIL] = "debug_mail",
+    [ngx.DEBUG_STREAM] = "debug_stream",
     [ngx.DEBUG] = "debug",
     [ngx.INFO] = "info",
     [ngx.NOTICE] = "notice",

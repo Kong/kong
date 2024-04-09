@@ -1,0 +1,7 @@
+message: |
+   Expose seven additional Nginx log levels that are not normally
+   exposed by OpenResty, which allows for finer-grained debugging
+   with less noise in the debug-level logs: `debug_core`, `debug_alloc`,
+   `debug_mutex`, `debug_event`, `debug_http`, `debug_mail`, `debug_stream`.
+type: feature
+scope: Configuration

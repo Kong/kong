@@ -31,6 +31,12 @@
 
 #log_level = notice              # Log level of the Nginx server. Logs are
                                  # found at `<prefix>/logs/error.log`.
+                                 # Supported values are: `debug`, `info`,
+                                 # `notice`, `warn`, `error`, `crit`, `alert`,
+                                 # `emerg`, `debug_core`, `debug_alloc`,
+                                 # `debug_mutex`, `debug_event`, `debug_http`,
+                                 # `debug_mail`, `debug_stream`.
+
 
 # See http://nginx.org/en/docs/ngx_core_module.html#error_log for a list
 # of accepted values.

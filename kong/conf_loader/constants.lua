@@ -468,6 +468,13 @@ local CONF_PARSERS = {
                   "crit",
                   "alert",
                   "emerg",
+                  "debug_core",
+                  "debug_alloc",
+                  "debug_mutex",
+                  "debug_event",
+                  "debug_http",
+                  "debug_mail",
+                  "debug_stream",
                 }
               },
   vaults = { typ = "array" },

@@ -8,6 +8,13 @@ globals = {
     "_KONG",
     "kong",
     "ngx.IS_CLI",
+    "ngx.DEBUG_CORE",
+    "ngx.DEBUG_ALLOC",
+    "ngx.DEBUG_MUTEX",
+    "ngx.DEBUG_EVENT",
+    "ngx.DEBUG_HTTP",
+    "ngx.DEBUG_MAIL",
+    "ngx.DEBUG_STREAM",
 }
 
 
