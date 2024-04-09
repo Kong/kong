@@ -9,15 +9,20 @@ local helpers    = require "spec.helpers"
 local ee_helpers = require "spec-ee.helpers"
 local clear_license_env = require("spec-ee.helpers").clear_license_env
 local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
+local enums                     = require "kong.enterprise_edition.dao.enums"
 
 
 for _, strategy in helpers.each_strategy() do
   describe("Developer Portal - Application Key-Auth Proxy access #" .. strategy, function()
     local portal_api_client
     local proxy_client
+    local admin_client
     local cookie
     local application
     local reset_license_data
+    local application_registration
+    local key_auth_credential_key = "test_app_reg_key_credential"
+    local app_client_id
 
     local bp, db, _ = helpers.get_db_utils(strategy)
 
@@ -35,18 +40,23 @@ for _, strategy in helpers.each_strategy() do
         protocols = { "http", "https" },
       })
 
-      assert(db.plugins:insert({
+      application_registration = assert(db.plugins:insert({
         name = "application-registration",
         service = { id = service.id },
         config = {
           display_name = "my service",
-          auto_approve = true
+          auto_approve = true,
         },
       }))
 
       bp.plugins:insert({
         name     = "key-auth",
         service = { id = service.id }
+      })
+
+      bp.consumers:insert({
+        username = "test_app_reg",
+        type = enums.CONSUMERS.TYPE.PROXY
       })
 
       assert(helpers.start_kong({
@@ -71,6 +81,21 @@ for _, strategy in helpers.each_strategy() do
           portal_auto_approve = true,
         },
       }))
+
+      admin_client = assert(helpers.admin_client())
+
+      -- create a key-auth's credential
+      local res = assert(admin_client:send {
+        method  = "POST",
+        path    = "/consumers/test_app_reg/key-auth",
+        body    = {
+          key = key_auth_credential_key
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+      assert.res_status(201, res)
 
       portal_api_client = assert(ee_helpers.portal_api_client())
 
@@ -131,6 +156,20 @@ for _, strategy in helpers.each_strategy() do
 
       assert.res_status(201, res)
 
+      res = assert(portal_api_client:send {
+        method = "GET",
+        path = "/applications/" .. application.id .. "/credentials",
+        headers = {
+          ["Cookie"] = cookie,
+          ["Content-Type"] = "application/json",
+        }
+      })
+
+      assert.response(res).has.status(200)
+      local json = assert.response(res).has.jsonbody()
+      assert.is_not_nil(json)
+      app_client_id = json.data[1].client_id
+
       portal_api_client:close()
     end)
 
@@ -163,23 +202,85 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(401, res)
     end)
 
-    it("can use client_id from application credential as a key", function()
-      local res = assert(portal_api_client:send {
+    it("can't access the route of the service with consumer's credential", function()
+      local res = assert(proxy_client:send {
         method = "GET",
-        path = "/applications/" .. application.id .. "/credentials",
+        path   = "/status/200?apikey=" .. key_auth_credential_key,
+      })
+      assert.res_status(401, res)
+    end)
+
+    it("can use client_id from application credential as a key", function()
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/status/200?apikey=" .. app_client_id,
+      })
+      assert.res_status(200, res)
+    end)
+
+    it("can access the route of the service while application registration enable proxy with consumer's credential", function()
+      -- enabl auto proxy by port 8000
+      local res = assert(admin_client:send {
+        method = "PATCH",
+        path = "/plugins/" .. application_registration.id,
+        body = {
+          config = {
+            enable_proxy_with_consumer_credential = true,
+          }
+        },
         headers = {
-          ["Cookie"] = cookie,
           ["Content-Type"] = "application/json",
         }
       })
+      assert.response(res).has.status(200)
+      local json = assert.response(res).has.jsonbody()
+      assert.is_not_nil(json)
+      assert.True(json.config.enable_proxy_with_consumer_credential)
 
-      local body = assert.res_status(200, res)
-      local json = cjson.decode(body)
-      local key = json.data[1].client_id
+      ngx.sleep(1)
 
-      local res = assert(proxy_client:send {
-        method  = "GET",
-        path    = "/status/200?apikey=" .. key,
+      -- can access the route with the consumer credential of the key-auth
+      res = assert(proxy_client:send {
+        method = "GET",
+        path   = "/status/200?apikey=" .. key_auth_credential_key,
+      })
+      assert.res_status(200, res)
+      -- can access the route with application client_id
+      res = assert(proxy_client:send {
+        method = "GET",
+        path   = "/status/200?apikey=" .. app_client_id,
+      })
+      assert.res_status(200, res)
+
+      -- disable auto proxy
+      res = assert(admin_client:send {
+        method = "PATCH",
+        path = "/plugins/" .. application_registration.id,
+        body = {
+          config = {
+            enable_proxy_with_consumer_credential = false,
+          }
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        }
+      })
+      assert.response(res).has.status(200)
+      local json = assert.response(res).has.jsonbody()
+      assert.is_not_nil(json)
+      assert.False(json.config.enable_proxy_with_consumer_credential)
+
+      ngx.sleep(1)
+      res = assert(proxy_client:send {
+        method = "GET",
+        path   = "/status/200?apikey=" .. key_auth_credential_key,
+      })
+      assert.res_status(401, res)
+
+      -- still can access the route with application client_id
+      res = assert(proxy_client:send {
+        method = "GET",
+        path   = "/status/200?apikey=" .. app_client_id,
       })
       assert.res_status(200, res)
     end)

@@ -23,6 +23,11 @@ function PortalAppHandler:access(conf)
 
   local consumer = kong.client.get_consumer()
   if not consumer or consumer.type ~= enums.CONSUMERS.TYPE.APPLICATION then
+    if consumer and conf.enable_proxy_with_consumer_credential
+        and consumer.type == enums.CONSUMERS.TYPE.PROXY then
+      return
+    end
+
     return kong.response.exit(401, "Unauthorized")
   end
 

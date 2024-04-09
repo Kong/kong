@@ -1,0 +1,3 @@
+message: "** Application Registration: ** Added support access the service using consumer credential authentication. To get this functionality, you can enable `enable_proxy_with_consumer_credential`(default is `false`)."
+type: feature
+scope: Plugin

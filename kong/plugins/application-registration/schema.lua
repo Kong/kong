@@ -23,6 +23,7 @@ return {
           { description = { description = "Unique description displayed in information about a Service in the Developer Portal.", type = "string", unique = true }, },
           { auto_approve = { description = "If enabled, all new Service Contracts requests are automatically approved.", type = "boolean", required = true, default = false }, },
           { show_issuer = { description = "Displays the **Issuer URL** in the **Service Details** dialog.", type = "boolean", required = true, default = false }, },
+          { enable_proxy_with_consumer_credential = { description = "If enabled, all routes of the Service with consumer's credential can be proxied via port 8000", type = "boolean", required = true, default = false }, },
         },
       },
     },
