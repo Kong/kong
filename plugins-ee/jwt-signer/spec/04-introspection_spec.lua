@@ -15,7 +15,7 @@ local fmt = string.format
 local introspection_fixture, introspection_url = helpers_ee.setup_oauth_introspection_fixture()
 
 
-local bp, admin_client, proxy_client
+local bp, admin_client, proxy_client, plugin_instance
 for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
   describe(fmt("%s - introspection", plugin_name), function()
     -- Sending opaque tokens require introspection. This test involves a fixture to return static
@@ -415,7 +415,7 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
     lazy_setup(function()
       bp = helpers.get_db_utils(strategy, nil, { plugin_name })
       local route = bp.routes:insert({ paths = { "/add_claims" }, })
-      assert(bp.plugins:insert({
+      plugin_instance = assert(bp.plugins:insert({
         name = plugin_name,
         route = route,
         config = {
@@ -434,9 +434,11 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }, nil, nil, introspection_fixture))
       proxy_client = helpers.proxy_client()
+      admin_client = helpers.admin_client()
     end)
 
     lazy_teardown(function()
+      if admin_client then admin_client:close() end
       if proxy_client then proxy_client:close() end
       assert(helpers.stop_kong())
     end)
@@ -465,6 +467,24 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
 
         assert.same(acc_token, oauth)
       end)
+
+    it("should fail when original_channel_token_upstream_header is the same to the access token's",
+      function()
+        local res = assert(admin_client:send {
+          method = "patch",
+          path = "/plugins/" .. plugin_instance.id,
+          headers = {
+            ["Content-Type"] = "application/x-www-form-urlencoded"
+          },
+          body = "config.original_channel_token_upstream_header=Origin-Authorization",
+        })
+        assert.response(res).has.status(400)
+        local json_table = assert.response(res).has.jsonbody()
+        assert.same(json_table.message,
+                    "schema violation (access_token_upstream_header, channel_token_upstream_header, " ..
+                    "original_access_token_upstream_header and original_channel_token_upstream_header " ..
+                    "should not have the same value.)")
+    end)
   end)
 
   describe(fmt("%s - introspection - consumer", plugin_name), function()

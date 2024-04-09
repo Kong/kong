@@ -9,6 +9,7 @@ local typedefs  = require "kong.db.schema.typedefs"
 local arguments = require "kong.plugins.jwt-signer.arguments"
 local cache     = require "kong.plugins.jwt-signer.cache"
 local log       = require "kong.plugins.jwt-signer.log"
+local string    = require "kong.tools.string"
 
 
 local get_phase = ngx.get_phase
@@ -695,6 +696,48 @@ local config = {
           { mutually_required = { "channel_token_jwks_uri_client_username", "channel_token_jwks_uri_client_password" } },
           { mutually_required = { "channel_token_keyset_client_username", "channel_token_keyset_client_password" } },
         },
+      },
+    },
+  },
+  entity_checks = {
+    {
+      custom_entity_check = {
+        field_sources = {
+          "config.access_token_upstream_header",
+          "config.channel_token_upstream_header",
+          "config.original_access_token_upstream_header",
+          "config.original_channel_token_upstream_header",
+        },
+        fn = function(entity)
+          local fields = {
+            entity.config.access_token_upstream_header,
+            entity.config.channel_token_upstream_header,
+            entity.config.original_access_token_upstream_header,
+            entity.config.original_channel_token_upstream_header,
+          }
+          local non_empty_strings = {}
+
+          for _, field in ipairs(fields) do
+            if field and type(field) == "string" and field ~= "" then
+              non_empty_strings[#non_empty_strings + 1] = string.replace_dashes_lower(field)
+            end
+          end
+
+          for i = 1, #non_empty_strings do
+            local val = non_empty_strings[i]
+            for j = i + 1, #non_empty_strings do
+              if non_empty_strings[j] == val then
+                return false, "access_token_upstream_header, " ..
+                              "channel_token_upstream_header, " ..
+                              "original_access_token_upstream_header and " ..
+                              "original_channel_token_upstream_header should " ..
+                              "not have the same value."
+              end
+            end
+          end
+
+          return true
+        end
       },
     },
   },
