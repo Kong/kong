@@ -188,12 +188,6 @@ _M.config_schema = {
                                       then_err = "must set %s for mistral provider" }},
 
     { conditional_at_least_one_of = { if_field = "model.provider",
-                                      if_match = {  },
-                                      then_at_least_one_of = { "model.name" },
-                                      then_err = "Must set a model name. Refer to https://docs.konghq.com/hub/kong-inc/ai-proxy/ " ..
-                                                 "for supported models." }},
-
-    { conditional_at_least_one_of = { if_field = "model.provider",
                                       if_match = { one_of = { "anthropic" } },
                                       then_at_least_one_of = { "model.options.anthropic_version" },
                                       then_err = "must set %s for anthropic provider" }},
