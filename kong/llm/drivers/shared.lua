@@ -198,6 +198,63 @@ function _M.to_ollama(request_table, model)
   return input, "application/json", nil
 end
 
+-- TODO REMOVE
+local function dump(o)
+  if type(o) == 'table' then
+     local s = '{ '
+     for k,v in pairs(o) do
+        if type(k) ~= 'number' then k = '"'..k..'"' end
+        s = s .. '['..k..'] = ' .. dump(v) .. ','
+     end
+     return s .. '} '
+  else
+     return tostring(o)
+  end
+end
+
+function _M.conf_from_request(kong_request, source, key)
+  if source == "uri_captures" then
+    return kong_request.get_uri_captures().named[key]
+  elseif source == "headers" then
+    return kong_request.get_header(key)
+  elseif source == "query_params" then
+    return kong_request.get_query_arg(key)
+  else
+    return nil, "source " .. source .. " is not supported"
+  end
+end
+
+function _M.resolve_plugin_conf(kong_request, conf)
+  local err
+  local conf_m = utils.cycle_aware_deep_copy(conf)
+
+  -- handle model name
+  local model_m = string_match(conf_m.model.name or "", '%$%((.-)%)')
+  if model_m then
+    local splitted = split(model_m, '.')
+    if #splitted ~= 2 then
+      return nil, "cannot parse expression for field 'model.name'"
+    end
+
+    -- find the request parameter, with the configured name
+    model_m, err = _M.conf_from_request(kong_request, splitted[1], splitted[2])
+    if err then
+      return nil, err
+    end
+    if not model_m then
+      return nil, splitted[1] .. " key " .. splitted[2] .. " was not provided"
+    end
+
+    -- replace the value
+    conf_m.model.name = model_m
+  end
+
+  -- handle all other options
+  ---- TODO for ipairs(conf.model.options) ...
+
+  return conf_m
+end
+
 function _M.from_ollama(response_string, model_info, route_type)
   local output, _, analytics
 
@@ -279,6 +336,12 @@ function _M.pre_request(conf, request_table)
   
   if auth_param_name and auth_param_value and auth_param_location == "body" then
     request_table[auth_param_name] = auth_param_value
+  end
+
+  if conf.logging and conf.logging.log_statistics then
+    kong.log.set_serialize_value(log_entry_keys.REQUEST_MODEL, conf.model.name)
+    kong.log.set_serialize_value(log_entry_keys.PROVIDER_NAME, conf.model.provider)
+    -- TODO log azure stuff
   end
 
   -- if enabled AND request type is compatible, capture the input for analytics

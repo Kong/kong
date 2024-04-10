@@ -171,6 +171,17 @@ function _M:access(conf)
     end
   end
 
+  -- resolve the real plugin config values
+  local conf_m = ai_shared.resolve_plugin_conf(kong.request, conf)
+
+  -- we need a model to run
+  if not conf_m.model.name then
+    -- TODO check input model and resolved model aren't the same
+    return bad_request("model parameter not located in request or in configuration")
+  end
+
+  kong.ctx.plugin.llm_model_requested = conf_m.model.name
+
   -- check the incoming format is the same as the configured LLM format
   local compatible, err = llm.is_compatible(request_table, route_type)
   if not compatible then
