@@ -251,6 +251,67 @@ function _M.resolve_plugin_conf(kong_request, conf)
 
   -- handle all other options
   ---- TODO for ipairs(conf.model.options) ...
+  local model_m = string_match(conf_m.model.options.azure_instance or "", '%$%((.-)%)')
+  if model_m then
+    local splitted = split(model_m, '.')
+    if #splitted ~= 2 then
+      return nil, "cannot parse expression for field 'model.options.azure_instance_id'"
+    end
+
+    -- find the request parameter, with the configured name
+    model_m, err = _M.conf_from_request(kong_request, splitted[1], splitted[2])
+    if err then
+      return nil, err
+    end
+    if not model_m then
+      return nil, splitted[1] .. " key " .. splitted[2] .. " was not provided"
+    end
+
+    -- replacdele the value
+    conf_m.model.options.azure_instance = model_m
+  end
+
+  local model_m = string_match(conf_m.model.options.azure_deployment_id or "", '%$%((.-)%)')
+  if model_m then
+    local splitted = split(model_m, '.')
+    if #splitted ~= 2 then
+      return nil, "cannot parse expression for field 'model.name'"
+    end
+
+    -- find the request parameter, with the configured name
+    model_m, err = _M.conf_from_request(kong_request, splitted[1], splitted[2])
+    if err then
+      return nil, err
+    end
+    if not model_m then
+      return nil, splitted[1] .. " key " .. splitted[2] .. " was not provided"
+    end
+
+    -- replace the value
+    conf_m.model.options.azure_deployment_id = model_m
+  end
+
+  local model_m = string_match(conf_m.model.options.azure_api_version or "", '%$%((.-)%)')
+  if model_m then
+    local splitted = split(model_m, '.')
+    if #splitted ~= 2 then
+      return nil, "cannot parse expression for field 'model.name'"
+    end
+
+    -- find the request parameter, with the configured name
+    model_m, err = _M.conf_from_request(kong_request, splitted[1], splitted[2])
+    if err then
+      return nil, err
+    end
+    if not model_m then
+      return nil, splitted[1] .. " key " .. splitted[2] .. " was not provided"
+    end
+
+    -- replace the value
+    conf_m.model.options.azure_api_version = model_m
+  end
+
+  kong.log.warn(dump(conf_m))
 
   return conf_m
 end

@@ -172,7 +172,10 @@ function _M:access(conf)
   end
 
   -- resolve the real plugin config values
-  local conf_m = ai_shared.resolve_plugin_conf(kong.request, conf)
+  local conf_m, err = ai_shared.resolve_plugin_conf(kong.request, conf)
+  if err then
+    return bad_request(err)
+  end
 
   -- we need a model to run
   if not conf_m.model.name then
