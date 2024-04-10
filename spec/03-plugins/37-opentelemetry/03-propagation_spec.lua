@@ -609,6 +609,158 @@ describe("propagation tests #"    .. strategy         ..
   end
 end)
 end
+
+for _, sampling_rate in ipairs({1, 0, 0.5}) do
+  describe("propagation tests #" .. strategy .. " instrumentations: " .. instrumentations .. " dynamic sampling_rate: " .. sampling_rate, function()
+    local service
+    local proxy_client
+
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, { "services", "routes", "plugins" })
+
+      service = bp.services:insert()
+
+      bp.plugins:insert({
+        name = "opentelemetry",
+        route = {id = bp.routes:insert({
+          service = service,
+          hosts = { "http-route" },
+        }).id},
+        config = {
+          -- fake endpoint, request to backend will sliently fail
+          endpoint = "http://localhost:8080/v1/traces",
+          sampling_rate = sampling_rate,
+        }
+      })
+
+      helpers.start_kong({
+        database = strategy,
+        plugins = "bundled",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        tracing_instrumentations = instrumentations,
+      })
+
+      proxy_client = helpers.proxy_client()
+    end)
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("propagates tracing headers (b3 request)", function()
+      local trace_id = gen_trace_id()
+      local r = proxy_client:get("/", {
+        headers = {
+          ["x-b3-sampled"] = "1",
+          ["x-b3-traceid"] = trace_id,
+          host  = "http-route",
+        },
+      })
+      local body = assert.response(r).has.status(200)
+      local json = cjson.decode(body)
+      assert.equals(trace_id, json.headers["x-b3-traceid"])
+    end)
+
+    describe("propagates tracing headers (b3-single request)", function()
+      it("with parent_id", function()
+        local trace_id = gen_trace_id()
+        local span_id = gen_span_id()
+        local parent_id = gen_span_id()
+
+        local r = proxy_client:get("/", {
+          headers = {
+            b3 = fmt("%s-%s-%s-%s", trace_id, span_id, "1", parent_id),
+            host = "http-route",
+          },
+        })
+        local body = assert.response(r).has.status(200)
+        local json = cjson.decode(body)
+        assert.matches(trace_id .. "%-%x+%-%x+%-%x+", json.headers.b3)
+      end)
+    end)
+
+    it("propagates w3c tracing headers", function()
+      local trace_id = gen_trace_id() -- w3c only admits 16-byte trace_ids
+      local parent_id = gen_span_id()
+
+      local r = proxy_client:get("/", {
+        headers = {
+          traceparent = fmt("00-%s-%s-01", trace_id, parent_id),
+          host = "http-route"
+        },
+      })
+      local body = assert.response(r).has.status(200)
+      local json = cjson.decode(body)
+      assert.matches("00%-" .. trace_id .. "%-%x+%-%x+", json.headers.traceparent)
+    end)
+
+    it("propagates jaeger tracing headers", function()
+      local trace_id = gen_trace_id()
+      local span_id = gen_span_id()
+      local parent_id = gen_span_id()
+
+      local r = proxy_client:get("/", {
+        headers = {
+          ["uber-trace-id"] = fmt("%s:%s:%s:%s", trace_id, span_id, parent_id, "1"),
+          host = "http-route"
+        },
+      })
+      local body = assert.response(r).has.status(200)
+      local json = cjson.decode(body)
+      -- Trace ID is left padded with 0 for assert
+      assert.matches( ('0'):rep(32-#trace_id) .. trace_id .. ":%x+:%x+:%x+", json.headers["uber-trace-id"])
+    end)
+
+    it("propagates ot headers", function()
+      local trace_id = gen_trace_id()
+      local span_id = gen_span_id()
+      local r = proxy_client:get("/", {
+        headers = {
+          ["ot-tracer-traceid"] = trace_id,
+          ["ot-tracer-spanid"] = span_id,
+          ["ot-tracer-sampled"] = "1",
+          host = "http-route",
+        },
+      })
+      local body = assert.response(r).has.status(200)
+      local json = cjson.decode(body)
+
+      assert.equals(trace_id, json.headers["ot-tracer-traceid"])
+    end)
+
+    describe("propagates datadog tracing headers", function()
+      it("with datadog headers in client request", function()
+        local trace_id  = "7532726115487256575"
+        local r = proxy_client:get("/", {
+          headers = {
+            ["x-datadog-trace-id"] = trace_id,
+            host = "http-route",
+          },
+        })
+        local body = assert.response(r).has.status(200)
+        local json = cjson.decode(body)
+
+        assert.equals(trace_id, json.headers["x-datadog-trace-id"])
+        assert.is_not_nil(tonumber(json.headers["x-datadog-parent-id"]))
+      end)
+
+      it("with a shorter-than-64b trace_id", function()
+        local trace_id  = "1234567890"
+        local r = proxy_client:get("/", {
+          headers = {
+            ["x-datadog-trace-id"] = trace_id,
+            host = "http-route",
+          },
+        })
+        local body = assert.response(r).has.status(200)
+        local json = cjson.decode(body)
+
+        assert.equals(trace_id, json.headers["x-datadog-trace-id"])
+        assert.is_not_nil(tonumber(json.headers["x-datadog-parent-id"]))
+      end)
+    end)
+  end)
+  end
 end
 end
 
