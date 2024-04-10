@@ -34,7 +34,7 @@ local KONG_VERSION = kong.version
 -- create a new RPC manager, node_id is own node_id
 function _M.new(conf, node_id)
   local self = {
-    -- node_id: { socket1 => true, socket2 => true, ... }
+    -- clients[node_id]: { socket1 => true, socket2 => true, ... }
     clients = {},
     client_capabilities = {},
     node_id = node_id,

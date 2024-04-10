@@ -5,6 +5,12 @@ local _MT = { __index = _M, }
 local semaphore = require("ngx.semaphore")
 
 
+local STATE_NEW = 1
+local STATE_IN_PROGRESS = 2
+local STATE_SUCCEED = 3
+local STATE_ERRORED = 4
+
+
 function _M.new(node_id, socket, method, params)
   local self = {
     method = method,
@@ -15,7 +21,7 @@ function _M.new(node_id, socket, method, params)
     id = nil,
     result = nil,
     ["error"] = nil,
-    state = "new", -- new, in_progress, succeed, errored
+    state = STATE_NEW, -- STATE_*
   }
 
   return setmetatable(self, _MT)
@@ -24,8 +30,8 @@ end
 
 -- start executing the future
 function _M:start()
-  assert(self.state == "new")
-  self.state = "in_progress"
+  assert(self.state == STATE_NEW)
+  self.state = STATE_IN_PROGRESS
 
   local callback = function(resp)
     assert(resp.jsonrpc == "2.0")
@@ -33,12 +39,12 @@ function _M:start()
     if resp.result then
       -- succeeded
       self.result = resp.result
-      self.state = "succeed"
+      self.state = STATE_SUCCEED
 
     else
       -- errored
       self.error = resp.error
-      self.state = "errored"
+      self.state = STATE_ERRORED
     end
 
     self.sema:post()
@@ -53,14 +59,14 @@ end
 
 
 function _M:wait(timeout)
-  assert(self.state == "in_progress")
+  assert(self.state == STATE_IN_PROGRESS)
 
   local res, err = self.sema:wait(timeout)
   if not res then
     return res, err
   end
 
-  return self.state == "succeed"
+  return self.state == STATE_SUCCEED
 end
 
 

@@ -15,12 +15,14 @@ local constants = require("kong.constants")
 
 
 local assert = assert
+local kong = kong
 local cjson_encode = cjson.encode
 local cjson_decode = cjson.decode
 local is_timeout = utils.is_timeout
 local exiting = ngx.worker.exiting
 local ngx_time = ngx.time
 local ngx_log = ngx.log
+local new_error = jsonrpc.new_error
 
 
 local CLUSTERING_PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
@@ -70,16 +72,16 @@ function _M:start()
         end
 
         local waited = ngx_time() - last_seen
+        if waited > PING_WAIT then
+          return nil, "did not receive ping frame from other end within " ..
+                      PING_WAIT .. " seconds"
+        end
+
         if waited > CLUSTERING_PING_INTERVAL then
           local res, err = self.outgoing:push(PING_TYPE)
           if not res then
             return nil, "unable to send ping: " .. err
           end
-        end
-
-        if waited > PING_WAIT then
-          return nil, "did not receive ping frame from other end within " ..
-                      PING_WAIT .. " seconds"
         end
 
         -- timeout
@@ -115,63 +117,31 @@ function _M:start()
       if payload.method then
         -- invoke
 
-        local cb = self.manager.callbacks.callbacks[payload.method]
-        if not cb then
-          local res, err = self.outgoing:push({
-            jsonrpc = "2.0",
-            id = payload.id,
-            ["error"] = {
-              code = jsonrpc.METHOD_NOT_FOUND,
-              message = "Method not found",
-            }
-          })
+        local dispatch_cb = self.manager.callbacks.callbacks[payload.method]
+        if not dispatch_cb then
+          local res, err = self.outgoing:push(new_error(payload.id, jsonrpc.METHOD_NOT_FOUND))
           if not res then
-            return nil, "unable to handle ping: " .. err
+            return nil, "unable to send \"METHOD_NOT_FOUND\" error back to client: " .. err
           end
 
           goto continue
         end
 
         -- call dispatch
-
-        assert(ngx.timer.at(0, function(premature)
-          if premature then
-            return
+        local res, err = kong.timer:named_at("JSON-RPC callback for " .. payload.method,
+                                             0, _M._dispatch, dispatch_cb, payload)
+        if not res then
+          local reso, erro = self.outgoing:push(new_error(payload.id, jsonrpc.INTERNAL_ERROR))
+          if not reso then
+            return nil, "unable to send \"INTERNAL_ERROR\" error back to client: " .. erro
           end
 
-          local res, err = cb(self.node_id, unpack(payload.params))
-          if not res then
-            ngx_log(ngx_WARN, "[rpc] RPC callback failed: ", err)
-
-            res, err = self.outgoing:push({
-              jsonrpc = "2.0",
-              id = payload.id,
-              ["error"] = {
-                code = jsonrpc.SERVER_ERROR,
-                message = tostring(err),
-              }
-            })
-            if not res then
-              ngx_log(ngx_WARN, "[rpc] unable to push RPC call error: ", err)
-            end
-
-            return
-          end
-
-          -- success
-          res, err = self.outgoing:push({
-            jsonrpc = "2.0",
-            id = payload.id,
-            result = res,
-          })
-          if not res then
-            ngx_log(ngx_WARN, "[rpc] unable to push RPC call result: ", err)
-          end
-        end))
+          return nil, "unable to dispatch JSON-RPC callback: " .. err
+        end
 
       else
         -- response
-        local cb = self.interest[payload.id]
+        local interest_cb = self.interest[payload.id]
         self.interest[payload.id] = nil -- edge trigger only once
 
         if not cb then
@@ -180,7 +150,7 @@ function _M:start()
           goto continue
         end
 
-        local res, err = cb(payload)
+        local res, err = interest_cb(payload)
         if not res then
           ngx_log(ngx_WARN, "[rpc] RPC response interest handler failed: id: ",
                   payload.id, ", err: ", err)
@@ -220,7 +190,7 @@ function _M:start()
         else
           assert(type(payload) == "table")
 
-          local bytes, err = self.wb:send_binary(cjson_encode(payload))
+          local bytes, err = self.wb:send_binary(assert(cjson_encode(payload)))
           if not bytes then
             return nil, err
           end
@@ -230,6 +200,36 @@ function _M:start()
   end)
 
   return true
+end
+
+
+function _M:_dispatch(premature, cb, payload)
+  if premature then
+    return
+  end
+
+  local res, err = cb(self.node_id, unpack(payload.params))
+  if not res then
+    ngx_log(ngx_WARN, "[rpc] RPC callback failed: ", err)
+
+    res, err = self.outgoing:push(new_error(payload.id, jsonrpc.SERVER_ERROR,
+                                            tostring(err)))
+    if not res then
+      ngx_log(ngx_WARN, "[rpc] unable to push RPC call error: ", err)
+    end
+
+    return
+  end
+
+  -- success
+  res, err = self.outgoing:push({
+    jsonrpc = "2.0",
+    id = payload.id,
+    result = res,
+  })
+  if not res then
+    ngx_log(ngx_WARN, "[rpc] unable to push RPC call result: ", err)
+  end
 end
 
 

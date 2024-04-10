@@ -3,11 +3,9 @@ local _MT = { __index = _M, }
 
 
 local utils = require("kong.clustering.rpc.utils")
-local pl_tablex = require("pl.tablex")
 
 
 local parse_method_name = utils.parse_method_name
-local pl_tablex_keys = pl_tablex.keys
 
 
 function _M.new()
@@ -32,7 +30,7 @@ function _M:register(method, func)
   end
 
   self.capabilities[cap] = true
-  self.capabilities_list = pl_tablex_keys(self.capabilities)
+  self.capabilities_list:insert(cap)
   self.callbacks[method] = func
 end
 
