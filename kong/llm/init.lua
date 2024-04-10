@@ -160,9 +160,10 @@ _M.config_schema = {
   fields = {
     { route_type = {
         type = "string",
-        description = "The model's operation implementation, for this provider.",
+        description = "The model's operation implementation, for this provider. " ..
+                      "Set to `preserve` to pass through without transformation.",
         required = true,
-        one_of = { "llm/v1/chat", "llm/v1/completions" } }},
+        one_of = { "llm/v1/chat", "llm/v1/completions", "preserve" } }},
     { auth = auth_schema },
     { model = model_schema },
     { logging = logging_schema },
