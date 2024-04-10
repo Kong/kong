@@ -659,12 +659,9 @@ describe("kong.clustering.compat", function()
 
       local config = { config_table = declarative.export_config() }
 
-      local has_update, result = compat.update_compatible_payload(config, "3.6.0", "test_")
-      assert.truthy(has_update)
-
-      result = cjson_decode(inflate_gzip(result)).config_table
-      local routes = assert(assert(assert(result).routes))
-      assert(#routes == 0)
+      local ok, err = compat.check_mixed_route_entities(config, "3.6.0")
+      assert.is_true(ok)
+      assert.is_nil(err)
     end)
 
   end)  -- describe

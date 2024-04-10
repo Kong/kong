@@ -23,51 +23,6 @@ end
 
 
 local compatible_checkers = {
-  { 3007000000, --[[ 3.7.0.0 ]]
-    function(config_table, dp_version, log_suffix)
-      local flavor = kong and
-                     kong.configuration and
-                     kong.configuration.router_flavor
-
-      if flavor ~= "expressions" then
-        return false
-      end
-
-      local cur_routes = config_table.routes or {}
-      local count = #cur_routes
-
-      local idx = 0
-      local routes = {}
-
-      -- get all expression only routes
-      for i = 1, count do
-        local r = cur_routes[i]
-
-        -- expression should be a string
-        if r.expression and r.expression ~= ngx.null then
-          idx = idx + 1
-          routes[idx] = r
-        end
-      end -- for
-
-      -- all routes are expression route
-      if idx == count then
-        return false
-      end
-
-      -- only pass expression routes to DP
-      -- mixed mode routes will be set to nil
-      for i = 1, count do
-        cur_routes[i] = routes[i] -- or nil
-      end
-
-      log_warn_message("contains mixed mode route", "be removed",
-                       dp_version, log_suffix)
-
-      return true
-    end,
-  },
-
   { 3006000000, --[[ 3.6.0.0 ]]
     function(config_table, dp_version, log_suffix)
       local has_update
