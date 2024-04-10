@@ -413,11 +413,11 @@ function _M.check_mixed_route_entities(payload, dp_version)
     return true
   end
 
-  -- cp run with 'expressions' flavor
+  -- CP runs with 'expressions' flavor
 
   local dp_version_num = version_num(dp_version)
 
-  if dp_version_num >= 3007000000 then --[[ 3.7.0.0 ]]
+  if dp_version_num >= 3007000000 then -- [[ 3.7.0.0 ]]
     return true
   end
 
@@ -440,7 +440,7 @@ function _M.check_mixed_route_entities(payload, dp_version)
     return true
   end
 
-  return false, dp_version .. " do not support mixed mode route"
+  return false, dp_version .. " does not support mixed mode route"
 end
 
 
