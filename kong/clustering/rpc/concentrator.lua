@@ -88,13 +88,9 @@ local function enqueue_notifications(notifications, notifications_queue)
 end
 
 
-function _M:_event_loop()
+function _M:_event_loop(lconn)
   local notifications_queue = queue.new(4096)
   local rpc_resp_channel_name = RESP_CHANNEL_PREFIX .. self.worker_id
-
-  local lconn = self.db.connector:connect("write")
-  lconn:settimeout(1000)
-  self.db.connector:store_connection(nil, "write")
 
   -- we always subscribe to our worker's receiving channel first
   local res, err = lconn:query('LISTEN "' .. rpc_resp_channel_name .. '";')
@@ -226,13 +222,22 @@ function _M:start(delay)
       return
     end
 
-    local _, res_or_perr, err = pcall(self._event_loop, self)
+    local lconn = self.db.connector:connect("write")
+    lconn:settimeout(1000)
+    self.db.connector:store_connection(nil, "write")
+
+    local _, res_or_perr, err = pcall(self._event_loop, self, lconn)
     -- _event_loop never returns true
     local delay = math.random(5, 10)
 
     ngx_log(ngx_ERR, "[rpc] concentrator event loop error: ",
             res_or_perr or err, ", reconecting in ",
             math.floor(delay), " seconds")
+
+    local res, err = lconn:disconnect()
+    if not res then
+      ngx_log(ngx_ERR, "[rpc] unable to close postgres connection: ", err)
+    end
 
     self:start(delay)
   end))
