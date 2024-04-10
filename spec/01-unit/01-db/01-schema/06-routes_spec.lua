@@ -1046,49 +1046,6 @@ describe("routes schema (flavor = " .. flavor .. ")", function()
         end
       end)
 
-      it("accepts leftmost wildcard", function()
-        for _, sni in ipairs({ "*.example.org", "*.foo.bar.test" }) do
-          local route = Routes:process_auto_fields({
-            protocols = { "https" },
-            snis = { sni },
-            service = s,
-          }, "insert")
-          local ok, errs = Routes:validate(route)
-          assert.is_nil(errs)
-          assert.truthy(ok)
-        end
-      end)
-
-      it("accepts rightmost wildcard", function()
-        for _, sni in ipairs({ "example.*", "foo.bar.*" }) do
-          local route = Routes:process_auto_fields({
-            protocols = { "https" },
-            snis = { sni },
-            service = s,
-          }, "insert")
-          local ok, errs = Routes:validate(route)
-          assert.is_nil(errs)
-          assert.truthy(ok)
-        end
-      end)
-
-      it("rejects invalid wildcard", function()
-        for _, sni in ipairs({ "foo.*.test", "foo*.test" }) do
-          local route = Routes:process_auto_fields({
-            protocols = { "https" },
-            snis = { sni },
-            service = s,
-          }, "insert")
-          local ok, errs = Routes:validate(route)
-          assert.falsy(ok)
-          assert.same({
-            snis = {
-              "wildcard must be leftmost or rightmost character",
-            },
-          }, errs)
-        end
-      end)
-
       it("rejects specifying 'snis' if 'protocols' does not have 'https', 'tls' or 'tls_passthrough'", function()
         local route = Routes:process_auto_fields({
           protocols = { "tcp", "udp" },
@@ -1535,6 +1492,53 @@ describe("routes schema (flavor = " .. flavor .. ")", function()
     local ok, errs = Routes:validate_insert(route)
     assert.truthy(ok)
     assert.is_nil(errs)
+  end)
+
+  describe("'snis' matching attribute (wildcard)", function()
+    local s = { id = "a4fbd24e-6a52-4937-bd78-2536713072d2" }
+
+    it("accepts leftmost wildcard", function()
+      for _, sni in ipairs({ "*.example.org", "*.foo.bar.test" }) do
+        local route = Routes:process_auto_fields({
+          protocols = { "https" },
+          snis = { sni },
+          service = s,
+        }, "insert")
+        local ok, errs = Routes:validate(route)
+        assert.is_nil(errs)
+        assert.truthy(ok)
+      end
+    end)
+
+    it("accepts rightmost wildcard", function()
+      for _, sni in ipairs({ "example.*", "foo.bar.*" }) do
+        local route = Routes:process_auto_fields({
+          protocols = { "https" },
+          snis = { sni },
+          service = s,
+        }, "insert")
+        local ok, errs = Routes:validate(route)
+        assert.is_nil(errs)
+        assert.truthy(ok)
+      end
+    end)
+
+    it("rejects invalid wildcard", function()
+      for _, sni in ipairs({ "foo.*.test", "foo*.test" }) do
+        local route = Routes:process_auto_fields({
+          protocols = { "https" },
+          snis = { sni },
+          service = s,
+        }, "insert")
+        local ok, errs = Routes:validate(route)
+        assert.falsy(ok)
+        assert.same({
+          snis = {
+            "wildcard must be leftmost or rightmost character",
+          },
+        }, errs)
+      end
+    end)
   end)
 end)
 end   -- flavor in ipairs({ "traditional_compatible", "expressions" })
