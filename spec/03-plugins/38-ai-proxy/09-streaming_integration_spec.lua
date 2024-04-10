@@ -262,7 +262,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       }
       --
 
-      -- 200 chat openai
+      -- 400 chat openai
       local openai_chat_bad = assert(bp.routes:insert {
         service = empty_service,
         protocols = { "http" },
