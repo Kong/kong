@@ -80,7 +80,7 @@ local FORMATS = {
   },
   anthropic = {
     ["llm/v1/chat"] = {
-      name = "claude-2",
+      name = "claude-2.1",
       provider = "anthropic",
       options = {
         max_tokens = 512,
@@ -89,7 +89,7 @@ local FORMATS = {
       },
     },
     ["llm/v1/completions"] = {
-      name = "claude-2",
+      name = "claude-2.1",
       provider = "anthropic",
       options = {
         max_tokens = 512,
@@ -307,7 +307,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
             assert.is_nil(err)
 
             -- compare the tables
-            assert.same(actual_response_table.choices[1].message, expected_response_table.choices[1].message)
+            assert.same(expected_response_table.choices[1].message, actual_response_table.choices[1].message)
             assert.same(actual_response_table.model, expected_response_table.model)
           end)
 
