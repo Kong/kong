@@ -129,18 +129,23 @@ for _, strategy in helpers.each_strategy() do
 
     before_each(function()
       _, db = helpers.get_db_utils(strategy)
-      helpers.kong_exec("migrations reset --yes")
-      helpers.kong_exec("migrations bootstrap", { password = "foo" })
 
-      assert(helpers.start_kong({
+      local conf = {
         database = strategy,
         admin_gui_url = "http://manager.konghq.com",
         admin_gui_auth = 'basic-auth',
         audit_log = "on",
         admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
         admin_gui_auth_password_complexity = "{\"kong-preset\": \"min_12\"}",
-        enforce_rbac = "on"
-      }))
+        enforce_rbac = "on",
+        password = "foo",
+        prefix = helpers.test_conf.prefix,
+      }
+
+      assert(helpers.kong_exec("migrations reset --yes", conf))
+      assert(helpers.kong_exec("migrations bootstrap", conf))
+
+      assert(helpers.start_kong(conf))
 
       ee_helpers.register_rbac_resources(db)
       admin_client = assert(helpers.admin_client())
@@ -148,7 +153,7 @@ for _, strategy in helpers.each_strategy() do
 
     after_each(function()
       if admin_client then admin_client:close() end
-      assert(helpers.stop_kong())
+      assert(helpers.stop_kong(nil, true))
     end)
 
     it("audit request should be have request-source and rbac_user_name", function()

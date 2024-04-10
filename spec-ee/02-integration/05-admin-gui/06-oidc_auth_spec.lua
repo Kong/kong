@@ -59,10 +59,17 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_setup(function()
       helpers.get_db_utils(nil, {})
-      helpers.kong_exec("migrations reset --yes")
-      helpers.kong_exec("migrations bootstrap", { password = "kong" })
 
-      assert(helpers.start_kong({ database = strategy }))
+      local conf = {
+        database = strategy,
+        password = "foo",
+        prefix = helpers.test_conf.prefix,
+      }
+
+      assert(helpers.kong_exec("migrations reset --yes", conf))
+      assert(helpers.kong_exec("migrations bootstrap", conf))
+
+      assert(helpers.start_kong(conf))
 
       insert_ws_and_related_roles("ws01")
       insert_ws_and_related_roles("ws02")
