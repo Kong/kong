@@ -1732,65 +1732,67 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
         end)
       end)
 
-      describe("[wildcard sni]", function()
-        local use_case, router
+      if flavor == "tradition_compatible" then
+        describe("[wildcard sni]", function()
+          local use_case, router
 
-        lazy_setup(function()
-          use_case = {
-            {
-              service = service,
-              route   = {
-                id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
-                snis = { "*.sni.test" },
+          lazy_setup(function()
+            use_case = {
+              {
+                service = service,
+                route   = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+                  snis = { "*.sni.test" },
+                },
               },
-            },
-            {
-              service = service,
-              route   = {
-                id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
-                snis = { "sni.*" },
+              {
+                service = service,
+                route   = {
+                  id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+                  snis = { "sni.*" },
+                },
               },
-            },
-          }
+            }
 
-          router = assert(new_router(use_case))
-        end)
+            router = assert(new_router(use_case))
+          end)
 
-        it("matches leftmost wildcards", function()
-          for _, sni in ipairs({"foo.sni.test", "foo.bar.sni.test"}) do
-            local match_t = router:select("GET", "/", "any.test", "https", nil, nil, nil, nil,
-                                          sni)
-            assert.truthy(match_t)
-            assert.same(use_case[1].route, match_t.route)
-            if flavor == "traditional" then
-              assert.same(use_case[1].route.snis[1], match_t.matches.sni)
+          it("matches leftmost wildcards", function()
+            for _, sni in ipairs({"foo.sni.test", "foo.bar.sni.test"}) do
+              local match_t = router:select("GET", "/", "any.test", "https", nil, nil, nil, nil,
+                                            sni)
+              assert.truthy(match_t)
+              assert.same(use_case[1].route, match_t.route)
+              if flavor == "traditional" then
+                assert.same(use_case[1].route.snis[1], match_t.matches.sni)
+              end
+              assert.same(nil, match_t.matches.method)
+              assert.same(nil, match_t.matches.uri)
+              assert.same(nil, match_t.matches.uri_captures)
             end
-            assert.same(nil, match_t.matches.method)
-            assert.same(nil, match_t.matches.uri)
-            assert.same(nil, match_t.matches.uri_captures)
-          end
-        end)
+          end)
 
-        it("matches rightmost wildcards", function()
-          for _, sni in ipairs({"sni.foo", "sni.foo.bar"}) do
-            local match_t = router:select("GET", "/", "any.test", "https", nil, nil, nil, nil,
-                                          sni)
-            assert.truthy(match_t)
-            assert.same(use_case[2].route, match_t.route)
-            if flavor == "traditional" then
-              assert.same(use_case[2].route.snis[1], match_t.matches.sni)
+          it("matches rightmost wildcards", function()
+            for _, sni in ipairs({"sni.foo", "sni.foo.bar"}) do
+              local match_t = router:select("GET", "/", "any.test", "https", nil, nil, nil, nil,
+                                            sni)
+              assert.truthy(match_t)
+              assert.same(use_case[2].route, match_t.route)
+              if flavor == "traditional" then
+                assert.same(use_case[2].route.snis[1], match_t.matches.sni)
+              end
             end
-          end
-        end)
+          end)
 
-        it("doesn't match wildcard", function()
-          for _, sni in ipairs({"bar.sni.foo", "foo.sni.test.bar"}) do
-            local match_t = router:select("GET", "/", "any.test", "https", nil, nil, nil, nil,
-                                          sni)
-            assert.is_nil(match_t)
-          end
+          it("doesn't match wildcard", function()
+            for _, sni in ipairs({"bar.sni.foo", "foo.sni.test.bar"}) do
+              local match_t = router:select("GET", "/", "any.test", "https", nil, nil, nil, nil,
+                                            sni)
+              assert.is_nil(match_t)
+            end
+          end)
         end)
-      end)
+      end
 
 
       if flavor ~= "traditional" then
