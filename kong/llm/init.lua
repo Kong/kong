@@ -7,6 +7,7 @@ local buf       = require("string.buffer")
 local lower     = string.lower
 local meta      = require "kong.meta"
 local ai_shared = require("kong.llm.drivers.shared")
+local strip     = require("kong.tools.utils").strip
 --
 
 local _M = {}
@@ -503,7 +504,7 @@ function _M:handle_streaming_request(body)
             --
             -- essentially, every 4 characters is a token, with minimum of 1 per event
             telemetry_fake_table.usage.completion_tokens =
-                telemetry_fake_table.usage.completion_tokens + math.ceil(#string.gsub(token_t, "^%s*(.-)%s*$", "%1") / 4)
+                telemetry_fake_table.usage.completion_tokens + math.ceil(#strip(token_t) / 4)
 
           elseif metadata then
             telemetry_fake_table.usage.completion_tokens = metadata.completion_tokens
