@@ -232,6 +232,9 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
               anthropic_version = "2023-06-01",
             },
           },
+          logging = {
+            log_statistics = false,  -- anthropic does not support statistics
+          },
         },
       }
       --
@@ -322,6 +325,9 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
               anthropic_version = "2023-06-01",
             },
           },
+          logging = {
+            log_statistics = false,  -- anthropic does not support statistics
+          },
         },
       }
       --
@@ -370,7 +376,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
       }, nil, nil, fixtures))
     end)
-    
+
     lazy_teardown(function()
       helpers.stop_kong()
     end)
@@ -441,7 +447,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/requests/good.json"),
         })
-        
+
         local body = assert.res_status(200 , r)
         local json = cjson.decode(body)
 
@@ -488,6 +494,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         -- check this is in the 'kong' response format
         assert.equals(json.error.message, "request format not recognised")
       end)
+    end)
 
     describe("anthropic llm/v1/completions", function()
       it("good request", function()
@@ -528,6 +535,5 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       end)
     end)
   end)
-end)
 
 end end
