@@ -131,12 +131,16 @@ local logging_schema = {
         description = "If enabled and supported by the driver, "
                    .. "will add model usage and token metrics into the Kong log plugin(s) output.",
                    required = true,
-                   default = true }},
+                   default = false }},
     { log_payloads = {
         type = "boolean", 
         description = "If enabled, will log the request and response body into the Kong log plugin(s) output.",
         required = true, default = false }},
   }
+}
+
+local UNSUPPORTED_LOG_STATISTICS = {
+  ["llm/v1/completions"] = { ["anthropic"] = true },
 }
 
 _M.config_schema = {
@@ -201,6 +205,23 @@ _M.config_schema = {
                                       if_match = { one_of = { "mistral", "llama2" } },
                                       then_at_least_one_of = { "model.options.upstream_url" },
                                       then_err = "must set %s for self-hosted providers/models" }},
+
+    {
+      custom_entity_check = {
+        field_sources = { "route_type", "model", "logging" },
+        fn = function(entity)
+          -- print(cjson.encode(entity))
+          if entity.logging.log_statistics and UNSUPPORTED_LOG_STATISTICS[entity.route_type]
+            and UNSUPPORTED_LOG_STATISTICS[entity.route_type][entity.model.provider] then
+              return nil, fmt("%s does not support statistics when route_type is %s",
+                               entity.model.provider, entity.route_type)
+
+          else
+            return true
+          end
+        end,
+      }
+    },
   },
 }
 
