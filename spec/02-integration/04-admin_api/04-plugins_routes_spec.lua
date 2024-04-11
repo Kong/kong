@@ -454,6 +454,40 @@ for _, strategy in helpers.each_strategy() do
           assert.match('"referenceable":true', body, 1, true)
         end)
 
+        it("returns the schema should include the field `enable_proxy_with_consumer_credential`", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/schemas/plugins/application-registration",
+          })
+          assert.response(res).has.status(200)
+          local body = assert.response(res).has.jsonbody()
+
+          local config = nil
+          for _, value in ipairs(body.fields) do
+            if value.config then
+              config = value.config
+              break
+            end
+          end
+          assert.is_not_nil(config)
+          local json_values = nil
+          for _, value in ipairs(config.fields) do
+            if value.enable_proxy_with_consumer_credential then
+              json_values = value.enable_proxy_with_consumer_credential
+              break
+            end
+          end
+
+          assert.is_not_nil(json_values)
+          local enable_proxy_with_consumer_credential = {
+            description = "If enabled, the Route of the Service can be accessed using the Consumer's credential",
+            required = true,
+            default = false,
+            type = "boolean"
+          }
+          assert.same(enable_proxy_with_consumer_credential, json_values)
+        end)
+
         it("returns the schema should include encrypted attribute of the introspection_headers_values in plugin openid-connect",
           function()
             local res = assert(client:send {
