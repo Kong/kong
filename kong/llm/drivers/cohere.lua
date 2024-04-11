@@ -123,6 +123,16 @@ local function handle_stream_event(event_string, model_info, route_type)
   else
     return nil, nil, metadata  -- caller code will handle "unrecognised" event types
   end
+
+local function merge_fields(request_table, model)
+  request_table.temperature = request_table.temperature or model.options.temperature
+  request_table.max_tokens = request_table.max_tokens or model.options.max_tokens
+  request_table.truncate = request_table.truncate or "END"
+  request_table.return_likelihoods = request_table.return_likelihoods or "NONE"
+  request_table.p = request_table.top_p or model.options.top_p
+  request_table.k = request_table.top_k or model.options.top_k
+
+  return request_table
 end
 
 local function handle_all(request_table, model)
@@ -156,21 +166,15 @@ local function handle_all(request_table, model)
       request_table.chat_history = chat_history
     end
 
-    request_table.max_tokens = request_table.max_tokens or model.options.max_tokens
-    request_table.temperature = request_table.temperature or model.options.temperature
-    request_table.p = request_table.top_p or model.options.top_p
-    request_table.k = request_table.top_k or model.options.top_k
     request_table.message = request_table.messages[#request_table.messages].content
     request_table.messages = nil
+    request_table = merge_fields(request_table, model)
 
   elseif request_table.prompt then
     request_table.prompt = request_table.prompt
     request_table.messages = nil
     request_table.message = nil
-    request_table.temperature = request_table.temperature or model.options.temperature
-    request_table.max_tokens = request_table.max_tokens or model.options.max_tokens
-    request_table.p = request_table.top_p or model.options.top_p
-    request_table.k = request_table.top_k or model.options.top_k
+    request_table = merge_fields(request_table, model)
 
   end
 
