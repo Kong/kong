@@ -519,15 +519,15 @@ function _M:handle_streaming_request(body)
         if self.conf.logging.log_payloads then
           -- append the "choice" to the buffer, for logging later. this actually works!
           if not event_t then
-            event_t = cjson.decode(formatted)
-          end
-          
-          if not token_t then
-            token_t = get_token_text(event_t)
+            event_t, err = cjson.decode(formatted)
           end
 
           if err then
             return internal_server_error("something wrong with decoding a specific token")
+          end
+
+          if not token_t then
+            token_t = get_token_text(event_t)
           end
 
           telemetry_fake_table.response:put(token_t)
