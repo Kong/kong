@@ -1781,8 +1781,7 @@ function _M.new(routes, cache, cache_neg)
       local src_ip = var.remote_addr
       local dst_ip = var.server_addr
       local src_port = tonumber(var.remote_port, 10)
-      local dst_port = tonumber((ctx or ngx.ctx).host_port, 10)
-                    or tonumber(var.server_port, 10)
+      local dst_port = (ctx or ngx.ctx).host_port or tonumber(var.server_port, 10)
       -- error value for non-TLS connections ignored intentionally
       local sni = server_name()
       -- fallback to preread SNI if current connection doesn't terminate TLS
@@ -1801,7 +1800,7 @@ function _M.new(routes, cache, cache_neg)
       -- rewrite the dst_ip, port back to what specified in proxy_protocol
       if var.kong_tls_passthrough_block == "1" or var.ssl_protocol then
         dst_ip = var.proxy_protocol_server_addr
-        dst_port = tonumber(var.proxy_protocol_server_port)
+        dst_port = tonumber(var.proxy_protocol_server_port, 10)
       end
 
       return find_route(nil, nil, nil, scheme,
