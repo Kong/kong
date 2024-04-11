@@ -477,6 +477,7 @@ function _M:handle_streaming_request(body)
     end
 
     local metadata
+    local route_type = "stream/" .. self.conf.route_type
 
     -- then parse each into the standard inference format
     for i, event in ipairs(events) do
@@ -485,7 +486,7 @@ function _M:handle_streaming_request(body)
 
       -- some LLMs do a final reply with token counts, and such
       -- so we will stash them if supported
-      local formatted, err, this_metadata = self.driver.from_format(event, self.conf.model, "stream/" .. self.conf.route_type)
+      local formatted, err, this_metadata = self.driver.from_format(event, self.conf.model, route_type)
       if err then
         return internal_server_error(err)
       end
