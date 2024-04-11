@@ -45,7 +45,7 @@ _M.operation_map = {
       method = "POST",
     },
     ["llm/v1/chat"] = {
-      path = "/v1/complete",
+      path = "/v1/messages",
       method = "POST",
     },
   },

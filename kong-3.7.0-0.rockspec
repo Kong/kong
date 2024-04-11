@@ -30,7 +30,7 @@ dependencies = {
   "lua_pack == 2.0.0",
   "binaryheap >= 0.4",
   "luaxxhash >= 1.0",
-  "lua-protobuf == 0.5.0",
+  "lua-protobuf == 0.5.1",
   "lua-resty-healthcheck == 3.0.1",
   "lua-messagepack == 0.5.4",
   "lua-resty-aws == 1.3.6",
