@@ -466,78 +466,78 @@ function _M:handle_streaming_request(body)
     if err then
         ngx.log(ngx.ERR, "failed to read chunk of streaming buffer, ", err)
         break
+    elseif not buffer then
+      break
     end
 
-    if buffer then
-      -- we need to rip each message from this chunk
-      events = {}
-      for s in buffer:gmatch("[^\r\n]+") do
-        table.insert(events, s)
+    -- we need to rip each message from this chunk
+    events = {}
+    for s in buffer:gmatch("[^\r\n]+") do
+      table.insert(events, s)
+    end
+
+    local metadata
+
+    -- then parse each into the standard inference format
+    for i, event in ipairs(events) do
+      local event_t
+      local token_t
+
+      -- some LLMs do a final reply with token counts, and such
+      -- so we will stash them if supported
+      local formatted, err, this_metadata = self.driver.from_format(event, self.conf.model, "stream/" .. self.conf.route_type)
+      if err then
+        return internal_server_error(err)
       end
 
-      local metadata
+      metadata = this_metadata or metadata
 
-      -- then parse each into the standard inference format
-      for i, event in ipairs(events) do
-        local event_t
-        local token_t
+      -- handle event telemetry
+      if self.conf.logging.log_statistics then
 
-        -- some LLMs do a final reply with token counts, and such
-        -- so we will stash them if supported
-        local formatted, err, this_metadata = self.driver.from_format(event, self.conf.model, "stream/" .. self.conf.route_type)
-        if err then
-          return internal_server_error(err)
+        if not ai_shared.streaming_has_token_counts[self.conf.model.provider] then
+          event_t = cjson.decode(formatted)
+          token_t = get_token_text(event_t)
+
+          -- incredibly loose estimate based on https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them
+          -- but this is all we can do until OpenAI fixes this...
+          --
+          -- essentially, every 4 characters is a token, with minimum of 1 per event
+          telemetry_fake_table.usage.completion_tokens =
+              telemetry_fake_table.usage.completion_tokens + math.ceil(#strip(token_t) / 4)
+
+        elseif metadata then
+          telemetry_fake_table.usage.completion_tokens = metadata.completion_tokens
+          telemetry_fake_table.usage.prompt_tokens = metadata.prompt_tokens
         end
 
-        metadata = this_metadata or metadata
+      end
 
-        -- handle event telemetry
-        if self.conf.logging.log_statistics then
-
-          if not ai_shared.streaming_has_token_counts[self.conf.model.provider] then
+      -- then stream to the client
+      if formatted then  -- only stream relevant frames back to the user
+        if self.conf.logging.log_payloads then
+          -- append the "choice" to the buffer, for logging later. this actually works!
+          if not event_t then
             event_t = cjson.decode(formatted)
+          end
+          
+          if not token_t then
             token_t = get_token_text(event_t)
-
-            -- incredibly loose estimate based on https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them
-            -- but this is all we can do until OpenAI fixes this...
-            --
-            -- essentially, every 4 characters is a token, with minimum of 1 per event
-            telemetry_fake_table.usage.completion_tokens =
-                telemetry_fake_table.usage.completion_tokens + math.ceil(#strip(token_t) / 4)
-
-          elseif metadata then
-            telemetry_fake_table.usage.completion_tokens = metadata.completion_tokens
-            telemetry_fake_table.usage.prompt_tokens = metadata.prompt_tokens
           end
 
-        end
-
-        -- then stream to the client
-        if formatted then  -- only stream relevant frames back to the user
-          if self.conf.logging.log_payloads then
-            -- append the "choice" to the buffer, for logging later. this actually works!
-            if not event_t then
-              event_t = cjson.decode(formatted)
-            end
-            
-            if not token_t then
-              token_t = get_token_text(event_t)
-            end
-
-            if err then
-              return internal_server_error("something wrong with decoding a specific token")
-            end
-
-            telemetry_fake_table.response:put(token_t)
+          if err then
+            return internal_server_error("something wrong with decoding a specific token")
           end
 
-          -- construct, transmit, and flush the frame
-          ngx.print("data: ", formatted, "\n\n")
-          ngx.flush()
+          telemetry_fake_table.response:put(token_t)
         end
+
+        -- construct, transmit, and flush the frame
+        ngx.print("data: ", formatted, "\n\n")
+        ngx.flush()
       end
-
     end
+
   until not buffer
 
   local ok, err = httpc:set_keepalive()
