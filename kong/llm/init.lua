@@ -532,7 +532,7 @@ function _M:handle_streaming_request(body)
           end
 
           -- construct, transmit, and flush the frame
-          ngx.print(fmt("data: %s\n\n", formatted))
+          ngx.print("data: ", formatted, "\n\n")
           ngx.flush()
         end
       end
