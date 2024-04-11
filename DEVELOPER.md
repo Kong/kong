@@ -201,6 +201,8 @@ Install the development dependencies ([busted], [luacheck]) with:
 make dev
 ```
 
+If Rust/Cargo doesn't work try setting `export KONG_TEST_USER_CARGO_DISABLED=1` first.
+
 Kong relies on three test suites using the [busted] testing library:
 
 * Unit tests
