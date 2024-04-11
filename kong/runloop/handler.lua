@@ -1122,7 +1122,7 @@ return {
   preread = {
     before = function(ctx)
       local server_port = var.server_port
-      ctx.host_port = HOST_PORTS[server_port] or server_port
+      ctx.host_port = HOST_PORTS[server_port] or tonumber(server_port, 10)
 
       local router = get_updated_router()
 
@@ -1199,7 +1199,7 @@ return {
   rewrite = {
     before = function(ctx)
       local server_port = var.server_port
-      ctx.host_port = HOST_PORTS[server_port] or server_port
+      ctx.host_port = HOST_PORTS[server_port] or tonumber(server_port, 10)
       instrumentation.request(ctx)
     end,
   },
@@ -1262,8 +1262,7 @@ return {
       end
 
       local host           = var.host
-      local port           = tonumber(ctx.host_port, 10)
-                          or tonumber(var.server_port, 10)
+      local port           = ctx.host_port or tonumber(var.server_port, 10)
 
       local service        = match_t.service
       local upstream_url_t = match_t.upstream_url_t

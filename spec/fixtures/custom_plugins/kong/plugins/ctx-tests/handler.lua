@@ -267,6 +267,7 @@ function CtxTests:preread()
   assert(is_nil(ctx, "KONG_RESPONSE_LATENCY"))
   assert(is_nil(ctx, "KONG_WAITING_TIME"))
   assert(is_nil(ctx, "KONG_RECEIVE_TIME"))
+  assert(is_positive_integer(ctx, "host_port"))
 end
 
 
@@ -306,6 +307,7 @@ function CtxTests:rewrite()
   assert(is_nil(ctx, "KONG_RESPONSE_LATENCY"))
   assert(is_nil(ctx, "KONG_WAITING_TIME"))
   assert(is_nil(ctx, "KONG_RECEIVE_TIME"))
+  assert(is_positive_integer(ctx, "host_port"))
 end
 
 
@@ -349,6 +351,7 @@ function CtxTests:access(config)
   assert(is_nil(ctx, "KONG_RESPONSE_LATENCY"))
   assert(is_nil(ctx, "KONG_WAITING_TIME"))
   assert(is_nil(ctx, "KONG_RECEIVE_TIME"))
+  assert(is_positive_integer(ctx, "host_port"))
 end
 
 
@@ -392,6 +395,7 @@ function CtxTests:header_filter(config)
   assert(is_nil(ctx, "KONG_LOG_TIME"))
   assert(is_nil(ctx, "KONG_RESPONSE_LATENCY"))
   assert(is_nil(ctx, "KONG_RECEIVE_TIME"))
+  assert(is_positive_integer(ctx, "host_port"))
 end
 
 
@@ -440,6 +444,7 @@ function CtxTests:body_filter(config)
   assert(is_nil(ctx, "KONG_LOG_TIME"))
   assert(is_nil(ctx, "KONG_RESPONSE_LATENCY"))
   assert(is_nil(ctx, "KONG_RECEIVE_TIME"))
+  assert(is_positive_integer(ctx, "host_port"))
 end
 
 
@@ -458,7 +463,7 @@ function CtxTests:log(config)
       assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_UPSTREAM_DNS_START", "KONG_UPSTREAM_DNS_END_AT"))
       assert(is_non_negative_integer(ctx, "KONG_UPSTREAM_DNS_TIME"))
       assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_UPSTREAM_DNS_END_AT", "KONG_LOG_START"))
-      assert(has_correct_upstream_dns_time(ctx)) 
+      assert(has_correct_upstream_dns_time(ctx))
     end
     assert(is_true(ctx, "KONG_PROXIED"))
     assert(has_correct_proxy_latency(ctx))
@@ -522,7 +527,7 @@ function CtxTests:log(config)
       assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_UPSTREAM_DNS_START", "KONG_UPSTREAM_DNS_END_AT"))
       assert(is_non_negative_integer(ctx, "KONG_UPSTREAM_DNS_TIME"))
       assert(is_greater_or_equal_to_ctx_value(ctx, "KONG_UPSTREAM_DNS_END_AT", "KONG_LOG_START"))
-      assert(has_correct_upstream_dns_time(ctx)) 
+      assert(has_correct_upstream_dns_time(ctx))
     end
     assert(is_true(ctx, "KONG_PROXIED"))
     assert(has_correct_proxy_latency(ctx))
@@ -534,6 +539,8 @@ function CtxTests:log(config)
     assert(is_nil(ctx, "KONG_LOG_ENDED_AT"))
     assert(is_nil(ctx, "KONG_LOG_TIME"))
   end
+
+  assert(is_positive_integer(ctx, "host_port"))
 end
 
 

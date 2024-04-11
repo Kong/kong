@@ -820,7 +820,7 @@ do
 
       local request_uri = var.request_uri or ""
 
-      local host_port = ctx.host_port or var.server_port
+      local host_port = ctx.host_port or tonumber(var.server_port, 10)
 
       local upstream_uri = var.upstream_uri or ""
       if upstream_uri ~= "" and not find(upstream_uri, "?", nil, true) then
@@ -839,11 +839,18 @@ do
       local response_source = okong.response.get_source(ongx.ctx)
       local response_source_name = TYPE_NAMES[response_source]
 
+      local url
+      if host_port then
+        url = var.scheme .. "://" .. var.host .. ":" .. host_port .. request_uri
+      else
+        url = var.scheme .. "://" .. var.host .. request_uri
+      end
+
       local root = {
         request = {
           id = request_id_get() or "",
           uri = request_uri,
-          url = var.scheme .. "://" .. var.host .. ":" .. host_port .. request_uri,
+          url = url,
           querystring = okong.request.get_query(), -- parameters, as a table
           method = okong.request.get_method(), -- http method
           headers = okong.request.get_headers(),
@@ -892,7 +899,7 @@ do
       local ctx = ongx.ctx
       local var = ongx.var
 
-      local host_port = ctx.host_port or var.server_port
+      local host_port = ctx.host_port or tonumber(var.server_port, 10)
 
       local root = {
         session = {
@@ -900,7 +907,7 @@ do
           received = to_decimal(var.bytes_received),
           sent = to_decimal(var.bytes_sent),
           status = ongx.status,
-          server_port = to_decimal(host_port),
+          server_port = host_port,
         },
         upstream = {
           received = to_decimal(var.upstream_bytes_received),
