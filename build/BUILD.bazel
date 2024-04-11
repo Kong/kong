@@ -1,6 +1,7 @@
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("//build:build_system.bzl", "kong_directory_genrule", "kong_rules_group", "kong_template_file")
+load("@kong//build/openresty/wasmx/filters:variables.bzl", "WASM_FILTERS_TARGETS")
 
 exports_files([
     "package/nfpm.yaml",
@@ -45,6 +46,18 @@ install_webui_cmd = select({
         cp -r $(location @kong_admin_gui//:dist_files) ${BUILD_DESTDIR}/kong/gui
     """,
     "@kong//:skip_webui_flags": "\n",
+})
+
+install_wasm_filters_cmd = select({
+    "@kong//:wasmx_flag": """
+            mkdir -pv ${BUILD_DESTDIR}/kong/include/filters
+        """ + " ".join(["""
+            tpath="$(locations %s)"
+            fname="$(echo "${tpath}" | cut -d'/' -f2)"
+
+            cp -v "$tpath" "${BUILD_DESTDIR}/kong/include/filters/${fname}"
+        """ % t for t in WASM_FILTERS_TARGETS]),
+    "//conditions:default": "\n",
 })
 
 install_wasm_deps_cmd = select({
@@ -99,7 +112,7 @@ kong_directory_genrule(
         "@kong//:wasmx_flag": [
             "@ngx_wasmx_module//:lua_libs",
             "@openresty//:wasm_runtime",
-        ],
+        ] + WASM_FILTERS_TARGETS,
         "//conditions:default": [],
     }) + lib_deps + lualib_deps,
     cmd =
@@ -147,7 +160,14 @@ kong_directory_genrule(
 
         cp -r $(locations @protoc//:all_srcs) ${BUILD_DESTDIR}/kong/.
 
-    """ + install_lib_deps_cmd + install_lualib_deps_cmd + install_webui_cmd + link_modules_dir + install_wasm_deps_cmd + """
+    """ +
+        install_lib_deps_cmd +
+        install_lualib_deps_cmd +
+        install_webui_cmd +
+        link_modules_dir +
+        install_wasm_filters_cmd +
+        install_wasm_deps_cmd +
+        """
         mkdir -p ${BUILD_DESTDIR}/etc/kong
         cp kong.conf.default ${BUILD_DESTDIR}/etc/kong/kong.conf.default
 
