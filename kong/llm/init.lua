@@ -312,7 +312,46 @@ local function get_token_text(event_t)
     or ""
 end
 
-function _M:calculate_cost(query_body, tokens_models, tokens_factor, tokens_max_query_cost)
+-- Function to count the number of words in a string
+local function count_words(str)
+  local count = 0
+  for word in str:gmatch("%S+") do
+      count = count + 1
+  end
+  return count
+end
+
+-- Function to count the number of words or tokens based on the content type
+local function count_prompt(content, tokens_factor)
+  local count = 0
+
+  if type(content) == "string" then
+      count = count_words(content) * tokens_factor
+  elseif type(content) == "table" then
+      for _, item in ipairs(content) do
+          if type(item) == "string" then
+              count = count + (count_words(item) * tokens_factor)
+          elseif type(item) == "number" then
+              count = count + 1
+          elseif type(item) == "table" then
+              for _2, item2 in ipairs(item) do
+                  if type(item2) == "number" then
+                      count = count + 1
+                  else
+                      return nil, "Invalid request format"
+                  end
+              end
+          else
+              return nil, "Invalid request format"
+          end
+      end
+  else 
+      return nil, "Invalid request format"
+  end
+  return count
+end
+
+function _M:calculate_cost(query_body, tokens_models, tokens_factor)
   local query_cost = 0
   local err
 
@@ -329,46 +368,6 @@ function _M:calculate_cost(query_body, tokens_models, tokens_factor, tokens_max_
       return nil, "No max_tokens in query and no key found in the plugin config for model: " .. query_body.model
   end
 
-  -- Function to count the number of words in a string
-  local function count_words(str)
-      local count = 0
-      for word in str:gmatch("%S+") do
-          count = count + 1
-      end
-      return count
-  end
-
-  -- Function to count the number of words or tokens based on the content type
-  local function count_prompt(content)
-      local count = 0
-
-      if type(content) == "string" then
-          count = count_words(content) * tokens_factor
-      elseif type(content) == "table" then
-          for _, item in ipairs(content) do
-              if type(item) == "string" then
-                  count = count + (count_words(item) * tokens_factor)
-              elseif type(item) == "number" then
-                  count = count + 1
-              elseif type(item) == "table" then
-                  for _2, item2 in ipairs(item) do
-                      if type(item2) == "number" then
-                          count = count + 1
-                      else
-                          return nil, "Invalid request format"
-                      end
-                  end
-              else
-                  return nil, "Invalid request format"
-              end
-          end
-      else 
-          return nil, "Invalid request format"
-      end
-      return count
-  end
-
-
   if query_body.messages then
       -- Calculate the cost based on the content type
       for _, message in ipairs(query_body.messages) do
@@ -376,7 +375,7 @@ function _M:calculate_cost(query_body, tokens_models, tokens_factor, tokens_max_
       end
   elseif query_body.prompt then
       -- Calculate the cost based on the content type
-      query_cost, err = count_prompt(query_body.prompt)
+      query_cost, err = count_prompt(query_body.prompt, tokens_factor)
       if err then
           return nil, err
       end
@@ -417,7 +416,7 @@ function _M:handle_streaming_request(body)
   local err
   if not ai_shared.streaming_has_token_counts[self.conf.model.provider] then
     -- Estimate the cost using KONG CX's counter implementation
-    prompt_tokens, err = self:calculate_cost(request, {}, 1.8, 0)
+    prompt_tokens, err = self:calculate_cost(request, {}, 1.8)
     if err then
       return internal_server_error("unable to estimate request token cost: " .. err)
     end
