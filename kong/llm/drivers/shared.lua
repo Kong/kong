@@ -203,7 +203,7 @@ function _M.from_ollama(response_string, model_info, route_type)
     if route_type == "llm/v1/chat" then
       output.object = "chat.completion"
       output.choices = {
-        [1] = {
+        {
           finish_reason = stop_reason,
           index = 0,
           message = response_table.message,
@@ -213,7 +213,7 @@ function _M.from_ollama(response_string, model_info, route_type)
     elseif route_type == "llm/v1/completions" then
       output.object = "text_completion"
       output.choices = {
-        [1] = {
+        {
           index = 0,
           text = response_table.response,
         }
