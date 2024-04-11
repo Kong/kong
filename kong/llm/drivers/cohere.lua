@@ -445,7 +445,9 @@ function _M.configure_request(conf)
       parsed_url = socket_url.parse(conf.model.options.upstream_url)
     else
       parsed_url = socket_url.parse(ai_shared.upstream_url_format[DRIVER_NAME])
-      parsed_url.path = ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
+      parsed_url.path = conf.model.options
+                    and conf.model.options.upstream_path
+                    or ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
 
       if not parsed_url.path then
         return false, fmt("operation %s is not supported for cohere provider", conf.route_type)

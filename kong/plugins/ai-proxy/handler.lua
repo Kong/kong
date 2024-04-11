@@ -57,24 +57,26 @@ function _M:header_filter(conf)
   local ai_driver = require("kong.llm.drivers." .. conf.model.provider)
   local route_type = conf.route_type
 
-  local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
-  if is_gzip then
-    response_body = kong_utils.inflate_gzip(response_body)
-  end
+  if route_type ~= "preserve" then
+    local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
+    if is_gzip then
+      response_body = kong_utils.inflate_gzip(response_body)
+    end
 
-  local new_response_string, err = ai_driver.from_format(response_body, conf.model, route_type)
-  if err then
-    kong.ctx.plugin.ai_parser_error = true
+    local new_response_string, err = ai_driver.from_format(response_body, conf.model, route_type)
+    if err then
+      kong.ctx.plugin.ai_parser_error = true
 
-    ngx.status = 500
-    ERROR_MSG.error.message = err
+      ngx.status = 500
+      ERROR_MSG.error.message = err
 
-    kong.ctx.plugin.parsed_response = cjson.encode(ERROR_MSG)
+      kong.ctx.plugin.parsed_response = cjson.encode(ERROR_MSG)
 
-  elseif new_response_string then
-    -- preserve the same response content type; assume the from_format function
-    -- has returned the body in the appropriate response output format
-    kong.ctx.plugin.parsed_response = new_response_string
+    elseif new_response_string then
+      -- preserve the same response content type; assume the from_format function
+      -- has returned the body in the appropriate response output format
+      kong.ctx.plugin.parsed_response = new_response_string
+    end
   end
 
   ai_driver.post_request(conf)
@@ -89,8 +91,10 @@ function _M:body_filter(conf)
 
   if kong.ctx.shared.skip_response_transformer then
     local response_body
+
     if kong.ctx.shared.parsed_response then
       response_body = kong.ctx.shared.parsed_response
+
     elseif kong.response.get_status() == 200 then
       response_body = kong.service.response.get_raw_body()
       if not response_body then
@@ -110,6 +114,7 @@ function _M:body_filter(conf)
     
     if err then
       kong.log.warn("issue when transforming the response body for analytics in the body filter phase, ", err)
+
     elseif new_response_string then
       ai_shared.post_request(conf, new_response_string)
     end
@@ -125,22 +130,24 @@ function _M:body_filter(conf)
     -- all errors MUST be checked and returned in header_filter
     -- we should receive a replacement response body from the same thread
 
-    local original_request = kong.ctx.plugin.parsed_response
-    local deflated_request = original_request
-    
-    if deflated_request then
-      local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
-      if is_gzip then
-        deflated_request = kong_utils.deflate_gzip(deflated_request)
+    if route_type ~= "preserve" then
+      local original_request = kong.ctx.plugin.parsed_response
+      local deflated_request = original_request
+      
+      if deflated_request then
+        local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
+        if is_gzip then
+          deflated_request = kong_utils.deflate_gzip(deflated_request)
+        end
+
+        kong.response.set_raw_body(deflated_request)
       end
 
-      kong.response.set_raw_body(deflated_request)
-    end
-
-    -- call with replacement body, or original body if nothing changed
-    local _, err = ai_shared.post_request(conf, original_request)
-    if err then
-      kong.log.warn("analytics phase failed for request, ", err)
+      -- call with replacement body, or original body if nothing changed
+      local _, err = ai_shared.post_request(conf, original_request)
+      if err then
+        kong.log.warn("analytics phase failed for request, ", err)
+      end
     end
   end
 
@@ -177,12 +184,17 @@ function _M:access(conf)
     return bad_request(err)
   end
 
-  -- we need a model to run
+  -- copy from the user request if present
+  if (not conf_m.model.name) and (request_table.model) then
+    conf_m.model.name = request_table.model
+  end
+  
+  -- model is stashed in the copied plugin conf, for consistency in transformation functions
   if not conf_m.model.name then
-    -- TODO check input model and resolved model aren't the same
-    return bad_request("model parameter not located in request or in configuration")
+    return bad_request("model parameter not found in request, nor in gateway configuration")
   end
 
+  -- stash for analytics later
   kong.ctx.plugin.llm_model_requested = conf_m.model.name
 
   -- check the incoming format is the same as the configured LLM format
@@ -191,6 +203,7 @@ function _M:access(conf)
     kong.ctx.shared.skip_response_transformer = true
     return bad_request(err)
   end
+
 
   if request_table.stream or conf.model.options.response_streaming == "always" then
     kong.ctx.shared.skip_response_transformer = true
@@ -214,10 +227,14 @@ function _M:access(conf)
       return bad_request(err)
     end
 
-    -- transform the body to Kong-format for this provider/model
-    local parsed_request_body, content_type, err = ai_driver.to_format(request_table, conf.model, route_type)
-    if err then
-      return bad_request(err)
+    local parsed_request_body, content_type, err
+    if route_type ~= "preserve" then
+      -- transform the body to Kong-format for this provider/model
+      parsed_request_body, content_type, err = ai_driver.to_format(request_table, conf_m.model, route_type)
+      if err then
+        kong.ctx.shared.skip_response_transformer = true
+        return bad_request(err)
+      end
     end
 
     -- execute pre-request hooks for "all" drivers before set new body
@@ -226,11 +243,14 @@ function _M:access(conf)
       return bad_request(err)
     end
 
-    kong.service.request.set_body(parsed_request_body, content_type)
+    if route_type ~= "preserve" then
+      kong.service.request.set_body(parsed_request_body, content_type)
+    end
 
     -- now re-configure the request for this operation type
     local ok, err = ai_driver.configure_request(conf)
     if not ok then
+      kong.ctx.shared.skip_response_transformer = true
       return internal_server_error(err)
     end
 

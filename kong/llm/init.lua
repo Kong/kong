@@ -62,12 +62,6 @@ local model_options_schema = {
         description = "Defines the max_tokens, if using chat or completion models.",
         required = false,
         default = 256 }},
-    { allow_exceeding_max_tokens = {
-        type = "boolean",
-        description = "If enabled, will allow users to send their own 'max_tokens' parameter, "
-                   .. "larger than the pre-defined option in [model.options.max_tokens].",
-        required = true,
-        default = true }},
     { temperature = {
         type = "number",
         description = "Defines the matching temperature, if using chat or completion models.",
@@ -110,6 +104,11 @@ local model_options_schema = {
         description = "If using mistral provider, select the upstream message format.",
         required = false,
         one_of = { "openai", "ollama" }}},
+    { upstream_path = {
+        description = "Manually specify or override the AI operation path, "
+                   .. "used when e.g. using the 'preserve' route_type.",
+        type = "string",
+        required = false }},
     { upstream_url = typedefs.url {
         description = "Manually specify or override the full URL to the AI operation endpoints, "
                    .. "when calling (self-)hosted models, or for running via a private endpoint.",
@@ -388,6 +387,10 @@ function _M:calculate_cost(query_body, tokens_models, tokens_factor)
 end
 
 function _M.is_compatible(request, route_type)
+  if route_type == "preserve" then
+    return true
+  end
+
   local format, err = identify_request(request)
   if err then 
     return nil, err

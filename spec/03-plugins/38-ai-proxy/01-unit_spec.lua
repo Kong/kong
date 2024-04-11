@@ -4,6 +4,7 @@ local pl_replace = require("pl.stringx").replace
 local cjson = require("cjson.safe")
 local fmt = string.format
 local llm = require("kong.llm")
+local ai_shared = require("kong.llm.drivers.shared")
 
 local SAMPLE_LLM_V1_CHAT = {
   messages = {
@@ -222,6 +223,167 @@ local expected_stream_choices = {
 }
 
 describe(PLUGIN_NAME .. ": (unit)", function()
+
+  it("resolves referenceable plugin configuration from request context", function()
+    local fake_request = {
+      ["get_header"] = function(header_name)
+        local headers = {
+          ["from_header_1"] = "header_value_here_1",
+          ["from_header_2"] = "header_value_here_2",
+        }
+        return headers[header_name]
+      end,
+
+      ["get_uri_captures"] = function()
+        return {
+          ["named"] = {
+            ["uri_cap_1"] = "cap_value_here_1",
+            ["uri_cap_2"] = "cap_value_here_2",
+          },
+        }
+      end,
+
+      ["get_query_arg"] = function(query_arg_name)
+        local query_args = {
+          ["arg_1"] = "arg_value_here_1",
+          ["arg_2"] = "arg_value_here_2",
+        }
+        return query_args[query_arg_name]
+      end,
+    }
+
+    local fake_config = {
+      route_type = "llm/v1/chat",
+      auth = {
+        header_name = "api-key",
+        header_value = "azure-key",
+      },
+      model = {
+        name = "gpt-3.5-turbo",
+        provider = "azure",
+        options = {
+          max_tokens = 256,
+          temperature = 1.0,
+          azure_instance = "$(uri_captures.uri_cap_1)",
+          azure_deployment_id = "$(headers.from_header_1)",
+          azure_api_version = "$(query_params.arg_1)",
+        },
+      },
+    }
+
+    local result, err = ai_shared.resolve_plugin_conf(fake_request, fake_config)
+    assert.is_falsy(err)
+    assert.same(result.model.options, {
+      ['azure_api_version'] = 'arg_value_here_1',
+      ['azure_deployment_id'] = 'header_value_here_1',
+      ['azure_instance'] = 'cap_value_here_1',
+      ['max_tokens'] = 256,
+      ['temperature'] = 1,
+    })
+  end)
+
+  it("resolves referenceable model name from request context", function()
+    local fake_request = {
+      ["get_header"] = function(header_name)
+        local headers = {
+          ["from_header_1"] = "header_value_here_1",
+          ["from_header_2"] = "header_value_here_2",
+        }
+        return headers[header_name]
+      end,
+
+      ["get_uri_captures"] = function()
+        return {
+          ["named"] = {
+            ["uri_cap_1"] = "cap_value_here_1",
+            ["uri_cap_2"] = "cap_value_here_2",
+          },
+        }
+      end,
+
+      ["get_query_arg"] = function(query_arg_name)
+        local query_args = {
+          ["arg_1"] = "arg_value_here_1",
+          ["arg_2"] = "arg_value_here_2",
+        }
+        return query_args[query_arg_name]
+      end,
+    }
+
+    local fake_config = {
+      route_type = "llm/v1/chat",
+      auth = {
+        header_name = "api-key",
+        header_value = "azure-key",
+      },
+      model = {
+        name = "$(uri_captures.uri_cap_2)",
+        provider = "azure",
+        options = {
+          max_tokens = 256,
+          temperature = 1.0,
+          azure_instance = "string-1",
+          azure_deployment_id = "string-2",
+          azure_api_version = "string-3",
+        },
+      },
+    }
+
+    local result, err = ai_shared.resolve_plugin_conf(fake_request, fake_config)
+    assert.is_falsy(err)
+    assert.same("cap_value_here_2", result.model.name)
+  end)
+
+  it("returns appropriate error when referenceable plugin configuration is missing from request context", function()
+    local fake_request = {
+      ["get_header"] = function(header_name)
+        local headers = {
+          ["from_header_1"] = "header_value_here_1",
+          ["from_header_2"] = "header_value_here_2",
+        }
+        return headers[header_name]
+      end,
+
+      ["get_uri_captures"] = function()
+        return {
+          ["named"] = {
+            ["uri_cap_1"] = "cap_value_here_1",
+            ["uri_cap_2"] = "cap_value_here_2",
+          },
+        }
+      end,
+
+      ["get_query_arg"] = function(query_arg_name)
+        local query_args = {
+          ["arg_1"] = "arg_value_here_1",
+          ["arg_2"] = "arg_value_here_2",
+        }
+        return query_args[query_arg_name]
+      end,
+    }
+
+    local fake_config = {
+      route_type = "llm/v1/chat",
+      auth = {
+        header_name = "api-key",
+        header_value = "azure-key",
+      },
+      model = {
+        name = "gpt-3.5-turbo",
+        provider = "azure",
+        options = {
+          max_tokens = 256,
+          temperature = 1.0,
+          azure_instance = "$(uri_captures.uri_cap_3)",
+          azure_deployment_id = "$(headers.from_header_1)",
+          azure_api_version = "$(query_params.arg_1)",
+        },
+      },
+    }
+
+    local _, err = ai_shared.resolve_plugin_conf(fake_request, fake_config)
+    assert.same("uri_captures key uri_cap_3 was not provided", err)
+  end)
 
   it("llm/v1/chat message is compatible with llm/v1/chat route", function()
     local compatible, err = llm.is_compatible(SAMPLE_LLM_V1_CHAT, "llm/v1/chat")

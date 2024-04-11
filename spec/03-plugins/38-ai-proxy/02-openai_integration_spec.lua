@@ -191,6 +191,40 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
               }
             }
 
+            location = "/llm/v1/embeddings/good" {
+              content_by_lua_block {
+                local pl_file = require "pl.file"
+                local json = require("cjson.safe")
+
+                ngx.req.read_body()
+                local body, err = ngx.req.get_body_data()
+                body, err = json.decode(body)
+
+                local token = ngx.req.get_headers()["authorization"]
+                local token_query = ngx.req.get_uri_args()["apikey"]
+
+                if token == "Bearer openai-key" or token_query == "openai-key" or body.apikey == "openai-key" then
+                  ngx.req.read_body()
+                  local body, err = ngx.req.get_body_data()
+                  body, err = json.decode(body)
+
+                  if err then
+                    ngx.status = 400
+                    ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/bad_request.json"))
+
+                  elseif body.input == "The food was delicious and the waiter"
+                     and body.model == "text-embedding-ada-002" then
+                    ngx.status = 200
+                    ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-embeddings/responses/good.json"))
+                  end
+
+                else
+                  ngx.status = 401
+                  ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/unauthorized.json"))
+                end
+              }
+            }
+
         }
       ]]
 
@@ -242,12 +276,45 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       }
       --
 
-      -- 200 chat good with max tokens exceeding blocked
+      -- 200 embeddings (preserve route mode) good
       local chat_good = assert(bp.routes:insert {
         service = empty_service,
         protocols = { "http" },
         strip_path = true,
-        paths = { "/openai/llm/v1/chat/good-with-max-tokens" }
+        paths = { "/openai/llm/v1/embeddings/good" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = chat_good.id },
+        config = {
+          route_type = "preserve",
+          auth = {
+            header_name = "Authorization",
+            header_value = "Bearer openai-key",
+          },
+          model = {
+            provider = "openai",
+            options = {
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/embeddings/good"
+            },
+          },
+        },
+      }
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = chat_good.id },
+        config = {
+          path = "/dev/stdout",
+        },
+      }
+      --
+
+      -- 200 chat good but no model set
+      local chat_good = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http" },
+        strip_path = true,
+        paths = { "/openai/llm/v1/chat/good-no-model-param" }
       })
       bp.plugins:insert {
         name = PLUGIN_NAME,
@@ -259,18 +326,23 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             header_value = "Bearer openai-key",
           },
           model = {
-            name = "gpt-3.5-turbo",
             provider = "openai",
             options = {
               max_tokens = 256,
-              allow_exceeding_max_tokens = false,
               temperature = 1.0,
               upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/chat/good"
             },
           },
         },
       }
-      --
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = chat_good.id },
+        config = {
+          path = "/dev/stdout",
+        },
+      }
+      --   
 
       -- 200 chat good with statistics disabled
       local chat_good_no_stats = assert(bp.routes:insert {
@@ -776,21 +848,31 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         }, json.choices[1].message)
       end)
 
-      it("tries to exceed max tokens", function()
-        local r = client:get("/openai/llm/v1/chat/good-with-max-tokens", {
+      it("works with model not sent in plugin conf but is in body", function()
+        local r = client:get("/openai/llm/v1/chat/good-no-model-param", {
           headers = {
             ["content-type"] = "application/json",
             ["accept"] = "application/json",
           },
-          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good-excessive-tokens.json"),
+          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good_own_model.json"),
+        })
+
+        assert.res_status(200, r)
+      end)
+
+      it("fails with model not sent in body and also missing from plugin conf", function()
+        local r = client:get("/openai/llm/v1/chat/good-no-model-param", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
         })
         
         local body = assert.res_status(400, r)
         local json = cjson.decode(body)
 
-        -- check this is in the 'kong' response format
-        assert.is_truthy(json.error)
-        assert.equals(json.error.message, "exceeding max_tokens of 256 is not allowed")
+        assert.same(json, { error = { message = "model parameter not found in request, nor in gateway configuration" }})
       end)
     end)
 
@@ -877,6 +959,43 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.is_table(json.choices)
         assert.is_table(json.choices[1])
         assert.same("\n\nI am a language model AI created by OpenAI. I can answer questions", json.choices[1].text)
+      end)
+
+      it("bad request", function()
+        local r = client:get("/openai/llm/v1/completions/bad_request", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-completions/requests/bad_request.json"),
+        })
+        
+        local body = assert.res_status(400 , r)
+        local json = cjson.decode(body)
+
+        -- check this is in the 'kong' response format
+        assert.is_truthy(json.error)
+        assert.equals("request format not recognised", json.error.message)
+      end)
+    end)
+
+    describe("openai preserve", function()
+      it("good request", function()
+        local r = client:get("/openai/llm/v1/embeddings/good", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-embeddings/requests/good.json"),
+        })
+        
+        -- validate that the request succeeded, response status 200
+        local body = assert.res_status(200 , r)
+        local json = cjson.decode(body)
+
+        -- check this is in the 'kong' response format
+        assert.same(json.model, "text-embedding-ada-002")
+        assert.same(json.object, "list")
       end)
 
       it("bad request", function()

@@ -14,8 +14,20 @@ local DRIVER_NAME = "azure"
 
 _M.from_format = openai_driver.from_format
 _M.to_format = openai_driver.to_format
-_M.pre_request = openai_driver.pre_request
 _M.header_filter_hooks = openai_driver.header_filter_hooks
+
+function _M.pre_request(conf)
+  kong.service.request.set_header("Accept-Encoding", "gzip, identity")  -- tell server not to send brotli
+
+  -- for azure provider, all of these must/will be set
+  if conf.logging and conf.logging.log_statistics then
+    kong.log.set_serialize_value("ai.meta.azure_instance_id", conf.model.options.azure_instance)
+    kong.log.set_serialize_value("ai.meta.azure_deployment_id", conf.model.options.azure_deployment_id)
+    kong.log.set_serialize_value("ai.meta.azure_api_version", conf.model.options.azure_api_version)
+  end
+
+  return true
+end
 
 function _M.post_request(conf)
   if ai_shared.clear_response_headers[DRIVER_NAME] then
@@ -91,7 +103,9 @@ function _M.configure_request(conf)
     local url = fmt(
       "%s%s",
       ai_shared.upstream_url_format[DRIVER_NAME]:format(conf.model.options.azure_instance, conf.model.options.azure_deployment_id),
-      ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
+          conf.model.options
+      and conf.model.options.upstream_path
+      or ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
     )
     parsed_url = socket_url.parse(url)
   end
@@ -99,7 +113,6 @@ function _M.configure_request(conf)
   kong.service.request.set_path(parsed_url.path)
   kong.service.request.set_scheme(parsed_url.scheme)
   kong.service.set_target(parsed_url.host, tonumber(parsed_url.port))
-
 
   local auth_header_name = conf.auth and conf.auth.header_name
   local auth_header_value = conf.auth and conf.auth.header_value

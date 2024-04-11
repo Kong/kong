@@ -92,6 +92,37 @@ local format_stencils = {
     },
 
   },
+
+  llm_v1_embeddings = {
+    good = {
+
+      user_request = {
+        input = "The food was delicious and the waiter",
+        model = "text-embedding-ada-002",
+      },
+
+      provider_response = {
+        object = "list",
+        data = {
+          [1] = {
+            object = "embedding",
+            embedding = {
+              [1] = 0.0023064255,
+              [2] = -0.009327292,
+              [3] = -0.0028842222,
+            },
+            index = 0,
+          },
+        },
+        model = "text-embedding-ada-002",
+        usage = {
+          prompt_tokens = 8,
+          total_tokens = 8,
+        },
+      },
+
+    },
+  },
 }
 
 local plugin_conf = {
@@ -106,6 +137,20 @@ local plugin_conf = {
     options = {
       max_tokens = 256,
       temperature = 1.0,
+    },
+  },
+}
+
+local plugin_conf_preserve = {
+  route_type = "preserve",
+  auth = {
+    header_name = "Authorization",
+    header_value = "Bearer openai-key",
+  },
+  model = {
+    provider = "openai",
+    options = {
+      upstream_path = "/v1/embeddings"
     },
   },
 }
@@ -199,6 +244,64 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
               }
             }
 
+            location = "/v1/embeddings" {
+              content_by_lua_block {
+                local json = require("cjson.safe")
+                local inflate_gzip  = require("kong.tools.gzip").inflate_gzip
+                local deflate_gzip  = require("kong.tools.gzip").deflate_gzip
+
+                ngx.req.read_body()
+                local body, err = ngx.req.get_body_data()
+                body, err = json.decode(body)
+
+                local token = ngx.req.get_headers()["authorization"]
+                local token_query = ngx.req.get_uri_args()["apikey"]
+                
+                if token == "Bearer openai-key" or token_query == "openai-key" or body.apikey == "openai-key" then
+                  ngx.req.read_body()
+                  local body, err = ngx.req.get_body_data()
+                  body, err = json.decode(body)
+
+                  if err or (body.messages == ngx.null) then
+                    ngx.status = 400
+                  else
+                    local test_type = ngx.req.get_headers()['x-test-type']
+
+                    -- switch based on test type requested
+                    if test_type == ngx.null or test_type == "200" then
+                      ngx.status = 200
+                      ngx.header["content-encoding"] = "gzip"
+                      local response = deflate_gzip(']] .. cjson.encode(format_stencils.llm_v1_embeddings.good.provider_response) .. [[')
+                      ngx.print(response)
+                    elseif test_type == "200_FAULTY" then
+                      ngx.status = 200
+                      ngx.header["content-encoding"] = "gzip"
+                      local response = deflate_gzip(']] .. cjson.encode(format_stencils.llm_v1_chat.faulty.provider_response) .. [[')
+                      ngx.print(response)
+                    elseif test_type == "401" then
+                      ngx.status = 401
+                      ngx.header["content-encoding"] = "gzip"
+                      local response = deflate_gzip(']] .. cjson.encode(format_stencils.llm_v1_chat.unauthorized.provider_response) .. [[')
+                      ngx.print(response)
+                    elseif test_type == "500" then
+                      ngx.status = 500
+                      ngx.header["content-encoding"] = "gzip"
+                      local response = deflate_gzip(']] .. cjson.encode(format_stencils.llm_v1_chat.error.provider_response) .. [[')
+                      ngx.print(response)
+                    elseif test_type == "500_FAULTY" then
+                      ngx.status = 500
+                      ngx.header["content-encoding"] = "gzip"
+                      local response = deflate_gzip(']] .. cjson.encode(format_stencils.llm_v1_chat.error_faulty.provider_response) .. [[')
+                      ngx.print(response)
+                    end
+                  end
+                else
+                  ngx.status = 401
+                  -- ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/unauthorized.json"))
+                end
+              }
+            }
+
         }
       ]]
 
@@ -220,6 +323,20 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         name = PLUGIN_NAME,
         route = { id = openai_chat.id },
         config = plugin_conf,
+      }
+      --
+
+      -- 200 preserve good, gzipped from server
+      local openai_embedding = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http" },
+        strip_path = true,
+        paths = { "/openai/llm/v1/embeddings" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = openai_embedding.id },
+        config = plugin_conf_preserve,
       }
       --
 
@@ -250,7 +367,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
 
     ---- TESTS
-    describe("returns deflated response to client", function()
+    describe("CHAT: returns deflated response to client", function()
       it("200 from LLM", function()
         local r = client:get("/openai/llm/v1/chat", {
           headers = {
@@ -360,7 +477,32 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       -- compare the webserver vs expected error
       assert.same({ bad_message = { bad_error = { unauthorized = "some failure with weird json" }}}, actual_response)
     end)
+
+    describe("PRESERVE: returns deflated response to client", function()
+      it("200 from LLM", function()
+        local r = client:get("/openai/llm/v1/embeddings", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+            ["x-test-type"] = "200",
+          },
+          body = format_stencils.llm_v1_embeddings.good.user_request,
+        })
+
+        -- validate that the request succeeded, response status 200
+        local actual_response_string = assert.res_status(200 , r)
+        actual_response_string = inflate_gzip(actual_response_string)
+        local actual_response, err = cjson.decode(actual_response_string)
+        assert.is_falsy(err)
+
+        -- compare the webserver vs code responses objects
+        assert.same(format_stencils.llm_v1_embeddings.good.provider_response, actual_response)
+      end)
+    end)
+
   end)
+
+  
   ----
 
 end end

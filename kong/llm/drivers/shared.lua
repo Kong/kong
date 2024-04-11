@@ -198,20 +198,6 @@ function _M.to_ollama(request_table, model)
   return input, "application/json", nil
 end
 
--- TODO REMOVE
-local function dump(o)
-  if type(o) == 'table' then
-     local s = '{ '
-     for k,v in pairs(o) do
-        if type(k) ~= 'number' then k = '"'..k..'"' end
-        s = s .. '['..k..'] = ' .. dump(v) .. ','
-     end
-     return s .. '} '
-  else
-     return tostring(o)
-  end
-end
-
 function _M.conf_from_request(kong_request, source, key)
   if source == "uri_captures" then
     return kong_request.get_uri_captures().named[key]
@@ -220,7 +206,7 @@ function _M.conf_from_request(kong_request, source, key)
   elseif source == "query_params" then
     return kong_request.get_query_arg(key)
   else
-    return nil, "source " .. source .. " is not supported"
+    return nil, "source '" .. source .. "' is not supported"
   end
 end
 
@@ -242,7 +228,7 @@ function _M.resolve_plugin_conf(kong_request, conf)
       return nil, err
     end
     if not model_m then
-      return nil, splitted[1] .. " key " .. splitted[2] .. " was not provided"
+      return nil, "'" .. splitted[1] .. "', key '" .. splitted[2] .. "' was not provided"
     end
 
     -- replace the value
@@ -250,68 +236,27 @@ function _M.resolve_plugin_conf(kong_request, conf)
   end
 
   -- handle all other options
-  ---- TODO for ipairs(conf.model.options) ...
-  local model_m = string_match(conf_m.model.options.azure_instance or "", '%$%((.-)%)')
-  if model_m then
-    local splitted = split(model_m, '.')
-    if #splitted ~= 2 then
-      return nil, "cannot parse expression for field 'model.options.azure_instance_id'"
-    end
+  for k, v in pairs(conf.model.options or {}) do
+    local prop_m = string_match(v or "", '%$%((.-)%)')
+    if prop_m then
+      local splitted = split(prop_m, '.')
+      if #splitted ~= 2 then
+        return nil, "cannot parse expression for field '" .. v .. "'"
+      end
 
-    -- find the request parameter, with the configured name
-    model_m, err = _M.conf_from_request(kong_request, splitted[1], splitted[2])
-    if err then
-      return nil, err
-    end
-    if not model_m then
-      return nil, splitted[1] .. " key " .. splitted[2] .. " was not provided"
-    end
+      -- find the request parameter, with the configured name
+      prop_m, err = _M.conf_from_request(kong_request, splitted[1], splitted[2])
+      if err then
+        return nil, err
+      end
+      if not prop_m then
+        return nil, splitted[1] .. " key " .. splitted[2] .. " was not provided"
+      end
 
-    -- replacdele the value
-    conf_m.model.options.azure_instance = model_m
+      -- replace the value
+      conf_m.model.options[k] = prop_m
+    end
   end
-
-  local model_m = string_match(conf_m.model.options.azure_deployment_id or "", '%$%((.-)%)')
-  if model_m then
-    local splitted = split(model_m, '.')
-    if #splitted ~= 2 then
-      return nil, "cannot parse expression for field 'model.name'"
-    end
-
-    -- find the request parameter, with the configured name
-    model_m, err = _M.conf_from_request(kong_request, splitted[1], splitted[2])
-    if err then
-      return nil, err
-    end
-    if not model_m then
-      return nil, splitted[1] .. " key " .. splitted[2] .. " was not provided"
-    end
-
-    -- replace the value
-    conf_m.model.options.azure_deployment_id = model_m
-  end
-
-  local model_m = string_match(conf_m.model.options.azure_api_version or "", '%$%((.-)%)')
-  if model_m then
-    local splitted = split(model_m, '.')
-    if #splitted ~= 2 then
-      return nil, "cannot parse expression for field 'model.name'"
-    end
-
-    -- find the request parameter, with the configured name
-    model_m, err = _M.conf_from_request(kong_request, splitted[1], splitted[2])
-    if err then
-      return nil, err
-    end
-    if not model_m then
-      return nil, splitted[1] .. " key " .. splitted[2] .. " was not provided"
-    end
-
-    -- replace the value
-    conf_m.model.options.azure_api_version = model_m
-  end
-
-  kong.log.warn(dump(conf_m))
 
   return conf_m
 end
@@ -381,15 +326,6 @@ function _M.from_ollama(response_string, model_info, route_type)
 end
 
 function _M.pre_request(conf, request_table)
-  -- check that the user hasn't exceeded the "max" max_tokens
-  if request_table.max_tokens
-       and conf.model.options
-       and conf.model.options.max_tokens
-       and request_table.max_tokens > conf.model.options.max_tokens
-       and (not conf.model.options.allow_exceeding_max_tokens) then
-    return nil, "exceeding max_tokens of " .. conf.model.options.max_tokens .. " is not allowed"
-  end
-
   -- process form/json body auth information
   local auth_param_name = conf.auth and conf.auth.param_name
   local auth_param_value = conf.auth and conf.auth.param_value
@@ -402,7 +338,6 @@ function _M.pre_request(conf, request_table)
   if conf.logging and conf.logging.log_statistics then
     kong.log.set_serialize_value(log_entry_keys.REQUEST_MODEL, conf.model.name)
     kong.log.set_serialize_value(log_entry_keys.PROVIDER_NAME, conf.model.provider)
-    -- TODO log azure stuff
   end
 
   -- if enabled AND request type is compatible, capture the input for analytics
