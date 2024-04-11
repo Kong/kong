@@ -138,8 +138,7 @@ if is_http then
     end
 
     if not params.dst_port then
-      params.dst_port = tonumber((ctx or ngx.ctx).host_port, 10) or
-                        tonumber(var.server_port, 10)
+      params.dst_port = (ctx or ngx.ctx).host_port or tonumber(var.server_port, 10)
     end
 
     return params.dst_port
@@ -182,11 +181,9 @@ else  -- stream
   function(params, ctx)
     if not params.dst_port then
       if var.kong_tls_passthrough_block == "1" or var.ssl_protocol then
-        params.dst_port = tonumber(var.proxy_protocol_server_port)
-
+        params.dst_port = tonumber(var.proxy_protocol_server_port, 10)
       else
-        params.dst_port = tonumber((ctx or ngx.ctx).host_port, 10) or
-                          tonumber(var.server_port, 10)
+        params.dst_port = (ctx or ngx.ctx).host_port or tonumber(var.server_port, 10)
       end
     end
 
