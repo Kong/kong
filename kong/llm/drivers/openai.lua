@@ -236,6 +236,10 @@ function _M.configure_request(conf)
     parsed_url.path = path
   end
 
+  if string.sub(parsed_url.path, 1, 1) ~= "/" then
+    parsed_url.path = "/" .. parsed_url.path
+  end
+
   kong.service.request.set_path(parsed_url.path)
   kong.service.request.set_scheme(parsed_url.scheme)
   kong.service.set_target(parsed_url.host, tonumber(parsed_url.port))

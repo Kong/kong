@@ -457,6 +457,10 @@ function _M.configure_request(conf)
         return false, fmt("operation %s is not supported for cohere provider", conf.route_type)
       end
     end
+
+    if string.sub(parsed_url.path, 1, 1) ~= "/" then
+      parsed_url.path = "/" .. parsed_url.path
+    end
     
     kong.service.request.set_path(parsed_url.path)
     kong.service.request.set_scheme(parsed_url.scheme)

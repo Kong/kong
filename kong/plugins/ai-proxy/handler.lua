@@ -163,6 +163,7 @@ function _M:access(conf)
   kong.ctx.plugin.operation = route_type
 
   local request_table
+  local multipart = false
 
   -- we may have received a replacement / decorated request body from another AI plugin
   if kong.ctx.shared.replacement_request then
@@ -176,7 +177,11 @@ function _M:access(conf)
     request_table = kong.request.get_body(content_type)
 
     if not request_table then
-      return bad_request("content-type header does not match request body")
+      if not string.find(content_type, "multipart/form-data", nil, true) then
+        return bad_request("content-type header does not match request body")
+      end
+
+      multipart = true  -- this may be a large file upload, so we have to proxy it directly
     end
   end
 
@@ -187,10 +192,12 @@ function _M:access(conf)
   end
 
   -- copy from the user request if present
-  if (not conf_m.model.name) and (request_table.model) then
+  if (not multipart) and (not conf_m.model.name) and (request_table.model) then
     conf_m.model.name = request_table.model
+  elseif multipart then
+    conf_m.model.name = "NOT_SPECIFIED"
   end
-  
+
   -- model is stashed in the copied plugin conf, for consistency in transformation functions
   if not conf_m.model.name then
     return bad_request("model parameter not found in request, nor in gateway configuration")
@@ -200,12 +207,13 @@ function _M:access(conf)
   kong.ctx.plugin.llm_model_requested = conf_m.model.name
 
   -- check the incoming format is the same as the configured LLM format
-  local compatible, err = llm.is_compatible(request_table, route_type)
-  if not compatible then
-    kong.ctx.shared.skip_response_transformer = true
-    return bad_request(err)
+  if not multipart then
+    local compatible, err = llm.is_compatible(request_table, route_type)
+    if not compatible then
+      kong.ctx.shared.skip_response_transformer = true
+      return bad_request(err)
+    end
   end
-
 
   if request_table.stream or conf.model.options.response_streaming == "always" then
     kong.ctx.shared.skip_response_transformer = true
@@ -226,11 +234,12 @@ function _M:access(conf)
     -- execute pre-request hooks for this driver
     local ok, err = ai_driver.pre_request(conf, request_table)
     if not ok then
+      kong.ctx.shared.skip_response_transformer = true
       return bad_request(err)
     end
 
     local parsed_request_body, content_type, err
-    if route_type ~= "preserve" then
+    if route_type ~= "preserve" and (not multipart) then
       -- transform the body to Kong-format for this provider/model
       parsed_request_body, content_type, err = ai_driver.to_format(request_table, conf_m.model, route_type)
       if err then

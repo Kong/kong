@@ -331,7 +331,7 @@ function _M.pre_request(conf, request_table)
   local auth_param_value = conf.auth and conf.auth.param_value
   local auth_param_location = conf.auth and conf.auth.param_location
   
-  if auth_param_name and auth_param_value and auth_param_location == "body" then
+  if auth_param_name and auth_param_value and auth_param_location == "body" and request_table then
     request_table[auth_param_name] = auth_param_value
   end
 
@@ -341,7 +341,7 @@ function _M.pre_request(conf, request_table)
   end
 
   -- if enabled AND request type is compatible, capture the input for analytics
-  if conf.logging and conf.logging.log_payloads then
+  if conf.logging and conf.logging.log_payloads and request_table then
     kong.log.set_serialize_value(log_entry_keys.REQUEST_BODY, kong.request.get_raw_body())
   end
 
