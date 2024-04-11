@@ -1,5 +1,0 @@
-message: |
-  Added a config option to prevent AI consumers from overriding/exceeding the max_tokens parameter 
-  set in the config options of the AI Proxy plugin.
-type: feature
-scope: Plugin

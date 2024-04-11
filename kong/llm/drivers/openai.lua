@@ -28,15 +28,15 @@ end
 --
 -- we have already checked that "max_tokens" isn't overridden when it
 -- is not allowed to do so.
-local function merge_defaults(request, options)
-  local merging = {
-    [1] = "max_tokens",
-    [2] = "temperature",
-    [3] = "top_p",
-    [4] = "top_k",
-  }
+local _MERGE_PROPERTIES = {
+  [1] = "max_tokens",
+  [2] = "temperature",
+  [3] = "top_p",
+  [4] = "top_k",
+}
 
-  for i, v in ipairs(merging) do
+local function merge_defaults(request, options)
+  for i, v in ipairs(_MERGE_PROPERTIES) do
     request[v] = request[v] or (options and options[v]) or nil
   end
 
