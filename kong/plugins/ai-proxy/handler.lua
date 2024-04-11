@@ -57,12 +57,14 @@ function _M:header_filter(conf)
   local ai_driver = require("kong.llm.drivers." .. conf.model.provider)
   local route_type = conf.route_type
 
-  if route_type ~= "preserve" then
-    local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
-    if is_gzip then
-      response_body = kong_utils.inflate_gzip(response_body)
-    end
-
+  local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
+  if is_gzip then
+    response_body = kong_utils.inflate_gzip(response_body)
+  end
+  
+  if route_type == "preserve" then
+    kong.ctx.plugin.parsed_response = response_body
+  else
     local new_response_string, err = ai_driver.from_format(response_body, conf.model, route_type)
     if err then
       kong.ctx.plugin.ai_parser_error = true
