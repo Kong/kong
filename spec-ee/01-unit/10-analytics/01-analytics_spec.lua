@@ -907,10 +907,21 @@ describe("proto buffer", function()
     local bytes = pb.encode("kong.model.analytics.Payload", { data = {payload} })
     local decoded = pb.decode("kong.model.analytics.Payload", bytes)
     local expected = {
+      auth = {
+        id = "",
+        type = "",
+      },
       client_ip = "",
       started_at = 0,
       trace_id = "",
       request_id = request_id_value,
+      request = {
+        body_size = 0,
+        header_host = "",
+        header_user_agent = "",
+        http_method = "",
+        uri = "",
+      },
       response = {
         http_status = 0,
         body_size = 0,
@@ -941,7 +952,20 @@ describe("proto buffer", function()
         ratelimit_enabled_year = false
       },
       tries = {},
+      upstream = {
+        upstream_uri = "",
+      },
       upstream_status = "",
+      service = {
+        id = "",
+        name = "",
+        port = 0,
+        protocol = "",
+      },
+      route = {
+        id = "",
+        name = "",
+      },
       source = "",
       application_context = {
         application_id = "app_id",
@@ -950,8 +974,17 @@ describe("proto buffer", function()
         developer_id = "dev_id",
         product_version_id = "pv_id",
       },
+      consumer = {
+        id = "",
+      },
       consumer_groups = {
         { id = "1" },
+      },
+      latencies = {
+        kong_gateway_ms = 0,
+        receive_ms = 0,
+        response_ms = 0,
+        upstream_ms = 0,
       },
       websocket = false,
       sse = false,
@@ -964,10 +997,21 @@ describe("proto buffer", function()
     local bytes = pb.encode("kong.model.analytics.RequestMetadata", payload)
     local decoded = pb.decode("kong.model.analytics.RequestMetadata", bytes)
     local default = {
+      auth = {
+        id = "",
+        type = "",
+      },
       client_ip = "",
       started_at = 0,
       trace_id = "",
       request_id = request_id_value,
+      request = {
+        body_size = 0,
+        header_host = "",
+        header_user_agent = "",
+        http_method = "",
+        uri = "",
+      },
       response = {
         http_status = 0,
         body_size = 0,
@@ -998,7 +1042,20 @@ describe("proto buffer", function()
         ratelimit_enabled_year = false
       },
       tries = {},
+      upstream = {
+        upstream_uri = "",
+      },
       upstream_status = "",
+      service = {
+        id = "",
+        name = "",
+        port = 0,
+        protocol = "",
+      },
+      route = {
+        id = "",
+        name = "",
+      },
       source = "",
       application_context = {
         application_id = "app_id",
@@ -1007,8 +1064,24 @@ describe("proto buffer", function()
         developer_id = "dev_id",
         product_version_id = "pv_id",
       },
+      consumer = {
+        id = "",
+      },
       consumer_groups = {
         { id = "1" },
+      },
+      request = {
+        body_size = 0,
+        header_host = "",
+        header_user_agent = "",
+        http_method = "",
+        uri = "",
+      },
+      latencies = {
+        kong_gateway_ms = 0,
+        receive_ms = 0,
+        response_ms = 0,
+        upstream_ms = 0,
       },
       websocket = false,
       sse = false,
