@@ -464,7 +464,7 @@ function _M:handle_streaming_request(body)
     -- receive next chunk
     local buffer, err = reader(buffer_size)
     if err then
-        ngx.log(ngx.ERR, err)
+        ngx.log(ngx.ERR, "failed to read chunk of streaming buffer, ", err)
         break
     end
 
