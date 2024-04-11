@@ -131,7 +131,7 @@ local logging_schema = {
         description = "If enabled and supported by the driver, "
                    .. "will add model usage and token metrics into the Kong log plugin(s) output.",
                    required = true,
-                   default = true }},
+                   default = false }},
     { log_payloads = {
         type = "boolean", 
         description = "If enabled, will log the request and response body into the Kong log plugin(s) output.",
@@ -140,7 +140,7 @@ local logging_schema = {
 }
 
 local UNSUPPORTED_LOG_STATISTICS = {
-  ["llm/v1/completions"] = { "anthropic" },
+  ["llm/v1/completions"] = { ["anthropic"] = true },
 }
 
 _M.config_schema = {
@@ -210,8 +210,10 @@ _M.config_schema = {
       custom_entity_check = {
         field_sources = { "route_type", "model", "logging" },
         fn = function(entity)
-          if entity.logging.log_statistics and UNSUPPORTED_LOG_STATISTICS[entity.route_type][entity.model.provider] then
-              return nil, fmt("cannot log statistics for %s provider when route_type is %s",
+          -- print(cjson.encode(entity))
+          if entity.logging.log_statistics and UNSUPPORTED_LOG_STATISTICS[entity.route_type]
+            and UNSUPPORTED_LOG_STATISTICS[entity.route_type][entity.model.provider] then
+              return nil, fmt("%s does not support statistics when route_type is %s",
                                entity.model.provider, entity.route_type)
 
           else

@@ -5,6 +5,11 @@
             "type": "text"
         }
     ],
-    "stop_reason": "stop_sequence",
-    "model": "claude-2.1"
+    "model": "claude-2.1",
+    "stop_reason": "end_turn",
+    "stop_sequence": "string",
+    "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0
+    }
 }
