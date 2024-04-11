@@ -535,7 +535,7 @@ function _M:handle_streaming_request(body)
 
         -- construct, transmit, and flush the frame
         ngx.print("data: ", formatted, "\n\n")
-        ngx.flush()
+        ngx.flush(true)
       end
     end
 
