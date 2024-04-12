@@ -925,7 +925,7 @@ jobs:
       image: "${{ fromJSON(needs.provenance-metadata.outputs.build-images-provenance-result)['image'][matrix.label] }}"
       digest: "${{ fromJSON(needs.provenance-metadata.outputs.build-images-provenance-result)['digest'][matrix.label] }}"
       private-repository: true
-      provenance-registry: "kong/notary-internal"
+      provenance-repository: "kong/notary-internal"
     secrets:
       registry-password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
       registry-username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
@@ -962,7 +962,7 @@ jobs:
       image: "${{ fromJSON(needs.provenance-metadata.outputs.release-images-provenance-result)['image'][matrix.label] }}"
       digest: "${{ fromJSON(needs.provenance-metadata.outputs.release-images-provenance-result)['digest'][matrix.label] }}"
       private-repository: true
-      provenance-registry: "kong/notary"
+      provenance-repository: "kong/notary"
     secrets:
       registry-password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
       registry-username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
