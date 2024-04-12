@@ -11,6 +11,18 @@ local socket_url = require "socket.url"
 local DRIVER_NAME = "openai"
 --
 
+local function handle_stream_event(event_string)
+  if #event_string > 0 then
+    local lbl, val = event_string:match("(%w*): (.*)")
+
+    if lbl == "data" then
+      return val
+    end
+  end
+
+  return nil
+end
+
 local transformers_to = {
   ["llm/v1/chat"] = function(request_table, model, max_tokens, temperature, top_p)
     -- if user passed a prompt as a chat, transform it to a chat message
@@ -29,8 +41,9 @@ local transformers_to = {
       max_tokens = max_tokens,
       temperature = temperature,
       top_p = top_p,
+      stream = request_table.stream or false,
     }
-  
+
     return this, "application/json", nil
   end,
 
@@ -40,6 +53,7 @@ local transformers_to = {
       model = model,
       max_tokens = max_tokens,
       temperature = temperature,
+      stream = request_table.stream or false,
     }
 
     return this, "application/json", nil
@@ -52,7 +66,7 @@ local transformers_from = {
     if err then
       return nil, "'choices' not in llm/v1/chat response"
     end
-
+    
     if response_object.choices then
       return response_string, nil
     else
@@ -72,6 +86,9 @@ local transformers_from = {
       return nil, "'choices' not in llm/v1/completions response"
     end
   end,
+
+  ["stream/llm/v1/chat"] = handle_stream_event,
+  ["stream/llm/v1/completions"] = handle_stream_event,
 }
 
 function _M.from_format(response_string, model_info, route_type)
@@ -155,13 +172,13 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
     headers[conf.auth.header_name] = conf.auth.header_value
   end
 
-  local res, err = ai_shared.http_request(url, body_string, method, headers, http_opts)
+  local res, err, httpc = ai_shared.http_request(url, body_string, method, headers, http_opts, return_res_table)
   if err then
     return nil, nil, "request to ai service failed: " .. err
   end
 
   if return_res_table then
-    return res, res.status, nil
+    return res, res.status, nil, httpc
   else
     -- At this point, the entire request / response is complete and the connection
     -- will be closed or back on the connection pool.

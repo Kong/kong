@@ -2,6 +2,7 @@ local _M = {}
 
 -- imports
 local ai_shared = require("kong.llm.drivers.shared")
+local ai_module = require("kong.llm")
 local llm = require("kong.llm")
 local cjson = require("cjson.safe")
 local kong_utils = require("kong.tools.gzip")
@@ -112,13 +113,9 @@ end
 
 
 function _M:access(conf)
-  kong.service.request.enable_buffering()
-
   -- store the route_type in ctx for use in response parsing
   local route_type = conf.route_type
   kong.ctx.plugin.operation = route_type
-
-  local ai_driver = require("kong.llm.drivers." .. conf.model.provider)
 
   local request_table
 
@@ -145,33 +142,50 @@ function _M:access(conf)
     return bad_request(err)
   end
 
-  -- execute pre-request hooks for this driver
-  local ok, err = ai_driver.pre_request(conf, request_table)
-  if not ok then
-    return bad_request(err)
+  if request_table.stream or conf.model.options.response_streaming == "always" then
+    kong.ctx.shared.skip_response_transformer = true
+
+    -- into sub-request streaming handler
+    -- everything happens in the access phase here
+    if conf.model.options.response_streaming == "deny" then
+      return bad_request("response streaming is not enabled for this LLM")
+    end
+
+    local llm_handler = ai_module:new(conf, {})
+    llm_handler:handle_streaming_request(request_table)
+  else
+    kong.service.request.enable_buffering()
+
+    local ai_driver = require("kong.llm.drivers." .. conf.model.provider)
+
+    -- execute pre-request hooks for this driver
+    local ok, err = ai_driver.pre_request(conf, request_table)
+    if not ok then
+      return bad_request(err)
+    end
+
+    -- transform the body to Kong-format for this provider/model
+    local parsed_request_body, content_type, err = ai_driver.to_format(request_table, conf.model, route_type)
+    if err then
+      return bad_request(err)
+    end
+
+    -- execute pre-request hooks for "all" drivers before set new body
+    local ok, err = ai_shared.pre_request(conf, parsed_request_body)
+    if not ok then
+      return bad_request(err)
+    end
+
+    kong.service.request.set_body(parsed_request_body, content_type)
+
+    -- now re-configure the request for this operation type
+    local ok, err = ai_driver.configure_request(conf)
+    if not ok then
+      return internal_server_error(err)
+    end
+
+    -- lights out, and away we go
   end
-
-  -- transform the body to Kong-format for this provider/model
-  local parsed_request_body, content_type, err = ai_driver.to_format(request_table, conf.model, route_type)
-  if err then
-    return bad_request(err)
-  end
-
-  -- execute pre-request hooks for "all" drivers before set new body
-  local ok, err = ai_shared.pre_request(conf, parsed_request_body)
-  if not ok then
-    return bad_request(err)
-  end
-
-  kong.service.request.set_body(parsed_request_body, content_type)
-
-  -- now re-configure the request for this operation type
-  local ok, err = ai_driver.configure_request(conf)
-  if not ok then
-    return internal_server_error(err)
-  end
-
-  -- lights out, and away we go
 end
 
 

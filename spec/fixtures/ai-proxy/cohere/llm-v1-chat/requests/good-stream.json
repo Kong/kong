@@ -1,5 +1,5 @@
 {
-	"messages":[
+	"messages": [
 		{
 			"role": "system",
 			"content": "You are a helpful assistant."
@@ -9,5 +9,5 @@
 			"content": "What is 1 + 1?"
 		}
 	],
-	"stream": false
+	"stream": true
 }
