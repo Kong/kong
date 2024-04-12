@@ -6,12 +6,15 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 -- imports
-local typedefs = require("kong.db.schema.typedefs")
-local fmt      = string.format
-local cjson    = require("cjson.safe")
-local re_match = ngx.re.match
-
+local typedefs  = require("kong.db.schema.typedefs")
+local fmt       = string.format
+local cjson     = require("cjson.safe")
+local re_match  = ngx.re.match
+local buf       = require("string.buffer")
+local lower     = string.lower
+local meta      = require "kong.meta"
 local ai_shared = require("kong.llm.drivers.shared")
+local strip     = require("kong.tools.utils").strip
 --
 
 local _M = {}
@@ -55,6 +58,12 @@ local model_options_schema = {
   type = "record",
   required = false,
   fields = {
+    { response_streaming = {
+        type = "string",
+        description = "Whether to 'optionally allow', 'deny', or 'always' (force) the streaming of answers via WebSocket.",
+        required = true,
+        default = "allow",
+        one_of = { "allow", "deny", "always" } }},
     { max_tokens = {
         type = "integer",
         description = "Defines the max_tokens, if using chat or completion models.",
@@ -232,6 +241,15 @@ _M.config_schema = {
   },
 }
 
+local streaming_skip_headers = {
+  ["connection"]        = true,
+  ["content-type"]      = true,
+  ["keep-alive"]        = true,
+  ["set-cookie"]        = true,
+  ["transfer-encoding"] = true,
+  ["via"]               = true,
+}
+
 local formats_compatible = {
   ["llm/v1/chat"] = {
     ["llm/v1/chat"] = true,
@@ -240,6 +258,20 @@ local formats_compatible = {
     ["llm/v1/completions"] = true,
   },
 }
+
+local function bad_request(msg)
+  ngx.log(ngx.WARN, msg)
+  ngx.status = 400
+  ngx.header["Content-Type"] = "application/json"
+  ngx.say(cjson.encode({ error = { message = msg } }))
+end
+
+local function internal_server_error(msg)
+  ngx.log(ngx.ERR, msg)
+  ngx.status = 500
+  ngx.header["Content-Type"] = "application/json"
+  ngx.say(cjson.encode({ error = { message = msg } }))
+end
 
 local function identify_request(request)
   -- primitive request format determination
@@ -267,6 +299,103 @@ local function identify_request(request)
   end
 end
 
+local function get_token_text(event_t)
+  -- chat
+  return
+    event_t and
+    event_t.choices and
+    #event_t.choices > 0 and
+    event_t.choices[1].delta and
+    event_t.choices[1].delta.content
+
+    or
+
+  -- completions
+    event_t and
+    event_t.choices and
+    #event_t.choices > 0 and
+    event_t.choices[1].text
+
+    or ""
+end
+
+-- Function to count the number of words in a string
+local function count_words(str)
+  local count = 0
+  for word in str:gmatch("%S+") do
+      count = count + 1
+  end
+  return count
+end
+
+-- Function to count the number of words or tokens based on the content type
+local function count_prompt(content, tokens_factor)
+  local count = 0
+
+  if type(content) == "string" then
+    count = count_words(content) * tokens_factor
+  elseif type(content) == "table" then
+    for _, item in ipairs(content) do
+      if type(item) == "string" then
+        count = count + (count_words(item) * tokens_factor)
+      elseif type(item) == "number" then
+        count = count + 1
+      elseif type(item) == "table" then
+        for _2, item2 in ipairs(item) do
+          if type(item2) == "number" then
+            count = count + 1
+          else
+            return nil, "Invalid request format"
+          end
+        end
+      else
+          return nil, "Invalid request format"
+      end
+    end
+  else 
+    return nil, "Invalid request format"
+  end
+  return count
+end
+
+function _M:calculate_cost(query_body, tokens_models, tokens_factor)
+  local query_cost = 0
+  local err
+
+  -- Check if max_tokens is provided in the request body
+  local max_tokens = query_body.max_tokens
+  
+  if not max_tokens then
+    if query_body.model and tokens_models then
+      max_tokens = tonumber(tokens_models[query_body.model])
+    end
+  end
+
+  if not max_tokens then
+    return nil, "No max_tokens in query and no key found in the plugin config for model: " .. query_body.model
+  end
+
+  if query_body.messages then
+    -- Calculate the cost based on the content type
+    for _, message in ipairs(query_body.messages) do
+        query_cost = query_cost + (count_words(message.content) * tokens_factor)
+    end
+  elseif query_body.prompt then
+    -- Calculate the cost based on the content type
+    query_cost, err = count_prompt(query_body.prompt, tokens_factor)
+    if err then
+        return nil, err
+    end
+  else
+    return nil, "No messages or prompt in query"
+  end
+
+  -- Round the total cost quantified
+  query_cost = math.floor(query_cost + 0.5)
+
+  return query_cost
+end
+
 function _M.is_compatible(request, route_type)
   local format, err = identify_request(request)
   if err then 
@@ -278,6 +407,160 @@ function _M.is_compatible(request, route_type)
   end
 
   return false, fmt("[%s] message format is not compatible with [%s] route type", format, route_type)
+end
+
+function _M:handle_streaming_request(body)
+  -- convert it to the specified driver format
+  local request, _, err = self.driver.to_format(body, self.conf.model, self.conf.route_type)
+  if err then
+    return internal_server_error(err)
+  end
+
+  -- run the shared logging/analytics/auth function
+  ai_shared.pre_request(self.conf, request)
+
+  local prompt_tokens = 0
+  local err
+  if not ai_shared.streaming_has_token_counts[self.conf.model.provider] then
+    -- Estimate the cost using KONG CX's counter implementation
+    prompt_tokens, err = self:calculate_cost(request, {}, 1.8)
+    if err then
+      return internal_server_error("unable to estimate request token cost: " .. err)
+    end
+  end
+
+  -- send it to the ai service
+  local res, _, err, httpc = self.driver.subrequest(request, self.conf, self.http_opts, true)
+  if err then
+    return internal_server_error("failed to connect to " .. self.conf.model.provider .. " for streaming: " .. err)
+  end
+  if res.status ~= 200 then
+    err = "bad status code whilst opening streaming to " .. self.conf.model.provider .. ": " .. res.status
+    ngx.log(ngx.WARN, err)
+    return bad_request(err)
+  end
+
+  -- get a big enough buffered ready to make sure we rip the entire chunk(s) each time
+  local reader = res.body_reader
+  local buffer_size = 35536
+  local events
+
+  -- we create a fake "kong response" table to pass to the telemetry handler later
+  local telemetry_fake_table = {
+    response = buf:new(),
+    usage = {
+      prompt_tokens = prompt_tokens,
+      completion_tokens = 0,
+      total_tokens = 0,
+    },
+  }
+
+  ngx.status = 200
+  ngx.header["Content-Type"] = "text/event-stream"
+  ngx.header["Via"] = meta._SERVER_TOKENS
+
+  for k, v in pairs(res.headers) do
+    if not streaming_skip_headers[lower(k)] then
+      ngx.header[k] = v
+    end
+  end
+
+  -- server-sent events should ALWAYS be chunk encoded.
+  -- if they aren't then... we just won't support them.
+  repeat
+    -- receive next chunk
+    local buffer, err = reader(buffer_size)
+    if err then
+        ngx.log(ngx.ERR, "failed to read chunk of streaming buffer, ", err)
+        break
+    elseif not buffer then
+      break
+    end
+
+    -- we need to rip each message from this chunk
+    events = {}
+    for s in buffer:gmatch("[^\r\n]+") do
+      table.insert(events, s)
+    end
+
+    local metadata
+    local route_type = "stream/" .. self.conf.route_type
+
+    -- then parse each into the standard inference format
+    for i, event in ipairs(events) do
+      local event_t
+      local token_t
+
+      -- some LLMs do a final reply with token counts, and such
+      -- so we will stash them if supported
+      local formatted, err, this_metadata = self.driver.from_format(event, self.conf.model, route_type)
+      if err then
+        return internal_server_error(err)
+      end
+
+      metadata = this_metadata or metadata
+
+      -- handle event telemetry
+      if self.conf.logging.log_statistics then
+
+        if not ai_shared.streaming_has_token_counts[self.conf.model.provider] then
+          event_t = cjson.decode(formatted)
+          token_t = get_token_text(event_t)
+
+          -- incredibly loose estimate based on https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them
+          -- but this is all we can do until OpenAI fixes this...
+          --
+          -- essentially, every 4 characters is a token, with minimum of 1 per event
+          telemetry_fake_table.usage.completion_tokens =
+              telemetry_fake_table.usage.completion_tokens + math.ceil(#strip(token_t) / 4)
+
+        elseif metadata then
+          telemetry_fake_table.usage.completion_tokens = metadata.completion_tokens
+          telemetry_fake_table.usage.prompt_tokens = metadata.prompt_tokens
+        end
+
+      end
+
+      -- then stream to the client
+      if formatted then  -- only stream relevant frames back to the user
+        if self.conf.logging.log_payloads then
+          -- append the "choice" to the buffer, for logging later. this actually works!
+          if not event_t then
+            event_t, err = cjson.decode(formatted)
+          end
+
+          if err then
+            return internal_server_error("something wrong with decoding a specific token")
+          end
+
+          if not token_t then
+            token_t = get_token_text(event_t)
+          end
+
+          telemetry_fake_table.response:put(token_t)
+        end
+
+        -- construct, transmit, and flush the frame
+        ngx.print("data: ", formatted, "\n\n")
+        ngx.flush(true)
+      end
+    end
+
+  until not buffer
+
+  local ok, err = httpc:set_keepalive()
+  if not ok then
+    -- continue even if keepalive gets killed
+    ngx.log(ngx.WARN, "setting keepalive failed: ", err)
+  end
+
+  -- process telemetry
+  telemetry_fake_table.response = telemetry_fake_table.response:tostring()
+
+  telemetry_fake_table.usage.total_tokens = telemetry_fake_table.usage.completion_tokens +
+                                telemetry_fake_table.usage.prompt_tokens
+
+  ai_shared.post_request(self.conf, telemetry_fake_table)
 end
 
 function _M:ai_introspect_body(request, system_prompt, http_opts, response_regex_match)
@@ -294,7 +577,8 @@ function _M:ai_introspect_body(request, system_prompt, http_opts, response_regex
         role = "user",
         content = request,
       }
-    }
+    },
+    stream = false,
   }
 
   -- convert it to the specified driver format
@@ -332,7 +616,7 @@ function _M:ai_introspect_body(request, system_prompt, http_opts, response_regex
                        and ai_response.choices[1].message
                        and ai_response.choices[1].message.content
   if not new_request_body then
-    return nil, "no response choices received from upstream AI service"
+    return nil, "no 'choices' in upstream AI service response"
   end
 
   -- if specified, extract the first regex match from the AI response

@@ -8,10 +8,11 @@
 local _M = {}
 
 -- imports
-local cjson = require("cjson.safe")
-local http  = require("resty.http")
-local fmt   = string.format
-local os    = os
+local cjson     = require("cjson.safe")
+local http      = require("resty.http")
+local fmt       = string.format
+local os        = os
+local parse_url = require("socket.url").parse
 --
 
 local log_entry_keys = {
@@ -27,6 +28,11 @@ local log_entry_keys = {
 }
 
 local openai_override = os.getenv("OPENAI_TEST_PORT")
+
+_M.streaming_has_token_counts = {
+  ["cohere"] = true,
+  ["llama2"] = true,
+}
 
 _M.upstream_url_format = {
   openai = fmt("%s://api.openai.com:%s", (openai_override and "http") or "https", (openai_override) or "443"),
@@ -93,6 +99,48 @@ _M.clear_response_headers = {
   },
 }
 
+
+local function handle_stream_event(event_table, model_info, route_type)
+  if event_table.done then
+    -- return analytics table
+    return nil, nil, {
+      prompt_tokens = event_table.prompt_eval_count or 0,
+      completion_tokens = event_table.eval_count or 0,
+    }
+
+  else
+    -- parse standard response frame
+    if route_type == "stream/llm/v1/chat" then
+      return {
+        choices = {
+          [1] = {
+            delta = {
+              content = event_table.message and event_table.message.content or "",
+            },
+            index = 0,
+          },
+        },
+        model = event_table.model,
+        object = "chat.completion.chunk",
+      }
+
+    elseif route_type == "stream/llm/v1/completions" then
+      return {
+        choices = {
+          [1] = {
+            text = event_table.response or "",
+            index = 0,
+          },
+        },
+        model = event_table.model,
+        object = "text_completion",
+      }
+
+    end
+  end
+end
+
+
 function _M.to_ollama(request_table, model)
   local input = {}
 
@@ -124,57 +172,67 @@ function _M.to_ollama(request_table, model)
 end
 
 function _M.from_ollama(response_string, model_info, route_type)
+  local output, _, analytics
+
   local response_table, err = cjson.decode(response_string)
   if err then
     return nil, "failed to decode ollama response"
   end
 
-  -- there is no direct field indicating STOP reason, so calculate it manually
-  local stop_length = (model_info.options and model_info.options.max_tokens) or -1
-  local stop_reason = "stop"
-  if response_table.eval_count and response_table.eval_count == stop_length then
-    stop_reason = "length"
-  end
+  if route_type == "stream/llm/v1/chat" then
+    output, _, analytics = handle_stream_event(response_table, model_info, route_type)
 
-  local output = {}
-
-  -- common fields
-  output.model = response_table.model
-  output.created = response_table.created_at
-
-  -- analytics
-  output.usage = {
-    completion_tokens = response_table.eval_count or 0,
-    prompt_tokens = response_table.prompt_eval_count or 0,
-    total_tokens = (response_table.eval_count or 0) + 
-                   (response_table.prompt_eval_count or 0),
-  }
-
-  if route_type == "llm/v1/chat" then
-    output.object = "chat.completion"
-    output.choices = {
-      [1] = {
-        finish_reason = stop_reason,
-        index = 0,
-        message = response_table.message,
-      }
-    }
-
-  elseif route_type == "llm/v1/completions" then
-    output.object = "text_completion"
-    output.choices = {
-      [1] = {
-        index = 0,
-        text = response_table.response,
-      }
-    }
+  elseif route_type == "stream/llm/v1/completions" then
+    output, _, analytics = handle_stream_event(response_table, model_info, route_type)
 
   else
-    return nil, "no ollama-format transformer for response type " .. route_type
+    -- there is no direct field indicating STOP reason, so calculate it manually
+    local stop_length = (model_info.options and model_info.options.max_tokens) or -1
+    local stop_reason = "stop"
+    if response_table.eval_count and response_table.eval_count == stop_length then
+      stop_reason = "length"
+    end
 
+    output = {}
+
+    -- common fields
+    output.model = response_table.model
+    output.created = response_table.created_at
+
+    -- analytics
+    output.usage = {
+      completion_tokens = response_table.eval_count or 0,
+      prompt_tokens = response_table.prompt_eval_count or 0,
+      total_tokens = (response_table.eval_count or 0) + 
+                    (response_table.prompt_eval_count or 0),
+    }
+
+    if route_type == "llm/v1/chat" then
+      output.object = "chat.completion"
+      output.choices = {
+        {
+          finish_reason = stop_reason,
+          index = 0,
+          message = response_table.message,
+        }
+      }
+
+    elseif route_type == "llm/v1/completions" then
+      output.object = "text_completion"
+      output.choices = {
+        {
+          index = 0,
+          text = response_table.response,
+        }
+      }
+
+    else
+      return nil, "no ollama-format transformer for response type " .. route_type
+
+    end
   end
 
-  return cjson.encode(output)
+  return output and cjson.encode(output) or nil, nil, analytics
 end
 
 function _M.pre_request(conf, request_table)
@@ -195,9 +253,24 @@ function _M.pre_request(conf, request_table)
   return true, nil
 end
 
-function _M.post_request(conf, response_string)
-  if conf.logging and conf.logging.log_payloads then
-    kong.log.set_serialize_value(log_entry_keys.RESPONSE_BODY, response_string)
+function _M.post_request(conf, response_object)
+  local err
+
+  if type(response_object) == "string" then
+    -- set raw string body first, then decode
+    if conf.logging and conf.logging.log_payloads then
+      kong.log.set_serialize_value(log_entry_keys.RESPONSE_BODY, response_object)
+    end
+
+    response_object, err = cjson.decode(response_object)
+    if err then
+      return nil, "failed to decode response from JSON"
+    end
+  else
+    -- this has come from another AI subsystem, and contains "response" field
+    if conf.logging and conf.logging.log_payloads then
+      kong.log.set_serialize_value(log_entry_keys.RESPONSE_BODY, response_object.response or "ERROR__NOT_SET")
+    end
   end
 
   -- analytics and logging
@@ -212,11 +285,6 @@ function _M.post_request(conf, response_string)
         completion_tokens = 0,
         total_tokens = 0,
       }
-    end
-
-    local response_object, err = cjson.decode(response_string)
-    if err then
-      return nil, "failed to decode response from JSON"
     end
 
     -- this captures the openai-format usage stats from the transformed response body
@@ -246,7 +314,7 @@ function _M.post_request(conf, response_string)
   return nil
 end
 
-function _M.http_request(url, body, method, headers, http_opts)
+function _M.http_request(url, body, method, headers, http_opts, buffered)
   local httpc = http.new()
 
   if http_opts.http_timeout then
@@ -257,19 +325,48 @@ function _M.http_request(url, body, method, headers, http_opts)
     httpc:set_proxy_options(http_opts.proxy_opts)
   end
 
-  local res, err = httpc:request_uri(
-    url,
-    {
-      method = method,
-      body = body,
-      headers = headers,
+  local parsed = parse_url(url)
+
+  if buffered then
+    local ok, err, _ = httpc:connect({
+      scheme = parsed.scheme,
+      host = parsed.host,
+      port = parsed.port or 443,  -- this always fails. experience.
+      ssl_server_name = parsed.host,
       ssl_verify = http_opts.https_verify,
     })
-  if not res then
-    return nil, "request failed: " .. err
-  end
+    if not ok then
+      return nil, err
+    end
 
-  return res, nil
+    local res, err = httpc:request({
+        path = parsed.path or "/",
+        query = parsed.query,
+        method = method,
+        headers = headers,
+        body = body,
+    })
+    if not res then
+      return nil, "connection failed: " .. err
+    end
+
+    return res, nil, httpc
+  else
+    -- 'single-shot'
+    local res, err = httpc:request_uri(
+      url,
+      {
+        method = method,
+        body = body,
+        headers = headers,
+        ssl_verify = http_opts.https_verify,
+      })
+    if not res then
+      return nil, "request failed: " .. err
+    end
+
+    return res, nil, nil
+  end
 end
 
 return _M
