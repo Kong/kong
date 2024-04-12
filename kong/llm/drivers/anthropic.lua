@@ -137,6 +137,7 @@ local transformers_from = {
     end
 
     if response_table.content then
+      local usage = response_table.usage
       local res = {
         choices = {
           {
@@ -148,12 +149,12 @@ local transformers_from = {
             finish_reason = response_table.stop_reason,
           },
         },
-        usage = {
-          prompt_tokens = response_table.usage.input_tokens or 0,
-          completion_tokens = response_table.usage.output_tokens or 0,
-          total_tokens = response_table.usage.input_tokens and response_table.usage.output_tokens and
-            response_table.usage.input_tokens + response_table.usage.output_tokens or 0,
-        },
+        usage = usage and {
+          prompt_tokens = usage and usage.input_tokens or nil,
+          completion_tokens = usage and usage.output_tokens or nil,
+          total_tokens = usage and usage.input_tokens and usage.output_tokens and
+            usage.input_tokens + usage.output_tokens or nil,
+        } or "no usage data returned from upstream",
         model = response_table.model,
         object = "chat.content",
       }
