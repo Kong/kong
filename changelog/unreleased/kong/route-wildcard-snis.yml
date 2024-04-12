@@ -1,3 +1,0 @@
-message: extend the field `snis` of the entity `routes` to support wildcard for the leftmost or the rightmost character when `router_flavor` is `traditional_compatible`. Note only the leftmost OR rightmost character can be the wildcard, otherwise the validation will fail.
-type: feature
-scope: Core
