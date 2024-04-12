@@ -438,7 +438,8 @@ local function retrieve_client_credentials(parameters, conf)
     from_authorization_header = true
 
     local iterator, iter_err = ngx_re_gmatch(authorization_header,
-                                             "\\s*[Bb]asic\\s*(.+)")
+                                             "\\s*[Bb]asic\\s*(.+)",
+                                             "jo")
     if not iterator then
       kong.log.err(iter_err)
       return

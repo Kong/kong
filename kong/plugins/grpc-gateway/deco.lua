@@ -194,7 +194,7 @@ end
 local function add_to_table( t, path, v, typ )
   local tab = t -- set up pointer to table root
   local msg_typ = typ;
-  for m in re_gmatch( path , "([^.]+)(\\.)?") do
+  for m in re_gmatch( path , "([^.]+)(\\.)?", "jo" ) do
     local key, dot = m[1], m[2]
     msg_typ = get_field_type(msg_typ, key)
 

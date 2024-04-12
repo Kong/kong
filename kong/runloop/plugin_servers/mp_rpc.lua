@@ -113,7 +113,7 @@ local function index_table(table, field)
   end
 
   local res = table
-  for segment, e in ngx.re.gmatch(field, "\\w+", "o") do
+  for segment, e in ngx.re.gmatch(field, "\\w+", "jo") do
     if res[segment[0]] then
       res = res[segment[0]]
     else
