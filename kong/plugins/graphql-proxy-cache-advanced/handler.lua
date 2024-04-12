@@ -11,8 +11,10 @@ local ngx_now          = ngx.now
 local ngx_re_match     = ngx.re.match
 local floor            = math.floor
 local str_lower        = string.lower
+local timer_at         = ngx.timer.at
 
 local meta = require "kong.meta"
+local strategies = require "kong.plugins.graphql-proxy-cache-advanced.strategies"
 local cache_key = require "kong.plugins.graphql-proxy-cache-advanced.cache_key"
 
 local STRATEGY_PATH = "kong.plugins.graphql-proxy-cache-advanced.strategies"
@@ -56,6 +58,16 @@ local function signal_cache_req(cache_key, cache_status)
   kong.response.set_header("X-Cache-Status", cache_status or "Miss")
 end
 
+local function async_store(premature, strategy, key, res, ttl)
+  if premature then
+    return
+  end
+
+  local ok, err = strategy:store(key, res, ttl)
+  if not ok then
+    kong.log.err(err)
+  end
+end
 
 local _GqlCacheHandler = {}
 
@@ -104,11 +116,16 @@ function _GqlCacheHandler:access(conf)
     end
   elseif err then
     kong.log.err(err)
-    return
+
+    if conf.bypass_on_err then
+      return signal_cache_req(cache_key, "Bypass")
+    end
+
+    return kong.response.exit(ngx.HTTP_BAD_GATEWAY, { message = err })
   end
 
   if res.version ~= CACHE_VERSION then
-    kong.log.notice("[proxy-cache] cache format mismatch, purging ", cache_key)
+    kong.log.notice("[graphql-proxy-cache-advanced] cache format mismatch, purging ", cache_key)
     strategy:purge(cache_key)
     return signal_cache_req(cache_key, "Bypass")
   end
@@ -189,9 +206,18 @@ function _GqlCacheHandler:body_filter(conf)
       req_body  = ngx.ctx.req_body,
     }
 
-    local ok, err = strategy:store(ctx.cache_key, res, ctx.res_ttl)
-    if not ok then
-      kong.log.err("[proxy-cache] ", err)
+    if not strategies.DELAY_STRATEGY_STORE[conf.strategy] then
+      local ok, err = strategy:store(ctx.cache_key, res,  ctx.res_ttl)
+      if not ok then
+        kong.log.err(err)
+      end
+
+    else
+      local ok, err = timer_at(0, async_store, strategy, ctx.cache_key,
+                               res, ctx.res_ttl)
+      if not ok then
+        kong.log.err(err)
+      end
     end
   else
     ngx.ctx.gql_proxy_cache = ctx

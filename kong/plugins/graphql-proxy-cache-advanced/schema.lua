@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local strategies = require "kong.plugins.graphql-proxy-cache-advanced.strategies"
+local redis      = require "kong.enterprise_edition.redis"
 local typedefs = require "kong.db.schema.typedefs"
 
 
@@ -38,6 +39,10 @@ return {
               } },
             },
           } },
+          { redis = redis.config_schema },
+          { bypass_on_err = { description = "Unhandled errors while trying to retrieve a cache entry (such as redis down) are resolved with `Bypass`, with the request going upstream.", type = "boolean",
+            default = false,
+          }},
           { vary_headers = { description = "Relevant headers considered for the cache key. If undefined, none of the headers are taken into consideration.", type = "array",
             elements = { type = "string" },
           }},

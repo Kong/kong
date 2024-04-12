@@ -266,5 +266,9 @@ return {
     zipkin = {
       "propagation",
     },
+    graphql_proxy_cache_advanced = {
+      "redis",
+      "bypass_on_err",
+    },
   }
 }

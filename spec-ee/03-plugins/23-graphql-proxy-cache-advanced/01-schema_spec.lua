@@ -30,10 +30,10 @@ describe("graphql-proxy-cache-advanced schema", function()
 
   it("errors with invalid strategy", function()
     local entity, err = v({
-      strategy = "redis"
+      strategy = "unsupported"
     }, proxy_cache_schema)
 
-    assert.same("expected one of: memory", err.config.strategy)
+    assert.same("expected one of: memory, redis", err.config.strategy)
     assert.is_falsy(entity)
   end)
 

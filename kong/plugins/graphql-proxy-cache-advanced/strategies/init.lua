@@ -9,7 +9,15 @@ local _M = {}
 
 _M.STRATEGY_TYPES = {
     "memory",
+    "redis",
 }
+
+-- strategies that should delay writing cache storage to
+-- a dummy req, rather than doing so at the last body filter execution
+_M.DELAY_STRATEGY_STORE = {
+    redis = true,
+  }
+  
 
 -- strategies that store cache data only on the node, instead of
 -- cluster-wide. this is typically used to handle purge notifications

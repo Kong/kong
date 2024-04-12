@@ -71,6 +71,17 @@ local compatible_checkers = {
             has_update = true
           end
         end
+        if plugin.name == 'graphql-proxy-cache-advanced' then
+          local config = plugin.config
+          if config.strategy == "redis" then
+            config.strategy = "memory"
+            log_warn_message('configures ' .. plugin.name .. ' plugin with:' ..
+                             ' strategy == redis',
+                             'overwritten with default value `memory`',
+                             dp_version, log_suffix)
+            has_update = true
+          end
+        end
       end
 
       return has_update

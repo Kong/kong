@@ -1,0 +1,4 @@
+message: |
+  **graphql-proxy-cache-advanced:** Addded redis strategy support and `bypass_on_err` config for `graphql-proxy-cache-advanced` plugin.
+type: feature
+scope: Plugin
