@@ -643,6 +643,10 @@ local function get_priority(route)
     end
   end
 
+  -- Currently match_weight has only 3 bits
+  -- it can not be more than 7
+  assert(match_weight <= 7)
+
   local match_weight   = lshift_uint64(match_weight, 61)
   local headers_count  = lshift_uint64(headers_count, 52)
 
