@@ -12,6 +12,7 @@ local helpers = require "spec.helpers"
 local tablex = require "pl.tablex"
 local pl_path = require "pl.path"
 local ffi = require "ffi"
+local utils = require "kong.tools.utils"
 
 
 local C = ffi.C
@@ -428,6 +429,41 @@ describe("Configuration loader", function()
       pg_password = [[test##12##3#]],
     }))
     assert.equal("test##12##3#", conf.pg_password)
+  end)
+
+  describe("healthz_ids", function()
+    local valid_uuid1 = utils.uuid()
+    local valid_uuid2 = utils.uuid()
+
+    it("is nil when empty", function()
+      local conf = assert(conf_loader())
+      assert.is_nil(conf.healthz_ids)
+    end)
+
+    it("loads valid UUID", function()
+      local conf = assert(conf_loader(nil, {
+        healthz_ids = valid_uuid1,
+      }))
+      assert.same({ [1] = valid_uuid1 }, conf.healthz_ids)
+    end)
+
+    it("loads valid UUIDs", function()
+      local conf = assert(conf_loader(nil, {
+        healthz_ids = string.format("%s, %s", valid_uuid1, valid_uuid2)
+      }))
+      assert.same({
+        [1] = valid_uuid1,
+        [2] = valid_uuid2,
+      }, conf.healthz_ids)
+    end)
+
+    it("fails with invalid value", function()
+      local _, err = conf_loader(nil, {
+        healthz_ids = string.format("%s, some-entity", valid_uuid1)
+      })
+      assert.equal("healthz_ids requires valid UUIDs", err)
+    end)
+
   end)
 
   describe("dynamic directives", function()

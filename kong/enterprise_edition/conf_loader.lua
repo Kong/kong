@@ -227,6 +227,8 @@ local EE_CONF_INFERENCES = {
   cluster_fallback_config_import = { typ = "boolean" },
 
   allow_inconsistent_data_plane_plugins = { typ = "boolean" },
+
+  healthz_ids = { typ = "array" },
 }
 
 
@@ -992,6 +994,23 @@ local function validate_postgres_iam_auth(conf, errors)
   end
 end
 
+
+local function validate_healthz_ids(conf, errors)
+  if conf.healthz_ids and #conf.healthz_ids > 0 then
+    for _, id in ipairs(conf.healthz_ids) do
+      if not is_valid_uuid(id) then
+        errors[#errors + 1] = "healthz_ids requires valid UUIDs"
+        return
+      end
+    end
+
+    return
+  end
+
+  conf.healthz_ids = nil
+end
+
+
 local function validate(conf, errors)
   validate_admin_gui_authentication(conf, errors)
   validate_admin_gui_session(conf, errors)
@@ -1201,6 +1220,8 @@ local function validate(conf, errors)
   if conf.node_id and not is_valid_uuid(conf.node_id) then
     errors[#errors + 1] = "node_id must be a valid UUID"
   end
+
+  validate_healthz_ids(conf, errors)
 end
 
 local function load_ssl_cert_abs_paths(prefix, conf)

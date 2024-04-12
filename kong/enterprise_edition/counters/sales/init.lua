@@ -294,6 +294,7 @@ end
 
 function _M.new(opts)
   local strategy = opts.strategy
+  local flush_interval = opts.flush_interval or 60
   local hybrid_cp = false
 
   if kong.configuration.role ~= "traditional" then
@@ -316,14 +317,25 @@ function _M.new(opts)
     end
   end
 
+  local healthz_ids
+  if kong.configuration.healthz_ids and #kong.configuration.healthz_ids > 0 then
+    healthz_ids = {}
+    -- index the matrix by the entity uuid to find entities quickier
+    for _, id in ipairs(kong.configuration.healthz_ids) do
+      healthz_ids[id] = true
+    end
+  end
+
   local self = {
     list_cache     = ngx.shared.kong_counters,
-    flush_interval = opts.flush_interval or 60,
+    flush_interval = flush_interval,
     strategy = strategy,
     counters = counters_service.new({
-      name = "sales"
+      name = "sales",
+      flush_interval = flush_interval,
     }),
     hybrid_cp = hybrid_cp,
+    healthz_ids = healthz_ids,
   }
 
   self.counters:add_key(METRICS.requests)
@@ -369,10 +381,17 @@ function _M:init()
   return "ok"
 end
 
-function _M:log_request()
+function _M:log_request(ctx)
   if self.hybrid_cp then
     return
   end
+
+  if self.healthz_ids and ctx.route and ctx.route.id then
+    if self.healthz_ids[ctx.route.id] then
+      return
+    end
+  end
+
   self.counters:increment(METRICS.requests)
 end
 

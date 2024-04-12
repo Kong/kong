@@ -742,7 +742,10 @@ function Kong.init()
   kong.analytics = analytics.new(config)
 
   local counters_strategy = require("kong.enterprise_edition.counters.sales.strategies." .. kong.db.strategy):new(kong.db)
-  kong.sales_counters = sales_counters.new({ strategy = counters_strategy })
+  kong.sales_counters = sales_counters.new({
+    strategy = counters_strategy,
+    flush_interval = config.analytics_flush_interval,
+  })
   -- ]]
 
 
