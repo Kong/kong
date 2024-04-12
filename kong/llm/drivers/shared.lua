@@ -10,14 +10,7 @@ local parse_url = require("socket.url").parse
 
 local log_entry_keys = {
   REQUEST_BODY = "ai.payload.request",
-  RESPONSE_BODY = "ai.payload.response",
-
-  TOKENS_CONTAINER = "ai.usage",
-  PROCESSING_TIME = "ai.usage.processing_time",
-
-  REQUEST_MODEL = "ai.meta.request_model",
-  RESPONSE_MODEL = "ai.meta.response_model",
-  PROVIDER_NAME = "ai.meta.provider_name",
+  RESPONSE_BODY = "payload.response",
 }
 
 local openai_override = os.getenv("OPENAI_TEST_PORT")
@@ -240,8 +233,7 @@ function _M.pre_request(conf, request_table)
 
   -- if enabled AND request type is compatible, capture the input for analytics
   if conf.logging and conf.logging.log_payloads then
-    local provider_length = kong.log.serialize().conf.model.provider.lenght || 0
-    kong.log.set_serialize_value(conf.model.provider[length+1].log_entry_keys.REQUEST_BODY, kong.request.get_raw_body())
+    kong.log.set_serialize_value(log_entry_keys.REQUEST_BODY, kong.request.get_raw_body())
   end
 
   return true, nil
@@ -289,6 +281,8 @@ function _M.post_request(conf, response_object)
         prompt_tokens = 0,
         completion_tokens = 0,
         total_tokens = 0,
+        number_of_instances = 0,
+        instances = {},
       }
     end
 
@@ -305,15 +299,43 @@ function _M.post_request(conf, response_object)
       end
     end
 
+    request_analytics_provider.number_of_instances = request_analytics_provider.number_of_instances + 1
+    local try_count = request_analytics_provider.number_of_instances
+
     -- update context with changed values
     kong.ctx.shared.analytics = request_analytics_provider
-    for k, v in pairs(request_analytics_provider) do
-      kong.log.set_serialize_value(conf.model.provider[provider_length].fmt("%s.%s", log_entry_keys.TOKENS_CONTAINER, k), v)
+
+    -- create a new try context
+    local current_try = {
+      meta = {},
+      usage = {},
+    }
+
+    request_analytics_provider.instances[try_count] = current_try
+    
+    -- this captures the openai-format usage stats from the transformed response body
+    if response_object.usage then
+      if response_object.usage.prompt_tokens then
+        current_try.usage.instance_prompt_tokens = response_object.usage.prompt_tokens
+      end
+      if response_object.usage.completion_tokens then
+        current_try.usage.instance_completion_tokens = response_object.usage.completion_tokens
+      end
+      if response_object.usage.total_tokens then
+        current_try.usage.instance_total_tokens = response_object.usage.total_tokens
+      end
     end
 
-    kong.log.set_serialize_value(conf.model.provider[provider_length].log_entry_keys.REQUEST_MODEL, conf.model.name)
-    kong.log.set_serialize_value(conf.model.provider[provider_length].log_entry_keys.RESPONSE_MODEL, response_object.model or conf.model.name)
-    kong.log.set_serialize_value(conf.model.provider[provider_length].log_entry_keys.PROVIDER_NAME, conf.model.provider)
+    current_try.meta.request_model = conf.model.name
+    current_try.meta.response_model = response_object.model or conf.model.name
+    current_try.meta.provider_name = conf.model.provider
+
+    if conf.logging and conf.logging.log_payloads then
+      current_try[log_entry_keys.RESPONSE_BODY] = response_string
+    end
+
+    -- kong.log.set_serialize_value(conf.model.provider, request_analytics_provider)
+    kong.log.set_serialize_value(fmt("%s.%s", "ai", conf.model.provider), request_analytics_provider)
   end
 
   return nil
