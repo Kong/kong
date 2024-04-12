@@ -11,6 +11,13 @@ local parse_url = require("socket.url").parse
 local log_entry_keys = {
   REQUEST_BODY = "ai.payload.request",
   RESPONSE_BODY = "payload.response",
+
+  TOKENS_CONTAINER = "usage",
+  PROCESSING_TIME = "usage.processing_time",
+
+  REQUEST_MODEL = "meta.request_model",
+  RESPONSE_MODEL = "meta.response_model",
+  PROVIDER_NAME = "meta.provider_name",
 }
 
 local openai_override = os.getenv("OPENAI_TEST_PORT")
@@ -19,6 +26,29 @@ _M.streaming_has_token_counts = {
   ["cohere"] = true,
   ["llama2"] = true,
 }
+local function split_table_key(obj)
+
+  local result = {}
+
+  for key, value in pairs(obj) do
+    local keys = {}
+    for k in key:gmatch("[^.]+") do
+      table.insert(keys, k)
+    end
+
+    local currentTable = result
+    for i, k in ipairs(keys) do
+      if i < #keys then
+        currentTable[k] = currentTable[k] or {}
+        currentTable = currentTable[k]
+      else
+        currentTable[k] = value
+      end
+    end
+  end
+
+  return result
+end
 
 _M.upstream_url_format = {
   openai = fmt("%s://api.openai.com:%s", (openai_override and "http") or "https", (openai_override) or "443"),
@@ -278,61 +308,59 @@ function _M.post_request(conf, response_object)
     -- create a new structure if not
     if not request_analytics_provider then
       request_analytics_provider = {
-        prompt_tokens = 0,
-        completion_tokens = 0,
-        total_tokens = 0,
+        request_prompt_tokens = 0,
+        request_completion_tokens = 0,
+        request_total_tokens = 0,
         number_of_instances = 0,
         instances = {},
       }
     end
 
-    -- this captures the openai-format usage stats from the transformed response body
-    if response_object.usage then
-      if response_object.usage.prompt_tokens then
-        request_analytics_provider.prompt_tokens = (request_analytics_provider.prompt_tokens + response_object.usage.prompt_tokens)
-      end
-      if response_object.usage.completion_tokens then
-        request_analytics_provider.completion_tokens = (request_analytics_provider.completion_tokens + response_object.usage.completion_tokens)
-      end
-      if response_object.usage.total_tokens then
-        request_analytics_provider.total_tokens = (request_analytics_provider.total_tokens + response_object.usage.total_tokens)
-      end
-    end
-
     request_analytics_provider.number_of_instances = request_analytics_provider.number_of_instances + 1
+    
     local try_count = request_analytics_provider.number_of_instances
 
-    -- update context with changed values
-    kong.ctx.shared.analytics = request_analytics_provider
+    local response_object, err = cjson.decode(response_string)
+    if err then
+      return nil, "failed to decode response from JSON"
+    end
 
     -- create a new try context
-    local current_try = {
-      meta = {},
-      usage = {},
-    }
+    if not current_try then
+      current_try= {
+        meta = {},
+        usage = {},
+      }
+    end
 
-    request_analytics_provider.instances[try_count] = current_try
-    
+    current_try[log_entry_keys.REQUEST_MODEL] = conf.model.name
+    current_try[log_entry_keys.RESPONSE_MODEL] = response_object.model or conf.model.name
+    current_try[log_entry_keys.PROVIDER_NAME] = conf.model.provider
+
     -- this captures the openai-format usage stats from the transformed response body
     if response_object.usage then
       if response_object.usage.prompt_tokens then
-        current_try.usage.instance_prompt_tokens = response_object.usage.prompt_tokens
+        request_analytics_provider.request_prompt_tokens = (request_analytics_provider.request_prompt_tokens + response_object.usage.prompt_tokens)
+        current_try[log_entry_keys.TOKENS_CONTAINER].prompt_tokens = response_object.usage.prompt_tokens
       end
       if response_object.usage.completion_tokens then
-        current_try.usage.instance_completion_tokens = response_object.usage.completion_tokens
+        request_analytics_provider.request_completion_tokens = (request_analytics_provider.request_completion_tokens + response_object.usage.completion_tokens)
+        current_try[log_entry_keys.TOKENS_CONTAINER].completion_tokens = response_object.usage.completion_tokens
       end
       if response_object.usage.total_tokens then
-        current_try.usage.instance_total_tokens = response_object.usage.total_tokens
+        request_analytics_provider.request_total_tokens = (request_analytics_provider.request_total_tokens + response_object.usage.total_tokens)
+        current_try[log_entry_keys.TOKENS_CONTAINER].total_tokens = response_object.usage.total_tokens
       end
     end
-
-    current_try.meta.request_model = conf.model.name
-    current_try.meta.response_model = response_object.model or conf.model.name
-    current_try.meta.provider_name = conf.model.provider
 
     if conf.logging and conf.logging.log_payloads then
       current_try[log_entry_keys.RESPONSE_BODY] = response_string
     end
+
+    request_analytics_provider.instances[try_count] = split_table_key(current_try)
+
+    -- update context with changed values
+    kong.ctx.shared.analytics = request_analytics_provider
 
     -- kong.log.set_serialize_value(conf.model.provider, request_analytics_provider)
     kong.log.set_serialize_value(fmt("%s.%s", "ai", conf.model.provider), request_analytics_provider)
