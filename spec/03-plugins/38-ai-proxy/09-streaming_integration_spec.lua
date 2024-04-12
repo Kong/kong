@@ -1,3 +1,10 @@
+-- This software is copyright Kong Inc. and its licensors.
+-- Use of the software is subject to the agreement between your organization
+-- and Kong Inc. If there is no such agreement, use is governed by and
+-- subject to the terms of the Kong Master Software License Agreement found
+-- at https://konghq.com/enterprisesoftwarelicense/.
+-- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
+
 local helpers = require "spec.helpers"
 local cjson = require "cjson.safe"
 local pl_file = require "pl.file"
@@ -69,7 +76,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                 ngx.req.read_body()
                 local body, err = ngx.req.get_body_data()
                 body, err = json.decode(body)
-                
+
                 if err or (body.messages == ngx.null) then
                   ngx.status = 400
                   ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/bad_request.json"))
@@ -124,7 +131,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                 ngx.req.read_body()
                 local body, err = ngx.req.get_body_data()
                 body, err = json.decode(body)
-                
+
                 if err or (body.messages == ngx.null) then
                   ngx.status = 400
                   ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/bad_request.json"))
@@ -163,7 +170,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                 ngx.req.read_body()
                 local body, err = ngx.req.get_body_data()
                 body, err = json.decode(body)
-                
+
                 if err or (body.messages == ngx.null) then
                   ngx.status = 400
                   ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/bad_request.json"))
@@ -310,7 +317,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
       }, nil, nil, fixtures))
     end)
-    
+
     lazy_teardown(function()
       helpers.stop_kong()
     end)
@@ -450,7 +457,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             end
           end
         until not buffer
-        
+
         assert.equal(#events, 16)
         assert.equal(buf:tostring(), "1 + 1 = 2. This is the most basic example of addition.")
       end)
