@@ -240,30 +240,34 @@ function _M.pre_request(conf, request_table)
 
   -- if enabled AND request type is compatible, capture the input for analytics
   if conf.logging and conf.logging.log_payloads then
-    kong.log.set_serialize_value(log_entry_keys.REQUEST_BODY, kong.request.get_raw_body())
+    local provider_length = kong.log.serialize().conf.model.provider.lenght || 0
+    kong.log.set_serialize_value(conf.model.provider[length+1].log_entry_keys.REQUEST_BODY, kong.request.get_raw_body())
   end
 
   return true, nil
 end
 
 function _M.post_request(conf, response_object)
-  local err
+  local body_string, err
 
   if type(response_object) == "string" then
     -- set raw string body first, then decode
-    if conf.logging and conf.logging.log_payloads then
-      kong.log.set_serialize_value(log_entry_keys.RESPONSE_BODY, response_object)
-    end
+    body_string = response_object
 
+    -- unpack the original response object for getting token and meta info
     response_object, err = cjson.decode(response_object)
     if err then
-      return nil, "failed to decode response from JSON"
+      return nil, "failed to decode LLM response from JSON"
     end
   else
-    -- this has come from another AI subsystem, and contains "response" field
-    if conf.logging and conf.logging.log_payloads then
-      kong.log.set_serialize_value(log_entry_keys.RESPONSE_BODY, response_object.response or "ERROR__NOT_SET")
-    end
+    -- this has come from another AI subsystem, is already formatted, and contains "response" field
+    body_string = response_object.response or "ERROR__NOT_SET"
+  end
+
+  local provider_length = conf.model.provider and #conf.model.provider or 0
+
+  if conf.logging and conf.logging.log_payloads then
+    kong.log.set_serialize_value(conf.model.provider[provider_length].log_entry_keys.RESPONSE_BODY, body_string)
   end
 
   -- analytics and logging
@@ -273,7 +277,15 @@ function _M.post_request(conf, response_object)
 
     -- create a new structure if not
     if not request_analytics then
-      request_analytics = {
+      request_analytics = {}
+    end
+
+    -- check if we already have anylytics for this provider
+    local request_analytics_provider = request_analytics[conf.model.provider]
+
+    -- create a new structure if not
+    if not request_analytics_provider then
+      request_analytics_provider = {
         prompt_tokens = 0,
         completion_tokens = 0,
         total_tokens = 0,
@@ -283,25 +295,25 @@ function _M.post_request(conf, response_object)
     -- this captures the openai-format usage stats from the transformed response body
     if response_object.usage then
       if response_object.usage.prompt_tokens then
-        request_analytics.prompt_tokens = (request_analytics.prompt_tokens + response_object.usage.prompt_tokens)
+        request_analytics_provider.prompt_tokens = (request_analytics_provider.prompt_tokens + response_object.usage.prompt_tokens)
       end
       if response_object.usage.completion_tokens then
-        request_analytics.completion_tokens = (request_analytics.completion_tokens + response_object.usage.completion_tokens)
+        request_analytics_provider.completion_tokens = (request_analytics_provider.completion_tokens + response_object.usage.completion_tokens)
       end
       if response_object.usage.total_tokens then
-        request_analytics.total_tokens = (request_analytics.total_tokens + response_object.usage.total_tokens)
+        request_analytics_provider.total_tokens = (request_analytics_provider.total_tokens + response_object.usage.total_tokens)
       end
     end
 
     -- update context with changed values
-    kong.ctx.shared.analytics = request_analytics
-    for k, v in pairs(request_analytics) do
-      kong.log.set_serialize_value(fmt("%s.%s", log_entry_keys.TOKENS_CONTAINER, k), v)
+    kong.ctx.shared.analytics = request_analytics_provider
+    for k, v in pairs(request_analytics_provider) do
+      kong.log.set_serialize_value(conf.model.provider[provider_length].fmt("%s.%s", log_entry_keys.TOKENS_CONTAINER, k), v)
     end
 
-    kong.log.set_serialize_value(log_entry_keys.REQUEST_MODEL, conf.model.name)
-    kong.log.set_serialize_value(log_entry_keys.RESPONSE_MODEL, response_object.model or conf.model.name)
-    kong.log.set_serialize_value(log_entry_keys.PROVIDER_NAME, conf.model.provider)
+    kong.log.set_serialize_value(conf.model.provider[provider_length].log_entry_keys.REQUEST_MODEL, conf.model.name)
+    kong.log.set_serialize_value(conf.model.provider[provider_length].log_entry_keys.RESPONSE_MODEL, response_object.model or conf.model.name)
+    kong.log.set_serialize_value(conf.model.provider[provider_length].log_entry_keys.PROVIDER_NAME, conf.model.provider)
   end
 
   return nil
