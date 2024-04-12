@@ -616,7 +616,7 @@ function _M:ai_introspect_body(request, system_prompt, http_opts, response_regex
   -- this is useful for AI models that pad with assistant text, even when
   -- we ask them NOT to.
   if response_regex_match then
-    local matches, err = re_match(new_request_body, response_regex_match, "ijm")
+    local matches, err = re_match(new_request_body, response_regex_match, "ijom")
     if err then
       return nil, "failed regex matching ai response: " .. err
     end
