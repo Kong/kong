@@ -925,10 +925,12 @@ jobs:
       image: "${{ fromJSON(needs.provenance-metadata.outputs.build-images-provenance-result)['image'][matrix.label] }}"
       digest: "${{ fromJSON(needs.provenance-metadata.outputs.build-images-provenance-result)['digest'][matrix.label] }}"
       private-repository: true
-      #COSIGN_REPOSITORY: kong/notary-internal #Issue: https://github.com/slsa-framework/slsa-github-generator/issues/2956
+      provenance-registry: "kong/notary-internal"
     secrets:
       registry-password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
       registry-username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
+      provenance-registry-username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
+      provenance-registry-password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
 
   # Provenance job for official release images
   # Provenqnce job for internal images are skipped
@@ -960,9 +962,11 @@ jobs:
       image: "${{ fromJSON(needs.provenance-metadata.outputs.release-images-provenance-result)['image'][matrix.label] }}"
       digest: "${{ fromJSON(needs.provenance-metadata.outputs.release-images-provenance-result)['digest'][matrix.label] }}"
       private-repository: true
-      #COSIGN_REPOSITORY: kong/notary #Issue: https://github.com/slsa-framework/slsa-github-generator/issues/2956
+      provenance-registry: "kong/notary"
     secrets:
       registry-password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
       registry-username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
+      provenance-registry-username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
+      provenance-registry-password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
 
 
