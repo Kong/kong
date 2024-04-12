@@ -50,12 +50,12 @@ install_webui_cmd = select({
 
 install_wasm_filters_cmd = select({
     "@kong//:wasmx_flag": """
-            mkdir -pv ${BUILD_DESTDIR}/kong/include/filters
+            mkdir -pv ${BUILD_DESTDIR}/kong/filters
         """ + " ".join(["""
             tpath="$(locations %s)"
             fname="$(echo "${tpath}" | cut -d'/' -f2)"
 
-            cp -v "$tpath" "${BUILD_DESTDIR}/kong/include/filters/${fname}"
+            cp -v "$tpath" "${BUILD_DESTDIR}/kong/filters/${fname}"
         """ % t for t in WASM_FILTERS_TARGETS]),
     "//conditions:default": "\n",
 })
