@@ -293,12 +293,6 @@ function _M.post_request(conf, response_object)
     body_string = response_object.response or "ERROR__NOT_SET"
   end
 
-  local provider_length = conf.model.provider and #conf.model.provider or 0
-
-  if conf.logging and conf.logging.log_payloads then
-    kong.log.set_serialize_value(conf.model.provider[provider_length].log_entry_keys.RESPONSE_BODY, body_string)
-  end
-
   -- analytics and logging
   if conf.logging and conf.logging.log_statistics then
     -- check if we already have analytics in this context
@@ -335,12 +329,6 @@ function _M.post_request(conf, response_object)
     -- Get the current try count
     local try_count = request_analytics_provider.number_of_instances
 
-    -- Decode the response string
-    local response_object, err = cjson.decode(response_string)
-    if err then
-      return nil, "failed to decode response from JSON"
-    end
-
     -- Set the model, response, and provider names in the current try context
     current_try[log_entry_keys.META_CONTAINER][log_entry_keys.REQUEST_MODEL] = conf.model.name
     current_try[log_entry_keys.META_CONTAINER][log_entry_keys.RESPONSE_MODEL] = response_object.model or conf.model.name
@@ -365,7 +353,7 @@ function _M.post_request(conf, response_object)
 
     -- Log response body if logging payloads is enabled
     if conf.logging and conf.logging.log_payloads then
-      current_try[log_entry_keys.RESPONSE_BODY] = response_string
+      current_try[log_entry_keys.RESPONSE_BODY] = body_string
     end
 
     -- Store the split key data in instances

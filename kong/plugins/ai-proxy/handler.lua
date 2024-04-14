@@ -141,7 +141,10 @@ function _M:body_filter(conf)
     end
 
     -- call with replacement body, or original body if nothing changed
-    ai_shared.post_request(conf, original_request)
+    local _, err = ai_shared.post_request(conf, original_request)
+    if err then
+      kong.log.warn("analytics phase failed for request, ", err)
+    end
   end
 
   kong.ctx.plugin.body_called = true
