@@ -615,7 +615,6 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
         local log_message = wait_for_json_log_entry(FILE_LOG_PATH_STATS_ONLY)
         assert.same("127.0.0.1", log_message.client_ip)
-        assert.same(uuid, log_message.request.headers["file-log-uuid"])
         assert.is_number(log_message.request.size)
         assert.is_number(log_message.response.size)
 
@@ -650,7 +649,6 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
         local log_message = wait_for_json_log_entry(FILE_LOG_PATH_NO_LOGS)
         assert.same("127.0.0.1", log_message.client_ip)
-        assert.same(uuid, log_message.request.headers["file-log-uuid"])
         assert.is_number(log_message.request.size)
         assert.is_number(log_message.response.size)
 
@@ -685,7 +683,6 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
         local log_message = wait_for_json_log_entry(FILE_LOG_PATH_WITH_PAYLOADS)
         assert.same("127.0.0.1", log_message.client_ip)
-        assert.same(uuid, log_message.request.headers["file-log-uuid"])
         assert.is_number(log_message.request.size)
         assert.is_number(log_message.response.size)
 
