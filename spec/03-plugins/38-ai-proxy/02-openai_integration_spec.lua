@@ -1,9 +1,62 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local pl_file = require "pl.file"
+local pl_stringx    = require "pl.stringx"
 
 local PLUGIN_NAME = "ai-proxy"
 local MOCK_PORT = helpers.get_available_port()
+
+
+local FILE_LOG_PATH_STATS_ONLY = os.tmpname()
+local FILE_LOG_PATH_NO_LOGS = os.tmpname()
+local FILE_LOG_PATH_WITH_PAYLOADS = os.tmpname()
+
+
+local function wait_for_json_log_entry(FILE_LOG_PATH)
+  local json
+
+  assert
+    .with_timeout(10)
+    .ignore_exceptions(true)
+    .eventually(function()
+      local data = assert(pl_file.read(FILE_LOG_PATH))
+
+      data = pl_stringx.strip(data)
+      assert(#data > 0, "log file is empty")
+
+      data = data:match("%b{}")
+      assert(data, "log file does not contain JSON")
+
+      json = cjson.decode(data)
+    end)
+    .has_no_error("log file contains a valid JSON entry")
+
+  return json
+end
+
+local _EXPECTED_CHAT_STATS = {
+  openai = {
+    instances = {
+      {
+        meta = {
+          plugin_id = '6e7c40f6-ce96-48e4-a366-d109c169e444',
+          provider_name = 'openai',
+          request_model = 'gpt-3.5-turbo',
+          response_model = 'gpt-3.5-turbo-0613',
+        },
+        usage = {
+          completion_token = 12,
+          prompt_token = 25,
+          total_tokens = 37,
+        },
+      },
+    },
+    number_of_instances = 1,
+    request_completion_tokens = 12,
+    request_prompt_tokens = 25,
+    request_total_tokens = 37,
+  },
+}
 
 for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
@@ -157,9 +210,14 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       })
       bp.plugins:insert {
         name = PLUGIN_NAME,
+        id = "6e7c40f6-ce96-48e4-a366-d109c169e444",
         route = { id = chat_good.id },
         config = {
           route_type = "llm/v1/chat",
+          logging = {
+            log_payloads = false,
+            log_statistics = true,
+          },
           auth = {
             header_name = "Authorization",
             header_value = "Bearer openai-key",
@@ -179,7 +237,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         name = "file-log",
         route = { id = chat_good.id },
         config = {
-          path = "/dev/stdout",
+          path = FILE_LOG_PATH_STATS_ONLY,
         },
       }
       --
@@ -219,7 +277,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         name = "file-log",
         route = { id = chat_good_no_stats.id },
         config = {
-          path = "/dev/stdout",
+          path = FILE_LOG_PATH_NO_LOGS,
         },
       }
       --
@@ -259,7 +317,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         name = "file-log",
         route = { id = chat_good_log_payloads.id },
         config = {
-          path = "/dev/stdout",
+          path = FILE_LOG_PATH_WITH_PAYLOADS,
         },
       }
       --
@@ -517,10 +575,16 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
     before_each(function()
       client = helpers.proxy_client()
+      os.remove(FILE_LOG_PATH_STATS_ONLY)
+      os.remove(FILE_LOG_PATH_NO_LOGS)
+      os.remove(FILE_LOG_PATH_WITH_PAYLOADS)
     end)
 
     after_each(function()
       if client then client:close() end
+      os.remove(FILE_LOG_PATH_STATS_ONLY)
+      os.remove(FILE_LOG_PATH_NO_LOGS)
+      os.remove(FILE_LOG_PATH_WITH_PAYLOADS)
     end)
 
     describe("openai general", function()
@@ -549,7 +613,14 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           role = "assistant",
         }, json.choices[1].message)
 
-        -- TODO TEST THE LOG FILE
+        local log_message = wait_for_json_log_entry(FILE_LOG_PATH_STATS_ONLY)
+        assert.same("127.0.0.1", log_message.client_ip)
+        assert.same(uuid, log_message.request.headers["file-log-uuid"])
+        assert.is_number(log_message.request.size)
+        assert.is_number(log_message.response.size)
+
+        -- test ai-proxy stats
+        assert.same(_EXPECTED_CHAT_STATS, log_message.ai)
       end)
 
       it("does not log statistics", function()
@@ -576,8 +647,15 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           content = "The sum of 1 + 1 is 2.",
           role = "assistant",
         }, json.choices[1].message)
-        
-        -- TODO TEST THE LOG FILE
+
+        local log_message = wait_for_json_log_entry(FILE_LOG_PATH_NO_LOGS)
+        assert.same("127.0.0.1", log_message.client_ip)
+        assert.same(uuid, log_message.request.headers["file-log-uuid"])
+        assert.is_number(log_message.request.size)
+        assert.is_number(log_message.response.size)
+
+        -- test ai-proxy has no stats
+        assert.same(nil, log_message.ai)
       end)
 
       it("logs payloads", function()
@@ -605,7 +683,20 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           role = "assistant",
         }, json.choices[1].message)
 
-        -- TODO TEST THE LOG FILE
+        local log_message = wait_for_json_log_entry(FILE_LOG_PATH_WITH_PAYLOADS)
+        assert.same("127.0.0.1", log_message.client_ip)
+        assert.same(uuid, log_message.request.headers["file-log-uuid"])
+        assert.is_number(log_message.request.size)
+        assert.is_number(log_message.response.size)
+
+        -- test request bodies
+        assert.matches('"content": "What is 1 + 1?"', log_message.ai.payload.request, nil, true)
+        assert.matches('"role": "user"', log_message.ai.payload.request, nil, true)
+
+        -- test response bodies
+        assert.matches('"content": "The sum of 1 + 1 is 2.",', log_message.ai.openai.instances[1].payload.response, nil, true)
+        assert.matches('"role": "assistant"', log_message.ai.openai.instances[1].payload.response, nil, true)
+        assert.matches('"id": "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2"', log_message.ai.openai.instances[1].payload.response, nil, true)
       end)
 
       it("internal_server_error request", function()
