@@ -34,6 +34,11 @@ _M.streaming_has_token_counts = {
   ["cohere"] = true,
   ["llama2"] = true,
 }
+
+--- Splits a table key into nested tables.
+-- Each part of the key separated by dots represents a nested table.
+-- @param obj The table to split keys for.
+-- @return A nested table structure representing the split keys.
 local function split_table_key(obj)
   local result = {}
 
@@ -295,6 +300,8 @@ function _M.post_request(conf, response_object)
 
   -- analytics and logging
   if conf.logging and conf.logging.log_statistics then
+    local provider_name = conf.model.provider
+
     -- check if we already have analytics in this context
     local request_analytics = kong.ctx.shared.analytics
 
@@ -310,7 +317,7 @@ function _M.post_request(conf, response_object)
     end
 
     -- check if we already have analytics for this provider
-    local request_analytics_provider = request_analytics[conf.model.provider]
+    local request_analytics_provider = request_analytics[provider_name]
 
     -- create a new structure if not
     if not request_analytics_provider then
@@ -323,16 +330,10 @@ function _M.post_request(conf, response_object)
       }
     end
 
-    -- Increment the number of instances
-    request_analytics_provider.number_of_instances = request_analytics_provider.number_of_instances + 1
-    
-    -- Get the current try count
-    local try_count = request_analytics_provider.number_of_instances
-
     -- Set the model, response, and provider names in the current try context
     current_try[log_entry_keys.META_CONTAINER][log_entry_keys.REQUEST_MODEL] = conf.model.name
     current_try[log_entry_keys.META_CONTAINER][log_entry_keys.RESPONSE_MODEL] = response_object.model or conf.model.name
-    current_try[log_entry_keys.META_CONTAINER][log_entry_keys.PROVIDER_NAME] = conf.model.provider
+    current_try[log_entry_keys.META_CONTAINER][log_entry_keys.PROVIDER_NAME] = provider_name
     current_try[log_entry_keys.META_CONTAINER][log_entry_keys.PLUGIN_ID] = conf.__plugin_id
 
     -- Capture openai-format usage stats from the transformed response body
@@ -356,15 +357,21 @@ function _M.post_request(conf, response_object)
       current_try[log_entry_keys.RESPONSE_BODY] = body_string
     end
 
+    -- Increment the number of instances
+    request_analytics_provider.number_of_instances = request_analytics_provider.number_of_instances + 1
+
+    -- Get the current try count
+    local try_count = request_analytics_provider.number_of_instances
+
     -- Store the split key data in instances
     request_analytics_provider.instances[try_count] = split_table_key(current_try)
 
     -- Update context with changed values
-    request_analytics[conf.model.provider] = request_analytics_provider
+    request_analytics[provider_name] = request_analytics_provider
     kong.ctx.shared.analytics = request_analytics
 
     -- Log analytics data
-    kong.log.set_serialize_value(fmt("%s.%s", "ai", conf.model.provider), request_analytics_provider)
+    kong.log.set_serialize_value(fmt("%s.%s", "ai", provider_name), request_analytics_provider)
   end
 
   return nil
