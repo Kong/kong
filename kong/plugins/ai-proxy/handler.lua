@@ -88,7 +88,7 @@ function _M:body_filter(conf)
   end
 
   if kong.ctx.shared.skip_response_transformer then
-    local response_body, status
+    local response_body
     if kong.ctx.shared.parsed_response then
       response_body = kong.ctx.shared.parsed_response
     elseif kong.response.get_status() == 200 then
