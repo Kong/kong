@@ -2,8 +2,7 @@ local typedefs = require("kong.db.schema.typedefs")
 local deprecation = require("kong.deprecation")
 
 
-local kong_router_flavor = kong and kong.configuration and kong.configuration.router_flavor or
-                           "traditional_compatible"
+local kong_router_flavor = kong and kong.configuration and kong.configuration.router_flavor
 
 
 local PATH_V1_DEPRECATION_MSG =
