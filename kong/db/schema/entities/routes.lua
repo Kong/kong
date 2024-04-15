@@ -42,6 +42,8 @@ if kong_router_flavor == "traditional_compatible" or kong_router_flavor == "expr
   local tonumber = tonumber
   local re_match = ngx.re.match
 
+  local MAX_EXPR_PRIORITY = 2^56
+
   local router = require("resty.router.router")
   local transform = require("kong.router.transform")
   local get_schema = require("kong.router.atc").schema
@@ -79,6 +81,12 @@ if kong_router_flavor == "traditional_compatible" or kong_router_flavor == "expr
                   "simultaneously"
     end
 
+    local priority = entity.priority
+    if not is_null(priority) and priority >= MAX_EXPR_PRIORITY then
+      return nil, "Router Expression failed validation: " ..
+                  "cannot set 'priority' more than 2^56"
+    end
+
     local schema = get_schema(entity.protocols)
     local exp = get_expression(entity)
 
@@ -108,7 +116,7 @@ if kong_router_flavor == "traditional_compatible" or kong_router_flavor == "expr
       field_sources = { "id", "protocols",
                         "snis", "sources", "destinations",
                         "methods", "hosts", "paths", "headers",
-                        "expression",
+                        "expression", "priority",
                       },
       run_with_missing_fields = true,
       fn = validate_route,
