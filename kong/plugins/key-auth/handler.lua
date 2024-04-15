@@ -9,6 +9,7 @@ local ipairs = ipairs
 local tostring = tostring
 local fmt = string.format
 local ngx_re_gsub = ngx.re.gsub
+local ngx_unescape_uri = ngx.unescape_uri
 
 
 local HEADERS_CONSUMER_ID           = constants.HEADERS.CONSUMER_ID
@@ -108,7 +109,13 @@ end
 
 local function remove_query_key(raw_query, key)
   local pattern = key .. "=[^&]*&?"
-  local new_query = ngx_re_gsub(raw_query, pattern, "", "oj")
+  -- make sure we are dealing with a url-decoded query before applying the substitution.
+  local unescaped_raw_query = ngx_unescape_uri(raw_query)
+  local new_query, n, err = ngx_re_gsub(unescaped_raw_query, pattern, "", "oj")
+  if not new_query then
+    kong.log.info("Cannot remove key from query: ", err)
+    return
+  end
   new_query = ngx_re_gsub(new_query, "&$", "", "oj")
   return new_query
 end
@@ -194,7 +201,7 @@ local function do_authentication(conf)
   local credential_cache_key = kong.db.keyauth_credentials:cache_key(key)
   -- hit_level be 1 if stale value is propelled into L1 cache; so set a minimal `resurrect_ttl`
   local credential, err, hit_level = cache:get(credential_cache_key, { resurrect_ttl = 0.001 }, load_credential,
-                                    key)
+    key)
 
   if err then
     return error(err)
@@ -215,8 +222,8 @@ local function do_authentication(conf)
   local consumer_cache_key, consumer
   consumer_cache_key = kong.db.consumers:cache_key(credential.consumer.id)
   consumer, err      = cache:get(consumer_cache_key, nil,
-                                 kong.client.load_consumer,
-                                 credential.consumer.id)
+    kong.client.load_consumer,
+    credential.consumer.id)
   if err then
     kong.log.err(err)
     return nil, server_error(ERR_UNEXPECTED)
@@ -230,8 +237,8 @@ end
 local function set_anonymous_consumer(anonymous)
   local consumer_cache_key = kong.db.consumers:cache_key(anonymous)
   local consumer, err = kong.cache:get(consumer_cache_key, nil,
-                                        kong.client.load_consumer,
-                                        anonymous, true)
+    kong.client.load_consumer,
+    anonymous, true)
   if err then
     return error(err)
   end
@@ -278,6 +285,5 @@ function KeyAuthHandler:access(conf)
     return logical_AND_authentication(conf)
   end
 end
-
 
 return KeyAuthHandler
