@@ -300,7 +300,7 @@ local function check_required_parameter(parameter, path_spec)
   elseif location == "path" then
     local request_path = normalize(kong.request.get_path(), true)
     local path_pattern = compile_pattern(path_spec)
-    local m, err = re_match(request_path, path_pattern)
+    local m, err = re_match(request_path, path_pattern, "jo")
     if err then
       kong.log.err("failed to match regular expression path: ", path_pattern)
     end

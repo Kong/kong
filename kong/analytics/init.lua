@@ -502,7 +502,7 @@ function _M:split(str, sep)
   end
   local t = new_tab(2, 0)
   local i = 1
-  for m, _ in re_gmatch(str, "([^" .. sep .. "]+)") do
+  for m, _ in re_gmatch(str, "([^" .. sep .. "]+)", "jo") do
     t[i] = m[0]
     i = i + 1
   end

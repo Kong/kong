@@ -125,7 +125,7 @@ end
 
 local function check_address(address)
   local host, port
-  local m, _ = ngx.re.match(address, [[([^:]+):(\d+)]])
+  local m, _ = ngx.re.match(address, [[([^:]+):(\d+)]], "jo")
   if m then
     host = m[1]
     port = tonumber(m[2])

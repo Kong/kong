@@ -55,7 +55,7 @@ local function prepare_plugin(opts)
     admin_plugin_model_key = opts.variant and opts.name .. "::".. opts.variant or opts.name
     model = admin_plugin_models[admin_plugin_model_key]
   end
-  
+
 
   if not model then
     local config = type(opts.config) == "function" and opts.config() or opts.config
@@ -97,8 +97,8 @@ local function prepare_plugin(opts)
     if opts.name == 'cors' and model.config and model.config.origins then
       local origins = model.config.origins
       for k, v in ipairs(origins) do
-        model.config.origins[k] = ngx.re.gsub(origins[k], ":443$", "")
-        model.config.origins[k] = ngx.re.gsub(origins[k], ":80$", "")
+        model.config.origins[k] = ngx.re.gsub(origins[k], ":443$", "", "jo")
+        model.config.origins[k] = ngx.re.gsub(origins[k], ":80$", "", "jo")
       end
     end
 

@@ -134,7 +134,7 @@ local function is_json_body(content_type)
   if not content_type then
     return false
   end
-  local content_types = split(content_type, ",")
+  local content_types = split(content_type, ",", "jo")
   local expected_media_type = { type = "application", subtype = "json" }
   for _, content_type in ipairs(content_types) do
     local t, subtype = parse_mime_type(strip(content_type))
