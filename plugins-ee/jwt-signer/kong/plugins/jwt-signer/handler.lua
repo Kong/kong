@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local meta = require "kong.meta"
+local auto_rotate = require "kong.plugins.jwt-signer.auto_rotate"
 
 local JwtSignerHandler = {
   PRIORITY = 1020,
@@ -310,6 +311,11 @@ end
 
 function JwtSignerHandler.init_worker()
   cache.init_worker()
+end
+
+
+function JwtSignerHandler.configure(_, configs)
+  auto_rotate.configure(configs)
 end
 
 

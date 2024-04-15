@@ -164,7 +164,7 @@ describe("CP/DP config compat #" .. strategy, function()
       "plugins",
       "clustering_data_planes",
     }, { 'graphql-rate-limiting-advanced', 'rate-limiting-advanced', 'openid-connect',
-        'oas-validation', 'mtls-auth', 'application-registration' })
+        'oas-validation', 'mtls-auth', 'application-registration', "jwt-signer" })
 
     PLUGIN_LIST = helpers.get_plugins_list()
 
@@ -187,7 +187,8 @@ describe("CP/DP config compat #" .. strategy, function()
         plugins =
         [[
           bundled,graphql-rate-limiting-advanced,rate-limiting-advanced,
-          openid-connect,oas-validation,mtls-auth,application-registration
+          openid-connect,oas-validation,mtls-auth,application-registration,
+          jwt-signer
         ]],
     }))
   end)
@@ -424,6 +425,50 @@ describe("CP/DP config compat #" .. strategy, function()
           return config.enable_proxy_with_consumer_credential == nil
         end
       },
+      {
+        plugin = "jwt-signer",
+        label = "w/ client auth and rotate_period unsupported",
+        pending = false,
+        config = {
+          access_token_jwks_uri_client_username = "john",
+          access_token_jwks_uri_client_password = "12345678",
+          access_token_jwks_uri_client_certificate = { id = "10e2442e-7135-436b-b05d-e3319c030bd3" },
+          access_token_jwks_uri_rotate_period = 300,
+          access_token_keyset_client_username = "john",
+          access_token_keyset_client_password = "12345678",
+          access_token_keyset_client_certificate = { id = "10e2442e-7135-436b-b05d-e3319c030bd3" },
+          access_token_keyset_rotate_period = 300,
+          channel_token_jwks_uri_client_username = "john",
+          channel_token_jwks_uri_client_password = "12345678",
+          channel_token_jwks_uri_client_certificate = { id = "10e2442e-7135-436b-b05d-e3319c030bd3" },
+          channel_token_jwks_uri_rotate_period = 300,
+          channel_token_keyset_client_username = "john",
+          channel_token_keyset_client_password = "12345678",
+          channel_token_keyset_client_certificate = { id = "10e2442e-7135-436b-b05d-e3319c030bd3" },
+          channel_token_keyset_rotate_period = 300,
+        },
+        status = STATUS.NORMAL,
+        removed = FIELDS[3007000000].jwt_signer,
+        validator = function(config)
+          return config.access_token_jwks_uri_client_username == nil and
+            config.access_token_jwks_uri_client_password == nil and
+            config.access_token_jwks_uri_client_certificate == nil and
+            config.access_token_jwks_uri_rotate_period == nil and
+            config.access_token_keyset_client_username == nil and
+            config.access_token_keyset_client_password == nil and
+            config.access_token_keyset_client_certificate == nil and
+            config.access_token_keyset_rotate_period == nil and
+            config.channel_token_jwks_uri_client_username == nil and
+            config.channel_token_jwks_uri_client_password == nil and
+            config.channel_token_jwks_uri_client_certificate == nil and
+            config.channel_token_jwks_uri_rotate_period == nil and
+            config.channel_token_keyset_client_username == nil and
+            config.channel_token_keyset_client_password == nil and
+            config.channel_token_keyset_client_certificate == nil and
+            config.channel_token_keyset_rotate_period == nil
+        end
+      },
+
     }
 
     for _, case in ipairs(CASES) do

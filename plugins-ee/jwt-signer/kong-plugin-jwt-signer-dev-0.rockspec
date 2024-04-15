@@ -28,6 +28,9 @@ build = {
     ["kong.plugins.jwt-signer.daos"] =
      "kong/plugins/jwt-signer/daos.lua",
 
+    ["kong.plugins.jwt-signer.auto_rotate"] =
+     "kong/plugins/jwt-signer/auto_rotate.lua",
+
     ["kong.plugins.jwt-signer.handler"] =
      "kong/plugins/jwt-signer/handler.lua",
 

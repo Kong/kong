@@ -1,0 +1,3 @@
+message: "**JWT-Signer:** The plugin now supports periodically rotating the jwks. For example, to autmatically rotate `access_token_jwks_uri`, you can set the config `access_token_jwks_uri_rotate_period`"
+type: feature
+scope: Plugin

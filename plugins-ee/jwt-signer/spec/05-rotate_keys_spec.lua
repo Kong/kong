@@ -8,9 +8,41 @@
 local helpers = require "spec.helpers"
 local http_mock = require "spec.helpers.http_mock"
 local jws = require "kong.openid-connect.jws"
+local jwks = require "kong.openid-connect.jwks"
 local json = require "cjson.safe"
 local fmt = string.format
 local plugin_name = "jwt-signer"
+local cache = require "kong.plugins.jwt-signer.cache"
+local time = ngx.time
+
+describe(fmt("%s - is_rotated_recently", plugin_name), function()
+  it("should return the elapsed time if the jwks were rotated recently", function()
+    local now = time()
+    local row = {
+      name = "foo-jwks",
+      keys = assert(jwks.new({ unwrap = true, json = false })),
+      created_at = now,
+      updated_at = now,
+    }
+
+    local res = cache.is_rotated_recently(row, 300)
+    assert(res)
+    assert(res < 300)
+  end)
+
+  it("should return nil if the jwks were not rotated recently", function()
+    local now = time()
+    local row = {
+      name = "foo-jwks",
+      keys = assert(jwks.new({ unwrap = true, json = false })),
+      created_at = now - 600,
+      updated_at = now - 600,
+    }
+
+    local res = cache.is_rotated_recently(row, 300)
+    assert.is_nil(res)
+  end)
+end)
 
 for _, strategy in helpers.all_strategies() do
   describe(fmt("%s - load/rotate jwks [#%s]", plugin_name, strategy), function()

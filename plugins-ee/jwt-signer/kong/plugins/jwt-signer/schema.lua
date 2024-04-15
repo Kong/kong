@@ -118,6 +118,12 @@ local config = {
             },
           },
           {
+            access_token_keyset_rotate_period = { description = "Specify the period (in seconds) to auto-rotate the jwks for `access_token_keyset`. The default value 0 means no auto-rotation.", type = "number",
+              default = 0,
+              required = false,
+            },
+          },
+          {
             access_token_jwks_uri =
               typedefs.url {
               required = false, description = "Specify the URI where the plugin can fetch the public keys (JWKS) to verify the signature of the access token."
@@ -139,6 +145,12 @@ local config = {
           {
             access_token_jwks_uri_client_certificate = { description = "The client certificate that will be used to authenticate Kong if `access_token_jwks_uri` is an https uri that requires mTLS Auth.", type = "foreign",
               reference = "certificates",
+              required = false,
+            },
+          },
+          {
+            access_token_jwks_uri_rotate_period = { description = "Specify the period (in seconds) to auto-rotate the jwks for `access_token_jwks_uri`. The default value 0 means no auto-rotation.", type = "number",
+              default = 0,
               required = false,
             },
           },
@@ -409,6 +421,12 @@ local config = {
             },
           },
           {
+            channel_token_keyset_rotate_period = { description = "Specify the period (in seconds) to auto-rotate the jwks for `channel_token_keyset`. The default value 0 means no auto-rotation.", type = "number",
+              default = 0,
+              required = false,
+            },
+          },
+          {
             channel_token_jwks_uri = typedefs.url {
               required = false, description = "If you want to use `config.verify_channel_token_signature`, you must specify the URI where the plugin can fetch the public keys (JWKS) to verify the signature of the channel token. If you don't specify a URI and you pass a JWT token to the plugin, then the plugin responds with `401 Unauthorized`."
             },
@@ -429,6 +447,12 @@ local config = {
           {
             channel_token_jwks_uri_client_certificate = { description = "The client certificate that will be used to authenticate Kong if `access_token_jwks_uri` is an https uri that requires mTLS Auth.", type = "foreign",
               reference = "certificates",
+              required = false,
+            },
+          },
+          {
+            channel_token_jwks_uri_rotate_period = { description = "Specify the period (in seconds) to auto-rotate the jwks for `channel_token_jwks_uri`. The default value 0 means no auto-rotation.", type = "number",
+              default = 0,
               required = false,
             },
           },

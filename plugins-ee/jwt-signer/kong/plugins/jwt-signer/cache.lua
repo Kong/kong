@@ -144,6 +144,17 @@ local function load_keys_db(name)
 end
 
 
+local function is_rotated_recently(row, period)
+  if row and row.updated_at then
+    local now = time()
+    local time_since_last_update = now - row.updated_at
+    if time_since_last_update < period then
+      return time_since_last_update
+    end
+  end
+end
+
+
 local function rotate_keys(name, row, update, force, ret_err, opts)
   local now = time()
   local is_http = find(name, "http://", 1, true) == 1
@@ -165,9 +176,7 @@ local function rotate_keys(name, row, update, force, ret_err, opts)
     need_load = true
 
   elseif update ~= false then
-    local updated_at = row.updated_at or 0
-
-    if is_uri and not force and now - updated_at < 300 then
+    if is_uri and not force and is_rotated_recently(row, 300) then
       if ret_err then
         return nil, "jwks were rotated less than 5 minutes ago (skipping)"
       end
@@ -330,9 +339,14 @@ rediscover_keys = function(name, row, opts)
 end
 
 
-local function load_keys(name, opts)
+local function get_keys(name)
   local cache_key = kong.db.jwt_signer_jwks:cache_key(name)
-  local row, err = kong.cache:get(cache_key, nil, load_keys_db, name)
+  return kong.cache:get(cache_key, nil, load_keys_db, name)
+end
+
+
+local function load_keys(name, opts)
+  local row, err = get_keys(name)
   if err then
     log(err)
   end
@@ -535,8 +549,10 @@ end
 return {
   init_worker   = init_worker,
   load_keys     = load_keys,
+  get_keys      = get_keys,
   load_consumer = load_consumer,
   rotate_keys   = rotate_keys,
   introspect    = introspect,
   keys          = keys,
+  is_rotated_recently = is_rotated_recently,
 }
