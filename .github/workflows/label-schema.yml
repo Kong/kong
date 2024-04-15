@@ -1,7 +1,7 @@
 name: Pull Request Schema Labeler
 on:
   pull_request:
-    types: [opened, edited, synchronize, labeled, unlabeled]
+    types: [opened, edited, labeled, unlabeled]
 jobs:
   schema-change-labels:
     if: "${{ contains(github.event.*.labels.*.name, 'schema-change-noteworthy') }}"
@@ -12,3 +12,4 @@ jobs:
       continue-on-error: true
       env:
         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_SCHEMA_CHANGE }}
+        SLACK_FOOTER: ${{ github.event.pull_request.title }}

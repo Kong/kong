@@ -73,7 +73,7 @@ local FORMATS = {
   },
   anthropic = {
     ["llm/v1/chat"] = {
-      name = "claude-2",
+      name = "claude-2.1",
       provider = "anthropic",
       options = {
         max_tokens = 512,
@@ -82,7 +82,7 @@ local FORMATS = {
       },
     },
     ["llm/v1/completions"] = {
-      name = "claude-2",
+      name = "claude-2.1",
       provider = "anthropic",
       options = {
         max_tokens = 512,
@@ -175,6 +175,49 @@ local FORMATS = {
   },
 }
 
+local STREAMS = {
+  openai = {
+    ["llm/v1/chat"] = {
+      name = "gpt-4",
+      provider = "openai",
+    },
+    ["llm/v1/completions"] = {
+      name = "gpt-3.5-turbo-instruct",
+      provider = "openai",
+    },
+  },
+  cohere = {
+    ["llm/v1/chat"] = {
+      name = "command",
+      provider = "cohere",
+    },
+    ["llm/v1/completions"] = {
+      name = "command-light",
+      provider = "cohere",
+    },
+  },
+}
+
+local expected_stream_choices = {
+  ["llm/v1/chat"] = {
+    [1] = {
+      delta = {
+        content = "the answer",
+      },
+      finish_reason = ngx.null,
+      index = 0,
+      logprobs = ngx.null,
+    },
+  },
+  ["llm/v1/completions"] = {
+    [1] = {
+      text = "the answer",
+      finish_reason = ngx.null,
+      index = 0,
+      logprobs = ngx.null,
+    },
+  },
+}
 
 describe(PLUGIN_NAME .. ": (unit)", function()
 
@@ -300,7 +343,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
             assert.is_nil(err)
 
             -- compare the tables
-            assert.same(actual_response_table.choices[1].message, expected_response_table.choices[1].message)
+            assert.same(expected_response_table.choices[1].message, actual_response_table.choices[1].message)
             assert.same(actual_response_table.model, expected_response_table.model)
           end)
 
@@ -310,6 +353,35 @@ describe(PLUGIN_NAME .. ": (unit)", function()
     end)
   end
 
+  -- streaming tests
+  for provider_name, provider_format in pairs(STREAMS) do
+
+    describe(provider_name .. " stream format tests", function()
+
+      for format_name, config in pairs(provider_format) do
+
+        ---- actual testing code begins here
+        describe(format_name .. " format test", function()
+          local driver = require("kong.llm.drivers." .. config.provider)
+
+          -- what we do is first put the SAME request message from the user, through the converter, for this provider/format
+          it("converts to provider request format correctly", function()
+            local real_stream_frame = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/real-stream-frames/%s/%s.txt", config.provider, pl_replace(format_name, "/", "-")))
+            local real_transformed_frame, err = driver.from_format(real_stream_frame, config, "stream/" .. format_name)
+
+            assert.is_nil(err)
+
+            real_transformed_frame = cjson.decode(real_transformed_frame)
+            assert.same(expected_stream_choices[format_name], real_transformed_frame.choices)
+          end)
+
+        end)
+      end
+    end)
+
+  end
+
+  -- generic tests
   it("throws correct error when format is not supported", function()
     local driver = require("kong.llm.drivers.mistral")  -- one-shot, random example of provider with only prompt support
     
@@ -334,4 +406,5 @@ describe(PLUGIN_NAME .. ": (unit)", function()
     assert.is_nil(content_type)
     assert.equal(err, "no transformer available to format mistral://llm/v1/chatnopenotsupported/ollama")
   end)
+
 end)

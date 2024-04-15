@@ -32,22 +32,22 @@ wasm_runtimes = {
     },
     "v8": {
         "linux": {
-            "x86_64": "41309c43d0f06334c8cf553b34973c42cfbdc3aadc1ca374723d4b6de48992d9",
-            "aarch64": "4e8b3881762b31078299ff1be2d48280c32ab4e1d48a0ce9ec267c4e302bb9ea",
+            "x86_64": "06b617a2b90ef81c302421937691e4f353ce2a2f3234607a8d270b1196c410f2",
+            "aarch64": "1e086105c27e9254ac2731eaf3dfb83d3966caa870ae984f5c92284bd26d1a3c",
         },
         "macos": {
-            "x86_64": "862260d74f39a96aac556f821c28beb4def5ad5d1e5c70a0aa80d1af7d581f8b",
+            "x86_64": "0ed81aae1336720aaec833c37aa6bb2db2b611e044746d65d497f285dff367ac",
             # "aarch64": None, no aarch64 v8 runtime release yet
         },
     },
     "wasmtime": {
         "linux": {
-            "x86_64": "a1285b0e2e3c6edf9cb6c7f214a682780f01ca8746a5d03f162512169cdf1e50",
-            "aarch64": "ef527ed31c3f141b5949bfd2e766a908f44b66ee839d4f0f22e740186236fd48",
+            "x86_64": "bb6859c30de292db22b32522e3ef42239cebef93f42c9cad2e0306311122e72a",
+            "aarch64": "63b2bd25828cf882befe7a6e9d5162c9a750f0ab1dbc2160f778eea48e9b52f7",
         },
         "macos": {
-            "x86_64": "c30ffb79f8097512fbe9ad02503dcdb0cd168eec2112b6951a013eed51050245",
-            "aarch64": "2834d667fc218925184db77fa91eca44d14f688a4972e2f365fe2b7c12e6d49f",
+            "x86_64": "2a79e92fb4150b9389d9ec67da0ba9ab913b9207122050a5e183a3695645692f",
+            "aarch64": "118b36b69953f00cebd9b5901b3313a19dea58eea926236a7318309f053e27a0",
         },
     },
 }
@@ -58,7 +58,7 @@ def wasmx_repositories():
         wasm_module_branch = KONG_VAR["NGX_WASM_MODULE"]
 
     new_git_repository(
-        name = "ngx_wasm_module",
+        name = "ngx_wasmx_module",
         branch = wasm_module_branch,
         remote = KONG_VAR["NGX_WASM_MODULE_REMOTE"],
         build_file_content = """

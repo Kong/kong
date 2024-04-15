@@ -18,7 +18,6 @@ end
 
 local function kong_messages_to_claude_prompt(messages)
   local buf = buffer.new()
-  buf:reset()
 
   -- We need to flatten the messages into an assistant chat history for Claude
   for _, v in ipairs(messages) do
@@ -44,6 +43,24 @@ local function kong_messages_to_claude_prompt(messages)
   return buf:get()
 end
 
+-- reuse the messages structure of prompt
+-- extract messages and system from kong request
+local function kong_messages_to_claude_messages(messages)
+  local msgs, system, n = {}, nil, 1
+
+  for _, v in ipairs(messages) do
+    if v.role ~= "assistant" and v.role ~= "user" then
+      system = v.content
+
+    else
+      msgs[n] = v
+      n = n + 1
+    end
+  end
+
+  return msgs, system
+end
+
 
 local function to_claude_prompt(req)
   if req.prompt then
@@ -57,22 +74,29 @@ local function to_claude_prompt(req)
   return nil, "request is missing .prompt and .messages commands"
 end
 
+local function to_claude_messages(req)
+  if req.messages then
+    return kong_messages_to_claude_messages(req.messages)
+  end
+
+  return nil, nil, "request is missing .messages command"
+end
 
 local transformers_to = {
   ["llm/v1/chat"] = function(request_table, model)
-    local prompt = {}
+    local messages = {}
     local err
 
-    prompt.prompt, err = to_claude_prompt(request_table)
-    if err then 
+    messages.messages, messages.system, err = to_claude_messages(request_table)
+    if err then
       return nil, nil, err
     end
-    
-    prompt.temperature = (model.options and model.options.temperature) or nil
-    prompt.max_tokens_to_sample = (model.options and model.options.max_tokens) or nil
-    prompt.model = model.name
 
-    return prompt, "application/json", nil
+    messages.temperature = (model.options and model.options.temperature) or nil
+    messages.max_tokens = (model.options and model.options.max_tokens) or nil
+    messages.model = model.name
+
+    return messages, "application/json", nil
   end,
 
   ["llm/v1/completions"] = function(request_table, model)
@@ -83,7 +107,7 @@ local transformers_to = {
     if err then
       return nil, nil, err
     end
-    
+
     prompt.temperature = (model.options and model.options.temperature) or nil
     prompt.max_tokens_to_sample = (model.options and model.options.max_tokens) or nil
     prompt.model = model.name
@@ -96,36 +120,55 @@ local transformers_from = {
   ["llm/v1/chat"] = function(response_string)
     local response_table, err = cjson.decode(response_string)
     if err then
-      return nil, "failed to decode cohere response"
+      return nil, "failed to decode anthropic response"
     end
 
-    if response_table.completion then
+    local function extract_text_from_content(content)
+      local buf = buffer.new()
+      for i, v in ipairs(content) do
+        if i ~= 1 then
+          buf:put("\n")
+        end
+
+        buf:put(v.text)
+      end
+
+      return buf:tostring()
+    end
+
+    if response_table.content then
       local res = {
         choices = {
           {
             index = 0,
             message = {
               role = "assistant",
-              content = response_table.completion,
+              content = extract_text_from_content(response_table.content),
             },
             finish_reason = response_table.stop_reason,
           },
         },
+        usage = {
+          prompt_tokens = response_table.usage.input_tokens or 0,
+          completion_tokens = response_table.usage.output_tokens or 0,
+          total_tokens = response_table.usage.input_tokens and response_table.usage.output_tokens and
+            response_table.usage.input_tokens + response_table.usage.output_tokens or 0,
+        },
         model = response_table.model,
-        object = "chat.completion",
+        object = "chat.content",
       }
         
       return cjson.encode(res)
     else
       -- it's probably an error block, return generic error
-      return nil, "'completion' not in anthropic://llm/v1/chat response"
+      return nil, "'content' not in anthropic://llm/v1/chat response"
     end
   end,
 
   ["llm/v1/completions"] = function(response_string)
     local response_table, err = cjson.decode(response_string)
     if err then
-      return nil, "failed to decode cohere response"
+      return nil, "failed to decode anthropic response"
     end
 
     if response_table.completion then
@@ -229,13 +272,13 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
     headers[conf.auth.header_name] = conf.auth.header_value
   end
 
-  local res, err = ai_shared.http_request(url, body_string, method, headers, http_opts)
+  local res, err, httpc = ai_shared.http_request(url, body_string, method, headers, http_opts, return_res_table)
   if err then
     return nil, nil, "request to ai service failed: " .. err
   end
 
   if return_res_table then
-    return res, res.status, nil
+    return res, res.status, nil, httpc
   else
     -- At this point, the entire request / response is complete and the connection
     -- will be closed or back on the connection pool.

@@ -1499,6 +1499,56 @@ describe("[DNS client]", function()
       assert.is_nil(ip)
       assert.are.equal("recursion detected", port)
     end)
+
+    it("individual_noip - force no sync", function()
+      local resolve_count = 10
+      assert(client.init({
+        noSynchronisation = false,
+      }))
+
+      local callcount = 0
+      query_func = function(self, original_query_func, name, options)
+        callcount = callcount + 1
+        return original_query_func(self, name, options)
+      end
+
+      -- assert synchronisation is working
+      local threads = {}
+      for i=1,resolve_count do
+        threads[i] = ngx.thread.spawn(function()
+          local ip = client.toip("smtp." .. TEST_DOMAIN)
+          assert.is_string(ip)
+        end)
+      end
+
+      -- only one thread must have called the query_func
+      assert.are.equal(1, callcount,
+        "synchronisation failed - out of " .. resolve_count .. " toip() calls " .. callcount ..
+        " queries were made")
+
+      for i=1,#threads do
+        ngx.thread.wait(threads[i])
+      end
+
+      callcount = 0
+      threads = {}
+      for i=1,resolve_count do
+        threads[i] = ngx.thread.spawn(function()
+          local ip = client.individual_toip("atest." .. TEST_DOMAIN)
+          assert.is_string(ip)
+        end)
+      end
+
+      -- all threads must have called the query_func
+      assert.are.equal(resolve_count, callcount,
+        "force no sync failed - out of " .. resolve_count .. " toip() calls" ..
+        callcount .. " queries were made")
+
+      for i=1,#threads do
+        ngx.thread.wait(threads[i])
+      end
+    end)
+
   end)
 
 

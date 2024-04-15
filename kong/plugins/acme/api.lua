@@ -125,7 +125,7 @@ return {
     end,
 
     PATCH = function()
-      ngx_timer_at(0, client.renew_certificate)
+      ngx_timer_at(0, handler.renew)
       return kong.response.exit(202, { message = "Renewal process started successfully" })
     end,
   },

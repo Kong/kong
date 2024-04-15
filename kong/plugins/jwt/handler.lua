@@ -59,7 +59,7 @@ local function retrieve_tokens(conf)
       if type(token_header) == "table" then
         token_header = token_header[1]
       end
-      local iterator, iter_err = re_gmatch(token_header, "\\s*[Bb]earer\\s+(.+)")
+      local iterator, iter_err = re_gmatch(token_header, "\\s*[Bb]earer\\s+(.+)", "jo")
       if not iterator then
         kong.log.err(iter_err)
         break

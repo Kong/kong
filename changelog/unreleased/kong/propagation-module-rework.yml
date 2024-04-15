@@ -1,0 +1,5 @@
+message: |
+  **OpenTelemetry, Zipkin**: the propagation module has been reworked, new
+  options allow better control over the configuration of tracing headers propagation.
+type: feature
+scope: Plugin

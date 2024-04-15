@@ -71,15 +71,24 @@ return {
               default = nil }},
         { header_type = { description = "All HTTP requests going through the plugin are tagged with a tracing HTTP request. This property codifies what kind of tracing header the plugin expects on incoming requests.",
               type = "string",
+              deprecation = {
+                message = "opentelemetry: config.header_type is deprecated, please use config.propagation options instead",
+                removal_in_version = "4.0",
+                old_default = "preserve" },
               required = false,
               default = "preserve",
-              one_of = { "preserve", "ignore", "b3", "b3-single", "w3c", "jaeger", "ot", "aws", "gcp" } } },
+              one_of = { "preserve", "ignore", "b3", "b3-single", "w3c", "jaeger", "ot", "aws", "gcp", "datadog" } } },
         { sampling_rate = {
           description = "Tracing sampling rate for configuring the probability-based sampler. When set, this value supersedes the global `tracing_sampling_rate` setting from kong.conf.",
           type = "number",
           between = {0, 1},
           required = false,
           default = nil,
+        } },
+        { propagation = typedefs.propagation {
+          default = {
+            default_format = "w3c",
+          },
         } },
       },
     }, },

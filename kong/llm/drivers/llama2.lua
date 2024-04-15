@@ -133,6 +133,8 @@ local transformers_from = {
   ["llm/v1/completions/raw"] = from_raw,
   ["llm/v1/chat/ollama"] = ai_shared.from_ollama,
   ["llm/v1/completions/ollama"] = ai_shared.from_ollama,
+  ["stream/llm/v1/chat/ollama"] = ai_shared.from_ollama,
+  ["stream/llm/v1/completions/ollama"] = ai_shared.from_ollama,
 }
 
 local transformers_to = {
@@ -155,8 +157,8 @@ function _M.from_format(response_string, model_info, route_type)
   if not transformers_from[transformer_type] then
     return nil, fmt("no transformer available from format %s://%s", model_info.provider, transformer_type)
   end
-  
-  local ok, response_string, err = pcall(
+
+  local ok, response_string, err, metadata = pcall(
     transformers_from[transformer_type],
     response_string,
     model_info,
@@ -166,7 +168,7 @@ function _M.from_format(response_string, model_info, route_type)
     return nil, fmt("transformation failed from type %s://%s: %s", model_info.provider, route_type, err or "unexpected_error")
   end
 
-  return response_string, nil
+  return response_string, nil, metadata
 end
 
 function _M.to_format(request_table, model_info, route_type)
@@ -217,13 +219,13 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
     headers[conf.auth.header_name] = conf.auth.header_value
   end
 
-  local res, err = ai_shared.http_request(url, body_string, method, headers, http_opts)
+  local res, err, httpc = ai_shared.http_request(url, body_string, method, headers, http_opts, return_res_table)
   if err then
     return nil, nil, "request to ai service failed: " .. err
   end
 
   if return_res_table then
-    return res, res.status, nil
+    return res, res.status, nil, httpc
   else
     -- At this point, the entire request / response is complete and the connection
     -- will be closed or back on the connection pool.
@@ -265,7 +267,7 @@ function _M.configure_request(conf)
 
   kong.service.request.set_path(parsed_url.path)
   kong.service.request.set_scheme(parsed_url.scheme)
-  kong.service.set_target(parsed_url.host, tonumber(parsed_url.port))
+  kong.service.set_target(parsed_url.host, (tonumber(parsed_url.port) or 443))
 
   local auth_header_name = conf.auth and conf.auth.header_name
   local auth_header_value = conf.auth and conf.auth.header_value

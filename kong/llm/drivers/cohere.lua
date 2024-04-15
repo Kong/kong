@@ -12,6 +12,119 @@ local table_new = require("table.new")
 local DRIVER_NAME = "cohere"
 --
 
+local function handle_stream_event(event_string, model_info, route_type)
+  local metadata
+
+  -- discard empty frames, it should either be a random new line, or comment
+  if #event_string < 1 then
+    return
+  end
+
+  local event, err = cjson.decode(event_string)
+  if err then
+    return nil, "failed to decode event frame from cohere: " .. err, nil
+  end
+
+  local new_event
+  
+  if event.event_type == "stream-start" then
+    kong.ctx.plugin.ai_proxy_cohere_stream_id = event.generation_id
+    
+    -- ignore the rest of this one
+    new_event = {
+      choices = {
+        [1] = {
+          delta = {
+            content = "",
+            role = "assistant",
+          },
+          index = 0,
+        },
+      },
+      id = event.generation_id,
+      model = model_info.name,
+      object = "chat.completion.chunk",
+    }
+    
+  elseif event.event_type == "text-generation" then
+    -- this is a token
+    if route_type == "stream/llm/v1/chat" then
+      new_event = {
+        choices = {
+          [1] = {
+            delta = {
+              content = event.text or "",
+            },
+            index = 0,
+            finish_reason = cjson.null,
+            logprobs = cjson.null,
+          },
+        },
+        id = kong
+         and kong.ctx
+         and kong.ctx.plugin
+         and kong.ctx.plugin.ai_proxy_cohere_stream_id,
+        model = model_info.name,
+        object = "chat.completion.chunk",
+      }
+
+    elseif route_type == "stream/llm/v1/completions" then
+      new_event = {
+        choices = {
+          [1] = {
+            text = event.text or "",
+            index = 0,
+            finish_reason = cjson.null,
+            logprobs = cjson.null,
+          },
+        },
+        id = kong
+         and kong.ctx
+         and kong.ctx.plugin
+         and kong.ctx.plugin.ai_proxy_cohere_stream_id,
+        model = model_info.name,
+        object = "text_completion",
+      }
+
+    end
+
+  elseif event.event_type == "stream-end" then
+    -- return a metadata object, with a null event
+    metadata = {
+      -- prompt_tokens = event.response.token_count.prompt_tokens,
+      -- completion_tokens = event.response.token_count.response_tokens,
+
+      completion_tokens = event.response
+                      and event.response.meta
+                      and event.response.meta.billed_units
+                      and event.response.meta.billed_units.output_tokens
+              or 
+                          event.response
+                      and event.response.token_count
+                      and event.response.token_count.response_tokens
+              or 0,
+
+      prompt_tokens = event.response
+                  and event.response.meta
+                  and event.response.meta.billed_units
+                  and event.response.meta.billed_units.input_tokens
+              or
+                      event.response
+                  and event.response.token_count
+                  and event.token_count.prompt_tokens
+              or 0,
+    }
+
+  end
+
+  if new_event then
+    new_event = cjson.encode(new_event)
+    return new_event, nil, metadata
+  else
+    return nil, nil, metadata  -- caller code will handle "unrecognised" event types
+  end
+end
+
 local transformers_to = {
   ["llm/v1/chat"] = function(request_table, model)
     request_table.model = model.name
@@ -193,7 +306,7 @@ local transformers_from = {
 
     if response_table.prompt and response_table.generations then
       -- this is a "co.generate"
-      
+
       for i, v in ipairs(response_table.generations) do
         prompt.choices[i] = {
           index = (i-1),
@@ -243,6 +356,9 @@ local transformers_from = {
 
     return cjson.encode(prompt)
   end,
+
+  ["stream/llm/v1/chat"] = handle_stream_event,
+  ["stream/llm/v1/completions"] = handle_stream_event,
 }
 
 function _M.from_format(response_string, model_info, route_type)
@@ -253,7 +369,7 @@ function _M.from_format(response_string, model_info, route_type)
     return nil, fmt("no transformer available from format %s://%s", model_info.provider, route_type)
   end
 
-  local ok, response_string, err = pcall(transformers_from[route_type], response_string, model_info)
+  local ok, response_string, err, metadata = pcall(transformers_from[route_type], response_string, model_info, route_type)
   if not ok or err then
     return nil, fmt("transformation failed from type %s://%s: %s",
                     model_info.provider,
@@ -262,7 +378,7 @@ function _M.from_format(response_string, model_info, route_type)
                   )
   end
 
-  return response_string, nil
+  return response_string, nil, metadata
 end
 
 function _M.to_format(request_table, model_info, route_type)
@@ -344,13 +460,13 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
     headers[conf.auth.header_name] = conf.auth.header_value
   end
 
-  local res, err = ai_shared.http_request(url, body_string, method, headers, http_opts)
+  local res, err, httpc = ai_shared.http_request(url, body_string, method, headers, http_opts, return_res_table)
   if err then
     return nil, nil, "request to ai service failed: " .. err
   end
 
   if return_res_table then
-    return res, res.status, nil
+    return res, res.status, nil, httpc
   else
     -- At this point, the entire request / response is complete and the connection
     -- will be closed or back on the connection pool.

@@ -36,7 +36,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                   local body, err = ngx.req.get_body_data()
                   body, err = json.decode(body)
                   
-                  if err or (not body.prompt) then
+                  if err or (not body.messages) then
                     ngx.status = 400
                     ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/responses/bad_request.json"))
                   else
@@ -61,7 +61,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                   local body, err = ngx.req.get_body_data()
                   body, err = json.decode(body)
                   
-                  if err or (not body.prompt) then
+                  if err or (not body.messages) then
                     ngx.status = 400
                     ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/responses/bad_request.json"))
                   else
@@ -156,7 +156,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             header_value = "anthropic-key",
           },
           model = {
-            name = "gpt-3.5-turbo",
+            name = "claude-2.1",
             provider = "anthropic",
             options = {
               max_tokens = 256,
@@ -186,7 +186,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             header_value = "anthropic-key",
           },
           model = {
-            name = "gpt-3.5-turbo",
+            name = "claude-2.1",
             provider = "anthropic",
             options = {
               max_tokens = 256,
@@ -216,7 +216,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             header_value = "anthropic-key",
           },
           model = {
-            name = "gpt-3.5-turbo-instruct",
+            name = "claude-2.1",
             provider = "anthropic",
             options = {
               max_tokens = 256,
@@ -224,6 +224,9 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
               upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/completions/good",
               anthropic_version = "2023-06-01",
             },
+          },
+          logging = {
+            log_statistics = false,  -- anthropic does not support statistics
           },
         },
       }
@@ -246,7 +249,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             header_value = "wrong-key",
           },
           model = {
-            name = "gpt-3.5-turbo",
+            name = "claude-2.1",
             provider = "anthropic",
             options = {
               max_tokens = 256,
@@ -276,7 +279,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             header_value = "anthropic-key",
           },
           model = {
-            name = "gpt-3.5-turbo",
+            name = "claude-2.1",
             provider = "anthropic",
             options = {
               max_tokens = 256,
@@ -306,7 +309,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             header_value = "anthropic-key",
           },
           model = {
-            name = "gpt-3.5-turbo-instruct",
+            name = "claude-2.1",
             provider = "anthropic",
             options = {
               max_tokens = 256,
@@ -314,6 +317,9 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
               upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/completions/bad_request",
               anthropic_version = "2023-06-01",
             },
+          },
+          logging = {
+            log_statistics = false,  -- anthropic does not support statistics
           },
         },
       }
@@ -336,7 +342,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             header_value = "anthropic-key",
           },
           model = {
-            name = "gpt-3.5-turbo",
+            name = "claude-2.1",
             provider = "anthropic",
             options = {
               max_tokens = 256,
@@ -363,7 +369,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
       }, nil, nil, fixtures))
     end)
-    
+
     lazy_teardown(function()
       helpers.stop_kong()
     end)
@@ -434,14 +440,14 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/requests/good.json"),
         })
-        
+
         local body = assert.res_status(200 , r)
         local json = cjson.decode(body)
 
         -- check this is in the 'kong' response format
         -- assert.equals(json.id, "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2")
-        assert.equals(json.model, "claude-2")
-        assert.equals(json.object, "chat.completion")
+        assert.equals(json.model, "claude-2.1")
+        assert.equals(json.object, "chat.content")
 
         assert.is_table(json.choices)
         assert.is_table(json.choices[1].message)
@@ -463,7 +469,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         -- check we got internal server error
         local body = assert.res_status(500 , r)
         local json = cjson.decode(body) 
-        assert.equals(json.error.message, "transformation failed from type anthropic://llm/v1/chat: 'completion' not in anthropic://llm/v1/chat response")
+        assert.equals(json.error.message, "transformation failed from type anthropic://llm/v1/chat: 'content' not in anthropic://llm/v1/chat response")
       end)
 
       it("bad request", function()
@@ -481,6 +487,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         -- check this is in the 'kong' response format
         assert.equals(json.error.message, "request format not recognised")
       end)
+    end)
 
     describe("anthropic llm/v1/completions", function()
       it("good request", function()
@@ -496,7 +503,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         local json = cjson.decode(body)
 
         -- check this is in the 'kong' response format
-        assert.equals(json.model, "claude-2")
+        assert.equals(json.model, "claude-2.1")
         assert.equals(json.object, "text_completion")
 
         assert.is_table(json.choices)
@@ -521,6 +528,5 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       end)
     end)
   end)
-end)
 
 end end

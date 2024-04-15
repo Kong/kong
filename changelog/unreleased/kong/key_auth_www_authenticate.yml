@@ -1,0 +1,3 @@
+message: Add WWW-Authenticate headers to all 401 response in key auth plugin.
+type: bugfix
+scope: Plugin

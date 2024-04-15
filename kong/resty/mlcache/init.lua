@@ -826,14 +826,15 @@ function _M:renew(key, opts, cb, ...)
 
     local version_before = get_version(shmerr or 0)
 
-    local lock, err = resty_lock:new(self.shm_locks, self.resty_lock_opts)
+    local lock, lock_err = resty_lock:new(self.shm_locks, self.resty_lock_opts)
     if not lock then
-        return nil, "could not create lock: " .. err
+        return nil, "could not create lock: " .. lock_err
     end
 
-    local elapsed, err = lock:lock(LOCK_KEY_PREFIX .. namespaced_key)
-    if not elapsed and err ~= "timeout"  then
-        return nil, "could not acquire callback lock: " .. err
+    local elapsed
+    elapsed, lock_err = lock:lock(LOCK_KEY_PREFIX .. namespaced_key)
+    if not elapsed and lock_err ~= "timeout"  then
+        return nil, "could not acquire callback lock: " .. lock_err
     end
 
     local is_hit
@@ -847,7 +848,11 @@ function _M:renew(key, opts, cb, ...)
         if shmerr then
             -- shmerr can be 'flags' upon successful get_stale() calls, so we
             -- also check v == nil
-            return nil, "could not read from lua_shared_dict: " .. shmerr
+            if not lock_err then
+                return unlock_and_ret(lock, nil,
+                    "could not read from lua_shared_dict: " .. shmerr)
+            end
+            return nil, "could not acquire callback lock: " .. lock_err
         end
 
         -- if we specified shm_miss, it might be a negative hit cached
@@ -860,7 +865,11 @@ function _M:renew(key, opts, cb, ...)
             elseif shmerr then
                 -- shmerr can be 'flags' upon successful get_stale() calls, so we
                 -- also check v == nil
-                return nil, "could not read from lua_shared_dict (miss): " .. shmerr
+                if not lock_err then
+                    return unlock_and_ret(lock, nil,
+                        "could not read from lua_shared_dict (miss): " .. shmerr)
+                end
+                return nil, "could not acquire callback lock: " .. lock_err
             end
         end
     end
@@ -881,7 +890,7 @@ function _M:renew(key, opts, cb, ...)
 
             if ttl_left then
                 v = decode(v)
-                if not err then
+                if not lock_err then
                     return unlock_and_ret(lock, v, nil, ttl_left)
                 end
                 return v, nil, ttl_left
@@ -889,12 +898,11 @@ function _M:renew(key, opts, cb, ...)
         end
     end
 
-    if err == "timeout" then
+    if lock_err == "timeout" then
         return nil, "could not acquire callback lock: timeout"
     end
 
-    local ok, data, new_ttl
-    ok, data, err, new_ttl = xpcall(cb, traceback, ...)
+    local ok, data, err, new_ttl = xpcall(cb, traceback, ...)
     if not ok then
         return unlock_and_ret(lock, nil, "callback threw an error: " .. tostring(data))
     end

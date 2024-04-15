@@ -323,11 +323,10 @@ describe("Tracer PDK", function()
         end
 
         -- for cases where the traceID is too short
-        -- just throw an error
         if len < SAMPLING_BYTE then
-          assert.error(function()
-            tracer.sampler(gen_id())
-          end)
+          local sampled, err = tracer.sampler(gen_id())
+          assert.is_nil(sampled)
+          assert.matches("sampling needs trace ID to be longer than", err)
           return
         end
   

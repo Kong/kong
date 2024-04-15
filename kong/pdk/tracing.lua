@@ -71,7 +71,7 @@ local function get_trace_id_based_sampler(options_sampling_rate)
     sampling_rate = sampling_rate or options_sampling_rate
 
     if type(sampling_rate) ~= "number" then
-      error("invalid fraction", 2)
+      return nil, "invalid fraction"
     end
 
     -- always on sampler
@@ -88,7 +88,7 @@ local function get_trace_id_based_sampler(options_sampling_rate)
     local bound = sampling_rate * BOUND_MAX
 
     if #trace_id < SAMPLING_BYTE then
-      error(TOO_SHORT_MESSAGE, 2)
+      return nil, TOO_SHORT_MESSAGE
     end
 
     local truncated = ffi_cast(SAMPLING_UINT_PTR_TYPE, ffi_str(trace_id, SAMPLING_BYTE))[0]
@@ -187,7 +187,18 @@ local function create_span(tracer, options)
     sampled = options.should_sample
 
   else
-    sampled = tracer and tracer.sampler(trace_id)
+    if not tracer then
+      sampled = false
+
+    else
+      local err
+      sampled, err = tracer.sampler(trace_id)
+
+      if err then
+        sampled = false
+        ngx_log(ngx_ERR, "sampler failure: ", err)
+      end
+    end
   end
 
   span.parent_id = span.parent and span.parent.span_id
@@ -589,7 +600,13 @@ local function new_tracer(name, options)
 
     else
       -- use probability-based sampler
-      sampled = self.sampler(trace_id, sampling_rate)
+      local err
+      sampled, err = self.sampler(trace_id, sampling_rate)
+
+      if err then
+        sampled = false
+        ngx_log(ngx_ERR, "sampler failure: ", err)
+      end
     end
 
     -- enforce boolean
