@@ -270,5 +270,8 @@ return {
       "redis",
       "bypass_on_err",
     },
+    application_registration = {
+      "enable_proxy_with_consumer_credential",
+    },
   }
 }

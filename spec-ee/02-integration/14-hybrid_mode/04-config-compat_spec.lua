@@ -111,11 +111,14 @@ describe("CP/DP config compat #" .. strategy, function()
     assert(db:truncate("plugins"))
     assert(db:truncate("clustering_data_planes"))
 
-    local plugin = admin.plugins:insert({
+    local plugin_entity = {
       name = case.plugin,
       config = case.config,
-    })
+    }
 
+    plugin_entity = case.init_plugin and case.init_plugin(plugin_entity) or plugin_entity
+
+    local plugin = admin.plugins:insert(plugin_entity)
     local id = utils.uuid()
 
     local conf, status
@@ -160,8 +163,8 @@ describe("CP/DP config compat #" .. strategy, function()
       "services",
       "plugins",
       "clustering_data_planes",
-    }, {'graphql-rate-limiting-advanced', 'rate-limiting-advanced', 'openid-connect',
-         'oas-validation', 'mtls-auth'})
+    }, { 'graphql-rate-limiting-advanced', 'rate-limiting-advanced', 'openid-connect',
+        'oas-validation', 'mtls-auth', 'application-registration' })
 
     PLUGIN_LIST = helpers.get_plugins_list()
 
@@ -181,7 +184,11 @@ describe("CP/DP config compat #" .. strategy, function()
       db_update_frequency = 0.1,
       cluster_listen = CP_HOST .. ":" .. CP_PORT,
       nginx_conf = "spec/fixtures/custom_nginx.template",
-      plugins = "bundled,graphql-rate-limiting-advanced,rate-limiting-advanced,openid-connect,oas-validation,mtls-auth",
+        plugins =
+        [[
+          bundled,graphql-rate-limiting-advanced,rate-limiting-advanced,
+          openid-connect,oas-validation,mtls-auth,application-registration
+        ]],
     }))
   end)
 
@@ -397,7 +404,26 @@ describe("CP/DP config compat #" .. strategy, function()
         validator = function(config)
           return config.response_mode == "query"
         end
-      }
+      },
+      {
+        plugin = "application-registration",
+        label = "w/ unsupported enable_proxy_with_consumer_credential",
+        pending = false,
+        config = {
+          enable_proxy_with_consumer_credential = false,
+          display_name = "test.service",
+        },
+        status = STATUS.NORMAL,
+        checker = CHECKERS,
+        init_plugin = function(plugin)
+          local service = admin.services:insert()
+          plugin["service"] = service
+          return plugin
+        end,
+        validator = function(config)
+          return config.enable_proxy_with_consumer_credential == nil
+        end
+      },
     }
 
     for _, case in ipairs(CASES) do
