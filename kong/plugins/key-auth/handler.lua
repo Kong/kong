@@ -111,7 +111,7 @@ local function remove_query_key(raw_query, key)
   local pattern = key .. "=[^&]*&?"
   -- make sure we are dealing with a url-decoded query before applying the substitution.
   local unescaped_raw_query = ngx_unescape_uri(raw_query)
-  local new_query, n, err = ngx_re_gsub(unescaped_raw_query, pattern, "", "oj")
+  local new_query, _, err = ngx_re_gsub(unescaped_raw_query, pattern, "", "oj")
   if not new_query then
     kong.log.info("Cannot remove key from query: ", err)
     return
