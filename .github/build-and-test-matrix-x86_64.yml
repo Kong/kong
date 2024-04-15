@@ -1,0 +1,38 @@
+build:
+  include:
+  - label: normal
+    fips: false
+  - label: fips
+    fips: true
+
+build-image:
+  include:
+  - label: normal
+  - label: fips
+
+plugins-ee-tests:
+  split:
+  - first
+  - second
+  - third
+  - fourth
+  - fips-first
+  - fips-second
+
+  label:
+  - normal
+  - fips
+
+  exclude:
+  - split: first
+    label: fips
+  - split: second
+    label: fips
+  - split: third
+    label: fips
+  - split: fourth
+    label: fips
+  - split: fips-first
+    label: normal
+  - split: fips-second
+    label: normal

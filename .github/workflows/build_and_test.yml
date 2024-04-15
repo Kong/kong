@@ -35,8 +35,8 @@ on:  # yamllint disable-line rule:truthy
         default: false
   workflow_call:
     inputs:
-      arm64:
-        description: 'Test with arm64 instead of x86_64'
+      aarch64:
+        description: 'Test with aarch64 instead of x86_64'
         required: false
         type: boolean
         default: false
@@ -61,24 +61,37 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  metadata:
+    name: Metadata
+    runs-on: ubuntu-latest-kong
+    outputs:
+      matrix: ${{ steps.build-info.outputs.matrix }}
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build Info
+      id: build-info
+      run: |
+        matrix_file=".github/build-and-test-matrix-x86_64.yml"
+        if [ "${{ inputs.aarch64 }}" == "true" ]; then
+            matrix_file=".github/build-and-test-matrix-aarch64.yml"
+        fi
+        echo "matrix=$(yq e -I=0 -o=json $matrix_file)" >> $GITHUB_OUTPUT
+
   build:
     uses: ./.github/workflows/build.yml
     secrets: inherit
+    needs: [metadata]
 
     strategy:
-      matrix:
-        include:
-        - label: normal
-          fips: false
-        - label: fips
-          fips: true
+      matrix: "${{ fromJSON(needs.metadata.outputs.matrix)['build'] }}"
 
     with:
       relative-build-root: bazel-bin/build
       label: "${{ matrix.label }}"
       build-name: "${{ matrix.label == 'normal' && 'kong-dev-normal' || 'kong-dev-fips' }}"
       fips: ${{ matrix.fips }}
-      aarch64: ${{ inputs.arm64 == true }}
+      aarch64: ${{ inputs.aarch64 == true }}
 
   kong-license-data:
     # Note: use a shared step to avoid hitting 1password rate limits (1000/hour)
@@ -107,7 +120,7 @@ jobs:
 
   cp-dp-compatibility-test:
     name: CP/DP compatibility
-    runs-on: ${{ inputs.arm64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
+    runs-on: ${{ inputs.aarch64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
     timeout-minutes: 30
     needs: [build, kong-license-data]
     if: false # FIXME(@flrgh): re-enable with FT-3478
@@ -222,7 +235,7 @@ jobs:
 
   sca-and-doc-tests:
     name: Static Code Analysis and Doc tests
-    runs-on: ${{ inputs.arm64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
+    runs-on: ${{ inputs.aarch64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
     needs: build
 
     steps:
@@ -306,7 +319,7 @@ jobs:
     - name: Schedule tests
       uses: Kong/gateway-test-scheduler/schedule@00ab5474e9a7d11e21738078ee563856dac2b868 # v4
       with:
-        test-suites-file: .ci/test_suites.json
+        test-suites-file: ${{ inputs.aarch64 == true && '.ci/non_fips_test_suites.json' || '.ci/test_suites.json' }}
         test-file-runtime-file: .ci/runtimes-ee.json
         output-prefix: test-chunk.
         runner-count: ${{ env.RUNNER_COUNT }}
@@ -327,7 +340,7 @@ jobs:
 
   busted-tests:
     name: Busted test runner ${{ matrix.runner }}
-    runs-on: ${{ inputs.arm64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
+    runs-on: ${{ inputs.aarch64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
     needs: [build,schedule, kong-license-data]
 
     strategy:
@@ -408,6 +421,7 @@ jobs:
 
     - name: Download fips build artifacts
       uses: actions/download-artifact@v3
+      if: ${{ inputs.aarch64 == false }}
       with:
         name: build-fips
         path: .
@@ -434,11 +448,13 @@ jobs:
         sudo rsync -a --delete /tmp/usr-local-bkp/local/ /usr/local/
 
     - name: Extract FIPS artifact contents
+      if: ${{ inputs.aarch64 == false }}
       run: |
         sudo mkdir -p ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_FIPS }}
         sudo tar -C ${{ env.BUILD_ROOT }}/${{ env.BUILD_NAME_FIPS }} -xzvf artifacts/build-${{ env.BUILD_NAME_FIPS }}.tar.gz
 
     - name: Install Kong dev FIPS
+      if: ${{ inputs.aarch64 == false }}
       env:
         GITHUB_TOKEN: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
       run: |
@@ -517,7 +533,7 @@ jobs:
         luarocks config || true
 
     - name: Tune up postgres max_connections
-      if: ${{ inputs.arm64 == true }}
+      if: ${{ inputs.aarch64 == true }}
       run: |
         # arm64 runners may use more connections due to more worker cores
         psql -hlocalhost -Ukong kong -tAc 'alter system set max_connections = 5000;'
@@ -645,7 +661,7 @@ jobs:
 
   pdk-tests:
     name: PDK tests
-    runs-on: ${{ inputs.arm64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
+    runs-on: ${{ inputs.aarch64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
     timeout-minutes: 30
     needs: build
 
@@ -745,12 +761,11 @@ jobs:
 
   build-image:
     name: Build Kong Base Image - ${{ matrix.label }}
-    needs: build
-    runs-on: ${{ inputs.arm64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
+    needs: [metadata, build]
+    runs-on: ${{ inputs.aarch64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
 
     strategy:
-      matrix:
-        label: [normal, fips]
+      matrix: "${{ fromJSON(needs.metadata.outputs.matrix)['build-image'] }}"
 
     steps:
     - uses: actions/checkout@v3
@@ -813,7 +828,7 @@ jobs:
     timeout-minutes: 60
     needs: [build, kong-license-data]
     # enable this step if migration starts to be architecture-dependent
-    if: ${{ inputs.arm64 != true }}
+    if: ${{ inputs.aarch64 != true }}
 
     steps:
       - name: Clone Kong source code
@@ -857,50 +872,13 @@ jobs:
 
   plugins-ee-tests:
     name: plugins EE - ${{ matrix.split }} tests
-    runs-on: ${{ inputs.arm64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
+    runs-on: ${{ inputs.aarch64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
     timeout-minutes: 50
-    needs: [build-image, kong-license-data]
+    needs: [metadata, build-image, kong-license-data]
 
     strategy:
       fail-fast: false
-      matrix:
-        split:
-        - first
-        - second
-        - third
-        - fourth
-        - fips-first
-        - fips-second
-
-        label:
-        - normal
-        - fips
-
-        exclude:
-        - split: first
-          label: fips
-        - split: second
-          label: fips
-        - split: third
-          label: fips
-        - split: fourth
-          label: fips
-        - split: fifth
-          label: fips
-        - split: sixth
-          label: fips
-        - split: seventh
-          label: fips
-        - split: eighth
-          label: fips
-        - split: ninth
-          label: fips
-        - split: fips-first
-          label: normal
-        - split: fips-second
-          label: normal
-        - split: fips-third
-          label: normal
+      matrix: "${{ fromJSON(needs.metadata.outputs.matrix)['plugins-ee-tests'] }}"
 
     env:
       PONGO_EXTRA_ARG: -o hjtest -Xoutput=/kong-plugin/report.html
@@ -971,7 +949,8 @@ jobs:
 
     - uses: datadog/junit-upload-github-action@056dec14f19687cd7d1e97f2009df81f8e64d621
       continue-on-error: true
-      if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }} # upload test results even if the job fails
+      # upload test results even if the job fails
+      if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }}
       with:
         api-key: ${{ secrets.DATADOG_API_KEY }}
         service: kong-ee-github-actions-ci

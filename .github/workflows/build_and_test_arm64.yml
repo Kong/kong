@@ -20,4 +20,4 @@ jobs:
     secrets: inherit
 
     with:
-      arm64: true
+      aarch64: true

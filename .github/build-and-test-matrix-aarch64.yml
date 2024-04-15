@@ -1,0 +1,18 @@
+build:
+  include:
+  - label: normal
+    fips: false
+
+build-image:
+  include:
+  - label: normal
+
+plugins-ee-tests:
+  split:
+  - first
+  - second
+  - third
+  - fourth
+
+  label:
+  - normal
