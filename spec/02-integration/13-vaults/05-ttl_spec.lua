@@ -377,7 +377,7 @@ describe("#hybrid mode dp vault ttl and rotation (#" .. strategy .. ") #" .. vau
     -- Switch to vault referenced key field
     local res = assert(admin_client:patch("/certificates/"..certificate.id, {
       body = {
-        key = fmt("{vault://%s/%s?ttl=%s}", vault.prefix, secret, 5),
+        key = fmt("{vault://%s/%s?ttl=%s}", vault.prefix, secret, 2),
         cert = ssl_fixtures.cert_client,
       },
       headers = {
@@ -402,7 +402,7 @@ describe("#hybrid mode dp vault ttl and rotation (#" .. strategy .. ") #" .. vau
     assert.matches("No required SSL certificate was sent", body)
 
     -- Update secret value and let cert be correct
-    vault:update_secret(secret, ssl_fixtures.key_client, { ttl = 5 })
+    vault:update_secret(secret, ssl_fixtures.key_client, { ttl = 2 })
     assert.with_timeout(7)
           .with_step(0.5)
           .ignore_exceptions(true)
