@@ -46,6 +46,44 @@ local function log(lvl, ...)
   ngx_log(lvl, "[ssl] ", ...)
 end
 
+
+local function parse_cert(cert, parsed)
+  if cert == nil then
+    return nil, nil, parsed
+  end
+
+  if type(cert) == "cdata" then
+    return cert, nil, parsed
+  end
+
+  local err
+  cert, err = parse_pem_cert(cert)
+  if not cert then
+    return nil, "could not parse PEM certificate: " .. err
+  end
+  return cert, nil, true
+end
+
+
+
+local function parse_key(key, parsed)
+  if key == nil then
+    return nil, nil, parsed
+  end
+
+  if type(key) == "cdata" then
+    return key, nil, parsed
+  end
+
+  local err
+  key, err = parse_pem_priv_key(key)
+  if not key then
+    return nil, "could not parse PEM private key: " .. err
+  end
+  return key, nil, true
+end
+
+
 local function parse_key_and_cert(row)
   if row == false then
     return default_cert_and_key
@@ -53,36 +91,43 @@ local function parse_key_and_cert(row)
 
   -- parse cert and priv key for later usage by ngx.ssl
 
-  local cert, err = parse_pem_cert(row.cert)
-  if not cert then
-    return nil, "could not parse PEM certificate: " .. err
+  local err, parsed
+  local key, key_alt
+  local cert, cert_alt
+
+  cert, err, parsed = parse_cert(row.cert)
+  if err then
+    return nil, err
   end
 
-  local key, err = parse_pem_priv_key(row.key)
-  if not key then
-    return nil, "could not parse PEM private key: " .. err
+  key, err, parsed = parse_key(row.key, parsed)
+  if err then
+    return nil, err
   end
 
-  local cert_alt
-  local key_alt
-  if row.cert_alt and row.key_alt then
-    cert_alt, err = parse_pem_cert(row.cert_alt)
-    if not cert_alt then
-      return nil, "could not parse alternate PEM certificate: " .. err
+  cert_alt, err, parsed = parse_cert(row.cert_alt, parsed)
+  if err then
+    return nil, err
+  end
+
+  if cert_alt then
+    key_alt, err, parsed = parse_key(row.key_alt, parsed)
+    if err then
+      return nil, err
     end
-
-    key_alt, err = parse_pem_priv_key(row.key_alt)
-    if not key_alt then
-      return nil, "could not parse alternate PEM private key: " .. err
-    end
   end
 
-  return {
-    cert = cert,
-    key = key,
-    cert_alt = cert_alt,
-    key_alt = key_alt,
-  }
+  if parsed then
+    return {
+      cert = cert,
+      key = key,
+      cert_alt = cert_alt,
+      key_alt = key_alt,
+      ["$refs"] = row["$refs"],
+    }
+  end
+
+  return row
 end
 
 
@@ -162,25 +207,7 @@ local function fetch_certificate(pk, sni_name)
     return nil, "certificate " .. pk.id .. " not found"
   end
 
-  -- The default TTL of certificate entity should be nil
-  -- to follow the default TTL settings
-  local certificate_ttl
-  -- Calculate the TTL of the certificate based on
-  -- vault reference
-  if certificate["$refs"] then
-    -- When vault reference presents, default interval
-    -- is set to SECRETS_CACHE_MIN_TTL
-    certificate_ttl = kong.vault.SECRETS_CACHE_MIN_TTL
-    kong.vault.update(certificate)
-    for _, value in pairs(certificate["$refs"]) do
-      local ttl = kong.vault.ttl(value)
-      if ttl > 0 and ttl < certificate_ttl then
-        certificate_ttl = ttl
-      end
-    end
-  end
-
-  return certificate, nil, certificate_ttl
+  return certificate
 end
 
 
@@ -226,10 +253,14 @@ end
 
 local function get_certificate(pk, sni_name)
   local cache_key = kong.db.certificates:cache_key(pk)
-  local certificate, err, _ = kong.core_cache:get(cache_key,
-                                                  get_certificate_opts,
-                                                  fetch_certificate,
-                                                  pk, sni_name)
+  local certificate, err, hit_level = kong.core_cache:get(cache_key,
+                                                          get_certificate_opts,
+                                                          fetch_certificate,
+                                                          pk, sni_name)
+
+  if certificate and hit_level ~= 3 and certificate["$refs"] then
+    certificate = parse_key_and_cert(kong.vault.update(certificate))
+  end
 
   return certificate, err
 end
