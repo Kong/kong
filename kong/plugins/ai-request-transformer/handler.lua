@@ -44,6 +44,7 @@ function _M:access(conf)
 
   -- first find the configured LLM interface and driver
   local http_opts = create_http_opts(conf)
+  conf.llm.__plugin_id = conf.__plugin_id
   local ai_driver, err = llm:new(conf.llm, http_opts)
   
   if not ai_driver then
