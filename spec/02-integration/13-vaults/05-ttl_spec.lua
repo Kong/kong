@@ -360,6 +360,10 @@ describe("#hybrid mode dp vault ttl and rotation (#" .. strategy .. ") #" .. vau
 
 
   it("updates plugin config references (backend: #" .. vault.name .. ")", function()
+    helpers.wait_for_all_config_update({
+      forced_admin_port = 9001,
+      forced_proxy_port = 9002,
+    })
     -- Wrong cert-key pair is being used in the pre-configured cert object
     local res = client:get("/tls", {
       headers = {
