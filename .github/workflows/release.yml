@@ -392,6 +392,7 @@ jobs:
       with:
         file: build/dockerfiles/${{ matrix.package }}.Dockerfile
         context: .
+        pull: true
         push: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
