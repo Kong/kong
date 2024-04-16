@@ -162,7 +162,25 @@ local function fetch_certificate(pk, sni_name)
     return nil, "certificate " .. pk.id .. " not found"
   end
 
-  return certificate
+  -- The default TTL of certificate entity should be nil
+  -- to follow the default TTL settings
+  local certificate_ttl
+  -- Calculate the TTL of the certificate based on
+  -- vault reference
+  if certificate["$refs"] then
+    -- When vault reference presents, default interval
+    -- is set to SECRETS_CACHE_MIN_TTL
+    certificate_ttl = kong.vault.SECRETS_CACHE_MIN_TTL
+    kong.vault.update(certificate)
+    for _, value in pairs(certificate["$refs"]) do
+      local ttl = kong.vault.ttl(value)
+      if ttl > 0 and ttl < certificate_ttl then
+        certificate_ttl = ttl
+      end
+    end
+  end
+
+  return certificate, nil, certificate_ttl
 end
 
 
@@ -208,14 +226,10 @@ end
 
 local function get_certificate(pk, sni_name)
   local cache_key = kong.db.certificates:cache_key(pk)
-  local certificate, err, hit_level = kong.core_cache:get(cache_key,
-                                                          get_certificate_opts,
-                                                          fetch_certificate,
-                                                          pk, sni_name)
-
-  if certificate and hit_level ~= 3 then
-    kong.vault.update(certificate)
-  end
+  local certificate, err, _ = kong.core_cache:get(cache_key,
+                                                  get_certificate_opts,
+                                                  fetch_certificate,
+                                                  pk, sni_name)
 
   return certificate, err
 end

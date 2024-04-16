@@ -1,4 +1,5 @@
 local helpers = require "spec.helpers"
+local ssl_fixtures = require "spec.fixtures.ssl"
 
 -- using the full path so that we don't have to modify package.path in
 -- this context
@@ -218,6 +219,201 @@ describe("vault ttl and rotation (#" .. strategy .. ") #" .. vault.name, functio
 
     vault:update_secret(secret, "new", { ttl = 5 })
     check_plugin_secret("new", 5)
+  end)
+end)
+
+
+describe("#hybrid mode dp vault ttl and rotation (#" .. strategy .. ") #" .. vault.name, function()
+  local client
+  local admin_client
+  local secret = "my-secret"
+  local certificate
+
+  local tls_fixtures = {
+    http_mock = {
+      upstream_tls = [[
+        server {
+            server_name example.com;
+            listen 16799 ssl;
+
+            ssl_certificate         ../spec/fixtures/mtls_certs/example.com.crt;
+            ssl_certificate_key     ../spec/fixtures/mtls_certs/example.com.key;
+            ssl_client_certificate  ../spec/fixtures/mtls_certs/ca.crt;
+            ssl_verify_client      on;
+            ssl_verify_depth       3;
+            ssl_session_tickets    off;
+            ssl_session_cache      off;
+            keepalive_requests     0;
+
+            location = / {
+                echo 'it works';
+            }
+        }
+      ]]
+    },
+  }
+
+  tls_fixtures.dns_mock = helpers.dns_mock.new({mocks_only = true})
+  tls_fixtures.dns_mock:A {
+    name = "example.com",
+    address = "127.0.0.1",
+  }
+
+  local vault_fixtures = vault:fixtures()
+  vault_fixtures.dns_mock = tls_fixtures.dns_mock
+
+  lazy_setup(function()
+    helpers.setenv("KONG_LUA_PATH_OVERRIDE", LUA_PATH)
+    helpers.setenv("KONG_VAULT_ROTATION_INTERVAL", "1")
+
+    helpers.test_conf.loaded_plugins = {
+      dummy = true,
+    }
+
+    vault:setup()
+    vault:create_secret(secret, ssl_fixtures.key_alt)
+
+    local bp = helpers.get_db_utils(strategy,
+                                    { "vaults", "routes", "services", "certificates", "ca_certificates" },
+                                    {},
+                                    { vault.name })
+
+
+    assert(bp.vaults:insert({
+      name     = vault.name,
+      prefix   = vault.prefix,
+      config   = vault.config,
+    }))
+
+    -- Prepare TLS upstream service
+    -- cert_alt & key_alt pair is not a correct client certificate
+    -- and it will fail the client TLS verification on server side
+    --
+    -- On the other hand, cert_client & key_client pair is a correct
+    -- client certificate
+    certificate = assert(bp.certificates:insert({
+      key = ssl_fixtures.key_alt,
+      cert = ssl_fixtures.cert_alt,
+    }))
+
+    local service_tls = assert(bp.services:insert({
+      name = "tls-service",
+      url = "https://example.com:16799",
+      client_certificate = certificate,
+    }))
+
+    assert(bp.routes:insert({
+      name      = "tls-route",
+      hosts     = { "example.com" },
+      paths = { "/tls", },
+      service   = { id = service_tls.id },
+    }))
+
+    assert(helpers.start_kong({
+      role = "control_plane",
+      cluster_cert = "spec/fixtures/kong_clustering.crt",
+      cluster_cert_key = "spec/fixtures/kong_clustering.key",
+      database = strategy,
+      prefix = "vault_ttl_test_cp",
+      cluster_listen = "127.0.0.1:9005",
+      admin_listen = "127.0.0.1:9001",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      vaults         = vault.name,
+      plugins        = "dummy",
+      log_level      = "debug",
+    }, nil, nil, tls_fixtures ))
+
+    assert(helpers.start_kong({
+      role = "data_plane",
+      database = "off",
+      prefix = "vault_ttl_test_dp",
+      vaults         = vault.name,
+      plugins        = "dummy",
+      log_level      = "debug",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      cluster_cert = "spec/fixtures/kong_clustering.crt",
+      cluster_cert_key = "spec/fixtures/kong_clustering.key",
+      cluster_control_plane = "127.0.0.1:9005",
+      proxy_listen = "127.0.0.1:9002",
+      nginx_worker_processes = 1,
+    }, nil, nil, vault_fixtures ))
+
+    admin_client = helpers.admin_client(nil, 9001)
+    client = helpers.proxy_client(nil, 9002)
+  end)
+
+
+  lazy_teardown(function()
+    if client then
+      client:close()
+    end
+    if admin_client then
+      admin_client:close()
+    end
+
+    helpers.stop_kong("vault_ttl_test_cp")
+    helpers.stop_kong("vault_ttl_test_dp")
+    vault:teardown()
+
+    helpers.unsetenv("KONG_LUA_PATH_OVERRIDE")
+  end)
+
+
+  it("updates plugin config references (backend: #" .. vault.name .. ")", function()
+    -- Wrong cert-key pair is being used in the pre-configured cert object
+    local res = client:get("/tls", {
+      headers = {
+        host = "example.com",
+      },
+      timeout = 2,
+    })
+    local body = assert.res_status(400, res)
+    assert.matches("The SSL certificate error", body)
+
+    -- Switch to vault referenced key field
+    local res = assert(admin_client:patch("/certificates/"..certificate.id, {
+      body = {
+        key = fmt("{vault://%s/%s?ttl=%s}", vault.prefix, secret, 5),
+        cert = ssl_fixtures.cert_client,
+      },
+      headers = {
+        ["Content-Type"] = "application/json",
+      },
+    }))
+    assert.res_status(200, res)
+    helpers.wait_for_all_config_update({
+      forced_admin_port = 9001,
+      forced_proxy_port = 9002,
+    })
+
+    -- Assume wrong cert-key pair still being used
+    local res = client:get("/tls", {
+      headers = {
+        host = "example.com",
+      },
+      timeout = 2,
+    })
+
+    local body = assert.res_status(400, res)
+    assert.matches("No required SSL certificate was sent", body)
+
+    -- Update secret value and let cert be correct
+    vault:update_secret(secret, ssl_fixtures.key_client, { ttl = 5 })
+    assert.with_timeout(7)
+          .with_step(0.5)
+          .ignore_exceptions(true)
+          .eventually(function()
+            local res = client:get("/tls", {
+              headers = {
+                host = "example.com",
+              },
+              timeout = 2,
+            })
+
+            local body = assert.res_status(200, res)
+            assert.matches("it works", body)
+            return true
+          end).is_truthy("Expected certificate being refreshed")
   end)
 end)
 
