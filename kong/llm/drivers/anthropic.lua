@@ -141,8 +141,8 @@ local transformers_from = {
 
       if usage then
         usage = {
-          prompt_tokens = usage.input_tokens or nil,
-          completion_tokens = usage.output_tokens or nil,
+          prompt_tokens = usage.input_tokens,
+          completion_tokens = usage.output_tokens,
           total_tokens = usage.input_tokens and usage.output_tokens and
             usage.input_tokens + usage.output_tokens or nil,
         }
