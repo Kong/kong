@@ -5,7 +5,7 @@ for _, strategy in helpers.each_strategy() do
   describe("ai-proxy plugin migration", function()
     local db, ai_proxy_plugin
     uh.setup(function()
-      _, db = helpers.get_db_utils(strategy, {"plugins"}, { "ai-proxy" })
+      _, db = helpers.get_db_utils(strategy, {"plugins"})
       local plugin, err, err_t = db.plugins:insert {
         name = "ai-proxy",
         config = {
