@@ -2127,7 +2127,7 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       assert.response(r).has.status(500)
     end)
     it("rendering error (header) is correctly propagated in error.log, issue #25", function()
-      local pattern = [[error:%[string "TMP"%]:4: attempt to call global 'foo' %(a nil value%)]]
+      local pattern = [[error:%[string "TMP"%]:1: attempt to call global 'foo' %(a nil value%)]]
       local start_count = count_log_lines(pattern)
 
       local r = assert(client:send {
