@@ -1080,6 +1080,7 @@ build = {
     ["kong.openid-connect.pkey"]           = "kong/openid-connect/pkey.lua",
     ["kong.openid-connect.certificate"]    = "kong/openid-connect/certificate.lua",
     ["kong.openid-connect.utils"]          = "kong/openid-connect/utils.lua",
+    ["kong.openid-connect.dpop"]           = "kong/openid-connect/dpop.lua",
     -- XXX EE ]]
   }
 }

@@ -39,57 +39,48 @@ describe("Error:expose_error", function()
   end)
 end)
 
-describe("Oauth Error Object ->", function ()
-  it("build_auth_header processes `host` parameter correctly", function ()
+describe("#Oauth Error Object ->", function ()
+  it("build_www_auth_header processes `host` parameter correctly", function ()
     local forbidden_error = ForbiddenError:new {
-      expose_error_code = true
+      expose_error_code = true,
+      fields = {
+        realm = "foo"
+      }
     }
-    local header = forbidden_error:build_auth_header("foo")
-    assert.is_table(header)
-    assert.is_not_nil(header["WWW-Authenticate"])
-    local header_value = header["WWW-Authenticate"]
-    assert.is_same('Bearer realm="foo", error="insufficient_scope"', header_value)
+    local www_header = forbidden_error:build_www_auth_header()
+    assert.is_same('Bearer realm="foo", error="insufficient_scope"', www_header)
   end)
 
   describe("ForbiddenError", function ()
     local error = ForbiddenError:new{}
     it("has sane defaults", function ()
-      assert(error.status_code == 403)
-      assert(error.error_code == oauth_error_codes.INSUFFICIENT_SCOPE)
-      assert(error.error_description == nil)
-      assert(error.log == "Forbidden")
-      assert(error.expose_error_code == false)
-      assert(error.message == "Forbidden")
+      assert.same(403, error.status_code)
+      assert.same(oauth_error_codes.INSUFFICIENT_SCOPE, error.error_code)
+      assert.same(nil, error.error_description)
+      assert.same("Forbidden", error.log)
+      assert.same(false, error.expose_error_code)
+      assert.same("Forbidden", error.message)
     end)
 
-    it("builds base header correctly", function ()
-      local header = error:build_auth_header()
-      assert.is_table(header)
-      assert.is_not_nil(header["WWW-Authenticate"])
-      local header_value = header["WWW-Authenticate"]
-      assert.is_same("Bearer realm=\"kong\"", header_value)
+    it("builds base headers correctly", function ()
+      local www_header = error:build_www_auth_header()
+      assert.same("Bearer realm=\"kong\"", www_header)
     end)
 
-    it("builds `error_description` header correctly", function ()
+    it("builds `error_description` headers correctly", function ()
       error.error_description = "something forbidden"
       error.expose_error_code = true
-      local header = error:build_auth_header()
-      assert.is_table(header)
-      assert.is_not_nil(header["WWW-Authenticate"])
-      local header_value = header["WWW-Authenticate"]
+      local www_header = error:build_www_auth_header()
       assert.is_same(
-[[Bearer realm="kong", error="insufficient_scope", error_description="something forbidden"]], header_value)
+[[Bearer realm="kong", error="insufficient_scope", error_description="something forbidden"]], www_header)
     end)
 
-    it("builds header without `error_description` correctly", function ()
+    it("builds headers without `error_description` correctly", function ()
       error.error_description = nil
       error.expose_error_code = true
-      local header = error:build_auth_header()
-      assert.is_table(header)
-      assert.is_not_nil(header["WWW-Authenticate"])
-      local header_value = header["WWW-Authenticate"]
+      local www_header = error:build_www_auth_header()
       assert.is_same(
-[[Bearer realm="kong", error="insufficient_scope"]], header_value)
+[[Bearer realm="kong", error="insufficient_scope"]], www_header)
     end)
   end)
 
@@ -104,34 +95,25 @@ describe("Oauth Error Object ->", function ()
       assert(error.message == "Unauthorized")
     end)
 
-    it("builds base header correctly", function ()
-      local header = error:build_auth_header()
-      assert.is_table(header)
-      assert.is_not_nil(header["WWW-Authenticate"])
-      local header_value = header["WWW-Authenticate"]
-      assert.is_same("Bearer realm=\"kong\"", header_value)
+    it("builds base headers correctly", function ()
+      local www_header = error:build_www_auth_header()
+      assert.is_same("Bearer realm=\"kong\"", www_header)
     end)
 
-    it("builds `error_description` header correctly", function ()
+    it("builds `error_description` headers correctly", function ()
       error.error_description = "something unauthorized"
       error.expose_error_code = true
-      local header = error:build_auth_header()
-      assert.is_table(header)
-      assert.is_not_nil(header["WWW-Authenticate"])
-      local header_value = header["WWW-Authenticate"]
+      local www_header = error:build_www_auth_header()
       assert.is_same(
-[[Bearer realm="kong", error="invalid_token", error_description="something unauthorized"]], header_value)
+[[Bearer realm="kong", error="invalid_token", error_description="something unauthorized"]], www_header)
     end)
 
-    it("builds header without `error_description` correctly", function ()
+    it("builds headers without `error_description` correctly", function ()
       error.error_description = "something unauthorized"
       error.expose_error_code = true
-      local header = error:build_auth_header()
-      assert.is_table(header)
-      assert.is_not_nil(header["WWW-Authenticate"])
-      local header_value = header["WWW-Authenticate"]
+      local www_header = error:build_www_auth_header()
       assert.is_same(
-[[Bearer realm="kong", error="invalid_token", error_description="something unauthorized"]], header_value)
+[[Bearer realm="kong", error="invalid_token", error_description="something unauthorized"]], www_header)
     end)
   end)
 
@@ -146,34 +128,25 @@ describe("Oauth Error Object ->", function ()
       assert(error.message == "Bad Request")
     end)
 
-    it("builds base header correctly", function ()
-      local header = error:build_auth_header()
-      assert.is_table(header)
-      assert.is_not_nil(header["WWW-Authenticate"])
-      local header_value = header["WWW-Authenticate"]
-      assert.is_same("Bearer realm=\"kong\"", header_value)
+    it("builds base headers correctly", function ()
+      local www_header = error:build_www_auth_header()
+      assert.is_same("Bearer realm=\"kong\"", www_header)
     end)
 
-    it("builds `error_description` header correctly", function ()
+    it("builds `error_description` headers correctly", function ()
       error.error_description = "something bad"
       error.expose_error_code = true
-      local header = error:build_auth_header()
-      assert.is_table(header)
-      assert.is_not_nil(header["WWW-Authenticate"])
-      local header_value = header["WWW-Authenticate"]
+      local www_header = error:build_www_auth_header()
       assert.is_same(
-[[Bearer realm="kong", error="invalid_request", error_description="something bad"]], header_value)
+[[Bearer realm="kong", error="invalid_request", error_description="something bad"]], www_header)
     end)
 
-    it("builds header without `error_description` correctly", function ()
+    it("builds headers without `error_description` correctly", function ()
       error.error_description = nil
       error.expose_error_code = true
-      local header = error:build_auth_header()
-      assert.is_table(header)
-      assert.is_not_nil(header["WWW-Authenticate"])
-      local header_value = header["WWW-Authenticate"]
+      local www_header = error:build_www_auth_header()
       assert.is_same(
-[[Bearer realm="kong", error="invalid_request"]], header_value)
+[[Bearer realm="kong", error="invalid_request"]], www_header)
     end)
   end)
 

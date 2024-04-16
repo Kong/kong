@@ -95,4 +95,22 @@ function jwt:decode(input, options)
 end
 
 
+function jwt:decode_dpop_proof(input, options)
+  local parts, pz = split(input)
+
+  if pz == 3 then
+    local decoded, err = jws.decode(parts, options, self.oic, true)
+    if not decoded then
+      return nil, err
+    end
+    if type(decoded.payload) ~= "table" then
+      return nil, "invalid DPoP payload"
+    end
+    return decoded
+  end
+
+  return nil, "invalid DPoP proof"
+end
+
+
 return jwt

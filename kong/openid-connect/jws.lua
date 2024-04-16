@@ -109,7 +109,7 @@ function jws.encode(token)
 end
 
 
-function jws.decode(token, options, oic)
+function jws.decode(token, options, oic, is_dpop_proof)
   options = options or {}
   oic     = oic     or { options = {} }
 
@@ -158,7 +158,7 @@ function jws.decode(token, options, oic)
   if verify_signature then
     if hdr.typ then
       local upper_typ = upper(hdr.typ)
-      if upper_typ ~= "JWT" and upper_typ ~= "AT+JWT" then
+      if upper_typ ~= "JWT" and upper_typ ~= "AT+JWT" and upper_typ ~= "DPOP+JWT" then
         return nil, "only jwts are supported for the jws"
       end
     end
@@ -190,7 +190,10 @@ function jws.decode(token, options, oic)
       x5t = nil
     end
 
-    if kid and x5t then
+    if is_dpop_proof and hdr.jwk then
+      jwk = hdr.jwk
+
+    elseif kid and x5t then
       local ckey  = kid .. ":" .. alg
       local ckey2 = x5t .. ":" .. alg
       jwk = keys1[ckey] or keys1[ckey2] or keys1[kid] or keys1[x5t] or

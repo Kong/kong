@@ -73,7 +73,7 @@ local JWK = {}
 
 JWK.__index = JWK
 
-function JWK.validate(scheme, op, jwk)
+function JWK.validate(scheme, op, jwk, no_optional)
   local req_keys = VALIDATION[scheme][op]["req"]
   local opt_keys = VALIDATION[scheme][op]["opt"]
   local v_jwk = {}
@@ -84,6 +84,11 @@ function JWK.validate(scheme, op, jwk)
     end
     v_jwk[k] = jwk[k]
   end
+
+  if no_optional then
+    return v_jwk
+  end
+
   for _, k in ipairs(opt_keys) do
     v_jwk[k] = jwk[k]
   end

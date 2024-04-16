@@ -18,6 +18,10 @@ local encode_args      = ngx.encode_args
 local decode_args      = ngx.decode_args
 local escape_uri       = ngx.escape_uri
 local unescape_uri     = ngx.unescape_uri
+local type             = type
+local pairs            = pairs
+local concat           = table.concat
+local sort             = table.sort
 local find             = string.find
 local sub              = string.sub
 local to_hex           = str.to_hex
@@ -34,10 +38,49 @@ local function from_hex(s)
 end
 
 
+local json_encode = json.encode
+
+
+local function ordered_json_encode(v)
+  if type(v) == "table" and not v[1] then
+    local keys, nk = {}, 0
+    for k in pairs(v) do
+      nk = nk + 1
+      keys[nk] = k
+    end
+    sort(keys)
+
+    local buf = { "{" }
+    for i = 1, nk do
+      local k = keys[i]
+      if type(k) ~= "string" then
+        return nil, "table keys must be strings"
+      end
+      local encoded_k = json_encode(k)
+      local encoded_v = ordered_json_encode(v[k])
+      if encoded_k and encoded_v then
+        buf[i + 1] = encoded_k .. ":" .. encoded_v
+      end
+
+      if i < nk then
+        buf[i + 1] = buf[i + 1] .. ","
+      end
+    end
+
+    buf[nk + 2] = "}"
+
+    return concat(buf)
+  end
+
+  return json_encode(v)
+end
+
+
 return {
   json   = {
     encode = json.encode,
     decode = json.decode,
+    ordered_encode = ordered_json_encode,
   },
   base16 = {
     encode = to_hex,

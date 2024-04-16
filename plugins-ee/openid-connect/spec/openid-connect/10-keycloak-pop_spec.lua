@@ -16,6 +16,8 @@ local pl_file = require "pl.file"
 local cjson = require "cjson"
 local keycloak_api = require "spec-ee.fixtures.keycloak_api".new()
 
+local oauth_client = require "spec.helpers.oauth_client"
+
 local PLUGIN_NAME = "openid-connect"
 local keycloak_config = keycloak_api.config
 local KONG_HOSTNAME = "localhost" -- only use other names and when it's resolvable by resty.http
@@ -30,10 +32,20 @@ local KEYCLOAK_SNI_HOST = keycloak_config.host_name
 local KEYCLOAK_SSL_PORT = keycloak_config.ssl_port
 local REALM_PATH = keycloak_config.realm_path
 local ISSUER_SSL_URL = keycloak_config.ssl_issuer_discovery
+local ISSUER_URL = keycloak_config.issuer_discovery
 ---- Clients:
 local KONG_CLIENT_ID = "kong"
 local KONG_CLIENT_SECRET = "X5DGMNBb6NjEp595L9h5Wb2x7DC4jvwE"
 local TLS_AUTH_CLIENT_ID = "kong-client-tls-auth"
+
+-- not sure if it's a bug but once a client uses dpop, it can't be used without dpop anymore
+-- thus we need a differnt client for dpop tests
+local DPOP_CLIENT_ID = "kong-client-dpop"
+local DPOP_CLIENT_SECRET = "hOfxl46eEa7BI5RMmB5ROJQaSCdRheDs"
+
+local NON_DPOP_CLIENT_ID = "kong-client-no-dpop"
+local NON_DPOP_CLIENT_SECRET = "isWgKZbptbiXxz6XlxQaXLLWHha5ik08"
+
 ---- Users:
 local USERNAME = "john"
 local PASSWORD = "doe"
@@ -84,6 +96,13 @@ if KEYCLOAK_LISTEN_HOST ~= "keycloak" then
 end
 
 
+local jwks = require "spec.fixtures.jwks"
+local client_jwk = jwks.client_jwk
+local client_jwk_public = jwks.client_jwk_public
+local client2_jwk = jwks.client2_jwk
+local client2_jwk_public = jwks.client2_jwk_public
+
+
 local function get_jwt_from_token_endpoint()
   local path = REALM_PATH .. "/protocol/openid-connect/token"
 
@@ -125,11 +144,295 @@ local function request_uri(uri, opts)
   return require("resty.http").new():request_uri(uri, opts)
 end
 
-for _, strategy in helpers.all_strategies() do
-for _, mtls_plugin  in ipairs({"tls-handshake-modifier", "mtls-auth"}) do
-for _, auth_method in ipairs({ "bearer", "introspection" }) do
 
-  describe("proof of possession (mtls) strategy: #" .. strategy .. " auth_method: #" .. auth_method .. " mtls plugin: #" .. mtls_plugin, function()
+local function user_password(client)
+  client.username = "dpop_test_user"
+  client.password = "test"
+end
+
+
+for _, strategy in helpers.all_strategies() do
+for _, auth_method in ipairs({ "bearer", "introspection" }) do
+for _, use_nonce in ipairs({ true, false }) do
+  describe("proof of possession (#dpop) strategy: #" .. strategy .. " auth_method: #" .. auth_method .. " use_nonce: " .. tostring(use_nonce), function()
+    local upstream
+    local clients
+
+    lazy_setup(function()
+      clients = {}
+      clients.dpop_client = oauth_client.new({
+        using_dpop = true,
+        issuer = ISSUER_URL,
+        client_id = DPOP_CLIENT_ID,
+        client_secret = DPOP_CLIENT_SECRET,
+        client_jwk = client_jwk,
+        client_jwk_public = client_jwk_public,
+        client_uri = "https://" .. KONG_HOSTNAME .. ":" .. PROXY_PORT_HTTPS, -- make sure the redirect uri is allowed
+        use_pkce = true,
+        code_challenge_method = "S256",
+      })
+
+      user_password(clients.dpop_client)
+
+      clients.non_dpop_client = oauth_client.new({
+        using_dpop = false,
+        issuer = ISSUER_URL,
+        client_id = NON_DPOP_CLIENT_ID,
+        client_secret = NON_DPOP_CLIENT_SECRET,
+        client_uri = "https://" .. KONG_HOSTNAME .. ":" .. PROXY_PORT_HTTPS,
+        use_pkce = true,
+        code_challenge_method = "S256",
+      })
+
+      user_password(clients.non_dpop_client)
+
+      clients.dpop_client_with_wrong_key = oauth_client.new({
+        using_dpop = true,
+        issuer = ISSUER_URL,
+        client_id = DPOP_CLIENT_ID,
+        client_secret = DPOP_CLIENT_SECRET,
+        client_jwk = client_jwk,
+        client_jwk_public = client_jwk_public,
+        client_uri = "https://" .. KONG_HOSTNAME .. ":" .. PROXY_PORT_HTTPS,
+        use_pkce = true,
+        code_challenge_method = "S256",
+      })
+
+      user_password(clients.dpop_client_with_wrong_key)
+
+      clients.dpop_client:login()
+      clients.non_dpop_client:login()
+      clients.dpop_client_with_wrong_key:login()
+
+      -- let it use a wrong jwk
+      clients.dpop_client_with_wrong_key.client_jwk = client2_jwk
+      clients.dpop_client_with_wrong_key.client_jwk_public = client2_jwk_public
+
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "ca_certificates",
+        "plugins",
+      }, {
+        PLUGIN_NAME,
+      })
+
+      upstream = http_mock.new(UPSTREAM_PORT)
+      upstream:start()
+
+      local service = assert(bp.services:insert {
+        name = "mock-service",
+        port = UPSTREAM_PORT,
+        host = "localhost",
+      })
+      local route = assert(bp.routes:insert {
+        service = service,
+        paths   = { "/" },
+      })
+      assert(bp.plugins:insert {
+        route  = route,
+        name   = PLUGIN_NAME,
+        config = {
+          issuer = ISSUER_URL,
+          client_id                  = {
+            KONG_CLIENT_ID, DPOP_CLIENT_ID,
+          },
+          client_secret              = {
+            KONG_CLIENT_SECRET, DPOP_CLIENT_SECRET,
+          },
+          proof_of_possession_dpop = "strict",
+          auth_methods = { auth_method },
+          expose_error_code = true,
+          dpop_use_nonce = use_nonce,
+        },
+      })
+
+      assert(helpers.start_kong({
+        database = strategy,
+        plugins = "bundled," .. PLUGIN_NAME,
+        proxy_listen = "0.0.0.0:" .. PROXY_PORT_HTTPS .. " http2 ssl",
+      }, nil, nil, kong_fixtures))
+    end)
+
+    lazy_teardown(function()
+      upstream:stop()
+      helpers.stop_kong()
+    end)
+
+    it("should reject request with no proof", function()
+      local res = assert(clients.non_dpop_client:rp_request("/"))
+      assert.same(401, res.status)
+      assert.match("invalid_dpop_proof", res.headers["WWW-Authenticate"])
+      assert.logfile().has.line("not a DPoP token")
+    end)
+
+    it("should reject request with an unmatched key", function()
+      local res = assert(clients.dpop_client_with_wrong_key:rp_request("/"))
+      assert.same(401, res.status)
+      assert.match("invalid_dpop_proof", res.headers["WWW-Authenticate"])
+      assert.logfile().has.line("The JWK in the DPoP proof does not match the token")
+    end)
+
+    it("should accept request with correct clients", function()
+      local res = assert(clients.dpop_client:rp_request("/"))
+      assert.same(200, res.status)
+    end)
+
+    -- tests manipulating the proof would break the nonce check
+    if not use_nonce then
+      it("should reject request with wrong proof", function()
+        local res = assert(clients.dpop_client:rp_request("/", {
+          headers = {
+            ["DPoP"] = "wrong_proof",
+          }
+        }))
+        assert.same(401, res.status)
+        assert.match("invalid_dpop_proof", res.headers["WWW-Authenticate"])
+        assert.logfile().has.line("invalid DPoP header")
+      end)
+
+      it("should reject request with an unmatched proof", function()
+        local incorrect_proof = assert.is_truthy(clients.dpop_client:generate_dpop_proof({
+          method = "GET",
+          url = "https://localhost:" .. PROXY_PORT_HTTPS .. "/"
+        }, {
+          access_token = clients.dpop_client:get_access_token(),
+        }), "failed to generate proof")
+
+
+        local res = assert(clients.dpop_client:rp_request("/", {
+          method = "POST",
+          headers = {
+            ["DPoP"] = incorrect_proof,
+          }
+        }))
+        assert.same(401, res.status)
+        assert.match("invalid_dpop_proof", res.headers["WWW-Authenticate"])
+        assert.logfile().has.line("DPoP proof does not match the request")
+      end)
+
+      it("should reject request with an expired proof", function()
+        local expired_proof = assert.is_truthy(clients.dpop_client:generate_dpop_proof({
+          method = "GET",
+          url = "https://localhost:" .. PROXY_PORT_HTTPS .. "/"
+        }, {
+          access_token = clients.dpop_client:get_access_token(),
+          iat = ngx.time() - 3600,
+        }), "failed to generate proof")
+
+        local res = assert(clients.dpop_client:rp_request("/", {
+          headers = {
+            ["DPoP"] = expired_proof,
+          }
+        }))
+        assert.same(401, res.status)
+        assert.match("invalid_dpop_proof", res.headers["WWW-Authenticate"])
+        assert.logfile().has.line("DPoP token has expired")
+      end)
+
+      it("should accept request with slightly time skew", function()
+        local pseudo_future_proof = assert.is_truthy(clients.dpop_client:generate_dpop_proof({
+          method = "GET",
+          url = "https://localhost:" .. PROXY_PORT_HTTPS .. "/"
+        }, {
+          access_token = clients.dpop_client:get_access_token(),
+          iat = ngx.time() + 1,
+        }), "failed to generate proof")
+
+        local res = assert(clients.dpop_client:rp_request("/", {
+          headers = {
+            ["DPoP"] = pseudo_future_proof,
+          }
+        }))
+        assert.same(200, res.status)
+      end)
+
+      it("should reject request with a proof dated too far ahead", function()
+        local expired_proof = assert.is_truthy(clients.dpop_client:generate_dpop_proof({
+          method = "GET",
+          url = "https://localhost:" .. PROXY_PORT_HTTPS .. "/"
+        }, {
+          access_token = clients.dpop_client:get_access_token(),
+          iat = ngx.time() + 3600,
+        }), "failed to generate proof")
+
+        -- make the proof expired
+        ngx.sleep(1)
+
+        local res = assert(clients.dpop_client:rp_request("/", {
+          headers = {
+            ["DPoP"] = expired_proof,
+          }
+        }))
+        assert.same(401, res.status)
+        assert.match("invalid_dpop_proof", res.headers["WWW-Authenticate"])
+        assert.logfile().has.line("DPoP token is not yet valid")
+      end)
+
+      it("should reject request with an unmatched access_token", function()
+        local wrong_proof = assert.is_truthy(clients.dpop_client:generate_dpop_proof({
+          method = "GET",
+          url = "https://localhost:" .. PROXY_PORT_HTTPS .. "/"
+        }, {
+          access_token = clients.dpop_client_with_wrong_key:get_access_token(),
+        }), "failed to generate proof")
+
+        local res = assert(clients.dpop_client:rp_request("/", {
+          headers = {
+            ["DPoP"] = wrong_proof,
+          }
+        }))
+        assert.same(401, res.status)
+        assert.match("invalid_dpop_proof", res.headers["WWW-Authenticate"])
+        assert.logfile().has.line("DPoP proof does not match the access token")
+      end)
+    end
+
+    if use_nonce then
+      it("should reject missing nonce", function ()
+        local incorrect_proof = assert.is_truthy(clients.dpop_client:generate_dpop_proof({
+          method = "GET",
+          url = "https://localhost:" .. PROXY_PORT_HTTPS .. "/"
+        }, {
+          access_token = clients.dpop_client:get_access_token(),
+          nonce = nil, -- missing nonce
+        }), "failed to generate proof")
+
+        local res = assert(clients.dpop_client:rp_request("/", {
+          headers = {
+            ["DPoP"] = incorrect_proof,
+          }
+        }))
+        assert.same(401, res.status)
+        assert.match("use_dpop_nonce", res.headers["WWW-Authenticate"])
+        assert.logfile().has.line("Resource server requires nonce in DPoP proof")
+      end)
+
+      it("should reject incorrect nonce", function ()
+        local incorrect_proof = assert.is_truthy(clients.dpop_client:generate_dpop_proof({
+          method = "GET",
+          url = "https://localhost:" .. PROXY_PORT_HTTPS .. "/"
+        }, {
+          access_token = clients.dpop_client:get_access_token(),
+          nonce = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890", -- incorrect nonce
+        }), "failed to generate proof")
+
+        local res = assert(clients.dpop_client:rp_request("/", {
+          headers = {
+            ["DPoP"] = incorrect_proof,
+          }
+        }))
+        assert.same(401, res.status)
+        assert.match("invalid_dpop_proof", res.headers["WWW-Authenticate"])
+        assert.logfile().has.line("invalid nonce")
+      end)
+    end
+  end)
+end
+
+for _, mtls_plugin  in ipairs({"tls-handshake-modifier", "mtls-auth"}) do
+
+  describe("proof of possession (#mtls) strategy: #" .. strategy .. " auth_method: #" .. auth_method .. " mtls plugin: #" .. mtls_plugin, function()
     local upstream
     local clients
     local JWT
@@ -250,7 +553,7 @@ for _, auth_method in ipairs({ "bearer", "introspection" }) do
     end)
 
     lazy_teardown(function()
-      helpers.stop_kong()
+      helpers.stop_kong(nil, true)
       upstream:stop()
       for _, client in pairs(clients) do
         client:close()
@@ -321,6 +624,7 @@ for _, auth_method in ipairs({ "bearer", "introspection" }) do
       end)
     end
   end)
+
 end
 end
 

@@ -108,15 +108,16 @@ local function create_get_headers(hdrs)
   end
 
   local initialized = false
-  local headers
+  local headers, err
 
   return function()
     if not initialized then
       initialized = true
-      headers = get_value(get_headers())
+      headers, err = get_headers()
+      headers = get_value(headers)
     end
 
-    return headers
+    return headers, err
   end
 end
 
@@ -132,10 +133,14 @@ local function create_get_header(hdrs)
       return nil
     end
 
-    local bearer, basic
+    local bearer, dpop, basic
     if name == "authorization:bearer" then
       name   = "Authorization"
       bearer = true
+
+    elseif name == "authorization:dpop" then
+      name  = "Authorization"
+      dpop = true
 
     elseif name == "authorization:basic" then
       name  = "Authorization"
@@ -158,35 +163,35 @@ local function create_get_header(hdrs)
       end
     end
 
-    if type(header_arg) == "table" then
-      return get_value(header_arg[1])
+    if not header_arg then
+      return nil
     end
 
-    if header_arg then
-      local value_prefix = lower(sub(header_arg, 1, 6))
-      if bearer then
-        if value_prefix == "bearer" then
-          return sub(header_arg, 8)
-
-        else
-          return nil
-        end
-
-      elseif basic then
-        if sub(value_prefix, 1, 5) == "basic" then
-          header_arg = sub(header_arg, 7)
-          local decoded = decode_base64(header_arg)
-          if decoded then
-            header_arg = decoded
-          end
-
-        else
-          return nil
-        end
+    if not basic and not bearer and not dpop then
+      if type(header_arg) == "table" then
+        return get_value(header_arg[1])
+      else
+        return header_arg
       end
     end
 
-    return header_arg
+    header_arg = type(header_arg) == "table" and header_arg or { header_arg }
+    for _, header in ipairs(header_arg) do
+      local token_type, remaining = header:match("^(%S+)%s(.+)")
+      token_type = lower(token_type or "")
+
+      if bearer and token_type == "bearer" then
+        return remaining
+
+      elseif dpop and token_type == "dpop" then
+        return remaining
+
+      elseif basic and token_type == "basic"  then
+        return decode_base64(remaining)
+      end
+    end
+
+    return nil
   end
 end
 

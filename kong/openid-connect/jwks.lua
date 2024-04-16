@@ -5,10 +5,15 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+
+local jwa       = require "kong.openid-connect.jwa"
 local random    = require "kong.openid-connect.random"
 local codec     = require "kong.openid-connect.codec"
 local pkey      = require "resty.openssl.pkey"
 local is_fips   = require "resty.openssl".get_fips_mode
+
+local validate_jwk = require "kong.openid-connect.validation.jwk".validate
+local ordered_json_encode = codec.json.ordered_encode
 
 local ES_CURVES = {
   ES256 = "P-256",
@@ -394,6 +399,35 @@ function jwks.new(options)
   end
 
   return keys
+end
+
+
+-- TODO: jwks.new could use the x5t parameter too
+function jwks.compute_thumbprint(key)
+  local important_keys, err1 = validate_jwk(key.kty, "v", key, true)
+  if not important_keys then
+    return nil, err1
+  end
+
+  important_keys.kty = key.kty
+
+  local encoded, err2 = ordered_json_encode(important_keys)
+  if not encoded then
+    return nil, err2
+  end
+
+  local hash, err3 = jwa.S256(encoded)
+  if not hash then
+    return nil, err3
+  end
+
+  return codec.base64url.encode(hash)
+end
+
+
+function jwks.contain_private_key(key)
+  -- if it can be validated as a signing key, it contains a private key
+  return validate_jwk(key.kty, "s", key)
 end
 
 

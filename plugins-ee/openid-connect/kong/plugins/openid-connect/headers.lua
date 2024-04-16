@@ -59,6 +59,9 @@ local function set_upstream_header(header_key, header_value)
   elseif header_key == "authorization:basic" then
     set_header("Authorization", "Basic " .. header_value)
 
+  elseif header_key == "authorization:dpop" then
+    set_header("Authorization", "DPoP " .. header_value)
+
   else
     set_header(header_key, header_value)
   end
@@ -75,6 +78,9 @@ local function set_downstream_header(header_key, header_value)
 
   elseif header_key == "authorization:basic" then
     append_header("Authorization", "Basic " .. header_value)
+
+  elseif header_key == "authorization:dpop" then
+    append_header("Authorization", "DPoP " .. header_value)
 
   else
     append_header(header_key, header_value)

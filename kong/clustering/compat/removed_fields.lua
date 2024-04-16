@@ -290,7 +290,10 @@ return {
       "enable_proxy_with_consumer_credential",
     },
     openid_connect = {
-      "require_signed_request_object"
+      "require_signed_request_object",
+      "proof_of_possession_dpop",
+      "dpop_use_nonce",
+      "dpop_proof_lifetime",
     },
   },
 }

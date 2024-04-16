@@ -2,17 +2,8 @@ version: '3.5'
 
 services:
   keycloak:
-    image: quay.io/keycloak/keycloak:${PONGO_KEYCLOAK_VERSION:-22.0}
-    command:
-      - >
-        start-dev
-        --https-trust-store-file /tmp/truststore.jks
-        --https-trust-store-password=password
-        --https-client-auth=request
-        --https-protocols=TLSv1.2
-        --https-certificate-file=/tmp/server.crt
-        --https-certificate-key-file=/tmp/server.key
-        --import-realm
+    image: quay.io/keycloak/keycloak:${PONGO_KEYCLOAK_VERSION:-24.0}
+    command: start-dev --import-realm
     volumes:
       - ${PONGO_WD}/../openid-connect/.pongo/demo.json:/opt/keycloak/data/import/demo.json
       - ${PONGO_WD}/../openid-connect/.pongo/truststore.jks:/tmp/truststore.jks
@@ -24,6 +15,13 @@ services:
       VIRTUAL_PORT: 8080,8443
       DB_VENDOR: h2
       JAVA_OPTS_APPEND: -Dkeycloak.migration.strategy=OVERWRITE_EXISTING
+      KC_HTTPS_TRUST_STORE_FILE: /tmp/truststore.jks
+      KC_HTTPS_TRUST_STORE_PASSWORD: password
+      KC_HTTPS_CLIENT_AUTH: request
+      KC_HTTPS_PROTOCOLS: TLSv1.2
+      KC_HTTPS_CERTIFICATE_FILE: /tmp/server.crt
+      KC_HTTPS_CERTIFICATE_KEY_FILE: /tmp/server.key
+      KC_FEATURES: dpop
     healthcheck:
       interval: 5s
       retries: 10

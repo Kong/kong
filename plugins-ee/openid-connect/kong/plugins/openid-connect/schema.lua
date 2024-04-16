@@ -45,7 +45,7 @@ local function validate_issuer(conf)
   return true
 end
 
-local function check_auth_method_for_mtls_pop(conf)
+local function check_auth_method_for_pop(conf)
   if not conf.proof_of_possession_auth_methods_validation then
     return true
   end
@@ -57,7 +57,7 @@ local function check_auth_method_for_mtls_pop(conf)
 
   for _, auth_method in ipairs(conf.auth_methods) do
     if auth_method ~= "bearer" and auth_method ~= "introspection" and auth_method ~= "session" then
-      return false
+      return false, "mTLS-proof-of-possession or Demonstrating Proof-of-Possession (DPoP) only supports 'bearer', 'introspection', 'session' auth methods when proof_of_possession_auth_methods_validation is set to true."
     end
   end
 
@@ -69,14 +69,20 @@ local function validate_proof_of_possession(conf)
   local self_signed_verify_support = kong.configuration.loaded_plugins["tls-handshake-modifier"]
   local ca_chain_verify_support = kong.configuration.loaded_plugins["mtls-auth"]
 
-  if conf.proof_of_possession_mtls == "strict" or conf.proof_of_possession_mtls == "optional" then
+  local mtls_pop_enabled = conf.proof_of_possession_mtls == "strict" or conf.proof_of_possession_mtls == "optional"
+  local dpop_enabled = conf.proof_of_possession_dpop and conf.proof_of_possession_dpop ~= "off"
+
+  if mtls_pop_enabled then
     if not (self_signed_verify_support or ca_chain_verify_support) then
       return false, "mTLS-proof-of-possession requires client certificate authentication. " ..
         "'tls-handshake-modifier' or 'mtls-auth' plugin could be used for this purpose."
     end
+  end
 
-    if not check_auth_method_for_mtls_pop(conf) then
-      return false, "mTLS-proof-of-possession only supports 'bearer', 'introspection', 'session' auth methods when proof_of_possession_auth_methods_validation is set to true."
+  if mtls_pop_enabled or dpop_enabled then
+    local ok, err = check_auth_method_for_pop(conf)
+    if not ok then
+      return ok, err
     end
   end
 
@@ -2295,6 +2301,34 @@ local config = {
             mtls_revocation_endpoint = typedefs.url {
               description = "Alias for the introspection endpoint to be used for mTLS client authentication. If set it overrides the value in `mtls_endpoint_aliases` returned by the discovery endpoint.",
               required = false,
+            },
+          },
+          {
+            proof_of_possession_dpop = {
+              description = "Enable Demonstrating Proof-of-Possession (DPoP). If set to strict, all request are verified despite the presence of the DPoP key claim (cnf.jkt). If set to optional, only tokens bound with DPoP's key are verified with the proof.",
+              required = false,
+              type = "string",
+              one_of = {
+                "off", "strict", "optional",
+              },
+              default = "off",
+            },
+          },
+          {
+            dpop_use_nonce = {
+              description = "Specifies whether to challenge the client with a nonce value for DPoP proof. When enabled it will also be used to calculate the DPoP proof lifetime.",
+              required = false,
+              type = "boolean",
+              default = false,
+            },
+          },
+          {
+            dpop_proof_lifetime = {
+              description = "Specifies the lifetime in seconds of the DPoP proof. It determines how long the same proof can be used after creation. " ..
+                "The creation time is determined by the nonce creation time if a nonce is used, and the iat claim otherwise.",
+              required = false,
+              type = "number",
+              default = 300,
             },
           },
         },

@@ -1,0 +1,3 @@
+message: "**OpenID Connect:** Added support for DPoP (Demonstrating Proof-of-Possession) tokens validation. The feature is available by enabling `proof_of_possession_dpop`"
+type: feature
+scope: Plugin

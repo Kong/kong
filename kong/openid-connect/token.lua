@@ -15,6 +15,7 @@ local nyi           = require "kong.openid-connect.nyi"
 local set           = require "kong.openid-connect.set"
 local claimshandler = require "kong.openid-connect.claims"
 local certificate   = require "kong.openid-connect.certificate"
+local dpop          = require "kong.openid-connect.dpop"
 
 
 local setmetatable  = setmetatable
@@ -775,7 +776,6 @@ local function verify_x5t(claim_x5t_s256, client_cert_pem)
 
   local x5t_s256 = assert(client_cert:digest("SHA256"))
   local x5t_s256_encoded = assert(base64url.encode(x5t_s256))
-  x5t_s256_encoded = x5t_s256_encoded:gsub("=*$", "")
 
   if claim_x5t_s256 ~= x5t_s256_encoded then
     return nil, "the client certificate thumbprint does not match the x5t#S256 claim"
@@ -785,31 +785,14 @@ local function verify_x5t(claim_x5t_s256, client_cert_pem)
 end
 
 
-function token:verify_client(access_token, options)
-  options = options or {}
-
-  local opts = self.oic.options
-  local proof_of_possession_mtls = options.proof_of_possession_mtls or
-                                   opts.proof_of_possession_mtls
-  local client_cert_pem = options.client_cert_pem or opts.client_cert_pem
-
-  if type(access_token) == "string" then
-    access_token = self.oic.jwt:decode(access_token, options)
-  end
-
-  local payload = access_token and access_token.payload or access_token
-  local cnf = payload and payload.cnf
+function token:verify_client_mtls(claims, client_cert_pem)
+  local cnf = claims and claims.cnf
   local claim_x5t_s256 = cnf and cnf["x5t#S256"]
 
-  if proof_of_possession_mtls == "strict" or (proof_of_possession_mtls == "optional" and claim_x5t_s256) then
-    -- mandatory verification, or optional verification for tokens with the claim
-    local ok, err = verify_x5t(claim_x5t_s256, client_cert_pem)
-    if not ok then
-      return nil, err
-    end
-
-  elseif proof_of_possession_mtls ~= "off" and proof_of_possession_mtls ~= "optional" then
-    error("unsupported bearer proof of possession method: " .. proof_of_possession_mtls)
+  -- mandatory verification, or optional verification for tokens with the claim
+  local ok, err = verify_x5t(claim_x5t_s256, client_cert_pem)
+  if not ok then
+    return false, "invalid_token", err
   end
 
   return true
@@ -1973,5 +1956,11 @@ function token:revoke(tok, hint, options)
     end
   end
 end
+
+
+function token:verify_client_dpop(...)
+  return dpop.verify_client_dpop(self.oic, ...)
+end
+
 
 return token

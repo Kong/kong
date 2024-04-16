@@ -234,9 +234,9 @@ describe(PLUGIN_NAME .. ": (#schema)", function()
             if auth_methods_validation and (pop_mtls == "strict" or pop_mtls == "optional") then
               assert.is_falsy(ok)
 
-              assert.same(err, {
-                config = "mTLS-proof-of-possession only supports 'bearer', 'introspection', 'session' auth methods when proof_of_possession_auth_methods_validation is set to true."
-              })
+              assert.same({
+                config = "mTLS-proof-of-possession or Demonstrating Proof-of-Possession (DPoP) only supports 'bearer', 'introspection', 'session' auth methods when proof_of_possession_auth_methods_validation is set to true."
+              }, err)
             else
               assert.is_truthy(ok)
             end
@@ -250,9 +250,9 @@ describe(PLUGIN_NAME .. ": (#schema)", function()
             if auth_methods_validation and (pop_mtls == "strict" or pop_mtls == "optional") then
               assert.is_falsy(ok)
 
-              assert.same(err, {
-                config = "mTLS-proof-of-possession only supports 'bearer', 'introspection', 'session' auth methods when proof_of_possession_auth_methods_validation is set to true."
-              })
+              assert.same({
+                config = "mTLS-proof-of-possession or Demonstrating Proof-of-Possession (DPoP) only supports 'bearer', 'introspection', 'session' auth methods when proof_of_possession_auth_methods_validation is set to true."
+              }, err)
             else
               assert.is_truthy(ok)
             end

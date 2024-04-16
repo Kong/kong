@@ -6,7 +6,14 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local oic = require "kong.openid-connect"
+local jwa = require "kong.openid-connect.jwa"
+local jwks = require "kong.openid-connect.jwks"
 local mtls_fixtures = require "spec-ee.fixtures.mtls"
+local dpop_fixtures = require "spec-ee.fixtures.dpop"
+
+local base64  = require "ngx.base64"
+local json_encode = require("cjson").encode
+local json_decode = require("cjson").decode
 
 local CLIENT_CERT                   = mtls_fixtures.CLIENT_CERT
 local CERT_ACCESS_TOKEN             = mtls_fixtures.CERT_ACCESS_TOKEN
@@ -15,6 +22,12 @@ local NO_CERT_ACCESS_TOKEN          = mtls_fixtures.NO_CERT_ACCESS_TOKEN
 local CERT_INTROSPECTION_DATA       = mtls_fixtures.CERT_INTROSPECTION_DATA
 local WRONG_CERT_INTROSPECTION_DATA = mtls_fixtures.WRONG_CERT_INTROSPECTION_DATA
 local NO_CERT_INTROSPECTION_DATA    = mtls_fixtures.NO_CERT_INTROSPECTION_DATA
+
+
+local function get_claims(token)
+  local _, payload_encoded, _ = token:match("^([^.]+)%.([^.]+)%.([^.]+)$")
+  return json_decode(base64.decode_base64url(payload_encoded))
+end
 
 
 local KEYS = [[
@@ -84,6 +97,37 @@ local TOKENS_DECODED = {
     type = "JWS",
   }
 }
+
+
+local function sign_dpop_header(req, nonce, key, pub_key, ath, iat, jti, alg)
+  alg = alg or "SHA512"
+
+  local header = ngx.encode_base64(json_encode {
+    typ = "dpop+jwt",
+    alg = key.alg,
+    jwk = pub_key,
+  }, true)
+
+  local payload = ngx.encode_base64(json_encode {
+    ath = ath,
+    jti = jti or "1234567890",
+    htm = req.method,
+    htu = req.uri,
+    iat = iat or ngx.now(),
+    nonce = nonce,
+  }, true)
+
+  local ret = header .. "." .. payload
+
+  local sign = assert(jwa.sign(key.alg, key, ret))
+
+  return ret .. "." .. sign
+end
+
+
+local function hash_access_token(jwt)
+  return base64.encode_base64url(jwa.S256(jwt), true)
+end
 
 
 local function initialize_oic_and_token(options)
@@ -188,81 +232,225 @@ describe("Token tests", function ()
     end)
   end)
 
-  describe("Proof of Possession #mtls mode - verify_client()", function()
+  describe("Proof of Possession #mtls mode - verify_client_mtls()", function()
     local options
+
+    local access_token_claims = get_claims(CERT_ACCESS_TOKEN)
+    local unbound_access_token_claims = get_claims(NO_CERT_ACCESS_TOKEN)
+    local wrong_access_token_claims = get_claims(WRONG_CERT_ACCESS_TOKEN)
 
     before_each(function()
       options = {
         proof_of_possession_mtls = "strict",
         client_cert_pem = CLIENT_CERT,
         verify_signature = false,
+        dpop_req_info = {
+          method = "GET",
+          uri = "https://kong:8000",
+        }
       }
     end)
 
-    it("should return true when token is bound to the right certificate", function()
+    it("should return true when the token is bound to the right certificate", function()
       t = initialize_oic_and_token(options)
 
-      local res, err = t:verify_client(CERT_ACCESS_TOKEN)
-      assert.is_true(res)
-      assert.is_nil(err)
+      local ok, err_typ, err_msg = t:verify_client_mtls(access_token_claims, CLIENT_CERT)
+      assert.is_nil(err_msg)
+      assert.is_nil(err_typ)
+      assert.is_truthy(ok)
     end)
 
-    it("should return err when token is not bound to any certificate", function()
+    it("should return err when the token is not bound to any certificate", function()
       t = initialize_oic_and_token(options)
 
-      local res, err = t:verify_client(NO_CERT_ACCESS_TOKEN)
-      assert.is_nil(res)
-      assert.equals(err, "x5t#S256 claim required but not found")
+      local ok, err_typ, err_msg = t:verify_client_mtls(unbound_access_token_claims, CLIENT_CERT)
+      assert.is_falsy(ok)
+      assert.is_same("invalid_token", err_typ)
+      assert.is_same("x5t#S256 claim required but not found", err_msg)
     end)
 
-    it("should return err when token is bound to the wrong certificate", function()
+    it("should return err when the token is bound to the wrong certificate", function()
       t = initialize_oic_and_token(options)
 
-      local res, err = t:verify_client(WRONG_CERT_ACCESS_TOKEN)
-      assert.is_nil(res)
-      assert.equals(err, "the client certificate thumbprint does not match the x5t#S256 claim")
-    end)
-
-    it("does not enforce PoP with proof_of_possession_mtls = optional", function()
-      options.proof_of_possession_mtls = "optional"
-      t = initialize_oic_and_token(options)
-
-      local res, err = t:verify_client(NO_CERT_ACCESS_TOKEN)
-      assert.is_true(res)
-      assert.is_nil(err)
-    end)
-
-    it("does not validate PoP with proof_of_possession_mtls = off", function()
-      options.proof_of_possession_mtls = "off"
-      t = initialize_oic_and_token(options)
-
-      local res, err = t:verify_client(WRONG_CERT_ACCESS_TOKEN)
-      assert.is_true(res)
-      assert.is_nil(err)
+      local ok, err_typ, err_msg = t:verify_client_mtls(wrong_access_token_claims, CLIENT_CERT)
+      assert.is_falsy(ok)
+      assert.is_same("invalid_token", err_typ)
+      assert.is_same("the client certificate thumbprint does not match the x5t#S256 claim", err_msg)
     end)
 
     it("should return true when introspection data is bound to the right certificate", function()
       t = initialize_oic_and_token(options)
 
-      local res, err = t:verify_client(CERT_INTROSPECTION_DATA)
-      assert.is_true(res)
-      assert.is_nil(err)
+      local ok, err_typ, err_msg = t:verify_client_mtls(CERT_INTROSPECTION_DATA, CLIENT_CERT)
+      assert.is_nil(err_msg)
+      assert.is_nil(err_typ)
+      assert.is_truthy(ok)
     end)
 
     it("should return err when introspection data is not bound to any certificate", function()
       t = initialize_oic_and_token(options)
 
-      local res, err = t:verify_client(NO_CERT_INTROSPECTION_DATA)
-      assert.is_nil(res)
-      assert.equals(err, "x5t#S256 claim required but not found")
+      local ok, err_typ, err_msg = t:verify_client_mtls(NO_CERT_INTROSPECTION_DATA, CLIENT_CERT)
+      assert.is_falsy(ok)
+      assert.is_same("invalid_token", err_typ)
+      assert.is_same("x5t#S256 claim required but not found", err_msg)
     end)
 
     it("should return err when introspection data is bound to the wrong certificate", function()
       t = initialize_oic_and_token(options)
 
-      local res, err = t:verify_client(WRONG_CERT_INTROSPECTION_DATA)
-      assert.is_nil(res)
-      assert.equals(err, "the client certificate thumbprint does not match the x5t#S256 claim")
+      local ok, err_typ, err_msg = t:verify_client_mtls(WRONG_CERT_INTROSPECTION_DATA, CLIENT_CERT)
+      assert.is_falsy(ok)
+      assert.is_same("invalid_token", err_typ)
+      assert.is_same("the client certificate thumbprint does not match the x5t#S256 claim", err_msg)
+    end)
+  end)
+
+  describe("Proof of Possession #dpop mode - verify_client_mtls()", function()
+    local options
+    local logger
+    local log_record
+    local log_match
+    local old_kong = _G.kong
+
+    local access_token_claims = get_claims(dpop_fixtures.CERT_ACCESS_TOKEN)
+    local unbound_access_token_claims = get_claims(dpop_fixtures.NO_CERT_ACCESS_TOKEN)
+    local wrong_access_token_claims = get_claims(dpop_fixtures.WRONG_CERT_ACCESS_TOKEN)
+
+    local opaque_token = "test_opaque"
+    local opaque_ath = hash_access_token(opaque_token)
+    local ath = hash_access_token(dpop_fixtures.CERT_ACCESS_TOKEN)
+
+    local dpop_req_info = {
+      method = "GET",
+      uri = "https://kong:8000/protected",
+    }
+
+    lazy_setup(function()
+      log_record = {}
+
+      local function log(...)
+        table.insert(log_record, table.concat{ ... })
+      end
+
+      logger = setmetatable({}, { __index = function()
+        return log
+      end })
+
+      _G.kong = {
+        log = logger,
+      }
+
+      setmetatable(_G.kong, { __index = old_kong })
+
+      function log_match(str)
+        for _, v in ipairs(log_record) do
+          if v:match(str, nil, true) then
+            return true
+          end
+        end
+        return false
+      end
+    end)
+
+    lazy_teardown(function()
+      _G.kong = old_kong
+    end)
+
+    before_each(function()
+      options = {
+        dpop_use_nonce = false,
+        dpop_proof_lifetime = 600,
+        client_cert_pem = CLIENT_CERT,
+        verify_signature = false,
+      }
+    end)
+
+    it("should return true when the token is not a dpop token", function()
+      dpop_req_info.dpop_header = assert(sign_dpop_header(dpop_req_info, nil, dpop_fixtures.CLIENT_KEY, dpop_fixtures.CLIENT_KEY_PUBLIC, ath))
+      t = initialize_oic_and_token(options)
+
+      local ok, err_typ, err_msg = t:verify_client_dpop(dpop_fixtures.CERT_ACCESS_TOKEN, access_token_claims, true, dpop_req_info, options)
+      assert.is_nil(err_msg)
+      assert.is_nil(err_typ)
+      assert.is_truthy(ok)
+    end)
+
+    it("should return true when the token is bound to the right certificate", function()
+      dpop_req_info.dpop_header = assert(sign_dpop_header(dpop_req_info, nil, dpop_fixtures.CLIENT_KEY, dpop_fixtures.CLIENT_KEY_PUBLIC, ath))
+      t = initialize_oic_and_token(options)
+
+      local ok, err_typ, err_msg = t:verify_client_dpop(dpop_fixtures.CERT_ACCESS_TOKEN, access_token_claims, true, dpop_req_info, options)
+      assert.is_nil(err_msg)
+      assert.is_nil(err_typ)
+      assert.is_truthy(ok)
+    end)
+
+    it("should return false when the token is bound to the wrong request", function()
+      dpop_req_info.dpop_header = assert(sign_dpop_header({
+        method = "POST",
+        uri = "https://kong:8000/protected",
+      }, nil, dpop_fixtures.CLIENT_KEY, dpop_fixtures.CLIENT_KEY_PUBLIC, ath))
+      t = initialize_oic_and_token(options)
+
+      local ok, err_typ, err_msg = t:verify_client_dpop(dpop_fixtures.CERT_ACCESS_TOKEN, access_token_claims, true, dpop_req_info, options)
+      assert.is_falsy(ok)
+      log_match("DPoP proof does not match the request")
+      assert.is_same("invalid_dpop_proof", err_typ)
+      assert.is_same("Unable to validate the DPoP proof", err_msg)
+    end)
+
+    it("should return err when the token is not bound to any certificate", function()
+      t = initialize_oic_and_token(options)
+
+      local ok, err_typ, err_msg = t:verify_client_dpop(dpop_fixtures.NO_CERT_ACCESS_TOKEN, unbound_access_token_claims, true, dpop_req_info, options)
+      assert.is_falsy(ok)
+      log_match("there should be one and only one DPoP header")
+      assert.is_same("invalid_dpop_proof", err_typ)
+      assert.is_same("Unable to validate the DPoP proof", err_msg)
+    end)
+
+    it("should return err when the token is bound to the wrong certificate", function()
+      dpop_req_info.dpop_header = assert(sign_dpop_header(dpop_req_info, nil, dpop_fixtures.CLIENT_KEY, dpop_fixtures.CLIENT_KEY_PUBLIC, ath))
+      t = initialize_oic_and_token(options)
+
+      local ok, err_typ, err_msg = t:verify_client_dpop(dpop_fixtures.WRONG_CERT_ACCESS_TOKEN, wrong_access_token_claims, true, dpop_req_info, options)
+      log_match("DPoP proof does not match the access token")
+      assert.is_same("invalid_dpop_proof", err_typ)
+      assert.is_same("Unable to validate the DPoP proof", err_msg)
+      assert.is_falsy(ok)
+    end)
+
+    it("should return true when introspection data is bound to the right certificate", function()
+      dpop_req_info.dpop_header = assert(sign_dpop_header(dpop_req_info, nil, dpop_fixtures.CLIENT_KEY, dpop_fixtures.CLIENT_KEY_PUBLIC, opaque_ath))
+      t = initialize_oic_and_token(options)
+
+      local ok, err_typ, err_msg = t:verify_client_dpop(opaque_token, dpop_fixtures.CERT_INTROSPECTION_DATA, true, dpop_req_info, options)
+      assert.is_nil(err_msg)
+      assert.is_nil(err_typ)
+      assert.is_truthy(ok)
+    end)
+
+    it("should return err when introspection data is not bound to any certificate", function()
+      dpop_req_info.dpop_header = assert(sign_dpop_header(dpop_req_info, nil, dpop_fixtures.CLIENT_KEY, dpop_fixtures.CLIENT_KEY_PUBLIC, opaque_ath))
+      t = initialize_oic_and_token(options)
+
+      local ok, err_typ, err_msg = t:verify_client_dpop(opaque_token, dpop_fixtures.NO_CERT_INTROSPECTION_DATA, true, dpop_req_info, options)
+      log_match("DPoP key bound to the access token is missing")
+      assert.is_same("invalid_dpop_proof", err_typ)
+      assert.is_same("Unable to validate the DPoP proof", err_msg)
+      assert.is_falsy(ok)
+    end)
+
+    it("should return err when introspection data is bound to the wrong certificate", function()
+      dpop_req_info.dpop_header = assert(sign_dpop_header(dpop_req_info, nil, dpop_fixtures.CLIENT_KEY, dpop_fixtures.CLIENT_KEY_PUBLIC, opaque_ath))
+      t = initialize_oic_and_token(options)
+
+      local ok, err_typ, err_msg = t:verify_client_dpop(opaque_token, dpop_fixtures.WRONG_CERT_INTROSPECTION_DATA, true, dpop_req_info, options)
+      log_match("The JWK in the DPoP proof does not match the token")
+      assert.is_same("invalid_dpop_proof", err_typ)
+      assert.is_same("Unable to validate the DPoP proof", err_msg)
+      assert.is_falsy(ok)
     end)
   end)
 end)

@@ -72,6 +72,13 @@ local REFRESH_TOKEN_GRANT = "refresh_token"
 local JWT_BEARER_GRANT = "urn:ietf:params:oauth:grant-type:jwt-bearer"
 
 
+local DPOP_MULTI_AUTH_METHODS_USED do
+  local jwa = require("kong.openid-connect.jwa")
+  local err_msg = 'error="invalid_request", error_description="Multiple methods used to include access token"'
+  DPOP_MULTI_AUTH_METHODS_USED = ('Bearer %s, DPoP algs="%s", %s'):format(err_msg, jwa.get_dpop_algs(), err_msg)
+end
+
+
 local tls_client_auth_certs = {}
 
 
@@ -246,8 +253,6 @@ function OICHandler.access(_, conf)
       -- resolve_aggregated_claims  = args.get_conf_arg("resolve_aggregated_claims"),
       resolve_distributed_claims = args.get_conf_arg("resolve_distributed_claims"),
       rediscover_keys = rediscover_keys(issuer_uri, discovery_options),
-      proof_of_possession_mtls = args.get_conf_arg("proof_of_possession_mtls", "off"),
-      client_cert_pem = ngx.var.ssl_client_raw_cert,
       tls_client_auth_cert = tls_client_auth_cert,
       tls_client_auth_key = tls_client_auth_key,
       tls_client_auth_ssl_verify = args.get_conf_arg("tls_client_auth_ssl_verify", true),
@@ -358,22 +363,9 @@ function OICHandler.access(_, conf)
     end
   end
 
-  local response
-  if not session_present then
-    response = responses.new(args, ctx, iss, client, anonymous)
-  else
-    response = responses.new(args, ctx, iss, client, anonymous, session)
-  end
-
-  local expose_error_code = args.get_conf_arg("expose_error_code", false)
-
-  local function forbidden(message, description)
-    return response.forbidden(message, description, expose_error_code)
-  end
-
-  local function unauthorized(message, description)
-    return response.unauthorized(message, description, expose_error_code)
-  end
+  local response = responses.new(args, ctx, iss, client, anonymous, session_present and session or nil)
+  local unauthorized = response.unauthorized
+  local forbidden = response.forbidden
 
   local proxy_despite_refresh_failure = false
 
@@ -509,10 +501,11 @@ function OICHandler.access(_, conf)
 
   -- find credentials
   local bearer_token
+  local is_dpop_token
   local token_endpoint_args
-  if not session_present then
-    local hide_credentials = args.get_conf_arg("hide_credentials", false)
+  local hide_credentials = args.get_conf_arg("hide_credentials", false)
 
+  if not session_present then
     if auth_methods.session then
       if session_error then
         log("session was not found (", session_error, ")")
@@ -532,6 +525,21 @@ function OICHandler.access(_, conf)
       for _, location in ipairs(bearer_token_param_type) do
         if location == "header" then
           bearer_token = args.get_header("authorization:bearer")
+          local dpop_token = args.get_header("authorization:dpop")
+
+          if dpop_token then
+            -- special handling of ambiguous authentication
+            if bearer_token then -- TODO: cover this case with tests
+              return kong.response.exit(400, nil, {
+                -- TODO: should this be part of response.lua?
+                ["WWW-Authenticate"] = DPOP_MULTI_AUTH_METHODS_USED,
+              })
+            end
+
+            bearer_token = dpop_token
+            is_dpop_token = true
+          end
+
           if bearer_token then
             if hide_credentials then
               args.clear_header("Authorization")
@@ -602,6 +610,7 @@ function OICHandler.access(_, conf)
           client = client.index,
           tokens = {
             access_token = bearer_token,
+            is_dpop_token = is_dpop_token,
           },
         }
 
@@ -1124,7 +1133,7 @@ function OICHandler.access(_, conf)
            not auth_methods.kong_oauth2
         then
           log("unable to verify bearer token")
-          return unauthorized(err or "invalid jwt token", "invalid_token")
+          return unauthorized(err or "invalid jwt token")
         end
 
         if err then
@@ -1428,7 +1437,8 @@ function OICHandler.access(_, conf)
   local original_auth_method = auth_method ~= "session" and auth_method or
                                session_data and session_data.auth_method
   -- only do proof of possession validation for bearer and introspection auth methods
-  if conf.proof_of_possession_mtls ~= "off" and (original_auth_method == "bearer" or original_auth_method == "introspection") then
+  if (conf.proof_of_possession_mtls ~= "off" or conf.proof_of_possession_dpop ~= "off")
+    and (original_auth_method == "bearer" or original_auth_method == "introspection") then
     local access_token
 
     -- check if access token is a structured token or a (not yet introspected) opaque token
@@ -1441,6 +1451,15 @@ function OICHandler.access(_, conf)
 
     elseif session_data and session_data.tokens then
       access_token = session_data.tokens.access_token
+      is_dpop_token = session_data.tokens.is_dpop_token
+      if type(access_token) == "string" then
+        local decoded_access_token, err_ = oic.token:decode(access_token, TOKEN_DECODE_OPTS)
+        if decoded_access_token then
+          access_token = decoded_access_token
+        else
+          log("error decoding access token in session ", " (", err_, ")")
+        end
+      end
     end
 
     -- do introspection of opaque token
@@ -1454,9 +1473,57 @@ function OICHandler.access(_, conf)
       access_token = introspection_data or introspection_jwt
     end
 
-    ok, err = oic.token:verify_client(access_token)
-    if not ok then
-      return unauthorized(err, "invalid_token")
+    local token = tokens_encoded.access_token or introspection_jwt
+    local token_claims = type(access_token) == "table" and access_token.payload
+
+    local mtls_pop_mode = conf.proof_of_possession_mtls
+    local dpop_mode = conf.proof_of_possession_dpop
+    local client_cert_pem = ngx.var.ssl_client_raw_cert
+
+    -- check the cnf claim to prevent downgrade attack
+    local cnf_is_dpop_token = token_claims and token_claims.cnf and token_claims.cnf.jkt
+
+    if dpop_mode ~= "off" and is_dpop_token and not cnf_is_dpop_token then
+      return unauthorized("token marked as DPoP but missing cnf.jkt claim")
+    end
+
+    local verified, err_typ, err_msg = true, nil, nil
+    if mtls_pop_mode == "strict" or (mtls_pop_mode == "optional" and client_cert_pem) then
+      verified, err_typ, err_msg = oic.token:verify_client_mtls(token_claims, client_cert_pem)
+
+    elseif dpop_mode == "strict" or (dpop_mode == "optional" and cnf_is_dpop_token) then
+      if cnf_is_dpop_token and not is_dpop_token then
+        log.warn("DPoP token (with cnf.jkt claim) not marked as DPoP") -- Likely a downgrade attack?
+      end
+
+      local headers_for_dpop, get_headers_err = args.get_headers()
+
+      if hide_credentials then
+        args.clear_header("DPoP")
+      end
+
+      local nonce_header
+
+      -- however we are still check if the token is marked as DPoP token, so we are passing is_dpop_token
+      verified, err_typ, err_msg, nonce_header = oic.token:verify_client_dpop(token, token_claims, is_dpop_token, {
+        method = var.request_method,
+        uri = args.get_redirect_uri(),
+        dpop_header = headers_for_dpop and headers_for_dpop["DPoP"],
+        truncated = get_headers_err == "truncated",
+      }, {
+        dpop_use_nonce = args.get_conf_arg("dpop_use_nonce", false),
+        dpop_proof_lifetime = args.get_conf_arg("dpop_proof_lifetime", 300),
+      })
+
+      -- we also response with nonce for successful requests
+      if nonce_header then
+        kong.response.set_header("DPoP-Nonce", nonce_header)
+      end
+    end
+
+    -- the request is terminating, return the response
+    if not verified then
+      return unauthorized(err_msg, err_typ, err_msg)
     end
   end
 
@@ -1525,13 +1592,11 @@ function OICHandler.access(_, conf)
     -- possibly expired
 
     if not refresh_tokens then
-      return unauthorized("access token has expired and \
-      refreshing of tokens was disabled", TOKEN_EXPIRED_MESSAGE, true)
+      return unauthorized("access token has expired and refreshing of tokens was disabled", nil, TOKEN_EXPIRED_MESSAGE)
     end
 
     if not tokens_encoded.refresh_token then
-      return unauthorized("access token cannot be refreshed in \
-      absence of refresh token", TOKEN_EXPIRED_MESSAGE, true)
+      return unauthorized("access token cannot be refreshed in absence of refresh token", nil, TOKEN_EXPIRED_MESSAGE)
     end
 
     log("trying to refresh access token using refresh token")
@@ -1677,12 +1742,12 @@ function OICHandler.access(_, conf)
         if not jwt_session_claim_value then
 
           return unauthorized("jwt session claim (" .. jwt_session_claim ..
-          ") was not specified in jwt access token")
+                              ") was not specified in jwt access token")
         end
 
         if jwt_session_claim_value ~= jwt_session_cookie_value then
           return unauthorized("invalid jwt session claim (" .. jwt_session_claim ..
-                                       ") was specified in jwt access token")
+                              ") was specified in jwt access token")
         end
 
         log("jwt claim matches jwt session cookie")

@@ -69,16 +69,18 @@ local Error = {}
 ---@return (table) A new instance of the `GenericError` class.
 function Error:new(e)
   e = e or {}
-  local obj = {
-    status_code = e.status_code or 500,
-    error_code = e.error_code or nil,
-    error_description = e.error_description or nil,
-    message = e.message or "internal server error",
-    log = e.log_msg or e.message,
-    expose_error_code = e.expose_error_code or false
-  }
-  setmetatable(obj, self)
-  return obj
+  e.status_code = e.status_code or 500
+  e.error_code = e.error_code or nil
+  e.error_description = e.error_description or nil
+  e.message = e.message or "internal server error"
+  e.log = e.log_msg or e.message
+  e.expose_error_code = e.expose_error_code or false
+  e.realm = e.realm or "kong"
+  e.fields = e.fields or { realm = e.realm }
+  e.fields.realm = e.fields.realm or e.realm
+  e.token_type = e.token_type or "Bearer"
+  setmetatable(e, self)
+  return e
 end
 
 --- Check if the `error_code` and corresponding `error_description` should be exposed.
@@ -97,26 +99,41 @@ end
 --- Builds the `WWW-Authenticate` header for the error response.
 --- RFC https://www.rfc-editor.org/rfc/rfc6750#section-3
 --
----@param host (string) (optional) A string representing the hostname or realm for the `Bearer` scheme. Defaults to "kong".
----@return (table) - A table containing the `WWW-Authenticate` header with an optional `error` and `error_description` fields if set and required, for use in the error response.
-function Error:build_auth_header(host)
-  local header = {}
-  local hostname = host or "kong"
-  local www_bearer_realm = fmt('Bearer realm="%s"', hostname)
-  insert(header, www_bearer_realm)
-
-  -- add header fields for error_code and error_description if set and required
-  if self:expose_error() then
-    insert(header, fmt('error="%s"', self.error_code))
-    if self.error_description then
-      insert(header, fmt('error_description="%s"', self.error_description))
+---@return (table) - the headers for use in the error response.
+function Error:build_www_auth_header()
+  local fields = {}
+  local i = 0
+  if self.fields then
+    for k, v in pairs(self.fields) do
+      i = i + 1
+      fields[i] = fmt('%s="%s"', k, v)
     end
   end
 
-  local headers = {
-    ["WWW-Authenticate"] = concat(header, ", ")
-  }
-  return headers
+  -- we want a constant ordering of the fields
+  -- and error_code and error_description should be last
+  if i > 1 then
+    table.sort(fields)
+  end
+
+  -- add header fields for error_code and error_description if set and required
+  if self:expose_error() then
+    i = i + 1
+    fields[i] = fmt('error="%s"', self.error_code)
+
+    if self.error_description then
+      i = i + 1
+      fields[i] = fmt('error_description="%s"', self.error_description)
+    end
+  end
+
+  local www_header = self.token_type
+
+  if i > 0 then
+    www_header = www_header .. " " .. concat(fields, ", ")
+  end
+
+  return www_header
 end
 
 --- A class representing a Forbidden HTTP error.
@@ -133,7 +150,7 @@ setmetatable(ForbiddenError, { __index = Error })
 -- @treturn ForbiddenError The new `ForbiddenError` object.
 function ForbiddenError:new(e)
   e.status_code = HTTP_FORBIDDEN
-  e.error_code = INSUFFICIENT_SCOPE
+  e.error_code = e.error_code or INSUFFICIENT_SCOPE
   e.message = e.message or "Forbidden"
   local obj = Error:new(e)
   setmetatable(obj, self)
@@ -155,7 +172,7 @@ setmetatable(UnauthorizedError, { __index = Error })
 -- @treturn UnauthorizedError The new `UnauthorizedError` object.
 function UnauthorizedError:new(e)
   e.status_code = HTTP_UNAUTHORIZED
-  e.error_code = INVALID_TOKEN
+  e.error_code = e.error_code or INVALID_TOKEN
   e.message = e.message or "Unauthorized"
   local obj = Error:new(e)
   setmetatable(obj, self)
@@ -177,7 +194,7 @@ setmetatable(BadRequestError, { __index = Error })
 -- @treturn BadRequestError The new `BadRequestError` object.
 function BadRequestError:new(e)
   e.status_code = HTTP_BAD_REQUEST
-  e.error_code = INVALID_REQUEST
+  e.error_code = e.error_code or INVALID_REQUEST
   e.message = e.mesasge or "Bad Request"
   local obj = Error:new(e)
   setmetatable(obj, self)

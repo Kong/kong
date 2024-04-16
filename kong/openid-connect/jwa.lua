@@ -380,6 +380,7 @@ local SIGN = {
 }
 
 
+-- if VERIFY is updated with new algoriths please update DPOP_SUPPORTED_ALGS too, when needed.
 local VERIFY = {
   HS256 = HS256.verify,
   HS384 = HS384.verify,
@@ -395,6 +396,9 @@ local VERIFY = {
   PS512 = PS512.verify,
   EdDSA = EdDSA.verify,
 }
+
+-- Note that we don't want symmetric hashing/signing algorithms enabled with DPoP
+local DPOP_SUPPORTED_ALGS = "RS256 RS384 RS512 PS256 PS384 PS512 ES256 ES384 ES512 EdDSA"
 
 
 local jwa = {
@@ -471,6 +475,11 @@ function jwa.sign(alg, jwk, ...)
   end
 
   return sign(jwk, ...)
+end
+
+
+function jwa.get_dpop_algs()
+  return DPOP_SUPPORTED_ALGS
 end
 
 
