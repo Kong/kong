@@ -1,0 +1,3 @@
+message: "**DNS Client**: Ignore records with non-matching types when parsing answers."
+type: bugfix
+scope: Core
