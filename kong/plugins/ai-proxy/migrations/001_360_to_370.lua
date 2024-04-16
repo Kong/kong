@@ -1,4 +1,4 @@
-local operations = require "kong.db.migrations.operations.200_to_210"
+local ops = require("kong.db.migrations.operations.200_to_210.lua")
 
 local function update_logging_statistic(config)
   if config.logging.log_statistics and config.route_type == "llm/v1/completions"
@@ -8,12 +8,10 @@ local function update_logging_statistic(config)
   end
 end
 
-
 return {
   postgres = {
-    up = "",
     teardown = function(connector)
-      operations.postgres.teardown:fixup_plugin_config(connector, "ai-proxy", update_logging_statistic)
+      ops.postgres.teardown:fixup_plugin_config(connector, "ai-proxy", update_logging_statistic)
     end
   }
 }
