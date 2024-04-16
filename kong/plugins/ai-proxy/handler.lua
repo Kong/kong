@@ -89,33 +89,69 @@ end
 
 
 function _M:body_filter(conf)
+  -- if body_filter is called twice, then return
+  if kong.ctx.plugin.body_called then
+    return
+  end
+
   if kong.ctx.shared.skip_response_transformer then
-    return
-  end
-
-  if (kong.response.get_status() ~= 200) and (not kong.ctx.plugin.ai_parser_error) then
-    return
-  end
-
-  -- (kong.response.get_status() == 200) or (kong.ctx.plugin.ai_parser_error)
-
-  -- all errors MUST be checked and returned in header_filter
-  -- we should receive a replacement response body from the same thread
-
-  local original_request = kong.ctx.plugin.parsed_response
-  local deflated_request = original_request
-
-  if deflated_request then
-    local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
-    if is_gzip then
-      deflated_request = kong_utils.deflate_gzip(deflated_request)
+    local response_body
+    if kong.ctx.shared.parsed_response then
+      response_body = kong.ctx.shared.parsed_response
+    elseif kong.response.get_status() == 200 then
+      response_body = kong.service.response.get_raw_body()
+      if not response_body then
+        kong.log.warn("issue when retrieve the response body for analytics in the body filter phase.",
+                      " Please check AI request transformer plugin response.")
+      else
+        local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
+        if is_gzip then
+          response_body = kong_utils.inflate_gzip(response_body)
+        end
+      end
     end
 
-    kong.response.set_raw_body(deflated_request)
+    local ai_driver = require("kong.llm.drivers." .. conf.model.provider)
+    local route_type = conf.route_type
+    local new_response_string, err = ai_driver.from_format(response_body, conf.model, route_type)
+    
+    if err then
+      kong.log.warn("issue when transforming the response body for analytics in the body filter phase, ", err)
+    elseif new_response_string then
+      ai_shared.post_request(conf, new_response_string)
+    end
   end
 
-  -- call with replacement body, or original body if nothing changed
-  ai_shared.post_request(conf, original_request)
+  if not kong.ctx.shared.skip_response_transformer then
+    if (kong.response.get_status() ~= 200) and (not kong.ctx.plugin.ai_parser_error) then
+      return
+    end
+  
+    -- (kong.response.get_status() == 200) or (kong.ctx.plugin.ai_parser_error)
+  
+    -- all errors MUST be checked and returned in header_filter
+    -- we should receive a replacement response body from the same thread
+
+    local original_request = kong.ctx.plugin.parsed_response
+    local deflated_request = original_request
+    
+    if deflated_request then
+      local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
+      if is_gzip then
+        deflated_request = kong_utils.deflate_gzip(deflated_request)
+      end
+
+      kong.response.set_raw_body(deflated_request)
+    end
+
+    -- call with replacement body, or original body if nothing changed
+    local _, err = ai_shared.post_request(conf, original_request)
+    if err then
+      kong.log.warn("analytics phase failed for request, ", err)
+    end
+  end
+
+  kong.ctx.plugin.body_called = true
 end
 
 
