@@ -609,6 +609,13 @@ local config = {
             },
           },
           {
+            require_signed_request_object = {
+              description = "Forcibly enable or disable the usage of signed request object on authorization or pushed authorization endpoint. When not set the value is determined through the discovery using the value of `require_signed_request_object`, and enabled automatically (in case the `require_signed_request_object` is missing, the feature will not be enabled).",
+              required = false,
+              type = "boolean",
+            },
+          },
+          {
             authorization_endpoint = typedefs.url {
               description = "The authorization endpoint. If set it overrides the value in `authorization_endpoint` returned by the discovery endpoint.",
               required = false,

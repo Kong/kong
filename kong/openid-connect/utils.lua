@@ -11,6 +11,9 @@ local jws    = require "kong.openid-connect.jws"
 local uri    = require "kong.openid-connect.uri"
 
 
+local table_merge = require("kong.tools.table").table_merge
+
+
 local base64url = codec.base64url
 local tostring  = tostring
 local time      = ngx.time
@@ -80,6 +83,33 @@ local function generate_private_key_jwt(client_id, client_jwk, endpoint)
 end
 
 
+local function generate_request_object(client_id, client_jwk, endpoint, args)
+  local iat = time()
+  local exp = iat + 60
+
+  local payload = {
+    iss = client_id,
+    aud = endpoint,
+    jti = base64url.encode(random(32)),
+    exp = exp,
+    iat = iat,
+  }
+
+  if args then
+    payload = table_merge(payload, args)
+  end
+
+  local signed_token, err = jws.encode({
+    payload = payload,
+    jwk     = client_jwk,
+  })
+
+  if not signed_token then
+    return nil, "unable to encode JWT for request object usage (" .. err .. ")"
+  end
+
+  return signed_token
+end
 
 
 -- Returns a pool key for the httpc connection pool which includes the client
@@ -109,5 +139,6 @@ end
 return {
   generate_client_secret_jwt = generate_client_secret_jwt,
   generate_private_key_jwt = generate_private_key_jwt,
+  generate_request_object = generate_request_object,
   pool_key = pool_key,
 }

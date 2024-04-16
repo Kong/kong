@@ -2,7 +2,7 @@ version: '3.5'
 
 services:
   keycloak:
-    image: quay.io/keycloak/keycloak:${PONGO_KEYCLOAK_VERSION:-23.0}
+    image: quay.io/keycloak/keycloak:${PONGO_KEYCLOAK_VERSION:-24.0}
     command: start-dev --import-realm
     volumes:
       - ${PONGO_WD}/.pongo/demo.json:/opt/keycloak/data/import/demo.json

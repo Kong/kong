@@ -47,6 +47,7 @@ local CLIENT_CREDENTIALS = "Basic " .. encode_base64(CLIENT_ID .. ":" .. CLIENT_
 local KONG_HOST = "localhost" -- only use other names and when it's resolvable by resty.http
 local KONG_CLIENT_ID = keycloak_config.client_id
 local KONG_CLIENT_SECRET = keycloak_config.client_secret
+local KONG_PRIVATE_KEY_JWT_CLIENT_ID = "kong-private-key-jwt"
 
 local PUBLIC_CLIENT_ID = "kong-public"
 
@@ -251,6 +252,11 @@ for _, strategy in helpers.all_strategies() do
           paths = { "/par-code-flow" },
         }
 
+        local jar_code_flow_route = bp.routes:insert {
+          service = service,
+          paths   = { "/jar-code-flow" },
+        }
+
         local jarm_code_flow_route = bp.routes:insert {
           service = service,
           paths   = { "/jarm-code-flow" },
@@ -314,6 +320,47 @@ for _, strategy in helpers.all_strategies() do
             upstream_refresh_token_header = "refresh_token",
             refresh_token_param_name      = "refresh_token",
             require_pushed_authorization_requests = true,
+          },
+        }
+
+        bp.plugins:insert {
+          route   = jar_code_flow_route,
+          name    = PLUGIN_NAME,
+          config  = {
+            issuer    = ISSUER_URL,
+            scopes = {
+              -- this is the default
+              "openid",
+            },
+            auth_methods = {
+              "authorization_code",
+              "session"
+            },
+            preserve_query_args = true,
+            login_action = "redirect",
+            login_tokens = {},
+            client_id = {
+              KONG_PRIVATE_KEY_JWT_CLIENT_ID,
+            },
+            client_auth = {
+              "private_key_jwt"
+            },
+            client_jwk = {
+              {
+                kty = "RSA",
+                n = "2q4Xg7nrWYhwU3xMlIValpB_BkdWEkoOluk1e7U5elXEITkEUaXm8BzLU-PU0yHiqWe5s1wiceaEXNvpwgVDhpzisBMutmpoxEnVMNC-n6LS1IIOdup6NbhPD_zI-2wJD9YD40kmHEtpoUR1ZrRIitrkP4S-iKamVhKRxAVvZqEfftEpaDwN-V9YlXbSGFMPC_Hkjsi3WkynS9BMl0GDH7k7qFr5SDxkCZiL7MvgQrrIrB1mYhOF7HNmiWTOlbX7qbitw_H3vvnZzPz4RDloPti51c22dRTredvEdE-PYpwSrzkXESuQwxLJGT9LUENHXJUWtWp6i2uav1KIHbWzUQ",
+                e = "AQAB",
+                d = "ZaP3P_2hOzskYllqyrl00niU4dk0U0nioBgDCN3Bum-0unBi5oRC46Wuh-5kVEHytSSF9qzDQceQDA0XCFwj96Rh5M71rkmlKl7a3VaY01_9uFI-4Ny5MtDYxqiKzfl3-MlTg0fTk-ElVpSYMMVo1klJP5C2cpNqyqTU5ZRVJBCxrowFvpNi4YnyyPzd5PpLSr5dM_M0Ut6aE8xYbKj8HvpmMsoG_fxapZL7OBCeBUGBKb0QWJwfTEElLMQ5hTTobZyVzIIpjOoH7Pjxk8kHzjwPmS86JT4h8zor4YyH2vvwjoo9WgLsyuSc3vPVKDlLBeLBALPfgX7cgO4dhJb4MQ",
+                p = "8hhUwnjY3HFqz4Bs771H_wSmNGDdHNzX8hEeOBhtRpJBuAHcqXW4EwZXRFij0MUjdm64jqJAgpKzp4hnErZroJUsmlAC2oFqqPBPicD_dTZFE9xBr3IvndgpkdockL3GyRl6ju1-b_-AT3LlTeL-jJPROh2UYKpDT85unbiz8A0",
+                q = "5z152ml7gMIL4Szo0JC19aOXXCbS4mu_tzwJZ_c9pvEJCiqOECbvHJAR_9cWvR9IhSIwCd3BjMoeIUQyMuWqZuRmQxht93AScMApxF0ZkCOhhmo9fvGMEOIUXbfap6XVwOdRKRxwHX8Kf1WupPjmeX2Xa9jaKJeXqkEv5ws0O1U",
+                dp = "sArRV7jYuTQgH1Ob45kYSXDwCxaEswBEZ1nbR587lx2zfEKeWvunJu5tdt2eAanY574LpmyFzG0xBppBmXHdQaA4Ft4ntQx2qvJUZC9bk7gq8w4vFY1K4tTVJaIdM4NMkd9dJ6G7V2XLv_oklEaEI2U5t7DavJAS8m2CMl6lOeE",
+                dq = "P-qzOtb7R0zbwcMLG1NUqHAuj08_7UwBMyHKK82gYfuwFvpKSFaqs0dzYjdO1rnF7t7TTnbYYBUiHOnfwkfPQR-S0Kr5AnMc9cN4CAn_3eKrbB8DnoofwC7tmDYQn1RscCTAP0_YAZ8zBJ1nZ7xQ4HYBm9LWAnBcgLgCCKgFKP0",
+                qi = "l5ci1Tnsh6G5lm9qmqF6lF25yjCJhM-Qh6hTa9M2MxtQIEgtRWv9lhUzahepUswgCMg2dq_Azqih46ITmI6zLZhURdGPPmBRYeNFSsAy0ZsCyWJhGp2fa-a1apno5yJi9gWE0J7c8W1rNO-cM6I1rn9yhtpdkz6NO-nH668e9LU",
+              },
+            },
+            upstream_refresh_token_header = "refresh_token",
+            refresh_token_param_name      = "refresh_token",
+            require_signed_request_object = true,
           },
         }
 
@@ -837,7 +884,7 @@ for _, strategy in helpers.all_strategies() do
           auth_code_flow("/code-flow", kong_redirect_assert_cb, idp_redirect_assert_cb)
         end)
 
-        it("initial request, expect redirect to login page using pushed authorization requests", function()
+        it("initial request, expect redirect to login page using PAR", function()
           local function kong_redirect_assert_cb(url)
             assert.equal("http", url.scheme)
             assert.equal(KEYCLOAK_HOST, url.host)
@@ -856,6 +903,24 @@ for _, strategy in helpers.all_strategies() do
           end
 
           auth_code_flow("/par-code-flow", kong_redirect_assert_cb, idp_redirect_assert_cb)
+        end)
+
+        it("initial request, expect redirect to login page using JAR", function()
+          local function kong_redirect_assert_cb(url)
+            assert.equal("http", url.scheme)
+            assert.equal(KEYCLOAK_HOST, url.host)
+            assert.equal(KEYCLOAK_PORT, url.port)
+            assert.equal(KONG_PRIVATE_KEY_JWT_CLIENT_ID, url.args.client_id)
+            assert.is_string(url.args.request)
+            assert.not_equal("", url.args.request)
+            assert.is_nil(url.args.redirect_uri)
+          end
+
+          local function idp_redirect_assert_cb(res)
+            assert.equal(302, res.status)
+          end
+
+          auth_code_flow("/jar-code-flow", kong_redirect_assert_cb, idp_redirect_assert_cb)
         end)
 
         it("initial request, expect redirect to login page using JARM", function()

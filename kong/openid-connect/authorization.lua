@@ -868,6 +868,27 @@ function authorization:request(options)
       require_pushed_authorization_requests = conf.require_pushed_authorization_requests
     end
   end
+  
+  local require_signed_request_object = options.require_signed_request_object
+  if require_signed_request_object == nil then
+    require_signed_request_object = opts.require_signed_request_object
+    if require_signed_request_object == nil then
+      require_signed_request_object = conf.require_signed_request_object
+    end
+  end
+  
+  if require_signed_request_object then
+    local client_jwk = options.client_jwk or args.client_jwk or opts.client_jwk
+    local res, err = utils.generate_request_object(client_id, client_jwk, endpoint, args)
+    if not res then
+      return nil, err
+    end
+    
+    args = {
+      client_id = client_id,
+      request = res,
+    }
+  end
 
   if require_pushed_authorization_requests then
     local res, err = self:pushed_authorization_request(options, args)
@@ -915,8 +936,7 @@ function authorization:verify(options)
         end
       end
     end
-
-
+    
     if not args then
       args = get_uri_args()
 

@@ -289,5 +289,8 @@ return {
     application_registration = {
       "enable_proxy_with_consumer_credential",
     },
-  }
+    openid_connect = {
+      "require_signed_request_object"
+    },
+  },
 }

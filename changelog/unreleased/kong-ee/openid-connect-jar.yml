@@ -1,0 +1,3 @@
+message: "**OpenID Connect**: Add support for JWT Secured Authorization Requests (JAR) on Authorization and Pushed Authorization (PAR) endpoints, see: `config.require_signed_request_object`"
+type: feature
+scope: Plugin
