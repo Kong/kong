@@ -4,8 +4,7 @@ local ffi_new = ffi.new
 local ffi_string = ffi.string
 local ffi_cast = ffi.cast
 local band = bit.band
-local base = require "resty.core.base"
-local new_tab = base.new_tab
+local new_tab = require("table.new")
 
 local cucharpp = ffi_new("const unsigned char*[1]")
 local ucharpp = ffi_new("unsigned char*[1]")
