@@ -317,7 +317,7 @@ jobs:
         repo-path: Kong/gateway-action-storage/main/.ci/runtimes-ee.json
 
     - name: Schedule tests
-      uses: Kong/gateway-test-scheduler/schedule@00ab5474e9a7d11e21738078ee563856dac2b868 # v4
+      uses: Kong/gateway-test-scheduler/schedule@1ca1120856ffaf9ba87e14564ccabe91e2b4ebf3 # v5
       with:
         test-suites-file: ${{ inputs.aarch64 == true && '.ci/non_fips_test_suites.json' || '.ci/test_suites.json' }}
         test-file-runtime-file: .ci/runtimes-ee.json
@@ -573,6 +573,11 @@ jobs:
         op: decode
         in: ${{ needs.kong-license-data.outputs.encrypted }}
 
+    - name: Set up test result output folder
+      run: |
+        mkdir ${{ env.TEST_RESULTS_XML_OUTPUT }}
+        echo "TEST_RESULTS=$(realpath $TEST_RESULTS_XML_OUTPUT)" >> $GITHUB_ENV
+
     - name: Run Tests
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.TEST_API_AWS_ACCESS_KEY_ID }}
@@ -592,12 +597,12 @@ jobs:
         DT_TEST: ${{ inputs.dt-test }}
         DT_ENV_ID: ${{ secrets.DT_ENV_ID }}
         DT_API_TOKEN: ${{ secrets.DT_API_TOKEN }}
-      uses: Kong/gateway-test-scheduler/runner@00ab5474e9a7d11e21738078ee563856dac2b868 # v4
+      uses: Kong/gateway-test-scheduler/runner@1ca1120856ffaf9ba87e14564ccabe91e2b4ebf3 # v5
       with:
         tests-to-run-file: test-chunk.${{ matrix.runner }}.json
         failed-test-files-file: ${{ env.FAILED_TEST_FILES_FILE }}
         test-file-runtime-file: ${{ env.TEST_FILE_RUNTIME_FILE }}
-        xml-output-file: ${{ env.TEST_RESULTS_XML_OUTPUT }}
+        xml-output-folder: ${{ env.TEST_RESULTS }}
         build-root: ${{ env.BUILD_ROOT }}
         build-dest-path: "/usr/local"
 
@@ -632,7 +637,7 @@ jobs:
       with:
         api-key: ${{ secrets.DATADOG_API_KEY }}
         service: kong-ee-github-actions-ci
-        files: ${{ env.TEST_RESULTS_XML_OUTPUT }}
+        files: ${{ env.TEST_RESULTS }}
         extra-args: --xpath-tag test.suite=/testcase/@filename
 
     - name: Get kernel message
