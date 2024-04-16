@@ -138,6 +138,19 @@ local transformers_from = {
 
     if response_table.content then
       local usage = response_table.usage
+
+      if usage then
+        usage = {
+          prompt_tokens = usage.input_tokens or nil,
+          completion_tokens = usage.output_tokens or nil,
+          total_tokens = usage.input_tokens and usage.output_tokens and
+            usage.input_tokens + usage.output_tokens or nil,
+        }
+
+      else
+        usage = "no usage data returned from upstream"
+      end
+
       local res = {
         choices = {
           {
@@ -149,16 +162,11 @@ local transformers_from = {
             finish_reason = response_table.stop_reason,
           },
         },
-        usage = usage and {
-          prompt_tokens = usage and usage.input_tokens or nil,
-          completion_tokens = usage and usage.output_tokens or nil,
-          total_tokens = usage and usage.input_tokens and usage.output_tokens and
-            usage.input_tokens + usage.output_tokens or nil,
-        } or "no usage data returned from upstream",
+        usage = usage,
         model = response_table.model,
         object = "chat.content",
       }
-        
+
       return cjson.encode(res)
     else
       -- it's probably an error block, return generic error
