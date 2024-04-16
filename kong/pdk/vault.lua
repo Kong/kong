@@ -900,6 +900,32 @@ local function new(self)
 
 
   ---
+  -- Return the theoretically remaining TTL value of
+  -- a reference before it gets refreshed. A remaining
+  -- time of 0 means the reference may be refreshed at any
+  -- second.
+  -- @local
+  -- @function ttl
+  -- @tparam string reference reference to look from the caches
+  -- @treturn number|nil the TTL value of the reference
+  -- @treturn nil|string a string describing an error if there was one
+  local function ttl(reference)
+    local strategy, err, config, cache_key = get_strategy(reference)
+    if not strategy then
+      return nil, fmt("could not fetch ttl (%s)", err)
+    end
+
+    local ttl = SECRETS_CACHE:ttl(cache_key)
+    if ttl and SECRETS_CACHE:get(cache_key) ~= NEGATIVELY_CACHED_VALUE then
+      local resurrect_ttl = max(config.resurrect_ttl or DAO_MAX_TTL, SECRETS_CACHE_MIN_TTL)
+      return max(ttl - resurrect_ttl, 0)
+    else
+      return ttl or 0
+    end
+  end
+
+
+  ---
   -- In place updates record's field from a cached reference.
   --
   -- @local
@@ -1486,7 +1512,9 @@ local function new(self)
   end
 
 
-  local _VAULT = {} -- the public PDK interfaces
+  local _VAULT = {
+    SECRETS_CACHE_MIN_TTL = SECRETS_CACHE_MIN_TTL,
+  } -- the public PDK interfaces
 
 
   ---
@@ -1574,6 +1602,21 @@ local function new(self)
   -- local value, err = kong.vault.get("{vault://env/cert/key}")
   function _VAULT.get(reference)
     return get(reference)
+  end
+
+
+  ---
+  -- Resolves the passed in reference and returns the TTL in the secret cache
+  --
+  -- @function kong.vault.get
+  -- @tparam string reference  reference to resolve
+  -- @treturn string|nil resolved value of the reference
+  -- @treturn string|nil error message on failure, otherwise `nil`
+  --
+  -- @usage
+  -- local value, err = kong.vault.get("{vault://env/cert/key}")
+  function _VAULT.ttl(reference)
+    return ttl(reference)
   end
 
 
