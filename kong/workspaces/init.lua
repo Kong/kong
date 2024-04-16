@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local base = require "resty.core.base"
+local get_request = require("resty.core.base").get_request
 
 
 local workspaces = {}
@@ -64,8 +64,7 @@ end
 
 
 function workspaces.get_workspace_id(ctx)
-  local r = base.get_request()
-  if not r then
+  if not get_request() then
     return nil
   end
 
