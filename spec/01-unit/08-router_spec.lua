@@ -5824,7 +5824,7 @@ do
           route   = {
             id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
             expression = [[http.path ^= r#"/foo"#]],
-            priority = 2^46 - 2,
+            priority = 2^46 - 3,
           },
         },
       }
@@ -5840,7 +5840,7 @@ do
           route   = {
             id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
             expression = [[http.path ^= r#"/foo"#]],
-            priority = 2^46 - 1,
+            priority = 2^46 - 2,
           },
       })
 

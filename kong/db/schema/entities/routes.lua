@@ -189,7 +189,7 @@ if kong_router_flavor == "expressions" then
 
   local special_fields = {
     { expression = { description = "The route expression.", type = "string" }, },   -- not required now
-    { priority = { description = "A number used to specify the matching order for expression routes. The higher the `priority`, the sooner an route will be evaluated. This field is ignored unless `expression` field is set.", type = "integer", between = { 0, 2^46 }, required = true, default = 0 }, },
+    { priority = { description = "A number used to specify the matching order for expression routes. The higher the `priority`, the sooner an route will be evaluated. This field is ignored unless `expression` field is set.", type = "integer", between = { 0, 2^46 - 1 }, required = true, default = 0 }, },
   }
 
   for _, v in ipairs(special_fields) do
