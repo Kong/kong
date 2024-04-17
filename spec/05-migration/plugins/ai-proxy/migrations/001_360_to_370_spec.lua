@@ -38,7 +38,7 @@ if uh.database_type() == strategy then
     uh.setup(function()
       local sql = render([[
         INSERT INTO plugins (id, name, config, enabled) VALUES
-          ('$(ID)', '$(PLUGIN_NAME)', $(CONFIG)::jsonb, 1);
+          ('$(ID)', '$(PLUGIN_NAME)', $(CONFIG)::jsonb, TRUE);
       ]], {
         ID = id,
         PLUGIN_NAME = plugin_name,
