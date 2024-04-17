@@ -568,7 +568,7 @@ local function get_priority(route)
   local paths   = route.paths
   local headers = route.headers
 
-  local match_weight = 0  -- 0x0ULL
+  local match_weight = 0  -- 0x0ULL, *can not* exceed `7`
 
   if not is_empty_field(srcs) then
     match_weight = match_weight + 1
