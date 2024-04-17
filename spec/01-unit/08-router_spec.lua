@@ -22,16 +22,6 @@ local function reload_router(flavor, subsystem)
 end
 
 local function new_router(cases, old_router)
-  -- add fields expression/priority only for flavor expressions
-  if kong.configuration.router_flavor == "expressions" then
-    for _, v in ipairs(cases) do
-      local r = v.route
-
-      r.expression = r.expression or atc_compat.get_expression(r)
-      r.priority = r.priority or atc_compat._get_priority(r)
-    end
-  end
-
   return Router.new(cases, nil, nil, old_router)
 end
 
@@ -4878,7 +4868,7 @@ end)
 end -- for flavor
 
 
-for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
+for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
   describe("Router (flavor = " .. flavor .. ")", function()
     reload_router(flavor)
 
@@ -4995,8 +4985,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
   end)
 end
 
-do
-  local flavor = "traditional_compatible"
+for _, flavor in ipairs({ "traditional_compatible", "expressions" }) do
 
   describe("Router (flavor = " .. flavor .. ")", function()
     reload_router(flavor)
@@ -5139,7 +5128,8 @@ do
       assert.same(use_case[2].route, match_t.route)
     end)
   end)
-end   -- local flavor = "traditional_compatible"
+end   -- for flavor
+
 
 do
   local flavor = "expressions"
@@ -5768,6 +5758,97 @@ do
 
       local match_t = router:select("GET", "/foo/bar")
       assert.falsy(match_t)
+    end)
+  end)
+
+  describe("Router (flavor = " .. flavor .. ") [http]", function()
+    reload_router(flavor)
+
+    it("rejects other fields if expression field exists", function()
+      local use_case = {
+        {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+            paths = { "/foo" },                       -- rejected
+            expression = [[http.path ^= r#"/bar"#]],  -- effective
+          },
+        },
+      }
+
+      local router = assert(new_router(use_case))
+
+      local match_t = router:select("GET", "/foo")
+      assert.falsy(match_t)
+
+      local match_t = router:select("GET", "/bar")
+      assert.truthy(match_t)
+    end)
+
+    it("expression route has higher priority than traditional route", function()
+      local use_case = {
+        {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+            paths = { "/foo" },
+          },
+        },
+      }
+
+      local router = assert(new_router(use_case))
+
+      local match_t = router:select("GET", "/foo/bar")
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+
+      table.insert(use_case, {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+            expression = [[http.path ^= r#"/foo"#]],
+          },
+      })
+
+      local router = assert(new_router(use_case))
+
+      local match_t = router:select("GET", "/foo/bar")
+      assert.truthy(match_t)
+      assert.same(use_case[2].route, match_t.route)
+    end)
+
+    it("works when route.priority is near 2^46", function()
+      local use_case = {
+        {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+            expression = [[http.path ^= r#"/foo"#]],
+            priority = 2^46 - 3,
+          },
+        },
+      }
+
+      local router = assert(new_router(use_case))
+
+      local match_t = router:select("GET", "/foo/bar")
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+
+      table.insert(use_case, {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+            expression = [[http.path ^= r#"/foo"#]],
+            priority = 2^46 - 2,
+          },
+      })
+
+      local router = assert(new_router(use_case))
+
+      local match_t = router:select("GET", "/foo/bar")
+      assert.truthy(match_t)
+      assert.same(use_case[2].route, match_t.route)
     end)
   end)
 end   -- local flavor = "expressions"

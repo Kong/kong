@@ -66,18 +66,47 @@ local grpc_subschema = {
 }
 
 
+-- NOTICE: make sure we have correct schema constraion for flavor 'expressions'
 if kong and kong.configuration and  kong.configuration.router_flavor == "expressions" then
-  return {}
 
-else
-  return {
-    http = http_subschema,  -- protocols is the subschema key, and the first
-    https = http_subschema, -- matching protocol name is selected as subschema name
-    tcp = stream_subschema,
-    tls = stream_subschema,
-    udp = stream_subschema,
-    tls_passthrough = stream_subschema,
-    grpc = grpc_subschema,
-    grpcs = grpc_subschema,
-  }
+  -- now http route in flavor 'expressions' accepts `sources` and `destinations`
+
+  assert(http_subschema.fields[1].sources)
+  http_subschema.fields[1] = nil  -- sources
+
+  assert(http_subschema.fields[2].destinations)
+  http_subschema.fields[2] = nil  -- destinations
+
+  -- the route should have the field 'expression' if no others
+
+  table.insert(http_subschema.entity_checks[1].conditional_at_least_one_of.then_at_least_one_of, "expression")
+  table.insert(http_subschema.entity_checks[1].conditional_at_least_one_of.else_then_at_least_one_of, "expression")
+
+  -- now grpc route in flavor 'expressions' accepts `sources` and `destinations`
+
+  assert(grpc_subschema.fields[3].sources)
+  grpc_subschema.fields[3] = nil  -- sources
+
+  assert(grpc_subschema.fields[4].destinations)
+  grpc_subschema.fields[4] = nil  -- destinations
+
+  -- the route should have the field 'expression' if no others
+
+  table.insert(grpc_subschema.entity_checks[1].conditional_at_least_one_of.then_at_least_one_of, "expression")
+  table.insert(grpc_subschema.entity_checks[1].conditional_at_least_one_of.else_then_at_least_one_of, "expression")
+
+  table.insert(stream_subschema.entity_checks[1].conditional_at_least_one_of.then_at_least_one_of, "expression")
+  table.insert(stream_subschema.entity_checks[2].conditional_at_least_one_of.then_at_least_one_of, "expression")
+
 end
+
+return {
+  http = http_subschema,  -- protocols is the subschema key, and the first
+  https = http_subschema, -- matching protocol name is selected as subschema name
+  tcp = stream_subschema,
+  tls = stream_subschema,
+  udp = stream_subschema,
+  tls_passthrough = stream_subschema,
+  grpc = grpc_subschema,
+  grpcs = grpc_subschema,
+}
