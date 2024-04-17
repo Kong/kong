@@ -7,7 +7,7 @@ local function render(template, keys)
   return (template:gsub("$%(([A-Z_]+)%)", keys))
 end
 
-for _, strategy in helpers.each_strategy() do
+if uh.database_type() == 'postgres' then
   describe("ai-proxy plugin migration", function()
     local db
     local id = uuid.generate_v4()
