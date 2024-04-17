@@ -5816,6 +5816,40 @@ do
       assert.truthy(match_t)
       assert.same(use_case[2].route, match_t.route)
     end)
+
+    it("works when route.priority is near 2^53 - 1", function()
+      local use_case = {
+        {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8101",
+            expression = [[http.path ^= r#"/foo"#]],
+            priority = 2^53 - 3,
+          },
+        },
+      }
+
+      local router = assert(new_router(use_case))
+
+      local match_t = router:select("GET", "/foo/bar")
+      assert.truthy(match_t)
+      assert.same(use_case[1].route, match_t.route)
+
+      table.insert(use_case, {
+          service = service,
+          route   = {
+            id = "e8fb37f1-102d-461e-9c51-6608a6bb8102",
+            expression = [[http.path ^= r#"/foo"#]],
+            priority = 2^53 - 2,
+          },
+      })
+
+      local router = assert(new_router(use_case))
+
+      local match_t = router:select("GET", "/foo/bar")
+      assert.truthy(match_t)
+      assert.same(use_case[2].route, match_t.route)
+    end)
   end)
 end   -- local flavor = "expressions"
 

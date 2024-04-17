@@ -1369,6 +1369,14 @@ describe("routes schema (flavor = expressions)", function()
     assert.truthy(errs["priority"])
   end)
 
+  it("fails when priority is more than 2^53 - 1", function()
+    local route = { priority = 2^53 }
+    route = Routes:process_auto_fields(route, "insert")
+    local ok, errs = Routes:validate_insert(route)
+    assert.falsy(ok)
+    assert.truthy(errs["priority"])
+  end)
+
   it("fails when all fields is missing", function()
     local route = { expression = ngx.null }
     route = Routes:process_auto_fields(route, "insert")
