@@ -49,6 +49,17 @@ if uh.database_type() == strategy then
       assert.is_nil(err)
       assert.is_not_nil(res)
 
+      sql = render([[
+        SELECT * FROM plugins WHERE id = '$(ID)';
+      ]], {
+        ID = id,
+      })
+
+      res, err = db.connector:query(sql)
+      assert.is_nil(err)
+      assert.is_not_nil(res)
+      assert.equals(1, #res)
+
     end)
 
     uh.new_after_up("has updated ai-proxy plugin configuration", function ()
@@ -62,7 +73,7 @@ if uh.database_type() == strategy then
       assert.is_nil(err)
       assert.is_not_nil(res)
       assert.equals(1, #res)
-      
+
       -- local plugin, err = db.plugins:select({ id = id })
       -- assert.is_nil(err)
       -- assert.is_not_nil(plugin)
