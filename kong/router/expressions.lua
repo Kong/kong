@@ -15,6 +15,10 @@ local atc = require("kong.router.atc")
 local transform = require("kong.router.transform")
 
 
+local get_expression = transform.get_expression
+local get_priority   = transform.get_priority
+
+
 local gen_for_field = transform.gen_for_field
 local OP_EQUAL      = transform.OP_EQUAL
 local LOGICAL_AND   = transform.LOGICAL_AND
@@ -34,7 +38,7 @@ local PROTOCOLS_OVERRIDE = {
 
 -- net.port => net.dst.port
 local function transform_expression(route)
-  local exp = route.expression
+  local exp = get_expression(route)
 
   if not exp then
     return nil
@@ -67,6 +71,8 @@ local function get_exp_and_priority(route)
     return
   end
 
+  local priority = get_priority(route)
+
   local protocols = route.protocols
 
   -- give the chance for http redirection (301/302/307/308/426)
@@ -76,7 +82,7 @@ local function get_exp_and_priority(route)
      protocols[1] == "tls" or
      protocols[1] == "tls_passthrough")
   then
-    return exp, route.priority
+    return exp, priority
   end
 
   local gen = gen_for_field("net.protocol", OP_EQUAL, protocols,
@@ -87,7 +93,7 @@ local function get_exp_and_priority(route)
     exp = exp .. LOGICAL_AND .. gen
   end
 
-  return exp, route.priority
+  return exp, priority
 end
 
 

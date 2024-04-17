@@ -7,7 +7,9 @@
 
 local bit = require("bit")
 local buffer = require("string.buffer")
+local tb_new = require("table.new")
 local tb_nkeys = require("table.nkeys")
+local uuid = require("resty.jit-uuid")
 local lrucache = require("resty.lrucache")
 local ipmatcher = require("resty.ipmatcher")
 local utils = require("kong.router.utils")
@@ -15,7 +17,10 @@ local utils = require("kong.router.utils")
 
 local type = type
 local assert = assert
+local pairs = pairs
 local ipairs = ipairs
+local tostring = tostring
+local tb_insert = table.insert
 local fmt = string.format
 local byte = string.byte
 local bor, band, lshift, rshift = bit.bor, bit.band, bit.lshift, bit.rshift
@@ -23,6 +28,7 @@ local bor, band, lshift, rshift = bit.bor, bit.band, bit.lshift, bit.rshift
 
 local is_regex_magic  = utils.is_regex_magic
 local replace_dashes_lower  = require("kong.tools.string").replace_dashes_lower
+local shallow_copy = require("kong.tools.table").shallow_copy
 
 
 local is_null
@@ -312,6 +318,13 @@ end
 
 
 local function get_expression(route)
+  -- we perfer the field 'expression', reject others
+  if not is_null(route.expression) then
+    return route.expression
+  end
+
+  -- transform other fields (methods/hosts/paths/...) to expression
+
   local methods = route.methods
   local hosts   = route.hosts
   local paths   = route.paths
@@ -519,6 +532,10 @@ local PLAIN_HOST_ONLY_BIT = lshift_uint64(0x01ULL, 60)
 local REGEX_URL_BIT       = lshift_uint64(0x01ULL, 51)
 
 
+-- expression only route has higher priority than traditional route
+local EXPRESSION_ONLY_BIT = lshift_uint64(0xFFULL, 56)
+
+
 -- convert a route to a priority value for use in the ATC router
 -- priority must be a 64-bit non negative integer
 -- format (big endian):
@@ -534,6 +551,13 @@ local REGEX_URL_BIT       = lshift_uint64(0x01ULL, 51)
 -- |                         |                                     |
 -- +-------------------------+-------------------------------------+
 local function get_priority(route)
+  -- we perfer the fields 'expression' and 'priority'
+  if not is_null(route.expression) then
+    return bor(EXPRESSION_ONLY_BIT, route.priority or 0)
+  end
+
+  -- transform other fields (methods/hosts/paths/...) to expression priority
+
   local snis = route.snis
   local srcs = route.sources
   local dsts = route.destinations
@@ -551,7 +575,15 @@ local function get_priority(route)
   local paths   = route.paths
   local headers = route.headers
 
-  local match_weight = 0  -- 0x0ULL
+  local match_weight = 0  -- 0x0ULL, *can not* exceed `7`
+
+  if not is_empty_field(srcs) then
+    match_weight = match_weight + 1
+  end
+
+  if not is_empty_field(dsts) then
+    match_weight = match_weight + 1
+  end
 
   if not is_empty_field(methods) then
     match_weight = match_weight + 1
@@ -618,6 +650,10 @@ local function get_priority(route)
     end
   end
 
+  -- Currently match_weight has only 3 bits
+  -- it can not be more than 7
+  assert(match_weight <= 7)
+
   local match_weight   = lshift_uint64(match_weight, 61)
   local headers_count  = lshift_uint64(headers_count, 52)
 
@@ -635,6 +671,77 @@ local function get_priority(route)
 end
 
 
+-- When splitting routes, we need to assign new UUIDs to the split routes.  We use uuid v5 to generate them from
+-- the original route id and the path index so that incremental rebuilds see stable IDs for routes that have not
+-- changed.
+local uuid_generator = assert(uuid.factory_v5('7f145bf9-0dce-4f91-98eb-debbce4b9f6b'))
+
+
+local function sort_by_regex_or_length(path)
+  return is_regex_magic(path) or #path
+end
+
+
+-- group array-like table t by the function f, returning a table mapping from
+-- the result of invoking f on one of the elements to the actual elements.
+local function group_by(t, f)
+  local result = {}
+  for _, value in ipairs(t) do
+    local key = f(value)
+    if result[key] then
+      tb_insert(result[key], value)
+    else
+      result[key] = { value }
+    end
+  end
+  return result
+end
+
+-- split routes into multiple routes, one for each prefix length and one for all
+-- regular expressions
+local function split_route_by_path_info(route_and_service, routes_and_services_split)
+  local original_route = route_and_service.route
+
+  if is_empty_field(original_route.paths) or #original_route.paths == 1 or
+     not is_null(original_route.expression) -- expression will ignore paths
+  then
+    tb_insert(routes_and_services_split, route_and_service)
+    return
+  end
+
+  -- make sure that route_and_service contains only the two expected entries, route and service
+  assert(tb_nkeys(route_and_service) == 1 or tb_nkeys(route_and_service) == 2)
+
+  local grouped_paths = group_by(
+    original_route.paths, sort_by_regex_or_length
+  )
+  for index, paths in pairs(grouped_paths) do
+    local cloned_route = {
+      route = shallow_copy(original_route),
+      service = route_and_service.service,
+    }
+
+    cloned_route.route.original_route = original_route
+    cloned_route.route.paths = paths
+    cloned_route.route.id = uuid_generator(original_route.id .. "#" .. tostring(index))
+
+    tb_insert(routes_and_services_split, cloned_route)
+  end
+end
+
+
+local function split_routes_and_services_by_path(routes_and_services)
+  local count = #routes_and_services
+  local routes_and_services_split = tb_new(count, 0)
+
+  for i = 1, count do
+    split_route_by_path_info(routes_and_services[i], routes_and_services_split)
+  end
+
+  return routes_and_services_split
+end
+
+
 return {
   OP_EQUAL    = OP_EQUAL,
 
@@ -643,10 +750,14 @@ return {
 
   split_host_port = split_host_port,
 
+  is_null = is_null,
   is_empty_field = is_empty_field,
+
   gen_for_field = gen_for_field,
 
   get_expression = get_expression,
   get_priority = get_priority,
+
+  split_routes_and_services_by_path = split_routes_and_services_by_path,
 }
 

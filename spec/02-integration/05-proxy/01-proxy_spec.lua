@@ -9,7 +9,6 @@ local helpers = require "spec.helpers"
 local utils = require "pl.utils"
 local stringx = require "pl.stringx"
 local http = require "resty.http"
-local atc_compat = require "kong.router.compat"
 
 
 local function count_server_blocks(filename)
@@ -173,16 +172,8 @@ local function reload_router(flavor)
 end
 
 
+-- TODO: remove it when we confirm it is not needed
 local function gen_route(flavor, r)
-  if flavor ~= "expressions" then
-    return r
-  end
-
-  r.expression = atc_compat.get_expression(r)
-  r.priority = tonumber(atc_compat._get_priority(r))
-
-  r.destinations = nil
-
   return r
 end
 

@@ -129,8 +129,7 @@ local function remove_routes(strategy, routes)
   admin_api.plugins:remove(enable_buffering_plugin)
 end
 
---for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
-for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
+for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
 for _, b in ipairs({ false, true }) do enable_buffering = b
 for _, strategy in helpers.each_strategy() do
   describe("Router [#" .. strategy .. ", flavor = " .. flavor .. "] with buffering [" .. (b and "on]" or "off]") , function()
@@ -2608,6 +2607,76 @@ do
           query   = "a=10&a=20",
         })
         assert.res_status(404, res)
+      end)
+
+    end)
+
+    describe("Router [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
+      local proxy_client
+
+      reload_router(flavor)
+
+      lazy_setup(function()
+        local bp = helpers.get_db_utils(strategy, {
+          "routes",
+          "services",
+        })
+
+        local service = bp.services:insert {
+          name = "global-cert",
+        }
+
+        bp.routes:insert {
+          protocols = { "http" },
+          expression = [[http.path == "/foo/bar"]],
+          priority = 2^46 - 1,
+          service = service,
+        }
+
+        assert(helpers.start_kong({
+          router_flavor = flavor,
+          database    = strategy,
+          nginx_conf  = "spec/fixtures/custom_nginx.template",
+          allow_debug_header = true,
+        }))
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+      end)
+
+      before_each(function()
+        proxy_client = helpers.proxy_client()
+      end)
+
+      after_each(function()
+        if proxy_client then
+          proxy_client:close()
+        end
+      end)
+
+      it("can set route.priority to 2^46 - 1", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/foo/bar",
+          headers = { ["kong-debug"] = 1 },
+        })
+        assert.res_status(200, res)
+
+        local route_id = res.headers["kong-route-id"]
+
+        local admin_client = helpers.admin_client()
+        local res = assert(admin_client:send {
+          method  = "GET",
+          path    = "/routes/" .. route_id,
+        })
+        local body = assert.response(res).has_status(200)
+        assert(string.find(body, [["priority":70368744177663]]))
+
+        local json = cjson.decode(body)
+        assert.equal(2^46 - 1, json.priority)
+
+        admin_client:close()
       end)
 
     end)
