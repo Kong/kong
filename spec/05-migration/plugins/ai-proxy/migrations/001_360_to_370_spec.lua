@@ -2,6 +2,7 @@ local uh = require "spec.upgrade_helpers"
 local helpers = require "spec.helpers"
 local pgmoon_json = require("pgmoon.json")
 local uuid = require "resty.jit-uuid"
+local cjson = require "cjson.safe"
 
 local strategy = "postgres"
 
@@ -38,7 +39,7 @@ if uh.database_type() == strategy then
     uh.setup(function()
       local sql = render([[
         INSERT INTO plugins (id, name, config, enabled) VALUES
-          ('$(ID)', '$(PLUGIN_NAME)', $(CONFIG)::jsonb, TRUE);
+          ($(ID), '$(PLUGIN_NAME)', $(CONFIG)::jsonb, TRUE);
       ]], {
         ID = id,
         PLUGIN_NAME = plugin_name,
@@ -48,6 +49,21 @@ if uh.database_type() == strategy then
       local res, err = db.connector:query(sql)
       assert.is_nil(err)
       assert.is_not_nil(res)
+
+      -- sql = render([[
+      --   SELECT * FROM plugins WHERE id = '$(ID)';
+      -- ]], {
+      --   ID = id,
+      -- })
+
+      -- res, err = db.connector:query(sql)
+      -- assert.is_nil(err)
+      -- assert.is_not_nil(res)
+
+      -- if type(res) ~= 'string' then
+      --   print(cjson.encode(res))
+      -- end
+
     end)
 
     uh.new_after_up("has updated ai-proxy plugin configuration", function ()
