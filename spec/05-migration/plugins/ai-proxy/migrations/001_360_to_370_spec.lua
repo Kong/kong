@@ -3,11 +3,13 @@ local helpers = require "spec.helpers"
 local pgmoon_json = require("pgmoon.json")
 local uuid = require "resty.jit-uuid"
 
+local strategy = "postgres"
+
 local function render(template, keys)
   return (template:gsub("$%(([A-Z_]+)%)", keys))
 end
 
-if uh.database_type() == 'postgres' then
+if uh.database_type() == strategy then
   describe("ai-proxy plugin migration", function()
     local db
     local id = uuid.generate_v4()
@@ -42,7 +44,7 @@ if uh.database_type() == 'postgres' then
         PLUGIN_NAME = plugin_name,
         CONFIG = pgmoon_json.encode_json(plugin_config),
       })
-      _, db = helpers.get_db_utils(strategy, {"plugins"})
+      local _, db = helpers.get_db_utils(strategy, {"plugins"})
       local res, err = db.connector:query(sql)
       assert.is_not_nil(res)
       assert.is_nil(err)
