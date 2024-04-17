@@ -63,7 +63,7 @@ if uh.database_type() == strategy then
 
     end)
 
-    uh.new_after_up("has updated ai-proxy plugin configuration", function ()
+    uh.new_after_finish("has updated ai-proxy plugin configuration", function ()
       local sql = render([[
         SELECT * FROM plugins WHERE name = '$(PLUGIN_NAME)';
       ]], {
