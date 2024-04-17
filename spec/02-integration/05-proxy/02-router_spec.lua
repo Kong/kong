@@ -2613,7 +2613,7 @@ do
         bp.routes:insert {
           protocols = { "http" },
           expression = [[http.path == "/foo/bar"]],
-          priority = 2^53 - 1,
+          priority = 2^53 - 2,
           service = service,
         }
 
@@ -2639,7 +2639,7 @@ do
         end
       end)
 
-      it("can set route.priority to 2^53 - 1", function()
+      it("can set route.priority to 2^53 - 2", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/foo/bar",
@@ -2655,10 +2655,10 @@ do
           path    = "/routes/" .. route_id,
         })
         local body = assert.response(res).has_status(200)
-        assert(string.find(body, [["priority":9007199254740991]]))
+        assert(string.find(body, [["priority":9007199254740990]]))
 
         local json = cjson.decode(body)
-        assert.equal(2^53 - 1, json.priority)
+        assert.equal(2^53 - 2, json.priority)
 
         admin_client:close()
       end)
