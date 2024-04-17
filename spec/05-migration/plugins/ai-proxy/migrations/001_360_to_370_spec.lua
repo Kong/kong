@@ -11,7 +11,7 @@ end
 
 if uh.database_type() == strategy then
   describe("ai-proxy plugin migration", function()
-    local db
+    local _, db = helpers.get_db_utils(strategy, { "plugins" })
     local id = uuid.generate_v4()
     local plugin_name = "ai-proxy"
     local plugin_config = {
@@ -44,10 +44,10 @@ if uh.database_type() == strategy then
         PLUGIN_NAME = plugin_name,
         CONFIG = pgmoon_json.encode_json(plugin_config),
       })
-      local _, db = helpers.get_db_utils(strategy, {"plugins"})
+
       local res, err = db.connector:query(sql)
-      assert.is_not_nil(res)
       assert.is_nil(err)
+      assert.is_not_nil(res)
     end)
 
     uh.new_after_up("has updated ai-proxy plugin configuration", function ()
