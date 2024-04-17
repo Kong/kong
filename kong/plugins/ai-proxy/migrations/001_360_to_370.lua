@@ -11,8 +11,7 @@ end
 
 return {
   postgres = {
-    up = "",
-    teardown = function(connector)
+    up = function(connector)
       operations.postgres.teardown:fixup_plugin_config(connector, "ai-proxy", update_logging_statistic)
     end
   }
