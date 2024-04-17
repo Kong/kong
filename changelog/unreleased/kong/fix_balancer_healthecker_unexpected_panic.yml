@@ -1,3 +1,3 @@
-message: "**Balancer**: fix balancer stop_healthchecks function unexpected table nil panic"
+message: "**Core**: fix balancer stop_healthchecks function unexpected table nil panic"
 type: bugfix
-scope: Balancer
+scope: Core
