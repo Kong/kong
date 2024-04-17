@@ -2595,6 +2595,76 @@ do
 
     end)
 
+    describe("Router [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
+      local proxy_client
+
+      reload_router(flavor)
+
+      lazy_setup(function()
+        local bp = helpers.get_db_utils(strategy, {
+          "routes",
+          "services",
+        })
+
+        local service = bp.services:insert {
+          name = "global-cert",
+        }
+
+        bp.routes:insert {
+          protocols = { "http" },
+          expression = [[http.path == "/foo/bar"]],
+          priority = 2^53 - 1,
+          service = service,
+        }
+
+        assert(helpers.start_kong({
+          router_flavor = flavor,
+          database    = strategy,
+          nginx_conf  = "spec/fixtures/custom_nginx.template",
+          allow_debug_header = true,
+        }))
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+      end)
+
+      before_each(function()
+        proxy_client = helpers.proxy_client()
+      end)
+
+      after_each(function()
+        if proxy_client then
+          proxy_client:close()
+        end
+      end)
+
+      it("can set route.priority to 2^53 - 1", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/foo/bar",
+          headers = { ["kong-debug"] = 1 },
+        })
+        assert.res_status(200, res)
+
+        local route_id = res.headers["kong-route-id"]
+
+        local admin_client = helpers.admin_client()
+        local res = assert(admin_client:send {
+          method  = "GET",
+          path    = "/routes/" .. route_id,
+        })
+        local body = assert.response(res).has_status(200)
+        assert(string.find(body, [["priority":9007199254740991]]))
+
+        local json = cjson.decode(body)
+        assert.equal(2^53 - 1, json.priority)
+
+        admin_client:close()
+      end)
+
+    end)
+
   end   -- strategy
 
 end -- http expression 'http.queries.*'
