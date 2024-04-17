@@ -1,7 +1,7 @@
 local uh = require "spec.upgrade_helpers"
 local helpers = require "spec.helpers"
 local pgmoon_json = require("pgmoon.json")
-local uuid = require "kong.tools.uuid"
+local uuid = require "resty.jit-uuid"
 
 local function render(template, keys)
   return (template:gsub("$%(([A-Z_]+)%)", keys))
@@ -9,8 +9,8 @@ end
 
 for _, strategy in helpers.each_strategy() do
   describe("ai-proxy plugin migration", function()
-    local db, ai_proxy_plugin
-    local id = uuid.uuid()
+    local db
+    local id = uuid.generate_v4()
     local plugin_name = "ai-proxy"
     local plugin_config = {
       route_type = "llm/v1/completions",
@@ -49,13 +49,11 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     uh.new_after_up("has updated ai-proxy plugin configuration", function ()
-      -- local cache_key = db.plugins:cache_key("ai-proxy")
       local plugin, err = db.plugins:select({ id = id })
       assert.is_nil(err)
       assert.is_not_nil(plugin)
-      -- assert.equal(1, #rows)
 
-      assert.equal("ai-proxy", plugin.name)
+      assert.equal(plugin_name, plugin.name)
       local expected_config = {
         logging = {
             log_statistics = false
