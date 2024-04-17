@@ -34,11 +34,7 @@ end
 local function init_handler()
   local shm_log_level = ngx.shared.kong:get(constants.DYN_LOG_LEVEL_KEY)
 
-  local cur_log_level = kong_log.get_log_level(
-                          constants.LOG_LEVELS[kong.configuration.log_level])
-  local timeout = (tonumber(
-                    ngx.shared.kong:get(constants.DYN_LOG_LEVEL_TIMEOUT_AT_KEY)) or 0)
-                  - ngx.time()
+  local cur_log_level, timeout = kong_log.get_log_level()
 
   if shm_log_level and cur_log_level ~= shm_log_level and timeout > 0 then
     set_log_level(ngx.worker.id() or -1, shm_log_level, timeout)
