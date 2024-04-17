@@ -65,9 +65,9 @@ if uh.database_type() == strategy then
 
     uh.new_after_up("has updated ai-proxy plugin configuration", function ()
       local sql = render([[
-        SELECT * FROM plugins WHERE id = '$(ID)';
+        SELECT * FROM plugins WHERE name = '$(PLUGIN_NAME)';
       ]], {
-        ID = id,
+        PLUGIN_NAME = plugin_name,
       })
 
       local res, err = db.connector:query(sql)
