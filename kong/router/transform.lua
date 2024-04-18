@@ -1,6 +1,5 @@
 local bit = require("bit")
 local buffer = require("string.buffer")
-local tb_new = require("table.new")
 local tb_nkeys = require("table.nkeys")
 local uuid = require("resty.jit-uuid")
 local lrucache = require("resty.lrucache")
@@ -690,48 +689,56 @@ local function group_by(t, f)
   return result
 end
 
--- split routes into multiple routes, one for each prefix length and one for all
--- regular expressions
-local function split_route_by_path_info(route_and_service, routes_and_services_split)
-  local original_route = route_and_service.route
-
-  if is_empty_field(original_route.paths) or #original_route.paths == 1 or
-     not is_null(original_route.expression) -- expression will ignore paths
-  then
-    tb_insert(routes_and_services_split, route_and_service)
-    return
-  end
-
-  -- make sure that route_and_service contains only the two expected entries, route and service
-  assert(tb_nkeys(route_and_service) == 1 or tb_nkeys(route_and_service) == 2)
-
-  local grouped_paths = group_by(
-    original_route.paths, sort_by_regex_or_length
-  )
-  for index, paths in pairs(grouped_paths) do
-    local cloned_route = {
-      route = shallow_copy(original_route),
-      service = route_and_service.service,
-    }
-
-    cloned_route.route.original_route = original_route
-    cloned_route.route.paths = paths
-    cloned_route.route.id = uuid_generator(original_route.id .. "#" .. tostring(index))
-
-    tb_insert(routes_and_services_split, cloned_route)
-  end
-end
-
-
+-- split routes into multiple routes,
+-- one for each prefix length and one for all regular expressions
 local function split_routes_and_services_by_path(routes_and_services)
   local count = #routes_and_services
-  local routes_and_services_split = tb_new(count, 0)
+  local append_count = 1
 
   for i = 1, count do
-    split_route_by_path_info(routes_and_services[i], routes_and_services_split)
-  end
+    local route_and_service = routes_and_services[i]
+    local original_route = route_and_service.route
+    local original_paths = original_route.paths
 
-  return routes_and_services_split
+    if is_empty_field(original_paths) or #original_paths == 1 or
+       not is_null(original_route.expression) -- expression will ignore paths
+    then
+      goto continue
+    end
+
+    -- make sure that route_and_service contains only the two expected entries, route and service
+    assert(tb_nkeys(route_and_service) == 1 or tb_nkeys(route_and_service) == 2)
+
+    local original_route_id = original_route.id
+    local grouped_paths = group_by(original_paths, sort_by_regex_or_length)
+
+    local is_first = true
+    for idx, paths in pairs(grouped_paths) do
+      local cloned_route = {
+        route = shallow_copy(original_route),
+        service = route_and_service.service,
+      }
+
+      cloned_route.route.original_route = original_route
+      cloned_route.route.paths = paths
+      cloned_route.route.id = uuid_generator(original_route_id .. "#" .. tostring(idx))
+
+      if is_first then
+        -- the first one will replace the original route
+        routes_and_services[i] = cloned_route
+        is_first = false
+
+      else
+        -- the others will append to the original routes array
+        routes_and_services[count + append_count] = cloned_route
+        append_count = append_count + 1
+      end
+    end -- for pairs(grouped_paths)
+
+    ::continue::
+  end   -- for routes_and_services
+
+  return routes_and_services
 end
 
 
