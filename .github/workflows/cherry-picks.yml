@@ -4,6 +4,9 @@ on:
     types: [closed, labeled]
   issue_comment:
     types: [created]
+permissions:
+  contents: write # so it can comment
+  pull-requests: write # so it can create pull requests and labels
 jobs:
   cross-repo-cherrypick:
     name: Cherry pick to remote repository
