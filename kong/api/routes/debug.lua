@@ -112,7 +112,7 @@ local function handle_put_log_level(self, broadcast)
     return kong.response.exit(400, { message = "Timeout must be greater than or equal to 0" })
   end
 
-  local cur_log_level = get_log_level(LOG_LEVELS[kong.configuration.log_level])
+  local cur_log_level = get_log_level()
 
   if cur_log_level == log_level then
     local message = "Log level is already " .. self.params.log_level
@@ -207,7 +207,7 @@ end
 local routes = {
   ["/debug/node/log-level"] = {
     GET = function(self)
-      local cur_level = get_log_level(LOG_LEVELS[kong.configuration.log_level])
+      local cur_level = get_log_level()
 
       if type(LOG_LEVELS[cur_level]) ~= "string" then
         local message = "Unknown log level: " .. tostring(cur_level)
