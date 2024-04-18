@@ -7,7 +7,6 @@ local _M = {}
 local _MT = { __index = _M, }
 
 
-local cjson = require("cjson.safe")
 local utils = require("kong.clustering.rpc.utils")
 local queue = require("kong.clustering.rpc.queue")
 local jsonrpc = require("kong.clustering.rpc.json_rpc_v2")
@@ -17,9 +16,9 @@ local constants = require("kong.constants")
 local assert = assert
 local string_format = string.format
 local kong = kong
-local cjson_encode = cjson.encode
-local cjson_decode = cjson.decode
 local is_timeout = utils.is_timeout
+local compress_payload = utils.compress_payload
+local decompress_payload = utils.decompress_payload
 local exiting = ngx.worker.exiting
 local ngx_time = ngx.time
 local ngx_log = ngx.log
@@ -142,7 +141,7 @@ function _M:start()
 
       assert(typ == "binary")
 
-      local payload = cjson_decode(data)
+      local payload = decompress_payload(data)
       assert(payload.jsonrpc == "2.0")
 
       if payload.method then
@@ -222,7 +221,7 @@ function _M:start()
         else
           assert(type(payload) == "table")
 
-          local bytes, err = self.wb:send_binary(assert(cjson_encode(payload)))
+          local bytes, err = self.wb:send_binary(compress_payload(payload))
           if not bytes then
             return nil, err
           end

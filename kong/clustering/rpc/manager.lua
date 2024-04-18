@@ -153,6 +153,7 @@ function _M:handle_websocket()
   local client_version = ngx_var.http_x_kong_version
   local node_id = ngx_var.http_x_kong_node_id
   local meta_call = ngx_var.http_sec_websocket_protocol
+  local content_encoding = ngx_var.http_content_encoding
 
   if not client_version then
     ngx_log(ngx_ERR, "[rpc] client did not provide version number")
@@ -161,6 +162,11 @@ function _M:handle_websocket()
 
   if not node_id then
     ngx_log(ngx_ERR, "[rpc] client did not provide node ID")
+    return ngx_exit(ngx.HTTP_CLOSE)
+  end
+
+  if content_encoding ~= "x-snappy-framed" then
+    ngx_log(ngx_ERR, "[rpc] client does use Snappy compressed frames")
     return ngx_exit(ngx.HTTP_CLOSE)
   end
 
@@ -212,6 +218,7 @@ function _M:connect(premature, node_id, host, path, cert, key)
     headers = {
       "X-Kong-Version: " .. KONG_VERSION,
       "X-Kong-Node-Id: " .. self.node_id,
+      "Content-Encoding: x-snappy-framed"
     },
   }
 
