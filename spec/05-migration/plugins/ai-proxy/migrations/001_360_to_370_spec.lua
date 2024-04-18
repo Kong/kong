@@ -11,7 +11,11 @@ end
 
 if uh.database_type() == strategy then
   describe("ai-proxy plugin migration", function()
-    local _, db = helpers.get_db_utils(strategy, { "plugins" })
+    local bp, db
+    lazy_setup(function()
+      bp, db = helpers.get_db_utils(strategy, { "plugins" })
+    end)
+
     local id = uuid.generate_v4()
     local plugin_name = "ai-proxy"
     local plugin_config = {
@@ -39,7 +43,6 @@ if uh.database_type() == strategy then
       local sql = render([[
         INSERT INTO plugins (id, name, config, enabled) VALUES
           ('$(ID)', '$(PLUGIN_NAME)', $(CONFIG)::jsonb, TRUE);
-        COMMIT;
       ]], {
         ID = id,
         PLUGIN_NAME = plugin_name,
@@ -61,6 +64,16 @@ if uh.database_type() == strategy then
       assert.is_not_nil(res)
       assert.equals(1, #res)
 
+    end)
+
+    uh.old_after_up("test", function ()
+      local res, err = db.connector:query([[SELECT * FROM plugins;]])
+      assert.is_nil(res)
+    end)
+
+    uh.new_after_up("test", function ()
+      local res, err = db.connector:query([[SELECT * FROM plugins;]])
+      assert.is_nil(res)
     end)
 
     uh.new_after_finish("has updated ai-proxy plugin configuration", function ()
