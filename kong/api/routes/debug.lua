@@ -113,7 +113,7 @@ local routes = {
   ["/clustering/data-planes/:node_id/log-level"] = {
     GET = function(self)
       local current_level, timeout_or_err, original_level =
-        kong.rpc:call(self.params.node_id, "kong.debug.v1.get_log_level")
+        kong.rpc:call(self.params.node_id, "kong.debug.log_level.v1.get_log_level")
       if not current_level then
         return kong.response.exit(500, { message = timeout_or_err, })
       end
@@ -124,7 +124,7 @@ local routes = {
     end,
     PUT = function(self)
       local res, err = kong.rpc:call(self.params.node_id,
-                                     "kong.debug.v1.set_log_level",
+                                     "kong.debug.log_level.v1.set_log_level",
                                      self.params.new_level,
                                      self.params.timeout)
       if not res then

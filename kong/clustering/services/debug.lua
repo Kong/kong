@@ -57,8 +57,8 @@ end
 
 
 function _M.init(manager)
-  manager.callbacks:register("kong.debug.v1.get_log_level", rpc_get_log_level)
-  manager.callbacks:register("kong.debug.v1.set_log_level", rpc_set_log_level)
+  manager.callbacks:register("kong.debug.log_level.v1.get_log_level", rpc_get_log_level)
+  manager.callbacks:register("kong.debug.log_level.v1.set_log_level", rpc_set_log_level)
 end
 
 
