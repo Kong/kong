@@ -1351,7 +1351,7 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
 
-      it("matches a Route based on its 'snis' attribute", function()
+      it("matches a route based on its 'snis' attribute", function()
         proxy_ssl_client = helpers.proxy_ssl_client(nil, "www.example.org")
 
         local res = assert(proxy_ssl_client:send {
@@ -1396,7 +1396,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       if flavor ~= "traditional" then
-        it("matches a Route based on its leftmost wildcard sni", function()
+        it("matches a route based on its leftmost wildcard sni", function()
           for _, sni in ipairs({"a.foo.test", "a.b.foo.test"}) do
             proxy_ssl_client = helpers.proxy_ssl_client(nil, sni)
 
@@ -1413,7 +1413,7 @@ for _, strategy in helpers.each_strategy() do
           end
         end)
 
-        it("matches a Route based on its rightmost wildcard sni", function()
+        it("matches a route based on its rightmost wildcard sni", function()
           for _, sni in ipairs({"bar.x", "bar.y.z"}) do
             proxy_ssl_client = helpers.proxy_ssl_client(nil, sni)
 
@@ -1502,7 +1502,7 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
 
-      it("matches a Route based on its 'snis' attribute", function()
+      it("matches a route based on its 'snis' attribute", function()
         -- config propagates to stream subsystems not instantly
         -- try up to 10 seconds with step of 2 seconds
         -- in vagrant it takes around 6 seconds
@@ -1553,7 +1553,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       if flavor ~= "traditional" then
-        it("matches a Route based on its leftmost wildcard sni", function()
+        it("matches a route based on its leftmost wildcard sni", function()
           for _, sni in ipairs({"a.foo.test", "a.b.foo.test"}) do
             -- config propagates to stream subsystems not instantly
             -- try up to 10 seconds with step of 2 seconds
@@ -1579,7 +1579,7 @@ for _, strategy in helpers.each_strategy() do
           end
         end)
 
-        it("matches a Route based on its rightmost wildcard sni", function()
+        it("matches a route based on its rightmost wildcard sni", function()
           for _, sni in ipairs({"bar.x", "bar.y.z"}) do
             -- config propagates to stream subsystems not instantly
             -- try up to 10 seconds with step of 2 seconds
@@ -1968,7 +1968,7 @@ for _, strategy in helpers.each_strategy() do
         remove_routes(strategy, routes)
       end)
 
-      it("matches a Route based on its 'snis' attribute", function()
+      it("matches a route based on its 'snis' attribute", function()
         grpcs_proxy_ssl_client = helpers.proxy_client_grpcs("grpcs_1.test")
 
         local ok, resp = assert(grpcs_proxy_ssl_client({
@@ -2002,7 +2002,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       if flavor ~= "traditional" then
-        it("matches a Route based on its leftmost wildcard sni", function()
+        it("matches a route based on its leftmost wildcard sni", function()
           for _, sni in ipairs({"a.grpcs_3.test", "a.b.grpcs_3.test"}) do
             grpcs_proxy_ssl_client = helpers.proxy_client_grpcs(sni)
 
@@ -2022,7 +2022,7 @@ for _, strategy in helpers.each_strategy() do
           end
         end)
 
-        it("matches a Route based on its rightmost wildcard sni", function()
+        it("matches a route based on its rightmost wildcard sni", function()
           for _, sni in ipairs({"grpcs_4.x", "grpcs_4.y.z"}) do
             grpcs_proxy_ssl_client = helpers.proxy_client_grpcs(sni)
 
