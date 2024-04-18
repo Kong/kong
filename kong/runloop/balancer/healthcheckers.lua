@@ -418,7 +418,7 @@ end
 -- the health checker, this parameter is useful to avoid throwing away current
 -- health status.
 function healthcheckers_M.stop_healthcheckers(delay)
-  local all_upstreams =  upstreams.get_all_upstreams()
+  local all_upstreams = upstreams.get_all_upstreams()
   if all_upstreams == nil then
     return
   end
