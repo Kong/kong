@@ -433,7 +433,9 @@ function _M:handle_cp_websocket(cert)
         goto continue
       end
 
-      ok, err = check_mixed_route_entities(self.reconfigure_payload, dp_version)
+      ok, err = check_mixed_route_entities(self.reconfigure_payload, dp_version,
+                                           kong and kong.configuration and
+                                           kong.configuration.router_flavor)
       if not ok then
         ngx_log(ngx_WARN, _log_prefix, "unable to send updated configuration to data plane: ", err, log_suffix)
 
