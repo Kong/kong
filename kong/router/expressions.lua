@@ -9,17 +9,44 @@ local get_priority   = transform.get_priority
 local amending_expression = transform.amending_expression
 
 
-local gen_for_field = transform.gen_for_field
-local OP_EQUAL      = transform.OP_EQUAL
-local LOGICAL_AND   = transform.LOGICAL_AND
+local append_exp_with_protocol
+do
+  local gen_for_field = transform.gen_for_field
+  local OP_EQUAL      = transform.OP_EQUAL
+  local LOGICAL_AND   = transform.LOGICAL_AND
 
+  -- map to normal protocol
+  local PROTOCOLS_OVERRIDE = {
+    tls_passthrough = "tcp",
+    grpc            = "http",
+    grpcs           = "https",
+  }
 
--- map to normal protocol
-local PROTOCOLS_OVERRIDE = {
-  tls_passthrough = "tcp",
-  grpc            = "http",
-  grpcs           = "https",
-}
+  local function protocol_val_transform(_, p)
+    return PROTOCOLS_OVERRIDE[p] or p
+  end
+
+  append_exp_with_protocol = function(protocols, exp)
+
+    -- give the chance for http redirection (301/302/307/308/426)
+    -- and allow tcp works with tls
+    if protocols and #protocols == 1 and
+      (protocols[1] == "https" or
+       protocols[1] == "tls" or
+       protocols[1] == "tls_passthrough")
+    then
+      return exp
+    end
+
+    local gen = gen_for_field("net.protocol", OP_EQUAL, protocols,
+                              protocol_val_transform)
+    if gen then
+      exp = exp .. LOGICAL_AND .. gen
+    end
+
+    return exp
+  end
+end
 
 
 local function get_exp_and_priority(route)
@@ -32,25 +59,7 @@ local function get_exp_and_priority(route)
 
   local priority = get_priority(route)
 
-  local protocols = route.protocols
-
-  -- give the chance for http redirection (301/302/307/308/426)
-  -- and allow tcp works with tls
-  if protocols and #protocols == 1 and
-    (protocols[1] == "https" or
-     protocols[1] == "tls" or
-     protocols[1] == "tls_passthrough")
-  then
-    return exp, priority
-  end
-
-  local gen = gen_for_field("net.protocol", OP_EQUAL, protocols,
-                            function(_, p)
-                              return PROTOCOLS_OVERRIDE[p] or p
-                            end)
-  if gen then
-    exp = exp .. LOGICAL_AND .. gen
-  end
+  exp = append_exp_with_protocol(route.protocols, exp)
 
   return exp, priority
 end
