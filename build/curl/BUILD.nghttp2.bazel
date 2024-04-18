@@ -42,6 +42,11 @@ configure_make(
             "--with-zlib=$$EXT_BUILD_DEPS$$/zlib",
         ],
         "//conditions:default": [],
+    }) + select({
+        "@platforms//os:linux": [
+            "--with-pic",
+        ],
+        "//conditions:default": [],
     }),
     env = select({
         "@platforms//os:macos": {

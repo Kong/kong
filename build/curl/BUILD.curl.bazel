@@ -25,9 +25,9 @@ configure_make(
         "--disable-debug",
         "--disable-dependency-tracking",
         "--disable-ldap",
-        "--disable-shared",
+        "--enable-shared",
         "--disable-silent-rules",
-        "--enable-static",
+        "--disable-static",
         "--enable-websockets",
         "--with-ca-bundle=%s/kong-tools/ssl/cacerts.pem" % KONG_VAR["INSTALL_DESTDIR"],
         "--with-ca-fallback",
@@ -58,10 +58,6 @@ configure_make(
     }),
     data = ["ssl/cacerts-%s.pem" % KONG_VAR["CA_CERTS"]],
     env = {
-        "LT_SYS_LIBRARY_PATH": "%s/kong-tools/lib:%s/kong/lib" % (
-            KONG_VAR["INSTALL_DESTDIR"],
-            KONG_VAR["INSTALL_DESTDIR"],
-        ),
     } | select({
         "@platforms//os:macos": {
             "AR": "/usr/bin/ar",
@@ -69,6 +65,12 @@ configure_make(
         "//conditions:default": {},
     }),
     lib_source = ":all_srcs",
+    linkopts = [
+        "-Wl,-rpath,%s/kong-tools/lib:%s/kong/lib" % (
+            KONG_VAR["INSTALL_DESTDIR"],
+            KONG_VAR["INSTALL_DESTDIR"],
+        ),
+    ],
     out_binaries = [
         "curl",
         "curl-config",

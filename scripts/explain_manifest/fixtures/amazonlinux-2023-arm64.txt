@@ -109,10 +109,20 @@
 
 - Path      : /usr/local/kong-tools/bin/curl
   Needed    :
+  - libcurl.so.4
   - libssl.so.3
   - libcrypto.so.3
   - libz.so.1
   - libc.so.6
+  Rpath     : /usr/local/kong-tools/lib:/usr/local/kong/lib
+
+- Path      : /usr/local/kong-tools/lib/libcurl.so
+  Needed    :
+  - libssl.so.3
+  - libcrypto.so.3
+  - libz.so.1
+  - libc.so.6
+  Rpath     : /usr/local/kong-tools/lib:/usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/bcrypt.so
   Needed    :
