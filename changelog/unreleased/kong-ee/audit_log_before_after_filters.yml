@@ -1,0 +1,3 @@
+message: "**Audit Log**: Add before / after aliases for LHS Brackets filters."
+type: feature
+scope: Admin API

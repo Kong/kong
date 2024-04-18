@@ -294,6 +294,7 @@ build = {
     ["kong.tools.cjson"] = "kong/tools/cjson.lua",
     ["kong.tools.redis.schema"] = "kong/tools/redis/schema.lua",
     ["kong.tools.ssl"] = "kong/tools/ssl.lua",
+    ["kong.tools.date"] = "kong/tools/date.lua",
 
     ["kong.tools.channel"] = "kong/tools/channel.lua",
 

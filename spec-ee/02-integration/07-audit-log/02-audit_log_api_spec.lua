@@ -7,6 +7,7 @@
 
 local helpers = require "spec.helpers"
 local ee_helpers = require "spec-ee.helpers"
+local luatz = require "luatz"
 local cjson = require "cjson"
 
 local function insert_dummy_audit_request(bp, id, timestamp)
@@ -89,12 +90,12 @@ for _, strategy in helpers.each_strategy() do
         local F_ID = "ffffffffffffffffffffffffffffffff"
 
         before_each(function()
-          insert_dummy_audit_request(bp, B_ID, os.time({year = 2024, month = 3, day = 11, hour = 14, min = 31, sec = 8}))
-          insert_dummy_audit_request(bp, D_ID, os.time({year = 2024, month = 3, day = 11, hour = 14, min = 31, sec = 7}))
-          insert_dummy_audit_request(bp, A_ID, os.time({year = 2024, month = 3, day = 10}))
-          insert_dummy_audit_request(bp, F_ID, os.time({year = 2024, month = 3, day = 10}))
-          insert_dummy_audit_request(bp, C_ID, os.time({year = 2024, month = 3, day = 9}))
-          insert_dummy_audit_request(bp, E_ID, os.time({year = 2024, month = 3, day = 8}))
+          insert_dummy_audit_request(bp, B_ID, luatz.timetable.new(2024, 3, 11, 14, 31, 8):timestamp())
+          insert_dummy_audit_request(bp, D_ID, luatz.timetable.new(2024, 3, 11, 14, 31, 7):timestamp())
+          insert_dummy_audit_request(bp, A_ID, luatz.timetable.new(2024, 3, 10, 0):timestamp())
+          insert_dummy_audit_request(bp, F_ID, luatz.timetable.new(2024, 3, 10, 0):timestamp())
+          insert_dummy_audit_request(bp, C_ID, luatz.timetable.new(2024, 3, 9, 0):timestamp())
+          insert_dummy_audit_request(bp, E_ID, 3) -- timestamp of vaue "3"
         end)
 
         -- Assert paging behavior - given we have custom logic for paging in
@@ -186,7 +187,7 @@ for _, strategy in helpers.each_strategy() do
         it("allows filtering by specific audit_request", function()
           local res = assert.res_status(200, admin_client:send({
             path = "/audit/requests",
-            query = {request_timestamp = os.time({year = 2024, month = 3, day = 11, hour = 14, min = 31, sec = 7}) }
+            query = {request_timestamp = luatz.timetable.new(2024, 3, 11, 14, 31, 7):timestamp()}
           }))
           local json = cjson.decode(res)
           assert.same(1, #json.data)
@@ -197,8 +198,8 @@ for _, strategy in helpers.each_strategy() do
           local res = assert.res_status(200, admin_client:send({
             path = "/audit/requests",
             query = {
-              ["request_timestamp[lt]"] = os.time({year = 2024, month = 3, day = 10}),
-              ["request_timestamp[gt]"] = os.time({year = 2024, month = 3, day = 8}),
+              ["request_timestamp[lt]"] = luatz.timetable.new(2024, 3, 10, 0):timestamp(),
+              ["request_timestamp[gt]"] = luatz.timetable.new(2024, 3, 8, 0):timestamp(),
             }
           }))
           local json = cjson.decode(res)
@@ -210,16 +211,247 @@ for _, strategy in helpers.each_strategy() do
           local res = assert.res_status(200, admin_client:send({
             path = "/audit/requests",
             query = {
-              ["request_timestamp[lte]"] = os.time({year = 2024, month = 3, day = 10}),
-              ["request_timestamp[gte]"] = os.time({year = 2024, month = 3, day = 8}),
+              ["request_timestamp[lte]"] = luatz.timetable.new(2024, 3, 10, 0):timestamp(),
+              ["request_timestamp[gte]"] = luatz.timetable.new(2024, 3, 1, 0):timestamp(),
             }
           }))
           local json = cjson.decode(res)
-          assert.same(4, #json.data)
+          assert.same(3, #json.data)
           assert.same(F_ID, json.data[1].request_id)
           assert.same(A_ID, json.data[2].request_id)
           assert.same(C_ID, json.data[3].request_id)
-          assert.same(E_ID, json.data[4].request_id)
+        end)
+
+        describe("when using before & after aliases", function()
+          describe("when using timestamp", function()
+            it("allows filtering by before  - (exclusive for provided time)", function()
+              local res = assert.res_status(200, admin_client:send({
+                path = "/audit/requests",
+                query = {
+                  before = luatz.timetable.new(2024, 3, 10, 0):timestamp(),
+                }
+              }))
+              local json = cjson.decode(res)
+              assert.same(2, #json.data)
+              assert.same(C_ID, json.data[1].request_id)
+              assert.same(E_ID, json.data[2].request_id)
+            end)
+
+            it("allows filtering by before  - (exclusive for provided time) - even when timestamp resembles a year", function()
+              local res = assert.res_status(200, admin_client:send({
+                path = "/audit/requests",
+                query = {
+                  before = "2024",
+                }
+              }))
+              local json = cjson.decode(res)
+              assert.same(1, #json.data)
+              assert.same(E_ID, json.data[1].request_id)
+            end)
+
+            it("allows filtering by before  - (exclusive for provided time)", function()
+              local res = assert.res_status(200, admin_client:send({
+                path = "/audit/requests",
+                query = {
+                  before = "0",
+                }
+              }))
+              local json = cjson.decode(res)
+              assert.same(0, #json.data)
+            end)
+
+            it("allows filtering by after  - (inclusive for provided time)", function()
+              local res = assert.res_status(200, admin_client:send({
+                path = "/audit/requests",
+                query = {
+                  after = luatz.timetable.new(2024, 3, 10, 0):timestamp(),
+                }
+              }))
+              local json = cjson.decode(res)
+              assert.same(4, #json.data)
+              assert.same(B_ID, json.data[1].request_id)
+              assert.same(D_ID, json.data[2].request_id)
+              assert.same(F_ID, json.data[3].request_id)
+              assert.same(A_ID, json.data[4].request_id)
+            end)
+
+            it("allows filtering by before & after", function()
+              local res = assert.res_status(200, admin_client:send({
+                path = "/audit/requests",
+                query = {
+                  after =  luatz.timetable.new(2024, 3, 9, 0):timestamp(), -- inclusive
+                  before = luatz.timetable.new(2024, 3, 10, 0):timestamp(), -- exclusive
+                }
+              }))
+              local json = cjson.decode(res)
+              assert.same(1, #json.data)
+              assert.same(C_ID, json.data[1].request_id)
+            end)
+
+            it("filtering both by before & request_timestamp prioritizes before", function()
+              local res = assert.res_status(200, admin_client:send({
+                path = "/audit/requests",
+                query = {
+                  before = luatz.timetable.new(2024, 3, 9, 0):timestamp(),
+                  ["request_timestamp[lt]"] = luatz.timetable.new(2024, 3, 10, 0):timestamp(),
+                }
+              }))
+              local json = cjson.decode(res)
+              assert.same(1, #json.data)
+              assert.same(E_ID, json.data[1].request_id)
+            end)
+
+            it("filtering both by after & request_timestamp prioritizes after", function()
+              local res = assert.res_status(200, admin_client:send({
+                path = "/audit/requests",
+                query = {
+                  after = luatz.timetable.new(2024, 3, 10, 0):timestamp(),
+                  ["request_timestamp[gte]"] = luatz.timetable.new(2024, 3, 8, 0):timestamp(),
+                }
+              }))
+              local json = cjson.decode(res)
+              assert.same(4, #json.data)
+              assert.same(B_ID, json.data[1].request_id)
+              assert.same(D_ID, json.data[2].request_id)
+              assert.same(F_ID, json.data[3].request_id)
+              assert.same(A_ID, json.data[4].request_id)
+            end)
+
+            it("filtering both by after & request_timestamp - allows non conflicting queries", function()
+              local res = assert.res_status(200, admin_client:send({
+                path = "/audit/requests",
+                query = {
+                  after = luatz.timetable.new(2024, 3, 11, 0):timestamp(),
+                  ["request_timestamp[gte]"] = luatz.timetable.new(2024, 3, 11, 0):timestamp(),
+                }
+              }))
+              local json = cjson.decode(res)
+
+              -- after queries for gte and explicit gt are joined with
+              -- AND clause making it more narrow
+              assert.same(2, #json.data)
+              assert.same(B_ID, json.data[1].request_id)
+              assert.same(D_ID, json.data[2].request_id)
+            end)
+          end)
+
+          describe("when using date", function()
+            describe("when using correct date format (RFC3339)", function()
+              it("allows filtering by before - (exclusive for provided time)", function()
+                local res = assert.res_status(200, admin_client:send({
+                  path = "/audit/requests",
+                  query = {
+                    before = "2024-03-11T14:31:07Z",
+                  }
+                }))
+                local json = cjson.decode(res)
+                assert.same(4, #json.data)
+                assert.same(F_ID, json.data[1].request_id)
+                assert.same(A_ID, json.data[2].request_id)
+                assert.same(C_ID, json.data[3].request_id)
+                assert.same(E_ID, json.data[4].request_id)
+              end)
+
+              it("allows filtering by after - inclusive for provided time)", function()
+                local res = assert.res_status(200, admin_client:send({
+                  path = "/audit/requests",
+                  query = {
+                    after = "2024-03-11T14:31:08Z",
+                  }
+                }))
+                local json = cjson.decode(res)
+                assert.same(1, #json.data)
+                assert.same(B_ID, json.data[1].request_id)
+              end)
+
+              it("allows filtering by combination of before and after)", function()
+                local res = assert.res_status(200, admin_client:send({
+                  path = "/audit/requests",
+                  query = {
+                    before = "2024-03-11T14:31:07Z",
+                    after =  "2024-03-10T00:00:00Z",
+                  }
+                }))
+                local json = cjson.decode(res)
+                assert.same(2, #json.data)
+                assert.same(F_ID, json.data[1].request_id)
+                assert.same(A_ID, json.data[2].request_id)
+              end)
+            end)
+
+            describe("when date format is incorrect", function()
+              it("before - returns 400 for partial dates", function()
+                local res = assert.res_status(400, admin_client:send({
+                  path = "/audit/requests",
+                  query = {
+                    before = "2013-07-02T09:00:00-07:00",
+                  }
+                }))
+                local json = cjson.decode(res)
+                assert.same({
+                  code = 20,
+                  message = "date param: '2013-07-02T09:00:00-07:00' does not match expected format: YYYY-MM-DDTHH:MI:SSZ",
+                  name = "invalid search query"
+                }, json)
+
+                local res = assert.res_status(400, admin_client:send({
+                  path = "/audit/requests",
+                  query = {
+                    before = "2024-03-11T14:31:07.533Z",
+                  }
+                }))
+                local json = cjson.decode(res)
+                assert.same({
+                  code = 20,
+                  message = "date param: '2024-03-11T14:31:07.533Z' does not match expected format: YYYY-MM-DDTHH:MI:SSZ",
+                  name = "invalid search query"
+                }, json)
+              end)
+
+              it("after - returns 400 for partial dates", function()
+                local res = assert.res_status(400, admin_client:send({
+                  path = "/audit/requests",
+                  query = {
+                    before = "2024-",
+                  }
+                }))
+                local json = cjson.decode(res)
+                assert.same({
+                  code = 20,
+                  message = "date param: '2024-' does not match expected format: YYYY-MM-DDTHH:MI:SSZ",
+                  name = "invalid search query"
+                }, json)
+              end)
+
+              it("before - returns 400 unmatching strings", function()
+                local res = assert.res_status(400, admin_client:send({
+                  path = "/audit/requests",
+                  query = {
+                    before = "before-something-else",
+                  }
+                }))
+                local json = cjson.decode(res)
+                assert.same({
+                  code = 20,
+                  message = "date param: 'before-something-else' does not match expected format: YYYY-MM-DDTHH:MI:SSZ",
+                  name = "invalid search query"
+                }, json)
+
+                local res = assert.res_status(400, admin_client:send({
+                  path = "/audit/requests",
+                  query = {
+                    after = "after-something-else",
+                  }
+                }))
+                local json = cjson.decode(res)
+                assert.same({
+                  code = 20,
+                  message = "date param: 'after-something-else' does not match expected format: YYYY-MM-DDTHH:MI:SSZ",
+                  name = "invalid search query"
+                }, json)
+              end)
+            end)
+          end)
         end)
       end)
     end)
@@ -276,11 +508,11 @@ for _, strategy in helpers.each_strategy() do
         local F_UUID = "ffffffff-ffff-ffff-ffff-ffffffffffff"
 
         before_each(function()
-          insert_dummy_audit_object(bp, B_UUID, os.time({year = 2024, month = 3, day = 11, hour = 14, min = 31, sec = 8}))
-          insert_dummy_audit_object(bp, D_UUID, os.time({year = 2024, month = 3, day = 11, hour = 14, min = 31, sec = 7}))
-          insert_dummy_audit_object(bp, A_UUID, os.time({year = 2024, month = 3, day = 10}))
-          insert_dummy_audit_object(bp, F_UUID, os.time({year = 2024, month = 3, day = 10}))
-          insert_dummy_audit_object(bp, C_UUID, os.time({year = 2024, month = 3, day = 9}))
+          insert_dummy_audit_object(bp, B_UUID, luatz.timetable.new(2024, 3, 11, 14, 31, 8):timestamp())
+          insert_dummy_audit_object(bp, D_UUID, luatz.timetable.new(2024, 3, 11, 14, 31, 7):timestamp())
+          insert_dummy_audit_object(bp, A_UUID, luatz.timetable.new(2024, 3, 10, 0):timestamp())
+          insert_dummy_audit_object(bp, F_UUID, luatz.timetable.new(2024, 3, 10, 0):timestamp())
+          insert_dummy_audit_object(bp, C_UUID, luatz.timetable.new(2024, 3, 9, 0):timestamp())
           -- the column request_timestamp was added in migration and existing records will have 0 value in it
           -- (note: typedefs of type timestamp does not allow 0 - minimum is 1)
           insert_dummy_audit_object(bp, E_UUID, 1)
@@ -375,7 +607,7 @@ for _, strategy in helpers.each_strategy() do
         it("allows filtering by specific audit_request", function()
           local res = assert.res_status(200, admin_client:send({
             path = "/audit/objects",
-            query = {request_timestamp = os.time({year = 2024, month = 3, day = 11, hour = 14, min = 31, sec = 7}) }
+            query = {request_timestamp = luatz.timetable.new(2024, 3, 11, 14, 31, 7):timestamp() }
           }))
           local json = cjson.decode(res)
           assert.same(1, #json.data)
@@ -386,8 +618,8 @@ for _, strategy in helpers.each_strategy() do
           local res = assert.res_status(200, admin_client:send({
             path = "/audit/objects",
             query = {
-              ["request_timestamp[lt]"] = os.time({year = 2024, month = 3, day = 10}),
-              ["request_timestamp[gt]"] = os.time({year = 2024, month = 3, day = 8}),
+              ["request_timestamp[lt]"] = luatz.timetable.new(2024, 3, 10, 0):timestamp(),
+              ["request_timestamp[gt]"] = luatz.timetable.new(2024, 3, 8, 0):timestamp(),
             }
           }))
           local json = cjson.decode(res)
@@ -399,8 +631,8 @@ for _, strategy in helpers.each_strategy() do
           local res = assert.res_status(200, admin_client:send({
             path = "/audit/objects",
             query = {
-              ["request_timestamp[lte]"] = os.time({year = 2024, month = 3, day = 10}),
-              ["request_timestamp[gte]"] = os.time({year = 2024, month = 3, day = 8}),
+              ["request_timestamp[lte]"] = luatz.timetable.new(2024, 3, 10, 0):timestamp(),
+              ["request_timestamp[gte]"] = luatz.timetable.new(2024, 3, 8, 0):timestamp(),
             }
           }))
           local json = cjson.decode(res)
@@ -408,6 +640,215 @@ for _, strategy in helpers.each_strategy() do
           assert.same(F_UUID, json.data[1].id)
           assert.same(A_UUID, json.data[2].id)
           assert.same(C_UUID, json.data[3].id)
+        end)
+
+        describe("when using before & after aliases", function()
+          describe("when using timestamp", function()
+            it("allows filtering by before  - (exclusive for provided time)", function()
+              local res = assert.res_status(200, admin_client:send({
+                path = "/audit/objects",
+                query = {
+                  before = luatz.timetable.new(2024, 3, 10, 0):timestamp(),
+                }
+              }))
+              local json = cjson.decode(res)
+              assert.same(2, #json.data)
+              assert.same(C_UUID, json.data[1].id)
+              assert.same(E_UUID, json.data[2].id)
+            end)
+
+            it("allows filtering by after  - (inclusive for provided time)", function()
+              local res = assert.res_status(200, admin_client:send({
+                path = "/audit/objects",
+                query = {
+                  after = luatz.timetable.new(2024, 3, 10, 0):timestamp(),
+                }
+              }))
+              local json = cjson.decode(res)
+              assert.same(4, #json.data)
+              assert.same(B_UUID, json.data[1].id)
+              assert.same(D_UUID, json.data[2].id)
+              assert.same(F_UUID, json.data[3].id)
+              assert.same(A_UUID, json.data[4].id)
+            end)
+
+            it("allows filtering by before & after", function()
+              local res = assert.res_status(200, admin_client:send({
+                path = "/audit/objects",
+                query = {
+                  after = luatz.timetable.new(2024, 3, 9, 0):timestamp(), -- inclusive
+                  before = luatz.timetable.new(2024, 3, 10, 0):timestamp(), -- exclusive
+                }
+              }))
+              local json = cjson.decode(res)
+              assert.same(1, #json.data)
+              assert.same(C_UUID, json.data[1].id)
+            end)
+
+            it("filtering both by before & request_timestamp prioritizes before", function()
+              local res = assert.res_status(200, admin_client:send({
+                path = "/audit/objects",
+                query = {
+                  before = luatz.timetable.new(2024, 3, 9, 0):timestamp(),
+                  ["request_timestamp[lt]"] = luatz.timetable.new(2024, 3, 10, 0):timestamp(),
+                }
+              }))
+              local json = cjson.decode(res)
+              assert.same(1, #json.data)
+              assert.same(E_UUID, json.data[1].id)
+            end)
+
+            it("filtering both by after & request_timestamp prioritizes after", function()
+              local res = assert.res_status(200, admin_client:send({
+                path = "/audit/objects",
+                query = {
+                  after = luatz.timetable.new(2024, 3, 10, 0):timestamp(),
+                  ["request_timestamp[gte]"] = luatz.timetable.new(2024, 3, 8, 0):timestamp(),
+                }
+              }))
+              local json = cjson.decode(res)
+              assert.same(4, #json.data)
+              assert.same(B_UUID, json.data[1].id)
+              assert.same(D_UUID, json.data[2].id)
+              assert.same(F_UUID, json.data[3].id)
+              assert.same(A_UUID, json.data[4].id)
+            end)
+
+            it("filtering both by after & request_timestamp - allows non conflicting queries", function()
+              local res = assert.res_status(200, admin_client:send({
+                path = "/audit/objects",
+                query = {
+                  after = luatz.timetable.new(2024, 3, 10, 0):timestamp(),
+                  ["request_timestamp[gt]"] = luatz.timetable.new(2024, 3, 10, 0):timestamp(),
+                }
+              }))
+              local json = cjson.decode(res)
+
+              -- after queries for gte and explicit gt are joined with
+              -- AND clause making it more narrow
+              assert.same(2, #json.data)
+              assert.same(B_UUID, json.data[1].id)
+              assert.same(D_UUID, json.data[2].id)
+            end)
+          end)
+
+          describe("when using date", function()
+            describe("when using correct date format (RFC3339)", function()
+              it("allows filtering by before - (exclusive for provided time)", function()
+                local res = assert.res_status(200, admin_client:send({
+                  path = "/audit/objects",
+                  query = {
+                    before = "2024-03-11T14:31:07Z",
+                  }
+                }))
+                local json = cjson.decode(res)
+                assert.same(4, #json.data)
+                assert.same(F_UUID, json.data[1].id)
+                assert.same(A_UUID, json.data[2].id)
+                assert.same(C_UUID, json.data[3].id)
+                assert.same(E_UUID, json.data[4].id)
+              end)
+
+              it("allows filtering by after - inclusive for provided time)", function()
+                local res = assert.res_status(200, admin_client:send({
+                  path = "/audit/objects",
+                  query = {
+                    after = "2024-03-11T14:31:08Z",
+                  }
+                }))
+                local json = cjson.decode(res)
+                assert.same(1, #json.data)
+                assert.same(B_UUID, json.data[1].id)
+              end)
+
+              it("allows filtering by combination of before and after)", function()
+                local res = assert.res_status(200, admin_client:send({
+                  path = "/audit/objects",
+                  query = {
+                    before = "2024-03-11T14:31:07Z",
+                    after =  "2024-03-10T00:00:00Z",
+                  }
+                }))
+                local json = cjson.decode(res)
+                assert.same(2, #json.data)
+                assert.same(F_UUID, json.data[1].id)
+                assert.same(A_UUID, json.data[2].id)
+              end)
+            end)
+
+            describe("when date format is incorrect", function()
+              it("before - returns 400 for partial dates", function()
+                local res = assert.res_status(400, admin_client:send({
+                  path = "/audit/objects",
+                  query = {
+                    before = "2013-07-02T09:00:00-07:00",
+                  }
+                }))
+                local json = cjson.decode(res)
+                assert.same({
+                  code = 20,
+                  message = "date param: '2013-07-02T09:00:00-07:00' does not match expected format: YYYY-MM-DDTHH:MI:SSZ",
+                  name = "invalid search query"
+                }, json)
+
+                local res = assert.res_status(400, admin_client:send({
+                  path = "/audit/objects",
+                  query = {
+                    before = "2024-03-11T14:31:07.533Z",
+                  }
+                }))
+                local json = cjson.decode(res)
+                assert.same({
+                  code = 20,
+                  message = "date param: '2024-03-11T14:31:07.533Z' does not match expected format: YYYY-MM-DDTHH:MI:SSZ",
+                  name = "invalid search query"
+                }, json)
+              end)
+
+              it("after - returns 400 for partial dates", function()
+                local res = assert.res_status(400, admin_client:send({
+                  path = "/audit/objects",
+                  query = {
+                    before = "2024-",
+                  }
+                }))
+                local json = cjson.decode(res)
+                assert.same({
+                  code = 20,
+                  message = "date param: '2024-' does not match expected format: YYYY-MM-DDTHH:MI:SSZ",
+                  name = "invalid search query"
+                }, json)
+              end)
+
+              it("before - returns 400 unmatching strings", function()
+                local res = assert.res_status(400, admin_client:send({
+                  path = "/audit/objects",
+                  query = {
+                    before = "before-something-else",
+                  }
+                }))
+                local json = cjson.decode(res)
+                assert.same({
+                  code = 20,
+                  message = "date param: 'before-something-else' does not match expected format: YYYY-MM-DDTHH:MI:SSZ",
+                  name = "invalid search query"
+                }, json)
+
+                local res = assert.res_status(400, admin_client:send({
+                  path = "/audit/objects",
+                  query = {
+                    after = "after-something-else",
+                  }
+                }))
+                local json = cjson.decode(res)
+                assert.same({
+                  code = 20,
+                  message = "date param: 'after-something-else' does not match expected format: YYYY-MM-DDTHH:MI:SSZ",
+                  name = "invalid search query"
+                }, json)
+              end)
+            end)
+          end)
         end)
       end)
     end)
