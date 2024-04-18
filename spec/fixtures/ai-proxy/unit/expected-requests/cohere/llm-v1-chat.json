@@ -11,5 +11,6 @@
   "max_tokens": 512,
   "temperature": 0.5,
   "return_likelihoods": "NONE",
-  "truncate": "END"
+  "truncate": "END",
+  "stream": false
 }

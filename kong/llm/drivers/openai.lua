@@ -57,7 +57,7 @@ local transformers_to = {
 
     request_table = merge_defaults(request_table, model_info.options)
     request_table.model = model_info.name
-    request_table.stream = request_table.stream or false
+    request_table.stream = request_table.stream or false  -- explicitly set this
   
     return request_table, "application/json", nil
   end,
@@ -65,7 +65,7 @@ local transformers_to = {
   ["llm/v1/completions"] = function(request_table, model_info, route_type)
     request_table = merge_defaults(request_table, model_info.options)
     request_table.model = model_info.name
-    stream = request_table.stream or false
+    request_table.stream = request_table.stream or false -- explicitly set this
 
     return request_table, "application/json", nil
   end,

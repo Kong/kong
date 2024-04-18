@@ -1,11 +1,14 @@
 local _M = {}
 
 -- imports
-local cjson     = require("cjson.safe")
-local http      = require("resty.http")
-local fmt       = string.format
-local os        = os
-local parse_url = require("socket.url").parse
+local cjson        = require("cjson.safe")
+local http         = require("resty.http")
+local fmt          = string.format
+local os           = os
+local parse_url    = require("socket.url").parse
+local string_match = string.match
+local utils        = require("kong.tools.utils")
+local split        = utils.split
 --
 
 local log_entry_keys = {

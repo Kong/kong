@@ -123,6 +123,7 @@ local function handle_stream_event(event_string, model_info, route_type)
   else
     return nil, nil, metadata  -- caller code will handle "unrecognised" event types
   end
+end
 
 local function merge_fields(request_table, model)
   request_table.temperature = request_table.temperature or model.options.temperature
@@ -137,6 +138,7 @@ end
 
 local function handle_all(request_table, model)
   request_table.model = model.name
+  request_table.stream = request_table.stream or false  -- explicitly set this
 
   if request_table.prompt and request_table.messages then
     return kong.response.exit(400, "cannot run a 'prompt' and a history of 'messages' at the same time - refer to schema")

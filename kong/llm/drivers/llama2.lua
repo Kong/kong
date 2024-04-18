@@ -112,6 +112,7 @@ local function to_raw(request_table, model)
   messages.parameters.top_p = request_table.top_p or (model.options and model.options.top_p)
   messages.parameters.top_k = request_table.top_k or (model.options and model.options.top_k)
   messages.parameters.temperature = request_table.temperature or (model.options and model.options.temperature)
+  messages.parameters.stream = request_table.stream or false  -- explicitly set this
   
   if request_table.prompt and request_table.messages then
     return kong.response.exit(400, "cannot run raw 'prompt' and chat history 'messages' requests at the same time - refer to schema")
