@@ -757,6 +757,39 @@ local function split_routes_and_services_by_path(routes_and_services)
 end
 
 
+local amending_expression
+do
+  local re_gsub = ngx.re.gsub
+
+  local NET_PORT_REG = [[(net\.port)(\s*)([=><!])]]
+  local NET_PORT_REPLACE = [[net.dst.port$2$3]]
+
+  -- net.port => net.dst.port
+  amending_expression = function(route)
+    local exp = get_expression(route)
+
+    if not exp then
+      return nil
+    end
+
+    if not exp:find("net.port", 1, true) then
+      return exp
+    end
+
+    -- there is "net.port" in expression
+
+    local new_exp = re_gsub(exp, NET_PORT_REG, NET_PORT_REPLACE, "jo")
+
+    if exp ~= new_exp then
+      ngx.log(ngx.WARN, "The field 'net.port' of expression is deprecated " ..
+                        "and will be removed in the upcoming major release, " ..
+                        "please use 'net.dst.port' instead.")
+    end
+
+    return new_exp
+  end
+end
+
 return {
   OP_EQUAL    = OP_EQUAL,
 
@@ -774,4 +807,6 @@ return {
   get_priority = get_priority,
 
   split_routes_and_services_by_path = split_routes_and_services_by_path,
+
+  amending_expression = amending_expression,
 }
