@@ -6,9 +6,9 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local Router
-local atc_compat = require "kong.router.compat"
 local path_handling_tests = require "spec.fixtures.router_path_handling_tests"
 local uuid = require("kong.tools.utils").uuid
+local get_expression = require("kong.router.transform").get_expression
 
 local function reload_router(flavor, subsystem)
   _G.kong = {
@@ -2171,7 +2171,6 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
 
         describe("check empty route fields", function()
           local use_case
-          local get_expression = atc_compat.get_expression
 
           before_each(function()
             use_case = {
@@ -2229,7 +2228,6 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
 
         describe("raw string", function()
           local use_case
-          local get_expression = atc_compat.get_expression
 
           before_each(function()
             use_case = {
@@ -2262,7 +2260,6 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
 
         describe("check regex with '\\'", function()
           local use_case
-          local get_expression = atc_compat.get_expression
 
           before_each(function()
             use_case = {
@@ -2295,7 +2292,6 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
 
         describe("generate http expression", function()
           local use_case
-          local get_expression = atc_compat.get_expression
 
           before_each(function()
             use_case = {
@@ -4738,8 +4734,6 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
       describe("#stream context", function()
         -- enable stream subsystem
         reload_router(flavor, "stream")
-
-        local get_expression = require("kong.router.compat").get_expression
 
         describe("check empty route fields", function()
           local use_case
