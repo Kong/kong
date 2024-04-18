@@ -40,7 +40,7 @@ config_setting(
 cc_library(
     name = "config",
     hdrs = ["config.h"],
-    defines = ["HAVE_CONFIG_H"]
+    defines = ["HAVE_CONFIG_H"],
 )
 
 cc_library(
@@ -72,10 +72,11 @@ cc_library(
         "snappy-sinksource.h",
     ],
     copts = select({
-      ":windows": [],
-      "//conditions:default": [
-        "-Wno-sign-compare",
-    ]}),
+        ":windows": [],
+        "//conditions:default": [
+            "-Wno-sign-compare",
+        ],
+    }),
     deps = [
         ":config",
         ":snappy-stubs-internal",
