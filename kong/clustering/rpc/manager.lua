@@ -114,7 +114,7 @@ function _M:_call(node_id, method, params)
     return fut.result
   end
 
-  return fut.error.message
+  return nil, fut.error.message
 end
 
 
@@ -141,7 +141,7 @@ function _M:call(node_id, method, ...)
       return fut.result
     end
 
-    return fut.error.message
+    return nil, fut.error.message
   end
 
   return res, err
