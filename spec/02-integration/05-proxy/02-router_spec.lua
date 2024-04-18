@@ -131,7 +131,7 @@ for _, strategy in helpers.each_strategy() do
     local proxy_ssl_client
     local bp
     local it_trad_only = (flavor == "traditional") and it or pending
-    local it_trad_comp_only = (flavor == "traditional_compatible") and it or pending
+    local it_not_trad = (flavor ~= "traditional") and it or pending
 
     lazy_setup(function()
       local fixtures = {
@@ -1316,7 +1316,7 @@ for _, strategy in helpers.each_strategy() do
           },
         }
 
-        local trad_comp_configs = {
+        local not_trad_configs = {
           {
             protocols = { "https" },
             snis = { "*.foo.test" },
@@ -1333,8 +1333,8 @@ for _, strategy in helpers.each_strategy() do
           },
         }
 
-        if flavor == "traditional_compatible" then
-          for _, v in ipairs(trad_comp_configs) do
+        if flavor ~= "traditional" then
+          for _, v in ipairs(not_trad_configs) do
             table_insert(configs, v)
           end
         end
@@ -1396,7 +1396,7 @@ for _, strategy in helpers.each_strategy() do
                      res.headers["kong-service-name"])
       end)
 
-      it_trad_comp_only("matches a Route based on its leftmost wildcard sni", function()
+      it_not_trad("matches a Route based on its leftmost wildcard sni", function()
         for _, sni in ipairs({"a.foo.test", "a.b.foo.test"}) do
           proxy_ssl_client = helpers.proxy_ssl_client(nil, sni)
 
@@ -1413,7 +1413,7 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
 
-      it_trad_comp_only("matches a Route based on its rightmost wildcard sni", function()
+      it_not_trad("matches a Route based on its rightmost wildcard sni", function()
         for _, sni in ipairs({"bar.x", "bar.y.z"}) do
           proxy_ssl_client = helpers.proxy_ssl_client(nil, sni)
 
@@ -1459,7 +1459,7 @@ for _, strategy in helpers.each_strategy() do
           },
         }
 
-        local trad_comp_configs = {
+        local not_trad_configs = {
           {
             protocols = { "tls_passthrough" },
             snis = { "*.foo.test" },
@@ -1482,8 +1482,8 @@ for _, strategy in helpers.each_strategy() do
           },
         }
 
-        if flavor == "traditional_compatible" then
-          for _, v in ipairs(trad_comp_configs) do
+        if flavor ~= "traditional" then
+          for _, v in ipairs(not_trad_configs) do
             table_insert(configs, v)
           end
         end
@@ -1551,7 +1551,7 @@ for _, strategy in helpers.each_strategy() do
         proxy_ssl_client:close()
       end)
 
-      it_trad_comp_only("matches a Route based on its leftmost wildcard sni", function()
+      it_not_trad("matches a Route based on its leftmost wildcard sni", function()
         for _, sni in ipairs({"a.foo.test", "a.b.foo.test"}) do
           -- config propagates to stream subsystems not instantly
           -- try up to 10 seconds with step of 2 seconds
@@ -1577,7 +1577,7 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
 
-      it_trad_comp_only("matches a Route based on its rightmost wildcard sni", function()
+      it_not_trad("matches a Route based on its rightmost wildcard sni", function()
         for _, sni in ipairs({"bar.x", "bar.y.z"}) do
           -- config propagates to stream subsystems not instantly
           -- try up to 10 seconds with step of 2 seconds
@@ -1933,7 +1933,7 @@ for _, strategy in helpers.each_strategy() do
           },
         }
 
-        local trad_comp_configs = {
+        local not_trad_configs = {
           {
             protocols = { "grpcs" },
             snis = { "*.grpcs_3.test" },
@@ -1952,8 +1952,8 @@ for _, strategy in helpers.each_strategy() do
           },
         }
 
-        if flavor == "traditional_compatible" then
-          for _, v in ipairs(trad_comp_configs) do
+        if flavor ~= "traditional" then
+          for _, v in ipairs(not_trad_configs) do
             table_insert(configs, v)
           end
         end
@@ -1998,7 +1998,7 @@ for _, strategy in helpers.each_strategy() do
         assert.matches("kong-service-name: grpcs_2", resp, nil, true)
       end)
 
-      it_trad_comp_only("matches a Route based on its leftmost wildcard sni", function()
+      it_not_trad("matches a Route based on its leftmost wildcard sni", function()
         for _, sni in ipairs({"a.grpcs_3.test", "a.b.grpcs_3.test"}) do
           grpcs_proxy_ssl_client = helpers.proxy_client_grpcs(sni)
 
@@ -2018,7 +2018,7 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
 
-      it_trad_comp_only("matches a Route based on its rightmost wildcard sni", function()
+      it_not_trad("matches a Route based on its rightmost wildcard sni", function()
         for _, sni in ipairs({"grpcs_4.x", "grpcs_4.y.z"}) do
           grpcs_proxy_ssl_client = helpers.proxy_client_grpcs(sni)
 
