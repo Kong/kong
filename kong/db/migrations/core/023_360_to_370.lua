@@ -8,6 +8,14 @@ return {
         "ttl"        TIMESTAMP WITH TIME ZONE   NOT NULL,
         "payload"    JSON                       NOT NULL
       );
+
+      DO $$
+      BEGIN
+      ALTER TABLE IF EXISTS ONLY "clustering_data_planes" ADD "capabilities" TEXT[];
+      EXCEPTION WHEN DUPLICATE_COLUMN THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
     ]]
   }
 }

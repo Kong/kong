@@ -15,6 +15,7 @@ local constants = require("kong.constants")
 
 
 local assert = assert
+local string_format = string.format
 local kong = kong
 local cjson_encode = cjson.encode
 local cjson_decode = cjson.decode
@@ -55,6 +56,36 @@ function _M:_get_next_id()
   self.sequence = res + 1
 
   return res
+end
+
+
+function _M._dispatch(premature, self, cb, payload)
+  if premature then
+    return
+  end
+
+  local res, err = cb(self.node_id, unpack(payload.params))
+  if not res then
+    ngx_log(ngx_WARN, "[rpc] RPC callback failed: ", err)
+
+    res, err = self.outgoing:push(new_error(payload.id, jsonrpc.SERVER_ERROR,
+                                            tostring(err)))
+    if not res then
+      ngx_log(ngx_WARN, "[rpc] unable to push RPC call error: ", err)
+    end
+
+    return
+  end
+
+  -- success
+  res, err = self.outgoing:push({
+    jsonrpc = "2.0",
+    id = payload.id,
+    result = res,
+  })
+  if not res then
+    ngx_log(ngx_WARN, "[rpc] unable to push RPC call result: ", err)
+  end
 end
 
 
@@ -128,8 +159,9 @@ function _M:start()
         end
 
         -- call dispatch
-        local res, err = kong.timer:named_at("JSON-RPC callback for " .. payload.method,
-                                             0, _M._dispatch, dispatch_cb, payload)
+        local res, err = kong.timer:named_at(string_format("JSON-RPC callback for node_id: %s, id: %d, method: %s",
+                                                           self.node_id, payload.id, payload.method),
+                                                           0, _M._dispatch, self, dispatch_cb, payload)
         if not res then
           local reso, erro = self.outgoing:push(new_error(payload.id, jsonrpc.INTERNAL_ERROR))
           if not reso then
@@ -144,7 +176,7 @@ function _M:start()
         local interest_cb = self.interest[payload.id]
         self.interest[payload.id] = nil -- edge trigger only once
 
-        if not cb then
+        if not interest_cb then
           ngx_log(ngx_WARN, "[rpc] no interest for RPC response id: ", payload.id, ", dropping it")
 
           goto continue
@@ -200,36 +232,6 @@ function _M:start()
   end)
 
   return true
-end
-
-
-function _M:_dispatch(premature, cb, payload)
-  if premature then
-    return
-  end
-
-  local res, err = cb(self.node_id, unpack(payload.params))
-  if not res then
-    ngx_log(ngx_WARN, "[rpc] RPC callback failed: ", err)
-
-    res, err = self.outgoing:push(new_error(payload.id, jsonrpc.SERVER_ERROR,
-                                            tostring(err)))
-    if not res then
-      ngx_log(ngx_WARN, "[rpc] unable to push RPC call error: ", err)
-    end
-
-    return
-  end
-
-  -- success
-  res, err = self.outgoing:push({
-    jsonrpc = "2.0",
-    id = payload.id,
-    result = res,
-  })
-  if not res then
-    ngx_log(ngx_WARN, "[rpc] unable to push RPC call result: ", err)
-  end
 end
 
 

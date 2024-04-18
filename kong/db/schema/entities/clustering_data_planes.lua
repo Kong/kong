@@ -46,5 +46,7 @@ return {
         description = "Certificate details of the DPs.",
       },
     },
+    { capabilities = { type = "set", description = "An array of RPC capabilities this node supports.",
+                       elements = typedefs.capability, } },
   },
 }

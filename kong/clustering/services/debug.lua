@@ -1,62 +1,58 @@
 local _M = {}
 
-local get_log_level                = require("resty.kong.log").get_log_level
-local set_log_level                = require("resty.kong.log").set_log_level
-local constants                    = require("kong.constants")
 
-local LOG_LEVELS                   = constants.LOG_LEVELS
-local DYN_LOG_LEVEL_KEY            = constants.DYN_LOG_LEVEL_KEY
-local DYN_LOG_LEVEL_TIMEOUT_AT_KEY = constants.DYN_LOG_LEVEL_TIMEOUT_AT_KEY
+local resty_log = require("resty.kong.log")
+local constants = require("kong.constants")
 
 
-local function rpc_get_log_level(_node_id)
-  return get_log_level(LOG_LEVELS[kong.configuration.log_level])
-end
+local tostring = tostring
 
 
-local function rpc_set_log_level(_node_id, log_level, timeout)
-  local timeout = math.ceil(timeout or 60)
-
-  local cur_log_level = get_log_level(LOG_LEVELS[kong.configuration.log_level])
-
-  if cur_log_level == log_level then
-    local message = "log level is already " .. LOG_LEVELS[log_level]
-    return nil, message
+local function rpc_set_log_level(_node_id, new_log_level, timeout)
+  if not constants.LOG_LEVELS[new_log_level] then
+    return nil, "unknown log level: " .. tostring(log_level)
   end
 
-  local ok, err = pcall(set_log_level, log_level, timeout)
-
-  if not ok then
-    local message = "failed setting log level: " .. err
-    return nil, message
+  if type(new_log_level) == "string" then
+    new_log_level = constants.LOG_LEVELS[new_log_level]
   end
+
+  local timeout = math.ceil(timeout or constants.DYN_LOG_LEVEL_DEFAULT_TIMEOUT)
+
+  -- this function should not fail, if it throws exception, let RPC framework handle it
+  resty_log.set_log_level(new_log_level, timeout)
 
   local data = {
-    log_level = log_level,
+    log_level = new_log_level,
     timeout = timeout,
   }
-
   -- broadcast to all workers in a node
-  ok, err = kong.worker_events.post("debug", "log_level", data)
-
+  local ok, err = kong.worker_events.post("debug", "log_level", data)
   if not ok then
     return nil, err
   end
 
   -- store in shm so that newly spawned workers can update their log levels
-  ok, err = ngx.shared.kong:set(DYN_LOG_LEVEL_KEY, log_level, timeout)
-
+  ok, err = ngx.shared.kong:set(constants.DYN_LOG_LEVEL_KEY, new_log_level, timeout)
   if not ok then
     return nil, err
   end
 
-  ok, err = ngx.shared.kong:set(DYN_LOG_LEVEL_TIMEOUT_AT_KEY, ngx.time() + timeout, timeout)
-
+  ok, err = ngx.shared.kong:set(constants.DYN_LOG_LEVEL_TIMEOUT_AT_KEY, ngx.time() + timeout, timeout)
   if not ok then
     return nil, err
   end
 
   return true
+end
+
+
+local function rpc_get_log_level(_node_id)
+  local current_level, timeout, original_level = resty_log.get_log_level()
+  return { current_level = constants.LOG_LEVELS[current_level],
+           timeout = timeout,
+           original_level = constants.LOG_LEVELS[original_level],
+         }
 end
 
 

@@ -110,24 +110,28 @@ local routes = {
       return handle_put_log_level(self, NODE_LEVEL_BROADCAST)
     end
   },
-  ["/debug/node/:node_id/node/log-level"] = {
+  ["/clustering/data-planes/:node_id/log-level"] = {
     GET = function(self)
-      local res, err = kong.rpc:call(self.params.node_id, "kong.debug.v1.get_log_level")
-      if not res then
-        return kong.response.exit(500, { message = err })
+      local current_level, timeout_or_err, original_level =
+        kong.rpc:call(self.params.node_id, "kong.debug.v1.get_log_level")
+      if not current_level then
+        return kong.response.exit(500, { message = timeout_or_err, })
       end
 
-      return kong.response.exit(200, { level = LOG_LEVELS[res], })
+      return kong.response.exit(200, { current_level = current_level,
+                                       timeout = timeout_or_err,
+                                       original_level = original_level, })
     end,
-  },
-  ["/debug/node/:node_id/node/log-level/:log_level"] = {
     PUT = function(self)
-      local res, err = kong.rpc:call(self.params.node_id, "kong.debug.v1.set_log_level", LOG_LEVELS[self.params.log_level], self.params.timeout)
+      local res, err = kong.rpc:call(self.params.node_id,
+                                     "kong.debug.v1.set_log_level",
+                                     self.params.new_level,
+                                     self.params.timeout)
       if not res then
         return kong.response.exit(500, { message = err, })
       end
 
-      return kong.response.exit(200, { result = res,  })
+      return kong.response.exit(201)
     end,
   },
 }

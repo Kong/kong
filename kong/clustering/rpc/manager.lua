@@ -251,7 +251,6 @@ function _M:connect(premature, node_id, host, path, cert, key)
 
     self.client_capabilities[node_id] = { list = fut.result,
                                           set = pl_tablex_makeset(fut.result), }
-
     self:_add_socket(s)
 
     ok, err = s:join()

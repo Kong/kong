@@ -143,7 +143,7 @@ function _M:_event_loop(lconn)
           ngx_log(ngx_DEBUG, "concentrator got ", calls[2].affected_rows,
                   " calls from database for node ", target_id)
           for _, call in ipairs(calls[2]) do
-            local payload = assert(cjson_decode(call.payload))
+            local payload = assert(call.payload)
             local reply_to = assert(call.reply_to,
                                     "unknown requester for RPC")
 

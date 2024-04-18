@@ -30,7 +30,7 @@ function _M:register(method, func)
   end
 
   self.capabilities[cap] = true
-  self.capabilities_list:insert(cap)
+  table.insert(self.capabilities_list, cap)
   self.callbacks[method] = func
 end
 

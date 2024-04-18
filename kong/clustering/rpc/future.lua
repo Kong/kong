@@ -20,7 +20,7 @@ function _M.new(node_id, socket, method, params)
     node_id = node_id,
     id = nil,
     result = nil,
-    ["error"] = nil,
+    error = nil,
     state = STATE_NEW, -- STATE_*
   }
 
