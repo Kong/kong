@@ -65,7 +65,7 @@ describe('Expressions Router Tests', function () {
     await waitForConfigRebuild({timeout: 50000});
   });
 
-  it('should not create route without expression', async function () {
+  it('should not create route without mandatory fields required by the expression flavor', async function () {
     const resp = await axios({
       url: `${url}/services/${serviceId}/routes`,
       method: 'post',
@@ -78,7 +78,7 @@ describe('Expressions Router Tests', function () {
 
     expect(resp.status, 'Status should be 400').to.equal(400);
     expect(resp.data.message, 'Should return correct error message').to.equal(
-      'schema violation (expression: required field missing)',
+      "schema violation (must set one of 'methods', 'hosts', 'headers', 'paths', 'snis', 'expression' when 'protocols' is 'https')",
     );
   });
 
