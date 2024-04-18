@@ -126,6 +126,18 @@ if kong and kong.configuration and  kong.configuration.router_flavor == "express
   table.insert(stream_subschema.entity_checks[1].conditional_at_least_one_of.then_at_least_one_of, "expression")
   table.insert(stream_subschema.entity_checks[2].conditional_at_least_one_of.then_at_least_one_of, "expression")
 
+  -- EE websockets [[
+  -- now ws/wss route in flavor 'expressions' accepts `sources` and `destinations`
+
+  assert(websocket_subschema.fields[1].sources)
+  websocket_subschema.fields[1] = nil  -- sources
+
+  assert(websocket_subschema.fields[2].destinations)
+  websocket_subschema.fields[2] = nil  -- destinations
+
+  table.insert(websocket_subschema.entity_checks[1].conditional_at_least_one_of.then_at_least_one_of, "expression")
+  table.insert(websocket_subschema.entity_checks[1].conditional_at_least_one_of.else_then_at_least_one_of, "expression")
+  -- EE websockets ]]
 end
 
 return {
@@ -141,5 +153,5 @@ return {
   -- EE websockets [[
   ws = websocket_subschema,
   wss = websocket_subschema,
-  -- ]]
+  -- EE websockets ]]
 }
