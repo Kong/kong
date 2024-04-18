@@ -420,7 +420,7 @@ end
 function healthcheckers_M.stop_healthcheckers(delay)
   local all_upstreams, err = upstreams.get_all_upstreams()
   if err then
-    log(ERR, "[healthchecks] failed to retrieve allupstreams: ", err)
+    log(ERR, "[healthchecks] failed to retrieve all upstreams: ", err)
     return
   end
   for _, id in pairs(all_upstreams) do
