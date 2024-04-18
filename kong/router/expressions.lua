@@ -6,14 +6,15 @@ local transform = require("kong.router.transform")
 
 
 local get_priority   = transform.get_priority
-local amending_expression = transform.amending_expression
 
 
-local append_exp_with_protocol
+local get_expression
 do
   local gen_for_field = transform.gen_for_field
   local OP_EQUAL      = transform.OP_EQUAL
   local LOGICAL_AND   = transform.LOGICAL_AND
+
+  local amending_expression = transform.amending_expression
 
   -- map to normal protocol
   local PROTOCOLS_OVERRIDE = {
@@ -26,7 +27,13 @@ do
     return PROTOCOLS_OVERRIDE[p] or p
   end
 
-  append_exp_with_protocol = function(protocols, exp)
+  get_expression = function(route)
+    local exp = amending_expression(route)
+    if not exp then
+      return nil
+    end
+
+    local protocols = route.protocols
 
     -- give the chance for http redirection (301/302/307/308/426)
     -- and allow tcp works with tls
@@ -50,7 +57,7 @@ end
 
 
 local function get_exp_and_priority(route)
-  local exp = amending_expression(route)
+  local exp = get_expression(route)
   if not exp then
     ngx.log(ngx.ERR, "expecting an expression route while it's not (probably a traditional route). ",
                      "Likely it's a misconfiguration. Please check the 'router_flavor' config in kong.conf")
@@ -58,8 +65,6 @@ local function get_exp_and_priority(route)
   end
 
   local priority = get_priority(route)
-
-  exp = append_exp_with_protocol(route.protocols, exp)
 
   return exp, priority
 end
