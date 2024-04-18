@@ -249,8 +249,7 @@ local function log(message, serialized)
     consumer = nil -- no consumer in stream
   end
 
-  local workspace = workspaces.get_workspace().name
-
+  local workspace = message.workspace_name or ""
   if serialized.ingress_size or serialized.egress_size then
     labels_table_bandwidth[1] = service_name
     labels_table_bandwidth[2] = route_name
