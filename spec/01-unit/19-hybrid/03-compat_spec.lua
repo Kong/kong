@@ -648,7 +648,7 @@ describe("kong.clustering.compat", function()
     local helpers = require ("spec.helpers")
     local declarative = require("kong.db.declarative")
 
-    it("won't updated with mixed mode routes in expressions flavor lower than 3.7", function()
+    it("won't update with mixed mode routes in expressions flavor lower than 3.7", function()
       local _, db = helpers.get_db_utils(nil, {
         "routes",
       })
@@ -682,7 +682,7 @@ describe("kong.clustering.compat", function()
       assert.is_nil(err)
     end)
 
-    it("update with traditional routes in expressions flavor", function()
+    it("updates with all traditional routes in expressions flavor", function()
       local _, db = helpers.get_db_utils(nil, {
         "routes",
       })
@@ -706,7 +706,7 @@ describe("kong.clustering.compat", function()
       assert.is_nil(err)
     end)
 
-    it("update with expression routes in expressions flavor", function()
+    it("updates with all expression routes in expressions flavor", function()
       local _, db = helpers.get_db_utils(nil, {
         "routes",
       })
