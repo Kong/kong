@@ -632,7 +632,7 @@ describe("kong.clustering.compat", function()
 
   end)  -- describe
 
-  describe("route entities compatible changes", function()
+  describe("#only route entities compatible changes", function()
     it("mixed mode routes in expressions flavor", function()
       _G.kong = { configuration = { router_flavor = "expressions" } }
 
@@ -642,6 +642,7 @@ describe("kong.clustering.compat", function()
       package.loaded["spec.helpers"] = nil
       package.loaded["kong.db.declarative"] = nil
 
+      require("kong.db.schema.entities.routes_subschemas")
       local helpers = require ("spec.helpers")
       local declarative = require("kong.db.declarative")
 
@@ -658,15 +659,13 @@ describe("kong.clustering.compat", function()
             protocols = { "http" },
             id = "00000000-0000-0000-0000-000000000001",
             hosts = { "example.com" },
-            expression == ngx.null,
+            expression = ngx.null,
           },
-          --[==[
           route2 = {
             protocols = { "http" },
             id = "00000000-0000-0000-0000-000000000002",
-            expression = [[http.path == "/foo"]]
+            expression = [[http.path == "/foo"]],
           },
-          --]==]
         },
       }, { _transform = true }))
 
