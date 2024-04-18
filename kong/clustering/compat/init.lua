@@ -404,8 +404,8 @@ end
 
 -- If mixed config is detected and a 3.6 or lower DP is attached to the CP,
 -- no config will be sent at all
-function _M.check_mixed_route_entities(payload, dp_version)
-  local flavor = kong and
+function _M.check_mixed_route_entities(payload, dp_version, flavor)
+  local flavor = flavor or kong and
                  kong.configuration and
                  kong.configuration.router_flavor
 

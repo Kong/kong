@@ -632,17 +632,20 @@ describe("kong.clustering.compat", function()
 
   end)  -- describe
 
-  describe("#only route entities compatible changes", function()
+  describe("route entities compatible changes", function()
     it("mixed mode routes in expressions flavor", function()
       _G.kong = { configuration = { router_flavor = "expressions" } }
-
 
       package.loaded["kong.db.schema.entities.routes"] = nil
       package.loaded["kong.db.schema.entities.routes_subschemas"] = nil
       package.loaded["spec.helpers"] = nil
+      package.loaded["kong.clustering.compat"] = nil
       package.loaded["kong.db.declarative"] = nil
 
+      require("kong.db.schema.entities.routes")
       require("kong.db.schema.entities.routes_subschemas")
+
+      local compat = require("kong.clustering.compat")
       local helpers = require ("spec.helpers")
       local declarative = require("kong.db.declarative")
 
@@ -650,7 +653,6 @@ describe("kong.clustering.compat", function()
         "routes",
       })
       _G.kong.db = db
-
 
       -- mixed mode routes
       assert(declarative.load_into_db({
@@ -671,7 +673,7 @@ describe("kong.clustering.compat", function()
 
       local config = { config_table = declarative.export_config() }
 
-      local ok, err = compat.check_mixed_route_entities(config, "3.6.0")
+      local ok, err = compat.check_mixed_route_entities(config, "3.6.0", "expressions")
       assert.is_false(ok)
       assert(string.find(err, "does not support mixed mode route"))
     end)
