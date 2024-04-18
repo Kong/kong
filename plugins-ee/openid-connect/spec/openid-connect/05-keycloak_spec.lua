@@ -378,7 +378,7 @@ for _, strategy in helpers.all_strategies() do
               "session"
             },
             preserve_query_args = true,
-            login_action = "redirect",
+            login_action = "upstream",
             login_tokens = {},
             client_id = {
               KONG_CLIENT_ID,
@@ -767,7 +767,7 @@ for _, strategy in helpers.all_strategies() do
         end
       end)
 
-      local function auth_code_flow(path, kong_redirect_assert_cb, idp_redirect_assert_cb)
+      local function auth_code_flow(path, kong_redirect_assert_cb, idp_redirect_assert_cb, upstream_request_assert_cb)
         local res = proxy_client:get(path, {
           headers = {
             ["Host"] = "kong"
@@ -834,7 +834,10 @@ for _, strategy in helpers.all_strategies() do
           }
         })
         assert.is_nil(err)
-        assert.equal(302, ures.status)
+        local continue = upstream_request_assert_cb(ures)
+        if not continue then
+          return
+        end
 
         local client_session
         local client_session_header_table = {}
@@ -881,7 +884,12 @@ for _, strategy in helpers.all_strategies() do
             assert.equal(302, res.status)
           end
 
-          auth_code_flow("/code-flow", kong_redirect_assert_cb, idp_redirect_assert_cb)
+          local function upstream_request_assert_cb(res)
+            assert.equal(302, res.status)
+            return true
+          end
+
+          auth_code_flow("/code-flow", kong_redirect_assert_cb, idp_redirect_assert_cb, upstream_request_assert_cb)
         end)
 
         it("initial request, expect redirect to login page using PAR", function()
@@ -902,7 +910,12 @@ for _, strategy in helpers.all_strategies() do
             assert.equal(302, res.status)
           end
 
-          auth_code_flow("/par-code-flow", kong_redirect_assert_cb, idp_redirect_assert_cb)
+          local function upstream_request_assert_cb(res)
+            assert.equal(302, res.status)
+            return true
+          end
+
+          auth_code_flow("/par-code-flow", kong_redirect_assert_cb, idp_redirect_assert_cb, upstream_request_assert_cb)
         end)
 
         it("initial request, expect redirect to login page using JAR", function()
@@ -920,7 +933,12 @@ for _, strategy in helpers.all_strategies() do
             assert.equal(302, res.status)
           end
 
-          auth_code_flow("/jar-code-flow", kong_redirect_assert_cb, idp_redirect_assert_cb)
+          local function upstream_request_assert_cb(res)
+            assert.equal(302, res.status)
+            return true
+          end
+
+          auth_code_flow("/jar-code-flow", kong_redirect_assert_cb, idp_redirect_assert_cb, upstream_request_assert_cb)
         end)
 
         it("initial request, expect redirect to login page using JARM", function()
@@ -946,7 +964,14 @@ for _, strategy in helpers.all_strategies() do
             assert.matches("response=", parsed.query)
           end
 
-          auth_code_flow("/jarm-code-flow", kong_redirect_assert_cb, idp_redirect_assert_cb)
+          local function upstream_request_assert_cb(res)
+            assert.equal(200, res.status)
+            local json = assert(cjson.decode(res.body))
+            assert.is_nil(json.uri_args.response)
+            return false
+          end
+
+          auth_code_flow("/jarm-code-flow", kong_redirect_assert_cb, idp_redirect_assert_cb, upstream_request_assert_cb)
         end)
 
         it("post wrong login credentials", function()

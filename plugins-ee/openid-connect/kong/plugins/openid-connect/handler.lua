@@ -963,10 +963,10 @@ function OICHandler.access(_, conf)
               end
 
               if var.request_method == "POST" then
-                args.clear_post_arg("code", "state", "session_state")
+                args.clear_post_arg("code", "state", "session_state", "response", "iss")
 
               else
-                args.clear_uri_arg("code", "state", "session_state")
+                args.clear_uri_arg("code", "state", "session_state", "response", "iss")
               end
 
               token_endpoint_args.ignore_signature = ignore_signature.authorization_code
