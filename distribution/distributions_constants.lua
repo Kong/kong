@@ -7,22 +7,23 @@
 
 local c = {}
 
-c.plugins = {
-  "proxy-cache-advanced", -- built-in in kong-ee
-  "openid-connect",  -- built-in in kong-ee
-  "rate-limiting-advanced",  -- built-in in kong-ee
-  "ldap-auth-advanced",  -- built-in in kong-ee
-  "jwt-signer",  -- built-in in kong-ee
-  "vault-auth",  -- built-in in kong-ee
-  "request-validator",  -- built-in in kong-ee
-  "mtls-auth",  -- built-in in kong-ee
-  "graphql-rate-limiting-advanced",  -- built-in in kong-ee
-  "kafka-log",  -- built-in in kong-ee
-  "kafka-upstream",  -- built-in in kong-ee
-  "opa",  -- built-in in kong-ee
-  "konnect-application-auth",  -- built-in in kong-ee
-  "saml", -- built-in in kong-ee
-  "oas-validation", -- built-in in kong-ee
+c.plugins = {  -- This list of plugins is located in the "plugins-ee" directory
+  "proxy-cache-advanced",
+  "openid-connect",
+  "rate-limiting-advanced",
+  "ldap-auth-advanced",
+  "jwt-signer",
+  "vault-auth",
+  "request-validator",
+  "mtls-auth",
+  "graphql-rate-limiting-advanced",
+  "kafka-log",
+  "kafka-upstream",
+  "opa",
+  "ai-azure-content-safety",
+  "konnect-application-auth",
+  "saml",
+  "oas-validation",
 }
 
 c.featureset = {

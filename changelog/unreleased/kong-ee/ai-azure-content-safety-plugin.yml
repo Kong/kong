@@ -1,0 +1,8 @@
+message: |
+  **AI Azure Content Safety**: Adds a new plugin that allows the Kong administrator to enforce 
+  that all AI-Proxy requests must be introspected with the Azure Content Safety service.
+
+  The plugin enables configurable thresholds for the different moderation categories, 
+  and reports audit results into the Kong log serializer for reporting purposes.
+type: feature
+scope: Plugin

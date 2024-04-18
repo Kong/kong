@@ -30,6 +30,7 @@ local all_plugins = {
   "rate-limiting-advanced",
   "request-validator",
   "vault-auth",
+  "ai-azure-content-safety",
 }
 
 describe("Plugins", function()
@@ -165,6 +166,7 @@ describe("Plugins", function()
       'response-transformer',
       'route-transformer-advanced',
       'ai-request-transformer',
+      'ai-azure-content-safety',
       'ai-prompt-template',
       'ai-prompt-decorator',
       'ai-prompt-guard',

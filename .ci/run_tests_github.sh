@@ -83,9 +83,10 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
     scripts/enterprise_plugin.sh build-deps
     rm -f .failed
 
+    # TODO: add the ai-azure-content-safety plugin here?
     declare -A plugins_to_test=(
         ["first"]="openid-connect"
-        ["second"]="ldap-auth-advanced proxy-cache-advanced"
+        ["second"]="ldap-auth-advanced proxy-cache-advanced ai-azure-content-safety"
         ["third"]="rate-limiting-advanced kafka-log oas-validation saml vault-auth"
         ["fourth"]="mtls-auth jwt-signer request-validator kafka-upstream konnect-application-auth opa graphql-rate-limiting-advanced"
         ["fips-first"]="openid-connect"

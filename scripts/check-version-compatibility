@@ -482,6 +482,27 @@ ENABLE_JWE_DECRYPT=(
   --data "config.jwk_set=dummy"
 )
 
+ENABLE_AI_AZURE_CONTENT_SAFETY=(
+  --data "name=ai-azure-content-safety"
+  --data "config.content_safety_url=https://to.no.where/got/lost"
+  --data "config.azure_api_version=2023-10-01"
+  --data "config.azure_use_managed_identity=true"
+  --data "config.azure_client_id=its_me"
+  --data "config.azure_client_secret=sooper_secret"
+  --data "config.azure_tenant_id=thats_not_me"
+  --data "config.content_safety_key=sooper_sooper_secret"
+  --data "config.text_source=concatenate_all_content"
+  --data "config.categories[1].name=noname"
+  --data "config.categories[1].rejection_level=20"
+  --data "config.categories[2].name=noname2"
+  --data "config.categories[2].rejection_level=10"
+  --data "config.reveal_failure_reason=false"
+  --data "config.output_type=EightSeverityLevels"
+  --data "config.blocklist_names[1]=list1"
+  --data "config.blocklist_names[2]=list2"
+  --data "config.halt_on_blocklist_hit=false"
+)
+
 function use_local_path {
   local path=${!1}
   if [[ -n $path ]] &&
