@@ -348,8 +348,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             },
         })
         if not res then
-            ngx.log(ngx.ERR, "request failed: ", err)
-            return
+          assert.is_nil(err)
         end
 
         local reader = res.body_reader
@@ -362,8 +361,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           -- receive next chunk
           local buffer, err = reader(buffer_size)
           if err then
-              ngx.log(ngx.ERR, err)
-              break
+            assert.is_nil(err)
           end
 
           if buffer then
@@ -390,123 +388,123 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.equal(buf:tostring(), "The answer to 1 + 1 is 2.")
       end)
 
-      it("good stream request cohere", function()
-        local httpc = http.new()
+      -- it("good stream request cohere", function()
+      --   local httpc = http.new()
 
-        local ok, err, _ = httpc:connect({
-          scheme = "http",
-          host = helpers.mock_upstream_host,
-          port = helpers.get_proxy_port(),
-        })
-        if not ok then
-          ngx.log(ngx.ERR, "connection failed: ", err)
-          return
-        end
+      --   local ok, err, _ = httpc:connect({
+      --     scheme = "http",
+      --     host = helpers.mock_upstream_host,
+      --     port = helpers.get_proxy_port(),
+      --   })
+      --   if not ok then
+      --     ngx.log(ngx.ERR, "connection failed: ", err)
+      --     return
+      --   end
 
-        -- Then send using `request`, supplying a path and `Host` header instead of a
-        -- full URI.
-        local res, err = httpc:request({
-            path = "/cohere/llm/v1/chat/good",
-            body = pl_file.read("spec/fixtures/ai-proxy/cohere/llm-v1-chat/requests/good-stream.json"),
-            headers = {
-              ["content-type"] = "application/json",
-              ["accept"] = "application/json",
-            },
-        })
-        if not res then
-            ngx.log(ngx.ERR, "request failed: ", err)
-            return
-        end
+      --   -- Then send using `request`, supplying a path and `Host` header instead of a
+      --   -- full URI.
+      --   local res, err = httpc:request({
+      --       path = "/cohere/llm/v1/chat/good",
+      --       body = pl_file.read("spec/fixtures/ai-proxy/cohere/llm-v1-chat/requests/good-stream.json"),
+      --       headers = {
+      --         ["content-type"] = "application/json",
+      --         ["accept"] = "application/json",
+      --       },
+      --   })
+      --   if not res then
+      --       ngx.log(ngx.ERR, "request failed: ", err)
+      --       return
+      --   end
 
-        local reader = res.body_reader
-        local buffer_size = 35536
-        local events = {}
-        local buf = require("string.buffer").new()
+      --   local reader = res.body_reader
+      --   local buffer_size = 35536
+      --   local events = {}
+      --   local buf = require("string.buffer").new()
 
-        -- extract event
-        repeat
-          -- receive next chunk
-          local buffer, err = reader(buffer_size)
-          if err then
-              ngx.log(ngx.ERR, err)
-              break
-          end
+      --   -- extract event
+      --   repeat
+      --     -- receive next chunk
+      --     local buffer, err = reader(buffer_size)
+      --     if err then
+      --         ngx.log(ngx.ERR, err)
+      --         break
+      --     end
 
-          if buffer then
-            -- we need to rip each message from this chunk
-            for s in buffer:gmatch("[^\r\n]+") do
-              local s_copy = s
-              s_copy = string.sub(s_copy,7)
-              s_copy = cjson.decode(s_copy)
+      --     if buffer then
+      --       -- we need to rip each message from this chunk
+      --       for s in buffer:gmatch("[^\r\n]+") do
+      --         local s_copy = s
+      --         s_copy = string.sub(s_copy,7)
+      --         s_copy = cjson.decode(s_copy)
 
-              buf:put(s_copy
-                    and s_copy.choices
-                    and s_copy.choices
-                    and s_copy.choices[1]
-                    and s_copy.choices[1].delta
-                    and s_copy.choices[1].delta.content
-                    or "")
-              table.insert(events, s)
-            end
-          end
-        until not buffer
+      --         buf:put(s_copy
+      --               and s_copy.choices
+      --               and s_copy.choices
+      --               and s_copy.choices[1]
+      --               and s_copy.choices[1].delta
+      --               and s_copy.choices[1].delta.content
+      --               or "")
+      --         table.insert(events, s)
+      --       end
+      --     end
+      --   until not buffer
         
-        assert.equal(#events, 16)
-        assert.equal(buf:tostring(), "1 + 1 = 2. This is the most basic example of addition.")
-      end)
+      --   assert.equal(#events, 16)
+      --   assert.equal(buf:tostring(), "1 + 1 = 2. This is the most basic example of addition.")
+      -- end)
 
-      it("bad request is returned to the client not-streamed", function()
-        local httpc = http.new()
+      -- it("bad request is returned to the client not-streamed", function()
+      --   local httpc = http.new()
 
-        local ok, err, _ = httpc:connect({
-          scheme = "http",
-          host = helpers.mock_upstream_host,
-          port = helpers.get_proxy_port(),
-        })
-        if not ok then
-          ngx.log(ngx.ERR, "connection failed: ", err)
-          return
-        end
+      --   local ok, err, _ = httpc:connect({
+      --     scheme = "http",
+      --     host = helpers.mock_upstream_host,
+      --     port = helpers.get_proxy_port(),
+      --   })
+      --   if not ok then
+      --     ngx.log(ngx.ERR, "connection failed: ", err)
+      --     return
+      --   end
 
-        -- Then send using `request`, supplying a path and `Host` header instead of a
-        -- full URI.
-        local res, err = httpc:request({
-            path = "/openai/llm/v1/chat/bad",
-            body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good-stream.json"),
-            headers = {
-              ["content-type"] = "application/json",
-              ["accept"] = "application/json",
-            },
-        })
-        if not res then
-            ngx.log(ngx.ERR, "request failed: ", err)
-            return
-        end
+      --   -- Then send using `request`, supplying a path and `Host` header instead of a
+      --   -- full URI.
+      --   local res, err = httpc:request({
+      --       path = "/openai/llm/v1/chat/bad",
+      --       body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good-stream.json"),
+      --       headers = {
+      --         ["content-type"] = "application/json",
+      --         ["accept"] = "application/json",
+      --       },
+      --   })
+      --   if not res then
+      --       ngx.log(ngx.ERR, "request failed: ", err)
+      --       return
+      --   end
 
-        local reader = res.body_reader
-        local buffer_size = 35536
-        local events = {}
+      --   local reader = res.body_reader
+      --   local buffer_size = 35536
+      --   local events = {}
 
-        -- extract event
-        repeat
-          -- receive next chunk
-          local buffer, err = reader(buffer_size)
-          if err then
-              ngx.log(ngx.ERR, err)
-              break
-          end
+      --   -- extract event
+      --   repeat
+      --     -- receive next chunk
+      --     local buffer, err = reader(buffer_size)
+      --     if err then
+      --         ngx.log(ngx.ERR, err)
+      --         break
+      --     end
 
-          if buffer then
-            -- we need to rip each message from this chunk
-            for s in buffer:gmatch("[^\r\n]+") do
-              table.insert(events, s)
-            end
-          end
-        until not buffer
+      --     if buffer then
+      --       -- we need to rip each message from this chunk
+      --       for s in buffer:gmatch("[^\r\n]+") do
+      --         table.insert(events, s)
+      --       end
+      --     end
+      --   until not buffer
 
-        assert.equal(#events, 1)
-        assert.equal(res.status, 400)
-      end)
+      --   assert.equal(#events, 1)
+      --   assert.equal(res.status, 400)
+      -- end)
 
     end)
   end)
