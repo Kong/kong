@@ -103,6 +103,7 @@ kong_directory_genrule(
         "@openresty",
         "@openresty//:luajit",
         "@protoc//:all_srcs",
+        "@snappy//:snappy",
     ] + select({
         "@kong//:skip_webui_flags": [],
         "//conditions:default": [
@@ -151,6 +152,9 @@ kong_directory_genrule(
         cp ${LUAJIT}/bin/luajit ${BUILD_DESTDIR}/openresty/luajit/bin/luajit
         tar -cC ${LUAJIT}/share . | tar -xC ${BUILD_DESTDIR}/openresty/luajit/share
         chmod -R "+rw" ${BUILD_DESTDIR}/openresty/luajit
+
+        SNAPPY=${WORKSPACE_PATH}/$(dirname $(echo '$(locations @snappy//:snappy)' | awk '{print $1}'))
+        cp ${SNAPPY}/libsnappy.so ${BUILD_DESTDIR}/kong/lib
 
         LUAROCKS=${WORKSPACE_PATH}/$(dirname '$(location @luarocks//:luarocks_make)')/luarocks_tree
         cp -r ${LUAROCKS}/. ${BUILD_DESTDIR}/.
