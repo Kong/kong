@@ -1429,7 +1429,7 @@ for _, strategy in helpers.each_strategy() do
             proxy_ssl_client:close()
           end
         end)
-      end
+      end -- if flavor ~= "traditional" then
     end)
 
     describe("tls_passthrough", function()
@@ -1604,7 +1604,7 @@ for _, strategy in helpers.each_strategy() do
             proxy_ssl_client:close()
           end
         end)
-      end
+      end -- if flavor ~= "traditional" then
     end)
 
     describe("[#headers]", function()
@@ -2041,7 +2041,7 @@ for _, strategy in helpers.each_strategy() do
             assert.matches("kong-service-name: grpcs_4", resp, nil, true)
           end
         end)
-      end
+      end -- if flavor ~= "traditional" then
     end)
     end -- not enable_buffering
 
