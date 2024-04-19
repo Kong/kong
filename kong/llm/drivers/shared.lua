@@ -35,33 +35,6 @@ _M.streaming_has_token_counts = {
   ["llama2"] = true,
 }
 
---- Splits a table key into nested tables.
--- Each part of the key separated by dots represents a nested table.
--- @param obj The table to split keys for.
--- @return A nested table structure representing the split keys.
-local function split_table_key(obj)
-  local result = {}
-
-  for key, value in pairs(obj) do
-    local keys = {}
-    for k in key:gmatch("[^.]+") do
-      table.insert(keys, k)
-    end
-
-    local currentTable = result
-    for i, k in ipairs(keys) do
-      if i < #keys then
-        currentTable[k] = currentTable[k] or {}
-        currentTable = currentTable[k]
-      else
-        currentTable[k] = value
-      end
-    end
-  end
-
-  return result
-end
-
 _M.upstream_url_format = {
   openai = fmt("%s://api.openai.com:%s", (openai_override and "http") or "https", (openai_override) or "443"),
   anthropic = "https://api.anthropic.com:443",
@@ -326,20 +299,6 @@ function _M.post_request(conf, response_object)
       }
     end
 
-    -- check if we already have analytics for this provider
-    local request_analytics_provider = request_analytics[provider_name]
-
-    -- create a new structure if not
-    if not request_analytics_provider then
-      request_analytics_provider = {
-        request_prompt_tokens = 0,
-        request_completion_tokens = 0,
-        request_total_tokens = 0,
-        number_of_instances = 0,
-        instances = {},
-      }
-    end
-
     -- Set the model, response, and provider names in the current try context
     request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.REQUEST_MODEL] = conf.model.name
     request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.RESPONSE_MODEL] = response_object.model or conf.model.name
@@ -361,7 +320,7 @@ function _M.post_request(conf, response_object)
 
     -- Log response body if logging payloads is enabled
     if conf.logging and conf.logging.log_payloads then
-      request_analytics_plugin[log_entry_keys.RESPONSE_BODY] = response_string
+      request_analytics_plugin[log_entry_keys.RESPONSE_BODY] = body_string
     end
 
     -- Update context with changed values
