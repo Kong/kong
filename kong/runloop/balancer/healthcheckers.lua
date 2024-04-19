@@ -418,7 +418,12 @@ end
 -- the health checker, this parameter is useful to avoid throwing away current
 -- health status.
 function healthcheckers_M.stop_healthcheckers(delay)
-  for _, id in pairs(upstreams.get_all_upstreams()) do
+  local all_upstreams, err = upstreams.get_all_upstreams()
+  if err then
+    log(ERR, "[healthchecks] failed to retrieve all upstreams: ", err)
+    return
+  end
+  for _, id in pairs(all_upstreams) do
     local balancer = balancers.get_balancer_by_id(id)
     if balancer then
       healthcheckers_M.stop_healthchecker(balancer, delay)
