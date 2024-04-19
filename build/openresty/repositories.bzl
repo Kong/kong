@@ -8,6 +8,7 @@ load("//build/openresty/pcre:pcre_repositories.bzl", "pcre_repositories")
 load("//build/openresty/openssl:openssl_repositories.bzl", "openssl_repositories")
 load("//build/openresty/atc_router:atc_router_repositories.bzl", "atc_router_repositories")
 load("//build/openresty/wasmx:wasmx_repositories.bzl", "wasmx_repositories")
+load("//build/openresty/wasmx/filters:repositories.bzl", "wasm_filters_repositories")
 load("//build/openresty/brotli:brotli_repositories.bzl", "brotli_repositories")
 
 # This is a dummy file to export the module's repository.
@@ -24,6 +25,7 @@ def openresty_repositories():
     openssl_repositories()
     atc_router_repositories()
     wasmx_repositories()
+    wasm_filters_repositories()
     brotli_repositories()
 
     openresty_version = KONG_VAR["OPENRESTY"]
