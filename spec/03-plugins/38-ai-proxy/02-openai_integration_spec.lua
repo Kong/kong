@@ -35,7 +35,7 @@ local function wait_for_json_log_entry(FILE_LOG_PATH)
 end
 
 local _EXPECTED_CHAT_STATS = {
-  ai-proxy = {
+  ["ai-proxy"] = {
     meta = {
       plugin_id = '6e7c40f6-ce96-48e4-a366-d109c169e444',
       provider_name = 'openai',
