@@ -35,26 +35,18 @@ local function wait_for_json_log_entry(FILE_LOG_PATH)
 end
 
 local _EXPECTED_CHAT_STATS = {
-  openai = {
-    instances = {
-      {
-        meta = {
-          plugin_id = '6e7c40f6-ce96-48e4-a366-d109c169e444',
-          provider_name = 'openai',
-          request_model = 'gpt-3.5-turbo',
-          response_model = 'gpt-3.5-turbo-0613',
-        },
-        usage = {
-          completion_token = 12,
-          prompt_token = 25,
-          total_tokens = 37,
-        },
-      },
+  ai-proxy = {
+    meta = {
+      plugin_id = '6e7c40f6-ce96-48e4-a366-d109c169e444',
+      provider_name = 'openai',
+      request_model = 'gpt-3.5-turbo',
+      response_model = 'gpt-3.5-turbo-0613',
     },
-    number_of_instances = 1,
-    request_completion_tokens = 12,
-    request_prompt_tokens = 25,
-    request_total_tokens = 37,
+    usage = {
+      completion_token = 12,
+      prompt_token = 25,
+      total_tokens = 37,
+    },
   },
 }
 

@@ -301,19 +301,29 @@ function _M.post_request(conf, response_object)
   -- analytics and logging
   if conf.logging and conf.logging.log_statistics then
     local provider_name = conf.model.provider
+    local plugin_name = conf.__key__:match('plugins:(.-):')
 
     -- check if we already have analytics in this context
     local request_analytics = kong.ctx.shared.analytics
 
-    -- create a new try context
-    local current_try = {
-      [log_entry_keys.META_CONTAINER] = {},
-      [log_entry_keys.TOKENS_CONTAINER] = {},
-    }
-
     -- create a new structure if not
     if not request_analytics then
       request_analytics = {}
+    end
+
+    -- check if we already have analytics for this provider
+    local request_analytics_plugin = request_analytics[plugin_name]
+
+    -- create a new structure if not
+    if not request_analytics_plugin then
+      request_analytics_plugin = {
+        [log_entry_keys.META_CONTAINER] = {},
+        [log_entry_keys.TOKENS_CONTAINER] = {
+          [log_entry_keys.PROMPT_TOKEN] = 0,
+          [log_entry_keys.COMPLETION_TOKEN] = 0,
+          [log_entry_keys.TOTAL_TOKENS] = 0,
+        },
+      }
     end
 
     -- check if we already have analytics for this provider
@@ -331,47 +341,35 @@ function _M.post_request(conf, response_object)
     end
 
     -- Set the model, response, and provider names in the current try context
-    current_try[log_entry_keys.META_CONTAINER][log_entry_keys.REQUEST_MODEL] = conf.model.name
-    current_try[log_entry_keys.META_CONTAINER][log_entry_keys.RESPONSE_MODEL] = response_object.model or conf.model.name
-    current_try[log_entry_keys.META_CONTAINER][log_entry_keys.PROVIDER_NAME] = provider_name
-    current_try[log_entry_keys.META_CONTAINER][log_entry_keys.PLUGIN_ID] = conf.__plugin_id
+    request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.REQUEST_MODEL] = conf.model.name
+    request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.RESPONSE_MODEL] = response_object.model or conf.model.name
+    request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.PROVIDER_NAME] = provider_name
+    request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.PLUGIN_ID] = conf.__plugin_id
 
     -- Capture openai-format usage stats from the transformed response body
     if response_object.usage then
       if response_object.usage.prompt_tokens then
-        request_analytics_provider.request_prompt_tokens = (request_analytics_provider.request_prompt_tokens + response_object.usage.prompt_tokens)
-        current_try[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.PROMPT_TOKEN] = response_object.usage.prompt_tokens
+        request_analytics_plugin[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.PROMPT_TOKEN] = request_analytics_plugin[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.PROMPT_TOKEN] + response_object.usage.prompt_tokens
       end
       if response_object.usage.completion_tokens then
-        request_analytics_provider.request_completion_tokens = (request_analytics_provider.request_completion_tokens + response_object.usage.completion_tokens)
-        current_try[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.COMPLETION_TOKEN] = response_object.usage.completion_tokens
+        request_analytics_plugin[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.COMPLETION_TOKEN] = request_analytics_plugin[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.COMPLETION_TOKEN] + response_object.usage.completion_tokens
       end
       if response_object.usage.total_tokens then
-        request_analytics_provider.request_total_tokens = (request_analytics_provider.request_total_tokens + response_object.usage.total_tokens)
-        current_try[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.TOTAL_TOKENS] = response_object.usage.total_tokens
+        request_analytics_plugin[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.TOTAL_TOKENS] = request_analytics_plugin[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.TOTAL_TOKENS] + response_object.usage.total_tokens
       end
     end
 
     -- Log response body if logging payloads is enabled
     if conf.logging and conf.logging.log_payloads then
-      current_try[log_entry_keys.RESPONSE_BODY] = body_string
+      request_analytics_plugin[log_entry_keys.RESPONSE_BODY] = response_string
     end
 
-    -- Increment the number of instances
-    request_analytics_provider.number_of_instances = request_analytics_provider.number_of_instances + 1
-
-    -- Get the current try count
-    local try_count = request_analytics_provider.number_of_instances
-
-    -- Store the split key data in instances
-    request_analytics_provider.instances[try_count] = split_table_key(current_try)
-
     -- Update context with changed values
-    request_analytics[provider_name] = request_analytics_provider
+    request_analytics[plugin_name] = request_analytics_plugin
     kong.ctx.shared.analytics = request_analytics
 
     -- Log analytics data
-    kong.log.set_serialize_value(fmt("%s.%s", "ai", provider_name), request_analytics_provider)
+    kong.log.set_serialize_value(fmt("%s.%s", "ai", plugin_name), request_analytics_plugin)
   end
 
   return nil
