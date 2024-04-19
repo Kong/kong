@@ -5,7 +5,6 @@ local lower = string.lower
 local ngx_timer_pending_count = ngx.timer.pending_count
 local ngx_timer_running_count = ngx.timer.running_count
 local balancer = require("kong.runloop.balancer")
-local workspaces = require ("kong.workspaces")
 local yield = require("kong.tools.yield").yield
 local get_all_upstreams = balancer.get_all_upstreams
 if not balancer.get_all_upstreams then -- API changed since after Kong 2.5
