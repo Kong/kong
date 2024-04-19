@@ -123,8 +123,10 @@ def ee_suites(expect, fips: bool = False):
             .text_content.matches("\[fips_sect\]") \
             .text_content.matches("module-mac = [A-F:\d]+")
 
-    expect("/usr/local/kong-tools/bin/curl", "included curl binary exists")\
+    expect("/usr/local/kong-tools/bin/curl", "curl binary exists under kong-tools")\
         .mode.equals('0755')
+    expect("/usr/local/kong-tools/ssl/cacerts-*.pem", "curl cacerts exists under kong-tools")\
+        .exists()
 
 def libc_libcpp_suites(expect, libc_max_version: str = None, libcxx_max_version: str = None, cxxabi_max_version: str = None):
     if libc_max_version:
@@ -148,6 +150,9 @@ def arm64_suites(expect):
         .arch.equals("AARCH64")
 
     expect("/usr/local/openresty/nginx/sbin/nginx", "Nginx is arm64 arch") \
+        .arch.equals("AARCH64")
+
+    expect("/usr/local/kong-tools/bin/curl", "tools are arm64 arch") \
         .arch.equals("AARCH64")
 
 def docker_suites(expect):

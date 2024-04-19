@@ -157,24 +157,12 @@
   Needed    :
   - libstdc++.so.6
   - libm.so.6
-  - libcurl.so.4
   - libssl.so.3
   - libcrypto.so.3
   - libz.so.1
   - libpthread.so.0
   - libc.so.6
-  Runpath   : /usr/local/kong-tools/lib:/usr/local/kong/lib
-
-- Path      : /usr/local/kong-tools/lib/libcurl.so
-  Needed    :
-  - libssl.so.3
-  - libcrypto.so.3
-  - libz.so.1
-  - libstdc++.so.6
-  - libm.so.6
-  - libpthread.so.0
-  - libc.so.6
-  Runpath   : /usr/local/kong-tools/lib:/usr/local/kong/lib
+  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/bcrypt.so
   Needed    :

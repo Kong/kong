@@ -25,11 +25,15 @@ configure_make(
         "--disable-debug",
         "--disable-dependency-tracking",
         "--disable-ldap",
-        "--enable-shared",
         "--disable-silent-rules",
-        "--disable-static",
+        # don't produce libcurl.so but still dynamically link to openssl etc.
+        "--enable-static",
+        "--disable-shared",
         "--enable-websockets",
-        "--with-ca-bundle=%s/kong-tools/ssl/cacerts.pem" % KONG_VAR["INSTALL_DESTDIR"],
+        "--with-ca-bundle=%s/kong-tools/ssl/cacerts-%s.pem" % (
+            KONG_VAR["INSTALL_DESTDIR"],
+            KONG_VAR["CA_CERTS"],
+        ),
         "--with-ca-fallback",
         "--with-default-ssl-backend=openssl",
         "--with-nghttp2=$$EXT_BUILD_DEPS$$/nghttp2",
@@ -57,8 +61,7 @@ configure_make(
         "//conditions:default": [],
     }),
     data = ["ssl/cacerts-%s.pem" % KONG_VAR["CA_CERTS"]],
-    env = {
-    } | select({
+    env = select({
         "@platforms//os:macos": {
             "AR": "/usr/bin/ar",
         },
@@ -66,15 +69,16 @@ configure_make(
     }),
     lib_source = ":all_srcs",
     linkopts = [
-        "-Wl,-rpath,%s/kong-tools/lib:%s/kong/lib" % (
-            KONG_VAR["INSTALL_DESTDIR"],
+        "-Wl,-rpath,%s/kong/lib" % (
             KONG_VAR["INSTALL_DESTDIR"],
         ),
+        "-Wl,--strip-debug",
     ],
     out_binaries = [
         "curl",
         "curl-config",
     ],
+    out_include_dir = "",  # don't install headers
     targets = [
         "-j" + KONG_VAR["NPROC"],
         "install -j" + KONG_VAR["NPROC"],

@@ -24,10 +24,9 @@ def transform(f: FileInfo):
         # otherwise remain unmodified
 
     if glob_match(f.path, [
-        "**/kong-tools/lib/libcurl.so*",
         "**/kong-tools/bin/curl",
     ]):
-        expected_rpath = "/usr/local/kong-tools/lib:/usr/local/kong/lib"
+        expected_rpath = "/usr/local/kong/lib"
         if f.rpath and expected_rpath in f.rpath:
             f.rpath = expected_rpath
         elif f.runpath and expected_rpath in f.runpath:
