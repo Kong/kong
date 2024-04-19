@@ -19,10 +19,8 @@ local EMPTY_T = {}
 
 local _M = {}
 
-
-function _M.get_req_body_json()
+function _M.get_req_body()
   ngx.req.read_body()
-
   local body_data = ngx.req.get_body_data()
 
   if not body_data then
@@ -42,6 +40,12 @@ function _M.get_req_body_json()
   if not body_data or #body_data == 0 then
     return nil
   end
+
+  return body_data
+end
+
+function _M.get_req_body_json()
+  local body_data = _M.get_req_body()
 
   -- try to decode body data as json
   local body, err = json_decode(body_data)
@@ -77,5 +81,69 @@ function _M.traverse(object, property_name, callback)
     end
   end
 end
+
+
+local BOOLEAN_MAP = {
+  ["true"] = true,
+  ["false"] = false,
+}
+
+
+local function normalize_value(value, typ)
+  if typ == "integer" or typ == "number" then
+    local v = tonumber(value)
+    if v then
+      return v
+    end
+    return nil, "failed to parse '" .. value .. "' from string to " .. typ
+  end
+
+  if typ == "boolean" then
+    local v = BOOLEAN_MAP[value]
+    if v ~= nil then
+      return v
+    end
+    return nil, "failed to parse '" .. value .. "' from string to " .. typ
+  end
+
+  return value
+end
+
+
+--- Normalizes a value based on its schema.
+-- values lost their orignal type after transporting from querystring and cookie.
+-- it's necessary to convert back to its original type from literal(string) value
+function _M.normalize(value, schema)
+  local value_type = type(value)
+  assert(value_type == "table" or value_type == "string")
+
+  if value_type == "string" then
+    return normalize_value(value, schema.type)
+  end
+
+  if schema.type == "object" then
+    for k, v in pairs(value) do
+      local key_schema = schema.properties[k]
+      local normalized_value, err = _M.normalize(v, key_schema)
+      if err then
+        return nil, err
+      end
+      value[k] = normalized_value
+    end
+
+  elseif schema.type == "array" then
+    local item_schema = schema.items
+    for k, v in pairs(value) do
+      local normalized_value, err = _M.normalize(v, item_schema)
+      if err then
+        return nil, err
+      end
+      value[k] = normalized_value
+    end
+  end
+
+  return value
+end
+
 
 return _M

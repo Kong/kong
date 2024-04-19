@@ -1,0 +1,137 @@
+openapi: 3.1.0
+info:
+  title: A OpenAPI spec
+  description: A OpenAPI spec for multiple test cases
+  version: 1.0.0
+
+paths:
+  /regex/pattern/{anything}:
+    get:
+      parameters:
+        - name: anything
+          in: path
+          required: true
+          schema:
+            pattern: .+
+            type: string
+      responses:
+        200:
+          description: OK
+          content: {}
+
+    post:
+      requestBody:
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/RegexPatternObject'
+        required: true
+      responses:
+        200:
+          description: OK
+          content: {}
+
+  /anytype/{anytype}:
+    get:
+      parameters:
+        - name: anytype
+          in: path
+          required: true
+          style: simple
+          explode: false
+          schema: {}
+      responses:
+        200:
+          description: OK
+          content: {}
+
+  /cookie/required:
+    get:
+      parameters:
+        - name: cookie_boolean_required
+          in: cookie
+          schema:
+            type: boolean
+          required: true
+      responses:
+        200:
+          description: OK
+          content: { }
+  /cookie/optional:
+    get:
+      parameters:
+        - name: cookie_integer
+          in: cookie
+          schema:
+            type: integer
+        - name: cookie_string
+          in: cookie
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content: { }
+  /cookie/array:
+    get:
+      parameters:
+        - name: cookie_array
+          in: cookie
+          schema:
+            type: array
+            items:
+              type: integer
+          required: true
+      responses:
+        200:
+          description: OK
+          content: { }
+  /cookie/object:
+    get:
+      parameters:
+        - name: cookie_object
+          in: cookie
+          schema:
+            $ref: "#/components/schemas/CookieObject"
+          required: true
+      responses:
+        200:
+          description: OK
+          content: { }
+
+  /response/object:
+    post:
+      responses:
+        '200':
+          description: OK
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/SimpleObject'
+
+components:
+  schemas:
+    SimpleObject:
+      type: object
+      properties:
+        string:
+          type: string
+        integer:
+          type: integer
+        boolean:
+          type: boolean
+        object:
+          type: object
+    RegexPatternObject:
+      type: object
+      properties:
+        email:
+          type: string
+          pattern: "^[a-zA-Z0-9_!#$%&’*+/=?`{|}~^.-]+@[a-zA-Z0-9.-]+$"
+    CookieObject:
+      type: object
+      properties:
+        string:
+          type: string
+        integer:
+          type: integer

@@ -10,3 +10,6 @@
 [submodule "distribution/lua-resty-openapi3-deserializer"]
 	path = distribution/lua-resty-openapi3-deserializer
 	url = git@github.com:Kong/lua-resty-openapi3-deserializer.git
+[submodule "distribution/lua-resty-jsonschema-rs"]
+	path = distribution/lua-resty-jsonschema-rs
+	url = git@github.com:Kong/lua-resty-jsonschema-rs.git

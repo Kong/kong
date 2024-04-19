@@ -225,6 +225,14 @@
   - ld-linux-x86-64.so.2
   - libstdc++.so.6
 
+- Path      : /usr/local/openresty/lualib/liblua_resty_jsonschema_rs.so
+  Needed    :
+  - libgcc_s.so.1
+  - libm.so.6
+  - libc.so.6
+  - ld-linux-x86-64.so.2
+  - libstdc++.so.6
+
 - Path      : /usr/local/openresty/lualib/librestysignal.so
 
 - Path      : /usr/local/openresty/lualib/rds/parser.so

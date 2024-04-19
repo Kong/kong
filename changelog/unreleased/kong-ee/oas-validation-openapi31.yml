@@ -1,0 +1,3 @@
+message: "**OAS-Validation**: Supported OpenAPI Specification v3.1.0. The plugin now switches to a new JSONSchema validator when the specification version is v3.1.0."
+type: feature
+scope: Plugin

@@ -1,0 +1,106 @@
+openapi: 3.1.0
+info:
+  title: Non-oAuth Scopes example
+  version: 1.0.0
+paths:
+  /feature/array-type:
+    post:
+      requestBody:
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/TestObject'
+        required: true
+      responses:
+        200:
+          description: OK
+          content: { }
+
+  /feature/optional-type:
+    post:
+      requestBody:
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/OptionalType'
+        required: true
+      responses:
+        200:
+          description: OK
+          content: { }
+
+  /feature/format:
+    post:
+      requestBody:
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/FormatObject'
+        required: true
+      responses:
+        200:
+          description: OK
+          content: { }
+
+  /feature/arbitrary-keywords:
+    post:
+      requestBody:
+        content:
+          'application/json':
+            schema:
+              type: object
+              not-matter-what: "value"
+        required: true
+      responses:
+        200:
+          description: OK
+          content: { }
+
+  /regex/utf-8:
+    get:
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            pattern: ^[a-zA-Zа-яА-ЯІіЇїЄєҐґ0-9+\-!ʼ',/()\s\.%]{1,50}$
+            type: string
+      responses:
+        200:
+          description: OK
+          content: {}
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: jwt
+      description: 'note: non-oauth scopes are not defined at the securityScheme level'
+  schemas:
+    TestObject:
+      type: object
+      properties:
+        integer_nullable:
+          type: [ integer, "null" ]
+        integer_string:
+          type: [ integer, string ]
+    OptionalType:
+      type: object
+      properties:
+        arbitrary_value: {}
+    FormatObject:
+      type: object
+      properties:
+        ipv4:
+          type: string
+          format: ipv4
+        ipv6:
+          type: string
+          format: ipv6
+        uuid:
+          type: string
+          format: uuid
+        hostname:
+          type: string
+          format: hostname

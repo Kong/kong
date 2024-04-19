@@ -24,10 +24,12 @@ local parse_mime_type = require "kong.tools.mime_type".parse_mime_type
 local meta = require "kong.meta"
 local constants = require "kong.plugins.oas-validation.constants"
 local cookie = require "resty.cookie"
+local jsonschema_rs = require "resty.jsonschema-rs.jsonschema-rs"
 
 local kong = kong
 local ngx = ngx
 local type = type
+local tostring = tostring
 local setmetatable = setmetatable
 local re_match = ngx.re.match
 local ipairs = ipairs
@@ -43,13 +45,14 @@ local replace = pl_stringx.replace
 local request_get_header = kong.request.get_header
 
 local get_req_body_json = utils.get_req_body_json
+local get_req_body = utils.get_req_body
 local content_type_allowed = validation_utils.content_type_allowed
 local param_array_helper = validation_utils.param_array_helper
 local merge_params = validation_utils.merge_params
 local parameter_validator_v2 = validation_utils.parameter_validator_v2
 local locate_request_body_schema = validation_utils.locate_request_body_schema
 local locate_response_body_schema = validation_utils.locate_response_body_schema
-
+local utils_normalize = utils.normalize
 
 local spec_cache = lrucache.new(1000)
 
@@ -63,6 +66,10 @@ local DEFAULT_CONTENT_TYPE = "application/json"
 local OPEN_API = "openapi"
 
 local CONTENT_METHODS = constants.CONTENT_METHODS
+
+--- Note that we treat 3.1.x as 3.1 series and switch to rust lib for JSONSchema validation.
+--- However, we apply a stricted validation in schema to deny spec version > 3.1.0 to avoid undefined behavior.
+local VERSION_31x_PATTERN = [[^3\.1\.\d$]]
 
 local OASValidationPlugin = {
   VERSION  = meta.core_version,
@@ -120,6 +127,39 @@ local validator_param_cache = setmetatable({}, {
   end
 })
 
+-- whether the spec version is 3.1.x
+local function is_version_31x(version)
+  if not version then
+    return false
+  end
+
+  local m = re_match(version, VERSION_31x_PATTERN, "jo")
+  return m ~= nil
+end
+
+local json_cache = lrucache.new(100)
+
+local function validate(schema, value, validator)
+  if not kong.ctx.plugin.is_31x then
+    -- use Lua lib to validate schema
+    return validator(value)
+  end
+
+  -- use Rust lib to validate schema
+  if type(value) ~= "string" then
+    -- convert non-string type to its literal value.
+    value = tostring(value)
+  end
+
+  schema = resolve_schema(schema)
+  local schema_json = json_cache:get(schema)
+  if not schema_json then
+    schema_json = assert(json_encode(schema))
+    json_cache:set(schema, schema_json)
+  end
+
+  return jsonschema_rs.validate(schema_json, value)
+end
 
 local function validate_style_deepobject(location, parameter)
   local template_environment = kong.ctx.plugin.template_environment
@@ -139,7 +179,10 @@ local function validate_style_deepobject(location, parameter)
     setmetatable(result, cjson.array_mt)
   end
 
-  return validator(result)
+  local payload = (kong.ctx.plugin.is_31x and type(result) == "table") and
+                  assert(json_encode(result)) or
+                  result
+  return validate(parameter.decoded_schema, payload, validator)
 end
 
 
@@ -165,6 +208,8 @@ end
 
 
 local function validate_parameter_value_openapi(parameter)
+  local is_31x = kong.ctx.plugin.is_31x
+
   if parameter["in"] == "cookie" then
     parameter.style = "form" -- cookie only allow form style
   end
@@ -172,7 +217,8 @@ local function validate_parameter_value_openapi(parameter)
   if parameter["in"] == "body" then
     local validator = validator_cache[parameter]
     -- try to validate body against schema
-    local ok, err = validator(parameter.value)
+    -- only Swagger allows defining body in the parameter
+    local ok, err = validate(parameter.schema, parameter.value, validator)
     if not ok then
       return false, err
     end
@@ -192,11 +238,23 @@ local function validate_parameter_value_openapi(parameter)
       return false, err
     end
 
+    if is_31x then
+      -- The Lua lib has loose type converting, while the Rust doesn't,
+      -- we manually normalize values that don't match with their desired type.
+      result, err = utils_normalize(result, parameter.decoded_schema)
+      if err then
+        return false, err
+      end
+    end
+
     if parameter.decoded_schema.type == "array" and type(result) == "table" then
       setmetatable(result, cjson.array_mt)
     end
 
-    local ok, err = validator(result)
+    local payload = is_31x and
+                    assert(json_encode(result)) or
+                    result
+    local ok, err = validate(parameter.decoded_schema, payload, validator)
     if not ok then
       return false, err
     end
@@ -213,7 +271,10 @@ local function validate_parameter_value_openapi(parameter)
     end
 
     local validator = validator_param_cache[parameter]
-    local ok, err = validator(parameter.value)
+    local payload = is_31x and
+                    assert(json_encode(parameter.value)) or
+                    parameter.value
+    local ok, err = validate(parameter.decoded_schema, payload, validator)
     if not ok then
       return false, err
     end
@@ -450,18 +511,23 @@ function OASValidationPlugin:response(conf)
   end
 
   local parameter = { schema = schema }
-  local validator = validator_cache[parameter]
-  local resp_obj = json_decode(kong.service.response.get_raw_body())
-  --check response type
-  if parameter.schema.type == "array" and type(resp_obj) == "string" then
-    resp_obj = {resp_obj}
+  local response_body = kong.service.response.get_raw_body()
+  local ok, err
+  if kong.ctx.plugin.is_31x then
+    ok, err = validate(parameter.schema, response_body, nil)
+
+  else
+    local resp_obj = json_decode(response_body)
+    --check response type
+    if parameter.schema.type == "array" and type(resp_obj) == "string" then
+      resp_obj = { resp_obj }
+    end
+    if parameter.schema.type == "array" and type(resp_obj) == "table" then
+      setmetatable(resp_obj, cjson.array_mt)
+    end
+    ok, err = validate(parameter.schema, resp_obj, validator_cache[parameter])
   end
 
-  if parameter.schema.type == "array" and type(resp_obj) == "table" then
-    setmetatable(resp_obj, cjson.array_mt)
-  end
-
-  local ok, err = validator(resp_obj)
   if not ok then
     err = fmt("response body validation failed with error: %s", replace(err, "userdata", "null"))
     return handle_validate_error(err, DENY_RESPONSE_MESSAGE, 406, {
@@ -472,7 +538,14 @@ function OASValidationPlugin:response(conf)
   end
 end
 
-
+local function nullable_converter(_, value, parent)
+  if value == true then
+    local t = parent["type"]
+    if type(t) == "string" then
+      parent["type"] = { t, "null" } -- inject "null"
+    end
+  end
+end
 
 local function parse_spec(conf)
   local spec_content = conf.api_spec
@@ -495,15 +568,10 @@ local function parse_spec(conf)
       return nil, err
     end
 
-    -- converting nullable keyword
-    utils.traverse(spec, "nullable", function(key, value, parent)
-      if value == true then
-        local t = parent["type"]
-        if type(t) == "string" then
-          parent["type"] = { t, "null" } -- inject "null"
-        end
-      end
-    end)
+    if not is_version_31x(spec.spec.openapi) then
+      -- converting nullable keyword, only convert when the spec version is not 3.1.x
+      utils.traverse(spec, "nullable", nullable_converter)
+    end
 
     parsed_spec = spec.spec
     spec_cache:set(spec_cache_key, parsed_spec)
@@ -527,7 +595,7 @@ local function init_template_environment()
           return kong.request.get_query() or EMPTY_T
         end,
         path = function(self)
-          return split(string_sub(normalize(kong.request.get_path(),true), 2),"/") or EMPTY_T
+          return split(string_sub(kong.request.get_path(), 2),"/") or EMPTY_T
         end,
         cookie = function(self)
           if not cookie_obj then
@@ -559,7 +627,7 @@ function OASValidationPlugin:access(conf)
   kong.ctx.plugin.template_environment = init_template_environment()
 
   local request_method = kong.request.get_method()
-  local request_path = normalize(kong.request.get_path(), true)
+  local request_path = kong.request.get_path()
   local error_options = {
     verbose = conf.verbose_response,
     interrupt_request = not conf.notify_only_request_validation_failure,
@@ -575,6 +643,10 @@ function OASValidationPlugin:access(conf)
     err = "validation failed, Unable to parse the api specification: " .. err
     return handle_validate_error(err, DENY_REQUEST_MESSAGE, 400, error_options)
   end
+
+  -- instead of passing the spec version everywhere, we set the spec version to
+  -- the current plugin context to be used in many functions for backward compatibility.
+  kong.ctx.plugin.is_31x = is_version_31x(parsed_spec.openapi)
 
   local path_spec, match_path, method_spec = utils.retrieve_operation(parsed_spec, request_path, request_method)
   if not method_spec then
@@ -656,7 +728,10 @@ function OASValidationPlugin:access(conf)
     }
     local validator = validator_cache[parameter]
     -- validate request body against schema
-    local ok, err = validator(get_req_body_json() or EMPTY_T)
+    local payload = kong.ctx.plugin.is_31x and
+                    get_req_body() or
+                    (get_req_body_json() or EMPTY_T)
+    local ok, err = validate(parameter.schema, payload, validator)
     if not ok then
       -- check for userdata cjson.null and return nicer err message
       err = fmt("request body validation failed with error: '%s'", replace(err, "userdata", "null"))

@@ -463,4 +463,104 @@ describe("validation utils spec", function ()
     assert.is_nil(schema)
     assert.same(err, "no response body schema found for status code '400' and content type 'application/json'")
   end)
+
+  describe("normalize", function()
+
+    local normalize = utils.normalize
+
+    it("primitive", function()
+      local value = normalize("1.1", { type = "number" })
+      assert.equal(1.1, value)
+
+      local value = normalize("1", { type = "integer" })
+      assert.equal(1, value)
+
+      local value = normalize("true", { type = "boolean" })
+      assert.equal(true, value)
+
+      local value = normalize("false", { type = "boolean" })
+      assert.equal(false, value)
+    end)
+
+    it("object", function()
+      local schema = {
+        type = "object",
+        properties = {
+          boolean = { type = "boolean" },
+          integer = { type = "integer" },
+          number = { type = "number" },
+        },
+      }
+      local value = normalize({
+        boolean = "true",
+        integer = "1",
+        number = "1.1",
+      }, schema)
+      assert.same({
+        boolean = true,
+        integer = 1,
+        number = 1.1,
+      }, value)
+    end)
+
+    it("array", function()
+      local schema = {
+        type = "array",
+        items = { type = "boolean" },
+      }
+      local value = normalize({ "true", "false", "true"  }, schema)
+      assert.same({ true, false, true }, value)
+    end)
+
+    it("nested", function()
+      local schema = {
+        type = "object",
+        properties = {
+          boolean = { type = "boolean" },
+          array = {
+            type = "array",
+            items = {
+              type = "object",
+              properties = {
+                integer = { type = "integer" },
+                boolean_array = {
+                  type = "array",
+                  items = { type = "boolean" }
+                }
+              }
+            }
+          }
+        }
+      }
+      local input = {
+        boolean = "true",
+        array = {
+          {
+            integer = "1",
+            boolean_array = { "true", "false", "true" },
+          },
+          {
+            integer = "2",
+            boolean_array = { "true", "false", "true" }
+          }
+        }
+      }
+      local output = normalize(input, schema)
+      local expected = {
+        boolean = true,
+        array = {
+          {
+            integer = 1,
+            boolean_array = { true, false, true },
+          },
+          {
+            integer = 2,
+            boolean_array = { true, false, true },
+          }
+        }
+      }
+      assert.same(expected, output)
+    end)
+  end)
+
 end)

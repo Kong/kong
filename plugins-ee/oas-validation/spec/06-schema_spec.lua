@@ -56,4 +56,37 @@ describe("Plugin: " .. plugin_name .. "(schema)", function()
             "a valid yaml spec')", err.config)
     end)
 
+  it("accepts when spec version is in 3.0.x or 3.1.x", function()
+    local ok, err = v({
+      api_spec = '{ "openapi": "3.0.1" }',
+    }, validation_schema)
+    assert.truthy(ok)
+    assert.is_nil(err)
+
+    local ok, err = v({
+      api_spec = '{ "openapi": "3.1.10" }',
+    }, validation_schema)
+    assert.truthy(ok)
+    assert.is_nil(err)
+  end)
+
+  it("errors when spec version is not in 3.0.x and 3.1.x", function()
+    local ok, err = v({
+      api_spec = '{ "openapi": "2.9.0" }',
+    }, validation_schema)
+    assert.is_nil(ok)
+    assert.same("api_spec: invalid spec version: only 3.0.x and 3.1.x are allowed", err.config)
+
+    local ok, err = v({
+      api_spec = '{ "openapi": "3.2.0" }',
+    }, validation_schema)
+    assert.is_nil(ok)
+    assert.same("api_spec: invalid spec version: only 3.0.x and 3.1.x are allowed", err.config)
+
+    local ok, err = v({
+      api_spec = '{ "openapi": "4.0.0" }',
+    }, validation_schema)
+    assert.is_nil(ok)
+    assert.same("api_spec: invalid spec version: only 3.0.x and 3.1.x are allowed", err.config)
+  end)
 end)

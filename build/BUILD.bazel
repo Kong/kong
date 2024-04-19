@@ -31,15 +31,17 @@ lualib_deps = [
     "@lua-resty-events//:all_srcs",
     "@lua-resty-websocket//:all_srcs",
     "@atc_router",
+    # EE only
+    "@jsonschema//:lua_resty_jsonschema_rs",
 ]
 
 install_lualib_deps_cmd = "\n".join([
     """
     DEP=$(pwd)/external/%s
-    if [[ ${DEP} == */atc_router ]]; then
-        INSTALL=/usr/bin/install make --silent -C ${DEP} LUA_LIB_DIR=${BUILD_DESTDIR}/openresty/lualib install-lualib
+    if [[ "${DEP}" == */atc_router || "${DEP}" == */jsonschema ]]; then
+        INSTALL=/usr/bin/install make --silent -C "${DEP}" LUA_LIB_DIR="${BUILD_DESTDIR}/openresty/lualib" install-lualib
     else
-        INSTALL=/usr/bin/install make --silent -C ${DEP} LUA_LIB_DIR=${BUILD_DESTDIR}/openresty/lualib install
+        INSTALL=/usr/bin/install make --silent -C "${DEP}" LUA_LIB_DIR="${BUILD_DESTDIR}/openresty/lualib" install
     fi
 """ % dep.lstrip("@").split("/")[0]
     for dep in lualib_deps
@@ -226,6 +228,9 @@ kong_directory_genrule(
 
         ATC_ROUTER=${WORKSPACE_PATH}/$(location @atc_router)
         cp $ATC_ROUTER ${BUILD_DESTDIR}/openresty/lualib/.
+
+        LUA_RESTY_JSONSCHEMA=${WORKSPACE_PATH}/$(location @jsonschema//:lua_resty_jsonschema_rs)
+        cp $LUA_RESTY_JSONSCHEMA ${BUILD_DESTDIR}/openresty/lualib/.
 
         cp -r $(locations @protoc//:all_srcs) ${BUILD_DESTDIR}/kong/.
 

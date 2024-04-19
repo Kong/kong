@@ -7,7 +7,7 @@
 
 local typedefs = require "kong.db.schema.typedefs"
 local swagger_parser = require "kong.enterprise_edition.openapi.plugins.swagger-parser.parser"
-
+local version = require "version"
 
 local function check_for_config(config)
   local api_spec = config.api_spec
@@ -15,10 +15,18 @@ local function check_for_config(config)
     api_spec = ngx.unescape_uri(api_spec)
   end
 
-  local ok ,err = swagger_parser.parse(api_spec)
-  if not ok then
+  local spec ,err = swagger_parser.parse(api_spec)
+  if not spec then
     return false, "api_spec: " .. err
   end
+
+  -- only 3.0.x and 3.1.x are allowed
+  if spec.spec.openapi and
+    (version(spec.spec.openapi) < version("3.0.0") or
+     version(spec.spec.openapi) >= version("3.2.0")) then
+    return false, "api_spec: invalid spec version: only 3.0.x and 3.1.x are allowed"
+  end
+
   return true
 end
 

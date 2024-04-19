@@ -52,6 +52,18 @@ load("@atc_router//build:crates.bzl", "atc_router_crates")
 
 atc_router_crates()
 
+load("@jsonschema//build:repos.bzl", "jsonschema_repositories")
+
+jsonschema_repositories()
+
+load("@jsonschema//build:deps.bzl", "jsonschema_dependencies")
+
+jsonschema_dependencies(cargo_home_isolated = False)
+
+load("@jsonschema//build:crates.bzl", "jsonschema_crates")
+
+jsonschema_crates()
+
 load("//build/ee:repositories.bzl", "ee_repositories")
 
 ee_repositories()
