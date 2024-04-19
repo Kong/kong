@@ -134,10 +134,6 @@ describe("vault resurrect_ttl and rotation (#" .. strategy .. ") #" .. vault.nam
     helpers.setenv("KONG_LUA_PATH_OVERRIDE", LUA_PATH)
     helpers.setenv("KONG_VAULT_ROTATION_INTERVAL", "1")
 
-    helpers.test_conf.loaded_plugins = {
-      dummy = true,
-    }
-
     vault:setup()
     vault:create_secret(secret, "init")
 
