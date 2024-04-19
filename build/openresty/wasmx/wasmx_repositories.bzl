@@ -69,8 +69,8 @@ filegroup(
 )
 
 filegroup(
-    name = "lua_libs",
-    srcs = glob(["lib/resty/**"]),
+    name = "lualib_srcs",
+    srcs = glob(["lib/**/*.lua"]),
     visibility = ["//visibility:public"]
 )
 

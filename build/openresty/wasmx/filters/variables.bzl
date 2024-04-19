@@ -15,9 +15,7 @@ WASM_FILTERS = [
 ]
 
 WASM_FILTERS_TARGETS = [
-    [
-        "@%s//file" % file
-        for file in filter["files"].keys()
-    ]
+    "@%s-%s//file" % (filter["name"], file)
     for filter in WASM_FILTERS
-][0]
+    for file in filter["files"].keys()
+]
