@@ -10,6 +10,7 @@ local new_tab = require "table.new"
 local cjson = require "cjson.safe"
 local math = require "math"
 local request_id = require "kong.tracing.request_id"
+local is_http_module = ngx.config.subsystem == "http"
 local log = ngx.log
 local INFO = ngx.INFO
 local DEBUG = ngx.DEBUG
@@ -96,6 +97,11 @@ function _M:init_worker()
     return false
   end
 
+  if not is_http_module then
+    log(INFO, _log_prefix, "the analytics don't need to init in non HTTP module.")
+    return false
+  end
+  
   if self.initialized then
     log(WARN, _log_prefix, "tried to initialize kong.analytics (already initialized)")
     return true

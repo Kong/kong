@@ -1,0 +1,4 @@
+message: |
+  **Core**: Disable analytics in stream module to avoid unnecessary error logs.
+type: bugfix
+scope: Core

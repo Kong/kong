@@ -135,3 +135,48 @@ for _, strategy in helpers.each_strategy() do
 
   end)
 end
+
+for _, strategy in helpers.each_strategy() do
+  describe("analytics [#traditional] #" .. strategy, function()
+    local node_id
+    lazy_setup(function()
+      node_id = utils.uuid()
+      helpers.get_db_utils(strategy)
+
+      local fixtures = {
+        http_mock = {
+          analytics = analytics_mock
+        }
+      }
+
+      assert(helpers.start_kong({
+        database = strategy,
+        role = "traditional",
+        cluster_cert = "spec/fixtures/kong_clustering.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+        lua_package_path = "./?.lua;./?/init.lua;./spec/fixtures/?.lua",
+        konnect_mode = true,
+        log_level = "info",
+        vitals = true,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        cluster_telemetry_endpoint = "127.0.0.1:9006",
+        cluster_telemetry_listen = "127.0.0.1:9006",
+        cluster_telemetry_server_name = "kong_clustering",
+        node_id = node_id,
+        admin_listen = "127.0.0.1:8001",
+        stream_listen = "127.0.0.1:8888",
+      }, nil, nil, fixtures))
+
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("the analytics don't need to init in non HTTP module.", function()
+      assert.logfile().has.line("the analytics don't need to init in non HTTP module.", true, 10)
+    end)
+  end)
+end
+
