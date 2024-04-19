@@ -1,4 +1,4 @@
-local ops = require("kong.db.migrations.operations.200_to_210.lua")
+local ops = require("kong.db.migrations.operations.200_to_210")
 
 local function update_logging_statistic(config)
   if config.logging.log_statistics and config.route_type == "llm/v1/completions"
