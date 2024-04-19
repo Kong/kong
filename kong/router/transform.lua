@@ -710,27 +710,30 @@ local function split_routes_and_services_by_path(routes_and_services)
     assert(tb_nkeys(route_and_service) == 1 or tb_nkeys(route_and_service) == 2)
 
     local original_route_id = original_route.id
+    local original_service = route_and_service.service
     local grouped_paths = group_by(original_paths, sort_by_regex_or_length)
 
     local is_first = true
     for idx, paths in pairs(grouped_paths) do
-      local cloned_route = {
-        route = shallow_copy(original_route),
-        service = route_and_service.service,
-      }
+      local route = shallow_copy(original_route)
 
-      cloned_route.route.original_route = original_route
-      cloned_route.route.paths = paths
-      cloned_route.route.id = uuid_generator(original_route_id .. "#" .. tostring(idx))
+      route.original_route = original_route
+      route.paths = paths
+      route.id = uuid_generator(original_route_id .. "#" .. tostring(idx))
+
+      local cloned_route_and_service = {
+        route = route,
+        service = original_service,
+      }
 
       if is_first then
         -- the first one will replace the original route
-        routes_and_services[i] = cloned_route
+        routes_and_services[i] = cloned_route_and_service
         is_first = false
 
       else
         -- the others will append to the original routes array
-        routes_and_services[count + append_count] = cloned_route
+        routes_and_services[count + append_count] = cloned_route_and_service
         append_count = append_count + 1
       end
     end -- for pairs(grouped_paths)
