@@ -309,13 +309,13 @@ for _, strategy in helpers.each_strategy() do
     lazy_teardown(function()
       helpers.stop_kong()
     end)
-  
+
     local function get_tls_service_id(subsystems)
       if subsystems == "http" then
         return service_mtls.id
       else
         return tls_service_mtls.id
-      end      
+      end
     end
 
     local function get_proxy_client(subsystems, stream_port)
@@ -326,7 +326,7 @@ for _, strategy in helpers.each_strategy() do
       end
     end
 
-    local function wait_for_all_config_update(subsystems) 
+    local function wait_for_all_config_update(subsystems)
       local opt = {}
       if subsystems == "stream" then
         opt.stream_enabled = true
@@ -881,7 +881,7 @@ for _, strategy in helpers.each_strategy() do
               end)
             end
           end, 10)
-          
+
           if subsystems == "http" then
             assert.matches("An invalid response was received from the upstream server", body)
           end
