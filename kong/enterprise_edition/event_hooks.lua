@@ -160,9 +160,31 @@ local function field_digest(source, event, data)
 end
 
 
-_M.emit = function(source, event, data)
+local function _check(source, event)
+  if not events[source] then
+    return nil, fmt("source '%s' is not registered", source)
+  end
+
+  local event = event ~= ngx_null and event or nil
+  if event and not events[source][event] then
+    return nil, fmt("source '%s' has no '%s' event", source, event)
+  end
+
+  return true
+end
+
+_M.emit = function(source, event, data, local_only)
   if not _M.enabled() then
     return
+  end
+
+  local res, err = _check(source, event)
+  if not res then
+    return nil, err
+  end
+
+  if local_only then
+    return kong.worker_events.post_local(prefix(source), event, data)
   end
 
   local digest = field_digest(source, event, data)
@@ -334,11 +356,17 @@ _M.register_events = function(events_handler)
   end
 
   events_handler.register(function(data, event, source, pid)
-    _M.emit(source, event, dao_adapter(data))
+    local ok, err = _M.emit(source, event, dao_adapter(data))
+    if not ok then
+      kong.log.warn("failed to emit event: ", err)
+    end
   end, "crud")
 
   events_handler.register(function(data, event, source, pid)
-    _M.emit(source, event, dao_adapter(data))
+    local ok, err = _M.emit(source, event, dao_adapter(data))
+    if not ok then
+      kong.log.warn("failed to emit event: ", err)
+    end
   end, "dao:crud")
 
   events_handler.register(_M.crud, "crud", "event_hooks")
@@ -346,13 +374,16 @@ _M.register_events = function(events_handler)
   -- register a callback to trigger an event_hook balanacer health
   -- event
   balancer.subscribe_to_healthcheck_events(function(upstream_id, ip, port, hostname, health)
-    _M.emit("balancer", "health", {
+    local ok, err = _M.emit("balancer", "health", {
       upstream_id = upstream_id,
       ip = ip,
       port = port,
       hostname = hostname,
       health = health,
     })
+    if not ok then
+      kong.log.warn("failed to emit event: ", err)
+    end
   end)
 
   _M.publish("balancer", "health", {

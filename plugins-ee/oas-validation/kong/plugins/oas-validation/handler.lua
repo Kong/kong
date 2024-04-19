@@ -367,13 +367,16 @@ end
 
 local function emit_event_hook(errmsg)
 
-  event_hooks.emit("oas-validation", "validation-failed", {
+  local ok, err = event_hooks.emit("oas-validation", "validation-failed", {
     consumer = kong.client.get_consumer() or {},
     ip = kong.client.get_forwarded_ip(),
     service = kong.router.get_service() or {},
     err = errmsg,
   })
 
+  if not ok then
+    kong.log.warn("failed to emit event: ", err)
+  end
 end
 
 

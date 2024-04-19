@@ -1,0 +1,4 @@
+message: |
+  Fix an issue that delay validate of event_hooks to avoid unregistered event_hooks in hybrid mode
+type: bugfix
+scope: Clustering

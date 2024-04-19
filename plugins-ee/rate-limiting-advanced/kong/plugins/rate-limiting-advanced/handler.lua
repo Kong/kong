@@ -417,7 +417,7 @@ function NewRLHandler:access(conf)
       -- XXX we are doing it on this flow of code because it's easier to
       -- get the rate and the limit that triggered it. Move it somewhere
       -- general later.
-      event_hooks.emit("rate-limiting-advanced", "rate-limit-exceeded", {
+      local ok, err = event_hooks.emit("rate-limiting-advanced", "rate-limit-exceeded", {
         consumer = kong.client.get_consumer() or {},
         ip = kong.client.get_forwarded_ip(),
         service = kong.router.get_service() or {},
@@ -425,6 +425,10 @@ function NewRLHandler:access(conf)
         limit = current_limit,
         window = window_name,
       })
+
+      if not ok then
+        kong.log.warn("failed to emit event: ", err)
+      end
     end
   end
 

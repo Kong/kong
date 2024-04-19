@@ -313,6 +313,10 @@ describe("event-hooks", function()
 
     describe("receives a source, an event and some data", function()
       it("calls worker_events post", function()
+        event_hooks.publish("some_source", "some_event", {
+          fields = { "some" },
+        })
+
         event_hooks.emit("some_source", "some_event", { some = "data" })
         local unique = "some_source:some_event:bc31a334fcc4ed689f4ea9ab824f23b3"
         local source = "event-hooks:some_source"
