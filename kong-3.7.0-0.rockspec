@@ -33,7 +33,7 @@ dependencies = {
   "lua-protobuf == 0.5.1",
   "lua-resty-healthcheck == 3.0.1",
   "lua-messagepack == 0.5.4",
-  "lua-resty-aws == 1.4.0",
+  "lua-resty-aws == 1.4.1",
   "lua-resty-openssl == 1.2.1",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6.1",
