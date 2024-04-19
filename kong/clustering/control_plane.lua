@@ -252,7 +252,8 @@ function _M:handle_cp_websocket(cert)
       sync_status = sync_status, -- TODO: import may have been failed though
       labels = data.labels,
       cert_details = dp_cert_details,
-      capabilities = rpc_peers and rpc_peers[dp_id] or {},
+      -- only update rpc_capabilities if dp_id is connected
+      rpc_capabilities = rpc_peers and rpc_peers[dp_id] or nil,
     }, { ttl = purge_delay })
     if not ok then
       ngx_log(ngx_ERR, _log_prefix, "unable to update clustering data plane status: ", err, log_suffix)

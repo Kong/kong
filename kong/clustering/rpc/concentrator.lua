@@ -147,8 +147,8 @@ function _M:_event_loop(lconn)
             local reply_to = assert(call.reply_to,
                                     "unknown requester for RPC")
 
-            local res, err = self.manager:_call(target_id, payload.method,
-                                                payload.params)
+            local res, err = self.manager:_local_call(target_id, payload.method,
+                                                      payload.params)
             if res then
               -- call success
               res, err = self:_enqueue_rpc_response(reply_to, {

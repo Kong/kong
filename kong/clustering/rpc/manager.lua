@@ -13,15 +13,21 @@ local clustering_tls = require("kong.clustering.tls")
 local constants = require("kong.constants")
 local table_isempty = require("table.isempty")
 local pl_tablex = require("pl.tablex")
+local cjson = require("cjson.safe")
 
 
 local ngx_var = ngx.var
 local ngx_ERR = ngx.ERR
 local ngx_log = ngx.log
 local ngx_exit = ngx.exit
+local ngx_time = ngx.time
 local exiting = ngx.worker.exiting
 local pl_tablex_makeset = pl_tablex.makeset
+local table_concat = table.concat
+local cjson_encode = cjson.encode
+local cjson_decode = cjson.decode
 local validate_client_cert = clustering_tls.validate_client_cert
+local CLUSTERING_PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 
 
 local WS_OPTS = {
@@ -46,23 +52,22 @@ function _M.new(conf, node_id)
 
   self.concentrator = concentrator.new(self, kong.db)
 
-  self.callbacks:register("kong.meta.v1.capability_advertisement", function(node_id, capabilities)
-    self.client_capabilities[node_id] = { set = pl_tablex_makeset(capabilities), list = capabilities, }
-
-    return self.callbacks:get_capabilities_list()
-  end)
-
   return setmetatable(self, _MT)
 end
 
 
-function _M:_add_socket(socket)
+function _M:_add_socket(socket, capabilities_list)
   local sockets = self.clients[socket.node_id]
   if not sockets then
     assert(self.concentrator:_enqueue_subscribe(socket.node_id))
     sockets = setmetatable({}, { __mode = "k", })
     self.clients[socket.node_id] = sockets
   end
+
+  self.client_capabilities[socket.node_id] = {
+    set = pl_tablex_makeset(capabilities_list),
+    list = capabilities_list,
+  }
 
   assert(not sockets[socket])
 
@@ -85,20 +90,51 @@ function _M:_remove_socket(socket)
 end
 
 
+-- Helper that finds a node by node_id and check
+-- if capability is supported
+-- Returns: "local" if found locally,
+-- or "concentrator" if found from the concentrator
+-- In case of error, return nil, err instead
+function _M:_find_node_and_check_capability(node_id, cap)
+  if self.client_capabilities[node_id] then
+    if not self.client_capabilities[node_id].set[cap] then
+      return nil, "requested capability does not exist, capability: " ..
+                  cap .. ", node_id: " .. node_id
+    end
+
+    return "local"
+  end
+
+  -- does concentrator knows more about this client?
+  local res, err = kong.db.clustering_data_planes:select({ id = node_id })
+  if err then
+    return nil, "unable to query concentrator " .. err
+  end
+
+  if not res or ngx_time() - res.last_seen > CLUSTERING_PING_INTERVAL * 2 then
+    return nil, "node is not connected, node_id: " .. node_id
+  end
+
+  for _, c in ipairs(res.rpc_capabilities) do
+    if c == cap then
+      return "concentrator"
+    end
+  end
+
+  return nil, "requested capability does not exist, capability: " ..
+              cap .. ", node_id: " .. node_id
+end
+
+
 -- low level helper used internally by :call() and concentrator
 -- this one does not consider forwarding using concentrator
 -- when node does not exist
-function _M:_call(node_id, method, params)
-  local cap = utils.parse_method_name(method)
-
+function _M:_local_call(node_id, method, params)
   if not self.client_capabilities[node_id] then
     return nil, "node is not connected, node_id: " .. node_id
   end
 
-  if not self.client_capabilities[node_id].set[cap] then
-    return nil, "requested capability does not exist, capability: " ..
-                cap .. ", node_id: " .. node_id
-  end
+  local cap = utils.parse_method_name(method)
 
   local s = next(self.clients[node_id])
 
@@ -121,41 +157,52 @@ end
 -- public interface, try call on node_id locally first,
 -- if node is not connected, try concentrator next
 function _M:call(node_id, method, ...)
-  local params = {...}
-  local res, err = self:_call(node_id, method, params)
-  if res then
-    return res
+  local cap = utils.parse_method_name(method)
+
+  local res, err = self:_find_node_and_check_capability(node_id, cap)
+  if not res then
+    return nil, err
   end
 
-  if err:sub(1, #"node is not connected") == "node is not connected" then
-    -- try concentrator
-    local fut = future.new(node_id, self.concentrator, method, params)
-    assert(fut:start())
+  local params = {...}
 
-    local ok, err = fut:wait(5)
-    if err then
+  if res == "local" then
+    res, err = self:_local_call(node_id, method, params)
+    if not res then
       return nil, err
     end
 
-    if ok then
-      return fut.result
-    end
-
-    return nil, fut.error.message
+    return res
   end
 
-  return res, err
+  assert(res == "concentrator")
+
+  -- try concentrator
+  local fut = future.new(node_id, self.concentrator, method, params)
+  assert(fut:start())
+
+  local ok, err = fut:wait(5)
+  if err then
+    return nil, err
+  end
+
+  if ok then
+    return fut.result
+  end
+
+  return nil, fut.error.message
 end
 
 
 -- handle incoming client connections
 function _M:handle_websocket()
-  local client_version = ngx_var.http_x_kong_version
+  local kong_version = ngx_var.http_x_kong_version
   local node_id = ngx_var.http_x_kong_node_id
-  local meta_call = ngx_var.http_sec_websocket_protocol
+  local rpc_protocol = ngx_var.http_sec_websocket_protocol
   local content_encoding = ngx_var.http_content_encoding
+  local rpc_capabilities = ngx_var.http_x_kong_rpc_capabilities
 
-  if not client_version then
+  if not kong_version then
     ngx_log(ngx_ERR, "[rpc] client did not provide version number")
     return ngx_exit(ngx.HTTP_CLOSE)
   end
@@ -170,8 +217,21 @@ function _M:handle_websocket()
     return ngx_exit(ngx.HTTP_CLOSE)
   end
 
-  if not meta_call then
-    ngx_log(ngx_ERR, "[rpc] client did not provide Sec-WebSocket-Protocol, doesn't know how to negotiate")
+  if rpc_protocol ~= "kong.rpc.v1" then
+    ngx_log(ngx_ERR, "[rpc] unknown RPC protocol: " ..
+                     tostring(rpc_protocol) ..
+                     ", doesn't know how to communicate with client")
+    return ngx_exit(ngx.HTTP_CLOSE)
+  end
+
+  if not rpc_capabilities then
+    ngx_log(ngx_ERR, "[rpc] client did not provide capability list")
+    return ngx_exit(ngx.HTTP_CLOSE)
+  end
+
+  rpc_capabilities = cjson_decode(rpc_capabilities)
+  if not rpc_capabilities then
+    ngx_log(ngx_ERR, "[rpc] failed to decode client capability list")
     return ngx_exit(ngx.HTTP_CLOSE)
   end
 
@@ -181,6 +241,8 @@ function _M:handle_websocket()
     return ngx_exit(ngx.HTTP_CLOSE)
   end
 
+  ngx.header["X-Kong-RPC-Capabilities"] = cjson_encode(self.callbacks:get_capabilities_list())
+
   local wb, err = server:new(WS_OPTS)
   if not wb then
     ngx_log(ngx_ERR, "[rpc] unable to establish WebSocket connection with client: ", err)
@@ -188,7 +250,7 @@ function _M:handle_websocket()
   end
 
   local s = socket.new(self, wb, node_id)
-  self:_add_socket(s)
+  self:_add_socket(s, rpc_capabilities)
 
   assert(s:start())
   local res, err = s:join()
@@ -214,10 +276,12 @@ function _M:connect(premature, node_id, host, path, cert, key)
     ssl_verify = true,
     client_cert = cert,
     client_priv_key = key,
-    protocols = "kong.meta.v1",
+    protocols = "kong.rpc.v1",
     headers = {
       "X-Kong-Version: " .. KONG_VERSION,
       "X-Kong-Node-Id: " .. self.node_id,
+      "X-Kong-Hostname: " .. kong.node.get_hostname(),
+      "X-Kong-RPC-Capabilities: " .. cjson_encode(self.callbacks:get_capabilities_list()),
       "Content-Encoding: x-snappy-framed"
     },
   }
@@ -235,6 +299,7 @@ function _M:connect(premature, node_id, host, path, cert, key)
   local reconnection_delay = math.random(5, 10)
 
   local c = assert(client:new(WS_OPTS))
+
   local ok, err = c:connect(uri, opts)
   if not ok then
     ngx_log(ngx_ERR, "[rpc] unable to connect to peer: ", err)
@@ -242,32 +307,35 @@ function _M:connect(premature, node_id, host, path, cert, key)
   end
 
   do
-    local s = socket.new(self, c, node_id)
-    assert(s:start())
-
-    -- capability advertisement
-    local fut = future.new(node_id, s, "kong.meta.v1.capability_advertisement", { self.callbacks:get_capabilities_list(), })
-    assert(fut:start())
-
-    ok, err = fut:wait(5)
-    if not ok then
-      s:stop()
-      ngx_log(ngx_ERR, "[rpc] unable to advertise capability to peer: ", err)
+    local resp_headers = c:get_resp_headers()
+    -- FIXME: resp_headers should not be case sensitive
+    if not resp_headers or not resp_headers["X-Kong-RPC-Capabilities"] then
+      ngx_log(ngx_ERR, "[rpc] peer did not provide capability list, node_id: ", node_id)
+      c:send_close() -- can't do much if this fails
       goto err
     end
 
-    self.client_capabilities[node_id] = { list = fut.result,
-                                          set = pl_tablex_makeset(fut.result), }
-    self:_add_socket(s)
+    local capabilities = resp_headers["X-Kong-RPC-Capabilities"]
+    capabilities = cjson_decode(capabilities)
+    if not capabilities then
+      ngx_log(ngx_ERR, "[rpc] unable to decode peer capability list, node_id: ", node_id,
+                       " list: ", capabilities)
+      c:send_close() -- can't do much if this fails
+      goto err
+    end
 
-    ok, err = s:join()
+    local s = socket.new(self, c, node_id)
+    assert(s:start())
+    self:_add_socket(s, capabilities)
+
+    ok, err = s:join() -- main event loop
 
     self:_remove_socket(s)
-  end
 
-  if not ok then
-    ngx_log(ngx_ERR, "[rpc] connection to node_id: ", node_id, " broken, err: ",
-            err, ", reconnecting in ", reconnection_delay, " seconds")
+    if not ok then
+      ngx_log(ngx_ERR, "[rpc] connection to node_id: ", node_id, " broken, err: ",
+              err, ", reconnecting in ", reconnection_delay, " seconds")
+    end
   end
 
   ::err::
