@@ -10,7 +10,6 @@ load("//build/openresty/atc_router:atc_router_repositories.bzl", "atc_router_rep
 load("//build/openresty/jsonschema:jsonschema_repositories.bzl", "jsonschema_repositories")
 load("//build/openresty/msgpack_c:msgpack_c_repositories.bzl", "msgpack_c_repositories")
 load("//build/openresty/wasmx:wasmx_repositories.bzl", "wasmx_repositories")
-load("//build/openresty/wasmx/filters:repositories.bzl", "wasm_filters_repositories")
 load("//build/openresty/brotli:brotli_repositories.bzl", "brotli_repositories")
 load("//build/openresty/snappy:snappy_repositories.bzl", "snappy_repositories")
 
@@ -19,6 +18,12 @@ _NGINX_MODULE_DUMMY_FILE = """
 filegroup(
     name = "all_srcs",
     srcs = glob(["**"]),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "lualib_srcs",
+    srcs = glob(["lualib/**/*.lua", "lib/**/*.lua"]),
     visibility = ["//visibility:public"],
 )
 """
@@ -30,7 +35,6 @@ def openresty_repositories():
     jsonschema_repositories()
     msgpack_c_repositories()
     wasmx_repositories()
-    wasm_filters_repositories()
     brotli_repositories()
     snappy_repositories()
 
@@ -89,7 +93,7 @@ def openresty_repositories():
     )
 
 def _openresty_binding_impl(ctx):
-    ctx.file("BUILD.bazel", _NGINX_MODULE_DUMMY_FILE)
+    ctx.file("BUILD.bazel", "")
     ctx.file("WORKSPACE", "workspace(name = \"openresty_patch\")")
 
     version = "LuaJIT\\\\ 2.1.0-"

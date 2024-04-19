@@ -50,12 +50,15 @@ configure_make(
         "//conditions:default": [],
     }),
     # out_lib_dir = "lib",
+    out_include_dir = "",  # don't install headers
     out_shared_libs = select({
         "@platforms//os:macos": [
             "libxslt.1.dylib",
+            "libexslt.0.dylib",
         ],
         "//conditions:default": [
-            "libxslt.so.1",
+            "libxslt.so.1.1.39",
+            "libexslt.so.0.8.21",
         ],
     }),
     targets = [

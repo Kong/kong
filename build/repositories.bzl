@@ -2,11 +2,10 @@
 
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-load("//build:build_system.bzl", "git_or_local_repository")
+load("//build:build_system.bzl", "git_or_local_repository", "github_release")
 load("//build/luarocks:luarocks_repositories.bzl", "luarocks_repositories")
 load("//build/cross_deps:repositories.bzl", "cross_deps_repositories")
 load("//build/libexpat:repositories.bzl", "libexpat_repositories")
-load("//build:build_system.bzl", "github_release")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 load("//build/toolchain:bindings.bzl", "load_bindings")
 
@@ -16,12 +15,18 @@ filegroup(
     srcs = glob(["**"]),
     visibility = ["//visibility:public"],
 )
+
+filegroup(
+    name = "lualib_srcs",
+    srcs = glob(["lualib/**/*.lua", "lib/**/*.lua"]),
+    visibility = ["//visibility:public"],
+)
 """
 
 _DIST_BUILD_FILE_CONTENT = """
 filegroup(
-    name = "dist_files",
-    srcs = ["dist"],
+    name = "dist",
+    srcs = glob(["dist/**"]),
     visibility = ["//visibility:public"],
 )
 """
@@ -70,8 +75,8 @@ def protoc_repositories():
         sha256 = "2994b7256f7416b90ad831dbf76a27c0934386deb514587109f39141f2636f37",
         build_file_content = """
 filegroup(
-    name = "all_srcs",
-    srcs = ["include"],
+    name = "include",
+    srcs = glob(["include/google/**"]),
     visibility = ["//visibility:public"],
 )""",
     )

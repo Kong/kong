@@ -3,6 +3,7 @@
 load("//build:build_system.bzl", "git_or_local_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
+load("//build/openresty/wasmx/filters:repositories.bzl", "wasm_filters_repositories")
 
 wasm_runtime_build_file = """
 filegroup(
@@ -53,6 +54,8 @@ wasm_runtimes = {
 }
 
 def wasmx_repositories():
+    wasm_filters_repositories()
+
     wasm_module_branch = KONG_VAR["NGX_WASM_MODULE_BRANCH"]
     if wasm_module_branch == "":
         wasm_module_branch = KONG_VAR["NGX_WASM_MODULE"]
@@ -69,8 +72,8 @@ filegroup(
 )
 
 filegroup(
-    name = "lua_libs",
-    srcs = glob(["lib/resty/**"]),
+    name = "lualib_srcs",
+    srcs = glob(["lib/**/*.lua"]),
     visibility = ["//visibility:public"]
 )
 

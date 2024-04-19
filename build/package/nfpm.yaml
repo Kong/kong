@@ -44,6 +44,12 @@ contents:
   dst: /etc/kong/kong.logrotate
   file_info:
     mode: 0644
+- src: /usr/local/openresty/bin/resty
+  dst: /usr/local/bin/resty
+  type: symlink
+- src: /usr/local/openresty/nginx/modules
+  dst: /usr/local/kong/modules
+  type: symlink
 # EE
 - src: nfpm-prefix/COPYRIGHT
   dst: /usr/local/kong/COPYRIGHT
@@ -58,6 +64,9 @@ contents:
   dst: /usr/local/kong/portal_manifest.json
 - src: nfpm-prefix/kong-tools
   dst: /usr/local/kong-tools
+  type: tree
+- src: scripts/tools
+  dst: /usr/local/kong/scripts/
   type: tree
 scripts:
   postinstall: ./build/package/postinstall.sh

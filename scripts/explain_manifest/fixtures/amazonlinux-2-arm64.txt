@@ -265,21 +265,6 @@
   Needed    :
   - libc.so.6
 
-- Path      : /usr/local/openresty/lualib/libatc_router.so
-  Needed    :
-  - libgcc_s.so.1
-  - libpthread.so.0
-  - libdl.so.2
-  - libc.so.6
-
-- Path      : /usr/local/openresty/lualib/liblua_resty_jsonschema_rs.so
-  Needed    :
-  - libgcc_s.so.1
-  - libpthread.so.0
-  - libm.so.6
-  - libdl.so.2
-  - libc.so.6
-
 - Path      : /usr/local/openresty/lualib/librestysignal.so
   Needed    :
   - libc.so.6
@@ -324,6 +309,21 @@
   OpenSSL   : OpenSSL 3.2.1 30 Jan 2024
   DWARF     : True
   DWARF - ngx_http_request_t related DWARF DIEs: True
+
+- Path      : /usr/local/openresty/site/lualib/libatc_router.so
+  Needed    :
+  - libgcc_s.so.1
+  - libpthread.so.0
+  - libdl.so.2
+  - libc.so.6
+
+- Path      : /usr/local/openresty/site/lualib/liblua_resty_jsonschema_rs.so
+  Needed    :
+  - libgcc_s.so.1
+  - libpthread.so.0
+  - libm.so.6
+  - libdl.so.2
+  - libc.so.6
 
 - Path      : /usr/local/share/lua/5.1/kong/portal
   Type      : directory

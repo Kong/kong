@@ -4,3 +4,21 @@ build_openssl(
     name = "openssl_fips",
     fips = True,
 )
+
+exports_files(
+    [
+        "openssl.cnf.template",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+genrule(
+    name = "openssl_conf",
+    srcs = [
+        "@openssl_fips",
+        "@kong//build/ee/openssl_fips:openssl.cnf.template",
+    ],
+    outs = ["openssl.cnf"],
+    cmd = "cat $(location @kong//build/ee/openssl_fips:openssl.cnf.template ) $$(echo '$(locations @openssl_fips//:openssl_fips)' | awk '{print $$1}')/fipsmodule/fipsmodule.cnf > $@",
+    visibility = ["//visibility:public"],
+)

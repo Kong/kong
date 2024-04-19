@@ -97,7 +97,7 @@ kong_template_genrule(
     }),
     is_executable = True,
     output = "luarocks_target.log",
-    progress_message = "Luarocks: Install luarocks on target system",
+    progress_message = "Luarocks: Install luarocks with target configuration",
     substitutions = {
         "{{build_destdir}}": KONG_VAR["BUILD_DESTDIR"],
         "{{install_destdir}}": KONG_VAR["INSTALL_DESTDIR"],

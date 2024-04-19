@@ -5,11 +5,10 @@ load(":variables.bzl", "WASM_FILTERS")
 def wasm_filters_repositories():
     for filter in WASM_FILTERS:
         for file in filter["files"].keys():
-            renamed_file = file.replace("filter", filter["name"])
-
             maybe(
                 http_file,
-                name = renamed_file,
+                name = "%s-%s" % (filter["name"], file),
+                downloaded_file_path = file,
                 url = "https://github.com/%s/releases/download/%s/%s" % (
                     filter["repo"],
                     filter["tag"],
