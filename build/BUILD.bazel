@@ -87,6 +87,25 @@ kong_install(
     ],
 )
 
+# Use this target when developing with nginx modules and want to
+# avoid rebuilding a clean OpenResty every time.
+kong_genrule(
+    name = "dev-make-openresty",
+    srcs = [
+        "@openresty//:dev-just-make",
+    ],
+    outs = [
+        "openresty.dev.nop",
+    ],
+    cmd = """
+        rm -rf ${BUILD_DESTDIR}/openresty
+        cp -r $(location @openresty//:dev-just-make) ${BUILD_DESTDIR}/openresty
+        chmod -R "u+rw" ${BUILD_DESTDIR}/openresty
+        touch ${BUILD_DESTDIR}/openresty.dev.nop
+    """,
+    visibility = ["//visibility:public"],
+)
+
 # Lua Libraries
 
 lualib_deps = [
