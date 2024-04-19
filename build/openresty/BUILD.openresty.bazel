@@ -332,3 +332,30 @@ configure_make(
         "//conditions:default": [],
     }),
 )
+
+genrule(
+    name = "dev-just-make",
+    srcs = [
+        "@lua-kong-nginx-module//:all_srcs",
+        "@lua-resty-events//:all_srcs",
+        "@lua-resty-lmdb//:all_srcs",
+        "@ngx_brotli//:all_srcs",
+    ] + select({
+        "@kong//:wasmx_flag": [
+            "@ngx_wasmx_module//:all_srcs",
+            # wasm_runtime has to be a "data" (target) instead of "build_data" (exec)
+            # to be able to lookup by its path (relative to INSTALLDIR)
+            ":wasm_runtime",
+        ],
+        "//conditions:default": [],
+    }),
+    outs = ["dev-builddir"],
+    cmd = """
+        pushd $(RULEDIR)/openresty.build_tmpdir >/dev/null
+        make -j%s
+        make install
+        popd >/dev/null
+        cp -r $(RULEDIR)/openresty.build_tmpdir/openresty $@
+    """ % KONG_VAR["NPROC"],
+    visibility = ["//visibility:public"],
+)
