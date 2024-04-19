@@ -37,7 +37,7 @@ dependencies = {
   "lua-resty-healthcheck == 3.0.1",
   "lua-messagepack == 0.5.4",
   "lua-resty-azure == 1.5.0",
-  "lua-resty-aws == 1.3.6",
+  "lua-resty-aws == 1.4.1",
   "lua-resty-openssl == 1.2.1",
   "lua-resty-mail == 1.1.0",
   "lua-resty-redis-connector == 0.11.0",

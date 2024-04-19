@@ -1,0 +1,3 @@
+message: "Bumped lua-resty-aws from 1.3.6 to 1.4.1"
+type: dependency
+scope: Core
