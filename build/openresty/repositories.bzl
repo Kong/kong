@@ -2,7 +2,7 @@
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
+load("//build:build_system.bzl", "git_or_local_repository")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 load("//build/openresty/pcre:pcre_repositories.bzl", "pcre_repositories")
 load("//build/openresty/openssl:openssl_repositories.bzl", "openssl_repositories")
@@ -43,7 +43,7 @@ def openresty_repositories():
     )
 
     maybe(
-        new_git_repository,
+        git_or_local_repository,
         name = "lua-kong-nginx-module",
         branch = KONG_VAR["LUA_KONG_NGINX_MODULE"],
         remote = "https://github.com/Kong/lua-kong-nginx-module",
@@ -52,7 +52,7 @@ def openresty_repositories():
     )
 
     maybe(
-        new_git_repository,
+        git_or_local_repository,
         name = "lua-resty-lmdb",
         branch = KONG_VAR["LUA_RESTY_LMDB"],
         remote = "https://github.com/Kong/lua-resty-lmdb",
@@ -63,7 +63,7 @@ def openresty_repositories():
     )
 
     maybe(
-        new_git_repository,
+        git_or_local_repository,
         name = "lua-resty-events",
         branch = KONG_VAR["LUA_RESTY_EVENTS"],
         remote = "https://github.com/Kong/lua-resty-events",
@@ -72,7 +72,7 @@ def openresty_repositories():
     )
 
     maybe(
-        new_git_repository,
+        git_or_local_repository,
         name = "ngx_brotli",
         branch = KONG_VAR["NGX_BROTLI"],
         remote = "https://github.com/google/ngx_brotli",

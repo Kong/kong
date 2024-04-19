@@ -1,6 +1,6 @@
 """A module defining the third party dependency WasmX"""
 
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
+load("//build:build_system.bzl", "git_or_local_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 
@@ -57,7 +57,7 @@ def wasmx_repositories():
     if wasm_module_branch == "":
         wasm_module_branch = KONG_VAR["NGX_WASM_MODULE"]
 
-    new_git_repository(
+    git_or_local_repository(
         name = "ngx_wasmx_module",
         branch = wasm_module_branch,
         remote = KONG_VAR["NGX_WASM_MODULE_REMOTE"],

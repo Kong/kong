@@ -4,6 +4,7 @@ and rules that you'd like to use in your BUILD files.
 """
 
 load("@bazel_skylib//lib:dicts.bzl", "dicts")
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_repository")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 
 # A genrule variant that can output a directory.
@@ -208,3 +209,29 @@ github_release = repository_rule(
         "skip_add_copyright_header": attr.bool(default = False, doc = "Whether to inject COPYRIGHT-HEADER into downloaded files, only required for webuis"),
     },
 )
+
+def git_or_local_repository(name, branch, **kwargs):
+    new_repo = "build_file" in kwargs or "build_file_content" in kwargs
+    if branch.startswith("/") or branch.startswith("."):
+        print("Note @%s is initialized as a local repository from path %s" % (name, branch))
+
+        func = new_repo and native.new_local_repository or native.local_repository
+        func(
+            name = name,
+            path = branch,
+            build_file = kwargs.get("build_file"),
+            build_file_content = kwargs.get("build_file_content"),
+        )
+    else:
+        func = new_repo and new_git_repository or git_repository
+
+        # if "branch" is likely a commit hash, use it as commit
+        if branch.isalnum() and len(branch) == 40:
+            kwargs["commit"] = branch
+            branch = None
+
+        func(
+            name = name,
+            branch = branch,
+            **kwargs
+        )
