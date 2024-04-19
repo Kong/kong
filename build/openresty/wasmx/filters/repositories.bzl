@@ -10,6 +10,7 @@ def wasm_filters_repositories():
             maybe(
                 http_file,
                 name = renamed_file,
+                downloaded_file_path = renamed_file,
                 url = "https://github.com/%s/releases/download/%s/%s" % (
                     filter["repo"],
                     filter["tag"],

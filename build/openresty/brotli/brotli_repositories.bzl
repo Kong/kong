@@ -10,5 +10,4 @@ def brotli_repositories():
         name = "brotli",
         branch = KONG_VAR["BROTLI"],
         remote = "https://github.com/google/brotli",
-        visibility = ["//visibility:public"],  # let this to be referenced by openresty build
     )

@@ -123,6 +123,18 @@ config_setting(
     visibility = ["//visibility:public"],
 )
 
+config_setting(
+    name = "debug_linux_flag",
+    constraint_values = [
+        "@platforms//os:linux",
+    ],
+    flag_values = {
+        ":debug": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
+# --//:brotli=true
 bool_flag(
     name = "brotli",
     build_setting_default = True,
@@ -132,17 +144,6 @@ config_setting(
     name = "brotli_flag",
     flag_values = {
         ":brotli": "true",
-    },
-    visibility = ["//visibility:public"],
-)
-
-config_setting(
-    name = "debug_linux_flag",
-    constraint_values = [
-        "@platforms//os:linux",
-    ],
-    flag_values = {
-        ":debug": "true",
     },
     visibility = ["//visibility:public"],
 )
@@ -254,6 +255,20 @@ config_setting(
     name = "wasmx_el7_workaround_flag",
     flag_values = {
         ":wasmx_el7_workaround": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
+# --//:skip_tools=false
+bool_flag(
+    name = "skip_tools",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "skip_tools_flag",
+    flag_values = {
+        ":skip_tools": "true",
     },
     visibility = ["//visibility:public"],
 )

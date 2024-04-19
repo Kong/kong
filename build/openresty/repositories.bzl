@@ -19,6 +19,12 @@ filegroup(
     srcs = glob(["**"]),
     visibility = ["//visibility:public"],
 )
+
+filegroup(
+    name = "lualib_srcs",
+    srcs = glob(["lualib/**/*.lua", "lib/**/*.lua"]),
+    visibility = ["//visibility:public"],
+)
 """
 
 def openresty_repositories():
@@ -85,7 +91,7 @@ def openresty_repositories():
     )
 
 def _openresty_binding_impl(ctx):
-    ctx.file("BUILD.bazel", _NGINX_MODULE_DUMMY_FILE)
+    ctx.file("BUILD.bazel", "")
     ctx.file("WORKSPACE", "workspace(name = \"openresty_patch\")")
 
     version = "LuaJIT\\\\ 2.1.0-"
