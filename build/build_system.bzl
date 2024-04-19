@@ -3,16 +3,15 @@ Load this file for all Kong-specific build macros
 and rules that you'd like to use in your BUILD files.
 """
 
-load("@bazel_skylib//lib:dicts.bzl", "dicts")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_repository")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 
-# A genrule variant that can output a directory.
-def _kong_directory_genrule_impl(ctx):
-    tree = ctx.actions.declare_directory(ctx.attr.output_dir)
-    env = dicts.add(KONG_VAR, ctx.configuration.default_shell_env, {
-        "GENRULE_OUTPUT_DIR": tree.path,
-    })
+def _kong_genrule_impl(ctx):
+    outputs = []
+    for f in ctx.attr.outs:
+        outputs.append(ctx.actions.declare_file(KONG_VAR["BUILD_NAME"] + "/" + f))
+
+    env = dict(KONG_VAR)
 
     # XXX: remove the "env" from KONG_VAR which is a list
     env["OPENRESTY_PATCHES"] = ""
@@ -20,28 +19,29 @@ def _kong_directory_genrule_impl(ctx):
     ctx.actions.run_shell(
         inputs = ctx.files.srcs,
         tools = ctx.files.tools,
-        outputs = [tree],
-        command = "mkdir -p " + tree.path + " && " + ctx.expand_location(ctx.attr.cmd),
+        outputs = outputs,
+        command = ctx.expand_location(ctx.attr.cmd),
         env = env,
     )
-    return [DefaultInfo(files = depset([tree]))]
+    return [DefaultInfo(files = depset(outputs))]
 
-kong_directory_genrule = rule(
-    implementation = _kong_directory_genrule_impl,
+kong_genrule = rule(
+    implementation = _kong_genrule_impl,
+    doc = "A genrule that prefixes output files with BUILD_NAME",
     attrs = {
         "srcs": attr.label_list(),
         "cmd": attr.string(),
         "tools": attr.label_list(),
-        "output_dir": attr.string(),
+        "outs": attr.string_list(),
     },
 )
 
-# A rule that can be used as a meta rule that propagates multiple other rules
 def _kong_rules_group_impl(ctx):
     return [DefaultInfo(files = depset(ctx.files.propagates))]
 
 kong_rules_group = rule(
     implementation = _kong_rules_group_impl,
+    doc = "A rule that can be used as a meta rule that propagates multiple other rules",
     attrs = {
         "propagates": attr.label_list(),
     },
@@ -68,11 +68,14 @@ _kong_template_attrs = {
 def _render_template(ctx, output):
     substitutions = dict(ctx.attr.substitutions)
     for l in ctx.attr.srcs + ctx.attr.tools:
-        files = l.files.to_list()
-        if len(files) == 1:
+        if OutputGroupInfo in l and "gen_dir" in l[OutputGroupInfo]:  # usualy it's foreign_cc target
+            p = l[OutputGroupInfo].gen_dir.to_list()[0].path
+        else:  # otherwise it's usually output from gen_rule, file_group etc
+            files = l.files.to_list()
             p = files[0].path
-        else:
-            p = "/".join(files[0].path.split("/")[:-1])  # get the directory
+            for file in files:  # get the one with shorted path, that will be the directory
+                if len(file.path) < len(p):
+                    p = file.path
         substitutions["{{%s}}" % l.label] = p
 
     substitutions["{{CC}}"] = ctx.attr._cc_toolchain[cc_common.CcToolchainInfo].compiler_executable
@@ -96,6 +99,7 @@ def _kong_template_file_impl(ctx):
 
 kong_template_file = rule(
     implementation = _kong_template_file_impl,
+    doc = "A rule that expands a template file",
     attrs = _kong_template_attrs,
 )
 
@@ -117,6 +121,7 @@ def _kong_template_genrule_impl(ctx):
 
 kong_template_genrule = rule(
     implementation = _kong_template_genrule_impl,
+    doc = "A genrule that expands a template file and execute it",
     attrs = _kong_template_attrs | {
         "progress_message": attr.string(doc = "Message to display when running the command"),
     },
@@ -198,6 +203,7 @@ def _github_release_impl(ctx):
 
 github_release = repository_rule(
     implementation = _github_release_impl,
+    doc = "Use `gh` CLI to download a github release and optionally add license headers",
     attrs = {
         "tag": attr.string(mandatory = True),
         "pattern": attr.string(mandatory = False),
@@ -211,6 +217,14 @@ github_release = repository_rule(
 )
 
 def git_or_local_repository(name, branch, **kwargs):
+    """A macro creates git_repository or local_repository based on the value of "branch".
+
+    Args:
+        name: the name of target
+        branch: if starts with "." or "/", treat it as local_repository; otherwise git branch pr commit hash
+        **kwargs: if build_file or build_file_content is set, the macros uses new_* variants.
+    """
+
     new_repo = "build_file" in kwargs or "build_file_content" in kwargs
     if branch.startswith("/") or branch.startswith("."):
         print("Note @%s is initialized as a local repository from path %s" % (name, branch))
@@ -235,3 +249,109 @@ def git_or_local_repository(name, branch, **kwargs):
             branch = branch,
             **kwargs
         )
+
+def _kong_install_impl(ctx):
+    outputs = []
+    strip_path = ctx.attr.strip_path
+
+    # TODO: `label.workspace_name` has been deprecated in the Bazel v7.1.0,
+    # we should replace it with `label.repo_name` after upgrading
+    # to the Bazel v7.
+    # https://bazel.build/versions/7.1.0/rules/lib/builtins/Label
+    label_path = ctx.attr.src.label.workspace_name + "/" + ctx.attr.src.label.name
+    if not strip_path:
+        strip_path = label_path
+    prefix = ctx.attr.prefix
+    if prefix:
+        prefix = prefix + "/"
+
+    for file in ctx.files.src:
+        # skip top level directory
+        if file.short_path.endswith(label_path) or file.short_path.endswith(strip_path):
+            continue
+
+        # strip ../ from the path
+        path = file.short_path
+        if file.short_path.startswith("../"):
+            path = "/".join(file.short_path.split("/")[1:])
+
+        # skip foreign_cc generated copy_* targets
+        if path.startswith(ctx.attr.src.label.workspace_name + "/copy_" + ctx.attr.src.label.name):
+            continue
+
+        # only replace the first one
+        target_path = path.replace(strip_path + "/", "", 1)
+        full_path = "%s/%s%s" % (KONG_VAR["BUILD_NAME"], prefix, target_path)
+
+        # use a fake output, if we are writing a directory that may collide with others
+        # nop_path = "%s-nop-farms/%s/%s/%s" % (KONG_VAR["BUILD_NAME"], strip_path, prefix, target_path)
+        # output = ctx.actions.declare_file(nop_path)
+        # ctx.actions.run_shell(
+        #     outputs = [output],
+        #     inputs = [file],
+        #     command = "(mkdir -p {t} && chmod -R +rw {t} && cp -r {s} {t}) >{f}".format(
+        #         t = full_path,
+        #         s = file.path,
+        #         f = output.path,
+        #     ),
+        # )
+        output = ctx.actions.declare_file(full_path)
+        ctx.actions.run_shell(
+            outputs = [output],
+            inputs = [file],
+            command = "cp -r %s %s" % (file.path, output.path),
+        )
+
+        outputs.append(output)
+
+        if full_path.find(".so.") >= 0 and ctx.attr.create_dynamic_library_symlink:
+            el = full_path.split(".")
+            si = el.index("so")
+            sym_paths = []
+            if len(el) > si + 2:  # has more than one part after .so like libX.so.2.3.4
+                sym_paths.append(".".join(el[:si + 2]))  # libX.so.2
+            sym_paths.append(".".join(el[:si + 1]))  # libX.so
+
+            for sym_path in sym_paths:
+                sym_output = ctx.actions.declare_symlink(sym_path)
+                ctx.actions.symlink(output = sym_output, target_path = file.basename)
+                outputs.append(sym_output)
+
+    return [DefaultInfo(files = depset(outputs + ctx.files.deps))]
+
+kong_install = rule(
+    implementation = _kong_install_impl,
+    doc = "Install files from the `src` label output to BUILD_DESTDIR",
+    attrs = {
+        "prefix": attr.string(
+            mandatory = False,
+            doc = "The relative prefix to add to target files, after KONG_VAR['BUILD_DESTDIR'], default to 'kong'",
+            default = "kong",
+        ),
+        "strip_path": attr.string(
+            mandatory = False,
+            doc = "The leading path to strip from input, default to the ./<package/<target>",
+            default = "",
+        ),
+        # "include": attr.string_list(
+        #     mandatory = False,
+        #     doc = "List of files to explictly install, take effect after exclude; full name, or exactly one '*' at beginning or end as wildcard are supported",
+        #     default = [],
+        # ),
+        # "exclude": attr.string_list(
+        #     mandatory = False,
+        #     doc = "List of directories to exclude from installation",
+        #     default = [],
+        # ),
+        "create_dynamic_library_symlink": attr.bool(
+            mandatory = False,
+            doc = "Create non versioned symlinks to the versioned so, e.g. libfoo.so -> libfoo.so.1.2.3",
+            default = True,
+        ),
+        "deps": attr.label_list(allow_files = True, doc = "Labels to declare as dependency"),
+        "src": attr.label(allow_files = True, doc = "Label to install files for"),
+    },
+)
+
+def get_workspace_name(label):
+    return label.replace("@", "").split("/")[0]
