@@ -2,7 +2,7 @@
 
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
+load("//build:build_system.bzl", "git_or_local_repository")
 load("//build/luarocks:luarocks_repositories.bzl", "luarocks_repositories")
 load("//build/cross_deps:repositories.bzl", "cross_deps_repositories")
 load("//build/libexpat:repositories.bzl", "libexpat_repositories")
@@ -76,7 +76,7 @@ filegroup(
     )
 
 def kong_resty_websocket_repositories():
-    new_git_repository(
+    git_or_local_repository(
         name = "lua-resty-websocket",
         branch = KONG_VAR["LUA_RESTY_WEBSOCKET"],
         remote = "https://github.com/Kong/lua-resty-websocket",
