@@ -9,7 +9,7 @@ local llm           = require("kong.llm")
 --
 
 _M.PRIORITY = 769
-_M.VERSION = kong_meta.version
+_M.VERSION = kong_meta.core_version
 
 local function bad_request(msg)
   kong.log.info(msg)

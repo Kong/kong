@@ -9,11 +9,13 @@ local parse_url = require("socket.url").parse
 --
 
 local log_entry_keys = {
-  REQUEST_BODY = "ai.payload.request",
-  RESPONSE_BODY = "payload.response",
-
   TOKENS_CONTAINER = "usage",
   META_CONTAINER = "meta",
+  PAYLOAD_CONTAINER = "payload",
+  REQUEST_BODY = "ai.payload.request",
+
+  -- payload keys
+  RESPONSE_BODY = "response",
 
   -- meta keys
   REQUEST_MODEL = "request_model",
@@ -291,6 +293,7 @@ function _M.post_request(conf, response_object)
     if not request_analytics_plugin then
       request_analytics_plugin = {
         [log_entry_keys.META_CONTAINER] = {},
+        [log_entry_keys.PAYLOAD_CONTAINER] = {},
         [log_entry_keys.TOKENS_CONTAINER] = {
           [log_entry_keys.PROMPT_TOKEN] = 0,
           [log_entry_keys.COMPLETION_TOKEN] = 0,
@@ -320,7 +323,7 @@ function _M.post_request(conf, response_object)
 
     -- Log response body if logging payloads is enabled
     if conf.logging and conf.logging.log_payloads then
-      request_analytics_plugin[log_entry_keys.RESPONSE_BODY] = body_string
+      request_analytics_plugin[log_entry_keys.PAYLOAD_CONTAINER][log_entry_keys.RESPONSE_BODY] = body_string
     end
 
     -- Update context with changed values

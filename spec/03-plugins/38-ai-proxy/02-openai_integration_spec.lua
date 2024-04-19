@@ -683,9 +683,9 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.matches('"role": "user"', log_message.ai.payload.request, nil, true)
 
         -- test response bodies
-        assert.matches('"content": "The sum of 1 + 1 is 2.",', log_message.ai.openai.instances[1].payload.response, nil, true)
-        assert.matches('"role": "assistant"', log_message.ai.openai.instances[1].payload.response, nil, true)
-        assert.matches('"id": "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2"', log_message.ai.openai.instances[1].payload.response, nil, true)
+        assert.matches('"content": "The sum of 1 + 1 is 2.",', log_message.ai["ai-proxy"].payload.response, nil, true)
+        assert.matches('"role": "assistant"', log_message.ai["ai-proxy"].payload.response, nil, true)
+        assert.matches('"id": "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2"', log_message.ai["ai-proxy"].payload.response, nil, true)
       end)
 
       it("internal_server_error request", function()
