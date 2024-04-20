@@ -714,16 +714,17 @@ local function split_routes_and_services_by_path(routes_and_services)
     local original_route_id = original_route.id
     local original_service = route_and_service.service
 
-    -- `grouped_paths` is a hash table, like {true='regex', 2='/a', 3='/aa'}
+    -- `grouped_paths` is a hash table, like {true={'regex'}, 2={'/a'}, 3={'/aa'},}
     local grouped_paths = group_by(original_paths, sort_by_regex_or_length)
 
     local is_first = true
-    for idx, paths in pairs(grouped_paths) do
+    for key, paths in pairs(grouped_paths) do
       local route = shallow_copy(original_route)
 
+      -- create a new route from the original route
       route.original_route = original_route
       route.paths = paths
-      route.id = uuid_generator(original_route_id .. "#" .. tostring(idx))
+      route.id = uuid_generator(original_route_id .. "#" .. tostring(key))
 
       local cloned_route_and_service = {
         route = route,
