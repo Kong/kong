@@ -706,11 +706,15 @@ local function split_routes_and_services_by_path(routes_and_services)
       goto continue
     end
 
-    -- make sure that route_and_service contains only the two expected entries, route and service
-    assert(tb_nkeys(route_and_service) == 1 or tb_nkeys(route_and_service) == 2)
+    -- make sure that route_and_service contains
+    -- only the two expected entries, route and service
+    local nkeys = tb_nkeys(route_and_service)
+    assert(nkeys == 1 or nkeys == 2)
 
     local original_route_id = original_route.id
     local original_service = route_and_service.service
+
+    -- `grouped_paths` is a hash table, like {true='regex', 2='/a', 3='/aa'}
     local grouped_paths = group_by(original_paths, sort_by_regex_or_length)
 
     local is_first = true
