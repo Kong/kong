@@ -776,8 +776,8 @@ jobs:
         tags: |
           type=raw,value=latest,enable=${{ matrix.label == 'ubuntu' && github.ref_name == 'master' }}
           type=raw,value=latest,enable=${{ matrix.label == 'ubuntu' && github.ref_name == 'master' }},suffix=
-          type=match,enable=${{ github.event_name == 'workflow_dispatch' }},pattern=\d.\d,value=${{ github.event.inputs.version }}
-          type=match,enable=${{ github.event_name == 'workflow_dispatch' && matrix.label == 'ubuntu' }},pattern=\d.\d,value=${{ github.event.inputs.version }},suffix=
+          type=match,enable=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.official  == 'true' }},pattern=\d.\d,value=${{ github.event.inputs.version }}
+          type=match,enable=${{ github.event_name == 'workflow_dispatch' && matrix.label == 'ubuntu' && github.event.inputs.official  == 'true' }},pattern=\d.\d,value=${{ github.event.inputs.version }},suffix=
           type=raw,enable=${{ github.event_name == 'workflow_dispatch' }},${{ github.event.inputs.version }}
           type=raw,enable=${{ github.event_name == 'workflow_dispatch' && matrix.label == 'ubuntu' }},${{ github.event.inputs.version }},suffix=
           type=ref,enable=${{ github.event_name != 'workflow_dispatch' }},event=branch
