@@ -11,16 +11,8 @@ local socket_url = require "socket.url"
 local DRIVER_NAME = "openai"
 --
 
-local function handle_stream_event(event_string)
-  if #event_string > 0 then
-    local lbl, val = event_string:match("(%w*): (.*)")
-
-    if lbl == "data" then
-      return val
-    end
-  end
-
-  return nil
+local function handle_stream_event(event_t)
+  return event_t.data
 end
 
 local transformers_to = {
