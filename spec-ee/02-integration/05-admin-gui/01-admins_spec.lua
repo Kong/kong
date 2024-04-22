@@ -253,25 +253,44 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("/admins", function()
-      describe("GET", function ()
-        it("retrieves list of admins only", function()
+      describe("GET", function()
+
+        local headers = {
+          ["Kong-Admin-Token"] = "letmein-default",
+        }
+
+        local getAdmins = function(path)
           local res = assert(client:send {
             method = "GET",
-            path = "/admins?type=2",
-            headers = {
-              ["Kong-Admin-Token"] = "letmein-default",
-            },
+            path = path,
+            headers = headers
           })
-
           res = assert.res_status(200, res)
-          local json = cjson.decode(res)
+          return cjson.decode(res)
+        end
+
+        it("retrieves list of admins only", function()
+          local json = getAdmins("/admins?type=2")
+
           assert.equal(4, #json.data)
           assert(utils.is_array(json.data))
           assert.same(ngx.null, json.next)
         end)
 
+        it("retrieve admins of the belong workspaces only", function()
+          post(client, "/"..another_ws.name.."/admins", {
+            email = "test1@konghq.com",
+            username = "test123"
+          }, headers, 200)
+
+          local admins = getAdmins("/" .. another_ws.name .. "/admins")
+          assert.equal(1, #admins.data)
+          assert.equal("test1@konghq.com", admins.data[1].email)
+          assert(utils.is_array(admins.data))
+          assert.same(ngx.null, admins.next)
+        end)
+
         it("does not retrieve super admins in other workspaces", function()
-          local headers = { ["Kong-Admin-Token"] = "letmein-default" }
           assert(admins_helpers.create({
             custom_id = "dj",
             username = "dj",
@@ -291,72 +310,35 @@ for _, strategy in helpers.each_strategy() do
             roles = "read-only",
           }, headers, 201)
 
-          local getAdmins = function (path)
-            local res = assert(client:send {
-              method = "GET",
-              path = path,
-              headers = headers
-            })
-            res = assert.res_status(200, res)
-            return cjson.decode(res)
-          end
-
           local admins = getAdmins("/admins")
-          assert.equal(4, #admins.data)
+          assert.equal(5, #admins.data)
           assert(utils.is_array(admins.data))
           assert.same(ngx.null, admins.next)
 
           admins = getAdmins("/" .. another_ws.name .. "/admins")
           assert.equal(1, #admins.data)
-          assert.equal("dj@konghq.com", admins.data[1].email)
+          assert.equal("test1@konghq.com", admins.data[1].email)
           assert(utils.is_array(admins.data))
           assert.same(ngx.null, admins.next)
         end)
 
         it("retrieves list of admins in all workspaces", function()
-          local res = assert(client:send {
-            method = "GET",
-            path = "/admins?all_workspaces=true",
-            headers = {
-              ["Kong-Admin-Token"] = "letmein-default",
-            },
-          })
-
-          res = assert.res_status(200, res)
-          local json = cjson.decode(res)
-          assert.equal(5, #json.data) -- 1 more admin in non-default workspaces
+          local json = getAdmins("/admins?all_workspaces=true")
+          assert.equal(6, #json.data) -- 1 more admin in non-default workspaces
           assert(utils.is_array(json.data))
           assert.same(ngx.null, json.next)
 
           -- omit value
-          res = assert(client:send {
-            method = "GET",
-            path = "/admins?all_workspaces",
-            headers = {
-              ["Kong-Admin-Token"] = "letmein-default",
-            },
-          })
-
-          res = assert.res_status(200, res)
-          json = cjson.decode(res)
+          json = getAdmins("/admins?all_workspaces")
           assert(utils.is_array(json.data))
-          assert.equal(5, #json.data)
+          assert.equal(6, #json.data)
           assert.same(ngx.null, json.next)
         end)
 
         it("retrieves list of admins in all workspaces - invalid params", function()
-          local res = assert(client:send {
-            method = "GET",
-            path = "/admins?all_workspaces=false",
-            headers = {
-              ["Kong-Admin-Token"] = "letmein-default",
-            },
-          })
-
-          res = assert.res_status(200, res)
-          local json = cjson.decode(res)
+          local json = getAdmins("/admins?all_workspaces=false")
           assert(utils.is_array(json.data))
-          assert.equal(4, #json.data)
+          assert.equal(5, #json.data)
           assert.same(ngx.null, json.next)
         end)
       end)

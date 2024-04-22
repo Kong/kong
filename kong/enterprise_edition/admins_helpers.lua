@@ -14,7 +14,8 @@ local cjson = require "cjson"
 local rbac = require "kong.rbac"
 local auth_helpers = require "kong.enterprise_edition.auth_helpers"
 local Errors = require "kong.db.errors"
-
+local workspaces   = require "kong.workspaces"
+local tablex    = require("pl.tablex")
 
 local emails = kong.admin_emails
 
@@ -38,16 +39,17 @@ local function transmogrify(admin)
   if not admin then return nil end
 
   return {
-      id = admin.id,
-      username = admin.username,
-      custom_id = admin.custom_id,
-      email = admin.email,
-      status = admin.status,
-      rbac_token_enabled = admin.rbac_token_enabled,
-      workspaces = admin.workspaces,
-      created_at = admin.created_at,
-      updated_at = admin.updated_at,
-    }
+    id = admin.id,
+    username = admin.username,
+    custom_id = admin.custom_id,
+    email = admin.email,
+    status = admin.status,
+    rbac_token_enabled = admin.rbac_token_enabled,
+    belong_workspace = admin.belong_workspace,
+    workspaces = admin.workspaces,
+    created_at = admin.created_at,
+    updated_at = admin.updated_at,
+  }
 end
 _M.transmogrify = transmogrify
 
@@ -89,6 +91,20 @@ local function sanitize_params(params)
   return sanitized_params
 end
 
+local function retrieve_belong_workspace(rbac_user)
+  local roles = rbac.get_user_roles(kong.db, rbac_user, ngx.null)
+  local default_role
+  for _, role in ipairs(roles or {}) do
+    if role.is_default then
+      default_role = role
+      break
+    end
+  end
+
+  default_role = default_role or { ws_id = ngx.ctx.workspace }
+
+  return workspaces.select_workspace_by_id_with_cache(default_role.ws_id)
+end
 
 function _M.find_all(all_workspaces)
 -- XXXCORE TODO
@@ -105,13 +121,16 @@ function _M.find_all(all_workspaces)
   setmetatable(ws_admins, cjson.empty_array_mt)
   for _, v in ipairs(all_admins) do
     local rbac_user = kong.db.rbac_users:select(v.rbac_user, { workspace = null, show_ws_id = true })
-    v.workspaces = rbac.find_all_ws_for_rbac_user(rbac_user, null, true)
+    v.belong_workspace = retrieve_belong_workspace(rbac_user)
 
-    for _, ws in ipairs(v.workspaces) do
-      if all_workspaces or ws.id == ngx.ctx.workspace then
-        ws_admins[#ws_admins + 1] = transmogrify(v)
-        break
-      end
+    if all_workspaces or v.belong_workspace.id == ngx.ctx.workspace then
+      v.workspaces = rbac.find_all_ws_for_rbac_user(rbac_user, null, true)
+
+      v.workspaces = tablex.map(function(w)
+        return { name = w.name, id = w.id, is_admin_workspace = w.is_admin_workspace }
+      end, v.workspaces)
+
+      ws_admins[#ws_admins + 1] = transmogrify(v)
     end
   end
 
@@ -571,12 +590,12 @@ function _M.find_by_username_or_id(username_or_id, raw, require_workspace_ctx)
   local rbac_user = kong.db.rbac_users:select(admin.rbac_user, { workspace = null, show_ws_id = true })
 
   local wss, _, err = rbac.find_all_ws_for_rbac_user(rbac_user, null, true)
-
-  admin.workspaces = wss
-
   if err then
     return nil, err
   end
+
+  admin.workspaces = wss
+  admin.belong_workspace = retrieve_belong_workspace(rbac_user)
 
   local c_ws_id = ngx.ctx.workspace
 
@@ -584,7 +603,7 @@ function _M.find_by_username_or_id(username_or_id, raw, require_workspace_ctx)
     return raw and admin or transmogrify(admin)
   end
 
-  local ws, err = kong.db.workspaces:select({ id = c_ws_id })
+  local ws, err = workspaces.select_workspace_by_id_with_cache(c_ws_id)
   if not ws then
     return nil, err
   end

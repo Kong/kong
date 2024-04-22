@@ -1,0 +1,4 @@
+message: >-
+  The `/<workspace>/admins` endpoint was used to return admins associated with a workspace based on their assigned RBAC roles. It has been fixed to return admins according to the workspace they belong to.
+type: bugfix
+scope: Admin API
