@@ -633,20 +633,31 @@ describe("kong.clustering.compat", function()
   end)  -- describe
 
   describe("route entities compatible changes", function()
-    _G.kong = { configuration = { router_flavor = "expressions" } }
+    local function reload_modules(flavor)
+      _G.kong = { configuration = { router_flavor = flavor } }
+      _G.kong.db = nil
 
-    package.loaded["kong.db.schema.entities.routes"] = nil
-    package.loaded["kong.db.schema.entities.routes_subschemas"] = nil
-    package.loaded["spec.helpers"] = nil
-    package.loaded["kong.clustering.compat"] = nil
-    package.loaded["kong.db.declarative"] = nil
+      package.loaded["kong.db.schema.entities.routes"] = nil
+      package.loaded["kong.db.schema.entities.routes_subschemas"] = nil
+      package.loaded["spec.helpers"] = nil
+      package.loaded["kong.clustering.compat"] = nil
+      package.loaded["kong.db.declarative"] = nil
 
-    require("kong.db.schema.entities.routes")
-    require("kong.db.schema.entities.routes_subschemas")
+      require("kong.db.schema.entities.routes")
+      require("kong.db.schema.entities.routes_subschemas")
 
-    local compat = require("kong.clustering.compat")
-    local helpers = require ("spec.helpers")
-    local declarative = require("kong.db.declarative")
+      compat = require("kong.clustering.compat")
+      helpers = require ("spec.helpers")
+      declarative = require("kong.db.declarative")
+    end
+
+    lazy_setup(function()
+      reload_modules("expressions")
+    end)
+
+    lazy_teardown(function()
+      reload_modules()
+    end)
 
     it("won't update with mixed mode routes in expressions flavor lower than 3.7", function()
       local _, db = helpers.get_db_utils(nil, {
