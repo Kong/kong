@@ -61,7 +61,7 @@ local compatible_checkers = {
                              'overwritten with default value `form_post`',
                              dp_version, log_suffix)
             has_update = true
-          
+
           elseif config.response_mode == 'fragment.jwt' then
             config.response_mode = 'fragment'
             log_warn_message('configures ' .. plugin.name .. ' plugin with:' ..
@@ -80,6 +80,57 @@ local compatible_checkers = {
                              'overwritten with default value `memory`',
                              dp_version, log_suffix)
             has_update = true
+          end
+        end
+        if plugin.name == 'ai-proxy' then
+          local config = plugin.config
+          if config.model.provider == "azure" then
+            if config.auth.azure_use_managed_identity then
+              config.auth.azure_use_managed_identity = nil
+              has_update = true
+            end
+            if config.auth.azure_client_id then
+              config.auth.azure_client_id = nil
+              has_update = true
+            end
+            if config.auth.azure_client_secret then
+              config.auth.azure_client_secret = nil
+              has_update = true
+            end
+            if config.auth.azure_tenant_id then
+              config.auth.azure_tenant_id = nil
+              has_update = true
+            end
+            log_warn_message('configures ' .. plugin.name .. ' plugin with:' ..
+                             ' auth.azure_use_managed_identity == azure',
+                             ' overwritten with default value `nil`',
+                             dp_version, log_suffix)
+          end
+        end
+        if plugin.name == 'ai-request-transformer' or
+           plugin.name == 'ai-response-transformer' then
+          local config = plugin.config
+          if config.llm.model.provider == "azure" then
+            if config.llm.auth.azure_use_managed_identity then
+              config.llm.auth.azure_use_managed_identity = nil
+              has_update = true
+            end
+            if config.llm.auth.azure_client_id then
+              config.llm.auth.azure_client_id = nil
+              has_update = true
+            end
+            if config.llm.auth.azure_client_secret then
+              config.llm.auth.azure_client_secret = nil
+              has_update = true
+            end
+            if config.llm.auth.azure_tenant_id then
+              config.llm.auth.azure_tenant_id = nil
+              has_update = true
+            end
+            log_warn_message('configures ' .. plugin.name .. ' plugin with:' ..
+                             ' auth.azure_use_managed_identity == azure',
+                             ' overwritten with default value `nil`',
+                             dp_version, log_suffix)
           end
         end
       end

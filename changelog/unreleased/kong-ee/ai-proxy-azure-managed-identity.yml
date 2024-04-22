@@ -1,0 +1,5 @@
+message: |
+  Added support for Managed Identity authentication when using the
+  Azure provider with AI Proxy.
+type: feature
+scope: Plugin

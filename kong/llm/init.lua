@@ -50,6 +50,45 @@ local auth_schema = {
         description = "Specify whether the 'param_name' and 'param_value' options go in a query string, or the POST form/JSON body.",
         required = false,
         one_of = { "query", "body" } }},
+    -- [[ EE
+    {
+      azure_use_managed_identity = {
+        type = "boolean",
+        description =
+        "Set true to use the Azure Cloud Managed Identity (or user-assigned identity) to authenticate with Azure-provider models.",
+        required = false,
+        default = false
+      }
+    },
+    {
+      azure_client_id = {
+        type = "string",
+        description =
+        "If azure_use_managed_identity is set to true, and you need to use a different user-assigned identity for this LLM instance, set the client ID.",
+        required = false,
+        referenceable = true
+      }
+    },
+    {
+      azure_client_secret = {
+        type = "string",
+        description =
+        "If azure_use_managed_identity is set to true, and you need to use a different user-assigned identity for this LLM instance, set the client secret.",
+        required = false,
+        encrypted = true,
+        referenceable = true
+      }
+    },
+    {
+      azure_tenant_id = {
+        type = "string",
+        description =
+        "If azure_use_managed_identity is set to true, and you need to use a different user-assigned identity for this LLM instance, set the tenant ID.",
+        required = false,
+        referenceable = true
+      }
+    },
+    -- EE ]]
   }
 }
 
@@ -125,7 +164,7 @@ local model_schema = {
   type = "record",
   required = true,
   fields = {
-    { provider = { 
+    { provider = {
         type = "string", description = "AI provider request format - Kong translates "
                                     .. "requests to and from the specified backend compatible formats.",
         required = true,
@@ -149,7 +188,7 @@ local logging_schema = {
                    required = true,
                    default = false }},
     { log_payloads = {
-        type = "boolean", 
+        type = "boolean",
         description = "If enabled, will log the request and response body into the Kong log plugin(s) output.",
         required = true, default = false }},
   }
@@ -174,9 +213,17 @@ _M.config_schema = {
   entity_checks = {
     -- these three checks run in a chain, to ensure that all auth params for each respective "set" are specified
     { conditional_at_least_one_of = { if_field = "model.provider",
-                                      if_match = { one_of = { "openai", "azure", "anthropic", "cohere" } },
+                                      if_match = { one_of = { "openai", "anthropic", "cohere" } },
                                       then_at_least_one_of = { "auth.header_name", "auth.param_name" },
                                       then_err = "must set one of %s, and its respective options, when provider is not self-hosted" }},
+    {
+      conditional_at_least_one_of = {
+        if_field = "model.provider",
+        if_match = { one_of = { "azure" } },
+        then_at_least_one_of = { "auth.header_name", "auth.param_name", "auth.azure_use_managed_identity" },
+        then_err = "must set one of %s, and its respective options, when azure provider is set"
+      }
+    },
 
     { mutually_required = { "auth.header_name", "auth.header_value" }, },
     { mutually_required = { "auth.param_name", "auth.param_value", "auth.param_location" }, },
@@ -283,7 +330,7 @@ local function identify_request(request)
       then
         table.insert(formats, "llm/v1/chat")
   end
-  
+
   if request.prompt
     and type(request.prompt) == "string"
       then
@@ -352,7 +399,7 @@ local function count_prompt(content, tokens_factor)
           return nil, "Invalid request format"
       end
     end
-  else 
+  else
     return nil, "Invalid request format"
   end
   return count
@@ -364,7 +411,7 @@ function _M:calculate_cost(query_body, tokens_models, tokens_factor)
 
   -- Check if max_tokens is provided in the request body
   local max_tokens = query_body.max_tokens
-  
+
   if not max_tokens then
     if query_body.model and tokens_models then
       max_tokens = tonumber(tokens_models[query_body.model])
@@ -398,7 +445,7 @@ end
 
 function _M.is_compatible(request, route_type)
   local format, err = identify_request(request)
-  if err then 
+  if err then
     return nil, err
   end
 
@@ -653,7 +700,7 @@ function _M:parse_json_instructions(in_body)
     return nil, nil, nil, "input not table or string"
   end
 
-  return 
+  return
     in_body.headers,
     in_body.body or in_body,
     in_body.status or 200

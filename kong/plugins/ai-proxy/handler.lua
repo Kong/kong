@@ -40,6 +40,39 @@ local function internal_server_error(msg)
   return kong.response.exit(500, ERROR_MSG)
 end
 
+-- [[ EE
+local _KEYBASTION = setmetatable({}, {
+  __mode = "k",
+  __index = function(this_cache, plugin_config)
+
+    ngx.log(ngx.NOTICE, "loading azure sdk for ", plugin_config.model.options.azure_deployment_id, " in ", plugin_config.model.options.azure_instance)
+
+    if plugin_config.model.provider == "azure"
+       and plugin_config.auth.azure_use_managed_identity then
+
+      local azure_client = require("resty.azure"):new({
+        client_id = plugin_config.auth.azure_client_id,
+        client_secret = plugin_config.auth.azure_client_secret,
+        tenant_id = plugin_config.auth.azure_tenant_id,
+        token_scope = "https://cognitiveservices.azure.com/.default",
+        token_version = "v2.0",
+      })
+
+      local _, err = azure_client.authenticate()
+      if err then
+        return internal_server_error("failed to authenticate with Azure OpenAI")
+      end
+
+      -- store our item for the next time we need it
+      this_cache[plugin_config] = azure_client
+      return azure_client
+    else
+      return nil
+    end
+  end,
+})
+-- ]]
+
 
 function _M:header_filter(conf)
   if kong.ctx.shared.skip_response_transformer then
@@ -114,7 +147,7 @@ function _M:body_filter(conf)
     local ai_driver = require("kong.llm.drivers." .. conf.model.provider)
     local route_type = conf.route_type
     local new_response_string, err = ai_driver.from_format(response_body, conf.model, route_type)
-    
+
     if err then
       kong.log.warn("issue when transforming the response body for analytics in the body filter phase, ", err)
     elseif new_response_string then
@@ -126,15 +159,15 @@ function _M:body_filter(conf)
     if (kong.response.get_status() ~= 200) and (not kong.ctx.plugin.ai_parser_error) then
       return
     end
-  
+
     -- (kong.response.get_status() == 200) or (kong.ctx.plugin.ai_parser_error)
-  
+
     -- all errors MUST be checked and returned in header_filter
     -- we should receive a replacement response body from the same thread
 
     local original_request = kong.ctx.plugin.parsed_response
     local deflated_request = original_request
-    
+
     if deflated_request then
       local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
       if is_gzip then
@@ -184,6 +217,26 @@ function _M:access(conf)
     kong.ctx.shared.skip_response_transformer = true
     return bad_request(err)
   end
+
+  -- [[ EE
+  local identity_interface = _KEYBASTION[conf]
+  if identity_interface then
+    kong.service.request.set_header("Authorization", "Bearer " .. identity_interface.credentials.token)
+
+    -- force a refresh if the token has expired
+    ngx.update_time()
+    local now_millis = ngx.now()
+
+    if now_millis > identity_interface.credentials.expireTime then
+      kong.log.notice("refreshing token for ", conf.model.name)
+
+      local _, err = identity_interface.authenticate()
+      if err then
+        return internal_server_error("failed to rotate Azure authentication")
+      end
+    end
+  end
+  -- ]]
 
   if request_table.stream or conf.model.options.response_streaming == "always" then
     kong.ctx.shared.skip_response_transformer = true

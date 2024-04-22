@@ -333,7 +333,7 @@ describe("CP/DP config compat #" .. strategy, function()
         removed = FIELDS[3007000000].mtls_auth,
         validator = function(config)
           local ca_certificate = "00e2341e-0835-4d6b-855d-23c92d232bc4"
-          return config.default_consumer == nil and 
+          return config.default_consumer == nil and
             config.ca_certificates[1] == ca_certificate
         end
       }
@@ -468,7 +468,99 @@ describe("CP/DP config compat #" .. strategy, function()
             config.channel_token_keyset_rotate_period == nil
         end
       },
-
+      {
+        plugin = "ai-proxy",
+        label = "w/ unsupported azure managed identity",
+        pending = false,
+        config = {
+          model = {
+            provider = "azure",
+            options = {
+              azure_instance = "ai-proxy-regression",
+              azure_deployment_id = "kong-gpt-3-5",
+            },
+            name = "kong-gpt-3-5"
+          },
+          auth = {
+            azure_use_managed_identity = true,
+            azure_client_id = "foo",
+            azure_client_secret = "bar",
+            azure_tenant_id = "baz"
+          },
+          route_type = "llm/v1/chat",
+        },
+        status = STATUS.NORMAL,
+        validator = function(config)
+          return config.auth.azure_use_managed_identity == nil and
+            config.auth.azure_client_id == nil and
+            config.auth.azure_client_secret == nil and
+            config.auth.azure_tenant_id == nil
+        end
+      },
+      {
+        plugin = "ai-response-transformer",
+        label = "w/ unsupported azure managed identity",
+        pending = false,
+        config = {
+          prompt = "test",
+          llm = {
+            model = {
+              provider = "azure",
+              options = {
+                azure_instance = "ai-proxy-regression",
+                azure_deployment_id = "kong-gpt-3-5",
+              },
+              name = "kong-gpt-3-5"
+            },
+            auth = {
+              azure_use_managed_identity = true,
+              azure_client_id = "foo",
+              azure_client_secret = "bar",
+              azure_tenant_id = "baz"
+            },
+            route_type = "llm/v1/chat",
+          },
+        },
+        status = STATUS.NORMAL,
+        validator = function(config)
+          return config.llm.auth.azure_use_managed_identity == nil and
+            config.llm.auth.azure_client_id == nil and
+            config.llm.auth.azure_client_secret == nil and
+            config.llm.auth.azure_tenant_id == nil
+        end
+      },
+      {
+        plugin = "ai-request-transformer",
+        label = "w/ unsupported azure managed identity",
+        pending = false,
+        config = {
+          prompt = "test",
+          llm = {
+            model = {
+              provider = "azure",
+              options = {
+                azure_instance = "ai-proxy-regression",
+                azure_deployment_id = "kong-gpt-3-5",
+              },
+              name = "kong-gpt-3-5"
+            },
+            auth = {
+              azure_use_managed_identity = true,
+              azure_client_id = "foo",
+              azure_client_secret = "bar",
+              azure_tenant_id = "baz"
+            },
+            route_type = "llm/v1/chat",
+          },
+        },
+        status = STATUS.NORMAL,
+        validator = function(config)
+          return config.llm.auth.azure_use_managed_identity == nil and
+            config.llm.auth.azure_client_id == nil and
+            config.llm.auth.azure_client_secret == nil and
+            config.llm.auth.azure_tenant_id == nil
+        end
+      },
     }
 
     for _, case in ipairs(CASES) do
