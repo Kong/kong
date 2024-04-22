@@ -93,6 +93,7 @@ local process = require "ngx.process"
 local tablepool = require "tablepool"
 local table_new = require "table.new"
 local utils = require "kong.tools.utils"
+local emmy_debugger = require "kong.tools.emmy_debugger"
 local get_ctx_table = require("resty.core.ctx").get_ctx_table
 local admin_gui = require "kong.admin_gui"
 local wasm = require "kong.runloop.wasm"
@@ -873,6 +874,9 @@ end
 
 
 function Kong.init_worker()
+
+  emmy_debugger.init()
+
   local ctx = ngx.ctx
 
   ctx.KONG_PHASE = PHASES.init_worker

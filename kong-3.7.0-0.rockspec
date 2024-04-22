@@ -303,6 +303,7 @@ build = {
     ["kong.tools.ip"] = "kong/tools/ip.lua",
     ["kong.tools.http"] = "kong/tools/http.lua",
     ["kong.tools.cjson"] = "kong/tools/cjson.lua",
+    ["kong.tools.emmy_debugger"] = "kong/tools/emmy_debugger.lua",
     ["kong.tools.redis.schema"] = "kong/tools/redis/schema.lua",
     ["kong.tools.ssl"] = "kong/tools/ssl.lua",
     ["kong.tools.date"] = "kong/tools/date.lua",
