@@ -94,6 +94,8 @@ local admin_gui = require "kong.admin_gui"
 local wasm = require "kong.runloop.wasm"
 local reports = require "kong.reports"
 local pl_file = require "pl.file"
+local pl_path = require "pl.path"
+local split = utils.split
 local req_dyn_hook = require "kong.dynamic_hook"
 
 
@@ -781,7 +783,80 @@ function Kong.init()
 end
 
 
+local maybe_init_emmy_debugger
+do
+  local debugger = os.getenv("KONG_EMMY_DEBUGGER")
+  local emmy_debugger_host = os.getenv("KONG_EMMY_DEBUGGER_HOST") or "localhost"
+  local emmy_debugger_port = os.getenv("KONG_EMMY_DEBUGGER_PORT") or 9966
+  local emmy_debugger_wait = os.getenv("KONG_EMMY_DEBUGGER_WAIT")
+  local emmy_debugger_source_path = split(os.getenv("KONG_EMMY_DEBUGGER_SOURCE_PATH") or "", ":")
+
+  local function find_source(path)
+    if pl_path.exists(path) then
+      return path
+    end
+
+    for _, source_path in ipairs(emmy_debugger_source_path) do
+      local full_path = pl_path.join(source_path, path)
+      if pl_path.exists(full_path) then
+        return full_path
+      end
+    end
+
+    ngx.log(ngx_ERR, "source file " .. path .. " not found in KONG_EMMY_DEBUGGER_SOURCE_PATH")
+
+    return path
+  end
+
+  maybe_init_emmy_debugger = function()
+    if debugger then
+      if not pl_path.isabs(debugger) then
+        ngx_log(ngx_ERR, "KONG_EMMY_DEBUGGER (" .. debugger .. ") must be an absolute path")
+        return
+      end
+      if not pl_path.exists(debugger) then
+        ngx_log(ngx_ERR, "KONG_EMMY_DEBUGGER (" .. debugger .. ") file not found")
+        return
+      end
+      local ext = pl_path.extension(debugger)
+      if ext ~= ".so" and ext ~= ".dylib" then
+        ngx_log(ngx_ERR, "KONG_EMMY_DEBUGGER (" .. debugger .. ") must be a .so (Linux) or .dylib (macOS) file")
+        return
+      end
+      if worker_id() ~= 0 then
+        ngx_log(ngx_ERR, "KONG_EMMY_DEBUGGER is only supported in the first worker process, suggest setting KONG_NGINX_WORKER_PROCESSES to 1")
+        return
+      end
+
+      ngx_log(ngx_NOTICE, "loading EmmyLua debugger " .. debugger)
+
+      _G.emmy = {
+        fixPath = find_source
+      }
+
+      package.cpath = package.cpath .. ';' .. pl_path.dirname(debugger) .. '/?' .. ext
+      local name = pl_path.basename(debugger):sub(1, -#ext-1)
+
+      local dbg = require(name)
+      dbg.tcpListen(emmy_debugger_host, emmy_debugger_port)
+
+      ngx_log(ngx_NOTICE, "EmmyLua debugger loaded, listening on port ", emmy_debugger_port)
+
+      if emmy_debugger_wait then
+        -- Wait for IDE connection
+        ngx_log(ngx_NOTICE, "waiting for IDE to connect")
+        dbg.waitIDE()
+        ngx_log(ngx_NOTICE, "IDE connected")
+      end
+    end
+  end
+end
+
+
 function Kong.init_worker()
+
+  maybe_init_emmy_debugger()
+
   local ctx = ngx.ctx
 
   ctx.KONG_PHASE = PHASES.init_worker
