@@ -1,0 +1,3 @@
+message: "Dynamic log level over Hybrid mode RPC"
+type: feature
+scope: Clustering
