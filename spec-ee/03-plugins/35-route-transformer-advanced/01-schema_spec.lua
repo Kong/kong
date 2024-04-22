@@ -28,7 +28,7 @@ describe("Plugin: " .. plugin_name .. "(schema)", function()
     ok, err = validate_schema { path = "$(this does not work)" }
     assert.same({
       config = {
-        path = [[value '$(this does not work)' is not in supported format, error:[string "TMP"]:4: ')' expected near 'does']]
+        path = [[value '$(this does not work)' is not in supported format, error:[string "TMP"]:1: ')' expected near 'does']]
       }
     }, err)
     assert.falsy(ok)
@@ -47,7 +47,7 @@ describe("Plugin: " .. plugin_name .. "(schema)", function()
     ok, err = validate_schema { port = "$(this does not work)" }
     assert.same({
       config = {
-        port = [[value '$(this does not work)' is not in supported format, error:[string "TMP"]:4: ')' expected near 'does']]
+        port = [[value '$(this does not work)' is not in supported format, error:[string "TMP"]:1: ')' expected near 'does']]
       }
     }, err)
     assert.falsy(ok)
@@ -66,7 +66,7 @@ describe("Plugin: " .. plugin_name .. "(schema)", function()
     ok, err = validate_schema { host = "$(this does not work)" }
     assert.same({
       config = {
-        host = [[value '$(this does not work)' is not in supported format, error:[string "TMP"]:4: ')' expected near 'does']]
+        host = [[value '$(this does not work)' is not in supported format, error:[string "TMP"]:1: ')' expected near 'does']]
       }
     }, err)
     assert.falsy(ok)
