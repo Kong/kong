@@ -5,6 +5,7 @@ local cjson = require("cjson.safe")
 local fmt = string.format
 local ai_shared = require("kong.llm.drivers.shared")
 local socket_url = require "socket.url"
+local ensure_valid_path = require("kong.tools.utils").ensure_valid_path
 --
 
 -- globals
@@ -227,6 +228,9 @@ function _M.configure_request(conf)
     kong.service.request.set_scheme(parsed_url.scheme)
     kong.service.set_target(parsed_url.host, tonumber(parsed_url.port))
   end
+
+  -- if the path is read from a URL capture, ensure that it is valid
+  parsed_url.path = ensure_valid_path(parsed_url.path)
 
   local auth_header_name = conf.auth and conf.auth.header_name
   local auth_header_value = conf.auth and conf.auth.header_value
