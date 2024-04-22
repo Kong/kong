@@ -23,7 +23,6 @@ local ngx_exit = ngx.exit
 local ngx_time = ngx.time
 local exiting = ngx.worker.exiting
 local pl_tablex_makeset = pl_tablex.makeset
-local table_concat = table.concat
 local cjson_encode = cjson.encode
 local cjson_decode = cjson.decode
 local validate_client_cert = clustering_tls.validate_client_cert
@@ -135,6 +134,10 @@ function _M:_local_call(node_id, method, params)
   end
 
   local cap = utils.parse_method_name(method)
+  if not self.client_capabilities[node_id].set[cap] then
+    return nil, "requested capability does not exist, capability: " ..
+                cap .. ", node_id: " .. node_id
+  end
 
   local s = next(self.clients[node_id])
 

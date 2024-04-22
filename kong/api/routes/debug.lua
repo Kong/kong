@@ -11,6 +11,7 @@ local kong                         = kong
 local pcall                        = pcall
 local type                         = type
 local tostring                     = tostring
+local tonumber                     = tonumber
 
 local get_log_level                = require("resty.kong.log").get_log_level
 
@@ -122,7 +123,8 @@ local routes = {
     end,
     PUT = function(self)
       local new_level = self.params.current_level
-      local timeout = self.params.timeout
+      local timeout = self.params.timeout and
+                      math.ceil(tonumber(self.params.timeout)) or nil
 
       if not new_level then
         return kong.response.exit(400, { message = "Required parameter \"current_level\" is missing.", })
@@ -131,7 +133,7 @@ local routes = {
       local res, err = kong.rpc:call(self.params.node_id,
                                      "kong.debug.log_level.v1.set_log_level",
                                      new_level,
-                                     self.params.timeout)
+                                     timeout)
       if not res then
         return kong.response.exit(500, { message = err, })
       end

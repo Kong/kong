@@ -10,7 +10,7 @@ local tostring = tostring
 
 local function rpc_set_log_level(_node_id, new_log_level, timeout)
   if not constants.LOG_LEVELS[new_log_level] then
-    return nil, "unknown log level: " .. tostring(log_level)
+    return nil, "unknown log level: " .. tostring(new_log_level)
   end
 
   if type(new_log_level) == "string" then
