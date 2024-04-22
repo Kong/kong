@@ -8,5 +8,9 @@
   ],
   "message": "Why can't you divide by zero?",
   "model": "command",
-  "temperature": 0.5
+  "max_tokens": 512,
+  "temperature": 0.5,
+  "truncate": "END",
+  "return_likelihoods": "NONE",
+  "stream": false
 }

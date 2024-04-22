@@ -53,18 +53,18 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                 [5] = 'data: {    "choices": [        {            "delta": {},            "finish_reason": "stop",            "index": 0,            "logprobs": null        }    ],    "created": 1712538905,    "id": "chatcmpl-9BXtBvU8Tsw1U7CarzV71vQEjvYwq",    "model": "gpt-4-0613",    "object": "chat.completion.chunk",    "system_fingerprint": null}',
                 [6] = 'data: [DONE]',
               }
-
+              
               local fmt = string.format
               local pl_file = require "pl.file"
               local json = require("cjson.safe")
-
+              
               ngx.req.read_body()
               local body, err = ngx.req.get_body_data()
               body, err = json.decode(body)
-
+              
               local token = ngx.req.get_headers()["authorization"]
               local token_query = ngx.req.get_uri_args()["apikey"]
-
+              
               if token == "Bearer openai-key" or token_query == "openai-key" or body.apikey == "openai-key" then
                 ngx.req.read_body()
                 local body, err = ngx.req.get_body_data()
@@ -75,11 +75,10 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                   ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/bad_request.json"))
                 else
                   -- GOOD RESPONSE
-
+                  
                   ngx.status = 200
                   ngx.header["Content-Type"] = "text/event-stream"
-                  ngx.header["Transfer-Encoding"] = "chunked"
-
+                  
                   for i, EVENT in ipairs(_EVENT_CHUNKS) do
                     ngx.print(fmt("%s\n\n", EVENT))
                   end
@@ -133,10 +132,76 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
                   ngx.status = 200
                   ngx.header["Content-Type"] = "text/event-stream"
-                  ngx.header["Transfer-Encoding"] = "chunked"
 
                   for i, EVENT in ipairs(_EVENT_CHUNKS) do
                     ngx.print(fmt("%s\n\n", EVENT))
+                  end
+                end
+              else
+                ngx.status = 401
+                ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/unauthorized.json"))
+              end
+            }
+          }
+
+          location = "/anthropic/llm/v1/chat/good" {
+            content_by_lua_block {
+              local _EVENT_CHUNKS = {
+                [1] = 'event: message_start',
+                [2] = 'event: content_block_start',
+                [3] = 'event: ping',
+                [4] = 'event: content_block_delta',
+                [5] = 'event: content_block_delta',
+                [6] = 'event: content_block_delta',
+                [7] = 'event: content_block_delta',
+                [8] = 'event: content_block_delta',
+                [9] = 'event: content_block_stop',
+                [10] = 'event: message_delta',
+                [11] = 'event: message_stop',
+              }
+
+              local _DATA_CHUNKS = {
+                [1] = 'data: {"type":"message_start","message":{"id":"msg_013NVLwA2ypoPDJAxqC3G7wg","type":"message","role":"assistant","model":"claude-2.1","stop_sequence":null,"usage":{"input_tokens":15,"output_tokens":1},"content":[],"stop_reason":null}          }',
+                [2] = 'data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}    }',
+                [3] = 'data: {"type": "ping"}',
+                [4] = 'data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"1"}       }',
+                [5] = 'data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" +"}               }',
+                [6] = 'data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" 1"}               }',
+                [7] = 'data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" ="}               }',
+                [8] = 'data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" 2"}               }',
+                [9] = 'data: {"type":"content_block_stop","index":0           }',
+                [10] = '{"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"output_tokens":9}}',
+                [11] = '{"type":"message_stop"}',
+              }
+
+              local fmt = string.format
+              local pl_file = require "pl.file"
+              local json = require("cjson.safe")
+
+              ngx.req.read_body()
+              local body, err = ngx.req.get_body_data()
+              body, err = json.decode(body)
+
+              local token = ngx.req.get_headers()["api-key"]
+              local token_query = ngx.req.get_uri_args()["apikey"]
+
+              if token == "anthropic-key" or token_query == "anthropic-key" or body.apikey == "anthropic-key" then
+                ngx.req.read_body()
+                local body, err = ngx.req.get_body_data()
+                body, err = json.decode(body)
+                
+                if err or (body.messages == ngx.null) then
+                  ngx.status = 400
+                  ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/bad_request.json"))
+                else
+                  -- GOOD RESPONSE
+                  
+                  ngx.status = 200
+                  ngx.header["Content-Type"] = "text/event-stream"
+                  
+                  for i, EVENT in ipairs(_EVENT_CHUNKS) do
+                    ngx.print(fmt("%s\n", EVENT))
+                    ngx.print(fmt("%s\n\n", _DATA_CHUNKS[i]))
                   end
                 end
               else
@@ -262,6 +327,43 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       }
       --
 
+      -- 200 chat anthropic
+      local anthropic_chat_good = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http" },
+        strip_path = true,
+        paths = { "/anthropic/llm/v1/chat/good" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = anthropic_chat_good.id },
+        config = {
+          route_type = "llm/v1/chat",
+          auth = {
+            header_name = "api-key",
+            header_value = "anthropic-key",
+          },
+          model = {
+            name = "claude-2.1",
+            provider = "anthropic",
+            options = {
+              max_tokens = 256,
+              temperature = 1.0,
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/anthropic/llm/v1/chat/good",
+              anthropic_version = "2023-06-01",
+            },
+          },
+        },
+      }
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = anthropic_chat_good.id },
+        config = {
+          path = "/dev/stdout",
+        },
+      }
+      --
+
       -- 400 chat openai
       local openai_chat_bad = assert(bp.routes:insert {
         service = empty_service,
@@ -333,8 +435,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           port = helpers.get_proxy_port(),
         })
         if not ok then
-          ngx.log(ngx.ERR, "connection failed: ", err)
-          return
+          assert.is_nil(err)
         end
 
         -- Then send using `request`, supplying a path and `Host` header instead of a
@@ -348,8 +449,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             },
         })
         if not res then
-            ngx.log(ngx.ERR, "request failed: ", err)
-            return
+          assert.is_nil(err)
         end
 
         local reader = res.body_reader
@@ -362,8 +462,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           -- receive next chunk
           local buffer, err = reader(buffer_size)
           if err then
-              ngx.log(ngx.ERR, err)
-              break
+            assert.is_falsy(err and err ~= "closed")
           end
 
           if buffer then
@@ -399,8 +498,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           port = helpers.get_proxy_port(),
         })
         if not ok then
-          ngx.log(ngx.ERR, "connection failed: ", err)
-          return
+          assert.is_nil(err)
         end
 
         -- Then send using `request`, supplying a path and `Host` header instead of a
@@ -414,8 +512,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             },
         })
         if not res then
-            ngx.log(ngx.ERR, "request failed: ", err)
-            return
+          assert.is_nil(err)
         end
 
         local reader = res.body_reader
@@ -428,8 +525,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           -- receive next chunk
           local buffer, err = reader(buffer_size)
           if err then
-              ngx.log(ngx.ERR, err)
-              break
+            assert.is_falsy(err and err ~= "closed")
           end
 
           if buffer then
@@ -451,8 +547,70 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           end
         until not buffer
         
-        assert.equal(#events, 16)
+        assert.equal(#events, 17)
         assert.equal(buf:tostring(), "1 + 1 = 2. This is the most basic example of addition.")
+      end)
+
+      it("good stream request anthropic", function()
+        local httpc = http.new()
+
+        local ok, err, _ = httpc:connect({
+          scheme = "http",
+          host = helpers.mock_upstream_host,
+          port = helpers.get_proxy_port(),
+        })
+        if not ok then
+          assert.is_nil(err)
+        end
+
+        -- Then send using `request`, supplying a path and `Host` header instead of a
+        -- full URI.
+        local res, err = httpc:request({
+            path = "/anthropic/llm/v1/chat/good",
+            body = pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/requests/good-stream.json"),
+            headers = {
+              ["content-type"] = "application/json",
+              ["accept"] = "application/json",
+            },
+        })
+        if not res then
+          assert.is_nil(err)
+        end
+
+        local reader = res.body_reader
+        local buffer_size = 35536
+        local events = {}
+        local buf = require("string.buffer").new()
+
+        -- extract event
+        repeat
+          -- receive next chunk
+          local buffer, err = reader(buffer_size)
+          if err then
+            assert.is_falsy(err and err ~= "closed")
+          end
+
+          if buffer then
+            -- we need to rip each message from this chunk
+            for s in buffer:gmatch("[^\r\n]+") do
+              local s_copy = s
+              s_copy = string.sub(s_copy,7)
+              s_copy = cjson.decode(s_copy)
+
+              buf:put(s_copy
+                    and s_copy.choices
+                    and s_copy.choices
+                    and s_copy.choices[1]
+                    and s_copy.choices[1].delta
+                    and s_copy.choices[1].delta.content
+                    or "")
+              table.insert(events, s)
+            end
+          end
+        until not buffer
+        
+        assert.equal(#events, 7)
+        assert.equal(buf:tostring(), "1 + 1 = 2")
       end)
 
       it("bad request is returned to the client not-streamed", function()
@@ -464,8 +622,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           port = helpers.get_proxy_port(),
         })
         if not ok then
-          ngx.log(ngx.ERR, "connection failed: ", err)
-          return
+          assert.is_nil(err)
         end
 
         -- Then send using `request`, supplying a path and `Host` header instead of a
@@ -479,8 +636,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             },
         })
         if not res then
-            ngx.log(ngx.ERR, "request failed: ", err)
-            return
+          assert.is_nil(err)
         end
 
         local reader = res.body_reader
@@ -492,8 +648,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           -- receive next chunk
           local buffer, err = reader(buffer_size)
           if err then
-              ngx.log(ngx.ERR, err)
-              break
+            assert.is_nil(err)
           end
 
           if buffer then

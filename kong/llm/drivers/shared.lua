@@ -8,6 +8,16 @@ local os        = os
 local parse_url = require("socket.url").parse
 --
 
+-- static
+local str_find   = string.find
+local str_sub    = string.sub
+local tbl_insert = table.insert
+
+local function str_ltrim(s) -- remove leading whitespace from string.
+  return (s:gsub("^%s*", ""))
+end
+--
+
 local log_entry_keys = {
   TOKENS_CONTAINER = "usage",
   META_CONTAINER = "meta",
@@ -106,7 +116,7 @@ _M.clear_response_headers = {
 local function handle_stream_event(event_table, model_info, route_type)
   if event_table.done then
     -- return analytics table
-    return nil, nil, {
+    return "[DONE]", nil, {
       prompt_tokens = event_table.prompt_eval_count or 0,
       completion_tokens = event_table.eval_count or 0,
     }
@@ -143,6 +153,57 @@ local function handle_stream_event(event_table, model_info, route_type)
   end
 end
 
+local function complex_split(str, delimiter)
+  local result = {}
+  local from  = 1
+  local delim_from, delim_to = string.find(str, delimiter, from)
+  while delim_from do
+    table.insert( result, string.sub(str, from , delim_from-1))
+    from  = delim_to + 1
+    delim_from, delim_to = string.find(str, delimiter, from)
+  end
+  table.insert( result, string.sub(str, from))
+  return result
+end
+
+function _M.frame_to_events(frame)
+  local events = {}
+
+  -- todo check if it's raw json and
+  -- just return the split up data frame
+  if string.sub(str_ltrim(frame), 1, 1) == "{" then
+    for event in frame:gmatch("[^\r\n]+") do
+      events[#events + 1] = {
+        data = event,
+      }
+    end
+  else
+    local event_lines = complex_split(frame, "\n")
+    local struct = { event = nil, id = nil, data = nil }
+
+    for _, dat in ipairs(event_lines) do
+      if #dat < 1 then
+        events[#events + 1] = struct
+        struct = { event = nil, id = nil, data = nil }
+      end
+
+      local s1, _ = str_find(dat, ":") -- find where the cut point is
+
+      if s1 and s1 ~= 1 then
+        local field = str_sub(dat, 1, s1-1) -- returns "data " from data: hello world
+        local value = str_ltrim(str_sub(dat, s1+1)) -- returns "hello world" from data: hello world
+
+        -- for now not checking if the value is already been set
+        if     field == "event" then struct.event = value
+        elseif field == "id"    then struct.id = value
+        elseif field == "data"  then struct.data = value
+        end -- if
+      end -- if
+    end
+  end
+  
+  return events
+end
 
 function _M.to_ollama(request_table, model)
   local input = {}
@@ -234,8 +295,13 @@ function _M.from_ollama(response_string, model_info, route_type)
 
     end
   end
+  
+  if output and output ~= "[DONE]" then
+    output, err = cjson.encode(output)
+  end
 
-  return output and cjson.encode(output) or nil, nil, analytics
+  -- err maybe be nil from successful decode above
+  return output, err, analytics
 end
 
 function _M.pre_request(conf, request_table)
@@ -394,6 +460,90 @@ function _M.http_request(url, body, method, headers, http_opts, buffered)
 
     return res, nil, nil
   end
+end
+
+local function get_token_text(event_t)
+  -- chat
+  return
+    event_t and
+    event_t.choices and
+    #event_t.choices > 0 and
+    event_t.choices[1].delta and
+    event_t.choices[1].delta.content
+
+    or
+
+  -- completions
+    event_t and
+    event_t.choices and
+    #event_t.choices > 0 and
+    event_t.choices[1].text
+
+    or ""
+end
+
+-- Function to count the number of words in a string
+local function count_words(str)
+  local count = 0
+  for word in str:gmatch("%S+") do
+      count = count + 1
+  end
+  return count
+end
+
+-- Function to count the number of words or tokens based on the content type
+local function count_prompt(content, tokens_factor)
+  local count = 0
+
+  if type(content) == "string" then
+    count = count_words(content) * tokens_factor
+  elseif type(content) == "table" then
+    for _, item in ipairs(content) do
+      if type(item) == "string" then
+        count = count + (count_words(item) * tokens_factor)
+      elseif type(item) == "number" then
+        count = count + 1
+      elseif type(item) == "table" then
+        for _2, item2 in ipairs(item) do
+          if type(item2) == "number" then
+            count = count + 1
+          else
+            return nil, "Invalid request format"
+          end
+        end
+      else
+          return nil, "Invalid request format"
+      end
+    end
+  else 
+    return nil, "Invalid request format"
+  end
+  return count
+end
+
+function _M.calculate_cost(query_body, tokens_models, tokens_factor)
+  local query_cost = 0
+  local err
+
+  if query_body.messages then
+    -- Calculate the cost based on the content type
+    for _, message in ipairs(query_body.messages) do
+        query_cost = query_cost + (count_words(message.content) * tokens_factor)
+    end
+  elseif query_body.prompt then
+    -- Calculate the cost based on the content type
+    query_cost, err = count_prompt(query_body.prompt, tokens_factor)
+    if err then
+        return nil, err
+    end
+  else
+    return nil, "No messages or prompt in query"
+  end
+
+  -- Round the total cost quantified
+  query_cost = math.floor(query_cost + 0.5)
+
+  return query_cost
 end
 
 return _M

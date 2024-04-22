@@ -4,6 +4,7 @@ local pl_replace = require("pl.stringx").replace
 local cjson = require("cjson.safe")
 local fmt = string.format
 local llm = require("kong.llm")
+local ai_shared = require("kong.llm.drivers.shared")
 
 local SAMPLE_LLM_V1_CHAT = {
   messages = {
@@ -366,12 +367,20 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
           -- what we do is first put the SAME request message from the user, through the converter, for this provider/format
           it("converts to provider request format correctly", function()
+            -- load the real provider frame from file
             local real_stream_frame = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/real-stream-frames/%s/%s.txt", config.provider, pl_replace(format_name, "/", "-")))
-            local real_transformed_frame, err = driver.from_format(real_stream_frame, config, "stream/" .. format_name)
-
+            
+            -- use the shared function to produce an SSE format object
+            local real_transformed_frame, err = ai_shared.frame_to_events(real_stream_frame)
             assert.is_nil(err)
 
-            real_transformed_frame = cjson.decode(real_transformed_frame)
+            -- transform the SSE frame into OpenAI format
+            real_transformed_frame, err = driver.from_format(real_transformed_frame[1], config, "stream/" .. format_name)
+            assert.is_nil(err)
+            real_transformed_frame, err = cjson.decode(real_transformed_frame)
+            assert.is_nil(err)
+
+            -- check it's what we expeced
             assert.same(expected_stream_choices[format_name], real_transformed_frame.choices)
           end)
 

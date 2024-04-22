@@ -6,5 +6,6 @@
   "p": 0.75,
   "k": 5,
   "return_likelihoods": "NONE",
-  "truncate": "END"
+  "truncate": "END",
+  "stream": false
 }
