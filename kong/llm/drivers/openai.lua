@@ -12,44 +12,45 @@ local ensure_valid_path = require("kong.tools.utils").ensure_valid_path
 local DRIVER_NAME = "openai"
 --
 
+-- merge_defaults takes the model options, and sets any defaults defined,
+-- if the caller hasn't explicitly set them
+--
+-- we have already checked that "max_tokens" isn't overridden when it
+-- is not allowed to do so.
+local _MERGE_PROPERTIES = {
+  [1] = "max_tokens",
+  [2] = "temperature",
+  [3] = "top_p",
+  [4] = "top_k",
+}
+
+local function merge_defaults(request, options)
+  for i, v in ipairs(_MERGE_PROPERTIES) do
+    request[v] = request[v] or (options and options[v]) or nil
+  end
+
+  return request
+end
+
 local function handle_stream_event(event_t)
   return event_t.data
 end
 
 local transformers_to = {
-  ["llm/v1/chat"] = function(request_table, model, max_tokens, temperature, top_p)
-    -- if user passed a prompt as a chat, transform it to a chat message
-    if request_table.prompt then
-      request_table.messages = {
-        {
-          role = "user",
-          content = request_table.prompt,
-        }
-      }
-    end
-  
-    local this = {
-      model = model,
-      messages = request_table.messages,
-      max_tokens = max_tokens,
-      temperature = temperature,
-      top_p = top_p,
-      stream = request_table.stream or false,
-    }
+  ["llm/v1/chat"] = function(request_table, model_info, route_type)
+    request_table = merge_defaults(request_table, model_info.options)
+    request_table.model = request_table.model or model_info.name
+    request_table.stream = request_table.stream or false  -- explicitly set this
 
-    return this, "application/json", nil
+    return request_table, "application/json", nil
   end,
 
-  ["llm/v1/completions"] = function(request_table, model, max_tokens, temperature, top_p)
-    local this = {
-      prompt = request_table.prompt,
-      model = model,
-      max_tokens = max_tokens,
-      temperature = temperature,
-      stream = request_table.stream or false,
-    }
+  ["llm/v1/completions"] = function(request_table, model_info, route_type)
+    request_table = merge_defaults(request_table, model_info.options)
+    request_table.model = model_info.name
+    request_table.stream = request_table.stream or false -- explicitly set this
 
-    return this, "application/json", nil
+    return request_table, "application/json", nil
   end,
 }
 
@@ -119,10 +120,7 @@ function _M.to_format(request_table, model_info, route_type)
   local ok, response_object, content_type, err = pcall(
     transformers_to[route_type],
     request_table,
-    model_info.name,
-    (model_info.options and model_info.options.max_tokens),
-    (model_info.options and model_info.options.temperature),
-    (model_info.options and model_info.options.top_p)
+    model_info
   )
   if err or (not ok) then
     return nil, nil, fmt("error transforming to %s://%s", model_info.provider, route_type)
@@ -199,10 +197,7 @@ function _M.post_request(conf)
 end
 
 function _M.pre_request(conf, body)
-  -- check for user trying to bring own model
-  if body and body.model then
-    return nil, "cannot use own model for this instance"
-  end
+  kong.service.request.set_header("Accept-Encoding", "gzip, identity") -- tell server not to send brotli
 
   return true, nil
 end
@@ -211,26 +206,26 @@ end
 function _M.configure_request(conf)
   local parsed_url
   
-  if conf.route_type ~= "preserve" then
-    if (conf.model.options and conf.model.options.upstream_url) then
-      parsed_url = socket_url.parse(conf.model.options.upstream_url)
-    else
-      local path = ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
-      if not path then
-        return nil, fmt("operation %s is not supported for openai provider", conf.route_type)
-      end
-      
-      parsed_url = socket_url.parse(ai_shared.upstream_url_format[DRIVER_NAME])
-      parsed_url.path = path
+  if (conf.model.options and conf.model.options.upstream_url) then
+    parsed_url = socket_url.parse(conf.model.options.upstream_url)
+  else
+    local path = conf.model.options
+             and conf.model.options.upstream_path
+             or ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
+    if not path then
+      return nil, fmt("operation %s is not supported for openai provider", conf.route_type)
     end
-
-    kong.service.request.set_path(parsed_url.path)
-    kong.service.request.set_scheme(parsed_url.scheme)
-    kong.service.set_target(parsed_url.host, tonumber(parsed_url.port))
+    
+    parsed_url = socket_url.parse(ai_shared.upstream_url_format[DRIVER_NAME])
+    parsed_url.path = path
   end
-
+  
   -- if the path is read from a URL capture, ensure that it is valid
   parsed_url.path = ensure_valid_path(parsed_url.path)
+
+  kong.service.request.set_path(parsed_url.path)
+  kong.service.request.set_scheme(parsed_url.scheme)
+  kong.service.set_target(parsed_url.host, (tonumber(parsed_url.port) or 443))
 
   local auth_header_name = conf.auth and conf.auth.header_name
   local auth_header_value = conf.auth and conf.auth.header_value

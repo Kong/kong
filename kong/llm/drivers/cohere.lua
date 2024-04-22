@@ -453,26 +453,24 @@ end
 -- returns err or nil
 function _M.configure_request(conf)
   local parsed_url
-  
-  if conf.route_type ~= "preserve" then
-    if conf.model.options.upstream_url then
-      parsed_url = socket_url.parse(conf.model.options.upstream_url)
-    else
-      parsed_url = socket_url.parse(ai_shared.upstream_url_format[DRIVER_NAME])
-      parsed_url.path = ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
 
-      if not parsed_url.path then
-        return false, fmt("operation %s is not supported for cohere provider", conf.route_type)
-      end
+  if conf.model.options.upstream_url then
+    parsed_url = socket_url.parse(conf.model.options.upstream_url)
+  else
+    parsed_url = socket_url.parse(ai_shared.upstream_url_format[DRIVER_NAME])
+    parsed_url.path = ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
+
+    if not parsed_url.path then
+      return false, fmt("operation %s is not supported for cohere provider", conf.route_type)
     end
-    
-    kong.service.request.set_path(parsed_url.path)
-    kong.service.request.set_scheme(parsed_url.scheme)
-    kong.service.set_target(parsed_url.host, tonumber(parsed_url.port))
   end
-
+  
   -- if the path is read from a URL capture, ensure that it is valid
   parsed_url.path = ensure_valid_path(parsed_url.path)
+
+  kong.service.request.set_path(parsed_url.path)
+  kong.service.request.set_scheme(parsed_url.scheme)
+  kong.service.set_target(parsed_url.host, (tonumber(parsed_url.port) or 443))
 
   local auth_header_name = conf.auth and conf.auth.header_name
   local auth_header_value = conf.auth and conf.auth.header_value
