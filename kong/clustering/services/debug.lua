@@ -19,6 +19,11 @@ local function rpc_set_log_level(_node_id, new_log_level, timeout)
 
   local timeout = math.ceil(timeout or constants.DYN_LOG_LEVEL_DEFAULT_TIMEOUT)
 
+  local _, _, original_level = resty_log.get_log_level()
+  if new_log_level == original_level then
+    timeout = 0
+  end
+
   -- this function should not fail, if it throws exception, let RPC framework handle it
   resty_log.set_log_level(new_log_level, timeout)
 
