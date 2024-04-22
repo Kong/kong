@@ -11,6 +11,7 @@ local utils = require("kong.tools.utils")
 local type = type
 local tonumber = tonumber
 local split = utils.split
+local floor = math.floor
 
 local MAJOR_MINOR_PATTERN = "^(%d+)%.(%d+)%.%d+"
 
@@ -36,7 +37,6 @@ function _M.extract_major_minor(version)
   return major, minor
 end
 
-
 ---@param s string
 ---@return integer
 function _M.string_to_number(s)
@@ -47,8 +47,34 @@ function _M.string_to_number(s)
     num = num + base * (tonumber(v, 10) or 0)
     base = base / 1000
   end
-
   return num
 end
 
+---@param n integer
+---@return string
+function _M.number_to_string(n)
+  -- This function takes a version number in the form of a single integer
+  -- and converts it to a string in the format "major.minor.patch.build".
+
+  -- The major version number is the quotient of n divided by 1 billion (1e9).
+  -- We use the floor function to get the largest integer less than or equal to the quotient.
+  local major = floor(n / 1e9)
+
+  -- The minor version number is the remainder of n divided by 1 billion (1e9),
+  -- divided by 1 million (1e6). We use the floor function to get the largest integer
+  -- less than or equal to the quotient.
+  local minor = floor((n % 1e9) / 1e6)
+
+  -- The patch version number is the remainder of n divided by 1 million (1e6),
+  -- divided by 1 thousand (1e3). We use the floor function to get the largest integer
+  -- less than or equal to the quotient.
+  local patch = floor((n % 1e6) / 1e3)
+
+  -- The build number is the remainder of n divided by 1 thousand (1e3).
+  local build = n % 1e3
+
+  -- We concatenate the major, minor, patch, and build numbers with periods
+  -- in between to get the string representation of the version number.
+  return major .. "." .. minor .. "." .. patch .. "." .. build
+end
 return _M
