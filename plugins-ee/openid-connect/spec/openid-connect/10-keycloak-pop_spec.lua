@@ -154,7 +154,9 @@ end
 for _, strategy in helpers.all_strategies() do
 for _, auth_method in ipairs({ "bearer", "introspection" }) do
 for _, use_nonce in ipairs({ true, false }) do
-  describe("proof of possession (#dpop) strategy: #" .. strategy .. " auth_method: #" .. auth_method .. " use_nonce: " .. tostring(use_nonce), function()
+
+for _, verification_type in ipairs({ "strict", "optional" }) do
+  describe("proof of possession (#dpop) strategy: #" .. strategy .. " auth_method: #" .. auth_method .. " use_nonce: " .. tostring(use_nonce) .. "strcit: " .. verification_type, function()
     local upstream
     local clients
 
@@ -240,7 +242,7 @@ for _, use_nonce in ipairs({ true, false }) do
           client_secret              = {
             KONG_CLIENT_SECRET, DPOP_CLIENT_SECRET,
           },
-          proof_of_possession_dpop = "strict",
+          proof_of_possession_dpop = verification_type,
           auth_methods = { auth_method },
           expose_error_code = true,
           dpop_use_nonce = use_nonce,
@@ -259,11 +261,32 @@ for _, use_nonce in ipairs({ true, false }) do
       helpers.stop_kong()
     end)
 
-    it("should reject request with no proof", function()
+    it("should reject when multiple authentication method is used", function()
+      local res = assert(clients.dpop_client:rp_request("/", {
+        headers = {
+          Authorization = {
+            "Bearer " .. clients.dpop_client:get_access_token(),
+            "DPoP " .. clients.dpop_client:get_access_token(),
+          }
+        }
+      }))
+      assert.same(400, res.status)
+
+      -- due to limitation of Nginx this is not supported yet
+      -- assert.match("invalid_request", res.headers["WWW-Authenticate"])
+      -- assert.match("Multiple methods used to include access token", res.headers["WWW-Authenticate"])
+    end)
+
+    it("should reject request with no proof if strict", function()
       local res = assert(clients.non_dpop_client:rp_request("/"))
-      assert.same(401, res.status)
-      assert.match("invalid_dpop_proof", res.headers["WWW-Authenticate"])
-      assert.logfile().has.line("not a DPoP token")
+
+      if verification_type == "strict" then
+        assert.same(401, res.status)
+        assert.match("invalid_dpop_proof", res.headers["WWW-Authenticate"])
+        assert.logfile().has.line("not a DPoP token")
+      else
+        assert.same(200, res.status)
+      end
     end)
 
     it("should reject request with an unmatched key", function()
@@ -271,6 +294,17 @@ for _, use_nonce in ipairs({ true, false }) do
       assert.same(401, res.status)
       assert.match("invalid_dpop_proof", res.headers["WWW-Authenticate"])
       assert.logfile().has.line("The JWK in the DPoP proof does not match the token")
+    end)
+
+    it("#should reject a downgrade attack", function()
+      local res = assert(clients.dpop_client:rp_request("/", {
+        headers = {
+          ["Authorization"] = "Bearer " .. clients.dpop_client:get_access_token(),
+        }
+      }))
+      assert.same(401, res.status)
+      assert.match("invalid_dpop_proof", res.headers["WWW-Authenticate"])
+      assert.logfile().has.line("DPoP token (with cnf.jkt claim) not marked as DPoP", true)
     end)
 
     it("should accept request with correct clients", function()
@@ -428,6 +462,7 @@ for _, use_nonce in ipairs({ true, false }) do
       end)
     end
   end)
+end
 end
 
 for _, mtls_plugin  in ipairs({"tls-handshake-modifier", "mtls-auth"}) do

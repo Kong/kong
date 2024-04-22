@@ -189,76 +189,78 @@ describe(PLUGIN_NAME .. ": (#schema)", function()
           end)
         end
 
-        describe("other checks", function ()
-          lazy_setup(function ()
-            helpers.test_conf.loaded_plugins["mtls-auth"] = true
-            helpers.test_conf.loaded_plugins["tls-handshake-modifier"] = true
+        for _, pop_type in ipairs({ "mtls", "dpop" }) do
+          describe("other checks", function ()
+            lazy_setup(function ()
+              helpers.test_conf.loaded_plugins["mtls-auth"] = true
+              helpers.test_conf.loaded_plugins["tls-handshake-modifier"] = true
+            end)
+
+            lazy_teardown(function ()
+              helpers.test_conf.loaded_plugins["mtls-auth"] = false
+              helpers.test_conf.loaded_plugins["tls-handshake-modifier"] = false
+            end)
+
+            it("auth_methods check", function()
+              assert(validate({
+                issuer = "https://accounts.google.test/.well-known/openid-configuration",
+                proof_of_possession_auth_methods_validation = auth_methods_validation,
+                ["proof_of_possession_" .. pop_type] = pop_mtls,
+                auth_methods = {
+                  "bearer",
+                  "introspection",
+                  "session",
+                },
+              }))
+
+              assert(validate({
+                issuer = "https://accounts.google.test/.well-known/openid-configuration",
+                proof_of_possession_auth_methods_validation = auth_methods_validation,
+                ["proof_of_possession_" .. pop_type] = pop_mtls,
+                auth_methods = {
+                  "bearer",
+                },
+              }))
+
+              local ok, err = validate({
+                issuer = "https://accounts.google.test/.well-known/openid-configuration",
+                proof_of_possession_auth_methods_validation = auth_methods_validation,
+                ["proof_of_possession_" .. pop_type] = pop_mtls,
+                auth_methods = {
+                  "client_credentials",
+                  "bearer",
+                },
+              })
+
+              if auth_methods_validation and (pop_mtls == "strict" or pop_mtls == "optional") then
+                assert.is_falsy(ok)
+
+                assert.same({
+                  config = "mTLS-proof-of-possession or Demonstrating Proof-of-Possession (DPoP) only supports 'bearer', 'introspection', 'session' auth methods when proof_of_possession_auth_methods_validation is set to true."
+                }, err)
+              else
+                assert.is_truthy(ok)
+              end
+
+              ok, err = validate({
+                issuer = "https://accounts.google.test/.well-known/openid-configuration",
+                proof_of_possession_auth_methods_validation = auth_methods_validation,
+                ["proof_of_possession_" .. pop_type] = pop_mtls,
+              })
+
+              if auth_methods_validation and (pop_mtls == "strict" or pop_mtls == "optional") then
+                assert.is_falsy(ok)
+
+                assert.same({
+                  config = "mTLS-proof-of-possession or Demonstrating Proof-of-Possession (DPoP) only supports 'bearer', 'introspection', 'session' auth methods when proof_of_possession_auth_methods_validation is set to true."
+                }, err)
+              else
+                assert.is_truthy(ok)
+              end
+
+            end)
           end)
-
-          lazy_teardown(function ()
-            helpers.test_conf.loaded_plugins["mtls-auth"] = false
-            helpers.test_conf.loaded_plugins["tls-handshake-modifier"] = false
-          end)
-
-          it("auth_methods check", function()
-            assert(validate({
-              issuer = "https://accounts.google.test/.well-known/openid-configuration",
-              proof_of_possession_auth_methods_validation = auth_methods_validation,
-              proof_of_possession_mtls = pop_mtls,
-              auth_methods = {
-                "bearer",
-                "introspection",
-                "session",
-              },
-            }))
-
-            assert(validate({
-              issuer = "https://accounts.google.test/.well-known/openid-configuration",
-              proof_of_possession_auth_methods_validation = auth_methods_validation,
-              proof_of_possession_mtls = pop_mtls,
-              auth_methods = {
-                "bearer",
-              },
-            }))
-
-            local ok, err = validate({
-              issuer = "https://accounts.google.test/.well-known/openid-configuration",
-              proof_of_possession_auth_methods_validation = auth_methods_validation,
-              proof_of_possession_mtls = pop_mtls,
-              auth_methods = {
-                "client_credentials",
-                "bearer",
-              },
-            })
-
-            if auth_methods_validation and (pop_mtls == "strict" or pop_mtls == "optional") then
-              assert.is_falsy(ok)
-
-              assert.same({
-                config = "mTLS-proof-of-possession or Demonstrating Proof-of-Possession (DPoP) only supports 'bearer', 'introspection', 'session' auth methods when proof_of_possession_auth_methods_validation is set to true."
-              }, err)
-            else
-              assert.is_truthy(ok)
-            end
-
-            ok, err = validate({
-              issuer = "https://accounts.google.test/.well-known/openid-configuration",
-              proof_of_possession_auth_methods_validation = auth_methods_validation,
-              proof_of_possession_mtls = pop_mtls,
-            })
-
-            if auth_methods_validation and (pop_mtls == "strict" or pop_mtls == "optional") then
-              assert.is_falsy(ok)
-
-              assert.same({
-                config = "mTLS-proof-of-possession or Demonstrating Proof-of-Possession (DPoP) only supports 'bearer', 'introspection', 'session' auth methods when proof_of_possession_auth_methods_validation is set to true."
-              }, err)
-            else
-              assert.is_truthy(ok)
-            end
-
-          end)
-        end)
+        end
       end)
     end
   end

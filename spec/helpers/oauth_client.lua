@@ -95,6 +95,7 @@ end
 
 -- to use a public client, set client_secret to false explicitly
 function _M.new(opts)
+  opts = opts or {}
   opts.http_client = opts.http_client or resty_http.new()
   opts.issuer = opts.issuer or "http://localhost:8080/realms/master"
   opts.client_uri = opts.client_uri or "http://localhost"

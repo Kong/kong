@@ -50,7 +50,6 @@ local DEFAULT_PORTS = {
 }
 
 
--- TODO: add unit test for this
 -- https://www.rfc-editor.org/rfc/rfc3986#section-6.1
 -- those are considered equivalent:
 -- http://example.com
@@ -93,7 +92,6 @@ end
 local timestamp_buf = buffer.new(NONCE_IAT_BYTES)
 
 
--- TODO: add unit test for this
 local function encode_timestamp(iat)
   timestamp_buf:reset()
 
@@ -336,4 +334,10 @@ end
 
 return {
   verify_client_dpop = verify_client_dpop,
+  -- belows are barely for unit tests. Do not use them outside this module
+  __TEST__ = {
+    normalize_dpop_url = normalize_dpop_url,
+    encode_timestamp = encode_timestamp,
+    decode_timestamp = decode_timestamp,
+  }
 }
