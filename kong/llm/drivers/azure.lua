@@ -53,7 +53,8 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
   end
 
   -- azure has non-standard URL format
-  local url = fmt(
+  local url = (conf.model.options and conf.model.options.upstream_url)
+  or fmt(
     "%s%s?api-version=%s",
     ai_shared.upstream_url_format[DRIVER_NAME]:format(conf.model.options.azure_instance, conf.model.options.azure_deployment_id),
         conf.model.options
@@ -99,7 +100,7 @@ function _M.configure_request(conf)
   local parsed_url
 
   if conf.model.options.upstream_url then
-    parsed_url = socket_url.parse(conf.model.options.upstream_url)
+    parsed_url = socket_url.parse("http://127.0.0.1:8080/jack/t")
   else
     -- azure has non-standard URL format
     local url = fmt(
@@ -118,7 +119,6 @@ function _M.configure_request(conf)
   kong.service.request.set_path(parsed_url.path)
   kong.service.request.set_scheme(parsed_url.scheme)
   kong.service.set_target(parsed_url.host, (tonumber(parsed_url.port) or 443))
-
 
   local auth_header_name = conf.auth and conf.auth.header_name
   local auth_header_value = conf.auth and conf.auth.header_value

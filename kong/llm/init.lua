@@ -3,11 +3,7 @@ local typedefs  = require("kong.db.schema.typedefs")
 local fmt       = string.format
 local cjson     = require("cjson.safe")
 local re_match  = ngx.re.match
-local buf       = require("string.buffer")
-local lower     = string.lower
-local meta      = require "kong.meta"
 local ai_shared = require("kong.llm.drivers.shared")
-local strip     = require("kong.tools.utils").strip
 --
 
 local _M = {}
@@ -230,15 +226,6 @@ _M.config_schema = {
   },
 }
 
-local streaming_skip_headers = {
-  ["connection"]        = true,
-  ["content-type"]      = true,
-  ["keep-alive"]        = true,
-  ["set-cookie"]        = true,
-  ["transfer-encoding"] = true,
-  ["via"]               = true,
-}
-
 local formats_compatible = {
   ["llm/v1/chat"] = {
     ["llm/v1/chat"] = true,
@@ -247,20 +234,6 @@ local formats_compatible = {
     ["llm/v1/completions"] = true,
   },
 }
-
-local function bad_request(msg)
-  ngx.log(ngx.WARN, msg)
-  ngx.status = 400
-  ngx.header["Content-Type"] = "application/json"
-  ngx.say(cjson.encode({ error = { message = msg } }))
-end
-
-local function internal_server_error(msg)
-  ngx.log(ngx.ERR, msg)
-  ngx.status = 500
-  ngx.header["Content-Type"] = "application/json"
-  ngx.say(cjson.encode({ error = { message = msg } }))
-end
 
 local function identify_request(request)
   -- primitive request format determination

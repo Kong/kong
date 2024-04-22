@@ -2,7 +2,6 @@ local _M = {}
 
 -- imports
 local ai_shared = require("kong.llm.drivers.shared")
-local ai_module = require("kong.llm")
 local llm = require("kong.llm")
 local cjson = require("cjson.safe")
 local kong_utils = require("kong.tools.gzip")
@@ -78,7 +77,7 @@ local function handle_streaming_frame(conf)
     -- because we have already 200 OK'd the client by now
 
     if (not finished) and (is_gzip) then
-      event = kong_utils.inflate_gzip(chunk)
+      chunk = kong_utils.inflate_gzip(chunk)
     end
 
     local events = ai_shared.frame_to_events(chunk)
@@ -86,7 +85,9 @@ local function handle_streaming_frame(conf)
     for _, event in ipairs(events) do
       local formatted, _, metadata = ai_driver.from_format(event, conf.model, "stream/" .. conf.route_type)
 
-      local event_t, token_t, err
+      local event_t = nil
+      local token_t = nil
+      local err
 
       if formatted then  -- only stream relevant frames back to the user
         if conf.logging and conf.logging.log_payloads and (formatted ~= "[DONE]") then
@@ -140,7 +141,6 @@ local function handle_streaming_frame(conf)
   end
 
   local response_frame = framebuffer:get()
-  framebuffer = nil
   if (not finished) and (is_gzip) then
     response_frame = kong_utils.deflate_gzip(response_frame)
   end
@@ -233,6 +233,8 @@ function _M:body_filter(conf)
     return
   end
 
+  local route_type = conf.route_type
+
   if kong.ctx.shared.skip_response_transformer and (route_type ~= "preserve") then
     local response_body
     if kong.ctx.shared.parsed_response then
@@ -251,7 +253,6 @@ function _M:body_filter(conf)
     end
 
     local ai_driver = require("kong.llm.drivers." .. conf.model.provider)
-    local route_type = conf.route_type
     local new_response_string, err = ai_driver.from_format(response_body, conf.model, route_type)
     
     if err then

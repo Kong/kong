@@ -206,8 +206,6 @@ local function handle_stream_event(event_t, model_info, route_type)
       -- last few frames / iterations
       if event_data
       and event_data.usage then
-        local meta = event_data.usage
-
         return nil, nil, {
           prompt_tokens = nil,
           completion_tokens = event_data.meta.usage
