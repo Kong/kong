@@ -1,6 +1,7 @@
 local bit = require("bit")
 local buffer = require("string.buffer")
 local tb_nkeys = require("table.nkeys")
+local tb_clear = require("table.clear")
 local uuid = require("resty.jit-uuid")
 local lrucache = require("resty.lrucache")
 local ipmatcher = require("resty.ipmatcher")
@@ -11,7 +12,6 @@ local type = type
 local assert = assert
 local pairs = pairs
 local ipairs = ipairs
-local tostring = tostring
 local tb_insert = table.insert
 local fmt = string.format
 local byte = string.byte
@@ -669,32 +669,32 @@ end
 local uuid_generator = assert(uuid.factory_v5('7f145bf9-0dce-4f91-98eb-debbce4b9f6b'))
 
 
-local function sort_by_regex_or_length(path)
-  return is_regex_magic(path) or #path
-end
+-- group array-like table t to regex and length groups
+local group_by_map = {}
+local path_groups = {}
+local function group_by_regex_or_length(t)
+  tb_clear(group_by_map)
+  tb_clear(path_groups)
+  local idx = 0
+  for _, v in ipairs(t) do
+    local k = is_regex_magic(v) and 0 or #v
+    if group_by_map[k] then
+      tb_insert(path_groups[group_by_map[k]], v)
 
-
--- group array-like table t by the function f, returning a table mapping from
--- the result of invoking f on one of the elements to the actual elements.
-local function group_by(t, f)
-  local result = {}
-  for _, value in ipairs(t) do
-    local key = f(value)
-    if result[key] then
-      tb_insert(result[key], value)
     else
-      result[key] = { value }
+      idx = idx + 1
+      group_by_map[k] = idx
+      path_groups[idx] = { v }
     end
   end
-  return result
+  return path_groups, idx
 end
+
 
 -- split routes into multiple routes,
 -- one for each prefix length and one for all regular expressions
 local function split_routes_and_services_by_path(routes_and_services)
   local count = #routes_and_services
-  local append_count = 1
-
   for i = 1, count do
     local route_and_service = routes_and_services[i]
     local original_route = route_and_service.route
@@ -706,42 +706,30 @@ local function split_routes_and_services_by_path(routes_and_services)
       goto continue
     end
 
-    -- make sure that route_and_service contains
-    -- only the two expected entries, route and service
+    local grouped_paths, grouped_paths_count = group_by_regex_or_length(original_paths)
+    if grouped_paths_count == 1 then
+      goto continue
+    end
+
+    -- make sure that route_and_service contains only
+    -- the two expected entries, route and service
     local nkeys = tb_nkeys(route_and_service)
     assert(nkeys == 1 or nkeys == 2)
 
     local original_route_id = original_route.id
     local original_service = route_and_service.service
 
-    -- `grouped_paths` is a hash table, like {true={'regex'}, 2={'/a'}, 3={'/aa'},}
-    local grouped_paths = group_by(original_paths, sort_by_regex_or_length)
-
-    local is_first = true
-    for key, paths in pairs(grouped_paths) do
+    for j = 1, grouped_paths_count do
       local route = shallow_copy(original_route)
-
       -- create a new route from the original route
       route.original_route = original_route
-      route.paths = paths
-      route.id = uuid_generator(original_route_id .. "#" .. tostring(key))
-
-      local cloned_route_and_service = {
+      route.paths = grouped_paths[j]
+      route.id = uuid_generator(original_route_id .. "#" .. j)
+      routes_and_services[j == 1 and i or (count + j - 1)] = {
         route = route,
         service = original_service,
       }
-
-      if is_first then
-        -- the first one will replace the original route
-        routes_and_services[i] = cloned_route_and_service
-        is_first = false
-
-      else
-        -- the others will append to the original routes array
-        routes_and_services[count + append_count] = cloned_route_and_service
-        append_count = append_count + 1
-      end
-    end -- for pairs(grouped_paths)
+    end
 
     ::continue::
   end   -- for routes_and_services
@@ -768,4 +756,3 @@ return {
 
   split_routes_and_services_by_path = split_routes_and_services_by_path,
 }
-
