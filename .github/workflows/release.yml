@@ -133,7 +133,7 @@ jobs:
     - name: Cache Git
       id: cache-git
       if: (matrix.package == 'rpm' || matrix.image == 'debian:10') && matrix.image != ''
-      uses: actions/cache@e12d46a63a90f2fae62d114769bbf2a179198b5c # v3, DO NOT BUMP, v4 BREAKS ON CENTOS7 OR AMAZONLINUX2
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v3, DO NOT BUMP, v4 BREAKS ON CENTOS7 OR AMAZONLINUX2
       with:
         path: /usr/local/git
         key: ${{ matrix.label }}-git-2.41.0
@@ -194,7 +194,7 @@ jobs:
     - name: Cache Packages
       id: cache-deps
       if: env.GHA_CACHE == 'true'
-      uses: actions/cache@e12d46a63a90f2fae62d114769bbf2a179198b5c # v3, DO NOT BUMP, v4 BREAKS ON CENTOS7 OR AMAZONLINUX2
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v3, DO NOT BUMP, v4 BREAKS ON CENTOS7 OR AMAZONLINUX2
       with:
         path: bazel-bin/pkg
         key: ${{ steps.cache-key.outputs.cache-key }}
