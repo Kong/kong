@@ -89,7 +89,7 @@ jobs:
           git checkout -b "autodocs-${{ steps.kong-branch.outputs.name }}"
 
       - name: Commit autodoc changes
-        uses: stefanzweifel/git-auto-commit-action@8756aa072ef5b4a080af5dc8fef36c5d586e521d # v5.0.0
+        uses: stefanzweifel/git-auto-commit-action@8621497c8c39c72f3e2a999a26b4ca1b5058a842 # v5.0.1
         with:
           repository: "./docs.konghq.com"
           commit_message: "Autodocs update"
