@@ -1,0 +1,3 @@
+message: |
+  Added support for debugging with EmmyLuaDebugger
+type: feature
