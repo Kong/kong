@@ -529,13 +529,22 @@ function OICHandler.access(_, conf)
 
           if dpop_token then
             -- special handling of ambiguous authentication
-            if bearer_token then -- TODO: cover this case with tests
+            if bearer_token then
+              -- Due to the limitation of Nginx, this is unreachable code
+              -- as the Nginx core logic will reject at the first place
+              -- https://github.com/nginx/nginx/blob/d8a849ae3c99ee5ca82c9a06074761e937dac6d6/src/http/ngx_http_request.c#L152
               return kong.response.exit(400, nil, {
                 -- TODO: should this be part of response.lua?
                 ["WWW-Authenticate"] = DPOP_MULTI_AUTH_METHODS_USED,
               })
             end
 
+
+            -- dpop token is a special type of bearer token
+            -- we refer to it as bearer token in the code
+            -- and handle it with the same logic as bearer token
+            -- except that we do dpop verification for it when enabled
+            -- we use the is_dpop_token flag for later verification
             bearer_token = dpop_token
             is_dpop_token = true
           end

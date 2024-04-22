@@ -7,7 +7,6 @@
 
 local oic = require "kong.openid-connect"
 local jwa = require "kong.openid-connect.jwa"
-local jwks = require "kong.openid-connect.jwks"
 local mtls_fixtures = require "spec-ee.fixtures.mtls"
 local dpop_fixtures = require "spec-ee.fixtures.dpop"
 
@@ -306,20 +305,20 @@ describe("Token tests", function ()
     end)
   end)
 
-  describe("Proof of Possession #dpop mode - verify_client_mtls()", function()
+  describe("Proof of Possession #dpop mode - verify_client_dpop()", function()
     local options
     local logger
     local log_record
     local log_match
     local old_kong = _G.kong
 
-    local access_token_claims = get_claims(dpop_fixtures.CERT_ACCESS_TOKEN)
-    local unbound_access_token_claims = get_claims(dpop_fixtures.NO_CERT_ACCESS_TOKEN)
-    local wrong_access_token_claims = get_claims(dpop_fixtures.WRONG_CERT_ACCESS_TOKEN)
+    local access_token_claims = get_claims(dpop_fixtures.KEY_ACCESS_TOKEN)
+    local unbound_access_token_claims = get_claims(dpop_fixtures.NO_KEY_ACCESS_TOKEN)
+    local wrong_access_token_claims = get_claims(dpop_fixtures.WRONG_KEY_ACCESS_TOKEN)
 
     local opaque_token = "test_opaque"
     local opaque_ath = hash_access_token(opaque_token)
-    local ath = hash_access_token(dpop_fixtures.CERT_ACCESS_TOKEN)
+    local ath = hash_access_token(dpop_fixtures.KEY_ACCESS_TOKEN)
 
     local dpop_req_info = {
       method = "GET",
@@ -370,17 +369,17 @@ describe("Token tests", function ()
       dpop_req_info.dpop_header = assert(sign_dpop_header(dpop_req_info, nil, dpop_fixtures.CLIENT_KEY, dpop_fixtures.CLIENT_KEY_PUBLIC, ath))
       t = initialize_oic_and_token(options)
 
-      local ok, err_typ, err_msg = t:verify_client_dpop(dpop_fixtures.CERT_ACCESS_TOKEN, access_token_claims, true, dpop_req_info, options)
+      local ok, err_typ, err_msg = t:verify_client_dpop(dpop_fixtures.KEY_ACCESS_TOKEN, access_token_claims, true, dpop_req_info, options)
       assert.is_nil(err_msg)
       assert.is_nil(err_typ)
       assert.is_truthy(ok)
     end)
 
-    it("should return true when the token is bound to the right certificate", function()
+    it("should return true when the token is bound to the right key", function()
       dpop_req_info.dpop_header = assert(sign_dpop_header(dpop_req_info, nil, dpop_fixtures.CLIENT_KEY, dpop_fixtures.CLIENT_KEY_PUBLIC, ath))
       t = initialize_oic_and_token(options)
 
-      local ok, err_typ, err_msg = t:verify_client_dpop(dpop_fixtures.CERT_ACCESS_TOKEN, access_token_claims, true, dpop_req_info, options)
+      local ok, err_typ, err_msg = t:verify_client_dpop(dpop_fixtures.KEY_ACCESS_TOKEN, access_token_claims, true, dpop_req_info, options)
       assert.is_nil(err_msg)
       assert.is_nil(err_typ)
       assert.is_truthy(ok)
@@ -393,35 +392,35 @@ describe("Token tests", function ()
       }, nil, dpop_fixtures.CLIENT_KEY, dpop_fixtures.CLIENT_KEY_PUBLIC, ath))
       t = initialize_oic_and_token(options)
 
-      local ok, err_typ, err_msg = t:verify_client_dpop(dpop_fixtures.CERT_ACCESS_TOKEN, access_token_claims, true, dpop_req_info, options)
+      local ok, err_typ, err_msg = t:verify_client_dpop(dpop_fixtures.KEY_ACCESS_TOKEN, access_token_claims, true, dpop_req_info, options)
       assert.is_falsy(ok)
       log_match("DPoP proof does not match the request")
       assert.is_same("invalid_dpop_proof", err_typ)
       assert.is_same("Unable to validate the DPoP proof", err_msg)
     end)
 
-    it("should return err when the token is not bound to any certificate", function()
+    it("should return err when the token is not bound to any key", function()
       t = initialize_oic_and_token(options)
 
-      local ok, err_typ, err_msg = t:verify_client_dpop(dpop_fixtures.NO_CERT_ACCESS_TOKEN, unbound_access_token_claims, true, dpop_req_info, options)
+      local ok, err_typ, err_msg = t:verify_client_dpop(dpop_fixtures.NO_KEY_ACCESS_TOKEN, unbound_access_token_claims, true, dpop_req_info, options)
       assert.is_falsy(ok)
       log_match("there should be one and only one DPoP header")
       assert.is_same("invalid_dpop_proof", err_typ)
       assert.is_same("Unable to validate the DPoP proof", err_msg)
     end)
 
-    it("should return err when the token is bound to the wrong certificate", function()
+    it("should return err when the token is bound to the wrong key", function()
       dpop_req_info.dpop_header = assert(sign_dpop_header(dpop_req_info, nil, dpop_fixtures.CLIENT_KEY, dpop_fixtures.CLIENT_KEY_PUBLIC, ath))
       t = initialize_oic_and_token(options)
 
-      local ok, err_typ, err_msg = t:verify_client_dpop(dpop_fixtures.WRONG_CERT_ACCESS_TOKEN, wrong_access_token_claims, true, dpop_req_info, options)
+      local ok, err_typ, err_msg = t:verify_client_dpop(dpop_fixtures.WRONG_KEY_ACCESS_TOKEN, wrong_access_token_claims, true, dpop_req_info, options)
       log_match("DPoP proof does not match the access token")
       assert.is_same("invalid_dpop_proof", err_typ)
       assert.is_same("Unable to validate the DPoP proof", err_msg)
       assert.is_falsy(ok)
     end)
 
-    it("should return true when introspection data is bound to the right certificate", function()
+    it("should return true when introspection data is bound to the right key", function()
       dpop_req_info.dpop_header = assert(sign_dpop_header(dpop_req_info, nil, dpop_fixtures.CLIENT_KEY, dpop_fixtures.CLIENT_KEY_PUBLIC, opaque_ath))
       t = initialize_oic_and_token(options)
 
@@ -431,7 +430,7 @@ describe("Token tests", function ()
       assert.is_truthy(ok)
     end)
 
-    it("should return err when introspection data is not bound to any certificate", function()
+    it("should return err when introspection data is not bound to any key", function()
       dpop_req_info.dpop_header = assert(sign_dpop_header(dpop_req_info, nil, dpop_fixtures.CLIENT_KEY, dpop_fixtures.CLIENT_KEY_PUBLIC, opaque_ath))
       t = initialize_oic_and_token(options)
 
@@ -442,7 +441,7 @@ describe("Token tests", function ()
       assert.is_falsy(ok)
     end)
 
-    it("should return err when introspection data is bound to the wrong certificate", function()
+    it("should return err when introspection data is bound to the wrong key", function()
       dpop_req_info.dpop_header = assert(sign_dpop_header(dpop_req_info, nil, dpop_fixtures.CLIENT_KEY, dpop_fixtures.CLIENT_KEY_PUBLIC, opaque_ath))
       t = initialize_oic_and_token(options)
 
