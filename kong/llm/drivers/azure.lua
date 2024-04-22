@@ -111,13 +111,14 @@ function _M.configure_request(conf)
     )
     parsed_url = socket_url.parse(url)
   end
+  
+  -- if the path is read from a URL capture, ensure that it is valid
+  parsed_url.path = ensure_valid_path(parsed_url.path)
 
   kong.service.request.set_path(parsed_url.path)
   kong.service.request.set_scheme(parsed_url.scheme)
-  kong.service.set_target(parsed_url.host, tonumber(parsed_url.port))
+  kong.service.set_target(parsed_url.host, (tonumber(parsed_url.port) or 443))
 
-  -- if the path is read from a URL capture, ensure that it is valid
-  parsed_url.path = ensure_valid_path(parsed_url.path)
 
   local auth_header_name = conf.auth and conf.auth.header_name
   local auth_header_value = conf.auth and conf.auth.header_value

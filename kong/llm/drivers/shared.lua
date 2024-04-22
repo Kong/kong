@@ -6,12 +6,15 @@ local http      = require("resty.http")
 local fmt       = string.format
 local os        = os
 local parse_url = require("socket.url").parse
+local utils     = require("kong.tools.utils")
 --
 
 -- static
-local str_find   = string.find
-local str_sub    = string.sub
-local tbl_insert = table.insert
+local str_find     = string.find
+local str_sub      = string.sub
+local tbl_insert   = table.insert
+local string_match = string.match
+local split        = utils.split
 
 local function str_ltrim(s) -- remove leading whitespace from string.
   return (s:gsub("^%s*", ""))
@@ -226,10 +229,10 @@ function _M.to_ollama(request_table, model)
   if model.options then
     input.options = {}
 
-    if model.options.max_tokens then input.options.num_predict = model.options.max_tokens end
-    if model.options.temperature then input.options.temperature = model.options.temperature end
-    if model.options.top_p then input.options.top_p = model.options.top_p end
-    if model.options.top_k then input.options.top_k = model.options.top_k end
+    input.options.num_predict = request_table.max_tokens or model.options.max_tokens
+    input.options.temperature = request_table.temperature or model.options.temperature
+    input.options.top_p = request_table.top_p or model.options.top_p
+    input.options.top_k = request_table.top_k or model.options.top_k
   end
 
   return input, "application/json", nil
@@ -304,14 +307,94 @@ function _M.from_ollama(response_string, model_info, route_type)
   return output, err, analytics
 end
 
+function _M.conf_from_request(kong_request, source, key)
+  if source == "uri_captures" then
+    return kong_request.get_uri_captures().named[key]
+  elseif source == "headers" then
+    return kong_request.get_header(key)
+  elseif source == "query_params" then
+    return kong_request.get_query_arg(key)
+  else
+    return nil, "source '" .. source .. "' is not supported"
+  end
+end
+
+function _M.conf_from_request(kong_request, source, key)
+  if source == "uri_captures" then
+    return kong_request.get_uri_captures().named[key]
+  elseif source == "headers" then
+    return kong_request.get_header(key)
+  elseif source == "query_params" then
+    return kong_request.get_query_arg(key)
+  else
+    return nil, "source '" .. source .. "' is not supported"
+  end
+end
+
+function _M.resolve_plugin_conf(kong_request, conf)
+  local err
+  local conf_m = utils.cycle_aware_deep_copy(conf)
+
+  -- handle model name
+  local model_m = string_match(conf_m.model.name or "", '%$%((.-)%)')
+  if model_m then
+    local splitted = split(model_m, '.')
+    if #splitted ~= 2 then
+      return nil, "cannot parse expression for field 'model.name'"
+    end
+
+    -- find the request parameter, with the configured name
+    model_m, err = _M.conf_from_request(kong_request, splitted[1], splitted[2])
+    if err then
+      return nil, err
+    end
+    if not model_m then
+      return nil, "'" .. splitted[1] .. "', key '" .. splitted[2] .. "' was not provided"
+    end
+
+    -- replace the value
+    conf_m.model.name = model_m
+  end
+
+  -- handle all other options
+  for k, v in pairs(conf.model.options or {}) do
+    local prop_m = string_match(v or "", '%$%((.-)%)')
+    if prop_m then
+      local splitted = split(prop_m, '.')
+      if #splitted ~= 2 then
+        return nil, "cannot parse expression for field '" .. v .. "'"
+      end
+
+      -- find the request parameter, with the configured name
+      prop_m, err = _M.conf_from_request(kong_request, splitted[1], splitted[2])
+      if err then
+        return nil, err
+      end
+      if not prop_m then
+        return nil, splitted[1] .. " key " .. splitted[2] .. " was not provided"
+      end
+
+      -- replace the value
+      conf_m.model.options[k] = prop_m
+    end
+  end
+
+  return conf_m
+end
+
 function _M.pre_request(conf, request_table)
   -- process form/json body auth information
   local auth_param_name = conf.auth and conf.auth.param_name
   local auth_param_value = conf.auth and conf.auth.param_value
   local auth_param_location = conf.auth and conf.auth.param_location
   
-  if auth_param_name and auth_param_value and auth_param_location == "body" then
+  if auth_param_name and auth_param_value and auth_param_location == "body" and request_table then
     request_table[auth_param_name] = auth_param_value
+  end
+
+  if conf.logging and conf.logging.log_statistics then
+    kong.log.set_serialize_value(log_entry_keys.REQUEST_MODEL, conf.model.name)
+    kong.log.set_serialize_value(log_entry_keys.PROVIDER_NAME, conf.model.provider)
   end
 
   -- if enabled AND request type is compatible, capture the input for analytics

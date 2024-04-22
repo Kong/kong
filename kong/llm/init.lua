@@ -66,20 +66,17 @@ local model_options_schema = {
         type = "number",
         description = "Defines the matching temperature, if using chat or completion models.",
         required = false,
-        between = { 0.0, 5.0 },
-        default = 1.0 }},
+        between = { 0.0, 5.0 }}},
     { top_p = {
         type = "number",
         description = "Defines the top-p probability mass, if supported.",
         required = false,
-        between = { 0, 1 },
-        default = 1.0 }},
+        between = { 0, 1 }}},
     { top_k = {
         type = "integer",
         description = "Defines the top-k most likely tokens, if supported.",
         required = false,
-        between = { 0, 500 },
-        default = 0 }},
+        between = { 0, 500 }}},
     { anthropic_version = {
         type = "string",
         description = "Defines the schema/API version, if using Anthropic provider.",
@@ -110,6 +107,11 @@ local model_options_schema = {
     { upstream_url = typedefs.url {
         description = "Manually specify or override the full URL to the AI operation endpoints, "
                    .. "when calling (self-)hosted models, or for running via a private endpoint.",
+        required = false }},
+    { upstream_path = {
+        description = "Manually specify or override the AI operation path, "
+                   .. "used when e.g. using the 'preserve' route_type.",
+        type = "string",
         required = false }},
   }
 }
@@ -157,9 +159,10 @@ _M.config_schema = {
   fields = {
     { route_type = {
         type = "string",
-        description = "The model's operation implementation, for this provider.",
+        description = "The model's operation implementation, for this provider. " ..
+                      "Set to `preserve` to pass through without transformation.",
         required = true,
-        one_of = { "llm/v1/chat", "llm/v1/completions" } }},
+        one_of = { "llm/v1/chat", "llm/v1/completions", "preserve" } }},
     { auth = auth_schema },
     { model = model_schema },
     { logging = logging_schema },
@@ -183,12 +186,6 @@ _M.config_schema = {
                                       if_match = { one_of = { "mistral" } },
                                       then_at_least_one_of = { "model.options.mistral_format" },
                                       then_err = "must set %s for mistral provider" }},
-
-    { conditional_at_least_one_of = { if_field = "model.provider",
-                                      if_match = {  },
-                                      then_at_least_one_of = { "model.name" },
-                                      then_err = "Must set a model name. Refer to https://docs.konghq.com/hub/kong-inc/ai-proxy/ " ..
-                                                 "for supported models." }},
 
     { conditional_at_least_one_of = { if_field = "model.provider",
                                       if_match = { one_of = { "anthropic" } },
@@ -292,6 +289,10 @@ local function identify_request(request)
 end
 
 function _M.is_compatible(request, route_type)
+  if route_type == "preserve" then
+    return true
+  end
+
   local format, err = identify_request(request)
   if err then 
     return nil, err
