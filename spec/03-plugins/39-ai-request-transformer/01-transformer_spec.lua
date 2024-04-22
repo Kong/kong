@@ -64,7 +64,7 @@ local FORMATS = {
       options = {
         max_tokens = 512,
         temperature = 0.5,
-        upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORT .. "/chat/azure"
+        upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORT .. "/chat/azure",
       },
     },
     auth = {

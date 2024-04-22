@@ -12,7 +12,6 @@ local utils     = require("kong.tools.utils")
 -- static
 local str_find     = string.find
 local str_sub      = string.sub
-local tbl_insert   = table.insert
 local string_match = string.match
 local split        = utils.split
 
@@ -543,26 +542,6 @@ function _M.http_request(url, body, method, headers, http_opts, buffered)
 
     return res, nil, nil
   end
-end
-
-local function get_token_text(event_t)
-  -- chat
-  return
-    event_t and
-    event_t.choices and
-    #event_t.choices > 0 and
-    event_t.choices[1].delta and
-    event_t.choices[1].delta.content
-
-    or
-
-  -- completions
-    event_t and
-    event_t.choices and
-    #event_t.choices > 0 and
-    event_t.choices[1].text
-
-    or ""
 end
 
 -- Function to count the number of words in a string
