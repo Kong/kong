@@ -24,7 +24,7 @@ local parse_mime_type = require "kong.tools.mime_type".parse_mime_type
 local meta = require "kong.meta"
 local constants = require "kong.plugins.oas-validation.constants"
 local cookie = require "resty.cookie"
-local jsonschema_rs = require "resty.jsonschema-rs.jsonschema-rs"
+local jsonschema_rs = require "resty.jsonschema-rs"
 
 local kong = kong
 local ngx = ngx
