@@ -1,0 +1,26 @@
+From e1fca089680e76896744ec2f25219dd705fe21da Mon Sep 17 00:00:00 2001
+From: Wangchong Zhou <wangchong@konghq.com>
+Date: Wed, 17 Apr 2024 18:00:10 +0800
+Subject: [PATCH 1/4] bugfix: throw error if T_END found in the middle of input
+
+---
+ lua_cjson.c    | 4 ++++
+ tests/test.lua | 5 +++++
+ 2 files changed, 9 insertions(+)
+
+diff --git a/bundle/lua-cjson-2.1.0.13/lua_cjson.c b/bundle/lua-cjson-2.1.0.13/lua_cjson.c
+index 363466c..7343f32 100644
+--- a/bundle/lua-cjson-2.1.0.13/lua_cjson.c
++++ b/bundle/lua-cjson-2.1.0.13/lua_cjson.c
+@@ -1437,6 +1437,10 @@ static int json_decode(lua_State *l)
+     if (token.type != T_END)
+         json_throw_parse_error(l, &json, "the end", &token);
+
++    /* Make sure T_END (\x00) doesn't occur at middle of input */
++    if (json.data + json_len > json.ptr)
++        json_throw_parse_error(l, &json, "EOF", &token);
++
+     strbuf_free(json.tmp);
+
+     return 1;
+
