@@ -1518,7 +1518,7 @@ local function execute_toip(qname, port, dnsCacheOnly, try_list, force_no_sync)
     -- our SRV entry might still contain a hostname, so recurse, with found port number
     local srvport = (entry.port ~= 0 and entry.port) or port -- discard port if it is 0
     add_status_to_try_list(try_list, "dereferencing SRV")
-    return execute_toip(entry.target, srvport, dnsCacheOnly, try_list)
+    return execute_toip(entry.target, srvport, dnsCacheOnly, try_list, force_no_sync)
   end
 
   -- must be A or AAAA
