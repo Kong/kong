@@ -276,7 +276,11 @@ function _M.post_request(conf, response_object)
   -- analytics and logging
   if conf.logging and conf.logging.log_statistics then
     local provider_name = conf.model.provider
+
     local plugin_name = conf.__key__:match('plugins:(.-):')
+    if not plugin_name or plugin_name == "" then
+      return nil, "no plugin name is being passed by the plugin"
+    end
 
     -- check if we already have analytics in this context
     local request_analytics = kong.ctx.shared.analytics
