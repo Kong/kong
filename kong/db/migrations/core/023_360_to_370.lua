@@ -9,6 +9,8 @@ return {
         "payload"    JSON                       NOT NULL
       );
 
+      CREATE INDEX IF NOT EXISTS "clustering_rpc_requests_node_id_idx" ON "clustering_rpc_requests" ("node_id");
+
       DO $$
       BEGIN
       ALTER TABLE IF EXISTS ONLY "clustering_data_planes" ADD "rpc_capabilities" TEXT[];
