@@ -563,7 +563,8 @@ local function load(path, custom_conf, opts)
     -- set it as such in kong_defaults, because it can only be used if wasm is
     -- _also_ enabled. We inject it here if the user has not opted to set it
     -- themselves.
-    add_wasm_directive("nginx_http_proxy_wasm_lua_resolver", "on")
+    -- TODO: as a temporary compatibility fix, we are forcing it to 'off'.
+    add_wasm_directive("nginx_http_proxy_wasm_lua_resolver", "off")
 
     -- wasm vm properties are inherited from previously set directives
     if conf.lua_ssl_trusted_certificate and #conf.lua_ssl_trusted_certificate >= 1 then
