@@ -1,8 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require("cjson.safe")
 
-local cp_status_port = helpers.get_available_port()
-
 for _, strategy in helpers.each_strategy() do
   describe("Hybrid Mode RPC #" .. strategy, function()
 

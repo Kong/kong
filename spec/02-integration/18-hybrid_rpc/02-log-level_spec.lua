@@ -1,8 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require("cjson.safe")
 
-local cp_status_port = helpers.get_available_port()
-
 
 local function obtain_dp_node_id()
   local dp_node_id
