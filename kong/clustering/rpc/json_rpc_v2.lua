@@ -30,7 +30,7 @@ function _M.new_error(id, code, msg)
   return {
     jsonrpc = "2.0",
     id = id,
-    ["error"] = {
+    error = {
       code = code,
       message = msg,
     }

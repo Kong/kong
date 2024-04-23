@@ -133,9 +133,10 @@ function _M:_event_loop(lconn)
 
       else
         -- other CP inside the cluster asked us to forward a call
-        assert(n.channel:sub(1, #REQ_CHANNEL_PREFIX) == REQ_CHANNEL_PREFIX)
+        assert(n.channel:sub(1, #REQ_CHANNEL_PREFIX) == REQ_CHANNEL_PREFIX,
+               "unexpected concentrator request channel name: " .. n.channel)
 
-        local target_id = n.channel:sub(9)
+        local target_id = n.channel:sub(#REQ_CHANNEL_PREFIX + 1)
         local sql = string_format(RPC_REQUEST_DEQUEUE_SQL, self.db.connector:escape_literal(target_id))
         local calls, err = self.db.connector:query(sql)
         if not calls then
@@ -168,7 +169,7 @@ function _M:_event_loop(lconn)
             res, err = self:_enqueue_rpc_response(reply_to, {
               jsonrpc = "2.0",
               id = payload.id,
-              ["error"] = {
+              error = {
                 code = jsonrpc.SERVER_ERROR,
                 message = tostring(err),
               }
@@ -183,25 +184,24 @@ function _M:_event_loop(lconn)
 
     local res, err = lconn:wait_for_notification()
     if not res then
-      if err:sub(-7) == "timeout" then
-        repeat
-          local sql, err = self.sub_unsub:pop(0)
-          if err then
-            return nil, err
-          end
-
-          local _, notifications
-          res, err, _, notifications = lconn:query(sql or "SELECT 1;") -- keepalive
-          if not res then
-            return nil, "query to Postgres failed: " .. err
-          end
-
-          enqueue_notifications(notifications, notifications_queue)
-        until not sql
-
-      else
+      if err:sub(-7) ~= "timeout" then
         return nil, "wait_for_notification error: " .. err
-      end -- err ends with "timeout"
+      end
+
+      repeat
+        local sql, err = self.sub_unsub:pop(0)
+        if err then
+          return nil, err
+        end
+
+        local _, notifications
+        res, err, _, notifications = lconn:query(sql or "SELECT 1;") -- keepalive
+        if not res then
+          return nil, "query to Postgres failed: " .. err
+        end
+
+        enqueue_notifications(notifications, notifications_queue)
+      until not sql
 
     else
       notifications_queue:push(res)
