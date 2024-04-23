@@ -554,13 +554,15 @@ local function parse_spec(conf)
   end
   -- includes conf.include_base_path as part of the cache key
   -- as it could lead to a different parsed result.
-  local spec_cache_key = fmt("%s:%s",
+local spec_cache_key = fmt("%s:%s:%s",
                              sha256_hex(spec_content),
-                             conf.include_base_path)
+                             conf.include_base_path,
+                             conf.custom_base_path)
   local parsed_spec = spec_cache:get(spec_cache_key)
   if not parsed_spec then
     local opts = {
       resolve_base_path = conf.include_base_path,
+      custom_base_path = conf.custom_base_path,
       dereference = { circular = true },
     }
     local spec, err = swagger_parser.parse(spec_content, opts)

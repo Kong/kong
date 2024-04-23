@@ -1,0 +1,3 @@
+message: "**OAS-Validation**: Add the `custom_base_path` field to specifiy a custom base path. It will be used with the `deck file namespace` feature"
+type: "feature"
+scope: "Plugin"

@@ -98,6 +98,20 @@ for _, strategy in strategies() do
             },
           }
 
+          local route4 = db.routes:insert({
+            hosts = { "mocking-include-custom-base-path.test" },
+            service = service,
+          })
+          db.plugins:insert {
+            name = PLUGIN_NAME,
+            route = { id = route4.id },
+            config = {
+              api_specification = spec_content,
+              include_base_path = true,
+              custom_base_path = "/v3"
+            },
+          }
+
           -- start kong
           assert(helpers.start_kong({
             database = db_strategy,
@@ -181,6 +195,33 @@ for _, strategy in strategies() do
                 path = "/v1/inventory",
                 headers = {
                   host = "mocking-include-base-path.test"
+                }
+              })
+
+              assert.response(res).has.status(200)
+              assert.equal("true", assert.response(res).has.header("X-Kong-Mocking-Plugin"))
+              assert.equal("application/json", assert.response(res).has.header("Content-Type"))
+              local body = assert.response(res).has.jsonbody()
+              assert.same({
+                id = "d290f1ee-6c54-4b01-90e6-d701748f0851",
+                name = "test",
+                release_date = "2016-08-29T09:12:33.001Z",
+                manufacturer = {
+                  name = "ACME Corporation",
+                  home_page = "https://www.acme-corp.com",
+                  phone = "408-867-5309"
+                }
+              }, body)
+            end)
+          end)
+
+          describe("custom_base_path = /v3", function()
+            it("/v3/inventory GET", function()
+              local res = assert(client:send {
+                method = "GET",
+                path = "/v3/inventory",
+                headers = {
+                  host = "mocking-include-custom-base-path.test"
                 }
               })
 

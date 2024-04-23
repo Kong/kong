@@ -19,6 +19,7 @@ local EMPTY_T = {}
 
 local DEFAULT_OPTIONS = {
   resolve_base_path = false,
+  custom_base_path = "",
   dereference = {
     maximum_dereference = 0
   },
@@ -88,8 +89,14 @@ local function remove_trailing_slashes(path)
   return path
 end
 
-local function resolve_paths(spec)
-  local base_path = get_base_path(spec)
+local function resolve_paths(spec, custom_base_path)
+  local base_path
+  if custom_base_path and custom_base_path ~= "" then
+    base_path = custom_base_path
+  else
+    base_path = get_base_path(spec)
+  end
+
   if base_path == "/" or not spec.paths then
     -- do nothing
     return
@@ -110,7 +117,7 @@ end
 
 local function apply(spec, options)
   if options.resolve_base_path == true then
-    resolve_paths(spec)
+    resolve_paths(spec, options.custom_base_path)
   end
 
 end

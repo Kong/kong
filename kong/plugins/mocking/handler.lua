@@ -303,6 +303,7 @@ function MockingHandler:access(conf)
     end
     local opts = {
       resolve_base_path = conf.include_base_path,
+      custom_base_path = conf.custom_base_path,
       dereference = { maximum_dereference = 3 },
     }
     spec, err = swagger_parser.parse(content, opts)

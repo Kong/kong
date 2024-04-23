@@ -245,7 +245,11 @@ return {
   [3007000000] = {
     -- Enterprise plugins
     oas_validation = {
+      "custom_base_path",
       "api_spec_encoded"
+    },
+    mocking = {
+      "custom_base_path",
     },
     jwt_signer = {
       "add_access_token_claims",

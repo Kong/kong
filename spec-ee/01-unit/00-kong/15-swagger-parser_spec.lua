@@ -433,6 +433,280 @@ describe("swagger-parser", function()
       end)
 
     end)
+
+    describe("custom_base_path", function()
+      it("swagger: sanity", function()
+        local spec_str = [[
+          swagger: "2.0"
+          info:
+            title: Sample API
+            description: A Sample OpenAPI Spec
+            version: 1.0.0
+          basePath: /v1
+          paths:
+            /a:
+              get:
+                summary: get
+                responses:
+                  '200':
+                    description: success
+            /b:
+              get:
+                summary: get
+                responses:
+                  '200':
+                    description: success
+            /c:
+              get:
+                summary: get
+                responses:
+                  '200':
+                    description: success
+        ]]
+        local spec, err = swagger_parser.parse(spec_str, { resolve_base_path = true, custom_base_path = "/v2" })
+        assert.truthy(spec)
+        assert.is_nil(err)
+        local paths = {}
+        for path in pairs(spec.spec.paths) do
+          paths[path] = true
+        end
+        assert.same({
+          ["/v2/a"] = true,
+          ["/v2/b"] = true,
+          ["/v2/c"] = true,
+        }, paths)
+      end)
+
+      it("swagger: omitted basePath", function()
+        local spec_str = [[
+          swagger: "2.0"
+          info:
+            title: Sample API
+            description: A Sample OpenAPI Spec
+            version: 1.0.0
+          paths:
+            /a:
+              get:
+                summary: get
+                responses:
+                  '200':
+                    description: success
+            /b:
+              get:
+                summary: get
+                responses:
+                  '200':
+                    description: success
+            /c:
+              get:
+                summary: get
+                responses:
+                  '200':
+                    description: success
+        ]]
+        local spec, err = swagger_parser.parse(spec_str, { resolve_base_path = true, custom_base_path = "/v2" })
+        assert.truthy(spec)
+        assert.is_nil(err)
+        local paths = {}
+        for path in pairs(spec.spec.paths) do
+          paths[path] = true
+        end
+        assert.same({
+          ["/v2/a"] = true,
+          ["/v2/b"] = true,
+          ["/v2/c"] = true,
+        }, paths)
+      end)
+
+      it("openapi: sanity", function()
+        local spec_str = [[
+          openapi: 3.0.1
+          info:
+            title: Sample API
+            description: A Sample OpenAPI Spec
+            version: 1.0.0
+          servers:
+            - url: "/v1"
+          paths:
+            /a:
+              get:
+                summary: get
+                responses:
+                  '200':
+                    description: success
+            /b:
+              get:
+                summary: get
+                responses:
+                  '200':
+                    description: success
+            /c:
+              get:
+                summary: get
+                responses:
+                  '200':
+                    description: success
+        ]]
+        local spec, err = swagger_parser.parse(spec_str, { resolve_base_path = true, custom_base_path = "/v2" })
+        assert.truthy(spec)
+        assert.is_nil(err)
+        local paths = {}
+        for path in pairs(spec.spec.paths) do
+          paths[path] = true
+        end
+        assert.same({
+          ["/v2/a"] = true,
+          ["/v2/b"] = true,
+          ["/v2/c"] = true,
+        }, paths)
+
+        local spec_str = [[
+          openapi: 3.0.1
+          info:
+            title: Sample API
+            description: A Sample OpenAPI Spec
+            version: 1.0.0
+          servers:
+            - url: "https://example.com/v1"
+          paths:
+            /a:
+              get:
+                summary: get
+                responses:
+                  '200':
+                    description: success
+            /b:
+              get:
+                summary: get
+                responses:
+                  '200':
+                    description: success
+            /c:
+              get:
+                summary: get
+                responses:
+                  '200':
+                    description: success
+        ]]
+        local spec, err = swagger_parser.parse(spec_str, { resolve_base_path = true, custom_base_path = "/v2" })
+        assert.truthy(spec)
+        assert.is_nil(err)
+        local paths = {}
+        for path in pairs(spec.spec.paths) do
+          paths[path] = true
+        end
+        assert.same({
+          ["/v2/a"] = true,
+          ["/v2/b"] = true,
+          ["/v2/c"] = true,
+        }, paths)
+
+        -- empty custom base path
+        local spec_str = [[
+          openapi: 3.0.1
+          info:
+            title: Sample API
+            description: A Sample OpenAPI Spec
+            version: 1.0.0
+          servers:
+            - url: "/v1"
+          paths:
+            /a:
+              get:
+                summary: get
+                responses:
+                  '200':
+                    description: success
+            b:
+              get:
+                summary: get
+                responses:
+                  '200':
+                    description: success
+        ]]
+        local spec, err = swagger_parser.parse(spec_str, { resolve_base_path = true, custom_base_path = "" })
+        assert.truthy(spec)
+        assert.is_nil(err)
+        local paths = {}
+        for path in pairs(spec.spec.paths) do
+          paths[path] = true
+        end
+        assert.same({
+          ["/v1/a"] = true,
+          ["/v1/b"] = true,
+        }, paths)
+
+        -- trailing slash
+        local spec_str = [[
+          openapi: 3.0.1
+          info:
+            title: Sample API
+            description: A Sample OpenAPI Spec
+            version: 1.0.0
+          servers:
+            - url: "/v1"
+          paths:
+            /a:
+              get:
+                summary: get
+                responses:
+                  '200':
+                    description: success
+            b:
+              get:
+                summary: get
+                responses:
+                  '200':
+                    description: success
+        ]]
+        local spec, err = swagger_parser.parse(spec_str, { resolve_base_path = true, custom_base_path = "/v2/" })
+        assert.truthy(spec)
+        assert.is_nil(err)
+        local paths = {}
+        for path in pairs(spec.spec.paths) do
+          paths[path] = true
+        end
+        assert.same({
+          ["/v2/a"] = true,
+          ["/v2/b"] = true,
+        }, paths)
+
+        -- trailing slashes
+        local spec_str = [[
+          openapi: 3.0.1
+          info:
+            title: Sample API
+            description: A Sample OpenAPI Spec
+            version: 1.0.0
+          servers:
+            - url: "/v1"
+          paths:
+            /a:
+              get:
+                summary: get
+                responses:
+                  '200':
+                    description: success
+            b:
+              get:
+                summary: get
+                responses:
+                  '200':
+                    description: success
+        ]]
+        local spec, err = swagger_parser.parse(spec_str, { resolve_base_path = true, custom_base_path = "/v2//" })
+        assert.truthy(spec)
+        assert.is_nil(err)
+        local paths = {}
+        for path in pairs(spec.spec.paths) do
+          paths[path] = true
+        end
+        assert.same({
+          ["/v2/a"] = true,
+          ["/v2/b"] = true,
+        }, paths)
+      end)
+    end)
   end)
 
   describe("dereference()", function()

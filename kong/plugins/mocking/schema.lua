@@ -30,6 +30,7 @@ return {
         { included_status_codes = { description = "A global list of the HTTP status codes that can only be selected and returned.", type = "array", elements = { type = "integer" } } },
         { random_status_code = { description = "Determines whether to randomly select an HTTP status code from the responses of the corresponding API method. The default value is `false`, which means the minimum HTTP status code is always selected and returned.", type = "boolean", required = true, default = false } },
         { include_base_path = { description = "Indicates whether to include the base path when performing path match evaluation.", type = "boolean", required = true, default = false } },
+        { custom_base_path = typedefs.path { description = "The base path to be used for path match evaluation. This value is ignored if `include_base_path` is set to `false`.", required = false } },
       }
     } },
   },
