@@ -835,12 +835,19 @@ do
   ---@param err_t       table
   ---@param flattened   table
   local function add_entity_errors(entity_type, entity, err_t, flattened)
-    if type(err_t) ~= "table" or nkeys(err_t) == 0 then
+    local err_type = type(err_t)
+
+    -- promote error strings to `@entity` type errors
+    if err_type == "string" then
+      err_t = { ["@entity"] = err_t }
+
+    elseif err_type ~= "table" or nkeys(err_t) == 0 then
       return
+    end
 
     -- this *should* be unreachable, but it's relatively cheap to guard against
     -- compared to everything else we're doing in this code path
-    elseif type(entity) ~= "table" then
+    if type(entity) ~= "table" then
       log(WARN, "could not parse ", entity_type, " errors for non-table ",
                 "input: '", tostring(entity), "'")
       return
@@ -1073,13 +1080,7 @@ do
       for i, err_t_i in drain(section_errors) do
         local entity = entities[i]
 
-
-        -- promote error strings to `@entity` type errors
-        if type(err_t_i) == "string" then
-          err_t_i = { ["@entity"] = err_t_i }
-        end
-
-        if type(entity) == "table" and type(err_t_i) == "table" then
+        if type(entity) == "table" then
           add_entity_errors(entity_type, entity, err_t_i, flattened)
 
         else
