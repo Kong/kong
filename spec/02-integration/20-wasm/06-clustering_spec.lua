@@ -185,7 +185,7 @@ describe("#wasm - hybrid mode #postgres", function()
             res = res:read_body(),
           }
         end)
-        .with_timeout(60)
+        .with_timeout(15)
         .with_step(0.1)
         .is_truthy("service/route are ready on the data plane")
 
@@ -247,7 +247,7 @@ describe("#wasm - hybrid mode #postgres", function()
             got = res.headers[HEADER] or "<NIL>",
           }
         end)
-        .with_timeout(60)
+        .with_timeout(15)
         .with_step(0.1)
         .is_truthy("wasm filter is configured on the data plane")
 
@@ -277,7 +277,7 @@ describe("#wasm - hybrid mode #postgres", function()
 
           return true
         end)
-        .with_timeout(60)
+        .with_timeout(15)
         .with_step(0.1)
         .is_truthy("wasm filter has been removed from the data plane")
 
