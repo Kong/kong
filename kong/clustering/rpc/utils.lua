@@ -30,13 +30,15 @@ end
 
 function _M.compress_payload(payload)
   local json = assert(cjson_encode(payload))
-  return assert(snappy_compress(json))
+  local data = assert(snappy_compress(json))
+  return data
 end
 
 
 function _M.decompress_payload(compressed)
   local json = assert(snappy_uncompress(compressed))
-  return assert(cjson_decode(json))
+  local data = assert(cjson_decode(json))
+  return data
 end
 
 

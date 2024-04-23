@@ -229,8 +229,6 @@ function _M:start()
       end
     end
   end)
-
-  return true
 end
 
 

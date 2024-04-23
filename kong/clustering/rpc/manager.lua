@@ -255,7 +255,7 @@ function _M:handle_websocket()
   local s = socket.new(self, wb, node_id)
   self:_add_socket(s, rpc_capabilities)
 
-  assert(s:start())
+  s:start()
   local res, err = s:join()
   self:_remove_socket(s)
 
@@ -328,7 +328,7 @@ function _M:connect(premature, node_id, host, path, cert, key)
     end
 
     local s = socket.new(self, c, node_id)
-    assert(s:start())
+    s:start()
     self:_add_socket(s, capabilities)
 
     ok, err = s:join() -- main event loop
