@@ -1,6 +1,6 @@
 local _M = {}
 local pl_stringx = require("pl.stringx")
-local cjson = require("cjson.safe")
+local cjson = require("cjson")
 local snappy = require("resty.snappy")
 
 
@@ -29,7 +29,7 @@ end
 
 
 function _M.compress_payload(payload)
-  local json = assert(cjson_encode(payload))
+  local json = cjson_encode(payload)
   local data = assert(snappy_compress(json))
   return data
 end
@@ -37,7 +37,7 @@ end
 
 function _M.decompress_payload(compressed)
   local json = assert(snappy_uncompress(compressed))
-  local data = assert(cjson_decode(json))
+  local data = cjson_decode(json)
   return data
 end
 

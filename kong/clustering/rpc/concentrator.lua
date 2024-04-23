@@ -4,7 +4,7 @@ local _MT = { __index = _M, }
 
 local uuid = require("resty.jit-uuid")
 local queue = require("kong.clustering.rpc.queue")
-local cjson = require("cjson.safe")
+local cjson = require("cjson")
 local jsonrpc = require("kong.clustering.rpc.json_rpc_v2")
 
 
@@ -113,7 +113,7 @@ function _M:_event_loop(lconn)
 
       if n.channel == rpc_resp_channel_name then
         -- an response for a previous RPC call we asked for
-        local payload = assert(cjson_decode(n.payload))
+        local payload = cjson_decode(n.payload)
         assert(payload.jsonrpc == "2.0")
 
         -- response
