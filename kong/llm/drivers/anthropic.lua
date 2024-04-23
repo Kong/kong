@@ -6,7 +6,7 @@ local fmt = string.format
 local ai_shared = require("kong.llm.drivers.shared")
 local socket_url = require "socket.url"
 local buffer = require("string.buffer")
-local ensure_valid_path = require("kong.tools.utils").ensure_valid_path
+local string_gsub = string.gsub
 --
 
 -- globals
@@ -186,60 +186,58 @@ local function start_to_event(event_data, model_info)
 end
 
 local function handle_stream_event(event_t, model_info, route_type)
-  ngx.log(ngx.WARN, event_t.event or "NO EVENT")
-  ngx.log(ngx.WARN, event_t.data or "NO DATA")
-  local event_id = event_t.event or "ping"
+  local event_id = event_t.event
   local event_data = cjson.decode(event_t.data)
 
-  if event_id and event_data then
-    if event_id == "message_start" then
-      -- message_start and contains the token usage and model metadata
-
-      if event_data and event_data.message then
-        return start_to_event(event_data, model_info)
-      else
-        return nil, "message_start is missing the metadata block", nil
-      end
-
-    elseif event_id == "message_delta" then
-      -- message_delta contains and interim token count of the
-      -- last few frames / iterations
-      if event_data
-      and event_data.usage then
-        return nil, nil, {
-          prompt_tokens = nil,
-          completion_tokens = event_data.meta.usage
-                          and event_data.meta.usage.output_tokens
-                          or nil,
-          stop_reason = event_data.delta
-                    and event_data.delta.stop_reason
-                     or nil,
-          stop_sequence = event_data.delta
-                      and event_data.delta.stop_sequence
-                       or nil,
-        }
-      else
-        return nil, "message_delta is missing the metadata block", nil
-      end
-
-    elseif event_id == "content_block_start" then
-      -- content_block_start is just an empty string and indicates
-      -- that we're getting an actual answer
-      return delta_to_event(event_data, model_info)
-
-    elseif event_id == "content_block_delta" then
-      return delta_to_event(event_data, model_info)
-
-    elseif event_id == "message_stop" then
-      return "[DONE]", nil, nil
-
-    elseif event_id == "ping" then
-      return nil, nil, nil
-
-    end
+  if not event_id or not event_data then
+    return nil, "transformation to stream event failed or empty stream event received", nil
   end
 
-  return nil, "transformation to stream event failed or empty stream event received", nil
+  if event_id == "message_start" then
+    -- message_start and contains the token usage and model metadata
+
+    if event_data and event_data.message then
+      return start_to_event(event_data, model_info)
+    else
+      return nil, "message_start is missing the metadata block", nil
+    end
+
+  elseif event_id == "message_delta" then
+    -- message_delta contains and interim token count of the
+    -- last few frames / iterations
+    if event_data
+    and event_data.usage then
+      return nil, nil, {
+        prompt_tokens = nil,
+        completion_tokens = event_data.meta.usage
+                        and event_data.meta.usage.output_tokens
+                        or nil,
+        stop_reason = event_data.delta
+                  and event_data.delta.stop_reason
+                    or nil,
+        stop_sequence = event_data.delta
+                    and event_data.delta.stop_sequence
+                      or nil,
+      }
+    else
+      return nil, "message_delta is missing the metadata block", nil
+    end
+
+  elseif event_id == "content_block_start" then
+    -- content_block_start is just an empty string and indicates
+    -- that we're getting an actual answer
+    return delta_to_event(event_data, model_info)
+
+  elseif event_id == "content_block_delta" then
+    return delta_to_event(event_data, model_info)
+
+  elseif event_id == "message_stop" then
+    return "[DONE]", nil, nil
+
+  elseif event_id == "ping" then
+    return nil, nil, nil
+
+  end
 end
 
 local transformers_from = {
@@ -467,7 +465,7 @@ function _M.configure_request(conf)
   end
 
   -- if the path is read from a URL capture, ensure that it is valid
-  parsed_url.path = ensure_valid_path(parsed_url.path)
+  parsed_url.path = string_gsub(parsed_url.path, "^/*", "/")
 
   kong.service.request.set_path(parsed_url.path)
   kong.service.request.set_scheme(parsed_url.scheme)

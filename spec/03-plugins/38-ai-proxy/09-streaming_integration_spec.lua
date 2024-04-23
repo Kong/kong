@@ -53,32 +53,32 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                 [5] = 'data: {    "choices": [        {            "delta": {},            "finish_reason": "stop",            "index": 0,            "logprobs": null        }    ],    "created": 1712538905,    "id": "chatcmpl-9BXtBvU8Tsw1U7CarzV71vQEjvYwq",    "model": "gpt-4-0613",    "object": "chat.completion.chunk",    "system_fingerprint": null}',
                 [6] = 'data: [DONE]',
               }
-              
+
               local fmt = string.format
               local pl_file = require "pl.file"
               local json = require("cjson.safe")
-              
+
               ngx.req.read_body()
               local body, err = ngx.req.get_body_data()
               body, err = json.decode(body)
-              
+
               local token = ngx.req.get_headers()["authorization"]
               local token_query = ngx.req.get_uri_args()["apikey"]
-              
+
               if token == "Bearer openai-key" or token_query == "openai-key" or body.apikey == "openai-key" then
                 ngx.req.read_body()
                 local body, err = ngx.req.get_body_data()
                 body, err = json.decode(body)
-                
+
                 if err or (body.messages == ngx.null) then
                   ngx.status = 400
                   ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/bad_request.json"))
                 else
                   -- GOOD RESPONSE
-                  
+
                   ngx.status = 200
                   ngx.header["Content-Type"] = "text/event-stream"
-                  
+
                   for i, EVENT in ipairs(_EVENT_CHUNKS) do
                     ngx.print(fmt("%s\n\n", EVENT))
                   end
@@ -123,7 +123,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                 ngx.req.read_body()
                 local body, err = ngx.req.get_body_data()
                 body, err = json.decode(body)
-                
+
                 if err or (body.messages == ngx.null) then
                   ngx.status = 400
                   ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/bad_request.json"))
@@ -170,8 +170,8 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                 [7] = 'data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" ="}               }',
                 [8] = 'data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" 2"}               }',
                 [9] = 'data: {"type":"content_block_stop","index":0           }',
-                [10] = '{"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"output_tokens":9}}',
-                [11] = '{"type":"message_stop"}',
+                [10] = 'data: {"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"output_tokens":9}}',
+                [11] = 'data: {"type":"message_stop"}',
               }
 
               local fmt = string.format
@@ -189,16 +189,16 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                 ngx.req.read_body()
                 local body, err = ngx.req.get_body_data()
                 body, err = json.decode(body)
-                
+
                 if err or (body.messages == ngx.null) then
                   ngx.status = 400
                   ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/bad_request.json"))
                 else
                   -- GOOD RESPONSE
-                  
+
                   ngx.status = 200
                   ngx.header["Content-Type"] = "text/event-stream"
-                  
+
                   for i, EVENT in ipairs(_EVENT_CHUNKS) do
                     ngx.print(fmt("%s\n", EVENT))
                     ngx.print(fmt("%s\n\n", _DATA_CHUNKS[i]))
@@ -228,7 +228,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                 ngx.req.read_body()
                 local body, err = ngx.req.get_body_data()
                 body, err = json.decode(body)
-                
+
                 if err or (body.messages == ngx.null) then
                   ngx.status = 400
                   ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/bad_request.json"))
@@ -609,7 +609,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           end
         until not buffer
         
-        assert.equal(#events, 7)
+        assert.equal(#events, 8)
         assert.equal(buf:tostring(), "1 + 1 = 2")
       end)
 

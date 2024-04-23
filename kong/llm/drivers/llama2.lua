@@ -8,7 +8,6 @@ local ai_shared = require("kong.llm.drivers.shared")
 local openai_driver = require("kong.llm.drivers.openai")
 local socket_url = require "socket.url"
 local string_gsub = string.gsub
-local ensure_valid_path = require("kong.tools.utils").ensure_valid_path
 --
 
 -- globals
@@ -263,7 +262,7 @@ function _M.configure_request(conf)
   local parsed_url = socket_url.parse(conf.model.options.upstream_url)
 
   -- if the path is read from a URL capture, ensure that it is valid
-  parsed_url.path = ensure_valid_path(parsed_url.path)
+  parsed_url.path = string_gsub(parsed_url.path, "^/*", "/")
 
   kong.service.request.set_path(parsed_url.path)
   kong.service.request.set_scheme(parsed_url.scheme)

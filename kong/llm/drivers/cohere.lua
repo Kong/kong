@@ -6,7 +6,7 @@ local fmt = string.format
 local ai_shared = require("kong.llm.drivers.shared")
 local socket_url = require "socket.url"
 local table_new = require("table.new")
-local ensure_valid_path = require("kong.tools.utils").ensure_valid_path
+local string_gsub = string.gsub
 --
 
 -- globals
@@ -466,7 +466,7 @@ function _M.configure_request(conf)
   end
   
   -- if the path is read from a URL capture, ensure that it is valid
-  parsed_url.path = ensure_valid_path(parsed_url.path)
+  parsed_url.path = string_gsub(parsed_url.path, "^/*", "/")
 
   kong.service.request.set_path(parsed_url.path)
   kong.service.request.set_scheme(parsed_url.scheme)
