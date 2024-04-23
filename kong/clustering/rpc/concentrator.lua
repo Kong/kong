@@ -99,85 +99,87 @@ function _M:_event_loop(lconn)
   end
 
   while not exiting() do
-    repeat
+    while true do
       local n, err = notifications_queue:pop(0)
-      if err then
-        return nil, "unable to pop from notifications queue: " .. err
+      if not n then
+        if err then
+          return nil, "unable to pop from notifications queue: " .. err
+        end
+
+        break
       end
 
-      if n then
-        assert(n.operation == "notification")
+      assert(n.operation == "notification")
 
-        if n.channel == rpc_resp_channel_name then
-          -- an response for a previous RPC call we asked for
-          local payload = assert(cjson_decode(n.payload))
-          assert(payload.jsonrpc == "2.0")
+      if n.channel == rpc_resp_channel_name then
+        -- an response for a previous RPC call we asked for
+        local payload = assert(cjson_decode(n.payload))
+        assert(payload.jsonrpc == "2.0")
 
-          -- response
-          local cb = self.interest[payload.id]
-          self.interest[payload.id] = nil -- edge trigger only once
+        -- response
+        local cb = self.interest[payload.id]
+        self.interest[payload.id] = nil -- edge trigger only once
 
-          if cb then
-            local res, err = cb(payload)
-            if not res then
-              ngx_log(ngx_WARN, "[rpc] concentrator response interest handler failed: id: ",
-                      payload.id, ", err: ", err)
-            end
-
-          else
-            ngx_log(ngx_WARN, "[rpc] no interest for concentrator response id: ", payload.id, ", dropping it")
+        if cb then
+          local res, err = cb(payload)
+          if not res then
+            ngx_log(ngx_WARN, "[rpc] concentrator response interest handler failed: id: ",
+                    payload.id, ", err: ", err)
           end
 
         else
-          -- other CP inside the cluster asked us to forward a call
-          assert(n.channel:sub(1, #REQ_CHANNEL_PREFIX) == REQ_CHANNEL_PREFIX)
+          ngx_log(ngx_WARN, "[rpc] no interest for concentrator response id: ", payload.id, ", dropping it")
+        end
 
-          local target_id = n.channel:sub(9)
-          local sql = string_format(RPC_REQUEST_DEQUEUE_SQL, self.db.connector:escape_literal(target_id))
-          local calls, err = self.db.connector:query(sql)
-          if not calls then
-            return nil, "concentrator request dequeue query failed: " .. err
-          end
+      else
+        -- other CP inside the cluster asked us to forward a call
+        assert(n.channel:sub(1, #REQ_CHANNEL_PREFIX) == REQ_CHANNEL_PREFIX)
 
-          assert(calls[1] == true)
-          ngx_log(ngx_DEBUG, "concentrator got ", calls[2].affected_rows,
-                  " calls from database for node ", target_id)
-          for _, call in ipairs(calls[2]) do
-            local payload = assert(call.payload)
-            local reply_to = assert(call.reply_to,
-                                    "unknown requester for RPC")
+        local target_id = n.channel:sub(9)
+        local sql = string_format(RPC_REQUEST_DEQUEUE_SQL, self.db.connector:escape_literal(target_id))
+        local calls, err = self.db.connector:query(sql)
+        if not calls then
+          return nil, "concentrator request dequeue query failed: " .. err
+        end
 
-            local res, err = self.manager:_local_call(target_id, payload.method,
-                                                      payload.params)
-            if res then
-              -- call success
-              res, err = self:_enqueue_rpc_response(reply_to, {
-                jsonrpc = "2.0",
-                id = payload.id,
-                result = res,
-              })
-              if not res then
-                ngx_log(ngx_WARN, "[rpc] unable to enqueue RPC call result: ", err)
-              end
+        assert(calls[1] == true)
+        ngx_log(ngx_DEBUG, "concentrator got ", calls[2].affected_rows,
+                " calls from database for node ", target_id)
+        for _, call in ipairs(calls[2]) do
+          local payload = assert(call.payload)
+          local reply_to = assert(call.reply_to,
+                                  "unknown requester for RPC")
 
-            else
-              -- call failure
-              res, err = self:_enqueue_rpc_response(reply_to, {
-                jsonrpc = "2.0",
-                id = payload.id,
-                ["error"] = {
-                  code = jsonrpc.SERVER_ERROR,
-                  message = tostring(err),
-                }
-              })
-              if not res then
-                ngx_log(ngx_WARN, "[rpc] unable to enqueue RPC error: ", err)
-              end
+          local res, err = self.manager:_local_call(target_id, payload.method,
+                                                    payload.params)
+          if res then
+            -- call success
+            res, err = self:_enqueue_rpc_response(reply_to, {
+              jsonrpc = "2.0",
+              id = payload.id,
+              result = res,
+            })
+            if not res then
+              ngx_log(ngx_WARN, "[rpc] unable to enqueue RPC call result: ", err)
+            end
+
+          else
+            -- call failure
+            res, err = self:_enqueue_rpc_response(reply_to, {
+              jsonrpc = "2.0",
+              id = payload.id,
+              ["error"] = {
+                code = jsonrpc.SERVER_ERROR,
+                message = tostring(err),
+              }
+            })
+            if not res then
+              ngx_log(ngx_WARN, "[rpc] unable to enqueue RPC error: ", err)
             end
           end
         end
       end
-    until not n
+    end
 
     local res, err = lconn:wait_for_notification()
     if not res then

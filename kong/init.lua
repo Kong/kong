@@ -982,7 +982,7 @@ function Kong.init_worker()
                            cluster_tls.get_cluster_cert_key(kong.configuration))
         end)
 
-      else
+      else -- control_plane
         kong.rpc.concentrator:start()
       end
     end
