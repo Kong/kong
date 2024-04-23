@@ -314,7 +314,6 @@ describe("NGINX conf compiler", function()
         role = "control_plane",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
-        database = strategy,
         cluster_listen = "127.0.0.1:9005",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
@@ -327,7 +326,6 @@ describe("NGINX conf compiler", function()
         role = "control_plane",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
-        database = strategy,
         cluster_listen = "127.0.0.1:9005",
         cluster_rpc = "off",
         nginx_conf = "spec/fixtures/custom_nginx.template",

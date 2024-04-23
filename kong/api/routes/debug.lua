@@ -170,7 +170,7 @@ if kong.rpc then
 
       return kong.response.exit(204)
     end,
-  },
+  }
 end
 
 return routes
