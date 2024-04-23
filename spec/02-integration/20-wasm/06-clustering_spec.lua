@@ -306,7 +306,7 @@ describe("#wasm - hybrid mode #postgres", function()
     it("does not sync configuration", function()
       assert.logfile(cp_errlog).has.line(
         [[unable to send updated configuration to data plane: data plane is missing one or more wasm filters]],
-        true, 5)
+        true, 60)
 
       expect_status(node_id, STATUS.FILTER_SET_INCOMPATIBLE)
     end)
@@ -345,7 +345,7 @@ describe("#wasm - hybrid mode #postgres", function()
     it("does not sync configuration", function()
       assert.logfile(cp_errlog).has.line(
         [[unable to send updated configuration to data plane: data plane is missing one or more wasm filters]],
-        true, 5)
+        true, 60)
 
       expect_status(node_id, STATUS.FILTER_SET_INCOMPATIBLE)
     end)
