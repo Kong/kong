@@ -6,6 +6,7 @@ local uuid = require("resty.jit-uuid")
 local queue = require("kong.clustering.rpc.queue")
 local cjson = require("cjson")
 local jsonrpc = require("kong.clustering.rpc.json_rpc_v2")
+local rpc_utils = require("kong.clustering.rpc.utils")
 
 
 local setmetatable = setmetatable
@@ -16,6 +17,7 @@ local string_format = string.format
 local cjson_decode = cjson.decode
 local cjson_encode = cjson.encode
 local exiting = ngx.worker.exiting
+local is_timeout = rpc_utils.is_timeout
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
 local ngx_WARN = ngx.WARN
@@ -184,7 +186,7 @@ function _M:_event_loop(lconn)
 
     local res, err = lconn:wait_for_notification()
     if not res then
-      if err:sub(-7) ~= "timeout" then
+      if is_timeout(err) then
         return nil, "wait_for_notification error: " .. err
       end
 

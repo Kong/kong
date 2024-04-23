@@ -24,7 +24,7 @@ end
 
 
 function _M.is_timeout(err)
-  return err and string_sub(err, -7) == "timeout"
+  return err and (err == "timeout" or string_sub(err, -7) == "timeout")
 end
 
 
