@@ -774,7 +774,23 @@ local function new(self)
 
       else
         lru_ttl = ttl
-        shdict_ttl = DAO_MAX_TTL
+        -- shared dict ttl controls when the secret
+        -- value will be refreshed by `rotate_secrets`
+        -- timer. If a secret whose remaining time is less
+        -- than `config.resurrect_ttl`(or DAO_MAX_TTL
+        -- if not configured), it could possibly
+        -- be updated in every cycle of `rotate_secrets`.
+        --
+        -- The shdict_ttl should be
+        -- `config.ttl` + `config.resurrect_ttl`
+        -- to make sure the secret value persists for
+        -- at least `config.ttl` seconds.
+        -- When `config.resurrect_ttl` is not set and
+        -- `config.ttl` is not set, shdict_ttl will be
+        -- DAO_MAX_TTL * 2; when `config.resurrect_ttl`
+        -- is not set but `config.ttl` is set, shdict_ttl
+        -- will be ttl + DAO_MAX_TTL
+        shdict_ttl = ttl + DAO_MAX_TTL
       end
 
     else
