@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
+local ee_helpers = require "spec-ee.helpers"
 local auth_plugin_helpers = require "kong.enterprise_edition.auth_plugin_helpers"
 
 
@@ -40,7 +41,7 @@ for _, strategy in helpers.each_strategy() do
   end
 
   local function correct_setting_related_role_for_admin(claim_values, ws_roles)
-    -- local admin = assert(kong.db.admins:select_by_username(username))
+    auth_plugin_helpers.delete_admin_groups_or_roles(admin)
     auth_plugin_helpers.map_admin_roles_by_idp_claim(admin, claim_values)
     for ws_name, roles in pairs(ws_roles) do
       local ws = assert(kong.db.workspaces:select_by_name(ws_name))
@@ -70,6 +71,8 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.kong_exec("migrations bootstrap", conf))
 
       assert(helpers.start_kong(conf))
+
+      ee_helpers.register_rbac_resources(kong.db, "default")
 
       insert_ws_and_related_roles("ws01")
       insert_ws_and_related_roles("ws02")

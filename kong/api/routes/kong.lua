@@ -51,6 +51,17 @@ local strip_foreign_schemas = function(fields)
   end
 end
 
+local function retrieve_ws_name(self, ws_id)
+  local res = {}
+  for _, ws in ipairs(self.workspaces) do
+    if ws.id == ws_id then
+      res[#res + 1] = { name = ws.name, id = ws_id }
+    end
+  end
+
+  return res and res[1]
+end
+
 local function ws_and_rbac_helper(self)
   self.workspaces = {}
   local admin_auth = kong.configuration.admin_gui_auth
@@ -101,13 +112,8 @@ local function ws_and_rbac_helper(self)
   kong.cache:invalidate(cache_key)
 
   -- get roles across all workspaces (except for the wildcard "*" one, the 3rd argument)
-  local wss, roles = rbac.find_all_ws_for_rbac_user(ngx.ctx.rbac.user, ngx.null, false)
+  local wss, roles = rbac.find_all_ws_for_rbac_user(ngx.ctx.rbac.user, null, false)
   self.workspaces = wss
-
-  if err then
-    log(ERR, "[userinfo] ", err)
-    return kong.response.exit(500, err)
-  end
 
   local rbac_enabled = kong.configuration.rbac
   if rbac_enabled == "on" or rbac_enabled == "both" then
@@ -117,6 +123,19 @@ local function ws_and_rbac_helper(self)
   if rbac_enabled == "entity" or rbac_enabled == "both" then
     self.permissions.entities = rbac.readable_entities_permissions(roles)
   end
+
+  local user_roles = rbac.get_user_roles(kong.db, ngx.ctx.rbac.user, null)
+
+  local belong_roles = {}
+  for _, role in ipairs(user_roles or {}) do
+    if not role.is_default then
+      belong_roles[#belong_roles + 1] = {
+        name = role.name,
+        workspace = retrieve_ws_name(self, role.ws_id),
+      }
+    end
+  end
+  self.roles = belong_roles
 end
 
 
@@ -279,6 +298,7 @@ return {
       return kong.response.exit(200, {
         admin = admins.transmogrify(self.admin),
         groups = self.groups,
+        roles = self.roles,
         permissions = self.permissions,
         workspaces = self.workspaces,
         session = {

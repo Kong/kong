@@ -17,6 +17,7 @@ local errors          = require "kong.db.errors"
 local entity          = require "kong.db.schema.entity"
 local ws_schema       = require "kong.db.schema.entities.workspaces"
 local get_request_id  = require("kong.tracing.request_id").get
+local tablex          = require "pl.tablex"
 
 local fmt = string.format
 local kong = kong
@@ -327,7 +328,9 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
   end
 
   self.rbac_user = rbac_user
-  self.groups = ctx.authenticated_groups
+  local groups = rbac.get_user_groups(kong.db, rbac_user)
+
+  self.groups = tablex.map(function(group) return { name = group.name } end, groups)
   self.admin = admin
   -- set back workspace context from request
   ctx.workspace = old_ws

@@ -14,6 +14,7 @@ local admins_helpers = require "kong.enterprise_edition.admins_helpers"
 
 local compare_no_order = require "pl.tablex".compare_no_order
 local kong_vitals = require "kong.vitals"
+local tablex = require "pl.tablex"
 
 local client
 local db, dao
@@ -113,6 +114,9 @@ local function admin(db, workspace, name, role, email)
   return admin
 end
 
+local function group_mapping(g)
+  return g and g.name
+end
 local rbac_modes = { "on", "both", "entity" }
 
 for _, strategy in helpers.each_strategy() do
@@ -895,56 +899,184 @@ for _, strategy in helpers.each_strategy() do
         end
 
         describe("groups - rbac roles mapped from ldap groups", function()
-          it("read-only user - can login and only read resources", function()
-            local cookie = get_admin_cookie_basic_auth(client, read_only_admin.username,
-                                                      skeleton_key)
-            local res = assert(client:send({
-              method = "GET",
-              path = "/userinfo",
-              headers = {
-                ["cookie"] = cookie,
-                ["Kong-Admin-User"] = read_only_admin.username,
-              }
-            }))
+          
+          describe("read-only user", function()
+            it("can login and only read resources", function()
+              local cookie = get_admin_cookie_basic_auth(client, read_only_admin.username,
+                skeleton_key)
+              local res = assert(client:send({
+                method = "GET",
+                path = "/userinfo",
+                headers = {
+                  ["cookie"] = cookie,
+                  ["Kong-Admin-User"] = read_only_admin.username,
+                }
+              }))
 
-            local body = assert.res_status(200, res)
+              local body = assert.res_status(200, res)
 
-            -- in entity-only mode, endpoint permissions are not enforced
-            if rbac_mode ~= "entity" then
-              local json = cjson.decode(body)
+              -- in entity-only mode, endpoint permissions are not enforced
+              if rbac_mode ~= "entity" then
+                local json = cjson.decode(body)
 
-              assert.same({"test-group-2"}, json.groups)
-              assert.same({ ["*"] = { ["*"] = { actions = { read = { negative = false } },
-                         } } }, json.permissions.endpoints)
-            end
+                assert.same({ "test-group-2" }, tablex.map(group_mapping, json.groups))
+                assert.same({
+                  ["*"] = {
+                    ["*"] = { actions = { read = { negative = false } },
+                    }
+                  }
+                }, json.permissions.endpoints)
+              end
 
-            res = assert(client:send({
-              method = "POST",
-              path = "/consumers",
-              headers = {
-                ["cookie"] = cookie,
-                ["Kong-Admin-User"] = read_only_admin.username,
-                ["Content-Type"]     = "application/json",
-              },
-              body = {
-                username = "somebody-that-i-used-to-know"
-              }
-            }))
+              res = assert(client:send({
+                method = "POST",
+                path = "/consumers",
+                headers = {
+                  ["cookie"]          = cookie,
+                  ["Kong-Admin-User"] = read_only_admin.username,
+                  ["Content-Type"]    = "application/json",
+                },
+                body = {
+                  username = "somebody-that-i-used-to-know"
+                }
+              }))
 
-            -- cannot create consumers if endpoint rbac is enforced
-            assert.res_status(rbac_mode ~= "entity" and 403 or 201, res)
+              -- cannot create consumers if endpoint rbac is enforced
+              assert.res_status(rbac_mode ~= "entity" and 403 or 201, res)
 
-            res = assert(client:send({
-              method = "GET",
-              path = "/consumers",
-              headers = {
-                ["cookie"] = cookie,
-                ["Kong-Admin-User"] = read_only_admin.username,
-              },
-            }))
+              res = assert(client:send({
+                method = "GET",
+                path = "/consumers",
+                headers = {
+                  ["cookie"] = cookie,
+                  ["Kong-Admin-User"] = read_only_admin.username,
+                },
+              }))
 
-            -- but can read consumers
-            assert.res_status(200, res)
+              -- but can read consumers
+              assert.res_status(200, res)
+            end)
+
+            it("add a local role `super-admin`", function()
+              local super_admin_role = assert(db.rbac_roles:select_by_name('super-admin'))
+
+              assert(db.rbac_user_roles:insert({
+                user = { id = read_only_admin.rbac_user.id },
+                role = { id = super_admin_role.id }
+              }))
+
+              local rbac_user_role = db.rbac_user_roles:select({
+                user = { id = read_only_admin.rbac_user.id },
+                role = { id = super_admin_role.id }
+              })
+
+              assert.equal("local", rbac_user_role.role_source)
+
+              local cookie = get_admin_cookie_basic_auth(client, read_only_admin.username,
+                skeleton_key)
+              local res = assert(client:send({
+                method = "GET",
+                path = "/userinfo",
+                headers = {
+                  ["cookie"] = cookie,
+                  ["Kong-Admin-User"] = read_only_admin.username,
+                }
+              }))
+
+              local body = assert.res_status(200, res)
+
+              -- in entity-only mode, endpoint permissions are not enforced
+              if rbac_mode ~= "entity" then
+                local json = cjson.decode(body)
+
+                assert.same({ "test-group-2" }, tablex.map(group_mapping, json.groups))
+                assert.same({ "super-admin" }, tablex.map(group_mapping, json.roles))
+                assert.same({
+                  ["*"] = {
+                    ["*"] = { actions = { read = { negative = false }, create = { negative = false }, update = { negative = false }, delete = { negative = false } },
+                    }
+                  }
+                }, json.permissions.endpoints)
+              end
+
+              res = assert(client:send({
+                method = "POST",
+                path = "/consumers",
+                headers = {
+                  ["cookie"]          = cookie,
+                  ["Kong-Admin-User"] = read_only_admin.username,
+                  ["Content-Type"]    = "application/json",
+                },
+                body = {
+                  username = "consumers1"
+                }
+              }))
+
+              -- can create consumers if endpoint rbac is enforced
+              assert.res_status(201, res)
+            end)
+
+            it("change the role_source of the role `super-admin` to `idp`", function()
+              local super_admin_role = assert(db.rbac_roles:select_by_name('super-admin'))
+
+              assert(db.rbac_user_roles:update({
+                user = { id = read_only_admin.rbac_user.id },
+                role = { id = super_admin_role.id }
+              }, {
+                role_source = "idp",
+              }))
+
+              local rbac_user_role = db.rbac_user_roles:select({
+                user = { id = read_only_admin.rbac_user.id },
+                role = { id = super_admin_role.id }
+              })
+
+              assert.equal("idp", rbac_user_role.role_source)
+
+              -- login agin, the role "super-admin" of the admin  "read_only" will be removed.
+              local cookie = get_admin_cookie_basic_auth(client, read_only_admin.username,
+                skeleton_key)
+              local res = assert(client:send({
+                method = "GET",
+                path = "/userinfo",
+                headers = {
+                  ["cookie"] = cookie,
+                  ["Kong-Admin-User"] = read_only_admin.username,
+                }
+              }))
+
+              local body = assert.res_status(200, res)
+
+              -- in entity-only mode, endpoint permissions are not enforced
+              if rbac_mode ~= "entity" then
+                local json = cjson.decode(body)
+
+                assert.same({ "test-group-2" }, tablex.map(group_mapping, json.groups))
+                assert.same({ }, tablex.map(group_mapping, json.roles))
+                assert.same({
+                  ["*"] = {
+                    ["*"] = { actions = { read = { negative = false }, },
+                    }
+                  }
+                }, json.permissions.endpoints)
+              end
+
+              res = assert(client:send({
+                method = "POST",
+                path = "/consumers",
+                headers = {
+                  ["cookie"]          = cookie,
+                  ["Kong-Admin-User"] = read_only_admin.username,
+                  ["Content-Type"]    = "application/json",
+                },
+                body = {
+                  username = "consumers2"
+                }
+              }))
+
+              -- cannot create consumers if endpoint rbac is enforced
+              assert.res_status(rbac_mode ~= "entity" and 403 or 201, res)
+            end)
           end)
 
           it("super-admin user - can login and read/create resources", function()
@@ -963,7 +1095,7 @@ for _, strategy in helpers.each_strategy() do
             if rbac_mode ~= "entity" then
               local json = cjson.decode(body)
 
-              assert.True(compare_no_order({"test-group-1", "test-group-3"}, json.groups))
+              assert.True(compare_no_order({ "test-group-1", "test-group-3" }, tablex.map(group_mapping, json.groups)))
               local expected = { create = { negative = false }, read = { negative = false }, update = { negative = false },
                               delete = { negative = false }, }
               local actions = json.permissions.endpoints["*"]["*"].actions
@@ -1018,7 +1150,7 @@ for _, strategy in helpers.each_strategy() do
             local res = req("/userinfo")
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
-            assert.same({"test-group-3"}, json.groups)
+            assert.same({ "test-group-3" }, tablex.map(group_mapping, json.groups))
             assert.True(compare_no_order({["ws2"] = {
               ["*"] = {
                 actions = {
@@ -1088,7 +1220,7 @@ for _, strategy in helpers.each_strategy() do
             local res = req("/userinfo")
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
-            assert.same({"test-group-1", "test-group-4"}, json.groups)
+            assert.True(compare_no_order ({ "test-group-1", "test-group-4" }, tablex.map(group_mapping, json.groups)))
 
             -- user can do things super-admins can from group-1
             res = req("/services")
@@ -1122,7 +1254,7 @@ for _, strategy in helpers.each_strategy() do
             local res = req("/userinfo", super_admin_cookie, super_admin.username)
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
-            assert.same({ "test-group-1", "test-group-3" }, json.groups)
+            assert.True(compare_no_order({ "test-group-1", "test-group-3" }, tablex.map(group_mapping, json.groups)))
 
 
             -- user can do things super-admins can from group-1

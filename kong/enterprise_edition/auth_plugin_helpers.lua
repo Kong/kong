@@ -112,14 +112,13 @@ function _M.delete_admin_groups_or_roles(admin)
     kong.db.rbac_user_groups:delete(group)
   end
 
-  -- FIXME: should delete roles from IdPs only
-  -- delete rbac_user_roles
-  -- local cache_key = kong.db.rbac_user_roles:cache_key(admin.rbac_user.id)
-  -- kong.cache:invalidate(cache_key)
+  -- only delete rbac_user_roles from idp
+  cache_key = kong.db.rbac_user_roles:cache_key(admin.rbac_user.id)
+  kong.cache:invalidate(cache_key)
 
-  -- for rbac_user_role, _ in kong.db.rbac_user_roles:each_for_user({ id = admin.rbac_user.id }) do
-  --   kong.db.rbac_user_roles:delete(rbac_user_role)
-  -- end
+  for rbac_user_role, _ in kong.db.rbac_user_roles:each_for_user({ id = admin.rbac_user.id }, nil, { search_fields = { role_source = { eq = "idp" } } }) do
+    kong.db.rbac_user_roles:delete(rbac_user_role)
+  end
 
 end
 
@@ -184,53 +183,58 @@ function _M.map_admin_roles_by_idp_claim(admin, claim_values)
   end
   
   local existing_roles, _ = rbac.get_user_roles(kong.db, admin.rbac_user, ngx.null)
-  -- assign roles to admin by each ws
-  for ws_id, ws_roles in pairs(roles_by_ws) do
-    -- Todo: rbac.set_user_role improvment.
-    -- the rbac.set_user_role requires ws_id when insert new roles,
-    -- but not checking ws when deleting the exist roles. So that,
-    -- we always input all the user's roles here.
-    local _, err_str = rbac.set_user_roles(kong.db, admin.rbac_user, ws_roles, ws_id)
-    if err_str then
-      ngx.log(ngx.NOTICE, err_str)
-    end
-  end
-
-  -- delete roles that are not in the claim
-  local check_role_exists = function(ws_id, role)
-    local ws_roles = roles_by_ws[ws_id]
-
-    if not ws_roles then
-      return false
-    end
-
-    local exists = false
-    for _, role_name in ipairs(ws_roles) do
-      if role_name == role.name then
-        exists = true
-        break
+  local retrieve_ws_roles = function(ws_id)
+    local ws_roles = {}
+    for _, role in pairs(existing_roles or {}) do
+      if not role.is_default and role.ws_id == ws_id then
+        ws_roles[role.name] = role
       end
     end
-    return exists
+    return ws_roles
   end
+  -- assign roles to admin by each ws
+  local user_pk = { id = admin.rbac_user.id }
 
-  for i = 1, #existing_roles do
-    local role = existing_roles[i]
-    if not role.is_default then
-      local ws_id = role.ws_id
+  for ws_id, role_names in pairs(roles_by_ws) do
+    local ws_exists_roles = retrieve_ws_roles(ws_id)
 
-      if not check_role_exists(ws_id, role) then
-        local ok, err = kong.db.rbac_user_roles:delete({
-          user = { id = admin.rbac_user.id },
-          role = { id = role.id },
+    for _, role_name in ipairs(role_names) do
+      local exist_role = ws_exists_roles[role_name]
+
+      if not exist_role then
+        local role = kong.db.rbac_roles:select_by_name(role_name, { workspace = ws_id })
+
+        if role then
+          local _, err = kong.db.rbac_user_roles:insert({
+            user = user_pk,
+            role = { id = role.id },
+            role_source = "idp"
+          })
+
+          if err then
+            kong.log.err("Failure insert the role ", role_name, ". Error message:", err)
+          end
+
+        else
+          kong.log.warn(string.format("role '%s' does not exist of the workspace '%s'", role_name, ws_id))
+        end
+
+      else
+        local _, err = kong.db.rbac_user_roles:update({
+          user = user_pk,
+          role = { id = exist_role.id },
+        }, {
+          role_source = "idp",
         })
-        if not ok then
-          kong.log.err("Error while deleting role: " .. err .. ".")
+        if err then
+          kong.log.err("Failure update the role source of the role ", role_name, ". Error message:", err)
         end
       end
     end
   end
 
+  local cache_key = kong.db.rbac_user_roles:cache_key(admin.rbac_user.id)
+  kong.cache:invalidate(cache_key)
 end
 
 -- [[ OpenID Connect helpers (ONLY for Admin API usages with Kong Manager for now)

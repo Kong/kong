@@ -138,6 +138,12 @@ for _, strategy in helpers.each_strategy() do
           user = admin,
           role = admin_role,
         })
+
+        local rbac_user_role = db.rbac_user_roles:select({
+          user = admin,
+          role = admin_role
+        })
+        assert.equal("local", rbac_user_role.role_source)
       end)
 
       it("should not add an admin with the endpoint `/admins`", function()

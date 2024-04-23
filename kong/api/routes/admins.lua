@@ -222,6 +222,40 @@ return {
       return kong.response.exit(201, { roles = roles })
     end,
 
+    PATCH = function(self, db, helpers, parent)
+      -- we have the user, now verify our roles
+      if not self.params.roles or type(self.params.roles) == "userdata" then
+        return kong.response.exit(400, { message = "must provide at least one role or not null" })
+      end
+
+      local roles, err = rbac.objects_from_names(db, self.params.roles, "role")
+      if err then
+        if err:find("could not find role with name " .. tostring(self.params.roles), nil, true) then
+          return kong.response.exit(400, { message = err })
+        else
+          return endpoints.handle_error(err)
+        end
+      end
+
+      for _, role in ipairs(roles or {}) do
+        local _, err_t = db.rbac_user_roles:update({
+          user = { id = self.admin.rbac_user.id },
+          role = { id = role.id },
+        }, {
+          role_source = self.params.role_source,
+        })
+
+        if err_t then
+          return endpoints.handle_error(err_t)
+        end
+      end
+
+      local cache_key = db.rbac_user_roles:cache_key(self.admin.rbac_user.id)
+      kong.cache:invalidate(cache_key)
+
+      return kong.response.exit(201, { roles = roles })
+    end,
+
     DELETE = function(self, db, helpers, parent)
       -- we have the user, now verify our roles
       if not self.params.roles then

@@ -15,5 +15,6 @@ return {
   fields = {
     { user = { description = "The RBAC user associated with the role.", type = "foreign", required = true, reference = "rbac_users", on_delete = "cascade" } },
     { role = { description = "The RBAC role assigned to the user.", type = "foreign", required = true, reference = "rbac_roles", on_delete = "cascade" } },
+    { role_source = { description = "The origin of the RBAC user role.", type = "string", default = "local", one_of = { "local", "idp" }, indexed = true } }
   }
 }

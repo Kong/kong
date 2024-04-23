@@ -133,6 +133,17 @@ for _, strategy in helpers.each_strategy() do
           )
           assert.same("the admin should not update their own roles", json.message)
 
+          json = admin_request("PATCH",
+            fmt("/%s/admins/%s/roles", workspace.name, admin.id),
+            {
+              roles = "admin",
+              role_source = "idp"
+            },
+            405,
+            token
+          )
+          assert.same("Method Not Allowed", json.message)
+
           json = admin_request("DELETE",
             fmt("/%s/admins/%s/roles", workspace.name, admin.id),
             {

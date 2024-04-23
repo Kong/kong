@@ -46,6 +46,7 @@ local function transmogrify(admin)
     status = admin.status,
     rbac_token_enabled = admin.rbac_token_enabled,
     belong_workspace = admin.belong_workspace,
+    groups = admin.groups,
     workspaces = admin.workspaces,
     created_at = admin.created_at,
     updated_at = admin.updated_at,
@@ -590,6 +591,10 @@ function _M.find_by_username_or_id(username_or_id, raw, require_workspace_ctx)
   local rbac_user = kong.db.rbac_users:select(admin.rbac_user, { workspace = null, show_ws_id = true })
 
   local wss, _, err = rbac.find_all_ws_for_rbac_user(rbac_user, null, true)
+
+  admin.workspaces = wss
+  admin.groups = rbac.get_user_groups(kong.db, rbac_user)
+
   if err then
     return nil, err
   end

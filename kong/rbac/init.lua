@@ -552,6 +552,7 @@ local function get_user_roles(db, user, workspace)
     end
 
     if relationship and (workspace == null or workspace == relationship.ws_id) then
+      relationship.role_source = relationship_ids[i].role_source
       relationship_objs[#relationship_objs + 1] = relationship
     end
   end
@@ -567,6 +568,23 @@ local function retrieve_user_groups(rbac_user)
   end
 
   return rbac_user_groups
+end
+
+function _M.get_user_groups(db, rbac_user)
+  local cache_key = db.rbac_user_groups:cache_key(rbac_user.id)
+  local rbac_user_groups = kong.cache:get(cache_key, nil, retrieve_user_groups, rbac_user)
+
+  local groups = {}
+  for _, rbac_user_group in ipairs(rbac_user_groups or {}) do
+    local group = rbac_user_group and rbac_user_group.group
+
+    group = select_from_cache(db.groups, group.id, retrieve_group)
+    if group then
+      table.insert(groups, group)
+    end
+  end
+
+  return groups
 end
 
 function _M.get_groups_roles(db, rbac_user, workspace)
@@ -1702,6 +1720,15 @@ local NOT_PERMIT_ROUTE = {}
 
 NOT_PERMIT_ROUTE["/admins/:admin/roles"] = {
   handler = function(request)
+    -- doesn't support update the role_source while admin_gui_auth is not openid-connect or ldap-auth-advanced
+    local method = request.req.method
+    local admin_gui_auth = kong.configuration.admin_gui_auth
+
+    if not (admin_gui_auth == "openid-connect" or admin_gui_auth == "ldap-auth-advanced")
+        and method == "PATCH" then
+      return true, 405, "Method Not Allowed"
+    end
+
     local rbac_user = ngx.ctx.rbac.user
     local name_or_id = request.params.admin
     local admin      = find_admin_by_username_or_id(name_or_id)
@@ -1711,7 +1738,7 @@ NOT_PERMIT_ROUTE["/admins/:admin/roles"] = {
 
     return false
   end,
-  methods = { POST = true, DELETE = true },
+  methods = { POST = true, PATCH = true, DELETE = true },
   err = "the admin should not update their own roles",
 }
 
@@ -1743,8 +1770,9 @@ function _M.validate_permit_update(request)
   local route = NOT_PERMIT_ROUTE[route_name]
   if route then
     local method = request.req.method
-    if route.methods[method] and route.handler(request) then
-      return kong.response.exit(403, { message = route.err })
+    local ok, status, err = route.handler(request)
+    if route.methods[method] and ok then
+      return kong.response.exit(status or 403, { message = err or route.err })
     end
   end
 end

@@ -303,6 +303,26 @@ local function authenticate(db, admin_client, username)
   return session_cookie
 end
 
+local function insert_rbac_use_role(db, ws, admin, role_name)
+  local role, err = db.rbac_roles:select_by_name(role_name, { workspace = ws.id })
+  assert.is_not_nil(role, tostring(err))
+  assert(db.rbac_user_roles:insert({
+    user = { id = admin.rbac_user.id },
+    role = { id = role.id },
+  }))
+end
+
+local function insert_admin(db, ws, name, email)
+  local admin, err = db.admins:insert({
+    username = name,
+    email = email,
+    status = 4,
+  }, { workspace = ws.id })
+  assert.is_nil(err)
+
+  return admin
+end
+
 local TEST_TABLES = {
   "admins",
   "plugins",
@@ -514,11 +534,97 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
+    describe("#openid-connect - associate the permissions of oidc users with those of local admin", function()
+      local email = "sam.stark@konghq.com"
+      local name = "sam"
+      local _, db, admin_client, admin, default_workspace, session_cookie
+
+      lazy_setup(function()
+        _, db = helpers.get_db_utils(strategy, TEST_TABLES, { PLUGIN_NAME })
+
+        assert(helpers.start_kong({
+          plugins             = "bundled," .. PLUGIN_NAME,
+          database            = strategy,
+          prefix              = helpers.test_conf.prefix,
+          enforce_rbac        = "on",
+          admin_gui_auth      = PLUGIN_NAME,
+          admin_listen        = ADMIN_API_LISTEN,
+          admin_gui_listen    = ADMIN_GUI_LISTEN,
+          admin_gui_auth_conf = compose_openid_conf { admin_claim = "preferred_username" },
+        }))
+
+        ee_helpers.register_rbac_resources(db, "default")
+        default_workspace = db.workspaces:select_by_name("default")
+        admin = insert_admin(db, default_workspace, name, email)
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+        truncate_test_tables(db)
+      end)
+
+      before_each(function()
+        admin_client = helpers.admin_client()
+      end)
+
+      after_each(function()
+        if admin_client then
+          admin_client:close()
+        end
+      end)
+
+      it("the admin doesn't have any permissions for all workspaces", function()
+        session_cookie = authenticate(db, admin_client, name)
+
+        -- login success
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/default/services",
+          headers = {
+            Cookie = session_cookie,
+          }
+        })
+        assert.response(res).has.status(403)
+      end)
+
+      it("the admin has read-only permissions for default workspace", function()
+        -- assign `read-only` role to the admin.
+        insert_rbac_use_role(db, default_workspace, admin, "read-only")
+
+        session_cookie = authenticate(db, admin_client, name)
+
+        -- login success
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/default/services",
+          headers = {
+            Cookie = session_cookie,
+          }
+        })
+        assert.response(res).has.status(200)
+
+        res = assert(admin_client:send {
+          method = "POST",
+          path = "/default/services",
+          body = {
+            name = "test.service",
+            url = "http://test.com:8080/",
+          },
+          headers = {
+            Cookie = session_cookie,
+            ["Content-type"] = "application/json"
+          }
+        })
+
+        assert.response(res).has.status(403)
+      end)
+    end)
+
     describe("#openid-connect - mapping role with group", function()
       local USERNAME = "sam.stark@konghq.com"
 
       local _, db, admin_client, keycloak_client
-      local user, group_ws1, group_ws2 -- , default_super_admin_group
+      local user, group_ws1, group_ws2, default_super_admin_group
 
       lazy_setup(function()
         _, db = helpers.get_db_utils(strategy, TEST_TABLES, { PLUGIN_NAME })
@@ -542,7 +648,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- retrieve user from keycloak
         user = get_user_by_username(keycloak_client, "sam")
-        -- default_super_admin_group = get_group_by_name(keycloak_client, "default:super-admin")
+        default_super_admin_group = get_group_by_name(keycloak_client, "default:super-admin")
         -- add two workspaces
         for i = 1, 2, 1 do
           local ws_name = "ws" .. i
@@ -635,41 +741,34 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
 
-      -- FIXME: Disabling this test case as we reverted some fixes on RBAC roles
-      -- See: https://github.com/Kong/kong-ee/pull/8060
-      --
-      -- it("the admin has all workspaces permissions when add the group `default:super-admin` of IDP", function()
-      --   -- add default:super-admin to admin
-      --   do_cloak_request(keycloak_api.add_group_to_user, keycloak_client, false, 204, user.id,
-      --     default_super_admin_group.id)
-      --   authenticate(db, admin_client, USERNAME)
-      --   -- login success
-      --   local admin = db.admins:select_by_username(USERNAME)
-      --   assert(USERNAME, admin.username)
-      --   local rbac_user_id = admin.rbac_user and admin.rbac_user.id
-      --   assert.is_not_nil(rbac_user_id)
-      --   local user_token = update_rbac_token(rbac_user_id)
+      it("the admin has all workspaces permissions when add the group `default:super-admin` of IDP", function()
+        -- add default:super-admin to admin
+        do_cloak_request(keycloak_api.add_group_to_user, keycloak_client, false, 204, user.id,
+          default_super_admin_group.id)
+        authenticate(db, admin_client, USERNAME)
+        -- login success
+        local admin = db.admins:select_by_username(USERNAME)
+        assert(USERNAME, admin.username)
+        local rbac_user_id = admin.rbac_user and admin.rbac_user.id
+        assert.is_not_nil(rbac_user_id)
+        local user_token = update_rbac_token(rbac_user_id)
 
-      --   -- should access ws1/services
-      --   for _, ws_name in ipairs({ "ws1", "ws2", "default" }) do
-      --     local res = assert(admin_client:send {
-      --       method = "GET",
-      --       path = "/" .. ws_name .. "/services",
-      --       headers = {
-      --         ["Kong-Admin-Token"] = user_token
-      --       }
-      --     })
-      --     assert.response(res).has.status(200)
-      --   end
-      -- end)
+        -- should access ws1/services
+        for _, ws_name in ipairs({ "ws1", "ws2", "default" }) do
+          local res = assert(admin_client:send {
+            method = "GET",
+            path = "/" .. ws_name .. "/services",
+            headers = {
+              ["Kong-Admin-Token"] = user_token
+            }
+          })
+          assert.response(res).has.status(200)
+        end
+      end)
 
       it("the admin has readonly permissions of the workspace ws1 when add the group `readonly_group_ws1` of IDP", function()
         -- remove default:super-admin from the admin
-
-        -- FIXME: Commenting this line as we reverted some fixes on RBAC roles
-        -- See: https://github.com/Kong/kong-ee/pull/8060
-        -- do_cloak_request(keycloak_api.delete_group_from_user, keycloak_client, false, 204, user.id, default_super_admin_group.id)
-        --
+        do_cloak_request(keycloak_api.delete_group_from_user, keycloak_client, false, 204, user.id, default_super_admin_group.id)
         -- add readonly_group_ws1 to the admin
         do_cloak_request(keycloak_api.add_group_to_user, keycloak_client, false, 204, user.id, group_ws1.id)
         -- begin auth via openid-connect
@@ -783,40 +882,36 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
 
-      -- FIXME: Commenting this line as we reverted some fixes on RBAC roles
-      -- See: https://github.com/Kong/kong-ee/pull/8060
-      -- do_cloak_request(keycloak_api.delete_group_from_user, keycloak_client, false, 204, user.id, default_super_admin_group.id)
-      --
-      -- it("the admin doesn't have any permissions when remove the group `readonly_group_ws2` of IDP", function()
-      --   do_cloak_request(keycloak_api.delete_group_from_user, keycloak_client, false, 204, user.id, group_ws2.id)
-      --
-      --   -- begin auth via openid-connect
-      --   authenticate(db, admin_client, USERNAME)
-      --   -- login success
-      --   local admin = db.admins:select_by_username(USERNAME)
-      --   assert(USERNAME, admin.username)
-      --   local rbac_user_id = admin.rbac_user and admin.rbac_user.id
-      --   assert.is_not_nil(rbac_user_id)
+      it("the admin doesn't have any permissions when remove the group `readonly_group_ws2` of IDP", function()
+        do_cloak_request(keycloak_api.delete_group_from_user, keycloak_client, false, 204, user.id, group_ws2.id)
 
-      --   local user_token = update_rbac_token(rbac_user_id)
+        -- begin auth via openid-connect
+        authenticate(db, admin_client, USERNAME)
+        -- login success
+        local admin = db.admins:select_by_username(USERNAME)
+        assert(USERNAME, admin.username)
+        local rbac_user_id = admin.rbac_user and admin.rbac_user.id
+        assert.is_not_nil(rbac_user_id)
 
-      --   local rbac_user_groups = {}
-      --   for rbac_user_group, _ in db.rbac_user_groups:each_for_user({ id = rbac_user_id }) do
-      --     table.insert(rbac_user_groups, rbac_user_group)
-      --   end
-      --   assert.equal(0, #rbac_user_groups)
-      --   for _, ws in ipairs({ "ws1", "ws2", "default" }) do
-      --     -- should access ws1/services
-      --     local res = assert(admin_client:send {
-      --       method = "GET",
-      --       path = "/" .. ws .. "/services",
-      --       headers = {
-      --         ["Kong-Admin-Token"] = user_token
-      --       }
-      --     })
-      --     assert.response(res).has.status(403)
-      --   end
-      -- end)
+        local user_token = update_rbac_token(rbac_user_id)
+
+        local rbac_user_groups = {}
+        for rbac_user_group, _ in db.rbac_user_groups:each_for_user({ id = rbac_user_id }) do
+          table.insert(rbac_user_groups, rbac_user_group)
+        end
+        assert.equal(0, #rbac_user_groups)
+        for _, ws in ipairs({ "ws1", "ws2", "default" }) do
+          -- should access ws1/services
+          local res = assert(admin_client:send {
+            method = "GET",
+            path = "/" .. ws .. "/services",
+            headers = {
+              ["Kong-Admin-Token"] = user_token
+            }
+          })
+          assert.response(res).has.status(403)
+        end
+      end)
 
       it("the admin doesn't have any permissions when delete group `readonly_group_ws2`", function()
         do_cloak_request(keycloak_api.add_group_to_user, keycloak_client, false, 204, user.id, group_ws2.id)
@@ -874,52 +969,48 @@ for _, strategy in helpers.each_strategy() do
 
       end)
 
-      -- FIXME: Commenting this line as we reverted some fixes on RBAC roles
-      -- See: https://github.com/Kong/kong-ee/pull/8060
-      -- do_cloak_request(keycloak_api.delete_group_from_user, keycloak_client, false, 204, user.id, default_super_admin_group.id)
-      --
-      -- it("the admin should doesn't have any permissions when remove the group `default:super-admin` again", function()
-      --   -- add default:super-admin to admin
-      --   do_cloak_request(keycloak_api.add_group_to_user, keycloak_client, false, 204, user.id,
-      --     default_super_admin_group.id)
-      --   authenticate(db, admin_client, USERNAME)
-      --   -- login success
-      --   local admin = db.admins:select_by_username(USERNAME)
-      --   assert(USERNAME, admin.username)
-      --   local rbac_user_id = admin.rbac_user and admin.rbac_user.id
-      --   assert.is_not_nil(rbac_user_id)
-      --   local user_token = update_rbac_token(rbac_user_id)
+      it("the admin should doesn't have any permissions when remove the group `default:super-admin` again", function()
+        -- add default:super-admin to admin
+        do_cloak_request(keycloak_api.add_group_to_user, keycloak_client, false, 204, user.id,
+          default_super_admin_group.id)
+        authenticate(db, admin_client, USERNAME)
+        -- login success
+        local admin = db.admins:select_by_username(USERNAME)
+        assert(USERNAME, admin.username)
+        local rbac_user_id = admin.rbac_user and admin.rbac_user.id
+        assert.is_not_nil(rbac_user_id)
+        local user_token = update_rbac_token(rbac_user_id)
 
-      --   -- should access ws1/services
-      --   for _, ws_name in ipairs({ "ws1", "ws2", "default" }) do
-      --     local res = assert(admin_client:send {
-      --       method = "GET",
-      --       path = "/" .. ws_name .. "/services",
-      --       headers = {
-      --         ["Kong-Admin-Token"] = user_token
-      --       }
-      --     })
-      --     assert.response(res).has.status(200)
-      --   end
+        -- should access ws1/services
+        for _, ws_name in ipairs({ "ws1", "ws2", "default" }) do
+          local res = assert(admin_client:send {
+            method = "GET",
+            path = "/" .. ws_name .. "/services",
+            headers = {
+              ["Kong-Admin-Token"] = user_token
+            }
+          })
+          assert.response(res).has.status(200)
+        end
 
-      --   -- remove default:super-admin from admin
-      --   do_cloak_request(keycloak_api.delete_group_from_user, keycloak_client, false, 204, user.id,
-      --     default_super_admin_group.id)
-      --   authenticate(db, admin_client, USERNAME)
-      --   -- login success
+        -- remove default:super-admin from admin
+        do_cloak_request(keycloak_api.delete_group_from_user, keycloak_client, false, 204, user.id,
+          default_super_admin_group.id)
+        authenticate(db, admin_client, USERNAME)
+        -- login success
 
-      --   -- should access ws1/services
-      --   for _, ws_name in ipairs({ "ws1", "ws2", "default" }) do
-      --     local res = assert(admin_client:send {
-      --       method = "GET",
-      --       path = "/" .. ws_name .. "/services",
-      --       headers = {
-      --         ["Kong-Admin-Token"] = user_token
-      --       }
-      --     })
-      --     assert.response(res).has.status(403)
-      --   end
-      -- end)
+        -- should access ws1/services
+        for _, ws_name in ipairs({ "ws1", "ws2", "default" }) do
+          local res = assert(admin_client:send {
+            method = "GET",
+            path = "/" .. ws_name .. "/services",
+            headers = {
+              ["Kong-Admin-Token"] = user_token
+            }
+          })
+          assert.response(res).has.status(403)
+        end
+      end)
     end)
   end)
 end
