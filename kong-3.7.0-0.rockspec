@@ -98,6 +98,7 @@ build = {
     ["kong.templates.nginx_kong_inject"] = "kong/templates/nginx_kong_inject.lua",
     ["kong.templates.nginx_kong_stream_inject"] = "kong/templates/nginx_kong_stream_inject.lua",
     ["kong.templates.kong_yml"] = "kong/templates/kong_yml.lua",
+    ["kong.templates.wasmtime_cache_config"] = "kong/templates/wasmtime_cache_config.lua",
 
     ["kong.resty.dns.client"] = "kong/resty/dns/client.lua",
     ["kong.resty.dns.utils"] = "kong/resty/dns/utils.lua",
