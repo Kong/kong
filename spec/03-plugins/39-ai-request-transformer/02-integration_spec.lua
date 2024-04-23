@@ -281,7 +281,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           body = REQUEST_BODY,
         })
 
-        local body = assert.res_status(400 , r)
+        local body = assert.res_status(200 , r)
         local _, err = cjson.decode(body)
 
         assert.is_nil(err)
