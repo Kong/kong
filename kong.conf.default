@@ -2077,8 +2077,8 @@
                                     #
                                     # If a conflict occurs where a bundled filter and a
                                     # user-supplied filter share the same name, a warning
-				    # will be logged, and the user-supplied filter will
-				    # be used instead.
+                                    # will be logged, and the user-supplied filter will
+                                    # be used instead.
 
 #------------------------------------------------------------------------------
 # WASM injected directives
