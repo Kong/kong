@@ -16,7 +16,7 @@ dependencies = {
   "luasec == 1.3.2",
   "luasocket == 3.0-rc1",
   "penlight == 1.14.0",
-  "lua-resty-http == 0.17.1",
+  "lua-resty-http == 0.17.2",
   "lua-resty-jit-uuid == 0.0.7",
   "lua-ffi-zlib == 0.6",
   "multipart == 0.5.9",
