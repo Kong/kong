@@ -308,6 +308,34 @@ describe("NGINX conf compiler", function()
       assert.not_matches("ssl_certificate_by_lua_block", kong_nginx_conf)
       assert.not_matches("ssl_dhparam", kong_nginx_conf)
     end)
+
+    it("renders RPC server", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        role = "control_plane",
+        cluster_cert = "spec/fixtures/kong_clustering.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        database = strategy,
+        cluster_listen = "127.0.0.1:9005",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.matches("location = /v2/outlet {", kong_nginx_conf)
+    end)
+
+    it("does not renders RPC server when inert", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        role = "control_plane",
+        cluster_cert = "spec/fixtures/kong_clustering.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        database = strategy,
+        cluster_listen = "127.0.0.1:9005",
+        cluster_rpc = "off",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.not_matches("location = /v2/outlet {", kong_nginx_conf)
+    end)
+
     describe("handles client_ssl", function()
       it("on", function()
         local conf = assert(conf_loader(helpers.test_conf_path, {

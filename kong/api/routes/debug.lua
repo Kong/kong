@@ -111,7 +111,26 @@ local routes = {
       return handle_put_log_level(self, NODE_LEVEL_BROADCAST)
     end
   },
-  ["/clustering/data-planes/:node_id/log-level"] = {
+}
+
+
+local cluster_name
+
+if kong.configuration.role == "control_plane" then
+  cluster_name = "/debug/cluster/control-planes-nodes/log-level/:log_level"
+else
+  cluster_name = "/debug/cluster/log-level/:log_level"
+end
+
+routes[cluster_name] = {
+  PUT = function(self)
+    return handle_put_log_level(self, CLUSTER_LEVEL_BROADCAST)
+  end
+}
+
+
+if kong.rpc then
+  routes["/clustering/data-planes/:node_id/log-level"] = {
     GET = function(self)
       local res, err =
         kong.rpc:call(self.params.node_id, "kong.debug.log_level.v1.get_log_level")
@@ -152,21 +171,6 @@ local routes = {
       return kong.response.exit(204)
     end,
   },
-}
-
-
-local cluster_name
-
-if kong.configuration.role == "control_plane" then
-  cluster_name = "/debug/cluster/control-planes-nodes/log-level/:log_level"
-else
-  cluster_name = "/debug/cluster/log-level/:log_level"
 end
-
-routes[cluster_name] = {
-  PUT = function(self)
-    return handle_put_log_level(self, CLUSTER_LEVEL_BROADCAST)
-  end
-}
 
 return routes

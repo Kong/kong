@@ -688,10 +688,12 @@ function Kong.init()
   then
     kong.clustering = require("kong.clustering").new(config)
 
-    kong.rpc = require("kong.clustering.rpc.manager").new(config, kong.node.get_id())
+    if config.cluster_rpc then
+      kong.rpc = require("kong.clustering.rpc.manager").new(config, kong.node.get_id())
 
-    if is_http_module and is_data_plane(config) then
-      require("kong.clustering.services.debug").init(kong.rpc)
+      if is_http_module and is_data_plane(config) then
+        require("kong.clustering.services.debug").init(kong.rpc)
+      end
     end
   end
 
@@ -970,7 +972,7 @@ function Kong.init_worker()
 
     local cluster_tls = require("kong.clustering.tls")
 
-    if is_http_module then
+    if kong.rpc and is_http_module then
       if is_data_plane(kong.configuration) then
         ngx.timer.at(0, function(premature)
           kong.rpc:connect(premature,
