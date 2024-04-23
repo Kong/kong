@@ -37,7 +37,7 @@
   - ld-linux-aarch64.so.1
   Runpath   : /usr/local/kong/lib
 
-- Path      : /usr/local/kong/lib/libexpat.so.1.8.10
+- Path      : /usr/local/kong/lib/libexpat.so.1.9.2
   Needed    :
   - libc.so.6
   - ld-linux-aarch64.so.1
@@ -184,4 +184,3 @@
   OpenSSL   : OpenSSL 3.2.1 30 Jan 2024
   DWARF     : True
   DWARF - ngx_http_request_t related DWARF DIEs: True
-
