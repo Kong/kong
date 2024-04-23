@@ -76,7 +76,7 @@ for _, strategy in helpers.each_strategy() do
           local json = cjson.decode(body)
 
           for _, v in pairs(json.data) do
-            if v.ip == "127.0.0.1" and v.rpc_capabilities then
+            if v.ip == "127.0.0.1" then
               assert.near(14 * 86400, v.ttl, 3)
               assert.equal(0, #v.rpc_capabilities)
               return true
