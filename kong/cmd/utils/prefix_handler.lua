@@ -5,6 +5,7 @@ local kong_nginx_stream_template = require "kong.templates.nginx_kong_stream"
 local nginx_main_inject_template = require "kong.templates.nginx_inject"
 local nginx_http_inject_template = require "kong.templates.nginx_kong_inject"
 local nginx_stream_inject_template = require "kong.templates.nginx_kong_stream_inject"
+local wasmtime_cache_template = require "kong.templates.wasmtime_cache_config"
 local system_constants = require "lua_system_constants"
 local process_secrets = require "kong.cmd.utils.process_secrets"
 local openssl_bignum = require "resty.openssl.bn"
@@ -419,6 +420,10 @@ local function compile_nginx_conf(kong_config, template)
   return compile_conf(kong_config, template)
 end
 
+local function compile_wasmtime_cache_conf(kong_config)
+  return compile_conf(kong_config, wasmtime_cache_template)
+end
+
 local function prepare_prefixed_interface_dir(usr_path, interface_dir, kong_config)
   local usr_interface_path = usr_path .. "/" .. interface_dir
   local interface_path = kong_config.prefix .. "/" .. interface_dir
@@ -671,6 +676,24 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
 
   if skip_write then
     return true
+  end
+
+  if kong_config.wasm then
+    if kong_config.wasmtime_cache_directory then
+      local ok, err = makepath(kong_config.wasmtime_cache_directory)
+      if not ok then
+        return nil, err
+      end
+    end
+
+    if kong_config.nginx_wasm_wasmtime_cache_config_load then
+      local wasmtime_conf, err = compile_wasmtime_cache_conf(kong_config)
+      if not wasmtime_conf then
+        return nil, err
+      end
+      pl_file.write(kong_config.nginx_wasm_wasmtime_cache_config_load,
+                    wasmtime_conf)
+    end
   end
 
   -- compile Nginx configurations

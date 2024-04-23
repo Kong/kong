@@ -646,6 +646,11 @@ local function load(path, custom_conf, opts)
     -- TODO: as a temporary compatibility fix, we are forcing it to 'off'.
     add_wasm_directive("nginx_http_proxy_wasm_lua_resolver", "off")
 
+    -- configure wasmtime module cache
+    conf.wasmtime_cache_directory = pl_path.join(conf.prefix, ".wasmtime_cache")
+    add_wasm_directive("nginx_wasm_wasmtime_cache_config_load",
+                       pl_path.join(conf.prefix, ".wasmtime_config.toml"))
+
     -- wasm vm properties are inherited from previously set directives
     if conf.lua_ssl_trusted_certificate and #conf.lua_ssl_trusted_certificate >= 1 then
       add_wasm_directive("tls_trusted_certificate", conf.lua_ssl_trusted_certificate[1], wasm_main_prefix)

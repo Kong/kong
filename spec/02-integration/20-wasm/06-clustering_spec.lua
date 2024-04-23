@@ -98,7 +98,7 @@ describe("#wasm - hybrid mode #postgres", function()
       },
     }))
 
-    assert(helpers.start_kong({
+    local conf = {
       role                = "control_plane",
       database            = "postgres",
       prefix              = cp_prefix,
@@ -109,7 +109,11 @@ describe("#wasm - hybrid mode #postgres", function()
       nginx_conf          = "spec/fixtures/custom_nginx.template",
       wasm                = true,
       wasm_filters_path   = cp_filter_path,
-    }))
+    }
+
+    assert(helpers.start_kong(conf))
+    assert(helpers.stop_kong(conf.prefix, true))
+    assert(helpers.start_kong(conf))
   end)
 
   lazy_teardown(function()
@@ -128,7 +132,7 @@ describe("#wasm - hybrid mode #postgres", function()
       dp_filter_path = new_wasm_filter_directory()
       node_id = utils.uuid()
 
-      assert(helpers.start_kong({
+      local conf = {
         role                  = "data_plane",
         database              = "off",
         prefix                = dp_prefix,
@@ -140,7 +144,11 @@ describe("#wasm - hybrid mode #postgres", function()
         wasm                  = true,
         wasm_filters_path     = dp_filter_path,
         node_id               = node_id,
-      }))
+      }
+
+      assert(helpers.start_kong(conf))
+      assert(helpers.stop_kong(conf.prefix, true))
+      assert(helpers.start_kong(conf))
 
       client = helpers.proxy_client()
     end)
