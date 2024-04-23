@@ -1,0 +1,4 @@
+message: |
+  Fixed an issue where DP was unable to resolve license required Vault reference when loading an existing lmdb.
+type: bugfix
+scope: Core

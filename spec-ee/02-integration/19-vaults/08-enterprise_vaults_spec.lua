@@ -173,5 +173,49 @@ for _, strategy in helpers.each_strategy() do
       assert.not_nil(res.headers[secret_dummy_header])
       assert.equal("test-secret", res.headers[secret_dummy_header])
     end)
+
+    it("should not have [requires a license to be used] lines in the error log while loading exist lmdb by restarting DP", function()
+      helpers.wait_for_all_config_update({
+        disable_ipv6 = true,
+        forced_proxy_port = 9002,
+      })
+
+      helpers.clean_logfile("servroot2/logs/error.log")
+
+      assert(helpers.restart_kong({
+        role = "data_plane",
+        database = "off",
+        prefix = "servroot2",
+        log_level = "debug",
+        lua_package_path = LUA_PATH,
+        vaults = "lic_required_vault",
+        dedicated_config_processing = "on",
+        cluster_cert = "spec/fixtures/kong_clustering.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+        cluster_control_plane = "127.0.0.1:9005",
+        proxy_listen = "0.0.0.0:9002",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }, nil, nil, fixtures))
+
+      helpers.wait_for_all_config_update({
+        disable_ipv6 = true,
+        forced_proxy_port = 9002,
+      })
+
+      proxy_client = helpers.proxy_client(10000, 9002)
+
+      local res = proxy_client:get("/", {
+        headers = {
+          host = "test1.com",
+        }
+      })
+
+      assert.logfile("servroot2/logs/error.log").has.no.line("requires a license to be used", true, 0)
+
+      assert.res_status(200, res)
+      assert.not_nil(res.headers[secret_dummy_header])
+      assert.equal("test-secret", res.headers[secret_dummy_header])
+    end)
   end)
 end

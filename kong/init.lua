@@ -922,6 +922,10 @@ function Kong.init_worker()
   end
   kong.cluster_events = cluster_events
 
+  -- EE licensing [[
+  kong.licensing:init_worker()
+  -- EE licensing ]]
+
   if kong.vitals then
     kong.vitals:register_config_change(worker_events)
     -- vitals functions require a timer, so must start in worker context
