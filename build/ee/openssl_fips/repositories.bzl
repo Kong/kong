@@ -14,7 +14,7 @@ def openssl_fips_repositories():
         http_archive,
         name = "openssl_fips",
         build_file = "//build/ee/openssl_fips:BUILD.bazel",
-        sha256 = "6c13d2bf38fdf31eac3ce2a347073673f5d63263398f1f69d0df4a41253e4b3e",
+        sha256 = "eb1ab04781474360f77c318ab89d8c5a03abc38e63d65a603cabbf1b00a1dc90",
         strip_prefix = "openssl-" + version,
         urls = [
             "https://www.openssl.org/source/openssl-" + version + ".tar.gz",
