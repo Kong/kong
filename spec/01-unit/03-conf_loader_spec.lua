@@ -2079,6 +2079,32 @@ describe("Configuration loader", function()
       assert.same(bundled_filters, conf.wasm_modules_parsed)
     end)
 
+    it("prefers user filters to bundled filters when a conflict exists", function()
+      local user_filter = temp_dir .. "/datakit.wasm"
+      assert(helpers.file.write(user_filter, "I'm a happy little wasm filter"))
+      finally(function()
+        assert(os.remove(user_filter))
+      end)
+
+      local conf, err = conf_loader(nil, {
+        wasm = "on",
+        wasm_filters = "bundled,user",
+        wasm_filters_path = temp_dir,
+      })
+      assert.is_nil(err)
+
+      local found = false
+      for _, filter in ipairs(conf.wasm_modules_parsed) do
+        if filter.name == "datakit" then
+          found = true
+          assert.equals(user_filter, filter.path,
+                        "user filter should override the bundled filter")
+        end
+      end
+
+      assert.is_true(found, "expected the user filter to be enabled")
+    end)
+
   end)
 
   describe("errors", function()

@@ -575,10 +575,8 @@ local function load(path, custom_conf, opts)
       all_user_filters_enabled = false
     end
 
-    ---@type kong.configuration.wasm_filter[]
-    local active_filters = {}
-    ---@type table<string, boolean>
-    local active_filter_names = {}
+    ---@type table<string, kong.configuration.wasm_filter>
+    local active_filters_by_name = {}
 
     local bundled_filter_path = conf_constants.WASM_BUNDLED_FILTERS_PATH
     if not pl_path.isdir(bundled_filter_path) then
@@ -606,43 +604,26 @@ local function load(path, custom_conf, opts)
     local bundled_filters = get_wasm_filters(bundled_filter_path)
     for _, filter in ipairs(bundled_filters) do
       if all_bundled_filters_enabled or allowed_filter_names[filter.name] then
-        insert(active_filters, filter)
-        active_filter_names[filter.name] = true
+        active_filters_by_name[filter.name] = filter
       end
     end
-
-    ---@type string[]
-    local conflicts = {}
 
     local user_filters = get_wasm_filters(conf.wasm_filters_path)
     for _, filter in ipairs(user_filters) do
       if all_user_filters_enabled or allowed_filter_names[filter.name] then
-        if active_filter_names[filter.name] then
-          insert(conflicts, filter.name)
-
-        else
-          insert(active_filters, filter)
-          active_filter_names[filter.name] = true
+        if active_filters_by_name[filter.name] then
+          log.warn("Replacing bundled filter %s with a user-supplied " ..
+                   "filter at %s", filter.name, filter.path)
         end
+        active_filters_by_name[filter.name] = filter
       end
     end
 
-    if #conflicts > 0 then
-      local e = "One or more wasm filters in %q conflicts with a bundled " ..
-                "filter name:" ..
-                "\n\n" ..
-                "%s" ..
-                "\n\n" ..
-                "To remedy this, you may need to remove 'bundled' from " ..
-                "`wasm_filters` and add enable any chosen bundled filters " ..
-                "one-by-one. Alternatively, you may rename one of the " ..
-                "conflicting filters in your `wasm_filters_path` directory " ..
-                "(this is necessary if you want to use both the bundled " ..
-                "filter and the user-supplied filter)."
-
-      return nil, fmt(e, conf.wasm_filters_path, table.concat(conflicts, ", "))
+    ---@type kong.configuration.wasm_filter[]
+    local active_filters = {}
+    for _, filter in pairs(active_filters_by_name) do
+      insert(active_filters, filter)
     end
-
     sort(active_filters, function(lhs, rhs)
       return lhs.name < rhs.name
     end)
