@@ -6,7 +6,7 @@ local fmt = string.format
 local ai_shared = require("kong.llm.drivers.shared")
 local openai_driver = require("kong.llm.drivers.openai")
 local socket_url = require "socket.url"
-local ensure_valid_path = require("kong.tools.utils").ensure_valid_path
+local string_gsub = string.gsub
 --
 
 -- globals
@@ -60,7 +60,7 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
         conf.model.options
     and conf.model.options.upstream_path
     or ai_shared.operation_map[DRIVER_NAME][conf.route_type].path,
-    conf.model.options.azure_api_version or "2023-05-15"
+    conf.model.options.azure_api_version
   )
 
   local method = ai_shared.operation_map[DRIVER_NAME][conf.route_type].method
@@ -100,7 +100,7 @@ function _M.configure_request(conf)
   local parsed_url
 
   if conf.model.options.upstream_url then
-    parsed_url = socket_url.parse("http://127.0.0.1:8080/jack/t")
+    parsed_url = socket_url.parse(conf.model.options.upstream_url)
   else
     -- azure has non-standard URL format
     local url = fmt(
@@ -113,8 +113,8 @@ function _M.configure_request(conf)
     parsed_url = socket_url.parse(url)
   end
   
-  -- if the path is read from a URL capture, ensure that it is valid
-  parsed_url.path = ensure_valid_path(parsed_url.path)
+  -- if the path is read from a URL capture, 3re that it is valid
+  parsed_url.path = string_gsub(parsed_url.path, "^/*", "/")
 
   kong.service.request.set_path(parsed_url.path)
   kong.service.request.set_scheme(parsed_url.scheme)
@@ -135,7 +135,6 @@ function _M.configure_request(conf)
   -- technically min supported version
   query_table["api-version"] = kong.request.get_query_arg("api-version")
                             or (conf.model.options and conf.model.options.azure_api_version)
-                            or "2023-05-15"
   
   if auth_param_name and auth_param_value and auth_param_location == "query" then
     query_table[auth_param_name] = auth_param_value
