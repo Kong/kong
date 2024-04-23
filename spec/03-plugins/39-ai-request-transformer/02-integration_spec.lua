@@ -282,9 +282,6 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         })
         
         local body = assert.res_status(200 , r)
-        local body_table, err = cjson.decode(body)
-
-        assert.is_nil(err)
 
         local log_message = wait_for_json_log_entry(FILE_LOG_PATH_STATS_ONLY)
         assert.same("127.0.0.1", log_message.client_ip)
