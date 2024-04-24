@@ -9,7 +9,7 @@
 
 local GqlSchema    = require "kong.gql.schema"
 local build_ast    = require "kong.gql.query.build_ast"
-local ratelimiting = require("kong.tools.public.rate-limiting").new("graphql-rate-limiting-advanced")
+local ratelimiting = require("kong.tools.public.rate-limiting").new_instance("graphql-rate-limiting-advanced")
 local schema       = require "kong.plugins.graphql-rate-limiting-advanced.schema"
 local cost         = require "kong.plugins.graphql-rate-limiting-advanced.cost"
 local meta         = require "kong.meta"
@@ -115,7 +115,7 @@ local function new_namespace(config, init_timer)
 
     kong.log.notice("using shared dictionary '" .. dict_name .. "'")
 
-    ratelimiting:new_namespace({
+    ratelimiting.new({
       namespace     = config.namespace,
       sync_rate     = config.sync_rate,
       strategy      = strategy,
@@ -134,11 +134,11 @@ local function new_namespace(config, init_timer)
       local rate = config.sync_rate
       local when = rate - (ngx.now() - (math.floor(ngx.now() / rate) * rate))
       kong.log.debug("initial sync in ", when, " seconds")
-      ngx.timer.at(when, ratelimiting.sync, ratelimiting, config.namespace)
+      ngx.timer.at(when, ratelimiting.sync, config.namespace)
 
       -- run the fetch from a timer because it uses cosockets
       -- kong patches this for psql and c*, but not redis
-      ngx.timer.at(0, ratelimiting.fetch, ratelimiting, config.namespace, ngx.now(), min(rate - 0.001, 2), true)
+      ngx.timer.at(0, ratelimiting.fetch, config.namespace, ngx.now(), min(rate - 0.001, 2), true)
     end
 
   else
@@ -191,7 +191,7 @@ function NewRLHandler:init_worker()
       start_timer = true
     end
 
-    ratelimiting:clear_config(config.namespace)
+    ratelimiting.clear_config(config.namespace)
     new_namespace(config, start_timer)
 
     -- clear the timer if we dont need it
@@ -459,10 +459,10 @@ function NewRLHandler:access(conf)
     -- set of response headers regardless of whether we block the request
     local rate
     if deny then
-      rate = ratelimiting:sliding_window(key, window_size, nil, conf.namespace)
+      rate = ratelimiting.sliding_window(key, window_size, nil, conf.namespace)
 
     else -- Increment cost window by computed cost of query
-      rate = ratelimiting:increment(key, window_size, query_cost, conf.namespace,
+      rate = ratelimiting.increment(key, window_size, query_cost, conf.namespace,
                                     conf.window_type == "fixed" and 0 or nil)
     end
 

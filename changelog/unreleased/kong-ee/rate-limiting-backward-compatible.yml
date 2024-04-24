@@ -1,0 +1,3 @@
+message: "**Rate Limiting Advanced:** Refactored `kong/tools/public/rate-limiting` to keep the original interfaces unchanged and extend a new interface `new_instance` to provide isolation between different plugins."
+type: bugfix
+scope: Plugin

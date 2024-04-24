@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local ratelimit   = require("kong.tools.public.rate-limiting").new("awesomeplugin")
+local ratelimit   = require "kong.tools.public.rate-limiting"
 local spec_helpers = require "spec.helpers"
 local conf_loader = require "kong.conf_loader"
 local DB          = require "kong.db"
@@ -40,20 +40,11 @@ describe("rate-limiting", function()
   describe("new()", function()
     describe("returns true", function()
       after_each(function()
-        ratelimit:clear_config()
-      end)
-
-      it("use the specified name", function()
-        assert.same("awesomeplugin", ratelimit.name)
-      end)
-
-      it("should throw an error if the plugin_name is not specified", function()
-        assert.error(function() require("kong.tools.public.rate-limiting").new() end,
-                     "plugin_name must be a string")
+        ratelimit.clear_config()
       end)
 
       it("given a config with sane values", function()
-        assert.is_true(ratelimit:new_namespace({
+        assert.is_true(ratelimit.new({
           dict        = "foo",
           sync_rate   = 10,
           strategy    = "postgres",
@@ -62,7 +53,7 @@ describe("rate-limiting", function()
       end)
 
       it("given a config with a custom namespace", function()
-        assert.is_true(ratelimit:new_namespace({
+        assert.is_true(ratelimit.new({
           dict      = "foo",
           sync_rate = 10,
           strategy  = "postgres",
@@ -72,7 +63,7 @@ describe("rate-limiting", function()
       end)
 
       it("given a config with sync_rate as '-1'", function()
-        assert.is_true(ratelimit:new_namespace({
+        assert.is_true(ratelimit.new({
           dict      = "foo",
           sync_rate = -1,
           strategy  = "postgres",
@@ -82,7 +73,7 @@ describe("rate-limiting", function()
       end)
 
       it("given a config with strategy as 'off'", function()
-        assert.is_true(ratelimit:new_namespace({
+        assert.is_true(ratelimit.new({
           dict      = "foo",
           sync_rate = 10,
           strategy  = "off",
@@ -92,7 +83,7 @@ describe("rate-limiting", function()
       end)
 
       it("given a config with sync_rate as '-1' and strategy as 'off'", function()
-        assert.is_true(ratelimit:new_namespace({
+        assert.is_true(ratelimit.new({
           dict      = "foo",
           sync_rate = -1,
           strategy  = "off",
@@ -104,12 +95,12 @@ describe("rate-limiting", function()
 
     describe("errors", function()
       it("when opts is not a table", function()
-        assert.has.error(function() ratelimit:new_namespace("foo") end,
+        assert.has.error(function() ratelimit.new("foo") end,
           "opts must be a table")
       end)
 
       it("when namespace contains a pipe character", function()
-        assert.has.error(function() ratelimit:new_namespace({
+        assert.has.error(function() ratelimit.new({
           dict      = "foo",
           sync_rate = 10,
           strategy  = "postgres",
@@ -119,7 +110,7 @@ describe("rate-limiting", function()
       end)
 
       it("when namespace is not a string", function()
-        assert.has.error(function() ratelimit:new_namespace({
+        assert.has.error(function() ratelimit.new({
           dict      = "foo",
           sync_rate = 10,
           strategy  = "postgres",
@@ -128,7 +119,7 @@ describe("rate-limiting", function()
         }) end, "namespace must be a valid string")
       end)
       it("when namespace already exists", function()
-        assert.is_true(ratelimit:new_namespace({
+        assert.is_true(ratelimit.new({
           dict      = "foo",
           sync_rate = 10,
           strategy  = "postgres",
@@ -136,7 +127,7 @@ describe("rate-limiting", function()
           db = new_db,
         }))
 
-        assert.has.error(function() ratelimit:new_namespace({
+        assert.has.error(function() ratelimit.new({
           dict      = "foo",
           sync_rate = 10,
           strategy  = "postgres",
@@ -146,12 +137,12 @@ describe("rate-limiting", function()
       end)
 
       it("when dict is not a valid string", function()
-        assert.has.error(function() ratelimit:new_namespace({
+        assert.has.error(function() ratelimit.new({
           dict      = "",
           sync_rate = 10,
         }) end, "given dictionary reference must be a string")
 
-        assert.has.error(function() ratelimit:new_namespace({
+        assert.has.error(function() ratelimit.new({
           sync_rate = 10,
           strategy  = "postgres",
           db = new_db,
@@ -159,7 +150,7 @@ describe("rate-limiting", function()
       end)
 
       it("when an invalid strategy is given", function()
-        assert.has.error(function() ratelimit:new_namespace({
+        assert.has.error(function() ratelimit.new({
           dict      = "foo",
           sync_rate = 10,
           strategy  = "yomama",
@@ -168,7 +159,7 @@ describe("rate-limiting", function()
       end)
 
       it("when an invalid sync_rate is given", function()
-        assert.has.error(function() ratelimit:new_namespace({
+        assert.has.error(function() ratelimit.new({
           dict      = "foo",
           sync_rate = "bar",
           strategy  = "postgres",
@@ -189,7 +180,7 @@ describe("rate-limiting", function()
     end
 
     setup(function()
-      assert(ratelimit:new_namespace({
+      assert(ratelimit.new({
         dict      = "foo",
         sync_rate = 10,
         strategy  = "postgres",
@@ -197,7 +188,7 @@ describe("rate-limiting", function()
         db = new_db,
       }))
 
-      assert(ratelimit:new_namespace({
+      assert(ratelimit.new({
         dict      = "foo",
         sync_rate = 10,
         strategy  = "postgres",
@@ -206,7 +197,7 @@ describe("rate-limiting", function()
         db = new_db,
       }))
 
-      assert(ratelimit:new_namespace({
+      assert(ratelimit.new({
         dict         = "foo",
         sync_rate    = -1,
         strategy     = "postgres",
@@ -215,7 +206,7 @@ describe("rate-limiting", function()
         db = new_db,
       }))
 
-      assert(ratelimit:new_namespace({
+      assert(ratelimit.new({
         dict         = "foo",
         sync_rate    = 10,
         strategy     = "postgres",
@@ -224,7 +215,7 @@ describe("rate-limiting", function()
         db = new_db,
       }))
 
-      assert(ratelimit:new_namespace({
+      assert(ratelimit.new({
         dict         = "off",
         sync_rate    = -1,
         strategy     = "off",
@@ -233,7 +224,7 @@ describe("rate-limiting", function()
         db = new_db,
       }))
 
-      assert(ratelimit:new_namespace({
+      assert(ratelimit.new({
         dict         = "off",
         sync_rate    = -1,
         strategy     = "off",
@@ -242,7 +233,7 @@ describe("rate-limiting", function()
         db = new_db,
       }))
 
-      assert(ratelimit:new_namespace({
+      assert(ratelimit.new({
         dict         = "foo",
         sync_rate    = 5,
         strategy     = "postgres",
@@ -251,7 +242,7 @@ describe("rate-limiting", function()
         db = new_db,
       }))
 
-      assert(ratelimit:new_namespace({
+      assert(ratelimit.new({
         dict         = "foo",
         sync_rate    = 2,
         strategy     = "postgres",
@@ -270,45 +261,45 @@ describe("rate-limiting", function()
     describe("increment()", function()
       describe("in a single namespace", function()
         it("auto creates a key", function()
-          local n = ratelimit:increment("foo", 60, 1)
+          local n = ratelimit.increment("foo", 60, 1)
           assert.same(1, n)
 
-          n = ratelimit:increment("off", 60, 1, "nodb")
+          n = ratelimit.increment("off", 60, 1, "nodb")
           assert.same(1, n)
         end)
 
         it("increments a key", function()
-          local n = ratelimit:increment("foo", 60, 1)
+          local n = ratelimit.increment("foo", 60, 1)
           assert.same(2, n)
-          n = ratelimit:increment("foo", 60, 1)
+          n = ratelimit.increment("foo", 60, 1)
           assert.same(3, n)
 
-          n = ratelimit:increment("off", 60, 1, "nodb")
+          n = ratelimit.increment("off", 60, 1, "nodb")
           assert.same(2, n)
         end)
       end)
 
       describe("in multiple namespaces", function()
         it("auto creates a key", function()
-          local n = ratelimit:increment("bar", 60, 1)
+          local n = ratelimit.increment("bar", 60, 1)
           assert.same(1, n)
 
-         local o = ratelimit:increment("bar", 60, 1, "other")
+         local o = ratelimit.increment("bar", 60, 1, "other")
          assert.same(1, o)
         end)
 
         it("increments a key in the appropriate namespace", function()
-          local n = ratelimit:increment("bar", 60, 1)
+          local n = ratelimit.increment("bar", 60, 1)
           assert.same(2, n)
-          n = ratelimit:increment("bar", 60, 1)
+          n = ratelimit.increment("bar", 60, 1)
           assert.same(3, n)
 
-          n = ratelimit:increment("bar", 60, 1, "other")
+          n = ratelimit.increment("bar", 60, 1, "other")
           assert.same(2, n)
-          n = ratelimit:increment("bar", 60, 1, "other")
+          n = ratelimit.increment("bar", 60, 1, "other")
           assert.same(3, n)
 
-          n = ratelimit:increment("off", 60, 1, "nodb")
+          n = ratelimit.increment("off", 60, 1, "nodb")
           assert.same(3, n)
         end)
       end)
@@ -326,12 +317,12 @@ describe("rate-limiting", function()
           local n
           local m, o = 5, 5
           for i = 1, m do
-            n = ratelimit:increment("foo", rate, 1, "tiny")
+            n = ratelimit.increment("foo", rate, 1, "tiny")
             assert.same(i, n)
           end
 
           for i = 1, m do
-            n = ratelimit:increment("off", rate, 1, "nodbweight")
+            n = ratelimit.increment("off", rate, 1, "nodbweight")
             assert.same(i, n)
           end
 
@@ -339,12 +330,12 @@ describe("rate-limiting", function()
           ngx.sleep(rate + 0.3)
 
           for i = 1, o do
-            n = ratelimit:increment("foo", rate, 1, "tiny")
+            n = ratelimit.increment("foo", rate, 1, "tiny")
             assert.is_true(n >i and n <= m + o)
           end
 
           for i = 1, o do
-            n = ratelimit:increment("off", rate, 1, "nodbweight")
+            n = ratelimit.increment("off", rate, 1, "nodbweight")
             assert.is_true(n > i and n <= m + o)
           end
         end)
@@ -353,12 +344,12 @@ describe("rate-limiting", function()
           local n
           local m, o = 5, 5
           for i = 1, m do
-            n = ratelimit:increment("foo", rate, 1, "tiny", 0)
+            n = ratelimit.increment("foo", rate, 1, "tiny", 0)
             assert.same(i, n)
           end
 
           for i = 1, m do
-            n = ratelimit:increment("off", rate, 1, "nodbweight", 0)
+            n = ratelimit.increment("off", rate, 1, "nodbweight", 0)
             assert.same(i, n)
           end
 
@@ -366,12 +357,12 @@ describe("rate-limiting", function()
           ngx.sleep(rate + 0.3)
 
           for i = 1, o do
-            n = ratelimit:increment("foo", rate, 1, "tiny", 0)
+            n = ratelimit.increment("foo", rate, 1, "tiny", 0)
             assert.same(i, n)
           end
 
           for i = 1, o do
-            n = ratelimit:increment("off", rate, 1, "nodbweight", 0)
+            n = ratelimit.increment("off", rate, 1, "nodbweight", 0)
             assert.same(i, n)
           end
         end)
@@ -395,8 +386,8 @@ describe("rate-limiting", function()
         end)
 
         it("updates the database with our diffs", function()
-          ratelimit:increment("foo", 60, 3, "mock")
-          ratelimit.sync(nil, ratelimit, "mock") -- sync the mock namespace
+          ratelimit.increment("foo", 60, 3, "mock")
+          ratelimit.sync(nil, "mock") -- sync the mock namespace
 
           local rows = assert(db:query("SELECT * from rl_counters where key = 'foo' and namespace = 'mock'"))
           assert.same(6, rows[1].count)
@@ -415,7 +406,7 @@ describe("rate-limiting", function()
         end)
 
         it("does not adjust values in a separate namespace", function()
-          pcall(function() ratelimit.sync(nil, ratelimit, "other") end)
+          pcall(function() ratelimit.sync(nil, "other") end)
           assert.equals(0, ngx.shared.foo:get("other|" .. mock_start .. "|60|bar|diff"))
           assert.equals(3, ngx.shared.foo:get("other|" .. mock_start .. "|60|bar|sync"))
         end)
@@ -425,10 +416,10 @@ describe("rate-limiting", function()
           local jitter = 1
 
           local mock_window = window_floor(1, ngx.time())
-          ratelimit:increment("foo", 1, 1, "one")
+          ratelimit.increment("foo", 1, 1, "one")
 
           ngx.sleep(2 + jitter)   -- greater than window_size * 2
-          pcall(function() ratelimit.sync(nil, ratelimit, "one") end)
+          pcall(function() ratelimit.sync(nil, "one") end)
           assert.equals(0, ngx.shared.foo:get("one|" .. mock_window .. "|1|foo|diff"))
           assert.equals(1, ngx.shared.foo:get("one|" .. mock_window .. "|1|foo|sync"))
 
@@ -442,10 +433,10 @@ describe("rate-limiting", function()
           local jitter = 1
 
           local mock_window = window_floor(3, ngx.time())
-          ratelimit:increment("foo", 3, 1, "two")
+          ratelimit.increment("foo", 3, 1, "two")
 
           ngx.sleep(2 + jitter)   -- greater than sync_rate
-          pcall(function() ratelimit.sync(nil, ratelimit, "two") end)
+          pcall(function() ratelimit.sync(nil, "two") end)
           assert.equals(0, ngx.shared.foo:get("two|" .. mock_window .. "|3|foo|diff"))
           assert.equals(1, ngx.shared.foo:get("two|" .. mock_window .. "|3|foo|sync"))
 
@@ -465,7 +456,7 @@ describe("rate-limiting", function()
         ngx.shared.foo:set("mock|" .. mock_start .. "|60|foo|sync", 0)
 
         assert.has_no.errors(function()
-          assert(ratelimit:increment("foo", 60, 3, "mock"))
+          assert(ratelimit.increment("foo", 60, 3, "mock"))
         end)
 
         ngx.shared.foo:set("nodb|" .. mock_start - 60 .. "|60|off|diff", 0)
@@ -475,16 +466,16 @@ describe("rate-limiting", function()
         ngx.shared.foo:set("nodb|" .. mock_start .. "|60|off|sync", 10)
 
         assert.has_no.errors(function()
-          ratelimit:increment("off", 60, 3, "nodb")
+          ratelimit.increment("off", 60, 3, "nodb")
         end)
       end)
 
       it("returns a fraction of the previous window", function()
-        local rate = ratelimit:sliding_window("foo", 60, nil, "mock")
+        local rate = ratelimit.sliding_window("foo", 60, nil, "mock")
         -- 10 for what we set in setup(), 3 from previous increments
         assert.is_true(rate < 13 and rate >= 3)
 
-        rate = ratelimit:sliding_window("off", 60, nil, "nodb")
+        rate = ratelimit.sliding_window("off", 60, nil, "nodb")
         ngx.say("rate = ", rate)
         assert.is_true(rate < 7 and rate >= 3)
       end)
@@ -495,31 +486,27 @@ describe("rate-limiting", function()
         assert.is_nil(ngx.shared.foo:get(dict_key .. "|diff"))
         assert.is_nil(ngx.shared.foo:get(dict_key .. "|sync"))
 
-        assert.equals(0, ratelimit:sliding_window(dne_key, 60, nil, "mock"))
+        assert.equals(0, ratelimit.sliding_window(dne_key, 60, nil, "mock"))
 
         assert.equals(0, ngx.shared.foo:get(dict_key .. "|diff"))
         assert.equals(0, ngx.shared.foo:get(dict_key .. "|sync"))
       end)
 
       it("uses the appropriate namespace", function()
-        assert(ratelimit:increment("bat", 60, 1, "mock"))
-        assert.equals(1, ratelimit:sliding_window("bat", 60, nil, "mock"))
-        assert.equals(0, ratelimit:sliding_window("bat", 60, nil, "other"))
+        assert(ratelimit.increment("bat", 60, 1, "mock"))
+        assert.equals(1, ratelimit.sliding_window("bat", 60, nil, "mock"))
+        assert.equals(0, ratelimit.sliding_window("bat", 60, nil, "other"))
       end)
     end)
   end)
 
   describe("multiple instances", function()
-    local rl1 = require("kong.tools.public.rate-limiting").new("plugin1")
-    local rl2 = require("kong.tools.public.rate-limiting").new("plugin2")
-
-    it("use the specified name", function()
-      assert.same("plugin1", rl1.name)
-      assert.same("plugin2", rl2.name)
-    end)
+    local ratelimit = require("kong.tools.public.rate-limiting")
+    local rl1 = ratelimit.new_instance("plugin1")
+    local rl2 = ratelimit.new_instance("plugin2")
 
     it("instances should be isolated from each other", function()
-      assert.is_true(rl1:new_namespace({
+      assert.is_true(rl1.new({
         dict      = "foo",
         sync_rate = 10,
         strategy  = "postgres",
@@ -527,7 +514,7 @@ describe("rate-limiting", function()
         db = new_db,
       }))
 
-      assert.is_true(rl2:new_namespace({
+      assert.is_true(rl2.new({
         dict      = "fee",
         sync_rate = 5,
         strategy  = "postgres",
@@ -535,7 +522,7 @@ describe("rate-limiting", function()
         db = new_db,
       }))
 
-      assert.is_true(rl2:new_namespace({
+      assert.is_true(rl2.new({
         dict      = "faa",
         sync_rate = 3,
         strategy  = "postgres",

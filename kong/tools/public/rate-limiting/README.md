@@ -102,6 +102,28 @@ below).
 The following public functions are provided by this library:
 
 
+#### ratelimiting.new_instace
+
+*syntax: ratelimiting = ratelimiting.new_instance(instance_name)*
+
+Previously this library used a module level global table `config` and thus
+lacked of necessary data isolation between different plugins. So when two or
+more different plugins are using it at the same time, it doesn't work normally
+because we can't distinguish which namespaces belong to which plugin. When the
+`reconfigure` event happens, the plugin will delete all the namespaces it does
+not use anymore, but those deleted namespaces may belong to other plugins.
+
+To provide necessary isolation without changing the original interfaces, we
+added this new interface. Every returned instance has its own
+`ratelimiting.config` that won't interfere with each other. As a usage example:
+`local ratelimiting = require("kong.tools.public.rate-limiting").new_instance("rate-limiting-foo")`
+
+If the library is used in the old way, the behavior is as before. In this case,
+it will return a default instance which may be shared with other plugins.
+`local ratelimiting = require("kong.tools.public.rate-limiting")`
+
+Other functions below remain unchanged.
+
 #### ratelimiting.new
 
 *syntax: ok = ratelimiting.new(opts)*

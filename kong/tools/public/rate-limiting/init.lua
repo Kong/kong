@@ -5,9 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local _M = {}
-local mt = { __index = _M }
-
 local floor    = math.floor
 local math_max = math.max
 local insert   = table.insert
@@ -30,6 +27,7 @@ local TIME_DELTA = 0.001
 
 
 local new_tab = require("table.new")
+local DEFAULT_INSTANCE_NAME = "rate-limiting"
 
 
 local function calculate_weight(window_size)
@@ -37,29 +35,7 @@ local function calculate_weight(window_size)
 end
 
 
-function _M.new(plugin_name)
-  assert(type(plugin_name) == "string", "plugin_name must be a string")
-
-  return setmetatable({name = plugin_name, config = {
-    -- default = {
-      -- dict,
-      -- sync_rate,
-      -- strategy,
-      -- seen_map,
-      -- seen_map_idx,
-      -- seen_map_ctr,
-      -- window_sizes,
-    -- }
-  }}, mt)
-end
-
-
-function _M.log(self, lvl, ...)
-  ngx_log(lvl, "[rate-limiting ", self.name, " ] ", ...)
-end
-
-
-function _M.table_names()
+local function table_names()
   local t = {
     "rl_counters",
   }
@@ -73,534 +49,567 @@ local function window_floor(size, time)
 end
 
 
-function _M.fetch(premature, self, namespace, time, timeout, is_initial)
-  if premature then
-    return
+local function new_instance(instance_name)
+  -- namespace configurations
+  local config = {
+  -- default = {
+    -- dict,
+    -- sync_rate,
+    -- strategy,
+    -- seen_map,
+    -- seen_map_idx,
+    -- seen_map_ctr,
+    -- window_sizes,
+  -- }
+  }
+
+  local name = type(instance_name) == "string" and instance_name or DEFAULT_INSTANCE_NAME
+
+  local function log(lvl, ...)
+    ngx_log(lvl, "[", name, "] ", ...)
   end
 
-  namespace  = namespace or "default"
-  local cfg  = self.config[namespace]
-
-  -- early return. Improve perf
-  if cfg.strategy == nil or cfg.sync_rate == -1 then
-    self:log(DEBUG, "rate-limiting strategy is not enabled: skipping fetch")
-    return
-  end
-
-  local dict = ngx.shared[cfg.dict]
-
-  -- mutex so only one worker fetches from the cluster and
-  -- updates our shared zone
-  local lock_key = "rl-init-fetch-" .. namespace
-  local ok, err
-  if timeout then
-    ok, err = locks_shm:add(lock_key, true, math_max(timeout, TIME_DELTA))
-  else
-    ok, err = locks_shm:add(lock_key, true)
-  end
-  if not ok then
-    if err ~= "exists" then
-      self:log(ERR, "err in setting initial ratelimit fetch mutex for ",
-               namespace, ": ", err)
+  local function fetch(premature, namespace, time, timeout, is_initial)
+    if premature then
+      return
     end
 
-    return
-  end
+    namespace  = namespace or "default"
+    local cfg  = config[namespace]
 
-  -- this worker is allowed to fetch and update the sync keys
-  self:log(DEBUG, "rl fetch mutex established on pid ", ngx.worker.pid())
+    -- early return. Improve perf
+    if cfg.strategy == nil or cfg.sync_rate == -1 then
+      log(DEBUG, "rate-limiting strategy is not enabled: skipping fetch")
+      return
+    end
 
-  local row_iter, err = cfg.strategy:get_counters(namespace, cfg.window_sizes, time)
-  if not row_iter then
-    self:log(ERR, "error in fetching counters for namespace ", namespace, ": ", err)
+    local dict = ngx.shared[cfg.dict]
 
-  else
-    for row in row_iter do
-      local dict_key = namespace .. "|" .. row.window_start ..
-                       "|" .. row.window_size .. "|" .. row.key
+    -- mutex so only one worker fetches from the cluster and
+    -- updates our shared zone
+    local lock_key = "rl-init-fetch-" .. namespace
+    local ok, err
+    if timeout then
+      ok, err = locks_shm:add(lock_key, true, math_max(timeout, TIME_DELTA))
+    else
+      ok, err = locks_shm:add(lock_key, true)
+    end
+    if not ok then
+      if err ~= "exists" then
+        log(ERR, "err in setting initial ratelimit fetch mutex for ",
+                 namespace, ": ", err)
+      end
 
-      self:log(DEBUG, "setting sync key ", dict_key)
+      return
+    end
 
-      local ok, err = dict:set(dict_key .. "|sync", row.count, math_max(cfg.exptime, row.window_size * 2))
+    -- this worker is allowed to fetch and update the sync keys
+    log(DEBUG, "rl fetch mutex established on pid ", ngx.worker.pid())
 
-      if not ok then
-        self:log(ERR, "err setting sync key: ", err)
+    local row_iter, err = cfg.strategy:get_counters(namespace, cfg.window_sizes, time)
+    if not row_iter then
+      log(ERR, "error in fetching counters for namespace ", namespace, ": ", err)
+
+    else
+      for row in row_iter do
+        local dict_key = namespace .. "|" .. row.window_start ..
+                         "|" .. row.window_size .. "|" .. row.key
+
+        log(DEBUG, "setting sync key ", dict_key)
+
+        local ok, err = dict:set(dict_key .. "|sync", row.count, math_max(cfg.exptime, row.window_size * 2))
+
+        if not ok then
+          log(ERR, "err setting sync key: ", err)
+        end
       end
     end
-  end
 
-  if not timeout or is_initial then
-    locks_shm:delete(lock_key)
-  end
-end
-
-
-function _M.sync(premature, self, namespace, timer_id)
-  if premature then
-    return
-  end
-
-  namespace  = namespace or "default"
-  local cfg  = self.config[namespace]
-
-  -- early return. Improve perf
-  if cfg.strategy == nil or cfg.sync_rate == -1 then
-    self:log(DEBUG, "rate-limiting strategy is not enabled: skipping sync")
-    return
-  end
-
-  local dict = ngx.shared[cfg.dict]
-
-  if cfg.timer_id ~= timer_id then
-    self:log(DEBUG, "stale timer of namespace ", namespace, ", timer_id: ", timer_id, ", skipping sync")
-    return
-  end
-
-  if cfg.kill then
-    self:log(DEBUG, "killing ", namespace)
-    return
-  end
-
-  self:log(DEBUG, "start sync ", namespace)
-
-  local sync_start_now  = now()
-  local sync_start_time = time()
-
-  do
-    local _, err = timer_at(cfg.sync_rate, _M.sync, self, namespace, timer_id)
-    if err then
-      self:log(ERR, "error starting new sync timer: ", err)
+    if not timeout or is_initial then
+      locks_shm:delete(lock_key)
     end
   end
 
-  if cfg.seen_map_idx == 0 then
-    self:log(DEBUG, "empty sync, do fetch")
-    _M.fetch(nil, self, namespace, sync_start_time, cfg.sync_rate - TIME_DELTA)
-    return
-  end
 
-  -- roll over our seen keys map
-  local seen_map_old_idx = cfg.seen_map_idx
-  cfg.seen_map_idx = 0
-  cfg.seen_map_ctr = cfg.seen_map_ctr + 1
-
-  -- assume we'll see at least the same amount of keys next time
-  cfg.seen_map[cfg.seen_map_ctr] = new_tab(seen_map_old_idx, seen_map_old_idx)
-
-  local diffs = new_tab(seen_map_old_idx, seen_map_old_idx)
-
-  for i = 1, seen_map_old_idx do
-    local key = cfg.seen_map[cfg.seen_map_ctr - 1][i]
-
-    self:log(DEBUG, "try sync ", key)
-
-    local ok, err = locks_shm:add(key .. "|sync-lock", true, cfg.sync_rate - TIME_DELTA)
-    if not ok and err ~= "exists" then
-      self:log(WARN, "error in establishing sync-lock for ", key, ": ", err)
+  local function sync(premature, namespace, timer_id)
+    if premature then
+      return
     end
 
-    -- we have the lock!
-    -- get the current diff, and push it
-    -- before we push, set the diff to 0 so we track while we push diff + wait
-    -- for sync
-    if ok then
-      -- figure out by how much we need to incr this key and subtract it from
-      -- the running diff counter (raceless operation)
-      local diff_val, diff_err = dict:get(key .. "|diff")
-      if diff_val == nil then
-        if diff_err then
-          self.log(ERR, "failed to get diff_val: ", diff_err)
+    namespace  = namespace or "default"
+    local cfg  = config[namespace]
 
-        else
-          self:log(WARN, "key expired")
+    -- early return. Improve perf
+    if cfg.strategy == nil or cfg.sync_rate == -1 then
+      log(DEBUG, "rate-limiting strategy is not enabled: skipping sync")
+      return
+    end
+
+    local dict = ngx.shared[cfg.dict]
+
+    if cfg.timer_id ~= timer_id then
+      log(DEBUG, "stale timer of namespace ", namespace, ", timer_id: ", timer_id, ", skipping sync")
+      return
+    end
+
+    if cfg.kill then
+      log(DEBUG, "killing ", namespace)
+      return
+    end
+
+    log(DEBUG, "start sync ", namespace)
+
+    local sync_start_now  = now()
+    local sync_start_time = time()
+
+    do
+      local _, err = timer_at(cfg.sync_rate, sync, namespace, timer_id)
+      if err then
+        log(ERR, "error starting new sync timer: ", err)
+      end
+    end
+
+    if cfg.seen_map_idx == 0 then
+      log(DEBUG, "empty sync, do fetch")
+      fetch(nil, namespace, sync_start_time, cfg.sync_rate - TIME_DELTA)
+      return
+    end
+
+    -- roll over our seen keys map
+    local seen_map_old_idx = cfg.seen_map_idx
+    cfg.seen_map_idx = 0
+    cfg.seen_map_ctr = cfg.seen_map_ctr + 1
+
+    -- assume we'll see at least the same amount of keys next time
+    cfg.seen_map[cfg.seen_map_ctr] = new_tab(seen_map_old_idx, seen_map_old_idx)
+
+    local diffs = new_tab(seen_map_old_idx, seen_map_old_idx)
+
+    for i = 1, seen_map_old_idx do
+      local key = cfg.seen_map[cfg.seen_map_ctr - 1][i]
+
+      log(DEBUG, "try sync ", key)
+
+      local ok, err = locks_shm:add(key .. "|sync-lock", true, cfg.sync_rate - TIME_DELTA)
+      if not ok and err ~= "exists" then
+        log(WARN, "error in establishing sync-lock for ", key, ": ", err)
+      end
+
+      -- we have the lock!
+      -- get the current diff, and push it
+      -- before we push, set the diff to 0 so we track while we push diff + wait
+      -- for sync
+      if ok then
+        -- figure out by how much we need to incr this key and subtract it from
+        -- the running diff counter (raceless operation)
+        local diff_val, diff_err = dict:get(key .. "|diff")
+        if diff_val == nil then
+          if diff_err then
+            log(ERR, "failed to get diff_val: ", diff_err)
+
+          else
+            log(WARN, "key expired")
+          end
+
+          diff_val = 0
+          log(WARN, "Setting 'diff_val' to 0")
+        end
+        log(DEBUG, "neg incr ", -diff_val)
+        dict:incr(key .. "|diff", -diff_val)
+
+        -- mock what we think as the synced value so we dont lose counts
+        -- since our diff counter is reduced to 0, we account for this by
+        -- temporarily increasing our sync counter to make up the difference. this
+        -- only lives until we have finished updating all keys upstream, and we
+        -- finish the 'read' of the write-then-read strategy used here
+        dict:incr(key .. "|sync", diff_val)
+
+        log(DEBUG, "push ", key, ": ", diff_val)
+
+        --[[
+          diffs = {
+            [1] = {
+              key = "1.2.3.4",
+              windows = {
+                {
+                  window    = 12345610,
+                  size      = 60,
+                  diff      = 5,
+                  namespace = foo,
+                },
+                {
+                  window    = 12345670,
+                  size      = 60,
+                  diff      = 5,
+                  namespace = foo,
+                },
+              }
+            },
+            ...
+            ["1.2.3.4"] = 1,
+            ...
+        ]]
+
+        -- grab each element of the key string
+        local p, q
+        p = key:find("|", 1, true)
+        local namespace = key:sub(1, p - 1)
+        q = p + 1
+        p = key:find("|", q, true)
+        local window = key:sub(q, p - 1)
+        q = p + 1
+        p = key:find("|", q, true)
+        local size = key:sub(q, p - 1)
+        q = p + 1
+        -- get everything to the end
+        local rl_key = key:sub(q)
+
+        -- now figure out if this data point already has a top-level key
+        -- if so, add it to the windows member of this entry; otherwise,
+        -- we create a new key in `diffs` based on this rl_key, and add
+        -- the appropriate members
+        local rl_key_idx = diffs[rl_key]
+
+        if not rl_key_idx then
+          rl_key_idx = #diffs + 1
+
+          diffs[rl_key] = rl_key_idx
+
+          diffs[rl_key_idx] = {
+            key = rl_key,
+            windows = {},
+          }
         end
 
-        diff_val = 0
-        self:log(WARN, "Setting 'diff_val' to 0")
+        insert(diffs[diffs[rl_key]].windows, {
+          window    = tonumber(window),
+          size      = tonumber(size),
+          diff      = tonumber(diff_val),
+          namespace = namespace,
+        })
       end
-      self:log(DEBUG, "neg incr ", -diff_val)
-      dict:incr(key .. "|diff", -diff_val)
-
-      -- mock what we think as the synced value so we dont lose counts
-      -- since our diff counter is reduced to 0, we account for this by
-      -- temporarily increasing our sync counter to make up the difference. this
-      -- only lives until we have finished updating all keys upstream, and we
-      -- finish the 'read' of the write-then-read strategy used here
-      dict:incr(key .. "|sync", diff_val)
-
-      self:log(DEBUG, "push ", key, ": ", diff_val)
-
-      --[[
-        diffs = {
-          [1] = {
-            key = "1.2.3.4",
-            windows = {
-              {
-                window    = 12345610,
-                size      = 60,
-                diff      = 5,
-                namespace = foo,
-              },
-              {
-                window    = 12345670,
-                size      = 60,
-                diff      = 5,
-                namespace = foo,
-              },
-            }
-          },
-          ...
-          ["1.2.3.4"] = 1,
-          ...
-      ]]
-
-      -- grab each element of the key string
-      local p, q
-      p = key:find("|", 1, true)
-      local namespace = key:sub(1, p - 1)
-      q = p + 1
-      p = key:find("|", q, true)
-      local window = key:sub(q, p - 1)
-      q = p + 1
-      p = key:find("|", q, true)
-      local size = key:sub(q, p - 1)
-      q = p + 1
-      -- get everything to the end
-      local rl_key = key:sub(q)
-
-      -- now figure out if this data point already has a top-level key
-      -- if so, add it to the windows member of this entry; otherwise,
-      -- we create a new key in `diffs` based on this rl_key, and add
-      -- the appropriate members
-      local rl_key_idx = diffs[rl_key]
-
-      if not rl_key_idx then
-        rl_key_idx = #diffs + 1
-
-        diffs[rl_key] = rl_key_idx
-
-        diffs[rl_key_idx] = {
-          key = rl_key,
-          windows = {},
-        }
-      end
-
-      insert(diffs[diffs[rl_key]].windows, {
-        window    = tonumber(window),
-        size      = tonumber(size),
-        diff      = tonumber(diff_val),
-        namespace = namespace,
-      })
     end
+
+    -- push these diffs to the appropriate data store
+    local ok, err = cfg.strategy:push_diffs(diffs)
+    if not ok then
+      log(ERR, "error in pushing diffs for namespace ", namespace, ": ", err)
+    end
+
+    -- sleep for a bit to allow each node in the cluster to update,
+    -- and the data store to reach consistency. once that's done
+    -- we re-gather our synced values
+    ngx.sleep(cfg.sync_rate / 20)
+
+    local sync_end_now = now() - sync_start_now
+
+    -- update this node's sync counters
+    -- consider the amount of time we've already taken when setting
+    -- the lock timeout for the next fetch
+    fetch(nil, namespace, sync_start_time, cfg.sync_rate - sync_end_now - TIME_DELTA)
+
+    -- we dont need the old map anymore
+    cfg.seen_map[cfg.seen_map_ctr - 1] = nil
+
+    log(DEBUG, "sync time ", sync_end_now)
+
+    log(DEBUG, "end sync")
   end
 
-  -- push these diffs to the appropriate data store
-  local ok, err = cfg.strategy:push_diffs(diffs)
-  if not ok then
-    self:log(ERR, "error in pushing diffs for namespace ", namespace, ": ", err)
-  end
 
-  -- sleep for a bit to allow each node in the cluster to update,
-  -- and the data store to reach consistency. once that's done
-  -- we re-gather our synced values
-  ngx.sleep(cfg.sync_rate / 20)
-
-  local sync_end_now = now() - sync_start_now
-
-  -- update this node's sync counters
-  -- consider the amount of time we've already taken when setting
-  -- the lock timeout for the next fetch
-  _M.fetch(nil, self, namespace, sync_start_time, cfg.sync_rate - sync_end_now - TIME_DELTA)
-
-  -- we dont need the old map anymore
-  cfg.seen_map[cfg.seen_map_ctr - 1] = nil
-
-  self:log(DEBUG, "sync time ", sync_end_now)
-
-  self:log(DEBUG, "end sync")
-end
-
-
--- calculate the sliding window based on the tuple of key,window_size
--- we derive the weight of the previous window based on how far along into
--- the current window we are
---
--- third param cur_diff is an optional arg of the current diff of the key
--- this allows us to save a shm fetch whiling calculating
--- the sliding window from increment()
-function _M.sliding_window(self, key, window_size, cur_diff, namespace, weight)
-  namespace  = namespace or "default"
-  local cfg  = self.config[namespace]
-  local dict = ngx.shared[cfg.dict]
-
-  local cur_window  = window_floor(window_size, time())
-  local prev_window = cur_window - window_size
-  local exptime = math_max(cfg.exptime, window_size * 2)
-
-  -- incr(k, 0, 0) is a branch free way to dict:get(...) or 0
+  -- calculate the sliding window based on the tuple of key,window_size
+  -- we derive the weight of the previous window based on how far along into
+  -- the current window we are
   --
-  -- storing |diff and |sync counters separately sucks. we want to use
-  -- the incr() operator as part of our increment() becase its atomic
-  -- however, this takes a single value of type 'number'; in Lua this is
-  -- a double, so we could use the upper and lower 32 bits of this data
-  -- to represet diff and sync, however, the Lua bitop library only works
-  -- on 32 bits, so trying to rshift down the high bits to use as a separate
-  -- type is a no-op. bummer. so we're stuck with two discrete values. :/
-  local cur_prefix  = namespace .. "|" .. cur_window .. "|" .. window_size ..
-                      "|" .. key
-  local prev_prefix = namespace .. "|" .. prev_window .. "|" .. window_size ..
-                      "|" .. key
+  -- third param cur_diff is an optional arg of the current diff of the key
+  -- this allows us to save a shm fetch whiling calculating
+  -- the sliding window from increment()
+  local function sliding_window(key, window_size, cur_diff, namespace, weight)
+    namespace  = namespace or "default"
+    local cfg  = config[namespace]
+    local dict = ngx.shared[cfg.dict]
 
-  self:log(DEBUG, "cur_prefix ", cur_prefix)
-  self:log(DEBUG, "prev_prefix ", prev_prefix)
+    local cur_window  = window_floor(window_size, time())
+    local prev_window = cur_window - window_size
+    local exptime = math_max(cfg.exptime, window_size * 2)
 
-  local cur = cur_diff or dict:incr(cur_prefix .. "|diff", 0, 0, exptime)
-  self:log(DEBUG, "cur diff: ", cur)
+    -- incr(k, 0, 0) is a branch free way to dict:get(...) or 0
+    --
+    -- storing |diff and |sync counters separately sucks. we want to use
+    -- the incr() operator as part of our increment() becase its atomic
+    -- however, this takes a single value of type 'number'; in Lua this is
+    -- a double, so we could use the upper and lower 32 bits of this data
+    -- to represet diff and sync, however, the Lua bitop library only works
+    -- on 32 bits, so trying to rshift down the high bits to use as a separate
+    -- type is a no-op. bummer. so we're stuck with two discrete values. :/
+    local cur_prefix  = namespace .. "|" .. cur_window .. "|" .. window_size ..
+                        "|" .. key
+    local prev_prefix = namespace .. "|" .. prev_window .. "|" .. window_size ..
+                        "|" .. key
 
-  if cur == nil then
-    cur = 0
-    self:log(WARN, "rate limit counters shared dict is possibly out of space.", " Setting 'cur' to 0")
-  end
+    log(DEBUG, "cur_prefix ", cur_prefix)
+    log(DEBUG, "prev_prefix ", prev_prefix)
 
-  cur = cur + (dict:incr(cur_prefix .. "|sync", 0, 0, exptime) or 0)
-  self:log(DEBUG, "cur sum: ", cur)
+    local cur = cur_diff or dict:incr(cur_prefix .. "|diff", 0, 0, exptime)
+    log(DEBUG, "cur diff: ", cur)
 
-  local prev = 0
-
-  if not weight then
-    weight = calculate_weight(window_size)
-  end
-
-  if weight > 0 then
-    prev = dict:incr(prev_prefix .. "|diff", 0, 0, exptime)
-    self:log(DEBUG, "prev diff: ", prev)
-    if prev == nil then
-      prev = 0
-      self:log(WARN, "rate limit counters shared dict is possibly out of space.", " Setting 'prev' to 0")
+    if cur == nil then
+      cur = 0
+      log(WARN, "rate limit counters shared dict is possibly out of space.", " Setting 'cur' to 0")
     end
 
-    prev = prev + (dict:incr(prev_prefix .. "|sync", 0, 0, exptime) or 0)
-    self:log(DEBUG, "prev sum: ", prev)
+    cur = cur + (dict:incr(cur_prefix .. "|sync", 0, 0, exptime) or 0)
+    log(DEBUG, "cur sum: ", cur)
 
-    prev = prev * weight
-    self:log(DEBUG, "weighted prev: ", prev)
-  end
+    local prev = 0
 
-  return cur + prev
-end
-
-
--- increment our diff counter for this key,window
--- returns the sliding window value for this key
-function _M.increment(self, key, window_size, value, namespace, prev_window_weight)
-  namespace  = namespace or "default"
-  local cfg  = self.config[namespace]
-  local dict = ngx.shared[cfg.dict]
-
-  local window = window_floor(window_size, time())
-  local exptime = math_max(cfg.exptime, window_size * 2)
-
-  -- storing keys like means its easy to work with our shared dicts,
-  -- but storage consumers that do not work as a k/v store (e.g. cassandra)
-  -- need to pick it apart.
-  local incr_key = namespace .. "|" .. window .. "|" .. window_size .. "|" .. key
-
-  -- increment this key
-  local newval, err = dict:incr(incr_key .. "|diff", value, 0, exptime)
-  if err then
-    newval = 0
-    self:log(WARN, "reset rate-limiting counter after failing to increment value: ", err)
-  end
-
-  -- and mark that we've seen it (if we're syncing in the background;
-  -- if we're not syncing at all, or syncing after every increment,
-  -- the worker doesnt need to track what it has seen)
-  if cfg.sync_rate > 0 then
-    if not cfg.seen_map[cfg.seen_map_ctr][incr_key] then
-      cfg.seen_map_idx = cfg.seen_map_idx + 1
-      cfg.seen_map[cfg.seen_map_ctr][cfg.seen_map_idx] = incr_key
-      cfg.seen_map[cfg.seen_map_ctr][incr_key] = true
+    if not weight then
+      weight = calculate_weight(window_size)
     end
 
-  elseif cfg.sync_rate == 0 then
-    -- push it up synchronously
-    local diffs = {
-      {
-        key     = key,
-        windows = {
-          {
-            window    = window,
-            size      = window_size,
-            diff      = value,
-            namespace = namespace,
+    if weight > 0 then
+      prev = dict:incr(prev_prefix .. "|diff", 0, 0, exptime)
+      log(DEBUG, "prev diff: ", prev)
+      if prev == nil then
+        prev = 0
+        log(WARN, "rate limit counters shared dict is possibly out of space.", " Setting 'prev' to 0")
+      end
+
+      prev = prev + (dict:incr(prev_prefix .. "|sync", 0, 0, exptime) or 0)
+      log(DEBUG, "prev sum: ", prev)
+
+      prev = prev * weight
+      log(DEBUG, "weighted prev: ", prev)
+    end
+
+    return cur + prev
+  end
+
+
+  -- increment our diff counter for this key,window
+  -- returns the sliding window value for this key
+  local function increment(key, window_size, value, namespace, prev_window_weight)
+    namespace  = namespace or "default"
+    local cfg  = config[namespace]
+    local dict = ngx.shared[cfg.dict]
+
+    local window = window_floor(window_size, time())
+    local exptime = math_max(cfg.exptime, window_size * 2)
+
+    -- storing keys like means its easy to work with our shared dicts,
+    -- but storage consumers that do not work as a k/v store (e.g. cassandra)
+    -- need to pick it apart.
+    local incr_key = namespace .. "|" .. window .. "|" .. window_size .. "|" .. key
+
+    -- increment this key
+    local newval, err = dict:incr(incr_key .. "|diff", value, 0, exptime)
+    if err then
+      newval = 0
+      log(WARN, "reset rate-limiting counter after failing to increment value: ", err)
+    end
+
+    -- and mark that we've seen it (if we're syncing in the background;
+    -- if we're not syncing at all, or syncing after every increment,
+    -- the worker doesnt need to track what it has seen)
+    if cfg.sync_rate > 0 then
+      if not cfg.seen_map[cfg.seen_map_ctr][incr_key] then
+        cfg.seen_map_idx = cfg.seen_map_idx + 1
+        cfg.seen_map[cfg.seen_map_ctr][cfg.seen_map_idx] = incr_key
+        cfg.seen_map[cfg.seen_map_ctr][incr_key] = true
+      end
+
+    elseif cfg.sync_rate == 0 then
+      -- push it up synchronously
+      local diffs = {
+        {
+          key     = key,
+          windows = {
+            {
+              window    = window,
+              size      = window_size,
+              diff      = value,
+              namespace = namespace,
+            }
           }
         }
       }
+
+      -- handle our diff similarly to we do with the regular sync()
+      -- note we're still using dict:incr() because other workers may
+      -- be working on this dictionary at the same time, so we need to
+      -- ensure we take an atomic approach
+      -- TODO
+      -- this needs a refactor to avoid so many shm operations
+      -- this currently a bottleneck with this policy (sync_rate == 0)
+      dict:incr(incr_key .. "|diff", -newval)
+      local cur_sync = dict:incr(incr_key .. "|sync", newval, 0)
+
+      local ok, err = cfg.strategy:push_diffs(diffs)
+      if not ok then
+        log(ERR, "error in pushing diffs for namespace ", namespace, ": ", err)
+      end
+
+      log(DEBUG, "current window_size ", window_size)
+      local window_count, err = cfg.strategy:get_window(key, namespace, window, window_size)
+      if err then
+        log(ERR, "error in getting window for namespace ", namespace, ": ", err)
+        window_count = cur_sync or 0 -- fall back to local counter
+      end
+      dict:set(incr_key .. "|sync", window_count, exptime)
+
+      newval = nil -- make sliding window refetch the diff
+    end
+
+    -- how much of the previous window should we take into consideration
+    local weight = prev_window_weight or calculate_weight(window_size)
+
+    -- return the current sliding window for this key
+    return sliding_window(key, window_size, newval, namespace, weight)
+  end
+
+  local function namespace_maintenance_cycle(namespace, period)
+    local cfg = config[namespace]
+    local window_start = time()
+
+    if not cfg then
+      log(DEBUG, "namespace ", namespace, " no longer exists")
+      return
+    end
+
+    if cfg.kill then
+      -- run one last maintenance cycle for this namespace
+      log(DEBUG, "terminating maintenance cycles for old namespace: ", namespace)
+      -- clean up all data for this namespace: make all counters obsolete
+      window_start = time() + 10 * math.max(unpack(cfg.window_sizes))
+      config[namespace] = nil
+    end
+
+    -- early return. Improve perf
+    if cfg.strategy == nil or cfg.sync_rate == -1 then
+      log(DEBUG, "rate-limiting strategy is not enabled: skipping namespace_maintenance_cycle")
+      return
+    end
+
+    local ok, err = locks_shm:add("rl-maint-" .. namespace, true, period - 0.1)
+    if not ok then
+      if err ~= "exists" then
+        log(ERR, "failed to execute lock acquisition: ", err)
+      end
+
+      return
+    end
+
+    local ok, err = cfg.strategy:purge(namespace, cfg.window_sizes, window_start)
+    if not ok then
+      log(ERR, "rate-limiting strategy maintenance cycle failed: ", err)
+    end
+  end
+
+
+  local function run_maintenance_cycle(premature, period)
+    if premature then
+      return
+    end
+
+    for namespace, _ in pairs(config) do
+      namespace_maintenance_cycle(namespace, period)
+    end
+
+    local err
+    timer_handle, err = timer_at(period, run_maintenance_cycle, period)
+    if err then
+      log(ERR, "error starting new maintenance timer: ", err)
+    end
+  end
+
+  local function new(opts)
+    if type(opts) ~= "table" then
+      error("opts must be a table")
+    end
+
+    local strategy_type = opts.strategy
+    local namespace     = opts.namespace or "default"
+
+    if type(namespace) ~= "string" or namespace == "" then
+      error("namespace must be a valid string")
+    end
+
+    if namespace:find("|", nil, true) then
+      error("namespace must not contain a pipe char")
+    end
+
+    if config[namespace] then
+      error("namespace " .. namespace .. " already exists")
+    end
+
+    if type(opts.dict) ~= "string" or opts.dict == "" then
+      error("given dictionary reference must be a string")
+    end
+
+    if type(opts.sync_rate) ~= "number" then
+      error("sync rate must be a number")
+    end
+
+    -- load the class and instantiate it
+    -- if no database or sync_rate == -1, bypass instantiating. Improve perf
+    local strategy_class
+    if strategy_type ~= "off" and opts.sync_rate ~= -1 then
+      strategy_class = require("kong.tools.public.rate-limiting." ..
+                               "strategies." .. strategy_type)
+
+    else
+      log(DEBUG, "rate-limiting strategy is 'off' or sync_rate is '-1'. ",
+                 "Skipping instantiating strategy")
+    end
+
+    config[namespace] = {
+      dict         = opts.dict,
+      sync_rate    = opts.sync_rate,
+      strategy     = strategy_class and strategy_class.new(opts.db, opts.strategy_opts),
+      seen_map     = {{}},
+      seen_map_idx = 0,
+      seen_map_ctr = 1,
+      window_sizes = opts.window_sizes,
+      exptime      = math_max(opts.sync_rate + TIME_DELTA, 2),    --- min TTL is 2s
+      timer_id     = opts.timer_id,
     }
 
-    -- handle our diff similarly to we do with the regular sync()
-    -- note we're still using dict:incr() because other workers may
-    -- be working on this dictionary at the same time, so we need to
-    -- ensure we take an atomic approach
-    -- TODO
-    -- this needs a refactor to avoid so many shm operations
-    -- this currently a bottleneck with this policy (sync_rate == 0)
-    dict:incr(incr_key .. "|diff", -newval)
-    local cur_sync = dict:incr(incr_key .. "|sync", newval, 0)
-
-    local ok, err = cfg.strategy:push_diffs(diffs)
-    if not ok then
-      self:log(ERR, "error in pushing diffs for namespace ", namespace, ": ", err)
+    -- start maintenance timer
+    if timer_handle == nil then
+      local period = 3600
+      log(DEBUG, "starting timer for cleanup at ", time() + period)
+      local err
+      timer_handle, err = timer_at(period, run_maintenance_cycle, period)
+      if err then
+        log(ERR, "error starting new maintenance timer: ", err)
+      end
     end
 
-    self:log(DEBUG, "current window_size ", window_size)
-    local window_count, err = cfg.strategy:get_window(key, namespace, window, window_size)
-    if err then
-      self:log(ERR, "error in getting window for namespace ", namespace, ": ", err)
-      window_count = cur_sync or 0 -- fall back to local counter
+    return true
+  end
+
+
+  local function clear_config(namespace)
+    if namespace then
+      config[namespace] = nil
+
+    else
+      config = {}
     end
-    dict:set(incr_key .. "|sync", window_count, exptime)
-
-    newval = nil -- make sliding window refetch the diff
   end
 
-  -- how much of the previous window should we take into consideration
-  local weight = prev_window_weight or calculate_weight(window_size)
 
-  -- return the current sliding window for this key
-  return self:sliding_window(key, window_size, newval, namespace, weight)
-end
-
-
-local function namespace_maintenance_cycle(self, namespace, cfg, period)
-  local window_start = time()
-
-  if not cfg then
-    self:log(DEBUG, "namespace ", namespace, " no longer exists")
-    return
-  end
-
-  if cfg.kill then
-    -- run one last maintenance cycle for this namespace
-    self:log(DEBUG, "terminating maintenance cycles for old namespace: ", namespace)
-    -- clean up all data for this namespace: make all counters obsolete
-    window_start = time() + 10 * math.max(unpack(cfg.window_sizes))
-    self.config[namespace] = nil
-  end
-
-  -- early return. Improve perf
-  if cfg.strategy == nil or cfg.sync_rate == -1 then
-    self:log(DEBUG, "rate-limiting strategy is not enabled: skipping namespace_maintenance_cycle")
-    return
-  end
-
-  local ok, err = locks_shm:add("rl-maint-" .. namespace, true, period - 0.1)
-  if not ok then
-    if err ~= "exists" then
-      self:log(ERR, "failed to execute lock acquisition: ", err)
-    end
-
-    return
-  end
-
-  local ok, err = cfg.strategy:purge(namespace, cfg.window_sizes, window_start)
-  if not ok then
-    self:log(ERR, "rate-limiting strategy maintenance cycle failed: ", err)
-  end
-end
-
-
-local function run_maintenance_cycle(premature, self, period)
-  if premature then
-    return
-  end
-
-  for namespace, cfg in pairs(self.config) do
-    namespace_maintenance_cycle(self, namespace, cfg, period)
-  end
-
-  local err
-  timer_handle, err = timer_at(period, run_maintenance_cycle, self, period)
-  if err then
-    self:log(ERR, "error starting new maintenance timer: ", err)
-  end
-end
-
-function _M.new_namespace(self, opts)
-  if type(opts) ~= "table" then
-    error("opts must be a table")
-  end
-
-  local strategy_type = opts.strategy
-  local namespace     = opts.namespace or "default"
-
-  if type(namespace) ~= "string" or namespace == "" then
-    error("namespace must be a valid string")
-  end
-
-  if namespace:find("|", nil, true) then
-    error("namespace must not contain a pipe char")
-  end
-
-  if self.config[namespace] then
-    error("namespace " .. namespace .. " already exists")
-  end
-
-  if type(opts.dict) ~= "string" or opts.dict == "" then
-    error("given dictionary reference must be a string")
-  end
-
-  if type(opts.sync_rate) ~= "number" then
-    error("sync rate must be a number")
-  end
-
-  -- load the class and instantiate it
-  -- if no database or sync_rate == -1, bypass instantiating. Improve perf
-  local strategy_class
-  if strategy_type ~= "off" and opts.sync_rate ~= -1 then
-    strategy_class = require("kong.tools.public.rate-limiting." ..
-                             "strategies." .. strategy_type)
-
-  else
-    self:log(DEBUG, "rate-limiting strategy is 'off' or sync_rate is '-1'. ",
-               "Skipping instantiating strategy")
-  end
-
-  self.config[namespace] = {
-    dict         = opts.dict,
-    sync_rate    = opts.sync_rate,
-    strategy     = strategy_class and strategy_class.new(opts.db, opts.strategy_opts),
-    seen_map     = {{}},
-    seen_map_idx = 0,
-    seen_map_ctr = 1,
-    window_sizes = opts.window_sizes,
-    exptime      = math_max(opts.sync_rate + TIME_DELTA, 2),    --- min TTL is 2s
-    timer_id     = opts.timer_id,
+  return {
+    config = config,
+    table_names = table_names,
+    fetch = fetch,
+    sync = sync,
+    sliding_window = sliding_window,
+    increment = increment,
+    new = new,
+    clear_config = clear_config,
+    new_instance = new_instance,
   }
-
-  -- start maintenance timer
-  if timer_handle == nil then
-    local period = 3600
-    self:log(DEBUG, "starting timer for cleanup at ", time() + period)
-    local err
-    timer_handle, err = timer_at(period, run_maintenance_cycle, self, period)
-    if err then
-      self:log(ERR, "error starting new maintenance timer: ", err)
-    end
-  end
-
-  return true
 end
 
-
-function _M.clear_config(self, namespace)
-  if namespace then
-    self.config[namespace] = nil
-
-  else
-    self.config = {}
-  end
-end
-
-
-return _M
+return new_instance(DEFAULT_INSTANCE_NAME)
