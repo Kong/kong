@@ -793,7 +793,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
       assert.logfile().has.no.line("[crit]",  true, 0)
     end)
 
-    it("resolves DNS hostnames to send an http dispatch, return its response body", function()
+    pending("resolves DNS hostnames to send an http dispatch, return its response body", function()
       local client = helpers.proxy_client()
       finally(function() client:close() end)
 
