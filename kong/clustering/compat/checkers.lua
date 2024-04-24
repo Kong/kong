@@ -47,6 +47,7 @@ local compatible_checkers = {
       return has_update
     end,
   },
+
   { 3005000000, --[[ 3.5.0.0 ]]
     function(config_table, dp_version, log_suffix)
       local has_update

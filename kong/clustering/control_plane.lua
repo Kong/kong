@@ -39,6 +39,7 @@ local sleep = ngx.sleep
 
 local plugins_list_to_map = compat.plugins_list_to_map
 local update_compatible_payload = compat.update_compatible_payload
+local check_mixed_route_entities = compat.check_mixed_route_entities
 local deflate_gzip = require("kong.tools.gzip").deflate_gzip
 local yield = require("kong.tools.yield").yield
 local connect_dp = clustering_utils.connect_dp
@@ -428,6 +429,15 @@ function _M:handle_cp_websocket(cert)
         if sync_status ~= previous_sync_status then
           update_sync_status()
         end
+
+        goto continue
+      end
+
+      ok, err = check_mixed_route_entities(self.reconfigure_payload, dp_version,
+                                           kong and kong.configuration and
+                                           kong.configuration.router_flavor)
+      if not ok then
+        ngx_log(ngx_WARN, _log_prefix, "unable to send updated configuration to data plane: ", err, log_suffix)
 
         goto continue
       end
