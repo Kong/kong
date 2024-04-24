@@ -16,6 +16,10 @@ local null = ngx.null
 local ipairs = ipairs
 local new_tab = require("table.new")
 
+local PREFIX_SNIS_PSEUDO_INDEX  = -1
+local POSTFIX_SNIS_PSEUDO_INDEX = -2
+_M.PREFIX_SNIS_PSEUDO_INDEX = PREFIX_SNIS_PSEUDO_INDEX
+_M.POSTFIX_SNIS_PSEUDO_INDEX = POSTFIX_SNIS_PSEUDO_INDEX
 local TTL_FOREVER = { ttl = 0 }
 
 local ca_cert_cache_opts = {
@@ -87,10 +91,33 @@ local function build_snis_for_route(route, snis, send_ca_dn, ca_ids)
 
   else
     for _, sni in ipairs(route.snis) do
-      snis[sni] = snis[sni] or {}
+      local sni_t
+      local idx = sni:find("*", 1, true)
+
+      if idx == 1 then
+        -- store snis with the leftmost wildcard in a subtable
+        snis[POSTFIX_SNIS_PSEUDO_INDEX] = snis[POSTFIX_SNIS_PSEUDO_INDEX] or {}
+        local postfix_snis = snis[POSTFIX_SNIS_PSEUDO_INDEX]
+        postfix_snis[sni] = postfix_snis[sni] or { value = sni:sub(2) }
+        sni_t = postfix_snis[sni]
+        kong.log.debug("add a postfix sni ", sni)
+
+      elseif idx == #sni then
+        -- store snis with the rightmost wildcard in a subtable
+        snis[PREFIX_SNIS_PSEUDO_INDEX] = snis[PREFIX_SNIS_PSEUDO_INDEX] or {}
+        local prefix_snis = snis[PREFIX_SNIS_PSEUDO_INDEX]
+        prefix_snis[sni] = prefix_snis[sni] or { value = sni:sub(1, -2) }
+        sni_t = prefix_snis[sni]
+        kong.log.debug("add a prefix sni ", sni)
+
+      else
+        snis[sni] = snis[sni] or {}
+        sni_t = snis[sni]
+        kong.log.debug("add a plain sni ", sni)
+      end
 
       if send_ca_dn then
-        merge_ca_ids(snis[sni], ca_ids)
+        merge_ca_ids(sni_t, ca_ids)
       end
     end
   end
@@ -150,8 +177,14 @@ local function get_snis_for_plugin(db, plugin, snis, options)
   end
 end
 
--- build ca_cert_chain from ca_ids
-local function build_ca_cert_chain(ca_ids)
+-- build ca_cert_chain from sni_t
+local function build_ca_cert_chain(sni_t)
+  local ca_ids = sni_t.ca_ids
+
+  if not ca_ids then
+    return true
+  end
+
   local chain, err = chain_lib.new()
   if err then
     return nil, err
@@ -172,20 +205,29 @@ local function build_ca_cert_chain(ca_ids)
     end
   end
 
-  return chain
+  sni_t.ca_cert_chain = chain
+
+  return true
 end
+
 
 -- build ca_cert_chain for every sni
 function _M.sni_cache_l1_serializer(snis)
-  for sni, v in pairs(snis) do
-    if v.ca_ids then
-      local chain, err = build_ca_cert_chain(v.ca_ids)
-
-      if err then
-        return nil, err
+  for k, v in pairs(snis) do
+    if k == PREFIX_SNIS_PSEUDO_INDEX or
+       k == POSTFIX_SNIS_PSEUDO_INDEX then
+      for _, sni_t in pairs(v) do
+        local res, err = build_ca_cert_chain(sni_t)
+        if not res then
+          return nil, err
+        end
       end
 
-      v.ca_cert_chain = chain
+    else
+      local res, err = build_ca_cert_chain(v)
+      if not res then
+        return nil, err
+      end
     end
   end
 

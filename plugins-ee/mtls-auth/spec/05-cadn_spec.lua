@@ -235,22 +235,22 @@ for _, strategy in strategies() do
       }
 
       route2 = bp.routes:insert {
-        snis   = { "test2.test", "test2-alias.test" },
+        snis   = { "test2.test", "test2-alias.test", "*.test2-left-wildcard.test", "test2-right-wildcard.*" },
         service = { id = service1.id, },
       }
 
       route3 = bp.routes:insert {
-        snis   = { "test3.test" },
+        snis   = { "test3.test", "*.test3-wildcard.test" },
         service = { id = service1.id, },
       }
 
       route4 = bp.routes:insert {
-        snis   = { "test3.test" },
+        snis   = { "test3.test", "*.test3-wildcard.test" },
         service = { id = service1.id, },
       }
 
       route5 = bp.routes:insert {
-        snis   = { "test4.test" },
+        snis   = { "test4.test", "*.test4-wildcard.test" },
         service = { id = service1.id, },
       }
 
@@ -271,7 +271,7 @@ for _, strategy in strategies() do
 
       -- routes to service2
       bp.routes:insert {    -- route9
-        snis   = { "test4.test" },
+        snis   = { "test4.test", "*.test4-wildcard.test" },
         service = { id = service2.id, },
       }
 
@@ -489,6 +489,36 @@ for _, strategy in strategies() do
         assert.falsy(string.find(body, "C = US, ST = CA, L = SF, O = Other Kong Testing, CN = Other Kong Testing Root CA", 1, true))
       end)
 
+      it("mtls plugin applied on a route with multiple snis, send the related ca dn when client hello contains one of the snis #3 (leftmost wildcard)", function()
+        local res = assert(mtls_client:send {
+          method  = "GET",
+          path    = "/foo.test2-left-wildcard",
+          headers = {
+            ["Host"] = "mtls_test_client"
+          }
+        })
+        local body = assert.res_status(200, res)
+        assert.truthy(string.find(body, "Acceptable client certificate CA names", 1, true))
+        assert.falsy(string.find(body, "C = US, ST = California, O = Kong Testing, CN = Kong Testing Intermidiate CA", 1, true))
+        assert.truthy(string.find(body, "C = US, ST = California, O = Kong Testing, CN = Kong Testing Root CA", 1, true))
+        assert.falsy(string.find(body, "C = US, ST = CA, L = SF, O = Other Kong Testing, CN = Other Kong Testing Root CA", 1, true))
+      end)
+
+      it("mtls plugin applied on a route with multiple snis, send the related ca dn when client hello contains one of the snis #4 (rightmost wildcard)", function()
+        local res = assert(mtls_client:send {
+          method  = "GET",
+          path    = "/test2-right-wildcard",
+          headers = {
+            ["Host"] = "mtls_test_client"
+          }
+        })
+        local body = assert.res_status(200, res)
+        assert.truthy(string.find(body, "Acceptable client certificate CA names", 1, true))
+        assert.falsy(string.find(body, "C = US, ST = California, O = Kong Testing, CN = Kong Testing Intermidiate CA", 1, true))
+        assert.truthy(string.find(body, "C = US, ST = California, O = Kong Testing, CN = Kong Testing Root CA", 1, true))
+        assert.falsy(string.find(body, "C = US, ST = CA, L = SF, O = Other Kong Testing, CN = Other Kong Testing Root CA", 1, true))
+      end)
+
       it("multiple mtls plugin applied on multiple routes with the same sni, send the merged ca dn when client hello contains the sni", function()
         local res = assert(mtls_client:send {
           method  = "GET",
@@ -504,10 +534,40 @@ for _, strategy in strategies() do
         assert.falsy(string.find(body, "C = US, ST = CA, L = SF, O = Other Kong Testing, CN = Other Kong Testing Root CA", 1, true))
       end)
 
+      it("multiple mtls plugin applied on multiple routes with the same sni (with wildcard), send the merged ca dn when client hello contains the sni", function()
+        local res = assert(mtls_client:send {
+          method  = "GET",
+          path    = "/foo.test3-wildcard",
+          headers = {
+            ["Host"] = "mtls_test_client"
+          }
+        })
+        local body = assert.res_status(200, res)
+        assert.truthy(string.find(body, "Acceptable client certificate CA names", 1, true))
+        assert.truthy(string.find(body, "C = US, ST = California, O = Kong Testing, CN = Kong Testing Intermidiate CA", 1, true))
+        assert.truthy(string.find(body, "C = US, ST = California, O = Kong Testing, CN = Kong Testing Root CA", 1, true))
+        assert.falsy(string.find(body, "C = US, ST = CA, L = SF, O = Other Kong Testing, CN = Other Kong Testing Root CA", 1, true))
+      end)
+
       it("multiple mtls plugin applied on a route and a service with the same sni, send the merged ca dn when client hello contains the sni", function()
         local res = assert(mtls_client:send {
           method  = "GET",
           path    = "/test4",
+          headers = {
+            ["Host"] = "mtls_test_client"
+          }
+        })
+        local body = assert.res_status(200, res)
+        assert.truthy(string.find(body, "Acceptable client certificate CA names", 1, true))
+        assert.truthy(string.find(body, "C = US, ST = California, O = Kong Testing, CN = Kong Testing Intermidiate CA", 1, true))
+        assert.truthy(string.find(body, "C = US, ST = California, O = Kong Testing, CN = Kong Testing Root CA", 1, true))
+        assert.falsy(string.find(body, "C = US, ST = CA, L = SF, O = Other Kong Testing, CN = Other Kong Testing Root CA", 1, true))
+      end)
+
+      it("multiple mtls plugin applied on a route and a service with the same sni (with wildcard), send the merged ca dn when client hello contains the sni", function()
+        local res = assert(mtls_client:send {
+          method  = "GET",
+          path    = "/foo.test4-wildcard",
           headers = {
             ["Host"] = "mtls_test_client"
           }
