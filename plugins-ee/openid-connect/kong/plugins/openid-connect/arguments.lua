@@ -187,7 +187,12 @@ local function create_get_header(hdrs)
         return remaining
 
       elseif basic and token_type == "basic"  then
-        return decode_base64(remaining)
+        local decoded = decode_base64(remaining)
+        if decoded then
+          return decoded
+        else
+          return remaining
+        end
       end
     end
 
