@@ -523,6 +523,7 @@ return {
     end
 
     if kong.ctx.shared.analytics then
+      incr_counter(AI_REQUEST_COUNT_KEY)
       local counter_token = {}
       local PROMPT_TOKEN = "prompt_token"
       local COMPLETION_TOKEN = "completion_token"
