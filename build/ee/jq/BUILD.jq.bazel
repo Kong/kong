@@ -46,7 +46,7 @@ configure_make(
         "-Wl,-rpath,%s/kong/lib" % KONG_VAR["INSTALL_DESTDIR"],
     ],
     # out_lib_dir = "lib",
-    out_include_dir = "",  # don't install headers
+    out_include_dir = None,  # don't install headers
     out_shared_libs = select({
         "@platforms//os:macos": [
             "libjq.dylib",

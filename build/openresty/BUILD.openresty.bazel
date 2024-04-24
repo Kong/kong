@@ -147,14 +147,14 @@ CONFIGURE_OPTIONS = [
     "--without-http_redis_module",
     "--without-http_rds_json_module",
     "--without-http_rds_csv_module",
-    "--with-luajit=$$EXT_BUILD_DEPS$$/luajit",
-    "--with-cc-opt=\"-I$$EXT_BUILD_DEPS$$/pcre/include\"",
-    "--with-cc-opt=\"-I$$EXT_BUILD_DEPS$$/luajit/include\"",
-    "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/pcre/lib\"",
-    "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/luajit/lib\"",
-    "--with-cc-opt=\"-I$$EXT_BUILD_DEPS$$/openssl/include\"",
-    "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/openssl/lib\"",
-    "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/lib\"",
+    "--with-luajit=$$EXT_BUILD_DEPS/luajit",
+    "--with-cc-opt=\"-I$$EXT_BUILD_DEPS/pcre/include\"",
+    "--with-cc-opt=\"-I$$EXT_BUILD_DEPS/luajit/include\"",
+    "--with-ld-opt=\"-L$$EXT_BUILD_DEPS/pcre/lib\"",
+    "--with-ld-opt=\"-L$$EXT_BUILD_DEPS/luajit/lib\"",
+    "--with-cc-opt=\"-I$$EXT_BUILD_DEPS/openssl/include\"",
+    "--with-ld-opt=\"-L$$EXT_BUILD_DEPS/openssl/lib\"",
+    "--with-ld-opt=\"-L$$EXT_BUILD_DEPS/lib\"",
     # Here let's try not having --disable-new-dtags; --disable-new-dtags creates rpath instead of runpath
     # note rpath can't handle indirect dependency (nginx -> luajit -> dlopen("other")), so each indirect
     # dependency should have its rpath set (luajit, libxslt etc); on the other side, rpath is not
@@ -204,14 +204,14 @@ CONFIGURE_OPTIONS = [
     "//conditions:default": [],
 }) + select({
     "@kong//:any-cross": [
-        "--with-cc-opt=\"-I$$EXT_BUILD_DEPS$$/zlib/include\"",
-        "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/zlib/lib\"",
+        "--with-cc-opt=\"-I$$EXT_BUILD_DEPS/zlib/include\"",
+        "--with-ld-opt=\"-L$$EXT_BUILD_DEPS/zlib/lib\"",
     ],
     "//conditions:default": [],
 }) + select({
     ":needs-xcrypt2": [
-        "--with-cc-opt=\"-I$$EXT_BUILD_DEPS$$/libxcrypt/include\"",
-        "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/libxcrypt/lib\"",
+        "--with-cc-opt=\"-I$$EXT_BUILD_DEPS/libxcrypt/include\"",
+        "--with-ld-opt=\"-L$$EXT_BUILD_DEPS/libxcrypt/lib\"",
     ],
     "//conditions:default": [],
 }) + select({
@@ -223,8 +223,8 @@ CONFIGURE_OPTIONS = [
     "//conditions:default": [],
 }) + select({
     "@kong//:fips_flag": [
-        "--with-cc-opt=\"-I$$EXT_BUILD_DEPS$$/include\"",
-        "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/lib -Wl,-Bsymbolic-functions -Wl,-z,relro\"",
+        "--with-cc-opt=\"-I$$EXT_BUILD_DEPS/include\"",
+        "--with-ld-opt=\"-L$$EXT_BUILD_DEPS/lib -Wl,-Bsymbolic-functions -Wl,-z,relro\"",
     ],
     "//conditions:default": [],
 }) + select({

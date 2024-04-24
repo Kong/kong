@@ -18,7 +18,7 @@ make(
         "CFLAGS": "-I$$EXT_BUILD_DEPS/openssl/include",
     },
     lib_source = ":all_srcs",
-    out_include_dir = "",  # don't install headers
+    out_include_dir = None,  # don't install headers
     out_lib_dir = "",
     out_shared_libs = [
         "liblicense_utils.so",

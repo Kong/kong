@@ -78,7 +78,7 @@ configure_make(
         "curl",
         "curl-config",
     ],
-    out_include_dir = "",  # don't install headers
+    out_include_dir = None,  # don't install headers
     targets = [
         "-j" + KONG_VAR["NPROC"],
         "install -j" + KONG_VAR["NPROC"],

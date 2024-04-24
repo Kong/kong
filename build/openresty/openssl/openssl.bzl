@@ -97,7 +97,7 @@ def build_openssl(
                 "engines-3/padlock.so",
             ],
         }),
-        out_data_dirs = ["fipsmodule"] if fips else [""],  # the generated openssl.cnf is needed by fips activation
+        out_data_dirs = ["fipsmodule"] if fips else [],  # the generated openssl.cnf is needed by fips activation
         out_include_dir = "" if fips else "include/openssl",  # don't install headers on fips to avoid collision
         out_lib_dir = "fipsmodule/lib" if fips else "lib",
         targets = [
