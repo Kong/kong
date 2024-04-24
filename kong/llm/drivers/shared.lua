@@ -114,6 +114,30 @@ _M.clear_response_headers = {
   },
 }
 
+---
+-- Takes an already 'standardised' input, and merges
+-- any missing fields with their defaults as defined
+-- in the plugin config.
+--
+-- It it supposed to be completely provider-agnostic,
+-- and only operate to assist the Kong operator to
+-- allow their users and admins to define a pre-runed
+-- set of default options for any AI inference request.
+--
+-- @param {table} request kong-format inference request conforming to one of many supported formats
+-- @param {table} options the 'config.model.options' table from any Kong AI plugin
+-- @return {table} the input 'request' table, but with (missing) default options merged in
+-- @return {string} error if any is thrown - request should definitely be terminated if this is not nil
+function _M.merge_config_defaults(request, options, request_format)
+  if options then
+    request.temperature = request.temperature or options.temperature
+    request.max_tokens = request.max_tokens or options.max_tokens
+    request.top_p = request.top_p or options.top_p
+    request.top_k = request.top_k or options.top_k
+  end
+
+  return request, nil
+end
 
 local function handle_stream_event(event_table, model_info, route_type)
   if event_table.done then
@@ -228,10 +252,10 @@ function _M.to_ollama(request_table, model)
   if model.options then
     input.options = {}
 
-    input.options.num_predict = request_table.max_tokens or model.options.max_tokens
-    input.options.temperature = request_table.temperature or model.options.temperature
-    input.options.top_p = request_table.top_p or model.options.top_p
-    input.options.top_k = request_table.top_k or model.options.top_k
+    input.options.num_predict = request_table.max_tokens
+    input.options.temperature = request_table.temperature
+    input.options.top_p = request_table.top_p
+    input.options.top_k = request_table.top_k
   end
 
   return input, "application/json", nil

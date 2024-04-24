@@ -10,7 +10,6 @@
   "model": "command",
   "max_tokens": 512,
   "temperature": 0.5,
-  "truncate": "END",
-  "return_likelihoods": "NONE",
+  "p": 1.0,
   "stream": false
 }

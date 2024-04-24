@@ -24,21 +24,12 @@ local _MERGE_PROPERTIES = {
   [4] = "top_k",
 }
 
-local function merge_defaults(request, options)
-  for i, v in ipairs(_MERGE_PROPERTIES) do
-    request[v] = request[v] or (options and options[v]) or nil
-  end
-
-  return request
-end
-
 local function handle_stream_event(event_t)
   return event_t.data
 end
 
 local transformers_to = {
   ["llm/v1/chat"] = function(request_table, model_info, route_type)
-    request_table = merge_defaults(request_table, model_info.options)
     request_table.model = request_table.model or model_info.name
     request_table.stream = request_table.stream or false  -- explicitly set this
 
@@ -46,7 +37,6 @@ local transformers_to = {
   end,
 
   ["llm/v1/completions"] = function(request_table, model_info, route_type)
-    request_table = merge_defaults(request_table, model_info.options)
     request_table.model = model_info.name
     request_table.stream = request_table.stream or false -- explicitly set this
 
@@ -116,6 +106,8 @@ function _M.to_format(request_table, model_info, route_type)
   if not transformers_to[route_type] then
     return nil, nil, fmt("no transformer for %s://%s", model_info.provider, route_type)
   end
+
+  request_table = ai_shared.merge_config_defaults(request_table, model_info.options, model_info.route_type)
 
   local ok, response_object, content_type, err = pcall(
     transformers_to[route_type],

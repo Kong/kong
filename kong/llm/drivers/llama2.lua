@@ -108,10 +108,10 @@ end
 local function to_raw(request_table, model)
   local messages = {}
   messages.parameters = {}
-  messages.parameters.max_new_tokens = request_table.max_tokens or (model.options and model.options.max_tokens)
-  messages.parameters.top_p = request_table.top_p or (model.options and model.options.top_p)
-  messages.parameters.top_k = request_table.top_k or (model.options and model.options.top_k)
-  messages.parameters.temperature = request_table.temperature or (model.options and model.options.temperature)
+  messages.parameters.max_new_tokens = request_table.max_tokens
+  messages.parameters.top_p = request_table.top_p
+  messages.parameters.top_k = request_table.top_k
+  messages.parameters.temperature = request_table.temperature
   messages.parameters.stream = request_table.stream or false  -- explicitly set this
   
   if request_table.prompt and request_table.messages then
@@ -178,6 +178,8 @@ function _M.to_format(request_table, model_info, route_type)
   if model_info.options.llama2_format == "openai" then
     return openai_driver.to_format(request_table, model_info, route_type)
   end
+
+  request_table = ai_shared.merge_config_defaults(request_table, model_info.options, model_info.route_type)
 
   -- dynamically call the correct transformer
   local ok, response_object, content_type, err = pcall(
