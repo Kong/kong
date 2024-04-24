@@ -165,6 +165,7 @@ kong_directory_genrule(
         "//build/ee:bytecode_compile",
         # EE new files
         "//build/ee:luarocks_license",
+        "@snappy//:snappy",
     ] + select({
         "@kong//:licensing_flag": [
             "@kong-licensing",
@@ -234,6 +235,9 @@ kong_directory_genrule(
         cp ${LUAJIT}/bin/luajit ${BUILD_DESTDIR}/openresty/luajit/bin/luajit
         tar -cC ${LUAJIT}/share . | tar -xC ${BUILD_DESTDIR}/openresty/luajit/share
         chmod -R "+rw" ${BUILD_DESTDIR}/openresty/luajit
+
+        SNAPPY=${WORKSPACE_PATH}/$(dirname $(echo '$(locations @snappy//:snappy)' | awk '{print $1}'))
+        cp ${SNAPPY}/libsnappy.so ${BUILD_DESTDIR}/kong/lib
 
         LUAROCKS=${WORKSPACE_PATH}/$(dirname '$(location @luarocks//:luarocks_make)')/luarocks_tree
         cp -r ${LUAROCKS}/. ${BUILD_DESTDIR}/.

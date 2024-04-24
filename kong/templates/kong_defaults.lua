@@ -143,6 +143,7 @@ cluster_allowed_common_names = NONE
 cluster_max_payload = 16777216
 cluster_use_proxy = off
 cluster_dp_labels = NONE
+cluster_rpc = on
 
 lmdb_environment_path = dbless.lmdb
 lmdb_map_size = 2048m

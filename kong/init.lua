@@ -760,6 +760,14 @@ function Kong.init()
   if is_http_module and (is_data_plane(config) or is_control_plane(config))
   then
     kong.clustering = require("kong.clustering").new(config)
+
+    if config.cluster_rpc then
+      kong.rpc = require("kong.clustering.rpc.manager").new(config, kong.node.get_id())
+
+      if is_data_plane(config) then
+        require("kong.clustering.services.debug").init(kong.rpc)
+      end
+    end
   end
 
   assert(db.vaults:load_vault_schemas(config.loaded_vaults))
@@ -1075,6 +1083,23 @@ function Kong.init_worker()
 
   if kong.clustering then
     kong.clustering:init_worker()
+
+    local cluster_tls = require("kong.clustering.tls")
+
+    if kong.rpc and is_http_module then
+      if is_data_plane(kong.configuration) then
+        ngx.timer.at(0, function(premature)
+          kong.rpc:connect(premature,
+                           "control_plane", kong.configuration.cluster_control_plane,
+                           "/v2/outlet",
+                           cluster_tls.get_cluster_cert(kong.configuration).cdata,
+                           cluster_tls.get_cluster_cert_key(kong.configuration))
+        end)
+
+      else -- control_plane
+        kong.rpc.concentrator:start()
+      end
+    end
   end
 
   ok, err = wasm.init_worker()
@@ -2112,6 +2137,15 @@ end
 
 function Kong.stream_api()
   stream_api.handle()
+end
+
+
+function Kong.serve_cluster_rpc_listener(options)
+  log_init_worker_errors()
+
+  ngx.ctx.KONG_PHASE = PHASES.cluster_listener
+
+  return kong.rpc:handle_websocket()
 end
 
 

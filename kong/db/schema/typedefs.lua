@@ -495,6 +495,11 @@ typedefs.tags = Schema.define {
   description = "A set of strings representing tags."
 }
 
+typedefs.capability = Schema.define {
+  type = "string",
+  description = "A string representing an RPC capability."
+}
+
 local http_protocols = {}
 local http_and_ws_protocols = {}
 local ws_protocols = {}
