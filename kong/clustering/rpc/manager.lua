@@ -139,7 +139,7 @@ function _M:_local_call(node_id, method, params)
                 cap .. ", node_id: " .. node_id
   end
 
-  local s = next(self.clients[node_id])
+  local s = next(self.clients[node_id]) -- TODO: better LB?
 
   local fut = future.new(node_id, s, method, params)
   assert(fut:start())
@@ -312,13 +312,13 @@ function _M:connect(premature, node_id, host, path, cert, key)
   do
     local resp_headers = c:get_resp_headers()
     -- FIXME: resp_headers should not be case sensitive
-    if not resp_headers or not resp_headers["X-Kong-RPC-Capabilities"] then
+    if not resp_headers or not resp_headers["x_kong_rpc_capabilities"] then
       ngx_log(ngx_ERR, "[rpc] peer did not provide capability list, node_id: ", node_id)
       c:send_close() -- can't do much if this fails
       goto err
     end
 
-    local capabilities = resp_headers["X-Kong-RPC-Capabilities"]
+    local capabilities = resp_headers["x_kong_rpc_capabilities"]
     capabilities = cjson_decode(capabilities)
     if not capabilities then
       ngx_log(ngx_ERR, "[rpc] unable to decode peer capability list, node_id: ", node_id,

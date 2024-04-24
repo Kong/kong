@@ -235,7 +235,7 @@ function _M:start(delay)
     local delay = math.random(5, 10)
 
     ngx_log(ngx_ERR, "[rpc] concentrator event loop error: ",
-            res_or_perr or err, ", reconecting in ",
+            res_or_perr or err, ", reconnecting in ",
             math.floor(delay), " seconds")
 
     local res, err = lconn:disconnect()
