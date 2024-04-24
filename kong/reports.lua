@@ -53,6 +53,11 @@ local GO_PLUGINS_REQUEST_COUNT_KEY = "events:requests:go_plugins"
 local WASM_REQUEST_COUNT_KEY = "events:requests:wasm"
 
 
+local AI_TOKEN_PROMPT_COUNT_KEY = "events:ai:tokens:prompt"
+local AI_TOKEN_PROMPT_COMPLETION_KEY = "events:ai:tokens:completion"
+local AI_TOKEN_PROMPT_TOTAL_KEY = "events:ai:tokens:total"
+
+
 local ROUTE_CACHE_HITS_KEY = "route_cache_hits"
 local STEAM_ROUTE_CACHE_HITS_KEY_POS = STREAM_COUNT_KEY .. ":" .. ROUTE_CACHE_HITS_KEY .. ":pos"
 local STEAM_ROUTE_CACHE_HITS_KEY_NEG = STREAM_COUNT_KEY .. ":" .. ROUTE_CACHE_HITS_KEY .. ":neg"
@@ -240,8 +245,12 @@ local function reset_counter(key, amount)
 end
 
 
-local function incr_counter(key)
-  local ok, err = report_counter:incr(key, 1)
+local function incr_counter(key, hit)
+  if not hit then 
+    hit = 1
+  end
+
+  local ok, err = report_counter:incr(key, hit)
   if not ok then
     log(WARN, "could not increment ", key, " in 'kong' shm: ", err)
   end
@@ -326,6 +335,9 @@ local function send_ping(host, port)
 
     _ping_infos.stream_route_cache_hit_pos = get_counter(STEAM_ROUTE_CACHE_HITS_KEY_POS)
     _ping_infos.stream_route_cache_hit_neg = get_counter(STEAM_ROUTE_CACHE_HITS_KEY_NEG)
+    _ping_infos.ai_tokens_prompt           = get_counter(AI_TOKEN_PROMPT_COUNT_KEY)
+    _ping_infos.ai_tokens_completion       = get_counter(AI_TOKEN_PROMPT_COMPLETION_KEY)
+    _ping_infos.ai_tokens_total            = get_counter(AI_TOKEN_PROMPT_TOTAL_KEY)
 
     send_report("ping", _ping_infos, host, port)
 
@@ -337,6 +349,9 @@ local function send_ping(host, port)
     reset_counter(WASM_REQUEST_COUNT_KEY, _ping_infos.wasm_reqs)
     reset_counter(STEAM_ROUTE_CACHE_HITS_KEY_POS, _ping_infos.stream_route_cache_hit_pos)
     reset_counter(STEAM_ROUTE_CACHE_HITS_KEY_NEG, _ping_infos.stream_route_cache_hit_neg)
+    reset_counter(AI_TOKEN_PROMPT_COUNT_KEY, _ping_infos.ai_tokens_prompt)
+    reset_counter(AI_TOKEN_PROMPT_COMPLETION_KEY, _ping_infos.ai_tokens_completion)
+    reset_counter(AI_TOKEN_PROMPT_TOTAL_KEY, _ping_infos.ai_tokens_total)
     return
   end
 
@@ -353,6 +368,9 @@ local function send_ping(host, port)
   _ping_infos.go_plugin_reqs = get_counter(GO_PLUGINS_REQUEST_COUNT_KEY)
   _ping_infos.wasm_reqs      = get_counter(WASM_REQUEST_COUNT_KEY)
 
+  _ping_infos.ai_tokens_prompt            = get_counter(AI_TOKEN_PROMPT_COUNT_KEY)
+  _ping_infos.ai_tokens_completion        = get_counter(AI_TOKEN_PROMPT_COMPLETION_KEY)
+  _ping_infos.ai_tokens_total             = get_counter(AI_TOKEN_PROMPT_TOTAL_KEY)
   _ping_infos.request_route_cache_hit_pos = get_counter(REQUEST_ROUTE_CACHE_HITS_KEY_POS)
   _ping_infos.request_route_cache_hit_neg = get_counter(REQUEST_ROUTE_CACHE_HITS_KEY_NEG)
 
@@ -372,6 +390,9 @@ local function send_ping(host, port)
   reset_counter(WASM_REQUEST_COUNT_KEY,  _ping_infos.wasm_reqs)
   reset_counter(REQUEST_ROUTE_CACHE_HITS_KEY_POS, _ping_infos.request_route_cache_hit_pos)
   reset_counter(REQUEST_ROUTE_CACHE_HITS_KEY_NEG, _ping_infos.request_route_cache_hit_neg)
+  reset_counter(AI_TOKEN_PROMPT_COUNT_KEY, _ping_infos.ai_tokens_prompt)
+  reset_counter(AI_TOKEN_PROMPT_COMPLETION_KEY, _ping_infos.ai_tokens_completion)
+  reset_counter(AI_TOKEN_PROMPT_TOTAL_KEY,_ping_infos.ai_tokens_total)
 end
 
 
@@ -494,6 +515,23 @@ return {
 
     if ctx.ran_wasm then
       incr_counter(WASM_REQUEST_COUNT_KEY)
+    end
+
+    if kong.ctx.shared.analytics then
+      local counter_token = {}
+      local PROMPT_TOKEN = "prompt_token"
+      local COMPLETION_TOKEN = "completion_token"
+      local TOTAL_TOKENS = "total_tokens"
+
+      for _, plugin_data in pairs(kong.ctx.shared.analytics) do
+        counter_token[PROMPT_TOKEN] = (counter_token[PROMPT_TOKEN] or 0) + plugin_data.usage[PROMPT_TOKEN]
+        counter_token[COMPLETION_TOKEN] = (counter_token[COMPLETION_TOKEN] or 0) + plugin_data.usage[COMPLETION_TOKEN]
+        counter_token[TOTAL_TOKENS] = (counter_token[TOTAL_TOKENS] or 0) + plugin_data.usage[TOTAL_TOKENS]
+      end
+
+      incr_counter(AI_TOKEN_PROMPT_COUNT_KEY, counter_token[PROMPT_TOKEN])
+      incr_counter(AI_TOKEN_PROMPT_COMPLETION_KEY, counter_token[COMPLETION_TOKEN])
+      incr_counter(AI_TOKEN_PROMPT_TOTAL_KEY, counter_token[TOTAL_TOKENS])
     end
 
     local suffix = get_current_suffix(ctx)
