@@ -325,7 +325,7 @@ local constants = {
       exit = "kong",
       service = "upstream",
     }
-  }
+  },
 }
 
 -- XXX EE: add enterprise-specific CLUSTERING_SYNC_STATUS enum values before

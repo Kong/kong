@@ -84,6 +84,7 @@ describe("#wasm - hybrid mode #postgres", function()
   local cp_filter_path
 
   local dp_prefix = "dp"
+  local dp_errlog = dp_prefix .. "/logs/error.log"
 
   lazy_setup(function()
     helpers.clean_prefix(cp_prefix)
@@ -115,8 +116,16 @@ describe("#wasm - hybrid mode #postgres", function()
       cluster_listen      = "127.0.0.1:9005",
       nginx_conf          = "spec/fixtures/custom_nginx.template",
       wasm                = true,
+      wasm_filters        = "user", -- don't enable bundled filters for this test
       wasm_filters_path   = cp_filter_path,
+      nginx_main_worker_processes = 2,
     }))
+
+    assert.logfile(cp_errlog).has.line([[successfully loaded "response_transformer" module]], true, 10)
+    assert.logfile(cp_errlog).has.no.line("[error]", true, 0)
+    assert.logfile(cp_errlog).has.no.line("[alert]", true, 0)
+    assert.logfile(cp_errlog).has.no.line("[crit]",  true, 0)
+    assert.logfile(cp_errlog).has.no.line("[emerg]", true, 0)
   end)
 
   lazy_teardown(function()
@@ -145,9 +154,17 @@ describe("#wasm - hybrid mode #postgres", function()
         admin_listen          = "off",
         nginx_conf            = "spec/fixtures/custom_nginx.template",
         wasm                  = true,
+        wasm_filters          = "user", -- don't enable bundled filters for this test
         wasm_filters_path     = dp_filter_path,
         node_id               = node_id,
+        nginx_main_worker_processes = 2,
       }))
+
+      assert.logfile(dp_errlog).has.line([[successfully loaded "response_transformer" module]], true, 10)
+      assert.logfile(dp_errlog).has.no.line("[error]", true, 0)
+      assert.logfile(dp_errlog).has.no.line("[alert]", true, 0)
+      assert.logfile(dp_errlog).has.no.line("[crit]",  true, 0)
+      assert.logfile(dp_errlog).has.no.line("[emerg]", true, 0)
 
       client = helpers.proxy_client()
     end)
@@ -332,6 +349,7 @@ describe("#wasm - hybrid mode #postgres", function()
         admin_listen          = "off",
         nginx_conf            = "spec/fixtures/custom_nginx.template",
         wasm                  = true,
+        wasm_filters          = "user", -- don't enable bundled filters for this test
         wasm_filters_path     = tmp_dir,
         node_id               = node_id,
       }))

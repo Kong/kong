@@ -199,6 +199,7 @@ describe("#wasm declarative config (no installed filters)", function()
         nginx_conf = "spec/fixtures/custom_nginx.template",
         wasm = true,
         wasm_filters_path = tmp_dir,
+        wasm_filters = "user",
       }))
 
       client = helpers.admin_client()
@@ -259,6 +260,7 @@ describe("#wasm declarative config (no installed filters)", function()
         nginx_conf = "spec/fixtures/custom_nginx.template",
         wasm = true,
         wasm_filters_path = tmp_dir,
+        wasm_filters = "user",
         declarative_config = kong_yaml,
       })
 

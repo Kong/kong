@@ -384,6 +384,7 @@ cluster_fallback_config_export_delay = 60
 wasm = off
 wasm_filters_path = NONE
 wasm_dynamic_module = NONE
+wasm_filters = bundled,user
 
 request_debug = on
 request_debug_token =

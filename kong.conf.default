@@ -2881,6 +2881,33 @@
                         #   top level are registered
                         # * This path _may_ be a symlink to a directory.
 
+#wasm_filters = bundled,user        # Comma-separated list of Wasm filters to be made
+                                    # available for use in filter chains.
+                                    #
+                                    # When the `off` keyword is specified as the
+                                    # only value, no filters will be available for use.
+                                    #
+                                    # When the `bundled` keyword is specified, all filters
+                                    # bundled with Kong will be available.
+                                    #
+                                    # When the `user` keyword is specified, all filters
+                                    # within the `wasm_filters_path` will be available.
+                                    #
+                                    # **Examples:**
+                                    #
+                                    # - `wasm_filters = bundled,user` enables _all_ bundled
+                                    #   and user-supplied filters
+                                    # - `wasm_filters = user` enables _only_ user-supplied
+                                    #   filters
+                                    # - `wasm_filters = filter-a,filter-b` enables _only_
+                                    #   filters named `filter-a` or `filter-b` (whether
+                                    #   bundled _or_ user-suppplied)
+                                    #
+                                    # If a conflict occurs where a bundled filter and a
+                                    # user-supplied filter share the same name, a warning
+                                    # will be logged, and the user-supplied filter will
+                                    # be used instead.
+
 #------------------------------------------------------------------------------
 # WASM injected directives
 #------------------------------------------------------------------------------

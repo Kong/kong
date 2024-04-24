@@ -15,6 +15,7 @@ local socket_url = require "socket.url"
 local conf_constants = require "kong.conf_loader.constants"
 local listeners = require "kong.conf_loader.listeners"
 local conf_parse = require "kong.conf_loader.parse"
+local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local pl_pretty = require "pl.pretty"
 local pl_config = require "pl.config"
 local pl_file = require "pl.file"
@@ -178,11 +179,12 @@ local function load_config_file(path)
 end
 
 --- Get available Wasm filters list
--- @param[type=string] Path where Wasm filters are stored.
+---@param filters_path string # Path where Wasm filters are stored.
+---@return kong.configuration.wasm_filter[]
 local function get_wasm_filters(filters_path)
   local wasm_filters = {}
 
-  if filters_path then
+  if filters_path and pl_path.isdir(filters_path) then
     local filter_files = {}
     for entry in pl_path.dir(filters_path) do
       local pathname = pl_path.join(filters_path, entry)
@@ -554,8 +556,86 @@ local function load(path, custom_conf, opts)
 
   -- Wasm module support
   if conf.wasm then
-    local wasm_filters = get_wasm_filters(conf.wasm_filters_path)
-    conf.wasm_modules_parsed = setmetatable(wasm_filters, conf_constants._NOP_TOSTRING_MT)
+    ---@type table<string, boolean>
+    local allowed_filter_names = {}
+    local all_bundled_filters_enabled = false
+    local all_user_filters_enabled = false
+    local all_filters_disabled = false
+    for _, filter in ipairs(conf.wasm_filters) do
+      if filter == "bundled" then
+        all_bundled_filters_enabled = true
+
+      elseif filter == "user" then
+        all_user_filters_enabled = true
+
+      elseif filter == "off" then
+        all_filters_disabled = true
+
+      else
+        allowed_filter_names[filter] = true
+      end
+    end
+
+    if all_filters_disabled then
+      allowed_filter_names = {}
+      all_bundled_filters_enabled = false
+      all_user_filters_enabled = false
+    end
+
+    ---@type table<string, kong.configuration.wasm_filter>
+    local active_filters_by_name = {}
+
+    local bundled_filter_path = conf_constants.WASM_BUNDLED_FILTERS_PATH
+    if not pl_path.isdir(bundled_filter_path) then
+      local alt_path
+
+      local nginx_bin = nginx_signals.find_nginx_bin(conf)
+      if nginx_bin then
+        alt_path = pl_path.dirname(nginx_bin) .. "/../../../kong/wasm"
+        alt_path = pl_path.normpath(alt_path) or alt_path
+      end
+
+      if alt_path and pl_path.isdir(alt_path) then
+        log.debug("loading bundled proxy-wasm filters from alt path: %s",
+                  alt_path)
+        bundled_filter_path = alt_path
+
+      else
+        log.warn("Bundled proxy-wasm filters path (%s) does not exist " ..
+                 "or is not a directory. Bundled filters may not be " ..
+                 "available", bundled_filter_path)
+      end
+    end
+
+    conf.wasm_bundled_filters_path = bundled_filter_path
+    local bundled_filters = get_wasm_filters(bundled_filter_path)
+    for _, filter in ipairs(bundled_filters) do
+      if all_bundled_filters_enabled or allowed_filter_names[filter.name] then
+        active_filters_by_name[filter.name] = filter
+      end
+    end
+
+    local user_filters = get_wasm_filters(conf.wasm_filters_path)
+    for _, filter in ipairs(user_filters) do
+      if all_user_filters_enabled or allowed_filter_names[filter.name] then
+        if active_filters_by_name[filter.name] then
+          log.warn("Replacing bundled filter %s with a user-supplied " ..
+                   "filter at %s", filter.name, filter.path)
+        end
+        active_filters_by_name[filter.name] = filter
+      end
+    end
+
+    ---@type kong.configuration.wasm_filter[]
+    local active_filters = {}
+    for _, filter in pairs(active_filters_by_name) do
+      insert(active_filters, filter)
+    end
+    sort(active_filters, function(lhs, rhs)
+      return lhs.name < rhs.name
+    end)
+
+    conf.wasm_modules_parsed = setmetatable(active_filters, conf_constants._NOP_TOSTRING_MT)
 
     local function add_wasm_directive(directive, value, prefix)
       local directive_name = (prefix or "") .. directive
