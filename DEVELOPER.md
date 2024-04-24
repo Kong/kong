@@ -438,26 +438,35 @@ how to access (or create) a development container with a well-defined tool and r
 - See [How to create a GitHub codespace](https://docs.github.com/en/codespaces/developing-in-codespaces/creating-a-codespace#creating-a-codespace).
 - See [How to create a VSCode development container](https://code.visualstudio.com/docs/remote/containers#_quick-start-try-a-development-container).
 
-## Debugging Kong Gateway with IntelliJ IDEA and EmmyLua
+## Debugging Kong Gateway with EmmyLua and IntelliJ IDEA/VSCode 
 
-[EmmyLua](https://emmylua.github.io/) is a plugin for IntelliJ IDEA that provides Lua language
+[EmmyLua](https://emmylua.github.io/) is a plugin for IntelliJ IDEA and VSCode that provides Lua language
 support.  It comes with debugger support that makes it possible to set breakpoints in Lua code
 and inspect variables.  Kong Gateway can be debugged using EmmyLua by following these steps:
 
 ### Install IntelliJ IDEA
 
+#### IntelliJ IDEA
 Download and install IntelliJ IDEA from [here](https://www.jetbrains.com/idea/download/).  Note
 that IntelliJ is a commercial product and requires a paid license after the trial period.
 
+#### VSCode
+Download and install MS Visual Studio Code from [here](https://code.visualstudio.com/download).
+
 ### Install EmmyLua
 
-In IntelliJ IDEA, go to the `Settings`->`Plugins`->`Marketplace` and search for `EmmyLua`.
+#### IntelliJ IDEA
+Go to the `Settings`->`Plugins`->`Marketplace` and search for `EmmyLua`.
 Install the plugin.
+
+#### VSCode
+Go to the `Settings`->`Extensions` and search for `EmmyLua`.
+Install the plugin (publisher is `Tangzx`).
 
 ### Download and install the EmmyLua debugging server
 
 The [EmmyLuaDebugger](https://github.com/EmmyLua/EmmyLuaDebugger) is a standalone C++ program
-that runs on the same machine as Kong Gateway and that mediates between the IntelliJ IDEA
+that runs on the same machine as Kong Gateway and that mediates between the IDE's
 debugger and the Lua code running in Kong Gateway.  It can be downloaded from
 [GitHub](https://github.com/EmmyLua/EmmyLuaDebugger/releases).  The release
 ZIP file contains a single share library named emmy_core.so (Linux) or emmy_core.dylib (macOS).
@@ -474,21 +483,28 @@ processes is not supported.  For example:
 KONG_EMMY_DEBUGGER=/path/to/emmy_core.so KONG_NGINX_WORKER_PROCESSES=1 kong start
 ```
 
-### Create debugger configuration in IntelliJ IDEA
+### Create debugger configuration
 
-In IntelliJ IDEA, go to `Run`->`Edit Configurations` and click the `+` button to add a new
+#### IntelliJ IDEA
+
+Go to `Run`->`Edit Configurations` and click the `+` button to add a new
 configuration.  Select `Emmy Debugger(NEW)` as the configuration type.  Enter a descriptive
 name for the configuration, e.g. "Kong Gateway Debug".  Click `OK` to save the configuration.
+
+#### VSCode
+
+Go to `Run`->`Add Configuration` and choose `EmmyLua New Debugger`. Enter a descriptive name
+for the configuration, e.g. "Kong Gateway Debug". Save `launch.json`.
 
 ### Start the EmmyLua debugger
 
 To connect the EmmyLua debugger to Kong Gateway, click the `Run`->`Debug` menu item in IntelliJ
-and select the configuration that you've just created.  You will notice that the restart and
-stop buttons on the top right of your IDE will change to solid green and red colors.  You can
-now set breakpoints in your Lua code and start debugging.  Try setting a breakpoint in the
-global `access` function that is defined `runloop/handler.lua` and send a proxy request to the
-Gateway.  The debugger should stop at the breakpoint and you can inspect the variables in the
-request context.
+(`Run`->`Start Debugging` in VSCode) and select the configuration that you've just created.  You
+will notice that the restart and stop buttons on the top of your IDE will change to solid green
+and red colors.  You can now set breakpoints in your Lua code and start debugging.  Try setting
+a breakpoint in the global `access` function that is defined `runloop/handler.lua` and send
+a proxy request to the Gateway.  The debugger should stop at the breakpoint and you can
+inspect the variables in the request context.
 
 ## What's next
 
