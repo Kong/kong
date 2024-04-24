@@ -301,6 +301,7 @@ end
 function _M:access(conf)
   -- store the route_type in ctx for use in response parsing
   local route_type = conf.route_type
+
   kong.ctx.plugin.operation = route_type
 
   local request_table
@@ -316,8 +317,6 @@ function _M:access(conf)
     local content_type = kong.request.get_header("Content-Type") or "application/json"
 
     request_table = kong.request.get_body(content_type)
-
-    -- TODO octet stream check here
 
     if not request_table then
       if not string.find(content_type, "multipart/form-data", nil, true) then
