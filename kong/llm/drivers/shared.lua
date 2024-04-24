@@ -179,6 +179,13 @@ local function handle_stream_event(event_table, model_info, route_type)
   end
 end
 
+---
+-- Splits up a string by delimiter, whilst preserving
+-- empty lines, double line-breaks.
+--
+-- @param {string} str input string to split
+-- @param {string} delimiter delimeter (can be complex string) to split by
+-- @return {table} n number of split results, or empty table
 local function complex_split(str, delimiter)
   local result = {}
   local from  = 1
@@ -192,6 +199,20 @@ local function complex_split(str, delimiter)
   return result
 end
 
+---
+-- Splits a HTTPS data chunk or frame into individual
+-- SSE-format messages, see:
+-- https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#event_stream_format
+--
+-- For compatibility, it also looks for the first character being '{' which
+-- indicates that the input is not text/event-stream format, but instead a chunk
+-- of delimited application/json, which some providers return, in which case
+-- it simply splits the frame into separate JSON messages and appends 'data: '
+-- as if it were an SSE message.
+--
+-- @param {string} frame input string to format into SSE events
+-- @param {string} delimiter delimeter (can be complex string) to split by
+-- @return {table} n number of split SSE messages, or empty table
 function _M.frame_to_events(frame)
   local events = {}
 
