@@ -19,6 +19,24 @@ local SAMPLE_LLM_V1_CHAT = {
   },
 }
 
+local SAMPLE_LLM_V1_CHAT_WITH_SOME_OPTS = {
+  messages = {
+    [1] = {
+      role = "system",
+      content = "You are a mathematician."
+    },
+    [2] = {
+      role = "assistant",
+      content = "What is 1 + 1?"
+    },
+  },
+  max_tokens = 256,
+  temperature = 0.1,
+  top_p = 0.2,
+  some_extra_param = "string_val",
+  another_extra_param = 0.5,
+}
+
 local SAMPLE_DOUBLE_FORMAT = {
   messages = {
     [1] = {
@@ -36,143 +54,172 @@ local SAMPLE_DOUBLE_FORMAT = {
 local FORMATS = {
   openai = {
     ["llm/v1/chat"] = {
-      name = "gpt-4",
-      provider = "openai",
-      options = {
-        max_tokens = 512,
-        temperature = 0.5,
+      config = {
+        name = "gpt-4",
+        provider = "openai",
+        options = {
+          max_tokens = 512,
+          temperature = 0.5,
+        },
       },
     },
     ["llm/v1/completions"] = {
-      name = "gpt-3.5-turbo-instruct",
-      provider = "openai",
-      options = {
-        max_tokens = 512,
-        temperature = 0.5,
+      config = {
+        name = "gpt-3.5-turbo-instruct",
+        provider = "openai",
+        options = {
+          max_tokens = 512,
+          temperature = 0.5,
+        },
       },
     },
   },
   cohere = {
     ["llm/v1/chat"] = {
-      name = "command",
-      provider = "cohere",
-      options = {
-        max_tokens = 512,
-        temperature = 0.5,
+      config = {
+        name = "command",
+        provider = "cohere",
+        options = {
+          max_tokens = 512,
+          temperature = 0.5,
+          top_p = 1.0
+        },
       },
     },
     ["llm/v1/completions"] = {
-      name = "command",
-      provider = "cohere",
-      options = {
-        max_tokens = 512,
-        temperature = 0.5,
-        top_p = 0.75,
-        top_k = 5,
+      config = {
+        name = "command",
+        provider = "cohere",
+        options = {
+          max_tokens = 512,
+          temperature = 0.5,
+          top_p = 0.75,
+          top_k = 5,
+        },
       },
     },
   },
   anthropic = {
     ["llm/v1/chat"] = {
-      name = "claude-2.1",
-      provider = "anthropic",
-      options = {
-        max_tokens = 512,
-        temperature = 0.5,
-        top_p = 1.0,
+      config = {
+        name = "claude-2.1",
+        provider = "anthropic",
+        options = {
+          max_tokens = 512,
+          temperature = 0.5,
+          top_p = 1.0,
+        },
       },
     },
     ["llm/v1/completions"] = {
-      name = "claude-2.1",
-      provider = "anthropic",
-      options = {
-        max_tokens = 512,
-        temperature = 0.5,
-        top_p = 1.0,
+      config = {
+        name = "claude-2.1",
+        provider = "anthropic",
+        options = {
+          max_tokens = 512,
+          temperature = 0.5,
+          top_p = 1.0,
+        },
       },
     },
   },
   azure = {
     ["llm/v1/chat"] = {
-      name = "gpt-4",
-      provider = "azure",
-      options = {
-        max_tokens = 512,
-        temperature = 0.5,
-        top_p = 1.0,
+      config = {
+        name = "gpt-4",
+        provider = "azure",
+        options = {
+          max_tokens = 512,
+          temperature = 0.5,
+          top_p = 1.0,
+        },
       },
     },
     ["llm/v1/completions"] = {
-      name = "gpt-3.5-turbo-instruct",
+      config = {
+        name = "gpt-3.5-turbo-instruct",
       provider = "azure",
-      options = {
-        max_tokens = 512,
-        temperature = 0.5,
-        top_p = 1.0,
+        options = {
+          max_tokens = 512,
+          temperature = 0.5,
+          top_p = 1.0,
+        },
       },
     },
   },
   llama2_raw = {
     ["llm/v1/chat"] = {
-      name = "llama2",
-      provider = "llama2",
-      options = {
-        max_tokens = 512,
-        temperature = 0.5,
-        llama2_format = "raw",
-        top_p = 1,
-        top_k = 40,
+      config = {
+        name = "llama2",
+        provider = "llama2",
+        options = {
+          max_tokens = 512,
+          temperature = 0.5,
+          llama2_format = "raw",
+          top_p = 1,
+          top_k = 40,
+        },
       },
     },
     ["llm/v1/completions"] = {
-      name = "llama2",
-      provider = "llama2",
-      options = {
-        max_tokens = 512,
-        temperature = 0.5,
-        llama2_format = "raw",
+      config = {
+        name = "llama2",
+        provider = "llama2",
+        options = {
+          max_tokens = 512,
+          temperature = 0.5,
+          llama2_format = "raw",
+        },
       },
     },
   },
   llama2_ollama = {
     ["llm/v1/chat"] = {
-      name = "llama2",
-      provider = "llama2",
-      options = {
-        max_tokens = 512,
-        temperature = 0.5,
-        llama2_format = "ollama",
+      config = {
+        name = "llama2",
+        provider = "llama2",
+        options = {
+          max_tokens = 512,
+          temperature = 0.5,
+          llama2_format = "ollama",
+        },
       },
     },
     ["llm/v1/completions"] = {
-      name = "llama2",
-      provider = "llama2",
-      options = {
-        max_tokens = 512,
-        temperature = 0.5,
-        llama2_format = "ollama",
+      config = {
+        name = "llama2",
+        provider = "llama2",
+        options = {
+          max_tokens = 512,
+          temperature = 0.5,
+          llama2_format = "ollama",
+        },
       },
     },
   },
   mistral_openai = {
     ["llm/v1/chat"] = {
-      name = "mistral-tiny",
-      provider = "mistral",
-      options = {
-        max_tokens = 512,
-        temperature = 0.5,
-        mistral_format = "openai",
+      config = {
+        name = "mistral-tiny",
+        provider = "mistral",
+        options = {
+          max_tokens = 512,
+          temperature = 0.5,
+          mistral_format = "openai",
+        },
       },
     },
   },
   mistral_ollama = {
     ["llm/v1/chat"] = {
-      name = "mistral-tiny",
-      provider = "mistral",
-      options = {
-        max_tokens = 512,
-        temperature = 0.5,
-        mistral_format = "ollama",
+      config = {
+        name = "mistral-tiny",
+        provider = "mistral",
+        options = {
+          max_tokens = 512,
+          temperature = 0.5,
+          mistral_format = "ollama",
+        },
       },
     },
   },
@@ -422,7 +469,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
         describe(k .. " format test", function()
 
           local actual_request_table
-          local driver = require("kong.llm.drivers." .. l.provider)
+          local driver = require("kong.llm.drivers." .. l.config.provider)
 
 
           -- what we do is first put the SAME request message from the user, through the converter, for this provider/format
@@ -437,20 +484,20 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
             -- send it
             local content_type, err
-            actual_request_table, content_type, err = driver.to_format(request_table, l, k)
+            actual_request_table, content_type, err = driver.to_format(request_table, l.config, k)
             assert.is_nil(err)
             assert.not_nil(content_type)
 
             -- load the expected outbound request to this provider
             local filename
-            if l.provider == "llama2" then
-              filename = fmt("spec/fixtures/ai-proxy/unit/expected-requests/%s/%s/%s.json", l.provider, l.options.llama2_format, pl_replace(k, "/", "-"))
+            if l.config.provider == "llama2" then
+              filename = fmt("spec/fixtures/ai-proxy/unit/expected-requests/%s/%s/%s.json", l.config.provider, l.config.options.llama2_format, pl_replace(k, "/", "-"))
 
-            elseif l.provider == "mistral" then
-              filename = fmt("spec/fixtures/ai-proxy/unit/expected-requests/%s/%s/%s.json", l.provider, l.options.mistral_format, pl_replace(k, "/", "-"))
+            elseif l.config.provider == "mistral" then
+              filename = fmt("spec/fixtures/ai-proxy/unit/expected-requests/%s/%s/%s.json", l.config.provider, l.config.options.mistral_format, pl_replace(k, "/", "-"))
 
             else
-              filename = fmt("spec/fixtures/ai-proxy/unit/expected-requests/%s/%s.json", l.provider, pl_replace(k, "/", "-"))
+              filename = fmt("spec/fixtures/ai-proxy/unit/expected-requests/%s/%s.json", l.config.provider, pl_replace(k, "/", "-"))
 
             end
 
@@ -470,20 +517,20 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
             -- load what the endpoint would really response with
             local filename
-            if l.provider == "llama2" then
-              filename = fmt("spec/fixtures/ai-proxy/unit/real-responses/%s/%s/%s.json", l.provider, l.options.llama2_format, pl_replace(k, "/", "-"))
+            if l.config.provider == "llama2" then
+              filename = fmt("spec/fixtures/ai-proxy/unit/real-responses/%s/%s/%s.json", l.config.provider, l.config.options.llama2_format, pl_replace(k, "/", "-"))
             
-            elseif l.provider == "mistral" then
-              filename = fmt("spec/fixtures/ai-proxy/unit/real-responses/%s/%s/%s.json", l.provider, l.options.mistral_format, pl_replace(k, "/", "-"))
+            elseif l.config.provider == "mistral" then
+              filename = fmt("spec/fixtures/ai-proxy/unit/real-responses/%s/%s/%s.json", l.config.provider, l.config.options.mistral_format, pl_replace(k, "/", "-"))
 
             else
-              filename = fmt("spec/fixtures/ai-proxy/unit/real-responses/%s/%s.json", l.provider, pl_replace(k, "/", "-"))
+              filename = fmt("spec/fixtures/ai-proxy/unit/real-responses/%s/%s.json", l.config.provider, pl_replace(k, "/", "-"))
 
             end
             local virtual_response_json = pl_file.read(filename)
 
             -- convert to kong format (emulate on response phase hook)
-            local actual_response_json, err = driver.from_format(virtual_response_json, l, k)
+            local actual_response_json, err = driver.from_format(virtual_response_json, l.config, k)
             assert.is_nil(err)
 
             local actual_response_table, err = cjson.decode(actual_response_json)
@@ -491,14 +538,14 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
             -- load the expected response body
             local filename
-            if l.provider == "llama2" then
-              filename = fmt("spec/fixtures/ai-proxy/unit/expected-responses/%s/%s/%s.json", l.provider, l.options.llama2_format, pl_replace(k, "/", "-"))
+            if l.config.provider == "llama2" then
+              filename = fmt("spec/fixtures/ai-proxy/unit/expected-responses/%s/%s/%s.json", l.config.provider, l.config.options.llama2_format, pl_replace(k, "/", "-"))
 
-            elseif l.provider == "mistral" then
-              filename = fmt("spec/fixtures/ai-proxy/unit/expected-responses/%s/%s/%s.json", l.provider, l.options.mistral_format, pl_replace(k, "/", "-"))
+            elseif l.config.provider == "mistral" then
+              filename = fmt("spec/fixtures/ai-proxy/unit/expected-responses/%s/%s/%s.json", l.config.provider, l.config.options.mistral_format, pl_replace(k, "/", "-"))
 
             else
-              filename = fmt("spec/fixtures/ai-proxy/unit/expected-responses/%s/%s.json", l.provider, pl_replace(k, "/", "-"))
+              filename = fmt("spec/fixtures/ai-proxy/unit/expected-responses/%s/%s.json", l.config.provider, pl_replace(k, "/", "-"))
 
             end
             local expected_response_json = pl_file.read(filename)
@@ -509,8 +556,6 @@ describe(PLUGIN_NAME .. ": (unit)", function()
             assert.same(expected_response_table.choices[1].message, actual_response_table.choices[1].message)
             assert.same(actual_response_table.model, expected_response_table.model)
           end)
-
-
         end)
       end
     end)
@@ -577,5 +622,29 @@ describe(PLUGIN_NAME .. ": (unit)", function()
     assert.is_nil(content_type)
     assert.equal(err, "no transformer available to format mistral://llm/v1/chatnopenotsupported/ollama")
   end)
+
+  
+  it("produces a correct default config merge", function()
+    local formatted, err = ai_shared.merge_config_defaults(
+      SAMPLE_LLM_V1_CHAT_WITH_SOME_OPTS,
+      {
+        max_tokens = 1024,
+        top_p = 1.0,
+      },
+      "llm/v1/chat"
+    )
+
+    formatted.messages = nil  -- not needed for config merge
+
+    assert.is_nil(err)
+    assert.same({
+      max_tokens          = 256,
+      temperature         = 0.1,
+      top_p               = 0.2,
+      some_extra_param    = "string_val",
+      another_extra_param = 0.5,
+    }, formatted)
+  end)
+
 
 end)

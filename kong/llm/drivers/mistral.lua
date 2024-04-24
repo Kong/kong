@@ -66,6 +66,8 @@ function _M.to_format(request_table, model_info, route_type)
     return nil, nil, fmt("no transformer available to format %s://%s", model_info.provider, transformer_type)
   end
 
+  request_table = ai_shared.merge_config_defaults(request_table, model_info.options, model_info.route_type)
+
   -- dynamically call the correct transformer
   local ok, response_object, content_type, err = pcall(
     transformers_to[transformer_type],

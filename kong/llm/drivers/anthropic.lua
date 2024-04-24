@@ -356,6 +356,8 @@ function _M.to_format(request_table, model_info, route_type)
     return request_table, nil, nil
   end
 
+  request_table = ai_shared.merge_config_defaults(request_table, model_info.options, model_info.route_type)
+
   if not transformers_to[route_type] then
     return nil, nil, fmt("no transformer for %s://%s", model_info.provider, route_type)
   end

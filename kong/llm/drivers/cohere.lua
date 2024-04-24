@@ -11,6 +11,12 @@ local string_gsub = string.gsub
 
 -- globals
 local DRIVER_NAME = "cohere"
+
+local _CHAT_ROLES = {
+  ["system"] = "CHATBOT",
+  ["assistant"] = "CHATBOT",
+  ["user"] = "USER",
+}
 --
 
 local function handle_stream_event(event_t, model_info, route_type)
@@ -128,25 +134,22 @@ local function handle_stream_event(event_t, model_info, route_type)
 end
 
 
-local function merge_fields(request_table, model)
-  model.options = model.options or {}
-  request_table.temperature = request_table.temperature or model.options.temperature
-  request_table.max_tokens = request_table.max_tokens or model.options.max_tokens
-  request_table.truncate = request_table.truncate or "END"
-  request_table.return_likelihoods = request_table.return_likelihoods or "NONE"
-  request_table.p = request_table.top_p or model.options.top_p
-  request_table.k = request_table.top_k or model.options.top_k
-
-  return request_table
-end
-
-local function handle_all(request_table, model)
+local function handle_json_inference_event(request_table, model)
+  request_table.temperature = request_table.temperature
+  request_table.max_tokens = request_table.max_tokens
+  
+  request_table.p = request_table.top_p
+  request_table.k = request_table.top_k
+  
+  request_table.top_p = nil
+  request_table.top_k = nil
+  
   request_table.model = model.name or request_table.model
   request_table.stream = request_table.stream or false  -- explicitly set this
-
+  
   if request_table.prompt and request_table.messages then
     return kong.response.exit(400, "cannot run a 'prompt' and a history of 'messages' at the same time - refer to schema")
-
+    
   elseif request_table.messages then
     -- we have to move all BUT THE LAST message into "chat_history" array
     -- and move the LAST message (from 'user') into "message" string
@@ -156,40 +159,37 @@ local function handle_all(request_table, model)
         -- if this is the last message prompt, don't add to history
         if i < #request_table.messages then
           local role
-          if v.role == "assistant" or v.role == "CHATBOT" then
-            role = "CHATBOT"
+          if v.role == "assistant" or v.role == _CHAT_ROLES.assistant then
+            role = _CHAT_ROLES.assistant
           else
-            role = "USER"
+            role = _CHAT_ROLES.user
           end
-  
+          
           chat_history[i] = {
             role = role,
             message = v.content,
           }
         end
       end
-
+      
       request_table.chat_history = chat_history
     end
-
+    
     request_table.message = request_table.messages[#request_table.messages].content
     request_table.messages = nil
-    request_table = merge_fields(request_table, model)
-
+    
   elseif request_table.prompt then
     request_table.prompt = request_table.prompt
     request_table.messages = nil
     request_table.message = nil
-    request_table = merge_fields(request_table, model)
-
   end
-
+  
   return request_table, "application/json", nil
 end
 
 local transformers_to = {
-  ["llm/v1/chat"] = handle_all,
-  ["llm/v1/completions"] = handle_all,
+  ["llm/v1/chat"] = handle_json_inference_event,
+  ["llm/v1/completions"] = handle_json_inference_event,
 }
 
 local transformers_from = {
@@ -362,6 +362,8 @@ function _M.to_format(request_table, model_info, route_type)
     return nil, nil, fmt("no transformer for %s://%s", model_info.provider, route_type)
   end
 
+  request_table = ai_shared.merge_config_defaults(request_table, model_info.options, model_info.route_type)
+
   local ok, response_object, content_type, err = pcall(
     transformers_to[route_type],
     request_table,
@@ -491,6 +493,5 @@ function _M.configure_request(conf)
   -- if auth_param_location is "form", it will have already been set in a pre-request hook
   return true, nil
 end
-
 
 return _M
