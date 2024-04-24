@@ -10,6 +10,7 @@ load("//build/openresty/atc_router:atc_router_repositories.bzl", "atc_router_rep
 load("//build/openresty/jsonschema:jsonschema_repositories.bzl", "jsonschema_repositories")
 load("//build/openresty/msgpack_c:msgpack_c_repositories.bzl", "msgpack_c_repositories")
 load("//build/openresty/wasmx:wasmx_repositories.bzl", "wasmx_repositories")
+load("//build/openresty/wasmx/filters:repositories.bzl", "wasm_filters_repositories")
 load("//build/openresty/brotli:brotli_repositories.bzl", "brotli_repositories")
 
 # This is a dummy file to export the module's repository.
@@ -28,6 +29,7 @@ def openresty_repositories():
     jsonschema_repositories()
     msgpack_c_repositories()
     wasmx_repositories()
+    wasm_filters_repositories()
     brotli_repositories()
 
     openresty_version = KONG_VAR["OPENRESTY"]
