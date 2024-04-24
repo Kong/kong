@@ -277,7 +277,7 @@ local constants = {
       exit = "kong",
       service = "upstream",
     }
-  }
+  },
 }
 
 for _, v in ipairs(constants.CLUSTERING_SYNC_STATUS) do
