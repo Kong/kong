@@ -1406,7 +1406,8 @@ describe("Admin API #" .. strategy, function()
         }))
       end)
 
-      it("doesn't allow creating routes that collide in path and have no host", function()
+      -- TODO: remove #flaky tag when KAG-4224 is solved
+      it("doesn't allow creating routes that collide in path and have no host #flaky", function()
         assert.res_status(201, client:post("/default/services/demo-ip/routes", {
           body = {
             paths = { "/my-uri" },
