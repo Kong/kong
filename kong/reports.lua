@@ -38,6 +38,7 @@ local GRPC_REQUEST_COUNT_KEY  = "events:requests:grpc"
 local GRPCS_REQUEST_COUNT_KEY = "events:requests:grpcs"
 local WS_REQUEST_COUNT_KEY    = "events:requests:ws"
 local WSS_REQUEST_COUNT_KEY   = "events:requests:wss"
+local AI_REQUEST_COUNT_KEY    = "events:requests:ai"
 
 
 local STREAM_COUNT_KEY        = "events:streams"
@@ -365,6 +366,7 @@ local function send_ping(host, port)
   _ping_infos.grpcs_reqs     = get_counter(GRPCS_REQUEST_COUNT_KEY)
   _ping_infos.ws_reqs        = get_counter(WS_REQUEST_COUNT_KEY)
   _ping_infos.wss_reqs       = get_counter(WSS_REQUEST_COUNT_KEY)
+  _ping_infos.ai_reqs        = get_counter(AI_REQUEST_COUNT_KEY)
   _ping_infos.km_visits      = get_counter(KM_VISIT_COUNT_KEY)
   _ping_infos.go_plugin_reqs = get_counter(GO_PLUGINS_REQUEST_COUNT_KEY)
   _ping_infos.wasm_reqs      = get_counter(WASM_REQUEST_COUNT_KEY)
@@ -387,6 +389,7 @@ local function send_ping(host, port)
   reset_counter(GRPCS_REQUEST_COUNT_KEY, _ping_infos.grpcs_reqs)
   reset_counter(WS_REQUEST_COUNT_KEY,    _ping_infos.ws_reqs)
   reset_counter(WSS_REQUEST_COUNT_KEY,   _ping_infos.wss_reqs)
+  reset_counter(AI_REQUEST_COUNT_KEY,    _ping_infos.ai_reqs)
   reset_counter(KM_VISIT_COUNT_KEY,      _ping_infos.km_visits)
   reset_counter(GO_PLUGINS_REQUEST_COUNT_KEY, _ping_infos.go_plugin_reqs)
   reset_counter(WASM_REQUEST_COUNT_KEY,  _ping_infos.wasm_reqs)
