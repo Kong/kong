@@ -444,22 +444,26 @@ how to access (or create) a development container with a well-defined tool and r
 support.  It comes with debugger support that makes it possible to set breakpoints in Lua code
 and inspect variables.  Kong Gateway can be debugged using EmmyLua by following these steps:
 
-### Install IntelliJ IDEA
+### Install the IDE
 
 #### IntelliJ IDEA
+
 Download and install IntelliJ IDEA from [here](https://www.jetbrains.com/idea/download/).  Note
 that IntelliJ is a commercial product and requires a paid license after the trial period.
 
 #### VSCode
+
 Download and install MS Visual Studio Code from [here](https://code.visualstudio.com/download).
 
 ### Install EmmyLua
 
 #### IntelliJ IDEA
+
 Go to the `Settings`->`Plugins`->`Marketplace` and search for `EmmyLua`.
 Install the plugin.
 
 #### VSCode
+
 Go to the `Settings`->`Extensions` and search for `EmmyLua`.
 Install the plugin (publisher is `Tangzx`).
 
