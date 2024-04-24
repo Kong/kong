@@ -1,0 +1,43 @@
+From 74001becbbd84108781014d1cd240a09dc57f2ab Mon Sep 17 00:00:00 2001
+From: James Sharpe <james.sharpe@zenotech.com>
+Date: Thu, 5 Sep 2024 14:09:40 +0000
+Subject: [PATCH] Revert "Set the LD environment variable (#1068)"
+
+This reverts commit c62e551f9f980adc512aee03ba4f6988e34e30ac.
+---
+ foreign_cc/private/cc_toolchain_util.bzl | 2 --
+ foreign_cc/private/make_env_vars.bzl     | 1 -
+ 2 files changed, 3 deletions(-)
+
+diff --git a/foreign_cc/private/cc_toolchain_util.bzl b/foreign_cc/private/cc_toolchain_util.bzl
+index 9b3397475..9e6000d88 100644
+--- a/foreign_cc/private/cc_toolchain_util.bzl
++++ b/foreign_cc/private/cc_toolchain_util.bzl
+@@ -21,7 +21,6 @@ CxxToolsInfo = provider(
+         cxx = "C++ compiler",
+         cxx_linker_static = "C++ linker to link static library",
+         cxx_linker_executable = "C++ linker to link executable",
+-        ld = "linker",
+     ),
+ )
+ 
+@@ -217,7 +216,6 @@ def get_tools_info(ctx):
+             feature_configuration = feature_configuration,
+             action_name = ACTION_NAMES.cpp_link_executable,
+         ),
+-        ld = cc_toolchain.ld_executable,
+     )
+ 
+ def get_flags_info(ctx, link_output_file = None):
+diff --git a/foreign_cc/private/make_env_vars.bzl b/foreign_cc/private/make_env_vars.bzl
+index 30e91c3b5..78ae779df 100644
+--- a/foreign_cc/private/make_env_vars.bzl
++++ b/foreign_cc/private/make_env_vars.bzl
+@@ -94,7 +94,6 @@ _MAKE_TOOLS = {
+     "AR": "cxx_linker_static",
+     "CC": "cc",
+     "CXX": "cxx",
+-    "LD": "ld",
+     # missing: cxx_linker_executable
+ }
+ 
