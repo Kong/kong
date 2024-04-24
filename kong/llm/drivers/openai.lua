@@ -12,18 +12,6 @@ local string_gsub = string.gsub
 local DRIVER_NAME = "openai"
 --
 
--- merge_defaults takes the model options, and sets any defaults defined,
--- if the caller hasn't explicitly set them
---
--- we have already checked that "max_tokens" isn't overridden when it
--- is not allowed to do so.
-local _MERGE_PROPERTIES = {
-  [1] = "max_tokens",
-  [2] = "temperature",
-  [3] = "top_p",
-  [4] = "top_k",
-}
-
 local function handle_stream_event(event_t)
   return event_t.data
 end
