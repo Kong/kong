@@ -523,7 +523,6 @@ return {
     end
 
     if kong.ctx.shared.analytics then
-      incr_counter(AI_REQUEST_COUNT_KEY)
       local counter_token = {}
       local PROMPT_TOKEN = "prompt_token"
       local COMPLETION_TOKEN = "completion_token"
@@ -535,6 +534,7 @@ return {
         counter_token[TOTAL_TOKENS] = (counter_token[TOTAL_TOKENS] or 0) + plugin_data.usage[TOTAL_TOKENS]
       end
 
+      incr_counter(AI_REQUEST_COUNT_KEY)
       incr_counter(AI_TOKENS_PROMPT_COUNT_KEY, counter_token[PROMPT_TOKEN])
       incr_counter(AI_TOKENS_COMPLETION_COUNT_KEY, counter_token[COMPLETION_TOKEN])
       incr_counter(AI_TOKENS_TOTAL_COUNT_KEY, counter_token[TOTAL_TOKENS])
