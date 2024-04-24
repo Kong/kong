@@ -228,6 +228,7 @@ do
     "events:requests:grpcs",
     "events:requests:ws",
     "events:requests:wss",
+    "events:requests:ai",
     "events:requests:go_plugins",
     "events:km:visit",
     "events:streams",
