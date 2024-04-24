@@ -152,7 +152,7 @@ function Consumers:page_by_type(_, size, offset, options)
     end
 
     for i, row in ipairs(page) do
-      local valid_row = row.type == options.search_fields.type
+      local valid_row = row.type == options.search_fields.type.eq
       if valid_row and next(row) then
         insert(rows, row)
 

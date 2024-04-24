@@ -32,7 +32,7 @@ do
   end
 end
 
-for _, strategy in helpers.each_strategy() do
+for _, strategy in helpers.each_strategy({"postgres"}) do
 
 describe("Admin API (#" .. strategy .. "): ", function()
   local bp
@@ -54,6 +54,8 @@ describe("Admin API (#" .. strategy .. "): ", function()
 
   lazy_teardown(function()
     helpers.stop_kong()
+    db:truncate("consumers")
+    db:truncate("plugins")
   end)
 
   before_each(function()
@@ -1029,3 +1031,120 @@ describe("Admin API (#" .. strategy .. "): ", function()
 end)
 
 end
+
+for _, strategy in helpers.each_strategy({"off"}) do
+
+describe("Admin API (#" .. strategy .. "): ", function()
+  local client
+
+  lazy_setup(function()
+    local deck_yaml = helpers.make_yaml_file([[
+      _format_version: "3.0"
+      consumers:
+      - username: c1
+      - username: c2
+      - username: c3
+      - username: c4
+      - username: c5
+      - username: c6
+      - username: c7
+      - username: c8
+      - username: custom1
+        custom_id: abc def 1
+      - username: custom2
+        custom_id: 5ecda99b-b8f5-422d-8712-ca9646287443
+    ]])
+
+    assert(helpers.start_kong {
+      database = "off",
+      declarative_config = deck_yaml,
+    })
+  end)
+
+  lazy_teardown(function()
+    helpers.stop_kong()
+  end)
+
+  before_each(function()
+    client = helpers.admin_client()
+  end)
+
+  after_each(function()
+    if client then client:close() end
+  end)
+
+  describe("GET", function()
+    it("retrieves the first page", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/consumers",
+      })
+      res = assert.res_status(200, res)
+      local json = cjson.decode(res)
+      assert.equal(10, #json.data)
+    end)
+
+    it("paginates a set", function()
+      local pages = {}
+      local offset
+
+      for i = 1, 4 do
+        local res = assert(client:send {
+          method = "GET",
+          path = "/consumers",
+          query = {size = 3, offset = offset}
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        if i < 4 then
+          assert.equal(3, #json.data)
+        else
+          assert.equal(1, #json.data)
+        end
+
+        if i > 1 then
+          -- check all pages are different
+          assert.not_same(pages[i-1], json)
+        end
+
+        offset = json.offset
+        pages[i] = json
+      end
+    end)
+
+    it("not crashed by empty custom_id #KAG-867", function()
+      local res = client:get("/consumers?custom_id=")
+      local body = assert.res_status(400, res)
+      assert(cjson.decode(body))
+      res = client:get("/consumers?custom_id")
+      body = assert.res_status(400, res)
+      assert(cjson.decode(body))
+    end)
+
+    it("allows filtering by custom_id", function()
+      local res = client:get("/consumers?custom_id=" .. escape("abc def 1"))
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+
+      assert.equal(1, #json.data)
+      assert.same("custom1", json.data[1].username)
+    end)
+
+    it("allows filtering by uuid-like custom_id", function()
+      local res = client:get("/consumers?custom_id=" .. "5ecda99b-b8f5-422d-8712-ca9646287443")
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+
+      assert.equal(1, #json.data)
+      assert.same("custom2", json.data[1].username)
+    end)
+
+    it("returns empty json array when consumer does not exist", function()
+      local res = client:get("/consumers?custom_id=does-not-exist")
+      local body = assert.response(res).has.status(200)
+      assert.match('"data":%[%]', body)
+    end)
+  end)
+end)
+end -- for each strategy ("off")
