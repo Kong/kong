@@ -29,8 +29,10 @@ function _M:register(method, func)
     return nil, "unable to get capabilities: " .. func_or_err
   end
 
-  self.capabilities[cap] = true
-  table.insert(self.capabilities_list, cap)
+  if not self.capabilities[cap] then
+    self.capabilities[cap] = true
+    table.insert(self.capabilities_list, cap)
+  end
   self.callbacks[method] = func
 end
 
