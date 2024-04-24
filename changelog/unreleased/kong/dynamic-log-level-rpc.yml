@@ -1,0 +1,6 @@
+message: |
+  Dynamic log level over Hybrid mode RPC which allows setting DP log level
+  to a different level for specified duration before reverting back
+  to the `kong.conf` configured value.
+type: feature
+scope: Clustering

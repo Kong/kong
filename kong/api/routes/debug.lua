@@ -11,6 +11,7 @@ local kong                         = kong
 local pcall                        = pcall
 local type                         = type
 local tostring                     = tostring
+local tonumber                     = tonumber
 
 local get_log_level                = require("resty.kong.log").get_log_level
 
@@ -126,5 +127,50 @@ routes[cluster_name] = {
     return handle_put_log_level(self, CLUSTER_LEVEL_BROADCAST)
   end
 }
+
+
+if kong.rpc then
+  routes["/clustering/data-planes/:node_id/log-level"] = {
+    GET = function(self)
+      local res, err =
+        kong.rpc:call(self.params.node_id, "kong.debug.log_level.v1.get_log_level")
+      if not res then
+        return kong.response.exit(500, { message = err, })
+      end
+
+      return kong.response.exit(200, res)
+    end,
+    PUT = function(self)
+      local new_level = self.params.current_level
+      local timeout = self.params.timeout and
+                      math.ceil(tonumber(self.params.timeout)) or nil
+
+      if not new_level then
+        return kong.response.exit(400, { message = "Required parameter \"current_level\" is missing.", })
+      end
+
+      local res, err = kong.rpc:call(self.params.node_id,
+                                     "kong.debug.log_level.v1.set_log_level",
+                                     new_level,
+                                     timeout)
+      if not res then
+        return kong.response.exit(500, { message = err, })
+      end
+
+      return kong.response.exit(201)
+    end,
+    DELETE = function(self)
+      local res, err = kong.rpc:call(self.params.node_id,
+                                     "kong.debug.log_level.v1.set_log_level",
+                                     "warn",
+                                     0)
+      if not res then
+        return kong.response.exit(500, { message = err, })
+      end
+
+      return kong.response.exit(204)
+    end,
+  }
+end
 
 return routes

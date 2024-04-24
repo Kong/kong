@@ -42,6 +42,7 @@ dependencies = {
   "lua-resty-timer-ng == 0.2.7",
   "lpeg == 1.1.0",
   "lua-resty-ljsonschema == 1.1.6-2",
+  "lua-resty-snappy == 1.0-1",
 }
 build = {
   type = "builtin",
@@ -84,6 +85,16 @@ build = {
     ["kong.clustering.compat.checkers"] = "kong/clustering/compat/checkers.lua",
     ["kong.clustering.config_helper"] = "kong/clustering/config_helper.lua",
     ["kong.clustering.tls"] = "kong/clustering/tls.lua",
+    ["kong.clustering.services.debug"] = "kong/clustering/services/debug.lua",
+
+    ["kong.clustering.rpc.callbacks"] = "kong/clustering/rpc/callbacks.lua",
+    ["kong.clustering.rpc.future"] = "kong/clustering/rpc/future.lua",
+    ["kong.clustering.rpc.json_rpc_v2"] = "kong/clustering/rpc/json_rpc_v2.lua",
+    ["kong.clustering.rpc.manager"] = "kong/clustering/rpc/manager.lua",
+    ["kong.clustering.rpc.queue"] = "kong/clustering/rpc/queue.lua",
+    ["kong.clustering.rpc.socket"] = "kong/clustering/rpc/socket.lua",
+    ["kong.clustering.rpc.utils"] = "kong/clustering/rpc/utils.lua",
+    ["kong.clustering.rpc.concentrator"] = "kong/clustering/rpc/concentrator.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.postgres"] = "kong/cluster_events/strategies/postgres.lua",
@@ -291,6 +302,7 @@ build = {
     ["kong.db.migrations.core.020_330_to_340"] = "kong/db/migrations/core/020_330_to_340.lua",
     ["kong.db.migrations.core.021_340_to_350"] = "kong/db/migrations/core/021_340_to_350.lua",
     ["kong.db.migrations.core.022_350_to_360"] = "kong/db/migrations/core/022_350_to_360.lua",
+    ["kong.db.migrations.core.023_360_to_370"] = "kong/db/migrations/core/023_360_to_370.lua",
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",
     ["kong.db.migrations.operations.280_to_300"] = "kong/db/migrations/operations/280_to_300.lua",
