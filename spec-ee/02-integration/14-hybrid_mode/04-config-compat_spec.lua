@@ -277,22 +277,7 @@ describe("CP/DP config compat #" .. strategy, function()
           config.revocation_endpoint_auth_method    == nil
         end
       },
-      {
-        plugin = "mtls-auth",
-        label = "w/ default_consumer is unsupported",
-        pending = false,
-        config = {
-          ca_certificates = {"00e2341e-0835-4d6b-855d-23c92d232bc4"},
-          default_consumer = "281c2046-9480-4bee-8851-69362b1e8894"
-        },
-        status = STATUS.NORMAL,
-        removed = FIELDS[3007000000].mtls_auth,
-        validator = function(config)
-          local ca_certificate = "00e2341e-0835-4d6b-855d-23c92d232bc4"
-          return config.default_consumer == nil and
-            config.ca_certificates[1] == ca_certificate
-        end
-      }
+
     }
 
     for _, case in ipairs(CASES) do
@@ -588,6 +573,56 @@ describe("CP/DP config compat #" .. strategy, function()
       do_assert(case, "3.4.3.6")
     end)
   end)
+
+  describe("3.7.0.0", function()
+    local unsupported = {
+      plugin = "mtls-auth",
+      label = "w/ default_consumer is unsupported",
+      pending = false,
+      config = {
+        ca_certificates = {"00e2341e-0835-4d6b-855d-23c92d232bc4"},
+        default_consumer = "281c2046-9480-4bee-8851-69362b1e8894"
+      },
+      status = STATUS.NORMAL,
+      checker = CHECKERS,
+      validator = function(config)
+        local ca_certificate = "00e2341e-0835-4d6b-855d-23c92d232bc4"
+        return config.default_consumer == nil and
+          config.ca_certificates[1] == ca_certificate
+      end
+    }
+
+    it(fmt("%s - %s", unsupported.plugin, unsupported.label), function()
+      do_assert(unsupported, "3.4.3.4")
+      do_assert(unsupported, "3.5.0.3")
+      do_assert(unsupported, "3.6.1.3")
+    end)
+
+    local supported = {
+      plugin = "mtls-auth",
+      label = "w/ default_consumer is supported",
+      pending = false,
+      config = {
+        ca_certificates = {"00e2341e-0835-4d6b-855d-23c92d232bc4"},
+        default_consumer = "281c2046-9480-4bee-8851-69362b1e8894"
+      },
+      status = STATUS.NORMAL,
+      checker = CHECKERS,
+      validator = function(config)
+        local ca_certificate = "00e2341e-0835-4d6b-855d-23c92d232bc4"
+        return config.default_consumer == "281c2046-9480-4bee-8851-69362b1e8894" and
+          config.ca_certificates[1] == ca_certificate
+      end
+    }
+
+    it(fmt("%s - %s", supported.plugin, supported.label), function()
+      do_assert(supported, "3.4.3.5")
+      do_assert(supported, "3.5.0.4")
+      do_assert(supported, "3.6.1.4")
+      do_assert(supported, "3.7.0.0")
+    end)
+  end)
+
 
 end)
 

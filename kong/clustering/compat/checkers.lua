@@ -108,6 +108,22 @@ local compatible_checkers = {
                              dp_version, log_suffix)
           end
         end
+        if plugin.name == 'mtls-auth' then
+          local dp_version_num = version_num(dp_version)
+          local config = plugin.config
+          if config.default_consumer ~= nil then
+            if dp_version_num < 3004003005 or
+               (dp_version_num >= 3005000000 and dp_version_num < 3005000004) or
+               (dp_version_num >= 3006000000 and dp_version_num < 3006001004) then
+              -- remove config.default_consumer when DP version in intervals (, 3435), [3500, 3504), [3600, 3614)
+              config.default_consumer = nil
+              has_update = true
+              log_warn_message('configures ' .. plugin.name .. ' plugin with default_consumer',
+                'will be removed.',
+                dp_version, log_suffix)
+            end
+          end
+        end
         if plugin.name == 'ai-proxy' then
           local config = plugin.config
           if config.model and config.model.options then

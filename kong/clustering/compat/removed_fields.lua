@@ -276,9 +276,6 @@ return {
       "channel_token_keyset_client_certificate",
       "channel_token_keyset_rotate_period",
     },
-    mtls_auth = {
-      "default_consumer",
-    },
     opentelemetry = {
       "propagation",
     },
