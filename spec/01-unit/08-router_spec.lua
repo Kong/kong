@@ -9,6 +9,7 @@ local Router
 local path_handling_tests = require "spec.fixtures.router_path_handling_tests"
 local uuid = require("kong.tools.utils").uuid
 local get_expression = require("kong.router.transform").get_expression
+local deep_copy = require("kong.tools.table").deep_copy
 
 local function reload_router(flavor, subsystem)
   _G.kong = {
@@ -3732,7 +3733,8 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
         }
 
         lazy_setup(function()
-          router = assert(new_router(use_case_routes))
+          -- deep copy use_case_routes in case it changes
+          router = assert(new_router(deep_copy(use_case_routes)))
         end)
 
         it("strips the specified paths from the given uri if matching", function()
@@ -3786,7 +3788,8 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
             },
           }
 
-          local router = assert(new_router(use_case_routes))
+          -- deep copy use_case_routes in case it changes
+          local router = assert(new_router(deep_copy(use_case_routes)))
 
           local _ngx = mock_ngx("POST", "/my-route/hello/world",
                                 { host = "domain.org" })
@@ -4969,7 +4972,8 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
           },
         }
 
-        router = assert(new_router(use_case))
+          -- deep copy use_case in case it changes
+        router = assert(new_router(deep_copy(use_case)))
       end)
 
       it("[assigns different priorities to regex and non-regex path]", function()
@@ -5017,7 +5021,8 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
           },
         }
 
-        router = assert(new_router(use_case))
+        -- deep copy use_case in case it changes
+        router = assert(new_router(deep_copy(use_case)))
       end)
 
       it("[assigns different priorities to each path]", function()
