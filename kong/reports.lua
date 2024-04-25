@@ -38,7 +38,6 @@ local GRPC_REQUEST_COUNT_KEY  = "events:requests:grpc"
 local GRPCS_REQUEST_COUNT_KEY = "events:requests:grpcs"
 local WS_REQUEST_COUNT_KEY    = "events:requests:ws"
 local WSS_REQUEST_COUNT_KEY   = "events:requests:wss"
-local AI_REQUEST_COUNT_KEY    = "events:requests:ai"
 
 
 local STREAM_COUNT_KEY        = "events:streams"
@@ -54,7 +53,8 @@ local GO_PLUGINS_REQUEST_COUNT_KEY = "events:requests:go_plugins"
 local WASM_REQUEST_COUNT_KEY = "events:requests:wasm"
 
 
-local AI_TOKENS_PROMPT_COUNT_KEY = "events:ai:tokens:prompt"
+local AI_PROMPT_TOKENS_COUNT_KEY = "events:ai:prompt_tokens"
+local AI_REQUEST_COUNT_KEY       = "events:ai:requests"
 
 
 local ROUTE_CACHE_HITS_KEY = "route_cache_hits"
@@ -335,7 +335,7 @@ local function send_ping(host, port)
     _ping_infos.stream_route_cache_hit_pos = get_counter(STEAM_ROUTE_CACHE_HITS_KEY_POS)
     _ping_infos.stream_route_cache_hit_neg = get_counter(STEAM_ROUTE_CACHE_HITS_KEY_NEG)
 
-    _ping_infos.ai_tokens_prompt     = get_counter(AI_TOKENS_PROMPT_COUNT_KEY)
+    _ping_infos.ai_prompt_tokens     = get_counter(AI_PROMPT_TOKENS_COUNT_KEY)
     _ping_infos.ai_reqs              = get_counter(AI_REQUEST_COUNT_KEY)
 
     send_report("ping", _ping_infos, host, port)
@@ -348,7 +348,7 @@ local function send_ping(host, port)
     reset_counter(WASM_REQUEST_COUNT_KEY, _ping_infos.wasm_reqs)
     reset_counter(STEAM_ROUTE_CACHE_HITS_KEY_POS, _ping_infos.stream_route_cache_hit_pos)
     reset_counter(STEAM_ROUTE_CACHE_HITS_KEY_NEG, _ping_infos.stream_route_cache_hit_neg)
-    reset_counter(AI_TOKENS_PROMPT_COUNT_KEY, _ping_infos.ai_tokens_prompt)
+    reset_counter(AI_PROMPT_TOKENS_COUNT_KEY, _ping_infos.ai_prompt_tokens)
     reset_counter(AI_REQUEST_COUNT_KEY, _ping_infos.ai_reqs)
     return
   end
@@ -366,7 +366,7 @@ local function send_ping(host, port)
   _ping_infos.go_plugin_reqs = get_counter(GO_PLUGINS_REQUEST_COUNT_KEY)
   _ping_infos.wasm_reqs      = get_counter(WASM_REQUEST_COUNT_KEY)
 
-  _ping_infos.ai_tokens_prompt = get_counter(AI_TOKENS_PROMPT_COUNT_KEY)
+  _ping_infos.ai_prompt_tokens = get_counter(AI_PROMPT_TOKENS_COUNT_KEY)
   _ping_infos.ai_reqs          = get_counter(AI_REQUEST_COUNT_KEY)
 
   _ping_infos.request_route_cache_hit_pos = get_counter(REQUEST_ROUTE_CACHE_HITS_KEY_POS)
@@ -388,7 +388,7 @@ local function send_ping(host, port)
   reset_counter(WASM_REQUEST_COUNT_KEY,  _ping_infos.wasm_reqs)
   reset_counter(REQUEST_ROUTE_CACHE_HITS_KEY_POS, _ping_infos.request_route_cache_hit_pos)
   reset_counter(REQUEST_ROUTE_CACHE_HITS_KEY_NEG, _ping_infos.request_route_cache_hit_neg)
-  reset_counter(AI_TOKENS_PROMPT_COUNT_KEY, _ping_infos.ai_tokens_prompt)
+  reset_counter(AI_PROMPT_TOKENS_COUNT_KEY, _ping_infos.ai_prompt_tokens)
   reset_counter(AI_REQUEST_COUNT_KEY, _ping_infos.ai_reqs)
 end
 
@@ -516,7 +516,7 @@ return {
 
     if kong.ctx.shared.ai_prompt_tokens then
       incr_counter(AI_REQUEST_COUNT_KEY)
-      incr_counter(AI_TOKENS_PROMPT_COUNT_KEY, kong.ctx.shared.ai_prompt_tokens)
+      incr_counter(AI_PROMPT_TOKENS_COUNT_KEY, kong.ctx.shared.ai_prompt_tokens)
     end
 
     local suffix = get_current_suffix(ctx)
