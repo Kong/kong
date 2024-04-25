@@ -188,8 +188,6 @@ for _, strategy in helpers.each_strategy() do
 
         proxy_client:close()
 
-        ngx.sleep(0.1)
-
         local _, reports_data = assert(reports_server:join())
         reports_data = cjson.encode(reports_data)
 
@@ -225,8 +223,6 @@ for _, strategy in helpers.each_strategy() do
 
         proxy_client:close()
         proxy_client_2:close()
-
-        ngx.sleep(0.1)
 
         local _, reports_data = assert(reports_server:join())
         reports_data = cjson.encode(reports_data)
