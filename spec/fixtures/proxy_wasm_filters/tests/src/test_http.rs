@@ -98,11 +98,14 @@ impl TestHttp {
         if cur_phase == on_phase {
             info!("[proxy-wasm] testing in \"{:?}\"", on_phase);
 
-            self.set_http_request_header(INPUT_HEADER_NAME, None);
-            self.set_http_request_header(TEST_HEADER_NAME, None);
-            self.set_http_request_header(PHASE_HEADER_NAME, None);
+            if cur_phase == TestPhase::RequestHeaders || cur_phase == TestPhase::RequestBody {
+                self.set_http_request_header(INPUT_HEADER_NAME, None);
+                self.set_http_request_header(TEST_HEADER_NAME, None);
+                self.set_http_request_header(PHASE_HEADER_NAME, None);
 
-            add_request_header(self);
+                add_request_header(self);
+            }
+
             add_response_header(self);
 
             if let Some(test) = opt_test {
