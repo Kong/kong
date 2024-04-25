@@ -377,7 +377,7 @@ function _M.resolve_plugin_conf(kong_request, conf)
       if #splitted ~= 2 then
         return nil, "cannot parse expression for field '" .. v .. "'"
       end
-
+      
       -- find the request parameter, with the configured name
       prop_m, err = _M.conf_from_request(kong_request, splitted[1], splitted[2])
       if err then
@@ -416,12 +416,14 @@ function _M.pre_request(conf, request_table)
   end
 
   -- log tokens prompt for reports and billing
-  local prompt_tokens, err = _M.calculate_cost(request_table, {}, 1.0)
-  if err then
-    kong.log.warn("failed calculating cost for prompt tokens: ", err)
-    prompt_tokens = 0
+  if conf.route_type ~= "preserve" then
+    local prompt_tokens, err = _M.calculate_cost(request_table, {}, 1.0)
+    if err then
+      kong.log.warn("failed calculating cost for prompt tokens: ", err)
+      prompt_tokens = 0
+    end
+    kong.ctx.shared.ai_prompt_tokens = (kong.ctx.shared.ai_prompt_tokens or 0) + prompt_tokens
   end
-  kong.ctx.shared.ai_prompt_tokens = (kong.ctx.shared.ai_prompt_tokens or 0) + prompt_tokens
 
   return true, nil
 end
@@ -617,6 +619,10 @@ function _M.calculate_cost(query_body, tokens_models, tokens_factor)
   local query_cost = 0
   local err
 
+  if not query_body then
+    return nil, "cannot calculate tokens on empty request"
+  end
+
   if query_body.choices then
     -- Calculate the cost based on the content type
     for _, choice in ipairs(query_body.choices) do
@@ -637,8 +643,6 @@ function _M.calculate_cost(query_body, tokens_models, tokens_factor)
     if err then
         return nil, err
     end
-  else
-    return nil, "No messages or prompt in query"
   end
 
   -- Round the total cost quantified

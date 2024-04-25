@@ -108,11 +108,13 @@ function _M.configure_request(conf)
       ai_shared.upstream_url_format[DRIVER_NAME]:format(conf.model.options.azure_instance, conf.model.options.azure_deployment_id),
           conf.model.options
       and conf.model.options.upstream_path
-      or ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
+      or ai_shared.operation_map[DRIVER_NAME][conf.route_type]
+      and ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
+      or "/"
     )
     parsed_url = socket_url.parse(url)
   end
-  
+
   -- if the path is read from a URL capture, 3re that it is valid
   parsed_url.path = string_gsub(parsed_url.path, "^/*", "/")
 

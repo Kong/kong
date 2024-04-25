@@ -366,11 +366,11 @@ function _M:access(conf)
 
   -- check if the user has asked for a stream, and/or if
   -- we are forcing all requests to be of streaming type
-  if request_table.stream or
-     (conf.model.options and conf.model.options.response_streaming) == "always" then
+  if request_table and request_table.stream or
+     (conf_m.model.options and conf_m.model.options.response_streaming) == "always" then
     -- this condition will only check if user has tried
     -- to activate streaming mode within their request
-    if conf.model.options and conf.model.options.response_streaming == "deny" then
+    if conf_m.model.options and conf_m.model.options.response_streaming == "deny" then
       return bad_request("response streaming is not enabled for this LLM")
     end
 
@@ -394,7 +394,7 @@ function _M:access(conf)
   local ai_driver = require("kong.llm.drivers." .. conf.model.provider)
 
   -- execute pre-request hooks for this driver
-  local ok, err = ai_driver.pre_request(conf, request_table)
+  local ok, err = ai_driver.pre_request(conf_m, request_table)
   if not ok then
     return bad_request(err)
   end
@@ -411,7 +411,7 @@ function _M:access(conf)
   end
 
   -- execute pre-request hooks for "all" drivers before set new body
-  local ok, err = ai_shared.pre_request(conf, parsed_request_body)
+  local ok, err = ai_shared.pre_request(conf_m, parsed_request_body)
   if not ok then
     return bad_request(err)
   end
@@ -421,7 +421,7 @@ function _M:access(conf)
   end
 
   -- now re-configure the request for this operation type
-  local ok, err = ai_driver.configure_request(conf)
+  local ok, err = ai_driver.configure_request(conf_m)
   if not ok then
     kong.ctx.shared.skip_response_transformer = true
     return internal_server_error(err)
