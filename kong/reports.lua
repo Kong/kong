@@ -336,6 +336,7 @@ local function send_ping(host, port)
     _ping_infos.stream_route_cache_hit_neg = get_counter(STEAM_ROUTE_CACHE_HITS_KEY_NEG)
 
     _ping_infos.ai_tokens_prompt     = get_counter(AI_TOKENS_PROMPT_COUNT_KEY)
+    _ping_infos.ai_reqs              = get_counter(AI_REQUEST_COUNT_KEY)
 
     send_report("ping", _ping_infos, host, port)
 
@@ -348,6 +349,7 @@ local function send_ping(host, port)
     reset_counter(STEAM_ROUTE_CACHE_HITS_KEY_POS, _ping_infos.stream_route_cache_hit_pos)
     reset_counter(STEAM_ROUTE_CACHE_HITS_KEY_NEG, _ping_infos.stream_route_cache_hit_neg)
     reset_counter(AI_TOKENS_PROMPT_COUNT_KEY, _ping_infos.ai_tokens_prompt)
+    reset_counter(AI_REQUEST_COUNT_KEY, _ping_infos.ai_reqs)
     return
   end
 
@@ -360,12 +362,12 @@ local function send_ping(host, port)
   _ping_infos.grpcs_reqs     = get_counter(GRPCS_REQUEST_COUNT_KEY)
   _ping_infos.ws_reqs        = get_counter(WS_REQUEST_COUNT_KEY)
   _ping_infos.wss_reqs       = get_counter(WSS_REQUEST_COUNT_KEY)
-  _ping_infos.ai_reqs        = get_counter(AI_REQUEST_COUNT_KEY)
   _ping_infos.km_visits      = get_counter(KM_VISIT_COUNT_KEY)
   _ping_infos.go_plugin_reqs = get_counter(GO_PLUGINS_REQUEST_COUNT_KEY)
   _ping_infos.wasm_reqs      = get_counter(WASM_REQUEST_COUNT_KEY)
 
   _ping_infos.ai_tokens_prompt = get_counter(AI_TOKENS_PROMPT_COUNT_KEY)
+  _ping_infos.ai_reqs          = get_counter(AI_REQUEST_COUNT_KEY)
 
   _ping_infos.request_route_cache_hit_pos = get_counter(REQUEST_ROUTE_CACHE_HITS_KEY_POS)
   _ping_infos.request_route_cache_hit_neg = get_counter(REQUEST_ROUTE_CACHE_HITS_KEY_NEG)
@@ -381,13 +383,13 @@ local function send_ping(host, port)
   reset_counter(GRPCS_REQUEST_COUNT_KEY, _ping_infos.grpcs_reqs)
   reset_counter(WS_REQUEST_COUNT_KEY,    _ping_infos.ws_reqs)
   reset_counter(WSS_REQUEST_COUNT_KEY,   _ping_infos.wss_reqs)
-  reset_counter(AI_REQUEST_COUNT_KEY,    _ping_infos.ai_reqs)
   reset_counter(KM_VISIT_COUNT_KEY,      _ping_infos.km_visits)
   reset_counter(GO_PLUGINS_REQUEST_COUNT_KEY, _ping_infos.go_plugin_reqs)
   reset_counter(WASM_REQUEST_COUNT_KEY,  _ping_infos.wasm_reqs)
   reset_counter(REQUEST_ROUTE_CACHE_HITS_KEY_POS, _ping_infos.request_route_cache_hit_pos)
   reset_counter(REQUEST_ROUTE_CACHE_HITS_KEY_NEG, _ping_infos.request_route_cache_hit_neg)
   reset_counter(AI_TOKENS_PROMPT_COUNT_KEY, _ping_infos.ai_tokens_prompt)
+  reset_counter(AI_REQUEST_COUNT_KEY, _ping_infos.ai_reqs)
 end
 
 
