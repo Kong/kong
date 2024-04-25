@@ -90,6 +90,12 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "http-service.test" }
       })
 
+      local chat_good_2 = assert(bp.routes:insert {
+        service = http_srv,
+        protocols = { "http" },
+        hosts = { "http-service.test_2" }
+      })
+
       bp.plugins:insert({
         name = "reports-api",
         config = {}
@@ -97,13 +103,37 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name = PLUGIN_NAME,
-        id = "6e7c40f6-ce96-48e4-a366-d109c169e444",
         route = { id = chat_good.id },
         config = {
           route_type = "llm/v1/chat",
           logging = {
             log_payloads = false,
             log_statistics = true,
+          },
+          auth = {
+            header_name = "Authorization",
+            header_value = "Bearer openai-key",
+          },
+          model = {
+            name = "gpt-3.5-turbo",
+            provider = "openai",
+            options = {
+              max_tokens = 256,
+              temperature = 1.0,
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/chat/good"
+            },
+          },
+        },
+      }
+
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = chat_good_2.id },
+        config = {
+          route_type = "llm/v1/chat",
+          logging = {
+            log_payloads = false,
+            log_statistics = false, -- should work also for statistics disable
           },
           auth = {
             header_name = "Authorization",
@@ -142,7 +172,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("check report has ai data", function()
-      it("logs number of requests triggering a ai plugin", function()
+      it("logs correct data for report on a request triggering a ai plugin", function()
         local proxy_client = assert(helpers.proxy_client())
         local res = proxy_client:get("/", {
           headers = { 
@@ -154,8 +184,23 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res)
 
-        local proxy_client2 = assert(helpers.proxy_client())
-        local res2 = proxy_client2:get("/", {
+        reports_send_ping(constants.REPORTS.STATS_TLS_PORT)
+
+        proxy_client:close()
+
+        ngx.sleep(0.1)
+
+        local _, reports_data = assert(reports_server:join())
+        reports_data = cjson.encode(reports_data)
+
+        assert.match("ai_response_tokens=8", reports_data)
+        assert.match("ai_prompt_tokens=10", reports_data)
+        assert.match("ai_reqs=1", reports_data)
+      end)
+
+      it("logs correct data for a different routes triggering a ai plugin", function()
+        local proxy_client = assert(helpers.proxy_client())
+        local res = proxy_client:get("/", {
           headers = { 
             ["content-type"] = "application/json",
             ["accept"] = "application/json",
@@ -163,20 +208,31 @@ for _, strategy in helpers.each_strategy() do
           },
           body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
         })
-        assert.res_status(200, res2)
+        assert.res_status(200, res)
+
+        local proxy_client_2 = assert(helpers.proxy_client())
+        local res_2 = proxy_client_2:get("/", {
+          headers = { 
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+            ["host"]  = "http-service.test_2",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
+        })
+        assert.res_status(200, res_2)
 
         reports_send_ping(constants.REPORTS.STATS_TLS_PORT)
 
         proxy_client:close()
-        proxy_client2:close()
+        proxy_client_2:close()
 
         ngx.sleep(0.1)
 
         local _, reports_data = assert(reports_server:join())
         reports_data = cjson.encode(reports_data)
 
-        assert.match("ai_response_tokens=1", reports_data)
-        assert.match("ai_prompt_tokens=1", reports_data)
+        assert.match("ai_response_tokens=16", reports_data)
+        assert.match("ai_prompt_tokens=20", reports_data)
         assert.match("ai_reqs=2", reports_data)
       end)
     end)
