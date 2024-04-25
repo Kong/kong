@@ -229,7 +229,7 @@ end
 
 function _M:body_filter(conf)
   -- if body_filter is called twice, then return
-  if kong.ctx.plugin.body_called and (not kong.ctx.shared.ai_proxy_streaming_mode) then
+  if kong.ctx.plugin.body_called and not kong.ctx.shared.ai_proxy_streaming_mode then
     return
   end
 
