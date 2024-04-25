@@ -18,9 +18,10 @@ cmake(
     ],
     cache_entries = {
         "BUILD_SHARED_LIBS": "OFF",
-        "MSGPACK_GEN_COVERAGE": "OFF",
-        "MSGPACK_BUILD_TESTS": "OFF",
+        "CMAKE_INSTALL_LIBDIR": "lib",  # force distros that uses lib64 (rhel family) to use lib
         "MSGPACK_BUILD_EXAMPLES": "OFF",
+        "MSGPACK_BUILD_TESTS": "OFF",
+        "MSGPACK_GEN_COVERAGE": "OFF",
     },
     lib_source = ":all_srcs",
     out_static_libs = [
