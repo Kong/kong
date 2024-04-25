@@ -250,9 +250,20 @@ local transformers_from = {
       messages.id = response_table.generation_id
   
       local stats = {
-        completion_tokens = response_table.token_count and response_table.token_count.response_tokens or nil,
-        prompt_tokens = response_table.token_count and response_table.token_count.prompt_tokens or nil,
-        total_tokens = response_table.token_count and response_table.token_count.total_tokens or nil,
+        completion_tokens = response_table.meta
+                        and response_table.meta.billed_units
+                        and response_table.meta.billed_units.output_tokens
+                        or nil,
+
+        prompt_tokens = response_table.meta
+                    and response_table.meta.billed_units
+                    and response_table.meta.billed_units.input_tokens
+                    or nil,
+
+        total_tokens = response_table.meta
+                  and response_table.meta.billed_units
+                  and (response_table.meta.billed_units.output_tokens + response_table.meta.billed_units.input_tokens)
+                  or nil,
       }
       messages.usage = stats
   
