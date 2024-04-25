@@ -416,7 +416,7 @@ function _M.pre_request(conf, request_table)
   end
 
   -- log tokens prompt for reports and billing
-  local prompt_tokens, err = calculate_cost(request_table, {}, 1.0) or 0
+  local prompt_tokens, err = _M.calculate_cost(request_table, {}, 1.0) or 0
   kong.ctx.shared.ai_prompt_tokens = (kong.ctx.shared.ai_prompt_tokens or 0) + prompt_tokens
 
   return true, nil
@@ -505,7 +505,7 @@ function _M.post_request(conf, response_object)
   end
 
   -- log tokens prompt for reports and billing
-  local response_tokens, err = calculate_cost(response_object, {}, 1.0) or 0
+  local response_tokens, err = _M.calculate_cost(response_object, {}, 1.0) or 0
   kong.ctx.shared.ai_response_tokens = (kong.ctx.shared.ai_response_tokens or 0) + response_tokens
 
   return nil
@@ -605,7 +605,7 @@ local function count_prompt(content, tokens_factor)
   return count
 end
 
-local function calculate_cost(query_body, tokens_models, tokens_factor)
+function _M.calculate_cost(query_body, tokens_models, tokens_factor)
   local query_cost = 0
   local err
 
@@ -635,7 +635,7 @@ local function calculate_cost(query_body, tokens_models, tokens_factor)
 
   -- Round the total cost quantified
   query_cost = math.floor(query_cost + 0.5)
-  
+
   return query_cost
 end
 
