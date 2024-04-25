@@ -234,7 +234,7 @@ do
     "events:streams:tcp",
     "events:streams:tls",
     "events:ai:prompt_tokens",
-    "events:ai:requests,
+    "events:ai:requests",
   }
 
   reset_kong_shm = function(config)
