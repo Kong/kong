@@ -608,7 +608,7 @@ local function count_prompt(content, tokens_factor)
   else 
     return nil, "Invalid request format"
   end
-  return count
+  return count, nil
 end
 
 function _M.calculate_cost(query_body, tokens_models, tokens_factor)
@@ -642,7 +642,7 @@ function _M.calculate_cost(query_body, tokens_models, tokens_factor)
   -- Round the total cost quantified
   query_cost = math.floor(query_cost + 0.5)
 
-  return query_cost
+  return query_cost, nil
 end
 
 return _M
