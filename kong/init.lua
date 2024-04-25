@@ -228,13 +228,13 @@ do
     "events:requests:grpcs",
     "events:requests:ws",
     "events:requests:wss",
-    "events:requests:ai",
     "events:requests:go_plugins",
     "events:km:visit",
     "events:streams",
     "events:streams:tcp",
     "events:streams:tls",
-    "events:ai:tokens:prompt",
+    "events:ai:prompt_tokens",
+    "events:ai:requests,
   }
 
   reset_kong_shm = function(config)
