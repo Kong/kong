@@ -626,7 +626,7 @@ function _M.calculate_cost(query_body, tokens_models, tokens_factor)
   if query_body.choices then
     -- Calculate the cost based on the content type
     for _, choice in ipairs(query_body.choices) do
-      if choice.message.content then 
+      if choice.message and choice.message.content then 
         query_cost = query_cost + (count_words(choice.message.content) * tokens_factor)
       elseif choice.text then 
         query_cost = query_cost + (count_words(choice.text) * tokens_factor)
