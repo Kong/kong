@@ -21,7 +21,6 @@ do
     "kong.tools.table",
     "kong.tools.string",
     "kong.tools.uuid",
-    "kong.tools.rand",
     "kong.tools.time",
     "kong.tools.ip",
     "kong.tools.http",
