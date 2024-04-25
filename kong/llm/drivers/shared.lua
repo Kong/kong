@@ -419,6 +419,7 @@ function _M.pre_request(conf, request_table)
   local prompt_tokens, err = _M.calculate_cost(request_table, {}, 1.0)
   if err then
     kong.log.warn("failed calculating cost for prompt tokens: ", err)
+    prompt_tokens = 0
   end
   kong.ctx.shared.ai_prompt_tokens = (kong.ctx.shared.ai_prompt_tokens or 0) + prompt_tokens
 
@@ -511,6 +512,7 @@ function _M.post_request(conf, response_object)
   local response_tokens, err = _M.calculate_cost(response_object, {}, 1.0)
   if err then
     kong.log.warn("failed calculating cost for response tokens: ", err)
+    response_tokens = 0
   end
   kong.ctx.shared.ai_response_tokens = (kong.ctx.shared.ai_response_tokens or 0) + response_tokens
 
