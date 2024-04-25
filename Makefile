@@ -160,7 +160,6 @@ endif
 	@$(VENV) $(TEST_CMD) $(test_spec)
 
 test-logs:
-	mkdir -p servroot/logs && touch servroot/logs/error.log
 	tail -F servroot/logs/error.log
 
 pdk-phase-checks: dev
