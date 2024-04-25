@@ -181,7 +181,7 @@ function AWSLambdaHandler:access(conf)
   -- setting the latency here is a bit tricky, but because we are not
   -- actually proxying, it will not be overwritten
   ctx.KONG_WAITING_TIME = lambda_wait_time_total
-  ctx.AWS_LAMBDA_WAIT_TIME = lambda_wait_time_total
+  kong.ctx.plugin.waiting_time = lambda_wait_time_total
 
   if err then
     return error(err)
@@ -248,7 +248,7 @@ function AWSLambdaHandler:header_filter(conf)
   -- TRACING: remove the latency of requesting AWS Lambda service from the KONG_RESPONSE_LATENCY
   local ctx = ngx.ctx
   if ctx.KONG_RESPONSE_LATENCY then
-    ctx.KONG_RESPONSE_LATENCY = ctx.KONG_RESPONSE_LATENCY - (ctx.AWS_LAMBDA_WAIT_TIME or 0)
+    ctx.KONG_RESPONSE_LATENCY = ctx.KONG_RESPONSE_LATENCY - (kong.ctx.plugin.waiting_time or 0)
   end
 end
 
