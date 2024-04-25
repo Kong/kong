@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
 local cjson = require "cjson.safe"
 local STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
 local admin = require "spec.fixtures.admin_api"
@@ -10,6 +9,8 @@ local FILTER_SRC = "spec/fixtures/proxy_wasm_filters/build/response_transformer.
 
 local json = cjson.encode
 local file = helpers.file
+local random_string = require("kong.tools.rand").random_string
+local uuid = require("kong.tools.uuid").uuid
 
 
 local function expect_status(id, exp)
@@ -135,7 +136,7 @@ describe("#wasm - hybrid mode #postgres", function()
 
     lazy_setup(function()
       dp_filter_path = new_wasm_filter_directory()
-      node_id = utils.uuid()
+      node_id = uuid()
 
       assert(helpers.start_kong({
         role                  = "data_plane",
@@ -172,7 +173,7 @@ describe("#wasm - hybrid mode #postgres", function()
 
     it("syncs wasm filter chains to the data plane", function()
       local service = admin.services:insert({})
-      local host = "wasm-" .. utils.random_string() .. ".test"
+      local host = "wasm-" .. random_string() .. ".test"
 
       admin.routes:insert({
         service = service,
@@ -196,7 +197,7 @@ describe("#wasm - hybrid mode #postgres", function()
         end)
         .is_truthy("service/route are ready on the data plane")
 
-      local value = utils.random_string()
+      local value = random_string()
 
       local filter = admin.filter_chains:insert({
         service = { id = service.id },
@@ -293,7 +294,7 @@ describe("#wasm - hybrid mode #postgres", function()
 
     lazy_setup(function()
       helpers.clean_logfile(cp_errlog)
-      node_id = utils.uuid()
+      node_id = uuid()
 
       assert(helpers.start_kong({
         role                  = "data_plane",
@@ -330,7 +331,7 @@ describe("#wasm - hybrid mode #postgres", function()
     lazy_setup(function()
       helpers.clean_logfile(cp_errlog)
       tmp_dir = helpers.make_temp_dir()
-      node_id = utils.uuid()
+      node_id = uuid()
 
       assert(helpers.start_kong({
         role                  = "data_plane",

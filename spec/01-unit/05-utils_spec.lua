@@ -196,6 +196,7 @@ describe("Utils", function()
       assert.False(utils.validate_utf8(string.char(237, 160, 128))) -- Single UTF-16 surrogate
     end)
     describe("random_string()", function()
+      local utils = require "kong.tools.rand"
       it("should return a random string", function()
         local first = utils.random_string()
         assert.is_string(first)
