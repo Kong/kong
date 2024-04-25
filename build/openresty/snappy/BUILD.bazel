@@ -58,8 +58,8 @@ cc_library(
     ],
 )
 
-cc_shared_library(
-    name = "snappy",
+cc_library(
+    name = "_snappy",
     srcs = [
         "snappy.cc",
         "snappy-c.cc",
@@ -82,6 +82,11 @@ cc_shared_library(
         ":snappy-stubs-internal",
         ":snappy-stubs-public",
     ],
+)
+
+cc_shared_library(
+    name = "snappy",
+    deps = [":_snappy"],
 )
 
 filegroup(
