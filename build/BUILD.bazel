@@ -154,7 +154,7 @@ kong_directory_genrule(
         chmod -R "+rw" ${BUILD_DESTDIR}/openresty/luajit
 
         SNAPPY=${WORKSPACE_PATH}/$(dirname $(echo '$(locations @snappy//:snappy)' | awk '{print $1}'))
-        cp ${SNAPPY}/libsnappy.so ${BUILD_DESTDIR}/kong/lib
+        cp ${SNAPPY}/libsnappy.${libext} ${BUILD_DESTDIR}/kong/lib
 
         LUAROCKS=${WORKSPACE_PATH}/$(dirname '$(location @luarocks//:luarocks_make)')/luarocks_tree
         cp -r ${LUAROCKS}/. ${BUILD_DESTDIR}/.
