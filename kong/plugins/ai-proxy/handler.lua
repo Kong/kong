@@ -149,7 +149,7 @@ local function handle_streaming_frame(conf)
 
   if finished then
     local fake_response_t = {
-      response = kong.ctx.plugin.ai_stream_log_buffer:get(),
+      response = kong.ctx.plugin.ai_stream_log_buffer and kong.ctx.plugin.ai_stream_log_buffer:get(),
       usage = {
         prompt_tokens = kong.ctx.plugin.ai_stream_prompt_tokens or 0,
         completion_tokens = kong.ctx.plugin.ai_stream_completion_tokens or 0,

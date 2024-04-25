@@ -47,6 +47,7 @@ local openai_override = os.getenv("OPENAI_TEST_PORT")
 _M.streaming_has_token_counts = {
   ["cohere"] = true,
   ["llama2"] = true,
+  ["anthropic"] = true,
 }
 
 _M.upstream_url_format = {
@@ -180,26 +181,6 @@ local function handle_stream_event(event_table, model_info, route_type)
 end
 
 ---
--- Splits up a string by delimiter, whilst preserving
--- empty lines, double line-breaks.
---
--- @param {string} str input string to split
--- @param {string} delimiter delimeter (can be complex string) to split by
--- @return {table} n number of split results, or empty table
-local function complex_split(str, delimiter)
-  local result = {}
-  local from  = 1
-  local delim_from, delim_to = string.find(str, delimiter, from)
-  while delim_from do
-    table.insert( result, string.sub(str, from , delim_from-1))
-    from  = delim_to + 1
-    delim_from, delim_to = string.find(str, delimiter, from)
-  end
-  table.insert( result, string.sub(str, from))
-  return result
-end
-
----
 -- Splits a HTTPS data chunk or frame into individual
 -- SSE-format messages, see:
 -- https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#event_stream_format
@@ -225,7 +206,7 @@ function _M.frame_to_events(frame)
       }
     end
   else
-    local event_lines = complex_split(frame, "\n")
+    local event_lines = split(frame, "\n")
     local struct = { event = nil, id = nil, data = nil }
 
     for _, dat in ipairs(event_lines) do
@@ -349,18 +330,6 @@ function _M.from_ollama(response_string, model_info, route_type)
 
   -- err maybe be nil from successful decode above
   return output, err, analytics
-end
-
-function _M.conf_from_request(kong_request, source, key)
-  if source == "uri_captures" then
-    return kong_request.get_uri_captures().named[key]
-  elseif source == "headers" then
-    return kong_request.get_header(key)
-  elseif source == "query_params" then
-    return kong_request.get_query_arg(key)
-  else
-    return nil, "source '" .. source .. "' is not supported"
-  end
 end
 
 function _M.conf_from_request(kong_request, source, key)

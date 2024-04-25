@@ -553,28 +553,4 @@ do
   end
 end
 
-do
-  local string_sub = string.sub
-
-  ---
-  -- Ensures that a given path adheres to a valid format
-  -- for usage with PDK set_path, or a lua-resty-http client.
-  --
-  -- The function returns the re-formatted path, in its valid form,
-  -- or returns the original string if nothing was changed.
-  --
-  -- @param path string the path to ensure is valid
-  -- @return string the newly-formatted valid path, or the original path if nothing changed
-  function _M.ensure_valid_path(path)
-    if string_sub(path, 1, 1) ~= "/" then
-      path = "/" .. path
-
-    elseif string_sub(path, 1, 2) == "//" then
-      path = string_sub(path, 2)
-    end
-
-    return path
-  end
-end
-
 return _M
