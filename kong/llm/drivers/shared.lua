@@ -416,8 +416,7 @@ function _M.pre_request(conf, request_table)
   end
 
   -- log tokens prompt for reports and billing
-  local prompt_tokens, err
-  prompt_tokens, err = _M.calculate_cost(request_table, {}, 1.0) or 0
+  local prompt_tokens, err = _M.calculate_cost(request_table, {}, 1.0)
   if err then
     kong.log.warn("failed calculating cost for prompt tokens: ", err)
   end
@@ -509,8 +508,7 @@ function _M.post_request(conf, response_object)
   end
 
   -- log tokens response for reports and billing
-  local response_tokens, err
-  response_tokens, err = _M.calculate_cost(response_object, {}, 1.0) or 0
+  local response_tokens, err = _M.calculate_cost(response_object, {}, 1.0)
   if err then
     kong.log.warn("failed calculating cost for response tokens: ", err)
   end
