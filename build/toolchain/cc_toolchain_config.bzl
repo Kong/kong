@@ -13,7 +13,7 @@
 # limitations under the License.
 
 load("@bazel_tools//tools/cpp:cc_toolchain_config_lib.bzl", "feature", "tool_path")
-load("@kong_bindings//:variables.bzl", "KONG_VAR")
+load("@toolchain_bindings//:variables.bzl", "INTERNAL_ROOT")
 
 # Bazel 4.* doesn't support nested starlark functions, so we cannot simplify
 #_fmt_flags() by defining it as a nested function.
@@ -100,8 +100,23 @@ def _cc_toolchain_config_impl(ctx):
     # C++ built-in include directories:
     cxx_builtin_include_directories = [
         "/usr/" + target_cpu + "-linux-gnu/include",
+        # let's just add any version we might need in here (debian based)
+        "/usr/lib/gcc-cross/" + target_cpu + "-linux-gnu/13/include",
+        "/usr/lib/gcc-cross/" + target_cpu + "-linux-gnu/12/include",
         "/usr/lib/gcc-cross/" + target_cpu + "-linux-gnu/11/include",
+        "/usr/lib/gcc-cross/" + target_cpu + "-linux-gnu/10/include",
     ]
+
+    if len(ctx.files.src) > 0:
+        # define absolute path for managed toolchain
+        # bazel doesn't support relative path for cxx_builtin_include_directories
+        # file is something like external/aarch64-rhel9-linux-gnu-gcc-11/aarch64-rhel9-linux-gnu/bin/ar
+        # we will take aarch64-rhel9-linux-gnu-gcc-11/aarch64-rhel9-linux-gnu
+        tools_dir = "/".join(ctx.files.src[0].path.split("/")[1:3])
+        cxx_builtin_include_directories.append(INTERNAL_ROOT + "/" + tools_dir + "/include")
+        cxx_builtin_include_directories.append(INTERNAL_ROOT + "/" + tools_dir + "/sysroot/usr/include")
+        gcc_dir = "/".join(ctx.files.src[0].path.split("/")[1:2]) + "/lib/gcc"
+        cxx_builtin_include_directories.append(INTERNAL_ROOT + "/" + gcc_dir)
 
     # sysroot_path = compiler_configuration["sysroot_path"]
     # sysroot_prefix = ""
@@ -213,6 +228,7 @@ cc_toolchain_config = rule(
         "compiler_configuration": attr.string_list_dict(allow_empty = True, default = {}),
         "target_libc": attr.string(default = "gnu"),
         "ld": attr.string(default = "gcc"),
+        "src": attr.label(),
     },
     provides = [CcToolchainConfigInfo],
 )

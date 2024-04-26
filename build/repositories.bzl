@@ -8,6 +8,7 @@ load("//build/cross_deps:repositories.bzl", "cross_deps_repositories")
 load("//build/libexpat:repositories.bzl", "libexpat_repositories")
 load("//build:build_system.bzl", "github_release")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
+load("//build/toolchain:bindings.bzl", "load_bindings")
 
 _SRCS_BUILD_FILE_CONTENT = """
 filegroup(
@@ -75,6 +76,8 @@ def kong_resty_websocket_repositories():
     )
 
 def build_repositories():
+    load_bindings(name = "toolchain_bindings")
+
     libexpat_repositories()
     luarocks_repositories()
 

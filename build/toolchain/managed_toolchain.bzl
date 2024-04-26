@@ -88,6 +88,7 @@ def define_managed_toolchain(
         target_libc = libc,
         toolchain_path_prefix = "wrappers-%s/" % identifier,  # is this required?
         tools_path_prefix = "wrappers-%s/%s" % (identifier, tools_prefix),
+        src = "@%s//:toolchain" % identifier,
     )
 
     generate_wrappers(
