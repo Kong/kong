@@ -25,8 +25,22 @@ def _fmt_flags(flags, toolchain_path_prefix):
 def _cc_toolchain_config_impl(ctx):
     target_cpu = ctx.attr.target_cpu
     toolchain_path_prefix = ctx.attr.toolchain_path_prefix
-    tools_path_prefix = ctx.attr.tools_path_prefix
+    tools_prefix = ctx.attr.tools_prefix
     compiler_configuration = ctx.attr.compiler_configuration
+
+    # update to absolute paths if we are using a managed toolchain (downloaded by bazel)
+    if len(ctx.files.src) > 0:
+        if toolchain_path_prefix:
+            fail("Both `src` and `toolchain_path_prefix` is set, but toolchain_path_prefix will be overrided if `src` is set.")
+
+        # file is something like external/aarch64-rhel9-linux-gnu-gcc-11/aarch64-rhel9-linux-gnu/bin/ar
+        # we will take aarch64-rhel9-linux-gnu-gcc-11/aarch64-rhel9-linux-gnu
+        toolchain_path_prefix = INTERNAL_ROOT + "/" + "/".join(ctx.files.src[0].path.split("/")[1:3])
+
+        _tools_root_dir = INTERNAL_ROOT + "/" + ctx.files.src[0].path.split("/")[1]
+        tools_prefix = _tools_root_dir + "/bin/" + tools_prefix
+    else:
+        tools_prefix = "/usr/bin/" + tools_prefix
 
     # Unfiltered compiler flags; these are placed at the end of the command
     # line, so take precendence over any user supplied flags through --copts or
@@ -110,13 +124,9 @@ def _cc_toolchain_config_impl(ctx):
     if len(ctx.files.src) > 0:
         # define absolute path for managed toolchain
         # bazel doesn't support relative path for cxx_builtin_include_directories
-        # file is something like external/aarch64-rhel9-linux-gnu-gcc-11/aarch64-rhel9-linux-gnu/bin/ar
-        # we will take aarch64-rhel9-linux-gnu-gcc-11/aarch64-rhel9-linux-gnu
-        tools_dir = "/".join(ctx.files.src[0].path.split("/")[1:3])
-        cxx_builtin_include_directories.append(INTERNAL_ROOT + "/" + tools_dir + "/include")
-        cxx_builtin_include_directories.append(INTERNAL_ROOT + "/" + tools_dir + "/sysroot/usr/include")
-        gcc_dir = "/".join(ctx.files.src[0].path.split("/")[1:2]) + "/lib/gcc"
-        cxx_builtin_include_directories.append(INTERNAL_ROOT + "/" + gcc_dir)
+        cxx_builtin_include_directories.append(toolchain_path_prefix + "/include")
+        cxx_builtin_include_directories.append(toolchain_path_prefix + "/sysroot/usr/include")
+        cxx_builtin_include_directories.append(_tools_root_dir + "/lib/gcc")
 
     # sysroot_path = compiler_configuration["sysroot_path"]
     # sysroot_prefix = ""
@@ -140,39 +150,39 @@ def _cc_toolchain_config_impl(ctx):
     tool_paths = [
         tool_path(
             name = "ar",
-            path = tools_path_prefix + "ar",
+            path = tools_prefix + "ar",
         ),
         tool_path(
             name = "cpp",
-            path = tools_path_prefix + "g++",
+            path = tools_prefix + "g++",
         ),
         tool_path(
             name = "gcc",
-            path = tools_path_prefix + "gcc",
+            path = tools_prefix + "gcc",
         ),
         tool_path(
             name = "gcov",
-            path = tools_path_prefix + "gcov",
+            path = tools_prefix + "gcov",
         ),
         tool_path(
             name = "ld",
-            path = tools_path_prefix + ctx.attr.ld,
+            path = tools_prefix + ctx.attr.ld,
         ),
         tool_path(
             name = "nm",
-            path = tools_path_prefix + "nm",
+            path = tools_prefix + "nm",
         ),
         tool_path(
             name = "objcopy",
-            path = tools_path_prefix + "objcopy",
+            path = tools_prefix + "objcopy",
         ),
         tool_path(
             name = "objdump",
-            path = tools_path_prefix + "objdump",
+            path = tools_prefix + "objdump",
         ),
         tool_path(
             name = "strip",
-            path = tools_path_prefix + "strip",
+            path = tools_prefix + "strip",
         ),
     ]
 
@@ -223,12 +233,12 @@ cc_toolchain_config = rule(
     implementation = _cc_toolchain_config_impl,
     attrs = {
         "target_cpu": attr.string(),
-        "toolchain_path_prefix": attr.string(),
-        "tools_path_prefix": attr.string(),
+        "toolchain_path_prefix": attr.string(doc = "The root directory of the toolchain."),
+        "tools_prefix": attr.string(doc = "The tools prefix, for example aarch64-linux-gnu-"),
         "compiler_configuration": attr.string_list_dict(allow_empty = True, default = {}),
         "target_libc": attr.string(default = "gnu"),
         "ld": attr.string(default = "gcc"),
-        "src": attr.label(),
+        "src": attr.label(doc = "Reference to the managed toolchain repository, if set, toolchain_path_prefix will not be used and tools_prefix will be infered "),
     },
     provides = [CcToolchainConfigInfo],
 )
