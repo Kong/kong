@@ -576,6 +576,14 @@ local function new_instance(instance_name)
 
     -- start maintenance timer
     if timer_handle == nil then
+      if not instance_name then
+        log(WARN, debug.traceback("Your plugin is using a deprecated interface to initialize the rate limiting library. " ..
+                  "To avoid potential race conditions or other unexpected behaviors, " ..
+                  "the plugin code should be updated to use new initialization function like:\n" ..
+                  "local ratelimiting = require(\"kong.tools.public.rate-limiting\").new_instance(\"custom-plugin-name\")\n" ..
+                  "The old initialization method will be removed in the upcoming major release", 2))
+      end
+
       local period = 3600
       log(DEBUG, "starting timer for cleanup at ", time() + period)
       local err
@@ -612,4 +620,4 @@ local function new_instance(instance_name)
   }
 end
 
-return new_instance(DEFAULT_INSTANCE_NAME)
+return new_instance()

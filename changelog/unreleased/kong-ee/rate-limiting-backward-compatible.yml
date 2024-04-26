@@ -1,3 +1,3 @@
-message: "**Rate Limiting Advanced:** Refactored `kong/tools/public/rate-limiting` to keep the original interfaces unchanged and extend a new interface `new_instance` to provide isolation between different plugins."
+message: "**Rate Limiting Advanced:** Refactored `kong/tools/public/rate-limiting` to keep the original interfaces unchanged (backward compatibility) and extend a new interface `new_instance` to provide isolation between different plugins. If you are using custom Rate Limiting plugins based on this library, please update the initialization code to the new format like 'local ratelimiting = require(\"kong.tools.public.rate-limiting\").new_instance(\"custom-plugin-name\")'. The old interface will be removed in the upcoming major release."
 type: bugfix
 scope: Plugin

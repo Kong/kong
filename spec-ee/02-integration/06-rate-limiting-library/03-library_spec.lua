@@ -5,7 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local ratelimit   = require "kong.tools.public.rate-limiting"
 local spec_helpers = require "spec.helpers"
 local conf_loader = require "kong.conf_loader"
 local DB          = require "kong.db"
@@ -20,21 +19,62 @@ end
 
 describe("rate-limiting", function()
   local kong_conf = assert(conf_loader(spec_helpers.test_conf_path))
+  local ratelimit
 
   local new_db = assert(DB.new(kong_conf))
   assert(new_db:init_connector())
   local db = new_db.connector
 
+  -- hook the ngx.log so that we can check the log easily in the unit tests
+  local native_ngx_log
+  local log_path
+
   setup(function()
     if db_not_off(db) then
       assert(db:query("TRUNCATE TABLE rl_counters"))
     end
+
+    native_ngx_log = ngx.log
+    log_path = os.tmpname()
+
+    ngx.log = function(lvl, ...) -- luacheck: ignore
+      local t = table.pack(...)
+      local file = io.open(log_path, "a")
+      file:write(table.concat(t, ""))
+      file:close()
+    end
+
+    -- require this after we hook the ngx.log
+    ratelimit = require "kong.tools.public.rate-limiting"
   end)
 
   teardown(function()
     if db_not_off(db) then
       assert(db:query("TRUNCATE TABLE rl_counters"))
     end
+
+    ngx.log = native_ngx_log -- luacheck: ignore
+    os.remove(log_path)
+  end)
+
+  -- this must be the first one to test because the warn log is only printed
+  -- first time `new` is called
+  describe("the deprecated way of initialization of the library", function()
+    it("print a warn log when the library is used without correctly initialized", function()
+      local rl = require("kong.tools.public.rate-limiting")
+      assert.is_true(rl.new({
+        dict      = "avoid-conflict",
+        sync_rate = 10,
+        strategy  = "postgres",
+        namespace = "avoid-conflict",
+        db = new_db,
+      }))
+
+      assert.logfile(log_path).has.line("Your plugin is using a deprecated "
+      .. "interface to initialize the rate limiting library. To avoid potential"
+      .. " race conditions or other unexpected behaviors, the plugin code should"
+      .. " be updated to use new initialization function like", true)
+    end)
   end)
 
   describe("new()", function()

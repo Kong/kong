@@ -102,7 +102,7 @@ below).
 The following public functions are provided by this library:
 
 
-#### ratelimiting.new_instace
+#### ratelimiting.new_instance
 
 *syntax: ratelimiting = ratelimiting.new_instance(instance_name)*
 
