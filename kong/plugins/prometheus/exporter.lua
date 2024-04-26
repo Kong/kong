@@ -110,21 +110,21 @@ local function init()
   if http_subsystem then
     metrics.status = prometheus:counter("http_requests_total",
                                         "HTTP status codes per consumer/service/route in Kong",
-                                        {"service", "route", "code", "source", "consumer"})
+                                        {"service", "route", "code", "source", "workspace", "consumer"})
   else
     metrics.status = prometheus:counter("stream_sessions_total",
                                         "Stream status codes per service/route in Kong",
-                                        {"service", "route", "code", "source"})
+                                        {"service", "route", "code", "source", "workspace"})
   end
   metrics.kong_latency = prometheus:histogram("kong_latency_ms",
                                               "Latency added by Kong and enabled plugins " ..
                                               "for each service/route in Kong",
-                                              {"service", "route"},
+                                              {"service", "route", "workspace"},
                                               KONG_LATENCY_BUCKETS)
   metrics.upstream_latency = prometheus:histogram("upstream_latency_ms",
                                                   "Latency added by upstream response " ..
                                                   "for each service/route in Kong",
-                                                  {"service", "route"},
+                                                  {"service", "route", "workspace"},
                                                   UPSTREAM_LATENCY_BUCKETS)
 
 
@@ -132,13 +132,13 @@ local function init()
     metrics.total_latency = prometheus:histogram("request_latency_ms",
                                                  "Total latency incurred during requests " ..
                                                  "for each service/route in Kong",
-                                                 {"service", "route"},
+                                                 {"service", "route", "workspace"},
                                                  UPSTREAM_LATENCY_BUCKETS)
   else
     metrics.total_latency = prometheus:histogram("session_duration_ms",
                                                  "latency incurred in stream session " ..
                                                  "for each service/route in Kong",
-                                                 {"service", "route"},
+                                                 {"service", "route", "workspace"},
                                                  UPSTREAM_LATENCY_BUCKETS)
   end
 
@@ -146,12 +146,12 @@ local function init()
     metrics.bandwidth = prometheus:counter("bandwidth_bytes",
                                           "Total bandwidth (ingress/egress) " ..
                                           "throughput in bytes",
-                                          {"service", "route", "direction", "consumer"})
+                                          {"service", "route", "direction", "workspace","consumer"})
   else -- stream has no consumer
     metrics.bandwidth = prometheus:counter("bandwidth_bytes",
                                           "Total bandwidth (ingress/egress) " ..
                                           "throughput in bytes",
-                                          {"service", "route", "direction"})
+                                          {"service", "route", "direction", "workspace"})
   end
 
   -- XXX EE
@@ -213,9 +213,9 @@ end
 
 -- Since in the prometheus library we create a new table for each diverged label
 -- so putting the "more dynamic" label at the end will save us some memory
-local labels_table_bandwidth = {0, 0, 0, 0}
-local labels_table_status = {0, 0, 0, 0, 0}
-local labels_table_latency = {0, 0}
+local labels_table_bandwidth = {0, 0, 0, 0, 0}
+local labels_table_status = {0, 0, 0, 0, 0, 0}
+local labels_table_latency = {0, 0, 0}
 local upstream_target_addr_health_table = {
   { value = 0, labels = { 0, 0, 0, "healthchecks_off", ngx.config.subsystem } },
   { value = 0, labels = { 0, 0, 0, "healthy", ngx.config.subsystem } },
@@ -263,10 +263,12 @@ local function log(message, serialized)
     consumer = nil -- no consumer in stream
   end
 
+  local workspace = message.workspace_name or ""
   if serialized.ingress_size or serialized.egress_size then
     labels_table_bandwidth[1] = service_name
     labels_table_bandwidth[2] = route_name
-    labels_table_bandwidth[4] = consumer
+    labels_table_bandwidth[4] = workspace
+    labels_table_bandwidth[5] = consumer
 
     local ingress_size = serialized.ingress_size
     if ingress_size and ingress_size > 0 then
@@ -292,7 +294,8 @@ local function log(message, serialized)
       labels_table_status[4] = "kong"
     end
 
-    labels_table_status[5] = consumer
+    labels_table_status[5] = workspace
+    labels_table_status[6] = consumer
 
     metrics.status:inc(1, labels_table_status)
   end
@@ -300,6 +303,7 @@ local function log(message, serialized)
   if serialized.latencies then
     labels_table_latency[1] = service_name
     labels_table_latency[2] = route_name
+    labels_table_latency[3] = workspace
 
     if http_subsystem then
       local request_latency = serialized.latencies.request

@@ -26,6 +26,7 @@ local phase_checker = require "kong.pdk.private.phases"
 local utils = require "kong.tools.utils"
 local cycle_aware_deep_copy = utils.cycle_aware_deep_copy
 local constants = require "kong.constants"
+local workspace = require "kong.workspaces"
 
 local sub = string.sub
 local type = type
