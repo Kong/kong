@@ -108,10 +108,11 @@ end
 local function to_raw(request_table, model)
   local messages = {}
   messages.parameters = {}
-  messages.parameters.max_new_tokens = model.options and model.options.max_tokens
-  messages.parameters.top_p = model.options and model.options.top_p or 1.0
-  messages.parameters.top_k = model.options and model.options.top_k or 40
-  messages.parameters.temperature = model.options and model.options.temperature
+  messages.parameters.max_new_tokens = request_table.max_tokens
+  messages.parameters.top_p = request_table.top_p
+  messages.parameters.top_k = request_table.top_k
+  messages.parameters.temperature = request_table.temperature
+  messages.parameters.stream = request_table.stream or false  -- explicitly set this
   
   if request_table.prompt and request_table.messages then
     return kong.response.exit(400, "cannot run raw 'prompt' and chat history 'messages' requests at the same time - refer to schema")
@@ -177,6 +178,8 @@ function _M.to_format(request_table, model_info, route_type)
   if model_info.options.llama2_format == "openai" then
     return openai_driver.to_format(request_table, model_info, route_type)
   end
+
+  request_table = ai_shared.merge_config_defaults(request_table, model_info.options, model_info.route_type)
 
   -- dynamically call the correct transformer
   local ok, response_object, content_type, err = pcall(
@@ -253,17 +256,15 @@ function _M.post_request(conf)
 end
 
 function _M.pre_request(conf, body)
-  -- check for user trying to bring own model
-  if body and body.model then
-    return false, "cannot use own model for this instance"
-  end
-
   return true, nil
 end
 
 -- returns err or nil
 function _M.configure_request(conf)
   local parsed_url = socket_url.parse(conf.model.options.upstream_url)
+
+  -- if the path is read from a URL capture, ensure that it is valid
+  parsed_url.path = string_gsub(parsed_url.path, "^/*", "/")
 
   kong.service.request.set_path(parsed_url.path)
   kong.service.request.set_scheme(parsed_url.scheme)

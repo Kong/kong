@@ -3,7 +3,6 @@
   "parameters": {
     "max_new_tokens": 512,
     "temperature": 0.5,
-    "top_k": 40,
-    "top_p": 1
+    "stream": false
   }
 }
