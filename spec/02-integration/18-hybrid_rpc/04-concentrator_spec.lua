@@ -60,6 +60,7 @@ for _, strategy in helpers.each_strategy() do
         database = strategy,
         cluster_listen = "127.0.0.1:" .. helpers.get_available_port(),
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        cluster_telemetry_listen = "127.0.0.1:" .. helpers.get_available_port(),
       }))
 
       assert(helpers.start_kong({
