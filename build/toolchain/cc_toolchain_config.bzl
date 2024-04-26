@@ -12,8 +12,43 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@bazel_tools//tools/cpp:cc_toolchain_config_lib.bzl", "feature", "tool_path")
+load("@bazel_tools//tools/cpp:cc_toolchain_config_lib.bzl", "feature", "flag_group", "flag_set", "tool_path", "with_feature_set")
+load("@bazel_tools//tools/build_defs/cc:action_names.bzl", "ACTION_NAMES")
 load("@toolchain_bindings//:variables.bzl", "INTERNAL_ROOT")
+
+all_compile_actions = [
+    ACTION_NAMES.c_compile,
+    ACTION_NAMES.cpp_compile,
+    ACTION_NAMES.linkstamp_compile,
+    ACTION_NAMES.assemble,
+    ACTION_NAMES.preprocess_assemble,
+    ACTION_NAMES.cpp_header_parsing,
+    ACTION_NAMES.cpp_module_compile,
+    ACTION_NAMES.cpp_module_codegen,
+    ACTION_NAMES.clif_match,
+    ACTION_NAMES.lto_backend,
+]
+
+all_cpp_compile_actions = [
+    ACTION_NAMES.cpp_compile,
+    ACTION_NAMES.linkstamp_compile,
+    ACTION_NAMES.cpp_header_parsing,
+    ACTION_NAMES.cpp_module_compile,
+    ACTION_NAMES.cpp_module_codegen,
+    ACTION_NAMES.clif_match,
+]
+
+all_link_actions = [
+    ACTION_NAMES.cpp_link_executable,
+    ACTION_NAMES.cpp_link_dynamic_library,
+    ACTION_NAMES.cpp_link_nodeps_dynamic_library,
+]
+
+lto_index_actions = [
+    ACTION_NAMES.lto_index_for_executable,
+    ACTION_NAMES.lto_index_for_dynamic_library,
+    ACTION_NAMES.lto_index_for_nodeps_dynamic_library,
+]
 
 # Bazel 4.* doesn't support nested starlark functions, so we cannot simplify
 #_fmt_flags() by defining it as a nested function.
@@ -64,10 +99,7 @@ def _cc_toolchain_config_impl(ctx):
         "-fstack-protector",
         "-fno-omit-frame-pointer",
         # Diagnostics
-        "-fcolor-diagnostics",
         "-Wall",
-        "-Wthread-safety",
-        "-Wself-assign",
     ]
 
     dbg_compile_flags = ["-g", "-fstandalone-debug"]
@@ -84,6 +116,7 @@ def _cc_toolchain_config_impl(ctx):
     link_flags = [
         # "--target=" + target_system_name,
         "-lm",
+        "-lstdc++",
         "-no-canonical-prefixes",
     ]
 
@@ -96,7 +129,6 @@ def _cc_toolchain_config_impl(ctx):
     # only option.
 
     link_flags.extend([
-        "-fuse-ld=lld",
         "-Wl,--build-id=md5",
         "-Wl,--hash-style=gnu",
         "-Wl,-z,relro,-z,now",
@@ -190,29 +222,119 @@ def _cc_toolchain_config_impl(ctx):
 
     # Replace flags with any user-provided overrides.
     if "compile_flags" in compiler_configuration:
-        compile_flags = _fmt_flags(compiler_configuration["compile_flags"], toolchain_path_prefix)
+        compile_flags = compile_flags + _fmt_flags(compiler_configuration["compile_flags"], toolchain_path_prefix)
     if "cxx_flags" in compiler_configuration:
-        cxx_flags = _fmt_flags(compiler_configuration["cxx_flags"], toolchain_path_prefix)
+        cxx_flags = cxx_flags + _fmt_flags(compiler_configuration["cxx_flags"], toolchain_path_prefix)
     if "link_flags" in compiler_configuration:
-        link_flags = _fmt_flags(compiler_configuration["link_flags"], toolchain_path_prefix)
+        link_flags = link_flags + _fmt_flags(compiler_configuration["link_flags"], toolchain_path_prefix)
     if "link_libs" in compiler_configuration:
-        link_libs = _fmt_flags(compiler_configuration["link_libs"], toolchain_path_prefix)
+        link_libs = link_libs + _fmt_flags(compiler_configuration["link_libs"], toolchain_path_prefix)
     if "opt_compile_flags" in compiler_configuration:
-        opt_compile_flags = _fmt_flags(compiler_configuration["opt_compile_flags"], toolchain_path_prefix)
+        opt_compile_flags = opt_compile_flags + _fmt_flags(compiler_configuration["opt_compile_flags"], toolchain_path_prefix)
     if "opt_link_flags" in compiler_configuration:
-        opt_link_flags = _fmt_flags(compiler_configuration["opt_link_flags"], toolchain_path_prefix)
+        opt_link_flags = opt_link_flags + _fmt_flags(compiler_configuration["opt_link_flags"], toolchain_path_prefix)
     if "dbg_compile_flags" in compiler_configuration:
-        dbg_compile_flags = _fmt_flags(compiler_configuration["dbg_compile_flags"], toolchain_path_prefix)
+        dbg_compile_flags = dbg_compile_flags + _fmt_flags(compiler_configuration["dbg_compile_flags"], toolchain_path_prefix)
     if "coverage_compile_flags" in compiler_configuration:
-        coverage_compile_flags = _fmt_flags(compiler_configuration["coverage_compile_flags"], toolchain_path_prefix)
+        coverage_compile_flags = coverage_compile_flags + _fmt_flags(compiler_configuration["coverage_compile_flags"], toolchain_path_prefix)
     if "coverage_link_flags" in compiler_configuration:
-        coverage_link_flags = _fmt_flags(compiler_configuration["coverage_link_flags"], toolchain_path_prefix)
+        coverage_link_flags = coverage_link_flags + _fmt_flags(compiler_configuration["coverage_link_flags"], toolchain_path_prefix)
     if "unfiltered_compile_flags" in compiler_configuration:
-        unfiltered_compile_flags = _fmt_flags(compiler_configuration["unfiltered_compile_flags"], toolchain_path_prefix)
+        unfiltered_compile_flags = unfiltered_compile_flags + _fmt_flags(compiler_configuration["unfiltered_compile_flags"], toolchain_path_prefix)
+
+    default_compile_flags_feature = feature(
+        name = "default_compile_flags",
+        enabled = True,
+        flag_sets = [
+            flag_set(
+                actions = all_compile_actions,
+                flag_groups = ([
+                    flag_group(
+                        flags = compile_flags,
+                    ),
+                ] if compile_flags else []),
+            ),
+            flag_set(
+                actions = all_compile_actions,
+                flag_groups = ([
+                    flag_group(
+                        flags = dbg_compile_flags,
+                    ),
+                ] if dbg_compile_flags else []),
+                with_features = [with_feature_set(features = ["dbg"])],
+            ),
+            flag_set(
+                actions = all_compile_actions,
+                flag_groups = ([
+                    flag_group(
+                        flags = opt_compile_flags,
+                    ),
+                ] if opt_compile_flags else []),
+                with_features = [with_feature_set(features = ["opt"])],
+            ),
+            flag_set(
+                actions = all_cpp_compile_actions + [ACTION_NAMES.lto_backend],
+                flag_groups = ([
+                    flag_group(
+                        flags = cxx_flags,
+                    ),
+                ] if cxx_flags else []),
+            ),
+        ],
+    )
+
+    default_link_flags_feature = feature(
+        name = "default_link_flags",
+        enabled = True,
+        flag_sets = [
+            flag_set(
+                actions = all_link_actions + lto_index_actions,
+                flag_groups = ([
+                    flag_group(
+                        flags = link_flags,
+                    ),
+                ] if link_flags else []),
+            ),
+            flag_set(
+                actions = all_link_actions + lto_index_actions,
+                flag_groups = ([
+                    flag_group(
+                        flags = opt_link_flags,
+                    ),
+                ] if opt_link_flags else []),
+                with_features = [with_feature_set(features = ["opt"])],
+            ),
+        ],
+    )
+
+    unfiltered_compile_flags_feature = feature(
+        name = "unfiltered_compile_flags",
+        enabled = True,
+        flag_sets = [
+            flag_set(
+                actions = all_compile_actions,
+                flag_groups = ([
+                    flag_group(
+                        flags = unfiltered_compile_flags,
+                    ),
+                ] if unfiltered_compile_flags else []),
+            ),
+        ],
+    )
 
     supports_pic_feature = feature(name = "supports_pic", enabled = True)
     supports_dynamic_linker_feature = feature(name = "supports_dynamic_linker", enabled = True)
-    features = [supports_dynamic_linker_feature, supports_pic_feature]
+    dbg_feature = feature(name = "dbg")
+    opt_feature = feature(name = "opt")
+    features = [
+        supports_dynamic_linker_feature,
+        supports_pic_feature,
+        dbg_feature,
+        opt_feature,
+        default_compile_flags_feature,
+        unfiltered_compile_flags_feature,
+        default_link_flags_feature,
+    ]
 
     return cc_common.create_cc_toolchain_config_info(
         ctx = ctx,
