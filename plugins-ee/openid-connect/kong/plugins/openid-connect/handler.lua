@@ -525,28 +525,29 @@ function OICHandler.access(_, conf)
       for _, location in ipairs(bearer_token_param_type) do
         if location == "header" then
           bearer_token = args.get_header("authorization:bearer")
-          local dpop_token = args.get_header("authorization:dpop")
 
-          if dpop_token then
-            -- special handling of ambiguous authentication
-            if bearer_token then
-              -- Due to the limitation of Nginx, this is unreachable code
-              -- as the Nginx core logic will reject at the first place
-              -- https://github.com/nginx/nginx/blob/d8a849ae3c99ee5ca82c9a06074761e937dac6d6/src/http/ngx_http_request.c#L152
-              return kong.response.exit(400, nil, {
-                -- TODO: should this be part of response.lua?
-                ["WWW-Authenticate"] = DPOP_MULTI_AUTH_METHODS_USED,
-              })
+          if conf.proof_of_possession_dpop and conf.proof_of_possession_dpop ~= "off" then
+            local dpop_token = args.get_header("authorization:dpop")
+            if dpop_token then
+              -- special handling of ambiguous authentication
+              if bearer_token then
+                -- Due to the limitation of Nginx, this is unreachable code
+                -- as the Nginx core logic will reject at the first place
+                -- https://github.com/nginx/nginx/blob/d8a849ae3c99ee5ca82c9a06074761e937dac6d6/src/http/ngx_http_request.c#L152
+                return kong.response.exit(400, nil, {
+                  -- TODO: should this be part of response.lua?
+                  ["WWW-Authenticate"] = DPOP_MULTI_AUTH_METHODS_USED,
+                })
+              end
+
+              -- dpop token is a special type of bearer token
+              -- we refer to it as bearer token in the code
+              -- and handle it with the same logic as bearer token
+              -- except that we do dpop verification for it when enabled
+              -- we use the is_dpop_token flag for later verification
+              bearer_token = dpop_token
+              is_dpop_token = true
             end
-
-
-            -- dpop token is a special type of bearer token
-            -- we refer to it as bearer token in the code
-            -- and handle it with the same logic as bearer token
-            -- except that we do dpop verification for it when enabled
-            -- we use the is_dpop_token flag for later verification
-            bearer_token = dpop_token
-            is_dpop_token = true
           end
 
           if bearer_token then
@@ -1506,10 +1507,11 @@ function OICHandler.access(_, conf)
       end
 
       local headers_for_dpop, get_headers_err = args.get_headers()
-
-      if hide_credentials then
-        args.clear_header("DPoP")
-      end
+      -- we are downgrading to non-DPoP token by default, thus we remove the proof unconditionally
+      -- to pass the DPoP token and proof, do not use OIDC, or:
+      -- TODO: add support for `upstream_dpop_access_token_header` and `upstream_dpop_proof_header`
+      -- we are not removing the header when we are not verifying DPoP, so it remains to be the original behavior
+      args.clear_header("DPoP")
 
       local nonce_header
 
