@@ -14,7 +14,6 @@ common --color=yes
 common --curses=auto
 
 build --experimental_ui_max_stdouterr_bytes=10485760
-build --experimental_cc_shared_library
 
 build --show_progress_rate_limit=0
 build --show_timestamps
