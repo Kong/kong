@@ -84,6 +84,21 @@ cc_library(
     ],
 )
 
+# workaround for apple_cc_toolchain doesn't support dynamic linker feature
+cc_shared_library(
+    name = "snappy-macos-lib",
+    shared_lib_name = "libsnappy.dylib",
+    deps = [":snappy"],
+)
+
+alias(
+    name = "snappy-lib",
+    actual = select({
+        "@platforms//os:osx": ":snappy-macos-lib",
+        "//conditions:default": ":snappy",
+    }),
+)
+
 filegroup(
     name = "testdata",
     srcs = glob(["testdata/*"]),
