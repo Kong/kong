@@ -10,14 +10,12 @@ local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
 local FIELDS = require("kong.clustering.compat.removed_fields")
-local CHECKERS = require("kong.clustering.compat.checkers")
 local version = require("kong.clustering.compat.version")
 local tablex = require "pl.tablex"
 
 local admin = require "spec.fixtures.admin_api"
 
 local fmt = string.format
-local version_num = version.string_to_number
 
 local CP_HOST = "127.0.0.1"
 local CP_PORT = 9005
@@ -69,6 +67,8 @@ end
 
 
 local function get_plugin(node_id, node_version, name)
+  -- Emulates a DP connection to a CP. We're sending our node_id and version
+  -- and expect a payload back that contains our sanitized plugin config.
   local res = cluster_client({ id = node_id, version = node_version })
 
   local plugin
@@ -84,23 +84,6 @@ local function get_plugin(node_id, node_version, name)
 
   return plugin, get_sync_status(node_id)
 end
-
-
-local function get(t, field)
-  local parts = utils.split(field, ".")
-  local ref = t
-
-  for i = 1, #parts do
-    if type(ref) ~= "table" then
-      return
-    end
-
-    ref = ref[parts[i]]
-  end
-
-  return ref
-end
-
 
 for _, strategy in helpers.each_strategy() do
 
@@ -119,40 +102,28 @@ describe("CP/DP config compat #" .. strategy, function()
     plugin_entity = case.init_plugin and case.init_plugin(plugin_entity) or plugin_entity
 
     local plugin = admin.plugins:insert(plugin_entity)
-    local id = utils.uuid()
+    for k, v in pairs(case.config) do
+      -- assert that the config was created with the expected values from the case struct
+      -- This is mere a safety check to ensure the test doesn't start wrong.
+      assert.is_same(plugin.config[k], v, "initial plugin configuration isn't sane.")
+    end
 
+    local id = utils.uuid()
     local conf, status
     helpers.wait_until(function()
+      -- Connect to a CP and await config.
+      -- The config should be shaped as described in the validator func
+      -- as the get_plugin function connects to the CP, which
+      -- runs the required compatibility checkers (functions)
+      -- to ensure a compatible config is sent back to us.
       conf, status = get_plugin(id, dp_version, case.plugin)
       return status == case.status
     end, 5, 0.25)
 
     assert.equals(case.status, status)
 
-    if case.status == STATUS.NORMAL then
-      for _, chkrs in pairs(case.checker or EMPTY) do
-        local ver = chkrs[1]
-        local fn = chkrs[2]
-        if ver == version_num(dp_version) then
-          local plugins_table = { plugins = {{ config = conf, name = plugin.name }}}
-          fn(plugins_table, dp_version, "")
-        end
-      end
-      for _, field in ipairs(case.removed or {}) do
-        assert.not_nil(get(plugin.config, field),
-                        "field '" .. field .. "' is missing from the " ..
-                        "configured plugin")
-
-        assert.is_nil(get(conf, field),
-                      "field '" .. field .. "' was not removed from the " ..
-                      "data plane copy of the plugin config")
-      end
-    else
-      assert.is_nil(conf, "expected config sync to fail")
-    end
-
     if case.validator then
-      assert(case.validator(conf), "unexpected config received")
+      assert.is_truthy(case.validator(conf), "unexpected config received")
     end
   end
 
@@ -198,6 +169,8 @@ describe("CP/DP config compat #" .. strategy, function()
   end)
 
   describe("3.4.x.y", function()
+    -- When a data-plane lower than the version of the control-plane
+    -- connects, it should receive the config as described in the validator func
     local CASES = {
       {
         plugin = "opentelemetry",
@@ -218,12 +191,14 @@ describe("CP/DP config compat #" .. strategy, function()
       local test = case.pending and pending or it
 
       test(fmt("%s - %s", case.plugin, case.label), function()
-        do_assert(case, "3.4.0.0")
+        do_assert(case, "3.3.9.9")
       end)
     end
   end)
 
   describe("3.5.x.y", function()
+    -- When a data-plane lower than the version of the control-plane
+    -- connects, it should receive the config as described in the validator func
     local CASES = {
       {
         plugin = "acl",
@@ -245,12 +220,14 @@ describe("CP/DP config compat #" .. strategy, function()
       local test = case.pending and pending or it
 
       test(fmt("%s - %s", case.plugin, case.label), function()
-        do_assert(case, "3.5.0.0")
+        do_assert(case, "3.4.9.9")
       end)
     end
   end)
 
   describe("3.6.x.y", function()
+    -- When a data-plane lower than the version of the control-plane
+    -- connects, it should receive the config as described in the validator func
     local CASES = {
       {
         plugin = "rate-limiting-advanced",
@@ -262,7 +239,6 @@ describe("CP/DP config compat #" .. strategy, function()
           identifier = "consumer-group",
         },
         status = STATUS.NORMAL,
-        checker = CHECKERS,
         validator = function(config)
           return config.identifier == 'consumer'
         end
@@ -276,7 +252,6 @@ describe("CP/DP config compat #" .. strategy, function()
           limit_by = "consumer-group"
         },
         status = STATUS.NORMAL,
-        checker = CHECKERS,
         validator = function(config)
           return config.limit_by == 'consumer'
         end
@@ -299,7 +274,6 @@ describe("CP/DP config compat #" .. strategy, function()
           revocation_endpoint_auth_method    = "self_signed_tls_client_auth"
         },
         status = STATUS.NORMAL,
-        checker = CHECKERS,
         validator = function(config)
           return tablex.compare({ "client_secret_post", "client_secret_basic" }, config.client_auth, "==") and
           config.token_endpoint_auth_method         == nil and
@@ -343,12 +317,14 @@ describe("CP/DP config compat #" .. strategy, function()
       local test = case.pending and pending or it
 
       test(fmt("%s - %s", case.plugin, case.label), function()
-        do_assert(case, "3.6.0.0")
+        do_assert(case, "3.5.9.9")
       end)
     end
   end)
 
   describe("3.7.x.y", function()
+    -- When a data-plane lower than the version of the control-plane
+    -- connects, it should receive the config as described in the validator func
     local CASES = {
       {
         plugin = "openid-connect",
@@ -359,7 +335,6 @@ describe("CP/DP config compat #" .. strategy, function()
           response_mode = "query.jwt"
         },
         status = STATUS.NORMAL,
-        checker = CHECKERS,
         validator = function(config)
           return config.response_mode == "query"
         end
@@ -373,7 +348,6 @@ describe("CP/DP config compat #" .. strategy, function()
           response_mode = "form_post.jwt"
         },
         status = STATUS.NORMAL,
-        checker = CHECKERS,
         validator = function(config)
           return config.response_mode == "form_post"
         end
@@ -387,7 +361,6 @@ describe("CP/DP config compat #" .. strategy, function()
           response_mode = "fragment.jwt"
         },
         status = STATUS.NORMAL,
-        checker = CHECKERS,
         validator = function(config)
           return config.response_mode == "fragment"
         end
@@ -401,7 +374,6 @@ describe("CP/DP config compat #" .. strategy, function()
           response_mode = "jwt"
         },
         status = STATUS.NORMAL,
-        checker = CHECKERS,
         validator = function(config)
           return config.response_mode == "query"
         end
@@ -415,7 +387,6 @@ describe("CP/DP config compat #" .. strategy, function()
           display_name = "test.service",
         },
         status = STATUS.NORMAL,
-        checker = CHECKERS,
         init_plugin = function(plugin)
           local service = admin.services:insert()
           plugin["service"] = service
@@ -567,7 +538,7 @@ describe("CP/DP config compat #" .. strategy, function()
       local test = case.pending and pending or it
 
       test(fmt("%s - %s", case.plugin, case.label), function()
-        do_assert(case, "3.6.0.0")
+        do_assert(case, "3.6.9.9")
       end)
     end
   end)
