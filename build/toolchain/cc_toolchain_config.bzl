@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@bazel_tools//tools/cpp:cc_toolchain_config_lib.bzl", "tool_path")
+load("@bazel_tools//tools/cpp:cc_toolchain_config_lib.bzl", "feature", "tool_path")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 
 # Bazel 4.* doesn't support nested starlark functions, so we cannot simplify
@@ -185,9 +185,14 @@ def _cc_toolchain_config_impl(ctx):
     if "unfiltered_compile_flags" in compiler_configuration:
         unfiltered_compile_flags = _fmt_flags(compiler_configuration["unfiltered_compile_flags"], toolchain_path_prefix)
 
+    supports_pic_feature = feature(name = "supports_pic", enabled = True)
+    supports_dynamic_linker_feature = feature(name = "supports_dynamic_linker", enabled = True)
+    features = [supports_dynamic_linker_feature, supports_pic_feature]
+
     return cc_common.create_cc_toolchain_config_info(
         ctx = ctx,
         compiler = "gcc",
+        features = features,
         toolchain_identifier = target_cpu + "-linux-gnu",
         host_system_name = "local",
         target_cpu = target_cpu,
