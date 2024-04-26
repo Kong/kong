@@ -186,7 +186,7 @@ function _M:_event_loop(lconn)
 
     local res, err = lconn:wait_for_notification()
     if not res then
-      if is_timeout(err) then
+      if not is_timeout(err) then
         return nil, "wait_for_notification error: " .. err
       end
 
