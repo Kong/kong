@@ -102,11 +102,7 @@ describe("CP/DP config compat #" .. strategy, function()
     plugin_entity = case.init_plugin and case.init_plugin(plugin_entity) or plugin_entity
 
     local plugin = admin.plugins:insert(plugin_entity)
-    for k, v in pairs(case.config) do
-      -- assert that the config was created with the expected values from the case struct
-      -- This is mere a safety check to ensure the test doesn't start wrong.
-      assert.is_same(plugin.config[k], v, "initial plugin configuration isn't sane.")
-    end
+    assert.partial_match(case.config, plugin.config, "initial plugin configuration isn't sane.")
 
     local id = utils.uuid()
     local conf, status
