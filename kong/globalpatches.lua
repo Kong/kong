@@ -405,7 +405,7 @@ return function(options)
     --
     -- This patched method will create a unique seed per worker process,
     -- using a combination of both time and the worker's pid.
-    local util = require "kong.tools.utils"
+    local get_rand_bytes = require("kong.tools.rand").get_rand_bytes
     local seeded = {}
     local randomseed = math.randomseed
 
@@ -436,7 +436,7 @@ return function(options)
       end
 
       local seed
-      local bytes, err = util.get_rand_bytes(8)
+      local bytes, err = get_rand_bytes(8)
       if bytes then
         ngx.log(ngx.DEBUG, "seeding PRNG from OpenSSL RAND_bytes()")
 

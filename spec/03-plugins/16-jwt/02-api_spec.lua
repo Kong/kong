@@ -1,7 +1,8 @@
 local helpers  = require "spec.helpers"
 local cjson    = require "cjson"
 local fixtures = require "spec.03-plugins.16-jwt.fixtures"
-local utils    = require "kong.tools.utils"
+local random_string = require("kong.tools.rand").random_string
+local uuid = require("kong.tools.uuid").uuid
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: jwt (API) [#" .. strategy .. "]", function()
@@ -544,14 +545,14 @@ for _, strategy in helpers.each_strategy() do
         it("returns 404 for a random non-existing JWT id", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/jwts/" .. utils.uuid()  .. "/consumer"
+            path = "/jwts/" .. uuid()  .. "/consumer"
           })
           assert.res_status(404, res)
         end)
         it("returns 404 for a random non-existing JWT key", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/jwts/" .. utils.random_string()  .. "/consumer"
+            path = "/jwts/" .. random_string()  .. "/consumer"
           })
           assert.res_status(404, res)
         end)
