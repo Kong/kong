@@ -223,6 +223,20 @@ local FORMATS = {
       },
     },
   },
+  gemini = {
+    ["llm/v1/chat"] = {
+      config = {
+        name = "gemini-pro",
+        provider = "gemini",
+        options = {
+          max_tokens = 8192,
+          temperature = 0.8,
+          top_k = 1,
+          top_p = 0.6,
+        },
+      },
+    },
+  },
 }
 
 local STREAMS = {

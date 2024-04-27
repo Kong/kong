@@ -62,6 +62,7 @@ _M.upstream_url_format = {
   anthropic = "https://api.anthropic.com:443",
   cohere = "https://api.cohere.com:443",
   azure = "https://%s.openai.azure.com:443/openai/deployments/%s",
+  gemini = "https://generativelanguage.googleapis.com",
 }
 
 _M.operation_map = {
@@ -105,6 +106,12 @@ _M.operation_map = {
       method = "POST",
     },
   },
+  gemini = {
+    ["llm/v1/chat"] = {
+      path = "/v1/models/%s:generateContent",  -- /v1/models/gemini-pro:generateContent,
+      method = "POST",
+    },
+  },
 }
 
 _M.clear_response_headers = {
@@ -118,6 +125,9 @@ _M.clear_response_headers = {
     "Set-Cookie",
   },
   mistral = {
+    "Set-Cookie",
+  },
+  gemini = {
     "Set-Cookie",
   },
 }
