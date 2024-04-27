@@ -64,7 +64,6 @@ _M.upstream_url_format = {
   cohere = "https://api.cohere.com:443",
   azure = "https://%s.openai.azure.com:443/openai/deployments/%s",
   gemini = "https://generativelanguage.googleapis.com",
-  gemini_vertex = "https://%s",
 }
 
 _M.operation_map = {
@@ -110,13 +109,7 @@ _M.operation_map = {
   },
   gemini = {
     ["llm/v1/chat"] = {
-      path = "/v1beta/models/%s:%s",
-      method = "POST",
-    },
-  },
-  gemini_vertex = {
-    ["llm/v1/chat"] = {
-      path = "/v1/projects/%s/locations/%s/publishers/google/models/%s:%s",
+      path = "/v1/models/%s:generateContent",  -- /v1/models/gemini-pro:generateContent,
       method = "POST",
     },
   },
