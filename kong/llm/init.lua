@@ -11,7 +11,6 @@ local _M = {
 }
 
 
-
 do
   -- formats_compatible is a map of formats that are compatible with each other.
   local formats_compatible = {

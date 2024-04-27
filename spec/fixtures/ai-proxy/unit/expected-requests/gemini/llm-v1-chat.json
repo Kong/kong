@@ -1,0 +1,57 @@
+{
+  "contents": [
+    {
+      "role": "user",
+      "parts": [
+        {
+          "text": "What is 1 + 2?"
+        }
+      ]
+    },
+    {
+      "role": "model",
+      "parts": [
+        {
+          "text": "The sum of 1 + 2 is 3. If you have any more math questions or if there's anything else I can help you with, feel free to ask!"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "parts": [
+        {
+          "text": "Multiply that by 2"
+        }
+      ]
+    },
+    {
+      "role": "model",
+      "parts": [
+        {
+          "text": "Certainly! If you multiply 3 by 2, the result is 6. If you have any more questions or if there's anything else I can help you with, feel free to ask!"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "parts": [
+        {
+          "text": "Why can't you divide by zero?"
+        }
+      ]
+    }
+  ],
+  "generationConfig": {
+    "temperature": 0.8,
+    "topK": 1,
+    "topP": 0.6,
+    "maxOutputTokens": 8192
+  },
+  "systemInstruction": {
+    "parts": [
+      {
+        "text": "You are a mathematician."
+      }
+    ]
+  }
+}
