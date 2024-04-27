@@ -22,7 +22,7 @@ local _OPENAI_ROLE_MAPPING = {
   ["assistant"] = "model",
 }
 
-local function to_gemini_generation_config(request_table)
+local function to_bard_generation_config(request_table)
   return {
     ["maxOutputTokens"] = request_table.max_tokens,
     ["stopSequences"] = request_table.stop,
@@ -32,70 +32,7 @@ local function to_gemini_generation_config(request_table)
   }
 end
 
-local function handle_stream_event(event_t, model_info, route_type)
-  local metadata
-
-  
-  -- discard empty frames, it should either be a random new line, or comment
-  if (not event_t.data) or (#event_t.data < 1) then
-    return
-  end
-  
-  local event, err = cjson.decode(event_t.data)
-  if err then
-    ngx.log(ngx.WARN, "failed to decode stream event frame from gemini: " .. err)
-    return nil, "failed to decode stream event frame from gemini", nil
-  end
-
-  local new_event
-  local metadata
-
-  if event.candidates and
-     #event.candidates > 0 then
-    
-    if event.candidates[1].content and
-        event.candidates[1].content.parts and
-        #event.candidates[1].content.parts > 0 and
-        event.candidates[1].content.parts[1].text then
-      
-      new_event = {
-        choices = {
-          [1] = {
-            delta = {
-              content = event.candidates[1].content.parts[1].text or "",
-              role = "assistant",
-            },
-            index = 0,
-          },
-        },
-      }
-    end
-
-    if event.candidates[1].finishReason then
-      metadata = metadata or {}
-      metadata.finished_reason = event.candidates[1].finishReason
-      new_event = "[DONE]"
-    end
-  end
-
-  if event.usageMetadata then
-    metadata = metadata or {}
-    metadata.completion_tokens = event.usageMetadata.candidatesTokenCount or 0
-    metadata.prompt_tokens     = event.usageMetadata.promptTokenCount or 0
-  end
-  
-  if new_event then
-    if new_event ~= "[DONE]" then
-      new_event = cjson.encode(new_event)
-    end
-
-    return new_event, nil, metadata
-  else
-    return nil, nil, metadata  -- caller code will handle "unrecognised" event types
-  end
-end
-
-local function to_gemini_chat_openai(request_table, model_info, route_type)
+local function to_bard_chat_openai(request_table, model_info, route_type)
   if request_table then  -- try-catch type mechanism
     local new_r = {}
 
@@ -122,76 +59,34 @@ local function to_gemini_chat_openai(request_table, model_info, route_type)
         end
       end
 
-      -- This was only added in Gemini 1.5
-      if system_prompt and model_info.name:sub(1, 10) == "gemini-1.0" then
-        return nil, nil, "system prompts aren't supported on gemini-1.0 models"
+      ---- TODO for some reason this is broken?
+      ---- I think it's something to do with which "regional" endpoint of Gemini you hit...
+      -- if system_prompt then
+      --   new_r.systemInstruction = {
+      --     parts = {
+      --       {
+      --         text = system_prompt:get(),
+      --       },
+      --     },
+      --   }
+      -- end
+      ----
 
-      elseif system_prompt then
-        new_r.systemInstruction = {
-          parts = {
-            {
-              text = system_prompt:get(),
-            },
-          },
-        }
-      end
     end
-    
-    new_r.generationConfig = to_gemini_generation_config(request_table)
+
+    new_r.generationConfig = to_bard_generation_config(request_table)
+
+    kong.log.debug(cjson.encode(new_r))
 
     return new_r, "application/json", nil
   end
 
-  local new_r = {}
-
-  if request_table.messages and #request_table.messages > 0 then
-    local system_prompt
-
-    for i, v in ipairs(request_table.messages) do
-
-      -- for 'system', we just concat them all into one Gemini instruction
-      if v.role and v.role == "system" then
-        system_prompt = system_prompt or buffer.new()
-        system_prompt:put(v.content or "")
-      else
-        -- for any other role, just construct the chat history as 'parts.text' type
-        new_r.contents = new_r.contents or {}
-        table_insert(new_r.contents, {
-          role = _OPENAI_ROLE_MAPPING[v.role or "user"],  -- default to 'user'
-          parts = {
-            {
-              text = v.content or ""
-            },
-          },
-        })
-      end
-    end
-
-    -- only works for gemini 1.5+
-    -- if system_prompt then
-    --   if string_sub(model_info.name, 1, 10) == "gemini-1.0" then
-    --     return nil, nil, "system prompts only work with gemini models 1.5 or later"
-    --   end
-
-    --   new_r.systemInstruction = {
-    --     parts = {
-    --       {
-    --         text = system_prompt:get(),
-    --       },
-    --     },
-    --   }
-    -- end
-    --
-  end
-
-  kong.log.debug(cjson.encode(new_r))
-
-  new_r.generationConfig = to_gemini_generation_config(request_table)
-
-  return new_r, "application/json", nil
+  local err = "empty request table received for transformation"
+  ngx.log(ngx.ERR, err)
+  return nil, nil, err
 end
 
-local function from_gemini_chat_openai(response, model_info, route_type)
+local function from_bard_chat_openai(response, model_info, route_type)
   local response, err = cjson.decode(response)
 
   if err then
@@ -231,21 +126,22 @@ local function from_gemini_chat_openai(response, model_info, route_type)
   return cjson.encode(messages)
 end
 
-local function to_gemini_chat_gemini(request_table, model_info, route_type)
-  return nil, nil, "gemini to gemini not yet implemented"
+local function to_bard_chat_bard(request_table, model_info, route_type)
+  return nil, nil, "bard to bard not yet implemented"
 end
 
-local function from_gemini_chat_gemini(request_table, model_info, route_type)
-  return nil, nil, "gemini to gemini not yet implemented"
+local function from_bard_chat_bard(request_table, model_info, route_type)
+  return nil, nil, "bard to bard not yet implemented"
 end
 
 local transformers_to = {
-  ["llm/v1/chat"] = to_gemini_chat_openai,
+  ["llm/v1/chat"] = to_bard_chat_openai,
+  ["gemini/v1/chat"] = to_gemini_chat_bard,
 }
 
 local transformers_from = {
-  ["llm/v1/chat"] = from_gemini_chat_openai,
-  ["stream/llm/v1/chat"] = handle_stream_event,
+  ["llm/v1/chat"] = from_bard_chat_openai,
+  ["gemini/v1/chat"] = from_gemini_chat_bard,
 }
 
 function _M.from_format(response_string, model_info, route_type)
@@ -256,7 +152,7 @@ function _M.from_format(response_string, model_info, route_type)
     return nil, fmt("no transformer available from format %s://%s", model_info.provider, route_type)
   end
   
-  local ok, response_string, err, metadata = pcall(transformers_from[route_type], response_string, model_info, route_type)
+  local ok, response_string, err = pcall(transformers_from[route_type], response_string, model_info, route_type)
   if not ok or err then
     return nil, fmt("transformation failed from type %s://%s: %s",
                     model_info.provider,
@@ -265,7 +161,7 @@ function _M.from_format(response_string, model_info, route_type)
                   )
   end
 
-  return response_string, nil, metadata
+  return response_string, nil
 end
 
 function _M.to_format(request_table, model_info, route_type)
@@ -288,7 +184,7 @@ function _M.to_format(request_table, model_info, route_type)
     model_info
   )
   if err or (not ok) then
-    return nil, nil, fmt("error transforming to %s://%s: %s", model_info.provider, route_type, err)
+    return nil, nil, fmt("error transforming to %s://%s", model_info.provider, route_type)
   end
 
   return response_object, content_type, nil
@@ -362,51 +258,31 @@ function _M.post_request(conf)
 end
 
 function _M.pre_request(conf, body)
-  -- disable gzip for gemini because it breaks streaming
-  kong.service.request.set_header("Accept-Encoding", "identity")
+  kong.service.request.set_header("Accept-Encoding", "gzip, identity") -- tell server not to send brotli
 
   return true, nil
 end
 
 -- returns err or nil
-function _M.configure_request(conf, identity_interface)
+function _M.configure_request(conf)
   local parsed_url
-  local operation = kong.ctx.shared.ai_proxy_streaming_mode and "streamGenerateContent"
-                                                             or "generateContent"
-  local f_url = conf.model.options and conf.model.options.upstream_url
 
-  if not f_url then  -- upstream_url override is not set
-    -- check if this is "public" or "vertex" gemini deployment
-    if conf.model.options
-        and conf.model.options.gemini
-        and conf.model.options.gemini.api_endpoint
-        and conf.model.options.gemini.project_id
-        and conf.model.options.gemini.location_id
-    then
-      -- vertex mode
-      f_url = fmt(ai_shared.upstream_url_format["gemini_vertex"],
-                  conf.model.options.gemini.api_endpoint) ..
-              fmt(ai_shared.operation_map["gemini_vertex"][conf.route_type].path,
-                  conf.model.options.gemini.project_id,
-                  conf.model.options.gemini.location_id,
-                  conf.model.name,
-                  operation)
-    else
-      -- public mode
-      f_url = ai_shared.upstream_url_format["gemini"] ..
-              fmt(ai_shared.operation_map["gemini"][conf.route_type].path,
-                  conf.model.name,
-                  operation)
+  if (conf.model.options and conf.model.options.upstream_url) then
+    parsed_url = socket_url.parse(conf.model.options.upstream_url)
+  else
+    local path = conf.model.options
+             and conf.model.options.upstream_path
+             or ai_shared.operation_map[DRIVER_NAME][conf.route_type]
+             and fmt(ai_shared.operation_map[DRIVER_NAME][conf.route_type].path, conf.model.name)
+             or "/"
+    if not path then
+      return nil, fmt("operation %s is not supported for openai provider", conf.route_type)
     end
+
+    parsed_url = socket_url.parse(ai_shared.upstream_url_format[DRIVER_NAME])
+    parsed_url.path = path
   end
-
-  parsed_url = socket_url.parse(f_url)
-
-  if conf.model.options and conf.model.options.upstream_path then
-    -- upstream path override is set (or templated from request params)
-    parsed_url.path = conf.model.options.upstream_path
-  end
-
+  
   -- if the path is read from a URL capture, ensure that it is valid
   parsed_url.path = string_gsub(parsed_url.path, "^/*", "/")
 
@@ -420,7 +296,6 @@ function _M.configure_request(conf, identity_interface)
   local auth_param_value = conf.auth and conf.auth.param_value
   local auth_param_location = conf.auth and conf.auth.param_location
 
-  -- DBO restrictions makes sure that only one of these auth blocks runs in one plugin config
   if auth_header_name and auth_header_value then
     kong.service.request.set_header(auth_header_name, auth_header_value)
   end
@@ -430,28 +305,9 @@ function _M.configure_request(conf, identity_interface)
     query_table[auth_param_name] = auth_param_value
     kong.service.request.set_query(query_table)
   end
+
   -- if auth_param_location is "form", it will have already been set in a global pre-request hook
-
-  -- if we're passed a GCP SDK, for cloud identity / SSO, use it appropriately
-  if identity_interface then
-    if identity_interface:needsRefresh() then
-      -- HACK: A bug in lua-resty-gcp tries to re-load the environment
-      --       variable every time, which fails in nginx
-      --       Create a whole new interface instead.
-      --       Memory leaks are mega unlikely because this should only
-      --       happen about once an hour, and the old one will be
-      --       cleaned up anyway.
-      local service_account_json = identity_interface.service_account_json
-      local identity_interface_new = identity_interface:new(service_account_json)
-      identity_interface.token = identity_interface_new.token
-
-      kong.log.notice("gcp identity token for ", kong.plugin.get_id(), " has been refreshed")
-    end
-
-    kong.service.request.set_header("Authorization", "Bearer " .. identity_interface.token)
-  end
-
-  return true
+  return true, nil
 end
 
 return _M
