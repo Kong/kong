@@ -30,7 +30,7 @@ function _M.new_error(id, code, msg)
       -- generate a meaningful string, we should consider it as a
       -- bug since we should not expose something like
       -- `"table: 0x7fff0000"` to the RPC caller.
-      assert(mt.__tostring)
+      assert(type(mt.__tostring) == "function")
     end
 
     msg = tostring(msg)
