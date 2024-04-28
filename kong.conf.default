@@ -1990,7 +1990,7 @@
                                  #   is not visible.
                                  # - `expressions`: the DSL based expression router engine
                                  #   will be used under the hood. Traditional router
-                                 #   config interface is not visible and you must write
+                                 #   config interface is still visible, and you could also write
                                  #   Router Expression manually and provide them in the
                                  #   `expression` field on the `Route` object.
                                  # - `traditional`: the pre-3.0 Router engine will be
