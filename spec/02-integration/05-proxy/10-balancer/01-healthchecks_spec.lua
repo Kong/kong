@@ -1,7 +1,7 @@
 local bu = require "spec.fixtures.balancer_utils"
 local cjson = require "cjson"
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
+local utils = require "kong.tools.uuid"
 
 
 local https_server = helpers.https_server

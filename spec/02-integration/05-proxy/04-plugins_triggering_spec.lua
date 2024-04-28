@@ -1,5 +1,5 @@
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
+local utils = require "kong.tools.uuid"
 local cjson = require "cjson"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"

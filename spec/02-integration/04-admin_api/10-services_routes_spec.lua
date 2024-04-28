@@ -1,5 +1,5 @@
 local cjson   = require "cjson"
-local utils   = require "kong.tools.utils"
+local utils   = require "kong.tools.uuid"
 local helpers = require "spec.helpers"
 local Errors  = require "kong.db.errors"
 

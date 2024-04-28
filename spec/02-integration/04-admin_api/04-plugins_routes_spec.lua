@@ -1,6 +1,6 @@
 local helpers = require "spec.helpers"
 local admin_api = require "spec.fixtures.admin_api"
-local utils = require "kong.tools.utils"
+local utils = require "kong.tools.uuid"
 local cjson = require "cjson"
 
 for _, strategy in helpers.each_strategy() do

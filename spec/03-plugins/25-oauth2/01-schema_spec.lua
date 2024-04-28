@@ -1,5 +1,5 @@
 local helpers         = require "spec.helpers"
-local utils           = require "kong.tools.utils"
+local utils           = require "kong.tools.uuid"
 local schema_def = require "kong.plugins.oauth2.schema"
 local DAO_MAX_TTL = require("kong.constants").DATABASE.DAO_MAX_TTL
 local v = require("spec.helpers").validate_plugin_config_schema

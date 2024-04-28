@@ -8,6 +8,7 @@ local constants = require("kong.constants")
 local plugin_loader = require("kong.db.schema.plugin_loader")
 local vault_loader = require("kong.db.schema.vault_loader")
 local schema_topological_sort = require("kong.db.schema.topological_sort")
+local utils_uuid = require("kong.tools.uuid").uuid
 
 
 local null = ngx.null
@@ -649,7 +650,7 @@ local function populate_ids_for_validation(input, known_entities, parent_entity,
         if key then
           item[pk_name] = generate_uuid(schema.name, key)
         else
-          item[pk_name] = utils.uuid()
+          item[pk_name] = utils_uuid()
         end
       end
 

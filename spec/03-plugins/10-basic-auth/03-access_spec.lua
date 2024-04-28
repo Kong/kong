@@ -1,6 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
-local utils   = require "kong.tools.utils"
+local utils   = require "kong.tools.uuid"
 
 
 for _, strategy in helpers.each_strategy() do

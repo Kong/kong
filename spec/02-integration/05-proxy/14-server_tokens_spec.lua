@@ -2,7 +2,7 @@ local meta = require "kong.meta"
 local helpers = require "spec.helpers"
 local constants = require "kong.constants"
 local cjson = require "cjson"
-local utils   = require "kong.tools.utils"
+local utils   = require "kong.tools.uuid"
 
 
 local default_server_header = meta._SERVER_TOKENS

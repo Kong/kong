@@ -1,7 +1,7 @@
 local ssl_fixtures = require "spec.fixtures.ssl"
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local utils = require "kong.tools.utils"
+local utils = require "kong.tools.uuid"
 local Errors  = require "kong.db.errors"
 
 

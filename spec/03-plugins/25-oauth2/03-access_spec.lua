@@ -1,6 +1,6 @@
 local cjson   = require "cjson"
 local helpers = require "spec.helpers"
-local utils   = require "kong.tools.utils"
+local utils   = require "kong.tools.uuid"
 local admin_api = require "spec.fixtures.admin_api"
 local sha256 = require "resty.sha256"
 local jwt_encoder = require "kong.plugins.jwt.jwt_parser"

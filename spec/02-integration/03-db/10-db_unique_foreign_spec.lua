@@ -1,6 +1,6 @@
 local Errors  = require "kong.db.errors"
 local helpers = require "spec.helpers"
-local utils   = require "kong.tools.utils"
+local utils   = require "kong.tools.uuid"
 
 
 local fmt = string.format

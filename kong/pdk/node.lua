@@ -2,9 +2,10 @@
 --
 -- @module kong.node
 
-local utils = require "kong.tools.utils"
 local ffi = require "ffi"
 local private_node = require "kong.pdk.private.node"
+local uuid = require("kong.tools.uuid").uuid
+local bytes_to_str = require("kong.tools.string").bytes_to_str
 
 
 local floor = math.floor
@@ -46,7 +47,7 @@ local function convert_bytes(bytes, unit, scale)
     return floor(bytes)
   end
 
-  return utils.bytes_to_str(bytes, unit, scale)
+  return bytes_to_str(bytes, unit, scale)
 end
 
 
@@ -73,7 +74,7 @@ local function new(self)
 
     local shm = ngx.shared.kong
 
-    local ok, err = shm:safe_add(NODE_ID_KEY, utils.uuid())
+    local ok, err = shm:safe_add(NODE_ID_KEY, uuid())
     if not ok and err ~= "exists" then
       error("failed to set 'node_id' in shm: " .. err)
     end
@@ -160,7 +161,7 @@ local function new(self)
       unit = unit or "b"
       scale = scale or 2
 
-      local pok, perr = pcall(utils.bytes_to_str, 0, unit, scale)
+      local pok, perr = pcall(bytes_to_str, 0, unit, scale)
       if not pok then
         error(perr, 2)
       end

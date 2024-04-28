@@ -2,6 +2,7 @@ local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 local declarative = require "kong.db.declarative"
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
+local uuid = require("kong.tools.uuid").uuid
 
 -- Note: include "off" strategy here as well
 for _, strategy in helpers.all_strategies() do
@@ -162,7 +163,7 @@ for _, strategy in helpers.all_strategies() do
 
       -- new plugin upsert (insert part of upsert)
       local new_plugin_config = {
-        id = utils.uuid(),
+        id = uuid(),
         enabled = true,
         name = "rate-limiting",
         instance_name = 'rate-limiting-instance-2',

@@ -2,7 +2,7 @@ local cjson       = require "cjson"
 local helpers     = require "spec.helpers"
 local fixtures    = require "spec.03-plugins.16-jwt.fixtures"
 local jwt_encoder = require "kong.plugins.jwt.jwt_parser"
-local utils       = require "kong.tools.utils"
+local utils       = require "kong.tools.uuid"
 
 
 local PAYLOAD = {

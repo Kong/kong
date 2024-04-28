@@ -11,7 +11,7 @@ local targets, balancers
 require "spec.helpers" -- initialize db
 local dns_utils = require "kong.resty.dns.utils"
 local mocker = require "spec.fixtures.mocker"
-local utils = require "kong.tools.utils"
+local utils = require "kong.tools.uuid"
 
 local ws_id = utils.uuid()
 

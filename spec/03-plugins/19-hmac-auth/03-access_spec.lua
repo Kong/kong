@@ -1,7 +1,7 @@
 local cjson = require "cjson"
 local openssl_mac = require "resty.openssl.mac"
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
+local utils = require "kong.tools.uuid"
 local resty_sha256 = require "resty.sha256"
 
 local fmt = string.format

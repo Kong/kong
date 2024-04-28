@@ -2,7 +2,7 @@ local PLUGIN_NAME = "http-log"
 
 
 local Queue = require "kong.tools.queue"
-local utils = require "kong.tools.utils"
+local utils = require "kong.tools.uuid"
 local mocker = require "spec.fixtures.mocker"
 
 -- helper function to validate data against a schema

@@ -1,6 +1,6 @@
 local helpers   = require "spec.helpers"
 local cjson     = require "cjson"
-local utils     = require "kong.tools.utils"
+local utils     = require "kong.tools.uuid"
 local http_mock = require "spec.helpers.http_mock"
 
 local MOCK_PORT = helpers.get_available_port()

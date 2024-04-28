@@ -1,6 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local utils = require "kong.tools.utils"
+local utils = require "kong.tools.uuid"
 local tablex = require "pl.tablex"
 
 local function it_content_types(title, fn)

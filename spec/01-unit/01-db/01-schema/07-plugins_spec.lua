@@ -1,7 +1,7 @@
 require "spec.helpers" -- initializes 'kong' global for plugins
 local Entity = require "kong.db.schema.entity"
 local typedefs = require "kong.db.schema.typedefs"
-local utils = require "kong.tools.utils"
+local utils = require "kong.tools.uuid"
 local routes_definition = require "kong.db.schema.entities.routes"
 local services_definition = require "kong.db.schema.entities.services"
 local consumers_definition = require "kong.db.schema.entities.consumers"
