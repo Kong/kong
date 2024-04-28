@@ -561,6 +561,19 @@ describe("validation utils spec", function ()
       }
       assert.same(expected, output)
     end)
+
+    it("negative cases", function()
+      -- function `normalize()` should only accept `string` and `table` as the first parameter.
+
+      -- should not accept `number`
+      assert.has_error(function() normalize(1.0, { type = "number" }) end, "assertion failed!")
+      -- should not accept `boolean`
+      assert.has_error(function() normalize(true, { type = "boolean" }) end, "assertion failed!")
+      -- should not accept `nil`
+      assert.has_error(function() normalize(nil, { type = "number" }) end, "assertion failed!")
+      -- should not accept `userdata`
+      assert.has_error(function() normalize(cjson.null, { type = "number" }) end, "assertion failed!")
+    end)
   end)
 
 end)
