@@ -24,7 +24,16 @@ local ERROR_MSG = {
 
 function _M.new_error(id, code, msg)
   if msg then
-    msg = assert(tostring(msg))
+    if type(msg) ~= "string" then
+      local mt = getmetatable(msg)
+      -- other types without the metamethod `__tostring` don't
+      -- generate a meaningful string, we should consider it as a
+      -- bug since we should not expose something like
+      -- `"table: 0x7fff0000"` to the RPC caller.
+      assert(mt.__tostring)
+    end
+
+    msg = tostring(msg)
 
   else
     msg = assert(ERROR_MSG[code], "unknown code: " .. tostring(code))
