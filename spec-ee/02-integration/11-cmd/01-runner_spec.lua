@@ -9,6 +9,15 @@ local helpers = require "spec.helpers"
 local shell = require "resty.shell"
 
 describe("kong runner", function()
+  local prefix
+
+  lazy_setup(function()
+    prefix = helpers.tmpdir()
+  end)
+
+  lazy_teardown(function()
+    helpers.clean_prefix(prefix)
+  end)
 
   it("fails when the given file argument does not exist", function()
     local _, stderr = helpers.kong_exec "runner notexists.lua"
@@ -17,7 +26,8 @@ describe("kong runner", function()
 
   it("runs code from stdin if no arg is given", function()
     local _, _, stdout = helpers.execute(
-      [[ echo 'print(#args)' | ]] .. helpers.bin_path .. " runner " )
+      [[ echo 'print(#args)' | KONG_PREFIX=]] ..
+      prefix .. " " .. helpers.bin_path .. " runner " )
     assert.equals("0", string.sub(stdout, 1, -2) )
   end)
 
@@ -27,7 +37,8 @@ describe("kong runner", function()
 
       shell.run([[echo 'print(#args)' >]] .. tmpfile, nil, 0)
       local _, _, stdout = helpers.execute(
-        helpers.bin_path .. [[ runner ]] .. tmpfile .. " foo")
+        "KONG_PREFIX=" .. prefix .. " " .. helpers.bin_path ..
+	[[ runner ]] .. tmpfile .. " foo")
 
       assert.equals("2", string.sub(stdout, 1, -2))
   end)
@@ -36,14 +47,15 @@ describe("kong runner", function()
     local tmpfile = require("pl.path").tmpname()  -- this creates the file!
     finally(function() os.remove(tmpfile) end)
     shell.run([[echo "print('roar'" >]] .. tmpfile, nil, 0)
-    local ok = helpers.execute(helpers.bin_path .. [[ runner ]] .. tmpfile)
+    local ok = helpers.execute("KONG_PREFIX=" .. prefix ..
+      " " .. helpers.bin_path .. [[ runner ]] .. tmpfile)
     assert.is_false(ok)
   end)
 
   it("has access to kong variable", function()
     local _, _, stdout = helpers.execute([[
       echo 'print(tostring(kong))' | ]] ..
-      helpers.bin_path .. " runner " )
+      "KONG_PREFIX=" .. prefix .. " " .. helpers.bin_path .. " runner " )
     assert.matches("table", string.sub(stdout, 1, -2) )
   end)
 

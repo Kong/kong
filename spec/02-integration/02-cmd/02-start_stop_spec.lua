@@ -188,6 +188,7 @@ describe("kong start/stop #" .. strategy, function()
     helpers.setenv("KONG_LICENSE_DATA", "")
 
     local _, stderr = kong_exec("start", {
+      prefix = PREFIX,
       fips = "on",
     })
     kong_exec("stop", {})
@@ -206,6 +207,7 @@ describe("kong start/stop #" .. strategy, function()
     helpers.setenv("KONG_LICENSE_DATA", pl_file.read("spec-ee/fixtures/mock_license.json"))
 
     local _, stderr = kong_exec("start", {
+      prefix = PREFIX,
       fips = "on",
     })
     kong_exec("stop", {})
@@ -225,6 +227,7 @@ describe("kong start/stop #" .. strategy, function()
     helpers.setenv("KONG_LICENSE_DATA", pl_file.read("spec-ee/fixtures/mock_license.json"))
 
     local _, stderr = kong_exec("start", {
+      prefix = PREFIX,
       fips = "on",
       role = "control_plane",
     })
