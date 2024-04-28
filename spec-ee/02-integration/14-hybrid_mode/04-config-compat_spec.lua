@@ -278,20 +278,6 @@ describe("CP/DP config compat #" .. strategy, function()
         end
       },
       {
-        plugin = "oas-validation",
-        label = "w/ api_spec_encoded unsupported",
-        pending = false,
-        config = {
-          api_spec = '{}',
-          api_spec_encoded = true
-        },
-        status = STATUS.NORMAL,
-        removed = FIELDS[3007000000].oas_validation,
-        validator = function(config)
-          return config.api_spec_encoded == nil
-        end
-      },
-      {
         plugin = "mtls-auth",
         label = "w/ default_consumer is unsupported",
         pending = false,
@@ -316,6 +302,54 @@ describe("CP/DP config compat #" .. strategy, function()
         do_assert(case, "3.5.9.9")
       end)
     end
+  end)
+
+  describe("oas-validation", function()
+    local case_sanity = {
+      plugin = "oas-validation",
+      label = "w/ api_spec_encoded unsupported",
+      pending = false,
+      config = {
+        api_spec = '{}',
+        api_spec_encoded = true
+      },
+      status = STATUS.NORMAL,
+      checker = CHECKERS,
+      validator = function(config)
+        return config.api_spec_encoded == true
+      end
+    }
+
+    it(fmt("%s - %s", case_sanity.plugin, case_sanity.label), function()
+      do_assert(case_sanity, "3.6.1.2")
+    end)
+
+    local case = {
+      plugin = "oas-validation",
+      label = "w/ api_spec_encoded unsupported",
+      pending = false,
+      config = {
+        api_spec = '{}',
+        api_spec_encoded = true
+      },
+      status = STATUS.NORMAL,
+      checker = CHECKERS,
+      validator = function(config)
+        return config.api_spec_encoded == nil
+      end
+    }
+
+    it(fmt("%s - %s", case.plugin, case.label), function()
+      do_assert(case, "3.6.1.1")
+    end)
+
+    it(fmt("%s - %s", case.plugin, case.label), function()
+      do_assert(case, "3.5.0.3")
+    end)
+
+    it(fmt("%s - %s", case.plugin, case.label), function()
+      do_assert(case, "3.4.3.5")
+    end)
   end)
 
   describe("3.7.x.y", function()

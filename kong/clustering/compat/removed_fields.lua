@@ -246,7 +246,6 @@ return {
     -- Enterprise plugins
     oas_validation = {
       "custom_base_path",
-      "api_spec_encoded"
     },
     mocking = {
       "custom_base_path",

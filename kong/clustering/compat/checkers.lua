@@ -138,7 +138,33 @@ local compatible_checkers = {
       return has_update
     end
   },
+  { 3006001002, --[[3.6.1.2]]
+    function(config_table, dp_version, log_suffix)
+      local has_update
 
+      local dp_version_num = version_num(dp_version)
+
+      for _, plugin in ipairs(config_table.plugins or {}) do
+        if plugin.name == 'oas-validation' then
+          local config = plugin.config
+          if config.api_spec_encoded ~= nil then
+            if dp_version_num < 3004003006 or
+              (dp_version_num >= 3005000000 and dp_version_num < 3005000004) or
+              dp_version_num >= 3006000000 then
+              -- remove config.api_spec_encoded when DP version in intervals (, 3436), [3500, 3504), [3600, 3612)
+              config.api_spec_encoded = nil
+              has_update = true
+              log_warn_message('configures ' .. plugin.name .. ' plugin with api_spec_encoded',
+                'will be removed.',
+                dp_version, log_suffix)
+            end
+          end
+        end
+      end
+
+      return has_update
+    end
+  },
   { 3006000000, -- [[ 3.6.0.0 ]]
     function(config_table, dp_version, log_suffix)
       local has_update
