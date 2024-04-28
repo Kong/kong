@@ -31,7 +31,7 @@ local _M = {
 ---@field config_schema kong.db.schema.json.schema_doc|nil
 
 
-local utils = require "kong.tools.utils"
+local utils = require "kong.tools.uuid"
 local reports = require "kong.reports"
 local clear_tab = require "table.clear"
 local cjson = require "cjson.safe"
