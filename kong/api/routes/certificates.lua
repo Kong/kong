@@ -1,6 +1,6 @@
 local endpoints   = require "kong.api.endpoints"
 local arguments   = require "kong.api.arguments"
-local utils       = require "kong.tools.utils"
+local utils       = require "kong.tools.uuid"
 
 
 local ngx = ngx

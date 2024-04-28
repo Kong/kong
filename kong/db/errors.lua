@@ -2,7 +2,7 @@ local pl_pretty = require("pl.pretty").write
 local pl_keys = require("pl.tablex").keys
 local nkeys = require("table.nkeys")
 local table_isarray = require("table.isarray")
-local utils = require("kong.tools.utils")
+local utils = require("kong.tools.uuid")
 
 
 local type         = type

@@ -1,5 +1,5 @@
 local endpoints = require "kong.api.endpoints"
-local utils = require "kong.tools.utils"
+local utils = require "kong.tools.uuid"
 
 
 local kong = kong

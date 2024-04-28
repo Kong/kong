@@ -8,8 +8,9 @@
 -- @module kong.client
 
 
-local utils = require "kong.tools.utils"
 local phase_checker = require "kong.pdk.private.phases"
+local is_valid_uuid = require("kong.tools.uuid").is_valid_uuid
+local check_https = require("kong.tools.http").check_https
 
 
 local ngx = ngx
@@ -187,11 +188,11 @@ local function new(self)
       error("consumer_id must be a string", 2)
     end
 
-    if not utils.is_valid_uuid(consumer_id) and not search_by_username then
+    if not is_valid_uuid(consumer_id) and not search_by_username then
       error("cannot load a consumer with an id that is not a uuid", 2)
     end
 
-    if utils.is_valid_uuid(consumer_id) then
+    if is_valid_uuid(consumer_id) then
       local result, err = kong.db.consumers:select({ id = consumer_id })
 
       if result then
@@ -289,7 +290,7 @@ local function new(self)
 
     if ngx.config.subsystem == "http" then
       local is_trusted = self.ip.is_trusted(self.client.get_ip())
-      local is_https, err = utils.check_https(is_trusted, allow_terminated)
+      local is_https, err = check_https(is_trusted, allow_terminated)
       if err then
         return nil, err
       end

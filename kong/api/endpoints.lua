@@ -1,5 +1,5 @@
 local Errors       = require "kong.db.errors"
-local utils        = require "kong.tools.utils"
+local utils        = require "kong.tools.uuid"
 local arguments    = require "kong.api.arguments"
 local workspaces   = require "kong.workspaces"
 local app_helpers  = require "lapis.application"
@@ -17,7 +17,8 @@ local type         = type
 local fmt          = string.format
 local concat       = table.concat
 local re_match     = ngx.re.match
-local split        = utils.split
+local split        = require("kong.tools.string").split
+local get_default_exit_body = require("kong.tools.http").get_default_exit_body
 
 
 -- error codes http status codes
@@ -132,7 +133,7 @@ local function handle_error(err_t)
     return kong.response.exit(status, err_t)
   end
 
-  return kong.response.exit(status, utils.get_default_exit_body(status, err_t))
+  return kong.response.exit(status, get_default_exit_body(status, err_t))
 end
 
 

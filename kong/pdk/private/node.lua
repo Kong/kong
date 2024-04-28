@@ -1,5 +1,5 @@
 local log = require "kong.cmd.utils.log"
-local utils = require "kong.tools.utils"
+local utils = require "kong.tools.uuid"
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 local pl_dir = require "pl.dir"
