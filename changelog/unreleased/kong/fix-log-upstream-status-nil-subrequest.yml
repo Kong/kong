@@ -1,0 +1,4 @@
+message: |
+  **PDK:** fix log serialize `upstream_status` entry nil bug in subrequest case
+type: bugfix
+scope: PDK
