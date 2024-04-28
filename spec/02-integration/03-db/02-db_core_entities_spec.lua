@@ -1,6 +1,6 @@
 local Errors = require "kong.db.errors"
 local defaults = require "kong.db.strategies.connector".defaults
-local utils = require "kong.tools.utils"
+local utils = require "kong.tools.uuid"
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local ssl_fixtures = require "spec.fixtures.ssl"

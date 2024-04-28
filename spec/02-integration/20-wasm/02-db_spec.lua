@@ -1,5 +1,5 @@
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
+local utils = require "kong.tools.uuid"
 local schema_lib = require "kong.db.schema.json"
 
 local FILTER_PATH = assert(helpers.test_conf.wasm_filters_path)

@@ -3,7 +3,7 @@ local helpers = require "spec.helpers"
 local lyaml = require "lyaml"
 local cjson = require "cjson"
 local tablex = require "pl.tablex"
-local utils = require "kong.tools.utils"
+local utils = require "kong.tools.uuid"
 
 local null = ngx.null
 

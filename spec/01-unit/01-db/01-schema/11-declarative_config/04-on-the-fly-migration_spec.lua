@@ -6,7 +6,7 @@ local null = ngx.null
 
 local helpers = require "spec.helpers"
 local tablex = require "pl.tablex"
-local utils = require "kong.tools.utils"
+local utils = require "kong.tools.uuid"
 
 local function sort_by_key(t)
   return function(a, b)
