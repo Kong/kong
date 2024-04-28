@@ -2,7 +2,7 @@ local Schema = require "kong.db.schema"
 local targets = require "kong.db.schema.entities.targets"
 local certificates = require "kong.db.schema.entities.certificates"
 local upstreams = require "kong.db.schema.entities.upstreams"
-local utils = require "kong.tools.utils"
+local utils = require "kong.tools.uuid"
 
 local function setup_global_env()
   _G.kong = _G.kong or {}
