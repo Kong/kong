@@ -140,6 +140,9 @@ return {
     },
     key_auth = {
       "realm"
+    },
+    response_transformer = {
+      "rename.json",
     }
   },
 }
