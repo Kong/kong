@@ -23,7 +23,10 @@ local ERROR_MSG = {
 
 
 function _M.new_error(id, code, msg)
-  if not msg then
+  if msg then
+    msg = assert(tostring(msg))
+
+  else
     msg = assert(ERROR_MSG[code], "unknown code: " .. tostring(code))
   end
 
@@ -32,7 +35,7 @@ function _M.new_error(id, code, msg)
     id = id,
     error = {
       code = code,
-      message = tostring(msg),
+      message = msg,
     }
   }
 end
