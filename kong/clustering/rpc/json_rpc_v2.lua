@@ -32,7 +32,7 @@ function _M.new_error(id, code, msg)
     id = id,
     error = {
       code = code,
-      message = msg,
+      message = tostring(msg),
     }
   }
 end
