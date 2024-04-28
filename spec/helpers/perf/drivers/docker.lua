@@ -7,7 +7,7 @@
 
 local nkeys = require "table.nkeys"
 local perf = require("spec.helpers.perf")
-local tools = require("kong.tools.utils")
+local tools = require("kong.tools.rand")
 local helpers
 
 local _M = {}

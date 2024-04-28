@@ -18,6 +18,7 @@ local assert = assert
 local tonumber = tonumber
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
+local get_rand_bytes = require("kong.tools.rand").get_rand_bytes
 
 
 -- Note: of the following ones only PBKDF2 is FIPS compliant, when other
@@ -141,7 +142,7 @@ if ENABLED_ALGORITHMS.ARGON2 then
       m_cost      = ARGON2_M_COST,
     }
     do
-      local hash = argon2.hash_encoded("", utils.get_rand_bytes(ARGON2_SALT_LEN), ARGON2_OPTIONS)
+      local hash = argon2.hash_encoded("", get_rand_bytes(ARGON2_SALT_LEN), ARGON2_OPTIONS)
       local parts = utils.split(hash, "$")
       remove(parts)
       remove(parts)
@@ -151,7 +152,7 @@ if ENABLED_ALGORITHMS.ARGON2 then
     local crypt = {}
 
     function crypt.hash(secret)
-      return argon2.hash_encoded(secret, utils.get_rand_bytes(ARGON2_SALT_LEN), ARGON2_OPTIONS)
+      return argon2.hash_encoded(secret, get_rand_bytes(ARGON2_SALT_LEN), ARGON2_OPTIONS)
     end
 
     function crypt.verify(secret, hash)
@@ -240,7 +241,7 @@ if ENABLED_ALGORITHMS.PBKDF2 then
         end
       end
 
-      local salt = opts.salt or utils.get_rand_bytes(PBKDF2_SALT_LEN)
+      local salt = opts.salt or get_rand_bytes(PBKDF2_SALT_LEN)
       local hash, err = kdf:derive(opts.outlen or PBKDF2_HASH_LEN, {
         pass        = secret,
         salt        = salt,

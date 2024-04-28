@@ -7,7 +7,7 @@
 
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local utils = require "kong.tools.utils"
+local utils = require "kong.tools.rand"
 local to_hex = require "resty.string".to_hex
 
 local fmt = string.format

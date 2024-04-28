@@ -8,9 +8,8 @@
 require "spec.helpers" -- initializes 'kong' global for tracer
 local match = require("luassert.match")
 
-local utils = require "kong.tools.utils"
 local SAMPLING_BYTE = 8
-local rand_bytes = utils.get_rand_bytes
+local rand_bytes = require("kong.tools.rand").get_rand_bytes
 local TEST_COUNT = 10000
 -- we can only ensure a sampling precision of 0.02
 local SAMPLING_PRECISION = 0.02

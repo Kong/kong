@@ -7,11 +7,10 @@
 
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local utils = require "kong.tools.utils"
 local to_hex = require("resty.string").to_hex
 local from_hex = require 'kong.tracing.propagation.utils'.from_hex
 
-local rand_bytes = utils.get_rand_bytes
+local rand_bytes = require("kong.tools.rand").get_rand_bytes
 
 local function gen_id(len)
   return to_hex(rand_bytes(len))

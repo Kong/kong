@@ -6,8 +6,8 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
 local cjson = require "cjson"
+local random_string = require("kong.tools.rand").random_string
 
 local file = helpers.file
 
@@ -31,7 +31,7 @@ local function post_config(client, config)
 end
 
 local function random_name()
-  return "test-" .. utils.random_string()
+  return "test-" .. random_string()
 end
 
 
