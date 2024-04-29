@@ -266,7 +266,6 @@ _M.config_schema = {
       custom_entity_check = {
         field_sources = { "route_type", "model", "logging" },
         fn = function(entity)
-          -- print(cjson.encode(entity))
           if entity.logging.log_statistics and UNSUPPORTED_LOG_STATISTICS[entity.route_type]
             and UNSUPPORTED_LOG_STATISTICS[entity.route_type][entity.model.provider] then
               return nil, fmt("%s does not support statistics when route_type is %s",

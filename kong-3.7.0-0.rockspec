@@ -869,6 +869,8 @@ build = {
 
     ["kong.plugins.ai-proxy.handler"] = "kong/plugins/ai-proxy/handler.lua",
     ["kong.plugins.ai-proxy.schema"] = "kong/plugins/ai-proxy/schema.lua",
+    ["kong.plugins.ai-proxy.migrations"] = "kong/plugins/ai-proxy/migrations/init.lua",
+    ["kong.plugins.ai-proxy.migrations.001_360_to_370"] = "kong/plugins/ai-proxy/migrations/001_360_to_370.lua",
 
     ["kong.plugins.ai-request-transformer.handler"] = "kong/plugins/ai-request-transformer/handler.lua",
     ["kong.plugins.ai-request-transformer.schema"] = "kong/plugins/ai-request-transformer/schema.lua",
