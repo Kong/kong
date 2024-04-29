@@ -288,7 +288,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
       assert.res_status(200, res)
       assert.response(res).has.no.header("x-via")
       assert.logfile().has.line([[testing in "Log"]])
-      assert.logfile().has.line("cannot add response header: headers already sent")
+      assert.logfile().has.line("can only set response headers before \"on_response_body\"")
     end)
 
     pending("throw a trap", function()
