@@ -1,5 +1,5 @@
 local Errors       = require "kong.db.errors"
-local utils        = require "kong.tools.uuid"
+local uuid         = require "kong.tools.uuid"
 local arguments    = require "kong.api.arguments"
 local workspaces   = require "kong.workspaces"
 local app_helpers  = require "lapis.application"
@@ -242,7 +242,7 @@ local function query_entity(context, self, db, schema, method)
       end
     end
 
-    if key.id and not utils.is_valid_uuid(key.id) then
+    if key.id and not uuid.is_valid_uuid(key.id) then
       local endpoint_key = schema.endpoint_key
       if endpoint_key then
         local field = schema.fields[endpoint_key]
@@ -527,7 +527,7 @@ local function put_entity_endpoint(schema, foreign_schema, foreign_field_name, m
         self.params[foreign_schema.name] = pk
       else
         associate = true
-        self.params[foreign_schema.name] = utils.uuid()
+        self.params[foreign_schema.name] = uuid.uuid()
       end
 
     else

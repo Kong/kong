@@ -1,6 +1,6 @@
 local helpers = require "spec.helpers"
 local admin_api = require "spec.fixtures.admin_api"
-local utils = require "kong.tools.uuid"
+local uuid = require "kong.tools.uuid"
 local cjson = require "cjson"
 
 for _, strategy in helpers.each_strategy() do
@@ -187,7 +187,7 @@ for _, strategy in helpers.each_strategy() do
             })
             local res = assert(client:send {
               method = "PUT",
-              path = "/plugins/" .. utils.uuid(),
+              path = "/plugins/" .. uuid.uuid(),
               body = {
                 name = "key-auth",
                 service = {
@@ -201,7 +201,7 @@ for _, strategy in helpers.each_strategy() do
 
           it("can create a plugin by instance_name", function()
             local service = admin_api.services:insert()
-            local instance_name = "name-" .. utils.uuid()
+            local instance_name = "name-" .. uuid.uuid()
             local res = assert(client:send {
               method = "PUT",
               path = "/plugins/" .. instance_name,
@@ -221,7 +221,7 @@ for _, strategy in helpers.each_strategy() do
           it("can upsert a plugin by instance_name", function()
             -- create a plugin by instance_name
             local service = admin_api.services:insert()
-            local instance_name = "name-" .. utils.uuid()
+            local instance_name = "name-" .. uuid.uuid()
             local plugin_id
             local res = assert(client:send {
               method = "PUT",

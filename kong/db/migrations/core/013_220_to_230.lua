@@ -1,7 +1,7 @@
-local utils = require("kong.tools.uuid")
+local uuid = require("kong.tools.uuid")
 
 
-local CLUSTER_ID = utils.uuid()
+local CLUSTER_ID = uuid.uuid()
 
 
 return {

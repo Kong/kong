@@ -1,6 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
-local utils   = require "kong.tools.uuid"
+local uuid    = require "kong.tools.uuid"
 
 
 for _, strategy in helpers.each_strategy() do
@@ -104,7 +104,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "basic-auth",
         route = { id = route4.id },
         config   = {
-          anonymous = utils.uuid(), -- a non-existing consumer id
+          anonymous = uuid.uuid(), -- a non-existing consumer id
         },
       }
 

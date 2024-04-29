@@ -1,7 +1,7 @@
 local bu = require "spec.fixtures.balancer_utils"
 local cjson = require "cjson"
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.uuid"
+local uuid = require "kong.tools.uuid"
 
 
 local https_server = helpers.https_server
@@ -1099,7 +1099,7 @@ for _, strategy in helpers.each_strategy() do
               local api_host, service_id = bu.add_api(bp, upstream_name, { connect_timeout = 50, })
 
               -- add a plugin
-              local plugin_id = utils.uuid()
+              local plugin_id = uuid.uuid()
               bp.plugins:insert({
                 id = plugin_id,
                 service = { id = service_id },
