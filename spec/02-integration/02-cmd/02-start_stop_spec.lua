@@ -938,9 +938,9 @@ describe("kong start/stop #" .. strategy, function()
 
         assert.truthy(ok)
         assert.not_matches("error", err)
+        assert.logfile().has.line(" {vault://mocksocket/session-secret-unknown}", true)
         assert.logfile().has.no.line("[error]", true, 0)
         assert.logfile().has.no.line("traceback", true, 0)
-        assert.logfile().has.line(" {vault://mocksocket/session-secret-unknown}", true, 0)
         assert.logfile().has.no.line("could not find vault", true, 0)
 
         assert(helpers.restart_kong({
@@ -950,9 +950,9 @@ describe("kong start/stop #" .. strategy, function()
           declarative_config = "",
         }))
 
+        assert.logfile().has.line(" {vault://mocksocket/session-secret-unknown}", true)
         assert.logfile().has.no.line("[error]", true, 0)
         assert.logfile().has.no.line("traceback", true, 0)
-        assert.logfile().has.line(" {vault://mocksocket/session-secret-unknown}", true, 0)
         assert.logfile().has.no.line("could not find vault", true, 0)
 
         proxy_client = helpers.proxy_client()
@@ -969,8 +969,8 @@ describe("kong start/stop #" .. strategy, function()
           declarative_config = "",
         }))
 
+        assert.logfile().has.line(" {vault://mocksocket/session-secret-unknown}", true)
         assert.logfile().has.no.line("traceback", true, 0)
-        assert.logfile().has.line(" {vault://mocksocket/session-secret-unknown}", true, 0)
         assert.logfile().has.no.line("could not find vault", true, 0)
 
         proxy_client = helpers.proxy_client()
@@ -1111,9 +1111,9 @@ describe("kong start/stop #" .. strategy, function()
 
         assert.truthy(ok)
         assert.not_matches("error", err)
+        assert.logfile().has.line(" {vault://mock/session-secret-unknown-again}", true)
         assert.logfile().has.no.line("[error]", true, 0)
         assert.logfile().has.no.line("traceback", true, 0)
-        assert.logfile().has.line(" {vault://mock/session-secret-unknown-again}", true, 0)
         assert.logfile().has.no.line("could not find vault", true, 0)
 
         proxy_client = helpers.proxy_client()
@@ -1130,9 +1130,9 @@ describe("kong start/stop #" .. strategy, function()
           declarative_config = "",
         }))
 
+        assert.logfile().has.line(" {vault://mock/session-secret-unknown-again}", true)
         assert.logfile().has.no.line("[error]", true, 0)
         assert.logfile().has.no.line("traceback", true, 0)
-        assert.logfile().has.line(" {vault://mock/session-secret-unknown-again}", true, 0)
         assert.logfile().has.no.line("could not find vault", true, 0)
 
         proxy_client = helpers.proxy_client()
@@ -1149,8 +1149,8 @@ describe("kong start/stop #" .. strategy, function()
           declarative_config = "",
         }))
 
+        assert.logfile().has.line(" {vault://mock/session-secret-unknown-again}", true)
         assert.logfile().has.no.line("traceback", true, 0)
-        assert.logfile().has.line(" {vault://mock/session-secret-unknown-again}", true, 0)
         assert.logfile().has.no.line("could not find vault", true, 0)
 
         proxy_client = helpers.proxy_client()
