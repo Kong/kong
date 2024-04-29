@@ -10,11 +10,7 @@ local typedefs  = require("kong.db.schema.typedefs")
 local fmt       = string.format
 local cjson     = require("cjson.safe")
 local re_match  = ngx.re.match
-local buf       = require("string.buffer")
-local lower     = string.lower
-local meta      = require "kong.meta"
 local ai_shared = require("kong.llm.drivers.shared")
-local strip     = require("kong.tools.utils").strip
 --
 
 local _M = {}
@@ -99,8 +95,8 @@ local model_options_schema = {
   fields = {
     { response_streaming = {
         type = "string",
-        description = "Whether to 'optionally allow', 'deny', or 'always' (force) the streaming of answers via WebSocket.",
-        required = true,
+        description = "Whether to 'optionally allow', 'deny', or 'always' (force) the streaming of answers via server sent events.",
+        required = false,
         default = "allow",
         one_of = { "allow", "deny", "always" } }},
     { max_tokens = {
@@ -112,20 +108,17 @@ local model_options_schema = {
         type = "number",
         description = "Defines the matching temperature, if using chat or completion models.",
         required = false,
-        between = { 0.0, 5.0 },
-        default = 1.0 }},
+        between = { 0.0, 5.0 }}},
     { top_p = {
         type = "number",
         description = "Defines the top-p probability mass, if supported.",
         required = false,
-        between = { 0, 1 },
-        default = 1.0 }},
+        between = { 0, 1 }}},
     { top_k = {
         type = "integer",
         description = "Defines the top-k most likely tokens, if supported.",
         required = false,
-        between = { 0, 500 },
-        default = 0 }},
+        between = { 0, 500 }}},
     { anthropic_version = {
         type = "string",
         description = "Defines the schema/API version, if using Anthropic provider.",
@@ -156,6 +149,11 @@ local model_options_schema = {
     { upstream_url = typedefs.url {
         description = "Manually specify or override the full URL to the AI operation endpoints, "
                    .. "when calling (self-)hosted models, or for running via a private endpoint.",
+        required = false }},
+    { upstream_path = {
+        description = "Manually specify or override the AI operation path, "
+                   .. "used when e.g. using the 'preserve' route_type.",
+        type = "string",
         required = false }},
   }
 }
@@ -203,9 +201,10 @@ _M.config_schema = {
   fields = {
     { route_type = {
         type = "string",
-        description = "The model's operation implementation, for this provider.",
+        description = "The model's operation implementation, for this provider. " ..
+                      "Set to `preserve` to pass through without transformation.",
         required = true,
-        one_of = { "llm/v1/chat", "llm/v1/completions" } }},
+        one_of = { "llm/v1/chat", "llm/v1/completions", "preserve" } }},
     { auth = auth_schema },
     { model = model_schema },
     { logging = logging_schema },
@@ -237,12 +236,6 @@ _M.config_schema = {
                                       if_match = { one_of = { "mistral" } },
                                       then_at_least_one_of = { "model.options.mistral_format" },
                                       then_err = "must set %s for mistral provider" }},
-
-    { conditional_at_least_one_of = { if_field = "model.provider",
-                                      if_match = {  },
-                                      then_at_least_one_of = { "model.name" },
-                                      then_err = "Must set a model name. Refer to https://docs.konghq.com/hub/kong-inc/ai-proxy/ " ..
-                                                 "for supported models." }},
 
     { conditional_at_least_one_of = { if_field = "model.provider",
                                       if_match = { one_of = { "anthropic" } },
@@ -288,15 +281,6 @@ _M.config_schema = {
   },
 }
 
-local streaming_skip_headers = {
-  ["connection"]        = true,
-  ["content-type"]      = true,
-  ["keep-alive"]        = true,
-  ["set-cookie"]        = true,
-  ["transfer-encoding"] = true,
-  ["via"]               = true,
-}
-
 local formats_compatible = {
   ["llm/v1/chat"] = {
     ["llm/v1/chat"] = true,
@@ -305,20 +289,6 @@ local formats_compatible = {
     ["llm/v1/completions"] = true,
   },
 }
-
-local function bad_request(msg)
-  ngx.log(ngx.WARN, msg)
-  ngx.status = 400
-  ngx.header["Content-Type"] = "application/json"
-  ngx.say(cjson.encode({ error = { message = msg } }))
-end
-
-local function internal_server_error(msg)
-  ngx.log(ngx.ERR, msg)
-  ngx.status = 500
-  ngx.header["Content-Type"] = "application/json"
-  ngx.say(cjson.encode({ error = { message = msg } }))
-end
 
 local function identify_request(request)
   -- primitive request format determination
@@ -444,6 +414,10 @@ function _M:calculate_cost(query_body, tokens_models, tokens_factor)
 end
 
 function _M.is_compatible(request, route_type)
+  if route_type == "preserve" then
+    return true
+  end
+
   local format, err = identify_request(request)
   if err then
     return nil, err
@@ -454,160 +428,6 @@ function _M.is_compatible(request, route_type)
   end
 
   return false, fmt("[%s] message format is not compatible with [%s] route type", format, route_type)
-end
-
-function _M:handle_streaming_request(body)
-  -- convert it to the specified driver format
-  local request, _, err = self.driver.to_format(body, self.conf.model, self.conf.route_type)
-  if err then
-    return internal_server_error(err)
-  end
-
-  -- run the shared logging/analytics/auth function
-  ai_shared.pre_request(self.conf, request)
-
-  local prompt_tokens = 0
-  local err
-  if not ai_shared.streaming_has_token_counts[self.conf.model.provider] then
-    -- Estimate the cost using KONG CX's counter implementation
-    prompt_tokens, err = self:calculate_cost(request, {}, 1.8)
-    if err then
-      return internal_server_error("unable to estimate request token cost: " .. err)
-    end
-  end
-
-  -- send it to the ai service
-  local res, _, err, httpc = self.driver.subrequest(request, self.conf, self.http_opts, true)
-  if err then
-    return internal_server_error("failed to connect to " .. self.conf.model.provider .. " for streaming: " .. err)
-  end
-  if res.status ~= 200 then
-    err = "bad status code whilst opening streaming to " .. self.conf.model.provider .. ": " .. res.status
-    ngx.log(ngx.WARN, err)
-    return bad_request(err)
-  end
-
-  -- get a big enough buffered ready to make sure we rip the entire chunk(s) each time
-  local reader = res.body_reader
-  local buffer_size = 35536
-  local events
-
-  -- we create a fake "kong response" table to pass to the telemetry handler later
-  local telemetry_fake_table = {
-    response = buf:new(),
-    usage = {
-      prompt_tokens = prompt_tokens,
-      completion_tokens = 0,
-      total_tokens = 0,
-    },
-  }
-
-  ngx.status = 200
-  ngx.header["Content-Type"] = "text/event-stream"
-  ngx.header["Via"] = meta._SERVER_TOKENS
-
-  for k, v in pairs(res.headers) do
-    if not streaming_skip_headers[lower(k)] then
-      ngx.header[k] = v
-    end
-  end
-
-  -- server-sent events should ALWAYS be chunk encoded.
-  -- if they aren't then... we just won't support them.
-  repeat
-    -- receive next chunk
-    local buffer, err = reader(buffer_size)
-    if err then
-        ngx.log(ngx.ERR, "failed to read chunk of streaming buffer, ", err)
-        break
-    elseif not buffer then
-      break
-    end
-
-    -- we need to rip each message from this chunk
-    events = {}
-    for s in buffer:gmatch("[^\r\n]+") do
-      table.insert(events, s)
-    end
-
-    local metadata
-    local route_type = "stream/" .. self.conf.route_type
-
-    -- then parse each into the standard inference format
-    for i, event in ipairs(events) do
-      local event_t
-      local token_t
-
-      -- some LLMs do a final reply with token counts, and such
-      -- so we will stash them if supported
-      local formatted, err, this_metadata = self.driver.from_format(event, self.conf.model, route_type)
-      if err then
-        return internal_server_error(err)
-      end
-
-      metadata = this_metadata or metadata
-
-      -- handle event telemetry
-      if self.conf.logging.log_statistics then
-
-        if not ai_shared.streaming_has_token_counts[self.conf.model.provider] then
-          event_t = cjson.decode(formatted)
-          token_t = get_token_text(event_t)
-
-          -- incredibly loose estimate based on https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them
-          -- but this is all we can do until OpenAI fixes this...
-          --
-          -- essentially, every 4 characters is a token, with minimum of 1 per event
-          telemetry_fake_table.usage.completion_tokens =
-              telemetry_fake_table.usage.completion_tokens + math.ceil(#strip(token_t) / 4)
-
-        elseif metadata then
-          telemetry_fake_table.usage.completion_tokens = metadata.completion_tokens
-          telemetry_fake_table.usage.prompt_tokens = metadata.prompt_tokens
-        end
-
-      end
-
-      -- then stream to the client
-      if formatted then  -- only stream relevant frames back to the user
-        if self.conf.logging.log_payloads then
-          -- append the "choice" to the buffer, for logging later. this actually works!
-          if not event_t then
-            event_t, err = cjson.decode(formatted)
-          end
-
-          if err then
-            return internal_server_error("something wrong with decoding a specific token")
-          end
-
-          if not token_t then
-            token_t = get_token_text(event_t)
-          end
-
-          telemetry_fake_table.response:put(token_t)
-        end
-
-        -- construct, transmit, and flush the frame
-        ngx.print("data: ", formatted, "\n\n")
-        ngx.flush(true)
-      end
-    end
-
-  until not buffer
-
-  local ok, err = httpc:set_keepalive()
-  if not ok then
-    -- continue even if keepalive gets killed
-    ngx.log(ngx.WARN, "setting keepalive failed: ", err)
-  end
-
-  -- process telemetry
-  telemetry_fake_table.response = telemetry_fake_table.response:tostring()
-
-  telemetry_fake_table.usage.total_tokens = telemetry_fake_table.usage.completion_tokens +
-                                telemetry_fake_table.usage.prompt_tokens
-
-  ai_shared.post_request(self.conf, telemetry_fake_table)
 end
 
 function _M:ai_introspect_body(request, system_prompt, http_opts, response_regex_match)

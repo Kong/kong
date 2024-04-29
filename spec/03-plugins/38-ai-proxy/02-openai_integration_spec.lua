@@ -191,6 +191,33 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
               }
             }
 
+            location = "/llm/v1/embeddings/good" {
+              content_by_lua_block {
+                local pl_file = require "pl.file"
+                local json = require("cjson.safe")
+                ngx.req.read_body()
+                local body, err = ngx.req.get_body_data()
+                body, err = json.decode(body)
+                local token = ngx.req.get_headers()["authorization"]
+                local token_query = ngx.req.get_uri_args()["apikey"]
+                if token == "Bearer openai-key" or token_query == "openai-key" or body.apikey == "openai-key" then
+                  ngx.req.read_body()
+                  local body, err = ngx.req.get_body_data()
+                  body, err = json.decode(body)
+                  if err then
+                    ngx.status = 400
+                    ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/bad_request.json"))
+                  elseif body.input == "The food was delicious and the waiter"
+                     and body.model == "text-embedding-ada-002" then
+                    ngx.status = 200
+                    ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-embeddings/responses/good.json"))
+                  end
+                else
+                  ngx.status = 401
+                  ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/unauthorized.json"))
+                end
+              }
+            }
         }
       ]]
 
@@ -406,6 +433,74 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
               upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/completions/good"
             },
           },
+        },
+      }
+      --
+
+      -- 200 embeddings (preserve route mode) good
+      local chat_good = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http" },
+        strip_path = true,
+        paths = { "/openai/llm/v1/embeddings/good" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = chat_good.id },
+        config = {
+          route_type = "preserve",
+          auth = {
+            header_name = "Authorization",
+            header_value = "Bearer openai-key",
+          },
+          model = {
+            provider = "openai",
+            options = {
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/embeddings/good"
+            },
+          },
+        },
+      }
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = chat_good.id },
+        config = {
+          path = "/dev/stdout",
+        },
+      }
+      --
+
+      -- 200 chat good but no model set
+      local chat_good = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http" },
+        strip_path = true,
+        paths = { "/openai/llm/v1/chat/good-no-model-param" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = chat_good.id },
+        config = {
+          route_type = "llm/v1/chat",
+          auth = {
+            header_name = "Authorization",
+            header_value = "Bearer openai-key",
+          },
+          model = {
+            provider = "openai",
+            options = {
+              max_tokens = 256,
+              temperature = 1.0,
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/chat/good"
+            },
+          },
+        },
+      }
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = chat_good.id },
+        config = {
+          path = "/dev/stdout",
         },
       }
       --
@@ -724,23 +819,6 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         -- check this is in the 'kong' response format
         assert.is_truthy(json.error)
         assert.equals(json.error.code, "invalid_api_key")
-      end)
-
-      it("tries to override model", function()
-        local r = client:get("/openai/llm/v1/chat/good", {
-          headers = {
-            ["content-type"] = "application/json",
-            ["accept"] = "application/json",
-          },
-          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good_own_model.json"),
-        })
-        
-        local body = assert.res_status(400, r)
-        local json = cjson.decode(body)
-
-        -- check this is in the 'kong' response format
-        assert.is_truthy(json.error)
-        assert.equals(json.error.message, "cannot use own model for this instance")
       end)
     end)
 

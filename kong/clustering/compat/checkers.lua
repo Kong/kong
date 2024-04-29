@@ -82,31 +82,6 @@ local compatible_checkers = {
             has_update = true
           end
         end
-        if plugin.name == 'ai-proxy' then
-          local config = plugin.config
-          if config.model.provider == "azure" then
-            if config.auth.azure_use_managed_identity then
-              config.auth.azure_use_managed_identity = nil
-              has_update = true
-            end
-            if config.auth.azure_client_id then
-              config.auth.azure_client_id = nil
-              has_update = true
-            end
-            if config.auth.azure_client_secret then
-              config.auth.azure_client_secret = nil
-              has_update = true
-            end
-            if config.auth.azure_tenant_id then
-              config.auth.azure_tenant_id = nil
-              has_update = true
-            end
-            log_warn_message('configures ' .. plugin.name .. ' plugin with:' ..
-                             ' auth.azure_use_managed_identity == azure',
-                             ' overwritten with default value `nil`',
-                             dp_version, log_suffix)
-          end
-        end
         if plugin.name == 'ai-request-transformer' or
            plugin.name == 'ai-response-transformer' then
           local config = plugin.config
@@ -133,7 +108,74 @@ local compatible_checkers = {
                              dp_version, log_suffix)
           end
         end
+        if plugin.name == 'ai-proxy' then
+          local config = plugin.config
+          if config.model and config.model.options then
+            if config.model.options.response_streaming then
+              config.model.options.response_streaming = nil
+              log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
+                              ' response_streaming == nil, because it is not supported' ..
+                              ' in this release',
+                              dp_version, log_suffix)
+              has_update = true
+            end
 
+            if config.model.options.upstream_path then
+              config.model.options.upstream_path = nil
+              log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
+                              ' upstream_path == nil, because it is not supported' ..
+                              ' in this release',
+                              dp_version, log_suffix)
+              has_update = true
+            end
+          end
+
+          if config.route_type == "preserve" then
+            config.route_type = "llm/v1/chat"
+            log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
+                              ' route_type == "llm/v1/chat", because preserve' ..
+                              ' mode is not supported in this release',
+                              dp_version, log_suffix)
+            has_update = true
+          end
+
+          if config.model.provider == "azure" then
+            if config.auth.azure_use_managed_identity then
+              config.auth.azure_use_managed_identity = nil
+              has_update = true
+            end
+            if config.auth.azure_client_id then
+              config.auth.azure_client_id = nil
+              has_update = true
+            end
+            if config.auth.azure_client_secret then
+              config.auth.azure_client_secret = nil
+              has_update = true
+            end
+            if config.auth.azure_tenant_id then
+              config.auth.azure_tenant_id = nil
+              has_update = true
+            end
+            log_warn_message('configures ' .. plugin.name .. ' plugin with:' ..
+                             ' auth.azure_use_managed_identity == azure',
+                             ' overwritten with default value `nil`',
+                             dp_version, log_suffix)
+          end
+        end
+
+        if plugin.name == 'ai-request-transformer' or plugin.name == 'ai-response-transformer' then
+          local config = plugin.config
+          if config.llm.model
+              and config.llm.model.options
+              and config.llm.model.options.upstream_path then
+            config.llm.model.options.upstream_path = nil
+            log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
+                            ' upstream_path == nil, because it is not supported' ..
+                            ' in this release',
+                            dp_version, log_suffix)
+            has_update = true
+          end
+        end
         if plugin.name == 'application-registration' then
           local config = plugin.config
           local dp_version_num = version_num(dp_version)
@@ -151,10 +193,10 @@ local compatible_checkers = {
             end
           end
         end
-      end
+      end -- end for
 
       return has_update
-    end
+      end -- end function
   },
   { 3006001002, --[[3.6.1.2]]
     function(config_table, dp_version, log_suffix)
