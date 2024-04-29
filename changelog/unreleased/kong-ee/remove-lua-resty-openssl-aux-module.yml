@@ -1,0 +1,2 @@
+message: Remove lua-resty-openssl-aux-module dependency
+type: dependency

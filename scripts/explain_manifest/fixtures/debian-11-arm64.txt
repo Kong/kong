@@ -272,8 +272,6 @@
   - lua-kong-nginx-module/stream
   - lua-resty-events
   - lua-resty-lmdb
-  - lua-resty-openssl-aux-module
-  - lua-resty-openssl-aux-module/stream
   - ngx_wasmx_module
   OpenSSL   : OpenSSL 3.2.1 30 Jan 2024
   DWARF     : True
