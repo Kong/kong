@@ -38,9 +38,9 @@ describe("rate-limiting", function()
     log_path = os.tmpname()
 
     ngx.log = function(lvl, ...) -- luacheck: ignore
-      local t = table.pack(...)
       local file = io.open(log_path, "a")
-      file:write(table.concat(t, ""))
+      file:write(...)
+      file:write("\n")
       file:close()
     end
 
