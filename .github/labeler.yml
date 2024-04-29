@@ -254,10 +254,6 @@ plugins/opentelemetry:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/opentelemetry/**/*
 
-plugins/standard-webhooks:
-- changed-files:
-  - any-glob-to-any-file: kong/plugins/standard-webhooks/**/*
-
 schema-change-noteworthy:
 - changed-files:
   - any-glob-to-any-file: ['kong/db/schema/**/*.lua', 'kong/**/schema.lua', 'kong/plugins/**/daos.lua', 'plugins-ee/**/daos.lua', 'plugins-ee/**/schema.lua', 'kong/db/dao/*.lua', 'kong/enterprise_edition/redis/init.lua']

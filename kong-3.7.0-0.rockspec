@@ -608,10 +608,6 @@ build = {
     ["kong.plugins.ai-prompt-guard.handler"] = "kong/plugins/ai-prompt-guard/handler.lua",
     ["kong.plugins.ai-prompt-guard.schema"]  = "kong/plugins/ai-prompt-guard/schema.lua",
 
-    ["kong.plugins.standard-webhooks.handler"] = "kong/plugins/standard-webhooks/handler.lua",
-    ["kong.plugins.standard-webhooks.internal"] = "kong/plugins/standard-webhooks/internal.lua",
-    ["kong.plugins.standard-webhooks.schema"]  = "kong/plugins/standard-webhooks/schema.lua",
-
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
 
