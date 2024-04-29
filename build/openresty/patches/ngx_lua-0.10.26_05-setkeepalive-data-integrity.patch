@@ -1,0 +1,135 @@
+From e2067ddd2b2897d3c6fa6f91ce4e8169fe8c97c6 Mon Sep 17 00:00:00 2001
+From: lijunlong <lijunlong@openresty.com>
+Date: Wed, 20 Mar 2024 12:02:38 +0800
+Subject: [PATCH] bugfix: wrong arguments of setkeepalive() result in the
+ compromise of data integrity.
+
+==338736== Invalid read of size 8
+==338736==    at 0x209890: ngx_http_lua_socket_tcp_handler (ngx_http_lua_socket_tcp.c:3341)
+==338736==    by 0x16CB21: ngx_epoll_process_events (ngx_epoll_module.c:1001)
+==338736==    by 0x160213: ngx_process_events_and_timers (ngx_event.c:262)
+==338736==    by 0x16B772: ngx_single_process_cycle (ngx_process_cycle.c:338)
+==338736==    by 0x13E8B7: main (nginx.c:394)
+==338736==  Address 0x68c8678 is 8 bytes inside a block of size 1,488 free'd
+==338736==    at 0x48472AC: free (vg_replace_malloc.c:974)
+==338736==    by 0x14035D: ngx_destroy_pool (ngx_palloc.c:76)
+==338736==    by 0x18694E: ngx_http_free_request (ngx_http_request.c:3799)
+==338736==    by 0x186AE0: ngx_http_close_request (ngx_http_request.c:3708)
+==338736==    by 0x187A6A: ngx_http_finalize_connection (ngx_http_request.c:2812)
+==338736==    by 0x1887C7: ngx_http_finalize_request (ngx_http_request.c:2685)
+==338736==    by 0x1883CC: ngx_http_finalize_request (ngx_http_request.c:2571)
+==338736==    by 0x2010B2: ngx_http_lua_finalize_request (ngx_http_lua_util.c:3706)
+==338736==    by 0x20B6A1: ngx_http_lua_socket_tcp_resume_helper (ngx_http_lua_socket_tcp.c:6132)
+==338736==    by 0x20BA75: ngx_http_lua_socket_tcp_read_resume (ngx_http_lua_socket_tcp.c:6030)
+==338736==    by 0x20356B: ngx_http_lua_content_wev_handler (ngx_http_lua_contentby.c:152)
+==338736==    by 0x20CA9F: ngx_http_lua_socket_handle_read_success (ngx_http_lua_socket_tcp.c:3602)
+==338736==    by 0x20CA9F: ngx_http_lua_socket_tcp_read (ngx_http_lua_socket_tcp.c:2607)
+==338736==    by 0x20D289: ngx_http_lua_socket_read_handler (ngx_http_lua_socket_tcp.c:3405)
+==338736==    by 0x20991D: ngx_http_lua_socket_tcp_handler (ngx_http_lua_socket_tcp.c:3356)
+==338736==    by 0x16C970: ngx_epoll_process_events (ngx_epoll_module.c:968)
+==338736==    by 0x160213: ngx_process_events_and_timers (ngx_event.c:262)
+==338736==    by 0x16B772: ngx_single_process_cycle (ngx_process_cycle.c:338)
+==338736==    by 0x13E8B7: main (nginx.c:394)
+==338736==  Block was alloc'd at
+==338736==    at 0x484482F: malloc (vg_replace_malloc.c:431)
+==338736==    by 0x165448: ngx_alloc (ngx_alloc.c:22)
+==338736==    by 0x1401B2: ngx_malloc (ngx_palloc.c:137)
+==338736==    by 0x1403EC: ngx_palloc (ngx_palloc.c:120)
+==338736==    by 0x140503: ngx_pcalloc (ngx_palloc.c:215)
+==338736==    by 0x185BC9: ngx_http_alloc_request (ngx_http_request.c:580)
+==338736==    by 0x186356: ngx_http_create_request (ngx_http_request.c:536)
+==338736==    by 0x189F2A: ngx_http_wait_request_handler (ngx_http_request.c:518)
+==338736==    by 0x16C970: ngx_epoll_process_events (ngx_epoll_module.c:968)
+==338736==    by 0x160213: ngx_process_events_and_timers (ngx_event.c:262)
+==338736==    by 0x16B772: ngx_single_process_cycle (ngx_process_cycle.c:338)
+==338736==    by 0x13E8B7: main (nginx.c:394)
+==338736==
+---
+ src/ngx_http_lua_socket_tcp.c |  50 ++++++-----
+ t/068-socket-keepalive.t      | 160 ++++++++++++++++++++++++++++++++++
+ 2 files changed, 188 insertions(+), 22 deletions(-)
+
+diff --git a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_socket_tcp.c b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_socket_tcp.c
+index 0aa7109758..214e78329e 100644
+--- a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_socket_tcp.c
++++ b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_socket_tcp.c
+@@ -5385,6 +5385,34 @@ ngx_http_lua_socket_tcp_setkeepalive(lua_State *L)
+ 
+     luaL_checktype(L, 1, LUA_TTABLE);
+ 
++    r = ngx_http_lua_get_req(L);
++    if (r == NULL) {
++        return luaL_error(L, "no request found");
++    }
++
++    llcf = ngx_http_get_module_loc_conf(r, ngx_http_lua_module);
++
++    /* luaL_checkinteger will throw error if the argument is not a number.
++     * e.g.: bad argument \#2 to '?' (number expected, got string)
++     *
++     * We should check the argument in advance; otherwise,
++     * throwing an exception in the middle can compromise data integrity.
++     * e.g.: set pc->connection to NULL without following cleanup.
++     */
++    if (n >= 2 && !lua_isnil(L, 2)) {
++        timeout = (ngx_msec_t) luaL_checkinteger(L, 2);
++
++    } else {
++        timeout = llcf->keepalive_timeout;
++    }
++
++    if (n >= 3 && !lua_isnil(L, 3)) {
++        pool_size = luaL_checkinteger(L, 3);
++
++    } else {
++        pool_size = llcf->pool_size;
++    }
++
+     lua_rawgeti(L, 1, SOCKET_CTX_INDEX);
+     u = lua_touserdata(L, -1);
+     lua_pop(L, 1);
+@@ -5411,11 +5439,6 @@ ngx_http_lua_socket_tcp_setkeepalive(lua_State *L)
+         return 2;
+     }
+ 
+-    r = ngx_http_lua_get_req(L);
+-    if (r == NULL) {
+-        return luaL_error(L, "no request found");
+-    }
+-
+     if (u->request != r) {
+         return luaL_error(L, "bad request");
+     }
+@@ -5486,18 +5509,8 @@ ngx_http_lua_socket_tcp_setkeepalive(lua_State *L)
+ 
+     /* stack: obj timeout? size? pools cache_key */
+ 
+-    llcf = ngx_http_get_module_loc_conf(r, ngx_http_lua_module);
+-
+     if (spool == NULL) {
+         /* create a new socket pool for the current peer key */
+-
+-        if (n >= 3 && !lua_isnil(L, 3)) {
+-            pool_size = luaL_checkinteger(L, 3);
+-
+-        } else {
+-            pool_size = llcf->pool_size;
+-        }
+-
+         if (pool_size <= 0) {
+             msg = lua_pushfstring(L, "bad \"pool_size\" option value: %d",
+                                   pool_size);
+@@ -5561,13 +5574,6 @@ ngx_http_lua_socket_tcp_setkeepalive(lua_State *L)
+         ngx_del_timer(c->write);
+     }
+ 
+-    if (n >= 2 && !lua_isnil(L, 2)) {
+-        timeout = (ngx_msec_t) luaL_checkinteger(L, 2);
+-
+-    } else {
+-        timeout = llcf->keepalive_timeout;
+-    }
+-
+ #if (NGX_DEBUG)
+     if (timeout == 0) {
+         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,

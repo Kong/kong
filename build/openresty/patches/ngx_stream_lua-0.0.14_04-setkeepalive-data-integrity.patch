@@ -1,0 +1,95 @@
+From cb82db3574f42fd3f22f98c51f5183e975eaa766 Mon Sep 17 00:00:00 2001
+From: lijunlong <lijunlong@openresty.com>
+Date: Wed, 20 Mar 2024 12:12:30 +0800
+Subject: [PATCH] bugfix: wrong arguments of setkeepalive() result in the
+ compromise of data integrity.
+
+---
+ src/ngx_stream_lua_socket_tcp.c |  49 +++++++-----
+ t/068-socket-keepalive.t        | 138 ++++++++++++++++++++++++++++++++
+ 2 files changed, 166 insertions(+), 21 deletions(-)
+
+diff --git a/bundle/ngx_stream_lua-0.0.14/src/ngx_stream_lua_socket_tcp.c b/bundle/ngx_stream_lua-0.0.14/src/ngx_stream_lua_socket_tcp.c
+index 57f389d0..9d5472a2 100644
+--- a/bundle/ngx_stream_lua-0.0.14/src/ngx_stream_lua_socket_tcp.c
++++ b/bundle/ngx_stream_lua-0.0.14/src/ngx_stream_lua_socket_tcp.c
+@@ -5250,6 +5250,34 @@ ngx_stream_lua_socket_tcp_setkeepalive(lua_State *L)
+ 
+     luaL_checktype(L, 1, LUA_TTABLE);
+ 
++    r = ngx_stream_lua_get_req(L);
++    if (r == NULL) {
++        return luaL_error(L, "no request found");
++    }
++
++    llcf = ngx_stream_lua_get_module_loc_conf(r, ngx_stream_lua_module);
++
++    /* luaL_checkinteger will throw error if the argument is not a number.
++     * e.g.: bad argument \#2 to '?' (number expected, got string)
++     *
++     * We should check the argument in advance; otherwise,
++     * throwing an exception in the middle can compromise data integrity.
++     * e.g.: set pc->connection to NULL without following cleanup.
++     */
++    if (n >= 2 && !lua_isnil(L, 2)) {
++        timeout = (ngx_msec_t) luaL_checkinteger(L, 2);
++
++    } else {
++        timeout = llcf->keepalive_timeout;
++    }
++
++    if (n >= 3 && !lua_isnil(L, 3)) {
++        pool_size = luaL_checkinteger(L, 3);
++
++    } else {
++        pool_size = llcf->pool_size;
++    }
++
+     lua_rawgeti(L, 1, SOCKET_CTX_INDEX);
+     u = lua_touserdata(L, -1);
+     lua_pop(L, 1);
+@@ -5271,11 +5299,6 @@ ngx_stream_lua_socket_tcp_setkeepalive(lua_State *L)
+         return 2;
+     }
+ 
+-    r = ngx_stream_lua_get_req(L);
+-    if (r == NULL) {
+-        return luaL_error(L, "no request found");
+-    }
+-
+     if (u->request != r) {
+         return luaL_error(L, "bad request");
+     }
+@@ -5349,18 +5372,9 @@ ngx_stream_lua_socket_tcp_setkeepalive(lua_State *L)
+ 
+     /* stack: obj timeout? size? pools cache_key */
+ 
+-    llcf = ngx_stream_lua_get_module_loc_conf(r, ngx_stream_lua_module);
+-
+     if (spool == NULL) {
+         /* create a new socket pool for the current peer key */
+ 
+-        if (n >= 3 && !lua_isnil(L, 3)) {
+-            pool_size = luaL_checkinteger(L, 3);
+-
+-        } else {
+-            pool_size = llcf->pool_size;
+-        }
+-
+         if (pool_size <= 0) {
+             msg = lua_pushfstring(L, "bad \"pool_size\" option value: %i",
+                                   pool_size);
+@@ -5425,13 +5439,6 @@ ngx_stream_lua_socket_tcp_setkeepalive(lua_State *L)
+         ngx_del_timer(c->write);
+     }
+ 
+-    if (n >= 2 && !lua_isnil(L, 2)) {
+-        timeout = (ngx_msec_t) luaL_checkinteger(L, 2);
+-
+-    } else {
+-        timeout = llcf->keepalive_timeout;
+-    }
+-
+ #if (NGX_DEBUG)
+     if (timeout == 0) {
+         ngx_log_debug0(NGX_LOG_DEBUG_STREAM, r->connection->log, 0,
