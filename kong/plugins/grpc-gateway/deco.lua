@@ -1,6 +1,6 @@
 -- Copyright (c) Kong Inc. 2020
 
-local cjson = require "cjson"
+local cjson = require "cjson.safe".new()
 local buffer = require "string.buffer"
 local pb = require "pb"
 local grpc_tools = require "kong.tools.grpc"
@@ -227,7 +227,10 @@ function deco:upstream(body)
   local body_variable = self.endpoint.body_variable
   if body_variable then
     if body and #body > 0 then
-      local body_decoded = decode_json(body)
+      local body_decoded, err = decode_json(body)
+      if err then
+        return nil, err
+      end
       if body_variable ~= "*" then
         --[[
           // For HTTP methods that allow a request body, the `body` field
