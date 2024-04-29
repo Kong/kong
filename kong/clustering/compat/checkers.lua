@@ -133,6 +133,24 @@ local compatible_checkers = {
                              dp_version, log_suffix)
           end
         end
+
+        if plugin.name == 'application-registration' then
+          local config = plugin.config
+          local dp_version_num = version_num(dp_version)
+
+          if config.enable_proxy_with_consumer_credential ~= nil then
+            if dp_version_num < 3004003007 or
+                (dp_version_num >= 3005000000 and dp_version_num < 3005000005) or
+                (dp_version_num >= 3006000000 and dp_version_num < 3006001004) then
+              -- remove config.enable_proxy_with_consumer_credential when DP version in intervals (, 3437), [3500, 3505), [3600, 3614)
+              config.enable_proxy_with_consumer_credential = nil
+              has_update = true
+              log_warn_message('configures ' .. plugin.name .. ' plugin with enable_proxy_with_consumer_credential',
+                'will be removed.',
+                dp_version, log_suffix)
+            end
+          end
+        end
       end
 
       return has_update

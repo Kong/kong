@@ -289,9 +289,6 @@ return {
       "redis",
       "bypass_on_err",
     },
-    application_registration = {
-      "enable_proxy_with_consumer_credential",
-    },
     openid_connect = {
       "require_signed_request_object",
       "proof_of_possession_dpop",

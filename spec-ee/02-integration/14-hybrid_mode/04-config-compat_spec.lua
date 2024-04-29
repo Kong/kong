@@ -409,24 +409,6 @@ describe("CP/DP config compat #" .. strategy, function()
         end
       },
       {
-        plugin = "application-registration",
-        label = "w/ unsupported enable_proxy_with_consumer_credential",
-        pending = false,
-        config = {
-          enable_proxy_with_consumer_credential = false,
-          display_name = "test.service",
-        },
-        status = STATUS.NORMAL,
-        init_plugin = function(plugin)
-          local service = admin.services:insert()
-          plugin["service"] = service
-          return plugin
-        end,
-        validator = function(config)
-          return config.enable_proxy_with_consumer_credential == nil
-        end
-      },
-      {
         plugin = "jwt-signer",
         label = "w/ client auth and rotate_period unsupported",
         pending = false,
@@ -571,6 +553,40 @@ describe("CP/DP config compat #" .. strategy, function()
         do_assert(case, "3.6.9.9")
       end)
     end
+  end)
+  
+  describe("application-registration", function()
+    local case = {
+      plugin = "application-registration",
+      label = "w/ unsupported enable_proxy_with_consumer_credential",
+      pending = false,
+      config = {
+        enable_proxy_with_consumer_credential = false,
+        display_name = "test.service",
+      },
+      status = STATUS.NORMAL,
+      checker = CHECKERS,
+      init_plugin = function(plugin)
+        local service = admin.services:insert()
+        plugin["service"] = service
+        return plugin
+      end,
+      validator = function(config)
+        return config.enable_proxy_with_consumer_credential == nil
+      end
+    }
+    
+    it(fmt("%s - %s - 3.6.1.3", case.plugin, case.label), function()
+      do_assert(case, "3.6.1.3")
+    end)
+
+    it(fmt("%s - %s - 3.5.0.4", case.plugin, case.label), function()
+      do_assert(case, "3.5.0.4")
+    end)
+
+    it(fmt("%s - %s - 3.4.3.6", case.plugin, case.label), function()
+      do_assert(case, "3.4.3.6")
+    end)
   end)
 
 end)
