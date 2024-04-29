@@ -42,7 +42,6 @@ local plugins = {
   "ai-prompt-guard",
   "ai-request-transformer",
   "ai-response-transformer",
-  "standard-webhooks",
 }
 
 local plugin_map = {}
