@@ -269,6 +269,22 @@ ENABLE_GRAPHQL_PROXY_CACHE_ADVANCED=(
   --data "config.strategy=memory"
 )
 
+ENABLE_AI_RATE_LIMITING_ADVANCED=(
+  --data "name=ai-rate-limiting-advanced"
+  --data "config.models_providers=openai"
+  --data "config.models_providers_limit=5"
+  --data "config.models_providers_window_size=30"
+  --data "config.sync_rate=10"
+  --data "config.strategy=redis"
+  --data "config.redis.host=redis.com"
+  --data "config.redis.port=8080"
+  --data "config.redis.username=user1"
+  --data "config.redis.password=pass1"
+  --data "config.redis.database=1"
+  --data "config.redis.sentinel_username=user1"
+  --data "config.redis.sentinel_password=pass1"
+)
+
 ENABLE_GRAPHQL_RATE_LIMITING_ADVANCED=(
   --data "name=graphql-rate-limiting-advanced"
   --data "config.limit=5"

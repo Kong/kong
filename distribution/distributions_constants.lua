@@ -24,6 +24,7 @@ c.plugins = {  -- This list of plugins is located in the "plugins-ee" directory
   "konnect-application-auth",
   "saml",
   "oas-validation",
+  "ai-rate-limiting-advanced",
 }
 
 c.featureset = {

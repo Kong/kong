@@ -87,7 +87,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
     declare -A plugins_to_test=(
         ["first"]="openid-connect"
         ["second"]="ldap-auth-advanced proxy-cache-advanced ai-azure-content-safety"
-        ["third"]="rate-limiting-advanced kafka-log oas-validation saml vault-auth"
+        ["third"]="rate-limiting-advanced ai-rate-limiting-advanced kafka-log oas-validation saml vault-auth"
         ["fourth"]="mtls-auth jwt-signer request-validator kafka-upstream konnect-application-auth opa graphql-rate-limiting-advanced"
         ["fips-first"]="openid-connect"
         ["fips-second"]="jwt-signer mtls-auth saml"

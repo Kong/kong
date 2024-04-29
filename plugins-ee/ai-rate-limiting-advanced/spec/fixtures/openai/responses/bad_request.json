@@ -1,0 +1,8 @@
+{
+    "error": {
+        "code": null,
+        "message": "'messages' is a required property",
+        "param": null,
+        "type": "invalid_request_error"
+    }
+}

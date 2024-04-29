@@ -1,0 +1,3 @@
+message: Introduced the new **AI Rate Limiting Advanced** plugin that allow to implement a rate limit by AI provider.
+type: feature
+scope: Plugin

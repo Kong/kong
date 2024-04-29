@@ -394,6 +394,10 @@ plugins-ee/rate-limiting-advanced:
 - changed-files:
   - any-glob-to-any-file: plugins-ee/rate-limiting-advanced/**/*
 
+plugins-ee/ai-rate-limiting-advanced:
+- changed-files:
+  - any-glob-to-any-file: plugins-ee/ai-rate-limiting-advanced/**/*
+
 plugins-ee/request-validator:
 - changed-files:
   - any-glob-to-any-file: plugins-ee/request-validator/**/*

@@ -130,7 +130,7 @@ describe("CP/DP config compat #" .. strategy, function()
       "services",
       "plugins",
       "clustering_data_planes",
-    }, { 'graphql-rate-limiting-advanced', 'rate-limiting-advanced', 'openid-connect',
+    }, { 'graphql-rate-limiting-advanced', 'ai-rate-limiting-advanced', 'rate-limiting-advanced', 'openid-connect',
         'oas-validation', 'mtls-auth', 'application-registration', "jwt-signer" })
 
     PLUGIN_LIST = helpers.get_plugins_list()
@@ -153,7 +153,7 @@ describe("CP/DP config compat #" .. strategy, function()
       nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins =
         [[
-          bundled,graphql-rate-limiting-advanced,rate-limiting-advanced,
+          bundled,graphql-rate-limiting-advanced,ai-rate-limiting-advanced,rate-limiting-advanced,
           openid-connect,oas-validation,mtls-auth,application-registration,
           jwt-signer
         ]],

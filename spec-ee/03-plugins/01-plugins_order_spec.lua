@@ -28,6 +28,7 @@ local all_plugins = {
   "openid-connect",
   "proxy-cache-advanced",
   "rate-limiting-advanced",
+  "ai-rate-limiting-advanced",
   "request-validator",
   "vault-auth",
   "ai-azure-content-safety",
@@ -155,6 +156,7 @@ describe("Plugins", function()
       -- authz
       'rate-limiting-advanced',
       'rate-limiting',
+      'ai-rate-limiting-advanced',
       'graphql-rate-limiting-advanced',
       'response-ratelimiting',
       'route-by-header',
