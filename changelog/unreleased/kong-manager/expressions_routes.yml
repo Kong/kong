@@ -1,0 +1,5 @@
+message: >-
+  Kong Manager now supports creating and editing Expressions routes with an interactive in-browser
+  editor with syntax highlighting and autocompletion features for Kong's Expressions language.
+type: feature
+githubs: [217]
