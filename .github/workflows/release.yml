@@ -585,6 +585,11 @@ jobs:
       with:
         asset_prefix: kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-amd64
         image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
+        # fail build if severities at or above cutoff
+        # default cutoff: critical
+        # see also:
+        #   https://github.com/Kong/public-shared-actions/blob/main/security-actions/scan-docker-image/README.md#security-actions
+        fail_build: true
 
     - name: Scan ARM64 Image digest
       if: ${{ steps.image_manifest_metadata.outputs.arm64_image_sha != '' }}
@@ -593,6 +598,8 @@ jobs:
       with:
         asset_prefix: kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-arm64
         image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
+        # see above
+        fail_build: true
 
     - name: Upload SBOM assets
       # ensure that this does not run twice (once for the scheduled job,
