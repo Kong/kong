@@ -1,0 +1,4 @@
+message: |
+  More strict parameter checking when generating a RPC error.
+type: bugfix
+scope: Core
