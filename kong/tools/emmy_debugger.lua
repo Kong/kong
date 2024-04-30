@@ -60,6 +60,7 @@ local function init()
   end
 
   ngx.log(ngx.NOTICE, "loading EmmyLua debugger " .. debugger)
+  ngx.log(ngx.WARN, "The EmmyLua integration for Kong is a feature solely for your convenience during development. Kong assumes no liability as a result of using the integration and does not endorse it’s usage. Issues related to usage of EmmyLua integration should be directed to the respective project instead.")
 
   _G.emmy = {
     fixPath = find_source
