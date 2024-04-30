@@ -1,0 +1,5 @@
+message: >-
+  When using Kong in hybrid mode, Kong Manager now provides a page to list all the data planes in the
+  cluster under the newly added "Data Plane nodes" tab.
+type: feature
+githubs: [214]

@@ -1,0 +1,14 @@
+message: >-
+  Kong Manager now groups the parameters to provide a better user experience while configuring plugins.
+  Meanwhile, several issues with the plugin form page were fixed.
+type: feature
+githubs:
+  - 195
+  - 199
+  - 201
+  - 202
+  - 207
+  - 208
+  - 209
+  - 213
+  - 216
