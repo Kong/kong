@@ -1,0 +1,3 @@
+message: Disabled Safari telephone format detection for portal site
+type: bugfix
+githubs: [285]
