@@ -1,0 +1,136 @@
+name: Gateway decK Integration Tests
+
+on:
+  pull_request:
+    paths:
+    - 'kong/db/schema/**/*.lua'
+    - 'kong/**/schema.lua'
+    - 'kong/plugins/**/daos.lua'
+    - 'kong/db/dao/*.lua'
+    - 'kong/api/**/*.lua'
+
+permissions:
+  pull-requests: write
+
+env:
+  LIBRARY_PREFIX: /usr/local/kong
+  TEST_RESULTS_XML_OUTPUT: test-results
+  BUILD_ROOT: ${{ github.workspace }}/bazel-bin/build
+
+# cancel previous runs if new commits are pushed to the PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      relative-build-root: bazel-bin/build
+
+  deck-integration:
+    name: Gateway decK integration tests
+    runs-on: ubuntu-22.04
+    needs: build
+    timeout-minutes: 5
+
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: kong
+          POSTGRES_DB: kong
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
+
+    steps:
+      - name: Install packages
+        run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev postgresql-client jq
+
+      - name: Checkout Kong source code
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+          token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+
+      - name: Lookup build cache
+        id: cache-deps
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.BUILD_ROOT }}
+          key: ${{ needs.build.outputs.cache-key }}
+
+      - name: Install Kong dev
+        run: make dev
+
+      - name: Tests
+        id: deck_tests
+        continue-on-error: true
+        env:
+          KONG_TEST_PG_DATABASE: kong
+          KONG_TEST_PG_USER: kong
+          KONG_TEST_DATABASE: postgres
+        run: |
+          mkdir $TEST_RESULTS_XML_OUTPUT
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+          bin/busted spec/06-third-party/01-deck -o hjtest -Xoutput $(realpath $TEST_RESULTS_XML_OUTPUT)/report.xml -v
+
+      - name: Find review if exists
+        id: find-review
+        uses: actions/github-script@v7
+        with:
+          result-encoding: json
+          retries: 3
+          script: |
+            const reviews = await github.paginate(github.rest.pulls.listReviews, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+
+            const botReview = reviews.reverse().find(review => {
+              return review.user.login === "github-actions[bot]" && review.body.includes("decK integration tests");
+            });
+
+            if (botReview && botReview.state === "CHANGES_REQUESTED") {
+              return { "review_id": botReview.id };
+            } else {
+              return { "review_id": "" };
+            }
+      
+      - name: Prepare comment body
+        id: prepare_comment_body
+        run: |
+          if [ "${{ steps.deck_tests.outcome }}" != 'success' ]; then
+            echo "comment_body=## decK integration tests\n\n:warning: failure detected. Please check [the workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details." >> $GITHUB_OUTPUT
+          else
+            echo "comment_body=:white_check_mark: decK integration tests passed successfully" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Request changes if failure are detected
+        if: ${{ fromJson(steps.find-review.outputs.result).review_id == '' && steps.deck_tests.outcome != 'success' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.pulls.createReview({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              event: 'REQUEST_CHANGES',
+              body: `${{ steps.prepare_comment_body.outputs.comment_body }}`
+            })
+
+      - name: Dismiss review if failures are resolved
+        if: ${{ fromJson(steps.find-review.outputs.result).review_id != '' && steps.deck_tests.outcome == 'success' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.pulls.dismissReview({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              review_id: ${{ fromJson(steps.find-review.outputs.result).review_id }},
+              message: `${{ steps.prepare_comment_body.outputs.comment_body }}`
+            })
