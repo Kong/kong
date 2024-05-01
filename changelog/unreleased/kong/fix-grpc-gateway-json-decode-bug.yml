@@ -1,0 +1,3 @@
+message: "**grpc-gateway**:Fixed an json decode issue so that kong will response 400 with error info in it's body instead of 500."
+type: bugfix
+scope: Plugin
