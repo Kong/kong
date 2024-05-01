@@ -5,7 +5,7 @@ local utils = require "kong.tools.utils"
 local pb = require "pb"
 
 local fmt = string.format
-local rand_bytes = utils.get_rand_bytes
+local rand_bytes = require("kong.tools.rand").get_rand_bytes
 local time_ns = utils.time_ns
 local insert = table.insert
 local tracer = kong.tracing.new("test")

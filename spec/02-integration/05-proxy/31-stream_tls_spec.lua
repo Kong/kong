@@ -1,6 +1,6 @@
 local helpers = require "spec.helpers"
 
-for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
+for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
 for _, strategy in helpers.each_strategy({"postgres"}) do
   describe("#stream Proxying [#" .. strategy .. "] [#" .. flavor .. "]", function()
     local bp

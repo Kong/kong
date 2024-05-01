@@ -1,9 +1,55 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local pl_file = require "pl.file"
+local pl_stringx = require "pl.stringx"
 
 local PLUGIN_NAME = "ai-proxy"
 local MOCK_PORT = helpers.get_available_port()
+
+
+local FILE_LOG_PATH_STATS_ONLY = os.tmpname()
+local FILE_LOG_PATH_NO_LOGS = os.tmpname()
+local FILE_LOG_PATH_WITH_PAYLOADS = os.tmpname()
+
+
+local function wait_for_json_log_entry(FILE_LOG_PATH)
+  local json
+
+  assert
+    .with_timeout(10)
+    .ignore_exceptions(true)
+    .eventually(function()
+      local data = assert(pl_file.read(FILE_LOG_PATH))
+
+      data = pl_stringx.strip(data)
+      assert(#data > 0, "log file is empty")
+
+      data = data:match("%b{}")
+      assert(data, "log file does not contain JSON")
+
+      json = cjson.decode(data)
+    end)
+    .has_no_error("log file contains a valid JSON entry")
+
+  return json
+end
+
+local _EXPECTED_CHAT_STATS = {
+  ["ai-proxy"] = {
+    meta = {
+      plugin_id = '6e7c40f6-ce96-48e4-a366-d109c169e444',
+      provider_name = 'openai',
+      request_model = 'gpt-3.5-turbo',
+      response_model = 'gpt-3.5-turbo-0613',
+    },
+    payload = {},
+    usage = {
+      completion_token = 12,
+      prompt_token = 25,
+      total_tokens = 37,
+    },
+  },
+}
 
 for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
@@ -138,6 +184,33 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
               }
             }
 
+            location = "/llm/v1/embeddings/good" {
+              content_by_lua_block {
+                local pl_file = require "pl.file"
+                local json = require("cjson.safe")
+                ngx.req.read_body()
+                local body, err = ngx.req.get_body_data()
+                body, err = json.decode(body)
+                local token = ngx.req.get_headers()["authorization"]
+                local token_query = ngx.req.get_uri_args()["apikey"]
+                if token == "Bearer openai-key" or token_query == "openai-key" or body.apikey == "openai-key" then
+                  ngx.req.read_body()
+                  local body, err = ngx.req.get_body_data()
+                  body, err = json.decode(body)
+                  if err then
+                    ngx.status = 400
+                    ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/bad_request.json"))
+                  elseif body.input == "The food was delicious and the waiter"
+                     and body.model == "text-embedding-ada-002" then
+                    ngx.status = 200
+                    ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-embeddings/responses/good.json"))
+                  end
+                else
+                  ngx.status = 401
+                  ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/unauthorized.json"))
+                end
+              }
+            }
         }
       ]]
 
@@ -157,9 +230,14 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       })
       bp.plugins:insert {
         name = PLUGIN_NAME,
+        id = "6e7c40f6-ce96-48e4-a366-d109c169e444",
         route = { id = chat_good.id },
         config = {
           route_type = "llm/v1/chat",
+          logging = {
+            log_payloads = false,
+            log_statistics = true,
+          },
           auth = {
             header_name = "Authorization",
             header_value = "Bearer openai-key",
@@ -179,7 +257,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         name = "file-log",
         route = { id = chat_good.id },
         config = {
-          path = "/dev/stdout",
+          path = FILE_LOG_PATH_STATS_ONLY,
         },
       }
       --
@@ -219,7 +297,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         name = "file-log",
         route = { id = chat_good_no_stats.id },
         config = {
-          path = "/dev/stdout",
+          path = FILE_LOG_PATH_NO_LOGS,
         },
       }
       --
@@ -259,7 +337,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         name = "file-log",
         route = { id = chat_good_log_payloads.id },
         config = {
-          path = "/dev/stdout",
+          path = FILE_LOG_PATH_WITH_PAYLOADS,
         },
       }
       --
@@ -348,6 +426,74 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
               upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/completions/good"
             },
           },
+        },
+      }
+      --
+
+      -- 200 embeddings (preserve route mode) good
+      local chat_good = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http" },
+        strip_path = true,
+        paths = { "/openai/llm/v1/embeddings/good" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = chat_good.id },
+        config = {
+          route_type = "preserve",
+          auth = {
+            header_name = "Authorization",
+            header_value = "Bearer openai-key",
+          },
+          model = {
+            provider = "openai",
+            options = {
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/embeddings/good"
+            },
+          },
+        },
+      }
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = chat_good.id },
+        config = {
+          path = "/dev/stdout",
+        },
+      }
+      --
+
+      -- 200 chat good but no model set
+      local chat_good = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http" },
+        strip_path = true,
+        paths = { "/openai/llm/v1/chat/good-no-model-param" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = chat_good.id },
+        config = {
+          route_type = "llm/v1/chat",
+          auth = {
+            header_name = "Authorization",
+            header_value = "Bearer openai-key",
+          },
+          model = {
+            provider = "openai",
+            options = {
+              max_tokens = 256,
+              temperature = 1.0,
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/chat/good"
+            },
+          },
+        },
+      }
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = chat_good.id },
+        config = {
+          path = "/dev/stdout",
         },
       }
       --
@@ -517,10 +663,16 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
     before_each(function()
       client = helpers.proxy_client()
+      os.remove(FILE_LOG_PATH_STATS_ONLY)
+      os.remove(FILE_LOG_PATH_NO_LOGS)
+      os.remove(FILE_LOG_PATH_WITH_PAYLOADS)
     end)
 
     after_each(function()
       if client then client:close() end
+      os.remove(FILE_LOG_PATH_STATS_ONLY)
+      os.remove(FILE_LOG_PATH_NO_LOGS)
+      os.remove(FILE_LOG_PATH_WITH_PAYLOADS)
     end)
 
     describe("openai general", function()
@@ -549,7 +701,13 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           role = "assistant",
         }, json.choices[1].message)
 
-        -- TODO TEST THE LOG FILE
+        local log_message = wait_for_json_log_entry(FILE_LOG_PATH_STATS_ONLY)
+        assert.same("127.0.0.1", log_message.client_ip)
+        assert.is_number(log_message.request.size)
+        assert.is_number(log_message.response.size)
+
+        -- test ai-proxy stats
+        assert.same(_EXPECTED_CHAT_STATS, log_message.ai)
       end)
 
       it("does not log statistics", function()
@@ -576,8 +734,14 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           content = "The sum of 1 + 1 is 2.",
           role = "assistant",
         }, json.choices[1].message)
-        
-        -- TODO TEST THE LOG FILE
+
+        local log_message = wait_for_json_log_entry(FILE_LOG_PATH_NO_LOGS)
+        assert.same("127.0.0.1", log_message.client_ip)
+        assert.is_number(log_message.request.size)
+        assert.is_number(log_message.response.size)
+
+        -- test ai-proxy has no stats
+        assert.same(nil, log_message.ai)
       end)
 
       it("logs payloads", function()
@@ -605,7 +769,19 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           role = "assistant",
         }, json.choices[1].message)
 
-        -- TODO TEST THE LOG FILE
+        local log_message = wait_for_json_log_entry(FILE_LOG_PATH_WITH_PAYLOADS)
+        assert.same("127.0.0.1", log_message.client_ip)
+        assert.is_number(log_message.request.size)
+        assert.is_number(log_message.response.size)
+
+        -- test request bodies
+        assert.matches('"content": "What is 1 + 1?"', log_message.ai.payload.request, nil, true)
+        assert.matches('"role": "user"', log_message.ai.payload.request, nil, true)
+
+        -- test response bodies
+        assert.matches('"content": "The sum of 1 + 1 is 2.",', log_message.ai["ai-proxy"].payload.response, nil, true)
+        assert.matches('"role": "assistant"', log_message.ai["ai-proxy"].payload.response, nil, true)
+        assert.matches('"id": "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2"', log_message.ai["ai-proxy"].payload.response, nil, true)
       end)
 
       it("internal_server_error request", function()
@@ -636,23 +812,6 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         -- check this is in the 'kong' response format
         assert.is_truthy(json.error)
         assert.equals(json.error.code, "invalid_api_key")
-      end)
-
-      it("tries to override model", function()
-        local r = client:get("/openai/llm/v1/chat/good", {
-          headers = {
-            ["content-type"] = "application/json",
-            ["accept"] = "application/json",
-          },
-          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good_own_model.json"),
-        })
-        
-        local body = assert.res_status(400, r)
-        local json = cjson.decode(body)
-
-        -- check this is in the 'kong' response format
-        assert.is_truthy(json.error)
-        assert.equals(json.error.message, "cannot use own model for this instance")
       end)
     end)
 

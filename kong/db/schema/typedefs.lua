@@ -456,6 +456,11 @@ typedefs.tags = Schema.define {
   description = "A set of strings representing tags."
 }
 
+typedefs.capability = Schema.define {
+  type = "string",
+  description = "A string representing an RPC capability."
+}
+
 local http_protocols = {}
 for p, s in pairs(constants.PROTOCOLS_WITH_SUBSYSTEM) do
   if s == "http" then

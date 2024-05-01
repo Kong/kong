@@ -1948,10 +1948,47 @@ describe("Configuration loader", function()
 
   describe("#wasm properties", function()
     local temp_dir, cleanup
+    local user_filters
+    local bundled_filters
+    local all_filters
 
     lazy_setup(function()
       temp_dir, cleanup = helpers.make_temp_dir()
-      assert(helpers.file.write(temp_dir .. "/empty-filter.wasm", "hello!"))
+      assert(helpers.file.write(temp_dir .. "/filter-a.wasm", "hello!"))
+      assert(helpers.file.write(temp_dir .. "/filter-b.wasm", "hello!"))
+
+      user_filters = {
+        {
+          name = "filter-a",
+          path = temp_dir .. "/filter-a.wasm",
+        },
+        {
+          name = "filter-b",
+          path = temp_dir .. "/filter-b.wasm",
+        }
+      }
+
+      do
+        -- for local builds, the bundled filter path is not constant, so we
+        -- must load the config first to discover the path
+        local conf = assert(conf_loader(nil, {
+          wasm = "on",
+          wasm_filters = "bundled",
+        }))
+
+        assert(conf.wasm_bundled_filters_path)
+        bundled_filters = {
+          {
+            name = "datakit",
+            path = conf.wasm_bundled_filters_path .. "/datakit.wasm",
+          },
+        }
+      end
+
+      all_filters = {}
+      table.insert(all_filters, bundled_filters[1])
+      table.insert(all_filters, user_filters[1])
+      table.insert(all_filters, user_filters[2])
     end)
 
     lazy_teardown(function() cleanup() end)
@@ -1979,12 +2016,7 @@ describe("Configuration loader", function()
         wasm_filters_path = temp_dir,
       })
       assert.is_nil(err)
-      assert.same({
-          {
-              name = "empty-filter",
-              path = temp_dir .. "/empty-filter.wasm",
-          }
-      }, conf.wasm_modules_parsed)
+      assert.same(all_filters, conf.wasm_modules_parsed)
       assert.same(temp_dir, conf.wasm_filters_path)
     end)
 
@@ -1995,6 +2027,82 @@ describe("Configuration loader", function()
       })
       assert.same(err, "wasm_filters_path 'spec/fixtures/no-wasm-here/unit-test' is not a valid directory")
       assert.is_nil(conf)
+    end)
+
+    it("wasm_filters default", function()
+      local conf, err = conf_loader(nil, {
+        wasm = "on",
+        wasm_filters_path = temp_dir,
+      })
+      assert.is_nil(err)
+      assert.same(all_filters, conf.wasm_modules_parsed)
+      assert.same({ "bundled", "user" }, conf.wasm_filters)
+    end)
+
+    it("wasm_filters = off", function()
+      local conf, err = conf_loader(nil, {
+        wasm = "on",
+        wasm_filters = "off",
+        wasm_filters_path = temp_dir,
+      })
+      assert.is_nil(err)
+      assert.same({}, conf.wasm_modules_parsed)
+    end)
+
+    it("wasm_filters = 'user' allows all user filters", function()
+      local conf, err = conf_loader(nil, {
+        wasm = "on",
+        wasm_filters = "user",
+        wasm_filters_path = temp_dir,
+      })
+      assert.is_nil(err)
+      assert.same(user_filters, conf.wasm_modules_parsed)
+    end)
+
+    it("wasm_filters can allow individual user filters", function()
+      local conf, err = conf_loader(nil, {
+        wasm = "on",
+        wasm_filters = assert(user_filters[1].name),
+        wasm_filters_path = temp_dir,
+      })
+      assert.is_nil(err)
+      assert.same({ user_filters[1] }, conf.wasm_modules_parsed)
+    end)
+
+    it("wasm_filters = 'bundled' allows all bundled filters", function()
+      local conf, err = conf_loader(nil, {
+        wasm = "on",
+        wasm_filters = "bundled",
+        wasm_filters_path = temp_dir,
+      })
+      assert.is_nil(err)
+      assert.same(bundled_filters, conf.wasm_modules_parsed)
+    end)
+
+    it("prefers user filters to bundled filters when a conflict exists", function()
+      local user_filter = temp_dir .. "/datakit.wasm"
+      assert(helpers.file.write(user_filter, "I'm a happy little wasm filter"))
+      finally(function()
+        assert(os.remove(user_filter))
+      end)
+
+      local conf, err = conf_loader(nil, {
+        wasm = "on",
+        wasm_filters = "bundled,user",
+        wasm_filters_path = temp_dir,
+      })
+      assert.is_nil(err)
+
+      local found = false
+      for _, filter in ipairs(conf.wasm_modules_parsed) do
+        if filter.name == "datakit" then
+          found = true
+          assert.equals(user_filter, filter.path,
+                        "user filter should override the bundled filter")
+        end
+      end
+
+      assert.is_true(found, "expected the user filter to be enabled")
     end)
 
   end)

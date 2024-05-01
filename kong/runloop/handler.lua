@@ -1009,7 +1009,7 @@ return {
   preread = {
     before = function(ctx)
       local server_port = var.server_port
-      ctx.host_port = HOST_PORTS[server_port] or server_port
+      ctx.host_port = HOST_PORTS[server_port] or tonumber(server_port, 10)
 
       local router = get_updated_router()
 
@@ -1086,7 +1086,7 @@ return {
   rewrite = {
     before = function(ctx)
       local server_port = var.server_port
-      ctx.host_port = HOST_PORTS[server_port] or server_port
+      ctx.host_port = HOST_PORTS[server_port] or tonumber(server_port, 10)
       instrumentation.request(ctx)
     end,
   },
@@ -1145,8 +1145,7 @@ return {
       end
 
       local host           = var.host
-      local port           = tonumber(ctx.host_port, 10)
-                          or tonumber(var.server_port, 10)
+      local port           = ctx.host_port or tonumber(var.server_port, 10)
 
       local route          = match_t.route
       local service        = match_t.service
@@ -1397,11 +1396,11 @@ return {
         end
       end
 
-      if var.http_proxy then
+      if get_header("proxy", ctx) then
         clear_header("Proxy")
       end
 
-      if var.http_proxy_connection then
+      if get_header("proxy_connection", ctx) then
         clear_header("Proxy-Connection")
       end
     end

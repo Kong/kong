@@ -440,6 +440,83 @@ how to access (or create) a development container with a well-defined tool and r
 - See [How to create a GitHub codespace](https://docs.github.com/en/codespaces/developing-in-codespaces/creating-a-codespace#creating-a-codespace).
 - See [How to create a VSCode development container](https://code.visualstudio.com/docs/remote/containers#_quick-start-try-a-development-container).
 
+## Debugging Kong Gateway with EmmyLua and IntelliJ IDEA/VSCode
+
+[EmmyLua](https://emmylua.github.io/) is a plugin for IntelliJ IDEA and VSCode that provides Lua language
+support.  It comes with debugger support that makes it possible to set breakpoints in Lua code
+and inspect variables.  Kong Gateway can be debugged using EmmyLua by following these steps:
+
+### Install the IDE
+
+#### IntelliJ IDEA
+
+Download and install IntelliJ IDEA from [here](https://www.jetbrains.com/idea/download/).  Note
+that IntelliJ is a commercial product and requires a paid license after the trial period.
+
+#### VSCode
+
+Download and install MS Visual Studio Code from [here](https://code.visualstudio.com/download).
+
+### Install EmmyLua
+
+#### IntelliJ IDEA
+
+Go to the `Settings`->`Plugins`->`Marketplace` and search for `EmmyLua`.
+Install the plugin.
+
+#### VSCode
+
+Go to the `Settings`->`Extensions` and search for `EmmyLua`.
+Install the plugin (publisher is `Tangzx`).
+
+### Download and install the EmmyLua debugging server
+
+The [EmmyLuaDebugger](https://github.com/EmmyLua/EmmyLuaDebugger) is a standalone C++ program
+that runs on the same machine as Kong Gateway and that mediates between the IDE's
+debugger and the Lua code running in Kong Gateway.  It can be downloaded from
+[GitHub](https://github.com/EmmyLua/EmmyLuaDebugger/releases).  The release
+ZIP file contains a single share library named emmy_core.so (Linux) or emmy_core.dylib (macOS).
+Place this file in a directory that is convenient for you and remember the path.
+
+Depending on your Linux version, you may need to compile
+[EmmyLuaDebugger](https://github.com/EmmyLua/EmmyLuaDebugger) on your
+own system as the release binaries published on GitHub assume a pretty
+recent version of GLIBC to be present.
+
+### Start Kong Gateway with the EmmyLua debugger
+
+To enable the EmmyLua debugger, the `KONG_EMMY_DEBUGGER` environment variable must be set to
+the absolute path of the debugger shared library file when Kong Gateway is started.  It is
+also advisable to start Kong Gateway with only one worker process, as debugging multiple worker
+processes is not supported.  For example:
+
+```shell
+KONG_EMMY_DEBUGGER=/path/to/emmy_core.so KONG_NGINX_WORKER_PROCESSES=1 kong start
+```
+
+### Create debugger configuration
+
+#### IntelliJ IDEA
+
+Go to `Run`->`Edit Configurations` and click the `+` button to add a new
+configuration.  Select `Emmy Debugger(NEW)` as the configuration type.  Enter a descriptive
+name for the configuration, e.g. "Kong Gateway Debug".  Click `OK` to save the configuration.
+
+#### VSCode
+
+Go to `Run`->`Add Configuration` and choose `EmmyLua New Debugger`. Enter a descriptive name
+for the configuration, e.g. "Kong Gateway Debug". Save `launch.json`.
+
+### Start the EmmyLua debugger
+
+To connect the EmmyLua debugger to Kong Gateway, click the `Run`->`Debug` menu item in IntelliJ
+(`Run`->`Start Debugging` in VSCode) and select the configuration that you've just created.  You
+will notice that the restart and stop buttons on the top of your IDE will change to solid green
+and red colors.  You can now set breakpoints in your Lua code and start debugging.  Try setting
+a breakpoint in the global `access` function that is defined `runloop/handler.lua` and send
+a proxy request to the Gateway.  The debugger should stop at the breakpoint and you can
+inspect the variables in the request context.
+
 ## What's next
 
 - Refer to the [Kong Gateway Docs](https://docs.konghq.com/gateway/) for more information.

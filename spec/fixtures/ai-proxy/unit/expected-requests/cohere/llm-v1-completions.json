@@ -5,6 +5,5 @@
   "temperature": 0.5,
   "p": 0.75,
   "k": 5,
-  "return_likelihoods": "NONE",
-  "truncate": "END"
+  "stream": false
 }

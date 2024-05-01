@@ -55,10 +55,17 @@
   - libc.so.6
   Runpath   : /usr/local/kong/lib
 
-- Path      : /usr/local/kong/lib/libexpat.so.1.8.10
+- Path      : /usr/local/kong/lib/libexpat.so.1.9.2
   Needed    :
   - libstdc++.so.6
   - libm.so.6
+  - libc.so.6
+
+- Path      : /usr/local/kong/lib/libsnappy.so
+  Needed    :
+  - libstdc++.so.6
+  - libm.so.6
+  - libgcc_s.so.1
   - libc.so.6
 
 - Path      : /usr/local/kong/lib/libssl.so.3
@@ -206,4 +213,3 @@
   OpenSSL   : OpenSSL 3.2.1 30 Jan 2024
   DWARF     : True
   DWARF - ngx_http_request_t related DWARF DIEs: True
-

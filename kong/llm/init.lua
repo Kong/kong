@@ -1,9 +1,8 @@
 -- imports
-local typedefs = require("kong.db.schema.typedefs")
-local fmt      = string.format
-local cjson    = require("cjson.safe")
-local re_match = ngx.re.match
-
+local typedefs  = require("kong.db.schema.typedefs")
+local fmt       = string.format
+local cjson     = require("cjson.safe")
+local re_match  = ngx.re.match
 local ai_shared = require("kong.llm.drivers.shared")
 --
 
@@ -48,6 +47,12 @@ local model_options_schema = {
   type = "record",
   required = false,
   fields = {
+    { response_streaming = {
+        type = "string",
+        description = "Whether to 'optionally allow', 'deny', or 'always' (force) the streaming of answers via server sent events.",
+        required = false,
+        default = "allow",
+        one_of = { "allow", "deny", "always" } }},
     { max_tokens = {
         type = "integer",
         description = "Defines the max_tokens, if using chat or completion models.",
@@ -57,20 +62,17 @@ local model_options_schema = {
         type = "number",
         description = "Defines the matching temperature, if using chat or completion models.",
         required = false,
-        between = { 0.0, 5.0 },
-        default = 1.0 }},
+        between = { 0.0, 5.0 }}},
     { top_p = {
         type = "number",
         description = "Defines the top-p probability mass, if supported.",
         required = false,
-        between = { 0, 1 },
-        default = 1.0 }},
+        between = { 0, 1 }}},
     { top_k = {
         type = "integer",
         description = "Defines the top-k most likely tokens, if supported.",
         required = false,
-        between = { 0, 500 },
-        default = 0 }},
+        between = { 0, 500 }}},
     { anthropic_version = {
         type = "string",
         description = "Defines the schema/API version, if using Anthropic provider.",
@@ -102,6 +104,11 @@ local model_options_schema = {
         description = "Manually specify or override the full URL to the AI operation endpoints, "
                    .. "when calling (self-)hosted models, or for running via a private endpoint.",
         required = false }},
+    { upstream_path = {
+        description = "Manually specify or override the AI operation path, "
+                   .. "used when e.g. using the 'preserve' route_type.",
+        type = "string",
+        required = false }},
   }
 }
 
@@ -131,7 +138,7 @@ local logging_schema = {
         description = "If enabled and supported by the driver, "
                    .. "will add model usage and token metrics into the Kong log plugin(s) output.",
                    required = true,
-                   default = true }},
+                   default = false }},
     { log_payloads = {
         type = "boolean", 
         description = "If enabled, will log the request and response body into the Kong log plugin(s) output.",
@@ -139,14 +146,19 @@ local logging_schema = {
   }
 }
 
+local UNSUPPORTED_LOG_STATISTICS = {
+  ["llm/v1/completions"] = { ["anthropic"] = true },
+}
+
 _M.config_schema = {
   type = "record",
   fields = {
     { route_type = {
         type = "string",
-        description = "The model's operation implementation, for this provider.",
+        description = "The model's operation implementation, for this provider. " ..
+                      "Set to `preserve` to pass through without transformation.",
         required = true,
-        one_of = { "llm/v1/chat", "llm/v1/completions" } }},
+        one_of = { "llm/v1/chat", "llm/v1/completions", "preserve" } }},
     { auth = auth_schema },
     { model = model_schema },
     { logging = logging_schema },
@@ -172,12 +184,6 @@ _M.config_schema = {
                                       then_err = "must set %s for mistral provider" }},
 
     { conditional_at_least_one_of = { if_field = "model.provider",
-                                      if_match = {  },
-                                      then_at_least_one_of = { "model.name" },
-                                      then_err = "Must set a model name. Refer to https://docs.konghq.com/hub/kong-inc/ai-proxy/ " ..
-                                                 "for supported models." }},
-
-    { conditional_at_least_one_of = { if_field = "model.provider",
                                       if_match = { one_of = { "anthropic" } },
                                       then_at_least_one_of = { "model.options.anthropic_version" },
                                       then_err = "must set %s for anthropic provider" }},
@@ -201,6 +207,22 @@ _M.config_schema = {
                                       if_match = { one_of = { "mistral", "llama2" } },
                                       then_at_least_one_of = { "model.options.upstream_url" },
                                       then_err = "must set %s for self-hosted providers/models" }},
+
+    {
+      custom_entity_check = {
+        field_sources = { "route_type", "model", "logging" },
+        fn = function(entity)
+          if entity.logging.log_statistics and UNSUPPORTED_LOG_STATISTICS[entity.route_type]
+            and UNSUPPORTED_LOG_STATISTICS[entity.route_type][entity.model.provider] then
+              return nil, fmt("%s does not support statistics when route_type is %s",
+                               entity.model.provider, entity.route_type)
+
+          else
+            return true
+          end
+        end,
+      }
+    },
   },
 }
 
@@ -240,6 +262,10 @@ local function identify_request(request)
 end
 
 function _M.is_compatible(request, route_type)
+  if route_type == "preserve" then
+    return true
+  end
+
   local format, err = identify_request(request)
   if err then 
     return nil, err
@@ -266,7 +292,8 @@ function _M:ai_introspect_body(request, system_prompt, http_opts, response_regex
         role = "user",
         content = request,
       }
-    }
+    },
+    stream = false,
   }
 
   -- convert it to the specified driver format
@@ -304,14 +331,14 @@ function _M:ai_introspect_body(request, system_prompt, http_opts, response_regex
                        and ai_response.choices[1].message
                        and ai_response.choices[1].message.content
   if not new_request_body then
-    return nil, "no response choices received from upstream AI service"
+    return nil, "no 'choices' in upstream AI service response"
   end
 
   -- if specified, extract the first regex match from the AI response
   -- this is useful for AI models that pad with assistant text, even when
   -- we ask them NOT to.
   if response_regex_match then
-    local matches, err = re_match(new_request_body, response_regex_match, "ijm")
+    local matches, err = re_match(new_request_body, response_regex_match, "ijom")
     if err then
       return nil, "failed regex matching ai response: " .. err
     end

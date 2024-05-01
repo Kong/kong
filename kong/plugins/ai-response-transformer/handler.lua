@@ -97,6 +97,8 @@ function _M:access(conf)
 
   -- first find the configured LLM interface and driver
   local http_opts = create_http_opts(conf)
+  conf.llm.__plugin_id = conf.__plugin_id
+  conf.llm.__key__ = conf.__key__
   local ai_driver, err = llm:new(conf.llm, http_opts)
   
   if not ai_driver then
@@ -115,6 +117,8 @@ function _M:access(conf)
   if is_gzip then
     res_body = kong_utils.inflate_gzip(res_body)
   end
+
+  kong.ctx.shared.parsed_response = res_body
 
   -- if asked, introspect the request before proxying
   kong.log.debug("introspecting response with LLM")

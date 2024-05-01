@@ -8,6 +8,7 @@ local MOCK_PORT = helpers.get_available_port()
 local PLUGIN_NAME = "ai-response-transformer"
 
 local OPENAI_INSTRUCTIONAL_RESPONSE = {
+  __key__ = "ai-response-transformer",
   route_type = "llm/v1/chat",
   model = {
     name = "gpt-4",

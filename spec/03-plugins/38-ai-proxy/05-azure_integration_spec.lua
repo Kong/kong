@@ -413,23 +413,6 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.is_truthy(json.error)
         assert.equals(json.error.code, "invalid_api_key")
       end)
-
-      it("tries to override model", function()
-        local r = client:get("/azure/llm/v1/chat/good", {
-          headers = {
-            ["content-type"] = "application/json",
-            ["accept"] = "application/json",
-          },
-          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good_own_model.json"),
-        })
-        
-        local body = assert.res_status(400, r)
-        local json = cjson.decode(body)
-
-        -- check this is in the 'kong' response format
-        assert.is_truthy(json.error)
-        assert.equals(json.error.message, "cannot use own model for this instance")
-      end)
     end)
 
     describe("azure llm/v1/chat", function()

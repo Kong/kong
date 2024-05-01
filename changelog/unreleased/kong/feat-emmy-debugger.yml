@@ -1,0 +1,4 @@
+message: |
+  Added support for debugging with EmmyLuaDebugger.  This feature is a
+  tech preview and not officially supported by Kong Inc. for now.
+type: feature

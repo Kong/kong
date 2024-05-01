@@ -5,44 +5,30 @@ local cjson = require("cjson.safe")
 local fmt = string.format
 local ai_shared = require("kong.llm.drivers.shared")
 local socket_url = require "socket.url"
+local string_gsub = string.gsub
 --
 
 -- globals
 local DRIVER_NAME = "openai"
 --
 
+local function handle_stream_event(event_t)
+  return event_t.data
+end
+
 local transformers_to = {
-  ["llm/v1/chat"] = function(request_table, model, max_tokens, temperature, top_p)
-    -- if user passed a prompt as a chat, transform it to a chat message
-    if request_table.prompt then
-      request_table.messages = {
-        {
-          role = "user",
-          content = request_table.prompt,
-        }
-      }
-    end
-  
-    local this = {
-      model = model,
-      messages = request_table.messages,
-      max_tokens = max_tokens,
-      temperature = temperature,
-      top_p = top_p,
-    }
-  
-    return this, "application/json", nil
+  ["llm/v1/chat"] = function(request_table, model_info, route_type)
+    request_table.model = request_table.model or model_info.name
+    request_table.stream = request_table.stream or false  -- explicitly set this
+
+    return request_table, "application/json", nil
   end,
 
-  ["llm/v1/completions"] = function(request_table, model, max_tokens, temperature, top_p)
-    local this = {
-      prompt = request_table.prompt,
-      model = model,
-      max_tokens = max_tokens,
-      temperature = temperature,
-    }
+  ["llm/v1/completions"] = function(request_table, model_info, route_type)
+    request_table.model = model_info.name
+    request_table.stream = request_table.stream or false -- explicitly set this
 
-    return this, "application/json", nil
+    return request_table, "application/json", nil
   end,
 }
 
@@ -52,7 +38,7 @@ local transformers_from = {
     if err then
       return nil, "'choices' not in llm/v1/chat response"
     end
-
+    
     if response_object.choices then
       return response_string, nil
     else
@@ -72,6 +58,9 @@ local transformers_from = {
       return nil, "'choices' not in llm/v1/completions response"
     end
   end,
+
+  ["stream/llm/v1/chat"] = handle_stream_event,
+  ["stream/llm/v1/completions"] = handle_stream_event,
 }
 
 function _M.from_format(response_string, model_info, route_type)
@@ -106,13 +95,12 @@ function _M.to_format(request_table, model_info, route_type)
     return nil, nil, fmt("no transformer for %s://%s", model_info.provider, route_type)
   end
 
+  request_table = ai_shared.merge_config_defaults(request_table, model_info.options, model_info.route_type)
+
   local ok, response_object, content_type, err = pcall(
     transformers_to[route_type],
     request_table,
-    model_info.name,
-    (model_info.options and model_info.options.max_tokens),
-    (model_info.options and model_info.options.temperature),
-    (model_info.options and model_info.options.top_p)
+    model_info
   )
   if err or (not ok) then
     return nil, nil, fmt("error transforming to %s://%s", model_info.provider, route_type)
@@ -155,13 +143,13 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
     headers[conf.auth.header_name] = conf.auth.header_value
   end
 
-  local res, err = ai_shared.http_request(url, body_string, method, headers, http_opts)
+  local res, err, httpc = ai_shared.http_request(url, body_string, method, headers, http_opts, return_res_table)
   if err then
     return nil, nil, "request to ai service failed: " .. err
   end
 
   if return_res_table then
-    return res, res.status, nil
+    return res, res.status, nil, httpc
   else
     -- At this point, the entire request / response is complete and the connection
     -- will be closed or back on the connection pool.
@@ -189,10 +177,7 @@ function _M.post_request(conf)
 end
 
 function _M.pre_request(conf, body)
-  -- check for user trying to bring own model
-  if body and body.model then
-    return nil, "cannot use own model for this instance"
-  end
+  kong.service.request.set_header("Accept-Encoding", "gzip, identity") -- tell server not to send brotli
 
   return true, nil
 end
@@ -200,24 +185,29 @@ end
 -- returns err or nil
 function _M.configure_request(conf)
   local parsed_url
-  
-  if conf.route_type ~= "preserve" then
-    if (conf.model.options and conf.model.options.upstream_url) then
-      parsed_url = socket_url.parse(conf.model.options.upstream_url)
-    else
-      local path = ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
-      if not path then
-        return nil, fmt("operation %s is not supported for openai provider", conf.route_type)
-      end
-      
-      parsed_url = socket_url.parse(ai_shared.upstream_url_format[DRIVER_NAME])
-      parsed_url.path = path
+
+  if (conf.model.options and conf.model.options.upstream_url) then
+    parsed_url = socket_url.parse(conf.model.options.upstream_url)
+  else
+    local path = conf.model.options
+             and conf.model.options.upstream_path
+             or ai_shared.operation_map[DRIVER_NAME][conf.route_type]
+             and ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
+             or "/"
+    if not path then
+      return nil, fmt("operation %s is not supported for openai provider", conf.route_type)
     end
 
-    kong.service.request.set_path(parsed_url.path)
-    kong.service.request.set_scheme(parsed_url.scheme)
-    kong.service.set_target(parsed_url.host, tonumber(parsed_url.port))
+    parsed_url = socket_url.parse(ai_shared.upstream_url_format[DRIVER_NAME])
+    parsed_url.path = path
   end
+  
+  -- if the path is read from a URL capture, ensure that it is valid
+  parsed_url.path = string_gsub(parsed_url.path, "^/*", "/")
+
+  kong.service.request.set_path(parsed_url.path)
+  kong.service.request.set_scheme(parsed_url.scheme)
+  kong.service.set_target(parsed_url.host, (tonumber(parsed_url.port) or 443))
 
   local auth_header_name = conf.auth and conf.auth.header_name
   local auth_header_value = conf.auth and conf.auth.header_value

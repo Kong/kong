@@ -69,7 +69,6 @@ describe("CP/DP communication #" .. strategy, function()
             assert.near(14 * 86400, v.ttl, 3)
             assert.matches("^(%d+%.%d+)%.%d+", v.version)
             assert.equal(CLUSTERING_SYNC_STATUS.NORMAL, v.sync_status)
-            assert.equal(CLUSTERING_SYNC_STATUS.NORMAL, v.sync_status)
             return true
           end
         end

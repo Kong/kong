@@ -1,0 +1,4 @@
+message: |
+  **Prometheus**: Added workspace label to Prometheus plugin metrics.
+type: feature
+scope: Plugin

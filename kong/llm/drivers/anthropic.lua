@@ -6,6 +6,7 @@ local fmt = string.format
 local ai_shared = require("kong.llm.drivers.shared")
 local socket_url = require "socket.url"
 local buffer = require("string.buffer")
+local string_gsub = string.gsub
 --
 
 -- globals
@@ -92,9 +93,10 @@ local transformers_to = {
       return nil, nil, err
     end
 
-    messages.temperature = (model.options and model.options.temperature) or nil
-    messages.max_tokens = (model.options and model.options.max_tokens) or nil
-    messages.model = model.name
+    messages.temperature = request_table.temperature or (model.options and model.options.temperature) or nil
+    messages.max_tokens = request_table.max_tokens or (model.options and model.options.max_tokens) or nil
+    messages.model = model.name or request_table.model
+    messages.stream = request_table.stream or false  -- explicitly set this if nil
 
     return messages, "application/json", nil
   end,
@@ -108,13 +110,135 @@ local transformers_to = {
       return nil, nil, err
     end
 
-    prompt.temperature = (model.options and model.options.temperature) or nil
-    prompt.max_tokens_to_sample = (model.options and model.options.max_tokens) or nil
+    prompt.temperature = request_table.temperature or (model.options and model.options.temperature) or nil
+    prompt.max_tokens_to_sample = request_table.max_tokens or (model.options and model.options.max_tokens) or nil
     prompt.model = model.name
+    prompt.model = model.name or request_table.model
+    prompt.stream = request_table.stream or false  -- explicitly set this if nil
 
     return prompt, "application/json", nil
   end,
 }
+
+local function delta_to_event(delta, model_info)
+  local data = {
+    choices = {
+      [1] = {
+        delta = {
+          content = (delta.delta
+                 and delta.delta.text)
+                 or (delta.content_block
+                 and "")
+                 or "",
+        },
+        index = 0,
+        finish_reason = cjson.null,
+        logprobs = cjson.null,
+      },
+    },
+    id = kong
+     and kong.ctx
+     and kong.ctx.plugin
+     and kong.ctx.plugin.ai_proxy_anthropic_stream_id,
+    model = model_info.name,
+    object = "chat.completion.chunk",
+  }
+
+  return cjson.encode(data), nil, nil
+end
+
+local function start_to_event(event_data, model_info)
+  local meta = event_data.message or {}
+
+  local metadata = {
+    prompt_tokens = meta.usage
+                    and meta.usage.input_tokens
+                    or nil,
+    completion_tokens = meta.usage
+                    and meta.usage.output_tokens
+                    or nil,
+    model = meta.model,
+    stop_reason = meta.stop_reason,
+    stop_sequence = meta.stop_sequence,
+  }
+
+  local message = {
+    choices = {
+      [1] = {
+        delta = {
+          content = "",
+          role = meta.role,
+        },
+        index = 0,
+        logprobs = cjson.null,
+      },
+    },
+    id = meta.id,
+    model = model_info.name,
+    object = "chat.completion.chunk",
+    system_fingerprint = cjson.null,
+  }
+
+  message = cjson.encode(message)
+  kong.ctx.plugin.ai_proxy_anthropic_stream_id = meta.id
+
+  return message, nil, metadata
+end
+
+local function handle_stream_event(event_t, model_info, route_type)
+  local event_id = event_t.event
+  local event_data = cjson.decode(event_t.data)
+
+  if not event_id or not event_data then
+    return nil, "transformation to stream event failed or empty stream event received", nil
+  end
+
+  if event_id == "message_start" then
+    -- message_start and contains the token usage and model metadata
+
+    if event_data and event_data.message then
+      return start_to_event(event_data, model_info)
+    else
+      return nil, "message_start is missing the metadata block", nil
+    end
+
+  elseif event_id == "message_delta" then
+    -- message_delta contains and interim token count of the
+    -- last few frames / iterations
+    if event_data
+    and event_data.usage then
+      return nil, nil, {
+        prompt_tokens = nil,
+        completion_tokens = event_data.meta.usage
+                        and event_data.meta.usage.output_tokens
+                        or nil,
+        stop_reason = event_data.delta
+                  and event_data.delta.stop_reason
+                    or nil,
+        stop_sequence = event_data.delta
+                    and event_data.delta.stop_sequence
+                      or nil,
+      }
+    else
+      return nil, "message_delta is missing the metadata block", nil
+    end
+
+  elseif event_id == "content_block_start" then
+    -- content_block_start is just an empty string and indicates
+    -- that we're getting an actual answer
+    return delta_to_event(event_data, model_info)
+
+  elseif event_id == "content_block_delta" then
+    return delta_to_event(event_data, model_info)
+
+  elseif event_id == "message_stop" then
+    return "[DONE]", nil, nil
+
+  elseif event_id == "ping" then
+    return nil, nil, nil
+
+  end
+end
 
 local transformers_from = {
   ["llm/v1/chat"] = function(response_string)
@@ -137,6 +261,20 @@ local transformers_from = {
     end
 
     if response_table.content then
+      local usage = response_table.usage
+
+      if usage then
+        usage = {
+          prompt_tokens = usage.input_tokens,
+          completion_tokens = usage.output_tokens,
+          total_tokens = usage.input_tokens and usage.output_tokens and
+            usage.input_tokens + usage.output_tokens or nil,
+        }
+
+      else
+        usage = "no usage data returned from upstream"
+      end
+
       local res = {
         choices = {
           {
@@ -148,10 +286,11 @@ local transformers_from = {
             finish_reason = response_table.stop_reason,
           },
         },
+        usage = usage,
         model = response_table.model,
         object = "chat.content",
       }
-        
+
       return cjson.encode(res)
     else
       -- it's probably an error block, return generic error
@@ -184,6 +323,8 @@ local transformers_from = {
       return nil, "'completion' not in anthropic://llm/v1/chat response"
     end
   end,
+
+  ["stream/llm/v1/chat"] = handle_stream_event,
 }
 
 function _M.from_format(response_string, model_info, route_type)
@@ -195,7 +336,7 @@ function _M.from_format(response_string, model_info, route_type)
     return nil, fmt("no transformer available from format %s://%s", model_info.provider, route_type)
   end
   
-  local ok, response_string, err = pcall(transform, response_string)
+  local ok, response_string, err = pcall(transform, response_string, model_info, route_type)
   if not ok or err then
     return nil, fmt("transformation failed from type %s://%s: %s",
                     model_info.provider,
@@ -214,6 +355,8 @@ function _M.to_format(request_table, model_info, route_type)
     -- do nothing
     return request_table, nil, nil
   end
+
+  request_table = ai_shared.merge_config_defaults(request_table, model_info.options, model_info.route_type)
 
   if not transformers_to[route_type] then
     return nil, nil, fmt("no transformer for %s://%s", model_info.provider, route_type)
@@ -266,13 +409,13 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
     headers[conf.auth.header_name] = conf.auth.header_value
   end
 
-  local res, err = ai_shared.http_request(url, body_string, method, headers, http_opts)
+  local res, err, httpc = ai_shared.http_request(url, body_string, method, headers, http_opts, return_res_table)
   if err then
     return nil, nil, "request to ai service failed: " .. err
   end
 
   if return_res_table then
-    return res, res.status, nil
+    return res, res.status, nil, httpc
   else
     -- At this point, the entire request / response is complete and the connection
     -- will be closed or back on the connection pool.
@@ -312,22 +455,29 @@ end
 function _M.configure_request(conf)
   local parsed_url
 
-  if conf.route_type ~= "preserve" then
-    if conf.model.options.upstream_url then
-      parsed_url = socket_url.parse(conf.model.options.upstream_url)
-    else
-      parsed_url = socket_url.parse(ai_shared.upstream_url_format[DRIVER_NAME])
-      parsed_url.path = ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
+  if conf.model.options.upstream_url then
+    parsed_url = socket_url.parse(conf.model.options.upstream_url)
+  else
+    parsed_url = socket_url.parse(ai_shared.upstream_url_format[DRIVER_NAME])
+    parsed_url.path = conf.model.options
+                    and conf.model.options.upstream_path
+                    or ai_shared.operation_map[DRIVER_NAME][conf.route_type]
+                    and ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
+                    or "/"
 
-      if not parsed_url.path then
-        return nil, fmt("operation %s is not supported for anthropic provider", conf.route_type)
-      end
+    if not parsed_url.path then
+      return nil, fmt("operation %s is not supported for anthropic provider", conf.route_type)
     end
-
-    kong.service.request.set_path(parsed_url.path)
-    kong.service.request.set_scheme(parsed_url.scheme)
-    kong.service.set_target(parsed_url.host, tonumber(parsed_url.port))
   end
+
+  -- if the path is read from a URL capture, ensure that it is valid
+  parsed_url.path = string_gsub(parsed_url.path, "^/*", "/")
+
+  kong.service.request.set_path(parsed_url.path)
+  kong.service.request.set_scheme(parsed_url.scheme)
+  kong.service.set_target(parsed_url.host, (tonumber(parsed_url.port) or 443))
+
+
 
   kong.service.request.set_header("anthropic-version", conf.model.options.anthropic_version)
 

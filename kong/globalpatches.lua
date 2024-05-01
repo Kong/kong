@@ -118,8 +118,7 @@ return function(options)
 
   do
     if ngx.config.subsystem == "http" then
-      local base = require "resty.core.base"
-      local get_request = base.get_request
+      local get_request = require("resty.core.base").get_request
 
       local error = error
 
@@ -151,8 +150,7 @@ return function(options)
       end
 
       _G.ngx.req.get_headers = function(max_req_headers, ...)
-        local r = get_request()
-        if not r then
+        if not get_request() then
           error("no request found")
         end
         MAX_REQ_HEADERS = kong and kong.configuration and kong.configuration.lua_max_req_headers or DEFAULT_MAX_REQ_HEADERS
@@ -171,8 +169,7 @@ return function(options)
       end
 
       _G.ngx.resp.get_headers = function(max_resp_headers, ...)
-        local r = get_request()
-        if not r then
+        if not get_request() then
           error("no request found")
         end
         MAX_RESP_HEADERS = kong and kong.configuration and kong.configuration.lua_max_resp_headers or DEFAULT_MAX_RESP_HEADERS
@@ -191,8 +188,7 @@ return function(options)
       end
 
       _G.ngx.req.get_uri_args = function(max_uri_args, ...)
-        local r = get_request()
-        if not r then
+        if not get_request() then
           error("no request found")
         end
         MAX_URI_ARGS = kong and kong.configuration and kong.configuration.lua_max_uri_args or DEFAULT_MAX_URI_ARGS
@@ -211,8 +207,7 @@ return function(options)
       end
 
       _G.ngx.req.get_post_args = function(max_post_args, ...)
-        local r = get_request()
-        if not r then
+        if not get_request() then
           error("no request found")
         end
         MAX_POST_ARGS = kong and kong.configuration and kong.configuration.lua_max_post_args or DEFAULT_MAX_POST_ARGS
@@ -410,7 +405,7 @@ return function(options)
     --
     -- This patched method will create a unique seed per worker process,
     -- using a combination of both time and the worker's pid.
-    local util = require "kong.tools.utils"
+    local get_rand_bytes = require("kong.tools.rand").get_rand_bytes
     local seeded = {}
     local randomseed = math.randomseed
 
@@ -441,7 +436,7 @@ return function(options)
       end
 
       local seed
-      local bytes, err = util.get_rand_bytes(8)
+      local bytes, err = get_rand_bytes(8)
       if bytes then
         ngx.log(ngx.DEBUG, "seeding PRNG from OpenSSL RAND_bytes()")
 
