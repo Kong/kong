@@ -264,20 +264,30 @@ function _M.to_ollama(request_table, model)
 end
 
 function _M.from_ollama(response_string, model_info, route_type)
-  local output, _, analytics
-
-  local response_table, err = cjson.decode(response_string)
-  if err then
-    return nil, "failed to decode ollama response"
-  end
+  local output, err, _, analytics
 
   if route_type == "stream/llm/v1/chat" then
+    local response_table, err = cjson.decode(response_string.data)
+    if err then
+      return nil, "failed to decode ollama response"
+    end
+
     output, _, analytics = handle_stream_event(response_table, model_info, route_type)
 
   elseif route_type == "stream/llm/v1/completions" then
+    local response_table, err = cjson.decode(response_string.data)
+    if err then
+      return nil, "failed to decode ollama response"
+    end
+
     output, _, analytics = handle_stream_event(response_table, model_info, route_type)
 
   else
+    local response_table, err = cjson.decode(response_string)
+    if err then
+      return nil, "failed to decode ollama response"
+    end
+
     -- there is no direct field indicating STOP reason, so calculate it manually
     local stop_length = (model_info.options and model_info.options.max_tokens) or -1
     local stop_reason = "stop"
