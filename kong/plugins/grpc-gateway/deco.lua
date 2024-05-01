@@ -229,7 +229,7 @@ function deco:upstream(body)
     if body and #body > 0 then
       local body_decoded, err = decode_json(body)
       if err then
-        return nil, err
+        return nil, "decode json err: " .. err
       end
       if body_variable ~= "*" then
         --[[

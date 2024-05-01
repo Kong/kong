@@ -214,7 +214,7 @@ for _, strategy in helpers.each_strategy() do
         body = [[{"message":"invalid}]]
       })
       assert.equal(400, res.status)
-      assert.same(res:read_body(),"Expected value but found unexpected end of string at character 21")
+      assert.same(res:read_body(),"decode json err: Expected value but found unexpected end of string at character 21")
     end)
 
     test("field type mismatch", function()
