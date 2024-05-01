@@ -41,7 +41,7 @@ cluster_ocsp = off
 cluster_max_payload = 16777216
 cluster_use_proxy = off
 cluster_dp_labels = NONE
-cluster_rpc = on
+cluster_rpc = off
 
 lmdb_environment_path = dbless.lmdb
 lmdb_map_size = 2048m
