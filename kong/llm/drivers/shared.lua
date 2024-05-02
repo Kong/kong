@@ -518,6 +518,9 @@ function _M.post_request(conf, response_object)
   end
 
   -- Update context with changed values
+  request_analytics_plugin[log_entry_keys.PAYLOAD_CONTAINER] = {
+    [log_entry_keys.RESPONSE_BODY] = body_string,
+  }
   request_analytics[plugin_name] = request_analytics_plugin
   kong.ctx.shared.analytics = request_analytics
 
