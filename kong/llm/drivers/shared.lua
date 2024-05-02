@@ -417,7 +417,12 @@ function _M.pre_request(conf, request_table)
 
   -- if enabled AND request type is compatible, capture the input for analytics
   if conf.logging and conf.logging.log_payloads then
-    kong.log.set_serialize_value(fmt("ai.%s.%s.%s", "ai-proxy", log_entry_keys.PAYLOAD_CONTAINER, log_entry_keys.REQUEST_BODY), kong.request.get_raw_body())
+    local plugin_name = conf.__key__:match('plugins:(.-):')
+    if not plugin_name or plugin_name == "" then
+      return nil, "no plugin name is being passed by the plugin"
+    end
+
+    kong.log.set_serialize_value(fmt("ai.%s.%s.%s", plugin_name, log_entry_keys.PAYLOAD_CONTAINER, log_entry_keys.REQUEST_BODY), kong.request.get_raw_body())
   end
 
   -- log tokens prompt for reports and billing
