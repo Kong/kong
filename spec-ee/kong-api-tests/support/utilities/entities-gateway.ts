@@ -197,6 +197,34 @@ export const createRoute = async (
 };
 
 /**
+ * Patch a route
+ * @param {string} routeIdOrName
+ * @param {object} payload - optional request body for the route
+ * @param {string} workspace - name of the worksapce
+ * @returns {AxiosResponse}
+ */
+export const patchRoute = async (
+  routeIdOrName: string,
+  payload: object,
+  workspace?: string
+) => {
+
+  const endpoint = `${workspace}/routes/${routeIdOrName}`;
+  const url = workspace ? `${getUrl(endpoint)}` : getUrl(`routes/${routeIdOrName}`);
+  payload ? (payload = { ...payload }) : null;
+
+  const resp = await axios({
+    method: 'patch',
+    validateStatus: null,
+    url,
+    data: payload,
+  });
+  logResponse(resp);
+
+  return resp;
+};
+
+/**
  * Delete the target route
  * @param {string} routeIdOrName route id or name
  * @param {object} headers optional headers
