@@ -1,5 +1,0 @@
-message: >-
-  Kong Manager now supports setting log levels with timeouts in bulk for data planes under the hybrid
-  mode.
-type: feature
-githubs: [214]
