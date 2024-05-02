@@ -79,28 +79,28 @@ local function handle_streaming_frame(conf)
     if (not finished) and (is_gzip) then
       chunk = kong_utils.inflate_gzip(chunk)
     end
-
+    
     local events = ai_shared.frame_to_events(chunk)
-
+    
     for _, event in ipairs(events) do
       local formatted, _, metadata = ai_driver.from_format(event, conf.model, "stream/" .. conf.route_type)
 
       local event_t = nil
       local token_t = nil
       local err
-
+      
       if formatted then  -- only stream relevant frames back to the user
         if conf.logging and conf.logging.log_payloads and (formatted ~= "[DONE]") then
           -- append the "choice" to the buffer, for logging later. this actually works!
           if not event_t then
             event_t, err = cjson.decode(formatted)
           end
-
+          
           if not err then
             if not token_t then
               token_t = get_token_text(event_t)
             end
-
+            
             kong.ctx.plugin.ai_stream_log_buffer:put(token_t)
           end
         end
@@ -126,16 +126,23 @@ local function handle_streaming_frame(conf)
                     (kong.ctx.plugin.ai_stream_completion_tokens or 0) + math.ceil(#strip(token_t) / 4)
               end
             end
-
-          elseif metadata then
-            kong.ctx.plugin.ai_stream_completion_tokens = metadata.completion_tokens or kong.ctx.plugin.ai_stream_completion_tokens
-            kong.ctx.plugin.ai_stream_prompt_tokens = metadata.prompt_tokens or kong.ctx.plugin.ai_stream_prompt_tokens
           end
         end
 
         framebuffer:put("data: ")
         framebuffer:put(formatted or "")
         framebuffer:put((formatted ~= "[DONE]") and "\n\n" or "")
+      end
+
+      if conf.logging and conf.logging.log_statistics and metadata then
+        kong.ctx.plugin.ai_stream_completion_tokens = 
+          (kong.ctx.plugin.ai_stream_completion_tokens or 0) +
+          (metadata.completion_tokens or 0)
+          or kong.ctx.plugin.ai_stream_completion_tokens
+        kong.ctx.plugin.ai_stream_prompt_tokens = 
+          (kong.ctx.plugin.ai_stream_prompt_tokens or 0) +
+          (metadata.prompt_tokens or 0)
+          or kong.ctx.plugin.ai_stream_prompt_tokens
       end
     end
   end
