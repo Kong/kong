@@ -10,7 +10,7 @@ local TEST_CONF_PATH = os.getenv("KONG_SPEC_TEST_CONF_PATH") or "spec/kong_tests
 local CUSTOM_PLUGIN_PATH = "./spec/fixtures/custom_plugins/?.lua"
 local CUSTOM_VAULT_PATH = "./spec/fixtures/custom_vaults/?.lua;./spec/fixtures/custom_vaults/?/init.lua"
 local DNS_MOCK_LUA_PATH = "./spec/fixtures/mocks/lua-resty-dns/?.lua"
-local GO_PLUGIN_PATH = "./spec/fixtures/go"
+local EXTERNAL_PLUGINS_PATH = "./spec/fixtures/external_plugins"
 local GRPC_TARGET_SRC_PATH = "./spec/fixtures/grpc/target/"
 local MOCK_UPSTREAM_PROTOCOL = "http"
 local MOCK_UPSTREAM_SSL_PROTOCOL = "https"
@@ -3744,8 +3744,8 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
   -- go plugins are enabled
   --  compile fixture go plugins if any setting mentions it
   for _,v in pairs(env) do
-    if type(v) == "string" and v:find(GO_PLUGIN_PATH) then
-      build_go_plugins(GO_PLUGIN_PATH)
+    if type(v) == "string" and v:find(EXTERNAL_PLUGINS_PATH .. "/go") then
+      build_go_plugins(EXTERNAL_PLUGINS_PATH .. "/go")
       break
     end
   end
@@ -4218,7 +4218,7 @@ end
   bin_path = BIN_PATH,
   test_conf = conf,
   test_conf_path = TEST_CONF_PATH,
-  go_plugin_path = GO_PLUGIN_PATH,
+  external_plugins_path = EXTERNAL_PLUGINS_PATH,
   mock_upstream_hostname = MOCK_UPSTREAM_HOSTNAME,
   mock_upstream_protocol = MOCK_UPSTREAM_PROTOCOL,
   mock_upstream_host     = MOCK_UPSTREAM_HOST,
@@ -4397,4 +4397,6 @@ end
   get_available_port = get_available_port,
 
   make_temp_dir = make_temp_dir,
+
+  build_go_plugins = build_go_plugins,
 }

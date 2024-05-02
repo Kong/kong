@@ -971,7 +971,7 @@ function Kong.init_worker()
   end
 
   if is_not_control_plane then
-    plugin_servers.start()
+    assert(plugin_servers.start())
   end
 
   if kong.clustering then
@@ -1008,7 +1008,7 @@ end
 
 function Kong.exit_worker()
   if process.type() ~= "privileged agent" and not is_control_plane(kong.configuration) then
-    plugin_servers.stop()
+    assert(plugin_servers.stop())
   end
 end
 

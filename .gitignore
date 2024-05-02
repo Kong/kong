@@ -41,3 +41,4 @@ bin/h2client
 *.wasm
 spec/fixtures/proxy_wasm_filters/build
 spec/fixtures/proxy_wasm_filters/target
+spec/fixtures/external_plugins/go/go-hello
