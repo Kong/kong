@@ -94,6 +94,7 @@ export {
   expectStatusReadyEndpointOk,
   expectStatusReadyEndpoint503,
   waitForTargetStatus,
+  getClusteringDataPlanes
 } from './utilities/status-endpoint';
 export {
   getMetric,

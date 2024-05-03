@@ -5,6 +5,8 @@ import {
   getGatewayHost,
   wait,
   expect,
+  getBasePath,
+  Environment,
 } from '@support';
 
 const defaultPort = 8100;
@@ -14,6 +16,11 @@ const agent = new https.Agent({
 });
 
 axios.defaults.httpsAgent = agent;
+
+const adminUrl = `${getBasePath({
+  app: 'gateway',
+  environment: Environment.gateway.adminSec,
+})}`;
 
 /**
  * Get /status/ready endpoint response
@@ -81,3 +88,11 @@ export const waitForTargetStatus = async (
   logResponse(response);
   return false;
 };
+
+export const getClusteringDataPlanes = async () => {
+  const resp = await axios({
+    url:`${adminUrl}/clustering/data-planes`,
+  })
+
+  return resp.data
+}
