@@ -1,6 +1,6 @@
 local typedefs = require("kong.db.schema.typedefs")
 local llm = require("kong.llm")
-local deep_copy = require("kong.tools.utils").deep_copy
+local deep_copy = require("kong.tools.table").deep_copy
 
 local this_schema = deep_copy(llm.config_schema)
 

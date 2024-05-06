@@ -1,6 +1,7 @@
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
 local declarative = require "kong.db.declarative"
+local uuid = require("kong.tools.uuid").uuid
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 -- Note: include "off" strategy here as well
 for _, strategy in helpers.all_strategies() do
@@ -139,7 +140,7 @@ for _, strategy in helpers.all_strategies() do
 
     it("update_by_instance_name", function()
       local newhost = "newhost"
-      local updated_plugin = utils.cycle_aware_deep_copy(plugin2)
+      local updated_plugin = cycle_aware_deep_copy(plugin2)
       updated_plugin.config.redis.host = newhost
       updated_plugin.config.redis_host = newhost
 
@@ -151,7 +152,7 @@ for _, strategy in helpers.all_strategies() do
     it("upsert_by_instance_name", function()
       -- existing plugin upsert (update part of upsert)
       local newhost = "newhost"
-      local updated_plugin = utils.cycle_aware_deep_copy(plugin2)
+      local updated_plugin = cycle_aware_deep_copy(plugin2)
       updated_plugin.config.redis.host = newhost
       updated_plugin.config.redis_host = newhost
 
@@ -161,7 +162,7 @@ for _, strategy in helpers.all_strategies() do
 
       -- new plugin upsert (insert part of upsert)
       local new_plugin_config = {
-        id = utils.uuid(),
+        id = uuid(),
         enabled = true,
         name = "rate-limiting",
         instance_name = 'rate-limiting-instance-2',

@@ -2,8 +2,8 @@ local Schema = require("kong.db.schema.init")
 local Entity = require("kong.db.schema.entity")
 local DAO = require("kong.db.dao.init")
 local errors = require("kong.db.errors")
-local utils = require("kong.tools.utils")
 local hooks = require("kong.hooks")
+local cycle_aware_deep_merge = require("kong.tools.table").cycle_aware_deep_merge
 
 local null = ngx.null
 
@@ -194,7 +194,7 @@ describe("DAO", function()
         update = function(_, _, value)
           -- defaults pre-applied before partial update
           assert(value.b == "hello")
-          data = utils.cycle_aware_deep_merge(data, value)
+          data = cycle_aware_deep_merge(data, value)
           return data
         end,
       }
@@ -219,7 +219,7 @@ describe("DAO", function()
         update = function(_, _, value)
           -- no defaults pre-applied before partial update
           assert(value.r.f2 == nil)
-          data = utils.cycle_aware_deep_merge(data, value)
+          data = cycle_aware_deep_merge(data, value)
           return data
         end,
       }
@@ -248,7 +248,7 @@ describe("DAO", function()
             f1 = null,
             f2 = "world",
           }, value.r)
-          data = utils.cycle_aware_deep_merge(data, value)
+          data = cycle_aware_deep_merge(data, value)
           return data
         end,
       }
@@ -274,7 +274,7 @@ describe("DAO", function()
           -- defaults pre-applied before partial update
           assert.equal("hello", value.b)
           assert.same(null, value.r)
-          data = utils.cycle_aware_deep_merge(data, value)
+          data = cycle_aware_deep_merge(data, value)
           return data
         end,
       }
@@ -298,7 +298,7 @@ describe("DAO", function()
           return data
         end,
         update = function(_, _, value)
-          data = utils.cycle_aware_deep_merge(data, value)
+          data = cycle_aware_deep_merge(data, value)
           return data
         end,
       }
@@ -350,7 +350,7 @@ describe("DAO", function()
           return data
         end,
         update = function(_, _, value)
-          data = utils.cycle_aware_deep_merge(data, value)
+          data = cycle_aware_deep_merge(data, value)
           return data
         end,
       }
@@ -373,7 +373,7 @@ describe("DAO", function()
           return data
         end,
         update = function(_, _, value)
-          data = utils.cycle_aware_deep_merge(data, value)
+          data = cycle_aware_deep_merge(data, value)
           return data
         end,
       }
@@ -396,7 +396,7 @@ describe("DAO", function()
           return data
         end,
         update = function(_, _, value)
-          data = utils.cycle_aware_deep_merge(data, value)
+          data = cycle_aware_deep_merge(data, value)
           return data
         end,
       }
@@ -419,7 +419,7 @@ describe("DAO", function()
           return data
         end,
         update = function(_, _, value)
-          data = utils.cycle_aware_deep_merge(data, value)
+          data = cycle_aware_deep_merge(data, value)
           return data
         end,
       }
@@ -442,7 +442,7 @@ describe("DAO", function()
           return data
         end,
         update = function(_, _, value)
-          data = utils.cycle_aware_deep_merge(data, value)
+          data = cycle_aware_deep_merge(data, value)
           return data
         end,
       }

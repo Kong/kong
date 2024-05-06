@@ -1,12 +1,12 @@
 require "kong.plugins.opentelemetry.proto"
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
+local kong_table = require "kong.tools.table"
 local ngx_re = require "ngx.re"
 local http = require "resty.http"
 
 
 local fmt = string.format
-local table_merge = utils.table_merge
+local table_merge = kong_table.table_merge
 local split = ngx_re.split
 
 local OTELCOL_HOST = helpers.otelcol_host

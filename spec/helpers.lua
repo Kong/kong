@@ -62,6 +62,7 @@ local Schema = require "kong.db.schema"
 local Entity = require "kong.db.schema.entity"
 local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
+local kong_table = require "kong.tools.table"
 local http = require "resty.http"
 local pkey = require "resty.openssl.pkey"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
@@ -824,7 +825,7 @@ end
 -- @see admin_ssl_client
 local function http_client_opts(options)
   if not options.scheme then
-    options = utils.cycle_aware_deep_copy(options)
+    options = kong_table.cycle_aware_deep_copy(options)
     options.scheme = "http"
     if options.port == 443 then
       options.scheme = "https"
@@ -3787,7 +3788,7 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
         return nil, err
       end
     end
-    env = utils.cycle_aware_deep_copy(env)
+    env = kong_table.cycle_aware_deep_copy(env)
     env.declarative_config = config_yml
   end
 
