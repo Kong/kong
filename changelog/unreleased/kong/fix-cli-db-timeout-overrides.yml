@@ -1,0 +1,5 @@
+message: |
+  Fixed an issue where the `pg_timeout` was overridden to `60s` even if `--db-timeout`
+  was not explicitly passed in CLI arguments.
+type: bugfix
+scope: CLI Command
