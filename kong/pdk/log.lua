@@ -814,7 +814,7 @@ do
         end
       end
 
-      local upstream_status = kong.service.response.get_status()
+      local upstream_status = okong.service.response.get_status()
 
       local response_source = okong.response.get_source(ongx.ctx)
       local response_source_name = TYPE_NAMES[response_source]
