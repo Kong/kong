@@ -22,6 +22,11 @@ jobs:
       cache-key: ${{ steps.cache-key.outputs.cache-key }}
 
     steps:
+    - name: test
+      run: |
+        cat $GITHUB_PATH || true
+        export
+
     - name: Checkout Kong source code
       uses: actions/checkout@v4
 
