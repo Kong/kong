@@ -25,7 +25,8 @@ clib_deps = [
     kong_install(
         name = "install-%s" % get_workspace_name(k),
         src = k,
-        prefix = "kong/lib" if k == "@passwdqc" else "kong",
+        prefix = "kong/lib" if k in ("@passwdqc", "@snappy") else "kong",
+        strip_path = "snappy" if k == "@snappy" else "",
     )
     for k in clib_deps
 ]
