@@ -4,6 +4,9 @@ on:
     types: [closed, labeled]
   issue_comment:
     types: [created]
+permissions:
+  contents: write # so it can comment
+  pull-requests: write # so it can create pull requests and labels
 jobs:
   cross-repo-cherrypick:
     name: Cherry pick to remote repository
@@ -12,6 +15,7 @@ jobs:
     # or when a comment containing `/cherry-pick` is created
     # and the author is a member, collaborator or owner
     if: >
+      github.ref == 'refs/heads/master' &&
       (
         github.event_name == 'pull_request_target' &&
         github.event.pull_request.merged

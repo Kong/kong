@@ -1,6 +1,7 @@
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("//build:build_system.bzl", "kong_directory_genrule", "kong_rules_group", "kong_template_file")
+load("@kong//build/openresty/wasmx/filters:variables.bzl", "WASM_FILTERS_TARGETS")
 
 exports_files([
     "package/nfpm.yaml",
@@ -47,10 +48,22 @@ install_webui_cmd = select({
     "@kong//:skip_webui_flags": "\n",
 })
 
+install_wasm_filters_cmd = select({
+    "@kong//:wasmx_flag": """
+            mkdir -pv ${BUILD_DESTDIR}/kong/wasm
+        """ + " ".join(["""
+            tpath="$(locations %s)"
+            fname="$(echo "${tpath}" | cut -d'/' -f2)"
+
+            cp -v "$tpath" "${BUILD_DESTDIR}/kong/wasm/${fname}"
+        """ % t for t in WASM_FILTERS_TARGETS]),
+    "//conditions:default": "\n",
+})
+
 install_wasm_deps_cmd = select({
     "@kong//:wasmx_flag": """
-    for fname in $(locations @ngx_wasm_module//:lua_libs); do
-        base=${fname##*/ngx_wasm_module/lib/}
+    for fname in $(locations @ngx_wasmx_module//:lua_libs); do
+        base=${fname##*/ngx_wasmx_module/lib/}
         dest="${BUILD_DESTDIR}/openresty/lualib/$base"
         mkdir -p "$(dirname "$dest")"
         cp -v "$fname" "$dest"
@@ -90,6 +103,7 @@ kong_directory_genrule(
         "@openresty",
         "@openresty//:luajit",
         "@protoc//:all_srcs",
+        "@snappy//:snappy-lib",
     ] + select({
         "@kong//:skip_webui_flags": [],
         "//conditions:default": [
@@ -97,9 +111,9 @@ kong_directory_genrule(
         ],
     }) + select({
         "@kong//:wasmx_flag": [
-            "@ngx_wasm_module//:lua_libs",
+            "@ngx_wasmx_module//:lua_libs",
             "@openresty//:wasm_runtime",
-        ],
+        ] + WASM_FILTERS_TARGETS,
         "//conditions:default": [],
     }) + lib_deps + lualib_deps,
     cmd =
@@ -139,6 +153,9 @@ kong_directory_genrule(
         tar -cC ${LUAJIT}/share . | tar -xC ${BUILD_DESTDIR}/openresty/luajit/share
         chmod -R "+rw" ${BUILD_DESTDIR}/openresty/luajit
 
+        SNAPPY=${WORKSPACE_PATH}/$(dirname $(echo '$(locations @snappy//:snappy-lib)' | awk '{print $1}'))
+        cp ${SNAPPY}/libsnappy.${libext} ${BUILD_DESTDIR}/kong/lib
+
         LUAROCKS=${WORKSPACE_PATH}/$(dirname '$(location @luarocks//:luarocks_make)')/luarocks_tree
         cp -r ${LUAROCKS}/. ${BUILD_DESTDIR}/.
 
@@ -147,7 +164,14 @@ kong_directory_genrule(
 
         cp -r $(locations @protoc//:all_srcs) ${BUILD_DESTDIR}/kong/.
 
-    """ + install_lib_deps_cmd + install_lualib_deps_cmd + install_webui_cmd + link_modules_dir + install_wasm_deps_cmd + """
+    """ +
+        install_lib_deps_cmd +
+        install_lualib_deps_cmd +
+        install_webui_cmd +
+        link_modules_dir +
+        install_wasm_filters_cmd +
+        install_wasm_deps_cmd +
+        """
         mkdir -p ${BUILD_DESTDIR}/etc/kong
         cp kong.conf.default ${BUILD_DESTDIR}/etc/kong/kong.conf.default
 

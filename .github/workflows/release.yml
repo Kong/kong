@@ -133,7 +133,7 @@ jobs:
     - name: Cache Git
       id: cache-git
       if: (matrix.package == 'rpm' || matrix.image == 'debian:10') && matrix.image != ''
-      uses: actions/cache@v4
+      uses: actions/cache@e12d46a63a90f2fae62d114769bbf2a179198b5c # v3, DO NOT BUMP, v4 BREAKS ON CENTOS7 OR AMAZONLINUX2
       with:
         path: /usr/local/git
         key: ${{ matrix.label }}-git-2.41.0
@@ -194,7 +194,7 @@ jobs:
     - name: Cache Packages
       id: cache-deps
       if: env.GHA_CACHE == 'true'
-      uses: actions/cache@v4
+      uses: actions/cache@e12d46a63a90f2fae62d114769bbf2a179198b5c # v3, DO NOT BUMP, v4 BREAKS ON CENTOS7 OR AMAZONLINUX2
       with:
         path: bazel-bin/pkg
         key: ${{ steps.cache-key.outputs.cache-key }}
@@ -204,7 +204,7 @@ jobs:
         grep -v '^#' .requirements >> $GITHUB_ENV
 
     - name: Setup Bazel
-      uses: bazelbuild/setup-bazelisk@b39c379c82683a5f25d34f0d062761f62693e0b2 # v3.0.0
+      uses: bazelbuild/setup-bazelisk@95c9bf48d0c570bb3e28e57108f3450cd67c1a44 # v2.0.0
 
     - name: Install Deb Dependencies
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true'
@@ -549,10 +549,6 @@ jobs:
       env:
         ARCHITECTURE: ${{ steps.pkg-arch.outputs.arch }}
         OFFICIAL_RELEASE: ${{ github.event.inputs.official }}
-        PULP_HOST: https://api.download.konghq.com
-        PULP_USERNAME: admin
-        # PULP_PASSWORD: ${{ secrets.PULP_DEV_PASSWORD }}
-        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
         ARTIFACT_VERSION: ${{ matrix.artifact-version }}
         ARTIFACT_TYPE: ${{ matrix.artifact-type }}
         ARTIFACT: ${{ matrix.artifact }}
@@ -564,7 +560,6 @@ jobs:
         CLOUDSMITH_DRY_RUN: ''
         IGNORE_CLOUDSMITH_FAILURES: ${{ vars.IGNORE_CLOUDSMITH_FAILURES }}
         USE_CLOUDSMITH: ${{ vars.USE_CLOUDSMITH }}
-        USE_PULP: ${{ vars.USE_PULP }}
       run: |
         sha256sum bazel-bin/pkg/*
 

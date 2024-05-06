@@ -732,7 +732,7 @@
 
 #mem_cache_size = 128m           # Size of each of the two shared memory caches
                                  # for traditional mode database entities
-                                 # and runtime data, `kong_core_cache` and 
+                                 # and runtime data, `kong_core_cache` and
                                  # `kong_cache`.
                                  #
                                  # The accepted units are `k` and `m`, with a minimum
@@ -1659,7 +1659,7 @@
                                  #   is not visible.
                                  # - `expressions`: the DSL based expression router engine
                                  #   will be used under the hood. Traditional router
-                                 #   config interface is not visible and you must write
+                                 #   config interface is still visible, and you could also write
                                  #   Router Expression manually and provide them in the
                                  #   `expression` field on the `Route` object.
                                  # - `traditional`: the pre-3.0 Router engine will be
@@ -2053,6 +2053,33 @@
                         #   top level are registered
                         # * This path _may_ be a symlink to a directory.
 
+#wasm_filters = bundled,user        # Comma-separated list of Wasm filters to be made
+                                    # available for use in filter chains.
+                                    #
+                                    # When the `off` keyword is specified as the
+                                    # only value, no filters will be available for use.
+                                    #
+                                    # When the `bundled` keyword is specified, all filters
+                                    # bundled with Kong will be available.
+                                    #
+                                    # When the `user` keyword is specified, all filters
+                                    # within the `wasm_filters_path` will be available.
+                                    #
+                                    # **Examples:**
+                                    #
+                                    # - `wasm_filters = bundled,user` enables _all_ bundled
+                                    #   and user-supplied filters
+                                    # - `wasm_filters = user` enables _only_ user-supplied
+                                    #   filters
+                                    # - `wasm_filters = filter-a,filter-b` enables _only_
+                                    #   filters named `filter-a` or `filter-b` (whether
+                                    #   bundled _or_ user-suppplied)
+                                    #
+                                    # If a conflict occurs where a bundled filter and a
+                                    # user-supplied filter share the same name, a warning
+                                    # will be logged, and the user-supplied filter will
+                                    # be used instead.
+
 #------------------------------------------------------------------------------
 # WASM injected directives
 #------------------------------------------------------------------------------
@@ -2065,9 +2092,16 @@
 # The following namespaces are supported:
 #
 # - `nginx_wasm_<directive>`: Injects `<directive>` into the `wasm {}` block.
+# - `nginx_wasm_shm_kv`: Injects `shm_kv *` into the `wasm {}` block,
+#   allowing operators to define a general memory zone which is usable by
+#   the `get_shared_data`/`set_shared_data` Proxy-Wasm SDK functions as
+#   an in-memory key-value store of data shareable across filters.
 # - `nginx_wasm_shm_kv_<name>`: Injects `shm_kv <name>` into the `wasm {}` block,
 #   allowing operators to define custom shared memory zones which are usable by
-#   the `get_shared_data`/`set_shared_data` Proxy-Wasm SDK functions.
+#   the `get_shared_data`/`set_shared_data` Proxy-Wasm SDK functions as
+#   separate namespaces in the `"<name>/<key>"` format.
+#   For using these functions with non-namespaced keys, the Nginx template needs
+#   a `shm_kv *` entry, which can be defined using `nginx_wasm_shm_kv`.
 # - `nginx_wasm_wasmtime_<flag>`: Injects `flag <flag>` into the `wasmtime {}`
 #   block, allowing various Wasmtime-specific flags to be set.
 # - `nginx_<http|proxy>_<directive>`: Injects `<directive>` into the

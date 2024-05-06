@@ -9,6 +9,7 @@ local PLUGIN_NAME = "ai-request-transformer"
 
 local FORMATS = {
   openai = {
+    __key__ = "ai-request-transformer",
     route_type = "llm/v1/chat",
     model = {
       name = "gpt-4",
@@ -25,6 +26,7 @@ local FORMATS = {
     },
   },
   cohere = {
+    __key__ = "ai-request-transformer",
     route_type = "llm/v1/chat",
     model = {
       name = "command",
@@ -40,10 +42,11 @@ local FORMATS = {
       header_value = "Bearer cohere-key",
     },
   },
-  authropic = {
+  anthropic = {
+    __key__ = "ai-request-transformer",
     route_type = "llm/v1/chat",
     model = {
-      name = "claude-2",
+      name = "claude-2.1",
       provider = "anthropic",
       options = {
         max_tokens = 512,
@@ -57,6 +60,7 @@ local FORMATS = {
     },
   },
   azure = {
+    __key__ = "ai-request-transformer",
     route_type = "llm/v1/chat",
     model = {
       name = "gpt-4",
@@ -64,7 +68,7 @@ local FORMATS = {
       options = {
         max_tokens = 512,
         temperature = 0.5,
-        upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORT .. "/chat/azure"
+        upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORT .. "/chat/azure",
       },
     },
     auth = {
@@ -73,6 +77,7 @@ local FORMATS = {
     },
   },
   llama2 = {
+    __key__ = "ai-request-transformer",
     route_type = "llm/v1/chat",
     model = {
       name = "llama2",
@@ -90,6 +95,7 @@ local FORMATS = {
     },
   },
   mistral = {
+    __key__ = "ai-request-transformer",
     route_type = "llm/v1/chat",
     model = {
       name = "mistral",
@@ -110,6 +116,7 @@ local FORMATS = {
 
 local OPENAI_NOT_JSON = {
   route_type = "llm/v1/chat",
+  __key__ = "ai-request-transformer",
   model = {
     name = "gpt-4",
     provider = "openai",
@@ -185,7 +192,6 @@ describe(PLUGIN_NAME .. ": (unit)", function()
                 if err or (body.messages == ngx.null) then
                   ngx.status = 400
                   ngx.say(pl_file.read(base_dir .. ngx.var.provider .. "/llm-v1-chat/responses/bad_request.json"))
-
                 else
                   ngx.status = 200
                   ngx.say(pl_file.read(base_dir .. ngx.var.provider .. "/request-transformer/response-in-json.json"))
@@ -213,6 +219,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
   lazy_teardown(function()
     assert(mock:stop())
   end)
+
 
   for name, format_options in pairs(FORMATS) do
     describe(name .. " transformer tests, exact json response", function()

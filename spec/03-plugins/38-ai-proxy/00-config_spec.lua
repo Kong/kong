@@ -115,6 +115,34 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     assert.is_falsy(ok)
   end)
 
+  it("do not support log statistics when /chat route_type is used for anthropic provider", function()
+    local config = {
+      route_type = "llm/v1/completions",
+      auth = {
+        header_name = "x-api-key",
+        header_value = "anthropic_key",
+      },
+      model = {
+        name = "anthropic-chat",
+        provider = "anthropic",
+        options = {
+          max_tokens = 256,
+          temperature = 1.0,
+          anthropic_version = "2021-09-01",
+        },
+      },
+      logging = {
+        log_statistics = true,
+      },
+    }
+
+    local ok, err = validate(config)
+    assert.is_falsy(ok)
+    assert.not_nil(err["config"]["@entity"])
+    assert.not_nil(err["config"]["@entity"][1])
+    assert.not_nil(err["config"]["@entity"][1], "anthropic does not support statistics when route_type is llm/v1/completions")
+  end)
+
   it("requires [azure_instance] field when azure provider is used", function()
     local config = {
       route_type = "llm/v1/chat",

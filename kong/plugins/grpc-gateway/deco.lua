@@ -1,6 +1,6 @@
 -- Copyright (c) Kong Inc. 2020
 
-local cjson = require "cjson"
+local cjson = require "cjson.safe".new()
 local buffer = require "string.buffer"
 local pb = require "pb"
 local grpc_tools = require "kong.tools.grpc"
@@ -194,7 +194,7 @@ end
 local function add_to_table( t, path, v, typ )
   local tab = t -- set up pointer to table root
   local msg_typ = typ;
-  for m in re_gmatch( path , "([^.]+)(\\.)?") do
+  for m in re_gmatch( path , "([^.]+)(\\.)?", "jo" ) do
     local key, dot = m[1], m[2]
     msg_typ = get_field_type(msg_typ, key)
 
@@ -227,7 +227,10 @@ function deco:upstream(body)
   local body_variable = self.endpoint.body_variable
   if body_variable then
     if body and #body > 0 then
-      local body_decoded = decode_json(body)
+      local body_decoded, err = decode_json(body)
+      if err then
+        return nil, "decode json err: " .. err
+      end
       if body_variable ~= "*" then
         --[[
           // For HTTP methods that allow a request body, the `body` field

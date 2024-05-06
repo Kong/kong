@@ -402,4 +402,42 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix)
 end
 
 
+-- If mixed config is detected and a 3.6 or lower DP is attached to the CP,
+-- no config will be sent at all
+function _M.check_mixed_route_entities(payload, dp_version, flavor)
+  if flavor ~= "expressions" then
+    return true
+  end
+
+  -- CP runs with 'expressions' flavor
+
+  local dp_version_num = version_num(dp_version)
+
+  if dp_version_num >= 3007000000 then -- [[ 3.7.0.0 ]]
+    return true
+  end
+
+  local routes = payload["config_table"].routes or {}
+  local routes_n = #routes
+  local count = 0   -- expression route count
+
+  for i = 1, routes_n do
+    local r = routes[i]
+
+    -- expression should be a string
+    if r.expression and r.expression ~= ngx.null then
+      count = count + 1
+    end
+  end
+
+  if count == routes_n or   -- all are expression only routes
+     count == 0             -- all are traditional routes
+  then
+    return true
+  end
+
+  return false, dp_version .. " does not support mixed mode route"
+end
+
+
 return _M

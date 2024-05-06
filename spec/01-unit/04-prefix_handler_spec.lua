@@ -308,6 +308,47 @@ describe("NGINX conf compiler", function()
       assert.not_matches("ssl_certificate_by_lua_block", kong_nginx_conf)
       assert.not_matches("ssl_dhparam", kong_nginx_conf)
     end)
+
+    -- TODO: enable when cluster RPC is GA
+    pending("renders RPC server", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        role = "control_plane",
+        cluster_cert = "spec/fixtures/kong_clustering.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        cluster_listen = "127.0.0.1:9005",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.matches("location = /v2/outlet {", kong_nginx_conf)
+    end)
+
+    -- TODO: remove when cluster RPC is GA
+    it("does not render RPC server, even when cluster_rpc enabled", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        role = "control_plane",
+        cluster_cert = "spec/fixtures/kong_clustering.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        cluster_rpc = "on",
+        cluster_listen = "127.0.0.1:9005",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.matches("location = /v2/outlet {", kong_nginx_conf)
+    end)
+
+    it("does not renders RPC server when inert", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        role = "control_plane",
+        cluster_cert = "spec/fixtures/kong_clustering.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        cluster_listen = "127.0.0.1:9005",
+        cluster_rpc = "off",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.not_matches("location = /v2/outlet {", kong_nginx_conf)
+    end)
+
     describe("handles client_ssl", function()
       it("on", function()
         local conf = assert(conf_loader(helpers.test_conf_path, {
@@ -911,30 +952,45 @@ describe("NGINX conf compiler", function()
       it("injects a shm_kv", function()
         assert.matches("wasm {.+shm_kv counters 10m;.+}", ngx_cfg({ wasm = true, nginx_wasm_shm_kv_counters="10m" }, debug))
       end)
+      it("injects a general shm_kv", function()
+        assert.matches("wasm {.+shm_kv %* 10m;.+}", ngx_cfg({ wasm = true, nginx_wasm_shm_kv = "10m" }, debug))
+      end)
       it("injects multiple shm_kvs", function()
         assert.matches(
-          "wasm {.+shm_kv cache 10m.+shm_kv counters 10m;.+}",
-          ngx_cfg({ wasm = true, nginx_wasm_shm_kv_cache="10m", nginx_wasm_shm_kv_counters="10m"}, debug)
+          "wasm {.+shm_kv cache 10m.+shm_kv counters 10m;.+shm_kv %* 5m;.+}",
+          ngx_cfg({
+            wasm = true,
+            nginx_wasm_shm_kv_cache = "10m",
+            nginx_wasm_shm_kv_counters = "10m",
+            nginx_wasm_shm_kv = "5m",
+          }, debug)
         )
       end)
       it("injects default configurations if wasm=on", function()
         assert.matches(
-          ".+proxy_wasm_lua_resolver on;.+",
+          ".+proxy_wasm_lua_resolver off;.+",
           kong_ngx_cfg({ wasm = true, }, debug)
         )
       end)
       it("does not inject default configurations if wasm=off", function()
         assert.not_matches(
-          ".+proxy_wasm_lua_resolver on;.+",
+          ".+proxy_wasm_lua_resolver.+",
           kong_ngx_cfg({ wasm = false, }, debug)
         )
       end)
-      it("permits overriding proxy_wasm_lua_resolver", function()
+      it("permits overriding proxy_wasm_lua_resolver to off", function()
         assert.matches(
           ".+proxy_wasm_lua_resolver off;.+",
           kong_ngx_cfg({ wasm = true,
-                         -- or should this be `false`? IDK
                          nginx_http_proxy_wasm_lua_resolver = "off",
+                       }, debug)
+        )
+      end)
+      it("permits overriding proxy_wasm_lua_resolver to on", function()
+        assert.matches(
+          ".+proxy_wasm_lua_resolver on;.+",
+          kong_ngx_cfg({ wasm = true,
+                         nginx_http_proxy_wasm_lua_resolver = "on",
                        }, debug)
         )
       end)

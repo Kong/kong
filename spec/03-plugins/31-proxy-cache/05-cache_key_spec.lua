@@ -1,12 +1,13 @@
-local utils = require "kong.tools.utils"
 local key_utils = require "kong.plugins.proxy-cache.cache_key"
+local random_string = require("kong.tools.rand").random_string
+local uuid = require("kong.tools.uuid").uuid
 
 
 describe("prefix_uuid", function()
-  local consumer1_uuid = utils.uuid()
-  local consumer2_uuid = utils.uuid()
-  local route1_uuid = utils.uuid()
-  local route2_uuid = utils.uuid()
+  local consumer1_uuid = uuid()
+  local consumer2_uuid = uuid()
+  local route1_uuid = uuid()
+  local route2_uuid = uuid()
 
   it("returns distinct prefixes for a consumer on different routes", function()
     local prefix1 = assert(key_utils.prefix_uuid(consumer1_uuid, route1_uuid))
@@ -72,8 +73,8 @@ describe("params_key", function()
 
   it("sorts the arguments", function()
     for i = 1, 100 do
-      local s1 = "a" .. utils.random_string()
-      local s2 = "b" .. utils.random_string()
+      local s1 = "a" .. random_string()
+      local s2 = "b" .. random_string()
       assert.equal(s1.."=1:".. s2 .. "=2", key_utils.params_key({[s2] = 2, [s1] = 1},{}))
     end
   end)
@@ -106,8 +107,8 @@ describe("headers_key", function()
 
   it("sorts the arguments", function()
     for i = 1, 100 do
-      local s1 = "a" .. utils.random_string()
-      local s2 = "b" .. utils.random_string()
+      local s1 = "a" .. random_string()
+      local s2 = "b" .. random_string()
       assert.equal(s1.."=1:".. s2 .. "=2", key_utils.params_key({[s2] = 2, [s1] = 1},
                      {vary_headers = {"a", "b"}}))
     end

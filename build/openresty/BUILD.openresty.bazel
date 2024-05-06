@@ -3,6 +3,7 @@ load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@kong//build/openresty/wasmx:rules.bzl", "wasm_runtime", "wasmx_configure_options", "wasmx_env")
 load("@openresty_binding//:variables.bzl", "LUAJIT_VERSION")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
+load("@kong//build/openresty/wasmx/filters:variables.bzl", "WASM_FILTERS_TARGETS")
 
 filegroup(
     name = "luajit_srcs",
@@ -270,11 +271,11 @@ configure_make(
         "@openresty_binding//:all_srcs",
     ] + select({
         "@kong//:wasmx_flag": [
-            "@ngx_wasm_module//:all_srcs",
+            "@ngx_wasmx_module//:all_srcs",
             # wasm_runtime has to be a "data" (target) instead of "build_data" (exec)
             # to be able to lookup by its path (relative to INSTALLDIR)
             ":wasm_runtime",
-        ],
+        ] + WASM_FILTERS_TARGETS,
         "//conditions:default": [],
     }),
     env = wasmx_env,

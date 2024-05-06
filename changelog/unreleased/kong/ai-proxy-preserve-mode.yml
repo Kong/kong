@@ -1,0 +1,6 @@
+message: |
+  AI Proxy now has a 'preserve' route_type option, where the requests and responses 
+  are passed directly to the upstream LLM. This is to enable compatilibity with any  
+  and all models and SDKs, that may be used when calling the AI services.
+type: feature
+scope: Plugin

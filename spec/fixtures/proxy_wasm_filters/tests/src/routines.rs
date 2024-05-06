@@ -18,7 +18,6 @@ pub(crate) fn add_response_header(ctx: &mut TestHttp) {
         let (name, value) = header.split_once('=').unwrap();
 
         ctx.add_http_response_header(name, value);
-        ctx.set_http_request_header(HEADER_NAME, None)
     }
 
     const CONFIG_HEADER_NAME: &str = "X-PW-Resp-Header-From-Config";

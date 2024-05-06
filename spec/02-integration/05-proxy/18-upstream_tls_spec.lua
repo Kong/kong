@@ -1,6 +1,5 @@
 local helpers = require "spec.helpers"
 local ssl_fixtures = require "spec.fixtures.ssl"
-local atc_compat = require "kong.router.compat"
 
 
 local other_ca_cert = [[
@@ -103,20 +102,8 @@ local function reload_router(flavor)
 end
 
 
+-- TODO: remove it when we confirm it is not needed
 local function gen_route(flavor, r)
-  if flavor ~= "expressions" then
-    return r
-  end
-
-  r.expression = atc_compat.get_expression(r)
-  r.priority = tonumber(atc_compat._get_priority(r))
-
-  r.hosts = nil
-  r.paths = nil
-  r.snis  = nil
-
-  r.destinations = nil
-
   return r
 end
 
@@ -135,7 +122,7 @@ local function gen_plugin(route)
 end
 
 
-for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
+for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
 for _, strategy in helpers.each_strategy() do
   describe("overriding upstream TLS parameters for database [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
     local admin_client
@@ -322,13 +309,13 @@ for _, strategy in helpers.each_strategy() do
     lazy_teardown(function()
       helpers.stop_kong()
     end)
-  
+
     local function get_tls_service_id(subsystems)
       if subsystems == "http" then
         return service_mtls.id
       else
         return tls_service_mtls.id
-      end      
+      end
     end
 
     local function get_proxy_client(subsystems, stream_port)
@@ -339,7 +326,7 @@ for _, strategy in helpers.each_strategy() do
       end
     end
 
-    local function wait_for_all_config_update(subsystems) 
+    local function wait_for_all_config_update(subsystems)
       local opt = {}
       if subsystems == "stream" then
         opt.stream_enabled = true
@@ -894,7 +881,7 @@ for _, strategy in helpers.each_strategy() do
               end)
             end
           end, 10)
-          
+
           if subsystems == "http" then
             assert.matches("An invalid response was received from the upstream server", body)
           end

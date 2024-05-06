@@ -7,6 +7,7 @@ local fmt = string.format
 local ai_shared = require("kong.llm.drivers.shared")
 local openai_driver = require("kong.llm.drivers.openai")
 local socket_url = require "socket.url"
+local string_gsub = string.gsub
 --
 
 -- globals
@@ -17,6 +18,8 @@ local DRIVER_NAME = "mistral"
 local transformers_from = {
   ["llm/v1/chat/ollama"] = ai_shared.from_ollama,
   ["llm/v1/completions/ollama"] = ai_shared.from_ollama,
+  ["stream/llm/v1/chat/ollama"] = ai_shared.from_ollama,
+  ["stream/llm/v1/completions/ollama"] = ai_shared.from_ollama,
 }
 
 local transformers_to = {
@@ -63,6 +66,8 @@ function _M.to_format(request_table, model_info, route_type)
     return nil, nil, fmt("no transformer available to format %s://%s", model_info.provider, transformer_type)
   end
 
+  request_table = ai_shared.merge_config_defaults(request_table, model_info.options, model_info.route_type)
+
   -- dynamically call the correct transformer
   local ok, response_object, content_type, err = pcall(
     transformers_to[transformer_type],
@@ -104,13 +109,13 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
     headers[conf.auth.header_name] = conf.auth.header_value
   end
 
-  local res, err = ai_shared.http_request(url, body_string, method, headers, http_opts)
+  local res, err, httpc = ai_shared.http_request(url, body_string, method, headers, http_opts, return_res_table)
   if err then
     return nil, nil, "request to ai service failed: " .. err
   end
 
   if return_res_table then
-    return res, res.status, nil
+    return res, res.status, nil, httpc
   else
     -- At this point, the entire request / response is complete and the connection
     -- will be closed or back on the connection pool.
@@ -126,11 +131,6 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
 end
 
 function _M.pre_request(conf, body)
-  -- check for user trying to bring own model
-  if body and body.model then
-    return nil, "cannot use own model for this instance"
-  end
-
   return true, nil
 end
 
@@ -144,14 +144,15 @@ end
 
 -- returns err or nil
 function _M.configure_request(conf)
-  if conf.route_type ~= "preserve" then
-    -- mistral shared openai operation paths
-    local parsed_url = socket_url.parse(conf.model.options.upstream_url)
+  -- mistral shared operation paths
+  local parsed_url = socket_url.parse(conf.model.options.upstream_url)
 
-    kong.service.request.set_path(parsed_url.path)
-    kong.service.request.set_scheme(parsed_url.scheme)
-    kong.service.set_target(parsed_url.host, tonumber(parsed_url.port))
-  end
+  -- if the path is read from a URL capture, ensure that it is valid
+  parsed_url.path = string_gsub(parsed_url.path, "^/*", "/")
+
+  kong.service.request.set_path(parsed_url.path)
+  kong.service.request.set_scheme(parsed_url.scheme)
+  kong.service.set_target(parsed_url.host, (tonumber(parsed_url.port) or 443))
 
   local auth_header_name = conf.auth and conf.auth.header_name
   local auth_header_value = conf.auth and conf.auth.header_value

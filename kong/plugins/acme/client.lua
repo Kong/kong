@@ -114,8 +114,8 @@ local function new(conf)
 
   -- backward compat
   local url = conf.api_uri
-  if not ngx_re_match(url, "/directory$") then
-    if not ngx_re_match(url, "/$") then
+  if not ngx_re_match(url, "/directory$", "jo") then
+    if not ngx_re_match(url, "/$", "jo") then
       url = url .. "/"
     end
     url = url .. "directory"

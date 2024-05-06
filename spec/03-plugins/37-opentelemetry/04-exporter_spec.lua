@@ -1,21 +1,22 @@
 require "kong.plugins.opentelemetry.proto"
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
 local pb = require "pb"
 local pl_file = require "pl.file"
 local ngx_re = require "ngx.re"
 local to_hex = require "resty.string".to_hex
+local get_rand_bytes = require("kong.tools.rand").get_rand_bytes
+local table_merge = require("kong.tools.table").table_merge
 
 local fmt = string.format
 
 local HTTP_MOCK_TIMEOUT = 1
 
 local function gen_trace_id()
-  return to_hex(utils.get_rand_bytes(16))
+  return to_hex(get_rand_bytes(16))
 end
 
 local function gen_span_id()
-  return to_hex(utils.get_rand_bytes(8))
+  return to_hex(get_rand_bytes(8))
 end
 
 -- so we can have a stable output to verify
@@ -25,7 +26,6 @@ local function sort_by_key(tbl)
   end)
 end
 
-local table_merge = utils.table_merge
 local HTTP_SERVER_PORT = helpers.get_available_port()
 local PROXY_PORT = 9000
 

@@ -1,15 +1,14 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local utils = require "kong.tools.utils"
 local to_hex = require "resty.string".to_hex
+local get_rand_bytes = require("kong.tools.rand").get_rand_bytes
 
 local fmt = string.format
 local W3C_TRACE_ID_HEX_LEN = 32
-local OT_TRACE_ID_HEX_LEN = 32
 
 
 local function gen_trace_id(traceid_byte_count)
-  return to_hex(utils.get_rand_bytes(traceid_byte_count))
+  return to_hex(get_rand_bytes(traceid_byte_count))
 end
 
 
@@ -25,7 +24,7 @@ end
 
 
 local function gen_span_id()
-  return to_hex(utils.get_rand_bytes(8))
+  return to_hex(get_rand_bytes(8))
 end
 
 
@@ -154,12 +153,14 @@ describe("http integration tests with zipkin server (no http_endpoint) [#"
     })
     local body = assert.response(r).has.status(200)
     local json = cjson.decode(body)
+    local expected_len = traceid_byte_count * 2
+
     -- Trace ID is left padded with 0 for assert
-    assert.matches( ('0'):rep(32-#trace_id) .. trace_id .. ":%x+:" .. span_id .. ":01", json.headers["uber-trace-id"])
+    assert.matches( ('0'):rep(expected_len-#trace_id) .. trace_id .. ":%x+:" .. span_id .. ":01", json.headers["uber-trace-id"])
   end)
 
   it("propagates ot headers", function()
-    local trace_id = gen_trace_id(8)
+    local trace_id = gen_trace_id(traceid_byte_count)
     local span_id = gen_span_id()
     local r = proxy_client:get("/", {
       headers = {
@@ -172,7 +173,8 @@ describe("http integration tests with zipkin server (no http_endpoint) [#"
     local body = assert.response(r).has.status(200)
     local json = cjson.decode(body)
 
-    assert.equals(to_id_len(trace_id, OT_TRACE_ID_HEX_LEN), json.headers["ot-tracer-traceid"])
+    local expected_len = traceid_byte_count * 2
+    assert.equals(to_id_len(trace_id, expected_len), json.headers["ot-tracer-traceid"])
   end)
 end)
 end

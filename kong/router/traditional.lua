@@ -74,6 +74,12 @@ do
 end
 
 
+local get_header
+if is_http then
+  get_header = require("kong.tools.http").get_header
+end
+
+
 local split_port
 do
   local ZERO, NINE, LEFTBRACKET, RIGHTBRACKET = ("09[]"):byte(1, -1)
@@ -260,6 +266,12 @@ local function _set_ngx(mock_ngx)
     if mock_ngx.re.find then
       re_find = mock_ngx.re.find
     end
+  end
+
+  get_header = function(key)
+    local mock_headers = mock_ngx.headers or {}
+    local mock_var = mock_ngx.var or {}
+    return mock_headers[key] or mock_var["http_" .. key]
   end
 end
 
@@ -1743,7 +1755,7 @@ function _M.new(routes, cache, cache_neg)
     exec = function(ctx)
       local req_method = get_method()
       local req_uri = ctx and ctx.request_uri or var.request_uri
-      local req_host = var.http_host
+      local req_host = get_header("host", ctx)
       local req_scheme = ctx and ctx.scheme or var.scheme
       local sni = server_name()
 
@@ -1759,7 +1771,7 @@ function _M.new(routes, cache, cache_neg)
                     "(currently at ", lua_max_req_headers, ")")
         end
 
-        headers["host"] = nil
+        headers.host = nil
       end
 
       req_uri = strip_uri_args(req_uri)
@@ -1770,7 +1782,7 @@ function _M.new(routes, cache, cache_neg)
                                  sni, headers)
       if match_t then
         -- debug HTTP request header logic
-        add_debug_headers(var, header, match_t)
+        add_debug_headers(ctx, header, match_t)
       end
 
       return match_t
@@ -1781,8 +1793,7 @@ function _M.new(routes, cache, cache_neg)
       local src_ip = var.remote_addr
       local dst_ip = var.server_addr
       local src_port = tonumber(var.remote_port, 10)
-      local dst_port = tonumber((ctx or ngx.ctx).host_port, 10)
-                    or tonumber(var.server_port, 10)
+      local dst_port = (ctx or ngx.ctx).host_port or tonumber(var.server_port, 10)
       -- error value for non-TLS connections ignored intentionally
       local sni = server_name()
       -- fallback to preread SNI if current connection doesn't terminate TLS
@@ -1801,7 +1812,7 @@ function _M.new(routes, cache, cache_neg)
       -- rewrite the dst_ip, port back to what specified in proxy_protocol
       if var.kong_tls_passthrough_block == "1" or var.ssl_protocol then
         dst_ip = var.proxy_protocol_server_addr
-        dst_port = tonumber(var.proxy_protocol_server_port)
+        dst_port = tonumber(var.proxy_protocol_server_port, 10)
       end
 
       return find_route(nil, nil, nil, scheme,

@@ -23,6 +23,61 @@ end
 
 
 local compatible_checkers = {
+  { 3007000000, --[[ 3.7.0.0 ]]
+    function(config_table, dp_version, log_suffix)
+      local has_update
+
+      for _, plugin in ipairs(config_table.plugins or {}) do
+        if plugin.name == 'ai-proxy' then
+          local config = plugin.config
+          if config.model and config.model.options then
+            if config.model.options.response_streaming then
+              config.model.options.response_streaming = nil
+              log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
+                              ' response_streaming == nil, because it is not supported' ..
+                              ' in this release',
+                              dp_version, log_suffix)
+              has_update = true
+            end
+
+            if config.model.options.upstream_path then
+              config.model.options.upstream_path = nil
+              log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
+                              ' upstream_path == nil, because it is not supported' ..
+                              ' in this release',
+                              dp_version, log_suffix)
+              has_update = true
+            end
+          end
+
+          if config.route_type == "preserve" then
+            config.route_type = "llm/v1/chat"
+            log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
+                              ' route_type == "llm/v1/chat", because preserve' ..
+                              ' mode is not supported in this release',
+                              dp_version, log_suffix)
+            has_update = true
+          end
+        end
+
+        if plugin.name == 'ai-request-transformer' or plugin.name == 'ai-response-transformer' then
+          local config = plugin.config
+          if config.llm.model
+              and config.llm.model.options
+              and config.llm.model.options.upstream_path then
+            config.llm.model.options.upstream_path = nil
+            log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
+                            ' upstream_path == nil, because it is not supported' ..
+                            ' in this release',
+                            dp_version, log_suffix)
+            has_update = true
+          end
+        end
+      end
+
+      return has_update
+    end,
+  },
   { 3006000000, --[[ 3.6.0.0 ]]
     function(config_table, dp_version, log_suffix)
       local has_update
@@ -47,6 +102,7 @@ local compatible_checkers = {
       return has_update
     end,
   },
+
   { 3005000000, --[[ 3.5.0.0 ]]
     function(config_table, dp_version, log_suffix)
       local has_update

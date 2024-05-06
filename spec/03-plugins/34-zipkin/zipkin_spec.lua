@@ -1,13 +1,19 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local utils = require "kong.tools.utils"
+local utils = require "kong.tools.rand"
 local to_hex = require "resty.string".to_hex
 
 local fmt = string.format
 
-local OT_TRACE_ID_HEX_LEN = 32
 local ZIPKIN_HOST = helpers.zipkin_host
 local ZIPKIN_PORT = helpers.zipkin_port
+
+local http_route_host             = "http-route"
+local http_route_ignore_host      = "http-route-ignore"
+local http_route_w3c_host         = "http-route-w3c"
+local http_route_dd_host          = "http-route-dd"
+local http_route_clear_host       = "http-clear-route"
+local http_route_no_preserve_host = "http-no-preserve-route"
 
 -- Transform zipkin annotations into a hash of timestamps. It assumes no repeated values
 -- input: { { value = x, timestamp = y }, { value = x2, timestamp = y2 } }
@@ -212,11 +218,14 @@ for _, strategy in helpers.each_strategy() do
         }
       })
 
-      -- enable zipkin on the service, with sample_ratio = 1
+      -- enable zipkin on the route, with sample_ratio = 1
       -- this should generate traces, even if there is another plugin with sample_ratio = 0
       bp.plugins:insert({
         name = "zipkin",
-        service = { id = service.id },
+        route = {id = bp.routes:insert({
+          service = service,
+          hosts = { http_route_host },
+        }).id},
         config = {
           sample_ratio = 1,
           http_endpoint = fmt("http://%s:%d/api/v2/spans", ZIPKIN_HOST, ZIPKIN_PORT),
@@ -601,9 +610,190 @@ for _, strategy in helpers.each_strategy() do
   end)
 end
 
+local function setup_zipkin_old_propagation(bp, service, traceid_byte_count)
+  -- enable zipkin plugin globally pointing to mock server
+  bp.plugins:insert({
+    name = "zipkin",
+    -- enable on TCP as well (by default it is only enabled on http, https, grpc, grpcs)
+    protocols = { "http", "https", "tcp", "tls", "grpc", "grpcs" },
+    config = {
+      sample_ratio = 1,
+      http_endpoint = fmt("http://%s:%d/api/v2/spans", ZIPKIN_HOST, ZIPKIN_PORT),
+      traceid_byte_count = traceid_byte_count,
+      static_tags = {
+        { name = "static", value = "ok" },
+      },
+      default_header_type = "b3-single",
+    }
+  })
+
+  -- header_type = "ignore", def w3c
+  bp.plugins:insert({
+    name = "zipkin",
+    route = {id = bp.routes:insert({
+      service = service,
+      hosts = { http_route_ignore_host },
+    }).id},
+    config = {
+      sample_ratio = 1,
+      http_endpoint = fmt("http://%s:%d/api/v2/spans", ZIPKIN_HOST, ZIPKIN_PORT),
+      header_type = "ignore",
+      default_header_type = "w3c",
+    }
+  })
+
+  -- header_type = "w3c"
+  bp.plugins:insert({
+    name = "zipkin",
+    route = {id = bp.routes:insert({
+      service = service,
+      hosts = { http_route_w3c_host },
+    }).id},
+    config = {
+      sample_ratio = 1,
+      http_endpoint = fmt("http://%s:%d/api/v2/spans", ZIPKIN_HOST, ZIPKIN_PORT),
+      header_type = "w3c",
+      default_header_type = "b3-single",
+    }
+  })
+
+  -- header_type = "datadog"
+  bp.plugins:insert({
+    name = "zipkin",
+    route = {id = bp.routes:insert({
+      service = service,
+      hosts = { http_route_dd_host },
+    }).id},
+    config = {
+      sample_ratio = 1,
+      http_endpoint = fmt("http://%s:%d/api/v2/spans", ZIPKIN_HOST, ZIPKIN_PORT),
+      header_type = "datadog",
+      default_header_type = "datadog",
+    }
+  })
+end
+
+local function setup_zipkin_new_propagation(bp, service, traceid_byte_count)
+  -- enable zipkin plugin globally pointing to mock server
+  bp.plugins:insert({
+    name = "zipkin",
+    -- enable on TCP as well (by default it is only enabled on http, https, grpc, grpcs)
+    protocols = { "http", "https", "tcp", "tls", "grpc", "grpcs" },
+    config = {
+      sample_ratio = 1,
+      http_endpoint = fmt("http://%s:%d/api/v2/spans", ZIPKIN_HOST, ZIPKIN_PORT),
+      traceid_byte_count = traceid_byte_count,
+      static_tags = {
+        { name = "static", value = "ok" },
+      },
+      propagation = {
+        extract = { "b3", "w3c", "jaeger", "ot", "datadog", "aws", "gcp" },
+        inject = { "preserve" },
+        default_format = "b3-single",
+      },
+    }
+  })
+
+  -- header_type = "ignore", def w3c
+  bp.plugins:insert({
+    name = "zipkin",
+    route = {id = bp.routes:insert({
+      service = service,
+      hosts = { http_route_ignore_host },
+    }).id},
+    config = {
+      sample_ratio = 1,
+      http_endpoint = fmt("http://%s:%d/api/v2/spans", ZIPKIN_HOST, ZIPKIN_PORT),
+      propagation = {
+        extract = {  },
+        inject = { "preserve" },
+        default_format = "w3c",
+      },
+    }
+  })
+
+  -- header_type = "w3c"
+  bp.plugins:insert({
+    name = "zipkin",
+    route = {id = bp.routes:insert({
+      service = service,
+      hosts = { http_route_w3c_host },
+    }).id},
+    config = {
+      sample_ratio = 1,
+      http_endpoint = fmt("http://%s:%d/api/v2/spans", ZIPKIN_HOST, ZIPKIN_PORT),
+      propagation = {
+        extract = { "b3", "w3c", "jaeger", "ot", "datadog", "aws", "gcp" },
+        inject = { "preserve", "w3c" },
+        default_format = "b3-single",
+      },
+    }
+  })
+
+  -- header_type = "datadog"
+  bp.plugins:insert({
+    name = "zipkin",
+    route = {id = bp.routes:insert({
+      service = service,
+      hosts = { http_route_dd_host },
+    }).id},
+    config = {
+      sample_ratio = 1,
+      http_endpoint = fmt("http://%s:%d/api/v2/spans", ZIPKIN_HOST, ZIPKIN_PORT),
+      propagation = {
+        extract = { "b3", "w3c", "jaeger", "ot", "aws", "datadog", "gcp" },
+        inject = { "preserve", "datadog" },
+        default_format = "datadog",
+      },
+    }
+  })
+
+  -- available with new configuration only:
+  -- no preserve
+  bp.plugins:insert({
+    name = "zipkin",
+    route = {id = bp.routes:insert({
+      service = service,
+      hosts = { http_route_no_preserve_host },
+    }).id},
+    config = {
+      sample_ratio = 1,
+      http_endpoint = fmt("http://%s:%d/api/v2/spans", ZIPKIN_HOST, ZIPKIN_PORT),
+      propagation = {
+        extract = { "b3" },
+        inject = { "w3c" },
+        default_format = "w3c",
+      }
+    }
+  })
+
+  --clear
+  bp.plugins:insert({
+    name = "zipkin",
+    route = {id = bp.routes:insert({
+      service = service,
+      hosts = { http_route_clear_host },
+    }).id},
+    config = {
+      sample_ratio = 1,
+      http_endpoint = fmt("http://%s:%d/api/v2/spans", ZIPKIN_HOST, ZIPKIN_PORT),
+      propagation = {
+        extract = { "w3c", "ot" },
+        inject = { "preserve" },
+        clear = {
+          "ot-tracer-traceid",
+          "ot-tracer-spanid",
+          "ot-tracer-sampled",
+        },
+        default_format = "b3",
+      }
+    }
+  })
+end
 
 for _, strategy in helpers.each_strategy() do
 for _, traceid_byte_count in ipairs({ 8, 16 }) do
+for _, propagation_config in ipairs({"old", "new"}) do
 describe("http integration tests with zipkin server [#"
          .. strategy .. "] traceid_byte_count: "
          .. traceid_byte_count, function()
@@ -617,31 +807,21 @@ describe("http integration tests with zipkin server [#"
   lazy_setup(function()
     local bp = helpers.get_db_utils(strategy, { "services", "routes", "plugins" })
 
-    -- enable zipkin plugin globally pointing to mock server
-    bp.plugins:insert({
-      name = "zipkin",
-      -- enable on TCP as well (by default it is only enabled on http, https, grpc, grpcs)
-      protocols = { "http", "https", "tcp", "tls", "grpc", "grpcs" },
-      config = {
-        sample_ratio = 1,
-        http_endpoint = fmt("http://%s:%d/api/v2/spans", ZIPKIN_HOST, ZIPKIN_PORT),
-        traceid_byte_count = traceid_byte_count,
-        static_tags = {
-          { name = "static", value = "ok" },
-        },
-        default_header_type = "b3-single",
-      }
-    })
-
     service = bp.services:insert {
       name = string.lower("http-" .. utils.random_string()),
     }
+
+    if propagation_config == "old" then
+      setup_zipkin_old_propagation(bp, service, traceid_byte_count)
+    else
+      setup_zipkin_new_propagation(bp, service, traceid_byte_count)
+    end
 
     -- kong (http) mock upstream
     route = bp.routes:insert({
       name = string.lower("route-" .. utils.random_string()),
       service = service,
-      hosts = { "http-route" },
+      hosts = { http_route_host },
       preserve_host = true,
     })
 
@@ -695,7 +875,7 @@ describe("http integration tests with zipkin server [#"
     local r = proxy_client:get("/", {
       headers = {
         ["x-b3-sampled"] = "1",
-        host  = "http-route",
+        host  = http_route_host,
         ["zipkin-tags"] = "foo=bar; baz=qux"
       },
     })
@@ -718,7 +898,7 @@ describe("http integration tests with zipkin server [#"
       ["http.path"] = "/",
       ["http.status_code"] = "200", -- found (matches server status)
       ["http.protocol"] = "HTTP/1.1",
-      ["http.host"] = "http-route",
+      ["http.host"] = http_route_host,
       lc = "kong",
       static = "ok",
       foo = "bar",
@@ -1039,7 +1219,7 @@ describe("http integration tests with zipkin server [#"
       local r = proxy_client:get("/", {
         headers = {
           b3 = fmt("%s-%s-%s-%s", trace_id, span_id, "1", parent_id),
-          host = "http-route",
+          host = http_route_host,
         },
       })
       local body = assert.response(r).has.status(200)
@@ -1071,7 +1251,7 @@ describe("http integration tests with zipkin server [#"
       local r = proxy_client:get("/", {
         headers = {
           b3 = fmt("%s-%s-1", trace_id, span_id),
-          host = "http-route",
+          host = http_route_host,
         },
       })
       local body = assert.response(r).has.status(200)
@@ -1093,6 +1273,7 @@ describe("http integration tests with zipkin server [#"
       assert.equals(trace_id, balancer_span.traceId)
       assert.not_equals(span_id, balancer_span.id)
       assert.equals(span_id, balancer_span.parentId)
+
     end)
 
     it("works with only trace_id and span_id", function()
@@ -1103,7 +1284,7 @@ describe("http integration tests with zipkin server [#"
         headers = {
           b3 = fmt("%s-%s", trace_id, span_id),
           ["x-b3-sampled"] = "1",
-          host = "http-route",
+          host = http_route_host,
         },
       })
       local body = assert.response(r).has.status(200)
@@ -1161,7 +1342,7 @@ describe("http integration tests with zipkin server [#"
       local r = proxy_client:get("/", {
         headers = {
           traceparent = fmt("00-%s-%s-01", trace_id, parent_id),
-          host = "http-route"
+          host = http_route_host
         },
       })
       local body = assert.response(r).has.status(200)
@@ -1212,12 +1393,13 @@ describe("http integration tests with zipkin server [#"
       local r = proxy_client:get("/", {
         headers = {
           ["uber-trace-id"] = fmt("%s:%s:%s:%s", trace_id, span_id, parent_id, "1"),
-          host = "http-route"
+          host = http_route_host
         },
       })
       local body = assert.response(r).has.status(200)
       local json = cjson.decode(body)
-      assert.matches(('0'):rep(32-#trace_id) .. trace_id .. ":%x+:" .. span_id .. ":01", json.headers["uber-trace-id"])
+      local expected_len = traceid_byte_count * 2
+      assert.matches(('0'):rep(expected_len-#trace_id) .. trace_id .. ":%x+:" .. span_id .. ":01", json.headers["uber-trace-id"])
 
       local spans = wait_for_spans(zipkin_client, 3, nil, trace_id)
       local balancer_span = assert(get_span("get (balancer try 1)", spans), "balancer span missing")
@@ -1266,7 +1448,7 @@ describe("http integration tests with zipkin server [#"
 
   describe("ot header propagation", function()
     it("works on regular calls", function()
-      local trace_id = gen_trace_id(8)
+      local trace_id = gen_trace_id(traceid_byte_count)
       local span_id = gen_span_id()
 
       local r = proxy_client:get("/", {
@@ -1274,13 +1456,14 @@ describe("http integration tests with zipkin server [#"
           ["ot-tracer-traceid"] = trace_id,
           ["ot-tracer-spanid"] = span_id,
           ["ot-tracer-sampled"] = "1",
-          host = "http-route",
+          host = http_route_host,
         },
       })
 
       local body = assert.response(r).has.status(200)
       local json = cjson.decode(body)
-      assert.equals(to_id_len(trace_id, OT_TRACE_ID_HEX_LEN), json.headers["ot-tracer-traceid"])
+      local expected_len = traceid_byte_count * 2
+      assert.equals(to_id_len(trace_id, expected_len), json.headers["ot-tracer-traceid"])
 
       local spans = wait_for_spans(zipkin_client, 3, nil, trace_id)
       local balancer_span = assert(get_span("get (balancer try 1)", spans), "balancer span missing")
@@ -1321,13 +1504,122 @@ describe("http integration tests with zipkin server [#"
       local r = proxy_client:get("/", {
         headers = {
           -- no tracing header
-          host = "http-route"
+          host = http_route_host
         },
       })
       local body = assert.response(r).has.status(200)
       local json = cjson.decode(body)
       assert.not_nil(json.headers.b3)
     end)
+  end)
+
+  describe("propagation configuration", function()
+    it("ignores incoming headers and uses default type", function()
+      local trace_id = gen_trace_id(16)
+      local r = proxy_client:get("/", {
+        headers = {
+          ["x-b3-sampled"] = "1",
+          ["x-b3-traceid"] = trace_id,
+          host  = http_route_ignore_host,
+        },
+      })
+      local body = assert.response(r).has.status(200)
+      local json = cjson.decode(body)
+      -- uses default type
+      assert.is_not_nil(json.headers.traceparent)
+      -- incoming trace id is ignored
+      assert.not_matches("00%-" .. trace_id .. "%-%x+-01", json.headers.traceparent)
+    end)
+
+    it("propagates w3c tracing headers + incoming format (preserve + w3c)", function()
+      local trace_id = gen_trace_id(16)
+      local span_id = gen_span_id()
+      local parent_id = gen_span_id()
+
+      local r = proxy_client:get("/", {
+        headers = {
+          b3 = fmt("%s-%s-1-%s", trace_id, span_id, parent_id),
+          host = http_route_w3c_host
+        },
+      })
+      local body = assert.response(r).has.status(200)
+      local json = cjson.decode(body)
+
+      assert.matches("00%-" .. trace_id .. "%-%x+-01", json.headers.traceparent)
+      -- incoming b3 is modified
+      assert.not_equals(fmt("%s-%s-1-%s", trace_id, span_id, parent_id), json.headers.b3)
+      assert.matches(trace_id .. "%-%x+%-1%-%x+", json.headers.b3)
+    end)
+
+    describe("propagates datadog tracing headers", function()
+      it("with datadog headers in client request", function()
+        local trace_id  = "1234567890"
+        local r = proxy_client:get("/", {
+          headers = {
+            ["x-datadog-trace-id"] = trace_id,
+            host = http_route_host,
+          },
+        })
+        local body = assert.response(r).has.status(200)
+        local json = cjson.decode(body)
+
+        assert.equals(trace_id, json.headers["x-datadog-trace-id"])
+        assert.is_not_nil(tonumber(json.headers["x-datadog-parent-id"]))
+      end)
+
+      it("without datadog headers in client request", function()
+        local r = proxy_client:get("/", {
+          headers = { host = http_route_dd_host },
+        })
+        local body = assert.response(r).has.status(200)
+        local json = cjson.decode(body)
+
+        assert.is_not_nil(tonumber(json.headers["x-datadog-trace-id"]))
+        assert.is_not_nil(tonumber(json.headers["x-datadog-parent-id"]))
+      end)
+    end)
+
+    if propagation_config == "new" then
+      it("clears non-propagated headers when configured to do so", function()
+        local trace_id = gen_trace_id(16)
+        local parent_id = gen_span_id()
+
+        local r = proxy_client:get("/", {
+          headers = {
+            traceparent = fmt("00-%s-%s-01", trace_id, parent_id),
+            ["ot-tracer-traceid"] = trace_id,
+            ["ot-tracer-spanid"] = parent_id,
+            ["ot-tracer-sampled"] = "1",
+            host = http_route_clear_host
+          },
+        })
+        local body = assert.response(r).has.status(200)
+        local json = cjson.decode(body)
+        assert.matches("00%-" .. trace_id .. "%-%x+-01", json.headers.traceparent)
+        assert.is_nil(json.headers["ot-tracer-traceid"])
+        assert.is_nil(json.headers["ot-tracer-spanid"])
+        assert.is_nil(json.headers["ot-tracer-sampled"])
+      end)
+
+      it("does not preserve incoming header type if preserve is not specified", function()
+        local trace_id = gen_trace_id(16)
+        local span_id = gen_span_id()
+        local parent_id = gen_span_id()
+
+        local r = proxy_client:get("/", {
+          headers = {
+            b3 = fmt("%s-%s-1-%s", trace_id, span_id, parent_id),
+            host = http_route_no_preserve_host
+          },
+        })
+        local body = assert.response(r).has.status(200)
+        local json = cjson.decode(body)
+        -- b3 was not injected, only preserved as incoming
+        assert.equals(fmt("%s-%s-1-%s", trace_id, span_id, parent_id), json.headers.b3)
+        -- w3c was injected
+        assert.matches("00%-" .. trace_id .. "%-%x+-01", json.headers.traceparent)
+      end)
+    end
   end)
 end)
 end
@@ -1553,4 +1845,5 @@ for _, strategy in helpers.each_strategy() do
       assert_span_invariants(request_span, proxy_span, 16 * 2, start_s, "kong")
     end)
   end)
+end
 end

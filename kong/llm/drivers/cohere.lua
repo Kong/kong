@@ -6,108 +6,190 @@ local fmt = string.format
 local ai_shared = require("kong.llm.drivers.shared")
 local socket_url = require "socket.url"
 local table_new = require("table.new")
+local string_gsub = string.gsub
 --
 
 -- globals
 local DRIVER_NAME = "cohere"
+
+local _CHAT_ROLES = {
+  ["system"] = "CHATBOT",
+  ["assistant"] = "CHATBOT",
+  ["user"] = "USER",
+}
 --
 
-local transformers_to = {
-  ["llm/v1/chat"] = function(request_table, model)
-    request_table.model = model.name
-
-    if request_table.prompt and request_table.messages then
-      return kong.response.exit(400, "cannot run a 'prompt' and a history of 'messages' at the same time - refer to schema")
+local function handle_stream_event(event_t, model_info, route_type)
+  local metadata
   
-    elseif request_table.messages then
-      -- we have to move all BUT THE LAST message into "chat_history" array
-      -- and move the LAST message (from 'user') into "message" string
-      if #request_table.messages > 1 then
-        local chat_history = table_new(#request_table.messages - 1, 0)
-        for i, v in ipairs(request_table.messages) do
-          -- if this is the last message prompt, don't add to history
-          if i < #request_table.messages then
-            local role
-            if v.role == "assistant" or v.role == "CHATBOT" then
-              role = "CHATBOT"
-            else
-              role = "USER"
-            end
+  -- discard empty frames, it should either be a random new line, or comment
+  if (not event_t.data) or (#event_t.data < 1) then
+    return
+  end
+
+  local event, err = cjson.decode(event_t.data)
+  if err then
+    return nil, "failed to decode event frame from cohere: " .. err, nil
+  end
+  
+  local new_event
+  
+  if event.event_type == "stream-start" then
+    kong.ctx.plugin.ai_proxy_cohere_stream_id = event.generation_id
     
-            chat_history[i] = {
-              role = role,
-              message = v.content,
-            }
-          end
-        end
+    -- ignore the rest of this one
+    new_event = {
+      choices = {
+        [1] = {
+          delta = {
+            content = "",
+            role = "assistant",
+          },
+          index = 0,
+        },
+      },
+      id = event.generation_id,
+      model = model_info.name,
+      object = "chat.completion.chunk",
+    }
+    
+  elseif event.event_type == "text-generation" then
+    -- this is a token
+    if route_type == "stream/llm/v1/chat" then
+      new_event = {
+        choices = {
+          [1] = {
+            delta = {
+              content = event.text or "",
+            },
+            index = 0,
+            finish_reason = cjson.null,
+            logprobs = cjson.null,
+          },
+        },
+        id = kong
+         and kong.ctx
+         and kong.ctx.plugin
+         and kong.ctx.plugin.ai_proxy_cohere_stream_id,
+        model = model_info.name,
+        object = "chat.completion.chunk",
+      }
 
-        request_table.chat_history = chat_history
-      end
-
-      request_table.temperature = model.options.temperature
-      request_table.message = request_table.messages[#request_table.messages].content
-      request_table.messages = nil
-
-    elseif request_table.prompt then
-      request_table.temperature = model.options.temperature
-      request_table.max_tokens = model.options.max_tokens
-      request_table.truncate = request_table.truncate or "END"
-      request_table.return_likelihoods = request_table.return_likelihoods or "NONE"
-      request_table.p = model.options.top_p
-      request_table.k = model.options.top_k
+    elseif route_type == "stream/llm/v1/completions" then
+      new_event = {
+        choices = {
+          [1] = {
+            text = event.text or "",
+            index = 0,
+            finish_reason = cjson.null,
+            logprobs = cjson.null,
+          },
+        },
+        id = kong
+         and kong.ctx
+         and kong.ctx.plugin
+         and kong.ctx.plugin.ai_proxy_cohere_stream_id,
+        model = model_info.name,
+        object = "text_completion",
+      }
 
     end
 
-    return request_table, "application/json", nil
-  end,
+  elseif event.event_type == "stream-end" then
+    -- return a metadata object, with the OpenAI termination event
+    new_event = "[DONE]"
 
-  ["llm/v1/completions"] = function(request_table, model)
-    request_table.model = model.name
+    metadata = {
+      completion_tokens = event.response
+                      and event.response.meta
+                      and event.response.meta.billed_units
+                      and event.response.meta.billed_units.output_tokens
+              or 
+                          event.response
+                      and event.response.token_count
+                      and event.response.token_count.response_tokens
+              or 0,
 
-    if request_table.prompt and request_table.messages then
-      return kong.response.exit(400, "cannot run a 'prompt' and a history of 'messages' at the same time - refer to schema")
+      prompt_tokens = event.response
+                  and event.response.meta
+                  and event.response.meta.billed_units
+                  and event.response.meta.billed_units.input_tokens
+              or
+                      event.response
+                  and event.response.token_count
+                  and event.token_count.prompt_tokens
+              or 0,
+    }
+  end
 
-    elseif request_table.messages then
-      -- we have to move all BUT THE LAST message into "chat_history" array
-      -- and move the LAST message (from 'user') into "message" string
-      if #request_table.messages > 1 then
-        local chat_history = table_new(#request_table.messages - 1, 0)
-        for i, v in ipairs(request_table.messages) do
-          -- if this is the last message prompt, don't add to history
-          if i < #request_table.messages then
-            local role
-            if v.role == "assistant" or v.role == "CHATBOT" then
-              role = "CHATBOT"
-            else
-              role = "USER"
-            end
-    
-            chat_history[i] = {
-              role = role,
-              message = v.content,
-            }
-          end
-        end
-
-        request_table.chat_history = chat_history
-      end
-
-      request_table.temperature = model.options.temperature
-      request_table.message = request_table.messages[#request_table.messages].content
-      request_table.messages = nil
-
-    elseif request_table.prompt then
-      request_table.temperature = model.options.temperature
-      request_table.max_tokens = model.options.max_tokens
-      request_table.truncate = request_table.truncate or "END"
-      request_table.return_likelihoods = request_table.return_likelihoods or "NONE"
-      request_table.p = model.options.top_p
-      request_table.k = model.options.top_k
-
+  if new_event then
+    if new_event ~= "[DONE]" then
+      new_event = cjson.encode(new_event)
     end
 
-    return request_table, "application/json", nil
-  end,
+    return new_event, nil, metadata
+  else
+    return nil, nil, metadata  -- caller code will handle "unrecognised" event types
+  end
+end
+
+
+local function handle_json_inference_event(request_table, model)
+  request_table.temperature = request_table.temperature
+  request_table.max_tokens = request_table.max_tokens
+  
+  request_table.p = request_table.top_p
+  request_table.k = request_table.top_k
+  
+  request_table.top_p = nil
+  request_table.top_k = nil
+  
+  request_table.model = model.name or request_table.model
+  request_table.stream = request_table.stream or false  -- explicitly set this
+  
+  if request_table.prompt and request_table.messages then
+    return kong.response.exit(400, "cannot run a 'prompt' and a history of 'messages' at the same time - refer to schema")
+    
+  elseif request_table.messages then
+    -- we have to move all BUT THE LAST message into "chat_history" array
+    -- and move the LAST message (from 'user') into "message" string
+    if #request_table.messages > 1 then
+      local chat_history = table_new(#request_table.messages - 1, 0)
+      for i, v in ipairs(request_table.messages) do
+        -- if this is the last message prompt, don't add to history
+        if i < #request_table.messages then
+          local role
+          if v.role == "assistant" or v.role == _CHAT_ROLES.assistant then
+            role = _CHAT_ROLES.assistant
+          else
+            role = _CHAT_ROLES.user
+          end
+          
+          chat_history[i] = {
+            role = role,
+            message = v.content,
+          }
+        end
+      end
+      
+      request_table.chat_history = chat_history
+    end
+    
+    request_table.message = request_table.messages[#request_table.messages].content
+    request_table.messages = nil
+    
+  elseif request_table.prompt then
+    request_table.prompt = request_table.prompt
+    request_table.messages = nil
+    request_table.message = nil
+  end
+  
+  return request_table, "application/json", nil
+end
+
+local transformers_to = {
+  ["llm/v1/chat"] = handle_json_inference_event,
+  ["llm/v1/completions"] = handle_json_inference_event,
 }
 
 local transformers_from = {
@@ -168,9 +250,20 @@ local transformers_from = {
       messages.id = response_table.generation_id
   
       local stats = {
-        completion_tokens = response_table.token_count and response_table.token_count.response_tokens or nil,
-        prompt_tokens = response_table.token_count and response_table.token_count.prompt_tokens or nil,
-        total_tokens = response_table.token_count and response_table.token_count.total_tokens or nil,
+        completion_tokens = response_table.meta
+                        and response_table.meta.billed_units
+                        and response_table.meta.billed_units.output_tokens
+                        or nil,
+
+        prompt_tokens = response_table.meta
+                    and response_table.meta.billed_units
+                    and response_table.meta.billed_units.input_tokens
+                    or nil,
+
+        total_tokens = response_table.meta
+                  and response_table.meta.billed_units
+                  and (response_table.meta.billed_units.output_tokens + response_table.meta.billed_units.input_tokens)
+                  or nil,
       }
       messages.usage = stats
   
@@ -193,7 +286,7 @@ local transformers_from = {
 
     if response_table.prompt and response_table.generations then
       -- this is a "co.generate"
-      
+
       for i, v in ipairs(response_table.generations) do
         prompt.choices[i] = {
           index = (i-1),
@@ -243,6 +336,9 @@ local transformers_from = {
 
     return cjson.encode(prompt)
   end,
+
+  ["stream/llm/v1/chat"] = handle_stream_event,
+  ["stream/llm/v1/completions"] = handle_stream_event,
 }
 
 function _M.from_format(response_string, model_info, route_type)
@@ -253,7 +349,7 @@ function _M.from_format(response_string, model_info, route_type)
     return nil, fmt("no transformer available from format %s://%s", model_info.provider, route_type)
   end
 
-  local ok, response_string, err = pcall(transformers_from[route_type], response_string, model_info)
+  local ok, response_string, err, metadata = pcall(transformers_from[route_type], response_string, model_info, route_type)
   if not ok or err then
     return nil, fmt("transformation failed from type %s://%s: %s",
                     model_info.provider,
@@ -262,7 +358,7 @@ function _M.from_format(response_string, model_info, route_type)
                   )
   end
 
-  return response_string, nil
+  return response_string, nil, metadata
 end
 
 function _M.to_format(request_table, model_info, route_type)
@@ -276,6 +372,8 @@ function _M.to_format(request_table, model_info, route_type)
   if not transformers_to[route_type] then
     return nil, nil, fmt("no transformer for %s://%s", model_info.provider, route_type)
   end
+
+  request_table = ai_shared.merge_config_defaults(request_table, model_info.options, model_info.route_type)
 
   local ok, response_object, content_type, err = pcall(
     transformers_to[route_type],
@@ -344,13 +442,13 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
     headers[conf.auth.header_name] = conf.auth.header_value
   end
 
-  local res, err = ai_shared.http_request(url, body_string, method, headers, http_opts)
+  local res, err, httpc = ai_shared.http_request(url, body_string, method, headers, http_opts, return_res_table)
   if err then
     return nil, nil, "request to ai service failed: " .. err
   end
 
   if return_res_table then
-    return res, res.status, nil
+    return res, res.status, nil, httpc
   else
     -- At this point, the entire request / response is complete and the connection
     -- will be closed or back on the connection pool.
@@ -368,23 +466,28 @@ end
 -- returns err or nil
 function _M.configure_request(conf)
   local parsed_url
-  
-  if conf.route_type ~= "preserve" then
-    if conf.model.options.upstream_url then
-      parsed_url = socket_url.parse(conf.model.options.upstream_url)
-    else
-      parsed_url = socket_url.parse(ai_shared.upstream_url_format[DRIVER_NAME])
-      parsed_url.path = ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
 
-      if not parsed_url.path then
-        return false, fmt("operation %s is not supported for cohere provider", conf.route_type)
-      end
+  if conf.model.options.upstream_url then
+    parsed_url = socket_url.parse(conf.model.options.upstream_url)
+  else
+    parsed_url = socket_url.parse(ai_shared.upstream_url_format[DRIVER_NAME])
+    parsed_url.path = conf.model.options
+                      and conf.model.options.upstream_path
+                      or ai_shared.operation_map[DRIVER_NAME][conf.route_type]
+                      and ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
+                      or "/"
+
+    if not parsed_url.path then
+      return false, fmt("operation %s is not supported for cohere provider", conf.route_type)
     end
-    
-    kong.service.request.set_path(parsed_url.path)
-    kong.service.request.set_scheme(parsed_url.scheme)
-    kong.service.set_target(parsed_url.host, tonumber(parsed_url.port))
   end
+  
+  -- if the path is read from a URL capture, ensure that it is valid
+  parsed_url.path = string_gsub(parsed_url.path, "^/*", "/")
+
+  kong.service.request.set_path(parsed_url.path)
+  kong.service.request.set_scheme(parsed_url.scheme)
+  kong.service.set_target(parsed_url.host, (tonumber(parsed_url.port) or 443))
 
   local auth_header_name = conf.auth and conf.auth.header_name
   local auth_header_value = conf.auth and conf.auth.header_value
@@ -405,6 +508,5 @@ function _M.configure_request(conf)
   -- if auth_param_location is "form", it will have already been set in a pre-request hook
   return true, nil
 end
-
 
 return _M

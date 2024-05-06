@@ -251,6 +251,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         local expected_otel_prior_35 = utils.cycle_aware_deep_copy(opentelemetry)
         expected_otel_prior_35.config.header_type = "preserve"
         expected_otel_prior_35.config.sampling_rate = nil
+        expected_otel_prior_35.config.propagation = nil
         do_assert(utils.uuid(), "3.4.0", expected_otel_prior_35)
 
         -- cleanup
@@ -271,6 +272,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         local expected_otel_prior_34 = utils.cycle_aware_deep_copy(opentelemetry)
         expected_otel_prior_34.config.header_type = "preserve"
         expected_otel_prior_34.config.sampling_rate = nil
+        expected_otel_prior_34.config.propagation = nil
         do_assert(utils.uuid(), "3.3.0", expected_otel_prior_34)
 
         -- cleanup
@@ -296,6 +298,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         local expected_zipkin_prior_35 = utils.cycle_aware_deep_copy(zipkin)
         expected_zipkin_prior_35.config.header_type = "preserve"
         expected_zipkin_prior_35.config.default_header_type = "b3"
+        expected_zipkin_prior_35.config.propagation = nil
         do_assert(utils.uuid(), "3.4.0", expected_zipkin_prior_35)
 
         -- cleanup
@@ -316,6 +319,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         local expected_zipkin_prior_34 = utils.cycle_aware_deep_copy(zipkin)
         expected_zipkin_prior_34.config.header_type = "preserve"
         expected_zipkin_prior_34.config.default_header_type = "b3"
+        expected_zipkin_prior_34.config.propagation = nil
         do_assert(utils.uuid(), "3.3.0", expected_zipkin_prior_34)
 
         -- cleanup
@@ -466,6 +470,120 @@ describe("CP/DP config compat transformations #" .. strategy, function()
           -- cleanup
           admin.plugins:remove({ id = response_rl.id })
         end)
+      end)
+    end)
+
+    describe("ai plugins", function()
+      it("[ai-proxy] sets unsupported AI LLM properties to nil or defaults", function()
+        -- [[ 3.7.x ]] --
+        local ai_proxy = admin.plugins:insert {
+          name = "ai-proxy",
+          enabled = true,
+          config = {
+            route_type = "preserve", -- becomes 'llm/v1/chat'
+            auth = {
+              header_name = "header",
+              header_value = "value",
+            },
+            model = {
+              name = "any-model-name",
+              provider = "openai",
+              options = {
+                max_tokens = 512,
+                temperature = 0.5,
+                response_streaming = "allow", -- becomes nil
+                upstream_path = "/anywhere", -- becomes nil
+              },
+            },
+          },
+        }
+        -- ]]
+
+        local expected_ai_proxy_prior_37 = utils.cycle_aware_deep_copy(ai_proxy)
+        expected_ai_proxy_prior_37.config.model.options.response_streaming = nil
+        expected_ai_proxy_prior_37.config.model.options.upstream_path = nil
+        expected_ai_proxy_prior_37.config.route_type = "llm/v1/chat"
+
+        do_assert(utils.uuid(), "3.6.0", expected_ai_proxy_prior_37)
+
+        -- cleanup
+        admin.plugins:remove({ id = ai_proxy.id })
+      end)
+
+      it("[ai-request-transformer] sets unsupported AI LLM properties to nil or defaults", function()
+        -- [[ 3.7.x ]] --
+        local ai_request_transformer = admin.plugins:insert {
+          name = "ai-request-transformer",
+          enabled = true,
+          config = {
+            prompt = "Convert my message to XML.",
+            llm = {
+              route_type = "llm/v1/chat",
+              auth = {
+                header_name = "header",
+                header_value = "value",
+              },
+              model = {
+                name = "any-model-name",
+                provider = "azure",
+                options = {
+                  azure_instance = "azure-1",
+                  azure_deployment_id = "azdep-1",
+                  azure_api_version = "2023-01-01",
+                  max_tokens = 512,
+                  temperature = 0.5,
+                  upstream_path = "/anywhere", -- becomes nil
+                },
+              },
+            },
+          },
+        }
+        -- ]]
+
+        local expected_ai_request_transformer_prior_37 = utils.cycle_aware_deep_copy(ai_request_transformer)
+        expected_ai_request_transformer_prior_37.config.llm.model.options.upstream_path = nil
+
+        do_assert(utils.uuid(), "3.6.0", expected_ai_request_transformer_prior_37)
+
+        -- cleanup
+        admin.plugins:remove({ id = ai_request_transformer.id })
+      end)
+
+      it("[ai-response-transformer] sets unsupported AI LLM properties to nil or defaults", function()
+        -- [[ 3.7.x ]] --
+        local ai_response_transformer = admin.plugins:insert {
+          name = "ai-response-transformer",
+          enabled = true,
+          config = {
+            prompt = "Convert my message to XML.",
+            llm = {
+              route_type = "llm/v1/chat",
+              auth = {
+                header_name = "header",
+                header_value = "value",
+              },
+              model = {
+                name = "any-model-name",
+                provider = "cohere",
+                options = {
+                  azure_api_version = "2023-01-01",
+                  max_tokens = 512,
+                  temperature = 0.5,
+                  upstream_path = "/anywhere", -- becomes nil
+                },
+              },
+            },
+          },
+        }
+        -- ]]
+
+        local expected_ai_response_transformer_prior_37 = utils.cycle_aware_deep_copy(ai_response_transformer)
+        expected_ai_response_transformer_prior_37.config.llm.model.options.upstream_path = nil
+
+        do_assert(utils.uuid(), "3.6.0", expected_ai_response_transformer_prior_37)
+
+        -- cleanup
+        admin.plugins:remove({ id = ai_response_transformer.id })
       end)
     end)
   end)

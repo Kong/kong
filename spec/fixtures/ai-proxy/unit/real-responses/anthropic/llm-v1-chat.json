@@ -1,5 +1,12 @@
 {
-  "completion": "You cannot divide by zero because it is not a valid operation in mathematics.",
+  "content": [{
+    "text": "You cannot divide by zero because it is not a valid operation in mathematics.",
+    "type": "text"
+  }],
   "stop_reason": "stop_sequence",
-  "model": "claude-2"
+  "model": "claude-2.1",
+  "usage": {
+    "input_tokens": 0,
+    "output_tokens": 0
+  }
 }

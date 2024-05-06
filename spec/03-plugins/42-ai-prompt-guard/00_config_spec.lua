@@ -42,7 +42,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     local config = {
       allow_all_conversation_history = true,
       allow_patterns = {
-        [1] = "123456789012345678901234567890123456789012345678901" -- 51
+        [1] = string.rep('x', 501)
       },
     }
 
@@ -50,7 +50,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
     assert.is_falsy(ok)
     assert.not_nil(err)
-    assert.same({ config = {allow_patterns = { [1] = "length must be at most 50" }}}, err)
+    assert.same({ config = {allow_patterns = { [1] = "length must be at most 500" }}}, err)
   end)
 
   it("won't allow too many array items", function()

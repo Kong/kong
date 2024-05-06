@@ -2,6 +2,7 @@
 -- @module kong.db.schema.typedefs
 local utils = require "kong.tools.utils"
 local queue_schema = require "kong.tools.queue_schema"
+local propagation_schema = require "kong.tracing.propagation.schema"
 local openssl_pkey = require "resty.openssl.pkey"
 local openssl_x509 = require "resty.openssl.x509"
 local Schema = require "kong.db.schema"
@@ -167,14 +168,14 @@ end
 
 
 local function validate_wildcard_host(host)
-  local idx = string.find(host, "*", nil, true)
+  local idx = host:find("*", nil, true)
   if idx then
     if idx ~= 1 and idx ~= #host then
       return nil, "wildcard must be leftmost or rightmost character"
     end
 
     -- substitute wildcard for upcoming host normalization
-    local mock_host, count = string.gsub(host, "%*", "wildcard")
+    local mock_host, count = gsub(host, "%*", "wildcard")
     if count > 1 then
       return nil, "only one wildcard must be specified"
     end
@@ -455,6 +456,11 @@ typedefs.tags = Schema.define {
   description = "A set of strings representing tags."
 }
 
+typedefs.capability = Schema.define {
+  type = "string",
+  description = "A string representing an RPC capability."
+}
+
 local http_protocols = {}
 for p, s in pairs(constants.PROTOCOLS_WITH_SUBSYSTEM) do
   if s == "http" then
@@ -485,7 +491,7 @@ typedefs.protocols_http = Schema.define {
 -- common for routes and routes subschemas
 
 local function validate_host_with_wildcards(host)
-  local no_wildcards = string.gsub(host, "%*", "abc")
+  local no_wildcards = gsub(host, "%*", "abc")
   return typedefs.host_with_optional_port.custom_validator(no_wildcards)
 end
 
@@ -881,6 +887,8 @@ typedefs.jwk = Schema.define {
 }
 
 typedefs.queue = queue_schema
+
+typedefs.propagation = propagation_schema
 
 local function validate_lua_expression(expression)
   local sandbox = require "kong.tools.sandbox"

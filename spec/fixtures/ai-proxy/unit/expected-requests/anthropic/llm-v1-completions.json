@@ -1,6 +1,7 @@
 {
-  "model": "claude-2",
+  "model": "claude-2.1",
   "prompt": "Human: Explain why you can't divide by zero?\n\nAssistant:",
   "max_tokens_to_sample": 512,
-  "temperature": 0.5
+  "temperature": 0.5,
+  "stream": false
 }

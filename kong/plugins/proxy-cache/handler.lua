@@ -53,7 +53,7 @@ local function overwritable_header(header)
   local n_header = lower(header)
 
   return not hop_by_hop_headers[n_header]
-     and not ngx_re_match(n_header, "ratelimit-remaining")
+     and not ngx_re_match(n_header, "ratelimit-remaining", "jo")
 end
 
 local function set_header(conf, header, value)

@@ -1,9 +1,8 @@
 require "spec.helpers" -- initializes 'kong' global for tracer
 local match = require("luassert.match")
 
-local utils = require "kong.tools.utils"
 local SAMPLING_BYTE = 8
-local rand_bytes = utils.get_rand_bytes
+local rand_bytes = require("kong.tools.rand").get_rand_bytes
 local TEST_COUNT = 10000
 -- we can only ensure a sampling precision of 0.02
 local SAMPLING_PRECISION = 0.02
@@ -323,11 +322,10 @@ describe("Tracer PDK", function()
         end
 
         -- for cases where the traceID is too short
-        -- just throw an error
         if len < SAMPLING_BYTE then
-          assert.error(function()
-            tracer.sampler(gen_id())
-          end)
+          local sampled, err = tracer.sampler(gen_id())
+          assert.is_nil(sampled)
+          assert.matches("sampling needs trace ID to be longer than", err)
           return
         end
   
