@@ -14,7 +14,7 @@ common --color=yes
 common --curses=auto
 
 build --experimental_ui_max_stdouterr_bytes=10485760
-# required to build shared library on macOS
+# TODO: remove after bump to bazel >= 7
 build --experimental_cc_shared_library
 
 build --show_progress_rate_limit=0
