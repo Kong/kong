@@ -209,8 +209,7 @@ local function handle_stream_event(event_t, model_info, route_type)
     and event_data.usage then
       return nil, nil, {
         prompt_tokens = nil,
-        completion_tokens = event_data.meta.usage
-                        and event_data.meta.usage.output_tokens
+        completion_tokens = event_data.usage.output_tokens
                         or nil,
         stop_reason = event_data.delta
                   and event_data.delta.stop_reason
@@ -336,7 +335,7 @@ function _M.from_format(response_string, model_info, route_type)
     return nil, fmt("no transformer available from format %s://%s", model_info.provider, route_type)
   end
   
-  local ok, response_string, err = pcall(transform, response_string, model_info, route_type)
+  local ok, response_string, err, metadata = pcall(transform, response_string, model_info, route_type)
   if not ok or err then
     return nil, fmt("transformation failed from type %s://%s: %s",
                     model_info.provider,
@@ -345,7 +344,7 @@ function _M.from_format(response_string, model_info, route_type)
                 )
   end
 
-  return response_string, nil
+  return response_string, nil, metadata
 end
 
 function _M.to_format(request_table, model_info, route_type)
