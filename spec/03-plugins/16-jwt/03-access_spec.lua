@@ -46,7 +46,7 @@ for _, strategy in helpers.each_strategy() do
 
       local routes = {}
 
-      for i = 1, 13 do
+      for i = 1, 14 do
         routes[i] = bp.routes:insert {
           hosts = { "jwt" .. i .. ".test" },
         }
@@ -161,6 +161,14 @@ for _, strategy in helpers.each_strategy() do
       })
 
       plugins:insert({
+        name     = "jwt",
+        route = { id = routes[14].id },
+        config   = {
+          claims_to_reject = { "mine", "yours" },
+        },
+      })
+
+      plugins:insert({
         name     = "ctx-checker",
         route = { id = routes[1].id },
         config   = { ctx_kind = "kong.ctx.shared",
@@ -242,13 +250,13 @@ for _, strategy in helpers.each_strategy() do
         consumer       = { id = consumer15.id },
         algorithm      = "EdDSA",
         rsa_public_key = fixtures.ed25519_public_key
-      }      
+      }
 
       rsa_jwt_secret_11 = bp.jwt_secrets:insert {
         consumer       = { id = consumer16.id },
         algorithm      = "EdDSA",
         rsa_public_key = fixtures.ed448_public_key
-      }      
+      }
 
       hs_jwt_secret_1 = bp.jwt_secrets:insert {
         consumer       = { id = consumer7.id },
@@ -456,6 +464,58 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = cjson.decode(assert.res_status(401, res))
         assert.same({ message = "Multiple tokens provided" }, body)
+      end)
+
+      it("rejects claims in the claims_to_reject list", function()
+        -- validate we're allowed without the claims
+        local payload = {
+          iss = jwt_secret.key,
+          exp = os.time() + 3600,
+          -- yours = "1",
+        }
+        local jwt = jwt_encoder.encode(payload, jwt_secret.secret)
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/request/?jwt=" .. jwt,
+          headers = {
+            ["Host"] = "jwt14.test"
+          }
+        })
+        assert.response(res).has.status(200)
+
+        -- validate we're not allowed with the claim "mine"
+        local payload = {
+          iss = jwt_secret.key,
+          exp = os.time() + 3600,
+          mine = "1",
+        }
+        local jwt = jwt_encoder.encode(payload, jwt_secret.secret)
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/request/?jwt=" .. jwt,
+          headers = {
+            ["Host"] = "jwt14.test"
+          }
+        })
+        local body = assert.response(res).has.status(401)
+        assert.equal('{"message":"Token rejected due to claim mine"}', body)
+
+        -- validate we're not allowed with the claim "yours"
+        local payload = {
+          iss = jwt_secret.key,
+          exp = os.time() + 3600,
+          yours = "1",
+        }
+        local jwt = jwt_encoder.encode(payload, jwt_secret.secret)
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/request/?jwt=" .. jwt,
+          headers = {
+            ["Host"] = "jwt14.test"
+          }
+        })
+        local body = assert.response(res).has.status(401)
+        assert.equal('{"message":"Token rejected due to claim yours"}', body)
       end)
     end)
 

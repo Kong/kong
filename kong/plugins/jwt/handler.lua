@@ -173,6 +173,14 @@ local function do_authentication(conf)
   local claims = jwt.claims
   local header = jwt.header
 
+  if conf.claims_to_reject then
+    for _, claim in ipairs(conf.claims_to_reject) do
+      if claims[claim] then
+        return false, { status = 401, message = "Token rejected due to claim " .. claim }
+      end
+    end
+  end
+
   local jwt_secret_key = claims[conf.key_claim_name] or header[conf.key_claim_name]
   if not jwt_secret_key then
     return false, { status = 401, message = "No mandatory '" .. conf.key_claim_name .. "' in claims" }

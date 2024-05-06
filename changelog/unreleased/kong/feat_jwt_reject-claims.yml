@@ -1,0 +1,3 @@
+message: |
+  Adds a `jwt_reject_claims` configuration option to the JWT plugin to allow for rejecting tokens that contain specific claims.
+type: feature
