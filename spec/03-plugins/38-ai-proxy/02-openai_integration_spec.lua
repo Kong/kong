@@ -42,7 +42,6 @@ local _EXPECTED_CHAT_STATS = {
       request_model = 'gpt-3.5-turbo',
       response_model = 'gpt-3.5-turbo-0613',
     },
-    payload = {},
     usage = {
       completion_token = 12,
       prompt_token = 25,
@@ -775,8 +774,8 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.is_number(log_message.response.size)
 
         -- test request bodies
-        assert.matches('"content": "What is 1 + 1?"', log_message.ai.payload.request, nil, true)
-        assert.matches('"role": "user"', log_message.ai.payload.request, nil, true)
+        assert.matches('"content": "What is 1 + 1?"', log_message.ai['ai-proxy'].payload.request, nil, true)
+        assert.matches('"role": "user"', log_message.ai['ai-proxy'].payload.request, nil, true)
 
         -- test response bodies
         assert.matches('"content": "The sum of 1 + 1 is 2.",', log_message.ai["ai-proxy"].payload.response, nil, true)

@@ -112,7 +112,7 @@ local function handle_streaming_frame(conf)
               if not event_t then
                 event_t, err = cjson.decode(formatted)
               end
-    
+
               if not err then
                 if not token_t then
                   token_t = get_token_text(event_t)
@@ -126,16 +126,23 @@ local function handle_streaming_frame(conf)
                     (kong.ctx.plugin.ai_stream_completion_tokens or 0) + math.ceil(#strip(token_t) / 4)
               end
             end
-
-          elseif metadata then
-            kong.ctx.plugin.ai_stream_completion_tokens = metadata.completion_tokens or kong.ctx.plugin.ai_stream_completion_tokens
-            kong.ctx.plugin.ai_stream_prompt_tokens = metadata.prompt_tokens or kong.ctx.plugin.ai_stream_prompt_tokens
           end
         end
 
         framebuffer:put("data: ")
         framebuffer:put(formatted or "")
         framebuffer:put((formatted ~= "[DONE]") and "\n\n" or "")
+      end
+
+      if conf.logging and conf.logging.log_statistics and metadata then
+        kong.ctx.plugin.ai_stream_completion_tokens = 
+          (kong.ctx.plugin.ai_stream_completion_tokens or 0) +
+          (metadata.completion_tokens or 0)
+          or kong.ctx.plugin.ai_stream_completion_tokens
+        kong.ctx.plugin.ai_stream_prompt_tokens = 
+          (kong.ctx.plugin.ai_stream_prompt_tokens or 0) +
+          (metadata.prompt_tokens or 0)
+          or kong.ctx.plugin.ai_stream_prompt_tokens
       end
     end
   end
@@ -367,10 +374,12 @@ function _M:access(conf)
   -- check if the user has asked for a stream, and/or if
   -- we are forcing all requests to be of streaming type
   if request_table and request_table.stream or
-     (conf_m.model.options and conf_m.model.options.response_streaming) == "always" then
+     (conf_m.response_streaming and conf_m.response_streaming == "always") then
+    request_table.stream = true
+
     -- this condition will only check if user has tried
     -- to activate streaming mode within their request
-    if conf_m.model.options and conf_m.model.options.response_streaming == "deny" then
+    if conf_m.response_streaming and conf_m.response_streaming == "deny" then
       return bad_request("response streaming is not enabled for this LLM")
     end
 

@@ -31,8 +31,8 @@ local compatible_checkers = {
         if plugin.name == 'ai-proxy' then
           local config = plugin.config
           if config.model and config.model.options then
-            if config.model.options.response_streaming then
-              config.model.options.response_streaming = nil
+            if config.response_streaming then
+              config.response_streaming = nil
               log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
                               ' response_streaming == nil, because it is not supported' ..
                               ' in this release',
