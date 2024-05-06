@@ -31,9 +31,9 @@ local log_entry_keys = {
   TOKENS_CONTAINER = "usage",
   META_CONTAINER = "meta",
   PAYLOAD_CONTAINER = "payload",
-  REQUEST_BODY = "ai.payload.request",
 
   -- payload keys
+  REQUEST_BODY = "request",
   RESPONSE_BODY = "response",
 
   -- meta keys
@@ -271,20 +271,30 @@ function _M.to_ollama(request_table, model)
 end
 
 function _M.from_ollama(response_string, model_info, route_type)
-  local output, _, analytics
-
-  local response_table, err = cjson.decode(response_string)
-  if err then
-    return nil, "failed to decode ollama response"
-  end
+  local output, err, _, analytics
 
   if route_type == "stream/llm/v1/chat" then
+    local response_table, err = cjson.decode(response_string.data)
+    if err then
+      return nil, "failed to decode ollama response"
+    end
+
     output, _, analytics = handle_stream_event(response_table, model_info, route_type)
 
   elseif route_type == "stream/llm/v1/completions" then
+    local response_table, err = cjson.decode(response_string.data)
+    if err then
+      return nil, "failed to decode ollama response"
+    end
+
     output, _, analytics = handle_stream_event(response_table, model_info, route_type)
 
   else
+    local response_table, err = cjson.decode(response_string)
+    if err then
+      return nil, "failed to decode ollama response"
+    end
+
     -- there is no direct field indicating STOP reason, so calculate it manually
     local stop_length = (model_info.options and model_info.options.max_tokens) or -1
     local stop_reason = "stop"
@@ -412,14 +422,14 @@ function _M.pre_request(conf, request_table)
     request_table[auth_param_name] = auth_param_value
   end
 
-  if conf.logging and conf.logging.log_statistics then
-    kong.log.set_serialize_value(log_entry_keys.REQUEST_MODEL, conf.model.name)
-    kong.log.set_serialize_value(log_entry_keys.PROVIDER_NAME, conf.model.provider)
-  end
-
   -- if enabled AND request type is compatible, capture the input for analytics
   if conf.logging and conf.logging.log_payloads then
-    kong.log.set_serialize_value(log_entry_keys.REQUEST_BODY, kong.request.get_raw_body())
+    local plugin_name = conf.__key__:match('plugins:(.-):')
+    if not plugin_name or plugin_name == "" then
+      return nil, "no plugin name is being passed by the plugin"
+    end
+
+    kong.log.set_serialize_value(fmt("ai.%s.%s.%s", plugin_name, log_entry_keys.PAYLOAD_CONTAINER, log_entry_keys.REQUEST_BODY), kong.request.get_raw_body())
   end
 
   -- log tokens prompt for reports and billing
@@ -475,7 +485,6 @@ function _M.post_request(conf, response_object)
   if not request_analytics_plugin then
     request_analytics_plugin = {
       [log_entry_keys.META_CONTAINER] = {},
-      [log_entry_keys.PAYLOAD_CONTAINER] = {},
       [log_entry_keys.TOKENS_CONTAINER] = {
         [log_entry_keys.PROMPT_TOKEN] = 0,
         [log_entry_keys.COMPLETION_TOKEN] = 0,
@@ -485,10 +494,17 @@ function _M.post_request(conf, response_object)
   end
 
   -- Set the model, response, and provider names in the current try context
-  request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.REQUEST_MODEL] = conf.model.name
+  request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.REQUEST_MODEL] = kong.ctx.plugin.llm_model_requested or conf.model.name
   request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.RESPONSE_MODEL] = response_object.model or conf.model.name
   request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.PROVIDER_NAME] = provider_name
   request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.PLUGIN_ID] = conf.__plugin_id
+
+  -- set extra per-provider meta
+  if kong.ctx.plugin.ai_extra_meta and type(kong.ctx.plugin.ai_extra_meta) == "table" then
+    for k, v in pairs(kong.ctx.plugin.ai_extra_meta) do
+      request_analytics_plugin[log_entry_keys.META_CONTAINER][k] = v
+    end
+  end
 
   -- Capture openai-format usage stats from the transformed response body
   if response_object.usage then
@@ -505,16 +521,24 @@ function _M.post_request(conf, response_object)
 
   -- Log response body if logging payloads is enabled
   if conf.logging and conf.logging.log_payloads then
-    request_analytics_plugin[log_entry_keys.PAYLOAD_CONTAINER][log_entry_keys.RESPONSE_BODY] = body_string
+    kong.log.set_serialize_value(fmt("ai.%s.%s.%s", plugin_name, log_entry_keys.PAYLOAD_CONTAINER, log_entry_keys.RESPONSE_BODY), body_string)
   end
 
   -- Update context with changed values
+  request_analytics_plugin[log_entry_keys.PAYLOAD_CONTAINER] = {
+    [log_entry_keys.RESPONSE_BODY] = body_string,
+  }
   request_analytics[plugin_name] = request_analytics_plugin
   kong.ctx.shared.analytics = request_analytics
 
   if conf.logging and conf.logging.log_statistics then
     -- Log analytics data
-    kong.log.set_serialize_value(fmt("%s.%s", "ai", plugin_name), request_analytics_plugin)
+    kong.log.set_serialize_value(fmt("ai.%s.%s", plugin_name, log_entry_keys.TOKENS_CONTAINER),
+      request_analytics_plugin[log_entry_keys.TOKENS_CONTAINER])
+
+    -- Log meta
+    kong.log.set_serialize_value(fmt("ai.%s.%s", plugin_name, log_entry_keys.META_CONTAINER),
+      request_analytics_plugin[log_entry_keys.META_CONTAINER])
   end
 
   -- log tokens response for reports and billing

@@ -29,9 +29,11 @@ function _M.pre_request(conf)
 
   -- for azure provider, all of these must/will be set by now
   if conf.logging and conf.logging.log_statistics then
-    kong.log.set_serialize_value("ai.meta.azure_instance_id", conf.model.options.azure_instance)
-    kong.log.set_serialize_value("ai.meta.azure_deployment_id", conf.model.options.azure_deployment_id)
-    kong.log.set_serialize_value("ai.meta.azure_api_version", conf.model.options.azure_api_version)
+    kong.ctx.plugin.ai_extra_meta = {
+      ["azure_instance_id"] = conf.model.options.azure_instance,
+      ["azure_deployment_id"] = conf.model.options.azure_deployment_id,
+      ["azure_api_version"] = conf.model.options.azure_api_version,
+    }
   end
 
   return true

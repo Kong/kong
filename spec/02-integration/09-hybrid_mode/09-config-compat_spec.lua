@@ -550,6 +550,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
           name = "ai-proxy",
           enabled = true,
           config = {
+            response_streaming = "allow", -- becomes nil
             route_type = "preserve", -- becomes 'llm/v1/chat'
             auth = {
               header_name = "header",
@@ -561,7 +562,6 @@ describe("CP/DP config compat transformations #" .. strategy, function()
               options = {
                 max_tokens = 512,
                 temperature = 0.5,
-                response_streaming = "allow", -- becomes nil
                 upstream_path = "/anywhere", -- becomes nil
               },
             },
@@ -570,7 +570,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         -- ]]
 
         local expected_ai_proxy_prior_37 = utils.cycle_aware_deep_copy(ai_proxy)
-        expected_ai_proxy_prior_37.config.model.options.response_streaming = nil
+        expected_ai_proxy_prior_37.config.response_streaming = nil
         expected_ai_proxy_prior_37.config.model.options.upstream_path = nil
         expected_ai_proxy_prior_37.config.route_type = "llm/v1/chat"
 

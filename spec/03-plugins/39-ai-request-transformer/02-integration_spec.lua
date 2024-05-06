@@ -129,7 +129,6 @@ local _EXPECTED_CHAT_STATS = {
       request_model = 'gpt-4',
       response_model = 'gpt-3.5-turbo-0613',
     },
-    payload = {},
     usage = {
       completion_token = 12,
       prompt_token = 25,
