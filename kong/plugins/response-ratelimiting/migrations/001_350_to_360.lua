@@ -6,15 +6,6 @@ return {
           UPDATE plugins
           SET config =
             config::jsonb
-              - 'redis_host'
-              - 'redis_port'
-              - 'redis_password'
-              - 'redis_username'
-              - 'redis_ssl'
-              - 'redis_ssl_verify'
-              - 'redis_server_name'
-              - 'redis_timeout'
-              - 'redis_database'
             || jsonb_build_object(
               'redis',
               jsonb_build_object(
@@ -34,5 +25,30 @@ return {
           -- Do nothing, accept existing state
         END$$;
       ]],
+      teardown = function(connector, _)
+        local sql = [[
+          DO $$
+          BEGIN
+            UPDATE plugins
+            SET config =
+              config::jsonb
+                - 'redis_host'
+                - 'redis_port'
+                - 'redis_password'
+                - 'redis_username'
+                - 'redis_ssl'
+                - 'redis_ssl_verify'
+                - 'redis_server_name'
+                - 'redis_timeout'
+                - 'redis_database'
+            WHERE name = 'response-ratelimiting';
+          EXCEPTION WHEN UNDEFINED_COLUMN OR UNDEFINED_TABLE THEN
+            -- Do nothing, accept existing state
+          END$$;
+        ]]
+        assert(connector:query(sql))
+
+        return true
+      end,
     },
 }
