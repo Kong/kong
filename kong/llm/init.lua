@@ -348,44 +348,6 @@ local function count_prompt(content, tokens_factor)
   return count
 end
 
-function _M:calculate_cost(query_body, tokens_models, tokens_factor)
-  local query_cost = 0
-  local err
-
-  -- Check if max_tokens is provided in the request body
-  local max_tokens = query_body.max_tokens
-
-  if not max_tokens then
-    if query_body.model and tokens_models then
-      max_tokens = tonumber(tokens_models[query_body.model])
-    end
-  end
-
-  if not max_tokens then
-    return nil, "No max_tokens in query and no key found in the plugin config for model: " .. query_body.model
-  end
-
-  if query_body.messages then
-    -- Calculate the cost based on the content type
-    for _, message in ipairs(query_body.messages) do
-        query_cost = query_cost + (count_words(message.content) * tokens_factor)
-    end
-  elseif query_body.prompt then
-    -- Calculate the cost based on the content type
-    query_cost, err = count_prompt(query_body.prompt, tokens_factor)
-    if err then
-        return nil, err
-    end
-  else
-    return nil, "No messages or prompt in query"
-  end
-
-  -- Round the total cost quantified
-  query_cost = math.floor(query_cost + 0.5)
-
-  return query_cost
-end
-
 function _M.is_compatible(request, route_type)
   if route_type == "preserve" then
     return true
