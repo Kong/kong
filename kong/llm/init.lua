@@ -309,26 +309,6 @@ local function identify_request(request)
   end
 end
 
-local function get_token_text(event_t)
-  -- chat
-  return
-    event_t and
-    event_t.choices and
-    #event_t.choices > 0 and
-    event_t.choices[1].delta and
-    event_t.choices[1].delta.content
-
-    or
-
-  -- completions
-    event_t and
-    event_t.choices and
-    #event_t.choices > 0 and
-    event_t.choices[1].text
-
-    or ""
-end
-
 -- Function to count the number of words in a string
 local function count_words(str)
   local count = 0
