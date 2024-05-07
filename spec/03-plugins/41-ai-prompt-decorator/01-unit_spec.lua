@@ -1,8 +1,5 @@
 local PLUGIN_NAME = "ai-prompt-decorator"
 
--- imports
-local access_handler = require("kong.plugins.ai-prompt-decorator.handler")
---
 
 local function deepcopy(o, seen)
   seen = seen or {}
@@ -108,7 +105,23 @@ local injector_conf_both = {
   },
 }
 
+
+
 describe(PLUGIN_NAME .. ": (unit)", function()
+
+  local access_handler
+
+  setup(function()
+    _G._TEST = true
+    package.loaded["kong.plugins.ai-prompt-decorator.handler"] = nil
+    access_handler = require("kong.plugins.ai-prompt-decorator.handler")
+  end)
+
+  teardown(function()
+    _G._TEST = nil
+  end)
+
+
 
   describe("chat v1 operations", function()
 
@@ -121,11 +134,12 @@ describe(PLUGIN_NAME .. ": (unit)", function()
       table.insert(expected_request_copy.messages, 2, injector_conf_prepend.prompts.prepend[2])
       table.insert(expected_request_copy.messages, 3, injector_conf_prepend.prompts.prepend[3])
 
-      local decorated_request, err = access_handler.execute(request_copy, injector_conf_prepend)
+      local decorated_request, err = access_handler._execute(request_copy, injector_conf_prepend)
 
       assert.is_nil(err)
       assert.same(decorated_request, expected_request_copy)
     end)
+
 
     it("adds messages to the end of the array", function()
       local request_copy = deepcopy(general_chat_request)
@@ -135,11 +149,12 @@ describe(PLUGIN_NAME .. ": (unit)", function()
       table.insert(expected_request_copy.messages, #expected_request_copy.messages + 1, injector_conf_append.prompts.append[1])
       table.insert(expected_request_copy.messages, #expected_request_copy.messages + 1, injector_conf_append.prompts.append[2])
 
-      local decorated_request, err = access_handler.execute(request_copy, injector_conf_append)
+      local decorated_request, err = access_handler._execute(request_copy, injector_conf_append)
 
       assert.is_nil(err)
       assert.same(expected_request_copy, decorated_request)
     end)
+
 
     it("adds messages to the start and the end of the array", function()
       local request_copy = deepcopy(general_chat_request)
@@ -152,7 +167,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
       table.insert(expected_request_copy.messages, #expected_request_copy.messages + 1, injector_conf_both.prompts.append[1])
       table.insert(expected_request_copy.messages, #expected_request_copy.messages + 1, injector_conf_both.prompts.append[2])
 
-      local decorated_request, err = access_handler.execute(request_copy, injector_conf_both)
+      local decorated_request, err = access_handler._execute(request_copy, injector_conf_both)
 
       assert.is_nil(err)
       assert.same(expected_request_copy, decorated_request)

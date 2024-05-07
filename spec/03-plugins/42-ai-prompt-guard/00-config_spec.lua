@@ -11,7 +11,10 @@ local validate do
   end
 end
 
+
+
 describe(PLUGIN_NAME .. ": (schema)", function()
+
   it("won't allow both allow_patterns and deny_patterns to be unset", function()
     local config = {
       allow_all_conversation_history = true,
@@ -23,6 +26,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     assert.not_nil(err)
     assert.equal("at least one of these fields must be non-empty: 'config.allow_patterns', 'config.deny_patterns'", err["@entity"][1])
   end)
+
 
   it("won't allow both allow_patterns and deny_patterns to be empty arrays", function()
     local config = {
@@ -38,6 +42,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     assert.equal("at least one of these fields must be non-empty: 'config.allow_patterns', 'config.deny_patterns'", err["@entity"][1])
   end)
 
+
   it("won't allow patterns that are too long", function()
     local config = {
       allow_all_conversation_history = true,
@@ -52,6 +57,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     assert.not_nil(err)
     assert.same({ config = {allow_patterns = { [1] = "length must be at most 500" }}}, err)
   end)
+
 
   it("won't allow too many array items", function()
     local config = {
@@ -77,4 +83,5 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     assert.not_nil(err)
     assert.same({ config = {allow_patterns = "length must be at most 10" }}, err)
   end)
+
 end)
