@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local cjson   = require "cjson"
 
 local PLUGIN_NAME = "ai-prompt-decorator"
 
@@ -53,60 +52,62 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       }))
     end)
 
+
     lazy_teardown(function()
       helpers.stop_kong()
     end)
+
 
     before_each(function()
       client = helpers.proxy_client()
     end)
 
+
     after_each(function()
       if client then client:close() end
     end)
 
-    describe("request", function()
-      it("sends in a non-chat message", function()
-        local r = client:get("/request", {
-          headers = {
-            host = "test1.com",
-            ["Content-Type"] = "application/json",
-          },
-          body = [[
-            {
-              "anything": [
-                {
-                  "random": "data"
-                }
-              ]
-            }]],
-          method = "POST",
-        })
-        
-        local body = assert.res_status(400, r)
-        local json = cjson.decode(body)
 
-        assert.same(json, { error = { message = "this LLM route only supports llm/chat type requests" }})
-      end)
 
-      it("sends in an empty messages array", function()
-        local r = client:get("/request", {
-          headers = {
-            host = "test1.com",
-            ["Content-Type"] = "application/json",
-          },
-          body = [[
-            {
-              "messages": []
-            }]],
-          method = "POST",
-        })
-        
-        local body = assert.res_status(400, r)
-        local json = cjson.decode(body)
+    it("blocks a non-chat message", function()
+      local r = client:get("/request", {
+        headers = {
+          host = "test1.com",
+          ["Content-Type"] = "application/json",
+        },
+        body = [[
+          {
+            "anything": [
+              {
+                "random": "data"
+              }
+            ]
+          }]],
+        method = "POST",
+      })
 
-        assert.same(json, { error = { message = "this LLM route only supports llm/chat type requests" }})
-      end)
+      assert.response(r).has.status(400)
+      local json = assert.response(r).has.jsonbody()
+      assert.same(json, { error = { message = "this LLM route only supports llm/chat type requests" }})
+    end)
+
+
+    it("blocks an empty messages array", function()
+      local r = client:get("/request", {
+        headers = {
+          host = "test1.com",
+          ["Content-Type"] = "application/json",
+        },
+        body = [[
+          {
+            "messages": []
+          }]],
+        method = "POST",
+      })
+
+      assert.response(r).has.status(400)
+      local json = assert.response(r).has.jsonbody()
+      assert.same(json, { error = { message = "this LLM route only supports llm/chat type requests" }})
     end)
 
   end)
