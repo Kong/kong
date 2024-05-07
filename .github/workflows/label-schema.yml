@@ -13,4 +13,4 @@ jobs:
       env:
         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_SCHEMA_CHANGE }}
         SLACK_MESSAGE: ${{ github.event.pull_request.title }}
-        SLACK_FOOTER: "${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
+        SLACK_FOOTER: "<${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}>"
