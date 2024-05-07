@@ -550,6 +550,8 @@ jobs:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-images'] }}"
 
     steps:
+    - uses: actions/checkout@v3
+
     - name: Install regctl
       uses: regclient/actions/regctl-installer@main
 
@@ -577,6 +579,10 @@ jobs:
           echo "${arch}_image_sha=${IMAGE}@${sha}"
           echo "${arch}_image_sha=${IMAGE}@${sha}" >> $GITHUB_OUTPUT
         done
+
+    - name: Place Override grype Config
+      run: |
+        cp -v .grype.yaml "${HOME}/"
 
     - name: Scan AMD64 Image digest
       if: ${{ steps.image_manifest_metadata.outputs.amd64_image_sha != '' }}
