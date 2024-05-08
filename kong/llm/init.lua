@@ -309,45 +309,6 @@ local function identify_request(request)
   end
 end
 
--- Function to count the number of words in a string
-local function count_words(str)
-  local count = 0
-  for word in str:gmatch("%S+") do
-      count = count + 1
-  end
-  return count
-end
-
--- Function to count the number of words or tokens based on the content type
-local function count_prompt(content, tokens_factor)
-  local count = 0
-
-  if type(content) == "string" then
-    count = count_words(content) * tokens_factor
-  elseif type(content) == "table" then
-    for _, item in ipairs(content) do
-      if type(item) == "string" then
-        count = count + (count_words(item) * tokens_factor)
-      elseif type(item) == "number" then
-        count = count + 1
-      elseif type(item) == "table" then
-        for _2, item2 in ipairs(item) do
-          if type(item2) == "number" then
-            count = count + 1
-          else
-            return nil, "Invalid request format"
-          end
-        end
-      else
-          return nil, "Invalid request format"
-      end
-    end
-  else
-    return nil, "Invalid request format"
-  end
-  return count
-end
-
 function _M.is_compatible(request, route_type)
   if route_type == "preserve" then
     return true
