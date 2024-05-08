@@ -1,32 +1,9 @@
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
-local assert = require "luassert"
-local say = require "say"
 
 local PLUGIN_NAME = "ai-prompt-template"
 
-local function matches_regex(state, arguments)
-  local string = arguments[1]
-  local regex = arguments[2]
-  if ngx.re.find(string, regex) then
-    return true
-  else
-    return false
-  end
-end
 
-say:set_namespace("en")
-say:set("assertion.matches_regex.positive", [[
-Expected
-%s
-to match regex
-%s]])
-say:set("assertion.matches_regex.negative", [[
-Expected
-%s
-to not match regex
-%s]])
-assert:register("assertion", "matches_regex", matches_regex, "assertion.matches_regex.positive", "assertion.matches_regex.negative")
 
 for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
@@ -124,19 +101,25 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       }))
     end)
 
+
     lazy_teardown(function()
       helpers.stop_kong()
     end)
+
 
     before_each(function()
       client = helpers.proxy_client()
     end)
 
+
     after_each(function()
       if client then client:close() end
     end)
 
+
+
     describe("request", function()
+
       it("templates a chat message", function()
         local r = client:get("/request", {
           headers = {
@@ -150,15 +133,15 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                 "language": "python",
                 "program": "flask web server"
               }
-            }  
+            }
           ]],
           method = "POST",
         })
-        
-        local body = assert.res_status(200, r)
-        local json = cjson.decode(body)
 
-        assert.same(cjson.decode(json.post_data.text), {
+        assert.response(r).has.status(200)
+        local json = assert.response(r).has.jsonbody()
+
+        assert.same({
             messages = {
               [1] = {
                 role = "system",
@@ -169,9 +152,9 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                 content = "Write me a flask web server program."
               },
             }
-          }
-        )
+          }, cjson.decode(json.post_data.text))
       end)
+
 
       it("templates a completions message", function()
         local r = client:get("/request", {
@@ -186,16 +169,19 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                 "language": "python",
                 "program": "flask web server"
               }
-            }  
+            }
           ]],
           method = "POST",
         })
-        
-        local body = assert.res_status(200, r)
-        local json = cjson.decode(body)
 
-        assert.same(cjson.decode(json.post_data.text), { prompt = "You are a python programming expert. Make me a flask web server program." })
+        assert.response(r).has.status(200)
+        local json = assert.response(r).has.jsonbody()
+
+        assert.same({
+            prompt = "You are a python programming expert. Make me a flask web server program."
+          }, cjson.decode(json.post_data.text))
       end)
+
 
       it("blocks when 'allow_untemplated_requests' is OFF", function()
         local r = client:get("/request", {
@@ -211,16 +197,21 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                   "content": "Arbitrary content"
                 }
               ]
-            }  
+            }
           ]],
           method = "POST",
         })
-        
-        local body = assert.res_status(400, r)
-        local json = cjson.decode(body)
 
-        assert.same(json, { error = { message = "this LLM route only supports templated requests" }})
+        assert.response(r).has.status(400)
+        local json = assert.response(r).has.jsonbody()
+
+        assert.same({
+            error = {
+              message = "this LLM route only supports templated requests"
+            }
+          }, json)
       end)
+
 
       it("doesn't block when 'allow_untemplated_requests' is ON", function()
         local r = client:get("/request", {
@@ -236,16 +227,24 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                   "content": "Arbitrary content"
                 }
               ]
-            }  
+            }
           ]],
           method = "POST",
         })
 
-        local body = assert.res_status(200, r)
-        local json = cjson.decode(body)
+        assert.response(r).has.status(200)
+        local json = assert.response(r).has.jsonbody()
 
-        assert.same(json.post_data.params, { messages = { [1] = { role = "system", content = "Arbitrary content" }}})
+        assert.same({
+            messages = {
+              [1] = {
+                role = "system",
+                content = "Arbitrary content"
+              }
+            }
+          }, json.post_data.params)
       end)
+
 
       it("errors with a not found template", function()
         local r = client:get("/request", {
@@ -260,16 +259,21 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                 "language": "python",
                 "program": "flask web server"
               }
-            }  
+            }
           ]],
           method = "POST",
         })
 
-        local body = assert.res_status(400, r)
-        local json = cjson.decode(body)
+        assert.response(r).has.status(400)
+        local json = assert.response(r).has.jsonbody()
 
-        assert.same(json, { error = { message = "could not find template name [developer-doesnt-exist]" }} )
+        assert.same({
+            error = {
+              message = "could not find template name [developer-doesnt-exist]"
+            }
+          }, json)
       end)
+
 
       it("still errors with a not found template when 'allow_untemplated_requests' is ON", function()
         local r = client:get("/request", {
@@ -280,16 +284,21 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           body = [[
             {
               "messages": "{template://not_found}"
-            }  
+            }
           ]],
           method = "POST",
         })
-        
-        local body = assert.res_status(400, r)
-        local json = cjson.decode(body)
 
-        assert.same(json, { error = { message = "could not find template name [not_found]" }} )
+        assert.response(r).has.status(400)
+        local json = assert.response(r).has.jsonbody()
+
+        assert.same({
+            error = {
+              message = "could not find template name [not_found]"
+            }
+          }, json)
       end)
+
 
       it("errors with missing template parameter", function()
         local r = client:get("/request", {
@@ -303,16 +312,21 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
               "properties": {
                 "language": "python"
               }
-            }  
+            }
           ]],
           method = "POST",
         })
 
-        local body = assert.res_status(400, r)
-        local json = cjson.decode(body)
+        assert.response(r).has.status(400)
+        local json = assert.response(r).has.jsonbody()
 
-        assert.same(json, { error = { message = "missing template parameters: [program]" }} )
+        assert.same({
+            error = {
+              message = "missing template parameters: [program]"
+            }
+          }, json)
       end)
+
 
       it("errors with multiple missing template parameters", function()
         local r = client:get("/request", {
@@ -326,16 +340,17 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
               "properties": {
                 "nothing": "no"
               }
-            }  
+            }
           ]],
           method = "POST",
         })
-        
-        local body = assert.res_status(400, r)
-        local json = cjson.decode(body)
 
-        assert.matches_regex(json.error.message, "^missing template parameters: \\[.*\\], \\[.*\\]")
+        assert.response(r).has.status(400)
+        local json = assert.response(r).has.jsonbody()
+
+        assert.matches("^missing template parameters: %[.*%], %[.*%]", json.error.message)
       end)
+
 
       it("fails with non-json request", function()
         local r = client:get("/request", {
@@ -346,12 +361,17 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           body = [[template: programmer, property: hi]],
           method = "POST",
         })
-        
-        local body = assert.res_status(400, r)
-        local json = cjson.decode(body)
 
-        assert.same(json, { error = { message = "this LLM route only supports application/json requests" }})
+        assert.response(r).has.status(400)
+        local json = assert.response(r).has.jsonbody()
+
+        assert.same({
+            error = {
+              message = "this LLM route only supports application/json requests"
+            }
+          }, json)
       end)
+
 
       it("fails with non llm/v1/chat or llm/v1/completions request", function()
         local r = client:get("/request", {
@@ -365,11 +385,16 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           method = "POST",
         })
 
-        local body = assert.res_status(400, r)
-        local json = cjson.decode(body)
+        assert.response(r).has.status(400)
+        local json = assert.response(r).has.jsonbody()
 
-        assert.same(json, { error = { message = "this LLM route only supports llm/chat or llm/completions type requests" }})
+        assert.same({
+            error = {
+              message = "only 'llm/v1/chat' and 'llm/v1/completions' formats are supported for templating"
+            }
+          }, json)
       end)
+
 
       it("fails with multiple types of prompt", function()
         local r = client:get("/request", {
@@ -387,12 +412,18 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           method = "POST",
         })
 
-        local body = assert.res_status(400, r)
-        local json = cjson.decode(body)
+        assert.response(r).has.status(400)
+        local json = assert.response(r).has.jsonbody()
 
-        assert.same(json, { error = { message = "cannot run 'messages' and 'prompt' templates at the same time" }})
+        assert.same({
+            error = {
+              message = "cannot run 'messages' and 'prompt' templates at the same time"
+            }
+          }, json)
       end)
+
     end)
+
   end)
 
 end end
