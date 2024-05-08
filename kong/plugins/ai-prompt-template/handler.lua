@@ -5,103 +5,81 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local _M = {}
+local templater = require("kong.plugins.ai-prompt-template.templater")
+local ipairs = ipairs
+local type = type
 
 
--- imports
-local kong_meta = require("kong.meta")
-local templater = require("kong.plugins.ai-prompt-template.templater"):new()
-local fmt       = string.format
-local parse_url = require("socket.url").parse
-local byte      = string.byte
-local sub       = string.sub
-local type      = type
-local ipairs    = ipairs
---
 
-_M.PRIORITY = 773
-_M.VERSION = kong_meta.core_version
+local AIPromptTemplateHandler = {
+  PRIORITY = 773,
+  VERSION = require("kong.meta").core_version,
+}
 
 
-local log_entry_keys = {
+
+local LOG_ENTRY_KEYS = {
   REQUEST_BODY = "ai.payload.original_request",
 }
 
 
--- reuse this table for error message response
-local ERROR_MSG = { error = { message = "" } }
-
 
 local function bad_request(msg)
   kong.log.debug(msg)
-  ERROR_MSG.error.message = msg
-
-  return kong.response.exit(ngx.HTTP_BAD_REQUEST, ERROR_MSG)
+  return kong.response.exit(400, { error = { message = msg } })
 end
 
 
-local BRACE_START = byte("{")
-local BRACE_END = byte("}")
-local COLON = byte(":")
-local SLASH = byte("/")
 
-
----- BORROWED FROM `kong.pdk.vault`
----
--- Checks if the passed in reference looks like a reference.
+-- Checks if the passed in reference looks like a reference, and returns the template name.
 -- Valid references start with '{template://' and end with '}'.
---
--- @local
--- @function is_reference
 -- @tparam string reference reference to check
--- @treturn boolean `true` is the passed in reference looks like a reference, otherwise `false`
-local function is_reference(reference)
-  return type(reference)      == "string"
-     and byte(reference, 1)   == BRACE_START
-     and byte(reference, -1)  == BRACE_END
-     and byte(reference, 10)   == COLON
-     and byte(reference, 11)   == SLASH
-     and byte(reference, 12)   == SLASH
-     and sub(reference, 2, 9) == "template"
-end
-
-
-local function find_template(reference_string, templates)
-  local parts, err = parse_url(sub(reference_string, 2, -2))
-  if not parts then
-    return nil, fmt("template reference is not in format '{template://template_name}' (%s) [%s]", err, reference_string)
+-- @treturn string the reference template name or nil if it's not a reference
+local function extract_template_name(reference)
+  if type(reference) ~= "string" then
+    return nil
   end
 
-  -- iterate templates to find it
+  if not (reference:sub(1, 12) == "{template://" and reference:sub(-1) == "}") then
+    return nil
+  end
+
+  return reference:sub(13, -2)
+end
+
+
+
+--- Find a template by name in the list of templates.
+-- @tparam string reference_name the name of the template to find
+-- @tparam table templates the list of templates to search
+-- @treturn string the template if found, or nil + error message if not found
+local function find_template(reference_name, templates)
   for _, v in ipairs(templates) do
-    if v.name == parts.host then
+    if v.name == reference_name then
       return v, nil
     end
   end
 
-  return nil, fmt("could not find template name [%s]", parts.host)
+  return nil, "could not find template name [" .. reference_name .. "]"
 end
 
 
-function _M:access(conf)
+
+function AIPromptTemplateHandler:access(conf)
   kong.service.request.enable_buffering()
   kong.ctx.shared.ai_prompt_templated = true
 
   if conf.log_original_request then
-    kong.log.set_serialize_value(log_entry_keys.REQUEST_BODY, kong.request.get_raw_body())
+    kong.log.set_serialize_value(LOG_ENTRY_KEYS.REQUEST_BODY, kong.request.get_raw_body())
   end
 
-  local request, err = kong.request.get_body("application/json")
-  if err then
+  local request = kong.request.get_body("application/json")
+  if type(request) ~= "table" then
     return bad_request("this LLM route only supports application/json requests")
   end
 
   local messages = request.messages
   local prompt   = request.prompt
-
-  if (not messages) and (not prompt) then
-    return bad_request("this LLM route only supports llm/chat or llm/completions type requests")
-  end
 
   if messages and prompt then
     return bad_request("cannot run 'messages' and 'prompt' templates at the same time")
@@ -112,22 +90,22 @@ function _M:access(conf)
     return bad_request("only 'llm/v1/chat' and 'llm/v1/completions' formats are supported for templating")
   end
 
-  if not is_reference(reference) then
-    if not (conf.allow_untemplated_requests) then
-      return bad_request("this LLM route only supports templated requests")
+  local template_name = extract_template_name(reference)
+  if not template_name then
+    if conf.allow_untemplated_requests then
+      return  -- not a reference, do nothing
     end
 
-    -- not reference, do nothing
-    return
+    return bad_request("this LLM route only supports templated requests")
   end
 
-  local requested_template, err = find_template(reference, conf.templates)
+  local requested_template, err = find_template(template_name, conf.templates)
   if not requested_template then
     return bad_request(err)
   end
 
   -- try to render the replacement request
-  local rendered_template, err = templater:render(requested_template, request.properties or {})
+  local rendered_template, err = templater.render(requested_template, request.properties or {})
   if err then
     return bad_request(err)
   end
@@ -136,4 +114,4 @@ function _M:access(conf)
 end
 
 
-return _M
+return AIPromptTemplateHandler
