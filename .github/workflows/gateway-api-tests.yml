@@ -206,10 +206,14 @@ jobs:
 
       - name: Retry Failed E2E API Tests
         if: steps.execute_tests.outcome == 'failure'
-        run: TEST_APP=gateway npm run test-multiple -- --spec=$(cat failed-tests.txt)
+        run: |
+          if test -s failed-tests.txt; then
+            npm run test-multiple -- --spec=$(cat failed-tests.txt)
+          fi
         env:
           AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
           APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
+          TEST_APP: gateway
 
       - name: Send test results to Slack
         if: ${{ env.SEND_SLACK_RESULTS == 'true' && always() && github.ref == 'refs/heads/master' }}

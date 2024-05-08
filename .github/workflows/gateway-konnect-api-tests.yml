@@ -124,7 +124,10 @@ jobs:
 
       - name: Retry Konnect Failed API Tests
         if: steps.execute_tests.outcome == 'failure'
-        run: npm run test-multiple -- --spec=$(cat failed-tests.txt)
+        run: |
+          if test -s failed-tests.txt; then
+            npm run test-multiple -- --spec=$(cat failed-tests.txt)
+          fi
         env:
           TEST_ENV: dev
 
