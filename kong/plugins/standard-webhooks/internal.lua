@@ -64,12 +64,10 @@ local function access(config)
 
   local expected_signature = sign(config.secret_v1, id, ts, body)
 
-  if signature == expected_signature then
-    return
+  if signature ~= expected_signature then
+    kong.log.debug("signature not matched")
+    return kong.response.error(400)
   end
-
-  kong.log.debug("signature not matched")
-  return kong.response.error(400)
 end
 
 return {
