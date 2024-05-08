@@ -39,7 +39,7 @@ local clientcache = setmetatable({}, {
   __mode = "k",
   __index = function(clientcache, plugin_config)
 
-    ngx.log(ngx.NOTICE, "loading azure sdk for ", plugin_config.content_safety_url)
+    ngx.log(ngx.DEBUG, "loading azure sdk for ", plugin_config.content_safety_url)
 
     local azure_client = require("resty.azure"):new({
       client_id = plugin_config.azure_client_id,
@@ -51,8 +51,8 @@ local clientcache = setmetatable({}, {
 
     local _, err = azure_client.authenticate()
     if err then
-      kong.log.err("failed to authenticate with Azure OpenAI: ", err)
-      return kong.response.exit(500)
+      ngx.log(ngx.ERR, "failed to authenticate with Azure Content Services, ", err)
+      return kong.response.exit(500, { error = { message = "failed to authenticate with Azure Content Services" }})
     end
 
     -- store our item for the next time we need it
@@ -190,7 +190,15 @@ local function cog_serv_request(text, conf)
     ["Accept"] = "application/json",
   }
   if conf.azure_use_managed_identity then
-    headers["Authorization"] = "Bearer " .. clientcache[conf].credentials.token
+    local client = clientcache[conf]
+    local _, token, _, err = client.credentials:get()
+
+    if err then
+      kong.log.err("failed to authenticate with Azure Content Services, ", err)
+      return kong.response.exit(500, { error = { message = "failed to authenticate with Azure Content Services" }})
+    end
+
+    headers["Authorization"] = "Bearer " .. token
   else
     headers["Ocp-Apim-Subscription-Key"] = conf.content_safety_key
   end
@@ -209,7 +217,10 @@ local function cog_serv_request(text, conf)
   end
 
   if res.status ~= 200 then
-    return nil, "bad content safety status: " .. res.status .. ", response: " .. body
+    return nil, "bad content safety status: " ..
+      res.status ..
+      ", response: "
+      .. (res.body or "EMPTY_RESPONSE")
   end
 
   return res.body

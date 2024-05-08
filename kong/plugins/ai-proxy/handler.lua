@@ -46,30 +46,24 @@ local _KEYBASTION = setmetatable({}, {
   __mode = "k",
   __index = function(this_cache, plugin_config)
 
-    ngx.log(ngx.NOTICE, "loading azure sdk for ", plugin_config.model.options.azure_deployment_id, " in ", plugin_config.model.options.azure_instance)
+    ngx.log(ngx.DEBUG, "loading azure sdk for ", plugin_config.model.options.azure_deployment_id, " in ", plugin_config.model.options.azure_instance)
 
-    if plugin_config.model.provider == "azure"
-       and plugin_config.auth.azure_use_managed_identity then
+    local azure_client = require("resty.azure"):new({
+      client_id = plugin_config.auth.azure_client_id,
+      client_secret = plugin_config.auth.azure_client_secret,
+      tenant_id = plugin_config.auth.azure_tenant_id,
+      token_scope = "https://cognitiveservices.azure.com/.default",
+      token_version = "v2.0",
+    })
 
-      local azure_client = require("resty.azure"):new({
-        client_id = plugin_config.auth.azure_client_id,
-        client_secret = plugin_config.auth.azure_client_secret,
-        tenant_id = plugin_config.auth.azure_tenant_id,
-        token_scope = "https://cognitiveservices.azure.com/.default",
-        token_version = "v2.0",
-      })
-
-      local _, err = azure_client.authenticate()
-      if err then
-        return internal_server_error("failed to authenticate with Azure OpenAI")
-      end
-
-      -- store our item for the next time we need it
-      this_cache[plugin_config] = azure_client
-      return azure_client
-    else
-      return nil
+    local _, err = azure_client.authenticate()
+    if err then
+      return internal_server_error("failed to authenticate with Azure OpenAI")
     end
+
+    -- store our item for the next time we need it
+    this_cache[plugin_config] = azure_client
+    return azure_client
   end,
 })
 -- ]]
@@ -412,21 +406,18 @@ function _M:access(conf)
   end
 
   -- [[ EE
-  local identity_interface = _KEYBASTION[conf]
-  if identity_interface then
-    kong.service.request.set_header("Authorization", "Bearer " .. identity_interface.credentials.token)
+  if conf.model.provider == "azure"
+       and conf.auth.azure_use_managed_identity then
+    local identity_interface = _KEYBASTION[conf]
+    if identity_interface then
+      local _, token, _, err = identity_interface.credentials:get()
 
-    -- force a refresh if the token has expired
-    ngx.update_time()
-    local now_millis = ngx.now()
-
-    if now_millis > identity_interface.credentials.expireTime then
-      kong.log.notice("refreshing token for ", conf.model.name)
-
-      local _, err = identity_interface.authenticate()
       if err then
-        return internal_server_error("failed to rotate Azure authentication")
+        kong.log.err("failed to authenticate with Azure Content Services, ", err)
+        return kong.response.exit(500, { error = { message = "failed to authenticate with Azure Content Services" }})
       end
+
+      kong.service.request.set_header("Authorization", "Bearer " .. token)
     end
   end
   -- ]]
