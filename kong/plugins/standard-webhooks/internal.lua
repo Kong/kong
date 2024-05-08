@@ -11,9 +11,9 @@ local HEADER_WEBHOOK_TS = "webhook-timestamp"
 local function getHeader(input)
   if type(input) == "table" then
     return input[1]
-  else
-    return input
   end
+  
+  return input
 end
 
 local function sign(secret, id, ts, payload)
