@@ -46,11 +46,19 @@ jobs:
           spec-ee/**
 
     - name: Lua Check
-      if: steps.changed-files.outputs.any_changed == 'true'
-      uses: Kong/public-shared-actions/code-check-actions/lua-lint@28046231055b99899d55d32eda2a5f4a6075db36
+      uses: Kong/public-shared-actions/code-check-actions/lua-lint@a98be0184f832cb24a9dd233f99074e8ba17b488 # v2.3.3
       with:
         additional_args: '--no-default-config --config .luacheckrc --exclude-files ./distribution/'
-        files: ${{ steps.changed-files.outputs.all_changed_files }}
+        # Point to the /dev/null file if no files are changed.
+        # This action commented out the linting errors in PR,
+        # and the author might have already fixed that but no Lua files are changed
+        # (e.g. reset branch to target branch, and changed some CI files only),
+        # the outdated comments should be updated in this case.
+        # Pointing to /dev/null make the action to lint a empty file,
+        # empty file will not have any linting errors,
+        # so the action will update the outdated comments in PR.
+        files: ${{ steps.changed-files.outputs.any_changed == 'true' && steps.changed-files.outputs.all_changed_files || '/dev/null' }}
+        action_fail: true # Fail the action if the linting fails
 
     - name: Check spec and copyright-header
       if: steps.changed-spec-files.outputs.any_changed == 'true'
