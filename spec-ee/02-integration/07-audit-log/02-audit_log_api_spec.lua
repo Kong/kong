@@ -75,9 +75,11 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(200, admin_client:get("/services"))
 
           -- expect to have 3 audit logs
-          res = assert.res_status(200, admin_client:send({path = "/audit/requests"}))
-          json = cjson.decode(res)
-          assert.same(3, #json.data)
+          assert.eventually(function()
+            res = assert.res_status(200, admin_client:send({path = "/audit/requests"}))
+            json = cjson.decode(res)
+            assert.same(3, #json.data)
+          end).has_no_error()
         end)
       end)
 
@@ -489,10 +491,13 @@ for _, strategy in helpers.each_strategy() do
           }))
 
           -- expect to have 3 additional audit logs
-          res = assert.res_status(200, admin_client:send({path = "/audit/objects"}))
-          json = cjson.decode(res)
-          assert.same(3, #json.data)
-          -- request_timestamp is a new field - verify if it's not nill
+          assert.eventually(function()
+            res = assert.res_status(200, admin_client:send({path = "/audit/objects"}))
+            json = cjson.decode(res)
+            assert.same(3, #json.data)
+            -- request_timestamp is a new field - verify if it's not nill
+          end).has_no_error()
+
           assert.not_nil(json.data[1].request_timestamp)
           assert.not_nil(json.data[2].request_timestamp)
           assert.not_nil(json.data[3].request_timestamp)
