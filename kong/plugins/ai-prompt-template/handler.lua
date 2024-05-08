@@ -5,7 +5,7 @@ local type = type
 
 
 
-local plugin = {
+local AIPromptTemplateHandler = {
   PRIORITY = 773,
   VERSION = require("kong.meta").version,
 }
@@ -25,7 +25,7 @@ end
 
 
 
--- Checks if the passed in reference looks like a reference.
+-- Checks if the passed in reference looks like a reference, and returns the template name.
 -- Valid references start with '{template://' and end with '}'.
 -- @tparam string reference reference to check
 -- @treturn string the reference template name or nil if it's not a reference
@@ -59,7 +59,7 @@ end
 
 
 
-function plugin:access(conf)
+function AIPromptTemplateHandler:access(conf)
   kong.service.request.enable_buffering()
   kong.ctx.shared.ai_prompt_templated = true
 
@@ -84,8 +84,8 @@ function plugin:access(conf)
     return bad_request("only 'llm/v1/chat' and 'llm/v1/completions' formats are supported for templating")
   end
 
-  reference = extract_template_name(reference)
-  if not reference then
+  local template_name = extract_template_name(reference)
+  if not template_name then
     if conf.allow_untemplated_requests then
       return  -- not a reference, do nothing
     end
@@ -93,7 +93,7 @@ function plugin:access(conf)
     return bad_request("this LLM route only supports templated requests")
   end
 
-  local requested_template, err = find_template(reference, conf.templates)
+  local requested_template, err = find_template(template_name, conf.templates)
   if not requested_template then
     return bad_request(err)
   end
@@ -108,4 +108,4 @@ function plugin:access(conf)
 end
 
 
-return plugin
+return AIPromptTemplateHandler

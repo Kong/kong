@@ -4,20 +4,27 @@ local _M = {}
 
 
 
---- sanitize table of parameters.
--- Any non-string values will be dropped.
--- @tparam table params the kv table to sanitize, if not a table will be replace with an empty table
--- @return the same table, with escaped values (without quotes)
-local function sanitize_parameters(params)
+--- Sanitize properties object.
+-- Incoming user-provided JSON object may contain any kind of data.
+-- @tparam table params the kv table to sanitize
+-- @treturn[1] table the escaped values (without quotes)
+-- @treturn[2] nil
+-- @treturn[2] string error message
+local function sanitize_properties(params)
   local result = {}
 
   if type(params) ~= "table" then
-    return result
+    return nil, "properties must be an object"
   end
 
   for k,v in pairs(params) do
+    if type(k) ~= "string" then
+      return nil, "properties must be an object"
+    end
     if type(v) == "string" then
       result[k] = cjson.encode(v):sub(2, -2)  -- remove quotes
+    else
+      return nil, "property values must be a string, got " .. type(v)
     end
   end
 
@@ -30,26 +37,28 @@ do
   local GSUB_REPLACE_PATTERN = "{{([%w_]+)}}"
 
   function _M.render(template, properties)
-    local sanitized_properties = sanitize_parameters(properties)
+    local sanitized_properties, err = sanitize_properties(properties)
+    if not sanitized_properties then
+      return nil, err
+    end
 
     local result = template.template:gsub(GSUB_REPLACE_PATTERN, sanitized_properties)
 
     -- find any missing variables
     local errors = {}
-    local dup_check = {}
+    local seen_before = {}
     for w in result:gmatch(GSUB_REPLACE_PATTERN) do
-      if not dup_check[w] then
-        dup_check[w] = true
+      if not seen_before[w] then
+        seen_before[w] = true
         errors[#errors+1] = "[" .. w .. "]"
       end
     end
 
-    local error_string
     if errors[1] then
-      error_string = "missing template parameters: " .. table.concat(errors, ", ")
+      return nil, "missing template parameters: " .. table.concat(errors, ", ")
     end
 
-    return result, error_string
+    return result
   end
 end
 
