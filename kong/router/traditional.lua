@@ -47,7 +47,7 @@ local get_upstream_uri_v0  = utils.get_upstream_uri_v0
 local route_match_stat     = utils.route_match_stat
 
 
--- limits regex degenerate times to the low miliseconds
+-- limits regex degenerate times to the low milliseconds
 local REGEX_PREFIX  = "(*LIMIT_MATCH=10000)"
 local SLASH         = byte("/")
 local DOT           = byte(".")

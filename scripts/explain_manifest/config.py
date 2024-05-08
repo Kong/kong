@@ -36,7 +36,7 @@ def transform(f: FileInfo):
 # GLIBCXX and CXXABI based on gcc version:
 # - https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html
 # - https://repology.org/project/gcc/versions
-# TODO: libstdc++ verions
+# TODO: libstdc++ versions
 targets = {
     "alpine-amd64": ExpectSuite(
         name="Alpine Linux (amd64)",

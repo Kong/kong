@@ -131,7 +131,7 @@ end
 -- hostname lru-cache indexed by "recordtype:hostname" returning address list.
 -- short names are indexed by "recordtype:short:hostname"
 -- Result is a list with entries.
--- Keys only by "hostname" only contain the last succesfull lookup type
+-- Keys only by "hostname" only contain the last successful lookup type
 -- for this name, see `resolve` function.
 local dnscache
 
@@ -1255,7 +1255,7 @@ local function resolve(qname, r_opts, dnsCacheOnly, try_list, force_no_sync)
         if not qtype then
           -- only set the last succes, if we're not searching for a specific type
           -- and we're not limited by a cache-only request
-          cachesetsuccess(try_name, try_type) -- set last succesful type resolved
+          cachesetsuccess(try_name, try_type) -- set last successful type resolved
         end
       end
 

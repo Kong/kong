@@ -665,7 +665,7 @@ for _, strategy in helpers.each_strategy() do
             consumer = { id = consumer.id },
           }
 
-          -- just consumer, no no route or service
+          -- just consumer, no route or service
           bp.response_ratelimiting_plugins:insert({
             consumer = { id = consumer.id },
             config = {
