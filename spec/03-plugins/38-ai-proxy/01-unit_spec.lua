@@ -636,7 +636,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
       SAMPLE_LLM_V1_CHAT_WITH_SOME_OPTS,
       {
         max_tokens = 1024,
-        top_p = 1.0,
+        top_p = 0.5,
       },
       "llm/v1/chat"
     )
@@ -645,9 +645,9 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
     assert.is_nil(err)
     assert.same({
-      max_tokens          = 256,
+      max_tokens          = 1024,
       temperature         = 0.1,
-      top_p               = 0.2,
+      top_p               = 0.5,
       some_extra_param    = "string_val",
       another_extra_param = 0.5,
     }, formatted)

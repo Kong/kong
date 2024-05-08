@@ -610,8 +610,10 @@ end
 -- Function to count the number of words in a string
 local function count_words(str)
   local count = 0
-  for word in str:gmatch("%S+") do
-      count = count + 1
+  if type(str) == "string" then
+    for word in str:gmatch("%S+") do
+        count = count + 1
+    end
   end
   return count
 end
