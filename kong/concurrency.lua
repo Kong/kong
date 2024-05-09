@@ -109,6 +109,15 @@ function concurrency.with_coroutine_mutex(opts, fn)
     semaphore:post(1)
   end
 
+  -- to resolve deadlock issue in case the worker event thread
+  -- associated with `pcall(fn)` below got killed
+  -- and the `:post(1)` followed is skipped.
+  if semaphore:count() <= 0 then
+    -- the `:post(1)` operation is guaranteed to run immediately
+    -- as the `:count()` does not yeild
+    semaphore:post(1)
+  end
+
   -- acquire lock
   local lok, err = semaphore:wait(timeout)
   if not lok then
