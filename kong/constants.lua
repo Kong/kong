@@ -59,6 +59,7 @@ end
 
 local vaults = {
   "env",
+  "fs",
 }
 
 local vault_map = {}
