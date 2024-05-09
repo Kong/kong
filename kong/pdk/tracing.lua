@@ -563,9 +563,9 @@ local function new_tracer(name, options)
 
   --- Get the sampling decision result
   --
-  -- Uses a parent-based sampler when the parent has sampled flag == false
-  -- to inherit the non-recording decision from the parent span, or when 
-  -- trace_id is not available.
+  -- Uses a parent-based sampler when the parent has sampled flag set
+  -- to inherit the decision from the parent span, or when trace_id is
+  -- not available.
   --
   -- Else, apply the probability-based should_sample decision.
   --
@@ -587,7 +587,7 @@ local function new_tracer(name, options)
       -- a dummy created only to propagate headers
       sampled = false
 
-    elseif parent_should_sample == false or not trace_id then
+    elseif parent_should_sample ~= nil or not trace_id then
       -- trace_id can be nil when tracing instrumentations are disabled
       -- and Kong is configured to only do headers propagation
       sampled = parent_should_sample
