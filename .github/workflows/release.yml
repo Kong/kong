@@ -206,7 +206,7 @@ jobs:
     - name: Setup Bazel
       uses: bazel-contrib/setup-bazel@7d9487bea505c4779367dc5b21dfc4dc6a02d21d # v0.8.3
       with:
-        bazelisk-cache: true
+        bazelisk-cache: false
         disk-cache: false
         external-cache: false
         repository-cache: false
