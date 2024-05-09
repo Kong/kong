@@ -1,0 +1,5 @@
+message: >-
+  Fixed an issue where deadlock happens when the light thread associated with coroutine mutex job
+  was killed.
+type: bugfix
+scope: Core
