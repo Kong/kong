@@ -214,7 +214,9 @@ jobs:
     - name: Install Deb Dependencies
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true'
       run: |
-        sudo find / -name 'bazel'
+        # find bazel executable
+        find / -name bazel -type f
+        exit 1
         sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
                 automake \
                 build-essential \
