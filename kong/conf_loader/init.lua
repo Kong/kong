@@ -936,7 +936,6 @@ local function load(path, custom_conf, opts)
 
   -- TODO: remove this when cluster_rpc is ready for GA
   if conf.cluster_rpc then
-    log.warn("Cluster RPC has been forcibly disabled")
     conf.cluster_rpc = "off"
   end
 
