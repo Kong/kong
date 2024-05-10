@@ -197,16 +197,18 @@ for _, strategy in helpers.each_strategy() do
 
     local function ensure_cluster_id_exists()
       local res = db.parameters:select({ key = "cluster_id", })
-
-      -- table is broken for some unknown reason
-      if not res then
-        db.connector:query(
-        "BEGIN;\n" ..
-        "INSERT INTO parameters (key, value) VALUES('cluster_id', 'fake-cluster-id');" ..
-        "COMMIT;\n"
-        )
+      if res and res.value then
+        return
       end
 
+      -- table is broken for some unknown reason
+      db.connector:query(
+      "BEGIN;\n" ..
+      "INSERT INTO parameters (key, value) VALUES('cluster_id', 'fake-cluster-id');" ..
+      "COMMIT;\n"
+      )
+
+      -- check again
       res = db.parameters:select({ key = "cluster_id", })
       assert(res and res.value)
     end
