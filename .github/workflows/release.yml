@@ -106,6 +106,10 @@ jobs:
     name: Build & Package - ${{ matrix.label }}
     environment: ${{ needs.metadata.outputs.deploy-environment }}
 
+    env:
+      BAZELISK_DOWNLOAD_URL: https://github.com/bazelbuild/bazelisk/releases/download/v1.19.0/bazelisk-linux-${{ endsWith(matrix.label, 'arm64') && 'arm64' || 'amd64' }}
+      BAZELISK_SHA256: ${{ endsWith(matrix.label, 'arm64') && '861a16ba9979613e70bd3d2f9d9ab5e3b59fe79471c5753acdc9c431ab6c9d94' || 'd28b588ac0916abd6bf02defb5433f6eddf7cba35ffa808eabb65a44aab226f7' }}
+
     strategy:
       fail-fast: false
       matrix:
@@ -204,12 +208,11 @@ jobs:
         grep -v '^#' .requirements >> $GITHUB_ENV
 
     - name: Setup Bazel
-      uses: bazel-contrib/setup-bazel@7d9487bea505c4779367dc5b21dfc4dc6a02d21d # v0.8.3
-      with:
-        bazelisk-cache: false
-        disk-cache: false
-        external-cache: false
-        repository-cache: false
+      run: |
+        wget -O /bin/bazelisk "${BAZELISK_DOWNLOAD_URL}"
+        # integrety check
+        echo "${BAZELISK_SHA256}  /bin/bazelisk" | sha256sum -c -
+        ln -s /bin/bazelisk /bin/bazel
 
     - name: Install Deb Dependencies
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true'
