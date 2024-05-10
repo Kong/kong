@@ -292,5 +292,27 @@ return {
       "dpop_use_nonce",
       "dpop_proof_lifetime",
     },
+    ai_proxy = {
+      "response_streaming",
+      "model.options.upstream_path",
+      "auth.azure_use_managed_identity",
+      "auth.azure_client_id",
+      "auth.azure_client_secret",
+      "auth.azure_tenant_id",
+    },
+    ai_request_transformer = {
+      "llm.model.options.upstream_path",
+      "llm.auth.azure_use_managed_identity",
+      "llm.auth.azure_client_id",
+      "llm.auth.azure_client_secret",
+      "llm.auth.azure_tenant_id",
+    },
+    ai_response_transformer = {
+      "llm.model.options.upstream_path",
+      "llm.auth.azure_use_managed_identity",
+      "llm.auth.azure_client_id",
+      "llm.auth.azure_client_secret",
+      "llm.auth.azure_tenant_id",
+    },
   },
 }

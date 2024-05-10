@@ -572,6 +572,10 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         local expected_ai_proxy_prior_37 = utils.cycle_aware_deep_copy(ai_proxy)
         expected_ai_proxy_prior_37.config.response_streaming = nil
         expected_ai_proxy_prior_37.config.model.options.upstream_path = nil
+        expected_ai_proxy_prior_37.config.auth.azure_use_managed_identity = nil
+        expected_ai_proxy_prior_37.config.auth.azure_client_id = nil
+        expected_ai_proxy_prior_37.config.auth.azure_client_secret = nil
+        expected_ai_proxy_prior_37.config.auth.azure_tenant_id = nil
         expected_ai_proxy_prior_37.config.route_type = "llm/v1/chat"
 
         do_assert(utils.uuid(), "3.6.0", expected_ai_proxy_prior_37)
@@ -612,6 +616,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
         local expected_ai_request_transformer_prior_37 = utils.cycle_aware_deep_copy(ai_request_transformer)
         expected_ai_request_transformer_prior_37.config.llm.model.options.upstream_path = nil
+        expected_ai_request_transformer_prior_37.config.llm.auth.azure_use_managed_identity = nil
         expected_ai_request_transformer_prior_37.config.llm.auth.azure_client_id = nil
         expected_ai_request_transformer_prior_37.config.llm.auth.azure_client_secret = nil
         expected_ai_request_transformer_prior_37.config.llm.auth.azure_tenant_id = nil
@@ -652,6 +657,10 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
         local expected_ai_response_transformer_prior_37 = utils.cycle_aware_deep_copy(ai_response_transformer)
         expected_ai_response_transformer_prior_37.config.llm.model.options.upstream_path = nil
+        expected_ai_response_transformer_prior_37.config.llm.auth.azure_use_managed_identity = nil
+        expected_ai_response_transformer_prior_37.config.llm.auth.azure_client_id = nil
+        expected_ai_response_transformer_prior_37.config.llm.auth.azure_client_secret = nil
+        expected_ai_response_transformer_prior_37.config.llm.auth.azure_tenant_id = nil
 
         do_assert(utils.uuid(), "3.6.0", expected_ai_response_transformer_prior_37)
 

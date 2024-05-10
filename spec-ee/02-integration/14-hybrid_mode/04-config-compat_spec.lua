@@ -10,7 +10,6 @@ local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
 local FIELDS = require("kong.clustering.compat.removed_fields")
-local version = require("kong.clustering.compat.version")
 local tablex = require "pl.tablex"
 
 local admin = require "spec.fixtures.admin_api"
@@ -299,7 +298,6 @@ describe("CP/DP config compat #" .. strategy, function()
         api_spec_encoded = true
       },
       status = STATUS.NORMAL,
-      checker = CHECKERS,
       validator = function(config)
         return config.api_spec_encoded == true
       end
@@ -318,7 +316,6 @@ describe("CP/DP config compat #" .. strategy, function()
         api_spec_encoded = true
       },
       status = STATUS.NORMAL,
-      checker = CHECKERS,
       validator = function(config)
         return config.api_spec_encoded == nil
       end
@@ -529,6 +526,179 @@ describe("CP/DP config compat #" .. strategy, function()
             config.llm.auth.azure_tenant_id == nil
         end
       },
+      {
+        plugin = "ai-request-transformer",
+        label = "w/ unsupported extra fields",
+        pending = false,
+        config = {
+          prompt = "test",
+          llm = {
+            model = {
+              provider = "openai",
+              options = {
+                max_tokens = 256,
+                upstream_path = "/v1/other-operation"
+              },
+              name = "gpt-4"
+            },
+            auth = {
+              header_name = "Authorization",
+              header_value = "Bearer abc",
+            },
+            route_type = "llm/v1/chat",
+          },
+        },
+        status = STATUS.NORMAL,
+        validator = function(config)
+          return config.llm.model.options.upstream_path == nil
+        end
+      },
+      {
+        plugin = "ai-proxy",
+        label = "w/ unsupported azure managed identity set to false",
+        pending = false,
+        config = {
+          model = {
+            provider = "azure",
+            options = {
+              azure_instance = "ai-proxy-regression",
+              azure_deployment_id = "kong-gpt-3-5",
+            },
+            name = "kong-gpt-3-5"
+          },
+          auth = {
+            azure_use_managed_identity = false,
+            azure_client_id = "foo",
+            azure_client_secret = "bar",
+            azure_tenant_id = "baz"
+          },
+          route_type = "llm/v1/chat",
+        },
+        status = STATUS.NORMAL,
+        validator = function(config)
+          return config.auth.azure_use_managed_identity == nil and
+            config.auth.azure_client_id == nil and
+            config.auth.azure_client_secret == nil and
+            config.auth.azure_tenant_id == nil
+        end
+      },
+      {
+        plugin = "ai-proxy",
+        label = "w/ unsupported extra fields",
+        pending = false,
+        config = {
+          response_streaming = "allow",
+          model = {
+            provider = "openai",
+            options = {
+              max_tokens = 256,
+              upstream_path = "/v1/other-operation"
+            },
+            name = "gpt-4"
+          },
+          auth = {
+            header_name = "Authorization",
+            header_value = "Bearer abc",
+          },
+          route_type = "llm/v1/chat",
+        },
+        status = STATUS.NORMAL,
+        validator = function(config)
+          return config.response_streaming == nil and
+            config.model.options.upstream_path == nil
+        end
+      },
+      {
+        plugin = "ai-request-transformer",
+        label = "w/ unsupported azure managed identity set to false",
+        pending = false,
+        config = {
+          prompt = "test",
+          llm = {
+            model = {
+              provider = "azure",
+              options = {
+                azure_instance = "ai-proxy-regression",
+                azure_deployment_id = "kong-gpt-3-5",
+              },
+              name = "kong-gpt-3-5"
+            },
+            auth = {
+              azure_use_managed_identity = false,
+              azure_client_id = "foo",
+              azure_client_secret = "bar",
+              azure_tenant_id = "baz"
+            },
+            route_type = "llm/v1/chat",
+          },
+        },
+        status = STATUS.NORMAL,
+        validator = function(config)
+          return config.llm.auth.azure_use_managed_identity == nil and
+            config.llm.auth.azure_client_id == nil and
+            config.llm.auth.azure_client_secret == nil and
+            config.llm.auth.azure_tenant_id == nil
+        end
+      },
+      {
+        plugin = "ai-response-transformer",
+        label = "w/ unsupported azure managed identity set to false",
+        pending = false,
+        config = {
+          prompt = "test",
+          llm = {
+            model = {
+              provider = "azure",
+              options = {
+                azure_instance = "ai-proxy-regression",
+                azure_deployment_id = "kong-gpt-3-5",
+              },
+              name = "kong-gpt-3-5"
+            },
+            auth = {
+              azure_use_managed_identity = false,
+              azure_client_id = "foo",
+              azure_client_secret = "bar",
+              azure_tenant_id = "baz"
+            },
+            route_type = "llm/v1/chat",
+          },
+        },
+        status = STATUS.NORMAL,
+        validator = function(config)
+          return config.llm.auth.azure_use_managed_identity == nil and
+            config.llm.auth.azure_client_id == nil and
+            config.llm.auth.azure_client_secret == nil and
+            config.llm.auth.azure_tenant_id == nil
+        end
+      },
+      {
+        plugin = "ai-response-transformer",
+        label = "w/ unsupported extra fields",
+        pending = false,
+        config = {
+          prompt = "test",
+          llm = {
+            model = {
+              provider = "openai",
+              options = {
+                max_tokens = 256,
+                upstream_path = "/v1/other-operation"
+              },
+              name = "gpt-4"
+            },
+            auth = {
+              header_name = "Authorization",
+              header_value = "Bearer abc",
+            },
+            route_type = "llm/v1/chat",
+          },
+        },
+        status = STATUS.NORMAL,
+        validator = function(config)
+          return config.llm.model.options.upstream_path == nil
+        end
+      },
     }
 
     for _, case in ipairs(CASES) do
@@ -539,7 +709,7 @@ describe("CP/DP config compat #" .. strategy, function()
       end)
     end
   end)
-  
+
   describe("application-registration", function()
     local case = {
       plugin = "application-registration",
@@ -550,7 +720,6 @@ describe("CP/DP config compat #" .. strategy, function()
         display_name = "test.service",
       },
       status = STATUS.NORMAL,
-      checker = CHECKERS,
       init_plugin = function(plugin)
         local service = admin.services:insert()
         plugin["service"] = service
@@ -560,7 +729,7 @@ describe("CP/DP config compat #" .. strategy, function()
         return config.enable_proxy_with_consumer_credential == nil
       end
     }
-    
+
     it(fmt("%s - %s - 3.6.1.3", case.plugin, case.label), function()
       do_assert(case, "3.6.1.3")
     end)
@@ -584,7 +753,6 @@ describe("CP/DP config compat #" .. strategy, function()
         default_consumer = "281c2046-9480-4bee-8851-69362b1e8894"
       },
       status = STATUS.NORMAL,
-      checker = CHECKERS,
       validator = function(config)
         local ca_certificate = "00e2341e-0835-4d6b-855d-23c92d232bc4"
         return config.default_consumer == nil and
@@ -607,7 +775,6 @@ describe("CP/DP config compat #" .. strategy, function()
         default_consumer = "281c2046-9480-4bee-8851-69362b1e8894"
       },
       status = STATUS.NORMAL,
-      checker = CHECKERS,
       validator = function(config)
         local ca_certificate = "00e2341e-0835-4d6b-855d-23c92d232bc4"
         return config.default_consumer == "281c2046-9480-4bee-8851-69362b1e8894" and
@@ -627,3 +794,4 @@ describe("CP/DP config compat #" .. strategy, function()
 end)
 
 end -- each strategy
+
