@@ -213,6 +213,7 @@ jobs:
         # integrety check
         echo "${BAZELISK_SHA256}  /bin/bazelisk" | sha256sum -c -
         ln -s /usr/bin/bazelisk /usr/bin/bazel
+        echo $PATH
         which bazel
 
     - name: Install Deb Dependencies
