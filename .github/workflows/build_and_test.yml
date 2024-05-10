@@ -33,7 +33,7 @@ concurrency:
 env:
   BUILD_ROOT: ${{ github.workspace }}/bazel-bin/build
   KONG_TEST_COVERAGE: ${{ inputs.coverage == true || github.event_name == 'schedule' }}
-  RUNNER_COUNT: 7
+  RUNNER_COUNT: 1
 
 jobs:
   build:
@@ -119,7 +119,7 @@ jobs:
         test-file-runtime-file: .ci/runtimes.json
         output-prefix: test-chunk.
         runner-count: ${{ env.RUNNER_COUNT }}
-        static-mode: ${{ github.run_attempt > 1 }}
+        static-mode: true
 
     - name: Upload schedule files
       uses: actions/upload-artifact@v3
