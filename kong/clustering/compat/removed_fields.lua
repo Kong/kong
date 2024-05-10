@@ -125,5 +125,15 @@ return {
     zipkin = {
       "propagation",
     },
+    ai_proxy = {
+      "response_streaming",
+      "model.options.upstream_path",
+    },
+    ai_request_transformer = {
+      "llm.model.options.upstream_path",
+    },
+    ai_response_transformer = {
+      "llm.model.options.upstream_path",
+    },
   },
 }
