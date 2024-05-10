@@ -195,35 +195,10 @@ for _, strategy in helpers.each_strategy() do
       password = crypto.hash(consumer_def.id, "MI6"),
     }
 
-    local function ensure_cluster_id_exists()
-      local res = db.parameters:select({ key = "cluster_id", })
-      if res and res.value then
-        return
-      end
-
-      -- table is broken for some unknown reason
-      db.connector:query(
-      "BEGIN;\n" ..
-      "INSERT INTO parameters (key, value) VALUES('cluster_id', 'fake-cluster-id');" ..
-      "COMMIT;\n"
-      )
-
-      -- check again
-      res = db.parameters:select({ key = "cluster_id", })
-      assert(res and res.value)
-    end
-
     before_each(function()
-      db.acls:truncate()
-      db.basicauth_credentials:truncate()
-      db.plugins:truncate()
-      db.routes:truncate()
-      db.services:truncate()
-      db.snis:truncate()
-      db.certificates:truncate()
-      db.consumers:truncate()
-
-      ensure_cluster_id_exists()
+      -- remove all data in DB
+      db:schema_reset()
+      helpers.bootstrap_database(db)
 
       assert(declarative.load_into_db({
         snis = { [sni_def.id] = sni_def },
