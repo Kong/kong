@@ -209,11 +209,11 @@ jobs:
 
     - name: Setup Bazel
       run: |
-        wget -O /usr/bin/bazelisk "${BAZELISK_DOWNLOAD_URL}"
+        sudo wget -O /usr/bin/bazelisk "${BAZELISK_DOWNLOAD_URL}"
         # integrety check
         echo "${BAZELISK_SHA256}  /bin/bazelisk" | sha256sum -c -
-        ln -s /usr/bin/bazelisk /usr/bin/bazel
-        chmod +x /usr/bin/bazelisk
+        sudo ln -s /usr/bin/bazelisk /usr/bin/bazel
+        sudo chmod +x /usr/bin/bazelisk
 
     - name: Install Deb Dependencies
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true'
