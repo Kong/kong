@@ -37,6 +37,9 @@ local table_insert = table.insert
 local table_concat = table.concat
 local table_remove = table.remove
 local clear_tab = require "table.clear"
+local tonumber = tonumber
+local string_find = string.find
+local string_sub  = string.sub
 
 
 local _M = {
@@ -55,6 +58,15 @@ p:addpath("kong/include")
 p:loadfile("kong/model/analytics/payload.proto")
 
 local EMPTY_PAYLOAD = pb.encode("kong.model.analytics.Payload", {})
+
+local function strip_query(str)
+  local idx = string_find(str, "?", 1, true)
+  if idx then
+    return string_sub(str, 1, idx - 1)
+  end
+
+  return str
+end
 
 function _M.new(config)
   assert(config, "conf can not be nil", 2)
@@ -350,7 +362,7 @@ function _M:create_payload(message)
   end
 
   if message.upstream_uri ~= nil then
-    payload.upstream.upstream_uri = self:split(message.upstream_uri, "?")[1]
+    payload.upstream.upstream_uri = strip_query(message.upstream_uri)
   end
 
   if message.request ~= nil then
@@ -360,7 +372,7 @@ function _M:create_payload(message)
     request.header_host = self:safe_string(req.headers["host"])
     request.http_method = req.method
     request.body_size = req.size
-    request.uri = self:split(req.uri, "?")[1]
+    request.uri = strip_query(req.uri)
   end
 
   if message.response ~= nil then
