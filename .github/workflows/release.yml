@@ -125,14 +125,14 @@ jobs:
       if: matrix.package == 'rpm' && matrix.image != ''
       run: |
         # tar/gzip is needed to restore git cache (if available)
-        yum install -y tar gzip which file zlib-devel
+        yum install -y tar gzip which file zlib-devel wget
 
     - name: Early Deb in Container Setup
       if: matrix.package == 'deb' && matrix.image != ''
       run: |
         # tar/gzip is needed to restore git cache (if available)
         apt-get update
-        apt-get install -y git tar gzip file sudo
+        apt-get install -y git tar gzip file sudo wget
 
     - name: Cache Git
       id: cache-git
