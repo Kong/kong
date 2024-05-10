@@ -7,6 +7,7 @@
 
 local uh = require "spec/upgrade_helpers"
 local cjson = require "cjson"
+local helpers = require "spec.helpers"
 
 if uh.database_type() == 'postgres' then
   describe("audit_objects default timestamp", function()
@@ -40,9 +41,12 @@ if uh.database_type() == 'postgres' then
           }))
 
           -- validate if audit_objects were created
-          res = assert.res_status(200, admin_client:send({path = "/audit/objects"}))
-          json = cjson.decode(res)
-          assert.same(3, #json.data)
+          helpers.wait_until(function()
+            res = assert.res_status(200, admin_client:send({path = "/audit/objects"}))
+            json = cjson.decode(res)
+            return #json.data == 3
+          end, 5, 0.5)
+
           assert.is_nil(json.data[1].request_timestamp)
           assert.is_nil(json.data[2].request_timestamp)
           assert.is_nil(json.data[3].request_timestamp)
