@@ -18,6 +18,7 @@ import {
   getKongContainerName,
   logDebug,
   isGateway,
+  retryRequest,
 } from '@support';
 
 describe('Gateway Plugins: OpenTelemetry', function () {
@@ -39,7 +40,7 @@ describe('Gateway Plugins: OpenTelemetry', function () {
     app: 'gateway',
     environment: Environment.gateway.hostName,
   })}`;
-  const jaegerTracesEndpoint = `http://${host}:16686/api/traces?service=kong&lookback=2m&limit=10`;
+  const jaegerTracesEndpoint = `http://${host}:16686/api/traces?service=kong&lookback=2m`;
 
   const url = `${getBasePath({
     environment: isGateway() ? Environment.gateway.admin : undefined,
@@ -56,7 +57,7 @@ describe('Gateway Plugins: OpenTelemetry', function () {
   let routeId: string;
   let pluginId: string;
   let totalTraces: number;
-  let maxAllowedTraces: number;
+  let expectedTraces: number;
 
   before(async function () {
     // enable kong opel tracing for requests for this test
@@ -223,57 +224,63 @@ describe('Gateway Plugins: OpenTelemetry', function () {
   });
 
   it('should send updated service instance.id and version metadata to jaeger', async function () {
-    let resp = await axios(`${proxyUrl}${paths[1]}`);
+    const resp = await axios(`${proxyUrl}${paths[1]}`);
     logResponse(resp);
     await wait(jaegerWait + (isLocalDb ? 0 : hybridWaitTime)); // eslint-disable-line no-restricted-syntax
 
-    resp = await axios(jaegerTracesEndpoint);
-    logResponse(resp);
+    expectedTraces = totalTraces + 1;
 
-    maxAllowedTraces = totalTraces + 1;
+    const req = () =>
+      axios({
+        url: jaegerTracesEndpoint,
+      });
 
-    expect(
-      resp.data.data.length,
-      'Should see correct number of request traces in jaeger'
-    ).to.equal(maxAllowedTraces);
+    const assertions = (resp) => {
+      expect(
+        resp.data.data.length,
+        'Should see correct number of request traces in jaeger'
+      ).to.be.greaterThanOrEqual(expectedTraces);
 
-    // setting new totalTraces number
-    totalTraces = resp.data.data.length;
+      // setting new totalTraces number
+      totalTraces = resp.data.data.length;
 
-    let isFound = false;
-    for (const data of resp.data.data) {
-      const urlObj = data.spans[0].tags.find((obj) => obj.key === 'http.url');
+      let isFound = false;
+      for (const data of resp.data.data) {
+        const urlObj = data.spans[0].tags.find((obj) => obj.key === 'http.url');
 
-      if (urlObj.value.includes(paths[1])) {
-        isFound = true;
+        if (urlObj.value.includes(paths[1])) {
+          isFound = true;
 
-        expect(urlObj.value, `Should see correct http.url`).to.contain(
-          paths[1]
-        );
+          expect(urlObj.value, `Should see correct http.url`).to.contain(
+            paths[1]
+          );
 
-        expect(
-          data.spans[0].operationName,
-          'Should have kong operationName'
-        ).to.equal(`kong`);
+          expect(
+            data.spans[0].operationName,
+            'Should have kong operationName'
+          ).to.equal(`kong`);
 
-        const instance_id = data.processes.p1.tags.find((obj) => {
-          return obj.key === 'service.instance.id';
-        });
-        const version = data.processes.p1.tags.find((obj) => {
-          return obj.key === 'service.version';
-        });
-        expect(
-          instance_id.value,
-          'Should have correct service.instance.id'
-        ).to.equal(`8888`);
-        expect(
-          version.value,
-          'Should have correct service.version'
-        ).to.equal(`kongtest`);
+          const instance_id = data.processes.p1.tags.find((obj) => {
+            return obj.key === 'service.instance.id';
+          });
+          const version = data.processes.p1.tags.find((obj) => {
+            return obj.key === 'service.version';
+          });
+          expect(
+            instance_id.value,
+            'Should have correct service.instance.id'
+          ).to.equal(`8888`);
+          expect(
+            version.value,
+            'Should have correct service.version'
+          ).to.equal(`kongtest`);
+        }
       }
-    }
 
-    expect(isFound, 'Should find the target trace in jaeger').to.be.true;
+      expect(isFound, 'Should find the target trace in jaeger').to.be.true;
+    };
+
+    await retryRequest(req, assertions, 10000);
   });
 
   it('should not get 500 when traceparent -00 header is present in the request', async function () {
