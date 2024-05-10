@@ -213,8 +213,7 @@ jobs:
         # integrety check
         echo "${BAZELISK_SHA256}  /bin/bazelisk" | sha256sum -c -
         ln -s /usr/bin/bazelisk /usr/bin/bazel
-        echo $PATH
-        which bazel
+        chmod +x /usr/bin/bazelisk
 
     - name: Install Deb Dependencies
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true'
