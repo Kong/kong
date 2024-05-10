@@ -435,14 +435,16 @@ describe("CP/DP config compat #" .. strategy, function()
       },
       {
         plugin = "ai-proxy",
-        label = "w/ unsupported azure managed identity",
+        label = "w/ unsupported fields",
         pending = false,
         config = {
+          response_streaming = "allow",
           model = {
             provider = "azure",
             options = {
               azure_instance = "ai-proxy-regression",
               azure_deployment_id = "kong-gpt-3-5",
+              upstream_path = "/v1/other-operation"
             },
             name = "kong-gpt-3-5"
           },
@@ -459,158 +461,14 @@ describe("CP/DP config compat #" .. strategy, function()
           return config.auth.azure_use_managed_identity == nil and
             config.auth.azure_client_id == nil and
             config.auth.azure_client_secret == nil and
-            config.auth.azure_tenant_id == nil
-        end
-      },
-      {
-        plugin = "ai-response-transformer",
-        label = "w/ unsupported azure managed identity",
-        pending = false,
-        config = {
-          prompt = "test",
-          llm = {
-            model = {
-              provider = "azure",
-              options = {
-                azure_instance = "ai-proxy-regression",
-                azure_deployment_id = "kong-gpt-3-5",
-              },
-              name = "kong-gpt-3-5"
-            },
-            auth = {
-              azure_use_managed_identity = true,
-              azure_client_id = "foo",
-              azure_client_secret = "bar",
-              azure_tenant_id = "baz"
-            },
-            route_type = "llm/v1/chat",
-          },
-        },
-        status = STATUS.NORMAL,
-        validator = function(config)
-          return config.llm.auth.azure_use_managed_identity == nil and
-            config.llm.auth.azure_client_id == nil and
-            config.llm.auth.azure_client_secret == nil and
-            config.llm.auth.azure_tenant_id == nil
-        end
-      },
-      {
-        plugin = "ai-request-transformer",
-        label = "w/ unsupported azure managed identity",
-        pending = false,
-        config = {
-          prompt = "test",
-          llm = {
-            model = {
-              provider = "azure",
-              options = {
-                azure_instance = "ai-proxy-regression",
-                azure_deployment_id = "kong-gpt-3-5",
-              },
-              name = "kong-gpt-3-5"
-            },
-            auth = {
-              azure_use_managed_identity = true,
-              azure_client_id = "foo",
-              azure_client_secret = "bar",
-              azure_tenant_id = "baz"
-            },
-            route_type = "llm/v1/chat",
-          },
-        },
-        status = STATUS.NORMAL,
-        validator = function(config)
-          return config.llm.auth.azure_use_managed_identity == nil and
-            config.llm.auth.azure_client_id == nil and
-            config.llm.auth.azure_client_secret == nil and
-            config.llm.auth.azure_tenant_id == nil
-        end
-      },
-      {
-        plugin = "ai-request-transformer",
-        label = "w/ unsupported extra fields",
-        pending = false,
-        config = {
-          prompt = "test",
-          llm = {
-            model = {
-              provider = "openai",
-              options = {
-                max_tokens = 256,
-                upstream_path = "/v1/other-operation"
-              },
-              name = "gpt-4"
-            },
-            auth = {
-              header_name = "Authorization",
-              header_value = "Bearer abc",
-            },
-            route_type = "llm/v1/chat",
-          },
-        },
-        status = STATUS.NORMAL,
-        validator = function(config)
-          return config.llm.model.options.upstream_path == nil
-        end
-      },
-      {
-        plugin = "ai-proxy",
-        label = "w/ unsupported azure managed identity set to false",
-        pending = false,
-        config = {
-          model = {
-            provider = "azure",
-            options = {
-              azure_instance = "ai-proxy-regression",
-              azure_deployment_id = "kong-gpt-3-5",
-            },
-            name = "kong-gpt-3-5"
-          },
-          auth = {
-            azure_use_managed_identity = false,
-            azure_client_id = "foo",
-            azure_client_secret = "bar",
-            azure_tenant_id = "baz"
-          },
-          route_type = "llm/v1/chat",
-        },
-        status = STATUS.NORMAL,
-        validator = function(config)
-          return config.auth.azure_use_managed_identity == nil and
-            config.auth.azure_client_id == nil and
-            config.auth.azure_client_secret == nil and
-            config.auth.azure_tenant_id == nil
-        end
-      },
-      {
-        plugin = "ai-proxy",
-        label = "w/ unsupported extra fields",
-        pending = false,
-        config = {
-          response_streaming = "allow",
-          model = {
-            provider = "openai",
-            options = {
-              max_tokens = 256,
-              upstream_path = "/v1/other-operation"
-            },
-            name = "gpt-4"
-          },
-          auth = {
-            header_name = "Authorization",
-            header_value = "Bearer abc",
-          },
-          route_type = "llm/v1/chat",
-        },
-        status = STATUS.NORMAL,
-        validator = function(config)
-          return config.response_streaming == nil and
+            config.auth.azure_tenant_id == nil and
+            config.response_streaming == nil and
             config.model.options.upstream_path == nil
         end
       },
       {
-        plugin = "ai-request-transformer",
-        label = "w/ unsupported azure managed identity set to false",
+        plugin = "ai-response-transformer",
+        label = "w/ unsupported fields",
         pending = false,
         config = {
           prompt = "test",
@@ -620,83 +478,60 @@ describe("CP/DP config compat #" .. strategy, function()
               options = {
                 azure_instance = "ai-proxy-regression",
                 azure_deployment_id = "kong-gpt-3-5",
-              },
-              name = "kong-gpt-3-5"
-            },
-            auth = {
-              azure_use_managed_identity = false,
-              azure_client_id = "foo",
-              azure_client_secret = "bar",
-              azure_tenant_id = "baz"
-            },
-            route_type = "llm/v1/chat",
-          },
-        },
-        status = STATUS.NORMAL,
-        validator = function(config)
-          return config.llm.auth.azure_use_managed_identity == nil and
-            config.llm.auth.azure_client_id == nil and
-            config.llm.auth.azure_client_secret == nil and
-            config.llm.auth.azure_tenant_id == nil
-        end
-      },
-      {
-        plugin = "ai-response-transformer",
-        label = "w/ unsupported azure managed identity set to false",
-        pending = false,
-        config = {
-          prompt = "test",
-          llm = {
-            model = {
-              provider = "azure",
-              options = {
-                azure_instance = "ai-proxy-regression",
-                azure_deployment_id = "kong-gpt-3-5",
-              },
-              name = "kong-gpt-3-5"
-            },
-            auth = {
-              azure_use_managed_identity = false,
-              azure_client_id = "foo",
-              azure_client_secret = "bar",
-              azure_tenant_id = "baz"
-            },
-            route_type = "llm/v1/chat",
-          },
-        },
-        status = STATUS.NORMAL,
-        validator = function(config)
-          return config.llm.auth.azure_use_managed_identity == nil and
-            config.llm.auth.azure_client_id == nil and
-            config.llm.auth.azure_client_secret == nil and
-            config.llm.auth.azure_tenant_id == nil
-        end
-      },
-      {
-        plugin = "ai-response-transformer",
-        label = "w/ unsupported extra fields",
-        pending = false,
-        config = {
-          prompt = "test",
-          llm = {
-            model = {
-              provider = "openai",
-              options = {
-                max_tokens = 256,
                 upstream_path = "/v1/other-operation"
               },
-              name = "gpt-4"
+              name = "kong-gpt-3-5"
             },
             auth = {
-              header_name = "Authorization",
-              header_value = "Bearer abc",
+              azure_use_managed_identity = true,
+              azure_client_id = "foo",
+              azure_client_secret = "bar",
+              azure_tenant_id = "baz"
             },
             route_type = "llm/v1/chat",
           },
         },
         status = STATUS.NORMAL,
         validator = function(config)
-          return config.llm.model.options.upstream_path == nil
+          return config.llm.auth.azure_use_managed_identity == nil and
+            config.llm.auth.azure_client_id == nil and
+            config.llm.auth.azure_client_secret == nil and
+            config.llm.auth.azure_tenant_id == nil and
+            config.llm.model.options.upstream_path == nil
+        end
+      },
+      {
+        plugin = "ai-request-transformer",
+        label = "w/ unsupported fields",
+        pending = false,
+        config = {
+          prompt = "test",
+          llm = {
+            model = {
+              provider = "azure",
+              options = {
+                azure_instance = "ai-proxy-regression",
+                azure_deployment_id = "kong-gpt-3-5",
+                upstream_path = "/v1/other-operation"
+              },
+              name = "kong-gpt-3-5"
+            },
+            auth = {
+              azure_use_managed_identity = true,
+              azure_client_id = "foo",
+              azure_client_secret = "bar",
+              azure_tenant_id = "baz"
+            },
+            route_type = "llm/v1/chat",
+          },
+        },
+        status = STATUS.NORMAL,
+        validator = function(config)
+          return config.llm.auth.azure_use_managed_identity == nil and
+            config.llm.auth.azure_client_id == nil and
+            config.llm.auth.azure_client_secret == nil and
+            config.llm.auth.azure_tenant_id == nil and
+            config.llm.model.options.upstream_path == nil
         end
       },
     }
