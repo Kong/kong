@@ -49,7 +49,7 @@ export {
 } from './entities/user';
 export {
   getGatewayContainerLogs,
-  setGatewayContainerEnvVariable,
+  resetGatewayContainerEnvVariable,
   startGwWithCustomEnvVars,
   getKongVersionFromContainer,
   runDockerContainerCommand,

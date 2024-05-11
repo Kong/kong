@@ -18,7 +18,7 @@ import {
   isGwHybrid,
   client,
   getAllKeys,
-  setGatewayContainerEnvVariable
+  resetGatewayContainerEnvVariable
 } from '@support';
 import axios from 'axios';
 
@@ -47,14 +47,14 @@ describe('Gateway Plugins: ACME', function () {
 
   before(async function () {
     // set KONG_LUA_SSL_TRUSTED_CERTIFICATE value to pebble certificate path in kong container
-    setGatewayContainerEnvVariable(
+    await resetGatewayContainerEnvVariable(
       {
         KONG_LUA_SSL_TRUSTED_CERTIFICATE: '/etc/acme-certs/pebble.minica.pem',
       },
       kongContainerName
     );
     if (isGwHybrid()) {
-      setGatewayContainerEnvVariable(
+      await resetGatewayContainerEnvVariable(
         {
           KONG_LUA_SSL_TRUSTED_CERTIFICATE: '/etc/acme-certs/pebble.minica.pem',
         },
@@ -260,14 +260,14 @@ describe('Gateway Plugins: ACME', function () {
 
   after(async function () {
     // set KONG_LUA_SSL_TRUSTED_CERTIFICATE value back to its deafult 'system'
-    setGatewayContainerEnvVariable(
+    await resetGatewayContainerEnvVariable(
       {
         KONG_LUA_SSL_TRUSTED_CERTIFICATE: 'system',
       },
       kongContainerName
     );
     if (isGwHybrid()) {
-      setGatewayContainerEnvVariable(
+      await resetGatewayContainerEnvVariable(
         {
           KONG_LUA_SSL_TRUSTED_CERTIFICATE: 'system',
         },

@@ -8,7 +8,7 @@ import {
     waitForConfigRebuild,
     logResponse,
     isGateway,
-    setGatewayContainerEnvVariable,
+    resetGatewayContainerEnvVariable,
     getKongContainerName,
     getGatewayMode,
     clearAllKongResources,
@@ -71,7 +71,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
 
     before(async function () {
         //set KONG_LUA_SSL_TRUSTED_CERTIFICATE value to root/intermediate CA certificates
-        setGatewayContainerEnvVariable(
+        await resetGatewayContainerEnvVariable(
             {
                 KONG_LUA_SSL_TRUSTED_CERTIFICATE: '/tmp/root_ca.crt,/tmp/intermediate_ca.crt',
             },
@@ -79,7 +79,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
         );
 
         if (isHybrid) {
-            setGatewayContainerEnvVariable(
+            await resetGatewayContainerEnvVariable(
                 {
                     KONG_LUA_SSL_TRUSTED_CERTIFICATE: '/tmp/root_ca.crt,/tmp/intermediate_ca.crt',
                 },
@@ -409,14 +409,14 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
         await clearAllKongResources()
 
         // reset vars back to original setting 'system'
-        setGatewayContainerEnvVariable(
+        await resetGatewayContainerEnvVariable(
             {
                 KONG_LUA_SSL_TRUSTED_CERTIFICATE: 'system',
             },
             kongContainerName
         );
         if (isHybrid) {
-            setGatewayContainerEnvVariable(
+            await resetGatewayContainerEnvVariable(
                 {
                     KONG_LUA_SSL_TRUSTED_CERTIFICATE: 'system',
                 },

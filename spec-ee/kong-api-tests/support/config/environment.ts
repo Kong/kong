@@ -87,6 +87,8 @@ const getPaths = (geo = getApiGeo()) => {
     gateway: {
       admin: `http://${getGatewayHost()}:8001`,
       adminSec: `https://${getGatewayHost()}:8444`,
+      status: `https://${getGatewayHost()}:8100`,
+      statusDP: `https://${getGatewayHost()}:8101`,
       proxy: `http://${getGatewayHost()}:8000`,
       proxySec: `https://${getGatewayHost()}:8443`,
       proxy2: `http://${getGatewayHost()}:8010`,

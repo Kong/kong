@@ -2,13 +2,17 @@ import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { getKongContainerName, isGwNative } from 'support/config/gateway-vars';
+import axios from 'axios';
+import { expect } from 'chai';
+import { eventually, getGatewayBasePath } from 'support';
+import { wait } from 'support/utilities/random';
 
 /**
  * Sets Kong Gateway target container variables
  * @param {object} targetEnvironmentVariables - {KONG_PORTAL: 'on', KONG_VITALS: 'off'}
  * @param {string} containerName - target docker kong container name, default is 'kong-cp'
  */
-export const setGatewayContainerEnvVariable = (
+export const resetGatewayContainerEnvVariable = async (
   targetEnvironmentVariables: object,
   containerName: string
 ) => {
@@ -33,7 +37,7 @@ export const setGatewayContainerEnvVariable = (
   }
 
   try {
-    return execSync(
+    execSync(
       `kongVars="${finalVars}" command="${restartCommand}" make gwContainerName=${containerName} update_kong_container_env_var`,
       { stdio: 'inherit' }
     );
@@ -42,6 +46,17 @@ export const setGatewayContainerEnvVariable = (
       `Something went wrong during updating the container environment variable: ${error}`
     );
   }
+
+  // wait before test to prevent the case where we are checking before any worker exits
+  await wait(1000) // eslint-disable-line no-restricted-syntax
+
+  await eventually(async () => {
+    const base_url = containerName === 'kong-dp1' ? getGatewayBasePath('statusDP') : getGatewayBasePath('status')
+    const resp = await axios.get(`${base_url}/status/ready`)
+
+    expect(resp.status, 'Kong Gateway timed out, restarting').to.equal(200)
+    expect(resp.data.message, 'Message should be ready').to.equal('ready')
+  });
 };
 
 /**

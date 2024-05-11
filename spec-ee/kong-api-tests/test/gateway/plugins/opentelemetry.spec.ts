@@ -14,7 +14,7 @@ import {
   logResponse,
   deletePlugin,
   createRouteForService,
-  setGatewayContainerEnvVariable,
+  resetGatewayContainerEnvVariable,
   getKongContainerName,
   logDebug,
   isGateway,
@@ -61,7 +61,7 @@ describe('Gateway Plugins: OpenTelemetry', function () {
 
   before(async function () {
     // enable kong opel tracing for requests for this test
-    setGatewayContainerEnvVariable(
+    await resetGatewayContainerEnvVariable(
       {
         KONG_TRACING_INSTRUMENTATIONS: 'request',
         KONG_TRACING_SAMPLING_RATE: 1,
@@ -69,7 +69,7 @@ describe('Gateway Plugins: OpenTelemetry', function () {
       gwContainerName
     );
     if (isHybrid) {
-      setGatewayContainerEnvVariable(
+      await resetGatewayContainerEnvVariable(
         {
           KONG_TRACING_INSTRUMENTATIONS: 'request',
           KONG_TRACING_SAMPLING_RATE: 1,
@@ -105,7 +105,7 @@ describe('Gateway Plugins: OpenTelemetry', function () {
     );
   });
 
-  it('should create opel plugin with valid jaeger config.endpoint', async function () {
+  it('should create otel plugin with valid jaeger config.endpoint', async function () {
     const pluginPayload = {
       name: 'opentelemetry',
       config: {
@@ -683,7 +683,7 @@ describe('Gateway Plugins: OpenTelemetry', function () {
   });
 
   after(async function () {
-    setGatewayContainerEnvVariable(
+    await resetGatewayContainerEnvVariable(
       {
         KONG_TRACING_INSTRUMENTATIONS: 'off',
         KONG_TRACING_SAMPLING_RATE: 0.01,
@@ -691,7 +691,7 @@ describe('Gateway Plugins: OpenTelemetry', function () {
       gwContainerName
     );
     if (isHybrid) {
-      setGatewayContainerEnvVariable(
+      await resetGatewayContainerEnvVariable(
         {
           KONG_TRACING_INSTRUMENTATIONS: 'off',
           KONG_TRACING_SAMPLING_RATE: 0.01,
