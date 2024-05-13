@@ -84,6 +84,19 @@ if kong_router_flavor == "traditional_compatible" or kong_router_flavor == "expr
                   "simultaneously"
     end
 
+    if not is_expression_empty and not is_null(entity.regex_priority) then
+      return nil, "Router Expression failed validation: " ..
+                  "cannot set 'regex_priority' with 'expression' " ..
+                  "simultaneously"
+    end
+
+    if not is_others_empty and not is_null(entity.priority) then
+      return nil, "Router Expression failed validation: " ..
+                  "cannot set 'priority' with " ..
+                  "'methods', 'hosts', 'paths', 'headers', 'snis', 'sources' or 'destinations' " ..
+                  "simultaneously"
+    end
+
     local schema = get_schema(entity.protocols)
     local exp = get_expression(entity)
 
