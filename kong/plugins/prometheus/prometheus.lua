@@ -377,8 +377,8 @@ local function lookup_or_create(self, label_values)
   local cnt = label_values and #label_values or 0
   -- specially, if first element is nil, # will treat it as "non-empty"
   if cnt ~= self.label_count or (self.label_count > 0 and label_values[1] == nil) then
-    return nil, string.format("inconsistent labels count, expected %d, got %d",
-                              self.label_count, cnt)
+    return nil, string.format("metric '%s' has inconsistent labels count, expected %d, got %d",
+      self.name, self.label_count, cnt)
   end
   local t = self.lookup
   if label_values then
