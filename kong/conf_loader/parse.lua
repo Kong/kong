@@ -559,6 +559,14 @@ local function check_and_parse(conf, opts)
     errors[#errors + 1] = "pg_semaphore_timeout must be an integer greater than 0"
   end
 
+  if conf.concurrency_timeout < 0 then
+    errors[#errors + 1] = "concurrency_timeout must be greater than 0"
+  end
+
+  if conf.concurrency_timeout ~= floor(conf.concurrency_timeout) then
+    errors[#errors + 1] = "concurrency_timeout must be an integer greater than 0"
+  end
+
   if conf.pg_keepalive_timeout then
     if conf.pg_keepalive_timeout < 0 then
       errors[#errors + 1] = "pg_keepalive_timeout must be greater than 0"

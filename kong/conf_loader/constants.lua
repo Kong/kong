@@ -410,6 +410,8 @@ local CONF_PARSERS = {
   lua_max_uri_args = { typ = "number" },
   lua_max_post_args = { typ = "number" },
 
+  concurrency_timeout = { typ = "number" },
+
   ssl_protocols = {
     typ = "string",
     directives = {

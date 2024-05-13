@@ -932,6 +932,10 @@ return {
           rebuild_timeout = kong.configuration.pg_timeout / 1000
         end
 
+        if strategy == "off" and kong.configuration.concurrency_timeout then
+          rebuild_timeout = kong.configuration.concurrency_timeout / 1000
+        end
+
         if strategy == "off" then
           RECONFIGURE_OPTS = {
             name = "reconfigure",

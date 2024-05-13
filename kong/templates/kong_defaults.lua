@@ -201,6 +201,8 @@ admin_gui_api_url = NONE
 
 openresty_path =
 
+concurrency_timeout = 60000
+
 opentelemetry_tracing = off
 opentelemetry_tracing_sampling_rate = 0.01
 tracing_instrumentations = off
