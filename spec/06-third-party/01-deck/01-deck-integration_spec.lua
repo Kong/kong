@@ -204,6 +204,12 @@ local function get_plugins_configs(service)
           route_type = "llm/v1/chat",
         },
       },
+    },
+    ["standard-webhooks"] = {
+      name = "standard-webhooks",
+      config = {
+        secret_v1 = "test",
+      },
     }
   }
 end
@@ -264,7 +270,18 @@ for _, strategy in helpers.each_strategy({ "postgres" }) do
       local plugins_configs = get_plugins_configs(service)
       for _, plugin in ipairs(plugins) do
         if not pending[plugin] then
-          bp.plugins:insert(plugins_configs[plugin] or { name = plugin })
+          local ok, err
+          ok, err = pcall(
+            bp.plugins.insert,
+            bp.plugins,
+            plugins_configs[plugin] or { name = plugin }
+          )
+
+          -- if this assertion fails make sure the plugin is configured
+          -- correctly with the required fields in the `get_plugins_configs`
+          -- function above
+          assert(ok, "failed configuring plugin: " .. plugin .. " with error: "
+                 .. tostring(err))
           configured_plugins_num = configured_plugins_num + 1
         end
       end
@@ -314,7 +331,9 @@ for _, strategy in helpers.each_strategy({ "postgres" }) do
       end
 
       helpers.stop_kong()
-      cleanup()
+      if cleanup then
+        cleanup()
+      end
     end)
 
     it("execute `gateway dump` and `gateway sync` commands successfully", function()
