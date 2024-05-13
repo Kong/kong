@@ -84,13 +84,15 @@ if kong_router_flavor == "traditional_compatible" or kong_router_flavor == "expr
                   "simultaneously"
     end
 
-    if not is_expression_empty and not is_null(entity.regex_priority) then
+    local is_regex_priority_exists = not is_null(entity.regex_priority) and entity.regex_priority ~= 0
+    if not is_expression_empty and is_regex_priority_exists then
       return nil, "Router Expression failed validation: " ..
                   "cannot set 'regex_priority' with 'expression' " ..
                   "simultaneously"
     end
 
-    if not is_others_empty and not is_null(entity.priority) then
+    local is_priority_exists = not is_null(entity.priority) and entity.priority ~= 0
+    if not is_others_empty and is_priority_exists then
       return nil, "Router Expression failed validation: " ..
                   "cannot set 'priority' with " ..
                   "'methods', 'hosts', 'paths', 'headers', 'snis', 'sources' or 'destinations' " ..
@@ -127,6 +129,7 @@ if kong_router_flavor == "traditional_compatible" or kong_router_flavor == "expr
                         "snis", "sources", "destinations",
                         "methods", "hosts", "paths", "headers",
                         "expression",
+                        "regex_priority", "priority",
                       },
       run_with_missing_fields = true,
       fn = validate_route,
