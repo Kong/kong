@@ -1,0 +1,4 @@
+message: |
+  **reqeust-transformer**: Fixed the uri replace didn't works well if contains the optional group.
+type: bugfix
+scope: Plugin
