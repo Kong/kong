@@ -128,3 +128,6 @@ do
 end
 
 return app
+
+
+-- run deck tests
