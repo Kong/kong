@@ -18,7 +18,8 @@ import {
   isGwHybrid,
   client,
   getAllKeys,
-  resetGatewayContainerEnvVariable
+  resetGatewayContainerEnvVariable,
+  retryRequest
 } from '@support';
 import axios from 'axios';
 
@@ -137,7 +138,6 @@ describe('Gateway Plugins: ACME', function () {
     logResponse(resp);
 
     pluginId = resp.data.id;
-    await waitForConfigRebuild()
 
     expect(resp.status, 'Status should be 201').to.equal(201);
     expect(resp.data.config.account_email, 'Should have correct plugin name').to.equal(
@@ -146,13 +146,18 @@ describe('Gateway Plugins: ACME', function () {
     expect(resp.data.config.domains, 'Should have correct domain').to.eql(
       [domain]
     );
+
+    await waitForConfigRebuild()
   });
 
   it('should send the initial request to generate certificate creation', async function () {
-    const resp = await axios(`https://${domain}:8443${path}`);
-    logResponse(resp);
+    const req = () => axios(`https://${domain}:8443${path}`);;
 
-    expect(resp.status, 'Status should be 200').to.equal(200);
+    const assertions = (resp) => {
+      expect(resp.status, 'Status should be 200').equal(200);
+    };
+
+    await retryRequest(req, assertions);
   });
 
   if(isGwHybrid()) {

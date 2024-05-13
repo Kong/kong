@@ -362,6 +362,10 @@ describe('Gateway Admin API: Targets health', function () {
   let targetData: any;
 
   before(async function () {
+    if (isHybrid) {
+      this.skip();
+    }
+
     // Create an upstream to associate with the target
     const resp = await axios({
       method: 'post',
@@ -402,10 +406,6 @@ describe('Gateway Admin API: Targets health', function () {
   });
 
   it('should set target to healthy using target id and address and confirm its status', async function () {
-    if (isHybrid) {
-      this.skip();
-    }
-    
     // set healthy status
     const setStatusReq = () => axios({
       url: `${url}/${upstreamData.id}/targets/${targetData.id}/healthy`,
@@ -444,11 +444,7 @@ describe('Gateway Admin API: Targets health', function () {
     await retryRequest(req, assertions);
   });
   
-  it('should set target to unhealthy using target and confirm its status', async function () {
-    if (isHybrid) {
-      this.skip();
-    }
-    
+  it('should set target status to unhealthy', async function () {
     // set unhealthy status
     const setStatusReq = () => axios({
       url: `${url}/${upstreamData.id}/targets/${targetData.id}/unhealthy`,
@@ -463,8 +459,10 @@ describe('Gateway Admin API: Targets health', function () {
       expect(res.status, 'should return 204 status').to.equal(204);
     };
 
-    await retryRequest(setStatusReq, setStatusAssertions);  
+    await retryRequest(setStatusReq, setStatusAssertions);
+  });
 
+  it('should confirm target unhealthy status', async function () {
     // confirm unhealthy status
     const req = () => axios(`${url}/${upstreamData.id}/health`);
   
@@ -488,9 +486,11 @@ describe('Gateway Admin API: Targets health', function () {
   
 
   after(async function () {
-    await axios({
-      method: 'delete',
-      url: `${url}/${upstreamData.id}`,
-    });
+    if (!isHybrid) {
+      await axios({
+        method: 'delete',
+        url: `${url}/${upstreamData.id}`,
+      });
+    }
   });
 });

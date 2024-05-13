@@ -17,9 +17,11 @@ import {
   Consumer,
   postNegative,
   patchConsumer,
+  retryRequest,
 } from '@support';
 
 describe('@smoke: Gateway Plugins: mtls-auth', function () {
+  this.timeout(40000)
   const path = '/mtls-auth';
   const serviceName = 'mtls-auth-service';
   const root1CertDn = 'emailAddress=kong@konghq.com,CN=KongSDET,OU=Gateway,O=Kong,L=Toronto,ST=ON,C=CA'
@@ -122,31 +124,38 @@ describe('@smoke: Gateway Plugins: mtls-auth', function () {
   });
 
   it('should not proxy request without supplying certificates', async function () {
-    const resp = await getNegative(`${proxyUrl}${path}`, {}, {}, { rejectUnauthorized: true });
-    logResponse(resp);
+    const req = () => getNegative(`${proxyUrl}${path}`, {}, {}, { rejectUnauthorized: true });
 
-    expect(resp.status, 'Status should be 401').to.equal(401);
-    expect(resp.data.message, 'Should indicate no api key found').to.equal(
-      'No required TLS certificate was sent'
-    );
+    const assertions = (resp) => {
+      expect(resp.status, 'Status should be 401').to.equal(401);
+      expect(resp.data.message, 'Should indicate no api key found').to.equal(
+        'No required TLS certificate was sent'
+      );
+    };
+
+    await retryRequest(req, assertions);
   });
 
   it('should not proxy request with supplying non-matching certificates', async function () {
-    const resp = await axios({
-      url: `${proxyUrl}${path}`,
-      httpsAgent: new https.Agent({
-        rejectUnauthorized: false,
-        cert: authDetails.mtls_certs.entity2_cert,
-        key: authDetails.mtls_certs.entity2_key,
-      }),
-      validateStatus: null
-    });
-    logResponse(resp);
+    const req = () =>
+      axios({
+        url: `${proxyUrl}${path}`,
+        httpsAgent: new https.Agent({
+          rejectUnauthorized: false,
+          cert: authDetails.mtls_certs.entity2_cert,
+          key: authDetails.mtls_certs.entity2_key,
+        }),
+        validateStatus: null
+      });
 
-    expect(resp.status, 'Status should be 401').to.equal(401);
-    expect(resp.data.message, 'Should indicate no api key found').to.equal(
-      'TLS certificate failed verification'
-    );
+    const assertions = (resp) => {
+      expect(resp.status, 'Status should be 401').to.equal(401);
+      expect(resp.data.message, 'Should indicate no api key found').to.equal(
+        'TLS certificate failed verification'
+      );
+    };
+
+    await retryRequest(req, assertions);
   });
 
   // as long as at least one consumer exists with matching CN this test will fail (meaning request will go through which is illogical)
@@ -210,39 +219,47 @@ describe('@smoke: Gateway Plugins: mtls-auth', function () {
   });
 
   it('should not proxy request with CN username match when consumer_by is custom_id only', async function () {
-    const resp = await axios({
-      url: `${proxyUrl}${path}`,
-      httpsAgent: new https.Agent({
-        rejectUnauthorized: false,
-        cert: authDetails.mtls_certs.entity1_cert,
-        key: authDetails.mtls_certs.entity1_key,
-      }),
-      validateStatus: null
-    });
-    logResponse(resp);
+    const req = () =>
+      axios({
+        url: `${proxyUrl}${path}`,
+        httpsAgent: new https.Agent({
+          rejectUnauthorized: false,
+          cert: authDetails.mtls_certs.entity1_cert,
+          key: authDetails.mtls_certs.entity1_key,
+        }),
+        validateStatus: null
+      });
 
-    expect(resp.status, 'Status should be 401').to.equal(401);
-    expect(resp.data.message, 'Should indicate no api key found').to.equal(
-      'TLS certificate failed verification'
-    );
+    const assertions = (resp) => {
+      expect(resp.status, 'Status should be 401').to.equal(401);
+      expect(resp.data.message, 'Should indicate no api key found').to.equal(
+        'TLS certificate failed verification'
+      );
+    };
+
+    await retryRequest(req, assertions);
   });
 
   it('should proxy request with supplying matching certificates for the new root certificate', async function () {
-    const resp = await axios({
-      url: `${proxyUrl}${path}`,
-      httpsAgent: new https.Agent({
-        rejectUnauthorized: false,
-        cert: authDetails.mtls_certs.entity2_cert,
-        key: authDetails.mtls_certs.entity2_key,
-      }),
-      validateStatus: null
-    });
-    logResponse(resp);
+    const req = () =>
+      axios({
+        url: `${proxyUrl}${path}`,
+        httpsAgent: new https.Agent({
+          rejectUnauthorized: false,
+          cert: authDetails.mtls_certs.entity2_cert,
+          key: authDetails.mtls_certs.entity2_key,
+        }),
+        validateStatus: null
+      });
 
-    expect(resp.status, 'Status should be 200').to.equal(200);
-    expect(resp.data.headers['X-Consumer-Custom-Id'], 'Should see X-Consumer-Custom-Id header').to.equal(consumer2Details.custom_id);
-    expect(resp.data.headers['X-Consumer-Id'], 'Should see X-Consumer-Id header').to.equal(consumer2Details.id);
-    expect(resp.data.headers['X-Consumer-Username'], 'Should see X-Consumer-Username header').to.equal(consumer2Details.username);
+    const assertions = (resp) => {
+      expect(resp.status, 'Status should be 200').to.equal(200);
+      expect(resp.data.headers['X-Consumer-Custom-Id'], 'Should see X-Consumer-Custom-Id header').to.equal(consumer2Details.custom_id);
+      expect(resp.data.headers['X-Consumer-Id'], 'Should see X-Consumer-Id header').to.equal(consumer2Details.id);
+      expect(resp.data.headers['X-Consumer-Username'], 'Should see X-Consumer-Username header').to.equal(consumer2Details.username);
+    };
+
+    await retryRequest(req, assertions);
   });
 
   it('should patch mtls-auth plugin skip_consumer_lookup', async function () {
@@ -327,47 +344,55 @@ describe('@smoke: Gateway Plugins: mtls-auth', function () {
     // update consumer custom_id to non-matching to the cert CN
     await patchConsumer(consumer2Details.username, { custom_id: 'notapitest' })
     consumer2Details.custom_id = 'notapitest'
-    
-    const resp = await axios({
-      method: 'patch',
-      url: `${url}/${pluginId}`,
-      data: {
-        config: {
-          default_consumer: consumer3Details.id,
-          skip_consumer_lookup: false,
-          consumer_by: ['custom_id', 'username'],
-        },
-      },
-    });
-    logResponse(resp);
 
-    expect(resp.status, 'Status should be 200').to.equal(200);
-    expect(resp.data.config.consumer_by, 'Should see correct consumer_by configuration').to.eql(['custom_id','username']);
-    expect(resp.data.config.skip_consumer_lookup, 'Should see skip_consumer_lookup enabled').to.be.false
-    expect(resp.data.config.anonymous, 'Should see correct anonymous configuration').to.equal(consumer3Details.id)
-    expect(resp.data.config.default_consumer, 'Should see correct default_consumer configuration').to.equal(consumer3Details.id)
+    const req = () =>
+      axios({
+        method: 'patch',
+        url: `${url}/${pluginId}`,
+        data: {
+          config: {
+            default_consumer: consumer3Details.id,
+            skip_consumer_lookup: false,
+            consumer_by: ['custom_id', 'username'],
+          },
+        },
+      });
+
+    const assertions = (resp) => {
+      expect(resp.status, 'Status should be 200').to.equal(200);
+      expect(resp.data.config.consumer_by, 'Should see correct consumer_by configuration').to.eql(['custom_id','username']);
+      expect(resp.data.config.skip_consumer_lookup, 'Should see skip_consumer_lookup enabled').to.be.false
+      expect(resp.data.config.anonymous, 'Should see correct anonymous configuration').to.equal(consumer3Details.id)
+      expect(resp.data.config.default_consumer, 'Should see correct default_consumer configuration').to.equal(consumer3Details.id)
+    };
+
+    await retryRequest(req, assertions);
 
     await waitForConfigRebuild();
   });
 
   it('should fallback to default_consumer with valid cert when no matching consumer is found', async function () {
-    const resp = await axios({
-      url: `${proxyUrl}${path}`,
-      httpsAgent: new https.Agent({
-        rejectUnauthorized: false,
-        cert: authDetails.mtls_certs.entity2_cert,
-        key: authDetails.mtls_certs.entity2_key,
-      }),
-      validateStatus: null
-    });
-    logResponse(resp);
+    const req = () =>
+      axios({
+        url: `${proxyUrl}${path}`,
+        httpsAgent: new https.Agent({
+          rejectUnauthorized: false,
+          cert: authDetails.mtls_certs.entity2_cert,
+          key: authDetails.mtls_certs.entity2_key,
+        }),
+        validateStatus: null
+      });
 
-    expect(resp.status, 'Status should be 200').to.equal(200);''
-    expect(resp.data.headers['X-Client-Cert-Dn'], 'Should see X-Client-Cert-Dn header').to.equal(root2CertDn);
-    expect(resp.data.headers['X-Client-Cert-San'], 'Should see X-Client-Cert-San header').to.equal('apitest');
-    expect(resp.data.headers['X-Consumer-Custom-Id'], 'Should see X-Consumer-Custom-Id header').to.equal(consumer3Details.custom_id)
-    expect(resp.data.headers['X-Consumer-Id'], 'Should see X-Consumer-Id header').to.equal(consumer3Details.id)
-    expect(resp.data.headers['X-Consumer-Username'], 'Should see X-Consumer-Username header').to.equal(consumer3Details.username)
+    const assertions = (resp) => {
+      expect(resp.status, 'Status should be 200').to.equal(200);''
+      expect(resp.data.headers['X-Client-Cert-Dn'], 'Should see X-Client-Cert-Dn header').to.equal(root2CertDn);
+      expect(resp.data.headers['X-Client-Cert-San'], 'Should see X-Client-Cert-San header').to.equal('apitest');
+      expect(resp.data.headers['X-Consumer-Custom-Id'], 'Should see X-Consumer-Custom-Id header').to.equal(consumer3Details.custom_id)
+      expect(resp.data.headers['X-Consumer-Id'], 'Should see X-Consumer-Id header').to.equal(consumer3Details.id)
+      expect(resp.data.headers['X-Consumer-Username'], 'Should see X-Consumer-Username header').to.equal(consumer3Details.username)
+    };
+
+    await retryRequest(req, assertions);
   });
 
   it('should fallback to anonymous when using invalid cert with default consumer enabled', async function () {

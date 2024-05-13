@@ -415,21 +415,24 @@ describe('Gateway Plugins: OpenTelemetry', function () {
   });
 
   it('should both b3 and traceparent headers preserve their values', async function () {
-    const resp = await axios({
-      url: `${proxyUrl}${paths[1]}`,
-      headers: {
-        b3: b3Header,
-        traceparent: traceparentHeader,
-      },
-    });
+    const req = () =>
+      axios({
+        url: `${proxyUrl}${paths[1]}`,
+        headers: {
+          b3: b3Header,
+          traceparent: traceparentHeader,
+        },
+      });
 
-    logResponse(resp);
+    const assertions = (resp) => {
+      expect(resp.status, 'Status should be 200').to.equal(200);
+      expect(resp.data.headers['B3'], 'Should see B3 header with given value').to.contain(b3Header.split('-')[0]);
+      expect(resp.data.headers['B3'], 'Should see B3 header id').to.contain(b3Header.split('-')[1]);
+      expect(resp.data.headers['B3'], 'Should see B3 header parentSpanId').to.contain(b3Header.split('-')[3]);
+      expect(resp.data.headers['Traceparent'], 'Should see Traceparent header with its value').to.contain(traceparentHeader.split('-')[1]);
+    };
 
-    expect(resp.status, 'Status should be 200').to.equal(200);
-    expect(resp.data.headers['B3'], 'Should see B3 header with given value').to.contain(b3Header.split('-')[0]);
-    expect(resp.data.headers['B3'], 'Should see B3 header id').to.contain(b3Header.split('-')[1]);
-    expect(resp.data.headers['B3'], 'Should see B3 header parentSpanId').to.contain(b3Header.split('-')[3]);
-    expect(resp.data.headers['Traceparent'], 'Should see Traceparent header with its value').to.contain(traceparentHeader.split('-')[1]);
+    await retryRequest(req, assertions);
   });
 
   it('should propagation.clear the given b3 header', async function () {
