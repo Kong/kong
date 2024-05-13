@@ -2,6 +2,7 @@ local _M = {}
 local _MT = { __index = _M, }
 
 
+local pl_tablex = require("pl.tablex")
 local lrucache = require("resty.lrucache")
 local tb_new = require("table.new")
 local utils = require("kong.router.utils")
@@ -382,12 +383,16 @@ function _M:matching(params)
 
   local request_prefix = matched_route.strip_path and matched_path or nil
 
+    local uri_captures = nil
+    if matched_path and captures and pl_tablex.size(captures) > 1 then
+      uri_captures = captures
+    end
   return {
     route           = matched_route,
     service         = service,
     prefix          = request_prefix,
     matches = {
-      uri_captures = (captures and captures[1]) and captures or nil,
+      uri_captures = uri_captures
     },
     upstream_url_t = {
       type = service_hostname_type,
