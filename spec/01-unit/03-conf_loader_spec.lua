@@ -75,6 +75,7 @@ describe("Configuration loader", function()
     assert.same(false, conf.allow_debug_header)
     assert.same(KONG_VERSION, conf.lmdb_validation_tag)
     assert.is_nil(getmetatable(conf))
+    assert.equal(60000, conf.concurrency_timeout)
   end)
   it("loads a given file, with higher precedence", function()
     local conf = assert(conf_loader(helpers.test_conf_path))
@@ -1723,6 +1724,32 @@ describe("Configuration loader", function()
       })
       assert.is_nil(conf)
       assert.equal("pg_semaphore_timeout must be an integer greater than 0", err)
+    end)
+  end)
+
+  describe("concurrency_timeout option", function()
+    it("rejects a concurrency_timeout with a negative number", function()
+      local conf, err = conf_loader(nil, {
+        concurrency_timeout = -1,
+      })
+      assert.is_nil(conf)
+      assert.equal("concurrency_timeout must be greater than 0", err)
+    end)
+
+    it("rejects a concurrency_timeout with a decimal", function()
+      local conf, err = conf_loader(nil, {
+        concurrency_timeout = 0.1,
+      })
+      assert.is_nil(conf)
+      assert.equal("concurrency_timeout must be an integer greater than 0", err)
+    end)
+
+    it("accept a concurrency_timeout with integer greater than 0", function()
+      local conf, err = conf_loader(nil, {
+        concurrency_timeout = 65432,
+      })
+      assert.is_nil(err)
+      assert.equal(65432, conf.concurrency_timeout)
     end)
   end)
 

@@ -1206,11 +1206,13 @@ local function new(self)
       return execute_callback(callback, options)
     end
 
+    local concurrency_timeout = self and self.configuration and self.configuration.concurrency_timeout / 1000
+                                or ROTATION_INTERVAL
     -- Is it worth to have node level mutex instead?
     -- If so, the RETRY_LRU also needs to be node level.
     concurrency.with_coroutine_mutex({
       name = name,
-      timeout = ROTATION_INTERVAL,
+      timeout = concurrency_timeout,
     }, function()
       -- Check if references were updated while waiting for a lock
       new_updated_at = RETRY_LRU:get(name) or 0
