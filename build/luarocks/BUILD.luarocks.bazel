@@ -19,8 +19,8 @@ configure_make(
     configure_in_place = True,
     configure_options = [
         "--lua-suffix=jit",
-        "--with-lua=$$EXT_BUILD_DEPS$$/luajit",
-        "--with-lua-include=$$EXT_BUILD_DEPS$$/luajit/include/luajit-2.1",
+        "--with-lua=$$EXT_BUILD_DEPS/luajit",
+        "--with-lua-include=$$EXT_BUILD_DEPS/luajit/include/luajit-2.1",
     ],
     lib_source = ":all_srcs",
     out_bin_dir = "",
