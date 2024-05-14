@@ -134,7 +134,7 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
     local route29 = bp.routes:insert({
       hosts = { "test29.test" },
       paths = { "~/(gw/)?api/(?<subpath>htest)$" },
-      strip_path = false
+      strip_path = false,
     })
 
     bp.plugins:insert {
