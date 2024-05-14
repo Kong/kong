@@ -383,10 +383,11 @@ function _M:matching(params)
 
   local request_prefix = matched_route.strip_path and matched_path or nil
 
-    local uri_captures = nil
-    if matched_path and captures and pl_tablex.size(captures) > 1 then
-      uri_captures = captures
-    end
+  local uri_captures = nil
+  if matched_path and captures and pl_tablex.size(captures) > 1 then
+    uri_captures = captures
+  end
+
   return {
     route           = matched_route,
     service         = service,
