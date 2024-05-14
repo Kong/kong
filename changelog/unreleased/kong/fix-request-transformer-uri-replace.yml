@@ -1,4 +1,4 @@
 message: |
-  **reqeust-transformer**: Fixed the uri replace didn't works well if contains the optional group.
+  **reqeust-transformer**: Fixed an issue where the URI captures are unavailable when an optional group is absent.
 type: bugfix
 scope: Plugin
