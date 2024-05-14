@@ -42,7 +42,7 @@ end
 local function escape_str(str)
   -- raw string
   if not str:find([["#]], 1, true) then
-    return "r#\"" .. str .. "\"#"
+    return [[r#"]] .. str .. [["#]]
   end
 
   -- standard string escaping (unlikely case)
@@ -54,7 +54,7 @@ local function escape_str(str)
     str = str:gsub([["]], [[\"]])
   end
 
-  return "\"" .. str .. "\""
+  return [["]] .. str .. [["]]
 end
 
 
@@ -75,7 +75,6 @@ do
     end
 
     local m = memo_hp:get(key)
-
     if m then
       return m[1], m[2]
     end
@@ -87,7 +86,6 @@ do
     end
 
     local port = tonumber(key:sub(p + 1))
-
     if not port then
       memo_hp:set(key, { key, nil })
       return key, nil
@@ -127,15 +125,14 @@ local headers_buf       = buffer.new(64)
 local single_header_buf = buffer.new(64)
 
 
--- sep: a seperator of expressions, like '&&'
+-- sep: a separator of expressions, like '&&'
 -- idx: indicate whether or not to add 'sep'
 --      for example, we should not add 'sep' for the first element in array
 local function expression_append(buf, sep, str, idx)
-  if #buf > 0 and
-     (idx == nil or idx > 1)
-  then
+  if #buf > 0 and (idx == nil or idx > 1) then
     buf:put(sep)
   end
+
   buf:put(str)
 end
 
@@ -263,8 +260,7 @@ local function gen_for_nets(ip_field, port_field, vals)
 end
 
 
-local is_stream_route
-do
+local is_stream_route do
   local is_stream_protocol = {
     tcp = true,
     udp = true,
@@ -337,32 +333,23 @@ end
 
 
 local function get_expression(route)
-  -- we perfer the field 'expression', reject others
+  -- we prefer the field 'expression', reject others
   if not is_null(route.expression) then
     return route.expression
   end
 
   -- transform other fields (methods/hosts/paths/...) to expression
 
-  local methods = route.methods
-  local hosts   = route.hosts
-  local paths   = route.paths
-  local headers = route.headers
-  local snis    = route.snis
-
-  local srcs    = route.sources
-  local dsts    = route.destinations
-
   expr_buf:reset()
 
-  local gen = gen_for_field("tls.sni", sni_op_transform, snis, sni_val_transform)
+  local gen = gen_for_field("tls.sni", sni_op_transform, route.snis, sni_val_transform)
   if gen then
     -- See #6425, if `net.protocol` is not `https`
     -- then SNI matching should simply not be considered
     if is_stream_route(route) then
-      gen = "(net.protocol != r#\"tls\"#"   .. LOGICAL_OR .. gen .. ")"
+      gen = [[(net.protocol != r#"tls"#]]   .. LOGICAL_OR .. gen .. ")"
     else
-      gen = "(net.protocol != r#\"https\"#" .. LOGICAL_OR .. gen .. ")"
+      gen = [[(net.protocol != r#"https"#]] .. LOGICAL_OR .. gen .. ")"
     end
 
     expression_append(expr_buf, LOGICAL_AND, gen)
@@ -370,15 +357,14 @@ local function get_expression(route)
 
   -- now http route support net.src.* and net.dst.*
 
-  local src_gen = gen_for_nets("net.src.ip", "net.src.port", srcs)
-  local dst_gen = gen_for_nets("net.dst.ip", "net.dst.port", dsts)
-
-  if src_gen then
-    expression_append(expr_buf, LOGICAL_AND, src_gen)
+  gen = gen_for_nets("net.src.ip", "net.src.port", route.sources)
+  if gen then
+    expression_append(expr_buf, LOGICAL_AND, gen)
   end
 
-  if dst_gen then
-    expression_append(expr_buf, LOGICAL_AND, dst_gen)
+  gen = gen_for_nets("net.dst.ip", "net.dst.port", route.destinations)
+  if gen then
+    expression_append(expr_buf, LOGICAL_AND, gen)
   end
 
   -- stream expression, protocol = tcp/udp/tls/tls_passthrough
@@ -392,11 +378,12 @@ local function get_expression(route)
 
   -- http expression, protocol = http/https/grpc/grpcs
 
-  local gen = gen_for_field("http.method", OP_EQUAL, methods)
+  gen = gen_for_field("http.method", OP_EQUAL, route.methods)
   if gen then
     expression_append(expr_buf, LOGICAL_AND, gen)
   end
 
+  local hosts = route.hosts
   if not is_empty_field(hosts) then
     hosts_buf:reset():put("(")
 
@@ -415,7 +402,7 @@ local function get_expression(route)
         host = host:sub(1, -2)
       end
 
-      local exp = "http.host ".. op .. " r#\"" .. host .. "\"#"
+      local exp = "http.host ".. op .. [[ r#"]] .. host .. [["#]]
       if port then
         exp = "(" .. exp .. LOGICAL_AND ..
               "net.dst.port ".. OP_EQUAL .. " " .. port .. ")"
@@ -423,15 +410,15 @@ local function get_expression(route)
       expression_append(hosts_buf, LOGICAL_OR, exp, i)
     end -- for route.hosts
 
-    expression_append(expr_buf, LOGICAL_AND,
-                      hosts_buf:put(")"):get())
+    expression_append(expr_buf, LOGICAL_AND, hosts_buf:put(")"):get())
   end
 
-  gen = gen_for_field("http.path", path_op_transform, paths, path_val_transform)
+  gen = gen_for_field("http.path", path_op_transform, route.paths, path_val_transform)
   if gen then
     expression_append(expr_buf, LOGICAL_AND, gen)
   end
 
+  local headers = route.headers
   if not is_empty_field(headers) then
     headers_buf:reset()
 
@@ -570,48 +557,39 @@ local EXPRESSION_ONLY_BIT = lshift_uint64(0xFFULL, 56)
 -- |                         |                                     |
 -- +-------------------------+-------------------------------------+
 local function get_priority(route)
-  -- we perfer the fields 'expression' and 'priority'
+  -- we prefer the fields 'expression' and 'priority'
   if not is_null(route.expression) then
     return bor(EXPRESSION_ONLY_BIT, route.priority or 0)
   end
 
-  -- transform other fields (methods/hosts/paths/...) to expression priority
-
-  local snis = route.snis
-  local srcs = route.sources
-  local dsts = route.destinations
-
   -- stream expression
 
   if is_stream_route(route) then
-    return stream_get_priority(snis, srcs, dsts)
+    return stream_get_priority(route.snis, route.sources, route.destinations)
   end
 
   -- http expression
 
-  local methods = route.methods
-  local hosts   = route.hosts
-  local paths   = route.paths
-  local headers = route.headers
-
   local match_weight = 0  -- 0x0ULL, *can not* exceed `7`
 
-  if not is_empty_field(srcs) then
+  if not is_empty_field(route.sources) then
     match_weight = match_weight + 1
   end
 
-  if not is_empty_field(dsts) then
+  if not is_empty_field(route.destinations) then
     match_weight = match_weight + 1
   end
 
-  if not is_empty_field(methods) then
+  if not is_empty_field(route.methods) then
     match_weight = match_weight + 1
   end
 
+  local hosts = route.hosts
   if not is_empty_field(hosts) then
     match_weight = match_weight + 1
   end
 
+  local headers = route.headers
   local headers_count = is_empty_field(headers) and 0 or tb_nkeys(headers)
 
   if headers_count > 0 then
@@ -625,7 +603,7 @@ local function get_priority(route)
     end
   end
 
-  if not is_empty_field(snis) then
+  if not is_empty_field(route.snis) then
     match_weight = match_weight + 1
   end
 
@@ -643,6 +621,7 @@ local function get_priority(route)
   local uri_length = 0
   local regex_url = false
 
+  local paths = route.paths
   if not is_empty_field(paths) then
     match_weight = match_weight + 1
 
