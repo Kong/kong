@@ -1,0 +1,3 @@
+message: |
+  Bumped `kong-lua-resty-kafka` to `0.19` for supporting TCP socket keepalive.
+type: dependency
