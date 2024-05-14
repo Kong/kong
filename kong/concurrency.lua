@@ -135,9 +135,9 @@ function concurrency.with_coroutine_mutex(opts, fn)
     end
   end
 
+  running_jobs[opts_name] = true
   local pok, ok, err = pcall(fn)
 
-  running_jobs[opts_name] = true
   if lok then
     -- release lock
     semaphore:post(1)
