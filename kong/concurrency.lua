@@ -13,6 +13,7 @@ local concurrency = {}
 
 -- these must remain for the lifetime of the process
 local semaphores = {}
+local running_jobs = setmetatable({}, { __mode = "k" })
 
 
 function concurrency.with_worker_mutex(opts, fn)
@@ -112,7 +113,7 @@ function concurrency.with_coroutine_mutex(opts, fn)
   -- to resolve deadlock issue in case the worker event thread
   -- associated with `pcall(fn)` below got killed
   -- and the `:post(1)` followed is skipped.
-  if semaphore:count() <= 0 then
+  if semaphore:count() == 0 and not running_jobs[opts_name] then
     -- the `:post(1)` operation is guaranteed to run immediately
     -- as the `:count()` does not yeild
     semaphore:post(1)
@@ -136,9 +137,11 @@ function concurrency.with_coroutine_mutex(opts, fn)
 
   local pok, ok, err = pcall(fn)
 
+  running_jobs[opts_name] = true
   if lok then
     -- release lock
     semaphore:post(1)
+    running_jobs[opts_name] = false
   end
 
   if not pok then
