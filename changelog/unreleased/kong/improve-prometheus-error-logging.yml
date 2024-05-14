@@ -1,0 +1,4 @@
+message: |
+  **prometheus**: Improve logging when having the inconsistent labels count.
+type: bugfix
+scope: Plugin
