@@ -1143,7 +1143,7 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       assert.equals("/api/v2/htest", body.vars.request_uri)
     end)
 
-    it("replace request uri with the capature prefix", function()
+    it("replaces request uri with the capature prefix", function()
       local r = assert(client:send {
         method = "GET",
         path = "/gw/api/htest",
