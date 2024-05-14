@@ -2,7 +2,7 @@ local _M = {}
 local _MT = { __index = _M, }
 
 
-local isempty= require("table.isempty")
+local tb_nkeys = require("table.nkeys")
 local lrucache = require("resty.lrucache")
 local tb_new = require("table.new")
 local utils = require("kong.router.utils")
@@ -384,7 +384,7 @@ function _M:matching(params)
   local request_prefix = matched_route.strip_path and matched_path or nil
 
   local uri_captures = nil
-  if matched_path and captures and not isempty(captures) then
+  if matched_path and captures and tb_nkeys(captures) > 1 then
     uri_captures = captures
   end
 
