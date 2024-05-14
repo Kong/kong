@@ -592,6 +592,7 @@ build = {
     ["kong.plugins.ai-response-transformer.schema"] = "kong/plugins/ai-response-transformer/schema.lua",
 
     ["kong.llm"] = "kong/llm/init.lua",
+    ["kong.llm.schemas"] = "kong/llm/schemas/init.lua",
     ["kong.llm.drivers.shared"] = "kong/llm/drivers/shared.lua",
     ["kong.llm.drivers.openai"] = "kong/llm/drivers/openai.lua",
     ["kong.llm.drivers.azure"] = "kong/llm/drivers/azure.lua",

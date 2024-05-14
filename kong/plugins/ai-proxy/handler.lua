@@ -1,58 +1,43 @@
-local _M = {}
-
--- imports
 local ai_shared = require("kong.llm.drivers.shared")
 local llm = require("kong.llm")
 local cjson = require("cjson.safe")
 local kong_utils = require("kong.tools.gzip")
 local kong_meta = require("kong.meta")
 local buffer = require "string.buffer"
-local strip = require("kong.tools.string").strip
---
+local strip = require("kong.tools.utils").strip
 
 
-_M.PRIORITY = 770
-_M.VERSION = kong_meta.version
+local EMPTY = {}
 
 
--- reuse this table for error message response
-local ERROR_MSG = { error = { message = "" } }
+local _M = {
+  PRIORITY = 770,
+  VERSION = kong_meta.version
+}
 
 
+
+--- Return a 400 response with a JSON body. This function is used to
+-- return errors to the client while also logging the error.
 local function bad_request(msg)
-  kong.log.warn(msg)
-  ERROR_MSG.error.message = msg
-
-  return kong.response.exit(400, ERROR_MSG)
+  kong.log.info(msg)
+  return kong.response.exit(400, { error = { message = msg } })
 end
 
 
-local function internal_server_error(msg)
-  kong.log.err(msg)
-  ERROR_MSG.error.message = msg
 
-  return kong.response.exit(500, ERROR_MSG)
-end
-
+-- get the token text from an event frame
 local function get_token_text(event_t)
-  -- chat
-  return
-    event_t and
-    event_t.choices and
-    #event_t.choices > 0 and
-    event_t.choices[1].delta and
-    event_t.choices[1].delta.content
-
-    or
-
-  -- completions
-    event_t and
-    event_t.choices and
-    #event_t.choices > 0 and
-    event_t.choices[1].text
-
-    or ""
+  -- get: event_t.choices[1]
+  local first_choice = ((event_t or EMPTY).choices or EMPTY)[1] or EMPTY
+  -- return:
+  --   - event_t.choices[1].delta.content
+  --   - event_t.choices[1].text
+  --   - ""
+  return (first_choice.delta or EMPTY).content or first_choice.text or ""
 end
+
+
 
 local function handle_streaming_frame(conf)
   -- make a re-usable framebuffer
@@ -62,9 +47,8 @@ local function handle_streaming_frame(conf)
   local ai_driver = require("kong.llm.drivers." .. conf.model.provider)
 
   -- create a buffer to store each response token/frame, on first pass
-  if conf.logging
-       and conf.logging.log_payloads
-       and (not kong.ctx.plugin.ai_stream_log_buffer) then
+  if (conf.logging or EMPTY).log_payloads and
+     (not kong.ctx.plugin.ai_stream_log_buffer) then
     kong.ctx.plugin.ai_stream_log_buffer = buffer.new()
   end
 
@@ -135,11 +119,11 @@ local function handle_streaming_frame(conf)
       end
 
       if conf.logging and conf.logging.log_statistics and metadata then
-        kong.ctx.plugin.ai_stream_completion_tokens = 
+        kong.ctx.plugin.ai_stream_completion_tokens =
           (kong.ctx.plugin.ai_stream_completion_tokens or 0) +
           (metadata.completion_tokens or 0)
           or kong.ctx.plugin.ai_stream_completion_tokens
-        kong.ctx.plugin.ai_stream_prompt_tokens = 
+        kong.ctx.plugin.ai_stream_prompt_tokens =
           (kong.ctx.plugin.ai_stream_prompt_tokens or 0) +
           (metadata.prompt_tokens or 0)
           or kong.ctx.plugin.ai_stream_prompt_tokens
@@ -216,12 +200,10 @@ function _M:header_filter(conf)
       local new_response_string, err = ai_driver.from_format(response_body, conf.model, route_type)
       if err then
         kong.ctx.plugin.ai_parser_error = true
-  
+
         ngx.status = 500
-        ERROR_MSG.error.message = err
-  
-        kong.ctx.plugin.parsed_response = cjson.encode(ERROR_MSG)
-  
+        kong.ctx.plugin.parsed_response = cjson.encode({ error = { message = err } })
+
       elseif new_response_string then
         -- preserve the same response content type; assume the from_format function
         -- has returned the body in the appropriate response output format
@@ -261,7 +243,7 @@ function _M:body_filter(conf)
 
     local ai_driver = require("kong.llm.drivers." .. conf.model.provider)
     local new_response_string, err = ai_driver.from_format(response_body, conf.model, route_type)
-    
+
     if err then
       kong.log.warn("issue when transforming the response body for analytics in the body filter phase, ", err)
     elseif new_response_string then
@@ -282,7 +264,7 @@ function _M:body_filter(conf)
       -- we should receive a replacement response body from the same thread
         local original_request = kong.ctx.plugin.parsed_response
         local deflated_request = original_request
-        
+
         if deflated_request then
           local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
           if is_gzip then
@@ -298,7 +280,7 @@ function _M:body_filter(conf)
           kong.log.warn("analytics phase failed for request, ", err)
         end
       end
-    end    
+    end
   end
 
   kong.ctx.plugin.body_called = true
@@ -387,7 +369,8 @@ function _M:access(conf)
     if not kong.ctx.plugin.ai_stream_prompt_tokens then
       local prompt_tokens, err = ai_shared.calculate_cost(request_table or {}, {}, 1.8)
       if err then
-        return internal_server_error("unable to estimate request token cost: " .. err)
+        kong.log.err("unable to estimate request token cost: ", err)
+        return kong.response.exit(500)
       end
 
       kong.ctx.plugin.ai_stream_prompt_tokens = prompt_tokens
@@ -433,7 +416,8 @@ function _M:access(conf)
   local ok, err = ai_driver.configure_request(conf_m)
   if not ok then
     kong.ctx.shared.skip_response_transformer = true
-    return internal_server_error(err)
+    kong.log.err("failed to configure request for AI service: ", err)
+    return kong.response.exit(500)
   end
 
   -- lights out, and away we go
