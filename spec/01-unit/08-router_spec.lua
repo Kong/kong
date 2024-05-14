@@ -3496,13 +3496,10 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
         }
 
         local router = assert(new_router(use_case))
-        local _ngx = mock_ngx("GET", "/1984/profile",
-                                                 { host = "domain.org" })
+        local _ngx = mock_ngx("GET", "/1984/profile", { host = "domain.org" })
         router._set_ngx(_ngx)
         local match_t = router:exec()
-        if flavor ~= "traditional" then
-          assert.is_nil(match_t.matches.uri_captures[1])
-        end
+        assert.falsy(match_t.matches.uri_captures[1])
         assert.equal("profile", match_t.matches.uri_captures.subpath)
         assert.is_nil(match_t.matches.uri_captures.scope)
       end)

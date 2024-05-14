@@ -385,8 +385,8 @@ function _M:matching(params)
 
   local uri_captures = nil
   -- The whole matched uri will be put in captures[0], so we need to check
-  -- the number of table keys >= 2 to determine if there has any uri captured.
-  if matched_path and captures and tb_nkeys(captures) >= 2 then
+  -- the number of table keys >= 2 to determine if there is any uri captured.
+  if captures and tb_nkeys(captures) >= 2 then
     uri_captures = captures
   end
 
