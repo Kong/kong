@@ -393,7 +393,7 @@ function _M:matching(params)
     service         = service,
     prefix          = request_prefix,
     matches = {
-      uri_captures = uri_captures
+      uri_captures = uri_captures,
     },
     upstream_url_t = {
       type = service_hostname_type,
