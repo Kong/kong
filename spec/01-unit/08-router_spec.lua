@@ -3484,7 +3484,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
         assert.is_nil(match_t.matches.headers)
       end)
 
-      it("uri_captreus works well with the optional capture group. Fix #13014", function()
+      it("uri_captures works well with the optional capture group. Fix #13014", function()
         local use_case = {
           {
             service = service,
