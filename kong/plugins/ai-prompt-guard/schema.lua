@@ -15,9 +15,9 @@ return {
       type = "record",
       fields = {
           { allow_patterns = {
-              description = "Array of valid patterns, or valid questions from the 'user' role in chat.",
+              description = "Array of valid regex patterns, or valid questions from the 'user' role in chat.",
               type = "array",
-              default = {},
+              required = false,
               len_max = 10,
               elements = {
                 type = "string",
@@ -25,9 +25,9 @@ return {
                 len_max = 500,
               }}},
           { deny_patterns = {
-              description = "Array of invalid patterns, or invalid questions from the 'user' role in chat.",
+              description = "Array of invalid regex patterns, or invalid questions from the 'user' role in chat.",
               type = "array",
-              default = {},
+              required = false,
               len_max = 10,
               elements = {
                 type = "string",
