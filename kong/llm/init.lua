@@ -207,7 +207,9 @@ function _M:new(conf, http_opts)
   local ok
   ok, self.driver = pcall(require, driver_module)
   if not ok then
-    return nil, "could not instantiate " .. driver_module .. " package"
+    local err = "could not instantiate " .. driver_module .. " package"
+    kong.log.err(err)
+    return nil, err
   end
 
   return self
