@@ -1130,7 +1130,7 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       assert.is_truthy(string.find(json.data, "\"emptyarray\":[]", 1, true))
     end)
 
-    it("replace request uri with optional capture prefix", function()
+    it("replaces request uri with optional capture prefix", function()
       local r = assert(client:send {
         method = "GET",
         path = "/api/htest",
