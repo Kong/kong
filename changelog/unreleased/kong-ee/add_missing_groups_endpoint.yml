@@ -1,0 +1,3 @@
+message: "Built-in RBAC roles for admins (`admin` under the default workspace and `workspace-admin` under non-default workspaces) now disallow CRUD actions to `/groups` and `/groups/*` endpoints."
+type: "bugfix"
+scope: "Core"

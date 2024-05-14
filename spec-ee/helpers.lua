@@ -120,7 +120,7 @@ function _M.register_rbac_resources(db, ws_name, ws_table)
     return nil, nil, err
   end
 
-  local rbac_endpoints = { '/rbac/*', '/rbac/*/*', '/rbac/*/*/*', '/rbac/*/*/*/*', '/rbac/*/*/*/*/*', '/admins', '/admins/*' }
+  local rbac_endpoints = { '/rbac/*', '/rbac/*/*', '/rbac/*/*/*', '/rbac/*/*/*/*', '/rbac/*/*/*/*/*', '/admins', '/admins/*', '/groups', '/groups/*' }
   for _, endpoint in ipairs(rbac_endpoints) do
     _, err = db.rbac_role_endpoints:insert({
       role = { id = roles.admin.id, },

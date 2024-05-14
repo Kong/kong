@@ -1266,8 +1266,8 @@ for _, strategy in helpers.each_strategy() do
                 method = "DELETE",
                 path = "/groups/" .. group,
                 headers = {
-                  ["cookie"] = m_admin_cookie,
-                  ["Kong-Admin-User"] = multiple_groups_admin.username,
+                  ["cookie"] = super_admin_cookie,
+                  ["Kong-Admin-User"] = super_admin.username,
                 }
               }))
             end

@@ -157,6 +157,17 @@ for _, strategy in helpers.each_strategy() do
           "admin_handyshake"
         )
       end)
+
+      it("should not add a group with the endpoint `/groups`", function()
+        admin_request("POST",
+          "/groups",
+          {
+            name = "test_group1",
+          },
+          403,
+          "admin_handyshake"
+        )
+      end)
     end)
 
     describe("the admin with the role of admin when the workspace is non-default", function()
@@ -180,6 +191,17 @@ for _, strategy in helpers.each_strategy() do
           {
             email = "john@konghq.com",
             username = "john",
+          },
+          403,
+          token
+        )
+      end)
+
+      it("should not add an admin with the endpoint `/groups`", function()
+        admin_request("POST",
+          "/" .. ws1.name .. "/groups",
+          {
+            name = "test_group1",
           },
           403,
           token
