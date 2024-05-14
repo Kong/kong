@@ -2,9 +2,9 @@ local _M = {}
 local _MT = { __index = _M, }
 
 
-local tb_nkeys = require("table.nkeys")
 local lrucache = require("resty.lrucache")
 local tb_new = require("table.new")
+local tb_nkeys = require("table.nkeys")
 local utils = require("kong.router.utils")
 local transform = require("kong.router.transform")
 local rat = require("kong.tools.request_aware_table")
@@ -384,7 +384,9 @@ function _M:matching(params)
   local request_prefix = matched_route.strip_path and matched_path or nil
 
   local uri_captures = nil
-  if matched_path and captures and tb_nkeys(captures) > 1 then
+  -- The whole matched uri will be put in captures[0], so we need to check
+  -- the number of table keys >= 2 to determine if there has any uri captured.
+  if matched_path and captures and tb_nkeys(captures) >= 2 then
     uri_captures = captures
   end
 
