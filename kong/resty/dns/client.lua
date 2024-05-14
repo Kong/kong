@@ -52,7 +52,6 @@ local math_max = math.max
 local math_fmod = math.fmod
 local math_random = math.random
 local table_remove = table.remove
-local table_insert = table.insert
 local table_concat = table.concat
 local string_lower = string.lower
 local string_byte  = string.byte
@@ -672,15 +671,13 @@ _M.init = function(options)
 end
 
 
--- Removes non-requested results, updates the cache.
+-- Removes records with non-matching types, updates the cache.
 -- Parameter `answers` is updated in-place.
 -- @return `true`
 local function parseAnswer(qname, qtype, answers, try_list)
 
-  -- check the answers and store them in the cache
+  -- check the answers and store records with matching types in the cache
   -- eg. A, AAAA, SRV records may be accompanied by CNAME records
-  -- store them all, leaving only the requested type in so we can return that set
-  local others = {}
 
   -- remove last '.' from FQDNs as the answer does not contain it
   local check_qname do
@@ -697,25 +694,10 @@ local function parseAnswer(qname, qtype, answers, try_list)
     -- normalize casing
     answer.name = string_lower(answer.name)
 
-    if (answer.type ~= qtype) or (answer.name ~= check_qname) then
-      local key = answer.type..":"..answer.name
-      add_status_to_try_list(try_list, key .. " removed")
-      local lst = others[key]
-      if not lst then
-        lst = {}
-        others[key] = lst
-      end
-      table_insert(lst, 1, answer)  -- pos 1: preserve order
-      table_remove(answers, i)
-    end
-  end
-  if next(others) then
-    for _, lst in pairs(others) do
-      cacheinsert(lst)
-      -- set success-type, only if not set (this is only a 'by-product')
-      if not cachegetsuccess(lst[1].name) then
-        cachesetsuccess(lst[1].name, lst[1].type)
-      end
+    if answer.type ~= qtype then
+      table_remove(answers, i)  -- remove records with non-matching types
+    else
+      answer.name = check_qname
     end
   end
 

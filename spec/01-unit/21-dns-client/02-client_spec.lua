@@ -790,29 +790,29 @@ describe("[DNS client]", function()
     -- check first CNAME
     local key1 = client.TYPE_CNAME..":"..host
     local entry1 = lrucache:get(key1)
-    assert.are.equal(host, entry1[1].name)       -- the 1st record is the original 'smtp.'..TEST_DOMAIN
-    assert.are.equal(client.TYPE_CNAME, entry1[1].type) -- and that is a CNAME
+    assert.falsy(entry1)
 
     -- check second CNAME
-    local key2 = client.TYPE_CNAME..":"..entry1[1].cname
+    local key2 = client.TYPE_CNAME..":thuis.kong-gateway-testing.link"
     local entry2 = lrucache:get(key2)
-    assert.are.equal(entry1[1].cname, entry2[1].name) -- the 2nd is the middle 'thuis.'..TEST_DOMAIN
-    assert.are.equal(client.TYPE_CNAME, entry2[1].type) -- and that is also a CNAME
+    assert.falsy(entry2)
 
-    -- check second target to match final record
-    assert.are.equal(entry2[1].cname, answers[1].name)
-    assert.are.not_equal(host, answers[1].name)  -- we got final name 'wdnaste.duckdns.org'
-    assert.are.equal(typ, answers[1].type)       -- we got a final A type record
+    assert.are.equal(host, answers[1].name) -- we got final name same to host
+    assert.are.equal(typ, answers[1].type)  -- we got a final A type record
     assert.are.equal(#answers, 1)
 
     -- check last successful lookup references
     local lastsuccess3 = lrucache:get(answers[1].name)
-    local lastsuccess2 = lrucache:get(entry2[1].name)
-    local lastsuccess1 = lrucache:get(entry1[1].name)
+    local lastsuccess2 = lrucache:get("thuis.kong-gateway-testing.link")
+    local lastsuccess1 = lrucache:get("kong-gateway-testing.link")
     assert.are.equal(client.TYPE_A, lastsuccess3)
-    assert.are.equal(client.TYPE_CNAME, lastsuccess2)
-    assert.are.equal(client.TYPE_CNAME, lastsuccess1)
+    assert.is_nil(lastsuccess2)
+    assert.is_nil(lastsuccess1)
 
+    -- check entries in the intermediate cache against the final output result
+    local key = client.TYPE_A .. ":" .. host
+    local entry = lrucache:get(key)
+    assert.same(answers, entry)
   end)
 
   it("fetching multiple SRV records (un-typed)", function()
@@ -845,17 +845,18 @@ describe("[DNS client]", function()
     -- first check CNAME
     local key = client.TYPE_CNAME..":"..host
     local entry = lrucache:get(key)
-    assert.are.equal(host, entry[1].name)
-    assert.are.equal(client.TYPE_CNAME, entry[1].type)
+    assert.falsy(entry)
 
     -- check final target
-    assert.are.equal(entry[1].cname, answers[1].name)
     assert.are.equal(typ, answers[1].type)
-    assert.are.equal(entry[1].cname, answers[2].name)
     assert.are.equal(typ, answers[2].type)
-    assert.are.equal(entry[1].cname, answers[3].name)
     assert.are.equal(typ, answers[3].type)
     assert.are.equal(#answers, 3)
+
+    -- check entries in the intermediate cache against the final output result
+    key = client.TYPE_SRV .. ":" .. host
+    entry = lrucache:get(key)
+    assert.same(answers, entry)
   end)
 
   it("fetching non-type-matching records", function()
