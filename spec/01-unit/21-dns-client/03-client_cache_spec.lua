@@ -465,7 +465,7 @@ describe("[DNS client cache]", function()
 
       local res, _, try_list = client.resolve("myhost9", {})
       assert.matches(tostring(try_list), '"myhost9.domain.com:1 - cache-miss/querying/dns client error: 101 empty record received"')
-      assert.equal(nil, res)
+      assert.is_nil(res)
     end)
   end)
 
@@ -512,16 +512,16 @@ describe("[DNS client cache]", function()
       }
 
       local res = client.resolve("myhost9.domain.com")
-
-      -- name has been fixed to queried name
+      -- The record's name has been fixed to the queried name.
       assert.equal("myhost9.domain.com", res[1].name)
       assert.equal(A, res[1])
 
-      local success = client.getcache():get("myhost9.domain.com")
+      local success = lrucache:get("myhost9.domain.com")
       assert.equal(client.TYPE_A, success)
 
+      -- The CNAME records have been removed due to a mismatch with type A.
       local cached = lrucache:get(client.TYPE_CNAME..":myhost9.domain.com")
-      assert(cached == nil, "CNAME entries are not stored as `intermediates` for A type")
+      assert.is_nil(cached)
     end)
 
     it("No RRs match the queried type", function()
@@ -539,7 +539,7 @@ describe("[DNS client cache]", function()
 
       local res, err = client.resolve("myhost9.domain.com", {})
       assert.equal('dns client error: 101 empty record received', err)
-      assert(res == nil)
+      assert.is_nil(res)
     end)
 
   end)
@@ -630,7 +630,7 @@ describe("[DNS client cache]", function()
 
       -- It only stores SRV target entry into cache, not storing A entry.
       local success = client.getcache():get("192.168.5.232.node.api_test.consul")
-      assert.equal(nil, success)
+      assert.is_nil(success)
 
       success = client.getcache():get("demo.service.consul")
       assert.equal(client.TYPE_SRV, success)

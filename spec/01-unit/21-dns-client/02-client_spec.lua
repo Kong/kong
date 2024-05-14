@@ -800,8 +800,8 @@ describe("[DNS client]", function()
     local lastsuccess2 = lrucache:get("thuis.kong-gateway-testing.link")
     local lastsuccess1 = lrucache:get("kong-gateway-testing.link")
     assert.are.equal(client.TYPE_A, lastsuccess3)
-    assert.are.equal(nil, lastsuccess2)
-    assert.are.equal(nil, lastsuccess1)
+    assert.is_nil(lastsuccess2)
+    assert.is_nil(lastsuccess1)
 
     -- check entries in the intermediate cache against the final output result
     local key = client.TYPE_A .. ":" .. host
