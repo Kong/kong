@@ -3502,7 +3502,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
         local match_t = router:exec()
         assert.equal("users/", match_t.matches.uri_captures[1])
         assert.equal("profile", match_t.matches.uri_captures.subpath)
-        assert.same(nil, match_t.matches.uri_captures.scope)
+        assert.is_nil(match_t.matches.uri_captures.scope)
       end)
 
       it("returns uri_captures from a [uri regex]", function()
