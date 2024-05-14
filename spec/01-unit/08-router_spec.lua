@@ -3504,6 +3504,7 @@ for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions"
         assert.equal("profile", match_t.matches.uri_captures.subpath)
         assert.same(nil, match_t.matches.uri_captures.scope)
       end)
+
       it("returns uri_captures from a [uri regex]", function()
         local use_case = {
           {
