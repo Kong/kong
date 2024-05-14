@@ -1,0 +1,3 @@
+message: "**DNS Client**: Ignore records with RR types differs from that of the query when parsing answers."
+type: bugfix
+scope: Core
