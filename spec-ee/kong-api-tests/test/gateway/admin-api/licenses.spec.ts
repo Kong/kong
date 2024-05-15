@@ -21,6 +21,7 @@ describe('Gateway /licenses API tests', function () {
   const licenseKey = 'ASDASDASDASDASDASDASDASDASD_a1VASASD';
   const validLicense = authDetails.license.valid;
   const inValidLicense = authDetails.license.invalid;
+  const validLicenseAws = '{vault://aws/gateway-secret-test/ee_license}'
 
   const url = `${getBasePath({
     environment: isGateway() ? Environment.gateway.admin : undefined,
@@ -252,6 +253,24 @@ describe('Gateway /licenses API tests', function () {
       resp.data.db_version,
       'Should see db_version in response'
     ).to.include('postgres');
+  });
+
+  // unskip when https://konghq.atlassian.net/browse/KAG-4341 is fixed
+  it.skip('should delete the license and post a new one from aws vault', async function () {
+    let resp = await axios({
+      method: 'delete',
+      url: `${url}/${licenseId}`,
+    });
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 204').to.equal(204);
+
+    resp = await postNegative(url, { payload: validLicenseAws });
+    logResponse(resp);
+    expect(resp.data.message, 'Should not see license decode error').to.not.include('Unable to validate license: could not decode license json')
+
+    licenseId = resp.data.id;
+    assertBasicRespDetails(resp);
   });
 
   after(async function () {
