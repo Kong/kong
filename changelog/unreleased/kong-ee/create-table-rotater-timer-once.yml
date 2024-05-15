@@ -1,0 +1,4 @@
+message: |
+  **Vitals**: Fixed a bug that each data plane connecting to the control plane would trigger the control plane to create a redundant table rotater timer.
+type: bugfix
+scope: Core

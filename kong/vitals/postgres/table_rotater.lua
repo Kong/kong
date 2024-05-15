@@ -12,6 +12,7 @@ local log        = ngx.log
 local WARN       = ngx.WARN
 local DEBUG      = ngx.DEBUG
 local ERR        = ngx.ERR
+local NOTICE     = ngx.NOTICE
 local time       = ngx.time
 
 
@@ -93,6 +94,7 @@ end
 
 
 function _M:init()
+  log(NOTICE, _log_prefix, "init vitals table rotater")
   -- make sure we have a current vitals_stats_seconds table
   local query = fmt(CREATE_VITALS_STATS_SECONDS, self:current_table_name())
   local _, err = self.connector:query(query)

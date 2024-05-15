@@ -219,7 +219,7 @@ function _M.new(db, opts)
   local table_rotater = table_rotater_module.new(
     {
       connector = db.connector,
-      rotation_interval = opts.ttl_seconds or 3600,
+      ttl_seconds = opts.ttl_seconds or 3600,
       list_cache = ngx.shared.kong_vitals_lists,
     }
   )
@@ -266,12 +266,6 @@ function _M:init(node_id, hostname)
     return nil, "node_id is required"
   end
 
-  local ok, err = self.table_rotater:init()
-
-  if not ok then
-    return nil, "failed to init table rotator: " .. err
-  end
-
   self.node_id = node_id
   self.hostname = hostname
 
@@ -285,11 +279,17 @@ end
 
 
 function _M:start()
-  -- delete timer
-  -- make sure the timer is started only once, clustering strategy will call
+  -- table rotater timer and delete timer
+  -- make sure these two timers are started only once, clustering strategy will call
   -- this function multiple times
   if self:get_running() then
     return true
+  end
+
+  local ok, err = self.table_rotater:init()
+
+  if not ok then
+    return nil, "failed to init table rotator: " .. err
   end
 
   local when = self.delete_interval
