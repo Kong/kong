@@ -42,7 +42,7 @@ def openresty_repositories():
         openresty_http_archive_wrapper,
         name = "openresty",
         build_file = "//build/openresty:BUILD.openresty.bazel",
-        sha256 = "32ec1a253a5a13250355a075fe65b7d63ec45c560bbe213350f0992a57cd79df",
+        sha256 = KONG_VAR["OPENRESTY_SHA256"],
         strip_prefix = "openresty-" + openresty_version,
         urls = [
             "https://openresty.org/download/openresty-" + openresty_version + ".tar.gz",
