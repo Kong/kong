@@ -255,6 +255,7 @@ local function aws_serializer(ctx, config)
   end
 
   local request = {
+    version                         = "1.0",
     resource                        = ctx.router_matches.uri,
     path                            = path,
     httpMethod                      = var.request_method,

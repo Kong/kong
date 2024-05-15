@@ -95,6 +95,7 @@ describe("[AWS Lambda] aws-gateway input", function()
     local out = aws_serialize()
 
     assert.same({
+        version = "1.0",
         httpMethod = "GET",
         path = "/123/strip/more",
         resource = "/(?<version>\\d+)/strip",
@@ -172,6 +173,7 @@ describe("[AWS Lambda] aws-gateway input", function()
     local out = aws_serialize()
 
     assert.same({
+        version = "1.0",
         httpMethod = "GET",
         path = "/plain/strip/more",
         resource = "/plain/strip",
@@ -269,6 +271,7 @@ describe("[AWS Lambda] aws-gateway input", function()
         local out = aws_serialize()
 
         assert.same({
+          version = "1.0",
           body = tdata.body_out,
           headers = {
             ["Content-Type"] = tdata.ct,
