@@ -95,6 +95,14 @@ build-venv: check-bazel
 		$(BAZEL) build //build:venv $(BAZEL_ARGS); \
 	fi
 
+build-openresty: check-bazel
+
+	@if [ ! -e bazel-bin/build/$(BUILD_NAME)/openresty ]; then \
+		$(BAZEL) build //build:install-openresty --verbose_failures --action_env=BUILD_NAME=$(BUILD_NAME); \
+	else \
+		$(BAZEL) build //build:dev-make-openresty --verbose_failures --action_env=BUILD_NAME=$(BUILD_NAME); \
+	fi
+
 install-dev-rocks: build-venv
 	@. $(VENV) ;\
 	for rock in $(DEV_ROCKS) ; do \
