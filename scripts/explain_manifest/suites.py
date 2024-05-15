@@ -100,7 +100,7 @@ def common_suites(expect, libxcrypt_no_obsolete_api: bool = False):
     
     # wasm filters
     for f in wasm_filters:
-        expect("/usr/local/kong/wasm/%s" % f, "wasm filter %s" % f).exists()
+        expect("/usr/local/kong/wasm/%s" % f, "wasm filter %s is installed under kong/wasm" % f).exists()
 
 
 def libc_libcpp_suites(expect, libc_max_version: str = None, libcxx_max_version: str = None, cxxabi_max_version: str = None):
