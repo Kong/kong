@@ -57,14 +57,16 @@ kong_install(
 kong_genrule(
     name = "dev-make-openresty",
     srcs = [
+        ":install-openresty-luajit",
         "@openresty//:dev-just-make",
     ],
     outs = [
         "openresty.dev.nop",
     ],
     cmd = """
-        rm -rf ${BUILD_DESTDIR}/openresty
-        cp -r $(location @openresty//:dev-just-make) ${BUILD_DESTDIR}/openresty
+        chmod -R "u+rw" ${BUILD_DESTDIR}/openresty
+        rm -rf ${BUILD_DESTDIR}/openresty/nginx
+        cp -r $(location @openresty//:dev-just-make)/. ${BUILD_DESTDIR}/openresty/
         chmod -R "u+rw" ${BUILD_DESTDIR}/openresty
         touch ${BUILD_DESTDIR}/openresty.dev.nop
     """,
