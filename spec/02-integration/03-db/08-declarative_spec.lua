@@ -10,6 +10,11 @@ for _, strategy in helpers.each_strategy() do
     lazy_setup(function()
       local _
       _, db = helpers.get_db_utils(strategy)
+
+      -- ensure bootstrap DB correctly
+      db:schema_reset()
+      helpers.bootstrap_database(db)
+
       _G.kong.db = db
       assert(helpers.start_kong({
         database   = strategy,
@@ -196,9 +201,14 @@ for _, strategy in helpers.each_strategy() do
     }
 
     before_each(function()
-      -- remove all data in DB
-      db:schema_reset()
-      helpers.bootstrap_database(db)
+      db.acls:truncate()
+      db.basicauth_credentials:truncate()
+      db.plugins:truncate()
+      db.routes:truncate()
+      db.services:truncate()
+      db.snis:truncate()
+      db.certificates:truncate()
+      db.consumers:truncate()
 
       assert(declarative.load_into_db({
         snis = { [sni_def.id] = sni_def },
