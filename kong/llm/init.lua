@@ -3,7 +3,8 @@ local re_match = ngx.re.match
 local cjson = require("cjson.safe")
 local fmt = string.format
 
-
+-- TODO: this module returns a class but also has function (not methods) that are not part of the class
+--       this is confusing. Refactor, the `new` function (not method!) should remain and return a new instance
 
 local _M = {
   config_schema = require "kong.llm.schemas",
