@@ -46,7 +46,7 @@ function _M:access(conf)
   local http_opts = create_http_opts(conf)
   conf.llm.__plugin_id = conf.__plugin_id
   conf.llm.__key__ = conf.__key__
-  local ai_driver, err = llm:new(conf.llm, http_opts)
+  local ai_driver, err = llm.new_driver(conf.llm, http_opts)
 
   if not ai_driver then
     return internal_server_error(err)

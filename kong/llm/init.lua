@@ -2,14 +2,13 @@ local ai_shared = require("kong.llm.drivers.shared")
 local re_match = ngx.re.match
 local cjson = require("cjson.safe")
 local fmt = string.format
+local EMPTY = {}
 
--- TODO: this module returns a class but also has function (not methods) that are not part of the class
---       this is confusing. Refactor, the `new` function (not method!) should remain and return a new instance
 
+-- The module table
 local _M = {
   config_schema = require "kong.llm.schemas",
 }
-_M.__index = _M
 
 
 
@@ -82,140 +81,145 @@ do
 end
 
 
+do
+  ------------------------------------------------------------------------------
+  -- LLM class implementation
+  ------------------------------------------------------------------------------
+  local LLM = {}
+  LLM.__index = LLM
 
-function _M:ai_introspect_body(request, system_prompt, http_opts, response_regex_match)
-  local err, _
 
-  -- set up the request
-  local ai_request = {
-    messages = {
-      [1] = {
-        role = "system",
-        content = system_prompt,
+
+  function LLM:ai_introspect_body(request, system_prompt, http_opts, response_regex_match)
+    local err, _
+
+    -- set up the request
+    local ai_request = {
+      messages = {
+        [1] = {
+          role = "system",
+          content = system_prompt,
+        },
+        [2] = {
+          role = "user",
+          content = request,
+        }
       },
-      [2] = {
-        role = "user",
-        content = request,
-      }
-    },
-    stream = false,
-  }
+      stream = false,
+    }
 
-  -- convert it to the specified driver format
-  ai_request, _, err = self.driver.to_format(ai_request, self.conf.model, "llm/v1/chat")
-  if err then
-    return nil, err
-  end
-
-  -- run the shared logging/analytics/auth function
-  ai_shared.pre_request(self.conf, ai_request)
-
-  -- send it to the ai service
-  local ai_response, _, err = self.driver.subrequest(ai_request, self.conf, http_opts, false)
-  if err then
-    return nil, "failed to introspect request with AI service: " .. err
-  end
-
-  -- parse and convert the response
-  local ai_response, _, err = self.driver.from_format(ai_response, self.conf.model, self.conf.route_type)
-  if err then
-    return nil, "failed to convert AI response to Kong format: " .. err
-  end
-
-  -- run the shared logging/analytics function
-  ai_shared.post_request(self.conf, ai_response)
-
-  local ai_response, err = cjson.decode(ai_response)
-  if err then
-    return nil, "failed to convert AI response to JSON: " .. err
-  end
-
-  local new_request_body = ai_response.choices
-                       and #ai_response.choices > 0
-                       and ai_response.choices[1]
-                       and ai_response.choices[1].message
-                       and ai_response.choices[1].message.content
-  if not new_request_body then
-    return nil, "no 'choices' in upstream AI service response"
-  end
-
-  -- if specified, extract the first regex match from the AI response
-  -- this is useful for AI models that pad with assistant text, even when
-  -- we ask them NOT to.
-  if response_regex_match then
-    local matches, err = re_match(new_request_body, response_regex_match, "ijom")
+    -- convert it to the specified driver format
+    ai_request, _, err = self.driver.to_format(ai_request, self.conf.model, "llm/v1/chat")
     if err then
-      return nil, "failed regex matching ai response: " .. err
+      return nil, err
     end
 
-    if matches then
-      new_request_body = matches[0]  -- this array DOES start at 0, for some reason
+    -- run the shared logging/analytics/auth function
+    ai_shared.pre_request(self.conf, ai_request)
 
-    else
-      return nil, "AI response did not match specified regular expression"
-
-    end
-  end
-
-  return new_request_body
-end
-
-
-
--- Parse the response instructions.
--- @tparam string|table in_body The response to parse, if a string, it will be parsed as JSON.
--- @treturn[1] table The headers, field `in_body.headers`
--- @treturn[1] string The body, field `in_body.body` (or if absent `in_body` itself as a table)
--- @treturn[1] number The status, field `in_body.status` (or 200 if absent)
--- @treturn[2] nil
--- @treturn[2] string An error message if parsing failed or input wasn't a table
-function _M:parse_json_instructions(in_body)
-  local err
-  if type(in_body) == "string" then
-    in_body, err = cjson.decode(in_body)
+    -- send it to the ai service
+    local ai_response, _, err = self.driver.subrequest(ai_request, self.conf, http_opts, false)
     if err then
-      return nil, nil, nil, err
+      return nil, "failed to introspect request with AI service: " .. err
     end
+
+    -- parse and convert the response
+    local ai_response, _, err = self.driver.from_format(ai_response, self.conf.model, self.conf.route_type)
+    if err then
+      return nil, "failed to convert AI response to Kong format: " .. err
+    end
+
+    -- run the shared logging/analytics function
+    ai_shared.post_request(self.conf, ai_response)
+
+    local ai_response, err = cjson.decode(ai_response)
+    if err then
+      return nil, "failed to convert AI response to JSON: " .. err
+    end
+
+    local new_request_body = ((ai_response.choices or EMPTY)[1].message or EMPTY).content
+    if not new_request_body then
+      return nil, "no 'choices' in upstream AI service response"
+    end
+
+    -- if specified, extract the first regex match from the AI response
+    -- this is useful for AI models that pad with assistant text, even when
+    -- we ask them NOT to.
+    if response_regex_match then
+      local matches, err = re_match(new_request_body, response_regex_match, "ijom")
+      if err then
+        return nil, "failed regex matching ai response: " .. err
+      end
+
+      if matches then
+        new_request_body = matches[0]  -- this array DOES start at 0, for some reason
+
+      else
+        return nil, "AI response did not match specified regular expression"
+
+      end
+    end
+
+    return new_request_body
   end
 
-  if type(in_body) ~= "table" then
-    return nil, nil, nil, "input not table or string"
+
+
+  -- Parse the response instructions.
+  -- @tparam string|table in_body The response to parse, if a string, it will be parsed as JSON.
+  -- @treturn[1] table The headers, field `in_body.headers`
+  -- @treturn[1] string The body, field `in_body.body` (or if absent `in_body` itself as a table)
+  -- @treturn[1] number The status, field `in_body.status` (or 200 if absent)
+  -- @treturn[2] nil
+  -- @treturn[2] string An error message if parsing failed or input wasn't a table
+  function LLM:parse_json_instructions(in_body)
+    local err
+    if type(in_body) == "string" then
+      in_body, err = cjson.decode(in_body)
+      if err then
+        return nil, nil, nil, err
+      end
+    end
+
+    if type(in_body) ~= "table" then
+      return nil, nil, nil, "input not table or string"
+    end
+
+    return
+      in_body.headers,
+      in_body.body or in_body,
+      in_body.status or 200
   end
 
-  return
-    in_body.headers,
-    in_body.body or in_body,
-    in_body.status or 200
+
+
+  --- Instantiate a new LLM driver instance.
+  -- @tparam table conf Configuration table
+  -- @tparam table http_opts HTTP options table
+  -- @treturn[1] table A new LLM driver instance
+  -- @treturn[2] nil
+  -- @treturn[2] string An error message if instantiation failed
+  function _M.new_driver(conf, http_opts)
+    local self = {
+      conf = conf or {},
+      http_opts = http_opts or {},
+    }
+    setmetatable(self, LLM)
+
+    local provider = (self.conf.model or {}).provider or "NONE_SET"
+    local driver_module = "kong.llm.drivers." .. provider
+    local ok
+    ok, self.driver = pcall(require, driver_module)
+    if not ok then
+      local err = "could not instantiate " .. driver_module .. " package"
+      kong.log.err(err)
+      return nil, err
+    end
+
+    return self
+  end
+
 end
-
-
-
---- Instantiate a new LLM instance.
--- @tparam table conf Configuration table
--- @tparam table http_opts HTTP options table
--- @treturn[1] table A new LLM instance
--- @treturn[2] nil
--- @treturn[2] string An error message if instantiation failed
-function _M:new(conf, http_opts)
-  local self = {
-    conf = conf or {},
-    http_opts = http_opts or {},
-  }
-  setmetatable(self, _M)
-
-  local provider = (self.conf.model or {}).provider or "NONE_SET"
-  local driver_module = "kong.llm.drivers." .. provider
-  local ok
-  ok, self.driver = pcall(require, driver_module)
-  if not ok then
-    local err = "could not instantiate " .. driver_module .. " package"
-    kong.log.err(err)
-    return nil, err
-  end
-
-  return self
-end
-
 
 
 return _M
