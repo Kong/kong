@@ -63,6 +63,22 @@ This operation primarily accomplishes the following:
 2. Set and specify the runtime path for Kong.
 3. Provide Bash functions to start and stop the database and other third-party dependency services required for Kong development environment using Docker, read more: [Start Kong](../DEVELOPER#start-kong).
 
+###  C module and Nginx development
+
+When we are developing part of the Kong installation, especially some Nginx C modules, installing stuffs like luarocks is not necessary. We can use the following steps:
+
+1. Update the C module to be pointed to point a local path. In `.requirements` update (for example) `LUA_KONG_NGINX_MODULE=/path/to/lua-kong-nginx-module`
+2. Do a full build once `bazel build //build:install-openresty`
+3. The produced nginx is at `./bazel-bin/build/kong-dev/openresty/nginx/sbin/nginx`
+4. Do incremental build using `bazel build //build:dev-make-openresty`
+
+One can also use `make build-openresty` to automatically do a full build or a incremental build.
+
+Other targets developer may found useful to cope with Nginx development:
+
+- Install the lua files come with the C modules: `bazel build //build:install-lualibs`
+- Install WasmX related artifacts: `bazel build //build:install-wasmx`
+
 ### Debugging
 
 Query list all direct dependencies of the `kong` target
@@ -71,14 +87,23 @@ Query list all direct dependencies of the `kong` target
 bazel query 'deps(//build:kong, 1)'
 
 # output
-@openresty//:luajit
-@openresty//:openresty
+//build:install
+//build:kong
+@luarocks//:luarocks_make
+@luarocks//:luarocks_target
 ...
 ```
 
+Each targets under `//build:install` installs an independent component that
+composes the Kong runtime environment. We can query `deps(//build:install, 1)`
+recursively to find the target that only build and install specific component.
+This would be useful if one is debugging the issue of a specific target without
+the need to build whole Kong runtime environment. 
+
 We can use the target labels to build the dependency directly, for example:
 
-- `bazel build @openresty//:openresty`: builds openresty
+- `bazel build //build:install-openresty`: builds openresty
+- `bazel build //build:install-atc_router-luaclib`: builds the ATC router shared library
 - `bazel build @luarocks//:luarocks_make`: builds luarocks for Kong dependencies
 
 #### Debugging variables in *.bzl files
