@@ -587,6 +587,39 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         admin.plugins:remove({ id = ai_response_transformer.id })
       end)
     end)
+
+    describe("www-authenticate header in plugins (realm config)", function()
+      it("[basic-auth] removes realm for versions below 3.6", function()
+        local basic_auth = admin.plugins:insert {
+          name = "basic-auth",
+        }
+
+        local expected_basic_auth_prior_36 = cycle_aware_deep_copy(basic_auth)
+        expected_basic_auth_prior_36.config.realm = nil
+
+        do_assert(utils.uuid(), "3.5.0", expected_basic_auth_prior_36)
+
+        -- cleanup
+        admin.plugins:remove({ id = basic_auth.id })
+      end)
+
+      it("[key-auth] removes realm for versions below 3.7", function()
+        local key_auth = admin.plugins:insert {
+          name = "key-auth",
+          config = {
+            realm = "test"
+          }
+        }
+
+        local expected_key_auth_prior_37 = cycle_aware_deep_copy(key_auth)
+        expected_key_auth_prior_37.config.realm = nil
+
+        do_assert(utils.uuid(), "3.6.0", expected_key_auth_prior_37)
+
+        -- cleanup
+        admin.plugins:remove({ id = key_auth.id })
+      end)
+    end)
   end)
 end)
 
