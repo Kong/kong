@@ -74,7 +74,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("Dynamic log level over RPC", function()
-      pending("can get the current log level", function()
+      it("can get the current log level", function()
         local dp_node_id = obtain_dp_node_id()
 
         -- this sleep is *not* needed for the below wait_until to succeed,
