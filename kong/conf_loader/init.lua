@@ -953,12 +953,6 @@ local function load(path, custom_conf, opts)
     end
   end
 
-  -- TODO: remove this when cluster_rpc is ready for GA
-  if conf.cluster_rpc then
-    log.warn("Cluster RPC has been forcibly disabled")
-    conf.cluster_rpc = "off"
-  end
-
   -- initialize the dns client, so the globally patched tcp.connect method
   -- will work from here onwards.
   assert(require("kong.tools.dns")(conf))
