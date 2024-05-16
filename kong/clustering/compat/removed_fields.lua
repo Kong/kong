@@ -115,5 +115,8 @@ return {
     opentelemetry = {
       "sampling_rate",
     },
+    basic_auth = {
+      "realm"
+    },
   },
 }

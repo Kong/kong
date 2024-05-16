@@ -468,6 +468,22 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         end)
       end)
     end)
+
+    describe("www-authenticate header in plugins (realm config)", function()
+      it("[basic-auth] removes realm for versions below 3.6", function()
+        local basic_auth = admin.plugins:insert {
+          name = "basic-auth",
+        }
+
+        local expected_basic_auth_prior_36 = utils.cycle_aware_deep_copy(basic_auth)
+        expected_basic_auth_prior_36.config.realm = nil
+
+        do_assert(utils.uuid(), "3.5.0", expected_basic_auth_prior_36)
+
+        -- cleanup
+        admin.plugins:remove({ id = basic_auth.id })
+      end)
+    end)
   end)
 end)
 
