@@ -25,12 +25,11 @@ describe("Plugin: response-transformer", function()
       headers_sent = false,
       resp = {
       },
-      config = {
-        subsystem = "http",
-      },
+      config = ngx.config,
       ctx = {
         KONG_PHASE = 0x00000200,
       },
+      re = ngx.re,
     }
 
     _G.ngx.DEBUG = 8
