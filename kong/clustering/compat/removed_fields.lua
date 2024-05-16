@@ -115,6 +115,9 @@ return {
     opentelemetry = {
       "sampling_rate",
     },
+    basic_auth = {
+      "realm"
+    }
   },
 
   -- Any dataplane older than 3.7.0
@@ -135,5 +138,8 @@ return {
     ai_response_transformer = {
       "llm.model.options.upstream_path",
     },
+    key_auth = {
+      "realm"
+    }
   },
 }
