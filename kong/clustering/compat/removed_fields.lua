@@ -224,6 +224,9 @@ return {
     opentelemetry = {
       "sampling_rate",
     },
+    basic_auth = {
+      "realm"
+    },
     -- Enterprise plugins
     openid_connect = {
       "tls_client_auth_cert_id",
@@ -243,6 +246,9 @@ return {
 
   -- Any dataplane older than 3.7.0
   [3007000000] = {
+    key_auth = {
+      "realm"
+    },
     -- Enterprise plugins
     oas_validation = {
       "custom_base_path",
