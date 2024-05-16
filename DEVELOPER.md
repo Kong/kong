@@ -473,7 +473,7 @@ The [EmmyLuaDebugger](https://github.com/EmmyLua/EmmyLuaDebugger) is a standalon
 that runs on the same machine as Kong Gateway and that mediates between the IDE's
 debugger and the Lua code running in Kong Gateway.  It can be downloaded from
 [GitHub](https://github.com/EmmyLua/EmmyLuaDebugger/releases).  The release
-ZIP file contains a single share library named emmy_core.so (Linux) or emmy_core.dylib (macOS).
+ZIP file contains a single shared library named emmy_core.so (Linux) or emmy_core.dylib (macOS).
 Place this file in a directory that is convenient for you and remember the path.
 
 Depending on your Linux version, you may need to compile
