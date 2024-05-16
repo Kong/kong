@@ -1,3 +1,16 @@
+import os
+
+wasm_filters = []
+wasm_filter_variable_file = "../../build/openresty/wasmx/filters/variables.bzl"
+if os.path.exists(wasm_filter_variable_file):
+    from importlib.util import spec_from_loader, module_from_spec
+    from importlib.machinery import SourceFileLoader
+
+    wasm_filter_spec = spec_from_loader("wasm_filters", SourceFileLoader("wasm_filters", wasm_filter_variable_file))
+    wasm_filter_module = module_from_spec(wasm_filter_spec)
+    wasm_filter_spec.loader.exec_module(wasm_filter_module)
+    wasm_filters = [f for filter in wasm_filter_module.WASM_FILTERS for f in filter["files"]]
+
 
 def read_requirements(path=None):
     if not path:
@@ -84,6 +97,10 @@ def common_suites(expect, libxcrypt_no_obsolete_api: bool = False):
     expect("**/*.so", "dynamic libraries are compiled with OpenSSL 3.2.x") \
         .version_requirement.key("libssl.so.3").less_than("OPENSSL_3.3.0") \
         .version_requirement.key("libcrypto.so.3").less_than("OPENSSL_3.3.0") \
+    
+    # wasm filters
+    for f in wasm_filters:
+        expect("/usr/local/kong/wasm/%s" % f, "wasm filter %s is installed under kong/wasm" % f).exists()
 
 
 def libc_libcpp_suites(expect, libc_max_version: str = None, libcxx_max_version: str = None, cxxabi_max_version: str = None):
