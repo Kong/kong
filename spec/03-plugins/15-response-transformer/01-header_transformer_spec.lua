@@ -25,11 +25,11 @@ describe("Plugin: response-transformer", function()
       headers_sent = false,
       resp = {
       },
-      config = ngx.config,
+      config = ngx.config, -- jit-uuid needs ngx.config.nginx_configure
       ctx = {
         KONG_PHASE = 0x00000200,
       },
-      re = ngx.re,
+      re = ngx.re, -- jit-uuid will use ngx.re.find
     }
 
     _G.ngx.DEBUG = 8

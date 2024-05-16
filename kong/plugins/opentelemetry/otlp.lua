@@ -4,13 +4,12 @@ local new_tab = require "table.new"
 local nkeys = require "table.nkeys"
 local tablepool = require "tablepool"
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
-local kong_table = require "kong.tools.table"
 
 local kong = kong
 local insert = table.insert
 local tablepool_fetch = tablepool.fetch
 local tablepool_release = tablepool.release
-local table_merge = kong_table.table_merge
+local table_merge = require("kong.tools.table").table_merge
 local setmetatable = setmetatable
 
 local TRACE_ID_LEN = 16

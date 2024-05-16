@@ -1,5 +1,5 @@
 local uuid = require("resty.jit-uuid")
-local kong_uuid = require("kong.tools.uuid").uuid
+local utils = require("kong.tools.utils")
 local kong_table = require("kong.tools.table")
 local Errors = require("kong.db.errors")
 local Entity = require("kong.db.schema.entity")
@@ -649,7 +649,7 @@ local function populate_ids_for_validation(input, known_entities, parent_entity,
         if key then
           item[pk_name] = generate_uuid(schema.name, key)
         else
-          item[pk_name] = kong_uuid()
+          item[pk_name] = utils.uuid()
         end
       end
 

@@ -1,10 +1,11 @@
 local helpers = require "spec.helpers"
+local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 
 
 describe("Plugin: response-ratelimiting (shorthand fields)", function()
   local bp, route, admin_client
-  local plugin_id = require("kong.tools.uuid").uuid()
+  local plugin_id = utils.uuid()
 
   lazy_setup(function()
     bp = helpers.get_db_utils(nil, {

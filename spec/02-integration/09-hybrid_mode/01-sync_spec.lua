@@ -1,11 +1,11 @@
 local helpers = require "spec.helpers"
+local utils = require "kong.tools.utils"
 local cjson = require "cjson.safe"
 local _VERSION_TABLE = require "kong.meta" ._VERSION_TABLE
 local MAJOR = _VERSION_TABLE.major
 local MINOR = _VERSION_TABLE.minor
 local PATCH = _VERSION_TABLE.patch
 local CLUSTERING_SYNC_STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
-local uuid = require("kong.tools.uuid").uuid
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 
@@ -480,7 +480,7 @@ describe("CP/DP #version check #" .. strategy, function()
 
     for desc, harness in pairs(allowed_cases) do
       it(desc .. ", sync is allowed", function()
-        local uuid = uuid()
+        local uuid = utils.uuid()
 
         local res = assert(helpers.clustering_client({
           host = "127.0.0.1",
@@ -567,7 +567,7 @@ describe("CP/DP #version check #" .. strategy, function()
 
     for desc, harness in pairs(blocked_cases) do
       it(desc ..", sync is blocked", function()
-        local uuid = uuid()
+        local uuid = utils.uuid()
 
         local res, err = helpers.clustering_client({
           host = "127.0.0.1",
