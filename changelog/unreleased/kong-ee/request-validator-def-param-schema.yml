@@ -1,0 +1,3 @@
+message: "**Request-Validator**: Fix an issue where the plugin may fail to handle requests when param_schema is $ref schema."
+type: bugfix
+scope: Plugin

@@ -90,28 +90,26 @@ do
   -- validate the schema has a top-level 'type' property. But take into account that
   -- the top-level might actually be a reference first. So the first non-reference
   -- object must have a 'type' field
-  local function has_type(s)
+  local function find_type(s)
     if s.type then
-      return true -- found a type, so we're ok
+      return s.type -- found a type, so we're ok
     end
 
     -- we don't have a type, but it might be a reference...
     local ref = s["$ref"]
     if not ref then
-      return false -- so neither a type, nor a reference, so that's not ok
+      return -- so neither a type, nor a reference, so that's not ok
     end
 
     -- find the referenced target...
     local target = find_reference(s, ref, {})
 
     -- check the target for the type field
-    if type(target) ~= "table" then
-      return false
-    elseif not target.type then
-      return false
+    if type(target) ~= "table" or not target.type then
+      return
     end
 
-    return true
+    return target.type
   end
 
 
@@ -141,12 +139,14 @@ do
       return nil, err
     end
 
-    if is_parameter and not has_type(schema) then
+    if is_parameter and not find_type(schema) then
       return nil, "the JSONschema is missing a top-level 'type' property"
     end
 
     return true
   end
+
+  _M.find_type = find_type
 end
 
 return _M

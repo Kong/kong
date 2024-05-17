@@ -177,6 +177,9 @@ local validator_param_cache = setmetatable({}, {
       coercion = true,
     }))
     parameter.decoded_schema = assert(json_decode(parameter.schema))
+    if not parameter.decoded_schema.type then
+      parameter.decoded_schema.type = require(validators.draft4).find_type(parameter.decoded_schema)
+    end
     self[parameter] = validator_func
     return validator_func
   end

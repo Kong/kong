@@ -540,6 +540,26 @@ for _, strategy in strategies() do
         }, json)
       end)
 
+      it("validates parameters with reference schema", function()
+        local param_schema = {
+          {
+            style = "form",
+            explode = true,
+            ["in"] = "query",
+            required = false,
+            name = "offset",
+            schema = '{"$ref":"#/definitions/OpenApiDefinitions.Offset","definitions":{"OpenApiDefinitions.Offset":{"format":"int32","minimum":0,"type":"integer"}}}',
+          }
+        }
+
+        add_plugin(admin_client, { parameter_schema = param_schema, verbose_response = true }, 201)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200?offset=1",
+        })
+        assert.response(res).has.status(200)
+      end)
 
       describe("parameter type[object] validation for multi/single header with a object", function()
 
