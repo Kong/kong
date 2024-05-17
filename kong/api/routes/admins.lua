@@ -514,6 +514,10 @@ return {
     end,
 
     PATCH = function(self, db, helpers, parent)
+      if self.admin and not self.admin.rbac_token_enabled then
+        return kong.response.exit(400, { message = "It is disallowed to reset the token while disabling rbac_token_enabled" })
+      end
+
       local res, err = admins.update_token(self.admin, self.params)
       if err then
         return endpoints.handle_error(err)

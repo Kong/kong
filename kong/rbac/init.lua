@@ -596,7 +596,6 @@ function _M.get_groups_roles(db, rbac_user, workspace)
     if not ws then
       return nil, err
     end
-    workspace = ws.id
   end
 
   local cache = kong.cache

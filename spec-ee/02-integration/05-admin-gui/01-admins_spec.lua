@@ -2593,6 +2593,39 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("Tokens cannot be set explicitly. Remove token parameter to receive an auto-generated token.",
                        json.message)
         end)
+
+        it("fails to reset the token while disabling rbac_token_enabled", function()
+          local cookie = get_admin_cookie(client, admin.username, 'hunter1')
+          -- disable rbac token
+          local res = assert(client:send {
+            path = "/admins/" .. admin.username,
+            body = {
+              username = admin.username,
+              rbac_token_enabled = false,
+            },
+            method = "PATCH",
+            headers = {
+              ["Content-Type"] = "application/json",
+              ["Kong-Admin-User"] = admin.username,
+              cookie = cookie,
+            },
+          })
+
+          assert.res_status(200, res)
+
+          local res = assert(client:send {
+            path = "/admins/self/token",
+            method = "PATCH",
+            headers = {
+              ["Kong-Admin-User"] = admin.username,
+              cookie = cookie,
+            },
+          })
+
+          assert.response(res).has.status(400)
+          local json = assert.response(res).has.jsonbody()
+          assert.equal("It is disallowed to reset the token while disabling rbac_token_enabled", json.message)
+        end)
       end)
     end)
   end)
