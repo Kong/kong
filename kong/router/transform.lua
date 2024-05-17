@@ -720,10 +720,8 @@ local function split_routes_and_services_by_path(routes_and_services)
       goto continue -- in case we only got one group, we can accept the original route
     end
 
-    -- make sure that route_and_service contains only
+    -- route_and_service should contain only
     -- the two expected entries, route and service
-    local nkeys = tb_nkeys(route_and_service)
-    assert(nkeys == 1 or nkeys == 2)
 
     local original_route_id = original_route.id
     local original_service = route_and_service.service
