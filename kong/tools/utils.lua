@@ -18,10 +18,12 @@ local _M = {}
 
 do
   local modules = {
+    -- [[ keep it here for compatibility
     "kong.tools.table",
+    "kong.tools.uuid",
+    "kong.tools.rand",
+    -- ]] keep it here for compatibility
     "kong.tools.string",
-    --"kong.tools.uuid",  -- keep it here for compatibility
-    "kong.tools.rand",  -- keep it here for compatibility
     "kong.tools.time",
     "kong.tools.ip",
     "kong.tools.http",
