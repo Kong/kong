@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local CLUSTERING_SYNC_STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy

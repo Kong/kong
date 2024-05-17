@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
 local cjson = require "cjson.safe"
 local _VERSION_TABLE = require "kong.meta" ._VERSION_TABLE
 local MAJOR = _VERSION_TABLE.major

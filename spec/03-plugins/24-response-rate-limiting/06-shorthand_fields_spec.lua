@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local uuid = require("kong.tools.uuid").uuid
 

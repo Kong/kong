@@ -1,6 +1,5 @@
 local cjson    = require "cjson"
 local lyaml    = require "lyaml"
-local utils    = require "kong.tools.utils"
 local kong_table = require "kong.tools.table"
 local pl_utils = require "pl.utils"
 local helpers  = require "spec.helpers"

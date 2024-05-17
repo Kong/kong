@@ -1,5 +1,4 @@
 local uuid = require("resty.jit-uuid")
-local utils = require("kong.tools.utils")
 local kong_table = require("kong.tools.table")
 local Errors = require("kong.db.errors")
 local Entity = require("kong.db.schema.entity")

@@ -1,4 +1,3 @@
-local utils = require "kong.tools.table"
 local mocker = require "spec.fixtures.mocker"
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 

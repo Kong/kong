@@ -1,6 +1,5 @@
 local Queue = require "kong.tools.queue"
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
-local utils = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 local mocker = require "spec.fixtures.mocker"
 local timerng = require "resty.timerng"

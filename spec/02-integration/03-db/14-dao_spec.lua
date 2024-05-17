@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
 local declarative = require "kong.db.declarative"
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local uuid = require("kong.tools.uuid").uuid
