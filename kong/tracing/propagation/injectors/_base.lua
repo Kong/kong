@@ -1,9 +1,8 @@
-local utils             = require "kong.tools.utils"
 local propagation_utils = require "kong.tracing.propagation.utils"
 
 local to_id_size  = propagation_utils.to_id_size
 local set_header  = kong.service.request.set_header
-local contains    = utils.table_contains
+local contains    = require("kong.tools.table").table_contains
 local type = type
 local ipairs = ipairs
 

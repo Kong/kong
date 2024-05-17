@@ -1,5 +1,4 @@
 local logger       = require "kong.cmd.utils.log"
-local utils        = require "kong.tools.utils"
 local pgmoon       = require "pgmoon"
 local arrays       = require "pgmoon.arrays"
 local stringx      = require "pl.stringx"
@@ -31,7 +30,7 @@ local fmt          = string.format
 local sub          = string.sub
 local utils_toposort = db_utils.topological_sort
 local insert       = table.insert
-local table_merge  = utils.table_merge
+local table_merge  = require("kong.tools.table").table_merge
 
 
 local WARN                          = ngx.WARN

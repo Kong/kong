@@ -2,6 +2,7 @@ local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local CLUSTERING_SYNC_STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 local admin = require "spec.fixtures.admin_api"
 
@@ -136,7 +137,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         For 3.0.x
         should not have: error_code, error_message, sync_rate
       --]]
-      local expected = utils.cycle_aware_deep_copy(rate_limit)
+      local expected = cycle_aware_deep_copy(rate_limit)
       expected.config.redis = nil
       expected.config.error_code = nil
       expected.config.error_message = nil
@@ -149,7 +150,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         should have: error_code, error_message
         should not have: sync_rate
       --]]
-      expected = utils.cycle_aware_deep_copy(rate_limit)
+      expected = cycle_aware_deep_copy(rate_limit)
       expected.config.redis = nil
       expected.config.sync_rate = nil
       do_assert(utils.uuid(), "3.2.0", expected)
@@ -160,7 +161,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         should have: error_code, error_message
         should not have: sync_rate
       --]]
-      expected = utils.cycle_aware_deep_copy(rate_limit)
+      expected = cycle_aware_deep_copy(rate_limit)
       expected.config.redis = nil
       expected.config.sync_rate = nil
       do_assert(utils.uuid(), "3.3.0", expected)
@@ -188,7 +189,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         },
       }
 
-      local expected = utils.cycle_aware_deep_copy(rate_limit)
+      local expected = cycle_aware_deep_copy(rate_limit)
       expected.config.redis = nil
       do_assert(utils.uuid(), "3.4.0", expected)
 
@@ -209,7 +210,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         }
 
         assert.not_nil(cors.config.private_network)
-        local expected_cors = utils.cycle_aware_deep_copy(cors)
+        local expected_cors = cycle_aware_deep_copy(cors)
         expected_cors.config.private_network = nil
         do_assert(utils.uuid(), "3.4.0", expected_cors)
 
@@ -248,7 +249,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
           }
         }
 
-        local expected_otel_prior_35 = utils.cycle_aware_deep_copy(opentelemetry)
+        local expected_otel_prior_35 = cycle_aware_deep_copy(opentelemetry)
         expected_otel_prior_35.config.header_type = "preserve"
         expected_otel_prior_35.config.sampling_rate = nil
         expected_otel_prior_35.config.propagation = nil
@@ -269,7 +270,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
           }
         }
 
-        local expected_otel_prior_34 = utils.cycle_aware_deep_copy(opentelemetry)
+        local expected_otel_prior_34 = cycle_aware_deep_copy(opentelemetry)
         expected_otel_prior_34.config.header_type = "preserve"
         expected_otel_prior_34.config.sampling_rate = nil
         expected_otel_prior_34.config.propagation = nil
@@ -295,7 +296,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
           }
         }
 
-        local expected_zipkin_prior_35 = utils.cycle_aware_deep_copy(zipkin)
+        local expected_zipkin_prior_35 = cycle_aware_deep_copy(zipkin)
         expected_zipkin_prior_35.config.header_type = "preserve"
         expected_zipkin_prior_35.config.default_header_type = "b3"
         expected_zipkin_prior_35.config.propagation = nil
@@ -316,7 +317,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
           }
         }
 
-        local expected_zipkin_prior_34 = utils.cycle_aware_deep_copy(zipkin)
+        local expected_zipkin_prior_34 = cycle_aware_deep_copy(zipkin)
         expected_zipkin_prior_34.config.header_type = "preserve"
         expected_zipkin_prior_34.config.default_header_type = "b3"
         expected_zipkin_prior_34.config.propagation = nil
@@ -359,7 +360,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
             }
           }
 
-          local expected_acme_prior_36 = utils.cycle_aware_deep_copy(acme)
+          local expected_acme_prior_36 = cycle_aware_deep_copy(acme)
           expected_acme_prior_36.config.storage_config.redis = {
             host = "localhost",
             port = 57198,
@@ -403,7 +404,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
             }
           }
 
-          local expected_rl_prior_36 = utils.cycle_aware_deep_copy(rl)
+          local expected_rl_prior_36 = cycle_aware_deep_copy(rl)
           expected_rl_prior_36.config.redis = nil
           expected_rl_prior_36.config.redis_host = "localhost"
           expected_rl_prior_36.config.redis_port = 57198
@@ -452,7 +453,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
             }
           }
 
-          local expected_response_rl_prior_36 = utils.cycle_aware_deep_copy(response_rl)
+          local expected_response_rl_prior_36 = cycle_aware_deep_copy(response_rl)
           expected_response_rl_prior_36.config.redis = nil
           expected_response_rl_prior_36.config.redis_host = "localhost"
           expected_response_rl_prior_36.config.redis_port = 57198
@@ -499,7 +500,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         }
         -- ]]
 
-        local expected_ai_proxy_prior_37 = utils.cycle_aware_deep_copy(ai_proxy)
+        local expected_ai_proxy_prior_37 = cycle_aware_deep_copy(ai_proxy)
         expected_ai_proxy_prior_37.config.response_streaming = nil
         expected_ai_proxy_prior_37.config.model.options.upstream_path = nil
         expected_ai_proxy_prior_37.config.route_type = "llm/v1/chat"
@@ -540,7 +541,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         }
         -- ]]
 
-        local expected_ai_request_transformer_prior_37 = utils.cycle_aware_deep_copy(ai_request_transformer)
+        local expected_ai_request_transformer_prior_37 = cycle_aware_deep_copy(ai_request_transformer)
         expected_ai_request_transformer_prior_37.config.llm.model.options.upstream_path = nil
 
         do_assert(utils.uuid(), "3.6.0", expected_ai_request_transformer_prior_37)
@@ -577,7 +578,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         }
         -- ]]
 
-        local expected_ai_response_transformer_prior_37 = utils.cycle_aware_deep_copy(ai_response_transformer)
+        local expected_ai_response_transformer_prior_37 = cycle_aware_deep_copy(ai_response_transformer)
         expected_ai_response_transformer_prior_37.config.llm.model.options.upstream_path = nil
 
         do_assert(utils.uuid(), "3.6.0", expected_ai_response_transformer_prior_37)

@@ -6,14 +6,14 @@ local http      = require("resty.http")
 local fmt       = string.format
 local os        = os
 local parse_url = require("socket.url").parse
-local utils     = require("kong.tools.utils")
 --
 
 -- static
 local str_find     = string.find
 local str_sub      = string.sub
 local string_match = string.match
-local split        = utils.split
+local split        = require("kong.tools.string").split
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 local function str_ltrim(s) -- remove leading whitespace from string.
   return (s:gsub("^%s*", ""))
@@ -356,7 +356,7 @@ end
 
 function _M.resolve_plugin_conf(kong_request, conf)
   local err
-  local conf_m = utils.cycle_aware_deep_copy(conf)
+  local conf_m = cycle_aware_deep_copy(conf)
 
   -- handle model name
   local model_m = string_match(conf_m.model.name or "", '%$%((.-)%)')

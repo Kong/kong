@@ -1,6 +1,6 @@
 local DB      = require "kong.db"
 local helpers = require "spec.helpers"
-local utils   = require "kong.tools.utils"
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 
 for _, strategy in helpers.each_strategy() do
@@ -65,7 +65,7 @@ describe("db_spec [#" .. strategy .. "]", function()
       end)
 
       postgres_only("initializes infos with custom schema", function()
-        local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
+        local conf = cycle_aware_deep_copy(helpers.test_conf)
 
         conf.pg_schema = "demo"
 
@@ -88,7 +88,7 @@ describe("db_spec [#" .. strategy .. "]", function()
       end)
 
       postgres_only("initializes infos with readonly support", function()
-        local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
+        local conf = cycle_aware_deep_copy(helpers.test_conf)
 
         conf.pg_ro_host = "127.0.0.1"
 
@@ -151,7 +151,7 @@ describe("db_spec [#" .. strategy .. "]", function()
     end)
 
     postgres_only("initializes infos with custom schema", function()
-      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
+      local conf = cycle_aware_deep_copy(helpers.test_conf)
 
       conf.pg_schema = "demo"
 
@@ -216,7 +216,7 @@ describe("db_spec [#" .. strategy .. "]", function()
     end)
 
     postgres_only("connects to custom schema when configured", function()
-      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
+      local conf = cycle_aware_deep_copy(helpers.test_conf)
 
       conf.pg_schema = "demo"
 
@@ -300,7 +300,7 @@ describe("db_spec [#" .. strategy .. "]", function()
     postgres_only("returns opened connection with ssl (IS_CLI=false)", function()
       ngx.IS_CLI = false
 
-      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
+      local conf = cycle_aware_deep_copy(helpers.test_conf)
 
       conf.pg_ssl = true
 
@@ -326,7 +326,7 @@ describe("db_spec [#" .. strategy .. "]", function()
     postgres_only("returns opened connection with ssl (IS_CLI=true)", function()
       ngx.IS_CLI = true
 
-      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
+      local conf = cycle_aware_deep_copy(helpers.test_conf)
 
       conf.pg_ssl = true
 
@@ -352,7 +352,7 @@ describe("db_spec [#" .. strategy .. "]", function()
     postgres_only("connects to postgres with readonly account (IS_CLI=false)", function()
       ngx.IS_CLI = false
 
-      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
+      local conf = cycle_aware_deep_copy(helpers.test_conf)
       conf.pg_ro_host = conf.pg_host
 
       local db, err = DB.new(conf, strategy)
@@ -380,7 +380,7 @@ describe("db_spec [#" .. strategy .. "]", function()
     postgres_only("connects to postgres with readonly account (IS_CLI=true)", function()
       ngx.IS_CLI = true
 
-      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
+      local conf = cycle_aware_deep_copy(helpers.test_conf)
       conf.pg_ro_host = conf.pg_host
 
       local db, err = DB.new(conf, strategy)
@@ -420,7 +420,7 @@ describe("db_spec [#" .. strategy .. "]", function()
     postgres_only("establish new connection when error occurred", function()
       ngx.IS_CLI = false
 
-      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
+      local conf = cycle_aware_deep_copy(helpers.test_conf)
       conf.pg_ro_host = conf.pg_host
       conf.pg_ro_user = conf.pg_user
 
@@ -515,7 +515,7 @@ describe("db_spec [#" .. strategy .. "]", function()
     postgres_only("returns true when there is a stored connection with ssl (IS_CLI=false)", function()
       ngx.IS_CLI = false
 
-      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
+      local conf = cycle_aware_deep_copy(helpers.test_conf)
 
       conf.pg_ssl = true
 
@@ -543,7 +543,7 @@ describe("db_spec [#" .. strategy .. "]", function()
     postgres_only("returns true when there is a stored connection with ssl (IS_CLI=true)", function()
       ngx.IS_CLI = true
 
-      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
+      local conf = cycle_aware_deep_copy(helpers.test_conf)
 
       conf.pg_ssl = true
 
@@ -598,7 +598,7 @@ describe("db_spec [#" .. strategy .. "]", function()
     postgres_only("keepalives both read only and write connection (IS_CLI=false)", function()
       ngx.IS_CLI = false
 
-      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
+      local conf = cycle_aware_deep_copy(helpers.test_conf)
       conf.pg_ro_host = conf.pg_host
 
       local db, err = DB.new(conf, strategy)
@@ -635,7 +635,7 @@ describe("db_spec [#" .. strategy .. "]", function()
     postgres_only("connects and keepalives only write connection (IS_CLI=true)", function()
       ngx.IS_CLI = true
 
-      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
+      local conf = cycle_aware_deep_copy(helpers.test_conf)
       conf.pg_ro_host = conf.pg_host
 
       local db, err = DB.new(conf, strategy)
@@ -724,7 +724,7 @@ describe("db_spec [#" .. strategy .. "]", function()
     postgres_only("returns true when there is a stored connection with ssl (IS_CLI=false)", function()
       ngx.IS_CLI = false
 
-      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
+      local conf = cycle_aware_deep_copy(helpers.test_conf)
 
       conf.pg_ssl = true
 
@@ -750,7 +750,7 @@ describe("db_spec [#" .. strategy .. "]", function()
     postgres_only("returns true when there is a stored connection with ssl (IS_CLI=true)", function()
       ngx.IS_CLI = true
 
-      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
+      local conf = cycle_aware_deep_copy(helpers.test_conf)
 
       conf.pg_ssl = true
 
@@ -802,7 +802,7 @@ describe("db_spec [#" .. strategy .. "]", function()
     postgres_only("returns true when both read-only and write connection exists (IS_CLI=false)", function()
       ngx.IS_CLI = false
 
-      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
+      local conf = cycle_aware_deep_copy(helpers.test_conf)
       conf.pg_ro_host = conf.pg_host
 
       local db, err = DB.new(conf, strategy)
@@ -839,7 +839,7 @@ describe("db_spec [#" .. strategy .. "]", function()
     postgres_only("returns true when both read-only and write connection exists (IS_CLI=true)", function()
       ngx.IS_CLI = true
 
-      local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
+      local conf = cycle_aware_deep_copy(helpers.test_conf)
       conf.pg_ro_host = conf.pg_host
 
       local db, err = DB.new(conf, strategy)

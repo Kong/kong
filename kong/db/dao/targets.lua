@@ -10,7 +10,7 @@ local ipairs = ipairs
 local table = table
 local type = type
 local min = math.min
-local table_merge = utils.table_merge
+local table_merge = require("kong.tools.table").table_merge
 
 
 local _TARGETS = {}

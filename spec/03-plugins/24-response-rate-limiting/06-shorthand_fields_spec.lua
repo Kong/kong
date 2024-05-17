@@ -118,7 +118,7 @@ describe("Plugin: response-ratelimiting (shorthand fields)", function()
       })
 
       json = cjson.decode(assert.res_status(200, res))
-      local patched_config = utils.cycle_aware_deep_copy(plugin_config)
+      local patched_config = require("kong.tools.table").cycle_aware_deep_copy(plugin_config)
       patched_config.redis_host = updated_host
       assert_redis_config_same(patched_config, json.config)
 

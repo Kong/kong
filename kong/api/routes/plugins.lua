@@ -1,9 +1,9 @@
 local cjson = require "cjson"
-local utils = require "kong.tools.utils"
 local reports = require "kong.reports"
 local endpoints = require "kong.api.endpoints"
 local arguments = require "kong.api.arguments"
 local api_helpers = require "kong.api.api_helpers"
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 
 local ngx = ngx
@@ -20,7 +20,7 @@ local function reports_timer(premature, data)
     return
   end
 
-  local r_data = utils.cycle_aware_deep_copy(data)
+  local r_data = cycle_aware_deep_copy(data)
 
   r_data.config = nil
   r_data.route = nil

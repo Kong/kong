@@ -1,6 +1,7 @@
 local cjson    = require "cjson"
 local lyaml    = require "lyaml"
 local utils    = require "kong.tools.utils"
+local kong_table = require "kong.tools.table"
 local pl_utils = require "pl.utils"
 local helpers  = require "spec.helpers"
 local Errors   = require "kong.db.errors"
@@ -2733,7 +2734,7 @@ R6InCcH2Wh8wSeY5AuDXvu2tv9g/PW9wIJmPuKSHMA==
     }
     -- this has the same <addr>:<port> tuple as the first target, so it will
     -- be assigned the same id
-    local dupe_target = utils.deep_copy(target)
+    local dupe_target = kong_table.deep_copy(target)
     dupe_target.tags = { "target-2" }
 
     local input = {
