@@ -704,6 +704,8 @@ end
 -- one for each prefix length and one for all regular expressions
 local function split_routes_and_services_by_path(routes_and_services)
   local routes_and_services_count = #routes_and_services
+  local appending_index = routes_and_services_count
+
   for routes_and_services_index = 1, routes_and_services_count do
     local route_and_service = routes_and_services[routes_and_services_index]
     local original_route = route_and_service.route
@@ -741,8 +743,8 @@ local function split_routes_and_services_by_path(routes_and_services)
       -- at the end of the routes and services array.
       local index = routes_and_services_index
       if grouped_paths_index > 1 then
-        routes_and_services_count = routes_and_services_count + 1
-        index = routes_and_services_count
+        appending_index = appending_index + 1
+        index = appending_index
       end
 
       routes_and_services[index] = {
