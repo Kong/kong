@@ -185,11 +185,12 @@ local function get_wasm_filters(filters_path)
         filter_files[pathname] = pathname
 
         local extension = pl_path.extension(entry)
-        if string.lower(extension) == ".wasm" then
+        if lower(extension) == ".wasm" then
           insert(wasm_filters, {
             name = entry:sub(0, -#extension - 1),
             path = pathname,
           })
+
         else
           log.debug("ignoring file ", entry, " in ", filters_path, ": does not contain wasm suffix")
         end
