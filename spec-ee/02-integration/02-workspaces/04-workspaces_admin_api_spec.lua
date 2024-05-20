@@ -7,7 +7,6 @@
 
 local helpers     = require "spec.helpers"
 local ee_helpers  = require "spec-ee.helpers"
-local enums       = require "kong.enterprise_edition.dao.enums"
 local rbac        = require "kong.rbac"
 local cjson       = require "cjson"
 local utils       = require "kong.tools.utils"
