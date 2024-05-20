@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { getUrl, expect, logResponse } from '@support';
+import { getUrl, expect, logResponse, waitForConfigRebuild } from '@support';
 import { authDetails } from '@fixtures';
 
 const url = getUrl('licenses');
@@ -17,6 +17,9 @@ export const postGatewayEeLicense = async () => {
   logResponse(resp);
   expect(resp.status, 'Status should be 201').to.equal(201);
   console.log('Gateway EE License was successfully posted');
+
+  // wait until the license is applied
+  await waitForConfigRebuild();
 
   return resp.data;
 };
