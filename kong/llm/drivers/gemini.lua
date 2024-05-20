@@ -81,9 +81,53 @@ local function to_gemini_chat_openai(request_table, model_info, route_type)
     return new_r, "application/json", nil
   end
 
-  local err = "empty request table received for transformation"
-  ngx.log(ngx.ERR, err)
-  return nil, nil, err
+  local new_r = {}
+
+  if request_table.messages and #request_table.messages > 0 then
+    local system_prompt
+
+    for i, v in ipairs(request_table.messages) do
+
+      -- for 'system', we just concat them all into one Gemini instruction
+      if v.role and v.role == "system" then
+        system_prompt = system_prompt or buffer.new()
+        system_prompt:put(v.content or "")
+      else
+        -- for any other role, just construct the chat history as 'parts.text' type
+        new_r.contents = new_r.contents or {}
+        table_insert(new_r.contents, {
+          role = _OPENAI_ROLE_MAPPING[v.role or "user"],  -- default to 'user'
+          parts = {
+            {
+              text = v.content or ""
+            },
+          },
+        })
+      end
+    end
+
+    -- only works for gemini 1.5+
+    -- if system_prompt then
+    --   if string_sub(model_info.name, 1, 10) == "gemini-1.0" then
+    --     return nil, nil, "system prompts only work with gemini models 1.5 or later"
+    --   end
+
+    --   new_r.systemInstruction = {
+    --     parts = {
+    --       {
+    --         text = system_prompt:get(),
+    --       },
+    --     },
+    --   }
+    -- end
+    --
+  end
+
+  kong.log.debug(cjson.encode(new_r))
+
+  new_r.generationConfig = to_gemini_generation_config(request_table)
+
+  return new_r, "application/json", nil
 end
 
 local function from_gemini_chat_openai(response, model_info, route_type)
@@ -184,7 +228,7 @@ function _M.to_format(request_table, model_info, route_type)
     model_info
   )
   if err or (not ok) then
-    return nil, nil, fmt("error transforming to %s://%s", model_info.provider, route_type)
+    return nil, nil, fmt("error transforming to %s://%s: %s", model_info.provider, route_type, err)
   end
 
   return response_object, content_type, nil
