@@ -30,10 +30,14 @@ for _, strategy in helpers.each_strategy() do
         [[./spec/fixtures/custom_plugins/?.lua;]]..
         [[./spec/fixtures/custom_plugins/?/init.lua;" ]]
 
+      -- bootstrap db in case it's not done yet
+      -- ignore errors if it's already bootstrapped
+      helpers.kong_exec("migrations bootstrap -c " .. helpers.test_conf_path, env, true, lua_path)
+
       local cmdline = "migrations up -c " .. helpers.test_conf_path
       local _, code, _, stderr = helpers.kong_exec(cmdline, env, true, lua_path)
-      assert.same(0, code)
       assert.equal("", stderr)
+      assert.same(0, code)
 
       local _
       _, db = helpers.get_db_utils(strategy, {
