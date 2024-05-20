@@ -194,14 +194,14 @@ for _, strategy in helpers.each_strategy() do
 
         ngx.sleep(1)
 
-        helpers.wait_until(function()
+        helpers.pwait_until(function()
           local status, body = client_send({
             method = "GET",
             path = "/hits",
           })
           assert.equal(200, status)
           local hits = tonumber(body)
-          return assert(hits == 1, "hits: " .. hits)
+          assert.same(1, hits)
         end, 10)
     end)
 
