@@ -108,7 +108,7 @@ _M.operation_map = {
   },
   gemini = {
     ["llm/v1/chat"] = {
-      path = "/v1/models/%s:generateContent",  -- /v1/models/gemini-pro:generateContent,
+      path = "/v1/models/%s:generateContent",
       method = "POST",
     },
   },
