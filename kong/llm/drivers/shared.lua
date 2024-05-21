@@ -16,7 +16,7 @@ local split        = require("kong.tools.string").split
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 local function str_ltrim(s) -- remove leading whitespace from string.
-  return (s:gsub("^%s*", ""))
+  return type(s) == "string" and s:gsub("^%s*", "")
 end
 --
 
@@ -221,6 +221,11 @@ end
 function _M.frame_to_events(frame)
   local events = {}
 
+  if (not frame) or #frame < 1 then
+    return
+  end
+
+  -- check if it's raw json and just return the split up data frame
   -- Cohere / Other flat-JSON format parser
   -- just return the split up data frame
   if (not kong or not kong.ctx.plugin.truncated_frame) and string.sub(str_ltrim(frame), 1, 1) == "{" then
