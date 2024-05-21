@@ -87,10 +87,6 @@ function push_package () {
 
   # TODO: CE gateway-src
 
-  if [ "$ARTIFACT_TYPE" == "alpine" ]; then
-    dist_version=
-  fi
-
   if [ "$ARTIFACT_VERSION" == "18.04" ]; then
     dist_version="--dist-version bionic"
   fi
