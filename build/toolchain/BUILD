@@ -63,6 +63,14 @@ define_managed_toolchain(
     vendor = "alpine",
 )
 
+define_managed_toolchain(
+    arch = "x86_64",
+    gcc_version = aarch64_glibc_distros["aws2"],
+    libc = "gnu",
+    target_compatible_with = ["//build/platforms/distro:aws2"],
+    vendor = "aws2",
+)
+
 [
     define_managed_toolchain(
         arch = "aarch64",

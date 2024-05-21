@@ -68,3 +68,11 @@ def toolchain_repositories():
         strip_prefix = "aarch64-aws2-linux-gnu",
         build_file_content = build_file_content,
     )
+
+    http_archive(
+        name = "x86_64-aws2-linux-gnu-gcc-7",
+        url = "https://github.com/Kong/crosstool-ng-actions/releases/download/0.7.0/x86_64-aws2-linux-gnu-glibc-2.26-gcc-7.tar.gz",
+        sha256 = "645c242d13bf456ca59a7e9701e9d2f53336fd0497ccaff2b151da9921469985",
+        strip_prefix = "x86_64-aws2-linux-gnu",
+        build_file_content = build_file_content,
+    )
