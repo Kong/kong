@@ -24,6 +24,11 @@ local _M = {
 }
 
 
+-- static messages
+local ERROR_MSG = { error = { message = "" } }
+local ERROR__NOT_SET = 'data: {"error": true, "message": "empty or unsupported transformer response"}'
+
+
 local _KEYBASTION = setmetatable({}, {
   __mode = "k",
   __index = function(this_cache, plugin_config)
@@ -92,14 +97,17 @@ local function handle_streaming_frame(conf)
     -- because we have already 200 OK'd the client by now
 
     if (not finished) and (is_gzip) then
-      chunk = kong_utils.inflate_gzip(chunk)
+      chunk = kong_utils.inflate_gzip(ngx.arg[1])
     end
 
-    local events = ai_shared.frame_to_events(chunk)
+    local events = ai_shared.frame_to_events(chunk, conf.model.provider == "gemini")
 
     if not events then
-      local response = 'data: {"error": true, "message": "empty transformer response"}'
-      
+      -- usually a not-supported-transformer or empty frames.
+      -- header_filter has already run, so all we can do is log it,
+      -- and then send the client a readable error in a single chunk
+      local response = ERROR__NOT_SET
+
       if is_gzip then
         response = kong_utils.deflate_gzip(response)
       end
@@ -419,8 +427,9 @@ function _M:access(conf)
       return bad_request("response streaming is not enabled for this LLM")
     end
 
-    -- store token cost estimate, on first pass
-    if not kong_ctx_plugin.ai_stream_prompt_tokens then
+    -- store token cost estimate, on first pass, if the
+    -- provider doesn't reply with a prompt token count
+    if (not kong.ctx.plugin.ai_stream_prompt_tokens) and (not ai_shared.streaming_has_token_counts[conf_m.model.provider]) then
       local prompt_tokens, err = ai_shared.calculate_cost(request_table or {}, {}, 1.8)
       if err then
         kong.log.err("unable to estimate request token cost: ", err)
@@ -468,7 +477,7 @@ function _M:access(conf)
 
   -- get the provider's cached identity interface - nil may come back, which is fine
   local identity_interface = _KEYBASTION[conf]
-  if identity_interface.error then
+  if identity_interface and identity_interface.error then
     kong.ctx.shared.skip_response_transformer = true
     kong.log.err("error authenticating with cloud-provider, ", identity_interface.error)
 
@@ -476,7 +485,8 @@ function _M:access(conf)
   end
 
   -- now re-configure the request for this operation type
-  local ok, err = ai_driver.configure_request(conf_m, identity_interface.interface)
+  local ok, err = ai_driver.configure_request(conf_m,
+               identity_interface and identity_interface.interface)
   if not ok then
     kong_ctx_shared.skip_response_transformer = true
     kong.log.err("failed to configure request for AI service: ", err)
