@@ -283,6 +283,9 @@ function _M.frame_to_events(frame, provider)
         events[#events + 1] = struct
         struct = { event = nil, id = nil, data = nil }
       end
+    else
+      local event_lines = split(frame, "\n")
+      local struct = { event = nil, id = nil, data = nil }
 
       -- test for truncated chunk on the last line (no trailing \r\n\r\n)
       if #dat > 0 and #event_lines == i then
@@ -305,12 +308,17 @@ function _M.frame_to_events(frame, provider)
         local field = str_sub(dat, 1, s1-1) -- returns "data" from data: hello world
         local value = str_ltrim(str_sub(dat, s1+1)) -- returns "hello world" from data: hello world
 
-        -- for now not checking if the value is already been set
-        if     field == "event" then struct.event = value
-        elseif field == "id"    then struct.id = value
-        elseif field == "data"  then struct.data = value
+        if s1 and s1 ~= 1 then
+          local field = str_sub(dat, 1, s1-1) -- returns "data " from data: hello world
+          local value = str_ltrim(str_sub(dat, s1+1)) -- returns "hello world" from data: hello world
+
+          -- for now not checking if the value is already been set
+          if     field == "event" then struct.event = value
+          elseif field == "id"    then struct.id = value
+          elseif field == "data"  then struct.data = value
+          end -- if
         end -- if
-      end -- if
+      end
     end
   end
   
