@@ -310,23 +310,43 @@ end
 -- returns err or nil
 function _M.configure_request(conf)
   local parsed_url
+  local operation = kong.ctx.shared.ai_proxy_streaming_mode and "streamGenerateContent"
+                                                             or "generateContent"
+  local f_url = conf.model.options and conf.model.options.upstream_url
 
-  if (conf.model.options and conf.model.options.upstream_url) then
-    parsed_url = socket_url.parse(conf.model.options.upstream_url)
-  else
-    local path = conf.model.options
-             and conf.model.options.upstream_path
-             or ai_shared.operation_map[DRIVER_NAME][conf.route_type]
-             and fmt(ai_shared.operation_map[DRIVER_NAME][conf.route_type].path, conf.model.name)
-             or "/"
-    if not path then
-      return nil, fmt("operation %s is not supported for openai provider", conf.route_type)
+  if not f_url then  -- upstream_url override is not set
+    -- check if this is "public" or "vertex" gemini deployment
+    if conf.model.options.gemini
+        and conf.model.options.gemini.api_endpoint
+        and conf.model.options.gemini.project_id
+        and conf.model.options.gemini.location_id
+    then
+      -- vertex mode
+      f_url = fmt(ai_shared.upstream_url_format["gemini_vertex"],
+                  conf.model.options.gemini.api_endpoint) ..
+              fmt(ai_shared.operation_map["gemini_vertex"][conf.route_type].path,
+                  conf.model.options.gemini.project_id,
+                  conf.model.options.gemini.location_id,
+                  conf.model.name,
+                  operation)
+    else
+      -- public mode
+      f_url = ai_shared.upstream_url_format["gemini"] ..
+              fmt(ai_shared.operation_map["gemini"][conf.route_type].path,
+                  conf.model.name,
+                  operation)
     end
-
-    parsed_url = socket_url.parse(ai_shared.upstream_url_format[DRIVER_NAME])
-    parsed_url.path = path
   end
-  
+
+  parsed_url = socket_url.parse(f_url)
+
+  kong.log.inspect(parsed_url)
+
+  if conf.model.options and conf.model.options.upstream_path then
+    -- upstream path override is set (or templated from request params)
+    parsed_url.path = conf.model.options.upstream_path
+  end
+
   -- if the path is read from a URL capture, ensure that it is valid
   parsed_url.path = string_gsub(parsed_url.path, "^/*", "/")
 
@@ -349,6 +369,11 @@ function _M.configure_request(conf)
     query_table[auth_param_name] = auth_param_value
     kong.service.request.set_query(query_table)
   end
+
+  ---- DEBUG REMOVE THIS
+  local auth = require("resty.gcp.request.credentials.accesstoken"):new(conf.auth.gcp_service_account_json)
+  kong.service.request.set_header("Authorization", "Bearer " .. auth.token)
+  ----
 
   -- if auth_param_location is "form", it will have already been set in a global pre-request hook
   return true, nil
