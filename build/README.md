@@ -69,11 +69,9 @@ GITHUB_TOKEN=token bazel build --config release //build:kong --verbose_failures
 
 Supported build targets for binary packages:
 - `:kong_deb`
-- `:kong_el7`
 - `:kong_el8`
 - `:kong_aws2`
 - `:kong_aws2023`
-- `:kong_apk`
 
 For example, to build the deb package:
 
