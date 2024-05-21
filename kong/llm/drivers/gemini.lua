@@ -32,6 +32,69 @@ local function to_gemini_generation_config(request_table)
   }
 end
 
+local function handle_stream_event(event_t, model_info, route_type)
+  local metadata
+
+  
+  -- discard empty frames, it should either be a random new line, or comment
+  if (not event_t.data) or (#event_t.data < 1) then
+    return
+  end
+  
+  local event, err = cjson.decode(event_t.data)
+  if err then
+    ngx.log(ngx.WARN, "failed to decode stream event frame from gemini: " .. err)
+    return nil, "failed to decode stream event frame from gemini", nil
+  end
+
+  local new_event
+  local metadata
+
+  if event.candidates and
+     #event.candidates > 0 then
+    
+    if event.candidates[1].content and
+        event.candidates[1].content.parts and
+        #event.candidates[1].content.parts > 0 and
+        event.candidates[1].content.parts[1].text then
+      
+      new_event = {
+        choices = {
+          [1] = {
+            delta = {
+              content = event.candidates[1].content.parts[1].text or "",
+              role = "assistant",
+            },
+            index = 0,
+          },
+        },
+      }
+    end
+
+    if event.candidates[1].finishReason then
+      metadata = metadata or {}
+      metadata.finished_reason = event.candidates[1].finishReason
+      new_event = "[DONE]"
+    end
+  end
+
+  if event.usageMetadata then
+    metadata = metadata or {}
+    metadata.completion_tokens = event.usageMetadata.candidatesTokenCount or 0
+    metadata.prompt_tokens     = event.usageMetadata.promptTokenCount or 0
+  end
+  
+  if new_event then
+    if new_event ~= "[DONE]" then
+      new_event = cjson.encode(new_event)
+    end
+
+    return new_event, nil, metadata
+  else
+    return nil, nil, metadata  -- caller code will handle "unrecognised" event types
+  end
+end
+
 local function to_gemini_chat_openai(request_table, model_info, route_type)
   if request_table then  -- try-catch type mechanism
     local new_r = {}
@@ -180,12 +243,11 @@ end
 
 local transformers_to = {
   ["llm/v1/chat"] = to_gemini_chat_openai,
-  ["gemini/v1/chat"] = to_gemini_chat_gemini,
 }
 
 local transformers_from = {
   ["llm/v1/chat"] = from_gemini_chat_openai,
-  ["gemini/v1/chat"] = from_gemini_chat_gemini,
+  ["stream/llm/v1/chat"] = handle_stream_event,
 }
 
 function _M.from_format(response_string, model_info, route_type)
@@ -196,7 +258,7 @@ function _M.from_format(response_string, model_info, route_type)
     return nil, fmt("no transformer available from format %s://%s", model_info.provider, route_type)
   end
   
-  local ok, response_string, err = pcall(transformers_from[route_type], response_string, model_info, route_type)
+  local ok, response_string, err, metadata = pcall(transformers_from[route_type], response_string, model_info, route_type)
   if not ok or err then
     return nil, fmt("transformation failed from type %s://%s: %s",
                     model_info.provider,
@@ -205,7 +267,7 @@ function _M.from_format(response_string, model_info, route_type)
                   )
   end
 
-  return response_string, nil
+  return response_string, nil, metadata
 end
 
 function _M.to_format(request_table, model_info, route_type)
@@ -302,7 +364,8 @@ function _M.post_request(conf)
 end
 
 function _M.pre_request(conf, body)
-  kong.service.request.set_header("Accept-Encoding", "gzip, identity") -- tell server not to send brotli
+  -- disable gzip for gemini because it breaks streaming
+  kong.service.request.set_header("Accept-Encoding", "identity")
 
   return true, nil
 end
@@ -340,8 +403,6 @@ function _M.configure_request(conf, identity_interface)
   end
 
   parsed_url = socket_url.parse(f_url)
-
-  kong.log.inspect(parsed_url)
 
   if conf.model.options and conf.model.options.upstream_path then
     -- upstream path override is set (or templated from request params)
