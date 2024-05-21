@@ -222,26 +222,9 @@ end
 function _M.frame_to_events(frame, raw_json_mode)
   local events = {}
 
-  if (not frame) or (#frame < 1) or (type(frame)) ~= "string" then
+  if (not frame) or #frame < 1 then
     return
   end
-
-  -- some new LLMs return the JSON object-by-object,
-  -- because that totally makes sense to parse?!
-  if raw_json_mode then
-    -- if this is the first frame, it will begin with array opener '['
-    frame = (string.sub(str_ltrim(frame), 1, 1) == "[" and string.sub(str_ltrim(frame), 2)) or frame
-
-    -- it may start with ',' which is the start of the new frame
-    frame = (string.sub(str_ltrim(frame), 1, 1) == "," and string.sub(str_ltrim(frame), 2)) or frame
-    
-    -- finally, it may end with the array terminator ']' indicating the finished stream
-    frame = (string.sub(str_ltrim(frame), -1) == "]" and string.sub(str_ltrim(frame), 1, -2)) or frame
-
-    -- for multiple events that arrive in the same frame, split by top-level comma
-    for _, v in ipairs(split(frame, "\n,")) do
-      events[#events+1] = { data = v }
-    end
 
   -- check if it's raw json and just return the split up data frame
   -- Cohere / Other flat-JSON format parser
