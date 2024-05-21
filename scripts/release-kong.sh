@@ -71,9 +71,6 @@ case "$ARTIFACT_TYPE" in
   rhel)
     OUTPUT_FILE_SUFFIX=".rhel$ARTIFACT_VERSION.$ARCHITECTURE.rpm"
     ;;
-  alpine)
-    OUTPUT_FILE_SUFFIX=".$ARCHITECTURE.apk.tar.gz"
-    ;;
   amazonlinux)
     OUTPUT_FILE_SUFFIX=".aws.$ARCHITECTURE.rpm"
     ;;

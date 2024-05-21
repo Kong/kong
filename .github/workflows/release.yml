@@ -718,7 +718,7 @@ jobs:
         sha256sum bazel-bin/pkg/*
 
         if [[ ${{ matrix.label }} == *-fips ]]; then
-          # this is required for rpm and apk packages, but not for deb
+          # this is required for rpm packages, but not for deb
           export KONG_PACKAGE_NAME_OVERRIDE=kong-enterprise-edition-fips
         fi
 

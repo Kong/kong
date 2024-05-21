@@ -95,9 +95,6 @@ overrides:
     - ${RPM_EXTRA_DEPS}
     - ${RPM_EXTRA_DEPS_2}
     - ${RPM_EXTRA_DEPS_3}
-  apk:
-    depends:
-    - ca-certificates
 
 rpm:
   signature:

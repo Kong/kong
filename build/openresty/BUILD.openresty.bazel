@@ -188,19 +188,6 @@ CONFIGURE_OPTIONS = [
         "--with-time-t=8",
         "--with-sys-nerr=132",
     ],
-    "@kong//:x86_64-linux-musl-cross": [
-        "--crossbuild=Linux:x86_64",
-        "--with-endian=little",
-        "--with-int=4",
-        "--with-long=8",
-        "--with-long-long=8",
-        "--with-ptr-size=8",
-        "--with-sig-atomic-t=4",
-        "--with-size-t=8",
-        "--with-off-t=8",
-        "--with-time-t=8",
-        "--with-sys-nerr=132",
-    ],
     "//conditions:default": [],
 }) + select({
     "@kong//:any-cross": [
@@ -209,9 +196,7 @@ CONFIGURE_OPTIONS = [
     ],
     "//conditions:default": [],
 }) + select({
-    # any cross build that migrated to use libxcrypt needs those flags
-    # alpine uses different libc so doesn't need it
-    "@kong//:aarch64-linux-anylibc-cross": [
+    ":needs-xcrypt2": [
         "--with-cc-opt=\"-I$$EXT_BUILD_DEPS$$/libxcrypt/include\"",
         "--with-ld-opt=\"-L$$EXT_BUILD_DEPS$$/libxcrypt/lib\"",
     ],
@@ -322,7 +307,6 @@ configure_make(
         "//conditions:default": [],
     }) + select({
         # any cross build that migrated to use libxcrypt needs those flags
-        # alpine uses different libc so doesn't need it
         ":needs-xcrypt2": [
             "@cross_deps_libxcrypt//:libxcrypt",
         ],
