@@ -118,6 +118,19 @@ local function handle_streaming_frame(conf)
       return
     end
 
+    if not events then
+      local response = 'data: {"error": true, "message": "empty transformer response"}'
+      
+      if is_gzip then
+        response = kong_utils.deflate_gzip(response)
+      end
+
+      ngx.arg[1] = response
+      ngx.arg[2] = true
+
+      return
+    end
+
     for _, event in ipairs(events) do
       local formatted, _, metadata = ai_driver.from_format(event, conf.model, "stream/" .. conf.route_type)
 
