@@ -21,7 +21,6 @@ filegroup(
 """
 
 def toolchain_repositories():
-
     http_archive(
         name = "aarch64-rhel9-linux-gnu-gcc-11",
         url = "https://github.com/Kong/crosstool-ng-actions/releases/download/0.7.0/aarch64-rhel9-linux-gnu-glibc-2.34-gcc-11.tar.gz",
