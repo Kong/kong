@@ -13,6 +13,7 @@ local timer_at  = ngx.timer.at
 local ngx_update_time = ngx.update_time
 
 local knode = kong and kong.node or require "kong.pdk.node".new()
+local concurrency = require "kong.concurrency"
 
 local POLL_INTERVAL_LOCK_KEY = "cluster_events:poll_interval"
 local POLL_RUNNING_LOCK_KEY  = "cluster_events:poll_running"
@@ -326,80 +327,45 @@ if ngx_debug then
 end
 
 
-local function get_lock(self)
-  -- check if a poll is not currently running, to ensure we don't start
-  -- another poll while a worker is still stuck in its own polling (in
-  -- case it is being slow)
-  -- we still add an exptime to this lock in case something goes horribly
-  -- wrong, to ensure other workers can poll new events
-  -- a poll cannot take more than max(poll_interval * 5, 10) -- 10s min
-  local ok, err = self.shm:safe_add(POLL_RUNNING_LOCK_KEY, true,
-                                    max(self.poll_interval * 5, 10))
-  if not ok then
-    if err ~= "exists" then
-      log(ERR, "failed to acquire poll_running lock: ", err)
-    end
-    -- else
-    --   log(DEBUG, "failed to acquire poll_running lock: ",
-    --              "a worker still holds the lock")
-
-    return false
-  end
-
-  if self.poll_interval > 0.001 then
-    -- check if interval of `poll_interval` has elapsed already, to ensure
-    -- we do not run the poll when a previous poll was quickly executed, but
-    -- another worker got the timer trigger a bit too late.
-    ok, err = self.shm:safe_add(POLL_INTERVAL_LOCK_KEY, true,
-                                self.poll_interval - 0.001)
-    if not ok then
-      if err ~= "exists" then
-        log(ERR, "failed to acquire poll_interval lock: ", err)
-      end
-      -- else
-      --   log(DEBUG, "failed to acquire poll_interval lock: ",
-      --              "not enough time elapsed since last poll")
-
-      self.shm:delete(POLL_RUNNING_LOCK_KEY)
-
-      return false
-    end
-  end
-
-  return true
-end
-
-
 poll_handler = function(premature, self)
   if premature or not self.polling then
     -- set self.polling to false to stop a polling loop
     return
   end
 
-  if not get_lock(self) then
-    local ok, err = timer_at(self.poll_interval, poll_handler, self)
-    if not ok then
-      log(CRIT, "failed to start recurring polling timer: ", err)
+  -- check if a poll is not currently running, to ensure we don't start
+  -- another poll while a worker is still stuck in its own polling (in
+  -- case it is being slow)
+  -- we still add an exptime to this lock in case something goes horribly
+  -- wrong, to ensure other workers can poll new events
+  -- a poll cannot take more than max(poll_interval * 5, 10) -- 10s min
+  local ok, err = concurrency.with_worker_mutex({
+    name = POLL_RUNNING_LOCK_KEY,
+    timeout = 0,
+    exptime = max(self.poll_interval * 5, 10),
+  }, function()
+    if self.poll_interval > 0.001 then
+      -- check if interval of `poll_interval` has elapsed already, to ensure
+      -- we do not run the poll when a previous poll was quickly executed, but
+      -- another worker got the timer trigger a bit too late.
+      return concurrency.with_worker_mutex({
+        name = POLL_INTERVAL_LOCK_KEY,
+        timeout = 0,
+        exptime = self.poll_interval - 0.001,
+      }, function()
+        return poll(self)
+      end)
     end
 
-    return
+    return poll(self)
+  end)
+
+  if not ok and err ~= "exists" then
+    log(ERR, err)
   end
 
-  -- single worker
-
-  local pok, perr, err = pcall(poll, self)
-  if not pok then
-    log(ERR, "poll() threw an error: ", perr)
-
-  elseif not perr then
-    log(ERR, "failed to poll: ", err)
-  end
-
-  -- unlock
-
-  self.shm:delete(POLL_RUNNING_LOCK_KEY)
-
-  local ok, err = timer_at(self.poll_interval, poll_handler, self)
+  -- schedule next polling timer
+  ok, err = timer_at(self.poll_interval, poll_handler, self)
   if not ok then
     log(CRIT, "failed to start recurring polling timer: ", err)
   end
