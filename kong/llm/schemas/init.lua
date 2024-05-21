@@ -2,6 +2,25 @@ local typedefs = require("kong.db.schema.typedefs")
 local fmt = string.format
 
 
+local gemini_options_schema = {
+  type = "record",
+  required = false,
+  fields = {
+    { api_endpoint = {
+        type = "string",
+        description = "If running Gemini on Vertex, specify the regional API endpoint (hostname only).",
+        required = false }},
+    { project_id = {
+        type = "string",
+        description = "If running Gemini on Vertex, specify the project ID.",
+        required = false }},
+    { location_id = {
+        type = "string",
+        description = "If running Gemini on Vertex, specify the location ID.",
+        required = false }},
+  },
+}
+
 
 local auth_schema = {
   type = "record",
@@ -34,9 +53,20 @@ local auth_schema = {
         description = "Specify whether the 'param_name' and 'param_value' options go in a query string, or the POST form/JSON body.",
         required = false,
         one_of = { "query", "body" } }},
+    { gcp_use_service_account = {
+        type = "boolean",
+        description = "Use service account auth for GCP-based providers and models.",
+        required = false,
+        default = false }},
+    { gcp_service_account_json = {
+        type = "string",
+        description = "Set this field to the full JSON of the GCP service account to authenticate, if required. " ..
+                      "If null (and gcp_use_service_account is true), Kong will attempt to read from " ..
+                      "environment variable `GCP_SERVICE_ACCOUNT`.",
+        required = false,
+        referenceable = true }},
   }
 }
-
 
 
 local model_options_schema = {
@@ -110,6 +140,7 @@ local model_options_schema = {
                    .. "used when e.g. using the 'preserve' route_type.",
         type = "string",
         required = false }},
+    { gemini = gemini_options_schema },
   }
 }
 
