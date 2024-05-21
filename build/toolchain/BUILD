@@ -47,22 +47,6 @@ cc_toolchain(
 ###################
 # managed toolchains (downloaded by Bazel)
 
-define_managed_toolchain(
-    arch = "x86_64",
-    gcc_version = "11",
-    libc = "musl",
-    target_compatible_with = ["//build/platforms/distro:alpine"],
-    vendor = "alpine",
-)
-
-define_managed_toolchain(
-    arch = "aarch64",
-    gcc_version = "11",
-    libc = "musl",
-    target_compatible_with = ["//build/platforms/distro:alpine"],
-    vendor = "alpine",
-)
-
 [
     define_managed_toolchain(
         arch = "aarch64",

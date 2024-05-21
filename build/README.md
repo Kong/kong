@@ -224,8 +224,9 @@ Cross compiling is currently only tested on Ubuntu 22.04 x86_64 with following t
 
 - **//:generic-crossbuild-aarch64** Use the system installed aarch64 toolchain.
   - Requires user to manually install `crossbuild-essential-arm64` on Debian/Ubuntu.
-- **//:alpine-crossbuild-x86_64** Alpine Linux x86_64; bazel manages the build toolchain.
-- **//:alpine-crossbuild-aarch64** Alpine Linux aarch64; bazel manages the build toolchain.
+- **//:vendor_name-crossbuild-aarch64** Target to Redhat based Linux aarch64; bazel manages the build toolchain, `vendor_name`
+can be any of `rhel8`, `rhel9`, `aws2` or `aws2023`.
+- **//:aws2-crossbuild-x86_64** Target to AmazonLinux 2 x86_64; bazel manages the build toolchain.
 
 Make sure platforms are selected both in building Kong and packaging kong:
 

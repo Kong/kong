@@ -14,7 +14,7 @@ CONFIGURE_OPTIONS = select({
     "@kong//:aarch64-linux-anylibc-cross": [
         "linux-aarch64",
     ],
-    # no extra args needed for "@kong//:x86_64-linux-musl-cross" or non-cross builds
+    # no extra args needed for non-cross builds
     "//conditions:default": [],
 }) + [
     "-g",

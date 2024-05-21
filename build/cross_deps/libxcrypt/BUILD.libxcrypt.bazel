@@ -29,9 +29,6 @@ configure_make(
         "@kong//:aarch64-linux-anylibc-cross": [
             "--host=aarch64-linux",
         ],
-        "@kong//:x86_64-linux-musl-cross": [
-            "--host=x86_64-linux-musl",
-        ],
         "//conditions:default": [],
     }) + select({
         ":disable-obsolete-api": [
