@@ -22,7 +22,7 @@ local _OPENAI_ROLE_MAPPING = {
   ["assistant"] = "model",
 }
 
-local function to_bard_generation_config(request_table)
+local function to_gemini_generation_config(request_table)
   return {
     ["maxOutputTokens"] = request_table.max_tokens,
     ["stopSequences"] = request_table.stop,
@@ -32,7 +32,7 @@ local function to_bard_generation_config(request_table)
   }
 end
 
-local function to_bard_chat_openai(request_table, model_info, route_type)
+local function to_gemini_chat_openai(request_table, model_info, route_type)
   if request_table then  -- try-catch type mechanism
     local new_r = {}
 
@@ -59,22 +59,22 @@ local function to_bard_chat_openai(request_table, model_info, route_type)
         end
       end
 
-      ---- TODO for some reason this is broken?
-      ---- I think it's something to do with which "regional" endpoint of Gemini you hit...
-      -- if system_prompt then
-      --   new_r.systemInstruction = {
-      --     parts = {
-      --       {
-      --         text = system_prompt:get(),
-      --       },
-      --     },
-      --   }
-      -- end
-      ----
+      -- This was only added in Gemini 1.5
+      if system_prompt and model_info.name:sub(1, 10) == "gemini-1.0" then
+        return nil, nil, "system prompts aren't supported on gemini-1.0 models"
 
+      elseif system_prompt then
+        new_r.systemInstruction = {
+          parts = {
+            {
+              text = system_prompt:get(),
+            },
+          },
+        }
+      end
     end
 
-    new_r.generationConfig = to_bard_generation_config(request_table)
+    new_r.generationConfig = to_gemini_generation_config(request_table)
 
     kong.log.debug(cjson.encode(new_r))
 
@@ -86,7 +86,7 @@ local function to_bard_chat_openai(request_table, model_info, route_type)
   return nil, nil, err
 end
 
-local function from_bard_chat_openai(response, model_info, route_type)
+local function from_gemini_chat_openai(response, model_info, route_type)
   local response, err = cjson.decode(response)
 
   if err then
@@ -126,22 +126,22 @@ local function from_bard_chat_openai(response, model_info, route_type)
   return cjson.encode(messages)
 end
 
-local function to_bard_chat_bard(request_table, model_info, route_type)
-  return nil, nil, "bard to bard not yet implemented"
+local function to_gemini_chat_gemini(request_table, model_info, route_type)
+  return nil, nil, "gemini to gemini not yet implemented"
 end
 
-local function from_bard_chat_bard(request_table, model_info, route_type)
-  return nil, nil, "bard to bard not yet implemented"
+local function from_gemini_chat_gemini(request_table, model_info, route_type)
+  return nil, nil, "gemini to gemini not yet implemented"
 end
 
 local transformers_to = {
-  ["llm/v1/chat"] = to_bard_chat_openai,
-  ["gemini/v1/chat"] = to_gemini_chat_bard,
+  ["llm/v1/chat"] = to_gemini_chat_openai,
+  ["gemini/v1/chat"] = to_gemini_chat_gemini,
 }
 
 local transformers_from = {
-  ["llm/v1/chat"] = from_bard_chat_openai,
-  ["gemini/v1/chat"] = from_gemini_chat_bard,
+  ["llm/v1/chat"] = from_gemini_chat_openai,
+  ["gemini/v1/chat"] = from_gemini_chat_gemini,
 }
 
 function _M.from_format(response_string, model_info, route_type)
