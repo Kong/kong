@@ -5,47 +5,37 @@
 
 - Path      : /usr/local/kong/lib/engines-1.1/afalg.so
   Needed    :
-  - libstdc++.so.6
-  - libm.so.6
   - libcrypto.so.1.1
   - libdl.so.2
   - libc.so.6
-  Runpath   : /usr/local/kong/lib
+  Rpath     : /usr/local/kong/lib
 
 - Path      : /usr/local/kong/lib/engines-1.1/capi.so
   Needed    :
-  - libstdc++.so.6
-  - libm.so.6
   - libcrypto.so.1.1
   - libdl.so.2
   - libc.so.6
-  Runpath   : /usr/local/kong/lib
+  Rpath     : /usr/local/kong/lib
 
 - Path      : /usr/local/kong/lib/engines-1.1/padlock.so
   Needed    :
-  - libstdc++.so.6
-  - libm.so.6
   - libcrypto.so.1.1
   - libdl.so.2
   - libc.so.6
-  Runpath   : /usr/local/kong/lib
+  Rpath     : /usr/local/kong/lib
 
 - Path      : /usr/local/kong/lib/libcrypto.so.1.1
   Needed    :
-  - libstdc++.so.6
-  - libm.so.6
   - libdl.so.2
   - libc.so.6
-  Runpath   : /usr/local/kong/lib
+  Rpath     : /usr/local/kong/lib
 
 - Path      : /usr/local/kong/lib/libssl.so.1.1
   Needed    :
-  - libstdc++.so.6
-  - libm.so.6
   - libcrypto.so.1.1
   - libdl.so.2
   - libc.so.6
-  Runpath   : /usr/local/kong/lib
+  Rpath     : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/lfs.so
   Needed    :
