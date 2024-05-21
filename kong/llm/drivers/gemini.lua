@@ -308,7 +308,7 @@ function _M.pre_request(conf, body)
 end
 
 -- returns err or nil
-function _M.configure_request(conf)
+function _M.configure_request(conf, identity_interface)
   local parsed_url
   local operation = kong.ctx.shared.ai_proxy_streaming_mode and "streamGenerateContent"
                                                              or "generateContent"
@@ -361,6 +361,7 @@ function _M.configure_request(conf)
   local auth_param_value = conf.auth and conf.auth.param_value
   local auth_param_location = conf.auth and conf.auth.param_location
 
+  -- DBO restrictions makes sure that only one of these auth blocks runs in one plugin config
   if auth_header_name and auth_header_value then
     kong.service.request.set_header(auth_header_name, auth_header_value)
   end
@@ -370,14 +371,28 @@ function _M.configure_request(conf)
     query_table[auth_param_name] = auth_param_value
     kong.service.request.set_query(query_table)
   end
-
-  -- ---- DEBUG REMOVE THIS
-  -- local auth = require("resty.gcp.request.credentials.accesstoken"):new(conf.auth.gcp_service_account_json)
-  -- kong.service.request.set_header("Authorization", "Bearer " .. auth.token)
-  -- ----
-
   -- if auth_param_location is "form", it will have already been set in a global pre-request hook
-  return true, nil
+
+  -- if we're passed a GCP SDK, for cloud identity / SSO, use it appropriately
+  if identity_interface then
+    if identity_interface:needsRefresh() then
+      -- HACK: A bug in lua-resty-gcp tries to re-load the environment
+      --       variable every time, which fails in nginx
+      --       Create a whole new interface instead.
+      --       Memory leaks are mega unlikely because this should only
+      --       happen about once an hour, and the old one will be
+      --       cleaned up anyway.
+      local service_account_json = identity_interface.service_account_json
+      local identity_interface_new = identity_interface:new(service_account_json)
+      identity_interface.token = identity_interface_new.token
+
+      kong.log.notice("gcp identity token for ", kong.plugin.get_id(), " has been refreshed")
+    end
+
+    kong.service.request.set_header("Authorization", "Bearer " .. identity_interface.token)
+  end
+
+  return true
 end
 
 return _M
