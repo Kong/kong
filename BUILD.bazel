@@ -42,15 +42,6 @@ nfpm_pkg(
 )
 
 nfpm_pkg(
-    name = "kong_apk",
-    config = "//build:package/nfpm.yaml",
-    env = nfpm_env,
-    packager = "apk",
-    pkg_name = "kong",
-    visibility = ["//visibility:public"],
-)
-
-nfpm_pkg(
     name = "kong_el9",
     config = "//build:package/nfpm.yaml",
     env = nfpm_env,
@@ -67,8 +58,6 @@ nfpm_pkg(
     pkg_name = "kong.el8",
     visibility = ["//visibility:public"],
 )
-
-nfpm_pkg(
 
 nfpm_pkg(
     name = "kong_aws2",
@@ -279,37 +268,6 @@ platform(
     ],
 )
 
-# backward compatibility
-alias(
-    name = "ubuntu-22.04-arm64",
-    actual = ":generic-crossbuild-aarch64",
-)
-
-platform(
-    name = "alpine-crossbuild-x86_64",
-    constraint_values = [
-        "@platforms//os:linux",
-        "@platforms//cpu:x86_64",
-        "//build/platforms/distro:alpine",
-        ":cross_build",
-    ],
-)
-
-# backward compatibility
-alias(
-    name = "alpine-x86_64",
-    actual = ":alpine-crossbuild-x86_64",
-)
-
-platform(
-    name = "alpine-crossbuild-aarch64",
-    constraint_values = [
-        "@platforms//os:linux",
-        "@platforms//cpu:aarch64",
-        "//build/platforms/distro:alpine",
-        ":cross_build",
-    ],
-)
 
 [
     platform(
@@ -336,23 +294,11 @@ config_setting(
     visibility = ["//visibility:public"],
 )
 
-config_setting(
-    name = "x86_64-linux-musl-cross",
-    constraint_values = [
-        "@platforms//os:linux",
-        "@platforms//cpu:x86_64",
-        "//build/platforms/distro:alpine",
-        ":cross_build",
-    ],
-    visibility = ["//visibility:public"],
-)
-
 selects.config_setting_group(
     # matches all cross build platforms
     name = "any-cross",
     match_any = [
         ":aarch64-linux-anylibc-cross",
-        ":x86_64-linux-musl-cross",
     ],
     visibility = ["//visibility:public"],
 )

@@ -38,19 +38,6 @@ def transform(f: FileInfo):
 # - https://repology.org/project/gcc/versions
 # TODO: libstdc++ verions
 targets = {
-    "alpine-amd64": ExpectSuite(
-        name="Alpine Linux (amd64)",
-        manifest="fixtures/alpine-amd64.txt",
-        use_rpath=True,
-        tests={
-            common_suites: {},
-            libc_libcpp_suites: {
-                # alpine 3.16: gcc 11.2.1
-                "libcxx_max_version": "3.4.29",
-                "cxxabi_max_version": "1.3.13",
-            },
-        }
-    ),
     "amazonlinux-2-amd64": ExpectSuite(
         name="Amazon Linux 2 (amd64)",
         manifest="fixtures/amazonlinux-2-amd64.txt",
