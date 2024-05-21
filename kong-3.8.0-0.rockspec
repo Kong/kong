@@ -44,6 +44,7 @@ dependencies = {
   "lpeg == 1.1.0",
   "lua-resty-ljsonschema == 1.1.6-2",
   "lua-resty-snappy == 1.0-1",
+  "lua-resty-gcp == 0.0.13-1",
 }
 build = {
   type = "builtin",
@@ -607,6 +608,7 @@ build = {
     ["kong.llm.drivers.anthropic"] = "kong/llm/drivers/anthropic.lua",
     ["kong.llm.drivers.mistral"] = "kong/llm/drivers/mistral.lua",
     ["kong.llm.drivers.llama2"] = "kong/llm/drivers/llama2.lua",
+    ["kong.llm.auth.gcp] = "kong/llm/auth/gcp.lua",
 
     ["kong.plugins.ai-prompt-decorator.handler"] = "kong/plugins/ai-prompt-decorator/handler.lua",
     ["kong.plugins.ai-prompt-decorator.schema"]  = "kong/plugins/ai-prompt-decorator/schema.lua",
