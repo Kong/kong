@@ -32,6 +32,9 @@ local gemini_options_schema = {
         description = "If running Gemini on Vertex, specify the location ID.",
         required = false }},
   },
+  entity_checks = {
+    { mutually_required = { "api_endpoint", "project_id", "location_id" }, },
+  },
 }
 
 
