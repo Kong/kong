@@ -70,7 +70,14 @@ def _cc_toolchain_config_impl(ctx):
 
         # file is something like external/aarch64-rhel9-linux-gnu-gcc-11/aarch64-rhel9-linux-gnu/bin/ar
         # we will take aarch64-rhel9-linux-gnu-gcc-11/aarch64-rhel9-linux-gnu
-        toolchain_path_prefix = INTERNAL_ROOT + "/" + "/".join(ctx.files.src[0].path.split("/")[1:3])
+        ar_path = None
+        for f in ctx.files.src:
+            if f.path.endswith("bin/ar"):
+                ar_path = f.path
+                break
+        if not ar_path:
+            fail("Cannot find ar in the toolchain")
+        toolchain_path_prefix = INTERNAL_ROOT + "/" + "/".join(ar_path.split("/")[1:3])
 
         _tools_root_dir = INTERNAL_ROOT + "/" + ctx.files.src[0].path.split("/")[1]
         tools_prefix = _tools_root_dir + "/bin/" + tools_prefix
