@@ -50,10 +50,10 @@ build-packages:
 
   # Amazon Linux
 - label: amazonlinux-2
-  image: amazonlinux:2
   package: rpm
   package-type: aws2
   check-manifest-suite: amazonlinux-2-amd64
+  bazel-args: --platforms=//:aws2-crossbuild-x86_64
 - label: amazonlinux-2023
   image: amazonlinux:2023
   package: rpm
