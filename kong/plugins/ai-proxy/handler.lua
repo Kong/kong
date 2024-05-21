@@ -119,8 +119,11 @@ local function handle_streaming_frame(conf)
     end
 
     if not events then
-      local response = 'data: {"error": true, "message": "empty transformer response"}'
-      
+      -- usually a not-supported-transformer or empty frames.
+      -- header_filter has already run, so all we can do is log it,
+      -- and then send the client a readable error in a single chunk
+      local response = ERROR__NOT_SET
+
       if is_gzip then
         response = kong_utils.deflate_gzip(response)
       end
