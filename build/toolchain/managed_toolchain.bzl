@@ -143,6 +143,13 @@ def register_all_toolchains(name = None):
         vendor = "alpine",
     )
 
+    register_managed_toolchain(
+        arch = "x86_64",
+        gcc_version = "7",
+        libc = "gnu",
+        vendor = "aws2",
+    )
+
     for vendor in aarch64_glibc_distros:
         register_managed_toolchain(
             arch = "aarch64",
