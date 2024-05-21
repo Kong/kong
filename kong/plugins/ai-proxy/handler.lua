@@ -365,13 +365,6 @@ function _M:access(conf)
     end
   end
 
-  -- check the incoming format is the same as the configured LLM format
-  local compatible, err = llm.is_compatible(request_table, route_type)
-  if not compatible then
-    kong_ctx_shared.skip_response_transformer = true
-    return bad_request(err)
-  end
-
   -- check if the user has asked for a stream, and/or if
   -- we are forcing all requests to be of streaming type
   if request_table and request_table.stream or
