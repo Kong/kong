@@ -311,6 +311,7 @@ jobs:
         id: execute_tests
         env:
           AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
+          APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
 
       - name: Get Gateway Details
         if: always()
@@ -484,6 +485,7 @@ jobs:
           fi
         env:
           AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
+          APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
 
       - name: Get Gateway Details
         if: always()
@@ -642,6 +644,7 @@ jobs:
           fi
         env:
           AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
+          APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
 
       - name: Send test results to Slack
         if: ${{ env.SEND_SLACK_RESULTS == 'true' && always() && github.ref == 'refs/heads/master' }}

@@ -1,9 +1,8 @@
-import { createRedisClient, gatewayAuthHeader, isCI, waitForConfigRebuild, eventually } from '@support';
+import { clearAllKongResources, createRedisClient, gatewayAuthHeader, isCI, waitForConfigRebuild } from '@support';
 import {
   postGatewayEeLicense,
   deleteGatewayEeLicense,
 } from '@shared/gateway_workflows';
-import { expect } from '../../support/assert/chai-expect';
 import axios from 'axios';
 
 export const mochaHooks: Mocha.RootHookObject = {
@@ -16,16 +15,15 @@ export const mochaHooks: Mocha.RootHookObject = {
       if (isCI()) {
         // Gateway for API tests starts without EE_LICENSE in CI, hence, we post license at the beginning of all tests to allow us test the functionality of license endpoint
         await postGatewayEeLicense();
-        // Wait for the license propagation completes before release to the test
-        // configRebuild is wrapped with eventually as sometimes it returns 401 error for route creation
-        await eventually(async () => {
-          const intitialConfigRebuildSuccess = await waitForConfigRebuild();
-          expect(intitialConfigRebuildSuccess).to.be.true
-        })
+        // Wait for the license propagation to complete before release to the test
+        await waitForConfigRebuild();
+        console.info('waitForConfigRebuild successfully executed after posting the ee license\n')
       }
     } catch (err) {
-      console.error(`Something went wrong in beforeAll hook while rebuilding configuration: ${err}`)
-      process.exit(1)
+      console.error(`Something went wrong in beforeAll hook while rebuilding configuration: ${err}\n`)
+
+      // remove all possible remnant entities from failed waitForConfigRebuild above to start tests from clean state and avoid flakiness
+      await clearAllKongResources();
     }
   },
 
