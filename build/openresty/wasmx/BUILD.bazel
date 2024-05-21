@@ -24,16 +24,6 @@ config_setting(
     },
 )
 
-config_setting(
-    name = "wasmx_on_linux",
-    constraint_values = [
-        "@platforms//os:linux",
-    ],
-    flag_values = {
-        "@kong//:wasmx": "true",
-    },
-)
-
 # this works around an issue that occurs when installing/compiling the v8 wasm
 # runtime engine, specifically: cargo/bazel/rules_foreign_cc decide ARFLAGS
 # should be "rcsD cq ...", which is incorrect and results in ar thinking

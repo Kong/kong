@@ -156,15 +156,15 @@ jobs:
 
     - name: Cache Git
       id: cache-git
-      if: (matrix.package == 'rpm' || matrix.image == 'debian:10') && matrix.image != ''
+      if: (matrix.package == 'rpm') && matrix.image != ''
       uses: actions/cache@v3
       with:
         path: /usr/local/git
         key: ${{ matrix.label }}-git-2.41.0
 
-    # el-7,8, amazonlinux-2,2023, debian-10 doesn't have git 2.18+, so we need to install it manually
+    # el-7,8, amazonlinux-2,2023 doesn't have git 2.18+, so we need to install it manually
     - name: Install newer Git
-      if: (matrix.package == 'rpm' || matrix.image == 'debian:10') && matrix.image != '' && steps.cache-git.outputs.cache-hit != 'true'
+      if: (matrix.package == 'rpm') && matrix.image != '' && steps.cache-git.outputs.cache-hit != 'true'
       run: |
         if which apt 2>/dev/null; then
           apt update
@@ -178,27 +178,15 @@ jobs:
         tar xf git-2.41.0.tar.gz
         cd git-2.41.0
 
-        # https://gitlab.com/gitlab-org/omnibus-gitlab/-/merge_requests/5948/diffs
-        if [[ ${{ matrix.image }} == "centos:7" ]]; then
-          echo 'CFLAGS=-std=gnu99' >> config.mak
-        fi
-
         make configure
         ./configure --prefix=/usr/local/git
         make -j$(nproc)
         make install
 
     - name: Add Git to PATH
-      if: (matrix.package == 'rpm' || matrix.image == 'debian:10') && matrix.image != ''
+      if: (matrix.package == 'rpm') && matrix.image != ''
       run: |
         echo "/usr/local/git/bin" >> $GITHUB_PATH
-
-    - name: Debian Git dependencies
-      if: matrix.image == 'debian:10'
-      run: |
-        apt update
-        # dependencies for git
-        apt install -y wget libz-dev libssl-dev libcurl4-gnutls-dev libexpat1-dev sudo
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3

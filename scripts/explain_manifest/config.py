@@ -94,21 +94,6 @@ targets = {
             ee_suites: {},
         },
     ),
-    "el7-amd64": ExpectSuite(
-        name="Redhat 7 (amd64)",
-        manifest="fixtures/el7-amd64.txt",
-        use_rpath=True,
-        tests={
-            common_suites: {},
-            libc_libcpp_suites: {
-                "libc_max_version": "2.17",
-                # gcc 4.8.5
-                "libcxx_max_version": "3.4.19",
-                "cxxabi_max_version": "1.3.7",
-            },
-            ee_suites: {},
-        }
-    ),
     "el8-amd64": ExpectSuite(
         name="Redhat 8 (amd64)",
         manifest="fixtures/el8-amd64.txt",
@@ -165,20 +150,6 @@ targets = {
                 # gcc 11.2.0
                 "libcxx_max_version": "3.4.29",
                 "cxxabi_max_version": "1.3.13",
-            },
-            ee_suites: {},
-        }
-    ),
-    "debian-10-amd64": ExpectSuite(
-        name="Debian 10 (amd64)",
-        manifest="fixtures/debian-10-amd64.txt",
-        tests={
-            common_suites: {},
-            libc_libcpp_suites: {
-                "libc_max_version": "2.28",
-                # gcc 8.3.0
-                "libcxx_max_version": "3.4.25",
-                "cxxabi_max_version": "1.3.11",
             },
             ee_suites: {},
         }

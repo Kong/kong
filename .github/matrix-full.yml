@@ -110,7 +110,7 @@ build-images:
 # label: used as compose docker image label ${github.sha}-${label}
 # base-image: docker image to use as base
 # package: package type
-# package-distro: the distro name to use in package name, for example el7, aws2; only applicable to rpm
+# package-distro: the distro name to use in package name, for example el9, aws2023; only applicable to rpm
 # artifact-from: label of build-packages to use
 # artifact-from-alt: another label of build-packages to use for downloading package (to build multi-arch image)
 # docker-platforms: comma separated list of docker buildx platforms to build for

@@ -1,15 +1,6 @@
 load("//build/openresty/wasmx:wasmx_repositories.bzl", "wasm_runtimes")
 
 wasmx_configure_options = select({
-    "@kong//build/openresty/wasmx:wasmx_on_linux": [
-        # neded for wasmx module
-        # although this is centos7 specific, the flag will work on any GNU linker
-        # we place it here to skip macos, which uses darwin ld
-        # https://github.com/Kong/ngx_wasm_module/commit/e70a19f53e1dda99d016c5cfa393652720959afd
-        "--with-ld-opt=\"-Wl,--allow-multiple-definition\"",
-    ],
-    "//conditions:default": [],
-}) + select({
     "@kong//:wasmx_flag": [
         "--with-cc-opt=\"-DNGX_WASM_HOST_PROPERTY_NAMESPACE=kong\"",
     ],
