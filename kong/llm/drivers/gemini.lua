@@ -316,7 +316,8 @@ function _M.configure_request(conf)
 
   if not f_url then  -- upstream_url override is not set
     -- check if this is "public" or "vertex" gemini deployment
-    if conf.model.options.gemini
+    if conf.model.options
+        and conf.model.options.gemini
         and conf.model.options.gemini.api_endpoint
         and conf.model.options.gemini.project_id
         and conf.model.options.gemini.location_id
@@ -370,10 +371,10 @@ function _M.configure_request(conf)
     kong.service.request.set_query(query_table)
   end
 
-  ---- DEBUG REMOVE THIS
-  local auth = require("resty.gcp.request.credentials.accesstoken"):new(conf.auth.gcp_service_account_json)
-  kong.service.request.set_header("Authorization", "Bearer " .. auth.token)
-  ----
+  -- ---- DEBUG REMOVE THIS
+  -- local auth = require("resty.gcp.request.credentials.accesstoken"):new(conf.auth.gcp_service_account_json)
+  -- kong.service.request.set_header("Authorization", "Bearer " .. auth.token)
+  -- ----
 
   -- if auth_param_location is "form", it will have already been set in a global pre-request hook
   return true, nil
