@@ -14,6 +14,14 @@ end
 local GCP = require("resty.gcp.request.credentials.accesstoken")
 --
 
+-- cloud auth/sdk providers
+local GCP_SERVICE_ACCOUNT do
+  GCP_SERVICE_ACCOUNT = os.getenv("GCP_SERVICE_ACCOUNT")
+end
+
+local GCP = require("resty.gcp.request.credentials.accesstoken")
+--
+
 
 local EMPTY = {}
 
@@ -53,6 +61,30 @@ local _KEYBASTION = setmetatable({}, {
   end,
 })
 
+
+local _KEYBASTION = setmetatable({}, {
+  __mode = "k",
+  __index = function(this_cache, plugin_config)
+    if plugin_config.model.provider == "gemini" and
+       plugin_config.auth and
+       plugin_config.auth.gcp_use_service_account then
+
+      ngx.log(ngx.NOTICE, "loading gcp sdk for plugin ", kong.plugin.get_id())
+
+      local service_account_json = (plugin_config.auth and plugin_config.auth.gcp_service_account_json) or GCP_SERVICE_ACCOUNT
+
+      local ok, gcp_auth = pcall(GCP.new, nil, service_account_json)
+      if ok and gcp_auth then
+        -- store our item for the next time we need it
+        gcp_auth.service_account_json = service_account_json
+        this_cache[plugin_config] = { interface = gcp_auth, error = nil }
+        return this_cache[plugin_config]
+      end
+
+      return { interface = nil, error = "cloud-authentication with GCP failed" }
+    end
+  end,
+})
 
 local function bad_request(msg)
   kong.log.info(msg)
@@ -108,6 +140,19 @@ local function handle_streaming_frame(conf)
       -- and then send the client a readable error in a single chunk
       local response = ERROR__NOT_SET
 
+      if is_gzip then
+        response = kong_utils.deflate_gzip(response)
+      end
+
+      ngx.arg[1] = response
+      ngx.arg[2] = true
+
+      return
+    end
+
+    if not events then
+      local response = 'data: {"error": true, "message": "empty transformer response"}'
+      
       if is_gzip then
         response = kong_utils.deflate_gzip(response)
       end
