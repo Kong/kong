@@ -241,7 +241,7 @@ end
 function _M.frame_to_events(frame, provider)
   local events = {}
 
-  if (not frame) or #frame < 1 then
+  if (not frame) or (#frame < 1) or (type(frame)) ~= "string" then
     return
   end
 
@@ -255,36 +255,51 @@ function _M.frame_to_events(frame, provider)
       }
     end
 
+  -- some new LLMs return the JSON object-by-object,
+  -- because that totally makes sense to parse?!
+  elseif raw_json_mode then
+    -- if this is the first frame, it will begin with array opener '['
+    frame = (string.sub(str_ltrim(frame), 1, 1) == "[" and string.sub(str_ltrim(frame), 2)) or frame
+
+    -- it may start with ',' which is the start of the new frame
+    frame = (string.sub(str_ltrim(frame), 1, 1) == "," and string.sub(str_ltrim(frame), 2)) or frame
+    
+    -- finally, it may end with the array terminator ']' indicating the finished stream
+    frame = (string.sub(str_ltrim(frame), -1) == "]" and string.sub(str_ltrim(frame), 1, -2)) or frame
+
+    -- for multiple events that arrive in the same frame, split by top-level comma
+    for _, v in ipairs(split(frame, "\n,")) do
+      events[#events+1] = { data = v }
+    end
+
   else
     -- standard SSE parser
     local event_lines = split(frame, "\n")
     local struct = { event = nil, id = nil, data = nil }
 
-    for i, dat in ipairs(event_lines) do
-      if #dat < 1 then
-        events[#events + 1] = struct
-        struct = { event = nil, id = nil, data = nil }
-      end
+    -- test for truncated chunk on the last line (no trailing \r\n\r\n)
+    if #dat > 0 and #event_lines == i then
+      ngx.log(ngx.DEBUG, "[ai-proxy] truncated sse frame head")
+      kong.ctx.plugin.truncated_frame = dat
+      break  -- stop parsing immediately, server has done something wrong
+    end
 
-      -- test for truncated chunk on the last line (no trailing \r\n\r\n)
-      if #dat > 0 and #event_lines == i then
-        ngx.log(ngx.DEBUG, "[ai-proxy] truncated sse frame head")
-        kong.ctx.plugin.truncated_frame = dat
-        break  -- stop parsing immediately, server has done something wrong
-      end
+    -- test for abnormal start-of-frame (truncation tail)
+    if kong and kong.ctx.plugin.truncated_frame then
+      -- this is the tail of a previous incomplete chunk
+      ngx.log(ngx.DEBUG, "[ai-proxy] truncated sse frame tail")
+      dat = fmt("%s%s", kong.ctx.plugin.truncated_frame, dat)
+      kong.ctx.plugin.truncated_frame = nil
+    end
 
-      -- test for abnormal start-of-frame (truncation tail)
-      if kong and kong.ctx.plugin.truncated_frame then
-        -- this is the tail of a previous incomplete chunk
-        ngx.log(ngx.DEBUG, "[ai-proxy] truncated sse frame tail")
-        dat = fmt("%s%s", kong.ctx.plugin.truncated_frame, dat)
-        kong.ctx.plugin.truncated_frame = nil
-      end
+    local s1, _ = str_find(dat, ":") -- find where the cut point is
 
-      local s1, _ = str_find(dat, ":") -- find where the cut point is
+    if s1 and s1 ~= 1 then
+      local field = str_sub(dat, 1, s1-1) -- returns "data" from data: hello world
+      local value = str_ltrim(str_sub(dat, s1+1)) -- returns "hello world" from data: hello world
 
       if s1 and s1 ~= 1 then
-        local field = str_sub(dat, 1, s1-1) -- returns "data" from data: hello world
+        local field = str_sub(dat, 1, s1-1) -- returns "data " from data: hello world
         local value = str_ltrim(str_sub(dat, s1+1)) -- returns "hello world" from data: hello world
 
         -- for now not checking if the value is already been set
