@@ -69,16 +69,6 @@ nfpm_pkg(
 )
 
 nfpm_pkg(
-    name = "kong_el7",
-    config = "//build:package/nfpm.yaml",
-    env = nfpm_env,
-    extra_env = {
-        "RPM_EXTRA_DEPS": "hostname",
-    },
-    packager = "rpm",
-    pkg_name = "kong.el7",
-    visibility = ["//visibility:public"],
-)
 
 nfpm_pkg(
     name = "kong_aws2",
@@ -242,20 +232,6 @@ string_flag(
         "wasmer",
         "wasmtime",
     ],
-    visibility = ["//visibility:public"],
-)
-
-# --//:wasmx_el7_workaround=false
-bool_flag(
-    name = "wasmx_el7_workaround",
-    build_setting_default = False,
-)
-
-config_setting(
-    name = "wasmx_el7_workaround_flag",
-    flag_values = {
-        ":wasmx_el7_workaround": "true",
-    },
     visibility = ["//visibility:public"],
 )
 
