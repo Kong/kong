@@ -282,6 +282,16 @@ platform(
     for vendor in aarch64_glibc_distros
 ]
 
+platform(
+    name = "aws2-crossbuild-x86_64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+        "//build/platforms/distro:aws2",
+        ":cross_build",
+    ],
+)
+
 # config_settings define a select() condition based on user-set constraint_values
 # see https://bazel.build/docs/configurable-attributes
 config_setting(
@@ -294,11 +304,22 @@ config_setting(
     visibility = ["//visibility:public"],
 )
 
+config_setting(
+    name = "x86_64-linux-anylibc-cross",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+        ":cross_build",
+    ],
+    visibility = ["//visibility:public"],
+)
+
 selects.config_setting_group(
     # matches all cross build platforms
     name = "any-cross",
     match_any = [
         ":aarch64-linux-anylibc-cross",
+        ":x86_64-linux-anylibc-cross",
     ],
     visibility = ["//visibility:public"],
 )
