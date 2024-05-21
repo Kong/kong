@@ -30,46 +30,12 @@ local compatible_checkers = {
       for _, plugin in ipairs(config_table.plugins or {}) do
         if plugin.name == 'ai-proxy' then
           local config = plugin.config
-          if config.model and config.model.options then
-            if config.response_streaming then
-              config.response_streaming = nil
-              log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
-                              ' response_streaming == nil, because it is not supported' ..
-                              ' in this release',
-                              dp_version, log_suffix)
-              has_update = true
-            end
-
-            if config.model.options.upstream_path then
-              config.model.options.upstream_path = nil
-              log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
-                              ' upstream_path == nil, because it is not supported' ..
-                              ' in this release',
-                              dp_version, log_suffix)
-              has_update = true
-            end
-          end
-
           if config.route_type == "preserve" then
             config.route_type = "llm/v1/chat"
             log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
                               ' route_type == "llm/v1/chat", because preserve' ..
                               ' mode is not supported in this release',
                               dp_version, log_suffix)
-            has_update = true
-          end
-        end
-
-        if plugin.name == 'ai-request-transformer' or plugin.name == 'ai-response-transformer' then
-          local config = plugin.config
-          if config.llm.model
-              and config.llm.model.options
-              and config.llm.model.options.upstream_path then
-            config.llm.model.options.upstream_path = nil
-            log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
-                            ' upstream_path == nil, because it is not supported' ..
-                            ' in this release',
-                            dp_version, log_suffix)
             has_update = true
           end
         end
