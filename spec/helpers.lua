@@ -2832,6 +2832,22 @@ luassert:register("assertion", "gt", is_gt,
                   "assertion.gt.negative",
                   "assertion.gt.positive")
 
+
+
+---
+-- Matcher to ensure a value is greater than a base value.
+-- @function is_gt_matcher
+-- @param base the base value to compare against
+-- @param value the value that must be greater than the base value
+local function is_gt_matcher(state, arguments)
+  local expected = arguments[1]
+  return function(value)
+    return value > expected
+  end
+end
+luassert:register("matcher", "gt", is_gt_matcher)
+
+
 --- Generic modifier "certificate".
 -- Will set a "certificate" value in the assertion state, so following
 -- assertions will operate on the value set.
