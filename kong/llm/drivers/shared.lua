@@ -65,6 +65,7 @@ _M.upstream_url_format = {
   azure = "https://%s.openai.azure.com:443/openai/deployments/%s",
   gemini = "https://generativelanguage.googleapis.com",
   gemini_vertex = "https://%s",
+  bedrock = "https://bedrock-runtime.%s.amazonaws.com",
 }
 
 _M.operation_map = {
@@ -120,6 +121,12 @@ _M.operation_map = {
       method = "POST",
     },
   },
+  bedrock = {
+    ["llm/v1/chat"] = {
+      path = "/model/%s/%s",
+      method = "POST",
+    },
+  },
 }
 
 _M.clear_response_headers = {
@@ -136,6 +143,9 @@ _M.clear_response_headers = {
     "Set-Cookie",
   },
   gemini = {
+    "Set-Cookie",
+  },
+  bedrock = {
     "Set-Cookie",
   },
 }
@@ -679,6 +689,10 @@ end
 
 -- Function to count the number of words in a string
 local function count_words(str)
+  if type(str) ~= "string" then
+    return 0
+  end
+
   local count = 0
   if type(str) == "string" then
     for word in str:gmatch("%S+") do

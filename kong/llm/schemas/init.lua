@@ -68,6 +68,20 @@ local auth_schema = {
                       "environment variable `GCP_SERVICE_ACCOUNT`.",
         required = false,
         referenceable = true }},
+    { aws_access_key_id = {
+        type = "string",
+        description = "Set this if you are using an AWS provider (Bedrock, SageMaker) and you are authenticating " ..
+                      "using static IAM User credentials.",
+        required = false,
+        encrypted = true,
+        referenceable = true }},
+    { aws_secret_access_key = {
+        type = "string",
+        description = "Set this if you are using an AWS provider (Bedrock, SageMaker) and you are authenticating " ..
+                      "using static IAM User credentials.",
+        required = false,
+        encrypted = true,
+        referenceable = true }},
   }
 }
 
