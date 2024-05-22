@@ -161,6 +161,27 @@ local function wrap_function(max_args, group_name, original_func, handlers)
 end
 
 
+--- Hooks (patches) a function
+-- Hooks "before" and "after" handlers to a function. The function is patched
+-- to execute the handlers when it is called. The `parent` and `function_key`
+-- parameters are used to identify and patch the function to be hooked.
+--
+-- @function dynamic_hook:hook_function
+-- @tparam string group_name The name of the hook group
+-- @tparam table parent The table containing the function to be hooked
+-- @tparam string function_key The key (in the `parent` table) of the function
+--         to be hooked
+-- @tparam number max_args The maximum number of arguments the function accepts
+-- @tparam table handlers A table containing the `before` and `after` handlers. 
+--         The table may contain the keys listed below:
+--           * table `befores` array of handlers to execute before the function
+--           * table `afters` array of handlers to execute before the function
+--
+-- @usage
+-- -- Define a "before" handler to be executed before the _G.print function
+-- dynamic_hook.hook_function("my_group", _G, "print", "varargs", {
+--   befores = { before_handler },
+-- })
 function _M.hook_function(group_name, parent, function_key, max_args, handlers)
   assert(type(group_name) == "string", "group_name must be a string")
   assert(type(parent) == "table", "parent must be a table")
@@ -183,6 +204,14 @@ function _M.hook_function(group_name, parent, function_key, max_args, handlers)
 end
 
 
+--- Registers a new hook
+-- The hook handler function is executed when `run_hook` is called with the
+-- same `group_name` and `hook_name`.
+--
+-- @function dynamic_hook:hook
+-- @tparam string group_name The name of the hook group
+-- @tparam string hook_name The name of the hook
+-- @tparam table handler The hook function
 function _M.hook(group_name, hook_name, handler)
   assert(type(group_name) == "string", "group_name must be a string")
   assert(type(hook_name) == "string", "hook_name must be a string")
@@ -198,6 +227,13 @@ function _M.hook(group_name, hook_name, handler)
 end
 
 
+--- Checks if a hook group is enabled.
+-- If a group is enabled, its hooks can be executed when `run_hook` is called
+-- with the corresponding `group_name` and `hook_name` parameters.
+--
+-- @function dynamic_hook:is_group_enabled
+-- @tparam string group_name The name of the hook group
+-- @treturn boolean `true` if the group is enabled, `false` otherwise
 function _M.is_group_enabled(group_name)
   assert(type(group_name) == "string", "group_name must be a string")
 
@@ -219,6 +255,18 @@ function _M.is_group_enabled(group_name)
 end
 
 
+--- Runs a hook
+-- Runs the hook registered for the given `group_name` and `hook_name` (if the
+-- group is enabled).
+--
+-- @function dynamic_hook:run_hook
+-- @tparam string group_name The name of the hook group
+-- @tparam string hook_name The name of the hook
+-- @tparam any `a1, a2, ..., a8` Arguments passed to the hook function
+-- @tparam any ... Additional arguments passed to the hook function
+-- @usage
+-- -- Run the "my_hook" hook of the "my_group" group
+-- dynamic_hook.run_hook("my_group", "my_hook", arg1, arg2)
 function _M.run_hook(group_name, hook_name, a1, a2, a3, a4, a5, a6, a7, a8, ...)
   assert(type(group_name) == "string", "group_name must be a string")
   assert(type(hook_name) == "string", "hook_name must be a string")
@@ -251,6 +299,11 @@ function _M.run_hook(group_name, hook_name, a1, a2, a3, a4, a5, a6, a7, a8, ...)
 end
 
 
+--- Enables a hook group for the current request
+--
+-- @function dynamic_hook:enable_on_this_request
+-- @tparam string group_name The name of the hook group to enable
+-- @tparam table (optional) ngx_ctx The Nginx context object
 function _M.enable_on_this_request(group_name, ngx_ctx)
   assert(type(group_name) == "string", "group_name must be a string")
 
@@ -267,6 +320,10 @@ function _M.enable_on_this_request(group_name, ngx_ctx)
 end
 
 
+--- Enables a hook group for all requests
+--
+-- @function dynamic_hook:always_enable
+-- @tparam string group_name The name of the hook group to enable
 function _M.always_enable(group_name)
   assert(type(group_name) == "string", "group_name must be a string")
 
