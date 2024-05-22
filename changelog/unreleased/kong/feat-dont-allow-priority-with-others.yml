@@ -1,0 +1,5 @@
+message: |
+  Do not allow setting priority field in traditional mode route
+  When 'router_flavor' is configrued as 'expressions'.
+type: feature
+scope: Core
