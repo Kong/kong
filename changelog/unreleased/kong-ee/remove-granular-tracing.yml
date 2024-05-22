@@ -1,5 +1,5 @@
 message: >-
   Removed the Granular Tracing feature, and configurations like `tracing = on` are not available any longer.
   You should now use [OpenTelemetry Instrumentation](https://docs.konghq.com/gateway/latest/production/tracing/) instead.
-type: deprecation
+type: breaking_change
 scope: Core
