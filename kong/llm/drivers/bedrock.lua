@@ -11,132 +11,79 @@ local table_insert = table.insert
 local string_lower = string.lower
 local string_sub = string.sub
 local signer = require("resty.aws.request.sign")
-local AWS = require("resty.aws")
 --
 
 -- globals
 local DRIVER_NAME = "bedrock"
-
-local AWS_REGION do
-  AWS_REGION = os.getenv("AWS_REGION")
-end
-local AWS_ACCESS_KEY_ID do
-  AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-end
-local AWS_SECRET_ACCESS_KEY do
-  AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-end
 --
 
 local _OPENAI_ROLE_MAPPING = {
-  ["system"] = "system",
+  ["system"] = "assistant",
   ["user"] = "user",
   ["assistant"] = "assistant",
 }
 
 local function to_bedrock_generation_config(request_table)
   return {
-    ["maxTokens"] = request_table.max_tokens,
+    ["maxTokenCount"] = request_table.max_tokens,
     ["stopSequences"] = request_table.stop,
     ["temperature"] = request_table.temperature,
+    ["topK"] = request_table.top_k,
     ["topP"] = request_table.top_p,
   }
 end
 
-local function to_additional_request_fields(request_table)
-  return {
-    request_table.bedrock.additionalModelRequestFields
-  }
-end
-
-local function to_tool_config(request_table)
-  return {
-    request_table.bedrock.toolConfig
-  }
-end
-
 local function handle_stream_event(event_t, model_info, route_type)
-  local new_event, metadata
+  local metadata
 
-  if (not event_t) or (not event_t.data) then
-    return "", nil, nil
+  -- discard empty frames, it should either be a random new line, or comment
+  if (not event_t.data) or (#event_t.data < 1) then
+    return
+  end
+  
+  local event, err = cjson.decode(event_t.data)
+  if err then
+    ngx.log(ngx.WARN, "failed to decode stream event frame from bedrock: " .. err)
+    return nil, "failed to decode stream event frame from bedrock", nil
   end
 
-  -- decode and determine the event type
-  local event = cjson.decode(event_t.data)  
-  local event_type = event and event.headers and event.headers[":event-type"]
+  local new_event
+  local metadata
 
-  if not event_type then
-    return "", nil, nil
-  end
-
-  local body = event.body and cjson.decode(event.body)
-
-  if not body then
-    return "", nil, nil
-  end
-
-  if event_type == "messageStart" then
-    new_event = {
-      choices = {
-        [1] = {
-          delta = {
-            content = "",
-            role = body.role,
+  if event.candidates and
+     #event.candidates > 0 then
+    
+    if event.candidates[1].content and
+        event.candidates[1].content.parts and
+        #event.candidates[1].content.parts > 0 and
+        event.candidates[1].content.parts[1].text then
+      
+      new_event = {
+        choices = {
+          [1] = {
+            delta = {
+              content = event.candidates[1].content.parts[1].text or "",
+              role = "assistant",
+            },
+            index = 0,
           },
-          index = 0,
-          logprobs = cjson.null,
         },
-      },
-      model = model_info.name,
-      object = "chat.completion.chunk",
-      system_fingerprint = cjson.null,
-    }
+      }
+    end
 
-  elseif event_type == "contentBlockDelta" then
-    new_event = {
-      choices = {
-        [1] = {
-          delta = {
-            content = (body.delta
-                   and body.delta.text)
-                   or "",
-          },
-          index = 0,
-          finish_reason = cjson.null,
-          logprobs = cjson.null,
-        },
-      },
-      model = model_info.name,
-      object = "chat.completion.chunk",
-    }
-
-  elseif event_type == "messageStop" then
-    new_event = {
-      choices = {
-        [1] = {
-          delta = {},
-          index = 0,
-          finish_reason = body.stopReason,
-          logprobs = cjson.null,
-        },
-      },
-      model = model_info.name,
-      object = "chat.completion.chunk",
-    }
-
-  elseif event_type == "metadata" then
-    metadata = {
-      prompt_tokens = body.usage and body.usage.inputTokens or 0,
-      completion_tokens = body.usage and body.usage.outputTokens or 0,
-    }
-
-    new_event = "[DONE]"
-
-  elseif event_type == "contentBlockStop" then
-    -- placeholder - I don't think this does anything yet
+    if event.candidates[1].finishReason then
+      metadata = metadata or {}
+      metadata.finished_reason = event.candidates[1].finishReason
+      new_event = "[DONE]"
+    end
   end
 
+  if event.usageMetadata then
+    metadata = metadata or {}
+    metadata.completion_tokens = event.usageMetadata.candidatesTokenCount or 0
+    metadata.prompt_tokens     = event.usageMetadata.promptTokenCount or 0
+  end
+  
   if new_event then
     if new_event ~= "[DONE]" then
       new_event = cjson.encode(new_event)
@@ -162,12 +109,13 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
                          or "bedrock-2023-05-31"
 
   if request_table.messages and #request_table.messages > 0 then
-    local system_prompts = {}
+    local system_prompt
 
     for i, v in ipairs(request_table.messages) do
       -- for 'system', we just concat them all into one Gemini instruction
       if v.role and v.role == "system" then
-        system_prompts[#system_prompts+1] = { text = v.content }
+        system_prompt = system_prompt or buffer.new()
+        system_prompt:put(v.content or "")
 
       else
         -- for any other role, just construct the chat history as 'parts.text' type
@@ -183,49 +131,13 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
       end
     end
 
-    -- only works for some models
-    if #system_prompts > 0 then
-      for _, p in ipairs(ai_shared.bedrock_unsupported_system_role_patterns) do
-        if model_info.name:find(p) then
-          if (not model_info.source) or model_info.source ~= "transformer-plugins" then
-            return nil, nil, "system prompts are unsupported for model '" .. model_info.name
-          end
-
-          -- for transformer plugins, we just move the system prompt
-          table.insert(new_r.messages, 1, {
-            role = "user",
-            content = {
-              {
-                text = system_prompts[1].text
-              },
-            }
-          })
-          table.insert(new_r.messages, 2, {
-            role = "assistant",
-            content = {
-              {
-                text = "What is your message?"
-              },
-            }
-          })
-
-          break
-        else
-          new_r.system = system_prompts
-        end
-      end
+    -- only works for 
+    if system_prompt then
+      new_r.system = system_prompt:get()
     end
   end
 
   new_r.inferenceConfig = to_bedrock_generation_config(request_table)
-
-  new_r.toolConfig = request_table.bedrock
-                 and request_table.bedrock.toolConfig
-                 and to_tool_config(request_table)
-
-  new_r.additionalModelRequestFields = request_table.bedrock
-                                   and request_table.bedrock.additionalModelRequestFields
-                                   and to_additional_request_fields(request_table)
 
   return new_r, "application/json", nil
 end
@@ -334,35 +246,6 @@ function _M.to_format(request_table, model_info, route_type)
 end
 
 function _M.subrequest(body, conf, http_opts, return_res_table)
-  -- try to get AWS SDK first
-  ngx.log(ngx.NOTICE, "loading aws sdk for plugin ", kong.plugin.get_id())
-  local aws
-
-  local region = conf.model.options
-            and conf.model.options.bedrock
-            and conf.model.options.bedrock.aws_region
-              or AWS_REGION
-
-  local access_key = (conf.auth and conf.auth.aws_access_key_id)
-                  or AWS_ACCESS_KEY_ID
-  
-  local secret_key = (conf.auth and conf.auth.aws_secret_access_key)
-                  or AWS_SECRET_ACCESS_KEY
-
-  if access_key and secret_key then
-    aws = AWS({
-      -- if any of these are nil, they either use the SDK default or
-      -- are deliberately null so that a different auth chain is used
-      region = region,
-      aws_access_key_id = access_key,
-      aws_secret_access_key = secret_key,
-    })
-  else
-    aws = AWS({
-      region = region,
-    })
-  end
-
   -- use shared/standard subrequest routine
   local body_string, err
 
@@ -378,54 +261,22 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
   end
 
   -- may be overridden
-  local uri = fmt(ai_shared.upstream_url_format[DRIVER_NAME], aws.config.region)
-  local path = fmt(
-    ai_shared.operation_map[DRIVER_NAME][conf.route_type].path,
-    conf.model.name,
-    "converse")
-
-  local url = fmt("%s%s", uri, path)
-  local parsed_url = socket_url.parse(url)
+  local url = (conf.model.options and conf.model.options.upstream_url)
+    or fmt(
+    "%s%s",
+    ai_shared.upstream_url_format[DRIVER_NAME],
+    ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
+  )
 
   local method = ai_shared.operation_map[DRIVER_NAME][conf.route_type].method
 
   local headers = {
     ["Accept"] = "application/json",
     ["Content-Type"] = "application/json",
-    ["Host"] = parsed_url.host,
   }
 
   if conf.auth and conf.auth.header_name then
     headers[conf.auth.header_name] = conf.auth.header_value
-  end
-
-  -- do the IAM auth and signature headers
-  aws.config.signatureVersion = "v4"
-  aws.config.endpointPrefix = "bedrock"
-
-  local r = {
-    headers = {},
-    method = ai_shared.operation_map[DRIVER_NAME][conf.route_type].method,
-    path = parsed_url.path,
-    host = parsed_url.host,
-    port = parsed_url.port or "443",
-    body = body_string
-  }
-
-  local signature = signer(aws.config, r)
-
-  if not signature then
-    return nil, "failed to sign AWS request"
-  end
-
-  headers["Authorization"] = signature.headers["Authorization"]
-
-  if signature.headers["X-Amz-Security-Token"] then 
-    headers["X-Amz-Security-Token"] = signature.headers["X-Amz-Security-Token"]
-  end
-
-  if signature.headers["X-Amz-Date"] then
-    headers["X-Amz-Date"] = signature.headers["X-Amz-Date"]
   end
 
   local res, err, httpc = ai_shared.http_request(url, body_string, method, headers, http_opts, return_res_table)
@@ -470,8 +321,8 @@ end
 
 -- returns err or nil
 function _M.configure_request(conf, aws_sdk)
-  local operation = kong.ctx.shared.ai_proxy_streaming_mode and "converse-stream"
-                                                             or "converse"
+  local operation = kong.ctx.shared.ai_proxy_streaming_mode and "messages-stream"
+                                                             or "messages"
 
   local f_url = conf.model.options and conf.model.options.upstream_url
 
@@ -514,16 +365,9 @@ function _M.configure_request(conf, aws_sdk)
 
   local signature = signer(aws_sdk.config, r)
 
-  if not signature then
-    return nil, "failed to sign AWS request"
-  end
   kong.service.request.set_header("Authorization", signature.headers["Authorization"])
-  if signature.headers["X-Amz-Security-Token"] then 
-    kong.service.request.set_header("X-Amz-Security-Token", signature.headers["X-Amz-Security-Token"])
-  end
-  if signature.headers["X-Amz-Date"] then
-    kong.service.request.set_header("X-Amz-Date", signature.headers["X-Amz-Date"])
-  end
+  kong.service.request.set_header("X-Amz-Security-Token", signature.headers["X-Amz-Security-Token"])
+  kong.service.request.set_header("X-Amz-Date", signature.headers["X-Amz-Date"])
 
   return true
 end

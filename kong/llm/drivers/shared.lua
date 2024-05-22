@@ -75,6 +75,7 @@ _M.upstream_url_format = {
   azure = "https://%s.openai.azure.com:443/openai/deployments/%s",
   gemini = "https://generativelanguage.googleapis.com",
   gemini_vertex = "https://%s",
+  bedrock = "https://bedrock-runtime.%s.amazonaws.com",
 }
 
 _M.operation_map = {

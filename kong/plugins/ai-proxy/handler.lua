@@ -31,8 +31,12 @@ local AWS = require("resty.aws")
 local GCP_SERVICE_ACCOUNT do
   GCP_SERVICE_ACCOUNT = os.getenv("GCP_SERVICE_ACCOUNT")
 end
+local AWS_REGION do
+  AWS_REGION = os.getenv("AWS_REGION")
+end
 
 local GCP = require("resty.gcp.request.credentials.accesstoken")
+local AWS = require("resty.aws")
 --
 
 
@@ -135,6 +139,25 @@ local _KEYBASTION = setmetatable({}, {
 
       return { interface = nil, error = "cloud-authentication with GCP failed" }
     end
+
+    if plugin_config.model.provider == "bedrock" then
+      ngx.log(ngx.NOTICE, "loading aws sdk for plugin ", kong.plugin.get_id())
+
+      local aws
+      if plugin_config.model.options and plugin_config.model.options.aws then
+        aws = AWS({
+          region = plugin_config.model.options.aws_region or AWS_REGION,
+          aws_access_key_id = plugin_config.auth.aws_access_key_id,
+          aws_secret_access_key = plugin_config.auth.aws_secret_access_key,
+        })
+      else
+        aws = AWS({ region = plugin_config.model.options.aws_region or AWS_REGION })
+      end
+
+      this_cache[plugin_config] = { interface = aws, error = nil }
+
+      return this_cache[plugin_config]
+    end
   end,
 })
 
@@ -183,6 +206,12 @@ local function handle_streaming_frame(conf)
     if (not finished) and (is_gzip) then
       chunk = kong_utils.inflate_gzip(ngx.arg[1])
     end
+
+    local to_hex        = require("resty.string").to_hex
+
+    kong.log.warn("")
+    kong.log.warn(to_hex(chunk))
+    kong.log.warn("")
 
     local events = ai_shared.frame_to_events(chunk, conf.model.provider == "gemini")
 
