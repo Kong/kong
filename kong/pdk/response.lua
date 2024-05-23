@@ -1156,7 +1156,7 @@ local function new(self, major_version)
     if content_type ~= CONTENT_TYPE_GRPC then
       local actual_message = message or get_http_error_message(status)
       local rid = request_id.get() or ""
-      body = fmt(utils.get_error_template(content_type), actual_message, rid)
+      body = fmt(utils.get_error_template(content_type), actual_message, rid, status)
     end
 
     local ctx = ngx.ctx
