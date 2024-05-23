@@ -1500,10 +1500,11 @@ describe("[DNS client]", function()
       assert.are.equal("recursion detected", port)
     end)
 
-    it("individual_noip - force no sync", function()
+    it("individual_toip - force no sync", function()
       local resolve_count = 10
       assert(client.init({
         noSynchronisation = false,
+        order = { "A" },
       }))
 
       local callcount = 0
@@ -1521,14 +1522,14 @@ describe("[DNS client]", function()
         end)
       end
 
+      for i=1,#threads do
+        ngx.thread.wait(threads[i])
+      end
+
       -- only one thread must have called the query_func
       assert.are.equal(1, callcount,
         "synchronisation failed - out of " .. resolve_count .. " toip() calls " .. callcount ..
         " queries were made")
-
-      for i=1,#threads do
-        ngx.thread.wait(threads[i])
-      end
 
       callcount = 0
       threads = {}
@@ -1539,14 +1540,15 @@ describe("[DNS client]", function()
         end)
       end
 
+      for i=1,#threads do
+        ngx.thread.wait(threads[i])
+      end
+
       -- all threads must have called the query_func
       assert.are.equal(resolve_count, callcount,
         "force no sync failed - out of " .. resolve_count .. " toip() calls" ..
         callcount .. " queries were made")
 
-      for i=1,#threads do
-        ngx.thread.wait(threads[i])
-      end
     end)
 
   end)
