@@ -1,4 +1,4 @@
 message: |
-   Disable usage of the Lua DNS resolver from proxy-wasm by default.
+   Disabled usage of the Lua DNS resolver from proxy-wasm by default.
 type: bugfix
 scope: Configuration
