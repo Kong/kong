@@ -344,7 +344,7 @@ local function set_upstream_uri(req_uri, match_t)
 end
 
 
--- captures has the form { [0] = full_path, [1] = capture1, [2] = capture2, ... }
+-- captures has the form { [0] = full_path, [1] = capture1, [2] = capture2, ..., ["named1"] = named1, ... }
 -- and captures[0] will be the full matched path
 -- this function tests if there are captures other than the full path
 -- by checking if there are 2 or more than 2 keys
