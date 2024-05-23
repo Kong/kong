@@ -9,8 +9,11 @@ local uh = require "spec/upgrade_helpers"
 local cjson = require "cjson"
 local helpers = require "spec.helpers"
 
+local OLD_KONG_VERSION = os.getenv("OLD_KONG_VERSION")
+local handler = OLD_KONG_VERSION:sub(1,8) == "next/2.8" and describe or pending
+
 if uh.database_type() == 'postgres' then
-  describe("audit_objects default timestamp", function()
+  handler("audit_objects default timestamp", function()
       lazy_setup(function()
           assert(uh.start_kong({
             audit_log  = "on",

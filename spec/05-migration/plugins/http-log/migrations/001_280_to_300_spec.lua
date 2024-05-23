@@ -15,7 +15,7 @@ local uh = require "spec.upgrade_helpers"
 local HTTP_PORT = 29100
 
 local OLD_KONG_VERSION = os.getenv("OLD_KONG_VERSION")
-local handler = OLD_KONG_VERSION:sub(1,3) == "2.8" and describe or pending
+local handler = OLD_KONG_VERSION:sub(1,8) == "next/2.8" and describe or pending
 
 handler("http-log plugin migration", function()
     local mock
