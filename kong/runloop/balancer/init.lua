@@ -130,10 +130,9 @@ local function get_value_to_hash(upstream, ctx)
       identifier = var.remote_addr
 
     elseif hash_on == "header" then
-      identifier = ngx.req.get_headers()[upstream[header_field_name]]
-      if type(identifier) == "table" then
-        identifier = table_concat(identifier)
-      end
+      -- since nginx 1.23.0/openresty 1.25.3.1
+      -- ngx.var will automatically combine all header values with identical name
+      identifier = var["http_" .. upstream[header_field_name]]
 
     elseif hash_on == "cookie" then
       identifier = var["cookie_" .. upstream.hash_on_cookie]
