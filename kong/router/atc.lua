@@ -4,7 +4,6 @@ local _MT = { __index = _M, }
 
 local lrucache = require("resty.lrucache")
 local tb_new = require("table.new")
-local tb_nkeys = require("table.nkeys")
 local utils = require("kong.router.utils")
 local transform = require("kong.router.transform")
 local rat = require("kong.tools.request_aware_table")
@@ -345,6 +344,16 @@ local function set_upstream_uri(req_uri, match_t)
 end
 
 
+-- captures has the form { [0] = full_path, [1] = capture1, [2] = capture2, ... }
+-- and captures[0] will be the full matched path
+-- this function tests if there are captures other than the full path
+-- by checking if there are 2 or more than 2 keys
+local function has_capture(captures)
+  local next_i = next(captures)
+  return next_i and next(captures, next_i) ~= nil
+end
+
+
 function _M:matching(params)
   local req_uri = params.uri
   local req_host = params.host
@@ -383,19 +392,12 @@ function _M:matching(params)
 
   local request_prefix = matched_route.strip_path and matched_path or nil
 
-  local uri_captures = nil
-  -- The whole matched uri will be put in captures[0], so we need to check
-  -- the number of table keys >= 2 to determine if there is any uri captured.
-  if captures and tb_nkeys(captures) >= 2 then
-    uri_captures = captures
-  end
-
   return {
     route           = matched_route,
     service         = service,
     prefix          = request_prefix,
     matches = {
-      uri_captures = uri_captures,
+      uri_captures = has_capture(captures) and captures or nil,
     },
     upstream_url_t = {
       type = service_hostname_type,
