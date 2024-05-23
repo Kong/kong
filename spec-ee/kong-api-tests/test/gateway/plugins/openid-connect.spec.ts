@@ -12,6 +12,7 @@ import {
     getKongContainerName,
     getGatewayMode,
     clearAllKongResources,
+    isGwNative,
 } from '@support'
 import {
     authDetails,
@@ -20,6 +21,7 @@ import axios from 'axios'
 import https from 'https'
 import querystring from 'querystring'
 
+// Skip this test suite for packages to investigate the error when creating OIDC plugin
 describe('Gateway Plugins: OIDC with Keycloak', function () {
     const path = '/oidc'
     const serviceName = 'oidc-service'
@@ -49,6 +51,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
     let expiredCertId: string
     let token: string
 
+    const isKongNative = isGwNative();
     const isHybrid = getGatewayMode() === 'hybrid'
     const url = `${getBasePath({
         environment: isGateway() ? Environment.gateway.admin : undefined,
@@ -71,9 +74,10 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
 
     before(async function () {
         //set KONG_LUA_SSL_TRUSTED_CERTIFICATE value to root/intermediate CA certificates
+        //whenever the original LUA_SSL_TRUSTED_CERTIFICATE is being modified, the keyring needs to either be turned off or get its certificates updated as well
         await resetGatewayContainerEnvVariable(
             {
-                KONG_LUA_SSL_TRUSTED_CERTIFICATE: '/tmp/root_ca.crt,/tmp/intermediate_ca.crt',
+                KONG_LUA_SSL_TRUSTED_CERTIFICATE: '/tmp/root_ca.crt,/tmp/intermediate_ca.crt', KONG_KEYRING_ENABLED: `${isKongNative ? 'off' : 'on'}`
             },
             kongContainerName
         );
@@ -81,7 +85,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
         if (isHybrid) {
             await resetGatewayContainerEnvVariable(
                 {
-                    KONG_LUA_SSL_TRUSTED_CERTIFICATE: '/tmp/root_ca.crt,/tmp/intermediate_ca.crt',
+                    KONG_LUA_SSL_TRUSTED_CERTIFICATE: '/tmp/root_ca.crt,/tmp/intermediate_ca.crt', KONG_KEYRING_ENABLED: `${isKongNative ? 'off' : 'on'}`
                 },
                 kongDpContainerName
             );
@@ -411,14 +415,14 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
         // reset vars back to original setting 'system'
         await resetGatewayContainerEnvVariable(
             {
-                KONG_LUA_SSL_TRUSTED_CERTIFICATE: 'system',
+                KONG_LUA_SSL_TRUSTED_CERTIFICATE: 'system', KONG_KEYRING_ENABLED: `${isKongNative ? 'on' : 'off'}`
             },
             kongContainerName
         );
         if (isHybrid) {
             await resetGatewayContainerEnvVariable(
                 {
-                    KONG_LUA_SSL_TRUSTED_CERTIFICATE: 'system',
+                    KONG_LUA_SSL_TRUSTED_CERTIFICATE: 'system', KONG_KEYRING_ENABLED: `${isKongNative ? 'on' : 'off'}`
                 },
                 kongDpContainerName
             );

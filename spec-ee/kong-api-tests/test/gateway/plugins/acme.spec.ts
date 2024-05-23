@@ -19,7 +19,8 @@ import {
   client,
   getAllKeys,
   resetGatewayContainerEnvVariable,
-  retryRequest
+  retryRequest,
+  isGwNative,
 } from '@support';
 import axios from 'axios';
 
@@ -27,8 +28,6 @@ import axios from 'axios';
  * IMPORTANT NOTE
  * For this test to work, you need to add '127.0.0.1 domain.test' to your /etc/hosts file
  */
-
-
 describe('Gateway Plugins: ACME', function () {
   console.info(`Don't forget to add '127.0.0.1 domain.test' to your /etc/hosts file`)
 
@@ -36,6 +35,7 @@ describe('Gateway Plugins: ACME', function () {
 
   let serviceId: string;
 
+  const isKongNative = isGwNative();
   const url = `${getBasePath({
     environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/plugins`;
@@ -48,16 +48,17 @@ describe('Gateway Plugins: ACME', function () {
 
   before(async function () {
     // set KONG_LUA_SSL_TRUSTED_CERTIFICATE value to pebble certificate path in kong container
+    // whenever the original LUA_SSL_TRUSTED_CERTIFICATE is being modified, the keyring needs to either be turned off or get its certificates updated as well
     await resetGatewayContainerEnvVariable(
       {
-        KONG_LUA_SSL_TRUSTED_CERTIFICATE: '/etc/acme-certs/pebble.minica.pem',
+        KONG_LUA_SSL_TRUSTED_CERTIFICATE: '/etc/acme-certs/pebble.minica.pem', KONG_KEYRING_ENABLED: `${isKongNative ? 'off' : 'on'}`
       },
       kongContainerName
     );
     if (isGwHybrid()) {
       await resetGatewayContainerEnvVariable(
         {
-          KONG_LUA_SSL_TRUSTED_CERTIFICATE: '/etc/acme-certs/pebble.minica.pem',
+          KONG_LUA_SSL_TRUSTED_CERTIFICATE: '/etc/acme-certs/pebble.minica.pem', KONG_KEYRING_ENABLED: `${isKongNative ? 'off' : 'on'}`
         },
         'kong-dp1'
       );
@@ -267,14 +268,14 @@ describe('Gateway Plugins: ACME', function () {
     // set KONG_LUA_SSL_TRUSTED_CERTIFICATE value back to its deafult 'system'
     await resetGatewayContainerEnvVariable(
       {
-        KONG_LUA_SSL_TRUSTED_CERTIFICATE: 'system',
+        KONG_LUA_SSL_TRUSTED_CERTIFICATE: 'system', KONG_KEYRING_ENABLED: `${isKongNative ? 'on' : 'off'}`
       },
       kongContainerName
     );
     if (isGwHybrid()) {
       await resetGatewayContainerEnvVariable(
         {
-          KONG_LUA_SSL_TRUSTED_CERTIFICATE: 'system',
+          KONG_LUA_SSL_TRUSTED_CERTIFICATE: 'system', KONG_KEYRING_ENABLED: `${isKongNative ? 'on' : 'off'}`
         },
         'kong-dp1'
       );

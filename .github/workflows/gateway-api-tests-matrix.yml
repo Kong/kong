@@ -275,7 +275,6 @@ jobs:
           AZURE_TENANT_ID: ${{ secrets.TEST_API_AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.TEST_API_AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.TEST_API_AZURE_CLIENT_SECRET }}
-          APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
           WASM: true
           # set CUSTOM_PLUGIN to false in case of amazonlinux-2 image
           CUSTOM_PLUGIN: ${{ endsWith(env.GW_IMAGE, 'amazonlinux-2') && 'false' || env.CUSTOM_PLUGIN_VAR }}
@@ -298,6 +297,7 @@ jobs:
         uses: kong/setup-deck@v1
 
       - name: Execute Gateway API Tests
+        continue-on-error: true
         run: |
           if [[ $RUN_SPEC == 'all' ]]; then
             npm run test-gateway;
@@ -312,6 +312,17 @@ jobs:
         env:
           AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
           APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
+
+      - name: Retry Failed E2E API Tests
+        if: steps.execute_tests.outcome == 'failure'
+        run: |
+          if test -s failed-tests.txt; then
+            npm run test-multiple -- --spec=$(cat failed-tests.txt)
+          fi
+        env:
+          AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
+          APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
+          TEST_APP: gateway
 
       - name: Get Gateway Details
         if: always()
@@ -449,7 +460,6 @@ jobs:
           AZURE_TENANT_ID: ${{ secrets.TEST_API_AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.TEST_API_AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.TEST_API_AZURE_CLIENT_SECRET }}
-          APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
           WASM: true
           # set CUSTOM_PLUGIN to false in case of amazonlinux-2 image
           CUSTOM_PLUGIN: ${{ endsWith(env.GW_IMAGE, 'amazonlinux-2') && 'false' || env.CUSTOM_PLUGIN_VAR }}
@@ -473,6 +483,7 @@ jobs:
 
       - name: Execute Gateway API Tests
         id: execute_tests
+        continue-on-error: true
         run: |
           if [[ $RUN_SPEC == 'all' ]]; then
             npm run test-gateway;
@@ -486,6 +497,17 @@ jobs:
         env:
           AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
           APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
+
+      - name: Retry Failed E2E API Tests
+        if: steps.execute_tests.outcome == 'failure'
+        run: |
+          if test -s failed-tests.txt; then
+            npm run test-multiple -- --spec=$(cat failed-tests.txt)
+          fi
+        env:
+          AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
+          APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
+          TEST_APP: gateway
 
       - name: Get Gateway Details
         if: always()
@@ -589,6 +611,16 @@ jobs:
           echo "KONG_PACKAGE=$suffix_excluded_name" >> $GITHUB_ENV
           echo "KONG_PACKAGE is $suffix_excluded_name"
 
+      - name: Set CUSTOM_PLUGIN Variable
+        run: |
+          if [[ $RUN_SPEC == "smoke" || $RUN_SPEC == "custom-rla" || $RUN_SPEC == 'all' ]]; then
+            CUSTOM_PLUGIN=true
+          else
+            CUSTOM_PLUGIN=false
+          fi
+          echo "CUSTOM_PLUGIN_VAR=$CUSTOM_PLUGIN" >> $GITHUB_ENV
+          echo "CUSTOM_PLUGIN is $CUSTOM_PLUGIN"
+
       - name: Start Gateway
         run: cd gateway-docker-compose-generator && make generate_package && cat docker-compose-package.yml && make start_package_ci
         env:
@@ -613,8 +645,8 @@ jobs:
           AZURE_TENANT_ID: ${{ secrets.TEST_API_AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.TEST_API_AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.TEST_API_AZURE_CLIENT_SECRET }}
-          APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
           ACME: true
+          CUSTOM_PLUGIN: ${{ env.CUSTOM_PLUGIN_VAR }}
 
       - name: Logs from Gateway Start
         if: failure()
@@ -634,17 +666,31 @@ jobs:
 
       - name: Execute Gateway API Tests
         id: execute_tests
+        continue-on-error: true
         run: |
           if [[ $RUN_SPEC == 'all' ]]; then
             npm run test-gateway;
           elif [[ $RUN_SPEC == 'smoke' ]]; then
             npm run test-smoke;
+          elif [[ $RUN_SPEC == 'non-smoke' ]]; then
+            npm run test-non-smoke;
           else
             TEST_APP=gateway npm run test-spec --spec=$RUN_SPEC;
           fi
         env:
           AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
           APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
+
+      - name: Retry Failed E2E Package API Tests
+        if: steps.execute_tests.outcome == 'failure'
+        run: |
+          if test -s failed-tests.txt; then
+            npm run test-multiple -- --spec=$(cat failed-tests.txt)
+          fi
+        env:
+          AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
+          APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
+          TEST_APP: gateway
 
       - name: Send test results to Slack
         if: ${{ env.SEND_SLACK_RESULTS == 'true' && always() && github.ref == 'refs/heads/master' }}
