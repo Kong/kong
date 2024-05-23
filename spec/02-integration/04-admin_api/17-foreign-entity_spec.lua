@@ -43,6 +43,12 @@ for _, strategy in helpers.each_strategy() do
 
       local cmdline = "migrations up -c " .. helpers.test_conf_path
       local _, code, _, stderr = helpers.kong_exec(cmdline, env, true, lua_path)
+
+      if stderr and stderr:find("kong migrations finish") then
+        cmdline = "migrations finish -c " .. helpers.test_conf_path
+        _, code, _, stderr = helpers.kong_exec(cmdline, env, true, lua_path)
+      end
+
       assert.equal("", stderr)
       assert.same(0, code)
 
