@@ -349,6 +349,9 @@ end
 -- this function tests if there are captures other than the full path
 -- by checking if there are 2 or more than 2 keys
 local function has_capture(captures)
+  if not captures then
+    return nil
+  end
   local next_i = next(captures)
   return next_i and next(captures, next_i) ~= nil
 end
