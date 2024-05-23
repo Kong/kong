@@ -350,7 +350,7 @@ end
 -- by checking if there are 2 or more than 2 keys
 local function has_capture(captures)
   if not captures then
-    return nil
+    return false
   end
   local next_i = next(captures)
   return next_i and next(captures, next_i) ~= nil
