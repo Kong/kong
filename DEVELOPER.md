@@ -473,7 +473,7 @@ The [EmmyLuaDebugger](https://github.com/EmmyLua/EmmyLuaDebugger) is a standalon
 that runs on the same machine as Kong Gateway and that mediates between the IDE's
 debugger and the Lua code running in Kong Gateway.  It can be downloaded from
 [GitHub](https://github.com/EmmyLua/EmmyLuaDebugger/releases).  The release
-ZIP file contains a single share library named emmy_core.so (Linux) or emmy_core.dylib (macOS).
+ZIP file contains a single shared library named emmy_core.so (Linux) or emmy_core.dylib (macOS).
 Place this file in a directory that is convenient for you and remember the path.
 
 Depending on your Linux version, you may need to compile
@@ -486,7 +486,7 @@ recent version of GLIBC to be present.
 To enable the EmmyLua debugger, the `KONG_EMMY_DEBUGGER` environment variable must be set to
 the absolute path of the debugger shared library file when Kong Gateway is started.  It is
 also advisable to start Kong Gateway with only one worker process, as debugging multiple worker
-processes is not supported.  For example:
+processes requires special care.  For example:
 
 ```shell
 KONG_EMMY_DEBUGGER=/path/to/emmy_core.so KONG_NGINX_WORKER_PROCESSES=1 kong start
@@ -514,6 +514,33 @@ and red colors.  You can now set breakpoints in your Lua code and start debuggin
 a breakpoint in the global `access` function that is defined `runloop/handler.lua` and send
 a proxy request to the Gateway.  The debugger should stop at the breakpoint and you can
 inspect the variables in the request context.
+
+### Debugging `busted` tests
+
+To debug `busted` tests, you can set the `BUSTED_EMMY_DEBUGGER` environment variable to the path
+to the EmmyLua debugger shared library.  When debugging is enabled, `busted` will always wait for
+the IDE to connect during startup.
+
+### Debugging environment variables
+
+The following environment variables can be set to control the behavior of the EmmyLua debugger
+integration:
+
+- `KONG_EMMY_DEBUGGER`: The path to the EmmyLua debugger shared library.
+- `KONG_EMMY_DEBUGGER_HOST`: The IP address that the EmmyLua debugger will listen on.  The default
+  is `localhost`.
+- `KONG_EMMY_DEBUGGER_PORT`: The port that the EmmyLua debugger will listen on.  The default is
+  `9966`.
+- `KONG_EMMY_DEBUGGER_WAIT`: If set, Kong Gateway will wait for the debugger to connect
+  before starting continuing to start.
+- `KONG_EMMY_DEBUGGER_SOURCE_PATH`: The path to the source code that the EmmyLua debugger will
+  use to resolve source code locations.  The default is the current working directory.
+- `KONG_EMMY_DEBUGGER_MULTI_WORKER`: If set, a debugger will be started for each worker process, using
+  incrementing port numbers starting at `KONG_EMMY_DEBUGGER_PORT`.  The default is to start
+  only one debugger for worker zero.
+
+To control debugger behavior while running `busted` tests, a similar set of environment variables
+prefixed with `BUSTED_` instead of `KONG_` can be used.
 
 ## What's next
 
