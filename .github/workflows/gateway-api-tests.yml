@@ -128,7 +128,7 @@ jobs:
 
 
       - name: Start Gateway
-        run: cd gateway-docker-compose-generator && make generate && cat docker-compose.yml && make start
+        run: cd gateway-docker-compose-generator && make generate && cat docker-compose.yml && make start_ci
         env:
           EE_LICENSE: false
           PKI: true

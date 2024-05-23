@@ -256,7 +256,7 @@ jobs:
           echo "CUSTOM_PLUGIN is $CUSTOM_PLUGIN"
 
       - name: Start Gateway
-        run: cd gateway-docker-compose-generator && make generate && make start
+        run: cd gateway-docker-compose-generator && make generate && make start_ci
         env:
           EE_LICENSE: false
           PKI: true
@@ -428,7 +428,7 @@ jobs:
           echo "CUSTOM_PLUGIN is $CUSTOM_PLUGIN"
 
       - name: Start Gateway
-        run: cd gateway-docker-compose-generator && make generate && make start
+        run: cd gateway-docker-compose-generator && make generate && make start_ci
         env:
           EE_LICENSE: false
           PKI: true
@@ -590,7 +590,7 @@ jobs:
           echo "KONG_PACKAGE is $suffix_excluded_name"
 
       - name: Start Gateway
-        run: cd gateway-docker-compose-generator && make generate_package && cat docker-compose-package.yml && make start_package
+        run: cd gateway-docker-compose-generator && make generate_package && cat docker-compose-package.yml && make start_package_ci
         env:
           REPO_VISIBILITY: ${{ inputs.repo_visibility || 'private' }}
           CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
