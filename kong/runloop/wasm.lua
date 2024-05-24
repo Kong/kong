@@ -231,24 +231,21 @@ end
 ---
 ---@return kong.runloop.wasm.filter_chain_reference? ref
 local function get_chain_ref(state, typ, service_id, route_id)
-  local ref
-
   if typ == TYPE_SERVICE and service_id then
-    ref = state.by_service[service_id]
-
-  elseif typ == TYPE_ROUTE and route_id then
-    ref = state.by_route[route_id]
-
-  elseif typ == TYPE_COMBINED and service_id and route_id then
-    local routes = state.combined[service_id]
-    ref = routes and routes[route_id]
-
-  else
-    -- unreachable
-    error("unknown filter chain type: " .. tostring(typ), 2)
+    return state.by_service[service_id]
   end
 
-  return ref
+  if typ == TYPE_ROUTE and route_id then
+    return state.by_route[route_id]
+  end
+
+  if typ == TYPE_COMBINED and service_id and route_id then
+    local routes = state.combined[service_id]
+    return routes and routes[route_id]
+  end
+
+  -- unreachable
+  error("unknown filter chain type: " .. tostring(typ), 2)
 end
 
 
@@ -268,14 +265,18 @@ local function store_chain_ref(state, ref)
            ref.label .. " chain has no service ID")
 
     state.by_service[service_id] = ref
+    return
+  end
 
-  elseif typ == TYPE_ROUTE then
+  if typ == TYPE_ROUTE then
     assert(type(route_id) == "string",
            ref.label .. " chain has no route ID")
 
     state.by_route[route_id] = ref
+    return
+  end
 
-  elseif typ == TYPE_COMBINED then
+  if typ == TYPE_COMBINED then
     assert(type(service_id) == "string" and type(route_id) == "string",
            ref.label .. " chain is missing a service ID or route ID")
 
@@ -287,11 +288,11 @@ local function store_chain_ref(state, ref)
     end
 
     routes[route_id] = ref
-
-  else
-    -- unreachable
-    error("unknown filter chain type: " .. tostring(typ), 2)
+    return
   end
+
+  -- unreachable
+  error("unknown filter chain type: " .. tostring(typ), 2)
 end
 
 
@@ -306,17 +307,18 @@ local function label_for(service_id, route_id)
     return "combined " ..
            "service(" .. service_id .. "), " ..
            "route(" .. route_id .. ")"
-
-  elseif service_id then
-    return "service(" .. service_id .. ")"
-
-  elseif route_id then
-    return "route(" .. route_id .. ")"
-
-  else
-    -- unreachable
-    error("can't compute a label for a filter chain with no route/service", 2)
   end
+
+  if service_id then
+    return "service(" .. service_id .. ")"
+  end
+
+  if route_id then
+    return "route(" .. route_id .. ")"
+  end
+
+  -- unreachable
+  error("can't compute a label for a filter chain with no route/service", 2)
 end
 
 
