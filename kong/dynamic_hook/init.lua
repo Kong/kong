@@ -59,6 +59,7 @@ local function execute_hook_vararg(hook, hook_type, group_name, ...)
   if not hook then
     return
   end
+
   local ok, err = pcall(hook, ...)
   if not ok then
     ngx_log(ngx_WARN, "failed to run ", hook_type, " hook of ", group_name, ": ", err)
@@ -70,6 +71,7 @@ local function execute_hooks_vararg(hooks, hook_type, group_name, ...)
   if not hooks then
     return
   end
+
   for _, hook in ipairs(hooks) do
     execute_hook_vararg(hook, hook_type, group_name, ...)
   end
@@ -88,6 +90,7 @@ local function wrap_function_vararg(group_name, original_func, handlers)
     if should_execute_original_func(group_name) then
       return original_func(...)
     end
+
     execute_hooks_vararg(handlers.befores, "before", group_name, ...)
     return execute_after_hooks_vararg(handlers, group_name, original_func(...))
   end
@@ -98,6 +101,7 @@ local function execute_hook(hook, hook_type, group_name, a1, a2, a3, a4, a5, a6,
   if not hook then
     return
   end
+
   local ok, err = pcall(hook, a1, a2, a3, a4, a5, a6, a7, a8)
   if not ok then
     ngx_log(ngx_WARN, "failed to run ", hook_type, " hook of ", group_name, ": ", err)
@@ -109,6 +113,7 @@ local function execute_hooks(hooks, hook_type, group_name, a1, a2, a3, a4, a5, a
   if not hooks then
     return
   end
+
   for _, hook in ipairs(hooks) do
     execute_hook(hook, hook_type, group_name, a1, a2, a3, a4, a5, a6, a7, a8)
   end
@@ -150,6 +155,7 @@ local function wrap_function(max_args, group_name, original_func, handlers)
       execute_hook(handlers.after_mut, "after_mut", group_name, a1, a2, a3, a4, a5, a6, a7, a8)
       execute_hooks(handlers.afters, "after", group_name, a1, a2, a3, a4, a5, a6, a7, a8)
     end
+
     return a1, a2, a3, a4, a5, a6, a7, a8
   end
 end
@@ -234,6 +240,7 @@ function _M.run_hooks(group_name, hook_name, a1, a2, a3, a4, a5, a6, a7, a8, ...
   else
     ok, err = pcall(handler, a1, a2, a3, a4, a5, a6, a7, a8, ...)
   end
+
   if not ok then
     ngx_log(ngx_WARN, "failed to run dynamic hook ", group_name, ".", hook_name, ": ", err)
   end
