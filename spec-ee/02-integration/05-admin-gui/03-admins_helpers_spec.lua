@@ -8,6 +8,7 @@
 local helpers = require "spec.helpers"
 local constants = require "kong.constants"
 local utils = require "kong.tools.utils"
+local is_array = require("kong.tools.table").is_array
 local enums = require "kong.enterprise_edition.dao.enums"
 local admins_helpers = require "kong.enterprise_edition.admins_helpers"
 local basicauth_crypto = require "kong.plugins.basic-auth.crypto"
@@ -90,7 +91,7 @@ for _, strategy in helpers.each_strategy() do
         local res, err = admins_helpers.find_all()
         assert.is_nil(err)
         assert.same(200, res.code)
-        assert(utils.is_array(res.body.data))
+        assert(is_array(res.body.data))
         assert.same(2, #res.body.data)
         assert.same(ngx.null, res.body.next)
 
@@ -106,7 +107,7 @@ for _, strategy in helpers.each_strategy() do
         local res, err = admins_helpers.find_all(true)
         assert.is_nil(err)
         assert.same(200, res.code)
-        assert(utils.is_array(res.body.data))
+        assert(is_array(res.body.data))
         assert.same(4, #res.body.data) -- total admins in all workspaces
         assert.same(ngx.null, res.body.next)
       end)

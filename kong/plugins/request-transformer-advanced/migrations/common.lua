@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local utils = require "kong.tools.utils"
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 
 local _M = {}
@@ -24,7 +24,7 @@ function _M.rt_rename(_, _, dao)
       api_id = plugin.api_id,
       consumer_id = plugin.consumer_id,
       enabled = plugin.enabled,
-      config = utils.cycle_aware_deep_copy(plugin.config),
+      config = cycle_aware_deep_copy(plugin.config),
     })
     if err then
       return err

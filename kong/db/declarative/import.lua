@@ -9,7 +9,7 @@ local lmdb = require("resty.lmdb")
 local txn = require("resty.lmdb.transaction")
 local constants = require("kong.constants")
 local workspaces = require("kong.workspaces")
-local utils = require("kong.tools.utils")
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local declarative_config = require("kong.db.schema.others.declarative_config")
 
 
@@ -98,7 +98,7 @@ local function load_into_db(entities, meta)
 
     local primary_key, ok, err, err_t
     for _, entity in pairs(entities[schema_name]) do
-      entity = utils.cycle_aware_deep_copy(entity)
+      entity = cycle_aware_deep_copy(entity)
       entity._tags = nil
       entity.ws_id = nil
 
@@ -332,7 +332,7 @@ local function load_into_cache(entities, meta, hash)
 
       local cache_key = dao:cache_key(id, nil, nil, nil, nil, item.ws_id)
       if transform and schema:has_transformations(item) then
-        local transformed_item = utils.cycle_aware_deep_copy(item)
+        local transformed_item = cycle_aware_deep_copy(item)
         remove_nulls(transformed_item)
 
         local err

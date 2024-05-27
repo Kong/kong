@@ -9,7 +9,7 @@ local statsd_handler = require "kong.plugins.statsd.handler"
 
 local kong = kong
 
-local handler = require("kong.tools.utils").cycle_aware_deep_copy(statsd_handler)
+local handler = require("kong.tools.table").cycle_aware_deep_copy(statsd_handler)
 local logging_flag = false
 local log = handler.log
 

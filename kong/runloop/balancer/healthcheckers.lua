@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local utils = require "kong.tools.utils"
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local get_certificate = require "kong.runloop.certificate".get_certificate
 
 local balancers = require "kong.runloop.balancer.balancers"
@@ -252,7 +252,7 @@ function healthcheckers_M.create_healthchecker(balancer, upstream)
   if (ngx.config.subsystem == "stream" and checks.active.type ~= "tcp")
     or (ngx.config.subsystem == "http" and checks.active.type == "tcp")
   then
-    checks = utils.cycle_aware_deep_copy(checks)
+    checks = cycle_aware_deep_copy(checks)
     checks.active.healthy.interval = 0
     checks.active.unhealthy.interval = 0
   end

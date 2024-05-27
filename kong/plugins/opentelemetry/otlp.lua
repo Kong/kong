@@ -10,13 +10,14 @@ local pb = require "pb"
 local new_tab = require "table.new"
 local nkeys = require "table.nkeys"
 local tablepool = require "tablepool"
-local utils = require "kong.tools.utils"
+local kong_table = require "kong.tools.table"
 
 local kong = kong
 local insert = table.insert
 local tablepool_fetch = tablepool.fetch
 local tablepool_release = tablepool.release
-local table_merge = utils.table_merge
+local table_merge = kong_table.table_merge
+local cycle_aware_deep_copy = kong_table.cycle_aware_deep_copy
 local setmetatable = setmetatable
 
 local TRACE_ID_LEN = 16
@@ -176,7 +177,7 @@ do
   encode_traces = function(spans, resource_attributes)
     local tab = tablepool_fetch(POOL_OTLP, 0, 2)
     if not tab.resource_spans then
-      tab.resource_spans = utils.cycle_aware_deep_copy(pb_memo.resource_spans)
+      tab.resource_spans = cycle_aware_deep_copy(pb_memo.resource_spans)
     end
 
     local resource = tab.resource_spans[1].resource

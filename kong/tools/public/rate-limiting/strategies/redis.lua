@@ -5,8 +5,8 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local utils = require "kong.tools.utils"
 local redis = require "kong.enterprise_edition.redis"
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 local ngx_log   = ngx.log
 local ERR       = ngx.ERR
@@ -35,7 +35,7 @@ end
 
 
 function _M.new(_, opts)
-  local conf = utils.cycle_aware_deep_copy(opts)
+  local conf = cycle_aware_deep_copy(opts)
 
   -- initialize redis configuration - e.g., parse
   -- Sentinel addresses

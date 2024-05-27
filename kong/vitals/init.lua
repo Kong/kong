@@ -12,6 +12,7 @@ local tablex            = require "pl.tablex"
 local pl_stringx        = require "pl.stringx"
 local reports           = require "kong.reports"
 local utils             = require "kong.tools.utils"
+local kong_table        = require "kong.tools.table"
 local new_tab           = require "table.new"
 local pg_strat          = require "kong.vitals.postgres.strategy"
 local feature_flags     = require "kong.enterprise_edition.feature_flags"
@@ -44,7 +45,7 @@ local string_find       = string.find
 
 local table_insert      = table.insert
 
-local utils_unpack      = utils.unpack
+local utils_unpack      = kong_table.unpack
 
 local portal_and_vitals_allowed = license_helpers.portal_and_vitals_allowed
 
@@ -929,7 +930,7 @@ local function prep_code_class_counters(query_type, keys, count, data)
   if tonumber(code) then
     -- this one requires a little transformation: though we logged 404, for
     -- example, we want to store 4.
-    local new_keys = utils.shallow_copy(keys)
+    local new_keys = kong_table.shallow_copy(keys)
 
     new_keys[IDX.code] = floor(code / 100)
 

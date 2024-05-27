@@ -7,8 +7,8 @@
 
 local endpoints  = require "kong.api.endpoints"
 local cache      = require "kong.plugins.openid-connect.cache"
-local utils      = require "kong.tools.utils"
 local json       = require "cjson.safe"
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 
 local escape_uri = ngx.escape_uri
@@ -53,7 +53,7 @@ local function filter_jwks(jwks)
     return nil
   end
 
-  local keyset = utils.cycle_aware_deep_copy(jwks)
+  local keyset = cycle_aware_deep_copy(jwks)
   if type(keyset) == "table" and type(keyset.keys) == "table" then
     for _, jwk in ipairs(keyset.keys) do
       jwk.k = nil
@@ -93,7 +93,7 @@ return {
         if #issuers == 0 and db.strategy == "off" and cache.discovery_data then
           -- TODO: implement paging
           for i, data in ipairs(cache.discovery_data) do
-            issuers[i] = utils.cycle_aware_deep_copy(data)
+            issuers[i] = cycle_aware_deep_copy(data)
           end
         end
 
@@ -166,7 +166,7 @@ return {
         if not entity and db.strategy == "off"
            and cache.discovery_data and cache.discovery_data[self.params.oic_issuers]
         then
-          entity = utils.cycle_aware_deep_copy(cache.discovery_data[self.params.oic_issuers])
+          entity = cycle_aware_deep_copy(cache.discovery_data[self.params.oic_issuers])
         end
 
         if not entity then

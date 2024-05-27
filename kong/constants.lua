@@ -7,7 +7,7 @@
 
 local dist_constants = require "kong.enterprise_edition.distributions_constants"
 local ee_constants = require "kong.enterprise_edition.constants"
-local utils_table_concat = require "kong.tools.utils".concat
+local utils_table_concat = require "kong.tools.table".concat
 
 local plugins = {
   "jwt",

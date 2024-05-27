@@ -7,7 +7,7 @@
 
 local rbac          = require "kong.rbac"
 local constants     = require "kong.constants"
-local utils         = require "kong.tools.utils"
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local looper = require "kong.portal.render_toolset.looper"
 
 local PORTAL_PREFIX = constants.PORTAL_PREFIX
@@ -57,7 +57,7 @@ return function()
   -- to not interfere with is_authenticated checks
   user.preauth_claims = function()
     local render_ctx = ngx.ctx.render_ctx
-    return utils.cycle_aware_deep_copy(render_ctx.preauth_claims)
+    return cycle_aware_deep_copy(render_ctx.preauth_claims)
   end
 
   return user

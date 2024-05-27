@@ -7,7 +7,7 @@
 
 local helpers = require "spec.helpers"
 local crypto = require "kong.plugins.basic-auth.crypto"
-local utils = require "kong.tools.utils"
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local DB = require "kong.db"
 
 for _, strategy in helpers.each_strategy() do
@@ -18,7 +18,7 @@ for _, strategy in helpers.each_strategy() do
   end)
 
   local function init_db()
-    local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
+    local conf = cycle_aware_deep_copy(helpers.test_conf)
 
     local db = assert(DB.new(conf, strategy))
     assert(db:init_connector())

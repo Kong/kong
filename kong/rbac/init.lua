@@ -21,6 +21,7 @@ local base       = require "resty.core.base"
 local hooks      = require "kong.hooks"
 local resty_str  = require "resty.string"
 local constants  = require "kong.constants"
+local kong_table = require "kong.tools.table"
 
 local BCRYPT_COST_FACTOR = constants.RBAC.BCRYPT_COST_FACTOR
 
@@ -1506,7 +1507,7 @@ _M.validate_rbac_token = validate_rbac_token
 --@tparam table roles2
 --@tparam table - roles1 ∪ roles2
 function _M.merge_roles(roles1, roles2)
-  local _roles1 = utils.table_merge({}, roles1)
+  local _roles1 = kong_table.table_merge({}, roles1)
 
   if not roles2 then
     return roles1
@@ -1871,7 +1872,7 @@ function _M.find_all_ws_for_rbac_user(rbac_user, workspace, with_wildcard_worksp
   local ws_count = tablex.size(ws_map)
   if (ws_count == 1 and ws_map["*"]) or ws_count == 0 then
     local rbac_user_ws_id = assert(rbac_user.ws_id)
-    local ws = utils.shallow_copy(workspaces.select_workspace_by_id_with_cache(rbac_user_ws_id))
+    local ws = kong_table.shallow_copy(workspaces.select_workspace_by_id_with_cache(rbac_user_ws_id))
     if not ws_map[ws and ws.id] then
       ws.is_admin_workspace = true
       wss[#wss + 1] = ws

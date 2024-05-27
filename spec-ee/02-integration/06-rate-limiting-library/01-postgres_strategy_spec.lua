@@ -8,7 +8,7 @@
 local postgres_strategy = require "kong.tools.public.rate-limiting.strategies.postgres"
 local helpers           = require "spec.helpers"
 local DB                = require "kong.db"
-local utils             = require "kong.tools.utils"
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 local function window_floor(size, time)
   return math.floor(time / size) * size
@@ -27,7 +27,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
                             mock_window_size
 
     setup(function()
-      local conf = utils.cycle_aware_deep_copy(helpers.test_conf, true)
+      local conf = cycle_aware_deep_copy(helpers.test_conf, true)
       conf.pg_database =
         os.getenv("KONG_TEST_PG_DATABASE") or helpers.test_conf.pg_database
 

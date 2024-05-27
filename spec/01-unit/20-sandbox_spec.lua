@@ -5,8 +5,8 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local utils = require "kong.tools.utils"
 local fmt = string.format
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 describe("sandbox functions wrapper", function()
 
@@ -22,7 +22,7 @@ describe("sandbox functions wrapper", function()
   }
 
   lazy_setup(function()
-    _G.kong.configuration = utils.cycle_aware_deep_copy(base_conf)
+    _G.kong.configuration = cycle_aware_deep_copy(base_conf)
 
     -- load and reference module we can spy on
     load_s = spy.new(load)
@@ -50,7 +50,7 @@ describe("sandbox functions wrapper", function()
       end)
 
       lazy_teardown(function()
-        _G.kong.configuration = utils.cycle_aware_deep_copy(base_conf)
+        _G.kong.configuration = cycle_aware_deep_copy(base_conf)
       end)
 
       -- https://github.com/Kong/kong/issues/5110
@@ -74,7 +74,7 @@ describe("sandbox functions wrapper", function()
       end)
 
       lazy_teardown(function()
-        _G.kong.configuration = utils.cycle_aware_deep_copy(base_conf)
+        _G.kong.configuration = cycle_aware_deep_copy(base_conf)
       end)
 
       it("validates input is lua that returns a function", function()
@@ -106,7 +106,7 @@ describe("sandbox functions wrapper", function()
       end)
 
       lazy_teardown(function()
-        _G.kong.configuration = utils.cycle_aware_deep_copy(base_conf)
+        _G.kong.configuration = cycle_aware_deep_copy(base_conf)
       end)
 
       it("errors", function()
@@ -125,7 +125,7 @@ describe("sandbox functions wrapper", function()
     end)
 
     lazy_teardown(function()
-      _G.kong.configuration = utils.cycle_aware_deep_copy(base_conf)
+      _G.kong.configuration = cycle_aware_deep_copy(base_conf)
     end)
 
     describe("untrusted_lua = 'off'", function()
@@ -241,7 +241,7 @@ describe("sandbox functions wrapper", function()
           _G.baz = nil
           _G.fizz = nil
 
-          _G.kong.configuration = utils.cycle_aware_deep_copy(base_conf)
+          _G.kong.configuration = cycle_aware_deep_copy(base_conf)
         end)
 
         it("has access to string.rep", function()
@@ -324,7 +324,7 @@ describe("sandbox functions wrapper", function()
       end)
 
       lazy_teardown(function()
-        _G.kong.configuration = utils.cycle_aware_deep_copy(base_conf)
+        _G.kong.configuration = cycle_aware_deep_copy(base_conf)
       end)
 
       it("returns a function when it gets code returning a function", function()
@@ -354,7 +354,7 @@ describe("sandbox functions wrapper", function()
       end)
 
       lazy_teardown(function()
-        _G.kong.configuration = utils.cycle_aware_deep_copy(base_conf)
+        _G.kong.configuration = cycle_aware_deep_copy(base_conf)
       end)
 
       it("errors", function()

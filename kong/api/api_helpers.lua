@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local utils = require "kong.tools.utils"
+local kong_table = require "kong.tools.table"
 local cjson = require "cjson"
 local pl_pretty = require "pl.pretty"
 local tablex = require "pl.tablex"
@@ -101,7 +102,7 @@ function _M.normalize_nested_params(obj)
     is_array = false
     if type(v) == "table" then
       -- normalize arrays since Lapis parses ?key[1]=foo as {["1"]="foo"} instead of {"foo"}
-      if utils.is_array(v, "lapis") then
+      if kong_table.is_array(v, "lapis") then
         is_array = true
         local arr = {}
         for _, arr_v in pairs(v) do arr[#arr+1] = arr_v end

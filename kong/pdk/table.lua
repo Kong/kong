@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local table_merge = require("kong.tools.utils").table_merge
+local table_merge = require("kong.tools.table").table_merge
 
 --- Utilities for Lua tables.
 --

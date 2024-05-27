@@ -15,6 +15,7 @@ local hash        = require "kong.openid-connect.hash"
 local log         = require "kong.plugins.jwt-signer.log"
 local workspaces  = require "kong.workspaces"
 local certificate = require "kong.runloop.certificate"
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 
 local worker_id   = ngx.worker.id
@@ -535,7 +536,7 @@ local function introspect(endpoint, opaque_token, hint, authorization, args, cac
         return introspect_uri(endpoint, opaque_token, hint, authorization, args_table or args, timeout)
       end
 
-      return utils.cycle_aware_deep_copy(res[1])
+      return cycle_aware_deep_copy(res[1])
 
     else
       log("unable to generate a cache key for introspection")

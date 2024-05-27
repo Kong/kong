@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local utils = require "kong.tools.utils"
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local multipart = require "multipart"
 local cjson = require("cjson.safe").new()
 local pl_template = require "pl.template"
@@ -242,7 +242,7 @@ local function transform_querystrings(conf, template_env)
     return
   end
 
-  local querystring = utils.cycle_aware_deep_copy(template_env.query_params)
+  local querystring = cycle_aware_deep_copy(template_env.query_params)
 
   -- Remove querystring(s)
   for _, name, value in iter(conf.remove.querystring, template_env) do
@@ -696,7 +696,7 @@ function _M.execute(conf)
   local template_env = {}
   if lua_enabled and sandbox_enabled then
     -- load the sandbox environment to be used to render the template
-    template_env = utils.cycle_aware_deep_copy(sandbox.configuration.environment)
+    template_env = cycle_aware_deep_copy(sandbox.configuration.environment)
     -- here we can optionally add functions to expose to the sandbox, eg:
     -- tostring = tostring,
     -- because headers may contain array elements such as duplicated headers

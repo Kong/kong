@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local split = require "pl.stringx".split
-local utils = require "kong.tools.utils"
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local clone = require "table.clone"
 
 local type = type
@@ -127,7 +127,7 @@ local function resolve_ref(spec, schema, opts, parent_ref)
           if not ref_target then
             return nil, "failed dereferencing schema: " .. err
           end
-          value = utils.cycle_aware_deep_copy(ref_target)
+          value = cycle_aware_deep_copy(ref_target)
           schema[key] = value
 
         else

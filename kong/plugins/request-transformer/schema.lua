@@ -6,9 +6,9 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local pl_template = require "pl.template"
-local utils = require "kong.tools.utils"
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local typedefs = require "kong.db.schema.typedefs"
-local validate_header_name = require("kong.tools.utils").validate_header_name
+local validate_header_name = require("kong.tools.http").validate_header_name
 
 
 local compile_opts = {
@@ -123,7 +123,7 @@ local colon_rename_strings_array_record = {
 }
 
 
-local colon_strings_array_record_plus_uri = utils.cycle_aware_deep_copy(colon_strings_array_record)
+local colon_strings_array_record_plus_uri = cycle_aware_deep_copy(colon_strings_array_record)
 local uri = { uri = { type = "string" } }
 table.insert(colon_strings_array_record_plus_uri.fields, uri)
 

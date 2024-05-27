@@ -6,13 +6,12 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local propagation_utils = require "kong.tracing.propagation.utils"
-local utils = require "kong.tools.utils"
 local bn = require "resty.openssl.bn"
 
 local from_hex = propagation_utils.from_hex
 local to_hex = require "resty.string".to_hex
 
-local shallow_copy = utils.shallow_copy
+local shallow_copy = require("kong.tools.table").shallow_copy
 local fmt          = string.format
 local sub          = string.sub
 

@@ -10,6 +10,7 @@ local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 
 
+local cycle_aware_deep_merge = require("kong.tools.table").cycle_aware_deep_merge
 local fmt = string.format
 
 
@@ -25,10 +26,10 @@ end
 function Blueprint:build(overrides)
   overrides = overrides or {}
   if self._defaults then
-    overrides = utils.cycle_aware_deep_merge(self._defaults, overrides)
+    overrides = cycle_aware_deep_merge(self._defaults, overrides)
   end
 
-  return utils.cycle_aware_deep_merge(self.build_function(overrides), overrides)
+  return cycle_aware_deep_merge(self.build_function(overrides), overrides)
 end
 
 

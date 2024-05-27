@@ -10,7 +10,7 @@ local log       = require "kong.plugins.openid-connect.log"
 local redirect  = require "kong.plugins.openid-connect.redirect"
 local consumers = require "kong.plugins.openid-connect.consumers"
 local error_codes = require "kong.enterprise_edition.oauth.error_codes"
-local table_merge = require("kong.tools.utils").table_merge
+local table_merge = require("kong.tools.table").table_merge
 
 
 local ForbiddenError = error_codes.ForbiddenError

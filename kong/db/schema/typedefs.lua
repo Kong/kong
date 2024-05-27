@@ -16,6 +16,7 @@ local Schema = require "kong.db.schema"
 local socket_url = require "socket.url"
 local constants = require "kong.constants"
 local pl_tablex = require("pl.tablex")
+local kong_table = require("kong.tools.table")
 
 
 local DAO_MAX_TTL = constants.DATABASE.DAO_MAX_TTL
@@ -718,7 +719,7 @@ local function validate_loaded_plugins(target_plugin)
   -- we should ensure that the dependecy is actually a loaded plugin.
   -- `loaded_plugins` also include custom plugins
   local loaded_plugins = pl_tablex.keys(kong.configuration.loaded_plugins)
-  if utils.table_contains(loaded_plugins, target_plugin) then
+  if kong_table.table_contains(loaded_plugins, target_plugin) then
     return true
   end
   return false, "Expected one of " .. table.concat(loaded_plugins, ", ")

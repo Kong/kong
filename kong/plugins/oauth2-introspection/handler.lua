@@ -10,7 +10,7 @@
 local constants = require "kong.constants"
 local meta = require "kong.meta"
 
-local utils = require "kong.tools.utils"
+local table_merge = require("kong.tools.table").table_merge
 local Multipart = require "multipart"
 local cjson = require "cjson.safe"
 local http = require "resty.http"
@@ -64,7 +64,7 @@ local function retrieve_parameters()
     body_parameters = ngx.req.get_post_args()
   end
 
-  return utils.table_merge(ngx.req.get_uri_args(), body_parameters)
+  return table_merge(ngx.req.get_uri_args(), body_parameters)
 end
 
 local function parse_access_token(conf)

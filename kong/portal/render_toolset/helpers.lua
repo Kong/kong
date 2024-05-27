@@ -252,7 +252,7 @@ local function get_tbl_helpers()
   tbl_helpers.is_list = is_list
   tbl_helpers.list_insert = list_insert
   tbl_helpers.table_insert = table_insert
-  tbl_helpers.cycle_aware_deep_copy = require("kong.tools.utils").cycle_aware_deep_copy
+  tbl_helpers.cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
   return tbl_helpers
 end

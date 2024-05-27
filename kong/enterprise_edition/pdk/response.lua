@@ -6,10 +6,10 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local phase_checker = require "kong.pdk.private.phases"
-local utils = require "kong.tools.utils"
+local kong_table = require "kong.tools.table"
 
-local pack = utils.pack
-local unpack = utils.unpack
+local pack = kong_table.pack
+local unpack = kong_table.unpack
 
 local check_phase = phase_checker.check
 local PHASES = phase_checker.phases

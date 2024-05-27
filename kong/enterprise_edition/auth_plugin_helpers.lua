@@ -13,7 +13,7 @@ local rbac                = require "kong.rbac"
 local workspaces          = require "kong.workspaces"
 local jwt_decoder         = require "kong.plugins.jwt.jwt_parser"
 local kong_global         = require "kong.global"
-local utils               = require "kong.tools.utils"
+local shallow_copy        = require("kong.tools.table").shallow_copy
 
 local kong          = kong
 local DEBUG         = ngx.DEBUG
@@ -291,7 +291,7 @@ end
 -- ONLY designed for Admin API usages with Kong Manager for now.
 function _M.prepare_openid_config(plugin_config, is_auth_route)
   -- Shallow copy here to avoid changing the original config table
-  local config = utils.shallow_copy(plugin_config)
+  local config = shallow_copy(plugin_config)
 
   -- Clear these undocumented fields to avoid schema violations
   config.admin_claim = nil

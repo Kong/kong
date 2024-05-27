@@ -8,7 +8,7 @@
 local Entity = require("kong.db.schema.entity")
 local DAO = require("kong.db.dao.init")
 local errors = require("kong.db.errors")
-local utils = require("kong.tools.utils")
+local cycle_aware_deep_merge = require("kong.tools.table").cycle_aware_deep_merge
 
 local DEFAULT_WORKSPACE = "4d5435cb-5f92-42c0-ace3-752a78550126"
 
@@ -84,7 +84,7 @@ describe("option no_broadcast_crud_event", function()
           return data
         end,
         update = function(_, _, value)
-          data = utils.cycle_aware_deep_merge(data, value)
+          data = cycle_aware_deep_merge(data, value)
           return data
         end,
       }
@@ -116,7 +116,7 @@ describe("option no_broadcast_crud_event", function()
           return data
         end,
         update = function(_, _, value)
-          data = utils.cycle_aware_deep_merge(data, value)
+          data = cycle_aware_deep_merge(data, value)
           return data
         end,
       }

@@ -7,10 +7,9 @@
 
 
 local cjson = require "cjson.safe"
-local utils = require "kong.tools.utils"
 local const = require "spec-ee.fixtures.websocket.constants"
 
-local unpack = utils.unpack
+local unpack = require("kong.tools.table").unpack
 local log = ngx.log
 local concat = table.concat
 local insert = table.insert

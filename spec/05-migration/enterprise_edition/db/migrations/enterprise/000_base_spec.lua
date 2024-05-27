@@ -6,13 +6,13 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
 local DB = require "kong.db"
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 for _, strategy in helpers.each_strategy() do
 
   local function init_db()
-    local conf = utils.cycle_aware_deep_copy(helpers.test_conf)
+    local conf = cycle_aware_deep_copy(helpers.test_conf)
 
     local db = assert(DB.new(conf, strategy))
     assert(db:init_connector())

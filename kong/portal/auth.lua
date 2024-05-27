@@ -8,12 +8,12 @@
 local ee_api        = require "kong.enterprise_edition.api_helpers"
 local workspaces    = require "kong.workspaces"
 local constants     = require "kong.constants"
-local utils         = require "kong.tools.utils"
 local enums         = require "kong.enterprise_edition.dao.enums"
 local rbac          = require "kong.rbac"
 local auth_helpers  = require "kong.enterprise_edition.auth_helpers"
 local file_helpers  = require "kong.portal.file_helpers"
 local workspace_config = require "kong.portal.workspace_config"
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 local ws_constants  = constants.WORKSPACE_CONFIG
 
@@ -129,7 +129,7 @@ local function check_oidc_session()
     workspace,
     { decode_json = true }
   )
-  conf = utils.cycle_aware_deep_copy(conf) or {}
+  conf = cycle_aware_deep_copy(conf) or {}
   local cookie_name = get_conf_arg(conf, "session_cookie_name", "session")
 
   local vars = ngx.var

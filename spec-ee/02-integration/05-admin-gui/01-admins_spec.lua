@@ -9,6 +9,7 @@ local helpers    = require "spec.helpers"
 local cjson      = require "cjson"
 local enums      = require "kong.enterprise_edition.dao.enums"
 local utils      = require "kong.tools.utils"
+local is_array   = require("kong.tools.table").is_array
 local ee_jwt     = require "kong.enterprise_edition.jwt"
 local ee_helpers = require "spec-ee.helpers"
 local admins_helpers = require "kong.enterprise_edition.admins_helpers"
@@ -273,7 +274,7 @@ for _, strategy in helpers.each_strategy() do
           local json = getAdmins("/admins?type=2")
 
           assert.equal(4, #json.data)
-          assert(utils.is_array(json.data))
+          assert(is_array(json.data))
           assert.same(ngx.null, json.next)
         end)
 
@@ -286,7 +287,7 @@ for _, strategy in helpers.each_strategy() do
           local admins = getAdmins("/" .. another_ws.name .. "/admins")
           assert.equal(1, #admins.data)
           assert.equal("test1@konghq.com", admins.data[1].email)
-          assert(utils.is_array(admins.data))
+          assert(is_array(admins.data))
           assert.same(ngx.null, admins.next)
         end)
 
@@ -312,32 +313,32 @@ for _, strategy in helpers.each_strategy() do
 
           local admins = getAdmins("/admins")
           assert.equal(5, #admins.data)
-          assert(utils.is_array(admins.data))
+          assert(is_array(admins.data))
           assert.same(ngx.null, admins.next)
 
           admins = getAdmins("/" .. another_ws.name .. "/admins")
           assert.equal(1, #admins.data)
           assert.equal("test1@konghq.com", admins.data[1].email)
-          assert(utils.is_array(admins.data))
+          assert(is_array(admins.data))
           assert.same(ngx.null, admins.next)
         end)
 
         it("retrieves list of admins in all workspaces", function()
           local json = getAdmins("/admins?all_workspaces=true")
           assert.equal(6, #json.data) -- 1 more admin in non-default workspaces
-          assert(utils.is_array(json.data))
+          assert(is_array(json.data))
           assert.same(ngx.null, json.next)
 
           -- omit value
           json = getAdmins("/admins?all_workspaces")
-          assert(utils.is_array(json.data))
+          assert(is_array(json.data))
           assert.equal(6, #json.data)
           assert.same(ngx.null, json.next)
         end)
 
         it("retrieves list of admins in all workspaces - invalid params", function()
           local json = getAdmins("/admins?all_workspaces=false")
-          assert(utils.is_array(json.data))
+          assert(is_array(json.data))
           assert.equal(5, #json.data)
           assert.same(ngx.null, json.next)
         end)

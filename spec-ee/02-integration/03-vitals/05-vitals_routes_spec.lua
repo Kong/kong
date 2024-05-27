@@ -13,6 +13,7 @@ local clear_license_env = require("spec-ee.helpers").clear_license_env
 local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 local time        = ngx.time
 local fmt         = string.format
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 local compare_no_order = require "pl.tablex".compare_no_order
 
@@ -63,7 +64,7 @@ for _, db_strategy in helpers.each_strategy() do
       -- make a copy of the env. otherwise it will be modified by kong_exec,
       -- and every time new paths is duplicated to the lua_path, eventually
       -- exceed the limit of nginx conf string length
-      assert(helpers.restart_kong(utils.cycle_aware_deep_copy(env)))
+      assert(helpers.restart_kong(cycle_aware_deep_copy(env)))
       -- recreate the client as the old connection is closed
       if client then client:close() end
       client = helpers.admin_client()

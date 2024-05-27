@@ -9,9 +9,9 @@
 local meta = require "kong.meta"
 local kube = require "kong.vaults.hcv.kube"
 local approle = require "kong.vaults.hcv.approle"
-local utils = require "kong.tools.utils"
 local cjson = require("cjson.safe").new()
 local http = require "resty.luasocket.http"
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 
 local decode_json = cjson.decode
@@ -78,7 +78,7 @@ local function request(conf, resource, version, request_conf)
 
   for k, v in pairs(request_conf or {}) do
     if type(v) == "table" then
-      request[v] = utils.cycle_aware_deep_copy(v)
+      request[v] = cycle_aware_deep_copy(v)
     else
       request_opts[k] = v
     end

@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local cjson = require "cjson"
-local utils = require "kong.tools.utils"
+local shallow_copy = require("kong.tools.table").shallow_copy
 
 
 local setmetatable = setmetatable
@@ -23,7 +23,7 @@ local type = type
 local function parse_name_list(input, errors)
   local name_list
   if type(input) == "table" then
-    name_list = utils.shallow_copy(input)
+    name_list = shallow_copy(input)
 
   elseif input == ngx.null then
     name_list = {}

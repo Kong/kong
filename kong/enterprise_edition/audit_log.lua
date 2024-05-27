@@ -8,7 +8,7 @@
 local cjson = require "cjson"
 local pl_file = require "pl.file"
 local pl_sort = require "pl.tablex".sort
-local utils = require "kong.tools.utils"
+local table_contains = require("kong.tools.table").table_contains
 local find = string.find
 local lower = string.lower
 local pkey = require "resty.openssl.pkey"
@@ -152,7 +152,7 @@ local function dao_audit_handler(data)
     return
   end
 
-  if utils.table_contains(kong.configuration.audit_log_ignore_tables,
+  if table_contains(kong.configuration.audit_log_ignore_tables,
                           data.schema.name) then
     return
   end
@@ -228,7 +228,7 @@ local function admin_log_handler()
     return
   end
 
-  if utils.table_contains(kong.configuration.audit_log_ignore_methods,
+  if table_contains(kong.configuration.audit_log_ignore_methods,
                           ngx.req.get_method()) then
     return
   end

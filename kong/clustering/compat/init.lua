@@ -9,14 +9,14 @@ local cjson = require("cjson.safe")
 local constants = require("kong.constants")
 local meta = require("kong.enterprise_edition.meta")
 local version = require("kong.clustering.compat.version")
-local utils = require("kong.tools.utils")
 
 local type = type
 local ipairs = ipairs
 local table_insert = table.insert
 local table_sort = table.sort
 local gsub = string.gsub
-local split = utils.split
+local split = require("kong.tools.string").split
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local deflate_gzip = require("kong.tools.gzip").deflate_gzip
 local cjson_encode = cjson.encode
 -- [=[ EE only
@@ -475,7 +475,7 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix,
   end
 
   local has_update
-  payload = utils.cycle_aware_deep_copy(payload, true)
+  payload = cycle_aware_deep_copy(payload, true)
   local config_table = payload["config_table"]
 
   -- XXX EE

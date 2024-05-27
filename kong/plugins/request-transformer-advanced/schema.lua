@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local pl_template = require "pl.template"
-local utils = require "kong.tools.utils"
+local cycle_aware_deep_copy= require("kong.tools.table").cycle_aware_deep_copy
 local typedefs = require "kong.db.schema.typedefs"
 
 local ngx_re = require("ngx.re")
@@ -168,12 +168,12 @@ local colon_strings_array_record = {
   },
 }
 
-local colon_strings_array_record_plus_json_types = utils.cycle_aware_deep_copy(colon_strings_array_record)
+local colon_strings_array_record_plus_json_types = cycle_aware_deep_copy(colon_strings_array_record)
 local json_types = { json_types = json_types_array }
 table.insert(colon_strings_array_record_plus_json_types.fields, json_types)
 
 
-local colon_strings_array_record_plus_json_types_uri = utils.cycle_aware_deep_copy(colon_strings_array_record_plus_json_types)
+local colon_strings_array_record_plus_json_types_uri = cycle_aware_deep_copy(colon_strings_array_record_plus_json_types)
 local uri = { uri = { type = "string" } }
 table.insert(colon_strings_array_record_plus_json_types_uri.fields, uri)
 

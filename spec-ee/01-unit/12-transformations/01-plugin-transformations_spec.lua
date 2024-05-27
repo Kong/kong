@@ -54,7 +54,7 @@ describe("json_navigator", function()
         navigated = true
         navigate_cnt = navigate_cnt + 1
         table.insert(navigated_elements, { age = o[p] })
-        table.insert(navigated_ctxs, require("kong.tools.utils").cycle_aware_deep_copy(ctx))
+        table.insert(navigated_ctxs, require("kong.tools.table").cycle_aware_deep_copy(ctx))
       end, opts)
 
       assert.is_true(navigated)

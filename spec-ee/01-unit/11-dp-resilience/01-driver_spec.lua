@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require("spec.helpers")
-local utils = require("kong.tools.utils")
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local cjson_decode = require("cjson").decode
 local cjson_encode = require("cjson").encode
 
@@ -175,7 +175,7 @@ describe("cp outage handling driver", function()
     ngx.get_phase = get_phase -- luacheck: ignore
 
     config_sync_backup.init_worker(fake_conf, "exporter")
-    current_config = utils.cycle_aware_deep_copy(test_config)
+    current_config = cycle_aware_deep_copy(test_config)
     kong.worker_events.post("declarative", "reconfigure", { wrpc = true })
     helpers.pwait_until(function()
       assert.same(test_config, cjson_decode(uploaded_config))

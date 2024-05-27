@@ -25,9 +25,7 @@ describe("Plugin: response-transformer-advanced", function()
   setup(function()
     _G.ngx = {
       headers_sent = false,
-      config = {
-        subsystem = { "http" }
-      },
+      config = ngx.config, -- jit-uuid needs ngx.config.nginx_configure
       resp = {
         add_header = add_header
       },

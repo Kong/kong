@@ -8,7 +8,7 @@
 local cjson = require "cjson.safe"
 local helpers = require "spec.helpers"
 local enums = require "kong.enterprise_edition.dao.enums"
-local utils = require "kong.tools.utils"
+local is_array = require("kong.tools.table").is_array
 
 
 for _, strategy in helpers.each_strategy() do
@@ -48,7 +48,7 @@ for _, strategy in helpers.each_strategy() do
           for _, _ in pairs(json) do length = length + 1 end
           assert.equals(2, length)
 
-          assert(utils.is_array(json.data))
+          assert(is_array(json.data))
           assert.equal(0, #json.data)
           assert.equal(cjson.null, json.next)
         end)

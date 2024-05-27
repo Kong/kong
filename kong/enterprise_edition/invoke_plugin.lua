@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local utils = require "kong.tools.utils"
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local cjson = require "cjson"
 
 local tostring     = tostring
@@ -63,7 +63,7 @@ local function prepare_plugin(opts)
     local fields = {
       name = opts.name,
       service = { id = SERVICE_IDS[opts.api_type] },
-      config = utils.cycle_aware_deep_copy(config) or {},
+      config = cycle_aware_deep_copy(config) or {},
     }
 
     -- convert plugin configuration over to model to obtain defaults
@@ -128,7 +128,7 @@ local function validate(opts)
   if type(opts.config) == "string" then
     config = cjson.decode(opts.config)
   elseif type(opts.config) == "table" then
-    config = utils.cycle_aware_deep_copy(opts.config)
+    config = cycle_aware_deep_copy(opts.config)
   end
 
   local fields = {

@@ -12,6 +12,7 @@ _G.kong = {
 }
 
 local utils = require "kong.tools.utils"
+local deep_copy = require("kong.tools.table").deep_copy
 local protoc = require "protoc"
 local pb = require "pb"
 local analytics = require "kong.analytics"
@@ -771,7 +772,7 @@ describe("extract request log properly", function()
     end)
 
     it("are detected by upgrade/connection response headers", function()
-      local input = utils.deep_copy(request_log)
+      local input = deep_copy(request_log)
       input.response.headers["upgrade"] = "websocket"
       input.response.headers["connection"] = "upgrade"
 
@@ -780,7 +781,7 @@ describe("extract request log properly", function()
     end)
 
     it("are detected by upgrade/connection response headers (case insensitive)", function()
-      local input = utils.deep_copy(request_log)
+      local input = deep_copy(request_log)
       input.response.headers["upgrade"] = "WebSocket"
       input.response.headers["connection"] = "Upgrade"
 
@@ -796,7 +797,7 @@ describe("extract request log properly", function()
     end)
 
     it("are detected by the content-type response header", function()
-      local input = utils.deep_copy(request_log)
+      local input = deep_copy(request_log)
       input.response.headers["content-type"] = "text/event-stream"
 
       local payload = analytics:create_payload(input)
@@ -805,7 +806,7 @@ describe("extract request log properly", function()
   end)
 
   it("records receive time if available", function()
-    local input = utils.deep_copy(request_log)
+    local input = deep_copy(request_log)
     input.latencies = {
       kong = 10,
       proxy = 5,
@@ -1069,13 +1070,6 @@ describe("proto buffer", function()
       },
       consumer_groups = {
         { id = "1" },
-      },
-      request = {
-        body_size = 0,
-        header_host = "",
-        header_user_agent = "",
-        http_method = "",
-        uri = "",
       },
       latencies = {
         kong_gateway_ms = 0,
