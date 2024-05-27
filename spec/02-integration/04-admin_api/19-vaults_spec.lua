@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 local cjson = require "cjson"
 
 
@@ -109,7 +109,7 @@ for _, strategy in helpers.each_strategy() do
 
         describe("PUT", function()
           it("can create a vault by id", function()
-            local res = client:put("/vaults/" .. utils.uuid(), {
+            local res = client:put("/vaults/" .. uuid.uuid(), {
               headers = HEADERS,
               body = {
                 name = "env",
@@ -157,7 +157,7 @@ for _, strategy in helpers.each_strategy() do
 
           describe("errors", function()
             it("handles invalid input by id", function()
-              local res = client:put("/vaults/" .. utils.uuid(), {
+              local res = client:put("/vaults/" .. uuid.uuid(), {
                 headers = HEADERS,
                 body = {
                   name = "env",
@@ -246,7 +246,7 @@ for _, strategy in helpers.each_strategy() do
             end)
 
             it("vault name can't be changed", function()
-              local uuid = utils.uuid()
+              local uuid = uuid.uuid()
               local res = client:put("/vaults/" .. uuid, {
                 headers = HEADERS,
                 body = {

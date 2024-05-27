@@ -6,13 +6,13 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
 local cjson = require "cjson"
+local uuid = require("kong.tools.uuid").uuid
 
 
 describe("Plugin: response-ratelimiting (shorthand fields)", function()
   local bp, route, admin_client
-  local plugin_id = utils.uuid()
+  local plugin_id = uuid()
 
   lazy_setup(function()
     bp = helpers.get_db_utils(nil, {

@@ -6,12 +6,12 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local func = require "pl.func"
 local tablex = require "pl.tablex"
 local CLUSTERING_SYNC_STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
+local uuid = require("kong.tools.uuid").uuid
 
 local admin = require "spec.fixtures.admin_api"
 
@@ -29,7 +29,7 @@ local function cluster_client(opts)
     cert = "spec/fixtures/kong_clustering.crt",
     cert_key = "spec/fixtures/kong_clustering.key",
     node_hostname = opts.hostname or "test",
-    node_id = opts.id or utils.uuid(),
+    node_id = opts.id or uuid(),
     node_version = opts.version,
     node_plugins_list = PLUGIN_LIST,
   })
@@ -195,7 +195,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
       expected.config.error_code = nil
       expected.config.error_message = nil
       expected.config.sync_rate = nil
-      do_assert(utils.uuid(), "3.0.0", expected)
+      do_assert(uuid(), "3.0.0", expected)
 
 
       --[[
@@ -206,7 +206,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
       expected = cycle_aware_deep_copy(rate_limit)
       expected.config.redis = nil
       expected.config.sync_rate = nil
-      do_assert(utils.uuid(), "3.2.0", expected)
+      do_assert(uuid(), "3.2.0", expected)
 
 
       --[[
@@ -217,7 +217,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
       expected = cycle_aware_deep_copy(rate_limit)
       expected.config.redis = nil
       expected.config.sync_rate = nil
-      do_assert(utils.uuid(), "3.3.0", expected)
+      do_assert(uuid(), "3.3.0", expected)
 
       -- cleanup
       admin.plugins:remove({ id = rate_limit.id })
@@ -244,21 +244,21 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
       local expected = cycle_aware_deep_copy(rate_limit)
       expected.config.redis = nil
-      do_assert(utils.uuid(), "3.4.0", expected)
+      do_assert(uuid(), "3.4.0", expected)
 
       -- cleanup
       admin.plugins:remove({ id = rate_limit.id })
     end)
 
     it("consumer_group scoped plugins should not be present in 3.3 dataplanes", function()
-      local id = utils.uuid()
+      local id = uuid()
       local plugin = get_plugin(id, "3.3.0", response_transformer.name, true)
       assert.is_nil(plugin)
       assert.equals(CLUSTERING_SYNC_STATUS.NORMAL, get_sync_status(id))
     end)
 
     it("consumer_group scoped plugins should be present in 3.4 dataplanes", function()
-      local id = utils.uuid()
+      local id = uuid()
       local plugin = get_plugin(id, "3.4.0", response_transformer.name, true)
       assert.is_not_nil(plugin)
       assert.same(response_transformer.config, plugin.config)
@@ -286,7 +286,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
       local expected = cycle_aware_deep_copy(rate_limit)
       expected.config.redis = nil
-      do_assert(utils.uuid(), "3.4.0", expected)
+      do_assert(uuid(), "3.4.0", expected)
 
       -- cleanup
       admin.plugins:remove({ id = rate_limit.id })
@@ -297,11 +297,11 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         assert.not_nil(cors.config.private_network)
         local expected_cors = cycle_aware_deep_copy(cors)
         expected_cors.config.private_network = nil
-        do_assert(utils.uuid(), "3.4.3.3", expected_cors)
+        do_assert(uuid(), "3.4.3.3", expected_cors)
       end)
 
       it("does not remove `config.private_network` from DP nodes that are already compatible", function()
-        do_assert(utils.uuid(), "3.4.3.6", cors)
+        do_assert(uuid(), "3.4.3.6", cors)
       end)
     end)
 
@@ -323,7 +323,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         expected_otel_prior_35.config.header_type = "preserve"
         expected_otel_prior_35.config.sampling_rate = nil
         expected_otel_prior_35.config.propagation = nil
-        do_assert(utils.uuid(), "3.4.0", expected_otel_prior_35)
+        do_assert(uuid(), "3.4.0", expected_otel_prior_35)
 
         -- cleanup
         admin.plugins:remove({ id = opentelemetry.id })
@@ -344,7 +344,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         expected_otel_prior_34.config.header_type = "preserve"
         expected_otel_prior_34.config.sampling_rate = nil
         expected_otel_prior_34.config.propagation = nil
-        do_assert(utils.uuid(), "3.3.0", expected_otel_prior_34)
+        do_assert(uuid(), "3.3.0", expected_otel_prior_34)
 
         -- cleanup
         admin.plugins:remove({ id = opentelemetry.id })
@@ -370,7 +370,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         expected_zipkin_prior_35.config.header_type = "preserve"
         expected_zipkin_prior_35.config.default_header_type = "b3"
         expected_zipkin_prior_35.config.propagation = nil
-        do_assert(utils.uuid(), "3.4.0", expected_zipkin_prior_35)
+        do_assert(uuid(), "3.4.0", expected_zipkin_prior_35)
 
         -- cleanup
         admin.plugins:remove({ id = zipkin.id })
@@ -391,7 +391,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         expected_zipkin_prior_34.config.header_type = "preserve"
         expected_zipkin_prior_34.config.default_header_type = "b3"
         expected_zipkin_prior_34.config.propagation = nil
-        do_assert(utils.uuid(), "3.3.0", expected_zipkin_prior_34)
+        do_assert(uuid(), "3.3.0", expected_zipkin_prior_34)
 
         -- cleanup
         admin.plugins:remove({ id = zipkin.id })
@@ -442,7 +442,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
             namespace = "test_namespace",
             scan_count = 13
           }
-          do_assert(utils.uuid(), "3.5.0", expected_acme_prior_36)
+          do_assert(uuid(), "3.5.0", expected_acme_prior_36)
 
           -- cleanup
           admin.plugins:remove({ id = acme.id })
@@ -487,7 +487,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
           expected_rl_prior_36.config.redis_server_name = "example.test"
 
 
-          do_assert(utils.uuid(), "3.5.0", expected_rl_prior_36)
+          do_assert(uuid(), "3.5.0", expected_rl_prior_36)
 
           -- cleanup
           admin.plugins:remove({ id = rate_limit.id })
@@ -536,7 +536,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
           expected_response_rl_prior_36.config.redis_server_name = "example.test"
 
 
-          do_assert(utils.uuid(), "3.5.0", expected_response_rl_prior_36)
+          do_assert(uuid(), "3.5.0", expected_response_rl_prior_36)
 
           -- cleanup
           admin.plugins:remove({ id = response_rl.id })
@@ -579,7 +579,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         expected_ai_proxy_prior_37.config.auth.azure_tenant_id = nil
         expected_ai_proxy_prior_37.config.route_type = "llm/v1/chat"
 
-        do_assert(utils.uuid(), "3.6.0", expected_ai_proxy_prior_37)
+        do_assert(uuid(), "3.6.0", expected_ai_proxy_prior_37)
 
         -- cleanup
         admin.plugins:remove({ id = ai_proxy.id })
@@ -622,7 +622,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         expected_ai_request_transformer_prior_37.config.llm.auth.azure_client_secret = nil
         expected_ai_request_transformer_prior_37.config.llm.auth.azure_tenant_id = nil
 
-        do_assert(utils.uuid(), "3.6.0", expected_ai_request_transformer_prior_37)
+        do_assert(uuid(), "3.6.0", expected_ai_request_transformer_prior_37)
 
         -- cleanup
         admin.plugins:remove({ id = ai_request_transformer.id })
@@ -663,7 +663,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         expected_ai_response_transformer_prior_37.config.llm.auth.azure_client_secret = nil
         expected_ai_response_transformer_prior_37.config.llm.auth.azure_tenant_id = nil
 
-        do_assert(utils.uuid(), "3.6.0", expected_ai_response_transformer_prior_37)
+        do_assert(uuid(), "3.6.0", expected_ai_response_transformer_prior_37)
 
         -- cleanup
         admin.plugins:remove({ id = ai_response_transformer.id })
@@ -689,7 +689,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
       end)
 
       it("ttl parameters should be present in 3.4 dataplanes", function()
-        local id = utils.uuid()
+        local id = uuid()
         local transformed_vault = get_vault(id, "3.4.0", vault_name, true)
         assert.is_not_nil(transformed_vault)
         assert.is_not_nil(transformed_vault.config.ttl)
@@ -699,7 +699,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
       end)
 
       it("ttl parameters should not be present in 3.3 dataplanes", function()
-        local id = utils.uuid()
+        local id = uuid()
         local transformed_vault = get_vault(id, "3.3.0", vault_name, true)
         assert.is_not_nil(transformed_vault)
         assert.is_nil(transformed_vault.config.ttl)

@@ -8,7 +8,7 @@
 local ssl_fixtures = require "spec.fixtures.ssl"
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 local Errors  = require "kong.db.errors"
 
 
@@ -391,7 +391,7 @@ describe("Admin API: #" .. strategy, function()
       end)
 
       it("returns 404 for a random non-existing uuid", function()
-        local res = client:get("/certificates/" .. utils.uuid())
+        local res = client:get("/certificates/" .. uuid.uuid())
         assert.res_status(404, res)
       end)
 
@@ -404,7 +404,7 @@ describe("Admin API: #" .. strategy, function()
     describe("PUT", function()
       it("creates if not found", function()
         local n1 = get_name()
-        local id = utils.uuid()
+        local id = uuid.uuid()
         local res = client:put("/certificates/" .. id, {
           body = {
             cert = ssl_fixtures.cert,
@@ -528,7 +528,7 @@ describe("Admin API: #" .. strategy, function()
 
       it("handles invalid input", function()
         -- Missing params
-        local res = client:put("/certificates/" .. utils.uuid(), {
+        local res = client:put("/certificates/" .. uuid.uuid(), {
           body = {},
           headers = { ["Content-Type"] = "application/json" }
         })
@@ -546,7 +546,7 @@ describe("Admin API: #" .. strategy, function()
 
       it("handles invalid input with alternate certificate", function()
         -- Missing params
-        local res = client:put("/certificates/" .. utils.uuid(), {
+        local res = client:put("/certificates/" .. uuid.uuid(), {
           body = {
             cert = ssl_fixtures.cert,
             key = ssl_fixtures.key,
@@ -587,7 +587,7 @@ describe("Admin API: #" .. strategy, function()
 
       for typ, key in pairs(ssl_fixtures.key_encrypted) do
         it("fails on " .. typ .. " encrypted private key without passphrase", function()
-          local res = client:put("/certificates/" .. utils.uuid(), {
+          local res = client:put("/certificates/" .. uuid.uuid(), {
             body    = {
               cert  = ssl_fixtures.cert,
               key   = key,
@@ -600,7 +600,7 @@ describe("Admin API: #" .. strategy, function()
         end)
 
         it("fails on " .. typ .. " encrypted private key with incorrect passphrase", function()
-          local res = client:put("/certificates/" .. utils.uuid(), {
+          local res = client:put("/certificates/" .. uuid.uuid(), {
             body    = {
               cert       = ssl_fixtures.cert,
               key        = key,
@@ -614,7 +614,7 @@ describe("Admin API: #" .. strategy, function()
         end)
 
         it("decrypts " .. typ .. " encrypted private key with correct passphrase", function()
-          local res = client:put("/certificates/" .. utils.uuid(), {
+          local res = client:put("/certificates/" .. uuid.uuid(), {
             body    = {
               cert       = ssl_fixtures.cert,
               key        = key,
@@ -888,7 +888,7 @@ describe("Admin API: #" .. strategy, function()
 
       it("returns 404 for a random non-existing id", function()
         local n1 = get_name()
-        local res = client:patch("/certificates/" .. utils.uuid(), {
+        local res = client:patch("/certificates/" .. uuid.uuid(), {
           body    = {
             cert  = ssl_fixtures.cert,
             key   = ssl_fixtures.key,
@@ -1367,7 +1367,7 @@ describe("Admin API: #" .. strategy, function()
       it("creates if not found", function()
         local certificate = add_certificate()
         local n1 = get_name()
-        local id = utils.uuid()
+        local id = uuid.uuid()
         local res = client:put("/snis/" .. id, {
           body = {
             certificate = { id = certificate.id },
@@ -1412,7 +1412,7 @@ describe("Admin API: #" .. strategy, function()
 
       it("handles invalid input", function()
         -- Missing params
-        local res = client:put("/snis/" .. utils.uuid(), {
+        local res = client:put("/snis/" .. uuid.uuid(), {
           body = {},
           headers = { ["Content-Type"] = "application/json" }
         })

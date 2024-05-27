@@ -15,9 +15,9 @@ local targets, balancers
 
 local dns_utils = require "kong.resty.dns.utils"
 local mocker = require "spec.fixtures.mocker"
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 
-local ws_id = utils.uuid()
+local ws_id = uuid.uuid()
 
 local helpers = require "spec.helpers.dns"
 local gettime = helpers.gettime

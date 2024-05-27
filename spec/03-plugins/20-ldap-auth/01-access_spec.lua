@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 local cjson = require "cjson"
 
 local ws = require "spec-ee.fixtures.websocket"
@@ -153,7 +153,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
               attribute = "uid",
               cache_ttl = 2,
-              anonymous = utils.uuid(), -- non existing consumer
+              anonymous = uuid.uuid(), -- non existing consumer
             }
           }
 

@@ -6,7 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local uuid = require("resty.jit-uuid")
-local utils = require("kong.tools.utils")
 local kong_table = require("kong.tools.table")
 local Errors = require("kong.db.errors")
 local Entity = require("kong.db.schema.entity")
@@ -16,6 +15,7 @@ local plugin_loader = require("kong.db.schema.plugin_loader")
 local vault_loader = require("kong.db.schema.vault_loader")
 local schema_topological_sort = require("kong.db.schema.topological_sort")
 local typedefs = require("kong.db.schema.typedefs")
+local utils_uuid = require("kong.tools.uuid").uuid
 
 
 local null = ngx.null
@@ -666,7 +666,7 @@ local function populate_ids_for_validation(input, known_entities, parent_entity,
         if key then
           item[pk_name] = generate_uuid(schema.name, key)
         else
-          item[pk_name] = utils.uuid()
+          item[pk_name] = utils_uuid()
         end
       end
 

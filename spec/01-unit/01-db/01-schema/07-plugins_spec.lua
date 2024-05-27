@@ -8,7 +8,7 @@
 require "spec.helpers" -- initializes 'kong' global for plugins
 local Entity = require "kong.db.schema.entity"
 local typedefs = require "kong.db.schema.typedefs"
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 local routes_definition = require "kong.db.schema.entities.routes"
 local services_definition = require "kong.db.schema.entities.services"
 local consumers_definition = require "kong.db.schema.entities.consumers"
@@ -89,7 +89,7 @@ describe("plugins", function()
     -- Success
     local plugin = {
       name = "key-auth",
-      service = { id = utils.uuid() },
+      service = { id = uuid.uuid() },
       config = {
         key_names = { "x-kong-key" }
       }
@@ -102,7 +102,7 @@ describe("plugins", function()
     -- Failure
     plugin = {
       name = "rate-limiting",
-      service = { id = utils.uuid() },
+      service = { id = uuid.uuid() },
       config = {
         second = "hello"
       }
@@ -123,7 +123,7 @@ describe("plugins", function()
     -- Insert key-auth, whose config has some default values that should be set
     local plugin = {
       name = "key-auth",
-      service = { id = utils.uuid() },
+      service = { id = uuid.uuid() },
     }
     plugin = Plugins:process_auto_fields(plugin)
     local ok = Plugins:validate(plugin)
@@ -144,7 +144,7 @@ describe("plugins", function()
     -- Insert response-transformer, whose default config has no default values, and should be empty
     local plugin = {
       name = "response-transformer",
-      service = { id = utils.uuid() },
+      service = { id = uuid.uuid() },
     }
     plugin = Plugins:process_auto_fields(plugin)
     local ok = Plugins:validate(plugin)
@@ -193,7 +193,7 @@ describe("plugins", function()
 
       local ok, err = Plugins:validate(Plugins:process_auto_fields({
         name = "with-no-route",
-        route = { id = utils.uuid() },
+        route = { id = uuid.uuid() },
         config = {
           string = "foo",
         }
@@ -230,7 +230,7 @@ describe("plugins", function()
 
       local ok, err = Plugins:validate(Plugins:process_auto_fields({
         name = "with-no-service",
-        service = { id = utils.uuid() },
+        service = { id = uuid.uuid() },
         config = {
           string = "foo",
         }
@@ -267,7 +267,7 @@ describe("plugins", function()
 
       local ok, err = Plugins:validate(Plugins:process_auto_fields({
         name = "with-no-consumer",
-        consumer = { id = utils.uuid() },
+        consumer = { id = uuid.uuid() },
         config = {
           string = "foo",
         }
@@ -290,21 +290,21 @@ describe("plugins", function()
     it("accepts a plugin if configured for route", function()
       assert(Plugins:validate(Plugins:process_auto_fields({
         name = "key-auth",
-        route = { id = utils.uuid() },
+        route = { id = uuid.uuid() },
       })))
     end)
 
     it("accepts a plugin if configured for service", function()
       assert(Plugins:validate(Plugins:process_auto_fields({
         name = "key-auth",
-        service = { id = utils.uuid() },
+        service = { id = uuid.uuid() },
       })))
     end)
 
     it("accepts a plugin if configured for consumer", function()
       assert(Plugins:validate(Plugins:process_auto_fields({
         name = "rate-limiting",
-        consumer = { id = utils.uuid() },
+        consumer = { id = uuid.uuid() },
         config = {
           second = 1,
         }

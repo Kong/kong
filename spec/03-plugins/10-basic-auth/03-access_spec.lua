@@ -7,7 +7,7 @@
 
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
-local utils   = require "kong.tools.utils"
+local uuid    = require "kong.tools.uuid"
 
 local ws = require "spec-ee.fixtures.websocket"
 local ee_helpers = require "spec-ee.helpers"
@@ -116,7 +116,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "basic-auth",
         route = { id = route4.id },
         config   = {
-          anonymous = utils.uuid(), -- a non-existing consumer id
+          anonymous = uuid.uuid(), -- a non-existing consumer id
         },
       }
 

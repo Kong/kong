@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local utils   = require "kong.tools.utils"
+local uuid    = require "kong.tools.uuid"
 local cjson   = require "cjson"
 local helpers = require "spec.helpers"
 
@@ -473,7 +473,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("does not create acl when missing consumer", function()
-          local res = admin_client:put("/acls/" .. utils.uuid(), {
+          local res = admin_client:put("/acls/" .. uuid.uuid(), {
             body = { group = "test-group" },
             headers = {
               ["Content-Type"] = "application/json"
@@ -485,7 +485,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("creates acl", function()
-          local res = admin_client:put("/acls/" .. utils.uuid(), {
+          local res = admin_client:put("/acls/" .. uuid.uuid(), {
             body = {
               group = "test-group",
               consumer = {

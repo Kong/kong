@@ -63,6 +63,7 @@ describe("Utils", function()
   end)
 
   describe("is_valid_uuid()", function()
+    local utils = require "kong.tools.uuid"
     it("validates UUIDs from jit-uuid", function()
       assert.True (utils.is_valid_uuid("cbb297c0-a956-486d-ad1d-f9b42df9465a"))
       assert.False(utils.is_valid_uuid("cbb297c0-a956486d-ad1d-f9b42df9465a"))

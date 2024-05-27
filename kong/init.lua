@@ -100,6 +100,7 @@ local wasm = require "kong.runloop.wasm"
 local reports = require "kong.reports"
 local pl_file = require "pl.file"
 local req_dyn_hook = require "kong.dynamic_hook"
+local uuid = require("kong.tools.uuid").uuid
 
 
 local internal_proxies = require "kong.enterprise_edition.proxies"
@@ -848,7 +849,7 @@ function Kong.init()
   end
 
   if config.request_debug and config.role ~= "control_plane" and is_http_module then
-    local token = config.request_debug_token or utils.uuid()
+    local token = config.request_debug_token or uuid()
 
     local request_debug_token_file = pl_path.join(config.prefix,
                                                   constants.REQUEST_DEBUG_TOKEN_FILE)

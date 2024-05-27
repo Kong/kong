@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local cjson   = require "cjson"
-local utils   = require "kong.tools.utils"
+local uuid   = require "kong.tools.uuid"
 local helpers = require "spec.helpers"
 local Errors  = require "kong.db.errors"
 
@@ -679,7 +679,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("returns 404 if not found", function()
-            local res = client:get("/routes/" .. utils.uuid())
+            local res = client:get("/routes/" .. uuid.uuid())
             assert.res_status(404, res)
           end)
 
@@ -720,7 +720,7 @@ for _, strategy in helpers.each_strategy() do
               end
 
               local service = bp.services:insert()
-              local id = utils.uuid()
+              local id = uuid.uuid()
               local res = client:put("/routes/" .. id, {
                 headers = {
                   ["Content-Type"] = content_type
@@ -749,7 +749,7 @@ for _, strategy in helpers.each_strategy() do
                 return
               end
 
-              local id = utils.uuid()
+              local id = uuid.uuid()
               local res = client:put("/routes/" .. id, {
                 headers = {
                   ["Content-Type"] = content_type
@@ -907,7 +907,7 @@ for _, strategy in helpers.each_strategy() do
                 end
 
                 -- Missing params
-                local res = client:put("/routes/" .. utils.uuid(), {
+                local res = client:put("/routes/" .. uuid.uuid(), {
                   body = {},
                   headers = { ["Content-Type"] = content_type }
                 })
@@ -927,7 +927,7 @@ for _, strategy in helpers.each_strategy() do
                 }, cjson.decode(body))
 
                 -- Invalid parameter
-                res = client:put("/routes/" .. utils.uuid(), {
+                res = client:put("/routes/" .. uuid.uuid(), {
                   body = {
                     methods   = { "GET" },
                     protocols = { "foo", "http" },
@@ -1253,7 +1253,7 @@ for _, strategy in helpers.each_strategy() do
                   return
                 end
 
-                local res = client:patch("/routes/" .. utils.uuid(), {
+                local res = client:patch("/routes/" .. uuid.uuid(), {
                   headers = {
                     ["Content-Type"] = content_type
                   },
@@ -1320,7 +1320,7 @@ for _, strategy in helpers.each_strategy() do
 
           describe("errors", function()
             it("returns HTTP 204 even if not found", function()
-              local res = client:delete("/routes/" .. utils.uuid())
+              local res = client:delete("/routes/" .. uuid.uuid())
               assert.res_status(204, res)
             end)
           end)
@@ -1353,7 +1353,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("returns 404 if not found", function()
-            local res = client:get("/routes/" .. utils.uuid() .. "/service")
+            local res = client:get("/routes/" .. uuid.uuid() .. "/service")
             assert.res_status(404, res)
           end)
 
@@ -1472,7 +1472,7 @@ for _, strategy in helpers.each_strategy() do
           describe("errors", function()
             it_content_types("returns 404 if not found", function(content_type)
               return function()
-                local res = client:patch("/routes/" .. utils.uuid() .. "/service", {
+                local res = client:patch("/routes/" .. uuid.uuid() .. "/service", {
                   headers = {
                     ["Content-Type"] = content_type
                   },
@@ -1522,7 +1522,7 @@ for _, strategy in helpers.each_strategy() do
             end)
 
             it("returns HTTP 404 with non-existing route", function()
-              local res = client:delete("/routes/" .. utils.uuid() .. "/service")
+              local res = client:delete("/routes/" .. uuid.uuid() .. "/service")
               assert.res_status(404, res)
             end)
 
@@ -1656,7 +1656,7 @@ for _, strategy in helpers.each_strategy() do
         describe("errors", function()
           it_content_types("returns 404 if not found", function(content_type)
             return function()
-              local res = client:put("/routes/" .. utils.uuid() .. "/service", {
+              local res = client:put("/routes/" .. uuid.uuid() .. "/service", {
                 headers = {
                   ["Content-Type"] = content_type
                 },
@@ -1914,7 +1914,7 @@ for _, strategy in helpers.each_strategy() do
               hosts = { "example.test" },
             })
             local plugin = bp.key_auth_plugins:insert({
-              instance_name = "name-" .. utils.uuid(),
+              instance_name = "name-" .. uuid.uuid(),
               route = route,
             })
             local res = client:get("/routes/" .. route.id .. "/plugins/" .. plugin.instance_name)
@@ -1927,7 +1927,7 @@ for _, strategy in helpers.each_strategy() do
 
         describe("DELETE", function()
           it("deletes a plugin by id", function()
-            local route = bp.routes:insert({ paths = { "/route-" .. utils.uuid() }})
+            local route = bp.routes:insert({ paths = { "/route-" .. uuid.uuid() }})
             local plugin = bp.key_auth_plugins:insert({
               route = route,
             })
@@ -1939,9 +1939,9 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(in_db)
           end)
           it("deletes a plugin by instance_name", function()
-            local route = bp.routes:insert({ paths = { "/route-" .. utils.uuid() }})
+            local route = bp.routes:insert({ paths = { "/route-" .. uuid.uuid() }})
             local plugin = bp.key_auth_plugins:insert({
-              instance_name = "name-" .. utils.uuid(),
+              instance_name = "name-" .. uuid.uuid(),
               route = route,
             })
             local res = assert(client:delete("/routes/" .. route.id .. "/plugins/" .. plugin.instance_name))

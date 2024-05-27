@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers         = require "spec.helpers"
-local utils           = require "kong.tools.utils"
+local uuid            = require "kong.tools.uuid"
 local schema_def = require "kong.plugins.oauth2.schema"
 local DAO_MAX_TTL = require("kong.constants").DATABASE.DAO_MAX_TTL
 local v = require("spec.helpers").validate_plugin_config_schema
@@ -125,7 +125,7 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, err_t = oauth2_tokens_schema:validate_insert({
           credential = { id = "foo" },
-          service = { id = utils.uuid() },
+          service = { id = uuid.uuid() },
           expires_in = 1,
         })
         assert.falsy(ok)
@@ -136,8 +136,8 @@ for _, strategy in helpers.each_strategy() do
 
 
         local ok, err_t = oauth2_tokens_schema:validate_insert({
-          credential = { id = utils.uuid() },
-          service = { id = utils.uuid() },
+          credential = { id = uuid.uuid() },
+          service = { id = uuid.uuid() },
           expires_in = 1,
           token_type = "bearer",
         })
@@ -159,7 +159,7 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, err_t = oauth2_authorization_codes_schema:validate_insert({
           credential = { id = "foo" },
-          service = { id = utils.uuid() },
+          service = { id = uuid.uuid() },
         })
         assert.falsy(ok)
         assert.same({
@@ -167,8 +167,8 @@ for _, strategy in helpers.each_strategy() do
         }, err_t)
 
         local ok, err_t = oauth2_authorization_codes_schema:validate_insert({
-          credential = { id = utils.uuid() },
-          service = { id = utils.uuid() },
+          credential = { id = uuid.uuid() },
+          service = { id = uuid.uuid() },
         })
 
         assert.truthy(ok)

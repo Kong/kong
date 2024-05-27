@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 
 local fmt = string.format
 
@@ -106,7 +106,7 @@ describe("wasm admin API [#" .. strategy .. "]", function()
         local body = assert.response(res).has.jsonbody()
 
         assert.is_string(body.id)
-        assert.truthy(utils.is_valid_uuid(body.id))
+        assert.truthy(uuid.is_valid_uuid(body.id))
 
         assert.equals(1, #body.filters)
         assert.equals("tests", body.filters[1].name)
@@ -179,7 +179,7 @@ describe("wasm admin API [#" .. strategy .. "]", function()
 
       it("returns 404 if not found", function()
         assert.response(
-          admin:get("/filter-chains/" .. utils.uuid())
+          admin:get("/filter-chains/" .. uuid.uuid())
         ).has.status(404)
       end)
     end)
@@ -241,7 +241,7 @@ describe("wasm admin API [#" .. strategy .. "]", function()
 
     end)
 
-    unsupported("POST", "/filter-chains/" .. utils.uuid())
+    unsupported("POST", "/filter-chains/" .. uuid.uuid())
   end)
 
   end -- each { "id", "name" }
@@ -277,7 +277,7 @@ describe("wasm admin API [#" .. strategy .. "]", function()
         local body = assert.response(res).has.jsonbody()
 
         assert.is_string(body.id)
-        assert.truthy(utils.is_valid_uuid(body.id))
+        assert.truthy(uuid.is_valid_uuid(body.id))
 
         assert.equals(1, #body.filters)
         assert.equals("tests", body.filters[1].name)
@@ -347,7 +347,7 @@ describe("wasm admin API [#" .. strategy .. "]", function()
 
       it("returns 404 if not found", function()
         assert.response(
-          admin:get(path .. utils.uuid())
+          admin:get(path .. uuid.uuid())
         ).has.status(404)
       end)
     end)
@@ -673,7 +673,7 @@ describe("wasm admin API - wasm = off [#" .. strategy .. "]", function()
 
     it("PATCH returns 400", function()
       assert.response(
-        admin:patch(path .. "/" .. utils.uuid()), json({
+        admin:patch(path .. "/" .. uuid.uuid()), json({
           filters = { { name = "tests" } },
           service = { id = service.id },
         })
@@ -682,7 +682,7 @@ describe("wasm admin API - wasm = off [#" .. strategy .. "]", function()
 
     it("PUT returns 400", function()
       assert.response(
-        admin:put(path .. "/" .. utils.uuid()), json({
+        admin:put(path .. "/" .. uuid.uuid()), json({
           filters = { { name = "tests" } },
           service = { id = service.id },
         })
@@ -691,7 +691,7 @@ describe("wasm admin API - wasm = off [#" .. strategy .. "]", function()
 
     it("DELETE returns 400", function()
       assert.response(
-        admin:delete(path .. "/" .. utils.uuid())
+        admin:delete(path .. "/" .. uuid.uuid())
       ).has.status(400)
     end)
 

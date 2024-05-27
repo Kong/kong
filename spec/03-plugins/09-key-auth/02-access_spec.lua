@@ -7,7 +7,7 @@
 
 local helpers   = require "spec.helpers"
 local cjson     = require "cjson"
-local utils     = require "kong.tools.utils"
+local uuid      = require "kong.tools.uuid"
 local http_mock = require "spec.helpers.http_mock"
 
 local MOCK_PORT = helpers.get_available_port()
@@ -140,7 +140,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "key-auth",
         route = { id = route4.id },
         config   = {
-          anonymous = utils.uuid(),  -- unknown consumer
+          anonymous = uuid.uuid(),  -- unknown consumer
         },
       }
 

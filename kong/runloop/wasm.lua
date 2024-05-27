@@ -38,7 +38,7 @@ local _M = {
 ---@field config_schema kong.db.schema.json.schema_doc|nil
 
 
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 local reports = require "kong.reports"
 local clear_tab = require "table.clear"
 local cjson = require "cjson.safe"
@@ -88,7 +88,7 @@ local FILTER_META_SCHEMA = {
 --
 ---@return string
 local function get_version()
-  return kong.core_cache:get(VERSION_KEY, TTL_ZERO, utils.uuid)
+  return kong.core_cache:get(VERSION_KEY, TTL_ZERO, uuid.uuid)
 end
 
 

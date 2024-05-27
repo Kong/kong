@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local Errors       = require "kong.db.errors"
-local utils        = require "kong.tools.utils"
+local uuid         = require "kong.tools.uuid"
 local arguments    = require "kong.api.arguments"
 local workspaces   = require "kong.workspaces"
 local app_helpers  = require "lapis.application"
@@ -26,8 +26,9 @@ local type         = type
 local fmt          = string.format
 local concat       = table.concat
 local re_match     = ngx.re.match
-local split        = utils.split
 local insert       = table.insert
+local split        = require("kong.tools.string").split
+local get_default_exit_body = require("kong.tools.http").get_default_exit_body
 
 
 -- error codes http status codes
@@ -147,7 +148,7 @@ local function handle_error(err_t)
     return kong.response.exit(status, err_t)
   end
 
-  return kong.response.exit(status, utils.get_default_exit_body(status, err_t))
+  return kong.response.exit(status, get_default_exit_body(status, err_t))
 end
 
 local function parse_boolean_query_arg(arg)
@@ -321,7 +322,7 @@ local function query_entity(context, self, db, schema, method)
       end
     end
 
-    if key.id and not utils.is_valid_uuid(key.id) then
+    if key.id and not uuid.is_valid_uuid(key.id) then
       local endpoint_key = schema.endpoint_key
       if endpoint_key then
         local field = schema.fields[endpoint_key]
@@ -677,7 +678,7 @@ local function put_entity_endpoint(schema, foreign_schema, foreign_field_name, m
         self.params[foreign_schema.name] = pk
       else
         associate = true
-        self.params[foreign_schema.name] = utils.uuid()
+        self.params[foreign_schema.name] = uuid.uuid()
       end
 
     else

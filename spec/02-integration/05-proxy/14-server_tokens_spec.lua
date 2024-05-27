@@ -9,7 +9,7 @@ local meta = require "kong.meta"
 local helpers = require "spec.helpers"
 local constants = require "kong.constants"
 local cjson = require "cjson"
-local utils   = require "kong.tools.utils"
+local uuid   = require("kong.tools.uuid").uuid
 
 
 local default_server_header = meta._SERVER_TOKENS
@@ -466,7 +466,7 @@ describe("headers [#" .. strategy .. "]", function()
       if strategy ~= "off" then
         it("should not be returned when plugin errors on rewrite phase", function()
           local admin_client = helpers.admin_client()
-          local uuid = utils.uuid()
+          local uuid = uuid()
           local res = assert(admin_client:send {
             method = "PUT",
             path = "/plugins/" .. uuid,

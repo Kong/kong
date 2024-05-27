@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local cjson   = require "cjson"
-local utils   = require "kong.tools.utils"
+local uuid   = require "kong.tools.uuid"
 local helpers = require "spec.helpers"
 local Errors  = require "kong.db.errors"
 
@@ -280,7 +280,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("returns 404 if not found", function()
-            local res = client:get("/services/" .. utils.uuid())
+            local res = client:get("/services/" .. uuid.uuid())
             assert.res_status(404, res)
           end)
 
@@ -462,7 +462,7 @@ for _, strategy in helpers.each_strategy() do
 
           describe("errors", function()
             it("returns HTTP 204 even if not found", function()
-              local res = client:delete("/services/" .. utils.uuid())
+              local res = client:delete("/services/" .. uuid.uuid())
               assert.res_status(204, res)
             end)
 
@@ -826,7 +826,7 @@ for _, strategy in helpers.each_strategy() do
           it("retrieves a plugin by instance_name", function()
             local service = bp.services:insert()
             local plugin = bp.key_auth_plugins:insert({
-              instance_name = "name-" .. utils.uuid(),
+              instance_name = "name-" .. uuid.uuid(),
               service = service,
             })
             local res = client:get("/services/" .. service.id .. "/plugins/" .. plugin.instance_name)
@@ -853,7 +853,7 @@ for _, strategy in helpers.each_strategy() do
           it("deletes a plugin by instance_name", function()
             local service = bp.services:insert()
             local plugin = bp.key_auth_plugins:insert({
-              instance_name = "name-" .. utils.uuid(),
+              instance_name = "name-" .. uuid.uuid(),
               service = service,
             })
             local res = assert(client:delete("/services/" .. service.id .. "/plugins/" .. plugin.instance_name))

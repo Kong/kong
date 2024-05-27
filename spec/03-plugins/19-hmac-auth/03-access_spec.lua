@@ -8,7 +8,7 @@
 local cjson = require "cjson"
 local openssl_mac = require "resty.openssl.mac"
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 local resty_sha256 = require "resty.sha256"
 
 local ws = require "spec-ee.fixtures.websocket"
@@ -111,7 +111,7 @@ for proto, conf in ee_helpers.each_protocol() do
         name     = "hmac-auth",
         route = { id = route3.id },
         config   = {
-          anonymous  = utils.uuid(),  -- non existing consumer
+          anonymous  = uuid.uuid(),  -- non existing consumer
           clock_skew = 3000
         }
       }

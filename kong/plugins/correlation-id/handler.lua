@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 -- Copyright (C) Kong Inc.
-local uuid = require "kong.tools.utils".uuid
+local uuid = require "kong.tools.uuid".uuid
 local kong_meta = require "kong.meta"
 
 

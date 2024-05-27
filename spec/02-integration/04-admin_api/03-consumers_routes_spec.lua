@@ -9,7 +9,7 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local escape = require("socket.url").escape
 local Errors  = require "kong.db.errors"
-local utils   = require "kong.tools.utils"
+local uuid   = require "kong.tools.uuid"
 
 
 local function it_content_types(title, fn)
@@ -276,7 +276,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
         assert.same(c, json.data[1])
       end)
       it("allows filtering by uuid-like custom_id", function()
-        local custom_id = utils.uuid()
+        local custom_id = uuid.uuid()
         local c = bp.consumers:insert({ custom_id = custom_id }, { nulls = true })
 
         local res = client:get("/consumers?custom_id=" .. custom_id)
@@ -481,7 +481,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
         it_content_types("creates if not exists", function(content_type)
           return function()
             local custom_id = gensym()
-            local id = utils.uuid()
+            local id = uuid.uuid()
             local res = client:put("/consumers/" .. id, {
               body    = { custom_id = custom_id },
               headers = { ["Content-Type"] = content_type }
@@ -565,7 +565,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
           it_content_types("handles invalid input", function(content_type)
             return function()
               -- Missing params
-              local res = client:put("/consumers/" .. utils.uuid(), {
+              local res = client:put("/consumers/" .. uuid.uuid(), {
                 body = {},
                 headers = { ["Content-Type"] = content_type }
               })
@@ -964,7 +964,7 @@ describe("Admin API (#" .. strategy .. "): ", function()
       for content_type, input in pairs(inputs) do
         it("creates if not found with " .. content_type, function()
           local consumer = bp.consumers:insert()
-          local plugin_id = utils.uuid()
+          local plugin_id = uuid.uuid()
 
           local res = assert(client:send {
             method = "PUT",

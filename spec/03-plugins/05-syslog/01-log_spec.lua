@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers    = require "spec.helpers"
-local utils      = require "kong.tools.utils"
+local uuid       = require "kong.tools.uuid"
 local cjson      = require "cjson"
 local pl_stringx = require "pl.stringx"
 
@@ -166,7 +166,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     local function do_test(host, expecting_same, grpc)
-      local uuid = utils.uuid()
+      local uuid = uuid.uuid()
       local ok, resp
 
       if not grpc then
