@@ -21,8 +21,6 @@ local _M = {
   TYPE = {
     BEFORE      = 1,
     AFTER       = 2,
-    BEFORE_MUT  = 3,
-    AFTER_MUT   = 4,
   },
 }
 
@@ -87,7 +85,6 @@ end
 
 
 local function execute_after_hooks_vararg(handlers, group_name, ...)
-  execute_hook_vararg(handlers.after_mut, "after_mut", group_name, ...)
   execute_hooks_vararg(handlers.afters, "after", group_name, ...)
   return ...
 end
@@ -157,10 +154,8 @@ local function wrap_function(max_args, group_name, original_func, handlers)
       a1, a2, a3, a4, a5, a6, a7, a8 = execute_original_func(max_args, original_func, a1, a2, a3, a4, a5, a6, a7, a8)
 
     else
-      execute_hook(handlers.before_mut, "before_mut", group_name, a1, a2, a3, a4, a5, a6, a7, a8)
       execute_hooks(handlers.befores, "before", group_name, a1, a2, a3, a4, a5, a6, a7, a8)
       a1, a2, a3, a4, a5, a6, a7, a8 = execute_original_func(max_args, original_func, a1, a2, a3, a4, a5, a6, a7, a8)
-      execute_hook(handlers.after_mut, "after_mut", group_name, a1, a2, a3, a4, a5, a6, a7, a8)
       execute_hooks(handlers.afters, "after", group_name, a1, a2, a3, a4, a5, a6, a7, a8)
     end
 
@@ -174,9 +169,7 @@ function _M.hook_function(group_name, parent, child_key, max_args, handlers)
   assert(type(child_key) == "string", "child_key must be a string")
 
   local is_varargs = max_args == "varargs"
-  if is_varargs then
-    assert(handlers.before_mut == nil, "before_mut is not supported for varargs functions")
-  else
+  if not is_varargs then
     assert(type(max_args) == "number", 'max_args must be a number or "varargs"')
     assert(max_args >= 0 and max_args <= 8, 'max_args must be >= 0 and <= 8, or "varargs"')
   end
