@@ -21,7 +21,7 @@ def curl_repositories():
             "https://mirror.bazel.build/curl.haxx.se/download/" + tarball,
         ],
         type = "tar.gz",
-        sha256 = "f91249c87f68ea00cf27c44fdfa5a78423e41e71b7d408e5901a9896d905c495",
+        sha256 = KONG_VAR["CURL_SHA256"],
         strip_prefix = prefix,
         build_file = "//build/curl:BUILD.curl.bazel",
     )
@@ -38,7 +38,7 @@ def curl_repositories():
             "https://github.com/nghttp2/nghttp2/releases/download/%s/%s" % (tag, tarball),
         ],
         type = "tar.gz",
-        sha256 = "aa7594c846e56a22fbf3d6e260e472268808d3b49d5e0ed339f589e9cc9d484c",
+        sha256 = KONG_VAR["NGHTTP2_SHA256"],
         strip_prefix = prefix,
         build_file = Label("//build/curl:BUILD.nghttp2.bazel"),
     )
@@ -51,5 +51,5 @@ def curl_repositories():
         urls = [
             "https://curl.se/ca/cacert-%s.pem" % version,
         ],
-        sha256 = "1794c1d4f7055b7d02c2170337b61b48a2ef6c90d77e95444fd2596f4cac609f",
+        sha256 = KONG_VAR["CA_CERTS_SHA256"],
     )

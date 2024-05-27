@@ -13,7 +13,7 @@ def passwdqc_repositories():
         http_archive,
         name = "passwdqc",
         url = "https://www.openwall.com/passwdqc/passwdqc-" + version + ".tar.gz",
-        sha256 = "53b0f4bc49369f06195e9e13abb6cff352d5acb79e861004ec95973896488cf4",
+        sha256 = KONG_VAR["PASSWDQC_SHA256"],
         strip_prefix = "passwdqc-" + version,
         build_file = "//build/ee/passwdqc:BUILD.passwdqc.bazel",
         patches = ["//build/ee/passwdqc:passwdqc-cross.patch"],
