@@ -1,0 +1,5 @@
+message: |
+  **Admin API**: Fixed an issue where an entity (like route) wouldn't be
+  retrievable through admin via it's name if it was set as uuid.
+type: bugfix
+scope: Admin API

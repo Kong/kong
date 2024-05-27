@@ -644,7 +644,16 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("retrieves by name", function()
-            local route = bp.named_routes:insert(nil, { nulls = true })
+            local route = bp.named_routes:insert({ name = "test-route-name" }, { nulls = true })
+            local res  = client:get("/routes/" .. route.name)
+            local body = assert.res_status(200, res)
+
+            local json = cjson.decode(body)
+            assert.same(route, json)
+          end)
+
+          it("retrieves by name - when name is uuid", function()
+            local route = bp.named_routes:insert({ name = utils.uuid() }, { nulls = true })
             local res  = client:get("/routes/" .. route.name)
             local body = assert.res_status(200, res)
 
@@ -1090,6 +1099,42 @@ for _, strategy in helpers.each_strategy() do
               assert.same(cjson.null, json.hosts)
               assert.same(cjson.null, json.methods)
               assert.equal(route.id, json.id)
+
+              local in_db = assert(db.routes:select(route, { nulls = true }))
+              assert.same(json, in_db)
+
+              db.routes:delete(route)
+            end
+          end)
+
+          it_content_types("updates if found by name - when name is uuid", function(content_type)
+            return function()
+              if content_type == "multipart/form-data" then
+                -- the client doesn't play well with this
+                return
+              end
+
+              local route = bp.routes:insert({
+                name  = utils.uuid(),
+                paths = { "/my-route" },
+              })
+              local res = client:patch("/routes/" .. route.name, {
+                headers = {
+                  ["Content-Type"] = content_type
+                },
+                body = {
+                  methods = cjson.null,
+                  hosts   = cjson.null,
+                  paths   = { "/updated-paths" },
+                },
+              })
+              local body = assert.res_status(200, res)
+              local json = cjson.decode(body)
+              assert.same({ "/updated-paths" }, json.paths)
+              assert.same(cjson.null, json.hosts)
+              assert.same(cjson.null, json.methods)
+              assert.equal(route.id, json.id)
+              assert.equal(route.name, json.name)
 
               local in_db = assert(db.routes:select(route, { nulls = true }))
               assert.same(json, in_db)
