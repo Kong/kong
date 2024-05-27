@@ -109,6 +109,7 @@ export { eventually } from './utilities/eventually';
 export * from './config/geos';
 export { getRuntimeGroupId, setRuntimeGroupId } from './entities/runtimes'
 export { setKonnectControlPlaneId, getKonnectControlPlaneId } from './entities/konnect-cp'
+export { generateDpopProof } from './auth/openid-connect'
 export { getAuthOptions, setKAuthCookies } from './auth/kauth-tokens'
 export * from './entities/organization'
 export { getApiConfig } from './config/api-config';

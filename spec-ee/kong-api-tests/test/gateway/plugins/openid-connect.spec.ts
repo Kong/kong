@@ -12,6 +12,8 @@ import {
     getKongContainerName,
     getGatewayMode,
     clearAllKongResources,
+    randomString,
+    generateDpopProof,
     isGwNative,
 } from '@support'
 import {
@@ -20,15 +22,240 @@ import {
 import axios from 'axios'
 import https from 'https'
 import querystring from 'querystring'
+import { log } from 'console'
+
+const urls = {
+    admin: `${getBasePath({
+        environment: isGateway() ? Environment.gateway.admin : undefined,
+    })}`,
+    proxy: `${getBasePath({
+        app: 'gateway',
+        environment: Environment.gateway.proxy,
+    })}`,
+    proxySec: `${getBasePath({
+        app: 'gateway',
+        environment: Environment.gateway.proxySec,
+    })}`,
+    keycloak: `${getBasePath({
+        app: 'gateway',
+        environment: Environment.gateway.keycloakSec,
+    })}`,
+    okta: 'https://kong-sandbox.oktapreview.com/oauth2',
+}
+
+const isHybrid = getGatewayMode() === 'hybrid'
+const kongContainerName = getKongContainerName()
+const kongDpContainerName = 'kong-dp1';
+const serviceName = 'oidc-service'
+
+let serviceId: string
+let oidcPluginId: string
+
+describe('Gateway Plugins: OIDC with Okta', function () {
+    const oktaPath = '/oidcOktaAuthentication'
+    const oktaIssuerUrl = `${urls.okta}/default`
+    const oktaTokenUrl = `${urls.okta}/default/v1/token`
+
+    // DPoP vars
+    const dpopClientId = '0oae8abki4NEfVkLQ1d7'
+    const dpopClientSecret = 'eOXgBBLJHRcd9GYvkP3fbvfrf2tU6RmX3j_WYPYlRHGmQ1paRcNkfFM0DHolo1P6'
+    const jti = randomString()
+
+    let dpopProof: string
+    let dpopProofNonce: string
+    let updatedDpopProof: string
+    let dpopToken: string
+    let currentTime: number
+
+    before(async function () {
+        const service = await createGatewayService(serviceName)
+        serviceId = service.id
+        await createRouteForService(serviceId, [oktaPath])
+    })
+
+    //======= DPoP tests =======
+    it('should create OIDC plugin with dPoP enabled', async function () {
+        const resp = await axios({
+            method: 'POST',
+            url: `${urls.admin}/services/${serviceId}/plugins/`,
+            data: {
+                name: 'openid-connect',
+                config: {
+                    client_id: [ dpopClientId ],
+                    client_secret: [ dpopClientSecret ],
+                    auth_methods: [ 'bearer' ],
+                    issuer: oktaIssuerUrl,
+                    proof_of_possession_dpop: 'strict',
+                    scopes: ['scope1'],
+                    expose_error_code: true,
+                },
+            },
+            validateStatus: null,
+        })
+        logResponse(resp)
+        expect(resp.status).to.equal(201)
+        oidcPluginId = resp.data.id
+        await waitForConfigRebuild()
+    })
+
+    it('should be able to request token with dPoP', async function() {
+        // initial request to get nonce - should return 400
+        currentTime = Math.floor(Date.now() / 1000)
+        dpopProof = await generateDpopProof({time: currentTime, jti: jti, nonce: '', token: '', url: oktaTokenUrl})
+        const resp = await axios({
+            method: 'POST',
+            url: oktaTokenUrl,
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json',
+                'DPoP': dpopProof
+            },
+            data: querystring.stringify({
+                grant_type: 'client_credentials',
+                client_id: dpopClientId,
+                client_secret: dpopClientSecret,
+                scope: 'scope1'
+            }),
+            validateStatus: null,
+        })
+
+        expect(resp.status).to.equal(400)
+        expect(resp.data.error_description).to.contain('Authorization server requires nonce in DPoP proof')
+        dpopProofNonce = resp.headers['dpop-nonce']
+
+        // request token with dPoP proof
+        updatedDpopProof = await generateDpopProof({time: currentTime, jti: jti, nonce: dpopProofNonce, token: '', url: oktaTokenUrl})
+        const tokenResp = await axios({
+            method: 'POST',
+            url: oktaTokenUrl,
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json',
+                'DPoP': updatedDpopProof
+            },
+            data: querystring.stringify({
+                grant_type: 'client_credentials',
+                client_id: dpopClientId,
+                client_secret: dpopClientSecret,
+                scope: 'scope1'
+            }),
+        })
+        expect(tokenResp.status).to.equal(200)
+        expect(tokenResp.data).to.have.property('access_token')
+        expect(tokenResp.data.token_type).to.equal('DPoP')
+        dpopToken = tokenResp.data.access_token
+        await waitForConfigRebuild()
+    })
+
+    it('should return 401 when accessing route without token but with dpop proof', async function() {
+        const resp = await axios({
+            method: 'GET',
+            url: `${urls.proxy}${oktaPath}`,
+            validateStatus: null,
+            headers: {
+                'DPoP': dpopProof,
+            }
+        })
+
+        expect(resp.status).to.equal(401)
+        expect(resp.headers['www-authenticate']).to.contain('DPoP')
+        expect(resp.headers['www-authenticate']).to.contain('error="invalid_token"')
+    })
+
+    it('should return 401 when accessing route with token but without token proof', async function() {
+        const resp = await axios({
+            method: 'GET',
+            url: `${urls.proxy}${oktaPath}`,
+            validateStatus: null,
+            headers: {
+                'Authorization': `DPoP ${dpopToken}`,
+            }
+        })
+
+        expect(resp.status).to.equal(401)
+        expect(resp.headers['www-authenticate']).to.contain('DPoP')
+        expect(resp.headers['www-authenticate']).to.contain('error="invalid_dpop_proof"')
+    })
+
+    it('should return 401 when accessing route with downgraded dpop proof', async function() {
+        const proofWithRoute  = await generateDpopProof({time: currentTime, jti: jti, nonce: '', token: dpopToken, url: `${urls.proxy}${oktaPath}`})
+        const resp = await axios({
+            method: 'GET',
+            url: `${urls.proxy}${oktaPath}`,
+            validateStatus: null,
+            headers: {
+                'Authorization': `Bearer ${dpopToken}`,
+                'DPoP': proofWithRoute,
+            }
+        })
+
+        logResponse(resp)
+        expect(resp.status).to.equal(401)
+        expect(resp.headers['www-authenticate']).to.contain('DPoP')
+        expect(resp.headers['www-authenticate']).to.contain('error="invalid_dpop_proof"')
+    })
+
+    it('should return 401 when accessing route with dpop proof with incorrect htu claim', async function() {
+        const proofWithIncorrectHtu = await generateDpopProof({time: currentTime, jti: jti, nonce: '', token: dpopToken, url: `http://localhost:8000/wrongpath`})
+        const resp = await axios({
+            method: 'GET',
+            url: `${urls.proxy}${oktaPath}`,
+            headers: {
+                'Authorization': `DPoP ${dpopToken}`,
+                'DPoP': proofWithIncorrectHtu,
+            },
+            validateStatus: null,
+        })
+
+        logResponse(resp)
+        expect(resp.status).to.equal(401)
+        expect(resp.headers['www-authenticate']).to.contain('DPoP')
+        expect(resp.headers['www-authenticate']).to.contain('error="invalid_dpop_proof"')
+    })
+
+    it('should return 200 when accessing route with token and dpop proof', async function() {
+        const proofWithRoute  = await generateDpopProof({time: currentTime, jti: jti, nonce: '', token: dpopToken, url: `${urls.proxy}${oktaPath}`})
+        console.log('proofWithRoute: ', proofWithRoute)
+
+        const resp = await axios({
+            method: 'POST',
+            url: `${urls.proxy}${oktaPath}`,
+            headers: {
+                'Authorization': `DPoP ${dpopToken}`,
+                'DPoP': proofWithRoute,
+            },
+            validateStatus: null,
+        })
+
+        expect(resp.status).to.equal(200)
+    })
+
+    it('should delete OIDC plugin', async function () {
+        const resp = await axios({
+            method: 'DELETE',
+            url: `${urls.admin}/plugins/${oidcPluginId}`,
+        })
+        expect(resp.status).to.equal(204)
+    })
+
+    after(async function () {
+        await clearAllKongResources()
+    })
+
+})
 
 // Skip this test suite for packages to investigate the error when creating OIDC plugin
 describe('Gateway Plugins: OIDC with Keycloak', function () {
-    const path = '/oidc'
-    const serviceName = 'oidc-service'
+    const keycloakPath = '/oidc'
+    const keycloakTokenRequestUrl = `${urls.keycloak}/realms/demo/protocol/openid-connect/token`
+    const keycloakIssuerUrl = `https://keycloak:8543/realms/demo/`
+    const certClientId = 'kong-certificate-bound'
+    const certClientSecret = '670f2328-85a0-11ee-b9d1-0242ac120002'
+    const mtlsClientId = 'kong-client-tls-auth'
+    const isKongNative = isGwNative();
 
     const invalidCertificate = authDetails.keycloak.invalid_cert
     const invalidKey = authDetails.keycloak.invalid_key
-
     const clientCertificate = authDetails.keycloak.client_cert
     const clientKey = authDetails.keycloak.client_key
 
@@ -37,40 +264,13 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
         key: clientKey,
         rejectUnauthorized: false,
     })
-
-    // use to authenticate token request
-    const certClientId = 'kong-certificate-bound'
-    const certClientSecret = '670f2328-85a0-11ee-b9d1-0242ac120002'
-    const mtlsClientId = 'kong-client-tls-auth'
-
-    let serviceId: string
+    
     let tlsPluginId: string
-    let oidcPluginId: string
     let certId: string
     let invalidCertId: string
     let expiredCertId: string
     let token: string
-
-    const isKongNative = isGwNative();
-    const isHybrid = getGatewayMode() === 'hybrid'
-    const url = `${getBasePath({
-        environment: isGateway() ? Environment.gateway.admin : undefined,
-    })}`
-    const proxyUrl = `${getBasePath({
-        app: 'gateway',
-        environment: Environment.gateway.proxySec,
-    })}`
-
-    const keycloakUrl = `${getBasePath({
-        app: 'gateway',
-        environment: Environment.gateway.keycloakSec,
-    })}/realms/demo`
-
-    const tokenRequestUrl = `${keycloakUrl}/protocol/openid-connect/token`
-    const issuerUrl = 'https://keycloak:8543/realms/demo/'
-
-    const kongContainerName = getKongContainerName();
-    const kongDpContainerName = 'kong-dp1';
+    
 
     before(async function () {
         //set KONG_LUA_SSL_TRUSTED_CERTIFICATE value to root/intermediate CA certificates
@@ -90,13 +290,14 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
                 kongDpContainerName
             );
         }
+
         const service = await createGatewayService(serviceName)
         serviceId = service.id
-        await createRouteForService(serviceId, [path])
+        await createRouteForService(serviceId, [keycloakPath])
 
         const validCert = await axios({
             method: 'POST',
-            url: `${url}/certificates`,
+            url: `${urls.admin}/certificates`,
             data: {
                 cert: clientCertificate,
                 key: clientKey,
@@ -107,7 +308,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
 
         const invalidCert = await axios({
             method: 'POST',
-            url: `${url}/certificates`,
+            url: `${urls.admin}/certificates`,
             data: {
                 cert: invalidCertificate,
                 key: invalidKey,
@@ -119,28 +320,30 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
         // Create TLS plugin for certificate-based tokens
         const resp = await axios({
             method: 'POST',
-            url: `${url}/services/${serviceId}/plugins`,
+            url: `${urls.admin}/services/${serviceId}/plugins`,
             data: { name: 'tls-handshake-modifier' },
         })
         tlsPluginId = resp.data.id
     })
-
-    it('should create OIDC plugin with certificate-based tokens enabled', async function () {
+              
+    //======= cert-based auth tests =======
+    it('should create OIDC plugin that uses certificate-based tokens', async function () {
         const resp = await axios({
             method: 'POST',
-            url: `${url}/services/${serviceId}/plugins`,
+            url: `${urls.admin}/services/${serviceId}/plugins`,
             data: {
                 name: 'openid-connect',
                 config: {
                     client_id: [ certClientId ],
                     client_secret: [ certClientSecret ],
-                    auth_methods: [ 'bearer' ],
-                    issuer: issuerUrl,
+                    issuer: keycloakIssuerUrl,
+                    token_endpoint: keycloakTokenRequestUrl,
                     proof_of_possession_mtls: 'strict',
                     ignore_signature: [ 'client_credentials' ],
+                    auth_methods: ['bearer'],
+                    cache_user_info: false,
                     cache_tokens: false,
                     cache_introspection: false,
-                    cache_user_info: false,
                 },
             },
             validateStatus: null,
@@ -154,7 +357,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
     it('should not be able to request a token without a valid certificate', async function() {
         const resp = await axios({
             method: 'POST',
-            url: tokenRequestUrl,
+            url: keycloakTokenRequestUrl,
             data: querystring.stringify({
                 grant_type: 'client_credentials',
                 client_id: certClientId,
@@ -163,6 +366,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
             validateStatus: null,
         })
         logResponse(resp)
+
         expect(resp.status).to.equal(400)
         expect(resp.data.error_description).to.equal('Client Certification missing for MTLS HoK Token Binding')
     })
@@ -170,7 +374,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
     it('should return 401 when accessing route without certificate in request', async function() {
         const resp = await axios({
             method: 'GET',
-            url: `${proxyUrl}${path}`,
+            url: `${urls.proxySec}${keycloakPath}`,
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -183,7 +387,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
     it('should be able to request token with valid certificate provided', async function() {
         const resp = await axios({
             method: 'POST',
-            url: tokenRequestUrl,
+            url: keycloakTokenRequestUrl,
             data: querystring.stringify({
                 grant_type: 'client_credentials',
                 client_id: certClientId,
@@ -199,7 +403,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
     it('should return 401 when accessing route with certificate but no token', async function() {
         const resp = await axios({
             method: 'GET',
-            url: `${proxyUrl}${path}`,
+            url: `${urls.proxySec}${keycloakPath}`,
             validateStatus: null,
             httpsAgent: certHttpsAgent,
         })
@@ -209,9 +413,9 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
     it('should return 401 when accessing route with incorrect certificate', async function() {
         const resp = await axios({
             method: 'GET',
-            url: `${proxyUrl}${path}`,
+            url: `${urls.proxySec}${keycloakPath}`,
             headers: {
-                Authorization: `Bearer ${token}`,
+                'Authorization': `Bearer ${token}`,
             },
             httpsAgent: new https.Agent({
                 cert: invalidCertificate,
@@ -226,7 +430,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
     it('should successfully authenticate when accessing route with certificate and token', async function() {
         const resp = await axios({
             method: 'GET',
-            url: `${proxyUrl}${path}`,
+            url: `${urls.proxySec}${keycloakPath}`,
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -240,13 +444,20 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
         await waitForConfigRebuild()
     })
 
+    //======= mTLS auth tests =======
     it('should not update plugin to use mTLS authentication without certificate', async function () {
         const resp = await axios({
-            method: 'PATCH',
-            url: `${url}/plugins/${oidcPluginId}`,
+            method: 'POST',
+            url: `${urls.admin}/plugins`,
             data: {
+                name: 'openid-connect',
                 config: {
+                    client_id: [ mtlsClientId ],
+                    auth_methods: [ 'password' ],
+                    issuer: keycloakIssuerUrl,
                     client_auth: [ 'tls_client_auth' ],
+                    login_methods: ['authorization_code'],
+                    tls_client_auth_ssl_verify: true,
                 },
             },
             validateStatus: null,
@@ -259,22 +470,23 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
     it('should update plugin to use mTLS authentication', async function () {
         const resp = await axios({
             method: 'PATCH',
-            url: `${url}/plugins/${oidcPluginId}`,
+            url: `${urls.admin}/plugins/${oidcPluginId}`,
             data: {
                 config: {
                     client_id: [ mtlsClientId ],
+                    auth_methods: [ 'password' ],
                     client_auth: [ 'tls_client_auth' ],
                     tls_client_auth_cert_id: certId,
-                    auth_methods: [ 'password' ],
-                    ignore_signature: [],
-                    issuer: issuerUrl,
-                    proof_of_possession_mtls: 'off',
+                    issuer: keycloakIssuerUrl,
                     login_methods: ['authorization_code'],
                     tls_client_auth_ssl_verify: true,
+                    ignore_signature: [],
+                    proof_of_possession_mtls: 'off',
                 },
             },
             validateStatus: null,
         })
+        logResponse(resp)
         expect(resp.status).to.equal(200)
         await waitForConfigRebuild()
     })
@@ -282,7 +494,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
     it('should return 401 when accessing route without credentials', async function() {
         const resp = await axios({
             method: 'GET',
-            url: `${proxyUrl}${path}`,
+            url: `${urls.proxySec}${keycloakPath}`,
             validateStatus: null,
         })
         expect(resp.status).to.equal(401)
@@ -291,7 +503,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
     it('should return 401 when accessing route with incorrect credentials', async function() {
         const resp = await axios({
             method: 'GET',
-            url: `${proxyUrl}${path}`,
+            url: `${urls.proxySec}${keycloakPath}`,
             auth: {
                 username:'john',
                 password:'no',
@@ -304,13 +516,14 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
     it('should successfully authenticate when accessing route with mTLS authentication', async function() {
         const resp = await axios({
             method: 'GET',
-            url: `${proxyUrl}${path}`,
+            url: `${urls.proxySec}${keycloakPath}`,
             auth: {
                 username:'john',
                 password:'doe',
             },
             validateStatus: null,
         })
+
         logResponse(resp)
         expect(resp.status).to.equal(200)
         expect(resp.data.headers).to.have.property('Authorization')
@@ -319,7 +532,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
     it('should update plugin to use an invalid certificate', async function () {
         const resp = await axios({
             method: 'PATCH',
-            url: `${url}/plugins/${oidcPluginId}`,
+            url: `${urls.admin}/plugins/${oidcPluginId}`,
             data: {
                 config: {
                     tls_client_auth_cert_id: invalidCertId,
@@ -335,7 +548,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
     it('should return 401 when accessing route with mismatched certificate', async function() {
         const resp = await axios({
             method: 'GET',
-            url: `${proxyUrl}${path}`,
+            url: `${urls.proxySec}${keycloakPath}`,
             auth: {
                 username:'john',
                 password:'doe',
@@ -349,14 +562,14 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
     it('should update plugin to use expired certificate', async function() {
         const resp = await axios({
             method: 'PATCH',
-            url: `${url}/plugins/${oidcPluginId}`,
+            url: `${urls.admin}/plugins/${oidcPluginId}`,
             data: {
                 config: {
                     tls_client_auth_cert_id: expiredCertId,
                 },
             },
             validateStatus: null,
-        })
+        }) 
         logResponse(resp)
         expect(resp.status).to.equal(200)
     })
@@ -364,7 +577,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
     it('should return 401 when accessing route with expired certificate', async function() {
         const resp = await axios({
             method: 'GET',
-            url: `${proxyUrl}${path}`,
+            url: `${urls.proxySec}${keycloakPath}`,
             auth: {
                 username:'john',
                 password:'doe',
@@ -375,10 +588,11 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
         expect(resp.status).to.equal(401)
     })
 
+    //====== Unauthorized message tests =======
     it('should update plugin to use different message for unauthorized requests', async function () {
         const resp = await axios({
             method: 'PATCH',
-            url: `${url}/plugins/${oidcPluginId}`,
+            url: `${urls.admin}/plugins/${oidcPluginId}`,
             data: {
                 config: {
                     unauthorized_error_message: 'You shall not pass!',
@@ -393,7 +607,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
     it('should return custom message when accessing route without authorization', async function() {
         const resp = await axios({
             method: 'GET',
-            url: `${proxyUrl}${path}`,
+            url: `${urls.proxy}${keycloakPath}`,
             validateStatus: null,
         })
         logResponse(resp)
@@ -404,7 +618,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
     it('should delete OIDC plugin', async function () {
         const resp = await axios({
             method: 'DELETE',
-            url: `${url}/plugins/${oidcPluginId}`,
+            url: `${urls.admin}/plugins/${oidcPluginId}`,
         })
         expect(resp.status).to.equal(204)
     })
