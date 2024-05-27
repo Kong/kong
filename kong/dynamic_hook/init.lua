@@ -45,7 +45,7 @@ local function should_execute_original_func(group_name)
   if ALWAYS_ENABLED_GROUPS[group_name] then
     return
   end
-  
+
   local phase = ngx_get_phase()
   if phase == "init" or phase == "init_worker" then
     return true
@@ -66,7 +66,7 @@ end
 local function execute_hook_vararg(hook, hook_type, group_name, ...)
   if not hook then
     return
-  end  
+  end
   local ok, err = pcall(hook, ...)
   if not ok then
     ngx_log(ngx_WARN, "failed to run ", hook_type, " hook of ", group_name, ": ", err)
@@ -140,7 +140,7 @@ local function execute_original_func(max_args, original_func, a1, a2, a3, a4, a5
     return original_func(a1, a2, a3, a4, a5, a6)
   elseif max_args == 7 then
     return original_func(a1, a2, a3, a4, a5, a6, a7)
-  else 
+  else
     return original_func(a1, a2, a3, a4, a5, a6, a7, a8)
   end
 end
@@ -150,7 +150,7 @@ local function wrap_function(max_args, group_name, original_func, handlers)
   return function(a1, a2, a3, a4, a5, a6, a7, a8)
     if should_execute_original_func(group_name) then
       a1, a2, a3, a4, a5, a6, a7, a8 = execute_original_func(max_args, original_func, a1, a2, a3, a4, a5, a6, a7, a8)
-      
+
     else
       execute_hook(handlers.before_mut, "before_mut", group_name, a1, a2, a3, a4, a5, a6, a7, a8)
       execute_hooks(handlers.befores, "before", group_name, a1, a2, a3, a4, a5, a6, a7, a8)
