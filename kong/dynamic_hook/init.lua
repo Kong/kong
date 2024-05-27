@@ -142,16 +142,18 @@ end
 
 local function wrap_function(max_args, group_name, original_func, handlers)
   return function(a1, a2, a3, a4, a5, a6, a7, a8)
+    local r1, r2, r3, r4, r5, r6, r7, r8
+
     if should_execute_original_func(group_name) then
-      a1, a2, a3, a4, a5, a6, a7, a8 = execute_original_func(max_args, original_func, a1, a2, a3, a4, a5, a6, a7, a8)
+      r1, r2, r3, r4, r5, r6, r7, r8 = execute_original_func(max_args, original_func, a1, a2, a3, a4, a5, a6, a7, a8)
 
     else
       execute_hooks(handlers.befores, "before", group_name, a1, a2, a3, a4, a5, a6, a7, a8)
-      a1, a2, a3, a4, a5, a6, a7, a8 = execute_original_func(max_args, original_func, a1, a2, a3, a4, a5, a6, a7, a8)
-      execute_hooks(handlers.afters, "after", group_name, a1, a2, a3, a4, a5, a6, a7, a8)
+      r1, r2, r3, r4, r5, r6, r7, r8 = execute_original_func(max_args, original_func, a1, a2, a3, a4, a5, a6, a7, a8)
+      execute_hooks(handlers.afters, "after", group_name, r1, r2, r3, r4, r5, r6, r7, r8)
     end
 
-    return a1, a2, a3, a4, a5, a6, a7, a8
+    return r1, r2, r3, r4, r5, r6, r7, r8
   end
 end
 
