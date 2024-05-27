@@ -561,7 +561,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       local entries = get_log("host_header", 1)
-      local host_header = helpers.mock_upstream_host
+      local host_header
       if helpers.mock_upstream_port == 80 then
         host_header = helpers.mock_upstream_host
       else
