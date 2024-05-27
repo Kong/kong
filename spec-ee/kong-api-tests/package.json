@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "axios": "^1.7.2",
-    "@kong/kauth-test-utils": "^0.0.21",
+    "@kong/kauth-test-utils": "^0.0.22",
     "chai": "^4.4.1",
     "@kong/khcp-api-client": "^0.1.1954",
     "chai-arrays": "^2.2.0",
