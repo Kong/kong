@@ -153,10 +153,10 @@ local function wrap_function(max_args, group_name, original_func, handlers)
 end
 
 
-function _M.hook_function(group_name, parent, child_key, max_args, handlers)
+function _M.hook_function(group_name, parent, function_key, max_args, handlers)
   assert(type(group_name) == "string", "group_name must be a string")
   assert(type(parent) == "table", "parent must be a table")
-  assert(type(child_key) == "string", "child_key must be a string")
+  assert(type(function_key) == "string", "function_key must be a string")
 
   local is_varargs = max_args == "varargs"
   if not is_varargs then
@@ -164,13 +164,13 @@ function _M.hook_function(group_name, parent, child_key, max_args, handlers)
     assert(max_args >= 0 and max_args <= 8, 'max_args must be >= 0 and <= 8, or "varargs"')
   end
 
-  local original_func = parent[child_key]
-  assert(type(original_func) == "function", "parent[" .. child_key .. "] must be a function")
+  local original_func = parent[function_key]
+  assert(type(original_func) == "function", "parent[" .. function_key .. "] must be a function")
 
   if is_varargs then
-    parent[child_key] = wrap_function_vararg(group_name, original_func, handlers)
+    parent[function_key] = wrap_function_vararg(group_name, original_func, handlers)
   else
-    parent[child_key] = wrap_function(max_args, group_name, original_func, handlers)
+    parent[function_key] = wrap_function(max_args, group_name, original_func, handlers)
   end
 end
 
