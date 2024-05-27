@@ -190,7 +190,7 @@ for _, strategy in helpers.each_strategy() do
       -- note this is different from test "update row in tags table with"
       -- as this test actually creates new records
       local scenarios = {
-        { "upsert", { id = require("kong.tools.utils").uuid() }, { "service-upsert-1" } },
+        { "upsert", { id = require("kong.tools.uuid").uuid() }, { "service-upsert-1" } },
         { "upsert_by_name", "service-upsert-2", { "service-upsert-2" } },
       }
       for _, scenario in pairs(scenarios) do

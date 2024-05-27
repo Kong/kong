@@ -1,6 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 local Errors = require "kong.db.errors"
 
 
@@ -99,7 +99,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("returns 404 if not found", function()
-          local res = client:get("/foreign-references/" .. utils.uuid() .. "/same")
+          local res = client:get("/foreign-references/" .. uuid.uuid() .. "/same")
           assert.res_status(404, res)
         end)
 
@@ -190,7 +190,7 @@ for _, strategy in helpers.each_strategy() do
         describe("errors", function()
           it_content_types("returns 404 if not found", function(content_type)
             return function()
-              local res = client:patch("/foreign-references/" .. utils.uuid() .. "/same", {
+              local res = client:patch("/foreign-references/" .. uuid.uuid() .. "/same", {
                 headers = {
                   ["Content-Type"] = content_type
                 },
@@ -245,12 +245,12 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("returns HTTP 404 with non-existing foreign entity ", function()
-            local res = client:delete("/foreign-entities/" .. utils.uuid() .. "/foreign-references/" .. utils.uuid())
+            local res = client:delete("/foreign-entities/" .. uuid.uuid() .. "/foreign-references/" .. uuid.uuid())
             assert.res_status(404, res)
           end)
 
           it("returns HTTP 404 with non-existing foreign reference", function()
-            local res = client:delete("/foreign-references/" .. utils.uuid() .. "/same")
+            local res = client:delete("/foreign-references/" .. uuid.uuid() .. "/same")
             assert.res_status(404, res)
           end)
 

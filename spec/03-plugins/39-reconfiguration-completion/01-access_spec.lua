@@ -1,6 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 
 describe("Reconfiguration completion detection plugin", function()
 
@@ -11,7 +11,7 @@ describe("Reconfiguration completion detection plugin", function()
 
   local function plugin_tests()
 
-    local configuration_version = utils.uuid()
+    local configuration_version = uuid.uuid()
 
     local res = admin_client:post("/plugins", {
       body = {
@@ -72,7 +72,7 @@ describe("Reconfiguration completion detection plugin", function()
       })
       assert.res_status(201, res)
 
-      configuration_version = utils.uuid()
+      configuration_version = uuid.uuid()
       res = admin_client:patch("/plugins/" .. reconfiguration_completion_plugin_id, {
         body = {
           config = {

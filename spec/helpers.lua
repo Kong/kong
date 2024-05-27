@@ -61,7 +61,6 @@ local pl_Set = require "pl.Set"
 local Schema = require "kong.db.schema"
 local Entity = require "kong.db.schema.entity"
 local cjson = require "cjson.safe"
-local utils = require "kong.tools.utils"
 local kong_table = require "kong.tools.table"
 local http = require "resty.http"
 local pkey = require "resty.openssl.pkey"
@@ -78,6 +77,7 @@ local stress_generator = require "spec.fixtures.stress_generator"
 local resty_signal = require "resty.signal"
 local lfs = require "lfs"
 local luassert = require "luassert.assert"
+local uuid = require("kong.tools.uuid").uuid
 
 ffi.cdef [[
   int setenv(const char *name, const char *value, int overwrite);
@@ -594,7 +594,7 @@ local plugins_schema = assert(Entity.new(plugins_schema_def))
 local function validate_plugin_config_schema(config, schema_def)
   assert(plugins_schema:new_subschema(schema_def.name, schema_def))
   local entity = {
-    id = utils.uuid(),
+    id = uuid(),
     name = schema_def.name,
     config = config
   }
@@ -4061,7 +4061,7 @@ local function clustering_client(opts)
 
   local c = assert(ws_client:new())
   local uri = "wss://" .. opts.host .. ":" .. opts.port ..
-              "/v1/outlet?node_id=" .. (opts.node_id or utils.uuid()) ..
+              "/v1/outlet?node_id=" .. (opts.node_id or uuid()) ..
               "&node_hostname=" .. (opts.node_hostname or kong.node.get_hostname()) ..
               "&node_version=" .. (opts.node_version or KONG_VERSION)
 

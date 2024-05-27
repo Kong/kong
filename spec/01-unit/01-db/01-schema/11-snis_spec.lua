@@ -1,7 +1,7 @@
 local Schema = require "kong.db.schema"
 local snis = require "kong.db.schema.entities.snis"
 local certificates = require "kong.db.schema.entities.certificates"
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 
 Schema.new(certificates)
 local Snis = assert(Schema.new(snis))
@@ -27,7 +27,7 @@ end
 
 
 describe("snis", function()
-  local certificate = { id = utils.uuid() }
+  local certificate = { id = uuid.uuid() }
 
   setup_global_env()
 

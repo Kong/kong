@@ -1,12 +1,12 @@
 local cjson = require "cjson"
 local iteration = require "kong.db.iteration"
-local utils = require "kong.tools.utils"
 local kong_table = require "kong.tools.table"
 local defaults = require "kong.db.strategies.connector".defaults
 local hooks = require "kong.hooks"
 local workspaces = require "kong.workspaces"
 local new_tab = require "table.new"
 local DAO_MAX_TTL = require("kong.constants").DATABASE.DAO_MAX_TTL
+local is_valid_uuid = require("kong.tools.uuid").is_valid_uuid
 
 local setmetatable = setmetatable
 local tostring     = tostring
@@ -174,7 +174,7 @@ local function validate_options_value(self, options)
 
   if options.workspace then
     if type(options.workspace) == "string" then
-      if not utils.is_valid_uuid(options.workspace) then
+      if not is_valid_uuid(options.workspace) then
         local ws = kong.db.workspaces:select_by_name(options.workspace)
         if ws then
           options.workspace = ws.id

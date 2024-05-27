@@ -1,5 +1,5 @@
 local log = require "kong.cmd.utils.log"
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 local pl_dir = require "pl.dir"
@@ -31,7 +31,7 @@ local function initialize_node_id(prefix)
       return nil, fmt("failed to access file %s: %s", filename, err)
     end
 
-    if not utils.is_valid_uuid(id) then
+    if not uuid.is_valid_uuid(id) then
       log.debug("file %s contains invalid uuid: %s", filename, id)
       -- set false to override it when it contains an invalid uuid.
       file_exists = false
@@ -39,7 +39,7 @@ local function initialize_node_id(prefix)
   end
 
   if not file_exists then
-    local id = utils.uuid()
+    local id = uuid.uuid()
     log.debug("persisting node_id (%s) to %s", id, filename)
 
     local ok, write_err = pl_file.write(filename, id)
@@ -89,7 +89,7 @@ local function load_node_id(prefix)
     return nil, fmt("failed to access file %s: %s", filename, read_err)
   end
 
-  if not utils.is_valid_uuid(id) then
+  if not uuid.is_valid_uuid(id) then
     return nil, fmt("file %s contains invalid uuid: %q", filename, id)
   end
 

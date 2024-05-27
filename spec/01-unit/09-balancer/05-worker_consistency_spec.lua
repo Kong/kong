@@ -1,9 +1,8 @@
-local utils = require "kong.tools.utils"
 local mocker = require "spec.fixtures.mocker"
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 
-local ws_id = utils.uuid()
+local ws_id = require("kong.tools.uuid").uuid()
 
 
 local function setup_it_block(consistency)

@@ -1,6 +1,6 @@
 local Router
 local path_handling_tests = require "spec.fixtures.router_path_handling_tests"
-local uuid = require("kong.tools.utils").uuid
+local uuid = require("kong.tools.uuid").uuid
 local get_expression = require("kong.router.transform").get_expression
 local deep_copy = require("kong.tools.table").deep_copy
 

@@ -1,6 +1,5 @@
 local cjson    = require "cjson"
 local lyaml    = require "lyaml"
-local utils    = require "kong.tools.utils"
 local kong_table = require "kong.tools.table"
 local pl_utils = require "pl.utils"
 local helpers  = require "spec.helpers"
@@ -11,6 +10,7 @@ local inspect = require "inspect"
 local nkeys = require "table.nkeys"
 local typedefs = require "kong.db.schema.typedefs"
 local schema = require "kong.db.schema"
+local uuid = require("kong.tools.uuid").uuid
 
 local WORKER_SYNC_TIMEOUT = 10
 local LMDB_MAP_SIZE = "10m"
@@ -84,7 +84,7 @@ describe("Admin API #off", function()
             body = {
               protocols = { "http" },
               hosts     = { "my.route.test" },
-              service   = { id = utils.uuid() },
+              service   = { id = uuid() },
             },
             headers = { ["Content-Type"] = content_type }
           })
@@ -111,7 +111,7 @@ describe("Admin API #off", function()
               methods   = { "GET", "POST", "PATCH" },
               hosts     = { "foo.api.test", "bar.api.test" },
               paths     = { "/foo", "/bar" },
-              service   = { id =  utils.uuid() },
+              service   = { id =  uuid() },
             },
             headers = { ["Content-Type"] = content_type }
           })
@@ -160,7 +160,7 @@ describe("Admin API #off", function()
           path = "/routes",
           body = {
             paths = { "/" },
-            service = { id = utils.uuid() }
+            service = { id = uuid() }
           },
           headers = {
             ["Content-Type"] = "application/json"
@@ -188,10 +188,10 @@ describe("Admin API #off", function()
       for i = 1, #methods do
         local res = assert(client:send {
           method = methods[i],
-          path = "/routes/" .. utils.uuid(),
+          path = "/routes/" .. uuid(),
           body = {
             paths = { "/" },
-            service = { id = utils.uuid() }
+            service = { id = uuid() }
           },
           headers = {
             ["Content-Type"] = "application/json"

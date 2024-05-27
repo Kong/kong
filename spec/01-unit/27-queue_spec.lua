@@ -1,10 +1,10 @@
 local Queue = require "kong.tools.queue"
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
-local utils = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 local mocker = require "spec.fixtures.mocker"
 local timerng = require "resty.timerng"
 local queue_schema = require "kong.tools.queue_schema"
+local uuid = require("kong.tools.uuid").uuid
 local queue_num = 1
 
 
@@ -71,7 +71,7 @@ describe("plugin queue", function()
           err = function(message) return log('ERR', message) end,
         },
         plugin = {
-          get_id = function () return utils.uuid() end,
+          get_id = function () return uuid() end,
         },
       },
       ngx = {
@@ -128,7 +128,7 @@ describe("plugin queue", function()
 
   it("displays log_tag in log entries", function ()
     local handler_invoked
-    local log_tag = utils.uuid()
+    local log_tag = uuid()
     Queue.enqueue(
       queue_conf({ name = "log-tag", log_tag = log_tag }),
       function ()

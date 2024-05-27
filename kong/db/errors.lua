@@ -2,7 +2,7 @@ local pl_pretty = require("pl.pretty").write
 local pl_keys = require("pl.tablex").keys
 local nkeys = require("table.nkeys")
 local table_isarray = require("table.isarray")
-local utils = require("kong.tools.utils")
+local uuid = require("kong.tools.uuid")
 
 
 local type         = type
@@ -757,7 +757,7 @@ do
   ---@return string|nil
   local function validate_id(id)
     return (type(id) == "string"
-            and utils.is_valid_uuid(id)
+            and uuid.is_valid_uuid(id)
             and id)
            or nil
   end

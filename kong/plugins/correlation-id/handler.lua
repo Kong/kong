@@ -1,5 +1,5 @@
 -- Copyright (C) Kong Inc.
-local uuid = require "kong.tools.utils".uuid
+local uuid = require "kong.tools.uuid".uuid
 local kong_meta = require "kong.meta"
 
 

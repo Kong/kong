@@ -6,7 +6,7 @@ local null = ngx.null
 
 local helpers = require "spec.helpers"
 local tablex = require "pl.tablex"
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 
 local function sort_by_key(t)
   return function(a, b)
@@ -48,7 +48,7 @@ local function idempotent(tbl, err)
   local function recurse_fields(t)
     helpers.deep_sort(t)
     for k,v in sortedpairs(t) do
-      if k == "id" and utils.is_valid_uuid(v) then
+      if k == "id" and uuid.is_valid_uuid(v) then
         t[k] = "UUID"
       end
       if k == "client_id" or k == "client_secret" or k == "access_token" then
