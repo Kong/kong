@@ -18,6 +18,7 @@ local VIA_HEADER_VALUE = meta._NAME .. "/" .. meta._VERSION
 local request_util = require "kong.plugins.aws-lambda.request-util"
 local build_request_payload = request_util.build_request_payload
 local extract_proxy_response = request_util.extract_proxy_response
+local remove_array_mt_for_empty_table = request_util.remove_array_mt_for_empty_table
 
 local aws = require("resty.aws")
 local AWS_GLOBAL_CONFIG
@@ -238,6 +239,16 @@ function AWSLambdaHandler:access(conf)
 
   if kong.configuration.enabled_headers[VIA_HEADER] then
     headers[VIA_HEADER] = VIA_HEADER_VALUE
+  end
+
+  -- TODO: remove this in the next major release
+  -- function to remove array_mt metatables from empty tables
+  -- This is just a backward compatibility code to keep a
+  -- long-lived behavior that Kong responsed JSON objects
+  -- instead of JSON arrays for empty arrays.
+  local ct = headers["Content-Type"]
+  if ct and ct:lower():match("application/.*json") and conf.empty_arrays_mode == "legacy" then
+    content = remove_array_mt_for_empty_table(content)
   end
 
   return kong.response.exit(status, content, headers)
