@@ -131,6 +131,12 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       hosts = { "test28.test" }
     })
 
+    local route29 = bp.routes:insert({
+      hosts = { "test29.test" },
+      paths = { "~/(gw/)?api/(?<subpath>htest)$" },
+      strip_path = false,
+    })
+
     bp.plugins:insert {
       route = { id = route1.id },
       name = "request-transformer",
@@ -467,6 +473,16 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       config = {
         add = {
           headers = { "X-Write-Attempt:$(shared.written = true)" },
+        }
+      }
+    }
+
+    bp.plugins:insert {
+      route = { id = route29.id },
+      name = "request-transformer",
+      config = {
+        replace = {
+          uri = "/api/v2/$(uri_captures[\"subpath\"])",
         }
       }
     }
@@ -1112,6 +1128,32 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       assert.response(r).has.jsonbody()
       local json = assert.request(r).has.jsonbody()
       assert.is_truthy(string.find(json.data, "\"emptyarray\":[]", 1, true))
+    end)
+
+    it("replaces request uri with optional capture prefix", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/api/htest",
+        headers = {
+          host = "test29.test"
+        }
+      })
+      assert.response(r).has.status(404)
+      local body = assert(assert.response(r).has.jsonbody())
+      assert.equals("/api/v2/htest", body.vars.request_uri)
+    end)
+
+    it("replaces request uri with the capature prefix", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/gw/api/htest",
+        headers = {
+          host = "test29.test"
+        }
+      })
+      assert.response(r).has.status(404)
+      local body = assert(assert.response(r).has.jsonbody())
+      assert.equals("/api/v2/htest", body.vars.request_uri)
     end)
 
     pending("escape UTF-8 characters when replacing upstream path - enable after Kong 2.4", function()
