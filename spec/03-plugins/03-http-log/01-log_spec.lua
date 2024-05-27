@@ -209,6 +209,22 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
+      local route5 = bp.routes:insert {
+        hosts   = { "http_host_header.test" },
+        service = service1
+      }
+
+      bp.plugins:insert {
+        route  = { id = route5.id },
+        name   = "http-log",
+        config = {
+          http_endpoint = "http://" .. helpers.mock_upstream_host
+                                    .. ":"
+                                    .. helpers.mock_upstream_port
+                                    .. "/post_log/http"
+        }
+      }
+
       local route6 = bp.routes:insert {
         hosts   = { "https_logging_faulty.test" },
         service = service2
@@ -533,6 +549,25 @@ for _, strategy in helpers.each_strategy() do
       local entries = get_log("vault_header", 1)
       assert.same("value1", entries[1].log_req_headers.key1)
       assert.same(vault_env_value, entries[1].log_req_headers.key2)
+    end)
+
+    it("lua-resty-http adds Host header ", function()
+      reset_log("host_header")
+      local res = proxy_client:get("/status/200", {
+        headers = {
+          ["Host"] = "http_host_header.test"
+        }
+      })
+      assert.res_status(200, res)
+
+      local entries = get_log("host_header", 1)
+      local host_header = helpers.mock_upstream_host
+      if helpers.mock_upstream_port == 80 then
+        host_header = helpers.mock_upstream_host
+      else
+        host_header = helpers.mock_upstream_host .. ":" .. helpers.mock_upstream_port
+      end
+      assert.same(host_header, entries[1].host)
     end)
 
 
