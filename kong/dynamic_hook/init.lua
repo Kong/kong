@@ -219,7 +219,7 @@ function _M.is_group_enabled(group_name)
 end
 
 
-function _M.run_hooks(group_name, hook_name, a1, a2, a3, a4, a5, a6, a7, a8, ...)
+function _M.run_hook(group_name, hook_name, a1, a2, a3, a4, a5, a6, a7, a8, ...)
   assert(type(group_name) == "string", "group_name must be a string")
   assert(type(hook_name) == "string", "hook_name must be a string")
 

@@ -56,7 +56,7 @@ local table_concat = table.concat
 local string_lower = string.lower
 local string_byte  = string.byte
 
-local req_dyn_hook_run_hooks = req_dyn_hook.run_hooks
+local req_dyn_hook_run_hook = req_dyn_hook.run_hook
 
 
 local DOT   = string_byte(".")
@@ -152,7 +152,7 @@ local cachelookup = function(qname, qtype)
 
   local ctx = ngx.ctx
   if ctx and ctx.has_timing then
-    req_dyn_hook_run_hooks("timing", "dns:cache_lookup", cached ~= nil)
+    req_dyn_hook_run_hook("timing", "dns:cache_lookup", cached ~= nil)
   end
 
   if cached then
