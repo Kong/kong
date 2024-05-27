@@ -15,6 +15,7 @@ local assert = assert
 local setmetatable = setmetatable
 local pairs = pairs
 local ipairs = ipairs
+local next = next
 local max = math.max
 
 
