@@ -51,7 +51,7 @@ local request_id_get    = request_id.get
 local escape            = require("kong.tools.uri").escape
 local encode            = require("string.buffer").encode
 
-local req_dyn_hook_run_hooks = req_dyn_hook.run_hooks
+local req_dyn_hook_run_hook = req_dyn_hook.run_hook
 
 local is_http_module   = subsystem == "http"
 local is_stream_module = subsystem == "stream"
@@ -1112,7 +1112,7 @@ return {
       local has_timing = ctx.has_timing
 
       if has_timing then
-        req_dyn_hook_run_hooks("timing", "before:router")
+        req_dyn_hook_run_hook("timing", "before:router")
       end
 
       -- routing request
@@ -1120,7 +1120,7 @@ return {
       local match_t = router:exec(ctx)
 
       if has_timing then
-        req_dyn_hook_run_hooks("timing", "after:router")
+        req_dyn_hook_run_hook("timing", "after:router")
       end
 
       if not match_t then
@@ -1141,7 +1141,7 @@ return {
       ctx.workspace = match_t.route and match_t.route.ws_id
 
       if has_timing then
-        req_dyn_hook_run_hooks("timing", "workspace_id:got", ctx.workspace)
+        req_dyn_hook_run_hook("timing", "workspace_id:got", ctx.workspace)
       end
 
       local host           = var.host
