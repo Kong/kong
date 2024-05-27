@@ -17,12 +17,7 @@ local ngx_WARN      = ngx.WARN
 local ngx_get_phase = ngx.get_phase
 
 
-local _M = {
-  TYPE = {
-    BEFORE      = 1,
-    AFTER       = 2,
-  },
-}
+local _M = {}
 
 
 local NON_FUNCTION_HOOKS = {
