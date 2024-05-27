@@ -6,23 +6,23 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 
-local ngx = ngx
-local type = type
-local pcall = pcall
-local select = select
-local ipairs = ipairs
-local assert = assert
-local ngx_log = ngx.log
-local ngx_WARN = ngx.WARN
+local ngx           = ngx
+local type          = type
+local pcall         = pcall
+local select        = select
+local ipairs        = ipairs
+local assert        = assert
+local ngx_log       = ngx.log
+local ngx_WARN      = ngx.WARN
 local ngx_get_phase = ngx.get_phase
 
 
 local _M = {
   TYPE = {
-    BEFORE = 1,
-    AFTER = 2,
-    BEFORE_MUT = 3,
-    AFTER_MUT = 4,
+    BEFORE      = 1,
+    AFTER       = 2,
+    BEFORE_MUT  = 3,
+    AFTER_MUT   = 4,
   },
 }
 
