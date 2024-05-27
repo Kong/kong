@@ -159,6 +159,7 @@ end
 
 
 function _M.hook_function(group_name, parent, child_key, max_args, handlers)
+  assert(type(group_name) == "string", "group_name must be a string")
   assert(type(parent) == "table", "parent must be a table")
   assert(type(child_key) == "string", "child_key must be a string")
 
@@ -195,6 +196,8 @@ end
 
 
 function _M.is_group_enabled(group_name)
+  assert(type(group_name) == "string", "group_name must be a string")
+
   if ALWAYS_ENABLED_GROUPS[group_name] then
     return true
   end
@@ -214,6 +217,9 @@ end
 
 
 function _M.run_hooks(group_name, hook_name, a1, a2, a3, a4, a5, a6, a7, a8, ...)
+  assert(type(group_name) == "string", "group_name must be a string")
+  assert(type(hook_name) == "string", "hook_name must be a string")
+
   if not _M.is_group_enabled(group_name) then
     return
   end
@@ -243,6 +249,8 @@ end
 
 
 function _M.enable_on_this_request(group_name, ngx_ctx)
+  assert(type(group_name) == "string", "group_name must be a string")
+
   ngx_ctx = ngx_ctx or ngx.ctx
   if ngx_ctx.dynamic_hook then
     ngx_ctx.dynamic_hook.enabled_groups[group_name] = true
@@ -257,6 +265,8 @@ end
 
 
 function _M.always_enable(group_name)
+  assert(type(group_name) == "string", "group_name must be a string")
+
   ALWAYS_ENABLED_GROUPS[group_name] = true
 end
 
