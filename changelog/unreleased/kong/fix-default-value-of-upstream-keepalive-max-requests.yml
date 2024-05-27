@@ -1,5 +1,5 @@
 message: |
-    Fixed default value in kong.conf.default documentation from 1000 to 10000
-    for upstream_keepalive_max_requests option.
+  Fixed the default value in kong.conf.default documentation from 1000 to 10000
+  for the `upstream_keepalive_max_requests` option.
 type: bugfix
 scope: Configuration
