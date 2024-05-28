@@ -10,6 +10,16 @@ local function reset_fields()
 end
 
 describe("kong.clustering.compat", function()
+  -- The truncate() in the following teardown() will clean all tables' records,
+  -- which may cause some other tests to fail because the number of records
+  -- in the truncated table differs from the number of records after bootstrap.
+  -- So we need this to reset schema.
+  lazy_teardown(function()
+    if _G.kong.db then
+      _G.kong.db:schema_reset()
+    end
+  end)
+
   describe("calculating fields to remove", function()
     before_each(reset_fields)
     after_each(reset_fields)
