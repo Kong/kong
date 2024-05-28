@@ -1,5 +1,4 @@
 local cjson         = require("cjson.safe")
-local utils         = require("kong.tools.utils")
 
 local ngx_get_phase = ngx.get_phase
 local ngx_re_gmatch = ngx.re.gmatch
@@ -9,7 +8,7 @@ local setmetatable  = setmetatable
 local table_insert  = table.insert
 local table_remove  = table.remove
 
-local get_cur_msec  = utils.get_updated_monotonic_ms
+local get_cur_msec  = require("kong.tools.time").get_updated_monotonic_ms
 
 local assert        = assert
 
