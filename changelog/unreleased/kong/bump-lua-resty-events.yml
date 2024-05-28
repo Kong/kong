@@ -1,0 +1,3 @@
+message: "Bumped lua-resty-events to 0.2.1"
+type: dependency
+scope: Core
