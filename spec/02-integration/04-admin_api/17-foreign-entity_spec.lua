@@ -1,6 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 local Errors = require "kong.db.errors"
 
 
@@ -30,10 +30,14 @@ for _, strategy in helpers.each_strategy() do
         [[./spec/fixtures/custom_plugins/?.lua;]]..
         [[./spec/fixtures/custom_plugins/?/init.lua;" ]]
 
+      -- bootstrap db in case it's not done yet
+      -- ignore errors if it's already bootstrapped
+      helpers.kong_exec("migrations bootstrap -c " .. helpers.test_conf_path, env, true, lua_path)
+
       local cmdline = "migrations up -c " .. helpers.test_conf_path
       local _, code, _, stderr = helpers.kong_exec(cmdline, env, true, lua_path)
-      assert.same(0, code)
       assert.equal("", stderr)
+      assert.same(0, code)
 
       local _
       _, db = helpers.get_db_utils(strategy, {
@@ -95,7 +99,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("returns 404 if not found", function()
-          local res = client:get("/foreign-references/" .. utils.uuid() .. "/same")
+          local res = client:get("/foreign-references/" .. uuid.uuid() .. "/same")
           assert.res_status(404, res)
         end)
 
@@ -186,7 +190,7 @@ for _, strategy in helpers.each_strategy() do
         describe("errors", function()
           it_content_types("returns 404 if not found", function(content_type)
             return function()
-              local res = client:patch("/foreign-references/" .. utils.uuid() .. "/same", {
+              local res = client:patch("/foreign-references/" .. uuid.uuid() .. "/same", {
                 headers = {
                   ["Content-Type"] = content_type
                 },
@@ -241,12 +245,12 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("returns HTTP 404 with non-existing foreign entity ", function()
-            local res = client:delete("/foreign-entities/" .. utils.uuid() .. "/foreign-references/" .. utils.uuid())
+            local res = client:delete("/foreign-entities/" .. uuid.uuid() .. "/foreign-references/" .. uuid.uuid())
             assert.res_status(404, res)
           end)
 
           it("returns HTTP 404 with non-existing foreign reference", function()
-            local res = client:delete("/foreign-references/" .. utils.uuid() .. "/same")
+            local res = client:delete("/foreign-references/" .. uuid.uuid() .. "/same")
             assert.res_status(404, res)
           end)
 

@@ -1,5 +1,5 @@
 local endpoints   = require "kong.api.endpoints"
-local utils       = require "kong.tools.utils"
+local uuid        = require "kong.tools.uuid"
 
 
 local ngx = ngx
@@ -13,10 +13,10 @@ return {
     schema = kong.db.acls.schema,
     before = function(self, db, helpers)
       local group = unescape_uri(self.params.acls)
-      if not utils.is_valid_uuid(group) then
+      if not uuid.is_valid_uuid(group) then
         local consumer_id = unescape_uri(self.params.consumers)
 
-        if not utils.is_valid_uuid(consumer_id) then
+        if not uuid.is_valid_uuid(consumer_id) then
           local consumer, _, err_t = endpoints.select_entity(self, db, db.consumers.schema)
           if err_t then
             return endpoints.handle_error(err_t)
@@ -42,7 +42,7 @@ return {
             return kong.response.error(404)
           end
 
-          self.params.acls = utils.uuid()
+          self.params.acls = uuid.uuid()
         end
 
         self.params.group = group

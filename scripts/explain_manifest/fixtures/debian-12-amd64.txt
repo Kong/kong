@@ -50,8 +50,15 @@
   - libc.so.6
   Runpath   : /usr/local/kong/lib
 
-- Path      : /usr/local/kong/lib/libexpat.so.1.8.10
+- Path      : /usr/local/kong/lib/libexpat.so.1.9.2
   Needed    :
+  - libc.so.6
+
+- Path      : /usr/local/kong/lib/libsnappy.so
+  Needed    :
+  - libstdc++.so.6
+  - libm.so.6
+  - libgcc_s.so.1
   - libc.so.6
 
 - Path      : /usr/local/kong/lib/libssl.so.3
@@ -138,14 +145,6 @@
   Needed    :
   - libc.so.6
 
-- Path      : /usr/local/openresty/lualib/libatc_router.so
-  Needed    :
-  - libgcc_s.so.1
-  - libm.so.6
-  - libc.so.6
-  - ld-linux-x86-64.so.2
-  - libstdc++.so.6
-
 - Path      : /usr/local/openresty/lualib/librestysignal.so
 
 - Path      : /usr/local/openresty/lualib/rds/parser.so
@@ -183,3 +182,10 @@
   DWARF     : True
   DWARF - ngx_http_request_t related DWARF DIEs: True
 
+- Path      : /usr/local/openresty/site/lualib/libatc_router.so
+  Needed    :
+  - libgcc_s.so.1
+  - libm.so.6
+  - libc.so.6
+  - ld-linux-x86-64.so.2
+  - libstdc++.so.6

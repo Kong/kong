@@ -1347,6 +1347,40 @@ describe("routes schema (flavor = expressions)", function()
       snis           = { "example.org" },
       sources        = {{ ip = "127.0.0.1" }},
       destinations   = {{ ip = "127.0.0.1" }},
+
+      regex_priority = 100,
+    }
+
+    for k, v in pairs(others) do
+      route[k] = v
+
+      local r = Routes:process_auto_fields(route, "insert")
+      local ok, errs = Routes:validate_insert(r)
+      assert.falsy(ok)
+      assert.truthy(errs["@entity"])
+
+      route[k] = nil
+    end
+  end)
+
+  it("fails when set 'priority' and others simultaneously", function()
+    local route = {
+      id             = a_valid_uuid,
+      name           = "my_route",
+      protocols      = { "http" },
+      priority       = 100,
+      service        = { id = another_uuid },
+    }
+
+    local others = {
+      methods        = { "GET", "POST" },
+      hosts          = { "example.com" },
+      headers        = { location = { "location-1" } },
+      paths          = { "/ovo" },
+
+      snis           = { "example.org" },
+      sources        = {{ ip = "127.0.0.1" }},
+      destinations   = {{ ip = "127.0.0.1" }},
     }
 
     for k, v in pairs(others) do

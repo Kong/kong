@@ -87,6 +87,7 @@ make(
     out_binaries = [
         "luajit",
     ],
+    out_data_dirs = ["share"],
     out_shared_libs = select({
         "@platforms//os:macos": [
             "libluajit-5.1.2.dylib",
@@ -268,7 +269,6 @@ configure_make(
         "@lua-resty-events//:all_srcs",
         "@lua-resty-lmdb//:all_srcs",
         "@ngx_brotli//:all_srcs",
-        "@openresty_binding//:all_srcs",
     ] + select({
         "@kong//:wasmx_flag": [
             "@ngx_wasmx_module//:all_srcs",
@@ -284,6 +284,25 @@ configure_make(
     out_binaries = [
         "nginx/sbin/nginx",
     ],
+    out_data_dirs = [
+        "pod",
+        "bin",
+        "nginx/conf",
+        "nginx/html",
+        "lualib",
+    ],
+    out_lib_dir = "",
+    out_shared_libs = select({
+        "@kong//:wasmx_flag": [
+            "nginx/modules/ngx_wasmx_module.so",
+        ],
+        "//conditions:default": [],
+    }),
+    postfix_script = select({
+        # macOS ln doesn't support -r/relative path
+        "@platforms//os:macos": "ln -sf openresty/nginx/sbin/nginx openresty/bin/openresty",
+        "//conditions:default": "ln -srf openresty/nginx/sbin/nginx openresty/bin/openresty",
+    }),
     targets = [
         "-j" + KONG_VAR["NPROC"],
         "install -j" + KONG_VAR["NPROC"],
@@ -312,4 +331,31 @@ configure_make(
         ],
         "//conditions:default": [],
     }),
+)
+
+genrule(
+    name = "dev-just-make",
+    srcs = [
+        "@lua-kong-nginx-module//:all_srcs",
+        "@lua-resty-events//:all_srcs",
+        "@lua-resty-lmdb//:all_srcs",
+        "@ngx_brotli//:all_srcs",
+    ] + select({
+        "@kong//:wasmx_flag": [
+            "@ngx_wasmx_module//:all_srcs",
+            # wasm_runtime has to be a "data" (target) instead of "build_data" (exec)
+            # to be able to lookup by its path (relative to INSTALLDIR)
+            ":wasm_runtime",
+        ],
+        "//conditions:default": [],
+    }),
+    outs = ["dev-builddir"],
+    cmd = """
+        pushd $(RULEDIR)/openresty.build_tmpdir >/dev/null
+        make -j%s
+        make install
+        popd >/dev/null
+        cp -r $(RULEDIR)/openresty.build_tmpdir/openresty $@
+    """ % KONG_VAR["NPROC"],
+    visibility = ["//visibility:public"],
 )

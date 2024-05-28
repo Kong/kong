@@ -1,5 +1,5 @@
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 local cjson = require "cjson"
 
 
@@ -136,7 +136,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
               attribute = "uid",
               cache_ttl = 2,
-              anonymous = utils.uuid(), -- non existing consumer
+              anonymous = uuid.uuid(), -- non existing consumer
             }
           }
 

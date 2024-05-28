@@ -1,6 +1,6 @@
 local endpoints   = require "kong.api.endpoints"
 local arguments   = require "kong.api.arguments"
-local utils       = require "kong.tools.utils"
+local uuid        = require "kong.tools.uuid"
 
 
 local ngx = ngx
@@ -15,7 +15,7 @@ local function prepare_params(self)
   local id = unescape_uri(self.params.certificates)
   local method = self.req.method
   local name
-  if not utils.is_valid_uuid(id) then
+  if not uuid.is_valid_uuid(id) then
     name = arguments.infer_value(id, kong.db.snis.schema.fields.name)
 
     local sni, _, err_t = kong.db.snis:select_by_name(name)
@@ -31,7 +31,7 @@ local function prepare_params(self)
         return kong.response.exit(404, { message = "SNI not found" })
       end
 
-      id = utils.uuid()
+      id = uuid.uuid()
     end
   end
 

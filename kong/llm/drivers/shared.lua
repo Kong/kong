@@ -8,12 +8,26 @@ local os        = os
 local parse_url = require("socket.url").parse
 --
 
-local log_entry_keys = {
-  REQUEST_BODY = "ai.payload.request",
-  RESPONSE_BODY = "payload.response",
+-- static
+local str_find     = string.find
+local str_sub      = string.sub
+local string_match = string.match
+local split        = require("kong.tools.string").split
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
+local function str_ltrim(s) -- remove leading whitespace from string.
+  return (s:gsub("^%s*", ""))
+end
+--
+
+local log_entry_keys = {
   TOKENS_CONTAINER = "usage",
   META_CONTAINER = "meta",
+  PAYLOAD_CONTAINER = "payload",
+
+  -- payload keys
+  REQUEST_BODY = "request",
+  RESPONSE_BODY = "response",
 
   -- meta keys
   REQUEST_MODEL = "request_model",
@@ -33,34 +47,8 @@ local openai_override = os.getenv("OPENAI_TEST_PORT")
 _M.streaming_has_token_counts = {
   ["cohere"] = true,
   ["llama2"] = true,
+  ["anthropic"] = true,
 }
-
---- Splits a table key into nested tables.
--- Each part of the key separated by dots represents a nested table.
--- @param obj The table to split keys for.
--- @return A nested table structure representing the split keys.
-local function split_table_key(obj)
-  local result = {}
-
-  for key, value in pairs(obj) do
-    local keys = {}
-    for k in key:gmatch("[^.]+") do
-      table.insert(keys, k)
-    end
-
-    local currentTable = result
-    for i, k in ipairs(keys) do
-      if i < #keys then
-        currentTable[k] = currentTable[k] or {}
-        currentTable = currentTable[k]
-      else
-        currentTable[k] = value
-      end
-    end
-  end
-
-  return result
-end
 
 _M.upstream_url_format = {
   openai = fmt("%s://api.openai.com:%s", (openai_override and "http") or "https", (openai_override) or "443"),
@@ -127,11 +115,35 @@ _M.clear_response_headers = {
   },
 }
 
+---
+-- Takes an already 'standardised' input, and merges
+-- any missing fields with their defaults as defined
+-- in the plugin config.
+--
+-- It it supposed to be completely provider-agnostic,
+-- and only operate to assist the Kong operator to
+-- allow their users and admins to define a pre-runed
+-- set of default options for any AI inference request.
+--
+-- @param {table} request kong-format inference request conforming to one of many supported formats
+-- @param {table} options the 'config.model.options' table from any Kong AI plugin
+-- @return {table} the input 'request' table, but with (missing) default options merged in
+-- @return {string} error if any is thrown - request should definitely be terminated if this is not nil
+function _M.merge_config_defaults(request, options, request_format)
+  if options then
+    request.temperature = request.temperature or options.temperature
+    request.max_tokens = request.max_tokens or options.max_tokens
+    request.top_p = request.top_p or options.top_p
+    request.top_k = request.top_k or options.top_k
+  end
+
+  return request, nil
+end
 
 local function handle_stream_event(event_table, model_info, route_type)
   if event_table.done then
     -- return analytics table
-    return nil, nil, {
+    return "[DONE]", nil, {
       prompt_tokens = event_table.prompt_eval_count or 0,
       completion_tokens = event_table.eval_count or 0,
     }
@@ -168,6 +180,58 @@ local function handle_stream_event(event_table, model_info, route_type)
   end
 end
 
+---
+-- Splits a HTTPS data chunk or frame into individual
+-- SSE-format messages, see:
+-- https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#event_stream_format
+--
+-- For compatibility, it also looks for the first character being '{' which
+-- indicates that the input is not text/event-stream format, but instead a chunk
+-- of delimited application/json, which some providers return, in which case
+-- it simply splits the frame into separate JSON messages and appends 'data: '
+-- as if it were an SSE message.
+--
+-- @param {string} frame input string to format into SSE events
+-- @param {string} delimiter delimeter (can be complex string) to split by
+-- @return {table} n number of split SSE messages, or empty table
+function _M.frame_to_events(frame)
+  local events = {}
+
+  -- todo check if it's raw json and
+  -- just return the split up data frame
+  if string.sub(str_ltrim(frame), 1, 1) == "{" then
+    for event in frame:gmatch("[^\r\n]+") do
+      events[#events + 1] = {
+        data = event,
+      }
+    end
+  else
+    local event_lines = split(frame, "\n")
+    local struct = { event = nil, id = nil, data = nil }
+
+    for _, dat in ipairs(event_lines) do
+      if #dat < 1 then
+        events[#events + 1] = struct
+        struct = { event = nil, id = nil, data = nil }
+      end
+
+      local s1, _ = str_find(dat, ":") -- find where the cut point is
+
+      if s1 and s1 ~= 1 then
+        local field = str_sub(dat, 1, s1-1) -- returns "data " from data: hello world
+        local value = str_ltrim(str_sub(dat, s1+1)) -- returns "hello world" from data: hello world
+
+        -- for now not checking if the value is already been set
+        if     field == "event" then struct.event = value
+        elseif field == "id"    then struct.id = value
+        elseif field == "data"  then struct.data = value
+        end -- if
+      end -- if
+    end
+  end
+  
+  return events
+end
 
 function _M.to_ollama(request_table, model)
   local input = {}
@@ -190,30 +254,40 @@ function _M.to_ollama(request_table, model)
   if model.options then
     input.options = {}
 
-    if model.options.max_tokens then input.options.num_predict = model.options.max_tokens end
-    if model.options.temperature then input.options.temperature = model.options.temperature end
-    if model.options.top_p then input.options.top_p = model.options.top_p end
-    if model.options.top_k then input.options.top_k = model.options.top_k end
+    input.options.num_predict = request_table.max_tokens
+    input.options.temperature = request_table.temperature
+    input.options.top_p = request_table.top_p
+    input.options.top_k = request_table.top_k
   end
 
   return input, "application/json", nil
 end
 
 function _M.from_ollama(response_string, model_info, route_type)
-  local output, _, analytics
-
-  local response_table, err = cjson.decode(response_string)
-  if err then
-    return nil, "failed to decode ollama response"
-  end
+  local output, err, _, analytics
 
   if route_type == "stream/llm/v1/chat" then
+    local response_table, err = cjson.decode(response_string.data)
+    if err then
+      return nil, "failed to decode ollama response"
+    end
+
     output, _, analytics = handle_stream_event(response_table, model_info, route_type)
 
   elseif route_type == "stream/llm/v1/completions" then
+    local response_table, err = cjson.decode(response_string.data)
+    if err then
+      return nil, "failed to decode ollama response"
+    end
+
     output, _, analytics = handle_stream_event(response_table, model_info, route_type)
 
   else
+    local response_table, err = cjson.decode(response_string)
+    if err then
+      return nil, "failed to decode ollama response"
+    end
+
     -- there is no direct field indicating STOP reason, so calculate it manually
     local stop_length = (model_info.options and model_info.options.max_tokens) or -1
     local stop_reason = "stop"
@@ -259,8 +333,76 @@ function _M.from_ollama(response_string, model_info, route_type)
 
     end
   end
+  
+  if output and output ~= "[DONE]" then
+    output, err = cjson.encode(output)
+  end
 
-  return output and cjson.encode(output) or nil, nil, analytics
+  -- err maybe be nil from successful decode above
+  return output, err, analytics
+end
+
+function _M.conf_from_request(kong_request, source, key)
+  if source == "uri_captures" then
+    return kong_request.get_uri_captures().named[key]
+  elseif source == "headers" then
+    return kong_request.get_header(key)
+  elseif source == "query_params" then
+    return kong_request.get_query_arg(key)
+  else
+    return nil, "source '" .. source .. "' is not supported"
+  end
+end
+
+function _M.resolve_plugin_conf(kong_request, conf)
+  local err
+  local conf_m = cycle_aware_deep_copy(conf)
+
+  -- handle model name
+  local model_m = string_match(conf_m.model.name or "", '%$%((.-)%)')
+  if model_m then
+    local splitted = split(model_m, '.')
+    if #splitted ~= 2 then
+      return nil, "cannot parse expression for field 'model.name'"
+    end
+
+    -- find the request parameter, with the configured name
+    model_m, err = _M.conf_from_request(kong_request, splitted[1], splitted[2])
+    if err then
+      return nil, err
+    end
+    if not model_m then
+      return nil, "'" .. splitted[1] .. "', key '" .. splitted[2] .. "' was not provided"
+    end
+
+    -- replace the value
+    conf_m.model.name = model_m
+  end
+
+  -- handle all other options
+  for k, v in pairs(conf.model.options or {}) do
+    local prop_m = string_match(v or "", '%$%((.-)%)')
+    if prop_m then
+      local splitted = split(prop_m, '.')
+      if #splitted ~= 2 then
+        return nil, "cannot parse expression for field '" .. v .. "'"
+      end
+      
+      -- find the request parameter, with the configured name
+      prop_m, err = _M.conf_from_request(kong_request, splitted[1], splitted[2])
+      if err then
+        return nil, err
+      end
+      if not prop_m then
+        return nil, splitted[1] .. " key " .. splitted[2] .. " was not provided"
+      end
+
+      -- replace the value
+      conf_m.model.options[k] = prop_m
+    end
+  end
+
+  return conf_m
 end
 
 function _M.pre_request(conf, request_table)
@@ -269,13 +411,28 @@ function _M.pre_request(conf, request_table)
   local auth_param_value = conf.auth and conf.auth.param_value
   local auth_param_location = conf.auth and conf.auth.param_location
   
-  if auth_param_name and auth_param_value and auth_param_location == "body" then
+  if auth_param_name and auth_param_value and auth_param_location == "body" and request_table then
     request_table[auth_param_name] = auth_param_value
   end
 
   -- if enabled AND request type is compatible, capture the input for analytics
   if conf.logging and conf.logging.log_payloads then
-    kong.log.set_serialize_value(log_entry_keys.REQUEST_BODY, kong.request.get_raw_body())
+    local plugin_name = conf.__key__:match('plugins:(.-):')
+    if not plugin_name or plugin_name == "" then
+      return nil, "no plugin name is being passed by the plugin"
+    end
+
+    kong.log.set_serialize_value(fmt("ai.%s.%s.%s", plugin_name, log_entry_keys.PAYLOAD_CONTAINER, log_entry_keys.REQUEST_BODY), kong.request.get_raw_body())
+  end
+
+  -- log tokens prompt for reports and billing
+  if conf.route_type ~= "preserve" then
+    local prompt_tokens, err = _M.calculate_cost(request_table, {}, 1.0)
+    if err then
+      kong.log.warn("failed calculating cost for prompt tokens: ", err)
+      prompt_tokens = 0
+    end
+    kong.ctx.shared.ai_prompt_tokens = (kong.ctx.shared.ai_prompt_tokens or 0) + prompt_tokens
   end
 
   return true, nil
@@ -299,80 +456,91 @@ function _M.post_request(conf, response_object)
   end
 
   -- analytics and logging
-  if conf.logging and conf.logging.log_statistics then
-    local provider_name = conf.model.provider
+  local provider_name = conf.model.provider
 
-    -- check if we already have analytics in this context
-    local request_analytics = kong.ctx.shared.analytics
-
-    -- create a new try context
-    local current_try = {
-      [log_entry_keys.META_CONTAINER] = {},
-      [log_entry_keys.TOKENS_CONTAINER] = {},
-    }
-
-    -- create a new structure if not
-    if not request_analytics then
-      request_analytics = {}
-    end
-
-    -- check if we already have analytics for this provider
-    local request_analytics_provider = request_analytics[provider_name]
-
-    -- create a new structure if not
-    if not request_analytics_provider then
-      request_analytics_provider = {
-        request_prompt_tokens = 0,
-        request_completion_tokens = 0,
-        request_total_tokens = 0,
-        number_of_instances = 0,
-        instances = {},
-      }
-    end
-
-    -- Set the model, response, and provider names in the current try context
-    current_try[log_entry_keys.META_CONTAINER][log_entry_keys.REQUEST_MODEL] = conf.model.name
-    current_try[log_entry_keys.META_CONTAINER][log_entry_keys.RESPONSE_MODEL] = response_object.model or conf.model.name
-    current_try[log_entry_keys.META_CONTAINER][log_entry_keys.PROVIDER_NAME] = provider_name
-    current_try[log_entry_keys.META_CONTAINER][log_entry_keys.PLUGIN_ID] = conf.__plugin_id
-
-    -- Capture openai-format usage stats from the transformed response body
-    if response_object.usage then
-      if response_object.usage.prompt_tokens then
-        request_analytics_provider.request_prompt_tokens = (request_analytics_provider.request_prompt_tokens + response_object.usage.prompt_tokens)
-        current_try[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.PROMPT_TOKEN] = response_object.usage.prompt_tokens
-      end
-      if response_object.usage.completion_tokens then
-        request_analytics_provider.request_completion_tokens = (request_analytics_provider.request_completion_tokens + response_object.usage.completion_tokens)
-        current_try[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.COMPLETION_TOKEN] = response_object.usage.completion_tokens
-      end
-      if response_object.usage.total_tokens then
-        request_analytics_provider.request_total_tokens = (request_analytics_provider.request_total_tokens + response_object.usage.total_tokens)
-        current_try[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.TOTAL_TOKENS] = response_object.usage.total_tokens
-      end
-    end
-
-    -- Log response body if logging payloads is enabled
-    if conf.logging and conf.logging.log_payloads then
-      current_try[log_entry_keys.RESPONSE_BODY] = body_string
-    end
-
-    -- Increment the number of instances
-    request_analytics_provider.number_of_instances = request_analytics_provider.number_of_instances + 1
-
-    -- Get the current try count
-    local try_count = request_analytics_provider.number_of_instances
-
-    -- Store the split key data in instances
-    request_analytics_provider.instances[try_count] = split_table_key(current_try)
-
-    -- Update context with changed values
-    request_analytics[provider_name] = request_analytics_provider
-    kong.ctx.shared.analytics = request_analytics
-
-    -- Log analytics data
-    kong.log.set_serialize_value(fmt("%s.%s", "ai", provider_name), request_analytics_provider)
+  local plugin_name = conf.__key__:match('plugins:(.-):')
+  if not plugin_name or plugin_name == "" then
+    return nil, "no plugin name is being passed by the plugin"
   end
+
+  -- check if we already have analytics in this context
+  local request_analytics = kong.ctx.shared.analytics
+
+  -- create a new structure if not
+  if not request_analytics then
+    request_analytics = {}
+  end
+
+  -- check if we already have analytics for this provider
+  local request_analytics_plugin = request_analytics[plugin_name]
+
+  -- create a new structure if not
+  if not request_analytics_plugin then
+    request_analytics_plugin = {
+      [log_entry_keys.META_CONTAINER] = {},
+      [log_entry_keys.TOKENS_CONTAINER] = {
+        [log_entry_keys.PROMPT_TOKEN] = 0,
+        [log_entry_keys.COMPLETION_TOKEN] = 0,
+        [log_entry_keys.TOTAL_TOKENS] = 0,
+      },
+    }
+  end
+
+  -- Set the model, response, and provider names in the current try context
+  request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.REQUEST_MODEL] = kong.ctx.plugin.llm_model_requested or conf.model.name
+  request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.RESPONSE_MODEL] = response_object.model or conf.model.name
+  request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.PROVIDER_NAME] = provider_name
+  request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.PLUGIN_ID] = conf.__plugin_id
+
+  -- set extra per-provider meta
+  if kong.ctx.plugin.ai_extra_meta and type(kong.ctx.plugin.ai_extra_meta) == "table" then
+    for k, v in pairs(kong.ctx.plugin.ai_extra_meta) do
+      request_analytics_plugin[log_entry_keys.META_CONTAINER][k] = v
+    end
+  end
+
+  -- Capture openai-format usage stats from the transformed response body
+  if response_object.usage then
+    if response_object.usage.prompt_tokens then
+      request_analytics_plugin[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.PROMPT_TOKEN] = request_analytics_plugin[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.PROMPT_TOKEN] + response_object.usage.prompt_tokens
+    end
+    if response_object.usage.completion_tokens then
+      request_analytics_plugin[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.COMPLETION_TOKEN] = request_analytics_plugin[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.COMPLETION_TOKEN] + response_object.usage.completion_tokens
+    end
+    if response_object.usage.total_tokens then
+      request_analytics_plugin[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.TOTAL_TOKENS] = request_analytics_plugin[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.TOTAL_TOKENS] + response_object.usage.total_tokens
+    end
+  end
+
+  -- Log response body if logging payloads is enabled
+  if conf.logging and conf.logging.log_payloads then
+    kong.log.set_serialize_value(fmt("ai.%s.%s.%s", plugin_name, log_entry_keys.PAYLOAD_CONTAINER, log_entry_keys.RESPONSE_BODY), body_string)
+  end
+
+  -- Update context with changed values
+  request_analytics_plugin[log_entry_keys.PAYLOAD_CONTAINER] = {
+    [log_entry_keys.RESPONSE_BODY] = body_string,
+  }
+  request_analytics[plugin_name] = request_analytics_plugin
+  kong.ctx.shared.analytics = request_analytics
+
+  if conf.logging and conf.logging.log_statistics then
+    -- Log analytics data
+    kong.log.set_serialize_value(fmt("ai.%s.%s", plugin_name, log_entry_keys.TOKENS_CONTAINER),
+      request_analytics_plugin[log_entry_keys.TOKENS_CONTAINER])
+
+    -- Log meta
+    kong.log.set_serialize_value(fmt("ai.%s.%s", plugin_name, log_entry_keys.META_CONTAINER),
+      request_analytics_plugin[log_entry_keys.META_CONTAINER])
+  end
+
+  -- log tokens response for reports and billing
+  local response_tokens, err = _M.calculate_cost(response_object, {}, 1.0)
+  if err then
+    kong.log.warn("failed calculating cost for response tokens: ", err)
+    response_tokens = 0
+  end
+  kong.ctx.shared.ai_response_tokens = (kong.ctx.shared.ai_response_tokens or 0) + response_tokens
 
   return nil
 end
@@ -430,6 +598,81 @@ function _M.http_request(url, body, method, headers, http_opts, buffered)
 
     return res, nil, nil
   end
+end
+
+-- Function to count the number of words in a string
+local function count_words(str)
+  local count = 0
+  for word in str:gmatch("%S+") do
+      count = count + 1
+  end
+  return count
+end
+
+-- Function to count the number of words or tokens based on the content type
+local function count_prompt(content, tokens_factor)
+  local count = 0
+
+  if type(content) == "string" then
+    count = count_words(content) * tokens_factor
+  elseif type(content) == "table" then
+    for _, item in ipairs(content) do
+      if type(item) == "string" then
+        count = count + (count_words(item) * tokens_factor)
+      elseif type(item) == "number" then
+        count = count + 1
+      elseif type(item) == "table" then
+        for _2, item2 in ipairs(item) do
+          if type(item2) == "number" then
+            count = count + 1
+          else
+            return nil, "Invalid request format"
+          end
+        end
+      else
+          return nil, "Invalid request format"
+      end
+    end
+  else 
+    return nil, "Invalid request format"
+  end
+  return count, nil
+end
+
+function _M.calculate_cost(query_body, tokens_models, tokens_factor)
+  local query_cost = 0
+  local err
+
+  if not query_body then
+    return nil, "cannot calculate tokens on empty request"
+  end
+
+  if query_body.choices then
+    -- Calculate the cost based on the content type
+    for _, choice in ipairs(query_body.choices) do
+      if choice.message and choice.message.content then 
+        query_cost = query_cost + (count_words(choice.message.content) * tokens_factor)
+      elseif choice.text then 
+        query_cost = query_cost + (count_words(choice.text) * tokens_factor)
+      end
+    end
+  elseif query_body.messages then
+    -- Calculate the cost based on the content type
+    for _, message in ipairs(query_body.messages) do
+        query_cost = query_cost + (count_words(message.content) * tokens_factor)
+    end
+  elseif query_body.prompt then
+    -- Calculate the cost based on the content type
+    query_cost, err = count_prompt(query_body.prompt, tokens_factor)
+    if err then
+        return nil, err
+    end
+  end
+
+  -- Round the total cost quantified
+  query_cost = math.floor(query_cost + 0.5)
+
+  return query_cost, nil
 end
 
 return _M

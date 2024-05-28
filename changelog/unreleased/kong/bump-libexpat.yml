@@ -1,0 +1,3 @@
+message: "Bumped libexpat to 2.6.2"
+type: dependency
+scope: Core

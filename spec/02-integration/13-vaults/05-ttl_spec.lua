@@ -218,6 +218,123 @@ describe("vault ttl and rotation (#" .. strategy .. ") #" .. vault.name, functio
   end)
 end)
 
+describe("vault rotation #without ttl (#" .. strategy .. ") #" .. vault.name, function()
+  local client
+  local secret = "my-secret"
+
+
+  local function http_get(path)
+    path = path or "/"
+
+    local res = client:get(path, {
+      headers = {
+        host = assert(vault.host),
+      },
+    })
+
+    assert.response(res).has.status(200)
+
+    return res
+  end
+
+
+  lazy_setup(function()
+    helpers.setenv("KONG_LUA_PATH_OVERRIDE", LUA_PATH)
+    helpers.setenv("KONG_VAULT_ROTATION_INTERVAL", "1")
+
+    vault:setup()
+
+    local bp = helpers.get_db_utils(strategy,
+                                    { "vaults", "routes", "services", "plugins" },
+                                    { "dummy" },
+                                    { vault.name })
+
+
+    -- override a default config without default ttl
+    assert(bp.vaults:insert({
+      name     = vault.name,
+      prefix   = vault.prefix,
+      config   = {
+        default_value = "init",
+      },
+    }))
+
+    local route = assert(bp.routes:insert({
+      name      = vault.host,
+      hosts     = { vault.host },
+      paths     = { "/" },
+      service   = assert(bp.services:insert()),
+    }))
+
+
+    -- used by the plugin config test case
+    assert(bp.plugins:insert({
+      name = "dummy",
+      config = {
+        resp_header_value = fmt("{vault://%s/%s}",
+                                vault.prefix, secret),
+      },
+      route = { id = route.id },
+    }))
+
+    assert(helpers.start_kong({
+      database       = strategy,
+      nginx_conf     = "spec/fixtures/custom_nginx.template",
+      vaults         = vault.name,
+      plugins        = "dummy",
+      log_level      = "info",
+    }, nil, nil, vault:fixtures() ))
+
+    client = helpers.proxy_client()
+  end)
+
+
+  lazy_teardown(function()
+    if client then
+      client:close()
+    end
+
+    helpers.stop_kong()
+    vault:teardown()
+
+    helpers.unsetenv("KONG_LUA_PATH_OVERRIDE")
+  end)
+
+
+  it("update secret value should not refresh cached vault reference(backend: #" .. vault.name .. ")", function()
+    local function check_plugin_secret(expect, ttl, leeway)
+      leeway = leeway or 0.25 -- 25%
+
+      local timeout = ttl + (ttl * leeway)
+
+      -- The secret value is supposed to be not refreshed
+      -- after several rotations
+      assert.has_error(function()
+        assert
+         .with_timeout(timeout)
+         .with_step(0.5)
+         .eventually(function()
+            local res = http_get("/")
+            local value = assert.response(res).has.header(DUMMY_HEADER)
+
+            if value == expect then
+              return true
+            end
+
+            return false
+         end)
+         .is_falsy("expected plugin secret not to be updated to '" .. expect .. "' "
+                 .. "' within " .. tostring(timeout) .. "seconds")
+        end)
+    end
+
+    vault:update_secret(secret, "old")
+    check_plugin_secret("init", 5)
+
+    vault:update_secret(secret, "new")
+    check_plugin_secret("init", 5)
+  end)
+end)
 
 describe("#hybrid mode dp vault ttl and rotation (#" .. strategy .. ") #" .. vault.name, function()
   local client

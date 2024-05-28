@@ -7,9 +7,9 @@ local dnsA = function(...) return helpers.dnsA(client, ...) end
 local dnsExpire = helpers.dnsExpire
 
 local mocker = require "spec.fixtures.mocker"
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 
-local ws_id = utils.uuid()
+local ws_id = uuid.uuid()
 
 local hc_defaults = {
   active = {

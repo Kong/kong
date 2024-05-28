@@ -1,6 +1,5 @@
 local workspaces = require "kong.workspaces"
 local constants = require "kong.constants"
-local utils = require "kong.tools.utils"
 local tablepool = require "tablepool"
 
 
@@ -16,6 +15,8 @@ local ipairs = ipairs
 local format = string.format
 local fetch_table = tablepool.fetch
 local release_table = tablepool.release
+local uuid = require("kong.tools.uuid").uuid
+local get_updated_monotonic_ms = require("kong.tools.time").get_updated_monotonic_ms
 
 
 local TTL_ZERO = { ttl = 0 }
@@ -433,9 +434,9 @@ local function configure(configurable, ctx)
     local name = plugin.name
 
     kong_global.set_namespaced_log(kong, plugin.name, ctx)
-    local start = utils.get_updated_monotonic_ms()
+    local start = get_updated_monotonic_ms()
     local ok, err = pcall(plugin.handler[CONFIGURE_PHASE], plugin.handler, configurable[name])
-    local elapsed = utils.get_updated_monotonic_ms() - start
+    local elapsed = get_updated_monotonic_ms() - start
     kong_global.reset_log(kong, ctx)
 
     if not ok then
@@ -514,7 +515,7 @@ function PluginsIterator.new(version)
     end
 
     if is_not_dbless and counter > 0 and counter % page_size == 0 and kong.core_cache then
-      local new_version, err = kong.core_cache:get("plugins_iterator:version", TTL_ZERO, utils.uuid)
+      local new_version, err = kong.core_cache:get("plugins_iterator:version", TTL_ZERO, uuid)
       if err then
         return nil, "failed to retrieve plugins iterator version: " .. err
       end

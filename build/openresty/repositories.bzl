@@ -10,12 +10,19 @@ load("//build/openresty/atc_router:atc_router_repositories.bzl", "atc_router_rep
 load("//build/openresty/wasmx:wasmx_repositories.bzl", "wasmx_repositories")
 load("//build/openresty/wasmx/filters:repositories.bzl", "wasm_filters_repositories")
 load("//build/openresty/brotli:brotli_repositories.bzl", "brotli_repositories")
+load("//build/openresty/snappy:snappy_repositories.bzl", "snappy_repositories")
 
 # This is a dummy file to export the module's repository.
 _NGINX_MODULE_DUMMY_FILE = """
 filegroup(
     name = "all_srcs",
     srcs = glob(["**"]),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "lualib_srcs",
+    srcs = glob(["lualib/**/*.lua", "lib/**/*.lua"]),
     visibility = ["//visibility:public"],
 )
 """
@@ -27,6 +34,7 @@ def openresty_repositories():
     wasmx_repositories()
     wasm_filters_repositories()
     brotli_repositories()
+    snappy_repositories()
 
     openresty_version = KONG_VAR["OPENRESTY"]
 
@@ -34,7 +42,7 @@ def openresty_repositories():
         openresty_http_archive_wrapper,
         name = "openresty",
         build_file = "//build/openresty:BUILD.openresty.bazel",
-        sha256 = "32ec1a253a5a13250355a075fe65b7d63ec45c560bbe213350f0992a57cd79df",
+        sha256 = KONG_VAR["OPENRESTY_SHA256"],
         strip_prefix = "openresty-" + openresty_version,
         urls = [
             "https://openresty.org/download/openresty-" + openresty_version + ".tar.gz",
@@ -83,7 +91,7 @@ def openresty_repositories():
     )
 
 def _openresty_binding_impl(ctx):
-    ctx.file("BUILD.bazel", _NGINX_MODULE_DUMMY_FILE)
+    ctx.file("BUILD.bazel", "")
     ctx.file("WORKSPACE", "workspace(name = \"openresty_patch\")")
 
     version = "LuaJIT\\\\ 2.1.0-"

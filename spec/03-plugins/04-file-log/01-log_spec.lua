@@ -1,10 +1,11 @@
 local cjson         = require "cjson"
-local utils         = require "kong.tools.utils"
 local helpers       = require "spec.helpers"
 local pl_file       = require "pl.file"
 local pl_stringx    = require "pl.stringx"
 local pl_path       = require "pl.path"
 local fmt           = string.format
+local random_string = require("kong.tools.rand").random_string
+local uuid          = require("kong.tools.uuid").uuid
 
 
 local FILE_LOG_PATH = os.tmpname()
@@ -272,7 +273,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("logs to file", function()
-      local uuid = utils.random_string()
+      local uuid = random_string()
 
       -- Making the request
       local res = assert(proxy_client:send({
@@ -294,7 +295,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("custom log values by lua", function()
       it("logs custom values to file", function()
-        local uuid = utils.random_string()
+        local uuid = random_string()
 
         -- Making the request
         local res = assert(proxy_client:send({
@@ -316,7 +317,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("unsets existing log values", function()
-        local uuid = utils.random_string()
+        local uuid = random_string()
 
         -- Making the request
         local res = assert(proxy_client:send({
@@ -339,7 +340,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("logs to file #grpc", function()
-      local uuid = utils.random_string()
+      local uuid = random_string()
 
       -- Making the request
       local ok, resp = proxy_client_grpc({
@@ -361,7 +362,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("logs to file #grpcs", function()
-      local uuid = utils.random_string()
+      local uuid = random_string()
 
       -- Making the request
       local ok, resp = proxy_client_grpcs({
@@ -383,7 +384,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("reopens file on each request", function()
-      local uuid1 = utils.uuid()
+      local uuid1 = uuid()
 
       -- Making the request
       local res = assert(proxy_client:send({
@@ -402,7 +403,7 @@ for _, strategy in helpers.each_strategy() do
       os.remove(FILE_LOG_PATH)
 
       -- Making the next request
-      local uuid2 = utils.uuid()
+      local uuid2 = uuid()
       res = assert(proxy_client:send({
         method = "GET",
         path = "/status/200",
@@ -413,7 +414,7 @@ for _, strategy in helpers.each_strategy() do
       }))
       assert.res_status(200, res)
 
-      local uuid3 = utils.uuid()
+      local uuid3 = uuid()
       res = assert(proxy_client:send({
         method = "GET",
         path = "/status/200",
@@ -432,7 +433,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("does not create log file if directory doesn't exist", function()
-      local uuid = utils.random_string()
+      local uuid = random_string()
 
       helpers.clean_logfile()
 
@@ -452,7 +453,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("the given path is not a file but a directory", function()
-      local uuid = utils.random_string()
+      local uuid = random_string()
 
       helpers.clean_logfile()
 
@@ -472,7 +473,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("logs are lost if reopen = false and file doesn't exist", function()
-      local uuid1 = utils.uuid()
+      local uuid1 = uuid()
 
       os.remove(FILE_LOG_PATH)
 
@@ -491,7 +492,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("does not log if Kong has no write permissions to the file", function()
-      local uuid = utils.random_string()
+      local uuid = random_string()
 
       helpers.clean_logfile()
 
@@ -511,7 +512,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("the given path is a character device file", function()
-      local uuid = utils.random_string()
+      local uuid = random_string()
 
       helpers.clean_logfile()
 

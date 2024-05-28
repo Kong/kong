@@ -116,7 +116,7 @@ describe("Plugin: prometheus (access)", function()
       local body = assert.res_status(200, res)
       assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
 
-      return body:find('http_requests_total{service="mock-service",route="http-route",code="200",source="service",consumer=""} 1', nil, true)
+      return body:find('http_requests_total{service="mock-service",route="http-route",code="200",source="service",workspace="default",consumer=""} 1', nil, true)
     end)
 
     res = assert(proxy_client:send {
@@ -136,7 +136,7 @@ describe("Plugin: prometheus (access)", function()
       local body = assert.res_status(200, res)
       assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
 
-      return body:find('http_requests_total{service="mock-service",route="http-route",code="400",source="service",consumer=""} 1', nil, true)
+      return body:find('http_requests_total{service="mock-service",route="http-route",code="400",source="service",workspace="default",consumer=""} 1', nil, true)
     end)
   end)
 
@@ -161,7 +161,7 @@ describe("Plugin: prometheus (access)", function()
       local body = assert.res_status(200, res)
       assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
 
-      return body:find('http_requests_total{service="mock-grpc-service",route="grpc-route",code="200",source="service",consumer=""} 1', nil, true)
+      return body:find('http_requests_total{service="mock-grpc-service",route="grpc-route",code="200",source="service",workspace="default",consumer=""} 1', nil, true)
     end)
 
     ok, resp = proxy_client_grpcs({
@@ -184,7 +184,7 @@ describe("Plugin: prometheus (access)", function()
       local body = assert.res_status(200, res)
       assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
 
-      return body:find('http_requests_total{service="mock-grpcs-service",route="grpcs-route",code="200",source="service",consumer=""} 1', nil, true)
+      return body:find('http_requests_total{service="mock-grpcs-service",route="grpcs-route",code="200",source="service",workspace="default",consumer=""} 1', nil, true)
     end)
   end)
 
@@ -206,10 +206,10 @@ describe("Plugin: prometheus (access)", function()
       })
       local body = assert.res_status(200, res)
       assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
-      assert.matches('kong_stream_sessions_total{service="tcp-service",route="tcp-route",code="200",source="service"} 1', body, nil, true)
-      assert.matches('kong_session_duration_ms_bucket{service="tcp%-service",route="tcp%-route",le="%+Inf"} %d+', body)
+      assert.matches('kong_stream_sessions_total{service="tcp-service",route="tcp-route",code="200",source="service",workspace="default"} 1', body, nil, true)
+      assert.matches('kong_session_duration_ms_bucket{service="tcp%-service",route="tcp%-route",workspace="default",le="%+Inf"} %d+', body)
 
-      return body:find('kong_stream_sessions_total{service="tcp-service",route="tcp-route",code="200",source="service"} 1', nil, true)
+      return body:find('kong_stream_sessions_total{service="tcp-service",route="tcp-route",code="200",source="service",workspace="default"} 1', nil, true)
     end)
 
     thread:join()
@@ -456,7 +456,7 @@ describe("Plugin: prometheus (access) per-consumer metrics", function()
       local body = assert.res_status(200, res)
       assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
 
-      return body:find('http_requests_total{service="mock-service",route="http-route",code="200",source="service",consumer="alice"} 1', nil, true)
+      return body:find('http_requests_total{service="mock-service",route="http-route",code="200",source="service",workspace="default",consumer="alice"} 1', nil, true)
     end)
 
     res = assert(proxy_client:send {
@@ -477,7 +477,7 @@ describe("Plugin: prometheus (access) per-consumer metrics", function()
       local body = assert.res_status(200, res)
       assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
 
-      return body:find('http_requests_total{service="mock-service",route="http-route",code="400",source="service",consumer="alice"} 1', nil, true)
+      return body:find('http_requests_total{service="mock-service",route="http-route",code="400",source="service",workspace="default",consumer="alice"} 1', nil, true)
     end)
   end)
 
@@ -498,10 +498,10 @@ describe("Plugin: prometheus (access) per-consumer metrics", function()
         path    = "/metrics",
       })
       body = assert.res_status(200, res)
-      return body:find('http_requests_total{service="mock-service",route="http-route",code="200",source="service",consumer="alice"} 1', nil, true)
+      return body:find('http_requests_total{service="mock-service",route="http-route",code="200",source="service",workspace="default",consumer="alice"} 1', nil, true)
     end)
 
-    assert.matches('http_requests_total{service="mock-service",route="http-route",code="401",source="kong",consumer=""} 1', body, nil, true)
+    assert.matches('http_requests_total{service="mock-service",route="http-route",code="401",source="kong",workspace="default",consumer=""} 1', body, nil, true)
 
     assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
   end)

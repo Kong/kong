@@ -39,7 +39,7 @@ endif
 .PHONY: install dev \
 	lint test test-integration test-plugins test-all \
 	pdk-phase-check functional-tests \
-	fix-windows release wasm-test-filters
+	fix-windows release wasm-test-filters test-logs
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 KONG_SOURCE_LOCATION ?= $(ROOT_DIR)
@@ -88,6 +88,14 @@ build-venv: check-bazel
 
 	@if [ ! -e bazel-bin/build/$(BUILD_NAME)-venv.sh ]; then \
 		$(BAZEL) build //build:venv --verbose_failures --action_env=BUILD_NAME=$(BUILD_NAME); \
+	fi
+
+build-openresty: check-bazel
+
+	@if [ ! -e bazel-bin/build/$(BUILD_NAME)/openresty ]; then \
+		$(BAZEL) build //build:install-openresty --verbose_failures --action_env=BUILD_NAME=$(BUILD_NAME); \
+	else \
+		$(BAZEL) build //build:dev-make-openresty --verbose_failures --action_env=BUILD_NAME=$(BUILD_NAME); \
 	fi
 
 install-dev-rocks: build-venv
@@ -159,6 +167,9 @@ ifndef test_spec
 endif
 	@$(VENV) $(TEST_CMD) $(test_spec)
 
+test-logs:
+	tail -F servroot/logs/error.log
+
 pdk-phase-checks: dev
 	rm -f t/phase_checks.stats
 	rm -f t/phase_checks.report
@@ -198,3 +209,4 @@ install-legacy:
 	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR) YAML_DIR=$(YAML_DIR)
 
 dev-legacy: remove install-legacy dependencies
+

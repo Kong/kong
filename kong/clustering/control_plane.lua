@@ -39,6 +39,7 @@ local sleep = ngx.sleep
 
 local plugins_list_to_map = compat.plugins_list_to_map
 local update_compatible_payload = compat.update_compatible_payload
+local check_mixed_route_entities = compat.check_mixed_route_entities
 local deflate_gzip = require("kong.tools.gzip").deflate_gzip
 local yield = require("kong.tools.yield").yield
 local connect_dp = clustering_utils.connect_dp
@@ -237,6 +238,12 @@ function _M:handle_cp_websocket(cert)
   local sync_status = CLUSTERING_SYNC_STATUS.UNKNOWN
   local purge_delay = self.conf.cluster_data_plane_purge_delay
   local update_sync_status = function()
+    local rpc_peers
+
+    if self.conf.cluster_rpc then
+      rpc_peers = kong.rpc:get_peers()
+    end
+
     local ok
     ok, err = kong.db.clustering_data_planes:upsert({ id = dp_id }, {
       last_seen = last_seen,
@@ -249,6 +256,8 @@ function _M:handle_cp_websocket(cert)
       sync_status = sync_status, -- TODO: import may have been failed though
       labels = data.labels,
       cert_details = dp_cert_details,
+      -- only update rpc_capabilities if dp_id is connected
+      rpc_capabilities = rpc_peers and rpc_peers[dp_id] or {},
     }, { ttl = purge_delay })
     if not ok then
       ngx_log(ngx_ERR, _log_prefix, "unable to update clustering data plane status: ", err, log_suffix)
@@ -428,6 +437,15 @@ function _M:handle_cp_websocket(cert)
         if sync_status ~= previous_sync_status then
           update_sync_status()
         end
+
+        goto continue
+      end
+
+      ok, err = check_mixed_route_entities(self.reconfigure_payload, dp_version,
+                                           kong and kong.configuration and
+                                           kong.configuration.router_flavor)
+      if not ok then
+        ngx_log(ngx_WARN, _log_prefix, "unable to send updated configuration to data plane: ", err, log_suffix)
 
         goto continue
       end

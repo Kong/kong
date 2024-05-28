@@ -14,7 +14,9 @@ local error = error
 local assert = assert
 local ngx = ngx
 local io = io
-local shallow_copy = require "kong.tools.utils".shallow_copy
+-- It can't be changed to kong.tools.table because the old version
+-- does not have kong/tools/table.lua, so the upgrade test will fail.
+local shallow_copy = require("kong.tools.utils").shallow_copy
 
 local template = assert(pl_template.compile(template_str))
 local render_env = {ipairs = ipairs, pairs = pairs, error = error, }

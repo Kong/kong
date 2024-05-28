@@ -329,7 +329,7 @@ do
           content_type = { "text/plain", "application/json" },
           [policy] = policy_config,
           response_headers = {
-            age = false,
+            ["Age"] = false,
             ["X-Cache-Status"] = false,
             ["X-Cache-Key"]  = false
           },

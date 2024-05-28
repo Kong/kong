@@ -2,7 +2,9 @@ local cjson = require "cjson"
 local declarative = require "kong.db.declarative"
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
+local kong_table = require "kong.tools.table"
 local https_server = require "spec.fixtures.https_server"
+local uuid = require("kong.tools.uuid").uuid
 
 
 local CONSISTENCY_FREQ = 1
@@ -49,7 +51,7 @@ local prefix = ""
 
 
 local function healthchecks_config(config)
-  return utils.cycle_aware_deep_merge(healthchecks_defaults, config)
+  return kong_table.cycle_aware_deep_merge(healthchecks_defaults, config)
 end
 
 
@@ -227,16 +229,16 @@ do
   end
 
   add_certificate = function(bp, data)
-    local certificate_id = utils.uuid()
-    local req = utils.cycle_aware_deep_copy(data) or {}
+    local certificate_id = uuid()
+    local req = kong_table.cycle_aware_deep_copy(data) or {}
     req.id = certificate_id
     bp.certificates:insert(req)
     return certificate_id
   end
 
   add_upstream = function(bp, data)
-    local upstream_id = utils.uuid()
-    local req = utils.cycle_aware_deep_copy(data) or {}
+    local upstream_id = uuid()
+    local req = kong_table.cycle_aware_deep_copy(data) or {}
     local upstream_name = req.name or gen_sym("upstream")
     req.name = upstream_name
     req.slots = req.slots or SLOTS
@@ -311,7 +313,7 @@ do
 
   add_target = function(bp, upstream_id, host, port, data)
     port = port or get_available_port()
-    local req = utils.cycle_aware_deep_copy(data) or {}
+    local req = kong_table.cycle_aware_deep_copy(data) or {}
     if host == "[::1]" then
       host = "[0000:0000:0000:0000:0000:0000:0000:0001]"
     end
@@ -323,7 +325,7 @@ do
   end
 
   update_target = function(bp, upstream_id, host, port, data)
-    local req = utils.cycle_aware_deep_copy(data) or {}
+    local req = kong_table.cycle_aware_deep_copy(data) or {}
     if host == "[::1]" then
       host = "[0000:0000:0000:0000:0000:0000:0000:0001]"
     end
@@ -335,8 +337,8 @@ do
 
   add_api = function(bp, upstream_name, opts)
     opts = opts or {}
-    local route_id = utils.uuid()
-    local service_id = utils.uuid()
+    local route_id = uuid()
+    local service_id = uuid()
     local route_host = gen_sym("host")
     local sproto = opts.service_protocol or opts.route_protocol or "http"
     local rproto = opts.route_protocol or "http"

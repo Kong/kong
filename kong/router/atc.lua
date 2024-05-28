@@ -15,6 +15,7 @@ local assert = assert
 local setmetatable = setmetatable
 local pairs = pairs
 local ipairs = ipairs
+local next = next
 local max = math.max
 
 
@@ -344,6 +345,19 @@ local function set_upstream_uri(req_uri, match_t)
 end
 
 
+-- captures has the form { [0] = full_path, [1] = capture1, [2] = capture2, ..., ["named1"] = named1, ... }
+-- and captures[0] will be the full matched path
+-- this function tests if there are captures other than the full path
+-- by checking if there are 2 or more than 2 keys
+local function has_capture(captures)
+  if not captures then
+    return false
+  end
+  local next_i = next(captures)
+  return next_i and next(captures, next_i) ~= nil
+end
+
+
 function _M:matching(params)
   local req_uri = params.uri
   local req_host = params.host
@@ -387,7 +401,7 @@ function _M:matching(params)
     service         = service,
     prefix          = request_prefix,
     matches = {
-      uri_captures = (captures and captures[1]) and captures or nil,
+      uri_captures = has_capture(captures) and captures or nil,
     },
     upstream_url_t = {
       type = service_hostname_type,

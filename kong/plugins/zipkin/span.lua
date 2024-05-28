@@ -6,8 +6,7 @@ You can find it documented in this OpenAPI spec:
 https://github.com/openzipkin/zipkin-api/blob/7e33e977/zipkin2-api.yaml#L280
 ]]
 
-local utils = require "kong.tools.utils"
-local rand_bytes = utils.get_rand_bytes
+local rand_bytes = require("kong.tools.rand").get_rand_bytes
 
 local floor = math.floor
 

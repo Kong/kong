@@ -5,6 +5,7 @@ message: |
   the new `latencies.receive` metric, so if desired, the old value can be
   calculated as `latencies.kong + latencies.receive`. **Note:** this also
   affects payloads from all logging plugins that use the log serializer:
-  `file-log`, `tcp-log`, `udp-log`,`http-log`, `syslog`, and `loggly`.
+  `file-log`, `tcp-log`, `udp-log`,`http-log`, `syslog`, and `loggly`, e.g.
+  [descriptions of JSON objects for the HTTP Log Plugin's log format](https://docs.konghq.com/hub/kong-inc/http-log/log-format/#json-object-descriptions).
 type: bugfix
 scope: PDK

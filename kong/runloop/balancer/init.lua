@@ -2,6 +2,7 @@ local pl_tablex = require "pl.tablex"
 local utils = require "kong.tools.utils"
 local hooks = require "kong.hooks"
 local recreate_request = require("ngx.balancer").recreate_request
+local uuid = require("kong.tools.uuid").uuid
 
 local healthcheckers = require "kong.runloop.balancer.healthcheckers"
 local balancers = require "kong.runloop.balancer.balancers"
@@ -145,7 +146,7 @@ local function get_value_to_hash(upstream, ctx)
           ctx = ngx.ctx
         end
 
-        identifier = utils.uuid()
+        identifier = uuid()
 
         ctx.balancer_data.hash_cookie = {
           key = upstream.hash_on_cookie,

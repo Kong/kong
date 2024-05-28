@@ -1,6 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local utils = require "kong.tools.utils"
+local random_string = require("kong.tools.rand").random_string
+local uuid = require("kong.tools.uuid").uuid
 
 
 for _, strategy in helpers.each_strategy() do
@@ -466,14 +467,14 @@ for _, strategy in helpers.each_strategy() do
         it("returns 404 for a random non-existing hmac-auth id", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/hmac-auths/" .. utils.uuid()  .. "/consumer"
+            path = "/hmac-auths/" .. uuid()  .. "/consumer"
           })
           assert.res_status(404, res)
         end)
         it("returns 404 for a random non-existing hmac-auth username", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/hmac-auths/" .. utils.random_string()  .. "/consumer"
+            path = "/hmac-auths/" .. random_string()  .. "/consumer"
           })
           assert.res_status(404, res)
         end)

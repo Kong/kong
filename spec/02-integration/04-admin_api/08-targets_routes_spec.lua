@@ -1,6 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 local tablex = require "pl.tablex"
 
 local function it_content_types(title, fn)
@@ -797,8 +797,8 @@ describe("Admin API #" .. strategy, function()
         end)
 
         it("checks every combination of valid and invalid upstream and target", function()
-          for i, u in ipairs({ utils.uuid(), "invalid", upstream.name, upstream.id }) do
-            for j, t in ipairs({ utils.uuid(), "invalid:1234", wrong_target.id, target.target, target.id }) do
+          for i, u in ipairs({ uuid.uuid(), "invalid", upstream.name, upstream.id }) do
+            for j, t in ipairs({ uuid.uuid(), "invalid:1234", wrong_target.id, target.target, target.id }) do
               for _, e in ipairs({ "healthy", "unhealthy" }) do
                 local expected = (i >= 3 and j >= 4) and 204 or 404
                 local path = "/upstreams/" .. u .. "/targets/" .. t .. "/" .. e

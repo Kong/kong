@@ -78,6 +78,7 @@ describe("Plugins", function()
       "ai-prompt-guard",
       "ai-proxy",
       "ai-response-transformer",
+      "standard-webhooks",
       "aws-lambda",
       "azure-functions",
       "proxy-cache",

@@ -497,6 +497,7 @@ local CONF_PARSERS = {
   cluster_max_payload = { typ = "number" },
   cluster_use_proxy = { typ = "boolean" },
   cluster_dp_labels = { typ = "array" },
+  cluster_rpc = { typ = "boolean" },
 
   kic = { typ = "boolean" },
   pluginserver_names = { typ = "array" },
@@ -541,6 +542,7 @@ local CONF_PARSERS = {
 
   wasm = { typ = "boolean" },
   wasm_filters_path = { typ = "string" },
+  wasm_filters = { typ = "array" },
 
   error_template_html = { typ = "string" },
   error_template_json = { typ = "string" },
@@ -640,4 +642,6 @@ return {
   _NOP_TOSTRING_MT = _NOP_TOSTRING_MT,
 
   LMDB_VALIDATION_TAG = LMDB_VALIDATION_TAG,
+
+  WASM_BUNDLED_FILTERS_PATH = "/usr/local/kong/wasm",
 }

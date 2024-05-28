@@ -1,7 +1,7 @@
 local cjson = require "cjson"
 local openssl_mac = require "resty.openssl.mac"
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 local resty_sha256 = require "resty.sha256"
 
 local fmt = string.format
@@ -95,7 +95,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "hmac-auth",
         route = { id = route3.id },
         config   = {
-          anonymous  = utils.uuid(),  -- non existing consumer
+          anonymous  = uuid.uuid(),  -- non existing consumer
           clock_skew = 3000
         }
       }

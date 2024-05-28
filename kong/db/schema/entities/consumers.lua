@@ -13,7 +13,7 @@ return {
     {
       username = {
         description =
-        "The unique username of the Consumer. You must send either this field or custom_id with the request.",
+        "The unique username of the Consumer. You must send at least one of username or custom_id with the request.",
         type = "string",
         unique = true
       },
@@ -21,7 +21,7 @@ return {
     {
       custom_id =
       {
-        description = "Stores the existing unique ID of the consumer.",
+        description = "Stores the existing unique ID of the consumer. You must send at least one of username or custom_id with the request.",
         type = "string",
         unique = true
       },

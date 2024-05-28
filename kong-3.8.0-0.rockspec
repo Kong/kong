@@ -1,10 +1,10 @@
 package = "kong"
-version = "3.7.0-0"
+version = "3.8.0-0"
 rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git+https://github.com/Kong/kong.git",
-  tag = "3.7.0"
+  tag = "3.8.0"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -16,7 +16,7 @@ dependencies = {
   "luasec == 1.3.2",
   "luasocket == 3.0-rc1",
   "penlight == 1.14.0",
-  "lua-resty-http == 0.17.1",
+  "lua-resty-http == 0.17.2",
   "lua-resty-jit-uuid == 0.0.7",
   "lua-ffi-zlib == 0.6",
   "multipart == 0.5.9",
@@ -31,17 +31,18 @@ dependencies = {
   "binaryheap >= 0.4",
   "luaxxhash >= 1.0",
   "lua-protobuf == 0.5.1",
-  "lua-resty-healthcheck == 3.0.1",
+  "lua-resty-healthcheck == 3.0.2",
   "lua-messagepack == 0.5.4",
   "lua-resty-aws == 1.4.1",
-  "lua-resty-openssl == 1.2.1",
+  "lua-resty-openssl == 1.3.1",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6.1",
-  "lua-resty-acme == 0.12.0",
+  "lua-resty-acme == 0.13.0",
   "lua-resty-session == 4.0.5",
   "lua-resty-timer-ng == 0.2.7",
   "lpeg == 1.1.0",
   "lua-resty-ljsonschema == 1.1.6-2",
+  "lua-resty-snappy == 1.0-1",
 }
 build = {
   type = "builtin",
@@ -84,6 +85,16 @@ build = {
     ["kong.clustering.compat.checkers"] = "kong/clustering/compat/checkers.lua",
     ["kong.clustering.config_helper"] = "kong/clustering/config_helper.lua",
     ["kong.clustering.tls"] = "kong/clustering/tls.lua",
+    ["kong.clustering.services.debug"] = "kong/clustering/services/debug.lua",
+
+    ["kong.clustering.rpc.callbacks"] = "kong/clustering/rpc/callbacks.lua",
+    ["kong.clustering.rpc.future"] = "kong/clustering/rpc/future.lua",
+    ["kong.clustering.rpc.json_rpc_v2"] = "kong/clustering/rpc/json_rpc_v2.lua",
+    ["kong.clustering.rpc.manager"] = "kong/clustering/rpc/manager.lua",
+    ["kong.clustering.rpc.queue"] = "kong/clustering/rpc/queue.lua",
+    ["kong.clustering.rpc.socket"] = "kong/clustering/rpc/socket.lua",
+    ["kong.clustering.rpc.utils"] = "kong/clustering/rpc/utils.lua",
+    ["kong.clustering.rpc.concentrator"] = "kong/clustering/rpc/concentrator.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.postgres"] = "kong/cluster_events/strategies/postgres.lua",
@@ -182,6 +193,7 @@ build = {
     ["kong.tools.ip"] = "kong/tools/ip.lua",
     ["kong.tools.http"] = "kong/tools/http.lua",
     ["kong.tools.cjson"] = "kong/tools/cjson.lua",
+    ["kong.tools.emmy_debugger"] = "kong/tools/emmy_debugger.lua",
     ["kong.tools.redis.schema"] = "kong/tools/redis/schema.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
@@ -291,6 +303,7 @@ build = {
     ["kong.db.migrations.core.020_330_to_340"] = "kong/db/migrations/core/020_330_to_340.lua",
     ["kong.db.migrations.core.021_340_to_350"] = "kong/db/migrations/core/021_340_to_350.lua",
     ["kong.db.migrations.core.022_350_to_360"] = "kong/db/migrations/core/022_350_to_360.lua",
+    ["kong.db.migrations.core.023_360_to_370"] = "kong/db/migrations/core/023_360_to_370.lua",
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",
     ["kong.db.migrations.operations.280_to_300"] = "kong/db/migrations/operations/280_to_300.lua",
@@ -525,6 +538,7 @@ build = {
     ["kong.plugins.proxy-cache.api"]                  = "kong/plugins/proxy-cache/api.lua",
     ["kong.plugins.proxy-cache.strategies"]           = "kong/plugins/proxy-cache/strategies/init.lua",
     ["kong.plugins.proxy-cache.strategies.memory"]    = "kong/plugins/proxy-cache/strategies/memory.lua",
+    ["kong.plugins.proxy-cache.clustering.compat.response_headers_translation"] = "kong/plugins/proxy-cache/clustering/compat/response_headers_translation.lua",
 
     ["kong.plugins.grpc-web.deco"] = "kong/plugins/grpc-web/deco.lua",
     ["kong.plugins.grpc-web.handler"] = "kong/plugins/grpc-web/handler.lua",
@@ -595,6 +609,10 @@ build = {
 
     ["kong.plugins.ai-prompt-guard.handler"] = "kong/plugins/ai-prompt-guard/handler.lua",
     ["kong.plugins.ai-prompt-guard.schema"]  = "kong/plugins/ai-prompt-guard/schema.lua",
+
+    ["kong.plugins.standard-webhooks.handler"] = "kong/plugins/standard-webhooks/handler.lua",
+    ["kong.plugins.standard-webhooks.internal"] = "kong/plugins/standard-webhooks/internal.lua",
+    ["kong.plugins.standard-webhooks.schema"]  = "kong/plugins/standard-webhooks/schema.lua",
 
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",

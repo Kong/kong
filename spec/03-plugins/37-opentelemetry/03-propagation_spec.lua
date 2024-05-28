@@ -1,8 +1,8 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local utils = require "kong.tools.utils"
 local pretty = require "pl.pretty"
 local to_hex = require "resty.string".to_hex
+local get_rand_bytes = require("kong.tools.rand").get_rand_bytes
 
 local fmt = string.format
 
@@ -17,12 +17,12 @@ local http_route_clear_host       = "http-clear-route"
 local http_route_no_preserve_host = "http-no-preserve-route"
 
 local function gen_trace_id()
-  return to_hex(utils.get_rand_bytes(16))
+  return to_hex(get_rand_bytes(16))
 end
 
 
 local function gen_span_id()
-  return to_hex(utils.get_rand_bytes(8))
+  return to_hex(get_rand_bytes(8))
 end
 
 local function get_span(name, spans)

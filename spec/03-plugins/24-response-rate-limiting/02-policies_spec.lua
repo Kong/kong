@@ -1,4 +1,4 @@
-local uuid      = require("kong.tools.utils").uuid
+local uuid      = require("kong.tools.uuid").uuid
 local helpers   = require "spec.helpers"
 local timestamp = require "kong.tools.timestamp"
 

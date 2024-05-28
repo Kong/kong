@@ -1,6 +1,6 @@
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
 local cjson = require "cjson"
+local random_string = require("kong.tools.rand").random_string
 
 
 local fmt = string.format
@@ -53,12 +53,12 @@ describe("queueing behavior", function()
     })
 
     service = bp.services:insert {
-      name = string.lower("http-" .. utils.random_string()),
+      name = string.lower("http-" .. random_string()),
     }
 
     -- kong (http) mock upstream
     bp.routes:insert({
-      name = string.lower("route-" .. utils.random_string()),
+      name = string.lower("route-" .. random_string()),
       service = service,
       hosts = { "http-route" },
       preserve_host = true,

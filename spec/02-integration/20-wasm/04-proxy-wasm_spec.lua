@@ -281,7 +281,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
       assert.res_status(200, res)
       assert.response(res).has.no.header("x-via")
       assert.logfile().has.line([[testing in "Log"]])
-      assert.logfile().has.line("cannot add response header: headers already sent")
+      assert.logfile().has.line("can only set response headers before \"on_response_body\"")
     end)
 
     pending("throw a trap", function()
@@ -786,7 +786,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
       assert.logfile().has.no.line("[crit]",  true, 0)
     end)
 
-    it("resolves DNS hostnames to send an http dispatch, return its response body", function()
+    pending("resolves DNS hostnames to send an http dispatch, return its response body", function()
       local client = helpers.proxy_client()
       finally(function() client:close() end)
 

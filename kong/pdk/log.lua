@@ -16,9 +16,9 @@ local ngx_re = require "ngx.re"
 local inspect = require "inspect"
 local ngx_ssl = require "ngx.ssl"
 local phase_checker = require "kong.pdk.private.phases"
-local utils = require "kong.tools.utils"
-local cycle_aware_deep_copy = utils.cycle_aware_deep_copy
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local constants = require "kong.constants"
+local workspace = require "kong.workspaces"
 
 local sub = string.sub
 local type = type
@@ -36,7 +36,7 @@ local setmetatable = setmetatable
 local ngx = ngx
 local kong = kong
 local check_phase = phase_checker.check
-local split = utils.split
+local split = require("kong.tools.string").split
 local byte = string.byte
 local request_id_get = require "kong.tracing.request_id".get
 
@@ -861,6 +861,9 @@ do
         client_ip = var.remote_addr,
         started_at = okong.request.get_start_time(),
         source = response_source_name,
+
+        workspace = ctx.workspace,
+        workspace_name = workspace.get_workspace_name(),
       }
 
       return edit_result(ctx, root)
@@ -902,6 +905,9 @@ do
         consumer = cycle_aware_deep_copy(ctx.authenticated_consumer),
         client_ip = var.remote_addr,
         started_at = okong.request.get_start_time(),
+
+        workspace = ctx.workspace,
+        workspace_name = workspace.get_workspace_name(),
       }
 
       return edit_result(ctx, root)
