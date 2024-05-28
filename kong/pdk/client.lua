@@ -284,17 +284,25 @@ local function new(self)
   end
 
   ---
-  -- Explicitly sets the authenticated consumer group for the current request.
-  -- Throws an error if the `group` is neither a table nor `nil`.
+  -- Explicitly sets the authenticated consumer groups for the current request.
+  -- Throws an error if the `groups` parameter is neither a table nor `nil`.
   -- @function _CLIENT.set_authenticated_consumer_groups
   -- @phases auth_and_later
-  -- @tparam table|nil group The consumer group to set. If no
+  -- @tparam table|nil groups The consumer groups to set. If no
   -- value is provided, then any existing value will be cleared.
-  -- this value should be a table of tables where each group is an
-  -- table with metadata of the group like its `id` and `name`.
+  -- This value should be a sequence-like table of tables, with each item
+  -- having at least an `id` and a `name`.
   -- @usage
-  -- -- assuming `group` is provided by some code
-  -- _CLIENT.set_authenticated_consumer_groups(group)
+  -- _CLIENT.set_authenticated_consumer_groups({
+  --   {
+  --     id = "fed2bf38-10c4-404e-8d45-a2b0f521464d",
+  --     name = "my-group",
+  --   },
+  --   {
+  --     id = "736bb9d9-98f2-46d5-97fc-d7361d9488ee",
+  --     name = "my-other-group",
+  --   }
+  -- })
   function _CLIENT.set_authenticated_consumer_groups(groups)
     -- This is the counterpart for `authenticate_consumer_group_by_consumer_id`
     -- This method allows to explicitly set a group. This allows a plugin to set groups
