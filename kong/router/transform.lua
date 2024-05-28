@@ -295,20 +295,19 @@ end
 
 
 local function sni_val_transform(op, sni)
-  -- prefix matching
+  -- prefix matching, like 'x.*'
   if op == OP_PREFIX then
+    return sni:sub(1, -2)
+  end
+
+  -- last dot in FQDNs must not be used for routing
+  if #sni > 1 and byte(sni, -1) == DOT then
     sni = sni:sub(1, -2)
+  end
 
-  else
-    if #sni > 1 and byte(sni, -1) == DOT then
-      -- last dot in FQDNs must not be used for routing
-      sni = sni:sub(1, -2)
-    end
-
-    -- postfix matching
-    if op == OP_POSTFIX then
-      sni = sni:sub(2)
-    end
+  -- postfix matching, like '*.x'
+  if op == OP_POSTFIX then
+    sni = sni:sub(2)
   end
 
   return sni
