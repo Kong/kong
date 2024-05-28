@@ -1,0 +1,3 @@
+message: "**Rate Limiting Advanced:** Improved that timer spikes do not occur when there is network instability with the central data store."
+type: performance
+scope: Plugin

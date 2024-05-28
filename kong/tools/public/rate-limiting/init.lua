@@ -162,158 +162,157 @@ local function new_instance(instance_name)
     local sync_start_now  = now()
     local sync_start_time = time()
 
+    if cfg.seen_map_idx == 0 then
+      log(DEBUG, "empty sync, do fetch")
+      fetch(nil, namespace, sync_start_time, cfg.sync_rate - TIME_DELTA)
+    else
+      -- roll over our seen keys map
+      local seen_map_old_idx = cfg.seen_map_idx
+      cfg.seen_map_idx = 0
+      cfg.seen_map_ctr = cfg.seen_map_ctr + 1
+
+      -- assume we'll see at least the same amount of keys next time
+      cfg.seen_map[cfg.seen_map_ctr] = new_tab(seen_map_old_idx, seen_map_old_idx)
+
+      local diffs = new_tab(seen_map_old_idx, seen_map_old_idx)
+
+      for i = 1, seen_map_old_idx do
+        local key = cfg.seen_map[cfg.seen_map_ctr - 1][i]
+
+        log(DEBUG, "try sync ", key)
+
+        local ok, err = locks_shm:add(key .. "|sync-lock", true, cfg.sync_rate - TIME_DELTA)
+        if not ok and err ~= "exists" then
+          log(WARN, "error in establishing sync-lock for ", key, ": ", err)
+        end
+
+        -- we have the lock!
+        -- get the current diff, and push it
+        -- before we push, set the diff to 0 so we track while we push diff + wait
+        -- for sync
+        if ok then
+          -- figure out by how much we need to incr this key and subtract it from
+          -- the running diff counter (raceless operation)
+          local diff_val, diff_err = dict:get(key .. "|diff")
+          if diff_val == nil then
+            if diff_err then
+              log(ERR, "failed to get diff_val: ", diff_err)
+
+            else
+              log(WARN, "key expired")
+            end
+
+            diff_val = 0
+            log(WARN, "Setting 'diff_val' to 0")
+          end
+          log(DEBUG, "neg incr ", -diff_val)
+          dict:incr(key .. "|diff", -diff_val)
+
+          -- mock what we think as the synced value so we dont lose counts
+          -- since our diff counter is reduced to 0, we account for this by
+          -- temporarily increasing our sync counter to make up the difference. this
+          -- only lives until we have finished updating all keys upstream, and we
+          -- finish the 'read' of the write-then-read strategy used here
+          dict:incr(key .. "|sync", diff_val)
+
+          log(DEBUG, "push ", key, ": ", diff_val)
+
+          --[[
+            diffs = {
+              [1] = {
+                key = "1.2.3.4",
+                windows = {
+                  {
+                    window    = 12345610,
+                    size      = 60,
+                    diff      = 5,
+                    namespace = foo,
+                  },
+                  {
+                    window    = 12345670,
+                    size      = 60,
+                    diff      = 5,
+                    namespace = foo,
+                  },
+                }
+              },
+              ...
+              ["1.2.3.4"] = 1,
+              ...
+          ]]
+
+          -- grab each element of the key string
+          local p, q
+          p = key:find("|", 1, true)
+          local namespace = key:sub(1, p - 1)
+          q = p + 1
+          p = key:find("|", q, true)
+          local window = key:sub(q, p - 1)
+          q = p + 1
+          p = key:find("|", q, true)
+          local size = key:sub(q, p - 1)
+          q = p + 1
+          -- get everything to the end
+          local rl_key = key:sub(q)
+
+          -- now figure out if this data point already has a top-level key
+          -- if so, add it to the windows member of this entry; otherwise,
+          -- we create a new key in `diffs` based on this rl_key, and add
+          -- the appropriate members
+          local rl_key_idx = diffs[rl_key]
+
+          if not rl_key_idx then
+            rl_key_idx = #diffs + 1
+
+            diffs[rl_key] = rl_key_idx
+
+            diffs[rl_key_idx] = {
+              key = rl_key,
+              windows = {},
+            }
+          end
+
+          insert(diffs[diffs[rl_key]].windows, {
+            window    = tonumber(window),
+            size      = tonumber(size),
+            diff      = tonumber(diff_val),
+            namespace = namespace,
+          })
+        end
+      end
+
+      -- push these diffs to the appropriate data store
+      local ok, err = cfg.strategy:push_diffs(diffs)
+      if not ok then
+        log(ERR, "error in pushing diffs for namespace ", namespace, ": ", err)
+      end
+
+      -- sleep for a bit to allow each node in the cluster to update,
+      -- and the data store to reach consistency. once that's done
+      -- we re-gather our synced values
+      ngx.sleep(cfg.sync_rate / 20)
+
+      local sync_end_now = now() - sync_start_now
+
+      -- update this node's sync counters
+      -- consider the amount of time we've already taken when setting
+      -- the lock timeout for the next fetch
+      fetch(nil, namespace, sync_start_time, cfg.sync_rate - sync_end_now - TIME_DELTA)
+
+      -- we dont need the old map anymore
+      cfg.seen_map[cfg.seen_map_ctr - 1] = nil
+
+      log(DEBUG, "sync time ", sync_end_now)
+    end
+
+    log(DEBUG, "end sync")
+
     do
       local _, err = timer_at(cfg.sync_rate, sync, namespace, timer_id)
       if err then
         log(ERR, "error starting new sync timer: ", err)
       end
     end
-
-    if cfg.seen_map_idx == 0 then
-      log(DEBUG, "empty sync, do fetch")
-      fetch(nil, namespace, sync_start_time, cfg.sync_rate - TIME_DELTA)
-      return
-    end
-
-    -- roll over our seen keys map
-    local seen_map_old_idx = cfg.seen_map_idx
-    cfg.seen_map_idx = 0
-    cfg.seen_map_ctr = cfg.seen_map_ctr + 1
-
-    -- assume we'll see at least the same amount of keys next time
-    cfg.seen_map[cfg.seen_map_ctr] = new_tab(seen_map_old_idx, seen_map_old_idx)
-
-    local diffs = new_tab(seen_map_old_idx, seen_map_old_idx)
-
-    for i = 1, seen_map_old_idx do
-      local key = cfg.seen_map[cfg.seen_map_ctr - 1][i]
-
-      log(DEBUG, "try sync ", key)
-
-      local ok, err = locks_shm:add(key .. "|sync-lock", true, cfg.sync_rate - TIME_DELTA)
-      if not ok and err ~= "exists" then
-        log(WARN, "error in establishing sync-lock for ", key, ": ", err)
-      end
-
-      -- we have the lock!
-      -- get the current diff, and push it
-      -- before we push, set the diff to 0 so we track while we push diff + wait
-      -- for sync
-      if ok then
-        -- figure out by how much we need to incr this key and subtract it from
-        -- the running diff counter (raceless operation)
-        local diff_val, diff_err = dict:get(key .. "|diff")
-        if diff_val == nil then
-          if diff_err then
-            log(ERR, "failed to get diff_val: ", diff_err)
-
-          else
-            log(WARN, "key expired")
-          end
-
-          diff_val = 0
-          log(WARN, "Setting 'diff_val' to 0")
-        end
-        log(DEBUG, "neg incr ", -diff_val)
-        dict:incr(key .. "|diff", -diff_val)
-
-        -- mock what we think as the synced value so we dont lose counts
-        -- since our diff counter is reduced to 0, we account for this by
-        -- temporarily increasing our sync counter to make up the difference. this
-        -- only lives until we have finished updating all keys upstream, and we
-        -- finish the 'read' of the write-then-read strategy used here
-        dict:incr(key .. "|sync", diff_val)
-
-        log(DEBUG, "push ", key, ": ", diff_val)
-
-        --[[
-          diffs = {
-            [1] = {
-              key = "1.2.3.4",
-              windows = {
-                {
-                  window    = 12345610,
-                  size      = 60,
-                  diff      = 5,
-                  namespace = foo,
-                },
-                {
-                  window    = 12345670,
-                  size      = 60,
-                  diff      = 5,
-                  namespace = foo,
-                },
-              }
-            },
-            ...
-            ["1.2.3.4"] = 1,
-            ...
-        ]]
-
-        -- grab each element of the key string
-        local p, q
-        p = key:find("|", 1, true)
-        local namespace = key:sub(1, p - 1)
-        q = p + 1
-        p = key:find("|", q, true)
-        local window = key:sub(q, p - 1)
-        q = p + 1
-        p = key:find("|", q, true)
-        local size = key:sub(q, p - 1)
-        q = p + 1
-        -- get everything to the end
-        local rl_key = key:sub(q)
-
-        -- now figure out if this data point already has a top-level key
-        -- if so, add it to the windows member of this entry; otherwise,
-        -- we create a new key in `diffs` based on this rl_key, and add
-        -- the appropriate members
-        local rl_key_idx = diffs[rl_key]
-
-        if not rl_key_idx then
-          rl_key_idx = #diffs + 1
-
-          diffs[rl_key] = rl_key_idx
-
-          diffs[rl_key_idx] = {
-            key = rl_key,
-            windows = {},
-          }
-        end
-
-        insert(diffs[diffs[rl_key]].windows, {
-          window    = tonumber(window),
-          size      = tonumber(size),
-          diff      = tonumber(diff_val),
-          namespace = namespace,
-        })
-      end
-    end
-
-    -- push these diffs to the appropriate data store
-    local ok, err = cfg.strategy:push_diffs(diffs)
-    if not ok then
-      log(ERR, "error in pushing diffs for namespace ", namespace, ": ", err)
-    end
-
-    -- sleep for a bit to allow each node in the cluster to update,
-    -- and the data store to reach consistency. once that's done
-    -- we re-gather our synced values
-    ngx.sleep(cfg.sync_rate / 20)
-
-    local sync_end_now = now() - sync_start_now
-
-    -- update this node's sync counters
-    -- consider the amount of time we've already taken when setting
-    -- the lock timeout for the next fetch
-    fetch(nil, namespace, sync_start_time, cfg.sync_rate - sync_end_now - TIME_DELTA)
-
-    -- we dont need the old map anymore
-    cfg.seen_map[cfg.seen_map_ctr - 1] = nil
-
-    log(DEBUG, "sync time ", sync_end_now)
-
-    log(DEBUG, "end sync")
   end
 
 
