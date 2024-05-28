@@ -136,6 +136,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
       database = strategy,
       nginx_conf = "spec/fixtures/custom_nginx.template",
       wasm = true,
+      wasm_filters = "tests",
       dns_hostsfile = hosts_file,
       plugins = "pre-function,post-function",
     }))
@@ -152,7 +153,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
 
   describe("runs a filter chain", function()
     it("with a single filter", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -166,7 +167,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     end)
 
     it("with multiple filters", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -182,7 +183,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
 
   describe("filters can", function()
     it("add request headers", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -203,7 +204,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     end)
 
     it("remove request headers", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -223,7 +224,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     end)
 
     it("add response headers on_request_headers", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -243,7 +244,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     end)
 
     it("add response headers on_response_headers", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -266,7 +267,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     -- describe+it:
     -- "filters can NOT ..."
     it("NOT add response headers on_log", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -286,7 +287,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
 
     pending("throw a trap", function()
       -- Used to work but now broken (obscure wasmtime SIGSEV), no clue
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -303,7 +304,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     end)
 
     pending("send a local response", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -322,7 +323,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     end)
 
     it("read kong.client.protocol", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -342,7 +343,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     end)
 
     it("read kong.nginx.subsystem", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -362,7 +363,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     end)
 
     it("read kong.node.id", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -382,7 +383,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     end)
 
     it("read kong.node.memory_stats", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -402,7 +403,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     end)
 
     it("read kong.request.forwarded_host", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -422,7 +423,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     end)
 
     it("read kong.request.forwarded_port", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -442,7 +443,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     end)
 
     it("read kong.request.forwarded_scheme", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -462,7 +463,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     end)
 
     pending("read kong.response.source", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -483,7 +484,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     end)
 
     it("read kong.router.route", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -504,7 +505,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     end)
 
     it("read kong.router.service", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -525,7 +526,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     end)
 
     it("write kong.service.target", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local target = helpers.mock_upstream_host .. ":" ..
@@ -551,7 +552,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     -- target is being set to mock_upstream:15555 instead of
     -- 127.0.0.1:1555 as expected...
     pending("write kong.service.upstream", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -572,7 +573,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     end)
 
     it("write kong.service.request.scheme", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -591,7 +592,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     end)
 
     pending("read kong.service.response.status", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -612,7 +613,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     end)
 
     it("write kong.response.status", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -633,7 +634,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     end)
 
     it("read kong.configuration", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -653,7 +654,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     end)
 
     it("read kong.route_id", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -673,7 +674,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     end)
 
     it("read kong.service_id", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -693,7 +694,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     end)
 
     it("read kong.ctx.shared[<attr>]", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -715,7 +716,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     end)
 
     it("write kong.ctx.shared[<attr>]", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -737,7 +738,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     end)
 
     it("clear kong.ctx.shared[<attr>]", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -759,7 +760,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     end)
 
     it("send an http dispatch, return its response body", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -787,7 +788,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
     end)
 
     pending("resolves DNS hostnames to send an http dispatch, return its response body", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -819,7 +820,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
 
     pending("start on_tick background timer", function()
       -- Pending on internal ngx_wasm_module changes
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
@@ -837,7 +838,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
 
   describe("behavior with", function()
     pending("multiple filters, one sends a local response", function()
-      local client = helpers.proxy_client()
+      local client = helpers.proxy_client(5000)
       finally(function() client:close() end)
 
       local res = assert(client:send {
