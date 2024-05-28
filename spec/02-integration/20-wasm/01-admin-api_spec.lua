@@ -22,6 +22,8 @@ describe("wasm admin API [#" .. strategy .. "]", function()
   local service, route
 
   lazy_setup(function()
+    helpers.clean_prefix()
+
     require("kong.runloop.wasm").enable({
       { name = "tests",
         path = FILTER_PATH .. "/tests.wasm",
@@ -547,6 +549,8 @@ describe("wasm admin API - wasm = off [#" .. strategy .. "]", function()
   local service
 
   lazy_setup(function()
+    helpers.clean_prefix()
+
     bp, db = helpers.get_db_utils(strategy, {
       "routes",
       "services",
