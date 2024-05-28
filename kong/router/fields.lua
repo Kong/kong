@@ -24,11 +24,6 @@ local get_uri_args  = ngx.req.get_uri_args
 local server_name   = require("ngx.ssl").server_name
 
 
-local PREFIX_LEN = 13 -- #"http.headers."
-local HTTP_HEADERS_PREFIX = "http.headers."
-local HTTP_QUERIES_PREFIX = "http.queries."
-
-
 local HTTP_FIELDS = {
 
   ["String"] = {"net.protocol", "tls.sni",
@@ -216,6 +211,11 @@ if is_http then
   local fmt = string.format
   local ngx_null = ngx.null
   local re_split = require("ngx.re").split
+
+
+  local PREFIX_LEN = 13 -- #"http.headers."
+  local HTTP_HEADERS_PREFIX = "http.headers."
+  local HTTP_QUERIES_PREFIX = "http.queries."
 
 
   local HTTP_SEGMENTS_PREFIX = "http.path.segments."
