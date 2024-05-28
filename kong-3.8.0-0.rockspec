@@ -538,6 +538,7 @@ build = {
     ["kong.plugins.proxy-cache.api"]                  = "kong/plugins/proxy-cache/api.lua",
     ["kong.plugins.proxy-cache.strategies"]           = "kong/plugins/proxy-cache/strategies/init.lua",
     ["kong.plugins.proxy-cache.strategies.memory"]    = "kong/plugins/proxy-cache/strategies/memory.lua",
+    ["kong.plugins.proxy-cache.clustering.compat.response_headers_translation"] = "kong/plugins/proxy-cache/clustering/compat/response_headers_translation.lua",
 
     ["kong.plugins.grpc-web.deco"] = "kong/plugins/grpc-web/deco.lua",
     ["kong.plugins.grpc-web.handler"] = "kong/plugins/grpc-web/handler.lua",
