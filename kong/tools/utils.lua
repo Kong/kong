@@ -22,7 +22,7 @@ do
     "kong.tools.table",
     "kong.tools.uuid",
     "kong.tools.rand",
-    --"kong.tools.time",
+    "kong.tools.time",
     -- ]] keep it here for compatibility
     "kong.tools.string",
     "kong.tools.ip",
