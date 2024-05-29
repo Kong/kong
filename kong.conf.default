@@ -1496,8 +1496,7 @@
 # overridden by the environment variables `LOCALDOMAIN` and `RES_OPTIONS` if
 # they have been set.
 #
-# Kong will resolve hostnames as either `SRV` or `A` records (in that order, and
-# `CNAME` records will be dereferenced in the process).
+# Kong will resolve hostnames as either `SRV` or `A` records.
 # In case a name was resolved as an `SRV` record it will also override any given
 # port number by the `port` field contents received from the DNS server.
 #
@@ -1523,7 +1522,7 @@
                                  # To read the file again after modifying it,
                                  # Kong must be reloaded.
 
-#dns_order = LAST,SRV,A,CNAME    # The order in which to resolve different
+#dns_order = LAST,SRV,A          # The order in which to resolve different
                                  # record types. The `LAST` type means the
                                  # type of the last successful lookup (for the
                                  # specified name). The format is a (case
