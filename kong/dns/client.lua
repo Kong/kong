@@ -41,19 +41,17 @@ local LONG_LASTING_TTL = 10 * 365 * 24 * 60 * 60
 
 local PERSISTENT_CACHE_TTL = { ttl = 0 }  -- used for mlcache:set
 
-local DEFAULT_ORDER = { "LAST", "SRV", "A", "AAAA", "CNAME" }
+local DEFAULT_ORDER = { "LAST", "SRV", "A", "AAAA" }
 
 local TYPE_SRV = resolver.TYPE_SRV
 local TYPE_A = resolver.TYPE_A
 local TYPE_AAAA = resolver.TYPE_AAAA
-local TYPE_CNAME = resolver.TYPE_CNAME
 local TYPE_LAST = -1
 
 local NAME_TO_TYPE = {
   SRV = TYPE_SRV,
   A = TYPE_A,
   AAAA = TYPE_AAAA,
-  CNAME = TYPE_CNAME,
   LAST = TYPE_LAST,
 }
 
@@ -61,7 +59,6 @@ local TYPE_TO_NAME = {
   [TYPE_SRV] = "SRV",
   [TYPE_A] = "A",
   [TYPE_AAAA] = "AAAA",
-  [TYPE_CNAME] = "CNAME",
   [TYPE_LAST] = "LAST",
 }
 
@@ -95,7 +92,6 @@ local _M = {
   TYPE_SRV = TYPE_SRV,
   TYPE_A = TYPE_A,
   TYPE_AAAA = TYPE_AAAA,
-  TYPE_CNAME = TYPE_CNAME,
   TYPE_LAST = TYPE_LAST,
 }
 local MT = { __index = _M }
@@ -284,10 +280,17 @@ function _M.new(opts)
   end
 
   local order = opts.order or DEFAULT_ORDER
+
   local search_types = {}
   local preferred_ip_type
 
   for i, typstr in ipairs(order) do
+
+    -- TODO: delete this compatibility code in subsequent commits
+    if typstr:upper() == "CNAME" then
+      goto continue
+    end
+
     local qtype = NAME_TO_TYPE[typstr:upper()]
     if not qtype then
       return nil, "Invalid dns record type in order array: " .. typstr
@@ -298,6 +301,8 @@ function _M.new(opts)
     if (qtype == TYPE_A or qtype == TYPE_AAAA) and not preferred_ip_type then
       preferred_ip_type = qtype
     end
+
+    ::continue::
   end
 
   preferred_ip_type = preferred_ip_type or TYPE_A
@@ -339,7 +344,6 @@ local function process_answers(self, qname, qtype, answers)
   end
 
   local processed_answers = {}
-  local cname_answer
 
   -- 0xffffffff for maximum TTL value
   local ttl = math_min(self.valid_ttl or 0xffffffff, 0xffffffff)
@@ -355,10 +359,7 @@ local function process_answers(self, qname, qtype, answers)
 
     local answer_type = answer.type
 
-    if answer_type == TYPE_CNAME then
-      cname_answer = answer   -- use the last one as the real cname
-
-    elseif answer_type == qtype then
+    if answer_type == qtype then
       -- compatible with balancer, see https://github.com/Kong/kong/pull/3088
       if answer_type == TYPE_AAAA then
         answer.address = ipv6_bracket(answer.address)
@@ -376,18 +377,11 @@ local function process_answers(self, qname, qtype, answers)
   end
 
   if table_isempty(processed_answers) then
-    if not cname_answer then
-      log(DEBUG, "processed ans:empty")
-      return self.EMPTY_ANSWERS
-    end
-
-    processed_answers[1] = cname_answer
-
-    log(DEBUG, "processed cname:", cname_answer.cname)
-
-  else
-    log(DEBUG, "processed ans:", #processed_answers)
+    log(DEBUG, "processed ans:empty")
+    return self.EMPTY_ANSWERS
   end
+
+  log(DEBUG, "processed ans:", #processed_answers)
 
   processed_answers.expire = now() + ttl
   processed_answers.ttl = ttl
@@ -505,28 +499,11 @@ local function resolve_name_type_callback(self, name, qtype, cache_only,
 end
 
 
--- detect circular references in DNS CNAME or SRV records
-local function detect_recursion(resolved_names, key)
-  if not resolved_names then
-    return nil
-  end
-
-  local detected = resolved_names[key]
-  resolved_names[key] = true
-  return detected
-end
-
-
 local function resolve_name_type(self, name, qtype, cache_only, short_key,
-                                 tries, resolved_names, has_timing)
+                                 tries, has_timing)
   local key = name .. ":" .. qtype
 
   stats_init_name(self.stats, key)
-
-  if detect_recursion(resolved_names, key) then
-    stats_increment(self.stats, key, "fail_recur")
-    return nil, "recursion detected for name: " .. key
-  end
 
   local answers, err, hit_level = self.cache:get(key, nil,
                                                  resolve_name_type_callback,
@@ -602,7 +579,7 @@ end
 
 -- resolve all `name`s and `type`s combinations and return first usable answers
 local function resolve_names_and_types(self, name, typ, cache_only, short_key,
-                                       tries, resolved_names, has_timing)
+                                       tries, has_timing)
 
   local answers = check_and_get_ip_answers(name)
   if answers then -- domain name is IP literal
@@ -620,8 +597,7 @@ local function resolve_names_and_types(self, name, typ, cache_only, short_key,
   for _, qtype in ipairs(types) do
     for _, qname in ipairs(names) do
       answers, err = resolve_name_type(self, qname, qtype, cache_only,
-                                       short_key, tries, resolved_names,
-                                       has_timing)
+                                       short_key, tries, has_timing)
       -- severe error occurred
       if not answers then
         return nil, err, tries
@@ -639,8 +615,7 @@ local function resolve_names_and_types(self, name, typ, cache_only, short_key,
 end
 
 
-local function resolve_all(self, name, qtype, cache_only, tries, resolved_names,
-                           has_timing)
+local function resolve_all(self, name, qtype, cache_only, tries, has_timing)
   name = string_lower(name)
   tries = setmetatable(tries or {}, TRIES_MT)
 
@@ -650,20 +625,13 @@ local function resolve_all(self, name, qtype, cache_only, tries, resolved_names,
   stats_init_name(self.stats, name)
   stats_increment(self.stats, name, "runs")
 
-  if detect_recursion(resolved_names, key) then
-    stats_increment(self.stats, name, "fail_recur")
-    return nil, "recursion detected for name: " .. name
-  end
-
   -- quickly lookup with the key "short:<name>:all" or "short:<name>:<qtype>"
   local answers, err, hit_level = self.cache:get(key)
   if not answers then
     log(DEBUG, "quickly cache lookup ", key, " ans:- hlvl:", hit_level or "-")
 
     answers, err, tries = resolve_names_and_types(self, name, qtype, cache_only,
-                                             key, tries,
-                                             resolved_names or { [key] = true },
-                                             has_timing)
+                                             key, tries, has_timing)
 
     if not cache_only and answers then
       -- If another worker resolved the name between these two `:get`, it can
@@ -689,19 +657,12 @@ local function resolve_all(self, name, qtype, cache_only, tries, resolved_names,
     stats_increment(self.stats, name, HIT_LEVEL_TO_NAME[hit_level])
   end
 
-  -- dereference CNAME
-  if qtype ~= TYPE_CNAME and answers and answers[1].type == TYPE_CNAME then
-    stats_increment(self.stats, name, "cname")
-    return resolve_all(self, answers[1].cname, qtype, cache_only, tries,
-                       resolved_names or { [key] = true }, has_timing)
-  end
-
   return answers, err, tries
 end
 
 
 function _M:resolve(name, qtype, cache_only, tries)
-  return resolve_all(self, name, qtype, cache_only, tries, nil,
+  return resolve_all(self, name, qtype, cache_only, tries,
                      ngx.ctx and ngx.ctx.has_timing)
 end
 
@@ -709,12 +670,9 @@ end
 -- Implement `resolve_address` separately as `_resolve_address` with the
 -- `has_timing` parameter so that it avoids checking for `ngx.ctx.has_timing`
 -- in recursion.
-local function _resolve_address(self, name, port, cache_only, tries,
-                                resolved_names, has_timing)
-  resolved_names = resolved_names or {}
-
+local function _resolve_address(self, name, port, cache_only, tries, has_timing)
   local answers, err, tries = resolve_all(self, name, nil, cache_only, tries,
-                                          resolved_names, has_timing)
+                                          has_timing)
   if not answers then
     return nil, err, tries
   end
@@ -723,7 +681,7 @@ local function _resolve_address(self, name, port, cache_only, tries,
     local answer = get_next_weighted_round_robin_answer(answers)
     port = (answer.port ~= 0 and answer.port) or port
     return _resolve_address(self, answer.target, port, cache_only, tries,
-                            resolved_names, has_timing)
+                            has_timing)
   end
 
   return get_next_round_robin_answer(answers).address, port, tries
@@ -731,7 +689,7 @@ end
 
 
 function _M:resolve_address(name, port, cache_only, tries)
-  return _resolve_address(self, name, port, cache_only, tries, nil,
+  return _resolve_address(self, name, port, cache_only, tries,
                           ngx.ctx and ngx.ctx.has_timing)
 end
 

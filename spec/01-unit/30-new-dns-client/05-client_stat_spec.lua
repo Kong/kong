@@ -66,13 +66,6 @@ describe("[DNS client stats]", function()
           ttl = 30,
         }},
         ["nameserver_fail.com:" .. resolver.TYPE_A] = "nameserver failed",
-        ["recursion.com:" .. resolver.TYPE_CNAME] = {{
-          type = resolver.TYPE_CNAME,
-          cname = "recursion.com",
-          class = 1,
-          name = "recursion.com",
-          ttl = 30,
-        }},
         ["stale.com" .. resolver.TYPE_A] = {{
           type = resolver.TYPE_CNAME,
           address = "stale.com",
@@ -91,9 +84,6 @@ describe("[DNS client stats]", function()
 
       -- "query_err:nameserver failed"
       cli:resolve("nameserver_fail.com")
-
-      -- "fail_recur"
-      cli:resolve("recursion.com")
 
       -- "stale"
       cli:resolve("stale.com")
@@ -121,20 +111,6 @@ describe("[DNS client stats]", function()
           ["query"] = 1,
           ["query_succ"] = 1
         },
-        ["recursion.com"] = {
-          ["fail_recur"] = 1,
-          ["runs"] = 2,
-          ["miss"] = 1,
-          ["cname"] = 1
-        },
-        ["recursion.com:1"] = {
-          ["query"] = 1,
-          ["query_fail:name error"] = 1
-        },
-        ["recursion.com:5"] = {
-          ["query"] = 1,
-          ["query_succ"] = 1
-        },
         ["nameserver_fail.com"] = {
           ["fail"] = 1,
           ["runs"] = 1
@@ -152,11 +128,6 @@ describe("[DNS client stats]", function()
           ["query_fail:name error"] = 1,
           ["stale"] = 1
         },
-        ["stale.com:5"] = {
-          ["query"] = 1,
-          ["query_fail:name error"] = 1,
-          ["stale"] = 1
-        }
       }, cli.stats)
     end)
   end)

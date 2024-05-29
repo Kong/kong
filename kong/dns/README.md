@@ -45,7 +45,7 @@ Performs a series of initialization operations:
   * the path of `hosts` file.
 * `resolv_conf`: (default: `/etc/resolv.conf`)
   * the path of `resolv.conf` file, it will be parsed and passed into the underlying `lua-resty-dns` library.
-* `order`: (default: `{ "LAST", "SRV", "A", "AAAA", "CNAME" }`)
+* `order`: (default: `{ "LAST", "SRV", "A", "AAAA" }`)
   * the order in which to resolve different record types, it's similar to the option `dns_order` in `kong.conf`.
   * The `LAST` type means the type of the last successful lookup (for the specified name).
 * `enable_ipv6`: (default: `true`)
@@ -93,7 +93,6 @@ Performs a DNS resolution.
   * If the server returns a non-zero error code, it will return `nil` and a string describing the error in this record.
     * For exmaple, `nil, "dns server error: name error"`, the server returned a result with error code 3 (NXDOMAIN).
   * In case of severe errors, such network error or server's malformed DNS record response, it will return `nil` and a string describing the error instead. For example:
-      * `nil, "recursion detected for name: example.com:5"`, it detected a loop or recursion while attempting to resolve `example.com:CNAME`.
       * `nil, "dns server error: failed to send request to UDP server 10.0.0.1:53: timeout"`, there was a network issue.
 * Return value and input parameter `@tries?`:
   * If provided as an empty table, it will be returned as a third result. This table will be an array containing the error message for each (if any) failed try.

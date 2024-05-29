@@ -29,6 +29,7 @@ local function setup_it_block()
     nameservers = { "198.51.100.0" },
     enable_ipv6 = true,
     order = { "LAST", "SRV", "A", "CNAME" },
+    cache_purge = true,
   }
 end
 
