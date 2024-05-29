@@ -17,7 +17,6 @@ local dns_client = require "kong.resty.dns.client"
 local upstreams = require "kong.runloop.balancer.upstreams"
 local balancers = require "kong.runloop.balancer.balancers"
 local dns_utils = require "kong.resty.dns.utils"
-local utils = require "kong.tools.utils"
 
 local ngx = ngx
 local null = ngx.null
@@ -30,7 +29,7 @@ local tonumber = tonumber
 local table_sort = table.sort
 local assert = assert
 local exiting = ngx.worker.exiting
-local get_updated_now_ms = utils.get_updated_now_ms
+local get_updated_now_ms = require("kong.tools.time").get_updated_now_ms
 
 local CRIT = ngx.CRIT
 local DEBUG = ngx.DEBUG

@@ -35,7 +35,7 @@ local table = table
 local table_concat = table.concat
 local run_hook = hooks.run_hook
 local var = ngx.var
-local get_updated_now_ms = utils.get_updated_now_ms
+local get_updated_now_ms = require("kong.tools.time").get_updated_now_ms
 local is_http_module   = ngx.config.subsystem == "http"
 
 local CRIT = ngx.CRIT

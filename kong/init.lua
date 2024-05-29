@@ -92,7 +92,6 @@ local instrumentation = require "kong.tracing.instrumentation"
 local process = require "ngx.process"
 local tablepool = require "tablepool"
 local table_new = require "table.new"
-local utils = require "kong.tools.utils"
 local emmy_debugger = require "kong.tools.emmy_debugger"
 local get_ctx_table = require("resty.core.ctx").get_ctx_table
 local admin_gui = require "kong.admin_gui"
@@ -101,6 +100,7 @@ local reports = require "kong.reports"
 local pl_file = require "pl.file"
 local req_dyn_hook = require "kong.dynamic_hook"
 local uuid = require("kong.tools.uuid").uuid
+local kong_time = require("kong.tools.time")
 
 
 local internal_proxies = require "kong.enterprise_edition.proxies"
@@ -148,10 +148,10 @@ local set_more_tries   = ngx_balancer.set_more_tries
 local enable_keepalive = ngx_balancer.enable_keepalive
 
 
-local time_ns            = utils.time_ns
-local get_now_ms         = utils.get_now_ms
-local get_start_time_ms  = utils.get_start_time_ms
-local get_updated_now_ms = utils.get_updated_now_ms
+local time_ns            = kong_time.time_ns
+local get_now_ms         = kong_time.get_now_ms
+local get_start_time_ms  = kong_time.get_start_time_ms
+local get_updated_now_ms = kong_time.get_updated_now_ms
 
 
 local req_dyn_hook_run_hook         = req_dyn_hook.run_hook
