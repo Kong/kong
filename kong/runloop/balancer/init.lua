@@ -1,5 +1,5 @@
 local pl_tablex = require "pl.tablex"
-local utils = require "kong.tools.utils"
+local hostname_type = require("kong.tools.ip").hostname_type
 local hooks = require "kong.hooks"
 local recreate_request = require("ngx.balancer").recreate_request
 local uuid = require("kong.tools.uuid").uuid
@@ -412,7 +412,7 @@ local function post_health(upstream, hostname, ip, port, is_healthy)
   end
 
   local ok, err
-  if ip and (utils.hostname_type(ip) ~= "name") then
+  if ip and (hostname_type(ip) ~= "name") then
     ok, err = healthchecker:set_target_status(ip, port, hostname, is_healthy)
   else
     ok, err = healthchecker:set_all_target_statuses_for_hostname(hostname, port, is_healthy)

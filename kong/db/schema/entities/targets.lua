@@ -1,9 +1,10 @@
 local typedefs = require "kong.db.schema.typedefs"
 local utils = require "kong.tools.utils"
+local normalize_ip = require("kong.tools.ip").normalize_ip
 
 
 local function validate_target(target)
-  local p = utils.normalize_ip(target)
+  local p = normalize_ip(target)
   if not p then
     local ok = utils.validate_utf8(target)
     if not ok then
