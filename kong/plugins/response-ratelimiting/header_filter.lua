@@ -8,6 +8,8 @@ local pairs = pairs
 local ipairs = ipairs
 local tonumber = tonumber
 local math_max = math.max
+local strip = kong_string.strip
+local split = kong_string.split
 
 
 local RATELIMIT_LIMIT = "X-RateLimit-Limit"
@@ -22,15 +24,15 @@ local function parse_header(header_value, limits)
     if type(header_value) == "table" then
       parts = header_value
     else
-      parts = kong_string.split(header_value, ",")
+      parts = split(header_value, ",")
     end
 
     for _, v in ipairs(parts) do
-      local increment_parts = kong_string.split(v, "=")
+      local increment_parts = split(v, "=")
       if #increment_parts == 2 then
-        local limit_name = kong_string.strip(increment_parts[1])
+        local limit_name = strip(increment_parts[1])
         if limits[limit_name] then -- Only if the limit exists
-          increments[kong_string.strip(increment_parts[1])] = tonumber(kong_string.strip(increment_parts[2]))
+          increments[strip(increment_parts[1])] = tonumber(strip(increment_parts[2]))
         end
       end
     end
