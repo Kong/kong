@@ -1,12 +1,12 @@
 local Schema = require "kong.db.schema"
 local typedefs = require "kong.db.schema.typedefs"
-local utils = require "kong.tools.utils"
 local normalize_ip = require("kong.tools.ip").normalize_ip
+local validate_utf8 = require("kong.tools.string").validate_utf8
 local null = ngx.null
 
 
 local function get_name_for_error(name)
-  local ok = utils.validate_utf8(name)
+  local ok = validate_utf8(name)
   if not ok then
     return "Invalid name"
   end

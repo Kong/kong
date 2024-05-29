@@ -187,16 +187,18 @@ describe("Utils", function()
 
   describe("string", function()
     it("checks valid UTF8 values", function()
-      assert.True(utils.validate_utf8("hello"))
-      assert.True(utils.validate_utf8(123))
-      assert.True(utils.validate_utf8(true))
-      assert.False(utils.validate_utf8(string.char(105, 213, 205, 149)))
-      assert.False(utils.validate_utf8(string.char(128))) -- unexpected continuation byte
-      assert.False(utils.validate_utf8(string.char(192, 32))) -- 2-byte sequence 0xc0 followed by space
-      assert.False(utils.validate_utf8(string.char(192))) -- 2-byte sequence with last byte missing
-      assert.False(utils.validate_utf8(string.char(254))) -- impossible byte
-      assert.False(utils.validate_utf8(string.char(255))) -- impossible byte
-      assert.False(utils.validate_utf8(string.char(237, 160, 128))) -- Single UTF-16 surrogate
+      local validate_utf8 = require("kong.tools.string").validate_utf8
+
+      assert.True(validate_utf8("hello"))
+      assert.True(validate_utf8(123))
+      assert.True(validate_utf8(true))
+      assert.False(validate_utf8(string.char(105, 213, 205, 149)))
+      assert.False(validate_utf8(string.char(128))) -- unexpected continuation byte
+      assert.False(validate_utf8(string.char(192, 32))) -- 2-byte sequence 0xc0 followed by space
+      assert.False(validate_utf8(string.char(192))) -- 2-byte sequence with last byte missing
+      assert.False(validate_utf8(string.char(254))) -- impossible byte
+      assert.False(validate_utf8(string.char(255))) -- impossible byte
+      assert.False(validate_utf8(string.char(237, 160, 128))) -- Single UTF-16 surrogate
     end)
     describe("random_string()", function()
       local utils = require "kong.tools.rand"
