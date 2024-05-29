@@ -1,4 +1,4 @@
-local utils = require "kong.tools.utils"
+local kong_string = require "kong.tools.string"
 
 
 local kong = kong
@@ -22,15 +22,15 @@ local function parse_header(header_value, limits)
     if type(header_value) == "table" then
       parts = header_value
     else
-      parts = utils.split(header_value, ",")
+      parts = kong_string.split(header_value, ",")
     end
 
     for _, v in ipairs(parts) do
-      local increment_parts = utils.split(v, "=")
+      local increment_parts = kong_string.split(v, "=")
       if #increment_parts == 2 then
-        local limit_name = utils.strip(increment_parts[1])
+        local limit_name = kong_string.strip(increment_parts[1])
         if limits[limit_name] then -- Only if the limit exists
-          increments[utils.strip(increment_parts[1])] = tonumber(utils.strip(increment_parts[2]))
+          increments[kong_string.strip(increment_parts[1])] = tonumber(kong_string.strip(increment_parts[2]))
         end
       end
     end
