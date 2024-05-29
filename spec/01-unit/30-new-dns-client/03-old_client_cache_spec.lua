@@ -123,7 +123,7 @@ describe("[DNS client cache]", function()
         ndots = 1,
         search = { "domain.com" },
         hosts = {},
-        order = { "LAST", "SRV", "A", "AAAA", "CNAME" },
+        order = { "LAST", "SRV", "A", "AAAA" },
         error_ttl = 0.5,
         stale_ttl = 0.5,
         enable_ipv6 = false,
@@ -200,33 +200,7 @@ describe("[DNS client cache]", function()
       assert.equal(answers, cli.cache:get("short:myhost4:" .. resolver.TYPE_A))
     end)
 
-    it("of dereferenced CNAME are stored in cache", function()
-      mock_records = {
-        ["myhost5.domain.com:"..resolver.TYPE_CNAME] = {{
-          type = resolver.TYPE_CNAME,
-          class = 1,
-          name = "myhost5.domain.com",
-          cname = "mytarget.domain.com",
-          ttl = 30,
-        }},
-        ["mytarget.domain.com:"..resolver.TYPE_A] = {{
-          type = resolver.TYPE_A,
-          address = "1.2.3.4",
-          class = 1,
-          name = "mytarget.domain.com",
-          ttl = 30,
-        }}
-      }
-      local answers = cli:resolve("myhost5")
-      assert_same_answers(mock_records["mytarget.domain.com:"..resolver.TYPE_A], answers) -- not the test, intermediate validation
-
-      -- the type un-specificc query was the CNAME, so that should be in the
-      -- shorname cache
-      answers = cli.cache:get("short:myhost5:all")
-      assert_same_answers(mock_records["myhost5.domain.com:"..resolver.TYPE_CNAME], answers)
-    end)
-
-    it("ttl in cache is honored for short name entries #ttt", function()
+    it("ttl in cache is honored for short name entries", function()
       local ttl = 0.2
       -- in the short name case the same record is inserted again in the cache
       -- and the lru-ttl has to be calculated, make sure it is correct
@@ -328,7 +302,7 @@ describe("[DNS client cache]", function()
         search = { "domain.com" },
         hosts = {},
         resolvConf = {},
-        order = { "LAST", "SRV", "A", "AAAA", "CNAME" },
+        order = { "LAST", "SRV", "A", "AAAA" },
         error_ttl = 0.5,
         stale_ttl = 0.5,
         enable_ipv6 = false,
@@ -516,7 +490,7 @@ describe("[DNS client cache]", function()
         search = { "domain.com" },
         hosts = {},
         resolvConf = {},
-        order = { "LAST", "SRV", "A", "AAAA", "CNAME" },
+        order = { "LAST", "SRV", "A", "AAAA" },
         error_ttl = 0.5,
         stale_ttl = 0.5,
         enable_ipv6 = false,
@@ -596,10 +570,6 @@ describe("[DNS client cache]", function()
           "192.168.5.232.node.api_test.consul:AAAA",
           "dns server error: 3 name error",
         },
-        {
-          "192.168.5.232.node.api_test.consul:CNAME",
-          "dns server error: 3 name error",
-        }
       }, tries)
     end)
 

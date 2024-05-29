@@ -230,9 +230,6 @@ describe("[DNS client]", function()
           'host.one.com:28',
           'host.two.com:28',
           'host:28',
-          'host.one.com:5',
-          'host.two.com:5',
-          'host:5',
         }, list)
       end)
 
@@ -253,7 +250,6 @@ describe("[DNS client]", function()
           'host:33',
           'host:1',
           'host:28',
-          'host:5',
         }, list)
       end)
 
@@ -277,8 +273,6 @@ describe("[DNS client]", function()
           'host:1',
           'host.local.domain.com:28',
           'host:28',
-          'host.local.domain.com:5',
-          'host:5',
         }, list)
       end)
 
@@ -296,9 +290,6 @@ describe("[DNS client]", function()
         cli:resolve("host")
 
         assert.same({
-          'host.one.com:5',
-          'host.two.com:5',
-          'host:5',
           'host.one.com:33',
           'host.two.com:33',
           'host:33',
@@ -328,7 +319,6 @@ describe("[DNS client]", function()
             'host.:33',
             'host.:1',
             'host.:28',
-            'host.:5',
           }, list)
       end)
 
@@ -347,7 +337,6 @@ describe("[DNS client]", function()
             'host.:33',
             'host.:1',
             'host.:28',
-            'host.:5',
           }, list)
       end)
 
@@ -366,7 +355,6 @@ describe("[DNS client]", function()
           'host.:33',
           'host.:1',
           'host.:28',
-          'host.:5',
         }, list)
       end)
 
@@ -383,7 +371,6 @@ describe("[DNS client]", function()
 
         cli:resolve("host.")
         assert.same({
-            'host.:5',
             'host.:33',
             'host.:1',
             'host.:28',
@@ -515,7 +502,6 @@ describe("[DNS client]", function()
         'local.host:33',
         'local.host:1',
         'local.host:28',
-        'local.host:5',
       }, list)
     end)
 
@@ -727,7 +713,7 @@ describe("[DNS client]", function()
     local host = "smtp."..TEST_DOMAIN
 
     local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf"}))
-    local answers = assert(cli:resolve(host))
+    assert(cli:resolve(host))
 
     -- check first CNAME
     local key1 = host .. ":" .. resolver.TYPE_CNAME
@@ -739,31 +725,21 @@ describe("[DNS client]", function()
     end
 
     assert.same({
-      ["kong-gateway-testing.link"] = {
-	miss = 1,
-	runs = 1,
-      },
-      ["kong-gateway-testing.link:1"] = {
-	query = 1,
-	query_succ = 1
-      },
-      ["kong-gateway-testing.link:33"] = {
-	query = 1,
-	["query_fail:empty record received"] = 1
-      },
       ["smtp.kong-gateway-testing.link"] = {
-	cname = 1,
-	miss = 1,
-	runs = 1
+        miss = 1,
+        runs = 1
+      },
+      ["smtp.kong-gateway-testing.link:1"] = {
+        query = 1,
+        query_succ = 1
       },
       ["smtp.kong-gateway-testing.link:33"] = {
-	query = 1,
-	query_succ = 1
-      }
-    }, cli.stats)
+        query = 1,
+        ["query_fail:empty record received"] = 1 }
+      }, cli.stats)
 
     -- check last successful lookup references
-    local lastsuccess = cli:_get_last_type(answers[1].name)
+    local lastsuccess = cli:_get_last_type(host)
     assert.are.equal(resolver.TYPE_A, lastsuccess)
   end)
 
@@ -887,70 +863,6 @@ describe("[DNS client]", function()
     assert.equal("["..address.."]", answers[1].target)
   end)
 
-  it("recursive lookups failure - single resolve", function()
-    query_func = function(self, original_query_func, name, opts)
-      if name ~= "hello.world" and (opts or {}).qtype ~= resolver.TYPE_CNAME then
-        return original_query_func(self, name, opts)
-      end
-      return {{
-        type = resolver.TYPE_CNAME,
-        cname = "hello.world",
-        class = 1,
-        name = "hello.world",
-        ttl = 30,
-      }}
-    end
-
-    local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf" }))
-    local answers, err, _ = cli:resolve("hello.world")
-    assert.is_nil(answers)
-    assert.are.equal("recursion detected for name: hello.world", err)
-  end)
-
-  it("recursive lookups failure - single", function()
-    local entry1 = {{
-      type = resolver.TYPE_CNAME,
-      cname = "hello.world",
-      class = 1,
-      name = "hello.world",
-      ttl = 0,
-    }}
-
-    -- Note: the bad case would be that the below lookup would hang due to round-robin on an empty table
-    local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf" }))
-    -- insert in the cache
-    cli.cache:set(entry1[1].name .. ":" .. entry1[1].type, { ttl = 0 }, entry1)
-    local answers, err, _ = cli:resolve("hello.world", { cache_only = true })
-    assert.is_nil(answers)
-    assert.are.equal("recursion detected for name: hello.world", err)
-  end)
-
-  it("recursive lookups failure - multi", function()
-    local entry1 = {{
-      type = resolver.TYPE_CNAME,
-      cname = "bye.bye.world",
-      class = 1,
-      name = "hello.world",
-      ttl = 0,
-    }}
-    local entry2 = {{
-      type = resolver.TYPE_CNAME,
-      cname = "hello.world",
-      class = 1,
-      name = "bye.bye.world",
-      ttl = 0,
-    }}
-
-    -- Note: the bad case would be that the below lookup would hang due to round-robin on an empty table
-    local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf" }))
-    -- insert in the cache
-    cli.cache:set(entry1[1].name .. ":" .. entry1[1].type, { ttl = 0 }, entry1)
-    cli.cache:set(entry2[1].name .. ":" .. entry2[1].type, { ttl = 0 }, entry2)
-    local answers, err, _ = cli:resolve("hello.world", { cache_only = true })
-    assert.is_nil(answers)
-    assert.are.equal("recursion detected for name: hello.world", err)
-  end)
-
   it("resolving from the /etc/hosts file; preferred A or AAAA order", function()
     writefile(hosts_path, {
       "127.3.2.1 localhost",
@@ -958,13 +870,13 @@ describe("[DNS client]", function()
     })
     local cli = assert(client_new({
       resolv_conf = "/etc/resolv.conf",
-      order = {"SRV", "CNAME", "A", "AAAA"}
+      order = {"SRV", "A", "AAAA"}
     }))
     assert.equal(resolver.TYPE_A, cli:_get_last_type("localhost")) -- success set to A as it is the preferred option
 
     local cli = assert(client_new({
       resolv_conf = "/etc/resolv.conf",
-      order = {"SRV", "CNAME", "AAAA", "A"}
+      order = {"SRV", "AAAA", "A"}
     }))
     assert.equal(resolver.TYPE_AAAA, cli:_get_last_type("localhost")) -- success set to AAAA as it is the preferred option
   end)
@@ -1263,31 +1175,6 @@ describe("[DNS client]", function()
       local ip, port = cli:resolve("hello.world", { return_random = true, port = 123, cache_only = true })
       assert.is_nil(ip)
       assert.is.string(port)  -- error message
-    end)
-    it("recursive lookups failure", function()
-      local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf" }))
-      local entry1 = {{
-        type = resolver.TYPE_CNAME,
-        cname = "bye.bye.world",
-        class = 1,
-        name = "hello.world",
-        ttl = 10,
-      }}
-      local entry2 = {{
-        type = resolver.TYPE_CNAME,
-        cname = "hello.world",
-        class = 1,
-        name = "bye.bye.world",
-        ttl = 10,
-      }}
-      -- insert in the cache
-      cli.cache:set(entry1[1].name..":"..entry1[1].type, { ttl = 0 }, entry1)
-      cli.cache:set(entry2[1].name..":"..entry2[1].type, { ttl = 0 }, entry2)
-
-      -- Note: the bad case would be that the below lookup would hang due to round-robin on an empty table
-      local ip, port, _ = cli:resolve("hello.world", { return_random = true, port = 123, cache_only = true })
-      assert.is_nil(ip)
-      assert.are.equal("recursion detected for name: hello.world", port)
     end)
   end)
 
