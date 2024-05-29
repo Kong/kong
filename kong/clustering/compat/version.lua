@@ -1,8 +1,6 @@
-local utils = require("kong.tools.utils")
-
 local type = type
 local tonumber = tonumber
-local split = utils.split
+local split = require("kong.tools.string").split
 
 local MAJOR_MINOR_PATTERN = "^(%d+)%.(%d+)%.%d+"
 
