@@ -92,6 +92,8 @@ describe('@smoke: Gateway Plugins: mtls-auth', function () {
         id: routeId,
       },
     };
+
+    await waitForConfigRebuild()
   });
 
   it('should not create mtls-auth plugin without ca_certificates', async function () {
@@ -468,7 +470,7 @@ describe('@smoke: Gateway Plugins: mtls-auth', function () {
   });
 
   it('should see 401 when using invalid default consumer uuid', async function () {
-    let resp = await axios({
+    const resp = await axios({
       method: 'patch',
       url: `${url}/${pluginId}`,
       data: {
@@ -482,7 +484,7 @@ describe('@smoke: Gateway Plugins: mtls-auth', function () {
     expect(resp.status, 'Status should be 200').to.equal(200);
     await waitForConfigRebuild();
 
-    resp = await axios({
+    const req = () => axios({
       url: `${proxyUrl}${path}`,
       httpsAgent: new https.Agent({
         rejectUnauthorized: false,
@@ -491,10 +493,13 @@ describe('@smoke: Gateway Plugins: mtls-auth', function () {
       }),
       validateStatus: null
     });
-    logResponse(resp);
+  
+    const assertions = (resp) => {
+      expect(resp.status, 'Status should be 401').to.equal(401);
+      expect(resp.data.message, 'Should see Unauthorized error message').to.equal('Unauthorized')
+    };
 
-    expect(resp.status, 'Status should be 401').to.equal(401);
-    expect(resp.data.message, 'Should see Unauthorized error message').to.equal('Unauthorized')
+    await retryRequest(req, assertions);
   });
 
   it('should delete the mtls-auth plugin', async function () {

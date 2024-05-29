@@ -22,7 +22,6 @@ import {
 import axios from 'axios'
 import https from 'https'
 import querystring from 'querystring'
-import { log } from 'console'
 
 const urls = {
     admin: `${getBasePath({

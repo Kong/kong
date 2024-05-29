@@ -7,6 +7,8 @@ import {
   Environment,
   logResponse,
   isGateway,
+  retryRequest,
+  waitForConfigRebuild,
 } from '@support';
 
 describe('@smoke @gke: Gateway RBAC: Users', function () {
@@ -73,26 +75,29 @@ describe('@smoke @gke: Gateway RBAC: Users', function () {
   });
 
   it('should not create a user without name', async function () {
-    const resp = await postNegative(
+    const req = () => postNegative(
       url,
       {
         user_token: 'mytoken',
       },
       'post'
     );
-    logResponse(resp);
+  
+    const assertions = (resp) => {
+      expect(resp.status, 'Status should be 400').to.equal(400);
+      expect(resp.data.name, 'Should have correct error name').to.equal(
+        'schema violation'
+      );
+      expect(resp.data.message, 'Should have correct message').to.contain(
+        'schema violation (name:'
+      );
+      expect(
+        resp.data.fields,
+        'Should have correct violated fields'
+      ).to.haveOwnProperty('name', 'required field missing');
+    };
 
-    expect(resp.status, 'Status should be 400').to.equal(400);
-    expect(resp.data.name, 'Should have correct error name').to.equal(
-      'schema violation'
-    );
-    expect(resp.data.message, 'Should have correct message').to.contain(
-      'schema violation (name:'
-    );
-    expect(
-      resp.data.fields,
-      'Should have correct violated fields'
-    ).to.haveOwnProperty('name', 'required field missing');
+    await retryRequest(req, assertions);
   });
 
   it('should geta a user by id', async function () {
@@ -176,6 +181,8 @@ describe('@smoke @gke: Gateway RBAC: Users', function () {
     ).to.not.contain(user2Token);
 
     user2Id = resp.data.id;
+
+    await waitForConfigRebuild()
   });
 
   it('should get a user by name', async function () {

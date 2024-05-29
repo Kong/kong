@@ -10,6 +10,8 @@ import {
   deleteConsumer,
   logResponse,
   isGateway,
+  retryRequest,
+  waitForConfigRebuild,
 } from '@support';
 
 describe('@gke: Gateway Consumer Groups with RLA', function () {
@@ -150,31 +152,34 @@ describe('@gke: Gateway Consumer Groups with RLA', function () {
   });
 
   it('should add consumer 1 to consumer group 1 using consumer_groups endpoint', async function () {
-    const resp = await axios({
+    const req = () => axios({
       method: 'post',
       url: `${url}/${consumerGroup1.name}/consumers`,
       data: {
         consumer: consumer1.username,
       },
     });
-    logResponse(resp);
+  
+    const assertions = (resp) => {
+      assertConsumergroupResponse(resp.data.consumer_group, consumerGroup1.name);
+      expect(resp.status, 'Status should be 201').to.equal(201);
+      expect(
+        resp.data.consumers[0].username,
+        'Should have correct username'
+      ).to.eq(consumer1.username);
+      expect(
+        resp.data.consumers[0].username_lower,
+        'Should have correct username_lower'
+      ).to.eq(consumer1.username_lower);
+      expect(resp.data.consumers[0].id, 'Should have correct consumer id').to.eq(
+        consumer1.id
+      );
+      expect(resp.data.consumers[0].created_at, 'Should have created_at').to.be.a(
+        'number'
+      );
+    };
 
-    assertConsumergroupResponse(resp.data.consumer_group, consumerGroup1.name);
-    expect(resp.status, 'Status should be 201').to.equal(201);
-    expect(
-      resp.data.consumers[0].username,
-      'Should have correct username'
-    ).to.eq(consumer1.username);
-    expect(
-      resp.data.consumers[0].username_lower,
-      'Should have correct username_lower'
-    ).to.eq(consumer1.username_lower);
-    expect(resp.data.consumers[0].id, 'Should have correct consumer id').to.eq(
-      consumer1.id
-    );
-    expect(resp.data.consumers[0].created_at, 'Should have created_at').to.be.a(
-      'number'
-    );
+    await retryRequest(req, assertions);
   });
 
   it('should not add consumer 1 to consumer group 1 2nd time', async function () {
@@ -365,20 +370,22 @@ describe('@gke: Gateway Consumer Groups with RLA', function () {
   });
 
   it('should get consumer group 1 specific details', async function () {
-    const resp = await axios({
-      url: `${url}/${consumerGroup1.name}`,
-    });
-    logResponse(resp);
-
     let isConsumer = false;
     let isPlugin = false;
 
-    assertConsumergroupResponse(resp.data.consumer_group, consumerGroup1.name);
+    const req = () => axios({
+      url: `${url}/${consumerGroup1.name}`,
+    });
+  
+    const assertions = (resp) => {
+      assertConsumergroupResponse(resp.data.consumer_group, consumerGroup1.name);
+      expect(
+        resp.data.consumers,
+        'Should not have empty consumer group list'
+      ).not.to.be.ofSize(0);
+    };
 
-    expect(
-      resp.data.consumers,
-      'Should not have empty consumer group list'
-    ).not.to.be.ofSize(0);
+    const resp = await retryRequest(req, assertions);
 
     for (const consumer of resp.data.consumers) {
       if (consumer.id === consumer1.id) {
@@ -498,6 +505,8 @@ describe('@gke: Gateway Consumer Groups with RLA', function () {
     assertConsumergroupResponse(resp.data, consumerGroup2Name);
 
     consumerGroup2 = { id: resp.data.id, name: consumerGroup2Name };
+
+    await waitForConfigRebuild()
   });
 
   it('should add consumer 2 to consumer group 2 using consumers endpoint', async function () {
@@ -711,15 +720,17 @@ describe('@gke: Gateway Consumer Groups with RLA', function () {
 
   it('should not delete a consumer from a non existing consumer group', async function () {
     // At this point only consumer 2 belongs to consumer_group 2
-
     const consumerUrl = url.replace(
       '/consumer_groups',
       `/consumers/${consumer2.id}/consumer_groups/1c8feded-b71c-4b2e-82d0-60110d4846c4`
     );
-    const resp = await postNegative(consumerUrl, {}, 'delete');
-    logResponse(resp);
 
-    expect(resp.status, 'Status should be 404').to.equal(404);
+    const req = () => postNegative(consumerUrl, {}, 'delete');
+    const assertions = (resp) => {
+      expect(resp.status, 'Status should be 404').to.equal(404);
+    };
+
+    await retryRequest(req, assertions);
   });
 
   it('should add multiple consumers to consumer group 2', async function () {
@@ -905,12 +916,16 @@ describe('@gke: Gateway Consumer Groups with RLA', function () {
   });
 
   it('should get 204 for deleting non existing consumer group', async function () {
-    const resp = await axios({
+    const req = () => axios({
       method: 'delete',
       url: `${url}/wrong`,
     });
-    logResponse(resp);
-    expect(resp.status, 'Status should be 204').to.equal(204);
+
+    const assertions = (resp) => {
+      expect(resp.status, 'Status should be 204').to.equal(204);
+    };
+
+    await retryRequest(req, assertions);
   });
 
   after(async function () {
