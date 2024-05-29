@@ -2,7 +2,7 @@ local helpers = require "spec.helpers"
 local DB = require "kong.db.init"
 local tb_clone = require "table.clone"
 local shell = require "resty.shell"
-local split = require "kong.tools.string".split
+local strip = require "kong.tools.string".strip
 
 
 -- Current number of migrations to execute in a new install
