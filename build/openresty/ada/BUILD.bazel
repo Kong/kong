@@ -1,0 +1,18 @@
+cc_library(
+    name = "ada-lib",
+    srcs = ["ada.cpp"],
+    hdrs = [
+        "ada.h",
+        "ada_c.h",
+    ],
+    copts = [
+        "-std=c++17",
+    ],
+    linkstatic = True,
+)
+
+cc_shared_library(
+    name = "ada",
+    visibility = ["//visibility:public"],
+    deps = [":ada-lib"],
+)
