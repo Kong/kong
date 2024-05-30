@@ -28,7 +28,7 @@ local search_names = utils.search_names
 local get_next_round_robin_answer = utils.get_next_round_robin_answer
 local get_next_weighted_round_robin_answer = utils.get_next_weighted_round_robin_answer
 
-local req_dyn_hook_run_hooks = require("kong.dynamic_hook").run_hooks
+local req_dyn_hook_run_hook = require("kong.dynamic_hook").run_hook
 
 
 -- Constants and default values
@@ -541,7 +541,7 @@ local function resolve_name_type(self, name, qtype, cache_only, short_key,
              " hlv:", hit_level or "-")
 
   if has_timing then
-    req_dyn_hook_run_hooks("timing", "dns:cache_lookup",
+    req_dyn_hook_run_hook("timing", "dns:cache_lookup",
                            (hit_level and hit_level < HIT_L3))
   end
 
@@ -682,7 +682,7 @@ local function resolve_all(self, name, qtype, cache_only, tries, resolved_names,
                " hlv:", hit_level or "-")
 
     if has_timing then
-      req_dyn_hook_run_hooks("timing", "dns:cache_lookup",
+      req_dyn_hook_run_hook("timing", "dns:cache_lookup",
                              (hit_level and hit_level < HIT_L3))
     end
 
