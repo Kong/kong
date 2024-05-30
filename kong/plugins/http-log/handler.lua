@@ -114,7 +114,6 @@ local function send_entries(conf, entries)
   httpc:set_timeout(timeout)
 
   local headers = {
-    ["Host"] = host,
     ["Content-Type"] = content_type,
     ["Content-Length"] = content_length,
     ["Authorization"] = userinfo and "Basic " .. encode_base64(userinfo) or nil
