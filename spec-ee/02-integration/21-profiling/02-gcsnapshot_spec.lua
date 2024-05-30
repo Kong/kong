@@ -142,18 +142,27 @@ describe("GC snapshot #" .. strategy .. " #" .. deploy, function ()
         }
       })
 
-      assert.res_status(201, res)
+      local body = assert.res_status(201, res)
+      local json = cjson.decode(body)
+      assert.same(json.message, "Dumping snapshot in progress on pid: " .. pid, "gc-snapshot is not on specified pid")
 
       helpers.pwait_until(function()
         res = assert(admin_client:send {
           method = "GET",
           path = "/debug/profiling/gc-snapshot",
+          body = {
+            pid = pid,
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
         })
 
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-
-        return json.status == "stopped" and json.path
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+        assert.same("stopped", json.status)
+        assert.equals(pid, json.pid)
+        assert.truthy(json.path)
       end, 30) -- CI is very slow for computing task
     end
   end)

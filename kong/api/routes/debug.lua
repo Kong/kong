@@ -26,8 +26,6 @@ local tostring                           = tostring
 local tonumber                           = tonumber
 local string_format                      = string.format
 local math_max                           = math.max
-local math_random                        = math.random
-local table_remove                       = table.remove
 
 local ngx_time                           = ngx.time
 local ngx_worker_pids                    = ngx.worker.pids -- luacheck: ignore
@@ -324,28 +322,6 @@ local routes = {
 
       if not is_valid_worker_pid(pid) then
         return kong.response.exit(400, response_body("error", "Invalid pid: " .. pid))
-      end
-
-      local pids = ngx_worker_pids()
-      if pid == ngx_worker_pid() and #pids > 1 then
-        local current_pid = ngx_worker_pid()
-        local idx = 1
-
-        for i = 1, #pids do
-          if pids[i] == current_pid then
-            idx = i
-            break
-          end
-        end
-
-        --[[
-          Removing the current pid from the list of pids to avoid
-          dumping the snapshot of the current worker beacause it
-          will be blocked until the snapshot is done.
-        --]]
-        table_remove(pids, idx)
-
-        pid = pids[math_random(#pids)]
       end
 
       local ok, err = profiling.gc_snapshot.dump(make_profiling_data_path("gc-snapshot", pid, true),
