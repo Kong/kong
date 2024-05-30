@@ -447,6 +447,18 @@ jobs:
           DOCKER_DEFAULT_PLATFORM=linux/arm64 sudo -E python ./main.py --image $IMAGE -f docker_image_filelist.txt -s docker-image
         fi
 
+    - name: Uninstall Tests
+      run: |
+        cd scripts/explain_manifest
+        IMAGE=${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
+        BUILD_LABEL=${{ matrix.label }}
+        ./test-uninstall.sh $IMAGE $BUILD_LABEL
+        exit_code=$?
+        if [ $exit_code -ne 0 ]; then
+          echo "Uninstall test failed for $IMAGE"
+          exit $exit_code
+        fi
+
   scan-images:
     name: Scan Images - ${{ matrix.label }}
     needs: [metadata, build-images]
