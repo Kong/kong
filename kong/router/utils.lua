@@ -1,5 +1,5 @@
 local constants = require("kong.constants")
-local hostname_type = require("kong.tools.utils").hostname_type
+local hostname_type = require("kong.tools.ip").hostname_type
 local normalize = require("kong.tools.uri").normalize
 
 

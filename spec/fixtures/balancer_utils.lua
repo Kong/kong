@@ -1,7 +1,7 @@
 local cjson = require "cjson"
 local declarative = require "kong.db.declarative"
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
+local format_host = require("kong.tools.ip").format_host
 local kong_table = require "kong.tools.table"
 local https_server = require "spec.fixtures.https_server"
 local uuid = require("kong.tools.uuid").uuid
@@ -88,7 +88,7 @@ local function put_target_endpoint(upstream_id, host, port, endpoint)
   end
   local path = "/upstreams/" .. upstream_id
                              .. "/targets/"
-                             .. utils.format_host(host, port)
+                             .. format_host(host, port)
                              .. "/" .. endpoint
   local api_client = helpers.admin_client()
   local res, err = assert(api_client:put(prefix .. path, {
@@ -317,7 +317,7 @@ do
     if host == "[::1]" then
       host = "[0000:0000:0000:0000:0000:0000:0000:0001]"
     end
-    req.target = req.target or utils.format_host(host, port)
+    req.target = req.target or format_host(host, port)
     req.weight = req.weight or 10
     req.upstream = { id = upstream_id }
     local new_target = bp.targets:insert(req)
@@ -329,7 +329,7 @@ do
     if host == "[::1]" then
       host = "[0000:0000:0000:0000:0000:0000:0000:0001]"
     end
-    req.target = req.target or utils.format_host(host, port)
+    req.target = req.target or format_host(host, port)
     req.weight = req.weight or 10
     req.upstream = { id = upstream_id }
     bp.targets:update(req.id or req.target, req)
