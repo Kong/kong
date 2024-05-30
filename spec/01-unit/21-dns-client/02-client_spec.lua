@@ -1506,19 +1506,23 @@ describe("[DNS client]", function()
       assert(client.init({
         noSynchronisation = false,
         order = { "A" },
+        search = {},
       }))
 
       local callcount = 0
       query_func = function(self, original_query_func, name, options)
         callcount = callcount + 1
-        return original_query_func(self, name, options)
+        -- ensure individual_toip always triggers a DNS query to avoid it
+        -- triggering only once due to a cache hit.
+        ngx.sleep(1)
+        return {{ type = client.TYPE_A, address = "1.1.1.1", class = 1, name = name, ttl = 10 } }
       end
 
       -- assert synchronisation is working
       local threads = {}
       for i=1,resolve_count do
         threads[i] = ngx.thread.spawn(function()
-          local ip = client.toip("smtp." .. TEST_DOMAIN)
+          local ip = client.toip("toip.com")
           assert.is_string(ip)
         end)
       end
@@ -1536,7 +1540,7 @@ describe("[DNS client]", function()
       threads = {}
       for i=1,resolve_count do
         threads[i] = ngx.thread.spawn(function()
-          local ip = client.individual_toip("atest." .. TEST_DOMAIN)
+          local ip = client.individual_toip("individual_toip.com")
           assert.is_string(ip)
         end)
       end
