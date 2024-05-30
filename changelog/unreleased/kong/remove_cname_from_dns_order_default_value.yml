@@ -1,3 +1,3 @@
-message: Removed `CNAME` from the default value of the `dns_order` option
-type: bugfix
+message: Removed `CNAME` from default `dns_order` option
+type: breaking_change
 scope: Configuration
