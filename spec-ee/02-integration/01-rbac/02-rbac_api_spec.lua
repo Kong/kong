@@ -1116,6 +1116,38 @@ describe("Admin API RBAC with #" .. strategy, function()
         assert.equals("new comment", role2.comment)
         assert.not_equals(role1.comment, role2.comment)
       end)
+      
+      it("shouldn't updates a specific field `is_default` of the role", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "read-only-default-false",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        res = assert(client:send {
+          method = "PATCH",
+          path = "/rbac/roles/read-only-default-false",
+          body = {
+            is_default = true,
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+
+        local body = assert.res_status(400, res)
+        body = cjson.decode(body)
+        assert.same(body.message, "schema violation (is_default: immutable field cannot be updated)")
+        assert.same(body.fields, {
+		      is_default = "immutable field cannot be updated",
+	      })
+      end)
 
       it("errors on nonexistent value", function()
         local res = assert(client:send {

@@ -22,6 +22,6 @@ return {
     { comment = { description = "Additional comment or description for the RBAC role.", type = "string" } },
     { created_at     = typedefs.auto_timestamp_s },
     { updated_at     = typedefs.auto_timestamp_s },
-    { is_default = { description = "Indicates whether the RBAC role is the default role.", type = "boolean", required = true, default = false } },
+    { is_default = { description = "Indicates whether the RBAC role is the default role.", type = "boolean", required = true, default = false, immutable = true } },
   }
 }

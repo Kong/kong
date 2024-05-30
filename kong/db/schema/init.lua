@@ -1916,7 +1916,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
         end
       end
 
-    elseif context == "update" and field.immutable then
+    elseif context == "update" and field.immutable and data[key] ~= nil then
       check_immutable_fields = true
     end
 
@@ -2098,7 +2098,8 @@ function Schema:validate_immutable_fields(input, entity)
   for key, field in self:each_field(input) do
     local compare = table_tools.is_array(input[key]) and tablex.compare_no_order or tablex.deepcompare
 
-    if field.immutable and entity[key] ~= nil and not compare(input[key], entity[key]) then
+    if field.immutable and entity[key] ~= nil and input[key] ~= nil
+        and not compare(input[key], entity[key]) then
       errors[key] = validation_errors.IMMUTABLE
     end
   end
