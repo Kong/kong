@@ -1,10 +1,15 @@
 #!/bin/bash
-set -e
-
 image=$1
 label=$2
 
 container_id=$(docker run -d --entrypoint "/bin/bash" "$image" -c "tail -f /dev/null")
+
+cleanup() {
+    docker stop "$container_id" >/dev/null 2>&1
+    docker rm "$container_id" >/dev/null 2>&1
+}
+
+trap cleanup EXIT
 
 remove_kong_command() {
     local remove_cmd=""
@@ -28,12 +33,7 @@ if ! remove_cmd=$(remove_kong_command); then
     exit 1
 fi
 
-if ! docker exec -u root "$container_id" bash -c "$remove_cmd" > /dev/null 2>&1; then
-    echo "Failed to remove Kong"
-    docker stop --time 1 "$container_id" > /dev/null 2>&1
-    docker rm "$container_id" > /dev/null 2>&1
-    exit 1
-fi
+docker exec -u root "$container_id" bash -c "$remove_cmd" >/dev/null 2>&1
 
 dir=(
   "/usr/local/kong/include"
@@ -48,9 +48,8 @@ do
   result=$?
   if [ $result -eq 0 ]; then
     echo "Failed to uninstall Kong, $d still exists"
-    break
+    exit 1
   fi
 done
 
-docker stop --time 1 "$container_id" > /dev/null 2>&1
-docker rm "$container_id" > /dev/null 2>&1
+exit 0
