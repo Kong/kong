@@ -2409,8 +2409,12 @@
 # Analytics for Konnect
 #------------------------------------------------------------------------------
 
-#analytics_flush_interval = 1      # Determine the frequency of flushing local data
-                                   # to Konnect in seconds.
+#analytics_flush_interval = 1      # Determine the maximum frequency of flushing local data
+                                   # to Konnect in seconds. Kong also flushes data once
+                                   # it has already buffered
+                                   # enough (less than `analytics_buffer_size_limit`)
+                                   # messages in the buffer even if this interval has
+                                   # not been reached.
 
 #analytics_buffer_size_limit = 100000      # Max number of messages can be buffered locally
                                            # before dropping data in case there is no

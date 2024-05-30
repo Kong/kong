@@ -5,49 +5,46 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local reports = require "kong.reports"
-local new_tab = require "table.new"
-local cjson = require "cjson.safe"
-local math = require "math"
-local request_id = require "kong.tracing.request_id"
-local is_http_module = ngx.config.subsystem == "http"
-local log = ngx.log
-local INFO = ngx.INFO
-local DEBUG = ngx.DEBUG
-local ERR = ngx.ERR
-local WARN = ngx.WARN
-local ngx = ngx
-local kong = kong
-local knode = (kong and kong.node) and kong.node or
-  require "kong.pdk.node".new()
-local timer_at = ngx.timer.at
-local re_gmatch = ngx.re.gmatch
-local ipairs = ipairs
-local assert = assert
-local _log_prefix = "[analytics] "
-local persistence_handler
-local DELAY_LOWER_BOUND = 0
-local DELAY_UPPER_BOUND = 3
-local DEFAULT_ANALYTICS_FLUSH_INTERVAL = 1
+local reports           = require "kong.reports"
+local new_tab           = require "table.new"
+local math              = require "math"
+local request_id        = require "kong.tracing.request_id"
+local Queue             = require "kong.tools.queue"
+local pb                = require "pb"
+local protoc            = require "protoc"
+local is_http_module    = ngx.config.subsystem == "http"
+local log               = ngx.log
+local INFO              = ngx.INFO
+local DEBUG             = ngx.DEBUG
+local ERR               = ngx.ERR
+local WARN              = ngx.WARN
+local ngx               = ngx
+local kong              = kong
+local knode             = (kong and kong.node) and kong.node or
+                            require "kong.pdk.node".new()
+local re_gmatch         = ngx.re.gmatch
+local ipairs            = ipairs
+local assert            = assert
+local to_hex            = require "resty.string".to_hex
+local table_insert      = table.insert
+local table_concat      = table.concat
+local string_find       = string.find
+local string_sub        = string.sub
+local Queue_can_enqueue = Queue.can_enqueue
+local Queue_enqueue     = Queue.enqueue
+
+local _log_prefix                         = "[analytics] "
+local DELAY_LOWER_BOUND                   = 0
+local DELAY_UPPER_BOUND                   = 3
 local DEFAULT_ANALYTICS_BUFFER_SIZE_LIMIT = 100000
-local KONG_VERSION = kong.version
-local to_hex = require "resty.string".to_hex
-
-local table_insert = table.insert
-local table_concat = table.concat
-local table_remove = table.remove
-local clear_tab = require "table.clear"
-local tonumber = tonumber
-local string_find = string.find
-local string_sub  = string.sub
+local DEFAULT_ANALYTICS_FLUSH_INTERVAL    = 1
+local KEEPALIVE_INTERVAL                  = 1
+local KONG_VERSION                        = kong.version
 
 
-local _M = {
-}
+local _M = {}
+local _MT = { __index = _M }
 
-local mt = { __index = _M }
-local pb = require "pb"
-local protoc = require "protoc"
 
 local p = protoc.new()
 p.include_imports = true
@@ -68,26 +65,86 @@ local function strip_query(str)
   return str
 end
 
+
+local function keepalive_handler(premature, self)
+  if premature then
+    return
+  end
+
+  if not self.ws_send_func then
+    log(INFO, _log_prefix, "no analytics websocket connection, skipping this round of keepalive")
+    return
+  end
+
+  -- Random delay to avoid thundering herd.
+  -- We should not do this at the beginning of this function
+  -- because this will block the coroutine the timer is running in
+  -- even if we don't need to send the keepalive message (no connection).
+  -- So we should do this after we check if the connection is available.
+  ngx.sleep(KEEPALIVE_INTERVAL + self:random(DELAY_LOWER_BOUND, DELAY_UPPER_BOUND))
+
+  -- DO NOT YIELD IN THIS SECTION [[
+  -- the connection might be closed after the ngx.sleep (yielding)
+  if not self.ws_send_func then
+    log(INFO, _log_prefix, "no analytics websocket connection, skipping this round of keepalive")
+    return
+  end
+
+  self.ws_send_func(EMPTY_PAYLOAD)
+  -- DO NOT YIELD IN THIS SECTION ]]
+end
+
+
+local function send_entries(self, entries)
+  -- DO NOT YIELD IN THIS SECTION [[
+  -- the connection might be closed after the yielding
+
+  if not self.ws_send_func then
+    -- let the queue know that we are not able to send the entries
+    -- so it can retry later or drop them after serveral retries
+    return false, "no connection to analytics service"
+  end
+
+  local bytes = assert(pb.encode("kong.model.analytics.Payload", {
+    data = entries,
+  }))
+  self.ws_send_func(bytes)
+  -- DO NOT YIELD IN THIS SECTION ]]
+
+  return true
+end
+
+
 function _M.new(config)
   assert(config, "conf can not be nil", 2)
 
   local self = {
-    flush_interval = config.analytics_flush_interval or DEFAULT_ANALYTICS_FLUSH_INTERVAL,
-    buffer_size_limit = config.analytics_buffer_size_limit or DEFAULT_ANALYTICS_BUFFER_SIZE_LIMIT,
-    requests_buffer = {},
-    requests_count = 0,
     cluster_endpoint = kong.configuration.cluster_telemetry_endpoint,
     path = "analytics/reqlog",
     ws_send_func = nil,
+    keepalive_timer = nil, -- the handle of the timer to do keepalive for analytics service
     running = false,
+    queue_conf = {
+      name = "konnect_analytics_queue",
+      log_tag = "konnect_analytics_queue",
+      max_batch_size = 200,
+      max_coalescing_delay = config.flush_interval or DEFAULT_ANALYTICS_FLUSH_INTERVAL,
+      max_entries = config.analytics_buffer_size_limit or DEFAULT_ANALYTICS_BUFFER_SIZE_LIMIT,
+      max_bytes = nil,
+      initial_retry_delay = 0.2,
+      max_retry_time = 60,
+      max_retry_delay = 60,
+    }
   }
 
-  return setmetatable(self, mt)
+  return setmetatable(self, _MT)
 end
+
 
 function _M:random(low, high)
   return low + math.random() * (high - low);
 end
+
 
 local function get_server_name()
   local conf = kong.configuration
@@ -103,6 +160,7 @@ local function get_server_name()
   return server_name
 end
 
+
 function _M:init_worker()
   if not kong.configuration.konnect_mode then
     log(INFO, _log_prefix, "the analytics feature is only available to Konnect users.")
@@ -113,7 +171,7 @@ function _M:init_worker()
     log(INFO, _log_prefix, "the analytics don't need to init in non HTTP module.")
     return false
   end
-  
+
   if self.initialized then
     log(WARN, _log_prefix, "tried to initialize kong.analytics (already initialized)")
     return true
@@ -152,9 +210,11 @@ function _M:init_worker()
   return true
 end
 
+
 function _M:enabled()
   return kong.configuration.konnect_mode and self.initialized and self.running
 end
+
 
 function _M:register_config_change(events_handler)
   events_handler.register(function(data, event, source, pid)
@@ -175,73 +235,51 @@ function _M:register_config_change(events_handler)
   end, "kong:configuration", "change")
 end
 
+
 function _M:start()
-
-  local when = self.flush_interval + self:random(DELAY_LOWER_BOUND, DELAY_UPPER_BOUND)
-  log(DEBUG, _log_prefix, "starting initial analytics timer in ", when, " seconds")
-
-  local ok, err = timer_at(when, persistence_handler, self)
-  if ok then
-    log(INFO, _log_prefix, "initial analytics timers started. flush interval: ",
-      self.flush_interval, " seconds. max buffer size: ", self.buffer_size_limit)
-    self.running = true
-
-  else
-    log(ERR, _log_prefix, "failed to start the initial analytics timer ", err)
+  local hdl, err = kong.timer:named_every(
+    "konnect_analytics_keepalive",
+    KEEPALIVE_INTERVAL,
+    keepalive_handler,
+    self
+  )
+  if not hdl then
+    local msg = string.format(
+      "failed to start the initial analytics timer for worker %d: %s",
+      ngx.worker.id(), err
+    )
+    log(ERR, _log_prefix, msg)
   end
+
+  log(INFO, _log_prefix, "initial analytics keepalive timer started for worker ", ngx.worker.id())
+
+  self.keepalive_timer = hdl
+  self.running = true
 end
+
 
 function _M:stop()
   log(INFO, _log_prefix, "stopping analytics")
   self.running = false
-end
 
-persistence_handler = function(premature, self)
-  if premature then
+  if not self.keepalive_timer then
+    log(INFO, _log_prefix, "no analytics keepalive timer to stop for worker ", ngx.worker.id())
     return
   end
 
-  -- do not run / re schedule timer when not running (hot reload)
-  if not self.running then
-    log(INFO, _log_prefix, "stopping timer; persistence handler")
-    return
-  end
-
-  local when = self.flush_interval + self:random(DELAY_LOWER_BOUND, DELAY_UPPER_BOUND)
-  log(DEBUG, _log_prefix, "starting recurring analytics timer in ", when, " seconds for worker ", ngx.worker.id())
-
-  local ok, err = timer_at(when, persistence_handler, self)
+  local ok, err = kong.timer:cancel(self.keepalive_timer)
   if not ok then
-    return nil, "failed to start recurring analytics timer: " .. err
+    local msg = string.format(
+      "failed to stop the analytics keepalive timer for worker %d: %s",
+      ngx.worker.id(), err
+    )
+    log(ERR, _log_prefix, msg)
   end
 
-  self:flush_data()
+  self.keepalive_timer = nil
+  log(INFO, _log_prefix, "analytics keepalive timer stopped for worker ", ngx.worker.id())
 end
 
-function _M:flush_data()
-  if not self.ws_send_func then
-    return
-  end
-
-  if self.requests_count == 0 then
-    -- send a dummy to keep the connection open.
-    self.ws_send_func(EMPTY_PAYLOAD)
-    return
-  end
-
-  if kong.configuration.analytics_debug then
-    log(INFO, _log_prefix, "analytics_debug: ", cjson.encode(self.requests_buffer))
-  end
-
-  log(DEBUG, _log_prefix, "flushing analytics request log data: ", #self.requests_buffer, ". worker id: ", ngx.worker.id())
-
-  local bytes = pb.encode("kong.model.analytics.Payload", {
-    data = self.requests_buffer,
-  })
-  self.ws_send_func(bytes)
-  clear_tab(self.requests_buffer)
-  self.requests_count = 0
-end
 
 function _M:safe_string(var)
   if var == nil then
@@ -257,6 +295,7 @@ function _M:safe_string(var)
 
   return tostring(var)
 end
+
 
 function _M:create_payload(message)
   -- declare the table here for optimization
@@ -514,6 +553,7 @@ function _M:create_payload(message)
   return payload
 end
 
+
 function _M:split(str, sep)
   if sep == nil then
     sep = "%s"
@@ -527,21 +567,31 @@ function _M:split(str, sep)
   return t
 end
 
+
 function _M:log_request()
   if not self:enabled() then
     return
   end
 
-  if self.requests_count > self.buffer_size_limit then
+  local queue_conf = self.queue_conf
+
+  if not Queue_can_enqueue(queue_conf) then
     log(WARN, _log_prefix, "Local buffer size limit reached for the analytics request log. ",
-        "The current limit is ", self.buffer_size_limit)
-    table_remove(self.requests_buffer, 1)
-    self.requests_count = self.requests_count - 1
+        "The current limit is ", queue_conf.max_entries)
+    return
   end
-  local message = kong.log.serialize()
-  local payload = self:create_payload(message)
-  table_insert(self.requests_buffer, payload)
-  self.requests_count = self.requests_count + 1
+
+  local ok, err = Queue_enqueue(
+    queue_conf,
+    send_entries,
+    self,
+    self:create_payload(kong.log.serialize())
+  )
+
+  if not ok then
+    log(ERR, _log_prefix, "failed to log request: ", err)
+  end
 end
+
 
 return _M

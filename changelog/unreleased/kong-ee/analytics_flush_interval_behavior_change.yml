@@ -1,0 +1,12 @@
+message: |
+  The behavior of the configuration option `analytics_flush_interval` has changed
+  for saving memory resources by flushing analytics messages more frequently.
+  It now controls the maximum time interval between two flushes of
+  analytics messages to the configured backend, which means that
+  if there are enough (less than `analytics_buffer_size_limit`)
+  messages have already been buffered,
+  the flush will happen before the configured interval.
+  Previously, Kong always tries to flush messages after the configured interval,
+  regardless of the number of messages in the buffer.
+type: bugfix
+scope: Configuration
