@@ -47,6 +47,7 @@ local byte = string.byte
 local request_id_get = require "kong.tracing.request_id".get
 
 
+local EMPTY_TAB  = require("pl.tablex").readonly({})
 local _PREFIX = "[kong] "
 local _DEFAULT_FORMAT = "%file_src:%line_src %message"
 local _DEFAULT_NAMESPACED_FORMAT = "%file_src:%line_src [%namespace] %message"
@@ -810,7 +811,7 @@ do
     function serialize(options)
       check_phase(PHASES_LOG)
 
-      options = options or {}
+      options = options or EMPTY_TAB
       local ongx = options.ngx or ngx
       local okong = options.kong or kong
 
@@ -867,7 +868,7 @@ do
           receive = ctx.KONG_RECEIVE_TIME or 0,
         },
         auth_type = ctx.auth_type,
-        tries = (ctx.balancer_data or {}).tries,
+        tries = (ctx.balancer_data or EMPTY_TAB).tries,
         authenticated_entity = build_authenticated_entity(ctx),
         route = cycle_aware_deep_copy(ctx.route),
         service = cycle_aware_deep_copy(ctx.service),
@@ -888,7 +889,7 @@ do
     function serialize(options)
       check_phase(PHASES_LOG)
 
-      options = options or {}
+      options = options or EMPTY_TAB
       local ongx = options.ngx or ngx
       local okong = options.kong or kong
 
@@ -913,7 +914,7 @@ do
           kong = ctx.KONG_PROXY_LATENCY or ctx.KONG_RESPONSE_LATENCY or 0,
           session = var.session_time * 1000,
         },
-        tries = (ctx.balancer_data or {}).tries,
+        tries = (ctx.balancer_data or EMPTY_TAB).tries,
         authenticated_entity = build_authenticated_entity(ctx),
         route = cycle_aware_deep_copy(ctx.route),
         service = cycle_aware_deep_copy(ctx.service),
