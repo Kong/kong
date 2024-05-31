@@ -46,7 +46,7 @@ configure_make(
             "libxml2.2.dylib",
         ],
         "//conditions:default": [
-            "libxml2.so.2.12.6",
+            "libxml2.so.2.12.7",
         ],
     }),
     targets = [
