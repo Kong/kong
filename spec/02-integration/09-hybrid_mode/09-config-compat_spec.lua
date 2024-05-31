@@ -676,9 +676,9 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         }
 
         assert.not_nil(rt.config.rename.json)
-        local expected_rt = utils.cycle_aware_deep_copy(rt)
+        local expected_rt = cycle_aware_deep_copy(rt)
         expected_rt.config.rename.json = nil
-        do_assert(utils.uuid(), "3.7.0", expected_rt)
+        do_assert(uuid(), "3.7.0", expected_rt)
 
         -- cleanup
         admin.plugins:remove({ id = rt.id })
@@ -696,7 +696,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
             }
           }
         }
-        do_assert(utils.uuid(), "3.8.0", rt)
+        do_assert(uuid(), "3.8.0", rt)
 
         -- cleanup
         admin.plugins:remove({ id = rt.id })
