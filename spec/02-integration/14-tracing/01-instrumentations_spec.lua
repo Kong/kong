@@ -546,7 +546,9 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/test",
           })
-          assert.res_status(503, r)
+          -- The DNS server will reply "(2) server failure" for the domain in A
+          -- type without dot, like "really-inexist-host"
+          assert.res_status(500, r)
   
           -- Getting back the TCP server input
           local ok, res = thread:join()

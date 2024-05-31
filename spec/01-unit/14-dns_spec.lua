@@ -99,7 +99,7 @@ describe("DNS", function()
     resolver.new = old_new
   end)
 
-  it("returns an error and 503 on a Name Error (3)", function()
+  it("returns an error and 503 on a Name Error (3) #ttt", function()
     setup_it_block()
     mock_records = {
       ["konghq.com:" .. resolver.TYPE_A] = { errcode = 3, errstr = "name error" },

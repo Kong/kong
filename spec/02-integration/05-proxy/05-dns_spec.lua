@@ -108,7 +108,7 @@ for _, strategy in helpers.each_strategy() do
 
         local service = bp.services:insert {
           name     = "tests-retries",
-          host     = "nowthisdoesnotexistatall.com",
+          host     = "nowthisdoesnotexistatall",
           path     = "/exist",
           port     = 80,
           protocol = "http"
@@ -134,7 +134,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong()
       end)
 
-      it("fails with 503", function()
+      it("fails with 500", function()
         local r   = proxy_client:send {
           method  = "GET",
           path    = "/",
@@ -142,7 +142,9 @@ for _, strategy in helpers.each_strategy() do
             host  = "retries.test"
           }
         }
-        assert.response(r).has.status(503)
+        -- The DNS server will reply "(2) server failure" for the domain in A
+        -- type without dot, like "nowthisdoesnotexistatall"
+        assert.response(r).has.status(500)
       end)
     end)
 
