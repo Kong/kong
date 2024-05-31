@@ -18,15 +18,15 @@ jobs:
           - branch: master
             version: "nightly"
             active_branch: "yes"
+          - branch: next/3.7.x.x
+            version: "3.7.x.x"
+            active_branch: "yes"
           - branch: next/3.6.x.x
             version: "3.6.x.x"
-            active_branch: "yes"
           - branch: next/3.5.x.x
             version: "3.5.x.x"
           - branch: next/3.4.x.x
             version: "3.4.x.x"
-          - branch: next/3.3.x.x
-            version: "3.3.x.x"
           - branch: next/2.8.x.x
             version: "2.8.x.x"
     runs-on: ${{ vars.RUNS_ON }}
