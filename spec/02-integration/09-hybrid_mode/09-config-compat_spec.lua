@@ -637,7 +637,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         local expected_basic_auth_prior_36 = cycle_aware_deep_copy(basic_auth)
         expected_basic_auth_prior_36.config.realm = nil
 
-        do_assert(utils.uuid(), "3.5.0", expected_basic_auth_prior_36)
+        do_assert(uuid(), "3.5.0", expected_basic_auth_prior_36)
 
         -- cleanup
         admin.plugins:remove({ id = basic_auth.id })
@@ -654,7 +654,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         local expected_key_auth_prior_37 = cycle_aware_deep_copy(key_auth)
         expected_key_auth_prior_37.config.realm = nil
 
-        do_assert(utils.uuid(), "3.6.0", expected_key_auth_prior_37)
+        do_assert(uuid(), "3.6.0", expected_key_auth_prior_37)
 
         -- cleanup
         admin.plugins:remove({ id = key_auth.id })
