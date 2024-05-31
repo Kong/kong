@@ -1512,9 +1512,10 @@ describe("[DNS client]", function()
       local callcount = 0
       query_func = function(self, original_query_func, name, options)
         callcount = callcount + 1
-        -- ensure individual_toip always triggers a DNS query to avoid it
-        -- triggering only once due to a cache hit.
-        ngx.sleep(1)
+        -- Introducing a simulated network delay ensures individual_toip always
+        -- triggers a DNS query to avoid it triggering only once due to a cache
+        -- hit. 0.1 second is enough.
+        ngx.sleep(0.1)
         return {{ type = client.TYPE_A, address = "1.1.1.1", class = 1, name = name, ttl = 10 } }
       end
 
