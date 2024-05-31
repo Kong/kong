@@ -30,8 +30,8 @@ WASMER=3.1.1
 WASMTIME=19.0.0
 V8=12.0.267.17
 
-NGX_BROTLI=a71f9312c2deb28875acc7bacfdd5695a111aa53 # master branch of Jan 23, 2024
-BROTLI=ed738e842d2fbdf2d6459e39267a633c4a9b2f5d # master branch of brotli deps submodule of Jan 23, 2024
+NGX_BROTLI=a71f9312c2deb28875acc7bacfdd5695a111aa53 # master branch of Oct 9, 2023
+BROTLI=ed738e842d2fbdf2d6459e39267a633c4a9b2f5d # 1.1.0
 
 # < EE dependencies
 
