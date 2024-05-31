@@ -3591,6 +3591,93 @@ for _, strategy in helpers.all_strategies() do
       end)
     end)
 
+    describe("FTI-5861 existing anonymous consumer should not be cached to nil", function()
+      local proxy_client, anonymous_test
+      lazy_setup(function()
+        local bp = helpers.get_db_utils(strategy, {
+          "routes",
+          "services",
+          "plugins",
+        }, {
+          PLUGIN_NAME, "key-auth"
+        })
+
+        local service = bp.services:insert {
+          path = "/anything"
+        }
+        local oidc_route = bp.routes:insert {
+          service = service,
+          paths   = { "/oidc-test" },
+        }
+        local keyauth_route = bp.routes:insert {
+          service = service,
+          paths   = { "/keyauth-test" },
+        }
+        anonymous_test = bp.consumers:insert {
+          username = "anonymous_test"
+        }
+        bp.plugins:insert {
+          route   = oidc_route,
+          name    = PLUGIN_NAME,
+          config  = {
+            issuer    = ISSUER_URL,
+            client_id = {
+              KONG_CLIENT_ID,
+            },
+            client_secret = {
+              KONG_CLIENT_SECRET,
+            },
+            auth_methods = {
+              "password"
+            },
+            anonymous = anonymous_test.username,
+          },
+        }
+        bp.plugins:insert {
+          route   = keyauth_route,
+          name    = "key-auth",
+          config  = {
+            anonymous = anonymous_test.username,
+          },
+        }
+        assert(helpers.start_kong({
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+          plugins    = "bundled," .. PLUGIN_NAME,
+        }))
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+      end)
+
+      before_each(function()
+        proxy_client = helpers.proxy_client()
+      end)
+
+      after_each(function()
+        if proxy_client then
+          proxy_client:close()
+        end
+      end)
+
+      it("key-auth plugin should pass after call oidc first", function ()
+        local res = proxy_client:get("/oidc-test", {
+          headers = {
+            Authorization = "incorrectpw",
+          },
+        })
+        assert.response(res).has.status(200)
+        local anon_consumer = assert.request(res).has.header("x-anonymous-consumer")
+        assert.is_same(anon_consumer, "true")
+        local id = assert.request(res).has.header("x-consumer-id")
+        assert.equal(id, anonymous_test.id)
+
+        res = proxy_client:get("/keyauth-test")
+        assert.response(res).has.status(200)
+      end)
+    end)
+
     for _, c in ipairs({
       {
         alg = "ES256",

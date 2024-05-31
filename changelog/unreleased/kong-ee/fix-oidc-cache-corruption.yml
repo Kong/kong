@@ -1,0 +1,3 @@
+message: "**OpenID Connect**: Fixed a bug where anonymous consumers may be cached as nil under a certain condition."
+type: bugfix
+scope: Plugin

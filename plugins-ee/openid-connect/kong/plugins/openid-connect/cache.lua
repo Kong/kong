@@ -1040,6 +1040,10 @@ function consumers.load(subject, anonymous, consumer_by, ttl, by_username_ignore
 
   local err
   for _, field_name in ipairs(field_names) do
+    if field_name == "id" and not utils.is_valid_uuid(subject) then
+      goto continue
+    end
+
     local key
 
     if field_name == "id" then
@@ -1057,6 +1061,8 @@ function consumers.load(subject, anonymous, consumer_by, ttl, by_username_ignore
     if consumer then
       return consumer
     end
+
+    ::continue::
   end
 
   return nil, err
