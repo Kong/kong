@@ -108,7 +108,7 @@ for _, strategy in helpers.each_strategy() do
 
         local service = bp.services:insert {
           name     = "tests-retries",
-          host     = "nowthisdoesnotexistatall",
+          host     = "nowthisdoesnotexistatall.com",
           path     = "/exist",
           port     = 80,
           protocol = "http"
