@@ -1242,7 +1242,7 @@ for _, strategy in helpers.each_strategy() do
         retries         = 5,
       }
 
-      local route = bp.routes:insert {
+      bp.routes:insert {
         service    = service,
         paths      = { "/hello" },
         strip_path = false,
