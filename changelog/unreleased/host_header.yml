@@ -1,0 +1,3 @@
+message: fix a bug that the `host_header` attribute of upstream entity can not be set correctly in requests to upstream as Host header when retries to upstream happen.
+scope: Core
+type: bugfix
