@@ -1,5 +1,5 @@
 local rules = require "kong.plugins.bot-detection.rules"
-local strip = require("kong.tools.utils").strip
+local strip = require("kong.tools.string").strip
 local lrucache = require "resty.lrucache"
 local kong_meta = require "kong.meta"
 

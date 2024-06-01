@@ -1,8 +1,8 @@
-local utils = require "kong.tools.utils"
 local constants = require "kong.constants"
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local lower = string.lower
+local split = require("kong.tools.string").split
 
 local REMEMBER_ROLLING_TIMEOUT = 3600
 
@@ -196,14 +196,14 @@ for _, strategy in helpers.each_strategy() do
         client:close()
 
         local cookie = assert.response(res).has.header("Set-Cookie")
-        local cookie_name = utils.split(cookie, "=")[1]
+        local cookie_name = split(cookie, "=")[1]
         assert.equal("session", cookie_name)
 
         -- e.g. ["Set-Cookie"] =
         --    "da_cookie=m1EL96jlDyQztslA4_6GI20eVuCmsfOtd6Y3lSo4BTY|15434724
         --    06|U5W4A6VXhvqvBSf4G_v0-Q|DFJMMSR1HbleOSko25kctHZ44oo; Path=/
         --    ; SameSite=Lax; Secure; HttpOnly"
-        local cookie_parts = utils.split(cookie, "; ")
+        local cookie_parts = split(cookie, "; ")
         assert.equal("SameSite=Strict", cookie_parts[3])
         assert.equal("Secure", cookie_parts[4])
         assert.equal("HttpOnly", cookie_parts[5])
@@ -231,9 +231,9 @@ for _, strategy in helpers.each_strategy() do
         client:close()
 
         cookie = assert.response(res).has.header("Set-Cookie")
-        assert.equal("da_cookie", utils.split(cookie, "=")[1])
+        assert.equal("da_cookie", split(cookie, "=")[1])
 
-        local cookie_parts = utils.split(cookie, "; ")
+        local cookie_parts = split(cookie, "; ")
         assert.equal("SameSite=Lax", cookie_parts[3])
         assert.equal(nil, cookie_parts[4])
         assert.equal(nil, cookie_parts[5])
@@ -261,14 +261,14 @@ for _, strategy in helpers.each_strategy() do
         client:close()
 
         local cookie = assert.response(res).has.header("Set-Cookie")
-        local cookie_name = utils.split(cookie[1], "=")[1]
+        local cookie_name = split(cookie[1], "=")[1]
         assert.equal("session", cookie_name)
 
         -- e.g. ["Set-Cookie"] =
         --    "session=m1EL96jlDyQztslA4_6GI20eVuCmsfOtd6Y3lSo4BTY|15434724
         --    06|U5W4A6VXhvqvBSf4G_v0-Q|DFJMMSR1HbleOSko25kctHZ44oo; Expires=Mon, 06 Jun 2022 08:30:27 GMT;
         --    Max-Age=3600; Path=/; SameSite=Lax; Secure; HttpOnly"
-        local cookie_parts = utils.split(cookie[2], "; ")
+        local cookie_parts = split(cookie[2], "; ")
         print(cookie[2])
         assert.equal("Path=/", cookie_parts[2])
         assert.equal("SameSite=Strict", cookie_parts[3])

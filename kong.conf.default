@@ -1869,7 +1869,7 @@
                                   #
                                   # ```
                                   # local template = require "resty.template"
-                                  # local split = require "kong.tools.utils".split
+                                  # local split = require "kong.tools.string".split
                                   # ```
                                   #
                                   # To run the plugin, add the modules to the

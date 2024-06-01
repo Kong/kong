@@ -9,6 +9,7 @@ local Schema = require "kong.db.schema"
 local socket_url = require "socket.url"
 local constants = require "kong.constants"
 local tools_ip = require "kong.tools.ip"
+local validate_utf8 = require("kong.tools.string").validate_utf8
 
 
 local DAO_MAX_TTL = constants.DATABASE.DAO_MAX_TTL
@@ -104,7 +105,7 @@ end
 
 
 local function validate_utf8_string(str)
-  local ok, index = utils.validate_utf8(str)
+  local ok, index = validate_utf8(str)
 
   if not ok then
     return nil, "invalid utf-8 character sequence detected at position " .. tostring(index)
