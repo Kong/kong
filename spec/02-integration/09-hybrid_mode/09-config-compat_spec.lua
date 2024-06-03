@@ -660,6 +660,48 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         admin.plugins:remove({ id = key_auth.id })
       end)
     end)
+
+    describe("compatibility test for response-transformer plugin", function()
+      it("removes `config.rename.json` before sending them to older(less than 3.8.0.0) DP nodes", function()
+        local rt = admin.plugins:insert {
+          name = "response-transformer",
+          enabled = true,
+          config = {
+            rename = {
+              -- [[ new fields 3.8.0
+              json = {"old:new"}
+              -- ]]
+            }
+          }
+        }
+
+        assert.not_nil(rt.config.rename.json)
+        local expected_rt = cycle_aware_deep_copy(rt)
+        expected_rt.config.rename.json = nil
+        do_assert(uuid(), "3.7.0", expected_rt)
+
+        -- cleanup
+        admin.plugins:remove({ id = rt.id })
+      end)
+
+      it("does not remove `config.rename.json` from DP nodes that are already compatible", function()
+        local rt = admin.plugins:insert {
+          name = "response-transformer",
+          enabled = true,
+          config = {
+            rename = {
+              -- [[ new fields 3.8.0
+              json = {"old:new"}
+              -- ]]
+            }
+          }
+        }
+        do_assert(uuid(), "3.8.0", rt)
+
+        -- cleanup
+        admin.plugins:remove({ id = rt.id })
+      end)
+    end)
   end)
 end)
 
