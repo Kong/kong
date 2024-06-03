@@ -1218,7 +1218,7 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  describe("host_header should be set correctly #h", function()
+  describe("host_header should be set correctly", function()
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
         "routes",
