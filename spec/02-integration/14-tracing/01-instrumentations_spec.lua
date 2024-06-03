@@ -558,7 +558,7 @@ for _, strategy in helpers.each_strategy() do
           local dns_spans = assert_has_spans("kong.dns", spans)
           local upstream_dns
           for _, dns_span in ipairs(dns_spans) do
-            if dns_span.attributes["dns.record.domain"] == "really-inexist-host" then
+            if dns_span.attributes["dns.record.domain"] == "really-inexist-host.test" then
               upstream_dns = dns_span
               break
             end
