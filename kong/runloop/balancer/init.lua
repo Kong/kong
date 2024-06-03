@@ -305,8 +305,8 @@ local function execute(balancer_data, ctx)
 
   if dns_cache_only then
     -- retry, so balancer is already set if there was one
-    balancer   = balancer_data.balancer
-    upstream   = balancer_data.upstream
+    balancer = balancer_data.balancer
+    upstream = balancer_data.upstream
 
   else
     -- first try, so try and find a matching balancer/upstream object
