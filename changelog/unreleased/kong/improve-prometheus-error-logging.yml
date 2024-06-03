@@ -1,4 +1,4 @@
 message: |
-  **prometheus**: Improve logging when having the inconsistent labels count.
+  **Prometheus**: Improved error logging when having inconsistent labels count.
 type: bugfix
 scope: Plugin
