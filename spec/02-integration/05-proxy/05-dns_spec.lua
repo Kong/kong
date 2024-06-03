@@ -134,7 +134,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong()
       end)
 
-      it("fails with 500", function()
+      it("fails with 503", function()
         local r   = proxy_client:send {
           method  = "GET",
           path    = "/",
