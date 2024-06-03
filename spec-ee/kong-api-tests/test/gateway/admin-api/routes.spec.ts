@@ -10,6 +10,7 @@ import {
     randomString,
     deleteGatewayService,
     wait,
+    eventually
 } from '@support';
 import axios, { AxiosResponse } from 'axios';
   
@@ -200,15 +201,17 @@ describe('@smoke @gke: Gateway Admin API: Routes', function () {
     });
 
     it('should be able to send a request to the route', async function () {
-        const resp = await axios({
-            method: 'get',
-            url: `${proxyUrl}${newPath}`,
-            validateStatus: null,
+        await eventually(async () => {
+            const resp = await axios({
+                method: 'get',
+                url: `${proxyUrl}${newPath}`,
+                validateStatus: null,
+            });
+            logResponse(resp);
+            expect(resp.status, 'Status should be 200').to.equal(200);
+            expect(resp.headers, 'Should include request id in header').to.have.property('x-kong-request-id');
+            expect(resp.headers['x-kong-request-id'], 'request id should be a string').to.be.a('string')
         });
-        logResponse(resp);
-        expect(resp.status, 'Status should be 200').to.equal(200);
-        expect(resp.headers, 'Should include request id in header').to.have.property('x-kong-request-id');
-        expect(resp.headers['x-kong-request-id'], 'request id should be a string').to.be.a('string')
     });
 
     it('should be able to send a secure request to the route', async function () {

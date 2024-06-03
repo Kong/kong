@@ -166,7 +166,7 @@ describe('@gke: Gateway Consumer Groups with RLA', function () {
 
     rtPluginId = resp.id;
 
-    await wait(waitTime); // eslint-disable-line no-restricted-syntax
+    await waitForConfigRebuild(); // add dynamic wait for test stability
   });
 
   it('should trigger RT plugin with the correct plugin config', async function () {

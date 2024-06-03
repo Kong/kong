@@ -248,7 +248,7 @@ describe('Gateway Plugins: Prometheus', function () {
 
   it(`should see the new kong_http_requests_total metric after requests to upstream`, async function () {
     // send requests to upstream to log request status_code_metrics
-    for(let i = 1; i <= 2; i++) {
+    for(let i = 1; i <= 5; i++) {
       const resp = await axios(`${proxyUrl}/${routePath}`)
       logResponse(resp);
       expect(resp.status, 'Status should be 200').to.equal(200);
@@ -263,9 +263,9 @@ describe('Gateway Plugins: Prometheus', function () {
       })
     });
 
-    // expecting at least 2 total requests as we have made 2 requests after enabling the status_code_metrics
-    // the below assertion is made dynamic, meaning if you rerun the test it will find a total greater than 2 from all values
-    const totalExists = Array.from(totalValues).some((value) => Number(value) >= 2)
+    // expecting at least 5 total requests as we have made 5 requests after enabling the status_code_metrics
+    // the below assertion is made dynamic, meaning if you rerun the test it will find a total greater than 5 from all values
+    const totalExists = Array.from(totalValues).some((value) => Number(value) >= 5)
     expect(totalExists, 'should see correct kong_http_requests_total value').to.be.true
   });
 
@@ -363,7 +363,7 @@ describe('Gateway Plugins: Prometheus', function () {
   
   it(`should see the new kong_upstream_target_health metric exported from kong`, async function () {
     // send request to upstream to log the request's upstream_target_health metric
-    for(let i = 1; i <= 2; i++) {
+    for(let i = 1; i <= 4; i++) {
       // eslint-disable-next-line no-restricted-syntax
       await wait(3000)
       const resp = await axios({

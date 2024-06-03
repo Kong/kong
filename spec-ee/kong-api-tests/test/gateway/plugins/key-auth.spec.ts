@@ -15,6 +15,8 @@ import {
   retryRequest,
   getKonnectControlPlaneId,
   eventually,
+  isLocalDatabase,
+  isGwHybrid
 } from '@support';
 import axios from 'axios';
 
@@ -23,7 +25,9 @@ describe('@smoke @koko: Gateway Plugins: key-auth', function () {
   const serviceName = 'key-auth-service';
   const consumerName = 'bill';
   const key = 'api_key';
-  const keyAuthPayload = { tags: ['tag2'], ttl: 10 };
+  // add extra delay when database is remote and gateway in hybrid mode
+  const keyTtl = isGwHybrid() && !isLocalDatabase() ? 40 : 10;
+  const keyAuthPayload = { tags: ['tag2'], ttl: keyTtl };
   const keyAuthPayloadKonnect = { tags: ['tag2']};
   const plugin = 'key-auth';
 
@@ -144,22 +148,34 @@ describe('@smoke @koko: Gateway Plugins: key-auth', function () {
     const validTokenHeaders = {
       api_key: keyId,
     };
-    const resp = await getNegative(`${proxyUrl}${path}`, validTokenHeaders);
-    logResponse(resp);
 
-    expect(resp.status, 'Status should be 200').to.equal(200);
+    const req = () => getNegative(`${proxyUrl}${path}`, validTokenHeaders);
+
+    const assertions = (resp) => {
+      logResponse(resp);
+      expect(resp.status, 'Status should be 200').to.equal(200);
+    };
+
+    await retryRequest(req, assertions);
+  
   });
 
   it('should proxy request with apiKey in query param', async function () {
     const queryUrl = `${proxyUrl}${path}?api_key=${keyId}`;
 
-    const resp = await axios({
-      method: 'get',
-      url: `${queryUrl}`,
-    });
-    logResponse(resp);
+    const req = () =>
+      axios({
+        method: 'get',
+        url: `${queryUrl}`,
+      });
 
-    expect(resp.status, 'Status should be 200').to.equal(200);
+    const assertions = (resp) => {
+      logResponse(resp);
+      expect(resp.status, 'Status should be 200').to.equal(200);
+    };
+
+    await retryRequest(req, assertions);
+
   });
 
   if(isGateway()) {

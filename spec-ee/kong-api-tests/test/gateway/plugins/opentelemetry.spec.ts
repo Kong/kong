@@ -129,6 +129,7 @@ describe('Gateway Plugins: OpenTelemetry', function () {
   it('should send proxy request traces to jaeger', async function () {
     let targetDataset: any;
     let urlObj;
+    let statusObj;
     let resp = await axios(`${proxyUrl}${paths[0]}`);
     logResponse(resp);
     await wait(jaegerWait + (isLocalDb ? 0 : 10000)); // eslint-disable-line no-restricted-syntax
@@ -147,7 +148,10 @@ describe('Gateway Plugins: OpenTelemetry', function () {
       // find the http.url object which value is 'http://localhost/jaegertest1''
       urlObj = data.spans[0].tags.find((obj) => obj.key === 'http.url');
       logDebug('urlObj.value: ' + urlObj.value);
-      if (urlObj.value.includes(paths[0])) {
+      statusObj = data.spans[0].tags.find((obj) => obj.key === 'http.status_code');
+      logDebug('urlStatus.value: ' + statusObj.value);
+
+      if (urlObj.value.includes(paths[0]) && statusObj.value === 200) {
         isFound = true;
         targetDataset = data;
         break;

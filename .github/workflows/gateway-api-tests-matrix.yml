@@ -242,6 +242,12 @@ jobs:
       - name: Add domain.test to hostnames for ACME Plugin tests
         run: echo "127.0.0.1 domain.test" | sudo tee -a /etc/hosts
 
+      - name: Setup tmate session
+        if: ${{ inputs.enable_verbose_response_logging == 'true' }}
+        uses: mxschmitt/action-tmate@v3
+        with:
+          detached: true
+
       - name: Check for FIPS image
         run: |
           if ${{ contains(env.GW_IMAGE, 'fips') }}; then FIPS_MODE=on; else FIPS_MODE=off; fi;
@@ -323,7 +329,7 @@ jobs:
           AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
           APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
           TEST_APP: gateway
-
+                   
       - name: Get Gateway Details
         if: always()
         continue-on-error: true
@@ -427,6 +433,12 @@ jobs:
       
       - name: Add domain.test to hostnames for ACME Plugin tests
         run: echo "127.0.0.1 domain.test" | sudo tee -a /etc/hosts
+
+      - name: Setup tmate session
+        if: ${{ inputs.enable_verbose_response_logging == 'true' }}
+        uses: mxschmitt/action-tmate@v3
+        with:
+          detached: true
 
       - name: Set CUSTOM_PLUGIN Variable
         run: |
@@ -598,6 +610,12 @@ jobs:
       
       - name: Add domain.test to hostnames for ACME Plugin tests
         run: echo "127.0.0.1 domain.test" | sudo tee -a /etc/hosts
+
+      - name: Setup tmate session
+        if: ${{ inputs.enable_verbose_response_logging == 'true' }}
+        uses: mxschmitt/action-tmate@v3
+        with:
+          detached: true
 
       - name: Finalize Kong Package Name
         run: |

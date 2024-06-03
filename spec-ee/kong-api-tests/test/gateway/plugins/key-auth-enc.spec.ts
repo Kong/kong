@@ -11,7 +11,10 @@ import {
   waitForConfigRebuild,
   retryRequest,
   clearAllKongResources,
-  isGateway
+  isGateway,
+  isLocalDatabase,
+  isGwHybrid,
+  eventually
 } from '@support';
 import axios from 'axios';
 
@@ -21,7 +24,9 @@ describe('@gke: Gateway Plugins: key-auth-enc', function () {
   const waitTime = 5000;
   const consumerName = 'ted';
   const key = 'apiKey';
-  const tagAndTtlPayload = { tags: ['tag1'], ttl: 10 };
+  // add extra delay when database is remote and gateway in hybrid mode
+  const keyTtl = isGwHybrid() && !isLocalDatabase() ? 35 : 10;
+  const tagAndTtlPayload = { tags: ['tag1'], ttl: keyTtl };
   const plugin = 'key-auth-enc';
 
   const url = `${getBasePath({
@@ -112,7 +117,7 @@ describe('@gke: Gateway Plugins: key-auth-enc', function () {
     expect(resp.data.ttl, 'Should contain ttl value').to.be.a('number');
 
     keyId = resp.data.key;
-    await wait(waitTime); // eslint-disable-line no-restricted-syntax
+    await waitForConfigRebuild() // add dynamic wait for test stability
   });
 
   it('key-auth-enc: should not proxy request without supplying apiKey', async function () {
@@ -139,22 +144,34 @@ describe('@gke: Gateway Plugins: key-auth-enc', function () {
     const validTokenHeaders = {
       apiKey: keyId,
     };
-    const resp = await getNegative(`${proxyUrl}${path}`, validTokenHeaders);
-    logResponse(resp);
 
-    expect(resp.status, 'Status should be 200').to.equal(200);
+    const req = () => getNegative(`${proxyUrl}${path}`, validTokenHeaders);
+
+    const assertions = (resp) => {
+      logResponse(resp);
+      expect(resp.status, 'Status should be 200').to.equal(200);
+    };
+
+    await retryRequest(req, assertions);
+
   });
 
   it('key-auth-enc: should proxy request with apiKey in query param', async function () {
     const queryUrl = `${proxyUrl}${path}?apiKey=${keyId}`;
 
-    const resp = await axios({
-      method: 'get',
-      url: `${queryUrl}`,
-    });
-    logResponse(resp);
+    const req = () =>
+      axios({
+        method: 'get',
+        url: `${queryUrl}`,
+      });
 
-    expect(resp.status, 'Status should be 200').to.equal(200);
+    const assertions = (resp) => {
+      logResponse(resp);
+      expect(resp.status, 'Status should be 200').to.equal(200);
+    };
+
+    await retryRequest(req, assertions);    
+
     await wait(waitTime); // eslint-disable-line no-restricted-syntax
   });
 
@@ -164,27 +181,30 @@ describe('@gke: Gateway Plugins: key-auth-enc', function () {
     const validTokenHeaders = {
       apiKey: keyId,
     };
-    const resp = await getNegative(`${proxyUrl}${path}`, validTokenHeaders);
-    logResponse(resp);
+    await eventually(async () => {
+      const resp = await getNegative(`${proxyUrl}${path}`, validTokenHeaders);
+      logResponse(resp);
 
-    expect(resp.status, 'Status should be 401').to.equal(401);
-    expect(resp.data.message, 'Should indicate invalid credentials').to.equal(
-      'Unauthorized'
-    );
+      expect(resp.status, 'Status should be 401').to.equal(401);
+      expect(resp.data.message, 'Should indicate invalid credentials').to.equal(
+        'Unauthorized'
+      );
+    });
   });
 
   // This test case captures:
   // https://konghq.atlassian.net/browse/FTI-4512
   it('key-auth-enc: should not proxy request with apiKey in query param after ttl expiration', async function () {
     const queryUrl = `${proxyUrl}${path}?apiKey=${keyId}`;
+    await eventually(async () => {
+      const resp = await getNegative(`${queryUrl}`);
+      logResponse(resp);
 
-    const resp = await getNegative(`${queryUrl}`);
-    logResponse(resp);
-
-    expect(resp.status, 'Status should be 401').to.equal(401);
-    expect(resp.data.message, 'Should indicate invalid credentials').to.equal(
-      'Unauthorized'
-    );
+      expect(resp.status, 'Status should be 401').to.equal(401);
+      expect(resp.data.message, 'Should indicate invalid credentials').to.equal(
+        'Unauthorized'
+      );
+    });
   });
 
   it('key-auth-enc: should patch key-auth-enc plugin to disable auth and allow requests', async function () {
