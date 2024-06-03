@@ -88,7 +88,6 @@ build = {
     ["kong.clustering.compat.checkers"] = "kong/clustering/compat/checkers.lua",
     ["kong.clustering.config_helper"] = "kong/clustering/config_helper.lua",
     ["kong.clustering.tls"] = "kong/clustering/tls.lua",
-    ["kong.clustering.services.debug"] = "kong/clustering/services/debug.lua",
 
     ["kong.clustering.rpc.callbacks"] = "kong/clustering/rpc/callbacks.lua",
     ["kong.clustering.rpc.future"] = "kong/clustering/rpc/future.lua",
@@ -98,6 +97,11 @@ build = {
     ["kong.clustering.rpc.socket"] = "kong/clustering/rpc/socket.lua",
     ["kong.clustering.rpc.utils"] = "kong/clustering/rpc/utils.lua",
     ["kong.clustering.rpc.concentrator"] = "kong/clustering/rpc/concentrator.lua",
+
+    ["kong.clustering.services.debug"] = "kong/clustering/services/debug.lua",
+    ["kong.clustering.services.sync"] = "kong/clustering/services/sync/init.lua",
+    ["kong.clustering.services.sync.hooks"] = "kong/clustering/services/sync/hooks.lua",
+    ["kong.clustering.services.sync.strategies.postgres"] = "kong/clustering/services/sync/strategies/postgres.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.postgres"] = "kong/cluster_events/strategies/postgres.lua",
@@ -289,7 +293,6 @@ build = {
     ["kong.db.strategies.postgres.plugins"] = "kong/db/strategies/postgres/plugins.lua",
     ["kong.db.strategies.off"] = "kong/db/strategies/off/init.lua",
     ["kong.db.strategies.off.connector"] = "kong/db/strategies/off/connector.lua",
-    ["kong.db.strategies.off.tags"] = "kong/db/strategies/off/tags.lua",
 
     ["kong.db.migrations.state"] = "kong/db/migrations/state.lua",
     ["kong.db.migrations.subsystems"] = "kong/db/migrations/subsystems.lua",
