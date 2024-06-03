@@ -1,8 +1,10 @@
 local helpers = require "spec.helpers"
 local shell = require "resty.shell"
+local pl_file = require "pl.file"
 
 local tcp_service_port = helpers.get_available_port()
 local tcp_proxy_port = helpers.get_available_port()
+local MOCK_PORT = helpers.get_available_port()
 local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 
 describe("Plugin: prometheus (access)", function()
@@ -515,52 +517,211 @@ local granular_metrics_set = {
 }
 
 for switch, expected_pattern in pairs(granular_metrics_set) do
-describe("Plugin: prometheus (access) granular metrics switch", function()
+  describe("Plugin: prometheus (access) granular metrics switch", function()
+    local proxy_client
+    local admin_client
+
+    local success_scrape = ""
+
+    setup(function()
+      local bp = helpers.get_db_utils()
+
+      local service = bp.services:insert {
+        name = "mock-service",
+        host = helpers.mock_upstream_host,
+        port = helpers.mock_upstream_port,
+        protocol = helpers.mock_upstream_protocol,
+      }
+
+      bp.routes:insert {
+        protocols = { "http" },
+        name = "http-route",
+        paths = { "/" },
+        methods = { "GET" },
+        service = service,
+      }
+
+      local upstream_hc_off = bp.upstreams:insert({
+        name = "mock-upstream-healthchecksoff",
+      })
+      bp.targets:insert {
+        target = helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port,
+        weight = 1000,
+        upstream = { id = upstream_hc_off.id },
+      }
+
+      bp.plugins:insert {
+        protocols = { "http", "https", "grpc", "grpcs", "tcp", "tls" },
+        name = "prometheus",
+        config = {
+          [switch] = true,
+        },
+      }
+
+      assert(helpers.start_kong {
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        plugins = "bundled, prometheus",
+        nginx_worker_processes = 1, -- due to healthcheck state flakyness and local switch of healthcheck export or not
+      })
+      proxy_client = helpers.proxy_client()
+      admin_client = helpers.admin_client()
+    end)
+
+    teardown(function()
+      if proxy_client then
+        proxy_client:close()
+      end
+      if admin_client then
+        admin_client:close()
+      end
+
+      helpers.stop_kong()
+    end)
+
+    it("expected metrics " .. expected_pattern .. " is found", function()
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/status/200",
+        headers = {
+          host = helpers.mock_upstream_host,
+          apikey = 'alice-key',
+        }
+      })
+      assert.res_status(200, res)
+
+      helpers.wait_until(function()
+        local res = assert(admin_client:send {
+          method  = "GET",
+          path    = "/metrics",
+        })
+        local body = assert.res_status(200, res)
+        assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+
+        success_scrape = body
+
+        return body:find(expected_pattern, nil, true)
+      end)
+    end)
+
+    it("unexpected metrics is not found", function()
+      for test_switch, test_expected_pattern in pairs(granular_metrics_set) do
+        if test_switch ~= switch then
+          assert.not_match(test_expected_pattern, success_scrape, nil, true)
+        end
+      end
+    end)
+
+  end)
+end
+
+describe("Plugin: prometheus (access) AI metrics", function()
   local proxy_client
   local admin_client
-
-  local success_scrape = ""
 
   setup(function()
     local bp = helpers.get_db_utils()
 
-    local service = bp.services:insert {
-      name = "mock-service",
-      host = helpers.mock_upstream_host,
-      port = helpers.mock_upstream_port,
-      protocol = helpers.mock_upstream_protocol,
+    local fixtures = {
+      http_mock = {},
     }
 
-    bp.routes:insert {
-      protocols = { "http" },
-      name = "http-route",
-      paths = { "/" },
-      methods = { "GET" },
-      service = service,
-    }
+    fixtures.http_mock.openai = [[
+      server {
+          server_name openai;
+          listen ]]..MOCK_PORT..[[;
+          
+          default_type 'application/json';
+    
+  
+          location = "/llm/v1/chat/good" {
+            content_by_lua_block {
+              local pl_file = require "pl.file"
+              local json = require("cjson.safe")
+  
+              ngx.req.read_body()
+              local body, err = ngx.req.get_body_data()
+              body, err = json.decode(body)
+  
+              local token = ngx.req.get_headers()["authorization"]
+              local token_query = ngx.req.get_uri_args()["apikey"]
+  
+              if token == "Bearer openai-key" or token_query == "openai-key" or body.apikey == "openai-key" then
+                ngx.req.read_body()
+                local body, err = ngx.req.get_body_data()
+                body, err = json.decode(body)
+                
+                if err or (body.messages == ngx.null) then
+                  ngx.status = 400
+                  ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/bad_request.json"))
+                else
+                  ngx.status = 200
+                  ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/good.json"))
+                end
+              else
+                ngx.status = 401
+                ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/unauthorized.json"))
+              end
+            }
+          }
+      }
+    ]]
 
-    local upstream_hc_off = bp.upstreams:insert({
-      name = "mock-upstream-healthchecksoff",
+    local empty_service = assert(bp.services:insert {
+      name = "empty_service",
+      host = "localhost", --helpers.mock_upstream_host,
+      port = 8080, --MOCK_PORT,
+      path = "/",
     })
-    bp.targets:insert {
-      target = helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port,
-      weight = 1000,
-      upstream = { id = upstream_hc_off.id },
+  
+    -- 200 chat good with one option
+    local chat_good = assert(bp.routes:insert {
+      service = empty_service,
+      name = "http-route",
+      protocols = { "http" },
+      strip_path = true,
+      paths = { "/" }
+    })
+
+    bp.plugins:insert {
+      name = "ai-proxy",
+      route = { id = chat_good.id },
+      config = {
+        route_type = "llm/v1/chat",
+        logging = {
+          log_payloads = false,
+          log_statistics = true,
+        },
+        auth = {
+          header_name = "Authorization",
+          header_value = "Bearer openai-key",
+        },
+        model = {
+          name = "gpt-3.5-turbo",
+          provider = "openai",
+          options = {
+            max_tokens = 256,
+            temperature = 1.0,
+            upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/chat/good",
+            input_cost = 0.01,
+            output_cost = 0.01,
+          },
+        },
+      },
     }
 
     bp.plugins:insert {
       protocols = { "http", "https", "grpc", "grpcs", "tcp", "tls" },
       name = "prometheus",
       config = {
-        [switch] = true,
+        ai_metrics = true,
+        status_code_metrics = true,
       },
     }
 
-    assert(helpers.start_kong {
-      nginx_conf = "spec/fixtures/custom_nginx.template",
-      plugins = "bundled, prometheus",
-      nginx_worker_processes = 1, -- due to healthcheck state flakyness and local switch of healthcheck export or not
-    })
+    assert(helpers.start_kong ({
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        plugins = "bundled, prometheus",
+    }, nil, nil, fixtures))
     proxy_client = helpers.proxy_client()
     admin_client = helpers.admin_client()
   end)
@@ -576,38 +737,63 @@ describe("Plugin: prometheus (access) granular metrics switch", function()
     helpers.stop_kong()
   end)
 
-  it("expected metrics " .. expected_pattern .. " is found", function()
+  it("increments the count for proxied AI requests", function()
     local res = assert(proxy_client:send {
       method  = "GET",
       path    = "/status/200",
       headers = {
         host = helpers.mock_upstream_host,
-        apikey = 'alice-key',
-      }
+        authorization = 'Bearer openai-key',
+        ["content-type"] = 'application/json',
+        accept = 'application/json',
+      },
+      body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
     })
     assert.res_status(200, res)
 
+    local body
     helpers.wait_until(function()
       local res = assert(admin_client:send {
         method  = "GET",
         path    = "/metrics",
       })
-      local body = assert.res_status(200, res)
-      assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
-
-      success_scrape = body
-
-      return body:find(expected_pattern, nil, true)
+      body = assert.res_status(200, res)
+      return res.status == 200
     end)
+
+    assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+    assert.matches('http_requests_total{service="empty_service",route="http-route",code="200",source="service",workspace="default",consumer=""} 1', body, nil, true)
+    
+    assert.matches('ai_requests_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",workspace="default"} 1', body, nil, true)
+
+    assert.matches('ai_cost_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",workspace="default"} 0.00037', body, nil, true)
+
+    assert.matches('ai_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",token_type="completion_tokens",workspace="default"} 12', body, nil, true)
+    assert.matches('ai_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",token_type="prompt_tokens",workspace="default"} 25', body, nil, true)
+    assert.matches('ai_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",token_type="total_tokens",workspace="default"} 37', body, nil, true)
   end)
 
-  it("unexpected metrics is not found", function()
-    for test_switch, test_expected_pattern in pairs(granular_metrics_set) do
-      if test_switch ~= switch then
-        assert.not_match(test_expected_pattern, success_scrape, nil, true)
-      end
-    end
-  end)
+  it("behave correctly if AI metrics are not found", function()
+    local res = assert(proxy_client:send {
+      method  = "GET",
+      path    = "/status/400",
+      headers = {
+        host = helpers.mock_upstream_host,
+      }
+    })
+    assert.res_status(400, res)
 
+    local body
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      body = assert.res_status(200, res)
+      return res.status == 200
+    end)
+
+    assert.matches('http_requests_total{service="empty_service",route="http-route",code="400",source="kong",workspace="default",consumer=""} 1', body, nil, true)
+    assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+  end)
 end)
-end

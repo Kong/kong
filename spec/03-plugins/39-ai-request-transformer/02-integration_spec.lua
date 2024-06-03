@@ -42,7 +42,9 @@ local OPENAI_FLAT_RESPONSE = {
     options = {
       max_tokens = 512,
       temperature = 0.5,
-      upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/flat"
+      upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/flat",
+      input_cost = 0.01,
+      output_cost = 0.01,
     },
   },
   auth = {
@@ -123,10 +125,15 @@ local _EXPECTED_CHAT_STATS = {
       response_model = 'gpt-3.5-turbo-0613',
     },
     usage = {
-      completion_token = 12,
-      prompt_token = 25,
+      completion_tokens = 12,
+      cost_request = 0.00037,
+      prompt_tokens = 25,
       total_tokens = 37,
     },
+    cache = {
+      cache_type = 'not_cached',
+      db_name = '',
+    }
   },
 }
 

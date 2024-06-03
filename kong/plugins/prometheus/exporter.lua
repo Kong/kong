@@ -34,6 +34,8 @@ package.loaded['prometheus_resty_counter'] = require("resty.counter")
 local kong_subsystem = ngx.config.subsystem
 local http_subsystem = kong_subsystem == "http"
 
+-- AI metrics
+local ai_request = true
 
 local function init()
   local shm = "prometheus_metrics"
@@ -145,6 +147,21 @@ local function init()
                                           {"service", "route", "direction", "workspace"})
   end
 
+  -- AI mode
+  if ai_request then
+    metrics.ai_requests = prometheus:counter("ai_requests_total",
+                                        "AI requests total per ai_provider in Kong",
+                                        {"ai_provider", "ai_model", "cache", "db_name", "workspace"})
+
+    metrics.ai_cost = prometheus:counter("ai_cost_total",
+                                        "AI requests cost per ai_provider/cache in Kong",
+                                        {"ai_provider", "ai_model", "cache", "db_name", "workspace"})
+
+    metrics.ai_tokens = prometheus:counter("ai_tokens_total",
+                                        "AI requests cost per ai_provider/cache in Kong",
+                                        {"ai_provider", "ai_model", "cache", "db_name", "token_type", "workspace"})
+  end
+
   -- Hybrid mode status
   if role == "control_plane" then
     metrics.data_plane_last_seen = prometheus:gauge("data_plane_last_seen",
@@ -207,6 +224,9 @@ local upstream_target_addr_health_table = {
   { value = 0, labels = { 0, 0, 0, "unhealthy", ngx.config.subsystem } },
   { value = 0, labels = { 0, 0, 0, "dns_error", ngx.config.subsystem } },
 }
+-- ai
+local labels_table_ai_status = {0, 0, 0, 0, 0}
+local labels_table_ai_tokens = {0, 0, 0, 0, 0, 0}
 
 local function set_healthiness_metrics(table, upstream, target, address, status, metrics_bucket)
   for i = 1, #table do
@@ -311,6 +331,52 @@ local function log(message, serialized)
     local kong_proxy_latency = serialized.latencies.kong
     if kong_proxy_latency ~= nil and kong_proxy_latency >= 0 then
       metrics.kong_latency:observe(kong_proxy_latency, labels_table_latency)
+    end
+  end
+
+  if serialized.ai_metrics then
+    for _, ai_plugin in pairs(serialized.ai_metrics) do
+      local cache_type
+      if ai_plugin.cache and ai_plugin.cache.cache_type then
+        cache_type = ai_plugin.cache.cache_type
+      end
+
+      local db_name
+      if ai_plugin.cache and ai_plugin.cache.db_name then
+        db_name = ai_plugin.cache.db_name
+      end
+
+      labels_table_ai_status[1] = ai_plugin.meta.provider_name
+      labels_table_ai_status[2] = ai_plugin.meta.request_model
+      labels_table_ai_status[3] = cache_type
+      labels_table_ai_status[4] = db_name
+      labels_table_ai_status[5] = workspace
+      metrics.ai_requests:inc(1, labels_table_ai_status)
+
+      if ai_plugin.usage.cost_request and ai_plugin.usage.cost_request > 0 then
+        metrics.ai_cost:inc(ai_plugin.usage.cost_request, labels_table_ai_status)
+      end
+
+      labels_table_ai_tokens[1] = ai_plugin.meta.provider_name
+      labels_table_ai_tokens[2] = ai_plugin.meta.request_model
+      labels_table_ai_tokens[3] = cache_type
+      labels_table_ai_tokens[4] = db_name
+      labels_table_ai_tokens[6] = workspace
+
+      if ai_plugin.usage.prompt_tokens and ai_plugin.usage.prompt_tokens > 0 then
+        labels_table_ai_tokens[5] = "prompt_tokens"
+        metrics.ai_tokens:inc(ai_plugin.usage.prompt_tokens, labels_table_ai_tokens)
+      end
+
+      if ai_plugin.usage.completion_tokens and ai_plugin.usage.completion_tokens > 0 then
+        labels_table_ai_tokens[5] = "completion_tokens"
+        metrics.ai_tokens:inc(ai_plugin.usage.completion_tokens, labels_table_ai_tokens)
+      end
+
+      if ai_plugin.usage.total_tokens and ai_plugin.usage.total_tokens > 0 then
+        labels_table_ai_tokens[5] = "total_tokens"
+        metrics.ai_tokens:inc(ai_plugin.usage.total_tokens, labels_table_ai_tokens)
+      end
     end
   end
 end
