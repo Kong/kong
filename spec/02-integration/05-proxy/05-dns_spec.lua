@@ -108,7 +108,7 @@ for _, strategy in helpers.each_strategy() do
 
         local service = bp.services:insert {
           name     = "tests-retries",
-          host     = "nowthisdoesnotexistatall",
+          host     = "nowthisdoesnotexistatall.test",
           path     = "/exist",
           port     = 80,
           protocol = "http"
@@ -142,9 +142,7 @@ for _, strategy in helpers.each_strategy() do
             host  = "retries.test"
           }
         }
-        -- The DNS server will reply "(2) server failure" for the domain in A
-        -- type without dot, like "nowthisdoesnotexistatall"
-        assert.response(r).has.status(500)
+        assert.response(r).has.status(503)
       end)
     end)
 

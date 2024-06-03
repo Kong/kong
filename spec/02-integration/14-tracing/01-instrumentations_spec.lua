@@ -524,7 +524,7 @@ for _, strategy in helpers.each_strategy() do
             -- intentionally trigger a DNS query error
             local service = bp.services:insert({
               name = "inexist-host-service",
-              host = "really-inexist-host",
+              host = "really-inexist-host.test",
               port = 80,
             })
 
@@ -546,9 +546,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/test",
           })
-          -- The DNS server will reply "(2) server failure" for the domain in A
-          -- type without dot, like "really-inexist-host"
-          assert.res_status(500, r)
+          assert.res_status(503, r)
   
           -- Getting back the TCP server input
           local ok, res = thread:join()
