@@ -795,5 +795,8 @@ describe("Plugin: prometheus (access) AI metrics", function()
 
     assert.matches('http_requests_total{service="empty_service",route="http-route",code="400",source="kong",workspace="default",consumer=""} 1', body, nil, true)
     assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+
+    assert.matches('ai_requests_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",workspace="default"} 1', body, nil, true)
+    assert.matches('ai_cost_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",workspace="default"} 0.00037', body, nil, true)
   end)
 end)
