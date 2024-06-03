@@ -10,14 +10,13 @@ local groups = require "kong.plugins.canary.groups"
 local meta = require "kong.meta"
 
 local balancer    = require "kong.runloop.balancer"
-local utils       = require "kong.tools.utils"
 local math_random = math.random
 local math_floor  = math.floor
 local math_fmod   = math.fmod
 local crc32       = ngx.crc32_short
 local time_now    = ngx.now
+local hostname_type = require("kong.tools.ip").hostname_type
 
-local hostname_type = utils.hostname_type
 local get_consumer_id = groups.get_current_consumer_id
 local NGX_DEBUG = ngx.DEBUG
 

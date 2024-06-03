@@ -17,6 +17,7 @@ local socket_url = require "socket.url"
 local constants = require "kong.constants"
 local pl_tablex = require("pl.tablex")
 local kong_table = require("kong.tools.table")
+local tools_ip = require "kong.tools.ip"
 
 
 local DAO_MAX_TTL = constants.DATABASE.DAO_MAX_TTL
@@ -29,7 +30,7 @@ local type = type
 
 
 local function validate_host(host)
-  local res, err_or_port = utils.normalize_ip(host)
+  local res, err_or_port = tools_ip.normalize_ip(host)
   if type(err_or_port) == "string" and err_or_port ~= "invalid port number" then
     return nil, "invalid value: " .. host
   end
@@ -43,13 +44,13 @@ end
 
 
 local function validate_host_with_optional_port(host)
-  local res, err_or_port = utils.normalize_ip(host)
+  local res, err_or_port = tools_ip.normalize_ip(host)
   return (res and true or nil), err_or_port
 end
 
 
 local function validate_ip(ip)
-  if utils.is_valid_ip(ip) then
+  if tools_ip.is_valid_ip(ip) then
     return true
   end
 
@@ -58,7 +59,7 @@ end
 
 
 local function validate_ip_or_cidr(ip_or_cidr)
-  if utils.is_valid_ip_or_cidr(ip_or_cidr) then
+  if tools_ip.is_valid_ip_or_cidr(ip_or_cidr) then
     return true
   end
 
@@ -67,7 +68,7 @@ end
 
 
 local function validate_ip_or_cidr_v4(ip_or_cidr_v4)
-  if utils.is_valid_ip_or_cidr_v4(ip_or_cidr_v4) then
+  if tools_ip.is_valid_ip_or_cidr_v4(ip_or_cidr_v4) then
     return true
   end
 
@@ -159,7 +160,7 @@ end
 
 
 local function validate_sni(host)
-  local res, err_or_port = utils.normalize_ip(host)
+  local res, err_or_port = tools_ip.normalize_ip(host)
   if type(err_or_port) == "string" and err_or_port ~= "invalid port number" then
     return nil, "invalid value: " .. host
   end
@@ -192,7 +193,7 @@ local function validate_wildcard_host(host)
     host = mock_host
   end
 
-  local res, err_or_port = utils.normalize_ip(host)
+  local res, err_or_port = tools_ip.normalize_ip(host)
   if type(err_or_port) == "string" and err_or_port ~= "invalid port number" then
     return nil, "invalid value: " .. host
   end

@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local constants = require("kong.constants")
-local hostname_type = require("kong.tools.utils").hostname_type
+local hostname_type = require("kong.tools.ip").hostname_type
 local normalize = require("kong.tools.uri").normalize
 
 

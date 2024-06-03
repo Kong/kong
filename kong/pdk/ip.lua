@@ -19,7 +19,7 @@
 -- See the [documentation on trusted IPs](https://docs.konghq.com/gateway/latest/reference/configuration/#trusted_ips).
 --
 -- @module kong.ip
-local utils = require "kong.tools.utils"
+local is_valid_ip_or_cidr = require("kong.tools.ip").is_valid_ip_or_cidr
 local ipmatcher = require "resty.ipmatcher"
 
 ---
@@ -54,7 +54,7 @@ local function new(self)
   for i = 1, n_ips do
     local address = ips[i]
 
-    if utils.is_valid_ip_or_cidr(address) then
+    if is_valid_ip_or_cidr(address) then
       trusted_ips[idx] = address
       idx = idx + 1
 

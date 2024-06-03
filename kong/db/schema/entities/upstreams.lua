@@ -8,6 +8,7 @@
 local Schema = require "kong.db.schema"
 local typedefs = require "kong.db.schema.typedefs"
 local utils = require "kong.tools.utils"
+local normalize_ip = require("kong.tools.ip").normalize_ip
 local null = ngx.null
 
 
@@ -22,7 +23,7 @@ end
 
 
 local validate_name = function(name)
-  local p = utils.normalize_ip(name)
+  local p = normalize_ip(name)
   if not p then
     return nil, get_name_for_error(name) .. "; must be a valid hostname"
   end
