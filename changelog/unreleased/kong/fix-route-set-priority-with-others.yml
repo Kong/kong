@@ -1,0 +1,5 @@
+message: |
+  Fixed an issue where priority field can be set in traditional mode route
+  When 'router_flavor' is configured as 'expressions'.
+type: bugfix
+scope: Core
