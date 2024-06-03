@@ -517,101 +517,101 @@ local granular_metrics_set = {
 }
 
 for switch, expected_pattern in pairs(granular_metrics_set) do
-  describe("Plugin: prometheus (access) granular metrics switch", function()
-    local proxy_client
-    local admin_client
+describe("Plugin: prometheus (access) granular metrics switch", function()
+  local proxy_client
+  local admin_client
 
-    local success_scrape = ""
+  local success_scrape = ""
 
-    setup(function()
-      local bp = helpers.get_db_utils()
+  setup(function()
+    local bp = helpers.get_db_utils()
 
-      local service = bp.services:insert {
-        name = "mock-service",
-        host = helpers.mock_upstream_host,
-        port = helpers.mock_upstream_port,
-        protocol = helpers.mock_upstream_protocol,
-      }
+    local service = bp.services:insert {
+      name = "mock-service",
+      host = helpers.mock_upstream_host,
+      port = helpers.mock_upstream_port,
+      protocol = helpers.mock_upstream_protocol,
+    }
 
-      bp.routes:insert {
-        protocols = { "http" },
-        name = "http-route",
-        paths = { "/" },
-        methods = { "GET" },
-        service = service,
-      }
+    bp.routes:insert {
+      protocols = { "http" },
+      name = "http-route",
+      paths = { "/" },
+      methods = { "GET" },
+      service = service,
+    }
 
-      local upstream_hc_off = bp.upstreams:insert({
-        name = "mock-upstream-healthchecksoff",
-      })
-      bp.targets:insert {
-        target = helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port,
-        weight = 1000,
-        upstream = { id = upstream_hc_off.id },
-      }
+    local upstream_hc_off = bp.upstreams:insert({
+      name = "mock-upstream-healthchecksoff",
+    })
+    bp.targets:insert {
+      target = helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port,
+      weight = 1000,
+      upstream = { id = upstream_hc_off.id },
+    }
 
-      bp.plugins:insert {
-        protocols = { "http", "https", "grpc", "grpcs", "tcp", "tls" },
-        name = "prometheus",
-        config = {
-          [switch] = true,
-        },
-      }
+    bp.plugins:insert {
+      protocols = { "http", "https", "grpc", "grpcs", "tcp", "tls" },
+      name = "prometheus",
+      config = {
+        [switch] = true,
+      },
+    }
 
-      assert(helpers.start_kong {
-        nginx_conf = "spec/fixtures/custom_nginx.template",
-        plugins = "bundled, prometheus",
-        nginx_worker_processes = 1, -- due to healthcheck state flakyness and local switch of healthcheck export or not
-      })
-      proxy_client = helpers.proxy_client()
-      admin_client = helpers.admin_client()
-    end)
-
-    teardown(function()
-      if proxy_client then
-        proxy_client:close()
-      end
-      if admin_client then
-        admin_client:close()
-      end
-
-      helpers.stop_kong()
-    end)
-
-    it("expected metrics " .. expected_pattern .. " is found", function()
-      local res = assert(proxy_client:send {
-        method  = "GET",
-        path    = "/status/200",
-        headers = {
-          host = helpers.mock_upstream_host,
-          apikey = 'alice-key',
-        }
-      })
-      assert.res_status(200, res)
-
-      helpers.wait_until(function()
-        local res = assert(admin_client:send {
-          method  = "GET",
-          path    = "/metrics",
-        })
-        local body = assert.res_status(200, res)
-        assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
-
-        success_scrape = body
-
-        return body:find(expected_pattern, nil, true)
-      end)
-    end)
-
-    it("unexpected metrics is not found", function()
-      for test_switch, test_expected_pattern in pairs(granular_metrics_set) do
-        if test_switch ~= switch then
-          assert.not_match(test_expected_pattern, success_scrape, nil, true)
-        end
-      end
-    end)
-
+    assert(helpers.start_kong {
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      plugins = "bundled, prometheus",
+      nginx_worker_processes = 1, -- due to healthcheck state flakyness and local switch of healthcheck export or not
+    })
+    proxy_client = helpers.proxy_client()
+    admin_client = helpers.admin_client()
   end)
+
+  teardown(function()
+    if proxy_client then
+      proxy_client:close()
+    end
+    if admin_client then
+      admin_client:close()
+    end
+
+    helpers.stop_kong()
+  end)
+
+  it("expected metrics " .. expected_pattern .. " is found", function()
+    local res = assert(proxy_client:send {
+      method  = "GET",
+      path    = "/status/200",
+      headers = {
+        host = helpers.mock_upstream_host,
+        apikey = 'alice-key',
+      }
+    })
+    assert.res_status(200, res)
+
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      local body = assert.res_status(200, res)
+      assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+
+      success_scrape = body
+
+      return body:find(expected_pattern, nil, true)
+    end)
+  end)
+
+  it("unexpected metrics is not found", function()
+    for test_switch, test_expected_pattern in pairs(granular_metrics_set) do
+      if test_switch ~= switch then
+        assert.not_match(test_expected_pattern, success_scrape, nil, true)
+      end
+    end
+  end)
+
+end)
 end
 
 describe("Plugin: prometheus (access) AI metrics", function()
