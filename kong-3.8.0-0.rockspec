@@ -38,7 +38,7 @@ dependencies = {
   "lua-messagepack == 0.5.4",
   "lua-resty-azure == 1.5.0",
   "lua-resty-aws == 1.5.0",
-  "lua-resty-openssl == 1.3.1",
+  "lua-resty-openssl == 1.4.0",
   "lua-resty-mail == 1.1.0",
   "lua-resty-redis-connector == 0.11.0",
   "kong-redis-cluster == 1.5.3",
