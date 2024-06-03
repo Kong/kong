@@ -80,6 +80,7 @@ local colon_headers_array = {
 local colon_rename_strings_array_record = {
   type = "record",
   fields = {
+    { json = colon_string_array },
     { headers = colon_headers_array }
   },
 }

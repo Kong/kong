@@ -261,7 +261,9 @@ describe("CP/DP config compat transformations #" .. strategy, function()
       local id = uuid()
       local plugin = get_plugin(id, "3.4.0", response_transformer.name, true)
       assert.is_not_nil(plugin)
-      assert.same(response_transformer.config, plugin.config)
+      local response_transformer_expected_config = cycle_aware_deep_copy(response_transformer.config)
+      response_transformer_expected_config.rename.json = nil
+      assert.same(response_transformer_expected_config, plugin.config)
       assert.equals(CLUSTERING_SYNC_STATUS.NORMAL, get_sync_status(id))
     end)
 
@@ -799,6 +801,48 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         do_assert(uuid(), "3.7.0", expected_ldap_auth_adv_prior_38)
         -- cleanup
         admin.plugins:remove({ id = ldap_auth_adv.id })
+      end)
+    end)
+
+    describe("compatibility test for response-transformer plugin", function()
+      it("removes `config.rename.json` before sending them to older(less than 3.8.0.0) DP nodes", function()
+        local rt = admin.plugins:insert {
+          name = "response-transformer",
+          enabled = true,
+          config = {
+            rename = {
+              -- [[ new fields 3.8.0
+              json = {"old:new"}
+              -- ]]
+            }
+          }
+        }
+
+        assert.not_nil(rt.config.rename.json)
+        local expected_rt = cycle_aware_deep_copy(rt)
+        expected_rt.config.rename.json = nil
+        do_assert(uuid(), "3.7.0", expected_rt)
+
+        -- cleanup
+        admin.plugins:remove({ id = rt.id })
+      end)
+
+      it("does not remove `config.rename.json` from DP nodes that are already compatible", function()
+        local rt = admin.plugins:insert {
+          name = "response-transformer",
+          enabled = true,
+          config = {
+            rename = {
+              -- [[ new fields 3.8.0
+              json = {"old:new"}
+              -- ]]
+            }
+          }
+        }
+        do_assert(uuid(), "3.8.0", rt)
+
+        -- cleanup
+        admin.plugins:remove({ id = rt.id })
       end)
     end)
   end)

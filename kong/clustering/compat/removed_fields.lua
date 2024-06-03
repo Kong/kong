@@ -340,6 +340,9 @@ return {
       "traces_endpoint",
       "logs_endpoint",
     },
+    response_transformer = {
+      "rename.json",
+    },
     -- Enterprise plugins
     openid_connect = {
       "claims_forbidden",

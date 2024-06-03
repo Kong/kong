@@ -15,6 +15,9 @@ describe("Plugin: response-transformer-advanced", function()
         remove   = {
           json   = {}
         },
+        rename   = {
+          json   = {}
+        },
         replace  = {
           json   = {}
         },
@@ -52,6 +55,9 @@ describe("Plugin: response-transformer-advanced", function()
     describe("append", function()
       local conf = {
         remove   = {
+          json   = {}
+        },
+        rename   = {
           json   = {}
         },
         replace  = {
@@ -101,6 +107,9 @@ describe("Plugin: response-transformer-advanced", function()
         remove   = {
           json   = {"p1", "p2"}
         },
+        rename   = {
+          json   = {}
+        },
         replace  = {
           json   = {}
         },
@@ -129,6 +138,9 @@ describe("Plugin: response-transformer-advanced", function()
     describe("replace", function()
       local conf = {
         remove   = {
+          json   = {}
+        },
+        rename   = {
           json   = {}
         },
         replace  = {
@@ -177,6 +189,9 @@ describe("Plugin: response-transformer-advanced", function()
       local conf = {
         remove   = {
           json   = {"p1"}
+        },
+        rename   = {
+          json   = {}
         },
         replace  = {
           json   = {"p2:v2"}
@@ -253,6 +268,9 @@ describe("Plugin: response-transformer-advanced", function()
         remove    = {
           headers = {"h1", "h2", "h3"},
           json    = {}
+        },
+        rename   = {
+          json   = {}
         },
         add       = {
           headers = {},

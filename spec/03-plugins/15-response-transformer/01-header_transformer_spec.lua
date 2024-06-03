@@ -115,10 +115,11 @@ describe("Plugin: response-transformer", function()
     describe("rename", function()
       local conf  = {
         remove    = {
-          json = {},
+          json    = {},
           headers = {}
         },
-        rename   = {
+        rename    = {
+          json    = {},
           headers = {"h1:h2", "h3:h4"}
         },
         replace   = {
@@ -302,7 +303,8 @@ describe("Plugin: response-transformer", function()
             json    = {"p1"},
             headers = {"h1", "h2"}
           },
-          rename   = {
+          rename    = {
+            json    = {},
             headers = {}
           },
           replace   = {
@@ -346,7 +348,8 @@ describe("Plugin: response-transformer", function()
             json    = {},
             headers = {}
           },
-          rename   = {
+          rename    = {
+            json    = {},
             headers = {}
           },
           replace   = {
@@ -390,7 +393,8 @@ describe("Plugin: response-transformer", function()
             json    = {},
             headers = {}
           },
-          rename   = {
+          rename    = {
+            json    = {},
             headers = {}
           },
           replace   = {
@@ -434,7 +438,8 @@ describe("Plugin: response-transformer", function()
             json    = {},
             headers = {}
           },
-          rename   = {
+          rename    = {
+            json    = {},
             headers = {}
           },
           replace   = {

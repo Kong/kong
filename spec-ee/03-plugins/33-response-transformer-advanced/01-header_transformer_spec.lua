@@ -62,7 +62,8 @@ describe("Plugin: response-transformer", function()
           headers = {"h1", "h2", "h3"}
         },
         rename   = {
-          headers = {}
+          headers = {},
+          json = {},
         },
         replace   = {
           headers = {}
@@ -93,7 +94,8 @@ describe("Plugin: response-transformer", function()
           headers = {}
         },
         rename   = {
-          headers = {"h1:h2", "h3:h4"}
+          headers = {"h1:h2", "h3:h4"},
+          json = {},
         },
         replace   = {
           json    = {},
@@ -135,7 +137,8 @@ describe("Plugin: response-transformer", function()
           headers = {}
         },
         rename   = {
-          headers = {}
+          headers = {},
+          json = {},
         },
         replace   = {
           headers = {"h1:v1", "h2:value:2"}  -- payload with colon to verify parsing
@@ -170,7 +173,8 @@ describe("Plugin: response-transformer", function()
           headers = {}
         },
         rename   = {
-          headers = {}
+          headers = {},
+          json = {},
         },
         replace   = {
           headers = {}
@@ -205,7 +209,8 @@ describe("Plugin: response-transformer", function()
           headers = {}
         },
         rename   = {
-          headers = {}
+          headers = {},
+          json = {},
         },
         replace   = {
           headers = {}
@@ -240,7 +245,8 @@ describe("Plugin: response-transformer", function()
           headers = {"h1:v1"}
         },
         rename   = {
-          headers = {}
+          headers = {},
+          json = {},
         },
         replace   = {
           headers = {"h2:v3"}
@@ -272,7 +278,8 @@ describe("Plugin: response-transformer", function()
             headers = {"h1", "h2"}
           },
           rename   = {
-            headers = {}
+            headers = {},
+            json = {},
           },
           replace   = {
             json    = {},
@@ -316,7 +323,8 @@ describe("Plugin: response-transformer", function()
             headers = {}
           },
           rename   = {
-            headers = {}
+            headers = {},
+            json = {},
           },
           replace   = {
             json    = {"p1:v1", "p2:v1"},
@@ -360,7 +368,8 @@ describe("Plugin: response-transformer", function()
             headers = {}
           },
           rename   = {
-            headers = {}
+            headers = {},
+            json = {},
           },
           replace   = {
             json    = {},
@@ -404,7 +413,8 @@ describe("Plugin: response-transformer", function()
             headers = {}
           },
           rename   = {
-            headers = {}
+            headers = {},
+            json = {},
           },
           replace   = {
             json    = {},

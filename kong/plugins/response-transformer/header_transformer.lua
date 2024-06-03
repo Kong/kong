@@ -70,6 +70,7 @@ end
 
 local function is_body_transform_set(conf)
   return not isempty(conf.add.json    ) or
+         not isempty(conf.rename.json ) or
          not isempty(conf.remove.json ) or
          not isempty(conf.replace.json) or
          not isempty(conf.append.json )
