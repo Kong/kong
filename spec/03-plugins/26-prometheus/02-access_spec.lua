@@ -737,7 +737,7 @@ describe("Plugin: prometheus (access) AI metrics", function()
     helpers.stop_kong()
   end)
 
-  it("increments the count for proxied AI requests", function()
+  it("add the count for proxied AI requests", function()
     local res = assert(proxy_client:send {
       method  = "GET",
       path    = "/status/200",
@@ -773,6 +773,42 @@ describe("Plugin: prometheus (access) AI metrics", function()
     assert.matches('ai_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",token_type="total_tokens",workspace="default"} 37', body, nil, true)
   end)
 
+  it("increments the count for proxied AI requests", function()
+    local res = assert(proxy_client:send {
+      method  = "GET",
+      path    = "/status/200",
+      headers = {
+        host = helpers.mock_upstream_host,
+        authorization = 'Bearer openai-key',
+        ["content-type"] = 'application/json',
+        accept = 'application/json',
+      },
+      body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
+    })
+    assert.res_status(200, res)
+
+    local body
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      body = assert.res_status(200, res)
+      return res.status == 200
+    end)
+
+    assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+    assert.matches('http_requests_total{service="empty_service",route="http-route",code="200",source="service",workspace="default",consumer=""} 2', body, nil, true)
+    
+    assert.matches('ai_requests_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",workspace="default"} 2', body, nil, true)
+
+    assert.matches('ai_cost_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",workspace="default"} 0.00074', body, nil, true)
+
+    assert.matches('ai_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",token_type="completion_tokens",workspace="default"} 24', body, nil, true)
+    assert.matches('ai_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",token_type="prompt_tokens",workspace="default"} 50', body, nil, true)
+    assert.matches('ai_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",token_type="total_tokens",workspace="default"} 74', body, nil, true)
+  end)
+
   it("behave correctly if AI metrics are not found", function()
     local res = assert(proxy_client:send {
       method  = "GET",
@@ -796,7 +832,7 @@ describe("Plugin: prometheus (access) AI metrics", function()
     assert.matches('http_requests_total{service="empty_service",route="http-route",code="400",source="kong",workspace="default",consumer=""} 1', body, nil, true)
     assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
 
-    assert.matches('ai_requests_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",workspace="default"} 1', body, nil, true)
-    assert.matches('ai_cost_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",workspace="default"} 0.00037', body, nil, true)
+    assert.matches('ai_requests_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",workspace="default"} 2', body, nil, true)
+    assert.matches('ai_cost_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",workspace="default"} 0.00074', body, nil, true)
   end)
 end)
