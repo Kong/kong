@@ -961,7 +961,7 @@ for _, strategy in helpers.each_strategy() do
         end, 10)
       end)
 
-      it("#testme invokes a Lambda function with empty array", function()
+      it("invokes a Lambda function with empty array", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/get",
