@@ -307,7 +307,6 @@ local function execute(balancer_data, ctx)
     -- retry, so balancer is already set if there was one
     balancer   = balancer_data.balancer
     upstream   = balancer_data.upstream
-    hash_value = balancer_data.hash_value
 
   else
     -- first try, so try and find a matching balancer/upstream object
