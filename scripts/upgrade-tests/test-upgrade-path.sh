@@ -166,7 +166,7 @@ function run_tests() {
         echo ">> Setting up tests"
         docker exec -w /upgrade-test $OLD_CONTAINER $BUSTED_ENV /kong/bin/busted -t setup $TEST
         echo ">> Running migrations"
-        kong migrations up
+        kong migrations up --force
         echo ">> Testing old_after_up,all_phases"
         docker exec -w /upgrade-test $OLD_CONTAINER $BUSTED_ENV /kong/bin/busted -t old_after_up,all_phases $TEST
         echo ">> Testing new_after_up,all_phases"
