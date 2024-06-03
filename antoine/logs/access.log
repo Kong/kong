@@ -1,2 +1,0 @@
-127.0.0.1 - - [03/Jun/2024:14:54:42 +0200] "GET /test HTTP/1.1" 404 243 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36" kong_request_id: "59c9cd40508da8549e4f3d462c393608"
-127.0.0.1 - - [03/Jun/2024:14:54:42 +0200] "GET /favicon.ico HTTP/1.1" 404 103 "http://localhost:8000/test" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36" kong_request_id: "c857981b591e0b32d3e34766e37d3459"
