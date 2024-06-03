@@ -1,0 +1,6 @@
+message: >-
+  Fixed an issue where newly registered developers were not showing up when `portal_email_verification`
+  was enabled. Kong Manager now lists these unverified developers under the "Unverified" tab on the
+  developer list page.
+type: bugfix
+githubs: [3335]

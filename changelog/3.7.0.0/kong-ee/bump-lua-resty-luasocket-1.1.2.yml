@@ -1,0 +1,3 @@
+message: |
+  Updated `lua-resty-luasocket` to `1.1.2` for fixing [luasocket#427](https://github.com/lunarmodules/luasocket/issues/427).
+type: dependency

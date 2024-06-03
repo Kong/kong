@@ -1,3 +1,0 @@
-message: |
-  Bump `kong-lua-resty-kafka` to `0.18`.
-type: dependency

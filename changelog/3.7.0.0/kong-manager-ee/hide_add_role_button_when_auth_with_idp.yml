@@ -1,0 +1,5 @@
+message: >-
+  Fixed an issue where the "Add Role" button was visible when authenticating with an IDP. It is now
+  hidden when Kong Manager is set to authenticate with an IDP.
+type: bugfix
+githubs: [3183]
