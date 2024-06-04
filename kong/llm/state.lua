@@ -1,5 +1,7 @@
 local _M = {}
 
+-- Set disable_ai_proxy_response_transform if response is just a error message or has been generated
+-- by plugin and should skip further transformation
 function _M.disable_ai_proxy_response_transform()
   kong.ctx.shared.llm_disable_ai_proxy_response_transform = true
 end
