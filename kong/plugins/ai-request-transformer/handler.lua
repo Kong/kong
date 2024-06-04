@@ -11,6 +11,7 @@ local _M = {}
 local kong_meta     = require "kong.meta"
 local fmt           = string.format
 local llm           = require("kong.llm")
+local llm_state     = require("kong.llm.state")
 --
 
 _M.PRIORITY = 777
@@ -47,7 +48,7 @@ end
 
 function _M:access(conf)
   kong.service.request.enable_buffering()
-  kong.ctx.shared.skip_response_transformer = true
+  llm_state.set_response_transformer_skipped()
 
   -- first find the configured LLM interface and driver
   local http_opts = create_http_opts(conf)

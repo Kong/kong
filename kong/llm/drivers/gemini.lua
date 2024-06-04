@@ -16,6 +16,7 @@ local string_gsub = string.gsub
 local buffer = require("string.buffer")
 local table_insert = table.insert
 local string_lower = string.lower
+local llm_state = require("kong.llm.state")
 --
 
 -- globals
@@ -345,7 +346,7 @@ end
 -- returns err or nil
 function _M.configure_request(conf, identity_interface)
   local parsed_url
-  local operation = kong.ctx.shared.ai_proxy_streaming_mode and "streamGenerateContent"
+  local operation = llm_state.is_streaming_mode() and "streamGenerateContent"
                                                              or "generateContent"
   local f_url = conf.model.options and conf.model.options.upstream_url
 

@@ -7,6 +7,7 @@
 
 
 local ewma = require "kong.plugins.ai-proxy-advanced.balancer.ewma"
+local llm_state = require "kong.llm.state"
 
 local algo = {}
 algo.__index = algo
@@ -19,11 +20,11 @@ end
 function algo:afterBalance(conf, target)
   local data_point
   if conf.tokens_count_strategy == "total-tokens" then
-    data_point = kong.ctx.shared.ai_prompt_tokens + kong.ctx.shared.ai_response_tokens
+    data_point = llm_state.get_prompt_tokens_count() + llm_state.get_response_tokens_count()
   elseif conf.tokens_count_strategy == "prompt-tokens" then
-    data_point = kong.ctx.shared.ai_prompt_tokens
+    data_point = llm_state.get_prompt_tokens_count()
   elseif conf.tokens_count_strategy == "completion-tokens" then
-    data_point = kong.ctx.shared.ai_response_tokens
+    data_point = llm_state.get_response_tokens_count()
   else
     error("unknown token strategy: " .. conf.tokens_count_strategy)
   end

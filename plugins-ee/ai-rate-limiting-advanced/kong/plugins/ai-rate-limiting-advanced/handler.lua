@@ -15,6 +15,7 @@ local meta = require "kong.meta"
 local uuid = require "kong.tools.uuid"
 local pl_tablex = require "pl.tablex"
 local pdk_private_rl = require "kong.pdk.private.rate_limiting"
+local llm_state = require "kong.llm.state"
 
 local ngx = ngx
 local null = ngx.null
@@ -100,7 +101,8 @@ local id_lookup = {
 }
 
 local function send_stats_error()
-  if not kong.ctx.shared.ai_conf_copy then
+  local aip_conf = llm_state.get_ai_proxy_conf()
+  if not aip_conf then
     return
   end
 
@@ -111,7 +113,7 @@ local function send_stats_error()
       total_tokens = 0,
     }
   }
-  ai_shared.post_request(kong.ctx.shared.ai_conf_copy, response_stats)
+  ai_shared.post_request(aip_conf, response_stats)
 end
 
 local function create_timer(config, namespace)
@@ -564,7 +566,7 @@ function NewRLHandler:header_filter(conf)
   local deny_providers = {}
   local ngx_ctx = ngx.ctx
 
-  local request_analytics = kong.ctx.shared.analytics or {}
+  local request_analytics = llm_state.get_request_analytics() or {}
   kong.ctx.plugin.ai_query_cost = {}
 
   for _, plugin_data in pairs(request_analytics) do
@@ -710,7 +712,7 @@ function NewRLHandler:log(conf)
   local plugin_id = conf.__plugin_id
   local window_type = conf.window_type
   local shm = ngx.shared[conf.dictionary_name]
-  local request_analytics = kong.ctx.shared.analytics or {}
+  local request_analytics = llm_state.get_request_analytics() or {}
   local request_analytics_log = {}
 
   for _, plugin_data in pairs(request_analytics) do

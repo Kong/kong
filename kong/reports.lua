@@ -13,6 +13,8 @@ local counter = require "resty.counter"
 local knode = (kong and kong.node) and kong.node or
               require "kong.pdk.node".new()
 
+local llm_state = require "kong.llm.state"
+
 
 local kong_dict = ngx.shared.kong
 local ngx = ngx
@@ -637,13 +639,15 @@ return {
       incr_counter(WASM_REQUEST_COUNT_KEY)
     end
 
-    if kong.ctx.shared.ai_prompt_tokens then
+    local llm_prompt_tokens_count = llm_state.get_prompt_tokens_count()
+    if llm_prompt_tokens_count then
       incr_counter(AI_REQUEST_COUNT_KEY)
-      incr_counter(AI_PROMPT_TOKENS_COUNT_KEY, kong.ctx.shared.ai_prompt_tokens)
+      incr_counter(AI_PROMPT_TOKENS_COUNT_KEY, llm_prompt_tokens_count)
     end
 
-    if kong.ctx.shared.ai_response_tokens then
-      incr_counter(AI_RESPONSE_TOKENS_COUNT_KEY, kong.ctx.shared.ai_response_tokens)
+    local llm_response_tokens_count = llm_state.get_response_tokens_count()
+    if llm_response_tokens_count then
+      incr_counter(AI_RESPONSE_TOKENS_COUNT_KEY, llm_response_tokens_count)
     end
 
     local suffix = get_current_suffix(ctx)

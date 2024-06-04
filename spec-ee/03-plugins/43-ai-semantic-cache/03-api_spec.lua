@@ -63,7 +63,8 @@ local PRE_FUNCTION_ACCESS_SCRIPT = [[
   local original_request = cjson.decode(pl_file.read("spec-ee/fixtures/ai-proxy/chat/request/good.json"))
   kong.ctx.shared.ai_proxy_original_request = original_request
 
-  kong.ctx.shared.parsed_response = pl_file.read("spec-ee/fixtures/ai-proxy/chat/response/good.json")
+  local llm_state = require "kong.llm.state"
+  llm_state.set_parsed_response(pl_file.read("spec-ee/fixtures/ai-proxy/chat/response/good.json"))
 ]]
 
 local VECTORDB_SETUP = {
@@ -139,7 +140,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         -- write & load declarative config, only if 'strategy=off'
         declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
         -- let me read test files
-        untrusted_lua_sandbox_requires = "pl.file,cjson.safe"
+        untrusted_lua_sandbox_requires = "pl.file,cjson.safe,kong.llm.state"
       }, nil, nil, fixtures))
     end)
 

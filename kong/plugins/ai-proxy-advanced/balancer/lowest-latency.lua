@@ -7,6 +7,7 @@
 
 
 local ewma = require "kong.plugins.ai-proxy-advanced.balancer.ewma"
+local llm_state = require "kong.llm.state"
 
 local algo = {}
 algo.__index = algo
@@ -19,9 +20,9 @@ end
 function algo:afterBalance(conf, target)
   local data_point
   if conf.latency_strategy == "tpot" then
-    data_point = kong.ctx.shared.ai_request_time_per_token
+    data_point = llm_state.get_metrics("tpot_latency")
   elseif conf.latency_strategy == "e2e" then
-    data_point = kong.ctx.shared.ai_request_latency
+    data_point = llm_state.get_metrics("e2e_latency")
   else
     error("unknown token strategy: " .. conf.tokens_count_strategy)
   end

@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local PLUGIN_NAME = "ai-semantic-cache"
+local llm_state = require "kong.llm.state"
 
 local samples = {
   ["llm/v1/chat"] = {
@@ -59,12 +60,18 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
   before_each(function()
     _G._TEST = true
+    _G.kong = {
+        ctx = {
+            shared = {}
+        },
+    }
     package.loaded["kong.plugins.ai-semantic-cache.handler"] = nil
     access_handler = require("kong.plugins.ai-semantic-cache.handler")
   end)
 
   after_each(function()
     _G._TEST = nil
+    _G.kong = nil
     access_handler = nil
   end)
 
@@ -95,16 +102,11 @@ describe(PLUGIN_NAME .. ": (unit)", function()
     it("test good analytics output", function()
       local this_conf, this_stats
 
-      access_handler._set_kong({
-        ctx = {
-          shared = {
-            ai_conf_copy = {
-              __key__ = "kong-ai-proxy-1",
-              model = {
-                provider = "openai",
-              },
-            },
-          },
+
+      llm_state.set_ai_proxy_conf({
+        __key__ = "kong-ai-proxy-1",
+        model = {
+          provider = "openai",
         },
       })
 
@@ -161,13 +163,8 @@ describe(PLUGIN_NAME .. ": (unit)", function()
     it("test error analytics output", function()
       local this_conf, this_stats
 
-      access_handler._set_kong({
-        ctx = {
-          shared = {
-            ai_conf_copy = "ai_conf_copy",
-          },
-        },
-      })
+      llm_state.set_ai_proxy_conf("ai_conf_copy")
+
       access_handler._set_ai_shared({
         post_request = function(conf, stats)
           this_conf = conf

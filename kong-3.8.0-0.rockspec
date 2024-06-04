@@ -931,6 +931,8 @@ build = {
     ["kong.llm.drivers.anthropic"] = "kong/llm/drivers/anthropic.lua",
     ["kong.llm.drivers.mistral"] = "kong/llm/drivers/mistral.lua",
     ["kong.llm.drivers.llama2"] = "kong/llm/drivers/llama2.lua",
+    ["kong.llm.state"] = "kong/llm/state.lua",
+
     ["kong.llm.drivers.gemini"] = "kong/llm/drivers/gemini.lua",
     ["kong.llm.drivers.bedrock"] = "kong/llm/drivers/bedrock.lua",
     ["kong.llm.vectordb"] = "kong/llm/vectordb/init.lua",
