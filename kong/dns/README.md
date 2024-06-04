@@ -45,9 +45,8 @@ Performs a series of initialization operations:
   * the path of `hosts` file.
 * `resolv_conf`: (default: `/etc/resolv.conf`)
   * the path of `resolv.conf` file, it will be parsed and passed into the underlying `lua-resty-dns` library.
-* `order`: (default: `{ "LAST", "SRV", "A", "AAAA" }`)
+* `order`: (default: `{ "SRV", "A", "AAAA" }`)
   * the order in which to resolve different record types, it's similar to the option `dns_order` in `kong.conf`.
-  * The `LAST` type means the type of the last successful lookup (for the specified name).
 * `enable_ipv6`: (default: `true`)
   * whether to support IPv6 servers when getting nameservers from `resolv.conf`.
 * options for the underlying `lua-resty-dns` library:
@@ -75,16 +74,15 @@ Performs a series of initialization operations:
 
 Performs a DNS resolution.
 
-1. First, use the key `short:<qname>:all` (or `short:<qname>:<qtype>` if `@qtype` is not `nil`) to query mlcache to see if there are any results available for quick use. If results are found, return them directly.
-2. If there are no results available for quick use in the cache, then query all keys (`<name>:<type>`) extended from this domain name.
-    1. The method for calculating extended keys is as follows:
-        1. The domain `<name>` is extended based on the `ndots`, `search`, and `domain` settings in `resolv.conf`.
-        2. The `<type>` is extended based on the `dns_order` parameter.
-    2. Loop through all keys to query them. Once a usable result is found, return it. Also, store the DNS record result in mlcache with the key `short:<name>:all`.
-        1. Use this key (`<name>:<type>`) to query mlcache. If it is not found, it triggers the L3 callback of `mlcache:get` to query the DNS server and process data that has expired but is still usable (`resolve_name_type_callback`).
-        2. Use `mlcache:peek` to check if the missed and expired key still exists in the shared dictionary. If it does, return it directly to mlcache and trigger an asynchronous background task to update the expired data (`start_stale_update_task`). The maximum time that expired data can be reused is `stale_ttl`, but the maximum TTL returned to mlcache cannot exceed 60s. This way, if the expired key is not successfully updated by the background task after 60s, it can still be reused by calling the `resolve` function from the upper layer to trigger the L3 callback to continue executing this logic and initiate another background task for updating.
-            1. For example, with a `stale_ttl` of 3600s, if the background task fails to update the record due to network issues during this time, and the upper-level application continues to call resolve to get the domain name result, it will trigger a background task to query the DNS result for that domain name every 60s, resulting in approximately 60 background tasks being triggered (3600s/60s).
-
+1. First, use the key `<qname>:all` (or `<qname>:<qtype>` if `@qtype` is not `nil`) to query mlcache to see if there are any results available. If results are found, return them directly.
+2. If there are no results available in the cache, it triggers the L3 callback of `mlcache:get` to query records from the DNS servers, details are as follows:
+    1. Check if `<qname>` has an IP address in the `hosts` file, return if found.
+    2. Check if `<qname>` is an IP address itself, return if true.
+    3. Use `mlcache:peek` to check if the expired key still exists in the shared dictionary. If it does, return it directly to mlcache and trigger an asynchronous background task to update the expired data (`start_stale_update_task`). The maximum time that expired data can be reused is `stale_ttl`, but the maximum TTL returned to mlcache cannot exceed 60s. This way, if the expired key is not successfully updated by the background task after 60s, it can still be reused by calling the `resolve` function from the upper layer to trigger the L3 callback to continue executing this logic and initiate another background task for updating.
+        1. For example, with a `stale_ttl` of 3600s, if the background task fails to update the record due to network issues during this time, and the upper-level application continues to call resolve to get the domain name result, it will trigger a background task to query the DNS result for that domain name every 60s, resulting in approximately 60 background tasks being triggered (3600s/60s).
+    4. Query the DNS server, with `<name>:<type>` combinations:
+            1. The `<name>` is extended according to settings in `resolv.conf`, such as `ndots`, `search`, and `domain`.
+            2. The `<type>` is extended based on the `dns_order` parameter.
 
 **Return value:**
 

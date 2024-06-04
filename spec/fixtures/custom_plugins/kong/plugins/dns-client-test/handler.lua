@@ -14,7 +14,7 @@ local PRE = "dns-client-test:"
 
 local function test()
   local phase = ""
-  local host = "ipc.com"
+  local host = "ipc.test"
 
   -- inject resolver.query
   require("resty.dns.resolver").query = function(self, name, opts)

@@ -41,6 +41,7 @@ function _M.dnsExpire(client, record)
   local dnscache = client.getcache()
   dnscache:delete(record[1].name .. ":" .. record[1].type)
   dnscache:delete("short:" .. record[1].name .. ":" .. "all")
+  dnscache:delete(record[1].name .. ":" .. "all")
   record.expire = gettime() - 1
 end
 
@@ -84,8 +85,8 @@ function _M.dnsSRV(client, records, staleTtl)
   -- create key, and insert it
   local key = records[1].name..":"..records[1].type
   dnscache:set(key, records, records[1].ttl + (staleTtl or 4))
-  -- insert last-succesful lookup type
-  client.getobj():_insert_last_type(records[1].name, records[1].type)
+  key = records[1].name..":all"
+  dnscache:set(key, records, records[1].ttl + (staleTtl or 4))
   return records
 end
 
@@ -126,8 +127,8 @@ function _M.dnsA(client, records, staleTtl)
   -- create key, and insert it
   local key = records[1].name..":"..records[1].type
   dnscache:set(key, records, records[1].ttl)
-  -- insert last-succesful lookup type
-  client.getobj():_insert_last_type(records[1].name, records[1].type)
+  key = records[1].name..":all"
+  dnscache:set(key, records, records[1].ttl)
   return records
 end
 
@@ -167,8 +168,8 @@ function _M.dnsAAAA(client, records, staleTtl)
   -- create key, and insert it
   local key = records[1].name..":"..records[1].type
   dnscache:set(key, records, records[1].ttl + (staleTtl or 4))
-  -- insert last-succesful lookup type
-  client.getobj():_insert_last_type(records[1].name, records[1].type)
+  key = records[1].name..":all"
+  dnscache:set(key, records, records[1].ttl + (staleTtl or 4))
   return records
 end
 

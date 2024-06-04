@@ -117,11 +117,11 @@ describe("[DNS client cache]", function()
 
     local cli, mock_records, config
     before_each(function()
-      writefile(resolv_path, "search domain.com")
+      writefile(resolv_path, "search domain.test")
       config = {
         nameservers = { "198.51.100.0" },
         ndots = 1,
-        search = { "domain.com" },
+        search = { "domain.test" },
         hosts = {},
         order = { "LAST", "SRV", "A", "AAAA" },
         error_ttl = 0.5,
@@ -137,41 +137,41 @@ describe("[DNS client cache]", function()
 
     it("are stored in cache without type", function()
       mock_records = {
-        ["myhost1.domain.com:"..resolver.TYPE_A] = {{
+        ["myhost1.domain.test:"..resolver.TYPE_A] = {{
           type = resolver.TYPE_A,
           address = "1.2.3.4",
           class = 1,
-          name = "myhost1.domain.com",
+          name = "myhost1.domain.test",
           ttl = 30,
         }}
       }
 
       local answers = cli:resolve("myhost1")
-      assert.equal(answers, cli.cache:get("short:myhost1:all"))
+      assert.equal(answers, cli.cache:get("myhost1:all"))
     end)
 
     it("are stored in cache with type", function()
       mock_records = {
-        ["myhost2.domain.com:"..resolver.TYPE_A] = {{
+        ["myhost2.domain.test:"..resolver.TYPE_A] = {{
           type = resolver.TYPE_A,
           address = "1.2.3.4",
           class = 1,
-          name = "myhost2.domain.com",
+          name = "myhost2.domain.test",
           ttl = 30,
         }}
       }
 
       local answers = cli:resolve("myhost2", { qtype = resolver.TYPE_A })
-      assert.equal(answers, cli.cache:get("short:myhost2:" .. resolver.TYPE_A))
+      assert.equal(answers, cli.cache:get("myhost2:" .. resolver.TYPE_A))
     end)
 
     it("are resolved from cache without type", function()
       mock_records = {}
-      cli.cache:set("short:myhost3:all", {ttl=30+4}, {{
+      cli.cache:set("myhost3:all", {ttl=30+4}, {{
           type = resolver.TYPE_A,
           address = "1.2.3.4",
           class = 1,
-          name = "myhost3.domain.com",
+          name = "myhost3.domain.test",
           ttl = 30,
         },
         ttl = 30,
@@ -179,17 +179,17 @@ describe("[DNS client cache]", function()
       })
 
       local answers = cli:resolve("myhost3")
-      assert.same(answers, cli.cache:get("short:myhost3:all"))
+      assert.same(answers, cli.cache:get("myhost3:all"))
     end)
 
     it("are resolved from cache with type", function()
       mock_records = {}
       local cli = client_new()
-      cli.cache:set("short:myhost4:" .. resolver.TYPE_A, {ttl=30+4}, {{
+      cli.cache:set("myhost4:" .. resolver.TYPE_A, {ttl=30+4}, {{
           type = resolver.TYPE_A,
           address = "1.2.3.4",
           class = 1,
-          name = "myhost4.domain.com",
+          name = "myhost4.domain.test",
           ttl = 30,
         },
         ttl = 30,
@@ -197,7 +197,7 @@ describe("[DNS client cache]", function()
       })
 
       local answers = cli:resolve("myhost4", { qtype = resolver.TYPE_A })
-      assert.equal(answers, cli.cache:get("short:myhost4:" .. resolver.TYPE_A))
+      assert.equal(answers, cli.cache:get("myhost4:" .. resolver.TYPE_A))
     end)
 
     it("ttl in cache is honored for short name entries", function()
@@ -205,11 +205,11 @@ describe("[DNS client cache]", function()
       -- in the short name case the same record is inserted again in the cache
       -- and the lru-ttl has to be calculated, make sure it is correct
       mock_records = {
-        ["myhost6.domain.com:"..resolver.TYPE_A] = {{
+        ["myhost6.domain.test:"..resolver.TYPE_A] = {{
           type = resolver.TYPE_A,
           address = "1.2.3.4",
           class = 1,
-          name = "myhost6.domain.com",
+          name = "myhost6.domain.test",
           ttl = ttl,
         }}
       }
@@ -217,7 +217,7 @@ describe("[DNS client cache]", function()
 
       -- resolve and check whether we got the mocked record
       local answers = cli:resolve("myhost6")
-      assert_same_answers(answers, mock_records["myhost6.domain.com:"..resolver.TYPE_A])
+      assert_same_answers(answers, mock_records["myhost6.domain.test:"..resolver.TYPE_A])
 
       -- replace our mocked list with the copy made (new table, so no equality)
       mock_records = mock_copy
@@ -226,7 +226,7 @@ describe("[DNS client cache]", function()
       sleep(ttl + config.stale_ttl / 2)
 
       -- fresh result, but it should not affect answers2
-      mock_records["myhost6.domain.com:"..resolver.TYPE_A][1].tag = "new"
+      mock_records["myhost6.domain.test:"..resolver.TYPE_A][1].tag = "new"
 
       -- resolve again, now getting same record, but stale, this will trigger
       -- background refresh query
@@ -246,7 +246,7 @@ describe("[DNS client cache]", function()
       assert.equal(answers3[1].tag, "new")
       assert.falsy(answers3.expired)
       assert.not_equal(answers, answers3)  -- must be a different record now
-      assert_same_answers(answers3, mock_records["myhost6.domain.com:"..resolver.TYPE_A])
+      assert_same_answers(answers3, mock_records["myhost6.domain.test:"..resolver.TYPE_A])
 
       -- the 'answers3' resolve call above will also trigger a new background query
       -- (because the sleep of 0.1 equals the records ttl of 0.1)
@@ -262,7 +262,7 @@ describe("[DNS client cache]", function()
         errstr = "server failure",
       }
       mock_records = {
-        ["myhost7.domain.com:"..resolver.TYPE_A] = rec,
+        ["myhost7.domain.test:"..resolver.TYPE_A] = rec,
         ["myhost7:"..resolver.TYPE_A] = rec,
       }
 
@@ -278,7 +278,7 @@ describe("[DNS client cache]", function()
         errstr = "name error",
       }
       mock_records = {
-        ["myhost8.domain.com:"..resolver.TYPE_A] = rec,
+        ["myhost8.domain.test:"..resolver.TYPE_A] = rec,
         ["myhost8:"..resolver.TYPE_A] = rec,
       }
 
@@ -295,11 +295,11 @@ describe("[DNS client cache]", function()
 
     local cli, mock_records, config
     before_each(function()
-      writefile(resolv_path, "search domain.com")
+      writefile(resolv_path, "search domain.test")
       config = {
         nameservers = { "198.51.100.0" },
         ndots = 1,
-        search = { "domain.com" },
+        search = { "domain.test" },
         hosts = {},
         resolvConf = {},
         order = { "LAST", "SRV", "A", "AAAA" },
@@ -319,18 +319,18 @@ describe("[DNS client cache]", function()
         type = resolver.TYPE_A,
         address = "1.2.3.4",
         class = 1,
-        name = "myhost9.domain.com",
+        name = "myhost9.domain.test",
         ttl = 0.1,
       }}
       mock_records = {
-        ["myhost9.domain.com:"..resolver.TYPE_A] = rec1,
+        ["myhost9.domain.test:"..resolver.TYPE_A] = rec1,
       }
 
       local answers, err = cli:resolve("myhost9", { qtype = resolver.TYPE_A })
       assert.is_nil(err)
       -- check that the cache is properly populated
       assert_same_answers(rec1, answers)
-      answers = cli.cache:get("myhost9.domain.com:" .. resolver.TYPE_A)
+      answers = cli.cache:get("myhost9:" .. resolver.TYPE_A)
       assert_same_answers(rec1, answers)
 
       sleep(0.15) -- make sure we surpass the ttl of 0.1 of the record, so it is now stale.
@@ -340,7 +340,7 @@ describe("[DNS client cache]", function()
         errstr = "server failure",
       }
       mock_records = {
-        ["myhost9.domain.com:"..resolver.TYPE_A] = rec2,
+        ["myhost9.domain.test:"..resolver.TYPE_A] = rec2,
         ["myhost9:"..resolver.TYPE_A] = rec2,
       }
       -- doing a resolve will trigger the background query now
@@ -351,7 +351,7 @@ describe("[DNS client cache]", function()
       -- background resolve is now complete, check the cache, it should still have the
       -- stale record, and it should not have been replaced by the error
       --
-      answers = cli.cache:get("myhost9.domain.com:" .. resolver.TYPE_A)
+      answers = cli.cache:get("myhost9:" .. resolver.TYPE_A)
       assert.is_true(answers.expired)
       answers.expired = nil
       assert_same_answers(rec1, answers)
@@ -362,18 +362,18 @@ describe("[DNS client cache]", function()
         type = resolver.TYPE_A,
         address = "1.2.3.4",
         class = 1,
-        name = "myhost9.domain.com",
+        name = "myhost9.domain.test",
         ttl = 0.1,
       }}
       mock_records = {
-        ["myhost9.domain.com:"..resolver.TYPE_A] = rec1,
+        ["myhost9.domain.test:"..resolver.TYPE_A] = rec1,
       }
 
       local answers, err = cli:resolve("myhost9", { qtype = resolver.TYPE_A })
       assert.is_nil(err)
       -- check that the cache is properly populated
       assert_same_answers(rec1, answers)
-      answers = cli.cache:get("myhost9.domain.com:" .. resolver.TYPE_A)
+      answers = cli.cache:get("myhost9:" .. resolver.TYPE_A)
       assert_same_answers(rec1, answers)
 
       sleep(0.15) -- make sure we surpass the ttl of 0.1 of the record, so it is now stale.
@@ -383,7 +383,7 @@ describe("[DNS client cache]", function()
         errstr = "name error",
       }
       mock_records = {
-        ["myhost9.domain.com:"..resolver.TYPE_A] = rec2,
+        ["myhost9.domain.test:"..resolver.TYPE_A] = rec2,
         ["myhost9:"..resolver.TYPE_A] = rec2,
       }
       -- doing a resolve will trigger the background query now
@@ -393,7 +393,7 @@ describe("[DNS client cache]", function()
       sleep(0.1)
       -- background resolve is now complete, check the cache, it should now have been
       -- replaced by the name error
-      assert.equal(rec2, cli.cache:get("myhost9.domain.com:" .. resolver.TYPE_A))
+      assert.equal(rec2, cli.cache:get("myhost9:" .. resolver.TYPE_A))
     end)
 
     it("empty records do not replace stale records", function()
@@ -401,23 +401,23 @@ describe("[DNS client cache]", function()
         type = resolver.TYPE_A,
         address = "1.2.3.4",
         class = 1,
-        name = "myhost9.domain.com",
+        name = "myhost9.domain.test",
         ttl = 0.1,
       }}
       mock_records = {
-        ["myhost9.domain.com:"..resolver.TYPE_A] = rec1,
+        ["myhost9.domain.test:"..resolver.TYPE_A] = rec1,
       }
 
       local answers = cli:resolve("myhost9", { qtype = resolver.TYPE_A })
       -- check that the cache is properly populated
       assert_same_answers(rec1, answers)
-      assert_same_answers(rec1, cli.cache:get("myhost9.domain.com:" .. resolver.TYPE_A))
+      assert_same_answers(rec1, cli.cache:get("myhost9:" .. resolver.TYPE_A))
 
       sleep(0.15) -- stale
       -- clear mock records, such that we return name errors instead of records
       local rec2 = {}
       mock_records = {
-        ["myhost9.domain.com:"..resolver.TYPE_A] = rec2,
+        ["myhost9.domain.test:"..resolver.TYPE_A] = rec2,
         ["myhost9:"..resolver.TYPE_A] = rec2,
       }
       -- doing a resolve will trigger the background query now
@@ -427,7 +427,7 @@ describe("[DNS client cache]", function()
       sleep(0.1)
       -- background resolve is now complete, check the cache, it should still have the
       -- stale record, and it should not have been replaced by the empty record
-      answers = cli.cache:get("myhost9.domain.com:" .. resolver.TYPE_A)
+      answers = cli.cache:get("myhost9:" .. resolver.TYPE_A)
       assert.is_true(answers.expired)  -- we get the stale record, now marked as expired
       answers.expired = nil
       assert_same_answers(rec1, answers)
@@ -440,22 +440,22 @@ describe("[DNS client cache]", function()
       -- (additional section), but then they must be stored obviously.
       local CNAME1 = {
         type = resolver.TYPE_CNAME,
-        cname = "myotherhost.domain.com",
+        cname = "myotherhost.domain.test",
         class = 1,
-        name = "myhost9.domain.com",
+        name = "myhost9.domain.test",
         ttl = 0.1,
       }
       local A2 = {
         type = resolver.TYPE_A,
         address = "1.2.3.4",
         class = 1,
-        name = "myotherhost.domain.com",
+        name = "myotherhost.domain.test",
         ttl = 60,
       }
       mock_records = setmetatable({
-        ["myhost9.domain.com:"..resolver.TYPE_CNAME] = { cycle_aware_deep_copy(CNAME1) },  -- copy to make it different
-        ["myhost9.domain.com:"..resolver.TYPE_A] = { CNAME1, A2 },  -- not there, just a reference and target
-        ["myotherhost.domain.com:"..resolver.TYPE_A] = { A2 },
+        ["myhost9.domain.test:"..resolver.TYPE_CNAME] = { cycle_aware_deep_copy(CNAME1) },  -- copy to make it different
+        ["myhost9.domain.test:"..resolver.TYPE_A] = { CNAME1, A2 },  -- not there, just a reference and target
+        ["myotherhost.domain.test:"..resolver.TYPE_A] = { A2 },
       }, {
         -- do not do lookups, return empty on anything else
         __index = function(self, key)
@@ -468,145 +468,16 @@ describe("[DNS client cache]", function()
       ngx.sleep(0.2)  -- wait for it to become stale
       assert(cli:resolve("myhost9"), { return_random = true })
 
-      local cached = cli.cache:get("myhost9.domain.com:" .. resolver.TYPE_CNAME)
+      local cached = cli.cache:get("myhost9.domain.test:" .. resolver.TYPE_CNAME)
       assert.same(nil, cached)
     end)
 
   end)
 
--- ==============================================
---    success type caching
--- ==============================================
-
-
-  describe("success types", function()
-
-    local cli
-    local mock_records
-    before_each(function()
-      writefile(resolv_path, "search domain.com")
-      local config = {
-        ndots = 1,
-        search = { "domain.com" },
-        hosts = {},
-        resolvConf = {},
-        order = { "LAST", "SRV", "A", "AAAA" },
-        error_ttl = 0.5,
-        stale_ttl = 0.5,
-        enable_ipv6 = false,
-      }
-      cli = assert(client_new(config))
-
-      query_func = function(self, original_query_func, qname, opts)
-        return mock_records[qname..":"..opts.qtype] or { errcode = 3, errstr = "name error" }
-      end
-    end)
-
-    it("in add. section are not stored for non-listed types", function()
-      mock_records = {
-        ["demo.service.consul:" .. resolver.TYPE_SRV] = {
-          {
-            type = resolver.TYPE_SRV,
-            class = 1,
-            name = "demo.service.consul",
-            target = "192.168.5.232.node.api_test.consul",
-            priority = 1,
-            weight = 1,
-            port = 32776,
-            ttl = 0,
-          }, {
-            type = resolver.TYPE_TXT,  -- Not in the `order` as configured !
-            class = 1,
-            name = "192.168.5.232.node.api_test.consul",
-            txt = "consul-network-segment=",
-            ttl = 0,
-          },
-        }
-      }
-      cli:resolve("demo.service.consul", { return_random = true })
-      local success = cli.cache:get("192.168.5.232.node.api_test.consul")
-      assert.not_equal(resolver.TYPE_TXT, success)
-    end)
-
-    it("in add. section are stored for listed types", function()
-      mock_records = {
-        ["demo.service.consul:" .. resolver.TYPE_SRV] = {
-          {
-            type = resolver.TYPE_SRV,
-            class = 1,
-            name = "demo.service.consul",
-            target = "192.168.5.232.node.api_test.consul",
-            priority = 1,
-            weight = 1,
-            port = 32776,
-            ttl = 0,
-          }, {
-            type = resolver.TYPE_A,    -- In configured `order` !
-            class = 1,
-            name = "192.168.5.232.node.api_test.consul",
-            address = "192.168.5.232",
-            ttl = 0,
-          }, {
-            type = resolver.TYPE_TXT,  -- Not in the `order` as configured !
-            class = 1,
-            name = "192.168.5.232.node.api_test.consul",
-            txt = "consul-network-segment=",
-            ttl = 0,
-          },
-        }
-      }
-      local _, err, tries = cli:resolve("demo.service.consul", { return_random = true })
-      assert.same(err, "dns server error: 3 name error")
-      assert.same({
-        {
-          "192.168.5.232.node.api_test.consul:SRV",
-          "dns server error: 3 name error",
-        },
-        {
-          "192.168.5.232.node.api_test.consul:A",
-          "dns server error: 3 name error",
-        },
-        {
-          "192.168.5.232.node.api_test.consul:AAAA",
-          "dns server error: 3 name error",
-        },
-      }, tries)
-    end)
-
-    it("are not overwritten by add. section info", function()
-      mock_records = {
-        ["demo.service.consul:" .. resolver.TYPE_SRV] = {
-          {
-            type = resolver.TYPE_SRV,
-            class = 1,
-            name = "demo.service.consul",
-            target = "192.168.5.232.node.api_test.consul",
-            priority = 1,
-            weight = 1,
-            port = 32776,
-            ttl = 0,
-          }, {
-            type = resolver.TYPE_A,    -- In configured `order` !
-            class = 1,
-            name = "another.name.consul",
-            address = "192.168.5.232",
-            ttl = 0,
-          },
-        }
-      }
-      cli:_insert_last_type("another.name.consul", resolver.TYPE_AAAA)
-      cli:resolve("demo.service.consul", { return_random = true })
-      local success = cli:_get_last_type("another.name.consul")
-      assert.equal(resolver.TYPE_AAAA, success)
-    end)
-
-  end)
-
-
   describe("hosts entries", function()
     -- hosts file names are cached for 10 years, verify that
     -- it is not overwritten with valid_ttl settings.
-    -- Regressions reported in https://github.com/Kong/kong/issues/7444
+    -- Regressions reported in https://github.test/Kong/kong/issues/7444
     local cli, mock_records, config  -- luacheck: ignore
     writefile(resolv_path, "")
     writefile(hosts_path, "127.0.0.1 myname.lan")
@@ -623,11 +494,12 @@ describe("[DNS client cache]", function()
     end)
 
     it("entries from hosts file ignores valid_ttl overrides, Kong/kong #7444", function()
+      local record = cli:resolve("myname.lan")
+      assert.equal("127.0.0.1", record[1].address)
       ngx.sleep(0.2) -- must be > valid_ttl + stale_ttl
 
-      local record = cli.cache:get("myname.lan:1")
+      record = cli.cache:get("myname.lan:all")
       assert.equal("127.0.0.1", record[1].address)
     end)
   end)
-
 end)

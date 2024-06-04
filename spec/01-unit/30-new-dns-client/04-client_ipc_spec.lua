@@ -42,15 +42,21 @@ describe("[dns-client] inter-process communication:",function()
       return count_log_lines("DNS query completed") == num_workers
     end, 5)
 
-    assert.same(count_log_lines("first:query:ipc.com"), 1)
+    assert.same(count_log_lines("first:query:ipc.test"), 1)
     assert.same(count_log_lines("first:answers:1.2.3.4"), num_workers)
 
-    assert.same(count_log_lines("stale:query:ipc.com"), 1)
+    assert.same(count_log_lines("stale:query:ipc.test"), 1)
     assert.same(count_log_lines("stale:answers:1.2.3.4."), num_workers)
 
-    assert.same(count_log_lines("stale:broadcast:ipc.com:33"), 1)
+    -- wait background tasks to finish
+    helpers.wait_until(function()
+      return count_log_lines("stale:broadcast:ipc.test:all") == 1
+    end, 5)
+
     -- "stale:lru ..." means the progress of the two workers is about the same.
     -- "first:lru ..." means one of the workers is far behind the other.
-    assert.same(count_log_lines(":lru delete:ipc.com:33"), 1)
+    helpers.wait_until(function()
+      return count_log_lines(":lru delete:ipc.test:all") == 1
+    end, 5)
   end)
 end)

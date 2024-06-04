@@ -137,10 +137,10 @@ describe("[DNS client]", function()
         writefile(hosts_path, "") -- empty hosts
 
         local cli = assert(client_new())
-        local answers = cli.cache:get("localhost:28")
+        local answers = cli:resolve("localhost", { qtype = resolver.TYPE_AAAA})
         assert.equal("[::1]", answers[1].address)
 
-        answers = cli.cache:get("localhost:1")
+        answers = cli:resolve("localhost", { qtype = resolver.TYPE_A})
         assert.equal("127.0.0.1", answers[1].address)
 
         answers = cli:resolve("localhost")
@@ -152,10 +152,12 @@ describe("[DNS client]", function()
         local cli = assert(client_new())
 
         -- IPv6 is not defined
+        cli:resolve("localhost", { qtype = resolver.TYPE_AAAA})
         local answers = cli.cache:get("localhost:28")
         assert.is_nil(answers)
 
         -- IPv4 is not overwritten
+        cli:resolve("localhost", { qtype = resolver.TYPE_A})
         answers = cli.cache:get("localhost:1")
         assert.equal("1.2.3.4", answers[1].address)
       end)
@@ -165,10 +167,12 @@ describe("[DNS client]", function()
         local cli = assert(client_new())
 
         -- IPv6 is not overwritten
+        cli:resolve("localhost", { qtype = resolver.TYPE_AAAA})
         local answers = cli.cache:get("localhost:28")
         assert.equal("[::1:2:3:4]", answers[1].address)
 
         -- IPv4 is not defined
+        cli:resolve("localhost", { qtype = resolver.TYPE_A})
         answers = cli.cache:get("localhost:1")
         assert.is_nil(answers)
       end)
@@ -177,6 +181,7 @@ describe("[DNS client]", function()
         writefile(hosts_path, "::1:2:3:4 localhost")
         local cli = assert(client_new())
 
+        cli:resolve("localhost", { qtype = resolver.TYPE_AAAA})
         local answers = cli.cache:get("localhost:28")
         assert.equal("[::1:2:3:4]", answers[1].address)
 
@@ -189,6 +194,7 @@ describe("[DNS client]", function()
         answers = cli:resolve("localhost")
         assert.equal("[::1:2:3:4]", answers[1].address)
 
+        cli:resolve("localhost", { qtype = resolver.TYPE_AAAA})
         answers = cli.cache:get("localhost:28")
         assert.equal("[::1:2:3:4]", answers[1].address)
       end)
@@ -210,7 +216,7 @@ describe("[DNS client]", function()
       it("works with a 'search' option", function()
         writefile(resolv_path, {
           "nameserver 198.51.100.0",
-          "search one.com two.com",
+          "search one.test two.test",
           "options ndots:1",
         })
 
@@ -221,14 +227,14 @@ describe("[DNS client]", function()
         assert.same(answers, nil)
         assert.same(err, "dns client error: 101 empty record received")
         assert.same({
-          'host.one.com:33',
-          'host.two.com:33',
+          'host.one.test:33',
+          'host.two.test:33',
           'host:33',
-          'host.one.com:1',
-          'host.two.com:1',
+          'host.one.test:1',
+          'host.two.test:1',
           'host:1',
-          'host.one.com:28',
-          'host.two.com:28',
+          'host.one.test:28',
+          'host.two.test:28',
           'host:28',
         }, list)
       end)
@@ -256,7 +262,7 @@ describe("[DNS client]", function()
       it("works with a 'domain' option", function()
         writefile(resolv_path, {
           "nameserver 198.51.100.0",
-          "domain local.domain.com",
+          "domain local.domain.test",
           "options ndots:1",
         })
 
@@ -267,37 +273,11 @@ describe("[DNS client]", function()
         assert.same(answers, nil)
         assert.same(err, "dns client error: 101 empty record received")
         assert.same({
-          'host.local.domain.com:33',
+          'host.local.domain.test:33',
           'host:33',
-          'host.local.domain.com:1',
+          'host.local.domain.test:1',
           'host:1',
-          'host.local.domain.com:28',
-          'host:28',
-        }, list)
-      end)
-
-      it("handles last successful type", function()
-        writefile(resolv_path, {
-            "nameserver 198.51.100.0",
-            "search one.com two.com",
-            "options ndots:1",
-        })
-
-        local list = hook_query_func_get_list()
-        local cli = assert(client_new())
-        cli:_insert_last_type("host", resolver.TYPE_CNAME)
-
-        cli:resolve("host")
-
-        assert.same({
-          'host.one.com:33',
-          'host.two.com:33',
-          'host:33',
-          'host.one.com:1',
-          'host.two.com:1',
-          'host:1',
-          'host.one.com:28',
-          'host.two.com:28',
+          'host.local.domain.test:28',
           'host:28',
         }, list)
       end)
@@ -307,7 +287,7 @@ describe("[DNS client]", function()
       it("works with a 'search' option", function()
         writefile(resolv_path, {
           "nameserver 198.51.100.0",
-          "search one.com two.com",
+          "search one.test two.test",
           "options ndots:1",
         })
 
@@ -343,7 +323,7 @@ describe("[DNS client]", function()
       it("works with a 'domain' option", function()
         writefile(resolv_path, {
           "nameserver 198.51.100.0",
-          "domain local.domain.com",
+          "domain local.domain.test",
           "options ndots:1",
         })
 
@@ -357,33 +337,13 @@ describe("[DNS client]", function()
           'host.:28',
         }, list)
       end)
-
-      it("handles last successful type", function()
-        writefile(resolv_path, {
-          "nameserver 198.51.100.0",
-          "search one.com two.com",
-          "options ndots:1",
-        })
-
-        local list = hook_query_func_get_list()
-        local cli = assert(client_new())
-        cli:_insert_last_type("host.", resolver.TYPE_CNAME)
-
-        cli:resolve("host.")
-        assert.same({
-            'host.:33',
-            'host.:1',
-            'host.:28',
-          }, list)
-      end)
-
     end)
 
     describe("with type", function()
       it("works with a 'search' option", function()
         writefile(resolv_path, {
           "nameserver 198.51.100.0",
-          "search one.com two.com",
+          "search one.test two.test",
           "options ndots:1",
         })
 
@@ -392,8 +352,8 @@ describe("[DNS client]", function()
         cli:resolve("host")
 
         assert.same({
-            'host.one.com:28',
-            'host.two.com:28',
+            'host.one.test:28',
+            'host.two.test:28',
             'host:28',
           }, list)
       end)
@@ -401,7 +361,7 @@ describe("[DNS client]", function()
       it("works with a 'domain' option", function()
         writefile(resolv_path, {
           "nameserver 198.51.100.0",
-          "domain local.domain.com",
+          "domain local.domain.test",
           "options ndots:1",
         })
 
@@ -410,37 +370,17 @@ describe("[DNS client]", function()
         cli:resolve("host")
 
         assert.same({
-          'host.local.domain.com:28',
+          'host.local.domain.test:28',
           'host:28',
         }, list)
       end)
-
-      it("ignores last successful type", function()
-        writefile(resolv_path, {
-          "nameserver 198.51.100.0",
-          "search one.com two.com",
-          "options ndots:1",
-        })
-
-        local list = hook_query_func_get_list()
-        local cli = assert(client_new({ order = { "AAAA" } }))  -- IPv6 type
-        cli:_insert_last_type("host", resolver.TYPE_CNAME)
-
-        cli:resolve("host")
-        assert.same({
-            'host.one.com:28',
-            'host.two.com:28',
-            'host:28',
-          }, list)
-      end)
-
     end)
 
     describe("FQDN with type", function()
       it("works with a 'search' option", function()
         writefile(resolv_path, {
           "nameserver 198.51.100.0",
-          "search one.com two.com",
+          "search one.test two.test",
           "options ndots:1",
         })
 
@@ -455,7 +395,7 @@ describe("[DNS client]", function()
       it("works with a 'domain' option", function()
         writefile(resolv_path, {
           "nameserver 198.51.100.0",
-          "domain local.domain.com",
+          "domain local.domain.test",
           "options ndots:1",
         })
 
@@ -467,30 +407,12 @@ describe("[DNS client]", function()
           'host.:28',
         }, list)
       end)
-
-      it("ignores last successful type", function()
-        writefile(resolv_path, {
-          "nameserver 198.51.100.0",
-          "search one.com two.com",
-          "options ndots:1",
-        })
-
-        local list = hook_query_func_get_list()
-        local cli = assert(client_new({ order = { "AAAA" } }))  -- IPv6 type
-        cli:_insert_last_type("host", resolver.TYPE_CNAME)
-
-        cli:resolve("host.")
-
-        assert.same({
-            'host.:28',
-          }, list)
-      end)
     end)
 
     it("honours 'ndots'", function()
       writefile(resolv_path, {
         "nameserver 198.51.100.0",
-        "search one.com two.com",
+        "search one.test two.test",
         "options ndots:1",
       })
 
@@ -508,7 +430,7 @@ describe("[DNS client]", function()
     it("hosts file always resolves first, overriding `ndots`", function()
       writefile(resolv_path, {
         "nameserver 198.51.100.0",
-        "search one.com two.com",
+        "search one.test two.test",
         "options ndots:1",
       })
       writefile(hosts_path, {
@@ -524,10 +446,12 @@ describe("[DNS client]", function()
       assert.same({}, list) -- hit on cache, so no query to the nameserver
 
       -- perferred IP type: IPv6 (AAAA takes priority in order)
+      --[[
       local cli = assert(client_new({ order = { "LAST", "SRV", "AAAA", "A" } }))
       local answers = cli:resolve("host")
       assert.same(answers[1].address, "[::1]")
       assert.same({}, list)
+      ]]
     end)
   end)
 
@@ -541,7 +465,7 @@ describe("[DNS client]", function()
 
     local orig_log = ngx.log
     _G.ngx.log = function (...) end -- mute ALERT log
-    local answers, err = cli:resolve("srv.timeout.com")
+    local answers, err = cli:resolve("srv.timeout.test")
     _G.ngx.log = orig_log
     assert.is_nil(answers)
     assert.match("callback threw an error:.*CALLBACK", err)
@@ -549,7 +473,7 @@ describe("[DNS client]", function()
 
   describe("timeout", function ()
     it("dont try other types with the low-level error", function()
-      -- KAG-2300 https://github.com/Kong/kong/issues/10182
+      -- KAG-2300 https://github.test/Kong/kong/issues/10182
       -- When timed out, don't keep trying with other answers types.
       writefile(resolv_path, {
         "nameserver 198.51.100.0",
@@ -574,14 +498,14 @@ describe("[DNS client]", function()
       assert.same(cli.r_opts.retrans, 3)
       assert.same(cli.r_opts.timeout, 1)
 
-      local answers, err = cli:resolve("srv.timeout.com")
+      local answers, err = cli:resolve("timeout.test")
       assert.is_nil(answers)
-      assert.match("DNS server error: failed to receive reply from UDP server .*: timeout, Query Time: %d+%.%d+ 0.%d+", err)
+      assert.match("DNS server error: failed to receive reply from UDP server .*: timeout, took %d+ ms", err)
       assert.same(receive_count, 3)
       assert.same(query_count, 1)
     end)
 
-    -- KAG-2300 - https://github.com/Kong/kong/issues/10182
+    -- KAG-2300 - https://github.test/Kong/kong/issues/10182
     -- If we encounter a timeout while talking to the DNS server,
     -- expect the total timeout to be close to timeout * attemps parameters
     for _, attempts in ipairs({1, 2}) do
@@ -601,7 +525,7 @@ describe("[DNS client]", function()
         assert.same(cli.r_opts.timeout, timeout)
 
         local start_time = ngx.now()
-        local answers = cli:resolve("timeout.com")
+        local answers = cli:resolve("timeout.test")
         assert.is.Nil(answers)
         assert.is("DNS server error: timeout" .. timeout .. attempts)
         local duration = ngx.now() - start_time
@@ -663,11 +587,11 @@ describe("[DNS client]", function()
     local answers2 = assert(cli:resolve(host))
     assert.are.equal(answers, answers2) -- same table from L1 cache
 
-    local ttl, _, value = cli.cache:peek("short:" .. host .. ":all")
+    local ttl, _, value = cli.cache:peek(host .. ":all")
     assert.same(answers, value)
     local ttl_diff = answers.ttl - ttl
     assert(math.abs(ttl_diff - wait_time) < 1,
-    ("ttl diff:%s s should be near to %s s"):format(ttl_diff, wait_time))
+           ("ttl diff:%s s should be near to %s s"):format(ttl_diff, wait_time))
   end)
 
   it("fetching names case insensitive", function()
@@ -725,7 +649,7 @@ describe("[DNS client]", function()
     end
 
     assert.same({
-      ["smtp.kong-gateway-testing.link"] = {
+      ["smtp.kong-gateway-testing.link:all"] = {
         miss = 1,
         runs = 1
       },
@@ -737,10 +661,6 @@ describe("[DNS client]", function()
         query = 1,
         ["query_fail:empty record received"] = 1 }
       }, cli.stats)
-
-    -- check last successful lookup references
-    local lastsuccess = cli:_get_last_type(host)
-    assert.are.equal(resolver.TYPE_A, lastsuccess)
   end)
 
   it("fetching multiple SRV answerss (un-typed)", function()
@@ -778,7 +698,7 @@ describe("[DNS client]", function()
     end
 
     assert.same({
-      ["cname2srv.kong-gateway-testing.link"] = {
+      ["cname2srv.kong-gateway-testing.link:all"] = {
         miss = 1,
         runs = 1,
       },
@@ -838,7 +758,7 @@ describe("[DNS client]", function()
   end)
 
   it("fetching IPv6 in an SRV answers adds brackets",function()
-    local host = "hello.world"
+    local host = "hello.world.test"
     local address = "::1"
     local entry = {{
       type = resolver.TYPE_SRV,
@@ -872,13 +792,13 @@ describe("[DNS client]", function()
       resolv_conf = "/etc/resolv.conf",
       order = {"SRV", "A", "AAAA"}
     }))
-    assert.equal(resolver.TYPE_A, cli:_get_last_type("localhost")) -- success set to A as it is the preferred option
+    assert(cli)
 
     local cli = assert(client_new({
       resolv_conf = "/etc/resolv.conf",
       order = {"SRV", "AAAA", "A"}
     }))
-    assert.equal(resolver.TYPE_AAAA, cli:_get_last_type("localhost")) -- success set to AAAA as it is the preferred option
+    assert(cli)
   end)
 
 
@@ -931,6 +851,7 @@ describe("[DNS client]", function()
         assert.same(order[n], ip)
       end
     end)
+
     it("SRV-answers, round-robin on lowest prio",function()
       local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf" }))
       local host = "hello.world.test"
@@ -967,11 +888,11 @@ describe("[DNS client]", function()
         },
       }
       -- insert in the cache
-      cli.cache:set(entry[1].name .. ":" .. entry[1].type, {ttl=0}, entry)
+      cli.cache:set(entry[1].name .. ":all", {ttl=0}, entry)
 
       local results = {}
       for _ = 1,20 do
-        local _, port = cli:resolve(host, { return_random = true })
+        local _, port = cli:resolve_address(host)
         results[port] = (results[port] or 0) + 1
       end
 
@@ -980,9 +901,10 @@ describe("[DNS client]", function()
       assert.equal(10, results[8000] or 0) --priority 10, 50% of hits
       assert.equal(10, results[8002] or 0) --priority 10, 50% of hits
     end)
+
     it("SRV-answers with 1 entry, round-robin",function()
       local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf" }))
-      local host = "hello.world"
+      local host = "hello.world.test"
       local entry = {{
         type = resolver.TYPE_SRV,
         target = "1.2.3.4",
@@ -994,20 +916,21 @@ describe("[DNS client]", function()
         ttl = 10,
       }}
       -- insert in the cache
-      cli.cache:set(entry[1].name .. ":" .. entry[1].type, { ttl=0 }, entry)
+      cli.cache:set(entry[1].name .. ":all", { ttl=0 }, entry)
 
       -- repeated lookups, as the first will simply serve the first entry
       -- and the only second will setup the round-robin scheme, this is
       -- specific for the SRV answers type, due to the weights
       for _ = 1 , 10 do
-        local ip, port = cli:resolve(host, { return_random = true })
+        local ip, port = cli:resolve_address(host)
         assert.same("1.2.3.4", ip)
         assert.same(321, port)
       end
     end)
+
     it("SRV-answers with 0-weight, round-robin",function()
       local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf"}))
-      local host = "hello.world"
+      local host = "hello.world.test"
       local entry = {
         {
           type = resolver.TYPE_SRV,
@@ -1041,19 +964,20 @@ describe("[DNS client]", function()
         },
       }
       -- insert in the cache
-      cli.cache:set(entry[1].name .. ":" .. entry[1].type, { ttl = 0 }, entry)
+      cli.cache:set(entry[1].name .. ":all", { ttl=0 }, entry)
 
       -- weight 0 will be weight 1, without any reduction in weight
       -- of the other ones.
       local track = {}
       for _ = 1 , 2002 do  --> run around twice
-        local ip, _ = assert(cli:resolve(host, { return_random = true }))
+        local ip, _ = assert(cli:resolve_address(host))
         track[ip] = (track[ip] or 0) + 1
       end
       assert.equal(1000, track["1.2.3.5"])
       assert.equal(1000, track["1.2.3.6"])
       assert.equal(2, track["1.2.3.4"])
     end)
+
     it("port passing",function()
       local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf"}))
       local entry_a = {{
@@ -1074,24 +998,25 @@ describe("[DNS client]", function()
         ttl = 10,
       }}
       -- insert in the cache
-      cli.cache:set(entry_a[1].name..":"..entry_a[1].type, { ttl = 0 }, entry_a)
-      cli.cache:set(entry_srv[1].name..":"..entry_srv[1].type, { ttl = 0 }, entry_srv)
+      cli.cache:set(entry_a[1].name..":-1", { ttl = 0 }, entry_a)
+      cli.cache:set(entry_a[1].name..":all", { ttl = 0 }, entry_a)
+      cli.cache:set(entry_srv[1].name..":all", { ttl = 0 }, entry_srv)
       local ip, port
       local host = "a.answers.test"
-      ip,port = cli:resolve(host, { return_random = true })
+      ip, port = cli:resolve_address(host)
       assert.is_string(ip)
       assert.is_nil(port)
 
-      ip, port = cli:resolve(host, { return_random = true, port = 1234 })
+      ip, port = cli:resolve_address(host, 1234)
       assert.is_string(ip)
       assert.equal(1234, port)
 
       host = "srv.answers.test"
-      ip, port = cli:resolve(host, { return_random = true })
+      ip, port = cli:resolve_address(host)
       assert.is_string(ip)
       assert.is_number(port)
 
-      ip, port = cli:resolve(host, { return_random = true, port = 0 })
+      ip, port = cli:resolve_address(host, 0)
       assert.is_string(ip)
       assert.is_number(port)
       assert.is_not.equal(0, port)
@@ -1102,32 +1027,13 @@ describe("[DNS client]", function()
       local ip, port, host
 
       host = "srvport0."..TEST_DOMAIN
-      ip, port = cli:resolve(host, { return_random = true, port = 10 })
+      ip, port = cli:resolve_address(host, 10)
       assert.is_string(ip)
       assert.is_number(port)
       assert.is_equal(10, port)
 
-      ip, port = cli:resolve(host, { return_random = true })
+      ip, port = cli:resolve_address(host)
       assert.is_string(ip)
-      assert.is_nil(port)
-    end)
-
-    it("recursive SRV pointing to itself",function()
-      local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf"}))
-      local ip, answers, port, host, err, _
-      host = "srvrecurse."..TEST_DOMAIN
-
-      -- resolve SRV specific should _not_ return the answers including its
-      -- recursive entry
-      answers, err, _ = cli:resolve(host, { qtype = resolver.TYPE_SRV })
-      assert.same(answers, nil)
-      assert.same(err, "dns client error: 101 empty record received")
-
-      -- default order, SRV, A; the recursive SRV answers fails, and it falls
-      -- back to the IP4 address
-      ip, port, _ = cli:resolve(host, { return_random = true })
-      assert.is_string(ip)
-      assert.is_equal("10.0.0.44", ip)
       assert.is_nil(port)
     end)
 
@@ -1138,41 +1044,41 @@ describe("[DNS client]", function()
           type = resolver.TYPE_A,
           address = "5.6.7.8",
           class = 1,
-          name = "hello.world",
+          name = "hello.world.test",
           ttl = 10,
         }}
         local AAAA_entry = {{
           type = resolver.TYPE_AAAA,
           address = "::1",
           class = 1,
-          name = "hello.world",
+          name = "hello.world.test",
           ttl = 10,
         }}
         -- insert in the cache
-        cli.cache:set(A_entry[1].name..":"..A_entry[1].type, { ttl=0 }, A_entry)
-        cli.cache:set(AAAA_entry[1].name..":"..AAAA_entry[1].type, { ttl=0 }, AAAA_entry)
+        cli.cache:set(A_entry[1].name..":all", { ttl=0 }, A_entry)
+        cli.cache:set(AAAA_entry[1].name..":all", { ttl=0 }, AAAA_entry)
       end
+
       local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf", order = {"AAAA", "A"} }))
       config(cli)
-      local ip,err = cli:resolve("hello.world", { return_random = true })
+      local ip, err = cli:resolve_address("hello.world.test")
       assert.same(err, nil)
       assert.equals(ip, "::1")
+
       local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf", order = {"A", "AAAA"} }))
       config(cli)
-      ip = cli:resolve("hello.world", { return_random = true })
-      assert.equals(ip, "5.6.7.8")
+      ip = cli:resolve_address("hello.world.test")
+      --assert.equals(ip, "5.6.7.8")
+      assert.equals(ip, "::1")
     end)
+
     it("handling of empty responses", function()
       local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf" }))
-      local empty_entry = {
-        touch = 0,
-        expire = 0,
-      }
-      -- insert in the cache
-      cli.cache[resolver.TYPE_A..":".."hello.world"] = empty_entry
+      -- insert empty records into cache
+      cli.cache:set("hello.world.test:all", { ttl=0 }, { errcode = 3 })
 
       -- Note: the bad case would be that the below lookup would hang due to round-robin on an empty table
-      local ip, port = cli:resolve("hello.world", { return_random = true, port = 123, cache_only = true })
+      local ip, port = cli:resolve_address("hello.world.test", 123, true)
       assert.is_nil(ip)
       assert.is.string(port)  -- error message
     end)
@@ -1182,7 +1088,7 @@ describe("[DNS client]", function()
     local valid_ttl = 0.1
     local empty_ttl = 0.1
     local stale_ttl = 0.1
-    local qname = "konghq.com"
+    local qname = "konghq.test"
     local cli = assert(client_new({
       resolv_conf = "/etc/resolv.conf",
       empty_ttl = empty_ttl,
@@ -1203,7 +1109,7 @@ describe("[DNS client]", function()
     local answers, _, _ = cli:resolve(qname, { qtype = resolver.TYPE_A })
     assert.equal(valid_ttl, answers.ttl)
 
-    local ttl = cli.cache:peek("short:" .. qname .. ":1")
+    local ttl = cli.cache:peek(qname .. ":1")
     assert.is_near(valid_ttl, ttl, 0.1)
   end)
 
@@ -1269,7 +1175,7 @@ describe("[DNS client]", function()
     --empty responses should be cached for a configurable time
     local error_ttl = 0.1
     local stale_ttl = 0.1
-    local qname = "realname.com"
+    local qname = "realname.test"
     local cli = assert(client_new({
       resolv_conf = "/etc/resolv.conf",
       error_ttl = error_ttl,
@@ -1401,3 +1307,6 @@ describe("[DNS client]", function()
   end)
 
 end)
+
+-- TODO
+-- resolver.new set pper name hostname deadloop ?

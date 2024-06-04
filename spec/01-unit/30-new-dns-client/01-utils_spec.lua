@@ -9,7 +9,7 @@ describe("[utils]", function ()
     it("test @name: end with `.`", function ()
       assert.is_true(utils.is_fqdn("www.", 2))
       assert.is_true(utils.is_fqdn("www.example.", 3))
-      assert.is_true(utils.is_fqdn("www.example.com.", 4))
+      assert.is_true(utils.is_fqdn("www.example.test.", 4))
     end)
 
     it("test @ndots", function ()
@@ -17,28 +17,28 @@ describe("[utils]", function ()
 
       assert.is_false(utils.is_fqdn("www", 1))
       assert.is_true(utils.is_fqdn("www.example", 1))
-      assert.is_true(utils.is_fqdn("www.example.com", 1))
+      assert.is_true(utils.is_fqdn("www.example.test", 1))
 
       assert.is_false(utils.is_fqdn("www", 2))
       assert.is_false(utils.is_fqdn("www.example", 2))
-      assert.is_true(utils.is_fqdn("www.example.com", 2))
-      assert.is_true(utils.is_fqdn("www1.www2.example.com", 2))
+      assert.is_true(utils.is_fqdn("www.example.test", 2))
+      assert.is_true(utils.is_fqdn("www1.www2.example.test", 2))
     end)
   end)
 
   describe("search_names()", function ()
     it("empty resolv, not apply the search list", function ()
       local resolv = {}
-      local names = utils.search_names("www.example.com", resolv)
-      assert.same(names, { "www.example.com" })
+      local names = utils.search_names("www.example.test", resolv)
+      assert.same(names, { "www.example.test" })
     end)
 
     it("FQDN name: end with `.`, not apply the search list", function ()
-      local names = utils.search_names("www.example.com.", { ndots = 1 })
-      assert.same(names, { "www.example.com." })
+      local names = utils.search_names("www.example.test.", { ndots = 1 })
+      assert.same(names, { "www.example.test." })
       -- name with 3 dots, and ndots=4 > 3
-      local names = utils.search_names("www.example.com.", { ndots = 4 })
-      assert.same(names, { "www.example.com." })
+      local names = utils.search_names("www.example.test.", { ndots = 4 })
+      assert.same(names, { "www.example.test." })
     end)
 
     it("dots number in the name >= ndots, not apply the search list", function ()
@@ -46,11 +46,11 @@ describe("[utils]", function ()
         ndots = 1,
         search = { "example.net" },
       }
-      local names = utils.search_names("www.example.com", resolv)
-      assert.same(names, { "www.example.com" })
+      local names = utils.search_names("www.example.test", resolv)
+      assert.same(names, { "www.example.test" })
 
-      local names = utils.search_names("example.com", resolv)
-      assert.same(names, { "example.com" })
+      local names = utils.search_names("example.test", resolv)
+      assert.same(names, { "example.test" })
     end)
 
     it("dots number in the name < ndots, apply the search list", function ()
@@ -69,13 +69,13 @@ describe("[utils]", function ()
 
       local resolv = {
         ndots = 2,
-        search = { "example.net", "example.com" },
+        search = { "example.net", "example.test" },
       }
       local names = utils.search_names("www", resolv)
-      assert.same(names, { "www.example.net", "www.example.com", "www" })
+      assert.same(names, { "www.example.net", "www.example.test", "www" })
 
       local names = utils.search_names("www1.www2", resolv)
-      assert.same(names, { "www1.www2.example.net", "www1.www2.example.com", "www1.www2" })
+      assert.same(names, { "www1.www2.example.net", "www1.www2.example.test", "www1.www2" })
 
       local names = utils.search_names("www1.www2.www3", resolv)
       assert.same(names, { "www1.www2.www3" })  -- not apply
@@ -95,7 +95,7 @@ describe("[utils]", function ()
     end)
 
     it("host name", function ()
-      assert.equal(utils.ipv6_bracket("example.com"), "example.com")
+      assert.equal(utils.ipv6_bracket("example.test"), "example.test")
     end)
   end)
 
@@ -235,7 +235,7 @@ describe("[utils]", function ()
 [[# this is just a comment line
 # at the top of the file
 
-domain myservice.com
+domain myservice.test
 
 nameserver 198.51.100.0
 nameserver 2001:db8::1 ; and a comment here
@@ -243,7 +243,7 @@ nameserver 198.51.100.0:1234 ; this one has a port number (limited systems suppo
 nameserver 1.2.3.4 ; this one is 4th, so should be ignored
 
 # search is commented out, test below for a mutually exclusive one
-#search domaina.com domainb.com
+#search domaina.test domainb.test
 
 sortlist list1 list2 #list3 is not part of it
 
@@ -267,7 +267,7 @@ options use-vc
 ]])
       local resolv, err = utils.parse_resolv_conf(file)
       assert.is.Nil(err)
-      assert.is.equal("myservice.com", resolv.domain)
+      assert.is.equal("myservice.test", resolv.domain)
       assert.is.same({ "198.51.100.0", "2001:db8::1", "198.51.100.0:1234" }, resolv.nameserver)
       assert.is.same({ "list1", "list2" }, resolv.sortlist)
       assert.is.same({ ndots = 2, timeout = 3, attempts = 4, debug = true, rotate = true,
@@ -280,16 +280,16 @@ options use-vc
 
     it("tests parsing 'resolv.conf' with mutual exclusive domain vs search", function()
       local file = splitlines(
-[[domain myservice.com
+[[domain myservice.test
 
 # search is overriding domain above
-search domaina.com domainb.com
+search domaina.test domainb.test
 
 ]])
       local resolv, err = utils.parse_resolv_conf(file)
       assert.is.Nil(err)
       assert.is.Nil(resolv.domain)
-      assert.is.same({ "domaina.com", "domainb.com" }, resolv.search)
+      assert.is.same({ "domaina.test", "domainb.test" }, resolv.search)
     end)
 
     it("tests parsing 'resolv.conf' with 'timeout = 0'", function()
@@ -302,33 +302,33 @@ search domaina.com domainb.com
       local file = splitlines(
 [[
 
-search domain1.com domain2.com domain3.com domain4.com domain5.com domain6.com domain7.com
+search domain1.test domain2.test domain3.test domain4.test domain5.test domain6.test domain7.test
 
 ]])
       local resolv, err = utils.parse_resolv_conf(file)
       assert.is.Nil(err)
       assert.is.Nil(resolv.domain)
       assert.is.same({
-          "domain1.com",
-          "domain2.com",
-          "domain3.com",
-          "domain4.com",
-          "domain5.com",
-          "domain6.com",
+          "domain1.test",
+          "domain2.test",
+          "domain3.test",
+          "domain4.test",
+          "domain5.test",
+          "domain6.test",
         }, resolv.search)
     end)
 
     it("tests parsing 'resolv.conf' with environment variables", function()
       local file = splitlines(
 [[# this is just a comment line
-domain myservice.com
+domain myservice.test
 
 nameserver 198.51.100.0
 nameserver 198.51.100.1 ; and a comment here
 
 options ndots:1
 ]])
-      envvars.LOCALDOMAIN = "domaina.com domainb.com"
+      envvars.LOCALDOMAIN = "domaina.test domainb.test"
       envvars.RES_OPTIONS = "ndots:2 debug"
 
       local resolv, err = utils.parse_resolv_conf(file)
@@ -336,7 +336,7 @@ options ndots:1
 
 
       assert.is.Nil(resolv.domain)  -- must be nil, mutually exclusive
-      assert.is.same({ "domaina.com", "domainb.com" }, resolv.search)
+      assert.is.same({ "domaina.test", "domainb.test" }, resolv.search)
 
       assert.is.same({ ndots = 2, debug = true }, resolv.options)
     end)
@@ -344,7 +344,7 @@ options ndots:1
     it("tests parsing 'resolv.conf' with non-existing environment variables", function()
       local file = splitlines(
 [[# this is just a comment line
-domain myservice.com
+domain myservice.test
 
 nameserver 198.51.100.0
 nameserver 198.51.100.1 ; and a comment here
@@ -355,7 +355,7 @@ options ndots:2
       envvars.RES_OPTIONS = ""
       local resolv, err = utils.parse_resolv_conf(file)
       assert.is.Nil(err)
-      assert.is.equals("myservice.com", resolv.domain)  -- must be nil, mutually exclusive
+      assert.is.equals("myservice.test", resolv.domain)  -- must be nil, mutually exclusive
       assert.is.same({ ndots = 2 }, resolv.options)
     end)
 
@@ -398,15 +398,15 @@ nameserver [fe80::1%enp0s20f0u1u1]
 
 # My test server for the website
 
-192.168.1.2 test.computer.com
-  192.168.1.3 ftp.COMPUTER.com alias1 alias2
-192.168.1.4 smtp.computer.com alias3 #alias4
-192.168.1.5 smtp.computer.com alias3 #doubles, first one should win
+192.168.1.2 test.computer.test
+  192.168.1.3 ftp.COMPUTER.test alias1 alias2
+192.168.1.4 smtp.computer.test alias3 #alias4
+192.168.1.5 smtp.computer.test alias3 #doubles, first one should win
 
 #Blocking known malicious sites
-127.0.0.1  admin.abcsearch.com
-127.0.0.2  www3.abcsearch.com #[Browseraid]
-127.0.0.3  www.abcsearch.com wwwsearch #[Restricted Zone site]
+127.0.0.1  admin.abcsearch.test
+127.0.0.2  www3.abcsearch.test #[Browseraid]
+127.0.0.3  www.abcsearch.test wwwsearch #[Restricted Zone site]
 
 [::1]        alsolocalhost  #support IPv6 in brackets
 ]])
@@ -414,16 +414,16 @@ nameserver [fe80::1%enp0s20f0u1u1]
       assert.is.equal("127.0.0.1", reverse.localhost.ipv4)
       assert.is.equal("[::1]", reverse.localhost.ipv6)
 
-      assert.is.equal("192.168.1.2", reverse["test.computer.com"].ipv4)
+      assert.is.equal("192.168.1.2", reverse["test.computer.test"].ipv4)
 
-      assert.is.equal("192.168.1.3", reverse["ftp.computer.com"].ipv4)
+      assert.is.equal("192.168.1.3", reverse["ftp.computer.test"].ipv4)
       assert.is.equal("192.168.1.3", reverse["alias1"].ipv4)
       assert.is.equal("192.168.1.3", reverse["alias2"].ipv4)
 
-      assert.is.equal("192.168.1.4", reverse["smtp.computer.com"].ipv4)
+      assert.is.equal("192.168.1.4", reverse["smtp.computer.test"].ipv4)
       assert.is.equal("192.168.1.4", reverse["alias3"].ipv4)
 
-      assert.is.equal("192.168.1.4", reverse["smtp.computer.com"].ipv4)  -- .1.4; first one wins!
+      assert.is.equal("192.168.1.4", reverse["smtp.computer.test"].ipv4)  -- .1.4; first one wins!
       assert.is.equal("192.168.1.4", reverse["alias3"].ipv4)   -- .1.4; first one wins!
 
       assert.is.equal("[::1]", reverse["alsolocalhost"].ipv6)
