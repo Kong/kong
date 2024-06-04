@@ -1035,7 +1035,7 @@ return {
             end
           end
 
-          local _, err = kong.timer:named_every("rebuild",
+          local _, err = kong.timer:named_every("wasm-rebuild",
                                            worker_state_update_frequency,
                                            rebuild_wasm_filter_chains_timer)
           if err then

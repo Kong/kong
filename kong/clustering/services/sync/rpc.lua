@@ -102,6 +102,8 @@ function _M:sync_once(delay)
           return true
         end
       end
+
+      return true
     end)
     if not res and err ~= "timeout" then
       ngx_log(ngx_ERR, "unable to create worker mutex and sync: ", err)
