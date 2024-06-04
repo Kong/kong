@@ -176,6 +176,18 @@ for _, strategy in helpers.each_strategy() do
         service     = null,
       }
 
+      local route26 = bp.routes:insert {
+        hosts       = { "lambda26.test" },
+        protocols   = { "http", "https" },
+        service     = null,
+      }
+
+      local route27 = bp.routes:insert {
+        hosts       = { "lambda27.test" },
+        protocols   = { "http", "https" },
+        service     = null,
+      }
+
       bp.plugins:insert {
         name     = "aws-lambda",
         route    = { id = route1.id },
@@ -519,6 +531,32 @@ for _, strategy in helpers.each_strategy() do
         name = "http-log",
         config   = {
           http_endpoint = "http://localhost:" .. mock_http_server_port,
+        }
+      }
+
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route26.id },
+        config                 = {
+          port                 = 10001,
+          aws_key              = "mock-key",
+          aws_secret           = "mock-secret",
+          aws_region           = "us-east-1",
+          function_name        = "functionWithEmptyArray",
+          empty_arrays_mode    = "legacy",
+        }
+      }
+
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route27.id },
+        config                 = {
+          port                 = 10001,
+          aws_key              = "mock-key",
+          aws_secret           = "mock-secret",
+          aws_region           = "us-east-1",
+          function_name        = "functionWithEmptyArray",
+          empty_arrays_mode    = "correct",
         }
       }
 
@@ -921,6 +959,30 @@ for _, strategy in helpers.each_strategy() do
           local _, count = logs:gsub([[%[aws%-lambda%].+lambda%.ab%-cdef%-1%.amazonaws%.com.+name error"]], "")
           return count >= 1
         end, 10)
+      end)
+
+      it("invokes a Lambda function with empty array", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            ["Host"] = "lambda26.test"
+          }
+        })
+
+        local body = assert.res_status(200, res)
+        assert.matches("\"testbody\":{}", body)
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            ["Host"] = "lambda27.test"
+          }
+        })
+
+        local body = assert.res_status(200, res)
+        assert.matches("\"testbody\":%[%]", body)
       end)
 
       describe("config.is_proxy_integration = true", function()

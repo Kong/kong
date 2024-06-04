@@ -148,5 +148,8 @@ return {
     response_transformer = {
       "rename.json",
     },
+    aws_lambda = {
+      "empty_arrays_mode",
+    }
   },
 }

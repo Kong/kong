@@ -116,6 +116,13 @@ return {
           default = "v1",
           one_of = { "v1", "v2" }
         } },
+        { empty_arrays_mode = { -- TODO: this config field is added for backward compatibility and will be removed in next major version
+          description = "An optional value that defines whether Kong should send empty arrays (returned by Lambda function) as `[]` arrays or `{}` objects in JSON responses. The value `legacy` means Kong will send empty arrays as `{}` objects in response",
+          type = "string",
+          required = true,
+          default = "legacy",
+          one_of = { "legacy", "correct" }
+        } },
       }
     },
   } },

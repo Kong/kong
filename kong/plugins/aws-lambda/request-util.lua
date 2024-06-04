@@ -9,6 +9,7 @@ local get_request_id = require("kong.tracing.request_id").get
 
 local EMPTY = {}
 
+local isempty = require "table.isempty"
 local split = pl_stringx.split
 local ngx_req_get_headers  = ngx.req.get_headers
 local ngx_req_get_uri_args = ngx.req.get_uri_args
@@ -325,10 +326,36 @@ local function build_request_payload(conf)
 end
 
 
+-- TODO: remove this in the next major release
+-- function to remove array_mt metatables from empty tables
+-- This is just a backward compatibility code to keep a
+-- long-lived behavior that Kong responsed JSON objects
+-- instead of JSON arrays for empty arrays.
+local function remove_array_mt_for_empty_table(tbl)
+  if type(tbl) ~= "table" then
+    return tbl
+  end
+
+  -- Check if the current table(array) is empty and has a array_mt metatable, and remove it
+  if isempty(tbl) and getmetatable(tbl) == cjson.array_mt then
+    setmetatable(tbl, nil)
+  end
+
+  for _, value in pairs(tbl) do
+    if type(value) == "table" then
+      remove_array_mt_for_empty_table(value)
+    end
+  end
+
+  return tbl
+end
+
+
 return {
   aws_serializer = aws_serializer,
   validate_http_status_code = validate_http_status_code,
   validate_custom_response = validate_custom_response,
   build_request_payload = build_request_payload,
   extract_proxy_response = extract_proxy_response,
+  remove_array_mt_for_empty_table = remove_array_mt_for_empty_table,
 }
