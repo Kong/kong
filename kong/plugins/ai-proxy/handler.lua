@@ -1,5 +1,6 @@
 local ai_shared = require("kong.llm.drivers.shared")
 local llm = require("kong.llm")
+local llm_state = require("kong.llm.state")
 local cjson = require("cjson.safe")
 local kong_utils = require("kong.tools.gzip")
 local kong_meta = require("kong.meta")
@@ -159,9 +160,8 @@ end
 
 function _M:header_filter(conf)
   local kong_ctx_plugin = kong.ctx.plugin
-  local kong_ctx_shared = kong.ctx.shared
 
-  if kong_ctx_shared.skip_response_transformer then
+  if llm_state.is_response_transformer_skipped() then
     return
   end
 
@@ -176,7 +176,7 @@ function _M:header_filter(conf)
   end
 
   -- we use openai's streaming mode (SSE)
-  if kong_ctx_shared.ai_proxy_streaming_mode then
+  if llm_state.is_streaming_mode() then
     -- we are going to send plaintext event-stream frames for ALL models
     kong.response.set_header("Content-Type", "text/event-stream")
     return
@@ -193,7 +193,7 @@ function _M:header_filter(conf)
   -- if this is a 'streaming' request, we can't know the final
   -- result of the response body, so we just proceed to body_filter
   -- to translate each SSE event frame
-  if not kong_ctx_shared.ai_proxy_streaming_mode then
+  if not llm_state.is_streaming_mode() then
     local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
     if is_gzip then
       response_body = kong_utils.inflate_gzip(response_body)
@@ -226,17 +226,15 @@ function _M:body_filter(conf)
   local kong_ctx_shared = kong.ctx.shared
 
   -- if body_filter is called twice, then return
-  if kong_ctx_plugin.body_called and not kong_ctx_shared.ai_proxy_streaming_mode then
+  if kong_ctx_plugin.body_called and not llm_state.is_streaming_mode() then
     return
   end
 
   local route_type = conf.route_type
 
-  if kong_ctx_shared.skip_response_transformer and (route_type ~= "preserve") then
-    local response_body
-    if kong_ctx_shared.parsed_response then
-      response_body = kong_ctx_shared.parsed_response
-    elseif kong.response.get_status() == 200 then
+  if llm_state.is_response_transformer_skipped() and (route_type ~= "preserve") then
+    local response_body = llm_state.get_parsed_response()
+    if not response_body and kong.response.get_status() == 200 then
       response_body = kong.service.response.get_raw_body()
       if not response_body then
         kong.log.warn("issue when retrieve the response body for analytics in the body filter phase.",
@@ -247,6 +245,8 @@ function _M:body_filter(conf)
           response_body = kong_utils.inflate_gzip(response_body)
         end
       end
+    else
+      kong.response.exit(500, "no response body found")
     end
 
     local ai_driver = require("kong.llm.drivers." .. conf.model.provider)
@@ -259,13 +259,13 @@ function _M:body_filter(conf)
     end
   end
 
-  if not kong_ctx_shared.skip_response_transformer then
+  if not llm_state.is_response_transformer_skipped() then
     if (kong.response.get_status() ~= 200) and (not kong_ctx_plugin.ai_parser_error) then
       return
     end
 
     if route_type ~= "preserve" then
-      if kong_ctx_shared.ai_proxy_streaming_mode then
+      if llm_state.is_streaming_mode() then
         handle_streaming_frame(conf)
       else
       -- all errors MUST be checked and returned in header_filter
@@ -304,13 +304,12 @@ function _M:access(conf)
 
   kong_ctx_plugin.operation = route_type
 
-  local request_table
   local multipart = false
 
   -- we may have received a replacement / decorated request body from another AI plugin
-  if kong_ctx_shared.replacement_request then
+  local request_table = llm_state.get_replacement_response() -- not used
+  if request_table then
     kong.log.debug("replacement request body received from another AI plugin")
-    request_table = kong_ctx_shared.replacement_request
 
   else
     -- first, calculate the coordinates of the request
@@ -357,18 +356,9 @@ function _M:access(conf)
   kong_ctx_plugin.llm_model_requested = conf_m.model.name
 
   -- check the incoming format is the same as the configured LLM format
-  if not multipart then
-    local compatible, err = llm.is_compatible(request_table, route_type)
-    if not compatible then
-      kong_ctx_shared.skip_response_transformer = true
-      return bad_request(err)
-    end
-  end
-
-  -- check the incoming format is the same as the configured LLM format
   local compatible, err = llm.is_compatible(request_table, route_type)
   if not compatible then
-    kong_ctx_shared.skip_response_transformer = true
+    llm_state.set_response_transformer_skipped()
     return bad_request(err)
   end
 
@@ -396,7 +386,7 @@ function _M:access(conf)
     end
 
     -- specific actions need to skip later for this to work
-    kong_ctx_shared.ai_proxy_streaming_mode = true
+    llm_state.set_streaming_mode()
 
   else
     kong.service.request.enable_buffering()
@@ -416,7 +406,7 @@ function _M:access(conf)
     -- transform the body to Kong-format for this provider/model
     parsed_request_body, content_type, err = ai_driver.to_format(request_table, conf_m.model, route_type)
     if err then
-      kong_ctx_shared.skip_response_transformer = true
+      llm_state.set_response_transformer_skipped()
       return bad_request(err)
     end
   end
@@ -434,7 +424,7 @@ function _M:access(conf)
   -- now re-configure the request for this operation type
   local ok, err = ai_driver.configure_request(conf_m)
   if not ok then
-    kong_ctx_shared.skip_response_transformer = true
+    llm_state.set_response_transformer_skipped()
     kong.log.err("failed to configure request for AI service: ", err)
     return kong.response.exit(500)
   end
