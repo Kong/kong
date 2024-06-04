@@ -1,12 +1,21 @@
 local _M = {}
 
 -- imports
+<<<<<<< HEAD
 local cjson      = require("cjson.safe")
 local http       = require("resty.http")
 local fmt        = string.format
 local os         = os
 local parse_url  = require("socket.url").parse
 local aws_stream = require("kong.tools.aws_stream")
+=======
+local cjson     = require("cjson.safe")
+local http      = require("resty.http")
+local fmt       = string.format
+local os        = os
+local parse_url = require("socket.url").parse
+local llm_state = require("kong.llm.state")
+>>>>>>> d9053432f9 (refactor(plugins): move shared ctx usage of ai plugins to use a proper API)
 --
 
 -- static
@@ -341,7 +350,7 @@ function _M.frame_to_events(frame, provider)
       end -- if
     end
   end
-  
+
   return events
 end
 
@@ -500,7 +509,7 @@ function _M.resolve_plugin_conf(kong_request, conf)
         if #splitted ~= 2 then
           return nil, "cannot parse expression for field '" .. v .. "'"
         end
-        
+
         -- find the request parameter, with the configured name
         prop_m, err = _M.conf_from_request(kong_request, splitted[1], splitted[2])
         if err then
@@ -524,7 +533,7 @@ function _M.pre_request(conf, request_table)
   local auth_param_name = conf.auth and conf.auth.param_name
   local auth_param_value = conf.auth and conf.auth.param_value
   local auth_param_location = conf.auth and conf.auth.param_location
-  
+
   if auth_param_name and auth_param_value and auth_param_location == "body" and request_table then
     request_table[auth_param_name] = auth_param_value
   end
@@ -547,7 +556,7 @@ function _M.pre_request(conf, request_table)
       kong.log.warn("failed calculating cost for prompt tokens: ", err)
       prompt_tokens = 0
     end
-    kong.ctx.shared.ai_prompt_tokens = (kong.ctx.shared.ai_prompt_tokens or 0) + prompt_tokens
+    llm_state.increase_prompt_tokens_count(prompt_tokens)
   end
 
   local start_time_key = "ai_request_start_time_" .. plugin_name
@@ -586,7 +595,7 @@ function _M.post_request(conf, response_object)
   end
 
   -- check if we already have analytics in this context
-  local request_analytics = kong.ctx.shared.analytics
+  local request_analytics = llm_state.get_request_analytics()
 
   -- create a new structure if not
   if not request_analytics then
@@ -657,7 +666,7 @@ function _M.post_request(conf, response_object)
     [log_entry_keys.RESPONSE_BODY] = body_string,
   }
   request_analytics[plugin_name] = request_analytics_plugin
-  kong.ctx.shared.analytics = request_analytics
+  llm_state.set_request_analytics(request_analytics)
 
   if conf.logging and conf.logging.log_statistics then
     -- Log meta data
@@ -679,7 +688,7 @@ function _M.post_request(conf, response_object)
     kong.log.warn("failed calculating cost for response tokens: ", err)
     response_tokens = 0
   end
-  kong.ctx.shared.ai_response_tokens = (kong.ctx.shared.ai_response_tokens or 0) + response_tokens
+  llm_state.increase_response_tokens_count(response_tokens)
 
   return nil
 end

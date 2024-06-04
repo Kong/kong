@@ -1,4 +1,3 @@
-
 local kong_meta = require("kong.meta")
 local deep_copy = require "kong.tools.table".deep_copy
 

@@ -1,4 +1,5 @@
 local new_tab = require("table.new")
+local llm_state = require("kong.llm.state")
 local EMPTY = {}
 
 
@@ -52,7 +53,7 @@ end
 
 function plugin:access(conf)
   kong.service.request.enable_buffering()
-  kong.ctx.shared.ai_prompt_decorated = true  -- future use
+  llm_state.set_prompt_decorated()  -- future use
 
   -- if plugin ordering was altered, receive the "decorated" request
   local request = kong.request.get_body("application/json", nil, conf.max_request_body_size)
