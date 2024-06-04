@@ -1,0 +1,4 @@
+message: |
+   **AI-Proxy**: Fix issue when large response body is received transformation may fail.
+type: bugfix
+scope: Plugin
