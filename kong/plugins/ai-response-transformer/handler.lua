@@ -120,7 +120,9 @@ function _M:access(conf)
 
   kong.log.debug("intercepting plugin flow with one-shot request")
   local httpc = http.new()
-  local res, err = subrequest(httpc, kong.request.get_raw_body(), http_opts)
+  local res, err = subrequest(httpc,
+    kong.request.get_raw_body(conf.max_request_body_size),
+    http_opts)
   if err then
     return internal_server_error(err)
   end

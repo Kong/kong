@@ -62,7 +62,7 @@ function _M:access(conf)
   -- if asked, introspect the request before proxying
   kong.log.debug("introspecting request with LLM")
   local new_request_body, err = ai_driver:ai_introspect_body(
-    kong.request.get_raw_body(),
+    kong.request.get_raw_body(conf.max_request_body_size),
     conf.prompt,
     http_opts,
     conf.transformation_extract_pattern
