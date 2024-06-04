@@ -704,3 +704,35 @@ test=data
 mime=multipart/form-data
 --- no_error_log
 [error]
+
+
+
+=== TEST 26: request.get_body() with application/json returns ok if max_allowed_file_size is set
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            local args, err = pdk.request.get_body("application/json")
+            ngx.say("error: ", err)
+
+            local args, err = pdk.request.get_body("application/json", nil, 20008)
+            if err then
+                ngx.say("error: ", err)
+            else
+                ngx.say("parsed ok")
+            end
+
+        }
+    }
+--- request eval
+"POST /t\r\n{\"b\":\"" . ("a" x 20000) . "\"}"
+--- more_headers
+Content-Type: application/json
+--- response_body
+error: request body did not fit into client body buffer, consider raising 'client_body_buffer_size'
+parsed ok
+--- no_error_log
+[error]
