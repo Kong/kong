@@ -1,21 +1,13 @@
 local _M = {}
 
 -- imports
-<<<<<<< HEAD
-local cjson      = require("cjson.safe")
-local http       = require("resty.http")
-local fmt        = string.format
-local os         = os
-local parse_url  = require("socket.url").parse
-local aws_stream = require("kong.tools.aws_stream")
-=======
 local cjson     = require("cjson.safe")
 local http      = require("resty.http")
 local fmt       = string.format
 local os        = os
 local parse_url = require("socket.url").parse
 local llm_state = require("kong.llm.state")
->>>>>>> d9053432f9 (refactor(plugins): move shared ctx usage of ai plugins to use a proper API)
+local aws_stream = require("kong.tools.aws_stream")
 --
 
 -- static
