@@ -121,7 +121,7 @@ function plugin:access(conf)
   kong.ctx.shared.ai_prompt_guarded = true -- future use
 
   -- if plugin ordering was altered, receive the "decorated" request
-  local request = kong.request.get_body("application/json")
+  local request = kong.request.get_body("application/json", nil, conf.max_request_body_size)
   if type(request) ~= "table" then
     return bad_request("this LLM route only supports application/json requests")
   end

@@ -382,7 +382,7 @@ function _M:access(conf)
     -- first, calculate the coordinates of the request
     local content_type = kong.request.get_header("Content-Type") or "application/json"
 
-    request_table = kong.request.get_body(content_type)
+    request_table = kong.request.get_body(content_type, nil, conf.max_request_body_size)
 
     if not request_table then
       if not string.find(content_type, "multipart/form-data", nil, true) then
