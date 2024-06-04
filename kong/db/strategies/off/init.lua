@@ -162,7 +162,7 @@ local function page_for_prefix(self, prefix, size, offset, options, follow)
   end
 
   if err_or_more then
-    return ret, nil, last_key
+    return ret, nil, last_key .. "1"
   end
 
   return ret
