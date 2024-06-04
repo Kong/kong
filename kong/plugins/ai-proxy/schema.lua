@@ -13,6 +13,13 @@ local ai_proxy_only_config = {
         default = "allow",
         one_of = { "allow", "deny", "always" }},
     },
+    {
+      max_request_body_size = {
+      type = "integer",
+      default = 8 * 1024,
+      gt = 0,
+      description = "max allowed body size allowed to be introspected",}
+    },
 }
 
 for i, v in pairs(ai_proxy_only_config) do
