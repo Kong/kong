@@ -14,7 +14,8 @@ local function init_tracing_context(ctx)
     -- Unlinked spans are spans that were created (to generate their ID)
     -- but not added to `KONG_SPANS` (because their execution details were not
     -- yet available).
-    unlinked_spans = table_new(0, 1)
+    unlinked_spans = table_new(0, 1),
+    flags = nil,
   }
 
   return ctx.TRACING_CONTEXT
@@ -89,6 +90,18 @@ local function set_raw_trace_id(trace_id, ctx)
 end
 
 
+local function get_flags(ctx)
+  local tracing_context = get_tracing_context(ctx)
+  return tracing_context.flags
+end
+
+
+local function set_flags(flags, ctx)
+  local tracing_context = get_tracing_context(ctx)
+  tracing_context.flags = flags
+end
+
+
 local function get_unlinked_span(name, ctx)
   local tracing_context = get_tracing_context(ctx)
   return tracing_context.unlinked_spans[name]
@@ -108,4 +121,6 @@ return {
   set_raw_trace_id = set_raw_trace_id,
   get_unlinked_span = get_unlinked_span,
   set_unlinked_span = set_unlinked_span,
+  get_flags = get_flags,
+  set_flags = set_flags,
 }

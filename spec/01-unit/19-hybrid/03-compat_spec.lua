@@ -507,7 +507,7 @@ describe("kong.clustering.compat", function()
             id = "00000000-0000-0000-0000-000000000005",
             name = "opentelemetry",
             config = {
-              endpoint = "http://example.com",
+              traces_endpoint = "http://example.com",
               queue = {
                 max_batch_size = 9,
                 max_coalescing_delay = 9,

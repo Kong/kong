@@ -35,7 +35,8 @@ return {
     { config = {
       type = "record",
       fields = {
-        { endpoint = typedefs.url { required = true, referenceable = true } }, -- OTLP/HTTP
+        { traces_endpoint = typedefs.url { referenceable = true } }, -- OTLP/HTTP
+        { logs_endpoint = typedefs.url { referenceable = true } },
         { headers = { description = "The custom headers to be added in the HTTP request sent to the OTLP server. This setting is useful for adding the authentication headers (token) for the APM backend.", type = "map",
           keys = typedefs.header_name,
           values = {
@@ -91,6 +92,26 @@ return {
           },
         } },
       },
+      entity_checks = {
+        { at_least_one_of = {
+          "traces_endpoint",
+          "logs_endpoint",
+        } },
+      },
+      shorthand_fields = {
+        -- TODO: deprecated fields, to be removed in Kong 4.0
+        {
+          endpoint = typedefs.url {
+            referenceable = true,
+            deprecation = {
+              message = "OpenTelemetry: config.endpoint is deprecated, please use config.traces_endpoint instead",
+              removal_in_version = "4.0", },
+            func = function(value)
+              return { traces_endpoint = value }
+            end,
+          },
+        },
+      }
     }, },
   },
 }
