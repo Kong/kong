@@ -131,7 +131,7 @@ local function get_plugins_configs(service)
     ["opentelemetry"] = {
       name = "opentelemetry",
       config = {
-        endpoint = "http://test.test"
+        traces_endpoint = "http://test.test"
       },
     },
     ["loggly"] = {
