@@ -120,7 +120,7 @@ do
     -- get 24 bytes, which will return a 32 char string after encoding
     -- this is done in attempt to maintain backwards compatibility as
     -- much as possible while improving the strength of this function
-    local str = get_rand_bytes(24, true)
+    local str = encode_base64(get_rand_bytes(24, true))
 
     if str:find("/", 1, true) then
       str = str:gsub("/", char(rand(48, 57)))  -- 0 - 10
@@ -135,10 +135,6 @@ do
     end
 
     return str
-    --return encode_base64(get_rand_bytes(24, true))
-    --       :gsub("/", char(rand(48, 57)))  -- 0 - 10
-    --       :gsub("+", char(rand(65, 90)))  -- A - Z
-    --       :gsub("=", char(rand(97, 122))) -- a - z
   end
 
 end
