@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local pl_path = require "pl.path"
-local utils = require "kong.tools.utils"
+local split = require("kong.tools.string").split
 
 local env_config = {
   debugger = os.getenv("KONG_EMMY_DEBUGGER"),
@@ -71,7 +71,7 @@ local function init(config_)
   local multi_worker = env_config.multi_worker or env_config.multi_worker
 
   env_prefix = config.env_prefix or "KONG"
-  source_path = utils.split(config.source_path or env_config.source_path or "", ":")
+  source_path = split(config.source_path or env_config.source_path or "", ":")
 
   if not debugger then
     return

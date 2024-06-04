@@ -7,7 +7,7 @@
 
 local _M = {}
 
-local split = require("kong.tools.utils").split
+local split = require("kong.tools.string").split
 
 local header_mt = {
   __index = function(self, name)

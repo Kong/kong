@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local rules = require "kong.plugins.bot-detection.rules"
-local strip = require("kong.tools.utils").strip
+local strip = require("kong.tools.string").strip
 local lrucache = require "resty.lrucache"
 local kong_meta = require "kong.meta"
 

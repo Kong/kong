@@ -5,7 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local utils        = require "kong.tools.utils"
 local constants    = require "kong.constants"
 local certificate  = require "kong.runloop.certificate"
 local balancer     = require "kong.runloop.balancer"
@@ -18,7 +17,7 @@ local unpack       = unpack
 local ipairs       = ipairs
 local tonumber     = tonumber
 local fmt          = string.format
-local utils_split  = utils.split
+local split        = require("kong.tools.string").split
 
 
 local ngx   = ngx
@@ -123,7 +122,7 @@ end
 
 -- cluster event: "balancer:targets"
 local function cluster_balancer_targets_handler(data)
-  local operation, key = unpack(utils_split(data, ":"))
+  local operation, key = unpack(split(data, ":"))
 
   local entity = "all"
   if key ~= "all" then
@@ -161,7 +160,7 @@ end
 
 
 local function cluster_balancer_upstreams_handler(data)
-  local operation, ws_id, id, name = unpack(utils_split(data, ":"))
+  local operation, ws_id, id, name = unpack(split(data, ":"))
   local entity = {
     id = id,
     name = name,

@@ -5,12 +5,12 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local utils      = require "kong.tools.utils"
 local cjson_safe = require "cjson.safe"
 local cjson      = require "cjson"
 local ws_server  = require "resty.websocket.server"
 local pl_stringx = require "pl.stringx"
 local pl_file    = require "pl.file"
+local split      = require("kong.tools.string").split
 
 
 local kong = {
@@ -31,7 +31,7 @@ local function parse_multipart_form_params(body, content_type)
   end
 
   local boundary    = m[1]
-  local parts_split = utils.split(body, '--' .. boundary)
+  local parts_split = split(body, '--' .. boundary)
   local params      = {}
   local part, from, to, part_value, part_name, part_headers, first_header
   for i = 1, #parts_split do
@@ -45,7 +45,7 @@ local function parse_multipart_form_params(body, content_type)
 
       part_value   = part:sub(to + 2, #part) -- +2: trim leading line jump
       part_headers = part:sub(1, from - 1)
-      first_header = utils.split(part_headers, '\\n')[1]
+      first_header = split(part_headers, '\\n')[1]
       if pl_stringx.startswith(first_header:lower(), "content-disposition") then
         local m, err = ngx.re.match(first_header, 'name="(.*?)"', "oj")
 
@@ -121,7 +121,7 @@ local function find_http_credentials(authorization_header)
     local decoded_basic = ngx.decode_base64(m[1])
 
     if decoded_basic then
-      local user_pass = utils.split(decoded_basic, ":")
+      local user_pass = split(decoded_basic, ":")
       return user_pass[1], user_pass[2]
     end
   end

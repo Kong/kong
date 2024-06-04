@@ -6,12 +6,10 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 
-local utils = require("kong.tools.utils")
-
 local type = type
 local tonumber = tonumber
-local split = utils.split
 local floor = math.floor
+local split = require("kong.tools.string").split
 
 local MAJOR_MINOR_PATTERN = "^(%d+)%.(%d+)%.%d+"
 

@@ -8,8 +8,8 @@
 local _EXTRACTOR        = require "kong.tracing.propagation.extractors._base"
 local propagation_utils = require "kong.tracing.propagation.utils"
 
-local split = require "kong.tools.utils".split
-local strip = require "kong.tools.utils".strip
+local split = require "kong.tools.string".split
+local strip = require "kong.tools.string".strip
 
 local from_hex = propagation_utils.from_hex
 local match    = string.match

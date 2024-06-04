@@ -194,16 +194,18 @@ describe("Utils", function()
 
   describe("string", function()
     it("checks valid UTF8 values", function()
-      assert.True(utils.validate_utf8("hello"))
-      assert.True(utils.validate_utf8(123))
-      assert.True(utils.validate_utf8(true))
-      assert.False(utils.validate_utf8(string.char(105, 213, 205, 149)))
-      assert.False(utils.validate_utf8(string.char(128))) -- unexpected continuation byte
-      assert.False(utils.validate_utf8(string.char(192, 32))) -- 2-byte sequence 0xc0 followed by space
-      assert.False(utils.validate_utf8(string.char(192))) -- 2-byte sequence with last byte missing
-      assert.False(utils.validate_utf8(string.char(254))) -- impossible byte
-      assert.False(utils.validate_utf8(string.char(255))) -- impossible byte
-      assert.False(utils.validate_utf8(string.char(237, 160, 128))) -- Single UTF-16 surrogate
+      local validate_utf8 = require("kong.tools.string").validate_utf8
+
+      assert.True(validate_utf8("hello"))
+      assert.True(validate_utf8(123))
+      assert.True(validate_utf8(true))
+      assert.False(validate_utf8(string.char(105, 213, 205, 149)))
+      assert.False(validate_utf8(string.char(128))) -- unexpected continuation byte
+      assert.False(validate_utf8(string.char(192, 32))) -- 2-byte sequence 0xc0 followed by space
+      assert.False(validate_utf8(string.char(192))) -- 2-byte sequence with last byte missing
+      assert.False(validate_utf8(string.char(254))) -- impossible byte
+      assert.False(validate_utf8(string.char(255))) -- impossible byte
+      assert.False(validate_utf8(string.char(237, 160, 128))) -- Single UTF-16 surrogate
     end)
     describe("random_string()", function()
       local utils = require "kong.tools.rand"
@@ -715,55 +717,57 @@ describe("Utils", function()
   end)
 
   describe("bytes_to_str()", function()
+    local bytes_to_str = require("kong.tools.string").bytes_to_str
+
     it("converts bytes to the desired unit", function()
-      assert.equal("5497558", utils.bytes_to_str(5497558, "b"))
-      assert.equal("5368.71 KiB", utils.bytes_to_str(5497558, "k"))
-      assert.equal("5.24 MiB", utils.bytes_to_str(5497558, "m"))
-      assert.equal("0.01 GiB", utils.bytes_to_str(5497558, "g"))
-      assert.equal("5.12 GiB", utils.bytes_to_str(5497558998, "g"))
+      assert.equal("5497558", bytes_to_str(5497558, "b"))
+      assert.equal("5368.71 KiB", bytes_to_str(5497558, "k"))
+      assert.equal("5.24 MiB", bytes_to_str(5497558, "m"))
+      assert.equal("0.01 GiB", bytes_to_str(5497558, "g"))
+      assert.equal("5.12 GiB", bytes_to_str(5497558998, "g"))
     end)
 
     it("defaults unit arg to bytes", function()
-      assert.equal("5497558", utils.bytes_to_str(5497558))
-      assert.equal("5497558", utils.bytes_to_str(5497558, ""))
+      assert.equal("5497558", bytes_to_str(5497558))
+      assert.equal("5497558", bytes_to_str(5497558, ""))
     end)
 
     it("unit arg is case-insensitive", function()
-      assert.equal("5497558", utils.bytes_to_str(5497558, "B"))
-      assert.equal("5368.71 KiB", utils.bytes_to_str(5497558, "K"))
-      assert.equal("5.24 MiB", utils.bytes_to_str(5497558, "M"))
-      assert.equal("0.01 GiB", utils.bytes_to_str(5497558, "G"))
-      assert.equal("5.12 GiB", utils.bytes_to_str(5497558998, "G"))
+      assert.equal("5497558", bytes_to_str(5497558, "B"))
+      assert.equal("5368.71 KiB", bytes_to_str(5497558, "K"))
+      assert.equal("5.24 MiB", bytes_to_str(5497558, "M"))
+      assert.equal("0.01 GiB", bytes_to_str(5497558, "G"))
+      assert.equal("5.12 GiB", bytes_to_str(5497558998, "G"))
     end)
 
     it("scale arg", function()
       -- 3
-      assert.equal("5497558", utils.bytes_to_str(5497558, "b", 3))
-      assert.equal("5368.709 KiB", utils.bytes_to_str(5497558, "k", 3))
-      assert.equal("5.243 MiB", utils.bytes_to_str(5497558, "m", 3))
-      assert.equal("0.005 GiB", utils.bytes_to_str(5497558, "g", 3))
-      assert.equal("5.120 GiB", utils.bytes_to_str(5497558998, "g", 3))
+      assert.equal("5497558", bytes_to_str(5497558, "b", 3))
+      assert.equal("5368.709 KiB", bytes_to_str(5497558, "k", 3))
+      assert.equal("5.243 MiB", bytes_to_str(5497558, "m", 3))
+      assert.equal("0.005 GiB", bytes_to_str(5497558, "g", 3))
+      assert.equal("5.120 GiB", bytes_to_str(5497558998, "g", 3))
 
       -- 0
-      assert.equal("5 GiB", utils.bytes_to_str(5497558998, "g", 0))
+      assert.equal("5 GiB", bytes_to_str(5497558998, "g", 0))
 
       -- decimals
-      assert.equal("5.12 GiB", utils.bytes_to_str(5497558998, "g", 2.2))
+      assert.equal("5.12 GiB", bytes_to_str(5497558998, "g", 2.2))
     end)
 
     it("errors on invalid unit arg", function()
       assert.has_error(function()
-        utils.bytes_to_str(1234, "V")
+        bytes_to_str(1234, "V")
       end, "invalid unit 'V' (expected 'k/K', 'm/M', or 'g/G')")
     end)
 
     it("errors on invalid scale arg", function()
       assert.has_error(function()
-        utils.bytes_to_str(1234, "k", -1)
+        bytes_to_str(1234, "k", -1)
       end, "scale must be equal or greater than 0")
 
       assert.has_error(function()
-        utils.bytes_to_str(1234, "k", "")
+        bytes_to_str(1234, "k", "")
       end, "scale must be equal or greater than 0")
     end)
   end)

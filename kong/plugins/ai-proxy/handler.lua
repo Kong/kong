@@ -14,7 +14,7 @@ local cjson = require("cjson.safe")
 local kong_utils = require("kong.tools.gzip")
 local kong_meta = require("kong.meta")
 local buffer = require "string.buffer"
-local strip = require("kong.tools.utils").strip
+local strip = require("kong.tools.string").strip
 --
 
 
