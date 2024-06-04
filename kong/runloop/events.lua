@@ -170,7 +170,6 @@ end
 
 
 local function dao_crud_handler(data)
-  ngx.log(ngx.ERR, "dao_crud_handler")
   local schema = data.schema
   if not schema then
     log(ERR, "[events] missing schema in crud subscriber")

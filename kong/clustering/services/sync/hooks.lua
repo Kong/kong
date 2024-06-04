@@ -22,13 +22,13 @@ local function get_all_nodes_with_sync_cap()
   local ret = {}
   local ret_n = 0
 
-  local res, err = kong.db.clustering_data_planes:page(1000)
+  local res, err = kong.db.clustering_data_planes:page(512)
   if err then
     return nil, "unable to query DB " .. err
   end
 
-  if not res  then
-    return nil, "node is not connected, node_id: " .. node_id
+  if not res then
+    return {}
   end
 
   for _, row in ipairs(res) do
