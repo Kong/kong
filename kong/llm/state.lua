@@ -1,11 +1,11 @@
 local _M = {}
 
-function _M.set_response_transformer_skipped()
-  kong.ctx.shared.llm_skip_response_transformer = true
+function _M.disable_ai_proxy_response_transform()
+  kong.ctx.shared.disable_ai_proxy_response_transform = true
 end
 
-function _M.is_response_transformer_skipped()
-  return not not kong.ctx.shared.llm_skip_response_transformer
+function _M.should_disable_ai_proxy_response_transform()
+  return not not kong.ctx.shared.disable_ai_proxy_response_transform
 end
 
 function _M.set_prompt_decorated()
