@@ -246,9 +246,11 @@ function AWSLambdaHandler:access(conf)
   -- This is just a backward compatibility code to keep a
   -- long-lived behavior that Kong responsed JSON objects
   -- instead of JSON arrays for empty arrays.
-  local ct = headers["Content-Type"]
-  if ct and ct:lower():match("application/.*json") and conf.empty_arrays_mode == "legacy" then
-    content = remove_array_mt_for_empty_table(content)
+  if conf.empty_arrays_mode == "legacy" then
+    local ct = headers["Content-Type"]
+    if ct and ct:lower():match("application/.*json") then
+      content = remove_array_mt_for_empty_table(content)
+    end
   end
 
   return kong.response.exit(status, content, headers)
