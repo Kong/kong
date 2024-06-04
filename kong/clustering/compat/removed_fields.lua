@@ -314,5 +314,8 @@ return {
       "llm.auth.azure_client_secret",
       "llm.auth.azure_tenant_id",
     },
+    aws_lambda = {
+      "empty_arrays_mode",
+    }
   },
 }
