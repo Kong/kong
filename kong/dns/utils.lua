@@ -1,6 +1,7 @@
 local utils = require("kong.resty.dns.utils")
 
 local log = ngx.log
+
 local NOTICE = ngx.NOTICE
 
 local type = type
@@ -168,6 +169,11 @@ function _M.is_fqdn(name, ndots)
   end
   local _, dot_count = name:gsub("%.", "")
   return (dot_count >= ndots)
+end
+
+
+function _M.is_srv(name)
+  return name:sub(1, 1) == "_" and name:find("%._") ~= nil
 end
 
 

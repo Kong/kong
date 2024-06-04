@@ -7,6 +7,7 @@ local now = ngx.now
 local log = ngx.log
 local ERR = ngx.ERR
 local WARN = ngx.WARN
+local NOTICE = ngx.NOTICE
 local DEBUG = ngx.DEBUG
 local ALERT = ngx.ALERT
 local timer_at = ngx.timer.at
@@ -18,6 +19,7 @@ local tonumber = tonumber
 local setmetatable = setmetatable
 
 local math_min = math.min
+local math_floor = math.floor
 local string_lower = string.lower
 local table_insert = table.insert
 local table_isempty = require("table.isempty")
@@ -33,33 +35,26 @@ local req_dyn_hook_run_hook = require("kong.dynamic_hook").run_hook
 
 -- Constants and default values
 
+local PREFIX = "[dns_client] "
+
 local DEFAULT_ERROR_TTL = 1     -- unit: second
 local DEFAULT_STALE_TTL = 4
 local DEFAULT_EMPTY_TTL = 30
 -- long-lasting TTL of 10 years for hosts or static IP addresses in cache settings
 local LONG_LASTING_TTL = 10 * 365 * 24 * 60 * 60
 
-local PERSISTENT_CACHE_TTL = { ttl = 0 }  -- used for mlcache:set
-
-local DEFAULT_ORDER = { "LAST", "SRV", "A", "AAAA" }
+local DEFAULT_ORDER = { "SRV", "A", "AAAA" }
 
 local TYPE_SRV = resolver.TYPE_SRV
 local TYPE_A = resolver.TYPE_A
 local TYPE_AAAA = resolver.TYPE_AAAA
-local TYPE_LAST = -1
-
-local NAME_TO_TYPE = {
-  SRV = TYPE_SRV,
-  A = TYPE_A,
-  AAAA = TYPE_AAAA,
-  LAST = TYPE_LAST,
-}
+local TYPE_A_AAAA = -1  -- used to resolve IP addresses for SRV targets
 
 local TYPE_TO_NAME = {
   [TYPE_SRV] = "SRV",
   [TYPE_A] = "A",
   [TYPE_AAAA] = "AAAA",
-  [TYPE_LAST] = "LAST",
+  [TYPE_A_AAAA] = "A/AAAA",
 }
 
 local HIT_L3 = 3 -- L1 lru, L2 shm, L3 callback, L4 stale
@@ -67,7 +62,7 @@ local HIT_L3 = 3 -- L1 lru, L2 shm, L3 callback, L4 stale
 local HIT_LEVEL_TO_NAME = {
   [1] = "hit_lru",
   [2] = "hit_shm",
-  [3] = "hit_cb",
+  [3] = "miss",
   [4] = "hit_stale",
 }
 
@@ -92,7 +87,6 @@ local _M = {
   TYPE_SRV = TYPE_SRV,
   TYPE_A = TYPE_A,
   TYPE_AAAA = TYPE_AAAA,
-  TYPE_LAST = TYPE_LAST,
 }
 local MT = { __index = _M }
 
@@ -117,23 +111,8 @@ local function stats_set_count(stats, name, key, value)
 end
 
 
--- lookup or set TYPE_LAST (the DNS record type from the last successful query)
-local function insert_last_type(cache, name, qtype)
-  local key = "last:" .. name
-  if TYPE_TO_NAME[qtype] and cache:get(key) ~= qtype then
-    cache:set(key, PERSISTENT_CACHE_TTL, qtype)
-  end
-end
-
-
-local function get_last_type(cache, name)
-  return cache:get("last:" .. name)
-end
-
-
 local init_hosts do
   local function insert_answer_into_cache(cache, hosts_cache, address, name, qtype)
-    local key = name .. ":" .. qtype
     local answers = {
       ttl = LONG_LASTING_TTL,
       expire = now() + LONG_LASTING_TTL,
@@ -146,33 +125,25 @@ local init_hosts do
       },
     }
 
-    -- insert via the `:get` callback to prevent inter-process communication
-    cache:get(key, nil, function()
-      return answers, nil, LONG_LASTING_TTL
-    end)
-
-    -- used for the host entry eviction
-    hosts_cache[key] = answers
+    hosts_cache[name .. ":" .. qtype] = answers
+    hosts_cache[name .. ":" .. TYPE_A_AAAA] = answers
+    hosts_cache[name .. ":all"] = answers
   end
 
   -- insert hosts into cache
-  function init_hosts(cache, path, preferred_ip_type)
+  function init_hosts(cache, path)
     local hosts = parse_hosts(path)
     local hosts_cache = {}
 
     for name, address in pairs(hosts) do
       name = string_lower(name)
 
-      if address.ipv4 then
-        insert_answer_into_cache(cache, hosts_cache, address.ipv4, name, TYPE_A)
-        insert_last_type(cache, name, TYPE_A)
-      end
-
       if address.ipv6 then
         insert_answer_into_cache(cache, hosts_cache, address.ipv6, name, TYPE_AAAA)
-        if not address.ipv4 or preferred_ip_type == TYPE_AAAA then
-          insert_last_type(cache, name, TYPE_AAAA)
-        end
+      end
+
+      if address.ipv4 then
+        insert_answer_into_cache(cache, hosts_cache, address.ipv4, name, TYPE_A)
       end
     end
 
@@ -187,10 +158,34 @@ local ipc_counter = 0
 function _M.new(opts)
   opts = opts or {}
 
+  local enable_ipv4, enable_ipv6, enable_srv
+
+  opts.order = opts.order or DEFAULT_ORDER
+
+  for i, typstr in ipairs(opts.order) do
+    typstr = typstr:upper()
+
+    if typstr == "A" then
+      enable_ipv4 = true
+
+    elseif typstr == "AAAA" then
+      enable_ipv6 = true
+
+    elseif typstr == "SRV" then
+      enable_srv = true
+
+    elseif typstr ~= "LAST" and typstr ~= "CNAME" then
+      return nil, "Invalid dns record type in order array: " .. typstr
+    end
+  end
+
+  log(NOTICE, PREFIX, PREFIX, "supported types: ", enable_srv and "srv " or "",
+              enable_ipv4 and "ipv4 " or "", enable_ipv6 and "ipv6 " or "")
+
   -- parse resolv.conf
   local resolv, err = utils.parse_resolv_conf(opts.resolv_conf, opts.enable_ipv6)
   if not resolv then
-    log(WARN, "Invalid resolv.conf: ", err)
+    log(WARN, PREFIX, "Invalid resolv.conf: ", err)
     resolv = { options = {} }
   end
 
@@ -200,7 +195,7 @@ function _M.new(opts)
                       or resolv.nameservers
 
   if not nameservers or table_isempty(nameservers) then
-    log(WARN, "Invalid configuration, no nameservers specified")
+    log(WARN, PREFIX, "Invalid configuration, no nameservers specified")
   end
 
   local r_opts = {
@@ -254,7 +249,7 @@ function _M.new(opts)
 
       local ok, err = kong.worker_events.post(ipc_source, channel, data)
       if not ok then
-        log(ERR, "failed to post event '", ipc_source, "', '", channel, "': ", err)
+        log(ERR, PREFIX, "failed to post event '", ipc_source, "', '", channel, "': ", err)
       end
     end,
   }
@@ -263,6 +258,7 @@ function _M.new(opts)
     ipc = ipc,
     neg_ttl = opts.empty_ttl or DEFAULT_EMPTY_TTL,
     lru_size = opts.cache_size or 10000,
+    shm_locks = ngx.shared.kong_locks and "kong_locks",
     resty_lock_opts = resty_lock_opts,
   })
 
@@ -274,41 +270,8 @@ function _M.new(opts)
     cache:purge(true)
   end
 
-  -- parse order
-  if opts.order and table_isempty(opts.order) then
-    return nil, "Invalid order array: empty record types"
-  end
-
-  local order = opts.order or DEFAULT_ORDER
-
-  local search_types = {}
-  local preferred_ip_type
-
-  for i, typstr in ipairs(order) do
-
-    -- TODO: delete this compatibility code in subsequent commits
-    if typstr:upper() == "CNAME" then
-      goto continue
-    end
-
-    local qtype = NAME_TO_TYPE[typstr:upper()]
-    if not qtype then
-      return nil, "Invalid dns record type in order array: " .. typstr
-    end
-
-    search_types[i] = qtype
-
-    if (qtype == TYPE_A or qtype == TYPE_AAAA) and not preferred_ip_type then
-      preferred_ip_type = qtype
-    end
-
-    ::continue::
-  end
-
-  preferred_ip_type = preferred_ip_type or TYPE_A
-
   -- parse hosts
-  local hosts, hosts_cache = init_hosts(cache, opts.hosts, preferred_ip_type)
+  local hosts, hosts_cache = init_hosts(cache, opts.hosts)
 
   return setmetatable({
     cache = cache,
@@ -320,8 +283,10 @@ function _M.new(opts)
     error_ttl = opts.error_ttl or DEFAULT_ERROR_TTL,
     stale_ttl = opts.stale_ttl or DEFAULT_STALE_TTL,
     empty_ttl = opts.empty_ttl or DEFAULT_EMPTY_TTL,
+    enable_srv = enable_srv,
+    enable_ipv4 = enable_ipv4,
+    enable_ipv6 = enable_ipv6,
     hosts_cache = hosts_cache,
-    search_types = search_types,
 
     -- TODO: Make the table readonly. But if `string.buffer.encode/decode` and
     -- `pl.tablex.readonly` are called on it, it will become empty table.
@@ -368,20 +333,16 @@ local function process_answers(self, qname, qtype, answers)
         answer.target = ipv6_bracket(answer.target)
       end
 
-      -- skip the SRV record pointing to itself,
-      -- see https://github.com/Kong/lua-resty-dns-client/pull/3
-      if not (answer_type == TYPE_SRV and answer.target == qname) then
-        table_insert(processed_answers, answer)
-      end
+      table_insert(processed_answers, answer)
     end
   end
 
   if table_isempty(processed_answers) then
-    log(DEBUG, "processed ans:empty")
+    log(DEBUG, PREFIX, "processed ans:empty")
     return self.EMPTY_ANSWERS
   end
 
-  log(DEBUG, "processed ans:", #processed_answers)
+  log(DEBUG, PREFIX, "processed ans:", #processed_answers)
 
   processed_answers.expire = now() + ttl
   processed_answers.ttl = ttl
@@ -390,8 +351,10 @@ local function process_answers(self, qname, qtype, answers)
 end
 
 
-local function resolve_query(self, name, qtype)
+local function resolve_query(self, name, qtype, tries)
   local key = name .. ":" .. qtype
+
+  stats_init_name(self.stats, key)
   stats_increment(self.stats, key, "query")
 
   local r, err = resolver:new(self.r_opts)
@@ -399,23 +362,24 @@ local function resolve_query(self, name, qtype)
     return nil, "failed to instantiate the resolver: " .. err
   end
 
-  local start_time = now()
+  local start = now()
 
   local answers, err = r:query(name, { additional_section = true, qtype = qtype })
   r:destroy()
 
-  local query_time = now() - start_time -- the time taken for the DNS query
-  local time_str = ("%.3f %.3f"):format(start_time, query_time)
+  local duration = math_floor((now() - start) * 1000)
 
-  stats_set_count(self.stats, key, "query_last_time", time_str)
+  stats_set_count(self.stats, key, "query_last_time", duration)
 
-  log(DEBUG, "r:query(", key, ") ans:", answers and #answers or "-",
-             " t:", time_str)
+  log(DEBUG, PREFIX, "r:query(", key, ") ans:", answers and #answers or "-",
+             " t:", duration, " ms")
 
+  -- network error or malformed DNS response
   if not answers then
     stats_increment(self.stats, key, "query_fail_nameserver")
-    err = err or "unknown"
-    return nil, "DNS server error: " .. err .. ", Query Time: " .. time_str
+    err = "DNS server error: " .. tostring(err) .. ", took " .. duration .. " ms" 
+    table_insert(tries, { name .. ":" .. TYPE_TO_NAME[qtype], err })
+    return nil, err
   end
 
   answers = process_answers(self, name, qtype, answers)
@@ -424,41 +388,131 @@ local function resolve_query(self, name, qtype)
                                    "query_fail:" .. answers.errstr or
                                    "query_succ")
 
+  -- DNS response error
+  if answers.errcode then
+    err = ("dns %s error: %s %s"):format(
+            answers.errcode < CACHE_ONLY_ERROR_CODE and "server" or "client",
+            answers.errcode, answers.errstr)
+    table_insert(tries, { name .. ":" .. TYPE_TO_NAME[qtype], err })
+  end
+
+  return answers
+end
+
+
+-- resolve all `name`s and return first usable answers
+local function resolve_query_names(self, names, qtype, tries)
+  local answers, err
+
+  for _, qname in ipairs(names) do
+    answers, err = resolve_query(self, qname, qtype, tries)
+
+    -- severe error occurred
+    if not answers then
+      return nil, err
+    end
+
+    if not answers.errcode then
+      return answers, nil, answers.ttl
+    end
+  end
+
+  -- not found in the search iteration
   return answers, nil, answers.ttl
 end
 
 
-local function stale_update_task(premature, self, key, name, qtype, short_key)
+local function resolve_query_types(self, name, qtype, tries)
+  local names = search_names(name, self.resolv, self.hosts)
+  local answers, err, ttl
+
+  -- the specific type
+  if qtype and qtype ~= TYPE_A_AAAA then
+    return resolve_query_names(self, names, qtype, tries)
+  end
+
+  -- query SRV for nil type
+  if self.enable_srv and qtype == nil then
+    answers, err, ttl = resolve_query_names(self, names, TYPE_SRV, tries)
+    if not answers or not answers.errcode then
+      return answers, err, ttl
+    end
+  end
+
+  -- query A/AAAA for nil or TYPE_A_AAAA type
+  if self.enable_ipv4 then
+    answers, err, ttl = resolve_query_names(self, names, TYPE_A, tries)
+    if not answers or not answers.errcode then
+      return answers, err, ttl
+    end
+  end
+
+  if self.enable_ipv6 then
+    answers, err, ttl = resolve_query_names(self, names, TYPE_AAAA, tries)
+    if not answers or not answers.errcode then
+      return answers, err, ttl
+    end
+  end
+
+  return answers, err, ttl
+end
+
+
+local function stale_update_task(premature, self, key, name, qtype)
   if premature then
     return
   end
 
-  local answers = resolve_query(self, name, qtype)
+  local tries = setmetatable({}, TRIES_MT)
+  local answers = resolve_query_types(self, name, qtype, tries)
   if answers and (not answers.errcode or answers.errcode == NAME_ERROR_CODE) then
     self.cache:set(key, { ttl = answers.ttl }, answers)
-    insert_last_type(self.cache, name, qtype)
+  end
 
-    -- simply invalidate it and let the search iteration choose the correct one
-    self.cache:delete(short_key)
+  if not answers or answers.errcode then
+     log(WARN, PREFIX, "Updating stale DNS records failed. Tried: ", tostring(tries))
   end
 end
 
 
-local function start_stale_update_task(self, key, name, qtype, short_key)
+local function start_stale_update_task(self, key, name, qtype)
   stats_increment(self.stats, key, "stale")
 
-  local ok, err = timer_at(0, stale_update_task, self, key, name, qtype, short_key)
+  local ok, err = timer_at(0, stale_update_task, self, key, name, qtype)
   if not ok then
-    log(ALERT, "failed to start a timer to update stale DNS records: ", err)
+    log(ALERT, PREFIX, "failed to start a timer to update stale DNS records: ", err)
   end
 end
 
 
-local function resolve_name_type_callback(self, name, qtype, cache_only,
-                                          short_key, tries)
-  local key = name .. ":" .. qtype
+local function check_and_get_ip_answers(name)
+  if name:match("^%d+%.%d+%.%d+%.%d+$") then  -- IPv4
+    return {
+      { name = name, class = 1, type = TYPE_A, address = name },
+    }
+  end
+
+  if name:find(":", 1, true) then             -- IPv6
+    return {
+      { name = name, class = 1, type = TYPE_AAAA, address = ipv6_bracket(name) },
+    }
+  end
+
+  return nil
+end
+
+
+local function resolve_callback(self, name, qtype, cache_only, tries)
+  -- check if name is ip address
+  local answers = check_and_get_ip_answers(name)
+  if answers then -- domain name is IP literal
+    answers.ttl = LONG_LASTING_TTL
+    answers.expire = now() + answers.ttl
+    return answers, nil, tries
+  end
 
   -- check if this key exists in the hosts file (it maybe evicted from cache)
+  local key = name .. ":" .. (qtype or "all")
   local answers = self.hosts_cache[key]
   if answers then
     return answers, nil, answers.ttl
@@ -481,10 +535,10 @@ local function resolve_name_type_callback(self, name, qtype, cache_only,
     ttl = math_min(ttl, 60)
 
     if ttl > 0 then
-      log(DEBUG, "start stale update task ", key, " ttl:", ttl)
+      log(DEBUG, PREFIX, "start stale update task ", key, " ttl:", ttl)
 
       -- mlcache's internal lock mechanism ensures concurrent control
-      start_stale_update_task(self, key, name, qtype, short_key)
+      start_stale_update_task(self, key, name, qtype)
       answers.ttl = ttl
       return answers, nil, ttl
     end
@@ -494,167 +548,46 @@ local function resolve_name_type_callback(self, name, qtype, cache_only,
     return CACHE_ONLY_ANSWERS, nil, -1
   end
 
-  local answers, err, ttl = resolve_query(self, name, qtype)
-  return answers, err, ttl
-end
-
-
-local function resolve_name_type(self, name, qtype, cache_only, short_key,
-                                 tries, has_timing)
-  local key = name .. ":" .. qtype
-
-  stats_init_name(self.stats, key)
-
-  local answers, err, hit_level = self.cache:get(key, nil,
-                                                 resolve_name_type_callback,
-                                                 self, name, qtype, cache_only,
-                                                 short_key, tries)
-  -- check for runtime errors in the callback
-  if err and err:sub(1, 8) == "callback" then
-    log(ALERT, err)
-  end
-
-  log(DEBUG, "cache lookup ", key, " ans:", answers and #answers or "-",
-             " hlv:", hit_level or "-")
-
-  if has_timing then
-    req_dyn_hook_run_hook("timing", "dns:cache_lookup",
-                           (hit_level and hit_level < HIT_L3))
-  end
-
-  -- hit L1 lru or L2 shm
-  if hit_level and hit_level < HIT_L3 then
-    stats_increment(self.stats, key, HIT_LEVEL_TO_NAME[hit_level])
-  end
-
-  if err or answers.errcode then
-    if not err then
-      local src = answers.errcode < CACHE_ONLY_ERROR_CODE and "server" or "client"
-      err = ("dns %s error: %s %s"):format(src, answers.errcode, answers.errstr)
-    end
-
-    table_insert(tries, { name .. ":" .. TYPE_TO_NAME[qtype], err })
-  end
-
-  return answers, err
-end
-
-
-local function get_search_types(self, name, qtype)
-  local input_types = qtype and { qtype } or self.search_types
-  local checked_types = {}
-  local types = {}
-
-  for _, qtype in ipairs(input_types) do
-    if qtype == TYPE_LAST then
-      qtype = get_last_type(self.cache, name)
-    end
-
-    if qtype and not checked_types[qtype] then
-      table_insert(types, qtype)
-      checked_types[qtype] = true
-    end
-  end
-
-  return types
-end
-
-
-local function check_and_get_ip_answers(name)
-  if name:match("^%d+%.%d+%.%d+%.%d+$") then  -- IPv4
-    return {
-      { name = name, class = 1, type = TYPE_A, address = name },
-    }
-  end
-
-  if name:find(":", 1, true) then             -- IPv6
-    return {
-      { name = name, class = 1, type = TYPE_AAAA, address = ipv6_bracket(name) },
-    }
-  end
-
-  return nil
-end
-
-
--- resolve all `name`s and `type`s combinations and return first usable answers
-local function resolve_names_and_types(self, name, typ, cache_only, short_key,
-                                       tries, has_timing)
-
-  local answers = check_and_get_ip_answers(name)
-  if answers then -- domain name is IP literal
-    answers.ttl = LONG_LASTING_TTL
-    answers.expire = now() + answers.ttl
-    return answers, nil, tries
-  end
-
-  -- TODO: For better performance, it may be necessary to rewrite it as an
-  --       iterative function.
-  local types = get_search_types(self, name, typ)
-  local names = search_names(name, self.resolv, self.hosts)
-
-  local err
-  for _, qtype in ipairs(types) do
-    for _, qname in ipairs(names) do
-      answers, err = resolve_name_type(self, qname, qtype, cache_only,
-                                       short_key, tries, has_timing)
-      -- severe error occurred
-      if not answers then
-        return nil, err, tries
-      end
-
-      if not answers.errcode then
-        insert_last_type(self.cache, qname, qtype) -- cache TYPE_LAST
-        return answers, nil, tries
-      end
-    end
-  end
-
-  -- not found in the search iteration
-  return nil, err, tries
+  return resolve_query_types(self, name, qtype, tries)
 end
 
 
 local function resolve_all(self, name, qtype, cache_only, tries, has_timing)
   name = string_lower(name)
+
   tries = setmetatable(tries or {}, TRIES_MT)
 
-  -- key like "short:example.com:all" or "short:example.com:5"
-  local key = "short:" .. name .. ":" .. (qtype or "all")
+  -- key like "example.com:<type>"
+  local key = name .. ":" .. (qtype or "all")
+  log(DEBUG, PREFIX, "resolve_all ", key)
 
-  stats_init_name(self.stats, name)
-  stats_increment(self.stats, name, "runs")
+  stats_init_name(self.stats, key)
+  stats_increment(self.stats, key, "runs")
 
-  -- quickly lookup with the key "short:<name>:all" or "short:<name>:<qtype>"
-  local answers, err, hit_level = self.cache:get(key)
-  if not answers then
-    log(DEBUG, "quickly cache lookup ", key, " ans:- hlvl:", hit_level or "-")
+  local answers, err, hit_level = self.cache:get(key, nil, resolve_callback,
+                                                 self, name, qtype, cache_only,
+                                                 tries)
+  -- check for runtime errors in the callback
+  if err and err:sub(1, 8) == "callback" then
+    log(ALERT, PREFIX, err)
+  end
 
-    answers, err, tries = resolve_names_and_types(self, name, qtype, cache_only,
-                                             key, tries, has_timing)
+  local hit_str = hit_level and HIT_LEVEL_TO_NAME[hit_level] or "fail"
+  stats_increment(self.stats, key, hit_str)
 
-    if not cache_only and answers then
-      -- If another worker resolved the name between these two `:get`, it can
-      -- work as expected and will not introduce a race condition.
+  log(DEBUG, PREFIX, "cache lookup ", key, " ans:", answers and #answers or "-",
+             " hlv:", hit_str)
 
-      -- insert via the `:get` callback to prevent inter-process communication
-      self.cache:get(key, nil, function()
-        return answers, nil, answers.ttl
-      end)
-    end
+  if has_timing then
+    req_dyn_hook_run_hook("timing", "dns:cache_lookup",
+                          (hit_level and hit_level < HIT_L3))
+  end
 
-    stats_increment(self.stats, name, answers and "miss" or "fail")
-
-  else
-    log(DEBUG, "quickly cache lookup ", key, " ans:", #answers,
-               " hlv:", hit_level or "-")
-
-    if has_timing then
-      req_dyn_hook_run_hook("timing", "dns:cache_lookup",
-                             (hit_level and hit_level < HIT_L3))
-    end
-
-    stats_increment(self.stats, name, HIT_LEVEL_TO_NAME[hit_level])
+  if answers and answers.errcode then
+    err = ("dns %s error: %s %s"):format(
+            answers.errcode < CACHE_ONLY_ERROR_CODE and "server" or "client",
+            answers.errcode, answers.errstr)
+    return nil, err, tries
   end
 
   return answers, err, tries
@@ -667,30 +600,27 @@ function _M:resolve(name, qtype, cache_only, tries)
 end
 
 
--- Implement `resolve_address` separately as `_resolve_address` with the
--- `has_timing` parameter so that it avoids checking for `ngx.ctx.has_timing`
--- in recursion.
-local function _resolve_address(self, name, port, cache_only, tries, has_timing)
+function _M:resolve_address(name, port, cache_only, tries)
+  local has_timing = ngx.ctx and ngx.ctx.has_timing
+
   local answers, err, tries = resolve_all(self, name, nil, cache_only, tries,
                                           has_timing)
   if not answers then
     return nil, err, tries
   end
 
-  if answers[1].type == TYPE_SRV then
+  if answers and answers[1].type == TYPE_SRV then
     local answer = get_next_weighted_round_robin_answer(answers)
     port = (answer.port ~= 0 and answer.port) or port
-    return _resolve_address(self, answer.target, port, cache_only, tries,
-                            has_timing)
+    answers, err, tries = resolve_all(self, answer.target, TYPE_A_AAAA,
+                                      cache_only, tries, has_timing)
+  end
+
+  if not answers then
+    return nil, err, tries
   end
 
   return get_next_round_robin_answer(answers).address, port, tries
-end
-
-
-function _M:resolve_address(name, port, cache_only, tries)
-  return _resolve_address(self, name, port, cache_only, tries,
-                          ngx.ctx and ngx.ctx.has_timing)
 end
 
 
@@ -699,7 +629,7 @@ end
 local dns_client
 
 function _M.init(opts)
-  log(DEBUG, "(re)configuring dns client")
+  log(DEBUG, PREFIX, "(re)configuring dns client")
 
   if opts then
     opts.valid_ttl = opts.valid_ttl or opts.validTtl
@@ -731,7 +661,7 @@ function _M.toip(name, port, cache_only, tries)
 end
 
 
--- for example, "example.com:33" -> "example.com:SRV"
+-- "_ldap._tcp.example.com:33" -> "_ldap._tcp.example.com:SRV"
 local function format_key(key)
   local qname, qtype = key:match("([^:]+):(%d+)")  -- match "(qname):(qtype)"
   return qtype and qname .. ":" .. (TYPE_TO_NAME[tonumber(qtype)] or qtype)
@@ -767,14 +697,6 @@ if package.loaded.busted then
 
       cache = dns_client.cache,
     }
-  end
-
-  function _M:_insert_last_type(name, qtype)  -- export as different name!
-    insert_last_type(self.cache, name, qtype)
-  end
-
-  function _M:_get_last_type(name)            -- export as different name!
-    return get_last_type(self.cache, name)
   end
 end
 

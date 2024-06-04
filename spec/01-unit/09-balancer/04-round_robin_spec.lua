@@ -19,6 +19,7 @@ local sleep = helpers.sleep
 local dnsSRV = function(...) return helpers.dnsSRV(client, ...) end
 local dnsA = function(...) return helpers.dnsA(client, ...) end
 local dnsAAAA = function(...) return helpers.dnsAAAA(client, ...) end
+local dnsExpire = helpers.dnsExpire
 
 
 local unset_register = {}
@@ -1042,6 +1043,7 @@ describe("[round robin balancer]", function()
       -- expire the existing record
       record.expire = 0
       record.expired = true
+      dnsExpire(client, record)
       sleep(0.2)  -- wait for record expiration
       -- do a lookup to trigger the async lookup
       client.resolve("really.really.really.does.not.exist.hostname.test", {qtype = client.TYPE_A})

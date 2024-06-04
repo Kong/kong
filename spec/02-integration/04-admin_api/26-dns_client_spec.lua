@@ -38,7 +38,7 @@ for _, strategy in helpers.each_strategy() do
       assert(type(json.worker.count) == "number")
 
       assert(type(json.stats) == "table")
-      assert(type(json.stats["127.0.0.1"].runs) == "number")
+      assert(type(json.stats["127.0.0.1:all"].runs) == "number")
     end)
   end)
 
