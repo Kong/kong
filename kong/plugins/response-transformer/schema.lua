@@ -1,5 +1,5 @@
 local typedefs = require "kong.db.schema.typedefs"
-local validate_header_name = require("kong.tools.utils").validate_header_name
+local validate_header_name = require("kong.tools.http").validate_header_name
 
 
 local function validate_headers(pair, validate_value)
