@@ -16,4 +16,4 @@ jobs:
       - name: Validate PR Body
         uses: Kong/pr-template-validator@aecdf87d003b1b67e9bf32528a572aeb86c5d4ed
         with:
-          body-regex: '(KAG|FTI|DOCU|KM)-\d+'
+          body-regex: '(KAG|FTI|DOCU|KM|AG)-\d+'
