@@ -59,12 +59,10 @@ if kong_router_flavor == "traditional_compatible" or kong_router_flavor == "expr
   local router = require("resty.router.router")
   local transform = require("kong.router.transform")
   local get_schema = require("kong.router.atc").schema
-  local get_expression = kong_router_flavor == "traditional_compatible" and
-                         require("kong.router.compat").get_expression or
-                         require("kong.router.expressions").transform_expression
 
   local is_null = transform.is_null
   local is_empty_field = transform.is_empty_field
+  local amending_expression = transform.amending_expression
 
   local HTTP_PATH_SEGMENTS_PREFIX = "http.path.segments."
   local HTTP_PATH_SEGMENTS_SUFFIX_REG = [[^(0|[1-9]\d*)(_([1-9]\d*))?$]]
@@ -111,7 +109,7 @@ if kong_router_flavor == "traditional_compatible" or kong_router_flavor == "expr
     end
 
     local schema = get_schema(entity.protocols)
-    local exp = get_expression(entity)
+    local exp = amending_expression(entity)
 
     local fields, err = router.validate(schema, exp)
     if not fields then
