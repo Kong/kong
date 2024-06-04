@@ -60,8 +60,9 @@ function W3C_EXTRACTOR:get_context(headers)
     return
   end
 
+  local flags_number = tonumber(flags, 16)
   -- W3C sampled flag: https://www.w3.org/TR/trace-context/#sampled-flag
-  local should_sample = tonumber(flags, 16) % 2 == 1
+  local should_sample = flags_number % 2 == 1
 
   trace_id            = from_hex(trace_id)
   parent_id           = from_hex(parent_id)
@@ -75,7 +76,7 @@ function W3C_EXTRACTOR:get_context(headers)
     parent_id     = nil,
     should_sample = should_sample,
     baggage       = nil,
-    flags         = nil,
+    w3c_flags     = flags_number,
   }
 end
 

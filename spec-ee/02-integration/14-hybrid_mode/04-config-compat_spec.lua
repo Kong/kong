@@ -171,7 +171,7 @@ describe("CP/DP config compat #" .. strategy, function()
         label = "w/ header_type datadog unsupported",
         pending = false,
         config = {
-          endpoint = "http://1.1.1.1:12345/v1/trace",
+          traces_endpoint = "http://1.1.1.1:12345/v1/trace",
           header_type = "datadog"
         },
         status = STATUS.NORMAL,

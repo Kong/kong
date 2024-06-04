@@ -50,7 +50,6 @@ if uh.database_type() == 'postgres' then
             assert.equal(1, #body.data)
             assert.equal("opentelemetry", body.data[1].name)
             local expected_config = {
-                endpoint = "http://localhost:8080/v1/traces",
                 queue = {
                     max_batch_size = 200
                 },

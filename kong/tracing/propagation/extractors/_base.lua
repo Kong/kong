@@ -172,6 +172,7 @@ end
 --    should_sample     = {boolean        | nil},
 --    baggage           = {table          | nil},
 --    flags             = {string         | nil},
+--    w3c_flags         = {string         | nil},
 --    single_header     = {boolean        | nil},
 --  }
 --
@@ -193,6 +194,7 @@ end
 --  6. baggage: A table with the baggage items extracted from the incoming
 --     tracing headers.
 --  7. flags: Flags extracted from the incoming tracing headers (B3)
+--  7. w3c_flags: Flags extracted from the incoming tracing headers (W3C)
 --  8. single_header: For extractors that support multiple formats, whether the
 --     context was extracted from the single or the multi-header format.
 function _EXTRACTOR:get_context(headers)

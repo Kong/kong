@@ -375,6 +375,14 @@ local function invalidate_keys_from_config(config_plugins, keys, log_suffix, dp_
           end
         end
 
+        -- Any dataplane older than 3.8.0
+        if dp_version_num < 3008000000 then
+          -- OSS
+          if name == "opentelemetry" then
+            has_update = rename_field(config, "traces_endpoint", "endpoint", has_update)
+          end
+        end
+
         for _, key in ipairs(keys[name]) do
           if delete_at(config, key) then
             ngx_log(ngx_WARN, _log_prefix, name, " plugin contains configuration '", key,

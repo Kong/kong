@@ -60,7 +60,7 @@ for _, strategy in helpers.each_strategy() do
         http_endpoint = "http://example.com/",
       },
       ["opentelemetry"] = {
-        endpoint = "http://example.com/",
+        traces_endpoint = "http://example.com/",
       },
     }
 

@@ -50,7 +50,7 @@ for _, strategy in helpers.each_strategy() do
       bp.plugins:insert({
         name = "opentelemetry",
         config = table_merge({
-          endpoint = fmt("http://%s:%s/v1/traces", OTELCOL_HOST, OTELCOL_HTTP_PORT),
+          traces_endpoint = fmt("http://%s:%s/v1/traces", OTELCOL_HOST, OTELCOL_HTTP_PORT),
           batch_flush_delay = 0, -- report immediately
         }, config)
       })
@@ -59,7 +59,7 @@ for _, strategy in helpers.each_strategy() do
         name = "opentelemetry",
         route      = { id = route_traceid.id },
         config = table_merge({
-          endpoint = fmt("http://%s:%s/v1/traces", OTELCOL_HOST, OTELCOL_HTTP_PORT),
+          traces_endpoint = fmt("http://%s:%s/v1/traces", OTELCOL_HOST, OTELCOL_HTTP_PORT),
           batch_flush_delay = 0, -- report immediately
           http_response_header_for_traceid = "x-trace-id",
         }, config)

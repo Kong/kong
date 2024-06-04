@@ -520,7 +520,7 @@ describe("kong.clustering.compat", function()
               name = "opentelemetry",
               route = { id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c7" },
               config = {
-                endpoint = "http://example.com",
+                traces_endpoint = "http://example.com",
               },
             },
             plugin2 = {
@@ -528,14 +528,14 @@ describe("kong.clustering.compat", function()
               name = "opentelemetry",
               service = { id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6" },
               config = {
-                endpoint = "http://example.com",
+                traces_endpoint = "http://example.com",
               },
             },
             plugin3 = {
               id = "01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c1",
               name = "opentelemetry",
               config = {
-                endpoint = "http://example.com",
+                traces_endpoint = "http://example.com",
               },
             },
           },
@@ -655,7 +655,7 @@ describe("kong.clustering.compat", function()
             id = "00000000-0000-0000-0000-000000000005",
             name = "opentelemetry",
             config = {
-              endpoint = "http://example.com",
+              traces_endpoint = "http://example.com",
               queue = {
                 max_batch_size = 9,
                 max_coalescing_delay = 9,

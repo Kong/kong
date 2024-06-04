@@ -101,7 +101,7 @@ describe('Gateway Plugins: OpenTelemetry', function () {
 
     expect(resp.status, 'Status should be 400').to.equal(400);
     expect(resp.data.message, 'Should have correct error message').to.contain(
-      `schema violation (config.endpoint: missing host in url)`
+      `missing host in url`
     );
   });
 

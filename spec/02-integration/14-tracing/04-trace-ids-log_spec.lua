@@ -152,7 +152,7 @@ for _, strategy in helpers.each_strategy() do
         name = "opentelemetry",
         route = { id = otel_route.id },
         config = {
-          endpoint = "http://localhost:8080/v1/traces",
+          traces_endpoint = "http://localhost:8080/v1/traces",
           header_type = config_header.type,
         }
       })
@@ -161,7 +161,7 @@ for _, strategy in helpers.each_strategy() do
         name = "opentelemetry",
         route = { id = otel_zipkin_route.id },
         config = {
-          endpoint = "http://localhost:8080/v1/traces",
+          traces_endpoint = "http://localhost:8080/v1/traces",
           header_type = config_header.type,
         }
       })
@@ -170,7 +170,7 @@ for _, strategy in helpers.each_strategy() do
         name = "opentelemetry",
         route = { id = otel_zipkin_route_2.id },
         config = {
-          endpoint = "http://localhost:8080/v1/traces",
+          traces_endpoint = "http://localhost:8080/v1/traces",
           header_type = "jaeger",
         }
       })

@@ -336,6 +336,10 @@ return {
     oauth2 = {
       "realm",
     },
+    opentelemetry = {
+      "traces_endpoint",
+      "logs_endpoint",
+    },
     -- Enterprise plugins
     openid_connect = {
       "claims_forbidden",

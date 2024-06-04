@@ -871,6 +871,9 @@ build = {
     ["kong.plugins.opentelemetry.schema"]  = "kong/plugins/opentelemetry/schema.lua",
     ["kong.plugins.opentelemetry.proto"]  = "kong/plugins/opentelemetry/proto.lua",
     ["kong.plugins.opentelemetry.otlp"]  = "kong/plugins/opentelemetry/otlp.lua",
+    ["kong.plugins.opentelemetry.traces"] = "kong/plugins/opentelemetry/traces.lua",
+    ["kong.plugins.opentelemetry.logs"] = "kong/plugins/opentelemetry/logs.lua",
+    ["kong.plugins.opentelemetry.utils"] = "kong/plugins/opentelemetry/utils.lua",
 
     ["kong.plugins.ai-proxy.handler"] = "kong/plugins/ai-proxy/handler.lua",
     ["kong.plugins.ai-proxy.schema"] = "kong/plugins/ai-proxy/schema.lua",
@@ -1068,6 +1071,8 @@ build = {
     ["kong.tracing.propagation.injectors.datadog"] = "kong/tracing/propagation/injectors/datadog.lua",
     ["kong.tracing.request_id"] = "kong/tracing/request_id.lua",
     ["kong.tracing.tracing_context"] = "kong/tracing/tracing_context.lua",
+
+    ["kong.observability.logs"] = "kong/observability/logs.lua",
 
     ["kong.vaults.gcp"] = "kong/vaults/gcp/init.lua",
     ["kong.vaults.gcp.schema"] = "kong/vaults/gcp/schema.lua",
