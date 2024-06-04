@@ -337,7 +337,7 @@ server {
         set $kong_proxy_mode 'http';
 
         rewrite_by_lua_block       {
-          -- ngx.localtion.capture will create a new nginx request,
+          -- ngx.location.capture will create a new nginx request,
           -- so the upstream ssl-related info attached to the `r` gets lost.
           -- we need to re-set them here to the new nginx request.
           local ctx = ngx.ctx
