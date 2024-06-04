@@ -276,6 +276,16 @@ jobs:
       with:
         name: test-runtime-statistics-${{ matrix.runner }}
 
+    - name: Setup tmate session
+      uses: mxschmitt/action-tmate@v3
+      with:
+        github-token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+        sudo: true
+        install-dependencies: true
+        tmate-server-host: ssh.tmate.io
+        tmate-server-port: 22
+        limit-access-to-actor: true
+
     - name: Run Tests
       env:
         KONG_TEST_PG_DATABASE: kong
