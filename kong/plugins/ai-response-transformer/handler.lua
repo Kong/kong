@@ -6,6 +6,7 @@ local http          = require("resty.http")
 local fmt           = string.format
 local kong_utils    = require("kong.tools.gzip")
 local llm           = require("kong.llm")
+local llm_state     = require("kong.llm.state")
 --
 
 _M.PRIORITY = 769
@@ -99,7 +100,7 @@ end
 
 function _M:access(conf)
   kong.service.request.enable_buffering()
-  kong.ctx.shared.skip_response_transformer = true
+  llm_state.set_response_transformer_skipped()
 
   -- first find the configured LLM interface and driver
   local http_opts = create_http_opts(conf)
@@ -126,7 +127,7 @@ function _M:access(conf)
     res_body = kong_utils.inflate_gzip(res_body)
   end
 
-  kong.ctx.shared.parsed_response = res_body
+  llm_state.set_parsed_response(res_body) -- future use
 
   -- if asked, introspect the request before proxying
   kong.log.debug("introspecting response with LLM")

@@ -1,5 +1,6 @@
 
 local templater = require("kong.plugins.ai-prompt-template.templater")
+local llm_state = require("kong.llm.state")
 local ipairs = ipairs
 local type = type
 
@@ -61,7 +62,7 @@ end
 
 function AIPromptTemplateHandler:access(conf)
   kong.service.request.enable_buffering()
-  kong.ctx.shared.ai_prompt_templated = true
+  llm_state.set_prompt_templated()
 
   if conf.log_original_request then
     kong.log.set_serialize_value(LOG_ENTRY_KEYS.REQUEST_BODY, kong.request.get_raw_body(conf.max_request_body_size))

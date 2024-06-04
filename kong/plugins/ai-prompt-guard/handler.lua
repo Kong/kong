@@ -1,4 +1,5 @@
 local buffer = require("string.buffer")
+local llm_state = require("kong.llm.state")
 local ngx_re_find = ngx.re.find
 local EMPTY = {}
 
@@ -116,7 +117,7 @@ end
 
 function plugin:access(conf)
   kong.service.request.enable_buffering()
-  kong.ctx.shared.ai_prompt_guarded = true -- future use
+  llm_state.set_prompt_guarded() -- future use
 
   -- if plugin ordering was altered, receive the "decorated" request
   local request = kong.request.get_body("application/json", nil, conf.max_request_body_size)
