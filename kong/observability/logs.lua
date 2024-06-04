@@ -1,0 +1,173 @@
+local _M = {
+  maybe_push = function() end,
+  get_request_logs = function() return {} end,
+  get_worker_logs = function() return {} end,
+}
+
+if ngx.config.subsystem ~= "http" then
+  return _M
+end
+
+
+local request_id_get = require "kong.tracing.request_id".get
+local get_request = require "resty.core.base".get_request
+local time_ns = require "kong.tools.time".time_ns
+local cycle_aware_deep_copy = require "kong.tools.utils".cycle_aware_deep_copy
+
+local get_log_level = require "resty.kong.log".get_log_level
+local constants_log_levels = require "kong.constants".LOG_LEVELS
+
+local table_new = require "table.new"
+local table_clear = require "table.clear"
+local string_buffer = require "string.buffer"
+
+local ngx = ngx
+local kong = kong
+local table = table
+local tostring = tostring
+
+local MAX_WORKER_LOGS = 1000
+local MAX_REQUEST_LOGS = 1000
+local NGX_CTX_REQUEST_LOGS_KEY = "o11y_logs_request_scoped"
+
+local worker_logs = table_new(100, 0)
+local logline_buf = string_buffer.new()
+
+
+local function configured_log_level()
+  local ok, level = pcall(get_log_level)
+  if not ok then
+    level = constants_log_levels[kong.configuration.log_level]
+  end
+
+  return level
+end
+
+
+-- needed because table.concat doesn't like booleans
+local function concat_tostring(tab, from)
+  if #tab == 0 then
+    return ""
+  end
+
+  for i = from or 1, #tab do
+    logline_buf:put(tostring(tab[i]))
+  end
+
+  local retstr = logline_buf:tostring()
+  logline_buf:reset()
+
+  return retstr
+end
+
+
+local function generate_log_entry(request_scoped, log_level, log_str, debug_info)
+
+  local request_id, span_id
+
+  if request_scoped then
+    -- add request_id
+    request_id = request_id_get()
+
+    -- add tracing information if tracing is enabled
+    local active_span = kong and kong.tracing and kong.tracing.active_span()
+    if active_span then
+      span_id = active_span.span_id
+    end
+  end
+
+  local attributes = {
+    request_id = request_id,
+    introspection_current_line = debug_info.currentline,
+    introspection_name = debug_info.name,
+    introspection_namewhat = debug_info.namewhat,
+    introspection_source = debug_info.source,
+    introspection_what = debug_info.what,
+  }
+
+  local now_ns = time_ns()
+  return {
+    time_unix_nano = now_ns,
+    observed_time_unix_nano = now_ns,
+    log_level = log_level,
+    body = log_str,
+    attributes = attributes,
+    span_id = span_id,
+  }
+end
+
+
+local function get_request_log_buffer()
+  local log_buffer = ngx.ctx[NGX_CTX_REQUEST_LOGS_KEY]
+  if not log_buffer then
+    log_buffer = table_new(10, 0)
+    ngx.ctx[NGX_CTX_REQUEST_LOGS_KEY] = log_buffer
+  end
+  return log_buffer
+end
+
+
+function _M.maybe_push(...)
+  -- !WARNING! no logging here, to avoid infinite recursion.
+  --
+  -- Check if this log entry is eligible to go in the log buffer.
+  -- Early return cases:
+
+  -- no log line
+  local args = { ... }
+  if #args < 2 then
+    return
+  end
+
+  -- empty log line
+  local log_str = concat_tostring(args, 2)
+  if log_str == "" then
+    return
+  end
+
+  -- log level too low
+  local log_level = args[1]
+  if configured_log_level() < log_level then
+    return
+  end
+
+  local log_buffer, max_logs
+  local request_scoped = get_request() ~= nil
+
+  -- get the appropriate log buffer depending on the current context
+  if request_scoped then
+    log_buffer = get_request_log_buffer()
+    max_logs = MAX_REQUEST_LOGS
+
+  else
+    log_buffer = worker_logs
+    max_logs = MAX_WORKER_LOGS
+  end
+
+  -- return if log buffer is full
+  if #log_buffer >= max_logs then
+    return
+  end
+
+  -- generate & push log entry
+  local debug_info = debug.getinfo(5, "nSl")
+  local log_entry = generate_log_entry(request_scoped, log_level, log_str, debug_info)
+  table.insert(log_buffer, log_entry)
+end
+
+
+function _M.get_worker_logs()
+  local wl = cycle_aware_deep_copy(worker_logs)
+
+  table_clear(worker_logs)
+  return wl
+end
+
+
+function _M.get_request_logs()
+  local request_logs = get_request_log_buffer()
+  return cycle_aware_deep_copy(request_logs)
+end
+
+
+return _M

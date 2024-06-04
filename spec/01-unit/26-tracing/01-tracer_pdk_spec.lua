@@ -12,41 +12,6 @@ local function assert_sample_rate(actual, expected)
   assert(diff < SAMPLING_PRECISION, "sampling rate is not correct: " .. actual .. " expected: " .. expected)
 end
 
---- hook ngx.log to a spy for unit test
---- usage: local log_spy = hook_log_spy() -- hook ngx.log to a spy
----        -- do stuff
----        assert.spy(log_spy).was_called_with(ngx.ERR, "some error")
----        -- unhook
----        unhook_log_spy()
---- note that all messages arguments are concatenated together.
---- this hook slows down the test execution by a lot so only use if necessary.
--- @function hook_log_spy
--- @return log_spy the spy
-local function hook_log_spy()
-  local log_spy = spy(function() end)
-  local level, msg
-  -- the only reliable way to hook into ngx.log
-  -- is to use debug.sethook as ngx.log is always
-  -- localized and even reload the module does not work
-  debug.sethook(function()
-    if debug.getinfo(2, 'f').func == ngx.log then
-      level, msg = select(2, debug.getlocal(2, 1)),
-      table.concat {
-        select(2, debug.getlocal(2, 2)),
-        select(2, debug.getlocal(2, 3)),
-        select(2, debug.getlocal(2, 4)),
-        select(2, debug.getlocal(2, 5)),
-        select(2, debug.getlocal(2, 6)),
-      }
-      print(msg)
-      log_spy(level, msg)
-    end
-  end, "c", 1)
-  return log_spy
-end
-
-local unhook_log_spy = debug.sethook
-
 describe("Tracer PDK", function()
   local ok, err, old_ngx_get_phase, _
   local log_spy
@@ -55,14 +20,13 @@ describe("Tracer PDK", function()
     local kong_global = require "kong.global"
     _G.kong = kong_global.new()
     kong_global.init_pdk(kong)
-    log_spy = hook_log_spy()
+    log_spy = spy.on(ngx, "log")
     old_ngx_get_phase = ngx.get_phase
     -- trick the pdk into thinking we are not in the timer context
     _G.ngx.get_phase = function() return "access" end  -- luacheck: ignore
   end)
 
   lazy_teardown(function()
-    unhook_log_spy()
     _G.ngx.get_phase = old_ngx_get_phase  -- luacheck: ignore
   end)
 

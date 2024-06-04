@@ -37,7 +37,7 @@ for _, strategy in helpers.each_strategy() do
           route = route,
           service = http_srv,
           config = {
-            endpoint = "http://127.0.0.1:" .. mock_port1,
+            traces_endpoint = "http://127.0.0.1:" .. mock_port1,
             batch_flush_delay = 0, -- report immediately
           }
         })
