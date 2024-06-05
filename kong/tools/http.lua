@@ -212,6 +212,10 @@ _M.check_https = function(trusted_ip, allow_terminated)
   if trusted_ip then
     local scheme = ngx.var.http_x_forwarded_proto
 
+    if not scheme then
+      return false
+    end
+
     -- we could use the first entry (lower security), or check the contents of
     -- each of them (slow). So for now defensive, and error
     -- out on multiple entries for the x-forwarded-proto header.
