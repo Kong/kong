@@ -814,7 +814,7 @@ do
         end
       end
 
-      local upstream_status = ctx.buffered_status or var.upstream_status or ""
+      local upstream_status = var.upstream_status or ctx.buffered_status or ""
 
       local response_source = okong.response.get_source(ongx.ctx)
       local response_source_name = TYPE_NAMES[response_source]
