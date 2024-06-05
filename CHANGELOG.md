@@ -1,4 +1,10 @@
-# Table of Contents
+# Notice
+
+:warning: <b>All future changelog entries will be located [here](https://github.com/Kong/kong/tree/master/changelog)</b> :warning:
+
+
+
+## Table of Contents
 
 - [3.4.0](#340)
 - [3.3.0](#330)
