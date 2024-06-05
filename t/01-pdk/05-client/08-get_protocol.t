@@ -319,7 +319,7 @@ protocol=tls
             pdk.ip.is_trusted = function() return true end -- mock
 
             local ok, err = pdk.client.get_protocol(true)
-            assert(not ok)
+            assert(ok == nil)
             ngx.say("err=", err)
         }
     }
