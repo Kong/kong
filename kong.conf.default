@@ -247,11 +247,12 @@
                                  # override the default html kong error
                                  # template.
                                  #
-                                 # The template may contain up to two `%s`
+                                 # The template may contain up to three `%s`
                                  # placeholders. The first one will expand to
                                  # the error message. The second one will
-                                 # expand to the request ID. Both placeholders
-                                 # are optional, but recommended.
+                                 # expand to the request ID. The third one
+                                 # will expand to the HTTP status code.
+                                 # All placeholders are optional, but recommended.
                                  # Adding more than two placeholders will
                                  # result in a runtime error when trying to
                                  # render the template:
@@ -270,26 +271,26 @@
                                  # template.
                                  #
                                  # Similarly to `error_template_html`, the
-                                 # template may contain up to two `%s`
-                                 # placeholders for the error message and the
-                                 # request ID respectively.
+                                 # template may contain up to three `%s`
+                                 # placeholders for the error message, the
+                                 # request ID and the HTTP status code respectively.
 
 #error_template_xml =            # Path to the custom xml error template to
                                  # override the default xml kong error template
                                  #
                                  # Similarly to `error_template_html`, the
-                                 # template may contain up to two `%s`
-                                 # placeholders for the error message and the
-                                 # request ID respectively.
+                                 # template may contain up to three `%s`
+                                 # placeholders for the error message, the
+                                 # request ID and the HTTP status code respectively.
 
 #error_template_plain =          # Path to the custom plain error template to
                                  # override the default plain kong error
                                  # template
                                  #
                                  # Similarly to `error_template_html`, the
-                                 # template may contain up to two `%s`
-                                 # placeholders for the error message and the
-                                 # request ID respectively.
+                                 # template may contain up to three `%s`
+                                 # placeholders for the error message, the
+                                 # request ID and the HTTP status code respectively.
 
 #------------------------------------------------------------------------------
 # HYBRID MODE

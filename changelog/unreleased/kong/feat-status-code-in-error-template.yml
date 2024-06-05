@@ -1,0 +1,3 @@
+message: |
+  Made the response HTTP code available in the error template.
+type: feature

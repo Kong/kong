@@ -73,7 +73,7 @@ return function(ctx)
   else
     local mime_type = utils.get_response_type(accept_header)
     local rid = request_id.get() or ""
-    message = fmt(utils.get_error_template(mime_type), message, rid)
+    message = fmt(utils.get_error_template(mime_type), message, rid, status)
     headers = { [CONTENT_TYPE] = mime_type }
 
   end
