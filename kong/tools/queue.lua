@@ -113,7 +113,7 @@ local function internal_remaining_capacity(self)
 
   local remaining_bytes = self.max_bytes - self.bytes_queued
 
-  -- we checking remaining_bytes before enqueuing an entry,
+  -- we check remaining_bytes before enqueuing an entry,
   -- so it is impossible to have a negative value
   assert(remaining_bytes >= 0, "queue should not be over capacity")
 
