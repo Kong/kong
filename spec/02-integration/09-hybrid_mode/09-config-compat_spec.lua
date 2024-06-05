@@ -590,20 +590,26 @@ describe("CP/DP config compat transformations #" .. strategy, function()
                 upstream_path = "/anywhere", -- becomes nil
               },
             },
+            max_request_body_size = 8192,
           },
         }
         -- ]]
 
-        local expected_ai_proxy_prior_37 = cycle_aware_deep_copy(ai_proxy)
-        expected_ai_proxy_prior_37.config.response_streaming = nil
-        expected_ai_proxy_prior_37.config.model.options.upstream_path = nil
-        expected_ai_proxy_prior_37.config.auth.azure_use_managed_identity = nil
-        expected_ai_proxy_prior_37.config.auth.azure_client_id = nil
-        expected_ai_proxy_prior_37.config.auth.azure_client_secret = nil
-        expected_ai_proxy_prior_37.config.auth.azure_tenant_id = nil
-        expected_ai_proxy_prior_37.config.route_type = "llm/v1/chat"
+        local expected = cycle_aware_deep_copy(ai_proxy)
 
-        do_assert(uuid(), "3.6.0", expected_ai_proxy_prior_37)
+        expected.config.max_request_body_size = nil
+
+        do_assert(uuid(), "3.7.0", expected)
+
+        expected.config.response_streaming = nil
+        expected.config.model.options.upstream_path = nil
+        expected.config.auth.azure_use_managed_identity = nil
+        expected.config.auth.azure_client_id = nil
+        expected.config.auth.azure_client_secret = nil
+        expected.config.auth.azure_tenant_id = nil
+        expected.config.route_type = "llm/v1/chat"
+
+        do_assert(uuid(), "3.6.0", expected)
 
         -- cleanup
         admin.plugins:remove({ id = ai_proxy.id })
@@ -635,19 +641,24 @@ describe("CP/DP config compat transformations #" .. strategy, function()
                 },
               },
             },
+            max_request_body_size = 8192,
           },
         }
         -- ]]
 
-        local expected_ai_request_transformer_prior_37 = cycle_aware_deep_copy(ai_request_transformer)
-        expected_ai_request_transformer_prior_37.config.llm.model.options.upstream_path = nil
-        expected_ai_request_transformer_prior_37.config.llm.auth.azure_use_managed_identity = nil
-        expected_ai_request_transformer_prior_37.config.llm.auth.azure_client_id = nil
-        expected_ai_request_transformer_prior_37.config.llm.auth.azure_client_secret = nil
-        expected_ai_request_transformer_prior_37.config.llm.auth.azure_tenant_id = nil
+        local expected = cycle_aware_deep_copy(ai_request_transformer)
 
-        do_assert(uuid(), "3.6.0", expected_ai_request_transformer_prior_37)
+        expected.config.max_request_body_size = nil
 
+        do_assert(uuid(), "3.7.0", expected)
+
+        expected.config.llm.model.options.upstream_path = nil
+        expected.config.llm.auth.azure_use_managed_identity = nil
+        expected.config.llm.auth.azure_client_id = nil
+        expected.config.llm.auth.azure_client_secret = nil
+        expected.config.llm.auth.azure_tenant_id = nil
+
+        do_assert(uuid(), "3.6.0", expected)
         -- cleanup
         admin.plugins:remove({ id = ai_request_transformer.id })
       end)
@@ -676,18 +687,24 @@ describe("CP/DP config compat transformations #" .. strategy, function()
                 },
               },
             },
+            max_request_body_size = 8192,
           },
         }
         -- ]]
 
-        local expected_ai_response_transformer_prior_37 = cycle_aware_deep_copy(ai_response_transformer)
-        expected_ai_response_transformer_prior_37.config.llm.model.options.upstream_path = nil
-        expected_ai_response_transformer_prior_37.config.llm.auth.azure_use_managed_identity = nil
-        expected_ai_response_transformer_prior_37.config.llm.auth.azure_client_id = nil
-        expected_ai_response_transformer_prior_37.config.llm.auth.azure_client_secret = nil
-        expected_ai_response_transformer_prior_37.config.llm.auth.azure_tenant_id = nil
+        local expected = cycle_aware_deep_copy(ai_response_transformer)
 
-        do_assert(uuid(), "3.6.0", expected_ai_response_transformer_prior_37)
+        expected.config.max_request_body_size = nil
+
+        do_assert(uuid(), "3.7.0", expected)
+
+        expected.config.llm.model.options.upstream_path = nil
+        expected.config.llm.auth.azure_use_managed_identity = nil
+        expected.config.llm.auth.azure_client_id = nil
+        expected.config.llm.auth.azure_client_secret = nil
+        expected.config.llm.auth.azure_tenant_id = nil
+
+        do_assert(uuid(), "3.6.0", expected)
 
         -- cleanup
         admin.plugins:remove({ id = ai_response_transformer.id })
