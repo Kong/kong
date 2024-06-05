@@ -107,7 +107,7 @@ local function internal_remaining_capacity(self)
   -- so it is impossible to have a negative value
   assert(remaining_entries >= 0, "queue should not be over capacity")
 
-  if not self.max_bytes then
+  if self.max_bytes == nil then
     return remaining_entries
   end
 
@@ -161,7 +161,7 @@ end
 
 
 local function internal_will_exceed_max_bytes(self, entry)
-  if not self.max_bytes then
+  if self.max_bytes == nil then
     return false
   end
 
