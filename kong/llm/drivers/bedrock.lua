@@ -321,8 +321,8 @@ end
 
 -- returns err or nil
 function _M.configure_request(conf, aws_sdk)
-  local operation = kong.ctx.shared.ai_proxy_streaming_mode and "messages-stream"
-                                                             or "messages"
+  local operation = kong.ctx.shared.ai_proxy_streaming_mode and "converse-stream"
+                                                             or "converse"
 
   local f_url = conf.model.options and conf.model.options.upstream_url
 
