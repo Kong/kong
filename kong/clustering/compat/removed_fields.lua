@@ -313,7 +313,11 @@ return {
       "llm.auth.azure_client_id",
       "llm.auth.azure_client_secret",
       "llm.auth.azure_tenant_id",
-    },
+    }
+  },
+
+  -- Any dataplane older than 3.8.0
+  [3008000000] = {
     aws_lambda = {
       "empty_arrays_mode",
     }
