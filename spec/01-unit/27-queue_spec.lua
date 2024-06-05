@@ -789,7 +789,7 @@ describe("plugin queue", function()
     assert.match_re(log_messages, 'ERR \\[\\] queue continue-processing: could not send entries, giving up after \\d retries.  1 queue entries were lost')  
   end)
 
-  it("sanity check for function Queue.is_full() & Queue.will_full()", function()
+  it("sanity check for function Queue.is_full() & Queue.can_enqueue()", function()
     local queue_conf = {
       name = "queue-full-checking-too-many-entries",
       max_batch_size = 99999, -- avoiding automatically flushing,
@@ -810,15 +810,15 @@ describe("plugin queue", function()
     end
 
     assert.is_false(Queue.is_full(queue_conf))
-    assert.is_false(Queue.will_full(queue_conf, "One"))
+    assert.is_false(Queue.can_enqueue(queue_conf, "One"))
     enqueue(queue_conf, "One")
     assert.is_false(Queue.is_full(queue_conf))
 
-    assert.is_false(Queue.will_full(queue_conf, "Two"))
+    assert.is_false(Queue.can_enqueue(queue_conf, "Two"))
     enqueue(queue_conf, "Two")
     assert.is_true(Queue.is_full(queue_conf))
 
-    assert.is_true(Queue.will_full(queue_conf, "Three"))
+    assert.is_true(Queue.can_enqueue(queue_conf, "Three"))
 
 
     queue_conf = {
@@ -830,15 +830,15 @@ describe("plugin queue", function()
     }
 
     assert.is_false(Queue.is_full(queue_conf))
-    assert.is_false(Queue.will_full(queue_conf, "1"))
+    assert.is_false(Queue.can_enqueue(queue_conf, "1"))
     enqueue(queue_conf, "1")
     assert.is_false(Queue.is_full(queue_conf))
 
-    assert.is_false(Queue.will_full(queue_conf, "2"))
+    assert.is_false(Queue.can_enqueue(queue_conf, "2"))
     enqueue(queue_conf, "2")
     assert.is_true(Queue.is_full(queue_conf))
 
-    assert.is_true(Queue.will_full(queue_conf, "3"))
+    assert.is_true(Queue.can_enqueue(queue_conf, "3"))
 
     queue_conf = {
       name = "queue-full-checking-too-large-entry",
@@ -851,8 +851,8 @@ describe("plugin queue", function()
     enqueue(queue_conf, "1")
 
     assert.is_false(Queue.is_full(queue_conf))
-    assert.is_false(Queue.will_full(queue_conf, "1"))
-    assert.is_false(Queue.will_full(queue_conf, "11"))
-    assert.is_true(Queue.will_full(queue_conf, "111"))
+    assert.is_false(Queue.can_enqueue(queue_conf, "1"))
+    assert.is_false(Queue.can_enqueue(queue_conf, "11"))
+    assert.is_true(Queue.can_enqueue(queue_conf, "111"))
   end)
 end)
