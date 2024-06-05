@@ -247,6 +247,36 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
+      local route10 = bp.routes:insert {
+        hosts = { "file_logging10.test" },
+        response_buffering = true,
+      }
+
+      bp.plugins:insert({
+        name = "pre-function",
+        route = { id = route10.id },
+        config = {
+          access = {
+            [[
+              kong.service.request.enable_buffering()
+            ]],
+          },
+        }
+      })
+
+      bp.plugins:insert {
+        route = { id = route10.id },
+        name     = "file-log",
+        config   = {
+          path   = FILE_LOG_PATH,
+          reopen = true,
+          custom_fields_by_lua = {
+            new_field = "return 123",
+            route = "return nil", -- unset route field
+          },
+        },
+      }
+
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -336,6 +366,28 @@ for _, strategy in helpers.each_strategy() do
         assert.is_number(log_message.request.size)
         assert.is_number(log_message.response.size)
         assert.same(nil, log_message.route)
+      end)
+      it("correct upstream status when we use response phase", function()
+        local uuid = random_string()
+
+        -- Making the request
+        local res = assert(proxy_client:send({
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["file-log-uuid"] = uuid,
+            ["Host"] = "file_logging10.test"
+          }
+        }))
+        assert.res_status(200, res)
+
+        local log_message = wait_for_json_log_entry()
+        assert.same("127.0.0.1", log_message.client_ip)
+        assert.same(uuid, log_message.request.headers["file-log-uuid"])
+        assert.is_number(log_message.request.size)
+        assert.is_number(log_message.response.size)
+        assert.same(nil, log_message.route)
+        assert.same(200, log_message.upstream_status)
       end)
     end)
 
