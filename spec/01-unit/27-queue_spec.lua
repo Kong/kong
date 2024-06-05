@@ -788,4 +788,71 @@ describe("plugin queue", function()
     assert.match_re(log_messages, 'WARN \\[\\] queue continue-processing: handler could not process entries: .*: hard error')
     assert.match_re(log_messages, 'ERR \\[\\] queue continue-processing: could not send entries, giving up after \\d retries.  1 queue entries were lost')  
   end)
+
+  it("sanity check for function Queue.is_full() & Queue.will_full()", function()
+    local queue_conf = {
+      name = "queue-full-checking-too-many-entries",
+      max_batch_size = 99999, -- avoiding automatically flushing,
+      max_entries = 2,
+      max_bytes = nil, -- avoiding bytes limit
+      max_coalescing_delay = 99999, -- avoiding automatically flushing,
+    }
+
+    local function enqueue(queue_conf, entry)
+      Queue.enqueue(
+        queue_conf,
+        function()
+          return true
+        end,
+        nil,
+        entry
+      )
+    end
+
+    assert.is_false(Queue.is_full(queue_conf))
+    assert.is_false(Queue.will_full(queue_conf, "One"))
+    enqueue(queue_conf, "One")
+    assert.is_false(Queue.is_full(queue_conf))
+
+    assert.is_false(Queue.will_full(queue_conf, "Two"))
+    enqueue(queue_conf, "Two")
+    assert.is_true(Queue.is_full(queue_conf))
+
+    assert.is_true(Queue.will_full(queue_conf, "Three"))
+
+
+    queue_conf = {
+      name = "queue-full-checking-too-many-bytes",
+      max_batch_size = 99999, -- avoiding automatically flushing,
+      max_entries = 99999, -- big enough to avoid entries limit
+      max_bytes = 2,
+      max_coalescing_delay = 99999, -- avoiding automatically flushing,
+    }
+
+    assert.is_false(Queue.is_full(queue_conf))
+    assert.is_false(Queue.will_full(queue_conf, "1"))
+    enqueue(queue_conf, "1")
+    assert.is_false(Queue.is_full(queue_conf))
+
+    assert.is_false(Queue.will_full(queue_conf, "2"))
+    enqueue(queue_conf, "2")
+    assert.is_true(Queue.is_full(queue_conf))
+
+    assert.is_true(Queue.will_full(queue_conf, "3"))
+
+    queue_conf = {
+      name = "queue-full-checking-too-large-entry",
+      max_batch_size = 99999, -- avoiding automatically flushing,
+      max_entries = 99999, -- big enough to avoid entries limit
+      max_bytes = 3,
+      max_coalescing_delay = 99999, -- avoiding automatically flushing,
+    }
+
+    enqueue(queue_conf, "1")
+
+    assert.is_false(Queue.is_full(queue_conf))
+    assert.is_false(Queue.will_full(queue_conf, "1"))
+    assert.is_false(Queue.will_full(queue_conf, "11"))
+    assert.is_true(Queue.will_full(queue_conf, "111"))
+  end)
 end)
