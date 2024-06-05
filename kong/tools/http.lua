@@ -211,7 +211,6 @@ _M.check_https = function(trusted_ip, allow_terminated)
   -- (which was either validated earlier, or we fall through this block)
   if trusted_ip then
     local scheme = ngx.var.http_x_forwarded_proto
-
     if not scheme then
       return false
     end
