@@ -814,11 +814,11 @@ describe("plugin queue", function()
     enqueue(queue_conf, "One")
     assert.is_false(Queue.is_full(queue_conf))
 
-    assert.is_false(Queue.can_enqueue(queue_conf, "Two"))
+    assert.is_true(Queue.can_enqueue(queue_conf, "Two"))
     enqueue(queue_conf, "Two")
     assert.is_true(Queue.is_full(queue_conf))
 
-    assert.is_true(Queue.can_enqueue(queue_conf, "Three"))
+    assert.is_false(Queue.can_enqueue(queue_conf, "Three"))
 
 
     queue_conf = {
@@ -834,11 +834,11 @@ describe("plugin queue", function()
     enqueue(queue_conf, "1")
     assert.is_false(Queue.is_full(queue_conf))
 
-    assert.is_false(Queue.can_enqueue(queue_conf, "2"))
+    assert.is_true(Queue.can_enqueue(queue_conf, "2"))
     enqueue(queue_conf, "2")
     assert.is_true(Queue.is_full(queue_conf))
 
-    assert.is_true(Queue.can_enqueue(queue_conf, "3"))
+    assert.is_false(Queue.can_enqueue(queue_conf, "3"))
 
     queue_conf = {
       name = "queue-full-checking-too-large-entry",
@@ -851,8 +851,8 @@ describe("plugin queue", function()
     enqueue(queue_conf, "1")
 
     assert.is_false(Queue.is_full(queue_conf))
-    assert.is_false(Queue.can_enqueue(queue_conf, "1"))
-    assert.is_false(Queue.can_enqueue(queue_conf, "11"))
-    assert.is_true(Queue.can_enqueue(queue_conf, "111"))
+    assert.is_true(Queue.can_enqueue(queue_conf, "1"))
+    assert.is_true(Queue.can_enqueue(queue_conf, "11"))
+    assert.is_false(Queue.can_enqueue(queue_conf, "111"))
   end)
 end)

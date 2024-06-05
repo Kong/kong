@@ -182,10 +182,12 @@ end
 
 
 local function internal_can_enqueue(self, entry)
-  return internal_is_full(self)                       or
-         internal_is_entry_too_large(self, entry)     or
-         internal_will_exceed_max_entries(self)       or
-         internal_will_exceed_max_bytes(self, entry)
+  return not (
+    internal_is_full(self)                       or
+    internal_is_entry_too_large(self, entry)     or
+    internal_will_exceed_max_entries(self)       or
+    internal_will_exceed_max_bytes(self, entry)
+  )
 end
 
 
