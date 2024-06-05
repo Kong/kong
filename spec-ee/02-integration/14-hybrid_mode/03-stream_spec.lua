@@ -36,6 +36,16 @@ for _, strategy in helpers.each_strategy() do
         service = service,
       })
 
+      -- This is for `declarative_config = helpers.make_yaml_file()`
+      -- when starting Kong with Konnect mode enabled.
+      -- An old prefix directory may exist from previous tests,
+      -- which has configuration `database` might be set to `off`,
+      -- and then the `helpers.make_yaml_file()` will error as
+      -- generating a declarative config file by invoking
+      -- `kong config db_export`, which requires a backend database.
+      -- So, we need to clean the prefix directory before starting Kong.
+      helpers.clean_prefix()
+
       assert(helpers.start_kong({
         role               = "data_plane",
         database           = "off",
