@@ -1,4 +1,3 @@
-local utils = require "kong.tools.utils"
 local kong_table = require "kong.tools.table"
 local cjson = require "cjson"
 local pl_pretty = require "pl.pretty"
@@ -7,6 +6,7 @@ local app_helpers = require "lapis.application"
 local arguments = require "kong.api.arguments"
 local Errors = require "kong.db.errors"
 local hooks = require "kong.hooks"
+local decode_args = require("kong.tools.http").decode_args
 
 
 local ngx = ngx
@@ -300,7 +300,7 @@ local function parse_params(fn)
           return kong.response.exit(400, { message = "Cannot parse JSON body" })
 
         elseif find(content_type, "application/x-www-form-urlencode", 1, true) then
-          self.params = utils.decode_args(self.params)
+          self.params = decode_args(self.params)
         end
       end
     end
