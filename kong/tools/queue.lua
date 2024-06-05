@@ -533,9 +533,9 @@ local function enqueue(self, entry)
     self:log_err("byte capacity exceeded, %d queue entries were dropped", dropped)
   end
 
-  -- safe guard
+  -- safety guard
   -- this should never happen if the dropping logic is correct,
-  -- but it's better to be safe than memory leaky
+  -- but it's better to crash early than leak memory
   assert(
     -- bracing the function call to get the first return value only
     internal_is_full(self) == false,
