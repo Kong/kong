@@ -210,16 +210,16 @@ _M.check_https = function(trusted_ip, allow_terminated)
   -- otherwise, we fall back to relying on the client scheme
   -- (which was either validated earlier, or we fall through this block)
   if trusted_ip then
-    local scheme = ngx.req.get_headers()["x-forwarded-proto"]
+    local scheme = ngx.var.http_x_forwarded_proto
 
     -- we could use the first entry (lower security), or check the contents of
     -- each of them (slow). So for now defensive, and error
     -- out on multiple entries for the x-forwarded-proto header.
-    if type(scheme) == "table" then
+    if scheme:find(",", 1, true) then
       return nil, "Only one X-Forwarded-Proto header allowed"
     end
 
-    return tostring(scheme):lower() == "https"
+    return scheme:lower() == "https"
   end
 
   return false
