@@ -12,6 +12,7 @@ local kong_nginx_stream_template = require "kong.templates.nginx_kong_stream"
 local nginx_main_inject_template = require "kong.templates.nginx_inject"
 local nginx_http_inject_template = require "kong.templates.nginx_kong_inject"
 local nginx_stream_inject_template = require "kong.templates.nginx_kong_stream_inject"
+local wasmtime_cache_template = require "kong.templates.wasmtime_cache_config"
 local system_constants = require "lua_system_constants"
 local process_secrets = require "kong.cmd.utils.process_secrets"
 local openssl_bignum = require "resty.openssl.bn"
@@ -48,6 +49,7 @@ local math = math
 local join = pl_path.join
 local io = io
 local os = os
+local fmt = string.format
 
 
 local function pre_create_private_file(file)
@@ -253,6 +255,10 @@ local function get_ulimit()
   end
 end
 
+local function quote(s)
+  return fmt("%q", s)
+end
+
 local function compile_conf(kong_config, conf_template, template_env_inject)
   -- computed config properties for templating
   local compile_env = {
@@ -262,7 +268,8 @@ local function compile_conf(kong_config, conf_template, template_env_inject)
     tostring = tostring,
     os = {
       getenv = os.getenv,
-    }
+    },
+    quote = quote,
   }
 
   local kong_proxy_access_log = kong_config.proxy_access_log
@@ -469,6 +476,10 @@ end
 
 local function compile_kong_test_inject_conf(kong_config, template, template_env)
   return compile_conf(kong_config, template, template_env)
+end
+
+local function compile_wasmtime_cache_conf(kong_config)
+  return compile_conf(kong_config, wasmtime_cache_template)
 end
 
 local function prepare_prefixed_interface_dir(usr_path, interface_dir, kong_config)
@@ -738,6 +749,23 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
 
   if skip_write then
     return true
+  end
+
+  if kong_config.wasm then
+    if kong_config.wasmtime_cache_directory then
+      local ok, err = makepath(kong_config.wasmtime_cache_directory)
+      if not ok then
+        return nil, err
+      end
+    end
+
+    if kong_config.wasmtime_cache_config_file  then
+      local wasmtime_conf, err = compile_wasmtime_cache_conf(kong_config)
+      if not wasmtime_conf then
+        return nil, err
+      end
+      pl_file.write(kong_config.wasmtime_cache_config_file, wasmtime_conf)
+    end
   end
 
   -- compile Nginx configurations

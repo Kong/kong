@@ -1087,6 +1087,14 @@ describe("NGINX conf compiler", function()
           }, debug)
         )
       end)
+      it("injects wasmtime cache_config", function()
+        assert.matches(
+          "wasm {.+wasmtime {.+cache_config .+%.wasmtime_config%.toml.*;",
+          ngx_cfg({
+            wasm = true,
+          }, debug)
+        )
+      end)
       describe("injects inherited directives", function()
         it("only if one isn't explicitly set", function()
           assert.matches(
