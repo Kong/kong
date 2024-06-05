@@ -104,7 +104,7 @@ local _KEYBASTION = setmetatable({}, {
           aws_secret_access_key = plugin_config.auth.aws_secret_access_key,
         })
       else
-        aws = AWS({ region = plugin_config.model.options.aws_region or AWS_REGION })
+        aws = AWS({ region = (plugin_config.model.options and plugin_config.model.options.aws_region) or AWS_REGION })
       end
 
       this_cache[plugin_config] = { interface = aws, error = nil }
@@ -160,11 +160,17 @@ local function handle_streaming_frame(conf)
       chunk = kong_utils.inflate_gzip(ngx.arg[1])
     end
 
-    local to_hex        = require("resty.string").to_hex
+    local to_hex = require("resty.string").to_hex
 
     kong.log.warn("")
     kong.log.warn(to_hex(chunk))
     kong.log.warn("")
+
+    
+    -- for i = 1, #chunk do
+    --   local c = chunk:sub(i,i)
+    --   kong.log.debug(to_hex(c))
+    -- end
 
     local events = ai_shared.frame_to_events(chunk, conf.model.provider == "gemini")
 
