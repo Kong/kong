@@ -3312,7 +3312,8 @@ luassert:register("assertion", "partial_match", partial_match,
 -- (ok, code, stdout, stderr); if `returns` is false,
 -- returns either (false, stderr) or (true, stderr, stdout).
 function exec(cmd, returns)
-  local ok, stdout, stderr, _, code = shell.run(cmd, nil, 0)
+  --100MB for retrieving stdout & stderr
+  local ok, stdout, stderr, _, code = shell.run(cmd, nil, 0, 1024*1024*100)
   if returns then
     return ok, code, stdout, stderr
   end
