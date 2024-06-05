@@ -1,3 +1,5 @@
+The latest changelogs can now be found at https://github.com/Kong/kong/tree/master/changelog
+
 # Table of Contents
 
 - [3.4.0](#340)
