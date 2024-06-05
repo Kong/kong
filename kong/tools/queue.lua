@@ -536,7 +536,7 @@ local function enqueue(self, entry)
   -- safety guard
   -- The queue should not be full if we are running into this situation.
   -- Since the dropping logic is complcated,
-  -- further maintenance might introduce bugs,
+  -- further maintenancers might introduce bugs,
   -- so I added this assertion to detect this kind of bug early
   -- (it's better to crash early than leak memory).
   assert(
