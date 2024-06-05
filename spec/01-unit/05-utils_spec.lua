@@ -80,17 +80,14 @@ describe("Utils", function()
 
   describe("https_check", function()
     local old_ngx
-    local headers = {}
 
     lazy_setup(function()
       old_ngx = ngx
       _G.ngx = {
         var = {
-          scheme = nil
+          scheme = nil,
+          http_x_forwarded_proto = nil,
         },
-        req = {
-          get_headers = function() return headers end
-        }
       }
     end)
 
@@ -100,7 +97,7 @@ describe("Utils", function()
 
     describe("without X-Forwarded-Proto header", function()
       lazy_setup(function()
-        headers["x-forwarded-proto"] = nil
+        ngx.var.http_x_forwarded_proto = nil
       end)
 
       it("should validate an HTTPS scheme", function()
@@ -124,11 +121,11 @@ describe("Utils", function()
     describe("with X-Forwarded-Proto header", function()
 
       lazy_teardown(function()
-        headers["x-forwarded-proto"] = nil
+        ngx.var.http_x_forwarded_proto = nil
       end)
 
       it("should validate any scheme with X-Forwarded_Proto as HTTPS", function()
-        headers["x-forwarded-proto"] = "hTTPs"  -- check mixed casing for case insensitiveness
+        ngx.var.http_x_forwarded_proto = "hTTPs"  -- check mixed casing for case insensitiveness
         ngx.var.scheme = "hTTps"
         assert.is.truthy(tools_http.check_https(true, true))
         ngx.var.scheme = "hTTp"
@@ -138,7 +135,7 @@ describe("Utils", function()
       end)
 
       it("should validate only https scheme with X-Forwarded_Proto as non-HTTPS", function()
-        headers["x-forwarded-proto"] = "hTTP"
+        ngx.var.http_x_forwarded_proto = "hTTP"
         ngx.var.scheme = "hTTps"
         assert.is.truthy(tools_http.check_https(true, true))
         ngx.var.scheme = "hTTp"
@@ -148,7 +145,7 @@ describe("Utils", function()
       end)
 
       it("should return an error with multiple X-Forwarded_Proto headers", function()
-        headers["x-forwarded-proto"] = { "hTTP", "https" }
+        ngx.var.http_x_forwarded_proto = "hTTP, https"
         ngx.var.scheme = "hTTps"
         assert.is.truthy(tools_http.check_https(true, true))
         ngx.var.scheme = "hTTp"
@@ -157,19 +154,19 @@ describe("Utils", function()
       end)
 
       it("should not use X-Forwarded-Proto when the client is untrusted", function()
-        headers["x-forwarded-proto"] = "https"
+        ngx.var.http_x_forwarded_proto = "https"
         ngx.var.scheme = "http"
         assert.is_false(tools_http.check_https(false, false))
         assert.is_false(tools_http.check_https(false, true))
 
-        headers["x-forwarded-proto"] = "https"
+        ngx.var.http_x_forwarded_proto = "https"
         ngx.var.scheme = "https"
         assert.is_true(tools_http.check_https(false, false))
         assert.is_true(tools_http.check_https(false, true))
       end)
 
       it("should use X-Forwarded-Proto when the client is trusted", function()
-        headers["x-forwarded-proto"] = "https"
+        ngx.var.http_x_forwarded_proto = "https"
         ngx.var.scheme = "http"
 
         -- trusted client but do not allow terminated
@@ -177,7 +174,7 @@ describe("Utils", function()
 
         assert.is_true(tools_http.check_https(true, true))
 
-        headers["x-forwarded-proto"] = "https"
+        ngx.var.http_x_forwarded_proto = "https"
         ngx.var.scheme = "https"
         assert.is_true(tools_http.check_https(true, false))
         assert.is_true(tools_http.check_https(true, true))
