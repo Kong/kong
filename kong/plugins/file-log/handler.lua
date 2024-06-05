@@ -1,5 +1,4 @@
 -- Copyright (C) Kong Inc.
-require "kong.tools.utils" -- ffi.cdefs
 local kong_meta = require "kong.meta"
 
 

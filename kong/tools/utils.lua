@@ -24,9 +24,9 @@ do
     "kong.tools.rand",
     "kong.tools.time",
     "kong.tools.string",
-    -- ]] keep it here for compatibility
     "kong.tools.ip",
     "kong.tools.http",
+    -- ]] keep it here for compatibility
   }
 
   for _, str in ipairs(modules) do
