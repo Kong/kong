@@ -122,14 +122,14 @@ end
 
 
 local function internal_is_reaching_max_entries(self)
-  local remaining_entries = internal_remaining_capacity(self)
-  return remaining_entries == 0
+  -- `()` is used to get the first return value only
+  return (internal_remaining_capacity(self)) == 0
 end
 
 
 local function internal_will_exceed_max_entries(self)
-  local remaining_entries = internal_remaining_capacity(self)
-  return remaining_entries - 1 < 0
+   -- `()` is used to get the first return value only
+  return (internal_remaining_capacity(self)) - 1 < 0
 end
 
 
@@ -181,7 +181,7 @@ local function internal_is_full(self)
 end
 
 
-local function internal_will_full(self, entry)
+local function internal_can_enqueue(self, entry)
   return internal_is_full(self)                       or
          internal_is_entry_too_large(self, entry)     or
          internal_will_exceed_max_entries(self)       or
@@ -293,14 +293,14 @@ function Queue.is_full(queue_conf)
 end
 
 
-function Queue.will_full(queue_conf, entry)
+function Queue.can_enqueue(queue_conf, entry)
   local queue = queues[make_queue_key(queue_conf.name)]
   if not queue then
     -- treat non-existing queues as not full as they will be created on demand
     return false
   end
 
-  return internal_will_full(queue, entry)
+  return internal_can_enqueue(queue, entry)
 end
 
 
