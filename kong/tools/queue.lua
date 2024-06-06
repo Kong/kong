@@ -95,12 +95,12 @@ local Queue_mt = {
 }
 
 
-local function make_queue_key(name)
+local function _make_queue_key(name)
   return (workspaces.get_workspace_id() or "") .. "." .. name
 end
 
 
-local function internal_remaining_capacity(self)
+local function _remaining_capacity(self)
   local remaining_entries = self.max_entries - self:count()
   local max_bytes = self.max_bytes
 
@@ -122,19 +122,19 @@ local function internal_remaining_capacity(self)
 end
 
 
-local function internal_is_reaching_max_entries(self)
+local function _is_reaching_max_entries(self)
   -- `()` is used to get the first return value only
-  return (internal_remaining_capacity(self)) == 0
+  return (_remaining_capacity(self)) == 0
 end
 
 
-local function internal_will_exceed_max_entries(self)
+local function _will_exceed_max_entries(self)
    -- `()` is used to get the first return value only
-  return (internal_remaining_capacity(self)) - 1 < 0
+  return (_remaining_capacity(self)) - 1 < 0
 end
 
 
-local function internal_is_entry_too_large(self, entry)
+local function _is_entry_too_large(self, entry)
   local max_bytes = self.max_bytes
 
   if not max_bytes then
@@ -150,17 +150,17 @@ local function internal_is_entry_too_large(self, entry)
 end
 
 
-local function internal_is_reaching_max_bytes(self)
+local function _is_reaching_max_bytes(self)
   if not self.max_bytes then
     return false
   end
 
-  local _, remaining_bytes = internal_remaining_capacity(self)
+  local _, remaining_bytes = _remaining_capacity(self)
   return remaining_bytes == 0
 end
 
 
-local function internal_will_exceed_max_bytes(self, entry)
+local function _will_exceed_max_bytes(self, entry)
   if not self.max_bytes then
     return false
   end
@@ -170,22 +170,22 @@ local function internal_will_exceed_max_bytes(self, entry)
     return false
   end
 
-  local _, remaining_bytes = internal_remaining_capacity(self)
+  local _, remaining_bytes = _remaining_capacity(self)
   return #entry > remaining_bytes
 end
 
 
-local function internal_is_full(self)
-  return internal_is_reaching_max_entries(self) or internal_is_reaching_max_bytes(self)
+local function _is_full(self)
+  return _is_reaching_max_entries(self) or _is_reaching_max_bytes(self)
 end
 
 
-local function internal_can_enqueue(self, entry)
+local function _can_enqueue(self, entry)
   return not (
-    internal_is_full(self)                       or
-    internal_is_entry_too_large(self, entry)     or
-    internal_will_exceed_max_entries(self)       or
-    internal_will_exceed_max_bytes(self, entry)
+    _is_full(self)                       or
+    _is_entry_too_large(self, entry)     or
+    _will_exceed_max_entries(self)       or
+    _will_exceed_max_bytes(self, entry)
   )
 end
 
@@ -194,7 +194,7 @@ local queues = {}
 
 
 function Queue.exists(name)
-  return queues[make_queue_key(name)] and true or false
+  return queues[_make_queue_key(name)] and true or false
 end
 
 -------------------------------------------------------------------------------
@@ -205,7 +205,7 @@ end
 local function get_or_create_queue(queue_conf, handler, handler_conf)
 
   local name = assert(queue_conf.name)
-  local key = make_queue_key(name)
+  local key = _make_queue_key(name)
 
   local queue = queues[key]
   if queue then
@@ -284,24 +284,24 @@ end
 
 
 function Queue.is_full(queue_conf)
-  local queue = queues[make_queue_key(queue_conf.name)]
+  local queue = queues[_make_queue_key(queue_conf.name)]
   if not queue then
     -- treat non-existing queues as not full as they will be created on demand
     return false
   end
 
-  return internal_is_full(queue)
+  return _is_full(queue)
 end
 
 
 function Queue.can_enqueue(queue_conf, entry)
-  local queue = queues[make_queue_key(queue_conf.name)]
+  local queue = queues[_make_queue_key(queue_conf.name)]
   if not queue then
     -- treat non-existing queues as not full as they will be created on demand
     return false
   end
 
-  return internal_can_enqueue(queue, entry)
+  return _can_enqueue(queue, entry)
 end
 
 
@@ -505,13 +505,13 @@ local function enqueue(self, entry)
     self.warned = nil
   end
 
-  if internal_is_reaching_max_entries(self) then
+  if _is_reaching_max_entries(self) then
     self:log_err("queue full, dropping old entries until processing is successful again")
     self:drop_oldest_entry()
     self.already_dropped_entries = true
   end
 
-  if internal_is_entry_too_large(self, entry) then
+  if _is_entry_too_large(self, entry) then
     local err_msg = string.format(
       "string to be queued is longer (%d bytes) than the queue's max_bytes (%d bytes)",
       #entry,
@@ -522,14 +522,14 @@ local function enqueue(self, entry)
     return nil, err_msg
   end
 
-  if internal_will_exceed_max_bytes(self, entry) then
+  if _will_exceed_max_bytes(self, entry) then
     local dropped = 0
 
     repeat
       self:drop_oldest_entry()
       dropped = dropped + 1
       self.already_dropped_entries = true
-    until not internal_will_exceed_max_bytes(self, entry)
+    until not _will_exceed_max_bytes(self, entry)
 
     self:log_err("byte capacity exceeded, %d queue entries were dropped", dropped)
   end
@@ -543,7 +543,7 @@ local function enqueue(self, entry)
   -- as analyze memory leak is hard.
   assert(
     -- assert that enough space is available on the queue now
-    internal_can_enqueue(self, entry),
+    _can_enqueue(self, entry),
     "queue should not be full after dropping entries"
   )
 
@@ -612,7 +612,7 @@ end
 -- For testing, the _exists() function is provided to allow a test to wait for the
 -- queue to have been completely processed.
 function Queue._exists(name)
-  local queue = queues[make_queue_key(name)]
+  local queue = queues[_make_queue_key(name)]
   return queue and queue:count() > 0
 end
 
