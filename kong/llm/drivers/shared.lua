@@ -272,7 +272,7 @@ function _M.frame_to_events(frame, provider)
         break
       end
 
-      events[#events+1] = "data: " .. cjson.encode(msg)
+      events[#events+1] = { data = cjson.encode(msg) }
     end
 
   -- check if it's raw json and just return the split up data frame

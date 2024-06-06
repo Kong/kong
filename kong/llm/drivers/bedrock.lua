@@ -33,9 +33,96 @@ local function to_bedrock_generation_config(request_table)
 end
 
 local function handle_stream_event(event_t, model_info, route_type)
-  local metadata
+  local new_event, metadata
 
-  return "yes", nil, nil
+  if (not event_t) or (not event_t.data) then
+    return "", nil, nil
+  end
+
+  -- decode and determine the event type
+  local event = cjson.decode(event_t.data)  
+  local event_type = event and event.headers and event.headers[":event-type"]
+
+  if not event_type then
+    return "", nil, nil
+  end
+
+  local body = event.body and cjson.decode(event.body)
+
+  if not body then
+    return "", nil, nil
+  end
+
+  if event_type == "messageStart" then
+    new_event = {
+      choices = {
+        [1] = {
+          delta = {
+            content = "",
+            role = body.role,
+          },
+          index = 0,
+          logprobs = cjson.null,
+        },
+      },
+      model = model_info.name,
+      object = "chat.completion.chunk",
+      system_fingerprint = cjson.null,
+    }
+
+  elseif event_type == "contentBlockDelta" then
+    new_event = {
+      choices = {
+        [1] = {
+          delta = {
+            content = (body.delta
+                   and body.delta.text)
+                   or "",
+          },
+          index = 0,
+          finish_reason = cjson.null,
+          logprobs = cjson.null,
+        },
+      },
+      model = model_info.name,
+      object = "chat.completion.chunk",
+    }
+
+  elseif event_type == "messageStop" then
+    new_event = {
+      choices = {
+        [1] = {
+          delta = {},
+          index = 0,
+          finish_reason = body.stopReason,
+          logprobs = cjson.null,
+        },
+      },
+      model = model_info.name,
+      object = "chat.completion.chunk",
+    }
+
+  elseif event_type == "metadata" then
+    metadata = {
+      prompt_tokens = body.metrics and body.metrics.inputTokens or 0,
+      completion_tokens = body.metrics and body.metrics.outputTokens or 0,
+    }
+
+    new_event = "[DONE]"
+
+  elseif event_type == "contentBlockStop" then
+    -- placeholder - I don't think this does anything yet
+  end
+
+  if new_event then
+    if new_event ~= "[DONE]" then
+      new_event = cjson.encode(new_event)
+    end
+
+    return new_event, nil, metadata
+  else
+    return nil, nil, metadata  -- caller code will handle "unrecognised" event types
+  end
 end
 
 local function to_bedrock_chat_openai(request_table, model_info, route_type)
