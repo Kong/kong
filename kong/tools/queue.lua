@@ -543,7 +543,7 @@ local function enqueue(self, entry)
   -- as analyze memory leak is hard.
   assert(
     -- assert that enough space is available on the queue now
-    internal_can_enqueue(self, entry) == false,
+    internal_can_enqueue(self, entry),
     "queue should not be full after dropping entries"
   )
 
