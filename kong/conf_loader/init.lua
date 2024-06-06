@@ -141,7 +141,7 @@ local function load_config(thing)
     -- remove trailing comment, if any
     -- and remove escape chars from octothorpes
     if value then
-      value = ngx.re.sub(value, [[\s*(?<!\\)#.*$]], "")
+      value = ngx.re.sub(value, [[\s*(?<!\\)#.*$]], "", "jo")
       value = gsub(value, "\\#", "#")
     end
     return value
