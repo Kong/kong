@@ -141,9 +141,17 @@ package.path = (os.getenv("KONG_LUA_PATH_OVERRIDE") or "") .. "./?.lua;./?/init.
 require("kong.cmd.init")("%s", %s)
 ]], cmd_name, args_str)
 
+local resty_ngx_log_level
+if arg.vv then
+  resty_ngx_log_level = "debug"
+elseif arg.v then
+  resty_ngx_log_level = "info"
+end
+
 local resty_cmd = string.format(
-  "resty --main-conf \"%s\" --http-conf \"%s\" --stream-conf \"%s\" -e '%s'",
-  main_conf, http_conf, stream_conf, inline_code)
+  "resty %s --main-conf \"%s\" --http-conf \"%s\" --stream-conf \"%s\" -e '%s'",
+  resty_ngx_log_level and ("--errlog-level " .. resty_ngx_log_level) or "", main_conf,
+  http_conf, stream_conf, inline_code)
 
 local _, code = pl_utils.execute(resty_cmd)
 os.exit(code)

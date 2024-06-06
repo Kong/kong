@@ -1,7 +1,7 @@
 local bit = require("bit")
 local buffer = require("string.buffer")
-local tb_new = require("table.new")
 local tb_nkeys = require("table.nkeys")
+local tb_clear = require("table.clear")
 local uuid = require("resty.jit-uuid")
 local lrucache = require("resty.lrucache")
 local ipmatcher = require("resty.ipmatcher")
@@ -12,7 +12,6 @@ local type = type
 local assert = assert
 local pairs = pairs
 local ipairs = ipairs
-local tostring = tostring
 local tb_insert = table.insert
 local fmt = string.format
 local byte = string.byte
@@ -43,7 +42,7 @@ end
 local function escape_str(str)
   -- raw string
   if not str:find([["#]], 1, true) then
-    return "r#\"" .. str .. "\"#"
+    return [[r#"]] .. str .. [["#]]
   end
 
   -- standard string escaping (unlikely case)
@@ -55,7 +54,7 @@ local function escape_str(str)
     str = str:gsub([["]], [[\"]])
   end
 
-  return "\"" .. str .. "\""
+  return [["]] .. str .. [["]]
 end
 
 
@@ -76,7 +75,6 @@ do
     end
 
     local m = memo_hp:get(key)
-
     if m then
       return m[1], m[2]
     end
@@ -88,7 +86,6 @@ do
     end
 
     local port = tonumber(key:sub(p + 1))
-
     if not port then
       memo_hp:set(key, { key, nil })
       return key, nil
@@ -128,15 +125,14 @@ local headers_buf       = buffer.new(64)
 local single_header_buf = buffer.new(64)
 
 
--- sep: a seperator of expressions, like '&&'
+-- sep: a separator of expressions, like '&&'
 -- idx: indicate whether or not to add 'sep'
 --      for example, we should not add 'sep' for the first element in array
 local function expression_append(buf, sep, str, idx)
-  if #buf > 0 and
-     (idx == nil or idx > 1)
-  then
+  if #buf > 0 and (idx == nil or idx > 1) then
     buf:put(sep)
   end
+
   buf:put(str)
 end
 
@@ -264,8 +260,7 @@ local function gen_for_nets(ip_field, port_field, vals)
 end
 
 
-local is_stream_route
-do
+local is_stream_route do
   local is_stream_protocol = {
     tcp = true,
     udp = true,
@@ -283,13 +278,39 @@ do
 end
 
 
-local function sni_val_transform(_, p)
-  if #p > 1 and byte(p, -1) == DOT then
-    -- last dot in FQDNs must not be used for routing
-    return p:sub(1, -2)
+local function sni_op_transform(sni)
+  local op = OP_EQUAL
+
+  if byte(sni) == ASTERISK then
+    -- postfix matching
+    op = OP_POSTFIX
+
+  elseif byte(sni, -1) == ASTERISK then
+    -- prefix matching
+    op = OP_PREFIX
   end
 
-  return p
+  return op
+end
+
+
+local function sni_val_transform(op, sni)
+  -- prefix matching, like 'x.*'
+  if op == OP_PREFIX then
+    return sni:sub(1, -2)
+  end
+
+  -- last dot in FQDNs must not be used for routing
+  if #sni > 1 and byte(sni, -1) == DOT then
+    sni = sni:sub(1, -2)
+  end
+
+  -- postfix matching, like '*.x'
+  if op == OP_POSTFIX then
+    sni = sni:sub(2)
+  end
+
+  return sni
 end
 
 
@@ -311,32 +332,23 @@ end
 
 
 local function get_expression(route)
-  -- we perfer the field 'expression', reject others
+  -- we prefer the field 'expression', reject others
   if not is_null(route.expression) then
     return route.expression
   end
 
   -- transform other fields (methods/hosts/paths/...) to expression
 
-  local methods = route.methods
-  local hosts   = route.hosts
-  local paths   = route.paths
-  local headers = route.headers
-  local snis    = route.snis
-
-  local srcs    = route.sources
-  local dsts    = route.destinations
-
   expr_buf:reset()
 
-  local gen = gen_for_field("tls.sni", OP_EQUAL, snis, sni_val_transform)
+  local gen = gen_for_field("tls.sni", sni_op_transform, route.snis, sni_val_transform)
   if gen then
     -- See #6425, if `net.protocol` is not `https`
     -- then SNI matching should simply not be considered
     if is_stream_route(route) then
-      gen = "(net.protocol != r#\"tls\"#"   .. LOGICAL_OR .. gen .. ")"
+      gen = [[(net.protocol != r#"tls"#]]   .. LOGICAL_OR .. gen .. ")"
     else
-      gen = "(net.protocol != r#\"https\"#" .. LOGICAL_OR .. gen .. ")"
+      gen = [[(net.protocol != r#"https"#]] .. LOGICAL_OR .. gen .. ")"
     end
 
     expression_append(expr_buf, LOGICAL_AND, gen)
@@ -344,15 +356,14 @@ local function get_expression(route)
 
   -- now http route support net.src.* and net.dst.*
 
-  local src_gen = gen_for_nets("net.src.ip", "net.src.port", srcs)
-  local dst_gen = gen_for_nets("net.dst.ip", "net.dst.port", dsts)
-
-  if src_gen then
-    expression_append(expr_buf, LOGICAL_AND, src_gen)
+  gen = gen_for_nets("net.src.ip", "net.src.port", route.sources)
+  if gen then
+    expression_append(expr_buf, LOGICAL_AND, gen)
   end
 
-  if dst_gen then
-    expression_append(expr_buf, LOGICAL_AND, dst_gen)
+  gen = gen_for_nets("net.dst.ip", "net.dst.port", route.destinations)
+  if gen then
+    expression_append(expr_buf, LOGICAL_AND, gen)
   end
 
   -- stream expression, protocol = tcp/udp/tls/tls_passthrough
@@ -366,11 +377,12 @@ local function get_expression(route)
 
   -- http expression, protocol = http/https/grpc/grpcs
 
-  local gen = gen_for_field("http.method", OP_EQUAL, methods)
+  gen = gen_for_field("http.method", OP_EQUAL, route.methods)
   if gen then
     expression_append(expr_buf, LOGICAL_AND, gen)
   end
 
+  local hosts = route.hosts
   if not is_empty_field(hosts) then
     hosts_buf:reset():put("(")
 
@@ -389,7 +401,7 @@ local function get_expression(route)
         host = host:sub(1, -2)
       end
 
-      local exp = "http.host ".. op .. " r#\"" .. host .. "\"#"
+      local exp = "http.host ".. op .. [[ r#"]] .. host .. [["#]]
       if port then
         exp = "(" .. exp .. LOGICAL_AND ..
               "net.dst.port ".. OP_EQUAL .. " " .. port .. ")"
@@ -397,15 +409,15 @@ local function get_expression(route)
       expression_append(hosts_buf, LOGICAL_OR, exp, i)
     end -- for route.hosts
 
-    expression_append(expr_buf, LOGICAL_AND,
-                      hosts_buf:put(")"):get())
+    expression_append(expr_buf, LOGICAL_AND, hosts_buf:put(")"):get())
   end
 
-  gen = gen_for_field("http.path", path_op_transform, paths, path_val_transform)
+  gen = gen_for_field("http.path", path_op_transform, route.paths, path_val_transform)
   if gen then
     expression_append(expr_buf, LOGICAL_AND, gen)
   end
 
+  local headers = route.headers
   if not is_empty_field(headers) then
     headers_buf:reset()
 
@@ -544,48 +556,39 @@ local EXPRESSION_ONLY_BIT = lshift_uint64(0xFFULL, 56)
 -- |                         |                                     |
 -- +-------------------------+-------------------------------------+
 local function get_priority(route)
-  -- we perfer the fields 'expression' and 'priority'
+  -- we prefer the fields 'expression' and 'priority'
   if not is_null(route.expression) then
     return bor(EXPRESSION_ONLY_BIT, route.priority or 0)
   end
 
-  -- transform other fields (methods/hosts/paths/...) to expression priority
-
-  local snis = route.snis
-  local srcs = route.sources
-  local dsts = route.destinations
-
   -- stream expression
 
   if is_stream_route(route) then
-    return stream_get_priority(snis, srcs, dsts)
+    return stream_get_priority(route.snis, route.sources, route.destinations)
   end
 
   -- http expression
 
-  local methods = route.methods
-  local hosts   = route.hosts
-  local paths   = route.paths
-  local headers = route.headers
-
   local match_weight = 0  -- 0x0ULL, *can not* exceed `7`
 
-  if not is_empty_field(srcs) then
+  if not is_empty_field(route.sources) then
     match_weight = match_weight + 1
   end
 
-  if not is_empty_field(dsts) then
+  if not is_empty_field(route.destinations) then
     match_weight = match_weight + 1
   end
 
-  if not is_empty_field(methods) then
+  if not is_empty_field(route.methods) then
     match_weight = match_weight + 1
   end
 
+  local hosts = route.hosts
   if not is_empty_field(hosts) then
     match_weight = match_weight + 1
   end
 
+  local headers = route.headers
   local headers_count = is_empty_field(headers) and 0 or tb_nkeys(headers)
 
   if headers_count > 0 then
@@ -599,7 +602,7 @@ local function get_priority(route)
     end
   end
 
-  if not is_empty_field(snis) then
+  if not is_empty_field(route.snis) then
     match_weight = match_weight + 1
   end
 
@@ -617,6 +620,7 @@ local function get_priority(route)
   local uri_length = 0
   local regex_url = false
 
+  local paths = route.paths
   if not is_empty_field(paths) then
     match_weight = match_weight + 1
 
@@ -670,68 +674,120 @@ end
 local uuid_generator = assert(uuid.factory_v5('7f145bf9-0dce-4f91-98eb-debbce4b9f6b'))
 
 
-local function sort_by_regex_or_length(path)
-  return is_regex_magic(path) or #path
-end
+-- Turns route.paths array, e.g. { "~/regex.*$", "/long-path", "/one", "two, "/three", "~/.*" } to
+-- a regex/length grouped array: { { "~/regex.*$", "~/.*" }, { "/long-path" }, { "/one", "/two }, { "/three" } }
+local _grouped_paths = {} -- we reuse this to avoid runtime table creation (not thread safe - aka do not yield with it)
+local _grouped_paths_map = {} -- we reuse this to avoid runtime table/garbage creation (not thread safe - aka do not yield with it)
+local function group_by_regex_or_length(paths)
+  tb_clear(_grouped_paths)
+  tb_clear(_grouped_paths_map)
+  local grouped_paths_count = 0
 
+  for _, path in ipairs(paths) do
+    local k = is_regex_magic(path) and 0 or #path
+    if _grouped_paths_map[k] then
+      tb_insert(_grouped_paths[_grouped_paths_map[k]], path)
 
--- group array-like table t by the function f, returning a table mapping from
--- the result of invoking f on one of the elements to the actual elements.
-local function group_by(t, f)
-  local result = {}
-  for _, value in ipairs(t) do
-    local key = f(value)
-    if result[key] then
-      tb_insert(result[key], value)
     else
-      result[key] = { value }
+      grouped_paths_count = grouped_paths_count + 1
+      _grouped_paths_map[k] = grouped_paths_count
+      _grouped_paths[grouped_paths_count] = { path }
     end
   end
-  return result
-end
 
--- split routes into multiple routes, one for each prefix length and one for all
--- regular expressions
-local function split_route_by_path_info(route_and_service, routes_and_services_split)
-  local original_route = route_and_service.route
-
-  if is_empty_field(original_route.paths) or #original_route.paths == 1 or
-     not is_null(original_route.expression) -- expression will ignore paths
-  then
-    tb_insert(routes_and_services_split, route_and_service)
-    return
-  end
-
-  -- make sure that route_and_service contains only the two expected entries, route and service
-  assert(tb_nkeys(route_and_service) == 1 or tb_nkeys(route_and_service) == 2)
-
-  local grouped_paths = group_by(
-    original_route.paths, sort_by_regex_or_length
-  )
-  for index, paths in pairs(grouped_paths) do
-    local cloned_route = {
-      route = shallow_copy(original_route),
-      service = route_and_service.service,
-    }
-
-    cloned_route.route.original_route = original_route
-    cloned_route.route.paths = paths
-    cloned_route.route.id = uuid_generator(original_route.id .. "#" .. tostring(index))
-
-    tb_insert(routes_and_services_split, cloned_route)
-  end
+  return grouped_paths_count, _grouped_paths
 end
 
 
+-- split routes into multiple routes,
+-- one for each prefix length and one for all regular expressions
 local function split_routes_and_services_by_path(routes_and_services)
-  local count = #routes_and_services
-  local routes_and_services_split = tb_new(count, 0)
+  local routes_and_services_count = #routes_and_services
+  for routes_and_services_index = 1, routes_and_services_count do
+    local route_and_service = routes_and_services[routes_and_services_index]
+    local original_route = route_and_service.route
+    local original_paths = original_route.paths
 
-  for i = 1, count do
-    split_route_by_path_info(routes_and_services[i], routes_and_services_split)
+    if is_empty_field(original_paths) or #original_paths == 1 or
+       not is_null(original_route.expression) -- expression will ignore paths
+    then
+      goto continue
+    end
+
+    local grouped_paths_count, grouped_paths = group_by_regex_or_length(original_paths)
+    if grouped_paths_count == 1 then
+      goto continue -- in case we only got one group, we can accept the original route
+    end
+
+    -- make sure that route_and_service contains only
+    -- the two expected entries, route and service
+    local nkeys = tb_nkeys(route_and_service)
+    assert(nkeys == 1 or nkeys == 2)
+
+    local original_route_id = original_route.id
+    local original_service = route_and_service.service
+
+    for grouped_paths_index = 1, grouped_paths_count do
+      -- create a new route from the original route
+      local route = shallow_copy(original_route)
+      route.original_route = original_route
+      route.paths = grouped_paths[grouped_paths_index]
+      route.id = uuid_generator(original_route_id .. "#" .. grouped_paths_index)
+
+      -- In case this is the first iteration of grouped paths,
+      -- we want to replace the original route / service pair.
+      -- Otherwise we want to append a new route / service pair
+      -- at the end of the routes and services array.
+      local index = routes_and_services_index
+      if grouped_paths_index > 1 then
+        routes_and_services_count = routes_and_services_count + 1
+        index = routes_and_services_count
+      end
+
+      routes_and_services[index] = {
+        route = route,
+        service = original_service,
+      }
+    end
+
+    ::continue::
+  end -- for routes_and_services
+
+  return routes_and_services
+end
+
+
+local amending_expression
+do
+  local re_gsub = ngx.re.gsub
+
+  local NET_PORT_REG = [[(net\.port)(\s*)([=><!])]]
+  local NET_PORT_REPLACE = [[net.dst.port$2$3]]
+
+  -- net.port => net.dst.port
+  amending_expression = function(route)
+    local exp = get_expression(route)
+
+    if not exp then
+      return nil
+    end
+
+    if not exp:find("net.port", 1, true) then
+      return exp
+    end
+
+    -- there is "net.port" in expression
+
+    local new_exp = re_gsub(exp, NET_PORT_REG, NET_PORT_REPLACE, "jo")
+
+    if exp ~= new_exp then
+      ngx.log(ngx.WARN, "The field 'net.port' of expression is deprecated " ..
+                        "and will be removed in the upcoming major release, " ..
+                        "please use 'net.dst.port' instead.")
+    end
+
+    return new_exp
   end
-
-  return routes_and_services_split
 end
 
 
@@ -752,5 +808,6 @@ return {
   get_priority = get_priority,
 
   split_routes_and_services_by_path = split_routes_and_services_by_path,
-}
 
+  amending_expression = amending_expression,
+}

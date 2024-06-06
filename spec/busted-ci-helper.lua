@@ -1,5 +1,9 @@
 -- busted-ci-helper.lua
 
+
+-- needed before requiring 'socket.unix'
+require 'socket'
+
 local busted = require 'busted'
 local cjson = require 'cjson'
 local socket_unix = require 'socket.unix'

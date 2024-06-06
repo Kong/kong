@@ -181,7 +181,7 @@
 
 assert(package.loaded["resty.core"])
 
-local base = require "resty.core.base"
+local get_request = require("resty.core.base").get_request
 
 local type = type
 local error = error
@@ -270,7 +270,7 @@ function _PDK.new(kong_config, self)
   return setmetatable(self, {
     __index = function(t, k)
       if k == "log" then
-        if base.get_request() then
+        if get_request() then
           local log = ngx.ctx.KONG_LOG
           if log then
             return log

@@ -1,5 +1,5 @@
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 local cjson = require "cjson"
 
 
@@ -103,7 +103,7 @@ for _, strategy in helpers.each_strategy() do
 
         describe("PUT", function()
           it("can create a vault by id", function()
-            local res = client:put("/vaults/" .. utils.uuid(), {
+            local res = client:put("/vaults/" .. uuid.uuid(), {
               headers = HEADERS,
               body = {
                 name = "env",
@@ -151,7 +151,7 @@ for _, strategy in helpers.each_strategy() do
 
           describe("errors", function()
             it("handles invalid input by id", function()
-              local res = client:put("/vaults/" .. utils.uuid(), {
+              local res = client:put("/vaults/" .. uuid.uuid(), {
                 headers = HEADERS,
                 body = {
                   name = "env",

@@ -1,8 +1,8 @@
 local mocker = require "spec.fixtures.mocker"
 local balancer = require "kong.runloop.balancer"
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 
-local ws_id = utils.uuid()
+local ws_id = uuid.uuid()
 
 local function setup_it_block()
   local client = require "kong.resty.dns.client"

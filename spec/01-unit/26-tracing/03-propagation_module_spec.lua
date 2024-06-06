@@ -1,6 +1,6 @@
 local propagation_utils = require "kong.tracing.propagation.utils"
 local tablex = require "pl.tablex"
-local shallow_copy = require "kong.tools.utils".shallow_copy
+local shallow_copy = require "kong.tools.table".shallow_copy
 local to_hex = require "resty.string".to_hex
 
 local from_hex = propagation_utils.from_hex

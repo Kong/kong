@@ -1,4 +1,4 @@
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 local new_tab = require "table.new"
 
 
@@ -97,7 +97,7 @@ function _M:insert(node_id, channel, at, data, delay)
     nbf = "NULL"
   end
 
-  local pg_id      = self.connector:escape_literal(utils.uuid())
+  local pg_id      = self.connector:escape_literal(uuid.uuid())
   local pg_node_id = self.connector:escape_literal(node_id)
   local pg_channel = self.connector:escape_literal(channel)
   local pg_data    = self.connector:escape_literal(data)

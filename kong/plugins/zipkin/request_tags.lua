@@ -8,7 +8,7 @@
 -- Will add two tags to the request span in Zipkin
 
 
-local split = require "kong.tools.utils".split
+local split = require "kong.tools.string".split
 
 local match = string.match
 

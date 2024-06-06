@@ -1217,4 +1217,78 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
+
+  describe("host_header should be set correctly", function()
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+      })
+
+      local upstream = assert(bp.upstreams:insert {
+        name               = "foo",
+        host_header        = "foo.com",
+      })
+
+      assert(bp.targets:insert {
+        target   = "127.0.0.1:62351",
+        upstream = upstream,
+        weight   = 50,
+      })
+
+      local service = bp.services:insert {
+        name            = "retry_service",
+        host            = "foo",
+        retries         = 5,
+      }
+
+      bp.routes:insert {
+        service    = service,
+        paths      = { "/hello" },
+        strip_path = false,
+      }
+
+      local fixtures = {
+        http_mock = {}
+      }
+
+      fixtures.http_mock.my_server_block = [[
+        server {
+          listen 0.0.0.0:62351;
+          location /hello {
+            content_by_lua_block {
+              local shd = ngx.shared.request_counter
+              local request_counter = shd:incr("counter", 1, 0)
+              if request_counter % 2 ~= 0 then
+                ngx.exit(ngx.HTTP_CLOSE)
+              else
+                ngx.say(ngx.var.host)
+              end
+            }
+          }
+        }
+      ]]
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        nginx_http_lua_shared_dict = "request_counter 1m",
+      }, nil, nil, fixtures))
+    end)
+
+    lazy_teardown(function()
+      assert(helpers.stop_kong())
+    end)
+
+    it("when retries to upstream happen", function()
+      local proxy_client = helpers.proxy_client()
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/hello",
+      })
+
+      local body = assert.res_status(200, res)
+      assert.equal("foo.com", body)
+    end)
+  end)
 end

@@ -1,0 +1,3 @@
+message: TLSv1.1 and lower versions are disabled by default in OpenSSL 3.x.
+type: feature
+scope: Configuration

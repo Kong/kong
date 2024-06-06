@@ -1,7 +1,7 @@
 local perf = require("spec.helpers.perf")
 local pl_path = require("pl.path")
 local cjson = require("cjson")
-local tools = require("kong.tools.utils")
+local tools = require("kong.tools.rand")
 math.randomseed(os.time())
 
 local _M = {}

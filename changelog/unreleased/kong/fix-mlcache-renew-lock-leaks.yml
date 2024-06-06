@@ -1,4 +1,0 @@
-message: |
-  Fixed an issue that leaking locks in the internal caching logic
-type: bugfix
-scope: Core

@@ -1,0 +1,5 @@
+message: |
+    Fixed an issue where an external plugin (Go, Javascript, or Python) would fail to
+    apply a change to the plugin config via the Admin API.
+type: bugfix
+scope: Configuration

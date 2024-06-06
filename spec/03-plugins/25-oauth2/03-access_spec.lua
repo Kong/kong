@@ -1,6 +1,6 @@
 local cjson   = require "cjson"
 local helpers = require "spec.helpers"
-local utils   = require "kong.tools.utils"
+local uuid    = require "kong.tools.uuid"
 local admin_api = require "spec.fixtures.admin_api"
 local sha256 = require "resty.sha256"
 local jwt_encoder = require "kong.plugins.jwt.jwt_parser"
@@ -510,7 +510,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         config   = {
           scopes             = { "email", "profile", "user.email" },
           global_credentials = true,
-          anonymous          = utils.uuid(), -- a non existing consumer
+          anonymous          = uuid.uuid(), -- a non existing consumer
         },
       })
 

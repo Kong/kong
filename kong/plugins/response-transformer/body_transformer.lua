@@ -123,6 +123,15 @@ function _M.transform_json_body(conf, buffered_data)
     json_body[name] = nil
   end
 
+  -- rename key to body
+  for _, old_name, new_name in iter(conf.rename.json) do
+    if json_body[old_name] ~= nil and new_name then
+      local value = json_body[old_name]
+      json_body[new_name] = value
+      json_body[old_name] = nil
+    end
+  end
+
   -- replace key:value to body
   local replace_json_types = conf.replace.json_types
   for i, name, value in iter(conf.replace.json) do

@@ -23,6 +23,45 @@ end
 
 
 local compatible_checkers = {
+  { 3008000000, --[[ 3.8.0.0 ]]
+    function (config_table, dp_version, log_suffix)
+      local has_update
+      local adapter = require("kong.plugins.proxy-cache.clustering.compat.response_headers_translation").adapter
+      for _, plugin in ipairs(config_table.plugins or {}) do
+        if plugin.name == 'proxy-cache' then
+          has_update = adapter(plugin.config)
+          if has_update then
+            log_warn_message('adapts ' .. plugin.name .. ' plugin response_headers configuration to older version',
+                             'revert to older schema',
+                             dp_version, log_suffix)
+          end
+        end
+      end
+
+      return has_update
+    end
+  },
+  { 3007000000, --[[ 3.7.0.0 ]]
+    function(config_table, dp_version, log_suffix)
+      local has_update
+
+      for _, plugin in ipairs(config_table.plugins or {}) do
+        if plugin.name == 'ai-proxy' then
+          local config = plugin.config
+          if config.route_type == "preserve" then
+            config.route_type = "llm/v1/chat"
+            log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
+                              ' route_type == "llm/v1/chat", because preserve' ..
+                              ' mode is not supported in this release',
+                              dp_version, log_suffix)
+            has_update = true
+          end
+        end
+      end
+
+      return has_update
+    end,
+  },
   { 3006000000, --[[ 3.6.0.0 ]]
     function(config_table, dp_version, log_suffix)
       local has_update
@@ -47,6 +86,7 @@ local compatible_checkers = {
       return has_update
     end,
   },
+
   { 3005000000, --[[ 3.5.0.0 ]]
     function(config_table, dp_version, log_suffix)
       local has_update

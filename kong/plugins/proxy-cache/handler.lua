@@ -1,9 +1,9 @@
 local require     = require
 local cache_key   = require "kong.plugins.proxy-cache.cache_key"
-local utils       = require "kong.tools.utils"
 local kong_meta   = require "kong.meta"
 local mime_type   = require "kong.tools.mime_type"
 local nkeys       = require "table.nkeys"
+local split       = require("kong.tools.string").split
 
 
 local ngx              = ngx
@@ -260,7 +260,7 @@ function ProxyCacheHandler:init_worker()
   kong.cluster_events:subscribe("proxy-cache:purge", function(data)
     kong.log.err("handling purge of '", data, "'")
 
-    local plugin_id, cache_key = unpack(utils.split(data, ":"))
+    local plugin_id, cache_key = unpack(split(data, ":"))
     local plugin, err = kong.db.plugins:select({ id = plugin_id })
     if err then
       kong.log.err("error in retrieving plugins: ", err)

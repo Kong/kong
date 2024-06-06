@@ -42,6 +42,7 @@ local plugins = {
   "ai-prompt-guard",
   "ai-request-transformer",
   "ai-response-transformer",
+  "standard-webhooks",
 }
 
 local plugin_map = {}
@@ -256,6 +257,7 @@ local constants = {
 
   DYN_LOG_LEVEL_KEY = "kong:dyn_log_level",
   DYN_LOG_LEVEL_TIMEOUT_AT_KEY = "kong:dyn_log_level_timeout_at",
+  DYN_LOG_LEVEL_DEFAULT_TIMEOUT = 60,
 
   ADMIN_GUI_KCONFIG_CACHE_KEY = "admin:gui:kconfig",
 
@@ -277,7 +279,7 @@ local constants = {
       exit = "kong",
       service = "upstream",
     }
-  }
+  },
 }
 
 for _, v in ipairs(constants.CLUSTERING_SYNC_STATUS) do

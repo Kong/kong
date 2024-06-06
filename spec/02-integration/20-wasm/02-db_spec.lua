@@ -1,5 +1,5 @@
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 local schema_lib = require "kong.db.schema.json"
 
 local FILTER_PATH = assert(helpers.test_conf.wasm_filters_path)
@@ -63,11 +63,11 @@ describe("wasm DB entities [#" .. strategy .. "]", function()
         }))
 
         assert.is_string(chain.id)
-        assert.truthy(utils.is_valid_uuid(chain.id))
+        assert.truthy(uuid.is_valid_uuid(chain.id))
       end)
 
       it("can be user-generated", function()
-        local id = utils.uuid()
+        local id = uuid.uuid()
         local chain = assert(dao:insert({
           id = id,
           service = make_service(),
@@ -76,7 +76,7 @@ describe("wasm DB entities [#" .. strategy .. "]", function()
 
         assert.is_string(chain.id)
         assert.equals(id, chain.id)
-        assert.truthy(utils.is_valid_uuid(chain.id))
+        assert.truthy(uuid.is_valid_uuid(chain.id))
       end)
 
       it("must be a valid uuid", function()
@@ -178,7 +178,7 @@ describe("wasm DB entities [#" .. strategy .. "]", function()
       it("requires the route to exist", function()
         local chain, err, err_t = dao:insert({
           filters = { { name = "test" } },
-          route = { id = utils.uuid() },
+          route = { id = uuid.uuid() },
         })
 
         assert.is_nil(chain)
@@ -210,7 +210,7 @@ describe("wasm DB entities [#" .. strategy .. "]", function()
       it("requires the service to exist", function()
         local chain, err, err_t = dao:insert({
           filters = { { name = "test" } },
-          service = { id = utils.uuid() },
+          service = { id = uuid.uuid() },
         })
 
         assert.is_nil(chain)
@@ -247,7 +247,7 @@ describe("wasm DB entities [#" .. strategy .. "]", function()
         helpers.wait_until(function()
           local updated = assert(dao:update(
             { id = chain.id },
-            { tags = { utils.uuid() } }
+            { tags = { uuid.uuid() } }
           ))
 
           return updated.updated_at > chain.updated_at

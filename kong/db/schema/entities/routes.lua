@@ -34,6 +34,11 @@ local entity_checks = {
   }},
 }
 
+local snis_elements_type = typedefs.wildcard_host
+
+if kong_router_flavor == "traditional" then
+  snis_elements_type = typedefs.sni
+end
 
 -- works with both `traditional_compatible` and `expressions` routes
 local validate_route
@@ -45,12 +50,10 @@ if kong_router_flavor == "traditional_compatible" or kong_router_flavor == "expr
   local router = require("resty.router.router")
   local transform = require("kong.router.transform")
   local get_schema = require("kong.router.atc").schema
-  local get_expression = kong_router_flavor == "traditional_compatible" and
-                         require("kong.router.compat").get_expression or
-                         require("kong.router.expressions").transform_expression
 
   local is_null = transform.is_null
   local is_empty_field = transform.is_empty_field
+  local amending_expression = transform.amending_expression
 
   local HTTP_PATH_SEGMENTS_PREFIX = "http.path.segments."
   local HTTP_PATH_SEGMENTS_SUFFIX_REG = [[^(0|[1-9]\d*)(_([1-9]\d*))?$]]
@@ -79,8 +82,25 @@ if kong_router_flavor == "traditional_compatible" or kong_router_flavor == "expr
                   "simultaneously"
     end
 
+    local is_regex_priority_empty = is_null(entity.regex_priority) or
+                                    entity.regex_priority == 0    -- default value 0 means 'no set'
+    if not is_expression_empty and not is_regex_priority_empty then
+      return nil, "Router Expression failed validation: " ..
+                  "cannot set 'regex_priority' with 'expression' " ..
+                  "simultaneously"
+    end
+
+    local is_priority_empty = is_null(entity.priority) or
+                              entity.priority == 0    -- default value 0 means 'no set'
+    if not is_others_empty and not is_priority_empty then
+      return nil, "Router Expression failed validation: " ..
+                  "cannot set 'priority' with " ..
+                  "'methods', 'hosts', 'paths', 'headers', 'snis', 'sources' or 'destinations' " ..
+                  "simultaneously"
+    end
+
     local schema = get_schema(entity.protocols)
-    local exp = get_expression(entity)
+    local exp = amending_expression(entity)
 
     local fields, err = router.validate(schema, exp)
     if not fields then
@@ -109,6 +129,7 @@ if kong_router_flavor == "traditional_compatible" or kong_router_flavor == "expr
                         "snis", "sources", "destinations",
                         "methods", "hosts", "paths", "headers",
                         "expression",
+                        "regex_priority", "priority",
                       },
       run_with_missing_fields = true,
       fn = validate_route,
@@ -159,7 +180,7 @@ local routes = {
 
       { snis = { type = "set",
                  description = "A list of SNIs that match this Route.",
-                 elements = typedefs.sni }, },
+                 elements = snis_elements_type }, },
       { sources = typedefs.sources },
       { destinations = typedefs.destinations },
 

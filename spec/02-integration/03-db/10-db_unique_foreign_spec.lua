@@ -1,6 +1,6 @@
 local Errors  = require "kong.db.errors"
 local helpers = require "spec.helpers"
-local utils   = require "kong.tools.utils"
+local uuid   = require "kong.tools.uuid"
 
 
 local fmt = string.format
@@ -78,7 +78,7 @@ for _, strategy in helpers.each_strategy() do
         it("returns nothing on non-existing Unique Foreign", function()
           for i = 1, 5 do
             local unique_reference, err, err_t = db.unique_references:select_by_unique_foreign({
-              id = utils.uuid()
+              id = uuid.uuid()
             })
 
             assert.is_nil(err)
@@ -116,7 +116,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- I/O
         it("returns not found error", function()
-          local uuid = utils.uuid()
+          local uuid = uuid.uuid()
           local unique_reference, err, err_t = db.unique_references:update_by_unique_foreign({
             id = uuid,
           }, {
@@ -193,7 +193,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- I/O
         it("returns not found error", function()
-          local uuid = utils.uuid()
+          local uuid = uuid.uuid()
           local unique_reference, err, err_t = db.unique_references:upsert_by_unique_foreign({
             id = uuid,
           }, {
@@ -305,7 +305,7 @@ for _, strategy in helpers.each_strategy() do
         -- I/O
         it("returns nothing if the Unique Foreign does not exist", function()
           local ok, err, err_t = db.unique_references:delete_by_unique_foreign({
-            id = utils.uuid()
+            id = uuid.uuid()
           })
           assert.is_true(ok)
           assert.is_nil(err_t)

@@ -115,6 +115,9 @@ return {
     opentelemetry = {
       "sampling_rate",
     },
+    basic_auth = {
+      "realm"
+    }
   },
 
   -- Any dataplane older than 3.7.0
@@ -125,5 +128,28 @@ return {
     zipkin = {
       "propagation",
     },
+    ai_proxy = {
+      "response_streaming",
+      "model.options.upstream_path",
+    },
+    ai_request_transformer = {
+      "llm.model.options.upstream_path",
+    },
+    ai_response_transformer = {
+      "llm.model.options.upstream_path",
+    },
+    key_auth = {
+      "realm"
+    },
+  },
+
+  -- Any dataplane older than 3.8.0
+  [3008000000] = {
+    response_transformer = {
+      "rename.json",
+    },
+    aws_lambda = {
+      "empty_arrays_mode",
+    }
   },
 }

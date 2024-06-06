@@ -1,7 +1,7 @@
 local balancer = require "kong.runloop.balancer"
-local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local workspaces   = require "kong.workspaces"
+local tools_ip = require "kong.tools.ip"
 
 
 local setmetatable = setmetatable
@@ -10,7 +10,7 @@ local ipairs = ipairs
 local table = table
 local type = type
 local min = math.min
-local table_merge = utils.table_merge
+local table_merge = require("kong.tools.table").table_merge
 
 
 local _TARGETS = {}
@@ -29,11 +29,11 @@ end
 
 
 local function format_target(target)
-  local p = utils.normalize_ip(target)
+  local p = tools_ip.normalize_ip(target)
   if not p then
     return false, "Invalid target; not a valid hostname or ip address"
   end
-  return utils.format_host(p, DEFAULT_PORT)
+  return tools_ip.format_host(p, DEFAULT_PORT)
 end
 
 
@@ -296,13 +296,13 @@ end
 
 function _TARGETS:post_health(upstream_pk, target, address, is_healthy)
   local upstream = balancer.get_upstream_by_id(upstream_pk.id)
-  local host_addr = utils.normalize_ip(target.target)
-  local hostname = utils.format_host(host_addr.host)
+  local host_addr = tools_ip.normalize_ip(target.target)
+  local hostname = tools_ip.format_host(host_addr.host)
   local ip
   local port
 
   if address ~= nil then
-    local addr = utils.normalize_ip(address)
+    local addr = tools_ip.normalize_ip(address)
     ip = addr.host
     if addr.port then
       port = addr.port

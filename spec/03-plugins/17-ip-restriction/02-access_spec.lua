@@ -905,16 +905,7 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(200, res)
 
-      local cache_key = db.plugins:cache_key(plugin)
-
-      helpers.wait_until(function()
-        res = assert(admin_client:send {
-          method = "GET",
-          path   = "/cache/" .. cache_key
-        })
-        res:read_body()
-        return res.status ~= 200
-      end)
+      helpers.wait_for_all_config_update()
 
       local res = assert(proxy_client:send {
         method  = "GET",
@@ -939,16 +930,7 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(200, res)
 
-      local cache_key = db.plugins:cache_key(plugin)
-
-      helpers.wait_until(function()
-        res = assert(admin_client:send {
-          method = "GET",
-          path   = "/cache/" .. cache_key
-        })
-        res:read_body()
-        return res.status ~= 200
-      end)
+      helpers.wait_for_all_config_update()
 
       local res = assert(proxy_client:send {
         method  = "GET",

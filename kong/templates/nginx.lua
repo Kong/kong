@@ -38,8 +38,12 @@ wasm {
 > end
 > end
 
-> if #nginx_wasm_wasmtime_directives > 0 then
+> if #nginx_wasm_wasmtime_directives > 0 or wasmtime_cache_config_file then
   wasmtime {
+> if wasmtime_cache_config_file then
+    cache_config $(quote(wasmtime_cache_config_file));
+> end
+
 > for _, el in ipairs(nginx_wasm_wasmtime_directives) do
     flag $(el.name) $(el.value);
 > end

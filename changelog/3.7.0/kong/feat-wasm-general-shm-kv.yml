@@ -1,0 +1,6 @@
+message: |
+   Introduced `nginx_wasm_main_shm_kv` configuration parameter, which enables
+   Wasm filters to use the Proxy-Wasm operations `get_shared_data` and
+   `set_shared_data` without namespaced keys.
+type: feature
+scope: Configuration

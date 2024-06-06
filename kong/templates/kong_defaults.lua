@@ -41,6 +41,7 @@ cluster_ocsp = off
 cluster_max_payload = 16777216
 cluster_use_proxy = off
 cluster_dp_labels = NONE
+cluster_rpc = off
 
 lmdb_environment_path = dbless.lmdb
 lmdb_map_size = 2048m
@@ -208,6 +209,7 @@ tracing_sampling_rate = 0.01
 wasm = off
 wasm_filters_path = NONE
 wasm_dynamic_module = NONE
+wasm_filters = bundled,user
 
 request_debug = on
 request_debug_token =

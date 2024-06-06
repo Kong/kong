@@ -1,4 +1,4 @@
-local utils = require "kong.tools.utils"
+local hostname_type = require("kong.tools.ip").hostname_type
 local constants = require "kong.constants"
 local buffer = require "string.buffer"
 local acl_groups
@@ -131,7 +131,7 @@ function cache_warmup.single_dao(dao)
     end
 
     if entity_name == "services" then
-      if utils.hostname_type(entity.host) == "name"
+      if hostname_type(entity.host) == "name"
          and hosts_set[entity.host] == nil then
         host_count = host_count + 1
         hosts_array[host_count] = entity.host

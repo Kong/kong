@@ -1,0 +1,6 @@
+message: |
+  **AI-proxy**: A configuration validation is added to prevent from enabling `log_statistics` upon
+  providers not supporting statistics. Accordingly, the default of `log_statistics` is changed from
+  `true` to `false`, and a database migration is added as well for disabling `log_statistics` if it
+  has already been enabled upon unsupported providers.
+type: bugfix

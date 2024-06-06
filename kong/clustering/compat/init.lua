@@ -2,14 +2,14 @@ local cjson = require("cjson.safe")
 local constants = require("kong.constants")
 local meta = require("kong.meta")
 local version = require("kong.clustering.compat.version")
-local utils = require("kong.tools.utils")
 
 local type = type
 local ipairs = ipairs
 local table_insert = table.insert
 local table_sort = table.sort
 local gsub = string.gsub
-local split = utils.split
+local split = require("kong.tools.string").split
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local deflate_gzip = require("kong.tools.gzip").deflate_gzip
 local cjson_encode = cjson.encode
 
@@ -370,7 +370,7 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix)
   end
 
   local has_update
-  payload = utils.cycle_aware_deep_copy(payload, true)
+  payload = cycle_aware_deep_copy(payload, true)
   local config_table = payload["config_table"]
 
   for _, checker in ipairs(COMPATIBILITY_CHECKERS) do
@@ -399,6 +399,44 @@ function _M.update_compatible_payload(payload, dp_version, log_suffix)
   end
 
   return false, nil, nil
+end
+
+
+-- If mixed config is detected and a 3.6 or lower DP is attached to the CP,
+-- no config will be sent at all
+function _M.check_mixed_route_entities(payload, dp_version, flavor)
+  if flavor ~= "expressions" then
+    return true
+  end
+
+  -- CP runs with 'expressions' flavor
+
+  local dp_version_num = version_num(dp_version)
+
+  if dp_version_num >= 3007000000 then -- [[ 3.7.0.0 ]]
+    return true
+  end
+
+  local routes = payload["config_table"].routes or {}
+  local routes_n = #routes
+  local count = 0   -- expression route count
+
+  for i = 1, routes_n do
+    local r = routes[i]
+
+    -- expression should be a string
+    if r.expression and r.expression ~= ngx.null then
+      count = count + 1
+    end
+  end
+
+  if count == routes_n or   -- all are expression only routes
+     count == 0             -- all are traditional routes
+  then
+    return true
+  end
+
+  return false, dp_version .. " does not support mixed mode route"
 end
 
 

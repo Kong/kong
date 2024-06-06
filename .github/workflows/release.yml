@@ -133,7 +133,7 @@ jobs:
     - name: Cache Git
       id: cache-git
       if: (matrix.package == 'rpm' || matrix.image == 'debian:10') && matrix.image != ''
-      uses: actions/cache@v4
+      uses: actions/cache@e12d46a63a90f2fae62d114769bbf2a179198b5c # v3, DO NOT BUMP, v4 BREAKS ON CENTOS7 OR AMAZONLINUX2
       with:
         path: /usr/local/git
         key: ${{ matrix.label }}-git-2.41.0
@@ -194,7 +194,7 @@ jobs:
     - name: Cache Packages
       id: cache-deps
       if: env.GHA_CACHE == 'true'
-      uses: actions/cache@v4
+      uses: actions/cache@e12d46a63a90f2fae62d114769bbf2a179198b5c # v3, DO NOT BUMP, v4 BREAKS ON CENTOS7 OR AMAZONLINUX2
       with:
         path: bazel-bin/pkg
         key: ${{ steps.cache-key.outputs.cache-key }}
@@ -204,7 +204,7 @@ jobs:
         grep -v '^#' .requirements >> $GITHUB_ENV
 
     - name: Setup Bazel
-      uses: bazelbuild/setup-bazelisk@b39c379c82683a5f25d34f0d062761f62693e0b2 # v3.0.0
+      uses: bazelbuild/setup-bazelisk@95c9bf48d0c570bb3e28e57108f3450cd67c1a44 # v2.0.0
 
     - name: Install Deb Dependencies
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true'
@@ -597,6 +597,12 @@ jobs:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
 
+    - uses: actions/checkout@v3
+
+    - name: Get latest commit SHA on master
+      run: |
+        echo "latest_sha=$(git ls-remote origin -h refs/heads/${{ github.event.inputs.default_branch }} | cut -f1)" >> $GITHUB_ENV
+
     - name: Docker meta
       id: meta
       uses: docker/metadata-action@v5
@@ -604,7 +610,7 @@ jobs:
         images: ${{ needs.metadata.outputs.docker-repository }}
         sep-tags: " "
         tags: |
-          type=raw,value=latest,enable=${{ matrix.label == 'ubuntu' }}
+          type=raw,value=latest,enable=${{ matrix.label == 'ubuntu' && github.ref_name == github.event.inputs.default_branch && env.latest_sha == github.event.pull_request.head.sha }}
           type=match,enable=${{ github.event_name == 'workflow_dispatch' }},pattern=\d.\d,value=${{ github.event.inputs.version }}
           type=match,enable=${{ github.event_name == 'workflow_dispatch' && matrix.label == 'ubuntu' }},pattern=\d.\d,value=${{ github.event.inputs.version }},suffix=
           type=raw,enable=${{ github.event_name == 'workflow_dispatch' }},${{ github.event.inputs.version }}

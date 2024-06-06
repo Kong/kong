@@ -1,6 +1,6 @@
 local cjson    = require "cjson"
 local lyaml    = require "lyaml"
-local utils    = require "kong.tools.utils"
+local kong_table = require "kong.tools.table"
 local pl_utils = require "pl.utils"
 local helpers  = require "spec.helpers"
 local Errors   = require "kong.db.errors"
@@ -10,6 +10,7 @@ local inspect = require "inspect"
 local nkeys = require "table.nkeys"
 local typedefs = require "kong.db.schema.typedefs"
 local schema = require "kong.db.schema"
+local uuid = require("kong.tools.uuid").uuid
 
 local WORKER_SYNC_TIMEOUT = 10
 local LMDB_MAP_SIZE = "10m"
@@ -83,7 +84,7 @@ describe("Admin API #off", function()
             body = {
               protocols = { "http" },
               hosts     = { "my.route.test" },
-              service   = { id = utils.uuid() },
+              service   = { id = uuid() },
             },
             headers = { ["Content-Type"] = content_type }
           })
@@ -110,7 +111,7 @@ describe("Admin API #off", function()
               methods   = { "GET", "POST", "PATCH" },
               hosts     = { "foo.api.test", "bar.api.test" },
               paths     = { "/foo", "/bar" },
-              service   = { id =  utils.uuid() },
+              service   = { id =  uuid() },
             },
             headers = { ["Content-Type"] = content_type }
           })
@@ -159,7 +160,7 @@ describe("Admin API #off", function()
           path = "/routes",
           body = {
             paths = { "/" },
-            service = { id = utils.uuid() }
+            service = { id = uuid() }
           },
           headers = {
             ["Content-Type"] = "application/json"
@@ -187,10 +188,10 @@ describe("Admin API #off", function()
       for i = 1, #methods do
         local res = assert(client:send {
           method = methods[i],
-          path = "/routes/" .. utils.uuid(),
+          path = "/routes/" .. uuid(),
           body = {
             paths = { "/" },
-            service = { id = utils.uuid() }
+            service = { id = uuid() }
           },
           headers = {
             ["Content-Type"] = "application/json"
@@ -2723,6 +2724,115 @@ R6InCcH2Wh8wSeY5AuDXvu2tv9g/PW9wIJmPuKSHMA==
         },
       },
     }, flattened)
+  end)
+
+  it("correctly handles duplicate upstream target errors", function()
+    local target = {
+      target = "10.244.0.12:80",
+      weight = 1,
+      tags   = { "target-1" },
+    }
+    -- this has the same <addr>:<port> tuple as the first target, so it will
+    -- be assigned the same id
+    local dupe_target = kong_table.deep_copy(target)
+    dupe_target.tags = { "target-2" }
+
+    local input = {
+      _format_version = "3.0",
+      services = {
+        {
+          connect_timeout = 60000,
+          host = "httproute.default.httproute-testing.0",
+          id = "4e3cb785-a8d0-5866-aa05-117f7c64f24d",
+          name = "httproute.default.httproute-testing.0",
+          port = 8080,
+          protocol = "http",
+          read_timeout = 60000,
+          retries = 5,
+          routes = {
+            {
+              https_redirect_status_code = 426,
+              id = "073fc413-1c03-50b4-8f44-43367c13daba",
+              name = "httproute.default.httproute-testing.0.0",
+              path_handling = "v0",
+              paths = {
+                "~/httproute-testing$",
+                "/httproute-testing/",
+              },
+              preserve_host = true,
+              protocols = {
+                "http",
+                "https",
+              },
+              strip_path = true,
+              tags = {},
+            },
+          },
+          tags = {},
+          write_timeout = 60000,
+        },
+      },
+      upstreams = {
+        {
+          algorithm = "round-robin",
+          name = "httproute.default.httproute-testing.0",
+          id   = "e9792964-6797-482c-bfdf-08220a4f6832",
+          tags = {
+            "k8s-name:httproute-testing",
+            "k8s-namespace:default",
+            "k8s-kind:HTTPRoute",
+            "k8s-uid:f9792964-6797-482c-bfdf-08220a4f6839",
+            "k8s-group:gateway.networking.k8s.io",
+            "k8s-version:v1",
+          },
+          targets = {
+            {
+              target = "10.244.0.11:80",
+              weight = 1,
+            },
+            {
+              target = "10.244.0.12:80",
+              weight = 1,
+            },
+          },
+        },
+        {
+          algorithm = "round-robin",
+          name = "httproute.default.httproute-testing.1",
+          id   = "f9792964-6797-482c-bfdf-08220a4f6839",
+          tags = {
+            "k8s-name:httproute-testing",
+            "k8s-namespace:default",
+            "k8s-kind:HTTPRoute",
+            "k8s-uid:f9792964-6797-482c-bfdf-08220a4f6839",
+            "k8s-group:gateway.networking.k8s.io",
+            "k8s-version:v1",
+          },
+          targets = {
+            target,
+            dupe_target,
+          },
+        },
+      },
+    }
+
+    local flattened = post_config(input)
+    local entry = get_by_tag(dupe_target.tags[1], flattened)
+    assert.not_nil(entry, "no error for duplicate target in the response")
+
+    -- sanity
+    assert.same(dupe_target.tags, entry.entity_tags)
+
+    assert.is_table(entry.errors, "missing entity errors table")
+    assert.equals(1, #entry.errors, "expected 1 entity error")
+    assert.is_table(entry.errors[1], "entity error is not a table")
+
+    local e = entry.errors[1]
+    assert.equals("entity", e.type)
+
+    local exp = string.format("uniqueness violation: 'targets' entity with primary key set to '%s' already declared", entry.entity_id)
+
+    assert.equals(exp, e.message)
   end)
 end)
 

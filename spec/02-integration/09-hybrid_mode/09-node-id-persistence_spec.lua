@@ -1,7 +1,6 @@
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
 
-local is_valid_uuid = utils.is_valid_uuid
+local is_valid_uuid = require("kong.tools.uuid").is_valid_uuid
 
 local PREFIX = "servroot.dp"
 local NODE_ID = PREFIX .. "/kong.id"

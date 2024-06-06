@@ -1,5 +1,7 @@
-local utils = require "kong.tools.utils"
+local kong_table = require "kong.tools.table"
 local pl_path = require "pl.path"
+local tools_ip = require "kong.tools.ip"
+local tools_http = require "kong.tools.http"
 
 describe("Utils", function()
 
@@ -55,6 +57,7 @@ describe("Utils", function()
   end)
 
   describe("is_valid_uuid()", function()
+    local utils = require "kong.tools.uuid"
     it("validates UUIDs from jit-uuid", function()
       assert.True (utils.is_valid_uuid("cbb297c0-a956-486d-ad1d-f9b42df9465a"))
       assert.False(utils.is_valid_uuid("cbb297c0-a956486d-ad1d-f9b42df9465a"))
@@ -102,19 +105,19 @@ describe("Utils", function()
 
       it("should validate an HTTPS scheme", function()
         ngx.var.scheme = "hTTps" -- mixed casing to ensure case insensitiveness
-        assert.is.truthy(utils.check_https(true, false))
+        assert.is.truthy(tools_http.check_https(true, false))
       end)
 
       it("should invalidate non-HTTPS schemes", function()
         ngx.var.scheme = "hTTp"
-        assert.is.falsy(utils.check_https(true, false))
+        assert.is.falsy(tools_http.check_https(true, false))
         ngx.var.scheme = "something completely different"
-        assert.is.falsy(utils.check_https(true, false))
+        assert.is.falsy(tools_http.check_https(true, false))
       end)
 
       it("should invalidate non-HTTPS schemes with proto header allowed", function()
         ngx.var.scheme = "hTTp"
-        assert.is.falsy(utils.check_https(true, true))
+        assert.is.falsy(tools_http.check_https(true, true))
       end)
     end)
 
@@ -127,42 +130,42 @@ describe("Utils", function()
       it("should validate any scheme with X-Forwarded_Proto as HTTPS", function()
         headers["x-forwarded-proto"] = "hTTPs"  -- check mixed casing for case insensitiveness
         ngx.var.scheme = "hTTps"
-        assert.is.truthy(utils.check_https(true, true))
+        assert.is.truthy(tools_http.check_https(true, true))
         ngx.var.scheme = "hTTp"
-        assert.is.truthy(utils.check_https(true, true))
+        assert.is.truthy(tools_http.check_https(true, true))
         ngx.var.scheme = "something completely different"
-        assert.is.truthy(utils.check_https(true, true))
+        assert.is.truthy(tools_http.check_https(true, true))
       end)
 
       it("should validate only https scheme with X-Forwarded_Proto as non-HTTPS", function()
         headers["x-forwarded-proto"] = "hTTP"
         ngx.var.scheme = "hTTps"
-        assert.is.truthy(utils.check_https(true, true))
+        assert.is.truthy(tools_http.check_https(true, true))
         ngx.var.scheme = "hTTp"
-        assert.is.falsy(utils.check_https(true, true))
+        assert.is.falsy(tools_http.check_https(true, true))
         ngx.var.scheme = "something completely different"
-        assert.is.falsy(utils.check_https(true, true))
+        assert.is.falsy(tools_http.check_https(true, true))
       end)
 
       it("should return an error with multiple X-Forwarded_Proto headers", function()
         headers["x-forwarded-proto"] = { "hTTP", "https" }
         ngx.var.scheme = "hTTps"
-        assert.is.truthy(utils.check_https(true, true))
+        assert.is.truthy(tools_http.check_https(true, true))
         ngx.var.scheme = "hTTp"
         assert.are.same({ nil, "Only one X-Forwarded-Proto header allowed" },
-                        { utils.check_https(true, true) })
+                        { tools_http.check_https(true, true) })
       end)
 
       it("should not use X-Forwarded-Proto when the client is untrusted", function()
         headers["x-forwarded-proto"] = "https"
         ngx.var.scheme = "http"
-        assert.is_false(utils.check_https(false, false))
-        assert.is_false(utils.check_https(false, true))
+        assert.is_false(tools_http.check_https(false, false))
+        assert.is_false(tools_http.check_https(false, true))
 
         headers["x-forwarded-proto"] = "https"
         ngx.var.scheme = "https"
-        assert.is_true(utils.check_https(false, false))
-        assert.is_true(utils.check_https(false, true))
+        assert.is_true(tools_http.check_https(false, false))
+        assert.is_true(tools_http.check_https(false, true))
       end)
 
       it("should use X-Forwarded-Proto when the client is trusted", function()
@@ -170,32 +173,35 @@ describe("Utils", function()
         ngx.var.scheme = "http"
 
         -- trusted client but do not allow terminated
-        assert.is_false(utils.check_https(true, false))
+        assert.is_false(tools_http.check_https(true, false))
 
-        assert.is_true(utils.check_https(true, true))
+        assert.is_true(tools_http.check_https(true, true))
 
         headers["x-forwarded-proto"] = "https"
         ngx.var.scheme = "https"
-        assert.is_true(utils.check_https(true, false))
-        assert.is_true(utils.check_https(true, true))
+        assert.is_true(tools_http.check_https(true, false))
+        assert.is_true(tools_http.check_https(true, true))
       end)
     end)
   end)
 
   describe("string", function()
     it("checks valid UTF8 values", function()
-      assert.True(utils.validate_utf8("hello"))
-      assert.True(utils.validate_utf8(123))
-      assert.True(utils.validate_utf8(true))
-      assert.False(utils.validate_utf8(string.char(105, 213, 205, 149)))
-      assert.False(utils.validate_utf8(string.char(128))) -- unexpected continuation byte
-      assert.False(utils.validate_utf8(string.char(192, 32))) -- 2-byte sequence 0xc0 followed by space
-      assert.False(utils.validate_utf8(string.char(192))) -- 2-byte sequence with last byte missing
-      assert.False(utils.validate_utf8(string.char(254))) -- impossible byte
-      assert.False(utils.validate_utf8(string.char(255))) -- impossible byte
-      assert.False(utils.validate_utf8(string.char(237, 160, 128))) -- Single UTF-16 surrogate
+      local validate_utf8 = require("kong.tools.string").validate_utf8
+
+      assert.True(validate_utf8("hello"))
+      assert.True(validate_utf8(123))
+      assert.True(validate_utf8(true))
+      assert.False(validate_utf8(string.char(105, 213, 205, 149)))
+      assert.False(validate_utf8(string.char(128))) -- unexpected continuation byte
+      assert.False(validate_utf8(string.char(192, 32))) -- 2-byte sequence 0xc0 followed by space
+      assert.False(validate_utf8(string.char(192))) -- 2-byte sequence with last byte missing
+      assert.False(validate_utf8(string.char(254))) -- impossible byte
+      assert.False(validate_utf8(string.char(255))) -- impossible byte
+      assert.False(validate_utf8(string.char(237, 160, 128))) -- Single UTF-16 surrogate
     end)
     describe("random_string()", function()
+      local utils = require "kong.tools.rand"
       it("should return a random string", function()
         local first = utils.random_string()
         assert.is_string(first)
@@ -214,54 +220,54 @@ describe("Utils", function()
 
     describe("encode_args()", function()
       it("should encode a Lua table to a querystring", function()
-        local str = utils.encode_args {
+        local str = tools_http.encode_args {
           foo = "bar",
           hello = "world"
         }
         assert.equal("foo=bar&hello=world", str)
       end)
       it("should encode multi-value query args", function()
-        local str = utils.encode_args {
+        local str = tools_http.encode_args {
           foo = {"bar", "zoo"},
           hello = "world"
         }
         assert.equal("foo%5b1%5d=bar&foo%5b2%5d=zoo&hello=world", str)
       end)
       it("should percent-encode given values", function()
-        local str = utils.encode_args {
+        local str = tools_http.encode_args {
           encode = {"abc|def", ",$@|`"}
         }
         assert.equal("encode%5b1%5d=abc%7cdef&encode%5b2%5d=%2c%24%40%7c%60", str)
       end)
       it("should percent-encode given query args keys", function()
-        local str = utils.encode_args {
+        local str = tools_http.encode_args {
           ["hello world"] = "foo"
         }
         assert.equal("hello%20world=foo", str)
       end)
       it("should support Lua numbers", function()
-        local str = utils.encode_args {
+        local str = tools_http.encode_args {
           a = 1,
           b = 2
         }
         assert.equal("a=1&b=2", str)
       end)
       it("should support a boolean argument", function()
-        local str = utils.encode_args {
+        local str = tools_http.encode_args {
           a = true,
           b = 1
         }
         assert.equal("a=true&b=1", str)
       end)
       it("should ignore nil and false values", function()
-        local str = utils.encode_args {
+        local str = tools_http.encode_args {
           a = nil,
           b = false
         }
         assert.equal("b=false", str)
       end)
       it("should encode complex query args", function()
-        local encode = utils.encode_args
+        local encode = tools_http.encode_args
         assert.equal("falsy=false",
                      encode({ falsy = false }))
         assert.equal("multiple%20values=true",
@@ -280,13 +286,13 @@ describe("Utils", function()
                      encode({ hybrid = { 1, 2, n = 3 } }))
       end)
       it("should not interpret the `%` character followed by 2 characters in the [0-9a-f] group as an hexadecimal value", function()
-        local str = utils.encode_args {
+        local str = tools_http.encode_args {
           foo = "%bar%"
         }
         assert.equal("foo=%25bar%25", str)
       end)
       it("does not percent-encode if given a `raw` option", function()
-        local encode = utils.encode_args
+        local encode = tools_http.encode_args
         -- this is useful for kong.tools.http_client
         assert.equal("hello world=foo, bar",
                      encode({ ["hello world"] = "foo, bar" }, true))
@@ -302,7 +308,7 @@ describe("Utils", function()
                      encode({ hybrid = { 1, 2, n = 3 } }, true))
       end)
       it("does not include index numbers in arrays if given the `no_array_indexes` flag", function()
-        local encode = utils.encode_args
+        local encode = tools_http.encode_args
         assert.equal("falsy=false",
                      encode({ falsy = false }, nil, true))
         assert.equal("multiple%20values=true",
@@ -321,7 +327,7 @@ describe("Utils", function()
                      encode({ hybrid = { 1, 2, n = 3 } }, nil, true))
       end)
       it("does not percent-encode and does not add index numbers if both `raw` and `no_array_indexes` are active", function()
-        local encode = utils.encode_args
+        local encode = tools_http.encode_args
         -- this is useful for kong.tools.http_client
         assert.equal("hello world=foo, bar",
                      encode({ ["hello world"] = "foo, bar" }, true, true))
@@ -337,7 +343,7 @@ describe("Utils", function()
                      encode({ hybrid = { 1, 2, n = 3 } }, true, true))
       end)
       it("transforms ngx.null into empty string", function()
-        local str = utils.encode_args({ x = ngx.null, y = "foo" })
+        local str = tools_http.encode_args({ x = ngx.null, y = "foo" })
         assert.equal("x=&y=foo", str)
       end)
       -- while this method's purpose is to mimic 100% the behavior of ngx.encode_args,
@@ -345,26 +351,26 @@ describe("Utils", function()
       -- Hence, a `raw` parameter allows encoding for bodies.
       describe("raw", function()
         it("should not percent-encode values", function()
-          local str = utils.encode_args({
+          local str = tools_http.encode_args({
             foo = "hello world"
           }, true)
           assert.equal("foo=hello world", str)
         end)
         it("should not percent-encode keys", function()
-          local str = utils.encode_args({
+          local str = tools_http.encode_args({
             ["hello world"] = "foo"
           }, true)
           assert.equal("hello world=foo", str)
         end)
         it("should plainly include true and false values", function()
-          local str = utils.encode_args({
+          local str = tools_http.encode_args({
             a = true,
             b = false
           }, true)
           assert.equal("a=true&b=false", str)
         end)
         it("should prevent double percent-encoding", function()
-          local str = utils.encode_args({
+          local str = tools_http.encode_args({
             foo = "hello%20world"
           }, true)
           assert.equal("foo=hello%20world", str)
@@ -376,74 +382,74 @@ describe("Utils", function()
   describe("table", function()
     describe("table_contains()", function()
       it("should return false if a value is not contained in a nil table", function()
-        assert.False(utils.table_contains(nil, "foo"))
+        assert.False(kong_table.table_contains(nil, "foo"))
       end)
       it("should return true if a value is contained in a table", function()
         local t = { foo = "hello", bar = "world" }
-        assert.True(utils.table_contains(t, "hello"))
+        assert.True(kong_table.table_contains(t, "hello"))
       end)
       it("should return false if a value is not contained in a table", function()
         local t = { foo = "hello", bar = "world" }
-        assert.False(utils.table_contains(t, "foo"))
+        assert.False(kong_table.table_contains(t, "foo"))
       end)
     end)
 
     describe("is_array()", function()
       it("should know when an array (strict)", function()
-        assert.True(utils.is_array({ "a", "b", "c", "d" }))
-        assert.False(utils.is_array({ "a", "b", nil, "c", "d" }))
-        assert.False(utils.is_array({ [-1] = "a", [0] = "b", [1] = "c", [2] = "d" }))
-        assert.False(utils.is_array({ [0] = "a", [1] = "b", [2] = "c", [3] = "d" }))
-        assert.True(utils.is_array({ [1] = "a", [2] = "b", [3] = "c", [4] = "d" }))
-        assert.True(utils.is_array({ [1.0] = "a", [2.0] = "b", [3.0] = "c", [4.0] = "d" }))
-        assert.False(utils.is_array({ [1] = "a", [2] = "b", nil, [3] = "c", [4] = "d" })) --luacheck: ignore
-        assert.False(utils.is_array({ [1] = "a", [2] = "b", nil, [4] = "c", [5] = "d" })) --luacheck: ignore
-        assert.False(utils.is_array({ [1.1] = "a", [2.1] = "b", [3.1] = "c", [4.1] = "d" }))
-        assert.False(utils.is_array({ ["1"] = "a", ["2"] = "b", ["3"] = "c", ["4"] = "d" }))
-        assert.False(utils.is_array({ "a", "b", "c", foo = "d" }))
-        assert.False(utils.is_array())
-        assert.False(utils.is_array(false))
-        assert.False(utils.is_array(true))
+        assert.True(kong_table.is_array({ "a", "b", "c", "d" }))
+        assert.False(kong_table.is_array({ "a", "b", nil, "c", "d" }))
+        assert.False(kong_table.is_array({ [-1] = "a", [0] = "b", [1] = "c", [2] = "d" }))
+        assert.False(kong_table.is_array({ [0] = "a", [1] = "b", [2] = "c", [3] = "d" }))
+        assert.True(kong_table.is_array({ [1] = "a", [2] = "b", [3] = "c", [4] = "d" }))
+        assert.True(kong_table.is_array({ [1.0] = "a", [2.0] = "b", [3.0] = "c", [4.0] = "d" }))
+        assert.False(kong_table.is_array({ [1] = "a", [2] = "b", nil, [3] = "c", [4] = "d" })) --luacheck: ignore
+        assert.False(kong_table.is_array({ [1] = "a", [2] = "b", nil, [4] = "c", [5] = "d" })) --luacheck: ignore
+        assert.False(kong_table.is_array({ [1.1] = "a", [2.1] = "b", [3.1] = "c", [4.1] = "d" }))
+        assert.False(kong_table.is_array({ ["1"] = "a", ["2"] = "b", ["3"] = "c", ["4"] = "d" }))
+        assert.False(kong_table.is_array({ "a", "b", "c", foo = "d" }))
+        assert.False(kong_table.is_array())
+        assert.False(kong_table.is_array(false))
+        assert.False(kong_table.is_array(true))
       end)
 
       it("should know when an array (fast)", function()
-        assert.True(utils.is_array({ "a", "b", "c", "d" }, "fast"))
-        assert.True(utils.is_array({ "a", "b", nil, "c", "d" }, "fast"))
-        assert.True(utils.is_array({ [-1] = "a", [0] = "b", [1] = "c", [2] = "d" }, "fast"))
-        assert.True(utils.is_array({ [0] = "a", [1] = "b", [2] = "c", [3] = "d" }, "fast"))
-        assert.True(utils.is_array({ [1] = "a", [2] = "b", [3] = "c", [4] = "d" }, "fast"))
-        assert.True(utils.is_array({ [1.0] = "a", [2.0] = "b", [3.0] = "c", [4.0] = "d" }, "fast"))
-        assert.True(utils.is_array({ [1] = "a", [2] = "b", nil, [3] = "c", [4] = "d" }, "fast")) --luacheck: ignore
-        assert.True(utils.is_array({ [1] = "a", [2] = "b", nil, [4] = "c", [5] = "d" }, "fast")) --luacheck: ignore
-        assert.False(utils.is_array({ [1.1] = "a", [2.1] = "b", [3.1] = "c", [4.1] = "d" }, "fast"))
-        assert.False(utils.is_array({ ["1"] = "a", ["2"] = "b", ["3"] = "c", ["4"] = "d" }, "fast"))
-        assert.False(utils.is_array({ "a", "b", "c", foo = "d" }, "fast"))
-        assert.False(utils.is_array(nil, "fast"))
-        assert.False(utils.is_array(false, "fast"))
-        assert.False(utils.is_array(true, "fast"))
+        assert.True(kong_table.is_array({ "a", "b", "c", "d" }, "fast"))
+        assert.True(kong_table.is_array({ "a", "b", nil, "c", "d" }, "fast"))
+        assert.True(kong_table.is_array({ [-1] = "a", [0] = "b", [1] = "c", [2] = "d" }, "fast"))
+        assert.True(kong_table.is_array({ [0] = "a", [1] = "b", [2] = "c", [3] = "d" }, "fast"))
+        assert.True(kong_table.is_array({ [1] = "a", [2] = "b", [3] = "c", [4] = "d" }, "fast"))
+        assert.True(kong_table.is_array({ [1.0] = "a", [2.0] = "b", [3.0] = "c", [4.0] = "d" }, "fast"))
+        assert.True(kong_table.is_array({ [1] = "a", [2] = "b", nil, [3] = "c", [4] = "d" }, "fast")) --luacheck: ignore
+        assert.True(kong_table.is_array({ [1] = "a", [2] = "b", nil, [4] = "c", [5] = "d" }, "fast")) --luacheck: ignore
+        assert.False(kong_table.is_array({ [1.1] = "a", [2.1] = "b", [3.1] = "c", [4.1] = "d" }, "fast"))
+        assert.False(kong_table.is_array({ ["1"] = "a", ["2"] = "b", ["3"] = "c", ["4"] = "d" }, "fast"))
+        assert.False(kong_table.is_array({ "a", "b", "c", foo = "d" }, "fast"))
+        assert.False(kong_table.is_array(nil, "fast"))
+        assert.False(kong_table.is_array(false, "fast"))
+        assert.False(kong_table.is_array(true, "fast"))
       end)
 
       it("should know when an array (lapis)", function()
-        assert.True(utils.is_array({ "a", "b", "c", "d" }, "lapis"))
-        assert.False(utils.is_array({ "a", "b", nil, "c", "d" }, "lapis"))
-        assert.False(utils.is_array({ [-1] = "a", [0] = "b", [1] = "c", [2] = "d" }, "lapis"))
-        assert.False(utils.is_array({ [0] = "a", [1] = "b", [2] = "c", [3] = "d" }, "lapis"))
-        assert.True(utils.is_array({ [1] = "a", [2] = "b", [3] = "c", [4] = "d" }, "lapis"))
-        assert.True(utils.is_array({ [1.0] = "a", [2.0] = "b", [3.0] = "c", [4.0] = "d" }, "lapis"))
-        assert.False(utils.is_array({ [1] = "a", [2] = "b", nil, [3] = "c", [4] = "d" }, "lapis")) --luacheck: ignore
-        assert.False(utils.is_array({ [1] = "a", [2] = "b", nil, [4] = "c", [5] = "d" }, "lapis")) --luacheck: ignore
-        assert.False(utils.is_array({ [1.1] = "a", [2.1] = "b", [3.1] = "c", [4.1] = "d" }, "lapis"))
-        assert.True(utils.is_array({ ["1"] = "a", ["2"] = "b", ["3"] = "c", ["4"] = "d" }, "lapis"))
-        assert.False(utils.is_array({ "a", "b", "c", foo = "d" }, "lapis"))
-        assert.False(utils.is_array(nil, "lapis"))
-        assert.False(utils.is_array(false, "lapis"))
-        assert.False(utils.is_array(true, "lapis"))
+        assert.True(kong_table.is_array({ "a", "b", "c", "d" }, "lapis"))
+        assert.False(kong_table.is_array({ "a", "b", nil, "c", "d" }, "lapis"))
+        assert.False(kong_table.is_array({ [-1] = "a", [0] = "b", [1] = "c", [2] = "d" }, "lapis"))
+        assert.False(kong_table.is_array({ [0] = "a", [1] = "b", [2] = "c", [3] = "d" }, "lapis"))
+        assert.True(kong_table.is_array({ [1] = "a", [2] = "b", [3] = "c", [4] = "d" }, "lapis"))
+        assert.True(kong_table.is_array({ [1.0] = "a", [2.0] = "b", [3.0] = "c", [4.0] = "d" }, "lapis"))
+        assert.False(kong_table.is_array({ [1] = "a", [2] = "b", nil, [3] = "c", [4] = "d" }, "lapis")) --luacheck: ignore
+        assert.False(kong_table.is_array({ [1] = "a", [2] = "b", nil, [4] = "c", [5] = "d" }, "lapis")) --luacheck: ignore
+        assert.False(kong_table.is_array({ [1.1] = "a", [2.1] = "b", [3.1] = "c", [4.1] = "d" }, "lapis"))
+        assert.True(kong_table.is_array({ ["1"] = "a", ["2"] = "b", ["3"] = "c", ["4"] = "d" }, "lapis"))
+        assert.False(kong_table.is_array({ "a", "b", "c", foo = "d" }, "lapis"))
+        assert.False(kong_table.is_array(nil, "lapis"))
+        assert.False(kong_table.is_array(false, "lapis"))
+        assert.False(kong_table.is_array(true, "lapis"))
       end)
 
     end)
 
     describe("add_error()", function()
-      local add_error = utils.add_error
+      local add_error = kong_table.add_error
 
       it("should create a table if given `errors` is nil", function()
         assert.same({hello = "world"}, add_error(nil, "hello", "world"))
@@ -521,47 +527,47 @@ describe("Utils", function()
     describe("hostname_type", function()
       -- no check on "name" type as anything not ipv4 and not ipv6 will be labelled as 'name' anyway
       it("checks valid IPv4 address types", function()
-        assert.are.same("ipv4", utils.hostname_type("123.123.123.123"))
-        assert.are.same("ipv4", utils.hostname_type("1.2.3.4"))
-        assert.are.same("ipv4", utils.hostname_type("1.2.3.4:80"))
+        assert.are.same("ipv4", tools_ip.hostname_type("123.123.123.123"))
+        assert.are.same("ipv4", tools_ip.hostname_type("1.2.3.4"))
+        assert.are.same("ipv4", tools_ip.hostname_type("1.2.3.4:80"))
       end)
       it("checks valid IPv6 address types", function()
-        assert.are.same("ipv6", utils.hostname_type("::1"))
-        assert.are.same("ipv6", utils.hostname_type("2345::6789"))
-        assert.are.same("ipv6", utils.hostname_type("0001:0001:0001:0001:0001:0001:0001:0001"))
-        assert.are.same("ipv6", utils.hostname_type("[2345::6789]:80"))
+        assert.are.same("ipv6", tools_ip.hostname_type("::1"))
+        assert.are.same("ipv6", tools_ip.hostname_type("2345::6789"))
+        assert.are.same("ipv6", tools_ip.hostname_type("0001:0001:0001:0001:0001:0001:0001:0001"))
+        assert.are.same("ipv6", tools_ip.hostname_type("[2345::6789]:80"))
       end)
     end)
     describe("parsing", function()
       it("normalizes IPv4 address types", function()
-        assert.are.same({"123.123.123.123"}, {utils.normalize_ipv4("123.123.123.123")})
-        assert.are.same({"123.123.123.123", 80}, {utils.normalize_ipv4("123.123.123.123:80")})
-        assert.are.same({"1.1.1.1"}, {utils.normalize_ipv4("1.1.1.1")})
-        assert.are.same({"1.1.1.1", 80}, {utils.normalize_ipv4("001.001.001.001:00080")})
+        assert.are.same({"123.123.123.123"}, {tools_ip.normalize_ipv4("123.123.123.123")})
+        assert.are.same({"123.123.123.123", 80}, {tools_ip.normalize_ipv4("123.123.123.123:80")})
+        assert.are.same({"1.1.1.1"}, {tools_ip.normalize_ipv4("1.1.1.1")})
+        assert.are.same({"1.1.1.1", 80}, {tools_ip.normalize_ipv4("001.001.001.001:00080")})
       end)
       it("fails normalizing bad IPv4 address types", function()
-        assert.is_nil(utils.normalize_ipv4("123.123:80"))
-        assert.is_nil(utils.normalize_ipv4("123.123.123.999"))
-        assert.is_nil(utils.normalize_ipv4("123.123.123.123:80a"))
-        assert.is_nil(utils.normalize_ipv4("123.123.123.123.123:80"))
-        assert.is_nil(utils.normalize_ipv4("localhost:80"))
-        assert.is_nil(utils.normalize_ipv4("[::1]:80"))
-        assert.is_nil(utils.normalize_ipv4("123.123.123.123:99999"))
+        assert.is_nil(tools_ip.normalize_ipv4("123.123:80"))
+        assert.is_nil(tools_ip.normalize_ipv4("123.123.123.999"))
+        assert.is_nil(tools_ip.normalize_ipv4("123.123.123.123:80a"))
+        assert.is_nil(tools_ip.normalize_ipv4("123.123.123.123.123:80"))
+        assert.is_nil(tools_ip.normalize_ipv4("localhost:80"))
+        assert.is_nil(tools_ip.normalize_ipv4("[::1]:80"))
+        assert.is_nil(tools_ip.normalize_ipv4("123.123.123.123:99999"))
       end)
       it("normalizes IPv6 address types", function()
-        assert.are.same({"0000:0000:0000:0000:0000:0000:0000:0001"}, {utils.normalize_ipv6("::1")})
-        assert.are.same({"0000:0000:0000:0000:0000:0000:0000:0001"}, {utils.normalize_ipv6("[::1]")})
-        assert.are.same({"0000:0000:0000:0000:0000:0000:0000:0001", 80}, {utils.normalize_ipv6("[::1]:80")})
-        assert.are.same({"0000:0000:0000:0000:0000:0000:0000:0001", 80}, {utils.normalize_ipv6("[0000:0000:0000:0000:0000:0000:0000:0001]:80")})
+        assert.are.same({"0000:0000:0000:0000:0000:0000:0000:0001"}, {tools_ip.normalize_ipv6("::1")})
+        assert.are.same({"0000:0000:0000:0000:0000:0000:0000:0001"}, {tools_ip.normalize_ipv6("[::1]")})
+        assert.are.same({"0000:0000:0000:0000:0000:0000:0000:0001", 80}, {tools_ip.normalize_ipv6("[::1]:80")})
+        assert.are.same({"0000:0000:0000:0000:0000:0000:0000:0001", 80}, {tools_ip.normalize_ipv6("[0000:0000:0000:0000:0000:0000:0000:0001]:80")})
       end)
       it("fails normalizing bad IPv6 address types", function()
-        assert.is_nil(utils.normalize_ipv6("123.123.123.123"))
-        assert.is_nil(utils.normalize_ipv6("localhost:80"))
-        assert.is_nil(utils.normalize_ipv6("::x"))
-        assert.is_nil(utils.normalize_ipv6("[::x]:80"))
-        assert.is_nil(utils.normalize_ipv6("[::1]:80a"))
-        assert.is_nil(utils.normalize_ipv6("1"))
-        assert.is_nil(utils.normalize_ipv6("[::1]:99999"))
+        assert.is_nil(tools_ip.normalize_ipv6("123.123.123.123"))
+        assert.is_nil(tools_ip.normalize_ipv6("localhost:80"))
+        assert.is_nil(tools_ip.normalize_ipv6("::x"))
+        assert.is_nil(tools_ip.normalize_ipv6("[::x]:80"))
+        assert.is_nil(tools_ip.normalize_ipv6("[::1]:80a"))
+        assert.is_nil(tools_ip.normalize_ipv6("1"))
+        assert.is_nil(tools_ip.normalize_ipv6("[::1]:99999"))
       end)
       it("validates hostnames", function()
         local valids = {"hello.com", "hello.fr", "test.hello.com", "1991.io", "hello.COM",
@@ -579,66 +585,66 @@ describe("Utils", function()
                           "hello..example.com", "hello-.example.com",
                          }
         for _, name in ipairs(valids) do
-          assert.are.same(name, (utils.check_hostname(name)))
+          assert.are.same(name, (tools_ip.check_hostname(name)))
         end
         for _, name in ipairs(valids) do
-          assert.are.same({ [1] = name, [2] = 80}, { utils.check_hostname(name .. ":80")})
+          assert.are.same({ [1] = name, [2] = 80}, { tools_ip.check_hostname(name .. ":80")})
         end
         for _, name in ipairs(valids) do
-          assert.is_nil((utils.check_hostname(name .. ":xx")))
-          assert.is_nil((utils.check_hostname(name .. ":99999")))
+          assert.is_nil((tools_ip.check_hostname(name .. ":xx")))
+          assert.is_nil((tools_ip.check_hostname(name .. ":99999")))
         end
         for _, name in ipairs(invalids) do
-          assert.is_nil((utils.check_hostname(name)))
-          assert.is_nil((utils.check_hostname(name .. ":80")))
+          assert.is_nil((tools_ip.check_hostname(name)))
+          assert.is_nil((tools_ip.check_hostname(name .. ":80")))
         end
       end)
       it("validates addresses", function()
-        assert.are.same({host = "1.2.3.4", type = "ipv4", port = 80}, utils.normalize_ip("1.2.3.4:80"))
-        assert.are.same({host = "1.2.3.4", type = "ipv4", port = nil}, utils.normalize_ip("1.2.3.4"))
-        assert.are.same({host = "0000:0000:0000:0000:0000:0000:0000:0001", type = "ipv6", port = 80}, utils.normalize_ip("[::1]:80"))
-        assert.are.same({host = "0000:0000:0000:0000:0000:0000:0000:0001", type = "ipv6", port = nil}, utils.normalize_ip("::1"))
-        assert.are.same({host = "localhost", type = "name", port = 80}, utils.normalize_ip("localhost:80"))
-        assert.are.same({host = "mashape.test", type = "name", port = nil}, utils.normalize_ip("mashape.test"))
+        assert.are.same({host = "1.2.3.4", type = "ipv4", port = 80}, tools_ip.normalize_ip("1.2.3.4:80"))
+        assert.are.same({host = "1.2.3.4", type = "ipv4", port = nil}, tools_ip.normalize_ip("1.2.3.4"))
+        assert.are.same({host = "0000:0000:0000:0000:0000:0000:0000:0001", type = "ipv6", port = 80}, tools_ip.normalize_ip("[::1]:80"))
+        assert.are.same({host = "0000:0000:0000:0000:0000:0000:0000:0001", type = "ipv6", port = nil}, tools_ip.normalize_ip("::1"))
+        assert.are.same({host = "localhost", type = "name", port = 80}, tools_ip.normalize_ip("localhost:80"))
+        assert.are.same({host = "mashape.test", type = "name", port = nil}, tools_ip.normalize_ip("mashape.test"))
 
-        assert.is_nil((utils.normalize_ip("1.2.3.4:8x0")))
-        assert.is_nil((utils.normalize_ip("1.2.3.400")))
-        assert.is_nil((utils.normalize_ip("[::1]:8x0")))
-        assert.is_nil((utils.normalize_ip(":x:1")))
-        assert.is_nil((utils.normalize_ip("localhost:8x0")))
-        assert.is_nil((utils.normalize_ip("mashape..test")))
+        assert.is_nil((tools_ip.normalize_ip("1.2.3.4:8x0")))
+        assert.is_nil((tools_ip.normalize_ip("1.2.3.400")))
+        assert.is_nil((tools_ip.normalize_ip("[::1]:8x0")))
+        assert.is_nil((tools_ip.normalize_ip(":x:1")))
+        assert.is_nil((tools_ip.normalize_ip("localhost:8x0")))
+        assert.is_nil((tools_ip.normalize_ip("mashape..test")))
       end)
     end)
     describe("formatting", function()
       it("correctly formats addresses", function()
-        assert.are.equal("1.2.3.4", utils.format_host("1.2.3.4"))
-        assert.are.equal("1.2.3.4:80", utils.format_host("1.2.3.4", 80))
-        assert.are.equal("[0000:0000:0000:0000:0000:0000:0000:0001]", utils.format_host("::1"))
-        assert.are.equal("[0000:0000:0000:0000:0000:0000:0000:0001]:80", utils.format_host("::1", 80))
-        assert.are.equal("localhost", utils.format_host("localhost"))
-        assert.are.equal("mashape.test:80", utils.format_host("mashape.test", 80))
+        assert.are.equal("1.2.3.4", tools_ip.format_host("1.2.3.4"))
+        assert.are.equal("1.2.3.4:80", tools_ip.format_host("1.2.3.4", 80))
+        assert.are.equal("[0000:0000:0000:0000:0000:0000:0000:0001]", tools_ip.format_host("::1"))
+        assert.are.equal("[0000:0000:0000:0000:0000:0000:0000:0001]:80", tools_ip.format_host("::1", 80))
+        assert.are.equal("localhost", tools_ip.format_host("localhost"))
+        assert.are.equal("mashape.test:80", tools_ip.format_host("mashape.test", 80))
         -- passthrough (string)
-        assert.are.equal("1.2.3.4", utils.format_host(utils.normalize_ipv4("1.2.3.4")))
-        assert.are.equal("1.2.3.4:80", utils.format_host(utils.normalize_ipv4("1.2.3.4:80")))
-        assert.are.equal("[0000:0000:0000:0000:0000:0000:0000:0001]", utils.format_host(utils.normalize_ipv6("::1")))
-        assert.are.equal("[0000:0000:0000:0000:0000:0000:0000:0001]:80", utils.format_host(utils.normalize_ipv6("[::1]:80")))
-        assert.are.equal("localhost", utils.format_host(utils.check_hostname("localhost")))
-        assert.are.equal("mashape.test:80", utils.format_host(utils.check_hostname("mashape.test:80")))
+        assert.are.equal("1.2.3.4", tools_ip.format_host(tools_ip.normalize_ipv4("1.2.3.4")))
+        assert.are.equal("1.2.3.4:80", tools_ip.format_host(tools_ip.normalize_ipv4("1.2.3.4:80")))
+        assert.are.equal("[0000:0000:0000:0000:0000:0000:0000:0001]", tools_ip.format_host(tools_ip.normalize_ipv6("::1")))
+        assert.are.equal("[0000:0000:0000:0000:0000:0000:0000:0001]:80", tools_ip.format_host(tools_ip.normalize_ipv6("[::1]:80")))
+        assert.are.equal("localhost", tools_ip.format_host(tools_ip.check_hostname("localhost")))
+        assert.are.equal("mashape.test:80", tools_ip.format_host(tools_ip.check_hostname("mashape.test:80")))
         -- passthrough general (table)
-        assert.are.equal("1.2.3.4", utils.format_host(utils.normalize_ip("1.2.3.4")))
-        assert.are.equal("1.2.3.4:80", utils.format_host(utils.normalize_ip("1.2.3.4:80")))
-        assert.are.equal("[0000:0000:0000:0000:0000:0000:0000:0001]", utils.format_host(utils.normalize_ip("::1")))
-        assert.are.equal("[0000:0000:0000:0000:0000:0000:0000:0001]:80", utils.format_host(utils.normalize_ip("[::1]:80")))
-        assert.are.equal("localhost", utils.format_host(utils.normalize_ip("localhost")))
-        assert.are.equal("mashape.test:80", utils.format_host(utils.normalize_ip("mashape.test:80")))
+        assert.are.equal("1.2.3.4", tools_ip.format_host(tools_ip.normalize_ip("1.2.3.4")))
+        assert.are.equal("1.2.3.4:80", tools_ip.format_host(tools_ip.normalize_ip("1.2.3.4:80")))
+        assert.are.equal("[0000:0000:0000:0000:0000:0000:0000:0001]", tools_ip.format_host(tools_ip.normalize_ip("::1")))
+        assert.are.equal("[0000:0000:0000:0000:0000:0000:0000:0001]:80", tools_ip.format_host(tools_ip.normalize_ip("[::1]:80")))
+        assert.are.equal("localhost", tools_ip.format_host(tools_ip.normalize_ip("localhost")))
+        assert.are.equal("mashape.test:80", tools_ip.format_host(tools_ip.normalize_ip("mashape.test:80")))
         -- passthrough errors
-        local one, two = utils.format_host(utils.normalize_ipv4("1.2.3.4.5"))
+        local one, two = tools_ip.format_host(tools_ip.normalize_ipv4("1.2.3.4.5"))
         assert.are.equal("nilstring", type(one) .. type(two))
-        local one, two = utils.format_host(utils.normalize_ipv6("not ipv6..."))
+        local one, two = tools_ip.format_host(tools_ip.normalize_ipv6("not ipv6..."))
         assert.are.equal("nilstring", type(one) .. type(two))
-        local one, two = utils.format_host(utils.check_hostname("//bad..name\\:123"))
+        local one, two = tools_ip.format_host(tools_ip.check_hostname("//bad..name\\:123"))
         assert.are.equal("nilstring", type(one) .. type(two))
-        local one, two = utils.format_host(utils.normalize_ip("m a s h a p e.test:80"))
+        local one, two = tools_ip.format_host(tools_ip.normalize_ip("m a s h a p e.test:80"))
         assert.are.equal("nilstring", type(one) .. type(two))
       end)
     end)
@@ -651,10 +657,10 @@ describe("Utils", function()
       local c = string.char(i)
 
       if string.find(header_chars, c, nil, true) then
-        assert(utils.validate_header_name(c) == c,
+        assert(tools_http.validate_header_name(c) == c,
           "ascii character '" .. c .. "' (" .. i .. ") should have been allowed")
       else
-        assert(utils.validate_header_name(c) == nil,
+        assert(tools_http.validate_header_name(c) == nil,
           "ascii character " .. i .. " should not have been allowed")
       end
     end
@@ -666,23 +672,23 @@ describe("Utils", function()
       local c = string.char(i)
 
       if string.find(cookie_chars, c, nil, true) then
-        assert(utils.validate_cookie_name(c) == c,
+        assert(tools_http.validate_cookie_name(c) == c,
           "ascii character '" .. c .. "' (" .. i .. ") should have been allowed")
       else
-        assert(utils.validate_cookie_name(c) == nil,
+        assert(tools_http.validate_cookie_name(c) == nil,
           "ascii character " .. i .. " should not have been allowed")
       end
     end
   end)
   it("pack() stores results, including nils, properly", function()
-    assert.same({ n = 0 }, utils.pack())
-    assert.same({ n = 1 }, utils.pack(nil))
-    assert.same({ n = 3, "1", "2", "3" }, utils.pack("1", "2", "3"))
-    assert.same({ n = 3, [1] = "1", [3] = "3" }, utils.pack("1", nil, "3"))
+    assert.same({ n = 0 }, kong_table.pack())
+    assert.same({ n = 1 }, kong_table.pack(nil))
+    assert.same({ n = 3, "1", "2", "3" }, kong_table.pack("1", "2", "3"))
+    assert.same({ n = 3, [1] = "1", [3] = "3" }, kong_table.pack("1", nil, "3"))
   end)
   it("unpack() unwraps results, including nils, properly", function()
     local a,b,c
-    a,b,c = utils.unpack({})
+    a,b,c = kong_table.unpack({})
     assert.is_nil(a)
     assert.is_nil(b)
     assert.is_nil(c)
@@ -692,67 +698,69 @@ describe("Utils", function()
     assert.is_nil(b)
     assert.is_nil(c)
 
-    a,b,c = utils.unpack({ n = 3, "1", "2", "3" })
+    a,b,c = kong_table.unpack({ n = 3, "1", "2", "3" })
     assert.equal("1", a)
     assert.equal("2", b)
     assert.equal("3", c)
 
-    a,b,c = utils.unpack({ n = 3, [1] = "1", [3] = "3" })
+    a,b,c = kong_table.unpack({ n = 3, [1] = "1", [3] = "3" })
     assert.equal("1", a)
     assert.is_nil(b)
     assert.equal("3", c)
   end)
 
   describe("bytes_to_str()", function()
+    local bytes_to_str = require("kong.tools.string").bytes_to_str
+
     it("converts bytes to the desired unit", function()
-      assert.equal("5497558", utils.bytes_to_str(5497558, "b"))
-      assert.equal("5368.71 KiB", utils.bytes_to_str(5497558, "k"))
-      assert.equal("5.24 MiB", utils.bytes_to_str(5497558, "m"))
-      assert.equal("0.01 GiB", utils.bytes_to_str(5497558, "g"))
-      assert.equal("5.12 GiB", utils.bytes_to_str(5497558998, "g"))
+      assert.equal("5497558", bytes_to_str(5497558, "b"))
+      assert.equal("5368.71 KiB", bytes_to_str(5497558, "k"))
+      assert.equal("5.24 MiB", bytes_to_str(5497558, "m"))
+      assert.equal("0.01 GiB", bytes_to_str(5497558, "g"))
+      assert.equal("5.12 GiB", bytes_to_str(5497558998, "g"))
     end)
 
     it("defaults unit arg to bytes", function()
-      assert.equal("5497558", utils.bytes_to_str(5497558))
-      assert.equal("5497558", utils.bytes_to_str(5497558, ""))
+      assert.equal("5497558", bytes_to_str(5497558))
+      assert.equal("5497558", bytes_to_str(5497558, ""))
     end)
 
     it("unit arg is case-insensitive", function()
-      assert.equal("5497558", utils.bytes_to_str(5497558, "B"))
-      assert.equal("5368.71 KiB", utils.bytes_to_str(5497558, "K"))
-      assert.equal("5.24 MiB", utils.bytes_to_str(5497558, "M"))
-      assert.equal("0.01 GiB", utils.bytes_to_str(5497558, "G"))
-      assert.equal("5.12 GiB", utils.bytes_to_str(5497558998, "G"))
+      assert.equal("5497558", bytes_to_str(5497558, "B"))
+      assert.equal("5368.71 KiB", bytes_to_str(5497558, "K"))
+      assert.equal("5.24 MiB", bytes_to_str(5497558, "M"))
+      assert.equal("0.01 GiB", bytes_to_str(5497558, "G"))
+      assert.equal("5.12 GiB", bytes_to_str(5497558998, "G"))
     end)
 
     it("scale arg", function()
       -- 3
-      assert.equal("5497558", utils.bytes_to_str(5497558, "b", 3))
-      assert.equal("5368.709 KiB", utils.bytes_to_str(5497558, "k", 3))
-      assert.equal("5.243 MiB", utils.bytes_to_str(5497558, "m", 3))
-      assert.equal("0.005 GiB", utils.bytes_to_str(5497558, "g", 3))
-      assert.equal("5.120 GiB", utils.bytes_to_str(5497558998, "g", 3))
+      assert.equal("5497558", bytes_to_str(5497558, "b", 3))
+      assert.equal("5368.709 KiB", bytes_to_str(5497558, "k", 3))
+      assert.equal("5.243 MiB", bytes_to_str(5497558, "m", 3))
+      assert.equal("0.005 GiB", bytes_to_str(5497558, "g", 3))
+      assert.equal("5.120 GiB", bytes_to_str(5497558998, "g", 3))
 
       -- 0
-      assert.equal("5 GiB", utils.bytes_to_str(5497558998, "g", 0))
+      assert.equal("5 GiB", bytes_to_str(5497558998, "g", 0))
 
       -- decimals
-      assert.equal("5.12 GiB", utils.bytes_to_str(5497558998, "g", 2.2))
+      assert.equal("5.12 GiB", bytes_to_str(5497558998, "g", 2.2))
     end)
 
     it("errors on invalid unit arg", function()
       assert.has_error(function()
-        utils.bytes_to_str(1234, "V")
+        bytes_to_str(1234, "V")
       end, "invalid unit 'V' (expected 'k/K', 'm/M', or 'g/G')")
     end)
 
     it("errors on invalid scale arg", function()
       assert.has_error(function()
-        utils.bytes_to_str(1234, "k", -1)
+        bytes_to_str(1234, "k", -1)
       end, "scale must be equal or greater than 0")
 
       assert.has_error(function()
-        utils.bytes_to_str(1234, "k", "")
+        bytes_to_str(1234, "k", "")
       end, "scale must be equal or greater than 0")
     end)
   end)
@@ -789,46 +797,48 @@ describe("Utils", function()
 
   describe("get_mime_type()", function()
     it("with valid mime types", function()
-      assert.equal("application/json; charset=utf-8", utils.get_mime_type("application/json"))
-      assert.equal("application/json; charset=utf-8", utils.get_mime_type("application/json; charset=utf-8"))
-      assert.equal("application/json; charset=utf-8", utils.get_mime_type("application/*"))
-      assert.equal("application/json; charset=utf-8", utils.get_mime_type("application/*; charset=utf-8"))
-      assert.equal("text/html; charset=utf-8", utils.get_mime_type("text/html"))
-      assert.equal("text/plain; charset=utf-8", utils.get_mime_type("text/plain"))
-      assert.equal("text/plain; charset=utf-8", utils.get_mime_type("text/*"))
-      assert.equal("text/plain; charset=utf-8", utils.get_mime_type("text/*; charset=utf-8"))
-      assert.equal("application/xml; charset=utf-8", utils.get_mime_type("application/xml"))
-      assert.equal("application/json; charset=utf-8", utils.get_mime_type("*/*; charset=utf-8"))
-      assert.equal("application/json; charset=utf-8", utils.get_mime_type("*/*"))
-      assert.equal("", utils.get_mime_type("application/grpc"))
+      assert.equal("application/json; charset=utf-8", tools_http.get_mime_type("application/json"))
+      assert.equal("application/json; charset=utf-8", tools_http.get_mime_type("application/json; charset=utf-8"))
+      assert.equal("application/json; charset=utf-8", tools_http.get_mime_type("application/*"))
+      assert.equal("application/json; charset=utf-8", tools_http.get_mime_type("application/*; charset=utf-8"))
+      assert.equal("text/html; charset=utf-8", tools_http.get_mime_type("text/html"))
+      assert.equal("text/plain; charset=utf-8", tools_http.get_mime_type("text/plain"))
+      assert.equal("text/plain; charset=utf-8", tools_http.get_mime_type("text/*"))
+      assert.equal("text/plain; charset=utf-8", tools_http.get_mime_type("text/*; charset=utf-8"))
+      assert.equal("application/xml; charset=utf-8", tools_http.get_mime_type("application/xml"))
+      assert.equal("application/json; charset=utf-8", tools_http.get_mime_type("*/*; charset=utf-8"))
+      assert.equal("application/json; charset=utf-8", tools_http.get_mime_type("*/*"))
+      assert.equal("", tools_http.get_mime_type("application/grpc"))
     end)
 
     it("with unsupported or invalid mime types", function()
-      assert.equal("application/json; charset=utf-8", utils.get_mime_type("audio/*", true))
-      assert.equal("application/json; charset=utf-8", utils.get_mime_type("text/css"))
-      assert.equal("application/json; charset=utf-8", utils.get_mime_type("default"))
-      assert.is_nil(utils.get_mime_type("video/json", false))
-      assert.is_nil(utils.get_mime_type("text/javascript", false))
+      assert.equal("application/json; charset=utf-8", tools_http.get_mime_type("audio/*", true))
+      assert.equal("application/json; charset=utf-8", tools_http.get_mime_type("text/css"))
+      assert.equal("application/json; charset=utf-8", tools_http.get_mime_type("default"))
+      assert.is_nil(tools_http.get_mime_type("video/json", false))
+      assert.is_nil(tools_http.get_mime_type("text/javascript", false))
     end)
   end)
 
   describe("nginx_conf_time_to_seconds()", function()
+    local nginx_conf_time_to_seconds = require("kong.tools.time").nginx_conf_time_to_seconds
+
     it("returns value in seconds", function()
-      assert.equal(5, utils.nginx_conf_time_to_seconds("5"))
-      assert.equal(5, utils.nginx_conf_time_to_seconds("5s"))
-      assert.equal(60, utils.nginx_conf_time_to_seconds("60s"))
-      assert.equal(60, utils.nginx_conf_time_to_seconds("1m"))
-      assert.equal(120, utils.nginx_conf_time_to_seconds("2m"))
-      assert.equal(7200, utils.nginx_conf_time_to_seconds("2h"))
-      assert.equal(172800, utils.nginx_conf_time_to_seconds("2d"))
-      assert.equal(1209600, utils.nginx_conf_time_to_seconds("2w"))
-      assert.equal(5184000, utils.nginx_conf_time_to_seconds("2M"))
-      assert.equal(63072000, utils.nginx_conf_time_to_seconds("2y"))
+      assert.equal(5, nginx_conf_time_to_seconds("5"))
+      assert.equal(5, nginx_conf_time_to_seconds("5s"))
+      assert.equal(60, nginx_conf_time_to_seconds("60s"))
+      assert.equal(60, nginx_conf_time_to_seconds("1m"))
+      assert.equal(120, nginx_conf_time_to_seconds("2m"))
+      assert.equal(7200, nginx_conf_time_to_seconds("2h"))
+      assert.equal(172800, nginx_conf_time_to_seconds("2d"))
+      assert.equal(1209600, nginx_conf_time_to_seconds("2w"))
+      assert.equal(5184000, nginx_conf_time_to_seconds("2M"))
+      assert.equal(63072000, nginx_conf_time_to_seconds("2y"))
     end)
 
     it("throws an error on bad argument", function()
       assert.has_error(function()
-        utils.nginx_conf_time_to_seconds("abcd")
+        nginx_conf_time_to_seconds("abcd")
       end, "bad argument #1 'str'")
     end)
   end)
@@ -895,7 +905,7 @@ describe("Utils", function()
         b = ref,
       }
 
-      local c = utils.deep_copy(b)
+      local c = kong_table.deep_copy(b)
 
       assert.not_same(b, c)
       assert.not_equal(b, c)
@@ -1016,7 +1026,7 @@ describe("Utils", function()
         b = ref,
       }
 
-      local c = utils.deep_copy(b, false)
+      local c = kong_table.deep_copy(b, false)
 
       assert.not_same(b, c)
       assert.not_equal(b, c)
@@ -1137,7 +1147,7 @@ describe("Utils", function()
         b = ref,
       }
 
-      local c = utils.cycle_aware_deep_copy(b)
+      local c = kong_table.cycle_aware_deep_copy(b)
 
       assert.same(b, c)
       assert.not_equal(b, c)
@@ -1247,7 +1257,7 @@ describe("Utils", function()
         b = ref,
       }
 
-      local c = utils.cycle_aware_deep_copy(b, true)
+      local c = kong_table.cycle_aware_deep_copy(b, true)
 
       assert.same(b, c)
       assert.not_equal(b, c)
@@ -1357,7 +1367,7 @@ describe("Utils", function()
         b = ref,
       }
 
-      local c = utils.cycle_aware_deep_copy(b, nil, true)
+      local c = kong_table.cycle_aware_deep_copy(b, nil, true)
 
       assert.not_same(b, c)
       assert.not_equal(b, c)
@@ -1477,7 +1487,7 @@ describe("Utils", function()
         b = ref,
       }
 
-      local c = utils.cycle_aware_deep_copy(b, nil, nil, cache)
+      local c = kong_table.cycle_aware_deep_copy(b, nil, nil, cache)
 
       assert.same(b, c)
       assert.not_equal(b, c)
@@ -1588,7 +1598,7 @@ describe("Utils", function()
         c = "t2",
       }
 
-      local t3 = utils.deep_merge(t1, t2)
+      local t3 = kong_table.deep_merge(t1, t2)
 
       assert.not_equal(t3, t1)
       assert.not_equal(t3, t2)
@@ -1633,7 +1643,7 @@ describe("Utils", function()
         c = "t2",
       }
 
-      local t3 = utils.cycle_aware_deep_merge(t1, t2)
+      local t3 = kong_table.cycle_aware_deep_merge(t1, t2)
 
       assert.not_equal(t3, t1)
       assert.not_equal(t3, t2)
@@ -1665,25 +1675,25 @@ describe("Utils", function()
     it("retrieves value from table based on path - single level", function()
       local path = { "x" }
 
-      assert.equal(1, utils.table_path(t, path))
+      assert.equal(1, kong_table.table_path(t, path))
     end)
 
     it("retrieves value from table based on path - deep value", function()
       local path = { "a", "b", "c" }
 
-      assert.equal(200, utils.table_path(t, path))
+      assert.equal(200, kong_table.table_path(t, path))
     end)
 
     it("returns nil if element is not found - leaf not found", function()
       local path = { "a", "b", "x" }
 
-      assert.equal(nil, utils.table_path(t, path))
+      assert.equal(nil, kong_table.table_path(t, path))
     end)
 
     it("returns nil if element is not found - root branch not found", function()
       local path = { "o", "j", "k" }
 
-      assert.equal(nil, utils.table_path(t, path))
+      assert.equal(nil, kong_table.table_path(t, path))
     end)
   end)
 end)

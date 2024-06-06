@@ -120,7 +120,7 @@ function grpc_gateway:body_filter(conf)
   if not ret or #ret == 0 then
     if ngx_arg[2] then
       -- it's eof and we still cannot decode, fall through
-      ret = deco:get_raw_downstream_body()
+      ret = dec:get_raw_downstream_body()
     else
       -- clear output if we cannot decode, it could be body is not complete yet
       ret = nil

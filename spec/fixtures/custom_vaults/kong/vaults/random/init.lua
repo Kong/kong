@@ -1,4 +1,4 @@
-local utils         = require "kong.tools.utils"
+local utils         = require "kong.tools.rand"
 
 local function get(conf, resource, version)
   -- Return a random string every time

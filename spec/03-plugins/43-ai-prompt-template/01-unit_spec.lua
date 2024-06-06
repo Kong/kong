@@ -1,8 +1,5 @@
 local PLUGIN_NAME = "ai-prompt-template"
 
--- imports
-local templater = require("kong.plugins.ai-prompt-template.templater"):new()
---
 
 local good_chat_template = {
   template = [[
@@ -80,22 +77,33 @@ local good_prompt_template = {
 }
 local good_expected_prompt = "Make me a program to do fibonacci sequence in python."
 
+
+
 describe(PLUGIN_NAME .. ": (unit)", function()
 
+  local templater
+
+  setup(function()
+    templater = require("kong.plugins.ai-prompt-template.templater")
+  end)
+
+
   it("templates chat messages", function()
-    local rendered_template, err = templater:render(good_chat_template, templated_chat_request.parameters)
+    local rendered_template, err = templater.render(good_chat_template, templated_chat_request.parameters)
     assert.is_nil(err)
     assert.same(rendered_template, good_expected_chat)
   end)
 
+
   it("templates a prompt", function()
-    local rendered_template, err = templater:render(good_prompt_template, templated_prompt_request.parameters)
+    local rendered_template, err = templater.render(good_prompt_template, templated_prompt_request.parameters)
     assert.is_nil(err)
     assert.same(rendered_template, good_expected_prompt)
   end)
 
+
   it("prohibits json injection", function()
-    local rendered_template, err = templater:render(good_chat_template, templated_chat_request_inject_json.parameters)
+    local rendered_template, err = templater.render(good_chat_template, templated_chat_request_inject_json.parameters)
     assert.is_nil(err)
     assert.same(rendered_template, inject_json_expected_chat)
   end)

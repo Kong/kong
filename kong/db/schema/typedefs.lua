@@ -1,6 +1,5 @@
 --- A library of ready-to-use type synonyms to use in schema definitions.
 -- @module kong.db.schema.typedefs
-local utils = require "kong.tools.utils"
 local queue_schema = require "kong.tools.queue_schema"
 local propagation_schema = require "kong.tracing.propagation.schema"
 local openssl_pkey = require "resty.openssl.pkey"
@@ -8,6 +7,9 @@ local openssl_x509 = require "resty.openssl.x509"
 local Schema = require "kong.db.schema"
 local socket_url = require "socket.url"
 local constants = require "kong.constants"
+local tools_ip = require "kong.tools.ip"
+local validate_utf8 = require("kong.tools.string").validate_utf8
+local tools_http = require "kong.tools.http"
 
 
 local DAO_MAX_TTL = constants.DATABASE.DAO_MAX_TTL
@@ -20,7 +22,7 @@ local type = type
 
 
 local function validate_host(host)
-  local res, err_or_port = utils.normalize_ip(host)
+  local res, err_or_port = tools_ip.normalize_ip(host)
   if type(err_or_port) == "string" and err_or_port ~= "invalid port number" then
     return nil, "invalid value: " .. host
   end
@@ -34,13 +36,13 @@ end
 
 
 local function validate_host_with_optional_port(host)
-  local res, err_or_port = utils.normalize_ip(host)
+  local res, err_or_port = tools_ip.normalize_ip(host)
   return (res and true or nil), err_or_port
 end
 
 
 local function validate_ip(ip)
-  if utils.is_valid_ip(ip) then
+  if tools_ip.is_valid_ip(ip) then
     return true
   end
 
@@ -49,7 +51,7 @@ end
 
 
 local function validate_ip_or_cidr(ip_or_cidr)
-  if utils.is_valid_ip_or_cidr(ip_or_cidr) then
+  if tools_ip.is_valid_ip_or_cidr(ip_or_cidr) then
     return true
   end
 
@@ -58,7 +60,7 @@ end
 
 
 local function validate_ip_or_cidr_v4(ip_or_cidr_v4)
-  if utils.is_valid_ip_or_cidr_v4(ip_or_cidr_v4) then
+  if tools_ip.is_valid_ip_or_cidr_v4(ip_or_cidr_v4) then
     return true
   end
 
@@ -103,7 +105,7 @@ end
 
 
 local function validate_utf8_string(str)
-  local ok, index = utils.validate_utf8(str)
+  local ok, index = validate_utf8(str)
 
   if not ok then
     return nil, "invalid utf-8 character sequence detected at position " .. tostring(index)
@@ -150,7 +152,7 @@ end
 
 
 local function validate_sni(host)
-  local res, err_or_port = utils.normalize_ip(host)
+  local res, err_or_port = tools_ip.normalize_ip(host)
   if type(err_or_port) == "string" and err_or_port ~= "invalid port number" then
     return nil, "invalid value: " .. host
   end
@@ -183,7 +185,7 @@ local function validate_wildcard_host(host)
     host = mock_host
   end
 
-  local res, err_or_port = utils.normalize_ip(host)
+  local res, err_or_port = tools_ip.normalize_ip(host)
   if type(err_or_port) == "string" and err_or_port ~= "invalid port number" then
     return nil, "invalid value: " .. host
   end
@@ -335,14 +337,14 @@ typedefs.url = Schema.define {
 
 typedefs.cookie_name = Schema.define {
   type = "string",
-  custom_validator = utils.validate_cookie_name,
+  custom_validator = tools_http.validate_cookie_name,
   description = "A string representing an HTTP token defined by RFC 2616."
 }
 
 -- should we also allow all http token for this?
 typedefs.header_name = Schema.define {
   type = "string",
-  custom_validator = utils.validate_header_name,
+  custom_validator = tools_http.validate_header_name,
   description = "A string representing an HTTP header name."
 }
 
@@ -454,6 +456,11 @@ typedefs.tags = Schema.define {
   type = "set",
   elements = typedefs.tag,
   description = "A set of strings representing tags."
+}
+
+typedefs.capability = Schema.define {
+  type = "string",
+  description = "A string representing an RPC capability."
 }
 
 local http_protocols = {}

@@ -20,6 +20,7 @@ local AWS_Stream = require("kong.plugins.aws-lambda.aws_stream")
 local invokeWithResponseStream = require "kong.plugins.aws-lambda.execute"
 local build_request_payload = request_util.build_request_payload
 local extract_proxy_response = request_util.extract_proxy_response
+local remove_array_mt_for_empty_table = request_util.remove_array_mt_for_empty_table
 
 local aws = require("resty.aws")
 local AWS_GLOBAL_CONFIG
@@ -83,6 +84,15 @@ local function invoke_buffered(conf, lambda_service)
     Payload = build_request_payload(conf),
     Qualifier = conf.qualifier,
   })
+
+  -- TRACING: set KONG_WAITING_TIME stop
+  local ctx = ngx.ctx
+  local lambda_wait_time_total = get_now() - kong_wait_time_start
+  -- setting the latency here is a bit tricky, but because we are not
+  -- actually proxying, it will not be overwritten
+  ctx.KONG_WAITING_TIME = lambda_wait_time_total
+  kong.ctx.plugin.waiting_time = lambda_wait_time_total
+
   if err then
     return error(err)
   end
@@ -91,12 +101,6 @@ local function invoke_buffered(conf, lambda_service)
   if res.status >= 400 then
     return error(content.Message)
   end
-
-  -- TRACING: set KONG_WAITING_TIME stop
-  local ctx = ngx.ctx
-  -- setting the latency here is a bit tricky, but because we are not
-  -- actually proxying, it will not be overwritten
-  ctx.KONG_WAITING_TIME = get_now() - kong_wait_time_start
 
   local headers = res.headers
 
@@ -144,6 +148,18 @@ local function invoke_buffered(conf, lambda_service)
 
   if kong.configuration.enabled_headers[VIA_HEADER] then
     headers[VIA_HEADER] = VIA_HEADER_VALUE
+  end
+
+  -- TODO: remove this in the next major release
+  -- function to remove array_mt metatables from empty tables
+  -- This is just a backward compatibility code to keep a
+  -- long-lived behavior that Kong responsed JSON objects
+  -- instead of JSON arrays for empty arrays.
+  if conf.empty_arrays_mode == "legacy" then
+    local ct = headers["Content-Type"]
+    if ct and ct:lower():match("application/.*json") then
+      content = remove_array_mt_for_empty_table(content)
+    end
   end
 
   return kong.response.exit(status, content, headers)
@@ -337,6 +353,15 @@ function AWSLambdaHandler:access(conf)
     return invoke_streaming(conf, lambda_service)
   else
     return error(fmt("invalid invoke mode (%s)", conf.invoke_mode))
+  end
+end
+
+
+function AWSLambdaHandler:header_filter(conf)
+  -- TRACING: remove the latency of requesting AWS Lambda service from the KONG_RESPONSE_LATENCY
+  local ctx = ngx.ctx
+  if ctx.KONG_RESPONSE_LATENCY then
+    ctx.KONG_RESPONSE_LATENCY = ctx.KONG_RESPONSE_LATENCY - (kong.ctx.plugin.waiting_time or 0)
   end
 end
 

@@ -1,6 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local pl_file = require "pl.file"
+local deepcompare  = require("pl.tablex").deepcompare
 
 local PLUGIN_NAME = "ai-proxy"
 local MOCK_PORT = helpers.get_available_port()
@@ -67,6 +68,56 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                   else
                     ngx.status = 200
                     ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/responses/bad_upstream_response.json"))
+                  end
+                else
+                  ngx.status = 401
+                  ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/responses/unauthorized.json"))
+                end
+              }
+            }
+
+            location = "/llm/v1/chat/no_usage_upstream_response" {
+              content_by_lua_block {
+                local pl_file = require "pl.file"
+                local json = require("cjson.safe")
+
+                local token = ngx.req.get_headers()["x-api-key"]
+                if token == "anthropic-key" then
+                  ngx.req.read_body()
+                  local body, err = ngx.req.get_body_data()
+                  body, err = json.decode(body)
+
+                  if err or (not body.messages) then
+                    ngx.status = 400
+                    ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/responses/bad_request.json"))
+                  else
+                    ngx.status = 200
+                    ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/responses/no_usage_response.json"))
+                  end
+                else
+                  ngx.status = 401
+                  ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/responses/unauthorized.json"))
+                end
+              }
+            }
+
+            location = "/llm/v1/chat/malformed_usage_upstream_response" {
+              content_by_lua_block {
+                local pl_file = require "pl.file"
+                local json = require("cjson.safe")
+
+                local token = ngx.req.get_headers()["x-api-key"]
+                if token == "anthropic-key" then
+                  ngx.req.read_body()
+                  local body, err = ngx.req.get_body_data()
+                  body, err = json.decode(body)
+
+                  if err or (not body.messages) then
+                    ngx.status = 400
+                    ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/responses/bad_request.json"))
+                  else
+                    ngx.status = 200
+                    ngx.print(pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/responses/malformed_usage_response.json"))
                   end
                 else
                   ngx.status = 401
@@ -170,7 +221,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       --
 
       -- 200 chat bad upstream response with one option
-      local chat_good = assert(bp.routes:insert {
+      local chat_bad = assert(bp.routes:insert {
         service = empty_service,
         protocols = { "http" },
         strip_path = true,
@@ -178,7 +229,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       })
       bp.plugins:insert {
         name = PLUGIN_NAME,
-        route = { id = chat_good.id },
+        route = { id = chat_bad.id },
         config = {
           route_type = "llm/v1/chat",
           auth = {
@@ -198,6 +249,65 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         },
       }
       --
+
+      -- 200 chat no-usage response
+      local chat_no_usage = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http" },
+        strip_path = true,
+        paths = { "/anthropic/llm/v1/chat/no_usage_upstream_response" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = chat_no_usage.id },
+        config = {
+          route_type = "llm/v1/chat",
+          auth = {
+            header_name = "x-api-key",
+            header_value = "anthropic-key",
+          },
+          model = {
+            name = "claude-2.1",
+            provider = "anthropic",
+            options = {
+              max_tokens = 256,
+              temperature = 1.0,
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/chat/no_usage_upstream_response",
+              anthropic_version = "2023-06-01",
+            },
+          },
+        },
+      }
+      --
+
+      -- 200 chat malformed-usage response
+      local chat_malformed_usage = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http" },
+        strip_path = true,
+        paths = { "/anthropic/llm/v1/chat/malformed_usage_upstream_response" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = chat_malformed_usage.id },
+        config = {
+          route_type = "llm/v1/chat",
+          auth = {
+            header_name = "x-api-key",
+            header_value = "anthropic-key",
+          },
+          model = {
+            name = "claude-2.1",
+            provider = "anthropic",
+            options = {
+              max_tokens = 256,
+              temperature = 1.0,
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/chat/malformed_usage_upstream_response",
+              anthropic_version = "2023-06-01",
+            },
+          },
+        },
+      }
 
       -- 200 completions good with one option
       local completions_good = assert(bp.routes:insert {
@@ -412,23 +522,6 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.is_truthy(json.error)
         assert.equals(json.error.type, "authentication_error")
       end)
-
-      it("tries to override model", function()
-        local r = client:get("/anthropic/llm/v1/chat/good", {
-          headers = {
-            ["content-type"] = "application/json",
-            ["accept"] = "application/json",
-          },
-          body = pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/requests/good_own_model.json"),
-        })
-        
-        local body = assert.res_status(400, r)
-        local json = cjson.decode(body)
-
-        -- check this is in the 'kong' response format
-        assert.is_truthy(json.error)
-        assert.equals(json.error.message, "cannot use own model for this instance")
-      end)
     end)
 
     describe("anthropic llm/v1/chat", function()
@@ -486,6 +579,34 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
         -- check this is in the 'kong' response format
         assert.equals(json.error.message, "request format not recognised")
+      end)
+
+      it("no usage response", function()
+        local r = client:get("/anthropic/llm/v1/chat/no_usage_upstream_response", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/requests/good.json"),
+        })
+
+        local body = assert.res_status(200 , r)
+        local json = cjson.decode(body)
+        assert.equals(json.usage, "no usage data returned from upstream")
+      end)
+
+      it("malformed usage response", function()
+        local r = client:get("/anthropic/llm/v1/chat/malformed_usage_upstream_response", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/requests/good.json"),
+        })
+
+        local body = assert.res_status(200 , r)
+        local json = cjson.decode(body)
+        assert.is_truthy(deepcompare(json.usage, {}))
       end)
     end)
 

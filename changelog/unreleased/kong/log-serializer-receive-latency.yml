@@ -1,3 +1,0 @@
-message: 'Add `latencies.receive` property to log serializer'
-type: feature
-scope: PDK

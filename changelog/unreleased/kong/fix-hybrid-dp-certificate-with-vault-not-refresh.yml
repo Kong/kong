@@ -1,3 +1,0 @@
-message: Fixed a problem that in hybrid DP mode a certificate entity configured with vault reference may not get refreshed on time
-type: bugfix
-scope: Core

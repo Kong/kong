@@ -116,7 +116,7 @@ local function new()
   -- @treturn nil|err Returns `nil` if successful, or an error message if it fails.
   --
   -- @usage
-  -- local cert, err = kong.client.get_full_client_certificate_chain()
+  -- local cert, err = kong.client.tls.get_full_client_certificate_chain()
   -- if err then
   --   -- do something with err
   -- end

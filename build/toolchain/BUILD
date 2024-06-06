@@ -28,7 +28,7 @@ cc_toolchain_config(
     compiler_configuration = {},
     target_cpu = "aarch64",
     toolchain_path_prefix = "/usr/aarch64-linux-gnu/",  # is this required?
-    tools_path_prefix = "/usr/bin/aarch64-linux-gnu-",
+    tools_prefix = "aarch64-linux-gnu-",
 )
 
 cc_toolchain(

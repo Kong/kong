@@ -1,0 +1,3 @@
+message: "**Opentelemetry**: Fixed an OTEL sampling mode Lua panic bug, which happened when the `http_response_header_for_traceid` option was enabled."
+type: bugfix
+scope: Plugin

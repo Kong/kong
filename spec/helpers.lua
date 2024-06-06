@@ -61,7 +61,7 @@ local pl_Set = require "pl.Set"
 local Schema = require "kong.db.schema"
 local Entity = require "kong.db.schema.entity"
 local cjson = require "cjson.safe"
-local utils = require "kong.tools.utils"
+local kong_table = require "kong.tools.table"
 local http = require "resty.http"
 local pkey = require "resty.openssl.pkey"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
@@ -77,6 +77,7 @@ local stress_generator = require "spec.fixtures.stress_generator"
 local resty_signal = require "resty.signal"
 local lfs = require "lfs"
 local luassert = require "luassert.assert"
+local uuid = require("kong.tools.uuid").uuid
 
 ffi.cdef [[
   int setenv(const char *name, const char *value, int overwrite);
@@ -593,7 +594,7 @@ local plugins_schema = assert(Entity.new(plugins_schema_def))
 local function validate_plugin_config_schema(config, schema_def)
   assert(plugins_schema:new_subschema(schema_def.name, schema_def))
   local entity = {
-    id = utils.uuid(),
+    id = uuid(),
     name = schema_def.name,
     config = config
   }
@@ -694,7 +695,7 @@ end
 -- @param opts table with options. See [lua-resty-http](https://github.com/pintsized/lua-resty-http)
 function resty_http_proxy_mt:send(opts, is_reopen)
   local cjson = require "cjson"
-  local utils = require "kong.tools.utils"
+  local encode_args = require("kong.tools.http").encode_args
 
   opts = opts or {}
 
@@ -708,7 +709,7 @@ function resty_http_proxy_mt:send(opts, is_reopen)
     opts.body = cjson.encode(opts.body)
 
   elseif string.find(content_type, "www-form-urlencoded", nil, true) and t_body_table then
-    opts.body = utils.encode_args(opts.body, true, opts.no_array_indexes)
+    opts.body = encode_args(opts.body, true, opts.no_array_indexes)
 
   elseif string.find(content_type, "multipart/form-data", nil, true) and t_body_table then
     local form = opts.body
@@ -737,7 +738,7 @@ function resty_http_proxy_mt:send(opts, is_reopen)
 
   -- build querystring (assumes none is currently in 'opts.path')
   if type(opts.query) == "table" then
-    local qs = utils.encode_args(opts.query)
+    local qs = encode_args(opts.query)
     opts.path = opts.path .. "?" .. qs
     opts.query = nil
   end
@@ -824,7 +825,7 @@ end
 -- @see admin_ssl_client
 local function http_client_opts(options)
   if not options.scheme then
-    options = utils.cycle_aware_deep_copy(options)
+    options = kong_table.cycle_aware_deep_copy(options)
     options.scheme = "http"
     if options.port == 443 then
       options.scheme = "https"
@@ -3311,7 +3312,8 @@ luassert:register("assertion", "partial_match", partial_match,
 -- (ok, code, stdout, stderr); if `returns` is false,
 -- returns either (false, stderr) or (true, stderr, stdout).
 function exec(cmd, returns)
-  local ok, stdout, stderr, _, code = shell.run(cmd, nil, 0)
+  --100MB for retrieving stdout & stderr
+  local ok, stdout, stderr, _, code = shell.run(cmd, nil, 0, 1024*1024*100)
   if returns then
     return ok, code, stdout, stderr
   end
@@ -3787,7 +3789,7 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
         return nil, err
       end
     end
-    env = utils.cycle_aware_deep_copy(env)
+    env = kong_table.cycle_aware_deep_copy(env)
     env.declarative_config = config_yml
   end
 
@@ -4060,7 +4062,7 @@ local function clustering_client(opts)
 
   local c = assert(ws_client:new())
   local uri = "wss://" .. opts.host .. ":" .. opts.port ..
-              "/v1/outlet?node_id=" .. (opts.node_id or utils.uuid()) ..
+              "/v1/outlet?node_id=" .. (opts.node_id or uuid()) ..
               "&node_hostname=" .. (opts.node_hostname or kong.node.get_hostname()) ..
               "&node_version=" .. (opts.node_version or KONG_VERSION)
 

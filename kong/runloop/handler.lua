@@ -1,7 +1,6 @@
 -- Kong runloop
 
 local meta         = require "kong.meta"
-local utils        = require "kong.tools.utils"
 local Router       = require "kong.router"
 local balancer     = require "kong.runloop.balancer"
 local events       = require "kong.runloop.events"
@@ -50,8 +49,9 @@ local http_version      = ngx.req.http_version
 local request_id_get    = request_id.get
 local escape            = require("kong.tools.uri").escape
 local encode            = require("string.buffer").encode
+local uuid              = require("kong.tools.uuid").uuid
 
-local req_dyn_hook_run_hooks = req_dyn_hook.run_hooks
+local req_dyn_hook_run_hook = req_dyn_hook.run_hook
 
 local is_http_module   = subsystem == "http"
 local is_stream_module = subsystem == "stream"
@@ -226,7 +226,7 @@ end
 -- or an error happened).
 -- @returns error message as a second return value in case of failure/error
 local function rebuild(name, callback, version, opts)
-  local current_version, err = kong.core_cache:get(name .. ":version", TTL_ZERO, utils.uuid)
+  local current_version, err = kong.core_cache:get(name .. ":version", TTL_ZERO, uuid)
   if err then
     return nil, "failed to retrieve " .. name .. " version: " .. err
   end
@@ -333,7 +333,7 @@ end
 
 
 local function get_router_version()
-  return kong.core_cache:get("router:version", TTL_ZERO, utils.uuid)
+  return kong.core_cache:get("router:version", TTL_ZERO, uuid)
 end
 
 
@@ -533,7 +533,7 @@ end
 
 
 local function update_plugins_iterator()
-  local version, err = kong.core_cache:get("plugins_iterator:version", TTL_ZERO, utils.uuid)
+  local version, err = kong.core_cache:get("plugins_iterator:version", TTL_ZERO, uuid)
   if err then
     return nil, "failed to retrieve plugins iterator version: " .. err
   end
@@ -621,7 +621,7 @@ end
 
 local reconfigure_handler
 do
-  local get_monotonic_ms = utils.get_updated_monotonic_ms
+  local get_monotonic_ms = require("kong.tools.time").get_updated_monotonic_ms
 
   local ngx_worker_id = ngx.worker.id
   local exiting = ngx.worker.exiting
@@ -1112,7 +1112,7 @@ return {
       local has_timing = ctx.has_timing
 
       if has_timing then
-        req_dyn_hook_run_hooks("timing", "before:router")
+        req_dyn_hook_run_hook("timing", "before:router")
       end
 
       -- routing request
@@ -1120,7 +1120,7 @@ return {
       local match_t = router:exec(ctx)
 
       if has_timing then
-        req_dyn_hook_run_hooks("timing", "after:router")
+        req_dyn_hook_run_hook("timing", "after:router")
       end
 
       if not match_t then
@@ -1141,7 +1141,7 @@ return {
       ctx.workspace = match_t.route and match_t.route.ws_id
 
       if has_timing then
-        req_dyn_hook_run_hooks("timing", "workspace_id:got", ctx.workspace)
+        req_dyn_hook_run_hook("timing", "workspace_id:got", ctx.workspace)
       end
 
       local host           = var.host
@@ -1396,11 +1396,11 @@ return {
         end
       end
 
-      if var.http_proxy then
+      if get_header("proxy", ctx) then
         clear_header("Proxy")
       end
 
-      if var.http_proxy_connection then
+      if get_header("proxy_connection", ctx) then
         clear_header("Proxy-Connection")
       end
     end

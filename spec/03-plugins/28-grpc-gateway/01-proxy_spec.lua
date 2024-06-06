@@ -208,6 +208,24 @@ for _, strategy in helpers.each_strategy() do
       assert.equal(400, res.status)
     end)
 
+    test("invalid json", function()
+      local res, _ = proxy_client:post("/bounce", {
+        headers = { ["Content-Type"] = "application/json" },
+        body = [[{"message":"invalid}]]
+      })
+      assert.equal(400, res.status)
+      assert.same(res:read_body(),"decode json err: Expected value but found unexpected end of string at character 21")
+    end)
+
+    test("field type mismatch", function()
+      local res, _ = proxy_client:post("/bounce", {
+        headers = { ["Content-Type"] = "application/json" },
+        body = [[{"message":1}]]
+      })
+      assert.equal(400, res.status)
+      assert.same(res:read_body(),"failed to encode payload")
+    end)
+
     describe("regression", function()
       test("empty array in json #10801", function()
         local req_body = { array = {}, nullable = "ahaha" }
