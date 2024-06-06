@@ -539,8 +539,9 @@ local function enqueue(self, entry)
   -- The queue should not be full if we are running into this situation.
   -- Since the dropping logic is complcated,
   -- further maintenancers might introduce bugs,
-  -- so I added this assertion to detect this kind of bug early
-  -- (it's better to crash early than leak memory).
+  -- so I added this assertion to detect this kind of bug early.
+  -- It's better to crash early than leak memory
+  -- as analyze memory leak is hard.
   assert(
     -- bracing the function call to get the first return value only
     internal_is_full(self) == false,
