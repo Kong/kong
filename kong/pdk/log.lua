@@ -799,6 +799,7 @@ do
       options = options or EMPTY_TAB
       local ongx = options.ngx or ngx
       local okong = options.kong or kong
+      local okong_request = okong.request
 
       local ctx = ongx.ctx
       local var = ongx.var
@@ -833,9 +834,9 @@ do
           id = request_id_get() or "",
           uri = request_uri,
           url = url,
-          querystring = okong.request.get_query(), -- parameters, as a table
-          method = okong.request.get_method(), -- http method
-          headers = okong.request.get_headers(),
+          querystring = okong_request.get_query(), -- parameters, as a table
+          method = okong_request.get_method(), -- http method
+          headers = okong_request.get_headers(),
           size = to_decimal(var.request_length),
           tls = build_tls_info(var, ctx.CLIENT_VERIFY_OVERRIDE),
         },
@@ -858,7 +859,7 @@ do
         service = cycle_aware_deep_copy(ctx.service),
         consumer = cycle_aware_deep_copy(ctx.authenticated_consumer),
         client_ip = var.remote_addr,
-        started_at = okong.request.get_start_time(),
+        started_at = okong_request.get_start_time(),
         source = response_source_name,
 
         workspace = ctx.workspace,
