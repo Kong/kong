@@ -103,10 +103,25 @@ local function handle_stream_event(event_t, model_info, route_type)
     }
 
   elseif event_type == "metadata" then
+    local function dump(o)
+      if type(o) == 'table' then
+         local s = '{ '
+         for k,v in pairs(o) do
+            if type(k) ~= 'number' then k = '"'..k..'"' end
+            s = s .. '['..k..'] = ' .. dump(v) .. ','
+         end
+         return s .. '} '
+      else
+         return tostring(o)
+      end
+    end
+    kong.log.warn(dump(body))
     metadata = {
-      prompt_tokens = body.metrics and body.metrics.inputTokens or 0,
-      completion_tokens = body.metrics and body.metrics.outputTokens or 0,
+      prompt_tokens = body.usage and body.usage.inputTokens or 0,
+      completion_tokens = body.usage and body.usage.outputTokens or 0,
     }
+
+    kong.log.warn(dump(metadata))
 
     new_event = "[DONE]"
 
