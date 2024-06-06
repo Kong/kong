@@ -21,6 +21,8 @@ local function internal_server_error(msg)
   return kong.response.exit(500, { error = { message = msg } })
 end
 
+
+
 local function subrequest(httpc, request_body, http_opts)
   httpc:set_timeouts(http_opts.http_timeout or 60000)
 
@@ -72,6 +74,8 @@ local function subrequest(httpc, request_body, http_opts)
   return res
 end
 
+
+
 local function create_http_opts(conf)
   local http_opts = {}
 
@@ -84,12 +88,14 @@ local function create_http_opts(conf)
     http_opts.proxy_opts = http_opts.proxy_opts or {}
     http_opts.proxy_opts.https_proxy = fmt("http://%s:%d", conf.https_proxy_host, conf.https_proxy_port)
   end
-  
+
   http_opts.http_timeout = conf.http_timeout
   http_opts.https_verify = conf.https_verify
 
   return http_opts
 end
+
+
 
 function _M:access(conf)
   kong.service.request.enable_buffering()
@@ -99,8 +105,8 @@ function _M:access(conf)
   local http_opts = create_http_opts(conf)
   conf.llm.__plugin_id = conf.__plugin_id
   conf.llm.__key__ = conf.__key__
-  local ai_driver, err = llm:new(conf.llm, http_opts)
-  
+  local ai_driver, err = llm.new_driver(conf.llm, http_opts)
+
   if not ai_driver then
     return internal_server_error(err)
   end
@@ -123,7 +129,7 @@ function _M:access(conf)
   -- if asked, introspect the request before proxying
   kong.log.debug("introspecting response with LLM")
 
-  local new_response_body, err = llm:ai_introspect_body(
+  local new_response_body, err = ai_driver:ai_introspect_body(
     res_body,
     conf.prompt,
     http_opts,
@@ -142,7 +148,7 @@ function _M:access(conf)
 
   local headers, body, status
   if conf.parse_llm_response_json_instructions then
-    headers, body, status, err = llm:parse_json_instructions(new_response_body)
+    headers, body, status, err = ai_driver:parse_json_instructions(new_response_body)
     if err then
       return internal_server_error("failed to parse JSON response instructions from AI backend: " .. err)
     end
