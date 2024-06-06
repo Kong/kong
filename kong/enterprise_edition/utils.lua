@@ -8,7 +8,7 @@
 local cjson = require "cjson"
 local http = require "resty.http"
 
-local utils = require "kong.tools.utils"
+local encode_args = require("kong.tools.http").encode_args
 local ee_jwt = require "kong.enterprise_edition.jwt"
 local enums = require "kong.enterprise_edition.dao.enums"
 
@@ -170,7 +170,7 @@ local function as_body(data, opts)
   if string.find(content_type, "application/json") and t_body_table then
     body = cjson.encode(data)
   elseif string.find(content_type, "www-form-urlencoded", nil, true) and t_body_table then
-    body = utils.encode_args(data, true, opts.no_array_indexes)
+    body = encode_args(data, true, opts.no_array_indexes)
   elseif string.find(content_type, "multipart/form-data", nil, true) and t_body_table then
     local form = data
     local boundary = "8fd84e9444e3946c"
@@ -201,7 +201,7 @@ _M.request = function(url, opts)
   local data = opts.data or nil
 
   if method == "GET" and data then
-    url = url .. '?' .. utils.encode_args(data)
+    url = url .. '?' .. encode_args(data)
   elseif method == "POST" or method == "PUT" or method == "PATCH" then
     if data and not body or #body == 0 then
       if not lookup(headers, "content-type") then

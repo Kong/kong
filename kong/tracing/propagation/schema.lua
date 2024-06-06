@@ -6,8 +6,8 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local Schema = require "kong.db.schema"
-local utils = require "kong.tools.utils"
 local formats = require "kong.tracing.propagation.utils".FORMATS
+local validate_header_name = require("kong.tools.http").validate_header_name
 
 
 local extractors = {}
@@ -42,7 +42,7 @@ return Schema.define {
         type = "array",
         elements = {
           type = "string",
-          custom_validator = utils.validate_header_name,
+          custom_validator = validate_header_name,
         }
       }
     },

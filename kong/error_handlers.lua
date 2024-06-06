@@ -8,8 +8,8 @@
 local kong = kong
 local find = string.find
 local fmt  = string.format
-local utils = require "kong.tools.utils"
 local request_id = require "kong.tracing.request_id"
+local tools_http = require "kong.tools.http"
 
 
 local CONTENT_TYPE    = "Content-Type"
@@ -78,9 +78,9 @@ return function(ctx)
     message = { message = message }
 
   else
-    local mime_type = utils.get_response_type(accept_header)
+    local mime_type = tools_http.get_response_type(accept_header)
     local rid = request_id.get() or ""
-    message = fmt(utils.get_error_template(mime_type), message, rid)
+    message = fmt(tools_http.get_error_template(mime_type), message, rid)
     headers = { [CONTENT_TYPE] = mime_type }
 
   end

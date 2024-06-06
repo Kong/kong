@@ -7,7 +7,6 @@
 
 --- A library of ready-to-use type synonyms to use in schema definitions.
 -- @module kong.db.schema.typedefs
-local utils = require "kong.tools.utils"
 local queue_schema = require "kong.tools.queue_schema"
 local propagation_schema = require "kong.tracing.propagation.schema"
 local openssl_pkey = require "resty.openssl.pkey"
@@ -19,6 +18,7 @@ local pl_tablex = require("pl.tablex")
 local kong_table = require("kong.tools.table")
 local tools_ip = require "kong.tools.ip"
 local validate_utf8 = require("kong.tools.string").validate_utf8
+local tools_http = require "kong.tools.http"
 
 
 local DAO_MAX_TTL = constants.DATABASE.DAO_MAX_TTL
@@ -356,14 +356,14 @@ typedefs.url = Schema.define {
 
 typedefs.cookie_name = Schema.define {
   type = "string",
-  custom_validator = utils.validate_cookie_name,
+  custom_validator = tools_http.validate_cookie_name,
   description = "A string representing an HTTP token defined by RFC 2616."
 }
 
 -- should we also allow all http token for this?
 typedefs.header_name = Schema.define {
   type = "string",
-  custom_validator = utils.validate_header_name,
+  custom_validator = tools_http.validate_header_name,
   description = "A string representing an HTTP header name."
 }
 

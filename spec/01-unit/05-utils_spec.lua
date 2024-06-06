@@ -5,10 +5,10 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local utils = require "kong.tools.utils"
 local kong_table = require "kong.tools.table"
 local pl_path = require "pl.path"
 local tools_ip = require "kong.tools.ip"
+local tools_http = require "kong.tools.http"
 
 describe("Utils", function()
 
@@ -112,19 +112,19 @@ describe("Utils", function()
 
       it("should validate an HTTPS scheme", function()
         ngx.var.scheme = "hTTps" -- mixed casing to ensure case insensitiveness
-        assert.is.truthy(utils.check_https(true, false))
+        assert.is.truthy(tools_http.check_https(true, false))
       end)
 
       it("should invalidate non-HTTPS schemes", function()
         ngx.var.scheme = "hTTp"
-        assert.is.falsy(utils.check_https(true, false))
+        assert.is.falsy(tools_http.check_https(true, false))
         ngx.var.scheme = "something completely different"
-        assert.is.falsy(utils.check_https(true, false))
+        assert.is.falsy(tools_http.check_https(true, false))
       end)
 
       it("should invalidate non-HTTPS schemes with proto header allowed", function()
         ngx.var.scheme = "hTTp"
-        assert.is.falsy(utils.check_https(true, true))
+        assert.is.falsy(tools_http.check_https(true, true))
       end)
     end)
 
@@ -137,42 +137,42 @@ describe("Utils", function()
       it("should validate any scheme with X-Forwarded_Proto as HTTPS", function()
         headers["x-forwarded-proto"] = "hTTPs"  -- check mixed casing for case insensitiveness
         ngx.var.scheme = "hTTps"
-        assert.is.truthy(utils.check_https(true, true))
+        assert.is.truthy(tools_http.check_https(true, true))
         ngx.var.scheme = "hTTp"
-        assert.is.truthy(utils.check_https(true, true))
+        assert.is.truthy(tools_http.check_https(true, true))
         ngx.var.scheme = "something completely different"
-        assert.is.truthy(utils.check_https(true, true))
+        assert.is.truthy(tools_http.check_https(true, true))
       end)
 
       it("should validate only https scheme with X-Forwarded_Proto as non-HTTPS", function()
         headers["x-forwarded-proto"] = "hTTP"
         ngx.var.scheme = "hTTps"
-        assert.is.truthy(utils.check_https(true, true))
+        assert.is.truthy(tools_http.check_https(true, true))
         ngx.var.scheme = "hTTp"
-        assert.is.falsy(utils.check_https(true, true))
+        assert.is.falsy(tools_http.check_https(true, true))
         ngx.var.scheme = "something completely different"
-        assert.is.falsy(utils.check_https(true, true))
+        assert.is.falsy(tools_http.check_https(true, true))
       end)
 
       it("should return an error with multiple X-Forwarded_Proto headers", function()
         headers["x-forwarded-proto"] = { "hTTP", "https" }
         ngx.var.scheme = "hTTps"
-        assert.is.truthy(utils.check_https(true, true))
+        assert.is.truthy(tools_http.check_https(true, true))
         ngx.var.scheme = "hTTp"
         assert.are.same({ nil, "Only one X-Forwarded-Proto header allowed" },
-                        { utils.check_https(true, true) })
+                        { tools_http.check_https(true, true) })
       end)
 
       it("should not use X-Forwarded-Proto when the client is untrusted", function()
         headers["x-forwarded-proto"] = "https"
         ngx.var.scheme = "http"
-        assert.is_false(utils.check_https(false, false))
-        assert.is_false(utils.check_https(false, true))
+        assert.is_false(tools_http.check_https(false, false))
+        assert.is_false(tools_http.check_https(false, true))
 
         headers["x-forwarded-proto"] = "https"
         ngx.var.scheme = "https"
-        assert.is_true(utils.check_https(false, false))
-        assert.is_true(utils.check_https(false, true))
+        assert.is_true(tools_http.check_https(false, false))
+        assert.is_true(tools_http.check_https(false, true))
       end)
 
       it("should use X-Forwarded-Proto when the client is trusted", function()
@@ -180,14 +180,14 @@ describe("Utils", function()
         ngx.var.scheme = "http"
 
         -- trusted client but do not allow terminated
-        assert.is_false(utils.check_https(true, false))
+        assert.is_false(tools_http.check_https(true, false))
 
-        assert.is_true(utils.check_https(true, true))
+        assert.is_true(tools_http.check_https(true, true))
 
         headers["x-forwarded-proto"] = "https"
         ngx.var.scheme = "https"
-        assert.is_true(utils.check_https(true, false))
-        assert.is_true(utils.check_https(true, true))
+        assert.is_true(tools_http.check_https(true, false))
+        assert.is_true(tools_http.check_https(true, true))
       end)
     end)
   end)
@@ -227,54 +227,54 @@ describe("Utils", function()
 
     describe("encode_args()", function()
       it("should encode a Lua table to a querystring", function()
-        local str = utils.encode_args {
+        local str = tools_http.encode_args {
           foo = "bar",
           hello = "world"
         }
         assert.equal("foo=bar&hello=world", str)
       end)
       it("should encode multi-value query args", function()
-        local str = utils.encode_args {
+        local str = tools_http.encode_args {
           foo = {"bar", "zoo"},
           hello = "world"
         }
         assert.equal("foo%5b1%5d=bar&foo%5b2%5d=zoo&hello=world", str)
       end)
       it("should percent-encode given values", function()
-        local str = utils.encode_args {
+        local str = tools_http.encode_args {
           encode = {"abc|def", ",$@|`"}
         }
         assert.equal("encode%5b1%5d=abc%7cdef&encode%5b2%5d=%2c%24%40%7c%60", str)
       end)
       it("should percent-encode given query args keys", function()
-        local str = utils.encode_args {
+        local str = tools_http.encode_args {
           ["hello world"] = "foo"
         }
         assert.equal("hello%20world=foo", str)
       end)
       it("should support Lua numbers", function()
-        local str = utils.encode_args {
+        local str = tools_http.encode_args {
           a = 1,
           b = 2
         }
         assert.equal("a=1&b=2", str)
       end)
       it("should support a boolean argument", function()
-        local str = utils.encode_args {
+        local str = tools_http.encode_args {
           a = true,
           b = 1
         }
         assert.equal("a=true&b=1", str)
       end)
       it("should ignore nil and false values", function()
-        local str = utils.encode_args {
+        local str = tools_http.encode_args {
           a = nil,
           b = false
         }
         assert.equal("b=false", str)
       end)
       it("should encode complex query args", function()
-        local encode = utils.encode_args
+        local encode = tools_http.encode_args
         assert.equal("falsy=false",
                      encode({ falsy = false }))
         assert.equal("multiple%20values=true",
@@ -293,13 +293,13 @@ describe("Utils", function()
                      encode({ hybrid = { 1, 2, n = 3 } }))
       end)
       it("should not interpret the `%` character followed by 2 characters in the [0-9a-f] group as an hexadecimal value", function()
-        local str = utils.encode_args {
+        local str = tools_http.encode_args {
           foo = "%bar%"
         }
         assert.equal("foo=%25bar%25", str)
       end)
       it("does not percent-encode if given a `raw` option", function()
-        local encode = utils.encode_args
+        local encode = tools_http.encode_args
         -- this is useful for kong.tools.http_client
         assert.equal("hello world=foo, bar",
                      encode({ ["hello world"] = "foo, bar" }, true))
@@ -315,7 +315,7 @@ describe("Utils", function()
                      encode({ hybrid = { 1, 2, n = 3 } }, true))
       end)
       it("does not include index numbers in arrays if given the `no_array_indexes` flag", function()
-        local encode = utils.encode_args
+        local encode = tools_http.encode_args
         assert.equal("falsy=false",
                      encode({ falsy = false }, nil, true))
         assert.equal("multiple%20values=true",
@@ -334,7 +334,7 @@ describe("Utils", function()
                      encode({ hybrid = { 1, 2, n = 3 } }, nil, true))
       end)
       it("does not percent-encode and does not add index numbers if both `raw` and `no_array_indexes` are active", function()
-        local encode = utils.encode_args
+        local encode = tools_http.encode_args
         -- this is useful for kong.tools.http_client
         assert.equal("hello world=foo, bar",
                      encode({ ["hello world"] = "foo, bar" }, true, true))
@@ -350,7 +350,7 @@ describe("Utils", function()
                      encode({ hybrid = { 1, 2, n = 3 } }, true, true))
       end)
       it("transforms ngx.null into empty string", function()
-        local str = utils.encode_args({ x = ngx.null, y = "foo" })
+        local str = tools_http.encode_args({ x = ngx.null, y = "foo" })
         assert.equal("x=&y=foo", str)
       end)
       -- while this method's purpose is to mimic 100% the behavior of ngx.encode_args,
@@ -358,26 +358,26 @@ describe("Utils", function()
       -- Hence, a `raw` parameter allows encoding for bodies.
       describe("raw", function()
         it("should not percent-encode values", function()
-          local str = utils.encode_args({
+          local str = tools_http.encode_args({
             foo = "hello world"
           }, true)
           assert.equal("foo=hello world", str)
         end)
         it("should not percent-encode keys", function()
-          local str = utils.encode_args({
+          local str = tools_http.encode_args({
             ["hello world"] = "foo"
           }, true)
           assert.equal("hello world=foo", str)
         end)
         it("should plainly include true and false values", function()
-          local str = utils.encode_args({
+          local str = tools_http.encode_args({
             a = true,
             b = false
           }, true)
           assert.equal("a=true&b=false", str)
         end)
         it("should prevent double percent-encoding", function()
-          local str = utils.encode_args({
+          local str = tools_http.encode_args({
             foo = "hello%20world"
           }, true)
           assert.equal("foo=hello%20world", str)
@@ -664,10 +664,10 @@ describe("Utils", function()
       local c = string.char(i)
 
       if string.find(header_chars, c, nil, true) then
-        assert(utils.validate_header_name(c) == c,
+        assert(tools_http.validate_header_name(c) == c,
           "ascii character '" .. c .. "' (" .. i .. ") should have been allowed")
       else
-        assert(utils.validate_header_name(c) == nil,
+        assert(tools_http.validate_header_name(c) == nil,
           "ascii character " .. i .. " should not have been allowed")
       end
     end
@@ -679,10 +679,10 @@ describe("Utils", function()
       local c = string.char(i)
 
       if string.find(cookie_chars, c, nil, true) then
-        assert(utils.validate_cookie_name(c) == c,
+        assert(tools_http.validate_cookie_name(c) == c,
           "ascii character '" .. c .. "' (" .. i .. ") should have been allowed")
       else
-        assert(utils.validate_cookie_name(c) == nil,
+        assert(tools_http.validate_cookie_name(c) == nil,
           "ascii character " .. i .. " should not have been allowed")
       end
     end
@@ -804,26 +804,26 @@ describe("Utils", function()
 
   describe("get_mime_type()", function()
     it("with valid mime types", function()
-      assert.equal("application/json; charset=utf-8", utils.get_mime_type("application/json"))
-      assert.equal("application/json; charset=utf-8", utils.get_mime_type("application/json; charset=utf-8"))
-      assert.equal("application/json; charset=utf-8", utils.get_mime_type("application/*"))
-      assert.equal("application/json; charset=utf-8", utils.get_mime_type("application/*; charset=utf-8"))
-      assert.equal("text/html; charset=utf-8", utils.get_mime_type("text/html"))
-      assert.equal("text/plain; charset=utf-8", utils.get_mime_type("text/plain"))
-      assert.equal("text/plain; charset=utf-8", utils.get_mime_type("text/*"))
-      assert.equal("text/plain; charset=utf-8", utils.get_mime_type("text/*; charset=utf-8"))
-      assert.equal("application/xml; charset=utf-8", utils.get_mime_type("application/xml"))
-      assert.equal("application/json; charset=utf-8", utils.get_mime_type("*/*; charset=utf-8"))
-      assert.equal("application/json; charset=utf-8", utils.get_mime_type("*/*"))
-      assert.equal("", utils.get_mime_type("application/grpc"))
+      assert.equal("application/json; charset=utf-8", tools_http.get_mime_type("application/json"))
+      assert.equal("application/json; charset=utf-8", tools_http.get_mime_type("application/json; charset=utf-8"))
+      assert.equal("application/json; charset=utf-8", tools_http.get_mime_type("application/*"))
+      assert.equal("application/json; charset=utf-8", tools_http.get_mime_type("application/*; charset=utf-8"))
+      assert.equal("text/html; charset=utf-8", tools_http.get_mime_type("text/html"))
+      assert.equal("text/plain; charset=utf-8", tools_http.get_mime_type("text/plain"))
+      assert.equal("text/plain; charset=utf-8", tools_http.get_mime_type("text/*"))
+      assert.equal("text/plain; charset=utf-8", tools_http.get_mime_type("text/*; charset=utf-8"))
+      assert.equal("application/xml; charset=utf-8", tools_http.get_mime_type("application/xml"))
+      assert.equal("application/json; charset=utf-8", tools_http.get_mime_type("*/*; charset=utf-8"))
+      assert.equal("application/json; charset=utf-8", tools_http.get_mime_type("*/*"))
+      assert.equal("", tools_http.get_mime_type("application/grpc"))
     end)
 
     it("with unsupported or invalid mime types", function()
-      assert.equal("application/json; charset=utf-8", utils.get_mime_type("audio/*", true))
-      assert.equal("application/json; charset=utf-8", utils.get_mime_type("text/css"))
-      assert.equal("application/json; charset=utf-8", utils.get_mime_type("default"))
-      assert.is_nil(utils.get_mime_type("video/json", false))
-      assert.is_nil(utils.get_mime_type("text/javascript", false))
+      assert.equal("application/json; charset=utf-8", tools_http.get_mime_type("audio/*", true))
+      assert.equal("application/json; charset=utf-8", tools_http.get_mime_type("text/css"))
+      assert.equal("application/json; charset=utf-8", tools_http.get_mime_type("default"))
+      assert.is_nil(tools_http.get_mime_type("video/json", false))
+      assert.is_nil(tools_http.get_mime_type("text/javascript", false))
     end)
   end)
 
