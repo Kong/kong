@@ -25,10 +25,9 @@ local _OPENAI_ROLE_MAPPING = {
 
 local function to_bedrock_generation_config(request_table)
   return {
-    ["maxTokenCount"] = request_table.max_tokens,
+    ["maxTokens"] = request_table.max_tokens,
     ["stopSequences"] = request_table.stop,
     ["temperature"] = request_table.temperature,
-    ["topK"] = request_table.top_k,
     ["topP"] = request_table.top_p,
   }
 end
@@ -36,63 +35,7 @@ end
 local function handle_stream_event(event_t, model_info, route_type)
   local metadata
 
-  -- discard empty frames, it should either be a random new line, or comment
-  if (not event_t.data) or (#event_t.data < 1) then
-    return
-  end
-  
-  local event, err = cjson.decode(event_t.data)
-  if err then
-    ngx.log(ngx.WARN, "failed to decode stream event frame from bedrock: " .. err)
-    return nil, "failed to decode stream event frame from bedrock", nil
-  end
-
-  local new_event
-  local metadata
-
-  if event.candidates and
-     #event.candidates > 0 then
-    
-    if event.candidates[1].content and
-        event.candidates[1].content.parts and
-        #event.candidates[1].content.parts > 0 and
-        event.candidates[1].content.parts[1].text then
-      
-      new_event = {
-        choices = {
-          [1] = {
-            delta = {
-              content = event.candidates[1].content.parts[1].text or "",
-              role = "assistant",
-            },
-            index = 0,
-          },
-        },
-      }
-    end
-
-    if event.candidates[1].finishReason then
-      metadata = metadata or {}
-      metadata.finished_reason = event.candidates[1].finishReason
-      new_event = "[DONE]"
-    end
-  end
-
-  if event.usageMetadata then
-    metadata = metadata or {}
-    metadata.completion_tokens = event.usageMetadata.candidatesTokenCount or 0
-    metadata.prompt_tokens     = event.usageMetadata.promptTokenCount or 0
-  end
-  
-  if new_event then
-    if new_event ~= "[DONE]" then
-      new_event = cjson.encode(new_event)
-    end
-
-    return new_event, nil, metadata
-  else
-    return nil, nil, metadata  -- caller code will handle "unrecognised" event types
-  end
+  return "yes", nil, nil
 end
 
 local function to_bedrock_chat_openai(request_table, model_info, route_type)
@@ -138,6 +81,8 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
   end
 
   new_r.inferenceConfig = to_bedrock_generation_config(request_table)
+
+  kong.log.debug(new_r.inferenceConfig.maxTokens)
 
   return new_r, "application/json", nil
 end
@@ -366,8 +311,8 @@ function _M.configure_request(conf, aws_sdk)
   local signature = signer(aws_sdk.config, r)
 
   kong.service.request.set_header("Authorization", signature.headers["Authorization"])
-  kong.service.request.set_header("X-Amz-Security-Token", signature.headers["X-Amz-Security-Token"])
-  kong.service.request.set_header("X-Amz-Date", signature.headers["X-Amz-Date"])
+  kong.service.request.set_header("X-Amz-Security-Token", signature.headers["X-Amz-Security-Token"] or "")
+  kong.service.request.set_header("X-Amz-Date", signature.headers["X-Amz-Date"] or "")
 
   return true
 end
