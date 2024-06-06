@@ -21,6 +21,7 @@ local invokeWithResponseStream = require "kong.plugins.aws-lambda.execute"
 local build_request_payload = request_util.build_request_payload
 local extract_proxy_response = request_util.extract_proxy_response
 local remove_array_mt_for_empty_table = request_util.remove_array_mt_for_empty_table
+local cjson = require "cjson.safe"
 
 local aws = require("resty.aws")
 local AWS_GLOBAL_CONFIG
@@ -196,20 +197,115 @@ local function invoke_streaming(conf, lambda_service)
     headers[VIA_HEADER] = VIA_HEADER_VALUE
   end
 
-  ngx.status = res.status
-  -- print("status" .. ngx.status)
+  -- if error, set status and header, return error
+  if res.status > 400 then
+    ngx.status = res.status
+    for k, v in pairs(headers) do
+      ngx.header[k] = v
+      -- print("Header [" .. k .. "] = " .. v)
+    end
+    return error(res.body.Message)
+  end
+
+  -- not error, set default status and content type
+  ngx.status = 200
+  headers["Content-Type"] = "application/octet-stream"
+
+  -- record x-amzn-Remapped-Content-Type and clear it
+  local is_http_integration_response = headers["x-amzn-Remapped-Content-Type"] == "application/vnd.awslambda.http-integration-response"
+  headers["x-amzn-Remapped-Content-Type"] = nil
+
+  -- read from the body stream
+  local reader = res.body_reader
+  local buffer_size = 8192
+
+  -- for http integration response, parse the prelude just like Lambda Function Url
+  local first_chunk_body = ""
+  if is_http_integration_response then
+    local null_count = 0
+    local prelude = ""
+    while null_count < 8 do
+      local chunk, err = reader(buffer_size)
+      if err then
+        return error(err)
+      end
+
+      if chunk then
+        -- the chunk is in `application/vnd.amazon.eventstream` formatted
+        -- which is a binary format, we need to parse it
+        local parser, err = AWS_Stream:new(chunk, false)
+        if err or parser == nil then
+          -- print("ERROR: ", err)
+          return error(err)
+        end
+        
+        while true do
+          if null_count == 8 then
+            break
+          end
+
+          local msg = parser:next_message()
+        
+          if not msg then
+            break
+          end
+        
+          -- print(require("pl.pretty").write(msg))
+          for _, header in ipairs(msg.headers) do
+            if null_count == 8 then
+              break
+            end
+            if header.key == ":event-type" and header.value == "PayloadChunk" then
+              -- print(msg.body)
+              for i = 1, #msg.body do
+                local c = msg.body:byte(i)
+                if c == 0 then
+                  null_count = null_count + 1
+                  if null_count == 8 then
+                    -- parse the prelude
+                    local p, err = cjson.decode(prelude)
+                    if err or not p then
+                      return error(err)
+                    end
+                    if p["statusCode"] then
+                      ngx.status = p["statusCode"]
+                      -- headers and cookies will only be applied if the statusCode is provided
+                      if p["headers"] then
+                        for k, v in pairs(p["headers"]) do
+                          headers[k] = v
+                        end
+                      end
+                      if p["cookies"] then
+                        headers["Set-Cookie"] = p["cookies"]
+                      end
+                    end
+
+                    first_chunk_body = msg.body:sub(i + 1)
+                    break
+                  end
+                else
+                  prelude = prelude .. string.char(c)
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  -- set headers to ngx
   for k, v in pairs(headers) do
     ngx.header[k] = v
     -- print("Header [" .. k .. "] = " .. v)
   end
 
-  if ngx.status > 400 then
-    return error(res.body.Message)
+  -- send the first chunk if any
+  if first_chunk_body ~= "" then
+    ngx.print(first_chunk_body)
+    ngx.flush(true)
   end
 
-  -- read from the body stream
-  local reader = res.body_reader
-  local buffer_size = 8192
   repeat
     local chunk, err = reader(buffer_size)
     if err then
@@ -238,7 +334,6 @@ local function invoke_streaming(conf, lambda_service)
             -- print(msg.body)
             ngx.print(msg.body)
             ngx.flush(true)
-            -- TODO: identify `application/vnd.awslambda.http-integration-response` just like Lambda Function URL
           end
         end
       end
