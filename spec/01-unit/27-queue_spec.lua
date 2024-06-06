@@ -796,6 +796,9 @@ describe("plugin queue", function()
       max_entries = 2,
       max_bytes = nil, -- avoiding bytes limit
       max_coalescing_delay = 99999, -- avoiding automatically flushing,
+      max_retry_time = 60,
+      initial_retry_delay = 1,
+      max_retry_delay = 60,
     }
 
     local function enqueue(queue_conf, entry)
@@ -827,6 +830,9 @@ describe("plugin queue", function()
       max_entries = 99999, -- big enough to avoid entries limit
       max_bytes = 2,
       max_coalescing_delay = 99999, -- avoiding automatically flushing,
+      max_retry_time = 60,
+      initial_retry_delay = 1,
+      max_retry_delay = 60,
     }
 
     assert.is_false(Queue.is_full(queue_conf))
@@ -846,6 +852,9 @@ describe("plugin queue", function()
       max_entries = 99999, -- big enough to avoid entries limit
       max_bytes = 3,
       max_coalescing_delay = 99999, -- avoiding automatically flushing,
+      max_retry_time = 60,
+      initial_retry_delay = 1,
+      max_retry_delay = 60,
     }
 
     enqueue(queue_conf, "1")
