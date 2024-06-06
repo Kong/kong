@@ -108,7 +108,7 @@ local function internal_remaining_capacity(self)
   -- so it is impossible to have a negative value
   assert(remaining_entries >= 0, "queue should not be over capacity")
 
-  if max_bytes == nil then
+  if not max_bytes then
     return remaining_entries
   end
 
@@ -137,7 +137,7 @@ end
 local function internal_is_entry_too_large(self, entry)
   local max_bytes = self.max_bytes
 
-  if max_bytes == nil then
+  if not max_bytes then
     return false
   end
 
@@ -151,18 +151,17 @@ end
 
 
 local function internal_is_reaching_max_bytes(self)
-  if self.max_bytes == nil then
+  if not self.max_bytes then
     return false
   end
 
   local _, remaining_bytes = internal_remaining_capacity(self)
-  assert(type(remaining_bytes) == "number", "remaining_bytes must be a number")
   return remaining_bytes == 0
 end
 
 
 local function internal_will_exceed_max_bytes(self, entry)
-  if self.max_bytes == nil then
+  if not self.max_bytes then
     return false
   end
 
@@ -172,7 +171,6 @@ local function internal_will_exceed_max_bytes(self, entry)
   end
 
   local _, remaining_bytes = internal_remaining_capacity(self)
-  assert(type(remaining_bytes) == "number", "remaining_bytes must be a number")
   return #entry > remaining_bytes
 end
 
@@ -572,10 +570,41 @@ function Queue.enqueue(queue_conf, handler, handler_conf, value)
   assert(type(handler) == "function",
     "arg #2 (handler) must be a function")
   assert(handler_conf == nil or type(handler_conf) == "table",
-    "arg #3 (handler_conf) must be a table")
+    "arg #3 (handler_conf) must be a table or nil")
 
   assert(type(queue_conf.name) == "string",
     "arg #1 (queue_conf) must include a name")
+
+  local max_bytes_type = type(queue_conf.max_bytes)
+
+  assert(
+    type(queue_conf.max_batch_size) == "number",
+    "arg #1 (queue_conf) max_batch_size must be a number"
+  )
+  assert(
+    type(queue_conf.max_coalescing_delay) == "number",
+    "arg #1 (queue_conf) max_coalescing_delay must be a number"
+  )
+  assert(
+    type(queue_conf.max_entries) == "number",
+    "arg #1 (queue_conf) max_entries must be a number"
+  )
+  assert(
+    max_bytes_type == "nil" or max_bytes_type == "number",
+    "arg #1 (queue_conf) max_bytes must be a number or nil"
+  )
+  assert(
+    type(queue_conf.max_retry_time) == "number",
+    "arg #1 (queue_conf) max_retry_time must be a number"
+  )
+  assert(
+    type(queue_conf.initial_retry_delay) == "number",
+    "arg #1 (queue_conf) initial_retry_delay must be a number"
+  )
+  assert(
+    type(queue_conf.max_retry_delay) == "number",
+    "arg #1 (queue_conf) max_retry_delay must be a number"
+  )
 
   local queue = get_or_create_queue(queue_conf, handler, handler_conf)
   return enqueue(queue, value)
