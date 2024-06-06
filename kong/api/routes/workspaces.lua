@@ -9,6 +9,7 @@ local workspaces = require "kong.workspaces"
 local endpoints = require "kong.api.endpoints"
 local counters =  require "kong.workspaces.counters"
 local portal_crud = require "kong.portal.crud_helpers"
+local utils = require "kong.tools.utils"
 local cjson = require 'cjson'
 
 local null = ngx.null
@@ -140,7 +141,35 @@ return {
       end
 
       if self.params.cascade == "true" then
-        return parent()
+        local err_t
+        if utils.is_valid_uuid(self.args.workspaces) then
+          _, _, err_t = kong.db.workspaces:delete({ id = self.workspace.id })
+        else
+          _, _, err_t = kong.db.workspaces:delete_by_name(self.workspace.name, { workspace_id = self.workspace.id })
+        end
+        if not err_t then
+          return kong.response.exit(204)
+        end
+        if err_t.code == 4 and err_t.fields then
+          if err_t.fields["@referenced_by"] == "admins" then
+            local admins = {}
+            for admin, err in kong.db.admins:each() do
+              if err then
+                return kong.response.exit(500, err)
+              end
+              local rbac_user, err = kong.db.rbac_users:select({ id = admin.rbac_user.id },
+                { workspace = null, show_ws_id = true })
+              if err then
+                return kong.response.exit(500, err)
+              end
+              if rbac_user.ws_id == self.workspace.id then
+                table.insert(admins, admin.id)
+              end
+            end
+            err_t.fields["@referenced_ids"] = admins
+          end
+        end
+        return kong.response.exit(400, err_t)
       end
 
       local counts, err = counters.entity_counts(self.workspace.id)

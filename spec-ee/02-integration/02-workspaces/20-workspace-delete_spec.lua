@@ -68,6 +68,7 @@ for _, strategy in helpers.each_strategy() do
     local admin_client, proxy_client
     local ws
     local cache_keys
+    local ws_with_admin
 
     lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy)
@@ -81,6 +82,10 @@ for _, strategy in helpers.each_strategy() do
       })
       ws = assert(bp.workspaces:insert {
         name = "workspace1"
+      })
+
+      ws_with_admin = assert(bp.workspaces:insert {
+        name = "workspace_has_admin"
       })
 
       local entities = init_workspace(bp, ws)
@@ -123,6 +128,19 @@ for _, strategy in helpers.each_strategy() do
 
       local res = assert(admin_client:get("/workspaces/" .. ws.name))
       assert.res_status(404, res)
+
+      local res = assert(admin_client:send {
+        method = "POST",
+        path = "/" .. ws_with_admin.name .. "/admins",
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+        body  = {
+          username = "doge1",
+          email = "doge1@konghq.com",
+        },
+      })
+      assert.res_status(200, res)
     end)
 
     lazy_teardown(function()
@@ -152,7 +170,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(404, res.status, fmt("%s still exist", key))
         end
         return true
-      end, 5)
+      end, 10)
     end)
 
     it("router should be rebuilt", function()
@@ -166,6 +184,25 @@ for _, strategy in helpers.each_strategy() do
     it("should not touch other workspaces", function()
       local res = proxy_client:get("/ws1/hello")
       assert.res_status(200, res)
+    end)
+
+    it("return 400 with a detailed message when workspace had admin associated", function()
+      local res = assert(admin_client:get("/workspace_has_admin/admins/doge1"))
+      local admin1 = assert.response(res).has.jsonbody()
+
+      local res = assert(admin_client:delete("/workspaces/workspace_has_admin?cascade=true"))
+      assert.res_status(400, res)
+      local json = assert.response(res).has.jsonbody()
+      assert.same({
+        fields = {
+          ["@referenced_ids"] = { admin1.id },
+          ["@referenced_by"] = "admins"
+        },
+        strategy = "postgres",
+        message = "an existing 'admins' entity references this 'workspaces' entity",
+        code = 4,
+        name = "foreign key violation",
+      }, json)
     end)
   end)
 
