@@ -5,14 +5,9 @@ local kong_utils = require("kong.tools.gzip")
 local kong_meta = require("kong.meta")
 local buffer = require "string.buffer"
 local strip = require("kong.tools.utils").strip
-
--- cloud auth/sdk providers
-local GCP_SERVICE_ACCOUNT do
-  GCP_SERVICE_ACCOUNT = os.getenv("GCP_SERVICE_ACCOUNT")
-end
-
-local GCP = require("resty.gcp.request.credentials.accesstoken")
+local to_hex = require("resty.string").to_hex
 --
+
 
 -- cloud auth/sdk providers
 local GCP_SERVICE_ACCOUNT do
@@ -20,6 +15,12 @@ local GCP_SERVICE_ACCOUNT do
 end
 local AWS_REGION do
   AWS_REGION = os.getenv("AWS_REGION")
+end
+local AWS_ACCESS_KEY_ID do
+  AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+end
+local AWS_SECRET_ACCESS_KEY do
+  AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 end
 
 local GCP = require("resty.gcp.request.credentials.accesstoken")
@@ -97,14 +98,20 @@ local _KEYBASTION = setmetatable({}, {
       ngx.log(ngx.NOTICE, "loading aws sdk for plugin ", kong.plugin.get_id())
 
       local aws
-      if plugin_config.model.options and plugin_config.model.options.aws then
+      if plugin_config.model.options 
+         and plugin_config.model.options.bedrock
+         and plugin_config.model.auth then
         aws = AWS({
-          region = plugin_config.model.options.aws_region or AWS_REGION,
-          aws_access_key_id = plugin_config.auth.aws_access_key_id,
-          aws_secret_access_key = plugin_config.auth.aws_secret_access_key,
+          -- if any of these are nil, they either use the SDK default or
+          -- are deliberately null so that a different auth chain is used
+          region = plugin_config.model.options.bedrock.aws_region or AWS_REGION,
+          aws_access_key_id = plugin_config.auth.aws_access_key_id or AWS_ACCESS_KEY_ID,
+          aws_secret_access_key = plugin_config.auth.aws_secret_access_key or AWS_SECRET_ACCESS_KEY,
         })
       else
-        aws = AWS({ region = (plugin_config.model.options and plugin_config.model.options.aws_region) or AWS_REGION })
+        aws = AWS({ region = (plugin_config.model.options 
+                              and plugin_config.model.options.bedrock
+                              and plugin_config.model.options.bedrock.aws_region) or AWS_REGION })
       end
 
       this_cache[plugin_config] = { interface = aws, error = nil }
@@ -160,19 +167,23 @@ local function handle_streaming_frame(conf)
       chunk = kong_utils.inflate_gzip(ngx.arg[1])
     end
 
-    local to_hex = require("resty.string").to_hex
+    local events = ai_shared.frame_to_events(chunk, conf.model.provider)
 
-    kong.log.warn("")
-    kong.log.warn(to_hex(chunk))
-    kong.log.warn("")
+    -- TODO: DELETE THIS
+    local function dump(o)
+      if type(o) == 'table' then
+        local s = '{ '
+        for k,v in pairs(o) do
+            if type(k) ~= 'number' then k = '"'..k..'"' end
+            s = s .. '['..k..'] = ' .. dump(v) .. ','
+        end
+        return s .. '} '
+      else
+        return tostring(o)
+      end
+    end
 
-    
-    -- for i = 1, #chunk do
-    --   local c = chunk:sub(i,i)
-    --   kong.log.debug(to_hex(c))
-    -- end
-
-    local events = ai_shared.frame_to_events(chunk, conf.model.provider == "gemini")
+    kong.log.warn(dump(events))
 
     if not events then
       -- usually a not-supported-transformer or empty frames.

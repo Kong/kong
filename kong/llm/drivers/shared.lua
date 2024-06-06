@@ -1,11 +1,12 @@
 local _M = {}
 
 -- imports
-local cjson     = require("cjson.safe")
-local http      = require("resty.http")
-local fmt       = string.format
-local os        = os
-local parse_url = require("socket.url").parse
+local cjson      = require("cjson.safe")
+local http       = require("resty.http")
+local fmt        = string.format
+local os         = os
+local parse_url  = require("socket.url").parse
+local aws_stream = require("kong.tools.aws_stream")
 --
 
 -- static
@@ -229,7 +230,7 @@ end
 -- @param {string} frame input string to format into SSE events
 -- @param {boolean} raw_json sets application/json byte-parser mode
 -- @return {table} n number of split SSE messages, or empty table
-function _M.frame_to_events(frame, raw_json_mode)
+function _M.frame_to_events(frame, provider)
   local events = {}
 
   if (not frame) or (#frame < 1) or (type(frame)) ~= "string" then
@@ -238,7 +239,7 @@ function _M.frame_to_events(frame, raw_json_mode)
 
   -- some new LLMs return the JSON object-by-object,
   -- because that totally makes sense to parse?!
-  if raw_json_mode then
+  if provider == "gemini" then
     -- if this is the first frame, it will begin with array opener '['
     frame = (string.sub(str_ltrim(frame), 1, 1) == "[" and string.sub(str_ltrim(frame), 2)) or frame
 
@@ -251,6 +252,18 @@ function _M.frame_to_events(frame, raw_json_mode)
     -- for multiple events that arrive in the same frame, split by top-level comma
     for _, v in ipairs(split(frame, "\n,")) do
       events[#events+1] = { data = v }
+    end
+
+  elseif provider == "bedrock" then
+    local parser = aws_stream:new(frame)
+    while true do
+      local msg = parser:next_message()
+
+      if not msg then
+        break
+      end
+
+      events[#events+1] = "data: " .. cjson.encode(msg)
     end
 
   -- check if it's raw json and just return the split up data frame
