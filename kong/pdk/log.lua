@@ -817,6 +817,15 @@ do
         end
       end
 
+      local request_headers, response_headers = nil, nil
+      -- THIS IS AN INTERNAL ONLY FLAG TO SKIP FETCHING HEADERS,
+      -- AND THIS FLAG MIGHT BE REMOVED IN THE FUTURE
+      -- WITHOUT ANY NOTICE AND DEPRECATION.
+      if not options.__skip_fetch_headers__ then
+        request_headers = okong_request.get_headers()
+        response_headers = ongx.resp.get_headers()
+      end
+
       local upstream_status = var.upstream_status or ctx.buffered_status or ""
 
       local response_source = okong.response.get_source(ongx.ctx)
@@ -836,7 +845,7 @@ do
           url = url,
           querystring = okong_request.get_query(), -- parameters, as a table
           method = okong_request.get_method(), -- http method
-          headers = okong_request.get_headers(),
+          headers = request_headers,
           size = to_decimal(var.request_length),
           tls = build_tls_info(var, ctx.CLIENT_VERIFY_OVERRIDE),
         },
@@ -844,7 +853,7 @@ do
         upstream_status = upstream_status,
         response = {
           status = ongx.status,
-          headers = ongx.resp.get_headers(),
+          headers = response_headers,
           size = to_decimal(var.bytes_sent),
         },
         latencies = {
