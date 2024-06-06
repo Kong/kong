@@ -1,3 +1,3 @@
 message: "Returns a detailed error message when failed to cascade delete a workspace caused by admins associated."
 type: bugfix
-scope: Core
+scope: Admin API
