@@ -602,6 +602,8 @@ jobs:
     - name: Get latest commit SHA on master
       run: |
         echo "latest_sha=$(git ls-remote origin -h refs/heads/${{ github.event.inputs.default_branch }} | cut -f1)" >> $GITHUB_ENV
+        echo ${{ github.sha }}
+        echo ${{ github.event.pull_request.head.sha }}
 
     - name: Docker meta
       id: meta
