@@ -169,22 +169,6 @@ local function handle_streaming_frame(conf)
 
     local events = ai_shared.frame_to_events(chunk, conf.model.provider)
 
-    -- TODO: DELETE THIS
-    local function dump(o)
-      if type(o) == 'table' then
-        local s = '{ '
-        for k,v in pairs(o) do
-            if type(k) ~= 'number' then k = '"'..k..'"' end
-            s = s .. '['..k..'] = ' .. dump(v) .. ','
-        end
-        return s .. '} '
-      else
-        return tostring(o)
-      end
-    end
-
-    kong.log.warn(dump(events))
-
     if not events then
       -- usually a not-supported-transformer or empty frames.
       -- header_filter has already run, so all we can do is log it,
