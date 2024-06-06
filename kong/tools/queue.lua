@@ -102,18 +102,19 @@ end
 
 local function internal_remaining_capacity(self)
   local remaining_entries = self.max_entries - self:count()
+  local max_bytes = self.max_bytes
 
   -- we enqueue entries one by one,
   -- so it is impossible to have a negative value
   assert(remaining_entries >= 0, "queue should not be over capacity")
 
-  if self.max_bytes == nil then
+  if max_bytes == nil then
     return remaining_entries
   end
 
-  local remaining_bytes = self.max_bytes - self.bytes_queued
+  local remaining_bytes = max_bytes - self.bytes_queued
 
-  -- we check remaining_bytes before enqueuing an entry,
+  -- we check remaining_bytes before enqueueing an entry,
   -- so it is impossible to have a negative value
   assert(remaining_bytes >= 0, "queue should not be over capacity")
 
