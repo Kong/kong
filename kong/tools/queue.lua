@@ -571,11 +571,8 @@ function Queue.enqueue(queue_conf, handler, handler_conf, value)
     "arg #2 (handler) must be a function")
   assert(handler_conf == nil or type(handler_conf) == "table",
     "arg #3 (handler_conf) must be a table or nil")
-
   assert(type(queue_conf.name) == "string",
     "arg #1 (queue_conf) must include a name")
-
-  local max_bytes_type = type(queue_conf.max_bytes)
 
   assert(
     type(queue_conf.max_batch_size) == "number",
@@ -590,10 +587,6 @@ function Queue.enqueue(queue_conf, handler, handler_conf, value)
     "arg #1 (queue_conf) max_entries must be a number"
   )
   assert(
-    max_bytes_type == "nil" or max_bytes_type == "number",
-    "arg #1 (queue_conf) max_bytes must be a number or nil"
-  )
-  assert(
     type(queue_conf.max_retry_time) == "number",
     "arg #1 (queue_conf) max_retry_time must be a number"
   )
@@ -604,6 +597,12 @@ function Queue.enqueue(queue_conf, handler, handler_conf, value)
   assert(
     type(queue_conf.max_retry_delay) == "number",
     "arg #1 (queue_conf) max_retry_delay must be a number"
+  )
+
+  local max_bytes_type = type(queue_conf.max_bytes)
+  assert(
+    max_bytes_type == "nil" or max_bytes_type == "number",
+    "arg #1 (queue_conf) max_bytes must be a number or nil"
   )
 
   local queue = get_or_create_queue(queue_conf, handler, handler_conf)
