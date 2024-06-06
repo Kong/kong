@@ -16,6 +16,8 @@ local VIA_HEADER = constants.HEADERS.VIA
 local VIA_HEADER_VALUE = meta._NAME .. "/" .. meta._VERSION
 
 local request_util = require "kong.plugins.aws-lambda.request-util"
+local AWS_Stream = require("kong.plugins.aws-lambda.aws_stream")
+local invokeWithResponseStream = require "kong.plugins.aws-lambda.execute"
 local build_request_payload = request_util.build_request_payload
 local extract_proxy_response = request_util.extract_proxy_response
 
@@ -69,6 +71,173 @@ local AWSLambdaHandler = {
   VERSION = meta.version
 }
 
+
+local function invoke_buffered(conf, lambda_service)
+  -- TRACING: set KONG_WAITING_TIME start
+  local kong_wait_time_start = get_now()
+
+  local res, err = lambda_service:invoke({
+    FunctionName = conf.function_name,
+    InvocationType = conf.invocation_type,
+    LogType = conf.log_type,
+    Payload = build_request_payload(conf),
+    Qualifier = conf.qualifier,
+  })
+  if err then
+    return error(err)
+  end
+
+  local content = res.body
+  if res.status >= 400 then
+    return error(content.Message)
+  end
+
+  -- TRACING: set KONG_WAITING_TIME stop
+  local ctx = ngx.ctx
+  -- setting the latency here is a bit tricky, but because we are not
+  -- actually proxying, it will not be overwritten
+  ctx.KONG_WAITING_TIME = get_now() - kong_wait_time_start
+
+  local headers = res.headers
+
+  -- Remove Content-Length header returned by Lambda service,
+  -- to make sure returned response length will be correctly calculated
+  -- afterwards.
+  headers["Content-Length"] = nil
+  -- We're responding with the header returned from Lambda service
+  -- Remove hop-by-hop headers to prevent it from being sent to client
+  if ngx_var.http2 then
+    headers["Connection"] = nil
+    headers["Keep-Alive"] = nil
+    headers["Proxy-Connection"] = nil
+    headers["Upgrade"] = nil
+    headers["Transfer-Encoding"] = nil
+  end
+
+  local status
+  if conf.is_proxy_integration then
+    local proxy_response, err = extract_proxy_response(content)
+    if not proxy_response then
+      kong.log.err(err)
+      return kong.response.exit(502, { message = "Bad Gateway",
+                                       error = "could not JSON decode Lambda " ..
+                                         "function response: " .. err })
+    end
+
+    status = proxy_response.status_code
+    headers = kong.table.merge(headers, proxy_response.headers)
+    content = proxy_response.body
+  end
+
+  if not status then
+    if conf.unhandled_status
+      and headers["X-Amz-Function-Error"] == "Unhandled"
+    then
+      status = conf.unhandled_status
+
+    else
+      status = res.status
+    end
+  end
+
+  headers = kong.table.merge(headers) -- create a copy of headers
+
+  if kong.configuration.enabled_headers[VIA_HEADER] then
+    headers[VIA_HEADER] = VIA_HEADER_VALUE
+  end
+
+  return kong.response.exit(status, content, headers)
+end
+
+local function invoke_streaming(conf, lambda_service)
+  -- TRACING: set KONG_WAITING_TIME start
+  local kong_wait_time_start = get_now()
+
+  local res, err = invokeWithResponseStream(lambda_service, {
+    FunctionName = conf.function_name,
+    InvocationType = conf.invocation_type,
+    LogType = conf.log_type,
+    Payload = build_request_payload(conf),
+    Qualifier = conf.qualifier,
+  })
+  if err or res == nil then
+    -- print("error" .. err)
+    return error(err)
+  end
+
+  local headers = res.headers
+  -- We're responding with the header returned from Lambda service
+  -- Remove hop-by-hop headers to prevent it from being sent to client
+  if ngx_var.http2 then
+    headers["Connection"] = nil
+    headers["Keep-Alive"] = nil
+    headers["Proxy-Connection"] = nil
+    headers["Upgrade"] = nil
+    headers["Transfer-Encoding"] = nil
+  end
+  headers = kong.table.merge(headers) -- create a copy of headers
+  if kong.configuration.enabled_headers[VIA_HEADER] then
+    headers[VIA_HEADER] = VIA_HEADER_VALUE
+  end
+
+  ngx.status = res.status
+  -- print("status" .. ngx.status)
+  for k, v in pairs(headers) do
+    ngx.header[k] = v
+    print("Header [" .. k .. "] = " .. v)
+  end
+
+  if ngx.status > 400 then
+    return error(res.body.Message)
+  end
+
+  -- read from the body stream
+  local reader = res.body_reader
+  local buffer_size = 8192
+  repeat
+    local chunk, err = reader(buffer_size)
+    if err then
+      return error(err)
+    end
+
+    if chunk then
+      -- the chunk is in `application/vnd.amazon.eventstream` formatted
+      -- which is a binary format, we need to parse it
+      local parser, err = AWS_Stream:new(chunk, false)
+      if err or parser == nil then
+        -- print("ERROR: ", err)
+        return error(err)
+      end
+      
+      while true do
+        local msg = parser:next_message()
+      
+        if not msg then
+          break
+        end
+      
+        -- print(require("pl.pretty").write(msg))
+        for _, header in ipairs(msg.headers) do
+          if header.key == ":event-type" and header.value == "PayloadChunk" then
+            -- print(msg.body)
+            ngx.print(msg.body)
+            ngx.flush(true)
+            -- TODO: identify `application/vnd.awslambda.http-integration-response` just like Lambda Function URL
+          end
+        end
+      end
+    end
+  until not chunk
+
+  -- TRACING: set KONG_WAITING_TIME stop
+  local ctx = ngx.ctx
+  -- setting the latency here is a bit tricky, but because we are not
+  -- actually proxying, it will not be overwritten
+  ctx.KONG_WAITING_TIME = get_now() - kong_wait_time_start
+
+  ngx.eof()
+  ngx.exit(ngx.OK)
+end
 
 function AWSLambdaHandler:access(conf)
   if initialize then
@@ -162,83 +331,13 @@ function AWSLambdaHandler:access(conf)
     LAMBDA_SERVICE_CACHE:set(cache_key, lambda_service)
   end
 
-  local upstream_body_json = build_request_payload(conf)
-
-  -- TRACING: set KONG_WAITING_TIME start
-  local kong_wait_time_start = get_now()
-
-  local res, err = lambda_service:invoke({
-    FunctionName = conf.function_name,
-    InvocationType = conf.invocation_type,
-    LogType = conf.log_type,
-    Payload = upstream_body_json,
-    Qualifier = conf.qualifier,
-  })
-
-  if err then
-    return error(err)
+  if conf.invoke_mode == "BUFFERED" then
+    return invoke_buffered(conf, lambda_service)
+  elseif conf.invoke_mode == "RESPONSE_STREAM" then
+    return invoke_streaming(conf, lambda_service)
+  else
+    return error(fmt("invalid invoke mode (%s)", conf.invoke_mode))
   end
-
-  local content = res.body
-  if res.status >= 400 then
-    return error(content.Message)
-  end
-
-  -- TRACING: set KONG_WAITING_TIME stop
-  local ctx = ngx.ctx
-  -- setting the latency here is a bit tricky, but because we are not
-  -- actually proxying, it will not be overwritten
-  ctx.KONG_WAITING_TIME = get_now() - kong_wait_time_start
-
-  local headers = res.headers
-
-  -- Remove Content-Length header returned by Lambda service,
-  -- to make sure returned response length will be correctly calculated
-  -- afterwards.
-  headers["Content-Length"] = nil
-  -- We're responding with the header returned from Lambda service
-  -- Remove hop-by-hop headers to prevent it from being sent to client
-  if ngx_var.http2 then
-    headers["Connection"] = nil
-    headers["Keep-Alive"] = nil
-    headers["Proxy-Connection"] = nil
-    headers["Upgrade"] = nil
-    headers["Transfer-Encoding"] = nil
-  end
-
-  local status
-  if conf.is_proxy_integration then
-    local proxy_response, err = extract_proxy_response(content)
-    if not proxy_response then
-      kong.log.err(err)
-      return kong.response.exit(502, { message = "Bad Gateway",
-                                       error = "could not JSON decode Lambda " ..
-                                         "function response: " .. err })
-    end
-
-    status = proxy_response.status_code
-    headers = kong.table.merge(headers, proxy_response.headers)
-    content = proxy_response.body
-  end
-
-  if not status then
-    if conf.unhandled_status
-      and headers["X-Amz-Function-Error"] == "Unhandled"
-    then
-      status = conf.unhandled_status
-
-    else
-      status = res.status
-    end
-  end
-
-  headers = kong.table.merge(headers) -- create a copy of headers
-
-  if kong.configuration.enabled_headers[VIA_HEADER] then
-    headers[VIA_HEADER] = VIA_HEADER_VALUE
-  end
-
-  return kong.response.exit(status, content, headers)
 end
 
 
