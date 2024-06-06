@@ -60,14 +60,6 @@ _M.streaming_has_token_counts = {
   ["bedrock"] = true,
 }
 
-_M.bedrock_unsupported_system_role_patterns = {
-  "amazon.titan.-.*",
-  "cohere.command.-text.-.*",
-  "cohere.command.-light.-text.-.*",
-  "mistral.mistral.-7b.-instruct.-.*",
-  "mistral.mixtral.-8x7b.-instruct.-.*",
-}
-
 _M.upstream_url_format = {
   openai = fmt("%s://api.openai.com:%s", (openai_override and "http") or "https", (openai_override) or "443"),
   anthropic = "https://api.anthropic.com:443",
