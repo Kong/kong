@@ -158,7 +158,10 @@ function Stream:next_message()
     local header_value, header_value_len = _HEADER_EXTRACTORS[header_type](self)
     headers_bytes_read = header_value_len + headers_bytes_read
 
-    headers[header_key] = header_value
+    headers[#headers+1] = {
+      key = header_key,
+      value = header_value,
+    }
   end
 
   -- finally, extract the body as a string by
