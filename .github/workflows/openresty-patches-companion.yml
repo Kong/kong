@@ -6,7 +6,7 @@ on:
 
 jobs:
   create-pr:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Dispatch the workflow
         if: ${{ github.repository_owner == 'Kong' }}

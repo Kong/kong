@@ -9,7 +9,7 @@ permissions:
 jobs:
   backport:
     name: Backport
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event.pull_request.merged
     steps:
       - uses: actions/checkout@v4

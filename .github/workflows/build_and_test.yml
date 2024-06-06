@@ -43,7 +43,7 @@ jobs:
 
   lint-and-doc-tests:
     name: Lint and Doc tests
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs: build
 
     steps:
@@ -92,7 +92,7 @@ jobs:
 
   schedule:
     name: Schedule busted tests to run
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs: build
 
     env:
@@ -136,7 +136,7 @@ jobs:
 
   busted-tests:
     name: Busted test runner ${{ matrix.runner }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs: [build,schedule]
 
     strategy:
@@ -329,7 +329,7 @@ jobs:
 
   pdk-tests:
     name: PDK tests
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs: build
 
     steps:
@@ -390,7 +390,7 @@ jobs:
     needs: [lint-and-doc-tests,pdk-tests,busted-tests]
     name: Cleanup and Luacov stats aggregator
     if: ${{ always() && (inputs.coverage == true || github.event_name == 'schedule') }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Checkout source code
