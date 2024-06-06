@@ -130,9 +130,7 @@ do
       str = str:gsub("+", char(rand(65, 90)))  -- A - Z
     end
 
-    if str:find("=", 1, true) then
-      str = str:gsub("=", char(rand(97, 122))) -- a - z
-    end
+    -- no gsub for "=" since no padding
 
     return str
   end
