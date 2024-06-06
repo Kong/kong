@@ -200,7 +200,7 @@ local function invoke_streaming(conf, lambda_service)
   -- print("status" .. ngx.status)
   for k, v in pairs(headers) do
     ngx.header[k] = v
-    print("Header [" .. k .. "] = " .. v)
+    -- print("Header [" .. k .. "] = " .. v)
   end
 
   if ngx.status > 400 then
