@@ -10,15 +10,17 @@
 -- @module kong.log
 
 
-local buffer = require "string.buffer"
-local errlog = require "ngx.errlog"
-local ngx_re = require "ngx.re"
-local inspect = require "inspect"
-local ngx_ssl = require "ngx.ssl"
-local phase_checker = require "kong.pdk.private.phases"
+local buffer = require("string.buffer")
+local errlog = require("ngx.errlog")
+local ngx_re = require("ngx.re")
+local inspect = require("inspect")
+local phase_checker = require("kong.pdk.private.phases")
+local constants = require("kong.constants")
+
+local request_id_get = require("kong.tracing.request_id").get
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
-local constants = require "kong.constants"
-local workspace = require "kong.workspaces"
+local get_tls1_version_str = require("ngx.ssl").get_tls1_version_str
+local get_workspace_name = require("kong.workspaces").get_workspace_name
 
 local sub = string.sub
 local type = type
@@ -38,7 +40,6 @@ local kong = kong
 local check_phase = phase_checker.check
 local split = require("kong.tools.string").split
 local byte = string.byte
-local request_id_get = require "kong.tracing.request_id".get
 
 
 local EMPTY_TAB  = require("pl.tablex").readonly({})
@@ -716,7 +717,7 @@ do
 
   local function build_tls_info(var, override)
     local tls_info
-    local tls_info_ver = ngx_ssl.get_tls1_version_str()
+    local tls_info_ver = get_tls1_version_str()
     if tls_info_ver then
       tls_info = {
         version = tls_info_ver,
@@ -861,7 +862,7 @@ do
         source = response_source_name,
 
         workspace = ctx.workspace,
-        workspace_name = workspace.get_workspace_name(),
+        workspace_name = get_workspace_name(),
       }
 
       return edit_result(ctx, root)
@@ -905,7 +906,7 @@ do
         started_at = okong.request.get_start_time(),
 
         workspace = ctx.workspace,
-        workspace_name = workspace.get_workspace_name(),
+        workspace_name = get_workspace_name(),
       }
 
       return edit_result(ctx, root)
