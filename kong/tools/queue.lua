@@ -542,8 +542,8 @@ local function enqueue(self, entry)
   -- It's better to crash early than leak memory
   -- as analyze memory leak is hard.
   assert(
-    -- bracing the function call to get the first return value only
-    internal_is_full(self) == false,
+    -- assert that enough space is available on the queue now
+    internal_can_enqueue(self, entry) == false,
     "queue should not be full after dropping entries"
   )
 
