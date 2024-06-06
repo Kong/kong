@@ -2,6 +2,19 @@ local typedefs = require("kong.db.schema.typedefs")
 local fmt = string.format
 
 
+local bedrock_options_schema = {
+  type = "record",
+  required = false,
+  fields = {
+    { aws_region = {
+      description = "If using AWS providers (Bedrock) you can override the `AWS_REGION` " ..
+                    "environment variable by setting this option.",
+      type = "string",
+      required = false }},
+  },
+}
+
+
 local gemini_options_schema = {
   type = "record",
   required = false,
@@ -158,6 +171,7 @@ local model_options_schema = {
         type = "string",
         required = false }},
     { gemini = gemini_options_schema },
+    { bedrock = bedrock_options_schema },
   }
 }
 
