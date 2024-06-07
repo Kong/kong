@@ -71,6 +71,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
 
   for _, request_type in ipairs({"chat", "completions"}) do
+
     describe(request_type .. " operations", function()
       it("allows a user request when nothing is set", function()
         -- deny_pattern in this case should be made to have no effect
@@ -82,7 +83,13 @@ describe(PLUGIN_NAME .. ": (unit)", function()
         assert.is_nil(err)
       end)
 
+      -- only chat has history
+      -- match_all_roles require history
       for _, has_history in ipairs({false, request_type == "chat" and true or nil}) do
+      for _, match_all_roles in ipairs({false, has_history and true or nil}) do
+
+        -- we only have user or not user, so testing "assistant" is not necessary
+        local role = match_all_roles and "system" or "user"
 
         describe("conf.allow_patterns is set", function()
           for _, has_deny_patterns in ipairs({true, false}) do
@@ -92,7 +99,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
             it("allows a matching user request" .. test_description, function()
               -- deny_pattern in this case should be made to have no effect
-              local ctx = create_request(request_type):append_message("user", "pattern")
+              local ctx = create_request(request_type):append_message(role, "pattern")
 
               if has_history then
                 ctx:append_message("user", "no match")
@@ -103,6 +110,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
                 },
                 deny_patterns = has_deny_patterns and {"deny match"} or nil,
                 allow_all_conversation_history = not has_history,
+                match_all_roles = match_all_roles,
               })
 
               assert.is_truthy(ok)
@@ -117,7 +125,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
                 ctx:append_message("user", "no match")
               else
                 -- if we are ignoring history, actually put a matched message in history to test edge case
-                ctx:append_message("user", "pattern"):append_message("user", "no match")
+                ctx:append_message(role, "pattern"):append_message("user", "no match")
               end
 
               local ok, err = access_handler._execute(ctx, {
@@ -126,6 +134,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
                 },
                 deny_patterns = has_deny_patterns and {"deny match"} or nil,
                 allow_all_conversation_history = not has_history,
+                match_all_roles = match_all_roles,
               })
 
               assert.is_falsy(ok)
@@ -143,7 +152,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
             it("denies a matching user request" .. test_description, function()
               -- allow_pattern in this case should be made to have no effect
-              local ctx = create_request(request_type):append_message("user", "pattern")
+              local ctx = create_request(request_type):append_message(role, "pattern")
 
               if has_history then
                 ctx:append_message("user", "no match")
@@ -162,13 +171,13 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
             it("allows unmatched user request" .. test_description, function()
               -- allow_pattern in this case should be made to have no effect
-              local ctx = create_request(request_type):append_message("user", "allow match")
+              local ctx = create_request(request_type):append_message(role, "allow match")
 
               if has_history then
                 ctx:append_message("user", "no match")
               else
                 -- if we are ignoring history, actually put a matched message in history to test edge case
-                ctx:append_message("user", "pattern"):append_message("user", "allow match")
+                ctx:append_message(role, "pattern"):append_message(role, "allow match")
               end
 
               local ok, err = access_handler._execute(ctx, {
@@ -185,6 +194,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
           end -- for for _, has_allow_patterns in ipairs({true, false}) do
         end)
 
+      end -- for _, match_all_role in ipairs(false, true)) do
       end -- for _, has_history in ipairs({true, false}) do
     end)
   end --   for _, request_type in ipairs({"chat", "completions"}) do

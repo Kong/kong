@@ -44,7 +44,7 @@ local execute do
         if type(v.role) ~= "string" then
           return nil, bad_format_error
         end
-        if v.role == "user" then
+        if v.role == "user" or conf.match_all_roles then
           if type(v.content) ~= "string" then
             return nil, bad_format_error
           end
