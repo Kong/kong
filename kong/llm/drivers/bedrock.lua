@@ -412,6 +412,9 @@ function _M.configure_request(conf, aws_sdk)
 
   local signature = signer(aws_sdk.config, r)
 
+  if not signature then
+    return nil, "failed to sign AWS request"
+  end
   kong.service.request.set_header("Authorization", signature.headers["Authorization"])
   if signature.headers["X-Amz-Security-Token"] then 
     kong.service.request.set_header("X-Amz-Security-Token", signature.headers["X-Amz-Security-Token"])
