@@ -14,6 +14,7 @@ local pl_stringx = require "pl.stringx"
 local socket_url = require "socket.url"
 local conf_constants = require "kong.conf_loader.constants"
 local listeners = require "kong.conf_loader.listeners"
+local conf_sys = require "kong.conf_loader.sys"
 local conf_parse = require "kong.conf_loader.parse"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local pl_pretty = require "pl.pretty"
@@ -24,7 +25,6 @@ local tablex = require "pl.tablex"
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local log = require "kong.cmd.utils.log"
 local env = require "kong.cmd.utils.env"
-local ffi = require "ffi"
 
 local ee_conf_loader = require "kong.enterprise_edition.conf_loader"
 
@@ -43,21 +43,16 @@ local unpack = unpack
 local ipairs = ipairs
 local insert = table.insert
 local remove = table.remove
-local getenv = os.getenv
 local exists = pl_path.exists
 local abspath = pl_path.abspath
 local tostring = tostring
 local setmetatable = setmetatable
 
 
-local C = ffi.C
-
-
-ffi.cdef([[
-  struct group *getgrnam(const char *name);
-  struct passwd *getpwnam(const char *name);
-  int unsetenv(const char *name);
-]])
+local getgrnam = conf_sys.getgrnam
+local getpwnam = conf_sys.getpwnam
+local getenv   = conf_sys.getenv
+local unsetenv = conf_sys.unsetenv
 
 
 local get_phase = conf_parse.get_phase
@@ -410,7 +405,7 @@ local function load(path, custom_conf, opts)
     if get_phase() == "init" then
       local secrets = getenv("KONG_PROCESS_SECRETS")
       if secrets then
-        C.unsetenv("KONG_PROCESS_SECRETS")
+        unsetenv("KONG_PROCESS_SECRETS")
 
       else
         local path = pl_path.join(abspath(ngx.config.prefix()), unpack(conf_constants.PREFIX_PATHS.kong_process_secrets))
@@ -545,7 +540,7 @@ local function load(path, custom_conf, opts)
     end
   end
 
-  if C.getpwnam("kong") == nil or C.getgrnam("kong") == nil then
+  if getpwnam("kong") == nil or getgrnam("kong") == nil then
     if default_nginx_main_user == true and default_nginx_user == true then
       conf.nginx_user = nil
       conf.nginx_main_user = nil
