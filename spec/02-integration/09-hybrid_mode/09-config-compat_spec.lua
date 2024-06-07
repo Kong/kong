@@ -649,6 +649,30 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         -- cleanup
         admin.plugins:remove({ id = ai_response_transformer.id })
       end)
+
+      it("[ai-prompt-guard] sets unsupported match_all_roles to nil or defaults", function()
+        -- [[ 3.8.x ]] --
+        local ai_prompt_guard = admin.plugins:insert {
+          name = "ai-prompt-guard",
+          enabled = true,
+          config = {
+            allow_patterns = { "a" },
+            allow_all_conversation_history = false,
+            match_all_roles = true,
+            max_request_body_size = 8192,
+          },
+        }
+        -- ]]
+
+        local expected = cycle_aware_deep_copy(ai_prompt_guard)
+        expected.config.match_all_roles = nil
+        expected.config.max_request_body_size = nil
+
+        do_assert(uuid(), "3.7.0", expected)
+
+        -- cleanup
+        admin.plugins:remove({ id = ai_prompt_guard.id })
+      end)
     end)
 
     describe("www-authenticate header in plugins (realm config)", function()

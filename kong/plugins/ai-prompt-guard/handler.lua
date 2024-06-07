@@ -26,6 +26,7 @@ local execute do
   -- @tparam table request The deserialized JSON body of the request
   -- @tparam table conf The plugin configuration
   -- @treturn[1] table The decorated request (same table, content updated)
+  -- @treturn[2] nil
   -- @treturn[2] string The error message
   function execute(request, conf)
     local collected_prompts
@@ -44,7 +45,7 @@ local execute do
         if type(v.role) ~= "string" then
           return nil, bad_format_error
         end
-        if v.role == "user" then
+        if v.role == "user" or conf.match_all_roles then
           if type(v.content) ~= "string" then
             return nil, bad_format_error
           end

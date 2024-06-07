@@ -174,6 +174,7 @@ return {
       "max_request_body_size",
     },
     ai_prompt_guard = {
+      "match_all_roles",
       "max_request_body_size",
     },
     ai_prompt_template = {
