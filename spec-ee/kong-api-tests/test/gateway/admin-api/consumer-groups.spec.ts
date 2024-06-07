@@ -88,6 +88,7 @@ describe('@gke: Gateway Consumer Groups with RLA', function () {
     assertConsumergroupResponse(resp.data, consumerGroup1Name);
 
     consumerGroup1 = { id: resp.data.id, name: consumerGroup1Name };
+    await waitForConfigRebuild()
   });
 
   it('should see the consumer group 1 in groups list', async function () {
@@ -183,19 +184,22 @@ describe('@gke: Gateway Consumer Groups with RLA', function () {
   });
 
   it('should not add consumer 1 to consumer group 1 2nd time', async function () {
-    const resp = await postNegative(`${url}/${consumerGroup1.name}/consumers`, {
+    const req = () => postNegative(`${url}/${consumerGroup1.name}/consumers`, {
       consumer: consumer1.username,
     });
-    logResponse(resp);
 
-    expect(resp.status, 'Status should be 409').to.equal(409);
-    expect(resp.data.message, 'Should have correct error message').to.eq(
-      `Consumer '${consumer1.username}' already in group '${consumerGroup1.id}'`
-    );
+    const assertions = (resp) => {
+      expect(resp.status, 'Status should be 409').to.equal(409);
+      expect(resp.data.message, 'Should have correct error message').to.eq(
+        `Consumer '${consumer1.username}' already in group '${consumerGroup1.id}'`
+      );
+    };
+
+    await retryRequest(req, assertions);
   });
 
   it('should define settings for consumer group 1', async function () {
-    const resp = await axios({
+    const req = () => axios({
       method: 'put',
       url: `${url}/${consumerGroup1.name}/overrides/plugins/rate-limiting-advanced`,
       data: {
@@ -205,23 +209,26 @@ describe('@gke: Gateway Consumer Groups with RLA', function () {
         },
       },
     });
-    logResponse(resp);
 
-    expect(resp.status, 'Status should be 201').to.equal(201);
-    expect(resp.data.plugin, 'Should have correct plugin name').to.eq(
-      'rate-limiting-advanced'
-    );
-    expect(
-      resp.data.consumer_group,
-      'Should have correct consumer group name'
-    ).to.eq(consumerGroup1.name);
-    expect(resp.data.config.limit, 'Should have correct limit').to.be.equalTo([
-      2,
-    ]);
-    expect(
-      resp.data.config.window_size,
-      'Should have correct window_size'
-    ).to.be.equalTo([5]);
+    const assertions = (resp) => {
+      expect(resp.status, 'Status should be 201').to.equal(201);
+      expect(resp.data.plugin, 'Should have correct plugin name').to.eq(
+        'rate-limiting-advanced'
+      );
+      expect(
+        resp.data.consumer_group,
+        'Should have correct consumer group name'
+      ).to.eq(consumerGroup1.name);
+      expect(resp.data.config.limit, 'Should have correct limit').to.be.equalTo([
+        2,
+      ]);
+      expect(
+        resp.data.config.window_size,
+        'Should have correct window_size'
+      ).to.be.equalTo([5]);
+    };
+
+    await retryRequest(req, assertions);
   });
 
   it('should not define settings for a group without limit', async function () {
@@ -278,21 +285,24 @@ describe('@gke: Gateway Consumer Groups with RLA', function () {
       },
     };
 
-    const resp = await postNegative(
+    const req = () => postNegative(
       `${url}/${consumerGroup1.name}/overrides/plugins/rate-limiting-advanced`,
       data,
       'put'
     );
-    logResponse(resp);
 
-    expect(resp.status, 'Status should be 400').to.equal(400);
-    expect(resp.data.message, 'Should have correct error message').to.contain(
-      'You must provide the same number of windows and limits'
-    );
-    expect(
-      resp.data.fields['@entity'][0],
-      'Should have limit in error'
-    ).to.equal('You must provide the same number of windows and limits');
+    const assertions = (resp) => {
+      expect(resp.status, 'Status should be 400').to.equal(400);
+      expect(resp.data.message, 'Should have correct error message').to.contain(
+        'You must provide the same number of windows and limits'
+      );
+      expect(
+        resp.data.fields['@entity'][0],
+        'Should have limit in error'
+      ).to.equal('You must provide the same number of windows and limits');
+    };
+
+    await retryRequest(req, assertions);
   });
 
   it('should not define settings for a group with unequal limit and window_size', async function () {
@@ -328,20 +338,23 @@ describe('@gke: Gateway Consumer Groups with RLA', function () {
       },
     };
 
-    const resp = await postNegative(
+    const req = () => postNegative(
       `${url}/${consumerGroup1.name}/overrides/plugins/rate-limiting-advanced`,
       data,
       'put'
     );
-    logResponse(resp);
 
-    expect(resp.status, 'Status should be 400').to.equal(400);
-    expect(resp.data.message, 'Should have correct error message').to.contain(
-      'config.limit: expected an array'
-    );
-    expect(resp.data.fields.config.limit, 'Should have limit error').to.equal(
-      'expected an array'
-    );
+    const assertions = (resp) => {
+      expect(resp.status, 'Status should be 400').to.equal(400);
+      expect(resp.data.message, 'Should have correct error message').to.contain(
+        'config.limit: expected an array'
+      );
+      expect(resp.data.fields.config.limit, 'Should have limit error').to.equal(
+        'expected an array'
+      );
+    };
+
+    await retryRequest(req, assertions);
   });
 
   it('should not define settings for a group with non-array window_size', async function () {
@@ -457,7 +470,7 @@ describe('@gke: Gateway Consumer Groups with RLA', function () {
   });
 
   it('should define settings for consumer group 1 with jitter_max', async function () {
-    const resp = await axios({
+    const req = () => axios({
       method: 'put',
       url: `${url}/${consumerGroup1.name}/overrides/plugins/rate-limiting-advanced`,
       data: {
@@ -468,27 +481,30 @@ describe('@gke: Gateway Consumer Groups with RLA', function () {
         },
       },
     });
-    logResponse(resp);
 
-    expect(resp.status, 'Status should be 201').to.equal(201);
-    expect(resp.data.plugin, 'Should have correct plugin name').to.eq(
-      'rate-limiting-advanced'
-    );
-    expect(
-      resp.data.consumer_group,
-      'Should have correct consumer group name'
-    ).to.eq(consumerGroup1.name);
-    expect(resp.data.config.limit, 'Should have correct limit').to.be.equalTo([
-      25, 15,
-    ]);
-    expect(
-      resp.data.config.window_size,
-      'Should have correct window_size'
-    ).to.be.equalTo([55, 25]);
-    expect(
-      resp.data.config.retry_after_jitter_max,
-      'Should have correct jitter_max'
-    ).to.eq(10);
+    const assertions = (resp) => {
+      expect(resp.status, 'Status should be 201').to.equal(201);
+      expect(resp.data.plugin, 'Should have correct plugin name').to.eq(
+        'rate-limiting-advanced'
+      );
+      expect(
+        resp.data.consumer_group,
+        'Should have correct consumer group name'
+      ).to.eq(consumerGroup1.name);
+      expect(resp.data.config.limit, 'Should have correct limit').to.be.equalTo([
+        25, 15,
+      ]);
+      expect(
+        resp.data.config.window_size,
+        'Should have correct window_size'
+      ).to.be.equalTo([55, 25]);
+      expect(
+        resp.data.config.retry_after_jitter_max,
+        'Should have correct jitter_max'
+      ).to.eq(10);
+    };
+
+    await retryRequest(req, assertions);
   });
 
   it('should create a consumer group 2', async function () {
@@ -792,11 +808,13 @@ describe('@gke: Gateway Consumer Groups with RLA', function () {
   });
 
   it('should see no consumers in consumers list of consumer group 2', async function () {
-    const resp = await axios(`${url}/${consumerGroup2.id}/consumers`);
-    logResponse(resp);
+    const req = () => axios(`${url}/${consumerGroup2.id}/consumers`);
+    const assertions = (resp) => {
+      expect(resp.status, 'Status should be 200').to.equal(200);
+      expect(resp.data.data, 'Should have empty data in response').to.be.empty;
+    };
 
-    expect(resp.status, 'Status should be 200').to.equal(200);
-    expect(resp.data.data, 'Should have empty data in response').to.be.empty;
+    await retryRequest(req, assertions);
   });
 
   it('should not delete non existing consumer from consumer group 2 using groups endpoint', async function () {
@@ -819,50 +837,54 @@ describe('@gke: Gateway Consumer Groups with RLA', function () {
       `/consumers/${consumer1.username}/consumer_groups`
     );
 
-    const resp = await axios({
+    const req = () => axios({
       method: 'post',
       url: consumerUrl,
       data: {
         group: [consumerGroup1.name, consumerGroup2.id],
       },
     });
-    logResponse(resp);
-
-    expect(resp.status, 'Status should be 201').to.equal(201);
-    expect(
-      resp.data.consumer_groups,
-      'Should see 1 consumer group in the list'
-    ).to.be.ofSize(2);
-
-    for (const consumerGroup of resp.data.consumer_groups) {
-      if (consumerGroup.id === consumerGroup1.id) {
-        expect(consumerGroup.name).to.eq(consumerGroup1.name);
-      } else if (consumerGroup.id === consumerGroup2.id) {
-        expect(consumerGroup.name).to.eq(consumerGroup2.name);
-      } else {
-        throw new Error(
-          `Consumer group name for ${JSON.stringify(
-            consumerGroup
-          )} was not found in the response`
-        );
+  
+    const assertions = (resp) => {
+      expect(resp.status, 'Status should be 201').to.equal(201);
+      expect(
+        resp.data.consumer_groups,
+        'Should see 1 consumer group in the list'
+      ).to.be.ofSize(2);
+  
+      for (const consumerGroup of resp.data.consumer_groups) {
+        if (consumerGroup.id === consumerGroup1.id) {
+          expect(consumerGroup.name).to.eq(consumerGroup1.name);
+        } else if (consumerGroup.id === consumerGroup2.id) {
+          expect(consumerGroup.name).to.eq(consumerGroup2.name);
+        } else {
+          throw new Error(
+            `Consumer group name for ${JSON.stringify(
+              consumerGroup
+            )} was not found in the response`
+          );
+        }
       }
-    }
+  
+      expect(resp.data.consumer.username, 'Should have correct username').to.eq(
+        consumer1.username
+      );
+      expect(
+        resp.data.consumer.username_lower,
+        'Should have correct username_lower'
+      ).to.eq(consumer1.username_lower);
+      expect(resp.data.consumer.id, 'Should have correct consumer id').to.eq(
+        consumer1.id
+      );
+      expect(resp.data.consumer.created_at, 'Should have created_at').to.be.a(
+        'number'
+      );
+      expect(resp.data.consumer.custom_id, 'Should have custom_id null').to.be
+        .null;
+  
+    };
 
-    expect(resp.data.consumer.username, 'Should have correct username').to.eq(
-      consumer1.username
-    );
-    expect(
-      resp.data.consumer.username_lower,
-      'Should have correct username_lower'
-    ).to.eq(consumer1.username_lower);
-    expect(resp.data.consumer.id, 'Should have correct consumer id').to.eq(
-      consumer1.id
-    );
-    expect(resp.data.consumer.created_at, 'Should have created_at').to.be.a(
-      'number'
-    );
-    expect(resp.data.consumer.custom_id, 'Should have custom_id null').to.be
-      .null;
+    await retryRequest(req, assertions);
   });
 
   it('should not add the consumer 1 to non-existing group', async function () {
@@ -871,15 +893,17 @@ describe('@gke: Gateway Consumer Groups with RLA', function () {
       `/consumers/${consumer1.username}/consumer_groups`
     );
 
-    const resp = await postNegative(consumerUrl, {
+    const req = () => postNegative(consumerUrl, {
       group: ['non-existing-group'],
     });
-    logResponse(resp);
+    const assertions = (resp) => {
+      expect(resp.status, 'Status should be 404').to.equal(404);
+      expect(resp.data.message, 'Should have correct error message').to.equal(
+        "Group 'non-existing-group' not found"
+      );
+    };
 
-    expect(resp.status, 'Status should be 404').to.equal(404);
-    expect(resp.data.message, 'Should have correct error message').to.equal(
-      "Group 'non-existing-group' not found"
-    );
+    await retryRequest(req, assertions);
   });
 
   it('should delete the consumer group 1 by id', async function () {
