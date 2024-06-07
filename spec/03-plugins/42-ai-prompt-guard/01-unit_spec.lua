@@ -7,120 +7,58 @@
 
 local PLUGIN_NAME = "ai-prompt-guard"
 
+local message_fixtures = {
+  user = "this is a user request",
+  system = "this is a system message",
+  assistant = "this is an assistant reply",
+}
 
-
-local general_chat_request = {
-  messages = {
-    [1] = {
+local _M = {}
+local function create_request(typ)
+  local messages = {
+    {
       role = "system",
-      content = "You are a mathematician."
-    },
-    [2] = {
-      role = "user",
-      content = "What is 1 + 1?"
-    },
-  },
-}
+      content = message_fixtures.system,
+    }
+  }
 
-local general_chat_request_with_history = {
-  messages = {
-    [1] = {
-      role = "system",
-      content = "You are a mathematician."
-    },
-    [2] = {
-      role = "user",
-      content = "What is 12 + 1?"
-    },
-    [3] = {
-      role = "assistant",
-      content = "The answer is 13.",
-    },
-    [4] = {
-      role = "user",
-      content = "Now double the previous answer.",
-    },
-  },
-}
+  if typ ~= "chat" and typ ~= "completions" then
+    error("type must be one of 'chat' or 'completions'", 2)
+  end
+  
+  return setmetatable({
+    messages = messages,
+    type = typ,
+  }, {
+    __index = _M,
+  })
+end
 
-local denied_chat_request = {
-  messages = {
-    [1] = {
-      role = "system",
-      content = "You are a mathematician."
-    },
-    [2] = {
-      role = "user",
-      content = "What is 22 + 1?"
-    },
-  },
-}
+function _M:append_message(role, custom)
+  if not message_fixtures[role] then
+    assert("role must be one of: user, system or assistant")
+  end
 
-local neither_allowed_nor_denied_chat_request = {
-  messages = {
-    [1] = {
-      role = "system",
-      content = "You are a mathematician."
-    },
-    [2] = {
-      role = "user",
-      content = "What is 55 + 55?"
-    },
-  },
-}
+  if self.type == "completion" then
+    self.prompt = "this is a completions request"
+    if custom then
+      self.prompt = self.prompt .. " with custom content " .. custom
+    end
+    return
+  end
 
+  local message = message_fixtures[role]
+  if custom then
+    message = message .. " with custom content " .. custom
+  end
 
-local general_completions_request = {
-  prompt = "You are a mathematician. What is 1 + 1?"
-}
+  self.messages[#self.messages+1] = {
+    role = "user",
+    content = message
+  }
 
-
-local denied_completions_request = {
-  prompt = "You are a mathematician. What is 22 + 1?"
-}
-
-local neither_allowed_nor_denied_completions_request = {
-  prompt = "You are a mathematician. What is 55 + 55?"
-}
-
-local allow_patterns_no_history = {
-  allow_patterns = {
-    [1] = ".*1 \\+ 1.*"
-  },
-  allow_all_conversation_history = true,
-}
-
-local allow_patterns_with_history = {
-  allow_patterns = {
-    [1] = ".*1 \\+ 1.*"
-  },
-  allow_all_conversation_history = false,
-}
-
-local deny_patterns_with_history = {
-  deny_patterns = {
-    [1] = ".*12 \\+ 1.*"
-  },
-  allow_all_conversation_history = false,
-}
-
-local deny_patterns_no_history = {
-  deny_patterns = {
-    [1] = ".*22 \\+ 1.*"
-  },
-  allow_all_conversation_history = true,
-}
-
-local both_patterns_no_history = {
-  allow_patterns = {
-    [1] = ".*1 \\+ 1.*"
-  },
-  deny_patterns = {
-    [1] = ".*99 \\+ 99.*"
-  },
-  allow_all_conversation_history = true,
-}
-
+  return self
+end
 
 
 describe(PLUGIN_NAME .. ": (unit)", function()
@@ -139,115 +77,123 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
 
 
-  describe("chat operations", function()
+  for _, request_type in ipairs({"chat", "completions"}) do
+    describe(request_type .. " operations", function()
+      it("allows a user request when nothing is set", function()
+        -- deny_pattern in this case should be made to have no effect
+        local ctx = create_request(request_type):append_message("user", "pattern")
+        local ok, err = access_handler._execute(ctx, {
+        })
 
-    it("allows request when only conf.allow_patterns is set", function()
-      local ok, err = access_handler._execute(general_chat_request, allow_patterns_no_history)
+        assert.is_truthy(ok)
+        assert.is_nil(err)
+      end)
 
-      assert.is_truthy(ok)
-      assert.is_nil(err)
+      for _, has_history in ipairs({false, request_type == "chat" and true or nil}) do
+
+        describe("conf.allow_patterns is set", function()
+          for _, has_deny_patterns in ipairs({true, false}) do
+
+            local test_description = has_history and " in history" or " only the last"
+            test_description = test_description .. (has_deny_patterns and ", conf.deny_patterns is also set" or "")
+
+            it("allows a matching user request" .. test_description, function()
+              -- deny_pattern in this case should be made to have no effect
+              local ctx = create_request(request_type):append_message("user", "pattern")
+
+              if has_history then
+                ctx:append_message("user", "no match")
+              end
+              local ok, err = access_handler._execute(ctx, {
+                allow_patterns = {
+                  "pa..ern"
+                },
+                deny_patterns = has_deny_patterns and {"deny match"} or nil,
+                allow_all_conversation_history = not has_history,
+              })
+
+              assert.is_truthy(ok)
+              assert.is_nil(err)
+            end)
+
+            it("denies an unmatched user request" .. test_description, function()
+              -- deny_pattern in this case should be made to have no effect
+              local ctx = create_request(request_type):append_message("user", "no match")
+
+              if has_history then
+                ctx:append_message("user", "no match")
+              else
+                -- if we are ignoring history, actually put a matched message in history to test edge case
+                ctx:append_message("user", "pattern"):append_message("user", "no match")
+              end
+
+              local ok, err = access_handler._execute(ctx, {
+                allow_patterns = {
+                  "pa..ern"
+                },
+                deny_patterns = has_deny_patterns and {"deny match"} or nil,
+                allow_all_conversation_history = not has_history,
+              })
+
+              assert.is_falsy(ok)
+              assert.equal("prompt doesn't match any allowed pattern", err)
+            end)
+
+          end -- for _, has_deny_patterns in ipairs({true, false}) do
+        end)
+
+        describe("conf.deny_patterns is set", function()
+          for _, has_allow_patterns in ipairs({true, false}) do
+
+            local test_description = has_history and " in history" or " only the last"
+            test_description = test_description .. (has_allow_patterns and ", conf.allow_patterns is also set" or "")
+
+            it("denies a matching user request" .. test_description, function()
+              -- allow_pattern in this case should be made to have no effect
+              local ctx = create_request(request_type):append_message("user", "pattern")
+
+              if has_history then
+                ctx:append_message("user", "no match")
+              end
+              local ok, err = access_handler._execute(ctx, {
+                deny_patterns = {
+                  "pa..ern"
+                },
+                allow_patterns = has_allow_patterns and {"allow match"} or nil,
+                allow_all_conversation_history = not has_history,
+              })
+
+              assert.is_falsy(ok)
+              assert.equal("prompt pattern is blocked", err)
+            end)
+
+            it("allows unmatched user request" .. test_description, function()
+              -- allow_pattern in this case should be made to have no effect
+              local ctx = create_request(request_type):append_message("user", "allow match")
+
+              if has_history then
+                ctx:append_message("user", "no match")
+              else
+                -- if we are ignoring history, actually put a matched message in history to test edge case
+                ctx:append_message("user", "pattern"):append_message("user", "allow match")
+              end
+
+              local ok, err = access_handler._execute(ctx, {
+                deny_patterns = {
+                  "pa..ern"
+                },
+                allow_patterns = has_allow_patterns and {"allow match"} or nil,
+                allow_all_conversation_history = not has_history,
+              })
+
+              assert.is_truthy(ok)
+              assert.is_nil(err)
+            end)
+          end -- for for _, has_allow_patterns in ipairs({true, false}) do
+        end)
+
+      end -- for _, has_history in ipairs({true, false}) do
     end)
-
-
-    it("allows request when only conf.deny_patterns is set, and pattern should not match", function()
-      local ok, err = access_handler._execute(general_chat_request, deny_patterns_no_history)
-
-      assert.is_truthy(ok)
-      assert.is_nil(err)
-    end)
-
-
-    it("denies request when only conf.allow_patterns is set, and pattern should not match", function()
-      local ok, err = access_handler._execute(denied_chat_request, allow_patterns_no_history)
-
-      assert.is_falsy(ok)
-      assert.equal(err, "prompt doesn't match any allowed pattern")
-    end)
-
-
-    it("denies request when only conf.deny_patterns is set, and pattern should match", function()
-      local ok, err = access_handler._execute(denied_chat_request, deny_patterns_no_history)
-
-      assert.is_falsy(ok)
-      assert.equal(err, "prompt pattern is blocked")
-    end)
-
-
-    it("allows request when both conf.allow_patterns and conf.deny_patterns are set, and pattern matches allow", function()
-      local ok, err = access_handler._execute(general_chat_request, both_patterns_no_history)
-
-      assert.is_truthy(ok)
-      assert.is_nil(err)
-    end)
-
-
-    it("denies request when both conf.allow_patterns and conf.deny_patterns are set, and pattern matches neither", function()
-      local ok, err = access_handler._execute(neither_allowed_nor_denied_chat_request, both_patterns_no_history)
-
-      assert.is_falsy(ok)
-      assert.equal(err, "prompt doesn't match any allowed pattern")
-    end)
-
-
-    it("denies request when only conf.allow_patterns is set and previous chat history should not match", function()
-      local ok, err = access_handler._execute(general_chat_request_with_history, allow_patterns_with_history)
-
-      assert.is_falsy(ok)
-      assert.equal(err, "prompt doesn't match any allowed pattern")
-    end)
-
-
-    it("denies request when only conf.deny_patterns is set and previous chat history should match", function()
-      local ok, err = access_handler._execute(general_chat_request_with_history, deny_patterns_with_history)
-
-      assert.is_falsy(ok)
-      assert.equal(err, "prompt pattern is blocked")
-    end)
-
-  end)
-
-
-  describe("completions operations", function()
-
-    it("allows request when only conf.allow_patterns is set", function()
-      local ok, err = access_handler._execute(general_completions_request, allow_patterns_no_history)
-
-      assert.is_truthy(ok)
-      assert.is_nil(err)
-    end)
-
-
-    it("allows request when only conf.deny_patterns is set, and pattern should not match", function()
-      local ok, err = access_handler._execute(general_completions_request, deny_patterns_no_history)
-
-      assert.is_truthy(ok)
-      assert.is_nil(err)
-    end)
-
-
-    it("denies request when only conf.allow_patterns is set, and pattern should not match", function()
-      local ok, err = access_handler._execute(denied_completions_request, allow_patterns_no_history)
-
-      assert.is_falsy(ok)
-      assert.equal(err, "prompt doesn't match any allowed pattern")
-    end)
-
-
-    it("denies request when only conf.deny_patterns is set, and pattern should match", function()
-      local ok, err = access_handler._execute(denied_completions_request, deny_patterns_no_history)
-
-      assert.is_falsy(ok)
-      assert.equal("prompt pattern is blocked", err)
-    end)
-
-
-    it("denies request when both conf.allow_patterns and conf.deny_patterns are set, and pattern matches neither", function()
-      local ok, err = access_handler._execute(neither_allowed_nor_denied_completions_request, both_patterns_no_history)
-
-      assert.is_falsy(ok)
-      assert.equal(err, "prompt doesn't match any allowed pattern")
-    end)
-
-  end)
+  end --   for _, request_type in ipairs({"chat", "completions"}) do
 
 end)
