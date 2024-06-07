@@ -610,7 +610,7 @@ jobs:
         images: ${{ needs.metadata.outputs.docker-repository }}
         sep-tags: " "
         tags: |
-          type=raw,value=latest,enable=${{ matrix.label == 'ubuntu' && github.ref_name == github.event.inputs.default_branch && env.latest_sha == github.event.pull_request.head.sha }}
+          type=raw,value=latest,enable=${{ matrix.label == 'ubuntu' && github.ref_name == github.event.inputs.default_branch && env.latest_sha == needs.metadata.outputs.commit-sha }}
           type=match,enable=${{ github.event_name == 'workflow_dispatch' }},pattern=\d.\d,value=${{ github.event.inputs.version }}
           type=match,enable=${{ github.event_name == 'workflow_dispatch' && matrix.label == 'ubuntu' }},pattern=\d.\d,value=${{ github.event.inputs.version }},suffix=
           type=raw,enable=${{ github.event_name == 'workflow_dispatch' }},${{ github.event.inputs.version }}
