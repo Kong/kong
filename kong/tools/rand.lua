@@ -106,9 +106,13 @@ _M.get_rand_bytes = get_rand_bytes
 -- @return string  The random string (a chunk of base64ish-encoded random bytes)
 local random_string
 do
-  local char = string.char
   local rand = math.random
+  local byte = string.byte
   local encode_base64 = ngx.encode_base64
+
+  local OUTPUT = require("string.buffer").new(32)
+  local SLASH_BYTE = byte("/")
+  local PLUS_BYTE = byte("+")
 
   -- generate a random-looking string by retrieving a chunk of bytes and
   -- replacing non-alphanumeric characters with random alphanumeric replacements
@@ -117,15 +121,29 @@ do
   -- previous implementation (stripping a UUID of its hyphens), while significantly
   -- expanding the size of the keyspace.
   random_string = function()
+    OUTPUT:reset()
+
     -- get 24 bytes, which will return a 32 char string after encoding
     -- this is done in attempt to maintain backwards compatibility as
     -- much as possible while improving the strength of this function
-    return encode_base64(get_rand_bytes(24, true))
-           :gsub("/", char(rand(48, 57)))  -- 0 - 10
-           :gsub("+", char(rand(65, 90)))  -- A - Z
-           :gsub("=", char(rand(97, 122))) -- a - z
-  end
+    -- TODO: in future we may want to have variable length option to this
+    local str = encode_base64(get_rand_bytes(24, true), true)
 
+    for i = 1, 32 do
+      local b = byte(str, i)
+      if b == SLASH_BYTE then
+        OUTPUT:putf("%c", rand(65, 90))  -- A-Z
+      elseif b == PLUS_BYTE then
+        OUTPUT:putf("%c", rand(97, 122)) -- a-z
+      else
+        OUTPUT:putf("%c", b)
+      end
+    end
+
+    str = OUTPUT:get()
+
+    return str
+  end
 end
 _M.random_string = random_string
 
