@@ -1,0 +1,3 @@
+message: "**Konnect Application Auth**: ensure 'key_names' from correct auth strategy are used."
+type: bugfix
+scope: Plugin

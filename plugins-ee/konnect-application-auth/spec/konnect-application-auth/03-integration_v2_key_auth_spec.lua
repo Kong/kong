@@ -234,6 +234,48 @@ for _, strategy in helpers.each_strategy() do
        assert.res_status(200, res)
       end)
 
+      it("returns 401 if api key in query is using wrong key names for strategy", function ()
+        local res = client:get("/request?xapikey=OPENIT", {
+          headers = {
+            host = "keyauth.konghq.com"
+          }
+        })
+
+       assert.res_status(401, res)
+      end)
+
+      it("returns 401 if api key in query is using wrong key names for strategy", function ()
+        local res = client:get("/request?zapikey=opensesame", {
+          headers = {
+            host = "keyauth.konghq.com"
+          }
+        })
+
+       assert.res_status(401, res)
+      end)
+
+      it("returns 401 if api key in headers is using wrong key names for strategy", function ()
+        local res = client:get("/request", {
+          headers = {
+            zapikey = "opensesame",
+            host = "keyauth.konghq.com"
+          }
+        })
+
+       assert.res_status(401, res)
+      end)
+
+      it("returns 401 if api key in headers is using wrong key names for strategy", function ()
+        local res = client:get("/request", {
+          headers = {
+            xapikey = "OPENIT",
+            host = "keyauth.konghq.com"
+          }
+        })
+
+       assert.res_status(401, res)
+      end)
+
       it("returns 200 if api key found in headers", function ()
         local res = client:get("/request", {
           headers = {

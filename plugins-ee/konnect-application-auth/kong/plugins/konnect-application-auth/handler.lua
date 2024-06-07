@@ -272,7 +272,8 @@ local function v2_access_phase(plugin_conf)
     for i = 1, #plugin_conf.v2_strategies.key_auth do
       -- get_api_key consumes the old schema definition of key-auth
       -- reusing the key_auth config from v2 that has the same schema definition
-      appIdentifier = get_api_key(plugin_conf.v2_strategies.key_auth[i].config)
+      local key_auth = plugin_conf.v2_strategies.key_auth[i]
+      appIdentifier = get_api_key(key_auth.config)
       if appIdentifier then
 
         application, err = get_app(appIdentifier)
@@ -280,7 +281,7 @@ local function v2_access_phase(plugin_conf)
           return nil, err
         end
 
-        if application then
+        if application and application.auth_strategy_id == key_auth.strategy_id then
           kong.client.authenticate(nil, {
             id = tostring(appIdentifier)
           })
