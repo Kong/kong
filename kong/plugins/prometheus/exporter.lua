@@ -149,15 +149,15 @@ local function init()
 
   -- AI mode
   if ai_request then
-    metrics.ai_requests = prometheus:counter("ai_requests_total",
+    metrics.ai_llm_requests = prometheus:counter("ai_llm_requests_total",
                                         "AI requests total per ai_provider in Kong",
                                         {"ai_provider", "ai_model", "cache", "db_name", "workspace"})
 
-    metrics.ai_cost = prometheus:counter("ai_cost_total",
+    metrics.ai_llm_cost = prometheus:counter("ai_llm_cost_total",
                                         "AI requests cost per ai_provider/cache in Kong",
                                         {"ai_provider", "ai_model", "cache", "db_name", "workspace"})
 
-    metrics.ai_tokens = prometheus:counter("ai_tokens_total",
+    metrics.ai_llm_tokens = prometheus:counter("ai_llm_tokens_total",
                                         "AI requests cost per ai_provider/cache in Kong",
                                         {"ai_provider", "ai_model", "cache", "db_name", "token_type", "workspace"})
   end
@@ -225,8 +225,8 @@ local upstream_target_addr_health_table = {
   { value = 0, labels = { 0, 0, 0, "dns_error", ngx.config.subsystem } },
 }
 -- ai
-local labels_table_ai_status = {0, 0, 0, 0, 0}
-local labels_table_ai_tokens = {0, 0, 0, 0, 0, 0}
+local labels_table_ai_llm_status = {0, 0, 0, 0, 0}
+local labels_table_ai_llm_tokens = {0, 0, 0, 0, 0, 0}
 
 local function set_healthiness_metrics(table, upstream, target, address, status, metrics_bucket)
   for i = 1, #table do
@@ -346,36 +346,36 @@ local function log(message, serialized)
         db_name = ai_plugin.cache.db_name
       end
 
-      labels_table_ai_status[1] = ai_plugin.meta.provider_name
-      labels_table_ai_status[2] = ai_plugin.meta.request_model
-      labels_table_ai_status[3] = cache_type
-      labels_table_ai_status[4] = db_name
-      labels_table_ai_status[5] = workspace
-      metrics.ai_requests:inc(1, labels_table_ai_status)
+      labels_table_ai_llm_status[1] = ai_plugin.meta.provider_name
+      labels_table_ai_llm_status[2] = ai_plugin.meta.request_model
+      labels_table_ai_llm_status[3] = cache_type
+      labels_table_ai_llm_status[4] = db_name
+      labels_table_ai_llm_status[5] = workspace
+      metrics.ai_llm_requests:inc(1, labels_table_ai_llm_status)
 
       if ai_plugin.usage.cost_request and ai_plugin.usage.cost_request > 0 then
-        metrics.ai_cost:inc(ai_plugin.usage.cost_request, labels_table_ai_status)
+        metrics.ai_llm_cost:inc(ai_plugin.usage.cost_request, labels_table_ai_llm_status)
       end
 
-      labels_table_ai_tokens[1] = ai_plugin.meta.provider_name
-      labels_table_ai_tokens[2] = ai_plugin.meta.request_model
-      labels_table_ai_tokens[3] = cache_type
-      labels_table_ai_tokens[4] = db_name
-      labels_table_ai_tokens[6] = workspace
+      labels_table_ai_llm_tokens[1] = ai_plugin.meta.provider_name
+      labels_table_ai_llm_tokens[2] = ai_plugin.meta.request_model
+      labels_table_ai_llm_tokens[3] = cache_type
+      labels_table_ai_llm_tokens[4] = db_name
+      labels_table_ai_llm_tokens[6] = workspace
 
       if ai_plugin.usage.prompt_tokens and ai_plugin.usage.prompt_tokens > 0 then
-        labels_table_ai_tokens[5] = "prompt_tokens"
-        metrics.ai_tokens:inc(ai_plugin.usage.prompt_tokens, labels_table_ai_tokens)
+        labels_table_ai_llm_tokens[5] = "prompt_tokens"
+        metrics.ai_llm_tokens:inc(ai_plugin.usage.prompt_tokens, labels_table_ai_llm_tokens)
       end
 
       if ai_plugin.usage.completion_tokens and ai_plugin.usage.completion_tokens > 0 then
-        labels_table_ai_tokens[5] = "completion_tokens"
-        metrics.ai_tokens:inc(ai_plugin.usage.completion_tokens, labels_table_ai_tokens)
+        labels_table_ai_llm_tokens[5] = "completion_tokens"
+        metrics.ai_llm_tokens:inc(ai_plugin.usage.completion_tokens, labels_table_ai_llm_tokens)
       end
 
       if ai_plugin.usage.total_tokens and ai_plugin.usage.total_tokens > 0 then
-        labels_table_ai_tokens[5] = "total_tokens"
-        metrics.ai_tokens:inc(ai_plugin.usage.total_tokens, labels_table_ai_tokens)
+        labels_table_ai_llm_tokens[5] = "total_tokens"
+        metrics.ai_llm_tokens:inc(ai_plugin.usage.total_tokens, labels_table_ai_llm_tokens)
       end
     end
   end
