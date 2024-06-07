@@ -4,6 +4,7 @@ local cjson = require("cjson.safe")
 local fmt = string.format
 local EMPTY = {}
 
+
 -- The module table
 local _M = {
   config_schema = require "kong.llm.schemas",
