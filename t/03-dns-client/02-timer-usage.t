@@ -8,6 +8,7 @@ no_shuffle();
 run_tests();
 
 __DATA__
+
 === TEST 1: stale result triggers async timer
 --- config
     location = /t {
