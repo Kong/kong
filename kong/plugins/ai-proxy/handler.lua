@@ -131,16 +131,16 @@ local _KEYBASTION = setmetatable({}, {
     if plugin_config.model.provider == "bedrock" then
       ngx.log(ngx.NOTICE, "loading aws sdk for plugin ", kong.plugin.get_id())
 
-      local access_key = (plugin_config.auth and plugin_config.auth.aws_access_key_id)
-                      or AWS_ACCESS_KEY_ID
-      
-      local secret_key = (plugin_config.auth and plugin_config.auth.aws_secret_access_key)
-                      or AWS_ACCESS_KEY_ID
-
       local region = plugin_config.model.options
                  and plugin_config.model.options.bedrock
                  and plugin_config.model.options.bedrock.aws_region
                   or AWS_REGION
+
+      local access_key = (plugin_config.auth and plugin_config.auth.aws_access_key_id)
+                      or AWS_ACCESS_KEY_ID
+      
+      local secret_key = (plugin_config.auth and plugin_config.auth.aws_secret_access_key)
+                      or AWS_SECRET_ACCESS_KEY
 
       local aws = AWS({
         -- if any of these are nil, they either use the SDK default or
@@ -595,7 +595,9 @@ function _M:access(conf)
   end
 
   -- get the provider's cached identity interface - nil may come back, which is fine
+  ngx.log(ngx.WARN, "----> IN")
   local identity_interface = _KEYBASTION[conf]
+  ngx.log(ngx.WARN, "----> OUT")
   if identity_interface and identity_interface.error then
     kong.ctx.shared.skip_response_transformer = true
     kong.log.err("error authenticating with cloud-provider, ", identity_interface.error)
