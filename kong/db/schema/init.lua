@@ -19,6 +19,7 @@ local tostring     = tostring
 local concat       = table.concat
 local insert       = table.insert
 local format       = string.format
+local ipairs       = ipairs
 local unpack       = unpack
 local assert       = assert
 local yield        = require("kong.tools.yield").yield
@@ -1642,6 +1643,58 @@ local function adjust_field_for_context(field, value, context, nulls, opts)
 end
 
 
+local function resolve_reference(kong, value)
+  local deref, err = kong.vault.get(value)
+  if not deref then
+    if err then
+      kong.log.warn("unable to resolve reference ", value, " (", err, ")")
+    else
+      kong.log.notice("unable to resolve reference ", value)
+    end
+  end
+  return deref or ""
+end
+
+
+local function collect_previous_references(prev_refs, key, refs)
+  if prev_refs and prev_refs[key] then
+    if refs then
+      if not refs[key] then
+        refs[key] = prev_refs[key]
+      end
+
+    else
+      refs = { [key] = prev_refs[key] }
+    end
+  end
+  return refs
+end
+
+
+local function collect_subfield_reference(refs, key, references, index, narr, nrec)
+  if not refs then
+    refs = {
+      [key] = new_tab(narr, nrec)
+    }
+  elseif not refs[key] then
+    refs[key] = new_tab(narr, nrec)
+  end
+  refs[key][index] = references[index]
+  return refs
+end
+
+
+local function collect_field_reference(refs, key, reference)
+  if refs then
+    refs[key] = reference
+  else
+    refs = { [key] = reference }
+  end
+
+  return refs
+end
+
+
 --- Given a table, update its fields whose schema
 -- definition declares them as `auto = true`,
 -- based on its CRUD operation context, and set
@@ -1776,32 +1829,10 @@ function Schema:process_auto_fields(data, context, nulls, opts)
       if resolve_references then
         if ftype == "string" and field.referenceable then
           if is_reference(value) then
-            if refs then
-              refs[key] = value
-            else
-              refs = { [key] = value }
-            end
-
-            local deref, err = kong.vault.get(value)
-            if deref then
-              value = deref
-
-            else
-              if err then
-                kong.log.warn("unable to resolve reference ", value, " (", err, ")")
-              else
-                kong.log.notice("unable to resolve reference ", value)
-              end
-
-              value = ""
-            end
-
-          elseif prev_refs and prev_refs[key] then
-            if refs then
-              refs[key] = prev_refs[key]
-            else
-              refs = { [key] = prev_refs[key] }
-            end
+            refs = collect_field_reference(refs, key, value)
+            value = resolve_reference(kong, value)
+          else
+            refs = collect_previous_references(prev_refs, key, refs)
           end
 
         elseif vtype == "table" and (ftype == "array" or ftype == "set") then
@@ -1811,43 +1842,13 @@ function Schema:process_auto_fields(data, context, nulls, opts)
             if count > 0 then
               for i = 1, count do
                 if is_reference(value[i]) then
-                  if not refs then
-                    refs = {}
-                  end
-
-                  if not refs[key] then
-                    refs[key] = new_tab(count, 0)
-                  end
-
-                  refs[key][i] = value[i]
-
-                  local deref, err = kong.vault.get(value[i])
-                  if deref then
-                    value[i] = deref
-
-                  else
-                    if err then
-                      kong.log.warn("unable to resolve reference ", value[i], " (", err, ")")
-                    else
-                      kong.log.notice("unable to resolve reference ", value[i])
-                    end
-
-                    value[i] = ""
-                  end
+                  refs = collect_subfield_reference(refs, key, value, i, count, 0)
+                  value[i] = resolve_reference(kong, value[i])
                 end
               end
             end
 
-            if prev_refs and prev_refs[key] then
-              if refs then
-                if not refs[key] then
-                  refs[key] = prev_refs[key]
-                end
-
-              else
-                refs = { [key] = prev_refs[key] }
-              end
-            end
+            refs = collect_previous_references(prev_refs, key, refs)
           end
 
         elseif vtype == "table" and ftype == "map" then
@@ -1857,43 +1858,13 @@ function Schema:process_auto_fields(data, context, nulls, opts)
             if count > 0 then
               for k, v in pairs(value) do
                 if is_reference(v) then
-                  if not refs then
-                    refs = {}
-                  end
-
-                  if not refs[key] then
-                    refs[key] = new_tab(0, count)
-                  end
-
-                  refs[key][k] = v
-
-                  local deref, err = kong.vault.get(v)
-                  if deref then
-                    value[k] = deref
-
-                  else
-                    if err then
-                      kong.log.warn("unable to resolve reference ", v, " (", err, ")")
-                    else
-                      kong.log.notice("unable to resolve reference ", v)
-                    end
-
-                    value[k] = ""
-                  end
+                  refs = collect_subfield_reference(refs, key, value, k, 0, count)
+                  value[k] = resolve_reference(kong, v)
                 end
               end
             end
 
-            if prev_refs and prev_refs[key] then
-              if refs then
-                if not refs[key] then
-                  refs[key] = prev_refs[key]
-                end
-
-              else
-                refs = { [key] = prev_refs[key] }
-              end
-            end
+            refs = collect_previous_references(prev_refs, key, refs)
           end
         end
       end
