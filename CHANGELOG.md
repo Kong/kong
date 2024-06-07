@@ -1167,8 +1167,6 @@ route using fields like `http.path` even for stream routes. This is no longer al
 
 ## 3.4.1
 
-# 3.4.1.0
-
 ### Kong
 
 
