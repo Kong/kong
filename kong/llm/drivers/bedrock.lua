@@ -413,8 +413,12 @@ function _M.configure_request(conf, aws_sdk)
   local signature = signer(aws_sdk.config, r)
 
   kong.service.request.set_header("Authorization", signature.headers["Authorization"])
-  kong.service.request.set_header("X-Amz-Security-Token", signature.headers["X-Amz-Security-Token"] or "")
-  kong.service.request.set_header("X-Amz-Date", signature.headers["X-Amz-Date"] or "")
+  if signature.headers["X-Amz-Security-Token"] then 
+    kong.service.request.set_header("X-Amz-Security-Token", signature.headers["X-Amz-Security-Token"])
+  end
+  if signature.headers["X-Amz-Date"] then
+    kong.service.request.set_header("X-Amz-Date", signature.headers["X-Amz-Date"])
+  end
 
   return true
 end
