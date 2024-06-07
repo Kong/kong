@@ -5,8 +5,10 @@ local meta = require "kong.meta"
 local pl_path = require "pl.path"
 local version = require "version"
 local pl_utils = require "pl.utils"
-local pl_stringx = require "pl.stringx"
 local process_secrets = require "kong.cmd.utils.process_secrets"
+
+
+local strip = require("kong.tools.string").strip
 
 
 local fmt = string.format
@@ -115,7 +117,7 @@ function _M.find_nginx_bin(kong_conf)
         log.debug("finding executable absolute path from $PATH...")
         local ok, code, stdout, stderr = pl_utils.executeex("command -v nginx")
         if ok and code == 0 then
-          path_to_check = pl_stringx.strip(stdout)
+          path_to_check = strip(stdout)
 
         else
           log.error("could not find executable absolute path: %s", stderr)

@@ -4,7 +4,6 @@ local require = require
 local kong_default_conf = require "kong.templates.kong_defaults"
 local process_secrets = require "kong.cmd.utils.process_secrets"
 local pl_stringio = require "pl.stringio"
-local pl_stringx = require "pl.stringx"
 local socket_url = require "socket.url"
 local conf_constants = require "kong.conf_loader.constants"
 local listeners = require "kong.conf_loader.listeners"
@@ -16,9 +15,12 @@ local pl_config = require "pl.config"
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 local tablex = require "pl.tablex"
-local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local log = require "kong.cmd.utils.log"
 local env = require "kong.cmd.utils.env"
+
+
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
+local strip = require("kong.tools.string").strip
 
 
 local fmt = string.format
@@ -27,7 +29,6 @@ local type = type
 local sort = table.sort
 local find = string.find
 local gsub = string.gsub
-local strip = pl_stringx.strip
 local lower = string.lower
 local match = string.match
 local pairs = pairs

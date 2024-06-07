@@ -1,6 +1,3 @@
-local kong_string = require "kong.tools.string"
-
-
 local kong = kong
 local next = next
 local type = type
@@ -8,8 +5,8 @@ local pairs = pairs
 local ipairs = ipairs
 local tonumber = tonumber
 local math_max = math.max
-local strip = kong_string.strip
-local split = kong_string.split
+local strip = require("kong.tools.string").strip
+local split = require("kong.tools.string").split
 
 
 local RATELIMIT_LIMIT = "X-RateLimit-Limit"

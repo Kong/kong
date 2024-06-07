@@ -1,5 +1,5 @@
 local ipmatcher  = require "resty.ipmatcher"
-local pl_stringx = require "pl.stringx"
+
 
 
 local type     = type
@@ -11,7 +11,7 @@ local sub      = string.sub
 local fmt      = string.format
 local lower    = string.lower
 local find     = string.find
-local split    = pl_stringx.split
+local split    = require("kong.tools.string").split
 
 
 local _M = {}

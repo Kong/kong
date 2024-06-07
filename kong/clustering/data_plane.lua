@@ -8,7 +8,6 @@ local config_helper = require("kong.clustering.config_helper")
 local clustering_utils = require("kong.clustering.utils")
 local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
-local pl_stringx = require("pl.stringx")
 local inspect = require("inspect")
 
 local assert = assert
@@ -37,7 +36,7 @@ local PING_WAIT = PING_INTERVAL * 1.5
 local _log_prefix = "[clustering] "
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
-local endswith = pl_stringx.endswith
+local endswith = require("pl.stringx").endswith
 
 local function is_timeout(err)
   return err and sub(err, -7) == "timeout"
