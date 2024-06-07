@@ -10,6 +10,8 @@ local utils       = require "kong.tools.utils"
 local helpers     = require "spec.helpers"
 local conf_loader = require "kong.conf_loader"
 
+local null = ngx.null
+
 -- unsets kong license env vars and returns a function to restore their values
 -- on test teardown
 --
@@ -275,6 +277,11 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         service     = null,
       }
 
+      local route4 = db.routes:insert {
+        hosts       = { "lambda4.test" },
+        service     = null,
+      }
+
       db.plugins:insert {
         name     = "aws-lambda",
         route    = { id = route1.id },
@@ -314,6 +321,19 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         },
       }
 
+      -- w/o function_name field
+      db.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route4.id },
+        config   = {
+          port            = 10001,
+          aws_key         = "mock-key",
+          aws_secret      = "mock-secret",
+          aws_region      = "us-east-1",
+          invocation_type = "Event",
+        },
+      }
+
       db.plugins:insert {
         name = "kafka-upstream",
         route = { id = route1.id },
@@ -337,6 +357,17 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       db.plugins:insert {
         name = "kafka-upstream",
         route = { id = route3.id },
+        config = {
+          bootstrap_servers = { { host = "mock-host", port = 9092 } },
+          producer_async = false,
+          topic = 'sync_topic',
+        }
+      }
+
+      -- w/o bootstrap_servers field
+      db.plugins:insert {
+        name = "kafka-upstream",
+        route = { id = route4.id },
         config = {
           bootstrap_servers = { { host = "mock-host", port = 9092 } },
           producer_async = false,
@@ -401,8 +432,8 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       assert.equals(3, report.routes_count)
       assert.equals(1, report.plugins_count.unique_route_lambdas)
       assert.equals(1, report.plugins_count.unique_route_kafkas)
-      assert.equals(3, report.plugins_count.tiers.enterprise["kafka-upstream"])
-      assert.equals(3, report.plugins_count.tiers.free["aws-lambda"])
+      assert.equals(4, report.plugins_count.tiers.enterprise["kafka-upstream"])
+      assert.equals(4, report.plugins_count.tiers.free["aws-lambda"])
     end)
   end)
 end

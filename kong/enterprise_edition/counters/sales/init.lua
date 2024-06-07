@@ -130,6 +130,10 @@ local function handle_aws_lambda(plugin, filter_set)
 
   local aws_fn = plugin.config["function_name"]
 
+  if not aws_fn then
+    return
+  end
+
   if filter_set.configmap["unique_aws_fns"][aws_fn] then
     return
   end
@@ -145,6 +149,10 @@ local function handle_kafka_upstream(plugin, filter_set)
   end
 
   local kafka_brokers = plugin.config["bootstrap_servers"]
+
+  if not kafka_brokers then
+    return
+  end
 
   for _, broker in ipairs(kafka_brokers) do
     local addr = broker.host .. ":" .. broker.port
