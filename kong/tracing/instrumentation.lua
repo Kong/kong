@@ -44,6 +44,7 @@ function _M.db_query(connector)
     local span = tracer.start_span("kong.database.query")
     span:set_attribute("db.system", kong.db and kong.db.strategy)
     span:set_attribute("db.statement", sql)
+    tracer.set_active_span(span)
     -- raw query
     local ret = pack(f(self, sql, ...))
     -- ends span
@@ -58,7 +59,9 @@ end
 
 -- Record Router span
 function _M.router()
-  return tracer.start_span("kong.router")
+  local span = tracer.start_span("kong.router")
+  tracer.set_active_span(span)
+  return span
 end
 
 
@@ -127,6 +130,7 @@ function _M.balancer(ctx)
     else
       -- last try: load the last span (already created/propagated)
       span = last_try_balancer_span
+      tracer.set_active_span(span)
       tracer:link_span(span, span_name, span_options)
 
       if try.state then
@@ -156,7 +160,9 @@ local function plugin_callback(phase)
       name_memo[plugin_name] = name
     end
 
-    return tracer.start_span(name)
+    local span = tracer.start_span(name)
+    tracer.set_active_span(span)
+    return span
   end
 end
 
@@ -283,6 +289,7 @@ do
       span = tracer.start_span("kong.dns", {
         span_kind = 3, -- client
       })
+      tracer.set_active_span(span)
     end
 
     local ip_addr, res_port, try_list = raw_func(host, port, ...)
