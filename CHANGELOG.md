@@ -18,11 +18,11 @@
 Individual unreleased changelog entries can be located at [changelog/unreleased](changelog/unreleased). They will be assembled into [CHANGELOG.md](CHANGELOG.md) once released.
 
 ## 3.7.0
-## Kong
+### Kong
 
 
-### Performance
 #### Performance
+##### Performance
 
 - Improved proxy performance by refactoring internal hooking mechanism.
  [#12784](https://github.com/Kong/kong/issues/12784)
@@ -31,22 +31,22 @@ Individual unreleased changelog entries can be located at [changelog/unreleased]
 - Sped up the router matching when the `router_flavor` is `traditional_compatible` or `expressions`.
  [#12467](https://github.com/Kong/kong/issues/12467)
  [KAG-3653](https://konghq.atlassian.net/browse/KAG-3653)
-#### Plugin
+##### Plugin
 
 - **Opentelemetry**: Increased queue max batch size to 200.
  [#12488](https://github.com/Kong/kong/issues/12488)
  [KAG-3173](https://konghq.atlassian.net/browse/KAG-3173)
 
-### Breaking Changes
-#### Plugin
+#### Breaking Changes
+##### Plugin
 
 - **AI Proxy**: To support the new messages API of `Anthropic`, the upstream path of the `Anthropic` for `llm/v1/chat` route type has changed from `/v1/complete` to `/v1/messages`.
  [#12699](https://github.com/Kong/kong/issues/12699)
  [FTI-5770](https://konghq.atlassian.net/browse/FTI-5770)
 
 
-### Dependencies
-#### Core
+#### Dependencies
+##### Core
 
 - Bumped atc-router from v1.6.0 to v1.6.2
  [#12231](https://github.com/Kong/kong/issues/12231)
@@ -91,7 +91,7 @@ Individual unreleased changelog entries can be located at [changelog/unreleased]
 - Bumped penlight to 1.14.0
  [#12862](https://github.com/Kong/kong/issues/12862)
 
-#### Default
+##### Default
 
 - Added package `tzdata` to DEB Docker image for convenient timezone setting.
  [#12609](https://github.com/Kong/kong/issues/12609)
@@ -121,8 +121,8 @@ Individual unreleased changelog entries can be located at [changelog/unreleased]
  [#12904](https://github.com/Kong/kong/issues/12904)
  [KAG-4275](https://konghq.atlassian.net/browse/KAG-4275)
 
-### Features
-#### Configuration
+#### Features
+##### Configuration
 
 - TLSv1.1 and lower versions are disabled by default in OpenSSL 3.x.
  [#12420](https://github.com/Kong/kong/issues/12420)
@@ -141,7 +141,7 @@ Wasm filters to use the Proxy-Wasm operations `get_shared_data` and
 - Added the `wasm_filters` configuration parameter for enabling individual filters
  [#12843](https://github.com/Kong/kong/issues/12843)
  [KAG-4211](https://konghq.atlassian.net/browse/KAG-4211)
-#### Core
+##### Core
 
 - Added `events:ai:response_tokens`, `events:ai:prompt_tokens` and `events:ai:requests` to the anonymous report to start counting AI usage
  [#12924](https://github.com/Kong/kong/issues/12924)
@@ -160,12 +160,12 @@ Wasm filters to use the Proxy-Wasm operations `get_shared_data` and
 The meaning of these fields are consistent with the traditional route entity.
  [#12667](https://github.com/Kong/kong/issues/12667)
  [KAG-3805](https://konghq.atlassian.net/browse/KAG-3805) [KAG-3807](https://konghq.atlassian.net/browse/KAG-3807)
-#### PDK
+##### PDK
 
 - Added the `latencies.receive` property to the log serializer
  [#12730](https://github.com/Kong/kong/issues/12730)
  [KAG-3798](https://konghq.atlassian.net/browse/KAG-3798)
-#### Plugin
+##### Plugin
 
 - AI Proxy now reads most prompt tuning parameters from the client,
 while the plugin config parameters under `model_options` are now just defaults.
@@ -203,21 +203,21 @@ and all models and SDKs that may be used when calling the AI services.
 options allow better control over the configuration of tracing headers propagation.
  [#12670](https://github.com/Kong/kong/issues/12670)
  [KAG-1886](https://konghq.atlassian.net/browse/KAG-1886) [KAG-1887](https://konghq.atlassian.net/browse/KAG-1887)
-#### Default
+##### Default
 
 - Added support for debugging with EmmyLuaDebugger.  This feature is a
 tech preview and not officially supported by Kong Inc. for now.
  [#12899](https://github.com/Kong/kong/issues/12899)
  [KAG-4316](https://konghq.atlassian.net/browse/KAG-4316)
 
-### Fixes
-#### CLI Command
+#### Fixes
+##### CLI Command
 
 - Fixed an issue where the `pg_timeout` was overridden to `60s` even if `--db-timeout`
 was not explicitly passed in CLI arguments.
  [#12981](https://github.com/Kong/kong/issues/12981)
  [KAG-4416](https://konghq.atlassian.net/browse/KAG-4416)
-#### Configuration
+##### Configuration
 
 - Fixed the default value in kong.conf.default documentation from 1000 to 10000
 for the `upstream_keepalive_max_requests` option.
@@ -236,7 +236,7 @@ apply a change to the plugin config via the Admin API.
 - Set security level of gRPC's TLS to 0 when `ssl_cipher_suite` is set to `old`.
  [#12613](https://github.com/Kong/kong/issues/12613)
  [KAG-3259](https://konghq.atlassian.net/browse/KAG-3259)
-#### Core
+##### Core
 
 - Fixed an issue where `POST /config?flatten_errors=1` could not return a proper response if the input included duplicate upstream targets.
  [#12797](https://github.com/Kong/kong/issues/12797)
@@ -311,7 +311,7 @@ using `tls_passthrough` and the `traditional_compatible` router flavor.
 - Updated telemetry collection for AI Plugins to allow multiple plugins data to be set for the same request.
  [#12583](https://github.com/Kong/kong/issues/12583)
  [KAG-3759](https://konghq.atlassian.net/browse/KAG-3759) [KAG-4124](https://konghq.atlassian.net/browse/KAG-4124)
-#### PDK
+##### PDK
 
 - **PDK:** Fixed `kong.request.get_forwarded_port` to always return a number,
 which was caused by an incorrectly stored string value in `ngx.ctx.host_port`.
@@ -332,7 +332,7 @@ affects payloads from all logging plugins that use the log serializer:
 - **Tracing**: enhanced robustness of trace ID parsing
  [#12848](https://github.com/Kong/kong/issues/12848)
  [KAG-4218](https://konghq.atlassian.net/browse/KAG-4218)
-#### Plugin
+##### Plugin
 
 - **AI-proxy-plugin**: Fixed the bug that the `route_type` `/llm/v1/chat` didn't include the analytics in the responses.
  [#12781](https://github.com/Kong/kong/issues/12781)
@@ -373,12 +373,12 @@ affects payloads from all logging plugins that use the log serializer:
 - **Rate-Limiting**: Fixed migration of redis configuration.
  [#12989](https://github.com/Kong/kong/issues/12989)
  [KAG-4419](https://konghq.atlassian.net/browse/KAG-4419)
-#### Admin API
+##### Admin API
 
 - **Admin API**: fixed an issue where calling the endpoint `POST /schemas/vaults/validate` was conflicting with the endpoint `/schemas/vaults/:name` which only has GET implemented, hence resulting in a 405.
  [#12607](https://github.com/Kong/kong/issues/12607)
  [KAG-3699](https://konghq.atlassian.net/browse/KAG-3699)
-#### Default
+##### Default
 
 - Fixed a bug where, if the the ulimit setting (open files) was low, Kong would fail to start as the `lua-resty-timer-ng` exhausted the available `worker_connections`. Decreased the concurrency range of the `lua-resty-timer-ng` library from `[512, 2048]` to `[256, 1024]` to fix this bug.
  [#12606](https://github.com/Kong/kong/issues/12606)
@@ -387,15 +387,15 @@ affects payloads from all logging plugins that use the log serializer:
 - Fix an issue where external plugins using the protobuf-based protocol would fail to call the `kong.Service.SetUpstream` method with an error `bad argument #2 to 'encode' (table expected, got boolean)`.
  [#12727](https://github.com/Kong/kong/issues/12727)
 
-## Kong-Manager
+### Kong-Manager
 
 
 
 
 
 
-### Features
-#### Default
+#### Features
+##### Default
 
 - Kong Manager now supports creating and editing Expressions routes with an interactive in-browser editor with syntax highlighting and autocompletion features for Kong's Expressions language.
  [#217](https://github.com/Kong/kong-manager/issues/217)
@@ -405,19 +405,19 @@ affects payloads from all logging plugins that use the log serializer:
  [#195](https://github.com/Kong/kong-manager/issues/195) [#199](https://github.com/Kong/kong-manager/issues/199) [#201](https://github.com/Kong/kong-manager/issues/201) [#202](https://github.com/Kong/kong-manager/issues/202) [#207](https://github.com/Kong/kong-manager/issues/207) [#208](https://github.com/Kong/kong-manager/issues/208) [#209](https://github.com/Kong/kong-manager/issues/209) [#213](https://github.com/Kong/kong-manager/issues/213) [#216](https://github.com/Kong/kong-manager/issues/216)
 
 
-### Fixes
-#### Default
+#### Fixes
+##### Default
 
 - Improved the user experience in Kong Manager by fixing various UI-related issues.
  [#185](https://github.com/Kong/kong-manager/issues/185) [#188](https://github.com/Kong/kong-manager/issues/188) [#190](https://github.com/Kong/kong-manager/issues/190) [#195](https://github.com/Kong/kong-manager/issues/195) [#199](https://github.com/Kong/kong-manager/issues/199) [#201](https://github.com/Kong/kong-manager/issues/201) [#202](https://github.com/Kong/kong-manager/issues/202) [#207](https://github.com/Kong/kong-manager/issues/207) [#208](https://github.com/Kong/kong-manager/issues/208) [#209](https://github.com/Kong/kong-manager/issues/209) [#213](https://github.com/Kong/kong-manager/issues/213) [#216](https://github.com/Kong/kong-manager/issues/216)
 
 ## 3.6.1
 
-## Kong
+### Kong
 
 
-### Performance
-#### Plugin
+#### Performance
+##### Plugin
 
 - **Opentelemetry**: increase queue max batch size to 200
  [#12542](https://github.com/Kong/kong/issues/12542)
@@ -425,22 +425,22 @@ affects payloads from all logging plugins that use the log serializer:
 
 
 
-### Dependencies
-#### Core
+#### Dependencies
+##### Core
 
 - Bumped lua-resty-openssl to 1.2.1
  [#12669](https://github.com/Kong/kong/issues/12669)
 
 
-### Features
-#### Configuration
+#### Features
+##### Configuration
 
 - now TLSv1.1 and lower is by default disabled in OpenSSL 3.x
  [#12556](https://github.com/Kong/kong/issues/12556)
  [KAG-3259](https://konghq.atlassian.net/browse/KAG-3259)
 
-### Fixes
-#### Configuration
+#### Fixes
+##### Configuration
 
 - Fixed default value in kong.conf.default documentation from 1000 to 10000
 for upstream_keepalive_max_requests option.
@@ -450,7 +450,7 @@ for upstream_keepalive_max_requests option.
 - Set security level of gRPC's TLS to 0 when ssl_cipher_suite is set to old
  [#12616](https://github.com/Kong/kong/issues/12616)
 
-#### Core
+##### Core
 
 - Fix the missing router section for the output of the request-debugging
  [#12649](https://github.com/Kong/kong/issues/12649)
@@ -459,20 +459,20 @@ for upstream_keepalive_max_requests option.
 - revert the hard-coded limitation of the ngx.read_body() API in OpenResty upstreams' new versions when downstream connections are in HTTP/2 or HTTP/3 stream modes.
  [#12666](https://github.com/Kong/kong/issues/12666)
  [FTI-5766](https://konghq.atlassian.net/browse/FTI-5766) [FTI-5795](https://konghq.atlassian.net/browse/FTI-5795)
-#### Default
+##### Default
 
 - Fix a bug where the ulimit setting (open files) is low Kong will fail to start as the lua-resty-timer-ng exhausts the available worker_connections. Decrease the concurrency range of the lua-resty-timer-ng library from [512, 2048] to [256, 1024] to fix this bug.
  [#12608](https://github.com/Kong/kong/issues/12608)
  [KAG-3779](https://konghq.atlassian.net/browse/KAG-3779) [FTI-5780](https://konghq.atlassian.net/browse/FTI-5780)
-## Kong-Manager
+### Kong-Manager
 
 ## 3.6.0
 
-## Kong
+### Kong
 
 
-### Performance
 #### Performance
+##### Performance
 
 - Bumped the concurrency range of the lua-resty-timer-ng library from [32, 256] to [512, 2048].
  [#12275](https://github.com/Kong/kong/issues/12275)
@@ -481,7 +481,7 @@ for upstream_keepalive_max_requests option.
 - Cooperatively yield when building statistics of routes to reduce the impact to proxy path latency.
  [#12013](https://github.com/Kong/kong/issues/12013)
 
-#### Configuration
+##### Configuration
 
 - Bump `dns_stale_ttl` default to 1 hour so stale DNS record can be used for longer time in case of resolver downtime.
  [#12087](https://github.com/Kong/kong/issues/12087)
@@ -490,19 +490,19 @@ for upstream_keepalive_max_requests option.
 - Bumped default values of `nginx_http_keepalive_requests` and `upstream_keepalive_max_requests` to `10000`. These changes are optimized to work better in systems with high throughput. In a low-throughput setting, these new settings may have visible effects in loadbalancing - it can take more requests to start using all the upstreams than before.
  [#12223](https://github.com/Kong/kong/issues/12223)
  [KAG-3360](https://konghq.atlassian.net/browse/KAG-3360)
-#### Core
+##### Core
 
 - Reuse match context between requests to avoid frequent memory allocation/deallocation
  [#12258](https://github.com/Kong/kong/issues/12258)
  [KAG-3448](https://konghq.atlassian.net/browse/KAG-3448)
-#### PDK
+##### PDK
 
 - Performance optimization to avoid unnecessary creations and garbage-collections of spans
  [#12080](https://github.com/Kong/kong/issues/12080)
  [KAG-3169](https://konghq.atlassian.net/browse/KAG-3169)
 
-### Breaking Changes
-#### Core
+#### Breaking Changes
+##### Core
 
 - **BREAKING:** To avoid ambiguity with other Wasm-related nginx.conf directives, the prefix for Wasm `shm_kv` nginx.conf directives was changed from `nginx_wasm_shm_` to `nginx_wasm_shm_kv_`
  [#11919](https://github.com/Kong/kong/issues/11919)
@@ -517,14 +517,14 @@ for upstream_keepalive_max_requests option.
   [#7714](https://github.com/Kong/kong/issues/7714)
   [KAG-3459](https://konghq.atlassian.net/browse/KAG-3459)
 
-#### Plugin
+##### Plugin
 
 - **azure-functions**: azure-functions plugin now eliminates upstream/request URI and only use `routeprefix` configuration field to construct request path when requesting Azure API
  [#11850](https://github.com/Kong/kong/issues/11850)
  [KAG-2841](https://konghq.atlassian.net/browse/KAG-2841)
 
-### Deprecations
-#### Plugin
+#### Deprecations
+##### Plugin
 
 - **ACME**: Standardize redis configuration across plugins. The redis configuration right now follows common schema that is shared across other plugins.
  [#12300](https://github.com/Kong/kong/issues/12300)
@@ -538,8 +538,8 @@ for upstream_keepalive_max_requests option.
  [#12301](https://github.com/Kong/kong/issues/12301)
  [KAG-3388](https://konghq.atlassian.net/browse/KAG-3388)
 
-### Dependencies
-#### Core
+#### Dependencies
+##### Core
 
 - Bumped atc-router from 1.2.0 to 1.6.0
  [#12231](https://github.com/Kong/kong/issues/12231)
@@ -596,7 +596,7 @@ for upstream_keepalive_max_requests option.
 - Bumped lua-resty-healthcheck from 1.6.3 to 3.0.0
  [#11834](https://github.com/Kong/kong/issues/11834)
  [KAG-2704](https://konghq.atlassian.net/browse/KAG-2704)
-#### Default
+##### Default
 
 - Bump `ngx_wasm_module` to `a7087a37f0d423707366a694630f1e09f4c21728`
  [#12011](https://github.com/Kong/kong/issues/12011)
@@ -606,8 +606,8 @@ for upstream_keepalive_max_requests option.
  [#12011](https://github.com/Kong/kong/issues/12011)
 
 
-### Features
-#### Configuration
+#### Features
+##### Configuration
 
 - display a warning message when Kong Manager is enabled but the Admin API is not enabled
  [#12071](https://github.com/Kong/kong/issues/12071)
@@ -630,7 +630,7 @@ wiping the content if tag mismatch to avoid compatibility issues
 during minor version upgrade.
  [#12026](https://github.com/Kong/kong/issues/12026)
  [KAG-3093](https://konghq.atlassian.net/browse/KAG-3093)
-#### Core
+##### Core
 
 - Adds telemetry collection for AI Proxy, AI Request Transformer, and AI Response Transformer, pertaining to model and provider usage.
  [#12495](https://github.com/Kong/kong/issues/12495)
@@ -674,12 +674,12 @@ plus checking the total number of segments.
 - Extend support for getting and setting Gateway values via proxy-wasm properties in the `kong.*` namespace.
  [#11856](https://github.com/Kong/kong/issues/11856)
 
-#### PDK
+##### PDK
 
 - Increase the precision of JSON number encoding from 14 to 16 decimals
  [#12019](https://github.com/Kong/kong/issues/12019)
  [FTI-5515](https://konghq.atlassian.net/browse/FTI-5515)
-#### Plugin
+##### Plugin
 
 - Introduced the new **AI Prompt Decorator** plugin that enables prepending and appending llm/v1/chat messages onto consumer LLM requests, for prompt tuning.
  [#12336](https://github.com/Kong/kong/issues/12336)
@@ -708,7 +708,7 @@ plus checking the total number of segments.
 - Tracing Sampling Rate can now be set via the `config.sampling_rate` property of the OpenTelemetry plugin instead of it just being a global setting for the gateway.
  [#12054](https://github.com/Kong/kong/issues/12054)
  [KAG-3126](https://konghq.atlassian.net/browse/KAG-3126)
-#### Admin API
+##### Admin API
 
 - add gateway edition to the root endpoint of the admin api
  [#12097](https://github.com/Kong/kong/issues/12097)
@@ -717,14 +717,14 @@ plus checking the total number of segments.
 - Enable `status_listen` on `127.0.0.1:8007` by default
  [#12304](https://github.com/Kong/kong/issues/12304)
  [KAG-3359](https://konghq.atlassian.net/browse/KAG-3359)
-#### Clustering
+##### Clustering
 
 - **Clustering**: Expose data plane certificate expiry date on the control plane API.
  [#11921](https://github.com/Kong/kong/issues/11921)
  [FTI-5530](https://konghq.atlassian.net/browse/FTI-5530)
 
-### Fixes
-#### Configuration
+#### Fixes
+##### Configuration
 
 - fix error data loss caused by weakly typed of function in declarative_config_flattened function
  [#12167](https://github.com/Kong/kong/issues/12167)
@@ -733,7 +733,7 @@ plus checking the total number of segments.
 - respect custom `proxy_access_log`
  [#12073](https://github.com/Kong/kong/issues/12073)
  [FTI-5580](https://konghq.atlassian.net/browse/FTI-5580)
-#### Core
+##### Core
 
 - prevent ca to be deleted when it's still referenced by other entities and invalidate the related ca store caches when a ca cert is updated.
  [#11789](https://github.com/Kong/kong/issues/11789)
@@ -795,7 +795,7 @@ route using fields like `http.path` even for stream routes. This is no longer al
 - **proxy-wasm**: Fixed "previous plan already attached" error thrown when a filter triggers re-entrancy of the access handler.
  [#12452](https://github.com/Kong/kong/issues/12452)
  [KAG-3603](https://konghq.atlassian.net/browse/KAG-3603)
-#### PDK
+##### PDK
 
 - response.set_header support header argument with table array of string
  [#12164](https://github.com/Kong/kong/issues/12164)
@@ -808,7 +808,7 @@ route using fields like `http.path` even for stream routes. This is no longer al
 - **Plugin Server**: fix an issue where every request causes a new plugin instance to be created
  [#12020](https://github.com/Kong/kong/issues/12020)
  [KAG-2969](https://konghq.atlassian.net/browse/KAG-2969)
-#### Plugin
+##### Plugin
 
 - Add missing WWW-Authenticate headers to 401 response in basic auth plugin.
  [#11795](https://github.com/Kong/kong/issues/11795)
@@ -833,20 +833,20 @@ route using fields like `http.path` even for stream routes. This is no longer al
 - **Datadog**: Fix a bug that datadog plugin is not triggered for serviceless routes. In this fix, datadog plugin is always triggered, and the value of tag `name`(service_name) is set as an empty value.
  [#12068](https://github.com/Kong/kong/issues/12068)
  [FTI-5576](https://konghq.atlassian.net/browse/FTI-5576)
-#### Clustering
+##### Clustering
 
 - Fix a bug causing data-plane status updates to fail when an empty PING frame is received from a data-plane
  [#11917](https://github.com/Kong/kong/issues/11917)
  [KAG-2967](https://konghq.atlassian.net/browse/KAG-2967)
-## Kong-Manager
+### Kong-Manager
 
 
 
 
 
 
-### Features
-#### Default
+#### Features
+##### Default
 
 - Added a JSON/YAML format preview for all entity forms.
  [#157](https://github.com/Kong/kong-manager/issues/157)
@@ -860,35 +860,35 @@ route using fields like `http.path` even for stream routes. This is no longer al
  [#143](https://github.com/Kong/kong-manager/issues/143) [#147](https://github.com/Kong/kong-manager/issues/147)
 
 
-### Fixes
-#### Default
+#### Fixes
+##### Default
 
 - Standardized notification text format.
  [#140](https://github.com/Kong/kong-manager/issues/140)
 
 ## 3.5.0
-## Kong
+### Kong
 
 
-### Performance
-#### Configuration
+#### Performance
+##### Configuration
 
 - Bumped the default value of `upstream_keepalive_pool_size` to `512` and `upstream_keepalive_max_requests` to `1000`
   [#11515](https://github.com/Kong/kong/issues/11515)
-#### Core
+##### Core
 
 - refactor workspace id and name retrieval
   [#11442](https://github.com/Kong/kong/issues/11442)
 
-### Breaking Changes
-#### Plugin
+#### Breaking Changes
+##### Plugin
 
 - **Session**: a new configuration field `read_body_for_logout` was added with a default value of `false`, that changes behavior of `logout_post_arg` in a way that it is not anymore considered if the `read_body_for_logout` is not explicitly set to `true`. This is to avoid session plugin from reading request bodies by default on e.g. `POST` request for logout detection.
   [#10333](https://github.com/Kong/kong/issues/10333)
 
 
-### Dependencies
-#### Core
+#### Dependencies
+##### Core
 
 - Bumped resty.openssl from 0.8.23 to 0.8.25
   [#11518](https://github.com/Kong/kong/issues/11518)
@@ -906,7 +906,7 @@ route using fields like `http.path` even for stream routes. This is no longer al
 - Fix incorrect LuaJIT LDP/STP fusion on ARM64 which may sometimes cause incorrect logic
   [#11537](https://github.com/Kong/kong/issues/11537)
 
-#### Default
+##### Default
 
 - Bumped lua-resty-healthcheck from 1.6.2 to 1.6.3
   [#11360](https://github.com/Kong/kong/issues/11360)
@@ -943,8 +943,8 @@ route using fields like `http.path` even for stream routes. This is no longer al
   [#11416](https://github.com/Kong/kong/pull/11416)
 
 
-### Features
-#### Core
+#### Features
+##### Core
 
 - Add a new endpoint `/schemas/vaults/:name` to retrieve the schema of a vault.
   [#11727](https://github.com/Kong/kong/issues/11727)
@@ -973,7 +973,7 @@ route using fields like `http.path` even for stream routes. This is no longer al
 - Support HTTP query parameters in expression routes.
   [#11348](https://github.com/Kong/kong/pull/11348)
 
-#### Plugin
+##### Plugin
 
 - **response-ratelimiting**: add support for secret rotation with redis connection
   [#10570](https://github.com/Kong/kong/issues/10570)
@@ -996,18 +996,18 @@ route using fields like `http.path` even for stream routes. This is no longer al
   Google Cloud trace header
   [#11254](https://github.com/Kong/kong/pull/11254)
 
-#### Clustering
+##### Clustering
 
 - **Clustering**: Allow configuring DP metadata labels for on-premise CP Gateway
   [#11625](https://github.com/Kong/kong/issues/11625)
 
-### Fixes
-#### Configuration
+#### Fixes
+##### Configuration
 
 - The default value of `dns_no_sync` option has been changed to `on`
   [#11871](https://github.com/Kong/kong/issues/11871)
 
-#### Core
+##### Core
 
 - Fix an issue that the TTL of the key-auth plugin didnt work in DB-less and Hybrid mode.
   [#11464](https://github.com/Kong/kong/issues/11464)
@@ -1070,7 +1070,7 @@ route using fields like `http.path` even for stream routes. This is no longer al
   `nginx_http_proxy_wasm_isolation` configuration value from taking effect.
   [#11407](https://github.com/Kong/kong/pull/11407)
 
-#### PDK
+##### PDK
 
 - Fix several issues in Vault and refactor the Vault code base: - Make DAOs to fallback to empty string when resolving Vault references fail - Use node level mutex when rotation references  - Refresh references on config changes - Update plugin referenced values only once per request - Pass only the valid config options to vault implementations - Resolve multi-value secrets only once when rotating them - Do not start vault secrets rotation timer on control planes - Re-enable negative caching - Reimplement the kong.vault.try function - Remove references from rotation in case their configuration has changed
   [#11652](https://github.com/Kong/kong/issues/11652)
@@ -1083,7 +1083,7 @@ route using fields like `http.path` even for stream routes. This is no longer al
 
 - Fix a bug related to data interference between requests in the kong.log.serialize function.
   [#11566](https://github.com/Kong/kong/issues/11566)
-#### Plugin
+##### Plugin
 
 - **Opentelemetry**: fix an issue that resulted in invalid parent IDs in the propagated tracing headers
   [#11468](https://github.com/Kong/kong/issues/11468)
@@ -1114,19 +1114,19 @@ route using fields like `http.path` even for stream routes. This is no longer al
 - **AWS-Lambda**: fix an issue that the AWS-Lambda plugin cannot extract a json encoded proxy integration response.
   [#11413](https://github.com/Kong/kong/pull/11413)
 
-#### Default
+##### Default
 
 - Restore lapis & luarocks-admin bins
   [#11578](https://github.com/Kong/kong/issues/11578)
-## Kong-Manager
+### Kong-Manager
 
 
 
 
 
 
-### Features
-#### Default
+#### Features
+##### Default
 
 - Add `JSON` and `YAML` formats in entity config cards.
   [#111](https://github.com/Kong/kong-manager/issues/111)
@@ -1144,8 +1144,8 @@ route using fields like `http.path` even for stream routes. This is no longer al
   [#86](https://github.com/Kong/kong-manager/issues/86)
 
 
-### Fixes
-#### Default
+#### Fixes
+##### Default
 
 - Fix incorrect port number in Port Details.
   [#103](https://github.com/Kong/kong-manager/issues/103)
@@ -1156,10 +1156,10 @@ route using fields like `http.path` even for stream routes. This is no longer al
 
 ## 3.4.2
 
-## Kong
+### Kong
 
-### Fixes
-#### Core
+#### Fixes
+##### Core
 
 - Apply Nginx patch for detecting HTTP/2 stream reset attacks early (CVE-2023-44487)
  [#11743](https://github.com/Kong/kong/issues/11743)
@@ -1169,20 +1169,20 @@ route using fields like `http.path` even for stream routes. This is no longer al
 
 # 3.4.1.0
 
-## Kong
+### Kong
 
 
-### Additions
+#### Additions
 
-#### Core
+##### Core
 
 - Support HTTP query parameters in expression routes.
   [#11348](https://github.com/Kong/kong/pull/11348)
 
 
-### Dependencies
+#### Dependencies
 
-#### Core
+##### Core
 
 - Fix incorrect LuaJIT LDP/STP fusion on ARM64 which may sometimes cause incorrect logic
   [#11537](https://github.com/Kong/kong-ee/issues/11537)
@@ -1190,9 +1190,9 @@ route using fields like `http.path` even for stream routes. This is no longer al
 
 
 
-### Fixes
+#### Fixes
 
-#### Core
+##### Core
 
 - Removed a hardcoded proxy-wasm isolation level setting that was preventing the
   `nginx_http_proxy_wasm_isolation` configuration value from taking effect.
@@ -1210,7 +1210,7 @@ route using fields like `http.path` even for stream routes. This is no longer al
   [#11538](https://github.com/Kong/kong-ee/issues/11538)
   [KAG-2561](https://konghq.atlassian.net/browse/KAG-2561)
 
-#### PDK
+##### PDK
 
 - Fix several issues in Vault and refactor the Vault code base: - Make DAOs to fallback to empty string when resolving Vault references fail - Use node level mutex when rotation references  - Refresh references on config changes - Update plugin referenced values only once per request - Pass only the valid config options to vault implementations - Resolve multi-value secrets only once when rotating them - Do not start vault secrets rotation timer on control planes - Re-enable negative caching - Reimplement the kong.vault.try function - Remove references from rotation in case their configuration has changed
 
@@ -1220,15 +1220,15 @@ route using fields like `http.path` even for stream routes. This is no longer al
   [#11484](https://github.com/Kong/kong-ee/issues/11484)
   [KAG-2336](https://konghq.atlassian.net/browse/KAG-2336)
 
-#### Plugin
+##### Plugin
 
 - **Opentelemetry**: fix an issue that resulted in invalid parent IDs in the propagated tracing headers
   [#11468](https://github.com/Kong/kong-ee/issues/11468)
   [KAG-2281](https://konghq.atlassian.net/browse/KAG-2281)
 
-## Kong Manager
+### Kong Manager
 
-### Fixes
+#### Fixes
 
 - Fixed entity docs link.
   [#92](https://github.com/Kong/kong-manager/pull/92)
