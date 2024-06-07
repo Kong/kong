@@ -91,4 +91,22 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     assert.same({ config = {allow_patterns = "length must be at most 10" }}, err)
   end)
 
+  it("allow_all_conversation_history needs to be false if match_all_roles is set to true", function()
+    local config = {
+      allow_patterns = { "wat" },
+      allow_all_conversation_history = true,
+      match_all_roles = true,
+    }
+
+    local ok, err = validate(config)
+
+    assert.is_falsy(ok)
+    assert.not_nil(err)
+    assert.same({
+    ["@entity"] = {
+      [1] = 'failed conditional validation given value of field \'config.match_all_roles\'' },
+    ["config"] = {
+      ["allow_all_conversation_history"] = 'value must be false' }}, err)
+  end)
+
 end)
