@@ -33,7 +33,7 @@ dependencies = {
   "lua-protobuf == 0.5.1",
   "lua-resty-healthcheck == 3.0.2",
   "lua-messagepack == 0.5.4",
-  "lua-resty-aws == 1.4.1",
+  "lua-resty-aws == 1.5.0",
   "lua-resty-openssl == 1.4.0",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6.1",
@@ -72,6 +72,7 @@ build = {
     ["kong.conf_loader"] = "kong/conf_loader/init.lua",
     ["kong.conf_loader.constants"] = "kong/conf_loader/constants.lua",
     ["kong.conf_loader.parse"] = "kong/conf_loader/parse.lua",
+    ["kong.conf_loader.sys"] = "kong/conf_loader/sys.lua",
     ["kong.conf_loader.listeners"] = "kong/conf_loader/listeners.lua",
 
     ["kong.clustering"] = "kong/clustering/init.lua",
@@ -109,6 +110,7 @@ build = {
     ["kong.templates.nginx_kong_inject"] = "kong/templates/nginx_kong_inject.lua",
     ["kong.templates.nginx_kong_stream_inject"] = "kong/templates/nginx_kong_stream_inject.lua",
     ["kong.templates.kong_yml"] = "kong/templates/kong_yml.lua",
+    ["kong.templates.wasmtime_cache_config"] = "kong/templates/wasmtime_cache_config.lua",
 
     ["kong.resty.dns.client"] = "kong/resty/dns/client.lua",
     ["kong.resty.dns.utils"] = "kong/resty/dns/utils.lua",
@@ -592,6 +594,7 @@ build = {
     ["kong.plugins.ai-response-transformer.schema"] = "kong/plugins/ai-response-transformer/schema.lua",
 
     ["kong.llm"] = "kong/llm/init.lua",
+    ["kong.llm.schemas"] = "kong/llm/schemas/init.lua",
     ["kong.llm.drivers.shared"] = "kong/llm/drivers/shared.lua",
     ["kong.llm.drivers.openai"] = "kong/llm/drivers/openai.lua",
     ["kong.llm.drivers.azure"] = "kong/llm/drivers/azure.lua",

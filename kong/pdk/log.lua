@@ -10,15 +10,17 @@
 -- @module kong.log
 
 
-local buffer = require "string.buffer"
-local errlog = require "ngx.errlog"
-local ngx_re = require "ngx.re"
-local inspect = require "inspect"
-local ngx_ssl = require "ngx.ssl"
-local phase_checker = require "kong.pdk.private.phases"
+local buffer = require("string.buffer")
+local errlog = require("ngx.errlog")
+local ngx_re = require("ngx.re")
+local inspect = require("inspect")
+local phase_checker = require("kong.pdk.private.phases")
+local constants = require("kong.constants")
+
+local request_id_get = require("kong.tracing.request_id").get
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
-local constants = require "kong.constants"
-local workspace = require "kong.workspaces"
+local get_tls1_version_str = require("ngx.ssl").get_tls1_version_str
+local get_workspace_name = require("kong.workspaces").get_workspace_name
 
 local sub = string.sub
 local type = type
@@ -38,9 +40,9 @@ local kong = kong
 local check_phase = phase_checker.check
 local split = require("kong.tools.string").split
 local byte = string.byte
-local request_id_get = require "kong.tracing.request_id".get
 
 
+local EMPTY_TAB  = require("pl.tablex").readonly({})
 local _PREFIX = "[kong] "
 local _DEFAULT_FORMAT = "%file_src:%line_src %message"
 local _DEFAULT_NAMESPACED_FORMAT = "%file_src:%line_src [%namespace] %message"
@@ -715,7 +717,7 @@ do
 
   local function build_tls_info(var, override)
     local tls_info
-    local tls_info_ver = ngx_ssl.get_tls1_version_str()
+    local tls_info_ver = get_tls1_version_str()
     if tls_info_ver then
       tls_info = {
         version = tls_info_ver,
@@ -794,9 +796,10 @@ do
     function serialize(options)
       check_phase(PHASES_LOG)
 
-      options = options or {}
+      options = options or EMPTY_TAB
       local ongx = options.ngx or ngx
       local okong = options.kong or kong
+      local okong_request = okong.request
 
       local ctx = ongx.ctx
       local var = ongx.var
@@ -814,10 +817,16 @@ do
         end
       end
 
-      -- The value of upstream_status is a string, and status codes may be
-      -- seperated by comma or grouped by colon, according to
-      -- the nginx doc: http://nginx.org/en/docs/http/ngx_http_upstream_module.html#upstream_status
-      local upstream_status = var.upstream_status or ""
+      local request_headers, response_headers = nil, nil
+      -- THIS IS AN INTERNAL ONLY FLAG TO SKIP FETCHING HEADERS,
+      -- AND THIS FLAG MIGHT BE REMOVED IN THE FUTURE
+      -- WITHOUT ANY NOTICE AND DEPRECATION.
+      if not options.__skip_fetch_headers__ then
+        request_headers = okong_request.get_headers()
+        response_headers = ongx.resp.get_headers()
+      end
+
+      local upstream_status = var.upstream_status or ctx.buffered_status or ""
 
       local response_source = okong.response.get_source(ongx.ctx)
       local response_source_name = TYPE_NAMES[response_source]
@@ -834,9 +843,9 @@ do
           id = request_id_get() or "",
           uri = request_uri,
           url = url,
-          querystring = okong.request.get_query(), -- parameters, as a table
-          method = okong.request.get_method(), -- http method
-          headers = okong.request.get_headers(),
+          querystring = okong_request.get_query(), -- parameters, as a table
+          method = okong_request.get_method(), -- http method
+          headers = request_headers,
           size = to_decimal(var.request_length),
           tls = build_tls_info(var, ctx.CLIENT_VERIFY_OVERRIDE),
         },
@@ -844,7 +853,7 @@ do
         upstream_status = upstream_status,
         response = {
           status = ongx.status,
-          headers = ongx.resp.get_headers(),
+          headers = response_headers,
           size = to_decimal(var.bytes_sent),
         },
         latencies = {
@@ -853,17 +862,17 @@ do
           request = tonumber(var.request_time) * 1000,
           receive = ctx.KONG_RECEIVE_TIME or 0,
         },
-        tries = (ctx.balancer_data or {}).tries,
+        tries = (ctx.balancer_data or EMPTY_TAB).tries,
         authenticated_entity = build_authenticated_entity(ctx),
         route = cycle_aware_deep_copy(ctx.route),
         service = cycle_aware_deep_copy(ctx.service),
         consumer = cycle_aware_deep_copy(ctx.authenticated_consumer),
         client_ip = var.remote_addr,
-        started_at = okong.request.get_start_time(),
+        started_at = okong_request.get_start_time(),
         source = response_source_name,
 
         workspace = ctx.workspace,
-        workspace_name = workspace.get_workspace_name(),
+        workspace_name = get_workspace_name(),
       }
 
       return edit_result(ctx, root)
@@ -873,7 +882,7 @@ do
     function serialize(options)
       check_phase(PHASES_LOG)
 
-      options = options or {}
+      options = options or EMPTY_TAB
       local ongx = options.ngx or ngx
       local okong = options.kong or kong
 
@@ -898,7 +907,7 @@ do
           kong = ctx.KONG_PROXY_LATENCY or ctx.KONG_RESPONSE_LATENCY or 0,
           session = var.session_time * 1000,
         },
-        tries = (ctx.balancer_data or {}).tries,
+        tries = (ctx.balancer_data or EMPTY_TAB).tries,
         authenticated_entity = build_authenticated_entity(ctx),
         route = cycle_aware_deep_copy(ctx.route),
         service = cycle_aware_deep_copy(ctx.service),
@@ -907,7 +916,7 @@ do
         started_at = okong.request.get_start_time(),
 
         workspace = ctx.workspace,
-        workspace_name = workspace.get_workspace_name(),
+        workspace_name = get_workspace_name(),
       }
 
       return edit_result(ctx, root)

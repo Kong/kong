@@ -597,6 +597,12 @@ jobs:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
 
+    - uses: actions/checkout@v3
+
+    - name: Get latest commit SHA on master
+      run: |
+        echo "latest_sha=$(git ls-remote origin -h refs/heads/${{ github.event.inputs.default_branch }} | cut -f1)" >> $GITHUB_ENV
+
     - name: Docker meta
       id: meta
       uses: docker/metadata-action@v5
@@ -604,7 +610,7 @@ jobs:
         images: ${{ needs.metadata.outputs.docker-repository }}
         sep-tags: " "
         tags: |
-          type=raw,value=latest,enable=${{ matrix.label == 'ubuntu' }}
+          type=raw,value=latest,enable=${{ matrix.label == 'ubuntu' && github.ref_name == github.event.inputs.default_branch && env.latest_sha == needs.metadata.outputs.commit-sha }}
           type=match,enable=${{ github.event_name == 'workflow_dispatch' }},pattern=\d.\d,value=${{ github.event.inputs.version }}
           type=match,enable=${{ github.event_name == 'workflow_dispatch' && matrix.label == 'ubuntu' }},pattern=\d.\d,value=${{ github.event.inputs.version }},suffix=
           type=raw,enable=${{ github.event_name == 'workflow_dispatch' }},${{ github.event.inputs.version }}

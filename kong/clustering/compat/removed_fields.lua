@@ -140,6 +140,16 @@ return {
     },
     key_auth = {
       "realm"
+    },
+  },
+
+  -- Any dataplane older than 3.8.0
+  [3008000000] = {
+    response_transformer = {
+      "rename.json",
+    },
+    aws_lambda = {
+      "empty_arrays_mode",
     }
   },
 }

@@ -695,7 +695,7 @@ end
 -- @param opts table with options. See [lua-resty-http](https://github.com/pintsized/lua-resty-http)
 function resty_http_proxy_mt:send(opts, is_reopen)
   local cjson = require "cjson"
-  local utils = require "kong.tools.utils"
+  local encode_args = require("kong.tools.http").encode_args
 
   opts = opts or {}
 
@@ -709,7 +709,7 @@ function resty_http_proxy_mt:send(opts, is_reopen)
     opts.body = cjson.encode(opts.body)
 
   elseif string.find(content_type, "www-form-urlencoded", nil, true) and t_body_table then
-    opts.body = utils.encode_args(opts.body, true, opts.no_array_indexes)
+    opts.body = encode_args(opts.body, true, opts.no_array_indexes)
 
   elseif string.find(content_type, "multipart/form-data", nil, true) and t_body_table then
     local form = opts.body
@@ -738,7 +738,7 @@ function resty_http_proxy_mt:send(opts, is_reopen)
 
   -- build querystring (assumes none is currently in 'opts.path')
   if type(opts.query) == "table" then
-    local qs = utils.encode_args(opts.query)
+    local qs = encode_args(opts.query)
     opts.path = opts.path .. "?" .. qs
     opts.query = nil
   end
@@ -3312,7 +3312,8 @@ luassert:register("assertion", "partial_match", partial_match,
 -- (ok, code, stdout, stderr); if `returns` is false,
 -- returns either (false, stderr) or (true, stderr, stdout).
 function exec(cmd, returns)
-  local ok, stdout, stderr, _, code = shell.run(cmd, nil, 0)
+  --100MB for retrieving stdout & stderr
+  local ok, stdout, stderr, _, code = shell.run(cmd, nil, 0, 1024*1024*100)
   if returns then
     return ok, code, stdout, stderr
   end

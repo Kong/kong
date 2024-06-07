@@ -1,0 +1,4 @@
+message: |
+    **AWS-Lambda**: A new configuration field `empty_arrays_mode` is now added to control whether Kong should send `[]` empty arrays (returned by Lambda function) as `[]` empty arrays or `{}` empty objects in JSON responses.`
+type: feature
+scope: Plugin

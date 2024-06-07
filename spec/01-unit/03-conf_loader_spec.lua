@@ -2105,6 +2105,19 @@ describe("Configuration loader", function()
       assert.is_true(found, "expected the user filter to be enabled")
     end)
 
+    it("populates wasmtime_cache_* properties", function()
+      local conf, err = conf_loader(nil, {
+        wasm = "on",
+        wasm_filters = "bundled,user",
+        wasm_filters_path = temp_dir,
+      })
+      assert.is_nil(err)
+
+      assert.is_string(conf.wasmtime_cache_directory,
+                       "wasmtime_cache_directory was not set")
+      assert.is_string(conf.wasmtime_cache_config_file,
+                       "wasmtime_cache_config_file was not set")
+    end)
   end)
 
   describe("errors", function()

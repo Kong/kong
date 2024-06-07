@@ -301,3 +301,34 @@ qq{
 protocol=tls
 --- no_error_log
 [error]
+
+
+
+=== TEST 11: client.get_protocol() fails when kong receives an http request with multiple x-forwarded-proto headers
+
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        access_by_lua_block {
+            ngx.ctx.route = {
+              protocols = { "http", "https" }
+            }
+
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+            pdk.ip.is_trusted = function() return true end -- mock
+
+            local ok, err = pdk.client.get_protocol(true)
+            assert(ok == nil)
+            ngx.say("err=", err)
+        }
+    }
+--- request
+GET /t
+--- more_headers
+X-Forwarded-Proto: https
+X-Forwarded-Proto: http
+--- response_body
+err=Only one X-Forwarded-Proto header allowed
+--- no_error_log
+[error]

@@ -209,6 +209,22 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
+      local route5 = bp.routes:insert {
+        hosts   = { "http_host_header.test" },
+        service = service1
+      }
+
+      bp.plugins:insert {
+        route  = { id = route5.id },
+        name   = "http-log",
+        config = {
+          http_endpoint = "http://" .. helpers.mock_upstream_host
+                                    .. ":"
+                                    .. helpers.mock_upstream_port
+                                    .. "/post_log/http_host_header"
+        }
+      }
+
       local route6 = bp.routes:insert {
         hosts   = { "https_logging_faulty.test" },
         service = service2
@@ -535,6 +551,24 @@ for _, strategy in helpers.each_strategy() do
       assert.same(vault_env_value, entries[1].log_req_headers.key2)
     end)
 
+    it("http client implicitly adds Host header", function()
+      reset_log("http_host_header")
+      local res = proxy_client:get("/status/200", {
+        headers = {
+          ["Host"] = "http_host_header.test"
+        }
+      })
+      assert.res_status(200, res)
+
+      local entries = get_log("http_host_header", 1)
+      local host_header
+      if helpers.mock_upstream_port == 80 then
+        host_header = helpers.mock_upstream_host
+      else
+        host_header = helpers.mock_upstream_host .. ":" .. helpers.mock_upstream_port
+      end
+      assert.same(entries[1].log_req_headers['host'] or "", host_header)
+    end)
 
     it("puts changed configuration into effect immediately", function()
         local admin_client = assert(helpers.admin_client())
