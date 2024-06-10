@@ -841,6 +841,21 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         }, json.choices[1].message)
       end)
 
+      it("tries to override configured model", function()
+        local r = client:get("/openai/llm/v1/chat/good", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good_own_model.json"),
+        })
+
+        local body = assert.res_status(400 , r)
+        local json = cjson.decode(body)
+
+        assert.same(json, {error = { message = "cannot use own model - must be: gpt-3.5-turbo" } })
+      end)
+
       it("bad upstream response", function()
         local r = client:get("/openai/llm/v1/chat/bad_upstream_response", {
           headers = {
