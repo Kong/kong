@@ -369,7 +369,9 @@ function _M:access(conf)
 
   -- copy from the user request if present
   if (not multipart) and (not conf_m.model.name) and (request_table.model) then
-    conf_m.model.name = request_table.model
+    if request_table.model ~= cjson.null then
+      conf_m.model.name = request_table.model
+    end
   elseif multipart then
     conf_m.model.name = "NOT_SPECIFIED"
   end
@@ -386,7 +388,6 @@ function _M:access(conf)
     return bad_request("model parameter not found in request, nor in gateway configuration")
   end
 
-  -- stash for analytics later
   kong_ctx_plugin.llm_model_requested = conf_m.model.name
 
   -- check the incoming format is the same as the configured LLM format
