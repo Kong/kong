@@ -272,7 +272,7 @@ function _M.to_ollama(request_table, model)
 
   -- common parameters
   input.stream = request_table.stream or false -- for future capability
-  input.model = model.name
+  input.model = model.name or request_table.name
 
   if model.options then
     input.options = {}
