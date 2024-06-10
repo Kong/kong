@@ -32,6 +32,7 @@ nil
 [error]
 
 
+
 === TEST 2: tracer.set_active_span() sets active span
 --- http_config eval: $t::Util::HttpConfig
 --- config
@@ -55,6 +56,7 @@ GET /t
 access
 --- no_error_log
 [error]
+
 
 
 === TEST 3: tracer.active_span() get tracer from active span

@@ -39,5 +39,3 @@ GET /t/01/ok
 uri_captures: tag: /ok, 0: /t/01/ok, 1: /01/ok, 2: /01, 3: /ok
 --- no_error_log
 [error]
-
-

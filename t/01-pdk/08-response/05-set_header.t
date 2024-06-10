@@ -280,7 +280,8 @@ Transfer-Encoding: chunked
 manually setting Transfer-Encoding. Ignored.
 
 
-=== TEST 8: response.set_header() with header table
+
+=== TEST 9: response.set_header() with header table
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {

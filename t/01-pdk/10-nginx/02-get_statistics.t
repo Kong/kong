@@ -20,7 +20,6 @@ run_tests();
 
 __DATA__
 
-
 === TEST 1: nginx.get_statistics()
 returns Nginx connections and requests states
 --- http_config eval: $t::Util::HttpConfig
