@@ -339,6 +339,13 @@ function _M:access(conf)
     conf_m.model.name = "NOT_SPECIFIED"
   end
 
+  -- check that the user isn't trying to override the plugin conf model in the request body
+  if request_table and request_table.model and type(request_table.model) == "string" then
+    if request_table.model ~= conf_m.model.name then
+      return bad_request("cannot use own model - must be: " .. conf_m.model.name)
+    end
+  end
+
   -- model is stashed in the copied plugin conf, for consistency in transformation functions
   if not conf_m.model.name then
     return bad_request("model parameter not found in request, nor in gateway configuration")
