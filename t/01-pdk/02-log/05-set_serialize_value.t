@@ -35,6 +35,7 @@ mode false mode must be 'set', 'add' or 'replace'
 [error]
 
 
+
 === TEST 2: kong.log.serialize() rejects invalid values, including self-referencial tables
 --- http_config eval: $t::Util::HttpConfig
 --- config
@@ -64,6 +65,7 @@ self_ref false value must be nil, a number, string, boolean or a non-self-refere
 [error]
 
 
+
 === TEST 3: kong.log.set_serialize_value stores changes on ngx.ctx.serialize_values
 --- http_config eval: $t::Util::HttpConfig
 --- config
@@ -89,6 +91,7 @@ GET /t
 --- no_response_body
 --- no_error_log
 [error]
+
 
 
 === TEST 4: kong.log.set_serialize_value() sets, adds and replaces values with simple keys
@@ -137,6 +140,7 @@ add new value sets it true
 add existing value does not set it true
 --- no_error_log
 [error]
+
 
 
 === TEST 5: kong.log.set_serialize_value sets, adds and replaces values with keys with dots
@@ -248,6 +252,8 @@ complex true
 --- no_error_log
 [error]
 
+
+
 === TEST 7: kong.log.set_serialize_value() setting values to nil
 --- http_config eval: $t::Util::HttpConfig
 --- config
@@ -287,6 +293,8 @@ request.headers.authorization true
 --- no_error_log
 [error]
 
+
+
 === TEST 8: kong.log.serialize() redactes authorization headers by default
 --- http_config eval: $t::Util::HttpConfig
 --- config
@@ -325,5 +333,3 @@ Proxy-Authorization REDACTED
 PROXY_AUTHORIZATION REDACTED
 --- no_error_log
 [error]
-
-
