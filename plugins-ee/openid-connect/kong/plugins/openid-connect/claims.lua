@@ -61,6 +61,21 @@ local function find_claim(token, search, no_transform)
 end
 
 
+-- @tparam table token The token to check for forbidden claims.
+-- @tparam table forbidden_claim A list of forbidden claims.
+-- @treturn boolean false if the token doesn't have a forbidden claim.
+-- @treturn string the name of the first forbidden claim found.
+local function has_forbidden_claim(token, forbidden_claims)
+  for _, claim in ipairs(forbidden_claims) do
+    if find_claim(token, claim) then
+      return claim
+    end
+  end
+
+  return false
+end
+
+
 ---compares two timestamps and returns a boolean
 ---indicating token expiration.
 ---
@@ -131,5 +146,6 @@ end
 return {
   find = find_claim,
   exp  = get_exp,
-  token_is_expired = token_is_expired
+  token_is_expired = token_is_expired,
+  has_forbidden_claim = has_forbidden_claim,
 }

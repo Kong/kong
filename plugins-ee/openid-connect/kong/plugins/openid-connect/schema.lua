@@ -2331,6 +2331,16 @@ local config = {
               default = 300,
             },
           },
+          {
+            claims_forbidden = {
+              description = "If given, these claims are forbidden in the token payload.",
+              required = false,
+              type = "array",
+              elements = {
+                type = "string",
+              },
+            },
+          },
         },
         shorthand_fields = {
           -- TODO: deprecated forms, to be removed in Kong 4.0

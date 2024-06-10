@@ -2172,6 +2172,32 @@ for _, strategy in helpers.all_strategies() do
           },
         }
 
+        local claimsforbidden = bp.routes:insert {
+          service = service,
+          paths   = { "/claimsforbidden" },
+        }
+
+        bp.plugins:insert {
+          route   = claimsforbidden,
+          name    = PLUGIN_NAME,
+          config  = {
+            issuer    = ISSUER_URL,
+            client_id = {
+              KONG_CLIENT_ID,
+            },
+            client_secret = {
+              KONG_CLIENT_SECRET,
+            },
+            scopes_claim = {
+              "scope",
+            },
+            claims_forbidden = {
+              "preferred_username",
+            },
+            display_errors = true,
+          },
+        }
+
         local falseaudience = bp.routes:insert {
           service = service,
           paths   = { "/falseaudience" },
@@ -2519,6 +2545,17 @@ for _, strategy in helpers.all_strategies() do
           })
           assert.response(res).has.status(200)
           assert.response(res).has.jsonbody()
+        end)
+
+        it("prohibits access if a forbidden claim is present", function()
+          local res = proxy_client:get("/claimsforbidden", {
+            headers = {
+              Authorization = PASSWORD_CREDENTIALS
+            },
+          })
+          assert.response(res).has.status(403)
+          local json = assert.response(res).has.jsonbody()
+          assert.same("Forbidden (forbidden claim 'preferred_username' found in access token)", json.message)
         end)
       end)
 

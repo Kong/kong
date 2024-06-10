@@ -320,6 +320,10 @@ return {
   [3008000000] = {
     aws_lambda = {
       "empty_arrays_mode",
-    }
+    },
+    -- Enterprise plugins
+    openid_connect = {
+      "claims_forbidden",
+    },
   },
 }

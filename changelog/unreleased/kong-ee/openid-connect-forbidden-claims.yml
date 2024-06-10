@@ -1,0 +1,3 @@
+message: "**OpenID-connect:** Added `claims_forbidden` property to restrict access."
+type: feature
+scope: Plugin

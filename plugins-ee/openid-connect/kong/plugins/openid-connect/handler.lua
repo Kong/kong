@@ -1768,75 +1768,124 @@ function OICHandler.access(_, conf)
       end
     end
 
+
+    -- @return true if allowed
+    -- @return nil + error message if not allowed
+    local check_forbidden_claims = function(optname)
+      local forbidden_claims = args.get_conf_arg(optname)
+      if not forbidden_claims or #forbidden_claims == 0 then
+        return true
+      end
+
+      log("verifying forbidden claims")
+      if decode_tokens and type(tokens_decoded) ~= "table" then
+        decode_tokens = false
+        tokens_decoded, err = oic.token:decode(tokens_encoded, TOKEN_DECODE_OPTS)
+        if err then
+          log("error decoding tokens (", err, ")")
+        end
+      end
+
+      if not introspected and type(tokens_decoded) == "table" and type(tokens_decoded.access_token) ~= "table" then
+        log("introspecting token to verify forbidden claims")
+        introspection_data, err, introspection_jwt = introspect_token(tokens_encoded.access_token, ttl)
+        introspected = true
+        if err then
+          log("error introspecting token to verify forbidden claims (", err, ")")
+        end
+      end
+
+      if type(introspection_data) == "table" then
+        local claim_found = claims.has_forbidden_claim(introspection_data, forbidden_claims)
+        if claim_found then
+          return nil, "forbidden claim '" .. claim_found .. "' found in introspection results"
+        end
+      end
+
+      if type(tokens_decoded) == "table" and type(tokens_decoded.access_token) == "table" then
+        local claim_found = claims.has_forbidden_claim(tokens_decoded.access_token.payload, forbidden_claims)
+        if claim_found then
+          return nil, "forbidden claim '" .. claim_found .. "' found in access token"
+        end
+      end
+
+      return true
+    end
+
+
+    -- @return true if allowed
+    -- @return nil + error message if not allowed
     local check_required = function(name, required_name, claim_name, default)
       local requirements = args.get_conf_arg(required_name)
-      if requirements then
-        log("verifying required ", name)
-        local claim_lookup
-        if claim_name then
-          claim_lookup = args.get_conf_arg(claim_name, default)
+      if not requirements then
+        return true
+      end
+
+      log("verifying required ", name)
+      local claim_lookup
+      if claim_name then
+        claim_lookup = args.get_conf_arg(claim_name, default)
+      else
+        claim_lookup = default
+      end
+
+      if decode_tokens and type(tokens_decoded) ~= "table" then
+        decode_tokens = false
+        tokens_decoded, err = oic.token:decode(tokens_encoded, TOKEN_DECODE_OPTS)
+        if err then
+          log("error decoding tokens (", err, ")")
+        end
+      end
+
+      if not introspected and type(tokens_decoded) == "table" and type(tokens_decoded.access_token) ~= "table" then
+        log("introspecting token to verify required ", name)
+        introspection_data, err, introspection_jwt = introspect_token(tokens_encoded.access_token, ttl)
+        introspected = true
+        if err then
+          log("error introspecting token to verify required ", name, " (", err, ")")
+        end
+      end
+
+      local access_token_values
+      if type(introspection_data) == "table" then
+        access_token_values = claims.find(introspection_data, claim_lookup)
+        if access_token_values then
+          log(name, " found in introspection results")
         else
-          claim_lookup = default
+          log(name, " not found in introspection results")
         end
+      end
 
-        if decode_tokens and type(tokens_decoded) ~= "table" then
-          decode_tokens = false
-          tokens_decoded, err = oic.token:decode(tokens_encoded, TOKEN_DECODE_OPTS)
-          if err then
-            log("error decoding tokens (", err, ")")
-          end
-        end
-
-        if not introspected and type(tokens_decoded) == "table" and type(tokens_decoded.access_token) ~= "table" then
-          log("introspecting token to verify required ", name)
-          introspection_data, err, introspection_jwt = introspect_token(tokens_encoded.access_token, ttl)
-          introspected = true
-          if err then
-            log("error introspecting token to verify required ", name, " (", err, ")")
-          end
-        end
-
-        local access_token_values
-        if type(introspection_data) == "table" then
-          access_token_values = claims.find(introspection_data, claim_lookup)
+      if not access_token_values then
+        if type(tokens_decoded) == "table" and type(tokens_decoded.access_token) == "table" then
+          access_token_values = claims.find(tokens_decoded.access_token.payload, claim_lookup)
           if access_token_values then
-            log(name, " found in introspection results")
+            log(name, " found in access token")
           else
-            log(name, " not found in introspection results")
+            log(name, " not found in access token")
           end
         end
+      end
 
-        if not access_token_values then
-          if type(tokens_decoded) == "table" and type(tokens_decoded.access_token) == "table" then
-            access_token_values = claims.find(tokens_decoded.access_token.payload, claim_lookup)
-            if access_token_values then
-              log(name, " found in access token")
-            else
-              log(name, " not found in access token")
-            end
-          end
+      if not access_token_values then
+        return nil, name .. " required but no " .. name .. " found"
+      end
+
+      access_token_values = set.new(access_token_values)
+
+      local has_valid_requirements
+      for _, requirement in ipairs(requirements) do
+        if set.has(requirement, access_token_values) then
+          has_valid_requirements = true
+          break
         end
+      end
 
-        if not access_token_values then
-          return nil, name .. " required but no " .. name .. " found"
-        end
+      if has_valid_requirements then
+        log("required ", name, " were found")
 
-        access_token_values = set.new(access_token_values)
-
-        local has_valid_requirements
-        for _, requirement in ipairs(requirements) do
-          if set.has(requirement, access_token_values) then
-            has_valid_requirements = true
-            break
-          end
-        end
-
-        if has_valid_requirements then
-          log("required ", name, " were found")
-
-        else
-          return nil, "required " .. name .. " were not found [ " .. concat(access_token_values, ", ") .. " ]"
-        end
+      else
+        return nil, "required " .. name .. " were not found [ " .. concat(access_token_values, ", ") .. " ]"
       end
 
       return true
@@ -1845,6 +1894,11 @@ function OICHandler.access(_, conf)
     ok, err = check_required("issuers", "issuers_allowed", nil, { "iss" })
     if not ok then
       return unauthorized(err)
+    end
+
+    ok, err = check_forbidden_claims("claims_forbidden")
+    if not ok then
+      return forbidden(err)
     end
 
     ok, err = check_required("scopes", "scopes_required", "scopes_claim", { "scope" })

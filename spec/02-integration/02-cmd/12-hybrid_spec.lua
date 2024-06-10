@@ -145,6 +145,8 @@ for _, strategy in helpers.each_strategy() do
       lazy_teardown(function()
         helpers.stop_kong("servroot")
         helpers.stop_kong("servroot2")
+        helpers.clean_prefix("servroot")
+        helpers.clean_prefix("servroot2")
       end)
 
       it("quits gracefully", function()

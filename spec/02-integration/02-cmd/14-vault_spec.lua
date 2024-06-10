@@ -11,6 +11,7 @@ local helpers = require "spec.helpers"
 for _, strategy in helpers.all_strategies() do
 describe("kong vault #" .. strategy, function()
   lazy_setup(function()
+    helpers.clean_prefix()
     helpers.get_db_utils(nil, {}) -- runs migrations
   end)
 
