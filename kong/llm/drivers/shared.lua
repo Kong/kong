@@ -213,19 +213,35 @@ function _M.frame_to_events(frame)
       }
     end
   else
+    -- standard SSE parser
     local event_lines = split(frame, "\n")
     local struct = { event = nil, id = nil, data = nil }
 
-    for _, dat in ipairs(event_lines) do
+    for i, dat in ipairs(event_lines) do
       if #dat < 1 then
         events[#events + 1] = struct
         struct = { event = nil, id = nil, data = nil }
       end
 
+      -- test for truncated chunk on the last line (no trailing \r\n\r\n)
+      if #dat > 0 and #event_lines == i then
+        ngx.log(ngx.DEBUG, "[ai-proxy] truncated sse frame head")
+        kong.ctx.plugin.truncated_frame = dat
+        break  -- stop parsing immediately, server has done something wrong
+      end
+
+      -- test for abnormal start-of-frame (truncation tail)
+      if kong and kong.ctx.plugin.truncated_frame then
+        -- this is the tail of a previous incomplete chunk
+        ngx.log(ngx.DEBUG, "[ai-proxy] truncated sse frame tail")
+        dat = fmt("%s%s", kong.ctx.plugin.truncated_frame, dat)
+        kong.ctx.plugin.truncated_frame = nil
+      end
+
       local s1, _ = str_find(dat, ":") -- find where the cut point is
 
       if s1 and s1 ~= 1 then
-        local field = str_sub(dat, 1, s1-1) -- returns "data " from data: hello world
+        local field = str_sub(dat, 1, s1-1) -- returns "data" from data: hello world
         local value = str_ltrim(str_sub(dat, s1+1)) -- returns "hello world" from data: hello world
 
         -- for now not checking if the value is already been set
