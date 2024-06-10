@@ -93,8 +93,8 @@ local transformers_to = {
       return nil, nil, err
     end
 
-    messages.temperature = request_table.temperature or (model.options and model.options.temperature) or nil
-    messages.max_tokens = request_table.max_tokens or (model.options and model.options.max_tokens) or nil
+    messages.temperature = (model.options and model.options.temperature) or request_table.temperature or nil
+    messages.max_tokens = (model.options and model.options.max_tokens) or request_table.max_tokens or nil
     messages.model = model.name or request_table.model
     messages.stream = request_table.stream or false  -- explicitly set this if nil
 
@@ -110,9 +110,8 @@ local transformers_to = {
       return nil, nil, err
     end
 
-    prompt.temperature = request_table.temperature or (model.options and model.options.temperature) or nil
-    prompt.max_tokens_to_sample = request_table.max_tokens or (model.options and model.options.max_tokens) or nil
-    prompt.model = model.name
+    prompt.temperature = (model.options and model.options.temperature) or request_table.temperature or nil
+    prompt.max_tokens_to_sample = (model.options and model.options.max_tokens) or request_table.max_tokens or nil
     prompt.model = model.name or request_table.model
     prompt.stream = request_table.stream or false  -- explicitly set this if nil
 
