@@ -400,10 +400,7 @@ function _M.post_request(conf)
 end
 
 function _M.pre_request(conf, body)
-  -- check for user trying to bring own model
-  if body and body.model then
-    return false, "cannot use own model for this instance"
-  end
+  return true
 end
 
 function _M.subrequest(body, conf, http_opts, return_res_table)
