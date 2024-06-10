@@ -34,7 +34,8 @@ local function get_token_text(event_t)
   --   - event_t.choices[1].delta.content
   --   - event_t.choices[1].text
   --   - ""
-  return (first_choice.delta or EMPTY).content or first_choice.text or ""
+  local token_text = (first_choice.delta or EMPTY).content or first_choice.text or ""
+  return (type(token_text) == "string" and token_text) or ""
 end
 
 
