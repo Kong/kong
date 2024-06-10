@@ -442,10 +442,7 @@ function _M.post_request(conf)
 end
 
 function _M.pre_request(conf, body)
-  -- check for user trying to bring own model
-  if body and body.model then
-    return false, "cannot use own model for this instance"
-  end
+  return true
 end
 
 -- returns err or nil
