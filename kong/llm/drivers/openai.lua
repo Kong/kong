@@ -18,7 +18,7 @@ end
 
 local transformers_to = {
   ["llm/v1/chat"] = function(request_table, model_info, route_type)
-    request_table.model = request_table.model or model_info.name
+    request_table.model = model_info.name or request_table.model
     request_table.stream = request_table.stream or false  -- explicitly set this
     request_table.top_k = nil  -- explicitly remove unsupported default
 
@@ -26,7 +26,7 @@ local transformers_to = {
   end,
 
   ["llm/v1/completions"] = function(request_table, model_info, route_type)
-    request_table.model = model_info.name
+    request_table.model = model_info.name or request_table.model
     request_table.stream = request_table.stream or false -- explicitly set this
     request_table.top_k = nil  -- explicitly remove unsupported default
 
