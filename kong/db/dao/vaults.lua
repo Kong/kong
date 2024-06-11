@@ -1,6 +1,9 @@
 local constants = require "kong.constants"
 local vault_loader = require "kong.db.schema.vault_loader"
 local load_module_if_exists = require "kong.tools.module".load_module_if_exists
+local is_vault_reference = require("kong.pdk.vault").is_reference
+local list_concat = require("kong.tools.table").concat
+local yield = require("kong.tools.yield").yield
 
 
 local Vaults = {}
@@ -16,6 +19,8 @@ local log = ngx.log
 
 local WARN = ngx.WARN
 local DEBUG = ngx.DEBUG
+
+local GLOBAL_QUERY_OPTS = { nulls = true, workspace = ngx.null }
 
 
 local function load_vault_strategy(vault)
@@ -81,6 +86,55 @@ function Vaults:load_vault_schemas(vault_set)
   self.strategies = strategies
 
   return true
+end
+
+
+local function find_vault_references(tab)
+  local refs = {}
+  for k, v in pairs(tab) do
+    local kt = type(k)
+    if kt == "table" then
+      refs = list_concat(refs, find_vault_references(k))
+
+    elseif kt == "string" and is_vault_reference(k) then
+      refs[#refs+1] = k
+    end
+
+    local vt = type(v)
+    if vt == "table" then
+      refs = list_concat(refs, find_vault_references(v))
+
+    elseif vt == "string" and is_vault_reference(v) then
+      refs[#refs+1] = v
+    end
+  end
+
+  return refs
+end
+
+
+function Vaults:find_references_in_entities()
+  local references = {}
+  local db = kong.db
+  for _, dao in pairs(db.daos) do
+    local schema = dao.schema
+    local name = schema.name
+    local page_size = db[name].pagination and db[name].pagination.max_page_size
+    for row, err in db[name]:each(page_size, GLOBAL_QUERY_OPTS) do
+      yield()
+      if not row then
+        kong.log.err(err)
+        return nil, err
+      end
+
+      -- references = list_concat(references, find_vault_references(row))
+      for _, ref in ipairs(find_vault_references(row)) do
+        references[ref] = true
+      end
+    end
+  end
+
+  return references
 end
 
 

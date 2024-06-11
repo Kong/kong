@@ -51,6 +51,7 @@ local decode_json = cjson.decode
 
 local NEGATIVELY_CACHED_VALUE = "\0"
 local ROTATION_INTERVAL = tonumber(os.getenv("KONG_VAULT_ROTATION_INTERVAL"), 10) or 60
+local UPDATE_WATCHLIST_INTERVAL = tonumber(os.getenv("KONG_VAULT_UPDATE_WATCHLIST_INTERVAL"), 10) or 3600
 local DAO_MAX_TTL = constants.DATABASE.DAO_MAX_TTL
 
 
@@ -204,6 +205,7 @@ local function new(self)
   local STRATEGIES = {}
   local SCHEMAS = {}
   local CONFIGS = {}
+  local SECRETS_WATCHLIST = {}
 
   local BUNDLED_VAULTS = constants.BUNDLED_VAULTS
   local VAULT_NAMES
@@ -1245,6 +1247,11 @@ local function new(self)
       return nil, err
     end
 
+    if not SECRETS_WATCHLIST[reference] then
+      SECRETS_CACHE:delete(old_cache_key)
+      return nil, fmt("remove reference %s from rotation due to not in the watchlist", reference)
+    end
+
     local strategy, err, config, new_cache_key, parsed_reference, config_hash = get_strategy(reference)
     if not strategy then
       -- invalid cache keys are removed (e.g. a vault entity could have been removed)
@@ -1415,6 +1422,20 @@ local function new(self)
   end
 
 
+  local function update_secrets_watchlist()
+    local vaults_dao = kong.db.vaults
+
+    local refs, err = vaults_dao:find_references_in_entities()
+    if not refs then
+      self.log.err("could not retrieve all vault references from database: ", err)
+      return
+    end
+
+    self.log.debug("updating vault secret watchlist with references")
+    SECRETS_WATCHLIST = refs
+  end
+
+
   local initialized
   ---
   -- Initializes vault.
@@ -1431,6 +1452,9 @@ local function new(self)
 
     initialized = true
 
+    -- Update watchlist before starting secret rotation
+    update_secrets_watchlist()
+
     if self.configuration.database ~= "off" then
       self.worker_events.register(handle_vault_crud_event, "crud", "vaults")
     end
@@ -1443,6 +1467,11 @@ local function new(self)
     local _, err = self.timer:named_at("secret-rotation-on-init", 0, rotate_secrets_timer, true)
     if err then
       self.log.err("could not schedule timer to rotate vault secret references on init: ", err)
+    end
+
+    local _, err = self.timer:named_every("secret-watchlist-update", UPDATE_WATCHLIST_INTERVAL, update_secrets_watchlist)
+    if err then
+      self.log.err("could not schedule timer to update vault secret watchlist: ", err)
     end
   end
 
