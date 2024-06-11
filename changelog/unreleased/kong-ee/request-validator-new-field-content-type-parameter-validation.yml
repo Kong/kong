@@ -1,0 +1,3 @@
+message: "**Request-Validator**: Added a new configuration field `content_type_parameter_validation` to determine whether to enable Content-Type parameters validation."
+type: bugfix
+scope: Plugin

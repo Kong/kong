@@ -130,7 +130,7 @@ describe("CP/DP config compat #" .. strategy, function()
       "plugins",
       "clustering_data_planes",
     }, { 'graphql-rate-limiting-advanced', 'ai-rate-limiting-advanced', 'rate-limiting-advanced', 'openid-connect',
-        'oas-validation', 'mtls-auth', 'application-registration', "jwt-signer" })
+        'oas-validation', 'mtls-auth', 'application-registration', "jwt-signer", "request-validator" })
 
     PLUGIN_LIST = helpers.get_plugins_list()
 
@@ -154,7 +154,7 @@ describe("CP/DP config compat #" .. strategy, function()
         [[
           bundled,graphql-rate-limiting-advanced,ai-rate-limiting-advanced,rate-limiting-advanced,
           openid-connect,oas-validation,mtls-auth,application-registration,
-          jwt-signer
+          jwt-signer,request-validator
         ]],
     }))
   end)
@@ -625,6 +625,54 @@ describe("CP/DP config compat #" .. strategy, function()
     end)
   end)
 
+
+  describe("request-validator for content_type_parameter_validation", function()
+    local case_sanity = {
+      plugin = "request-validator",
+      label = "w/ content_type_parameter_validation",
+      pending = false,
+      config = {
+        version = "draft4",
+        body_schema = '{"name": {"type": "string"}}',
+        content_type_parameter_validation = true,
+      },
+      status = STATUS.NORMAL,
+      validator = function(config)
+        return config.content_type_parameter_validation == true
+      end
+    }
+
+    it(fmt("%s - %s", case_sanity.plugin, case_sanity.label), function()
+      do_assert(case_sanity, "3.6.1.5")
+    end)
+
+    it(fmt("%s - %s", case_sanity.plugin, case_sanity.label), function()
+      do_assert(case_sanity, "3.7.1.0")
+    end)
+
+    local case = {
+      plugin = "request-validator",
+      label = "w/ api_spec_encoded unsupported",
+      pending = false,
+      config = {
+        version = "draft4",
+        body_schema = '{"name": {"type": "string"}}',
+        content_type_parameter_validation = true,
+      },
+      status = STATUS.NORMAL,
+      validator = function(config)
+        return config.content_type_parameter_validation == nil
+      end
+    }
+
+    it(fmt("%s - %s", case.plugin, case.label), function()
+      do_assert(case, "3.6.1.4")
+    end)
+
+    it(fmt("%s - %s", case.plugin, case.label), function()
+      do_assert(case, "3.7.0.0")
+    end)
+  end)
 
 end)
 

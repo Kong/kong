@@ -689,6 +689,49 @@ for _, strategy in strategies() do
         assert.res_status(200, res)
       end)
 
+      it("should skip content-type parameters validation when content_type_parameter_validation = false", function()
+        local schema = [[
+          [
+            {
+              "f1": {
+                "type": "string",
+                "required": true
+              }
+            }
+          ]
+        ]]
+
+        add_plugin(admin_client, {
+          body_schema = schema,
+          allowed_content_types = { "application/json; charset=UTF-8" },
+          content_type_parameter_validation = false,
+        }, 201)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            f1 = "value!"
+          }
+        })
+        assert.res_status(200, res)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Content-Type"] = "application/json; boundary=something",
+          },
+          body = {
+            f1 = "value!"
+          }
+        })
+        assert.res_status(200, res)
+      end)
+
       it("validates nested records", function()
         local schema = [[
           [

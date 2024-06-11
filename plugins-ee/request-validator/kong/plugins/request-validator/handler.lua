@@ -80,8 +80,13 @@ do
     allowed = false
     local type, sub_type, params = parse_mime_type(content_type)
     for _, parsed in ipairs(conf.parsed_list) do
-      if (type == parsed.type or parsed.type == "*")
-        and (sub_type == parsed.sub_type or parsed.sub_type == "*") then
+      if (type == parsed.type or parsed.type == "*") and
+         (sub_type == parsed.sub_type or parsed.sub_type == "*") then
+        if not plugin_config.content_type_parameter_validation then
+          allowed = true
+          break
+        end
+
         local params_match = true
         for key, value1 in pairs(parsed.params or EMPTY) do
           local value2 = (params or EMPTY)[key]

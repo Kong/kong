@@ -164,6 +164,10 @@ return {
             default = false,
             required = true,
           }},
+          { content_type_parameter_validation = { description = "Determines whether to enable parameters validation of request content-type.", type = "boolean",
+            default = true,
+            required = true,
+          }}
         },
         entity_checks = {
           { at_least_one_of = { "body_schema", "parameter_schema" } },

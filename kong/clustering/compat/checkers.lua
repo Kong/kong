@@ -38,6 +38,33 @@ end
 
 
 local compatible_checkers = {
+  {
+    3007001000, --[[3.7.1.0]]
+    function(config_table, dp_version, log_suffix)
+      local has_update
+
+      local dp_version_num = version_num(dp_version)
+
+      for _, plugin in ipairs(config_table.plugins or {}) do
+        if plugin.name == 'request-validator' then
+          local config = plugin.config
+          if config.content_type_parameter_validation ~= nil then
+            if dp_version_num < 3006001005 or
+              dp_version_num >= 3007000000 then
+              -- remove config.content_type_parameter_validation when DP version in intervals (, 3615), [3700, 3710)
+              config.content_type_parameter_validation = nil
+              has_update = true
+              log_warn_message('configures ' .. plugin.name .. ' plugin with content_type_parameter_validation',
+                'will be removed.',
+                dp_version, log_suffix)
+            end
+          end
+        end
+      end
+
+      return has_update
+    end
+  },
   { 3007000000, -- [[ 3.7.0.0 ]]
     function(config_table, dp_version, log_suffix)
       local has_update
