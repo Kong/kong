@@ -1281,6 +1281,8 @@ local function new(self)
     local ok, err = get_from_vault(reference, strategy, config, new_cache_key, parsed_reference)
     if not ok then
       local retry_count = tonumber(SECRETS_CACHE:get(SECRETS_RETRY_KEY_PREFIX .. new_cache_key) or 0, 10)
+      -- secrets that are failed resolving for more than SECRETS_RETRY_COUNT_THRESHOLD
+      -- times will be removed from the cache and stop rotation
       if retry_count >= SECRETS_RETRY_COUNT_THRESHOLD then
         SECRETS_CACHE:delete(new_cache_key)
         SECRETS_CACHE:delete(SECRETS_RETRY_KEY_PREFIX .. new_cache_key)
@@ -1290,6 +1292,9 @@ local function new(self)
         SECRETS_CACHE:incr(SECRETS_RETRY_KEY_PREFIX .. new_cache_key, 1, 0)
       end
       return nil, fmt("could not retrieve value for reference %s (%s)", reference, err)
+
+    else
+      SECRETS_CACHE:delete(SECRETS_RETRY_KEY_PREFIX .. new_cache_key)
     end
 
     return true
