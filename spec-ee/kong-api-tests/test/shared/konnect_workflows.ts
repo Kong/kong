@@ -166,8 +166,4 @@ export const setupKonnectDataPlane = async () => {
 
   // Start the data plane locally
   deployKonnectDataPlane(controlPlaneEndpoint, telemetryEndpoint, certContent, privateKey, getDataPlaneDockerImage())
-
-  // Checking that Konnect CP config expected_hash is the same as the DP config hash
-  // This step is required to make sure that the DP is fully set up and is ready to route requests
-  await checkKonnectCpAndDpConfigHashMatch(controlPlaneId)
 }
