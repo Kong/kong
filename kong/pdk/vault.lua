@@ -1248,6 +1248,7 @@ local function new(self)
     if not reference then
       -- invalid cache keys are removed (in general should never happen)
       SECRETS_CACHE:delete(old_cache_key)
+      SECRETS_CACHE:delete(SECRETS_RETRY_KEY_PREFIX .. old_cache_key)
       return nil, err
     end
 
@@ -1255,12 +1256,14 @@ local function new(self)
     if not strategy then
       -- invalid cache keys are removed (e.g. a vault entity could have been removed)
       SECRETS_CACHE:delete(old_cache_key)
+      SECRETS_CACHE:delete(SECRETS_RETRY_KEY_PREFIX .. old_cache_key)
       return nil, fmt("could not parse reference %s (%s)", reference, err)
     end
 
     if old_cache_key ~= new_cache_key then
       -- config has changed, thus the old cache key can be removed
       SECRETS_CACHE:delete(old_cache_key)
+      SECRETS_CACHE:delete(SECRETS_RETRY_KEY_PREFIX .. old_cache_key)
     end
 
     -- The ttl for this key, is the TTL + the resurrect time
