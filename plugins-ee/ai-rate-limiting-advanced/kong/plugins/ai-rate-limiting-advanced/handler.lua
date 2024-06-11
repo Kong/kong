@@ -352,7 +352,7 @@ function NewRLHandler:access(conf)
     -- calculation to be extended longer than the actual window size
     local window_start = floor(now / current_window) * current_window
     local window_start_timstamp_key = "timestamp:" .. current_window .. ":window_start:" .. namespace_provider
-    if rate > current_limit and window_type == "sliding" and provider == "requestPrompt" then
+    if rate > current_limit and window_type == "sliding" then
       shm:add(window_start_timstamp_key, window_start)
       window_start = shm:get(window_start_timstamp_key) or window_start
     else
@@ -389,7 +389,7 @@ function NewRLHandler:access(conf)
       -- and the rate difference. Apply the adjustment to the current
       -- calculated reset value for a more accurate sliding window estimate.
       if window_type == "sliding" then
-        local window_adjustment = max(0.0, (((rate - current_limit) / current_limit) * current_window))
+        local window_adjustment = max(0.0, (((rate - current_limit) / (rate + current_limit)) * current_window))
         reset = ceil(reset + window_adjustment)
       end
 
@@ -497,6 +497,7 @@ function NewRLHandler:header_filter(conf)
     local window_start_timstamp_key = "timestamp:" .. current_window .. ":window_start:" .. namespace_provider
     if rate > current_limit and window_type == "sliding" then
       shm:add(window_start_timstamp_key, window_start)
+      window_start = shm:get(window_start_timstamp_key) or window_start
     else
       shm:delete(window_start_timstamp_key)
     end
@@ -528,7 +529,7 @@ function NewRLHandler:header_filter(conf)
       -- and the rate difference. Apply the adjustment to the current
       -- calculated reset value for a more accurate sliding window estimate.
       if window_type == "sliding" then
-        local window_adjustment = max(0.0, (((rate - current_limit) / current_limit) * current_window))
+        local window_adjustment = max(0.0, (((rate - current_limit) / (rate + current_limit)) * current_window))
         reset = ceil(reset + window_adjustment)
       end
 

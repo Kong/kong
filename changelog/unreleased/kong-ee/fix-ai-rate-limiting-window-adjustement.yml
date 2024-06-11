@@ -1,0 +1,3 @@
+message: "**ai-rate-limiting-advanced**: Edit the logic for the window ajustement and fix missing passing window to shm"
+type: bugfix
+scope: Plugin
