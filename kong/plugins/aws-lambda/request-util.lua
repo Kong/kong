@@ -6,7 +6,7 @@ local cjson = require "cjson.safe"
 local pl_stringx = require("pl.stringx")
 local date = require("date")
 local get_request_id = require("kong.tracing.request_id").get
-local AWS_Stream = require("kong.plugins.aws-lambda.aws_stream")
+local AWS_Stream = require("resty.aws.stream")
 
 local EMPTY = {}
 
@@ -386,28 +386,23 @@ end
 -- Process one message.
 -- Return error if any.
 function HttpIntegrationResponseProcessor:process_message(msg, headers)
-  for _, header in ipairs(msg.headers) do
-    if self.null_count == 8 then
-      break
-    end
-    if header.key == ":event-type" and header.value == "PayloadChunk" then
-      -- print(msg.body)
-      for i = 1, #msg.body do
-        local c = msg.body:byte(i)
-        if c == 0 then
-          self.null_count = self.null_count + 1
-          if self.null_count == 8 then
-            local err = self:update_status_and_headers_from_prelude(headers)
-            if err then
-              return error(err)
-            end
-
-            self.first_chunk_body = msg.body:sub(i + 1)
-            break
+  if msg.headers[":event-type"] == "PayloadChunk" then
+    -- print(msg.body)
+    for i = 1, #msg.body do
+      local c = msg.body:byte(i)
+      if c == 0 then
+        self.null_count = self.null_count + 1
+        if self.null_count == 8 then
+          local err = self:update_status_and_headers_from_prelude(headers)
+          if err then
+            return error(err)
           end
-        else
-          self.prelude = self.prelude .. string.char(c)
+
+          self.first_chunk_body = msg.body:sub(i + 1)
+          break
         end
+      else
+        self.prelude = self.prelude .. string.char(c)
       end
     end
   end

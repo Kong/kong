@@ -16,8 +16,7 @@ local VIA_HEADER = constants.HEADERS.VIA
 local VIA_HEADER_VALUE = meta._NAME .. "/" .. meta._VERSION
 
 local request_util = require "kong.plugins.aws-lambda.request-util"
-local AWS_Stream = require("kong.plugins.aws-lambda.aws_stream")
-local invokeWithResponseStream = require "kong.plugins.aws-lambda.execute"
+local AWS_Stream = require("resty.aws.stream")
 local build_request_payload = request_util.build_request_payload
 local extract_proxy_response = request_util.extract_proxy_response
 local remove_array_mt_for_empty_table = request_util.remove_array_mt_for_empty_table
@@ -170,7 +169,7 @@ local function invoke_streaming(conf, lambda_service)
   -- TRACING: set KONG_WAITING_TIME start
   local kong_wait_time_start = get_now()
 
-  local res, err = invokeWithResponseStream(lambda_service, {
+  local res, err = lambda_service:invokeWithResponseStream({
     FunctionName = conf.function_name,
     InvocationType = conf.invocation_type,
     LogType = conf.log_type,
@@ -263,12 +262,10 @@ local function invoke_streaming(conf, lambda_service)
         end
       
         -- print(require("pl.pretty").write(msg))
-        for _, header in ipairs(msg.headers) do
-          if header.key == ":event-type" and header.value == "PayloadChunk" then
-            -- print(msg.body)
-            ngx.print(msg.body)
-            ngx.flush(true)
-          end
+        if msg.headers[":event-type"] == "PayloadChunk" then
+          -- print(msg.body)
+          ngx.print(msg.body)
+          ngx.flush(true)
         end
       end
     end
