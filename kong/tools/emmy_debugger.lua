@@ -42,7 +42,7 @@ local function find_source(path)
     end
   end
 
-  ngx.log(ngx.ERR, "source file " .. path .. " not found in " .. env_prefix .. "_EMMY_DEBUGGER_SOURCE_PATH")
+  ngx.log(ngx.ERR, "source file ", path, " not found in ", env_prefix, "_EMMY_DEBUGGER_SOURCE_PATH")
 
   return path
 end
@@ -78,24 +78,24 @@ local function init(config_)
   end
 
   if not pl_path.isabs(debugger) then
-    ngx.log(ngx.ERR, env_prefix .. "_EMMY_DEBUGGER (" .. debugger .. ") must be an absolute path")
+    ngx.log(ngx.ERR, env_prefix, "_EMMY_DEBUGGER (", debugger, ") must be an absolute path")
     return
   end
   if not pl_path.exists(debugger) then
-    ngx.log(ngx.ERR, env_prefix .. "_EMMY_DEBUGGER (" .. debugger .. ") file not found")
+    ngx.log(ngx.ERR, env_prefix, "_EMMY_DEBUGGER (", debugger, ") file not found")
     return
   end
   local ext = pl_path.extension(debugger)
   if ext ~= ".so" and ext ~= ".dylib" then
-    ngx.log(ngx.ERR, env_prefix .. "_EMMY_DEBUGGER (" .. debugger .. ") must be a .so (Linux) or .dylib (macOS) file")
+    ngx.log(ngx.ERR, env_prefix, "_EMMY_DEBUGGER (", debugger, ") must be a .so (Linux) or .dylib (macOS) file")
     return
   end
   if ngx.worker.id() > 0 and not multi_worker then
-    ngx.log(ngx.ERR, env_prefix .. "_EMMY_DEBUGGER is only supported in the first worker process, suggest setting KONG_NGINX_WORKER_PROCESSES to 1")
+    ngx.log(ngx.ERR, env_prefix, "_EMMY_DEBUGGER is only supported in the first worker process, suggest setting KONG_NGINX_WORKER_PROCESSES to 1")
     return
   end
 
-  ngx.log(ngx.NOTICE, "loading EmmyLua debugger " .. debugger)
+  ngx.log(ngx.NOTICE, "loading EmmyLua debugger ", debugger)
   ngx.log(ngx.WARN, "The EmmyLua integration for Kong is a feature solely for your convenience during development. Kong assumes no liability as a result of using the integration and does not endorse it’s usage. Issues related to usage of EmmyLua integration should be directed to the respective project instead.")
 
   local dbg = load_debugger(debugger)
