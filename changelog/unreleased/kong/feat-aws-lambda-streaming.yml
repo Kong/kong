@@ -1,0 +1,4 @@
+message: |
+  **AWS-Lambda**: A new configuration field `invoke_mode` is now added to control whether to invoke AWS Lambda in buffered mode or streaming mode.
+type: feature
+scope: Plugin
