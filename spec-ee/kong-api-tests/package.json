@@ -15,8 +15,8 @@
     "test-gke": "TEST_APP=gateway mocha -g @gke --recursive"
   },
   "dependencies": {
-    "axios": "^1.7.2",
     "@kong/kauth-test-utils": "^0.0.22",
+    "axios": "^1.7.2",
     "chai": "^4.4.1",
     "@kong/khcp-api-client": "^0.1.1994",
     "chai-arrays": "^2.2.0",
@@ -35,6 +35,9 @@
     "uuid": "^9.0.0"
   },
   "devDependencies": {
+    "@pollyjs/adapter-node-http": "^6.0.6",
+    "@pollyjs/core": "^6.0.6",
+    "@pollyjs/persister-fs": "^6.0.6",
     "@tsconfig/recommended": "^1.0.6",
     "@types/chai": "^4.3.9",
     "@types/chai-arrays": "^2.0.2",

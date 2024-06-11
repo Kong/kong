@@ -21,9 +21,9 @@ import {
   addTargetToUpstream,
   deletePlugin,
   deleteConsumer,
-  wait
+  wait,
+  createPolly
 } from '@support';
-
 
 describe('Gateway Plugins: Prometheus', function () {
   const serviceName = 'prometheus-service';
@@ -379,8 +379,7 @@ describe('Gateway Plugins: Prometheus', function () {
     });
   });
 
-  // skipping due to flakiness, will revisit later
-  it.skip(`should see the new kong_upstream_target_health metric in prometheus`, async function () {
+  it(`should see the new kong_upstream_target_health metric in prometheus`, async function () {
       // send request to upstream to log the request's upstream_target_health metric
       for(let i = 1; i <= 2; i++) {
         // eslint-disable-next-line no-restricted-syntax
@@ -393,7 +392,10 @@ describe('Gateway Plugins: Prometheus', function () {
       }
   
       const promTargetResults = new Set()
-    
+
+      // initiate a new pollyjs mock instance to mock and/or play existing recordings
+      const polly = createPolly('prometheus')
+
       await eventually(async () => {
         const resp = await queryPrometheusMetrics('kong_upstream_target_health')
         expect(resp.result.length, 'should see 4 results for target health').to.be.gte(4)
@@ -408,6 +410,9 @@ describe('Gateway Plugins: Prometheus', function () {
       targetStates.every((state) => {
         expect(promTargetResults.has(state), `Should see ${state} state in the target health array`).to.be.true
       })
+
+      // stop the polly mock instance
+      await polly.stop()
   });
 
   it('should delete the prometheus plugin', async function () {

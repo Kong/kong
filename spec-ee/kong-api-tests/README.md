@@ -144,6 +144,28 @@ After this, you can run the tests as mentioned above.
 
 Refer to [How to run API smoke tests](https://konghq.atlassian.net/wiki/spaces/FTT/pages/3072917606/Running+smoke+tests+on+released+artifacts) to learn about running the tests in GH Actions.
 
+### Mocking/Recording
+
+The framework uses [POLLY.JS](https://netflix.github.io/pollyjs/#/quick-start) JavaScript library to record the target request/response interactions.
+
+Example usage:
+
+```bash
+# import the 'createPolly' function at the top level of the test file
+import { createPolly } from '@support'
+
+# instantiate a new Polly instance for mocking/recording
+const polly = createPolly('yourRecordingName')
+
+# send a request
+await axios('http://localhost:8000/someRequest')
+
+# stop the polly mock instance to stop recording further requests
+await polly.stop()
+```
+
+In the above example polly will record the request/response interraction and replay it using the response recording when the test is run again thereafter.\
+The recorded files/mocks will be stored for the specified amount of time (e.g. 30 days).
 
 ## Koko & Konnect
 

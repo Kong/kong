@@ -114,3 +114,4 @@ export { getAuthOptions, setKAuthCookies } from './auth/kauth-tokens'
 export * from './entities/organization'
 export { getApiConfig } from './config/api-config';
 export { generatePublicPrivateCertificates, getTargetFileContent, removeCertficatesAndKeys } from './exec/certificates'
+export { createPolly } from './mocking/polly'
