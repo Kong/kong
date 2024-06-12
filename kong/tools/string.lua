@@ -8,13 +8,20 @@
 local pl_stringx = require "pl.stringx"
 
 
-local type          = type
-local ipairs        = ipairs
-local tostring      = tostring
-local lower         = string.lower
-local fmt           = string.format
-local find          = string.find
-local gsub          = string.gsub
+local type     = type
+local ipairs   = ipairs
+local tostring = tostring
+local lower    = string.lower
+local sub      = string.sub
+local fmt      = string.format
+local find     = string.find
+local gsub     = string.gsub
+local byte     = string.byte
+
+
+local SPACE_BYTE = byte(" ")
+local TAB_BYTE   = byte("\t")
+local CR_BYTE    = byte("\r")
 
 
 local _M = {}
@@ -31,16 +38,52 @@ _M.split = pl_stringx.split
 
 --- strips whitespace from a string.
 -- @function strip
-_M.strip = function(str)
-  if str == nil then
+_M.strip = function(value)
+  if value == nil then
     return ""
   end
-  str = tostring(str)
-  if #str > 200 then
-    return str:gsub("^%s+", ""):reverse():gsub("^%s+", ""):reverse()
-  else
-    return str:match("^%s*(.-)%s*$")
+
+  -- TODO: do we want to operate on non-string values (kept for backward compatibility)?
+  if type(value) ~= "string" then
+    value = tostring(value) or ""
   end
+
+  if value == "" then
+    return ""
+  end
+
+  local len = #value
+  local s = 1 -- position of the leftmost non-whitespace char
+  for i = 1, len do
+    local b = byte(value, i)
+    if b == SPACE_BYTE or (b >= TAB_BYTE and b <= CR_BYTE) then
+      s = s + 1
+    else
+      break
+    end
+  end
+
+  if s > len then
+    return ""
+  end
+
+  local e = len -- position of the rightmost non-whitespace char
+  if s < e then
+    for i = e, 1, -1 do
+      local b = byte(value, i)
+      if b == SPACE_BYTE or (b >= TAB_BYTE and b <= CR_BYTE) then
+        e = e - 1
+      else
+        break
+      end
+    end
+  end
+
+  if s ~= 1 or e ~= len then
+    value = sub(value, s, e)
+  end
+
+  return value
 end
 
 
@@ -187,4 +230,3 @@ _M.replace_dashes_lower = replace_dashes_lower
 
 
 return _M
-
