@@ -3,6 +3,7 @@ name: Integration Test on AWS
 on:  # yamllint disable-line rule:truthy
   pull_request:
     paths:
+    - '.github/workflows/integration_test_on_aws.yml'
     - '*.rockspec'
     - 'kong/clustering/config_sync_backup/**'
     - 'kong/db/strategies/postgres/**'
@@ -15,6 +16,7 @@ on:  # yamllint disable-line rule:truthy
     - next/*
     - test-please/*
     paths:
+    - '.github/workflows/integration_test_on_aws.yml'
     - '*.rockspec'
     - 'kong/clustering/config_sync_backup/**'
     - 'kong/db/strategies/postgres/**'
