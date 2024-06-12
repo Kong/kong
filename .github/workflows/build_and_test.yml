@@ -259,6 +259,7 @@ jobs:
       run: |
            echo FAILED_TEST_FILES_FILE=failed-tests.json >> $GITHUB_ENV
            echo TEST_FILE_RUNTIME_FILE=test-runtime.json >> $GITHUB_ENV
+           echo SPEC_ERRLOG_CACHE_DIR=/tmp/${{ github.run_id }}/build_test/${{ matrix.runner }} >> $GITHUB_ENV
 
     - name: Build & install dependencies
       run: |
@@ -290,12 +291,21 @@ jobs:
         DD_CIVISIBILITY_AGENTLESS_ENABLED: true
         DD_TRACE_GIT_METADATA_ENABLED: true
         DD_API_KEY: ${{ secrets.DATADOG_API_KEY }}
+        SPEC_ERRLOG_CACHE_DIR: ${{ env.SPEC_ERRLOG_CACHE_DIR }}
       uses: Kong/gateway-test-scheduler/runner@69f0c2a562ac44fc3650b8bfa62106b34094b5ce # v3
       with:
         tests-to-run-file: test-chunk.${{ matrix.runner }}.json
         failed-test-files-file: ${{ env.FAILED_TEST_FILES_FILE }}
         test-file-runtime-file: ${{ env.TEST_FILE_RUNTIME_FILE }}
         setup-venv-path: ${{ env.BUILD_ROOT }}
+
+    - name: Upload error logs
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: busted-test-errlogs-${{ matrix.runner }}
+        path: ${{ env.SPEC_ERRLOG_CACHE_DIR }}
+        retention-days: 1
 
     - name: Upload test rerun information
       if: always()
@@ -361,6 +371,10 @@ jobs:
           $CPAN_DOWNLOAD/cpanm --notest --local-lib=$HOME/perl5 local::lib && eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
           $CPAN_DOWNLOAD/cpanm --notest Test::Nginx
 
+    - name: Generate environment variables
+      run: |
+           echo SPEC_ERRLOG_CACHE_DIR=/tmp/${{ github.run_id }}/PDK_test >> $GITHUB_ENV
+
     - name: Tests
       env:
         TEST_SUITE: pdk
@@ -371,6 +385,14 @@ jobs:
           fi
           eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
           prove -I. -r t
+
+    - name: Upload error logs
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: PDK-test-errlogs
+        path: ${{ env.SPEC_ERRLOG_CACHE_DIR }}
+        retention-days: 1
 
     - name: Archive coverage stats file
       uses: actions/upload-artifact@v3
