@@ -551,6 +551,7 @@ jobs:
       run: |
            echo FAILED_TEST_FILES_FILE=failed-tests.json >> $GITHUB_ENV
            echo TEST_FILE_RUNTIME_FILE=test-runtime.json >> $GITHUB_ENV
+           echo SPEC_ERRLOG_CACHE_DIR=/tmp/${{ github.run_id }}/build_test/${{ matrix.runner }} >> $GITHUB_ENV
 
     - name: Download test rerun information
       uses: actions/download-artifact@v4
@@ -597,6 +598,7 @@ jobs:
         DT_TEST: ${{ inputs.dt-test }}
         DT_ENV_ID: ${{ secrets.DT_ENV_ID }}
         DT_API_TOKEN: ${{ secrets.DT_API_TOKEN }}
+        SPEC_ERRLOG_CACHE_DIR: ${{ env.SPEC_ERRLOG_CACHE_DIR }}
       uses: Kong/gateway-test-scheduler/runner@1ca1120856ffaf9ba87e14564ccabe91e2b4ebf3 # v5
       with:
         tests-to-run-file: test-chunk.${{ matrix.runner }}.json
@@ -605,6 +607,14 @@ jobs:
         xml-output-folder: ${{ env.TEST_RESULTS }}
         build-root: ${{ env.BUILD_ROOT }}
         build-dest-path: "/usr/local"
+
+    - name: Upload error logs
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: busted-test-errlogs-${{ matrix.runner }}
+        path: ${{ env.SPEC_ERRLOG_CACHE_DIR }}
+        retention-days: 1
 
     - name: Upload test rerun information
       if: always()
@@ -727,6 +737,10 @@ jobs:
           $CPAN_DOWNLOAD/cpanm --notest --local-lib=$HOME/perl5 local::lib && eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
           $CPAN_DOWNLOAD/cpanm --notest Test::Nginx
 
+    - name: Generate environment variables
+      run: |
+           echo SPEC_ERRLOG_CACHE_DIR=/tmp/${{ github.run_id }}/PDK_test >> $GITHUB_ENV
+
     - name: Tests
       env:
         TEST_SUITE: pdk
@@ -737,6 +751,14 @@ jobs:
         fi
         eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
         TEST_NGINX_RANDOMIZE=1 prove -I. -r t
+
+    - name: Upload error logs
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: PDK-test-errlogs
+        path: ${{ env.SPEC_ERRLOG_CACHE_DIR }}
+        retention-days: 1
 
     - name: Archive coverage stats file
       uses: actions/upload-artifact@v3
@@ -900,6 +922,7 @@ jobs:
       run: |
         echo "/usr/local/openresty/bin/" >> $GITHUB_PATH
         echo "/usr/local/openresty/nginx/sbin/" >> $GITHUB_PATH
+        echo SPEC_ERRLOG_CACHE_DIR=/tmp/${{ github.run_id }}/plugins_ee_test/${{ matrix.label }}_${{ matrix.split }} >> $GITHUB_ENV
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -947,10 +970,19 @@ jobs:
         TEST_SUITE: plugins-ee
         TEST_SPLIT: ${{ matrix.split }}
         KONG_LICENSE_DATA: ${{ steps.decrypted_license.outputs.out }}
+        SPEC_ERRLOG_CACHE_DIR: ${{ env.SPEC_ERRLOG_CACHE_DIR }}
       run: |
         mkdir $TEST_RESULTS_XML_OUTPUT
         export XML_OUTPUT=$(realpath $TEST_RESULTS_XML_OUTPUT)
         .ci/run_tests_github.sh
+
+    - name: Upload error logs
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: plugins-ee-test-errlogs-${{ matrix.label }}-${{ matrix.split }}
+        path: ${{ env.SPEC_ERRLOG_CACHE_DIR }}
+        retention-days: 1
 
     - uses: datadog/junit-upload-github-action@056dec14f19687cd7d1e97f2009df81f8e64d621
       continue-on-error: true

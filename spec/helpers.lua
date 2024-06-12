@@ -90,6 +90,7 @@ local resty_signal = require "resty.signal"
 local lfs = require "lfs"
 local luassert = require "luassert.assert"
 local uuid = require("kong.tools.uuid").uuid
+local colors = require "ansicolors"
 
 -- XXX EE
 local dist_constants = require "kong.enterprise_edition.distributions_constants"
@@ -2587,6 +2588,33 @@ local deep_sort do
 end
 
 
+local function copy_errlog(errlog_path)
+  local file_path = "Unknown path"
+  local line_number = "Unknown line"
+  local errlog_cache_dir = os.getenv("SPEC_ERRLOG_CACHE_DIR") or "/tmp/kong_errlog_cache"
+
+  local ok, err = pl_dir.makepath(errlog_cache_dir)
+  assert(ok, "makepath failed: " .. tostring(err))
+
+  local info = debug.getinfo(4, "Sl")
+  if info then
+    file_path = info.source:gsub("^@", "")
+    line_number = info.currentline
+  end
+
+  if string.find(file_path, '/', nil, true) then
+    file_path = string.gsub(file_path, '/', '_')
+  end
+  file_path = errlog_cache_dir .. "/" .. file_path:gsub("%.lua$", "_") .. "line_" .. line_number .. '.log'
+
+  ok, err = pl_file.copy(errlog_path, file_path)
+  if ok then
+    print(colors("%{yellow}Log saved as: " .. file_path .. "%{reset}"))
+  else
+    print(colors("%{red}Failed to save error log for test " .. file_path .. ": " .. err))
+  end
+end
+
 --- Assertion to check the status-code of a http response.
 -- @function status
 -- @param expected the expected status code
@@ -2619,6 +2647,8 @@ local function res_status(state, args)
     args.n = 3
 
     if res.status == 500 then
+      copy_errlog(conf.nginx_err_logs)
+
       -- on HTTP 500, we can try to read the server's error logs
       -- for debugging purposes (very useful for travis)
       local str = pl_file.read(conf.nginx_err_logs)
