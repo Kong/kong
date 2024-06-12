@@ -1,6 +1,6 @@
 -- Copyright (C) Kong Inc.
 
-local strip = require("pl.stringx").strip
+local strip = require("kong.tools.string").strip
 local kong_meta = require "kong.meta"
 local tonumber = tonumber
 

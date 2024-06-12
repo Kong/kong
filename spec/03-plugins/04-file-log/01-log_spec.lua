@@ -1,11 +1,11 @@
 local cjson         = require "cjson"
 local helpers       = require "spec.helpers"
 local pl_file       = require "pl.file"
-local pl_stringx    = require "pl.stringx"
 local pl_path       = require "pl.path"
 local fmt           = string.format
 local random_string = require("kong.tools.rand").random_string
 local uuid          = require("kong.tools.uuid").uuid
+local strip         = require("kong.tools.string").strip
 
 
 local FILE_LOG_PATH = os.tmpname()
@@ -85,7 +85,7 @@ local function wait_for_json_log_entry()
     .eventually(function()
       local data = assert(pl_file.read(FILE_LOG_PATH))
 
-      data = pl_stringx.strip(data)
+      data = strip(data)
       assert(#data > 0, "log file is empty")
 
       data = data:match("%b{}")

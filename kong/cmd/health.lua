@@ -2,8 +2,9 @@ local log = require "kong.cmd.utils.log"
 local kill = require "kong.cmd.utils.kill"
 local pl_path = require "pl.path"
 local pl_tablex = require "pl.tablex"
-local pl_stringx = require "pl.stringx"
 local conf_loader = require "kong.conf_loader"
+
+local ljust = require("pl.stringx").ljust
 
 local function execute(args)
   log.disable()
@@ -27,7 +28,7 @@ local function execute(args)
   local count = 0
   for k, v in pairs(pids) do
     local running = kill.is_running(v)
-    local msg = pl_stringx.ljust(k, 12, ".") .. (running and "running" or "not running")
+    local msg = ljust(k, 12, ".") .. (running and "running" or "not running")
     if running then
       count = count + 1
     end

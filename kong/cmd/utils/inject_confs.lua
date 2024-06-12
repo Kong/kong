@@ -1,8 +1,8 @@
 local conf_loader = require "kong.conf_loader"
 local pl_path = require "pl.path"
-local pl_stringx = require "pl.stringx"
 local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local log = require "kong.cmd.utils.log"
+local strip = require("kong.tools.string").strip
 local fmt = string.format
 
 local compile_nginx_main_inject_conf = prefix_handler.compile_nginx_main_inject_conf
@@ -42,7 +42,7 @@ local function convert_directive_path_to_absolute(prefix, nginx_conf, paths)
       return nil, err
 
     elseif m then
-      local path = pl_stringx.strip(m[2])
+      local path = strip(m[2])
 
       if path:sub(1, 1) ~= '/' then
         local absolute_path = prefix .. "/" .. path
