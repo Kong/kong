@@ -8,7 +8,8 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local pl_file = require "pl.file"
-local pl_stringx = require "pl.stringx"
+
+local strip = require("kong.tools.string").strip
 
 local MOCK_PORT = helpers.get_available_port()
 local PLUGIN_NAME = "ai-response-transformer"
@@ -24,7 +25,7 @@ local function wait_for_json_log_entry(FILE_LOG_PATH)
     .eventually(function()
       local data = assert(pl_file.read(FILE_LOG_PATH))
 
-      data = pl_stringx.strip(data)
+      data = strip(data)
       assert(#data > 0, "log file is empty")
 
       data = data:match("%b{}")

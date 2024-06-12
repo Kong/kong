@@ -5,16 +5,19 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local pl_stringx = require "pl.stringx"
 local helpers = require "spec.helpers"
 local meta = require "kong.enterprise_edition.meta"
+
+
+local strip = require("kong.tools.string").strip
+
 
 describe("kong version", function()
   local package = tostring(meta.version)
 
   it("outputs Kong version", function()
     local _, _, stdout = assert(helpers.kong_exec("version"))
-    assert.equal("Kong Enterprise " .. package, pl_stringx.strip(stdout))
+    assert.equal("Kong Enterprise " .. package, strip(stdout))
   end)
   it("--all outputs all deps versions", function()
     local _, _, stdout = assert(helpers.kong_exec("version -a"))

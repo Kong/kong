@@ -6,7 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local _M = {}
-local pl_stringx = require("pl.stringx")
 local cjson = require("cjson")
 local snappy = require("resty.snappy")
 
@@ -15,7 +14,7 @@ local string_sub = string.sub
 local assert = assert
 local cjson_encode = cjson.encode
 local cjson_decode = cjson.decode
-local rfind = pl_stringx.rfind
+local rfind = require("pl.stringx").rfind
 local snappy_compress = snappy.compress
 local snappy_uncompress = snappy.uncompress
 

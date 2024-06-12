@@ -8,7 +8,8 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson.safe"
 local pl_file = require "pl.file"
-local pl_stringx = require "pl.stringx"
+
+local strip = require("kong.tools.string").strip
 
 local FILE_LOG_PATH = os.tmpname()
 
@@ -17,7 +18,6 @@ local fmt = string.format
 local trace_id_hex_128 = "4bf92000000000000000000000000001"
 local span_id = "0000000000000003"
 local trace_id_hex_pattern = "^%x+$"
-
 
 local tracing_headers = {
   {
@@ -92,7 +92,7 @@ local function wait_json_log()
       .eventually(function()
         local data = assert(pl_file.read(FILE_LOG_PATH))
 
-        data = pl_stringx.strip(data)
+        data = strip(data)
         assert(#data > 0, "log file is empty")
 
         data = data:match("%b{}")

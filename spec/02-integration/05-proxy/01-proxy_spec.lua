@@ -7,8 +7,10 @@
 
 local helpers = require "spec.helpers"
 local utils = require "pl.utils"
-local stringx = require "pl.stringx"
 local http = require "resty.http"
+
+
+local strip = require("kong.tools.string").strip
 
 
 local function count_server_blocks(filename)
@@ -23,11 +25,11 @@ local function get_listeners(filename)
   local result = {}
   for block in file:gmatch("[%\n%s]+server%s+(%b{})") do
     local server_name = block:match("[%\n%s]server_name%s(.-);")
-    server_name = server_name and stringx.strip(server_name) or "stream"
+    server_name = server_name and strip(server_name) or "stream"
     local server = result[server_name] or {}
     result[server_name] = server
     for listen in block:gmatch("[%\n%s]listen%s(.-);") do
-      listen = stringx.strip(listen)
+      listen = strip(listen)
       table.insert(server, listen)
       server[listen] = #server
     end

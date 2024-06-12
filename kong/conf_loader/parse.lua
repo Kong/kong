@@ -10,7 +10,6 @@ local require = require
 
 
 local cjson = require "cjson"
-local pl_stringx = require "pl.stringx"
 local pl_path = require "pl.path"
 local socket_url = require "socket.url"
 local tablex = require "pl.tablex"
@@ -31,6 +30,8 @@ local tools_ip = require("kong.tools.ip")
 local normalize_ip = tools_ip.normalize_ip
 local is_valid_ip_or_cidr = tools_ip.is_valid_ip_or_cidr
 local try_decode_base64 = require("kong.tools.string").try_decode_base64
+local strip = require("kong.tools.string").strip
+local split = require("kong.tools.string").split
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local is_valid_uuid = require("kong.tools.uuid").is_valid_uuid
 
@@ -52,7 +53,6 @@ local insert = table.insert
 local concat = table.concat
 local getenv = os.getenv
 local re_match = ngx.re.match
-local strip = pl_stringx.strip
 local exists = pl_path.exists
 local isdir = pl_path.isdir
 
@@ -112,7 +112,7 @@ local function parse_value(value, typ)
     -- must check type because pl will already convert comma
     -- separated strings to tables (but not when the arr has
     -- only one element)
-    value = setmetatable(pl_stringx.split(value, ","), nil) -- remove List mt
+    value = setmetatable(split(value, ","), nil) -- remove List mt
 
     for i = 1, #value do
       value[i] = strip(value[i])

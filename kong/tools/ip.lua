@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local ipmatcher  = require "resty.ipmatcher"
-local pl_stringx = require "pl.stringx"
+
 
 
 local type     = type
@@ -18,7 +18,7 @@ local sub      = string.sub
 local fmt      = string.format
 local lower    = string.lower
 local find     = string.find
-local split    = pl_stringx.split
+local split    = require("kong.tools.string").split
 
 
 local _M = {}

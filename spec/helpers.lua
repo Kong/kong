@@ -58,7 +58,6 @@ local dc_blueprints = require "spec.fixtures.dc_blueprints"
 local conf_loader = require "kong.conf_loader"
 local kong_global = require "kong.global"
 local Blueprints = require "spec.fixtures.blueprints"
-local pl_stringx = require "pl.stringx"
 local constants = require "kong.constants"
 local pl_tablex = require "pl.tablex"
 local pl_utils = require "pl.utils"
@@ -91,6 +90,8 @@ local lfs = require "lfs"
 local luassert = require "luassert.assert"
 local uuid = require("kong.tools.uuid").uuid
 local colors = require "ansicolors"
+local strip = require("kong.tools.string").strip
+local splitlines = require("pl.stringx").splitlines
 
 -- XXX EE
 local dist_constants = require "kong.enterprise_edition.distributions_constants"
@@ -2641,7 +2642,7 @@ local function res_status(state, args)
   if expected ~= res.status then
     local body, err = res:read_body()
     if not body then body = "Error reading body: " .. err end
-    table.insert(args, 1, pl_stringx.strip(body))
+    table.insert(args, 1, strip(body))
     table.insert(args, 1, res.status)
     table.insert(args, 1, expected)
     args.n = 3
@@ -2656,7 +2657,7 @@ local function res_status(state, args)
         return false -- no err logs to read in this prefix
       end
 
-      local lines_t = pl_stringx.splitlines(str)
+      local lines_t = splitlines(str)
       local str_t = {}
       -- filter out debugs as they are not usually useful in this context
       for i = 1, #lines_t do
@@ -2680,12 +2681,12 @@ local function res_status(state, args)
     local body, err = res:read_body()
     local output = body
     if not output then output = "Error reading body: " .. err end
-    output = pl_stringx.strip(output)
+    output = strip(output)
     table.insert(args, 1, output)
     table.insert(args, 1, res.status)
     table.insert(args, 1, expected)
     args.n = 3
-    return true, {pl_stringx.strip(body)}
+    return true, { strip(body) }
   end
 end
 say:set("assertion.res_status.negative", [[
@@ -3528,7 +3529,7 @@ function kong_exec(cmd, env, returns, env_vars)
   do
     local function cleanup(t)
       if t then
-        t = pl_stringx.strip(t)
+        t = strip(t)
         if t:sub(-1,-1) == ";" then
           t = t:sub(1, -2)
         end

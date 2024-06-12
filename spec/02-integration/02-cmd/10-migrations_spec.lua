@@ -9,7 +9,7 @@ local helpers = require "spec.helpers"
 local DB = require "kong.db.init"
 local tb_clone = require "table.clone"
 local shell = require "resty.shell"
-local strip = require "kong.tools.string".strip
+local strip = require("kong.tools.string").strip
 
 
 -- Current number of migrations to execute in a new install
@@ -525,4 +525,3 @@ for _, strategy in helpers.each_strategy() do
   end)
 
 end
-
