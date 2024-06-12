@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local llm_class = require("kong.llm")
+local llm = require("kong.llm")
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local http_mock = require "spec.helpers.http_mock"
@@ -231,10 +231,10 @@ describe(PLUGIN_NAME .. ": (unit)", function()
   for name, format_options in pairs(FORMATS) do
     describe(name .. " transformer tests, exact json response", function()
       it("transforms request based on LLM instructions", function()
-        local llm = llm_class:new(format_options, {})
-        assert.truthy(llm)
+        local llmdriver = llm.new_driver(format_options, {})
+        assert.truthy(llmdriver)
 
-        local result, err = llm:ai_introspect_body(
+        local result, err = llmdriver:ai_introspect_body(
           REQUEST_BODY,      -- request body
           SYSTEM_PROMPT,     -- conf.prompt
           {},                -- http opts
@@ -253,10 +253,10 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
   describe("openai transformer tests, pattern matchers", function()
     it("transforms request based on LLM instructions, with json extraction pattern", function()
-      local llm = llm_class:new(OPENAI_NOT_JSON, {})
-      assert.truthy(llm)
+      local llmdriver = llm.new_driver(OPENAI_NOT_JSON, {})
+      assert.truthy(llmdriver)
 
-      local result, err = llm:ai_introspect_body(
+      local result, err = llmdriver:ai_introspect_body(
         REQUEST_BODY,         -- request body
         SYSTEM_PROMPT,        -- conf.prompt
         {},                   -- http opts
@@ -272,10 +272,10 @@ describe(PLUGIN_NAME .. ": (unit)", function()
     end)
 
     it("transforms request based on LLM instructions, but fails to match pattern", function()
-      local llm = llm_class:new(OPENAI_NOT_JSON, {})
-      assert.truthy(llm)
+      local llmdriver = llm.new_driver(OPENAI_NOT_JSON, {})
+      assert.truthy(llmdriver)
 
-      local result, err = llm:ai_introspect_body(
+      local result, err = llmdriver:ai_introspect_body(
         REQUEST_BODY,      -- request body
         SYSTEM_PROMPT,     -- conf.prompt
         {},                -- http opts

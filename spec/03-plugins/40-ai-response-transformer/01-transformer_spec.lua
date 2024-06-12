@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local llm_class = require("kong.llm")
+local llm = require("kong.llm")
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local http_mock = require "spec.helpers.http_mock"
@@ -97,10 +97,10 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
   describe("openai transformer tests, specific response", function()
     it("transforms request based on LLM instructions, with response transformation instructions format", function()
-      local llm = llm_class:new(OPENAI_INSTRUCTIONAL_RESPONSE, {})
-      assert.truthy(llm)
+      local llmdriver = llm.new_driver(OPENAI_INSTRUCTIONAL_RESPONSE, {})
+      assert.truthy(llmdriver)
 
-      local result, err = llm:ai_introspect_body(
+      local result, err = llmdriver:ai_introspect_body(
         REQUEST_BODY,      -- request body
         SYSTEM_PROMPT,     -- conf.prompt
         {},                -- http opts
@@ -114,14 +114,14 @@ describe(PLUGIN_NAME .. ": (unit)", function()
       assert.same(EXPECTED_RESULT, table_result)
 
       -- parse in response string format
-      local headers, body, status, err = llm:parse_json_instructions(result)
+      local headers, body, status, err = llmdriver:parse_json_instructions(result)
       assert.is_nil(err)
       assert.same({ ["content-type"] = "application/xml" }, headers)
       assert.same(209, status)
       assert.same(EXPECTED_RESULT.body, body)
 
       -- parse in response table format
-      headers, body, status, err = llm:parse_json_instructions(table_result)
+      headers, body, status, err = llmdriver:parse_json_instructions(table_result)
       assert.is_nil(err)
       assert.same({ ["content-type"] = "application/xml" }, headers)
       assert.same(209, status)
