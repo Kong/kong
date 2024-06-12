@@ -75,15 +75,15 @@ self_ref false value must be nil, a number, string, boolean or a non-self-refere
             local pdk = PDK.new()
 
             pdk.log.set_serialize_value("val1", 1)
-            assert(#ngx.ctx.serialize_values == 3, "== 3 ")
+            assert(#ngx.ctx.serialize_values == 1, "== 1 ")
 
             -- Supports several operations over the same variable
             pdk.log.set_serialize_value("val1", 2)
-            assert(#ngx.ctx.serialize_values == 4, "== 4")
+            assert(#ngx.ctx.serialize_values == 2, "== 2")
 
             -- Other variables also supported
             pdk.log.set_serialize_value("val2", 1)
-            assert(#ngx.ctx.serialize_values == 5, "== 5")
+            assert(#ngx.ctx.serialize_values == 3, "== 3")
         }
     }
 --- request
