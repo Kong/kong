@@ -302,8 +302,8 @@ function Queue.can_enqueue(queue_conf, entry)
     --          and also the `#entry` is larger than `queue.max_bytes`,
     --          this function will incorrectly return `true` instead of `false`.
     --          This is a limitation of the current implementation.
-    --          All capacity checking functions needs a Queue instance to work correctly.
-    --          consturcting a Queue instance just for this function is not efficient,
+    --          All capacity checking functions need a Queue instance to work correctly.
+    --          constructing a Queue instance just for this function is not efficient,
     --          so we just return `true` here.
     --          This limitation should not happen in normal usage,
     --          as user should be aware of the queue capacity settings
