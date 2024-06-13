@@ -265,6 +265,11 @@ local get_current_suffix
 if subsystem == "http" then
 function get_current_suffix(ctx)
   local scheme = var.scheme
+  -- 400 case is for invalid requests, eg: if a client sends a HTTP
+  -- request to a HTTPS port, it does not initialized any Nginx variable
+  if kong.response.get_status() == 400 then
+    return nil
+  end
   local proxy_mode = var.kong_proxy_mode
   if scheme == "http" or scheme == "https" then
     if proxy_mode == "http" or proxy_mode == "unbuffered" then
