@@ -33,10 +33,11 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_setup(function()
       reset_license_data = clear_license_env()
-      _, db = helpers.get_db_utils(strategy)
+      _, db = helpers.get_db_utils(strategy, nil, { "application-registration" })
 
       assert(helpers.start_kong({
         database = strategy,
+        license_path = "spec-ee/fixtures/mock_license.json",
         portal = true,
         portal_and_vitals_key = get_portal_and_vitals_key(),
         portal_auth = "basic-auth",

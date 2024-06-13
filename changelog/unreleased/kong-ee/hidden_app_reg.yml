@@ -1,0 +1,3 @@
+message: The `application-registration` plugin will be hidden from `available_plugins` when the Dev Portal is disabled.
+type: bugfix
+scope: Admin API

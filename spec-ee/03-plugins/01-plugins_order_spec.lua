@@ -7,6 +7,7 @@
 
 local conf_loader = require "kong.conf_loader"
 local dao_plugins = require "kong.db.dao.plugins"
+local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 
 local fmt = string.format
 
@@ -40,6 +41,7 @@ describe("Plugins", function()
   lazy_setup(function()
     local conf = assert(conf_loader(nil, {
       plugins = all_plugins,
+      portal_and_vitals_key = get_portal_and_vitals_key()
     }))
 
     local kong_global = require "kong.global"

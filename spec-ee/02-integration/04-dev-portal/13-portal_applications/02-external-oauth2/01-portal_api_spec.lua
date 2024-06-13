@@ -115,7 +115,7 @@ for _, strategy in helpers.each_strategy() do
     describe("Developer Portal - Portal API #" .. strategy .. " (ENFORCE_RBAC = " .. rbac .. ")", function()
       local portal_api_client
       local admin_client
-      local _, db, _ = helpers.get_db_utils(strategy)
+      local _, db, _ = helpers.get_db_utils(strategy, nil, { "application-registration" })
       local reset_license_data
 
       lazy_setup(function()

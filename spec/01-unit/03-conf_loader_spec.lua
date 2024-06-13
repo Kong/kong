@@ -13,6 +13,7 @@ local tablex = require "pl.tablex"
 local pl_path = require "pl.path"
 local ffi = require "ffi"
 local utils = require "kong.tools.utils"
+local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 
 
 local C = ffi.C
@@ -133,7 +134,9 @@ describe("Configuration loader", function()
   end)
   it("returns a plugins table", function()
     local constants = require "kong.constants"
-    local conf = assert(conf_loader())
+    local conf = assert(conf_loader(nil, {
+      portal_and_vitals_key = get_portal_and_vitals_key()
+    }))
     assert.same(constants.BUNDLED_PLUGINS, conf.loaded_plugins)
   end)
   it("loads custom plugins", function()

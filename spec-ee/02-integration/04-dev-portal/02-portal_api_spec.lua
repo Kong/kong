@@ -127,7 +127,7 @@ for _, strategy in helpers.each_strategy() do
   for idx, rbac in ipairs(rbac_mode) do
     describe("Developer Portal - Portal API #" .. strategy .. " (ENFORCE_RBAC = " .. rbac .. ")", function()
       local portal_api_client
-      local _, db, _ = helpers.get_db_utils(strategy)
+      local _, db, _ = helpers.get_db_utils(strategy, nil, { "application-registration" })
 
       local reset_license_data
 

@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
+local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: application-registration (EE) (access) [#" .. strategy .. "]", function()
@@ -25,7 +26,7 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "consumers",
         "oauth2_credentials",
-      })
+      }, { "application-registration" })
 
       service = assert(bp.services:insert())
 
@@ -69,6 +70,7 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        portal_and_vitals_key = get_portal_and_vitals_key()
       }))
 
       proxy_client = helpers.proxy_client()

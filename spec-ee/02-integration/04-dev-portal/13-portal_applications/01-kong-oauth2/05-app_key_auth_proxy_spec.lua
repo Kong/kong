@@ -24,7 +24,7 @@ for _, strategy in helpers.each_strategy() do
     local key_auth_credential_key = "test_app_reg_key_credential"
     local app_client_id
 
-    local bp, db, _ = helpers.get_db_utils(strategy)
+    local bp, db, _ = helpers.get_db_utils(strategy, nil, { "application-registration" })
 
     lazy_setup(function()
       reset_license_data = clear_license_env()

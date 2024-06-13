@@ -32,7 +32,7 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_setup(function()
       reset_license_data = clear_license_env()
-      _, db = helpers.get_db_utils(strategy)
+      _, db = helpers.get_db_utils(strategy, nil, { "application-registration" })
 
       assert(helpers.start_kong({
         database = strategy,

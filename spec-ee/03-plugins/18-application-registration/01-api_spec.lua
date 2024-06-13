@@ -8,6 +8,7 @@
 local helpers = require "spec.helpers"
 local Errors = require "kong.db.errors"
 local cjson = require "cjson"
+local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 
 
 for _, strategy in helpers.each_strategy() do
@@ -25,6 +26,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         database   = strategy,
+        portal_and_vitals_key = get_portal_and_vitals_key()
       }))
     end)
 

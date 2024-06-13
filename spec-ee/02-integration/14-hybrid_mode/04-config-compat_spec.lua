@@ -11,6 +11,7 @@ local cjson = require "cjson"
 local STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
 local FIELDS = require("kong.clustering.compat.removed_fields")
 local tablex = require "pl.tablex"
+local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 
 local admin = require "spec.fixtures.admin_api"
 
@@ -149,6 +150,7 @@ describe("CP/DP config compat #" .. strategy, function()
       database = strategy,
       db_update_frequency = 0.1,
       cluster_listen = CP_HOST .. ":" .. CP_PORT,
+      portal_and_vitals_key = get_portal_and_vitals_key(),
       nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins =
         [[

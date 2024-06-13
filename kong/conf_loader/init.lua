@@ -750,6 +750,10 @@ local function load(path, custom_conf, opts)
       end
     end
 
+    if not conf.portal_and_vitals_key and plugins["application-registration"] then
+      plugins["application-registration"] = nil
+    end
+
     conf.loaded_plugins = setmetatable(plugins, conf_constants._NOP_TOSTRING_MT)
   end
 

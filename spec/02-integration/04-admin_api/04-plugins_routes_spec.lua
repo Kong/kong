@@ -9,10 +9,11 @@ local helpers = require "spec.helpers"
 local admin_api = require "spec.fixtures.admin_api"
 local uuid = require "kong.tools.uuid"
 local cjson = require "cjson"
+local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 
 for _, strategy in helpers.each_strategy() do
 
-  describe("Admin API #" .. strategy, function()
+  describe("Admin API when Dev Portal disabled #" .. strategy, function()
     local db
     local client
 
@@ -29,7 +30,7 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database = strategy,
         plugins =
-        "bundled,dummy,cache,rewriter,error-handler-log,error-generator,error-generator-last,short-circuit,oauth2-introspection,openid-connect"
+        "bundled,dummy,cache,rewriter,error-handler-log,error-generator,error-generator-last,short-circuit,oauth2-introspection,openid-connect,application-registration"
       }))
     end)
 
@@ -53,10 +54,19 @@ for _, strategy in helpers.each_strategy() do
           method = "GET",
           path = "/plugins/enabled",
         })
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.is_table(json.enabled_plugins)
-        assert.True(#json.enabled_plugins > 0)
+        assert.response(res).has.status(200)
+        local json = assert.response(res).has.jsonbody()
+        local enabled_plugins = json.enabled_plugins
+        assert.is_table(enabled_plugins)
+        assert.True(#enabled_plugins > 0)
+        local is_exist = false
+        for _, plugin_name in ipairs(enabled_plugins) do
+          if plugin_name == "application-registration" then
+            is_exist = true
+          end
+        end
+
+        assert.False(is_exist)
       end)
     end)
 
@@ -454,40 +464,6 @@ for _, strategy in helpers.each_strategy() do
           assert.match('"referenceable":true', body, 1, true)
         end)
 
-        it("returns the schema should include the field `enable_proxy_with_consumer_credential`", function()
-          local res = assert(client:send {
-            method = "GET",
-            path = "/schemas/plugins/application-registration",
-          })
-          assert.response(res).has.status(200)
-          local body = assert.response(res).has.jsonbody()
-
-          local config = nil
-          for _, value in ipairs(body.fields) do
-            if value.config then
-              config = value.config
-              break
-            end
-          end
-          assert.is_not_nil(config)
-          local json_values = nil
-          for _, value in ipairs(config.fields) do
-            if value.enable_proxy_with_consumer_credential then
-              json_values = value.enable_proxy_with_consumer_credential
-              break
-            end
-          end
-
-          assert.is_not_nil(json_values)
-          local enable_proxy_with_consumer_credential = {
-            description = "If enabled, the Route of the Service can be accessed using the Consumer's credential",
-            required = true,
-            default = false,
-            type = "boolean"
-          }
-          assert.same(enable_proxy_with_consumer_credential, json_values)
-        end)
-
         it("returns the schema should include encrypted attribute of the introspection_headers_values in plugin openid-connect",
           function()
             local res = assert(client:send {
@@ -560,6 +536,106 @@ for _, strategy in helpers.each_strategy() do
           local json = cjson.decode(body)
           assert.same({ message = "No plugin named 'foobar'" }, json)
         end)
+
+        it("retrieves `application-registration`should returns 404 on while Dev Portal disabled", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/schemas/plugins/application-registration",
+          })
+          local body = assert.res_status(404, res)
+          local json = cjson.decode(body)
+          assert.same({ message = "No plugin named 'application-registration'" }, json)
+        end)
+      end)
+    end)
+  end)
+
+  describe("Admin API when Dev Portal enabled #" .. strategy, function()
+    local client
+
+    lazy_setup(function()
+      assert(helpers.start_kong({
+        database = strategy,
+        license_path = "spec-ee/fixtures/mock_license.json",
+        portal = true,
+        portal_and_vitals_key = get_portal_and_vitals_key(),
+        portal_auth = "basic-auth",
+        portal_app_auth = "external-oauth2",
+        portal_session_conf = "{ \"secret\": \"super-secret\" }",
+      }))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+    before_each(function()
+      client = helpers.admin_client()
+    end)
+
+    after_each(function()
+      if client then
+        client:close()
+      end
+    end)
+
+    describe("/plugins/enabled", function()
+      it("returns a list of enabled plugins on this node", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/plugins/enabled",
+        })
+        assert.response(res).has.status(200)
+
+        local json = assert.response(res).has.jsonbody()
+        local enabled_plugins = json.enabled_plugins
+        assert.is_table(enabled_plugins)
+        assert.True(#enabled_plugins > 0)
+        local is_exist = false
+        for _, plugin_name in ipairs(enabled_plugins) do
+          if plugin_name == "application-registration" then
+            is_exist = true
+          end
+        end
+
+        assert.True(is_exist)
+
+      end)
+    end)
+
+    describe("/schemas/plugins/{plugin}", function()
+      it("returns the schema should include the field `enable_proxy_with_consumer_credential`", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/schemas/plugins/application-registration",
+        })
+        assert.response(res).has.status(200)
+        local body = assert.response(res).has.jsonbody()
+
+        local config = nil
+        for _, value in ipairs(body.fields) do
+          if value.config then
+            config = value.config
+            break
+          end
+        end
+        assert.is_not_nil(config)
+        local json_values = nil
+        for _, value in ipairs(config.fields) do
+          if value.enable_proxy_with_consumer_credential then
+            json_values = value.enable_proxy_with_consumer_credential
+            break
+          end
+        end
+
+        assert.is_not_nil(json_values)
+        local enable_proxy_with_consumer_credential = {
+          description = "If enabled, the Route of the Service can be accessed using the Consumer's credential",
+          required = true,
+          default = false,
+          type = "boolean"
+        }
+        assert.same(enable_proxy_with_consumer_credential, json_values)
       end)
     end)
   end)

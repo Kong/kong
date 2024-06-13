@@ -61,7 +61,7 @@ for _, strategy in helpers.each_strategy() do
       local test_service, test_plugin
 
       lazy_setup(function()
-        _, db = helpers.get_db_utils(strategy)
+        _, db = helpers.get_db_utils(strategy, nil, { "application-registration" })
 
         assert(db:truncate())
 
