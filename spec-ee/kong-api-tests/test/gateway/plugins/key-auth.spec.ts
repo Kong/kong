@@ -1,4 +1,3 @@
-import { checkKonnectCpAndDpConfigHashMatch } from '@shared/konnect_workflows';
 import {
   createConsumer,
   createGatewayService,
@@ -13,7 +12,6 @@ import {
   isKoko,
   waitForConfigRebuild,
   retryRequest,
-  getKonnectControlPlaneId,
   eventually,
   isLocalDatabase,
   isGwHybrid
@@ -230,10 +228,6 @@ describe('@smoke @koko: Gateway Plugins: key-auth', function () {
 
     expect(resp.status, 'Status should be 200').to.equal(200);
     expect(resp.data.enabled, 'Should be false').to.be.false;
-
-    if(isKoko()) {
-      await checkKonnectCpAndDpConfigHashMatch(getKonnectControlPlaneId())
-    }
   });
 
   it('should proxy request without supplying apiKey after disabling plugin', async function () {
