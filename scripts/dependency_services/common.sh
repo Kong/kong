@@ -17,9 +17,9 @@ PATH=$PATH:$cwd
 if ! test -z $plugins_ee_directory && ! yq --version >/dev/null 2>&1; then
     binary_name=""
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        binary_name="yq_linux_"
+        binary_name="yq_linux"
     elif [[ "$OSTYPE" == "darwin"* ]]; then
-        binary_name="yq_darwin_"
+        binary_name="yq_darwin"
     else
         echo "Unsupported OS for yq: $OSTYPE"
         exit 1
