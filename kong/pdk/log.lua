@@ -152,29 +152,29 @@ local serializers = {
   end,
 
   [2] = function(buf, sep, to_string, ...)
-    buf:put(to_string((select(1, ...)))):put(sep)
-       :put(to_string((select(2, ...))))
+    buf:put(to_string((select(1, ...))), sep,
+            to_string((select(2, ...))))
   end,
 
   [3] = function(buf, sep, to_string, ...)
-    buf:put(to_string((select(1, ...)))):put(sep)
-       :put(to_string((select(2, ...)))):put(sep)
-       :put(to_string((select(3, ...))))
+    buf:put(to_string((select(1, ...))), sep,
+            to_string((select(2, ...))), sep,
+            to_string((select(3, ...))))
   end,
 
   [4] = function(buf, sep, to_string, ...)
-    buf:put(to_string((select(1, ...)))):put(sep)
-       :put(to_string((select(2, ...)))):put(sep)
-       :put(to_string((select(3, ...)))):put(sep)
-       :put(to_string((select(4, ...))))
+    buf:put(to_string((select(1, ...))), sep,
+            to_string((select(2, ...))), sep,
+            to_string((select(3, ...))), sep,
+            to_string((select(4, ...))))
   end,
 
   [5] = function(buf, sep, to_string, ...)
-    buf:put(to_string((select(1, ...)))):put(sep)
-       :put(to_string((select(2, ...)))):put(sep)
-       :put(to_string((select(3, ...)))):put(sep)
-       :put(to_string((select(4, ...)))):put(sep)
-       :put(to_string((select(5, ...))))
+    buf:put(to_string((select(1, ...))), sep,
+            to_string((select(2, ...))), sep,
+            to_string((select(3, ...))), sep,
+            to_string((select(4, ...))), sep,
+            to_string((select(5, ...))))
   end,
 }
 
@@ -334,7 +334,7 @@ local function gen_log_func(lvl_const, imm_buf, to_string, stack_level, sep)
 
     else
       for i = 1, n - 1 do
-        variadic_buf:put(to_string((select(i, ...)))):put(sep or "")
+        variadic_buf:put(to_string((select(i, ...))), sep or "")
       end
       variadic_buf:put(to_string((select(n, ...))))
     end
