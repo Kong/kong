@@ -25,7 +25,7 @@ local ngx = ngx
 local now = ngx.now
 local log = ngx.log
 local NOTICE  = ngx.NOTICE
-
+local DEBUG = ngx.DEBUG
 
 local NO_TTL_FLAG = require("kong.resty.mlcache").NO_TTL_FLAG
 
@@ -145,7 +145,7 @@ function cache_warmup.single_dao(dao)
     end
 
     if entity_name == "acls" and acl_groups ~= nil then
-      log(NOTICE, "warmup acl groups cache for consumer id: ", entity.consumer.id , "...")
+      log(DEBUG, "warmup acl groups cache for consumer id: ", entity.consumer.id , "...")
       local _, err = acl_groups.warmup_groups_cache(entity.consumer.id)
       if err then
         log(NOTICE, "warmup acl groups cache for consumer id: ", entity.consumer.id , " err: ", err)
