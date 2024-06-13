@@ -10,6 +10,8 @@ lua_socket_log_errors  off;
 lua_max_running_timers 4096;
 lua_max_pending_timers 16384;
 
+uninitialized_variable_warn  off;
+
 include 'nginx-kong-inject.conf';
 
 lua_shared_dict kong                        5m;
@@ -387,8 +389,6 @@ server {
     location = /kong_error_handler {
         internal;
         default_type                 '';
-
-        uninitialized_variable_warn  off;
 
         rewrite_by_lua_block {;}
         access_by_lua_block  {;}
