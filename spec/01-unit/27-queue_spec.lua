@@ -818,8 +818,11 @@ describe("plugin queue", function()
       )
     end
 
+    -- should be true if the queue does not exist
+    assert.is_true(Queue.can_enqueue(queue_conf))
+
     assert.is_false(Queue.is_full(queue_conf))
-    assert.is_false(Queue.can_enqueue(queue_conf, "One"))
+    assert.is_true(Queue.can_enqueue(queue_conf, "One"))
     enqueue(queue_conf, "One")
     assert.is_false(Queue.is_full(queue_conf))
 
@@ -841,8 +844,11 @@ describe("plugin queue", function()
       max_retry_delay = 60,
     }
 
+    -- should be true if the queue does not exist
+    assert.is_true(Queue.can_enqueue(queue_conf))
+
     assert.is_false(Queue.is_full(queue_conf))
-    assert.is_false(Queue.can_enqueue(queue_conf, "1"))
+    assert.is_true(Queue.can_enqueue(queue_conf, "1"))
     enqueue(queue_conf, "1")
     assert.is_false(Queue.is_full(queue_conf))
 
@@ -862,6 +868,9 @@ describe("plugin queue", function()
       initial_retry_delay = 1,
       max_retry_delay = 60,
     }
+
+    -- should be true if the queue does not exist
+    assert.is_true(Queue.can_enqueue(queue_conf))
 
     enqueue(queue_conf, "1")
 
