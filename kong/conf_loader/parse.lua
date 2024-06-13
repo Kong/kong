@@ -11,13 +11,14 @@ local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local conf_constants = require "kong.conf_loader.constants"
 local tools_system = require "kong.tools.system" -- for unit-testing
 local tools_ip = require "kong.tools.ip"
+local tools_string = require "kong.tools.string"
 
 
 local normalize_ip = tools_ip.normalize_ip
 local is_valid_ip_or_cidr = tools_ip.is_valid_ip_or_cidr
-local try_decode_base64 = require("kong.tools.string").try_decode_base64
-local strip = require("kong.tools.string").strip
-local split = require("kong.tools.string").split
+local try_decode_base64 = tools_string.try_decode_base64
+local strip = tools_string.strip
+local split = tools_string.split
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local is_valid_uuid = require("kong.tools.uuid").is_valid_uuid
 
@@ -230,7 +231,7 @@ local function check_and_parse(conf, opts)
 
     elseif v_schema.enum and not tablex.find(v_schema.enum, value) then
       errors[#errors + 1] = fmt("%s has an invalid value: '%s' (%s)", k,
-                              tostring(value), concat(v_schema.enum, ", "))
+                                tostring(value), concat(v_schema.enum, ", "))
 
     end
 
@@ -442,7 +443,7 @@ local function check_and_parse(conf, opts)
           "nginx_stream_lua_ssl_conf_command"}) do
 
           if conf[key] then
-            local _, _, seclevel = string.find(conf[key], "@SECLEVEL=(%d+)")
+            local _, _, seclevel = find(conf[key], "@SECLEVEL=(%d+)")
             if seclevel ~= "0" then
               ngx.log(ngx.WARN, key, ": Default @SECLEVEL=0 overridden, TLSv1.1 unavailable")
             end
