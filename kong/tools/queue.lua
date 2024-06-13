@@ -297,8 +297,18 @@ end
 function Queue.can_enqueue(queue_conf, entry)
   local queue = queues[_make_queue_key(queue_conf.name)]
   if not queue then
-    -- treat non-existing queues as not full as they will be created on demand
-    return false
+    -- treat non-existing queues having enough capacity.
+    -- WARNING: The limitation is that if the `entry` is a string and the `queue.max_bytes` is set,
+    --          and also the `#entry` is larger than `queue.max_bytes`,
+    --          this function will incorrectly return `true` instead of `false`.
+    --          This is a limitation of the current implementation.
+    --          All capacity checking functions need a Queue instance to work correctly.
+    --          constructing a Queue instance just for this function is not efficient,
+    --          so we just return `true` here.
+    --          This limitation should not happen in normal usage,
+    --          as user should be aware of the queue capacity settings
+    --          to avoid such situation.
+    return true
   end
 
   return _can_enqueue(queue, entry)
