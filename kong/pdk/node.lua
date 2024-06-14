@@ -4,21 +4,23 @@
 
 local ffi = require "ffi"
 local private_node = require "kong.pdk.private.node"
+local tools_string = require("kong.tools.string")
 local uuid = require("kong.tools.uuid").uuid
-local bytes_to_str = require("kong.tools.string").bytes_to_str
 
 
 local floor = math.floor
 local lower = string.lower
 local match = string.match
-local gsub = string.gsub
 local sort = table.sort
 local insert = table.insert
+local strip = tools_string.strip
+local bytes_to_str = tools_string.bytes_to_str
 local ngx = ngx
 local shared = ngx.shared
 local C             = ffi.C
 local ffi_new       = ffi.new
 local ffi_str       = ffi.string
+
 
 local NODE_ID_KEY = "kong:node_id"
 
@@ -254,13 +256,13 @@ local function new(self)
 
     if res == 0 then
       local hostname = ffi_str(buf, SIZE)
-      return gsub(hostname, "%z+$", "")
+      return strip(hostname)
     end
 
     local f = io.popen("/bin/hostname")
     local hostname = f:read("*a") or ""
     f:close()
-    return gsub(hostname, "\n$", "")
+    return strip(hostname)
   end
 
 
