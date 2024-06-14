@@ -9,6 +9,7 @@ local helpers = require "spec.helpers"
 local pl_tablex = require "pl.tablex"
 local cjson = require "cjson"
 local ssl_fixtures = require "spec.fixtures.ssl"
+local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 
 local pl_union = pl_tablex.union
 local pl_pairmap = pl_tablex.pairmap
@@ -454,6 +455,7 @@ for _, strategy in helpers.each_strategy({ "postgres" }) do
       database     = strategy,
       nginx_conf   = "spec/fixtures/custom_nginx.template",
       plugins      = table.concat(plugins, ","),
+      portal_and_vitals_key = get_portal_and_vitals_key(),
       admin_listen = ADMIN_LISTEN,
     }
 
