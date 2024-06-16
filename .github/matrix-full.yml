@@ -12,9 +12,11 @@ build-packages:
   package: deb
   check-manifest-suite: ubuntu-20.04-amd64
 - label: ubuntu-22.04
+  image: ubuntu:22.04
   package: deb
   check-manifest-suite: ubuntu-22.04-amd64
 - label: ubuntu-22.04-arm64
+  image: ubuntu:22.04
   package: deb
   bazel-args: --platforms=//:generic-crossbuild-aarch64
   check-manifest-suite: ubuntu-22.04-arm64
