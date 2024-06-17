@@ -1,3 +1,5 @@
+local get_request = require "resty.core.base".get_request
+
 local ngx           = ngx
 local type          = type
 local pcall         = pcall
@@ -231,6 +233,10 @@ function _M.is_group_enabled(group_name)
 
   if ALWAYS_ENABLED_GROUPS[group_name] then
     return true
+  end
+
+  if not get_request() then
+    return false
   end
 
   local dynamic_hook = ngx.ctx.dynamic_hook
