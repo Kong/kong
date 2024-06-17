@@ -7,30 +7,32 @@
 
 -- Copyright (C) Kong Inc.
 
-local GqlSchema    = require "kong.gql.schema"
-local build_ast    = require "kong.gql.query.build_ast"
-local ratelimiting = require("kong.tools.public.rate-limiting").new_instance("graphql-rate-limiting-advanced")
-local schema       = require "kong.plugins.graphql-rate-limiting-advanced.schema"
-local cost         = require "kong.plugins.graphql-rate-limiting-advanced.cost"
-local meta         = require "kong.meta"
-local http         = require "resty.http"
-local cjson        = require "cjson.safe"
-local kong_global  = require "kong.global"
-local utils        = require "kong.tools.utils"
-local balancer     = require "kong.runloop.balancer"
+local GqlSchema       = require "kong.gql.schema"
+local build_ast       = require "kong.gql.query.build_ast"
+local ratelimiting    = require("kong.tools.public.rate-limiting").new_instance("graphql-rate-limiting-advanced")
+local schema          = require "kong.plugins.graphql-rate-limiting-advanced.schema"
+local cost            = require "kong.plugins.graphql-rate-limiting-advanced.cost"
+local meta            = require "kong.meta"
+local http            = require "resty.http"
+local cjson           = require "cjson.safe"
+local kong_global     = require "kong.global"
+local utils           = require "kong.tools.utils"
+local balancer        = require "kong.runloop.balancer"
+local pdk_private_rl  = require "kong.pdk.private.rate_limiting"
 
-local get_updated_now_ms = utils.get_updated_now_ms
-local time_ns = utils.time_ns
+local get_updated_now_ms            = utils.get_updated_now_ms
+local time_ns                       = utils.time_ns
+local pdk_rl_store_response_header  = pdk_private_rl.store_response_header
+local pdk_rl_apply_response_headers = pdk_private_rl.apply_response_headers
 
 local PHASES       = kong_global.phases
-
 
 local ngx      = ngx
 local kong     = kong
 local max      = math.max
 local min      = math.min
 local tonumber = tonumber
-local concat       = table.concat
+local concat   = table.concat
 
 local NewRLHandler = {
   PRIORITY = 902,
@@ -446,9 +448,11 @@ function NewRLHandler:access(conf)
     })
   end
 
+  local ngx_ctx = ngx.ctx
   local query_cost = cost(query_ast, conf.cost_strategy)
   -- Reduce tota node cost quantified by conf.score_factor, min 1
   query_cost = math.ceil((query_cost + 0.01) * conf.score_factor)
+
 
   for i = 1, #conf.window_size do
     local window_size = tonumber(conf.window_size[i])
@@ -471,15 +475,17 @@ function NewRLHandler:access(conf)
     local window_name = human_window_size_lookup[window_size] or window_size
 
     if not conf.hide_client_headers then
-      ngx.header["X-Gql-Query-Cost"] = query_cost
-      ngx.header[RATELIMIT_LIMIT .. "-" .. window_name] = limit
-      ngx.header[RATELIMIT_REMAINING .. "-" .. window_name] = max(limit - rate, 0)
+      pdk_rl_store_response_header(ngx_ctx, "X-Gql-Query-Cost", query_cost)
+      pdk_rl_store_response_header(ngx_ctx, RATELIMIT_LIMIT .. "-" .. window_name, limit)
+      pdk_rl_store_response_header(ngx_ctx, RATELIMIT_REMAINING .. "-" .. window_name, max(limit - rate, 0))
     end
 
     if rate > limit then
       deny = true
     end
   end
+
+  pdk_rl_apply_response_headers(ngx_ctx)
 
   if conf.max_cost > 0 and query_cost > conf.max_cost then
     return kong.response.exit(403, { message = "API max cost limit exceeded" })
