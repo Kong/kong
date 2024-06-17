@@ -151,15 +151,15 @@ local function init()
   if ai_request then
     metrics.ai_llm_requests = prometheus:counter("ai_llm_requests_total",
                                         "AI requests total per ai_provider in Kong",
-                                        {"ai_provider", "ai_model", "cache", "vector_db", "embeddings_provider", "embeddings_model", "workspace"})
+                                        {"ai_provider", "ai_model", "cache_status", "vector_db", "embeddings_provider", "embeddings_model", "workspace"})
 
     metrics.ai_llm_cost = prometheus:counter("ai_llm_cost_total",
                                         "AI requests cost per ai_provider/cache in Kong",
-                                        {"ai_provider", "ai_model", "cache", "vector_db", "embeddings_provider", "embeddings_model", "workspace"})
+                                        {"ai_provider", "ai_model", "cache_status", "vector_db", "embeddings_provider", "embeddings_model", "workspace"})
 
     metrics.ai_llm_tokens = prometheus:counter("ai_llm_tokens_total",
                                         "AI requests cost per ai_provider/cache in Kong",
-                                        {"ai_provider", "ai_model", "cache", "vector_db", "embeddings_provider", "embeddings_model", "token_type", "workspace"})
+                                        {"ai_provider", "ai_model", "cache_status", "vector_db", "embeddings_provider", "embeddings_model", "token_type", "workspace"})
   end
 
   -- Hybrid mode status
