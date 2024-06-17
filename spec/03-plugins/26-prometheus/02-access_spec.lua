@@ -702,8 +702,8 @@ describe("Plugin: prometheus (access) AI metrics", function()
             max_tokens = 256,
             temperature = 1.0,
             upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/chat/good",
-            input_cost = 0.01,
-            output_cost = 0.01,
+            input_cost = 10.0,
+            output_cost = 10.0,
           },
         },
       },
@@ -764,13 +764,13 @@ describe("Plugin: prometheus (access) AI metrics", function()
     assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
     assert.matches('http_requests_total{service="empty_service",route="http-route",code="200",source="service",workspace="default",consumer=""} 1', body, nil, true)
     
-    assert.matches('ai_llm_requests_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",workspace="default"} 1', body, nil, true)
+    assert.matches('ai_llm_requests_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",vector_db="",embeddings_provider="",embeddings_model="",workspace="default"} 1', body, nil, true)
 
-    assert.matches('ai_llm_cost_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",workspace="default"} 0.00037', body, nil, true)
+    assert.matches('ai_llm_cost_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",vector_db="",embeddings_provider="",embeddings_model="",workspace="default"} 0.00037', body, nil, true)
 
-    assert.matches('ai_llm_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",token_type="completion_tokens",workspace="default"} 12', body, nil, true)
-    assert.matches('ai_llm_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",token_type="prompt_tokens",workspace="default"} 25', body, nil, true)
-    assert.matches('ai_llm_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",token_type="total_tokens",workspace="default"} 37', body, nil, true)
+    assert.matches('ai_llm_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",vector_db="",embeddings_provider="",embeddings_model="",token_type="completion_tokens",workspace="default"} 12', body, nil, true)
+    assert.matches('ai_llm_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",vector_db="",embeddings_provider="",embeddings_model="",token_type="prompt_tokens",workspace="default"} 25', body, nil, true)
+    assert.matches('ai_llm_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",vector_db="",embeddings_provider="",embeddings_model="",token_type="total_tokens",workspace="default"} 37', body, nil, true)
   end)
 
   it("increments the count for proxied AI requests", function()
@@ -800,13 +800,13 @@ describe("Plugin: prometheus (access) AI metrics", function()
     assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
     assert.matches('http_requests_total{service="empty_service",route="http-route",code="200",source="service",workspace="default",consumer=""} 2', body, nil, true)
     
-    assert.matches('ai_llm_requests_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",workspace="default"} 2', body, nil, true)
+    assert.matches('ai_llm_requests_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",vector_db="",embeddings_provider="",embeddings_model="",workspace="default"} 2', body, nil, true)
 
-    assert.matches('ai_llm_cost_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",workspace="default"} 0.00074', body, nil, true)
+    assert.matches('ai_llm_cost_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",vector_db="",embeddings_provider="",embeddings_model="",workspace="default"} 0.00074', body, nil, true)
 
-    assert.matches('ai_llm_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",token_type="completion_tokens",workspace="default"} 24', body, nil, true)
-    assert.matches('ai_llm_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",token_type="prompt_tokens",workspace="default"} 50', body, nil, true)
-    assert.matches('ai_llm_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",token_type="total_tokens",workspace="default"} 74', body, nil, true)
+    assert.matches('ai_llm_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",vector_db="",embeddings_provider="",embeddings_model="",token_type="completion_tokens",workspace="default"} 24', body, nil, true)
+    assert.matches('ai_llm_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",vector_db="",embeddings_provider="",embeddings_model="",token_type="prompt_tokens",workspace="default"} 50', body, nil, true)
+    assert.matches('ai_llm_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",vector_db="",embeddings_provider="",embeddings_model="",token_type="total_tokens",workspace="default"} 74', body, nil, true)
   end)
 
   it("behave correctly if AI metrics are not found", function()
@@ -832,7 +832,7 @@ describe("Plugin: prometheus (access) AI metrics", function()
     assert.matches('http_requests_total{service="empty_service",route="http-route",code="400",source="kong",workspace="default",consumer=""} 1', body, nil, true)
     assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
 
-    assert.matches('ai_llm_requests_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",workspace="default"} 2', body, nil, true)
-    assert.matches('ai_llm_cost_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",db_name="",workspace="default"} 0.00074', body, nil, true)
+    assert.matches('ai_llm_requests_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",vector_db="",embeddings_provider="",embeddings_model="",workspace="default"} 2', body, nil, true)
+    assert.matches('ai_llm_cost_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache="not_cached",vector_db="",embeddings_provider="",embeddings_model="",workspace="default"} 0.00074', body, nil, true)
   end)
 end)

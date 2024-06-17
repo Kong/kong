@@ -151,15 +151,15 @@ local function init()
   if ai_request then
     metrics.ai_llm_requests = prometheus:counter("ai_llm_requests_total",
                                         "AI requests total per ai_provider in Kong",
-                                        {"ai_provider", "ai_model", "cache", "db_name", "workspace"})
+                                        {"ai_provider", "ai_model", "cache", "vector_db", "embeddings_provider", "embeddings_model", "workspace"})
 
     metrics.ai_llm_cost = prometheus:counter("ai_llm_cost_total",
                                         "AI requests cost per ai_provider/cache in Kong",
-                                        {"ai_provider", "ai_model", "cache", "db_name", "workspace"})
+                                        {"ai_provider", "ai_model", "cache", "vector_db", "embeddings_provider", "embeddings_model", "workspace"})
 
     metrics.ai_llm_tokens = prometheus:counter("ai_llm_tokens_total",
                                         "AI requests cost per ai_provider/cache in Kong",
-                                        {"ai_provider", "ai_model", "cache", "db_name", "token_type", "workspace"})
+                                        {"ai_provider", "ai_model", "cache", "vector_db", "embeddings_provider", "embeddings_model", "token_type", "workspace"})
   end
 
   -- Hybrid mode status
@@ -225,8 +225,8 @@ local upstream_target_addr_health_table = {
   { value = 0, labels = { 0, 0, 0, "dns_error", ngx.config.subsystem } },
 }
 -- ai
-local labels_table_ai_llm_status = {0, 0, 0, 0, 0}
-local labels_table_ai_llm_tokens = {0, 0, 0, 0, 0, 0}
+local labels_table_ai_llm_status = {0, 0, 0, 0, 0, 0, 0}
+local labels_table_ai_llm_tokens = {0, 0, 0, 0, 0, 0, 0, 0}
 
 local function set_healthiness_metrics(table, upstream, target, address, status, metrics_bucket)
   for i = 1, #table do
@@ -336,21 +336,33 @@ local function log(message, serialized)
 
   if serialized.ai_metrics then
     for _, ai_plugin in pairs(serialized.ai_metrics) do
-      local cache_type
-      if ai_plugin.cache and ai_plugin.cache.cache_type then
-        cache_type = ai_plugin.cache.cache_type
+      local cache_status
+      if ai_plugin.cache and ai_plugin.cache.cache_status then
+        cache_status = ai_plugin.cache.cache_status
       end
 
-      local db_name
-      if ai_plugin.cache and ai_plugin.cache.db_name then
-        db_name = ai_plugin.cache.db_name
+      local vector_db, embeddings_provider, embeddings_model
+      if ai_plugin.cache then
+        if ai_plugin.cache.vector_db then
+          vector_db = ai_plugin.cache.vector_db
+        end
+
+        if ai_plugin.cache.embeddings_provider then
+          vector_db = ai_plugin.cache.embeddings_provider
+        end
+
+        if ai_plugin.cache.embeddings_model then
+          vector_db = ai_plugin.cache.embeddings_model
+        end
       end
 
       labels_table_ai_llm_status[1] = ai_plugin.meta.provider_name
       labels_table_ai_llm_status[2] = ai_plugin.meta.request_model
-      labels_table_ai_llm_status[3] = cache_type
-      labels_table_ai_llm_status[4] = db_name
-      labels_table_ai_llm_status[5] = workspace
+      labels_table_ai_llm_status[3] = cache_status
+      labels_table_ai_llm_status[4] = vector_db
+      labels_table_ai_llm_status[5] = embeddings_provider
+      labels_table_ai_llm_status[6] = embeddings_model
+      labels_table_ai_llm_status[7] = workspace
       metrics.ai_llm_requests:inc(1, labels_table_ai_llm_status)
 
       if ai_plugin.usage.cost_request and ai_plugin.usage.cost_request > 0 then
@@ -359,12 +371,14 @@ local function log(message, serialized)
 
       labels_table_ai_llm_tokens[1] = ai_plugin.meta.provider_name
       labels_table_ai_llm_tokens[2] = ai_plugin.meta.request_model
-      labels_table_ai_llm_tokens[3] = cache_type
-      labels_table_ai_llm_tokens[4] = db_name
-      labels_table_ai_llm_tokens[6] = workspace
+      labels_table_ai_llm_tokens[3] = cache_status
+      labels_table_ai_llm_tokens[4] = vector_db
+      labels_table_ai_llm_tokens[5] = embeddings_provider
+      labels_table_ai_llm_tokens[6] = embeddings_model
+      labels_table_ai_llm_tokens[8] = workspace
 
       if ai_plugin.usage.prompt_tokens and ai_plugin.usage.prompt_tokens > 0 then
-        labels_table_ai_llm_tokens[5] = "prompt_tokens"
+        labels_table_ai_llm_tokens[7] = "prompt_tokens"
         metrics.ai_llm_tokens:inc(ai_plugin.usage.prompt_tokens, labels_table_ai_llm_tokens)
       end
 

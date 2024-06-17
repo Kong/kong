@@ -43,8 +43,8 @@ local OPENAI_FLAT_RESPONSE = {
       max_tokens = 512,
       temperature = 0.5,
       upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/flat",
-      input_cost = 0.01,
-      output_cost = 0.01,
+      input_cost = 10.0,
+      output_cost = 10.0,
     },
   },
   auth = {
@@ -131,8 +131,10 @@ local _EXPECTED_CHAT_STATS = {
       total_tokens = 37,
     },
     cache = {
-      cache_type = 'not_cached',
-      db_name = '',
+      cache_status = '',
+      vector_db = '',
+      embeddings_provider = '',
+      embeddings_model = '',
     }
   },
 }

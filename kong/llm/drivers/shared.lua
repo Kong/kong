@@ -44,8 +44,10 @@ local log_entry_keys = {
   COST_REQUEST = "cost_request",
 
   -- cache keys
-  DB_NAME = "db_name",
-  CACHE_TYPE = "cache_type",
+  VECTOR_DB = "vector_db",
+  EMBEDDINGS_PROVIDER = "embeddings_provider",
+  EMBEDDINGS_MODEL = "embeddings_model",
+  CACHE_STATUS = "cache_status",
 }
 
 local openai_override = os.getenv("OPENAI_TEST_PORT")
@@ -487,8 +489,10 @@ function _M.post_request(conf, response_object)
       [log_entry_keys.COST_REQUEST] = 0,
     },
     [log_entry_keys.CACHE_CONTAINER] = {
-      [log_entry_keys.DB_NAME] = "",
-      [log_entry_keys.CACHE_TYPE] = "not_cached",
+      [log_entry_keys.VECTOR_DB] = "",
+      [log_entry_keys.EMBEDDINGS_PROVIDER] = "",
+      [log_entry_keys.EMBEDDINGS_MODEL] = "",
+      [log_entry_keys.CACHE_STATUS] = "",
     },
   }
 
@@ -521,7 +525,7 @@ function _M.post_request(conf, response_object)
       and conf.model.options.input_cost and conf.model.options.output_cost then 
         request_analytics_plugin[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.COST_REQUEST] = 
           (response_object.usage.prompt_tokens * conf.model.options.input_cost
-          + response_object.usage.completion_tokens * conf.model.options.output_cost) / 1000
+          + response_object.usage.completion_tokens * conf.model.options.output_cost) / 1000000 -- 1 million
     end
   end
 

@@ -49,8 +49,10 @@ local _EXPECTED_CHAT_STATS = {
       total_tokens = 37,
     },
     cache = {
-      cache_type = 'not_cached',
-      db_name = '',
+      cache_status = '',
+      vector_db = '',
+      embeddings_provider = '',
+      embeddings_model = '',
     }
   },
 }
@@ -253,8 +255,8 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
               max_tokens = 256,
               temperature = 1.0,
               upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/chat/good",
-              input_cost = 0.01,
-              output_cost = 0.01,
+              input_cost = 10.0,
+              output_cost = 10.0,
             },
           },
         },
