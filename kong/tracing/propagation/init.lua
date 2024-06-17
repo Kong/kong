@@ -40,11 +40,6 @@ local function get_plugin_params(config)
 
   if (config.default_header_type or null) ~= null then
     propagation_config.default_format = config.default_header_type
-
-    kong.log.warn(
-      "the default_header_type parameter is deprecated, please update your "
-      .. "configuration to use the propagation.default_format, "
-      .. "propagation.extract and propagation.inject options instead")
   end
 
   if (config.header_type or null) ~= null then
@@ -82,10 +77,6 @@ local function get_plugin_params(config)
         config.header_type
       }
     end
-
-    kong.log.warn(
-      "the header_type parameter is deprecated, please update your "
-      .. "configuration to use propagation.extract and propagation.inject instead")
   end
 
   return propagation_config
