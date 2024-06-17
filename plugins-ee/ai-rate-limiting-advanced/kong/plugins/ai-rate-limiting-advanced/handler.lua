@@ -13,7 +13,7 @@ local sandbox = require "kong.tools.sandbox".sandbox
 local meta = require "kong.meta"
 local uuid = require "kong.tools.uuid"
 local pl_tablex = require "pl.tablex"
-
+local pdk_private_rl = require "kong.pdk.private.rate_limiting"
 
 local ngx = ngx
 local null = ngx.null
@@ -28,6 +28,10 @@ local pcall = pcall
 local pairs = pairs
 local ipairs = ipairs
 local tonumber = tonumber
+
+local pdk_rl_store_response_header = pdk_private_rl.store_response_header
+local pdk_rl_get_stored_response_header = pdk_private_rl.get_stored_response_header
+local pdk_rl_apply_response_headers = pdk_private_rl.apply_response_headers
 
 local sandbox_opts = { env = { kong = kong, ngx = ngx } }
 
@@ -219,7 +223,7 @@ function NewRLHandler:configure(configs)
       then
         sync_rate = -1
       end
-      
+
       for _, provider_config in ipairs(config.llm_providers) do
         config.window_size = provider_config.window_size
         local namespace_provider = provider_config.name .. ":" .. plugin_id
@@ -230,7 +234,7 @@ function NewRLHandler:configure(configs)
               "' have different counter syncing configurations. Please correct them to use the same configuration.")
           end
         else
-  
+
           namespaces[namespace_provider] = get_sync_conf(config)
         end
 
@@ -287,7 +291,7 @@ function NewRLHandler:access(conf)
   local window_type = conf.window_type
   local shm = ngx.shared[conf.dictionary_name]
   local deny_providers = {}
-  local headers_rl = {}
+  local ngx_ctx = ngx.ctx
 
   for _, provider_config in ipairs(conf.llm_providers) do
 
@@ -296,7 +300,7 @@ function NewRLHandler:access(conf)
     local current_window = tonumber(provider_config.window_size)
     local current_limit = tonumber(provider_config.limit)
     local query_cost = 0
-    
+
     if not ratelimiting.config[namespace_provider] then
       new_namespace(conf, nil , namespace_provider, current_window)
     end
@@ -319,7 +323,7 @@ function NewRLHandler:access(conf)
 
     if conf.request_prompt_count_function and provider == "requestPrompt" then
       local success, request_prompt_cost = pcall(sandbox(conf.request_prompt_count_function, sandbox_opts))
-    
+
       if success then
           if type(request_prompt_cost) ~= "number" then
               -- The code returned something unknown
@@ -366,11 +370,12 @@ function NewRLHandler:access(conf)
 
     local current_remaining = floor(max(current_limit - rate, 0))
     if not conf.hide_client_headers then
-      if provider == "requestPrompt" then 
-        headers_rl[X_RATELIMIT_QUERY_COST .. "-" .. window_name] = query_cost
+      if provider == "requestPrompt" then
+        pdk_rl_store_response_header(ngx_ctx, X_RATELIMIT_QUERY_COST .. "-" .. window_name, query_cost)
       end
-      headers_rl[X_RATELIMIT_LIMIT .. "-" .. window_name] = current_limit
-      headers_rl[X_RATELIMIT_REMAINING .. "-" .. window_name] = current_remaining
+
+      pdk_rl_store_response_header(ngx_ctx, X_RATELIMIT_LIMIT .. "-" .. window_name, current_limit)
+      pdk_rl_store_response_header(ngx_ctx, X_RATELIMIT_REMAINING .. "-" .. window_name, current_remaining)
     end
 
     if rate > current_limit then
@@ -394,13 +399,14 @@ function NewRLHandler:access(conf)
       end
 
       -- Add draft headers for rate limiting RFC; FTI-1447
-      if not headers_rl[X_RATELIMIT_RESET] or headers_rl[X_RATELIMIT_RESET] < reset then
-        headers_rl[X_RATELIMIT_RESET] = reset
+      local stored_reset = pdk_rl_get_stored_response_header(ngx_ctx, X_RATELIMIT_RESET)
+      if not stored_reset or stored_reset < reset then
+        pdk_rl_store_response_header(ngx_ctx, X_RATELIMIT_RESET, reset)
       end
 
       -- Only added for denied requests (if hide_client_headers == false)
       if not conf.hide_client_headers then
-        headers_rl[X_RATELIMIT_RESET .. "-" .. window_name] = reset
+        pdk_rl_store_response_header(ngx_ctx, X_RATELIMIT_RESET .. "-" .. window_name, reset)
       end
 
       local retry_after = reset
@@ -413,13 +419,14 @@ function NewRLHandler:access(conf)
       end
 
       -- Add draft headers for rate limiting RFC; FTI-1447
-      if not headers_rl[X_RATELIMIT_RETRY_AFTER] or headers_rl[X_RATELIMIT_RETRY_AFTER] < retry_after then
-        headers_rl[X_RATELIMIT_RETRY_AFTER] = retry_after
+      local stored_retry_after = pdk_rl_get_stored_response_header(ngx_ctx, X_RATELIMIT_RETRY_AFTER)
+      if not stored_retry_after or stored_retry_after < retry_after then
+        pdk_rl_store_response_header(ngx_ctx, X_RATELIMIT_RETRY_AFTER, retry_after)
       end
 
       -- Only added for denied requests (if hide_client_headers == false)
       if not conf.hide_client_headers then
-        headers_rl[X_RATELIMIT_RETRY_AFTER .. "-" .. window_name] = retry_after
+        pdk_rl_store_response_header(ngx_ctx, X_RATELIMIT_RETRY_AFTER .. "-" .. window_name, retry_after)
       end
 
       -- only gets emitted when kong.configuration.databus_enabled = true
@@ -438,16 +445,16 @@ function NewRLHandler:access(conf)
     end
   end
 
+  pdk_rl_apply_response_headers(ngx_ctx)
+
   if next(deny_providers) ~= nil then
     local error_message = conf.error_message
     if not conf.error_hide_providers then
       error_message = error_message .. table.concat(deny_providers, ", ")
     end
 
-    return kong.response.exit(conf.error_code, { message = error_message }, headers_rl)
+    return kong.response.exit(conf.error_code, { message = error_message })
   end
-
-  kong.response.set_headers(headers_rl)
 end
 
 
@@ -465,8 +472,8 @@ function NewRLHandler:header_filter(conf)
   local window_type = conf.window_type
   local shm = ngx.shared[conf.dictionary_name]
   local deny_providers = {}
-  local headers_rl = {}
-  
+  local ngx_ctx = ngx.ctx
+
   local request_analytics = kong.ctx.shared.analytics or {}
   kong.ctx.plugin.ai_query_cost = {}
 
@@ -509,8 +516,8 @@ function NewRLHandler:header_filter(conf)
 
     local current_remaining = floor(max(current_limit - rate, 0))
     if not conf.hide_client_headers then
-      headers_rl[X_RATELIMIT_LIMIT .. "-" .. window_name] = current_limit
-      headers_rl[X_RATELIMIT_REMAINING .. "-" .. window_name] = current_remaining
+      pdk_rl_store_response_header(ngx_ctx, X_RATELIMIT_LIMIT .. "-" .. window_name, current_limit)
+      pdk_rl_store_response_header(ngx_ctx, X_RATELIMIT_REMAINING .. "-" .. window_name, current_remaining)
     end
 
     if rate > current_limit then
@@ -534,32 +541,34 @@ function NewRLHandler:header_filter(conf)
       end
 
       -- Add draft headers for rate limiting RFC; FTI-1447
-      if not headers_rl[X_RATELIMIT_RESET] or headers_rl[X_RATELIMIT_RESET] < reset then
-        headers_rl[X_RATELIMIT_RESET] = reset
+      local stored_reset = pdk_rl_get_stored_response_header(ngx_ctx, X_RATELIMIT_RESET)
+      if not stored_reset or stored_reset < reset then
+        pdk_rl_store_response_header(ngx_ctx, X_RATELIMIT_RESET, reset)
       end
 
       -- Only added for denied requests (if hide_client_headers == false)
       if not conf.hide_client_headers then
-        headers_rl[X_RATELIMIT_RESET .. "-" .. window_name] = reset
+        pdk_rl_store_response_header(ngx_ctx, X_RATELIMIT_RESET .. "-" .. window_name, reset)
       end
 
       local retry_after = reset
       local jitter_max = conf.retry_after_jitter_max
-  
+
       -- Add a random value (a jitter) to the Retry-After value
       -- to reduce a chance of retries spike occurrence.
       if retry_after and jitter_max > 0 then
         retry_after = retry_after + rand(jitter_max)
       end
-  
+
       -- Add draft headers for rate limiting RFC; FTI-1447
-      if not headers_rl[X_RATELIMIT_RETRY_AFTER] or headers_rl[X_RATELIMIT_RETRY_AFTER] < retry_after then
-        headers_rl[X_RATELIMIT_RETRY_AFTER] = retry_after
+      local stored_retry_after = pdk_rl_get_stored_response_header(ngx_ctx, X_RATELIMIT_RETRY_AFTER)
+      if not stored_retry_after or stored_retry_after < retry_after then
+        pdk_rl_store_response_header(ngx_ctx, X_RATELIMIT_RETRY_AFTER, retry_after)
       end
 
       -- Only added for denied requests (if hide_client_headers == false)
       if not conf.hide_client_headers then
-        headers_rl[X_RATELIMIT_RETRY_AFTER .. "-" .. window_name] = retry_after
+        pdk_rl_store_response_header(ngx_ctx, X_RATELIMIT_RETRY_AFTER .. "-" .. window_name, retry_after)
       end
 
       -- only gets emitted when kong.configuration.databus_enabled = true
@@ -578,16 +587,16 @@ function NewRLHandler:header_filter(conf)
     end
   end
 
+  pdk_rl_apply_response_headers(ngx_ctx)
+
   if next(deny_providers) ~= nil then
     local error_message = conf.error_message
     if not conf.error_hide_providers then
       error_message = error_message .. table.concat(deny_providers, ", ")
     end
 
-    return kong.response.exit(conf.error_code, { message = error_message }, headers_rl)
+    return kong.response.exit(conf.error_code, { message = error_message })
   end
-
-  kong.response.set_headers(headers_rl)
 end
 
 
