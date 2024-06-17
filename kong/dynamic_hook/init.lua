@@ -6,6 +6,8 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 
+local get_request = require "resty.core.base".get_request
+
 local ngx           = ngx
 local type          = type
 local pcall         = pcall
@@ -241,6 +243,10 @@ function _M.is_group_enabled(group_name)
     return true
   end
 
+  if not get_request() then
+    return false
+  end
+
   local dynamic_hook = ngx.ctx.dynamic_hook
   if not dynamic_hook then
     return false
@@ -322,12 +328,23 @@ end
 
 --- Enables a hook group for all requests
 --
--- @function dynamic_hook:always_enable
+-- @function dynamic_hook:enable_by_default
 -- @tparam string group_name The name of the hook group to enable
-function _M.always_enable(group_name)
+function _M.enable_by_default(group_name)
   assert(type(group_name) == "string", "group_name must be a string")
 
   ALWAYS_ENABLED_GROUPS[group_name] = true
+end
+
+
+--- Disables a hook group that was enabled with `enable_by_default`
+--
+-- @function dynamic_hook:disable_by_default
+-- @tparam string group_name The name of the hook group to disable
+function _M.disable_by_default(group_name)
+  assert(type(group_name) == "string", "group_name must be a string")
+
+  ALWAYS_ENABLED_GROUPS[group_name] = nil
 end
 
 
