@@ -21,15 +21,40 @@ local pairs = pairs
 local error = error
 local tostring = tostring
 local timer_at = ngx.timer.at
-local pdk_rl_set_basic_limit = pdk_private_rl.set_basic_limit
-local pdk_rl_set_retry_after = pdk_private_rl.set_retry_after
-local pdk_rl_set_limit_by = pdk_private_rl.set_limit_by
-local pdk_rl_set_response_headers = pdk_private_rl.set_response_headers
 local SYNC_RATE_REALTIME = -1
+
+
+local pdk_rl_store_response_header = pdk_private_rl.store_response_header
+local pdk_rl_apply_response_headers = pdk_private_rl.apply_response_headers
 
 
 local EMPTY = {}
 local EXPIRATION = require "kong.plugins.rate-limiting.expiration"
+
+
+local RATELIMIT_LIMIT     = "RateLimit-Limit"
+local RATELIMIT_REMAINING = "RateLimit-Remaining"
+local RATELIMIT_RESET     = "RateLimit-Reset"
+local RETRY_AFTER         = "Retry-After"
+
+
+local X_RATELIMIT_LIMIT = {
+  second = "X-RateLimit-Limit-Second",
+  minute = "X-RateLimit-Limit-Minute",
+  hour   = "X-RateLimit-Limit-Hour",
+  day    = "X-RateLimit-Limit-Day",
+  month  = "X-RateLimit-Limit-Month",
+  year   = "X-RateLimit-Limit-Year",
+}
+
+local X_RATELIMIT_REMAINING = {
+  second = "X-RateLimit-Remaining-Second",
+  minute = "X-RateLimit-Remaining-Minute",
+  hour   = "X-RateLimit-Remaining-Hour",
+  day    = "X-RateLimit-Remaining-Day",
+  month  = "X-RateLimit-Remaining-Month",
+  year   = "X-RateLimit-Remaining-Year",
+}
 
 
 local RateLimitingHandler = {}
@@ -143,7 +168,6 @@ function RateLimitingHandler:access(conf)
 
   if usage then
     local ngx_ctx = ngx.ctx
-    -- Adding headers
     local reset
     if not conf.hide_client_headers then
       local timestamps
@@ -174,21 +198,23 @@ function RateLimitingHandler:access(conf)
           reset = max(1, window - floor((current_timestamp - timestamps[k]) / 1000))
         end
 
-        pdk_rl_set_limit_by(ngx_ctx, k, limit, current_remaining)
+        pdk_rl_store_response_header(ngx_ctx, X_RATELIMIT_LIMIT[k], current_limit)
+        pdk_rl_store_response_header(ngx_ctx, X_RATELIMIT_REMAINING[k], current_remaining)
       end
 
-      pdk_rl_set_basic_limit(ngx_ctx, limit, remaining, reset)
+      pdk_rl_store_response_header(ngx_ctx, RATELIMIT_LIMIT, limit)
+      pdk_rl_store_response_header(ngx_ctx, RATELIMIT_REMAINING, remaining)
+      pdk_rl_store_response_header(ngx_ctx, RATELIMIT_RESET, reset)
     end
 
     -- If limit is exceeded, terminate the request
     if stop then
-      pdk_rl_set_retry_after(ngx_ctx, reset)
-      pdk_rl_set_response_headers(ngx_ctx)
+      pdk_rl_store_response_header(ngx_ctx, RETRY_AFTER, reset)
+      pdk_rl_apply_response_headers(ngx_ctx)
       return kong.response.error(conf.error_code, conf.error_message)
     end
 
-    -- Set rate-limiting response headers
-    pdk_rl_set_response_headers(ngx_ctx)
+    pdk_rl_apply_response_headers(ngx_ctx)
   end
 
   if conf.sync_rate ~= SYNC_RATE_REALTIME and conf.policy == "redis" then
