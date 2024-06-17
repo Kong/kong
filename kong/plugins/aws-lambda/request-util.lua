@@ -376,6 +376,10 @@ function HttpIntegrationResponseProcessor:update_status_and_headers_from_prelude
       for k, v in pairs(p["headers"]) do
         headers[k] = v
       end
+      -- if no Content-Type is provided, default to application/octet-stream
+      if p["headers"]["Content-Type"] == nil then
+        headers["Content-Type"] = "application/octet-stream"
+      end
     end
     if p["cookies"] then
       headers["Set-Cookie"] = p["cookies"]
