@@ -1,5 +1,5 @@
-local pl_stringx = require "pl.stringx"
 local tools_ip = require "kong.tools.ip"
+local strip = require("kong.tools.string").strip
 
 
 local type = type
@@ -73,7 +73,7 @@ local function parse_option_flags(value, flags)
     end
   end
 
-  return pl_stringx.strip(value), result, pl_stringx.strip(sanitized)
+  return strip(value), result, strip(sanitized)
 end
 
 
@@ -98,7 +98,7 @@ local function parse_listeners(values, flags)
     return nil, usage
   end
 
-  if pl_stringx.strip(values[1]) == "off" then
+  if strip(values[1]) == "off" then
     return list
   end
 

@@ -275,24 +275,29 @@ local function set_consumer(consumer, credential)
   end
 end
 
+local function unauthorized(message, www_auth_content)
+  return { status = 401, message = message, headers = { ["WWW-Authenticate"] = www_auth_content } }
+end
+
 
 local function do_authentication(conf)
   local authorization = kong_request.get_header(AUTHORIZATION)
   local proxy_authorization = kong_request.get_header(PROXY_AUTHORIZATION)
+  local www_auth_content = conf.realm and fmt('hmac realm="%s"', conf.realm) or 'hmac'
 
   -- If both headers are missing, return 401
   if not (authorization or proxy_authorization) then
-    return false, { status = 401, message = "Unauthorized" }
+    return false, unauthorized("Unauthorized", www_auth_content)
   end
 
   -- validate clock skew
   if not (validate_clock_skew(X_DATE, conf.clock_skew) or
           validate_clock_skew(DATE, conf.clock_skew)) then
-    return false, {
-      status = 401,
-      message = "HMAC signature cannot be verified, a valid date or " ..
-                "x-date header is required for HMAC Authentication"
-    }
+    return false, unauthorized(
+      "HMAC signature cannot be verified, a valid date or " ..
+      "x-date header is required for HMAC Authentication",
+      www_auth_content
+    )
   end
 
   -- retrieve hmac parameter from Proxy-Authorization header
@@ -312,26 +317,26 @@ local function do_authentication(conf)
   local ok, err = validate_params(hmac_params, conf)
   if not ok then
     kong.log.debug(err)
-    return false, { status = 401, message = SIGNATURE_NOT_VALID }
+    return false, unauthorized(SIGNATURE_NOT_VALID, www_auth_content)
   end
 
   -- validate signature
   local credential = load_credential(hmac_params.username)
   if not credential then
     kong.log.debug("failed to retrieve credential for ", hmac_params.username)
-    return false, { status = 401, message = SIGNATURE_NOT_VALID }
+    return false, unauthorized(SIGNATURE_NOT_VALID, www_auth_content)
   end
 
   hmac_params.secret = credential.secret
 
   if not validate_signature(hmac_params) then
-    return false, { status = 401, message = SIGNATURE_NOT_SAME }
+    return false, unauthorized(SIGNATURE_NOT_SAME, www_auth_content)
   end
 
   -- If request body validation is enabled, then verify digest.
   if conf.validate_request_body and not validate_body() then
     kong.log.debug("digest validation failed")
-    return false, { status = 401, message = SIGNATURE_NOT_SAME }
+    return false, unauthorized(SIGNATURE_NOT_SAME, www_auth_content)
   end
 
   -- Retrieve consumer
@@ -349,34 +354,52 @@ local function do_authentication(conf)
   return true
 end
 
+local function set_anonymous_consumer(anonymous)
+  local consumer_cache_key = kong.db.consumers:cache_key(anonymous)
+  local consumer, err = kong.cache:get(consumer_cache_key, nil,
+                                        kong.client.load_consumer,
+                                        anonymous, true)
+  if err then
+    return error(err)
+  end
 
-local _M = {}
+  set_consumer(consumer)
+end
 
-
-function _M.execute(conf)
-  if conf.anonymous and kong_client.get_credential() then
-    -- we're already authenticated, and we're configured for using anonymous,
-    -- hence we're in a logical OR between auth methods and we're already done.
+--- When conf.anonymous is enabled we are in "logical OR" authentication flow.
+--- Meaning - either anonymous consumer is enabled or there are multiple auth plugins
+--- and we need to passthrough on failed authentication.
+local function logical_OR_authentication(conf)
+  if kong.client.get_credential() then
+    -- we're already authenticated and in "logical OR" between auth methods -- early exit
     return
   end
 
+  local ok, _ = do_authentication(conf)
+  if not ok then
+    set_anonymous_consumer(conf.anonymous)
+  end
+end
+
+--- When conf.anonymous is not set we are in "logical AND" authentication flow.
+--- Meaning - if this authentication fails the request should not be authorized
+--- even though other auth plugins might have successfully authorized user.
+local function logical_AND_authentication(conf)
   local ok, err = do_authentication(conf)
   if not ok then
-    if conf.anonymous then
-      -- get anonymous user
-      local consumer_cache_key = kong.db.consumers:cache_key(conf.anonymous)
-      local consumer, err      = kong.cache:get(consumer_cache_key, nil,
-                                                kong_client.load_consumer,
-                                                conf.anonymous, true)
-      if err then
-        return error(err)
-      end
+    return kong.response.error(err.status, err.message, err.headers)
+  end
+end
 
-      set_consumer(consumer)
 
-    else
-      return kong.response.error(err.status, err.message, err.headers)
-    end
+local _M = {}
+
+function _M.execute(conf)
+
+  if conf.anonymous then
+    return logical_OR_authentication(conf)
+  else
+    return logical_AND_authentication(conf)
   end
 end
 

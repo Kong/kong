@@ -1,7 +1,10 @@
 local helpers    = require "spec.helpers"
 local cjson      = require "cjson"
 local pl_file    = require "pl.file"
-local pl_stringx = require "pl.stringx"
+
+
+local strip = require("kong.tools.string").strip
+
 
 local UUID_PATTERN         = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 local UUID_COUNTER_PATTERN = UUID_PATTERN .. "#%d"
@@ -18,7 +21,7 @@ local function wait_json_log()
       .eventually(function()
         local data = assert(pl_file.read(FILE_LOG_PATH))
 
-        data = pl_stringx.strip(data)
+        data = strip(data)
         assert(#data > 0, "log file is empty")
 
         data = data:match("%b{}")

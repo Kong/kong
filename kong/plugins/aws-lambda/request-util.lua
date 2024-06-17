@@ -3,14 +3,13 @@ local ngx_encode_base64 = ngx.encode_base64
 local ngx_decode_base64 = ngx.decode_base64
 local cjson = require "cjson.safe"
 
-local pl_stringx = require("pl.stringx")
 local date = require("date")
 local get_request_id = require("kong.tracing.request_id").get
 
 local EMPTY = {}
 
 local isempty = require "table.isempty"
-local split = pl_stringx.split
+local split = require("kong.tools.string").split
 local ngx_req_get_headers  = ngx.req.get_headers
 local ngx_req_get_uri_args = ngx.req.get_uri_args
 local ngx_get_http_version = ngx.req.http_version

@@ -1,6 +1,3 @@
-local kong_string = require "kong.tools.string"
-
-
 local type = type
 local fmt = string.format
 local find = string.find
@@ -11,8 +8,8 @@ local assert = assert
 local tonumber = tonumber
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
-local strip = kong_string.strip
-local split = kong_string.split
+local strip = require("kong.tools.string").strip
+local split = require("kong.tools.string").split
 local get_rand_bytes = require("kong.tools.rand").get_rand_bytes
 
 

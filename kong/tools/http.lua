@@ -1,6 +1,5 @@
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
-local tools_str = require "kong.tools.string"
 
 
 local type          = type
@@ -13,9 +12,9 @@ local sort          = table.sort
 local concat        = table.concat
 local fmt           = string.format
 local re_match      = ngx.re.match
-local join          = tools_str.join
-local split         = tools_str.split
-local strip         = tools_str.strip
+local join          = require("kong.tools.string").join
+local split         = require("kong.tools.string").split
+local strip         = require("kong.tools.string").strip
 
 
 local _M = {}

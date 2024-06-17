@@ -1,7 +1,7 @@
 # please see matrix-full.yml for meaning of each field
 build-packages:
 - label: ubuntu-22.04
-  os: ubuntu-22.04
+  image: ubuntu:22.04
   package: deb
   check-manifest-suite: ubuntu-22.04-amd64
 

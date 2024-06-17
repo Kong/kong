@@ -16,14 +16,18 @@ local ngx_re = require("ngx.re")
 local inspect = require("inspect")
 local phase_checker = require("kong.pdk.private.phases")
 local constants = require("kong.constants")
+local clear_tab = require("table.clear")
+
 
 local request_id_get = require("kong.tracing.request_id").get
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local get_tls1_version_str = require("ngx.ssl").get_tls1_version_str
 local get_workspace_name = require("kong.workspaces").get_workspace_name
 
+
 local sub = string.sub
 local type = type
+local error = error
 local pairs = pairs
 local ipairs = ipairs
 local find = string.find
@@ -38,11 +42,12 @@ local setmetatable = setmetatable
 local ngx = ngx
 local kong = kong
 local check_phase = phase_checker.check
-local split = require("kong.tools.string").split
 local byte = string.byte
 
 
-local EMPTY_TAB  = require("pl.tablex").readonly({})
+local DOT_BYTE = byte(".")
+
+
 local _PREFIX = "[kong] "
 local _DEFAULT_FORMAT = "%file_src:%line_src %message"
 local _DEFAULT_NAMESPACED_FORMAT = "%file_src:%line_src [%namespace] %message"
@@ -552,17 +557,6 @@ local _log_mt = {
 }
 
 
-local function get_default_serialize_values()
-  if ngx.config.subsystem == "http" then
-    return {
-      { key = "request.headers.authorization", value = "REDACTED", mode = "replace" },
-      { key = "request.headers.proxy-authorization", value = "REDACTED", mode = "replace" },
-    }
-  end
-
-  return {}
-end
-
 ---
 -- Sets a value to be used on the `serialize` custom table.
 --
@@ -606,27 +600,36 @@ end
 local function set_serialize_value(key, value, options)
   check_phase(phases_with_ctx)
 
-  options = options or {}
-  local mode = options.mode or "set"
-
   if type(key) ~= "string" then
     error("key must be a string", 2)
   end
 
+  local mode = options and options.mode or "set"
   if mode ~= "set" and mode ~= "add" and mode ~= "replace" then
     error("mode must be 'set', 'add' or 'replace'", 2)
   end
 
-  local ongx = options.ngx or ngx
+  local data = {
+    key = key,
+    value = value,
+    mode = mode,
+  }
+
+  local ongx = options and options.ngx or ngx
   local ctx = ongx.ctx
-  ctx.serialize_values = ctx.serialize_values or get_default_serialize_values()
-  ctx.serialize_values[#ctx.serialize_values + 1] =
-    { key = key, value = value, mode = mode }
+  local serialize_values = ctx.serialize_values
+  if serialize_values then
+    serialize_values[#serialize_values + 1] = data
+  else
+    ctx.serialize_values = { data }
+  end
 end
 
 
 local serialize
 do
+  local VISITED = {}
+
   local function is_valid_value(v, visited)
     local t = type(v)
     if v == nil or t == "number" or t == "string" or t == "boolean" then
@@ -637,17 +640,20 @@ do
       return false
     end
 
-    if visited[v] then
+    if not visited then
+      clear_tab(VISITED)
+      visited = VISITED
+
+    elseif visited[v] then
       return false
     end
+
     visited[v] = true
 
     for k, val in pairs(v) do
       t = type(k)
-      if (t ~= "string"
-          and t ~= "number"
-          and t ~= "boolean")
-        or not is_valid_value(val, visited)
+      if (t ~= "string" and t ~= "number" and t ~= "boolean")
+      or not is_valid_value(val, visited)
       then
         return false
       end
@@ -656,43 +662,47 @@ do
     return true
   end
 
+
   -- Modify returned table with values set with kong.log.set_serialize_values
-  local function edit_result(ctx, root)
-    local serialize_values = ctx.serialize_values or get_default_serialize_values()
-    local key, mode, new_value, subkeys, node, subkey, last_subkey, existing_value
+  local function edit_result(root, serialize_values)
     for _, item in ipairs(serialize_values) do
-      key, mode, new_value = item.key, item.mode, item.value
-
-      if not is_valid_value(new_value, {}) then
-        error("value must be nil, a number, string, boolean or a non-self-referencial table containing numbers, string and booleans", 2)
+      local new_value = item.value
+      if not is_valid_value(new_value) then
+        error("value must be nil, a number, string, boolean or a non-self-referencial table containing numbers, string and booleans", 3)
       end
 
-      -- Split key by ., creating subtables when needed
-      subkeys = setmetatable(split(key, "."), nil)
-      node = root -- start in root, iterate with each subkey
-      for i = 1, #subkeys - 1 do -- note that last subkey is treated differently, below
-        subkey = subkeys[i]
-        if node[subkey] == nil then
-          if mode == "set" or mode == "add" then
-            node[subkey] = {} -- add subtables as needed
-          else
-            node = nil
-            break -- mode == replace; and we have a missing link on the "chain"
+      -- Split key by ., creating sub-tables when needed
+      local key = item.key
+      local mode = item.mode
+      local is_set_or_add = mode == "set" or mode == "add"
+      local node = root
+      local start = 1
+      for i = 2, #key do
+        if byte(key, i) == DOT_BYTE then
+          local subkey = sub(key, start, i - 1)
+          start = i + 1
+          if node[subkey] == nil then
+            if is_set_or_add then
+              node[subkey] = {} -- add sub-tables as needed
+            else
+              node = nil
+              break -- mode == replace; and we have a missing link on the "chain"
+            end
+
+          elseif type(node[subkey]) ~= "table" then
+            error("The key '" .. key .. "' could not be used as a serialize value. " ..
+                  "Subkey '" .. subkey .. "' is not a table. It's " .. tostring(node[subkey]))
           end
-        end
 
-        if type(node[subkey]) ~= "table" then
-          error("The key '" .. key .. "' could not be used as a serialize value. " ..
-                "Subkey '" .. subkey .. "' is not a table. It's " .. tostring(node[subkey]))
+          node = node[subkey]
         end
-
-        node = node[subkey]
       end
+
       if type(node) == "table" then
-        last_subkey = subkeys[#subkeys]
-        existing_value = node[last_subkey]
+        local last_subkey = sub(key, start)
+        local existing_value = node[last_subkey]
         if (mode == "set")
-        or (mode == "add" and existing_value == nil)
+        or (mode == "add"     and existing_value == nil)
         or (mode == "replace" and existing_value ~= nil)
         then
           node[last_subkey] = new_value
@@ -704,29 +714,32 @@ do
   end
 
   local function build_authenticated_entity(ctx)
-    local authenticated_entity
-    if ctx.authenticated_credential ~= nil then
-      authenticated_entity = {
-        id = ctx.authenticated_credential.id,
-        consumer_id = ctx.authenticated_credential.consumer_id,
+    local credential = ctx.authenticated_credential
+    if credential ~= nil then
+      local consumer_id = credential.consumer_id
+      if not consumer_id then
+        local consumer = ctx.authenticate_consumer
+        if consumer ~= nil then
+          consumer_id = consumer.id
+        end
+      end
+
+      return {
+        id = credential.id,
+        consumer_id = consumer_id,
       }
     end
-
-    return authenticated_entity
   end
 
   local function build_tls_info(var, override)
-    local tls_info
     local tls_info_ver = get_tls1_version_str()
     if tls_info_ver then
-      tls_info = {
+      return {
         version = tls_info_ver,
         cipher = var.ssl_cipher,
         client_verify = override or var.ssl_client_verify,
       }
     end
-
-    return tls_info
   end
 
   local function to_decimal(str)
@@ -796,42 +809,41 @@ do
     function serialize(options)
       check_phase(PHASES_LOG)
 
-      options = options or EMPTY_TAB
-      local ongx = options.ngx or ngx
-      local okong = options.kong or kong
+      local ongx = options and options.ngx or ngx
+      local okong = options and options.kong or kong
       local okong_request = okong.request
 
       local ctx = ongx.ctx
       local var = ongx.var
 
-      local request_uri = var.request_uri or ""
-
-      local host_port = ctx.host_port or tonumber(var.server_port, 10)
-
+      local request_uri = ctx.request_uri or var.request_uri or ""
       local upstream_uri = var.upstream_uri or ""
       if upstream_uri ~= "" and not find(upstream_uri, "?", nil, true) then
-        if byte(ctx.request_uri or var.request_uri, -1) == QUESTION_MARK then
+        if byte(request_uri, -1) == QUESTION_MARK then
           upstream_uri = upstream_uri .. "?"
         elseif var.is_args == "?" then
           upstream_uri = upstream_uri .. "?" .. (var.args or "")
         end
       end
 
-      local request_headers, response_headers = nil, nil
       -- THIS IS AN INTERNAL ONLY FLAG TO SKIP FETCHING HEADERS,
       -- AND THIS FLAG MIGHT BE REMOVED IN THE FUTURE
       -- WITHOUT ANY NOTICE AND DEPRECATION.
-      if not options.__skip_fetch_headers__ then
+      local request_headers
+      local response_headers
+      if not (options and options.__skip_fetch_headers__) then
         request_headers = okong_request.get_headers()
         response_headers = ongx.resp.get_headers()
+        if request_headers["authorization"] ~= nil then
+          request_headers["authorization"] = "REDACTED"
+        end
+        if request_headers["proxy-authorization"] ~= nil then
+          request_headers["proxy-authorization"] = "REDACTED"
+        end
       end
 
-      local upstream_status = var.upstream_status or ctx.buffered_status or ""
-
-      local response_source = okong.response.get_source(ongx.ctx)
-      local response_source_name = TYPE_NAMES[response_source]
-
       local url
+      local host_port = ctx.host_port or tonumber(var.server_port, 10)
       if host_port then
         url = var.scheme .. "://" .. var.host .. ":" .. host_port .. request_uri
       else
@@ -850,7 +862,7 @@ do
           tls = build_tls_info(var, ctx.CLIENT_VERIFY_OVERRIDE),
         },
         upstream_uri = upstream_uri,
-        upstream_status = upstream_status,
+        upstream_status = var.upstream_status or ctx.buffered_status or "",
         response = {
           status = ongx.status,
           headers = response_headers,
@@ -862,34 +874,35 @@ do
           request = tonumber(var.request_time) * 1000,
           receive = ctx.KONG_RECEIVE_TIME or 0,
         },
-        tries = (ctx.balancer_data or EMPTY_TAB).tries,
+        tries = ctx.balancer_data and ctx.balancer_data.tries,
         authenticated_entity = build_authenticated_entity(ctx),
         route = cycle_aware_deep_copy(ctx.route),
         service = cycle_aware_deep_copy(ctx.service),
         consumer = cycle_aware_deep_copy(ctx.authenticated_consumer),
         client_ip = var.remote_addr,
         started_at = okong_request.get_start_time(),
-        source = response_source_name,
-
+        source = TYPE_NAMES[okong.response.get_source(ctx)],
         workspace = ctx.workspace,
         workspace_name = get_workspace_name(),
       }
 
-      return edit_result(ctx, root)
+      local serialize_values = ctx.serialize_values
+      if serialize_values then
+        root = edit_result(root, serialize_values)
+      end
+
+      return root
     end
 
   else
     function serialize(options)
       check_phase(PHASES_LOG)
 
-      options = options or EMPTY_TAB
-      local ongx = options.ngx or ngx
-      local okong = options.kong or kong
+      local ongx = options and options.ngx or ngx
+      local okong = options and options.kong or kong
 
       local ctx = ongx.ctx
       local var = ongx.var
-
-      local host_port = ctx.host_port or tonumber(var.server_port, 10)
 
       local root = {
         session = {
@@ -897,7 +910,7 @@ do
           received = to_decimal(var.bytes_received),
           sent = to_decimal(var.bytes_sent),
           status = ongx.status,
-          server_port = host_port,
+          server_port = ctx.host_port or tonumber(var.server_port, 10),
         },
         upstream = {
           received = to_decimal(var.upstream_bytes_received),
@@ -907,19 +920,23 @@ do
           kong = ctx.KONG_PROXY_LATENCY or ctx.KONG_RESPONSE_LATENCY or 0,
           session = var.session_time * 1000,
         },
-        tries = (ctx.balancer_data or EMPTY_TAB).tries,
+        tries = ctx.balancer_data and ctx.balancer_data.tries,
         authenticated_entity = build_authenticated_entity(ctx),
         route = cycle_aware_deep_copy(ctx.route),
         service = cycle_aware_deep_copy(ctx.service),
         consumer = cycle_aware_deep_copy(ctx.authenticated_consumer),
         client_ip = var.remote_addr,
         started_at = okong.request.get_start_time(),
-
         workspace = ctx.workspace,
         workspace_name = get_workspace_name(),
       }
 
-      return edit_result(ctx, root)
+      local serialize_values = ctx.serialize_values
+      if serialize_values then
+        root = edit_result(root, serialize_values)
+      end
+
+      return root
     end
   end
 end

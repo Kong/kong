@@ -7,6 +7,7 @@ repeat_each(2);
 run_tests();
 
 __DATA__
+
 === TEST 1: one buf was linked to multiple ngx_chain_t nodes
 --- config
     location /t {

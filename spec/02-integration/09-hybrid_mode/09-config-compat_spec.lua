@@ -659,6 +659,37 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         -- cleanup
         admin.plugins:remove({ id = key_auth.id })
       end)
+
+      it("[ldap-auth] removes realm for versions below 3.8", function()
+        local ldap_auth = admin.plugins:insert {
+          name = "ldap-auth",
+          config = {
+            ldap_host = "localhost",
+            base_dn = "test",
+            attribute = "test",
+            realm = "test",
+          }
+        }
+        local expected_ldap_auth_prior_38 = cycle_aware_deep_copy(ldap_auth)
+        expected_ldap_auth_prior_38.config.realm = nil
+        do_assert(uuid(), "3.7.0", expected_ldap_auth_prior_38)
+        -- cleanup
+        admin.plugins:remove({ id = ldap_auth.id })
+      end)
+
+      it("[hmac-auth] removes realm for versions below 3.8", function()
+        local hmac_auth = admin.plugins:insert {
+          name = "hmac-auth",
+          config = {
+            realm = "test"
+          }
+        }
+        local expected_hmac_auth_prior_38 = cycle_aware_deep_copy(hmac_auth)
+        expected_hmac_auth_prior_38.config.realm = nil
+        do_assert(uuid(), "3.7.0", expected_hmac_auth_prior_38)
+        -- cleanup
+        admin.plugins:remove({ id = hmac_auth.id })
+      end)
     end)
 
     describe("compatibility test for response-transformer plugin", function()

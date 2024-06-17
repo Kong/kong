@@ -15,7 +15,6 @@ local x509 = require "resty.openssl.x509"
 local x509_extension = require "resty.openssl.x509.extension"
 local x509_name = require "resty.openssl.x509.name"
 local pl_template = require "pl.template"
-local pl_stringx = require "pl.stringx"
 local pl_tablex = require "pl.tablex"
 local pl_utils = require "pl.utils"
 local pl_file = require "pl.file"
@@ -25,6 +24,10 @@ local log = require "kong.cmd.utils.log"
 local ffi = require "ffi"
 local bit = require "bit"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
+
+
+local strip = require("kong.tools.string").strip
+local split = require("kong.tools.string").split
 
 
 local getmetatable = getmetatable
@@ -229,7 +232,7 @@ local function get_ulimit()
   if not ok then
     return nil, stderr
   end
-  local sanitized_limit = pl_stringx.strip(stdout)
+  local sanitized_limit = strip(stdout)
   if sanitized_limit:lower():match("unlimited") then
     return 65536
   else
@@ -725,7 +728,7 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
   end
 
   local template_env = {}
-  nginx_conf_flags = nginx_conf_flags and pl_stringx.split(nginx_conf_flags, ",") or {}
+  nginx_conf_flags = nginx_conf_flags and split(nginx_conf_flags, ",") or {}
   for _, flag in ipairs(nginx_conf_flags) do
     template_env[flag] = true
   end

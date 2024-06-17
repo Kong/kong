@@ -1,7 +1,6 @@
 local require = require
 
 
-local pl_stringx = require "pl.stringx"
 local pl_path = require "pl.path"
 local socket_url = require "socket.url"
 local tablex = require "pl.tablex"
@@ -10,15 +9,16 @@ local openssl_pkey = require "resty.openssl.pkey"
 local log = require "kong.cmd.utils.log"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local conf_constants = require "kong.conf_loader.constants"
-
-
-local tools_system = require("kong.tools.system")   -- for unit-testing
-local tools_ip = require("kong.tools.ip")
+local tools_system = require "kong.tools.system" -- for unit-testing
+local tools_ip = require "kong.tools.ip"
+local tools_string = require "kong.tools.string"
 
 
 local normalize_ip = tools_ip.normalize_ip
 local is_valid_ip_or_cidr = tools_ip.is_valid_ip_or_cidr
-local try_decode_base64 = require("kong.tools.string").try_decode_base64
+local try_decode_base64 = tools_string.try_decode_base64
+local strip = tools_string.strip
+local split = tools_string.split
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local is_valid_uuid = require("kong.tools.uuid").is_valid_uuid
 
@@ -40,7 +40,6 @@ local insert = table.insert
 local concat = table.concat
 local getenv = os.getenv
 local re_match = ngx.re.match
-local strip = pl_stringx.strip
 local exists = pl_path.exists
 local isdir = pl_path.isdir
 
@@ -93,7 +92,7 @@ local function parse_value(value, typ)
     -- must check type because pl will already convert comma
     -- separated strings to tables (but not when the arr has
     -- only one element)
-    value = setmetatable(pl_stringx.split(value, ","), nil) -- remove List mt
+    value = setmetatable(split(value, ","), nil) -- remove List mt
 
     for i = 1, #value do
       value[i] = strip(value[i])
@@ -232,7 +231,7 @@ local function check_and_parse(conf, opts)
 
     elseif v_schema.enum and not tablex.find(v_schema.enum, value) then
       errors[#errors + 1] = fmt("%s has an invalid value: '%s' (%s)", k,
-                              tostring(value), concat(v_schema.enum, ", "))
+                                tostring(value), concat(v_schema.enum, ", "))
 
     end
 
@@ -444,7 +443,7 @@ local function check_and_parse(conf, opts)
           "nginx_stream_lua_ssl_conf_command"}) do
 
           if conf[key] then
-            local _, _, seclevel = string.find(conf[key], "@SECLEVEL=(%d+)")
+            local _, _, seclevel = find(conf[key], "@SECLEVEL=(%d+)")
             if seclevel ~= "0" then
               ngx.log(ngx.WARN, key, ": Default @SECLEVEL=0 overridden, TLSv1.1 unavailable")
             end

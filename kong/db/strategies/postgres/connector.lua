@@ -1,11 +1,10 @@
 local logger       = require "kong.cmd.utils.log"
 local pgmoon       = require "pgmoon"
 local arrays       = require "pgmoon.arrays"
-local stringx      = require "pl.stringx"
 local semaphore    = require "ngx.semaphore"
-local kong_global = require "kong.global"
-local constants = require "kong.constants"
-local db_utils  = require "kong.db.utils"
+local kong_global  = require "kong.global"
+local constants    = require "kong.constants"
+local db_utils     = require "kong.db.utils"
 
 
 local setmetatable = setmetatable
@@ -31,6 +30,7 @@ local sub          = string.sub
 local utils_toposort = db_utils.topological_sort
 local insert       = table.insert
 local table_merge  = require("kong.tools.table").table_merge
+local strip        = require("kong.tools.string").strip
 
 
 local WARN                          = ngx.WARN
@@ -867,7 +867,7 @@ function _mt:run_up_migration(name, up_sql)
     error("no connection")
   end
 
-  local sql = stringx.strip(up_sql)
+  local sql = strip(up_sql)
   if sub(sql, -1) ~= ";" then
     sql = sql .. ";"
   end
