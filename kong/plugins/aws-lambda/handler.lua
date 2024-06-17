@@ -208,7 +208,7 @@ local function invoke_streaming(conf, lambda_service)
 
   -- not error, set default status and content type
   ngx.status = 200
-  headers["Content-Type"] = "application/octet-stream"
+  headers["Content-Type"] = headers["x-amzn-Remapped-Content-Type"]
 
   -- record x-amzn-Remapped-Content-Type and clear it
   local is_http_integration_response = headers["x-amzn-Remapped-Content-Type"] == "application/vnd.awslambda.http-integration-response"
