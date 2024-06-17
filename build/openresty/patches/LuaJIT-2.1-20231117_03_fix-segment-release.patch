@@ -1,0 +1,23 @@
+From 9b5e837ac2dfdc0638830c048a47ca9378c504d3 Mon Sep 17 00:00:00 2001
+From: Mike Pall <mike>
+Date: Fri, 19 Apr 2024 01:44:19 +0200
+Subject: [PATCH] Fix segment release check in internal memory allocator.
+
+Thanks to Jinji Zeng. #1179 #1157
+---
+ src/lj_alloc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/bundle/LuaJIT-2.1-20231117/src/lj_alloc.c b/bundle/LuaJIT-2.1-20231117/src/lj_alloc.c
+index 9adaa0e5bd..0c0c0c4f4c 100644
+--- a/bundle/LuaJIT-2.1-20231117/src/lj_alloc.c
++++ b/bundle/LuaJIT-2.1-20231117/src/lj_alloc.c
+@@ -1057,7 +1057,7 @@ static size_t release_unused_segments(mstate m)
+       mchunkptr p = align_as_chunk(base);
+       size_t psize = chunksize(p);
+       /* Can unmap if first chunk holds entire segment and not pinned */
+-      if (!cinuse(p) && (char *)p + psize >= base + size - TOP_FOOT_SIZE) {
++      if (!cinuse(p) && (char *)p + psize == (char *)mem2chunk(sp)) {
+ 	tchunkptr tp = (tchunkptr)p;
+ 	if (p == m->dv) {
+ 	  m->dv = 0;
