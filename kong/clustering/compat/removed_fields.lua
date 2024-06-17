@@ -163,5 +163,8 @@ return {
     oauth2 = {
       "realm",
     },
+    acl = {
+      "always_use_authenticated_groups",
+    },
   },
 }
