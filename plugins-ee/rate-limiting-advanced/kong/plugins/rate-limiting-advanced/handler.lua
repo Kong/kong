@@ -13,7 +13,7 @@ local helpers = require "kong.enterprise_edition.consumer_groups_helpers"
 local meta = require "kong.meta"
 local uuid = require "kong.tools.uuid"
 local pl_tablex = require "pl.tablex"
-
+local pdk_private_rl = require "kong.pdk.private.rate_limiting"
 
 local ngx = ngx
 local null = ngx.null
@@ -28,6 +28,9 @@ local pcall = pcall
 local pairs = pairs
 local ipairs = ipairs
 local tonumber = tonumber
+
+local pdk_rl_store_response_header = pdk_private_rl.store_response_header
+local pdk_rl_apply_response_headers = pdk_private_rl.apply_response_headers
 
 
 local NewRLHandler = {
@@ -346,7 +349,7 @@ function NewRLHandler:access(conf)
   local reset
   local window_type = config.window_type
   local shm = ngx.shared[conf.dictionary_name]
-  local headers_rl = {}
+  local ngx_ctx= ngx.ctx
   for i = 1, #config.window_size do
     local current_window = tonumber(config.window_size[i])
     local current_limit = tonumber(config.limit[i])
@@ -380,8 +383,8 @@ function NewRLHandler:access(conf)
 
     local current_remaining = floor(max(current_limit - rate, 0))
     if not conf.hide_client_headers then
-      headers_rl[X_RATELIMIT_LIMIT .. "-" .. window_name] = current_limit
-      headers_rl[X_RATELIMIT_REMAINING .. "-" .. window_name] = current_remaining
+      pdk_rl_store_response_header(ngx_ctx, X_RATELIMIT_LIMIT .. "-" .. window_name, current_limit)
+      pdk_rl_store_response_header(ngx_ctx, X_RATELIMIT_REMAINING .. "-" .. window_name, current_remaining)
 
       -- calculate the reset value based on the window type (if applicable)
       if not limit or (current_remaining < remaining)
@@ -433,9 +436,11 @@ function NewRLHandler:access(conf)
   end
 
   -- Add draft headers for rate limiting RFC; FTI-1447
-  headers_rl[RATELIMIT_LIMIT] = limit
-  headers_rl[RATELIMIT_REMAINING] = remaining
-  headers_rl[RATELIMIT_RESET] = reset
+  if limit then
+    pdk_rl_store_response_header(ngx_ctx, RATELIMIT_LIMIT, limit)
+    pdk_rl_store_response_header(ngx_ctx, RATELIMIT_REMAINING, remaining)
+    pdk_rl_store_response_header(ngx_ctx, RATELIMIT_RESET, reset)
+  end
 
   if deny_window_index then
     local retry_after = reset
@@ -443,12 +448,14 @@ function NewRLHandler:access(conf)
 
     -- Add a random value (a jitter) to the Retry-After value
     -- to reduce a chance of retries spike occurrence.
-    if retry_after and jitter_max > 0 then
-      retry_after = retry_after + rand(jitter_max)
-    end
+    if retry_after then
+      if jitter_max > 0 then
+        retry_after = retry_after + rand(jitter_max)
+      end
 
-    -- Only added for denied requests (if hide_client_headers == false)
-    headers_rl[RATELIMIT_RETRY_AFTER] = retry_after
+      -- Only added for denied requests (if hide_client_headers == false)
+      pdk_rl_store_response_header(ngx_ctx, RATELIMIT_RETRY_AFTER, retry_after)
+    end
 
     -- don't count requests which are rejected with 429
     if conf.disable_penalty and window_type == "sliding" then
@@ -459,11 +466,13 @@ function NewRLHandler:access(conf)
         ratelimiting.increment(key, current_window, -1, namespace, 0)
       end
     end
-    return kong.response.exit(conf.error_code, { message = conf.error_message }, headers_rl)
 
-  else
-    kong.response.set_headers(headers_rl)
+    pdk_rl_apply_response_headers(ngx_ctx)
+
+    return kong.response.exit(conf.error_code, { message = conf.error_message })
   end
+
+  pdk_rl_apply_response_headers(ngx_ctx)
 end
 
 
