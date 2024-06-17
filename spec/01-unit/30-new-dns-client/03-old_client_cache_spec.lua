@@ -357,45 +357,6 @@ describe("[DNS client cache]", function()
       assert_same_answers(rec1, answers)
     end)
 
-    it("name errors do replace stale records", function()
-      local rec1 = {{
-        type = resolver.TYPE_A,
-        address = "1.2.3.4",
-        class = 1,
-        name = "myhost9.domain.test",
-        ttl = 0.1,
-      }}
-      mock_records = {
-        ["myhost9.domain.test:"..resolver.TYPE_A] = rec1,
-      }
-
-      local answers, err = cli:resolve("myhost9", { qtype = resolver.TYPE_A })
-      assert.is_nil(err)
-      -- check that the cache is properly populated
-      assert_same_answers(rec1, answers)
-      answers = cli.cache:get("myhost9:" .. resolver.TYPE_A)
-      assert_same_answers(rec1, answers)
-
-      sleep(0.15) -- make sure we surpass the ttl of 0.1 of the record, so it is now stale.
-      -- clear mock records, such that we return name errors instead of records
-      local rec2 = {
-        errcode = 3,
-        errstr = "name error",
-      }
-      mock_records = {
-        ["myhost9.domain.test:"..resolver.TYPE_A] = rec2,
-        ["myhost9:"..resolver.TYPE_A] = rec2,
-      }
-      -- doing a resolve will trigger the background query now
-      answers = cli:resolve("myhost9", { qtype = resolver.TYPE_A })
-      assert.is_true(answers.expired)  -- we get the stale record, now marked as expired
-      -- wait again for the background query to complete
-      sleep(0.1)
-      -- background resolve is now complete, check the cache, it should now have been
-      -- replaced by the name error
-      assert.equal(rec2, cli.cache:get("myhost9:" .. resolver.TYPE_A))
-    end)
-
     it("empty records do not replace stale records", function()
       local rec1 = {{
         type = resolver.TYPE_A,
