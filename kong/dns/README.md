@@ -39,8 +39,7 @@ Performs a series of initialization operations:
 * TTL options:
   * `valid_ttl`: same to the option `dns_valid_ttl` in `kong.conf`.
   * `stale_ttl`: same to the option `dns_stale_ttl` in `kong.conf`.
-  * `empty_ttl`: same to the option `dns_not_found_ttl` in `kong.conf`.
-  * `bad_ttl`: same to the option `dns_error_ttl` in `kong.conf`.
+  * `error_ttl`: same to the option `dns_error_ttl` in `kong.conf`.
 * `hosts`: (default: `/etc/hosts`)
   * the path of `hosts` file.
 * `resolv_conf`: (default: `/etc/resolv.conf`)

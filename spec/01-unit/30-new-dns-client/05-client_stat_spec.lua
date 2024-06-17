@@ -95,7 +95,7 @@ describe("[DNS client stats]", function()
 
     it("resolve all types", function()
       mock_records = {
-        ["hit.test:"..resolver.TYPE_A] = {{
+        ["hit.test:" .. resolver.TYPE_A] = {{
           type = resolver.TYPE_A,
           address = "1.2.3.4",
           class = 1,
@@ -104,10 +104,17 @@ describe("[DNS client stats]", function()
         }},
         ["nameserver_fail.test:" .. resolver.TYPE_A] = "nameserver failed",
         ["stale.test:" .. resolver.TYPE_A] = {{
-          type = resolver.TYPE_CNAME,
-          address = "stale.test",
+          type = resolver.TYPE_A,
+          address = "1.2.3.4",
           class = 1,
           name = "stale.test",
+          ttl = 0.1,
+        }},
+        ["empty_result_not_stale.test:" .. resolver.TYPE_A] = {{
+          type = resolver.TYPE_CNAME, -- will be ignored compared to type A
+          cname = "stale.test",
+          class = 1,
+          name = "empty_result_not_stale.test",
           ttl = 0.1,
         }},
       }
@@ -133,6 +140,10 @@ describe("[DNS client stats]", function()
       cli:resolve("stale.test")
       sleep(0.2)
       cli:resolve("stale.test")
+
+      cli:resolve("empty_result_not_stale.test")
+      sleep(0.2)
+      cli:resolve("empty_result_not_stale.test")
 
       local query_last_time
       for k, v in pairs(cli.stats) do
@@ -168,9 +179,17 @@ describe("[DNS client stats]", function()
           ["stale"] = 1,
         },
         ["stale.test:1"] = {
-          ["query"] = 1,
-          ["query_fail:empty record received"] = 1,
+          ["query"] = 2,
+          ["query_succ"] = 2,
         },
+        ["empty_result_not_stale.test:1"] = {
+          ["query"] = 2,
+          ["query_fail:empty record received"] = 2,
+        },
+        ["empty_result_not_stale.test:all"] = {
+          ["miss"] = 2,
+          ["runs"] = 2,
+        }
       }, cli.stats)
     end)
   end)

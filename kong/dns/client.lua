@@ -39,7 +39,6 @@ local PREFIX = "[dns_client] "
 
 local DEFAULT_ERROR_TTL = 1     -- unit: second
 local DEFAULT_STALE_TTL = 4
-local DEFAULT_EMPTY_TTL = 30
 -- long-lasting TTL of 10 years for hosts or static IP addresses in cache settings
 local LONG_LASTING_TTL = 10 * 365 * 24 * 60 * 60
 
@@ -65,9 +64,6 @@ local HIT_LEVEL_TO_NAME = {
   [3] = "miss",
   [4] = "hit_stale",
 }
-
--- server replied error from the DNS protocol
-local NAME_ERROR_CODE = 3 -- response code 3 as "Name Error" or "NXDOMAIN"
 
 -- client specific error
 local CACHE_ONLY_ERROR_CODE = 100
@@ -256,7 +252,7 @@ function _M.new(opts)
 
   local cache, err = mlcache.new("dns_cache", "kong_dns_cache", {
     ipc = ipc,
-    neg_ttl = opts.empty_ttl or DEFAULT_EMPTY_TTL,
+    neg_ttl = opts.error_ttl or DEFAULT_ERROR_TTL,
     lru_size = opts.cache_size or 10000,
     shm_locks = ngx.shared.kong_locks and "kong_locks",
     resty_lock_opts = resty_lock_opts,
@@ -282,7 +278,6 @@ function _M.new(opts)
     valid_ttl = opts.valid_ttl,
     error_ttl = opts.error_ttl or DEFAULT_ERROR_TTL,
     stale_ttl = opts.stale_ttl or DEFAULT_STALE_TTL,
-    empty_ttl = opts.empty_ttl or DEFAULT_EMPTY_TTL,
     enable_srv = enable_srv,
     enable_ipv4 = enable_ipv4,
     enable_ipv6 = enable_ipv6,
@@ -295,7 +290,7 @@ function _M.new(opts)
     EMPTY_ANSWERS = {
       errcode = EMPTY_RECORD_ERROR_CODE,
       errstr = EMPTY_RECORD_ERROR_MESSAGE,
-      ttl = opts.empty_ttl or DEFAULT_EMPTY_TTL,
+      ttl = opts.error_ttl or DEFAULT_ERROR_TTL,
     },
   }, MT)
 end
@@ -304,7 +299,7 @@ end
 local function process_answers(self, qname, qtype, answers)
   local errcode = answers.errcode
   if errcode then
-    answers.ttl = errcode == NAME_ERROR_CODE and self.empty_ttl or self.error_ttl
+    answers.ttl = self.error_ttl
     return answers
   end
 
@@ -465,12 +460,12 @@ local function stale_update_task(premature, self, key, name, qtype)
 
   local tries = setmetatable({}, TRIES_MT)
   local answers = resolve_query_types(self, name, qtype, tries)
-  if answers and (not answers.errcode or answers.errcode == NAME_ERROR_CODE) then
+  if answers and not answers.errcode then
+    log(DEBUG, PREFIX, "update stale DNS records: ", #answers)
     self.cache:set(key, { ttl = answers.ttl }, answers)
-  end
 
-  if not answers or answers.errcode then
-     log(WARN, PREFIX, "Updating stale DNS records failed. Tried: ", tostring(tries))
+  else
+    log(DEBUG, PREFIX, "failed to update stale DNS records: ", tostring(tries))
   end
 end
 
@@ -521,7 +516,7 @@ local function resolve_callback(self, name, qtype, cache_only, tries)
   -- `:peek(stale=true)` verifies if the expired key remains in L2 shm, then
   -- initiates an asynchronous background updating task to refresh it.
   local ttl, _, answers = self.cache:peek(key, true)
-  if answers and ttl then
+  if answers and not answers.errcode and ttl then
     if not answers.expired then
       answers.expire = now() + ttl
       answers.expired = true
@@ -547,6 +542,8 @@ local function resolve_callback(self, name, qtype, cache_only, tries)
   if cache_only then
     return CACHE_ONLY_ANSWERS, nil, -1
   end
+
+  log(DEBUG, PREFIX, "cache miss, try to query ", key)
 
   return resolve_query_types(self, name, qtype, tries)
 end
