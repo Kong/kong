@@ -100,6 +100,9 @@ function push_package () {
   if [ "$ARTIFACT_VERSION" == "22.04" ]; then
     dist_version="--dist-version jammy"
   fi
+  if [ "$ARTIFACT_VERSION" == "24.04" ]; then
+    dist_version="--dist-version noble"
+  fi
 
   # test for sanitized github actions input
   if [[ -n "$(echo "$PACKAGE_TAGS" | tr -d 'a-zA-Z0-9._,')" ]]; then
