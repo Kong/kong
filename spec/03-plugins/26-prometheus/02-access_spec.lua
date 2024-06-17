@@ -617,6 +617,7 @@ end
 describe("Plugin: prometheus (access) AI metrics", function()
   local proxy_client
   local admin_client
+  local prometheus_plugin
 
   setup(function()
     local bp = helpers.get_db_utils()
@@ -709,14 +710,14 @@ describe("Plugin: prometheus (access) AI metrics", function()
       },
     }
 
-    bp.plugins:insert {
+    prometheus_plugin = assert(bp.plugins:insert {
       protocols = { "http", "https", "grpc", "grpcs", "tcp", "tls" },
       name = "prometheus",
       config = {
-        ai_metrics = true,
+        -- ai_metrics = true,
         status_code_metrics = true,
       },
-    }
+    })
 
     assert(helpers.start_kong ({
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -737,7 +738,7 @@ describe("Plugin: prometheus (access) AI metrics", function()
     helpers.stop_kong()
   end)
 
-  it("add the count for proxied AI requests", function()
+  it("no AI metrics when not enable in Prometheus plugin", function()
     local res = assert(proxy_client:send {
       method  = "GET",
       path    = "/status/200",
@@ -763,6 +764,66 @@ describe("Plugin: prometheus (access) AI metrics", function()
 
     assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
     assert.matches('http_requests_total{service="empty_service",route="http-route",code="200",source="service",workspace="default",consumer=""} 1', body, nil, true)
+    
+    assert.not_match('ai_llm_requests_total', body, nil, true)
+    assert.not_match('ai_llm_cost_total', body, nil, true)
+    assert.not_match('ai_llm_tokens_total', body, nil, true)
+  end)
+
+  it("update prometheus plugin config", function()
+    local body
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "PATCH",
+        path = "/plugins/" .. prometheus_plugin.id,
+        body = {
+          name = "prometheus",
+          config = {
+            status_code_metrics = true,
+            ai_metrics = true,
+          }
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+      body = assert.res_status(200, res)
+      return res.status == 200
+    end)
+
+    local cjson = require "cjson"
+    local json = cjson.decode(body)
+    assert.equal(true, json.config.ai_metrics)
+
+    ngx.sleep(2)
+  end)
+  
+  it("add the count for proxied AI requests", function()
+    local res = assert(proxy_client:send {
+      method  = "GET",
+      path    = "/status/200",
+      headers = {
+        host = helpers.mock_upstream_host,
+        authorization = 'Bearer openai-key',
+        ["content-type"] = 'application/json',
+        accept = 'application/json',
+      },
+      body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
+    })
+    assert.res_status(200, res)
+
+    local body
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      body = assert.res_status(200, res)
+      return res.status == 200
+    end)
+
+    assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+    assert.matches('http_requests_total{service="empty_service",route="http-route",code="200",source="service",workspace="default",consumer=""} 2', body, nil, true)
     
     assert.matches('ai_llm_requests_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",workspace="default"} 1', body, nil, true)
 
@@ -798,7 +859,7 @@ describe("Plugin: prometheus (access) AI metrics", function()
     end)
 
     assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
-    assert.matches('http_requests_total{service="empty_service",route="http-route",code="200",source="service",workspace="default",consumer=""} 2', body, nil, true)
+    assert.matches('http_requests_total{service="empty_service",route="http-route",code="200",source="service",workspace="default",consumer=""} 3', body, nil, true)
     
     assert.matches('ai_llm_requests_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",workspace="default"} 2', body, nil, true)
 
