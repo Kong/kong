@@ -305,7 +305,7 @@ function get_current_suffix(ctx)
 
   -- 400 case is for invalid requests, eg: if a client sends a HTTP
   -- request to a HTTPS port, it does not initialized any Nginx variables
-  if kong.response.get_status() == 400 and proxy_mode == "" then
+  if proxy_mode == "" and kong.response.get_status() == 400 then
     return nil
   end
 
