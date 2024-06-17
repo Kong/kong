@@ -1017,6 +1017,46 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         admin.plugins:remove({ id = rt.id })
       end)
     end)
+
+    describe("compatibility test for acl plugin", function()
+      it("removes `config.always_use_authenticated_groups` before sending them to older(less than 3.8.0.0) DP nodes", function()
+        local acl = admin.plugins:insert {
+          name = "acl",
+          enabled = true,
+          config = {
+            allow = { "admin" },
+            -- [[ new fields 3.8.0
+            always_use_authenticated_groups = true,
+            -- ]]
+          }
+        }
+
+        assert.not_nil(acl.config.always_use_authenticated_groups)
+        local expected_acl = cycle_aware_deep_copy(acl)
+        expected_acl.config.always_use_authenticated_groups = nil
+        do_assert(uuid(), "3.7.0", expected_acl)
+
+        -- cleanup
+        admin.plugins:remove({ id = acl.id })
+      end)
+
+      it("does not remove `config.always_use_authenticated_groups` from DP nodes that are already compatible", function()
+        local acl = admin.plugins:insert {
+          name = "acl",
+          enabled = true,
+          config = {
+            allow = { "admin" },
+            -- [[ new fields 3.8.0
+            always_use_authenticated_groups = true,
+            -- ]]
+          }
+        }
+        do_assert(uuid(), "3.8.0", acl)
+
+        -- cleanup
+        admin.plugins:remove({ id = acl.id })
+      end)
+    end)
   end)
 end)
 
