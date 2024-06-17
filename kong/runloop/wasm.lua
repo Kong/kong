@@ -952,13 +952,6 @@ function _M.attach(ctx)
       return kong.response.error(500)
     end
   end
-
-  jit.off(proxy_wasm.start)
-  ok, err = proxy_wasm.start()
-  if not ok then
-    log(CRIT, "failed to execute ", chain.label, " filter chain for request: ", err)
-    return kong.response.error(500)
-  end
 end
 
 
