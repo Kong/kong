@@ -365,8 +365,8 @@ local function log(message, serialized)
       labels_table_ai_llm_status[7] = workspace
       metrics.ai_llm_requests:inc(1, labels_table_ai_llm_status)
 
-      if ai_plugin.usage.cost_request and ai_plugin.usage.cost_request > 0 then
-        metrics.ai_llm_cost:inc(ai_plugin.usage.cost_request, labels_table_ai_llm_status)
+      if ai_plugin.usage.cost and ai_plugin.usage.cost > 0 then
+        metrics.ai_llm_cost:inc(ai_plugin.usage.cost, labels_table_ai_llm_status)
       end
 
       labels_table_ai_llm_tokens[1] = ai_plugin.meta.provider_name

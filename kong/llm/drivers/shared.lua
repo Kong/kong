@@ -41,7 +41,7 @@ local log_entry_keys = {
   PROMPT_TOKENS = "prompt_tokens",
   COMPLETION_TOKENS = "completion_tokens",
   TOTAL_TOKENS = "total_tokens",
-  COST_REQUEST = "cost_request",
+  COST = "cost",
 
   -- cache keys
   VECTOR_DB = "vector_db",
@@ -486,7 +486,7 @@ function _M.post_request(conf, response_object)
       [log_entry_keys.PROMPT_TOKENS] = 0,
       [log_entry_keys.COMPLETION_TOKENS] = 0,
       [log_entry_keys.TOTAL_TOKENS] = 0,
-      [log_entry_keys.COST_REQUEST] = 0,
+      [log_entry_keys.COST] = 0,
     },
     [log_entry_keys.CACHE_CONTAINER] = {
       [log_entry_keys.VECTOR_DB] = "",
@@ -523,7 +523,7 @@ function _M.post_request(conf, response_object)
 
     if response_object.usage.prompt_tokens and response_object.usage.completion_tokens
       and conf.model.options.input_cost and conf.model.options.output_cost then 
-        request_analytics_plugin[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.COST_REQUEST] = 
+        request_analytics_plugin[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.COST] = 
           (response_object.usage.prompt_tokens * conf.model.options.input_cost
           + response_object.usage.completion_tokens * conf.model.options.output_cost) / 1000000 -- 1 million
     end

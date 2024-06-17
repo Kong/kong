@@ -127,7 +127,7 @@ local _EXPECTED_CHAT_STATS = {
     },
     usage = {
       completion_tokens = 12,
-      cost_request = 0.00037,
+      cost = 0.00037,
       prompt_tokens = 25,
       total_tokens = 37,
     },
