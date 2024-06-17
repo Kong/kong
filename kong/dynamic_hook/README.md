@@ -28,7 +28,7 @@ dynamic_hook.hook_function("my_group", _G, "print", "varargs", {
 })
 
 -- Enable the hook group
-dynamic_hook.always_enable("my_group")
+dynamic_hook.enable_by_default("my_group")
 
 -- Call the function
 print("world!") -- prints "hello, world!"
