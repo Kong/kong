@@ -1,11 +1,11 @@
 # please see matrix-full.yml for meaning of each field
 build-packages:
 - label: ubuntu-22.04
-  os: vars.RELEASE_RUNS_ON
+  image: ubuntu:22.04
   package: deb
   check-manifest-suite: ubuntu-22.04-amd64
 - label: ubuntu-22.04-arm64
-  os: vars.RELEASE_RUNS_ON
+  image: ubuntu:22.04
   package: deb
   bazel-args: --platforms=//:generic-crossbuild-aarch64
   check-manifest-suite: ubuntu-22.04-arm64
