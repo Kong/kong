@@ -348,11 +348,11 @@ local function log(message, serialized)
         end
 
         if ai_plugin.cache.embeddings_provider then
-          vector_db = ai_plugin.cache.embeddings_provider
+          embeddings_provider = ai_plugin.cache.embeddings_provider
         end
 
         if ai_plugin.cache.embeddings_model then
-          vector_db = ai_plugin.cache.embeddings_model
+          embeddings_model = ai_plugin.cache.embeddings_model
         end
       end
 
@@ -383,12 +383,12 @@ local function log(message, serialized)
       end
 
       if ai_plugin.usage.completion_tokens and ai_plugin.usage.completion_tokens > 0 then
-        labels_table_ai_llm_tokens[5] = "completion_tokens"
+        labels_table_ai_llm_tokens[7] = "completion_tokens"
         metrics.ai_llm_tokens:inc(ai_plugin.usage.completion_tokens, labels_table_ai_llm_tokens)
       end
 
       if ai_plugin.usage.total_tokens and ai_plugin.usage.total_tokens > 0 then
-        labels_table_ai_llm_tokens[5] = "total_tokens"
+        labels_table_ai_llm_tokens[7] = "total_tokens"
         metrics.ai_llm_tokens:inc(ai_plugin.usage.total_tokens, labels_table_ai_llm_tokens)
       end
     end
