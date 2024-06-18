@@ -335,7 +335,7 @@ function _M:access(conf)
 
   -- copy from the user request if present
   if (not multipart) and (not conf_m.model.name) and (request_table.model) then
-    if request_table.model ~= cjson.null then
+    if type(request_table.model) == "string" then
       conf_m.model.name = request_table.model
     end
   elseif multipart then
@@ -343,7 +343,7 @@ function _M:access(conf)
   end
 
   -- check that the user isn't trying to override the plugin conf model in the request body
-  if request_table and request_table.model and type(request_table.model) == "string" then
+  if request_table and request_table.model and type(request_table.model) == "string" and request_table.model ~= "" then
     if request_table.model ~= conf_m.model.name then
       return bad_request("cannot use own model - must be: " .. conf_m.model.name)
     end
