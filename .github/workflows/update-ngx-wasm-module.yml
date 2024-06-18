@@ -82,7 +82,7 @@ jobs:
         # create or update changelog file
         readonly CHANGELOG_FILE=changelog/unreleased/kong/bump-ngx-wasm-module.yml
         {
-          printf 'message: "Bump `ngx_wasm_module` to `%s`"\n' "$TO"
+          printf 'message: "Bumped `ngx_wasm_module` to `%s`"\n' "$TO"
           printf 'type: dependency\n'
         } > "$CHANGELOG_FILE"
 
