@@ -175,7 +175,7 @@ function _M.new(opts)
     end
   end
 
-  log(NOTICE, PREFIX, PREFIX, "supported types: ", enable_srv and "srv " or "",
+  log(NOTICE, PREFIX, "supported types: ", enable_srv and "srv " or "",
               enable_ipv4 and "ipv4 " or "", enable_ipv6 and "ipv6 " or "")
 
   -- parse resolv.conf
