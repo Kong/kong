@@ -113,7 +113,6 @@ local function get_token_file_content(deployment)
     assert(deployment == "hybrid", "unknown deploy mode")
     path = pl_path.join(DP_PREFIX, TOKEN_FILE)
   end
-  print(path)
 
   return pl_file.read(path)
 end
