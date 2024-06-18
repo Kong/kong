@@ -197,9 +197,9 @@ end
 function _M.frame_to_events(frame)
   local events = {}
 
-  -- todo check if it's raw json and
+  -- Cohere / Other flat-JSON format parser
   -- just return the split up data frame
-  if (not kong.ctx.plugin.truncated_frame) and string.sub(str_ltrim(frame), 1, 1) == "{" then
+  if (not kong or not kong.ctx.plugin.truncated_frame) and string.sub(str_ltrim(frame), 1, 1) == "{" then
     for event in frame:gmatch("[^\r\n]+") do
       events[#events + 1] = {
         data = event,
