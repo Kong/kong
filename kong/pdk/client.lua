@@ -287,14 +287,14 @@ local function new(self)
   ---
   -- Explicitly sets the authenticated consumer groups for the current request.
   -- Throws an error if the `groups` parameter is neither a table nor `nil`.
-  -- @function _CLIENT.set_authenticated_consumer_groups
+  -- @function kong.client.set_authenticated_consumer_groups
   -- @phases auth_and_later
   -- @tparam table|nil groups The consumer groups to set. If no
   -- value is provided, then any existing value will be cleared.
   -- This value should be a sequence-like table of tables, with each item
   -- having at least an `id` and a `name`.
   -- @usage
-  -- _CLIENT.set_authenticated_consumer_groups({
+  -- kong.client.set_authenticated_consumer_groups({
   --   {
   --     id = "fed2bf38-10c4-404e-8d45-a2b0f521464d",
   --     name = "my-group",
@@ -329,14 +329,14 @@ local function new(self)
   -- This function is deprecated in favor of `set_authenticated_consumer_groups`.
   -- Explicitly sets the authenticated consumer group for the current request.
   -- Throws an error if the `group` is neither a table nor `nil`.
-  -- @function _CLIENT.set_authenticated_consumer_group
+  -- @function kong.client.set_authenticated_consumer_group
   -- @phases auth_and_later
   -- @tparam table|nil group The consumer group to set. If no
   -- value is provided, then any existing value will be cleared.
   -- this value should be a table with metadata of the group like its `id` and `name`.
   -- @usage
   -- -- assuming `group` is provided by some code
-  -- _CLIENT.set_authenticated_consumer_group(group)
+  -- kong.client.set_authenticated_consumer_group(group)
   function _CLIENT.set_authenticated_consumer_group(group)
     -- This is the counterpart for `authenticate_consumer_group_by_consumer_id`
     -- This method allows to explicitly set consumer groups. This allows a plugin to set groups
@@ -355,12 +355,12 @@ local function new(self)
 
   ---
   -- Retrieves the authenticated consumer groups for the current request.
-  -- @function _CLIENT.get_consumer_groups
+  -- @function kong.client.get_consumer_groups
   -- @phases auth_and_later
   -- @treturn table|nil The authenticated consumer groups. Returns `nil` if no
   -- consumer groups has been authenticated for the current request.
   -- @usage
-  -- local groups = _CLIENT.get_consumer_groups()
+  -- local groups = kong.client.get_consumer_groups()
   function _CLIENT.get_consumer_groups()
     check_phase(AUTH_AND_LATER)
 
@@ -370,12 +370,12 @@ local function new(self)
   ---
   -- This function is deprecated in favor of `get_consumer_groups`.
   -- Retrieves the authenticated consumer group for the current request.
-  -- @function _CLIENT.get_consumer_group
+  -- @function kong.client.get_consumer_group
   -- @phases auth_and_later
   -- @treturn table|nil The authenticated consumer group. Returns `nil` if no
   -- consumer group has been authenticated for the current request.
   -- @usage
-  -- local group = _CLIENT.get_consumer_group()
+  -- local group = kong.client.get_consumer_group()
   function _CLIENT.get_consumer_group()
     check_phase(AUTH_AND_LATER)
     self.log.deprecation("this function is deprecated in favor of `get_consumer_groups`", {after = "3.4.0.0", removal = "3.5.0.0"})
@@ -390,13 +390,13 @@ local function new(self)
 -- The consumer_group_mapping is sorted by group name for deterministic behavior,
 -- but this might be changed in future releases.
 --
--- @function _CLIENT.authenticate_consumer_group_by_consumer_id
+-- @function kong.client.authenticate_consumer_group_by_consumer_id
 -- @phases access
 -- @tparam string|nil consumer_id The consumer id to use for setting the consumer group.
 -- If no value is provided, the current consumer group is not changed.
 -- @usage
 -- -- assuming `consumer_id` is provided by some code
--- _CLIENT.authenticate_consumer_group_by_consumer_id(consumer_id)
+-- kong.client.authenticate_consumer_group_by_consumer_id(consumer_id)
   function _CLIENT.authenticate_consumer_group_by_consumer_id(consumer_id)
     check_phase(ACCESS_AND_WS_HANDSHAKE)
 
