@@ -34,9 +34,6 @@ package.loaded['prometheus_resty_counter'] = require("resty.counter")
 local kong_subsystem = ngx.config.subsystem
 local http_subsystem = kong_subsystem == "http"
 
--- AI metrics
-local ai_request = true
-
 local function init()
   local shm = "prometheus_metrics"
   if not ngx.shared[shm] then
@@ -148,19 +145,17 @@ local function init()
   end
 
   -- AI mode
-  if ai_request then
-    metrics.ai_llm_requests = prometheus:counter("ai_llm_requests_total",
-                                        "AI requests total per ai_provider in Kong",
-                                        {"ai_provider", "ai_model", "cache_status", "vector_db", "embeddings_provider", "embeddings_model", "workspace"})
+  metrics.ai_llm_requests = prometheus:counter("ai_llm_requests_total",
+                                      "AI requests total per ai_provider in Kong",
+                                      {"ai_provider", "ai_model", "cache_status", "vector_db", "embeddings_provider", "embeddings_model", "workspace"})
 
-    metrics.ai_llm_cost = prometheus:counter("ai_llm_cost_total",
-                                        "AI requests cost per ai_provider/cache in Kong",
-                                        {"ai_provider", "ai_model", "cache_status", "vector_db", "embeddings_provider", "embeddings_model", "workspace"})
+  metrics.ai_llm_cost = prometheus:counter("ai_llm_cost_total",
+                                      "AI requests cost per ai_provider/cache in Kong",
+                                      {"ai_provider", "ai_model", "cache_status", "vector_db", "embeddings_provider", "embeddings_model", "workspace"})
 
-    metrics.ai_llm_tokens = prometheus:counter("ai_llm_tokens_total",
-                                        "AI requests cost per ai_provider/cache in Kong",
-                                        {"ai_provider", "ai_model", "cache_status", "vector_db", "embeddings_provider", "embeddings_model", "token_type", "workspace"})
-  end
+  metrics.ai_llm_tokens = prometheus:counter("ai_llm_tokens_total",
+                                      "AI requests cost per ai_provider/cache in Kong",
+                                      {"ai_provider", "ai_model", "cache_status", "vector_db", "embeddings_provider", "embeddings_model", "token_type", "workspace"})
 
   -- Hybrid mode status
   if role == "control_plane" then
