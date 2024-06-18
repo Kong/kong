@@ -338,17 +338,11 @@ local function log(message, serialized)
 
       local vector_db, embeddings_provider, embeddings_model
       if ai_plugin.cache then
-        if ai_plugin.cache.vector_db then
-          vector_db = ai_plugin.cache.vector_db
-        end
+        vector_db = ai_plugin.cache.vector_db
 
-        if ai_plugin.cache.embeddings_provider then
-          embeddings_provider = ai_plugin.cache.embeddings_provider
-        end
+        embeddings_provider = ai_plugin.cache.embeddings_provider
 
-        if ai_plugin.cache.embeddings_model then
-          embeddings_model = ai_plugin.cache.embeddings_model
-        end
+        embeddings_model = ai_plugin.cache.embeddings_model
       end
 
       labels_table_ai_llm_status[1] = ai_plugin.meta.provider_name
