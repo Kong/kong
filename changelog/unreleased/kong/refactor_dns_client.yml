@@ -2,6 +2,8 @@ message: >
   Starting from this version, a new DNS client library has been implemented and added into Kong. The new DNS client library has the following changes
   - Introduced global caching for DNS records across workers, significantly reducing the query load on DNS servers.
   - Introduced observable statistics for the new DNS client, and a new Admin API `/status/dns` to retrieve them.
-  - Deprecated the `dns_no_sync` option in the context of the new DNS client library. With the new library, multiple DNS queries for the same name will always be synchronized (even across workers). The `dns_no_sync` option remains functional with the legacy DNS client library.
+  - Deprecated the `dns_no_sync` option. Multiple DNS queries for the same name will always be synchronized (even across workers). This remains functional with the legacy DNS client library.
+  - Deprecated the `dns_not_found_ttl` option. It uses the `dns_error_ttl` option for all error responses. This option remains functional with the legacy DNS client library.
+  - Deprecated `LAST` and `CNAME` values in the `dns_order` option. It's only used to specify supported types, not to decide their priority anymore. The priority of querying types from high to low is: `SRV`, `A`, `AAAA`.
 type: feature
 scope: Core
