@@ -188,12 +188,7 @@ local _EXPECTED_CHAT_STATS = {
       prompt_tokens = 25,
       total_tokens = 37,
     },
-    cache = {
-      cache_status = '',
-      vector_db = '',
-      embeddings_provider = '',
-      embeddings_model = '',
-    }
+    cache = {}
   },
 }
 
