@@ -489,10 +489,10 @@ function _M.post_request(conf, response_object)
       [log_entry_keys.COST] = 0,
     },
     [log_entry_keys.CACHE_CONTAINER] = {
+      [log_entry_keys.CACHE_STATUS] = "",
       [log_entry_keys.VECTOR_DB] = "",
       [log_entry_keys.EMBEDDINGS_PROVIDER] = "",
       [log_entry_keys.EMBEDDINGS_MODEL] = "",
-      [log_entry_keys.CACHE_STATUS] = "",
     },
   }
 
