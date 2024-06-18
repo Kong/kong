@@ -54,7 +54,7 @@ function PrometheusHandler:log(conf)
     serialized.latencies = message.latencies
   end
 
-  if conf.ai_metrics and message.ai then
+  if conf.ai_metrics then
     serialized.ai_metrics = message.ai
   end
 
