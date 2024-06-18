@@ -882,6 +882,17 @@ build = {
     ["kong.plugins.ai-response-transformer.handler"] = "kong/plugins/ai-response-transformer/handler.lua",
     ["kong.plugins.ai-response-transformer.schema"] = "kong/plugins/ai-response-transformer/schema.lua",
 
+    ["kong.ai.typedefs"] = "kong/ai/typedefs.lua",
+    ["kong.ai.embeddings"] = "kong/ai/embeddings/init.lua",
+    ["kong.ai.embeddings.drivers.openai"] = "kong/ai/embeddings/drivers/openai.lua",
+    ["kong.ai.embeddings.drivers.mistralai"] = "kong/ai/embeddings/drivers/mistralai.lua",
+    ["kong.ai.semantic_cache"] = "kong/ai/semantic_cache/init.lua",
+    ["kong.ai.semantic_cache.utils"] = "kong/ai/semantic_cache/utils.lua",
+    ["kong.ai.semantic_cache.drivers.redis"] = "kong/ai/semantic_cache/drivers/redis.lua",
+    ["kong.ai.vector_databases.drivers.redis.client"] = "kong/ai/vector_databases/drivers/redis/client.lua",
+    ["kong.ai.vector_databases.drivers.redis.index"] = "kong/ai/vector_databases/drivers/redis/index.lua",
+    ["kong.ai.vector_databases.drivers.redis.vectors"] = "kong/ai/vector_databases/drivers/redis/vectors.lua",
+
     ["kong.llm"] = "kong/llm/init.lua",
     ["kong.llm.schemas"] = "kong/llm/schemas/init.lua",
     ["kong.llm.drivers.shared"] = "kong/llm/drivers/shared.lua",
