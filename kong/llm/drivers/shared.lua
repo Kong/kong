@@ -31,13 +31,12 @@ local log_entry_keys = {
   RESPONSE_BODY = "response",
 
   -- meta keys
+  PLUGIN_ID = "plugin_id",
+  PROVIDER_NAME = "provider_name",
   REQUEST_MODEL = "request_model",
   RESPONSE_MODEL = "response_model",
-  PROVIDER_NAME = "provider_name",
-  PLUGIN_ID = "plugin_id",
 
   -- usage keys
-  PROCESSING_TIME = "processing_time",
   PROMPT_TOKENS = "prompt_tokens",
   COMPLETION_TOKENS = "completion_tokens",
   TOTAL_TOKENS = "total_tokens",
@@ -481,7 +480,12 @@ function _M.post_request(conf, response_object)
 
   -- create a new analytics structure for this plugin
   local request_analytics_plugin = {
-    [log_entry_keys.META_CONTAINER] = {},
+    [log_entry_keys.META_CONTAINER] = {
+      [log_entry_keys.PLUGIN_ID] = "",
+      [log_entry_keys.PROVIDER_NAME] = "",
+      [log_entry_keys.REQUEST_MODEL] = "",
+      [log_entry_keys.RESPONSE_MODEL] = "",
+    },
     [log_entry_keys.USAGE_CONTAINER] = {
       [log_entry_keys.PROMPT_TOKENS] = 0,
       [log_entry_keys.COMPLETION_TOKENS] = 0,
@@ -497,10 +501,10 @@ function _M.post_request(conf, response_object)
   }
 
   -- Set the model, response, and provider names in the current try context
+  request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.PLUGIN_ID] = conf.__plugin_id
+  request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.PROVIDER_NAME] = provider_name
   request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.REQUEST_MODEL] = kong.ctx.plugin.llm_model_requested or conf.model.name
   request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.RESPONSE_MODEL] = response_object.model or conf.model.name
-  request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.PROVIDER_NAME] = provider_name
-  request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.PLUGIN_ID] = conf.__plugin_id
 
   -- set extra per-provider meta
   if kong.ctx.plugin.ai_extra_meta and type(kong.ctx.plugin.ai_extra_meta) == "table" then
@@ -542,15 +546,15 @@ function _M.post_request(conf, response_object)
   kong.ctx.shared.analytics = request_analytics
 
   if conf.logging and conf.logging.log_statistics then
-    -- Log analytics data
-    kong.log.set_serialize_value(fmt("ai.%s.%s", plugin_name, log_entry_keys.USAGE_CONTAINER),
-      request_analytics_plugin[log_entry_keys.USAGE_CONTAINER])
-
-    -- Log meta
+    -- Log meta data
     kong.log.set_serialize_value(fmt("ai.%s.%s", plugin_name, log_entry_keys.META_CONTAINER),
       request_analytics_plugin[log_entry_keys.META_CONTAINER])
 
-    -- Log cache
+    -- Log usage data
+    kong.log.set_serialize_value(fmt("ai.%s.%s", plugin_name, log_entry_keys.USAGE_CONTAINER),
+      request_analytics_plugin[log_entry_keys.USAGE_CONTAINER])
+
+    -- Log cache data
     kong.log.set_serialize_value(fmt("ai.%s.%s", plugin_name, log_entry_keys.CACHE_CONTAINER),
       request_analytics_plugin[log_entry_keys.CACHE_CONTAINER])
   end
