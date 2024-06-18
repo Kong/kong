@@ -34,7 +34,7 @@ on:
       gateway_version:
         description: 'Kong Version'
         required: false
-        default: '3.6.0.0'
+        default: '3.8.0.0'
       repo_visibility:
         description: 'Cloudsmith repo visibility, either private or public, default is private'
         required: false

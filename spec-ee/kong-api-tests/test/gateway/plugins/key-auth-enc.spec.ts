@@ -117,7 +117,9 @@ describe('@gke: Gateway Plugins: key-auth-enc', function () {
     expect(resp.data.ttl, 'Should contain ttl value').to.be.a('number');
 
     keyId = resp.data.key;
-    await waitForConfigRebuild() // add dynamic wait for test stability
+    if (!process.env.GKE) {
+      await waitForConfigRebuild(); // add dynamic wait for test stability and skip for GKE
+    }
   });
 
   it('key-auth-enc: should not proxy request without supplying apiKey', async function () {

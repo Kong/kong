@@ -16,7 +16,7 @@ class CustomSpecReporter extends Spec {
   constructor(runner, options) {
     super(runner, options);
 
-    if (isCI()) {
+    if (isCI() || process.env.GKE === 'true') {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       runner.on('fail', (test, err) => {
         // create the report file it doesn't exist

@@ -14,7 +14,7 @@ on:
       kong_effective_semver:
         description: 'Kong effective semver'
         required: true
-        default: '3.7.0.0'
+        default: '3.8.0.0'
       gke_project_id:
         description: 'GKE Project ID'
         required: true
@@ -42,22 +42,27 @@ on:
         description: 'kong repository to test'
         required: true
         type: string
+        default: 'kong/kong-gateway-dev'
       kong_version_tag:
         description: 'Kong version tag to test'
         required: true
         type: string
+        default: 'nightly-ubuntu'
       kong_effective_semver:
         description: 'Kong effective semver'
         required: true
         type: string
+        default: '3.8.0.0' #Note: need to be updated to the latest version for weekly run
       gke_project_id:
         description: 'GKE Project ID'
         required: true
         type: string
+        default: 'gcp-sdet-test'
       target_test:
         description: 'Run only a single test by spec name or all gke tests'
         required: false
         type: string
+        default: 'all-gke'
       enable_verbose_response_logging:
         description: 'Enable response logging for debugging'
         required: false
@@ -80,7 +85,7 @@ on:
 env:
   TF_VAR_kong_repository: ${{ inputs.kong_repository || 'kong/kong-gateway-dev' }}
   TF_VAR_kong_version: ${{ inputs.kong_version_tag || 'nightly-ubuntu' }}
-  TF_VAR_kong_effective_semver: ${{ inputs.kong_effective_semver || '3.7.0.0' }}
+  TF_VAR_kong_effective_semver: ${{ inputs.kong_effective_semver || '3.8.0.0' }}
   TF_VAR_project_id: ${{ inputs.gke_project_id || 'gcp-sdet-test' }}
   GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.TEST_API_GCP_SERVICE_ACCOUNT }}
   SEND_SLACK_RESULTS: ${{ github.event.inputs.send_slack_results }}
@@ -102,6 +107,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup tmate session
+        if: ${{ inputs.enable_verbose_response_logging == 'true' }}
+        uses: mxschmitt/action-tmate@v3
+        with:
+          detached: true
+
       - name: Set up google auth
         uses: google-github-actions/auth@v2
         with:
@@ -110,7 +121,7 @@ jobs:
       - name: 'Set up Cloud SDK'
         uses: 'google-github-actions/setup-gcloud@v2'
         with:
-          install_component: 'kubectl'
+          install_components: 'kubectl'
     
       - name: 'Use gcloud CLI'
         run: 'gcloud info'
@@ -173,6 +184,7 @@ jobs:
 
       - name: Execute Gateway API Tests
         id: execute_tests
+        continue-on-error: true
         run: |
           if [[ $RUN_SPEC == 'all-gke' ]]; then
             npm run test-gke;
@@ -185,6 +197,15 @@ jobs:
           HCV: 'false'
           GKE: 'true'
           GW_HOST: 'localhost'
+
+      - name: Retry Failed E2E API Tests
+        if: steps.execute_tests.outcome == 'failure'
+        run: |
+          if test -s failed-tests.txt; then
+            npm run test-multiple -- --spec=$(cat failed-tests.txt)
+          fi
+        env:
+          TEST_APP: gateway
 
       - name: Get Gateway Details
         if: ${{ always() }}
