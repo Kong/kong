@@ -1,0 +1,3 @@
+message: "**Rate Limiting Advanced:** Fixed an issue where if the `window_size` in the consumer group overriding config is different from the `window_size` in the default config, then the rate limiting of that consumer group will fall back to local strategy."
+type: bugfix
+scope: Plugin

@@ -2241,6 +2241,8 @@ for _, strategy in strategies() do
         local plugin2, plugin4, plugin20, plugin21
         local proxy_client
         local redis_client
+        local OVERRIDE_LIMIT = 10
+        local DEFAULT_LIMIT = 6
 
         lazy_setup(function()
           if policy == "redis" then
@@ -2249,7 +2251,7 @@ for _, strategy in strategies() do
             redis_helper.add_admin_user(redis_client, REDIS_USERNAME_VALID, REDIS_PASSWORD_VALID)
           end
 
-          local bp = helpers.get_db_utils(strategy ~= "off" and strategy or nil,
+          local bp, db = helpers.get_db_utils(strategy ~= "off" and strategy or nil,
                                           nil, {"rate-limiting-advanced"})
 
           local service16 = assert(bp.services:insert {
@@ -2305,6 +2307,84 @@ for _, strategy in strategies() do
             build_plugin_fn("local")(
               route21.id, 5, 2, -1, nil,
               nil, nil, { namespace = "9a34c29b-1d3b-38e5-2ef0-a82a19d71682" }
+            )
+          ))
+
+          -- consumer_group_gold has a overriding config
+          local consumer_gold = assert(bp.consumers:insert {
+            custom_id = "consumer_gold"
+          })
+
+          -- consumer_group_silver has no overriding config
+          local consumer_silver = assert(bp.consumers:insert {
+            custom_id = "consumer_silver"
+          })
+
+          -- not in any consumer group
+          local consumer_copper = assert(bp.consumers:insert {
+            custom_id = "consumer_copper"
+          })
+
+          local consumer_group_gold = assert(db.consumer_groups:insert({
+            name = "consumer_group_gold"
+          }))
+
+          local consumer_group_silver = assert(db.consumer_groups:insert({
+            name = "consumer_group_silver"
+          }))
+
+          assert(db.consumer_group_consumers:insert({
+            consumer          = { id = consumer_gold.id },
+            consumer_group 	  = { id = consumer_group_gold.id },
+          }))
+
+          assert(db.consumer_group_consumers:insert({
+            consumer          = { id = consumer_silver.id },
+            consumer_group 	  = { id = consumer_group_silver.id },
+          }))
+
+          assert(db.consumer_group_plugins:insert({
+              name = "rate-limiting-advanced",
+              consumer_group = { id = consumer_group_gold.id },
+              config = {
+                window_size = { 20 },   -- a window_size different from that in the default config
+                limit = { OVERRIDE_LIMIT },
+              }
+          }))
+
+          assert(bp.keyauth_credentials:insert {
+            key = "apikeygold",
+            consumer = { id = consumer_gold.id },
+          })
+
+          assert(bp.keyauth_credentials:insert {
+            key = "apikeysilver",
+            consumer = { id = consumer_silver.id },
+          })
+
+          assert(bp.keyauth_credentials:insert {
+            key = "apikeycopper",
+            consumer = { id = consumer_copper.id },
+          })
+
+          local route_for_consumer_group_window_size = assert(bp.routes:insert {
+            name = "test_consumer_groups_window_size",
+            hosts = { "consumer_group_window_size.test"},
+          })
+
+          assert(bp.plugins:insert {
+            name = "key-auth",
+            route = { id = route_for_consumer_group_window_size.id },
+          })
+
+          assert(bp.plugins:insert(
+            build_plugin_fn("redis")(
+              route_for_consumer_group_window_size.id, 10, DEFAULT_LIMIT, 0.1, nil,
+              nil, redis_configuration, {
+                namespace = "Yk2xqm2AMteaeENCW5dAHL3ikcPygj1c",
+                enforce_consumer_groups = true,
+                consumer_groups = { "consumer_group_gold", "consumer_group_silver" }
+              }
             )
           ))
 
@@ -2729,6 +2809,101 @@ for _, strategy in strategies() do
           assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
           assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
           --]=]
+        end)
+
+        describe("with consumer groups", function()
+          it("works normally when the window_size in overriding config is different from that in the default config", function()
+            -- Hit DP 1
+            for i = 1, OVERRIDE_LIMIT do
+              proxy_client = helpers.proxy_client(nil, PROXY_PORT)
+              local res = assert(proxy_client:send {
+                method = "GET",
+                path = "/get?apikey=apikeygold",
+                headers = {
+                  ["Host"] = "consumer_group_window_size.test"
+                }
+              })
+              assert.res_status(200, res)
+              proxy_client:close()
+            end
+
+            -- wait for the counter to sync
+            ngx_sleep(0.1 + 0.5)
+
+            -- Hit DP 2
+            proxy_client = helpers.proxy_client(nil, 9104)
+            local res = assert(proxy_client:send {
+              method = "GET",
+              path = "/get?apikey=apikeygold",
+              headers = {
+                ["Host"] = "consumer_group_window_size.test"
+              }
+            })
+            assert.res_status(429, res)
+            proxy_client:close()
+          end)
+
+          it("uses the default config if the consumer groups doesn't have overriding config", function()
+            -- Hit DP 1
+            for i = 1, DEFAULT_LIMIT do
+              proxy_client = helpers.proxy_client(nil, PROXY_PORT)
+              local res = assert(proxy_client:send {
+                method = "GET",
+                path = "/get?apikey=apikeysilver",
+                headers = {
+                  ["Host"] = "consumer_group_window_size.test"
+                }
+              })
+              assert.res_status(200, res)
+              proxy_client:close()
+            end
+
+            -- wait for the counter to sync
+            ngx_sleep(0.1 + 0.5)
+
+            -- Hit DP 2
+            proxy_client = helpers.proxy_client(nil, 9104)
+            local res = assert(proxy_client:send {
+              method = "GET",
+              path = "/get?apikey=apikeysilver",
+              headers = {
+                ["Host"] = "consumer_group_window_size.test"
+              }
+            })
+            assert.res_status(429, res)
+            proxy_client:close()
+          end)
+
+          it("uses the default config if the consumer isn't in any group", function()
+            -- Hit DP 1
+            for i = 1, DEFAULT_LIMIT do
+              proxy_client = helpers.proxy_client(nil, PROXY_PORT)
+              local res = assert(proxy_client:send {
+                method = "GET",
+                path = "/get?apikey=apikeycopper",
+                headers = {
+                  ["Host"] = "consumer_group_window_size.test"
+                }
+              })
+              assert.res_status(200, res)
+              proxy_client:close()
+            end
+
+            -- wait for the counter to sync
+            ngx_sleep(0.1 + 0.5)
+
+            -- Hit DP 2
+            proxy_client = helpers.proxy_client(nil, 9104)
+            local res = assert(proxy_client:send {
+              method = "GET",
+              path = "/get?apikey=apikeycopper",
+              headers = {
+                ["Host"] = "consumer_group_window_size.test"
+              }
+            })
+            assert.res_status(429, res)
+            proxy_client:close()
+          end)
         end)
       end)
     end

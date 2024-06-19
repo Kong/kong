@@ -101,6 +101,51 @@ local id_lookup = {
 }
 
 
+local function merge_consumer_group_window_size(merged_sizes, seen_sizes, consumer_group_window_size)
+  for _, size in ipairs(consumer_group_window_size) do
+    if not seen_sizes[size] then
+      seen_sizes[size] = true
+      table.insert(merged_sizes, size)
+    end
+  end
+end
+
+
+local function merge_consumer_groups_window_size(config)
+  local base_window_size = config.window_size
+
+  local merged_sizes    -- array of window sizes
+  local seen_sizes      -- map of window sizes
+
+  if config.enforce_consumer_groups and config.consumer_groups then
+    for _, group_name in ipairs(config.consumer_groups) do
+      local consumer_group = helpers.get_consumer_group(group_name)
+      if consumer_group then
+        local consumer_group_config = helpers.get_consumer_group_config(consumer_group.id, "rate-limiting-advanced")
+        local consumer_group_window_size = consumer_group_config and consumer_group_config.config
+                                           and consumer_group_config.config.window_size
+        if consumer_group_window_size then
+          if not merged_sizes then
+            merged_sizes = {}
+            seen_sizes = {}
+
+            for _, size in ipairs(base_window_size) do
+              seen_sizes[size] = true
+              table.insert(merged_sizes, size)
+            end
+          end
+
+          -- merge the window_size in the overriding config of the consumer group
+          merge_consumer_group_window_size(merged_sizes, seen_sizes, consumer_group_window_size)
+        end
+      end
+    end
+  end
+
+  return merged_sizes or base_window_size
+end
+
+
 local function create_timer(config)
   local rate = config.sync_rate
   local namespace = config.namespace
@@ -169,7 +214,7 @@ local function new_namespace(config, timer_id)
       strategy      = strategy,
       strategy_opts = strategy_opts,
       dict          = dict_name,
-      window_sizes  = config.window_size,
+      window_sizes  = merge_consumer_groups_window_size(config),
       db            = kong.db,
       timer_id      = timer_id,
     })
