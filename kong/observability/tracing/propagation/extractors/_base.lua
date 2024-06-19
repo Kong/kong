@@ -1,4 +1,4 @@
-local propagation_utils = require "kong.tracing.propagation.utils"
+local propagation_utils = require "kong.observability.tracing.propagation.utils"
 
 local ipairs = ipairs
 local type = type

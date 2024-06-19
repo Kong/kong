@@ -1,4 +1,4 @@
-local propagation_utils = require "kong.tracing.propagation.utils"
+local propagation_utils = require "kong.observability.tracing.propagation.utils"
 
 local to_id_size  = propagation_utils.to_id_size
 local set_header  = kong.service.request.set_header

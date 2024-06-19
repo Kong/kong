@@ -1,4 +1,4 @@
-local _INJECTOR = require "kong.tracing.propagation.injectors._base"
+local _INJECTOR = require "kong.observability.tracing.propagation.injectors._base"
 local bn        = require "resty.openssl.bn"
 
 local from_binary = bn.from_binary
