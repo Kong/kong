@@ -1,5 +1,5 @@
 local Schema = require "kong.db.schema"
-local formats = require "kong.tracing.propagation.utils".FORMATS
+local formats = require "kong.observability.tracing.propagation.utils".FORMATS
 local validate_header_name = require("kong.tools.http").validate_header_name
 
 

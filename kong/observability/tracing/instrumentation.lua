@@ -6,7 +6,7 @@ local tablex = require "pl.tablex"
 local base = require "resty.core.base"
 local cjson = require "cjson"
 local ngx_re = require "ngx.re"
-local tracing_context = require "kong.tracing.tracing_context"
+local tracing_context = require "kong.observability.tracing.tracing_context"
 
 local ngx = ngx
 local var = ngx.var
@@ -27,7 +27,7 @@ local setmetatable = setmetatable
 local cjson_encode = cjson.encode
 local _log_prefix = "[tracing] "
 local split = ngx_re.split
-local request_id_get = require "kong.tracing.request_id".get
+local request_id_get = require "kong.observability.tracing.request_id".get
 
 local _M = {}
 local tracer = pdk_tracer

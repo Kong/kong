@@ -1,5 +1,5 @@
-local _EXTRACTOR        = require "kong.tracing.propagation.extractors._base"
-local propagation_utils = require "kong.tracing.propagation.utils"
+local _EXTRACTOR        = require "kong.observability.tracing.propagation.extractors._base"
+local propagation_utils = require "kong.observability.tracing.propagation.utils"
 
 local split = require "kong.tools.string".split
 local strip = require "kong.tools.string".strip

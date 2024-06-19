@@ -10,7 +10,7 @@ local ffi = require "ffi"
 local tablepool = require "tablepool"
 local new_tab = require "table.new"
 local phase_checker = require "kong.pdk.private.phases"
-local tracing_context = require "kong.tracing.tracing_context"
+local tracing_context = require "kong.observability.tracing.tracing_context"
 
 local ngx = ngx
 local type = type

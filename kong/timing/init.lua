@@ -11,7 +11,7 @@ local assert              = assert
 local ipairs              = ipairs
 local string_format       = string.format
 
-local request_id_get      = require("kong.tracing.request_id").get
+local request_id_get      = require("kong.observability.tracing.request_id").get
 
 local FILTER_ALL_PHASES = {
   ssl_cert      = nil,    -- NYI

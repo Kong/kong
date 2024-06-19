@@ -76,7 +76,7 @@ core/templates:
 
 core/tracing:
 - changed-files:
-  - any-glob-to-any-file: ['kong/tracing/**/*', 'kong/pdk/tracing.lua']
+  - any-glob-to-any-file: ['kong/observability/tracing/**/*', 'kong/pdk/tracing.lua']
 
 core/wasm:
 - changed-files:

@@ -1,5 +1,5 @@
-local _EXTRACTOR        = require "kong.tracing.propagation.extractors._base"
-local propagation_utils = require "kong.tracing.propagation.utils"
+local _EXTRACTOR        = require "kong.observability.tracing.propagation.extractors._base"
+local propagation_utils = require "kong.observability.tracing.propagation.utils"
 
 local from_hex          = propagation_utils.from_hex
 local match             = string.match
