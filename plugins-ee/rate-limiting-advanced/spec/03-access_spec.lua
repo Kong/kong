@@ -578,41 +578,6 @@ for _, strategy in strategies() do
           name = "key-auth",
           route = { id = route23.id },
         })
-        local function_body_headers = [[
-          return function(status, body, headers)
-            if not body or not body.message then
-              return status, body, headers
-            end
-
-            if headers then
-              headers["Has-Headers"] = "true"
-
-            else
-              headers = { ["Has-Headers"] = "false" }
-            end
-
-            local new_body = {
-              status = status,
-              error = false,
-              message = body.message,
-            }
-            if status == 429 then
-               new_body.error = true
-               new_body.message = "Kong API Quota exceeded!"
-            end
-
-            if status == 401 then
-              new_body.error = true
-            end
-
-            return status, new_body, headers
-          end
-        ]]
-        assert(bp.plugins:insert {
-          name = "exit-transformer",
-          route = { id = route23.id },
-          config = { functions = { function_body_headers } },
-        })
         assert(bp.plugins:insert(
           build_plugin(route23.id, MOCK_RATE, 3, 1, nil, nil, redis_configuration)
         ))
@@ -1679,10 +1644,15 @@ for _, strategy in strategies() do
               end
             end, 5, 0.5)
 
-            local body_json = cjson.decode((res:read_body()))
-            assert.is_true(body_json.error)
-            assert.equal("true", res.headers["has-headers"])
-            assert.same("Kong API Quota exceeded!", body_json.message)
+            local body = assert.res_status(429, res)
+            assert.same({ message = "API rate limit exceeded" }, cjson.decode(body))
+
+            assert.is_truthy(res.headers["retry-after"])
+            assert.is_truthy(res.headers["ratelimit-reset"])
+            assert.equal("3", res.headers["ratelimit-limit"])
+            assert.equal("0", res.headers["ratelimit-remaining"])
+            assert.equal("3", res.headers["x-rateLimit-limit-3"])
+            assert.equal("0", res.headers["x-rateLimit-remaining-3"])
 
             if proxy_client then proxy_client:close() end
           end)
