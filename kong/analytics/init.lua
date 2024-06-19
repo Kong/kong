@@ -7,7 +7,7 @@
 
 local reports           = require("kong.reports")
 local new_tab           = require("table.new")
-local request_id        = require("kong.tracing.request_id")
+local request_id        = require("kong.observability.tracing.request_id")
 local Queue             = require("kong.tools.queue")
 local pb                = require("pb")
 local protoc            = require("protoc")

@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local propagation_utils = require "kong.tracing.propagation.utils"
+local propagation_utils = require "kong.observability.tracing.propagation.utils"
 local bn = require "resty.openssl.bn"
 
 local from_hex = propagation_utils.from_hex
@@ -15,8 +15,8 @@ local shallow_copy = require("kong.tools.table").shallow_copy
 local fmt          = string.format
 local sub          = string.sub
 
-local EXTRACTORS_PATH = "kong.tracing.propagation.extractors."
-local INJECTORS_PATH  = "kong.tracing.propagation.injectors."
+local EXTRACTORS_PATH = "kong.observability.tracing.propagation.extractors."
+local INJECTORS_PATH  = "kong.observability.tracing.propagation.injectors."
 
 local trace_id_16     = "0af7651916cd43dd8448eb211c80319c"
 local trace_id_8      = "8448eb211c80319c"

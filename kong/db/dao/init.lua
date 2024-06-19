@@ -13,7 +13,7 @@ local hooks = require "kong.hooks"
 local workspaces = require "kong.workspaces"
 local new_tab = require "table.new"
 local DAO_MAX_TTL = require("kong.constants").DATABASE.DAO_MAX_TTL
-local get_request_id = require("kong.tracing.request_id").get
+local get_request_id = require("kong.observability.tracing.request_id").get
 local is_valid_uuid = require("kong.tools.uuid").is_valid_uuid
 local deep_copy     = require("kong.tools.table").deep_copy
 

@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local propagation_utils = require "kong.tracing.propagation.utils"
+local propagation_utils = require "kong.observability.tracing.propagation.utils"
 
 local ipairs = ipairs
 local type = type

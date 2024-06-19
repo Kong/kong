@@ -7,7 +7,7 @@
 
 local new_zipkin_reporter = require "kong.plugins.zipkin.reporter".new
 local new_span = require "kong.plugins.zipkin.span".new
-local propagation = require "kong.tracing.propagation"
+local propagation = require "kong.observability.tracing.propagation"
 local request_tags = require "kong.plugins.zipkin.request_tags"
 local kong_meta = require "kong.meta"
 local ngx_re = require "ngx.re"

@@ -62,7 +62,7 @@ describe("kong.log.serialize", function()
         get_phase = function() return "access" end,
       }
 
-      package.loaded["kong.tracing.request_id"] = nil
+      package.loaded["kong.observability.tracing.request_id"] = nil
       package.loaded["kong.pdk.log"] = nil
       kong.log = require "kong.pdk.log".new(kong)
 

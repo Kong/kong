@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local event_hooks    = require "kong.enterprise_edition.event_hooks"
-local get_request_id = require("kong.tracing.request_id").get
+local get_request_id = require("kong.observability.tracing.request_id").get
 local kong = kong
 
 local EventHooksHandler =  {

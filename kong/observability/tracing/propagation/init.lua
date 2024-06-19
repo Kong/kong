@@ -5,10 +5,10 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local tracing_context     = require "kong.tracing.tracing_context"
+local tracing_context     = require "kong.observability.tracing.tracing_context"
 local table_new           = require "table.new"
 
-local formats             = require "kong.tracing.propagation.utils".FORMATS
+local formats             = require "kong.observability.tracing.propagation.utils".FORMATS
 
 local clear_header        = kong.service.request.clear_header
 local ngx_req_get_headers = ngx.req.get_headers
@@ -19,8 +19,8 @@ local pairs = pairs
 local ipairs = ipairs
 local setmetatable = setmetatable
 
-local EXTRACTORS_PATH = "kong.tracing.propagation.extractors."
-local INJECTORS_PATH  = "kong.tracing.propagation.injectors."
+local EXTRACTORS_PATH = "kong.observability.tracing.propagation.extractors."
+local INJECTORS_PATH  = "kong.observability.tracing.propagation.injectors."
 
 
 -- This function retrieves the propagation parameters from a plugin

@@ -55,7 +55,7 @@ describe("Request ID unit tests", function()
 
     it("returns the expected Request ID and caches it in ctx", function()
 
-      local request_id = reload_module("kong.tracing.request_id")
+      local request_id = reload_module("kong.observability.tracing.request_id")
 
       local id, err = request_id.get()
       assert.is_nil(err)
@@ -68,7 +68,7 @@ describe("Request ID unit tests", function()
     it("fails if accessed from phase that cannot read ngx.var", function()
       _G.ngx.get_phase = function() return "init" end
 
-      local request_id = reload_module("kong.tracing.request_id")
+      local request_id = reload_module("kong.observability.tracing.request_id")
 
       local id, err = request_id.get()
       assert.is_nil(id)

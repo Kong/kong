@@ -20,12 +20,12 @@ local concurrency  = require "kong.concurrency"
 local lrucache     = require "resty.lrucache"
 local ktls         = require "resty.kong.tls"
 local workspaces   = require "kong.workspaces"
-local request_id   = require "kong.tracing.request_id"
+local request_id   = require "kong.observability.tracing.request_id"
 
 
 local PluginsIterator = require "kong.runloop.plugins_iterator"
 local log_level       = require "kong.runloop.log_level"
-local instrumentation = require "kong.tracing.instrumentation"
+local instrumentation = require "kong.observability.tracing.instrumentation"
 local req_dyn_hook   = require "kong.dynamic_hook"
 
 

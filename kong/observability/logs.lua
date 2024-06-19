@@ -17,7 +17,7 @@ if ngx.config.subsystem ~= "http" then
 end
 
 
-local request_id_get = require "kong.tracing.request_id".get
+local request_id_get = require "kong.observability.tracing.request_id".get
 local time_ns = require "kong.tools.time".time_ns
 local deep_copy = require "kong.tools.utils".deep_copy
 

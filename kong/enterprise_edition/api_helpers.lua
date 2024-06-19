@@ -16,7 +16,7 @@ local ee_jwt          = require "kong.enterprise_edition.jwt"
 local errors          = require "kong.db.errors"
 local entity          = require "kong.db.schema.entity"
 local ws_schema       = require "kong.db.schema.entities.workspaces"
-local get_request_id  = require("kong.tracing.request_id").get
+local get_request_id  = require("kong.observability.tracing.request_id").get
 local tablex          = require "pl.tablex"
 
 local fmt = string.format

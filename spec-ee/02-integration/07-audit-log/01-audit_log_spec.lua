@@ -96,7 +96,7 @@ for _, strategy in helpers.each_strategy() do
 
                 location = / {
                     content_by_lua_block {
-                        local get_request_id = require("kong.tracing.request_id").get
+                        local get_request_id = require("kong.observability.tracing.request_id").get
                         ngx.say(get_request_id())
                     }
                 }

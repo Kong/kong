@@ -241,7 +241,7 @@ local function set_context(trace_bytes, ngx_var, resp_hdrs, rl_ctx)
   }
 
   -- make sure to reload the module
-  package.loaded["kong.tracing.request_id"] = nil
+  package.loaded["kong.observability.tracing.request_id"] = nil
   package.loaded["kong.analytics"] = nil
   analytics = require("kong.analytics")
 end

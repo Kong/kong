@@ -6,8 +6,8 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local Queue = require "kong.tools.queue"
-local propagation = require "kong.tracing.propagation"
-local tracing_context = require "kong.tracing.tracing_context"
+local propagation = require "kong.observability.tracing.propagation"
+local tracing_context = require "kong.observability.tracing.tracing_context"
 local otlp = require "kong.plugins.opentelemetry.otlp"
 local otel_utils = require "kong.plugins.opentelemetry.utils"
 local clone = require "table.clone"

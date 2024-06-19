@@ -811,7 +811,7 @@ local function check_and_parse(conf, opts)
   end
 
   if conf.tracing_instrumentations and #conf.tracing_instrumentations > 0 then
-    local instrumentation = require "kong.tracing.instrumentation"
+    local instrumentation = require "kong.observability.tracing.instrumentation"
     local available_types_map = cycle_aware_deep_copy(instrumentation.available_types)
     available_types_map["all"] = true
     available_types_map["off"] = true

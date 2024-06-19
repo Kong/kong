@@ -12,7 +12,7 @@ local table_contains = require("kong.tools.table").table_contains
 local find = string.find
 local lower = string.lower
 local pkey = require "resty.openssl.pkey"
-local get_request_id = require("kong.tracing.request_id").get
+local get_request_id = require("kong.observability.tracing.request_id").get
 local table_concat = table.concat
 
 

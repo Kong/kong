@@ -8,7 +8,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local to_hex = require("resty.string").to_hex
-local from_hex = require 'kong.tracing.propagation.utils'.from_hex
+local from_hex = require 'kong.observability.tracing.propagation.utils'.from_hex
 
 local rand_bytes = require("kong.tools.rand").get_rand_bytes
 
@@ -36,8 +36,8 @@ local function generate_function_plugin_config(propagation_config, trace_id, spa
   return {
     access = {
       string.format([[
-        local propagation = require 'kong.tracing.propagation'
-        local from_hex = require 'kong.tracing.propagation.utils'.from_hex
+        local propagation = require 'kong.observability.tracing.propagation'
+        local from_hex = require 'kong.observability.tracing.propagation.utils'.from_hex
         
         local function transform_bin_id(id, last_byte)
           if not id then

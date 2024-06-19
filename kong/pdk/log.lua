@@ -26,7 +26,7 @@ local constants = require("kong.constants")
 local clear_tab = require("table.clear")
 
 
-local request_id_get = require("kong.tracing.request_id").get
+local request_id_get = require("kong.observability.tracing.request_id").get
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local get_tls1_version_str = require("ngx.ssl").get_tls1_version_str
 local dynamic_hook = require("kong.dynamic_hook")

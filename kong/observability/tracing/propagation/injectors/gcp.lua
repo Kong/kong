@@ -5,13 +5,12 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local _INJECTOR = require "kong.tracing.propagation.injectors._base"
+local _INJECTOR = require "kong.observability.tracing.propagation.injectors._base"
+local bn        = require "resty.openssl.bn"
 local to_hex    = require "resty.string".to_hex
 
-local string_format = string.format
-
-local W3C_INJECTOR = _INJECTOR:new({
-  name = "w3c",
+local GCP_INJECTOR = _INJECTOR:new({
+  name = "gcp",
   context_validate = {
     all = { "trace_id", "span_id" },
   },
@@ -20,21 +19,18 @@ local W3C_INJECTOR = _INJECTOR:new({
 })
 
 
-function W3C_INJECTOR:create_headers(out_tracing_ctx)
-  local trace_id  = to_hex(out_tracing_ctx.trace_id)
-  local span_id   = to_hex(out_tracing_ctx.span_id)
-  local sampled   = out_tracing_ctx.should_sample and "01" or "00"
-
+function GCP_INJECTOR:create_headers(out_tracing_ctx)
   return {
-    traceparent = string_format("00-%s-%s-%s", trace_id, span_id, sampled)
+    ["x-cloud-trace-context"] = to_hex(out_tracing_ctx.trace_id) .. "/" ..
+        bn.from_binary(out_tracing_ctx.span_id):to_dec() ..
+        ";o=" .. (out_tracing_ctx.should_sample and "1" or "0")
   }
 end
 
 
-function W3C_INJECTOR:get_formatted_trace_id(trace_id)
-  trace_id  = to_hex(trace_id)
-  return { w3c = trace_id }
+function GCP_INJECTOR:get_formatted_trace_id(trace_id)
+  return { gcp = to_hex(trace_id) }
 end
 
 
-return W3C_INJECTOR
+return GCP_INJECTOR

@@ -5,8 +5,8 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local _EXTRACTOR               = require "kong.tracing.propagation.extractors._base"
-local propagation_utils        = require "kong.tracing.propagation.utils"
+local _EXTRACTOR               = require "kong.observability.tracing.propagation.extractors._base"
+local propagation_utils        = require "kong.observability.tracing.propagation.utils"
 
 local from_hex                 = propagation_utils.from_hex
 local parse_baggage_headers    = propagation_utils.parse_baggage_headers

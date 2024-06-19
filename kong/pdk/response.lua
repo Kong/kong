@@ -23,7 +23,7 @@ local buffer = require "string.buffer"
 local cjson = require "cjson.safe"
 local checks = require "kong.pdk.private.checks"
 local phase_checker = require "kong.pdk.private.phases"
-local request_id = require "kong.tracing.request_id"
+local request_id = require "kong.observability.tracing.request_id"
 local constants = require "kong.constants"
 local tools_http = require "kong.tools.http"
 

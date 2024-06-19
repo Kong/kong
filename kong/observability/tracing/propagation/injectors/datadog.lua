@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local _INJECTOR = require "kong.tracing.propagation.injectors._base"
+local _INJECTOR = require "kong.observability.tracing.propagation.injectors._base"
 local bn        = require "resty.openssl.bn"
 
 local from_binary = bn.from_binary

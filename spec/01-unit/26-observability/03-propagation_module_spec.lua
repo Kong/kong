@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local propagation_utils = require "kong.tracing.propagation.utils"
+local propagation_utils = require "kong.observability.tracing.propagation.utils"
 local tablex = require "pl.tablex"
 local shallow_copy = require "kong.tools.table".shallow_copy
 local to_hex = require "resty.string".to_hex
@@ -430,7 +430,7 @@ describe("Tracing Headers Propagation Module", function()
       }
     }
   }
-  local propagation      = require "kong.tracing.propagation"
+  local propagation      = require "kong.observability.tracing.propagation"
 
   lazy_setup(function()
     err                 = spy.on(kong.log, "err")

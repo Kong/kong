@@ -23,7 +23,7 @@ local jws        = require "kong.openid-connect.jws"
 local set        = require "kong.openid-connect.set"
 local jwt_ee     = require "kong.enterprise_edition.jwt"
 
-local get_request_id = require("kong.tracing.request_id").get
+local get_request_id = require("kong.observability.tracing.request_id").get
 local cjson          = require("cjson.safe").new()
 
 local find_claim = jwt_ee.find_claim
