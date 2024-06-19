@@ -210,6 +210,9 @@ function _GLOBAL.init_worker_events()
     listening = listening,  -- unix socket for broker listening
     max_queue_len = 1024 * 50,  -- max queue len for events buffering
     max_payload_len = max_payload_len,  -- max payload size in bytes
+    enable_privileged_agent = configuration and configuration.dedicated_config_processing
+                                            and configuration.role == "data_plane"
+                                             or false
   }
 
   worker_events = require "resty.events.compat"
