@@ -174,6 +174,7 @@ describe("Plugins", function()
       'ai-prompt-template',
       'ai-prompt-decorator',
       'ai-prompt-guard',
+      'ai-proxy-advanced',
       'ai-proxy',
       'ai-response-transformer',
       'standard-webhooks',

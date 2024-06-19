@@ -46,6 +46,7 @@ return {
   BUNDLED_EE_PLUGINS = {
     --"app-dynamics", -- not part of the 'bundled' set due to system-level configuration requirements
     "application-registration",
+    "ai-proxy-advanced",
     "canary",
     "degraphql",
     "exit-transformer",

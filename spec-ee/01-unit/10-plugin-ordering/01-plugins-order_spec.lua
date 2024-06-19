@@ -5,6 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+require "spec.helpers" -- load the assert.fail modifier
 local conf_loader = require "kong.conf_loader"
 local topsort_plugins = require("kong.db.schema.topsort_plugins")
 

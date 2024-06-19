@@ -1,0 +1,105 @@
+-- This software is copyright Kong Inc. and its licensors.
+-- Use of the software is subject to the agreement between your organization
+-- and Kong Inc. If there is no such agreement, use is governed by and
+-- subject to the terms of the Kong Master Software License Agreement found
+-- at https://konghq.com/enterprisesoftwarelicense/.
+-- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
+
+local kong_meta = require("kong.meta")
+local proxy_handler = require("kong.llm.proxy.handler")
+
+
+local _M = {
+  PRIORITY = 770, -- same as ai-proxy
+  VERSION = kong_meta.core_version
+}
+
+local balancers_by_plugin_key = {}
+local BYPASS_CACHE = true
+
+local function get_balancer_instance(conf, bypass_cache)
+  local conf_key = conf.__plugin_id
+  assert(conf_key, "missing plugin conf key __plugin_id")
+
+  local balancer_instance = balancers_by_plugin_key[conf_key]
+
+  if not balancer_instance or bypass_cache then
+    local mod = require("kong.plugins.ai-proxy-advanced.balancer." .. conf.balancer.algorithm)
+    balancer_instance = mod.new(conf.targets, conf.balancer.slots)
+
+    balancers_by_plugin_key[conf_key] = balancer_instance
+  end
+
+  return balancer_instance
+end
+
+function _M:init_worker()
+  if kong.configuration.database == "off" or not (kong.worker_events and kong.worker_events.register) then
+    return
+  end
+
+  local worker_events = kong.worker_events
+
+  -- event handlers to update balancer instances
+  worker_events.register(function(data)
+    if data.entity.name == "ai-proxy-advanced" then
+      local conf = data.entity.config
+
+      local operation = data.operation
+      if operation == "create" or operation == "update" then
+        conf.__plugin_id = assert(data.entity.id, "missing plugin conf key __plugin_id")
+        get_balancer_instance(conf, BYPASS_CACHE)
+
+      elseif operation == "delete" then
+        local conf_key = data.entity.id
+        assert(conf_key, "missing plugin conf key data.entity.id")
+        balancers_by_plugin_key[conf_key] = nil
+      end
+
+    end
+  end, "crud", "plugins")
+
+end
+
+function _M:access(conf)
+  local balancer_instance = get_balancer_instance(conf)
+
+  local selected, err = balancer_instance:getPeer()
+  if err then
+    kong.log.err("failed to get peer: ", err)
+    return kong.response.exit(500, { message = "failed to get peer" })
+  end
+
+  kong.ctx.plugin.selected_target = selected
+
+  kong.service.set_retries(conf.balancer.retries)
+  kong.service.set_timeouts(conf.balancer.connect_timeout, conf.balancer.write_timeout, conf.balancer.read_timeout)
+
+  -- pass along the top level magic keys to selected target/conf
+  selected.__key__ = conf.__key__
+  selected.__plugin_id = conf.__plugin_id
+
+  -- no return value, short circuit the request on error
+  proxy_handler:access(selected)
+
+  local _, err = balancer_instance:afterBalance(conf, selected)
+
+  if err then
+    return kong.log.warn("failed to perform afterBalance operation: ", err)
+  end
+
+  selected.__key__ = conf.__key__
+  selected.__plugin_id = conf.__plugin_id
+end
+
+function _M:header_filter()
+  return proxy_handler:header_filter(kong.ctx.plugin.selected_target)
+end
+
+function _M:body_filter()
+  return proxy_handler:body_filter(kong.ctx.plugin.selected_target)
+end
+
+
+
+return _M
