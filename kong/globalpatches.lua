@@ -624,7 +624,7 @@ return function(options)
     -- STEP 5: load code that should be using the patched versions, if any (because of dependency chain)
     do
       -- dns query patch
-      local instrumentation = require "kong.tracing.instrumentation"
+      local instrumentation = require "kong.observability.tracing.instrumentation"
       client.toip = instrumentation.get_wrapped_dns_query(client.toip)
 
       -- patch request_uri to record http_client spans

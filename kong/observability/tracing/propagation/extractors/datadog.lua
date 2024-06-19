@@ -1,4 +1,4 @@
-local _EXTRACTOR        = require "kong.tracing.propagation.extractors._base"
+local _EXTRACTOR        = require "kong.observability.tracing.propagation.extractors._base"
 local bn                = require "resty.openssl.bn"
 
 local from_dec          = bn.from_dec

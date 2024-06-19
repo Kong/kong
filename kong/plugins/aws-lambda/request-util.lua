@@ -4,7 +4,7 @@ local ngx_decode_base64 = ngx.decode_base64
 local cjson = require "cjson.safe"
 
 local date = require("date")
-local get_request_id = require("kong.tracing.request_id").get
+local get_request_id = require("kong.observability.tracing.request_id").get
 
 local EMPTY = {}
 
