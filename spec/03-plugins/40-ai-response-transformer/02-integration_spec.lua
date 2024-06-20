@@ -183,10 +183,10 @@ local _EXPECTED_CHAT_STATS = {
       response_model = 'gpt-3.5-turbo-0613',
     },
     usage = {
-      completion_tokens = 12,
-      cost = 0.00037,
       prompt_tokens = 25,
+      completion_tokens = 12,
       total_tokens = 37,
+      cost = 0.00037,
     },
     cache = {}
   },

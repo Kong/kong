@@ -331,19 +331,10 @@ local function log(message, serialized)
 
   if serialized.ai_metrics then
     for _, ai_plugin in pairs(serialized.ai_metrics) do
-      local cache_status
-      if ai_plugin.cache and ai_plugin.cache.cache_status then
-        cache_status = ai_plugin.cache.cache_status
-      end
-
-      local vector_db, embeddings_provider, embeddings_model
-      if ai_plugin.cache then
-        vector_db = ai_plugin.cache.vector_db
-
-        embeddings_provider = ai_plugin.cache.embeddings_provider
-
-        embeddings_model = ai_plugin.cache.embeddings_model
-      end
+      local cache_status = ai_plugin.cache.cache_status or ""
+      local vector_db = ai_plugin.cache.vector_db or ""
+      local embeddings_provider = ai_plugin.cache.embeddings_provider or ""
+      local embeddings_model = ai_plugin.cache.embeddings_model or ""
 
       labels_table_ai_llm_status[1] = ai_plugin.meta.provider_name
       labels_table_ai_llm_status[2] = ai_plugin.meta.request_model
