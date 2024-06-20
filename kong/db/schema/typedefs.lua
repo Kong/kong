@@ -568,36 +568,54 @@ local function validate_host_with_wildcards(host)
   return typedefs.host_with_optional_port.custom_validator(no_wildcards)
 end
 
-local function validate_path_with_regexes(path)
 
+local function is_regex_pattern(pattern)
+  return pattern:sub(1, 1) == "~"
+end
+
+
+local function is_valid_regex_pattern(pattern)
+  local regex = pattern:sub(2) -- remove the leading "~"
+  -- the value will be interpreted as a regex by the router; but is it a
+  -- valid one? Let's dry-run it with the same options as our router.
+  local _, _, err = ngx.re.find("", regex, "aj")
+  if err then
+    return nil,
+           string.format("invalid regex: '%s' (PCRE returned: %s)",
+                         regex, err)
+  end
+
+  return true
+end
+
+
+local function validate_path_with_regexes(path)
   local ok, err, err_code = typedefs.path.custom_validator(path)
 
   if err_code == "percent" then
     return ok, err, err_code
   end
 
-  if path:sub(1, 1) ~= "~" then
-    -- prefix matching. let's check if it's normalized form
-    local normalized = normalize(path, true)
-    if path ~= normalized then
-      return nil, "non-normalized path, consider use '" .. normalized .. "' instead"
-    end
-
-    return true
+  if is_regex_pattern(path) then
+    return is_valid_regex_pattern(path)
   end
 
-  path = path:sub(2)
-
-  -- the value will be interpreted as a regex by the router; but is it a
-  -- valid one? Let's dry-run it with the same options as our router.
-  local _, _, err = ngx.re.find("", path, "aj")
-  if err then
-    return nil,
-           string.format("invalid regex: '%s' (PCRE returned: %s)",
-                         path, err)
+  -- prefix matching. let's check if it's normalized form
+  local normalized = normalize(path, true)
+  if path ~= normalized then
+    return nil, "non-normalized path, consider use '" .. normalized .. "' instead"
   end
 
   return true
+end
+
+
+local function validate_regex_or_plain_pattern(pattern)
+  if not is_regex_pattern(pattern) then
+    return true
+  end
+
+  return is_valid_regex_pattern(pattern)
 end
 
 
@@ -697,6 +715,12 @@ typedefs.headers = Schema.define {
     },
   },
   description = "A map of header names to arrays of header values."
+}
+
+typedefs.regex_or_plain_pattern = Schema.define {
+  type = "string",
+  custom_validator = validate_regex_or_plain_pattern,
+  description = "A string representing a regex or plain pattern."
 }
 
 typedefs.no_headers = Schema.define(typedefs.headers { eq = null, description = "A null value representing no headers." })
