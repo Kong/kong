@@ -140,49 +140,85 @@ X-2: 2
     location = /t {
         rewrite_by_lua_block {
             local pdk_rl = require("kong.pdk.private.rate_limiting")
-            local ok, err
+            local ok, err, errmsg
 
             ok, err = pcall(pdk_rl.store_response_header, ngx.ctx, nil, 1)
             assert(not ok, "pcall should fail")
+            errmsg = string.format(
+                "arg #%d `key` for function `%s` must be a string, got %s",
+                2,
+                "store_response_header",
+                type(nil)
+            )
             assert(
-                err:find("arg #2 `key` for function `store_response_header` must be a string", nil, true),
+                err:find(errmsg, nil, true),
                 "unexpected error message: " .. err
             )
             for _k, v in ipairs({ 1, true, {}, function() end, ngx.null }) do
                 ok, err = pcall(pdk_rl.store_response_header, ngx.ctx, v, 1)
                 assert(not ok, "pcall should fail")
+                errmsg = string.format(
+                    "arg #%d `key` for function `%s` must be a string, got %s",
+                    2,
+                    "store_response_header",
+                    type(v)
+                )
                 assert(
-                    err:find("arg #2 `key` for function `store_response_header` must be a string", nil, true),
+                    err:find(errmsg, nil, true),
                     "unexpected error message: " .. err
                 )
             end
 
             ok, err = pcall(pdk_rl.store_response_header, ngx.ctx, "X-1", nil)
             assert(not ok, "pcall should fail")
+            errmsg = string.format(
+                "arg #%d `value` for function `%s` must be a string or a number, got %s",
+                3,
+                "store_response_header",
+                type(nil)
+            )
             assert(
-                err:find("arg #3 `value` for function `store_response_header` must be a string or a number", nil, true),
+                err:find(errmsg, nil, true),
                 "unexpected error message: " .. err
             )
             for _k, v in ipairs({ true, {}, function() end, ngx.null }) do
                 ok, err = pcall(pdk_rl.store_response_header, ngx.ctx, "X-1", v)
                 assert(not ok, "pcall should fail")
+                errmsg = string.format(
+                    "arg #%d `value` for function `%s` must be a string or a number, got %s",
+                    3,
+                    "store_response_header",
+                    type(v)
+                )
                 assert(
-                    err:find("arg #3 `value` for function `store_response_header` must be a string or a number", nil, true),
+                    err:find(errmsg, nil, true),
                     "unexpected error message: " .. err
                 )
             end
 
             ok, err = pcall(pdk_rl.get_stored_response_header, ngx.ctx, nil)
             assert(not ok, "pcall should fail")
+            errmsg = string.format(
+                "arg #%d `key` for function `%s` must be a string, got %s",
+                2,
+                "get_stored_response_header",
+                type(nil)
+            )
             assert(
-                err:find("arg #2 `key` for function `get_stored_response_header` must be a string", nil, true),
+                err:find(errmsg, nil, true),
                 "unexpected error message: " .. err
             )
             for _k, v in ipairs({ 1, true, {}, function() end, ngx.null }) do
                 ok, err = pcall(pdk_rl.get_stored_response_header, ngx.ctx, v)
                 assert(not ok, "pcall should fail")
+                errmsg = string.format(
+                    "arg #%d `key` for function `%s` must be a string, got %s",
+                    2,
+                    "get_stored_response_header",
+                    type(v)
+                )
                 assert(
-                    err:find("arg #2 `key` for function `get_stored_response_header` must be a string", nil, true),
+                    err:find(errmsg, nil, true),
                     "unexpected error message: " .. err
                 )
             end

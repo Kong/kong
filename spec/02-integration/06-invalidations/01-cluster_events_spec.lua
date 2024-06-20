@@ -315,8 +315,10 @@ for _, strategy in helpers.each_strategy() do
 
         ngx.sleep(delay) -- go past our desired `nbf` delay
 
-        assert(cluster_events_1:poll())
-        assert.spy(spy_func).was_called(1) -- called
+        helpers.wait_until(function()
+          assert(cluster_events_1:poll())
+          return pcall(assert.spy(spy_func).was_called, 1) -- called
+        end, 1) -- note that we have already waited for `delay` seconds
       end)
 
       it("broadcasts an event with a polling delay for subscribers", function()

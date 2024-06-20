@@ -848,6 +848,52 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         }, json.choices[1].message)
       end)
 
+      it("good request, parses model of cjson.null", function()
+        local body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json")
+        body = cjson.decode(body)
+        body.model = cjson.null
+        body = cjson.encode(body)
+
+        local r = client:get("/openai/llm/v1/chat/good", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+          },
+          body = body,
+        })
+
+        -- validate that the request succeeded, response status 200
+        local body = assert.res_status(200 , r)
+        local json = cjson.decode(body)
+
+        -- check this is in the 'kong' response format
+        assert.equals(json.id, "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2")
+        assert.equals(json.model, "gpt-3.5-turbo-0613")
+        assert.equals(json.object, "chat.completion")
+
+        assert.is_table(json.choices)
+        assert.is_table(json.choices[1].message)
+        assert.same({
+          content = "The sum of 1 + 1 is 2.",
+          role = "assistant",
+        }, json.choices[1].message)
+      end)
+
+      it("tries to override configured model", function()
+        local r = client:get("/openai/llm/v1/chat/good", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good_own_model.json"),
+        })
+
+        local body = assert.res_status(400 , r)
+        local json = cjson.decode(body)
+
+        assert.same(json, {error = { message = "cannot use own model - must be: gpt-3.5-turbo" } })
+      end)
+
       it("bad upstream response", function()
         local r = client:get("/openai/llm/v1/chat/bad_upstream_response", {
           headers = {

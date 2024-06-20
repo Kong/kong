@@ -36,6 +36,7 @@ return {
           { refresh_token_ttl = typedefs.ttl { default = 1209600, required = true }, },
           { reuse_refresh_token = { description = "An optional boolean value that indicates whether an OAuth refresh token is reused when refreshing an access token.", type = "boolean", default = false, required = true }, },
           { pkce = { description = "Specifies a mode of how the Proof Key for Code Exchange (PKCE) should be handled by the plugin.", type = "string", default = "lax", required = false, one_of = { "none", "lax", "strict" } }, },
+          { realm = { description = "When authentication fails the plugin sends `WWW-Authenticate` header with `realm` attribute value.", type = "string", required = false }, },
         },
         custom_validator = validate_flows,
         entity_checks = {

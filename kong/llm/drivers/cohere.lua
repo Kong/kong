@@ -219,18 +219,15 @@ local transformers_from = {
       local stats = {
         completion_tokens = response_table.meta
                         and response_table.meta.billed_units
-                        and response_table.meta.billed_units.output_tokens
-                        or nil,
+                        and response_table.meta.billed_units.output_tokens,
 
         prompt_tokens = response_table.meta
                     and response_table.meta.billed_units
-                    and response_table.meta.billed_units.input_tokens
-                    or nil,
+                    and response_table.meta.billed_units.input_tokens,
 
         total_tokens = response_table.meta
                   and response_table.meta.billed_units
-                  and (response_table.meta.billed_units.output_tokens + response_table.meta.billed_units.input_tokens)
-                  or nil,
+                  and (response_table.meta.billed_units.output_tokens + response_table.meta.billed_units.input_tokens),
       }
       messages.usage = stats
   
@@ -252,18 +249,15 @@ local transformers_from = {
       local stats = {
         completion_tokens = response_table.meta
                         and response_table.meta.billed_units
-                        and response_table.meta.billed_units.output_tokens
-                        or nil,
+                        and response_table.meta.billed_units.output_tokens,
 
         prompt_tokens = response_table.meta
                     and response_table.meta.billed_units
-                    and response_table.meta.billed_units.input_tokens
-                    or nil,
+                    and response_table.meta.billed_units.input_tokens,
 
         total_tokens = response_table.meta
                   and response_table.meta.billed_units
-                  and (response_table.meta.billed_units.output_tokens + response_table.meta.billed_units.input_tokens)
-                  or nil,
+                  and (response_table.meta.billed_units.output_tokens + response_table.meta.billed_units.input_tokens),
       }
       messages.usage = stats
   
@@ -271,7 +265,7 @@ local transformers_from = {
       return nil, "'text' or 'generations' missing from cohere response body"
   
     end
-  
+
     return cjson.encode(messages)
   end,
 
@@ -299,11 +293,10 @@ local transformers_from = {
       prompt.id = response_table.id
 
       local stats = {
-        completion_tokens = response_table.meta and response_table.meta.billed_units.output_tokens or nil,
-        prompt_tokens = response_table.meta and response_table.meta.billed_units.input_tokens or nil,
+        completion_tokens = response_table.meta and response_table.meta.billed_units.output_tokens,
+        prompt_tokens = response_table.meta and response_table.meta.billed_units.input_tokens,
         total_tokens = response_table.meta
-                  and (response_table.meta.billed_units.output_tokens + response_table.meta.billed_units.input_tokens)
-                  or nil,
+                  and (response_table.meta.billed_units.output_tokens + response_table.meta.billed_units.input_tokens),
       }
       prompt.usage = stats
 
@@ -323,9 +316,9 @@ local transformers_from = {
       prompt.id = response_table.generation_id
   
       local stats = {
-        completion_tokens = response_table.token_count and response_table.token_count.response_tokens or nil,
-        prompt_tokens = response_table.token_count and response_table.token_count.prompt_tokens or nil,
-        total_tokens = response_table.token_count and response_table.token_count.total_tokens or nil,
+        completion_tokens = response_table.token_count and response_table.token_count.response_tokens,
+        prompt_tokens = response_table.token_count and response_table.token_count.prompt_tokens,
+        total_tokens = response_table.token_count and response_table.token_count.total_tokens,
       }
       prompt.usage = stats
   
@@ -400,12 +393,7 @@ function _M.post_request(conf)
 end
 
 function _M.pre_request(conf, body)
-  -- check for user trying to bring own model
-  if body and body.model then
-    return false, "cannot use own model for this instance"
-  end
-
-  return true, nil
+  return true
 end
 
 function _M.subrequest(body, conf, http_opts, return_res_table)
@@ -467,7 +455,7 @@ end
 function _M.configure_request(conf)
   local parsed_url
 
-  if conf.model.options.upstream_url then
+  if conf.model.options and conf.model.options.upstream_url then
     parsed_url = socket_url.parse(conf.model.options.upstream_url)
   else
     parsed_url = socket_url.parse(ai_shared.upstream_url_format[DRIVER_NAME])
@@ -476,10 +464,6 @@ function _M.configure_request(conf)
                       or ai_shared.operation_map[DRIVER_NAME][conf.route_type]
                       and ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
                       or "/"
-
-    if not parsed_url.path then
-      return false, fmt("operation %s is not supported for cohere provider", conf.route_type)
-    end
   end
   
   -- if the path is read from a URL capture, ensure that it is valid

@@ -1,0 +1,5 @@
+message: |
+  **AI-proxy-plugin**: Fixed a bug where AI Proxy would not take precedence of the 
+  plugin's configured model tuning options, over those in the user's LLM request.
+scope: Plugin
+type: bugfix

@@ -93,8 +93,8 @@ local transformers_to = {
       return nil, nil, err
     end
 
-    messages.temperature = request_table.temperature or (model.options and model.options.temperature) or nil
-    messages.max_tokens = request_table.max_tokens or (model.options and model.options.max_tokens) or nil
+    messages.temperature = (model.options and model.options.temperature) or request_table.temperature
+    messages.max_tokens = (model.options and model.options.max_tokens) or request_table.max_tokens
     messages.model = model.name or request_table.model
     messages.stream = request_table.stream or false  -- explicitly set this if nil
 
@@ -110,9 +110,8 @@ local transformers_to = {
       return nil, nil, err
     end
 
-    prompt.temperature = request_table.temperature or (model.options and model.options.temperature) or nil
-    prompt.max_tokens_to_sample = request_table.max_tokens or (model.options and model.options.max_tokens) or nil
-    prompt.model = model.name
+    prompt.temperature = (model.options and model.options.temperature) or request_table.temperature
+    prompt.max_tokens_to_sample = (model.options and model.options.max_tokens) or request_table.max_tokens
     prompt.model = model.name or request_table.model
     prompt.stream = request_table.stream or false  -- explicitly set this if nil
 
@@ -152,11 +151,9 @@ local function start_to_event(event_data, model_info)
 
   local metadata = {
     prompt_tokens = meta.usage
-                    and meta.usage.input_tokens
-                    or nil,
+                    and meta.usage.input_tokens,
     completion_tokens = meta.usage
-                    and meta.usage.output_tokens
-                    or nil,
+                    and meta.usage.output_tokens,
     model = meta.model,
     stop_reason = meta.stop_reason,
     stop_sequence = meta.stop_sequence,
@@ -209,14 +206,11 @@ local function handle_stream_event(event_t, model_info, route_type)
     and event_data.usage then
       return nil, nil, {
         prompt_tokens = nil,
-        completion_tokens = event_data.usage.output_tokens
-                        or nil,
+        completion_tokens = event_data.usage.output_tokens,
         stop_reason = event_data.delta
-                  and event_data.delta.stop_reason
-                    or nil,
+                  and event_data.delta.stop_reason,
         stop_sequence = event_data.delta
-                    and event_data.delta.stop_sequence
-                      or nil,
+                    and event_data.delta.stop_sequence,
       }
     else
       return nil, "message_delta is missing the metadata block", nil
@@ -267,7 +261,7 @@ local transformers_from = {
           prompt_tokens = usage.input_tokens,
           completion_tokens = usage.output_tokens,
           total_tokens = usage.input_tokens and usage.output_tokens and
-            usage.input_tokens + usage.output_tokens or nil,
+            usage.input_tokens + usage.output_tokens,
         }
 
       else
@@ -442,12 +436,7 @@ function _M.post_request(conf)
 end
 
 function _M.pre_request(conf, body)
-  -- check for user trying to bring own model
-  if body and body.model then
-    return nil, "cannot use own model for this instance"
-  end
-
-  return true, nil
+  return true
 end
 
 -- returns err or nil
