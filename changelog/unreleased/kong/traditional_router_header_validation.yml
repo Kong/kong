@@ -1,3 +1,3 @@
-message: Fix issue where a regex header value would not be validated if the `traditional` or `traditional_compatible` router flavors were in use.
+message: Fixed an issue where the `route` entity would accept an invalid regex pattern if the `router_flavor` is `traditional` or `traditional_compatible`. Now, the invalid regex pattern for matching the value of request headers will not be accepted when creating the `route` entity.
 type: bugfix
 scope: Core
