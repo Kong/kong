@@ -54,10 +54,10 @@ def _load_vars(ctx):
 
     # convert them into a list of labels relative to the workspace root
     # TODO: this may not change after a bazel clean if cache exists
-    patches = [
+    patches = sorted([
         '"@kong//:%s"' % str(p).replace(workspace_path, "").lstrip("/")
         for p in ctx.path(workspace_path + "/build/openresty/patches").readdir()
-    ]
+    ])
 
     content += '"OPENRESTY_PATCHES": [%s],' % (", ".join(patches))
 

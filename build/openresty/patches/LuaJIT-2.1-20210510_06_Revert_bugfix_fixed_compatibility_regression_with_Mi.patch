@@ -1,0 +1,30 @@
+From 01a9e4c7b67adb9f53cee915633bb754bd9300ee Mon Sep 17 00:00:00 2001
+From: Zhongwei Yao <zhongwei.yao@konghq.com>
+Date: Fri, 31 May 2024 11:40:58 -0700
+Subject: [PATCH] Revert "bugfix: fixed compatibility regression with MinGW
+ gcc"
+
+This reverts commit b882bdb6d65156249fd9119152826e2d1e0ab01c.
+---
+ src/x64/src/lj_str_hash_x64.h | 5 -----
+ 1 file changed, 5 deletions(-)
+
+diff --git a/bundle/LuaJIT-2.1-20210510/src/x64/src/lj_str_hash_x64.h b/bundle/LuaJIT-2.1-20210510/src/x64/src/lj_str_hash_x64.h
+index e6538953..8f6b8e1b 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/x64/src/lj_str_hash_x64.h
++++ b/bundle/LuaJIT-2.1-20210510/src/x64/src/lj_str_hash_x64.h
+@@ -21,11 +21,6 @@
+ #undef LJ_AINLINE
+ #define LJ_AINLINE
+ 
+-#ifdef __MINGW32__
+-#define random()  ((long) rand())
+-#define srandom(seed)  srand(seed)
+-#endif
+-
+ static const uint64_t* cast_uint64p(const char* str)
+ {
+   return (const uint64_t*)(void*)str;
+-- 
+2.43.0
+
