@@ -1,0 +1,19 @@
+diff --git a/bundle/LuaJIT-2.1-20231117/src/x64/src/lj_str_hash_x64.h b/bundle/LuaJIT-2.1-20231117/src/x64/src/lj_str_hash_x64.h
+index e6538953..8f6b8e1b 100644
+--- a/bundle/LuaJIT-2.1-20231117/src/x64/src/lj_str_hash_x64.h
++++ b/bundle/LuaJIT-2.1-20231117/src/x64/src/lj_str_hash_x64.h
+@@ -21,11 +21,6 @@
+ #undef LJ_AINLINE
+ #define LJ_AINLINE
+ 
+-#ifdef __MINGW32__
+-#define random()  ((long) rand())
+-#define srandom(seed)  srand(seed)
+-#endif
+-
+ static const uint64_t* cast_uint64p(const char* str)
+ {
+   return (const uint64_t*)(void*)str;
+-- 
+2.43.0
+
