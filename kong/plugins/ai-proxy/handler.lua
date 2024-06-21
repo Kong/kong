@@ -1,6 +1,3 @@
-local _M = {}
-
--- imports
 local ai_shared = require("kong.llm.drivers.shared")
 local llm = require("kong.llm")
 local cjson = require("cjson.safe")
@@ -8,51 +5,40 @@ local kong_utils = require("kong.tools.gzip")
 local kong_meta = require("kong.meta")
 local buffer = require "string.buffer"
 local strip = require("kong.tools.utils").strip
---
 
 
-_M.PRIORITY = 770
-_M.VERSION = kong_meta.version
+local EMPTY = {}
 
 
--- reuse this table for error message response
-local ERROR_MSG = { error = { message = "" } }
+local _M = {
+  PRIORITY = 770,
+  VERSION = kong_meta.version
+}
 
 
+
+--- Return a 400 response with a JSON body. This function is used to
+-- return errors to the client while also logging the error.
 local function bad_request(msg)
-  kong.log.warn(msg)
-  ERROR_MSG.error.message = msg
-
-  return kong.response.exit(400, ERROR_MSG)
+  kong.log.info(msg)
+  return kong.response.exit(400, { error = { message = msg } })
 end
 
 
-local function internal_server_error(msg)
-  kong.log.err(msg)
-  ERROR_MSG.error.message = msg
 
-  return kong.response.exit(500, ERROR_MSG)
-end
-
+-- get the token text from an event frame
 local function get_token_text(event_t)
-  -- chat
-  return
-    event_t and
-    event_t.choices and
-    #event_t.choices > 0 and
-    event_t.choices[1].delta and
-    event_t.choices[1].delta.content
-
-    or
-
-  -- completions
-    event_t and
-    event_t.choices and
-    #event_t.choices > 0 and
-    event_t.choices[1].text
-
-    or ""
+  -- get: event_t.choices[1]
+  local first_choice = ((event_t or EMPTY).choices or EMPTY)[1] or EMPTY
+  -- return:
+  --   - event_t.choices[1].delta.content
+  --   - event_t.choices[1].text
+  --   - ""
+  local token_text = (first_choice.delta or EMPTY).content or first_choice.text or ""
+  return (type(token_text) == "string" and token_text) or ""
 end
+
+
 
 local function handle_streaming_frame(conf)
   -- make a re-usable framebuffer
@@ -61,11 +47,11 @@ local function handle_streaming_frame(conf)
 
   local ai_driver = require("kong.llm.drivers." .. conf.model.provider)
 
+  local kong_ctx_plugin = kong.ctx.plugin
   -- create a buffer to store each response token/frame, on first pass
-  if conf.logging
-       and conf.logging.log_payloads
-       and (not kong.ctx.plugin.ai_stream_log_buffer) then
-    kong.ctx.plugin.ai_stream_log_buffer = buffer.new()
+  if (conf.logging or EMPTY).log_payloads and
+     (not kong_ctx_plugin.ai_stream_log_buffer) then
+    kong_ctx_plugin.ai_stream_log_buffer = buffer.new()
   end
 
   -- now handle each chunk/frame
@@ -101,7 +87,7 @@ local function handle_streaming_frame(conf)
               token_t = get_token_text(event_t)
             end
 
-            kong.ctx.plugin.ai_stream_log_buffer:put(token_t)
+            kong_ctx_plugin.ai_stream_log_buffer:put(token_t)
           end
         end
 
@@ -122,8 +108,8 @@ local function handle_streaming_frame(conf)
                 -- but this is all we can do until OpenAI fixes this...
                 --
                 -- essentially, every 4 characters is a token, with minimum of 1*4 per event
-                kong.ctx.plugin.ai_stream_completion_tokens =
-                    (kong.ctx.plugin.ai_stream_completion_tokens or 0) + math.ceil(#strip(token_t) / 4)
+                kong_ctx_plugin.ai_stream_completion_tokens =
+                    (kong_ctx_plugin.ai_stream_completion_tokens or 0) + math.ceil(#strip(token_t) / 4)
               end
             end
           end
@@ -135,14 +121,14 @@ local function handle_streaming_frame(conf)
       end
 
       if conf.logging and conf.logging.log_statistics and metadata then
-        kong.ctx.plugin.ai_stream_completion_tokens = 
-          (kong.ctx.plugin.ai_stream_completion_tokens or 0) +
+        kong_ctx_plugin.ai_stream_completion_tokens =
+          (kong_ctx_plugin.ai_stream_completion_tokens or 0) +
           (metadata.completion_tokens or 0)
-          or kong.ctx.plugin.ai_stream_completion_tokens
-        kong.ctx.plugin.ai_stream_prompt_tokens = 
-          (kong.ctx.plugin.ai_stream_prompt_tokens or 0) +
+          or kong_ctx_plugin.ai_stream_completion_tokens
+        kong_ctx_plugin.ai_stream_prompt_tokens =
+          (kong_ctx_plugin.ai_stream_prompt_tokens or 0) +
           (metadata.prompt_tokens or 0)
-          or kong.ctx.plugin.ai_stream_prompt_tokens
+          or kong_ctx_plugin.ai_stream_prompt_tokens
       end
     end
   end
@@ -156,23 +142,26 @@ local function handle_streaming_frame(conf)
 
   if finished then
     local fake_response_t = {
-      response = kong.ctx.plugin.ai_stream_log_buffer and kong.ctx.plugin.ai_stream_log_buffer:get(),
+      response = kong_ctx_plugin.ai_stream_log_buffer and kong_ctx_plugin.ai_stream_log_buffer:get(),
       usage = {
-        prompt_tokens = kong.ctx.plugin.ai_stream_prompt_tokens or 0,
-        completion_tokens = kong.ctx.plugin.ai_stream_completion_tokens or 0,
-        total_tokens = (kong.ctx.plugin.ai_stream_prompt_tokens or 0)
-                     + (kong.ctx.plugin.ai_stream_completion_tokens or 0),
+        prompt_tokens = kong_ctx_plugin.ai_stream_prompt_tokens or 0,
+        completion_tokens = kong_ctx_plugin.ai_stream_completion_tokens or 0,
+        total_tokens = (kong_ctx_plugin.ai_stream_prompt_tokens or 0)
+                     + (kong_ctx_plugin.ai_stream_completion_tokens or 0),
       }
     }
 
     ngx.arg[1] = nil
     ai_shared.post_request(conf, fake_response_t)
-    kong.ctx.plugin.ai_stream_log_buffer = nil
+    kong_ctx_plugin.ai_stream_log_buffer = nil
   end
 end
 
 function _M:header_filter(conf)
-  if kong.ctx.shared.skip_response_transformer then
+  local kong_ctx_plugin = kong.ctx.plugin
+  local kong_ctx_shared = kong.ctx.shared
+
+  if kong_ctx_shared.skip_response_transformer then
     return
   end
 
@@ -187,7 +176,7 @@ function _M:header_filter(conf)
   end
 
   -- we use openai's streaming mode (SSE)
-  if kong.ctx.shared.ai_proxy_streaming_mode then
+  if kong_ctx_shared.ai_proxy_streaming_mode then
     -- we are going to send plaintext event-stream frames for ALL models
     kong.response.set_header("Content-Type", "text/event-stream")
     return
@@ -204,28 +193,26 @@ function _M:header_filter(conf)
   -- if this is a 'streaming' request, we can't know the final
   -- result of the response body, so we just proceed to body_filter
   -- to translate each SSE event frame
-  if not kong.ctx.shared.ai_proxy_streaming_mode then
+  if not kong_ctx_shared.ai_proxy_streaming_mode then
     local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
     if is_gzip then
       response_body = kong_utils.inflate_gzip(response_body)
     end
 
     if route_type == "preserve" then
-      kong.ctx.plugin.parsed_response = response_body
+      kong_ctx_plugin.parsed_response = response_body
     else
       local new_response_string, err = ai_driver.from_format(response_body, conf.model, route_type)
       if err then
-        kong.ctx.plugin.ai_parser_error = true
-  
+        kong_ctx_plugin.ai_parser_error = true
+
         ngx.status = 500
-        ERROR_MSG.error.message = err
-  
-        kong.ctx.plugin.parsed_response = cjson.encode(ERROR_MSG)
-  
+        kong_ctx_plugin.parsed_response = cjson.encode({ error = { message = err } })
+
       elseif new_response_string then
         -- preserve the same response content type; assume the from_format function
         -- has returned the body in the appropriate response output format
-        kong.ctx.plugin.parsed_response = new_response_string
+        kong_ctx_plugin.parsed_response = new_response_string
       end
     end
   end
@@ -235,17 +222,20 @@ end
 
 
 function _M:body_filter(conf)
+  local kong_ctx_plugin = kong.ctx.plugin
+  local kong_ctx_shared = kong.ctx.shared
+
   -- if body_filter is called twice, then return
-  if kong.ctx.plugin.body_called and not kong.ctx.shared.ai_proxy_streaming_mode then
+  if kong_ctx_plugin.body_called and not kong_ctx_shared.ai_proxy_streaming_mode then
     return
   end
 
   local route_type = conf.route_type
 
-  if kong.ctx.shared.skip_response_transformer and (route_type ~= "preserve") then
+  if kong_ctx_shared.skip_response_transformer and (route_type ~= "preserve") then
     local response_body
-    if kong.ctx.shared.parsed_response then
-      response_body = kong.ctx.shared.parsed_response
+    if kong_ctx_shared.parsed_response then
+      response_body = kong_ctx_shared.parsed_response
     elseif kong.response.get_status() == 200 then
       response_body = kong.service.response.get_raw_body()
       if not response_body then
@@ -261,7 +251,7 @@ function _M:body_filter(conf)
 
     local ai_driver = require("kong.llm.drivers." .. conf.model.provider)
     local new_response_string, err = ai_driver.from_format(response_body, conf.model, route_type)
-    
+
     if err then
       kong.log.warn("issue when transforming the response body for analytics in the body filter phase, ", err)
     elseif new_response_string then
@@ -269,20 +259,20 @@ function _M:body_filter(conf)
     end
   end
 
-  if not kong.ctx.shared.skip_response_transformer then
-    if (kong.response.get_status() ~= 200) and (not kong.ctx.plugin.ai_parser_error) then
+  if not kong_ctx_shared.skip_response_transformer then
+    if (kong.response.get_status() ~= 200) and (not kong_ctx_plugin.ai_parser_error) then
       return
     end
 
     if route_type ~= "preserve" then
-      if kong.ctx.shared.ai_proxy_streaming_mode then
+      if kong_ctx_shared.ai_proxy_streaming_mode then
         handle_streaming_frame(conf)
       else
       -- all errors MUST be checked and returned in header_filter
       -- we should receive a replacement response body from the same thread
-        local original_request = kong.ctx.plugin.parsed_response
+        local original_request = kong_ctx_plugin.parsed_response
         local deflated_request = original_request
-        
+
         if deflated_request then
           local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
           if is_gzip then
@@ -298,26 +288,29 @@ function _M:body_filter(conf)
           kong.log.warn("analytics phase failed for request, ", err)
         end
       end
-    end    
+    end
   end
 
-  kong.ctx.plugin.body_called = true
+  kong_ctx_plugin.body_called = true
 end
 
 
 function _M:access(conf)
+  local kong_ctx_plugin = kong.ctx.plugin
+  local kong_ctx_shared = kong.ctx.shared
+
   -- store the route_type in ctx for use in response parsing
   local route_type = conf.route_type
 
-  kong.ctx.plugin.operation = route_type
+  kong_ctx_plugin.operation = route_type
 
   local request_table
   local multipart = false
 
   -- we may have received a replacement / decorated request body from another AI plugin
-  if kong.ctx.shared.replacement_request then
+  if kong_ctx_shared.replacement_request then
     kong.log.debug("replacement request body received from another AI plugin")
-    request_table = kong.ctx.shared.replacement_request
+    request_table = kong_ctx_shared.replacement_request
 
   else
     -- first, calculate the coordinates of the request
@@ -342,9 +335,18 @@ function _M:access(conf)
 
   -- copy from the user request if present
   if (not multipart) and (not conf_m.model.name) and (request_table.model) then
-    conf_m.model.name = request_table.model
+    if type(request_table.model) == "string" then
+      conf_m.model.name = request_table.model
+    end
   elseif multipart then
     conf_m.model.name = "NOT_SPECIFIED"
+  end
+
+  -- check that the user isn't trying to override the plugin conf model in the request body
+  if request_table and request_table.model and type(request_table.model) == "string" and request_table.model ~= "" then
+    if request_table.model ~= conf_m.model.name then
+      return bad_request("cannot use own model - must be: " .. conf_m.model.name)
+    end
   end
 
   -- model is stashed in the copied plugin conf, for consistency in transformation functions
@@ -352,14 +354,13 @@ function _M:access(conf)
     return bad_request("model parameter not found in request, nor in gateway configuration")
   end
 
-  -- stash for analytics later
-  kong.ctx.plugin.llm_model_requested = conf_m.model.name
+  kong_ctx_plugin.llm_model_requested = conf_m.model.name
 
   -- check the incoming format is the same as the configured LLM format
   if not multipart then
     local compatible, err = llm.is_compatible(request_table, route_type)
     if not compatible then
-      kong.ctx.shared.skip_response_transformer = true
+      kong_ctx_shared.skip_response_transformer = true
       return bad_request(err)
     end
   end
@@ -367,7 +368,7 @@ function _M:access(conf)
   -- check the incoming format is the same as the configured LLM format
   local compatible, err = llm.is_compatible(request_table, route_type)
   if not compatible then
-    kong.ctx.shared.skip_response_transformer = true
+    kong_ctx_shared.skip_response_transformer = true
     return bad_request(err)
   end
 
@@ -384,17 +385,18 @@ function _M:access(conf)
     end
 
     -- store token cost estimate, on first pass
-    if not kong.ctx.plugin.ai_stream_prompt_tokens then
+    if not kong_ctx_plugin.ai_stream_prompt_tokens then
       local prompt_tokens, err = ai_shared.calculate_cost(request_table or {}, {}, 1.8)
       if err then
-        return internal_server_error("unable to estimate request token cost: " .. err)
+        kong.log.err("unable to estimate request token cost: ", err)
+        return kong.response.exit(500)
       end
 
-      kong.ctx.plugin.ai_stream_prompt_tokens = prompt_tokens
+      kong_ctx_plugin.ai_stream_prompt_tokens = prompt_tokens
     end
 
     -- specific actions need to skip later for this to work
-    kong.ctx.shared.ai_proxy_streaming_mode = true
+    kong_ctx_shared.ai_proxy_streaming_mode = true
 
   else
     kong.service.request.enable_buffering()
@@ -414,7 +416,7 @@ function _M:access(conf)
     -- transform the body to Kong-format for this provider/model
     parsed_request_body, content_type, err = ai_driver.to_format(request_table, conf_m.model, route_type)
     if err then
-      kong.ctx.shared.skip_response_transformer = true
+      kong_ctx_shared.skip_response_transformer = true
       return bad_request(err)
     end
   end
@@ -432,8 +434,9 @@ function _M:access(conf)
   -- now re-configure the request for this operation type
   local ok, err = ai_driver.configure_request(conf_m)
   if not ok then
-    kong.ctx.shared.skip_response_transformer = true
-    return internal_server_error(err)
+    kong_ctx_shared.skip_response_transformer = true
+    kong.log.err("failed to configure request for AI service: ", err)
+    return kong.response.exit(500)
   end
 
   -- lights out, and away we go

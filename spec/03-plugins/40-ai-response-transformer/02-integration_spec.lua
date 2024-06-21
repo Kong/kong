@@ -210,7 +210,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         server {
             server_name llm;
             listen ]]..MOCK_PORT..[[;
-            
+
             default_type 'application/json';
 
             location ~/instructions {
@@ -237,7 +237,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             location = "/badrequest" {
               content_by_lua_block {
                 local pl_file = require "pl.file"
-                
+
                 ngx.status = 400
                 ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/bad_request.json"))
               }
@@ -246,7 +246,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             location = "/internalservererror" {
               content_by_lua_block {
                 local pl_file = require "pl.file"
-                
+
                 ngx.status = 500
                 ngx.header["content-type"] = "text/html"
                 ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/internal_server_error.html"))
@@ -357,7 +357,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
       }, nil, nil, fixtures))
     end)
-    
+
     lazy_teardown(function()
       helpers.stop_kong()
     end)
@@ -379,7 +379,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = REQUEST_BODY,
         })
-        
+
         local body = assert.res_status(209 , r)
         assert.same(EXPECTED_RESULT.body, body)
         assert.same(r.headers["content-type"], "application/xml")
@@ -393,7 +393,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = REQUEST_BODY,
         })
-        
+
         local body = assert.res_status(200 , r)
         local body_table, err = cjson.decode(body)
         assert.is_nil(err)
@@ -431,7 +431,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = REQUEST_BODY,
         })
-        
+
         local body = assert.res_status(500 , r)
         local body_table, err = cjson.decode(body)
         assert.is_nil(err)
