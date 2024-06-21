@@ -1,0 +1,1145 @@
+From 73811be9a047af819710c71cf2649603bc136cab Mon Sep 17 00:00:00 2001
+From: Zhongwei Yao <zhongwei.yao@konghq.com>
+Date: Fri, 31 May 2024 11:42:17 -0700
+Subject: [PATCH] Revert "Adjust SSE4.1 str_hash to replace hash_sparse and
+ hash_dense"
+
+This reverts commit 5bccde90b1808d1d456f52ae2aa8824487045111.
+---
+ src/lj_str.c                   |   5 +-
+ src/x64/Makefile               |  13 --
+ src/x64/src/lj_str_hash_x64.h  | 282 --------------------------
+ src/x64/test/Makefile          |  47 -----
+ src/x64/test/benchmark.cxx     | 357 ---------------------------------
+ src/x64/test/test.cpp          |  77 -------
+ src/x64/test/test_str_comp.lua |  67 -------
+ src/x64/test/test_util.cxx     |  21 --
+ src/x64/test/test_util.d       | 107 ----------
+ src/x64/test/test_util.hpp     |  57 ------
+ 10 files changed, 1 insertion(+), 1032 deletions(-)
+ delete mode 100644 src/x64/Makefile
+ delete mode 100644 src/x64/src/lj_str_hash_x64.h
+ delete mode 100644 src/x64/test/Makefile
+ delete mode 100644 src/x64/test/benchmark.cxx
+ delete mode 100644 src/x64/test/test.cpp
+ delete mode 100644 src/x64/test/test_str_comp.lua
+ delete mode 100644 src/x64/test/test_util.cxx
+ delete mode 100644 src/x64/test/test_util.d
+ delete mode 100644 src/x64/test/test_util.hpp
+
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_str.c b/bundle/LuaJIT-2.1-20210510/src/lj_str.c
+index c0e2dfad..27de2c0d 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/lj_str.c
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_str.c
+@@ -12,7 +12,6 @@
+ #include "lj_str.h"
+ #include "lj_char.h"
+ #include "lj_prng.h"
+-#include "x64/src/lj_str_hash_x64.h"
+ 
+ /* -- String helpers ------------------------------------------------------ */
+ 
+@@ -83,7 +82,6 @@ int lj_str_haspattern(GCstr *s)
+ 
+ /* -- String hashing ------------------------------------------------------ */
+ 
+-#ifndef ARCH_HASH_SPARSE
+ /* Keyed sparse ARX string hash. Constant time. */
+ static StrHash hash_sparse(uint64_t seed, const char *str, MSize len)
+ {
+@@ -106,9 +104,8 @@ static StrHash hash_sparse(uint64_t seed, const char *str, MSize len)
+   h ^= b; h -= lj_rol(b, 16);
+   return h;
+ }
+-#endif
+ 
+-#if LUAJIT_SECURITY_STRHASH && !defined(ARCH_HASH_DENSE)
++#if LUAJIT_SECURITY_STRHASH
+ /* Keyed dense ARX string hash. Linear time. */
+ static LJ_NOINLINE StrHash hash_dense(uint64_t seed, StrHash h,
+ 				      const char *str, MSize len)
+diff --git a/bundle/LuaJIT-2.1-20210510/src/x64/Makefile b/bundle/LuaJIT-2.1-20210510/src/x64/Makefile
+deleted file mode 100644
+index 27277140..00000000
+--- a/bundle/LuaJIT-2.1-20210510/src/x64/Makefile
++++ /dev/null
+@@ -1,13 +0,0 @@
+-.PHONY: default test benchmark clean
+-
+-default:
+-	@echo "make target include: test bechmark clean"
+-
+-test:
+-	$(MAKE) -C test test
+-
+-benchmark:
+-	$(MAKE) -C test benchmark
+-
+-clean:
+-	$(MAKE) -C test clean
+diff --git a/bundle/LuaJIT-2.1-20210510/src/x64/src/lj_str_hash_x64.h b/bundle/LuaJIT-2.1-20210510/src/x64/src/lj_str_hash_x64.h
+deleted file mode 100644
+index 8f6b8e1b..00000000
+--- a/bundle/LuaJIT-2.1-20210510/src/x64/src/lj_str_hash_x64.h
++++ /dev/null
+@@ -1,282 +0,0 @@
+-/*
+- * This file defines string hash function using CRC32. It takes advantage of
+- * Intel hardware support (crc32 instruction, SSE 4.2) to speedup the CRC32
+- * computation. The hash functions try to compute CRC32 of length and up
+- * to 128 bytes of given string.
+- */
+-
+-#ifndef _LJ_STR_HASH_X64_H_
+-#define _LJ_STR_HASH_X64_H_
+-
+-#if defined(__SSE4_2__) && defined(__x86_64) && defined(__GNUC__)
+-
+-#include <stdint.h>
+-#include <sys/types.h>
+-#include <unistd.h>
+-#include <time.h>
+-#include <smmintrin.h>
+-
+-#include "../../lj_def.h"
+-
+-#undef LJ_AINLINE
+-#define LJ_AINLINE
+-
+-static const uint64_t* cast_uint64p(const char* str)
+-{
+-  return (const uint64_t*)(void*)str;
+-}
+-
+-static const uint32_t* cast_uint32p(const char* str)
+-{
+-  return (const uint32_t*)(void*)str;
+-}
+-
+-/* hash string with len in [1, 4) */
+-static LJ_AINLINE uint32_t hash_sparse_1_4(uint64_t seed, const char* str,
+-					   uint32_t len)
+-{
+-#if 0
+-  /* TODO: The if-1 part (i.e the original algorithm) is working better when
+-   * the load-factor is high, as revealed by conflict benchmark (via
+-   * 'make benchmark' command); need to understand why it's so.
+-   */
+-  uint32_t v = str[0];
+-  v = (v << 8) | str[len >> 1];
+-  v = (v << 8) | str[len - 1];
+-  v = (v << 8) | len;
+-  return _mm_crc32_u32(0, v);
+-#else
+-  uint32_t a, b, h = len ^ seed;
+-
+-  a = *(const uint8_t *)str;
+-  h ^= *(const uint8_t *)(str+len-1);
+-  b = *(const uint8_t *)(str+(len>>1));
+-  h ^= b; h -= lj_rol(b, 14);
+-
+-  a ^= h; a -= lj_rol(h, 11);
+-  b ^= a; b -= lj_rol(a, 25);
+-  h ^= b; h -= lj_rol(b, 16);
+-
+-  return h;
+-#endif
+-}
+-
+-/* hash string with len in [4, 16) */
+-static LJ_AINLINE uint32_t hash_sparse_4_16(uint64_t seed, const char* str,
+-					    uint32_t len)
+-{
+-  uint64_t v1, v2, h;
+-
+-  if (len >= 8) {
+-    v1 = *cast_uint64p(str);
+-    v2 = *cast_uint64p(str + len - 8);
+-  } else {
+-    v1 = *cast_uint32p(str);
+-    v2 = *cast_uint32p(str + len - 4);
+-  }
+-
+-  h = _mm_crc32_u32(0, len ^ seed);
+-  h = _mm_crc32_u64(h, v1);
+-  h = _mm_crc32_u64(h, v2);
+-  return h;
+-}
+-
+-/* hash string with length in [16, 128) */
+-static uint32_t hash_16_128(uint64_t seed, const char* str,
+-				   uint32_t len)
+-{
+-  uint64_t h1, h2;
+-  uint32_t i;
+-
+-  h1 = _mm_crc32_u32(0, len ^ seed);
+-  h2 = 0;
+-
+-  for (i = 0; i < len - 16; i += 16) {
+-    h1 += _mm_crc32_u64(h1, *cast_uint64p(str + i));
+-    h2 += _mm_crc32_u64(h2, *cast_uint64p(str + i + 8));
+-  };
+-
+-  h1 = _mm_crc32_u64(h1, *cast_uint64p(str + len - 16));
+-  h2 = _mm_crc32_u64(h2, *cast_uint64p(str + len - 8));
+-
+-  return _mm_crc32_u32(h1, h2);
+-}
+-
+-/* **************************************************************************
+- *
+- *  Following is code about hashing string with length >= 128
+- *
+- * **************************************************************************
+- */
+-static uint32_t random_pos[32][2];
+-static const int8_t log2_tab[128] = { -1,0,1,1,2,2,2,2,3,3,3,3,3,3,3,3,4,4,
+-  4,4,4,4,4,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+-  5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,6,6,6,6,6,6,6,6,6,6,6,6,
+-  6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+-  6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6 };
+-
+-/* return floor(log2(n)) */
+-static LJ_AINLINE uint32_t log2_floor(uint32_t n)
+-{
+-  if (n <= 127) {
+-    return log2_tab[n];
+-  }
+-
+-  if ((n >> 8) <= 127) {
+-    return log2_tab[n >> 8] + 8;
+-  }
+-
+-  if ((n >> 16) <= 127) {
+-    return log2_tab[n >> 16] + 16;
+-  }
+-
+-  if ((n >> 24) <= 127) {
+-    return log2_tab[n >> 24] + 24;
+-  }
+-
+-  return 31;
+-}
+-
+-#define POW2_MASK(n) ((1L << (n)) - 1)
+-
+-/* This function is to populate `random_pos` such that random_pos[i][*]
+- * contains random value in the range of [2**i, 2**(i+1)).
+- */
+-static void x64_init_random(void)
+-{
+-  int i, seed, rml;
+-
+-  /* Calculate the ceil(log2(RAND_MAX)) */
+-  rml = log2_floor(RAND_MAX);
+-  if (RAND_MAX & (RAND_MAX - 1)) {
+-    rml += 1;
+-  }
+-
+-  /* Init seed */
+-  seed = _mm_crc32_u32(0, getpid());
+-  seed = _mm_crc32_u32(seed, time(NULL));
+-  srandom(seed);
+-
+-  /* Now start to populate the random_pos[][]. */
+-  for (i = 0; i < 3; i++) {
+-    /* No need to provide random value for chunk smaller than 8 bytes */
+-    random_pos[i][0] = random_pos[i][1] = 0;
+-  }
+-
+-  for (; i < rml; i++) {
+-    random_pos[i][0] = random() & POW2_MASK(i+1);
+-    random_pos[i][1] = random() & POW2_MASK(i+1);
+-  }
+-
+-  for (; i < 31; i++) {
+-    int j;
+-    for (j = 0; j < 2; j++) {
+-      uint32_t v, scale;
+-      scale = random_pos[i - rml][0];
+-      if (scale == 0) {
+-        scale = 1;
+-      }
+-      v = (random() * scale) & POW2_MASK(i+1);
+-      random_pos[i][j] = v;
+-    }
+-  }
+-}
+-#undef POW2_MASK
+-
+-void __attribute__((constructor)) x64_init_random_constructor()
+-{
+-    x64_init_random();
+-}
+-
+-/* Return a pre-computed random number in the range of [1**chunk_sz_order,
+- * 1**(chunk_sz_order+1)). It is "unsafe" in the sense that the return value
+- * may be greater than chunk-size; it is up to the caller to make sure
+- * "chunk-base + return-value-of-this-func" has valid virtual address.
+- */
+-static LJ_AINLINE uint32_t get_random_pos_unsafe(uint32_t chunk_sz_order,
+-                                                 uint32_t idx)
+-{
+-  uint32_t pos = random_pos[chunk_sz_order][idx & 1];
+-  return pos;
+-}
+-
+-static LJ_NOINLINE uint32_t hash_128_above(uint64_t seed, const char* str,
+-					   uint32_t len)
+-{
+-  uint32_t chunk_num, chunk_sz, chunk_sz_log2, i, pos1, pos2;
+-  uint64_t h1, h2, v;
+-  const char* chunk_ptr;
+-
+-  chunk_num = 16;
+-  chunk_sz = len / chunk_num;
+-  chunk_sz_log2 = log2_floor(chunk_sz);
+-
+-  pos1 = get_random_pos_unsafe(chunk_sz_log2, 0);
+-  pos2 = get_random_pos_unsafe(chunk_sz_log2, 1);
+-
+-  h1 = _mm_crc32_u32(0, len ^ seed);
+-  h2 = 0;
+-
+-  /* loop over 14 chunks, 2 chunks at a time */
+-  for (i = 0, chunk_ptr = str; i < (chunk_num / 2 - 1);
+-       chunk_ptr += chunk_sz, i++) {
+-
+-    v = *cast_uint64p(chunk_ptr + pos1);
+-    h1 = _mm_crc32_u64(h1, v);
+-
+-    v = *cast_uint64p(chunk_ptr + chunk_sz + pos2);
+-    h2 = _mm_crc32_u64(h2, v);
+-  }
+-
+-  /* the last two chunks */
+-  v = *cast_uint64p(chunk_ptr + pos1);
+-  h1 = _mm_crc32_u64(h1, v);
+-
+-  v = *cast_uint64p(chunk_ptr + chunk_sz - 8 - pos2);
+-  h2 = _mm_crc32_u64(h2, v);
+-
+-  /* process the trailing part */
+-  h1 = _mm_crc32_u64(h1, *cast_uint64p(str));
+-  h2 = _mm_crc32_u64(h2, *cast_uint64p(str + len - 8));
+-
+-  h1 = _mm_crc32_u32(h1, h2);
+-  return h1;
+-}
+-
+-/* NOTE: the "len" should not be zero */
+-static uint32_t hash_sparse(uint64_t seed, const char* str, size_t len)
+-{
+-  if (len < 4 || len >= 128)
+-    return hash_sparse_1_4(seed, str, len);
+-
+-  if (len >= 16) /* [16, 128) */
+-    return hash_16_128(seed, str, len);
+-
+-  /* [4, 16) */
+-  return hash_sparse_4_16(seed, str, len);
+-}
+-#define ARCH_HASH_SPARSE hash_sparse
+-
+-#if LUAJIT_SECURITY_STRHASH
+-static uint32_t hash_dense(uint64_t seed, uint32_t h, const char* str,
+-			   size_t len)
+-{
+-  uint32_t b = lj_bswap(lj_rol(h ^ (uint32_t)(seed >> 32), 4));
+-
+-  if (len <= 16)
+-    return b;
+-
+-  if (len < 128) /* [16, 128), try with a different seed. */
+-    return hash_16_128(b, str, len);
+-
+-  /* Otherwise, do the slow crc32 randomization for long strings. */
+-  return hash_128_above(b, str, len);
+-}
+-#define ARCH_HASH_DENSE hash_dense
+-#endif
+-
+-#else
+-#undef ARCH_HASH_SPARSE
+-#undef ARCH_HASH_DENSE
+-#endif
+-#endif /*_LJ_STR_HASH_X64_H_*/
+diff --git a/bundle/LuaJIT-2.1-20210510/src/x64/test/Makefile b/bundle/LuaJIT-2.1-20210510/src/x64/test/Makefile
+deleted file mode 100644
+index 4326ab3d..00000000
+--- a/bundle/LuaJIT-2.1-20210510/src/x64/test/Makefile
++++ /dev/null
+@@ -1,47 +0,0 @@
+-.PHONY: default test benchmark
+-
+-default: test benchmark
+-
+-COMMON_OBJ := test_util.o
+-
+-TEST_PROGRAM := ht_test
+-BENCHMARK_PROGRAM := ht_benchmark
+-
+-TEST_PROGRAM_OBJ := $(COMMON_OBJ) test.o
+-BENCHMARK_PROGRAM_OBJ := $(COMMON_OBJ) benchmark.o
+-
+-ifeq ($(WITH_VALGRIND), 1)
+-    VALGRIND := valgrind --leak-check=full
+-else
+-    VALGRIND :=
+-endif
+-
+-CXXFLAGS := -O3 -MD -g -msse4.2 -Wall -I../src -I../../../src
+-
+-%.o: %.cxx
+-	$(CXX) $(CXXFLAGS) -MD -c $<
+-
+-test: $(TEST_PROGRAM)
+-	@echo "some unit test"
+-	$(VALGRIND) ./$(TEST_PROGRAM)
+-
+-	@echo "smoke test"
+-	../../luajit test_str_comp.lua
+-
+-benchmark: $(BENCHMARK_PROGRAM)
+-	# micro benchmark
+-	./$(BENCHMARK_PROGRAM)
+-
+-$(TEST_PROGRAM) : $(TEST_PROGRAM_OBJ)
+-	cat $(TEST_PROGRAM_OBJ:.o=.d) > dep1.txt
+-	$(CXX) $+ $(CXXFLAGS) -lm -o $@
+-
+-$(BENCHMARK_PROGRAM): $(BENCHMARK_PROGRAM_OBJ)
+-	cat $(BENCHMARK_PROGRAM_OBJ:.o=.d) > dep2.txt
+-	$(CXX) $+ $(CXXFLAGS) -o $@
+-
+--include dep1.txt
+--include dep2.txt
+-
+-clean:
+-	-rm -f *.o *.d dep*.txt $(BENCHMARK_PROGRAM) $(TEST_PROGRAM)
+diff --git a/bundle/LuaJIT-2.1-20210510/src/x64/test/benchmark.cxx b/bundle/LuaJIT-2.1-20210510/src/x64/test/benchmark.cxx
+deleted file mode 100644
+index ee247c1c..00000000
+--- a/bundle/LuaJIT-2.1-20210510/src/x64/test/benchmark.cxx
++++ /dev/null
+@@ -1,357 +0,0 @@
+-#include <sys/time.h> // for gettimeofday()
+-extern "C" {
+-#define LUAJIT_SECURITY_STRHASH 1
+-#include "lj_str_hash_x64.h"
+-}
+-#include <string>
+-#include <vector>
+-#include <utility>
+-#include <algorithm>
+-#include "test_util.hpp"
+-#include <stdio.h>
+-#include <math.h>
+-
+-using namespace std;
+-
+-#define lj_rol(x, n) (((x)<<(n)) | ((x)>>(-(int)(n)&(8*sizeof(x)-1))))
+-#define lj_ror(x, n) (((x)<<(-(int)(n)&(8*sizeof(x)-1))) | ((x)>>(n)))
+-
+-const char* separator = "-------------------------------------------";
+-
+-static uint32_t LJ_AINLINE
+-original_hash_sparse(uint64_t seed, const char *str, size_t len)
+-{
+-  uint32_t a, b, h = len ^ seed;
+-  if (len >= 4) {
+-    a = lj_getu32(str); h ^= lj_getu32(str+len-4);
+-    b = lj_getu32(str+(len>>1)-2);
+-    h ^= b; h -= lj_rol(b, 14);
+-    b += lj_getu32(str+(len>>2)-1);
+-    a ^= h; a -= lj_rol(h, 11);
+-    b ^= a; b -= lj_rol(a, 25);
+-    h ^= b; h -= lj_rol(b, 16);
+-  } else {
+-    a = *(const uint8_t *)str;
+-    h ^= *(const uint8_t *)(str+len-1);
+-    b = *(const uint8_t *)(str+(len>>1));
+-    h ^= b; h -= lj_rol(b, 14);
+-  }
+-
+-  a ^= h; a -= lj_rol(h, 11);
+-  b ^= a; b -= lj_rol(a, 25);
+-  h ^= b; h -= lj_rol(b, 16);
+-
+-  return h;
+-}
+-
+-static uint32_t original_hash_dense(uint64_t seed, uint32_t h,
+-				    const char *str, size_t len)
+-{
+-  uint32_t b = lj_bswap(lj_rol(h ^ (uint32_t)(seed >> 32), 4));
+-  if (len > 12) {
+-    uint32_t a = (uint32_t)seed;
+-    const char *pe = str+len-12, *p = pe, *q = str;
+-    do {
+-      a += lj_getu32(p);
+-      b += lj_getu32(p+4);
+-      h += lj_getu32(p+8);
+-      p = q; q += 12;
+-      h ^= b; h -= lj_rol(b, 14);
+-      a ^= h; a -= lj_rol(h, 11);
+-      b ^= a; b -= lj_rol(a, 25);
+-    } while (p < pe);
+-    h ^= b; h -= lj_rol(b, 16);
+-    a ^= h; a -= lj_rol(h, 4);
+-    b ^= a; b -= lj_rol(a, 14);
+-  }
+-  return b;
+-}
+-
+-
+-template<class T> double
+-BenchmarkHashTmpl(T func, uint64_t seed, char* buf, size_t len)
+-{
+-  TestClock timer;
+-  uint32_t h = 0;
+-
+-  timer.start();
+-  for(int i = 1; i < 1000000 * 100; i++) {
+-    // So the buf is not loop invariant, hence the F(...)
+-    buf[i % 4096] = i;
+-    h += func(seed, buf, len) ^ i;
+-  }
+-  timer.stop();
+-
+-  // make h alive
+-  test_printf("%x", h);
+-  return timer.getElapseInSecond();
+-}
+-
+-struct TestFuncWasSparse
+-{
+-  uint32_t operator()(uint64_t seed, const char* buf, uint32_t len) {
+-    return original_hash_sparse(seed, buf, len);
+-  }
+-};
+-
+-struct TestFuncIsSparse
+-{
+-  uint32_t operator()(uint64_t seed, const char* buf, uint32_t len) {
+-    return hash_sparse(seed, buf, len);
+-  }
+-};
+-
+-struct TestFuncWasDense
+-{
+-  uint32_t operator()(uint64_t seed, const char* buf, uint32_t len) {
+-    return original_hash_dense(seed, 42, buf, len);
+-  }
+-};
+-
+-struct TestFuncIsDense
+-{
+-  uint32_t operator()(uint64_t seed, const char* buf, uint32_t len) {
+-    return hash_dense(seed, 42, buf, len);
+-  }
+-};
+-
+-static void
+-benchmarkIndividual(uint64_t seed, char* buf)
+-{
+-  fprintf(stdout,"\n\nCompare performance of particular len (in second)\n");
+-  fprintf(stdout, "%-12s%-8s%-8s%s%-8s%-8s%s\n", "len",
+-	  "was (s)", "is (s)", "diff (s)",
+-	  "was (d)", "is (d)", "diff (d)");
+-  fprintf(stdout, "-------------------------------------------\n");
+-
+-  uint32_t lens[] = {3, 4, 7, 10, 15, 16, 20, 32, 36, 63, 80, 100,
+-                     120, 127, 280, 290, 400};
+-  for (unsigned i = 0; i < sizeof(lens)/sizeof(lens[0]); i++) {
+-    uint32_t len = lens[i];
+-    double e1 = BenchmarkHashTmpl(TestFuncWasSparse(), seed, buf, len);
+-    double e2 = BenchmarkHashTmpl(TestFuncIsSparse(), seed, buf, len);
+-    double e3 = BenchmarkHashTmpl(TestFuncWasDense(), seed, buf, len);
+-    double e4 = BenchmarkHashTmpl(TestFuncIsDense(), seed, buf, len);
+-    fprintf(stdout, "len = %4d: %-7.3lf %-7.3lf %-7.2f%% %-7.3lf %-7.3lf %.2f%%\n",
+-	    len, e1, e2, 100*(e1-e2)/e1, e3, e4, 100*(e3-e4)/e3);
+-  }
+-}
+-
+-template<class T> double
+-BenchmarkChangeLenTmpl(T func, uint64_t seed, char* buf, uint32_t* len_vect,
+-		       uint32_t len_num)
+-{
+-  TestClock timer;
+-  uint32_t h = 0;
+-
+-  timer.start();
+-  for(int i = 1; i < 1000000 * 100; i++) {
+-    for (int j = 0; j < (int)len_num; j++) {
+-      // So the buf is not loop invariant, hence the F(...)
+-      buf[(i + j) % 4096] = i;
+-      h += func(seed, buf, len_vect[j]) ^ j;
+-    }
+-  }
+-  timer.stop();
+-
+-  // make h alive
+-  test_printf("%x", h);
+-  return timer.getElapseInSecond();
+-}
+-
+-// It is to measure the performance when length is changing.
+-// The purpose is to see how balanced branches impact the performance.
+-//
+-static void
+-benchmarkToggleLens(uint64_t seed, char* buf)
+-{
+-  double e1, e2, e3, e4;
+-  fprintf(stdout,"\nChanging length (in second):");
+-  fprintf(stdout, "\n%-24s%-8s%-8s%s%-8s%-8s%s\n%s\n", "len",
+-	  "was (s)", "is (s)", "diff (s)",
+-	  "was (d)", "is (d)", "diff (d)",
+-          separator);
+-
+-  uint32_t lens1[] = {4, 9};
+-  e1 = BenchmarkChangeLenTmpl(TestFuncWasSparse(), seed, buf, lens1, 2);
+-  e2 = BenchmarkChangeLenTmpl(TestFuncIsSparse(), seed, buf, lens1, 2);
+-  e3 = BenchmarkChangeLenTmpl(TestFuncWasDense(), seed, buf, lens1, 2);
+-  e4 = BenchmarkChangeLenTmpl(TestFuncIsDense(), seed, buf, lens1, 2);
+-  fprintf(stdout, "%-20s%-7.3lf %-7.3lf %-7.2f%% %-7.3lf %-7.3lf %.2f%%\n", "4,9",
+-	  e1, e2, 100*(e1-e2)/e1, e3, e4, 100*(e3-e4)/e3);
+-
+-  uint32_t lens2[] = {1, 4, 9};
+-  e1 = BenchmarkChangeLenTmpl(TestFuncWasSparse(), seed, buf, lens2, 3);
+-  e2 = BenchmarkChangeLenTmpl(TestFuncIsSparse(), seed, buf, lens2, 3);
+-  e3 = BenchmarkChangeLenTmpl(TestFuncWasDense(), seed, buf, lens2, 3);
+-  e4 = BenchmarkChangeLenTmpl(TestFuncIsDense(), seed, buf, lens2, 3);
+-  fprintf(stdout, "%-20s%-7.3lf %-7.3lf %-7.2f%% %-7.3lf %-7.3lf %.2f%%\n", "1,4,9",
+-	  e1, e2, 100*(e1-e2)/e1, e3, e4, 100*(e3-e4)/e3);
+-
+-  uint32_t lens3[] = {1, 33, 4, 9};
+-  e1 = BenchmarkChangeLenTmpl(TestFuncWasSparse(), seed, buf, lens3, 4);
+-  e2 = BenchmarkChangeLenTmpl(TestFuncIsSparse(), seed, buf, lens3, 4);
+-  e3 = BenchmarkChangeLenTmpl(TestFuncWasDense(), seed, buf, lens3, 4);
+-  e4 = BenchmarkChangeLenTmpl(TestFuncIsDense(), seed, buf, lens3, 4);
+-  fprintf(stdout, "%-20s%-7.3lf %-7.3lf %-7.2f%% %-7.3lf %-7.3lf %.2f%%\n",
+-	  "1,33,4,9", e1, e2, 100*(e1-e2)/e1, e3, e4, 100*(e3-e4)/e3);
+-
+-  uint32_t lens4[] = {16, 33, 64, 89};
+-  e1 = BenchmarkChangeLenTmpl(TestFuncWasSparse(), seed, buf, lens4, 4);
+-  e2 = BenchmarkChangeLenTmpl(TestFuncIsSparse(), seed, buf, lens4, 4);
+-  e3 = BenchmarkChangeLenTmpl(TestFuncWasDense(), seed, buf, lens4, 4);
+-  e4 = BenchmarkChangeLenTmpl(TestFuncIsDense(), seed, buf, lens4, 4);
+-  fprintf(stdout, "%-20s%-7.3lf %-7.3lf %-7.2f%% %-7.3lf %-7.3lf %.2f%%\n",
+-	  "16,33,64,89", e1, e2, 100*(e1-e2)/e1, e3, e4, 100*(e3-e4)/e3);
+-}
+-
+-static void
+-genRandomString(uint32_t min, uint32_t max,
+-                uint32_t num, vector<string>& result)
+-{
+-  double scale = (max - min) / (RAND_MAX + 1.0);
+-  result.clear();
+-  result.reserve(num);
+-  for (uint32_t i = 0; i < num; i++) {
+-    uint32_t len = (rand() * scale) + min;
+-
+-    char* buf = new char[len];
+-    for (uint32_t l = 0; l < len; l++) {
+-      buf[l] = rand() % 255;
+-    }
+-    result.push_back(string(buf, len));
+-    delete[] buf;
+-  }
+-}
+-
+-// Return the standard deviation of given array of number
+-static double
+-standarDeviation(const vector<uint32_t>& v)
+-{
+-  uint64_t total = 0;
+-  for (vector<uint32_t>::const_iterator i = v.begin(), e = v.end();
+-      i != e; ++i) {
+-    total += *i;
+-  }
+-
+-  double avg = total / (double)v.size();
+-  double sd = 0;
+-
+-  for (vector<uint32_t>::const_iterator i = v.begin(), e = v.end();
+-       i != e; ++i) {
+-    double t = avg - *i;
+-    sd = sd + t*t;
+-  }
+-
+-  return sqrt(sd/v.size());
+-}
+-
+-static vector<double>
+-benchmarkConflictHelper(uint64_t seed, uint32_t bucketNum,
+-			const vector<string>& strs)
+-{
+-  if (bucketNum & (bucketNum - 1)) {
+-    bucketNum = (1L << (log2_floor(bucketNum) + 1));
+-  }
+-  uint32_t mask = bucketNum - 1;
+-
+-  vector<uint32_t> conflictWasSparse(bucketNum);
+-  vector<uint32_t> conflictIsSparse(bucketNum);
+-  vector<uint32_t> conflictWasDense(bucketNum);
+-  vector<uint32_t> conflictIsDense(bucketNum);
+-
+-  conflictWasSparse.resize(bucketNum);
+-  conflictIsSparse.resize(bucketNum);
+-  conflictWasDense.resize(bucketNum);
+-  conflictIsDense.resize(bucketNum);
+-
+-  for (vector<string>::const_iterator i = strs.begin(), e = strs.end();
+-       i != e; ++i) {
+-    uint32_t h1 = original_hash_sparse(seed, i->c_str(), i->size());
+-    uint32_t h2 = hash_sparse(seed, i->c_str(), i->size());
+-    uint32_t h3 = original_hash_dense(seed, h1, i->c_str(), i->size());
+-    uint32_t h4 = hash_dense(seed, h2, i->c_str(), i->size());
+-
+-    conflictWasSparse[h1 & mask]++;
+-    conflictIsSparse[h2 & mask]++;
+-    conflictWasDense[h3 & mask]++;
+-    conflictIsDense[h4 & mask]++;
+-  }
+-
+-#if 0
+-  std::sort(conflictWas.begin(), conflictWas.end(), std::greater<int>());
+-  std::sort(conflictIs.begin(), conflictIs.end(), std::greater<int>());
+-
+-  fprintf(stderr, "%d %d %d %d vs %d %d %d %d\n",
+-          conflictWas[0], conflictWas[1], conflictWas[2], conflictWas[3],
+-          conflictIs[0], conflictIs[1], conflictIs[2], conflictIs[3]);
+-#endif
+-  vector<double> ret(4);
+-  ret[0] = standarDeviation(conflictWasSparse);
+-  ret[1] = standarDeviation(conflictIsSparse);
+-  ret[2] = standarDeviation(conflictWasDense);
+-  ret[3] = standarDeviation(conflictIsDense);
+-
+-  return ret;
+-}
+-
+-static void
+-benchmarkConflict(uint64_t seed)
+-{
+-  float loadFactor[] = { 0.5f, 1.0f, 2.0f, 4.0f, 8.0f };
+-  int bucketNum[] = { 512, 1024, 2048, 4096, 8192, 16384};
+-  int lenRange[][2] = { {1,3}, {4, 15}, {16, 127}, {128, 1024}, {1, 1024}};
+-
+-  fprintf(stdout,
+-          "\nBechmarking conflict (stand deviation of conflict)\n%s\n",
+-          separator);
+-
+-  for (uint32_t k = 0; k < sizeof(lenRange)/sizeof(lenRange[0]); k++) {
+-    fprintf(stdout, "\nlen range from %d - %d\n", lenRange[k][0],
+-            lenRange[k][1]);
+-    fprintf(stdout, "%-10s %-12s %-10s %-10s diff (s) %-10s %-10s diff (d)\n%s\n",
+-	    "bucket", "load-factor", "was (s)", "is (s)", "was (d)", "is (d)",
+-	    separator);
+-    for (uint32_t i = 0; i < sizeof(bucketNum)/sizeof(bucketNum[0]); ++i) {
+-      for (uint32_t j = 0;
+-           j < sizeof(loadFactor)/sizeof(loadFactor[0]);
+-           ++j) {
+-        int strNum = bucketNum[i] * loadFactor[j];
+-        vector<string> strs(strNum);
+-        genRandomString(lenRange[k][0], lenRange[k][1], strNum, strs);
+-
+-        vector<double> p;
+-        p = benchmarkConflictHelper(seed, bucketNum[i], strs);
+-        fprintf(stdout, "%-10d %-12.2f %-10.2f %-10.2f %-10.2f %-10.2f %-10.2f %.2f\n",
+-                bucketNum[i], loadFactor[j],
+-		p[0], p[1], p[0] - p[1],
+-		p[2], p[3], p[2] - p[3]);
+-      }
+-    }
+-  }
+-}
+-
+-static void
+-benchmarkHashFunc()
+-{
+-  srand(time(0));
+-
+-  uint64_t seed = (uint32_t) rand();
+-  char buf[4096];
+-  char c = getpid() % 'a';
+-  for (int i = 0; i < (int)sizeof(buf); i++) {
+-    buf[i] = (c + i) % 255;
+-  }
+-
+-  benchmarkConflict(seed);
+-  benchmarkIndividual(seed, buf);
+-  benchmarkToggleLens(seed, buf);
+-}
+-
+-int
+-main(int argc, char** argv)
+-{
+-  fprintf(stdout, "========================\nMicro benchmark...\n");
+-  benchmarkHashFunc();
+-  return 0;
+-}
+diff --git a/bundle/LuaJIT-2.1-20210510/src/x64/test/test.cpp b/bundle/LuaJIT-2.1-20210510/src/x64/test/test.cpp
+deleted file mode 100644
+index 75f34e9f..00000000
+--- a/bundle/LuaJIT-2.1-20210510/src/x64/test/test.cpp
++++ /dev/null
+@@ -1,77 +0,0 @@
+-#include <stdint.h>
+-#include <stdio.h>
+-#include <stdlib.h>
+-#include <map>
+-#define LUAJIT_SECURITY_STRHASH 1
+-#include "test_util.hpp"
+-#include "lj_str_hash_x64.h"
+-
+-using namespace std;
+-
+-static bool
+-smoke_test()
+-{
+-  fprintf(stdout, "running smoke tests...\n");
+-	char buf[1024];
+-  char c = getpid() % 'a';
+-  srand(time(0));
+-
+-  for (int i = 0; i < (int)sizeof(buf); i++) {
+-    buf[i] = (c + i) % 255;
+-  }
+-
+-  uint32_t lens[] = {3, 4, 5, 7, 8, 16, 17, 24, 25, 32, 33, 127, 128,
+-                     255, 256, 257};
+-  for (unsigned i = 0; i < sizeof(lens)/sizeof(lens[0]); i++) {
+-    string s(buf, lens[i]);
+-    uint32_t h = hash_sparse(rand(), s.c_str(), lens[i]);
+-    test_printf("%d", h);
+-    test_printf("%d", hash_dense(rand(), h, s.c_str(), lens[i]));
+-  }
+-
+-  return true;
+-}
+-
+-static bool
+-verify_log2()
+-{
+-  fprintf(stdout, "verify log2...\n");
+-  bool err = false;
+-  std::map<uint32_t, uint32_t> lm;
+-  lm[0] =(uint32_t)-1;
+-  lm[1] = 0;
+-  lm[2] = 1;
+-  for (int i = 2; i < 31; i++) {
+-    lm[(1<<i) - 2] = i - 1;
+-    lm[(1<<i) - 1] = i - 1;
+-    lm[1<<i] = i;
+-    lm[(1<<i) + 1] = i;
+-  }
+-  lm[(uint32_t)-1] = 31;
+-
+-  for (map<uint32_t, uint32_t>::iterator iter = lm.begin(), iter_e = lm.end();
+-       iter != iter_e; ++iter) {
+-    uint32_t v = (*iter).first;
+-    uint32_t log2_expect = (*iter).second;
+-    uint32_t log2_get = log2_floor(v);
+-    if (log2_expect != log2_get) {
+-      err = true;
+-      fprintf(stderr, "log2(%u) expect %u, get %u\n", v, log2_expect, log2_get);
+-      exit(1);
+-    }
+-  }
+-  return !err;
+-}
+-
+-int
+-main(int argc, char** argv)
+-{
+-  fprintf(stdout, "=======================\nRun unit testing...\n");
+-
+-  ASSERT(smoke_test(), "smoke_test test failed");
+-  ASSERT(verify_log2(), "log2 failed");
+-
+-  fprintf(stdout, TestErrMsgMgr::noError() ? "succ\n\n" : "fail\n\n");
+-
+-  return TestErrMsgMgr::noError() ? 0 : -1;
+-}
+diff --git a/bundle/LuaJIT-2.1-20210510/src/x64/test/test_str_comp.lua b/bundle/LuaJIT-2.1-20210510/src/x64/test/test_str_comp.lua
+deleted file mode 100644
+index 3a5c3e67..00000000
+--- a/bundle/LuaJIT-2.1-20210510/src/x64/test/test_str_comp.lua
++++ /dev/null
+@@ -1,67 +0,0 @@
+---[[
+- Given two content-idental string s1, s2, test if they end up to be the
+- same string object. The purpose of this test is to make sure hash function
+- do not accidently include extraneous bytes before and after the string in
+- question.
+-]]
+-
+-local ffi = require("ffi")
+-local C = ffi.C
+-
+-ffi.cdef[[
+-    void free(void*);
+-    char* malloc(size_t);
+-    void *memset(void*, int, size_t);
+-    void *memcpy(void*, void*, size_t);
+-    long time(void*);
+-    void srandom(unsigned);
+-    long random(void);
+-]]
+-
+-
+-local function test_equal(len_min, len_max)
+-    -- source string is wrapped by 16-byte-junk both before and after the
+-    -- string
+-    local x = C.random()
+-    local l = len_min + x % (len_max - len_min);
+-    local buf_len = tonumber(l + 16 * 2)
+-
+-    local src_buf = C.malloc(buf_len)
+-    for i = 0, buf_len - 1 do
+-        src_buf[i] = C.random() % 255
+-    end
+-
+-    -- dest string is the clone of the source string, but it is sandwiched
+-    -- by different junk bytes
+-    local dest_buf = C.malloc(buf_len)
+-    C.memset(dest_buf, 0x5a, buf_len)
+-
+-    local ofst = 8 + (C.random() % 8)
+-    C.memcpy(dest_buf + ofst, src_buf + 16, l);
+-
+-    local str1 = ffi.string(src_buf + 16, l)
+-    local str2 = ffi.string(dest_buf + ofst, l)
+-
+-    C.free(src_buf)
+-    C.free(dest_buf)
+-
+-    if str1 ~= str2 then
+-        -- Oops, look like hash function mistakenly include extraneous bytes
+-        -- close to the string
+-        return 1 -- wtf
+-    end
+-end
+-
+---local lens = {1, 4, 16, 128, 1024}
+-local lens = {128, 1024}
+-local iter = 1000
+-
+-for i = 1, #lens - 1 do
+-    for j = 1, iter do
+-        if test_equal(lens[i], lens[i+1]) ~= nil then
+-            os.exit(1)
+-        end
+-    end
+-end
+-
+-os.exit(0)
+diff --git a/bundle/LuaJIT-2.1-20210510/src/x64/test/test_util.cxx b/bundle/LuaJIT-2.1-20210510/src/x64/test/test_util.cxx
+deleted file mode 100644
+index 34b7d675..00000000
+--- a/bundle/LuaJIT-2.1-20210510/src/x64/test/test_util.cxx
++++ /dev/null
+@@ -1,21 +0,0 @@
+-#include <stdarg.h>
+-#include <stdio.h>
+-#include "test_util.hpp"
+-
+-using namespace std;
+-
+-std::vector<TestErrMsg> TestErrMsgMgr::_errMsg;
+-
+-void
+-test_printf(const char* format, ...)
+-{
+-  va_list args;
+-  va_start (args, format);
+-
+-  FILE* devNull = fopen("/dev/null", "w");
+-  if (devNull != 0) {
+-    (void)vfprintf (devNull, format, args);
+-  }
+-  fclose(devNull);
+-  va_end (args);
+-}
+diff --git a/bundle/LuaJIT-2.1-20210510/src/x64/test/test_util.d b/bundle/LuaJIT-2.1-20210510/src/x64/test/test_util.d
+deleted file mode 100644
+index e539432e..00000000
+--- a/bundle/LuaJIT-2.1-20210510/src/x64/test/test_util.d
++++ /dev/null
+@@ -1,107 +0,0 @@
+-test_util.o: test_util.cxx /usr/include/stdc-predef.h \
+- /usr/lib/gcc/x86_64-redhat-linux/10/include/stdarg.h \
+- /usr/include/stdio.h /usr/include/bits/libc-header-start.h \
+- /usr/include/features.h /usr/include/sys/cdefs.h \
+- /usr/include/bits/wordsize.h /usr/include/bits/long-double.h \
+- /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h \
+- /usr/lib/gcc/x86_64-redhat-linux/10/include/stddef.h \
+- /usr/include/bits/types.h /usr/include/bits/timesize.h \
+- /usr/include/bits/typesizes.h /usr/include/bits/time64.h \
+- /usr/include/bits/types/__fpos_t.h /usr/include/bits/types/__mbstate_t.h \
+- /usr/include/bits/types/__fpos64_t.h /usr/include/bits/types/__FILE.h \
+- /usr/include/bits/types/FILE.h /usr/include/bits/types/struct_FILE.h \
+- /usr/include/bits/types/cookie_io_functions_t.h \
+- /usr/include/bits/stdio_lim.h /usr/include/bits/sys_errlist.h \
+- /usr/include/bits/stdio.h test_util.hpp /usr/include/sys/time.h \
+- /usr/include/bits/types/time_t.h \
+- /usr/include/bits/types/struct_timeval.h /usr/include/sys/select.h \
+- /usr/include/bits/select.h /usr/include/bits/types/sigset_t.h \
+- /usr/include/bits/types/__sigset_t.h \
+- /usr/include/bits/types/struct_timespec.h /usr/include/bits/endian.h \
+- /usr/include/bits/endianness.h /usr/include/c++/10/string \
+- /usr/include/c++/10/x86_64-redhat-linux/bits/c++config.h \
+- /usr/include/c++/10/x86_64-redhat-linux/bits/os_defines.h \
+- /usr/include/c++/10/x86_64-redhat-linux/bits/cpu_defines.h \
+- /usr/include/c++/10/bits/stringfwd.h \
+- /usr/include/c++/10/bits/memoryfwd.h \
+- /usr/include/c++/10/bits/char_traits.h \
+- /usr/include/c++/10/bits/stl_algobase.h \
+- /usr/include/c++/10/bits/functexcept.h \
+- /usr/include/c++/10/bits/exception_defines.h \
+- /usr/include/c++/10/bits/cpp_type_traits.h \
+- /usr/include/c++/10/ext/type_traits.h \
+- /usr/include/c++/10/ext/numeric_traits.h \
+- /usr/include/c++/10/bits/stl_pair.h /usr/include/c++/10/bits/move.h \
+- /usr/include/c++/10/type_traits \
+- /usr/include/c++/10/bits/stl_iterator_base_types.h \
+- /usr/include/c++/10/bits/stl_iterator_base_funcs.h \
+- /usr/include/c++/10/bits/concept_check.h \
+- /usr/include/c++/10/debug/assertions.h \
+- /usr/include/c++/10/bits/stl_iterator.h \
+- /usr/include/c++/10/bits/ptr_traits.h /usr/include/c++/10/debug/debug.h \
+- /usr/include/c++/10/bits/predefined_ops.h \
+- /usr/include/c++/10/bits/postypes.h /usr/include/c++/10/cwchar \
+- /usr/include/wchar.h /usr/include/bits/floatn.h \
+- /usr/include/bits/floatn-common.h /usr/include/bits/wchar.h \
+- /usr/include/bits/types/wint_t.h /usr/include/bits/types/mbstate_t.h \
+- /usr/include/bits/types/locale_t.h /usr/include/bits/types/__locale_t.h \
+- /usr/include/c++/10/cstdint \
+- /usr/lib/gcc/x86_64-redhat-linux/10/include/stdint.h \
+- /usr/include/stdint.h /usr/include/bits/stdint-intn.h \
+- /usr/include/bits/stdint-uintn.h /usr/include/c++/10/bits/allocator.h \
+- /usr/include/c++/10/x86_64-redhat-linux/bits/c++allocator.h \
+- /usr/include/c++/10/ext/new_allocator.h /usr/include/c++/10/new \
+- /usr/include/c++/10/exception /usr/include/c++/10/bits/exception.h \
+- /usr/include/c++/10/bits/exception_ptr.h \
+- /usr/include/c++/10/bits/cxxabi_init_exception.h \
+- /usr/include/c++/10/typeinfo /usr/include/c++/10/bits/hash_bytes.h \
+- /usr/include/c++/10/bits/nested_exception.h \
+- /usr/include/c++/10/bits/localefwd.h \
+- /usr/include/c++/10/x86_64-redhat-linux/bits/c++locale.h \
+- /usr/include/c++/10/clocale /usr/include/locale.h \
+- /usr/include/bits/locale.h /usr/include/c++/10/iosfwd \
+- /usr/include/c++/10/cctype /usr/include/ctype.h \
+- /usr/include/c++/10/bits/ostream_insert.h \
+- /usr/include/c++/10/bits/cxxabi_forced.h \
+- /usr/include/c++/10/bits/stl_function.h \
+- /usr/include/c++/10/backward/binders.h \
+- /usr/include/c++/10/bits/range_access.h \
+- /usr/include/c++/10/initializer_list \
+- /usr/include/c++/10/bits/iterator_concepts.h \
+- /usr/include/c++/10/concepts /usr/include/c++/10/bits/range_cmp.h \
+- /usr/include/c++/10/bits/int_limits.h \
+- /usr/include/c++/10/bits/basic_string.h \
+- /usr/include/c++/10/ext/atomicity.h \
+- /usr/include/c++/10/x86_64-redhat-linux/bits/gthr.h \
+- /usr/include/c++/10/x86_64-redhat-linux/bits/gthr-default.h \
+- /usr/include/pthread.h /usr/include/sched.h /usr/include/bits/sched.h \
+- /usr/include/bits/types/struct_sched_param.h /usr/include/bits/cpu-set.h \
+- /usr/include/time.h /usr/include/bits/time.h /usr/include/bits/timex.h \
+- /usr/include/bits/types/clock_t.h /usr/include/bits/types/struct_tm.h \
+- /usr/include/bits/types/clockid_t.h /usr/include/bits/types/timer_t.h \
+- /usr/include/bits/types/struct_itimerspec.h \
+- /usr/include/bits/pthreadtypes.h /usr/include/bits/thread-shared-types.h \
+- /usr/include/bits/pthreadtypes-arch.h /usr/include/bits/struct_mutex.h \
+- /usr/include/bits/struct_rwlock.h /usr/include/bits/setjmp.h \
+- /usr/include/c++/10/x86_64-redhat-linux/bits/atomic_word.h \
+- /usr/include/c++/10/ext/alloc_traits.h \
+- /usr/include/c++/10/bits/alloc_traits.h \
+- /usr/include/c++/10/bits/stl_construct.h \
+- /usr/include/c++/10/ext/string_conversions.h /usr/include/c++/10/cstdlib \
+- /usr/include/stdlib.h /usr/include/bits/waitflags.h \
+- /usr/include/bits/waitstatus.h /usr/include/sys/types.h \
+- /usr/include/endian.h /usr/include/bits/byteswap.h \
+- /usr/include/bits/uintn-identity.h /usr/include/alloca.h \
+- /usr/include/bits/stdlib-bsearch.h /usr/include/bits/stdlib-float.h \
+- /usr/include/c++/10/bits/std_abs.h /usr/include/c++/10/cstdio \
+- /usr/include/c++/10/cerrno /usr/include/errno.h \
+- /usr/include/bits/errno.h /usr/include/linux/errno.h \
+- /usr/include/asm/errno.h /usr/include/asm-generic/errno.h \
+- /usr/include/asm-generic/errno-base.h /usr/include/bits/types/error_t.h \
+- /usr/include/c++/10/bits/charconv.h \
+- /usr/include/c++/10/bits/functional_hash.h \
+- /usr/include/c++/10/bits/basic_string.tcc /usr/include/c++/10/vector \
+- /usr/include/c++/10/bits/stl_uninitialized.h \
+- /usr/include/c++/10/bits/stl_vector.h \
+- /usr/include/c++/10/bits/stl_bvector.h \
+- /usr/include/c++/10/bits/vector.tcc
+diff --git a/bundle/LuaJIT-2.1-20210510/src/x64/test/test_util.hpp b/bundle/LuaJIT-2.1-20210510/src/x64/test/test_util.hpp
+deleted file mode 100644
+index 6cc2ea2c..00000000
+--- a/bundle/LuaJIT-2.1-20210510/src/x64/test/test_util.hpp
++++ /dev/null
+@@ -1,57 +0,0 @@
+-#ifndef _TEST_UTIL_HPP_
+-#define _TEST_UTIL_HPP_
+-
+-#include <sys/time.h> // gettimeofday()
+-#include <string>
+-#include <vector>
+-
+-struct TestErrMsg
+-{
+-  const char* fileName;
+-  unsigned lineNo;
+-  std::string errMsg;
+-
+-  TestErrMsg(const char* FN, unsigned LN, const char* Err):
+-             fileName(FN), lineNo(LN), errMsg(Err) {}
+-};
+-
+-class TestErrMsgMgr
+-{
+-public:
+-  static std::vector<TestErrMsg> getError();
+-  static void
+-  addError(const char* fileName, unsigned lineNo, const char* Err) {
+-    _errMsg.push_back(TestErrMsg(fileName, lineNo, Err));
+-  }
+-
+-  static bool noError() {
+-    return _errMsg.empty();
+-  }
+-
+-private:
+-  static std::vector<TestErrMsg> _errMsg;
+-};
+-
+-#define ASSERT(c, e) \
+-  if (!(c)) { TestErrMsgMgr::addError(__FILE__, __LINE__, (e)); }
+-
+-class TestClock
+-{
+-public:
+-  void start() { gettimeofday(&_start, 0); }
+-  void stop() { gettimeofday(&_end, 0); }
+-  double getElapseInSecond() {
+-    return (_end.tv_sec - _start.tv_sec)
+-            + ((long)_end.tv_usec - (long)_start.tv_usec) / 1000000.0;
+-  }
+-
+-private:
+-  struct timeval _start, _end;
+-};
+-
+-// write to /dev/null, the only purpose is to make the data fed to the
+-// function alive.
+-extern void test_printf(const char* format, ...)
+-  __attribute__ ((format (printf, 1, 2)));
+-
+-#endif //_TEST_UTIL_HPP_
+-- 
+2.43.0
+

@@ -1,0 +1,562 @@
+From db0824835876d11bf88b0c8ad9791019ea969ef7 Mon Sep 17 00:00:00 2001
+From: Zhongwei Yao <zhongwei.yao@konghq.com>
+Date: Fri, 31 May 2024 11:39:51 -0700
+Subject: [PATCH] Revert "Detect SSE4.2 support dynamically"
+
+This reverts commit 34b63ba83542cad8675f875c9aa849653ead378d.
+---
+ src/Makefile                                  |  18 +--
+ src/lj_arch.h                                 |   4 -
+ src/lj_init.c                                 |  69 ------------
+ src/lj_jit.h                                  |   1 -
+ src/lj_str.c                                  |  25 ++---
+ src/lj_str.h                                  |  12 --
+ src/ljamalg.c                                 |   1 +
+ .../src/lj_str_hash_x64.h}                    | 106 +++++++-----------
+ src/x64/test/benchmark.cxx                    |  13 +--
+ src/x64/test/test.cpp                         |  10 +-
+ 10 files changed, 64 insertions(+), 195 deletions(-)
+ delete mode 100644 src/lj_init.c
+ rename src/{lj_str_hash.c => x64/src/lj_str_hash_x64.h} (76%)
+
+diff --git a/bundle/LuaJIT-2.1-20210510/src/Makefile b/bundle/LuaJIT-2.1-20210510/src/Makefile
+index 287e4cd2..9fcf9316 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/Makefile
++++ b/bundle/LuaJIT-2.1-20210510/src/Makefile
+@@ -508,16 +508,10 @@
+ 	  lj_ctype.o lj_cdata.o lj_cconv.o lj_ccall.o lj_ccallback.o \
+ 	  lj_carith.o lj_clib.o lj_cparse.o \
+ 	  lj_lib.o lj_alloc.o lib_aux.o \
+-	  $(LJLIB_O) lib_init.o lj_str_hash.o
+-
+-ifeq (x64,$(TARGET_LJARCH))
+-  lj_str_hash-CFLAGS = -msse4.2
+-endif
+-
+-F_CFLAGS = $($(patsubst %.c,%-CFLAGS,$<))
++	  $(LJLIB_O) lib_init.o
+ 
+ LJVMCORE_O= $(LJVM_O) $(LJCORE_O)
+-LJVMCORE_DYNO= $(LJVMCORE_O:.o=_dyn.o) lj_init_dyn.o
++LJVMCORE_DYNO= $(LJVMCORE_O:.o=_dyn.o)
+ 
+ LIB_VMDEF= jit/vmdef.lua
+ LIB_VMDEFP= $(LIB_VMDEF)
+@@ -539,7 +533,7 @@
+ ##############################################################################
+ 
+ # Mixed mode defaults.
+-TARGET_O= lj_init.o $(LUAJIT_A)
++TARGET_O= $(LUAJIT_A)
+ TARGET_T= $(LUAJIT_T) $(LUAJIT_SO)
+ TARGET_DEP= $(LIB_VMDEF) $(LUAJIT_SO)
+ 
+@@ -621,7 +615,7 @@
+ default all:	$(TARGET_T)
+ 
+ amalg:
+-	$(MAKE) all "LJCORE_O=ljamalg.o lj_str_hash.o"
++	$(MAKE) all "LJCORE_O=ljamalg.o"
+ 
+ clean:
+ 	$(HOST_RM) $(ALL_RM)
+@@ -698,8 +692,8 @@
+ 
+ %.o: %.c
+ 	$(E) "CC        $@"
+-	$(Q)$(TARGET_DYNCC) $(TARGET_ACFLAGS) $(F_CFLAGS) -c -o $(@:.o=_dyn.o) $<
+-	$(Q)$(TARGET_CC) $(TARGET_ACFLAGS) $(F_CFLAGS) -c -o $@ $<
++	$(Q)$(TARGET_DYNCC) $(TARGET_ACFLAGS) -c -o $(@:.o=_dyn.o) $<
++	$(Q)$(TARGET_CC) $(TARGET_ACFLAGS) -c -o $@ $<
+ 
+ %.o: %.S
+ 	$(E) "ASM       $@"
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_arch.h b/bundle/LuaJIT-2.1-20210510/src/lj_arch.h
+index 326c7148..1ea68032 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/lj_arch.h
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_arch.h
+@@ -209,10 +209,6 @@
+ #define LJ_TARGET_GC64		1
+ #endif
+ 
+-#ifdef __GNUC__
+-#define LJ_HAS_OPTIMISED_HASH  1
+-#endif
+-
+ #elif LUAJIT_TARGET == LUAJIT_ARCH_ARM
+ 
+ #define LJ_ARCH_NAME		"arm"
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_init.c b/bundle/LuaJIT-2.1-20210510/src/lj_init.c
+deleted file mode 100644
+index a6816e1e..00000000
+--- a/bundle/LuaJIT-2.1-20210510/src/lj_init.c
++++ /dev/null
+@@ -1,69 +0,0 @@
+-#include <stdint.h>
+-#include "lj_arch.h"
+-#include "lj_jit.h"
+-#include "lj_vm.h"
+-#include "lj_str.h"
+-
+-#if LJ_TARGET_ARM && LJ_TARGET_LINUX
+-#include <sys/utsname.h>
+-#endif
+-
+-#ifdef _MSC_VER
+-/*
+-** Append a function pointer to the static constructor table executed by
+-** the C runtime.
+-** Based on https://stackoverflow.com/questions/1113409/attribute-constructor-equivalent-in-vc
+-** see also https://docs.microsoft.com/en-us/cpp/c-runtime-library/crt-initialization.
+-*/
+-#pragma section(".CRT$XCU",read)
+-#define LJ_INITIALIZER2_(f,p) \
+-        static void f(void); \
+-        __declspec(allocate(".CRT$XCU")) void (*f##_)(void) = f; \
+-        __pragma(comment(linker,"/include:" p #f "_")) \
+-        static void f(void)
+-#ifdef _WIN64
+-#define LJ_INITIALIZER(f) LJ_INITIALIZER2_(f,"")
+-#else
+-#define LJ_INITIALIZER(f) LJ_INITIALIZER2_(f,"_")
+-#endif
+-
+-#else
+-#define LJ_INITIALIZER(f) static void __attribute__((constructor)) f(void)
+-#endif
+-
+-
+-#ifdef LJ_HAS_OPTIMISED_HASH
+-static void str_hash_init(uint32_t flags)
+-{
+-  if (flags & JIT_F_SSE4_2)
+-    str_hash_init_sse42 ();
+-}
+-
+-/* CPU detection for interpreter features such as string hash function
+-   selection.  We choose to cherry-pick from lj_cpudetect and not have a single
+-   initializer to make sure that merges with LuaJIT/LuaJIT remain
+-   convenient. */
+-LJ_INITIALIZER(lj_init_cpuflags)
+-{
+-  uint32_t flags = 0;
+-#if LJ_TARGET_X86ORX64
+-
+-  uint32_t vendor[4];
+-  uint32_t features[4];
+-  if (lj_vm_cpuid(0, vendor) && lj_vm_cpuid(1, features)) {
+-    flags |= ((features[2] >> 0)&1) * JIT_F_SSE3;
+-    flags |= ((features[2] >> 19)&1) * JIT_F_SSE4_1;
+-    flags |= ((features[2] >> 20)&1) * JIT_F_SSE4_2;
+-    if (vendor[0] >= 7) {
+-      uint32_t xfeatures[4];
+-      lj_vm_cpuid(7, xfeatures);
+-      flags |= ((xfeatures[1] >> 8)&1) * JIT_F_BMI2;
+-    }
+-  }
+-
+-#endif
+-
+-  /* The reason why we initialized early: select our string hash functions.  */
+-  str_hash_init (flags);
+-}
+-#endif
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_jit.h b/bundle/LuaJIT-2.1-20210510/src/lj_jit.h
+index 8993354f..c834d80a 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/lj_jit.h
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_jit.h
+@@ -22,7 +22,6 @@
+ #define JIT_F_SSE3		(JIT_F_CPU << 0)
+ #define JIT_F_SSE4_1		(JIT_F_CPU << 1)
+ #define JIT_F_BMI2		(JIT_F_CPU << 2)
+-#define JIT_F_SSE4_2		(JIT_F_CPU << 3)
+ 
+ 
+ #define JIT_F_CPUSTRING		"\4SSE3\6SSE4.1\4BMI2"
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_str.c b/bundle/LuaJIT-2.1-20210510/src/lj_str.c
+index d37f3b22..c0e2dfad 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/lj_str.c
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_str.c
+@@ -12,6 +12,7 @@
+ #include "lj_str.h"
+ #include "lj_char.h"
+ #include "lj_prng.h"
++#include "x64/src/lj_str_hash_x64.h"
+ 
+ /* -- String helpers ------------------------------------------------------ */
+ 
+@@ -82,22 +83,9 @@ int lj_str_haspattern(GCstr *s)
+ 
+ /* -- String hashing ------------------------------------------------------ */
+ 
+-#ifdef LJ_HAS_OPTIMISED_HASH
+-static StrHash hash_sparse_def (uint64_t, const char *, MSize);
+-str_sparse_hashfn hash_sparse = hash_sparse_def;
+-#if LUAJIT_SECURITY_STRHASH
+-static StrHash hash_dense_def(uint64_t, StrHash, const char *, MSize);
+-str_dense_hashfn hash_dense = hash_dense_def;
+-#endif
+-#else
+-#define hash_sparse hash_sparse_def
+-#if LUAJIT_SECURITY_STRHASH
+-#define hash_dense hash_dense_def
+-#endif
+-#endif
+-
++#ifndef ARCH_HASH_SPARSE
+ /* Keyed sparse ARX string hash. Constant time. */
+-static StrHash hash_sparse_def(uint64_t seed, const char *str, MSize len)
++static StrHash hash_sparse(uint64_t seed, const char *str, MSize len)
+ {
+   /* Constants taken from lookup3 hash by Bob Jenkins. */
+   StrHash a, b, h = len ^ (StrHash)seed;
+@@ -118,11 +106,12 @@ static StrHash hash_sparse_def(uint64_t seed, const char *str, MSize len)
+   h ^= b; h -= lj_rol(b, 16);
+   return h;
+ }
++#endif
+ 
+-#if LUAJIT_SECURITY_STRHASH
++#if LUAJIT_SECURITY_STRHASH && !defined(ARCH_HASH_DENSE)
+ /* Keyed dense ARX string hash. Linear time. */
+-static LJ_NOINLINE StrHash hash_dense_def(uint64_t seed, StrHash h,
+-					  const char *str, MSize len)
++static LJ_NOINLINE StrHash hash_dense(uint64_t seed, StrHash h,
++				      const char *str, MSize len)
+ {
+   StrHash b = lj_bswap(lj_rol(h ^ (StrHash)(seed >> 32), 4));
+   if (len > 12) {
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_str.h b/bundle/LuaJIT-2.1-20210510/src/lj_str.h
+index f7b9234b..28edb5a5 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/lj_str.h
++++ b/bundle/LuaJIT-2.1-20210510/src/lj_str.h
+@@ -28,16 +28,4 @@ LJ_FUNC void LJ_FASTCALL lj_str_init(lua_State *L);
+ #define lj_str_newlit(L, s)	(lj_str_new(L, "" s, sizeof(s)-1))
+ #define lj_str_size(len)	(sizeof(GCstr) + (((len)+4) & ~(MSize)3))
+ 
+-#ifdef LJ_HAS_OPTIMISED_HASH
+-typedef StrHash (*str_sparse_hashfn) (uint64_t, const char *, MSize);
+-extern str_sparse_hashfn hash_sparse;
+-
+-#if LUAJIT_SECURITY_STRHASH
+-typedef StrHash (*str_dense_hashfn) (uint64_t, StrHash, const char *, MSize);
+-extern str_dense_hashfn hash_dense;
+-#endif
+-
+-extern void str_hash_init_sse42 (void);
+-#endif
+-
+ #endif
+diff --git a/bundle/LuaJIT-2.1-20210510/src/ljamalg.c b/bundle/LuaJIT-2.1-20210510/src/ljamalg.c
+index 36ad2f6d..34922650 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/ljamalg.c
++++ b/bundle/LuaJIT-2.1-20210510/src/ljamalg.c
+@@ -86,3 +86,4 @@
+ #include "lib_jit.c"
+ #include "lib_ffi.c"
+ #include "lib_init.c"
++
+diff --git a/bundle/LuaJIT-2.1-20210510/src/lj_str_hash.c b/bundle/LuaJIT-2.1-20210510/src/x64/src/lj_str_hash_x64.h
+similarity index 76%
+rename from src/lj_str_hash.c
+rename to src/x64/src/lj_str_hash_x64.h
+index 0ee4b5f6..e6538953 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/lj_str_hash.c
++++ b/bundle/LuaJIT-2.1-20210510/src/x64/src/lj_str_hash_x64.h
+@@ -5,48 +5,23 @@
+  * to 128 bytes of given string.
+  */
+ 
+-#include "lj_arch.h"
++#ifndef _LJ_STR_HASH_X64_H_
++#define _LJ_STR_HASH_X64_H_
++
++#if defined(__SSE4_2__) && defined(__x86_64) && defined(__GNUC__)
+ 
+-#if LJ_HAS_OPTIMISED_HASH == 1 || defined(SMOKETEST)
+ #include <stdint.h>
+ #include <sys/types.h>
++#include <unistd.h>
+ #include <time.h>
+ #include <smmintrin.h>
+ 
+-#if defined(_MSC_VER)
+-#include <process.h>
+-/* Silence deprecated name warning */
+-#define getpid _getpid
+-#else
+-#include <unistd.h>
+-#endif
+-
+-#include "lj_def.h"
+-#include "lj_str.h"
+-#include "lj_jit.h"
+-
+-
+-#if defined(_MSC_VER)
+-/*
+- *  MSVC doesn't seem to restrict intrinsics used based on /arch: value set
+- *  while clang-cl will error on it.
+- */
+-#if defined(__clang__) && !defined(__SSE4_2__)
+-#error "This file must be built with /arch:AVX1 or higher"
+-#endif
+-#else
+-#if !defined(__SSE4_2__)
+-#error "This file must be built with -msse4.2"
+-#endif
+-#endif
+-
+-#define lj_crc32_u32 _mm_crc32_u32
+-#define lj_crc32_u64 _mm_crc32_u64
++#include "../../lj_def.h"
+ 
+ #undef LJ_AINLINE
+ #define LJ_AINLINE
+ 
+-#if defined(__MINGW32__) || defined(_MSC_VER)
++#ifdef __MINGW32__
+ #define random()  ((long) rand())
+ #define srandom(seed)  srand(seed)
+ #endif
+@@ -74,7 +49,7 @@ static LJ_AINLINE uint32_t hash_sparse_1_4(uint64_t seed, const char* str,
+   v = (v << 8) | str[len >> 1];
+   v = (v << 8) | str[len - 1];
+   v = (v << 8) | len;
+-  return lj_crc32_u32(0, v);
++  return _mm_crc32_u32(0, v);
+ #else
+   uint32_t a, b, h = len ^ seed;
+ 
+@@ -105,9 +80,9 @@ static LJ_AINLINE uint32_t hash_sparse_4_16(uint64_t seed, const char* str,
+     v2 = *cast_uint32p(str + len - 4);
+   }
+ 
+-  h = lj_crc32_u32(0, len ^ seed);
+-  h = lj_crc32_u64(h, v1);
+-  h = lj_crc32_u64(h, v2);
++  h = _mm_crc32_u32(0, len ^ seed);
++  h = _mm_crc32_u64(h, v1);
++  h = _mm_crc32_u64(h, v2);
+   return h;
+ }
+ 
+@@ -118,18 +93,18 @@ static uint32_t hash_16_128(uint64_t seed, const char* str,
+   uint64_t h1, h2;
+   uint32_t i;
+ 
+-  h1 = lj_crc32_u32(0, len ^ seed);
++  h1 = _mm_crc32_u32(0, len ^ seed);
+   h2 = 0;
+ 
+   for (i = 0; i < len - 16; i += 16) {
+-    h1 += lj_crc32_u64(h1, *cast_uint64p(str + i));
+-    h2 += lj_crc32_u64(h2, *cast_uint64p(str + i + 8));
++    h1 += _mm_crc32_u64(h1, *cast_uint64p(str + i));
++    h2 += _mm_crc32_u64(h2, *cast_uint64p(str + i + 8));
+   };
+ 
+-  h1 = lj_crc32_u64(h1, *cast_uint64p(str + len - 16));
+-  h2 = lj_crc32_u64(h2, *cast_uint64p(str + len - 8));
++  h1 = _mm_crc32_u64(h1, *cast_uint64p(str + len - 16));
++  h2 = _mm_crc32_u64(h2, *cast_uint64p(str + len - 8));
+ 
+-  return lj_crc32_u32(h1, h2);
++  return _mm_crc32_u32(h1, h2);
+ }
+ 
+ /* **************************************************************************
+@@ -172,7 +147,7 @@ static LJ_AINLINE uint32_t log2_floor(uint32_t n)
+ /* This function is to populate `random_pos` such that random_pos[i][*]
+  * contains random value in the range of [2**i, 2**(i+1)).
+  */
+-static void str_hash_init_random(void)
++static void x64_init_random(void)
+ {
+   int i, seed, rml;
+ 
+@@ -183,8 +158,8 @@ static void str_hash_init_random(void)
+   }
+ 
+   /* Init seed */
+-  seed = lj_crc32_u32(0, getpid());
+-  seed = lj_crc32_u32(seed, time(NULL));
++  seed = _mm_crc32_u32(0, getpid());
++  seed = _mm_crc32_u32(seed, time(NULL));
+   srandom(seed);
+ 
+   /* Now start to populate the random_pos[][]. */
+@@ -213,6 +188,11 @@ static void str_hash_init_random(void)
+ }
+ #undef POW2_MASK
+ 
++void __attribute__((constructor)) x64_init_random_constructor()
++{
++    x64_init_random();
++}
++
+ /* Return a pre-computed random number in the range of [1**chunk_sz_order,
+  * 1**(chunk_sz_order+1)). It is "unsafe" in the sense that the return value
+  * may be greater than chunk-size; it is up to the caller to make sure
+@@ -239,7 +219,7 @@ static LJ_NOINLINE uint32_t hash_128_above(uint64_t seed, const char* str,
+   pos1 = get_random_pos_unsafe(chunk_sz_log2, 0);
+   pos2 = get_random_pos_unsafe(chunk_sz_log2, 1);
+ 
+-  h1 = lj_crc32_u32(0, len ^ seed);
++  h1 = _mm_crc32_u32(0, len ^ seed);
+   h2 = 0;
+ 
+   /* loop over 14 chunks, 2 chunks at a time */
+@@ -247,29 +227,29 @@ static LJ_NOINLINE uint32_t hash_128_above(uint64_t seed, const char* str,
+        chunk_ptr += chunk_sz, i++) {
+ 
+     v = *cast_uint64p(chunk_ptr + pos1);
+-    h1 = lj_crc32_u64(h1, v);
++    h1 = _mm_crc32_u64(h1, v);
+ 
+     v = *cast_uint64p(chunk_ptr + chunk_sz + pos2);
+-    h2 = lj_crc32_u64(h2, v);
++    h2 = _mm_crc32_u64(h2, v);
+   }
+ 
+   /* the last two chunks */
+   v = *cast_uint64p(chunk_ptr + pos1);
+-  h1 = lj_crc32_u64(h1, v);
++  h1 = _mm_crc32_u64(h1, v);
+ 
+   v = *cast_uint64p(chunk_ptr + chunk_sz - 8 - pos2);
+-  h2 = lj_crc32_u64(h2, v);
++  h2 = _mm_crc32_u64(h2, v);
+ 
+   /* process the trailing part */
+-  h1 = lj_crc32_u64(h1, *cast_uint64p(str));
+-  h2 = lj_crc32_u64(h2, *cast_uint64p(str + len - 8));
++  h1 = _mm_crc32_u64(h1, *cast_uint64p(str));
++  h2 = _mm_crc32_u64(h2, *cast_uint64p(str + len - 8));
+ 
+-  h1 = lj_crc32_u32(h1, h2);
++  h1 = _mm_crc32_u32(h1, h2);
+   return h1;
+ }
+ 
+ /* NOTE: the "len" should not be zero */
+-static StrHash hash_sparse_sse42(uint64_t seed, const char* str, MSize len)
++static uint32_t hash_sparse(uint64_t seed, const char* str, size_t len)
+ {
+   if (len < 4 || len >= 128)
+     return hash_sparse_1_4(seed, str, len);
+@@ -280,10 +260,11 @@ static StrHash hash_sparse_sse42(uint64_t seed, const char* str, MSize len)
+   /* [4, 16) */
+   return hash_sparse_4_16(seed, str, len);
+ }
++#define ARCH_HASH_SPARSE hash_sparse
+ 
+ #if LUAJIT_SECURITY_STRHASH
+-static StrHash hash_dense_sse42(uint64_t seed, uint32_t h, const char* str,
+-				MSize len)
++static uint32_t hash_dense(uint64_t seed, uint32_t h, const char* str,
++			   size_t len)
+ {
+   uint32_t b = lj_bswap(lj_rol(h ^ (uint32_t)(seed >> 32), 4));
+ 
+@@ -296,14 +277,11 @@ static StrHash hash_dense_sse42(uint64_t seed, uint32_t h, const char* str,
+   /* Otherwise, do the slow crc32 randomization for long strings. */
+   return hash_128_above(b, str, len);
+ }
++#define ARCH_HASH_DENSE hash_dense
+ #endif
+ 
+-void str_hash_init_sse42(void)
+-{
+-  hash_sparse = hash_sparse_sse42;
+-#if LUAJIT_SECURITY_STRHASH
+-  hash_dense = hash_dense_sse42;
+-#endif
+-  str_hash_init_random();
+-}
++#else
++#undef ARCH_HASH_SPARSE
++#undef ARCH_HASH_DENSE
+ #endif
++#endif /*_LJ_STR_HASH_X64_H_*/
+diff --git a/bundle/LuaJIT-2.1-20210510/src/x64/test/benchmark.cxx b/bundle/LuaJIT-2.1-20210510/src/x64/test/benchmark.cxx
+index 1ea8fb6b..ee247c1c 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/x64/test/benchmark.cxx
++++ b/bundle/LuaJIT-2.1-20210510/src/x64/test/benchmark.cxx
+@@ -1,10 +1,7 @@
+ #include <sys/time.h> // for gettimeofday()
+ extern "C" {
+ #define LUAJIT_SECURITY_STRHASH 1
+-#include "../../lj_str.h"
+-str_sparse_hashfn hash_sparse;
+-str_dense_hashfn hash_dense;
+-#include "../../lj_str_hash.c"
++#include "lj_str_hash_x64.h"
+ }
+ #include <string>
+ #include <vector>
+@@ -100,7 +97,7 @@ struct TestFuncWasSparse
+ struct TestFuncIsSparse
+ {
+   uint32_t operator()(uint64_t seed, const char* buf, uint32_t len) {
+-    return hash_sparse_sse42(seed, buf, len);
++    return hash_sparse(seed, buf, len);
+   }
+ };
+ 
+@@ -114,7 +111,7 @@ struct TestFuncWasDense
+ struct TestFuncIsDense
+ {
+   uint32_t operator()(uint64_t seed, const char* buf, uint32_t len) {
+-    return hash_dense_sse42(seed, 42, buf, len);
++    return hash_dense(seed, 42, buf, len);
+   }
+ };
+ 
+@@ -271,9 +268,9 @@ benchmarkConflictHelper(uint64_t seed, uint32_t bucketNum,
+   for (vector<string>::const_iterator i = strs.begin(), e = strs.end();
+        i != e; ++i) {
+     uint32_t h1 = original_hash_sparse(seed, i->c_str(), i->size());
+-    uint32_t h2 = hash_sparse_sse42(seed, i->c_str(), i->size());
++    uint32_t h2 = hash_sparse(seed, i->c_str(), i->size());
+     uint32_t h3 = original_hash_dense(seed, h1, i->c_str(), i->size());
+-    uint32_t h4 = hash_dense_sse42(seed, h2, i->c_str(), i->size());
++    uint32_t h4 = hash_dense(seed, h2, i->c_str(), i->size());
+ 
+     conflictWasSparse[h1 & mask]++;
+     conflictIsSparse[h2 & mask]++;
+diff --git a/bundle/LuaJIT-2.1-20210510/src/x64/test/test.cpp b/bundle/LuaJIT-2.1-20210510/src/x64/test/test.cpp
+index 432c7bbb..75f34e9f 100644
+--- a/bundle/LuaJIT-2.1-20210510/src/x64/test/test.cpp
++++ b/bundle/LuaJIT-2.1-20210510/src/x64/test/test.cpp
+@@ -4,14 +4,10 @@
+ #include <map>
+ #define LUAJIT_SECURITY_STRHASH 1
+ #include "test_util.hpp"
+-#include "../../lj_str.h"
+-str_sparse_hashfn hash_sparse;
+-str_dense_hashfn hash_dense;
+-#include "../../lj_str_hash.c"
++#include "lj_str_hash_x64.h"
+ 
+ using namespace std;
+ 
+-
+ static bool
+ smoke_test()
+ {
+@@ -28,9 +24,9 @@ smoke_test()
+                      255, 256, 257};
+   for (unsigned i = 0; i < sizeof(lens)/sizeof(lens[0]); i++) {
+     string s(buf, lens[i]);
+-    uint32_t h = hash_sparse_sse42(rand(), s.c_str(), lens[i]);
++    uint32_t h = hash_sparse(rand(), s.c_str(), lens[i]);
+     test_printf("%d", h);
+-    test_printf("%d", hash_dense_sse42(rand(), h, s.c_str(), lens[i]));
++    test_printf("%d", hash_dense(rand(), h, s.c_str(), lens[i]));
+   }
+ 
+   return true;
+-- 
+2.43.0
+
