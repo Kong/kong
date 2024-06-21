@@ -575,12 +575,13 @@ local function new_tracer(name, options)
   -- @tparam number sampling_rate the sampling rate to apply for the
   -- probability sampler
   -- @treturn bool sampled value of sampled for this trace
-  function self:get_sampling_decision(parent_should_sample, sampling_rate)
+  function self:get_sampling_decision(parent_should_sample, plugin_sampling_rate)
     local ctx = ngx.ctx
 
     local sampled
     local root_span = ctx.KONG_SPANS and ctx.KONG_SPANS[1]
     local trace_id = tracing_context.get_raw_trace_id(ctx)
+    local sampling_rate = plugin_sampling_rate or kong.configuration.tracing_sampling_rate
 
     if not root_span or root_span.attributes["kong.propagation_only"] then
       -- should not sample if there is no root span or if the root span is
@@ -592,12 +593,7 @@ local function new_tracer(name, options)
       -- and Kong is configured to only do headers propagation
       sampled = parent_should_sample
 
-    elseif not sampling_rate then
-      -- no custom sampling_rate was passed:
-      -- reuse the sampling result of the root_span
-      sampled = root_span.should_sample == true
-
-    else
+    elseif sampling_rate then
       -- use probability-based sampler
       local err
       sampled, err = self.sampler(trace_id, sampling_rate)
