@@ -34,7 +34,8 @@ local function get_token_text(event_t)
   --   - event_t.choices[1].delta.content
   --   - event_t.choices[1].text
   --   - ""
-  return (first_choice.delta or EMPTY).content or first_choice.text or ""
+  local token_text = (first_choice.delta or EMPTY).content or first_choice.text or ""
+  return (type(token_text) == "string" and token_text) or ""
 end
 
 
@@ -334,9 +335,18 @@ function _M:access(conf)
 
   -- copy from the user request if present
   if (not multipart) and (not conf_m.model.name) and (request_table.model) then
-    conf_m.model.name = request_table.model
+    if type(request_table.model) == "string" then
+      conf_m.model.name = request_table.model
+    end
   elseif multipart then
     conf_m.model.name = "NOT_SPECIFIED"
+  end
+
+  -- check that the user isn't trying to override the plugin conf model in the request body
+  if request_table and request_table.model and type(request_table.model) == "string" and request_table.model ~= "" then
+    if request_table.model ~= conf_m.model.name then
+      return bad_request("cannot use own model - must be: " .. conf_m.model.name)
+    end
   end
 
   -- model is stashed in the copied plugin conf, for consistency in transformation functions
@@ -344,7 +354,6 @@ function _M:access(conf)
     return bad_request("model parameter not found in request, nor in gateway configuration")
   end
 
-  -- stash for analytics later
   kong_ctx_plugin.llm_model_requested = conf_m.model.name
 
   -- check the incoming format is the same as the configured LLM format
