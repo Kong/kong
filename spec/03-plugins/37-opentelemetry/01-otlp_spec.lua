@@ -43,6 +43,14 @@ local pb_decode_span = function(data)
   return pb.decode("opentelemetry.proto.trace.v1.Span", data)
 end
 
+local pb_encode_log = function(data)
+  return pb.encode("opentelemetry.proto.logs.v1.LogRecord", data)
+end
+
+local pb_decode_log = function(data)
+  return pb.decode("opentelemetry.proto.logs.v1.LogRecord", data)
+end
+
 describe("Plugin: opentelemetry (otlp)", function()
   local old_ngx_get_phase
 
@@ -66,7 +74,7 @@ describe("Plugin: opentelemetry (otlp)", function()
     ngx.ctx.KONG_SPANS = nil
   end)
 
-  it("encode/decode pb", function ()
+  it("encode/decode pb (traces)", function ()
     local N = 10000
 
     local test_spans = {
@@ -121,6 +129,41 @@ describe("Plugin: opentelemetry (otlp)", function()
       local decoded_span = pb_decode_span(pb_data)
 
       local ok, err = table_compare(pb_span, decoded_span)
+      assert.is_true(ok, err)
+    end
+  end)
+
+  it("encode/decode pb (logs)", function ()
+    local N = 10000
+
+    local test_logs = {}
+
+    for _ = 1, N do
+      local now_ns = time_ns()
+
+      local log = {
+        time_unix_nano = now_ns,
+        observed_time_unix_nano = now_ns,
+        log_level = ngx.INFO,
+        span_id = rand_bytes(8),
+        body = "log line",
+        attributes = {
+          foo = "bar",
+          test = true,
+          version = 0.1,
+        },
+      }
+      insert(test_logs, log)
+    end
+
+    local trace_id = rand_bytes(16)
+    local flags = tonumber(rand_bytes(1))
+    local prepared_logs = otlp.prepare_logs(test_logs, trace_id, flags)
+
+    for _, prepared_log in ipairs(prepared_logs) do
+      local decoded_log = pb_decode_log(pb_encode_log(prepared_log))
+
+      local ok, err = table_compare(prepared_log, decoded_log)
       assert.is_true(ok, err)
     end
   end)
