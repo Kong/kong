@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [3.7.1](#371)
 - [3.7.0](#370)
 - [3.6.1](#361)
 - [3.5.0](#350)
@@ -16,6 +17,16 @@
 ## Unreleased
 
 Individual unreleased changelog entries can be located at [changelog/unreleased](changelog/unreleased). They will be assembled into [CHANGELOG.md](CHANGELOG.md) once released.
+
+## 3.7.1
+### Kong
+
+#### Performance
+
+##### Performance
+
+ - Fixed an inefficiency issue in the Luajit hashing algorithm
+ [#13240](https://github.com/Kong/kong/issues/13240)
 
 ## 3.7.0
 ### Kong
