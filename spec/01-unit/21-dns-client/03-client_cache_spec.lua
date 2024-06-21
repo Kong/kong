@@ -1,4 +1,4 @@
-local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
+local utils = require("kong.tools.utils")
 
 local gettime, sleep
 if ngx then
@@ -189,7 +189,7 @@ describe("[DNS client cache]", function()
           ttl = 0.1,
         }}
       }
-      local mock_copy = cycle_aware_deep_copy(mock_records)
+      local mock_copy = utils.cycle_aware_deep_copy(mock_records)
 
       -- resolve and check whether we got the mocked record
       local result = client.resolve("myhost6")
