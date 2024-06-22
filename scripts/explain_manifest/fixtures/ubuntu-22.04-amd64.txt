@@ -45,57 +45,46 @@
 - Path      : /usr/local/lib/lua/5.1/lfs.so
   Needed    :
   - libc.so.6
-  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/lpeg.so
   Needed    :
   - libc.so.6
-  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/lsyslog.so
   Needed    :
   - libc.so.6
-  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/lua_pack.so
   Needed    :
   - libc.so.6
-  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/lua_system_constants.so
-  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/mime/core.so
   Needed    :
   - libc.so.6
-  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/pb.so
   Needed    :
   - libc.so.6
-  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/socket/core.so
   Needed    :
   - libc.so.6
-  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/socket/serial.so
   Needed    :
   - libc.so.6
-  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/socket/unix.so
   Needed    :
   - libc.so.6
-  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/ssl.so
   Needed    :
   - libssl.so.1.1
   - libcrypto.so.1.1
   - libc.so.6
-  Runpath   : /usr/local/kong/lib
 
 - Path      : /usr/local/lib/lua/5.1/yaml.so
   Needed    :
@@ -128,7 +117,7 @@
   Modules   :
   - lua-kong-nginx-module
   - lua-kong-nginx-module/stream
-  OpenSSL   : OpenSSL 1.1.1w  11 Sep 2023
+  OpenSSL   : OpenSSL 1.1.1o  3 May 2022
   DWARF     : True
   DWARF - ngx_http_request_t related DWARF DIEs: True
 
