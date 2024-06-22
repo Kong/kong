@@ -1,0 +1,4 @@
+message: "Reverted DNS client to original behaviour of ignoring ADDITIONAL SECTION in DNS responses."
+type: bugfix
+scope: Core
+
