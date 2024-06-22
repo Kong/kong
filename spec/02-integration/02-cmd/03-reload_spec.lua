@@ -95,7 +95,7 @@ describe("kong reload #" .. strategy, function()
     helpers.clean_prefix()
   end)
   after_each(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
   it("send a 'reload' signal to a running Nginx master process", function()
@@ -651,7 +651,7 @@ describe("key-auth plugin invalidation on dbless reload #off", function()
 
     finally(function()
       os.remove(yaml_file)
-      helpers.stop_kong(helpers.test_conf.prefix, true)
+      helpers.stop_kong(helpers.test_conf.prefix)
       if admin_client then
         admin_client:close()
       end

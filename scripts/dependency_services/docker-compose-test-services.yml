@@ -1,0 +1,48 @@
+version: '3.5'
+services:
+  postgres:
+    image: postgres
+    ports:
+      - 127.0.0.1::5432
+    volumes:
+      - postgres-data:/var/lib/posgresql/data
+      - ./00-create-pg-db.sh:/docker-entrypoint-initdb.d/00-create-pg-db.sh
+    environment:
+      POSTGRES_DBS: kong,kong_tests
+      POSTGRES_USER: kong
+      POSTGRES_HOST_AUTH_METHOD: trust
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "kong"]
+      interval: 5s
+      timeout: 5s
+      retries: 8
+    restart: on-failure
+    stdin_open: true
+    tty: true
+  redis:
+    image: redis
+    ports:
+      - 127.0.0.1::6379
+      - 127.0.0.1::6380
+    volumes:
+      - redis-data:/data
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+  grpcbin:
+    image: kong/grpcbin
+    ports:
+      - 127.0.0.1::9000
+      - 127.0.0.1::9001
+  zipkin:
+    image: openzipkin/zipkin:2
+    ports:
+      - 127.0.0.1::9411
+    command: --logging.level.zipkin2=DEBUG
+
+volumes:
+  postgres-data:
+  redis-data:

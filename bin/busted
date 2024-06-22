@@ -1,6 +1,12 @@
 #!/usr/bin/env resty
 
-local DEFAULT_RESTY_FLAGS="-c 4096"
+setmetatable(_G, nil)
+
+local pl_path = require("pl.path")
+
+local cert_path = pl_path.abspath("spec/fixtures/kong_spec.crt")
+
+local DEFAULT_RESTY_FLAGS=string.format(" -c 4096 --http-conf 'lua_ssl_trusted_certificate %s;' ", cert_path)
 
 if not os.getenv("KONG_BUSTED_RESPAWNED") then
   -- initial run, so go update the environment
@@ -24,8 +30,9 @@ if not os.getenv("KONG_BUSTED_RESPAWNED") then
 
   -- rebuild the invoked commandline, while inserting extra resty-flags
   local resty_flags = DEFAULT_RESTY_FLAGS
-  local cmd = { "exec" }
-  for i = -1, #arg do
+  local cmd = { "exec", "/usr/bin/env", "resty" }
+  local cmd_prefix_count = #cmd
+  for i = 0, #arg do
     if arg[i]:sub(1, 12) == "RESTY_FLAGS=" then
       resty_flags = arg[i]:sub(13, -1)
 
@@ -35,7 +42,7 @@ if not os.getenv("KONG_BUSTED_RESPAWNED") then
   end
 
   if resty_flags then
-    table.insert(cmd, 3, resty_flags)
+    table.insert(cmd, cmd_prefix_count+1, resty_flags)
   end
 
   table.insert(script, table.concat(cmd, " "))
@@ -44,8 +51,6 @@ if not os.getenv("KONG_BUSTED_RESPAWNED") then
   local _, _, rc = os.execute(table.concat(script, "; "))
   os.exit(rc)
 end
-
-setmetatable(_G, nil)
 
 pcall(require, "luarocks.loader")
 
@@ -56,3 +61,5 @@ require("kong.globalpatches")({
 
 -- Busted command-line runner
 require 'busted.runner'({ standalone = false })
+
+-- vim: set ft=lua ts=2 sw=2 sts=2 et :

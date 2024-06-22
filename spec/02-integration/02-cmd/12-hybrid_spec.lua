@@ -62,6 +62,7 @@ describe("kong hybrid", function()
       local cert = helpers.test_conf.prefix .. "/test4.crt"
       local key = helpers.test_conf.prefix .. "/test4.key"
 
+      local time = ngx.time()
       local ok, _, stdout = helpers.kong_exec("hybrid gen_cert " .. cert .. " " .. key)
       assert.truthy(ok)
       assert.matches("Successfully generated certificate/key pairs, they have been written to: ", stdout, nil, true)
@@ -69,13 +70,14 @@ describe("kong hybrid", function()
       local crt = x509.new(pl_file.read(cert))
 
       assert.equals(crt:get_not_after() - crt:get_not_before(), 3 * 365 * 86400)
-      assert(crt:get_not_before() >= ngx.time())
+      assert(crt:get_not_before() >= time)
     end)
 
     it("gen_cert cert days can be overwritten with -d", function()
       local cert = helpers.test_conf.prefix .. "/test5.crt"
       local key = helpers.test_conf.prefix .. "/test5.key"
 
+      local time = ngx.time()
       local ok, _, stdout = helpers.kong_exec("hybrid gen_cert -d 1 " .. cert .. " " .. key)
       assert.truthy(ok)
       assert.matches("Successfully generated certificate/key pairs, they have been written to: ", stdout, nil, true)
@@ -83,13 +85,14 @@ describe("kong hybrid", function()
       local crt = x509.new(pl_file.read(cert))
 
       assert.equals(crt:get_not_after() - crt:get_not_before(), 86400)
-      assert(crt:get_not_before() >= ngx.time())
+      assert(crt:get_not_before() >= time)
     end)
 
     it("gen_cert cert days can be overwritten with --days", function()
       local cert = helpers.test_conf.prefix .. "/test6.crt"
       local key = helpers.test_conf.prefix .. "/test6.key"
 
+      local time = ngx.time()
       local ok, _, stdout = helpers.kong_exec("hybrid gen_cert --days 2 " .. cert .. " " .. key)
       assert.truthy(ok)
       assert.matches("Successfully generated certificate/key pairs, they have been written to: ", stdout, nil, true)
@@ -97,7 +100,7 @@ describe("kong hybrid", function()
       local crt = x509.new(pl_file.read(cert))
 
       assert.equals(crt:get_not_after() - crt:get_not_before(), 2 * 86400)
-      assert(crt:get_not_before() >= ngx.time())
+      assert(crt:get_not_before() >= time)
     end)
   end)
 end)

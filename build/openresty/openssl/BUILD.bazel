@@ -1,0 +1,5 @@
+load("@kong//build/openresty/openssl:openssl.bzl", "build_openssl")
+
+build_openssl(
+    name = "openssl",
+)

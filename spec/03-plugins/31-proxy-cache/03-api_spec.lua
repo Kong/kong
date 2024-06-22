@@ -64,7 +64,7 @@ describe("Plugin: proxy-cache", function()
   end)
 
   teardown(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
   describe("(schema)", function()

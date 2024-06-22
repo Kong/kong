@@ -19,7 +19,7 @@ on:
 jobs:
   build:
     name: Build dependencies
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     env:
       DOWNLOAD_ROOT: $HOME/download-root
@@ -32,10 +32,10 @@ jobs:
           echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
       - name: Checkout Kong source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Lookup build cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         id: cache-deps
         with:
           path: ${{ env.INSTALL_ROOT }}
@@ -43,7 +43,7 @@ jobs:
 
       - name: Checkout kong-build-tools
         if: steps.cache-deps.outputs.cache-hit != 'true' || github.event.inputs.force_build == 'true'
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: Kong/kong-build-tools
           path: kong-build-tools
@@ -51,7 +51,7 @@ jobs:
 
       - name: Checkout go-pluginserver
         if: steps.cache-deps.outputs.cache-hit != 'true' || github.event.inputs.force_build == 'true'
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: Kong/go-pluginserver
           path: go-pluginserver
@@ -68,9 +68,9 @@ jobs:
         if: steps.cache-deps.outputs.cache-hit != 'true' || github.event.inputs.force_build == 'true'
         run: |
           source .ci/setup_env_github.sh
-          make dev
+          make venv-dev
   autodoc:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [build]
     steps:
       - name: Set environment variables
@@ -80,13 +80,13 @@ jobs:
           echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
       - name: Checkout Kong source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           path: kong
           ref: ${{ github.event.inputs.source_branch }}
 
       - name: Checkout Kong Docs
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: kong/docs.konghq.com
           path: docs.konghq.com
@@ -94,7 +94,7 @@ jobs:
           ref: ${{ github.event.inputs.target_branch }}
 
       - name: Lookup build cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         id: cache-deps
         with:
           path: ${{ env.INSTALL_ROOT }}
@@ -114,7 +114,7 @@ jobs:
         run: |
           cd kong
           output="$(git branch --show-current)"
-          echo "::set-output name=name::$output"
+          echo "name=$output" >> $GITHUB_OUTPUT
 
       - name: Show Docs status
         run: |
@@ -123,7 +123,7 @@ jobs:
           git checkout -b "autodocs-${{ steps.kong-branch.outputs.name }}"
 
       - name: Commit autodoc changes
-        uses: stefanzweifel/git-auto-commit-action@v4
+        uses: stefanzweifel/git-auto-commit-action@v5
         with:
           repository: "./docs.konghq.com"
           commit_message: "Autodocs update"

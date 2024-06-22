@@ -1,0 +1,36 @@
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "cmake")
+load("@kong_bindings//:variables.bzl", "KONG_VAR")
+
+filegroup(
+    name = "all_srcs",
+    srcs = glob(
+        include = ["**"],
+        exclude = ["*.bazel"],
+    ),
+)
+
+# pcre cmake detects cross compile automatically
+cmake(
+    name = "pcre",
+    build_args = [
+        "--",  # <- Pass remaining options to the native tool.
+        "-j" + KONG_VAR["NPROC"],
+    ],
+    cache_entries = {
+        "CMAKE_C_FLAGS": "${CMAKE_C_FLAGS:-} -fPIC",
+        "PCRE_BUILD_PCREGREP": "OFF",  # we don't need the cli binary
+        "PCRE_BUILD_TESTS": "OFF",  # test doesn't compile on aarch64-linux-gnu (cross)
+        "CMAKE_INSTALL_LIBDIR": "lib",  # force distros that uses lib64 (rhel family) to use lib
+    },
+    lib_source = ":all_srcs",
+    out_static_libs = ["libpcre.a"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "pcre_dir",
+    srcs = [
+        ":pcre",
+    ],
+    output_group = "gen_dir",
+)
