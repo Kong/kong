@@ -48,6 +48,7 @@ overrides:
     - libpcre3
     - perl
     - libyaml-0-2
+    - zlib1g-dev
   rpm:
     depends:
     - ca-certificates
