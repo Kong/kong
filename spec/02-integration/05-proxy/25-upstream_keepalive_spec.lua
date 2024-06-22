@@ -120,9 +120,6 @@ describe("#postgres upstream keepalive", function()
     })
     local body = assert.res_status(200, res)
     assert.equal("SNI=one.com", body)
-    assert.errlog()
-          .has
-          .line([[enabled connection keepalive \(pool=[A-F0-9.:]+\|\d+\|one.com]])
 
     local res = assert(proxy_client:send {
       method = "GET",
@@ -133,9 +130,6 @@ describe("#postgres upstream keepalive", function()
     })
     local body = assert.res_status(200, res)
     assert.equal("SNI=two.com", body)
-    assert.errlog()
-          .has
-          .line([[enabled connection keepalive \(pool=[A-F0-9.:]+\|\d+\|two.com]])
   end)
 
 
@@ -163,10 +157,6 @@ describe("#postgres upstream keepalive", function()
     assert.not_equal("", fingerprint_2)
 
     assert.not_equal(fingerprint_1, fingerprint_2)
-
-    assert.errlog()
-              .has
-              .line([[enabled connection keepalive \(pool=[0-9.]+|\d+|[0-9.]+:\d+|[a-f0-9-]+]])
   end)
 
 

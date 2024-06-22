@@ -36,7 +36,6 @@ def common_suites(expect, libxcrypt_no_obsolete_api: bool = False):
     expect("/usr/local/openresty/nginx/sbin/nginx", "nginx should include Kong's patches") \
         .functions \
         .contain("ngx_http_lua_kong_ffi_set_grpc_authority") \
-        .contain("ngx_http_lua_ffi_balancer_enable_keepalive") \
         .contain("ngx_http_lua_kong_ffi_get_full_client_certificate_chain") \
         .contain("ngx_http_lua_kong_ffi_disable_session_reuse") \
         .contain("ngx_http_lua_kong_ffi_set_upstream_client_cert_and_key") \

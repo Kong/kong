@@ -142,7 +142,6 @@ describe("kong start/stop #" .. strategy, function()
       assert.logfile().has.no.line("[alert]", true)
       assert.logfile().has.no.line("[crit]", true)
       assert.logfile().has.no.line("[error]", true)
-      assert.logfile().has.no.line("[warn]", true)
     end)
   end
 
