@@ -98,7 +98,7 @@ msg_test 'resty CLI can be run by kong user'
 assert_exec 0 'kong' "/usr/local/openresty/bin/resty -e 'print(jit.version)'"
 
 msg_test 'resty CLI functions and returns valid version of LuaJIT'
-assert_exec 0 'root' "/usr/local/openresty/bin/resty -e 'print(jit.version)' | grep -E 'LuaJIT\ ([0-9]\.*){3}\-20[0-9]+'"
+assert_exec 0 'root' "/usr/local/openresty/bin/resty -e 'print(jit.version)' | grep -E 'LuaJIT\ ([0-9]\.*){3}\-beta[0-9]+'"
 
 ###
 #
