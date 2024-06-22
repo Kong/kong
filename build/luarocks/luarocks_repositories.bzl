@@ -12,7 +12,7 @@ def luarocks_repositories():
         name = "luarocks",
         build_file = "//build/luarocks:BUILD.luarocks.bazel",
         strip_prefix = "luarocks-" + version,
-        sha256 = "bca6e4ecc02c203e070acdb5f586045d45c078896f6236eb46aa33ccd9b94edb",
+        sha256 = "56ab9b90f5acbc42eb7a94cf482e6c058a63e8a1effdf572b8b2a6323a06d923",
         urls = [
             "https://luarocks.org/releases/luarocks-" + version + ".tar.gz",
         ],
