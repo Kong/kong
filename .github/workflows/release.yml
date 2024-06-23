@@ -618,7 +618,12 @@ jobs:
         CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
         CLOUDSMITH_DRY_RUN: ''
         IGNORE_CLOUDSMITH_FAILURES: ${{ vars.IGNORE_CLOUDSMITH_FAILURES }}
-        USE_CLOUDSMITH: ${{ vars.USE_CLOUDSMITH }}
+        # skip CentOS package uploads for Cloudsmith
+        #
+        # Cloudsmith doesn't support CentOS as a unique distribution
+        # there is only "el" (enterprise linux) distributions that cover all
+        # RedHat-family OSs and that distribution is covered by the rhel label
+        USE_CLOUDSMITH: ${{ ! startsWith(matrix.label, 'centos') || '' && vars.USE_CLOUDSMITH }}
       run: |
         sha256sum bazel-bin/pkg/*
 
