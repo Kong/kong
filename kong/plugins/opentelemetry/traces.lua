@@ -6,6 +6,7 @@ local otel_utils = require "kong.plugins.opentelemetry.utils"
 local clone = require "table.clone"
 
 local to_hex = require "resty.string".to_hex
+local bor = require "bit".bor
 
 local ngx = ngx
 local kong = kong
@@ -41,6 +42,7 @@ local function get_inject_ctx(extracted_ctx, conf)
   local span_id = extracted_ctx.span_id
   local parent_id = extracted_ctx.parent_id
   local parent_sampled = extracted_ctx.should_sample
+  local flags = extracted_ctx.w3c_flags or extracted_ctx.flags
 
   -- Overwrite trace ids
   -- with the value extracted from incoming tracing headers
@@ -83,6 +85,11 @@ local function get_inject_ctx(extracted_ctx, conf)
   extracted_ctx.span_id       = injected_parent_span.span_id
   extracted_ctx.should_sample = injected_parent_span.should_sample
   extracted_ctx.parent_id     = injected_parent_span.parent_id
+
+  flags = flags or 0x00
+  local sampled_flag = sampled and 1 or 0
+  local out_flags = bor(flags,  sampled_flag)
+  tracing_context.set_flags(out_flags)
 
   -- return the injected ctx (data to be injected with outgoing tracing headers)
   return extracted_ctx

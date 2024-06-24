@@ -520,8 +520,6 @@ return function(options)
       client = require("kong.tools.dns")()
     end
 
-    local errlog = require "ngx.errlog"
-
     --- Patch the TCP connect and UDP setpeername methods such that all
     -- connections will be resolved first by the internal DNS resolver.
     -- STEP 1: load code that should not be using the patched versions
@@ -537,7 +535,6 @@ return function(options)
     local old_udp_setpeername
 
     local old_ngx_log = ngx.log
-    local old_raw_log = errlog.raw_log
 
     -- need to do the extra check here: https://github.com/openresty/lua-nginx-module/issues/860
     local function strip_nils(first, second)
@@ -597,14 +594,15 @@ return function(options)
     -- OTel-formatted logs feature
     local dynamic_hook = require "kong.dynamic_hook"
     _G.ngx.log = function(...)
-      dynamic_hook.run_hook("observability_logs", "push", ...)
+      -- stack level = 5:
+      -- 1: maybe_push
+      -- 2: dynamic_hook.pcall
+      -- 3: dynamic_hook.run_hook
+      -- 4: patched function
+      -- 5: caller
+      dynamic_hook.run_hook("observability_logs", "push", 5, ...)
 
       return old_ngx_log(...)
-    end
-    errlog.raw_log = function(...)
-      dynamic_hook.run_hook("observability_logs", "push", ...)
-
-      return old_raw_log(...)
     end
 
     if not options.cli and not options.rbusted then

@@ -53,13 +53,17 @@ local function log(conf)
   local worker_logs = o11y_logs.get_worker_logs()
   local request_logs = o11y_logs.get_request_logs()
 
+  ngx_log(ngx_DEBUG, _log_prefix, "total request_logs in current request: ",
+      #request_logs, " total worker_logs in current request: ", #worker_logs)
+
   if #request_logs + #worker_logs == 0 then
     return
   end
 
   local raw_trace_id = tracing_context.get_raw_trace_id()
+  local flags = tracing_context.get_flags()
   local worker_logs_ready = prepare_logs(worker_logs)
-  local request_logs_ready = prepare_logs(request_logs, raw_trace_id)
+  local request_logs_ready = prepare_logs(request_logs, raw_trace_id, flags)
 
   local queue_conf = clone(Queue.get_plugin_params("opentelemetry", conf))
   queue_conf.name = queue_conf.name .. ":logs"

@@ -100,6 +100,7 @@ local test_data = { {
       ["traceparent"] = fmt("00-%s-%s-01", trace_id_16, span_id_8_1),
     },
     ctx = {
+      w3c_flags = 0x01,
       trace_id = trace_id_16,
       span_id = span_id_8_1,
       should_sample = true,
@@ -114,6 +115,7 @@ local test_data = { {
       ["traceparent"] = fmt("00-%s-%s-09", trace_id_16, span_id_8_1),
     },
     ctx = {
+      w3c_flags = 0x09,
       trace_id = trace_id_16,
       span_id = span_id_8_1,
       should_sample = true,
@@ -128,9 +130,25 @@ local test_data = { {
       ["traceparent"] = fmt("00-%s-%s-08", trace_id_16, span_id_8_1),
     },
     ctx = {
+      w3c_flags = 0x08,
       trace_id = trace_id_16,
       span_id = span_id_8_1,
       should_sample = false,
+      trace_id_original_size = 16,
+    }
+  }, {
+    description = "extraction with hex flags",
+    extract = true,
+    inject = false,
+    trace_id = trace_id_16,
+    headers = {
+      ["traceparent"] = fmt("00-%s-%s-ef", trace_id_16, span_id_8_1),
+    },
+    ctx = {
+      w3c_flags = 0xef,
+      trace_id = trace_id_16,
+      span_id = span_id_8_1,
+      should_sample = true,
       trace_id_original_size = 16,
     }
   }, {
@@ -142,6 +160,7 @@ local test_data = { {
       ["traceparent"] = fmt("00-%s-%s-00", trace_id_16, span_id_8_1),
     },
     ctx = {
+      w3c_flags = 0x00,
       trace_id = trace_id_16,
       span_id = span_id_8_1,
       should_sample = false,

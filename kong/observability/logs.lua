@@ -10,7 +10,6 @@ end
 
 
 local request_id_get = require "kong.tracing.request_id".get
-local get_request = require "resty.core.base".get_request
 local time_ns = require "kong.tools.time".time_ns
 local cycle_aware_deep_copy = require "kong.tools.utils".cycle_aware_deep_copy
 
@@ -45,12 +44,12 @@ end
 
 
 -- needed because table.concat doesn't like booleans
-local function concat_tostring(tab, from)
+local function concat_tostring(tab)
   if #tab == 0 then
     return ""
   end
 
-  for i = from or 1, #tab do
+  for i = 1, #tab do
     logline_buf:put(tostring(tab[i]))
   end
 
@@ -61,14 +60,11 @@ local function concat_tostring(tab, from)
 end
 
 
-local function generate_log_entry(request_scoped, log_level, log_str, debug_info)
+local function generate_log_entry(request_scoped, log_level, log_str, request_id, debug_info)
 
-  local request_id, span_id
+  local span_id
 
   if request_scoped then
-    -- add request_id
-    request_id = request_id_get()
-
     -- add tracing information if tracing is enabled
     local active_span = kong and kong.tracing and kong.tracing.active_span()
     if active_span then
@@ -107,7 +103,7 @@ local function get_request_log_buffer()
 end
 
 
-function _M.maybe_push(...)
+function _M.maybe_push(stack_level, log_level, ...)
   -- !WARNING! no logging here, to avoid infinite recursion.
   --
   -- Check if this log entry is eligible to go in the log buffer.
@@ -115,24 +111,24 @@ function _M.maybe_push(...)
 
   -- no log line
   local args = { ... }
-  if #args < 2 then
+  if #args == 0 then
     return
   end
 
   -- empty log line
-  local log_str = concat_tostring(args, 2)
+  local log_str = concat_tostring(args)
   if log_str == "" then
     return
   end
 
   -- log level too low
-  local log_level = args[1]
   if configured_log_level() < log_level then
     return
   end
 
   local log_buffer, max_logs
-  local request_scoped = get_request() ~= nil
+  local request_id = request_id_get()
+  local request_scoped = request_id ~= nil
 
   -- get the appropriate log buffer depending on the current context
   if request_scoped then
@@ -150,8 +146,8 @@ function _M.maybe_push(...)
   end
 
   -- generate & push log entry
-  local debug_info = debug.getinfo(5, "nSl")
-  local log_entry = generate_log_entry(request_scoped, log_level, log_str, debug_info)
+  local debug_info = debug.getinfo(stack_level, "nSl")
+  local log_entry = generate_log_entry(request_scoped, log_level, log_str, request_id, debug_info)
   table.insert(log_buffer, log_entry)
 end
 

@@ -235,13 +235,14 @@ do
     [ngx.EMERG] =  { 23, "EMERG" },
   }
 
-  prepare_logs = function(logs, trace_id)
+  prepare_logs = function(logs, trace_id, flags)
     for _, log in ipairs(logs) do
       local severity = map_severity[log.log_level]
       log.severity_number = severity and severity[1]
       log.severity_text = severity and severity[2]
       log.log_level = nil
       log.trace_id = trace_id
+      log.flags = flags
       log.attributes = transform_attributes(log.attributes)
       log.body = { string_value = log.body }
     end
