@@ -1131,7 +1131,6 @@ end
 -- @param qname Name to resolve
 -- @param r_opts Options table, see remark about the `qtype` field above and
 -- [OpenResty docs](https://github.com/openresty/lua-resty-dns) for more options.
--- The field `additional_section` will default to `true` instead of `false`.
 -- @param dnsCacheOnly Only check the cache, won't do server lookups
 -- @param try_list (optional) list of tries to add to
 -- @param force_no_sync force noSynchronisation
@@ -1146,10 +1145,8 @@ local function resolve(qname, r_opts, dnsCacheOnly, try_list, force_no_sync)
     for k,v in pairs(r_opts) do opts[k] = v end  -- copy the options table
   end
 
-  -- default the ADDITIONAL SECTION to TRUE
-  if opts.additional_section == nil then
-    opts.additional_section = true
-  end
+  -- avoid parsing ip addresses that do not match the qname
+  opts.additional_section = nil
 
   -- first check for shortname in the cache
   -- we do this only to prevent iterating over the SEARCH directive and
