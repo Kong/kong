@@ -504,14 +504,13 @@ end
 
 
 local function is_valid_regex_pattern(pattern)
-  local regex = pattern:sub(2) -- remove the leading "~"
   -- the value will be interpreted as a regex by the router; but is it a
   -- valid one? Let's dry-run it with the same options as our router.
-  local _, _, err = ngx.re.find("", regex, "aj")
+  local _, _, err = ngx.re.find("", pattern, "a")
   if err then
     return nil,
            string.format("invalid regex: '%s' (PCRE returned: %s)",
-                         regex, err)
+                         pattern, err)
   end
 
   return true
@@ -525,8 +524,9 @@ local function validate_path_with_regexes(path)
     return ok, err, err_code
   end
 
+  -- starts with `~`
   if is_regex_pattern(path) then
-    return is_valid_regex_pattern(path)
+    return is_valid_regex_pattern(path:sub(2))
   end
 
   -- prefix matching. let's check if it's normalized form
@@ -539,12 +539,14 @@ local function validate_path_with_regexes(path)
 end
 
 
-local function validate_regex_or_plain_pattern(pattern)
-  if not is_regex_pattern(pattern) then
+local function validate_header_regex_or_plain_pattern(patterns)
+  -- when there's only 1 pattern and it starts with "~*", it's a regex pattern
+  if #patterns ~= 1 or patterns[1]:sub(1, 2) ~= "~*" then
     return true
   end
 
-  return is_valid_regex_pattern(pattern)
+  -- starts with "~*"
+  return is_valid_regex_pattern(patterns[1]:sub(3))
 end
 
 
@@ -646,9 +648,12 @@ typedefs.headers = Schema.define {
   description = "A map of header names to arrays of header values."
 }
 
-typedefs.regex_or_plain_pattern = Schema.define {
-  type = "string",
-  custom_validator = validate_regex_or_plain_pattern,
+typedefs.header_regex_or_plain_pattern = Schema.define {
+  type = "array",
+  elements = {
+    type = "string",
+  },
+  custom_validator = validate_header_regex_or_plain_pattern,
   description = "A string representing a regex or plain pattern."
 }
 
