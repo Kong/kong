@@ -30,7 +30,6 @@ return {
   name = "ai-prompt-template",
   fields = {
     { protocols = typedefs.protocols_http },
-    { consumer = typedefs.no_consumer },
     { config = {
       type = "record",
       fields = {

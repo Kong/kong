@@ -30,8 +30,6 @@ return {
   name = "ai-proxy",
   fields = {
     { protocols = typedefs.protocols_http },
-    { consumer = typedefs.no_consumer },
-    { service = typedefs.no_service },
     { config = this_schema },
   },
 }
