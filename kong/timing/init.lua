@@ -222,7 +222,7 @@ function _M.init_worker(is_enabled)
   enabled = is_enabled and ngx.config.subsystem == "http"
 
   if enabled then
-    req_dyn_hook.always_enable("timing:auth")
+    req_dyn_hook.enable_by_default("timing:auth")
   end
 end
 
