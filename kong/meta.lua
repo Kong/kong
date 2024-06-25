@@ -1,7 +1,7 @@
 local version = setmetatable({
   major = 2,
   minor = 8,
-  patch = 5,
+  patch = 6,
   --suffix = "rc.1"
 }, {
   -- our Makefile during certain releases adjusts this line. Any changes to
