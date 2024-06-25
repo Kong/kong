@@ -470,7 +470,7 @@ jobs:
     - name: Sign Prerelease Container Images
       id: sign_prerelease_images
       if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' && steps.image.outputs.digest != '' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository)) }}
-      uses: Kong/public-shared-actions/security-actions/sign-docker-image@590c699fe824010d7d563a33cc60500d847d3f9e
+      uses: Kong/public-shared-actions/security-actions/sign-docker-image@a98be0184f832cb24a9dd233f99074e8ba17b488
       with:
         image_digest: ${{ steps.image.outputs.digest }}
         tags: ${{ steps.meta.outputs.tags }}
@@ -587,7 +587,7 @@ jobs:
     - name: Scan AMD64 Image digest
       if: ${{ steps.image_manifest_metadata.outputs.amd64_image_sha != '' }}
       id: sbom_action_amd64
-      uses: Kong/public-shared-actions/security-actions/scan-docker-image@590c699fe824010d7d563a33cc60500d847d3f9e
+      uses: Kong/public-shared-actions/security-actions/scan-docker-image@a98be0184f832cb24a9dd233f99074e8ba17b488
       with:
         asset_prefix: kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-amd64
         image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
@@ -600,7 +600,7 @@ jobs:
     - name: Scan ARM64 Image digest
       if: ${{ steps.image_manifest_metadata.outputs.arm64_image_sha != '' }}
       id: sbom_action_arm64
-      uses: Kong/public-shared-actions/security-actions/scan-docker-image@590c699fe824010d7d563a33cc60500d847d3f9e
+      uses: Kong/public-shared-actions/security-actions/scan-docker-image@a98be0184f832cb24a9dd233f99074e8ba17b488
       with:
         asset_prefix: kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-arm64
         image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
@@ -855,7 +855,7 @@ jobs:
     - name: Sign release images
       id: sign_release_images
       if: ${{ github.event.inputs.official  == 'true' && steps.attestation_metadata.outputs.release_tags != '' && env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' && steps.release_images.outputs.prerelease_image_digest != '' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository)) }}
-      uses: Kong/public-shared-actions/security-actions/sign-docker-image@590c699fe824010d7d563a33cc60500d847d3f9e
+      uses: Kong/public-shared-actions/security-actions/sign-docker-image@a98be0184f832cb24a9dd233f99074e8ba17b488
       with:
         image_digest: ${{ steps.release_images.outputs.prerelease_image_digest }}
         tags: ${{ steps.attestation_metadata.outputs.release_tags }}
