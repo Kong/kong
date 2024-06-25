@@ -359,7 +359,7 @@ local function resolve_query(self, name, qtype, tries)
 
   local start = now()
 
-  local answers, err = r:query(name, { additional_section = true, qtype = qtype })
+  local answers, err = r:query(name, { qtype = qtype })
   r:destroy()
 
   local duration = math_floor((now() - start) * 1000)

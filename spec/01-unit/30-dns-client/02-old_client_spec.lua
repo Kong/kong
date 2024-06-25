@@ -1172,7 +1172,7 @@ describe("[DNS client]", function()
     assert.falsy(answers2.expired)  -- new answers, not expired
   end)
 
-  it("verifies stale_ttl for available records #ttt", function()
+  it("verifies stale_ttl for available records", function()
     local stale_ttl = 0.1
     local ttl = 0.1
     local qname = "realname.test"
@@ -1210,7 +1210,7 @@ describe("[DNS client]", function()
     ngx.sleep(ttl + 0.5 * stale_ttl)
     answers2 = cli:resolve(qname, { qtype = resolver.TYPE_A })
     assert.same(answers2[1].address, "1.1.1.1")
-    assert.are.equal(call_count, 1)
+    assert.are.equal(call_count, 1) -- todo: flakiness
 
     answers2 = assert(cli.cache:get(qname .. ":" .. resolver.TYPE_A))
     assert.is_true(answers2.expired)
@@ -1307,7 +1307,102 @@ describe("[DNS client]", function()
     end)
   end)
 
-end)
 
--- TODO
--- resolver.new set pper name hostname deadloop ?
+  it("disable additional section when querying", function()
+
+    local function build_dns_reply(id, name, ip, ns_ip1, ns_ip2)
+      local function dns_encode_name(name)
+        local parts = {}
+        for part in string.gmatch(name, "[^.]+") do
+          table.insert(parts, string.char(#part) .. part)
+        end
+        table.insert(parts, "\0")
+        return table.concat(parts)
+      end
+
+      local function ip_to_bytes(ip)
+        local bytes = { "\x00\x04" }  -- RDLENGTH:4bytes (ipv4)
+        for octet in string.gmatch(ip, "%d+") do
+          table.insert(bytes, string.char(tonumber(octet)))
+        end
+        return table.concat(bytes)
+      end
+
+      local package = {}
+
+      -- Header
+      package[#package+1] = id
+      package[#package+1] = "\x85\x00"  -- QR, AA, RD
+      package[#package+1] = "\x00\x01\x00\x01\x00\x00\x00\x02"  -- QD:1 AN:1 NS:0 AR:2
+
+      -- Question
+      package[#package+1] = dns_encode_name(name)
+      package[#package+1] = "\x00\x01\x00\x01"  -- QTYPE A; QCLASS IN
+
+      -- Answer
+      package[#package+1] = dns_encode_name(name)
+      package[#package+1] = "\x00\x01\x00\x01\x00\x00\x00\x30"  -- QTYPE:A; QCLASS:IN TTL:48
+      package[#package+1] = ip_to_bytes(ip)
+
+      -- Additional
+      local function add_additional(name, ip)
+        package[#package+1] = dns_encode_name(name)
+        package[#package+1] = "\x00\x01\x00\x01\x00\x00\x00\x30"  -- QTYPE:A; QCLASS:IN TTL:48
+        package[#package+1] = ip_to_bytes(ip)
+      end
+
+      add_additional("ns1." .. name, ns_ip1)
+      add_additional("ns2." .. name, ns_ip2)
+
+      return table.concat(package)
+    end
+
+    local force_enable_additional_section = false
+
+    -- dns client will ignore additional section
+    query_func = function(self, original_query_func, name, options)
+      if options.qtype ~= client.TYPE_A then
+        return { errcode = 5, errstr = "refused" }
+      end
+
+      if force_enable_additional_section then
+        options.additional_section = true
+      end
+
+      self.tcp_sock = nil -- disable TCP query
+
+      local id
+      local sock = assert(self.socks[1])
+      -- hook send to get id
+      local orig_sock_send = sock.send
+      sock.send = function (self, query)
+        id = query[1] ..  query[2]
+        return orig_sock_send(self, query)
+      end
+      -- hook receive to reply raw data
+      sock.receive = function (self, size)
+        return build_dns_reply(id, name, "1.1.1.1", "2.2.2.2", "3.3.3.3")
+      end
+
+      return original_query_func(self, name, options)
+    end
+
+    local name = "additional-section.test"
+
+    -- no additional_section by default
+    local cli = client.new({ nameservers = TEST_NSS })
+    local answers = cli:resolve(name)
+    assert.equal(#answers, 1)
+    assert.same(answers[1].address, "1.1.1.1")
+
+    -- test the buggy scenario
+    force_enable_additional_section = true
+    cli = client.new({ nameservers = TEST_NSS, cache_purge = true })
+    answers = cli:resolve(name)
+    assert.equal(#answers, 3)
+    assert.same(answers[1].address, "1.1.1.1")
+    assert.same(answers[2].address, "2.2.2.2")
+    assert.same(answers[3].address, "3.3.3.3")
+  end)
+
+end)
