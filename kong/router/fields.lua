@@ -161,7 +161,12 @@ else  -- stream
   FIELDS_FUNCS["net.dst.ip"] =
   function(params)
     if not params.dst_ip then
-      if var.kong_tls_passthrough_block == "1" or var.ssl_protocol then
+      if params._need_proxy_protocol == nil then
+        params._need_proxy_protocol = var.kong_tls_passthrough_block == "1" or
+                                      var.ssl_protocol ~= nil
+      end
+
+      if params._need_proxy_protocol then
         params.dst_ip = var.proxy_protocol_server_addr
 
       else
@@ -175,8 +180,14 @@ else  -- stream
   FIELDS_FUNCS["net.dst.port"] =
   function(params, ctx)
     if not params.dst_port then
-      if var.kong_tls_passthrough_block == "1" or var.ssl_protocol then
+      if params._need_proxy_protocol == nil then
+        params._need_proxy_protocol = var.kong_tls_passthrough_block == "1" or
+                                      var.ssl_protocol ~= nil
+      end
+
+      if params._need_proxy_protocol then
         params.dst_port = tonumber(var.proxy_protocol_server_port, 10)
+
       else
         params.dst_port = (ctx or ngx.ctx).host_port or tonumber(var.server_port, 10)
       end
