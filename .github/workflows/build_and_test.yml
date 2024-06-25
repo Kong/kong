@@ -814,7 +814,7 @@ jobs:
         fi
 
     - name: Build Docker Image
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       with:
         file: build/dockerfiles/deb.Dockerfile
         context: .
@@ -826,7 +826,7 @@ jobs:
           EE_PORTS=8002 8445 8003 8446 8004 8447
 
     - name: Build Pongo Docker Image
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       with:
         file: build/dockerfiles/deb.pongo.Dockerfile
         context: .
