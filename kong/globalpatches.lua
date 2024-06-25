@@ -593,7 +593,15 @@ return function(options)
 
     -- OTel-formatted logs feature
     local dynamic_hook = require "kong.dynamic_hook"
+    local log_called = false
     _G.ngx.log = function(...)
+      if log_called then
+        -- avoid recursive loops
+        -- relies on the patch to NOT yield
+        return old_ngx_log(...)
+      end
+      log_called = true
+
       -- stack level = 5:
       -- 1: maybe_push
       -- 2: dynamic_hook.pcall
@@ -601,9 +609,12 @@ return function(options)
       -- 4: patched function
       -- 5: caller
       dynamic_hook.run_hook("observability_logs", "push", 5, ...)
-
+      log_called = false
       return old_ngx_log(...)
     end
+    -- export native ngx.log to be used where
+    -- the patched code must not be executed
+    _G.native_ngx_log = old_ngx_log
 
     if not options.cli and not options.rbusted then
       local timing = require "kong.timing"

@@ -17,7 +17,7 @@ function OpenTelemetryHandler:configure(configs)
     for _, config in ipairs(configs) do
       if config.logs_endpoint then
         dynamic_hook.hook("observability_logs", "push", o11y_logs.maybe_push)
-        dynamic_hook.always_enable("observability_logs")
+        dynamic_hook.enable_by_default("observability_logs")
       end
     end
   end

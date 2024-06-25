@@ -1,6 +1,7 @@
 local workspaces = require "kong.workspaces"
 local constants = require "kong.constants"
 local tablepool = require "tablepool"
+local req_dyn_hook = require "kong.dynamic_hook"
 
 
 local kong = kong
@@ -17,6 +18,7 @@ local fetch_table = tablepool.fetch
 local release_table = tablepool.release
 local uuid = require("kong.tools.uuid").uuid
 local get_updated_monotonic_ms = require("kong.tools.time").get_updated_monotonic_ms
+local req_dyn_hook_disable_by_default = req_dyn_hook.disable_by_default
 
 
 local TTL_ZERO = { ttl = 0 }
@@ -428,6 +430,10 @@ end
 
 
 local function configure(configurable, ctx)
+  -- Disable hooks that are selectively enabled by plugins
+  -- in their :configure handler
+  req_dyn_hook_disable_by_default("observability_logs")
+
   ctx = ctx or ngx.ctx
   local kong_global = require "kong.global"
   for _, plugin in ipairs(CONFIGURABLE_PLUGINS) do

@@ -53,10 +53,7 @@ local function concat_tostring(tab)
     logline_buf:put(tostring(tab[i]))
   end
 
-  local retstr = logline_buf:tostring()
-  logline_buf:reset()
-
-  return retstr
+  return logline_buf:get()
 end
 
 
@@ -104,18 +101,12 @@ end
 
 
 function _M.maybe_push(stack_level, log_level, ...)
-  -- !WARNING! no logging here, to avoid infinite recursion.
-  --
-  -- Check if this log entry is eligible to go in the log buffer.
+  -- WARNING: do not yield in this function, as it is called from ngx.log
+
   -- Early return cases:
 
-  -- no log line
+  -- no (or empty) log line
   local args = { ... }
-  if #args == 0 then
-    return
-  end
-
-  -- empty log line
   local log_str = concat_tostring(args)
   if log_str == "" then
     return
