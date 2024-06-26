@@ -72,6 +72,10 @@ for _, strategy in helpers.each_strategy() do
                                                    protocols = { "http" },
                                                    paths = { "/logs" }}))
 
+      local logs_traces_route = assert(bp.routes:insert({ service = http_srv,
+                                                   protocols = { "http" },
+                                                   paths = { "/traces_logs" }}))
+
       assert(bp.routes:insert({ service = http_srv2,
                                 protocols = { "http" },
                                 paths = { "/no_plugin" }}))
@@ -88,7 +92,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert(bp.plugins:insert({
         name = "opentelemetry",
-        route = logs_route,
+        route = logs_traces_route,
         config = table_merge({
           traces_endpoint = "http://127.0.0.1:" .. HTTP_SERVER_PORT_TRACES,
           logs_endpoint = "http://127.0.0.1:" .. HTTP_SERVER_PORT_LOGS,
@@ -97,6 +101,26 @@ for _, strategy in helpers.each_strategy() do
             max_coalescing_delay = 2,
           },
         }, config)
+      }))
+
+      assert(bp.plugins:insert({
+        name = "opentelemetry",
+        route = logs_route,
+        config = table_merge({
+          logs_endpoint = "http://127.0.0.1:" .. HTTP_SERVER_PORT_LOGS,
+          queue = {
+            max_batch_size = 1000,
+            max_coalescing_delay = 2,
+          },
+        }, config)
+      }))
+
+      assert(bp.plugins:insert({
+        name = "post-function",
+        route = logs_traces_route,
+        config = {
+          access = { post_function_access_body },
+        },
       }))
 
       assert(bp.plugins:insert({
@@ -197,34 +221,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_true(#scope_spans > 0, scope_spans)
       end)
 
-      it("exports valid logs", function ()
-        local trace_id = gen_trace_id()
-
-        local headers, body, request_id
-
-        local cli = helpers.proxy_client(7000, PROXY_PORT)
-        local res = assert(cli:send {
-          method  = "GET",
-          path    = "/logs",
-          headers = {
-            traceparent = fmt("00-%s-0123456789abcdef-01", trace_id),
-          },
-        })
-        assert.res_status(200, res)
-        cli:close()
-
-        request_id = res.headers["X-Kong-Request-Id"]
-
-        helpers.wait_until(function()
-          local lines
-          lines, body, headers = mock_logs()
-
-          return lines
-        end, 10)
-
-        assert.is_string(body)
-        assert.equals(headers["Content-Type"], "application/x-protobuf")
-
+      local function assert_find_valid_logs(body, request_id, trace_id)
         local decoded = assert(pb.decode("opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest", body))
         assert.not_nil(decoded)
 
@@ -258,7 +255,7 @@ for _, strategy in helpers.each_strategy() do
               end
 
               -- ensure the log is from the current request
-              if found_attrs.request_id == request_id then
+              if found_attrs["request.id"] == request_id then
                 local expected_line
                 if logline:sub(-8) == "kong.log" then
                   expected_line = 1
@@ -268,13 +265,15 @@ for _, strategy in helpers.each_strategy() do
 
                 assert.is_number(log_record.time_unix_nano)
                 assert.is_number(log_record.observed_time_unix_nano)
-                assert.is_number(log_record.flags)
-                assert.equals(post_function_access_body, found_attrs.introspection_source)
-                assert.equals(expected_line, found_attrs.introspection_current_line)
+                assert.equals(post_function_access_body, found_attrs["introspection.source"])
+                assert.equals(expected_line, found_attrs["introspection.current.line"])
                 assert.equals(log_record.severity_number, 9)
                 assert.equals(log_record.severity_text, "INFO")
-                assert.equals(trace_id, to_hex(log_record.trace_id))
-                assert.is_string(log_record.span_id)
+                if trace_id then
+                  assert.equals(trace_id, to_hex(log_record.trace_id))
+                  assert.is_string(log_record.span_id)
+                  assert.is_number(log_record.flags)
+                end
 
                 found = found + 1
                 if found == 2 then
@@ -285,6 +284,62 @@ for _, strategy in helpers.each_strategy() do
           end
         end
         assert.equals(2, found)
+      end
+
+      it("exports valid logs with tracing", function ()
+        local trace_id = gen_trace_id()
+
+        local headers, body, request_id
+
+        local cli = helpers.proxy_client(7000, PROXY_PORT)
+        local res = assert(cli:send {
+          method  = "GET",
+          path    = "/traces_logs",
+          headers = {
+            traceparent = fmt("00-%s-0123456789abcdef-01", trace_id),
+          },
+        })
+        assert.res_status(200, res)
+        cli:close()
+
+        request_id = res.headers["X-Kong-Request-Id"]
+
+        helpers.wait_until(function()
+          local lines
+          lines, body, headers = mock_logs()
+
+          return lines
+        end, 10)
+
+        assert.is_string(body)
+        assert.equals(headers["Content-Type"], "application/x-protobuf")
+        assert_find_valid_logs(body, request_id, trace_id)
+      end)
+
+      it("exports valid logs without tracing", function ()
+        local headers, body, request_id
+
+        local cli = helpers.proxy_client(7000, PROXY_PORT)
+        local res = assert(cli:send {
+          method  = "GET",
+          path    = "/logs",
+        })
+        assert.res_status(200, res)
+        cli:close()
+
+        request_id = res.headers["X-Kong-Request-Id"]
+
+        helpers.wait_until(function()
+          local lines
+          lines, body, headers = mock_logs()
+
+          return lines
+        end, 10)
+
+        assert.is_string(body)
+        assert.equals(headers["Content-Type"], "application/x-protobuf")
+
+        assert_find_valid_logs(body, request_id)
       end)
     end)
 
@@ -384,7 +439,7 @@ for _, strategy in helpers.each_strategy() do
         }, { "opentelemetry" }))
 
         setup_instrumentations("all", {}, nil, nil, nil, nil, sampling_rate)
-        mock = helpers.http_mock(HTTP_SERVER_PORT, { timeout = HTTP_MOCK_TIMEOUT })
+        mock = helpers.http_mock(HTTP_SERVER_PORT_TRACES, { timeout = HTTP_MOCK_TIMEOUT })
       end)
 
       lazy_teardown(function()
