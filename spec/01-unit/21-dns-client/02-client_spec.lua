@@ -42,7 +42,7 @@ describe("[DNS client]", function()
     client = require("kong.resty.dns.client")
     resolver = require("resty.dns.resolver")
 
-    -- you can replace this `resolver.query_func` upvalue to spy on resolver query calls.
+    -- you can replace this `resolver.query_func`  to spy on resolver query calls.
     -- This default will just call the original resolver (hence is transparent)
     resolver.query_func = function(self, original_query_func, name, options)
       return original_query_func(self, name, options)
