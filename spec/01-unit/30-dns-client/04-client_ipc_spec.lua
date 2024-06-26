@@ -51,13 +51,13 @@ describe("[dns-client] inter-process communication:",function()
 
     -- wait background tasks to finish
     helpers.wait_until(function()
-      return count_log_lines("stale:broadcast:ipc.test:all") == 1
+      return count_log_lines("stale:broadcast:ipc.test:%-1") == 1
     end, 5)
 
     -- "stale:lru ..." means the progress of the two workers is about the same.
     -- "first:lru ..." means one of the workers is far behind the other.
     helpers.wait_until(function()
-      return count_log_lines(":lru delete:ipc.test:all") == 1
+      return count_log_lines(":lru delete:ipc.test:%-1") == 1
     end, 5)
   end)
 end)

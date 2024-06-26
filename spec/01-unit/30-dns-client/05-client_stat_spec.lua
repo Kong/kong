@@ -85,8 +85,6 @@ describe("[DNS client stats]", function()
         ["_ldaps._tcp.srv.test:33"] = {
           ["query"] = 1,
           ["query_succ"] = 1,
-        },
-        ["_ldaps._tcp.srv.test:all"] = {
           ["miss"] = 1,
           ["runs"] = 1,
         },
@@ -155,17 +153,16 @@ describe("[DNS client stats]", function()
       assert.match("^%d+$", query_last_time)
 
       assert.same({
-        ["hit.test:all"] = {
-          ["hit_lru"] = 1,
-          ["runs"] = 3,
-          ["miss"] = 1,
-          ["hit_shm"] = 1,
-        },
         ["hit.test:1"] = {
           ["query"] = 1,
           ["query_succ"] = 1,
         },
-        ["nameserver_fail.test:all"] = {
+        ["hit.test:-1"] = {
+          ["hit_lru"] = 2,
+          ["miss"] = 1,
+          ["runs"] = 3,
+        },
+        ["nameserver_fail.test:-1"] = {
           ["fail"] = 1,
           ["runs"] = 1,
         },
@@ -173,7 +170,7 @@ describe("[DNS client stats]", function()
           ["query"] = 1,
           ["query_fail_nameserver"] = 1,
         },
-        ["stale.test:all"] = {
+        ["stale.test:-1"] = {
           ["miss"] = 2,
           ["runs"] = 2,
           ["stale"] = 1,
@@ -182,14 +179,18 @@ describe("[DNS client stats]", function()
           ["query"] = 2,
           ["query_succ"] = 2,
         },
+        ["empty_result_not_stale.test:-1"] = {
+          ["miss"] = 2,
+          ["runs"] = 2,
+        },
         ["empty_result_not_stale.test:1"] = {
           ["query"] = 2,
           ["query_fail:empty record received"] = 2,
         },
-        ["empty_result_not_stale.test:all"] = {
-          ["miss"] = 2,
-          ["runs"] = 2,
-        }
+        ["empty_result_not_stale.test:28"] = {
+          ["query"] = 2,
+          ["query_fail:name error"] = 2,
+        },
       }, cli.stats)
     end)
   end)

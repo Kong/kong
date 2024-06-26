@@ -4,6 +4,6 @@ message: >
   - Introduced observable statistics for the new DNS client, and a new Admin API `/status/dns` to retrieve them.
   - Deprecated the `dns_no_sync` option. Multiple DNS queries for the same name will always be synchronized (even across workers). This remains functional with the legacy DNS client library.
   - Deprecated the `dns_not_found_ttl` option. It uses the `dns_error_ttl` option for all error responses. This option remains functional with the legacy DNS client library.
-  - Deprecated `LAST` and `CNAME` values in the `dns_order` option. It's only used to specify supported types, not to decide their priority anymore. The priority of querying types from high to low is: `SRV`, `A`, `AAAA`.
+  - Deprecated the `dns_order` option. By default, SRV, A, and AAAA are supported. Only names in the SRV format (`_service._proto.name`) enable resolving of DNS SRV records.
 type: feature
 scope: Core

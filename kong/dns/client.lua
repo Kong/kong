@@ -24,6 +24,7 @@ local string_lower = string.lower
 local table_insert = table.insert
 local table_isempty = require("table.isempty")
 
+local is_srv = utils.is_srv
 local parse_hosts = utils.parse_hosts
 local ipv6_bracket = utils.ipv6_bracket
 local search_names = utils.search_names
@@ -42,7 +43,7 @@ local DEFAULT_STALE_TTL = 4
 -- long-lasting TTL of 10 years for hosts or static IP addresses in cache settings
 local LONG_LASTING_TTL = 10 * 365 * 24 * 60 * 60
 
-local DEFAULT_ORDER = { "SRV", "A", "AAAA" }
+local DEFAULT_FAMILY = { "SRV", "A", "AAAA" }
 
 local TYPE_SRV = resolver.TYPE_SRV
 local TYPE_A = resolver.TYPE_A
@@ -123,7 +124,6 @@ local init_hosts do
 
     hosts_cache[name .. ":" .. qtype] = answers
     hosts_cache[name .. ":" .. TYPE_A_AAAA] = answers
-    hosts_cache[name .. ":all"] = answers
   end
 
   -- insert hosts into cache
@@ -156,9 +156,7 @@ function _M.new(opts)
 
   local enable_ipv4, enable_ipv6, enable_srv
 
-  opts.order = opts.order or DEFAULT_ORDER
-
-  for i, typstr in ipairs(opts.order) do
+  for i, typstr in ipairs(opts.family or DEFAULT_FAMILY) do
     typstr = typstr:upper()
 
     if typstr == "A" then
@@ -170,8 +168,8 @@ function _M.new(opts)
     elseif typstr == "SRV" then
       enable_srv = true
 
-    elseif typstr ~= "LAST" and typstr ~= "CNAME" then
-      return nil, "Invalid dns record type in order array: " .. typstr
+    else
+      return nil, "Invalid dns type in dns_family array: " .. typstr
     end
   end
 
@@ -422,19 +420,11 @@ local function resolve_query_types(self, name, qtype, tries)
   local answers, err, ttl
 
   -- the specific type
-  if qtype and qtype ~= TYPE_A_AAAA then
+  if qtype ~= TYPE_A_AAAA then
     return resolve_query_names(self, names, qtype, tries)
   end
 
-  -- query SRV for nil type
-  if self.enable_srv and qtype == nil then
-    answers, err, ttl = resolve_query_names(self, names, TYPE_SRV, tries)
-    if not answers or not answers.errcode then
-      return answers, err, ttl
-    end
-  end
-
-  -- query A/AAAA for nil or TYPE_A_AAAA type
+  -- query A or AAAA
   if self.enable_ipv4 then
     answers, err, ttl = resolve_query_names(self, names, TYPE_A, tries)
     if not answers or not answers.errcode then
@@ -444,9 +434,6 @@ local function resolve_query_types(self, name, qtype, tries)
 
   if self.enable_ipv6 then
     answers, err, ttl = resolve_query_names(self, names, TYPE_AAAA, tries)
-    if not answers or not answers.errcode then
-      return answers, err, ttl
-    end
   end
 
   return answers, err, ttl
@@ -507,7 +494,7 @@ local function resolve_callback(self, name, qtype, cache_only, tries)
   end
 
   -- check if this key exists in the hosts file (it maybe evicted from cache)
-  local key = name .. ":" .. (qtype or "all")
+  local key = name .. ":" .. qtype
   local answers = self.hosts_cache[key]
   if answers then
     return answers, nil, answers.ttl
@@ -551,11 +538,14 @@ end
 
 local function resolve_all(self, name, qtype, cache_only, tries, has_timing)
   name = string_lower(name)
-
   tries = setmetatable(tries or {}, TRIES_MT)
 
-  -- key like "example.com:<type>"
-  local key = name .. ":" .. (qtype or "all")
+  if not qtype then
+    qtype = ((self.enable_srv and is_srv(name)) and TYPE_SRV or TYPE_A_AAAA)
+  end
+
+  local key = name .. ":" .. qtype
+
   log(DEBUG, PREFIX, "resolve_all ", key)
 
   stats_init_name(self.stats, key)
@@ -660,7 +650,7 @@ end
 
 -- "_ldap._tcp.example.com:33" -> "_ldap._tcp.example.com:SRV"
 local function format_key(key)
-  local qname, qtype = key:match("([^:]+):(%d+)")  -- match "(qname):(qtype)"
+  local qname, qtype = key:match("([^:]+):(%-?%d+)")  -- match "(qname):(qtype)"
   return qtype and qname .. ":" .. (TYPE_TO_NAME[tonumber(qtype)] or qtype)
                or  key
 end
