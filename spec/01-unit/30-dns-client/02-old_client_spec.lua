@@ -227,15 +227,30 @@ describe("[DNS client]", function()
         assert.same(answers, nil)
         assert.same(err, "dns client error: 101 empty record received")
         assert.same({
-          'host.one.test:33',
-          'host.two.test:33',
-          'host:33',
           'host.one.test:1',
           'host.two.test:1',
           'host:1',
           'host.one.test:28',
           'host.two.test:28',
           'host:28',
+        }, list)
+      end)
+
+      it("works with SRV name", function()
+        writefile(resolv_path, {
+          "nameserver 198.51.100.0",
+          "search one.test two.test",
+          "options ndots:1",
+        })
+
+        local list = hook_query_func_get_list()
+        local cli = assert(client_new())
+        local answers, err = cli:resolve("_imap._tcp.example.test")
+
+        assert.same(answers, nil)
+        assert.same(err, "dns client error: 101 empty record received")
+        assert.same({
+          '_imap._tcp.example.test:33',
         }, list)
       end)
 
@@ -253,7 +268,6 @@ describe("[DNS client]", function()
         assert.same(answers, nil)
         assert.same(err, "dns client error: 101 empty record received")
         assert.same({
-          'host:33',
           'host:1',
           'host:28',
         }, list)
@@ -273,8 +287,6 @@ describe("[DNS client]", function()
         assert.same(answers, nil)
         assert.same(err, "dns client error: 101 empty record received")
         assert.same({
-          'host.local.domain.test:33',
-          'host:33',
           'host.local.domain.test:1',
           'host:1',
           'host.local.domain.test:28',
@@ -296,7 +308,6 @@ describe("[DNS client]", function()
         cli:resolve("host.")
 
         assert.same({
-            'host.:33',
             'host.:1',
             'host.:28',
           }, list)
@@ -314,7 +325,6 @@ describe("[DNS client]", function()
         cli:resolve("host.")
 
         assert.same({
-            'host.:33',
             'host.:1',
             'host.:28',
           }, list)
@@ -332,7 +342,6 @@ describe("[DNS client]", function()
         cli:resolve("host.")
 
         assert.same({
-          'host.:33',
           'host.:1',
           'host.:28',
         }, list)
@@ -348,7 +357,7 @@ describe("[DNS client]", function()
         })
 
         local list = hook_query_func_get_list()
-        local cli = assert(client_new({ order = { "AAAA" } }))  -- IPv6 type
+        local cli = assert(client_new({ family = { "AAAA" } }))  -- IPv6 type
         cli:resolve("host")
 
         assert.same({
@@ -366,7 +375,7 @@ describe("[DNS client]", function()
         })
 
         local list = hook_query_func_get_list()
-        local cli = assert(client_new({ order = { "AAAA" } }))  -- IPv6 type
+        local cli = assert(client_new({ family = { "AAAA" } }))  -- IPv6 type
         cli:resolve("host")
 
         assert.same({
@@ -385,7 +394,7 @@ describe("[DNS client]", function()
         })
 
         local list = hook_query_func_get_list()
-        local cli = assert(client_new({ order = { "AAAA" } }))  -- IPv6 type
+        local cli = assert(client_new({ family = { "AAAA" } }))  -- IPv6 type
         cli:resolve("host.")
         assert.same({
             'host.:28',
@@ -400,7 +409,7 @@ describe("[DNS client]", function()
         })
 
         local list = hook_query_func_get_list()
-        local cli = assert(client_new({ order = { "AAAA" } }))  -- IPv6 type
+        local cli = assert(client_new({ family = { "AAAA" } }))  -- IPv6 type
         cli:resolve("host.")
 
         assert.same({
@@ -421,7 +430,6 @@ describe("[DNS client]", function()
       cli:resolve("local.host")
 
       assert.same({
-        'local.host:33',
         'local.host:1',
         'local.host:28',
       }, list)
@@ -439,15 +447,15 @@ describe("[DNS client]", function()
       })
 
       local list = hook_query_func_get_list()
-      -- perferred IP type: IPv4 (A takes priority in order)
-      local cli = assert(client_new({ order = { "LAST", "SRV", "A", "AAAA" } }))
+      -- perferred IP type: IPv4 (A takes priority in family)
+      local cli = assert(client_new({ family = { "SRV", "A", "AAAA" } }))
       local answers = cli:resolve("host")
       assert.same(answers[1].address, "127.0.0.1")
       assert.same({}, list) -- hit on cache, so no query to the nameserver
 
-      -- perferred IP type: IPv6 (AAAA takes priority in order)
+      -- perferred IP type: IPv6 (AAAA takes priority in family)
       --[[
-      local cli = assert(client_new({ order = { "LAST", "SRV", "AAAA", "A" } }))
+      local cli = assert(client_new({ family = { "SRV", "AAAA", "A" } }))
       local answers = cli:resolve("host")
       assert.same(answers[1].address, "[::1]")
       assert.same({}, list)
@@ -483,7 +491,7 @@ describe("[DNS client]", function()
 
       local query_count = 0
       query_func = function(self, original_query_func, name, options)
-        assert(options.qtype == resolver.TYPE_SRV)
+        assert(options.qtype == resolver.TYPE_A)
         query_count = query_count + 1
         return original_query_func(self, name, options)
       end
@@ -587,7 +595,7 @@ describe("[DNS client]", function()
     local answers2 = assert(cli:resolve(host))
     assert.are.equal(answers, answers2) -- same table from L1 cache
 
-    local ttl, _, value = cli.cache:peek(host .. ":all")
+    local ttl, _, value = cli.cache:peek(host .. ":-1")
     assert.same(answers, value)
     local ttl_diff = answers.ttl - ttl
     assert(math.abs(ttl_diff - wait_time) < 1,
@@ -611,7 +619,7 @@ describe("[DNS client]", function()
 
   it("fetching multiple A answers", function()
     local host = "atest."..TEST_DOMAIN
-    local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf", order = {"LAST", "A"}}))
+    local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf", family = {"A"}}))
     local answers = assert(cli:resolve(host))
     assert.are.equal(#answers, 2)
     assert.are.equal(host, answers[1].name)
@@ -622,7 +630,7 @@ describe("[DNS client]", function()
 
   it("fetching multiple A answers FQDN", function()
     local host = "atest."..TEST_DOMAIN
-    local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf", order = {"LAST", "A"}}))
+    local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf", family = {"A"}}))
     local answers = assert(cli:resolve(host .. "."))
     assert.are.equal(#answers, 2)
     assert.are.equal(host, answers[1].name)
@@ -649,7 +657,7 @@ describe("[DNS client]", function()
     end
 
     assert.same({
-      ["smtp.kong-gateway-testing.link:all"] = {
+      ["smtp.kong-gateway-testing.link:-1"] = {
         miss = 1,
         runs = 1
       },
@@ -657,15 +665,29 @@ describe("[DNS client]", function()
         query = 1,
         query_succ = 1
       },
-      ["smtp.kong-gateway-testing.link:33"] = {
-        query = 1,
-        ["query_fail:empty record received"] = 1 }
-      }, cli.stats)
+    }, cli.stats)
   end)
 
   it("fetching multiple SRV answerss (un-typed)", function()
-    local host = "srvtest."..TEST_DOMAIN
+    local host = "_ldap._tcp.srv.test"
     local typ = resolver.TYPE_SRV
+
+    query_func = function(self, original_query_func, name, options)
+      return {
+        {
+          type = typ, target = "srv.test", port = 8002, weight = 10,
+          priority = 5, class = 1, name = host, ttl = 300,
+        },
+        {
+          type = typ, target = "srv.test", port = 8002, weight = 10,
+          priority = 5, class = 1, name = host, ttl = 300,
+        },
+        {
+          type = typ, target = "srv.test", port = 8002, weight = 10,
+          priority = 5, class = 1, name = host, ttl = 300,
+        }
+      }
+    end
 
     -- un-typed lookup
     local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf"}))
@@ -681,8 +703,29 @@ describe("[DNS client]", function()
 
   it("fetching multiple SRV answerss through CNAME (un-typed)", function()
     writefile(resolv_path, "")  -- search {} empty
-    local host = "cname2srv."..TEST_DOMAIN
+    local host = "_ldap._tcp.cname2srv.test"
     local typ = resolver.TYPE_SRV
+
+    query_func = function(self, original_query_func, name, options)
+      return {
+        {
+          type = resolver.TYPE_CNAME, cname = host, class = 1, name = host,
+          ttl = 300,
+        },
+        {
+          type = typ, target = "srv.test", port = 8002, weight = 10,
+          priority = 5, class = 1, name = host, ttl = 300,
+        },
+        {
+          type = typ, target = "srv.test", port = 8002, weight = 10,
+          priority = 5, class = 1, name = host, ttl = 300,
+        },
+        {
+          type = typ, target = "srv.test", port = 8002, weight = 10,
+          priority = 5, class = 1, name = host, ttl = 300,
+        }
+      }
+    end
 
     -- un-typed lookup
     local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf"}))
@@ -698,14 +741,12 @@ describe("[DNS client]", function()
     end
 
     assert.same({
-      ["cname2srv.kong-gateway-testing.link:all"] = {
+      ["_ldap._tcp.cname2srv.test:33"] = {
         miss = 1,
         runs = 1,
-      },
-      ["cname2srv.kong-gateway-testing.link:33"] = {
         query = 1,
-        query_succ = 1
-      }
+        query_succ = 1,
+      },
     }, cli.stats)
 
     -- check final target
@@ -783,20 +824,20 @@ describe("[DNS client]", function()
     assert.equal("["..address.."]", answers[1].target)
   end)
 
-  it("resolving from the /etc/hosts file; preferred A or AAAA order", function()
+  it("resolving from the /etc/hosts file; preferred A or AAAA family", function()
     writefile(hosts_path, {
       "127.3.2.1 localhost",
       "1::2 localhost",
     })
     local cli = assert(client_new({
       resolv_conf = "/etc/resolv.conf",
-      order = {"SRV", "A", "AAAA"}
+      family = {"SRV", "A", "AAAA"}
     }))
     assert(cli)
 
     local cli = assert(client_new({
       resolv_conf = "/etc/resolv.conf",
-      order = {"SRV", "AAAA", "A"}
+      family = {"SRV", "AAAA", "A"}
     }))
     assert(cli)
   end)
@@ -837,24 +878,24 @@ describe("[DNS client]", function()
       answers.last = nil -- make sure to clean
       local ips = {}
       for _,answers in ipairs(answers) do ips[answers.address] = true end
-      local order = {}
+      local family = {}
       for n = 1, #answers do
         local ip = cli:resolve(host, { return_random = true })
         ips[ip] = nil
-        order[n] = ip
+        family[n] = ip
       end
       -- this table should be empty again
       assert.is_nil(next(ips))
-      -- do again, and check same order
-      for n = 1, #order do
+      -- do again, and check same family
+      for n = 1, #family do
         local ip = cli:resolve(host, { return_random = true })
-        assert.same(order[n], ip)
+        assert.same(family[n], ip)
       end
     end)
 
     it("SRV-answers, round-robin on lowest prio",function()
       local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf" }))
-      local host = "hello.world.test"
+      local host = "_service._proto.hello.world.test"
       local entry = {
         {
           type = resolver.TYPE_SRV,
@@ -888,7 +929,7 @@ describe("[DNS client]", function()
         },
       }
       -- insert in the cache
-      cli.cache:set(entry[1].name .. ":all", {ttl=0}, entry)
+      cli.cache:set(entry[1].name .. ":" .. resolver.TYPE_SRV, {ttl=0}, entry)
 
       local results = {}
       for _ = 1,20 do
@@ -904,7 +945,7 @@ describe("[DNS client]", function()
 
     it("SRV-answers with 1 entry, round-robin",function()
       local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf" }))
-      local host = "hello.world.test"
+      local host = "_service._proto.hello.world.test"
       local entry = {{
         type = resolver.TYPE_SRV,
         target = "1.2.3.4",
@@ -916,7 +957,7 @@ describe("[DNS client]", function()
         ttl = 10,
       }}
       -- insert in the cache
-      cli.cache:set(entry[1].name .. ":all", { ttl=0 }, entry)
+      cli.cache:set(entry[1].name .. ":" .. resolver.TYPE_SRV, { ttl=0 }, entry)
 
       -- repeated lookups, as the first will simply serve the first entry
       -- and the only second will setup the round-robin scheme, this is
@@ -930,7 +971,7 @@ describe("[DNS client]", function()
 
     it("SRV-answers with 0-weight, round-robin",function()
       local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf"}))
-      local host = "hello.world.test"
+      local host = "_service._proto.hello.world.test"
       local entry = {
         {
           type = resolver.TYPE_SRV,
@@ -964,7 +1005,7 @@ describe("[DNS client]", function()
         },
       }
       -- insert in the cache
-      cli.cache:set(entry[1].name .. ":all", { ttl=0 }, entry)
+      cli.cache:set(entry[1].name .. ":" .. resolver.TYPE_SRV, { ttl=0 }, entry)
 
       -- weight 0 will be weight 1, without any reduction in weight
       -- of the other ones.
@@ -994,13 +1035,12 @@ describe("[DNS client]", function()
         weight = 5,
         priority = 20,
         class = 1,
-        name = "srv.answers.test",
+        name = "_service._proto.srv.answers.test",
         ttl = 10,
       }}
       -- insert in the cache
       cli.cache:set(entry_a[1].name..":-1", { ttl = 0 }, entry_a)
-      cli.cache:set(entry_a[1].name..":all", { ttl = 0 }, entry_a)
-      cli.cache:set(entry_srv[1].name..":all", { ttl = 0 }, entry_srv)
+      cli.cache:set(entry_srv[1].name..":33", { ttl = 0 }, entry_srv)
       local ip, port
       local host = "a.answers.test"
       ip, port = cli:resolve_address(host)
@@ -1011,14 +1051,14 @@ describe("[DNS client]", function()
       assert.is_string(ip)
       assert.equal(1234, port)
 
-      host = "srv.answers.test"
+      host = "_service._proto.srv.answers.test"
       ip, port = cli:resolve_address(host)
-      assert.is_string(ip)
       assert.is_number(port)
+      assert.is_string(ip)
 
       ip, port = cli:resolve_address(host, 0)
-      assert.is_string(ip)
       assert.is_number(port)
+      assert.is_string(ip)
       assert.is_not.equal(0, port)
     end)
 
@@ -1026,10 +1066,27 @@ describe("[DNS client]", function()
       local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf"}))
       local ip, port, host
 
-      host = "srvport0."..TEST_DOMAIN
+      query_func = function(self, original_query_func, name, options)
+        if options.qtype ~= resolver.TYPE_SRV then
+          return original_query_func(self, name, options)
+        end
+
+        return {{
+          type = resolver.TYPE_SRV,
+          port = 0,
+          weight = 10,
+          priority = 20,
+          target = "kong-gateway-testing.link",
+          class = 1,
+          name = name,
+          ttl = 300,
+        }}
+      end
+
+      host = "_service._proto.srvport0.test"
       ip, port = cli:resolve_address(host, 10)
-      assert.is_string(ip)
       assert.is_number(port)
+      assert.is_string(ip)
       assert.is_equal(10, port)
 
       ip, port = cli:resolve_address(host)
@@ -1037,7 +1094,79 @@ describe("[DNS client]", function()
       assert.is_nil(port)
     end)
 
-    it("resolving in correct answers-type order",function()
+    it("SRV whole process: SRV -> A #ttt",function()
+      local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf"}))
+      local ip, port, host
+
+      query_func = function(self, original_query_func, name, options)
+        if options.qtype == resolver.TYPE_A then
+          return {{
+            type = resolver.TYPE_A,
+            address = "1.1.1.1",
+            name = name,
+            ttl = 300,
+          }}
+
+        elseif options.qtype == resolver.TYPE_SRV then
+          return {{
+            type = resolver.TYPE_SRV,
+            port = 0,
+            weight = 10,
+            priority = 20,
+            target = "kong-gateway-testing.link",
+            class = 1,
+            name = name,
+            ttl = 300,
+          }}
+
+        else
+          return {}
+        end
+      end
+
+      host = "_service._proto.srv_a.test"
+      ip, port = cli:resolve_address(host)
+      assert.equal(ip, "1.1.1.1")
+      assert.is_nil(port)
+    end)
+
+    it("SRV whole process: SRV -> A failed -> AAAA #ttt",function()
+      local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf"}))
+      local ip, port, host
+
+      query_func = function(self, original_query_func, name, options)
+        if options.qtype == resolver.TYPE_A then
+          return { errcode = 5, errstr = "refused" }
+
+        elseif options.qtype == resolver.TYPE_SRV then
+          return {{
+            type = resolver.TYPE_SRV,
+            port = 0,
+            weight = 10,
+            priority = 20,
+            target = "kong-gateway-testing.link",
+            class = 1,
+            name = name,
+            ttl = 300,
+          }}
+
+        else
+          return {{
+            type = resolver.TYPE_AAAA,
+            address = "::1:2:3:4",
+            name = name,
+            ttl = 300,
+          }}
+        end
+      end
+
+      host = "_service._proto.srv_aaaa.test"
+      ip, port = cli:resolve_address(host)
+      assert.equal(ip, "[::1:2:3:4]")
+      assert.is_nil(port)
+    end)
+
+    it("resolving in correct answers-type family",function()
       local function config(cli)
         -- function to insert 2 answerss in the cache
         local A_entry = {{
@@ -1055,17 +1184,17 @@ describe("[DNS client]", function()
           ttl = 10,
         }}
         -- insert in the cache
-        cli.cache:set(A_entry[1].name..":all", { ttl=0 }, A_entry)
-        cli.cache:set(AAAA_entry[1].name..":all", { ttl=0 }, AAAA_entry)
+        cli.cache:set(A_entry[1].name..":-1", { ttl=0 }, A_entry)
+        cli.cache:set(AAAA_entry[1].name..":-1", { ttl=0 }, AAAA_entry)
       end
 
-      local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf", order = {"AAAA", "A"} }))
+      local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf", family = {"AAAA", "A"} }))
       config(cli)
       local ip, err = cli:resolve_address("hello.world.test")
       assert.same(err, nil)
       assert.equals(ip, "::1")
 
-      local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf", order = {"A", "AAAA"} }))
+      local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf", family = {"A", "AAAA"} }))
       config(cli)
       ip = cli:resolve_address("hello.world.test")
       --assert.equals(ip, "5.6.7.8")

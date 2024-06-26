@@ -7,7 +7,16 @@ for _, strategy in helpers.each_strategy() do
     local client
 
     lazy_setup(function()
-      helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy, {
+        "upstreams",
+        "targets",
+      })
+
+      local upstream = bp.upstreams:insert()
+      bp.targets:insert({
+        upstream = upstream,
+        target = "_service._proto.srv.test",
+      })
 
       assert(helpers.start_kong({
         database = strategy,
@@ -39,7 +48,10 @@ for _, strategy in helpers.each_strategy() do
       assert(type(json.worker.count) == "number")
 
       assert(type(json.stats) == "table")
-      assert(type(json.stats["127.0.0.1:all"].runs) == "number")
+      assert(type(json.stats["127.0.0.1:A/AAAA"].runs) == "number")
+
+      assert(type(json.stats) == "table")
+      assert(type(json.stats["_service._proto.srv.test:SRV"].runs) == "number")
     end)
   end)
 

@@ -172,8 +172,9 @@ function _M.is_fqdn(name, ndots)
 end
 
 
+-- check if it matchs the SRV pattern: _<service>._<proto>.<name>
 function _M.is_srv(name)
-  return name:sub(1, 1) == "_" and name:find("%._") ~= nil
+  return name:match("^_[^._]+%._[^._]+%.[^.]+") ~= nil
 end
 
 

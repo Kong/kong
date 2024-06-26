@@ -147,7 +147,7 @@ describe("[DNS client cache]", function()
       }
 
       local answers = cli:resolve("myhost1")
-      assert.equal(answers, cli.cache:get("myhost1:all"))
+      assert.equal(answers, cli.cache:get("myhost1:-1"))
     end)
 
     it("are stored in cache with type", function()
@@ -167,7 +167,7 @@ describe("[DNS client cache]", function()
 
     it("are resolved from cache without type", function()
       mock_records = {}
-      cli.cache:set("myhost3:all", {ttl=30+4}, {{
+      cli.cache:set("myhost3:-1", {ttl=30+4}, {{
           type = resolver.TYPE_A,
           address = "1.2.3.4",
           class = 1,
@@ -179,7 +179,7 @@ describe("[DNS client cache]", function()
       })
 
       local answers = cli:resolve("myhost3")
-      assert.same(answers, cli.cache:get("myhost3:all"))
+      assert.same(answers, cli.cache:get("myhost3:-1"))
     end)
 
     it("are resolved from cache with type", function()
@@ -459,7 +459,7 @@ describe("[DNS client cache]", function()
       assert.equal("127.0.0.1", record[1].address)
       ngx.sleep(0.2) -- must be > valid_ttl + stale_ttl
 
-      record = cli.cache:get("myname.lan:all")
+      record = cli.cache:get("myname.lan:-1")
       assert.equal("127.0.0.1", record[1].address)
     end)
   end)

@@ -26,6 +26,36 @@ describe("[utils]", function ()
     end)
   end)
 
+  describe("is_srv(name)", function ()
+    local test_domains = {
+      ["_imaps._tcp.example.test"] = true,
+      ["_http._tcp.example.test"] = true,
+      ["_imaps._udp.example.test"] = true,
+      ["_http._udp.example.test"] = true,
+      ["_ldap._udp.example.test"] = true,
+      ["_ldap._udp.example"] = true,
+      ["_ldap._udp."] = false,
+      ["_ldap._udp"] = false,
+      ["_ldap._udp._example.test"] = true,
+      ["_ldap._udp._example"] = true,
+      ["_ldap._udp._"] = true,
+      ["_imaps.tcp.example.test"] = false,
+      ["imaps._tcp.example.test"] = false,
+      ["imaps.tcp.example.test"] = false,
+      ["_._tcp.example.test"] = false,
+      ["_imaps._.example.test"] = false,
+      ["_._.example.test"] = false,
+      ["_..example.test"] = false,
+      ["._.example.test"] = false,
+      ["www.example.test"] = false,
+      ["localhost"] = false,
+    }
+
+    for k,v in pairs(test_domains) do
+      assert.equal(utils.is_srv(k), v, "checking " .. k .. ", " .. tostring(v))
+    end
+  end)
+
   describe("search_names()", function ()
     it("empty resolv, not apply the search list", function ()
       local resolv = {}
