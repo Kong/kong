@@ -1,0 +1,3 @@
+message: "request-size-limiting check the file size when the request body buffered to a temporary file."
+type: bugfix
+scope: "Plugin"
