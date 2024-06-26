@@ -28,25 +28,32 @@ end
 --
 
 local log_entry_keys = {
-  TOKENS_CONTAINER = "usage",
+  USAGE_CONTAINER = "usage",
   META_CONTAINER = "meta",
   PAYLOAD_CONTAINER = "payload",
+  CACHE_CONTAINER = "cache",
 
   -- payload keys
   REQUEST_BODY = "request",
   RESPONSE_BODY = "response",
 
   -- meta keys
+  PLUGIN_ID = "plugin_id",
+  PROVIDER_NAME = "provider_name",
   REQUEST_MODEL = "request_model",
   RESPONSE_MODEL = "response_model",
-  PROVIDER_NAME = "provider_name",
-  PLUGIN_ID = "plugin_id",
 
   -- usage keys
-  PROCESSING_TIME = "processing_time",
-  PROMPT_TOKEN = "prompt_token",
-  COMPLETION_TOKEN = "completion_token",
+  PROMPT_TOKENS = "prompt_tokens",
+  COMPLETION_TOKENS = "completion_tokens",
   TOTAL_TOKENS = "total_tokens",
+  COST = "cost",
+
+  -- cache keys
+  VECTOR_DB = "vector_db",
+  EMBEDDINGS_PROVIDER = "embeddings_provider",
+  EMBEDDINGS_MODEL = "embeddings_model",
+  CACHE_STATUS = "cache_status",
 }
 
 local openai_override = os.getenv("OPENAI_TEST_PORT")
@@ -494,26 +501,18 @@ function _M.post_request(conf, response_object)
     request_analytics = {}
   end
 
-  -- check if we already have analytics for this provider
-  local request_analytics_plugin = request_analytics[plugin_name]
-
-  -- create a new structure if not
-  if not request_analytics_plugin then
-    request_analytics_plugin = {
-      [log_entry_keys.META_CONTAINER] = {},
-      [log_entry_keys.TOKENS_CONTAINER] = {
-        [log_entry_keys.PROMPT_TOKEN] = 0,
-        [log_entry_keys.COMPLETION_TOKEN] = 0,
-        [log_entry_keys.TOTAL_TOKENS] = 0,
-      },
-    }
-  end
+  -- create a new analytics structure for this plugin
+  local request_analytics_plugin = {
+    [log_entry_keys.META_CONTAINER] = {},
+    [log_entry_keys.USAGE_CONTAINER] = {},
+    [log_entry_keys.CACHE_CONTAINER] = {},
+  }
 
   -- Set the model, response, and provider names in the current try context
+  request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.PLUGIN_ID] = conf.__plugin_id
+  request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.PROVIDER_NAME] = provider_name
   request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.REQUEST_MODEL] = kong.ctx.plugin.llm_model_requested or conf.model.name
   request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.RESPONSE_MODEL] = response_object.model or conf.model.name
-  request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.PROVIDER_NAME] = provider_name
-  request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.PLUGIN_ID] = conf.__plugin_id
 
   -- set extra per-provider meta
   if kong.ctx.plugin.ai_extra_meta and type(kong.ctx.plugin.ai_extra_meta) == "table" then
@@ -525,13 +524,20 @@ function _M.post_request(conf, response_object)
   -- Capture openai-format usage stats from the transformed response body
   if response_object.usage then
     if response_object.usage.prompt_tokens then
-      request_analytics_plugin[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.PROMPT_TOKEN] = request_analytics_plugin[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.PROMPT_TOKEN] + response_object.usage.prompt_tokens
+      request_analytics_plugin[log_entry_keys.USAGE_CONTAINER][log_entry_keys.PROMPT_TOKENS] = response_object.usage.prompt_tokens
     end
     if response_object.usage.completion_tokens then
-      request_analytics_plugin[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.COMPLETION_TOKEN] = request_analytics_plugin[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.COMPLETION_TOKEN] + response_object.usage.completion_tokens
+      request_analytics_plugin[log_entry_keys.USAGE_CONTAINER][log_entry_keys.COMPLETION_TOKENS] = response_object.usage.completion_tokens
     end
     if response_object.usage.total_tokens then
-      request_analytics_plugin[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.TOTAL_TOKENS] = request_analytics_plugin[log_entry_keys.TOKENS_CONTAINER][log_entry_keys.TOTAL_TOKENS] + response_object.usage.total_tokens
+      request_analytics_plugin[log_entry_keys.USAGE_CONTAINER][log_entry_keys.TOTAL_TOKENS] = response_object.usage.total_tokens
+    end
+
+    if response_object.usage.prompt_tokens and response_object.usage.completion_tokens
+      and conf.model.options.input_cost and conf.model.options.output_cost then 
+        request_analytics_plugin[log_entry_keys.USAGE_CONTAINER][log_entry_keys.COST] = 
+          (response_object.usage.prompt_tokens * conf.model.options.input_cost
+          + response_object.usage.completion_tokens * conf.model.options.output_cost) / 1000000 -- 1 million
     end
   end
 
@@ -548,13 +554,17 @@ function _M.post_request(conf, response_object)
   kong.ctx.shared.analytics = request_analytics
 
   if conf.logging and conf.logging.log_statistics then
-    -- Log analytics data
-    kong.log.set_serialize_value(fmt("ai.%s.%s", plugin_name, log_entry_keys.TOKENS_CONTAINER),
-      request_analytics_plugin[log_entry_keys.TOKENS_CONTAINER])
-
-    -- Log meta
+    -- Log meta data
     kong.log.set_serialize_value(fmt("ai.%s.%s", plugin_name, log_entry_keys.META_CONTAINER),
       request_analytics_plugin[log_entry_keys.META_CONTAINER])
+
+    -- Log usage data
+    kong.log.set_serialize_value(fmt("ai.%s.%s", plugin_name, log_entry_keys.USAGE_CONTAINER),
+      request_analytics_plugin[log_entry_keys.USAGE_CONTAINER])
+
+    -- Log cache data
+    kong.log.set_serialize_value(fmt("ai.%s.%s", plugin_name, log_entry_keys.CACHE_CONTAINER),
+      request_analytics_plugin[log_entry_keys.CACHE_CONTAINER])
   end
 
   -- log tokens response for reports and billing

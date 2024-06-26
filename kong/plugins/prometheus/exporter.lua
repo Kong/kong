@@ -43,7 +43,6 @@ local enterprise = require("kong.plugins.prometheus.enterprise.exporter")
 local kong_subsystem = ngx.config.subsystem
 local http_subsystem = kong_subsystem == "http"
 
-
 local function init()
   local shm = "prometheus_metrics"
   if not ngx.shared[shm] then
@@ -157,6 +156,19 @@ local function init()
   -- XXX EE
   enterprise.init(prometheus)
 
+  -- AI mode
+  metrics.ai_llm_requests = prometheus:counter("ai_llm_requests_total",
+                                      "AI requests total per ai_provider in Kong",
+                                      {"ai_provider", "ai_model", "cache_status", "vector_db", "embeddings_provider", "embeddings_model", "workspace"})
+
+  metrics.ai_llm_cost = prometheus:counter("ai_llm_cost_total",
+                                      "AI requests cost per ai_provider/cache in Kong",
+                                      {"ai_provider", "ai_model", "cache_status", "vector_db", "embeddings_provider", "embeddings_model", "workspace"})
+
+  metrics.ai_llm_tokens = prometheus:counter("ai_llm_tokens_total",
+                                      "AI requests cost per ai_provider/cache in Kong",
+                                      {"ai_provider", "ai_model", "cache_status", "vector_db", "embeddings_provider", "embeddings_model", "token_type", "workspace"})
+
   -- Hybrid mode status
   if role == "control_plane" then
     metrics.data_plane_last_seen = prometheus:gauge("data_plane_last_seen",
@@ -222,6 +234,9 @@ local upstream_target_addr_health_table = {
   { value = 0, labels = { 0, 0, 0, "unhealthy", ngx.config.subsystem } },
   { value = 0, labels = { 0, 0, 0, "dns_error", ngx.config.subsystem } },
 }
+-- ai
+local labels_table_ai_llm_status = {0, 0, 0, 0, 0, 0, 0}
+local labels_table_ai_llm_tokens = {0, 0, 0, 0, 0, 0, 0, 0}
 
 local function set_healthiness_metrics(table, upstream, target, address, status, metrics_bucket)
   for i = 1, #table do
@@ -326,6 +341,51 @@ local function log(message, serialized)
     local kong_proxy_latency = serialized.latencies.kong
     if kong_proxy_latency ~= nil and kong_proxy_latency >= 0 then
       metrics.kong_latency:observe(kong_proxy_latency, labels_table_latency)
+    end
+  end
+
+  if serialized.ai_metrics then
+    for _, ai_plugin in pairs(serialized.ai_metrics) do
+      local cache_status = ai_plugin.cache.cache_status or ""
+      local vector_db = ai_plugin.cache.vector_db or ""
+      local embeddings_provider = ai_plugin.cache.embeddings_provider or ""
+      local embeddings_model = ai_plugin.cache.embeddings_model or ""
+
+      labels_table_ai_llm_status[1] = ai_plugin.meta.provider_name
+      labels_table_ai_llm_status[2] = ai_plugin.meta.request_model
+      labels_table_ai_llm_status[3] = cache_status
+      labels_table_ai_llm_status[4] = vector_db
+      labels_table_ai_llm_status[5] = embeddings_provider
+      labels_table_ai_llm_status[6] = embeddings_model
+      labels_table_ai_llm_status[7] = workspace
+      metrics.ai_llm_requests:inc(1, labels_table_ai_llm_status)
+
+      if ai_plugin.usage.cost and ai_plugin.usage.cost > 0 then
+        metrics.ai_llm_cost:inc(ai_plugin.usage.cost, labels_table_ai_llm_status)
+      end
+
+      labels_table_ai_llm_tokens[1] = ai_plugin.meta.provider_name
+      labels_table_ai_llm_tokens[2] = ai_plugin.meta.request_model
+      labels_table_ai_llm_tokens[3] = cache_status
+      labels_table_ai_llm_tokens[4] = vector_db
+      labels_table_ai_llm_tokens[5] = embeddings_provider
+      labels_table_ai_llm_tokens[6] = embeddings_model
+      labels_table_ai_llm_tokens[8] = workspace
+
+      if ai_plugin.usage.prompt_tokens and ai_plugin.usage.prompt_tokens > 0 then
+        labels_table_ai_llm_tokens[7] = "prompt_tokens"
+        metrics.ai_llm_tokens:inc(ai_plugin.usage.prompt_tokens, labels_table_ai_llm_tokens)
+      end
+
+      if ai_plugin.usage.completion_tokens and ai_plugin.usage.completion_tokens > 0 then
+        labels_table_ai_llm_tokens[7] = "completion_tokens"
+        metrics.ai_llm_tokens:inc(ai_plugin.usage.completion_tokens, labels_table_ai_llm_tokens)
+      end
+
+      if ai_plugin.usage.total_tokens and ai_plugin.usage.total_tokens > 0 then
+        labels_table_ai_llm_tokens[7] = "total_tokens"
+        metrics.ai_llm_tokens:inc(ai_plugin.usage.total_tokens, labels_table_ai_llm_tokens)
+      end
     end
   end
 end
