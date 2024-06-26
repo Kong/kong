@@ -46,10 +46,12 @@ local _EXPECTED_CHAT_STATS = {
       response_model = 'gpt-3.5-turbo-0613',
     },
     usage = {
-      completion_token = 12,
-      prompt_token = 25,
+      prompt_tokens = 25,
+      completion_tokens = 12,
       total_tokens = 37,
+      cost = 0.00037,
     },
+    cache = {}
   },
 }
 
@@ -250,7 +252,9 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             options = {
               max_tokens = 256,
               temperature = 1.0,
-              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/chat/good"
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/chat/good",
+              input_cost = 10.0,
+              output_cost = 10.0,
             },
           },
         },
