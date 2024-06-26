@@ -598,6 +598,7 @@ return function(options)
       if log_called then
         -- avoid recursive loops
         -- relies on the patch to NOT yield
+        old_ngx_log(ngx.ERR, debug.traceback("concurrent execution detected for: ngx.log", 2))
         return old_ngx_log(...)
       end
       log_called = true
