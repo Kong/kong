@@ -894,7 +894,7 @@ function Schema:validate_field(field, value)
 
   if field.deprecation then
     local old_default = field.deprecation.old_default
-    local should_warn = kong.configuration.role ~= "data_plane" and
+    local should_warn = kong and kong.configuration and kong.configuration.role ~= "data_plane" and
                           (old_default == nil
                             or not deepcompare(value, old_default))
     if should_warn then
