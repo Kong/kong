@@ -30,7 +30,7 @@ dependencies = {
   "luasyslog == 2.0.1",
   "lua_pack == 2.0.0",
   "xmlua == 1.2.1",
-  "luaexpat == 1.5.1",
+  "luaexpat == 1.5.2",
   "binaryheap >= 0.4",
   "luaxxhash >= 1.0",
   "lua-protobuf == 0.5.1",
