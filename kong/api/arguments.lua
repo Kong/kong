@@ -20,10 +20,12 @@ local req           = ngx.req
 local log           = ngx.log
 local re_match      = ngx.re.match
 local re_gmatch     = ngx.re.gmatch
+local re_gsub       = ngx.re.gsub
 local req_read_body = req.read_body
 local get_uri_args  = req.get_uri_args
 local get_body_data = req.get_body_data
 local get_post_args = req.get_post_args
+local get_method    = req.get_method
 local json_decode   = cjson.decode
 local kong          = kong
 
@@ -279,6 +281,63 @@ infer = function(args, schema)
 end
 
 
+local function decode_map_arg(name, value, container)
+  -- the meaning of square brackets varies depending on the method.
+  -- It is considered a map if the method is POST, PUT, or PATCH
+  -- otherwise square brackets are interpreted as LHS (EE only)
+  local method = get_method()
+  if method ~= "POST" and method ~= "PUT" and method ~= "PATCH" then
+    return nil, "maps not supported for this method"
+  end
+
+  container = container or {}
+
+  local keys = {}
+  local search = name
+
+  while true do
+    local captures, err = re_match(search, [=[(.+)\[([^\]]+)\]$]=], "ajos")
+    if captures then
+      search = captures[1]
+      local tonum = tonumber(captures[2])
+      if tonum then
+        return nil, "not a map: array index found"
+      end
+      insert(keys, #keys + 1, captures[2])
+
+    elseif err then
+      log(NOTICE, err)
+      break
+
+    else
+      break
+    end
+  end
+
+  if #keys == 0 then
+    return nil, "not a map: no keys found"
+  end
+
+  container[search] = {}
+  container = container[search]
+
+  for i = #keys, 1, -1 do
+    local k = keys[i]
+
+    if i == 1 then
+      container[k] = value
+      return container[k]
+
+    else
+      if not container[k] then
+        container[k] = {}
+        container = container[k]
+      end
+    end
+  end
+end
+
+
 local function decode_array_arg(name, value, container)
   container = container or {}
 
@@ -345,18 +404,22 @@ local function decode_array_arg(name, value, container)
 end
 
 
-local function decode_arg(name, value)
-  if type(name) ~= "string" or re_match(name, [[^\.+|\.$]], "jos") then
+local function decode_arg(raw_name, value)
+  if type(raw_name) ~= "string" or re_match(raw_name, [[^\.+|\.$]], "jos") then
     return { name = value }
   end
 
-  local iterator, err = re_gmatch(name, [[[^.]+]], "jos")
+  -- unescape `[` and `]` characters when the array / map syntax is detected
+  local name = re_gsub(raw_name, [[%5B(.*?)%5D]], "[$1]", "josi")
+
+  local iterator, err = re_gmatch(name, [=[([^.](?:\[[^\]]*\])*)+]=], "jos")
   if not iterator then
     if err then
       log(NOTICE, err)
     end
 
-    return decode_array_arg(name, value)
+    return decode_map_arg(name, value) or
+           decode_array_arg(name, value)
   end
 
   local names = {}
@@ -378,7 +441,8 @@ local function decode_arg(name, value)
   end
 
   if count == 0 then
-    return decode_array_arg(name, value)
+    return decode_map_arg(name, value) or
+           decode_array_arg(name, value)
   end
 
   local container = {}
@@ -386,11 +450,14 @@ local function decode_arg(name, value)
 
   for i = 1, count do
     if i == count then
-      decode_array_arg(names[i], value, bucket)
+      if not decode_map_arg(names[i], value, bucket) then
+        decode_array_arg(names[i], value, bucket)
+      end
       return container
 
     else
-      bucket = decode_array_arg(names[i], {}, bucket)
+      bucket = decode_map_arg(names[i], {}, bucket) or
+               decode_array_arg(names[i], {}, bucket)
     end
   end
 end
