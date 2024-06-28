@@ -136,10 +136,8 @@ local function to_gemini_chat_openai(request_table, model_info, route_type)
         }
       end
     end
-
+    
     new_r.generationConfig = to_gemini_generation_config(request_table)
-
-    kong.log.debug(cjson.encode(new_r))
 
     return new_r, "application/json", nil
   end
