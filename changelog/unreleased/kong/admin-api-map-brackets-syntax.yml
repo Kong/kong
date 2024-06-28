@@ -1,0 +1,3 @@
+message: "Added support for brackets syntax for map fields configuration via the Admin API"
+type: feature
+scope: Admin API
