@@ -226,19 +226,9 @@ function _M.frame_to_events(frame, raw_json_mode)
     return
   end
 
-  -- check if it's raw json and just return the split up data frame
-  -- Cohere / Other flat-JSON format parser
-  -- just return the split up data frame
-  elseif (not kong or not kong.ctx.plugin.truncated_frame) and string.sub(str_ltrim(frame), 1, 1) == "{" then
-    for event in frame:gmatch("[^\r\n]+") do
-      events[#events + 1] = {
-        data = event,
-      }
-    end
-
   -- some new LLMs return the JSON object-by-object,
   -- because that totally makes sense to parse?!
-  elseif raw_json_mode then
+  if raw_json_mode then
     -- if this is the first frame, it will begin with array opener '['
     frame = (string.sub(str_ltrim(frame), 1, 1) == "[" and string.sub(str_ltrim(frame), 2)) or frame
 
@@ -253,6 +243,17 @@ function _M.frame_to_events(frame, raw_json_mode)
       events[#events+1] = { data = v }
     end
 
+  -- check if it's raw json and just return the split up data frame
+  -- Cohere / Other flat-JSON format parser
+  -- just return the split up data frame
+  elseif (not kong or not kong.ctx.plugin.truncated_frame) and string.sub(str_ltrim(frame), 1, 1) == "{" then
+    for event in frame:gmatch("[^\r\n]+") do
+      events[#events + 1] = {
+        data = event,
+      }
+    end
+
+  -- standard SSE parser
   else
     local event_lines = split(frame, "\n")
     local struct = { event = nil, id = nil, data = nil }
