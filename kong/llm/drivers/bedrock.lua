@@ -103,25 +103,10 @@ local function handle_stream_event(event_t, model_info, route_type)
     }
 
   elseif event_type == "metadata" then
-    local function dump(o)
-      if type(o) == 'table' then
-         local s = '{ '
-         for k,v in pairs(o) do
-            if type(k) ~= 'number' then k = '"'..k..'"' end
-            s = s .. '['..k..'] = ' .. dump(v) .. ','
-         end
-         return s .. '} '
-      else
-         return tostring(o)
-      end
-    end
-    kong.log.warn(dump(body))
     metadata = {
       prompt_tokens = body.usage and body.usage.inputTokens or 0,
       completion_tokens = body.usage and body.usage.outputTokens or 0,
     }
-
-    kong.log.warn(dump(metadata))
 
     new_event = "[DONE]"
 
@@ -183,8 +168,6 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
   end
 
   new_r.inferenceConfig = to_bedrock_generation_config(request_table)
-
-  kong.log.debug(new_r.inferenceConfig.maxTokens)
 
   return new_r, "application/json", nil
 end
