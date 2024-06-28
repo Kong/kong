@@ -50,8 +50,18 @@ for _, strategy in helpers.each_strategy() do
       assert(type(json.stats) == "table")
       assert(type(json.stats["127.0.0.1:A/AAAA"].runs) == "number")
 
-      assert(type(json.stats) == "table")
-      assert(type(json.stats["_service._proto.srv.test:SRV"].runs) == "number")
+      -- Wait for the upstream target to be updated in the background
+      helpers.wait_until(function ()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status/dns",
+          headers = { ["Content-Type"] = "application/json" }
+        })
+
+        local body = assert.res_status(200 , res)
+        local json = cjson.decode(body)
+        return type(json.stats["_service._proto.srv.test:SRV"]) == "table"
+      end, 5)
     end)
   end)
 
