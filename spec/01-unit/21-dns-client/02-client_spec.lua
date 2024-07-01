@@ -43,20 +43,20 @@ end
 
 describe("[DNS client]", function()
 
-  local client, resolver, query_func
+  local client, resolver
 
   before_each(function()
     client = require("kong.resty.dns.client")
     resolver = require("resty.dns.resolver")
 
-    -- you can replace this `query_func` upvalue to spy on resolver query calls.
+    -- `resolver.query_func` is hooked to inspect resolver query calls. New values can be assigned to it.
     -- This default will just call the original resolver (hence is transparent)
-    query_func = function(self, original_query_func, name, options)
+    resolver.query_func = function(self, original_query_func, name, options)
       return original_query_func(self, name, options)
     end
 
     -- patch the resolver lib, such that any new resolver created will query
-    -- using the `query_func` upvalue defined above
+    -- using the `resolver.query_func` defined above
     local old_new = resolver.new
     resolver.new = function(...)
       local r, err = old_new(...)
@@ -64,6 +64,11 @@ describe("[DNS client]", function()
         return nil, err
       end
       local original_query_func = r.query
+
+      -- remember the passed in query_func
+      -- so it won't be replaced by the next resolver.new call
+      -- and won't interfere with other tests
+      local query_func = resolver.query_func
       r.query = function(self, ...)
         return query_func(self, original_query_func, ...)
       end
@@ -77,7 +82,6 @@ describe("[DNS client]", function()
     package.loaded["resty.dns.resolver"] = nil
     client = nil
     resolver = nil
-    query_func = nil
   end)
 
   describe("initialization", function()
@@ -590,7 +594,7 @@ describe("[DNS client]", function()
               "127.0.0.1 host"
             }
           }))
-          query_func = function(self, original_query_func, name, options)
+          resolver.query_func = function(self, original_query_func, name, options)
             -- The first request uses syncQuery not waiting on the
             -- aysncQuery timer, so the low-level r:query() could not sleep(5s),
             -- it can only sleep(timeout).
@@ -620,7 +624,7 @@ describe("[DNS client]", function()
       -- KAG-2300 - https://github.com/Kong/kong/issues/10182
       -- If we encounter a timeout while talking to the DNS server, don't keep trying with other record types
       assert(client.init({ timeout = 1000, retrans = 2 }))
-      query_func = function(self, original_query_func, name, options)
+      resolver.query_func = function(self, original_query_func, name, options)
         if options.qtype == client.TYPE_SRV then
           ngx.sleep(10)
         else
@@ -720,7 +724,7 @@ describe("[DNS client]", function()
   it("fetching names case insensitive", function()
     assert(client.init())
 
-    query_func = function(self, original_query_func, name, options)
+    resolver.query_func = function(self, original_query_func, name, options)
       return {
         {
           name = "some.UPPER.case",
@@ -908,7 +912,7 @@ describe("[DNS client]", function()
     assert(client.init())
 
     local callcount = 0
-    query_func = function(self, original_query_func, name, options)
+    resolver.query_func = function(self, original_query_func, name, options)
       callcount = callcount + 1
       return original_query_func(self, name, options)
     end
@@ -956,7 +960,7 @@ describe("[DNS client]", function()
     assert(client.init())
 
     local callcount = 0
-    query_func = function(self, original_query_func, name, options)
+    resolver.query_func = function(self, original_query_func, name, options)
       callcount = callcount + 1
       return original_query_func(self, name, options)
     end
@@ -1003,7 +1007,7 @@ describe("[DNS client]", function()
       },
     }
 
-    query_func = function(self, original_query_func, name, options)
+    resolver.query_func = function(self, original_query_func, name, options)
       if name == host and options.qtype == client.TYPE_SRV then
         return entry
       end
@@ -1026,7 +1030,7 @@ describe("[DNS client]", function()
             "nameserver 198.51.100.0",
           },
         }))
-    query_func = function(self, original_query_func, name, opts)
+    resolver.query_func = function(self, original_query_func, name, opts)
       if name ~= "hello.world" and (opts or {}).qtype ~= client.TYPE_CNAME then
         return original_query_func(self, name, opts)
       end
@@ -1516,7 +1520,7 @@ describe("[DNS client]", function()
       }))
 
       local callcount = 0
-      query_func = function(self, original_query_func, name, options)
+      resolver.query_func = function(self, original_query_func, name, options)
         callcount = callcount + 1
         -- Introducing a simulated network delay ensures individual_toip always
         -- triggers a DNS query to avoid it triggering only once due to a cache
@@ -1582,7 +1586,7 @@ describe("[DNS client]", function()
         }))
 
     -- mock query function to return a default record
-    query_func = function(self, original_query_func, name, options)
+    resolver.query_func = function(self, original_query_func, name, options)
       return  {
                 {
                   type = client.TYPE_A,
@@ -1620,7 +1624,7 @@ describe("[DNS client]", function()
 
     -- mock query function to count calls
     local call_count = 0
-    query_func = function(self, original_query_func, name, options)
+    resolver.query_func = function(self, original_query_func, name, options)
       call_count = call_count + 1
       return original_query_func(self, name, options)
     end
@@ -1695,7 +1699,7 @@ describe("[DNS client]", function()
 
     -- mock query function to count calls, and return errors
     local call_count = 0
-    query_func = function(self, original_query_func, name, options)
+    resolver.query_func = function(self, original_query_func, name, options)
       call_count = call_count + 1
       return { errcode = 5, errstr = "refused" }
     end
@@ -1761,7 +1765,7 @@ describe("[DNS client]", function()
       local results = {}
 
       local call_count = 0
-      query_func = function(self, original_query_func, name, options)
+      resolver.query_func = function(self, original_query_func, name, options)
         call_count = call_count + 1
         sleep(0.5) -- make sure we take enough time so the other threads
         -- will be waiting behind this one
@@ -1824,7 +1828,7 @@ describe("[DNS client]", function()
 
       -- insert a stub thats waits and returns a fixed record
       local name = TEST_DOMAIN
-      query_func = function()
+      resolver.query_func = function()
         local ip = ip
         local entry = {
           {
@@ -1891,7 +1895,7 @@ describe("[DNS client]", function()
     -- insert a stub thats waits and returns a fixed record
     local call_count = 0
     local name = TEST_DOMAIN
-    query_func = function()
+    resolver.query_func = function()
       local ip = "1.4.2.3"
       local entry = {
         {
