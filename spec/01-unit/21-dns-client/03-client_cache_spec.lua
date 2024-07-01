@@ -25,20 +25,20 @@ describe("[DNS client cache]", function()
     client = require("kong.resty.dns.client")
     resolver = require("resty.dns.resolver")
 
-    -- you can replace this `resolver.query_func` upvalue to spy on resolver query calls.
+    -- `resolver.query_func` is hooked to inspect resolver query calls. New values can be assigned to it.
     -- This default will just call the original resolver (hence is transparent)
     resolver.query_func = function(self, original_query_func, name, options)
       return original_query_func(self, name, options)
     end
 
     -- patch the resolver lib, such that any new resolver created will query
-    -- using the `resolver.query_func` upvalue defined above
+    -- using the `resolver.query_func` defined above
     local old_new = resolver.new
     resolver.new = function(...)
       local r = old_new(...)
       local original_query_func = r.query
 
-      -- freeze the query_func upvalue to the current value of `resolver.query_func`
+      -- remember the passed in query_func
       -- so it won't be replaced by the next resolver.new call
       -- and won't interfere with other tests
       local query_func = resolver.query_func
