@@ -298,16 +298,21 @@ local function v2_access_phase(plugin_conf)
 
     application = get_oidc_app(plugin_conf)
     if application then
+      local found = false
       for i = 1, #plugin_conf.v2_strategies.openid_connect do
         local kaa_conf = plugin_conf.v2_strategies.openid_connect[i]
 
         if kaa_conf.strategy_id == application.auth_strategy_id then
           oidc_plugin.access(nil, kaa_conf.config)
+          found = true
           break
         end
 
       end
-
+      if not found then
+        kong.log.warn("auth strategy not found for application")
+        return kong.response.error(401, "Unauthenticated")
+      end
     end
   end
 

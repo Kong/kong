@@ -1,0 +1,3 @@
+message: "**konnect-application-auth:**  Fixed an issue where Konnect Application Auth exited early if an invalid OIDC application was configured."
+type: "bugfix"
+scope: Plugin

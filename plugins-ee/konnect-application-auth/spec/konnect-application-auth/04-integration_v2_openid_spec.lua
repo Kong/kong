@@ -24,6 +24,7 @@ local DISCOVERY_PATH = "/.well-known/openid-configuration"
 local ISSUER_URL = keycloak_config.issuer
 
 local CLIENT_ID = "service"
+local CLIENT_ID_2 = "service2"
 local CLIENT_SECRET = "7adf1a21-6b9e-45f5-a033-d0e8f47b1dbc"
 local CLIENT_CREDENTIALS = "Basic " .. encode_base64(CLIENT_ID .. ":" .. CLIENT_SECRET)
 
@@ -134,6 +135,12 @@ for _, strategy in helpers.each_strategy() do
         auth_strategy_id = strat_all_id
       })
 
+      db.konnect_applications:insert({
+        client_id = CLIENT_ID_2,
+        scopes = { scope },
+        auth_strategy_id = nil,
+      })
+
       -- start kong
       assert(helpers.start_kong({
       -- set the strategy
@@ -179,6 +186,33 @@ for _, strategy in helpers.each_strategy() do
 
             assert.response(res).has.status(401)
           end)
+
+          it("rejects if the auth_strategy is not found", function()
+            local secret = "Basic " .. encode_base64(CLIENT_ID_2 .. ":something")
+
+            local res = proxy_client:get("/", {
+              headers = {
+                Authorization = secret,
+                host = host_all,
+              },
+            })
+
+            assert.response(res).has.status(401)
+          end)
+
+          it("rejects an invalid client secret", function()
+            local invalid_secret = "Basic " .. encode_base64(CLIENT_ID .. ":invalid_secret")
+
+            local res = proxy_client:get("/", {
+              headers = {
+                Authorization = invalid_secret,
+                host = host_all,
+              },
+            })
+
+            assert.response(res).has.status(401)
+          end)
+
           it("is allowed with valid credentials Authorization Basic", function()
             local res = proxy_client:get("/", {
               headers = {
