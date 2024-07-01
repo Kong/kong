@@ -11,14 +11,25 @@ local table_insert = table.insert
 local string_lower = string.lower
 local string_sub = string.sub
 local signer = require("resty.aws.request.sign")
+local AWS = require("resty.aws")
 --
 
 -- globals
 local DRIVER_NAME = "bedrock"
+
+local AWS_REGION do
+  AWS_REGION = os.getenv("AWS_REGION")
+end
+local AWS_ACCESS_KEY_ID do
+  AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+end
+local AWS_SECRET_ACCESS_KEY do
+  AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+end
 --
 
 local _OPENAI_ROLE_MAPPING = {
-  ["system"] = "assistant",
+  ["system"] = "system",
   ["user"] = "user",
   ["assistant"] = "assistant",
 }
@@ -176,11 +187,33 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
     if #system_prompts > 0 then
       for _, p in ipairs(ai_shared.bedrock_unsupported_system_role_patterns) do
         if model_info.name:find(p) then
-          return nil, nil, "system prompts are unsupported for model '" .. model_info.name
+          if (not model_info.source) or model_info.source ~= "transformer-plugins" then
+            return nil, nil, "system prompts are unsupported for model '" .. model_info.name
+          end
+
+          -- for transformer plugins, we just move the system prompt
+          table.insert(new_r.messages, 1, {
+            role = "user",
+            content = {
+              {
+                text = system_prompts[1].text
+              },
+            }
+          })
+          table.insert(new_r.messages, 2, {
+            role = "assistant",
+            content = {
+              {
+                text = "What is your message?"
+              },
+            }
+          })
+
+          break
+        else
+          new_r.system = system_prompts
         end
       end
-
-      new_r.system = system_prompts
     end
   end
 
@@ -301,6 +334,35 @@ function _M.to_format(request_table, model_info, route_type)
 end
 
 function _M.subrequest(body, conf, http_opts, return_res_table)
+  -- try to get AWS SDK first
+  ngx.log(ngx.NOTICE, "loading aws sdk for plugin ", kong.plugin.get_id())
+  local aws
+
+  local region = conf.model.options
+            and conf.model.options.bedrock
+            and conf.model.options.bedrock.aws_region
+              or AWS_REGION
+
+  local access_key = (conf.auth and conf.auth.aws_access_key_id)
+                  or AWS_ACCESS_KEY_ID
+  
+  local secret_key = (conf.auth and conf.auth.aws_secret_access_key)
+                  or AWS_SECRET_ACCESS_KEY
+
+  if access_key and secret_key then
+    aws = AWS({
+      -- if any of these are nil, they either use the SDK default or
+      -- are deliberately null so that a different auth chain is used
+      region = region,
+      aws_access_key_id = access_key,
+      aws_secret_access_key = secret_key,
+    })
+  else
+    aws = AWS({
+      region = region,
+    })
+  end
+
   -- use shared/standard subrequest routine
   local body_string, err
 
@@ -316,22 +378,54 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
   end
 
   -- may be overridden
-  local url = (conf.model.options and conf.model.options.upstream_url)
-    or fmt(
-    "%s%s",
-    ai_shared.upstream_url_format[DRIVER_NAME],
-    ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
-  )
+  local uri = fmt(ai_shared.upstream_url_format[DRIVER_NAME], aws.config.region)
+  local path = fmt(
+    ai_shared.operation_map[DRIVER_NAME][conf.route_type].path,
+    conf.model.name,
+    "converse")
+
+  local url = fmt("%s%s", uri, path)
+  local parsed_url = socket_url.parse(url)
 
   local method = ai_shared.operation_map[DRIVER_NAME][conf.route_type].method
 
   local headers = {
     ["Accept"] = "application/json",
     ["Content-Type"] = "application/json",
+    ["Host"] = parsed_url.host,
   }
 
   if conf.auth and conf.auth.header_name then
     headers[conf.auth.header_name] = conf.auth.header_value
+  end
+
+  -- do the IAM auth and signature headers
+  aws.config.signatureVersion = "v4"
+  aws.config.endpointPrefix = "bedrock"
+
+  local r = {
+    headers = {},
+    method = ai_shared.operation_map[DRIVER_NAME][conf.route_type].method,
+    path = parsed_url.path,
+    host = parsed_url.host,
+    port = parsed_url.port or "443",
+    body = body_string
+  }
+
+  local signature = signer(aws.config, r)
+
+  if not signature then
+    return nil, "failed to sign AWS request"
+  end
+
+  headers["Authorization"] = signature.headers["Authorization"]
+
+  if signature.headers["X-Amz-Security-Token"] then 
+    headers["X-Amz-Security-Token"] = signature.headers["X-Amz-Security-Token"]
+  end
+
+  if signature.headers["X-Amz-Date"] then
+    headers["X-Amz-Date"] = signature.headers["X-Amz-Date"]
   end
 
   local res, err, httpc = ai_shared.http_request(url, body_string, method, headers, http_opts, return_res_table)

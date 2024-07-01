@@ -92,50 +92,22 @@ do
     local err, _
 
     -- set up the LLM request for transformation instructions
-    local ai_request
-
-    -- mistral, cohere, titan (with Bedrock) don't support system commands
-    if self.driver == "bedrock" then
-      for _, p in ipairs(ai_shared.bedrock_unsupported_system_role_patterns) do
-        if request.model:find(p) then
-          ai_request = {
-            messages = {
-              [1] = {
-                role = "user",
-                content = system_prompt,
-              },
-              [2] = {
-                role = "assistant",
-                content = "What is the message?",
-              },
-              [3] = {
-                role = "user",
-                content = request,
-              }
-            },
-            stream = false,
-          }
-          break
-        end
-      end
-    end
-
-    -- not Bedrock, or didn't match banned pattern - continue as normal
-    if not ai_request then
-      ai_request = {
-        messages = {
-          [1] = {
-            role = "system",
-            content = system_prompt,
-          },
-          [2] = {
-            role = "user",
-            content = request,
-          }
+    local ai_request = {
+      messages = {
+        [1] = {
+          role = "system",
+          content = system_prompt,
         },
-        stream = false,
-      }
-    end
+        [2] = {
+          role = "user",
+          content = request,
+        }
+      },
+      stream = false,
+    }
+
+    -- needed for some drivers later
+    self.conf.model.source = "transformer-plugins"
 
     -- convert it to the specified driver format
     ai_request, _, err = self.driver.to_format(ai_request, self.conf.model, "llm/v1/chat")

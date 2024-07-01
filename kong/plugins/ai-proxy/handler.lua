@@ -63,36 +63,6 @@ local _KEYBASTION = setmetatable({}, {
 
       return { interface = nil, error = "cloud-authentication with GCP failed" }
     end
-  end,
-})
-
-
--- static messages
-local ERROR_MSG = { error = { message = "" } }
-local ERROR__NOT_SET = 'data: {"error": true, "message": "empty or unsupported transformer response"}'
-
-
-local _KEYBASTION = setmetatable({}, {
-  __mode = "k",
-  __index = function(this_cache, plugin_config)
-    if plugin_config.model.provider == "gemini" and
-       plugin_config.auth and
-       plugin_config.auth.gcp_use_service_account then
-
-      ngx.log(ngx.NOTICE, "loading gcp sdk for plugin ", kong.plugin.get_id())
-
-      local service_account_json = (plugin_config.auth and plugin_config.auth.gcp_service_account_json) or GCP_SERVICE_ACCOUNT
-
-      local ok, gcp_auth = pcall(GCP.new, nil, service_account_json)
-      if ok and gcp_auth then
-        -- store our item for the next time we need it
-        gcp_auth.service_account_json = service_account_json
-        this_cache[plugin_config] = { interface = gcp_auth, error = nil }
-        return this_cache[plugin_config]
-      end
-
-      return { interface = nil, error = "cloud-authentication with GCP failed" }
-    end
 
     if plugin_config.model.provider == "bedrock" then
       ngx.log(ngx.NOTICE, "loading aws sdk for plugin ", kong.plugin.get_id())

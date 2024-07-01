@@ -539,6 +539,10 @@ end
 function _M.post_request(conf, response_object)
   local body_string, err
 
+  if not response_object then
+    return
+  end
+
   if type(response_object) == "string" then
     -- set raw string body first, then decode
     body_string = response_object
@@ -691,6 +695,7 @@ function _M.http_request(url, body, method, headers, http_opts, buffered)
         method = method,
         body = body,
         headers = headers,
+        ssl_server_name = parsed.host,
         ssl_verify = http_opts.https_verify,
       })
     if not res then
