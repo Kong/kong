@@ -1,4 +1,5 @@
 # Table of Contents
+- [2.8.5](#285)
 - [2.8.4](#284)
 - [2.8.3](#283)
 - [2.8.2](#282)
@@ -64,6 +65,24 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+## [2.8.5]
+
+### Kong
+
+#### Performance
+##### Performance
+
+- Fixed an inefficiency issue in the Luajit hashing algorithm
+ [#13269](https://github.com/Kong/kong/issues/13269)
+
+
+#### Fixes
+##### Default
+
+- Added zlib1g-dev dependency to Ubuntu packages.
+ [#13269](https://github.com/Kong/kong/issues/13269)
+
 
 ## [2.8.4]
 
