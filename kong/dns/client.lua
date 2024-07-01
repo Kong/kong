@@ -86,10 +86,10 @@ local _M = {
   TYPE_A = TYPE_A,
   TYPE_AAAA = TYPE_AAAA,
 }
-local MT = { __index = _M, }
+local _MT = { __index = _M, }
 
 
-local TRIES_MT = { __tostring = cjson.encode, }
+local _TRIES_MT = { __tostring = cjson.encode, }
 
 
 local function stats_init_name(stats, name)
@@ -292,7 +292,7 @@ function _M.new(opts)
       errstr = EMPTY_RECORD_ERROR_MESSAGE,
       ttl = opts.error_ttl or DEFAULT_ERROR_TTL,
     },
-  }, MT)
+  }, _MT)
 end
 
 
@@ -447,7 +447,7 @@ local function stale_update_task(premature, self, key, name, qtype)
     return
   end
 
-  local tries = setmetatable({}, TRIES_MT)
+  local tries = setmetatable({}, _TRIES_MT)
   local answers = resolve_query_types(self, name, qtype, tries)
   if answers and not answers.errcode then
     log(DEBUG, PREFIX, "update stale DNS records: ", #answers)
@@ -541,7 +541,7 @@ end
 
 local function resolve_all(self, name, qtype, cache_only, tries, has_timing)
   name = string_lower(name)
-  tries = setmetatable(tries or {}, TRIES_MT)
+  tries = setmetatable(tries or {}, _TRIES_MT)
 
   if not qtype then
     qtype = ((self.enable_srv and is_srv(name)) and TYPE_SRV or TYPE_A_AAAA)
