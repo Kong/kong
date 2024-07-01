@@ -526,11 +526,11 @@
                          #   on a wildcard address [::] will accept only IPv6
                          #   connections or both IPv6 and IPv4 connections
                          # - so_keepalive=on|off|[keepidle]:[keepintvl]:[keepcnt]
-                         #   configures the “TCP keepalive” behavior for the listening
+                         #   configures the "TCP keepalive" behavior for the listening
                          #   socket. If this parameter is omitted then the operating
                          #   system’s settings will be in effect for the socket. If it
-                         #   is set to the value “on”, the SO_KEEPALIVE option is turned
-                         #   on for the socket. If it is set to the value “off”, the
+                         #   is set to the value "on", the SO_KEEPALIVE option is turned
+                         #   on for the socket. If it is set to the value "off", the
                          #   SO_KEEPALIVE option is turned off for the socket. Some
                          #   operating systems support setting of TCP keepalive parameters
                          #   on a per-socket basis using the TCP_KEEPIDLE, TCP_KEEPINTVL,
@@ -591,11 +591,11 @@
                          #   on a wildcard address [::] will accept only IPv6
                          #   connections or both IPv6 and IPv4 connections
                          # - so_keepalive=on|off|[keepidle]:[keepintvl]:[keepcnt]
-                         #   configures the “TCP keepalive” behavior for the listening
+                         #   configures the "TCP keepalive" behavior for the listening
                          #   socket. If this parameter is omitted then the operating
                          #   system’s settings will be in effect for the socket. If it
-                         #   is set to the value “on”, the SO_KEEPALIVE option is turned
-                         #   on for the socket. If it is set to the value “off”, the
+                         #   is set to the value "on", the SO_KEEPALIVE option is turned
+                         #   on for the socket. If it is set to the value "off", the
                          #   SO_KEEPALIVE option is turned off for the socket. Some
                          #   operating systems support setting of TCP keepalive parameters
                          #   on a per-socket basis using the TCP_KEEPIDLE, TCP_KEEPINTVL,
@@ -662,11 +662,11 @@
                          #   on a wildcard address [::] will accept only IPv6
                          #   connections or both IPv6 and IPv4 connections
                          # - so_keepalive=on|off|[keepidle]:[keepintvl]:[keepcnt]
-                         #   configures the “TCP keepalive” behavior for the listening
+                         #   configures the "TCP keepalive" behavior for the listening
                          #   socket. If this parameter is omitted then the operating
                          #   system’s settings will be in effect for the socket. If it
-                         #   is set to the value “on”, the SO_KEEPALIVE option is turned
-                         #   on for the socket. If it is set to the value “off”, the
+                         #   is set to the value "on", the SO_KEEPALIVE option is turned
+                         #   on for the socket. If it is set to the value "off", the
                          #   SO_KEEPALIVE option is turned off for the socket. Some
                          #   operating systems support setting of TCP keepalive parameters
                          #   on a per-socket basis using the TCP_KEEPIDLE, TCP_KEEPINTVL,
@@ -1148,13 +1148,13 @@
 #nginx_admin_client_max_body_size = 10m  # Defines the maximum request body size for
                                          # Admin API.
 
-#nginx_http_charset = UTF-8  # Adds the specified charset to the “Content-Type”
+#nginx_http_charset = UTF-8  # Adds the specified charset to the "Content-Type"
                              # response header field. If this charset is different
                              # from the charset specified in the source_charset
                              # directive, a conversion is performed.
                              #
                              # The parameter `off` cancels the addition of
-                             # charset to the “Content-Type” response header field.
+                             # charset to the "Content-Type" response header field.
                              # See http://nginx.org/en/docs/http/ngx_http_charset_module.html#charset
 
 #nginx_http_client_body_buffer_size = 8k  # Defines the buffer size for reading
