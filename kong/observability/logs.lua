@@ -105,15 +105,15 @@ function _M.maybe_push(stack_level, log_level, ...)
 
   -- Early return cases:
 
+  -- log level too low
+  if configured_log_level() < log_level then
+    return
+  end
+
   -- no (or empty) log line
   local args = { ... }
   local log_str = concat_tostring(args)
   if log_str == "" then
-    return
-  end
-
-  -- log level too low
-  if configured_log_level() < log_level then
     return
   end
 
