@@ -1,7 +1,3 @@
 message: adds certificate support for service protocol `grpcs`.
 type: bugfix
 scope: Admin API
-prs:
-  - 11529
-jiras:
-  - "FTI-5309"
