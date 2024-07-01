@@ -1,0 +1,3 @@
+message: Fixed an issue where can't be deleted or selected an entity after TTL expires.
+type: bugfix
+scope: Core
