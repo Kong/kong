@@ -32,6 +32,18 @@ local function to_bedrock_generation_config(request_table)
   }
 end
 
+local function to_additional_request_fields(request_table)
+  return {
+    request_table.bedrock.additionalModelRequestFields
+  }
+end
+
+local function to_tool_config(request_table)
+  return {
+    request_table.bedrock.toolConfig
+  }
+end
+
 local function handle_stream_event(event_t, model_info, route_type)
   local new_event, metadata
 
@@ -139,13 +151,12 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
                          or "bedrock-2023-05-31"
 
   if request_table.messages and #request_table.messages > 0 then
-    local system_prompt
+    local system_prompts = {}
 
     for i, v in ipairs(request_table.messages) do
       -- for 'system', we just concat them all into one Gemini instruction
       if v.role and v.role == "system" then
-        system_prompt = system_prompt or buffer.new()
-        system_prompt:put(v.content or "")
+        system_prompts[#system_prompts+1] = { text = v.content }
 
       else
         -- for any other role, just construct the chat history as 'parts.text' type
@@ -161,13 +172,27 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
       end
     end
 
-    -- only works for 
-    if system_prompt then
-      new_r.system = system_prompt:get()
+    -- only works for some models
+    if #system_prompts > 0 then
+      for _, p in ipairs(ai_shared.bedrock_unsupported_system_role_patterns) do
+        if model_info.name:find(p) then
+          return nil, nil, "system prompts are unsupported for model '" .. model_info.name
+        end
+      end
+
+      new_r.system = system_prompts
     end
   end
 
   new_r.inferenceConfig = to_bedrock_generation_config(request_table)
+
+  new_r.toolConfig = request_table.bedrock
+                 and request_table.bedrock.toolConfig
+                 and to_tool_config(request_table)
+
+  new_r.additionalModelRequestFields = request_table.bedrock
+                                   and request_table.bedrock.additionalModelRequestFields
+                                   and to_additional_request_fields(request_table)
 
   return new_r, "application/json", nil
 end
