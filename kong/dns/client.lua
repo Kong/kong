@@ -28,6 +28,7 @@ local is_srv = utils.is_srv
 local parse_hosts = utils.parse_hosts
 local ipv6_bracket = utils.ipv6_bracket
 local search_names = utils.search_names
+local parse_resolv_conf = utils.parse_resolv_conf
 local get_next_round_robin_answer = utils.get_next_round_robin_answer
 local get_next_weighted_round_robin_answer = utils.get_next_weighted_round_robin_answer
 
@@ -85,7 +86,7 @@ local _M = {
   TYPE_A = TYPE_A,
   TYPE_AAAA = TYPE_AAAA,
 }
-local MT = { __index = _M }
+local MT = { __index = _M, }
 
 
 local TRIES_MT = { __tostring = cjson.encode, }
@@ -156,7 +157,7 @@ function _M.new(opts)
 
   local enable_ipv4, enable_ipv6, enable_srv
 
-  for i, typstr in ipairs(opts.family or DEFAULT_FAMILY) do
+  for _, typstr in ipairs(opts.family or DEFAULT_FAMILY) do
     typstr = typstr:upper()
 
     if typstr == "A" then
@@ -177,7 +178,7 @@ function _M.new(opts)
               enable_ipv4 and "ipv4 " or "", enable_ipv6 and "ipv6 " or "")
 
   -- parse resolv.conf
-  local resolv, err = utils.parse_resolv_conf(opts.resolv_conf, opts.enable_ipv6)
+  local resolv, err = parse_resolv_conf(opts.resolv_conf, opts.enable_ipv6)
   if not resolv then
     log(WARN, PREFIX, "Invalid resolv.conf: ", err)
     resolv = { options = {} }
@@ -222,7 +223,7 @@ function _M.new(opts)
         return
       end
 
-      local cwid = worker_id()
+      local cwid = worker_id() or -1
       for _, ev in pairs(events) do
         local handler = function(data, event, source, wid)
           if cwid ~= wid then -- Current worker has handled this event.
@@ -251,6 +252,7 @@ function _M.new(opts)
   local cache, err = mlcache.new("dns_cache", "kong_dns_cache", {
     ipc = ipc,
     neg_ttl = opts.error_ttl or DEFAULT_ERROR_TTL,
+    -- 10000 is a reliable and tested value from the original library.
     lru_size = opts.cache_size or 10000,
     shm_locks = ngx.shared.kong_locks and "kong_locks",
     resty_lock_opts = resty_lock_opts,
@@ -365,12 +367,12 @@ local function resolve_query(self, name, qtype, tries)
   stats_set_count(self.stats, key, "query_last_time", duration)
 
   log(DEBUG, PREFIX, "r:query(", key, ") ans:", answers and #answers or "-",
-             " t:", duration, " ms")
+                     " t:", duration, " ms")
 
   -- network error or malformed DNS response
   if not answers then
     stats_increment(self.stats, key, "query_fail_nameserver")
-    err = "DNS server error: " .. tostring(err) .. ", took " .. duration .. " ms" 
+    err = "DNS server error: " .. tostring(err) .. ", took " .. duration .. " ms"
     table_insert(tries, { name .. ":" .. TYPE_TO_NAME[qtype], err })
     return nil, err
   end
@@ -468,6 +470,7 @@ end
 
 
 local function check_and_get_ip_answers(name)
+  -- TODO: use is_valid_ipv4 from kong/tools/ip.lua instead
   if name:match("^%d+%.%d+%.%d+%.%d+$") then  -- IPv4
     return {
       { name = name, class = 1, type = TYPE_A, address = name },
@@ -563,7 +566,7 @@ local function resolve_all(self, name, qtype, cache_only, tries, has_timing)
   stats_increment(self.stats, key, hit_str)
 
   log(DEBUG, PREFIX, "cache lookup ", key, " ans:", answers and #answers or "-",
-             " hlv:", hit_str)
+                     " hlv:", hit_str)
 
   if has_timing then
     req_dyn_hook_run_hook("timing", "dns:cache_lookup",
@@ -592,11 +595,8 @@ function _M:resolve_address(name, port, cache_only, tries)
 
   local answers, err, tries = resolve_all(self, name, nil, cache_only, tries,
                                           has_timing)
-  if not answers then
-    return nil, err, tries
-  end
 
-  if answers and answers[1].type == TYPE_SRV then
+  if answers and answers[1] and answers[1].type == TYPE_SRV then
     local answer = get_next_weighted_round_robin_answer(answers)
     port = (answer.port ~= 0 and answer.port) or port
     answers, err, tries = resolve_all(self, answer.target, TYPE_A_AAAA,
