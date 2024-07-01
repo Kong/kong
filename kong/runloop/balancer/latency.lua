@@ -32,12 +32,12 @@ local ewma = {}
 ewma.__index = ewma
 
 local function decay_ewma(ewma, last_touched_at, rtt, now)
-    local td = now - last_touched_at
-    td = (td > 0) and td or 0
-    local weight = math_exp(-td / DECAY_TIME)
-  
-    ewma = ewma * weight + rtt * (1.0 - weight)
-    return ewma
+  local td = now - last_touched_at
+  td = (td > 0) and td or 0
+  local weight = math_exp(-td / DECAY_TIME)
+
+  ewma = ewma * weight + rtt * (1.0 - weight)
+  return ewma
 end
 
 
@@ -47,30 +47,30 @@ end
 local function calculate_slow_start_ewma(self)
   local total_ewma = 0
   local address_count = 0
-  
-  for _, target in ipairs(self.balancer.targets) do
-      for _, address in ipairs(target.addresses) do
-          if address.available then
-            local ewma = self.ewma[address] or 0
-            address_count = address_count + 1
-            total_ewma = total_ewma + ewma
-          end
-      end
-  end
-  
-    if address_count == 0 then
-      ngx_log(ngx_DEBUG, "no ewma value exists for the endpoints")
-      return nil
-    end
 
-    self.address_count = address_count
-    return total_ewma / address_count
+  for _, target in ipairs(self.balancer.targets) do
+    for _, address in ipairs(target.addresses) do
+      if address.available then
+        local ewma = self.ewma[address] or 0
+        address_count = address_count + 1
+        total_ewma = total_ewma + ewma
+      end
+    end
+  end
+
+  if address_count == 0 then
+    ngx_log(ngx_DEBUG, "no ewma value exists for the endpoints")
+    return nil
+  end
+
+  self.address_count = address_count
+  return total_ewma / address_count
 end
 
 
 function ewma:afterHostUpdate()
   table_clear(new_addresses)
-  
+
   for _, target in ipairs(self.balancer.targets) do
     for _, address in ipairs(target.addresses) do
       if address.available then
@@ -187,13 +187,13 @@ function ewma:getPeer(cache_only, handle)
     if address_count > 1 then
       local k = (address_count < PICK_SET_SIZE) and address_count or PICK_SET_SIZE
       local filtered_addresses = {}
-  
+
       for addr, ewma in pairs(self.ewma) do
         if not handle.failedAddresses[addr] then
           table_insert(filtered_addresses, addr)
         end
       end
-      
+
       local filtered_addresses_num = table_nkeys(filtered_addresses)
       if filtered_addresses_num == 0 then
         ngx_log(ngx_WARN, "all endpoints have been retried")
