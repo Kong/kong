@@ -214,6 +214,7 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
         -- so that CI and docker can have reliable results
         -- but remove `search` and `domain`
         search = {},
+        cache_purge = true,
       })
       snapshot = assert:snapshot()
       assert:set_parameter("TableFormatLevel", 10)
@@ -1198,7 +1199,7 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
             },
           }, b:getStatus())
 
-          dnsExpire(record)
+          dnsExpire(client, record)
           dnsSRV({
             { name = "srvrecord.test", target = "1.1.1.1", port = 9000, weight = 20 },
             { name = "srvrecord.test", target = "2.2.2.2", port = 9001, weight = 20 },
@@ -1382,7 +1383,7 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
           }, b:getStatus())
 
           -- update weight, through dns renewal
-          dnsExpire(record)
+          dnsExpire(client, record)
           dnsSRV({
             { name = "srvrecord.test", target = "1.1.1.1", port = 9000, weight = 20 },
             { name = "srvrecord.test", target = "2.2.2.2", port = 9001, weight = 20 },
@@ -1695,6 +1696,7 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
         -- update DNS with a new backend IP
         -- balancer should now recover since a new healthy backend is available
         record.expire = 0
+        dnsExpire(client, record)
         dnsA({
           { name = "getkong.test", address = "5.6.7.8", ttl = 60 },
         })
