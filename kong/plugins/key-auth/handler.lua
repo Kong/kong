@@ -8,6 +8,8 @@ local error = error
 local ipairs = ipairs
 local tostring = tostring
 local fmt = string.format
+local ngx_re_gsub = ngx.re.gsub
+local ngx_unescape_uri = ngx.unescape_uri
 
 
 local HEADERS_CONSUMER_ID           = constants.HEADERS.CONSUMER_ID
@@ -105,6 +107,21 @@ local function unauthorized(message, www_auth_content)
   return { status = 401, message = message, headers = { ["WWW-Authenticate"] = www_auth_content } }
 end
 
+local function remove_query_key(raw_query, key)
+  local pattern = key .. "=[^&]*&?"
+  -- make sure we are dealing with a url-decoded query before applying the substitution.
+  local unescaped_raw_query = ngx_unescape_uri(raw_query)
+  local new_query, _, err = ngx_re_gsub(unescaped_raw_query, pattern, "", "oj")
+  if err then
+    return nil, err
+  end
+  new_query, _, err = ngx_re_gsub(new_query, "&$", "", "oj")
+  if err then
+    return nil, err
+  end
+  return new_query
+end
+
 local function do_authentication(conf)
   if type(conf.key_names) ~= "table" then
     kong.log.err("no conf.key_names set, aborting plugin execution")
@@ -143,9 +160,18 @@ local function do_authentication(conf)
       key = v
 
       if conf.hide_credentials then
-        query[name] = nil
-        kong.service.request.set_query(query)
-        kong.service.request.clear_header(name)
+        if conf.key_in_query then
+          local raw_query = kong.request.get_raw_query()
+          local new_query, err = remove_query_key(raw_query, name)
+          if err then
+            kong.log.info("Cannot remove key from query: ", err)
+          else
+            kong.service.request.set_raw_query(new_query)
+          end
+        end
+        if conf.key_in_header then
+          kong.service.request.clear_header(name)
+        end
 
         if conf.key_in_body then
           if not body then
@@ -163,7 +189,6 @@ local function do_authentication(conf)
       end
 
       break
-
     elseif type(v) == "table" then
       -- duplicate API key
       return nil, unauthorized(ERR_DUPLICATE_API_KEY, www_auth_content)
@@ -266,6 +291,5 @@ function KeyAuthHandler:access(conf)
     return logical_AND_authentication(conf)
   end
 end
-
 
 return KeyAuthHandler
