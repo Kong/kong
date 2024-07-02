@@ -1,6 +1,7 @@
 local _M = {}
 local cjson = require("cjson")
 local snappy = require("resty.snappy")
+local lrucache = require("resty.lrucache")
 
 
 local string_sub = string.sub
@@ -12,13 +13,26 @@ local snappy_compress = snappy.compress
 local snappy_uncompress = snappy.uncompress
 
 
+local cap_names = lrucache.new(100)
+
+
 function _M.parse_method_name(method)
+  local cap = cap_names:get(method)
+
+  if cap then
+    return cap[1], cap[2]
+  end
+
   local pos = rfind(method, ".")
   if not pos then
     return nil, "not a valid method name"
   end
 
-  return method:sub(1, pos - 1), method:sub(pos + 1)
+  local cap = { method:sub(1, pos - 1), method:sub(pos + 1) }
+
+  cap_names:set(method, cap)
+
+  return cap[1], cap[2]
 end
 
 
