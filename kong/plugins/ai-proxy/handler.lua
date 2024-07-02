@@ -1,5 +1,6 @@
 local ai_shared = require("kong.llm.drivers.shared")
 local llm = require("kong.llm")
+local llm_state = require("kong.llm.state")
 local cjson = require("cjson.safe")
 local kong_utils = require("kong.tools.gzip")
 local kong_meta = require("kong.meta")
@@ -38,9 +39,7 @@ local function get_token_text(event_t)
   return (type(token_text) == "string" and token_text) or ""
 end
 
-
-
-local function handle_streaming_frame(conf)
+local function handle_streaming_frame(conf, chunk, finished)
   -- make a re-usable framebuffer
   local framebuffer = buffer.new()
   local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
@@ -54,9 +53,6 @@ local function handle_streaming_frame(conf)
     kong_ctx_plugin.ai_stream_log_buffer = buffer.new()
   end
 
-  -- now handle each chunk/frame
-  local chunk = ngx.arg[1]
-  local finished = ngx.arg[2]
 
   if type(chunk) == "string" and chunk ~= "" then
     -- transform each one into flat format, skipping transformer errors
@@ -158,10 +154,12 @@ local function handle_streaming_frame(conf)
 end
 
 function _M:header_filter(conf)
-  local kong_ctx_plugin = kong.ctx.plugin
-  local kong_ctx_shared = kong.ctx.shared
+  if llm_state.should_disable_ai_proxy_response_transform() then
+    return
+  end
 
-  if kong_ctx_shared.skip_response_transformer then
+  -- only act on 200 in first release - pass the unmodifed response all the way through if any failure
+  if kong.response.get_status() ~= 200 then
     return
   end
 
@@ -170,147 +168,113 @@ function _M:header_filter(conf)
     kong.response.clear_header(v)
   end
 
-  -- only act on 200 in first release - pass the unmodifed response all the way through if any failure
-  if kong.response.get_status() ~= 200 then
-    return
-  end
-
   -- we use openai's streaming mode (SSE)
-  if kong_ctx_shared.ai_proxy_streaming_mode then
+  if llm_state.is_streaming_mode() then
     -- we are going to send plaintext event-stream frames for ALL models
     kong.response.set_header("Content-Type", "text/event-stream")
-    return
-  end
-
-  local response_body = kong.service.response.get_raw_body()
-  if not response_body then
-    return
   end
 
   local ai_driver = require("kong.llm.drivers." .. conf.model.provider)
+  ai_driver.post_request(conf)
+end
+
+local function body_filter_chunk(conf, chunk, eof)
   local route_type = conf.route_type
 
-  -- if this is a 'streaming' request, we can't know the final
-  -- result of the response body, so we just proceed to body_filter
-  -- to translate each SSE event frame
-  if not kong_ctx_shared.ai_proxy_streaming_mode then
-    local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
-    if is_gzip then
-      response_body = kong_utils.inflate_gzip(response_body)
-    end
+  if not llm_state.should_disable_ai_proxy_response_transform() and
+      route_type ~= "preserve" and
+      llm_state.is_streaming_mode() then
 
-    if route_type == "preserve" then
-      kong_ctx_plugin.parsed_response = response_body
-    else
-      local new_response_string, err = ai_driver.from_format(response_body, conf.model, route_type)
-      if err then
-        kong_ctx_plugin.ai_parser_error = true
+    handle_streaming_frame(conf, chunk, eof) -- conf, data, eof
 
-        ngx.status = 500
-        kong_ctx_plugin.parsed_response = cjson.encode({ error = { message = err } })
-
-      elseif new_response_string then
-        -- preserve the same response content type; assume the from_format function
-        -- has returned the body in the appropriate response output format
-        kong_ctx_plugin.parsed_response = new_response_string
+  else
+    -- otherwise whether we should transform the response or not, record it
+    -- even though we are not going to transform it, we may need to do analytics
+    if chunk then
+      kong.plugin.ctx.cached_response = kong.plugin.ctx.cached_response .. chunk
+      -- dismiss the original response if are going to transform later
+      if not llm_state.should_disable_ai_proxy_response_transform() then
+        ngx.arg[1] = nil
       end
     end
   end
+end
 
-  ai_driver.post_request(conf)
+local function body_filter_end(conf)
+  local route_type = conf.route_type
+  local ai_driver = require("kong.llm.drivers." .. conf.model.provider)
+
+  if route_type == "preserve" or llm_state.is_streaming_mode() then
+    return
+  end
+
+  -- Note: below even if we are told not to do response transform, we still need to do
+  -- get the body for analytics
+
+  -- try parsed response from other plugin first
+  local response_body = llm_state.get_parsed_response()
+  -- fallback to our own cached response
+  if not response_body and kong.plugin.ctx.cached_response then
+    response_body = kong.plugin.ctx.cached_response
+  end
+
+  if not response_body then
+    return kong.response.exit(500, "no response body")
+  end
+  local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
+  if is_gzip then
+    response_body = kong_utils.inflate_gzip(response_body)
+  end
+
+  local new_response_string, err = ai_driver.from_format(response_body, conf.model, route_type)
+  if err then
+    kong.log.warn("issue when transforming the response body for analytics in the body filter phase, ", err)
+    ngx.status = 500
+
+    new_response_string = cjson.encode({ error = { message = err }})
+  elseif new_response_string then
+    ai_shared.post_request(conf, new_response_string)
+  end
+
+
+  if not llm_state.should_disable_ai_proxy_response_transform() then
+    if is_gzip then
+      new_response_string = kong_utils.deflate_gzip(new_response_string)
+    end
+
+    kong.response.set_raw_body(new_response_string)
+  end -- no need to handle else cases, the response body is unmodified
 end
 
 
 function _M:body_filter(conf)
-  local kong_ctx_plugin = kong.ctx.plugin
-  local kong_ctx_shared = kong.ctx.shared
-
-  -- if body_filter is called twice, then return
-  if kong_ctx_plugin.body_called and not kong_ctx_shared.ai_proxy_streaming_mode then
+  if kong.response.get_status() ~= 200 then
     return
   end
 
-  local route_type = conf.route_type
+  local data, eof = ngx.arg[1], ngx.arg[2]
+  body_filter_chunk(conf, data, eof)
 
-  if kong_ctx_shared.skip_response_transformer and (route_type ~= "preserve") then
-    local response_body
-    if kong_ctx_shared.parsed_response then
-      response_body = kong_ctx_shared.parsed_response
-    elseif kong.response.get_status() == 200 then
-      response_body = kong.service.response.get_raw_body()
-      if not response_body then
-        kong.log.warn("issue when retrieve the response body for analytics in the body filter phase.",
-                      " Please check AI request transformer plugin response.")
-      else
-        local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
-        if is_gzip then
-          response_body = kong_utils.inflate_gzip(response_body)
-        end
-      end
-    end
-
-    local ai_driver = require("kong.llm.drivers." .. conf.model.provider)
-    local new_response_string, err = ai_driver.from_format(response_body, conf.model, route_type)
-
-    if err then
-      kong.log.warn("issue when transforming the response body for analytics in the body filter phase, ", err)
-    elseif new_response_string then
-      ai_shared.post_request(conf, new_response_string)
-    end
+  if eof then
+    body_filter_end(conf)
   end
-
-  if not kong_ctx_shared.skip_response_transformer then
-    if (kong.response.get_status() ~= 200) and (not kong_ctx_plugin.ai_parser_error) then
-      return
-    end
-
-    if route_type ~= "preserve" then
-      if kong_ctx_shared.ai_proxy_streaming_mode then
-        handle_streaming_frame(conf)
-      else
-      -- all errors MUST be checked and returned in header_filter
-      -- we should receive a replacement response body from the same thread
-        local original_request = kong_ctx_plugin.parsed_response
-        local deflated_request = original_request
-
-        if deflated_request then
-          local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
-          if is_gzip then
-            deflated_request = kong_utils.deflate_gzip(deflated_request)
-          end
-
-          kong.response.set_raw_body(deflated_request)
-        end
-
-        -- call with replacement body, or original body if nothing changed
-        local _, err = ai_shared.post_request(conf, original_request)
-        if err then
-          kong.log.warn("analytics phase failed for request, ", err)
-        end
-      end
-    end
-  end
-
-  kong_ctx_plugin.body_called = true
 end
 
 
 function _M:access(conf)
   local kong_ctx_plugin = kong.ctx.plugin
-  local kong_ctx_shared = kong.ctx.shared
 
   -- store the route_type in ctx for use in response parsing
   local route_type = conf.route_type
 
   kong_ctx_plugin.operation = route_type
 
-  local request_table
   local multipart = false
 
   -- we may have received a replacement / decorated request body from another AI plugin
-  if kong_ctx_shared.replacement_request then
+  local request_table = llm_state.get_replacement_response() -- not used
+  if request_table then
     kong.log.debug("replacement request body received from another AI plugin")
-    request_table = kong_ctx_shared.replacement_request
 
   else
     -- first, calculate the coordinates of the request
@@ -357,18 +321,9 @@ function _M:access(conf)
   kong_ctx_plugin.llm_model_requested = conf_m.model.name
 
   -- check the incoming format is the same as the configured LLM format
-  if not multipart then
-    local compatible, err = llm.is_compatible(request_table, route_type)
-    if not compatible then
-      kong_ctx_shared.skip_response_transformer = true
-      return bad_request(err)
-    end
-  end
-
-  -- check the incoming format is the same as the configured LLM format
   local compatible, err = llm.is_compatible(request_table, route_type)
   if not compatible then
-    kong_ctx_shared.skip_response_transformer = true
+    llm_state.disable_ai_proxy_response_transform()
     return bad_request(err)
   end
 
@@ -396,7 +351,7 @@ function _M:access(conf)
     end
 
     -- specific actions need to skip later for this to work
-    kong_ctx_shared.ai_proxy_streaming_mode = true
+    llm_state.set_streaming_mode()
 
   else
     kong.service.request.enable_buffering()
@@ -416,7 +371,7 @@ function _M:access(conf)
     -- transform the body to Kong-format for this provider/model
     parsed_request_body, content_type, err = ai_driver.to_format(request_table, conf_m.model, route_type)
     if err then
-      kong_ctx_shared.skip_response_transformer = true
+      llm_state.disable_ai_proxy_response_transform()
       return bad_request(err)
     end
   end
@@ -434,7 +389,7 @@ function _M:access(conf)
   -- now re-configure the request for this operation type
   local ok, err = ai_driver.configure_request(conf_m)
   if not ok then
-    kong_ctx_shared.skip_response_transformer = true
+    llm_state.disable_ai_proxy_response_transform()
     kong.log.err("failed to configure request for AI service: ", err)
     return kong.response.exit(500)
   end
