@@ -1,11 +1,12 @@
 local _M = {}
 
 -- imports
-local cjson     = require("cjson.safe")
-local http      = require("resty.http")
-local fmt       = string.format
-local os        = os
-local parse_url = require("socket.url").parse
+local cjson      = require("cjson.safe")
+local http       = require("resty.http")
+local fmt        = string.format
+local os         = os
+local parse_url  = require("socket.url").parse
+local aws_stream = require("kong.tools.aws_stream")
 --
 
 -- static
@@ -16,7 +17,7 @@ local split        = require("kong.tools.string").split
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 local function str_ltrim(s) -- remove leading whitespace from string.
-  return (s:gsub("^%s*", ""))
+  return type(s) == "string" and s:gsub("^%s*", "")
 end
 --
 
@@ -55,6 +56,16 @@ _M.streaming_has_token_counts = {
   ["cohere"] = true,
   ["llama2"] = true,
   ["anthropic"] = true,
+  ["gemini"] = true,
+  ["bedrock"] = true,
+}
+
+_M.bedrock_unsupported_system_role_patterns = {
+  "amazon.titan.-.*",
+  "cohere.command.-text.-.*",
+  "cohere.command.-light.-text.-.*",
+  "mistral.mistral.-7b.-instruct.-.*",
+  "mistral.mixtral.-8x7b.-instruct.-.*",
 }
 
 _M.upstream_url_format = {
@@ -62,6 +73,9 @@ _M.upstream_url_format = {
   anthropic = "https://api.anthropic.com:443",
   cohere = "https://api.cohere.com:443",
   azure = "https://%s.openai.azure.com:443/openai/deployments/%s",
+  gemini = "https://generativelanguage.googleapis.com",
+  gemini_vertex = "https://%s",
+  bedrock = "https://bedrock-runtime.%s.amazonaws.com",
 }
 
 _M.operation_map = {
@@ -105,6 +119,24 @@ _M.operation_map = {
       method = "POST",
     },
   },
+  gemini = {
+    ["llm/v1/chat"] = {
+      path = "/v1beta/models/%s:%s",
+      method = "POST",
+    },
+  },
+  gemini_vertex = {
+    ["llm/v1/chat"] = {
+      path = "/v1/projects/%s/locations/%s/publishers/google/models/%s:%s",
+      method = "POST",
+    },
+  },
+  bedrock = {
+    ["llm/v1/chat"] = {
+      path = "/model/%s/%s",
+      method = "POST",
+    },
+  },
 }
 
 _M.clear_response_headers = {
@@ -118,6 +150,12 @@ _M.clear_response_headers = {
     "Set-Cookie",
   },
   mistral = {
+    "Set-Cookie",
+  },
+  gemini = {
+    "Set-Cookie",
+  },
+  bedrock = {
     "Set-Cookie",
   },
 }
@@ -199,19 +237,54 @@ end
 -- as if it were an SSE message.
 --
 -- @param {string} frame input string to format into SSE events
--- @param {string} delimiter delimeter (can be complex string) to split by
+-- @param {boolean} raw_json sets application/json byte-parser mode
 -- @return {table} n number of split SSE messages, or empty table
-function _M.frame_to_events(frame)
+function _M.frame_to_events(frame, provider)
   local events = {}
 
+  if (not frame) or (#frame < 1) or (type(frame)) ~= "string" then
+    return
+  end
+
+  -- some new LLMs return the JSON object-by-object,
+  -- because that totally makes sense to parse?!
+  if provider == "gemini" then
+    -- if this is the first frame, it will begin with array opener '['
+    frame = (string.sub(str_ltrim(frame), 1, 1) == "[" and string.sub(str_ltrim(frame), 2)) or frame
+
+    -- it may start with ',' which is the start of the new frame
+    frame = (string.sub(str_ltrim(frame), 1, 1) == "," and string.sub(str_ltrim(frame), 2)) or frame
+    
+    -- finally, it may end with the array terminator ']' indicating the finished stream
+    frame = (string.sub(str_ltrim(frame), -1) == "]" and string.sub(str_ltrim(frame), 1, -2)) or frame
+
+    -- for multiple events that arrive in the same frame, split by top-level comma
+    for _, v in ipairs(split(frame, "\n,")) do
+      events[#events+1] = { data = v }
+    end
+
+  elseif provider == "bedrock" then
+    local parser = aws_stream:new(frame)
+    while true do
+      local msg = parser:next_message()
+
+      if not msg then
+        break
+      end
+
+      events[#events+1] = { data = cjson.encode(msg) }
+    end
+
+  -- check if it's raw json and just return the split up data frame
   -- Cohere / Other flat-JSON format parser
   -- just return the split up data frame
-  if (not kong or not kong.ctx.plugin.truncated_frame) and string.sub(str_ltrim(frame), 1, 1) == "{" then
+  elseif (not kong or not kong.ctx.plugin.truncated_frame) and string.sub(str_ltrim(frame), 1, 1) == "{" then
     for event in frame:gmatch("[^\r\n]+") do
       events[#events + 1] = {
         data = event,
       }
     end
+
   else
     -- standard SSE parser
     local event_lines = split(frame, "\n")
@@ -404,24 +477,26 @@ function _M.resolve_plugin_conf(kong_request, conf)
 
   -- handle all other options
   for k, v in pairs(conf.model.options or {}) do
-    local prop_m = string_match(v or "", '%$%((.-)%)')
-    if prop_m then
-      local splitted = split(prop_m, '.')
-      if #splitted ~= 2 then
-        return nil, "cannot parse expression for field '" .. v .. "'"
-      end
-      
-      -- find the request parameter, with the configured name
-      prop_m, err = _M.conf_from_request(kong_request, splitted[1], splitted[2])
-      if err then
-        return nil, err
-      end
-      if not prop_m then
-        return nil, splitted[1] .. " key " .. splitted[2] .. " was not provided"
-      end
+    if type(v) == "string" then
+      local prop_m = string_match(v or "", '%$%((.-)%)')
+      if prop_m then
+        local splitted = split(prop_m, '.')
+        if #splitted ~= 2 then
+          return nil, "cannot parse expression for field '" .. v .. "'"
+        end
+        
+        -- find the request parameter, with the configured name
+        prop_m, err = _M.conf_from_request(kong_request, splitted[1], splitted[2])
+        if err then
+          return nil, err
+        end
+        if not prop_m then
+          return nil, splitted[1] .. " key " .. splitted[2] .. " was not provided"
+        end
 
-      -- replace the value
-      conf_m.model.options[k] = prop_m
+        -- replace the value
+        conf_m.model.options[k] = prop_m
+      end
     end
   end
 
@@ -628,6 +703,10 @@ end
 
 -- Function to count the number of words in a string
 local function count_words(str)
+  if type(str) ~= "string" then
+    return 0
+  end
+
   local count = 0
   if type(str) == "string" then
     for word in str:gmatch("%S+") do

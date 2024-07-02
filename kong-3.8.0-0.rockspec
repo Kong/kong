@@ -35,6 +35,7 @@ dependencies = {
   "lua-messagepack == 0.5.4",
   "lua-resty-aws == 1.5.0",
   "lua-resty-openssl == 1.4.0",
+  "lua-resty-gcp == 0.0.13",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-acme == 0.14.0",
@@ -197,6 +198,7 @@ build = {
     ["kong.tools.cjson"] = "kong/tools/cjson.lua",
     ["kong.tools.emmy_debugger"] = "kong/tools/emmy_debugger.lua",
     ["kong.tools.redis.schema"] = "kong/tools/redis/schema.lua",
+    ["kong.tools.aws_stream"] = "kong/tools/aws_stream.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.events"] = "kong/runloop/events.lua",
