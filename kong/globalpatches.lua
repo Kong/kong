@@ -534,15 +534,6 @@ return function(options)
     local old_tcp_connect
     local old_udp_setpeername
 
-    -- need to do the extra check here: https://github.com/openresty/lua-nginx-module/issues/860
-    local function strip_nils(first, second)
-      if second then
-        return first, second
-      elseif first then
-        return first
-      end
-    end
-
     local function resolve_connect(f, sock, host, port, opts)
       if sub(host, 1, 5) ~= "unix:" then
         local try_list
@@ -553,7 +544,7 @@ return function(options)
         end
       end
 
-      return f(sock, host, strip_nils(port, opts))
+      return f(sock, host, port, port and opts or nil)
     end
 
     local function tcp_resolve_connect(sock, host, port, opts)
