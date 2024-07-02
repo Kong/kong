@@ -1,0 +1,5 @@
+message: |
+  Fixed an issue where vault references that no longer used would still be rotated. A maximum retry count threshold is added
+  with a default value 60, to prevent the reference from being rotated indefinitely.
+type: bugfix
+scope: Core

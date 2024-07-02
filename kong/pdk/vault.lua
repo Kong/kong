@@ -51,6 +51,8 @@ local decode_json = cjson.decode
 
 local NEGATIVELY_CACHED_VALUE = "\0"
 local ROTATION_INTERVAL = tonumber(os.getenv("KONG_VAULT_ROTATION_INTERVAL"), 10) or 60
+local SECRETS_RETRY_KEY_PREFIX = "retry_count:"
+local SECRETS_RETRY_COUNT_THRESHOLD = tonumber(os.getenv("KONG_VAULT_SECRETS_RETRY_COUNT_THRESHOLD"), 10) or 60
 local DAO_MAX_TTL = constants.DATABASE.DAO_MAX_TTL
 
 
@@ -1238,10 +1240,15 @@ local function new(self)
   -- @treturn true|nil `true` after successfully rotating a secret, otherwise `nil`
   -- @treturn string|nil a string describing an error if there was one
   local function rotate_secret(old_cache_key, caching_strategy)
+    if old_cache_key:sub(1, #SECRETS_RETRY_KEY_PREFIX) == SECRETS_RETRY_KEY_PREFIX then
+      return true
+    end
+
     local reference, err = parse_cache_key(old_cache_key)
     if not reference then
       -- invalid cache keys are removed (in general should never happen)
       SECRETS_CACHE:delete(old_cache_key)
+      SECRETS_CACHE:delete(SECRETS_RETRY_KEY_PREFIX .. old_cache_key)
       return nil, err
     end
 
@@ -1249,12 +1256,14 @@ local function new(self)
     if not strategy then
       -- invalid cache keys are removed (e.g. a vault entity could have been removed)
       SECRETS_CACHE:delete(old_cache_key)
+      SECRETS_CACHE:delete(SECRETS_RETRY_KEY_PREFIX .. old_cache_key)
       return nil, fmt("could not parse reference %s (%s)", reference, err)
     end
 
     if old_cache_key ~= new_cache_key then
       -- config has changed, thus the old cache key can be removed
       SECRETS_CACHE:delete(old_cache_key)
+      SECRETS_CACHE:delete(SECRETS_RETRY_KEY_PREFIX .. old_cache_key)
     end
 
     -- The ttl for this key, is the TTL + the resurrect time
@@ -1274,7 +1283,21 @@ local function new(self)
     -- we should refresh the secret at this point
     local ok, err = get_from_vault(reference, strategy, config, new_cache_key, parsed_reference)
     if not ok then
+      local retry_count = tonumber(SECRETS_CACHE:get(SECRETS_RETRY_KEY_PREFIX .. new_cache_key) or 0, 10)
+      -- secrets that are failed resolving for more than SECRETS_RETRY_COUNT_THRESHOLD
+      -- times will be removed from the cache and stop rotation
+      if retry_count >= SECRETS_RETRY_COUNT_THRESHOLD then
+        SECRETS_CACHE:delete(new_cache_key)
+        SECRETS_CACHE:delete(SECRETS_RETRY_KEY_PREFIX .. new_cache_key)
+        return nil, fmt("could not retrieve value for reference %s (%s) after %d retries, removing from cache and stop rotation", reference, err, SECRETS_RETRY_COUNT_THRESHOLD)
+
+      else
+        SECRETS_CACHE:incr(SECRETS_RETRY_KEY_PREFIX .. new_cache_key, 1, 0)
+      end
       return nil, fmt("could not retrieve value for reference %s (%s)", reference, err)
+
+    else
+      SECRETS_CACHE:delete(SECRETS_RETRY_KEY_PREFIX .. new_cache_key)
     end
 
     return true
