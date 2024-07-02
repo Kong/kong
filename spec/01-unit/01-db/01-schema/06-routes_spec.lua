@@ -622,16 +622,29 @@ describe("routes schema (flavor = " .. flavor .. ")", function()
       assert.equal("length must be at least 1", err.headers[1])
     end)
 
-    it("value must be a plain pattern or a valid regex pattern", function()
-      local route = {
-        headers = { location = { "~[" } },
-        protocols = { "http" },
-      }
+    if flavor == "traditional_compatible" then
+      it("value must be a plain pattern or a valid regex pattern", function()
+        local route = {
+          headers = { location = { "~*[" } },
+          protocols = { "http" },
+        }
 
-      local ok, err = Routes:validate(route)
-      assert.falsy(ok)
-      assert.match("invalid regex", err.headers[1])
-    end)
+        local ok, err = Routes:validate(route)
+        assert.falsy(ok)
+        assert.match("invalid regex", err.headers)
+      end)
+
+      it("multiple patterns are treated as plain patterns", function()
+        local route = {
+          headers = { location = { "~*[", "~*" } },
+          protocols = { "http" },
+        }
+
+        local ok, err = Routes:validate(route)
+        assert.is_nil(err)
+        assert.truthy(ok)
+      end)
+    end
   end)
 
   describe("methods attribute", function()

@@ -112,7 +112,6 @@ local OP_IN       = "in"
 
 
 local DOT              = byte(".")
-local TILDE            = byte("~")
 local ASTERISK         = byte("*")
 
 
@@ -424,12 +423,13 @@ local function get_expression(route)
     for h, v in pairs(headers) do
       single_header_buf:reset():put("(")
 
+      local num_v = #v
       for i, value in ipairs(v) do
         local name = "any(lower(http.headers." .. replace_dashes_lower(h) .. "))"
         local op = OP_EQUAL
 
-        -- value starts with "~*"
-        if byte(value, 1) == TILDE and byte(value, 2) == ASTERISK then
+        -- the condition: only 1 value and it starts with `~*`
+        if num_v == 1 and is_regex_magic(value) then
           value = value:sub(3)
           op = OP_REGEX
         end

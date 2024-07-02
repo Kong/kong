@@ -262,8 +262,9 @@ do
   local get_phase = ngx.get_phase
 
   local TILDE = byte("~")
+  local ASTERISK = byte("*")
   is_regex_magic = function(path)
-    return byte(path) == TILDE
+    return byte(path) == TILDE and byte(path, 2) == ASTERISK
   end
 
   local empty_table = {}
