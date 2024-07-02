@@ -1,0 +1,3 @@
+message: "**OpenID Connect:** Updated the rediscovery to use a short lifetime (5s) if the last discovery failed."
+type: bugfix
+scope: Plugin

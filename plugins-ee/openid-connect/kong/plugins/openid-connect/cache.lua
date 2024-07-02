@@ -36,6 +36,7 @@ local spawn         = ngx.thread.spawn
 local wait          = ngx.thread.wait
 local kong          = kong
 local url_encode    = ngx.escape_uri
+local min           = math.min
 
 
 local TOKEN_DECODE_OPTS = {
@@ -69,6 +70,9 @@ local rediscovery_semaphores = {}
 
 local discovery_data = { n = 0 }
 local jwks_cache = {}
+-- indicate if the last discovery failed (or partly failed)
+local failed_last_time = {}
+local FAILURE_REDISCOVERY_LIFETIME = 5
 
 
 local function cache_get(key, opts, func, ...)
@@ -496,8 +500,9 @@ local function get_config(issuer, opts)
 end
 
 
-local function discover(issuer, opts, issuer_entity)
+local function discover(issuer, identifier, opts, issuer_entity)
   opts = opts or {}
+  failed_last_time[identifier] = false
 
   local configuration_decoded, err
 
@@ -505,6 +510,10 @@ local function discover(issuer, opts, issuer_entity)
 
   if not opts.using_pseudo_issuer then
     configuration_decoded = get_config(issuer, opts)
+
+    if not configuration_decoded then
+      failed_last_time[identifier] = true
+    end
   end
 
   if not configuration_decoded then
@@ -561,10 +570,12 @@ local function discover(issuer, opts, issuer_entity)
       jwks_uri = jwks_uris[i]
       ok, jwks_string, err = wait(threads[i])
       if not ok then
+        failed_last_time[identifier] = true
         jwks_uri_jwks = decode_previous_jwks(jwks_uri, jwks_string, err)
 
       else
         if type(jwks_string) ~= "string" then
+          failed_last_time[identifier] = true
           jwks_uri_jwks = decode_previous_jwks(jwks_uri, jwks_string, err)
 
         else
@@ -573,6 +584,8 @@ local function discover(issuer, opts, issuer_entity)
             jwks_cache[jwks_uri] = jwks_string
 
           else
+            failed_last_time[identifier] = true
+
             if jwks_cache[jwks_uri] then
               log.notice("decoding jwks failed: ", err or "type error (falling back to previous jwks)")
               jwks_uri_jwks, err = json.decode(jwks_cache[jwks_uri])
@@ -698,7 +711,7 @@ local function rediscover(issuer, identifier, opts, issuer_entity)
     issuer_entity = issuer_select(identifier)
   end
 
-  local conf, jwks = discover(issuer, opts, issuer_entity)
+  local conf, jwks = discover(issuer, identifier, opts, issuer_entity)
   if not conf or not jwks then
     log.notice("rediscovery failed")
     issuer_entity = issuer_select(identifier)
@@ -822,6 +835,12 @@ function issuers.rediscover(issuer, opts)
     end
 
     local rediscovery_lifetime = opts.rediscovery_lifetime or 30
+    -- use a short lifetime if the last discovery failed
+    if failed_last_time[identifier] then
+      log("the last discovery failed, use a short rediscovery lifetime")
+      rediscovery_lifetime = min(FAILURE_REDISCOVERY_LIFETIME, rediscovery_lifetime)
+    end
+
     local seconds_since_last_rediscovery = time() - updated_at
     if seconds_since_last_rediscovery < rediscovery_lifetime then
       log.notice("rediscovery for ", identifier, " was done recently (",
@@ -899,7 +918,7 @@ local function issuers_init(issuer, identifier, opts)
     return issuer_entity
   end
 
-  local conf, jwks = discover(issuer, opts, issuer_entity)
+  local conf, jwks = discover(issuer, identifier, opts, issuer_entity)
   if not conf then
     return nil, "discovery failed"
   end
