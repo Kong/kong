@@ -1,0 +1,4 @@
+message: | 
+  **Core**: Added Ada dependency - WHATWG-compliant and fast URL parser.
+type: feature
+scope: Core

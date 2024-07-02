@@ -11,6 +11,7 @@ load("//build/openresty/wasmx:wasmx_repositories.bzl", "wasmx_repositories")
 load("//build/openresty/wasmx/filters:repositories.bzl", "wasm_filters_repositories")
 load("//build/openresty/brotli:brotli_repositories.bzl", "brotli_repositories")
 load("//build/openresty/snappy:snappy_repositories.bzl", "snappy_repositories")
+load("//build/openresty/ada:ada_repositories.bzl", "ada_repositories")
 
 # This is a dummy file to export the module's repository.
 _NGINX_MODULE_DUMMY_FILE = """
@@ -35,6 +36,7 @@ def openresty_repositories():
     wasm_filters_repositories()
     brotli_repositories()
     snappy_repositories()
+    ada_repositories()
 
     openresty_version = KONG_VAR["OPENRESTY"]
 
