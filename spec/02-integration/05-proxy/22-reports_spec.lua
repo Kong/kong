@@ -242,6 +242,20 @@ for _, strategy in helpers.each_strategy() do
       proxy_ssl_client:close()
     end)
 
+    it("when send http request to https port, no other error in error.log", function()
+      local https_port = assert(helpers.get_proxy_port(true))
+      local proxy_client = assert(helpers.proxy_client(nil, https_port))
+      local res = proxy_client:get("/", {
+        headers = { host  = "http-service.test" }
+      })
+      reports_send_ping({port=constants.REPORTS.STATS_TLS_PORT})
+
+      assert.response(res).has_status(400)
+      assert.logfile().has.no.line("using uninitialized")
+      assert.logfile().has.no.line("could not determine log suffix (scheme=http, proxy_mode=)")
+      proxy_client:close()
+    end)
+
     it("reports h2c requests", function()
       local h2c_client = assert(helpers.proxy_client_h2c())
       local body, headers = h2c_client({

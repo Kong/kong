@@ -1,0 +1,4 @@
+message: |
+  Fixed an issue where trigger a report with an uninitialized variable in the 400 abnormal traffic.
+type: bugfix
+scope: Core
