@@ -5,7 +5,7 @@ on:
 jobs:
   schema-change-labels:
     if: "${{ contains(github.event.*.labels.*.name, 'schema-change-noteworthy') }}"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - name: Schema change label found
       uses: rtCamp/action-slack-notify@v2
