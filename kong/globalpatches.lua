@@ -591,7 +591,10 @@ return function(options)
 
     if not options.cli and not options.rbusted then
       local timing = require "kong.timing"
+      local etrace = require "kong.etrace"
+
       timing.register_hooks()
+      etrace.globalpatches()
     end
 
     -- STEP 5: load code that should be using the patched versions, if any (because of dependency chain)

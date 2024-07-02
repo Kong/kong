@@ -100,6 +100,7 @@ lualib_deps = [
 
 luaclib_deps = [
     "@atc_router",
+    "@resty_protobuf",
 ]
 
 [
@@ -238,6 +239,15 @@ kong_genrule(
 
         # TODO: remove this after lua-resty-websocket becomes a patch or merged to upstream
         rm -rf ${BUILD_DESTDIR}/openresty/lualib/resty/websocket
+
+        RESTY_PROTOBUF=${WORKSPACE_PATH}/$(location @resty_protobuf)
+        cp $RESTY_PROTOBUF ${BUILD_DESTDIR}/openresty/lualib/.
+
+        cp -r $(locations @protoc//:all_srcs) ${BUILD_DESTDIR}/kong/.
+
+    """ + install_lib_deps_cmd + install_lualib_deps_cmd + install_webui_cmd + link_modules_dir + install_wasm_deps_cmd + """
+        mkdir -p ${BUILD_DESTDIR}/etc/kong
+        cp kong.conf.default ${BUILD_DESTDIR}/etc/kong/kong.conf.default
 
         # housecleaning
         if [[ -d ${BUILD_DESTDIR}/kong/lib64 ]]; then

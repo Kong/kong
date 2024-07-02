@@ -52,6 +52,18 @@ load("@atc_router//build:crates.bzl", "atc_router_crates")
 
 atc_router_crates()
 
+load("@resty_protobuf//build:repos.bzl", "resty_protobuf_repositories")
+
+resty_protobuf_repositories()
+
+load("@resty_protobuf//build:deps.bzl", "resty_protobuf_dependencies")
+
+resty_protobuf_dependencies(cargo_home_isolated = False)  # TODO: set cargo_home_isolated=True for release
+
+load("@resty_protobuf//build:crates.bzl", "resty_protobuf_crates")
+
+resty_protobuf_crates()
+
 load("//build:repositories.bzl", "build_repositories")
 
 build_repositories()

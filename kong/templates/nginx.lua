@@ -71,6 +71,7 @@ wasm {
 
 > if role == "control_plane" or #proxy_listeners > 0 or #admin_listeners > 0 or #status_listeners > 0 then
 http {
+    lua_capture_error_log 32m;
     include 'nginx-kong.conf';
 }
 > end
