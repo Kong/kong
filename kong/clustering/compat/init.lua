@@ -168,11 +168,20 @@ function _M.check_configuration_compatibility(cp, dp)
         -- CP plugin needs to match DP plugins with major version
         -- CP must have plugin with equal or newer version than that on DP
 
-        if cp_plugin.major ~= dp_plugin.major or
-          cp_plugin.minor < dp_plugin.minor then
-          local msg = "configured data plane " .. name .. " plugin version " .. dp_plugin.version ..
-                      " is different to control plane plugin version " .. cp_plugin.version
-          return nil, msg, CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE
+        -- luacheck:ignore 542
+        if name == "opentelemetry" and dp_plugin.major == 0 and dp_plugin.minor == 1 then
+          -- The first version of the opentelemetry plugin was introduced into the Kong code base with a version
+          -- number 0.1.0 and released that way.  In subsequent releases, the version number was then not updated
+          -- to avoid the compatibility check from failing.  To work around this issue and allow us to fix the
+          -- version number of the opentelemetry plugin, we're accepting the plugin with version 0.1.0 to be
+          -- compatible
+        else
+          if cp_plugin.major ~= dp_plugin.major or
+            cp_plugin.minor < dp_plugin.minor then
+            local msg = "configured data plane " .. name .. " plugin version " .. dp_plugin.version ..
+              " is different to control plane plugin version " .. cp_plugin.version
+            return nil, msg, CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE
+          end
         end
       end
     end
