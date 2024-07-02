@@ -1,0 +1,3 @@
+message: "Bumped libxcrypt to 4.4.36"
+type: dependency
+scope: Core
