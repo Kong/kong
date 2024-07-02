@@ -64,10 +64,10 @@ function AIPromptTemplateHandler:access(conf)
   kong.ctx.shared.ai_prompt_templated = true
 
   if conf.log_original_request then
-    kong.log.set_serialize_value(LOG_ENTRY_KEYS.REQUEST_BODY, kong.request.get_raw_body())
+    kong.log.set_serialize_value(LOG_ENTRY_KEYS.REQUEST_BODY, kong.request.get_raw_body(conf.max_request_body_size))
   end
 
-  local request = kong.request.get_body("application/json")
+  local request = kong.request.get_body("application/json", nil, conf.max_request_body_size)
   if type(request) ~= "table" then
     return bad_request("this LLM route only supports application/json requests")
   end

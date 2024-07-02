@@ -37,6 +37,14 @@ return {
           default = true,
         }},
 
+        {
+          max_request_body_size = {
+          type = "integer",
+          default = 8 * 1024,
+          gt = 0,
+          description = "max allowed body size allowed to be introspected",}
+        },
+
         -- from forward-proxy
         { http_proxy_host = typedefs.host },
         { http_proxy_port = typedefs.port },
@@ -46,7 +54,7 @@ return {
         { llm = llm.config_schema },
       },
     }},
-    
+
   },
   entity_checks = {
     {
