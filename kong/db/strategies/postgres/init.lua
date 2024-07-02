@@ -1215,7 +1215,7 @@ function _M.new(connector, schema, errors)
       "  FROM ", table_name_escaped, "\n",
       where_clause(
         " WHERE ", "(" .. pk_escaped .. ") = (" .. primary_key_placeholders .. ")",
-        ws_id_select_where), ";"
+                   ws_id_select_where), ";"
     }
   })
 
@@ -1245,7 +1245,7 @@ function _M.new(connector, schema, errors)
       "  FROM ", table_name_escaped, "\n",
       where_clause(
         " WHERE ", "(" .. pk_escaped .. ") = (" .. primary_key_placeholders .. ")",
-        ws_id_select_where),
+                   ws_id_select_where),
       " LIMIT 1;"
     }
   })
@@ -1441,7 +1441,7 @@ function _M.new(connector, schema, errors)
           "  FROM ", table_name_escaped, "\n",
           where_clause(
             " WHERE ", unique_escaped .. " = $1",
-            ws_id_select_where),
+                       ws_id_select_where),
           " LIMIT 1;"
         },
       })
@@ -1511,7 +1511,7 @@ function _M.new(connector, schema, errors)
           "  FROM ", table_name_escaped, "\n",
           where_clause(
             " WHERE ", unique_escaped .. " = $1",
-            ws_id_select_where), ";"
+                       ws_id_select_where), ";"
         }
       })
     end
