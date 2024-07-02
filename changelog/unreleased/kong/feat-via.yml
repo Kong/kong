@@ -1,0 +1,4 @@
+message: |
+  Append gateway info to inbound `Via` header, and optionally to outbound `Via` header, according to RFC7230 and RFC9110.
+type: feature
+scope: Core

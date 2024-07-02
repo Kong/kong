@@ -155,6 +155,7 @@ server {
 
         set $ctx_ref                     '';
         set $upstream_te                 '';
+        set $upstream_via                '';
         set $upstream_host               '';
         set $upstream_upgrade            '';
         set $upstream_connection         '';
@@ -178,6 +179,7 @@ server {
 > end
 
         proxy_set_header      TE                 $upstream_te;
+        proxy_set_header      Via                $upstream_via;
         proxy_set_header      Host               $upstream_host;
         proxy_set_header      Upgrade            $upstream_upgrade;
         proxy_set_header      Connection         $upstream_connection;
@@ -212,6 +214,7 @@ server {
         proxy_request_buffering off;
 
         proxy_set_header      TE                 $upstream_te;
+        proxy_set_header      Via                $upstream_via;
         proxy_set_header      Host               $upstream_host;
         proxy_set_header      Upgrade            $upstream_upgrade;
         proxy_set_header      Connection         $upstream_connection;
@@ -246,6 +249,7 @@ server {
         proxy_request_buffering off;
 
         proxy_set_header      TE                 $upstream_te;
+        proxy_set_header      Via                $upstream_via;
         proxy_set_header      Host               $upstream_host;
         proxy_set_header      Upgrade            $upstream_upgrade;
         proxy_set_header      Connection         $upstream_connection;
@@ -280,6 +284,7 @@ server {
         proxy_request_buffering  on;
 
         proxy_set_header      TE                 $upstream_te;
+        proxy_set_header      Via                $upstream_via;
         proxy_set_header      Host               $upstream_host;
         proxy_set_header      Upgrade            $upstream_upgrade;
         proxy_set_header      Connection         $upstream_connection;
@@ -310,6 +315,7 @@ server {
         set $kong_proxy_mode 'grpc';
 
         grpc_set_header      TE                 $upstream_te;
+        grpc_set_header      Via                $upstream_via;
         grpc_set_header      X-Forwarded-For    $upstream_x_forwarded_for;
         grpc_set_header      X-Forwarded-Proto  $upstream_x_forwarded_proto;
         grpc_set_header      X-Forwarded-Host   $upstream_x_forwarded_host;
@@ -353,6 +359,7 @@ server {
 
         proxy_http_version 1.1;
         proxy_set_header      TE                 $upstream_te;
+        proxy_set_header      Via                $upstream_via;
         proxy_set_header      Host               $upstream_host;
         proxy_set_header      Upgrade            $upstream_upgrade;
         proxy_set_header      Connection         $upstream_connection;
