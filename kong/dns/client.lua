@@ -598,7 +598,7 @@ function _M:resolve_address(name, port, cache_only, tries)
 
   if answers and answers[1] and answers[1].type == TYPE_SRV then
     local answer = get_next_weighted_round_robin_answer(answers)
-    port = (answer.port ~= 0 and answer.port) or port
+    port = answer.port ~= 0 and answer.port or port
     answers, err, tries = resolve_all(self, answer.target, TYPE_A_AAAA,
                                       cache_only, tries, has_timing)
   end
