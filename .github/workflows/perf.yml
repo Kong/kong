@@ -65,7 +65,7 @@ jobs:
         luarocks
 
     - name: Bazel Outputs
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: failure()
       with:
         name: bazel-outputs
@@ -267,7 +267,7 @@ jobs:
         done
 
     - name: Save results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: perf-results
@@ -278,7 +278,7 @@ jobs:
         retention-days: 31
 
     - name: Save error logs
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: error_logs
