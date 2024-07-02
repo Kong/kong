@@ -163,5 +163,9 @@ return {
     oauth2 = {
       "realm",
     },
+    opentelemetry = {
+      "traces_endpoint",
+      "logs_endpoint",
+    },
   },
 }

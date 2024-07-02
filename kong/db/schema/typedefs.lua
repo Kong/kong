@@ -1,7 +1,7 @@
 --- A library of ready-to-use type synonyms to use in schema definitions.
 -- @module kong.db.schema.typedefs
 local queue_schema = require "kong.tools.queue_schema"
-local propagation_schema = require "kong.tracing.propagation.schema"
+local propagation_schema = require "kong.observability.tracing.propagation.schema"
 local openssl_pkey = require "resty.openssl.pkey"
 local openssl_x509 = require "resty.openssl.x509"
 local Schema = require "kong.db.schema"

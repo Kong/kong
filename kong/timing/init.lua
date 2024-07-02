@@ -11,7 +11,7 @@ local assert              = assert
 local ipairs              = ipairs
 local string_format       = string.format
 
-local request_id_get      = require("kong.tracing.request_id").get
+local request_id_get      = require("kong.observability.tracing.request_id").get
 
 local FILTER_ALL_PHASES = {
   ssl_cert      = nil,    -- NYI
@@ -222,7 +222,7 @@ function _M.init_worker(is_enabled)
   enabled = is_enabled and ngx.config.subsystem == "http"
 
   if enabled then
-    req_dyn_hook.always_enable("timing:auth")
+    req_dyn_hook.enable_by_default("timing:auth")
   end
 end
 
