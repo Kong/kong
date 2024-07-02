@@ -1,0 +1,3 @@
+message: "**Opentelemetry**: respect the trace flags from the parent span (if present) before applying sampling"
+type: bugfix
+scope: PDK
