@@ -8,6 +8,9 @@ local error = error
 local pcall = pcall
 
 
+local kong_conf = kong and kong.configuration
+
+
 local concurrency = {}
 
 
@@ -93,7 +96,9 @@ function concurrency.with_coroutine_mutex(opts, fn)
     return fn()
   end
 
-  local timeout = opts_timeout or 60
+  local timeout = opts_timeout
+                  or kong_conf and kong_conf.concurrency_timeout and kong_conf.concurrency_timeout / 1000
+                  or 60
 
   local semaphore = semaphores[opts_name]
 
