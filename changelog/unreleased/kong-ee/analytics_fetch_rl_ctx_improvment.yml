@@ -1,0 +1,2 @@
+message: Improved the performance of Konnect Analytics by fetching Rate Limiting context more efficiently.
+type: performance

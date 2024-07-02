@@ -5,13 +5,12 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local reports           = require "kong.reports"
-local new_tab           = require "table.new"
-local math              = require "math"
-local request_id        = require "kong.tracing.request_id"
-local Queue             = require "kong.tools.queue"
-local pb                = require "pb"
-local protoc            = require "protoc"
+local reports           = require("kong.reports")
+local new_tab           = require("table.new")
+local request_id        = require("kong.tracing.request_id")
+local Queue             = require("kong.tools.queue")
+local pb                = require("pb")
+local protoc            = require("protoc")
 local is_http_module    = ngx.config.subsystem == "http"
 local log               = ngx.log
 local INFO              = ngx.INFO
@@ -19,19 +18,22 @@ local DEBUG             = ngx.DEBUG
 local ERR               = ngx.ERR
 local WARN              = ngx.WARN
 local ngx               = ngx
+local ngx_var           = ngx.var
+local ngx_header        = ngx.header
 local kong              = kong
 local knode             = (kong and kong.node) and kong.node or
-                            require "kong.pdk.node".new()
+                            require("kong.pdk.node").new()
 local re_gmatch         = ngx.re.gmatch
 local ipairs            = ipairs
 local assert            = assert
-local to_hex            = require "resty.string".to_hex
+local to_hex            = require("resty.string").to_hex
 local table_insert      = table.insert
 local table_concat      = table.concat
 local string_find       = string.find
 local string_sub        = string.sub
 local Queue_can_enqueue = Queue.can_enqueue
 local Queue_enqueue     = Queue.enqueue
+local get_rl_header     = require("kong.pdk.private.rate_limiting").get_stored_response_header
 
 local _log_prefix                         = "[analytics] "
 local DELAY_LOWER_BOUND                   = 0
@@ -55,6 +57,9 @@ p:addpath("kong/include")
 p:loadfile("kong/model/analytics/payload.proto")
 
 local EMPTY_PAYLOAD = pb.encode("kong.model.analytics.Payload", {})
+local LOG_SERILIZER_OPTS = {
+  __skip_fetch_headers__ = true,
+}
 
 local function strip_query(str)
   local idx = string_find(str, "?", 1, true)
@@ -385,7 +390,8 @@ function _M:create_payload(message)
   payload.client_ip = message.client_ip
   payload.started_at = message.started_at
 
-  local root_span = ngx.ctx.KONG_SPANS and ngx.ctx.KONG_SPANS[1]
+  local ngx_ctx = ngx.ctx
+  local root_span = ngx_ctx.KONG_SPANS and ngx_ctx.KONG_SPANS[1]
   local trace_id = root_span and root_span.trace_id
   if trace_id and root_span.should_sample then
     log(DEBUG, _log_prefix, "Attaching raw trace_id of to_hex(trace_id): ", to_hex(trace_id))
@@ -407,8 +413,17 @@ function _M:create_payload(message)
   if message.request ~= nil then
     local request = payload.request
     local req = message.request
-    request.header_user_agent = self:safe_string(req.headers["user-agent"])
-    request.header_host = self:safe_string(req.headers["host"])
+
+    -- Since Nginx 1.23.0,
+    -- Nginx Variables combined duplicated headers using comma-separated string
+    -- For example:
+    -- X-Foo: 1
+    -- X-Foo: 2
+    -- X-Foo: 3
+    -- And the `ngx_var.http_x_foo` will be `"1, 2, 3"`
+    request.header_user_agent = ngx_var.http_user_agent
+    request.header_host = ngx_var.http_host
+
     request.http_method = req.method
     request.body_size = req.size
     request.uri = strip_query(req.uri)
@@ -419,59 +434,103 @@ function _M:create_payload(message)
     local resp = message.response
     response.http_status = resp.status
     response.body_size = resp.size
-    response.header_content_length = resp.headers["content-length"]
-    response.header_content_type = resp.headers["content-type"]
-    response.header_ratelimit_limit = tonumber(resp.headers["ratelimit-limit"])
-    response.header_ratelimit_remaining = tonumber(resp.headers["ratelimit-remaining"])
-    response.header_ratelimit_reset = tonumber(resp.headers["ratelimit-reset"])
-    response.header_retry_after = tonumber(resp.headers["retry-after"])
-    response.header_x_ratelimit_limit_second = tonumber(resp.headers["x-ratelimit-limit-second"])
-    response.header_x_ratelimit_limit_minute = tonumber(resp.headers["x-ratelimit-limit-minute"])
-    response.header_x_ratelimit_limit_hour = tonumber(resp.headers["x-ratelimit-limit-hour"])
-    response.header_x_ratelimit_limit_day = tonumber(resp.headers["x-ratelimit-limit-day"])
-    response.header_x_ratelimit_limit_month = tonumber(resp.headers["x-ratelimit-limit-month"])
-    response.header_x_ratelimit_limit_year = tonumber(resp.headers["x-ratelimit-limit-year"])
-    response.header_x_ratelimit_remaining_second = tonumber(resp.headers["x-ratelimit-remaining-second"])
-    response.header_x_ratelimit_remaining_minute = tonumber(resp.headers["x-ratelimit-remaining-minute"])
-    response.header_x_ratelimit_remaining_hour = tonumber(resp.headers["x-ratelimit-remaining-hour"])
-    response.header_x_ratelimit_remaining_day = tonumber(resp.headers["x-ratelimit-remaining-day"])
-    response.header_x_ratelimit_remaining_month = tonumber(resp.headers["x-ratelimit-remaining-month"])
-    response.header_x_ratelimit_remaining_year = tonumber(resp.headers["x-ratelimit-remaining-year"])
-    if resp.headers["ratelimit-limit"] ~= nil then
+    response.header_content_length = tonumber(ngx_header.content_length)
+    response.header_content_type = ngx_header.content_type
+
+    local ratelimit_limit = get_rl_header(ngx_ctx, "RateLimit-Limit")
+    if ratelimit_limit then
+      response.header_ratelimit_limit = ratelimit_limit
+      response.header_ratelimit_remaining = get_rl_header(ngx_ctx, "RateLimit-Remaining")
+      response.header_ratelimit_reset = get_rl_header(ngx_ctx, "RateLimit-Reset")
       response.ratelimit_enabled = true
-    end
-    if resp.headers["x-ratelimit-limit-second"] ~= nil then
-      response.ratelimit_enabled_second = true
-    end
-    if resp.headers["x-ratelimit-limit-minute"] ~= nil then
-      response.ratelimit_enabled_minute = true
-    end
-    if resp.headers["x-ratelimit-limit-hour"] ~= nil then
-      response.ratelimit_enabled_hour = true
-    end
-    if resp.headers["x-ratelimit-limit-day"] ~= nil then
-      response.ratelimit_enabled_day = true
-    end
-    if resp.headers["x-ratelimit-limit-month"] ~= nil then
-      response.ratelimit_enabled_month = true
-    end
-    if resp.headers["x-ratelimit-limit-year"] ~= nil then
-      response.ratelimit_enabled_year = true
+
+    else
+      response.header_ratelimit_limit = nil
+      response.header_ratelimit_remaining = nil
+      response.header_ratelimit_reset = nil
     end
 
-    local upgrade = resp.headers["upgrade"]
-    local connection = resp.headers["connection"]
-    if type(upgrade) == "string"
-       and upgrade:lower() == "websocket"
-       and type(connection) == "string"
-       and connection:lower() == "upgrade"
+    response.header_retry_after = get_rl_header(ngx_ctx, "Retry-After")
+
+    local x_ratelimit_limit_second = get_rl_header(ngx_ctx, "X-RateLimit-Limit-Second")
+    if x_ratelimit_limit_second then
+      response.header_x_ratelimit_limit_second = x_ratelimit_limit_second
+      response.header_x_ratelimit_remaining_second = get_rl_header(ngx_ctx, "X-RateLimit-Remaining-Second")
+      response.ratelimit_enabled_second = true
+
+    else
+      response.header_x_ratelimit_limit_second = nil
+      response.header_x_ratelimit_remaining_second = nil
+    end
+
+    local x_ratelimit_limit_minute = get_rl_header(ngx_ctx, "X-RateLimit-Limit-Minute")
+    if x_ratelimit_limit_minute then
+      response.header_x_ratelimit_limit_minute = x_ratelimit_limit_minute
+      response.header_x_ratelimit_remaining_minute = get_rl_header(ngx_ctx, "X-RateLimit-Remaining-Minute")
+      response.ratelimit_enabled_minute = true
+
+    else
+      response.header_x_ratelimit_limit_minute = nil
+      response.header_x_ratelimit_remaining_minute = nil
+    end
+
+    local x_ratelimit_limit_hour = get_rl_header(ngx_ctx, "X-RateLimit-Limit-Hour")
+    if x_ratelimit_limit_hour then
+      response.header_x_ratelimit_limit_hour = x_ratelimit_limit_hour
+      response.header_x_ratelimit_remaining_hour = get_rl_header(ngx_ctx, "X-RateLimit-Remaining-Hour")
+      response.ratelimit_enabled_hour = true
+
+    else
+      response.header_x_ratelimit_limit_hour = nil
+      response.header_x_ratelimit_remaining_hour = nil
+    end
+
+    local x_ratelimit_limit_day = get_rl_header(ngx_ctx, "X-RateLimit-Limit-Day")
+    if x_ratelimit_limit_day then
+      response.header_x_ratelimit_limit_day = x_ratelimit_limit_day
+      response.header_x_ratelimit_remaining_day = get_rl_header(ngx_ctx, "X-RateLimit-Remaining-Day")
+      response.ratelimit_enabled_day = true
+
+    else
+      response.header_x_ratelimit_limit_day = nil
+      response.header_x_ratelimit_remaining_day = nil
+    end
+
+    local x_ratelimit_limit_month = get_rl_header(ngx_ctx, "X-RateLimit-Limit-Month")
+    if x_ratelimit_limit_month then
+      response.header_x_ratelimit_limit_month = x_ratelimit_limit_month
+      response.header_x_ratelimit_remaining_month = get_rl_header(ngx_ctx, "X-RateLimit-Remaining-Month")
+      response.ratelimit_enabled_month = true
+
+    else
+      response.header_x_ratelimit_limit_month = nil
+      response.header_x_ratelimit_remaining_month = nil
+    end
+
+    local x_ratelimit_limit_year = get_rl_header(ngx_ctx, "X-RateLimit-Limit-Year")
+    if x_ratelimit_limit_year then
+      response.header_x_ratelimit_limit_year = x_ratelimit_limit_year
+      response.header_x_ratelimit_remaining_year = get_rl_header(ngx_ctx, "X-RateLimit-Remaining-Year")
+      response.ratelimit_enabled_year = true
+
+    else
+      response.header_x_ratelimit_limit_year = nil
+      response.header_x_ratelimit_remaining_year = nil
+    end
+
+    local upgrade = ngx_header.upgrade
+    local connection = ngx_header.connection
+    if type(upgrade)      == "string"     and
+       type(connection)   == "string"     and
+       upgrade:lower()    == "websocket"  and
+       connection:lower() == "upgrade"
     then
       payload.websocket = true
     end
 
-    local content_type = resp.headers["content-type"]
-    if type(content_type) == "string"
-      and content_type:lower() == "text/event-stream"
+    local content_type = ngx_header.content_type
+    if type(content_type)   == "string" and
+       content_type:lower() == "text/event-stream"
     then
       payload.sse = true
     end
@@ -547,9 +606,12 @@ function _M:create_payload(message)
   end
 
   local consumer_groups = kong.client.get_consumer_groups()
-  for _, v in ipairs(consumer_groups or {}) do
-    table_insert(payload.consumer_groups, { id = v.id })
+  if consumer_groups then
+    for _, v in ipairs(consumer_groups) do
+      table_insert(payload.consumer_groups, { id = v.id })
+    end
   end
+
   return payload
 end
 
@@ -585,7 +647,7 @@ function _M:log_request()
     queue_conf,
     send_entries,
     self,
-    self:create_payload(kong.log.serialize())
+    self:create_payload(kong.log.serialize(LOG_SERILIZER_OPTS))
   )
 
   if not ok then

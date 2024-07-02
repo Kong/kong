@@ -18,7 +18,13 @@ local pb = require "pb"
 local analytics = require "kong.analytics"
 local to_hex = require "resty.string".to_hex
 
+local orig_ngx_var_mt = getmetatable(ngx.var)
+local orig_ngx_header = ngx.header
+local orig_ngx_get_phase = ngx.get_phase
 local request_id_value = to_hex(utils.get_rand_bytes(16))
+
+local CONTENT_TYPE = "application/json"
+local CONTENT_LENGTH = 503
 
 local request_log = {
   auth_type = "key-auth",
@@ -74,11 +80,11 @@ local request_log = {
   upstream_uri = "/anything",
   response = {
     headers = {
-      ['content-type'] = "application/json",
+      ['content-type'] = CONTENT_TYPE,
       date = "Thu, 25 Feb 2021 05=57=48 GMT",
       connection = "close",
       ['access-control-allow-credentials'] = "true",
-      ['content-length'] = 503,
+      ['content-length'] = CONTENT_LENGTH,
       server = "gunicorn/19.9.0",
       via = "kong/2.2.1.0-enterprise-edition",
       ['x-kong-proxy-latency'] = 57,
@@ -129,242 +135,30 @@ local request_log = {
   },
 }
 
-local request_log_with_user_agent_table = {
-  auth_type = "key-auth",
-  authenticated_entity = {
-    id = "4135aa9dc1b842a653dea846903ddb95bfb8c5a10c504a7fa16e10bc31d1fdf0",
-    consumer_id = ""
-  },
-  latencies = {
-    request = 515,
-    kong = 58,
-    proxy = 457,
-    receive = 0,
-  },
-  service = {
-    host = "konghq.com",
-    name = "service",
-    created_at = 1614232642,
-    connect_timeout = 60000,
-    id = "167290ee-c682-4ebf-bdea-e49a3ac5e260",
-    protocol = "http",
-    read_timeout = 60000,
-    port = 80,
-    path = "/anything",
-    updated_at = 1614232642,
-    write_timeout = 60000,
-    retries = 5,
-    ws_id = "54baa5a9-23d6-41e0-9c9a-02434b010b25"
-  },
-  request = {
-    querystring = {},
-    size = 138,
-    uri = "/log",
-    url = "http=//localhost:8000/log",
-    headers = {
-      host = "localhost:8000",
-      ['accept-encoding'] = "gzip, deflate",
-      ['user-agent'] = {"HTTPie/2.4.0", "AWS"},
-      accept = "*/*",
-      connection = "keep-alive"
-    },
-    method = "GET"
-  },
-  tries = {
-    {
-      balancer_latency = 10,
-      port = 80,
-      balancer_start = 1614232668399,
-      ip = "18.211.130.98"
-    }
-  },
-  client_ip = "192.168.144.1",
-  workspace = "54baa5a9-23d6-41e0-9c9a-02434b010b25",
-  upstream_uri = "/anything",
-  response = {
-    headers = {
-      ['content-type'] = "application/json",
-      date = "Thu, 25 Feb 2021 05=57=48 GMT",
-      connection = "close",
-      ['access-control-allow-credentials'] = "true",
-      ['content-length'] = 503,
-      server = "gunicorn/19.9.0",
-      via = "kong/2.2.1.0-enterprise-edition",
-      ['x-kong-proxy-latency'] = 57,
-      ['x-kong-upstream-latency'] = 457,
-      ['access-control-allow-origin'] = "*"
-    },
-    status = 200,
-    size = 827
-  },
-  route = {
-    id = "78f79740-c410-4fd9-a998-d0a60a99dc9b",
-    name = "route",
-    paths = {
-      "/log"
-    },
-    protocols = {
-      "http"
-    },
-    strip_path = true,
-    created_at = 1614232648,
-    ws_id = "54baa5a9-23d6-41e0-9c9a-02434b010b25",
-    request_buffering = true,
-    updated_at = 1614232648,
-    preserve_host = false,
-    regex_priority = 0,
-    response_buffering = true,
-    https_redirect_status_code = 426,
-    path_handling = "v0",
-    service = {
-      id = "167290ee-c682-4ebf-bdea-e49a3ac5e260"
-    }
-  },
-  consumer = {
-    id = "54baa5a9-23d6-41e0-9c9a-02434b010b25",
-  },
-  started_at = 1614232668342,
-  upstream_status = "200",
-  source = "upstream",
-  application_context = {
-    application_id = "app_id",
-    portal_id = "p_id",
-    organization_id = "org_id",
-    developer_id = "dev_id",
-    product_version_id = "pv_id",
-  },
-  consumer_groups = {
-    { id = "1" },
-  },
-}
+local resp_hdr_mt = {
+  __index = function(t, k)
+    if type(k) ~= "string" then
+      error("invalid key type: " .. type(k))
+    end
 
-local request_log_rate_limit = {
-  auth_type = "key-auth",
-  authenticated_entity = {
-    id = "4135aa9dc1b842a653dea846903ddb95bfb8c5a10c504a7fa16e10bc31d1fdf0",
-    consumer_id = ""
-  },
-  latencies = {
-    request = 515,
-    kong = 58,
-    proxy = 457,
-    receive = 0,
-  },
-  service = {
-    host = "konghq.com",
-    name = "service",
-    created_at = 1614232642,
-    connect_timeout = 60000,
-    id = "167290ee-c682-4ebf-bdea-e49a3ac5e260",
-    protocol = "http",
-    read_timeout = 60000,
-    port = 80,
-    path = "/anything",
-    updated_at = 1614232642,
-    write_timeout = 60000,
-    retries = 5,
-    ws_id = "54baa5a9-23d6-41e0-9c9a-02434b010b25"
-  },
-  request = {
-    querystring = {},
-    size = 138,
-    uri = "/log",
-    url = "http=//localhost:8000/log",
-    headers = {
-      host = "localhost:8000",
-      ['accept-encoding'] = "gzip, deflate",
-      ['user-agent'] = "HTTPie/2.4.0",
-      accept = "*/*",
-      connection = "keep-alive"
-    },
-    method = "GET"
-  },
-  tries = {
-    {
-      balancer_latency = 10,
-      port = 80,
-      balancer_start = 1614232668399,
-      ip = "18.211.130.98"
-    }
-  },
-  client_ip = "192.168.144.1",
-  workspace = "54baa5a9-23d6-41e0-9c9a-02434b010b25",
-  upstream_uri = "/anything",
-  response = {
-    headers = {
-      ['content-type'] = "application/json",
-      date = "Thu, 25 Feb 2021 05=57=48 GMT",
-      connection = "close",
-      ['access-control-allow-credentials'] = "true",
-      ['content-length'] = 503,
-      server = "gunicorn/19.9.0",
-      via = "kong/2.2.1.0-enterprise-edition",
-      ['x-kong-proxy-latency'] = 57,
-      ['x-kong-upstream-latency'] = 457,
-      ['access-control-allow-origin'] = "*",
-      ['ratelimit-limit'] = "10",
-      ['ratelimit-remaining'] = "0",
-      ['ratelimit-reset'] = "39",
-      ['retry-after'] = "39",
-      ['x-ratelimit-limit-day'] = "600",
-      ['x-ratelimit-limit-hour'] = "500",
-      ['x-ratelimit-limit-minute'] = "10",
-      ['x-ratelimit-limit-month'] = "700",
-      ['x-ratelimit-limit-second'] = "5",
-      ['x-ratelimit-limit-year'] = "800",
-      ['x-ratelimit-remaining-day'] = "580",
-      ['x-ratelimit-remaining-hour'] = "480",
-      ['x-ratelimit-remaining-minute'] = "0",
-      ['x-ratelimit-remaining-month'] = "680",
-      ['x-ratelimit-remaining-second'] = "5",
-      ['x-ratelimit-remaining-year'] = "780"
-    },
-    status = 200,
-    size = 827
-  },
-  route = {
-    id = "78f79740-c410-4fd9-a998-d0a60a99dc9b",
-    name = "route",
-    paths = {
-      "/log"
-    },
-    protocols = {
-      "http"
-    },
-    strip_path = true,
-    created_at = 1614232648,
-    ws_id = "54baa5a9-23d6-41e0-9c9a-02434b010b25",
-    request_buffering = true,
-    updated_at = 1614232648,
-    preserve_host = false,
-    regex_priority = 0,
-    response_buffering = true,
-    https_redirect_status_code = 426,
-    path_handling = "v0",
-    service = {
-      id = "167290ee-c682-4ebf-bdea-e49a3ac5e260"
-    }
-  },
-  consumer = {
-    id = "54baa5a9-23d6-41e0-9c9a-02434b010b25",
-  },
-  started_at = 1614232668342,
-  upstream_status = "200",
-  source = "upstream",
-  application_context = {
-    application_id = "app_id",
-    portal_id = "p_id",
-    organization_id = "org_id",
-    developer_id = "dev_id",
-    product_version_id = "pv_id",
-  },
-  consumer_groups = {
-    { id = "1" },
-  },
+    k = k:lower():gsub("_", "-")
+
+    return rawget(t, k)
+  end,
+
+  __newindex = function(t, k, v)
+    if type(k) ~= "string" then
+      error("invalid key type: " .. type(k))
+    end
+
+    k = k:lower():gsub("_", "-")
+
+    rawset(t, k, v)
+  end,
 }
 
 
-local function set_context(trace_bytes, request_id)
+local function set_context(trace_bytes, ngx_var, resp_hdrs, rl_ctx)
   if trace_bytes then
     _G.ngx.ctx["KONG_SPANS"] = {{
       trace_id = trace_bytes,
@@ -372,9 +166,14 @@ local function set_context(trace_bytes, request_id)
     }}
   end
 
-  _G.ngx.var = {
-    kong_request_id = request_id,
-  }
+  setmetatable(_G.ngx.var, nil)
+  for k, v in pairs(ngx_var or {}) do
+    _G.ngx.var[k] = v
+  end
+
+  _G.ngx.header = setmetatable(deep_copy(resp_hdrs or {}), resp_hdr_mt)
+
+  _G.ngx.ctx.__rate_limiting_context__ = deep_copy(rl_ctx)
 
   _G.ngx.get_phase = function() -- luacheck: ignore
     return "access"
@@ -412,27 +211,36 @@ local function set_context(trace_bytes, request_id)
 end
 
 
+local function reset_context()
+  _G.ngx.ctx.KONG_SPANS = nil
+  _G.ngx.ctx.__rate_limiting_context__ = nil
+  setmetatable(_G.ngx.var, orig_ngx_var_mt)
+  _G.ngx.header = orig_ngx_header
+  _G.ngx.get_phase = orig_ngx_get_phase
+end
+
+
 describe("extract request log properly", function()
   local trace_bytes = utils.get_rand_bytes(16)
-  local old_ngx_var
-  local old_get_phase
-
-  lazy_setup(function()
-    old_ngx_var = ngx.var
-    old_get_phase = ngx.get_phase
-  end)
-
-  before_each(function()
-    set_context(trace_bytes, request_id_value)
-  end)
 
   lazy_teardown(function()
-    ngx.ctx.KONG_SPANS = nil
-    ngx.var = old_ngx_var
-    ngx.get_phase = old_get_phase -- luacheck: ignore
+    reset_context()
   end)
 
   it("extract payload info properly dont sample trace_id", function()
+    set_context(
+      trace_bytes,
+      {
+        kong_request_id = request_id_value,
+        http_user_agent = "HTTPie/2.4.0",
+        http_host = "localhost:8000",
+      },
+      {
+        content_type = CONTENT_TYPE,
+        content_length = CONTENT_LENGTH,
+      },
+      nil
+    )
     ngx.ctx["KONG_SPANS"][1].should_sample = false
     local payload = analytics:create_payload(request_log)
     local expected = {
@@ -455,8 +263,8 @@ describe("extract request log properly", function()
       response = {
         http_status = 200,
         body_size = 827,
-        header_content_length = 503,
-        header_content_type = "application/json",
+        header_content_length = CONTENT_LENGTH,
+        header_content_type = CONTENT_TYPE,
         ratelimit_enabled = false,
         ratelimit_enabled_second = false,
         ratelimit_enabled_minute = false,
@@ -464,7 +272,6 @@ describe("extract request log properly", function()
         ratelimit_enabled_day = false,
         ratelimit_enabled_month = false,
         ratelimit_enabled_year = false
-
       },
       route = {
         id = "78f79740-c410-4fd9-a998-d0a60a99dc9b",
@@ -509,10 +316,24 @@ describe("extract request log properly", function()
       websocket = false,
       sse = false,
     }
+
     assert.are.same(expected, payload)
   end)
 
   it("extract payload info properly", function()
+    set_context(
+      trace_bytes,
+      {
+        kong_request_id = request_id_value,
+        http_user_agent = "HTTPie/2.4.0",
+        http_host = "localhost:8000",
+      },
+      {
+        content_type = CONTENT_TYPE,
+        content_length = CONTENT_LENGTH,
+      },
+      nil
+    )
     local payload = analytics:create_payload(request_log)
     local expected = {
       auth = {
@@ -526,85 +347,6 @@ describe("extract request log properly", function()
       },
       request = {
         header_user_agent = "HTTPie/2.4.0",
-        header_host = "localhost:8000",
-        http_method = "GET",
-        body_size = 138,
-        uri = "/log",
-      },
-      response = {
-        http_status = 200,
-        body_size = 827,
-        header_content_length = 503,
-        header_content_type = "application/json",
-        ratelimit_enabled = false,
-        ratelimit_enabled_second = false,
-        ratelimit_enabled_minute = false,
-        ratelimit_enabled_hour = false,
-        ratelimit_enabled_day = false,
-        ratelimit_enabled_month = false,
-        ratelimit_enabled_year = false
-
-      },
-      route = {
-        id = "78f79740-c410-4fd9-a998-d0a60a99dc9b",
-        name = "route"
-      },
-      service = {
-        id = "167290ee-c682-4ebf-bdea-e49a3ac5e260",
-        name = "service",
-        port = 80,
-        protocol = "http"
-      },
-      latencies = {
-        kong_gateway_ms = 58,
-        upstream_ms = 457,
-        response_ms = 515,
-        receive_ms = 0,
-      },
-      trace_id = trace_bytes,
-      request_id = request_id_value,
-      tries = {
-        {
-          balancer_latency = 10,
-          port = 80,
-          ip = "18.211.130.98"
-        }
-      },
-      consumer = {
-        id = "54baa5a9-23d6-41e0-9c9a-02434b010b25",
-      },
-      upstream_status = "200",
-      source = "upstream",
-      application_context = {
-        application_id = "app_id",
-        portal_id = "p_id",
-        organization_id = "org_id",
-        developer_id = "dev_id",
-        product_version_id = "pv_id",
-      },
-      consumer_groups = {
-        { id = "1" },
-      },
-      websocket = false,
-      sse = false,
-    }
-    assert.are.same(expected, payload)
-  end)
-
-  it("extract payload info properly table user-agent", function()
-    local payload = analytics:create_payload(request_log_with_user_agent_table)
-    local expected = {
-      auth = {
-        id = "4135aa9dc1b842a653dea846903ddb95bfb8c5a10c504a7fa16e10bc31d1fdf0",
-        type = "key-auth"
-      },
-      client_ip = "192.168.144.1",
-      started_at = 1614232668342,
-      upstream = {
-        upstream_uri = "/anything"
-      },
-      request = {
-        header_user_agent = "HTTPie/2.4.0,AWS",
         header_host = "localhost:8000",
         http_method = "GET",
         body_size = 138,
@@ -671,7 +413,37 @@ describe("extract request log properly", function()
   end)
 
   it("extract rate limit payload info properly", function()
-    local payload = analytics:create_payload(request_log_rate_limit)
+    set_context(
+      trace_bytes,
+      {
+        kong_request_id = request_id_value,
+        http_user_agent = "HTTPie/2.4.0",
+        http_host = "localhost:8000",
+      },
+      {
+        content_type = CONTENT_TYPE,
+        content_length = CONTENT_LENGTH,
+      },
+      {
+        ['RateLimit-Limit'] = 10,
+        ['RateLimit-Remaining'] = 0,
+        ['RateLimit-Reset'] = 39,
+        ['Retry-After'] = 39,
+        ['X-RateLimit-Limit-Day'] = 600,
+        ['X-RateLimit-Limit-Hour'] = 500,
+        ['X-RateLimit-Limit-Minute'] = 10,
+        ['X-RateLimit-Limit-Month'] = 700,
+        ['X-RateLimit-Limit-Second'] = 5,
+        ['X-RateLimit-Limit-Year'] = 800,
+        ['X-RateLimit-Remaining-Day'] = 580,
+        ['X-RateLimit-Remaining-Hour'] = 480,
+        ['X-RateLimit-Remaining-Minute'] = 0,
+        ['X-RateLimit-Remaining-Month'] = 680,
+        ['X-RateLimit-Remaining-Second'] = 5,
+        ['X-RateLimit-Remaining-Year'] = 780,
+      }
+    )
+    local payload = analytics:create_payload(request_log)
     local expected = {
       auth = {
         id = "4135aa9dc1b842a653dea846903ddb95bfb8c5a10c504a7fa16e10bc31d1fdf0",
@@ -772,20 +544,32 @@ describe("extract request log properly", function()
     end)
 
     it("are detected by upgrade/connection response headers", function()
-      local input = deep_copy(request_log)
-      input.response.headers["upgrade"] = "websocket"
-      input.response.headers["connection"] = "upgrade"
+      set_context(
+        nil,
+        nil,
+        {
+          connection = "upgrade",
+          upgrade = "websocket",
+        },
+        nil
+      )
 
-      local payload = analytics:create_payload(input)
+      local payload = analytics:create_payload(request_log)
       assert.is_true(payload.websocket)
     end)
 
     it("are detected by upgrade/connection response headers (case insensitive)", function()
-      local input = deep_copy(request_log)
-      input.response.headers["upgrade"] = "WebSocket"
-      input.response.headers["connection"] = "Upgrade"
+      set_context(
+        nil,
+        nil,
+        {
+          connection = "Upgrade",
+          upgrade = "Websocket",
+        },
+        nil
+      )
 
-      local payload = analytics:create_payload(input)
+      local payload = analytics:create_payload(request_log)
       assert.is_true(payload.websocket)
     end)
   end)
@@ -797,10 +581,16 @@ describe("extract request log properly", function()
     end)
 
     it("are detected by the content-type response header", function()
-      local input = deep_copy(request_log)
-      input.response.headers["content-type"] = "text/event-stream"
+      set_context(
+        nil,
+        nil,
+        {
+          content_type = "text/event-stream",
+        },
+        nil
+      )
 
-      local payload = analytics:create_payload(input)
+      local payload = analytics:create_payload(request_log)
       assert.is_true(payload.sse)
     end)
   end)
@@ -863,48 +653,70 @@ describe("filter keywords from uri properly", function()
 end)
 
 describe("proto buffer", function()
-  local old_ngx_var
-  local old_get_phase
-
-  lazy_setup(function()
-    old_ngx_var = ngx.var
-    old_get_phase = ngx.get_phase
-  end)
-
-  before_each(function()
-    set_context(nil, request_id_value)
-  end)
-
   lazy_teardown(function()
-    ngx.var = old_ngx_var
-    ngx.get_phase = old_get_phase -- luacheck: ignore
+    reset_context()
   end)
 
   local p = protoc.new()
   p:addpath("kong/include/kong/model/analytics")
   p:loadfile("payload.proto")
+
   it("encode and decode data correctly", function()
-    local payload = analytics:create_payload(request_log_rate_limit)
+    set_context(
+      nil,
+      {
+        kong_request_id = request_id_value,
+      },
+      {
+        content_type = CONTENT_TYPE,
+        content_length = CONTENT_LENGTH,
+      },
+      {
+        ['RateLimit-Limit'] = 10,
+        ['RateLimit-Remaining'] = 0,
+        ['RateLimit-Reset'] = 39,
+        ['Retry-After'] = 39,
+        ['X-RateLimit-Limit-Day'] = 600,
+        ['X-RateLimit-Limit-Hour'] = 500,
+        ['X-RateLimit-Limit-Minute'] = 10,
+        ['X-RateLimit-Limit-Month'] = 700,
+        ['X-RateLimit-Limit-Second'] = 5,
+        ['X-RateLimit-Limit-Year'] = 800,
+        ['X-RateLimit-Remaining-Day'] = 580,
+        ['X-RateLimit-Remaining-Hour'] = 480,
+        ['X-RateLimit-Remaining-Minute'] = 0,
+        ['X-RateLimit-Remaining-Month'] = 680,
+        ['X-RateLimit-Remaining-Second'] = 5,
+        ['X-RateLimit-Remaining-Year'] = 780,
+      }
+    )
+    local payload = analytics:create_payload(request_log)
     local bytes = pb.encode("kong.model.analytics.RequestMetadata", payload)
     local decoded = pb.decode("kong.model.analytics.RequestMetadata", bytes)
     assert.are.same(payload, decoded)
   end)
 
   it("encode strings to integers correctly", function()
-    local request_log_with_strings = {
-      response = {
-        headers = {
-          ["content-length"] = "41",
-          ['ratelimit-limit'] = "10",
-          ['ratelimit-remaining'] = "0",
-          ['ratelimit-reset'] = "39",
-          ['retry-after'] = "39",
-          ['x-ratelimit-limit-minute'] = "10",
-          ['x-ratelimit-remaining-minute'] = "0",
-        }
+    set_context(
+      nil,
+      {
+        kong_request_id = request_id_value,
+      },
+      {
+        content_length = CONTENT_LENGTH,
+      },
+      {
+        ['RateLimit-Limit'] = 10,
+        ['RateLimit-Remaining'] = 0,
+        ['RateLimit-Reset'] = 39,
+        ['Retry-After'] = 39,
+        ['X-RateLimit-Limit-Minute'] = 10,
       }
-    }
-    local payload = analytics:create_payload(request_log_with_strings)
+    )
+
+    local payload = analytics:create_payload({
+      response = {}
+    })
     local bytes = pb.encode("kong.model.analytics.Payload", { data = {payload} })
     local decoded = pb.decode("kong.model.analytics.Payload", bytes)
     local expected = {
@@ -926,7 +738,7 @@ describe("proto buffer", function()
       response = {
         http_status = 0,
         body_size = 0,
-        header_content_length = 41,
+        header_content_length = CONTENT_LENGTH,
         header_content_type = "",
         header_ratelimit_limit = 10,
         header_ratelimit_remaining = 0,
