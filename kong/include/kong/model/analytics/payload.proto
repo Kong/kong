@@ -28,6 +28,7 @@ message RequestMetadata {
   repeated ConsumerGroupInfo consumer_groups = 17;
   bool websocket = 18;
   bool sse = 19;
+  repeated AiInfo ai = 20;
 }
 
 message RequestInfo {
@@ -117,4 +118,24 @@ message ApplicationContext {
 
 message ConsumerGroupInfo {
   string id = 1;
+}
+
+message AiInfo {
+  string plugin_name = 1;
+  AIMetaData meta = 2;
+  AIUsageInfo usage = 3;
+}
+
+message AIMetaData {
+  string plugin_id = 1;
+  string provider_name = 2;
+  string request_model = 3;
+  string response_model = 4;
+}
+
+message AIUsageInfo {
+  uint32 prompt_tokens = 1;
+  uint32 completion_tokens = 2;
+  uint32 total_tokens = 3;
+  double cost = 4;
 }

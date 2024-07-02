@@ -22,6 +22,7 @@ local orig_ngx_var_mt = getmetatable(ngx.var)
 local orig_ngx_header = ngx.header
 local orig_ngx_get_phase = ngx.get_phase
 local request_id_value = to_hex(utils.get_rand_bytes(16))
+local table_sort = table.sort
 
 local CONTENT_TYPE = "application/json"
 local CONTENT_LENGTH = 503
@@ -133,6 +134,38 @@ local request_log = {
   consumer_groups = {
     { name = "c_group1" },
   },
+  ai = {
+    ["ai-proxy"] = {
+      meta = {
+        plugin_id = '6e7c40f6-ce96-48e4-a366-d109c169e444',
+        provider_name = 'openai',
+        request_model = 'gpt-3.5-turbo',
+        response_model = 'gpt-3.5-turbo-0613',
+      },
+      usage = {
+        prompt_tokens = 25,
+        completion_tokens = 12,
+        total_tokens = 37,
+        cost = 0.00037,
+      },
+      cache = {}
+    },
+    ["ai-request-transformer"] = {
+      meta = {
+        plugin_id = 'da587462-a802-4c22-931a-e6a92c5866d1',
+        provider_name = 'cohere',
+        request_model = 'command',
+        response_model = 'command',
+      },
+      usage = {
+        prompt_tokens = 40,
+        completion_tokens = 25,
+        total_tokens = 65,
+        cost = 0.00057,
+      },
+      cache = {}
+    },
+  },
 }
 
 local resp_hdr_mt = {
@@ -157,6 +190,9 @@ local resp_hdr_mt = {
   end,
 }
 
+local function compare_tables(a, b)
+  return a.plugin_name < b.plugin_name
+end
 
 local function set_context(trace_bytes, ngx_var, resp_hdrs, rl_ctx)
   if trace_bytes then
@@ -315,8 +351,42 @@ describe("extract request log properly", function()
       },
       websocket = false,
       sse = false,
+      ai = {
+        {
+          plugin_name = "ai-proxy",
+          meta = {
+            plugin_id = '6e7c40f6-ce96-48e4-a366-d109c169e444',
+            provider_name = 'openai',
+            request_model = 'gpt-3.5-turbo',
+            response_model = 'gpt-3.5-turbo-0613',
+          },
+          usage = {
+            prompt_tokens = 25,
+            completion_tokens = 12,
+            total_tokens = 37,
+            cost = 0.00037,
+          }
+        },
+        {
+          plugin_name = "ai-request-transformer",
+          meta = {
+            plugin_id = 'da587462-a802-4c22-931a-e6a92c5866d1',
+            provider_name = 'cohere',
+            request_model = 'command',
+            response_model = 'command',
+          },
+          usage = {
+            prompt_tokens = 40,
+            completion_tokens = 25,
+            total_tokens = 65,
+            cost = 0.00057,
+          }
+        }
+      },
     }
 
+    table_sort(expected.ai, compare_tables)
+    table_sort(payload.ai, compare_tables)
     assert.are.same(expected, payload)
   end)
 
@@ -408,7 +478,42 @@ describe("extract request log properly", function()
       },
       websocket = false,
       sse = false,
+      ai = {
+        {
+          plugin_name = "ai-proxy",
+          meta = {
+            plugin_id = '6e7c40f6-ce96-48e4-a366-d109c169e444',
+            provider_name = 'openai',
+            request_model = 'gpt-3.5-turbo',
+            response_model = 'gpt-3.5-turbo-0613',
+          },
+          usage = {
+            prompt_tokens = 25,
+            completion_tokens = 12,
+            total_tokens = 37,
+            cost = 0.00037,
+          }
+        },
+        {
+          plugin_name = "ai-request-transformer",
+          meta = {
+            plugin_id = 'da587462-a802-4c22-931a-e6a92c5866d1',
+            provider_name = 'cohere',
+            request_model = 'command',
+            response_model = 'command',
+          },
+          usage = {
+            prompt_tokens = 40,
+            completion_tokens = 25,
+            total_tokens = 65,
+            cost = 0.00057,
+          }
+        }
+      },
     }
+
+    table_sort(expected.ai, compare_tables)
+    table_sort(payload.ai, compare_tables)
     assert.are.same(expected, payload)
   end)
 
@@ -532,9 +637,43 @@ describe("extract request log properly", function()
       },
       websocket = false,
       sse = false,
+      ai = {
+        {
+          plugin_name = "ai-proxy",
+          meta = {
+            plugin_id = '6e7c40f6-ce96-48e4-a366-d109c169e444',
+            provider_name = 'openai',
+            request_model = 'gpt-3.5-turbo',
+            response_model = 'gpt-3.5-turbo-0613',
+          },
+          usage = {
+            prompt_tokens = 25,
+            completion_tokens = 12,
+            total_tokens = 37,
+            cost = 0.00037,
+          }
+        },
+        {
+          plugin_name = "ai-request-transformer",
+          meta = {
+            plugin_id = 'da587462-a802-4c22-931a-e6a92c5866d1',
+            provider_name = 'cohere',
+            request_model = 'command',
+            response_model = 'command',
+          },
+          usage = {
+            prompt_tokens = 40,
+            completion_tokens = 25,
+            total_tokens = 65,
+            cost = 0.00057,
+          }
+        }
+      },
     }
-    assert.are.same(expected, payload)
 
+    table_sort(expected.ai, compare_tables)
+    table_sort(payload.ai, compare_tables)
+    assert.are.same(expected, payload)
   end)
 
   describe("WebSocket requests", function()
@@ -801,6 +940,7 @@ describe("proto buffer", function()
       },
       websocket = false,
       sse = false,
+      ai = {},
     }
     assert.are.same(expected, decoded.data[1])
   end)
@@ -891,6 +1031,7 @@ describe("proto buffer", function()
       },
       websocket = false,
       sse = false,
+      ai = {},
     }
     assert.are.same(default, decoded)
   end)

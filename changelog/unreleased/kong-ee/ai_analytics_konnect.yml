@@ -1,0 +1,3 @@
+message: '**analytics**: send AI analtyics to Konnect'
+type: feature
+scope: Core

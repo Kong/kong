@@ -385,6 +385,7 @@ function _M:create_payload(message)
     consumer_groups = {},
     websocket = false,
     sse = false,
+    ai = {},
   }
 
   payload.client_ip = message.client_ip
@@ -612,9 +613,26 @@ function _M:create_payload(message)
     end
   end
 
+  if message.ai ~= nil then
+    payload.ai = self:transform_ai_data(message.ai)
+  end
+
   return payload
 end
 
+function _M:transform_ai_data(ai_data)
+  local transformed_ai_data = {}
+
+  for plugin_name, plugin_ai_data in pairs(ai_data) do
+      table.insert(transformed_ai_data, {
+          plugin_name = plugin_name,
+          usage = plugin_ai_data.usage,
+          meta = plugin_ai_data.meta
+      })
+  end
+
+  return transformed_ai_data
+end
 
 function _M:split(str, sep)
   if sep == nil then
