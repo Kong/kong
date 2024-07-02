@@ -5,6 +5,7 @@ local cjson = require "cjson.safe"
 
 local date = require("date")
 local get_request_id = require("kong.tracing.request_id").get
+local AWS_Stream = require("resty.aws.stream")
 
 local EMPTY = {}
 
@@ -349,6 +350,114 @@ local function remove_array_mt_for_empty_table(tbl)
   return tbl
 end
 
+local HttpIntegrationResponseProcessor = {}
+function HttpIntegrationResponseProcessor:new()
+  local instance = {
+    first_chunk_body = "",
+    null_count = 0,
+    prelude = ""
+  }
+  setmetatable(instance, {__index = HttpIntegrationResponseProcessor})
+  return instance
+end
+
+-- Update `ngx.status` and the parameter `headers` from the prelude string.
+-- Return error if any.
+function HttpIntegrationResponseProcessor:update_status_and_headers_from_prelude(headers)
+  local p, err = cjson.decode(self.prelude)
+  if err or not p then
+    return error(err)
+  end
+  if p["statusCode"] then
+    ngx.status = p["statusCode"]
+    -- headers and cookies will only be applied if the statusCode is provided
+    if p["headers"] then
+      for k, v in pairs(p["headers"]) do
+        headers[k] = v
+      end
+      -- if no Content-Type is provided, default to application/octet-stream
+      if p["headers"]["Content-Type"] == nil then
+        headers["Content-Type"] = "application/octet-stream"
+      end
+    end
+    if p["cookies"] then
+      headers["Set-Cookie"] = p["cookies"]
+    end
+  end
+end
+
+-- Process one message.
+-- Return error if any.
+function HttpIntegrationResponseProcessor:process_message(msg, headers)
+  if msg.headers[":event-type"] == "PayloadChunk" then
+    -- print(msg.body)
+    for i = 1, #msg.body do
+      local c = msg.body:byte(i)
+      if c == 0 then
+        self.null_count = self.null_count + 1
+        if self.null_count == 8 then
+          local err = self:update_status_and_headers_from_prelude(headers)
+          if err then
+            return error(err)
+          end
+
+          self.first_chunk_body = msg.body:sub(i + 1)
+          break
+        end
+      else
+        self.prelude = self.prelude .. string.char(c)
+      end
+    end
+  end
+end
+
+
+function HttpIntegrationResponseProcessor:process(reader, buffer_size, headers)
+  while self.null_count < 8 do
+    local chunk, err = reader(buffer_size)
+    if err then
+      return nil, error(err)
+    end
+
+    if chunk then
+      -- the chunk is in `application/vnd.amazon.eventstream` formatted
+      -- which is a binary format, we need to parse it
+      local parser, err = AWS_Stream:new(chunk, false)
+      if err or parser == nil then
+        -- print("ERROR: ", err)
+        return nil, error(err)
+      end
+      
+      while true do
+        if self.null_count == 8 then
+          break -- will jump to the end of the function
+        end
+
+        local msg = parser:next_message()
+      
+        if not msg then
+          break -- read again
+        end
+      
+        -- print(require("pl.pretty").write(msg))
+        local err = self:process_message(msg, headers)
+        if err then
+          return nil, error(err)
+        end
+      end
+    end
+  end
+
+  return self.first_chunk_body, nil
+end
+
+-- Process the http integration response.
+-- This will update `ngx.status` and the parameter `headers`.
+-- Return the first chunk body and error if any.
+local function process_http_integration_response(reader, buffer_size, headers)
+  local processor = HttpIntegrationResponseProcessor:new()
+  return processor:process(reader, buffer_size, headers)
+end
 
 return {
   aws_serializer = aws_serializer,
@@ -357,4 +466,5 @@ return {
   build_request_payload = build_request_payload,
   extract_proxy_response = extract_proxy_response,
   remove_array_mt_for_empty_table = remove_array_mt_for_empty_table,
+  process_http_integration_response = process_http_integration_response,
 }

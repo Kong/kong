@@ -188,6 +188,18 @@ for _, strategy in helpers.each_strategy() do
         service     = null,
       }
 
+      local route28 = bp.routes:insert {
+        hosts       = { "lambda28.test" },
+        protocols   = { "http", "https" },
+        service     = null,
+      }
+
+      local route29 = bp.routes:insert {
+        hosts       = { "lambda29.test" },
+        protocols   = { "http", "https" },
+        service     = null,
+      }
+
       bp.plugins:insert {
         name     = "aws-lambda",
         route    = { id = route1.id },
@@ -557,6 +569,32 @@ for _, strategy in helpers.each_strategy() do
           aws_region           = "us-east-1",
           function_name        = "functionWithEmptyArray",
           empty_arrays_mode    = "correct",
+        }
+      }
+
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route28.id },
+        config                 = {
+          port                 = 10001,
+          aws_key              = "mock-key",
+          aws_secret           = "mock-secret",
+          aws_region           = "us-east-1",
+          function_name        = "plainStreaming",
+          invoke_mode          = "RESPONSE_STREAM",
+        }
+      }
+
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route29.id },
+        config                 = {
+          port                 = 10001,
+          aws_key              = "mock-key",
+          aws_secret           = "mock-secret",
+          aws_region           = "us-east-1",
+          function_name        = "httpIntegrationStreaming",
+          invoke_mode          = "RESPONSE_STREAM",
         }
       }
 
@@ -983,6 +1021,39 @@ for _, strategy in helpers.each_strategy() do
 
         local body = assert.res_status(200, res)
         assert.matches("\"testbody\":%[%]", body)
+      end)
+
+      describe("lambda response streaming", function()
+        it("invokes a Lambda in streaming mode", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/get",
+            headers = {
+              ["Host"] = "lambda28.test"
+            }
+          })
+  
+          local body = assert.res_status(200, res)
+          assert.matches("Hello world from Lambda!", body)
+          assert.same(assert.response(res).has.header("Content-Type"), "application/octet-stream")
+          assert.same(assert.response(res).has.header("Transfer-Encoding"), "chunked")
+        end)
+        it("invokes a Lambda in streaming mode with http integration", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/get",
+            headers = {
+              ["Host"] = "lambda29.test"
+            }
+          })
+  
+          local body = assert.res_status(403, res)
+          assert.matches("Hello world from Lambda!", body)
+          assert.same(assert.response(res).has.header("Content-Type"), "text/html")
+          assert.same(assert.response(res).has.header("Transfer-Encoding"), "chunked")
+          assert.same(assert.response(res).has.header("custom-header"), "outer space")
+          assert.same(assert.response(res).has.header("Set-Cookie"), {"language=xxx", "theme=abc"})
+        end)
       end)
 
       describe("config.is_proxy_integration = true", function()

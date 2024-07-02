@@ -49,11 +49,18 @@ return {
           description = "The qualifier to use when invoking the function."
         } },
         { invocation_type = {
-          description = "The InvocationType to use when invoking the function. Available types are RequestResponse, Event, DryRun.",
+          description = "The InvocationType to use when invoking the function. Available types are RequestResponse, Event (only available when invoke_mode is BUFFERED), DryRun.",
           type = "string",
           required = true,
           default = "RequestResponse",
           one_of = { "RequestResponse", "Event", "DryRun" }
+        } },
+        { invoke_mode = {
+          type = "string",
+          description = "The mode for the AWS Lambda function to returns responses.",
+          required = true,
+          default = "BUFFERED",
+          one_of = { "BUFFERED", "RESPONSE_STREAM" }
         } },
         { log_type = {
           description = "The LogType to use when invoking the function. By default, None and Tail are supported.",
