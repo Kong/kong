@@ -225,14 +225,14 @@ do
 
   -- see: kong/include/opentelemetry/proto/logs/v1/logs.proto
   local map_severity = {
-    [ngx.DEBUG] =  { 5, "DEBUG" },
-    [ngx.INFO] =   { 9, "INFO" },
+    [ngx.DEBUG]  = {  5, "DEBUG" },
+    [ngx.INFO]   = {  9, "INFO" },
     [ngx.NOTICE] = { 11, "NOTICE" },
-    [ngx.WARN] =   { 13, "WARN" },
-    [ngx.ERR] =    { 17, "ERR" },
-    [ngx.CRIT] =   { 19, "CRIT" },
-    [ngx.ALERT] =  { 21, "ALERT" },
-    [ngx.EMERG] =  { 23, "EMERG" },
+    [ngx.WARN]   = { 13, "WARN" },
+    [ngx.ERR]    = { 17, "ERR" },
+    [ngx.CRIT]   = { 19, "CRIT" },
+    [ngx.ALERT]  = { 21, "ALERT" },
+    [ngx.EMERG]  = { 23, "EMERG" },
   }
 
   prepare_logs = function(logs, trace_id, flags)

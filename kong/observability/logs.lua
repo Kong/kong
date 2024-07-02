@@ -70,12 +70,12 @@ local function generate_log_entry(request_scoped, log_level, log_str, request_id
   end
 
   local attributes = {
-    request_id = request_id,
-    introspection_current_line = debug_info.currentline,
-    introspection_name = debug_info.name,
-    introspection_namewhat = debug_info.namewhat,
-    introspection_source = debug_info.source,
-    introspection_what = debug_info.what,
+    ["request.id"] = request_id,
+    ["introspection.current.line"] = debug_info.currentline,
+    ["introspection.name"] = debug_info.name,
+    ["introspection.namewhat"] = debug_info.namewhat,
+    ["introspection.source"] = debug_info.source,
+    ["introspection.what"] = debug_info.what,
   }
 
   local now_ns = time_ns()
@@ -110,13 +110,6 @@ function _M.maybe_push(stack_level, log_level, ...)
     return
   end
 
-  -- no (or empty) log line
-  local args = { ... }
-  local log_str = concat_tostring(args)
-  if log_str == "" then
-    return
-  end
-
   local log_buffer, max_logs
   local request_id = request_id_get()
   local request_scoped = request_id ~= nil
@@ -133,6 +126,13 @@ function _M.maybe_push(stack_level, log_level, ...)
 
   -- return if log buffer is full
   if #log_buffer >= max_logs then
+    return
+  end
+
+  -- no (or empty) log line
+  local args = { ... }
+  local log_str = concat_tostring(args)
+  if log_str == "" then
     return
   end
 
