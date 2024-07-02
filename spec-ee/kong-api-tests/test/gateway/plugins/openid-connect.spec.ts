@@ -92,7 +92,7 @@ describe('Gateway Plugins: OIDC with Okta', function () {
             validateStatus: null,
         })
         logResponse(resp)
-        expect(resp.status).to.equal(201)
+        expect(resp.status, 'Status should be 201').to.equal(201)
         oidcPluginId = resp.data.id
         await waitForConfigRebuild()
     })
@@ -118,8 +118,8 @@ describe('Gateway Plugins: OIDC with Okta', function () {
             validateStatus: null,
         })
 
-        expect(resp.status).to.equal(400)
-        expect(resp.data.error_description).to.contain('Authorization server requires nonce in DPoP proof')
+        expect(resp.status, 'Status should be 400').to.equal(400)
+        expect(resp.data.error_description, 'Error description should reference nonce').to.contain('Authorization server requires nonce in DPoP proof')
         dpopProofNonce = resp.headers['dpop-nonce']
 
         // request token with dPoP proof
@@ -139,9 +139,9 @@ describe('Gateway Plugins: OIDC with Okta', function () {
                 scope: 'scope1'
             }),
         })
-        expect(tokenResp.status).to.equal(200)
-        expect(tokenResp.data).to.have.property('access_token')
-        expect(tokenResp.data.token_type).to.equal('DPoP')
+        expect(tokenResp.status, 'Status should be 200').to.equal(200)
+        expect(tokenResp.data, 'Access token should be present').to.have.property('access_token')
+        expect(tokenResp.data.token_type, 'Token type should be DPOP').to.equal('DPoP')
         dpopToken = tokenResp.data.access_token
         await waitForConfigRebuild()
     })
@@ -156,9 +156,9 @@ describe('Gateway Plugins: OIDC with Okta', function () {
             }
         })
 
-        expect(resp.status).to.equal(401)
-        expect(resp.headers['www-authenticate']).to.contain('DPoP')
-        expect(resp.headers['www-authenticate']).to.contain('error="invalid_token"')
+        expect(resp.status, 'Status should be 401').to.equal(401)
+        expect(resp.headers['www-authenticate'], 'Headers should contain DPoP').to.contain('DPoP')
+        expect(resp.headers['www-authenticate'], 'error message should reference invalid token').to.contain('error="invalid_token"')
     })
 
     it('should return 401 when accessing route with token but without token proof', async function() {
@@ -171,9 +171,9 @@ describe('Gateway Plugins: OIDC with Okta', function () {
             }
         })
 
-        expect(resp.status).to.equal(401)
-        expect(resp.headers['www-authenticate']).to.contain('DPoP')
-        expect(resp.headers['www-authenticate']).to.contain('error="invalid_dpop_proof"')
+        expect(resp.status, 'Status should be 401').to.equal(401)
+        expect(resp.headers['www-authenticate'], 'Headers should contain DPoP').to.contain('DPoP')
+        expect(resp.headers['www-authenticate'], 'error message should reference invalid dpop proof').to.contain('error="invalid_dpop_proof"')
     })
 
     it('should return 401 when accessing route with downgraded dpop proof', async function() {
@@ -189,9 +189,9 @@ describe('Gateway Plugins: OIDC with Okta', function () {
         })
 
         logResponse(resp)
-        expect(resp.status).to.equal(401)
-        expect(resp.headers['www-authenticate']).to.contain('DPoP')
-        expect(resp.headers['www-authenticate']).to.contain('error="invalid_dpop_proof"')
+        expect(resp.status, 'Status should be 401').to.equal(401)
+        expect(resp.headers['www-authenticate'], 'Headers should contain DPoP').to.contain('DPoP')
+        expect(resp.headers['www-authenticate'], 'error message should reference invalid dpop proof').to.contain('error="invalid_dpop_proof"')
     })
 
     it('should return 401 when accessing route with dpop proof with incorrect htu claim', async function() {
@@ -207,14 +207,13 @@ describe('Gateway Plugins: OIDC with Okta', function () {
         })
 
         logResponse(resp)
-        expect(resp.status).to.equal(401)
-        expect(resp.headers['www-authenticate']).to.contain('DPoP')
-        expect(resp.headers['www-authenticate']).to.contain('error="invalid_dpop_proof"')
+        expect(resp.status, 'Status should be 401').to.equal(401)
+        expect(resp.headers['www-authenticate'], 'Headers should contain DPoP').to.contain('DPoP')
+        expect(resp.headers['www-authenticate'], 'error message should reference invalid dpop proof').to.contain('error="invalid_dpop_proof"')
     })
 
     it('should return 200 when accessing route with token and dpop proof', async function() {
         const proofWithRoute  = await generateDpopProof({time: currentTime, jti: jti, nonce: '', token: dpopToken, url: `${urls.proxy}${oktaPath}`})
-        console.log('proofWithRoute: ', proofWithRoute)
 
         const resp = await axios({
             method: 'POST',
@@ -226,7 +225,7 @@ describe('Gateway Plugins: OIDC with Okta', function () {
             validateStatus: null,
         })
 
-        expect(resp.status).to.equal(200)
+        expect(resp.status, 'Status should be 200').to.equal(200)
     })
 
     it('should delete OIDC plugin', async function () {
@@ -234,7 +233,7 @@ describe('Gateway Plugins: OIDC with Okta', function () {
             method: 'DELETE',
             url: `${urls.admin}/plugins/${oidcPluginId}`,
         })
-        expect(resp.status).to.equal(204)
+        expect(resp.status, 'Status should be 204').to.equal(204)
     })
 
     after(async function () {
@@ -247,7 +246,7 @@ describe('Gateway Plugins: OIDC with Okta', function () {
 describe('Gateway Plugins: OIDC with Keycloak', function () {
     const keycloakPath = '/oidc'
     const keycloakTokenRequestUrl = `${urls.keycloak}/realms/demo/protocol/openid-connect/token`
-    const keycloakIssuerUrl = `https://keycloak:8543/realms/demo/`
+    const keycloakIssuerUrl = `https://keycloak:8543/realms/demo`
     const certClientId = 'kong-certificate-bound'
     const certClientSecret = '670f2328-85a0-11ee-b9d1-0242ac120002'
     const mtlsClientId = 'kong-client-tls-auth'
@@ -269,11 +268,10 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
     let invalidCertId: string
     let expiredCertId: string
     let token: string
-    
 
     before(async function () {
-        //set KONG_LUA_SSL_TRUSTED_CERTIFICATE value to root/intermediate CA certificates
-        //whenever the original LUA_SSL_TRUSTED_CERTIFICATE is being modified, the keyring needs to either be turned off or get its certificates updated as well
+        // set KONG_LUA_SSL_TRUSTED_CERTIFICATE value to root/intermediate CA certificates
+        // whenever the original LUA_SSL_TRUSTED_CERTIFICATE is being modified, the keyring needs to either be turned off or get its certificates updated as well
         await resetGatewayContainerEnvVariable(
             {
                 KONG_LUA_SSL_TRUSTED_CERTIFICATE: '/tmp/root_ca.crt,/tmp/intermediate_ca.crt', KONG_KEYRING_ENABLED: `${isKongNative ? 'off' : 'on'}`
@@ -324,7 +322,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
         })
         tlsPluginId = resp.data.id
     })
-              
+  
     //======= cert-based auth tests =======
     it('should create OIDC plugin that uses certificate-based tokens', async function () {
         const resp = await axios({
@@ -342,13 +340,13 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
                     auth_methods: ['bearer'],
                     cache_user_info: false,
                     cache_tokens: false,
-                    cache_introspection: false,
+                    cache_introspection: false,                
                 },
             },
             validateStatus: null,
         })
         logResponse(resp)
-        expect(resp.status).to.equal(201)
+        expect(resp.status, 'Status should be 201').to.equal(201)
         oidcPluginId = resp.data.id
         await waitForConfigRebuild()
     })
@@ -366,8 +364,8 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
         })
         logResponse(resp)
 
-        expect(resp.status).to.equal(400)
-        expect(resp.data.error_description).to.equal('Client Certification missing for MTLS HoK Token Binding')
+        expect(resp.status, 'Status should be 400').to.equal(400)
+        expect(resp.data.error_description, 'Description should reference missing cert').to.equal('Client Certification missing for MTLS HoK Token Binding')
     })
 
     it('should return 401 when accessing route without certificate in request', async function() {
@@ -379,8 +377,9 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
             },
             validateStatus: null,
         })
-        expect(resp.status).to.equal(401)
-        expect(resp.data.message).to.equal('Unauthorized')
+        logResponse(resp)
+        expect(resp.status, 'Status should be 401').to.equal(401)
+        expect(resp.data.message, 'Message should be "Unauthorized"').to.equal('Unauthorized')
     })
 
     it('should be able to request token with valid certificate provided', async function() {
@@ -395,7 +394,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
             httpsAgent: certHttpsAgent,
         })
         logResponse(resp)
-        expect(resp.status).to.equal(200)
+        expect(resp.status, 'Status should be 200').to.equal(200)
         token = resp.data.access_token
     })
 
@@ -406,7 +405,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
             validateStatus: null,
             httpsAgent: certHttpsAgent,
         })
-        expect(resp.status).to.equal(401)
+        expect(resp.status, 'Status should be 401').to.equal(401)
     })
 
     it('should return 401 when accessing route with incorrect certificate', async function() {
@@ -423,7 +422,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
             }),
             validateStatus: null,
         })
-        expect(resp.status).to.equal(401)
+        expect(resp.status, 'Status should be 401').to.equal(401)
     })
 
     it('should successfully authenticate when accessing route with certificate and token', async function() {
@@ -437,7 +436,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
             validateStatus: null,
         })
         logResponse(resp)
-        expect(resp.status).to.equal(200)
+        expect(resp.status, 'Status should be 200').to.equal(200)
         // delete tls plugin to test mTLS auth
         await deletePlugin(tlsPluginId)
         await waitForConfigRebuild()
@@ -462,8 +461,8 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
             validateStatus: null,
         })
         logResponse(resp)
-        expect(resp.status).to.equal(400)
-        expect(resp.data.message).to.contain('tls_client_auth_cert_id is required when tls client auth is enabled')
+        expect(resp.status, 'Status should be 400').to.equal(400)
+        expect(resp.data.message, 'Message should reference missing cert id').to.contain('tls_client_auth_cert_id is required when tls client auth is enabled')
     })
 
     it('should update plugin to use mTLS authentication', async function () {
@@ -486,7 +485,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
             validateStatus: null,
         })
         logResponse(resp)
-        expect(resp.status).to.equal(200)
+        expect(resp.status, 'Status should be 200').to.equal(200)
         await waitForConfigRebuild()
     })
 
@@ -496,7 +495,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
             url: `${urls.proxySec}${keycloakPath}`,
             validateStatus: null,
         })
-        expect(resp.status).to.equal(401)
+        expect(resp.status, 'Status should be 401').to.equal(401)
     })
 
     it('should return 401 when accessing route with incorrect credentials', async function() {
@@ -509,7 +508,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
             },
             validateStatus: null,
         })
-        expect(resp.status).to.equal(401)
+        expect(resp.status, 'Status should be 401').to.equal(401)
     })
 
     it('should successfully authenticate when accessing route with mTLS authentication', async function() {
@@ -524,8 +523,8 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
         })
 
         logResponse(resp)
-        expect(resp.status).to.equal(200)
-        expect(resp.data.headers).to.have.property('Authorization')
+        expect(resp.status, 'Status should be 200').to.equal(200)
+        expect(resp.data.headers, 'Auth header should be present').to.have.property('Authorization')
     })
 
     it('should update plugin to use an invalid certificate', async function () {
@@ -540,7 +539,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
             validateStatus: null,
         })
         logResponse(resp)
-        expect(resp.status).to.equal(200)
+        expect(resp.status, 'Status should be 200').to.equal(200)
         await waitForConfigRebuild()
     })
 
@@ -555,7 +554,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
             validateStatus: null,
         })
         logResponse(resp)
-        expect(resp.status).to.equal(401)
+        expect(resp.status, 'Status should be 401').to.equal(401)
     })
 
     it('should update plugin to use expired certificate', async function() {
@@ -570,7 +569,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
             validateStatus: null,
         }) 
         logResponse(resp)
-        expect(resp.status).to.equal(200)
+        expect(resp.status, 'Status should be 200').to.equal(200)
     })
 
     it('should return 401 when accessing route with expired certificate', async function() {
@@ -584,7 +583,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
             validateStatus: null,
         })
         logResponse(resp)
-        expect(resp.status).to.equal(401)
+        expect(resp.status, 'Status should be 401').to.equal(401)
     })
 
     //====== Unauthorized message tests =======
@@ -599,7 +598,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
             },
             validateStatus: null,
         })
-        expect(resp.status).to.equal(200)
+        expect(resp.status, 'Status should be 200').to.equal(200)
         await waitForConfigRebuild()
     })
 
@@ -610,7 +609,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
             validateStatus: null,
         })
         logResponse(resp)
-        expect(resp.status).to.equal(401)
+        expect(resp.status, 'Status should be 200').to.equal(401)
         expect(resp.data.message).to.equal('You shall not pass!')
     })
 
@@ -619,7 +618,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
             method: 'DELETE',
             url: `${urls.admin}/plugins/${oidcPluginId}`,
         })
-        expect(resp.status).to.equal(204)
+        expect(resp.status, 'Status should be 204').to.equal(204)
     })
 
     after(async function () {
