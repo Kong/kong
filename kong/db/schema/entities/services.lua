@@ -51,23 +51,23 @@ return {
 
   entity_checks = {
     { conditional = { if_field = "protocol",
-                      if_match = { one_of = { "tcp", "tls", "udp", "grpc", "grpcs" }},
+                      if_match = { one_of = { "tcp", "tls", "udp", "grpc", "grpcs" } },
                       then_field = "path",
                       then_match = { eq = null }}},
     { conditional = { if_field = "protocol",
-                      if_match = { not_one_of = {"https", "tls"} },
+                      if_match = { not_one_of = { "https", "tls" } },
                       then_field = "client_certificate",
                       then_match = { eq = null }}},
     { conditional = { if_field = "protocol",
-                      if_match = { not_one_of = {"https", "tls"} },
+                      if_match = { not_one_of = { "https", "tls", "grpcs" } },
                       then_field = "tls_verify",
                       then_match = { eq = null }}},
     { conditional = { if_field = "protocol",
-                      if_match = { not_one_of = {"https", "tls"} },
+                      if_match = { not_one_of = { "https", "tls", "grpcs" } },
                       then_field = "tls_verify_depth",
                       then_match = { eq = null }}},
     { conditional = { if_field = "protocol",
-                      if_match = { not_one_of = {"https", "tls"} },
+                      if_match = { not_one_of = { "https", "tls", "grpcs" } },
                       then_field = "ca_certificates",
                       then_match = { eq = null }}},
   },
@@ -97,7 +97,7 @@ return {
           host = parsed_url.host or null,
           port = port or
                  parsed_url.port or
-                 (protocol == "http"  and 80)  or
+                 (protocol == "http" and 80) or
                  (protocol == "https" and 443) or
                  default_port,
           path = parsed_url.path or null,
