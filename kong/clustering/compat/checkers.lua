@@ -39,6 +39,32 @@ end
 
 local compatible_checkers = {
   {
+    3007001002, --[[3.7.1.2]]
+    function(config_table, dp_version, log_suffix)
+      local has_update
+
+      local dp_version_num = version_num(dp_version)
+
+      for _, plugin in ipairs(config_table.plugins or {}) do
+        if plugin.name == "aws-lambda" then
+          local config = plugin.config
+          if config.empty_arrays_mode ~= nil then
+            if dp_version_num >= 3007000000 and dp_version_num < 3007001002 then
+              -- remove config.empty_arrays_mode when DP version in interval [3700, 3712)
+              config.empty_arrays_mode = nil
+              has_update = true
+              log_warn_message('configures ' .. plugin.name .. ' plugin with empty_arrays_mode',
+                'will be removed.',
+                dp_version, log_suffix)
+            end
+          end
+        end
+      end
+
+      return has_update
+    end
+  },
+  {
     3007001000, --[[3.7.1.0]]
     function(config_table, dp_version, log_suffix)
       local has_update
@@ -159,6 +185,32 @@ local compatible_checkers = {
       return has_update
       end -- end function
   },
+  {
+    3006001007, --[[3.6.1.7]]
+    function(config_table, dp_version, log_suffix)
+      local has_update
+
+      local dp_version_num = version_num(dp_version)
+
+      for _, plugin in ipairs(config_table.plugins or {}) do
+        if plugin.name == "aws-lambda" then
+          local config = plugin.config
+          if config.empty_arrays_mode ~= nil then
+            if dp_version_num >= 3006000000 and dp_version_num < 3006001007 then
+              -- remove config.empty_arrays_mode when DP version in interval [3600, 3617)
+              config.empty_arrays_mode = nil
+              has_update = true
+              log_warn_message('configures ' .. plugin.name .. ' plugin with empty_arrays_mode',
+                'will be removed.',
+                dp_version, log_suffix)
+            end
+          end
+        end
+      end
+
+      return has_update
+    end
+  },
   { 3006001002, --[[3.6.1.2]]
     function(config_table, dp_version, log_suffix)
       local has_update
@@ -261,6 +313,29 @@ local compatible_checkers = {
             has_update = true
             log_warn_message('adapts ' .. plugin.name .. ' plugin redis configuration to older version',
               'revert to older schema',
+              dp_version, log_suffix)
+          end
+        end
+      end
+
+      return has_update
+    end
+  },
+
+  {
+    3005000007, --[[3.5.0.7]]
+    function(config_table, dp_version, log_suffix)
+      local has_update
+
+      for _, plugin in ipairs(config_table.plugins or {}) do
+        if plugin.name == "aws-lambda" then
+          local config = plugin.config
+          if config.empty_arrays_mode ~= nil then
+            -- remove config.empty_arrays_mode when DP version less than 3507
+            config.empty_arrays_mode = nil
+            has_update = true
+            log_warn_message('configures ' .. plugin.name .. ' plugin with empty_arrays_mode',
+              'will be removed.',
               dp_version, log_suffix)
           end
         end

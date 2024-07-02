@@ -673,6 +673,66 @@ describe("CP/DP config compat #" .. strategy, function()
     end)
   end)
 
+  describe("aws-lambda plugin empty_arrays_mode", function()
+    local case_sanity = {
+      plugin = "aws-lambda",
+      label = "w/ empty_arrays_mode",
+      pending = false,
+      config = {
+        aws_key = "test",
+        aws_secret = "test",
+        aws_region = "us-east-1",
+        function_name = "test-lambda",
+        empty_arrays_mode = "correct",
+      },
+      status = STATUS.NORMAL,
+      validator = function(config)
+        return config.empty_arrays_mode == "correct"
+      end
+    }
+
+    it(fmt("%s - %s", case_sanity.plugin, case_sanity.label), function()
+      do_assert(case_sanity, "3.5.0.7")
+    end)
+
+    it(fmt("%s - %s", case_sanity.plugin, case_sanity.label), function()
+      do_assert(case_sanity, "3.6.1.7")
+    end)
+
+    it(fmt("%s - %s", case_sanity.plugin, case_sanity.label), function()
+      do_assert(case_sanity, "3.7.1.2")
+    end)
+
+    local case = {
+      plugin = "aws-lambda",
+      label = "w/ empty_arrays_mode unsupported",
+      pending = false,
+      config = {
+        aws_key = "test",
+        aws_secret = "test",
+        aws_region = "us-east-1",
+        function_name = "test-lambda",
+        empty_arrays_mode = "correct",
+      },
+      status = STATUS.NORMAL,
+      validator = function(config)
+        return config.empty_arrays_mode == nil
+      end
+    }
+
+    it(fmt("%s - %s", case.plugin, case.label), function()
+      do_assert(case, "3.5.0.6")
+    end)
+
+    it(fmt("%s - %s", case.plugin, case.label), function()
+      do_assert(case, "3.6.1.6")
+    end)
+
+    it(fmt("%s - %s", case.plugin, case.label), function()
+      do_assert(case, "3.7.1.1")
+    end)
+  end)
+
   describe("3.8.x.y", function()
     -- When a data-plane lower than the version of the control-plane
     -- connects, it should receive the config as described in the validator func

@@ -324,9 +324,6 @@ return {
 
   -- Any dataplane older than 3.8.0
   [3008000000] = {
-    aws_lambda = {
-      "empty_arrays_mode",
-    },
     ldap_auth = {
       "realm",
     },
