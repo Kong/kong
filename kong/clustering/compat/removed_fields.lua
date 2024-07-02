@@ -163,5 +163,8 @@ return {
     oauth2 = {
       "realm",
     },
+    ai_prompt_guard = {
+      "match_all_roles",
+    },
   },
 }
