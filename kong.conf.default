@@ -427,7 +427,7 @@
 # HYBRID MODE CONTROL PLANE
 #------------------------------------------------------------------------------
 
-#cluster_listen = 0.0.0.0:8005
+#cluster_listen = 0.0.0.0:8005 reuseport
                          # Comma-separated list of addresses and ports on
                          # which the cluster control plane server should listen
                          # for data plane connections.
@@ -1914,7 +1914,7 @@
 
 # The Admin GUI for Kong Gateway.
 
-#admin_gui_listen = 0.0.0.0:8002, 0.0.0.0:8445 ssl
+#admin_gui_listen = 0.0.0.0:8002 reuseport, 0.0.0.0:8445 ssl reuseport
                         # Kong Manager Listeners
                         #
                         # Comma-separated list of addresses and ports on which
