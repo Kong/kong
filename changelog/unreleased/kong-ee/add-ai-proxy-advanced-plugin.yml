@@ -1,0 +1,3 @@
+message: "**ai-proxy-advanced:** Added the `ai-proxy-advanced` plugin that supports advanced load balancing between LLM services."
+type: feature
+scope: Plugin
