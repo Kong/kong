@@ -70,6 +70,7 @@ jobs:
           source .ci/setup_env_github.sh
           make dev
   autodoc:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     runs-on: ubuntu-22.04
     needs: [build]
     steps:

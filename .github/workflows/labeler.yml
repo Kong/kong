@@ -4,6 +4,7 @@ on:
 
 jobs:
   labeler:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     permissions:
       contents: read
       pull-requests: write

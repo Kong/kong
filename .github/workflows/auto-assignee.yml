@@ -6,6 +6,7 @@ permissions:
   pull-requests: write
 jobs:
   assign-author:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     runs-on: ubuntu-latest
     steps:
       - name: assign-author

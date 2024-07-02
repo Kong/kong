@@ -8,6 +8,7 @@ on:
 
 jobs:
   update:
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     runs-on: ubuntu-22.04
 
     permissions:
