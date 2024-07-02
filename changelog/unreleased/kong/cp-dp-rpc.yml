@@ -1,0 +1,3 @@
+message: "Remote procedure call (RPC) framework for Hybrid mode deployments."
+type: feature
+scope: Clustering
