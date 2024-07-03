@@ -19,6 +19,7 @@ end
 
 local request_id_get = require "kong.observability.tracing.request_id".get
 local time_ns = require "kong.tools.time".time_ns
+local table_merge = require "kong.tools.table".table_merge
 local deep_copy = require "kong.tools.utils".deep_copy
 
 local get_log_level = require "resty.kong.log".get_log_level
@@ -85,7 +86,7 @@ local function concat_tostring(tab)
 end
 
 
-local function generate_log_entry(request_scoped, log_level, log_str, request_id, debug_info)
+local function generate_log_entry(request_scoped, inj_attributes, log_level, log_str, request_id, debug_info)
 
   local span_id
 
@@ -105,6 +106,9 @@ local function generate_log_entry(request_scoped, log_level, log_str, request_id
     ["introspection.source"] = debug_info.source,
     ["introspection.what"] = debug_info.what,
   }
+  if inj_attributes then
+    attributes = table_merge(attributes, inj_attributes)
+  end
 
   local now_ns = time_ns()
   return {
@@ -128,13 +132,13 @@ local function get_request_log_buffer()
 end
 
 
-function _M.maybe_push(stack_level, log_level, ...)
+function _M.maybe_push(stack_level, attributes, log_level, ...)
   -- WARNING: do not yield in this function, as it is called from ngx.log
 
   -- Early return cases:
 
   -- log level too low
-  if configured_log_level() < log_level then
+  if log_level and configured_log_level() < log_level then
     return
   end
 
@@ -160,16 +164,19 @@ function _M.maybe_push(stack_level, log_level, ...)
     return
   end
 
-  -- no (or empty) log line
   local args = table_pack(...)
   local log_str = concat_tostring(args)
-  if log_str == "" then
-    return
-  end
 
   -- generate & push log entry
   local debug_info = debug.getinfo(stack_level, "nSl")
-  local log_entry = generate_log_entry(request_scoped, log_level, log_str, request_id, debug_info)
+  local log_entry = generate_log_entry(
+    request_scoped,
+    attributes,
+    log_level,
+    log_str,
+    request_id,
+    debug_info
+  )
   table.insert(log_buffer, log_entry)
 end
 

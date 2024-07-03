@@ -216,6 +216,7 @@ local MAJOR_MODULES = {
       "tracing",
       "jwe",
       "plugin",
+      "telemetry",
 }
 
 if ngx.config.subsystem == 'http' then
