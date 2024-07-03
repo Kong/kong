@@ -912,6 +912,7 @@ build = {
     ["kong.llm.vectordb"] = "kong/llm/vectordb/init.lua",
     ["kong.llm.vectordb.strategies.redis"] = "kong/llm/vectordb/strategies/redis/init.lua",
     ["kong.llm.vectordb.strategies.redis.utils"] = "kong/llm/vectordb/strategies/redis/utils.lua",
+    ["kong.llm.proxy.handler"] = "kong/llm/proxy/handler.lua",
 
     ["kong.llm.drivers.gemini"] = "kong/llm/drivers/gemini.lua",
 
