@@ -21,6 +21,7 @@ local constants = require("kong.constants")
 
 
 local assert = assert
+local unpack = unpack
 local string_format = string.format
 local kong = kong
 local is_timeout = utils.is_timeout
@@ -75,7 +76,7 @@ function _M._dispatch(premature, self, cb, payload)
     ngx_log(ngx_WARN, "[rpc] RPC callback failed: ", err)
 
     res, err = self.outgoing:push(new_error(payload.id, jsonrpc.SERVER_ERROR,
-                                            tostring(err)))
+                                            err))
     if not res then
       ngx_log(ngx_WARN, "[rpc] unable to push RPC call error: ", err)
     end
