@@ -608,7 +608,7 @@ return function(options)
       -- 4: patched function
       -- 5: caller
       hook_called = true
-      dynamic_hook.run_hook("observability_logs", "push", 5, ...)
+      dynamic_hook.run_hook("observability_logs", "push", 5, nil, ...)
       hook_called = false
       return old_ngx_log(...)
     end
