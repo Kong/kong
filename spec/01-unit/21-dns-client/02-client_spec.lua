@@ -790,12 +790,12 @@ describe("[DNS client]", function()
     -- check first CNAME
     local key1 = client.TYPE_CNAME..":"..host
     local entry1 = lrucache:get(key1)
-    assert.falsy(entry1)
+    assert.is_nil(entry1)
 
     -- check second CNAME
     local key2 = client.TYPE_CNAME..":thuis.kong-gateway-testing.link"
     local entry2 = lrucache:get(key2)
-    assert.falsy(entry2)
+    assert.is_nil(entry2)
 
     assert.are.equal(host, answers[1].name) -- we got final name same to host
     assert.are.equal(typ, answers[1].type)  -- we got a final A type record
