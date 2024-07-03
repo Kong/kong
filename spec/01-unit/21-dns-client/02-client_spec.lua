@@ -845,7 +845,7 @@ describe("[DNS client]", function()
     -- first check CNAME
     local key = client.TYPE_CNAME..":"..host
     local entry = lrucache:get(key)
-    assert.falsy(entry)
+    assert.is_nil(entry)
 
     -- check final target
     assert.are.equal(typ, answers[1].type)
