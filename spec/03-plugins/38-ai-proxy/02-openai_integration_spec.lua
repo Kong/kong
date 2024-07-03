@@ -715,15 +715,18 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.is_number(log_message.response.size)
 
         -- test ai-proxy stats
-        local actual_chat_stats = log_message.ai
-        local actual_llm_latency = actual_chat_stats["ai-proxy"].meta.llm_latency
-        local actual_time_per_token = actual_chat_stats["ai-proxy"].usage.time_per_token
-        local time_per_token = math.floor(actual_llm_latency / actual_chat_stats["ai-proxy"].usage.completion_tokens)
+        -- TODO: as we are reusing this test for ai-proxy and ai-proxy-advanced
+        -- we are currently stripping the top level key and comparing values directly
+        local _, first_expected = next(_EXPECTED_CHAT_STATS)
+        local _, first_got = next(log_message.ai)
+        local actual_llm_latency = first_got.meta.llm_latency
+        local actual_time_per_token = first_got.usage.time_per_token
+        local time_per_token = math.floor(actual_llm_latency / first_got.usage.completion_tokens)
 
-        log_message.ai["ai-proxy"].meta.llm_latency = 1
-        log_message.ai["ai-proxy"].usage.time_per_token = 1
+        first_got.meta.llm_latency = 1
+        first_got.usage.time_per_token = 1
 
-        assert.same(_EXPECTED_CHAT_STATS, log_message.ai)
+        assert.same(first_expected, first_got)
         assert.is_true(actual_llm_latency > 0)
         assert.same(actual_time_per_token, time_per_token)
       end)
@@ -770,7 +773,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
         })
-        
+
         -- validate that the request succeeded, response status 200
         local body = assert.res_status(200 , r)
         local json = cjson.decode(body)
@@ -792,14 +795,18 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.is_number(log_message.request.size)
         assert.is_number(log_message.response.size)
 
+        -- TODO: as we are reusing this test for ai-proxy and ai-proxy-advanced
+        -- we are currently stripping the top level key and comparing values directly
+        local _, message = next(log_message.ai)
+
         -- test request bodies
-        assert.matches('"content": "What is 1 + 1?"', log_message.ai['ai-proxy'].payload.request, nil, true)
-        assert.matches('"role": "user"', log_message.ai['ai-proxy'].payload.request, nil, true)
+        assert.matches('"content": "What is 1 + 1?"', message.payload.request, nil, true)
+        assert.matches('"role": "user"', message.payload.request, nil, true)
 
         -- test response bodies
-        assert.matches('"content": "The sum of 1 + 1 is 2.",', log_message.ai["ai-proxy"].payload.response, nil, true)
-        assert.matches('"role": "assistant"', log_message.ai["ai-proxy"].payload.response, nil, true)
-        assert.matches('"id": "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2"', log_message.ai["ai-proxy"].payload.response, nil, true)
+        assert.matches('"content": "The sum of 1 + 1 is 2.",', message.payload.response, nil, true)
+        assert.matches('"role": "assistant"', message.payload.response, nil, true)
+        assert.matches('"id": "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2"', message.payload.response, nil, true)
       end)
 
       it("internal_server_error request", function()
