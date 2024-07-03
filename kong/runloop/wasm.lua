@@ -793,6 +793,19 @@ local function register_property_handlers()
     return true, kong.version, true
   end)
 
+  properties.add_setter("kong.client.authentication", function(kong, _, _, auth_json)
+    local auth = cjson_decode(auth_json)
+    local consumer = auth.consumer and { id = consumer }
+    local credential = auth.credential and { id = auth.credential }
+    kong.client.authenticate(consumer, credential)
+    return true, nil, false
+  end)
+
+  properties.add_getter("kong.client.credential", function(kong)
+    local credential = kong.client.credential()
+    return true, credential and credential.id, false
+  end)
+
   properties.add_namespace_handlers("kong.ctx.shared",
     function(kong, _, _, key)
       local value = kong.ctx.shared[key]
