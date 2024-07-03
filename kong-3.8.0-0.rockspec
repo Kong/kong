@@ -337,6 +337,7 @@ build = {
     ["kong.pdk.vault"] = "kong/pdk/vault.lua",
     ["kong.pdk.tracing"] = "kong/pdk/tracing.lua",
     ["kong.pdk.plugin"] = "kong/pdk/plugin.lua",
+    ["kong.pdk.telemetry"] = "kong/pdk/telemetry.lua",
 
     ["kong.plugins.basic-auth.migrations"] = "kong/plugins/basic-auth/migrations/init.lua",
     ["kong.plugins.basic-auth.migrations.000_base_basic_auth"] = "kong/plugins/basic-auth/migrations/000_base_basic_auth.lua",

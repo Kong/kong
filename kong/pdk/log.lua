@@ -315,7 +315,7 @@ local function gen_log_func(lvl_const, imm_buf, to_string, stack_level, sep)
     -- 1: maybe_push
     -- 2: dynamic_hook.pcall
     -- 3: dynamic_hook.run_hook
-    dynamic_hook.run_hook("observability_logs", "push", stack_level + 3, lvl_const, ...)
+    dynamic_hook.run_hook("observability_logs", "push", stack_level + 3, nil, lvl_const, ...)
 
     local n = select("#", ...)
 

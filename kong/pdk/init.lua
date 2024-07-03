@@ -208,6 +208,7 @@ local MAJOR_MODULES = {
       "vault",
       "tracing",
       "plugin",
+      "telemetry",
 }
 
 if ngx.config.subsystem == 'http' then
