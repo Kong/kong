@@ -424,7 +424,7 @@ local function execute(strategy, statement_name, attributes, options)
 
   local is_update = options and options.update
   local has_ttl   = strategy.schema.ttl
-  local is_skip_ttl = options and options.skip_ttl
+  local skip_ttl = options and options.skip_ttl
   if has_ws_id then
     assert(ws_id == nil or type(ws_id) == "string")
     argv[0] = escape_literal(connector, ws_id, "ws_id")
@@ -433,7 +433,7 @@ local function execute(strategy, statement_name, attributes, options)
   for i = 1, argc do
     local name = argn[i]
     local value
-    if has_ttl and name == "ttl" and not is_skip_ttl then
+    if has_ttl and name == "ttl" and not skip_ttl then
       value = (options and options.ttl)
               and get_ttl_value(strategy, attributes, options)
 
