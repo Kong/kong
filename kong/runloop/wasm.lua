@@ -795,7 +795,7 @@ local function register_property_handlers()
 
   properties.add_setter("kong.client.authentication", function(kong, _, _, auth_json)
     local auth = cjson_decode(auth_json)
-    local consumer = auth.consumer and { id = consumer }
+    local consumer = auth.consumer and { id = auth.consumer }
     local credential = auth.credential and { id = auth.credential }
     kong.client.authenticate(consumer, credential)
     return true, nil, false

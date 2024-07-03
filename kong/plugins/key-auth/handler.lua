@@ -6,7 +6,6 @@ local kong = kong
 local type = type
 local error = error
 local ipairs = ipairs
-local tostring = tostring
 local fmt = string.format
 
 
@@ -30,23 +29,6 @@ local ERR_DUPLICATE_API_KEY   = "Duplicate API key found"
 local ERR_NO_API_KEY          = "No API key found in request"
 local ERR_INVALID_AUTH_CRED   = "Unauthorized"
 local ERR_INVALID_PLUGIN_CONF = "Invalid plugin configuration"
-local ERR_UNEXPECTED          = "An unexpected error occurred"
-
-
-local function load_credential(key)
-  local cred, err = kong.db.keyauth_credentials:select_by_key(key)
-  if not cred then
-    return nil, err
-  end
-
-  if cred.ttl == 0 then
-    kong.log.debug("key expired")
-
-    return nil
-  end
-
-  return cred, nil, cred.ttl
-end
 
 
 local function set_consumer(consumer, credential)
