@@ -128,7 +128,7 @@ end
 -- function.
 -- @return `ip + port + hostheader` + `handle`, or `nil+error`
 function consistent_hashing:getPeer(_, _, valueToHash)
-  kong.log.debug("trying to get peer with value to hash: [", valueToHash, "]")
+  -- kong.log.debug("trying to get peer with value to hash: [", valueToHash, "]")
   --if not balancer.healthy then
   --  return nil, balancers.errors.ERR_BALANCER_UNHEALTHY
   --end
@@ -182,11 +182,11 @@ end
 --
 -- If the balancer already has targets and addresses, the wheel is
 -- constructed here by calling `self:afterHostUpdate()`
-function consistent_hashing.new(targets, wheelSize)
+function consistent_hashing.new(targets, conf)
   local self = setmetatable({
     continuum = {},
     totalWeight = 0,
-    points = wheelSize or DEFAULT_CONTINUUM_SIZE,
+    points = (conf and conf.balancer and conf.balancer.slots) or DEFAULT_CONTINUUM_SIZE,
     targets = targets or {},
   }, consistent_hashing)
 

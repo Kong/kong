@@ -9,8 +9,6 @@ local helpers = require("spec.helpers")
 local v = helpers.validate_plugin_config_schema
 local schema_def
 
-local is_fips = helpers.is_fips_build()
-
 describe("Plugin: ai-proxy-advanced (schema)", function()
   local function setup_global_env()
     _G.kong = _G.kong or {}
