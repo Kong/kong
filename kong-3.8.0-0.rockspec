@@ -147,6 +147,7 @@ build = {
     ["kong.api"] = "kong/api/init.lua",
     ["kong.api.api_helpers"] = "kong/api/api_helpers.lua",
     ["kong.api.arguments"] = "kong/api/arguments.lua",
+    ["kong.api.arguments_decoder"] = "kong/api/arguments_decoder.lua",
     ["kong.api.endpoints"] = "kong/api/endpoints.lua",
     ["kong.api.routes.cache"] = "kong/api/routes/cache.lua",
     ["kong.api.routes.certificates"] = "kong/api/routes/certificates.lua",

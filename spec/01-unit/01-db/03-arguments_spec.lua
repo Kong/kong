@@ -5,26 +5,34 @@ local deep_sort = helpers.deep_sort
 
 describe("arguments tests", function()
 
-  local arguments, infer_value, infer, decode_arg, decode, combine, old_get_method
+  local arguments, arguments_decoder, infer_value, infer, decode, combine, old_get_method
+  local decode_arg, get_param_name_and_keys, nest_path, decode_map_array_arg
 
   lazy_setup(function()
     old_get_method = _G.ngx.req.get_method
     _G.ngx.req.get_method = function() return "POST" end
 
     package.loaded["kong.api.arguments"] = nil
+    package.loaded["kong.api.arguments_decoder"] = nil
+
     arguments = require "kong.api.arguments"
     infer_value = arguments.infer_value
-    infer       = arguments.infer
-    decode_arg  = arguments.decode_arg
     decode      = arguments.decode
-    combine     = arguments.combine
+    infer       = arguments._infer
+    combine     = arguments._combine
+
+    arguments_decoder = require "kong.api.arguments_decoder"
+    decode_arg = arguments_decoder._decode_arg
+    get_param_name_and_keys = arguments_decoder._get_param_name_and_keys
+    nest_path = arguments_decoder._nest_path
+    decode_map_array_arg = arguments_decoder._decode_map_array_arg
   end)
 
   lazy_teardown(function()
     _G.ngx.req.get_method = old_get_method
   end)
 
-  describe("arguments.infer_value", function()
+  describe("arguments_decoder.infer_value", function()
     it("infers numbers", function()
       assert.equal(2, infer_value("2", { type = "number" }))
       assert.equal(2, infer_value("2", { type = "integer" }))
@@ -85,7 +93,7 @@ describe("arguments tests", function()
   end)
 
 
-  describe("arguments.infer", function()
+  describe("arguments_decoder.infer", function()
     it("returns nil for nil args", function()
       assert.is_nil(infer())
     end)
@@ -147,7 +155,7 @@ describe("arguments tests", function()
 
   end)
 
-  describe("arguments.combine", function()
+  describe("arguments_decoder.combine", function()
     it("merges arguments together, creating arrays when finding repeated names, recursively", function()
       local monster = {
         { a = { [99] = "wayne", }, },
@@ -173,7 +181,7 @@ describe("arguments tests", function()
   end)
 
 
-  describe("arguments.decode_arg", function()
+  describe("arguments_decoder.decode_arg", function()
     it("does not infer numbers, booleans or nulls from strings", function()
       assert.same({ x = "" }, decode_arg("x", ""))
       assert.same({ x = "true" }, decode_arg("x", "true"))
@@ -193,7 +201,190 @@ describe("arguments tests", function()
     end)
   end)
 
-  describe("arguments.decode", function()
+  describe("arguments_decoder.get_param_name_and_keys", function()
+    it("extracts array keys", function()
+      local name, _, keys, is_map = get_param_name_and_keys("foo[]")
+      assert.equals(name, "foo")
+      assert.same({ "" }, keys)
+      assert.is_false(is_map)
+
+      name, _, keys, is_map = get_param_name_and_keys("foo[1]")
+      assert.same(name, "foo")
+      assert.same({ "1" }, keys)
+      assert.is_false(is_map)
+
+      name, _, keys, is_map = get_param_name_and_keys("foo[1][2]")
+      assert.same(name, "foo")
+      assert.same({ "1", "2" }, keys)
+      assert.is_false(is_map)
+    end)
+
+    it("extracts map keys", function()
+      local name, _, keys, is_map = get_param_name_and_keys("foo[m]")
+      assert.same(name, "foo")
+      assert.same({ "m" }, keys)
+      assert.is_true(is_map)
+
+      name, _, keys, is_map = get_param_name_and_keys("[name][m][n]")
+      assert.same(name, "[name]")
+      assert.same({ "m", "n" }, keys)
+      assert.is_true(is_map)
+    end)
+
+    it("extracts mixed map/array keys", function()
+      local name, _, keys, is_map = get_param_name_and_keys("foo[].a")
+      assert.same(name, "foo")
+      assert.same({ "", "a" }, keys)
+      assert.is_false(is_map)
+
+      name, _, keys, is_map = get_param_name_and_keys("foo[1].a")
+      assert.same(name, "foo")
+      assert.same({ "1", "a" }, keys)
+      assert.is_false(is_map)
+
+      name, _, keys, is_map = get_param_name_and_keys("foo[1][2].a")
+      assert.same(name, "foo")
+      assert.same({ "1", "2", "a" }, keys)
+      assert.is_false(is_map)
+
+      name, _, keys, is_map = get_param_name_and_keys("foo.z[1].a[2].b")
+      assert.same(name, "foo")
+      assert.same({ "z", "1", "a", "2", "b" }, keys)
+      assert.is_false(is_map)
+
+      name, _, keys, is_map = get_param_name_and_keys("foo[m].a")
+      assert.same(name, "foo")
+      assert.same({ "m", "a" }, keys)
+      assert.is_true(is_map)
+
+      name, _, keys, is_map = get_param_name_and_keys("foo[m][n].a")
+      assert.same(name, "foo")
+      assert.same({ "m", "n", "a" }, keys)
+      assert.is_true(is_map)
+
+      name, _, keys, is_map = get_param_name_and_keys("foo[m].a[n].b")
+      assert.same(name, "foo")
+      assert.same({ "m", "a", "n", "b" }, keys)
+      assert.is_true(is_map)
+
+      name, _, keys, is_map = get_param_name_and_keys("foo[1][m].a")
+      assert.same(name, "foo")
+      assert.same({ "1", "m", "a" }, keys)
+      assert.is_true(is_map)
+
+      name, _, keys, is_map = get_param_name_and_keys("foo[m][1].a[n].b")
+      assert.same(name, "foo")
+      assert.same({ "m", "1", "a", "n", "b" }, keys)
+      assert.is_true(is_map)
+    end)
+  end)
+
+  describe("arguments_decoder.nest_path", function()
+    it("nests simple value", function()
+      local container = {}
+      nest_path(container, { "foo" }, "a")
+      assert.same({ foo = "a" }, container)
+    end)
+
+    it("nests arrays", function()
+      local container = {}
+      nest_path(container, { "foo", "1" }, "a")
+      assert.same({ foo = { [1] = "a" } }, container)
+
+      container = {}
+      nest_path(container, { "foo", "1", "2" }, 12)
+      assert.same({ foo = { [1] = { [2] = 12 } } }, container)
+
+      container = {}
+      nest_path(container, { "foo", "1", "2", "3" }, false)
+      assert.same({ foo = { [1] = { [2] = { [3] = false } } } }, container)
+    end)
+
+    it("nests maps", function()
+      local container = {}
+      nest_path(container, { "foo", "bar" }, "a")
+      assert.same({ foo = { bar = "a" } }, container)
+
+      container = {}
+      nest_path(container, { "foo", "bar", "baz" }, true)
+      assert.same({ foo = { bar = { baz = true } } }, container)
+
+      container = {}
+      nest_path(container, { "foo", "bar", "baz", "qux" }, 42)
+      assert.same({ foo = { bar = { baz = { qux = 42 } } } }, container)
+    end)
+
+    it("nests mixed map/array", function()
+      local container = {}
+      nest_path(container, { "foo", "1", "bar" }, "a")
+      assert.same({ foo = { [1] = { bar = "a" } } }, container)
+
+      container = {}
+      nest_path(container, { 1, "1", "bar", "2" }, 42)
+      assert.same({ [1] = { [1] = { bar = { [2] = 42 } } } }, container)
+    end)
+  end)
+
+  describe("arguments_decoder.decode_map_array_arg", function()
+    it("decodes arrays", function()
+      local container = {}
+
+      decode_map_array_arg("x[]", "a", container)
+      assert.same({ x = { [1] = "a" } }, container)
+
+      container = {}
+      decode_map_array_arg("x[1]", "a", container)
+      assert.same({ x = { [1] = "a" } }, container)
+
+      container = {}
+      decode_map_array_arg("x[1][2][3]", 42, container)
+      assert.same({ x = { [1] = { [2] = { [3] = 42 } } } }, container)
+    end)
+
+    it("decodes maps", function()
+      local container = {}
+
+      decode_map_array_arg("x[a]", "a", container)
+      assert.same({ x = { a = "a" } }, container)
+
+      container = {}
+      decode_map_array_arg("x[a][b][c]", 42, container)
+      assert.same({ x = { a = { b = { c = 42 } } } }, container)
+    end)
+
+    it("decodes mixed map/array", function()
+      local container = {}
+
+      decode_map_array_arg("x[][a]", "a", container)
+      assert.same({ x = { [1] = { a = "a" } } }, container)
+
+      container = {}
+      decode_map_array_arg("x[1][a]", "a", container)
+      assert.same({ x = { [1] = { a = "a" } } }, container)
+
+      container = {}
+      decode_map_array_arg("x[1][2][a]", "a", container)
+      assert.same({ x = { [1] = { [2] = { a = "a" } } } }, container)
+
+      container = {}
+      decode_map_array_arg("x[a][1][b]", "a", container)
+      assert.same({ x = { a = { [1] = { b = "a" } } } }, container)
+
+      container = {}
+      decode_map_array_arg("x[a][1][b]", "a", container)
+      assert.same({ x = { a = { [1] = { b = "a" } } } }, container)
+
+      container = {}
+      decode_map_array_arg("x[1][a][2][b]", "a", container)
+      assert.same({ x = { [1] = { a = { [2] = { b = "a" } } } } }, container)
+
+      container = {}
+      decode_map_array_arg("x.r[1].s[a][2].t[b].u", "a", container)
+      assert.same({ x = { r = { [1] = { s = { a = { [2] = { t = { b = { u = "a" } } } } } } } } }, container)
+    end)
+  end)
+
+  describe("arguments_decoder.decode", function()
 
     it("decodes complex nested parameters", function()
       assert.same(deep_sort{
