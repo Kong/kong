@@ -196,10 +196,6 @@ local routes = {
             },
           },
         },
-        values = {
-          type = "array",
-          elements = typedefs.regex_or_plain_pattern,
-        }
       } },
 
       { regex_priority = { description = "A number used to choose which route resolves a given request when several routes match it using regexes simultaneously.", type = "integer", default = 0 }, },
