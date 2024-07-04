@@ -1,0 +1,25 @@
+{
+   "config_schema": {
+      "type": "object",
+      "properties": {
+         "run_on_preflight": { "type": "boolean" },
+         "keys": {
+            "type": "object",
+            "additionalProperties": {
+               "type": "object",
+               "properties": {
+                  "id": { "type": "string" },
+                  "consumer": {
+                     "type": "object",
+                     "properties": {
+                        "id": { "type": "string" },
+                        "custom_id": { "type": "string" },
+                        "username": { "type": "string" }
+                     }
+                  }
+               }
+            }
+         }
+      }
+   }
+}

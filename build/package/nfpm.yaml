@@ -40,6 +40,10 @@ contents:
   dst: /usr/local/bin/kong-health
 - src: build/package/kong.service
   dst: /lib/systemd/system/kong.service
+- src: filters/proxy_wasm_key_auth.wasm
+  dst: /usr/local/kong/filters/proxy_wasm_key_auth.wasm
+- src: filters/proxy_wasm_key_auth.meta.json
+  dst: /usr/local/kong/filters/proxy_wasm_key_auth.meta.json
 - src: build/package/kong.logrotate
   dst: /etc/kong/kong.logrotate
   file_info:
