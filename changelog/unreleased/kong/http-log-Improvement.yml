@@ -1,0 +1,4 @@
+message: |
+  **HTTP-Log**: Improved the concurrency of log sending when `max_batch_size` is 1.`
+type: bugfix
+scope: Plugin
