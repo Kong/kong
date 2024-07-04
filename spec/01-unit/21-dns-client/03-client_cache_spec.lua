@@ -493,7 +493,7 @@ describe("[DNS client cache]", function()
       assert(client.init(config))
       lrucache = client.getcache()
 
-      query_func = function(self, original_query_func, qname, opts)
+      resolver.query_func = function(self, original_query_func, qname, opts)
         return mock_records[qname..":"..opts.qtype] or { errcode = 3, errstr = "name error" }
       end
     end)
