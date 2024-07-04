@@ -33,10 +33,6 @@ build-packages:
   check-manifest-suite: ubuntu-22.04-amd64-fips
 
 # Debian
-- label: debian-10
-  image: debian:10
-  package: deb
-  check-manifest-suite: debian-10-amd64
 - label: debian-11
   image: debian:11
   package: deb
@@ -57,12 +53,6 @@ build-packages:
   check-manifest-suite: debian-12-arm64
 
 # RHEL
-- label: rhel-7
-  image: centos:7
-  package: rpm
-  package-type: el7
-  bazel-args: --//:brotli=False
-  check-manifest-suite: el7-amd64
 - label: rhel-8
   image: rockylinux:8
   package: rpm
@@ -209,12 +199,6 @@ release-packages:
   artifact: kong.amd64.deb
 
 # Debian
-- label: debian-10
-  package: deb
-  artifact-from: debian-10
-  artifact-version: 10
-  artifact-type: debian
-  artifact: kong.amd64.deb
 - label: debian-11
   package: deb
   artifact-from: debian-11
@@ -241,12 +225,6 @@ release-packages:
   artifact: kong.arm64.deb
 
 # RHEL
-- label: rhel-7
-  package: rpm
-  artifact-from: rhel-7
-  artifact-version: 7
-  artifact-type: rhel
-  artifact: kong.el7.amd64.rpm
 - label: rhel-8
   package: rpm
   artifact-from: rhel-8
