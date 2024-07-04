@@ -92,7 +92,10 @@ for _, strategy in helpers.each_strategy() do
           http_endpoint = "http://" .. helpers.mock_upstream_host
             .. ":"
             .. helpers.mock_upstream_port
-            .. "/post_log/http_tag"
+            .. "/post_log/http_tag",
+          queue = {
+            max_batch_size = 2,
+          }
         }
       }
 
@@ -638,6 +641,20 @@ for _, strategy in helpers.each_strategy() do
 
         admin_client:close()
    end)
+
+    it("should not rely on queue when max_batch_size is 1", function()
+      reset_log("http")
+      local res = proxy_client:get("/status/200", {
+        headers = {
+          ["Host"] = "http_logging.test"
+        }
+      })
+      assert.res_status(200, res)
+
+      local entries = get_log("http", 1)
+      assert.same("127.0.0.1", entries[1].client_ip)
+      assert.logfile().has.no.line("processing queue", true)  -- should not relay on queue
+    end)
   end)
 
   -- test both with a single worker for a deterministic test,
