@@ -32,6 +32,23 @@ local function to_gemini_generation_config(request_table)
   }
 end
 
+local function is_response_content(content)
+  return content
+        and content.candidates
+        and #content.candidates > 0
+        and content.candidates[1].content
+        and content.candidates[1].content.parts
+        and #content.candidates[1].content.parts > 0
+        and content.candidates[1].content.parts[1].text
+end
+
+local function is_response_finished(content)
+  return content
+     and content.candidates
+     and #content.candidates > 0
+     and content.candidates[1].finishReason
+end
+
 local function handle_stream_event(event_t, model_info, route_type)
   local metadata
 
@@ -50,32 +67,24 @@ local function handle_stream_event(event_t, model_info, route_type)
   local new_event
   local metadata
 
-  if event.candidates and
-     #event.candidates > 0 then
-    
-    if event.candidates[1].content and
-        event.candidates[1].content.parts and
-        #event.candidates[1].content.parts > 0 and
-        event.candidates[1].content.parts[1].text then
-      
-      new_event = {
-        choices = {
-          [1] = {
-            delta = {
-              content = event.candidates[1].content.parts[1].text or "",
-              role = "assistant",
-            },
-            index = 0,
+  if is_response_content(event) then
+    new_event = {
+      choices = {
+        [1] = {
+          delta = {
+            content = event.candidates[1].content.parts[1].text or "",
+            role = "assistant",
           },
+          index = 0,
         },
-      }
-    end
+      },
+    }
+  end
 
-    if event.candidates[1].finishReason then
-      metadata = metadata or {}
-      metadata.finished_reason = event.candidates[1].finishReason
-      new_event = "[DONE]"
-    end
+  if is_response_finished(event) then
+    metadata = metadata or {}
+    metadata.finished_reason = event.candidates[1].finishReason
+    new_event = "[DONE]"
   end
 
   if event.usageMetadata then
@@ -166,25 +175,7 @@ local function to_gemini_chat_openai(request_table, model_info, route_type)
         })
       end
     end
-
-    -- only works for gemini 1.5+
-    -- if system_prompt then
-    --   if string_sub(model_info.name, 1, 10) == "gemini-1.0" then
-    --     return nil, nil, "system prompts only work with gemini models 1.5 or later"
-    --   end
-
-    --   new_r.systemInstruction = {
-    --     parts = {
-    --       {
-    --         text = system_prompt:get(),
-    --       },
-    --     },
-    --   }
-    -- end
-    --
   end
-
-  kong.log.debug(cjson.encode(new_r))
 
   new_r.generationConfig = to_gemini_generation_config(request_table)
 
@@ -206,10 +197,7 @@ local function from_gemini_chat_openai(response, model_info, route_type)
 
   if response.candidates
         and #response.candidates > 0
-        and response.candidates[1].content
-        and response.candidates[1].content.parts
-        and #response.candidates[1].content.parts > 0
-        and response.candidates[1].content.parts[1].text then
+        and is_response_content(response) then
 
     messages.choices[1] = {
       index = 0,
