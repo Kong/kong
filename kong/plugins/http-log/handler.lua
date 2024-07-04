@@ -196,11 +196,8 @@ function HttpLogHandler:log(conf)
       local retry_count = 0
       local start_time = ngx.now()
       while true do
-        -- fixme: optmize the log as these may not appropriate at here
-        kong.log.debug("passing 1 entries to handler")
-        local ok, err = send_entries(conf, { entry }) -- fixme: should we pcall?
+        local ok, err = send_entries(conf, { entry })
         if ok then
-          kong.log.debug("handler processed 1 entries successfully")
           break
         end
         if not ok then
