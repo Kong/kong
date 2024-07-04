@@ -409,9 +409,10 @@ function Queue:process_once()
       self:log_err("handler returned falsy value but no error information")
     end
 
-    if (now() - start_time) > self.max_retry_time then
+    local spent = ngx.now() - start_time
+    if spent > self.max_retry_time then
       self:log_err(
-        "could not send entries, giving up after %d retries.  %d queue entries were lost",
+        "could not send entries due to max_retry_time exceeded. %d queue entries were lost",
         retry_count, entry_count)
       break
     end

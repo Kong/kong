@@ -204,9 +204,10 @@ function HttpLogHandler:log(conf)
           kong.log.warn(string.format("handler could not process entries: %s", tostring(err or "no error details returned by handler")))
         end
 
-        if (ngx.now() - start_time) > queue_conf.max_retry_time then
+        local spent = ngx.now() - start_time
+        if spent > queue_conf.max_retry_time then
           kong.log.err(string.format(
-            "could not send entries, giving up after %d retries. 1 queue entries were lost",
+            "could not send entries due to max_retry_time exceeded. 1 queue entries were lost",
             retry_count))
           break
         end
