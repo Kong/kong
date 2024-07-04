@@ -267,7 +267,10 @@ function _M.frame_to_events(frame, raw_json_mode)
       -- test for truncated chunk on the last line (no trailing \r\n\r\n)
       if #dat > 0 and #event_lines == i then
         ngx.log(ngx.DEBUG, "[ai-proxy] truncated sse frame head")
-        kong.ctx.plugin.truncated_frame = dat
+        if kong then
+          kong.ctx.plugin.truncated_frame = dat
+        end
+
         break  -- stop parsing immediately, server has done something wrong
       end
 
