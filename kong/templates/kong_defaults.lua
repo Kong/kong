@@ -161,7 +161,7 @@ db_cache_warmup_entities = services
 
 dns_resolver = NONE
 dns_hostsfile = /etc/hosts
-dns_order = LAST,SRV,A,CNAME
+dns_order = LAST,SRV,A
 dns_valid_ttl = NONE
 dns_stale_ttl = 3600
 dns_cache_size = 10000

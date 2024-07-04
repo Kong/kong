@@ -1,0 +1,3 @@
+message: Removed `CNAME` from default `dns_order` option
+type: breaking_change
+scope: Configuration
