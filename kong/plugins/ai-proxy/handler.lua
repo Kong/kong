@@ -100,7 +100,8 @@ local function handle_streaming_frame(conf)
       chunk = kong_utils.inflate_gzip(ngx.arg[1])
     end
 
-    local events = ai_shared.frame_to_events(chunk, conf.model.provider == "gemini")
+    local is_raw_json = conf.model.provider == "gemini"
+    local events = ai_shared.frame_to_events(chunk, is_raw_json )
 
     if not events then
       -- usually a not-supported-transformer or empty frames.
