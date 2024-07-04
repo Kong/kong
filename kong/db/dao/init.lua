@@ -15,6 +15,7 @@ local new_tab = require "table.new"
 local DAO_MAX_TTL = require("kong.constants").DATABASE.DAO_MAX_TTL
 local get_request_id = require("kong.tracing.request_id").get
 local is_valid_uuid = require("kong.tools.uuid").is_valid_uuid
+local deep_copy     = require("kong.tools.table").deep_copy
 
 local setmetatable = setmetatable
 local tostring     = tostring
@@ -309,6 +310,12 @@ local function validate_options_value(self, options)
   if options.export ~= nil then
     if type(options.export) ~= "boolean" then
       errors.export = "must be a boolean"
+    end
+  end
+
+  if options.skip_ttl ~= nil then
+    if type(options.skip_ttl) ~= "boolean" then
+      errors.skip_ttl = "must be a boolean"
     end
   end
 
@@ -948,14 +955,9 @@ local function generate_foreign_key_methods(schema)
           return nil, err, err_t
         end
 
-        -- Must have fully hydrated entity (including workspace id) for hooks to notify on
-        local show_ws_id = { show_ws_id = true }
-        if options ~= nil then
-          for k, v in pairs(options) do
-            show_ws_id[k] = v
-          end
-        end
-        local entity, err, err_t = self["select_by_" .. name](self, unique_value, show_ws_id)
+        local select_options = deep_copy(options or {})
+        select_options["show_ws_id"] = true
+        local entity, err, err_t = self["select_by_" .. name](self, unique_value, select_options)
         if err then
           return nil, err, err_t
         end
@@ -964,7 +966,7 @@ local function generate_foreign_key_methods(schema)
           return true
         end
 
-        local cascade_entries = find_cascade_delete_entities(self, entity, show_ws_id)
+        local cascade_entries = find_cascade_delete_entities(self, entity, select_options)
 
         local ok, err_t = run_hook("dao:delete_by:pre",
                                    entity,
@@ -1354,14 +1356,9 @@ function DAO:delete(pk_or_entity, options)
     return nil, tostring(err_t), err_t
   end
 
-  -- Must have fully hydrated entity (including workspace id) for hooks to notify on
-  local show_ws_id = { show_ws_id = true }
-  if options ~= nil then
-    for k, v in pairs(options) do
-      show_ws_id[k] = v
-    end
-  end
-  local entity, err, err_t = self:select(primary_key, show_ws_id)
+  local select_options = deep_copy(options or {})
+  select_options["show_ws_id"] = true
+  local entity, err, err_t = self:select(primary_key, select_options)
   if err then
     return nil, err, err_t
   end
@@ -1378,7 +1375,7 @@ function DAO:delete(pk_or_entity, options)
     end
   end
 
-  local cascade_entries = find_cascade_delete_entities(self, primary_key, show_ws_id)
+  local cascade_entries = find_cascade_delete_entities(self, primary_key, select_options)
 
   local ws_id = entity.ws_id
   local _

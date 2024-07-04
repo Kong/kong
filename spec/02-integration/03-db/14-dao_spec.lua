@@ -23,6 +23,7 @@ for _, strategy in helpers.all_strategies() do
         "services",
         "consumers",
         "acls",
+        "keyauth_credentials",
       })
       _G.kong.db = db
 
@@ -105,6 +106,7 @@ for _, strategy in helpers.all_strategies() do
       db.consumers:truncate()
       db.plugins:truncate()
       db.services:truncate()
+      db.keyauth_credentials:truncate()
     end)
 
     it("select_by_cache_key()", function()
@@ -191,6 +193,36 @@ for _, strategy in helpers.all_strategies() do
       assert.same(new_plugin_config.config.minute, read_plugin.config.minute)
       assert.same(new_plugin_config.config.redis.host, read_plugin.config.redis.host)
       assert.same(new_plugin_config.config.redis.host, read_plugin.config.redis_host) -- legacy field is included
+    end)
+
+    it("keyauth_credentials can be deleted or selected before run ttl cleanup in background timer", function()
+      local key = uuid()
+      local original_keyauth_credentials = bp.keyauth_credentials:insert({
+        consumer = { id = consumer.id },
+        key = key,
+      }, { ttl = 5 })
+
+      -- wait for 5 seconds.
+      ngx.sleep(5)
+
+      -- select or delete keyauth_credentials after ttl expired.
+      local expired_keyauth_credentials
+      helpers.wait_until(function()
+        expired_keyauth_credentials = kong.db.keyauth_credentials:select_by_key(key)
+        return not expired_keyauth_credentials
+      end, 1)
+      assert.is_nil(expired_keyauth_credentials)
+      kong.db.keyauth_credentials:delete_by_key(key)
+
+      -- select or delete keyauth_credentials with skip_ttl=true after ttl expired.
+      expired_keyauth_credentials = kong.db.keyauth_credentials:select_by_key(key, { skip_ttl = true })
+      assert.not_nil(expired_keyauth_credentials)
+      assert.same(expired_keyauth_credentials.id, original_keyauth_credentials.id)
+      kong.db.keyauth_credentials:delete_by_key(key, { skip_ttl = true })
+
+      -- check again
+      expired_keyauth_credentials = kong.db.keyauth_credentials:select_by_key(key, { skip_ttl = true })
+      assert.is_nil(expired_keyauth_credentials)
     end)
   end)
 end
