@@ -661,4 +661,39 @@ describe(PLUGIN_NAME .. ": (unit)", function()
   end)
 
 
+  local function dump(o)
+    if type(o) == 'table' then
+       local s = '{ '
+       for k,v in pairs(o) do
+          if type(k) ~= 'number' then k = '"'..k..'"' end
+          s = s .. '['..k..'] = ' .. dump(v) .. ','
+       end
+       return s .. '} '
+    else
+       return tostring(o)
+    end
+  end
+
+  describe("streaming transformer tests", function()
+    
+    it("transforms truncated-json type", function()
+      
+    end)
+    
+    it("transforms complete-json type", function()
+      local input = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/complete-json/input.bin"))
+      local events = ai_shared.frame_to_events(input, false)  -- not "truncated json mode" like Gemini
+
+      local expected = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/complete-json/expected-output.json"))
+      local expected_events = cjson.decode(expected)
+
+      assert.same(events, expected_events)
+    end)
+
+    it("transforms text/event-stream type", function()
+      
+    end)
+
+  end)
+
 end)
