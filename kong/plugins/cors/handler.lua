@@ -96,6 +96,11 @@ local function configure_origin(conf, header_filter)
       cached_domains = {}
 
       for _, entry in ipairs(conf.origins) do
+        if entry == "*" then
+          set_header("Access-Control-Allow-Origin", "*")
+          return true
+        end
+
         local domain
         local maybe_regex, _, err = re_find(entry, "[^A-Za-z0-9.:/-]", "jo")
         if err then
