@@ -1989,7 +1989,7 @@ describe("[DNS client]", function()
     local force_enable_additional_section = false
 
     -- dns client will ignore additional section
-    query_func = function(self, original_query_func, name, options)
+    resolver.query_func = function(self, original_query_func, name, options)
       if options.qtype ~= client.TYPE_A then
         return { errcode = 5, errstr = "refused" }
       end
