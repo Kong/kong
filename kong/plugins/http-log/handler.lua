@@ -189,12 +189,47 @@ function HttpLogHandler:log(conf)
 
   local queue_conf = Queue.get_plugin_params("http-log", conf, make_queue_name(conf))
   kong.log.debug("Queue name automatically configured based on configuration parameters to: ", queue_conf.name)
+  local entry = cjson.encode(kong.log.serialize())
+
+  if queue_conf.max_batch_size == 1 then
+    local ok ,err = ngx.timer.at(0, function()
+      local retry_count = 0
+      local start_time = ngx.now()
+      while true do
+        -- fixme: optmize the log as these may not appropriate at here
+        kong.log.debug("passing 1 entries to handler")
+        local ok, err = send_entries(conf, { entry }) -- fixme: should we pcall?
+        if ok then
+          kong.log.debug("handler processed 1 entries successfully")
+          break
+        end
+        if not ok then
+          kong.log.warn(string.format("handler could not process entries: %s", tostring(err or "no error details returned by handler")))
+        end
+
+        if (ngx.now() - start_time) > queue_conf.max_retry_time then
+          kong.log.err(string.format(
+            "could not send entries, giving up after %d retries. 1 queue entries were lost",
+            retry_count))
+          break
+        end
+
+        local delay = math.min(queue_conf.max_retry_delay, 2 ^ retry_count * queue_conf.initial_retry_delay)
+        ngx.sleep(delay)
+        retry_count = retry_count + 1
+      end
+    end)
+    if not ok then
+      kong.log.err("failed to create timer: ", err)
+    end
+    return
+  end
 
   local ok, err = Queue.enqueue(
     queue_conf,
     send_entries,
     conf,
-    cjson.encode(kong.log.serialize())
+    entry
   )
   if not ok then
     kong.log.err("Failed to enqueue log entry to log server: ", err)
