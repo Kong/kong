@@ -342,7 +342,7 @@ describe("plugin queue", function()
     enqueue("another value")
     wait_until_queue_done("retry-give-up")
     assert.match_re(log_messages, 'WARN .* handler could not process entries: FAIL FAIL FAIL')
-    assert.match_re(log_messages, 'ERR .*1 queue entries were lost')
+    assert.match_re(log_messages, 'ERR .* 7 queue entries were lost')
   end)
 
   it("warns when queue reaches its capacity limit", function()
