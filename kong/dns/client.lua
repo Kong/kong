@@ -449,13 +449,13 @@ local function stale_update_task(premature, self, key, name, qtype)
 
   local tries = setmetatable({}, _TRIES_MT)
   local answers = resolve_query_types(self, name, qtype, tries)
-  if answers and not answers.errcode then
-    log(DEBUG, PREFIX, "update stale DNS records: ", #answers)
-    self.cache:set(key, { ttl = answers.ttl }, answers)
-
-  else
+  if not answers or answers.errcode then
     log(DEBUG, PREFIX, "failed to update stale DNS records: ", tostring(tries))
+    return
   end
+
+  log(DEBUG, PREFIX, "update stale DNS records: ", #answers)
+  self.cache:set(key, { ttl = answers.ttl }, answers)
 end
 
 
