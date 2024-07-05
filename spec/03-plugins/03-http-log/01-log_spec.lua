@@ -653,7 +653,7 @@ for _, strategy in helpers.each_strategy() do
 
       local entries = get_log("http", 1)
       assert.same("127.0.0.1", entries[1].client_ip)
-      assert.logfile().has.no.line("processing queue", true)  -- should not relay on queue
+      assert.logfile().has.no.line("processing queue", true)  -- should not use queue
     end)
   end)
 
