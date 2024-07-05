@@ -210,7 +210,7 @@ function HttpLogHandler:log(conf)
         end
 
         if (now() - start_time) > queue_conf.max_retry_time then
-          kong.log.err("could not send entries due to max_retry_time exceeded. 1 queue entries were lost")
+          kong.log.err("could not send entries due to max_retry_time exceeded. 1 queue entry was lost")
           break
         end
 
