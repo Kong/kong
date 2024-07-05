@@ -994,6 +994,7 @@ function _M.new(kong_config)
     iam_auth = kong_config.pg_iam_auth,
     iam_auth_assume_role_arn = kong_config.pg_iam_auth_assume_role_arn,
     iam_auth_role_session_name = kong_config.pg_iam_auth_role_session_name,
+    iam_auth_sts_endpoint_url = kong_config.pg_iam_auth_sts_endpoint_url,
 
     --- not used directly by pgmoon, but used internally in connector to set the keepalive timeout
     keepalive_timeout = kong_config.pg_keepalive_timeout,
@@ -1059,6 +1060,7 @@ function _M.new(kong_config)
       iam_auth = kong_config.pg_ro_iam_auth,
       iam_auth_assume_role_arn = kong_config.pg_ro_iam_auth_assume_role_arn,
       iam_auth_role_session_name = kong_config.pg_ro_iam_auth_role_session_name,
+      iam_auth_sts_endpoint_url = kong_config.pg_ro_iam_auth_sts_endpoint_url,
 
       --- not used directly by pgmoon, but used internally in connector to set the keepalive timeout
       keepalive_timeout = kong_config.pg_ro_keepalive_timeout,

@@ -1329,6 +1329,18 @@
                                                 # Authentication. The default value is
                                                 # `KongPostgres`.
 
+#pg_iam_auth_sts_endpoint_url =  # The custom STS endpoint URL used for role assuming
+                                 # in AWS IAM Database Authentication.
+                                 #
+                                 # Note that this value will override the default
+                                 # STS endpoint URL(which should be
+                                 # `https://sts.amazonaws.com`, or
+                                 # `https://sts.<region>.amazonaws.com` if you have
+                                 # `AWS_STS_REGIONAL_ENDPOINTS` set to `regional`).
+                                 #
+                                 # If you are not using private VPC endpoint for STS
+                                 # service, you should not specify this value.
+
 #pg_database = kong              # The database name to connect to.
 
 #pg_schema =                     # The database schema to use. If unspecified,
@@ -1441,6 +1453,9 @@
 
 #pg_ro_iam_auth_role_session_name = KongPostgres   # Same as `pg_iam_auth_role_session_name`,
                                                    # but for the read-only connection.
+
+#pg_ro_iam_auth_sts_endpoint_url =  # Same as `pg_iam_auth_sts_endpoint_url`,
+                                    # but for the read-only connection.
 
 #pg_ro_database = <pg_database>  # Same as `pg_database`, but for the
                                  # read-only connection.

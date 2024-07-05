@@ -1,0 +1,4 @@
+message: >
+  Added support for a configurable STS endpoint for RDS IAM Authentication, with new configuration fields: `pg_iam_auth_sts_endpoint_url` and `pg_ro_iam_auth_sts_endpoint_url`.
+type: feature
+scope: Core

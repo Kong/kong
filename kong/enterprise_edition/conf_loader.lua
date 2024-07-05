@@ -205,6 +205,9 @@ local EE_CONF_INFERENCES = {
   pg_iam_auth_role_session_name = { typ = "string" },
   pg_ro_iam_auth_role_session_name = { typ = "string" },
 
+  pg_iam_auth_sts_endpoint_url = { typ = "string" },
+  pg_ro_iam_auth_sts_endpoint_url = { typ = "string" },
+
   -- "pki_check_cn" only for EE
   cluster_mtls = { enum = { "shared", "pki", "pki_check_cn" } },
 

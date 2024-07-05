@@ -60,6 +60,7 @@ end
 local function generate_conf_key(conf)
   return "IAM_TOKEN" .. ":" .. conf.host .. ":" .. conf.port .. ":" .. conf.user .. ":" .. conf.database
                      .. ":" .. (conf.iam_auth_assume_role_arn or "") .. ":" .. (conf.iam_auth_role_session_name or "")
+                     .. ":" .. (conf.iam_auth_sts_endpoint_url or "")
 end
 
 
@@ -70,6 +71,7 @@ local function raw_get_rds_instance(conf)
     local sts, err = aws:STS({
       region = aws.config.region,
       stsRegionalEndpoints = AWS_global_config.sts_regional_endpoints,
+      endpoint = conf.iam_auth_sts_endpoint_url,
     })
     if not sts then
       return nil, fmt("failed to instantiate sts (%s)", err)
