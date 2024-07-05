@@ -493,7 +493,7 @@ local function resolve_callback(self, name, qtype, cache_only, tries)
   if answers then -- domain name is IP literal
     answers.ttl = LONG_LASTING_TTL
     answers.expire = now() + answers.ttl
-    return answers, nil, tries
+    return answers, nil, answers.ttl
   end
 
   -- check if this key exists in the hosts file (it maybe evicted from cache)
