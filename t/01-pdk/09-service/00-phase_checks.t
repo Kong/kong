@@ -89,6 +89,18 @@ qq{
                 log           = "forced false",
                 admin_api     = "forced false",
             }, {
+                method        = "set_target_retry_callback",
+                args          = { function() end },
+                init_worker   = "forced false",
+                certificate   = "pending",
+                rewrite       = "forced false",
+                access        = true,
+                response      = "forced false",
+                header_filter = "forced false",
+                body_filter   = "forced false",
+                log           = "forced false",
+                admin_api     = "forced false",
+            }, {
                 method        = "set_timeouts",
                 args          = { 1, 2, 3},
                 init_worker   = "forced false",
@@ -251,10 +263,22 @@ qq{
                 log           = "pending",
                 admin_api     = "forced false",
                 preread       = "pending",
-            },
-            {
+            }, {
                 method        = "set_retries",
                 args          = { 3, },
+                init_worker   = "forced false",
+                certificate   = "pending",
+                rewrite       = "forced false",
+                access        = true,
+                response      = "forced false",
+                header_filter = "forced false",
+                body_filter   = "forced false",
+                log           = "pending",
+                admin_api     = "forced false",
+                preread       = "pending",
+            }, {
+                method        = "set_target_retry_callback",
+                args          = { function() end },
                 init_worker   = "forced false",
                 certificate   = "pending",
                 rewrite       = "forced false",
@@ -278,8 +302,7 @@ qq{
                 log           = "pending",
                 admin_api     = "forced false",
                 preread       = "pending",
-            }, 
-            {
+            }, {
                 method        = "set_tls_cert_key",
                 args          = { chain, key, },
                 init_worker   = false,

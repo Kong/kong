@@ -114,6 +114,28 @@ local function new()
     ctx.balancer_data.port = port
   end
 
+
+  -- Sets the retry callback function when the target set by `service.set_target`
+  -- failed to connect. The callback function will be called with no argument and
+  -- must return `host`, `port` and `err` if any.
+  --
+  --
+  -- @function kong.service.set_target_retry_callback
+  -- @phases access
+  -- @tparam function retry_callback
+  -- @usage
+  -- kong.service.set_target_retry_callback(function() return "service.local", 443 end)
+  function service.set_target_retry_callback(retry_callback)
+    check_phase(PHASES.access)
+
+    if type(retry_callback) ~= "function" then
+      error("retry_callback must be a function", 2)
+    end
+
+    ngx.ctx.balancer_data.retry_callback = retry_callback
+  end
+
+
   ---
   -- Sets the retries count for the current request. This will override the
   -- default retries count set in the Upstream entity.
