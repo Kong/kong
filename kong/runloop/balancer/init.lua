@@ -359,6 +359,16 @@ local function execute(balancer_data, ctx)
     balancer_data.balancer_handle = handle
 
   else
+    -- Note: balancer_data.retry_callback is only set by PDK once in access phase
+    -- if kong.service.set_target_retry_callback is called
+    if balancer_data.try_count ~= 0 and balancer_data.retry_callback then
+      local pok, perr, err = pcall(balancer_data.retry_callback)
+      if not pok or not perr then
+        log(ERR, "retry handler failed: ", err or perr)
+        return nil, "failure to get a peer from retry handler", 503
+      end
+    end
+
     -- have to do a regular DNS lookup
     local try_list
     local hstate = run_hook("balancer:to_ip:pre", balancer_data.host)
