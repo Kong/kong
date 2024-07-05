@@ -412,7 +412,7 @@ function Queue:process_once()
     if (now() - start_time) > self.max_retry_time then
       self:log_err(
         "could not send entries due to max_retry_time exceeded. %d queue entries were lost",
-        retry_count, entry_count)
+        entry_count)
       break
     end
 
