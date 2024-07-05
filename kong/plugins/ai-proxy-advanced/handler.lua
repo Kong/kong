@@ -7,7 +7,10 @@
 
 local kong_meta = require("kong.meta")
 local proxy_handler = require("kong.llm.proxy.handler")
+local deep_copy = require "kong.tools.table".deep_copy
+local uuid = require "kong.tools.uuid".uuid
 
+local set_tried_target = require "kong.plugins.ai-proxy-advanced.balancer.state".set_tried_target
 
 local _M = {
   PRIORITY = 770, -- same as ai-proxy
@@ -25,7 +28,13 @@ local function get_balancer_instance(conf, bypass_cache)
 
   if not balancer_instance or bypass_cache then
     local mod = require("kong.plugins.ai-proxy-advanced.balancer." .. conf.balancer.algorithm)
-    balancer_instance = mod.new(conf.targets, conf.balancer.slots)
+    -- copy the table, ignore metatables
+    local targets = deep_copy(conf.targets, false)
+    for _, target in ipairs(targets) do
+      target.id = target.id or uuid()
+    end
+
+    balancer_instance = mod.new(targets, conf.balancer.slots)
 
     balancers_by_plugin_key[conf_key] = balancer_instance
   end
@@ -82,14 +91,19 @@ function _M:access(conf)
   -- no return value, short circuit the request on error
   proxy_handler:access(selected)
 
-  local _, err = balancer_instance:afterBalance(conf, selected)
+  set_tried_target(selected)
 
-  if err then
-    return kong.log.warn("failed to perform afterBalance operation: ", err)
-  end
+  kong.service.set_target_retry_callback(function()
+    local selected_retry, err_retry = balancer_instance:getPeer()
+    if err_retry then
+      return false, "failed to get peer " .. err_retry
+    end
+    proxy_handler:access(selected_retry)
 
-  selected.__key__ = conf.__key__
-  selected.__plugin_id = conf.__plugin_id
+    set_tried_target(selected_retry.id)
+
+    return true
+  end)
 end
 
 function _M:header_filter()
@@ -100,6 +114,14 @@ function _M:body_filter()
   return proxy_handler:body_filter(kong.ctx.plugin.selected_target)
 end
 
+function _M:log(conf)
+  local balancer_instance = get_balancer_instance(conf)
+  local _, err = balancer_instance:afterBalance(conf, kong.ctx.plugin.selected_target)
+
+  if err then
+    return kong.log.warn("failed to perform afterBalance operation: ", err)
+  end
+end
 
 
 return _M

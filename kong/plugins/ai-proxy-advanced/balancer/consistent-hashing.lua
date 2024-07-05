@@ -17,8 +17,7 @@
 
 
 local balancers = require "kong.runloop.balancer.balancers"
-local deep_copy = require "kong.tools.table".deep_copy
-local uuid = require "kong.tools.uuid".uuid
+local get_tried_targets = require "kong.plugins.ai-proxy-advanced.balancer.state".get_tried_targets
 
 local xxhash32 = require "luaxxhash"
 
@@ -80,6 +79,7 @@ function consistent_hashing:afterHostUpdate()
   sort_targets(self.targets)
 
   for _, target in ipairs(self.targets) do
+    assert(target.id)
     local weight = target.weight
     local target_prop = weight / total_weight
     local entries = floor(target_prop * targets_count * SERVER_POINTS)
@@ -148,6 +148,8 @@ function consistent_hashing:getPeer(_, _, valueToHash)
   --   handle.hashValue = get_continuum_index(valueToHash, self.points)
   -- end
 
+  local tried = get_tried_targets()
+
   local target
   local hashValue = get_continuum_index(valueToHash, self.points)
   local index = hashValue
@@ -157,7 +159,7 @@ function consistent_hashing:getPeer(_, _, valueToHash)
     end
 
     target = self.continuum[index]
-    if target then
+    if target and not tried[target.id] then
       return target
     end
 
@@ -181,12 +183,6 @@ end
 -- If the balancer already has targets and addresses, the wheel is
 -- constructed here by calling `self:afterHostUpdate()`
 function consistent_hashing.new(targets, wheelSize)
-  -- copy the table, ignore metatables
-  targets = deep_copy(targets, false)
-  for _, target in ipairs(targets) do
-    target.id = target.id or uuid()
-  end
-
   local self = setmetatable({
     continuum = {},
     totalWeight = 0,

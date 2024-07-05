@@ -7,6 +7,7 @@
 
 
 local balancers = require "kong.runloop.balancer.balancers"
+local get_tried_targets = require "kong.plugins.ai-proxy-advanced.balancer.state".get_tried_targets
 local random = math.random
 
 local MAX_WHEEL_SIZE = 2^32
@@ -43,6 +44,7 @@ function roundrobin_algorithm:afterHostUpdate()
 
   -- calculate the gcd to find the proportional weight of each address
   for _, target in ipairs(targets) do
+    assert(target.id)
     local target_weight = target.weight
     divisor = gcd(divisor, target_weight)
     total_weight = total_weight + target_weight
@@ -87,6 +89,8 @@ function roundrobin_algorithm:getPeer(_)
   local starting_pointer = self.pointer
   local target
 
+  local tried = get_tried_targets()
+
   repeat
     self.pointer = self.pointer + 1
 
@@ -95,7 +99,8 @@ function roundrobin_algorithm:getPeer(_)
     end
 
     target = self.wheel[self.pointer]
-    if target then
+
+    if target and not tried[target.id] then
       return target
     end
 

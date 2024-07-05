@@ -59,4 +59,55 @@ return {
       }, -- fields
     }, }, -- config
   },
+  entity_checks = {
+    {
+      custom_entity_check = {
+        field_sources = { "config.targets", },
+        fn = function(entity)
+          -- anthorpic_version and azure_api_version doesn't appear in the body
+          -- so mixing them will not be a problem
+          local targets = entity.config.targets
+          local must_format, must_provider, must_route_type
+
+          for _, target in ipairs(targets) do
+            local this_provider = target.model and target.model.provider
+            if not must_provider then
+              must_provider = this_provider
+            end
+
+            local this_route_type = target.model and target.model.route_type
+            if not must_route_type then
+              must_route_type = this_route_type
+            end
+
+            if must_route_type ~= this_route_type then
+              return false, "mixing different route types are not supported"
+            end
+
+            local this_format
+            if this_provider == "openai" then
+              this_format = "openai"
+            elseif this_provider == "llama2" then
+              this_format = target.model and target.model.options and target.model.options.llama2_format
+            elseif this_provider == "mistral" then
+              this_format = target.model and target.model.options and target.model.options.mistral_format
+            end
+            if not must_format then
+              must_format = this_format
+            end
+
+            if must_provider ~= this_provider then -- if provider mismatches, check if format is same
+              if not this_format or must_format ~= this_format then
+                return false, "mixing different providers are not supported"
+              end
+            elseif this_format and must_format ~= this_format then -- if provider matches, but format doesn't
+              return false, "mixing different providers with different formats are not supported"
+            end
+          end
+
+          return true
+        end
+      }
+    },
+  }
 }

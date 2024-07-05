@@ -19,8 +19,7 @@
 -- This module is used as a super class for the lowest-latency and lowest-usage
 
 local balancers = require "kong.runloop.balancer.balancers"
-local deep_copy = require "kong.tools.table".deep_copy
-local uuid = require "kong.tools.uuid".uuid
+local get_tried_targets = require "kong.plugins.ai-proxy-advanced.balancer.state".get_tried_targets
 
 local pairs = pairs
 local ipairs = ipairs
@@ -74,6 +73,7 @@ function ewma:afterHostUpdate()
   local ewma = self.ewma
   local ewma_last_touched_at = self.ewma_last_touched_at
   for target, _ in pairs(ewma) do
+    assert(target.id)
     if not new_addresses[target.id] then
       ewma[target.id] = nil
       ewma_last_touched_at[target.id] = nil
@@ -120,16 +120,18 @@ end
 
 
 local function pick_and_score(self, addresses, k)
-  local lowest_score_index = 1
-  local lowest_score = get_or_update_ewma(self, addresses[lowest_score_index], 0, false) / addresses[lowest_score_index].weight
-  for i = 2, k do
+  local tried = get_tried_targets()
+
+  local lowest_score_index
+  local lowest_score = math.huge
+  for i = 1, k do
     local new_score = get_or_update_ewma(self, addresses[i], 0, false) / addresses[i].weight
-    if new_score < lowest_score then
+    if new_score < lowest_score and not tried[addresses[i].id] then
       lowest_score_index = i
       lowest_score = new_score
     end
   end
-  return addresses[lowest_score_index], lowest_score
+  return lowest_score_index and addresses[lowest_score_index], lowest_score
 end
 
 
@@ -163,38 +165,25 @@ function ewma:getPeer(_, _)
   end
 
   local target_count = self.target_count
-  while true do
-    -- retry end
-    if target_count > 1 then
-      local k = (target_count < PICK_SET_SIZE) and target_count or PICK_SET_SIZE
+  if target_count > 1 then
+    local k = (target_count < PICK_SET_SIZE) and target_count or PICK_SET_SIZE
 
-      local score
-      if self.target_count > 1 then
-        k = self.target_count > k and self.target_count or k
-        target, score = pick_and_score(self, self.targets, k)
-      else
-        target = self.targets[1]
-        score = get_or_update_ewma(self, target, 0, false)
-      end
-      kong.log.debug("get ewma score: ", score)
+    local score
+    if self.target_count > 1 then
+      k = self.target_count > k and self.target_count or k
+      target, score = pick_and_score(self, self.targets, k)
+    else
+      target = self.targets[1]
+      score = get_or_update_ewma(self, target, 0, false)
     end
-
-    if target then
-      break
-    end
+    kong.log.debug("get ewma score: ", score)
   end
 
-  return target
+  return target, not target and balancers.errors.ERR_NO_PEERS_AVAILABLE
 end
 
 
 function ewma.new(targets)
-  -- copy the table, ignore metatables
-  targets = deep_copy(targets, false)
-  for _, target in ipairs(targets) do
-    target.id = target.id or uuid()
-  end
-
   local self = setmetatable({
     ewma = {},
     ewma_last_touched_at = {},
