@@ -1742,6 +1742,18 @@
                                           # assuming. The default value is
                                           # `KongVault`.
 
+#vault_aws_sts_endpoint_url =    # The custom STS endpoint URL used for role assuming
+                                 # in AWS Vault.
+                                 #
+                                 # Note that this value will override the default
+                                 # STS endpoint URL(which should be
+                                 # `https://sts.amazonaws.com`, or
+                                 # `https://sts.<region>.amazonaws.com` if you have
+                                 # `AWS_STS_REGIONAL_ENDPOINTS` set to `regional`).
+                                 #
+                                 # If you are not using private VPC endpoint for STS
+                                 # service, you should not specify this value.
+
 #vault_aws_ttl = 0               # Time-to-live (in seconds) of a secret from
                                  # the AWS vault when cached by this node.
                                  #

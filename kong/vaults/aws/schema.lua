@@ -50,6 +50,7 @@ return {
           { endpoint_url = typedefs.url },
           { assume_role_arn = { type = "string" } },
           { role_session_name = { type = "string", default = "KongVault", required = true } },
+          { sts_endpoint_url = typedefs.url },
           { ttl           = typedefs.ttl },
           { neg_ttl       = typedefs.ttl },
           { resurrect_ttl = typedefs.ttl },

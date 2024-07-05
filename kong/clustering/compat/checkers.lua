@@ -97,6 +97,27 @@ local compatible_checkers = {
     end
   },
   {
+    3008000000, --[[3.8.0.0]]
+    function(config_table, dp_version, log_suffix)
+      local has_update
+
+      for _, vault in ipairs(config_table.vaults or {}) do
+        local name = vault.name
+        local config = vault.config
+        if name == "aws" and config.sts_endpoint_url ~= nil then
+          log_warn_message('contains configuration vaults.aws.sts_endpoint_url',
+                           'be removed',
+                           dp_version, log_suffix)
+          vault.config.sts_endpoint_url = nil
+          has_update = true
+        end
+      end
+
+      return has_update
+    end
+  },
+
+  {
     3007001000, --[[3.7.1.0]]
     function(config_table, dp_version, log_suffix)
       local has_update

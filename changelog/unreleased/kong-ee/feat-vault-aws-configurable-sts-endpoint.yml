@@ -1,0 +1,5 @@
+message: >
+  Added support for a configurable STS endpoint for AWS Vault.
+  This can either be configured by `vault_aws_sts_endpoint_url` as a global configuration, or `sts_endpoint_url` on a custom AWS vault entity.
+type: feature
+scope: Core

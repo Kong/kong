@@ -31,7 +31,8 @@ local function get_service_cache_key(conf)
   return fmt("%s:%s:%s:%s", conf.region,
              conf.endpoint_url,
              conf.assume_role_arn,
-             conf.role_session_name)
+             conf.role_session_name,
+             conf.sts_endpoint_url)
 end
 
 
@@ -71,6 +72,7 @@ local function get(conf, resource, version)
       local sts, err = AWS:STS({
         region = region,
         stsRegionalEndpoints = AWS_GLOBAL_CONFIG.sts_regional_endpoints,
+        endpoint = conf.sts_endpoint_url,
       })
       if not sts then
         return nil, fmt("unable to create AWS STS (%s)", err)

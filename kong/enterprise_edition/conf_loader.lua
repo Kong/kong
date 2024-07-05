@@ -275,6 +275,10 @@ local EE_DYNAMIC_KEY_NAMESPACES = {
 
 local EE_CONF_BASIC = {
   vault_aws_region = true,
+  vault_aws_endpoint_url = true,
+  vault_aws_assume_role_arn = true,
+  vault_aws_role_session_name = true,
+  vault_aws_sts_endpoint_url = true,
   vault_gcp_project_id = true,
   vault_hcv_protocol = true,
   vault_hcv_host = true,
