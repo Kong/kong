@@ -95,7 +95,7 @@ local function new()
   -- kong.service.set_target("service.local", 443)
   -- kong.service.set_target("192.168.130.1", 80)
   function service.set_target(host, port)
-    check_phase(PHASES.access)
+    check_phase(access_and_rewrite_and_balancer_preread)
 
     if type(host) ~= "string" then
       error("host must be a string", 2)

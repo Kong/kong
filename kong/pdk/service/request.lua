@@ -101,12 +101,12 @@ local function new(self)
   -- Enables buffered proxying, which allows plugins to access Service body and
   -- response headers at the same time.
   -- @function kong.service.request.enable_buffering
-  -- @phases `rewrite`, `access`
+  -- @phases `rewrite`, `access`, `balancer`
   -- @return Nothing.
   -- @usage
   -- kong.service.request.enable_buffering()
   request.enable_buffering = function()
-    check_phase(access_and_rewrite)
+    check_phase(access_rewrite_balancer)
 
     if ngx.req.http_version() >= 2 then
       error("buffered proxying cannot currently be enabled with http/" ..
@@ -120,13 +120,13 @@ local function new(self)
   ---
   -- Sets the protocol to use when proxying the request to the Service.
   -- @function kong.service.request.set_scheme
-  -- @phases `access`
+  -- @phases `access`, `rewrite`, `balancer`
   -- @tparam string scheme The scheme to be used. Supported values are `"http"` or `"https"`.
   -- @return Nothing; throws an error on invalid inputs.
   -- @usage
   -- kong.service.request.set_scheme("https")
   request.set_scheme = function(scheme)
-    check_phase(PHASES.access)
+    check_phase(access_rewrite_balancer)
 
     if type(scheme) ~= "string" then
       error("scheme must be a string", 2)
@@ -149,14 +149,14 @@ local function new(self)
   --
   -- Input should **not** include the query string.
   -- @function kong.service.request.set_path
-  -- @phases `access`
+  -- @phases `access`, `rewrite`, `balancer`
   -- @tparam string path The path string. Special characters and UTF-8
   -- characters are allowed, for example: `"/v2/movies"` or `"/foo/😀"`.
   -- @return Nothing; throws an error on invalid inputs.
   -- @usage
   -- kong.service.request.set_path("/v2/movies")
   request.set_path = function(path)
-    check_phase(PHASES.access)
+    check_phase(access_rewrite_balancer)
 
     if type(path) ~= "string" then
       error("path must be a string", 2)
@@ -458,13 +458,13 @@ local function new(self)
   -- For a higher-level function to set the body based on the request content type,
   -- see `kong.service.request.set_body()`.
   -- @function kong.service.request.set_raw_body
-  -- @phases `rewrite`, `access`
+  -- @phases `rewrite`, `access`, `balancer`
   -- @tparam string body The raw body.
   -- @return Nothing; throws an error on invalid inputs.
   -- @usage
   -- kong.service.request.set_raw_body("Hello, world!")
   request.set_raw_body = function(body)
-    check_phase(access_and_rewrite)
+    check_phase(access_rewrite_balancer)
 
     if type(body) ~= "string" then
       error("body must be a string", 2)
@@ -477,7 +477,9 @@ local function new(self)
     -- Ensure client request body has been read.
     -- This function is a nop if body has already been read,
     -- and necessary to write the request to the service if it has not.
-    ngx.req.read_body()
+    if ngx.get_phase() ~= "balancer" then
+      ngx.req.read_body()
+    end
 
     ngx.req.set_body_data(body)
   end
@@ -612,7 +614,7 @@ local function new(self)
     -- a string with `kong.service.request.set_raw_body()`.
     --
     -- @function kong.service.request.set_body
-    -- @phases `rewrite`, `access`
+    -- @phases `rewrite`, `access`, `balancer`
     -- @tparam table args A table with data to be converted to the appropriate format
     -- and stored in the body.
     -- @tparam[opt] string mimetype can be one of:
