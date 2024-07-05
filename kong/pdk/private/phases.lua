@@ -122,6 +122,7 @@ end
 local public_phases = setmetatable({
   request = new_phase(PHASES.rewrite,
                       PHASES.access,
+                      PHASES.balancer,
                       PHASES.response,
                       PHASES.header_filter,
                       PHASES.body_filter,
