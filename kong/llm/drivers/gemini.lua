@@ -9,7 +9,6 @@ local string_gsub = string.gsub
 local buffer = require("string.buffer")
 local table_insert = table.insert
 local string_lower = string.lower
-local string_sub = string.sub
 --
 
 -- globals
@@ -49,10 +48,7 @@ local function is_response_finished(content)
      and content.candidates[1].finishReason
 end
 
-local function handle_stream_event(event_t, model_info, route_type)
-  local metadata
-
-  
+local function handle_stream_event(event_t, model_info, route_type)  
   -- discard empty frames, it should either be a random new line, or comment
   if (not event_t.data) or (#event_t.data < 1) then
     return
@@ -65,7 +61,7 @@ local function handle_stream_event(event_t, model_info, route_type)
   end
 
   local new_event
-  local metadata
+  local metadata = nil
 
   if is_response_content(event) then
     new_event = {
@@ -217,14 +213,6 @@ local function from_gemini_chat_openai(response, model_info, route_type)
   end
 
   return cjson.encode(messages)
-end
-
-local function to_gemini_chat_gemini(request_table, model_info, route_type)
-  return nil, nil, "gemini to gemini not yet implemented"
-end
-
-local function from_gemini_chat_gemini(request_table, model_info, route_type)
-  return nil, nil, "gemini to gemini not yet implemented"
 end
 
 local transformers_to = {

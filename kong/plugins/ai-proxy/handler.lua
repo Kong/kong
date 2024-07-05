@@ -25,7 +25,6 @@ local _M = {
 
 
 -- static messages
-local ERROR_MSG = { error = { message = "" } }
 local ERROR__NOT_SET = 'data: {"error": true, "message": "empty or unsupported transformer response"}'
 
 
@@ -497,8 +496,7 @@ function _M:access(conf)
   if identity_interface and identity_interface.error then
     kong.ctx.shared.skip_response_transformer = true
     kong.log.err("error authenticating with cloud-provider, ", identity_interface.error)
-
-    return internal_server_error("LLM request failed before proxying")
+    return kong.response.exit(500, "LLM request failed before proxying")
   end
 
   -- now re-configure the request for this operation type
