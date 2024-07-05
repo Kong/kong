@@ -642,7 +642,7 @@ for _, strategy in helpers.each_strategy() do
         admin_client:close()
    end)
 
-    it("should not rely on queue when max_batch_size is 1", function()
+    it("should not use queue when max_batch_size is 1", function()
       reset_log("http")
       local res = proxy_client:get("/status/200", {
         headers = {
