@@ -16,10 +16,6 @@ build-packages:
   check-manifest-suite: ubuntu-22.04-amd64
 
 # Debian
-- label: debian-10
-  image: debian:10
-  package: deb
-  check-manifest-suite: debian-10-amd64
 - label: debian-11
   image: debian:11
   package: deb
@@ -32,20 +28,7 @@ build-packages:
   bazel-args: --platforms=//:alpine-crossbuild-x86_64
   check-manifest-suite: alpine-amd64
 
-# CentOS
-- label: centos-7
-  os: vars.RELEASE_RUNS_ON
-  image: centos:7
-  package: rpm
-  package-type: el7
-  check-manifest-suite: el7-amd64
-
 # RHEL
-- label: rhel-7
-  image: centos:7
-  package: rpm
-  package-type: el7
-  check-manifest-suite: el7-amd64
 - label: rhel-8
   image: rockylinux:8
   package: rpm
@@ -81,24 +64,12 @@ build-images:
   artifact-from: ubuntu-22.04
   docker-platforms: linux/amd64
 
-# Centos
-- label: centos7
-  base-image: centos:7
-  package: rpm
-  package-distro: el7
-  artifact-from: centos-7
-
-- label: rhel7
-  base-image: centos:7
-  package: rpm
-  package-distro: el7
-  artifact-from: rhel-7
-
 # Alpine
 - label: alpine
   base-image: alpine:3.16
   package: apk
   artifact-from: alpine
+
 # Debian
 - label: debian
   base-image: debian:11-slim
@@ -107,11 +78,10 @@ build-images:
 
 # RHEL
 - label: rhel
-  base-image: centos:7
+  base-image: registry.access.redhat.com/ubi8
   package: rpm
-  rpm_platform: el7
-  artifact-from: rhel-7
-  docker-platforms: linux/amd64
+  package-distro: el8
+  artifact-from: rhel-8
 
 smoke-tests:
 - label: ubuntu
@@ -141,12 +111,6 @@ release-packages:
   artifact: kong.amd64.deb
 
 # Debian
-- label: debian-10
-  package: deb
-  artifact-from: debian-10
-  artifact-version: 10
-  artifact-type: debian
-  artifact: kong.amd64.deb
 - label: debian-11
   package: deb
   artifact-from: debian-11
@@ -154,21 +118,7 @@ release-packages:
   artifact-type: debian
   artifact: kong.amd64.deb
 
-# CentOS
-- label: centos-7
-  package: rpm
-  artifact-from: centos-7
-  artifact-version: 7
-  artifact-type: centos
-  artifact: kong.el7.amd64.rpm
-
 # RHEL
-- label: rhel-7
-  package: rpm
-  artifact-from: rhel-7
-  artifact-version: 7
-  artifact-type: rhel
-  artifact: kong.el7.amd64.rpm
 - label: rhel-8
   package: rpm
   artifact-from: rhel-8
@@ -198,10 +148,6 @@ release-packages:
   artifact: kong.amd64.apk.tar.gz
 
 release-images:
-- label: centos7
-  package: rpm
-- label: rhel7
-  package: rpm
 - label: alpine
   package: apk
 - label: ubuntu

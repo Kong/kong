@@ -18,7 +18,7 @@ LABEL name="Kong" \
 # RedHat required LICENSE file approved path
 COPY LICENSE /licenses/
 
-ARG PACKAGE_DISTRO=el7
+ARG PACKAGE_DISTRO=el8
 
 ARG KONG_PREFIX=/usr/local/kong
 ENV KONG_PREFIX $KONG_PREFIX
