@@ -42,6 +42,7 @@ contents:
   dst: /lib/systemd/system/kong.service
 - src: build/package/kong.logrotate
   dst: /etc/kong/kong.logrotate
+  type: config|noreplace
   file_info:
     mode: 0644
 - src: /usr/local/openresty/bin/resty
