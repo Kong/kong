@@ -44,8 +44,8 @@ Performs a series of initialization operations:
   * the path of `hosts` file.
 * `resolv_conf`: (default: `/etc/resolv.conf`)
   * the path of `resolv.conf` file, it will be parsed and passed into the underlying `lua-resty-dns` library.
-* `order`: (default: `{ "SRV", "A", "AAAA" }`)
-  * the order in which to resolve different record types, it's similar to the option `dns_order` in `kong.conf`.
+* `family`: (default: `{ "SRV", "A", "AAAA" }`)
+  * the types of DNS records that the library should query, it is taken from `kong.conf` option `dns_family`.
 * options for the underlying `lua-resty-dns` library:
   * `retrans`: (default: `5`)
     * the total number of times of retransmitting the DNS request when receiving a DNS response times out according to the timeout setting. When trying to retransmit the query, the next nameserver according to the round-robin algorithm will be picked up.
