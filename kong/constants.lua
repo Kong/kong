@@ -53,6 +53,7 @@ local plugins = {
   "ai-prompt-guard",
   "ai-request-transformer",
   "ai-response-transformer",
+  "standard-webhooks",
 }
 
 local ce_plugin_map = {}

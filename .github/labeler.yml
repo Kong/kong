@@ -414,6 +414,10 @@ copyright:
 - changed-files:
   - any-glob-to-any-file: COPYRIGHT
 
+plugins/standard-webhooks:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/standard-webhooks/**/*
+
 schema-change-noteworthy:
 - changed-files:
   - any-glob-to-any-file: [

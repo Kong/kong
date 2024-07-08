@@ -1037,6 +1037,10 @@ build = {
     ["kong.plugins.xml-threat-protection.handler"] = "kong/plugins/xml-threat-protection/handler.lua",
     ["kong.plugins.xml-threat-protection.schema"] = "kong/plugins/xml-threat-protection/schema.lua",
 
+    ["kong.plugins.standard-webhooks.handler"] = "kong/plugins/standard-webhooks/handler.lua",
+    ["kong.plugins.standard-webhooks.internal"] = "kong/plugins/standard-webhooks/internal.lua",
+    ["kong.plugins.standard-webhooks.schema"]  = "kong/plugins/standard-webhooks/schema.lua",
+
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
     ["kong.vaults.aws"] = "kong/vaults/aws/init.lua",

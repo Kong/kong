@@ -176,6 +176,7 @@ describe("Plugins", function()
       'ai-prompt-guard',
       'ai-proxy',
       'ai-response-transformer',
+      'standard-webhooks',
       'kafka-upstream',
       'aws-lambda',
       'azure-functions',
