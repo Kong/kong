@@ -814,6 +814,21 @@ describe("CP/DP config compat #" .. strategy, function()
             return config.redis.cluster_max_redirections == nil
           end
         },
+        {
+          plugin = "proxy-cache-advanced",
+          label = "w/ the field Age in response_headers has been changed from Age to age",
+          pending = false,
+          config = {
+            response_headers = {
+              Age = false,
+            },
+            strategy = "memory"
+          },
+          status = STATUS.NORMAL,
+          validator = function(config)
+            return config.response_headers.Age == nil and config.response_headers.age ~= nil
+          end
+        },
 
       }
 

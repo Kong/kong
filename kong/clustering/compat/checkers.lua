@@ -38,6 +38,30 @@ end
 
 
 local compatible_checkers = {
+  { 3008000000, --[[ 3.8.0.0 ]]
+    function(config_table, dp_version, log_suffix)
+      local has_update
+      for _, plugin in ipairs(config_table.plugins or {}) do
+        if plugin.name == 'proxy-cache-advanced' then
+          local config = plugin.config
+          if config.response_headers["Age"] ~= nil then
+            config.response_headers.age = config.response_headers["Age"]
+            config.response_headers["Age"] = nil
+            has_update = true
+          end
+        end
+
+        if has_update then
+          log_warn_message(
+            'configures ' .. plugin.name .. ' plugin with:' ..
+            "the Age in response_headers",
+            "will be changed to age",
+            dp_version, log_suffix)
+        end
+      end
+      return has_update
+    end
+  },
   {
     3007001002, --[[3.7.1.2]]
     function(config_table, dp_version, log_suffix)
