@@ -97,6 +97,8 @@ overrides:
     - ${RPM_EXTRA_DEPS_3}
 
 rpm:
+  prefixes:
+  - /usr/local
   signature:
     # PGP secret key (can also be ASCII-armored), the passphrase is taken
     # from the environment variable $NFPM_RPM_PASSPHRASE with a fallback
