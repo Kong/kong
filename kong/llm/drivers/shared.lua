@@ -542,6 +542,10 @@ end
 function _M.post_request(conf, response_object)
   local body_string, err
 
+  if not response_object then
+    return
+  end
+
   if type(response_object) == "string" then
     -- set raw string body first, then decode
     body_string = response_object
