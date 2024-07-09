@@ -192,7 +192,7 @@ jobs:
             TEST_APP=gateway npm run test-spec --spec=$RUN_SPEC;
           fi
         env:
-          RUN_SPEC: ${{ inputs.target_test || 'all' }}
+          RUN_SPEC: ${{ inputs.target_test || 'all-gke' }}
           GW_MODE: 'hybrid'
           HCV: 'false'
           GKE: 'true'
