@@ -339,6 +339,11 @@ function _M:body_filter(conf)
     return
   end
 
+  -- only act on 200 in first release - pass the unmodifed response all the way through if any failure
+  if kong.response.get_status() ~= 200 then
+    return
+  end
+
   local route_type = conf.route_type
 
   if kong_ctx_shared.skip_response_transformer and (route_type ~= "preserve") then
