@@ -34,6 +34,7 @@ contents:
   type: tree
 - src: nfpm-prefix/etc/kong
   dst: /etc/kong
+  type: dir
 - src: bin/kong
   dst: /usr/local/bin/kong
 - src: bin/kong-health
@@ -45,6 +46,9 @@ contents:
   type: config|noreplace
   file_info:
     mode: 0644
+- src: nfpm-prefix/etc/kong/kong.conf.default
+  dst: /etc/kong/kong.conf.default
+  type: config
 - src: /usr/local/openresty/bin/resty
   dst: /usr/local/bin/resty
   type: symlink
