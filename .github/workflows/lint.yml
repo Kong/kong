@@ -46,7 +46,7 @@ jobs:
           spec-ee/**
 
     - name: Lua Check
-      uses: Kong/public-shared-actions/code-check-actions/lua-lint@a98be0184f832cb24a9dd233f99074e8ba17b488 # v2.3.3
+      uses: Kong/public-shared-actions/code-check-actions/lua-lint@62643b74f79f6a697b9add1a2f9c069bf9ca1250 # v2.3.3
       with:
         additional_args: '--no-default-config --config .luacheckrc --exclude-files ./distribution/'
         # Point to the /dev/null file if no files are changed.

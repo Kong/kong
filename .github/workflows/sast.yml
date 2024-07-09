@@ -26,4 +26,4 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - uses: Kong/public-shared-actions/security-actions/semgrep@a98be0184f832cb24a9dd233f99074e8ba17b488
+      - uses: Kong/public-shared-actions/security-actions/semgrep@62643b74f79f6a697b9add1a2f9c069bf9ca1250
