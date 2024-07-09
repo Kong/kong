@@ -5,13 +5,24 @@ local kong_utils = require("kong.tools.gzip")
 local kong_meta = require("kong.meta")
 local buffer = require "string.buffer"
 local strip = require("kong.tools.utils").strip
+local to_hex = require("resty.string").to_hex
 
 -- cloud auth/sdk providers
 local GCP_SERVICE_ACCOUNT do
   GCP_SERVICE_ACCOUNT = os.getenv("GCP_SERVICE_ACCOUNT")
 end
+local AWS_REGION do
+  AWS_REGION = os.getenv("AWS_REGION")
+end
+local AWS_ACCESS_KEY_ID do
+  AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+end
+local AWS_SECRET_ACCESS_KEY do
+  AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+end
 
 local GCP = require("resty.gcp.request.credentials.accesstoken")
+local AWS = require("resty.aws")
 --
 
 
@@ -48,6 +59,39 @@ local _KEYBASTION = setmetatable({}, {
       end
 
       return { interface = nil, error = "cloud-authentication with GCP failed" }
+
+    elseif plugin_config.model.provider == "bedrock" then
+      ngx.log(ngx.NOTICE, "loading aws sdk for plugin ", kong.plugin.get_id())
+      local aws
+
+      local region = plugin_config.model.options
+                 and plugin_config.model.options.bedrock
+                 and plugin_config.model.options.bedrock.aws_region
+                  or AWS_REGION
+
+      local access_key = (plugin_config.auth and plugin_config.auth.aws_access_key_id)
+                      or AWS_ACCESS_KEY_ID
+
+      local secret_key = (plugin_config.auth and plugin_config.auth.aws_secret_access_key)
+                      or AWS_SECRET_ACCESS_KEY
+
+      if access_key and secret_key then
+        aws = AWS({
+          -- if any of these are nil, they either use the SDK default or
+          -- are deliberately null so that a different auth chain is used
+          region = region,
+          aws_access_key_id = access_key,
+          aws_secret_access_key = secret_key,
+        })
+      else
+        aws = AWS({
+          region = region,
+        })
+      end
+
+      this_cache[plugin_config] = { interface = aws, error = nil }
+
+      return this_cache[plugin_config]
     end
   end,
 })
