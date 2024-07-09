@@ -10,8 +10,6 @@ local _M = {
   config_schema = require "kong.llm.schemas",
 }
 
-
-
 do
   -- formats_compatible is a map of formats that are compatible with each other.
   local formats_compatible = {

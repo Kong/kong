@@ -35,6 +35,7 @@ dependencies = {
   "lua-messagepack == 0.5.4",
   "lua-resty-aws == 1.5.0",
   "lua-resty-openssl == 1.4.0",
+  "lua-resty-gcp == 0.0.13",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-acme == 0.14.0",
@@ -606,6 +607,8 @@ build = {
     ["kong.llm.drivers.anthropic"] = "kong/llm/drivers/anthropic.lua",
     ["kong.llm.drivers.mistral"] = "kong/llm/drivers/mistral.lua",
     ["kong.llm.drivers.llama2"] = "kong/llm/drivers/llama2.lua",
+
+    ["kong.llm.drivers.gemini"] = "kong/llm/drivers/gemini.lua",
 
     ["kong.plugins.ai-prompt-decorator.handler"] = "kong/plugins/ai-prompt-decorator/handler.lua",
     ["kong.plugins.ai-prompt-decorator.schema"]  = "kong/plugins/ai-prompt-decorator/schema.lua",
