@@ -32,8 +32,7 @@ contents:
 - src: nfpm-prefix/share
   dst: /usr/local/share
   type: tree
-- src: nfpm-prefix/etc/kong
-  dst: /etc/kong
+- dst: /etc/kong
   type: dir
 - src: bin/kong
   dst: /usr/local/bin/kong
