@@ -268,8 +268,12 @@ configure_make(
         "@lua-kong-nginx-module//:all_srcs",
         "@lua-resty-events//:all_srcs",
         "@lua-resty-lmdb//:all_srcs",
-        "@ngx_brotli//:all_srcs",
     ] + select({
+        "@kong//:brotli_flag": [
+            "@ngx_brotli//:all_srcs",
+        ],
+        "//conditions:default": [],
+    }) + select({
         "@kong//:wasmx_flag": [
             "@ngx_wasmx_module//:all_srcs",
             # wasm_runtime has to be a "data" (target) instead of "build_data" (exec)
