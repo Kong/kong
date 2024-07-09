@@ -52,7 +52,7 @@ local decode_json = cjson.decode
 local NEGATIVELY_CACHED_VALUE = "\0"
 local ROTATION_INTERVAL = tonumber(os.getenv("KONG_VAULT_ROTATION_INTERVAL"), 10) or 60
 local SECRETS_RETRY_KEY_PREFIX = "retry_count:"
-local SECRETS_RETRY_COUNT_THRESHOLD = tonumber(os.getenv("KONG_VAULT_SECRETS_RETRY_COUNT_THRESHOLD"), 10) or 60
+local SECRETS_ROTATION_MAX_RETRIES = tonumber(os.getenv("KONG_VAULT_SECRETS_ROTATION_MAX_RETRIES"), 10) or 60
 local DAO_MAX_TTL = constants.DATABASE.DAO_MAX_TTL
 
 
@@ -1284,12 +1284,12 @@ local function new(self)
     local ok, err = get_from_vault(reference, strategy, config, new_cache_key, parsed_reference)
     if not ok then
       local retry_count = tonumber(SECRETS_CACHE:get(SECRETS_RETRY_KEY_PREFIX .. new_cache_key) or 0, 10)
-      -- secrets that are failed resolving for more than SECRETS_RETRY_COUNT_THRESHOLD
+      -- secrets that are failed resolving for more than SECRETS_ROTATION_MAX_RETRIES
       -- times will be removed from the cache and stop rotation
-      if retry_count >= SECRETS_RETRY_COUNT_THRESHOLD then
+      if retry_count >= SECRETS_ROTATION_MAX_RETRIES then
         SECRETS_CACHE:delete(new_cache_key)
         SECRETS_CACHE:delete(SECRETS_RETRY_KEY_PREFIX .. new_cache_key)
-        return nil, fmt("could not retrieve value for reference %s (%s) after %d retries, removing from cache and stop rotation", reference, err, SECRETS_RETRY_COUNT_THRESHOLD)
+        return nil, fmt("could not retrieve value for reference %s (%s) after %d retries, removing from cache and stop rotation", reference, err, SECRETS_ROTATION_MAX_RETRIES)
 
       else
         SECRETS_CACHE:incr(SECRETS_RETRY_KEY_PREFIX .. new_cache_key, 1, 0)

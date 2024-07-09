@@ -133,7 +133,7 @@ describe("vault resurrect_ttl and rotation (#" .. strategy .. ") #" .. vault.nam
   lazy_setup(function()
     helpers.setenv("KONG_LUA_PATH_OVERRIDE", LUA_PATH)
     helpers.setenv("KONG_VAULT_ROTATION_INTERVAL", "1")
-    helpers.setenv("KONG_VAULT_SECRETS_RETRY_COUNT_THRESHOLD", "2")
+    helpers.setenv("KONG_VAULT_SECRETS_ROTATION_MAX_RETRIES", "2")
 
     vault:setup()
     vault:create_secret(secret, "init")
