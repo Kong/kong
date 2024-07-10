@@ -1,3 +1,3 @@
-message: Improved latency performace When gzip/gunzip large size data (such as CP/DP config data).
+message: Improved latency performace when gzip/gunzip large size data (such as CP/DP config data).
 type: performance
 scope: Core
