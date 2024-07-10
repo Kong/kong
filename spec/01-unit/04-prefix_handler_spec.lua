@@ -968,7 +968,7 @@ describe("NGINX conf compiler", function()
       end)
       it("injects default configurations if wasm=on", function()
         assert.matches(
-          ".+proxy_wasm_lua_resolver off;.+",
+          ".+proxy_wasm_lua_resolver on;.+",
           kong_ngx_cfg({ wasm = true, }, debug)
         )
       end)
@@ -983,14 +983,6 @@ describe("NGINX conf compiler", function()
           ".+proxy_wasm_lua_resolver off;.+",
           kong_ngx_cfg({ wasm = true,
                          nginx_http_proxy_wasm_lua_resolver = "off",
-                       }, debug)
-        )
-      end)
-      it("permits overriding proxy_wasm_lua_resolver to on", function()
-        assert.matches(
-          ".+proxy_wasm_lua_resolver on;.+",
-          kong_ngx_cfg({ wasm = true,
-                         nginx_http_proxy_wasm_lua_resolver = "on",
                        }, debug)
         )
       end)
