@@ -644,7 +644,7 @@ for _ , strategy in strategies() do
 
 
   describe("Plugin: oauth2-introspection (hooks) #" .. strategy, function()
-    local client , admin_client
+    local client, admin_client, not_expect_custom_consumer
     local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
@@ -663,10 +663,29 @@ for _ , strategy in strategies() do
           ttl = 1
         }
       }
+      
+      local route2 = bp.routes:insert {
+        name = "route-2",
+        hosts = { "introspection.custom_id.test" },
+      }
+      bp.plugins:insert {
+        name = "oauth2-introspection",
+        route = { id = route2.id },
+        config = {
+          introspection_url = introspection_url,
+          authorization_value = "hello",
+          consumer_by = "client_id",
+          ttl = 1
+        }
+      }
 
       bp.consumers:insert {
         username = "bob"
       }
+      
+      not_expect_custom_consumer = assert(bp.consumers:insert {
+        custom_id = "kongsumer"
+      })
 
       assert(helpers.start_kong({
         database = db_strategy,
@@ -724,6 +743,65 @@ for _ , strategy in strategies() do
           })
           local body = cjson.decode(assert.res_status(200 , res))
           return body.headers["x-consumer-username"] == nil
+        end)
+      end)
+      
+      it("invalidates the consumer's cache by custom_id", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/request?access_token=valid_consumer_client_id",
+          headers = {
+            ["Host"] = "introspection.custom_id.test"
+          }
+        })
+
+        local body = cjson.decode(assert.res_status(200, res))
+        assert.equal(not_expect_custom_consumer.custom_id, body.headers["x-consumer-custom-id"])
+        assert.equal(not_expect_custom_consumer.id, body.headers["x-consumer-id"])
+        -- Deletes the consumer
+        local res = assert(admin_client:send {
+          method = "DELETE",
+          path = "/consumers/" .. not_expect_custom_consumer.id,
+          headers = {
+            ["Host"] = "introspection.custom_id.test"
+          }
+        })
+        assert.res_status(204, res)
+
+        -- ensure the not_expect_custom_consumer's cache is invalidated
+        helpers.wait_until(function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/request?access_token=valid_consumer_client_id",
+            headers = {
+              ["Host"] = "introspection.custom_id.test"
+            }
+          })
+          local body = cjson.decode(assert.res_status(200, res))
+          return body.headers["x-consumer-custom-id"] == nil
+        end)
+        
+        --insert consumer with the same custom_id again.
+        local expect_custom_consumer = assert(kong.db.consumers:insert {
+          custom_id = "kongsumer"
+        })
+
+        --wait the consumer insert successfully
+        helpers.wait_until(function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/request?access_token=valid_consumer_client_id",
+            headers = {
+              ["Host"] = "introspection.custom_id.test"
+            }
+          })
+          local body = cjson.decode(assert.res_status(200, res))
+
+          assert.equal(expect_custom_consumer.custom_id, body.headers["x-consumer-custom-id"])
+          assert.equal(expect_custom_consumer.id, body.headers["x-consumer-id"])
+          --to verify the consumer id is different before. ensure that the previous consumer's cache has expired.
+          assert.not_equal(not_expect_custom_consumer.id, body.headers["x-consumer-id"])
+          return expect_custom_consumer.id == body.headers["x-consumer-id"]
         end)
       end)
     end)

@@ -44,10 +44,6 @@ local function consumers_username_key(username)
   return fmt("oauth2_introspection_consumer_username:%s", username)
 end
 
-local function consumers_id_key(username)
-  return fmt("oauth2_introspection_consumer_id:%s", username)
-end
-
 local function retrieve_parameters()
   ngx.req.read_body()
   -- OAuth2 parameters could be in both the querystring or body
@@ -257,18 +253,9 @@ local function do_authentication(conf)
                                       consumer_by)
 
     if err then
-      return false, {status = 500, message = err}
+      return false, { status = 500, message = err }
     end
     if consumer then
-      cache_key = consumers_id_key(consumer.id)
-      local _, err = cache:get(cache_key, nil,
-                                 function(consumer)
-                                   return consumer.username
-                                 end, consumer)
-
-      if err then
-        return false, {status = 500, message = err}
-      end
 
       ngx_set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
       ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
@@ -345,23 +332,18 @@ function OAuth2Introspection:init_worker()
   local cache = kong.cache
 
   worker_events.register(function(data)
-    local consumer_id_key = consumers_id_key(data.old_entity and
-                              data.old_entity.id or data.entity.id)
-    local username, err = cache:get(consumer_id_key, nil, function() end)
-    if err then
-      ngx_log(ERR, err)
-      return
+    local entity = data.old_entity or data.entity
+    if entity then
+      cache:invalidate(consumers_username_key(entity.username))
+      cache:invalidate(consumers_username_key(entity.custom_id))
     end
 
-    cache:invalidate(consumers_username_key(username))
-    cache:invalidate(consumer_id_key)
   end, "crud", "consumers")
 end
 
 OAuth2Introspection.PRIORITY = 1700
 OAuth2Introspection.VERSION = meta.core_version
 OAuth2Introspection.consumers_username_key = consumers_username_key
-OAuth2Introspection.consumers_id_key = consumers_id_key
 OAuth2Introspection.consumer_by_fields = consumer_by_fields
 OAuth2Introspection.CONSUMER_BY_DEFAULT = CONSUMER_BY_DEFAULT
 
