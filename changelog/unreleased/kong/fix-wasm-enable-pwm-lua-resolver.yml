@@ -1,0 +1,4 @@
+message: |
+  Re-enabled the Lua DNS resolver from proxy-wasm by default.
+type: bugfix
+scope: Configuration
