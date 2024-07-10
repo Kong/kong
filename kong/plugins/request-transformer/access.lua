@@ -231,8 +231,10 @@ local function transform_querystrings(conf, template_env)
   -- Rename querystring(s)
   for _, old_name, new_name in iter(conf.rename.querystring, template_env) do
     local value = querystring[old_name]
-    querystring[new_name] = value
-    querystring[old_name] = nil
+    if value then
+      querystring[old_name] = nil
+      querystring[new_name] = value
+    end
   end
 
   for _, name, value in iter(conf.replace.querystring, template_env) do
@@ -276,9 +278,11 @@ local function transform_json_body(conf, body, content_length, template_env)
   if content_length > 0 and #conf.rename.body > 0 then
     for _, old_name, new_name in iter(conf.rename.body, template_env) do
       local value = parameters[old_name]
-      parameters[new_name] = value
-      parameters[old_name] = nil
-      renamed = true
+      if value then
+        parameters[old_name] = nil
+        parameters[new_name] = value
+        renamed = true
+      end
     end
   end
 
@@ -327,9 +331,11 @@ local function transform_url_encoded_body(conf, body, content_length, template_e
   if content_length > 0 and #conf.rename.body > 0 then
     for _, old_name, new_name in iter(conf.rename.body, template_env) do
       local value = parameters[old_name]
-      parameters[new_name] = value
-      parameters[old_name] = nil
-      renamed = true
+      if value then
+        parameters[old_name] = nil
+        parameters[new_name] = value
+        renamed = true
+      end
     end
   end
 
