@@ -716,6 +716,20 @@ describe(PLUGIN_NAME .. ": (unit)", function()
       assert.same(events, expected_events)
     end)
 
+    it("transforms application/vnd.amazon.eventstream (AWS) type", function()
+      local input = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/aws/input.bin"))
+      local events = ai_shared.frame_to_events(input, "bedrock")
+
+      local expected = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/aws/expected-output.json"))
+      local expected_events = cjson.decode(expected)
+
+      assert.equal(#events, #expected_events)
+      for i, _ in ipairs(expected_events) do
+        -- tables are random ordered, so we need to compare each serialized event
+        assert.same(cjson.decode(events[i].data), cjson.decode(expected_events[i].data))
+      end
+    end)
+
   end)
 
 end)
