@@ -46,18 +46,28 @@ local function handle_clustering_push_config_event(data)
 end
 
 
+local function trigger_push_config_event(source)
+  cluster_events:broadcast("clustering:push_config", source)
+
+  -- we have to re-broadcast event using `post` because the dao
+  -- events were sent using `post_local` which means not all workers
+  -- can receive it
+  post_push_config_event()
+end
+
+
 -- Handles "dao:crud" worker event and broadcasts "clustering:push_config" cluster event
 local function handle_dao_crud_event(data)
   if type(data) ~= "table" or data.schema == nil or data.schema.db_export == false then
     return
   end
 
-  cluster_events:broadcast("clustering:push_config", data.schema.name .. ":" .. data.operation)
+  trigger_push_config_event(data.schema.name .. ":" .. data.operation)
+end
 
-  -- we have to re-broadcast event using `post` because the dao
-  -- events were sent using `post_local` which means not all workers
-  -- can receive it
-  post_push_config_event()
+-- Handles "keyring" "recover" worker event and broadcasts "clustering:push_config" cluster event
+local function handle_keyring_recover_event()
+  trigger_push_config_event("keyring:recover")
 end
 
 
@@ -78,6 +88,10 @@ local function init()
   -- kong node where the event originated will need to be notified so they push config to
   -- their data planes
   worker_events.register(handle_dao_crud_event, "dao:crud")
+
+  -- The "keyring" "recover" event is triggered using post_local, which eventually generates an
+  -- "clustering:push_config" cluster event.
+  worker_events.register(handle_keyring_recover_event, "keyring", "recover")
 end
 
 

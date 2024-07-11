@@ -1,0 +1,4 @@
+message: |
+  Fixed an issue where the CPs won't trigger a configuration push after a keyring recovery.
+type: bugfix
+scope: Core

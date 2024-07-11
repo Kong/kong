@@ -347,6 +347,7 @@ function _M.recover(recv_key)
 
   local recovered_ids = {}
   local _
+  local push_config
 
   if #result then
     for i, key in ipairs(result.recovered) do
@@ -357,7 +358,12 @@ function _M.recover(recv_key)
       end
 
       recovered_ids[i] = key.id
+      push_config = true
     end
+  end
+
+  if push_config and kong.configuration.role == "control_plane" then
+    kong.worker_events.post_local("keyring", "recover")
   end
 
   result.recovered = recovered_ids -- only return ids to caller, hide the key value
