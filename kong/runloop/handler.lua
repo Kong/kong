@@ -1505,7 +1505,7 @@ return {
           end
 
           local kong_outbound_via = proxy_http_version .. " " .. SERVER_HEADER
-          local resp_via = var["upstream_http_"..lower(headers.VIA)]
+          local resp_via = var["upstream_http_" .. headers.VIA]
           header[headers.VIA] = resp_via and resp_via .. ", " .. kong_outbound_via
                                 or kong_outbound_via
         end
