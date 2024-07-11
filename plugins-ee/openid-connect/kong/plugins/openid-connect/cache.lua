@@ -1010,6 +1010,8 @@ local function consumers_load(subject, key, by_username_ignore_case)
   if key == "id" then
     if utils.is_valid_uuid(subject) then
       result, err = kong.db.consumers:select({ id = subject })
+    else
+      err = "not a valid uuid"
     end
 
   elseif key == "username" then
