@@ -277,22 +277,31 @@ local function crud_consumer_groups_handler(data)
 end
 
 
+local function invalidate_snis(sni_name)
+  local sni_wild_pref, sni_wild_suf = certificate.produce_wild_snis(sni_name)
+  core_cache:invalidate("snis:" .. sni_name)
+
+  if sni_wild_pref and sni_wild_pref ~= sni_name then
+    core_cache:invalidate("snis:" .. sni_wild_pref)
+  end
+
+  if sni_wild_suf and sni_wild_suf ~= sni_name then
+    core_cache:invalidate("snis:" .. sni_wild_suf)
+  end
+end
+
+
 local function crud_snis_handler(data)
   workspaces.set_workspace(data.workspace)  -- XX EE
 
   log(DEBUG, "[events] SNI updated, invalidating cached certificates")
 
-  local sni = data.old_entity or data.entity
-  local sni_name = sni.name
-  local sni_wild_pref, sni_wild_suf = certificate.produce_wild_snis(sni_name)
-  core_cache:invalidate("snis:" .. sni_name)
+  local new_name = data.entity.name
+  local old_name = data.old_entity and data.old_entity.name
 
-  if sni_wild_pref then
-    core_cache:invalidate("snis:" .. sni_wild_pref)
-  end
-
-  if sni_wild_suf then
-    core_cache:invalidate("snis:" .. sni_wild_suf)
+  invalidate_snis(new_name)
+  if old_name and old_name ~= new_name then
+    invalidate_snis(old_name)
   end
 end
 
