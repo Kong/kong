@@ -8,6 +8,7 @@ local type = type
 local ipairs = ipairs
 local tonumber = tonumber
 local math_random = math.random
+local table_clear = require("table.clear")
 local table_insert = table.insert
 local table_remove = table.remove
 
@@ -257,7 +258,8 @@ do
     for _, answer in ipairs(answers) do
       if answer.priority < lowest_priority then
         lowest_priority = answer.priority
-        l = { answer }
+        table_clear(l)
+        l[1] = answer
 
       elseif answer.priority == lowest_priority then
         table_insert(l, answer)
