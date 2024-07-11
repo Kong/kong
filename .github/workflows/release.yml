@@ -435,7 +435,7 @@ jobs:
         platforms: ${{ steps.docker_build_args.outputs.platforms }}
         build-args: |
           KONG_BASE_IMAGE=${{ matrix.base-image }}
-          KONG_ARTIFACT_PATH=bazel-bin/pkg/
+          KONG_ARTIFACT_PATH=bazel-bin/pkg
           KONG_VERSION=${{ needs.metadata.outputs.kong-version }}
           PACKAGE_DISTRO=${{ matrix.package-distro }}
           EE_PORTS=8002 8445 8003 8446 8004 8447
