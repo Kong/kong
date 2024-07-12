@@ -11,6 +11,8 @@ Table of Contents
     * [new](#new)
     * [resolve](#resolve)
     * [resolve_address](#resolve_address)
+* [Performance characteristics](#performance-characteristics)
+    * [Memory](#memory)
 
 # APIs
 
@@ -136,5 +138,37 @@ When calling multiple times on cached records, it will apply load-balancing base
   * default port number to return if none was found in the lookup chain (only SRV records carry port information, SRV with `port=0` will be ignored).
 * `@cache_only`: (optional: `boolean`)
   * control whether to solely retrieve data from the internal cache without querying to the nameserver.
+
+[Back to TOC](#table-of-contents)
+
+# Performance characteristics
+
+## Memory
+
+We evaluated the capacity of DNS records using the following resources:
+
+* Shared memory size:
+  * 5 MB (by default): `lua_shared_dict kong_dns_cache 5m`.
+  * 10 MB: `lua_shared_dict kong_dns_cache 10m`.
+* DNS response:
+  * Each DNS resolution response contains some number of A type records.
+    * Record: ~80 bytes json string, e.g., `{address = "127.0.0.1", name = <domain>, ttl = 3600, class = 1, type = 1}`.
+  * Domain: ~36 bytes string, e.g., `example<n>.long.long.long.long.test`. Domain names with lengths between 10 and 36 bytes yield similar results.
+
+The results of ) are as follows:
+
+| shared memory size | number of records per response | number of loaded responses |
+|--------------------|-------------------|----------|
+| 5 MB               | 1                 | 20224    |
+| 5 MB               | 2 ~ 3             | 10081    |
+| 5 MB               | 4 ~ 9             | 5041     |
+| 5 MB               | 10 ~ 20           | 5041     |
+| 5 MB               | 21 ~ 32           | 1261     |
+| 10 MB              | 1                 | 40704    |
+| 10 MB              | 2 ~ 3             | 20321    |
+| 10 MB              | 4 ~ 9             | 10161    |
+| 10 MB              | 10 ~ 20           | 5081     |
+| 10 MB              | 20 ~ 32           | 2541     |
+
 
 [Back to TOC](#table-of-contents)
