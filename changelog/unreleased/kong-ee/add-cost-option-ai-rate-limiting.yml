@@ -1,0 +1,3 @@
+message: "**ai-rate-limiting-advanced**: Add the cost strategy to AI rate Limiting plugin."
+type: feature
+scope: Plugin

@@ -368,7 +368,13 @@ function NewRLHandler:access(conf)
     local window_name = human_window_size_lookup[current_window] or current_window
     window_name = window_name .. "-" .. provider
 
-    local current_remaining = floor(max(current_limit - rate, 0))
+    local current_remaining
+    if conf.tokens_count_strategy == "cost" then
+      current_remaining = max(current_limit - rate, 0)
+    else
+      current_remaining = floor(max(current_limit - rate, 0))
+    end
+
     if not conf.hide_client_headers then
       if provider == "requestPrompt" then
         pdk_rl_store_response_header(ngx_ctx, X_RATELIMIT_QUERY_COST .. "-" .. window_name, query_cost)
@@ -514,7 +520,13 @@ function NewRLHandler:header_filter(conf)
     local window_name = human_window_size_lookup[current_window] or current_window
     window_name = window_name .. "-" .. provider
 
-    local current_remaining = floor(max(current_limit - rate, 0))
+    local current_remaining
+    if conf.tokens_count_strategy == "cost" then
+      current_remaining = max(current_limit - rate, 0)
+    else
+      current_remaining = floor(max(current_limit - rate, 0))
+    end
+
     if not conf.hide_client_headers then
       pdk_rl_store_response_header(ngx_ctx, X_RATELIMIT_LIMIT .. "-" .. window_name, current_limit)
       pdk_rl_store_response_header(ngx_ctx, X_RATELIMIT_REMAINING .. "-" .. window_name, current_remaining)
@@ -618,7 +630,7 @@ function NewRLHandler:log(conf)
 
   for _, plugin_data in pairs(request_analytics) do
     local provider = plugin_data.meta.provider_name
-    request_analytics_log[provider] = (request_analytics_log[provider] or 0) + plugin_data.usage[conf.tokens_count_strategy]
+    request_analytics_log[provider] = (request_analytics_log[provider] or 0) + (plugin_data.usage[conf.tokens_count_strategy] or 0)
   end
 
   for _, provider_config in ipairs(conf.llm_providers) do

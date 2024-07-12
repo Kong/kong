@@ -60,6 +60,30 @@ for _, strategy in strategies() do
     },
    }
 
+  local CONFIG_AI_PROXY_COST = {
+    route_type = "llm/v1/chat",
+    logging = {
+        log_payloads = false,
+        log_statistics = true,
+    },
+    auth = {
+        header_name = "Authorization",
+        header_value = "Bearer openai-key",
+    },
+    model = {
+        name = "gpt-3.5-turbo",
+        provider = "openai",
+        options = {
+            max_tokens = 256,
+            temperature = 1.0,
+            llama2_format = "openai",
+            upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/chat/good",
+            input_cost = 20,
+            output_cost = 10,
+        },
+    },
+   }
+
    local CONFIG_AI_REQUEST_TRANSFORMER = {
         prompt = "test",
         llm = {
@@ -389,6 +413,20 @@ for _, strategy in strategies() do
         hosts = { "test8.com" },
       })
 
+      -- with error request prompt function
+      local route9 = assert(bp.routes:insert {
+        protocols = { "http" },
+        name = "route-9",
+        hosts = { "test9.com" },
+      })
+
+      -- with error request prompt function
+      local route10 = assert(bp.routes:insert {
+        protocols = { "http" },
+        name = "route-10",
+        hosts = { "test10.com" },
+      })
+
       assert(bp.plugins:insert {
         name = PLUGIN_NAME,
         route = { id = route1.id },
@@ -604,6 +642,40 @@ for _, strategy in strategies() do
         }
       })
 
+      assert(bp.plugins:insert {
+        name = "ai-rate-limiting-advanced",
+        route = { id = route9.id },
+        config = {
+          strategy = policy,
+          llm_providers = {{
+            name = "openai",
+            window_size = MOCK_RATE,
+            limit = 100,
+          }},
+          sync_rate = (policy ~= "local" and 1 or -1), -- test -1 value ok for local strategy
+          window_type = "fixed",
+          tokens_count_strategy = "completion_tokens"
+          -- disable_penalty = false,
+        }
+      })
+
+      assert(bp.plugins:insert {
+        name = "ai-rate-limiting-advanced",
+        route = { id = route10.id },
+        config = {
+          strategy = policy,
+          llm_providers = {{
+            name = "openai",
+            window_size = MOCK_RATE,
+            limit = 0.0025,
+          }},
+          sync_rate = (policy ~= "local" and 1 or -1), -- test -1 value ok for local strategy
+          window_type = "fixed",
+          tokens_count_strategy = "cost"
+          -- disable_penalty = false,
+        }
+      })
+
       -- route 1 plugins
       assert(bp.plugins:insert {
         name = "ai-proxy",
@@ -680,6 +752,20 @@ for _, strategy in strategies() do
         name = "ai-proxy",
         route = { id = route8.id },
         config = CONFIG_AI_PROXY
+      })
+
+      -- route 9 plugins
+      assert(bp.plugins:insert {
+        name = "ai-proxy",
+        route = { id = route9.id },
+        config = CONFIG_AI_PROXY
+      })
+
+      -- route 10 plugins
+      assert(bp.plugins:insert {
+        name = "ai-proxy",
+        route = { id = route10.id },
+        config = CONFIG_AI_PROXY_COST
       })
 
       assert(helpers.start_kong({
@@ -1101,6 +1187,112 @@ for _, strategy in strategies() do
             assert.logfile().has.line("Error executing request prompt count function", true, 0.1)
             assert.logfile().has.line("attempt to call field 'get_raw_body_wrong' (a nil value)", true, 0.1)
         end)
+
+        it("check limit ok for completion tokens", function()
+            for i = 1, 4 do
+                proxy_client = helpers.proxy_client()
+                local res = assert(proxy_client:send {
+                method = "POST",
+                path = "/post",
+                headers = {
+                    ["Host"] = "test9.com",
+                    ["Content-Type"] = "application/json",
+                    ["accept"] = "application/json",
+                },
+                body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
+                })
+                
+                assert.res_status(200, res)
+
+                assert.are.same(100, tonumber(res.headers["x-ai-ratelimit-limit-3-openai"]))
+                assert.are.same(100 - ((i-1) * 30), tonumber(res.headers["x-ai-ratelimit-remaining-3-openai"]))
+                assert.is_nil(res.headers["x-ai-ratelimitbysize-retry-reset"])
+                assert.is_nil(res.headers["x-ai-ratelimitbysize-retry-after"])
+            end
+        end)
+
+        it("check limit with completion tokens for openai", function()
+            -- Additonal request, while limit is 6/window
+            proxy_client = helpers.proxy_client()
+            local res = assert(proxy_client:send {
+            method = "POST",
+            path = "/post",
+            headers = {
+                ["Host"] = "test9.com",
+                ["Content-Type"] = "application/json",
+                ["accept"] = "application/json",
+            },
+            body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
+            })
+            
+            local body = assert.res_status(429, res)
+            local json = cjson.decode(body)
+
+            assert.same({ message = "API rate limit exceeded for provider(s): openai" }, json)
+            local retry_after = tonumber(res.headers["x-ai-ratelimit-retry-after"])
+            assert.is_true(retry_after > 0) -- Uses sliding window and is executed in quick succession
+            assert.is_true(retry_after <= 10) -- Uses sliding window and is executed in quick succession
+            assert.same(retry_after, tonumber(res.headers["x-ai-ratelimit-reset"]))
+            assert.are.same(0, tonumber(res.headers["x-ai-ratelimit-remaining-3-openai"]))
+            assert.same(retry_after, tonumber(res.headers["x-ai-ratelimit-reset-3-openai"]))
+            assert.same(retry_after, tonumber(res.headers["x-ai-ratelimit-retry-after-3-openai"]))
+        end)
+
+        it("check limit ok for cost strategy", function()
+          for i = 1, 4 do
+              proxy_client = helpers.proxy_client()
+              local res = assert(proxy_client:send {
+              method = "POST",
+              path = "/post",
+              headers = {
+                  ["Host"] = "test10.com",
+                  ["Content-Type"] = "application/json",
+                  ["accept"] = "application/json",
+              },
+              body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
+              })
+              
+              assert.res_status(200, res)
+
+              -- Use to handle small round numbers
+              local passed_value_1 = string.format("%.5g", res.headers["x-ai-ratelimit-limit-3-openai"])
+              local passed_value_2 = string.format("%.5g", res.headers["x-ai-ratelimit-remaining-3-openai"])
+              local expected_value_1 = string.format("%.5g", 0.0025)
+              local expected_value_2 = string.format("%.5g", 0.0025 - ((i-1) * 0.0007))
+
+              assert.are.same(expected_value_1, passed_value_1)
+              assert.are.same(expected_value_2, passed_value_2)
+              assert.is_nil(res.headers["x-ai-ratelimitbysize-retry-reset"])
+              assert.is_nil(res.headers["x-ai-ratelimitbysize-retry-after"])
+          end
+        end)
+
+        it("check limit with cost for openai", function()
+          -- Additonal request, while limit is 6/window
+          proxy_client = helpers.proxy_client()
+          local res = assert(proxy_client:send {
+          method = "POST",
+          path = "/post",
+          headers = {
+              ["Host"] = "test10.com",
+              ["Content-Type"] = "application/json",
+              ["accept"] = "application/json",
+          },
+          body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
+          })
+          
+          local body = assert.res_status(429, res)
+          local json = cjson.decode(body)
+
+          assert.same({ message = "API rate limit exceeded for provider(s): openai" }, json)
+          local retry_after = tonumber(res.headers["x-ai-ratelimit-retry-after"])
+          assert.is_true(retry_after > 0) -- Uses sliding window and is executed in quick succession
+          assert.is_true(retry_after <= 10) -- Uses sliding window and is executed in quick succession
+          assert.same(retry_after, tonumber(res.headers["x-ai-ratelimit-reset"]))
+          assert.are.same(0, tonumber(res.headers["x-ai-ratelimit-remaining-3-openai"]))
+          assert.same(retry_after, tonumber(res.headers["x-ai-ratelimit-reset-3-openai"]))
+          assert.same(retry_after, tonumber(res.headers["x-ai-ratelimit-retry-after-3-openai"]))
+      end)
     end)
   end)
 end

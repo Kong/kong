@@ -48,17 +48,25 @@ local compatible_checkers = {
             config.response_headers.age = config.response_headers["Age"]
             config.response_headers["Age"] = nil
             has_update = true
+            log_warn_message('configures ' .. plugin.name .. ' plugin with the Age in response_headers',
+              'will be changed to age.',
+              dp_version, log_suffix)
           end
         end
 
-        if has_update then
-          log_warn_message(
-            'configures ' .. plugin.name .. ' plugin with:' ..
-            "the Age in response_headers",
-            "will be changed to age",
-            dp_version, log_suffix)
+        if plugin.name == 'ai-rate-limiting-advanced' then
+          local config = plugin.config
+          if config.tokens_count_strategy == "cost" then
+            -- remove cost strategy and replace with the default
+            config.tokens_count_strategy = "total_tokens"
+            log_warn_message('configures ' .. plugin.name .. ' plugin with tokens_count_strategy == cost',
+                             'overwritten with default value `total_tokens`.',
+                             dp_version, log_suffix)
+            has_update = true
+          end
         end
       end
+
       return has_update
     end
   },

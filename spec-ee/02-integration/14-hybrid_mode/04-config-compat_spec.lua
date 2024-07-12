@@ -829,7 +829,25 @@ describe("CP/DP config compat #" .. strategy, function()
             return config.response_headers.Age == nil and config.response_headers.age ~= nil
           end
         },
-
+        {
+          plugin = "ai-rate-limiting-advanced",
+          label = "w/ cost for tokens_count_strategy  unsupported",
+          pending = false,
+          config = {
+            llm_providers = {
+              {
+                name = "openai",
+                limit = 1,
+                window_size = 2,
+              },
+            },
+            tokens_count_strategy = "cost",
+          },
+          status = STATUS.NORMAL,
+          validator = function(config)
+            return config.tokens_count_strategy == 'total_tokens'
+          end
+        },
       }
 
       for _, case in ipairs(CASES) do
