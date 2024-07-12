@@ -381,7 +381,11 @@ local function resolve_query(self, name, qtype, tries)
   if not answers then
     stats_increment(self.stats, key, "query_fail_nameserver")
     err = "DNS server error: " .. tostring(err) .. ", took " .. duration .. " ms"
+
+    -- TODO: make the error more structured, like:
+    --       { qname = name, qtype = qtype, error = err, } or something similar
     table_insert(tries, { name .. ":" .. TYPE_TO_NAME[qtype], err })
+
     return nil, err
   end
 
