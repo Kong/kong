@@ -6,6 +6,7 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 def zlib_repositories():
     """Defines the zlib repository"""
 
+    # NOTE: do not bump the following version, see build/cross_deps/README.md for detail.
     http_archive(
         name = "cross_deps_zlib",
         urls = [

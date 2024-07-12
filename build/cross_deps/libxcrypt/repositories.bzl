@@ -9,6 +9,7 @@ def libxcrypt_repositories():
     # thus crypt.h and libcrypt.so.1 are missing from cross tool chain
     # ubuntu2004: 4.4.10
     # ubuntu2204: 4.4.27
+    # NOTE: do not bump the following version, see build/cross_deps/README.md for detail.
     http_archive(
         name = "cross_deps_libxcrypt",
         url = "https://github.com/besser82/libxcrypt/releases/download/v4.4.27/libxcrypt-4.4.27.tar.xz",
