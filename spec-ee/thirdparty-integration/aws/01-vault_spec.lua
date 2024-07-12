@@ -196,7 +196,8 @@ describe("Kong Vault Command with AWS Vault: ", function ()
       log_level = "error",
       prefix = helpers.test_conf.prefix,
       vault_aws_region = aws_region,
-      vault_aws_assume_role_arn = fmt("arn:aws:iam::%s:role/gw-test-test-sm-read-role", aws_account_id)
+      vault_aws_assume_role_arn = fmt("arn:aws:iam::%s:role/gw-test-test-sm-read-role", aws_account_id),
+      vault_aws_sts_endpoint_url = "https://sts.amazonaws.com",
     })
     assert.matches("secret_value", stdout, nil, true)
     assert.is_true(ok)

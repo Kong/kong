@@ -32,9 +32,21 @@ local mock_config_assume_role = {
   iam_auth_role_session_name = "test-session",
 }
 
+local mock_config_assume_role_with_sts_endpoint = {
+  host = DB_ENDPOINT,
+  port = DB_PORT,
+  user = DB_USER,
+  database = "kong-db",
+  iam_auth_assume_role_arn = "aws::arn::12345678::test-role",
+  iam_auth_role_session_name = "test-session",
+  iam_auth_sts_endpoint_url = "https://vpce-1234567-abcdefg.sts.us-east-1.vpce.amazonaws.com"
+}
+
 local environment_credential_expire = 10*365*24*60*60
 
 local resty_http_parse_uri = require("resty.http").parse_uri
+
+local is_custom_sts_endpoint_flag = false
 
 local resty_http = {
   parse_uri = resty_http_parse_uri,
@@ -45,6 +57,10 @@ local resty_http = {
       set_timeout = function() return true end,
       set_timeouts = function() return true end,
       request = function(self, opts)
+        if ("https://" .. opts.headers["Host"]) == mock_config_assume_role_with_sts_endpoint.iam_auth_sts_endpoint_url then
+          is_custom_sts_endpoint_flag = true
+        end
+
         return {
           status = 200,
           headers = {
@@ -121,6 +137,10 @@ describe("Postgres IAM token handler", function()
     package.loaded["resty.luasocket.http"] = nil
   end)
 
+  before_each(function()
+    is_custom_sts_endpoint_flag = false
+  end)
+
   it("should generate expected token with mocking env", function()
     local token, err = iam_token_handler.get(mock_config)
     local expected_auth_token = "test_database.test_cluster.us-east-1.rds.amazonaws.com:443/?X-Amz-Signature=ff72d46f1937c1f5917f69d694929ca814b781619b8d730451c7ffef050059b0&Action=connect&DBUser=test_user&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=test_id%2F20221104%2Fus-east-1%2Frds-db%2Faws4_request&X-Amz-Date=20221104T062611Z&X-Amz-Expires=900&X-Amz-SignedHeaders=host"
@@ -170,5 +190,15 @@ describe("Postgres IAM token handler", function()
 
     assert.is_nil(err)
     assert.same(token, expected_auth_token)
+    assert.same(is_custom_sts_endpoint_flag, false)
+  end)
+
+  it("should generate expected token with role assuming and custom sts endpoint", function()
+    local token, err = iam_token_handler.get(mock_config_assume_role_with_sts_endpoint)
+    local expected_auth_token = "test_database.test_cluster.us-east-1.rds.amazonaws.com:443/?X-Amz-Signature=31aa805cd9c7e5929b4a0e25718d933d006ae130156f8b66b60861548fc771ce&Action=connect&DBUser=test_user&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=test_access_key%2F20321101%2Fus-east-1%2Frds-db%2Faws4_request&X-Amz-Date=20321101T062621Z&X-Amz-Expires=900&X-Amz-Security-Token=%0A%20%20%20%20%20%20test_session_token%0A%20%20%20%20&X-Amz-SignedHeaders=host"
+
+    assert.is_nil(err)
+    assert.same(token, expected_auth_token)
+    assert.same(is_custom_sts_endpoint_flag, true)
   end)
 end)
