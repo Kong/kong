@@ -1292,7 +1292,7 @@ describe("[DNS client]", function()
     assert.are.equal(NOT_FOUND_ERROR, err2)
     answers2 = assert(cli.cache:get(qname .. ":" .. resolver.TYPE_A))
     assert.equal(answers1, answers2)
-    assert.falsy(answers2.expired)
+    assert.falsy(answers2._expire_at)
 
     -- wait for expiry of ttl and retry, it will not use the cached one
     -- because the cached one contains no avaible IP addresses
@@ -1303,7 +1303,7 @@ describe("[DNS client]", function()
     assert.are.equal(NOT_FOUND_ERROR, err2)
 
     answers2 = assert(cli.cache:get(qname .. ":" .. resolver.TYPE_A))
-    assert.falsy(answers2.expired)  -- refreshed record
+    assert.falsy(answers2._expire_at)  -- refreshed record
 
     -- wait for expiry of stale_ttl and retry, should be called twice now
     ngx.sleep(0.75 * stale_ttl)
@@ -1315,7 +1315,7 @@ describe("[DNS client]", function()
 
     answers2 = assert(cli.cache:get(qname .. ":" .. resolver.TYPE_A))
     assert.not_equal(answers1, answers2)
-    assert.falsy(answers2.expired)  -- new answers, not expired
+    assert.falsy(answers2._expire_at)  -- new answers, not expired
   end)
 
   it("verifies stale_ttl for available records", function()
@@ -1345,7 +1345,7 @@ describe("[DNS client]", function()
     answers1 = cli:resolve(qname, { qtype = resolver.TYPE_A })
     assert.same(answers1[1].address, "1.1.1.1")
     assert.are.equal(call_count, 1)
-    assert.falsy(answers1.expired)
+    assert.falsy(answers1._expire_at)
 
     -- try again, HIT from cache, not stale
     answers2 = cli:resolve(qname, { qtype = resolver.TYPE_A })
@@ -1359,10 +1359,9 @@ describe("[DNS client]", function()
     assert.are.equal(call_count, 1) -- todo: flakiness
 
     answers2 = assert(cli.cache:get(qname .. ":" .. resolver.TYPE_A))
-    assert.is_true(answers2.expired)
-    answers2.expired = nil  -- clear to be same with answers1
+    assert(answers2._expire_at)
+    answers2._expire_at = nil  -- clear to be same with answers1
     assert_same_answers(answers1, answers2)
-    answers2.expired = true
 
     -- async stale updating task
     ngx.sleep(0.1 * stale_ttl)
@@ -1372,7 +1371,7 @@ describe("[DNS client]", function()
     answers2 = cli:resolve(qname, { qtype = resolver.TYPE_A })
     assert.same(answers2[1].address, "1.1.1.1")
     assert.are.equal(call_count, 2)
-    assert.falsy(answers2.expired)
+    assert.falsy(answers2._expire_at)
 
     -- The stale one will be completely eliminated from the cache.
     ngx.sleep(ttl + stale_ttl)
@@ -1380,7 +1379,7 @@ describe("[DNS client]", function()
     answers2 = cli:resolve(qname, { qtype = resolver.TYPE_A })
     assert.same(answers2[1].address, "1.1.1.1")
     assert.are.equal(call_count, 3)
-    assert.falsy(answers2.expired)
+    assert.falsy(answers2._expire_at)
   end)
 
   describe("verifies the polling of dns queries, retries, and wait times", function()

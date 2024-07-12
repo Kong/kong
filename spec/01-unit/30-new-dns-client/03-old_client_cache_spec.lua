@@ -232,10 +232,9 @@ describe("[DNS client cache]", function()
       -- background refresh query
       local answers2 = cli:resolve("myhost6")
       assert.falsy(answers2[1].tag)
-      assert.is_true(answers2.expired)  -- stale; marked as expired
-      answers2.expired = nil
+      assert.is_number(answers2._expire_at)  -- stale; marked as expired
+      answers2._expire_at = nil
       assert_same_answers(answers2, answers)
-      answers2.expired = true
 
       -- wait for the refresh to complete. Ensure that the sleeping time is less
       -- than ttl, avoiding the updated record from becoming stale again.
@@ -244,7 +243,7 @@ describe("[DNS client cache]", function()
       -- resolve and check whether we got the new record from the mock copy
       local answers3 = cli:resolve("myhost6")
       assert.equal(answers3[1].tag, "new")
-      assert.falsy(answers3.expired)
+      assert.falsy(answers3._expired_at)
       assert.not_equal(answers, answers3)  -- must be a different record now
       assert_same_answers(answers3, mock_records["myhost6.domain.test:"..resolver.TYPE_A])
 
@@ -345,15 +344,15 @@ describe("[DNS client cache]", function()
       }
       -- doing a resolve will trigger the background query now
       answers = cli:resolve("myhost9", { qtype = resolver.TYPE_A })
-      assert.is_true(answers.expired)  -- we get the stale record, now marked as expired
+      assert.is_number(answers._expire_at)  -- we get the stale record, now marked as expired
       -- wait again for the background query to complete
       sleep(0.1)
       -- background resolve is now complete, check the cache, it should still have the
       -- stale record, and it should not have been replaced by the error
       --
       answers = cli.cache:get("myhost9:" .. resolver.TYPE_A)
-      assert.is_true(answers.expired)
-      answers.expired = nil
+      assert.is_number(answers._expire_at)
+      answers._expire_at = nil
       assert_same_answers(rec1, answers)
     end)
 
@@ -383,14 +382,14 @@ describe("[DNS client cache]", function()
       }
       -- doing a resolve will trigger the background query now
       answers = cli:resolve("myhost9", { qtype = resolver.TYPE_A })
-      assert.is_true(answers.expired)  -- we get the stale record, now marked as expired
+      assert.is_number(answers._expire_at)  -- we get the stale record, now marked as expired
       -- wait again for the background query to complete
       sleep(0.1)
       -- background resolve is now complete, check the cache, it should still have the
       -- stale record, and it should not have been replaced by the empty record
       answers = cli.cache:get("myhost9:" .. resolver.TYPE_A)
-      assert.is_true(answers.expired)  -- we get the stale record, now marked as expired
-      answers.expired = nil
+      assert.is_number(answers._expire_at)  -- we get the stale record, now marked as expired
+      answers._expire_at = nil
       assert_same_answers(rec1, answers)
     end)
 

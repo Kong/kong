@@ -518,27 +518,27 @@ local function resolve_callback(self, name, qtype, cache_only, tries)
   -- `:peek(stale=true)` verifies if the expired key remains in L2 shm, then
   -- initiates an asynchronous background updating task to refresh it.
   local ttl, _, answers = self.cache:peek(key, true)
-  if answers and not answers.errcode and ttl then
-    if not answers.expired then
-      answers.expire = now() + ttl
-      answers.expired = true
-      ttl = ttl + self.stale_ttl
 
-    else
-      ttl = ttl + (answers.expire - now())
+  if answers and not answers.errcode and self.stale_ttl and ttl then
+
+    -- `_expire_at` means the final expiration time of stale records
+    if not answers._expire_at then
+      answers._expire_at = answers.expire + self.stale_ttl
     end
 
     -- trigger the update task by the upper caller every 60 seconds
-    ttl = math_min(ttl, 60)
+    local remaining_stale_ttl = math_min(answers._expire_at - now(), 60)
 
-    if ttl > 0 then
-      log(DEBUG, PREFIX, "start stale update task ", key, " ttl:", ttl)
+    if remaining_stale_ttl > 0 then
+      log(DEBUG, PREFIX, "start stale update task ", key,
+                         " remaining_stale_ttl:", remaining_stale_ttl)
 
       -- mlcache's internal lock mechanism ensures concurrent control
       start_stale_update_task(self, key, name, qtype)
-      answers.ttl = ttl
+      answers.ttl = remaining_stale_ttl
+      answers.expire = remaining_stale_ttl + now()
 
-      return answers, nil, ttl
+      return answers, nil, remaining_stale_ttl
     end
   end
 
