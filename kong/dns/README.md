@@ -1,7 +1,7 @@
 Name
 ====
 
-Kong DNS client - The module is currently Kong only, and builds on top of the `lua-resty-dns` and `lua-resty-mlcache` libraries.
+Kong DNS client - The module is currently only used by Kong, and builds on top of the `lua-resty-dns` and `lua-resty-mlcache` libraries.
 
 Table of Contents
 =================
@@ -37,9 +37,13 @@ Performs a series of initialization operations:
 `@opts` It accepts a options table argument. The following options are supported:
 
 * TTL options:
-  * `valid_ttl`: same to the option `dns_valid_ttl` in `kong.conf`.
-  * `stale_ttl`: same to the option `dns_stale_ttl` in `kong.conf`.
-  * `error_ttl`: same to the option `dns_error_ttl` in `kong.conf`.
+  * `valid_ttl`: (default: `nil`)
+    * By default, it caches answers using the TTL value of a response. This optional parameter (in seconds) allows overriding it.
+  * `stale_ttl`: (default: `3600`)
+    * the time in seconds for keeping expired DNS records.
+    * Stale data remains in use from when a record expires until either the background refresh query completes or until `stale_ttl` seconds have passed. This helps Kong stay resilient if the DNS server is temporarily unavailable.
+  * `error_ttl`: (default: `1`)
+    * the time in seconds for caching DNS error responses.
 * `hosts`: (default: `/etc/hosts`)
   * the path of `hosts` file.
 * `resolv_conf`: (default: `/etc/resolv.conf`)
@@ -53,12 +57,14 @@ Performs a series of initialization operations:
   * `timeout`: (default: `2000`)
     * the time in milliseconds for waiting for the response for a single attempt of request transmission.
     * If not given, it is taken from `resolv.conf` option `options timeout:<value>`. But note that its unit in `resolv.conf` is second.
-  * `no_random`: (default: `true`)
-    * a boolean flag controls whether to randomly pick the nameserver to query first. If `true`, it always starts with the first nameserver listed.
-    * If not given, it is taken from `resolv.conf` option `rotate` (inverted).
+  * `random_resolver`: (default: `false`)
+    * a boolean flag controls whether to randomly pick the nameserver to query first. If `true`, it will always start with the random nameserver.
+    * If not given, it is taken from `resolv.conf` option `rotate`.
   * `nameservers`:
-    * a list of nameservers to be used. Each nameserver entry can be either a single hostname string or a table holding both the hostname string and the port number. For exmaple, `{"8.8.8.8", {"8.8.4.4", 53} }`.
+    * a list of nameservers to be used. Each nameserver entry can be either a single hostname string or a table holding both the hostname string and the port number. For example, `{"8.8.8.8", {"8.8.4.4", 53} }`.
     * If not given, it is taken from `resolv.conf` option `nameserver`.
+* `cache_purge`: (default: `false`)
+  * a boolean flag controls whether to clear the internal cache shared by other DNS client instances across workers.
 
 [Back to TOC](#table-of-contents)
 
@@ -84,8 +90,10 @@ Performs a DNS resolution.
 
 * Return value `answers, err`:
   * Return one array-like Lua table contains all the records.
+    * For example, `{{"address":"[2001:db8:3333:4444:5555:6666:7777:8888]","class":1,"name":"example.test","ttl":30,"type":28},{"address":"192.168.1.1","class":1,"name":"example.test","ttl":30,"type":1},"expire":1720765379,"ttl":30}`.
+      * IPv6 addresses are enclosed in brackets (`[]`).
   * If the server returns a non-zero error code, it will return `nil` and a string describing the error in this record.
-    * For exmaple, `nil, "dns server error: name error"`, the server returned a result with error code 3 (NXDOMAIN).
+    * For example, `nil, "dns server error: name error"`, the server returned a result with error code 3 (NXDOMAIN).
   * In case of severe errors, such network error or server's malformed DNS record response, it will return `nil` and a string describing the error instead. For example:
       * `nil, "dns server error: failed to send request to UDP server 10.0.0.1:53: timeout"`, there was a network issue.
 * Return value and input parameter `@tries?`:

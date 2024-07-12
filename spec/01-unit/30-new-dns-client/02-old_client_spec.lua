@@ -119,6 +119,23 @@ describe("[DNS client]", function()
 
 
   describe("initialization", function()
+    it("check special opts", function()
+      local opts = {
+        hosts = "non/existent/hosts",
+        resolv_conf = "non/exitent/resolv.conf",
+        retrans = 4,
+        timeout = 5000,
+        random_resolver = true,
+        nameservers = {"1.1.1.1", {"2.2.2.2", 53}},
+      }
+
+      local cli = assert(client.new(opts))
+
+      assert.same(opts.retrans, cli.r_opts.retrans)
+      assert.same(opts.timeout, cli.r_opts.timeout)
+      assert.same(not opts.random_resolver, cli.r_opts.no_random)
+      assert.same(opts.nameservers, cli.r_opts.nameservers)
+    end)
 
     it("succeeds if hosts/resolv.conf fails", function()
       local cli, err = client.new({
@@ -1094,7 +1111,7 @@ describe("[DNS client]", function()
       assert.is_nil(port)
     end)
 
-    it("SRV whole process: SRV -> A #ttt",function()
+    it("SRV whole process: SRV -> A",function()
       local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf"}))
       local ip, port, host
 
@@ -1130,7 +1147,7 @@ describe("[DNS client]", function()
       assert.is_nil(port)
     end)
 
-    it("SRV whole process: SRV -> A failed -> AAAA #ttt",function()
+    it("SRV whole process: SRV -> A failed -> AAAA",function()
       local cli = assert(client_new({ resolv_conf = "/etc/resolv.conf"}))
       local ip, port, host
 

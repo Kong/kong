@@ -40,7 +40,7 @@ local req_dyn_hook_run_hook = require("kong.dynamic_hook").run_hook
 local PREFIX = "[dns_client] "
 
 local DEFAULT_ERROR_TTL = 1     -- unit: second
-local DEFAULT_STALE_TTL = 4
+local DEFAULT_STALE_TTL = 3600
 -- long-lasting TTL of 10 years for hosts or static IP addresses in cache settings
 local LONG_LASTING_TTL = 10 * 365 * 24 * 60 * 60
 
@@ -193,10 +193,18 @@ function _M.new(opts)
     log(WARN, PREFIX, "Invalid configuration, no nameservers specified")
   end
 
+  local no_random
+
+  if opts.random_resolver == nil then
+    no_random = not resolv.options.rotate
+  else
+    no_random = not opts.random_resolver
+  end
+
   local r_opts = {
     retrans = opts.retrans or resolv.options.attempts or 5,
     timeout = opts.timeout or resolv.options.timeout or 2000, -- ms
-    no_random = opts.no_random or not resolv.options.rotate,
+    no_random = no_random,
     nameservers = nameservers,
   }
 
