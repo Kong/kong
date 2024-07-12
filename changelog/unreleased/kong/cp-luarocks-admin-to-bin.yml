@@ -1,0 +1,3 @@
+message: "Ensure luarocks-admin is available in /usr/local/bin"
+type: bugfix
+scope: Core
