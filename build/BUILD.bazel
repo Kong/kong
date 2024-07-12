@@ -218,6 +218,7 @@ kong_genrule(
     ],
     outs = [
         "bin/luarocks",
+        "bin/luarocks-admin",
         "etc/kong/kong.conf.default",
         "etc/luarocks",
         "lib",
@@ -231,6 +232,7 @@ kong_genrule(
         LUAROCKS=${WORKSPACE_PATH}/$(dirname '$(location @luarocks//:luarocks_make)')/luarocks_tree
         cp -r ${LUAROCKS}/share ${LUAROCKS}/lib ${LUAROCKS}/etc ${BUILD_DESTDIR}/.
         cp ${LUAROCKS}/bin/luarocks ${BUILD_DESTDIR}/bin/.
+        cp ${LUAROCKS}/bin/luarocks-admin ${BUILD_DESTDIR}/bin/.
         chmod -R "u+rw" ${BUILD_DESTDIR}/share/lua
 
         mkdir -p ${BUILD_DESTDIR}/etc/kong/
