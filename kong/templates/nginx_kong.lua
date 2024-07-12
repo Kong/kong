@@ -39,6 +39,8 @@ ssl_ciphers ${{SSL_CIPHERS}};
 $(el.name) $(el.value);
 > end
 
+uninitialized_variable_warn  off;
+
 init_by_lua_block {
 > if test and coverage then
     require 'luacov'
@@ -79,21 +81,6 @@ upstream kong_upstream {
 }
 
 server {
-    set $ctx_ref                     '';
-    set $upstream_te                 '';
-    set $upstream_host               '';
-    set $upstream_upgrade            '';
-    set $upstream_connection         '';
-    set $upstream_scheme             '';
-    set $upstream_uri                '';
-    set $upstream_x_forwarded_for    '';
-    set $upstream_x_forwarded_proto  '';
-    set $upstream_x_forwarded_host   '';
-    set $upstream_x_forwarded_port   '';
-    set $upstream_x_forwarded_path   '';
-    set $upstream_x_forwarded_prefix '';
-    set $kong_proxy_mode             'http';
-
     server_name kong;
 > for _, entry in ipairs(proxy_listeners) do
     listen $(entry.listener);
@@ -401,7 +388,6 @@ server {
 
     location = /kong_error_handler {
         internal;
-        uninitialized_variable_warn  off;
 
         default_type                 '';
 
