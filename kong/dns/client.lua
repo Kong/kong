@@ -49,13 +49,13 @@ local DEFAULT_FAMILY = { "SRV", "A", "AAAA" }
 local TYPE_SRV = resolver.TYPE_SRV
 local TYPE_A = resolver.TYPE_A
 local TYPE_AAAA = resolver.TYPE_AAAA
-local TYPE_A_AAAA = -1  -- used to resolve IP addresses for SRV targets
+local TYPE_A_OR_AAAA = -1  -- used to resolve IP addresses for SRV targets
 
 local TYPE_TO_NAME = {
   [TYPE_SRV] = "SRV",
   [TYPE_A] = "A",
   [TYPE_AAAA] = "AAAA",
-  [TYPE_A_AAAA] = "A/AAAA",
+  [TYPE_A_OR_AAAA] = "A/AAAA",
 }
 
 local HIT_L3 = 3 -- L1 lru, L2 shm, L3 callback, L4 stale
@@ -124,7 +124,7 @@ local init_hosts do
     }
 
     hosts_cache[name .. ":" .. qtype] = answers
-    hosts_cache[name .. ":" .. TYPE_A_AAAA] = answers
+    hosts_cache[name .. ":" .. TYPE_A_OR_AAAA] = answers
   end
 
   -- insert hosts into cache
@@ -422,7 +422,7 @@ local function resolve_query_types(self, name, qtype, tries)
   local answers, err, ttl
 
   -- the specific type
-  if qtype ~= TYPE_A_AAAA then
+  if qtype ~= TYPE_A_OR_AAAA then
     return resolve_query_names(self, names, qtype, tries)
   end
 
@@ -525,6 +525,7 @@ local function resolve_callback(self, name, qtype, cache_only, tries)
       -- mlcache's internal lock mechanism ensures concurrent control
       start_stale_update_task(self, key, name, qtype)
       answers.ttl = ttl
+
       return answers, nil, ttl
     end
   end
@@ -544,7 +545,7 @@ local function resolve_all(self, name, qtype, cache_only, tries, has_timing)
   tries = setmetatable(tries or {}, _TRIES_MT)
 
   if not qtype then
-    qtype = ((self.enable_srv and is_srv(name)) and TYPE_SRV or TYPE_A_AAAA)
+    qtype = ((self.enable_srv and is_srv(name)) and TYPE_SRV or TYPE_A_OR_AAAA)
   end
 
   local key = name .. ":" .. qtype
@@ -599,7 +600,7 @@ function _M:resolve_address(name, port, cache_only, tries)
   if answers and answers[1] and answers[1].type == TYPE_SRV then
     local answer = get_next_weighted_round_robin_answer(answers)
     port = answer.port ~= 0 and answer.port or port
-    answers, err, tries = resolve_all(self, answer.target, TYPE_A_AAAA,
+    answers, err, tries = resolve_all(self, answer.target, TYPE_A_OR_AAAA,
                                       cache_only, tries, has_timing)
   end
 

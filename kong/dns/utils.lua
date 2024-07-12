@@ -40,7 +40,7 @@ function _M.hostname_type(name)
     return "ipv4"
   end
 
-  return "name"
+  return "domain"
 end
 
 
@@ -50,7 +50,7 @@ end
 -- @return `name/ip` + `port (or nil)` + `type ("ipv4", "ipv6" or "name")`
 function _M.parse_hostname(name)
   local t = _M.hostname_type(name)
-  if t == "ipv4" or t == "name" then
+  if t == "ipv4" or t == "domain" then
     local ip, port = name:match("^([^:]+)%:*(%d*)$")
     return ip, tonumber(port), t
   end
@@ -69,6 +69,7 @@ local function get_lines(path)
   if type(path) == "table" then
     return path
   end
+
   return readlines(path)
 end
 
@@ -89,20 +90,24 @@ function _M.parse_hosts(path, enable_ipv6)
       if part:sub(1, 1) == '#' then
         break
       end
+
       table_insert(parts, part:lower())
     end
 
     -- Check if the line contains an IP address followed by hostnames
     if #parts >= 2 then
       local ip, _, family = _M.parse_hostname(parts[1])
+
       if family ~= "name" then    -- ipv4/ipv6
         for i = 2, #parts do
           local host = parts[i]
           local v = hosts[host]
+
           if not v then
             v = {}
             hosts[host] = v
           end
+
           v[family] = v[family] or ip -- prefer to use the first ip
         end
       end
@@ -160,6 +165,7 @@ function _M.parse_resolv_conf(path, enable_ipv6)
 
     resolv.nameservers = nameservers
   end
+
   return resolv
 end
 
@@ -168,7 +174,9 @@ function _M.is_fqdn(name, ndots)
   if name:sub(-1) == "." then
     return true
   end
+
   local _, dot_count = name:gsub("%.", "")
+
   return (dot_count >= ndots)
 end
 
@@ -188,6 +196,7 @@ function _M.search_names(name, resolv, hosts)
   end
 
   local names = {}
+
   for _, suffix in ipairs(resolv.search) do
     table_insert(names, name .. "." .. suffix)
   end
@@ -203,6 +212,7 @@ function _M.ipv6_bracket(name)
   if name:match("^[^[].*:") then  -- not start with '[' and contains ':'
     return "[" .. name .. "]"
   end
+
   return name
 end
 
@@ -211,6 +221,7 @@ end
 
 function _M.get_next_round_robin_answer(answers)
   answers.last = (answers.last or 0) % #answers + 1
+
   return answers[answers.last]
 end
 
@@ -225,14 +236,18 @@ do
       -- 0.1 gives weight 0 record a minimal chance of being chosen (rfc 2782)
       local w = (answer.weight == 0) and 0.1 or answer.weight
       local cw = answer.cw + w
+
       answer.cw = cw
+
       if not best or cw > best.cw then
         best = answer
       end
+
       total = total + w
     end
 
     best.cw = best.cw - total
+
     return best
   end
 
@@ -267,6 +282,7 @@ do
     end
 
     answers.lowest_prio_records = l
+
     return l
   end
 
