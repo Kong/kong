@@ -1,0 +1,7 @@
+message: |
+  Bumped `kong-redis-cluster` to `1.5.4`, fixing the following issues.
+
+  1. Fixed an issue where Kong Gateway cannot recover if partial or all pods were restared with new IPs in Kubernetes environment.
+  2. Fixed a memory leak issue where master nodes cache expanded infinitely upon refresh.
+  3. Fixed an issue where multiple cluster instances were accidently flushed.
+type: dependency
