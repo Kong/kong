@@ -657,10 +657,10 @@ function _M.toip(name, port, cache_only, tries)
 end
 
 
--- "_ldap._tcp.example.com:33" -> "_ldap._tcp.example.com:SRV"
+-- "_ldap._tcp.example.com:33" -> "_ldap._tcp.example.com|SRV"
 local function format_key(key)
-  local qname, qtype = key:match("([^:]+):(%-?%d+)")  -- match "(qname):(qtype)"
-  return qtype and qname .. ":" .. (TYPE_TO_NAME[tonumber(qtype)] or qtype)
+  local qname, qtype = key:match("^(.+):(%-?%d+)$")  -- match "(qname):(qtype)"
+  return qtype and qname .. "|" .. (TYPE_TO_NAME[tonumber(qtype)] or qtype)
                or  key
 end
 

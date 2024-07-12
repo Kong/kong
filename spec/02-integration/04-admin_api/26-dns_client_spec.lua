@@ -48,7 +48,7 @@ for _, strategy in helpers.each_strategy() do
       assert(type(json.worker.count) == "number")
 
       assert(type(json.stats) == "table")
-      assert(type(json.stats["127.0.0.1:A/AAAA"].runs) == "number")
+      assert(type(json.stats["127.0.0.1|A/AAAA"].runs) == "number")
 
       -- Wait for the upstream target to be updated in the background
       helpers.wait_until(function ()
@@ -60,7 +60,7 @@ for _, strategy in helpers.each_strategy() do
 
         local body = assert.res_status(200 , res)
         local json = cjson.decode(body)
-        return type(json.stats["_service._proto.srv.test:SRV"]) == "table"
+        return type(json.stats["_service._proto.srv.test|SRV"]) == "table"
       end, 5)
     end)
   end)
