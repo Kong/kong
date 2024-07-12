@@ -51,8 +51,7 @@ function concurrency.with_worker_mutex(opts, fn)
   local elapsed, err = rlock:lock(opts_name)
   if not elapsed then
     if err == "timeout" then
-      local ttl = rlock.dict and rlock.dict:ttl(opts_name)
-      return nil, err, ttl
+      return nil, err
     end
     return nil, "failed to acquire worker lock: " .. err
   end
