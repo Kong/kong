@@ -133,19 +133,9 @@ describe("CP/DP config compat transformations #" .. strategy, function()
   end)
 
   describe("plugin config fields", function()
-    local rate_limit, response_transformer, cors, opentelemetry, zipkin
+    local rate_limit, cors, opentelemetry, zipkin
 
     lazy_setup(function()
-      response_transformer = admin.plugins:insert {
-        name = "response-transformer",
-        enabled = true,
-        -- This should not be present in 3.3
-        consumer_group = {
-          id = cg_id,
-        },
-        config = { },
-      }
-
       cors = admin.plugins:insert {
         name = "cors",
         enabled = true,
@@ -251,20 +241,45 @@ describe("CP/DP config compat transformations #" .. strategy, function()
     end)
 
     it("consumer_group scoped plugins should not be present in 3.3 dataplanes", function()
+      local rt = admin.plugins:insert {
+        name = "response-transformer",
+        enabled = true,
+        -- This should not be present in 3.3
+        consumer_group = {
+          id = cg_id,
+        },
+        config = { },
+      }
+
       local id = uuid()
-      local plugin = get_plugin(id, "3.3.0", response_transformer.name, true)
+      local plugin = get_plugin(id, "3.3.0", rt.name, true)
       assert.is_nil(plugin)
       assert.equals(CLUSTERING_SYNC_STATUS.NORMAL, get_sync_status(id))
+
+      -- cleanup
+      admin.plugins:remove({ id = rt.id })
     end)
 
     it("consumer_group scoped plugins should be present in 3.4 dataplanes", function()
+      local rt = admin.plugins:insert {
+        name = "response-transformer",
+        enabled = true,
+        consumer_group = {
+          id = cg_id,
+        },
+        config = { },
+      }
+
       local id = uuid()
-      local plugin = get_plugin(id, "3.4.0", response_transformer.name, true)
+      local plugin = get_plugin(id, "3.4.0", rt.name, true)
       assert.is_not_nil(plugin)
-      local response_transformer_expected_config = cycle_aware_deep_copy(response_transformer.config)
+      local response_transformer_expected_config = cycle_aware_deep_copy(rt.config)
       response_transformer_expected_config.rename.json = nil
       assert.same(response_transformer_expected_config, plugin.config)
       assert.equals(CLUSTERING_SYNC_STATUS.NORMAL, get_sync_status(id))
+
+      -- cleanup
+      admin.plugins:remove({ id = rt.id })
     end)
 
     it("plugins with inherit `nil` consumer-group should be present in 3.4 dataplanes", function()
