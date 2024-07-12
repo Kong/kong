@@ -10,8 +10,6 @@ lua_socket_log_errors  off;
 lua_max_running_timers 4096;
 lua_max_pending_timers 16384;
 
-uninitialized_variable_warn  off;
-
 include 'nginx-kong-inject.conf';
 
 lua_shared_dict kong                        5m;
@@ -81,6 +79,21 @@ upstream kong_upstream {
 }
 
 server {
+    set $ctx_ref                     '';
+    set $upstream_te                 '';
+    set $upstream_host               '';
+    set $upstream_upgrade            '';
+    set $upstream_connection         '';
+    set $upstream_scheme             '';
+    set $upstream_uri                '';
+    set $upstream_x_forwarded_for    '';
+    set $upstream_x_forwarded_proto  '';
+    set $upstream_x_forwarded_host   '';
+    set $upstream_x_forwarded_port   '';
+    set $upstream_x_forwarded_path   '';
+    set $upstream_x_forwarded_prefix '';
+    set $kong_proxy_mode             'http';
+
     server_name kong;
 > for _, entry in ipairs(proxy_listeners) do
     listen $(entry.listener);
@@ -388,6 +401,8 @@ server {
 
     location = /kong_error_handler {
         internal;
+        uninitialized_variable_warn  off;
+
         default_type                 '';
 
         rewrite_by_lua_block {;}
