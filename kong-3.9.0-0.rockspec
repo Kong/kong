@@ -700,6 +700,12 @@ build = {
     ["kong.plugins.rate-limiting.policies.cluster"] = "kong/plugins/rate-limiting/policies/cluster.lua",
     ["kong.plugins.rate-limiting.clustering.compat.redis_translation"] = "kong/plugins/rate-limiting/clustering/compat/redis_translation.lua",
 
+    ["kong.plugins.rate-limiting-advanced.handler"] = "kong/plugins/rate-limiting-advanced/handler.lua",
+    ["kong.plugins.rate-limiting-advanced.schema"] = "kong/plugins/rate-limiting-advanced/schema.lua",
+    ["kong.plugins.rate-limiting-advanced.migrations"] = "kong/plugins/rate-limiting-advanced/migrations/init.lua",
+    ["kong.plugins.rate-limiting-advanced.migrations.001_370_to_380"] = "kong/plugins/rate-limiting-advanced/migrations/001_370_to_380.lua",
+    ["kong.plugins.rate-limiting-advanced.migrations.002_370_to_380"] = "kong/plugins/rate-limiting-advanced/migrations/002_370_to_380.lua",
+
     ["kong.plugins.response-ratelimiting.migrations"] = "kong/plugins/response-ratelimiting/migrations/init.lua",
     ["kong.plugins.response-ratelimiting.migrations.000_base_response_rate_limiting"] = "kong/plugins/response-ratelimiting/migrations/000_base_response_rate_limiting.lua",
     ["kong.plugins.response-ratelimiting.migrations.001_350_to_360"] = "kong/plugins/response-ratelimiting/migrations/001_350_to_360.lua",

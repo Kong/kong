@@ -59,6 +59,7 @@ return {
     "key-auth-enc",
     "mocking",
     "oauth2-introspection",
+    "rate-limiting-advanced",
     "request-transformer-advanced",
     "response-transformer-advanced",
     "route-by-header",

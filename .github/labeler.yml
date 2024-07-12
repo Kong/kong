@@ -415,9 +415,9 @@ plugins/proxy-cache-advanced:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/proxy-cache-advanced/**/*
 
-plugins-ee/rate-limiting-advanced:
+plugins/rate-limiting-advanced:
 - changed-files:
-  - any-glob-to-any-file: plugins-ee/rate-limiting-advanced/**/*
+  - any-glob-to-any-file: kong/plugins/rate-limiting-advanced/**/*
 
 plugins-ee/ai-rate-limiting-advanced:
 - changed-files:

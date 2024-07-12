@@ -46,6 +46,7 @@ describe("rate-limiting", function()
     end
 
     -- require this after we hook the ngx.log
+    package.loaded["kong.tools.public.rate-limiting"] = nil
     ratelimit = require "kong.tools.public.rate-limiting"
   end)
 

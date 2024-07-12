@@ -95,6 +95,7 @@ describe("Plugins", function()
       "ip-restriction",
       "request-size-limiting",
       "acl",
+      "rate-limiting-advanced",
       "rate-limiting",
       "response-ratelimiting",
       "route-by-header",

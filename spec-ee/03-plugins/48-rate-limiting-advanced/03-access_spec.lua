@@ -2690,7 +2690,6 @@ for _, strategy in strategies() do
                 ["Host"] = "test20.test",
               }
             })
-            io.read()
             assert.res_status(200, res)
             proxy_client:close()
             mock.eventually:has_one_without_error()

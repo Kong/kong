@@ -9,7 +9,6 @@ local c = {}
 
 c.plugins = {  -- This list of plugins is located in the "plugins-ee" directory
   "openid-connect",
-  "rate-limiting-advanced",
   "ldap-auth-advanced",
   "jwt-signer",
   "vault-auth",
