@@ -37,6 +37,8 @@ local NGX_CTX_REQUEST_LOGS_KEY = "o11y_logs_request_scoped"
 local worker_logs = table_new(INITIAL_SIZE_WORKER_LOGS, 0)
 local logline_buf = string_buffer.new()
 
+local notified_buffer_full = false
+
 
 -- WARNING: avoid using `ngx.log` in this function to prevent recursive loops
 local function configured_log_level()
@@ -124,6 +126,28 @@ local function get_request_log_buffer()
 end
 
 
+-- notifies the user that the log buffer is full, once (per worker)
+local function notify_buffer_full_once()
+  if not notified_buffer_full then
+    notified_buffer_full = true
+    native_ngx_log(ngx.NOTICE,
+      "[observability] OpenTelemetry logs buffer is full: dropping new log entries."
+    )
+  end
+end
+
+
+local function notify_if_resumed()
+  -- if we are in a "resumed" state
+  if notified_buffer_full then
+    notified_buffer_full = false
+    native_ngx_log(ngx.NOTICE,
+      "[observability] OpenTelemetry logs buffer resumed accepting log entries."
+    )
+  end
+end
+
+
 function _M.maybe_push(stack_level, attributes, log_level, ...)
   -- WARNING: do not yield in this function, as it is called from ngx.log
 
@@ -150,11 +174,10 @@ function _M.maybe_push(stack_level, attributes, log_level, ...)
 
   -- return if log buffer is full
   if #log_buffer >= max_logs then
-    native_ngx_log(ngx.NOTICE,
-      "[observability] OpenTelemetry logs buffer is full: dropping log entry."
-    )
+    notify_buffer_full_once()
     return
   end
+  notify_if_resumed()
 
   local args = table_pack(...)
   local log_str = concat_tostring(args)
