@@ -359,6 +359,9 @@ return {
     rate_limiting_advanced = {
       "redis.cluster_max_redirections",
     },
+    ai_rate_limiting_advanced = {
+      "redis.cluster_max_redirections",
+    },
     key_auth_enc = {
       "realm",
     },

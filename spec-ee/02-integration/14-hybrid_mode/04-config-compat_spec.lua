@@ -781,6 +781,29 @@ describe("CP/DP config compat #" .. strategy, function()
           end
         },
         {
+          plugin = "ai-rate-limiting-advanced",
+          label = "w/ cluster_max_redirections configured",
+          pending = false,
+          config = {
+            llm_providers = {{
+              name = "openai",
+              window_size = 60,
+              limit = 10,
+            }},
+            sync_rate = 10,
+            strategy = "redis",
+            redis = {
+              host = helpers.redis_host,
+              port = helpers.redis_port,
+              cluster_max_redirections = 10
+            }
+          },
+          status = STATUS.NORMAL,
+          validator = function(config)
+            return config.redis.cluster_max_redirections == nil
+          end
+        },
+        {
           plugin = "proxy-cache-advanced",
           label = "w/ cluster_max_redirections configured",
           pending = false,
