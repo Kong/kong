@@ -255,7 +255,7 @@ for _, strategy in helpers.each_strategy() do
       -- to produce an nginx output filter error and status code 412
       -- the response has to go through kong_error_handler (via error_page)
       it("remains healthy when if-match header is used with buffering", function()
-        mock = http_mock.new(TCP_PORT)
+        local mock = http_mock.new(TCP_PORT)
         mock:start()
         local res = assert(proxy_client:send {
           method  = "GET",
