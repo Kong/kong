@@ -1,6 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
-
+local http_mock = require "spec.helpers.http_mock"
 
 local md5 = ngx.md5
 local TCP_PORT = helpers.get_available_port()
@@ -255,8 +255,8 @@ for _, strategy in helpers.each_strategy() do
       -- to produce an nginx output filter error and status code 412
       -- the response has to go through kong_error_handler (via error_page)
       it("remains healthy when if-match header is used with buffering", function()
-        local thread = helpers.tcp_server(TCP_PORT)
-
+        local mock = http_mock.new(TCP_PORT)
+        mock:start()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/0",
@@ -265,9 +265,9 @@ for _, strategy in helpers.each_strategy() do
           }
         })
 
-        thread:join()
         assert.response(res).has_status(412)
         assert.logfile().has.no.line("exited on signal 11")
+        mock:stop(true)
       end)
     end)
   end)
