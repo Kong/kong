@@ -130,7 +130,7 @@ jobs:
               body: `## decK integration tests\n\n:warning: failure detected. Please check [the workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details.`
             })
 
-      - uses: datadog/junit-upload-github-action@056dec14f19687cd7d1e97f2009df81f8e64d621
+      - uses: datadog/junit-upload-github-action@a83979ccdfd5b9bff45aab16f726168e2bc23de2
         continue-on-error: true
         if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }} # upload test results even if the job fails
         with:
