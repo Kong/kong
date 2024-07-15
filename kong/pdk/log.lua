@@ -17,6 +17,7 @@ local inspect = require("inspect")
 local phase_checker = require("kong.pdk.private.phases")
 local constants = require("kong.constants")
 local clear_tab = require("table.clear")
+local cjson_null = require("cjson").null
 
 
 local request_id_get = require("kong.observability.tracing.request_id").get
@@ -640,7 +641,7 @@ do
 
   local function is_valid_value(v, visited)
     local t = type(v)
-    if v == nil or t == "number" or t == "string" or t == "boolean" then
+    if v == nil or v == cjson_null or t == "number" or t == "string" or t == "boolean" then
       return true
     end
 

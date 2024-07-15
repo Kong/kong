@@ -231,6 +231,14 @@ describe("kong.log.serialize", function()
         assert.not_equal(tostring(ngx.ctx.service),
                          tostring(res.service))
       end)
+
+      it("does not fail when coming across 'cjson.null' in response body", function()
+        local cjson_null = require "cjson".null
+        kong.log.set_serialize_value("response.body", cjson_null)
+        local pok, value = pcall(kong.log.serialize, {})
+        assert.is_true(pok)
+        assert.is_true(type(value) == "table")
+      end)
     end)
   end)
 
