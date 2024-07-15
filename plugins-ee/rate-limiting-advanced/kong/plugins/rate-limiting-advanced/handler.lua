@@ -174,40 +174,40 @@ local function new_namespace(config, timer_id)
 
   kong.log.debug("attempting to add namespace ", config.namespace)
 
-  local ok, err = pcall(function()
-    local strategy = config.strategy == "cluster" and
-                     kong.configuration.database or
-                     "redis"
+  local strategy = config.strategy == "cluster" and
+                   kong.configuration.database or
+                   "redis"
 
-    local strategy_opts = strategy == "redis" and config.redis
+  local strategy_opts = strategy == "redis" and config.redis
 
-    if config.strategy == "local" then
-      config.sync_rate = -1
+  if config.strategy == "local" then
+    config.sync_rate = -1
+  end
+
+  -- no shm was specified, try the default value specified in the schema
+  local dict_name = config.dictionary_name
+  if dict_name == nil then
+    dict_name = schema.fields.dictionary_name.default
+    if dict_name then
+      kong.log.warn("[rate-limiting-advanced] no shared dictionary was specified.",
+        " Trying the default value '", dict_name, "'...")
+    else
+      kong.log.warn("[rate-limiting-advanced] no schema default was specified.",
+        " Skipping the namespace creation.")
+      return false
     end
+  end
 
-    -- no shm was specified, try the default value specified in the schema
-    local dict_name = config.dictionary_name
-    if dict_name == nil then
-      dict_name = schema.fields.dictionary_name.default
-      if dict_name then
-        kong.log.warn("[rate-limiting-advanced] no shared dictionary was specified.",
-          " Trying the default value '", dict_name, "'...")
-      else
-        kong.log.warn("[rate-limiting-advanced] no schema default was specified.",
-          " Skipping the namespace creation.")
-        return false
-      end
-    end
-
-    -- if dictionary name was passed but doesn't exist, fallback to kong
-    if ngx.shared[dict_name] == nil then
-      kong.log.notice("[rate-limiting-advanced] specified shared dictionary '", dict_name,
-        "' doesn't exist. Falling back to the 'kong' shared dictionary")
-      dict_name = "kong"
-    end
-    kong.log.notice("[rate-limiting-advanced] using shared dictionary '"
+  -- if dictionary name was passed but doesn't exist, fallback to kong
+  if ngx.shared[dict_name] == nil then
+    kong.log.notice("[rate-limiting-advanced] specified shared dictionary '", dict_name,
+      "' doesn't exist. Falling back to the 'kong' shared dictionary")
+    dict_name = "kong"
+  end
+  kong.log.notice("[rate-limiting-advanced] using shared dictionary '"
                          .. dict_name .. "'")
 
+  local ok, err = pcall(function()
     ratelimiting.new({
       namespace     = config.namespace,
       sync_rate     = config.sync_rate,
@@ -221,7 +221,71 @@ local function new_namespace(config, timer_id)
   end)
 
   if not ok then
-    kong.log.err("err in creating new ratelimit namespace: ", err)
+    kong.log.err("err in creating new ratelimit namespace ", config.namespace, " :", err)
+    return false
+  end
+
+  return true
+end
+
+
+local function update_namespace(config, timer_id)
+  if not config then
+    kong.log.warn("[rate-limiting-advanced] no config was specified.",
+                  " Skipping the namespace creation.")
+    return false
+  end
+
+  kong.log.debug("attempting to update namespace ", config.namespace)
+
+  local strategy = config.strategy == "cluster" and
+                   kong.configuration.database or
+                   "redis"
+
+  local strategy_opts = strategy == "redis" and config.redis
+
+  if config.strategy == "local" then
+    config.sync_rate = -1
+  end
+
+  -- no shm was specified, try the default value specified in the schema
+  local dict_name = config.dictionary_name
+  if dict_name == nil then
+    dict_name = schema.fields.dictionary_name.default
+    if dict_name then
+      kong.log.warn("[rate-limiting-advanced] no shared dictionary was specified.",
+        " Trying the default value '", dict_name, "'...")
+    else
+      kong.log.warn("[rate-limiting-advanced] no schema default was specified.",
+        " Skipping the namespace creation.")
+      return false
+    end
+  end
+
+  -- if dictionary name was passed but doesn't exist, fallback to kong
+  if ngx.shared[dict_name] == nil then
+    kong.log.notice("[rate-limiting-advanced] specified shared dictionary '", dict_name,
+      "' doesn't exist. Falling back to the 'kong' shared dictionary")
+    dict_name = "kong"
+  end
+  kong.log.notice("[rate-limiting-advanced] using shared dictionary '"
+                         .. dict_name .. "'")
+
+  local ok, err = pcall(function()
+    ratelimiting.update({
+      namespace     = config.namespace,
+      sync_rate     = config.sync_rate,
+      strategy      = strategy,
+      strategy_opts = strategy_opts,
+      dict          = dict_name,
+      window_sizes  = merge_consumer_groups_window_size(config),
+      db            = kong.db,
+      timer_id      = timer_id,
+    })
+  end)
+
+  if not ok then
+    kong.log.err("err in updating ratelimit namespace ", config.namespace, " :", err)
     return false
   end
 
@@ -297,8 +361,7 @@ function NewRLHandler:configure(configs)
           timer_id = ratelimiting.config[namespace].timer_id
         end
 
-        ratelimiting.clear_config(namespace)
-        new_namespace(config, timer_id)
+        update_namespace(config, timer_id)
 
         -- recommendation have changed with FT-928
         if sync_rate > 0 and sync_rate < 1 then

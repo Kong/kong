@@ -215,6 +215,7 @@ describe("rate-limiting", function()
           db = db,
         }) end, "namespace must be a valid string")
       end)
+
       it("when namespace already exists", function()
         assert.is_true(ratelimit.new({
           dict      = "foo",
@@ -261,6 +262,166 @@ describe("rate-limiting", function()
           sync_rate = "bar",
           strategy  = "postgres",
           db = new_db,
+        }) end, "sync rate must be a number")
+      end)
+    end)
+  end)
+
+  describe("update()", function()
+    describe("returns true", function()
+      before_each(function()
+        ratelimit.clear_config()
+        assert.is_true(ratelimit.new({
+          dict      = "foo",
+          sync_rate = 10,
+          strategy  = "postgres",
+          namespace = "bar",
+          db = new_db,
+        }))
+      end)
+      after_each(function()
+        ratelimit.clear_config()
+      end)
+
+      it("given a config with sane values", function()
+        assert.is_true(ratelimit.new({
+          dict        = "foo",
+          sync_rate   = 10,
+          strategy    = "postgres",
+          db = new_db,
+        }))
+
+        assert.is_true(ratelimit.update({
+          dict        = "foo",
+          sync_rate   = 9,
+          strategy    = "postgres",
+          db = new_db,
+        }))
+      end)
+
+      it("given a config with a custom namespace", function()
+        assert.is_true(ratelimit.update({
+          dict      = "foo",
+          sync_rate = 9,
+          strategy  = "postgres",
+          namespace = "bar",
+          db = new_db,
+        }))
+      end)
+
+      it("given a config with sync_rate as '-1'", function()
+        assert.is_true(ratelimit.update({
+          dict      = "foo",
+          sync_rate = -1,
+          strategy  = "postgres",
+          namespace = "bar",
+          db = new_db,
+        }))
+      end)
+
+      it("given a config with strategy as 'off'", function()
+        assert.is_true(ratelimit.update({
+          dict      = "foo",
+          sync_rate = 10,
+          strategy  = "off",
+          namespace = "bar",
+          db = new_db,
+        }))
+      end)
+
+      it("given a config with sync_rate as '-1' and strategy as 'off'", function()
+        assert.is_true(ratelimit.update({
+          dict      = "foo",
+          sync_rate = -1,
+          strategy  = "off",
+          namespace = "bar",
+          db = new_db,
+        }))
+      end)
+    end)
+
+    describe("errors", function()
+      before_each(function()
+        ratelimit.clear_config()
+        assert.is_true(ratelimit.new({
+          dict      = "foo",
+          sync_rate = 10,
+          strategy  = "postgres",
+          namespace = "bar",
+          db = new_db,
+        }))
+      end)
+      after_each(function()
+        ratelimit.clear_config()
+      end)
+
+      it("when opts is not a table", function()
+        assert.has.error(function() ratelimit.update("foo") end,
+          "opts must be a table")
+      end)
+
+      it("when namespace contains a pipe character", function()
+        assert.has.error(function() ratelimit.update({
+          dict      = "foo",
+          sync_rate = 10,
+          strategy  = "postgres",
+          namespace = "ba|r",
+          db = db,
+        }) end, "namespace must not contain a pipe char")
+      end)
+
+      it("when namespace doesn't exist", function()
+        assert.has.error(function() ratelimit.update({
+          dict      = "foo",
+          sync_rate = 10,
+          strategy  = "postgres",
+          namespace = "nonexistent",
+          db = db,
+        }) end, "namespace nonexistent doesn't exist")
+      end)
+
+      it("when namespace is not a string", function()
+        assert.has.error(function() ratelimit.update({
+          dict      = "foo",
+          sync_rate = 10,
+          strategy  = "postgres",
+          namespace = 12345,
+          db = db,
+        }) end, "namespace must be a valid string")
+      end)
+
+      it("when dict is not a valid string", function()
+        assert.has.error(function() ratelimit.update({
+          dict      = "",
+          sync_rate = 10,
+          namespace = "bar",
+        }) end, "given dictionary reference must be a string")
+
+        assert.has.error(function() ratelimit.update({
+          sync_rate = 10,
+          strategy  = "postgres",
+          db = new_db,
+          namespace = "bar",
+        }) end, "given dictionary reference must be a string")
+      end)
+
+      it("when an invalid strategy is given", function()
+        assert.has.error(function() ratelimit.update({
+          dict      = "foo",
+          sync_rate = 10,
+          strategy  = "yomama",
+          db = new_db,
+          namespace = "bar",
+        }) end)
+      end)
+
+      it("when an invalid sync_rate is given", function()
+        assert.has.error(function() ratelimit.update({
+          dict      = "foo",
+          sync_rate = "bar",
+          strategy  = "postgres",
+          db = new_db,
+          namespace = "bar",
         }) end, "sync rate must be a number")
       end)
     end)

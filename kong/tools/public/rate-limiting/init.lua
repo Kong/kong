@@ -522,7 +522,7 @@ local function new_instance(instance_name, options)
     end
   end
 
-  local function new(opts)
+  local function set_namespace(opts, is_new)
     if type(opts) ~= "table" then
       error("opts must be a table")
     end
@@ -538,8 +538,10 @@ local function new_instance(instance_name, options)
       error("namespace must not contain a pipe char")
     end
 
-    if config[namespace] then
+    if is_new and config[namespace] then
       error("namespace " .. namespace .. " already exists")
+    elseif not is_new and not config[namespace] then
+      error("namespace " .. namespace .. " doesn't exist")
     end
 
     if type(opts.dict) ~= "string" or opts.dict == "" then
@@ -581,6 +583,10 @@ local function new_instance(instance_name, options)
       exptime      = math_max(opts.sync_rate + TIME_DELTA, 2),    --- min TTL is 2s
       timer_id     = opts.timer_id,
     }
+  end
+
+  local function new(opts)
+    set_namespace(opts, true)
 
     -- start maintenance timer
     if timer_handle == nil then
@@ -616,6 +622,13 @@ local function new_instance(instance_name, options)
   end
 
 
+  local function update(opts)
+    set_namespace(opts)
+
+    return true
+  end
+
+
   local function clear_config(namespace)
     if namespace then
       config[namespace] = nil
@@ -634,6 +647,7 @@ local function new_instance(instance_name, options)
     sliding_window = sliding_window,
     increment = increment,
     new = new,
+    update = update,
     clear_config = clear_config,
     new_instance = new_instance,
   }

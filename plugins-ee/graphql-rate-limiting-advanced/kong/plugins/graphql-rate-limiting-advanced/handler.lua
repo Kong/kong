@@ -73,50 +73,46 @@ local id_lookup = {
 
 
 local function new_namespace(config, init_timer)
-  local ret = true
-
   kong.log.debug("attempting to add namespace ", config.namespace)
 
-  local ok, err = pcall(function()
-    local strategy = config.strategy == "cluster" and
-                     kong.configuration.database or
-                     "redis"
+  local strategy = config.strategy == "cluster" and
+                   kong.configuration.database or
+                   "redis"
 
-    if config.strategy == "cluster" and config.sync_rate ~= -1 then
-      if kong.configuration.database == "off" or kong.configuration.role ~= "traditional" then
-        ret = false
-
-        local phase = ngx.get_phase()
-        if phase == "init" or phase == "init_worker" then
-          return nil, concat{ "[graphql-rate-limiting-advanced] strategy 'cluster' cannot ",
+  if config.strategy == "cluster" and config.sync_rate ~= -1 then
+    if kong.configuration.database == "off" or kong.configuration.role ~= "traditional" then
+      local phase = ngx.get_phase()
+      if phase == "init" or phase == "init_worker" then
+        return false, concat{ "[graphql-rate-limiting-advanced] strategy 'cluster' cannot ",
                               "be configured with DB-less mode or Hybrid mode. ",
                               "If you did not specify the strategy, please use the 'redis' strategy, ",
                               "or set 'sync_rate' to -1.", }
-        end
-
-        return kong.response.exit(500)
       end
+
+      return kong.response.exit(500)
     end
+  end
 
-    local strategy_opts = strategy == "redis" and config.redis
+  local strategy_opts = strategy == "redis" and config.redis
 
-    -- no shm was specified, try the default value specified in the schema
-    local dict_name = config.dictionary_name
-    if dict_name == nil then
-      dict_name = schema.fields.dictionary_name.default
-      kong.log.warn("no shared dictionary was specified.",
-        " Trying the default value '", dict_name, "'...")
-    end
+  -- no shm was specified, try the default value specified in the schema
+  local dict_name = config.dictionary_name
+  if dict_name == nil then
+    dict_name = schema.fields.dictionary_name.default
+    kong.log.warn("no shared dictionary was specified.",
+      " Trying the default value '", dict_name, "'...")
+  end
 
-    -- if dictionary name was passed but doesn't exist, fallback to kong
-    if ngx.shared[dict_name] == nil then
-      kong.log.notice("specified shared dictionary '", dict_name,
-        "' doesn't exist. Falling back to the 'kong' shared dictionary")
-      dict_name = "kong"
-    end
+  -- if dictionary name was passed but doesn't exist, fallback to kong
+  if ngx.shared[dict_name] == nil then
+    kong.log.notice("specified shared dictionary '", dict_name,
+      "' doesn't exist. Falling back to the 'kong' shared dictionary")
+    dict_name = "kong"
+  end
 
-    kong.log.notice("using shared dictionary '" .. dict_name .. "'")
+  kong.log.notice("using shared dictionary '" .. dict_name .. "'")
 
+  local ok, err = pcall(function()
     ratelimiting.new({
       namespace     = config.namespace,
       sync_rate     = config.sync_rate,
@@ -144,11 +140,87 @@ local function new_namespace(config, init_timer)
     end
 
   else
-    kong.log.err("err in creating new ratelimit namespace: ", err)
-    ret = false
+    kong.log.err("err in creating new ratelimit namespace ", config.namespace, " :", err)
+    return false
   end
 
-  return ret
+  return true
+end
+
+
+local function update_namespace(config, init_timer)
+  kong.log.debug("attempting to update namespace ", config.namespace)
+
+  local strategy = config.strategy == "cluster" and
+                   kong.configuration.database or
+                   "redis"
+
+  if config.strategy == "cluster" and config.sync_rate ~= -1 then
+    if kong.configuration.database == "off" or kong.configuration.role ~= "traditional" then
+      local phase = ngx.get_phase()
+      if phase == "init" or phase == "init_worker" then
+        return false, concat{ "[graphql-rate-limiting-advanced] strategy 'cluster' cannot ",
+                              "be configured with DB-less mode or Hybrid mode. ",
+                              "If you did not specify the strategy, please use the 'redis' strategy, ",
+                              "or set 'sync_rate' to -1.", }
+      end
+
+      return kong.response.exit(500)
+    end
+  end
+
+  local strategy_opts = strategy == "redis" and config.redis
+
+  -- no shm was specified, try the default value specified in the schema
+  local dict_name = config.dictionary_name
+  if dict_name == nil then
+    dict_name = schema.fields.dictionary_name.default
+    kong.log.warn("no shared dictionary was specified.",
+      " Trying the default value '", dict_name, "'...")
+  end
+
+  -- if dictionary name was passed but doesn't exist, fallback to kong
+  if ngx.shared[dict_name] == nil then
+    kong.log.notice("specified shared dictionary '", dict_name,
+      "' doesn't exist. Falling back to the 'kong' shared dictionary")
+    dict_name = "kong"
+  end
+
+  kong.log.notice("using shared dictionary '" .. dict_name .. "'")
+
+  local ok, err = pcall(function()
+    ratelimiting.update({
+      namespace     = config.namespace,
+      sync_rate     = config.sync_rate,
+      strategy      = strategy,
+      strategy_opts = strategy_opts,
+      dict          = dict_name,
+      window_sizes  = config.window_size,
+      db            = kong.db,
+    })
+  end)
+
+  -- if we created a new namespace, start the recurring sync timer and
+  -- run an intial sync to fetch our counter values from the data store
+  -- (if applicable)
+  if ok then
+    if init_timer and config.sync_rate > 0 then
+      local rate = config.sync_rate
+      local when = rate - (ngx.now() - (math.floor(ngx.now() / rate) * rate))
+      kong.log.debug("initial sync in ", when, " seconds")
+      ngx.timer.at(when, ratelimiting.sync, config.namespace)
+
+      -- run the fetch from a timer because it uses cosockets
+      -- kong patches this for psql and c*, but not redis
+      ngx.timer.at(0, ratelimiting.fetch, config.namespace, ngx.now(), min(rate - 0.001, 2), true)
+    end
+
+  else
+    kong.log.err("err in updating ratelimit namespace ", config.namespace, " :", err)
+    return false
+  end
+
+  return true
 end
 
 
@@ -193,8 +265,7 @@ function NewRLHandler:init_worker()
       start_timer = true
     end
 
-    ratelimiting.clear_config(config.namespace)
-    new_namespace(config, start_timer)
+    update_namespace(config, start_timer)
 
     -- clear the timer if we dont need it
     if config.sync_rate <= 0 then

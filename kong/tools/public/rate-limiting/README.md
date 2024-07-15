@@ -150,6 +150,28 @@ Define configurations for a new namespace. The following options are accepted:
     an error is thrown. If no namespace is defined, the literal string "default"
     will be used.
 - window_sizes: A list of window sizes used by this configuration.
+- db: An instance of DB
+- timer_id: ID of the sync timer of the namespace
+
+
+#### ratelimiting.update
+
+*syntax: ok = ratelimiting.update(opts)*
+
+Define configurations for updating a namespace. The following options are accepted:
+- dict: Name of the shared dictionary to use
+- sync_rate: Rate, in seconds, to sync data diffs to the storage server.
+- strategy: Storage strategy to use. currently `cassandra`, `postgres`, and
+    `redis` are supported. Strategies must provide several public functions
+    defined below.
+- strategy_opts: A table of options used by the storage strategy. Currently only
+    applicable for the 'redis' strategy.
+- namespace: String defining these config values. A namespace may only be
+    defined once; If no namespace is defined, the literal string "default"
+    will be used.
+- window_sizes: A list of window sizes used by this configuration.
+- db: An instance of DB
+- timer_id: ID of the sync timer of the namespace
 
 
 #### ratelimiting.increment
