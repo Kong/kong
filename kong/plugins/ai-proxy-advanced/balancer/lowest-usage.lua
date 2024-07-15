@@ -37,6 +37,10 @@ function algo:getPeer(...)
   return ewma.getPeer(self, ...)
 end
 
+function algo:cleanup()
+  return ewma.cleanup(self)
+end
+
 
 function algo.new(targets)
   return setmetatable(ewma.new(targets), algo)

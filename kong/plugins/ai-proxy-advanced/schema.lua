@@ -8,6 +8,7 @@
 local typedefs = require("kong.db.schema.typedefs")
 local Schema = require "kong.db.schema"
 local llm = require("kong.llm")
+local ai_typedefs = require("kong.ai.typedefs")
 
 local deep_copy = require("kong.tools.table").deep_copy
 
@@ -21,6 +22,15 @@ local nonzero_timeout = Schema.define {
 table.insert(target_schema.fields, #target_schema.fields, {
   weight = { description = "The weight this target gets within the upstream loadbalancer (1-65535).", type = "integer", default = 100, between = { 1, 65535 }, },
 })
+table.insert(target_schema.fields, #target_schema.fields, {
+  description = { description = "The semantic description of the target, required if using semantic load balancing.", type = "string", required = false, },
+})
+
+local vectordb_schema = deep_copy(llm.vectordb_schema)
+vectordb_schema.required = false
+
+local embeddings_schema = deep_copy(ai_typedefs.embeddings)
+embeddings_schema.required = false
 
 return {
   name = "ai-proxy-advanced",
@@ -35,7 +45,7 @@ return {
           fields = {
             { algorithm = { description = "Which load balancing algorithm to use.", type = "string",
               default = "round-robin",
-              one_of = { "round-robin", "lowest-latency", "lowest-usage", "consistent-hashing" },
+              one_of = { "round-robin", "lowest-latency", "lowest-usage", "consistent-hashing", "semantic", },
             }, },
             { tokens_count_strategy = { description = "What tokens to use for usage calculation. Available values are: `total_tokens` `prompt_tokens`, and `completion_tokens`.", type = "string",
               default = "total_tokens",
@@ -50,7 +60,17 @@ return {
             { connect_timeout = nonzero_timeout { default = 60000 }, },
             { write_timeout = nonzero_timeout { default = 60000 }, },
             { read_timeout = nonzero_timeout { default = 60000 }, },
+            { embeddings = ai_typedefs.embeddings },
+            { vectordb = ai_typedefs.vectordb },
+            { max_request_body_size = { description = "max allowed body size allowed to be introspected", type = "integer",
+            default = 8*1024, gt = 0, }, },
         }, }, },
+        { embeddings = embeddings_schema },
+        { vectordb = vectordb_schema },
+        { max_request_body_size = { description = "max allowed body size allowed to be introspected", type = "integer",
+          default = 8*1024, gt = 0, }, },
+        { model_name_header = { description = "Display the model name selected in the X-Kong-LLM-Model response header",
+          type = "boolean", default = true, }},
         { targets = {
           type = "array",
           required = true,
@@ -102,6 +122,22 @@ return {
               end
             elseif this_format and must_format ~= this_format then -- if provider matches, but format doesn't
               return false, "mixing different providers with different formats are not supported"
+            end
+          end
+
+          return true
+        end
+      }
+    },
+    {
+      custom_entity_check = {
+        field_sources = { "config.targets", "config.balancer", },
+        fn = function(entity)
+          if entity.config.balancer.algorithm == "semantic" then
+            for _, target in ipairs(entity.config.targets) do
+              if not target.description then
+                return false, "description field is required for every target in config.targets array"
+              end
             end
           end
 

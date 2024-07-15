@@ -489,4 +489,83 @@ describe("[least connection balancer]", function()
     -- -- most of time we should select target 1
     assert.is_true(res["getkong2.test"] - res["getkong1.test"] >= 158)
   end)
+
+  describe("[#semantic based balancer]", function()
+    local redis_mock = require("spec.helpers.ai.redis_mock")
+    local openai_mock = require("spec.helpers.ai.openai_mock")
+
+    local function new_balancer(targets, conf)
+      return require "kong.plugins.ai-proxy-advanced.balancer.semantic".new(targets, conf)
+    end
+
+    setup(function()
+      _G.ngx.get_phase = function() return "access" end
+
+      _G.kong = {
+        log = {
+          debug = function() end,
+          info = function() end,
+          warn = function() end,
+        },
+        ctx = {
+          plugin = {},
+        },
+        configuration = setmetatable({}, {
+          __index = function(_, key)
+            return nil
+          end
+        }),
+        request = {
+          get_body = function() return { messages = { { role = "user", content = "dog" }}} end
+        },
+        service = {
+          request = {
+            enable_buffering = function() return true end
+          }
+        }
+      }
+    end)
+
+    teardown(function()
+      _G.kong = nil
+    end)
+
+    before_each(function()
+      _G.kong.ctx.plugin = {}
+    end)
+
+    it("select the target with closer similarity", function()
+      redis_mock.setup(finally)
+      openai_mock.setup(finally)
+
+      local b = assert(new_balancer({
+        {name = "cat.test", description = "cat", id = "1"},
+        {name = "taco.test", description = "taco", id = "2"},
+        {name = "capacitor.test",   description = "capacitor", id = "3"},
+      }, {
+        __plugin_id = "1123",
+        vectordb = {
+          dimensions = 4,
+          distance_metric = "cosine",
+          threshold = 0.4,
+          redis = {},
+          strategy = "redis",
+        },
+        embeddings = {
+          driver = "openai",
+          model = "text-embedding-3-small",
+          auth = { token = "fake" },
+        },
+      }))
+      local res = {}
+      for _ = 1, 10 do
+        local target = b:getPeer()
+        res[target.name] = (res[target.name] or 0) + 1
+      end
+      -- dog is more similar to cat instead of others
+      assert.equal(10, res["cat.test"])
+      assert.equal(nil, res["taco.test"])
+      assert.equal(nil, res["capacitor.test"])
+    end)
+  end)
 end)

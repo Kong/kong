@@ -114,6 +114,9 @@ function roundrobin_algorithm:afterBalance()
   return true -- noop
 end
 
+function roundrobin_algorithm:cleanup()
+  return true -- noop
+end
 
 function roundrobin_algorithm.new(targets)
   local self = setmetatable({

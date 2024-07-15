@@ -183,6 +183,10 @@ function ewma:getPeer(_, _)
 end
 
 
+function ewma:cleanup()
+  return true -- noop
+end
+
 function ewma.new(targets)
   local self = setmetatable({
     ewma = {},

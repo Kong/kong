@@ -169,6 +169,15 @@ function consistent_hashing:getPeer(_, _, valueToHash)
   return nil, balancers.errors.ERR_NO_PEERS_AVAILABLE
 end
 
+function consistent_hashing:afterBalance()
+  return true -- noop
+end
+
+
+function consistent_hashing:cleanup()
+  return true -- noop
+end
+
 --- Creates a new algorithm.
 --
 -- The algorithm is based on a wheel (continuum) with a number of points

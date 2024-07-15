@@ -24,9 +24,17 @@ local function get_balancer_instance(conf, bypass_cache)
   local conf_key = conf.__plugin_id
   assert(conf_key, "missing plugin conf key __plugin_id")
 
+  local err
   local balancer_instance = balancers_by_plugin_key[conf_key]
 
   if not balancer_instance or bypass_cache then
+    if balancer_instance and balancer_instance.cleanup then
+      local ok, err = balancer_instance:cleanup()
+      if not ok then
+        kong.log.warn("error occured during cleaning up the staled balancer: ", err)
+      end
+    end
+
     local mod = require("kong.plugins.ai-proxy-advanced.balancer." .. conf.balancer.algorithm)
     -- copy the table, ignore metatables
     local targets = deep_copy(conf.targets, false)
@@ -34,7 +42,10 @@ local function get_balancer_instance(conf, bypass_cache)
       target.id = target.id or uuid()
     end
 
-    balancer_instance = mod.new(targets, conf.balancer.slots)
+    balancer_instance, err = mod.new(targets, conf.balancer)
+    if err then
+      return nil, err
+    end
 
     balancers_by_plugin_key[conf_key] = balancer_instance
   end
@@ -56,7 +67,7 @@ function _M:init_worker()
     local operation = data.operation
     if operation == "create" or operation == "update" then
       conf.__plugin_id = assert(data.entity.id, "missing plugin conf key __plugin_id")
-      get_balancer_instance(conf, BYPASS_CACHE)
+      assert(get_balancer_instance(conf, BYPASS_CACHE))
 
     elseif operation == "delete" then
       local conf_key = data.entity.id
@@ -86,7 +97,11 @@ function _M:init_worker()
 end
 
 function _M:access(conf)
-  local balancer_instance = get_balancer_instance(conf)
+  local balancer_instance, err = get_balancer_instance(conf)
+  if not balancer_instance then
+    kong.log.err("failed to get balancer: ", err)
+    return kong.response.exit(500, { message = "failed to get balancer" })
+  end
 
   local selected, err = balancer_instance:getPeer()
   if err then
@@ -102,6 +117,7 @@ function _M:access(conf)
   -- pass along the top level magic keys to selected target/conf
   selected.__key__ = conf.__key__
   selected.__plugin_id = conf.__plugin_id
+  selected.max_request_body_size = conf.balancer.max_request_body_size
 
   -- no return value, short circuit the request on error
   proxy_handler:access(selected)
@@ -122,14 +138,29 @@ function _M:access(conf)
 end
 
 function _M:header_filter()
-  return proxy_handler:header_filter(kong.ctx.plugin.selected_target)
+  local target = kong.ctx.plugin.selected_target
+  if not target then
+    return
+  end
+
+  return proxy_handler:header_filter(target)
 end
 
 function _M:body_filter()
-  return proxy_handler:body_filter(kong.ctx.plugin.selected_target)
+  local target = kong.ctx.plugin.selected_target
+  if not target then
+    return
+  end
+
+  return proxy_handler:body_filter(target)
 end
 
 function _M:log(conf)
+  local target = kong.ctx.plugin.selected_target
+  if not target then
+    return
+  end
+
   local balancer_instance = get_balancer_instance(conf)
   local _, err = balancer_instance:afterBalance(conf, kong.ctx.plugin.selected_target)
 
