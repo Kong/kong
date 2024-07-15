@@ -32,12 +32,12 @@ local ewma = {}
 ewma.__index = ewma
 
 local function decay_ewma(ewma, last_touched_at, rtt, now)
-    local td = now - last_touched_at
-    td = (td > 0) and td or 0
-    local weight = math_exp(-td / DECAY_TIME)
-  
-    ewma = ewma * weight + rtt * (1.0 - weight)
-    return ewma
+  local td = now - last_touched_at
+  td = (td > 0) and td or 0
+  local weight = math_exp(-td / DECAY_TIME)
+
+  ewma = ewma * weight + rtt * (1.0 - weight)
+  return ewma
 end
 
 
@@ -47,30 +47,30 @@ end
 local function calculate_slow_start_ewma(self)
   local total_ewma = 0
   local address_count = 0
-  
-  for _, target in ipairs(self.balancer.targets) do
-      for _, address in ipairs(target.addresses) do
-          if address.available then
-            local ewma = self.ewma[address] or 0
-            address_count = address_count + 1
-            total_ewma = total_ewma + ewma
-          end
-      end
-  end
-  
-    if address_count == 0 then
-      ngx_log(ngx_DEBUG, "no ewma value exists for the endpoints")
-      return nil
-    end
 
-    self.address_count = address_count
-    return total_ewma / address_count
+  for _, target in ipairs(self.balancer.targets) do
+    for _, address in ipairs(target.addresses) do
+      if address.available then
+        local ewma = self.ewma[address] or 0
+        address_count = address_count + 1
+        total_ewma = total_ewma + ewma
+      end
+    end
+  end
+
+  if address_count == 0 then
+    ngx_log(ngx_DEBUG, "no ewma value exists for the endpoints")
+    return nil
+  end
+
+  self.address_count = address_count
+  return total_ewma / address_count
 end
 
 
 function ewma:afterHostUpdate()
   table_clear(new_addresses)
-  
+
   for _, target in ipairs(self.balancer.targets) do
     for _, address in ipairs(target.addresses) do
       if address.available then
@@ -117,7 +117,7 @@ local function get_or_update_ewma(self, address, rtt, update)
 end
 
 
-function ewma:afterBalance(ctx, handle)
+function ewma:afterBalance(_, handle)
   local ngx_var = ngx.var
   local response_time = tonumber(ngx_var.upstream_response_time) or 0
   local connect_time = tonumber(ngx_var.upstream_connect_time) or 0
@@ -133,21 +133,21 @@ function ewma:afterBalance(ctx, handle)
 end
 
 
-local function pick_and_score(self, address, k)
+local function pick_and_score(self, addresses, k)
   local lowest_score_index = 1
-  local lowest_score = get_or_update_ewma(self, address[lowest_score_index], 0, false) / address[lowest_score_index].weight
+  local lowest_score = get_or_update_ewma(self, addresses[lowest_score_index], 0, false) / addresses[lowest_score_index].weight
   for i = 2, k do
-    local new_score = get_or_update_ewma(self, address[i], 0, false) / address[i].weight
+    local new_score = get_or_update_ewma(self, addresses[i], 0, false) / addresses[i].weight
     if new_score < lowest_score then
       lowest_score_index = i
       lowest_score = new_score
     end
   end
-  return address[lowest_score_index], lowest_score
+  return addresses[lowest_score_index], lowest_score
 end
 
 
-function ewma:getPeer(cache_only, handle, value_to_hash)
+function ewma:getPeer(cache_only, handle)
   if handle then
     -- existing handle, so it's a retry
     handle.retryCount = handle.retryCount + 1
@@ -186,27 +186,27 @@ function ewma:getPeer(cache_only, handle, value_to_hash)
     -- retry end
     if address_count > 1 then
       local k = (address_count < PICK_SET_SIZE) and address_count or PICK_SET_SIZE
-      local filtered_address = {}
-  
+      local filtered_addresses = {}
+
       for addr, ewma in pairs(self.ewma) do
         if not handle.failedAddresses[addr] then
-          table_insert(filtered_address, addr)
+          table_insert(filtered_addresses, addr)
         end
       end
-      
-      local filtered_address_num = table_nkeys(filtered_address)
-      if filtered_address_num == 0 then
+
+      local filtered_addresses_num = table_nkeys(filtered_addresses)
+      if filtered_addresses_num == 0 then
         ngx_log(ngx_WARN, "all endpoints have been retried")
         return nil, balancers.errors.ERR_NO_PEERS_AVAILABLE
       end
 
       local score
-      if filtered_address_num > 1 then
-        k = filtered_address_num > k and filtered_address_num or k
-        address, score = pick_and_score(self, filtered_address, k)
+      if filtered_addresses_num > 1 then
+        k = filtered_addresses_num > k and filtered_addresses_num or k
+        address, score = pick_and_score(self, filtered_addresses, k)
       else
-        address = filtered_address[1]
-        score = get_or_update_ewma(self, filtered_address[1], 0, false)
+        address = filtered_addresses[1]
+        score = get_or_update_ewma(self, filtered_addresses[1], 0, false)
       end
       ngx_log(ngx_DEBUG, "get ewma score: ", score)
     end
