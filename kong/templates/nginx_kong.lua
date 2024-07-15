@@ -39,6 +39,8 @@ ssl_ciphers ${{SSL_CIPHERS}};
 $(el.name) $(el.value);
 > end
 
+uninitialized_variable_warn  off;
+
 init_by_lua_block {
 > if test and coverage then
     require 'luacov'
@@ -386,9 +388,8 @@ server {
 
     location = /kong_error_handler {
         internal;
-        default_type                 '';
 
-        uninitialized_variable_warn  off;
+        default_type                 '';
 
         rewrite_by_lua_block {;}
         access_by_lua_block  {;}
