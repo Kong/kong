@@ -186,6 +186,7 @@ def docker_suites(expect):
             .gid.equals(0)
 
     for path in ("/usr/local/bin/luarocks",
+                 "/usr/local/bin/luarocks-admin",
                  "/usr/local/etc/luarocks/**",
                  "/usr/local/lib/lua/**",
                  "/usr/local/lib/luarocks/**",
