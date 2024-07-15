@@ -64,14 +64,15 @@ end
 -- @param red the initialized Redis client
 -- @param key the cache key to use
 -- @param vector the vector to associate with the cache
--- @param payload the cache payload to insert
+-- @param payload the cache payload to insert as a JSON string
 -- @return boolean indicating success
 -- @return nothing. throws an error if any
 local function create(red, key, vector, payload)
   local decoded_payload, err = cjson.decode(payload)
   if err then
-    return false, err
+    return false, "payload is not a valid JSON string: " .. err
   end
+  assert(not decoded_payload.vector, "payload cannot contain a vector")
   decoded_payload.vector = vector -- inserting the vector into the payload is required by redis
 
   local _, err = json_set(red, key, decoded_payload)

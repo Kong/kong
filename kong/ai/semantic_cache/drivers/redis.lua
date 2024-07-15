@@ -98,12 +98,25 @@ end
 -- Generates a unique cache key is the format of <index>:<vector>.
 --
 -- @param vector the vector to search
--- @param payload the payload to be cached
--- @return boolean indicating success
+-- @param payload the payload to be cached as a JSON string
+-- @return string the key id if successful
 -- @return nothing. throws an error if any
 function Driver:set_cache(vector, payload)
   local key = utils.cache_key(self.index)
-  return vectors.create(self.red, key, vector, payload)
+  local ok, err = vectors.create(self.red, key, vector, payload)
+  if err then
+    return nil, err
+  end
+  return key
+end
+
+-- Delete a cache entry for a given vector and payload.
+--
+-- @param key the key to be deleted
+-- @return boolean indicating success
+-- @return nothing. throws an error if any
+function Driver:delete_cache(key)
+  return self.red["JSON.DEL"](self.red, key)
 end
 
 --
