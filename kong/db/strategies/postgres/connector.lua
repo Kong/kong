@@ -976,7 +976,6 @@ function _M.new(kong_config)
     timeout     = kong_config.pg_timeout,
     user        = kong_config.pg_user,
     password    = kong_config.pg_password,
-    iam_auth    = kong_config.pg_iam_auth,
     database    = kong_config.pg_database,
     schema      = kong_config.pg_schema or "",
     ssl         = kong_config.pg_ssl,
@@ -990,6 +989,11 @@ function _M.new(kong_config)
     sem_timeout = (kong_config.pg_semaphore_timeout or 60000) / 1000,
     pool_size   = kong_config.pg_pool_size,
     backlog     = kong_config.pg_backlog,
+
+    --- AWS RDS IAM Authentication related configs
+    iam_auth = kong_config.pg_iam_auth,
+    iam_auth_assume_role_arn = kong_config.pg_iam_auth_assume_role_arn,
+    iam_auth_role_session_name = kong_config.pg_iam_auth_role_session_name,
 
     --- not used directly by pgmoon, but used internally in connector to set the keepalive timeout
     keepalive_timeout = kong_config.pg_keepalive_timeout,
@@ -1038,7 +1042,6 @@ function _M.new(kong_config)
       timeout     = kong_config.pg_ro_timeout,
       user        = kong_config.pg_ro_user,
       password    = kong_config.pg_ro_password,
-      iam_auth    = kong_config.pg_ro_iam_auth,
       database    = kong_config.pg_ro_database,
       schema      = kong_config.pg_ro_schema,
       ssl         = kong_config.pg_ro_ssl,
@@ -1051,6 +1054,11 @@ function _M.new(kong_config)
                     (kong_config.pg_ro_semaphore_timeout / 1000) or nil,
       pool_size   = kong_config.pg_ro_pool_size,
       backlog     = kong_config.pg_ro_backlog,
+
+      --- AWS RDS IAM Authentication related configs
+      iam_auth = kong_config.pg_ro_iam_auth,
+      iam_auth_assume_role_arn = kong_config.pg_ro_iam_auth_assume_role_arn,
+      iam_auth_role_session_name = kong_config.pg_ro_iam_auth_role_session_name,
 
       --- not used directly by pgmoon, but used internally in connector to set the keepalive timeout
       keepalive_timeout = kong_config.pg_ro_keepalive_timeout,
@@ -1088,6 +1096,17 @@ function _M.new(kong_config)
     local _, err = iam_token_handler.init()
     if err then
       ngx.log(ngx.CRIT, "failed to initialize IAM token handler: ", err)
+    end
+
+    -- Perform a one-time fetch token for read only mode to init the
+    -- RDS instance as well as the IAM auth token, so that
+    -- init_worker phase can use it directly(workers forked from master
+    -- can CoW the token cache)
+    if self.config_ro then
+      local _, err = iam_token_handler.get(self.config_ro)
+      if err then
+        ngx.log(ngx.CRIT, "failed to fetch IAM token for read only mode: ", err)
+      end
     end
   end
 

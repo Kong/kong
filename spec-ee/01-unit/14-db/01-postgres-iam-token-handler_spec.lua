@@ -5,8 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local helpers = require("spec.helpers")
-
 local DB_ENDPOINT = "test_database.test_cluster.us-east-1.rds.amazonaws.com"
 local DB_PORT = "443"
 local DB_USER = "test_user"
@@ -25,7 +23,64 @@ local mock_config_2 = {
   database = "kong-db-2",
 }
 
+local mock_config_assume_role = {
+  host = DB_ENDPOINT,
+  port = DB_PORT,
+  user = DB_USER,
+  database = "kong-db",
+  iam_auth_assume_role_arn = "aws::arn::12345678::test-role",
+  iam_auth_role_session_name = "test-session",
+}
+
 local environment_credential_expire = 10*365*24*60*60
+
+local resty_http_parse_uri = require("resty.http").parse_uri
+
+local resty_http = {
+  parse_uri = resty_http_parse_uri,
+  new = function()
+    return {
+      connect = function() return true end,
+      close = function() return true end,
+      set_timeout = function() return true end,
+      set_timeouts = function() return true end,
+      request = function(self, opts)
+        return {
+          status = 200,
+          headers = {
+            ["Content-Type"] = "application/xml",
+          },
+          has_body = true,
+          body = [[<AssumeRoleResponse xmlns="https://sts.amazonaws.com/doc/2011-06-15/">
+<AssumeRoleResult>
+<SourceIdentity>Alice</SourceIdentity>
+  <Credentials>
+    <AccessKeyId>test_access_key</AccessKeyId>
+    <SecretAccessKey>test_secret_key</SecretAccessKey>
+    <SessionToken>
+      test_session_token
+    </SessionToken>
+    <Expiration>2030-01-01T20:00:00Z</Expiration>
+  </Credentials>
+</AssumeRoleResult>
+<ResponseMetadata>
+  <RequestId>c6104cbe-af31-11e0-8154-cbc7ccf896c7</RequestId>
+</ResponseMetadata>
+</AssumeRoleResponse>
+]],
+          read_body = function(self) return self.body end,
+        }
+      end,
+    }
+  end,
+}
+
+package.loaded["resty.http"] = resty_http
+package.loaded["resty.luasocket.http"] = resty_http
+
+
+-- We only use setenv in helpers so it should not be a problem we patch the global resty http client
+local helpers = require("spec.helpers")
 
 describe("Postgres IAM token handler", function()
   local origin_time
@@ -35,6 +90,9 @@ describe("Postgres IAM token handler", function()
     package.loaded["resty.aws"] = nil
     package.loaded["resty.aws.config"] = nil
     package.loaded["kong.db.strategies.postgres.iam_token_handler"] = nil
+    package.loaded["resty.http"] = nil
+    package.loaded["resty.luasocket.http"] = resty_http
+
     iam_token_handler = require("kong.db.strategies.postgres.iam_token_handler")
     origin_time = ngx.time
     origin_now = ngx.now
@@ -56,6 +114,11 @@ describe("Postgres IAM token handler", function()
     helpers.unsetenv("AWS_REGION")
     helpers.unsetenv("AWS_ACCESS_KEY_ID")
     helpers.unsetenv("AWS_SECRET_ACCESS_KEY")
+    package.loaded["resty.aws"] = nil
+    package.loaded["resty.aws.config"] = nil
+    package.loaded["resty.http"] = nil
+    package.loaded["kong.db.strategies.postgres.iam_token_handler"] = nil
+    package.loaded["resty.luasocket.http"] = nil
   end)
 
   it("should generate expected token with mocking env", function()
@@ -99,5 +162,13 @@ describe("Postgres IAM token handler", function()
       assert.is_nil(err)
       return token1 ~= token2
     end).with_step(0.5).with_timeout(2).is_truthy()
+  end)
+
+  it("should generate expected token with role assuming", function()
+    local token, err = iam_token_handler.get(mock_config_assume_role)
+    local expected_auth_token = "test_database.test_cluster.us-east-1.rds.amazonaws.com:443/?X-Amz-Signature=31aa805cd9c7e5929b4a0e25718d933d006ae130156f8b66b60861548fc771ce&Action=connect&DBUser=test_user&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=test_access_key%2F20321101%2Fus-east-1%2Frds-db%2Faws4_request&X-Amz-Date=20321101T062621Z&X-Amz-Expires=900&X-Amz-Security-Token=%0A%20%20%20%20%20%20test_session_token%0A%20%20%20%20&X-Amz-SignedHeaders=host"
+
+    assert.is_nil(err)
+    assert.same(token, expected_auth_token)
   end)
 end)

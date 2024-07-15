@@ -1,0 +1,4 @@
+message: >
+  Added support for AWS IAM role assuming in AWS IAM Database Authentication, with new configuration fields: "pg_iam_auth_assume_role_arn", "pg_iam_auth_role_session_name", "pg_ro_iam_auth_assume_role_arn", and "pg_ro_iam_auth_role_session_name."
+type: feature
+scope: Core

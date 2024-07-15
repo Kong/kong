@@ -12,10 +12,11 @@ local min = math.min
 local max = math.max
 
 local aws
-local rds
+local AWS_global_config
 local RDS_IAM_AUTH_EXPIRE_TIME = 15 * 60
 
 local TOKEN_CACHE = lrucache.new(20)
+local RDS_SERVICE_CACHE = lrucache.new(4)
 
 -- Concatenating the rds keyword with common endpoint suffixes
 -- This works for both RDS default endpoints and custom endpoints since
@@ -29,23 +30,19 @@ local regionRegexes = {
   [[(?<region>us\-isob\-\w+\-\d+)\.rds\.sc2s\.sgov\.gov]]
 }
 
+local DEFAULT_ROLE_SESSION_NAME = "KongPostgres"
+
 
 local function init()
   local AWS = require("resty.aws")
   -- Note: cannot move to the module level because it contains network io
   -- which will yield, and yield cannot happens inside require
-  local AWS_global_config = require("resty.aws.config").global
-  local config = { region = AWS_global_config.region }
+  AWS_global_config = require("resty.aws.config").global
+  local aws_config = { region = AWS_global_config.region }
 
-  aws = AWS(config)
+  aws = AWS(aws_config)
   if not aws then
     return nil, "failed to instantiate aws"
-  end
-
-  local err
-  rds, err = aws:RDS()
-  if not rds then
-    return nil, fmt("failed to instantiate rds (%s)", err)
   end
 end
 
@@ -62,20 +59,76 @@ end
 
 local function generate_conf_key(conf)
   return "IAM_TOKEN" .. ":" .. conf.host .. ":" .. conf.port .. ":" .. conf.user .. ":" .. conf.database
+                     .. ":" .. (conf.iam_auth_assume_role_arn or "") .. ":" .. (conf.iam_auth_role_session_name or "")
+end
+
+
+local function raw_get_rds_instance(conf)
+  local credentials = aws.config.credentials
+  -- Assume role if the configuration is specified
+  if conf.iam_auth_assume_role_arn then
+    local sts, err = aws:STS({
+      region = aws.config.region,
+      stsRegionalEndpoints = AWS_global_config.sts_regional_endpoints,
+    })
+    if not sts then
+      return nil, fmt("failed to instantiate sts (%s)", err)
+    end
+
+    local sts_creds = aws:ChainableTemporaryCredentials {
+      params = {
+        RoleArn = conf.iam_auth_assume_role_arn,
+        RoleSessionName = conf.iam_auth_role_session_name or DEFAULT_ROLE_SESSION_NAME,
+      },
+      sts = sts,
+    }
+
+    credentials = sts_creds
+  end
+
+  local rds, err = aws:RDS({
+    credentials = credentials,
+    region = aws.config.region,
+  })
+
+  if not rds then
+    return nil, fmt("failed to instantiate rds (%s)", err)
+  end
+
+  RDS_SERVICE_CACHE:set(generate_conf_key(conf), rds)
+  return rds
+end
+
+
+local function get_rds_instance(conf)
+  local rds = RDS_SERVICE_CACHE:get(generate_conf_key(conf))
+  if rds then
+    return rds
+  end
+
+  return raw_get_rds_instance(conf)
 end
 
 
 local function raw_get(conf)
+  local rds, err = get_rds_instance(conf)
+  if not rds then
+    return nil, err
+  end
+
   local db_region = extract_region_from_db_endpoint(conf.host)
   if not db_region then
     return nil, "cannot fetch IAM token because extract region from db endpoint failed"
   end
 
+  -- Signer credentials are inherited from the global AWS config
+  -- so we need to override it by using the RDS credential
   local signer = rds:Signer {
     hostname = conf.host,
     port = conf.port,
     username = conf.user,
     region = db_region,
+    credentials = rds.config.credentials,
   }
 
   local res, err = signer:getAuthToken()

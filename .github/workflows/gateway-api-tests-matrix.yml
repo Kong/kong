@@ -329,7 +329,7 @@ jobs:
           AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
           APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
           TEST_APP: gateway
-                   
+
       - name: Get Gateway Details
         if: always()
         continue-on-error: true
@@ -375,6 +375,7 @@ jobs:
       GW_DP_IMAGE: ${{ github.event.inputs.gateway_image || 'kong/kong-gateway-internal:nightly-ubuntu' }}
       GW_MODE: ${{ matrix.gateway_mode }}
       PG_IAM_AUTH: ${{ matrix.postgres_version == 'rds-15.3' && 'true' || 'false' }}
+      PG_IAM_ASSUME_ROLE: ${{ matrix.postgres_version == 'rds-15.3' && 'true' || 'false' }}
     strategy:
       fail-fast: false
       matrix:
@@ -430,7 +431,7 @@ jobs:
         with:
           username: ${{ secrets.GHA_DOCKERHUB_PULL_USER }}
           password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
-      
+
       - name: Add domain.test to hostnames for ACME Plugin tests
         run: echo "127.0.0.1 domain.test" | sudo tee -a /etc/hosts
 
@@ -605,7 +606,7 @@ jobs:
         with:
           username: ${{ secrets.GHA_DOCKERHUB_PULL_USER }}
           password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
-      
+
       - name: Add domain.test to hostnames for ACME Plugin tests
         run: echo "127.0.0.1 domain.test" | sudo tee -a /etc/hosts
 
@@ -673,7 +674,7 @@ jobs:
 
       - name: Install decK
         uses: kong/setup-deck@v1
-      
+
       - name: Copy .npmrc
         run: cp .npmrc.ci .npmrc
 

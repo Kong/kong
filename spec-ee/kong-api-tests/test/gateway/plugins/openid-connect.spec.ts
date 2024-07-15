@@ -262,7 +262,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
         key: clientKey,
         rejectUnauthorized: false,
     })
-    
+
     let tlsPluginId: string
     let certId: string
     let invalidCertId: string
@@ -274,7 +274,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
         // whenever the original LUA_SSL_TRUSTED_CERTIFICATE is being modified, the keyring needs to either be turned off or get its certificates updated as well
         await resetGatewayContainerEnvVariable(
             {
-                KONG_LUA_SSL_TRUSTED_CERTIFICATE: '/tmp/root_ca.crt,/tmp/intermediate_ca.crt', KONG_KEYRING_ENABLED: `${isKongNative ? 'off' : 'on'}`
+                KONG_LUA_SSL_TRUSTED_CERTIFICATE: 'system,/tmp/root_ca.crt,/tmp/intermediate_ca.crt', KONG_KEYRING_ENABLED: `${isKongNative ? 'off' : 'on'}`
             },
             kongContainerName
         );
@@ -282,7 +282,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
         if (isHybrid) {
             await resetGatewayContainerEnvVariable(
                 {
-                    KONG_LUA_SSL_TRUSTED_CERTIFICATE: '/tmp/root_ca.crt,/tmp/intermediate_ca.crt', KONG_KEYRING_ENABLED: `${isKongNative ? 'off' : 'on'}`
+                    KONG_LUA_SSL_TRUSTED_CERTIFICATE: 'system,/tmp/root_ca.crt,/tmp/intermediate_ca.crt', KONG_KEYRING_ENABLED: `${isKongNative ? 'off' : 'on'}`
                 },
                 kongDpContainerName
             );
@@ -322,7 +322,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
         })
         tlsPluginId = resp.data.id
     })
-  
+
     //======= cert-based auth tests =======
     it('should create OIDC plugin that uses certificate-based tokens', async function () {
         const resp = await axios({
@@ -340,7 +340,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
                     auth_methods: ['bearer'],
                     cache_user_info: false,
                     cache_tokens: false,
-                    cache_introspection: false,                
+                    cache_introspection: false,
                 },
             },
             validateStatus: null,
@@ -567,7 +567,7 @@ describe('Gateway Plugins: OIDC with Keycloak', function () {
                 },
             },
             validateStatus: null,
-        }) 
+        })
         logResponse(resp)
         expect(resp.status, 'Status should be 200').to.equal(200)
     })

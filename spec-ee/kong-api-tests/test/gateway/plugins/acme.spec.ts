@@ -49,14 +49,14 @@ describe('Gateway Plugins: ACME', function () {
     // whenever the original LUA_SSL_TRUSTED_CERTIFICATE is being modified, the keyring needs to either be turned off or get its certificates updated as well
     await resetGatewayContainerEnvVariable(
       {
-        KONG_LUA_SSL_TRUSTED_CERTIFICATE: '/etc/acme-certs/pebble.minica.pem', KONG_KEYRING_ENABLED: `${isKongNative ? 'off' : 'on'}`
+        KONG_LUA_SSL_TRUSTED_CERTIFICATE: 'system,/etc/acme-certs/pebble.minica.pem', KONG_KEYRING_ENABLED: `${isKongNative ? 'off' : 'on'}`
       },
       kongContainerName
     );
     if (isGwHybrid()) {
       await resetGatewayContainerEnvVariable(
         {
-          KONG_LUA_SSL_TRUSTED_CERTIFICATE: '/etc/acme-certs/pebble.minica.pem', KONG_KEYRING_ENABLED: `${isKongNative ? 'off' : 'on'}`
+          KONG_LUA_SSL_TRUSTED_CERTIFICATE: 'system,/etc/acme-certs/pebble.minica.pem', KONG_KEYRING_ENABLED: `${isKongNative ? 'off' : 'on'}`
         },
         'kong-dp1'
       );
@@ -101,7 +101,7 @@ describe('Gateway Plugins: ACME', function () {
     it('should not create acme plugin with shm storage for hybrid mode', async function () {
       const resp = await postNegative(url, { name: 'acme', config: { storage: 'shm',  account_email: 'test@konghq.com'}});
       logResponse(resp);
-  
+
       expect(resp.status, 'Status should be 400').to.equal(400);
       expect(resp.data.message, 'Should have correct error message').to.contain(
         `schema violation ("shm" storage can't be used in Hybrid mode)`
@@ -173,7 +173,7 @@ describe('Gateway Plugins: ACME', function () {
       await eventually(async () => {
         const resp = await axios(`${url.split('plugins')[0]}certificates`);
         logResponse(resp);
-    
+
         expect(resp.status, 'Status should be 200').to.equal(200);
         expect(resp.data.data.length, 'Should see the certificate').to.equal(1);
         expect(resp.data.data[0].tags[0], 'Should see correct tag in certificate').to.equal('managed-by-acme');
@@ -187,7 +187,7 @@ describe('Gateway Plugins: ACME', function () {
     await eventually(async () => {
       const resp = await axios(`${url.split('plugins')[0]}acme/certificates`);
       logResponse(resp);
-  
+
       expect(resp.status, 'Status should be 200').to.equal(200);
       expect(resp.data.data.length, 'Should see the certificate').to.equal(1);
     });
@@ -197,7 +197,7 @@ describe('Gateway Plugins: ACME', function () {
     await eventually(async () => {
       const resp = await axios(`${url.split('plugins')[0]}acme/certificates/${domain}`);
       logResponse(resp);
-  
+
       expect(resp.status, 'Status should be 200').to.equal(200);
       expect(resp.data.data.length, 'Should see the certificate').to.equal(1);
     });
@@ -244,7 +244,7 @@ describe('Gateway Plugins: ACME', function () {
   //     logResponse(resp);
 
   //     console.log(`${url.split('plugins')[0]}acme`, resp)
-  
+
   //     // expect(resp.status, 'Status should be 400').to.equal(400);
   //     // expect(resp.data.message, 'Should have correct error message').to.contain(
   //     //   'schema violation ("shm" storage can nott be used in Hybrid mode)'
