@@ -1,3 +1,3 @@
-message: "set type of kong.logrotate as config|noreplace avoid overwriting during the upgrade"
+message: "Set type of kong.logrotate as `config|noreplace` to avoid overwriting during the upgrade."
 type: bugfix
 scope: Core
