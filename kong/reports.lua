@@ -335,6 +335,12 @@ function get_current_suffix(ctx)
     return nil
   end
 
+  -- 400 case is for invalid requests, eg: if a client sends a HTTP
+  -- request to a HTTPS port, it does not initialized any Nginx variables
+  if proxy_mode == "" and kong.response.get_status() == 400 then
+    return nil
+  end
+
   log(WARN, "could not determine log suffix (scheme=", tostring(scheme),
             ", proxy_mode=", tostring(proxy_mode), ")")
 end
