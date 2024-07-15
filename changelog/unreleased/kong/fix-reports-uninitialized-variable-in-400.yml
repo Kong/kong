@@ -1,4 +1,4 @@
 message: |
-  Fixed an issue where trigger a report with an uninitialized variable in the 400 abnormal traffic.
+  Fixed an issue where unnecessary uninitialized variable error log is reported when 400 bad requests were received.
 type: bugfix
 scope: Core
