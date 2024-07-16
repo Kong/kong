@@ -19,6 +19,7 @@ local sleep = helpers.sleep
 local dnsSRV = function(...) return helpers.dnsSRV(client, ...) end
 local dnsA = function(...) return helpers.dnsA(client, ...) end
 local dnsAAAA = function(...) return helpers.dnsAAAA(client, ...) end
+local dnsExpire = helpers.dnsExpire
 
 
 local unset_register = {}
@@ -304,6 +305,7 @@ describe("[round robin balancer]", function()
       -- so that CI and docker can have reliable results
       -- but remove `search` and `domain`
       search = {},
+      cache_purge = true,
     })
     snapshot = assert:snapshot()
   end)
@@ -412,6 +414,7 @@ describe("[round robin balancer]", function()
           resolvConf = {
             "nameserver 127.0.0.1:22000" -- make sure dns query fails
           },
+          cache_purge = true,
         })
         -- create balancer
         local b = check_balancer(new_balancer {
@@ -617,7 +620,7 @@ describe("[round robin balancer]", function()
     end)
     it("does not hit the resolver when 'cache_only' is set", function()
       local record = dnsA({
-        { name = "mashape.test", address = "1.2.3.4" },
+        { name = "mashape.test", address = "1.2.3.4", ttl = 0.1 },
       })
       local b = check_balancer(new_balancer {
         hosts = { { name = "mashape.test", port = 80, weight = 5 } },
@@ -625,6 +628,7 @@ describe("[round robin balancer]", function()
         wheelSize = 10,
       })
       record.expire = gettime() - 1 -- expire current dns cache record
+      sleep(0.2)  -- wait for record expiration
       dnsA({   -- create a new record
         { name = "mashape.test", address = "5.6.7.8" },
       })
@@ -1018,7 +1022,7 @@ describe("[round robin balancer]", function()
     end)
     it("weight change for unresolved record, updates properly", function()
       local record = dnsA({
-        { name = "really.really.really.does.not.exist.hostname.test", address = "1.2.3.4" },
+        { name = "really.really.really.does.not.exist.hostname.test", address = "1.2.3.4", ttl = 0.1 },
       })
       dnsAAAA({
         { name = "getkong.test", address = "::1" },
@@ -1039,6 +1043,8 @@ describe("[round robin balancer]", function()
       -- expire the existing record
       record.expire = 0
       record.expired = true
+      dnsExpire(client, record)
+      sleep(0.2)  -- wait for record expiration
       -- do a lookup to trigger the async lookup
       client.resolve("really.really.really.does.not.exist.hostname.test", {qtype = client.TYPE_A})
       sleep(0.5) -- provide time for async lookup to complete
@@ -1102,8 +1108,8 @@ describe("[round robin balancer]", function()
     end)
     it("renewed DNS A record; no changes", function()
       local record = dnsA({
-        { name = "mashape.test", address = "1.2.3.4" },
-        { name = "mashape.test", address = "1.2.3.5" },
+        { name = "mashape.test", address = "1.2.3.4", ttl = 0.1 },
+        { name = "mashape.test", address = "1.2.3.5", ttl = 0.1 },
       })
       dnsA({
         { name = "getkong.test", address = "9.9.9.9" },
@@ -1118,6 +1124,7 @@ describe("[round robin balancer]", function()
       })
       local state = copyWheel(b)
       record.expire = gettime() -1 -- expire current dns cache record
+      sleep(0.2)  -- wait for record expiration
       dnsA({   -- create a new record (identical)
         { name = "mashape.test", address = "1.2.3.4" },
         { name = "mashape.test", address = "1.2.3.5" },
@@ -1133,8 +1140,8 @@ describe("[round robin balancer]", function()
 
     it("renewed DNS AAAA record; no changes", function()
       local record = dnsAAAA({
-        { name = "mashape.test", address = "::1" },
-        { name = "mashape.test", address = "::2" },
+        { name = "mashape.test", address = "::1" , ttl = 0.1 },
+        { name = "mashape.test", address = "::2" , ttl = 0.1 },
       })
       dnsA({
         { name = "getkong.test", address = "9.9.9.9" },
@@ -1149,6 +1156,7 @@ describe("[round robin balancer]", function()
       })
       local state = copyWheel(b)
       record.expire = gettime() -1 -- expire current dns cache record
+      sleep(0.2)  -- wait for record expiration
       dnsAAAA({   -- create a new record (identical)
         { name = "mashape.test", address = "::1" },
         { name = "mashape.test", address = "::2" },
@@ -1163,9 +1171,9 @@ describe("[round robin balancer]", function()
     end)
     it("renewed DNS SRV record; no changes", function()
       local record = dnsSRV({
-        { name = "gelato.test", target = "1.2.3.6", port = 8001, weight = 5 },
-        { name = "gelato.test", target = "1.2.3.6", port = 8002, weight = 5 },
-        { name = "gelato.test", target = "1.2.3.6", port = 8003, weight = 5 },
+        { name = "gelato.test", target = "1.2.3.6", port = 8001, weight = 5, ttl = 0.1 },
+        { name = "gelato.test", target = "1.2.3.6", port = 8002, weight = 5, ttl = 0.1 },
+        { name = "gelato.test", target = "1.2.3.6", port = 8003, weight = 5, ttl = 0.1 },
       })
       dnsA({
         { name = "getkong.test", address = "9.9.9.9" },
@@ -1180,6 +1188,7 @@ describe("[round robin balancer]", function()
       })
       local state = copyWheel(b)
       record.expire = gettime() -1 -- expire current dns cache record
+      sleep(0.2)  -- wait for record expiration
       dnsSRV({    -- create a new record (identical)
         { name = "gelato.test", target = "1.2.3.6", port = 8001, weight = 5 },
         { name = "gelato.test", target = "1.2.3.6", port = 8002, weight = 5 },
@@ -1195,8 +1204,8 @@ describe("[round robin balancer]", function()
     end)
     it("renewed DNS A record; address changes", function()
       local record = dnsA({
-        { name = "mashape.test", address = "1.2.3.4" },
-        { name = "mashape.test", address = "1.2.3.5" },
+        { name = "mashape.test", address = "1.2.3.4", ttl = 0.1 },
+        { name = "mashape.test", address = "1.2.3.5", ttl = 0.1 },
       })
       dnsA({
         { name = "getkong.test", address = "9.9.9.9" },
@@ -1212,6 +1221,7 @@ describe("[round robin balancer]", function()
       })
       local state = copyWheel(b)
       record.expire = gettime() -1 -- expire current dns cache record
+      sleep(0.2)  -- wait for record expiration
       dnsA({                       -- insert an updated record
         { name = "mashape.test", address = "1.2.3.4" },
         { name = "mashape.test", address = "1.2.3.6" },  -- target updated
@@ -1229,7 +1239,7 @@ describe("[round robin balancer]", function()
       -- 2016/11/07 16:48:33 [error] 81932#0: *2 recv() failed (61: Connection refused), context: ngx.timer
 
       local record = dnsA({
-        { name = "mashape.test", address = "1.2.3.4" },
+        { name = "mashape.test", address = "1.2.3.4", ttl = 0.1 },
       })
       dnsA({
         { name = "getkong.test", address = "9.9.9.9" },
@@ -1251,8 +1261,10 @@ describe("[round robin balancer]", function()
         resolvConf = {
           "nameserver 127.0.0.1:22000" -- make sure dns query fails
         },
+        cache_purge = true,
       })
       record.expire = gettime() -1 -- expire current dns cache record
+      sleep(0.2)  -- wait for record expiration
       -- run entire wheel to make sure the expired one is requested, so it can fail
       for _ = 1, b.wheelSize do b:getPeer() end
       -- the only indice is now getkong.test
@@ -1282,6 +1294,7 @@ describe("[round robin balancer]", function()
       local test_name = "really.really.really.does.not.exist.hostname.test"
       local ttl = 0.1
       local staleTtl = 0   -- stale ttl = 0, force lookup upon expiring
+      client.getobj().stale_ttl = 0
       local record = dnsA({
         { name = test_name, address = "1.2.3.4", ttl = ttl },
       }, staleTtl)
@@ -1304,11 +1317,12 @@ describe("[round robin balancer]", function()
         assert.is_nil(ip)
         assert.equal(port, "Balancer is unhealthy")
       end
+      client.getobj().stale_ttl = 4
     end)
     it("renewed DNS A record; unhealthy entries remain unhealthy after renewal", function()
       local record = dnsA({
-        { name = "mashape.test", address = "1.2.3.4" },
-        { name = "mashape.test", address = "1.2.3.5" },
+        { name = "mashape.test", address = "1.2.3.4", ttl = 0.1 },
+        { name = "mashape.test", address = "1.2.3.5", ttl = 0.1 },
       })
       dnsA({
         { name = "getkong.test", address = "9.9.9.9" },
@@ -1342,6 +1356,7 @@ describe("[round robin balancer]", function()
       local state = copyWheel(b)
 
       record.expire = gettime() -1 -- expire current dns cache record
+      sleep(0.2)  -- wait for record expiration
       dnsA({   -- create a new record (identical)
         { name = "mashape.test", address = "1.2.3.4" },
         { name = "mashape.test", address = "1.2.3.5" },

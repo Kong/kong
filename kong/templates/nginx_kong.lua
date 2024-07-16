@@ -23,6 +23,10 @@ lua_shared_dict kong_db_cache               ${{MEM_CACHE_SIZE}};
 lua_shared_dict kong_db_cache_miss          12m;
 lua_shared_dict kong_secrets                5m;
 
+> if not legacy_dns_client then
+lua_shared_dict kong_dns_cache              5m;
+> end
+
 underscores_in_headers on;
 > if ssl_cipher_suite == 'old' then
 lua_ssl_conf_command CipherString DEFAULT:@SECLEVEL=0;

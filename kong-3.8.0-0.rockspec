@@ -115,6 +115,10 @@ build = {
 
     ["kong.resty.dns.client"] = "kong/resty/dns/client.lua",
     ["kong.resty.dns.utils"] = "kong/resty/dns/utils.lua",
+
+    ["kong.dns.client"] = "kong/dns/client.lua",
+    ["kong.dns.utils"] = "kong/dns/utils.lua",
+
     ["kong.resty.ctx"] = "kong/resty/ctx.lua",
 
     ["kong.resty.mlcache"] = "kong/resty/mlcache/init.lua",
