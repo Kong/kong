@@ -298,7 +298,7 @@ configure_make(
     ],
     out_lib_dir = "",
     out_shared_libs = select({
-        "@kong//:wasmx_flag": [
+        "@kong//:wasmx_dynamic_mod": [
             "nginx/modules/ngx_wasmx_module.so",
         ],
         "//conditions:default": [],
