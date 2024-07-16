@@ -641,7 +641,12 @@ do
 
   local function is_valid_value(v, visited)
     local t = type(v)
-    if v == nil or v == ngx_null or t == "number" or t == "string" or t == "boolean" then
+
+    -- cdata is not supported by cjson.encode
+    if type(v) == 'cdata' then
+        return false
+
+    elseif v == nil or v == ngx_null or t == "number" or t == "string" or t == "boolean" then
       return true
     end
 

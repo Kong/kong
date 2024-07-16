@@ -232,12 +232,18 @@ describe("kong.log.serialize", function()
                          tostring(res.service))
       end)
 
-      it("does not fail when coming across 'cjson.null' in response body", function()
-        local cjson_null = require "cjson".null
-        kong.log.set_serialize_value("response.body", cjson_null)
+      it("handle 'json.null' and 'cdata null'", function()
+        kong.log.set_serialize_value("response.body", ngx.null)
         local pok, value = pcall(kong.log.serialize, {})
         assert.is_true(pok)
         assert.is_true(type(value) == "table")
+
+        local ffi = require "ffi"
+        local n = ffi.new("void*")
+        kong.log.set_serialize_value("response.body", n)
+        local pok, value = pcall(kong.log.serialize, {})
+        assert.is_false(pok)
+        assert.is_true(type(value) == "string")
       end)
     end)
   end)
