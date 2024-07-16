@@ -895,6 +895,7 @@ build = {
     ["kong.plugins.ai-proxy-advanced.balancer.lowest-latency"] = "kong/plugins/ai-proxy-advanced/balancer/lowest-latency.lua",
     ["kong.plugins.ai-proxy-advanced.balancer.lowest-usage"] = "kong/plugins/ai-proxy-advanced/balancer/lowest-usage.lua",
     ["kong.plugins.ai-proxy-advanced.balancer.round-robin"] = "kong/plugins/ai-proxy-advanced/balancer/round-robin.lua",
+    ["kong.plugins.ai-proxy-advanced.balancer.least-connections"] = "kong/plugins/ai-proxy-advanced/balancer/least-connections.lua",
     ["kong.plugins.ai-proxy-advanced.balancer.state"] = "kong/plugins/ai-proxy-advanced/balancer/state.lua",
 
     ["kong.plugins.ai-request-transformer.handler"] = "kong/plugins/ai-request-transformer/handler.lua",

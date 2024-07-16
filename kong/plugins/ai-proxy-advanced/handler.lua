@@ -100,7 +100,7 @@ function _M:access(conf)
     end
     proxy_handler:access(selected_retry)
 
-    set_tried_target(selected_retry.id)
+    set_tried_target(selected)
 
     return true
   end)
