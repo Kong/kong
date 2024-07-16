@@ -1005,7 +1005,7 @@ for _, strategy in helpers.each_strategy() do
         assert.matches("\"testbody\":%[%]", body)
       end)
 
-      it("#testme invokes a Lambda function with legacy empty array mode and mutlivalueheaders", function()
+      it("invokes a Lambda function with legacy empty array mode and mutlivalueheaders", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/get",
