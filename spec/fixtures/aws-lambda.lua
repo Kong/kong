@@ -70,6 +70,10 @@ local fixtures = {
                       local str = "{\"statusCode\": 200, \"testbody\": [], \"isBase64Encoded\": false}"
                       ngx.say(str)
 
+                    elseif string.match(ngx.var.uri, "functionWithArrayCTypeInMVHAndEmptyArray") then
+                      ngx.header["Content-Type"] = "application/json"
+                      ngx.say("{\"statusCode\": 200, \"isBase64Encoded\": true, \"body\": \"eyJrZXkiOiAidmFsdWUiLCAia2V5MiI6IFtdfQ==\", \"headers\": {}, \"multiValueHeaders\": {\"Content-Type\": [\"application/json+test\"]}}")
+
                     elseif type(res) == 'string' then
                       ngx.header["Content-Length"] = #res + 1
                       ngx.say(res)
