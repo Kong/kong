@@ -44,7 +44,7 @@ endif
 .PHONY: install dev \
 	sca test test-integration test-plugins test-all \
 	pdk-phase-check functional-tests \
-	fix-windows release wasm-test-filters
+	fix-windows release wasm-test-filters test-logs
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 KONG_SOURCE_LOCATION ?= $(ROOT_DIR)
@@ -190,6 +190,9 @@ ifndef test_spec
 endif
 	@$(VENV) $(TEST_CMD) $(test_spec)
 
+test-logs:
+	tail -F servroot/logs/error.log
+
 pdk-phase-checks: dev
 	rm -f t/phase_checks.stats
 	rm -f t/phase_checks.report
@@ -236,3 +239,4 @@ install-legacy:
 	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) YAML_DIR=$(YAML_DIR)
 
 dev-legacy: remove install-legacy dependencies
+
