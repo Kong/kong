@@ -442,7 +442,7 @@ function ProxyCacheHandler:access(conf)
 
 
   reset_res_header(res)
-  set_res_header(res, "Age", floor(time() - res.timestamp), conf)
+  set_res_header(res, "age", floor(time() - res.timestamp), conf)
   set_res_header(res, "X-Cache-Status", "Hit", conf)
   set_res_header(res, "X-Cache-Key", cache_key, conf)
 

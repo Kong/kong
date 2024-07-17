@@ -160,6 +160,12 @@ for _, policy in ipairs({"memory", "redis"}) do
       local route22 = assert(bp.routes:insert {
         hosts = { "route-22.test" },
       })
+      local route23 = assert(bp.routes:insert {
+        hosts = { "route-23.test" },
+      })
+      local route24 = assert(bp.routes:insert({
+        hosts = { "route-24.test" },
+      }))
 
       local consumer1 = assert(bp.consumers:insert {
         username = "bob",
@@ -393,6 +399,30 @@ for _, policy in ipairs({"memory", "redis"}) do
         },
       })
 
+      assert(bp.plugins:insert {
+        name = "proxy-cache-advanced",
+        route = { id = route23.id },
+        config = {
+          strategy = policy,
+          content_type = { "text/plain", "application/json" },
+          [policy] = policy_config,
+          response_headers = {
+            age = true,
+          },
+        },
+      })
+
+      assert(bp.plugins:insert {
+        name = "proxy-cache-advanced",
+        route = { id = route24.id },
+        config = {
+          strategy = policy,
+          content_type = { "text/plain", "application/json" },
+          [policy] = policy_config,
+          -- default reponse_headers
+        },
+      })
+
       assert(helpers.start_kong({
         plugins = "bundled,proxy-cache-advanced",
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -574,6 +604,7 @@ for _, policy in ipairs({"memory", "redis"}) do
 
       local body1 = assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
+      assert.is_nil(res.headers["age"])
 
       -- cache key is a sha256sum of the prefix uuid, method, and $request
       local cache_key1 = res.headers["X-Cache-Key"]
@@ -592,6 +623,7 @@ for _, policy in ipairs({"memory", "redis"}) do
 
       local body2 = assert.res_status(200, res)
       assert.same("Hit", res.headers["X-Cache-Status"])
+      assert.is_not_nil(res.headers["age"])
       local cache_key2 = res.headers["X-Cache-Key"]
       assert.same(cache_key1, cache_key2)
 
@@ -616,7 +648,7 @@ for _, policy in ipairs({"memory", "redis"}) do
       local res = assert(client:send(request))
       assert.res_status(200, res)
       assert.is_nil(res.headers["X-Cache-Status"])
-      assert.is_nil(res.headers["Age"])
+      assert.is_nil(res.headers["age"])
       request.headers["kong-debug"] = 1
 
       local cache_key = res.headers["X-Cache-Key"]
@@ -626,8 +658,40 @@ for _, policy in ipairs({"memory", "redis"}) do
 
       local res = assert(client:send(request))
       assert.same("Hit", res.headers["X-Cache-Status"])
-      assert.is_not_nil(res.headers["Age"])
+      assert.is_not_nil(res.headers["age"])
       assert.is_not_nil(res.headers["X-Cache-Key"])
+    end)
+
+    it("Age headers on the response when enabling the response_headers.age", function()
+      local request = {
+        method = "GET",
+        path = "/get",
+        headers = {
+          host = "route-23.test",
+        },
+      }
+
+      local res = assert(client:send(request))
+      assert.res_status(200, res)
+      local res = assert(client:send(request))
+      assert.res_status(200, res)
+      assert.is_not_nil(res.headers["age"])
+    end)
+
+    it("Age headers on the response when defaults of response_headers are in effect", function()
+      local request = {
+        method = "GET",
+        path = "/get",
+        headers = {
+          host = "route-24.test",
+        },
+      }
+
+      local res = assert(client:send(request))
+      assert.res_status(200, res)
+      local res = assert(client:send(request))
+      assert.res_status(200, res)
+      assert.is_not_nil(res.headers["age"])
     end)
 
     it("respects cache ttl", function()
