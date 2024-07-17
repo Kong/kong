@@ -26,18 +26,6 @@ local compatible_checkers = {
   { 3008000000, --[[ 3.8.0.0 ]]
     function (config_table, dp_version, log_suffix)
       local has_update
-      local adapter = require("kong.plugins.proxy-cache.clustering.compat.response_headers_translation").adapter
-      for _, plugin in ipairs(config_table.plugins or {}) do
-        if plugin.name == 'proxy-cache' then
-          has_update = adapter(plugin.config)
-          if has_update then
-            log_warn_message('adapts ' .. plugin.name .. ' plugin response_headers configuration to older version',
-                             'revert to older schema',
-                             dp_version, log_suffix)
-          end
-        end
-      end
-
       for _, plugin in ipairs(config_table.plugins or {}) do
         if plugin.name == 'aws-lambda' then
           local config = plugin.config
