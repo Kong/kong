@@ -1,0 +1,4 @@
+message: |
+  **HTTP-Log**: When `queue.max_batch_size` is 1, log entries are now sent in separate, parallel HTTP requests.  Previously, they were sent sequentially in FIFO order.
+type: bugfix
+scope: Plugin

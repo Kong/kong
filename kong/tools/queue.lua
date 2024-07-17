@@ -203,6 +203,14 @@ end
 -- @param opts table, requires `name`, optionally includes `retry_count`, `max_coalescing_delay` and `max_batch_size`
 -- @return table: a Queue object.
 local function get_or_create_queue(queue_conf, handler, handler_conf)
+  assert(type(queue_conf) == "table",
+    "arg #1 (queue_conf) must be a table")
+  assert(type(handler) == "function",
+    "arg #2 (handler) must be a function")
+  assert(handler_conf == nil or type(handler_conf) == "table",
+    "arg #3 (handler_conf) must be a table or nil")
+  assert(type(queue_conf.name) == "string",
+    "arg #1 (queue_conf) must include a name")
 
   local name = assert(queue_conf.name)
   local key = _make_queue_key(name)
@@ -215,7 +223,70 @@ local function get_or_create_queue(queue_conf, handler, handler_conf)
     return queue
   end
 
-  queue = {
+  queue = Queue.create(queue_conf, handler, handler_conf)
+
+  kong.timer:named_at("queue " .. key, 0, function(_, q)
+    while q:count() > 0 do
+      q:log_debug("processing queue")
+      q:process_once()
+    end
+    q:log_debug("done processing queue")
+    queues[key] = nil
+  end, queue)
+
+  queues[key] = queue
+
+  queue:log_debug("queue created")
+
+  return queue
+end
+
+function Queue.create(queue_conf, handler, handler_conf)
+  assert(type(queue_conf) == "table",
+    "arg #1 (queue_conf) must be a table")
+  assert(type(handler) == "function",
+    "arg #2 (handler) must be a function")
+  assert(handler_conf == nil or type(handler_conf) == "table",
+    "arg #3 (handler_conf) must be a table or nil")
+  assert(type(queue_conf.name) == "string",
+    "arg #1 (queue_conf) must include a name")
+
+
+  assert(
+    type(queue_conf.max_batch_size) == "number",
+    "arg #1 (queue_conf) max_batch_size must be a number"
+  )
+  assert(
+    type(queue_conf.max_coalescing_delay) == "number",
+    "arg #1 (queue_conf) max_coalescing_delay must be a number"
+  )
+  assert(
+    type(queue_conf.max_entries) == "number",
+    "arg #1 (queue_conf) max_entries must be a number"
+  )
+  assert(
+    type(queue_conf.max_retry_time) == "number",
+    "arg #1 (queue_conf) max_retry_time must be a number"
+  )
+  assert(
+    type(queue_conf.initial_retry_delay) == "number",
+    "arg #1 (queue_conf) initial_retry_delay must be a number"
+  )
+  assert(
+    type(queue_conf.max_retry_delay) == "number",
+    "arg #1 (queue_conf) max_retry_delay must be a number"
+  )
+
+  local max_bytes_type = type(queue_conf.max_bytes)
+  assert(
+    max_bytes_type == "nil" or max_bytes_type == "number",
+    "arg #1 (queue_conf) max_bytes must be a number or nil"
+  )
+
+  local name = assert(queue_conf.name)
+  local key = _make_queue_key(name)
+
+  local queue = {
     -- Queue parameters from the enqueue call
     name = name,
     key = key,
@@ -238,22 +309,7 @@ local function get_or_create_queue(queue_conf, handler, handler_conf)
     queue[option] = value
   end
 
-  queue = setmetatable(queue, Queue_mt)
-
-  kong.timer:named_at("queue " .. key, 0, function(_, q)
-    while q:count() > 0 do
-      q:log_debug("processing queue")
-      q:process_once()
-    end
-    q:log_debug("done processing queue")
-    queues[key] = nil
-  end, queue)
-
-  queues[key] = queue
-
-  queue:log_debug("queue created")
-
-  return queue
+  return setmetatable(queue, Queue_mt)
 end
 
 
@@ -338,6 +394,45 @@ function Queue:drop_oldest_entry()
   self:delete_frontmost_entry()
 end
 
+function Queue:handle(entries)
+  local entry_count = #entries
+
+  local start_time = now()
+  local retry_count = 0
+  while true do
+    self:log_debug("passing %d entries to handler", entry_count)
+    local status, ok, err = pcall(self.handler, self.handler_conf, entries)
+    if status and ok == true then
+      self:log_debug("handler processed %d entries successfully", entry_count)
+      break
+    end
+
+    if not status then
+      -- protected call failed, ok is the error message
+      err = ok
+    end
+
+    self:log_warn("handler could not process entries: %s", tostring(err or "no error details returned by handler"))
+
+    if not err then
+      self:log_err("handler returned falsy value but no error information")
+    end
+
+    if (now() - start_time) > self.max_retry_time then
+      self:log_err(
+        "could not send entries due to max_retry_time exceeded. %d queue entries were lost",
+        entry_count)
+      break
+    end
+
+    -- Delay before retrying.  The delay time is calculated by multiplying the configured initial_retry_delay with
+    -- 2 to the power of the number of retries, creating an exponential increase over the course of each retry.
+    -- The maximum time between retries is capped by the max_retry_delay configuration parameter.
+    sleep(math_min(self.max_retry_delay, 2 ^ retry_count * self.initial_retry_delay))
+    retry_count = retry_count + 1
+  end
+end
+
 
 -- Process one batch of entries from the queue.  Returns truthy if entries were processed, falsy if there was an
 -- error or no items were on the queue to be processed.
@@ -387,41 +482,7 @@ function Queue:process_once()
     self.already_dropped_entries = false
   end
 
-  local start_time = now()
-  local retry_count = 0
-  while true do
-    self:log_debug("passing %d entries to handler", entry_count)
-    local status
-    status, ok, err = pcall(self.handler, self.handler_conf, batch)
-    if status and ok == true then
-      self:log_debug("handler processed %d entries successfully", entry_count)
-      break
-    end
-
-    if not status then
-      -- protected call failed, ok is the error message
-      err = ok
-    end
-
-    self:log_warn("handler could not process entries: %s", tostring(err or "no error details returned by handler"))
-
-    if not err then
-      self:log_err("handler returned falsy value but no error information")
-    end
-
-    if (now() - start_time) > self.max_retry_time then
-      self:log_err(
-        "could not send entries, giving up after %d retries.  %d queue entries were lost",
-        retry_count, entry_count)
-      break
-    end
-
-    -- Delay before retrying.  The delay time is calculated by multiplying the configured initial_retry_delay with
-    -- 2 to the power of the number of retries, creating an exponential increase over the course of each retry.
-    -- The maximum time between retries is capped by the max_retry_delay configuration parameter.
-    sleep(math_min(self.max_retry_delay, 2 ^ retry_count * self.initial_retry_delay))
-    retry_count = retry_count + 1
-  end
+  self:handle(batch)
 end
 
 
@@ -574,47 +635,6 @@ end
 
 
 function Queue.enqueue(queue_conf, handler, handler_conf, value)
-
-  assert(type(queue_conf) == "table",
-    "arg #1 (queue_conf) must be a table")
-  assert(type(handler) == "function",
-    "arg #2 (handler) must be a function")
-  assert(handler_conf == nil or type(handler_conf) == "table",
-    "arg #3 (handler_conf) must be a table or nil")
-  assert(type(queue_conf.name) == "string",
-    "arg #1 (queue_conf) must include a name")
-
-  assert(
-    type(queue_conf.max_batch_size) == "number",
-    "arg #1 (queue_conf) max_batch_size must be a number"
-  )
-  assert(
-    type(queue_conf.max_coalescing_delay) == "number",
-    "arg #1 (queue_conf) max_coalescing_delay must be a number"
-  )
-  assert(
-    type(queue_conf.max_entries) == "number",
-    "arg #1 (queue_conf) max_entries must be a number"
-  )
-  assert(
-    type(queue_conf.max_retry_time) == "number",
-    "arg #1 (queue_conf) max_retry_time must be a number"
-  )
-  assert(
-    type(queue_conf.initial_retry_delay) == "number",
-    "arg #1 (queue_conf) initial_retry_delay must be a number"
-  )
-  assert(
-    type(queue_conf.max_retry_delay) == "number",
-    "arg #1 (queue_conf) max_retry_delay must be a number"
-  )
-
-  local max_bytes_type = type(queue_conf.max_bytes)
-  assert(
-    max_bytes_type == "nil" or max_bytes_type == "number",
-    "arg #1 (queue_conf) max_bytes must be a number or nil"
-  )
-
   local queue = get_or_create_queue(queue_conf, handler, handler_conf)
   return enqueue(queue, value)
 end
