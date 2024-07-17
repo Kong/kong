@@ -109,6 +109,12 @@ do
       local route22 = assert(bp.routes:insert({
         hosts = { "route-22.test" },
       }))
+      local route23 = assert(bp.routes:insert({
+        hosts = { "route-23.test" },
+      }))
+      local route24 = assert(bp.routes:insert({
+        hosts = { "route-24.test" },
+      }))
 
       local consumer1 = assert(bp.consumers:insert {
         username = "bob",
@@ -343,6 +349,32 @@ do
         },
       })
 
+      assert(bp.plugins:insert {
+        name = "proxy-cache",
+        route = { id = route23.id },
+        config = {
+          strategy = policy,
+          content_type = { "text/plain", "application/json" },
+          [policy] = policy_config,
+          response_headers = {
+            age = true,
+            ["X-Cache-Status"] = true,
+            ["X-Cache-Key"]  = true
+          },
+        },
+      })
+
+      assert(bp.plugins:insert {
+        name = "proxy-cache",
+        route = { id = route24.id },
+        config = {
+          strategy = policy,
+          content_type = { "text/plain", "application/json" },
+          [policy] = policy_config,
+          -- leave reponse_header to default values
+        },
+      })
+
       assert(helpers.start_kong({
         plugins = "bundled",
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -419,6 +451,56 @@ do
         },
       }))
       assert.same("Hit", res.headers["X-Cache-Status"])
+      assert.is_not_nil(res.headers["Age"])
+      assert.is_not_nil(res.headers["X-Cache-Key"])
+    end)
+
+    it("response_headers headers on the response when configured", function()
+      -- Initial query to set cache
+      local res =  assert(client:get("/get", {
+        headers = {
+          Host = "route-23.test",
+        },
+      }))
+      -- Cache should be Miss
+      assert.res_status(200, res)
+      assert.is_same("Miss", res.headers["X-Cache-Status"])
+      assert.is_not_nil(res.headers["X-Cache-Key"])
+      assert.is_nil(res.headers["Age"])
+      -- Cache should be HIT
+      res =  assert(client:get("/get", {
+        headers = {
+          Host = "route-23.test",
+        },
+      }))
+      assert.res_status(200, res)
+      assert.same("Hit", res.headers["X-Cache-Status"])
+      -- response_headers are configured
+      assert.is_not_nil(res.headers["Age"])
+      assert.is_not_nil(res.headers["X-Cache-Key"])
+    end)
+
+    it("response_headers headers on the response when set to default", function()
+      -- Initial query to set cache
+      local res =  assert(client:get("/get", {
+        headers = {
+          Host = "route-24.test",
+        },
+      }))
+      -- Cache should be Miss
+      assert.res_status(200, res)
+      assert.is_same("Miss", res.headers["X-Cache-Status"])
+      assert.is_not_nil(res.headers["X-Cache-Key"])
+      assert.is_nil(res.headers["Age"])
+      res =  assert(client:get("/get", {
+        headers = {
+          Host = "route-24.test",
+        },
+      }))
+      -- Cache should be Hit
+      assert.res_status(200, res)
+      assert.same("Hit", res.headers["X-Cache-Status"])
+      -- response_headers are on by default
       assert.is_not_nil(res.headers["Age"])
       assert.is_not_nil(res.headers["X-Cache-Key"])
     end)
