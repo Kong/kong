@@ -42,7 +42,7 @@ local function get_balancer_instance(conf, bypass_cache)
       target.id = target.id or uuid()
     end
 
-    balancer_instance, err = mod.new(targets, conf.balancer)
+    balancer_instance, err = mod.new(targets, conf)
     if err then
       return nil, err
     end
@@ -137,10 +137,15 @@ function _M:access(conf)
   end)
 end
 
-function _M:header_filter()
+function _M:header_filter(conf)
   local target = kong.ctx.plugin.selected_target
   if not target then
     return
+  end
+
+  if ngx.var.http_kong_debug or conf.model_name_header then
+    local name = target.model.provider .. "/" .. (kong.ctx.plugin.llm_model_requested or target.model.name)
+    kong.response.set_header("X-Kong-LLM-Model", name)
   end
 
   return proxy_handler:header_filter(target)
@@ -161,7 +166,11 @@ function _M:log(conf)
     return
   end
 
-  local balancer_instance = get_balancer_instance(conf)
+  local balancer_instance, err = get_balancer_instance(conf)
+  if not balancer_instance then
+    return kong.log.err("failed to get balancer: ", err)
+  end
+
   local _, err = balancer_instance:afterBalance(conf, kong.ctx.plugin.selected_target)
 
   if err then
