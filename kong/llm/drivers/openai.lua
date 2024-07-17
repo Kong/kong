@@ -35,12 +35,12 @@ local transformers_to = {
 }
 
 local transformers_from = {
-  ["llm/v1/chat"] = function(response_string, model_info)
+  ["llm/v1/chat"] = function(response_string, _)
     local response_object, err = cjson.decode(response_string)
     if err then
-      return nil, "'choices' not in llm/v1/chat response"
+      return nil, "failed to decode llm/v1/chat response"
     end
-    
+
     if response_object.choices then
       return response_string, nil
     else
@@ -48,10 +48,10 @@ local transformers_from = {
     end
   end,
 
-  ["llm/v1/completions"] = function(response_string, model_info)
+  ["llm/v1/completions"] = function(response_string, _)
     local response_object, err = cjson.decode(response_string)
     if err then
-      return nil, "'choices' not in llm/v1/completions response"
+      return nil, "failed to decode llm/v1/completions response"
     end
 
     if response_object.choices then
