@@ -14,10 +14,7 @@ local tonumber = tonumber
 local fmt = string.format
 local pairs = pairs
 local max = math.max
-local min = math.min
 local timer_at = ngx.timer.at
-local now = ngx.now
-local sleep = ngx.sleep
 
 
 local sandbox_opts = { env = { kong = kong, ngx = ngx } }
@@ -196,28 +193,12 @@ function HttpLogHandler:log(conf)
   local entry = cjson.encode(kong.log.serialize())
 
   if queue_conf.max_batch_size == 1 then
-    local ok ,err = timer_at(0, function()
-      local retry_count = 0
-      local start_time = now()
-      while true do
-        local ok, err = send_entries(conf, { entry })
-        if ok then
-          break
-        end
-        if not ok then
-          kong.log.warn(fmt("handler could not process entries: %s",
-            tostring(err or "no error details returned by handler")))
-        end
-
-        if (now() - start_time) > queue_conf.max_retry_time then
-          kong.log.err("could not send entries due to max_retry_time exceeded. 1 queue entry was lost")
-          break
-        end
-
-        local delay = min(queue_conf.max_retry_delay, 2 ^ retry_count * queue_conf.initial_retry_delay)
-        sleep(delay)
-        retry_count = retry_count + 1
+    local queue = Queue.create(queue_conf, send_entries, conf)
+    local ok, err = timer_at(0, function(premature)
+      if premature then
+        return
       end
+      queue:handle({ entry })
     end)
     if not ok then
       kong.log.err("failed to create timer: ", err)
