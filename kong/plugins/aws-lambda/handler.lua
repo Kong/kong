@@ -4,6 +4,7 @@ local ngx_var = ngx.var
 local ngx_now = ngx.now
 local ngx_update_time = ngx.update_time
 local md5_bin = ngx.md5_bin
+local re_match = ngx.re.match
 local fmt = string.format
 local buffer = require "string.buffer"
 local lrucache = require "resty.lrucache"
@@ -256,7 +257,7 @@ function AWSLambdaHandler:access(conf)
       ct = ct[1]
     end
 
-    if ct and type(ct) == "string" and ct:lower():match("application/.*json") then
+    if ct and type(ct) == "string" and re_match(ct:lower(), "application/.*json", "jo") then
       content = remove_array_mt_for_empty_table(content)
     end
   end
