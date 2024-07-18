@@ -32,6 +32,18 @@ services:
       interval: 5s
       timeout: 10s
       retries: 10
+  redis-stack:
+    image: redis/redis-stack
+    ports:
+      - 127.0.0.1::6379
+    volumes:
+      - redis-stack-data:/data
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
   grpcbin:
     image: kong/grpcbin
     ports:
@@ -46,3 +58,4 @@ services:
 volumes:
   postgres-data:
   redis-data:
+  redis-stack-data:

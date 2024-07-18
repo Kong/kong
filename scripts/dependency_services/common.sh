@@ -111,6 +111,9 @@ port_defs+=("PG_PORT:5432")
 services+=("redis")
 port_defs+=("REDIS_PORT:6379 REDIS_SSL_PORT:6380")
 
+services+=("redis-stack")
+port_defs+=("REDIS_STACK_PORT:6379")
+
 services+=("grpcbin")
 port_defs+=("GRPCBIN_PORT:9000 GRPCBIN_SSL_PORT:9001")
 

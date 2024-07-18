@@ -373,6 +373,13 @@ jobs:
         options: >-
           --name kong_redis
 
+      redis-stack:
+        image: redis/redis-stack
+        ports:
+          - 16379:6379
+        options: >-
+          --name kong_redis_stack
+
       zipkin:
         image: openzipkin/zipkin:2
         ports:
@@ -593,6 +600,7 @@ jobs:
         KONG_TEST_DATABASE: postgres
         KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
         KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
+        KONG_SPEC_TEST_REDIS_STACK_PORT: "16379"
         KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
         KONG_TEST_LICENSE_DATA: ${{ steps.decrypted_license.outputs.out }}
         DT_TEST: ${{ inputs.dt-test }}

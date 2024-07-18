@@ -14,7 +14,6 @@ local utils = require("kong.llm.vectordb.strategies.redis.utils")
 local DEFAULT_KEEPALIVE_TIMEOUT = 55 * 1000
 local DEFAULT_KEEPALIVE_CONS = 1000
 
-
 local redis_metrics_mapping = {
   euclidean = "L2",
   cosine = "COSINE",
@@ -84,7 +83,7 @@ local function database_setup(namespace, redis_config, connector_config)
     "SCHEMA", "$.vector", "AS", "vector",
     "VECTOR", "FLAT", "6", "TYPE", "FLOAT32",
     "DIM", connector_config.dimensions,
-    "DISTANCE_METRIC", connector_config.metric
+    "DISTANCE_METRIC", metric
   )
 
   if not ok or err then
@@ -163,7 +162,7 @@ function Redis:search(vector, threshold, metadata_out)
   end
 
   if type(metadata_out) == "table" then
-    metadata_out.score = nested_table[2]
+    metadata_out.score = nested_table[1] == "vector_score" and nested_table[2]
   end
 
   return decoded_payload.payload

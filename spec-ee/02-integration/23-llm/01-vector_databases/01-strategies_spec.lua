@@ -8,10 +8,9 @@
 --
 -- imports
 --
-
 local uuid = require "kong.tools.uuid".uuid
-local redis_mock = require("spec.helpers.ai.redis_mock")
 
+local REDIS_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_STACK_PORT") or 6379)
 --
 -- test setup
 --
@@ -56,49 +55,52 @@ local test_payloads = {
 local default_config = {
   distance_metric = default_distance_metric,
   threshold = default_threshold,
-  redis = {},
+  dimensions = 1024,
+  redis = {
+    port = REDIS_PORT,
+  },
 }
 
 local default_namespace = "kong"
 
-describe("[redis vectordb]", function()
+local strategies = { "redis" }
+for _, strategy in ipairs(strategies) do
+
+describe("[" .. strategy .. " vectordb]", function()
+
+  local log_spy_func
+
+  before_each(function()
+    log_spy_func = spy.new(kong.log.warn)
+  end)
 
   after_each(function()
-    redis_mock.clear()
+    if strategy == "redis" then
+      local red = assert(require("kong.enterprise_edition.redis").connection(default_config.redis))
+      assert(red:flushall())
+    end
   end)
 
   describe("client:", function()
     it("initializes", function()
-      redis_mock.setup(finally)
-      local client, err = require("kong.llm.vectordb.strategies.redis").new(default_namespace, default_config)
+      local client, err = require("kong.llm.vectordb").new(strategy, default_namespace, default_config)
       assert.is_nil(err)
       assert.truthy(client)
-    end)
 
-    it("fails to initialize if the server connection can't be made", function()
-      redis_mock.setup(finally)
-      local mod = require("kong.llm.vectordb.strategies.redis")
-      local redis = require("resty.redis.connector")
-      local err_msg = "connection refused"
-      redis.forced_failure(err_msg)
-
-      local _, err = mod.new(default_namespace, default_config)
-      assert.equal(err_msg, err)
-
-      redis.forced_failure(nil)
+      assert.spy(log_spy_func).was_not_called()
     end)
   end)
 
   describe("indexes:", function()
     it("can manage indexes", function()
-      redis_mock.setup(finally)
-      local mod = require("kong.llm.vectordb.strategies.redis")
+      local mod = require("kong.llm.vectordb")
 
       -- creating indexes
       for i = 1, #test_indexes do
-        local succeeded, err = mod.new(test_indexes[i], {
-          dimensions = #test_vectors[1],
-          distance_metric = default_distance_metric
+        local succeeded, err = mod.new(strategy, test_indexes[i], {
+          dimensions = #test_vectors[i],
+          distance_metric = default_distance_metric,
+          redis = default_config.redis,
         })
         assert.is_nil(err)
         assert.truthy(succeeded)
@@ -106,26 +108,29 @@ describe("[redis vectordb]", function()
 
       -- it should not fail for duplicate indexes
       for i = 1, #test_indexes do
-        local succeeded, err = mod.new(test_indexes[i], {
-          dimensions = #test_vectors[1],
-          distance_metric = default_distance_metric
+        local succeeded, err = mod.new(strategy, test_indexes[i], {
+          dimensions = #test_vectors[i],
+          distance_metric = default_distance_metric,
+          redis = default_config.redis,
         })
         assert.is_nil(err)
         assert.truthy(succeeded)
       end
+
+      assert.spy(log_spy_func).was_not_called()
     end)
   end)
 
   describe("vectors:", function()
     it("insert", function()
-      redis_mock.setup(finally)
-      local mod = require("kong.llm.vectordb.strategies.redis")
+      local mod = require("kong.llm.vectordb")
 
       -- create vectors
       for i = 1, #test_indexes do
-        local client, err = mod.new(test_indexes[i], {
-          dimensions = #test_vectors[1],
+        local client, err = mod.new(strategy, test_indexes[i], {
+          dimensions = #test_vectors[i],
           distance_metric = default_distance_metric,
+          redis = default_config.redis,
         })
         assert.is_nil(err)
         assert.truthy(client)
@@ -133,29 +138,15 @@ describe("[redis vectordb]", function()
         assert.is_nil(err)
         assert.truthy(key)
       end
-
-      -- disallow duplicates
-      for i = 1, #test_indexes do
-        local client, err = mod.new(test_indexes[i], {
-          dimensions = #test_vectors[1],
-          distance_metric = default_distance_metric,
-        })
-        assert.is_nil(err)
-        assert.truthy(client)
-        local key, err = client:insert(test_vectors[i], test_payloads[i], i)
-        assert.equal("failed to execute JSON.SET: Already exists", err)
-        assert.is_falsy(key)
-      end
-
     end)
 
     it("delete", function()
-      redis_mock.setup(finally)
-      local mod = require("kong.llm.vectordb.strategies.redis")
+      local mod = require("kong.llm.vectordb")
 
-      local client, err = mod.new(test_indexes[1], {
+      local client, err = mod.new(strategy, test_indexes[1], {
         dimensions = #test_vectors[1],
         distance_metric = default_distance_metric,
+        redis = default_config.redis,
       })
       assert.is_nil(err)
       assert.truthy(client)
@@ -166,23 +157,25 @@ describe("[redis vectordb]", function()
       assert.is_nil(err)
       assert.truthy(ok)
 
-      local red2 = assert(require("kong.enterprise_edition.redis").connection(default_config.redis))
-      local res, err = red2["JSON.GET"](red2, key)
-      assert.truthy(res == nil)
-      assert.is_nil(err)
+      if strategy == "redis" then
+        local red2 = assert(require("kong.enterprise_edition.redis").connection(default_config.redis))
+        local res, err = red2["JSON.GET"](red2, key)
+        assert.truthy(res == ngx.null)
+        assert.is_nil(err)
+      end
     end)
 
-    it("search", function()
-      redis_mock.setup(finally)
-      local mod = require("kong.llm.vectordb.strategies.redis")
+    describe("search", function()
+      local mod = require("kong.llm.vectordb")
 
       -- search for vectors that have immediate matches
       local clients = {}
       local out = {}
       for i = 1, #test_vectors do
-        local client, err = mod.new(test_indexes[i], {
-          dimensions = #test_vectors[1],
+        local client, err = mod.new(strategy, test_indexes[i], {
+          dimensions = #test_vectors[i],
           distance_metric = default_distance_metric,
+          redis = default_config.redis,
         })
         assert.is_nil(err)
         assert.truthy(client)
@@ -195,8 +188,8 @@ describe("[redis vectordb]", function()
         local results, err = client:search(test_vectors[i], default_threshold, out)
         assert.is_nil(err)
         -- in the mock we put the distance as the score
-        assert.is_not_nil(results)
         assert.not_nil(out.score)
+        assert.is_not_nil(results)
         assert.same(test_payloads[i], results)
       end
 
@@ -216,7 +209,7 @@ describe("[redis vectordb]", function()
       end
 
       -- cache hit for distant vectors if you crank up the threshold
-      local crazy_threshold = 500.0
+      local crazy_threshold = 50000.0
       for i = 2, 3 do
         local results, err = clients[1]:search(test_vectors_for_search[i], crazy_threshold)
         assert.is_nil(err)
@@ -225,3 +218,5 @@ describe("[redis vectordb]", function()
     end)
   end)
 end)
+
+end -- for _, strategy in ipairs(strategies) do

@@ -151,11 +151,13 @@ local function setup(finally)
               for _, k in pairs(args) do
                 distance_metric = k
               end
-              if distance_metric ~= "euclidean" and distance_metric ~= "cosine" then
+              if distance_metric ~= "L2" and distance_metric ~= "COSINE" then
                 return false, "Invalid distance metric " .. (distance_metric or "nil")
               end
 
-              indexes[index] = distance_metric
+              indexes[index] = {
+                metric = distance_metric,
+              }
               return true, nil
             end,
              ["FT.INFO"] = function(red, index, ...)
@@ -167,7 +169,16 @@ local function setup(finally)
                 return false, "Invalid index name"
               end
 
-              return indexes[index]
+              if not indexes[index] then
+                return nil
+              end
+
+              return { "index_name", index,
+                "index_options", {},
+                "index_definition", {"key_type", "JSON", "prefixes", { index }, "default_score", "1" },
+                "attributes", {
+                  { "identifier", "$.vector", "attribute", "vector", "type", "VECTOR", "algorithm", "FLAT", "data_type", "FLOAT32", "dim", 4, "distance_metric", indexes[index].metric, }
+              } }
             end,
             ["FT.DROPINDEX"] = function(red, index, ...)
               if forced_error_msg then
@@ -189,7 +200,7 @@ local function setup(finally)
               -- verify whether the index for the search is valid,
               -- and determine whether the index was configured
               -- with euclidean or cosine distance
-              local distance_metric = indexes[index]
+              local distance_metric = indexes[index].metric
               if not distance_metric then
                 return nil, "Index not found"
               end
@@ -227,13 +238,15 @@ local function setup(finally)
                 -- check the proximity of the found vector
                 local found_vector = decoded_payload.vector
                 local proximity_match, distance
-                if distance_metric == "cosine" then
+                if distance_metric == "COSINE" then
                   proximity_match, distance = cosine_distance(search_vector, found_vector, threshold)
-                elseif distance_metric == "euclidean" then
+                elseif distance_metric == "L2" then
                   proximity_match, distance = euclidean_distance(search_vector, found_vector, threshold)
+                else
+                  error("unknown metric " .. distance_metric)
                 end
                 if proximity_match then
-                  table.insert(payloads, { {}, tostring(distance), {}, value })
+                  table.insert(payloads, { "vector_score", tostring(distance), "$", value })
                 end
               end
 
