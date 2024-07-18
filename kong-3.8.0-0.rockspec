@@ -898,15 +898,10 @@ build = {
     ["kong.ai.embeddings"] = "kong/ai/embeddings/init.lua",
     ["kong.ai.embeddings.drivers.openai"] = "kong/ai/embeddings/drivers/openai.lua",
     ["kong.ai.embeddings.drivers.mistralai"] = "kong/ai/embeddings/drivers/mistralai.lua",
-    ["kong.ai.semantic_cache"] = "kong/ai/semantic_cache/init.lua",
-    ["kong.ai.semantic_cache.utils"] = "kong/ai/semantic_cache/utils.lua",
-    ["kong.ai.semantic_cache.drivers.redis"] = "kong/ai/semantic_cache/drivers/redis.lua",
-    ["kong.ai.vector_databases.drivers.redis.client"] = "kong/ai/vector_databases/drivers/redis/client.lua",
-    ["kong.ai.vector_databases.drivers.redis.index"] = "kong/ai/vector_databases/drivers/redis/index.lua",
-    ["kong.ai.vector_databases.drivers.redis.vectors"] = "kong/ai/vector_databases/drivers/redis/vectors.lua",
 
     ["kong.llm"] = "kong/llm/init.lua",
     ["kong.llm.schemas"] = "kong/llm/schemas/init.lua",
+    ["kong.llm.schemas.vectordb"] = "kong/llm/schemas/vectordb.lua",
     ["kong.llm.drivers.shared"] = "kong/llm/drivers/shared.lua",
     ["kong.llm.drivers.openai"] = "kong/llm/drivers/openai.lua",
     ["kong.llm.drivers.azure"] = "kong/llm/drivers/azure.lua",
@@ -914,6 +909,9 @@ build = {
     ["kong.llm.drivers.anthropic"] = "kong/llm/drivers/anthropic.lua",
     ["kong.llm.drivers.mistral"] = "kong/llm/drivers/mistral.lua",
     ["kong.llm.drivers.llama2"] = "kong/llm/drivers/llama2.lua",
+    ["kong.llm.vectordb"] = "kong/llm/vectordb/init.lua",
+    ["kong.llm.vectordb.strategies.redis"] = "kong/llm/vectordb/strategies/redis/init.lua",
+    ["kong.llm.vectordb.strategies.redis.utils"] = "kong/llm/vectordb/strategies/redis/utils.lua",
 
     ["kong.llm.drivers.gemini"] = "kong/llm/drivers/gemini.lua",
 

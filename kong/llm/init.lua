@@ -17,6 +17,7 @@ local EMPTY = {}
 -- The module table
 local _M = {
   config_schema = require "kong.llm.schemas",
+  vectordb_schema = require "kong.llm.schemas.vectordb",
 }
 
 do

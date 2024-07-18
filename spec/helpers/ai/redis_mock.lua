@@ -95,6 +95,9 @@ local function euclidean_distance(v1, v2, threshold)
   return distance <= threshold, distance
 end
 
+local data = {}
+local indexes = {}
+
 --
 -- public functions
 --
@@ -102,25 +105,34 @@ end
 local function setup(finally)
   mocker.setup(finally, {
     modules = {
-      { "resty.redis", {
+      { "resty.redis.connector", {
         new = function()
           return {
             -- function mocks
             set_timeouts = function() end,
-            connect = function()
+            connect = function(red)
               if forced_error_msg then
                 return false, forced_error_msg
               end
+              return red
             end,
             auth = function()
               if forced_error_msg then
                 return false, forced_error_msg
               end
+              return true
             end,
             ping = function()
               if forced_error_msg then
                 return false, forced_error_msg
               end
+              return true
+            end,
+            set_keepalive = function()
+              if forced_error_msg then
+                return false, forced_error_msg
+              end
+              return true
             end,
 
             -- raw command mocks
@@ -135,24 +147,38 @@ local function setup(finally)
 
               -- gather the distance metric
               local args = { ... }
-              local distance_metric = args[#args]
-              if distance_metric ~= "EUCLIDEAN" and distance_metric ~= "COSINE" then
-                return false, "Invalid distance metric"
+              local distance_metric
+              for _, k in pairs(args) do
+                distance_metric = k
+              end
+              if distance_metric ~= "euclidean" and distance_metric ~= "cosine" then
+                return false, "Invalid distance metric " .. (distance_metric or "nil")
               end
 
-              red.indexes[index] = distance_metric
+              indexes[index] = distance_metric
               return true, nil
+            end,
+             ["FT.INFO"] = function(red, index, ...)
+              if forced_error_msg then
+                return false, forced_error_msg
+              end
+
+              if not index or index == "idx:_vss" then
+                return false, "Invalid index name"
+              end
+
+              return indexes[index]
             end,
             ["FT.DROPINDEX"] = function(red, index, ...)
               if forced_error_msg then
                 return false, forced_error_msg
               end
 
-              if not red.indexes[index] then
+              if not indexes[index] then
                 return false, "Index not found"
               end
 
-              red.indexes[index] = nil
+              indexes[index] = nil
               return true, nil
             end,
             ["FT.SEARCH"] = function(red, index, ...)
@@ -163,7 +189,7 @@ local function setup(finally)
               -- verify whether the index for the search is valid,
               -- and determine whether the index was configured
               -- with euclidean or cosine distance
-              local distance_metric = red.indexes[index]
+              local distance_metric = indexes[index]
               if not distance_metric then
                 return nil, "Index not found"
               end
@@ -179,7 +205,7 @@ local function setup(finally)
 
               -- The caller can override the response with mock_next_search to set this next_response_key
               -- and that will force a specific payload to be returned, if desired.
-              local payload = red.cache[red.next_response_key]
+              local payload = data[red.next_response_key]
               if payload then
                 -- reset the override
                 red.next_response_key = nil
@@ -192,7 +218,7 @@ local function setup(finally)
               -- we won't try to fully emulate Redis' vector search but we can do a simple
               -- distance comparison to emulate it.
               local payloads = {}
-              for _key, value in pairs(red.cache) do
+              for _key, value in pairs(data) do
                 local decoded_payload, err = cjson.decode(value)
                 if err then
                   return nil, err
@@ -201,9 +227,9 @@ local function setup(finally)
                 -- check the proximity of the found vector
                 local found_vector = decoded_payload.vector
                 local proximity_match, distance
-                if distance_metric == "COSINE" then
+                if distance_metric == "cosine" then
                   proximity_match, distance = cosine_distance(search_vector, found_vector, threshold)
-                elseif distance_metric == "EUCLIDEAN" then
+                elseif distance_metric == "euclidean" then
                   proximity_match, distance = euclidean_distance(search_vector, found_vector, threshold)
                 end
                 if proximity_match then
@@ -233,19 +259,19 @@ local function setup(finally)
                 return nil, forced_error_msg
               end
 
-              return red.cache[key], nil
+              return data[key], nil
             end,
             ["JSON.SET"] = function(red, key, _path, payload) -- currently, path is not used because we only set cache at root
               if forced_error_msg then
                 return false, forced_error_msg
               end
 
-              if red.cache[key] ~= nil then
+              if data[key] ~= nil then
                 return false, "Already exists"
               end
 
               red.key_count = red.key_count + 1
-              red.cache[key] = payload
+              data[key] = payload
 
               return true, nil
             end,
@@ -255,8 +281,12 @@ local function setup(finally)
               end
 
               red.key_count = red.key_count - 1
-              red.cache[key] = nil
+              data[key] = nil
 
+              return true, nil
+            end,
+            ["FLUSHALL"] = function()
+              data = {}
               return true, nil
             end,
 
@@ -279,6 +309,11 @@ local function setup(finally)
   })
 end
 
+local function clear()
+  data = {}
+  indexes = {}
+end
+
 --
 -- module
 --
@@ -286,4 +321,5 @@ end
 return {
   -- functions
   setup = setup,
+  clear = clear,
 }
