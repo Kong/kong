@@ -145,11 +145,11 @@ for _, strategy in helpers.each_strategy() do
         local logs = pl_file.read(cfg.prefix .. "/" .. cfg.proxy_error_log)
 
         for _, logpat in ipairs{
-          "access_start: %d%d+",
-          "shared_msg: Kong!",
-          "request_header: this",
-          "response_header: mock_upstream",
-          "serialized:%b{}",
+          "access_start: %d%d+\n",
+          "shared_msg: Kong!\n",
+          "request_header: this\n",
+          "response_header: mock_upstream\n",
+          "serialized:%b{}\n",
         } do
           assert.match(logpat, logs)
         end
