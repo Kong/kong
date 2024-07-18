@@ -1,6 +1,6 @@
 use Test::Nginx::Socket;
 
-plan tests => repeat_each() * (blocks() * 4 + 1);
+plan tests => repeat_each() * (blocks() * 5);
 
 workers(6);
 
@@ -59,7 +59,8 @@ qq {
 GET /t
 --- response_body
 answers: nil
-err: nil
---- error_log
+err: dns client error: 101 empty record received
+--- no_error_log
 [error]
+dns lookup pool exceeded retries
 API disabled in the context of init_worker_by_lua
