@@ -497,7 +497,6 @@ function _mt:query(sql, operation)
     operation = "write"
   end
 
-  local conn, is_new_conn
   local res, err, partial, num_queries
 
   local ok
@@ -506,36 +505,23 @@ function _mt:query(sql, operation)
     return nil, "error acquiring query semaphore: " .. err
   end
 
-  conn = self:get_stored_connection(operation)
-  if not conn then
+  local conn = self:get_stored_connection(operation)
+  if conn then
+    res, err, partial, num_queries = conn:query(sql)
+
+  else
+    local connection
     local config = operation == "write" and self.config or self.config_ro
 
-    conn, err = connect(config)
-    if not conn then
+    connection, err = connect(config)
+    if not connection then
       self:release_query_semaphore_resource(operation)
       return nil, err
     end
-    is_new_conn = true
-  end
 
-  res, err, partial, num_queries = conn:query(sql)
+    res, err, partial, num_queries = connection:query(sql)
 
-  -- if err is string then either it is a SQL error
-  -- or it is a socket error, here we abort connections
-  -- that encounter errors instead of reusing them, for
-  -- safety reason
-  if err and type(err) == "string" then
-    ngx.log(ngx.DEBUG, "SQL query throw error: ", err, ", close connection")
-    local _, err = conn:disconnect()
-    if err then
-      -- We're at the end of the query - just logging if
-      -- we cannot cleanup the connection
-      ngx.log(ngx.ERR, "failed to disconnect: ", err)
-    end
-    self.store_connection(nil, operation)
-
-  elseif is_new_conn then
-    setkeepalive(conn)
+    setkeepalive(connection)
   end
 
   self:release_query_semaphore_resource(operation)
