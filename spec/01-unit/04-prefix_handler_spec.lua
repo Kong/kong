@@ -1002,7 +1002,7 @@ describe("NGINX conf compiler", function()
                            nil, true)
             assert.matches("daemon on;", contents, nil, true)
             assert.matches("listen 0.0.0.0:9000;", contents, nil, true)
-            assert.not_matches("keepalive%s+%d+", contents)
+            assert.not_matches("keepalive", contents, nil, true)
           end)
 
           it("'upstream_keepalive = 0' disables keepalive", function()
