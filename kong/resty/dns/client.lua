@@ -697,6 +697,7 @@ local function parseAnswer(qname, qtype, answers, try_list)
   return true
 end
 
+
 -- executes 1 individual query.
 -- This query will not be synchronized, every call will be 1 query.
 -- @param qname the name to query for
@@ -713,10 +714,6 @@ local function individualQuery(qname, r_opts, try_list)
 
   local result
   result, err = r:query(qname, r_opts)
-  -- Manually destroy the resolver to avoid socket leak
-  -- resolver:destroy is patched in build phase, more information can be found in
-  -- build/openresty/patches/lua-resty-dns-0.22_01-destory_resolver.patch
-  r:destroy()
   if not result then
     return result, err, try_list
   end
