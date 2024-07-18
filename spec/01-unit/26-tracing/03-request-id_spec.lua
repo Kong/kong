@@ -1,13 +1,9 @@
-local function reload_module(name)
-  package.loaded[name] = nil
-  return require(name)
-end
-
+local request_id = require "kong.tracing.request_id"
 
 local function reset_globals(id)
   _G.ngx.ctx = {}
   _G.ngx.var = {
-    kong_request_id = id,
+    request_id = id,
   }
   _G.ngx.get_phase = function() -- luacheck: ignore
     return "access"
@@ -47,9 +43,6 @@ describe("Request ID unit tests", function()
     end)
 
     it("returns the expected Request ID and caches it in ctx", function()
-
-      local request_id = reload_module("kong.tracing.request_id")
-
       local id, err = request_id.get()
       assert.is_nil(err)
       assert.equal(ngx_var_request_id, id)
@@ -60,8 +53,6 @@ describe("Request ID unit tests", function()
 
     it("fails if accessed from phase that cannot read ngx.var", function()
       _G.ngx.get_phase = function() return "init" end
-
-      local request_id = reload_module("kong.tracing.request_id")
 
       local id, err = request_id.get()
       assert.is_nil(id)
