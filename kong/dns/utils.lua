@@ -29,7 +29,7 @@ local LOCALHOST = {
 }
 
 
-local DEFAULT_HOSTS = { localhost = LOCALHOST }
+local DEFAULT_HOSTS = { localhost = LOCALHOST, }
 
 
 local _M = {}
@@ -54,7 +54,7 @@ end
 -- parses a hostname with an optional port
 -- IPv6 addresses are always returned in square brackets
 -- @param name the string to check (this may contain a port number)
--- @return `name/ip` + `port (or nil)` + `type ("ipv4", "ipv6" or "name")`
+-- @return `name/ip` + `port (or nil)` + `type ("ipv4", "ipv6" or "domain")`
 function _M.parse_hostname(name)
   local t = _M.hostname_type(name)
   if t == "ipv4" or t == "domain" then
