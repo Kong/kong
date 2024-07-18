@@ -409,9 +409,11 @@ function Rpc:handle_event(plugin_name, conf, phase)
       self.reset_instance(plugin_name, conf)
       kong.log.warn(err)
       return self:handle_event(plugin_name, conf, phase)
-    end
 
-    kong.log.err(err)
+    else
+      kong.log.err("pluginserver error: ", err or "unknown error")
+      kong.response.error(500)
+    end
   end
 end
 
