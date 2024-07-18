@@ -170,7 +170,7 @@ function HttpLogHandler:log(conf)
     }
 
     local err
-    q, err = BatchQueue.new(process, opts)
+    q, err = BatchQueue.new("http-log", process, opts)
     if not q then
       kong.log.err("could not create queue: ", err)
       return
