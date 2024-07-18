@@ -1,13 +1,11 @@
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
-local constants = require "kong.constants"
 
 
 local XML_TEMPLATE = [[
 <?xml version="1.0" encoding="UTF-8"?>
 <error>
   <message>%s</message>
-  <requestid>%s</requestid>
 </error>]]
 
 
@@ -21,12 +19,8 @@ local HTML_TEMPLATE = [[
   <body>
     <h1>Kong Error</h1>
     <p>%s.</p>
-    <p>request_id: %s</p>
   </body>
 </html>]]
-
-
-local PLAIN_TEMPLATE = "%s\nrequest_id: %s"
 
 
 local RESPONSE_CODE    = 504
@@ -71,7 +65,6 @@ for _, strategy in helpers.each_strategy() do
 
       before_each(function()
         proxy_client = helpers.proxy_client()
-        helpers.clean_logfile()
       end)
 
       after_each(function()
@@ -90,8 +83,7 @@ for _, strategy in helpers.each_strategy() do
         })
 
         local body = assert.res_status(RESPONSE_CODE, res)
-        local request_id = res.headers[constants.HEADERS.REQUEST_ID]
-        local html_message = string.format(HTML_TEMPLATE, RESPONSE_MESSAGE, request_id)
+        local html_message = string.format(HTML_TEMPLATE, RESPONSE_MESSAGE)
         assert.equal(html_message, body)
       end)
 
@@ -139,7 +131,6 @@ for _, strategy in helpers.each_strategy() do
 
       before_each(function()
         proxy_client = helpers.proxy_client()
-        helpers.clean_logfile()
       end)
 
       after_each(function()
@@ -158,16 +149,10 @@ for _, strategy in helpers.each_strategy() do
         })
 
         local body = assert.res_status(RESPONSE_CODE, res)
-        local request_id = res.headers[constants.HEADERS.REQUEST_ID]
-        local plain_message = string.format(PLAIN_TEMPLATE, RESPONSE_MESSAGE, request_id)
-        assert.equals(plain_message, body)
+        assert.equal(RESPONSE_MESSAGE, body)
       end)
 
       describe("Accept header modified Content-Type", function()
-        before_each(function()
-          helpers.clean_logfile()
-        end)
-
         it("text/html", function()
           local res = assert(proxy_client:send {
             method  = "GET",
@@ -178,8 +163,7 @@ for _, strategy in helpers.each_strategy() do
           })
 
           local body = assert.res_status(RESPONSE_CODE, res)
-          local request_id = res.headers[constants.HEADERS.REQUEST_ID]
-          local html_message = string.format(HTML_TEMPLATE, RESPONSE_MESSAGE, request_id)
+          local html_message = string.format(HTML_TEMPLATE, RESPONSE_MESSAGE)
           assert.equal(html_message, body)
         end)
 
@@ -207,8 +191,7 @@ for _, strategy in helpers.each_strategy() do
           })
 
           local body = assert.res_status(RESPONSE_CODE, res)
-          local request_id = res.headers[constants.HEADERS.REQUEST_ID]
-          local xml_message = string.format(XML_TEMPLATE, RESPONSE_MESSAGE, request_id)
+          local xml_message = string.format(XML_TEMPLATE, RESPONSE_MESSAGE)
           assert.equal(xml_message, body)
         end)
       end)

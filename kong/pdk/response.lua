@@ -16,7 +16,6 @@ local cjson = require "cjson.safe"
 local checks = require "kong.pdk.private.checks"
 local phase_checker = require "kong.pdk.private.phases"
 local utils = require "kong.tools.utils"
-local request_id = require "kong.tracing.request_id"
 
 
 local ngx = ngx
@@ -1146,8 +1145,7 @@ local function new(self, major_version)
       local actual_message = message or
                              HTTP_MESSAGES["s" .. status] or
                              fmt(HTTP_MESSAGES.default, status)
-      local rid = request_id.get() or ""
-      body = fmt(utils.get_error_template(content_type), actual_message, rid)
+      body = fmt(utils.get_error_template(content_type), actual_message)
     end
 
     local ctx = ngx.ctx
