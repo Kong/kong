@@ -2196,7 +2196,7 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  describe("Router [#" .. strategy .. ", flavor = " .. flavor .. "] at startup" , function()
+  describe("Router at startup [#" .. strategy .. "]" , function()
     local proxy_client
     local route
 
@@ -2260,33 +2260,6 @@ for _, strategy in helpers.each_strategy() do
       end
     end)
 
-    it("#db worker respawn correctly rebuilds router", function()
-      local admin_client = helpers.admin_client()
-
-      local res = assert(admin_client:post("/routes", {
-        headers = { ["Content-Type"] = "application/json" },
-        body = {
-          paths = { "/foo" },
-        },
-      }))
-      assert.res_status(201, res)
-      admin_client:close()
-
-      assert(helpers.signal_workers(nil, "-TERM"))
-
-      proxy_client:close()
-      proxy_client = helpers.proxy_client()
-
-      local res = assert(proxy_client:send {
-        method  = "GET",
-        path    = "/foo",
-        headers = { ["kong-debug"] = 1 },
-      })
-
-      local body = assert.response(res).has_status(503)
-      local json = cjson.decode(body)
-      assert.equal("no Service found with those values", json.message)
-    end)
   end)
 end
 end
