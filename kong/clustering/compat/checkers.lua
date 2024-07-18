@@ -38,6 +38,19 @@ local compatible_checkers = {
         end
       end
 
+      for _, plugin in ipairs(config_table.plugins or {}) do
+        if plugin.name == 'aws-lambda' then
+          local config = plugin.config
+          if config.aws_sts_endpoint_url ~= nil then
+            config.aws_sts_endpoint_url = nil
+            has_update = true
+            log_warn_message('configures ' .. plugin.name .. ' plugin with aws_sts_endpoint_url',
+              'will be removed.',
+              dp_version, log_suffix)
+          end
+        end
+      end
+
       return has_update
     end
   },

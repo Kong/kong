@@ -48,6 +48,7 @@ local build_cache_key do
   -- vault refresh can take effect when key/secret is rotated
   local SERVICE_RELATED_FIELD = { "timeout", "keepalive", "aws_key", "aws_secret",
                                   "aws_assume_role_arn", "aws_role_session_name",
+                                  "aws_sts_endpoint_url",
                                   "aws_region", "host", "port", "disable_https",
                                   "proxy_url", "aws_imds_protocol_version" }
 
@@ -132,6 +133,7 @@ function AWSLambdaHandler:access(conf)
         credentials = credentials,
         region = region,
         stsRegionalEndpoints = AWS_GLOBAL_CONFIG.sts_regional_endpoints,
+        endpoint = conf.aws_sts_endpoint_url,
         ssl_verify = false,
         http_proxy = conf.proxy_url,
         https_proxy = conf.proxy_url,
