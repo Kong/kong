@@ -794,7 +794,7 @@
                                      # each upstream request to open a new
                                      # connection.
 
-#upstream_keepalive_max_requests = 10000 # Sets the default maximum number of
+#upstream_keepalive_max_requests = 1000  # Sets the default maximum number of
                                          # requests than can be proxied upstream
                                          # through one keepalive connection.
                                          # After the maximum number of requests
