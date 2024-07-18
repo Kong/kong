@@ -441,16 +441,17 @@ function _M.update(params, admin_to_update, opts)
   return { code = 200, body = transmogrify(admin) }
 end
 
-
-function _M.update_password(admin, params)
+local function do_update_password(admin, params)
   local creds, bad_req_message, err = auth_helpers.verify_password(admin, params.old_password,
                                                       params.password)
   if err then
-    return nil, err
+    kong.log.err("failed verify password:", err)
+
+    return { code = 500, body = { message = "An unexpected error occurred" } }
   end
 
   if bad_req_message then
-    return { code = 400, body = { message = bad_req_message }}
+    return { code = 400, body = { message = bad_req_message } }
   end
 
   local ws_id = admin.rbac_user.ws_id
@@ -460,9 +461,9 @@ function _M.update_password(admin, params)
                           { show_ws_id = true, workspace = null })
 
     if not consumer then
-      kong.log("update_password:", err)
+      kong.log.err("failed select consumer:", err)
 
-      return { code = 500, body = { message = "An unexpected error occurred" }}
+      return { code = 500, body = { message = "An unexpected error occurred" } }
     end
 
     ws_id = consumer.ws_id
@@ -476,7 +477,9 @@ function _M.update_password(admin, params)
     }, { workspace = ws_id })
 
   if err then
-    return nil, err
+    kong.log.err("failed update basicauth_credentials:", err)
+
+    return { code = 500, body = { message = "An unexpected error occurred" } }
   end
 
   -- invalidate auth credential cache
@@ -484,7 +487,33 @@ function _M.update_password(admin, params)
   local cache_key = kong.db.basicauth_credentials:cache_key(admin.username, nil, nil, nil, nil, ws_id)
   kong.cache:invalidate(cache_key)
 
-  return { code = 200, body = { message = "Password reset successfully" }}
+  return { code = 200, body = { message = "Password reset successfully" } }
+end
+
+function _M.update_password(admin, params)
+  local helpers = auth_helpers.new({ attempt_type = "change_password" })
+  local attempt = helpers:retrieve_login_attempts(admin)
+
+  if helpers:is_exceed_max_attempts(attempt) then
+    kong.log.warn("exceeded the maximum number of failed password attempts for admin.")
+    return { code = 400, body = { message = "Exceeded the maximum number of failed password attempts" } }
+  end
+
+  local res = do_update_password(admin, params)
+
+  if res and res.code ~= 200 then
+    helpers:unsuccessful_login_attempt(admin)
+    return res
+  end
+  
+  local _, err = helpers:successful_login_attempt(admin)
+
+  if err then
+    kong.log.err("failed login attempt:", err)
+    return { code = 500, body = { message = "An unexpected error occurred" } }
+  end
+  
+  return res
 end
 
 

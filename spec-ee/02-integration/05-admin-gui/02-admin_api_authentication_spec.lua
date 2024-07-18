@@ -1303,6 +1303,10 @@ for _, strategy in helpers.each_strategy() do
           -- only returning the last response is required for now
           return res
         end
+        
+        local retrieve_login_attempts = function (consumer)
+          return db.login_attempts:select({ consumer = consumer, attempt_type = "login" })
+        end
 
         describe("lockout", function()
           describe("default - unlimited attempts", function()
@@ -1345,7 +1349,7 @@ for _, strategy in helpers.each_strategy() do
 
             it("GET - infinite attempts", function()
               request_invalid(super_admin.username, 10)
-              assert.is_nil(db.login_attempts:select({consumer = super_admin.consumer}))
+              assert.is_nil(retrieve_login_attempts(super_admin.consumer))
             end)
           end)
 
@@ -1436,14 +1440,14 @@ for _, strategy in helpers.each_strategy() do
                 })
 
                 assert.res_status(200, res)
-                assert.is_nil(db.login_attempts:select({consumer = super_admin.consumer}))
+                assert.is_nil(retrieve_login_attempts(super_admin.consumer))
               end)
 
               it("user is denied access", function ()
                 local res = request_invalid(super_admin.username)
 
                 assert.res_status(401, res)
-                assert.equals(1, db.login_attempts:select({consumer = super_admin.consumer}).attempts["127.0.0.1"])
+                assert.equals(1, retrieve_login_attempts(super_admin.consumer).attempts["127.0.0.1"])
               end)
 
               it("user is denied access - upgrade path", function()
@@ -1459,7 +1463,7 @@ for _, strategy in helpers.each_strategy() do
 
                 assert.res_status(401, res)
 
-                local actual = assert(db.login_attempts:select({ consumer = upgrade_admin.consumer }))
+                local actual = assert(retrieve_login_attempts(upgrade_admin.consumer))
                 assert.equals(1, actual.attempts["1.2.3.4"])
                 assert.equals(1, actual.attempts["127.0.0.1"])
               end)
@@ -1468,12 +1472,12 @@ for _, strategy in helpers.each_strategy() do
                 local res = request_invalid(read_only_admin1.username, 3)
 
                 assert.res_status(401, res)
-                assert.equals(3, db.login_attempts:select({consumer = read_only_admin1.consumer}).attempts["127.0.0.1"])
+                assert.equals(3, retrieve_login_attempts(read_only_admin1.consumer).attempts["127.0.0.1"])
               end)
 
               it("user is locked out after max login attempts", function ()
                 request_invalid(read_only_admin2.username, 7)
-                assert.equals(7, db.login_attempts:select({consumer = read_only_admin2.consumer}).attempts["127.0.0.1"])
+                assert.equals(7, retrieve_login_attempts(read_only_admin2.consumer).attempts["127.0.0.1"])
 
                 -- Now that user is LOCKED_OUT, check to make sure that even a valid
                 -- password will not work
@@ -1494,7 +1498,7 @@ for _, strategy in helpers.each_strategy() do
 
               it("attempts are reset after successful login", function ()
                 request_invalid(read_only_admin3.username, 2)
-                assert.equals(2, db.login_attempts:select({consumer = read_only_admin3.consumer}).attempts["127.0.0.1"])
+                assert.equals(2,retrieve_login_attempts(read_only_admin3.consumer).attempts["127.0.0.1"])
 
                 local res = assert(client:send {
                   method = "GET",
@@ -1507,19 +1511,18 @@ for _, strategy in helpers.each_strategy() do
                 })
 
                 assert.res_status(200, res)
-                assert.is_nil(db.login_attempts:select({consumer = read_only_admin3.consumer}))
+                assert.is_nil(retrieve_login_attempts(read_only_admin3.consumer))
               end)
 
               it("attempts are reset after forgot password", function ()
                 -- lock the admin out
                 request_invalid(read_only_admin3.username, 7)
-                assert.equals(7, db.login_attempts:select({consumer = read_only_admin3.consumer}).attempts["127.0.0.1"])
+                assert.equals(7, retrieve_login_attempts(read_only_admin3.consumer).attempts["127.0.0.1"])
 
                 -- create a token for updating password
-                local jwt = assert(secrets.create(read_only_admin3.consumer, "localhost",
-                                                  ngx.time() + 100000))
+                local jwt = assert(secrets.create(read_only_admin3.consumer, "localhost", ngx.time() + 100000))
 
-              -- update their password
+                -- update their password
                 local res = assert(client:send {
                   method = "PATCH",
                   path  = "/admins/password_resets",
@@ -1547,7 +1550,7 @@ for _, strategy in helpers.each_strategy() do
                 assert.res_status(200, res)
 
                 -- check that login attempts are reset
-                assert.is_nil(db.login_attempts:select({consumer = read_only_admin3.consumer}))
+                assert.is_nil(retrieve_login_attempts(read_only_admin3.consumer))
               end)
             end)
           end)

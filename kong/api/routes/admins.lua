@@ -22,6 +22,8 @@ local kong = kong
 local log  = ngx.log
 local ERR  = ngx.ERR
 local null = ngx.null
+local login_auth_helpers           = auth_helpers.new({ attempt_type = "login" })
+local change_password_auth_helpers = auth_helpers.new({ attempt_type = "change_password" })
 
 local _log_prefix = "[admins] "
 
@@ -365,7 +367,8 @@ return {
         return kong.response.exit(404, { message = "Not found" })
       end
 
-      auth_helpers.reset_attempts(self.admin.consumer)
+      login_auth_helpers:reset_attempts(self.admin.consumer)
+      change_password_auth_helpers:reset_attempts(self.admin.consumer)
 
       local _, err = emails:reset_password_success(self.admin.email)
       if err then
@@ -495,11 +498,7 @@ return {
     PATCH = function(self, db, helpers, parent)
       ee_api.validate_password(self.params.password)
 
-      local res, err = admins.update_password(self.admin, self.params)
-
-      if err then
-        return endpoints.handle_error(err)
-      end
+      local res = admins.update_password(self.admin, self.params)
 
       return kong.response.exit(res.code, res.body)
     end

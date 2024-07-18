@@ -2327,6 +2327,16 @@
 #admin_gui_auth_login_attempts = 0
                         # Number of times a user can attempt to login to Kong
                         # Manager. 0 means infinite attempts allowed.
+#admin_gui_auth_change_password_attempts = 0
+                        # Number of times a user can attempt to change password.
+                        # 0 means infinite attempts allowed.
+
+#admin_gui_auth_change_password_ttl = 86400
+                        # Length, in seconds, of the TTL for changing password attempts
+                        # records. Records in the database older than
+                        # their TTL are automatically purged.
+                        #
+                        # Example, 1 days: `1 * 24 * 60 * 60 = 86400.`
 
 #admin_gui_header_txt =          # Sets the text for the Kong Manager header banner.
                                  # Header banner is not shown if this config is empty.

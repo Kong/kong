@@ -44,6 +44,16 @@ end
 
 return {
   postgres = {
+    up = [[
+      DO $$
+        BEGIN
+          ALTER TABLE IF EXISTS ONLY "login_attempts" ADD COLUMN "attempt_type" TEXT DEFAULT 'login';
+          ALTER TABLE login_attempts DROP CONSTRAINT login_attempts_pkey;
+          ALTER TABLE login_attempts ADD PRIMARY KEY(consumer_id, attempt_type);
+        EXCEPTION WHEN UNDEFINED_COLUMN OR DUPLICATE_COLUMN THEN
+          -- do nothing, accept existing state
+      END$$;
+    ]],
     teardown = function(connector)
       -- retrieve all workspace
       local workspaces = assert(connector:query("SELECT * FROM workspaces;"))

@@ -338,8 +338,13 @@ function _M.login(self, db, helpers)
   end
 
   if is_basic_auth then
-    local max_attempts = kong.configuration.portal_auth_login_attempts
-    auth_helpers.plugin_res_handler(plugin_auth_response, unauthenticated_developer, max_attempts)
+    local login_auth_helpers = auth_helpers.new({
+      attempt_type = "login",
+      configurations = {
+        attempt = "portal_auth_login_attempts",
+      }
+    })
+    login_auth_helpers:plugin_res_handler(plugin_auth_response, unauthenticated_developer)
   end
 
   -- if not openid-connect

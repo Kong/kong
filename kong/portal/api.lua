@@ -20,6 +20,12 @@ local dao_helpers        = require "kong.portal.dao_helpers"
 local workspace_config = require "kong.portal.workspace_config"
 local kong = kong
 local portal_and_vitals_allowed = require "kong.enterprise_edition.license_helpers".portal_and_vitals_allowed
+local login_auth_helpers = auth_helpers.new({
+  attempt_type = "login",
+  configurations = {
+    attempt = "portal_auth_login_attempts",
+  }
+})
 
 local PORTAL_DEVELOPER_META_FIELDS = constants.WORKSPACE_CONFIG.PORTAL_DEVELOPER_META_FIELDS
 local PORTAL_AUTH = constants.WORKSPACE_CONFIG.PORTAL_AUTH
@@ -499,7 +505,7 @@ return {
         return endpoints.handle_error(err)
       end
 
-      auth_helpers.reset_attempts(consumer)
+      login_auth_helpers:reset_attempts(consumer)
 
       local developer, _, err_t = db.developers:select_by_email(consumer.username)
       if err_t then

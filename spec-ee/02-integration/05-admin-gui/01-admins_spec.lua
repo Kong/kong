@@ -13,6 +13,7 @@ local is_array   = require("kong.tools.table").is_array
 local ee_jwt     = require "kong.enterprise_edition.jwt"
 local ee_helpers = require "spec-ee.helpers"
 local admins_helpers = require "kong.enterprise_edition.admins_helpers"
+local auth_helpers = require "kong.enterprise_edition.auth_helpers"
 local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local ee_utils = require "kong.enterprise_edition.utils"
 local escape = require("socket.url").escape
@@ -1678,8 +1679,9 @@ for _, strategy in helpers.each_strategy() do
       local client
       local db
       local admin
+      local login_attempt_helpers
 
-      local function password_reset(client, cookie, body, username)
+      local function remember_password_reset(cookie, body, username)
         if username == nil then
           username = "gruce"
         end
@@ -1717,8 +1719,45 @@ for _, strategy in helpers.each_strategy() do
 
         return db.admins:select_by_username(json.admin.username)
       end
+      
+      local function forgot_reset_password(admin, password)
+        -- create a token for updating password
+        local jwt, err = secrets.create(admin.consumer, "localhost", ngx.time() + 100000)
+        assert.is_nil(err)
+        assert.is_not_nil(jwt)
+
+        -- update password
+        local res = assert(client:send {
+          method  = "PATCH",
+          path    = "/admins/password_resets",
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+          body    = {
+            email = admin.email,
+            password = password,
+            token = jwt,
+          }
+        })
+
+        assert.res_status(200, res)
+      end
+      
+      local function auth(username, password, status)
+        local res = assert(client:send {
+          method = "GET",
+          path = "/auth",
+          headers = {
+            ["Authorization"] = "Basic " ..
+                ngx.encode_base64(username .. ":" .. password),
+            ["Kong-Admin-User"] = username,
+          }
+        })
+        assert.res_status(status, res)
+      end
 
       lazy_setup(function()
+        login_attempt_helpers = auth_helpers.new({ attempt_type = "change_password" })
         _, db = helpers.get_db_utils(strategy)
 
         assert(helpers.start_kong({
@@ -1728,6 +1767,8 @@ for _, strategy in helpers.each_strategy() do
           admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
           admin_gui_auth_password_complexity = "{\"kong-preset\": \"min_8\"}",
           enforce_rbac = "on",
+          admin_gui_auth_change_password_attempts = 2,
+          admin_gui_auth_change_password_ttl = 30
         }))
         ee_helpers.register_rbac_resources(db)
         client = assert(helpers.admin_client())
@@ -1769,7 +1810,7 @@ for _, strategy in helpers.each_strategy() do
       describe("POST", function()
         it("400 - password complexity checks should be enabled", function()
           local cookie = get_admin_cookie(client, "gruce", "original_gangster")
-          local res = assert(password_reset(client, cookie, {
+          local res = assert(remember_password_reset(cookie, {
             password = "1"
           }))
 
@@ -1781,51 +1822,91 @@ for _, strategy in helpers.each_strategy() do
 
         it("400 - old_password required", function()
           local cookie = get_admin_cookie(client, "gruce", "original_gangster")
-          local res = assert(password_reset(client, cookie, {password = "new_hotness"}))
+          local res = assert(remember_password_reset(cookie, { password = "new_hotness" }))
 
           assert.res_status(400, res)
         end)
-
-        it("400 - old_password cannot be the same as new password", function()
-          local cookie = get_admin_cookie(client, "gruce", "original_gangster")
-          local res = assert(password_reset(client, cookie, {
-            password = "New_hotness123",
-            old_password = "New_hotness123"
-          }))
+        
+        local attempt_change_password = function(password, body, message, attempts)
+          local cookie = get_admin_cookie(client, "gruce", password)
+          local res = assert(remember_password_reset(cookie, body))
 
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
 
-          assert.equal("Passwords cannot be the same", json.message)
+          assert.equal(message, json.message)
+          local attempt = login_attempt_helpers:retrieve_login_attempts(admin)
+          assert.is_not_nil(attempt)
+          assert.same(attempts, attempt.attempts["127.0.0.1"])
+        end
+
+        it("400 - old_password cannot be the same as new password", function()
+          attempt_change_password("original_gangster", {
+            password = "New_hotness123",
+            old_password = "New_hotness123"
+          }, "Passwords cannot be the same", 1)
         end)
 
         it("400 - old_password must be correct", function()
-          local cookie = get_admin_cookie(client, "gruce", "original_gangster")
-          local res = assert(password_reset(client, cookie, {
+          attempt_change_password("original_gangster", {
             password = "New_hotness123",
             old_password = "i_Am_Not_Correct"
-          }))
-          local body = assert.res_status(400, res)
-          local json = cjson.decode(body)
+          }, "Old password is invalid", 2)
+        end)
+        
+        it("400 - exceeded the maximum number of failed password attempts", function()
+          attempt_change_password("original_gangster", {
+            password = "New_hotness123",
+            old_password = "original_gangster"
+          }, "Exceeded the maximum number of failed password attempts", 2)
+        end)
 
-          assert.equal("Old password is invalid", json.message)
+        it("can change password again after reset password by 'Forgot Password'", function()
+          local new_password = "tHiSPasSw0rDiSTr*ng"
+          forgot_reset_password(admin, new_password)
+          -- ensure reset password successfully
+          auth("gruce", new_password, 200)
+          local cookie = get_admin_cookie(client, "gruce", new_password)
+          local res = assert(remember_password_reset(cookie, {
+            password = "IuLdfdlasdf*%sdf",
+            old_password = new_password
+          }))
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal("Password reset successfully", json.message)
+          auth("gruce", "IuLdfdlasdf*%sdf", 200)
         end)
 
         it("password can be reset successfully", function()
           local list = {
-            { username = "gruce"  },
-            { username = "gruce2" },
+            { username = "gruce", old_password = "IuLdfdlasdf*%sdf", },
+            { username = "gruce2", old_password = "original_gangster", },
           }
+          
+          for i = 1, 2, 1 do
+            attempt_change_password("IuLdfdlasdf*%sdf", {
+              password = "New_hotness123",
+              old_password = "i_Am_Not_Correct"
+            }, "Old password is invalid", i)
+          end
 
           for _, row in ipairs(list) do
-            local old_password = "original_gangster"
+            local old_password = row.old_password
             local new_password = "New_hotne33"
+            if row.username == "gruce" then
+              ngx.sleep(30) -- waiting for change password record was purged
+            end
 
-            local cookie = get_admin_cookie(client, row.username, old_password)
-            local res = assert(password_reset(client, cookie, {
-              password = new_password,
-              old_password = old_password,
-            }, row.username))
+            local res
+            helpers.wait_until(function()
+              local cookie = get_admin_cookie(client, row.username, old_password)
+              res = assert(remember_password_reset(cookie, {
+                password = new_password,
+                old_password = old_password,
+                            }, row.username))
+              return res.status == 200
+            end, 1)
+            
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
 
@@ -1836,17 +1917,9 @@ for _, strategy in helpers.each_strategy() do
             assert.truthy(cookie)
 
             -- ensure old password doesn't work anymore
-            local res = assert(client:send {
-              method = "GET",
-              path = "/auth",
-              headers = {
-                ["Authorization"] = "Basic " ..
-                                    ngx.encode_base64(row.username .. ":" .. old_password),
-                ["Kong-Admin-User"] = row.username,
-              }
-            })
-
-            assert.res_status(401, res)
+            auth(row.username, old_password, 401)
+            -- ensure new password works well
+            auth(row.username, new_password, 200)
           end
         end)
       end)

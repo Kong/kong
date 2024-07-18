@@ -40,6 +40,7 @@ local tagline = "Welcome to " .. _KONG._NAME
 local version = meta.version
 local lua_version = jit and jit.version or _VERSION
 
+local login_auth_helpers = auth_helpers.new({ attempt_type = "login" })
 
 local strip_foreign_schemas = function(fields)
   for _, field in ipairs(fields) do
@@ -544,8 +545,7 @@ return {
         return kong.response.exit(401, { message = "Unauthorized" })
       end
 
-      local max_attempts = kong.configuration.admin_gui_auth_login_attempts
-      auth_helpers.plugin_res_handler(plugin_auth_response, admin, max_attempts)
+      login_auth_helpers:plugin_res_handler(plugin_auth_response, admin)
 
       if self.consumer
          and ngx.ctx.authenticated_consumer.id ~= self.consumer.id
