@@ -114,6 +114,7 @@ build = {
     ["kong.templates.wasmtime_cache_config"] = "kong/templates/wasmtime_cache_config.lua",
 
     ["kong.resty.dns.client"] = "kong/resty/dns/client.lua",
+    ["kong.resty.dns.stats"] = "kong/resty/dns/stats.lua",
     ["kong.resty.dns.utils"] = "kong/resty/dns/utils.lua",
 
     ["kong.dns.client"] = "kong/dns/client.lua",
