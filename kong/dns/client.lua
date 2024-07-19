@@ -1,5 +1,6 @@
 local cjson = require("cjson.safe")
 local utils = require("kong.dns.utils")
+local stats = require("kong.dns.stats")
 local mlcache = require("kong.resty.mlcache")
 local resolver = require("resty.dns.resolver")
 
@@ -90,23 +91,6 @@ local _MT = { __index = _M, }
 
 
 local _TRIES_MT = { __tostring = cjson.encode, }
-
-
-local function stats_init_name(stats, name)
-  if not stats[name] then
-    stats[name] = {}
-  end
-end
-
-
-local function stats_increment(stats, name, key)
-  stats[name][key] = (stats[name][key] or 0) + 1
-end
-
-
-local function stats_set_count(stats, name, key, value)
-  stats[name][key] = value
-end
 
 
 local init_hosts do
@@ -279,7 +263,7 @@ function _M.new(opts)
 
   return setmetatable({
     cache = cache,
-    stats = {},
+    stats = stats.new(),
     hosts = hosts,
     r_opts = r_opts,
     resolv = opts._resolv or resolv,
@@ -357,8 +341,7 @@ end
 local function resolve_query(self, name, qtype, tries)
   local key = name .. ":" .. qtype
 
-  stats_init_name(self.stats, key)
-  stats_increment(self.stats, key, "query")
+  self.stats:incr(key, "query")
 
   local r, err = resolver:new(self.r_opts)
   if not r then
@@ -372,14 +355,14 @@ local function resolve_query(self, name, qtype, tries)
 
   local duration = math_floor((now() - start) * 1000)
 
-  stats_set_count(self.stats, key, "query_last_time", duration)
+  self.stats:set(key, "query_last_time", duration)
 
   log(DEBUG, PREFIX, "r:query(", key, ") ans:", answers and #answers or "-",
                      " t:", duration, " ms")
 
   -- network error or malformed DNS response
   if not answers then
-    stats_increment(self.stats, key, "query_fail_nameserver")
+    self.stats:incr(key, "query_fail_nameserver")
     err = "DNS server error: " .. tostring(err) .. ", took " .. duration .. " ms"
 
     -- TODO: make the error more structured, like:
@@ -391,9 +374,9 @@ local function resolve_query(self, name, qtype, tries)
 
   answers = process_answers(self, name, qtype, answers)
 
-  stats_increment(self.stats, key, answers.errstr and
-                                   "query_fail:" .. answers.errstr or
-                                   "query_succ")
+  self.stats:incr(key, answers.errstr and
+                       "query_fail:" .. answers.errstr or
+                       "query_succ")
 
   -- DNS response error
   if answers.errcode then
@@ -472,7 +455,7 @@ end
 
 
 local function start_stale_update_task(self, key, name, qtype)
-  stats_increment(self.stats, key, "stale")
+  self.stats:incr(key, "stale")
 
   local ok, err = timer_at(0, stale_update_task, self, key, name, qtype)
   if not ok then
@@ -564,8 +547,7 @@ local function resolve_all(self, name, qtype, cache_only, tries, has_timing)
 
   log(DEBUG, PREFIX, "resolve_all ", key)
 
-  stats_init_name(self.stats, key)
-  stats_increment(self.stats, key, "runs")
+  self.stats:incr(key, "runs")
 
   local answers, err, hit_level = self.cache:get(key, nil, resolve_callback,
                                                  self, name, qtype, cache_only,
@@ -576,7 +558,7 @@ local function resolve_all(self, name, qtype, cache_only, tries, has_timing)
   end
 
   local hit_str = hit_level and HIT_LEVEL_TO_NAME[hit_level] or "fail"
-  stats_increment(self.stats, key, hit_str)
+  self.stats:incr(key, hit_str)
 
   log(DEBUG, PREFIX, "cache lookup ", key, " ans:", answers and #answers or "-",
                      " hlv:", hit_str)
