@@ -1,4 +1,5 @@
-local tb_new = require(table.new)
+local tb_new = require("table.new")
+local tb_nkeys = require("table.nkeys")
 
 
 local pairs = pairs
@@ -44,9 +45,10 @@ end
 
 
 function _M:emit(fmt)
-  local output = {}
+  local stats = self.stats
+  local output = tb_new(0, tb_nkeys(stats))
 
-  for k, v in pairs(self.stats) do
+  for k, v in pairs(stats) do
     output[fmt(k)] = v
   end
 
