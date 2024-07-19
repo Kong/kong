@@ -652,11 +652,7 @@ end
 
 
 function _M.stats()
-  local stats = {}
-  for k, v in pairs(dns_client.stats) do
-    stats[format_key(k)] = v
-  end
-  return stats
+  return dns_client.stats:emit(format_key)
 end
 
 
