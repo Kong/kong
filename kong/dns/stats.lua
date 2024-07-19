@@ -12,7 +12,8 @@ local _MT = { __index = _M, }
 
 function _M.new()
   local self = {
-    stats = {},
+    -- pre-allocate 4 slots
+    stats = tb_new(0, 4),
   }
 
   return setmetatable(self, _MT)
@@ -23,6 +24,9 @@ function _M:_get_stats(name)
   local stats = self.stats
 
   if not stats[name] then
+    -- keys will be: query/query_last_time/query_fail_nameserver
+    --               query_succ/query_fail/stale/runs/...
+    -- 6 slots may be a approprate number
     stats[name] = tb_new(0, 6)
   end
 
