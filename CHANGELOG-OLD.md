@@ -89,15 +89,11 @@ Looking for recent releases? Please see [CHANGELOG.md](CHANGELOG.md) instead.
 
 ## [2.8.4]
 
-> Released 2023/09/22
-
 ### Fixes
 
 - Fixed a bug where internal redirects (i.e. those produced by the error_page directive) could interfere with worker process handling the request when buffered proxying is being used.
 
 ## [2.8.3]
-
-> Released 2022/11/02
 
 ### Fixes
 
