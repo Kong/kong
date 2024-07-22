@@ -105,7 +105,7 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
 end
 
 -- returns err or nil
-function _M.configure_request(conf)
+function _M.configure_request(conf, identity_interface)
   local parsed_url
 
   if conf.model.options.upstream_url then
@@ -136,26 +136,38 @@ function _M.configure_request(conf)
   local auth_param_name = conf.auth and conf.auth.param_name
   local auth_param_value = conf.auth and conf.auth.param_value
   local auth_param_location = conf.auth and conf.auth.param_location
-
-  if auth_header_name and auth_header_value then
-    kong.service.request.set_header(auth_header_name, auth_header_value)
-  end
-
   local query_table = kong.request.get_query()
+
+  -- [[ EE
+  if identity_interface then  -- managed identity mode, passed from ai-proxy handler.lua
+    local _, token, _, err = identity_interface.credentials:get()
+
+    if err then
+      kong.log.err("failed to authenticate with Azure OpenAI, ", err)
+      return kong.response.exit(500, { error = { message = "failed to authenticate with Azure OpenAI" }})
+    end
+
+    kong.service.request.set_header("Authorization", "Bearer " .. token)
+  
+  else
+    if auth_header_name and auth_header_value then
+      kong.service.request.set_header(auth_header_name, auth_header_value)
+    end
+
+    if auth_param_name and auth_param_value and auth_param_location == "query" then
+      query_table[auth_param_name] = auth_param_value
+    end
+    -- if auth_param_location is "form", it will have already been set in a pre-request hook
+  end
+  -- ]]
 
   -- technically min supported version
   query_table["api-version"] = kong.request.get_query_arg("api-version")
                             or (conf.model.options and conf.model.options.azure_api_version)
-  
-  if auth_param_name and auth_param_value and auth_param_location == "query" then
-    query_table[auth_param_name] = auth_param_value
-  end
 
   kong.service.request.set_query(query_table)
 
-  -- if auth_param_location is "form", it will have already been set in a pre-request hook
   return true, nil
 end
-
 
 return _M

@@ -13,6 +13,14 @@ local kong_meta = require("kong.meta")
 local buffer = require "string.buffer"
 local strip = require("kong.tools.utils").strip
 
+-- cloud auth/sdk providers
+local GCP_SERVICE_ACCOUNT do
+  GCP_SERVICE_ACCOUNT = os.getenv("GCP_SERVICE_ACCOUNT")
+end
+
+local GCP = require("resty.gcp.request.credentials.accesstoken")
+--
+
 
 local EMPTY = {}
 
@@ -23,43 +31,65 @@ local _M = {
 }
 
 
+-- static messages
+local ERROR__NOT_SET = 'data: {"error": true, "message": "empty or unsupported transformer response"}'
 
---- Return a 400 response with a JSON body. This function is used to
--- return errors to the client while also logging the error.
+
+local _KEYBASTION = setmetatable({}, {
+  __mode = "k",
+  __index = function(this_cache, plugin_config)
+    if plugin_config.model.provider == "gemini" and
+       plugin_config.auth and
+       plugin_config.auth.gcp_use_service_account then
+
+      ngx.log(ngx.NOTICE, "loading gcp sdk for plugin ", kong.plugin.get_id())
+
+      local service_account_json = (plugin_config.auth and plugin_config.auth.gcp_service_account_json) or GCP_SERVICE_ACCOUNT
+
+      local ok, gcp_auth = pcall(GCP.new, nil, service_account_json)
+      if ok and gcp_auth then
+        -- store our item for the next time we need it
+        gcp_auth.service_account_json = service_account_json
+        this_cache[plugin_config] = { interface = gcp_auth, error = nil }
+        return this_cache[plugin_config]
+      end
+
+      return { interface = nil, error = "cloud-authentication with GCP failed" }
+    
+    -- [[ EE
+    elseif plugin_config.model.provider == "azure" 
+        and plugin_config.auth.azure_use_managed_identity then
+      ngx.log(ngx.NOTICE, "loading azure sdk for plugin ", kong.plugin.get_id())
+
+      local azure_client = require("resty.azure"):new({
+        client_id = plugin_config.auth.azure_client_id,
+        client_secret = plugin_config.auth.azure_client_secret,
+        tenant_id = plugin_config.auth.azure_tenant_id,
+        token_scope = "https://cognitiveservices.azure.com/.default",
+        token_version = "v2.0",
+      })
+  
+      local _, err = azure_client.authenticate()
+      if not err then
+        -- store our item for the next time we need it
+        this_cache[plugin_config] = { interface = azure_client, error = nil }
+        return this_cache[plugin_config]
+      end
+  
+      kong.log.err("failed to authenticate with Azure OpenAI: ", err)
+      return { interface = nil, error = "managed identity auth with Azure OpenAI failed" }
+    end
+    -- ]]
+
+  end,
+})
+
+
 local function bad_request(msg)
   kong.log.info(msg)
   return kong.response.exit(400, { error = { message = msg } })
 end
 
-
-
--- [[ EE
-local _KEYBASTION = setmetatable({}, {
-  __mode = "k",
-  __index = function(this_cache, plugin_config)
-
-    ngx.log(ngx.DEBUG, "loading azure sdk for ", plugin_config.model.options.azure_deployment_id, " in ", plugin_config.model.options.azure_instance)
-
-    local azure_client = require("resty.azure"):new({
-      client_id = plugin_config.auth.azure_client_id,
-      client_secret = plugin_config.auth.azure_client_secret,
-      tenant_id = plugin_config.auth.azure_tenant_id,
-      token_scope = "https://cognitiveservices.azure.com/.default",
-      token_version = "v2.0",
-    })
-
-    local _, err = azure_client.authenticate()
-    if err then
-      kong.log.err("failed to authenticate with Azure OpenAI: ", err)
-      return kong.response.exit(500, { error = { message = "failed to authenticate with Azure OpenAI" }})
-    end
-
-    -- store our item for the next time we need it
-    this_cache[plugin_config] = azure_client
-    return azure_client
-  end,
-})
--- ]]
 
 -- get the token text from an event frame
 local function get_token_text(event_t)
@@ -72,7 +102,6 @@ local function get_token_text(event_t)
   local token_text = (first_choice.delta or EMPTY).content or first_choice.text or ""
   return (type(token_text) == "string" and token_text) or ""
 end
-
 
 
 local function handle_streaming_frame(conf)
@@ -98,10 +127,43 @@ local function handle_streaming_frame(conf)
     -- because we have already 200 OK'd the client by now
 
     if (not finished) and (is_gzip) then
-      chunk = kong_utils.inflate_gzip(chunk)
+      chunk = kong_utils.inflate_gzip(ngx.arg[1])
     end
 
-    local events = ai_shared.frame_to_events(chunk)
+    local is_raw_json = conf.model.provider == "gemini"
+    local events = ai_shared.frame_to_events(chunk, is_raw_json )
+
+    if not events then
+      -- usually a not-supported-transformer or empty frames.
+      -- header_filter has already run, so all we can do is log it,
+      -- and then send the client a readable error in a single chunk
+      local response = ERROR__NOT_SET
+
+      if is_gzip then
+        response = kong_utils.deflate_gzip(response)
+      end
+
+      ngx.arg[1] = response
+      ngx.arg[2] = true
+
+      return
+    end
+
+    if not events then
+      -- usually a not-supported-transformer or empty frames.
+      -- header_filter has already run, so all we can do is log it,
+      -- and then send the client a readable error in a single chunk
+      local response = ERROR__NOT_SET
+
+      if is_gzip then
+        response = kong_utils.deflate_gzip(response)
+      end
+
+      ngx.arg[1] = response
+      ngx.arg[2] = true
+
+      return
+    end
 
     for _, event in ipairs(events) do
       local formatted, _, metadata = ai_driver.from_format(event, conf.model, "stream/" .. conf.route_type)
@@ -355,7 +417,7 @@ function _M:access(conf)
 
     if not request_table then
       if not string.find(content_type, "multipart/form-data", nil, true) then
-        return bad_request("content-type header does not match request body")
+        return bad_request("content-type header does not match request body, or bad JSON formatting")
       end
 
       multipart = true  -- this may be a large file upload, so we have to proxy it directly
@@ -400,30 +462,6 @@ function _M:access(conf)
     end
   end
 
-  -- check the incoming format is the same as the configured LLM format
-  local compatible, err = llm.is_compatible(request_table, route_type)
-  if not compatible then
-    kong_ctx_shared.skip_response_transformer = true
-    return bad_request(err)
-  end
-
-  -- [[ EE
-  if conf.model.provider == "azure"
-       and conf.auth.azure_use_managed_identity then
-    local identity_interface = _KEYBASTION[conf]
-    if identity_interface then
-      local _, token, _, err = identity_interface.credentials:get()
-
-      if err then
-        kong.log.err("failed to authenticate with Azure Content Services, ", err)
-        return kong.response.exit(500, { error = { message = "failed to authenticate with Azure Content Services" }})
-      end
-
-      kong.service.request.set_header("Authorization", "Bearer " .. token)
-    end
-  end
-  -- ]]
-
   -- check if the user has asked for a stream, and/or if
   -- we are forcing all requests to be of streaming type
   if request_table and request_table.stream or
@@ -436,8 +474,9 @@ function _M:access(conf)
       return bad_request("response streaming is not enabled for this LLM")
     end
 
-    -- store token cost estimate, on first pass
-    if not kong_ctx_plugin.ai_stream_prompt_tokens then
+    -- store token cost estimate, on first pass, if the
+    -- provider doesn't reply with a prompt token count
+    if (not kong.ctx.plugin.ai_stream_prompt_tokens) and (not ai_shared.streaming_has_token_counts[conf_m.model.provider]) then
       local prompt_tokens, err = ai_shared.calculate_cost(request_table or {}, {}, 1.8)
       if err then
         kong.log.err("unable to estimate request token cost: ", err)
@@ -483,8 +522,17 @@ function _M:access(conf)
     kong.service.request.set_body(parsed_request_body, content_type)
   end
 
+  -- get the provider's cached identity interface - nil may come back, which is fine
+  local identity_interface = _KEYBASTION[conf]
+  if identity_interface and identity_interface.error then
+    kong.ctx.shared.skip_response_transformer = true
+    kong.log.err("error authenticating with ", conf.model.provider, " using native provider auth, ", identity_interface.error)
+    return kong.response.exit(500, "LLM request failed before proxying")
+  end
+
   -- now re-configure the request for this operation type
-  local ok, err = ai_driver.configure_request(conf_m)
+  local ok, err = ai_driver.configure_request(conf_m,
+               identity_interface and identity_interface.interface)
   if not ok then
     kong_ctx_shared.skip_response_transformer = true
     kong.log.err("failed to configure request for AI service: ", err)

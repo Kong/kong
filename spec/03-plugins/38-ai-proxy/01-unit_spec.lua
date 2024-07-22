@@ -230,6 +230,20 @@ local FORMATS = {
       },
     },
   },
+  gemini = {
+    ["llm/v1/chat"] = {
+      config = {
+        name = "gemini-pro",
+        provider = "gemini",
+        options = {
+          max_tokens = 8192,
+          temperature = 0.8,
+          top_k = 1,
+          top_p = 0.6,
+        },
+      },
+    },
+  },
 }
 
 local STREAMS = {
@@ -653,5 +667,48 @@ describe(PLUGIN_NAME .. ": (unit)", function()
     }, formatted)
   end)
 
+  describe("streaming transformer tests", function()
+    
+    it("transforms truncated-json type (beginning of stream)", function()
+      local input = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/partial-json-beginning/input.bin"))
+      local events = ai_shared.frame_to_events(input, true)
+
+      local expected = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/partial-json-beginning/expected-output.json"))
+      local expected_events = cjson.decode(expected)
+
+      assert.same(events, expected_events, true)
+    end)
+
+    it("transforms truncated-json type (end of stream)", function()
+      local input = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/partial-json-end/input.bin"))
+      local events = ai_shared.frame_to_events(input, true)
+
+      local expected = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/partial-json-end/expected-output.json"))
+      local expected_events = cjson.decode(expected)
+
+      assert.same(events, expected_events, true)
+    end)
+    
+    it("transforms complete-json type", function()
+      local input = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/complete-json/input.bin"))
+      local events = ai_shared.frame_to_events(input, false)  -- not "truncated json mode" like Gemini
+
+      local expected = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/complete-json/expected-output.json"))
+      local expected_events = cjson.decode(expected)
+
+      assert.same(events, expected_events)
+    end)
+
+    it("transforms text/event-stream type", function()
+      local input = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/text-event-stream/input.bin"))
+      local events = ai_shared.frame_to_events(input, false)  -- not "truncated json mode" like Gemini
+
+      local expected = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/text-event-stream/expected-output.json"))
+      local expected_events = cjson.decode(expected)
+
+      assert.same(events, expected_events)
+    end)
+
+  end)
 
 end)
