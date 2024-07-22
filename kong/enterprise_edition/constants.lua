@@ -51,6 +51,7 @@ return {
     "degraphql",
     "exit-transformer",
     "forward-proxy",
+    "proxy-cache-advanced",
     "graphql-proxy-cache-advanced",
     "jq",
     "jwe-decrypt",

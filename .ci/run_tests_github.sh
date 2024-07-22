@@ -86,7 +86,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
     # TODO: add the ai-azure-content-safety plugin here?
     declare -A plugins_to_test=(
         ["first"]="openid-connect"
-        ["second"]="ldap-auth-advanced proxy-cache-advanced ai-azure-content-safety"
+        ["second"]="ldap-auth-advanced ai-azure-content-safety"
         ["third"]="rate-limiting-advanced ai-rate-limiting-advanced kafka-log oas-validation saml vault-auth"
         ["fourth"]="upstream-oauth mtls-auth header-cert-auth jwt-signer request-validator kafka-upstream konnect-application-auth opa graphql-rate-limiting-advanced"
         ["fips-first"]="openid-connect"

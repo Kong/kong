@@ -1812,7 +1812,7 @@ for _, policy in ipairs({"memory", "redis"}) do
           local body = assert.res_status(502, res)
           local json_body = cjson.decode(body)
           assert.same({
-            message = "connection reset by peer",
+            message = "closed",
           }, json_body)
         end)
       end)

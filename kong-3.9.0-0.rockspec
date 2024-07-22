@@ -852,6 +852,17 @@ build = {
     ["kong.plugins.proxy-cache.strategies"]           = "kong/plugins/proxy-cache/strategies/init.lua",
     ["kong.plugins.proxy-cache.strategies.memory"]    = "kong/plugins/proxy-cache/strategies/memory.lua",
 
+    ["kong.plugins.proxy-cache-advanced.handler"]                      = "kong/plugins/proxy-cache-advanced/handler.lua",
+    ["kong.plugins.proxy-cache-advanced.cache_key"]                    = "kong/plugins/proxy-cache-advanced/cache_key.lua",
+    ["kong.plugins.proxy-cache-advanced.schema"]                       = "kong/plugins/proxy-cache-advanced/schema.lua",
+    ["kong.plugins.proxy-cache-advanced.api"]                          = "kong/plugins/proxy-cache-advanced/api.lua",
+    ["kong.plugins.proxy-cache-advanced.strategies"]                   = "kong/plugins/proxy-cache-advanced/strategies/init.lua",
+    ["kong.plugins.proxy-cache-advanced.strategies.memory"]            = "kong/plugins/proxy-cache-advanced/strategies/memory.lua",
+    ["kong.plugins.proxy-cache-advanced.strategies.redis"]             = "kong/plugins/proxy-cache-advanced/strategies/redis.lua",
+    ["kong.plugins.proxy-cache-advanced.migrations"]                   = "kong/plugins/proxy-cache-advanced/migrations/init.lua",
+    ["kong.plugins.proxy-cache-advanced.migrations.001_370_to_380"]    = "kong/plugins/proxy-cache-advanced/migrations/001_370_to_380.lua",
+    ["kong.plugins.proxy-cache-advanced.migrations.002_370_to_380"]    = "kong/plugins/proxy-cache-advanced/migrations/002_370_to_380.lua",
+
     ["kong.plugins.grpc-web.deco"] = "kong/plugins/grpc-web/deco.lua",
     ["kong.plugins.grpc-web.handler"] = "kong/plugins/grpc-web/handler.lua",
     ["kong.plugins.grpc-web.schema"] = "kong/plugins/grpc-web/schema.lua",

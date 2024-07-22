@@ -118,6 +118,7 @@ describe("Plugins", function()
       "aws-lambda",
       "azure-functions",
       "upstream-timeout",
+      "proxy-cache-advanced",
       "proxy-cache",
       "graphql-proxy-cache-advanced",
       "forward-proxy",

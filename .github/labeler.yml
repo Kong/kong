@@ -411,9 +411,9 @@ plugins-ee/openid-connect:
 - changed-files:
   - any-glob-to-any-file: plugins-ee/openid-connect/**/*
 
-plugins-ee/proxy-cache-advanced:
+plugins/proxy-cache-advanced:
 - changed-files:
-  - any-glob-to-any-file: plugins-ee/proxy-cache-advanced/**/*
+  - any-glob-to-any-file: kong/plugins/proxy-cache-advanced/**/*
 
 plugins-ee/rate-limiting-advanced:
 - changed-files:

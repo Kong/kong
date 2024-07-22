@@ -26,7 +26,7 @@ trap "echo exiting because of error" 0
 export KONG_PG_HOST=localhost
 export KONG_TEST_PG_HOST=localhost
 
-KONG_28XX_PLUGINS=bundled,rate-limiting-advanced,graphql-rate-limiting-advanced,openid-connect
+KONG_28XX_PLUGINS=bundled,rate-limiting-advanced,graphql-rate-limiting-advanced,proxy-cache-advanced,openid-connect
 KONG_34XX_PLUGINS=$KONG_28XX_PLUGINS,saml
 
 function usage() {
