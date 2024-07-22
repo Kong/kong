@@ -128,6 +128,22 @@ jobs:
         apt-get update
         apt-get install -y git tar gzip file sudo
 
+    - name: Install GLibc
+      if: matrix.label == 'amazonlinux-2'
+      run: |
+        yum groupinstall -y "Development Tools" && yum install -y nss_nis
+        curl -o gcc-8.2.0.tar.gz http://ftp.gnu.org/gnu/gcc/gcc-8.2.0/gcc-8.2.0.tar.gz && tar -xzf gcc-8.2.0.tar.gz
+        cd gcc-8.2.0 && ./contrib/download_prerequisites && mkdir build && cd build
+        ../configure --prefix=/usr/local/gcc-8.2.0 --enable-bootstrap --enable-checking=release --enable-languages=c,c++ --disable-multilib
+        make -j 8 && make install && ln -sv /usr/local/gcc-8.2.0/include/ /usr/include/gcc && ln -sv /usr/lib/gcc/aarch64-redhat-linux/7/include /usr/include/linux/
+        export PATH=/usr/local/gcc-8.2.0/bin:$PATH && echo "PATH=/usr/local/gcc-8.2.0/bin:$PATH" >> $GITHUB_ENV
+        cd ../../ && curl -o make-4.0.tar.gz http://ftp.gnu.org/gnu/make/make-4.0.tar.gz && tar -xzf make-4.0.tar.gz
+        cd make-4.0 && ./configure && make && make install && yum remove -y make && ln -s /usr/local/bin/make /bin/make
+        cd .. && curl -o glibc-2.28.tar.gz  https://ftp.gnu.org/gnu/libc/glibc-2.28.tar.gz && tar -xzf glibc-2.28.tar.gz
+        cd glibc-2.28 && mkdir build && cd build
+        ../configure --prefix=/usr --disable-profile --enable-add-ons --with-headers=/usr/include --with-binutils=/usr/
+        make -j 8 && make install
+
     - name: Cache Git
       id: cache-git
       if: (matrix.package == 'rpm' || matrix.image == 'debian:10') && matrix.image != ''
