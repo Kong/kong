@@ -4,6 +4,7 @@ local ngx_var = ngx.var
 local ngx_now = ngx.now
 local ngx_update_time = ngx.update_time
 local md5_bin = ngx.md5_bin
+local re_match = ngx.re.match
 local fmt = string.format
 local buffer = require "string.buffer"
 local lrucache = require "resty.lrucache"
@@ -252,7 +253,13 @@ function AWSLambdaHandler:access(conf)
   -- instead of JSON arrays for empty arrays.
   if conf.empty_arrays_mode == "legacy" then
     local ct = headers["Content-Type"]
-    if ct and ct:lower():match("application/.*json") then
+    -- If Content-Type is specified by multiValueHeader then
+    -- it will be an array, so we need to get the first element
+    if type(ct) == "table" and #ct > 0 then
+      ct = ct[1]
+    end
+
+    if ct and type(ct) == "string" and re_match(ct:lower(), "application/.*json", "jo") then
       content = remove_array_mt_for_empty_table(content)
     end
   end
