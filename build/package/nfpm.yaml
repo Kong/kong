@@ -32,8 +32,8 @@ contents:
 - src: nfpm-prefix/share
   dst: /usr/local/share
   type: tree
-- src: nfpm-prefix/etc/kong
-  dst: /etc/kong
+- dst: /etc/kong
+  type: dir
 - src: bin/kong
   dst: /usr/local/bin/kong
 - src: bin/kong-health
@@ -42,8 +42,12 @@ contents:
   dst: /lib/systemd/system/kong.service
 - src: build/package/kong.logrotate
   dst: /etc/kong/kong.logrotate
+  type: config|noreplace
   file_info:
     mode: 0644
+- src: nfpm-prefix/etc/kong/kong.conf.default
+  dst: /etc/kong/kong.conf.default
+  type: config
 - src: /usr/local/openresty/bin/resty
   dst: /usr/local/bin/resty
   type: symlink
