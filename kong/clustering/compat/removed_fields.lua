@@ -345,6 +345,9 @@ return {
     },
     ai_proxy = {
       "max_request_body_size",
+      "model.options.gemini",
+      "auth.gcp_use_service_account",
+      "auth.gcp_service_account_json",
     },
     ai_prompt_decorator = {
       "max_request_body_size",
@@ -358,9 +361,15 @@ return {
     },
     ai_request_transformer = {
       "max_request_body_size",
+      "llm.model.options.gemini",
+      "llm.auth.gcp_use_service_account",
+      "llm.auth.gcp_service_account_json",
     },
     ai_response_transformer = {
       "max_request_body_size",
+      "llm.model.options.gemini",
+      "llm.auth.gcp_use_service_account",
+      "llm.auth.gcp_service_account_json",
     },
     -- Enterprise plugins
     openid_connect = {
