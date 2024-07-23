@@ -37,7 +37,8 @@ local MAX_DATA_LEN = 2^22 - 1
 
 local HEADER_LEN = #st_pack(PACK_F, MAX_KEY_LEN, MAX_DATA_LEN)
 
-local SOCKET_PATH = "unix:" .. ngx.config.prefix() .. "/stream_rpc.sock"
+-- this module may be loaded before `kong.configuration` is initialized
+local SOCKET_PATH = "unix:" .. ngx.config.prefix() .. "/runtime/stream_rpc.sock"
 
 local stream_api = {}
 

@@ -896,11 +896,9 @@ return {
 
   init_worker = {
     before = function()
-      -- TODO: PR #9337 may affect the following line
-      local prefix = kong.configuration.prefix or ngx.config.prefix()
-
-      STREAM_TLS_TERMINATE_SOCK = fmt("unix:%s/stream_tls_terminate.sock", prefix)
-      STREAM_TLS_PASSTHROUGH_SOCK = fmt("unix:%s/stream_tls_passthrough.sock", prefix)
+      local runtime_prefix = kong.configuration.runtime_prefix
+      STREAM_TLS_TERMINATE_SOCK = fmt("unix:%s/stream_tls_terminate.sock", runtime_prefix)
+      STREAM_TLS_PASSTHROUGH_SOCK = fmt("unix:%s/stream_tls_passthrough.sock", runtime_prefix)
 
       log_level.init_worker()
 

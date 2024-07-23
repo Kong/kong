@@ -481,6 +481,13 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
     return nil, kong_config.prefix .. " is not a directory"
   end
 
+  if not exists(kong_config.runtime_prefix) then
+    local ok, err = makepath(kong_config.runtime_prefix)
+    if not ok then
+      return nil, err
+    end
+  end
+
   -- create directories in prefix
   for _, dir in ipairs {"logs", "pids"} do
     local ok, err = makepath(join(kong_config.prefix, dir))

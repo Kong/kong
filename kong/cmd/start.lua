@@ -13,11 +13,11 @@ local function is_socket(path)
   return lfs.attributes(path, "mode") == "socket"
 end
 
-local function cleanup_dangling_unix_sockets(prefix)
+local function cleanup_dangling_unix_sockets(runtime_prefix)
   local found = {}
 
-  for child in lfs.dir(prefix) do
-    local path = prefix .. "/" .. child
+  for child in lfs.dir(runtime_prefix) do
+    local path = runtime_prefix .. "/" .. child
     if is_socket(path) then
       table.insert(found, path)
     end
@@ -27,11 +27,11 @@ local function cleanup_dangling_unix_sockets(prefix)
     return
   end
 
-  log.warn("Found dangling unix sockets in the prefix directory (%q) while " ..
+  log.warn("Found dangling unix sockets in the runtime prefix (%q) while " ..
            "preparing to start Kong. This may be a sign that Kong was " ..
            "previously shut down uncleanly or is in an unknown state and " ..
            "could require further investigation.",
-           prefix)
+           runtime_prefix)
 
   log.warn("Attempting to remove dangling sockets before starting Kong...")
 
@@ -59,7 +59,7 @@ local function execute(args)
   assert(prefix_handler.prepare_prefix(conf, args.nginx_conf, nil, nil,
          args.nginx_conf_flags))
 
-  cleanup_dangling_unix_sockets(conf.prefix)
+  cleanup_dangling_unix_sockets(conf.runtime_prefix)
 
   _G.kong = kong_global.new()
   kong_global.init_pdk(_G.kong, conf)

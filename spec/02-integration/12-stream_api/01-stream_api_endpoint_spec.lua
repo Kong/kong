@@ -13,7 +13,7 @@ describe("Stream module API endpoint", function()
       plugins = "stream-api-echo",
     })
 
-    socket_path = "unix:" .. helpers.get_running_conf().prefix .. "/stream_rpc.sock"
+    socket_path = "unix:" .. helpers.get_running_conf().runtime_prefix .. "/stream_rpc.sock"
   end)
 
   lazy_teardown(function()

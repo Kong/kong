@@ -187,7 +187,7 @@ describe("#off preserve nulls", function()
     kong.configuration = kong_config
     kong.worker_events = kong.worker_events or
                          kong.cache and kong.cache.worker_events or
-                         assert(kong_global.init_worker_events())
+                         assert(kong_global.init_worker_events(kong.configuration))
     kong.cluster_events = kong.cluster_events or
                           kong.cache and kong.cache.cluster_events or
                           assert(kong_global.init_cluster_events(kong.configuration, kong.db))
