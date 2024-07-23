@@ -481,7 +481,168 @@ describe("CP/DP config compat transformations #" .. strategy, function()
       end)
     end)
 
-    describe("ai plugins", function()
+    describe("ai plugins supported providers", function()
+      it("[ai-proxy] tries to use unsupported gemini on older Kong versions", function()
+        -- [[ 3.8.x ]] --
+        local ai_proxy = admin.plugins:insert {
+          name = "ai-proxy",
+          enabled = true,
+          config = {
+            response_streaming = "allow",
+            route_type = "llm/v1/chat",
+            auth = {
+              header_name = "header",
+              header_value = "value",
+              gcp_service_account_json = '{"service": "account"}',
+              gcp_use_service_account = true,
+            },
+            model = {
+              name = "any-model-name",
+              provider = "gemini",
+              options = {
+                max_tokens = 512,
+                temperature = 0.5,
+                gemini = {
+                  api_endpoint = "https://gemini.local",
+                  project_id = "kong-gemini",
+                  location_id = "us-east5",
+                },
+              },
+            },
+            max_request_body_size = 8192,
+          },
+        }
+        -- ]]
+
+        local expected = cycle_aware_deep_copy(ai_proxy)
+
+        expected.config.max_request_body_size = nil
+        expected.config.auth.gcp_service_account_json = nil
+        expected.config.auth.gcp_use_service_account = nil
+        expected.config.model.options.gemini = nil
+        expected.config.route_type = "preserve"
+        expected.config.model.provider = "openai"
+
+        do_assert(uuid(), "3.7.0", expected)
+
+        expected.config.response_streaming = nil
+        expected.config.model.options.upstream_path = nil
+        expected.config.route_type = "llm/v1/chat"
+
+        do_assert(uuid(), "3.6.0", expected)
+
+        -- cleanup
+        admin.plugins:remove({ id = ai_proxy.id })
+      end)
+
+      it("[ai-request-transformer] tries to use unsupported gemini on older Kong versions", function()
+        -- [[ 3.8.x ]] --
+        local ai_request_transformer = admin.plugins:insert {
+          name = "ai-request-transformer",
+          enabled = true,
+          config = {
+            llm = {
+              route_type = "llm/v1/chat",
+              auth = {
+                header_name = "header",
+                header_value = "value",
+                gcp_service_account_json = '{"service": "account"}',
+                gcp_use_service_account = true,
+              },
+              model = {
+                name = "any-model-name",
+                provider = "gemini",
+                options = {
+                  max_tokens = 512,
+                  temperature = 0.5,
+                  gemini = {
+                    api_endpoint = "https://gemini.local",
+                    project_id = "kong-gemini",
+                    location_id = "us-east5",
+                  },
+                },
+              },
+            },
+            max_request_body_size = 8192,
+            prompt = "anything",
+          },
+        }
+        -- ]]
+
+        local expected = cycle_aware_deep_copy(ai_request_transformer)
+
+        expected.config.max_request_body_size = nil
+        expected.config.llm.auth.gcp_service_account_json = nil
+        expected.config.llm.auth.gcp_use_service_account = nil
+        expected.config.llm.model.options.gemini = nil
+        expected.config.llm.model.provider = "openai"
+
+        do_assert(uuid(), "3.7.0", expected)
+
+        expected.config.llm.model.options.upstream_path = nil
+        expected.config.llm.route_type = "llm/v1/chat"
+
+        do_assert(uuid(), "3.6.0", expected)
+
+        -- cleanup
+        admin.plugins:remove({ id = ai_request_transformer.id })
+      end)
+
+      it("[ai-response-transformer] tries to use unsupported gemini on older Kong versions", function()
+        -- [[ 3.8.x ]] --
+        local ai_response_transformer = admin.plugins:insert {
+          name = "ai-response-transformer",
+          enabled = true,
+          config = {
+            llm = {
+              route_type = "llm/v1/chat",
+              auth = {
+                header_name = "header",
+                header_value = "value",
+                gcp_service_account_json = '{"service": "account"}',
+                gcp_use_service_account = true,
+              },
+              model = {
+                name = "any-model-name",
+                provider = "gemini",
+                options = {
+                  max_tokens = 512,
+                  temperature = 0.5,
+                  gemini = {
+                    api_endpoint = "https://gemini.local",
+                    project_id = "kong-gemini",
+                    location_id = "us-east5",
+                  },
+                },
+              },
+            },
+            max_request_body_size = 8192,
+            prompt = "anything",
+          },
+        }
+        -- ]]
+
+        local expected = cycle_aware_deep_copy(ai_response_transformer)
+
+        expected.config.max_request_body_size = nil
+        expected.config.llm.auth.gcp_service_account_json = nil
+        expected.config.llm.auth.gcp_use_service_account = nil
+        expected.config.llm.model.options.gemini = nil
+        expected.config.llm.model.provider = "openai"
+
+        do_assert(uuid(), "3.7.0", expected)
+
+        expected.config.llm.model.options.upstream_path = nil
+        expected.config.llm.route_type = "llm/v1/chat"
+
+        do_assert(uuid(), "3.6.0", expected)
+
+        -- cleanup
+        admin.plugins:remove({ id = ai_response_transformer.id })
+      end)
+    end)
+
+    describe("ai plugins shared options", function()
       it("[ai-proxy] sets unsupported AI LLM properties to nil or defaults", function()
         -- [[ 3.7.x ]] --
         local ai_proxy = admin.plugins:insert {
@@ -511,6 +672,9 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         local expected = cycle_aware_deep_copy(ai_proxy)
 
         expected.config.max_request_body_size = nil
+        expected.config.auth.gcp_service_account_json = nil
+        expected.config.auth.gcp_use_service_account = nil
+        expected.config.model.options.gemini = nil
 
         do_assert(uuid(), "3.7.0", expected)
 
@@ -557,6 +721,9 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
         local expected = cycle_aware_deep_copy(ai_request_transformer)
         expected.config.max_request_body_size = nil
+        expected.config.llm.auth.gcp_service_account_json = nil
+        expected.config.llm.auth.gcp_use_service_account = nil
+        expected.config.llm.model.options.gemini = nil
 
         do_assert(uuid(), "3.7.0", expected)
 
@@ -595,10 +762,13 @@ describe("CP/DP config compat transformations #" .. strategy, function()
             max_request_body_size = 8192,
           },
         }
-        -- ]]
+        --]]
 
         local expected = cycle_aware_deep_copy(ai_response_transformer)
         expected.config.max_request_body_size = nil
+        expected.config.llm.auth.gcp_service_account_json = nil
+        expected.config.llm.auth.gcp_use_service_account = nil
+        expected.config.llm.model.options.gemini = nil
 
         do_assert(uuid(), "3.7.0", expected)
 
