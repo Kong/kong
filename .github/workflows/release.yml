@@ -119,6 +119,7 @@ jobs:
       run: |
         # tar/gzip is needed to restore git cache (if available)
         yum install -y tar gzip which file zlib-devel
+        echo "!!!!!!!![${{ matrix.image }}]"
 
     - name: Early Deb in Container Setup
       if: matrix.package == 'deb' && matrix.image != ''
