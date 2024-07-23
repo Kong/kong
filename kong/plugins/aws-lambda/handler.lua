@@ -1,8 +1,6 @@
 -- Copyright (C) Kong Inc.
 
 local ngx_var = ngx.var
-local ngx_now = ngx.now
-local ngx_update_time = ngx.update_time
 local md5_bin = ngx.md5_bin
 local re_match = ngx.re.match
 local fmt = string.format
