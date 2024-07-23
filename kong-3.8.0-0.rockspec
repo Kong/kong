@@ -159,6 +159,8 @@ build = {
     ["kong.enterprise_edition.plugin_overwrite"] = "kong/enterprise_edition/plugin_overwrite.lua",
     ["kong.enterprise_edition.proxies"] = "kong/enterprise_edition/proxies.lua",
     ["kong.enterprise_edition.redis"] = "kong/enterprise_edition/redis/init.lua",
+    ["kong.enterprise_edition.redis.schema_migrations_templates.cluster_sentinel_addreses_to_nodes_370_to_380"] = "kong/enterprise_edition/redis/schema_migrations_templates/cluster_sentinel_addreses_to_nodes_370_to_380.lua",
+    ["kong.enterprise_edition.redis.config_utils"] = "kong/enterprise_edition/redis/config_utils.lua",
     ["kong.enterprise_edition.smtp_client"] = "kong/enterprise_edition/smtp_client.lua",
     ["kong.enterprise_edition.utils"] = "kong/enterprise_edition/utils.lua",
     ["kong.enterprise_edition.invoke_plugin"] = "kong/enterprise_edition/invoke_plugin.lua",
@@ -962,6 +964,7 @@ build = {
     ["kong.plugins.graphql-proxy-cache-advanced.cache_key"] = "kong/plugins/graphql-proxy-cache-advanced/cache_key.lua",
     ["kong.plugins.graphql-proxy-cache-advanced.migrations"] = "kong/plugins/graphql-proxy-cache-advanced/migrations/init.lua",
     ["kong.plugins.graphql-proxy-cache-advanced.migrations.001_370_to_380"] = "kong/plugins/graphql-proxy-cache-advanced/migrations/001_370_to_380.lua",
+    ["kong.plugins.graphql-proxy-cache-advanced.migrations.002_370_to_380"] = "kong/plugins/graphql-proxy-cache-advanced/migrations/002_370_to_380.lua",
 
     ["kong.plugins.jq.cache"] = "kong/plugins/jq/cache.lua",
     ["kong.plugins.jq.handler"] = "kong/plugins/jq/handler.lua",

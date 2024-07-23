@@ -32,5 +32,7 @@ build = {
        "kong/plugins/graphql-rate-limiting-advanced/migrations/000_base_gql_rate_limiting.lua",
       ["kong.plugins.graphql-rate-limiting-advanced.migrations.001_370_to_380"] =
        "kong/plugins/graphql-rate-limiting-advanced/migrations/001_370_to_380.lua",
+      ["kong.plugins.graphql-rate-limiting-advanced.migrations.002_370_to_380"] =
+       "kong/plugins/graphql-rate-limiting-advanced/migrations/002_370_to_380.lua",
    }
 }

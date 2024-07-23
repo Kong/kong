@@ -21,32 +21,53 @@ local assert = require "luassert"
 local utils = require "kong.tools.utils"
 local admins_helpers = require "kong.enterprise_edition.admins_helpers"
 local pl_file = require "pl.file"
-
+local map = require "pl.tablex".map
 
 local _M = {}
 
 --- Returns Redis Cluster nodes list.
 -- The list can be configured in environment variable `KONG_SPEC_TEST_REDIS_CLUSTER_ADDRESSES`.
--- @function parsed_redis_cluster_addresses
+-- Note that the variable takes a list of combined ip:port addresses and this function parses
+-- then and returns a table of tables structured { ip = ip, port = port}
+-- @function parsed_redis_cluster_nodes
 -- @treturn table nodes list
 -- @usage
 -- ~ $ export KONG_SPEC_TEST_REDIS_CLUSTER_ADDRESSES=node-1:6379,node-2:6379,node-3:6379
 --
--- local redis_cluster_addresses = parsed_redis_cluster_addresses()
-function _M.parsed_redis_cluster_addresses()
+-- local redis_cluster_nodes = parsed_redis_cluster_nodes()
+function _M.parsed_redis_cluster_nodes()
   local env_cluster_addresses = os.getenv("KONG_SPEC_TEST_REDIS_CLUSTER_ADDRESSES")
 
   -- default
   if not env_cluster_addresses then
-    return {  "localhost:7000", "localhost:7001", "localhost:7002" }
+    return {
+      {ip = "localhost", port = 7000},
+      {ip = "localhost", port = 7001},
+      {ip = "localhost", port = 7002}
+    }
   end
 
-  local redis_cluster_addresses = {}
+  local redis_cluster_nodes = {}
   for node in string.gmatch(env_cluster_addresses, "[^,]+") do
-    table.insert(redis_cluster_addresses, node)
+    local parts = utils.split(node, ":")
+    local parsed_address = { ip = parts[1], port = tonumber(parts[2]) }
+    table.insert(redis_cluster_nodes, parsed_address)
   end
 
-  return redis_cluster_addresses
+  return redis_cluster_nodes
+end
+
+--- Returns Redis Cluster nodes list joined as table of strings like ip:port.
+-- @function redis_cluster_nodes_joined
+-- @treturn table adresses list
+function _M.redis_cluster_nodes_joined()
+  local cluster_nodes = _M.parsed_redis_cluster_nodes()
+
+  local addresses = map(function(node)
+    return string.format("%s:%s", node.ip, node.port)
+  end, cluster_nodes)
+
+  return addresses
 end
 
 --- Registers RBAC resources.
@@ -1174,12 +1195,14 @@ end
 -- @field portal_api_listeners the listener configuration for the Portal API
 -- @field portal_gui_listeners the listener configuration for the Portal GUI
 -- @field admin_gui_listeners the listener configuration for the Admin GUI
+-- @field redis_cluster_nodes the contact points for the Redis Cluster
 -- @field redis_cluster_addresses the contact points for the Redis Cluster
 
 local http_flags = { "ssl", "http2", "proxy_protocol", "transparent" }
 _M.portal_api_listeners = listeners._parse_listeners(helpers.test_conf.portal_api_listen, http_flags)
 _M.portal_gui_listeners = listeners._parse_listeners(helpers.test_conf.portal_gui_listen, http_flags)
 _M.admin_gui_listeners = listeners._parse_listeners(helpers.test_conf.admin_gui_listen, http_flags)
-_M.redis_cluster_addresses = _M.parsed_redis_cluster_addresses()
+_M.redis_cluster_nodes = _M.parsed_redis_cluster_nodes()
+_M.redis_cluster_addresses = _M.redis_cluster_nodes_joined()
 
 return _M

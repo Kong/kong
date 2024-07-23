@@ -818,7 +818,7 @@ describe(desc, function()
       sync_rate = 0, -- sync to redis for each request
       strategy = "redis",
       redis = {
-        cluster_addresses = ee_helpers.redis_cluster_addresses,
+        cluster_nodes = ee_helpers.redis_cluster_nodes,
       },
     })
 

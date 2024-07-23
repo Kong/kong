@@ -11,8 +11,10 @@ local cjson = require "cjson"
 local STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
 local FIELDS = require("kong.clustering.compat.removed_fields")
 local tablex = require "pl.tablex"
-local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
+local ee_helpers = require "spec-ee.helpers"
+local get_portal_and_vitals_key = ee_helpers.get_portal_and_vitals_key
 local join = require("pl.stringx").join
+local pl_tablex = require("pl.tablex")
 
 local admin = require "spec.fixtures.admin_api"
 
@@ -839,6 +841,120 @@ describe("CP/DP config compat #" .. strategy, function()
         },
 
       }
+
+      for _, case in ipairs(CASES) do
+        local test = case.pending and pending or it
+
+        test(fmt("%s - %s", case.plugin, case.label), function()
+          do_assert(case, "3.7.9.9")
+        end)
+      end
+    end)
+
+    describe("#oo redis changes - cluster/sentinel_adresses to cluster/sentinel_nodes", function()
+      -- We don't have running sentinel nodes config for specs - this is just a mock
+      local sentinel_node1 = { host = "localhost1", port = 26379 }
+      local sentinel_node2 = { host = "localhost2", port = 26380 }
+      local sentinel_node3 = { host = "localhost3", port = 26381 }
+      local sentinel_nodes = { sentinel_node1, sentinel_node2, sentinel_node3 }
+      local sentinel_addresses = {
+        sentinel_node1.host .. ":" .. sentinel_node1.port,
+        sentinel_node2.host .. ":" .. sentinel_node2.port,
+        sentinel_node3.host .. ":" .. sentinel_node3.port,
+      }
+
+      -- Shared redis config is used by:
+      -- rate-limiting-advanced | graphql-rate-limiting-advanced | proxy-cache-advanced |
+      --    graphql-proxy-cache-advanced | ai-rate-limiting-advanced
+
+      local function redis_cluster_addresses_validator(config)
+        local pok = pcall(function() return assert.same(ee_helpers.redis_cluster_addresses, config.redis.cluster_addresses) end)
+        return config.redis.cluster_nodes == nil and config.redis.redis_cluster_addresses ~= nil and pok
+      end
+
+
+      local function redis_sentinel_addresses_validator(config)
+        local pok = pcall(function() return assert.same(sentinel_addresses, config.redis.sentinel_addresses) end)
+        return config.redis.sentinel_nodes == nil and config.redis.sentinel_addresses ~= nil and pok
+      end
+
+      local plugins_config = {
+        {
+          plugin_name = "rate-limiting-advanced",
+          plugin_config = {
+            limit = {1},
+            window_size = {2},
+            sync_rate = 0.1,
+            strategy = "redis",
+          }
+        },
+        {
+          plugin_name = "graphql-rate-limiting-advanced",
+          plugin_config = {
+            limit = {1},
+            window_size = {2},
+            sync_rate = 0.1,
+            strategy = "redis",
+          }
+        },
+        {
+          plugin_name = "ai-rate-limiting-advanced",
+          plugin_config = {
+            llm_providers = {{
+              name = "openai",
+              window_size = 60,
+              limit = 10,
+            }},
+            sync_rate = 10,
+            strategy = "redis",
+          }
+        },
+        {
+          plugin_name = "proxy-cache-advanced",
+          plugin_config = {
+            strategy = "redis",
+          }
+        },
+        {
+          plugin_name = "graphql-proxy-cache-advanced",
+          plugin_config = {
+            strategy = "redis",
+          }
+        },
+      }
+
+      local CASES_CLUSTER_ADDRESSES = pl_tablex.map(function(config)
+        return {
+          plugin = config.plugin_name,
+          label = "w/ cluster_nodes configured",
+          pending = false,
+          config = pl_tablex.merge(config.plugin_config,
+            { redis = {
+                cluster_nodes = ee_helpers.redis_cluster_nodes
+            } }, true),
+          status = STATUS.NORMAL,
+          validator = redis_cluster_addresses_validator
+        }
+      end, plugins_config)
+
+      local CASES_SENTINEL_ADDRESSES = pl_tablex.map(function(config)
+        return {
+          plugin = config.plugin_name,
+          label = "w/ sentinel_nodes configured",
+          pending = false,
+          config = pl_tablex.merge(config.plugin_config,
+            { redis = {
+              sentinel_role = "master",
+              sentinel_master = "localhost1",
+              sentinel_nodes = sentinel_nodes
+            } }, true),
+          status = STATUS.NORMAL,
+          validator = redis_sentinel_addresses_validator
+        }
+      end, plugins_config)
+
+
+      local CASES = pl_tablex.merge(CASES_CLUSTER_ADDRESSES, CASES_SENTINEL_ADDRESSES, true)
 
       for _, case in ipairs(CASES) do
         local test = case.pending and pending or it

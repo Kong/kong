@@ -94,18 +94,29 @@ describe("Hybrid mode schema validation", function()
       },
       ['sentinel'] = {
         sentinel_role = 'master',
-        sentinel_addresses = {'1.1.1.1:12345', '1.1.1.2:23456'},
+        sentinel_nodes = {
+          { host = '1.1.1.1', port = 12345 },
+          { host = '1.1.1.2', port = 23456 }
+        },
         sentinel_master = '1.1.1.1:12345',
       },
       ['single-cluster'] = {
-        cluster_addresses = {'1.1.1.1:12345'},
+        cluster_nodes = {
+          { ip = '1.1.1.1', port = 12345 },
+        }
       },
       ['cluster'] = {
-        cluster_addresses = {'1.1.1.1:12345', '1.1.1.2:23456'},
+        cluster_nodes = {
+          { ip = '1.1.1.1', port = 12345},
+          { ip = '1.1.1.2', port = 23456}
+        },
       },
       ['failed_if_more_than_one'] = {
         host = '1.1.1.1', port = 12345,
-        cluster_addresses = {'1.1.1.1:12345', '1.1.1.2:23456'},
+        cluster_nodes = {
+          { ip = '1.1.1.1', port = 12345 },
+          { ip = '1.1.1.2', port = 23456 }
+        },
       },
       ['failed_no_redis_conf'] = {},
     }

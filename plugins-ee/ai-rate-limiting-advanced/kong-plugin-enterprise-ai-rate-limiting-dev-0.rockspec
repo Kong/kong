@@ -19,5 +19,7 @@ build = {
     ["kong.plugins.ai-rate-limiting-advanced.migrations"]     = "kong/plugins/ai-rate-limiting-advanced/migrations/init.lua",
     ["kong.plugins.ai-rate-limiting-advanced.migrations.001_370_to_380"] =
        "kong/plugins/ai-rate-limiting-advanced/migrations/001_370_to_380.lua",
+    ["kong.plugins.ai-rate-limiting-advanced.migrations.002_370_to_380"] =
+       "kong/plugins/ai-rate-limiting-advanced/migrations/002_370_to_380.lua",
   }
 }

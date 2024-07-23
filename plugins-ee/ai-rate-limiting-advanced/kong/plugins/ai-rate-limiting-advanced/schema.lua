@@ -134,8 +134,8 @@ return {
 
         if config.strategy == "redis" then
           if config.redis.host == null and
-             config.redis.sentinel_addresses == null and
-             config.redis.cluster_addresses == null then
+             config.redis.sentinel_nodes == null and
+             config.redis.cluster_nodes == null then
             return nil, "No redis config provided"
           end
         end

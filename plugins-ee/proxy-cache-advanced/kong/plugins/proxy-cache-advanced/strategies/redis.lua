@@ -36,10 +36,6 @@ function _M.new(opts)
     end
   end
 
-  -- initialize redis configuration - e.g., parse
-  -- Sentinel addresses
-  redis.init_conf(conf)
-
   return setmetatable({
     conf = conf
   }, {

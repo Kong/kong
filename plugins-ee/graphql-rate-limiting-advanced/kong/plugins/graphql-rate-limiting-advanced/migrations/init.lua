@@ -8,4 +8,5 @@
 return {
     "000_base_gql_rate_limiting",
     "001_370_to_380",
+    "002_370_to_380",
 }

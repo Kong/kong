@@ -5,7 +5,14 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-return {
-  "001_370_to_380",
-  "002_370_to_380",
-}
+local migration_spec_generator = require "spec.helpers.redis.schema_migrations_templates.cluster_sentinel_addreses_to_nodes_370_to_380_spec_generator"
+
+migration_spec_generator.test_plugin_migrations({
+  plugin_name = "rate-limiting-advanced",
+  plugin_config = {
+    window_size = { 1 },
+    limit = { 10 },
+    sync_rate = 0.1,
+    strategy = "redis",
+  }
+}, "2.8.x.x")

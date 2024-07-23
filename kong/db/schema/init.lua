@@ -1752,7 +1752,11 @@ function Schema:process_auto_fields(data, context, nulls, opts)
           if new_values then
             for k, v in pairs(new_values) do
               if type(v) == "table" then
-                data[k] = tablex.merge(data[k] or {}, v, true)
+                local source = {}
+                if data[k] and data[k] ~= ngx.null then
+                  source = data[k]
+                end
+                data[k] = tablex.merge(source, v, true)
               else
                 data[k] = v
               end
@@ -1761,8 +1765,12 @@ function Schema:process_auto_fields(data, context, nulls, opts)
         end
       end
 
-      if is_select and sdata.translate_backwards and not(opts and opts.hide_shorthands) then
-        data[sname] = table_tools.table_path(data, sdata.translate_backwards)
+      if is_select and not(opts and opts.hide_shorthands) then
+        if sdata.translate_backwards then
+          data[sname] = table_tools.table_path(data, sdata.translate_backwards)
+        elseif sdata.translate_backwards_with  then
+          data[sname] = sdata.translate_backwards_with(data)
+        end
       end
     end
     if has_errs then
@@ -1919,7 +1927,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
 
       if self.shorthand_fields then
         for _, shorthand_field in ipairs(self.shorthand_fields) do
-          if shorthand_field[key] and shorthand_field[key].translate_backwards then
+          if shorthand_field[key] and (shorthand_field[key].translate_backwards or shorthand_field[key].translate_backwards_with) then
             should_be_in_ouput = is_select
           end
         end

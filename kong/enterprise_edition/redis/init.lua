@@ -8,11 +8,14 @@
 --- Kong helpers for Redis integration; includes EE-only
 -- features, such as Sentinel compatibility.
 
-local redis_connector = require "resty.redis.connector"
-local redis_cluster   = require "resty.rediscluster"
-local typedefs        = require "kong.db.schema.typedefs"
-local utils           = require "kong.tools.utils"
-local reports         = require "kong.reports"
+local redis_connector    = require "resty.redis.connector"
+local redis_cluster      = require "resty.rediscluster"
+local typedefs           = require "kong.db.schema.typedefs"
+local utils              = require "kong.tools.utils"
+local reports            = require "kong.reports"
+local map                = require "pl.tablex".map
+local redis_config_utils = require "kong.enterprise_edition.redis.config_utils"
+
 local string_format   = string.format
 local table_concat    = table.concat
 
@@ -28,14 +31,8 @@ local function is_present(x)
 end
 
 
-local function is_redis_sentinel(redis)
-  return is_present(redis.sentinel_master) or
-    is_present(redis.sentinel_role) or
-    is_present(redis.sentinel_addresses)
-end
-
 local function is_redis_cluster(redis)
-  return is_present(redis.cluster_addresses)
+  return is_present(redis.cluster_nodes)
 end
 
 _M.is_redis_cluster = is_redis_cluster
@@ -94,16 +91,29 @@ _M.config_schema = {
         type = "string",
         one_of = { "master", "slave", "any" },
       } },
-    { sentinel_addresses = { description = "Sentinel addresses to use for Redis connections when the `redis` strategy is defined. Defining this value implies using Redis Sentinel. Each string element must be a hostname. The minimum length of the array is 1 element.",
-        type = "array",
-        elements = { type = "string" },
-        len_min = 1,
-        custom_validator =  validate_addresses
+    { sentinel_nodes = { description = "Sentinel node addresses to use for Redis connections when the `redis` strategy is defined. Defining this field implies using a Redis Sentinel. The minimum length of the array is 1 element.",
+      required = false,
+      type = "array",
+      len_min = 1,
+      elements = {
+        type = "record",
+        fields = {
+          { host = typedefs.host { required = true, default  = "127.0.0.1", }, },
+          { port = typedefs.port { default = 6379, }, },
+        },
+      },
       } },
-    { cluster_addresses = { description = "Cluster addresses to use for Redis connections when the `redis` strategy is defined. Defining this value implies using Redis Cluster. Each string element must be a hostname. The minimum length of the array is 1 element.", type = "array",
-        elements = { type = "string" },
+    { cluster_nodes = { description = "Cluster addresses to use for Redis connections when the `redis` strategy is defined. Defining this field implies using a Redis Cluster. The minimum length of the array is 1 element.",
+        required = false,
+        type = "array",
         len_min = 1,
-        custom_validator =  validate_addresses
+        elements = {
+          type = "record",
+          fields = {
+            { ip = typedefs.host { required = true, default  = "127.0.0.1", }, },
+            { port = typedefs.port { default = 6379, }, },
+          },
+        },
       } },
     { ssl = { description = "If set to true, uses SSL to connect to Redis.",
         type = "boolean",
@@ -126,24 +136,24 @@ _M.config_schema = {
   entity_checks = {
     {
       mutually_exclusive_sets = {
-        set1 = { "sentinel_master", "sentinel_role", "sentinel_addresses" },
+        set1 = { "sentinel_master", "sentinel_role", "sentinel_nodes" },
         set2 = { "host", "port" },
       },
     },
     {
       mutually_exclusive_sets = {
-        set1 = { "sentinel_master", "sentinel_role", "sentinel_addresses" },
-        set2 = { "cluster_addresses" },
+        set1 = { "sentinel_master", "sentinel_role", "sentinel_nodes" },
+        set2 = { "cluster_nodes" },
       },
     },
     {
       mutually_exclusive_sets = {
-        set1 = { "cluster_addresses" },
+        set1 = { "cluster_nodes" },
         set2 = { "host", "port" },
       },
     },
     {
-      mutually_required = { "sentinel_master", "sentinel_role", "sentinel_addresses" },
+      mutually_required = { "sentinel_master", "sentinel_role", "sentinel_nodes" },
     },
     {
       mutually_required = { "host", "port" },
@@ -165,41 +175,62 @@ _M.config_schema = {
           return { connect_timeout = value, send_timeout = value, read_timeout = value }
         end
       }
-    }
+    },
+    {
+      sentinel_addresses = {
+        type = "array",
+        elements = { type = "string" },
+        len_min = 1,
+        custom_validator =  validate_addresses,
+        deprecation = {
+          message = "sentinel_addresses is deprecated, please use sentinel_nodes instead",
+          removal_in_version = "4.0",
+        },
+        translate_backwards_with = function(data)
+          if not data.sentinel_nodes or data.sentinel_nodes == ngx.null then
+            return data.sentinel_nodes
+          end
+
+          return map(redis_config_utils.merge_host_port, data.sentinel_nodes)
+        end,
+
+        func = function(value)
+          if not value or value == ngx.null then
+            return { sentinel_nodes = value }
+          end
+
+          return { sentinel_nodes = map(redis_config_utils.split_host_port, value) }
+        end
+      },
+    },
+    {
+      cluster_addresses = {
+        type = "array",
+        elements = { type = "string" },
+        len_min = 1,
+        custom_validator =  validate_addresses,
+        deprecation = {
+          message = "cluster_addresses is deprecated, please use cluster_nodes instead",
+          removal_in_version = "4.0",
+        },
+        translate_backwards_with = function(data)
+          if not data.cluster_nodes or data.cluster_nodes == ngx.null then
+            return data.cluster_nodes
+          end
+
+          return map(redis_config_utils.merge_ip_port, data.cluster_nodes)
+        end,
+        func = function(value)
+          if not value or value == ngx.null then
+            return { cluster_nodes = value }
+          end
+
+          return { cluster_nodes = map(redis_config_utils.split_ip_port, value) }
+        end
+      },
+    },
   }
 }
-
-
--- Parse addresses from a string in the "ip1:port1,ip2:port2" format to a
--- table in the {{[ip_field_name] = "ip1", port = port1}, {[ip_field_name] = "ip2", port = port2}}
--- format
-local function parse_addresses(addresses, ip_field_name)
-  local parsed_addresses = {}
-
-  for i = 1, #addresses do
-    local address = addresses[i]
-    local parts = utils.split(address, ":")
-
-    local parsed_address = { [ip_field_name] = parts[1], port = tonumber(parts[2]) }
-    parsed_addresses[#parsed_addresses + 1] = parsed_address
-  end
-
-  return parsed_addresses
-end
-
-
--- Perform any needed Redis configuration; e.g., parse Sentinel addresses
-function _M.init_conf(conf)
-  if is_redis_cluster(conf) then
-    table.sort(conf.cluster_addresses)
-    conf.parsed_cluster_addresses =
-      parse_addresses(conf.cluster_addresses, "ip")
-  elseif is_redis_sentinel(conf) then
-    conf.parsed_sentinel_addresses =
-      parse_addresses(conf.sentinel_addresses, "host")
-  end
-end
-
 
 -- Create a connection with Redis; expects a table with
 -- required parameters. Examples:
@@ -233,11 +264,14 @@ function _M.connection(conf)
 
   if is_redis_cluster(conf) then
     -- creating client for redis cluster
+    local cluster_addresses = map(redis_config_utils.merge_ip_port, conf.cluster_nodes)
+    local cluster_name = "redis-cluster" .. table.concat(cluster_addresses)
+
     local err
     red, err = redis_cluster:new({
       dict_name       = "kong_locks",
-      name            = "redis-cluster" .. table.concat(conf.cluster_addresses),
-      serv_list       = conf.parsed_cluster_addresses,
+      name            = cluster_name,
+      serv_list       = conf.cluster_nodes,
       username        = conf.username,
       password        = conf.password,
       connect_timeout = conf.connect_timeout,
@@ -259,7 +293,7 @@ function _M.connection(conf)
       read_timeout       = conf.read_timeout,
       master_name        = conf.sentinel_master,
       role               = conf.sentinel_role,
-      sentinels          = conf.parsed_sentinel_addresses,
+      sentinels          = conf.sentinel_nodes,
       username           = conf.username,
       password           = conf.password,
       sentinel_username  = conf.sentinel_username,

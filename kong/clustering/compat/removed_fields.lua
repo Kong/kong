@@ -368,18 +368,28 @@ return {
     },
     proxy_cache_advanced = {
       "redis.cluster_max_redirections",
+      "redis.cluster_nodes",
+      "redis.sentinel_nodes",
     },
     graphql_proxy_cache_advanced = {
       "redis.cluster_max_redirections",
+      "redis.cluster_nodes",
+      "redis.sentinel_nodes",
     },
     graphql_rate_limiting_advanced = {
       "redis.cluster_max_redirections",
+      "redis.cluster_nodes",
+      "redis.sentinel_nodes",
     },
     rate_limiting_advanced = {
       "redis.cluster_max_redirections",
+      "redis.cluster_nodes",
+      "redis.sentinel_nodes",
     },
     ai_rate_limiting_advanced = {
       "redis.cluster_max_redirections",
+      "redis.cluster_nodes",
+      "redis.sentinel_nodes",
     },
     key_auth_enc = {
       "realm",

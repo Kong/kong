@@ -7,11 +7,9 @@
 
 local helpers = require "spec.helpers"
 local ee_helpers = require "spec-ee.helpers"
-local REDIS_CLUSTER_ADDRESSES = ee_helpers.redis_cluster_addresses
-local REDIS_CLUSTER_NODE_ADDRESS = REDIS_CLUSTER_ADDRESSES[1]
-local REDIS_CLUSTER_NODE_HOST, REDIS_CLUSTER_NODE_PORT =
-      REDIS_CLUSTER_NODE_ADDRESS:match("([^:]+):([^:]+)")
-REDIS_CLUSTER_NODE_PORT = tonumber(REDIS_CLUSTER_NODE_PORT)
+local REDIS_CLUSTER_NODE = ee_helpers.redis_cluster_nodes[1]
+local REDIS_CLUSTER_NODE_HOST = REDIS_CLUSTER_NODE.ip
+local REDIS_CLUSTER_NODE_PORT = REDIS_CLUSTER_NODE.port
 
 for _, strategy in helpers.all_strategies() do
   describe("rate-limiting-advanced redis cluster #" .. strategy, function()

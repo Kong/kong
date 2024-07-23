@@ -1,7 +1,7 @@
 import { createClient } from 'redis';
+import { expect } from '../assert/chai-expect';
 import { Environment, getBasePath, isGateway } from '../config/environment';
 import { wait } from './random';
-import { expect } from '../assert/chai-expect';
 
 const redisUser = 'redisuser';
 const redisPassword = 'redispassword';
@@ -79,6 +79,7 @@ export const expectRedisFieldsInPlugins = (resp) => {
     'ssl',
     'server_name',
     'sentinel_addresses',
+    'sentinel_nodes',
     'password',
     'port',
     'ssl_verify',
@@ -90,6 +91,7 @@ export const expectRedisFieldsInPlugins = (resp) => {
     'sentinel_username',
     'timeout',
     'cluster_addresses',
+    'cluster_nodes',
     'cluster_max_redirections',
     'database',
     'keepalive_backlog',

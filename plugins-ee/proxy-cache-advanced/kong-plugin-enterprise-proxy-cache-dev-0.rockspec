@@ -22,5 +22,6 @@ build = {
     ["kong.plugins.proxy-cache-advanced.strategies.memory"]                   = "kong/plugins/proxy-cache-advanced/strategies/memory.lua",
     ["kong.plugins.proxy-cache-advanced.strategies.redis"]                    = "kong/plugins/proxy-cache-advanced/strategies/redis.lua",
     ["kong.plugins.proxy-cache-advanced.migrations.001_370_to_380"]           = "kong/plugins/proxy-cache-advanced/migrations/001_370_to_380.lua",
+    ["kong.plugins.proxy-cache-advanced.migrations.002_370_to_380"]           = "kong/plugins/proxy-cache-advanced/migrations/002_370_to_380.lua",
   }
 }

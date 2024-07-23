@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-return {
-  "001_370_to_380",
-  "002_370_to_380",
-}
+
+local migration_generator = require("kong.enterprise_edition.redis.schema_migrations_templates.cluster_sentinel_addreses_to_nodes_370_to_380")
+
+return migration_generator.generate("rate-limiting-advanced")

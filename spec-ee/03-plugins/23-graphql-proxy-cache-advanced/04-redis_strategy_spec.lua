@@ -15,7 +15,7 @@ local version = require "version"
 
 local REDIS_HOST = helpers.redis_host
 local REDIS_PORT = helpers.redis_port
-local REDIS_CLUSTER_ADDRESSES = ee_helpers.redis_cluster_addresses
+local REDIS_CLUSTER_NODES = ee_helpers.redis_cluster_nodes
 local REDIS_DATABASE = 1
 
 local REDIS_USERNAME_VALID = "default"
@@ -62,7 +62,7 @@ local function redis_test_configurations()
       password = nil,
     },
     cluster = {
-      cluster_addresses = REDIS_CLUSTER_ADDRESSES,
+      cluster_nodes = REDIS_CLUSTER_NODES,
       keepalive_pool_size = 30,
       keepalive_backlog = 30,
       ssl = false,

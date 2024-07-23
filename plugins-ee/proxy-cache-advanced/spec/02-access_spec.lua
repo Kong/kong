@@ -19,7 +19,7 @@ local REDIS_HOST = helpers.redis_host
 local REDIS_PORT = helpers.redis_port or 6379
 local REDIS_SSL_PORT = helpers.redis_ssl_port or 6380
 local REDIS_SSL_SNI = helpers.redis_ssl_sni
-local REDIS_CLUSTER_ADDRESSES = ee_helpers.parsed_redis_cluster_addresses()
+local REDIS_CLUSTER_NODES = ee_helpers.redis_cluster_nodes
 local REDIS_DATABASE = 1
 
 
@@ -1571,7 +1571,7 @@ for _, policy in ipairs({"memory", "redis"}) do
       describe("redis cluster", function()
         lazy_setup(function()
           local redis_cluster_policy_config = {
-            cluster_addresses = REDIS_CLUSTER_ADDRESSES,
+            cluster_nodes = REDIS_CLUSTER_NODES,
             keepalive_pool_size = 30,
             keepalive_backlog = 30,
             ssl = false,

@@ -153,6 +153,7 @@ function initialize_test_list() {
     docker exec ${OLD_CONTAINER} tar -xf ${TESTS_TAR} -C /upgrade-test
     docker cp spec/helpers/http_mock ${OLD_CONTAINER}:/upgrade-test/spec/helpers
     docker cp spec/helpers/http_mock.lua ${OLD_CONTAINER}:/upgrade-test/spec/helpers
+    docker cp spec/helpers/redis ${OLD_CONTAINER}:/upgrade-test/spec/helpers/redis
     rm ${TESTS_TAR}
 }
 
