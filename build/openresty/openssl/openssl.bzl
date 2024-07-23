@@ -17,8 +17,13 @@ CONFIGURE_OPTIONS = select({
     "@kong//:x86_64-linux-glibc-cross": [
         "linux-x86_64",
     ],
-    # no extra args needed for "@kong//:x86_64-linux-musl-cross" or non-cross builds
-    "//conditions:default": [],
+    # non-cross build
+    "@platforms//cpu:x86_64": [
+        "linux-x86_64",
+    ],
+    "@platforms//cpu:aarch64": [
+        "linux-aarch64",
+    ],
 }) + [
     "-g",
     "-O3",  # force -O3 even we are using --debug (for example on CI)
@@ -50,7 +55,7 @@ def build_openssl(
 
     configure_make(
         name = name,
-        configure_command = "config",
+        configure_command = "Configure",
         configure_in_place = True,
         configure_options = CONFIGURE_OPTIONS + extra_configure_options,
         env = select({
