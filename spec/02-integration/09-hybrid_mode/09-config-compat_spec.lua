@@ -805,6 +805,28 @@ describe("CP/DP config compat transformations #" .. strategy, function()
       end)
     end)
 
+    describe("prometheus plugins", function()
+      it("[prometheus] remove ai_metrics property for versions below 3.8", function()
+        -- [[ 3.8.x ]] --
+        local prometheus = admin.plugins:insert {
+          name = "prometheus",
+          enabled = true,
+          config = {
+            ai_metrics = true, -- becomes nil
+          },
+        }
+        -- ]]
+
+        local expected_prometheus_prior_38 = cycle_aware_deep_copy(prometheus)
+        expected_prometheus_prior_38.config.ai_metrics = nil
+
+        do_assert(uuid(), "3.7.0", expected_prometheus_prior_38)
+
+        -- cleanup
+        admin.plugins:remove({ id = prometheus.id })
+      end)
+    end)
+
     describe("www-authenticate header in plugins (realm config)", function()
       it("[basic-auth] removes realm for versions below 3.6", function()
         local basic_auth = admin.plugins:insert {

@@ -195,5 +195,8 @@ return {
       "llm.auth.gcp_use_service_account",
       "llm.auth.gcp_service_account_json",
     },
+    prometheus = {
+      "ai_metrics",
+    },
   },
 }
