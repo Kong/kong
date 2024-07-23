@@ -32,8 +32,33 @@ local compatible_checkers = {
           has_update = adapter(plugin.config)
           if has_update then
             log_warn_message('adapts ' .. plugin.name .. ' plugin response_headers configuration to older version',
-                             'revert to older schema',
-                             dp_version, log_suffix)
+              'revert to older schema',
+              dp_version, log_suffix)
+          end
+        end
+      end
+      
+      -- remove tls_verify, ca_certificates, tls_verify_depth fields for core entity services
+      local config_services = config_table["services"]
+
+      local has_update
+      for _, t in ipairs(config_services or {}) do
+        if t["protocol"] == "grpcs" then
+          if t["tls_verify"] or t["tls_verify_depth"] or t["ca_certificates"]
+          then
+            t["tls_verify"] = nil
+            t["tls_verify_depth"] = nil
+            t["ca_certificates"] = nil
+
+            has_update = true
+
+            if has_update then
+              log_warn_message("grpcs protocol service contains configuration 'service.tls_verify'" ..
+                "or 'service.tls_verify_depth' or 'service.ca_certificates'",
+                "be removed",
+                dp_version,
+                log_suffix)
+            end
           end
         end
       end

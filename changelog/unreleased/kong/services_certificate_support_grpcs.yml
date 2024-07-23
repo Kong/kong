@@ -1,0 +1,3 @@
+message: adds certificate support for service protocol `grpcs`.
+scope: Core
+type: feature
