@@ -103,7 +103,7 @@ local function parse_hosts(path, enable_ipv6)
 
     -- Check if the line contains an IP address followed by hostnames
     if n >= 2 then
-      local ip, _, family = _M.parse_hostname(parts[1])
+      local ip, _, family = parse_hostname(parts[1])
 
       if family ~= "domain" then    -- ipv4/ipv6
         for i = 2, n do
