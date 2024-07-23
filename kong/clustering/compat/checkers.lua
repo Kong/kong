@@ -42,17 +42,6 @@ local compatible_checkers = {
     function(config_table, dp_version, log_suffix)
       local has_update
       for _, plugin in ipairs(config_table.plugins or {}) do
-        if plugin.name == 'proxy-cache-advanced' then
-          local config = plugin.config
-          if config.response_headers["Age"] ~= nil then
-            config.response_headers.age = config.response_headers["Age"]
-            config.response_headers["Age"] = nil
-            has_update = true
-            log_warn_message('configures ' .. plugin.name .. ' plugin with the Age in response_headers',
-              'will be changed to age.',
-              dp_version, log_suffix)
-          end
-        end
 
         if plugin.name == 'ai-rate-limiting-advanced' then
           local config = plugin.config

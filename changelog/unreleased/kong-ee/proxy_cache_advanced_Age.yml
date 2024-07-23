@@ -1,4 +1,0 @@
-message: |
-  "**proxy-cache-advanced**: The configuration `Age` in response_headers  has been changed from lowercase to uppercase. Please reconfigure the `Age` if you need it."
-type: bugfix
-scope: Plugin

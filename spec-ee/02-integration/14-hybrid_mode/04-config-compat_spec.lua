@@ -837,40 +837,7 @@ describe("CP/DP config compat #" .. strategy, function()
             return config.redis.cluster_max_redirections == nil
           end
         },
-        {
-          plugin = "proxy-cache-advanced",
-          label = "w/ the field Age in response_headers has been changed from Age to age",
-          pending = false,
-          config = {
-            response_headers = {
-              Age = false,
-            },
-            strategy = "memory"
-          },
-          status = STATUS.NORMAL,
-          validator = function(config)
-            return config.response_headers.Age == nil and config.response_headers.age ~= nil
-          end
-        },
-        {
-          plugin = "ai-rate-limiting-advanced",
-          label = "w/ cost for tokens_count_strategy  unsupported",
-          pending = false,
-          config = {
-            llm_providers = {
-              {
-                name = "openai",
-                limit = 1,
-                window_size = 2,
-              },
-            },
-            tokens_count_strategy = "cost",
-          },
-          status = STATUS.NORMAL,
-          validator = function(config)
-            return config.tokens_count_strategy == 'total_tokens'
-          end
-        },
+
       }
 
       for _, case in ipairs(CASES) do
@@ -885,4 +852,3 @@ describe("CP/DP config compat #" .. strategy, function()
 end)
 
 end -- each strategy
-

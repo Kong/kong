@@ -88,9 +88,9 @@ return {
             description = "Caching related diagnostic headers that should be included in cached responses",
             type = "record",
             fields = {
-              { ["Age"] = { type = "boolean", default = true } },
-              { ["X-Cache-Status"] = { type = "boolean", default = true } },
-              { ["X-Cache-Key"] = { type = "boolean", default = true } },
+              { age  = {type = "boolean",  default = true} },
+              { ["X-Cache-Status"]  = {type = "boolean",  default = true} },
+              { ["X-Cache-Key"]  = {type = "boolean",  default = true} },
             },
           }},
           { redis = redis.config_schema }, -- redis schema is provided by
@@ -100,30 +100,6 @@ return {
             default = false,
           }},
         },
-        shorthand_fields = {
-          {
-            response_headers = {
-              type = "json",
-              elements = { type = "boolean" },
-              deprecation = { message = "proxy-cache-advanced: config.response_headers.age has been changed from lowercase to uppercase, please use config.response_headers.Age instead", removal_in_version = "3.8", },
-              func = function(value)
-                local response_headers = {
-                  ["Age"] = value["Age"],
-                  ["X-Cache-Status"] = value["X-Cache-Status"],
-                  ["X-Cache-Key"] = value["X-Cache-Key"],
-                }
-
-                if value["age"] ~= nil then
-                  response_headers["Age"] = false
-                end
-
-                return {
-                  response_headers = response_headers,
-                }
-              end
-            }
-          },
-        }
       }
     },
   },
