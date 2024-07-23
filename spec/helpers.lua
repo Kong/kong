@@ -318,6 +318,8 @@ local function clear_cache_on_file_end(file)
   then
     _G.kong.cache.mlcache.lru.free_queue = nil
     _G.kong.cache.mlcache.lru.cache_queue = nil
+    _G.kong.cache.mlcache.lru = nil
+    collectgarbage()
   end
 end
 

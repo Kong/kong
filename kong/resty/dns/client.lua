@@ -5,6 +5,13 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+-- Use the new dns client library instead. If you want to switch to the original
+-- one, you can set `legacy_dns_client = on` in kong.conf.
+if ngx.shared.kong_dns_cache and not _G.busted_legacy_dns_client then
+  package.loaded["kong.dns.client"] = nil
+  return require("kong.dns.client")
+end
+
 --------------------------------------------------------------------------
 -- DNS client.
 --

@@ -46,6 +46,7 @@ describe("[DNS client]", function()
   local client, resolver
 
   before_each(function()
+    _G.busted_legacy_dns_client = true
     client = require("kong.resty.dns.client")
     resolver = require("resty.dns.resolver")
 
@@ -78,6 +79,7 @@ describe("[DNS client]", function()
   end)
 
   after_each(function()
+    _G.busted_legacy_dns_client = nil
     package.loaded["kong.resty.dns.client"] = nil
     package.loaded["resty.dns.resolver"] = nil
     client = nil
