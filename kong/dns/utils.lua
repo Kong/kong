@@ -1,8 +1,11 @@
 local utils = require("kong.resty.dns.utils")
 
+
 local log = ngx.log
 
+
 local NOTICE = ngx.NOTICE
+
 
 local type = type
 local ipairs = ipairs
@@ -12,24 +15,28 @@ local table_clear = require("table.clear")
 local table_insert = table.insert
 local table_remove = table.remove
 
+
 local readlines = require("pl.utils").readlines
+
 
 local DEFAULT_HOSTS_FILE = "/etc/hosts"
 local DEFAULT_RESOLV_CONF = "/etc/resolv.conf"
+
 
 local LOCALHOST = {
   ipv4 = "127.0.0.1",
   ipv6 = "[::1]",
 }
 
-local DEFAULT_HOSTS = { localhost = LOCALHOST }
+
+local DEFAULT_HOSTS = { localhost = LOCALHOST, }
 
 
 local _M = {}
 
 
 -- checks the hostname type
--- @return "ipv4", "ipv6", or "name"
+-- @return "ipv4", "ipv6", or "domain"
 function _M.hostname_type(name)
   local remainder, colons = name:gsub(":", "")
   if colons > 1 then
@@ -47,7 +54,7 @@ end
 -- parses a hostname with an optional port
 -- IPv6 addresses are always returned in square brackets
 -- @param name the string to check (this may contain a port number)
--- @return `name/ip` + `port (or nil)` + `type ("ipv4", "ipv6" or "name")`
+-- @return `name/ip` + `port (or nil)` + `type ("ipv4", "ipv6" or "domain")`
 function _M.parse_hostname(name)
   local t = _M.hostname_type(name)
   if t == "ipv4" or t == "domain" then
@@ -86,20 +93,22 @@ function _M.parse_hosts(path, enable_ipv6)
   for _, line in ipairs(lines) do
     -- Remove leading/trailing whitespaces and split by whitespace
     local parts = {}
+    local n = 0
     for part in line:gmatch("%S+") do
       if part:sub(1, 1) == '#' then
         break
       end
 
-      table_insert(parts, part:lower())
+      n = n + 1
+      parts[n] = part:lower()
     end
 
     -- Check if the line contains an IP address followed by hostnames
-    if #parts >= 2 then
+    if n >= 2 then
       local ip, _, family = _M.parse_hostname(parts[1])
 
-      if family ~= "name" then    -- ipv4/ipv6
-        for i = 2, #parts do
+      if family ~= "domain" then    -- ipv4/ipv6
+        for i = 2, n do
           local host = parts[i]
           local v = hosts[host]
 

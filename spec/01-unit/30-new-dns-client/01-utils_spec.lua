@@ -112,6 +112,54 @@ describe("[utils]", function ()
     end)
   end)
 
+  describe("parsing hostname", function ()
+    it("hostname_type()", function ()
+      assert.equal(utils.hostname_type("10.0.0.1"), "ipv4")
+      assert.equal(utils.hostname_type("127.0.0.1"), "ipv4")
+
+      assert.equal(utils.hostname_type("::1"), "ipv6")
+      assert.equal(utils.hostname_type("[::1]"), "ipv6")
+      assert.equal(utils.hostname_type("2001:db8::1"), "ipv6")
+      assert.equal(utils.hostname_type("[2001:db8::1]"), "ipv6")
+
+      assert.equal(utils.hostname_type("localhost"), "domain")
+      assert.equal(utils.hostname_type("example.test"), "domain")
+      assert.equal(utils.hostname_type("example.org"), "domain")
+      assert.equal(utils.hostname_type("example.com"), "domain")
+      assert.equal(utils.hostname_type("10.0.0.1.example.test"), "domain")
+    end)
+
+    it("parse_hostname()", function ()
+      local function check(name, expected_name, expected_port, expected_name_type)
+        local name_ip, port, name_type = utils.parse_hostname(name)
+
+        assert.equal(name_ip, expected_name, "checking the returned name/ip of " .. name)
+        assert.equal(port, expected_port, "checking the returned port of " .. name)
+        assert.equal(name_type, expected_name_type, "checking the returned type of " .. name)
+      end
+
+      check("127.0.0.1", "127.0.0.1", nil, "ipv4")
+      check("127.0.0.1:", "127.0.0.1", nil, "ipv4")
+      check("127.0.0.1:0", "127.0.0.1", 0, "ipv4")
+      check("127.0.0.1:80", "127.0.0.1", 80, "ipv4")
+
+      check("::1", "[::1]", nil, "ipv6")
+      check("[::1]:", "[::1]", nil, "ipv6")
+      check("[::1]:0", "[::1]", 0, "ipv6")
+      check("[::1]:80", "[::1]", 80, "ipv6")
+
+      check("www.example.test", "www.example.test", nil, "domain")
+      check("www.example.test:", "www.example.test", nil, "domain")
+      check("www.example.test:0", "www.example.test", 0, "domain")
+      check("www.example.test:80", "www.example.test", 80, "domain")
+
+      check("localhost", "localhost", nil, "domain")
+      check("localhost:", "localhost", nil, "domain")
+      check("localhost:0", "localhost", 0, "domain")
+      check("localhost:80", "localhost", 80, "domain")
+    end)
+  end)
+
   describe("ipv6_bracket()", function ()
     it("IPv6 address", function ()
       assert.equal(utils.ipv6_bracket("::1"), "[::1]")
