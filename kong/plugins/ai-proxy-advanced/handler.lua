@@ -48,25 +48,40 @@ function _M:init_worker()
   end
 
   local worker_events = kong.worker_events
+  local cluster_events = kong.configuration.role == "traditional" and kong.cluster_events
+
+  worker_events.register(function(data)
+    local conf = data.entity.config
+
+    local operation = data.operation
+    if operation == "create" or operation == "update" then
+      conf.__plugin_id = assert(data.entity.id, "missing plugin conf key __plugin_id")
+      get_balancer_instance(conf, BYPASS_CACHE)
+
+    elseif operation == "delete" then
+      local conf_key = data.entity.id
+      assert(conf_key, "missing plugin conf key data.entity.id")
+      balancers_by_plugin_key[conf_key] = nil
+    end
+  end, "ai-proxy-advanced", "balancers")
 
   -- event handlers to update balancer instances
   worker_events.register(function(data)
     if data.entity.name == "ai-proxy-advanced" then
-      local conf = data.entity.config
+      -- broadcast this to all workers becasue dao events are sent using post_local
+      worker_events.post("ai-proxy-advanced", "balancers", data)
 
-      local operation = data.operation
-      if operation == "create" or operation == "update" then
-        conf.__plugin_id = assert(data.entity.id, "missing plugin conf key __plugin_id")
-        get_balancer_instance(conf, BYPASS_CACHE)
-
-      elseif operation == "delete" then
-        local conf_key = data.entity.id
-        assert(conf_key, "missing plugin conf key data.entity.id")
-        balancers_by_plugin_key[conf_key] = nil
+      if cluster_events then
+        cluster_events:broadcast("ai-proxy-advanced:balancers", data)
       end
-
     end
   end, "crud", "plugins")
+
+  if cluster_events then
+    cluster_events:subscribe("ai-proxy-advanced:balancers", function(data)
+      worker_events.post("ai-proxy-advanced", "balancers", data)
+    end)
+  end
 
 end
 
