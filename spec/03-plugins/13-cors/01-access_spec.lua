@@ -287,6 +287,10 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "cors13.test" },
       })
 
+      local route14 = bp.routes:insert({
+        hosts = { "cors14.test" },
+      })
+
       local mock_upstream = bp.services:insert {
         host = helpers.mock_upstream_hostname,
         port = helpers.mock_upstream_port,
@@ -453,6 +457,15 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         name = "cors",
+        route = { id = route14.id },
+        config = {
+          preflight_continue = false,
+          origins = { "foo.bar", "*" }
+        }
+      }
+
+      bp.plugins:insert {
+        name = "cors",
         route = { id = route_timeout.id },
         config = {
           origins            = { "example.test" },
@@ -613,7 +626,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(res.headers["Vary"])
       end)
 
-      it("gives appropriate defaults when origin is explicitly set to *", function()
+      it("gives appropriate defaults when origin is explicitly set to * and config.credentials=true", function()
         local res = assert(proxy_client:send {
           method  = "OPTIONS",
           headers = {
@@ -630,6 +643,25 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("Origin", res.headers["Vary"])
         assert.is_nil(res.headers["Access-Control-Allow-Headers"])
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
+        assert.is_nil(res.headers["Access-Control-Max-Age"])
+      end)
+
+      it("gives * wildcard when origin has multiple entries and have * included", function()
+        local res = assert(proxy_client:send {
+          method  = "OPTIONS",
+          headers = {
+            ["Host"]   = "cors14.test",
+            ["Origin"] = "http://www.example.net",
+            ["Access-Control-Request-Method"] = "GET",
+          }
+        })
+        assert.res_status(200, res)
+        assert.equal("0", res.headers["Content-Length"])
+        assert.equal(CORS_DEFAULT_METHODS, res.headers["Access-Control-Allow-Methods"])
+        assert.equal("*", res.headers["Access-Control-Allow-Origin"])
+        assert.is_nil(res.headers["Access-Control-Allow-Headers"])
+        assert.is_nil(res.headers["Access-Control-Expose-Headers"])
+        assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
         assert.is_nil(res.headers["Access-Control-Max-Age"])
       end)
 
@@ -1032,7 +1064,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("Origin", res.headers["Vary"])
       end)
 
-      it("responds with * when config.credentials=false", function()
+      it("responds with * when origin is explicitly set to * and config.credentials=false", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           headers = {
@@ -1044,6 +1076,18 @@ for _, strategy in helpers.each_strategy() do
         assert.equals("*", res.headers["Access-Control-Allow-Origin"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
         assert.is_nil(res.headers["Vary"])
+      end)
+
+      it("responds with * when origin has multiple entries and have * included", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          headers = {
+            ["Host"]   = "cors14.test",
+            ["Origin"] = "http://www.example.net"
+          }
+        })
+        assert.res_status(200, res)
+        assert.equals("*", res.headers["Access-Control-Allow-Origin"])
       end)
 
       it("removes upstream ACAO header when no match is found", function()
