@@ -81,6 +81,7 @@ lualib_deps = [
     "@lua-resty-events//:lualib_srcs",
     "@lua-resty-websocket//:lualib_srcs",
     "@atc_router//:lualib_srcs",
+    "@simdjson//:lualib_srcs",
 ]
 
 [
@@ -100,6 +101,7 @@ lualib_deps = [
 
 luaclib_deps = [
     "@atc_router",
+    "@simdjson",
 ]
 
 [

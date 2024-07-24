@@ -52,6 +52,10 @@ load("@atc_router//build:crates.bzl", "atc_router_crates")
 
 atc_router_crates()
 
+load("@simdjson//build:repos.bzl", "simdjson_repositories")
+
+simdjson_repositories()
+
 load("//build:repositories.bzl", "build_repositories")
 
 build_repositories()
