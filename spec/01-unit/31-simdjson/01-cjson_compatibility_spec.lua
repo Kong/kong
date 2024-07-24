@@ -6,10 +6,9 @@ local simdjson = require("resty.simdjson")
 local deep_sort = helpers.deep_sort
 
 
-describe("[cjson compatibility]", function ()
+describe("[cjson compatibility] examples from cjson repo", function ()
 
-  it("examples from cjson repo", function ()
-    local strs = {
+  local strs = {
 [[
 {
     "glossary": {
@@ -250,7 +249,9 @@ describe("[cjson compatibility]", function ()
    }
 ]
 ]],
-    }
+  }
+
+  it("runs with unified interface", function ()
 
     local parser = simdjson.new()
     assert(parser)
@@ -262,6 +263,22 @@ describe("[cjson compatibility]", function ()
     end
 
     parser:destroy()
+  end)
+
+  it("runs with separated interface", function ()
+
+    local dec = require("resty.simdjson.decoder").new()
+    local enc = require("resty.simdjson.encoder").new()
+
+    assert(dec and enc)
+
+    for _, str in ipairs(strs) do
+      local obj1 = dec:process(str)
+      local obj2 = cjson.decode(enc:process(obj1))
+      assert.same(deep_sort(obj1), deep_sort(obj2))
+    end
+
+    dec:destroy()
   end)
 
 end)
