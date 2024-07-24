@@ -23,6 +23,8 @@ ngx.log(ngx.DEBUG, "Loading Debug API endpoints")
 
 -- Load debug routes
 api_helpers.attach_routes(app, require "kong.api.routes.debug")
+-- Load status routes
+api_helpers.attach_routes(app, require "kong.api.routes.health")
 
 
 return app

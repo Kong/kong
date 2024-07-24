@@ -1,0 +1,2 @@
+message: "Added a new sub-command `status` to the `kong debug` CLI tool."
+type: feature

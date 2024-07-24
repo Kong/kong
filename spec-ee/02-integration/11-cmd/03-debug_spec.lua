@@ -142,6 +142,23 @@ for __, deploy in ipairs({ "traditional", "hybrid" }) do
     assert.matches("Current log level: ", stdout)
   end)
 
+  it("kong debug status", function ()
+    code, stdout, stderr = kong_debug_exec("status")
+    assert.same(EC_SUCCESS, code)
+    assert.matches("server", string.sub(stdout, string.find(stdout, "server")))
+    assert.matches("memory", string.sub(stdout, string.find(stdout, "memory")))
+
+    if deploy == "traditional" then
+      assert.matches("database", string.sub(stdout, string.find(stdout, "database")))
+
+    elseif deploy == "hybrid" then
+      assert.matches("configuration_hash", string.sub(stdout, string.find(stdout, "configuration_hash")))
+
+    else
+      error("unknown deploy mode: " .. deploy)
+    end
+  end)
+
   it("kong debug profiling cpu", function ()
     code, stdout, stderr = kong_debug_exec("profiling cpu status")
     assert.same(EC_SUCCESS, code)

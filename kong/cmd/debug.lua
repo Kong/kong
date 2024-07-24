@@ -267,9 +267,37 @@ local function log_level_handler(socket_path, args, options)
 end
 
 
+local function status_handler(socket_path, args, options)
+  local method, path
+
+  method = "GET"
+  path = "/status"
+
+  -- request to the gateway
+  local res = request_unix_domain_socket({
+    socket_path = socket_path,
+    path = path,
+    method = method,
+    body = cjson.encode(options),
+    verbose = args.v,
+  })
+
+-- handle the result
+
+  if res.status == 400 then
+    log.error(res.body.message)
+    return EC_FAILURE
+  end
+
+  log(cjson.encode(res.body))
+  return EC_SUCCESS
+end
+
+
 local command_handlers = {
   profiling = profiling_handler,
   log_level = log_level_handler,
+  status = status_handler,
 }
 
 
@@ -357,6 +385,8 @@ The available commands are:
 
   log_level get                         Get the logging level.
 
+  status                                Get the status of the Kong node.
+
 
 Options:
  --pid            (optional number)     The worker’s PID for profiling.
@@ -394,5 +424,6 @@ return {
   sub_commands = {
     log_level = true,
     profiling = true,
+    status = true,
   },
 }
