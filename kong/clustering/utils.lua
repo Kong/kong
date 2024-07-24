@@ -175,16 +175,21 @@ if not ok or not kong.configuration.cluster_simd_json then
   _M.json_encode = cjson.encode
 
 else
-  -- enable yield and not reentrant
   _M.json_decode = function(str)
-    local parser = simdjson.new(true)
-    return parser:decode(str)
+    -- enable yield and not reentrant for decode
+    local dec = simdjson.new(true)
+
+    local res, err = dec:decode(str)
+    dec:destroy()
+
+    return res, err
   end
 
-  -- enable yield and not reentrant
+  -- enable yield and reentrant for encode
+  local enc = simdjson.new(true)
+
   _M.json_encode = function(obj)
-    local parser = simdjson.new(true)
-    return parser:encode(obj)
+    return enc:encode(obj)
   end
 end
 
