@@ -902,12 +902,12 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
         })
-        
+
         -- check we got internal server error
         local body = assert.res_status(500 , r)
         local json = cjson.decode(body)
         assert.is_truthy(json.error)
-        assert.equals(json.error.message, "transformation failed from type openai://llm/v1/chat: 'choices' not in llm/v1/chat response")
+        assert.same(json.error.message, "transformation failed from type openai://llm/v1/chat: 'choices' not in llm/v1/chat response")
       end)
 
       it("bad request", function()

@@ -154,7 +154,7 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
     local system_prompts = {}
 
     for i, v in ipairs(request_table.messages) do
-      -- for 'system', we just concat them all into one Gemini instruction
+      -- for 'system', we just concat them all into one Bedrock instruction
       if v.role and v.role == "system" then
         system_prompts[#system_prompts+1] = { text = v.content }
 
