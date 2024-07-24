@@ -3,7 +3,6 @@ local _MT = { __index = _M, }
 
 
 local semaphore = require("ngx.semaphore")
-local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local clustering_utils = require("kong.clustering.utils")
 local compat = require("kong.clustering.compat")
@@ -20,8 +19,8 @@ local pairs = pairs
 local ngx = ngx
 local ngx_log = ngx.log
 local timer_at = ngx.timer.at
-local cjson_decode = cjson.decode
-local cjson_encode = cjson.encode
+local json_decode = clustering_utils.json_decode
+local json_encode = clustering_utils.json_encode
 local kong = kong
 local ngx_exit = ngx.exit
 local exiting = ngx.worker.exiting
@@ -121,7 +120,7 @@ function _M:export_deflated_reconfigure_payload()
 
   -- store serialized plugins map for troubleshooting purposes
   local shm_key_name = "clustering:cp_plugins_configured:worker_" .. (worker_id() or -1)
-  kong_dict:set(shm_key_name, cjson_encode(self.plugins_configured))
+  kong_dict:set(shm_key_name, json_encode(self.plugins_configured))
   ngx_log(ngx_DEBUG, "plugin configuration map key: ", shm_key_name, " configuration: ", kong_dict:get(shm_key_name))
 
   local config_hash, hashes = calculate_config_hash(config_table)
@@ -136,7 +135,7 @@ function _M:export_deflated_reconfigure_payload()
 
   self.reconfigure_payload = payload
 
-  payload, err = cjson_encode(payload)
+  payload, err = json_encode(payload)
   if not payload then
     return nil, err
   end
@@ -207,7 +206,7 @@ function _M:handle_cp_websocket(cert)
       err = "failed to receive websocket basic info data"
 
     else
-      data, err = cjson_decode(data)
+      data, err = json_decode(data)
       if type(data) ~= "table" then
           err = "failed to decode websocket basic info data" ..
                 (err and ": " .. err or "")
