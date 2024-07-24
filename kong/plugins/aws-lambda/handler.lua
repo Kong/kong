@@ -8,8 +8,6 @@
 -- Copyright (C) Kong Inc.
 
 local ngx_var = ngx.var
-local ngx_now = ngx.now
-local ngx_update_time = ngx.update_time
 local md5_bin = ngx.md5_bin
 local re_match = ngx.re.match
 local fmt = string.format
@@ -24,6 +22,7 @@ local VIA_HEADER = constants.HEADERS.VIA
 local server_tokens = meta._SERVER_TOKENS
 
 local request_util = require "kong.plugins.aws-lambda.request-util"
+local get_now = require("kong.tools.time").get_updated_now_ms
 local build_request_payload = request_util.build_request_payload
 local extract_proxy_response = request_util.extract_proxy_response
 local remove_array_mt_for_empty_table = request_util.remove_array_mt_for_empty_table
@@ -35,12 +34,6 @@ local AWS_REGION do
 end
 local AWS
 local LAMBDA_SERVICE_CACHE
-
-
-local function get_now()
-  ngx_update_time()
-  return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
-end
 
 
 local function initialize()
