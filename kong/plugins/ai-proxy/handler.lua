@@ -5,7 +5,6 @@ local kong_utils = require("kong.tools.gzip")
 local kong_meta = require("kong.meta")
 local buffer = require "string.buffer"
 local strip = require("kong.tools.utils").strip
-local to_hex = require("resty.string").to_hex
 
 -- cloud auth/sdk providers
 local GCP_SERVICE_ACCOUNT do
@@ -230,14 +229,21 @@ local function handle_streaming_frame(conf)
       end
 
       if conf.logging and conf.logging.log_statistics and metadata then
-        kong_ctx_plugin.ai_stream_completion_tokens =
-          (kong_ctx_plugin.ai_stream_completion_tokens or 0) +
-          (metadata.completion_tokens or 0)
-          or kong_ctx_plugin.ai_stream_completion_tokens
-        kong_ctx_plugin.ai_stream_prompt_tokens =
-          (kong_ctx_plugin.ai_stream_prompt_tokens or 0) +
-          (metadata.prompt_tokens or 0)
-          or kong_ctx_plugin.ai_stream_prompt_tokens
+        -- gemini metadata specifically, works differently
+        if conf.model.provider == "gemini" then
+          print(metadata.completion_tokens)
+          kong_ctx_plugin.ai_stream_completion_tokens = metadata.completion_tokens or 0
+          kong_ctx_plugin.ai_stream_prompt_tokens = metadata.prompt_tokens or 0
+        else
+          kong_ctx_plugin.ai_stream_completion_tokens =
+            (kong_ctx_plugin.ai_stream_completion_tokens or 0) +
+            (metadata.completion_tokens or 0)
+            or kong_ctx_plugin.ai_stream_completion_tokens
+          kong_ctx_plugin.ai_stream_prompt_tokens =
+            (kong_ctx_plugin.ai_stream_prompt_tokens or 0) +
+            (metadata.prompt_tokens or 0)
+            or kong_ctx_plugin.ai_stream_prompt_tokens
+        end
       end
     end
   end

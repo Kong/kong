@@ -137,9 +137,6 @@ do
       }
     end
 
-    -- needed for some drivers later
-    self.conf.model.source = "transformer-plugins"
-
     -- convert it to the specified driver format
     ai_request, _, err = self.driver.to_format(ai_request, self.conf.model, "llm/v1/chat")
     if err then

@@ -98,7 +98,7 @@ function Stream:next_int(size)
     return nil, nil, "cannot work on integers smaller than 8 bits long"
   end
 
-  local int, err = self:next_bytes(size / 8, trim)
+  local int, err = self:next_bytes(size / 8)
   if err then
     return nil, nil, err
   end
@@ -123,22 +123,20 @@ function Stream:next_message()
   -- this is a chicken and egg problem, because we need to
   -- read the message to get the length, to then re-read the
   -- whole message at correct offset
-  local msg_len, orig_len, err = self:next_int(32)
+  local msg_len, _, err = self:next_int(32)
   if err then
     return err
   end
   
   -- get the headers length
-  local headers_len, orig_headers_len, err = self:next_int(32)
+  local headers_len, _, err = self:next_int(32)
+  if err then
+    return err
+  end
 
   -- get the preamble checksum
-  local preamble_checksum, orig_preamble_checksum, err = self:next_int(32)
-
-  -- TODO: calculate checksum
-  -- local result = crc32(orig_len .. origin_headers_len, preamble_checksum)
-  -- if not result then
-  --   return nil, "preamble checksum failed - message is corrupted"
-  -- end
+  -- skip it because we're not using UDP
+  self:next_int(32)
 
   -- pull the headers from the buf
   local headers = {}
@@ -167,12 +165,9 @@ function Stream:next_message()
   local body = self:next_utf_8(msg_len - self.read_count - 4)
 
   -- last 4 bytes is a body checksum
-  local msg_checksum = self:next_int(32)
-  -- TODO CHECK FULL MESSAGE CHECKSUM
-  -- local result = crc32(original_full_msg, msg_checksum)
-  -- if not result then
-  --   return nil, "preamble checksum failed - message is corrupted"
-  -- end
+  -- skip it because we're not using UDP
+  self:next_int(32)
+
 
   -- rewind the tape
   self.read_count = 0

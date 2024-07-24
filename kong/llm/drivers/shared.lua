@@ -19,6 +19,10 @@ local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local function str_ltrim(s) -- remove leading whitespace from string.
   return type(s) == "string" and s:gsub("^%s*", "")
 end
+
+local function str_rtrim(s) -- remove trailing whitespace from string.
+  return type(s) == "string" and s:match('^(.*%S)%s*$')
+end
 --
 
 local log_entry_keys = {
@@ -249,18 +253,29 @@ function _M.frame_to_events(frame, provider)
   -- some new LLMs return the JSON object-by-object,
   -- because that totally makes sense to parse?!
   if provider == "gemini" then
+    local done = false
+
     -- if this is the first frame, it will begin with array opener '['
     frame = (string.sub(str_ltrim(frame), 1, 1) == "[" and string.sub(str_ltrim(frame), 2)) or frame
 
     -- it may start with ',' which is the start of the new frame
     frame = (string.sub(str_ltrim(frame), 1, 1) == "," and string.sub(str_ltrim(frame), 2)) or frame
     
-    -- finally, it may end with the array terminator ']' indicating the finished stream
-    frame = (string.sub(str_ltrim(frame), -1) == "]" and string.sub(str_ltrim(frame), 1, -2)) or frame
+    -- it may end with the array terminator ']' indicating the finished stream
+    if string.sub(str_rtrim(frame), -1) == "]" then
+      frame = string.sub(str_rtrim(frame), 1, -2)
+      done = true
+    end
 
     -- for multiple events that arrive in the same frame, split by top-level comma
     for _, v in ipairs(split(frame, "\n,")) do
       events[#events+1] = { data = v }
+    end
+
+    if done then
+      -- add the done signal here
+      -- but we have to retrieve the metadata from a previous filter run
+      events[#events+1] = { data = "[DONE]" }
     end
 
   elseif provider == "bedrock" then
@@ -609,7 +624,7 @@ function _M.post_request(conf, response_object)
     end
 
     if response_object.usage.prompt_tokens and response_object.usage.completion_tokens
-      and conf.model.options.input_cost and conf.model.options.output_cost then 
+      and conf.model.options and conf.model.options.input_cost and conf.model.options.output_cost then 
         request_analytics_plugin[log_entry_keys.USAGE_CONTAINER][log_entry_keys.COST] = 
           (response_object.usage.prompt_tokens * conf.model.options.input_cost
           + response_object.usage.completion_tokens * conf.model.options.output_cost) / 1000000 -- 1 million

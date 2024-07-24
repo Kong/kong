@@ -6,10 +6,8 @@ local fmt = string.format
 local ai_shared = require("kong.llm.drivers.shared")
 local socket_url = require("socket.url")
 local string_gsub = string.gsub
-local buffer = require("string.buffer")
 local table_insert = table.insert
 local string_lower = string.lower
-local string_sub = string.sub
 local signer = require("resty.aws.request.sign")
 --
 
@@ -122,8 +120,7 @@ local function handle_stream_event(event_t, model_info, route_type)
 
     new_event = "[DONE]"
 
-  elseif event_type == "contentBlockStop" then
-    -- placeholder - I don't think this does anything yet
+  -- "contentBlockStop" is absent because it is not used for anything here
   end
 
   if new_event then
