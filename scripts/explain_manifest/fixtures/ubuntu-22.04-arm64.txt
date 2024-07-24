@@ -191,3 +191,10 @@
   Needed    :
   - libgcc_s.so.1
   - libc.so.6
+
+- Path      : /usr/local/openresty/site/lualib/libsimdjson_ffi.so
+  Needed    :
+  - libstdc++.so.6
+  - libgcc_s.so.1
+  - libc.so.6
+  - ld-linux-aarch64.so.1
