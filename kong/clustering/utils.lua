@@ -168,7 +168,7 @@ end
 
 -- encode/decode json with cjson or simdjson
 local ok, simdjson = pcall(require, "resty.simdjson")
-if not ok then
+if not ok or not kong.configuration.cluster_simd_json then
   local cjson = require("cjson.safe")
 
   _M.json_decode = cjson.decode
