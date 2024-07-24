@@ -155,7 +155,7 @@ We evaluated the capacity of DNS records using the following resources:
     * Record: ~80 bytes json string, e.g., `{address = "127.0.0.1", name = <domain>, ttl = 3600, class = 1, type = 1}`.
   * Domain: ~36 bytes string, e.g., `example<n>.long.long.long.long.test`. Domain names with lengths between 10 and 36 bytes yield similar results.
 
-The results of ) are as follows:
+The results of evaluation are as follows:
 
 | shared memory size | number of records per response | number of loaded responses |
 |--------------------|-------------------|----------|
