@@ -88,13 +88,14 @@ env:
   TF_VAR_kong_effective_semver: ${{ inputs.kong_effective_semver || '3.8.0.0' }}
   TF_VAR_project_id: ${{ inputs.gke_project_id || 'gcp-sdet-test' }}
   GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.TEST_API_GCP_SERVICE_ACCOUNT }}
-  SEND_SLACK_RESULTS: ${{ github.event.inputs.send_slack_results }}
+  SEND_SLACK_RESULTS: ${{ github.event.inputs.send_slack_results || 'true'}}
   NPM_TOKEN: ${{ secrets.NPM_TOKEN_PRIVATE_READ }}
   # if this is a push event, or it is pull request but not from a fork, and not from dependabot (dependabot does not use forks), then this PR will have access to secrets
   HAS_ACCESS_TO_SECRETS: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && !contains(github.actor, 'dependabot')) }}
   AWS_ACCESS_KEY_ID: ${{ secrets.TEST_API_AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.TEST_API_AWS_SECRET_ACCESS_KEY }}
-  VERBOSE_RESPONSE_LOGS: ${{ inputs.enable_verbose_response_logging }}
+  VERBOSE_RESPONSE_LOGS: ${{ inputs.enable_verbose_response_logging || 'false'}}
+  DESTROY_CLUSTER: ${{ inputs.destroy_cluster || 'true'}}
   CI: 'false'
 
 jobs:
@@ -235,5 +236,5 @@ jobs:
           retention-days: 3
 
       - name: Terraform Destroy gke cluster
-        if: ${{ always() && inputs.destroy_cluster == 'true' }}
+        if: ${{ always() && env.DESTROY_CLUSTER == 'true' }}
         run: terraform -chdir=gateway-docker-compose-generator/infrastructure/gateway-terraform-gke/provision-gke destroy -auto-approve
