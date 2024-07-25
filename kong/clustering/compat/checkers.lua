@@ -2,7 +2,7 @@ local ipairs = ipairs
 local type = type
 
 
-local log_warn_message
+local log_warn_message, _AI_PROVIDER_INCOMPATIBLE
 do
   local ngx_log = ngx.log
   local ngx_WARN = ngx.WARN
@@ -20,7 +20,7 @@ do
     ngx_log(ngx_WARN, _log_prefix, msg, log_suffix)
   end
 
-  _AI_PROVIDERS_ADDED = {
+  local _AI_PROVIDERS_ADDED = {
     [3008000000] = {
       "gemini",
       "bedrock",
@@ -32,9 +32,9 @@ do
       if v == provider then
         return true
       end
-
-      return false
     end
+
+    return false
   end
 end
 
