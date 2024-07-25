@@ -59,7 +59,8 @@ jobs:
         uses: benc-uk/workflow-dispatch@25b02cc069be46d637e8fe2f1e8484008e9e9609 # v1
         if: matrix.active_branch == 'yes' || steps.date.outputs.dmod == '1'
         with:
-          workflow: release.yml
+          # https://github.com/benc-uk/workflow-dispatch/blob/25b02cc069be46d637e8fe2f1e8484008e9e9609/src/main.ts#L58 what?
+          workflow: /release.yml
           ref: ${{ matrix.branch }}
           inputs: '{"official":"false", "version":"${{ matrix.version }}"}'
 
