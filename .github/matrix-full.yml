@@ -54,7 +54,7 @@ build-packages:
   package-type: aws2
   check-manifest-suite: amazonlinux-2-amd64
   # simdjson doesn't compile on gcc7.3.1 (needs 7.4)
-  bazel-args: --platforms=//:aws2-crossbuild-x86_64 -//:simdjson=False
+  bazel-args: --platforms=//:aws2-crossbuild-x86_64 --//:simdjson=False
 - label: amazonlinux-2023
   image: amazonlinux:2023
   package: rpm
