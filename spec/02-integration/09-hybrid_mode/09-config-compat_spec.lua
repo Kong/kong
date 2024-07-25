@@ -615,6 +615,10 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         expected.config.response_streaming = nil
         expected.config.model.options.upstream_path = nil
         expected.config.route_type = "llm/v1/chat"
+        expected.config.auth.azure_client_id = nil
+        expected.config.auth.azure_client_secret = nil
+        expected.config.auth.azure_tenant_id = nil
+        expected.config.auth.azure_use_managed_identity = nil
 
         do_assert(uuid(), "3.6.0", expected)
 
@@ -668,6 +672,10 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
         expected.config.llm.model.options.upstream_path = nil
         expected.config.llm.route_type = "llm/v1/chat"
+        expected.config.llm.auth.azure_client_id = nil
+        expected.config.llm.auth.azure_client_secret = nil
+        expected.config.llm.auth.azure_tenant_id = nil
+        expected.config.llm.auth.azure_use_managed_identity = nil
 
         do_assert(uuid(), "3.6.0", expected)
 
@@ -721,6 +729,10 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
         expected.config.llm.model.options.upstream_path = nil
         expected.config.llm.route_type = "llm/v1/chat"
+        expected.config.llm.auth.azure_client_id = nil
+        expected.config.llm.auth.azure_client_secret = nil
+        expected.config.llm.auth.azure_tenant_id = nil
+        expected.config.llm.auth.azure_use_managed_identity = nil
 
         do_assert(uuid(), "3.6.0", expected)
 
