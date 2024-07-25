@@ -40,37 +40,43 @@ local compatible_checkers = {
 
         if plugin.name == 'ai-proxy' then
           local config = plugin.config
-          if config.model.provider == "gemini" then
+          if config.model.provider == "gemini" or config.model.provider == "bedrock" then
+            log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
+            ' "openai preserve mode", because ' .. config.model.provider .. ' provider ' ..
+            ' is not supported in this release',
+            dp_version, log_suffix)
+
             config.model.provider = "openai"
             config.route_type = "preserve"
-            log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
-                              ' "openai preserve mode", because gemini' ..
-                              ' provider is not supported in this release',
-                              dp_version, log_suffix)
+
             has_update = true
           end
         end
 
         if plugin.name == 'ai-request-transformer' then
           local config = plugin.config
-          if config.llm.model.provider == "gemini" then
-            config.llm.model.provider = "openai"
+          if config.llm.model.provider == "gemini" or config.llm.model.provider == "bedrock" then
             log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
-                              ' "openai preserve mode", because gemini' ..
-                              ' provider is not supported in this release',
-                              dp_version, log_suffix)
+            ' "openai preserve mode", because ' .. config.llm.model.provider .. ' provider ' ..
+            ' is not supported in this release',
+            dp_version, log_suffix)
+
+            config.llm.model.provider = "openai"
+
             has_update = true
           end
         end
 
         if plugin.name == 'ai-response-transformer' then
           local config = plugin.config
-          if config.llm.model.provider == "gemini" then
-            config.llm.model.provider = "openai"
+          if config.llm.model.provider == "gemini" or config.llm.model.provider == "bedrock" then
             log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
-                              ' "openai preserve mode", because gemini' ..
-                              ' provider is not supported in this release',
-                              dp_version, log_suffix)
+            ' "openai preserve mode", because ' .. config.llm.model.provider .. ' provider ' ..
+            ' is not supported in this release',
+            dp_version, log_suffix)
+
+            config.llm.model.provider = "openai"
+
             has_update = true
           end
         end
