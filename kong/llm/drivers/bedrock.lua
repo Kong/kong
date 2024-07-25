@@ -365,7 +365,7 @@ function _M.post_request(conf)
 end
 
 function _M.pre_request(conf, body)
-  -- disable gzip for bedrock because it breaks streaming
+  -- force gzip for bedrock because brotli and others break streaming
   kong.service.request.set_header("Accept-Encoding", "gzip, identity")
 
   return true, nil
