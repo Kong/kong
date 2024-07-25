@@ -402,6 +402,27 @@ local function get_plugins_configs(service)
         upstream_uri = "http://test.test"
       }
     },
+    ["ai-proxy-advanced"] = {
+      name = "ai-proxy-advanced",
+      config = {
+        targets = {
+          {
+            route_type = "llm/v1/chat",
+            auth = {
+              header_name = "Authorization",
+              header_value = "Bearer openai-key",
+            },
+            model = {
+              name = "gpt-3.5-turbo",
+              provider = "openai",
+              options = {
+                upstream_url = "http://test.test"
+              },
+            },
+          },
+        },
+      },
+    },
   }
 end
 
