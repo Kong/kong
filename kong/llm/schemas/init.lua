@@ -89,8 +89,8 @@ local auth_schema = {
         description =
         "If azure_use_managed_identity is set to true, and you need to use a different user-assigned identity for this LLM instance, set the client secret.",
         required = false,
-        encrypted = true,
-        referenceable = true
+        encrypted = true,  -- [[ ee declaration ]]
+        referenceable = true,
       }
     },
     {
@@ -114,6 +114,7 @@ local auth_schema = {
                       "If null (and gcp_use_service_account is true), Kong will attempt to read from " ..
                       "environment variable `GCP_SERVICE_ACCOUNT`.",
         required = false,
+        encrypted = true,  -- [[ ee declaration ]]
         referenceable = true }},
   }
 }

@@ -19,6 +19,8 @@ local auth = {
         type        = "string",
         description = "authentication password",
         required    = false,
+        encrypted = true,  -- [[ ee declaration ]]
+        referenceable = true
       },
     },
     {
@@ -26,6 +28,8 @@ local auth = {
         type        = "string",
         description = "authentication token",
         required    = false,
+        encrypted = true,  -- [[ ee declaration ]]
+        referenceable = true
       },
     },
   },
