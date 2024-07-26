@@ -35,11 +35,13 @@ local log_entry_keys = {
   PROVIDER_NAME = "provider_name",
   REQUEST_MODEL = "request_model",
   RESPONSE_MODEL = "response_model",
+  LLM_LATENCY = "llm_latency",
 
   -- usage keys
   PROMPT_TOKENS = "prompt_tokens",
   COMPLETION_TOKENS = "completion_tokens",
   TOTAL_TOKENS = "total_tokens",
+  TIME_PER_TOKEN = "time_per_token",
   COST = "cost",
 
   -- cache keys
@@ -504,6 +506,8 @@ function _M.pre_request(conf, request_table)
     kong.ctx.shared.ai_prompt_tokens = (kong.ctx.shared.ai_prompt_tokens or 0) + prompt_tokens
   end
 
+  kong.ctx.shared.ai_request_start_time = ngx.now()
+
   return true, nil
 end
 
@@ -552,6 +556,16 @@ function _M.post_request(conf, response_object)
   request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.PROVIDER_NAME] = provider_name
   request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.REQUEST_MODEL] = kong.ctx.plugin.llm_model_requested or conf.model.name
   request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.RESPONSE_MODEL] = response_object.model or conf.model.name
+
+  -- Set the llm latency meta, and time per token usage
+  if kong.ctx.shared.ai_request_start_time then
+    local llm_latency = (ngx.now() - kong.ctx.shared.ai_request_start_time) * 1000
+    request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.LLM_LATENCY] = llm_latency
+
+    if response_object.usage and response_object.usage.completion_tokens then
+      request_analytics_plugin[log_entry_keys.USAGE_CONTAINER][log_entry_keys.TIME_PER_TOKEN] = llm_latency / response_object.usage.completion_tokens
+    end
+  end
 
   -- set extra per-provider meta
   if kong.ctx.plugin.ai_extra_meta and type(kong.ctx.plugin.ai_extra_meta) == "table" then
