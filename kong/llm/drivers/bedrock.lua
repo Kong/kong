@@ -21,6 +21,14 @@ local _OPENAI_ROLE_MAPPING = {
   ["assistant"] = "assistant",
 }
 
+_M.bedrock_unsupported_system_role_patterns = {
+  "amazon.titan.-.*",
+  "cohere.command.-text.-.*",
+  "cohere.command.-light.-text.-.*",
+  "mistral.mistral.-7b.-instruct.-.*",
+  "mistral.mixtral.-8x7b.-instruct.-.*",
+}
+
 local function to_bedrock_generation_config(request_table)
   return {
     ["maxTokens"] = request_table.max_tokens,
@@ -118,13 +126,13 @@ local function handle_stream_event(event_t, model_info, route_type)
       completion_tokens = body.usage and body.usage.outputTokens or 0,
     }
 
-    new_event = "[DONE]"
+    new_event = ai_shared._CONST.SSE_TERMINATOR
 
   -- "contentBlockStop" is absent because it is not used for anything here
   end
 
   if new_event then
-    if new_event ~= "[DONE]" then
+    if new_event ~= ai_shared._CONST.SSE_TERMINATOR then
       new_event = cjson.encode(new_event)
     end
 
@@ -137,7 +145,7 @@ end
 local function to_bedrock_chat_openai(request_table, model_info, route_type)
   if not request_table then  -- try-catch type mechanism
     local err = "empty request table received for transformation"
-    ngx.log(ngx.ERR, err)
+    ngx.log(ngx.ERR, "[bedrock] ", err)
     return nil, nil, err
   end
 
@@ -171,7 +179,7 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
 
     -- only works for some models
     if #system_prompts > 0 then
-      for _, p in ipairs(ai_shared.bedrock_unsupported_system_role_patterns) do
+      for _, p in ipairs(_M.bedrock_unsupported_system_role_patterns) do
         if model_info.name:find(p) then
           return nil, nil, "system prompts are unsupported for model '" .. model_info.name
         end
@@ -199,7 +207,7 @@ local function from_bedrock_chat_openai(response, model_info, route_type)
 
   if err then
     local err_client = "failed to decode response from Bedrock"
-    ngx.log(ngx.ERR, fmt("%s: %s", err_client, err))
+    ngx.log(ngx.ERR, fmt("[bedrock] %s: %s", err_client, err))
     return nil, err_client
   end
 
@@ -226,7 +234,7 @@ local function from_bedrock_chat_openai(response, model_info, route_type)
 
   else -- probably a server fault or other unexpected response
     local err = "no generation candidates received from Bedrock, or max_tokens too short"
-    ngx.log(ngx.ERR, err)
+    ngx.log(ngx.ERR, "[bedrock] ", err)
     return nil, err
   end
 

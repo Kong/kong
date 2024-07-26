@@ -47,8 +47,8 @@ local function handle_stream_event(event_t, model_info, route_type)
     return
   end
 
-  if event_t.data == "[DONE]" then
-    return "[DONE]", nil, nil
+  if event_t.data == ai_shared._CONST.SSE_TERMINATOR then
+    return ai_shared._CONST.SSE_TERMINATOR, nil, nil
   end
 
   local event, err = cjson.decode(event_t.data)

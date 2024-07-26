@@ -83,15 +83,17 @@ local auth_schema = {
         referenceable = true }},
     { aws_access_key_id = {
         type = "string",
-        description = "Set this if you are using an AWS provider (Bedrock, SageMaker) and you are authenticating " ..
-                      "using static IAM User credentials.",
+        description = "Set this if you are using an AWS provider (Bedrock) and you are authenticating " ..
+                      "using static IAM User credentials. Setting this will override the AWS_ACCESS_KEY_ID " ..
+                      "environment variable for this plugin instance.",
         required = false,
         encrypted = true,
         referenceable = true }},
     { aws_secret_access_key = {
         type = "string",
-        description = "Set this if you are using an AWS provider (Bedrock, SageMaker) and you are authenticating " ..
-                      "using static IAM User credentials.",
+        description = "Set this if you are using an AWS provider (Bedrock) and you are authenticating " ..
+                      "using static IAM User credentials. Setting this will override the AWS_SECRET_ACCESS_KEY " ..
+                      "environment variable for this plugin instance.",
         required = false,
         encrypted = true,
         referenceable = true }},

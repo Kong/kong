@@ -188,7 +188,7 @@ local function handle_streaming_frame(conf)
       local err
 
       if formatted then  -- only stream relevant frames back to the user
-        if conf.logging and conf.logging.log_payloads and (formatted ~= "[DONE]") then
+        if conf.logging and conf.logging.log_payloads and (formatted ~= ai_shared._CONST.SSE_TERMINATOR) then
           -- append the "choice" to the buffer, for logging later. this actually works!
           if not event_t then
             event_t, err = cjson.decode(formatted)
@@ -206,7 +206,7 @@ local function handle_streaming_frame(conf)
         -- handle event telemetry
         if conf.logging and conf.logging.log_statistics then
           if not ai_shared.streaming_has_token_counts[conf.model.provider] then
-            if formatted ~= "[DONE]" then
+            if formatted ~= ai_shared._CONST.SSE_TERMINATOR then
               if not event_t then
                 event_t, err = cjson.decode(formatted)
               end
@@ -229,7 +229,7 @@ local function handle_streaming_frame(conf)
 
         framebuffer:put("data: ")
         framebuffer:put(formatted or "")
-        framebuffer:put((formatted ~= "[DONE]") and "\n\n" or "")
+        framebuffer:put((formatted ~= ai_shared._CONST.SSE_TERMINATOR) and "\n\n" or "")
       end
 
       if conf.logging and conf.logging.log_statistics and metadata then

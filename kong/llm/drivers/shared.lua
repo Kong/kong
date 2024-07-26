@@ -56,20 +56,16 @@ local log_entry_keys = {
 
 local openai_override = os.getenv("OPENAI_TEST_PORT")
 
+_M._CONST = {
+  ["SSE_TERMINATOR"] = "[DONE]",
+}
+
 _M.streaming_has_token_counts = {
   ["cohere"] = true,
   ["llama2"] = true,
   ["anthropic"] = true,
   ["gemini"] = true,
   ["bedrock"] = true,
-}
-
-_M.bedrock_unsupported_system_role_patterns = {
-  "amazon.titan.-.*",
-  "cohere.command.-text.-.*",
-  "cohere.command.-light.-text.-.*",
-  "mistral.mistral.-7b.-instruct.-.*",
-  "mistral.mixtral.-8x7b.-instruct.-.*",
 }
 
 _M.upstream_url_format = {
@@ -275,7 +271,7 @@ function _M.frame_to_events(frame, provider)
     if done then
       -- add the done signal here
       -- but we have to retrieve the metadata from a previous filter run
-      events[#events+1] = { data = "[DONE]" }
+      events[#events+1] = { data = _M._CONST.SSE_TERMINATOR }
     end
 
   elseif provider == "bedrock" then
@@ -448,7 +444,7 @@ function _M.from_ollama(response_string, model_info, route_type)
     end
   end
   
-  if output and output ~= "[DONE]" then
+  if output and output ~= _M._CONST.SSE_TERMINATOR then
     output, err = cjson.encode(output)
   end
 

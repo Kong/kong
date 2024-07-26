@@ -96,7 +96,7 @@ do
 
     -- mistral, cohere, titan (via Bedrock) don't support system commands
     if self.driver == "bedrock" then
-      for _, p in ipairs(ai_shared.bedrock_unsupported_system_role_patterns) do
+      for _, p in ipairs(self.driver.bedrock_unsupported_system_role_patterns) do
         if request.model:find(p) then
           ai_request = {
             messages = {

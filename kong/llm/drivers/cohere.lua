@@ -97,7 +97,7 @@ local function handle_stream_event(event_t, model_info, route_type)
 
   elseif event.event_type == "stream-end" then
     -- return a metadata object, with the OpenAI termination event
-    new_event = "[DONE]"
+    new_event = ai_shared._CONST.SSE_TERMINATOR
 
     metadata = {
       completion_tokens = event.response
@@ -123,7 +123,7 @@ local function handle_stream_event(event_t, model_info, route_type)
   end
 
   if new_event then
-    if new_event ~= "[DONE]" then
+    if new_event ~= ai_shared._CONST.SSE_TERMINATOR then
       new_event = cjson.encode(new_event)
     end
 
