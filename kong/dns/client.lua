@@ -341,7 +341,9 @@ end
 local function resolve_query(self, name, qtype, tries)
   local key = name .. ":" .. qtype
 
-  self.stats:incr(key, "query")
+  local stats = self.stats
+
+  stats:incr(key, "query")
 
   local r, err = resolver:new(self.r_opts)
   if not r then
@@ -355,14 +357,14 @@ local function resolve_query(self, name, qtype, tries)
 
   local duration = math_floor((now() - start) * 1000)
 
-  self.stats:set(key, "query_last_time", duration)
+  stats:set(key, "query_last_time", duration)
 
   log(DEBUG, PREFIX, "r:query(", key, ") ans:", answers and #answers or "-",
                      " t:", duration, " ms")
 
   -- network error or malformed DNS response
   if not answers then
-    self.stats:incr(key, "query_fail_nameserver")
+    stats:incr(key, "query_fail_nameserver")
     err = "DNS server error: " .. tostring(err) .. ", took " .. duration .. " ms"
 
     -- TODO: make the error more structured, like:
@@ -374,9 +376,9 @@ local function resolve_query(self, name, qtype, tries)
 
   answers = process_answers(self, name, qtype, answers)
 
-  self.stats:incr(key, answers.errstr and
-                       "query_fail:" .. answers.errstr or
-                       "query_succ")
+  stats:incr(key, answers.errstr and
+                  "query_fail:" .. answers.errstr or
+                  "query_succ")
 
   -- DNS response error
   if answers.errcode then
@@ -547,7 +549,9 @@ local function resolve_all(self, name, qtype, cache_only, tries, has_timing)
 
   log(DEBUG, PREFIX, "resolve_all ", key)
 
-  self.stats:incr(key, "runs")
+  local stats = self.stats
+
+  stats:incr(key, "runs")
 
   local answers, err, hit_level = self.cache:get(key, nil, resolve_callback,
                                                  self, name, qtype, cache_only,
@@ -558,7 +562,7 @@ local function resolve_all(self, name, qtype, cache_only, tries, has_timing)
   end
 
   local hit_str = hit_level and HIT_LEVEL_TO_NAME[hit_level] or "fail"
-  self.stats:incr(key, hit_str)
+  stats:incr(key, hit_str)
 
   log(DEBUG, PREFIX, "cache lookup ", key, " ans:", answers and #answers or "-",
                      " hlv:", hit_str)
