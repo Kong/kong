@@ -10,18 +10,13 @@ local strip = require("kong.tools.utils").strip
 local GCP_SERVICE_ACCOUNT do
   GCP_SERVICE_ACCOUNT = os.getenv("GCP_SERVICE_ACCOUNT")
 end
-local AWS_REGION do
-  AWS_REGION = os.getenv("AWS_REGION")
-end
-local AWS_ACCESS_KEY_ID do
-  AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-end
-local AWS_SECRET_ACCESS_KEY do
-  AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-end
 
 local GCP = require("resty.gcp.request.credentials.accesstoken")
+local aws_config = require "resty.aws.config"  -- reads environment variables whilst available
 local AWS = require("resty.aws")
+local AWS_REGION do
+  AWS_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")
+end
 --
 
 
@@ -68,20 +63,27 @@ local _KEYBASTION = setmetatable({}, {
                  and plugin_config.model.options.bedrock.aws_region
                   or AWS_REGION
 
-      local access_key = (plugin_config.auth and plugin_config.auth.aws_access_key_id)
-                      or AWS_ACCESS_KEY_ID
+      if not region then
+        return { interface = nil, error = "AWS region not specified anywhere" }
+      end
 
-      local secret_key = (plugin_config.auth and plugin_config.auth.aws_secret_access_key)
-                      or AWS_SECRET_ACCESS_KEY
+      local access_key_set = plugin_config.auth and plugin_config.auth.aws_access_key_id
+      local secret_key_set = plugin_config.auth and plugin_config.auth.aws_secret_access_key
 
-      if access_key and secret_key then
+      if access_key_set and secret_key_set then
         aws = AWS({
           -- if any of these are nil, they either use the SDK default or
           -- are deliberately null so that a different auth chain is used
           region = region,
-          aws_access_key_id = access_key,
-          aws_secret_access_key = secret_key,
         })
+
+        -- Override credential config according to plugin config, if set
+        local creds = aws:Credentials {
+          accessKeyId = access_key_set,
+          secretAccessKey = secret_key_set,
+        }
+
+        aws.config.credentials = creds
       else
         aws = AWS({
           region = region,
