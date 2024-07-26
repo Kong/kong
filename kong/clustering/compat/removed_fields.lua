@@ -406,5 +406,8 @@ return {
     ldap_auth_advanced = {
       "realm",
     },
+    prometheus = {
+      "ai_metrics",
+    },
   },
 }
