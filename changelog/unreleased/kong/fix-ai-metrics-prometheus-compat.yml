@@ -1,0 +1,4 @@
+message: >
+  "**Prometheus**: Fixed an issue where CP/DP compatibility check was missing for the new configuration field `ai_metrics`.
+type: bugfix
+scope: Plugin
