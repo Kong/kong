@@ -1,5 +1,5 @@
 message: |
-  Introduced a new yieldable JSON library lua-resty-simdjson,
-  which will improve the latency dramatically.
+  Introduced a yieldable JSON library `lua-resty-simdjson`,
+  which would improve the latency significantly.
 type: dependency
 scope: Core
