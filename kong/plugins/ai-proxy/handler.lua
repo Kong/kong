@@ -67,8 +67,10 @@ local _KEYBASTION = setmetatable({}, {
         return { interface = nil, error = "AWS region not specified anywhere" }
       end
 
-      local access_key_set = plugin_config.auth and plugin_config.auth.aws_access_key_id
+      local access_key_set = (plugin_config.auth and plugin_config.auth.aws_access_key_id)
+                          or aws_config.global.AWS_ACCESS_KEY_ID
       local secret_key_set = plugin_config.auth and plugin_config.auth.aws_secret_access_key
+                          or aws_config.global.AWS_SECRET_ACCESS_KEY
 
       if access_key_set and secret_key_set then
         aws = AWS({
