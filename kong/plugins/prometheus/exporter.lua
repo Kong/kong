@@ -159,7 +159,7 @@ local function init()
                                       {"ai_provider", "ai_model", "cache_status", "vector_db", "embeddings_provider", "embeddings_model", "token_type", "workspace"})
 
   metrics.ai_llm_latency = prometheus:histogram("ai_llm_latency_ms",
-                                      "Latency added by llm response ai_provider in Kong",
+                                      "LLM response Latency for each AI plugins per ai_provider in Kong",
                                       {"ai_provider", "ai_model", "cache_status", "vector_db", "embeddings_provider", "embeddings_model", "workspace"},
                                       AI_LLM_LATENCY_BUCKETS)
 

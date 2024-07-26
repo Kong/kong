@@ -561,9 +561,12 @@ function _M.post_request(conf, response_object)
   if kong.ctx.shared.ai_request_start_time then
     local llm_latency = (ngx.now() - kong.ctx.shared.ai_request_start_time) * 1000
     request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.LLM_LATENCY] = llm_latency
+    kong.ctx.shared.ai_request_latency = llm_latency
 
     if response_object.usage and response_object.usage.completion_tokens then
-      request_analytics_plugin[log_entry_keys.USAGE_CONTAINER][log_entry_keys.TIME_PER_TOKEN] = llm_latency / response_object.usage.completion_tokens
+      local time_per_token = llm_latency / response_object.usage.completion_tokens
+      request_analytics_plugin[log_entry_keys.USAGE_CONTAINER][log_entry_keys.TIME_PER_TOKEN] = time_per_token
+      kong.ctx.shared.ai_request_time_per_token = time_per_token
     end
   end
 
