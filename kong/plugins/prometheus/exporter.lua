@@ -19,7 +19,7 @@ local role = kong.configuration.role
 
 local KONG_LATENCY_BUCKETS = { 1, 2, 5, 7, 10, 15, 20, 30, 50, 75, 100, 200, 500, 750, 1000 }
 local UPSTREAM_LATENCY_BUCKETS = { 25, 50, 80, 100, 250, 400, 700, 1000, 2000, 5000, 10000, 30000, 60000 }
-local AI_LLM_LATENCY_BUCKETS = { 250, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 10000, 30000, 60000 }
+local AI_LLM_PROVIDER_LATENCY_BUCKETS = { 250, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 10000, 30000, 60000 }
 local IS_PROMETHEUS_ENABLED
 
 
@@ -158,10 +158,10 @@ local function init()
                                       "AI requests cost per ai_provider/cache in Kong",
                                       {"ai_provider", "ai_model", "cache_status", "vector_db", "embeddings_provider", "embeddings_model", "token_type", "workspace"})
 
-  metrics.ai_llm_latency = prometheus:histogram("ai_llm_latency_ms",
+  metrics.ai_llm_provider_latency = prometheus:histogram("ai_llm_provider_latency_ms",
                                       "LLM response Latency for each AI plugins per ai_provider in Kong",
                                       {"ai_provider", "ai_model", "cache_status", "vector_db", "embeddings_provider", "embeddings_model", "workspace"},
-                                      AI_LLM_LATENCY_BUCKETS)
+                                      AI_LLM_PROVIDER_LATENCY_BUCKETS)
 
   -- Hybrid mode status
   if role == "control_plane" then
@@ -356,7 +356,7 @@ local function log(message, serialized)
       end
 
       if ai_plugin.meta.llm_latency and ai_plugin.meta.llm_latency > 0 then
-        metrics.ai_llm_latency:observe(ai_plugin.meta.llm_latency, labels_table_ai_llm_status)
+        metrics.ai_llm_provider_latency:observe(ai_plugin.meta.llm_latency, labels_table_ai_llm_status)
       end
 
       labels_table_ai_llm_tokens[1] = ai_plugin.meta.provider_name
