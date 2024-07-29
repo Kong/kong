@@ -695,13 +695,14 @@ local function new(self)
   -- If the size of the body is greater than the Nginx buffer size (set by
   -- `client_body_buffer_size`), this function fails and returns an error
   -- message explaining this limitation, unless `max_allowed_file_size`
-  -- is set and larger than the body size buffered to disk.
+  -- is set and less than 0 or larger than the body size buffered to disk.
   -- Use of `max_allowed_file_size` requires Kong to read data from filesystem
   -- and has performance implications.
   --
   -- @function kong.request.get_raw_body
   -- @phases rewrite, access, response, admin_api
-  -- @max_allowed_file_size[opt] number the max allowed file size to be read from
+  -- @max_allowed_file_size[opt] number the max allowed file size to be read from,
+  -- less than zero mean no limit.
   -- @treturn string|nil The plain request body or nil if it does not fit into
   -- the NGINX temporary buffer.
   -- @treturn nil|string An error message.
@@ -731,7 +732,7 @@ local function new(self)
       end
 
       local size = file:seek("end") or 0
-      if size > max_allowed_file_size then
+      if max_allowed_file_size >= 0 and size > max_allowed_file_size then
         return nil, ("request body file too big: %d > %d"):format(size, max_allowed_file_size)
       end
 
