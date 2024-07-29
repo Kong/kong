@@ -2395,7 +2395,7 @@ describe("Configuration loader", function()
       local FIELDS = {
         -- CONF_BASIC
         prefix = true,
-        runtime_prefix = true,
+        socket_path = true,
         vaults = true,
         database = true,
         lmdb_environment_path = true,

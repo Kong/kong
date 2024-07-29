@@ -3844,10 +3844,10 @@ end
 local function cleanup_kong(prefix, preserve_prefix, preserve_dc)
   -- remove socket files to ensure `pl.dir.rmtree()` ok
   prefix = prefix or conf.prefix
-  local runtime_prefix = pl_path.join(prefix, "runtime")
-  for child in lfs.dir(runtime_prefix) do
+  local socket_path = pl_path.join(prefix, "sockets")
+  for child in lfs.dir(socket_path) do
     if child:sub(-5) == ".sock" then
-      local path = pl_path.join(runtime_prefix, child)
+      local path = pl_path.join(socket_path, child)
       os.remove(path)
     end
   end

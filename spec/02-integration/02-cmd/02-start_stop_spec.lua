@@ -10,14 +10,14 @@ local read_file = helpers.file.read
 
 
 local PREFIX = helpers.test_conf.prefix
-local RUNTIME_PREFIX = helpers.test_conf.runtime_prefix
+local SOCKET_PATH = helpers.test_conf.socket_path
 local TEST_CONF = helpers.test_conf
 local TEST_CONF_PATH = helpers.test_conf_path
 
 
 local function wait_until_healthy(prefix)
   prefix = prefix or PREFIX
-  local runtime_prefix = prefix .. "/runtime"
+  local socket_path = prefix .. "/sockets"
 
   local cmd
 
@@ -43,11 +43,11 @@ local function wait_until_healthy(prefix)
   local conf = assert(helpers.get_running_conf(prefix))
 
   if conf.proxy_listen and conf.proxy_listen ~= "off" then
-    helpers.wait_for_file("socket", runtime_prefix .. "/worker_events.sock")
+    helpers.wait_for_file("socket", socket_path .. "/worker_events.sock")
   end
 
   if conf.stream_listen and conf.stream_listen ~= "off" then
-    helpers.wait_for_file("socket", runtime_prefix .. "/stream_worker_events.sock")
+    helpers.wait_for_file("socket", socket_path .. "/stream_worker_events.sock")
   end
 
   if conf.admin_listen and conf.admin_listen ~= "off" then
@@ -1036,27 +1036,27 @@ describe("kong start/stop #" .. strategy, function()
     end)
   end)
 
-  describe("runtime_prefix", function()
+  describe("socket_path", function()
     it("is created on demand by `kong prepare`", function()
       local dir, cleanup = helpers.make_temp_dir()
       finally(cleanup)
 
       local cmd = fmt("prepare -p %q", dir)
       assert.truthy(kong_exec(cmd), "expected '" .. cmd .. "' to succeed")
-      assert.truthy(helpers.path.isdir(dir .. "/runtime"),
-                    "expected '" .. dir .. "/runtime' directory to be created")
+      assert.truthy(helpers.path.isdir(dir .. "/sockets"),
+                    "expected '" .. dir .. "/sockets' directory to be created")
     end)
 
     it("can be a user-created symlink", function()
       local prefix, cleanup = helpers.make_temp_dir()
       finally(cleanup)
 
-      local runtime_prefix
-      runtime_prefix, cleanup = helpers.make_temp_dir()
+      local socket_path
+      socket_path, cleanup = helpers.make_temp_dir()
       finally(cleanup)
 
-      assert.truthy(helpers.execute(fmt("ln -sf %q %q/runtime", runtime_prefix, prefix)),
-                    "failed to symlink runtime prefix")
+      assert.truthy(helpers.execute(fmt("ln -sf %q %q/sockets", socket_path, prefix)),
+                    "failed to symlink socket path")
 
       local preserve_prefix = true
       assert(helpers.start_kong({
@@ -1071,8 +1071,8 @@ describe("kong start/stop #" .. strategy, function()
 
       wait_until_healthy(prefix)
 
-      assert.truthy(helpers.path.exists(runtime_prefix .. "/worker_events.sock"),
-                    "worker events socket was not created in the runtime_prefix dir")
+      assert.truthy(helpers.path.exists(socket_path .. "/worker_events.sock"),
+                    "worker events socket was not created in the socket_path dir")
     end)
   end)
 
@@ -1080,7 +1080,7 @@ describe("kong start/stop #" .. strategy, function()
     local pidfile = TEST_CONF.nginx_pid
 
     -- the worker events socket is just one of many unix sockets we use
-    local event_sock = RUNTIME_PREFIX .. "/worker_events.sock"
+    local event_sock = SOCKET_PATH .. "/worker_events.sock"
 
     local env = {
       prefix                      = PREFIX,
@@ -1175,8 +1175,8 @@ describe("kong start/stop #" .. strategy, function()
     it("removes unix socket files in the prefix directory", function()
       local _, stderr = assert_start()
 
-      assert.matches("[warn] Found dangling unix sockets in the runtime prefix", stderr, nil, true)
-      assert.matches(RUNTIME_PREFIX, stderr, nil, true)
+      assert.matches("[warn] Found dangling unix sockets in the prefix directory", stderr, nil, true)
+      assert.matches(SOCKET_PATH, stderr, nil, true)
 
       assert.matches("removing unix socket", stderr)
       assert.matches(event_sock, stderr, nil, true)
@@ -1217,7 +1217,7 @@ describe("kong start/stop #" .. strategy, function()
 
     it("works with resty.events when KONG_PREFIX is a relative path", function()
       local prefix = "relpath"
-      local runtime_prefix = "relpath/runtime"
+      local socket_path = "relpath/sockets"
 
       finally(function()
         -- this test uses a non-default prefix, so it must manage
@@ -1244,8 +1244,8 @@ describe("kong start/stop #" .. strategy, function()
       -- wait until everything is running
       wait_until_healthy(prefix)
 
-      assert.truthy(helpers.path.exists(runtime_prefix .. "/worker_events.sock"))
-      assert.truthy(helpers.path.exists(runtime_prefix .. "/stream_worker_events.sock"))
+      assert.truthy(helpers.path.exists(socket_path .. "/worker_events.sock"))
+      assert.truthy(helpers.path.exists(socket_path .. "/stream_worker_events.sock"))
 
       local log = prefix .. "/logs/error.log"
       assert.logfile(log).has.no.line("[error]", true, 0)

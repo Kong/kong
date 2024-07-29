@@ -896,9 +896,9 @@ return {
 
   init_worker = {
     before = function()
-      local runtime_prefix = kong.configuration.runtime_prefix
-      STREAM_TLS_TERMINATE_SOCK = fmt("unix:%s/stream_tls_terminate.sock", runtime_prefix)
-      STREAM_TLS_PASSTHROUGH_SOCK = fmt("unix:%s/stream_tls_passthrough.sock", runtime_prefix)
+      local socket_path = kong.configuration.socket_path
+      STREAM_TLS_TERMINATE_SOCK = fmt("unix:%s/stream_tls_terminate.sock", socket_path)
+      STREAM_TLS_PASSTHROUGH_SOCK = fmt("unix:%s/stream_tls_passthrough.sock", socket_path)
 
       log_level.init_worker()
 

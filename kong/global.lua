@@ -174,12 +174,12 @@ function _GLOBAL.init_worker_events(kong_config)
   local worker_events
   local opts
 
-  local runtime_prefix = kong_config.runtime_prefix
+  local socket_path = kong_config.socket_path
   local sock = ngx.config.subsystem == "stream" and
                "stream_worker_events.sock" or
                "worker_events.sock"
 
-  local listening = "unix:" .. runtime_prefix .. "/" .. sock
+  local listening = "unix:" .. socket_path .. "/" .. sock
 
   local max_payload_len = kong_config.worker_events_max_payload
 

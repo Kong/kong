@@ -83,7 +83,7 @@ stream {
 
 > if cluster_ssl_tunnel then
     server {
-        listen unix:${{RUNTIME_PREFIX}}/cluster_proxy_ssl_terminator.sock;
+        listen unix:${{SOCKET_PATH}}/cluster_proxy_ssl_terminator.sock;
 
         proxy_pass ${{cluster_ssl_tunnel}};
         proxy_ssl on;

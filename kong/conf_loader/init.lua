@@ -482,9 +482,9 @@ local function load(path, custom_conf, opts)
   -- load absolute paths
   conf.prefix = abspath(conf.prefix)
 
-  -- the runtime prefix is where we keep listening unix sockets for IPC and
+  -- the socket path is where we store listening unix sockets for IPC and
   -- private APIs
-  conf.runtime_prefix = pl_path.join(conf.prefix, "runtime")
+  conf.socket_path = pl_path.join(conf.prefix, "sockets")
 
   if conf.lua_ssl_trusted_certificate
      and #conf.lua_ssl_trusted_certificate > 0 then
