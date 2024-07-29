@@ -844,6 +844,10 @@ function _M.new(connector, schema, errors)
 
 
   for field_name, field in schema:each_field() do
+    if field.transient then
+      goto continue
+    end
+
     if field.type == "foreign" then
       local foreign_schema           = field.schema
       local foreign_key_names        = {}
@@ -925,6 +929,7 @@ function _M.new(connector, schema, errors)
 
       insert(fields, prepared_field)
     end
+    ::continue::
   end
 
   local primary_key_names        = {}

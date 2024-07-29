@@ -21,6 +21,7 @@ return {
     { cert_alt   = typedefs.certificate { required = false, referenceable = true }, },
     { key_alt    = typedefs.key         { required = false, referenceable = true, encrypted = true }, },
     { tags       = typedefs.tags },
+    { snis       = { type = "array", elements = typedefs.wildcard_host, required = false, transient = true }, },
   },
 
   entity_checks = {
