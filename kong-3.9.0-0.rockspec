@@ -910,6 +910,9 @@ build = {
     ["kong.plugins.opentelemetry.logs"] = "kong/plugins/opentelemetry/logs.lua",
     ["kong.plugins.opentelemetry.utils"] = "kong/plugins/opentelemetry/utils.lua",
 
+    ["kong.plugins.ai-azure-content-safety.handler"] = "kong/plugins/ai-azure-content-safety/handler.lua",
+    ["kong.plugins.ai-azure-content-safety.schema"]  = "kong/plugins/ai-azure-content-safety/schema.lua",
+
     ["kong.plugins.ai-proxy.handler"] = "kong/plugins/ai-proxy/handler.lua",
     ["kong.plugins.ai-proxy.schema"] = "kong/plugins/ai-proxy/schema.lua",
     ["kong.plugins.ai-proxy.migrations"] = "kong/plugins/ai-proxy/migrations/init.lua",

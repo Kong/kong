@@ -45,6 +45,7 @@ return {
   -- the following EE plugins exist in the `kong/plugins` directory
   BUNDLED_EE_PLUGINS = {
     --"app-dynamics", -- not part of the 'bundled' set due to system-level configuration requirements
+    "ai-azure-content-safety",
     "application-registration",
     "ai-proxy-advanced",
     "canary",

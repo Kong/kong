@@ -66,6 +66,7 @@ for _, strategy in helpers.each_strategy() do
     local handler
 
     setup(function()
+      package.loaded["kong.plugins.ai-azure-content-safety.handler"] = nil
       _G.TEST = true
       handler = require("kong.plugins.ai-azure-content-safety.handler")
     end)

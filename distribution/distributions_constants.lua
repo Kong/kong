@@ -20,7 +20,6 @@ c.plugins = {  -- This list of plugins is located in the "plugins-ee" directory
   "kafka-log",
   "kafka-upstream",
   "opa",
-  "ai-azure-content-safety",
   "konnect-application-auth",
   "saml",
   "oas-validation",

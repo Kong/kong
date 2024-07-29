@@ -106,6 +106,7 @@ describe("Plugins", function()
       "route-transformer-advanced",
       "ai-request-transformer",
       "ai-semantic-prompt-guard",
+      "ai-azure-content-safety",
       "ai-prompt-template",
       "ai-prompt-decorator",
       "ai-prompt-guard",

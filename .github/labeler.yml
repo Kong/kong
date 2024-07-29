@@ -366,9 +366,9 @@ plugins/confluent:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/confluent/**/*
 
-plugins-ee/ai-azure-content-safety:
+plugins/ai-azure-content-safety:
 - changed-files:
-  - any-glob-to-any-file: plugins-ee/ai-azure-content-safety/**/*
+  - any-glob-to-any-file: kong/plugins/ai-azure-content-safety/**/*
 
 plugins-ee/oas-validation:
 - changed-files:
