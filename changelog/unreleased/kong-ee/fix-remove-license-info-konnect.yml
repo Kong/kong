@@ -1,0 +1,2 @@
+message: "License expiry warnings are no longer logged and license info is removed from /metrics in Konnect."
+type: bugfix

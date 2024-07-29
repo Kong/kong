@@ -40,7 +40,6 @@ local GRACE_PERIOD_DAYS = 30
 local IS_EXCEEDS_GRACE_PERIOD = false
 local WARNING_NOTICE_DAYS = 90
 local ERROR_NOTICE_DAYS = 30
-local ERROR_NOTICE_DAYS_KONNECT = 16
 local LICENSE_NOTIFICATION_INTERVAL = DAY
 local LICENSE_NOTIFICATION_LOCK_KEY = "events:license"
 local decode_base64 = ngx.decode_base64
@@ -248,20 +247,12 @@ local function get_lock(key, exptime)
   return ok
 end
 
--- license alert has different behavior for Konnect and Kong
-local function log_license_state_konnect(expiration_time, now)
-  if expiration_time < now + (ERROR_NOTICE_DAYS_KONNECT * DAY) then
-    ngx.log(ngx.ERR, string.format("The Kong Enterprise license will expire on %s. " ..
-                                    PLEASE_CONTACT_STR, os.date("%Y-%m-%d", expiration_time)))
-  end
-end
-
 local function is_exceeds_grace_period()
   return IS_EXCEEDS_GRACE_PERIOD
 end
 _M.is_exceeds_grace_period = is_exceeds_grace_period
 
-local function log_license_state(expiration_time, now, konnect_mode)
+local function log_license_state(expiration_time, now)
   if expiration_time < now then
     -- grace period
     if now < expiration_time + (GRACE_PERIOD_DAYS * DAY) then
@@ -278,10 +269,6 @@ local function log_license_state(expiration_time, now, konnect_mode)
     ngx.log(ngx.CRIT, string.format("The Kong Enterprise license expired on %s. "..
                                     PLEASE_CONTACT_STR, os.date("%Y-%m-%d", expiration_time)))
     return
-  end
-
-  if konnect_mode then
-    return log_license_state_konnect(expiration_time, now)
   end
 
   if expiration_time < now + (ERROR_NOTICE_DAYS * DAY) then
@@ -305,12 +292,17 @@ local function license_notification_handler(premature, konnect_mode)
            license_notification_handler,
            konnect_mode)
 
-   local expiration_time = license_expiration_time(kong.license) or huge
-   local now = ngx.time()
+  local expiration_time = license_expiration_time(kong.license) or huge
+  local now = ngx.time()
 
    -- need to be updated on all workers
   if expiration_time < now then
     kong.licensing:update_featureset()
+  end
+
+  -- do not log license expiration warnings in Konnect
+  if konnect_mode then
+    return
   end
 
   if not get_lock(LICENSE_NOTIFICATION_LOCK_KEY,
@@ -318,7 +310,7 @@ local function license_notification_handler(premature, konnect_mode)
     return
   end
 
-  log_license_state(expiration_time, now, konnect_mode)
+  log_license_state(expiration_time, now)
 end
 
 local function report_expired_license(konnect_mode)

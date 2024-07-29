@@ -11,44 +11,90 @@ local fmt = string.format
 describe("Plugin: prometheus (exporter) enterprise licenses", function()
   local admin_client
 
-  setup(function()
-    local bp = helpers.get_db_utils()
+  describe("[on-premises]", function()
+    lazy_setup(function()
+      local bp = helpers.get_db_utils()
 
-    bp.plugins:insert {
-      protocols = { "http", "https", "grpc", "grpcs", "tcp", "tls" },
-      name = "prometheus",
-    }
+      bp.plugins:insert {
+        protocols = { "http", "https", "grpc", "grpcs", "tcp", "tls" },
+        name = "prometheus",
+      }
 
-    assert(helpers.start_kong {
-        nginx_conf = "spec/fixtures/custom_nginx.template",
-        plugins = "bundled",
-    })
-    admin_client = helpers.admin_client()
+      assert(helpers.start_kong {
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+          plugins = "bundled",
+      })
+      admin_client = helpers.admin_client()
+    end)
+
+    lazy_teardown(function()
+      if admin_client then
+        admin_client:close()
+      end
+
+      helpers.stop_kong()
+    end)
+
+    it("exports enterprise licenses", function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      local body = assert.res_status(200, res)
+
+      assert.matches('kong_enterprise_license_signature %d+', body)
+      assert.matches('kong_enterprise_license_expiration %d+', body)
+      assert.matches('kong_enterprise_license_features{feature="ee_entity_read"}', body)
+      assert.matches('kong_enterprise_license_features{feature="ee_entity_write"}', body)
+      assert.matches('kong_enterprise_license_errors 0', body)
+    end)
   end)
 
-  teardown(function()
-    if admin_client then
-      admin_client:close()
-    end
+  describe("[Konnect]", function()
+    lazy_setup(function()
+      local bp = helpers.get_db_utils()
 
-    helpers.stop_kong()
-  end)
+      bp.plugins:insert {
+        protocols = { "http", "https", "grpc", "grpcs", "tcp", "tls" },
+        name = "prometheus",
+      }
 
-  it("exports enterprise licenses", function()
+      assert(helpers.start_kong {
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+          plugins = "bundled",
+          konnect_mode = true,
+          cluster_cert = "spec/fixtures/kong_clustering.crt",
+          cluster_cert_key = "spec/fixtures/kong_clustering.key",
+          lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+          lua_package_path = "./?.lua;./?/init.lua;./spec/fixtures/?.lua",
+          cluster_telemetry_endpoint = "127.0.0.1:9006",
+          cluster_telemetry_listen = "127.0.0.1:9006",
+          cluster_telemetry_server_name = "kong_clustering",
+      })
+      admin_client = helpers.admin_client()
+    end)
 
-    local res = assert(admin_client:send {
-      method  = "GET",
-      path    = "/metrics",
-    })
-    local body = assert.res_status(200, res)
+    lazy_teardown(function()
+      if admin_client then
+        admin_client:close()
+      end
 
-    assert.matches('kong_enterprise_license_signature %d+', body)
-    assert.matches('kong_enterprise_license_expiration %d+', body)
-    assert.matches('kong_enterprise_license_features{feature="ee_entity_read"}', body, nil, true)
-    assert.matches('kong_enterprise_license_features{feature="ee_entity_write"}', body, nil, true)
+      helpers.stop_kong()
+    end)
 
-    assert.matches('kong_enterprise_license_errors 0', body, nil, true)
-    assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+    it("do not exports enterprise licenses in Konnect mode", function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      local body = assert.res_status(200, res)
+
+      assert.not_matches('kong_enterprise_license_signature %d+', body)
+      assert.not_matches('kong_enterprise_license_expiration %d+', body)
+      assert.not_matches('kong_enterprise_license_features{feature="ee_entity_read"}', body)
+      assert.not_matches('kong_enterprise_license_features{feature="ee_entity_write"}', body)
+      assert.not_matches('kong_enterprise_license_errors 0', body)
+    end)
   end)
 end)
 

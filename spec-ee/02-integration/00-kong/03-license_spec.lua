@@ -7,6 +7,7 @@
 
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
+local pl_file = require "pl.file"
 local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vitals_key
 
 -- unsets kong license env vars and returns a function to restore their values
@@ -403,7 +404,7 @@ describe("Admin API - Kong routes", function()
     local client, reset_distribution
 
     lazy_setup(function()
-      helpers.get_db_utils(strategy, {"licenses"})
+      helpers.get_db_utils(nil, {"licenses"})
       reset_distribution = setup_distribution()
 
       helpers.unsetenv("KONG_LICENSE_DATA")
@@ -514,7 +515,7 @@ describe("Admin API - Kong routes", function()
     local client, reset_distribution
 
     lazy_setup(function()
-      helpers.get_db_utils(strategy, {"licenses"})
+      helpers.get_db_utils(nil, {"licenses"})
       reset_distribution = setup_distribution()
 
       helpers.unsetenv("KONG_LICENSE_DATA")
@@ -616,7 +617,7 @@ describe("Admin API - Kong routes", function()
     local client, reset_distribution
 
     lazy_setup(function()
-      helpers.get_db_utils(strategy, {"licenses"})
+      helpers.get_db_utils(nil, {"licenses"})
       reset_distribution = setup_distribution()
 
       helpers.unsetenv("KONG_LICENSE_DATA")
@@ -788,7 +789,7 @@ describe("Admin API - Kong routes", function()
 end)
 
 describe("Admin API #off", function()
-  local valid_license, expired_license, grace_period_license
+  local expired_license, grace_period_license
 
   local declarative_config_ee = [[
     _format_version: '3.0'
@@ -831,11 +832,7 @@ describe("Admin API #off", function()
   ]]
 
   lazy_setup(function()
-    local f = assert(io.open("spec-ee/fixtures/mock_license.json"))
-    valid_license = f:read("*a")
-    f:close()
-
-    f = assert(io.open("spec-ee/fixtures/mock_expired_license.json"))
+    local f = assert(io.open("spec-ee/fixtures/mock_expired_license.json"))
     expired_license = f:read("*a")
     f:close()
 
@@ -1013,6 +1010,82 @@ describe("Admin API #off", function()
         },
       })
       assert.res_status(201, res)
+    end)
+  end)
+end)
+
+describe("License expiry warnings", function()
+  local expired_license
+
+  lazy_setup(function()
+    local f = assert(io.open("spec-ee/fixtures/mock_expired_license.json"))
+    expired_license = f:read("*a")
+    f:close()
+  end)
+
+  describe("[on-premises]", function()
+    lazy_setup(function()
+      helpers.clean_logfile()
+
+      assert(helpers.start_kong({
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        license_data = expired_license,
+        log_level = "info",
+      }))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("does CRIT log with an expired license", function()
+      -- We can't use `assert.logfile().has.line()` here because
+      -- the logfile assertion filters out license-related warnings.
+      -- See the implementation of `find_in_file` in helper.lua for details.
+      helpers.wait_until(function()
+        local s = pl_file.read("servroot/logs/error.log")
+        if s:match("The Kong Enterprise license expired on") then
+          return true
+        end
+
+        return false
+      end, 3)
+    end)
+  end)
+
+  describe("[Konnect]", function()
+    lazy_setup(function()
+      helpers.clean_logfile()
+
+      assert(helpers.start_kong({
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        plugins = "bundled",
+        konnect_mode = true,
+        cluster_cert = "spec/fixtures/kong_clustering.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+        lua_package_path = "./?.lua;./?/init.lua;./spec/fixtures/?.lua",
+        cluster_telemetry_endpoint = "127.0.0.1:9006",
+        cluster_telemetry_listen = "127.0.0.1:9006",
+        cluster_telemetry_server_name = "kong_clustering",
+        license_data = expired_license,
+      }))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("does not CRIT log with an expired license", function()
+      -- For the same reason as above, we can't use `assert.logfile().has.no.line()` here either.
+      helpers.wait_until(function()
+        local s = pl_file.read("servroot/logs/error.log")
+        if not s:match("The Kong Enterprise license expired on") then
+          return true
+        end
+
+        return false
+      end, 3)
     end)
   end)
 end)

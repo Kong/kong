@@ -57,22 +57,9 @@ end
 
 
 local function init(prometheus)
-  metrics.license_errors = prometheus:counter("enterprise_license_errors",
-                                              "Errors when collecting license info")
-  metrics.license_signature = prometheus:gauge("enterprise_license_signature",
-                                              "Last 32 bytes of the license signature in number")
-  metrics.license_expiration = prometheus:gauge("enterprise_license_expiration",
-                                                "Unix epoch time when the license expires, " ..
-                                                "the timestamp is substracted by 24 hours "..
-                                                "to avoid difference in timezone")
-  metrics.license_features = prometheus:gauge("enterprise_license_features",
-                                                "License features features",
-                                              { "feature" })
-
-  prometheus.dict:set("enterprise_license_errors", 0)
-
   local role = kong.configuration.role
   local strategy = kong.configuration.database
+  local is_konnect = kong.configuration.konnect_mode
 
   -- Entity counts are "global" and not really specific to any subsystem,
   -- so without this gate we would just be measuring the same metric twice
@@ -89,6 +76,27 @@ local function init(prometheus)
     )
     prometheus.dict:set("db_entity_count_errors", 0)
   end
+
+  -- XXX The remaining non-license related metrics must be placed before this block
+  --
+  -- remove license information in Konnect
+  if is_konnect then
+    return
+  end
+
+  metrics.license_errors = prometheus:counter("enterprise_license_errors",
+                                              "Errors when collecting license info")
+  metrics.license_signature = prometheus:gauge("enterprise_license_signature",
+                                              "Last 32 bytes of the license signature in number")
+  metrics.license_expiration = prometheus:gauge("enterprise_license_expiration",
+                                                "Unix epoch time when the license expires, " ..
+                                                "the timestamp is substracted by 24 hours "..
+                                                "to avoid difference in timezone")
+  metrics.license_features = prometheus:gauge("enterprise_license_features",
+                                                "License features features",
+                                              { "feature" })
+
+  prometheus.dict:set("enterprise_license_errors", 0)
 end
 
 local function license_date_to_unix(yyyy_mm_dd)
@@ -113,6 +121,14 @@ local function metric_data()
     return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
+  -- XXX The remaining non-license related metrics must be placed before this block
+  --
+  -- remove license information in Konnect
+  if kong.configuration.konnect_mode then
+    return
+  end
+
+  -- license status
   if not kong.license or not kong.license.license then
     metrics.license_errors:inc()
     kong.log.err("cannot read kong.license when collecting license info")

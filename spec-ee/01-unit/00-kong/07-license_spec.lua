@@ -59,23 +59,6 @@ describe("licensing", function()
     assert.stub(ngx.log).was.called_with(ngx.CRIT, match._)
   end)
 
-  it("does ERR from 16 days on from expiration date if konnect mode", function ()
-    lic_helper.log_license_state(os.time()+15*3600*24, os.time(), true)
-    assert.stub(ngx.log).was.called(1)
-    assert.stub(ngx.log).was.called_with(ngx.ERR, match._)
-  end)
-
-  it("doesn't ERR above 16 days from expiration date if konnect mode", function ()
-    lic_helper.log_license_state(os.time()+17*3600*24, os.time(), true)
-    assert.stub(ngx.log).was.called(0)
-  end)
-
-  it("does CRIT from -1 days on from expiration date if konnect mode", function()
-    lic_helper.log_license_state(os.time()-3600*24, os.time(), true)
-    assert.stub(ngx.log).was.called(1)
-    assert.stub(ngx.log).was.called_with(ngx.CRIT, match._)
-  end)
-
   it("does validate license using ffi", function()
     local file = assert(io.open("spec-ee/fixtures/expired_license.json"))
     local validation_pass = file:read("*a")
