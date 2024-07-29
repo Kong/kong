@@ -1,0 +1,2 @@
+message: "Fixed an issue where the stale license expiry warning continued to be logged even if the license was updated."
+type: bugfix

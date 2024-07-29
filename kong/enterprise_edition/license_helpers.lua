@@ -23,7 +23,6 @@ local log            = require "kong.cmd.utils.log"
 local dist_constants = require "kong.enterprise_edition.distributions_constants"
 local license_utils  = require "kong.enterprise_edition.license_utils"
 local base64         = require "ngx.base64"
-local hooks          = require "kong.hooks"
 local sha256_hex     = require "kong.tools.sha256".sha256_hex
 local ee_constants   = require "kong.enterprise_edition.constants"
 
@@ -34,6 +33,7 @@ local re_find = ngx.re.find
 local kong_dict = ngx.shared.kong
 local ceil = math.ceil
 local min = math.min
+local huge = math.huge
 local DAY = 24 * 3600
 local PLEASE_CONTACT_STR = "Please contact <support@konghq.com> to renew your license."
 local GRACE_PERIOD_DAYS = 30
@@ -296,17 +296,19 @@ end
 _M.log_license_state = log_license_state
 
 
-local function license_notification_handler(premature, expiration_time, konnect_mode)
+local function license_notification_handler(premature, konnect_mode)
   if premature then
     return
   end
 
   timer_at(LICENSE_NOTIFICATION_INTERVAL,
            license_notification_handler,
-           expiration_time, konnect_mode)
+           konnect_mode)
 
-  -- need to be updated on all workers
-  local now = ngx.time()
+   local expiration_time = license_expiration_time(kong.license) or huge
+   local now = ngx.time()
+
+   -- need to be updated on all workers
   if expiration_time < now then
     kong.licensing:update_featureset()
   end
@@ -320,12 +322,9 @@ local function license_notification_handler(premature, expiration_time, konnect_
 end
 
 local function report_expired_license(konnect_mode)
-  local expiration_time = license_expiration_time(kong.license)
-  if expiration_time then
-    timer_at(0,
-      license_notification_handler,
-      expiration_time, konnect_mode)
-  end
+  timer_at(0,
+    license_notification_handler,
+    konnect_mode)
 end
 _M.report_expired_license = report_expired_license
 
