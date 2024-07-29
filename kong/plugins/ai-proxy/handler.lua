@@ -72,13 +72,13 @@ local _KEYBASTION = setmetatable({}, {
       local secret_key_set = plugin_config.auth and plugin_config.auth.aws_secret_access_key
                           or aws_config.global.AWS_SECRET_ACCESS_KEY
 
-      if access_key_set and secret_key_set then
-        aws = AWS({
-          -- if any of these are nil, they either use the SDK default or
-          -- are deliberately null so that a different auth chain is used
-          region = region,
-        })
+      aws = AWS({
+        -- if any of these are nil, they either use the SDK default or
+        -- are deliberately null so that a different auth chain is used
+        region = region,
+      })
 
+      if access_key_set and secret_key_set then
         -- Override credential config according to plugin config, if set
         local creds = aws:Credentials {
           accessKeyId = access_key_set,
@@ -86,10 +86,6 @@ local _KEYBASTION = setmetatable({}, {
         }
 
         aws.config.credentials = creds
-      else
-        aws = AWS({
-          region = region,
-        })
       end
 
       this_cache[plugin_config] = { interface = aws, error = nil }
