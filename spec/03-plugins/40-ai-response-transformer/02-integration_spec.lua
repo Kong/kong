@@ -429,8 +429,8 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         -- test ai-response-transformer stats
         local actual_chat_stats = log_message.ai
         local actual_llm_latency = actual_chat_stats["ai-response-transformer"].meta.llm_latency
-        local actual_time_per_token = string.format("%.5g",actual_chat_stats["ai-response-transformer"].usage.time_per_token)
-        local time_per_token = string.format("%.5g", actual_llm_latency / actual_chat_stats["ai-response-transformer"].usage.completion_tokens)
+        local actual_time_per_token = actual_chat_stats["ai-response-transformer"].usage.time_per_token
+        local time_per_token = math.floor(actual_llm_latency / actual_chat_stats["ai-response-transformer"].usage.completion_tokens)
 
         log_message.ai["ai-response-transformer"].meta.llm_latency = 1
         log_message.ai["ai-response-transformer"].usage.time_per_token = 1
