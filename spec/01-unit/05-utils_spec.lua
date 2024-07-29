@@ -197,6 +197,16 @@ describe("Utils", function()
       assert.False(validate_utf8(string.char(255))) -- impossible byte
       assert.False(validate_utf8(string.char(237, 160, 128))) -- Single UTF-16 surrogate
     end)
+
+    it("checks valid nginx size values", function()
+      local parse_ngx_size = require("kong.tools.string").parse_ngx_size
+
+      assert.equal(1024 * 1024 * 1024, parse_ngx_size("1G"))
+      assert.equal(1024 * 1024, parse_ngx_size("1M"))
+      assert.equal(1024, parse_ngx_size("1k"))
+      assert.equal(1024, parse_ngx_size("1K"))
+    end)
+
     describe("random_string()", function()
       local utils = require "kong.tools.rand"
       it("should return a random string", function()

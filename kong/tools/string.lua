@@ -151,6 +151,33 @@ function _M.bytes_to_str(bytes, unit, scale)
 end
 
 
+local SCALES = {
+  k = 1024,
+  K = 1024,
+  m = 1024 * 1024,
+  M = 1024 * 1024,
+  g = 1024 * 1024 * 1024,
+  G = 1024 * 1024 * 1024,
+}
+
+function _M.parse_ngx_size(str)
+  local len = #str
+  local unit = sub(str, len)
+  local scale = SCALES[unit]
+
+  if scale then
+    len = len - 1
+
+  else
+    scale = 1
+  end
+
+  local size = tonumber(sub(str, 1, len)) or 0
+
+  return size * scale
+end
+
+
 local try_decode_base64
 do
   local decode_base64    = ngx.decode_base64
