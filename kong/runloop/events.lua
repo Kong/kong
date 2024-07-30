@@ -514,7 +514,8 @@ do
   if not socket_path then
     -- `kong.configuration.socket_path` is already normalized to an absolute
     -- path, but `ngx.config.prefix()` is not
-    socket_path = require("pl.path").abspath(ngx.config.prefix() .. "/sockets")
+    socket_path = require("pl.path").abspath(ngx.config.prefix() .. "/"
+                                             .. constants.SOCKET_DIRECTORY)
   end
 
   local STREAM_CONFIG_SOCK = "unix:" .. socket_path .. "/stream_config.sock"

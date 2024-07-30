@@ -3,6 +3,7 @@
 -- may changed or be removed in the future Kong releases once a better mechanism
 -- for inter subsystem communication in OpenResty became available.
 
+local constants = require "kong.constants"
 local lpack = require "lua_pack"
 
 local kong = kong
@@ -38,7 +39,8 @@ local MAX_DATA_LEN = 2^22 - 1
 local HEADER_LEN = #st_pack(PACK_F, MAX_KEY_LEN, MAX_DATA_LEN)
 
 -- this module may be loaded before `kong.configuration` is initialized
-local SOCKET_PATH = "unix:" .. ngx.config.prefix() .. "/sockets/stream_rpc.sock"
+local SOCKET_PATH = "unix:" .. ngx.config.prefix() .. "/"
+                    .. constants.SOCKET_DIRECTORY .. "/stream_rpc.sock"
 
 local stream_api = {}
 

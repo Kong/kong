@@ -17,6 +17,7 @@ local pl_path = require "pl.path"
 local tablex = require "pl.tablex"
 local log = require "kong.cmd.utils.log"
 local env = require "kong.cmd.utils.env"
+local constants = require "kong.constants"
 
 
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
@@ -484,7 +485,7 @@ local function load(path, custom_conf, opts)
 
   -- the socket path is where we store listening unix sockets for IPC and
   -- private APIs
-  conf.socket_path = pl_path.join(conf.prefix, "sockets")
+  conf.socket_path = pl_path.join(conf.prefix, constants.SOCKET_DIRECTORY)
 
   if conf.lua_ssl_trusted_certificate
      and #conf.lua_ssl_trusted_certificate > 0 then
