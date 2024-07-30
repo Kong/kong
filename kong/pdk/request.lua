@@ -702,7 +702,7 @@ local function new(self)
   -- @function kong.request.get_raw_body
   -- @phases rewrite, access, response, admin_api
   -- @max_allowed_file_size[opt] number the max allowed file size to be read from,
-  -- less than zero mean no limit, but the size of this body will still be limited
+  -- less than zero means no limit, but the size of this body will still be limited
   -- by Nginx's client_max_body_size.
   -- @treturn string|nil The plain request body or nil if it does not fit into
   -- the NGINX temporary buffer.
