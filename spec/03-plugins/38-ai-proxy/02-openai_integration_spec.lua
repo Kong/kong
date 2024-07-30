@@ -44,11 +44,13 @@ local _EXPECTED_CHAT_STATS = {
       provider_name = 'openai',
       request_model = 'gpt-3.5-turbo',
       response_model = 'gpt-3.5-turbo-0613',
+      llm_latency = 1
     },
     usage = {
       prompt_tokens = 25,
       completion_tokens = 12,
       total_tokens = 37,
+      time_per_token = 1,
       cost = 0.00037,
     },
     cache = {}
@@ -713,7 +715,17 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.is_number(log_message.response.size)
 
         -- test ai-proxy stats
+        local actual_chat_stats = log_message.ai
+        local actual_llm_latency = actual_chat_stats["ai-proxy"].meta.llm_latency
+        local actual_time_per_token = actual_chat_stats["ai-proxy"].usage.time_per_token
+        local time_per_token = math.floor(actual_llm_latency / actual_chat_stats["ai-proxy"].usage.completion_tokens)
+
+        log_message.ai["ai-proxy"].meta.llm_latency = 1
+        log_message.ai["ai-proxy"].usage.time_per_token = 1
+
         assert.same(_EXPECTED_CHAT_STATS, log_message.ai)
+        assert.is_true(actual_llm_latency > 0)
+        assert.same(actual_time_per_token, time_per_token)
       end)
 
       it("does not log statistics", function()
