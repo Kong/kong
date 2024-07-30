@@ -268,6 +268,13 @@
   - libdl.so.2
   - libc.so.6
 
+- Path      : /usr/local/openresty/site/lualib/libsimdjson_ffi.so
+  Needed    :
+  - libstdc++.so.6
+  - libgcc_s.so.1
+  - libc.so.6
+  - ld-linux-aarch64.so.1
+
 - Path      : /usr/local/share/lua/5.1/kong/portal
   Type      : directory
 
