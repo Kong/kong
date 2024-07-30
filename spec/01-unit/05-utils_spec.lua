@@ -202,7 +202,9 @@ describe("Utils", function()
       local parse_ngx_size = require("kong.tools.string").parse_ngx_size
 
       assert.equal(1024 * 1024 * 1024, parse_ngx_size("1G"))
+      assert.equal(1024 * 1024 * 1024, parse_ngx_size("1g"))
       assert.equal(1024 * 1024, parse_ngx_size("1M"))
+      assert.equal(1024 * 1024, parse_ngx_size("1m"))
       assert.equal(1024, parse_ngx_size("1k"))
       assert.equal(1024, parse_ngx_size("1K"))
     end)
