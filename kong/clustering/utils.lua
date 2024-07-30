@@ -155,6 +155,7 @@ function _M.connect_dp(dp_id, dp_hostname, dp_ip, dp_version)
   return wb, log_suffix
 end
 
+
 function _M.is_dp_worker_process()
   if kong.configuration.role == "data_plane"
       and kong.configuration.dedicated_config_processing == true then
@@ -163,5 +164,34 @@ function _M.is_dp_worker_process()
 
   return worker_id() == 0
 end
+
+
+-- encode/decode json with cjson or simdjson
+local ok, simdjson_dec = pcall(require, "resty.simdjson.decoder")
+if not ok or kong.configuration.cluster_cjson then
+  local cjson = require("cjson.safe")
+
+  _M.json_decode = cjson.decode
+  _M.json_encode = cjson.encode
+
+else
+  _M.json_decode = function(str)
+    -- enable yield and not reentrant for decode
+    local dec = simdjson_dec.new(true)
+
+    local res, err = dec:process(str)
+    dec:destroy()
+
+    return res, err
+  end
+
+  -- enable yield and reentrant for encode
+  local enc = require("resty.simdjson.encoder").new(true)
+
+  _M.json_encode = function(obj)
+    return enc:process(obj)
+  end
+end
+
 
 return _M

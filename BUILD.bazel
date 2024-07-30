@@ -127,6 +127,20 @@ config_setting(
     visibility = ["//visibility:public"],
 )
 
+# --//:simdjson=true
+bool_flag(
+    name = "simdjson",
+    build_setting_default = True,
+)
+
+config_setting(
+    name = "simdjson_flag",
+    flag_values = {
+        ":simdjson": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
 # --//:licensing=false
 bool_flag(
     name = "licensing",
