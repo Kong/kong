@@ -1,11 +1,12 @@
 local _M = {}
 
 -- imports
-local cjson     = require("cjson.safe")
-local http      = require("resty.http")
-local fmt       = string.format
-local os        = os
-local parse_url = require("socket.url").parse
+local cjson      = require("cjson.safe")
+local http       = require("resty.http")
+local fmt        = string.format
+local os         = os
+local parse_url  = require("socket.url").parse
+local aws_stream = require("kong.tools.aws_stream")
 --
 
 -- static
@@ -17,6 +18,10 @@ local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 local function str_ltrim(s) -- remove leading whitespace from string.
   return type(s) == "string" and s:gsub("^%s*", "")
+end
+
+local function str_rtrim(s) -- remove trailing whitespace from string.
+  return type(s) == "string" and s:match('^(.*%S)%s*$')
 end
 --
 
@@ -51,20 +56,26 @@ local log_entry_keys = {
 
 local openai_override = os.getenv("OPENAI_TEST_PORT")
 
+_M._CONST = {
+  ["SSE_TERMINATOR"] = "[DONE]",
+}
+
 _M.streaming_has_token_counts = {
   ["cohere"] = true,
   ["llama2"] = true,
   ["anthropic"] = true,
   ["gemini"] = true,
+  ["bedrock"] = true,
 }
 
 _M.upstream_url_format = {
-  openai = fmt("%s://api.openai.com:%s", (openai_override and "http") or "https", (openai_override) or "443"),
-  anthropic = "https://api.anthropic.com:443",
-  cohere = "https://api.cohere.com:443",
-  azure = "https://%s.openai.azure.com:443/openai/deployments/%s",
-  gemini = "https://generativelanguage.googleapis.com",
+  openai        = fmt("%s://api.openai.com:%s", (openai_override and "http") or "https", (openai_override) or "443"),
+  anthropic     = "https://api.anthropic.com:443",
+  cohere        = "https://api.cohere.com:443",
+  azure         = "https://%s.openai.azure.com:443/openai/deployments/%s",
+  gemini        = "https://generativelanguage.googleapis.com",
   gemini_vertex = "https://%s",
+  bedrock       = "https://bedrock-runtime.%s.amazonaws.com",
 }
 
 _M.operation_map = {
@@ -120,6 +131,12 @@ _M.operation_map = {
       method = "POST",
     },
   },
+  bedrock = {
+    ["llm/v1/chat"] = {
+      path = "/model/%s/%s",
+      method = "POST",
+    },
+  },
 }
 
 _M.clear_response_headers = {
@@ -136,6 +153,9 @@ _M.clear_response_headers = {
     "Set-Cookie",
   },
   gemini = {
+    "Set-Cookie",
+  },
+  bedrock = {
     "Set-Cookie",
   },
 }
@@ -219,7 +239,7 @@ end
 -- @param {string} frame input string to format into SSE events
 -- @param {boolean} raw_json sets application/json byte-parser mode
 -- @return {table} n number of split SSE messages, or empty table
-function _M.frame_to_events(frame, raw_json_mode)
+function _M.frame_to_events(frame, provider)
   local events = {}
 
   if (not frame) or (#frame < 1) or (type(frame)) ~= "string" then
@@ -228,19 +248,42 @@ function _M.frame_to_events(frame, raw_json_mode)
 
   -- some new LLMs return the JSON object-by-object,
   -- because that totally makes sense to parse?!
-  if raw_json_mode then
+  if provider == "gemini" then
+    local done = false
+
     -- if this is the first frame, it will begin with array opener '['
     frame = (string.sub(str_ltrim(frame), 1, 1) == "[" and string.sub(str_ltrim(frame), 2)) or frame
 
     -- it may start with ',' which is the start of the new frame
     frame = (string.sub(str_ltrim(frame), 1, 1) == "," and string.sub(str_ltrim(frame), 2)) or frame
     
-    -- finally, it may end with the array terminator ']' indicating the finished stream
-    frame = (string.sub(str_ltrim(frame), -1) == "]" and string.sub(str_ltrim(frame), 1, -2)) or frame
+    -- it may end with the array terminator ']' indicating the finished stream
+    if string.sub(str_rtrim(frame), -1) == "]" then
+      frame = string.sub(str_rtrim(frame), 1, -2)
+      done = true
+    end
 
     -- for multiple events that arrive in the same frame, split by top-level comma
     for _, v in ipairs(split(frame, "\n,")) do
       events[#events+1] = { data = v }
+    end
+
+    if done then
+      -- add the done signal here
+      -- but we have to retrieve the metadata from a previous filter run
+      events[#events+1] = { data = _M._CONST.SSE_TERMINATOR }
+    end
+
+  elseif provider == "bedrock" then
+    local parser = aws_stream:new(frame)
+    while true do
+      local msg = parser:next_message()
+
+      if not msg then
+        break
+      end
+
+      events[#events+1] = { data = cjson.encode(msg) }
     end
 
   -- check if it's raw json and just return the split up data frame
@@ -401,7 +444,7 @@ function _M.from_ollama(response_string, model_info, route_type)
     end
   end
   
-  if output and output ~= "[DONE]" then
+  if output and output ~= _M._CONST.SSE_TERMINATOR then
     output, err = cjson.encode(output)
   end
 
@@ -510,6 +553,10 @@ end
 function _M.post_request(conf, response_object)
   local body_string, err
 
+  if not response_object then
+    return
+  end
+
   if type(response_object) == "string" then
     -- set raw string body first, then decode
     body_string = response_object
@@ -573,7 +620,7 @@ function _M.post_request(conf, response_object)
     end
 
     if response_object.usage.prompt_tokens and response_object.usage.completion_tokens
-      and conf.model.options.input_cost and conf.model.options.output_cost then 
+      and conf.model.options and conf.model.options.input_cost and conf.model.options.output_cost then 
         request_analytics_plugin[log_entry_keys.USAGE_CONTAINER][log_entry_keys.COST] = 
           (response_object.usage.prompt_tokens * conf.model.options.input_cost
           + response_object.usage.completion_tokens * conf.model.options.output_cost) / 1000000 -- 1 million

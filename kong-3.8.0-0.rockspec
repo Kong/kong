@@ -203,6 +203,7 @@ build = {
     ["kong.tools.cjson"] = "kong/tools/cjson.lua",
     ["kong.tools.emmy_debugger"] = "kong/tools/emmy_debugger.lua",
     ["kong.tools.redis.schema"] = "kong/tools/redis/schema.lua",
+    ["kong.tools.aws_stream"] = "kong/tools/aws_stream.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.events"] = "kong/runloop/events.lua",
@@ -612,8 +613,8 @@ build = {
     ["kong.llm.drivers.anthropic"] = "kong/llm/drivers/anthropic.lua",
     ["kong.llm.drivers.mistral"] = "kong/llm/drivers/mistral.lua",
     ["kong.llm.drivers.llama2"] = "kong/llm/drivers/llama2.lua",
-
     ["kong.llm.drivers.gemini"] = "kong/llm/drivers/gemini.lua",
+    ["kong.llm.drivers.bedrock"] = "kong/llm/drivers/bedrock.lua",
 
     ["kong.plugins.ai-prompt-decorator.handler"] = "kong/plugins/ai-prompt-decorator/handler.lua",
     ["kong.plugins.ai-prompt-decorator.schema"]  = "kong/plugins/ai-prompt-decorator/schema.lua",

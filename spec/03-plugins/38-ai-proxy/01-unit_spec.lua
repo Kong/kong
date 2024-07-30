@@ -237,6 +237,20 @@ local FORMATS = {
       },
     },
   },
+  bedrock = {
+    ["llm/v1/chat"] = {
+      config = {
+        name = "bedrock",
+        provider = "bedrock",
+        options = {
+          max_tokens = 8192,
+          temperature = 0.8,
+          top_k = 1,
+          top_p = 0.6,
+        },
+      },
+    },
+  },
 }
 
 local STREAMS = {
@@ -664,7 +678,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
     
     it("transforms truncated-json type (beginning of stream)", function()
       local input = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/partial-json-beginning/input.bin"))
-      local events = ai_shared.frame_to_events(input, true)
+      local events = ai_shared.frame_to_events(input, "gemini")
 
       local expected = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/partial-json-beginning/expected-output.json"))
       local expected_events = cjson.decode(expected)
@@ -674,7 +688,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
     it("transforms truncated-json type (end of stream)", function()
       local input = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/partial-json-end/input.bin"))
-      local events = ai_shared.frame_to_events(input, true)
+      local events = ai_shared.frame_to_events(input, "gemini")
 
       local expected = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/partial-json-end/expected-output.json"))
       local expected_events = cjson.decode(expected)
@@ -684,7 +698,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
     
     it("transforms complete-json type", function()
       local input = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/complete-json/input.bin"))
-      local events = ai_shared.frame_to_events(input, false)  -- not "truncated json mode" like Gemini
+      local events = ai_shared.frame_to_events(input, "cohere")  -- not "truncated json mode" like Gemini
 
       local expected = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/complete-json/expected-output.json"))
       local expected_events = cjson.decode(expected)
@@ -694,12 +708,26 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
     it("transforms text/event-stream type", function()
       local input = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/text-event-stream/input.bin"))
-      local events = ai_shared.frame_to_events(input, false)  -- not "truncated json mode" like Gemini
+      local events = ai_shared.frame_to_events(input, "openai")  -- not "truncated json mode" like Gemini
 
       local expected = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/text-event-stream/expected-output.json"))
       local expected_events = cjson.decode(expected)
 
       assert.same(events, expected_events)
+    end)
+
+    it("transforms application/vnd.amazon.eventstream (AWS) type", function()
+      local input = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/aws/input.bin"))
+      local events = ai_shared.frame_to_events(input, "bedrock")
+
+      local expected = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/aws/expected-output.json"))
+      local expected_events = cjson.decode(expected)
+
+      assert.equal(#events, #expected_events)
+      for i, _ in ipairs(expected_events) do
+        -- tables are random ordered, so we need to compare each serialized event
+        assert.same(cjson.decode(events[i].data), cjson.decode(expected_events[i].data))
+      end
     end)
 
   end)
