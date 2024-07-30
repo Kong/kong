@@ -40,6 +40,10 @@ load("//build/nfpm:repositories.bzl", "nfpm_repositories")
 
 nfpm_repositories()
 
+load("@simdjson_ffi//build:repos.bzl", "simdjson_ffi_repositories")
+
+simdjson_ffi_repositories()
+
 load("@atc_router//build:repos.bzl", "atc_router_repositories")
 
 atc_router_repositories()

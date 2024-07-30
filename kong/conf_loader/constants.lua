@@ -508,6 +508,7 @@ local CONF_PARSERS = {
   cluster_use_proxy = { typ = "boolean" },
   cluster_dp_labels = { typ = "array" },
   cluster_rpc = { typ = "boolean" },
+  cluster_cjson = { typ = "boolean" },
 
   kic = { typ = "boolean" },
   pluginserver_names = { typ = "array" },

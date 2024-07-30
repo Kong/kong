@@ -2577,6 +2577,11 @@ local deep_sort do
       return deep_compare(a[1], b[1])
     end
 
+    -- compare cjson.null or ngx.null
+    if type(a) == "userdata" and type(b) == "userdata" then
+      return false
+    end
+
     return a < b
   end
 
