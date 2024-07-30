@@ -706,6 +706,12 @@ build = {
     ["kong.plugins.rate-limiting-advanced.migrations.001_370_to_380"] = "kong/plugins/rate-limiting-advanced/migrations/001_370_to_380.lua",
     ["kong.plugins.rate-limiting-advanced.migrations.002_370_to_380"] = "kong/plugins/rate-limiting-advanced/migrations/002_370_to_380.lua",
 
+    ["kong.plugins.ai-rate-limiting-advanced.handler"] = "kong/plugins/ai-rate-limiting-advanced/handler.lua",
+    ["kong.plugins.ai-rate-limiting-advanced.schema"] = "kong/plugins/ai-rate-limiting-advanced/schema.lua",
+    ["kong.plugins.ai-rate-limiting-advanced.migrations"]     = "kong/plugins/ai-rate-limiting-advanced/migrations/init.lua",
+    ["kong.plugins.ai-rate-limiting-advanced.migrations.001_370_to_380"] = "kong/plugins/ai-rate-limiting-advanced/migrations/001_370_to_380.lua",
+    ["kong.plugins.ai-rate-limiting-advanced.migrations.002_370_to_380"] = "kong/plugins/ai-rate-limiting-advanced/migrations/002_370_to_380.lua",
+
     ["kong.plugins.response-ratelimiting.migrations"] = "kong/plugins/response-ratelimiting/migrations/init.lua",
     ["kong.plugins.response-ratelimiting.migrations.000_base_response_rate_limiting"] = "kong/plugins/response-ratelimiting/migrations/000_base_response_rate_limiting.lua",
     ["kong.plugins.response-ratelimiting.migrations.001_350_to_360"] = "kong/plugins/response-ratelimiting/migrations/001_350_to_360.lua",

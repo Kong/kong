@@ -419,9 +419,9 @@ plugins/rate-limiting-advanced:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/rate-limiting-advanced/**/*
 
-plugins-ee/ai-rate-limiting-advanced:
+plugins/ai-rate-limiting-advanced:
 - changed-files:
-  - any-glob-to-any-file: plugins-ee/ai-rate-limiting-advanced/**/*
+  - any-glob-to-any-file: kong/plugins/ai-rate-limiting-advanced/**/*
 
 plugins-ee/request-validator:
 - changed-files:

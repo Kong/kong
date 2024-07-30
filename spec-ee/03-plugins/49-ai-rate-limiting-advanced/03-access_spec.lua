@@ -22,6 +22,8 @@ local update_time  = ngx.update_time
 local ngx = ngx
 local null = ngx.null
 
+local fixtures_path = "spec-ee/fixtures/ai-rate-limiting-advanced";
+
 -- all_strategries is not available on earlier versions spec.helpers in Kong
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
@@ -201,14 +203,14 @@ for _, strategy in strategies() do
 
                         if err or (body.messages == ngx.null) then
                             ngx.status = 400
-                            ngx.print(pl_file.read("/kong-plugin/spec/fixtures/openai/responses/bad_request.json"))
+                            ngx.print(pl_file.read("]] .. fixtures_path .. [[/openai/responses/bad_request.json"))
                         else
                             ngx.status = 200
-                            ngx.print(pl_file.read("/kong-plugin/spec/fixtures/openai/responses/good.json"))
+                            ngx.print(pl_file.read("]] .. fixtures_path .. [[/openai/responses/good.json"))
                         end
                     else
                         ngx.status = 401
-                        ngx.print(pl_file.read("/kong-plugin/spec/fixtures/openai/responses/unauthorized.json"))
+                        ngx.print(pl_file.read("]] .. fixtures_path .. [[/openai/responses/unauthorized.json"))
                     end
                 }
             }
@@ -233,14 +235,14 @@ for _, strategy in strategies() do
 
                         if err or (body.messages == ngx.null) then
                             ngx.status = 400
-                            ngx.print(pl_file.read("/kong-plugin/spec/fixtures/cohere/responses/bad_request.json"))
+                            ngx.print(pl_file.read("]] .. fixtures_path .. [[/cohere/responses/bad_request.json"))
                         else
                             ngx.status = 200
-                            ngx.print(pl_file.read("/kong-plugin/spec/fixtures/cohere/request-transformer/response-in-json.json"))
+                            ngx.print(pl_file.read("]] .. fixtures_path .. [[/cohere/request-transformer/response-in-json.json"))
                         end
                     else
                         ngx.status = 401
-                        ngx.print(pl_file.read("/kong-plugin/spec/fixtures/cohere/responses/unauthorized.json"))
+                        ngx.print(pl_file.read("]] .. fixtures_path .. [[/cohere/responses/unauthorized.json"))
                     end
                 }
             }
@@ -265,14 +267,14 @@ for _, strategy in strategies() do
 
                         if err or (body.messages == ngx.null) then
                             ngx.status = 400
-                            ngx.print(pl_file.read("/kong-plugin/spec/fixtures/openai/responses/bad_request.json"))
+                            ngx.print(pl_file.read("]] .. fixtures_path .. [[/openai/responses/bad_request.json"))
                         else
                             ngx.status = 200
-                            ngx.print(pl_file.read("/kong-plugin/spec/fixtures/openai/response-transformer/response-in-json.json"))
+                            ngx.print(pl_file.read("]] .. fixtures_path .. [[/openai/response-transformer/response-in-json.json"))
                         end
                     else
                         ngx.status = 401
-                        ngx.print(pl_file.read("/kong-plugin/spec/fixtures/openai/responses/unauthorized.json"))
+                        ngx.print(pl_file.read("]] .. fixtures_path .. [[/openai/responses/unauthorized.json"))
                     end
                 }
             }
@@ -297,14 +299,14 @@ for _, strategy in strategies() do
 
                         if err or (body.messages == ngx.null) then
                             ngx.status = 400
-                            ngx.print(pl_file.read("/kong-plugin/spec/fixtures/azure/responses/bad_request.json"))
+                            ngx.print(pl_file.read("]] .. fixtures_path .. [[/azure/responses/bad_request.json"))
                         else
                             ngx.status = 200
-                            ngx.print(pl_file.read("/kong-plugin/spec/fixtures/azure/response-transformer/response-in-json.json"))
+                            ngx.print(pl_file.read("]] .. fixtures_path .. [[/azure/response-transformer/response-in-json.json"))
                         end
                     else
                         ngx.status = 401
-                        ngx.print(pl_file.read("/kong-plugin/spec/fixtures/azure/responses/unauthorized.json"))
+                        ngx.print(pl_file.read("]] .. fixtures_path .. [[/azure/responses/unauthorized.json"))
                     end
                 }
             }
@@ -803,7 +805,7 @@ for _, strategy in strategies() do
                     ["Content-Type"] = "application/json",
                     ["accept"] = "application/json",
                 },
-                body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
+                body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
                 })
 
                 assert.res_status(200, res)
@@ -830,7 +832,7 @@ for _, strategy in strategies() do
                 ["Content-Type"] = "application/json",
                 ["accept"] = "application/json",
             },
-            body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
+            body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
             })
 
             local body = assert.res_status(429, res)
@@ -857,7 +859,7 @@ for _, strategy in strategies() do
                 ["Content-Type"] = "application/json",
                 ["accept"] = "application/json",
             },
-            body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
+            body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
             })
 
             local body = assert.res_status(429, res)
@@ -884,7 +886,7 @@ for _, strategy in strategies() do
                 ["Content-Type"] = "application/json",
                 ["accept"] = "application/json",
             },
-            body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
+            body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
             })
 
             assert.res_status(200, res)
@@ -901,7 +903,7 @@ for _, strategy in strategies() do
                 ["Content-Type"] = "application/json",
                 ["accept"] = "application/json",
             },
-            body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
+            body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
             })
 
             local body = assert.res_status(429, res)
@@ -927,7 +929,7 @@ for _, strategy in strategies() do
                 ["Content-Type"] = "application/json",
                 ["accept"] = "application/json",
             },
-            body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
+            body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
             })
 
             assert.res_status(200, res)
@@ -945,7 +947,7 @@ for _, strategy in strategies() do
                 ["Content-Type"] = "application/json",
                 ["accept"] = "application/json",
             },
-            body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
+            body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
             })
 
             assert.res_status(200, res)
@@ -966,7 +968,7 @@ for _, strategy in strategies() do
                     ["Content-Type"] = "application/json",
                     ["accept"] = "application/json",
                 },
-                body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
+                body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
                 })
 
                 assert.res_status(200, res)
@@ -994,7 +996,8 @@ for _, strategy in strategies() do
                 ["Content-Type"] = "application/json",
                 ["accept"] = "application/json",
             },
-            body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
+
+            body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
             })
 
             local body = assert.res_status(429, res)
@@ -1024,7 +1027,7 @@ for _, strategy in strategies() do
                 ["Content-Type"] = "application/json",
                 ["accept"] = "application/json",
             },
-            body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
+            body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
             })
 
             assert.res_status(200, res)
@@ -1041,7 +1044,7 @@ for _, strategy in strategies() do
                 ["Content-Type"] = "application/json",
                 ["accept"] = "application/json",
             },
-            body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
+            body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
             })
 
             local body = assert.res_status(429, res)
@@ -1068,7 +1071,7 @@ for _, strategy in strategies() do
                 ["Content-Type"] = "application/json",
                 ["accept"] = "application/json",
             },
-            body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
+            body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
             })
 
             assert.res_status(200, res)
@@ -1085,7 +1088,7 @@ for _, strategy in strategies() do
                 ["Content-Type"] = "application/json",
                 ["accept"] = "application/json",
             },
-            body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
+            body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
             })
 
             local body = assert.res_status(429, res)
@@ -1111,7 +1114,7 @@ for _, strategy in strategies() do
                 ["Content-Type"] = "application/json",
                 ["accept"] = "application/json",
             },
-            body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
+            body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
             })
 
             assert.res_status(200, res)
@@ -1133,7 +1136,7 @@ for _, strategy in strategies() do
                 ["Content-Type"] = "application/json",
                 ["accept"] = "application/json",
             },
-            body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
+            body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
             })
 
             assert.res_status(200, res)
@@ -1155,7 +1158,7 @@ for _, strategy in strategies() do
                 ["Content-Type"] = "application/json",
                 ["accept"] = "application/json",
             },
-            body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
+            body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
             })
 
             local body = assert.res_status(500, res)
@@ -1176,7 +1179,7 @@ for _, strategy in strategies() do
                 ["Content-Type"] = "application/json",
                 ["accept"] = "application/json",
             },
-            body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
+            body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
             })
 
             local body = assert.res_status(500, res)
@@ -1199,7 +1202,7 @@ for _, strategy in strategies() do
                     ["Content-Type"] = "application/json",
                     ["accept"] = "application/json",
                 },
-                body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
+                body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
                 })
 
                 assert.res_status(200, res)
@@ -1222,7 +1225,7 @@ for _, strategy in strategies() do
                 ["Content-Type"] = "application/json",
                 ["accept"] = "application/json",
             },
-            body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
+            body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
             })
 
             local body = assert.res_status(429, res)
@@ -1249,7 +1252,7 @@ for _, strategy in strategies() do
                   ["Content-Type"] = "application/json",
                   ["accept"] = "application/json",
               },
-              body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
+              body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
               })
 
               assert.res_status(200, res)
@@ -1278,7 +1281,7 @@ for _, strategy in strategies() do
               ["Content-Type"] = "application/json",
               ["accept"] = "application/json",
           },
-          body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
+          body = pl_file.read(fixtures_path .. "/openai/requests/good.json")
           })
 
           local body = assert.res_status(429, res)

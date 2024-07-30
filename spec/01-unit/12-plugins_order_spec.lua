@@ -97,6 +97,7 @@ describe("Plugins", function()
       "acl",
       "rate-limiting-advanced",
       "rate-limiting",
+      "ai-rate-limiting-advanced",
       "response-ratelimiting",
       "route-by-header",
       "jq",
