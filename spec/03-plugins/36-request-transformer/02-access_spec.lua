@@ -2,6 +2,9 @@ local admin_api = require "spec.fixtures.admin_api"
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
 local pl_file = require "pl.file"
+local http_mock = require "spec.helpers.http_mock"
+
+local MOCK_PORT = helpers.get_available_port()
 
 local fmt = string.format
 
@@ -16,7 +19,7 @@ end
 
 for _, strategy in helpers.each_strategy() do
 describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
-  local client
+  local client, mock_server
 
   lazy_setup(function()
     local bp = helpers.get_db_utils(strategy, {
@@ -487,6 +490,30 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       }
     }
 
+    do -- rename case tests
+      -- as assert.request(r) does not support case-sensitive header checks
+      -- we need to use a mock server
+      mock_server = http_mock.new(MOCK_PORT)
+      mock_server:start()
+      local mock_service = bp.services:insert {
+        url = "http://localhost:" .. MOCK_PORT
+      }
+      local route = bp.routes:insert {
+        hosts = { "rename.mock" },
+        service = mock_service,
+      }
+      bp.plugins:insert {
+        route = { id = route.id },
+        name = "request-transformer",
+        config = {
+          rename = {
+            headers = { "rename:Rename" },
+            querystring = { "inexist:exist" },
+          }
+        }
+      }
+    end
+
     assert(helpers.start_kong({
       database = strategy,
       plugins = "bundled, request-transformer",
@@ -495,6 +522,7 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
   end)
 
   lazy_teardown(function()
+    mock_server:stop()
     helpers.stop_kong()
   end)
 
@@ -908,6 +936,35 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       assert.response(r).has.jsonbody()
       local json = assert.request(r).has.jsonbody()
       assert.equals("{\"emptyarray\":[]}", json.data)
+    end)
+    it("rename correctly when only changing capitalization", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          host = "rename.mock",
+          ["rename"] = "true",
+        }
+      })
+      assert.response(r).has.status(200)
+      local ret = mock_server:get_request()
+
+      assert.equals("true", ret.headers["Rename"])
+      assert.is_nil(ret.headers["rename"])
+    end)
+    -- but should we override with a value?
+    it("does not override existing value with nil", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/request?exist=true",
+        headers = {
+          host = "rename.mock",
+        }
+      })
+      assert.response(r).has.status(200)
+      local ret = mock_server:get_request()
+      print(require"inspect"(ret))
+      assert.equals("/request?exist=true", ret.uri)
     end)
   end)
 

@@ -148,6 +148,19 @@ local function append_value(current_value, value)
   end
 end
 
+local function rename(tbl, old_name, new_name)
+  if old_name == new_name then
+    return
+  end
+
+  local value = tbl[old_name]
+  if value then
+    tbl[old_name] = nil
+    tbl[new_name] = value
+    return old_name
+  end
+end
+
 local function transform_headers(conf, template_env)
   local headers = get_headers()
   local headers_to_remove = {}
@@ -165,12 +178,15 @@ local function transform_headers(conf, template_env)
 
   -- Rename headers(s)
   for _, old_name, new_name in iter(conf.rename.headers, template_env) do
-    old_name = old_name:lower()
-    local value = headers[old_name]
-    if value then
-      headers[new_name:lower()] = value
-      headers[old_name] = nil
-      headers_to_remove[old_name] = true
+    local lower_old_name, lower_new_name = old_name:lower(), new_name:lower()
+    -- headers by default are case-insensitive
+    -- but if we have a case change, we need to handle it as a special case
+    if lower_old_name ~= lower_new_name then
+      old_name, new_name = lower_old_name, lower_new_name
+    end
+    local toremove = rename(headers, old_name, new_name)
+    if toremove then
+      headers_to_remove[toremove] = true
     end
   end
 
@@ -230,11 +246,7 @@ local function transform_querystrings(conf, template_env)
 
   -- Rename querystring(s)
   for _, old_name, new_name in iter(conf.rename.querystring, template_env) do
-    local value = querystring[old_name]
-    if value then
-      querystring[old_name] = nil
-      querystring[new_name] = value
-    end
+    rename(querystring, old_name, new_name)
   end
 
   for _, name, value in iter(conf.replace.querystring, template_env) do
@@ -277,12 +289,7 @@ local function transform_json_body(conf, body, content_length, template_env)
 
   if content_length > 0 and #conf.rename.body > 0 then
     for _, old_name, new_name in iter(conf.rename.body, template_env) do
-      local value = parameters[old_name]
-      if value then
-        parameters[old_name] = nil
-        parameters[new_name] = value
-        renamed = true
-      end
+      renamed = rename(parameters, old_name, new_name) and true
     end
   end
 
@@ -330,12 +337,7 @@ local function transform_url_encoded_body(conf, body, content_length, template_e
 
   if content_length > 0 and #conf.rename.body > 0 then
     for _, old_name, new_name in iter(conf.rename.body, template_env) do
-      local value = parameters[old_name]
-      if value then
-        parameters[old_name] = nil
-        parameters[new_name] = value
-        renamed = true
-      end
+      renamed = rename(parameters, old_name, new_name) and true or renamed
     end
   end
 
@@ -376,8 +378,9 @@ local function transform_multipart_body(conf, body, content_length, content_type
 
   if content_length > 0 and #conf.rename.body > 0 then
     for _, old_name, new_name in iter(conf.rename.body, template_env) do
-      if parameters:get(old_name) then
-        local value = parameters:get(old_name).value
+      local para = parameters:get(old_name)
+      if para and old_name ~= new_name then
+        local value = para.value
         parameters:set_simple(new_name, value)
         parameters:delete(old_name)
         renamed = true
