@@ -161,6 +161,8 @@ local SCALES = {
 }
 
 function _M.parse_ngx_size(str)
+  assert(type(str) == "string", "Parameter #1 must be a string")
+
   local len = #str
   local unit = sub(str, len)
   local scale = SCALES[unit]

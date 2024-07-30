@@ -207,6 +207,7 @@ describe("Utils", function()
       assert.equal(1024 * 1024, parse_ngx_size("1m"))
       assert.equal(1024, parse_ngx_size("1k"))
       assert.equal(1024, parse_ngx_size("1K"))
+      assert.equal(10, parse_ngx_size("10"))
     end)
 
     describe("random_string()", function()
