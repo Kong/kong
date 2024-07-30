@@ -486,13 +486,14 @@ function _M.pre_request(conf, request_table)
     request_table[auth_param_name] = auth_param_value
   end
 
+  -- retrieve the plugin name
+  local plugin_name = conf.__key__:match('plugins:(.-):')
+  if not plugin_name or plugin_name == "" then
+    return nil, "no plugin name is being passed by the plugin"
+  end
+
   -- if enabled AND request type is compatible, capture the input for analytics
   if conf.logging and conf.logging.log_payloads then
-    local plugin_name = conf.__key__:match('plugins:(.-):')
-    if not plugin_name or plugin_name == "" then
-      return nil, "no plugin name is being passed by the plugin"
-    end
-
     kong.log.set_serialize_value(fmt("ai.%s.%s.%s", plugin_name, log_entry_keys.PAYLOAD_CONTAINER, log_entry_keys.REQUEST_BODY), kong.request.get_raw_body())
   end
 
@@ -506,7 +507,7 @@ function _M.pre_request(conf, request_table)
     kong.ctx.shared.ai_prompt_tokens = (kong.ctx.shared.ai_prompt_tokens or 0) + prompt_tokens
   end
 
-  local start_time_key = "ai_request_start_time_" .. string.sub(conf.__plugin_id, -12)
+  local start_time_key = "ai_request_start_time_" .. plugin_name
   kong.ctx.plugin[start_time_key] = ngx.now()
 
   return true, nil
@@ -559,7 +560,7 @@ function _M.post_request(conf, response_object)
   request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.RESPONSE_MODEL] = response_object.model or conf.model.name
 
   -- Set the llm latency meta, and time per token usage
-  local start_time_key = "ai_request_start_time_" .. string.sub(conf.__plugin_id, -12)
+  local start_time_key = "ai_request_start_time_" .. plugin_name
   if kong.ctx.plugin[start_time_key] then
     local llm_latency = math.floor((ngx.now() - kong.ctx.plugin[start_time_key]) * 1000)
     request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.LLM_LATENCY] = llm_latency
