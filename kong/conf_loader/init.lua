@@ -483,8 +483,8 @@ local function load(path, custom_conf, opts)
   -- load absolute paths
   conf.prefix = abspath(conf.prefix)
 
-  -- the socket path is where we store listening unix sockets for IPC and
-  -- private APIs
+  -- The socket path is where we store listening unix sockets for IPC and private APIs.
+  -- It is derived from the prefix and is NOT intended to be user-configurable
   conf.socket_path = pl_path.join(conf.prefix, constants.SOCKET_DIRECTORY)
 
   if conf.lua_ssl_trusted_certificate
