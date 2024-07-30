@@ -507,7 +507,7 @@ function _M.pre_request(conf, request_table)
   end
 
   local start_time_key = "ai_request_start_time_" .. string.sub(conf.__plugin_id, -12)
-  kong.ctx.shared[start_time_key] = ngx.now()
+  kong.ctx.plugin[start_time_key] = ngx.now()
 
   return true, nil
 end
@@ -560,8 +560,8 @@ function _M.post_request(conf, response_object)
 
   -- Set the llm latency meta, and time per token usage
   local start_time_key = "ai_request_start_time_" .. string.sub(conf.__plugin_id, -12)
-  if kong.ctx.shared[start_time_key] then
-    local llm_latency = math.floor((ngx.now() - kong.ctx.shared[start_time_key]) * 1000)
+  if kong.ctx.plugin[start_time_key] then
+    local llm_latency = math.floor((ngx.now() - kong.ctx.plugin[start_time_key]) * 1000)
     request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.LLM_LATENCY] = llm_latency
     kong.ctx.shared.ai_request_latency = llm_latency
 
