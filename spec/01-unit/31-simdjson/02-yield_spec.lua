@@ -3,9 +3,23 @@ local orig_ngx_sleep = ngx.sleep
 
 local spy_ngx_sleep
 local simdjson
+local test_obj
+local test_str
 
 
 describe("[yield] ", function ()
+  lazy_setup(function()
+    test_obj = { str = string.rep("a", 2100), }
+
+    local arr = {}
+    for i = 1, 1000 do
+      arr[i] = i
+    end
+
+    test_str = "[" .. table.concat(arr, ",") .. "]"
+  end)
+
+
   before_each(function()
     spy_ngx_sleep = spy.on(ngx, "sleep")
     simdjson = require("resty.simdjson")
@@ -13,11 +27,12 @@ describe("[yield] ", function ()
 
 
   after_each(function()
-    ngx.sleep = orig_ngx_sleep
+    ngx.sleep = orig_ngx_sleep  -- luacheck: ignore
     package.loaded["resty.simdjson"] = nil
     package.loaded["resty.simdjson.decoder"] = nil
     package.loaded["resty.simdjson.encoder"] = nil
   end)
+
 
 
   it("enabled when encoding", function()
@@ -25,7 +40,7 @@ describe("[yield] ", function ()
     local parser = simdjson.new(true)
     assert(parser)
 
-    local str = parser:encode({ str = string.rep("a", 2100) })
+    local str = parser:encode(test_obj)
 
     parser:destroy()
 
@@ -41,7 +56,7 @@ describe("[yield] ", function ()
     local parser = simdjson.new(false)
     assert(parser)
 
-    local str = parser:encode({ str = string.rep("a", 2100) })
+    local str = parser:encode(test_obj)
 
     parser:destroy()
 
@@ -53,15 +68,10 @@ describe("[yield] ", function ()
 
   it("enabled when decoding", function()
 
-    local a = {}
-    for i = 1, 1000 do
-      a[i] = i
-    end
-
     local parser = simdjson.new(true)
     assert(parser)
 
-    local obj = parser:decode("[" .. table.concat(a, ",") .. "]")
+    local obj = parser:decode(test_str)
 
     parser:destroy()
 
@@ -74,15 +84,10 @@ describe("[yield] ", function ()
 
   it("disabled when decoding", function()
 
-    local a = {}
-    for i = 1, 1000 do
-      a[i] = i
-    end
-
     local parser = simdjson.new(false)
     assert(parser)
 
-    local obj = parser:decode("[" .. table.concat(a, ",") .. "]")
+    local obj = parser:decode(test_str)
 
     parser:destroy()
 
