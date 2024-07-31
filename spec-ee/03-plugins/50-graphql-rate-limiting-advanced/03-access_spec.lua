@@ -30,7 +30,7 @@ local fixtures = {
             content_by_lua_block {
               ngx.req.read_body()
               local echo = ngx.req.get_body_data()
-              package.path = "]] .. helpers.get_fixtures_path() .. [[/?.lua;" .. package.path
+              package.path = "spec-ee/fixtures/graphql-rate-limiting-advanced/?.lua;" .. package.path
               local schema = require "schema-json-01"
               local response_body = '{"data": ' .. schema .. '}'
               ngx.status = 200

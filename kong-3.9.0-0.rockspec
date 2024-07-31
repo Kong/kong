@@ -61,6 +61,7 @@ dependencies = {
   "lua-resty-jq == 0.1.0",
   "lua-resty-snappy == 1.0-1",
   "lua-resty-ada == 1.1.0",
+  "kong-gql == 0.2.3",
 }
 build = {
   type = "builtin",
@@ -711,6 +712,16 @@ build = {
     ["kong.plugins.ai-rate-limiting-advanced.migrations"]     = "kong/plugins/ai-rate-limiting-advanced/migrations/init.lua",
     ["kong.plugins.ai-rate-limiting-advanced.migrations.001_370_to_380"] = "kong/plugins/ai-rate-limiting-advanced/migrations/001_370_to_380.lua",
     ["kong.plugins.ai-rate-limiting-advanced.migrations.002_370_to_380"] = "kong/plugins/ai-rate-limiting-advanced/migrations/002_370_to_380.lua",
+
+    ["kong.plugins.graphql-rate-limiting-advanced.handler"] = "kong/plugins/graphql-rate-limiting-advanced/handler.lua",
+    ["kong.plugins.graphql-rate-limiting-advanced.schema"] = "kong/plugins/graphql-rate-limiting-advanced/schema.lua",
+    ["kong.plugins.graphql-rate-limiting-advanced.cost"] = "kong/plugins/graphql-rate-limiting-advanced/cost.lua",
+    ["kong.plugins.graphql-rate-limiting-advanced.api"] = "kong/plugins/graphql-rate-limiting-advanced/api.lua",
+    ["kong.plugins.graphql-rate-limiting-advanced.daos"] = "kong/plugins/graphql-rate-limiting-advanced/daos.lua",
+    ["kong.plugins.graphql-rate-limiting-advanced.migrations"] = "kong/plugins/graphql-rate-limiting-advanced/migrations/init.lua",
+    ["kong.plugins.graphql-rate-limiting-advanced.migrations.000_base_gql_rate_limiting"] = "kong/plugins/graphql-rate-limiting-advanced/migrations/000_base_gql_rate_limiting.lua",
+    ["kong.plugins.graphql-rate-limiting-advanced.migrations.001_370_to_380"] = "kong/plugins/graphql-rate-limiting-advanced/migrations/001_370_to_380.lua",
+    ["kong.plugins.graphql-rate-limiting-advanced.migrations.002_370_to_380"] = "kong/plugins/graphql-rate-limiting-advanced/migrations/002_370_to_380.lua",
 
     ["kong.plugins.response-ratelimiting.migrations"] = "kong/plugins/response-ratelimiting/migrations/init.lua",
     ["kong.plugins.response-ratelimiting.migrations.000_base_response_rate_limiting"] = "kong/plugins/response-ratelimiting/migrations/000_base_response_rate_limiting.lua",

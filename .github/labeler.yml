@@ -282,9 +282,9 @@ plugins/graphql-proxy-cache-advanced:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/graphql-proxy-cache-advanced/**/*
 
-plugins-ee/graphql-rate-limiting-advanced:
+plugins/graphql-rate-limiting-advanced:
 - changed-files:
-  - any-glob-to-any-file: plugins-ee/graphql-rate-limiting-advanced/**/*
+  - any-glob-to-any-file: kong/plugins/graphql-rate-limiting-advanced/**/*
 
 plugins/jq:
 - changed-files:

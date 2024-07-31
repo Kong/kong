@@ -61,6 +61,7 @@ return {
     "mocking",
     "oauth2-introspection",
     "rate-limiting-advanced",
+    "graphql-rate-limiting-advanced",
     "request-transformer-advanced",
     "response-transformer-advanced",
     "route-by-header",

@@ -9,14 +9,13 @@ local cost = require "kong.plugins.graphql-rate-limiting-advanced.cost"
 local build_ast = require "kong.gql.query.build_ast"
 local cjson = require "cjson.safe"
 local Schema = require "kong.gql.schema"
-local helpers = require "spec.helpers"
 
 describe("Function cost(query_ast, default): ", function ()
     local schema
     local old_package_path = package.path
     setup(function ()
         -- See file for full type definitions
-        package.path = helpers.get_fixtures_path() .. "/?.lua;" .. old_package_path
+        package.path = "spec-ee/fixtures/graphql-rate-limiting-advanced/?.lua;" .. old_package_path
         local raw_body = require "schema-json-01"
         local json_data = cjson.decode(raw_body)
 
@@ -90,7 +89,7 @@ describe("Function cost(query_ast, node_quantifier): ", function ()
     local old_package_path = package.path
     setup(function ()
         -- See file for full type definitions
-        package.path = helpers.get_fixtures_path() .. "/?.lua;" .. old_package_path
+        package.path = "spec-ee/fixtures/graphql-rate-limiting-advanced/?.lua;" .. old_package_path
         local raw_body = require "schema-json-02"
         local json_data = cjson.decode(raw_body)
         schema = Schema.deserialize_json_data(json_data)
