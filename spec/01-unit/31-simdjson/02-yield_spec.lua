@@ -31,7 +31,8 @@ describe("[yield] ", function ()
 
     assert(str)
     assert(type(str) == "string")
-    assert.spy(spy_ngx_sleep).was_called(1)
+    assert.spy(spy_ngx_sleep).was_called(1)       -- yield once
+    assert.spy(spy_ngx_sleep).was_called_with(0)  -- yield 0ms
   end)
 
 
@@ -66,7 +67,8 @@ describe("[yield] ", function ()
 
     assert(obj)
     assert(type(obj) == "table")
-    assert.spy(spy_ngx_sleep).was_called(1)
+    assert.spy(spy_ngx_sleep).was_called(1)       -- yield once
+    assert.spy(spy_ngx_sleep).was_called_with(0)  -- yield 0ms
   end)
 
 
