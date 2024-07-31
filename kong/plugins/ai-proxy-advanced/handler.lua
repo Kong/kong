@@ -79,18 +79,29 @@ function _M:init_worker()
   -- event handlers to update balancer instances
   worker_events.register(function(data)
     if data.entity.name == "ai-proxy-advanced" then
+      -- remove metatables from data
+      local post_data = {
+        operation = data.operation,
+        entity = data.entity,
+      }
+
       -- broadcast this to all workers becasue dao events are sent using post_local
-      worker_events.post("ai-proxy-advanced", "balancers", data)
+      worker_events.post("ai-proxy-advanced", "balancers", post_data)
 
       if cluster_events then
-        cluster_events:broadcast("ai-proxy-advanced:balancers", data)
+        cluster_events:broadcast("ai-proxy-advanced:balancers", post_data)
       end
     end
   end, "crud", "plugins")
 
   if cluster_events then
     cluster_events:subscribe("ai-proxy-advanced:balancers", function(data)
-      worker_events.post("ai-proxy-advanced", "balancers", data)
+      -- remove metatables from data
+      local post_data = {
+        operation = data.operation,
+        entity = data.entity,
+      }
+      worker_events.post("ai-proxy-advanced", "balancers", post_data)
     end)
   end
 
