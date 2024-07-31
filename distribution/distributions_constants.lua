@@ -16,6 +16,7 @@ c.plugins = {  -- This list of plugins is located in the "plugins-ee" directory
   "vault-auth",
   "request-validator",
   "mtls-auth",
+  "header-cert-auth",
   "graphql-rate-limiting-advanced",
   "kafka-log",
   "kafka-upstream",

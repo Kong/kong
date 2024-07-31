@@ -1,0 +1,79 @@
+-- This software is copyright Kong Inc. and its licensors.
+-- Use of the software is subject to the agreement between your organization
+-- and Kong Inc. If there is no such agreement, use is governed by and
+-- subject to the terms of the Kong Master Software License Agreement found
+-- at https://konghq.com/enterprisesoftwarelicense/.
+-- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
+
+local endpoints = require "kong.api.endpoints"
+
+
+local credentials_schema = kong.db.header_cert_auth_credentials.schema
+local consumers_schema   = kong.db.consumers.schema
+
+
+local HTTP_NOT_FOUND = ngx.HTTP_NOT_FOUND
+
+
+return {
+  ["/consumers/:consumers/header-cert-auth"] = {
+    schema = credentials_schema,
+    methods = {
+      GET = endpoints.get_collection_endpoint(
+              credentials_schema, consumers_schema, "consumer"),
+
+      POST = endpoints.post_collection_endpoint(
+              credentials_schema, consumers_schema, "consumer"),
+    },
+  },
+  ["/consumers/:consumers/header-cert-auth/:header_cert_auth_credentials"] = {
+    schema = credentials_schema,
+    methods = {
+      before = function(self, db, helpers)
+        local consumer, _, err_t = endpoints.select_entity(self, db, consumers_schema)
+        if err_t then
+          return endpoints.handle_error(err_t)
+        end
+        if not consumer then
+          return kong.response.exit(HTTP_NOT_FOUND, { message = "Not found" })
+        end
+
+        self.consumer = consumer
+
+        if self.req.method ~= "PUT" then
+          local cred, _, err_t = endpoints.select_entity(self, db, credentials_schema)
+          if err_t then
+            return endpoints.handle_error(err_t)
+          end
+
+          if not cred or cred.consumer.id ~= consumer.id then
+            return kong.response.exit(HTTP_NOT_FOUND, { message = "Not found" })
+          end
+          self.header_cert_auth_credential = cred
+          self.params.header_cert_auth_credentials = cred.id
+        end
+      end,
+
+      GET  = endpoints.get_entity_endpoint(credentials_schema),
+      PUT  = function(self, db, helpers)
+        self.args.post.consumer = { id = self.consumer.id }
+        return endpoints.put_entity_endpoint(credentials_schema)(self, db, helpers)
+      end,
+      PATCH  = endpoints.patch_entity_endpoint(credentials_schema),
+      DELETE = endpoints.delete_entity_endpoint(credentials_schema),
+    },
+  },
+  ["/header-cert-auths"] = {
+    schema = credentials_schema,
+    methods = {
+      GET = endpoints.get_collection_endpoint(credentials_schema),
+    }
+  },
+  ["/header-cert-auths/:header_cert_auth_credentials/consumer"] = {
+    schema = consumers_schema,
+    methods = {
+      GET = endpoints.get_entity_endpoint(
+              credentials_schema, consumers_schema, "consumer", nil, true),
+    }
+  },
+}

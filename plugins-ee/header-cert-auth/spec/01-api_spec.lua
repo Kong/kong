@@ -1,0 +1,607 @@
+-- This software is copyright Kong Inc. and its licensors.
+-- Use of the software is subject to the agreement between your organization
+-- and Kong Inc. If there is no such agreement, use is governed by and
+-- subject to the terms of the Kong Master Software License Agreement found
+-- at https://konghq.com/enterprisesoftwarelicense/.
+-- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
+
+local cjson   = require "cjson"
+local helpers = require "spec.helpers"
+local utils = require "kong.tools.utils"
+
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
+
+
+for _, strategy in strategies() do
+  describe("Plugin: header-cert-auth (API) [#" .. strategy .. "]", function()
+    local consumer
+    local admin_client
+    local bp
+    local db
+    local route1
+    local route2
+    local ca
+    local db_strategy = strategy ~= "off" and strategy or nil
+
+    lazy_setup(function()
+      bp, db = helpers.get_db_utils(db_strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "ca_certificates",
+        "header_cert_auth_credentials",
+      }, { "header-cert-auth", })
+
+      route1 = bp.routes:insert {
+        hosts = { "headercertauth1.test" },
+      }
+
+      route2 = bp.routes:insert {
+        hosts = { "headercertauth2.test" },
+      }
+
+      consumer = bp.consumers:insert({
+        username = "bob"
+      }, { nulls = true })
+
+      ca = bp.ca_certificates:insert()
+
+      assert(helpers.start_kong({
+        plugins = "bundled,header-cert-auth",
+        database = db_strategy,
+      }))
+
+      admin_client = helpers.admin_client()
+    end)
+
+    lazy_teardown(function()
+      if admin_client then
+        admin_client:close()
+      end
+
+      helpers.stop_kong()
+    end)
+
+    describe("/consumers/:consumer/header-cert-auth", function()
+      describe("POST", function()
+        after_each(function()
+          db:truncate("header_cert_auth_credentials")
+        end)
+
+        it("creates a header-cert-auth credential with subject name", function()
+          local res = assert(admin_client:send({
+            method  = "POST",
+            path    = "/consumers/bob/header-cert-auth",
+            body    = {
+              subject_name   = "1234"
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          }))
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal(consumer.id, json.consumer.id)
+          assert.equal("1234", json.subject_name)
+        end)
+
+        it("creates a header-cert-auth credential with subject name and tags", function()
+          local res = assert(admin_client:send({
+            method  = "POST",
+            path    = "/consumers/bob/header-cert-auth",
+            body    = {
+              subject_name   = "1234",
+              tags = { 'tag1', 'tag2' }
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          }))
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal(consumer.id, json.consumer.id)
+          assert.equal("1234", json.subject_name)
+          assert.equal("tag1", json.tags[1])
+          assert.equal("tag2", json.tags[2])
+        end)
+
+        it("subject_name is required", function()
+          local res = assert(admin_client:send({
+            method  = "POST",
+            path    = "/consumers/bob/header-cert-auth",
+            body    = {},
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          }))
+          local body = assert.res_status(400, res)
+          assert.matches("subject_name: required field missing", body, nil, true)
+        end)
+
+        it("duplicates not allowed", function()
+          local res = assert(admin_client:send({
+            method  = "POST",
+            path    = "/consumers/bob/header-cert-auth",
+            body    = {
+              subject_name   = "1234"
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          }))
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal(consumer.id, json.consumer.id)
+          assert.equal("1234", json.subject_name)
+
+          -- second time
+
+          res = assert(admin_client:send({
+            method  = "POST",
+            path    = "/consumers/bob/header-cert-auth",
+            body    = {
+              subject_name   = "1234"
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          }))
+          body = assert.res_status(409, res)
+          assert.matches("unique constraint violation", body, nil, true)
+        end)
+
+        it("creates a header-cert-auth credential with consumer ca_certificate", function()
+          local res = assert(admin_client:send({
+            method  = "POST",
+            path    = "/consumers/bob/header-cert-auth",
+            body    = {
+              subject_name   = "1234",
+              ca_certificate = { id = ca.id },
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          }))
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal(consumer.id, json.consumer.id)
+          assert.equal("1234", json.subject_name)
+          assert.equal(ca.id, json.ca_certificate.id)
+        end)
+      end)
+
+      describe("GET", function()
+        lazy_setup(function()
+          for i = 1, 3 do
+            assert(db.header_cert_auth_credentials:insert {
+              consumer = { id = consumer.id },
+              subject_name = "foo" .. i,
+            })
+          end
+
+          local res = assert(admin_client:send {
+            method  = "GET",
+            path    = "/consumers"
+          })
+          assert.res_status(200, res)
+        end)
+
+        lazy_teardown(function()
+          db:truncate("header_cert_auth_credentials")
+        end)
+
+        it("retrieves the first page", function()
+          local res = assert(admin_client:send {
+            method  = "GET",
+            path    = "/consumers/bob/header-cert-auth"
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.is_table(json.data)
+          assert.equal(3, #json.data)
+        end)
+      end)
+    end)
+
+    describe("/plugins for route", function()
+      it("fails with no ca_certificates", function()
+        local res = assert(admin_client:send {
+          method  = "POST",
+          path    = "/plugins",
+          body    = {
+            name  = "header-cert-auth",
+            route = { id = route1.id },
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same({ ca_certificates = "required field missing", certificate_header_name = "required field missing", certificate_header_format = "required field missing", secure_source = "required field missing" }, json.fields.config)
+      end)
+
+      it("fails with invalid ca_certificate UUID", function()
+        local res = assert(admin_client:send {
+          method  = "POST",
+          path    = "/plugins",
+          body    = {
+            route = { id = route2.id },
+            name       = "header-cert-auth",
+            config     = {
+              ca_certificates = { "123", },
+              certificate_header_name = "ssl-client-cert",
+              certificate_header_format = "base64_encoded",
+              secure_source = false,
+            },
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same({ "expected a valid UUID", }, json.fields.config.ca_certificates)
+      end)
+
+      it("succeeds with valid ca_certificates", function()
+        local res = assert(admin_client:send {
+          method  = "POST",
+          path    = "/plugins",
+          body    = {
+            route = { id = route2.id },
+            name       = "header-cert-auth",
+            config     = {
+              ca_certificates = { ca.id, },
+              certificate_header_name = "ssl-client-cert",
+              certificate_header_format = "base64_encoded",
+              secure_source = false,
+            },
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+        assert.same({ ca.id, }, json.config.ca_certificates)
+
+        -- delete it as later test will delete the ca certificate
+        local res = assert(admin_client:send {
+          method = "DELETE",
+          path   = "/plugins/" .. json.id,
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        assert.res_status(204, res)
+      end)
+    end)
+
+    describe("/consumers/:consumer/header-cert-auth/:id", function()
+      local credential
+      before_each(function()
+        db:truncate("header_cert_auth_credentials")
+        credential = db.header_cert_auth_credentials:insert {
+          consumer = { id = consumer.id },
+          subject_name = "foo",
+        }
+      end)
+
+      describe("GET", function()
+        it("retrieves header-cert-auth credential by id", function()
+          local res = assert(admin_client:send {
+            method  = "GET",
+            path    = "/consumers/bob/header-cert-auth/" .. credential.id
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal(credential.id, json.id)
+        end)
+
+        it("retrieves credential by id only if the credential belongs to the specified consumer", function()
+          assert(bp.consumers:insert {
+            username = "alice"
+          })
+
+          local res = assert(admin_client:send {
+            method  = "GET",
+            path    = "/consumers/bob/header-cert-auth/" .. credential.id
+          })
+          assert.res_status(200, res)
+
+          res = assert(admin_client:send {
+            method = "GET",
+            path   = "/consumers/alice/header-cert-auth/" .. credential.id
+          })
+          assert.res_status(404, res)
+        end)
+      end)
+
+      describe("PUT", function()
+        lazy_setup(function()
+          db:truncate("header_cert_auth_credentials")
+        end)
+
+        it("creates a header-cert-auth credential if id does not exist", function()
+          local res = assert(admin_client:send {
+            method  = "PUT",
+            path    = "/consumers/bob/header-cert-auth/c16bbff7-5d0d-4a28-8127-1ee581898f11",
+            body    = {
+              subject_name = "bar",
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(200, res)
+          local cred = cjson.decode(body)
+          assert.equal(consumer.id, cred.consumer.id)
+          assert.equal("bar", cred.subject_name)
+          assert.equal("c16bbff7-5d0d-4a28-8127-1ee581898f11", cred.id)
+        end)
+
+        it("updates existing header-cert-auth credential if id exists", function()
+          local res = assert(admin_client:send {
+            method  = "PUT",
+            path    = "/consumers/bob/header-cert-auth/c16bbff7-5d0d-4a28-8127-1ee581898f11",
+            body    = {
+              subject_name = "baz",
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(200, res)
+          local cred = cjson.decode(body)
+          assert.equal(consumer.id, cred.consumer.id)
+          assert.equal("baz", cred.subject_name)
+          assert.equal("c16bbff7-5d0d-4a28-8127-1ee581898f11", cred.id)
+        end)
+      end)
+
+      describe("PATCH", function()
+        it("updates a credential by id", function()
+          local res = assert(admin_client:send {
+            method  = "PATCH",
+            path    = "/consumers/bob/header-cert-auth/" .. credential.id,
+            body    = { subject_name = "4321" },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal("4321", json.subject_name)
+        end)
+
+        describe("errors", function()
+          it("handles invalid input", function()
+            local res = assert(admin_client:send {
+              method  = "PATCH",
+              path    = "/consumers/bob/header-cert-auth/" .. credential.id,
+              body    = { subject_name = 123 },
+              headers = {
+                ["Content-Type"] = "application/json"
+              }
+            })
+            local body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ subject_name = "expected a string" }, json.fields)
+          end)
+        end)
+      end)
+
+      describe("DELETE", function()
+        describe("errors", function()
+          it("returns 400 on invalid input", function()
+            local res = assert(admin_client:send {
+              method  = "DELETE",
+              path    = "/consumers/bob/header-cert-auth/blah"
+            })
+            local body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ id = "expected a valid UUID" }, json.fields)
+          end)
+
+          it("returns 404 if not found", function()
+            local res = assert(admin_client:send {
+              method  = "DELETE",
+              path    = "/consumers/bob/header-cert-auth/00000000-0000-0000-0000-000000000000"
+            })
+            assert.res_status(404, res)
+          end)
+        end)
+
+        it("deletes a credential and consumer is still there", function()
+          local res = assert(admin_client:send {
+            method  = "DELETE",
+            path    = "/consumers/bob/header-cert-auth/" .. credential.id,
+          })
+
+          assert.res_status(204, res)
+
+          res = assert(admin_client:send {
+            method  = "GET",
+            path    = "/consumers/bob"
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal(json.username, "bob")
+        end)
+
+        it("deletes the certificate cascades to the credential", function()
+          assert(db:truncate("header_cert_auth_credentials"))
+          local cred_id = assert(db.header_cert_auth_credentials:insert {
+            consumer = { id = consumer.id },
+            subject_name = "cascade.delete.test",
+            ca_certificate = { id = ca.id, },
+          }).id
+
+          assert(db.header_cert_auth_credentials:select({ id = cred_id, }))
+
+          local res = assert(admin_client:send {
+            method  = "DELETE",
+            path    = "/ca_certificates/" .. ca.id,
+          })
+
+          assert.res_status(204, res)
+
+          local res = assert(admin_client:send {
+            method  = "GET",
+            path    = "/consumers/bob/header-cert-auth"
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.same({ ["next"] = ngx.null, data = {}, }, json)
+
+          local cred = db.header_cert_auth_credentials:select({ id = cred_id, })
+          assert.is_nil(cred)
+        end)
+
+        it("deletes the consumer cascades to the credential", function()
+          assert(db:truncate("header_cert_auth_credentials"))
+          local cred_id = assert(db.header_cert_auth_credentials:insert {
+            consumer = { id = consumer.id },
+            subject_name = "cascade.delete.test",
+          }).id
+
+          assert(db.header_cert_auth_credentials:select({ id = cred_id, }))
+
+          local res = assert(admin_client:send {
+            method  = "DELETE",
+            path    = "/consumers/bob",
+          })
+
+          assert.res_status(204, res)
+
+          local res = assert(admin_client:send {
+            method  = "GET",
+            path    = "/consumers/bob/header-cert-auth"
+          })
+          assert.res_status(404, res)
+
+          local cred = db.header_cert_auth_credentials:select({ id = cred_id, })
+          assert.is_nil(cred)
+        end)
+
+      end)
+
+    end)
+
+    describe("/header-cert-auths", function()
+      local consumer2
+
+      describe("GET", function()
+        lazy_setup(function()
+          db:truncate("header_cert_auth_credentials")
+          db:truncate("consumers")
+
+          consumer = bp.consumers:insert({
+            username = "bob"
+          }, { nulls = true })
+
+          for i = 1, 3 do
+            assert(db.header_cert_auth_credentials:insert {
+              consumer = { id = consumer.id },
+              subject_name = "foo" .. i,
+            })
+          end
+
+          consumer2 = bp.consumers:insert {
+            username = "bob-the-buidler",
+          }
+
+          for i = 1, 3 do
+            assert(db.header_cert_auth_credentials:insert {
+              consumer = { id = consumer2.id },
+              subject_name = "bar" .. i,
+            })
+          end
+        end)
+
+        it("retrieves all the header-cert-auths with trailing slash", function()
+          local res = assert(admin_client:send {
+            method = "GET",
+            path = "/header-cert-auths/",
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.is_table(json.data)
+          assert.equal(6, #json.data)
+        end)
+
+        it("retrieves all the header-cert-auths without trailing slash", function()
+          local res = assert(admin_client:send {
+            method = "GET",
+            path = "/header-cert-auths",
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.is_table(json.data)
+          assert.equal(6, #json.data)
+        end)
+
+        it("paginates through the header-cert-auths", function()
+          local res = assert(admin_client:send {
+            method = "GET",
+            path = "/header-cert-auths?size=3",
+          })
+          local body = assert.res_status(200, res)
+          local json_1 = cjson.decode(body)
+          assert.is_table(json_1.data)
+          assert.equal(3, #json_1.data)
+
+          res = assert(admin_client:send {
+            method = "GET",
+            path = "/header-cert-auths",
+            query = {
+              size = 3,
+              offset = json_1.offset,
+            }
+          })
+          body = assert.res_status(200, res)
+          local json_2 = cjson.decode(body)
+          assert.is_table(json_2.data)
+          assert.equal(3, #json_2.data)
+
+          assert.not_same(json_1.data, json_2.data)
+          assert.is_nil(json_2.offset) -- last page
+        end)
+      end)
+    end)
+
+    describe("/header-cert-auths/:credential_id/consumer", function()
+      describe("GET", function()
+        local credential
+
+        lazy_setup(function()
+          db:truncate("header_cert_auth_credentials")
+          credential = db.header_cert_auth_credentials:insert {
+            consumer = { id = consumer.id },
+            subject_name = "foo",
+          }
+        end)
+
+        it("retrieve Consumer from a credential's id", function()
+          local res = assert(admin_client:send {
+            method = "GET",
+            path = "/header-cert-auths/" .. credential.id .. "/consumer"
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.same(consumer, json)
+        end)
+
+        it("returns 404 for a random non-existing id", function()
+          local res = assert(admin_client:send {
+            method = "GET",
+            path = "/header-cert-auths/" .. utils.uuid()  .. "/consumer"
+          })
+          assert.res_status(404, res)
+        end)
+      end)
+    end)
+  end)
+end

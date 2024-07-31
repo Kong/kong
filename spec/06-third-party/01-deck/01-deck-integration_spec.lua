@@ -263,6 +263,12 @@ local function get_plugins_configs(service)
         ca_certificates = {}
       }
     },
+    ["header-cert-auth"] = {
+      name = "header-cert-auth",
+      config = {
+        ca_certificates = {}
+      }
+    },
     ["graphql-rate-limiting-advanced"] = {
       name = "graphql-rate-limiting-advanced",
       config = {

@@ -382,6 +382,10 @@ plugins-ee/mtls-auth:
 - changed-files:
   - any-glob-to-any-file: plugins-ee/mtls-auth/**/*
 
+plugins-ee/header-cert-auth:
+- changed-files:
+  - any-glob-to-any-file: plugins-ee/header-cert-auth/**/*
+
 plugins-ee/opa:
 - changed-files:
   - any-glob-to-any-file: plugins-ee/opa/**/*

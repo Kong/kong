@@ -88,9 +88,9 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         ["first"]="openid-connect"
         ["second"]="ldap-auth-advanced proxy-cache-advanced ai-azure-content-safety"
         ["third"]="rate-limiting-advanced ai-rate-limiting-advanced kafka-log oas-validation saml vault-auth"
-        ["fourth"]="mtls-auth jwt-signer request-validator kafka-upstream konnect-application-auth opa graphql-rate-limiting-advanced"
+        ["fourth"]="mtls-auth header-cert-auth jwt-signer request-validator kafka-upstream konnect-application-auth opa graphql-rate-limiting-advanced"
         ["fips-first"]="openid-connect"
-        ["fips-second"]="jwt-signer mtls-auth saml"
+        ["fips-second"]="jwt-signer mtls-auth saml header-cert-auth"
     )
 
     plugins=${plugins_to_test["$TEST_SPLIT"]}
