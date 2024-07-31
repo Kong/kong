@@ -18,11 +18,11 @@ end
 
 function algo:afterBalance(conf, target)
   local data_point
-  if conf.tokens_count_strategy == "total_tokens" then
+  if conf.tokens_count_strategy == "total-tokens" then
     data_point = kong.ctx.shared.ai_prompt_tokens + kong.ctx.shared.ai_response_tokens
-  elseif conf.tokens_count_strategy == "prompt_tokens" then
+  elseif conf.tokens_count_strategy == "prompt-tokens" then
     data_point = kong.ctx.shared.ai_prompt_tokens
-  elseif conf.tokens_count_strategy == "completion_tokens" then
+  elseif conf.tokens_count_strategy == "completion-tokens" then
     data_point = kong.ctx.shared.ai_response_tokens
   else
     error("unknown token strategy: " .. conf.tokens_count_strategy)

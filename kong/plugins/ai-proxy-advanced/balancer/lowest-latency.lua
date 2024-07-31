@@ -17,9 +17,16 @@ end
 
 
 function algo:afterBalance(conf, target)
-  -- get the latency as datapoint
-  -- local data_point = TTFT + TPOT * ai_response_tokens
-  local data_point = 0 -- blocked on latency metrics for now
+  local data_point
+  if conf.latency_strategy == "tpot" then
+    data_point = kong.ctx.shared.ai_request_time_per_token
+  elseif conf.latency_strategy == "e2e" then
+    data_point = kong.ctx.shared.ai_request_latency
+  else
+    error("unknown token strategy: " .. conf.tokens_count_strategy)
+  end
+
+  -- get the tokens coun as datapoint
   return ewma.afterBalance(self, target, data_point)
 end
 
