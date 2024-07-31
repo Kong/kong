@@ -32,7 +32,7 @@
     "mocha": "^10.7.0",
     "mocha-multi-reporters": "^1.5.1",
     "promise-ws": "^1.0.0-1",
-    "redis": "^4.6.15",
+    "redis": "^4.7.0",
     "uuid": "^9.0.0"
   },
   "devDependencies": {
