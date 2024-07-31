@@ -57,6 +57,7 @@ return {
     "graphql-proxy-cache-advanced",
     "jq",
     "jwe-decrypt",
+    "jwt-signer",
     "key-auth-enc",
     "mocking",
     "oauth2-introspection",

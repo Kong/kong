@@ -780,6 +780,18 @@ build = {
     ["kong.plugins.jwt.daos"] = "kong/plugins/jwt/daos.lua",
     ["kong.plugins.jwt.jwt_parser"] = "kong/plugins/jwt/jwt_parser.lua",
 
+    ["kong.plugins.jwt-signer.api"] = "kong/plugins/jwt-signer/api.lua",
+    ["kong.plugins.jwt-signer.arguments"] = "kong/plugins/jwt-signer/arguments.lua",
+    ["kong.plugins.jwt-signer.cache"] = "kong/plugins/jwt-signer/cache.lua",
+    ["kong.plugins.jwt-signer.daos"] = "kong/plugins/jwt-signer/daos.lua",
+    ["kong.plugins.jwt-signer.auto_rotate"] = "kong/plugins/jwt-signer/auto_rotate.lua",
+    ["kong.plugins.jwt-signer.handler"] = "kong/plugins/jwt-signer/handler.lua",
+    ["kong.plugins.jwt-signer.log"] = "kong/plugins/jwt-signer/log.lua",
+    ["kong.plugins.jwt-signer.schema"] = "kong/plugins/jwt-signer/schema.lua",
+    ["kong.plugins.jwt-signer.migrations"] = "kong/plugins/jwt-signer/migrations/init.lua",
+    ["kong.plugins.jwt-signer.migrations.000_base_jwt_signer"] = "kong/plugins/jwt-signer/migrations/000_base_jwt_signer.lua",
+    ["kong.plugins.jwt-signer.migrations.001_200_to_210"] = "kong/plugins/jwt-signer/migrations/001_200_to_210.lua",
+
     ["kong.plugins.hmac-auth.migrations"] = "kong/plugins/hmac-auth/migrations/init.lua",
     ["kong.plugins.hmac-auth.migrations.000_base_hmac_auth"] = "kong/plugins/hmac-auth/migrations/000_base_hmac_auth.lua",
     ["kong.plugins.hmac-auth.migrations.002_130_to_140"] = "kong/plugins/hmac-auth/migrations/002_130_to_140.lua",

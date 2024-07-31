@@ -374,9 +374,9 @@ plugins-ee/oas-validation:
 - changed-files:
   - any-glob-to-any-file: plugins-ee/oas-validation/**/*
 
-plugins-ee/jwt-signer:
+plugins/jwt-signer:
 - changed-files:
-  - any-glob-to-any-file: plugins-ee/jwt-signer/**/*
+  - any-glob-to-any-file: kong/plugins/jwt-signer/**/*
 
 plugins-ee/kafka-log:
 - changed-files:

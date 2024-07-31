@@ -84,6 +84,7 @@ describe("Plugins", function()
       "ldap-auth",
       "basic-auth",
       "hmac-auth",
+      'jwt-signer',
       "json-threat-protection",
       "xml-threat-protection",
       "websocket-validator",

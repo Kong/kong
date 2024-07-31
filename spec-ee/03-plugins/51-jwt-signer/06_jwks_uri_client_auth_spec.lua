@@ -12,7 +12,6 @@ local jws = require "kong.openid-connect.jws"
 local json = require "cjson.safe"
 local fmt = string.format
 
-local fixtures_path = helpers.get_fixtures_path()
 local plugin_name = "jwt-signer"
 local test_user = "john"
 local test_pswd = "12345678"
@@ -112,7 +111,7 @@ for _, strategy in helpers.all_strategies() do
     }, {
       tls = "true",
       directives = {
-        "ssl_client_certificate " .. fixtures_path .. "/mtls_certs/ca.crt;",
+        "ssl_client_certificate ../../spec/fixtures/mtls_certs/ca.crt;",
         "ssl_verify_client      on;",
         "ssl_session_tickets    off;",
         "ssl_session_cache      off;",

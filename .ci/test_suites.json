@@ -52,6 +52,7 @@
       "spec-ee/03-plugins/26-jwe-decrypt",
       "spec-ee/03-plugins/28-key-auth-enc",
       "spec-ee/03-plugins/31-oauth2-introspection",
+      "spec-ee/03-plugins/51-jwt-signer",
       "spec-ee/02-integration/00-kong",
       "spec-ee/02-integration/01-rbac",
       "spec-ee/02-integration/02-workspaces",
