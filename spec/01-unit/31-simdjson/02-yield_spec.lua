@@ -7,7 +7,7 @@ local test_obj
 local test_str
 
 
-describe("[yield] ", function ()
+describe("[yield]", function ()
   lazy_setup(function()
     test_obj = { str = string.rep("a", 2100), }
 
@@ -34,74 +34,53 @@ describe("[yield] ", function ()
   end)
 
 
-  it("enabled when encoding", function()
+  for _, v in ipairs { true, false, } do
+    it("enable = " .. tostring(v) .." when encoding", function()
 
-    local parser = simdjson.new(true)
-    assert(parser)
+      local parser = simdjson.new(v)
+      assert(parser)
 
-    local str = parser:encode(test_obj)
+      local str = parser:encode(test_obj)
 
-    parser:destroy()
+      parser:destroy()
 
-    assert(str)
-    assert(type(str) == "string")
-    assert.equal(string.format([[{"str":"%s"}]], string.rep("a", 2100)), str)
+      assert(str)
+      assert(type(str) == "string")
+      assert.equal(string.format([[{"str":"%s"}]], string.rep("a", 2100)), str)
 
-    assert.spy(spy_ngx_sleep).was_called(1)       -- yield once
-    assert.spy(spy_ngx_sleep).was_called_with(0)  -- yield 0ms
-  end)
+      if v then
+        assert.spy(spy_ngx_sleep).was_called(1)       -- yield once
+        assert.spy(spy_ngx_sleep).was_called_with(0)  -- yield 0ms
 
-
-  it("disabled when encoding", function()
-
-    local parser = simdjson.new(false)
-    assert(parser)
-
-    local str = parser:encode(test_obj)
-
-    parser:destroy()
-
-    assert(str)
-    assert(type(str) == "string")
-    assert.equal(string.format([[{"str":"%s"}]], string.rep("a", 2100)), str)
-
-    assert.spy(spy_ngx_sleep).was_called(0)
-  end)
+      else
+        assert.spy(spy_ngx_sleep).was_called(0)       -- no yield
+      end
+    end)
+  end
 
 
-  it("enabled when decoding", function()
+  for _, v in ipairs { true, false, } do
+    it("enable = " .. tostring(v) .." when decoding", function()
 
-    local parser = simdjson.new(true)
-    assert(parser)
+      local parser = simdjson.new(v)
+      assert(parser)
 
-    local obj = parser:decode(test_str)
+      local obj = parser:decode(test_str)
 
-    parser:destroy()
+      parser:destroy()
 
-    assert(obj)
-    assert(type(obj) == "table")
-    assert.equal(obj[1], 1)
-    assert.equal(obj[1000], 1000)
+      assert(obj)
+      assert(type(obj) == "table")
+      assert.equal(obj[1], 1)
+      assert.equal(obj[1000], 1000)
 
-    assert.spy(spy_ngx_sleep).was_called(1)       -- yield once
-    assert.spy(spy_ngx_sleep).was_called_with(0)  -- yield 0ms
-  end)
+      if v then
+        assert.spy(spy_ngx_sleep).was_called(1)       -- yield once
+        assert.spy(spy_ngx_sleep).was_called_with(0)  -- yield 0ms
 
-
-  it("disabled when decoding", function()
-
-    local parser = simdjson.new(false)
-    assert(parser)
-
-    local obj = parser:decode(test_str)
-
-    parser:destroy()
-
-    assert(obj)
-    assert(type(obj) == "table")
-    assert.equal(obj[1], 1)
-    assert.equal(obj[1000], 1000)
-
-    assert.spy(spy_ngx_sleep).was_called(0)
-  end)
+      else
+        assert.spy(spy_ngx_sleep).was_called(0)       -- no yield
+      end
+    end)
+  end
 end)
