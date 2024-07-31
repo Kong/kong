@@ -1,16 +1,6 @@
-local helpers = require("spec.helpers")
-
-
 describe("[enable yield] ", function ()
-  local simdjson
   local spy_ngx_sleep = spy.on(ngx, "sleep")
-
-  lazy_setup(function()
-    simdjson = require("resty.simdjson")
-  end)
-
-  lazy_teardown(function()
-  end)
+  local simdjson = require("resty.simdjson")
 
   it("when encoding", function()
 
