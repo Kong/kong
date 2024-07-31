@@ -51,11 +51,13 @@ local _EXPECTED_CHAT_STATS = {
       provider_name = 'openai',
       request_model = 'gpt-3.5-turbo',
       response_model = 'gpt-3.5-turbo-0613',
+      llm_latency = 1
     },
     usage = {
       prompt_tokens = 25,
       completion_tokens = 12,
       total_tokens = 37,
+      time_per_token = 1,
       cost = 0.00037,
     },
     cache = {}
@@ -724,7 +726,17 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         -- we are currently stripping the top level key and comparing values directly
         local _, first_expected = next(_EXPECTED_CHAT_STATS)
         local _, first_got = next(log_message.ai)
+
+        local actual_llm_latency = first_got.meta.llm_latency
+        local actual_time_per_token = first_got.usage.time_per_token
+        local time_per_token = math.floor(actual_llm_latency / first_got.usage.completion_tokens)
+
+        first_got.meta.llm_latency = 1
+        first_got.usage.time_per_token = 1
+
         assert.same(first_expected, first_got)
+        assert.is_true(actual_llm_latency > 0)
+        assert.same(actual_time_per_token, time_per_token)
       end)
 
       it("does not log statistics", function()
