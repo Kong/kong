@@ -45,6 +45,8 @@ describe("[yield] ", function ()
 
     assert(str)
     assert(type(str) == "string")
+    assert.equal(string.format([[{"str":"%s"}]], string.rep("a", 2100)), str)
+
     assert.spy(spy_ngx_sleep).was_called(1)       -- yield once
     assert.spy(spy_ngx_sleep).was_called_with(0)  -- yield 0ms
   end)
@@ -61,6 +63,8 @@ describe("[yield] ", function ()
 
     assert(str)
     assert(type(str) == "string")
+    assert.equal(string.format([[{"str":"%s"}]], string.rep("a", 2100)), str)
+
     assert.spy(spy_ngx_sleep).was_called(0)
   end)
 
@@ -76,6 +80,9 @@ describe("[yield] ", function ()
 
     assert(obj)
     assert(type(obj) == "table")
+    assert.equal(obj[1], 1)
+    assert.equal(obj[1000], 1000)
+
     assert.spy(spy_ngx_sleep).was_called(1)       -- yield once
     assert.spy(spy_ngx_sleep).was_called_with(0)  -- yield 0ms
   end)
@@ -92,6 +99,9 @@ describe("[yield] ", function ()
 
     assert(obj)
     assert(type(obj) == "table")
+    assert.equal(obj[1], 1)
+    assert.equal(obj[1000], 1000)
+
     assert.spy(spy_ngx_sleep).was_called(0)
   end)
 end)
