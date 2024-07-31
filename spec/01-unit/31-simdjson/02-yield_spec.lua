@@ -4,19 +4,20 @@ local orig_ngx_sleep = ngx.sleep
 local spy_ngx_sleep
 local simdjson
 local test_obj
+local test_arr
 local test_str
 
 
-describe("[yield]", function ()
+describe("[yield]", function()
   lazy_setup(function()
     test_obj = { str = string.rep("a", 2100), }
 
-    local arr = {}
+    test_arr = {}
     for i = 1, 1000 do
-      arr[i] = i
+      test_arr[i] = i
     end
 
-    test_str = "[" .. table.concat(arr, ",") .. "]"
+    test_str = "[" .. table.concat(test_arr, ",") .. "]"
   end)
 
 
@@ -71,8 +72,7 @@ describe("[yield]", function ()
 
       assert(obj)
       assert(type(obj) == "table")
-      assert.equal(obj[1], 1)
-      assert.equal(obj[1000], 1000)
+      assert.same(test_arr, obj)
 
       if v then
         assert.spy(spy_ngx_sleep).was_called(1)       -- yield once
