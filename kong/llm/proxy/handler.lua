@@ -393,6 +393,10 @@ function _M:body_filter(conf)
   kong_ctx_plugin.body_called = true
 end
 
+function _M:rewrite(conf)
+  local kong_ctx_shared = kong.ctx.shared
+  kong_ctx_shared.ai_conf_copy = conf
+end
 
 function _M:access(conf)
   local kong_ctx_plugin = kong.ctx.plugin

@@ -7,6 +7,7 @@
 
 
 local ratelimiting = require("kong.tools.public.rate-limiting").new_instance("ai-rate-limiting-advanced")
+local ai_shared = require("kong.llm.drivers.shared")
 local schema = require "kong.plugins.ai-rate-limiting-advanced.schema"
 local event_hooks = require "kong.enterprise_edition.event_hooks"
 local sandbox = require "kong.tools.sandbox".sandbox
@@ -97,6 +98,21 @@ local id_lookup = {
     return nil
   end
 }
+
+local function send_stats_error()
+  if not kong.ctx.shared.ai_conf_copy then
+    return
+  end
+
+  local response_stats = {
+    usage = {
+      prompt_tokens = 0,
+      completion_tokens = 0,
+      total_tokens = 0,
+    }
+  }
+  ai_shared.post_request(kong.ctx.shared.ai_conf_copy, response_stats)
+end
 
 local function create_timer(config, namespace)
   local rate = config.sync_rate
@@ -459,6 +475,7 @@ function NewRLHandler:access(conf)
       error_message = error_message .. table.concat(deny_providers, ", ")
     end
 
+    send_stats_error()
     return kong.response.exit(conf.error_code, { message = error_message })
   end
 end
@@ -607,6 +624,7 @@ function NewRLHandler:header_filter(conf)
       error_message = error_message .. table.concat(deny_providers, ", ")
     end
 
+    send_stats_error()
     return kong.response.exit(conf.error_code, { message = error_message })
   end
 end
