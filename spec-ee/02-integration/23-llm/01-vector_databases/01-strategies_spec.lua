@@ -140,6 +140,30 @@ describe("[" .. strategy .. " vectordb]", function()
       end
     end)
 
+    it("insert and get ttl", function()
+      local mod = require("kong.llm.vectordb")
+
+      local client, err = mod.new(strategy, test_indexes[1], {
+        dimensions = #test_vectors[1],
+        distance_metric = default_distance_metric,
+        redis = default_config.redis,
+      })
+      assert.is_nil(err)
+      assert.truthy(client)
+      local key, err = client:insert(test_vectors[1], test_payloads[1], "1", 100)
+      assert.is_nil(err)
+      assert.truthy(key)
+
+      ngx.sleep(1)
+
+      local out = {}
+      local value, err = client:get(key, out)
+      assert.is_nil(err)
+      assert.same(test_payloads[1], value)
+      assert.truthy(out.ttl > 0)
+      assert.truthy(out.ttl < 100)
+    end)
+
     it("delete", function()
       local mod = require("kong.llm.vectordb")
 
@@ -165,7 +189,7 @@ describe("[" .. strategy .. " vectordb]", function()
       end
     end)
 
-    describe("search", function()
+    it("search", function()
       local mod = require("kong.llm.vectordb")
 
       -- search for vectors that have immediate matches
@@ -187,18 +211,22 @@ describe("[" .. strategy .. " vectordb]", function()
 
         local results, err = client:search(test_vectors[i], default_threshold, out)
         assert.is_nil(err)
-        -- in the mock we put the distance as the score
-        assert.not_nil(out.score)
         assert.is_not_nil(results)
+        assert.not_nil(out.score)
+        assert.not_nil(out.ttl)
+        assert.same(key, out.key)
         assert.same(test_payloads[i], results)
       end
 
       -- search for vectors in close proximity
       local vector_known_to_have_another_close_vector = test_vectors_for_search[1]
       local results, err = clients[1]:search(vector_known_to_have_another_close_vector,
-        default_threshold)
+        default_threshold, out)
       assert.is_nil(err)
       assert.is_not_nil(results)
+      assert.not_nil(out.score)
+      assert.not_nil(out.ttl)
+      assert.not_nil(out.key)
       assert.same(test_payloads[1], results)
 
       -- cache miss when there are no vectors in close proximity

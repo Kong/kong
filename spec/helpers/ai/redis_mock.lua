@@ -97,6 +97,7 @@ end
 
 local data = {}
 local indexes = {}
+local ttl = {}
 
 --
 -- public functions
@@ -135,14 +136,38 @@ local function setup(finally)
               return true
             end,
 
+            init_pipeline = function(red)
+              red.in_pipeline = true
+              red.pipeline_results = {}
+            end,
+
+            commit_pipeline = function(red)
+              red.in_pipeline = false
+              return red.pipeline_results
+            end,
+
+            -- either return or saved in pipeline results
+            ret = function(red, ret, err)
+              if red.in_pipeline then
+                if err then
+                  table.insert(red.pipeline_results, {ret, err})
+                else
+                  table.insert(red.pipeline_results, ret)
+                end
+                return true
+              end
+
+              return ret, err
+            end,
+
             -- raw command mocks
             ["FT.CREATE"] = function(red, index, ...)
               if forced_error_msg then
-                return false, forced_error_msg
+                return red:ret(false, forced_error_msg)
               end
 
               if not index or index == "idx:_vss" then
-                return false, "Invalid index name"
+                return red:ret(false, "Invalid index name")
               end
 
               -- gather the distance metric
@@ -152,49 +177,49 @@ local function setup(finally)
                 distance_metric = k
               end
               if distance_metric ~= "L2" and distance_metric ~= "COSINE" then
-                return false, "Invalid distance metric " .. (distance_metric or "nil")
+                return red:ret(false, "Invalid distance metric " .. (distance_metric or "nil"))
               end
 
               indexes[index] = {
                 metric = distance_metric,
               }
-              return true, nil
+              return red:ret(true, nil)
             end,
              ["FT.INFO"] = function(red, index, ...)
               if forced_error_msg then
-                return false, forced_error_msg
+                return red:ret(false, forced_error_msg)
               end
 
               if not index or index == "idx:_vss" then
-                return false, "Invalid index name"
+                return red:ret(false, "Invalid index name")
               end
 
               if not indexes[index] then
-                return nil
+                return red:ret(nil)
               end
 
-              return { "index_name", index,
+              return red:ret({ "index_name", index,
                 "index_options", {},
                 "index_definition", {"key_type", "JSON", "prefixes", { index }, "default_score", "1" },
                 "attributes", {
                   { "identifier", "$.vector", "attribute", "vector", "type", "VECTOR", "algorithm", "FLAT", "data_type", "FLOAT32", "dim", 4, "distance_metric", indexes[index].metric, }
-              } }
+              } })
             end,
             ["FT.DROPINDEX"] = function(red, index, ...)
               if forced_error_msg then
-                return false, forced_error_msg
+                return red:ret(false, forced_error_msg)
               end
 
               if not indexes[index] then
-                return false, "Index not found"
+                return red:ret(false, "Index not found")
               end
 
               indexes[index] = nil
-              return true, nil
+              return red:ret(true, nil)
             end,
             ["FT.SEARCH"] = function(red, index, ...)
               if forced_error_msg then
-                return nil, forced_error_msg
+                return red:ret(nil, forced_error_msg)
               end
 
               -- verify whether the index for the search is valid,
@@ -202,7 +227,7 @@ local function setup(finally)
               -- with euclidean or cosine distance
               local distance_metric = indexes[index].metric
               if not distance_metric then
-                return nil, "Index not found"
+                return red:ret(nil, "Index not found")
               end
 
               -- determine the threshold, and record
@@ -222,7 +247,7 @@ local function setup(finally)
                 red.next_response_key = nil
 
                 -- the structure Redis would respond with, but we only care about the proximity and payload
-                return { {}, {}, { {}, "1.0", {}, payload } }
+                return red:ret({ {}, {}, { {}, "1.0", {}, payload } })
               end
 
               -- if the payload wasn't forced with an override, we'll do a vector search.
@@ -232,7 +257,7 @@ local function setup(finally)
               for _key, value in pairs(data) do
                 local decoded_payload, err = cjson.decode(value)
                 if err then
-                  return nil, err
+                  return red:ret(nil, err)
                 end
 
                 -- check the proximity of the found vector
@@ -255,9 +280,9 @@ local function setup(finally)
                 return tonumber(a[2]) < tonumber(b[2])
               end)
 
-              -- if no payloads were found, just return an empty table to emulate cache miss
+              -- if no payloads were found, just return red:ret(an empty table to emulate cache miss)
               if #payloads < 1 then
-                return {}
+                return red:ret({})
               end
 
               -- the structure Redis would respond with, but we only care about the proximity and payload
@@ -265,42 +290,58 @@ local function setup(finally)
               for i = 1, #payloads do
                 table.insert(res, payloads[i])
               end
-              return res, nil
+              return red:ret(res, nil)
             end,
-            ["JSON.GET"] = function(red, key)
+            ["JSON.GET"] = function(red, key, path)
               if forced_error_msg then
-                return nil, forced_error_msg
+                return red:ret(nil, forced_error_msg)
               end
 
-              return data[key], nil
+              local ret = data[key] and cjson.decode(data[key])
+              if ret and path == ".payload" then
+                ret = cjson.encode(ret.payload)
+              elseif path then
+                error("unsupported path other than .payload, got " .. path)
+              end
+
+              return red:ret(ret, nil)
             end,
             ["JSON.SET"] = function(red, key, _path, payload) -- currently, path is not used because we only set cache at root
               if forced_error_msg then
-                return false, forced_error_msg
-              end
-
-              if data[key] ~= nil then
-                return false, "Already exists"
+                return red:ret(false, forced_error_msg)
               end
 
               red.key_count = red.key_count + 1
               data[key] = payload
 
-              return true, nil
+              return red:ret(true, nil)
             end,
             ["JSON.DEL"] = function(red, key, path)
               if forced_error_msg then
-                return false, forced_error_msg
+                return red:ret(false, forced_error_msg)
               end
 
               red.key_count = red.key_count - 1
               data[key] = nil
 
-              return true, nil
+              return red:ret(true, nil)
             end,
-            ["FLUSHALL"] = function()
+            ["FLUSHALL"] = function(red)
               data = {}
-              return true, nil
+              return red:ret(true, nil)
+            end,
+            ["expire"] = function(red, key, t)
+              ngx.update_time()
+              ttl[key] = t + ngx.now()
+              return red:ret(true)
+            end,
+            ["ttl"] = function(red, key)
+              ngx.update_time()
+              local t = ttl[key]
+              if not t then
+                return red:ret(-1)
+              end
+              return red:ret(t - ngx.now())
             end,
 
             -- internal tracking
@@ -309,6 +350,7 @@ local function setup(finally)
             cache = {},
             next_response_key = nil,
             last_threshold_received = 0.0,
+            pipeline_results = {},
           }
         end,
         mock_next_search = function(red, key)
@@ -325,6 +367,7 @@ end
 local function clear()
   data = {}
   indexes = {}
+  ttl = {}
 end
 
 --

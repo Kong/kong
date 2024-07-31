@@ -59,11 +59,12 @@ end
 -- @tparam string vector the vector to insert
 -- @tparam string|number|table payload the payload to insert
 -- @tparam string[opt] key_suffix the suffix used to compose key.
+-- @tparam number[opt] ttl the TTL of the key.
 -- @treturn string the composed key for the entry
 -- @treturn string error message if any
-function _M:insert(vector, payload, key_suffix)
+function _M:insert(vector, payload, key_suffix, ttl)
   key_suffix = key_suffix or utils.uuid()
-  return self.connector:insert(vector, payload, key_suffix)
+  return self.connector:insert(vector, payload, key_suffix, ttl)
 end
 
 
@@ -87,6 +88,16 @@ end
 -- @treturn string error message if any
 function _M:delete(pk)
   return self.connector:delete(pk)
+end
+
+-- Get an entry by pk.
+--
+-- @tparam string the primary key of the entry to delete
+-- @tparam table[opt] metadata_out if passed a table the table will be fill with metadata of the `get` result
+-- @treturn string|number|table|nil the payload, if any
+-- @treturn string error message if any
+function _M:get(pk, metadata_out)
+  return self.connector:get(pk, metadata_out)
 end
 
 return _M

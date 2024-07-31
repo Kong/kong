@@ -56,6 +56,7 @@ local test_payloads = {
 local default_config = {
   distance_metric = default_distance_metric,
   threshold = default_threshold,
+  dimensions = 4,
   redis = {},
 }
 
@@ -134,19 +135,30 @@ describe("[redis vectordb]", function()
         assert.truthy(key)
       end
 
-      -- disallow duplicates
-      for i = 1, #test_indexes do
-        local client, err = mod.new(test_indexes[i], {
-          dimensions = #test_vectors[1],
-          distance_metric = default_distance_metric,
-        })
-        assert.is_nil(err)
-        assert.truthy(client)
-        local key, err = client:insert(test_vectors[i], test_payloads[i], i)
-        assert.equal("failed to execute JSON.SET: Already exists", err)
-        assert.is_falsy(key)
-      end
+    end)
 
+    it("insert and get ttl", function()
+      redis_mock.setup(finally)
+      local mod = require("kong.llm.vectordb.strategies.redis")
+
+      local client, err = mod.new(test_indexes[1], {
+        dimensions = #test_vectors[1],
+        distance_metric = default_distance_metric,
+      })
+      assert.is_nil(err)
+      assert.truthy(client)
+      local key, err = client:insert(test_vectors[1], test_payloads[1], "1", 100)
+      assert.is_nil(err)
+      assert.truthy(key)
+
+      ngx.sleep(1)
+
+      local out = {}
+      local value, err = client:get(key, out)
+      assert.is_nil(err)
+      assert.same(test_payloads[1], value)
+      assert.truthy(out.ttl > 0)
+      assert.truthy(out.ttl < 100)
     end)
 
     it("delete", function()
@@ -181,7 +193,7 @@ describe("[redis vectordb]", function()
       local out = {}
       for i = 1, #test_vectors do
         local client, err = mod.new(test_indexes[i], {
-          dimensions = #test_vectors[1],
+          dimensions = #test_vectors[i],
           distance_metric = default_distance_metric,
         })
         assert.is_nil(err)

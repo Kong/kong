@@ -19,24 +19,39 @@ local redis_metrics_mapping = {
   cosine = "COSINE",
 }
 
-local function redis_op(conf, op, key, ...)
+local function redis_op(conf, op, key, args)
   local red, err = redis_ee.connection(conf)
   if not red then
     return nil, err
   end
 
+  -- not return values
+  red:init_pipeline()
+
   if conf.suffix then
     key = key .. ":" .. conf.suffix
   end
 
-  local res, err = red[op](red, key, ...)
+  red[op](red, key, unpack(args or {}))
+
+  if args and args.ttl then
+    red["expire"](red, key, args.ttl)
+  end
+
+  local results, err = red:commit_pipeline()
   if err then
-    return nil, "failed to execute " .. op .. ": " .. err
+    return nil, "failed to commit pipeline: " .. err
   end
 
   -- redis cluster library handles keepalive itself
   if not redis_ee.is_redis_cluster(conf) then
     red:set_keepalive(DEFAULT_KEEPALIVE_TIMEOUT, DEFAULT_KEEPALIVE_CONS)
+  end
+
+  local res = results[1]
+  -- on error it returns false, err, otherwise it's the returned data
+  if type(res) == "table" and #res == 2 then
+    return res[1], res[2]
   end
 
   return res
@@ -63,8 +78,9 @@ local function database_setup(namespace, redis_config, connector_config)
     local attrs = found[7] == "attributes" and found[8] and found[8][1]
     if not def or not attrs then
       kong.log.warn("[redis] does not found expected keywords in returned definition")
-    elseif def.key_type == "JSON" and def.default_score == "1" and
-      attrs[#attrs] == metric and attrs[#attrs - 3] == connector_config.dimensions then
+    -- "key_type", "JSON", "prefixes", { "whatever:" }, "default_score", "1" 
+    elseif def[2] == "JSON" and def[6] == "1" and
+      attrs[#attrs] == metric and attrs[#attrs - 2] == connector_config.dimensions then
 
       return true
     end
@@ -77,17 +93,17 @@ local function database_setup(namespace, redis_config, connector_config)
   end
 
   kong.log.debug("[redis] creating index")
-  local ok, err = redis_op(redis_config, "FT.CREATE",
-    key, "ON", "JSON",
+  local _, err = redis_op(redis_config, "FT.CREATE", key, {
+    "ON", "JSON",
     "PREFIX", "1", namespace .. ":", "SCORE", "1.0",
     "SCHEMA", "$.vector", "AS", "vector",
     "VECTOR", "FLAT", "6", "TYPE", "FLOAT32",
     "DIM", connector_config.dimensions,
     "DISTANCE_METRIC", metric
-  )
+  })
 
-  if not ok or err then
-    return false, "failed to create index: " .. (err or "nil")
+  if err then
+    return false, "failed to create index: " .. err
   end
 
   return true, nil
@@ -109,6 +125,9 @@ function Redis.new(namespace, connector_config)
   local redis_config = connector_config and connector_config.redis or {}
   redis_config = deep_copy(redis_config)
 
+  assert(connector_config.distance_metric, "distance_metric is required")
+  assert(connector_config.dimensions, "dimensions is required")
+
   local _, err = database_setup(namespace, redis_config, connector_config)
   if err then
     return nil, err
@@ -125,17 +144,18 @@ end
 --
 -- @param string vector the vector to search
 -- @param number threshold the proximity threshold for results
+-- @param table[opt] metadata_out if passed a table the table will be fill with metadata of the search result
 -- @treturn string|number|table|nil the payload, if any
 -- @treturn string error message if any
 function Redis:search(vector, threshold, metadata_out)
   threshold = threshold or self.default_threshold
 
-  local res, err = redis_op(self.config, "FT.SEARCH", full_index_name(self.namespace),
+  local res, err = redis_op(self.config, "FT.SEARCH", full_index_name(self.namespace), {
     "@vector:[VECTOR_RANGE $range $query_vector]=>{$YIELD_DISTANCE_AS: vector_score}",
     "SORTBY", "vector_score", "DIALECT", "2", "LIMIT", "0", "4", "PARAMS", "4", "query_vector",
     utils.convert_vector_to_bytes(vector),
-    "range", threshold
-  )
+    "range", threshold,
+  })
   if err then
     return nil, err
   end
@@ -163,6 +183,15 @@ function Redis:search(vector, threshold, metadata_out)
 
   if type(metadata_out) == "table" then
     metadata_out.score = nested_table[1] == "vector_score" and nested_table[2]
+    local key = res[2]
+    metadata_out.key = key
+
+    local ttl, err = redis_op(self.config, "ttl", key)
+    if err then
+      kong.log.warn("error when retrieving ttl of key: ", err)
+    else
+      metadata_out.ttl = ttl
+    end
   end
 
   return decoded_payload.payload
@@ -180,9 +209,10 @@ local payload_t = {
 -- @param string vector the vector to search
 -- @param string|number|table payload the payload to store as value
 -- @param string[opt] key_suffix the suffix used to compose key
+-- @param number[opt] ttl the TTL of the key.
 -- @treturn string the key id if successful
 -- @treturn string error message if any
-function Redis:insert(vector, payload, key_suffix)
+function Redis:insert(vector, payload, key_suffix, ttl)
   local key = self.namespace .. ":" .. key_suffix
   payload_t.payload = payload
   payload_t.vector = vector -- inserting the vector into the payload is required by redis
@@ -192,7 +222,7 @@ function Redis:insert(vector, payload, key_suffix)
     return nil, "unable to json encode the payload: " .. err
   end
 
-  local _, err = redis_op(self.config, "JSON.SET", key, "$", encoded)
+  local _, err = redis_op(self.config, "JSON.SET", key, {"$", encoded, ttl = ttl})
 
   if err then
     return nil, err
@@ -207,6 +237,36 @@ end
 -- @treturn string error message if any
 function Redis:delete(key)
   return redis_op(self.config, "JSON.DEL", key)
+end
+
+
+-- Get a cache entry for a given vector and payload.
+--
+-- @param key the key to be retrived
+-- @param table[opt] metadata_out if passed a table the table will be fill with metadata of the search result
+-- @treturn string|number|table|nil the payload, if any
+-- @treturn string error message if any
+function Redis:get(key, metadata_out)
+  local res, err = redis_op(self.config, "JSON.GET", key, {".payload"})
+  if err then
+    return nil, "failed to get key: " .. err
+  end
+
+  res, err = cjson.decode(res)
+  if err then
+    return nil, "failed to decode payload: " .. err
+  end
+
+  if type(metadata_out) == "table" then
+    local ttl, err = redis_op(self.config, "ttl", key)
+    if err then
+      kong.log.warn("error when retrieving ttl of key: ", err)
+    else
+      metadata_out.ttl = ttl
+    end
+  end
+
+  return res
 end
 
 
