@@ -6,8 +6,10 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
+local ssl_fixtures = require "spec.fixtures.ssl"
 local cjson = require "cjson"
 local constants = require "kong.constants"
+local Errors  = require "kong.db.errors"
 
 local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 
@@ -581,6 +583,45 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       local json = cjson.decode(body)
       assert.equal("schema validation successful", json.message)
     end)
+ 
+    it("returns 200 on certificates schema with snis", function()
+
+      local res = assert(client:post("/schemas/certificates/validate", {
+        body = {
+          cert = ssl_fixtures.cert,
+          key  = ssl_fixtures.key,
+          snis = {"a", "b", "c" },
+        },
+        headers = { ["Content-Type"] = "application/json" }
+      }))
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.equal("schema validation successful", json.message)
+    end)
+    
+    it("returns 400 on certificates schema with invalid snis", function()
+
+      local res = assert(client:post("/schemas/certificates/validate", {
+        body = {
+          cert = ssl_fixtures.cert,
+          key  = ssl_fixtures.key,
+          snis = {"120.0.9.32:90" },
+        },
+        headers = { ["Content-Type"] = "application/json" }
+      }))
+      local body = assert.res_status(400, res)
+      local json = cjson.decode(body)
+      local expected_body = {
+        fields= {
+          snis= { "must not be an IP" }
+        },
+        name= "schema violation",
+        message= "schema violation (snis.1: must not be an IP)",
+        code= Errors.codes.SCHEMA_VIOLATION,
+      }
+      assert.same(expected_body, json)
+    end)
+
     it("returns 200 on a valid plugin schema", function()
       local res = assert(client:post("/schemas/plugins/validate", {
         body = {

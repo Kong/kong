@@ -67,7 +67,6 @@ function _Certificates:insert(cert, options)
     end
   end
 
-  cert.snis = nil
   cert, err, err_t = self.super.insert(self, cert, options)
   if not cert then
     return nil, err, err_t
@@ -106,7 +105,6 @@ function _Certificates:update(cert_pk, cert, options)
     end
   end
 
-    cert.snis = nil
     cert, err, err_t = self.super.update(self, cert_pk, cert, options)
     if err then
       return nil, err, err_t
@@ -144,7 +142,6 @@ function _Certificates:upsert(cert_pk, cert, options)
     end
   end
 
-  cert.snis = nil
   cert, err, err_t = self.super.upsert(self, cert_pk, cert, options)
   if err then
     return nil, err, err_t

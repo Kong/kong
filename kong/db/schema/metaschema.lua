@@ -202,6 +202,8 @@ local field_schema = {
   { db_export = { type = "boolean" }, },
   { indexed = { type = "boolean" }, },
   { json_schema = json_metaschema },
+  -- Transient attribute: used to mark a field as a non-db column
+  { transient = { type = "boolean" }, },
   -- Deprecation attribute: used to mark a field as deprecated
   -- Results in `message` and `removal_in_version` to be printed in a warning
   -- (via kong.deprecation) when the field is used.
@@ -507,6 +509,14 @@ local attribute_types = {
   },
   json_schema = {
     ["json"] = true,
+  },
+  transient = {
+    ["string"] = true,
+    ["number"] = true,
+    ["integer"] = true,
+    ["array"] = true,
+    ["set"] = true,
+    ["boolean"] = true,
   },
 }
 

@@ -43,12 +43,23 @@ describe("Admin API: #" .. strategy, function()
     local n2 = get_name()
     local names = { n1, n2 }
 
+     local certificate = {
+      cert  = ssl_fixtures.cert,
+      key   = ssl_fixtures.key,
+      snis  = names,
+    }
+
+    local validate_res = client:post("/schemas/certificates/validate", {
+      body    = certificate,
+      headers = { ["Content-Type"] = "application/json" },
+    })
+
+    local validate_body = assert.res_status(200, validate_res)
+    local json = cjson.decode(validate_body)
+    assert.equal("schema validation successful", json.message)
+
     local res = client:post("/certificates", {
-      body    = {
-        cert  = ssl_fixtures.cert,
-        key   = ssl_fixtures.key,
-        snis  = names,
-      },
+      body    = certificate,
       headers = { ["Content-Type"] = "application/json" },
     })
 
@@ -420,9 +431,8 @@ describe("Admin API: #" .. strategy, function()
         assert.equal(cjson.null, json.key_alt)
 
         assert.same({ n1 }, json.snis)
-        json.snis = nil
 
-        local in_db = assert(db.certificates:select({ id = id }, { nulls = true }))
+        local in_db = assert(db.certificates:select_with_name_list({ id = id }, { nulls = true }))
         assert.same(json, in_db)
       end)
 
@@ -445,9 +455,8 @@ describe("Admin API: #" .. strategy, function()
         assert.equal(cjson.null, json.key_alt)
 
         assert.same({ n1, n2 }, json.snis)
-        json.snis = nil
 
-        local in_db = assert(db.certificates:select(json, { nulls = true }))
+        local in_db = assert(db.certificates:select_with_name_list(json, { nulls = true }))
         assert.same(json, in_db)
       end)
 
@@ -470,9 +479,8 @@ describe("Admin API: #" .. strategy, function()
         assert.equal(cjson.null, json.key_alt)
 
         assert.same({ n1, n2 }, json.snis)
-        json.snis = nil
 
-        local in_db = assert(db.certificates:select(json, { nulls = true }))
+        local in_db = assert(db.certificates:select_with_name_list(json, { nulls = true }))
         assert.same(json, in_db)
       end)
 
@@ -494,9 +502,7 @@ describe("Admin API: #" .. strategy, function()
         assert.same({}, json.snis)
         assert.truthy(certificate.updated_at < json.updated_at)
 
-        json.snis = nil
-
-        local in_db = assert(db.certificates:select(certificate, { nulls = true }))
+        local in_db = assert(db.certificates:select_with_name_list(certificate, { nulls = true }))
         assert.same(json, in_db)
       end)
 
@@ -520,9 +526,7 @@ describe("Admin API: #" .. strategy, function()
         assert.same(ssl_fixtures.key_alt_ecdsa, json.key_alt)
         assert.same({}, json.snis)
 
-        json.snis = nil
-
-        local in_db = assert(db.certificates:select(certificate, { nulls = true }))
+        local in_db = assert(db.certificates:select_with_name_list(certificate, { nulls = true }))
         assert.same(json, in_db)
       end)
 
