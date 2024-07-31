@@ -34,7 +34,6 @@ describe("[yield] ", function ()
   end)
 
 
-
   it("enabled when encoding", function()
 
     local parser = simdjson.new(true)
