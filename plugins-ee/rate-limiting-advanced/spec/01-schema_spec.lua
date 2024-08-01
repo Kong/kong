@@ -13,6 +13,8 @@ local fmt = string.format
 local pl_utils = require "pl.utils"
 local plugin_name = "rate-limiting-advanced"
 
+local ngx_null = ngx.null
+
 local kong = kong
 local concat = table.concat
 
@@ -65,6 +67,32 @@ end
 
 
 describe("rate-limiting-advanced schema", function()
+  it("timeout does not overwrite connect/read/send timeout to null", function()
+    local config, err = v({
+      window_size     = { 60 },
+      limit           = { 10 },
+      strategy        = "redis",
+      sync_rate       = 1,
+      redis           = {
+        host            = "redis",
+        port            = 6379,
+        timeout         = ngx_null,
+        connect_timeout = 3001,
+        read_timeout    = 3002,
+        send_timeout    = 3003,
+      },
+    }, rate_limiting_schema)
+
+    assert.is_truthy(config)
+    assert.equal("redis", config.config.strategy)
+    assert.equal(1, config.config.sync_rate)
+    assert.equal(3001, config.config.redis.connect_timeout)
+    assert.equal(3002, config.config.redis.read_timeout)
+    assert.equal(3003, config.config.redis.send_timeout)
+    assert.is_nil(config.config.redis.timeout)
+    assert.is_nil(err)
+  end)
+
   it("accepts a minimal config", function()
     local config, err = v({
       window_size = { 60 },

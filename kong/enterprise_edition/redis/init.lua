@@ -172,7 +172,9 @@ _M.config_schema = {
           removal_in_version = "4.0",
         },
         func = function(value)
-          return { connect_timeout = value, send_timeout = value, read_timeout = value }
+          if is_present(value) then
+            return { connect_timeout = value, send_timeout = value, read_timeout = value }
+          end
         end
       }
     },

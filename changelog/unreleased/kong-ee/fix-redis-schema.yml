@@ -1,0 +1,5 @@
+message: |
+  Fixed a Redis schema issue where `connect_timeout`, `read_timeout`, `send_timeout` were
+  reset to `null` if the deprecated `timeout` is `null`.
+type: bugfix
+scope: Plugin
