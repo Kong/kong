@@ -3,6 +3,7 @@ local ws_client = require("resty.websocket.client")
 local ws_server = require("resty.websocket.server")
 local parse_url = require("socket.url").parse
 local process_type = require("ngx.process").type
+local cjson = require("cjson.safe")
 
 local type = type
 local table_insert = table.insert
@@ -169,8 +170,6 @@ end
 -- encode/decode json with cjson or simdjson
 local ok, simdjson_dec = pcall(require, "resty.simdjson.decoder")
 if not ok or kong.configuration.cluster_cjson then
-  local cjson = require("cjson.safe")
-
   _M.json_decode = cjson.decode
   _M.json_encode = cjson.encode
 
@@ -185,12 +184,15 @@ else
     return res, err
   end
 
+  _M.json_encode = cjson.encode
+  --[[ TODO: make simdjson encoding more compatible with cjson
   -- enable yield and reentrant for encode
   local enc = require("resty.simdjson.encoder").new(true)
 
   _M.json_encode = function(obj)
     return enc:process(obj)
   end
+  --]]
 end
 
 
