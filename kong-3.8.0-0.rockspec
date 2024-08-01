@@ -940,6 +940,10 @@ build = {
     ["kong.plugins.ai-prompt-guard.handler"] = "kong/plugins/ai-prompt-guard/handler.lua",
     ["kong.plugins.ai-prompt-guard.schema"]  = "kong/plugins/ai-prompt-guard/schema.lua",
 
+    ["kong.plugins.ai-semantic-caching.handler"] = "kong/plugins/ai-semantic-caching/handler.lua",
+    ["kong.plugins.ai-semantic-caching.schema"]  = "kong/plugins/ai-semantic-caching/schema.lua",
+    ["kong.plugins.ai-semantic-caching.api"]  = "kong/plugins/ai-semantic-caching/api.lua",
+
     ["kong.plugins.application-registration.api"]     = "kong/plugins/application-registration/api.lua",
     ["kong.plugins.application-registration.handler"] = "kong/plugins/application-registration/handler.lua",
     ["kong.plugins.application-registration.schema"]  = "kong/plugins/application-registration/schema.lua",

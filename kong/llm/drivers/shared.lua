@@ -565,7 +565,7 @@ function _M.post_request(conf, response_object)
   -- Set the model, response, and provider names in the current try context
   request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.PLUGIN_ID] = conf.__plugin_id
   request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.PROVIDER_NAME] = provider_name
-  request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.REQUEST_MODEL] = kong.ctx.plugin.llm_model_requested or conf.model.name
+  request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.REQUEST_MODEL] = kong.ctx.shared.llm_model_requested or conf.model.name
   request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.RESPONSE_MODEL] = response_object.model or conf.model.name
 
   -- Set the llm latency meta, and time per token usage
@@ -602,10 +602,32 @@ function _M.post_request(conf, response_object)
     end
 
     if response_object.usage.prompt_tokens and response_object.usage.completion_tokens
-      and conf.model.options.input_cost and conf.model.options.output_cost then 
+       and conf.model.options and conf.model.options.input_cost and conf.model.options.output_cost then 
         request_analytics_plugin[log_entry_keys.USAGE_CONTAINER][log_entry_keys.COST] = 
           (response_object.usage.prompt_tokens * conf.model.options.input_cost
           + response_object.usage.completion_tokens * conf.model.options.output_cost) / 1000000 -- 1 million
+    end
+  end
+
+  -- Capture cache stats
+  if response_object.cache then
+    if response_object.cache.vector_db then
+      request_analytics_plugin[log_entry_keys.CACHE_CONTAINER][log_entry_keys.VECTOR_DB] = response_object.cache.vector_db
+    end
+    if response_object.cache.embeddings_provider then
+      request_analytics_plugin[log_entry_keys.CACHE_CONTAINER][log_entry_keys.EMBEDDINGS_PROVIDER] = response_object.cache.embeddings_provider
+    end
+    if response_object.cache.embeddings_model then
+      request_analytics_plugin[log_entry_keys.CACHE_CONTAINER][log_entry_keys.EMBEDDINGS_MODEL] = response_object.cache.embeddings_model
+    end
+    if response_object.cache.cache_status then
+      request_analytics_plugin[log_entry_keys.CACHE_CONTAINER][log_entry_keys.CACHE_STATUS] = response_object.cache.cache_status
+    end
+    if response_object.cache.fetch_latency then
+      request_analytics_plugin[log_entry_keys.CACHE_CONTAINER][log_entry_keys.FETCH_LATENCY] = math.floor(response_object.cache.fetch_latency * 1000)
+    end
+    if response_object.cache.embeddings_latency then
+      request_analytics_plugin[log_entry_keys.CACHE_CONTAINER][log_entry_keys.EMBEDDINGS_LATENCY] = math.floor(response_object.cache.embeddings_latency * 1000)
     end
   end
 

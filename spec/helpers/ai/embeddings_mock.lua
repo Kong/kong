@@ -87,6 +87,9 @@ local function mock_embeddings(opts)
   return {
     status = 200,
     body = gzipped_response_body,
+    headers = {
+      ["Content-Encoding"] = "gzip",
+    },
   }
 end
 

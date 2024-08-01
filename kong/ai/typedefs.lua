@@ -10,6 +10,7 @@ local null = ngx.null
 --
 -- typedefs
 --
+local typedefs = require "kong.db.schema.typedefs"
 
 -- the authentication configuration for the vector database.
 local auth = {
@@ -18,20 +19,20 @@ local auth = {
   fields   = {
     {
       password = {
-        type        = "string",
-        description = "authentication password",
-        required    = false,
-        encrypted = true,  -- [[ ee declaration ]]
-        referenceable = true
+        type          = "string",
+        description   = "authentication password",
+        required      = false,
+        referenceable = true,
+        encrypted     = true,  -- [[ ee declaration - it masks the sensitive field in the UI ]]
       },
     },
     {
       token = {
-        type        = "string",
-        description = "authentication token",
-        required    = false,
-        encrypted = true,  -- [[ ee declaration ]]
-        referenceable = true
+        type          = "string",
+        description   = "authentication token",
+        required      = false,
+        referenceable = true,
+        encrypted     = true,  -- [[ ee declaration - it masks the sensitive field in the UI ]]
       },
     },
   },
@@ -77,12 +78,6 @@ local embeddings = {
       },
     }
   },
-  entity_checks = {
-    { conditional = {
-      if_field = "driver", if_match = { one_of = {"openai"} },
-      then_field = "upstream_url",  then_match = { eq = null },
-    } },
-  }
 }
 
 

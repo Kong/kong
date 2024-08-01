@@ -114,6 +114,10 @@ plugins/ai-prompt-guard:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/ai-prompt-guard/**/*
 
+plugins/ai-semantic-caching:
+- changed-files:
+  - any-glob-to-any-file: ['kong/plugins/ai-semantic-caching/**/*']
+
 plugins/aws-lambda:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/aws-lambda/**/*

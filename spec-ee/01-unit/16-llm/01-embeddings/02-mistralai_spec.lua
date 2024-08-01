@@ -38,7 +38,7 @@ describe("[mistralai]", function()
       assert.is_nil(err)
 
       for prompt, embedding in pairs(known_text_embeddings) do
-        local found_embedding, err = embeddings:generate(prompt)
+        local found_embedding, err = embeddings:generate(prompt, 128)
         assert.is_nil(err)
         assert.are.same(embedding, found_embedding)
       end

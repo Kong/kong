@@ -111,6 +111,7 @@ describe("Plugins", function()
       "ai-proxy-advanced",
       "ai-proxy",
       "ai-response-transformer",
+      "ai-semantic-caching",
       "standard-webhooks",
       "aws-lambda",
       "azure-functions",

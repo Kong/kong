@@ -81,6 +81,26 @@ function _M:search(vector, threshold, metadata_out)
 end
 
 
+-- Keys retrieves all of a pattern of keys in this space.
+-- 
+-- @param pattern the search/filter pattern for keys
+-- @treturn table the array of keys found from the given pattern
+-- @treturn string error message if any
+function _M:keys(pattern)
+  return self.connector:keys(pattern)
+end
+
+
+-- Drop an index
+--
+-- @param index the index name to be deleted
+-- @treturn boolean indicating success
+-- @treturn string error message if any
+function _M:drop_index(drop_records)
+  return self.connector:drop_index(drop_records)
+end
+
+
 -- Delete an entry by pk.
 --
 -- @tparam string the primary key of the entry to delete
@@ -89,6 +109,7 @@ end
 function _M:delete(pk)
   return self.connector:delete(pk)
 end
+
 
 -- Get an entry by pk.
 --
@@ -99,5 +120,6 @@ end
 function _M:get(pk, metadata_out)
   return self.connector:get(pk, metadata_out)
 end
+
 
 return _M

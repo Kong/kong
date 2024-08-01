@@ -11,6 +11,7 @@ local cjson = require("cjson.safe")
 local kong_utils = require("kong.tools.gzip")
 local buffer = require "string.buffer"
 local strip = require("kong.tools.utils").strip
+local deep_copy = require("kong.tools.table").deep_copy
 
 -- cloud auth/sdk providers
 local GCP_SERVICE_ACCOUNT do
@@ -111,11 +112,10 @@ local function handle_streaming_frame(conf)
   local ai_driver = require("kong.llm.drivers." .. conf.model.provider)
 
   local kong_ctx_plugin = kong.ctx.plugin
+  local kong_ctx_shared = kong.ctx.shared
+
   -- create a buffer to store each response token/frame, on first pass
-  if (conf.logging or EMPTY).log_payloads and
-     (not kong_ctx_plugin.ai_stream_log_buffer) then
-    kong_ctx_plugin.ai_stream_log_buffer = buffer.new()
-  end
+  kong_ctx_plugin.ai_stream_log_buffer = kong_ctx_plugin.ai_stream_log_buffer or buffer.new()
 
   -- now handle each chunk/frame
   local chunk = ngx.arg[1]
@@ -156,13 +156,17 @@ local function handle_streaming_frame(conf)
       local err
 
       if formatted then  -- only stream relevant frames back to the user
-        if conf.logging and conf.logging.log_payloads and (formatted ~= "[DONE]") then
-          -- append the "choice" to the buffer, for logging later. this actually works!
+        if formatted ~= "[DONE]" then
+          -- append the "choice" to the buffer, for logging later
           if not event_t then
             event_t, err = cjson.decode(formatted)
           end
 
           if not err then
+            if event_t.choices and #event_t.choices > 0 then
+              kong_ctx_shared.ai_stream_finish_reason = event_t.choices[1].finish_reason
+            end
+
             if not token_t then
               token_t = get_token_text(event_t)
             end
@@ -221,8 +225,11 @@ local function handle_streaming_frame(conf)
   ngx.arg[1] = response_frame
 
   if finished then
+    kong_ctx_shared.ai_stream_full_text = kong_ctx_plugin.ai_stream_log_buffer:get()
+    kong_ctx_plugin.ai_stream_log_buffer = nil
+
     local fake_response_t = {
-      response = kong_ctx_plugin.ai_stream_log_buffer and kong_ctx_plugin.ai_stream_log_buffer:get(),
+      response = (conf.logging or EMPTY).log_payloads and kong_ctx_shared.ai_stream_full_text,
       usage = {
         prompt_tokens = kong_ctx_plugin.ai_stream_prompt_tokens or 0,
         completion_tokens = kong_ctx_plugin.ai_stream_completion_tokens or 0,
@@ -244,7 +251,7 @@ function _M:header_filter(conf)
   local kong_ctx_plugin = kong.ctx.plugin
   local kong_ctx_shared = kong.ctx.shared
 
-  if kong_ctx_shared.skip_response_transformer then
+  if kong_ctx_shared.skip_response_transformer or kong_ctx_shared.semantic_cache_hit then
     return
   end
 
@@ -283,19 +290,19 @@ function _M:header_filter(conf)
     end
 
     if route_type == "preserve" then
-      kong_ctx_plugin.parsed_response = response_body
+      kong_ctx_shared.parsed_response = response_body
     else
       local new_response_string, err = ai_driver.from_format(response_body, conf.model, route_type)
       if err then
         kong_ctx_plugin.ai_parser_error = true
 
         ngx.status = 500
-        kong_ctx_plugin.parsed_response = cjson.encode({ error = { message = err } })
+        kong_ctx_shared.parsed_response = cjson.encode({ error = { message = err } })
 
       elseif new_response_string then
         -- preserve the same response content type; assume the from_format function
         -- has returned the body in the appropriate response output format
-        kong_ctx_plugin.parsed_response = new_response_string
+        kong_ctx_shared.parsed_response = new_response_string
       end
     end
   end
@@ -307,6 +314,11 @@ end
 function _M:body_filter(conf)
   local kong_ctx_plugin = kong.ctx.plugin
   local kong_ctx_shared = kong.ctx.shared
+
+  if kong_ctx_shared.semantic_cache_hit then
+    -- ai-semantic-caching/handler.lua has handled all analytics and etc already
+    return
+  end
 
   -- if body_filter is called twice, then return
   if kong_ctx_plugin.body_called and not kong_ctx_shared.ai_proxy_streaming_mode then
@@ -351,9 +363,9 @@ function _M:body_filter(conf)
       if kong_ctx_shared.ai_proxy_streaming_mode then
         handle_streaming_frame(conf)
       else
-      -- all errors MUST be checked and returned in header_filter
-      -- we should receive a replacement response body from the same thread
-        local original_request = kong_ctx_plugin.parsed_response
+        -- all errors MUST be checked and returned in header_filter
+        -- we should receive a replacement response body from the same thread
+        local original_request = kong_ctx_shared.parsed_response
         local deflated_request = original_request
 
         if deflated_request then
@@ -425,6 +437,8 @@ function _M:access(conf)
       multipart = true  -- this may be a large file upload, so we have to proxy it directly
     end
   end
+
+  kong_ctx_shared.ai_proxy_original_request = deep_copy(request_table)
 
   -- resolve the real plugin config values
   local conf_m, err = ai_shared.resolve_plugin_conf(kong.request, conf)
@@ -527,7 +541,7 @@ function _M:access(conf)
   -- get the provider's cached identity interface - nil may come back, which is fine
   local identity_interface = _KEYBASTION[conf]
   if identity_interface and identity_interface.error then
-    kong.ctx.shared.skip_response_transformer = true
+    kong_ctx_shared.skip_response_transformer = true
     kong.log.err("error authenticating with ", conf.model.provider, " using native provider auth, ", identity_interface.error)
     return kong.response.exit(500, "LLM request failed before proxying")
   end

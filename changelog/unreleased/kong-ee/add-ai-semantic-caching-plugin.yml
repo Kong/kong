@@ -1,0 +1,5 @@
+message: |
+  **ai-semantic-caching**: Introduced AI Semantic Caching plugin, enabling you 
+  to configure an embeddings-based caching system for Large Language Model responses.
+type: feature
+scope: Plugin

@@ -198,6 +198,25 @@ function Redis:search(vector, threshold, metadata_out)
 end
 
 
+-- Keys retrieves all of a pattern of keys in this space.
+-- 
+-- @param pattern the search/filter pattern for keys
+-- @treturn table the array of keys found from the given pattern
+-- @treturn string error message if any
+function Redis:keys(pattern)
+  local res, err = redis_op(self.config, "KEYS", pattern)
+  if err then
+    return nil, "failed to list keys: " .. err
+  end
+
+  if err then
+    return nil, "failed to decode payload: " .. err
+  end
+
+  return res
+end
+
+
 local payload_t = {
   payload = 0,
   vector = 0,

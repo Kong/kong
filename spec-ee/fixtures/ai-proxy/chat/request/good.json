@@ -1,0 +1,8 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "Question about trains."
+    }
+  ]
+}
