@@ -432,6 +432,25 @@ local function get_plugins_configs(service)
         },
       },
     },
+    ["ai-semantic-prompt-guard"] = {
+      name = "ai-semantic-prompt-guard",
+      config = {
+        rules = {
+          allow_prompts = { "some" },
+          deny_prompts = { "other" },
+        },
+        embeddings = {
+          driver = "openai",
+          model = "text-embedding-3-large",
+        },
+        vectordb = {
+          dimensions = 1024,
+          distance_metric = "cosine",
+          strategy = "redis",
+          threshold = 0.1,
+        }
+      },
+    }
   }
 end
 
