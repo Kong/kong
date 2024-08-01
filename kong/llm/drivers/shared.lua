@@ -521,6 +521,21 @@ function _M.resolve_plugin_conf(kong_request, conf)
   return conf_m
 end
 
+
+local function check_multi_modal(conf, request_table)
+  if not request_table.messages or (conf.model.provider == "openai" or conf.model.provider == "bedrock" ) then
+    return true
+  end
+
+  for _, m in ipairs(request_table.messages) do
+    if type(m.content) == "table" then
+      return false
+    end
+  end
+
+  return true
+end
+
 function _M.pre_request(conf, request_table)
   -- process form/json body auth information
   local auth_param_name = conf.auth and conf.auth.param_name
@@ -537,6 +552,11 @@ function _M.pre_request(conf, request_table)
   local plugin_name = conf.__key__:match('plugins:(.-):')
   if not plugin_name or plugin_name == "" then
     return nil, "no plugin name is being passed by the plugin"
+  end
+
+  local ok = check_multi_modal(conf, request_table)
+  if not ok then
+    return kong.response.exit("multi-modal input is not supported by current provider")
   end
 
   -- if enabled AND request type is compatible, capture the input for analytics
@@ -744,11 +764,19 @@ function _M.http_request(url, body, method, headers, http_opts, buffered)
 end
 
 -- Function to count the number of words in a string
-local function count_words(str)
+local function count_words(any)
   local count = 0
-  if type(str) == "string" then
-    for word in str:gmatch("%S+") do
-        count = count + 1
+  if type(any) == "string" then
+    for _ in any:gmatch("%S+") do
+      count = count + 1
+    end
+  elseif type(any) == "table" then -- is multi-modal input
+    for _, item in ipairs(any) do
+      if item.type == "text" and item.text then
+        for _ in (item.text):gmatch("%S+") do
+          count = count + 1
+        end
+      end
     end
   end
   return count
