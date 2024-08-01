@@ -104,6 +104,7 @@ describe("Plugins", function()
       "response-transformer",
       "route-transformer-advanced",
       "ai-request-transformer",
+      "ai-semantic-prompt-guard",
       "ai-prompt-template",
       "ai-prompt-decorator",
       "ai-prompt-guard",

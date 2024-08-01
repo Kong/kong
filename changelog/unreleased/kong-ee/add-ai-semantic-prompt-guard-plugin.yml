@@ -1,0 +1,3 @@
+message: "**ai-semantic-prompt-guard:** Added the `ai-semantic-prompt-guard` plugin that supports semantic similarity-based prompt guarding."
+type: feature
+scope: Plugin

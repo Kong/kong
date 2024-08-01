@@ -68,6 +68,7 @@ return {
     "websocket-size-limit",
     "websocket-validator",
     "xml-threat-protection",
+    "ai-semantic-prompt-guard",
   },
 
   -- this list is joined into the DICTS list in kong.constants

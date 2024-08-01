@@ -24,9 +24,19 @@ local known_text_embeddings = {
   ["capacitor"] = { 0.350534, -0.025470039, -0.9204002, -0.17129119 },
   ["smell"] = { 0.23342973, -0.08322083, -0.8492907, -0.46614397 },
   ["Non-Perturbative Quantum Field Theory and Resurgence in Supersymmetric Gauge Theories"] = {
-    -0.6826024, -0.08655233, -0.72073454, -0.084287055,
+    -0.6826024,
+    -0.08655233,
+    -0.72073454,
+    -0.084287055,
   },
   ["taco"] = { -0.4407651, -0.85174876, -0.27901474, -0.048999753 },
+  ["If it discuss any topic about Amazon"] = { -0.86724466, 0.36718428, -0.21300745, -0.26017338 },
+  ["If it discuss any topic about Microsoft"] = { -0.8649115, 0.2526763, -0.41767937, -0.11673351 },
+  ["If it discuss any topic about Google"] = { -0.8108202, -0.22810346, -0.3790472, -0.38322666 },
+  ["If it discuss any topic about Apple"] = { -0.8892975, 0.30626073, -0.336221, 0.048061296 },
+  ["tell me something about Microsoft"] = { -0.48062202, -0.4189232, -0.7663229, -0.07908846 },
+  ["tell me something about Amazon"] = { -0.9346679, 0.10783355, -0.13593763, -0.31030443 },
+  ["tell me something about Google"] = { -0.3132111, -0.87082464, -0.33971936, -0.16779166 },
 }
 
 --

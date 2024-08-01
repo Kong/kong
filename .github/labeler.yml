@@ -346,6 +346,10 @@ plugins/xml-threat-protection:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/xml-threat-protection/**/*
 
+plugins/ai-semantic-prompt-guard:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/ai-semantic-prompt-guard/**/*
+
 plugins/ai-proxy-advanced:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/ai-proxy-advanced/**/*

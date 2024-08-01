@@ -905,6 +905,9 @@ build = {
     ["kong.plugins.ai-response-transformer.handler"] = "kong/plugins/ai-response-transformer/handler.lua",
     ["kong.plugins.ai-response-transformer.schema"] = "kong/plugins/ai-response-transformer/schema.lua",
 
+    ["kong.plugins.ai-semantic-prompt-guard.handler"] = "kong/plugins/ai-semantic-prompt-guard/handler.lua",
+    ["kong.plugins.ai-semantic-prompt-guard.schema"] = "kong/plugins/ai-semantic-prompt-guard/schema.lua",
+
     ["kong.ai.typedefs"] = "kong/ai/typedefs.lua",
     ["kong.ai.embeddings"] = "kong/ai/embeddings/init.lua",
     ["kong.ai.embeddings.drivers.openai"] = "kong/ai/embeddings/drivers/openai.lua",
