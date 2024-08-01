@@ -266,7 +266,10 @@ local function get_plugins_configs(service)
     ["header-cert-auth"] = {
       name = "header-cert-auth",
       config = {
-        ca_certificates = {}
+        ca_certificates = {},
+        certificate_header_format = "base64_encoded",
+        certificate_header_name = "some-header",
+        secure_source = true,
       }
     },
     ["graphql-rate-limiting-advanced"] = {
