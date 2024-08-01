@@ -1,0 +1,3 @@
+message: |
+  Bumped `lua-resty-azure` to `1.6.0` to support more Azure authentication methods.
+type: dependency
