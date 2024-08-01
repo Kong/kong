@@ -30,6 +30,7 @@ return {
           } },
           { secure_source = { description = "Whether to secure the source of the request. If set to `true`, the plugin will only allow requests from trusted IPs (configured by the `trusted_ips` config option).",
             type = "boolean",
+            default = true,
             required = true,
           }, },
           { anonymous = { description = "An optional string (consumer UUID or username) value to use as an “anonymous” consumer if authentication fails. If empty (default null), the request fails with an authentication failure `4xx`. Note that this value must refer to the consumer `id` or `username` attribute, and **not** its `custom_id`.", type = "string" } },

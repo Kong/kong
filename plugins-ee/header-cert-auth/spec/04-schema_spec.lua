@@ -41,4 +41,20 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     assert.is_truthy(ok)
   end)
 
+  it("does not allow null values for required fields", function()
+    local ok, err = validate({
+      ca_certificates = { "00000000-0000-0000-0000-000000000000" },
+      certificate_header_name = ngx.null,
+      certificate_header_format = ngx.null,
+      secure_source = ngx.null,
+    })
+    assert.is_falsy(ok)
+    assert.same({
+      config = {
+        secure_source = "required field missing",
+        certificate_header_name = "required field missing",
+        certificate_header_format = "required field missing",
+      }
+    }, err)
+  end)
 end)

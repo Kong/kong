@@ -219,7 +219,7 @@ for _, strategy in strategies() do
         })
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
-        assert.same({ ca_certificates = "required field missing", certificate_header_name = "required field missing", certificate_header_format = "required field missing", secure_source = "required field missing" }, json.fields.config)
+        assert.same({ ca_certificates = "required field missing", certificate_header_name = "required field missing", certificate_header_format = "required field missing", }, json.fields.config)
       end)
 
       it("fails with invalid ca_certificate UUID", function()
