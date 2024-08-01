@@ -9,6 +9,7 @@ local typedefs = require("kong.db.schema.typedefs")
 local Schema = require "kong.db.schema"
 local llm = require("kong.llm")
 local ai_typedefs = require("kong.ai.typedefs")
+local null = ngx.null
 
 local deep_copy = require("kong.tools.table").deep_copy
 
@@ -104,9 +105,9 @@ return {
             if this_provider == "openai" then
               this_format = "openai"
             elseif this_provider == "llama2" then
-              this_format = target.model and target.model.options and target.model.options.llama2_format
+              this_format = target.model and (target.model.options or null) ~= null and target.model.options.llama2_format
             elseif this_provider == "mistral" then
-              this_format = target.model and target.model.options and target.model.options.mistral_format
+              this_format = target.model and (target.model.options or null) ~= null and target.model.options.mistral_format
             end
             if not must_format then
               must_format = this_format
