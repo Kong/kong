@@ -38,7 +38,7 @@ local setup_client = function(conf)
   }
 
   -- new dns client
-  if conf.legacy_dns_client == "off" then
+  if conf.legacy_dns_client == false then
 
     servers = {}
 
