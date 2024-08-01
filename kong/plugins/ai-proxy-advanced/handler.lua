@@ -140,6 +140,10 @@ function _M:access(conf)
     if err_retry then
       return false, "failed to get peer " .. err_retry
     end
+    -- pass along the top level magic keys to selected target/conf
+    selected_retry.__key__ = conf.__key__
+    selected_retry.__plugin_id = conf.__plugin_id
+
     proxy_handler:access(selected_retry)
 
     set_tried_target(selected)

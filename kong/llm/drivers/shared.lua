@@ -484,6 +484,8 @@ function _M.resolve_plugin_conf(kong_request, conf)
 end
 
 function _M.pre_request(conf, request_table)
+  assert(conf.__key__, "missing plugin conf key")
+
   -- process form/json body auth information
   local auth_param_name = conf.auth and conf.auth.param_name
   local auth_param_value = conf.auth and conf.auth.param_value
