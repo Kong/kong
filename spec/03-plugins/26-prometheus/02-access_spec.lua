@@ -834,9 +834,7 @@ describe("Plugin: prometheus (access) AI metrics", function()
     assert.matches('http_requests_total{service="empty_service",route="http-route",code="200",source="service",workspace="default",consumer=""} 2', body, nil, true)
     
     assert.matches('ai_llm_requests_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",workspace="default"} 1', body, nil, true)
-
     assert.matches('ai_llm_cost_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",workspace="default"} 0.00037', body, nil, true)
-
     assert.matches('ai_llm_provider_latency_ms_bucket{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",workspace="default",le="+Inf"} 1', body, nil, true)
 
     assert.matches('ai_llm_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",token_type="completion_tokens",workspace="default"} 12', body, nil, true)
@@ -872,9 +870,7 @@ describe("Plugin: prometheus (access) AI metrics", function()
     assert.matches('http_requests_total{service="empty_service",route="http-route",code="200",source="service",workspace="default",consumer=""} 3', body, nil, true)
     
     assert.matches('ai_llm_requests_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",workspace="default"} 2', body, nil, true)
-
     assert.matches('ai_llm_cost_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",workspace="default"} 0.00074', body, nil, true)
-
     assert.matches('ai_llm_provider_latency_ms_bucket{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",workspace="default",le="+Inf"} 2', body, nil, true)
 
     assert.matches('ai_llm_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",token_type="completion_tokens",workspace="default"} 24', body, nil, true)

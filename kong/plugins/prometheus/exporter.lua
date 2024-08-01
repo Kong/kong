@@ -26,6 +26,7 @@ local role = kong.configuration.role
 
 local KONG_LATENCY_BUCKETS = { 1, 2, 5, 7, 10, 15, 20, 30, 50, 75, 100, 200, 500, 750, 1000 }
 local UPSTREAM_LATENCY_BUCKETS = { 25, 50, 80, 100, 250, 400, 700, 1000, 2000, 5000, 10000, 30000, 60000 }
+local AI_CACHE_FETCH_LATENCY_BUCKETS = { 1, 2, 5, 10, 15, 20, 30, 50, 75, 100, 200, 500, 750, 1000, 2000 }
 local AI_LLM_PROVIDER_LATENCY_BUCKETS = { 250, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 10000, 30000, 60000 }
 local IS_PROMETHEUS_ENABLED
 
@@ -169,6 +170,17 @@ local function init()
   metrics.ai_llm_tokens = prometheus:counter("ai_llm_tokens_total",
                                       "AI requests cost per ai_provider/cache in Kong",
                                       {"ai_provider", "ai_model", "cache_status", "vector_db", "embeddings_provider", "embeddings_model", "token_type", "workspace"})
+
+  metrics.ai_cache_fetch_latency = prometheus:histogram("ai_cache_fetch_latency_ms",
+                                      "Total latency to fetch from cache during requests " ..
+                                      "for each db_name/ai_provider in Kong",
+                                      {"ai_provider", "ai_model", "cache_status", "vector_db", "embeddings_provider", "embeddings_model", "workspace"},
+                                      AI_CACHE_FETCH_LATENCY_BUCKETS)
+
+  metrics.ai_cache_embeddings_latency = prometheus:histogram("ai_cache_embeddings_latency_ms",
+                                      "Total latency to generate embeddings during requests",
+                                      {"ai_provider", "ai_model", "cache_status", "vector_db", "embeddings_provider", "embeddings_model", "workspace"},
+                                      AI_CACHE_FETCH_LATENCY_BUCKETS)
 
   metrics.ai_llm_provider_latency = prometheus:histogram("ai_llm_provider_latency_ms",
                                       "LLM response Latency for each AI plugins per ai_provider in Kong",
@@ -372,6 +384,14 @@ local function log(message, serialized)
 
       if ai_plugin.meta.llm_latency and ai_plugin.meta.llm_latency > 0 then
         metrics.ai_llm_provider_latency:observe(ai_plugin.meta.llm_latency, labels_table_ai_llm_status)
+      end
+
+      if ai_plugin.cache.fetch_latency and ai_plugin.meta.fetch_latency > 0 then
+        metrics.ai_cache_fetch_latency:observe(ai_plugin.cache.fetch_latency, labels_table_ai_llm_status)
+      end
+
+      if ai_plugin.cache.embeddings_latency and ai_plugin.cache.embeddings_latency > 0 then
+        metrics.ai_cache_embeddings_latency:observe(ai_plugin.cache.embeddings_latency, labels_table_ai_llm_status)
       end
 
       labels_table_ai_llm_tokens[1] = ai_plugin.meta.provider_name
