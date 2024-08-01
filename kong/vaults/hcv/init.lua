@@ -42,7 +42,7 @@ local function get_vault_token(config)
     local handler = vault_auth_method_handler[config.auth_method]
     local cache_key = handler.cache_key(config)
 
-    local cache = kong.cache
+    local cache = kong and kong.cache
     local token
     if cache then
       token = cache:get(cache_key, nil, handler.vault_token_exchange, config)

@@ -12,6 +12,8 @@ local pl_file = require("pl.file")
 
 local mock_server_port = helpers.get_available_port()
 
+local TEST_PG_USER = os.getenv("KONG_TEST_PG_USER") or helpers.test_conf.pg_user
+
 local fixtures = {
   http_mock = {
     mock_hcv_server = fmt([[
@@ -33,6 +35,15 @@ local fixtures = {
           }
         }
 
+        location = /v1/secret/data/db {
+          content_by_lua_block {
+            ngx.req.read_body()
+            ngx.status = 200
+            ngx.header["Content-Type"] = "application/json"
+            ngx.say('{"data": {"data": {"user": "%s"}}}')
+          }
+        }
+
         location = /v1/auth/kubernetes/login {
           content_by_lua_block {
             ngx.req.read_body()
@@ -42,13 +53,20 @@ local fixtures = {
           }
         }
 
-
+        location = /v1/auth/approle/login {
+          content_by_lua_block {
+            ngx.req.read_body()
+            ngx.status = 200
+            ngx.header["Content-Type"] = "application/json"
+            ngx.say('{"auth": {"client_token": "mock_token"}}')
+          }
+        }
       }
-    ]], mock_server_port, mock_server_port),
+    ]], mock_server_port, mock_server_port, TEST_PG_USER),
   }
 }
 
-local function setup_env_var(mock_token_path)
+local function setup_env_var(override_env_vars)
   local mock_env = {
     KONG_LUA_SSL_TRUSTED_CERTIFICATE = "spec/fixtures/kong_spec.crt",
     -- KONG_LUA_SSL_TRUSTED_CERTIFICATE = "spec/fixtures/kong_clustering_ca.crt",
@@ -56,30 +74,34 @@ local function setup_env_var(mock_token_path)
     KONG_VAULT_HCV_HOST = "localhost",
     KONG_VAULT_HCV_PORT = tostring(mock_server_port),
     KONG_VAULT_HCV_KV = "v2",
-    KONG_VAULT_HCV_AUTH_METHOD = "kubernetes",
-    KONG_VAULT_HCV_KUBE_API_TOKEN_FILE = mock_token_path,
     KONG_PREFIX = "servroot_mock_hcv_command_line",
   }
 
-  local original_env = {}
+  for k, v in pairs(override_env_vars) do
+    mock_env[k] = v
+  end
 
-  for i, v in ipairs({
-    "KONG_LUA_SSL_TRUSTED_CERTIFICATE",
-    "KONG_VAULT_HCV_PROTOCOL",
-    "KONG_VAULT_HCV_HOST",
-    "KONG_VAULT_HCV_PORT",
-    "KONG_VAULT_HCV_KV",
-    "KONG_VAULT_HCV_AUTH_METHOD",
-    "KONG_VAULT_HCV_KUBE_API_TOKEN_FILE",
-    "KONG_PREFIX",
-  }) do
-    original_env[v] = os.getenv(v)
-    helpers.setenv(v, mock_env[v])
+  local original_env = {}
+  local empty_original_env = {}
+
+  for k, v in pairs(mock_env) do
+    local orig_env = os.getenv(k)
+    if orig_env then
+      original_env[k] = orig_env
+    else
+      empty_original_env[k] = true
+    end
+
+    helpers.setenv(k, v)
   end
 
   return function()
     for k, v in pairs(original_env) do
       helpers.setenv(k, v)
+    end
+
+    for k in pairs(empty_original_env) do
+      helpers.unsetenv(k)
     end
   end
 end
@@ -89,8 +111,7 @@ for _, strategy in helpers.each_strategy() do
   describe("HCV backend with self signed SSL certificate", function()
     local mock_tmp_kube_auth_token
     lazy_setup(function()
-      local bp, db = helpers.get_db_utils(strategy, {
-      }) -- runs migrations
+      helpers.get_db_utils(strategy, {}) -- runs migrations
 
       assert(helpers.start_kong({
         database = strategy,
@@ -106,11 +127,17 @@ for _, strategy in helpers.each_strategy() do
     lazy_teardown(function()
       pl_file.delete(mock_tmp_kube_auth_token)
       helpers.stop_kong()
-      helpers.stop_kong("servroot_mock_hcv_command_line")
     end)
 
-    it("worked in CLI", function()
-      local env_resetter = setup_env_var(mock_tmp_kube_auth_token)
+    after_each(function()
+      helpers.clean_prefix("servroot_mock_hcv_command_line")
+    end)
+
+    it("worked in CLI with kubernetes auth method", function()
+      local env_resetter = setup_env_var({
+        KONG_VAULT_HCV_AUTH_METHOD = "kubernetes",
+        KONG_VAULT_HCV_KUBE_API_TOKEN_FILE = mock_tmp_kube_auth_token,
+      })
 
       finally(function()
         env_resetter()
@@ -124,6 +151,37 @@ for _, strategy in helpers.each_strategy() do
       helpers.setenv("KONG_LUA_SSL_TRUSTED_CERTIFICATE", "spec/fixtures/kong_clustering.crt")
       assert.falsy(helpers.kong_exec("vault get {vault://hcv/kong} --vv"))
       helpers.setenv("KONG_LUA_SSL_TRUSTED_CERTIFICATE", old_trusted_cert)
+    end)
+
+    it("worked in CLI with approle auth method", function()
+      local env_resetter = setup_env_var({
+        KONG_VAULT_HCV_AUTH_METHOD = "approle",
+        KONG_VAULT_HCV_APPROLE_ROLE_ID = "test-role-id",
+        KONG_VAULT_HCV_APPROLE_SECRET_ID = "test-secret-id",
+      })
+
+      finally(function()
+        env_resetter()
+      end)
+
+      -- Should be able to use CLI
+      assert(helpers.kong_exec("vault get {vault://hcv/kong} --vv"))
+    end)
+
+    it("worked in CLI with approle auth method when database is also vault referenced", function()
+      local env_resetter = setup_env_var({
+        KONG_PG_USER = "{vault://hcv/db/user}",
+        KONG_VAULT_HCV_AUTH_METHOD = "approle",
+        KONG_VAULT_HCV_APPROLE_ROLE_ID = "test-role-id",
+        KONG_VAULT_HCV_APPROLE_SECRET_ID = "test-secret-id",
+      })
+
+      finally(function()
+        env_resetter()
+      end)
+
+      -- Should be able to use CLI
+      assert(helpers.kong_exec("vault get {vault://hcv/kong} --vv"))
     end)
   end)
 end
