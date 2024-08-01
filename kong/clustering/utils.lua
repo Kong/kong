@@ -168,14 +168,14 @@ end
 
 
 -- encode/decode json with cjson or simdjson
-local ok, simdjson_dec = pcall(require, "resty.simdjson.decoder")
+local ok, simdjson_dec = pcall(require, "resty.simdjson.decoder") -- luacheck:ignore
 if not ok or kong.configuration.cluster_cjson then
   _M.json_decode = cjson.decode
   _M.json_encode = cjson.encode
 
 else
   _M.json_decode = cjson.decode
-  --[[ TODO: fix the behavior of simdjson encoding
+  --[[ TODO: make simdjson decoding more compatible with cjson
   _M.json_decode = function(str)
     -- enable yield and not reentrant for decode
     local dec = simdjson_dec.new(true)
