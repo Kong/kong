@@ -5,6 +5,8 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local null = ngx.null
+
 --
 -- typedefs
 --
@@ -67,7 +69,20 @@ local embeddings = {
         },
       },
     },
+    {
+      upstream_url = {
+        type        = "string",
+        description = "upstream url for the embeddings",
+        required    = false,
+      },
+    }
   },
+  entity_checks = {
+    { conditional = {
+      if_field = "driver", if_match = { one_of = {"openai"} },
+      then_field = "upstream_url",  then_match = { eq = null },
+    } },
+  }
 }
 
 

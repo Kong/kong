@@ -60,12 +60,19 @@ function Driver:generate(prompt)
     ssl_verify = true,
     ssl_cafile = kong.configuration.lua_ssl_trusted_certificate_combined,
   })
+
+  local auth
+  if self.auth and self.auth.token then
+    auth = "Bearer " .. self.auth.token
+  end
+
+  local embeddings_url = self.upstream_url or embeddings_url
   local res, err = httpc:request_uri(embeddings_url, {
     method = "POST",
     headers = {
       ["Content-Type"]    = "application/json",
       ["Accept-Encoding"] = "gzip",
-      ["Authorization"]   = "Bearer " .. self.auth.token,
+      ["Authorization"]   = auth,
     },
     body = body,
   })
