@@ -82,6 +82,10 @@ def common_suites(expect, libxcrypt_no_obsolete_api: bool = False):
         .functions \
         .contain("router_execute")
 
+    expect("/usr/local/openresty/site/lualib/libsimdjson_ffi.so", "simdjson should have ffi module compiled") \
+        .functions \
+        .contain("simdjson_ffi_state_new")
+
     if libxcrypt_no_obsolete_api:
         expect("/usr/local/openresty/nginx/sbin/nginx", "nginx linked with libxcrypt.so.2") \
             .needed_libraries.contain("libcrypt.so.2")
