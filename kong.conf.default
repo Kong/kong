@@ -2367,17 +2367,17 @@
 
 #admin_gui_header_txt =          # Sets the text for the Kong Manager header banner.
                                  # Header banner is not shown if this config is empty.
-                                 
+
 
 #admin_gui_header_bg_color =     # Sets the background color for the Kong Manager header banner.
                                  # Accepts CSS color keyword, #-hexadecimal, or RGB
-                                 # format. Invalid values are ignored by Manager. 
-                                 
+                                 # format. Invalid values are ignored by Manager.
+
 
 #admin_gui_header_txt_color =    # Sets the text color for the Kong Manager header banner.
                                  # Accepts CSS color keyword, #-hexadecimal, or RGB
                                  # format. Invalid values are ignored by Kong Manager.
-                                
+
 
 #admin_gui_footer_txt =          # Sets the text for the Kong Manager footer banner. Footer banner
                                  # is not shown if this config is empty.
@@ -2385,24 +2385,24 @@
 #admin_gui_footer_bg_color =     # Sets the background color for the Kong Manager footer banner.
                                  # Accepts CSS color keyword, #-hexadecimal, or RGB
                                  # format. Invalid values are ignored by manager.
-                                 
+
 
 #admin_gui_footer_txt_color =    # Sets the text color for the Kong Manager footer banner.
                                  # Accepts CSS color keyword, #-hexadecimal, or RGB
                                  # format. Invalid values are ignored by Kong Manager.
-                                 
+
 
 #admin_gui_login_banner_title =  # Sets the title text for the Kong Manager login banner.
                                  # Login banner is not shown if both
                                  # `admin_gui_login_banner_title` and
                                  # `admin_gui_login_banner_body` are empty.
-                                 
+
 
 #admin_gui_login_banner_body =   # Sets the body text for the Kong Manager login banner.
                                  # Login banner is not shown if both
                                  # `admin_gui_login_banner_title` and
                                  # `admin_gui_login_banner_body` are empty.
-                                 
+
 
 
 #------------------------------------------------------------------------------
@@ -2416,12 +2416,15 @@
 # Analytics for Konnect
 #------------------------------------------------------------------------------
 
-#analytics_flush_interval = 1      # Determine the maximum frequency of flushing local data
-                                   # to Konnect in seconds. Kong also flushes data once
-                                   # it has already buffered
-                                   # enough (less than `analytics_buffer_size_limit`)
-                                   # messages in the buffer even if this interval has
-                                   # not been reached.
+#analytics_flush_interval = 1      # Specify the maximum frequency, in seconds,
+                                   # at which local analytics and licensing
+                                   # data are flushed to the database or
+                                   # Konnect, depending on the installation mode.
+                                   # Kong also triggers a flush when the number
+                                   # of messages in the buffer is less than
+                                   # `analytics_buffer_size_limit`, regardless
+                                   # of whether the specified time interval has
+                                   # elapsed.
 
 #analytics_buffer_size_limit = 100000      # Max number of messages can be buffered locally
                                            # before dropping data in case there is no
@@ -2941,7 +2944,7 @@
 #   separate namespaces in the `"<name>/<key>"` format.
 #   For using these functions with non-namespaced keys, the Nginx template needs
 #   a `shm_kv *` entry, which can be defined using `nginx_wasm_shm_kv`.
-# - `nginx_wasm_wasmtime_<flag>`: Injects `flag <flag>` into the `wasmtime {}` 
+# - `nginx_wasm_wasmtime_<flag>`: Injects `flag <flag>` into the `wasmtime {}`
 #   block, allowing various Wasmtime-specific flags to be set.
 # - `nginx_<http|proxy>_<directive>`: Injects `<directive>` into the
 #   `http {}` or `server {}` blocks, as specified in the Nginx injected directives
