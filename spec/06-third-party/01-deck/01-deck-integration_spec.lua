@@ -450,6 +450,21 @@ local function get_plugins_configs(service)
           threshold = 0.1,
         }
       },
+    },
+    ["ai-semantic-caching"] = {
+      name = "ai-semantic-caching",
+      config = {
+        embeddings = {
+          driver = "openai",
+          model = "text-embedding-3-large",
+        },
+        vectordb = {
+          dimensions = 1024,
+          distance_metric = "cosine",
+          strategy = "redis",
+          threshold = 0.1,
+        }
+      },
     }
   }
 end
