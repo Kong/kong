@@ -9,6 +9,7 @@ local http       = require "resty.http"
 local cert_utils = require "kong.enterprise_edition.cert_utils"
 local meta       = require "kong.meta"
 local lfs        = require("lfs")
+local parse_ngx_size = require("kong.tools.string").parse_ngx_size
 
 local kong                = kong
 local ngx                 = ngx
@@ -26,7 +27,6 @@ local ngx_print           = ngx.print
 local str_lower           = string.lower
 local str_format          = string.format
 local str_find            = string.find
-local str_sub             = string.sub
 local base64_encode       = ngx.encode_base64
 
 
@@ -40,24 +40,6 @@ local ForwardProxyHandler = {
   VERSION = meta.core_version
 }
 
-local function parse_ngx_size(str)
-  local scales = {
-    k = 1024,
-    K = 1024,
-    m = 1024 * 1024,
-    M = 1024 * 1024
-  }
-  local len = #str
-  local unit = str_sub(str, len)
-  local scale = scales[unit]
-  if scale then
-    len = len - 1
-  else
-    scale = 1
-  end
-  local size = tonumber(str_sub(str, 1, len)) or 0
-  return size * scale
-end
 
 local DEFAULT_BUFFER_SIZE = parse_ngx_size("1m")
 local MAX_BUFFER_SIZE = parse_ngx_size("64m")
