@@ -174,7 +174,7 @@ body err: request body file too big: 20000 > 19999
 
 
 
-=== TEST 8: request.get_raw_body() returns correctly if max_allowed_file_size is less than 0
+=== TEST 8: request.get_raw_body() returns correctly if max_allowed_file_size is equal to 0
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -182,7 +182,7 @@ body err: request body file too big: 20000 > 19999
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
-            local body, err = pdk.request.get_raw_body(-1)
+            local body, err = pdk.request.get_raw_body(0)
             if body then
               ngx.say("body length: ", #body)
 
