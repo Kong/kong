@@ -35,7 +35,7 @@ services:
   redis-stack:
     image: redis/redis-stack
     ports:
-      - 127.0.0.1:16379:6379
+      - 127.0.0.1::6379
     volumes:
       - redis-stack-data:/data
     restart: on-failure

@@ -18,7 +18,7 @@ local MOCK_PORT = helpers.get_available_port()
 
 local vectordb = require("kong.llm.vectordb")
 
-local REDIS_HOST = helpers.redis_host
+local REDIS_HOST = os.getenv("KONG_SPEC_TEST_REDIS_STACK_HOST") or "127.0.0.1"
 local REDIS_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_STACK_PORT") or 16379)
 
 local MOCK_FIXTURE = [[

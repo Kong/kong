@@ -14,7 +14,8 @@ local MOCK_PORT = helpers.get_available_port()
 
 local vectordb = require("kong.llm.vectordb")
 
-local REDIS_HOST = helpers.redis_host
+local REDIS_HOST = os.getenv("KONG_SPEC_TEST_REDIS_STACK_HOST") or "127.0.0.1"
+local REDIS_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_STACK_PORT") or 16379)
 
 local PLUGIN_NAME = "ai-semantic-caching"
 local PLUGIN_ID = "54f597cb-6703-47ca-8533-30b516edccdc"
@@ -72,7 +73,7 @@ local VECTORDB_SETUP = {
   threshold = 0.7,
   redis = {
     host = REDIS_HOST,
-    port = 16379,  -- use the "other" redis, that includes RediSearch
+    port = REDIS_PORT,  -- use the "other" redis, that includes RediSearch
   },
 }
 
