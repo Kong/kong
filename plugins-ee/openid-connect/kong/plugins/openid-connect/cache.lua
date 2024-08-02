@@ -15,6 +15,7 @@ local json          = require "cjson.safe"
 local workspaces    = require "kong.workspaces"
 local semaphore     = require "ngx.semaphore"
 local string_buffer = require("string.buffer")
+local callback_wrap = require("kong.plugins.openid-connect.cache.utils").callback_wrap
 
 
 local setmetatable  = setmetatable
@@ -1249,7 +1250,14 @@ function introspection.load(oic, access_token, hint, ttl, use_cache, ignore_sign
   local err
 
   if use_cache and key then
-    res, err = cache_get("oic:" .. key, ttl, introspection_load, oic, access_token, hint, ttl, ignore_signature, opts)
+    local cluster_cache_strategy = oic.options.cluster_cache_strategy
+    if cluster_cache_strategy then
+      res, err = cache_get("oic:" .. key, ttl, callback_wrap,
+        cluster_cache_strategy, key, introspection_load, oic, access_token, hint, ttl, ignore_signature, opts)
+    else
+      res, err = cache_get("oic:" .. key, ttl, introspection_load, oic, access_token, hint, ttl, ignore_signature, opts)
+    end
+
     if type(res) ~= "table" then
       return nil, err or "unable to introspect token"
     end

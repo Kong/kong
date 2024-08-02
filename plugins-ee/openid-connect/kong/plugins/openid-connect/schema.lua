@@ -14,6 +14,7 @@ local table_contains = require "kong.tools.utils".table_contains
 local oidcdefs = require "kong.plugins.openid-connect.typedefs"
 local cache = require "kong.plugins.openid-connect.cache"
 local arguments = require "kong.plugins.openid-connect.arguments"
+local redis_schema = require "kong.enterprise_edition.redis".config_schema
 
 
 local get_phase = ngx.get_phase
@@ -2340,6 +2341,20 @@ local config = {
                 type = "string",
               },
             },
+          },
+          {
+            cluster_cache_strategy = {
+              description = "The strategy to use for the cluster cache. If set, the plugin will share cache with nodes configured with the same strategy backend. Currentlly only introspection cache is shared.",
+              required = false,
+              type = "string",
+              one_of = {
+                "off", "redis",
+              },
+              default = "off",
+            },
+          },
+          {
+            cluster_cache_redis = redis_schema,
           },
         },
         shorthand_fields = {

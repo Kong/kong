@@ -31,6 +31,12 @@ build = {
     ["kong.plugins.openid-connect.cache"] =
      "kong/plugins/openid-connect/cache.lua",
 
+    ["kong.plugins.openid-connect.cache.strategy.redis"] =
+     "kong/plugins/openid-connect/cache/strategy/redis.lua",
+
+    ["kong.plugins.openid-connect.cache.utils"] =
+     "kong/plugins/openid-connect/cache/utils.lua",
+
     ["kong.plugins.openid-connect.claims"] =
      "kong/plugins/openid-connect/claims.lua",
 

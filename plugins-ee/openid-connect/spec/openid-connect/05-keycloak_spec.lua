@@ -57,6 +57,8 @@ local REDIS_PORT_ERR = 6480
 local REDIS_USER_VALID = "openid-connect-user"
 local REDIS_PASSWORD = "secret"
 
+local NODE2PORT = helpers.get_available_port()
+
 local HTTP_SERVER_PORT = helpers.get_available_port()
 local mock = http_mock.new(HTTP_SERVER_PORT, {
   ["/"] = {
@@ -4473,5 +4475,165 @@ for _, strategy in helpers.all_strategies() do
       end)
     end)
 
+    for _, enabled in ipairs{true, false} do
+      describe("introspection cache, cluster_cache = " .. tostring(enabled), function()
+        local is_introspecting, proxy_client, proxy_client2
+        lazy_setup(function()
+          local bp = helpers.get_db_utils(strategy, {
+            "routes",
+            "services",
+            "plugins",
+          }, {
+            PLUGIN_NAME
+          })
+
+          local service = bp.services:insert {
+            path = "/anything"
+          }
+          local route_get = bp.routes:insert {
+            service = service,
+            paths   = { "/get" },
+          }
+          local route = bp.routes:insert {
+            service = service,
+            paths   = { "/test" },
+          }
+
+          local config = {
+            issuer = MOCK_ISSUER_URL,
+            introspection_endpoint = MOCK_ISSUER_URL .. "/protocol/openid-connect/token/introspect",
+            client_id = {
+              KONG_CLIENT_ID,
+            },
+            client_secret = {
+              KONG_CLIENT_SECRET,
+            },
+            auth_methods = {
+              "password"
+            },
+            cluster_cache_strategy   = enabled and "redis" or "off",
+            cluster_cache_redis = {
+              host = REDIS_HOST,
+              port = REDIS_PORT,
+            },
+          }
+
+          bp.plugins:insert {
+            route   = route_get,
+            name    = PLUGIN_NAME,
+            config  = config,
+          }
+
+          config.auth_methods = {
+            "introspection",
+          }
+
+          bp.plugins:insert {
+            route   = route,
+            name    = PLUGIN_NAME,
+            config  = config,
+          }
+
+          assert(mock:start())
+
+          assert(helpers.start_kong({
+            database                 = strategy,
+            nginx_conf               = "spec/fixtures/custom_nginx.template",
+            plugins                  = "bundled," .. PLUGIN_NAME,
+            admin_listen             = "off"
+          }))
+
+          assert(helpers.start_kong({
+            database                 = strategy,
+            nginx_conf               = "spec/fixtures/custom_nginx.template",
+            plugins                  = "bundled," .. PLUGIN_NAME,
+            prefix                   = "servroot2",
+            proxy_listen             = "0.0.0.0:" .. NODE2PORT,
+            admin_listen             = "off"
+          }))
+
+          function is_introspecting(token)
+            return function(req)
+              assert.same("POST", req.method)
+              assert.same(REALM_PATH .. "/protocol/openid-connect/token/introspect", req.uri)
+              assert.matches("token=" .. token, req.body, nil, true)
+            end
+          end
+
+          proxy_client = assert(helpers.proxy_client())
+          proxy_client2 = assert(helpers.proxy_client(nil, NODE2PORT))
+        end)
+
+        lazy_teardown(function()
+          helpers.stop_kong()
+          helpers.stop_kong("servroot2")
+          mock:stop()
+          proxy_client:close()
+        end)
+
+        it("should cache in redis", function()
+          -- get a token from node a
+          local res = assert(proxy_client:send({
+            method = "GET",
+            path = "/get",
+            headers = {
+              ["Host"] = KONG_HOST,
+              ["Authorization"] = PASSWORD_CREDENTIALS,
+            }
+          }))
+          assert.response(res).has.status(200)
+
+          local json = assert.response(res).has.jsonbody()
+          assert.equal("Bearer", sub(json.headers.authorization, 1, 6))
+          local token = sub(json.headers.authorization, 8)
+          assert.is_not_nil(token)
+
+          -- should introspect
+          local res2 = assert(proxy_client:send({
+            method = "GET",
+            path = "/test",
+            headers = {
+              ["Host"] = KONG_HOST,
+              ["Authorization"] = "Bearer " .. token,
+            }
+          }))
+          assert.response(res2).has.status(200)
+
+          mock.eventually:has_request_satisfy(is_introspecting(token))
+
+          -- should have already been cached
+          local res3 = assert(proxy_client:send({
+            method = "GET",
+            path = "/test",
+            headers = {
+              ["Host"] = KONG_HOST,
+              ["Authorization"] = "Bearer " .. token,
+            }
+          }))
+          assert.response(res3).has.status(200)
+          -- no new introspection request as it should be cached
+          mock.eventually:has_no_request_satisfy(is_introspecting(token))
+
+          -- should be fetchable in the other node as well if cluster_cache is enabled
+          local res4 = assert(proxy_client2:send({
+            method = "GET",
+            path = "/test",
+            headers = {
+              ["Host"] = KONG_HOST,
+              ["Authorization"] = "Bearer " .. token,
+            }
+          }))
+          assert.response(res4).has.status(200)
+
+          if enabled then
+            -- no new introspection request as it should be cached in redis
+            mock.eventually:has_no_request_satisfy(is_introspecting(token))
+          else
+            -- new introspection request as it should not be cached in redis
+            mock.eventually:has_request_satisfy(is_introspecting(token))
+          end
+        end)
+      end)
+    end
   end)
 end

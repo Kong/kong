@@ -39,6 +39,11 @@ local set                = require "kong.openid-connect.set"
 local codec              = require "kong.openid-connect.codec"
 
 
+local cache_utils = require "kong.plugins.openid-connect.cache.utils"
+local get_cluster_cache_strategy = cache_utils.get_strategy
+local get_ttl_opts = cache_utils.get_ttl_opts
+
+
 local kong               = kong
 local ngx                = ngx
 local var                = ngx.var
@@ -222,6 +227,12 @@ function OICHandler.access(_, conf)
       end
     end
 
+    local cluster_cache_strategy
+    cluster_cache_strategy, err = get_cluster_cache_strategy(args)
+    if not cluster_cache_strategy and err ~= "not designated" then
+      log.err("failed to initialize cluster cache strategy: ", err)
+    end
+
     options = args.get_http_opts({
       client_id = client.id,
       client_secret = client.secret,
@@ -261,6 +272,7 @@ function OICHandler.access(_, conf)
       require_pushed_authorization_requests = args.get_conf_arg("require_pushed_authorization_requests"),
       require_proof_key_for_code_exchange = args.get_conf_arg("require_proof_key_for_code_exchange"),
       require_signed_request_object = args.get_conf_arg("require_signed_request_object"),
+      cluster_cache_strategy = cluster_cache_strategy,
     })
 
     log("initializing library")
@@ -1074,36 +1086,9 @@ function OICHandler.access(_, conf)
 
     local now = time()
 
-    local ttl_default   = args.get_conf_arg("cache_ttl", 3600)
-    local ttl_max       = args.get_conf_arg("cache_ttl_max")
-    local ttl_min       = args.get_conf_arg("cache_ttl_min")
-    local ttl_neg       = args.get_conf_arg("cache_ttl_neg")
-    local ttl_resurrect = args.get_conf_arg("cache_ttl_resurrect")
+    ttl = get_ttl_opts(args)
 
-    if ttl_max and ttl_max > 0 then
-      if ttl_min and ttl_min > ttl_max then
-        ttl_min = ttl_max
-      end
-
-      if ttl_default > ttl_max then
-        ttl_default = ttl_max
-      end
-    end
-
-    if ttl_min and ttl_min > 0 then
-      if ttl_default < ttl_min then
-        ttl_default = ttl_min
-      end
-    end
-
-    ttl = {
-      now = now,
-      default_ttl = ttl_default,
-      min_ttl = ttl_min,
-      max_ttl = ttl_max,
-      neg_ttl = ttl_neg,
-      resurrect_ttl = ttl_resurrect
-    }
+    ttl.now = now
   end
 
   local exp_default

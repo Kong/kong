@@ -374,6 +374,8 @@ return {
     -- Enterprise plugins
     openid_connect = {
       "claims_forbidden",
+      "cluster_cache_strategy",
+      "cluster_cache_redis",
     },
     proxy_cache_advanced = {
       "redis.cluster_max_redirections",

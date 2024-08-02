@@ -1,0 +1,3 @@
+message: "**OpenID-Connect**: Added support for redis cache for introspection result with new fields `cluster_cache_strategy` and `cluster_cache_redis`. When configured, the plugin will share the tokens introspection responses cache across nodes configured to use the same Redis Database."
+type: feature
+scope: Plugin
