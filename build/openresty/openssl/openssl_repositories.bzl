@@ -17,9 +17,8 @@ def openssl_repositories():
         sha256 = KONG_VAR["OPENSSL_SHA256"],
         strip_prefix = "openssl-" + version,
         urls = [
-            "https://www.openssl.org/source/openssl-" + version + ".tar.gz",
-            "https://www.openssl.org/source/old/" + major_minor_version + "/openssl-" + version + ".tar.gz",
             "https://github.com/openssl/openssl/releases/download/openssl-" + version + "/openssl-" + version + ".tar.gz",
             "https://github.com/openssl/openssl/archive/OpenSSL_" + version_github + ".tar.gz",
+            "https://www.openssl.org/source/old/" + major_minor_version + "/openssl-" + version + ".tar.gz",
         ],
     )
