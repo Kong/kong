@@ -40,7 +40,7 @@ local function handle_stream_event(event_t, model_info, route_type)
   end
   
   local new_event
-  
+
   if event.event_type == "stream-start" then
     kong.ctx.plugin.ai_proxy_cohere_stream_id = event.generation_id
     

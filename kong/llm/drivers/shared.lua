@@ -56,6 +56,8 @@ local log_entry_keys = {
   EMBEDDINGS_PROVIDER = "embeddings_provider",
   EMBEDDINGS_MODEL = "embeddings_model",
   CACHE_STATUS = "cache_status",
+  FETCH_LATENCY = "fetch_latency",
+  EMBEDDINGS_LATENCY = "embeddings_latency",
 }
 
 local openai_override = os.getenv("OPENAI_TEST_PORT")
@@ -602,7 +604,7 @@ function _M.post_request(conf, response_object)
     end
 
     if response_object.usage.prompt_tokens and response_object.usage.completion_tokens
-       and conf.model.options and conf.model.options.input_cost and conf.model.options.output_cost then 
+      and conf.model.options and conf.model.options.input_cost and conf.model.options.output_cost then 
         request_analytics_plugin[log_entry_keys.USAGE_CONTAINER][log_entry_keys.COST] = 
           (response_object.usage.prompt_tokens * conf.model.options.input_cost
           + response_object.usage.completion_tokens * conf.model.options.output_cost) / 1000000 -- 1 million
