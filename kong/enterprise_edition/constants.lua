@@ -69,7 +69,7 @@ return {
     "websocket-validator",
     "xml-threat-protection",
     "ai-semantic-prompt-guard",
-    "ai-semantic-caching",
+    "ai-semantic-cache",
     "json-threat-protection",
   },
 

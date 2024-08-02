@@ -336,7 +336,7 @@ function _M:body_filter(conf)
   local kong_ctx_shared = kong.ctx.shared
 
   if kong_ctx_shared.semantic_cache_hit then
-    -- ai-semantic-caching/handler.lua has handled all analytics and etc already
+    -- ai-semantic-cache/handler.lua has handled all analytics and etc already
     return
   end
 

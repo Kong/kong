@@ -451,8 +451,8 @@ local function get_plugins_configs(service)
         }
       },
     },
-    ["ai-semantic-caching"] = {
-      name = "ai-semantic-caching",
+    ["ai-semantic-cache"] = {
+      name = "ai-semantic-cache",
       config = {
         embeddings = {
           provider = "openai",

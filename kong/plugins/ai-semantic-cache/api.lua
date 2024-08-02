@@ -93,9 +93,9 @@ end
 
 
 return {
-  ["/ai-semantic-caching"] = {
+  ["/ai-semantic-cache"] = {
     DELETE = function()
-      for plugin, err in each_by_name(kong.db.plugins, "ai-semantic-caching") do
+      for plugin, err in each_by_name(kong.db.plugins, "ai-semantic-cache") do
         if err then
           return kong.response.exit(500, { message = HTTP_INTERNAL_SERVER_ERROR_MSG })
         end
@@ -109,9 +109,9 @@ return {
       return kong.response.exit(204)
     end
   },
-  ["/ai-semantic-caching/:cache_key"] = {
+  ["/ai-semantic-cache/:cache_key"] = {
     GET = function(self)
-      for plugin, err in each_by_name(kong.db.plugins, "ai-semantic-caching") do
+      for plugin, err in each_by_name(kong.db.plugins, "ai-semantic-cache") do
         if err then
           return kong.response.exit(500, { message = HTTP_INTERNAL_SERVER_ERROR_MSG })
         end
@@ -134,7 +134,7 @@ return {
     end,
 
     DELETE = function(self)
-      for plugin, err in each_by_name(kong.db.plugins, "ai-semantic-caching") do
+      for plugin, err in each_by_name(kong.db.plugins, "ai-semantic-cache") do
         if err then
           return kong.response.exit(500, { message = HTTP_INTERNAL_SERVER_ERROR_MSG })
         end
@@ -153,7 +153,7 @@ return {
       return kong.response.exit(404)
     end,
   },
-  ["/ai-semantic-caching/:plugin_id/caches/:cache_key"] = {
+  ["/ai-semantic-cache/:plugin_id/caches/:cache_key"] = {
     GET = function(self)
       local plugin = get_plugin_by_id(self.params.plugin_id)
 

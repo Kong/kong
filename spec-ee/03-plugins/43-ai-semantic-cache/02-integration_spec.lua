@@ -13,7 +13,7 @@ local http = require("resty.http")
 local split = require "kong.tools.string".split
 local buffer = require("string.buffer")
 
-local PLUGIN_NAME = "ai-semantic-caching"
+local PLUGIN_NAME = "ai-semantic-cache"
 local MOCK_PORT = helpers.get_available_port()
 
 local vectordb = require("kong.llm.vectordb")

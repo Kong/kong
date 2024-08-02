@@ -17,7 +17,7 @@ local vectordb = require("kong.llm.vectordb")
 local REDIS_HOST = os.getenv("KONG_SPEC_TEST_REDIS_STACK_HOST") or "127.0.0.1"
 local REDIS_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_STACK_PORT") or 16379)
 
-local PLUGIN_NAME = "ai-semantic-caching"
+local PLUGIN_NAME = "ai-semantic-cache"
 local PLUGIN_ID = "54f597cb-6703-47ca-8533-30b516edccdc"
 local vector_connector
 
@@ -203,7 +203,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.equals("kong_semantic_cache", split(x_cache_key, ":")[1])
 
         -- try to read it back using admin api
-        local pret, err = admin_client:get(fmt("/ai-semantic-caching/%s", x_cache_key))
+        local pret, err = admin_client:get(fmt("/ai-semantic-cache/%s", x_cache_key))
         assert.is_nil(err)
         assert.equal(200, pret.status)
         
@@ -252,7 +252,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.equals("kong_semantic_cache", split(x_cache_key, ":")[1])
 
         -- try to read it back using admin api
-        local pret, err = admin_client:get(fmt("/ai-semantic-caching/%s/caches/%s", PLUGIN_ID, x_cache_key))
+        local pret, err = admin_client:get(fmt("/ai-semantic-cache/%s/caches/%s", PLUGIN_ID, x_cache_key))
         assert.is_nil(err)
         assert.equal(200, pret.status)
         
@@ -302,12 +302,12 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.equals("kong_semantic_cache", split(x_cache_key, ":")[1])
 
         -- try to delete it using admin api
-        local pret, err = admin_client:delete(fmt("/ai-semantic-caching/%s", x_cache_key))
+        local pret, err = admin_client:delete(fmt("/ai-semantic-cache/%s", x_cache_key))
         assert.is_nil(err)
         assert.equal(204, pret.status)
         
         -- now try to read it back, it should be gone
-        local pret, err = admin_client:get(fmt("/ai-semantic-caching/%s", PLUGIN_ID, x_cache_key))
+        local pret, err = admin_client:get(fmt("/ai-semantic-cache/%s", PLUGIN_ID, x_cache_key))
         assert.is_nil(err)
         assert.equal(404, pret.status)
       end)
@@ -344,12 +344,12 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.equals("kong_semantic_cache", split(x_cache_key, ":")[1])
 
         -- try to delete it using admin api
-        local pret, err = admin_client:delete(fmt("/ai-semantic-caching/%s/caches/%s", PLUGIN_ID, x_cache_key))
+        local pret, err = admin_client:delete(fmt("/ai-semantic-cache/%s/caches/%s", PLUGIN_ID, x_cache_key))
         assert.is_nil(err)
         assert.equal(204, pret.status)
         
         -- now try to read it back, it should be gone
-        local pret, err = admin_client:get(fmt("/ai-semantic-caching/%s/caches/%s", PLUGIN_ID, x_cache_key))
+        local pret, err = admin_client:get(fmt("/ai-semantic-cache/%s/caches/%s", PLUGIN_ID, x_cache_key))
         assert.is_nil(err)
         assert.equal(404, pret.status)
       end)

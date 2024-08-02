@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local PLUGIN_NAME = "ai-semantic-caching"
+local PLUGIN_NAME = "ai-semantic-cache"
 
 local samples = {
   ["llm/v1/chat"] = {
@@ -50,7 +50,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
   setup(function()
     _G._TEST = true
-    package.loaded["kong.plugins.ai-semantic-caching.handler"] = nil
+    package.loaded["kong.plugins.ai-semantic-cache.handler"] = nil
   end)
 
   teardown(function()
@@ -59,8 +59,8 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
   before_each(function()
     _G._TEST = true
-    package.loaded["kong.plugins.ai-semantic-caching.handler"] = nil
-    access_handler = require("kong.plugins.ai-semantic-caching.handler")
+    package.loaded["kong.plugins.ai-semantic-cache.handler"] = nil
+    access_handler = require("kong.plugins.ai-semantic-cache.handler")
   end)
 
   after_each(function()
