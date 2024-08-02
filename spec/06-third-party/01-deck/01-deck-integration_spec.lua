@@ -440,8 +440,8 @@ local function get_plugins_configs(service)
           deny_prompts = { "other" },
         },
         embeddings = {
-          driver = "openai",
-          model = "text-embedding-3-large",
+          provider = "openai",
+          name = "text-embedding-3-large",
         },
         vectordb = {
           dimensions = 1024,
@@ -455,8 +455,8 @@ local function get_plugins_configs(service)
       name = "ai-semantic-caching",
       config = {
         embeddings = {
-          driver = "openai",
-          model = "text-embedding-3-large",
+          provider = "openai",
+          name = "text-embedding-3-large",
         },
         vectordb = {
           dimensions = 1024,

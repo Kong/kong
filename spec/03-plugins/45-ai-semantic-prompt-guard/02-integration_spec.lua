@@ -105,8 +105,8 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         route = { id = permit_history.id },
         config = {
           embeddings = {
-            driver = "mistralai",
-            model = "text-embedding-3-large",
+            provider = "mistralai",
+            name = "text-embedding-3-large",
             upstream_url = "http://127.0.0.1:" .. MOCK_PORT .. "/v1/embeddings",
           },
           vectordb = {
@@ -142,8 +142,8 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         route = { id = block_history.id },
         config = {
           embeddings = {
-            driver = "mistralai",
-            model = "text-embedding-3-large",
+            provider = "mistralai",
+            name = "text-embedding-3-large",
             upstream_url = "http://127.0.0.1:" .. MOCK_PORT .. "/v1/embeddings",
           },
           vectordb = {
@@ -181,8 +181,8 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         route = { id = permit_history_allow_only.id },
         config = {
           embeddings = {
-            driver = "mistralai",
-            model = "text-embedding-3-large",
+            provider = "mistralai",
+            name = "text-embedding-3-large",
             upstream_url = "http://127.0.0.1:" .. MOCK_PORT .. "/v1/embeddings",
           },
           vectordb = {
@@ -214,8 +214,8 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         route = { id = block_history_allow_only.id },
         config = {
           embeddings = {
-            driver = "mistralai",
-            model = "text-embedding-3-large",
+            provider = "mistralai",
+            name = "text-embedding-3-large",
             upstream_url = "http://127.0.0.1:" .. MOCK_PORT .. "/v1/embeddings",
           },
           vectordb = {
@@ -249,8 +249,8 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         route = { id = permit_history_deny_only.id },
         config = {
           embeddings = {
-            driver = "mistralai",
-            model = "text-embedding-3-large",
+            provider = "mistralai",
+            name = "text-embedding-3-large",
             upstream_url = "http://127.0.0.1:" .. MOCK_PORT .. "/v1/embeddings",
           },
           vectordb = {
@@ -281,8 +281,8 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         route = { id = block_history_deny_only.id },
         config = {
           embeddings = {
-            driver = "mistralai",
-            model = "text-embedding-3-large",
+            provider = "mistralai",
+            name = "text-embedding-3-large",
             upstream_url = "http://127.0.0.1:" .. MOCK_PORT .. "/v1/embeddings",
           },
           vectordb = {

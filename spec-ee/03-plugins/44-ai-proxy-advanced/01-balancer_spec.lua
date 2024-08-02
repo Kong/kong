@@ -552,8 +552,8 @@ describe("[least connection balancer]", function()
           strategy = "redis",
         },
         embeddings = {
-          driver = "openai",
-          model = "text-embedding-3-small",
+          provider = "openai",
+          name = "text-embedding-3-small",
           auth = { token = "fake" },
         },
       }))

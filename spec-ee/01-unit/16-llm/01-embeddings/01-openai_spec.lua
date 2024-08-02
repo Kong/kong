@@ -31,8 +31,8 @@ describe("[openai]", function()
     it("can generate embeddings", function()
       openai_mock.setup(finally)
       local embeddings, err = require("kong.ai.embeddings").new({
-        driver = "openai",
-        model = "text-embedding-3-small",
+        provider = "openai",
+        name = "text-embedding-3-small",
         auth = { token = "fake" },
       }, 4)
       assert.is_nil(err)

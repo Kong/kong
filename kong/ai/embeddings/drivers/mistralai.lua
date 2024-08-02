@@ -51,7 +51,7 @@ function Driver:generate(prompt)
 
   local body, err = cjson.encode({
     input           = prompt,
-    model           = self.model,
+    model           = self.name,
     encoding_format = "float",
   })
   if err then

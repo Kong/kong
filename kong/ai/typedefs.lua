@@ -44,9 +44,9 @@ local embeddings = {
   fields   = {
     { auth = auth },
     {
-      driver = {
+      provider = {
         type        = "string",
-        description = "which driver to use for embeddings",
+        description = "which provider to use for embeddings",
         required    = true,
         one_of      = {
           "mistralai",
@@ -55,7 +55,7 @@ local embeddings = {
       },
     },
     {
-      model = {
+      name = {
         type        = "string",
         description = "which AI model to use for generating embeddings",
         required    = true,

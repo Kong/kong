@@ -195,8 +195,8 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                   auth = {
                     token = TEST_SCENARIO.embeddings_config == "bad_unauthorized" and "wrong-key" or "openai-key",
                   },
-                  driver = "openai",
-                  model = "text-embedding-3-large",
+                  provider = "openai",
+                  name = "text-embedding-3-large",
                   upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/" .. TEST_SCENARIO.embeddings_response,
                 },
                 vectordb = {

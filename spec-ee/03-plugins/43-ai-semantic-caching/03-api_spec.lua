@@ -81,8 +81,8 @@ local EMBEDDINGS_SETUP = {
   auth = {
     token = "kong-key",
   },
-  driver = "openai",
-  model = "text-embedding-3-large",
+  provider = "openai",
+  name = "text-embedding-3-large",
   upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/embeddings",
 }
 
