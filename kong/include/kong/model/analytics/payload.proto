@@ -124,6 +124,7 @@ message AiInfo {
   string plugin_name = 1;
   AIMetaData meta = 2;
   AIUsageInfo usage = 3;
+  AICacheInfo cache = 4;
 }
 
 message AIMetaData {
@@ -131,6 +132,7 @@ message AIMetaData {
   string provider_name = 2;
   string request_model = 3;
   string response_model = 4;
+  uint32 llm_latency = 5;
 }
 
 message AIUsageInfo {
@@ -138,4 +140,13 @@ message AIUsageInfo {
   uint32 completion_tokens = 2;
   uint32 total_tokens = 3;
   double cost = 4;
+  uint32 time_per_token = 5;
+}
+
+message AICacheInfo {
+  string cache_status = 1;
+  string embeddings_provider = 2;
+  string embeddings_model = 3;
+  uint32 fetch_latency = 4;
+  uint32 embeddings_latency = 5;
 }

@@ -141,14 +141,22 @@ local request_log = {
         provider_name = 'openai',
         request_model = 'gpt-3.5-turbo',
         response_model = 'gpt-3.5-turbo-0613',
+        llm_latency = 3402,
       },
       usage = {
-        prompt_tokens = 25,
-        completion_tokens = 12,
-        total_tokens = 37,
-        cost = 0.00037,
+        prompt_tokens = 0,
+        completion_tokens = 0,
+        total_tokens = 0,
+        cost = 0,
+        time_per_token = 136,
       },
-      cache = {}
+      cache = {
+        embeddings_model = "text-embedding-3-small",
+        cache_status = "Hit",
+        fetch_latency = 452,
+        embeddings_latency = 424,
+        embeddings_provider = "openai",
+      }
     },
     ["ai-request-transformer"] = {
       meta = {
@@ -156,14 +164,22 @@ local request_log = {
         provider_name = 'cohere',
         request_model = 'command',
         response_model = 'command',
+        llm_latency = 3402,
       },
       usage = {
         prompt_tokens = 40,
         completion_tokens = 25,
         total_tokens = 65,
         cost = 0.00057,
+        time_per_token = 136,
       },
-      cache = {}
+      cache = {
+        embeddings_model = "text-embedding-3-small",
+        cache_status = "Hit",
+        fetch_latency = 452,
+        embeddings_latency = 424,
+        embeddings_provider = "openai",
+      },
     },
   },
 }
@@ -359,12 +375,21 @@ describe("extract request log properly", function()
             provider_name = 'openai',
             request_model = 'gpt-3.5-turbo',
             response_model = 'gpt-3.5-turbo-0613',
+            llm_latency = 3402,
           },
           usage = {
-            prompt_tokens = 25,
-            completion_tokens = 12,
-            total_tokens = 37,
-            cost = 0.00037,
+            prompt_tokens = 0,
+            completion_tokens = 0,
+            total_tokens = 0,
+            cost = 0,
+            time_per_token = 136,
+          },
+          cache = {
+            embeddings_model = "text-embedding-3-small",
+            cache_status = "Hit",
+            fetch_latency = 452,
+            embeddings_latency = 424,
+            embeddings_provider = "openai",
           }
         },
         {
@@ -374,13 +399,23 @@ describe("extract request log properly", function()
             provider_name = 'cohere',
             request_model = 'command',
             response_model = 'command',
+            llm_latency = 3402,
           },
           usage = {
             prompt_tokens = 40,
             completion_tokens = 25,
             total_tokens = 65,
             cost = 0.00057,
-          }
+            time_per_token = 136,
+          },
+          cache = {
+            embeddings_model = "text-embedding-3-small",
+            cache_status = "Hit",
+            fetch_latency = 452,
+            embeddings_latency = 424,
+            embeddings_provider = "openai",
+          },
+
         }
       },
     }
@@ -486,12 +521,21 @@ describe("extract request log properly", function()
             provider_name = 'openai',
             request_model = 'gpt-3.5-turbo',
             response_model = 'gpt-3.5-turbo-0613',
+            llm_latency = 3402,
           },
           usage = {
-            prompt_tokens = 25,
-            completion_tokens = 12,
-            total_tokens = 37,
-            cost = 0.00037,
+            prompt_tokens = 0,
+            completion_tokens = 0,
+            total_tokens = 0,
+            cost = 0,
+            time_per_token = 136,
+          },
+          cache = {
+            embeddings_model = "text-embedding-3-small",
+            cache_status = "Hit",
+            fetch_latency = 452,
+            embeddings_latency = 424,
+            embeddings_provider = "openai",
           }
         },
         {
@@ -501,13 +545,22 @@ describe("extract request log properly", function()
             provider_name = 'cohere',
             request_model = 'command',
             response_model = 'command',
+            llm_latency = 3402,
           },
           usage = {
             prompt_tokens = 40,
             completion_tokens = 25,
             total_tokens = 65,
             cost = 0.00057,
-          }
+            time_per_token = 136,
+          },
+          cache = {
+            embeddings_model = "text-embedding-3-small",
+            cache_status = "Hit",
+            fetch_latency = 452,
+            embeddings_latency = 424,
+            embeddings_provider = "openai",
+          },
         }
       },
     }
@@ -645,12 +698,21 @@ describe("extract request log properly", function()
             provider_name = 'openai',
             request_model = 'gpt-3.5-turbo',
             response_model = 'gpt-3.5-turbo-0613',
+            llm_latency = 3402,
           },
           usage = {
-            prompt_tokens = 25,
-            completion_tokens = 12,
-            total_tokens = 37,
-            cost = 0.00037,
+            prompt_tokens = 0,
+            completion_tokens = 0,
+            total_tokens = 0,
+            cost = 0,
+            time_per_token = 136,
+          },
+          cache = {
+            embeddings_model = "text-embedding-3-small",
+            cache_status = "Hit",
+            fetch_latency = 452,
+            embeddings_latency = 424,
+            embeddings_provider = "openai",
           }
         },
         {
@@ -660,13 +722,22 @@ describe("extract request log properly", function()
             provider_name = 'cohere',
             request_model = 'command',
             response_model = 'command',
+            llm_latency = 3402,
           },
           usage = {
             prompt_tokens = 40,
             completion_tokens = 25,
             total_tokens = 65,
             cost = 0.00057,
-          }
+            time_per_token = 136,
+          },
+          cache = {
+            embeddings_model = "text-embedding-3-small",
+            cache_status = "Hit",
+            fetch_latency = 452,
+            embeddings_latency = 424,
+            embeddings_provider = "openai",
+          },
         }
       },
     }

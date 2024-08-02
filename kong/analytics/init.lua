@@ -627,7 +627,8 @@ function _M:transform_ai_data(ai_data)
       table.insert(transformed_ai_data, {
           plugin_name = plugin_name,
           usage = plugin_ai_data.usage,
-          meta = plugin_ai_data.meta
+          meta = plugin_ai_data.meta,
+          cache = plugin_ai_data.cache,
       })
   end
 

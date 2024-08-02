@@ -1,0 +1,3 @@
+message: '**analytics**: send AI analytics about latency and caching to Konnect.'
+type: feature
+scope: Core
