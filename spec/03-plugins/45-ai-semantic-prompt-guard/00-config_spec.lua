@@ -145,7 +145,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
     assert.is_falsy(ok)
     assert.not_nil(err)
-    assert.same({ config = { embeddings = { ["@entity"] = {"failed conditional validation given value of field 'driver'"}, upstream_url = "value must be null"}, rules = {allow_prompts = { [1] = "length must be at most 500" }}}}, err)
+    assert.same({ config = { rules = {allow_prompts = { [1] = "length must be at most 500" }}}}, err)
   end)
 
   it("won't allow too many array items", function()

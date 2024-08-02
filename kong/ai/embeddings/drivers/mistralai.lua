@@ -42,7 +42,8 @@ end
 -- @return the API response containing the embeddings
 -- @return nothing. throws an error if any
 function Driver:generate(prompt)
-  if not self.auth or not self.auth.token then
+  -- allow auth to skip for custom upstream_url
+  if not self.upstream_url and (not self.auth or not self.auth.token) then
     return nil, "Authorization is not defined for the mistralai driver"
   end
 
