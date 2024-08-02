@@ -19,6 +19,11 @@ local GCP_SERVICE_ACCOUNT do
 end
 
 local GCP = require("resty.gcp.request.credentials.accesstoken")
+local aws_config = require "resty.aws.config"  -- reads environment variables whilst available
+local AWS = require("resty.aws")
+local AWS_REGION do
+  AWS_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")
+end
 --
 
 
@@ -62,31 +67,44 @@ local _KEYBASTION = setmetatable({}, {
 
       return { interface = nil, error = "cloud-authentication with GCP failed" }
 
-    -- [[ EE
-    elseif plugin_config.model.provider == "azure" 
-        and plugin_config.auth.azure_use_managed_identity then
-      ngx.log(ngx.NOTICE, "loading azure sdk for plugin ", kong.plugin.get_id())
+    elseif plugin_config.model.provider == "bedrock" then
+      ngx.log(ngx.NOTICE, "loading aws sdk for plugin ", kong.plugin.get_id())
+      local aws
 
-      local azure_client = require("resty.azure"):new({
-        client_id = plugin_config.auth.azure_client_id,
-        client_secret = plugin_config.auth.azure_client_secret,
-        tenant_id = plugin_config.auth.azure_tenant_id,
-        token_scope = "https://cognitiveservices.azure.com/.default",
-        token_version = "v2.0",
-      })
+      local region = plugin_config.model.options
+                 and plugin_config.model.options.bedrock
+                 and plugin_config.model.options.bedrock.aws_region
+                  or AWS_REGION
 
-      local _, err = azure_client.authenticate()
-      if not err then
-        -- store our item for the next time we need it
-        this_cache[plugin_config] = { interface = azure_client, error = nil }
-        return this_cache[plugin_config]
+      if not region then
+        return { interface = nil, error = "AWS region not specified anywhere" }
       end
 
-      kong.log.err("failed to authenticate with Azure OpenAI: ", err)
-      return { interface = nil, error = "managed identity auth with Azure OpenAI failed" }
-    end
-    -- ]]
+      local access_key_set = (plugin_config.auth and plugin_config.auth.aws_access_key_id)
+                          or aws_config.global.AWS_ACCESS_KEY_ID
+      local secret_key_set = plugin_config.auth and plugin_config.auth.aws_secret_access_key
+                          or aws_config.global.AWS_SECRET_ACCESS_KEY
 
+      aws = AWS({
+        -- if any of these are nil, they either use the SDK default or
+        -- are deliberately null so that a different auth chain is used
+        region = region,
+      })
+
+      if access_key_set and secret_key_set then
+        -- Override credential config according to plugin config, if set
+        local creds = aws:Credentials {
+          accessKeyId = access_key_set,
+          secretAccessKey = secret_key_set,
+        }
+
+        aws.config.credentials = creds
+      end
+
+      this_cache[plugin_config] = { interface = aws, error = nil }
+
+      return this_cache[plugin_config]
+    end
   end,
 })
 
@@ -129,8 +147,7 @@ local function handle_streaming_frame(conf)
       chunk = kong_utils.inflate_gzip(ngx.arg[1])
     end
 
-    local is_raw_json = conf.model.provider == "gemini"
-    local events = ai_shared.frame_to_events(chunk, is_raw_json )
+    local events = ai_shared.frame_to_events(chunk, conf.model.provider)
 
     if not events then
       -- usually a not-supported-transformer or empty frames.
@@ -156,8 +173,8 @@ local function handle_streaming_frame(conf)
       local err
 
       if formatted then  -- only stream relevant frames back to the user
-        if formatted ~= "[DONE]" then
-          -- append the "choice" to the buffer, for logging later
+        if conf.logging and conf.logging.log_payloads and (formatted ~= ai_shared._CONST.SSE_TERMINATOR) then
+          -- append the "choice" to the buffer, for logging later. this actually works!
           if not event_t then
             event_t, err = cjson.decode(formatted)
           end
@@ -178,7 +195,7 @@ local function handle_streaming_frame(conf)
         -- handle event telemetry
         if conf.logging and conf.logging.log_statistics then
           if not ai_shared.streaming_has_token_counts[conf.model.provider] then
-            if formatted ~= "[DONE]" then
+            if formatted ~= ai_shared._CONST.SSE_TERMINATOR then
               if not event_t then
                 event_t, err = cjson.decode(formatted)
               end
@@ -201,18 +218,24 @@ local function handle_streaming_frame(conf)
 
         framebuffer:put("data: ")
         framebuffer:put(formatted or "")
-        framebuffer:put((formatted ~= "[DONE]") and "\n\n" or "")
+        framebuffer:put((formatted ~= ai_shared._CONST.SSE_TERMINATOR) and "\n\n" or "")
       end
 
       if conf.logging and conf.logging.log_statistics and metadata then
-        kong_ctx_plugin.ai_stream_completion_tokens =
-          (kong_ctx_plugin.ai_stream_completion_tokens or 0) +
-          (metadata.completion_tokens or 0)
-          or kong_ctx_plugin.ai_stream_completion_tokens
-        kong_ctx_plugin.ai_stream_prompt_tokens =
-          (kong_ctx_plugin.ai_stream_prompt_tokens or 0) +
-          (metadata.prompt_tokens or 0)
-          or kong_ctx_plugin.ai_stream_prompt_tokens
+        -- gemini metadata specifically, works differently
+        if conf.model.provider == "gemini" then
+          kong_ctx_plugin.ai_stream_completion_tokens = metadata.completion_tokens or 0
+          kong_ctx_plugin.ai_stream_prompt_tokens = metadata.prompt_tokens or 0
+        else
+          kong_ctx_plugin.ai_stream_completion_tokens =
+            (kong_ctx_plugin.ai_stream_completion_tokens or 0) +
+            (metadata.completion_tokens or 0)
+            or kong_ctx_plugin.ai_stream_completion_tokens
+          kong_ctx_plugin.ai_stream_prompt_tokens =
+            (kong_ctx_plugin.ai_stream_prompt_tokens or 0) +
+            (metadata.prompt_tokens or 0)
+            or kong_ctx_plugin.ai_stream_prompt_tokens
+        end
       end
     end
   end
@@ -245,9 +268,6 @@ local function handle_streaming_frame(conf)
 end
 
 function _M:header_filter(conf)
-  -- free up the buffered body used in the access phase
-  kong.ctx.shared.ai_request_body = nil
-
   local kong_ctx_plugin = kong.ctx.plugin
   local kong_ctx_shared = kong.ctx.shared
 
@@ -329,8 +349,10 @@ function _M:body_filter(conf)
 
   if kong_ctx_shared.skip_response_transformer and (route_type ~= "preserve") then
     local response_body
+
     if kong_ctx_shared.parsed_response then
       response_body = kong_ctx_shared.parsed_response
+
     elseif kong.response.get_status() == 200 then
       response_body = kong.service.response.get_raw_body()
       if not response_body then
@@ -349,6 +371,7 @@ function _M:body_filter(conf)
 
     if err then
       kong.log.warn("issue when transforming the response body for analytics in the body filter phase, ", err)
+
     elseif new_response_string then
       ai_shared.post_request(conf, new_response_string)
     end

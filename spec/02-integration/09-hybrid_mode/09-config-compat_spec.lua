@@ -569,7 +569,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
     end)
 
     describe("ai plugins supported providers", function()
-      it("[ai-proxy] tries to use unsupported gemini on older Kong versions", function()
+      it("[ai-proxy] tries to use unsupported providers on older Kong versions", function()
         -- [[ 3.8.x ]] --
         local ai_proxy = admin.plugins:insert {
           name = "ai-proxy",
@@ -603,10 +603,20 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
         local expected = cycle_aware_deep_copy(ai_proxy)
 
+        -- max body size
         expected.config.max_request_body_size = nil
+
+        -- gemini fields
         expected.config.auth.gcp_service_account_json = nil
         expected.config.auth.gcp_use_service_account = nil
         expected.config.model.options.gemini = nil
+
+        -- bedrock fields
+        expected.config.auth.aws_access_key_id = nil
+        expected.config.auth.aws_secret_access_key = nil
+        expected.config.model.options.bedrock = nil
+
+        -- 'ai fallback' field sets
         expected.config.route_type = "preserve"
         expected.config.model.provider = "openai"
 
@@ -626,7 +636,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         admin.plugins:remove({ id = ai_proxy.id })
       end)
 
-      it("[ai-request-transformer] tries to use unsupported gemini on older Kong versions", function()
+      it("[ai-request-transformer] tries to use unsupported providers on older Kong versions", function()
         -- [[ 3.8.x ]] --
         local ai_request_transformer = admin.plugins:insert {
           name = "ai-request-transformer",
@@ -662,10 +672,20 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
         local expected = cycle_aware_deep_copy(ai_request_transformer)
 
+        -- max body size
         expected.config.max_request_body_size = nil
+
+        -- gemini fields
         expected.config.llm.auth.gcp_service_account_json = nil
         expected.config.llm.auth.gcp_use_service_account = nil
         expected.config.llm.model.options.gemini = nil
+
+        -- bedrock fields
+        expected.config.llm.auth.aws_access_key_id = nil
+        expected.config.llm.auth.aws_secret_access_key = nil
+        expected.config.llm.model.options.bedrock = nil
+
+        -- 'ai fallback' field sets
         expected.config.llm.model.provider = "openai"
 
         do_assert(uuid(), "3.7.0", expected)
@@ -683,7 +703,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         admin.plugins:remove({ id = ai_request_transformer.id })
       end)
 
-      it("[ai-response-transformer] tries to use unsupported gemini on older Kong versions", function()
+      it("[ai-response-transformer] tries to use unsupported providers on older Kong versions", function()
         -- [[ 3.8.x ]] --
         local ai_response_transformer = admin.plugins:insert {
           name = "ai-response-transformer",
@@ -719,10 +739,20 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
         local expected = cycle_aware_deep_copy(ai_response_transformer)
 
+        -- max body size
         expected.config.max_request_body_size = nil
+
+        -- gemini fields
         expected.config.llm.auth.gcp_service_account_json = nil
         expected.config.llm.auth.gcp_use_service_account = nil
         expected.config.llm.model.options.gemini = nil
+
+        -- bedrock fields
+        expected.config.llm.auth.aws_access_key_id = nil
+        expected.config.llm.auth.aws_secret_access_key = nil
+        expected.config.llm.model.options.bedrock = nil
+
+        -- 'ai fallback' field sets
         expected.config.llm.model.provider = "openai"
 
         do_assert(uuid(), "3.7.0", expected)
@@ -770,10 +800,18 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
         local expected = cycle_aware_deep_copy(ai_proxy)
 
+        -- max body size
         expected.config.max_request_body_size = nil
+
+        -- gemini fields
         expected.config.auth.gcp_service_account_json = nil
         expected.config.auth.gcp_use_service_account = nil
         expected.config.model.options.gemini = nil
+
+        -- bedrock fields
+        expected.config.auth.aws_access_key_id = nil
+        expected.config.auth.aws_secret_access_key = nil
+        expected.config.model.options.bedrock = nil
 
         do_assert(uuid(), "3.7.0", expected)
 
@@ -824,10 +862,18 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
         local expected = cycle_aware_deep_copy(ai_request_transformer)
 
+        -- max body size
         expected.config.max_request_body_size = nil
+
+        -- gemini fields
         expected.config.llm.auth.gcp_service_account_json = nil
         expected.config.llm.auth.gcp_use_service_account = nil
         expected.config.llm.model.options.gemini = nil
+
+        -- bedrock fields
+        expected.config.llm.auth.aws_access_key_id = nil
+        expected.config.llm.auth.aws_secret_access_key = nil
+        expected.config.llm.model.options.bedrock = nil
 
         do_assert(uuid(), "3.7.0", expected)
 
@@ -873,10 +919,18 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
         local expected = cycle_aware_deep_copy(ai_response_transformer)
 
+        -- max body size
         expected.config.max_request_body_size = nil
+
+        -- gemini fields
         expected.config.llm.auth.gcp_service_account_json = nil
         expected.config.llm.auth.gcp_use_service_account = nil
         expected.config.llm.model.options.gemini = nil
+
+        -- bedrock fields
+        expected.config.llm.auth.aws_access_key_id = nil
+        expected.config.llm.auth.aws_secret_access_key = nil
+        expected.config.llm.model.options.bedrock = nil
 
         do_assert(uuid(), "3.7.0", expected)
 

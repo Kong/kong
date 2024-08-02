@@ -232,7 +232,7 @@ local function handle_stream_event(event_t, model_info, route_type)
     return delta_to_event(event_data, model_info)
 
   elseif event_id == "message_stop" then
-    return "[DONE]", nil, nil
+    return ai_shared._CONST.SSE_TERMINATOR, nil, nil
 
   elseif event_id == "ping" then
     return nil, nil, nil

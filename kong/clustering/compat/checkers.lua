@@ -21,7 +21,7 @@ local ngx_WARN = ngx.WARN
 local _log_prefix = "[clustering] "
 
 
-local log_warn_message
+local log_warn_message, _AI_PROVIDER_INCOMPATIBLE
 do
   local fmt = string.format
 
@@ -34,8 +34,24 @@ do
                     KONG_VERSION, hint, dp_version, action)
     ngx_log(ngx_WARN, _log_prefix, msg, log_suffix)
   end
-end
 
+  local _AI_PROVIDERS_ADDED = {
+    [3008000000] = {
+      "gemini",
+      "bedrock",
+    },
+  }
+
+  _AI_PROVIDER_INCOMPATIBLE = function(provider, ver)
+    for _, v in ipairs(_AI_PROVIDERS_ADDED[ver]) do
+      if v == provider then
+        return true
+      end
+    end
+
+    return false
+  end
+end
 
 local compatible_checkers = {
   { 3008000000, --[[ 3.8.0.0 ]]
@@ -116,37 +132,43 @@ local compatible_checkers = {
 
         if plugin.name == 'ai-proxy' then
           local config = plugin.config
-          if config.model.provider == "gemini" then
+          if _AI_PROVIDER_INCOMPATIBLE(config.model.provider, 3008000000) then
+            log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
+            ' "openai preserve mode", because ' .. config.model.provider .. ' provider ' ..
+            ' is not supported in this release',
+            dp_version, log_suffix)
+
             config.model.provider = "openai"
             config.route_type = "preserve"
-            log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
-                              ' "openai preserve mode", because gemini' ..
-                              ' provider is not supported in this release',
-                              dp_version, log_suffix)
+
             has_update = true
           end
         end
 
         if plugin.name == 'ai-request-transformer' then
           local config = plugin.config
-          if config.llm.model.provider == "gemini" then
-            config.llm.model.provider = "openai"
+          if _AI_PROVIDER_INCOMPATIBLE(config.llm.model.provider, 3008000000) then
             log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
-                              ' "openai preserve mode", because gemini' ..
-                              ' provider is not supported in this release',
-                              dp_version, log_suffix)
+            ' "openai preserve mode", because ' .. config.llm.model.provider .. ' provider ' ..
+            ' is not supported in this release',
+            dp_version, log_suffix)
+
+            config.llm.model.provider = "openai"
+
             has_update = true
           end
         end
 
         if plugin.name == 'ai-response-transformer' then
           local config = plugin.config
-          if config.llm.model.provider == "gemini" then
-            config.llm.model.provider = "openai"
+          if _AI_PROVIDER_INCOMPATIBLE(config.llm.model.provider, 3008000000) then
             log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
-                              ' "openai preserve mode", because gemini' ..
-                              ' provider is not supported in this release',
-                              dp_version, log_suffix)
+            ' "openai preserve mode", because ' .. config.llm.model.provider .. ' provider ' ..
+            ' is not supported in this release',
+            dp_version, log_suffix)
+
+            config.llm.model.provider = "openai"
+
             has_update = true
           end
         end

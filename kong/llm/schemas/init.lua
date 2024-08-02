@@ -10,6 +10,19 @@ local typedefs = require("kong.db.schema.typedefs")
 local fmt = string.format
 
 
+local bedrock_options_schema = {
+  type = "record",
+  required = false,
+  fields = {
+    { aws_region = {
+      description = "If using AWS providers (Bedrock) you can override the `AWS_REGION` " ..
+                    "environment variable by setting this option.",
+      type = "string",
+      required = false }},
+  },
+}
+
+
 local gemini_options_schema = {
   type = "record",
   required = false,
@@ -116,6 +129,22 @@ local auth_schema = {
         required = false,
         encrypted = true,  -- [[ ee declaration ]]
         referenceable = true }},
+    { aws_access_key_id = {
+        type = "string",
+        description = "Set this if you are using an AWS provider (Bedrock) and you are authenticating " ..
+                      "using static IAM User credentials. Setting this will override the AWS_ACCESS_KEY_ID " ..
+                      "environment variable for this plugin instance.",
+        required = false,
+        encrypted = true,
+        referenceable = true }},
+    { aws_secret_access_key = {
+        type = "string",
+        description = "Set this if you are using an AWS provider (Bedrock) and you are authenticating " ..
+                      "using static IAM User credentials. Setting this will override the AWS_SECRET_ACCESS_KEY " ..
+                      "environment variable for this plugin instance.",
+        required = false,
+        encrypted = true,
+        referenceable = true }},
   }
 }
 
@@ -192,6 +221,7 @@ local model_options_schema = {
         type = "string",
         required = false }},
     { gemini = gemini_options_schema },
+    { bedrock = bedrock_options_schema },
   }
 }
 
@@ -205,7 +235,7 @@ local model_schema = {
         type = "string", description = "AI provider request format - Kong translates "
                                     .. "requests to and from the specified backend compatible formats.",
         required = true,
-        one_of = { "openai", "azure", "anthropic", "cohere", "mistral", "llama2", "gemini" }}},
+        one_of = { "openai", "azure", "anthropic", "cohere", "mistral", "llama2", "gemini", "bedrock" }}},
     { name = {
         type = "string",
         description = "Model name to execute.",

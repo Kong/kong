@@ -324,6 +324,8 @@ build = {
     ["kong.tools.public.rate-limiting.strategies.redis"] = "kong/tools/public/rate-limiting/strategies/redis.lua",
     ["kong.tools.json-schema.draft4"] = "kong/tools/json-schema/draft4/init.lua",
 
+    ["kong.tools.aws_stream"] = "kong/tools/aws_stream.lua",
+
     -- XXX merge - files added or modified by enterprise, all of which no longer exist
     -- upstream (in 0.15.0)
     ["kong.enterprise_edition.db.migrations.enterprise"] = "kong/enterprise_edition/db/migrations/enterprise/init.lua",
@@ -352,7 +354,6 @@ build = {
     ["kong.enterprise_edition.db.migrations.enterprise.019_3500_to_3600"] = "kong/enterprise_edition/db/migrations/enterprise/019_3500_to_3600.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.020_3600_to_3700"] = "kong/enterprise_edition/db/migrations/enterprise/020_3600_to_3700.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.021_3700_to_3800"] = "kong/enterprise_edition/db/migrations/enterprise/021_3700_to_3800.lua",
-
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.events"] = "kong/runloop/events.lua",
@@ -923,12 +924,12 @@ build = {
     ["kong.llm.drivers.anthropic"] = "kong/llm/drivers/anthropic.lua",
     ["kong.llm.drivers.mistral"] = "kong/llm/drivers/mistral.lua",
     ["kong.llm.drivers.llama2"] = "kong/llm/drivers/llama2.lua",
+    ["kong.llm.drivers.gemini"] = "kong/llm/drivers/gemini.lua",
+    ["kong.llm.drivers.bedrock"] = "kong/llm/drivers/bedrock.lua",
     ["kong.llm.vectordb"] = "kong/llm/vectordb/init.lua",
     ["kong.llm.vectordb.strategies.redis"] = "kong/llm/vectordb/strategies/redis/init.lua",
     ["kong.llm.vectordb.strategies.redis.utils"] = "kong/llm/vectordb/strategies/redis/utils.lua",
     ["kong.llm.proxy.handler"] = "kong/llm/proxy/handler.lua",
-
-    ["kong.llm.drivers.gemini"] = "kong/llm/drivers/gemini.lua",
 
     ["kong.plugins.ai-prompt-template.handler"] = "kong/plugins/ai-prompt-template/handler.lua",
     ["kong.plugins.ai-prompt-template.schema"]  = "kong/plugins/ai-prompt-template/schema.lua",

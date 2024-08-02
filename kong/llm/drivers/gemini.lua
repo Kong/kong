@@ -48,30 +48,32 @@ local function is_response_content(content)
         and content.candidates[1].content.parts[1].text
 end
 
-local function is_response_finished(content)
-  return content
-     and content.candidates
-     and #content.candidates > 0
-     and content.candidates[1].finishReason
-end
-
-local function handle_stream_event(event_t, model_info, route_type)  
+local function handle_stream_event(event_t, model_info, route_type)
   -- discard empty frames, it should either be a random new line, or comment
   if (not event_t.data) or (#event_t.data < 1) then
     return
   end
-  
+
+  if event_t.data == ai_shared._CONST.SSE_TERMINATOR then
+    return ai_shared._CONST.SSE_TERMINATOR, nil, nil
+  end
+
   local event, err = cjson.decode(event_t.data)
   if err then
     ngx.log(ngx.WARN, "failed to decode stream event frame from gemini: " .. err)
     return nil, "failed to decode stream event frame from gemini", nil
   end
 
-  local new_event
-  local metadata = nil
-
   if is_response_content(event) then
-    new_event = {
+    local metadata = {}
+    metadata.finished_reason   = event.candidates
+                             and #event.candidates > 0
+                             and event.candidates[1].finishReason
+                             or "STOP"
+    metadata.completion_tokens = event.usageMetadata and event.usageMetadata.candidatesTokenCount or 0
+    metadata.prompt_tokens     = event.usageMetadata and event.usageMetadata.promptTokenCount or 0
+
+    local new_event = {
       choices = {
         [1] = {
           delta = {
@@ -82,28 +84,8 @@ local function handle_stream_event(event_t, model_info, route_type)
         },
       },
     }
-  end
 
-  if is_response_finished(event) then
-    metadata = metadata or {}
-    metadata.finished_reason = event.candidates[1].finishReason
-    new_event = "[DONE]"
-  end
-
-  if event.usageMetadata then
-    metadata = metadata or {}
-    metadata.completion_tokens = event.usageMetadata.candidatesTokenCount or 0
-    metadata.prompt_tokens     = event.usageMetadata.promptTokenCount or 0
-  end
-  
-  if new_event then
-    if new_event ~= "[DONE]" then
-      new_event = cjson.encode(new_event)
-    end
-
-    return new_event, nil, metadata
-  else
-    return nil, nil, metadata  -- caller code will handle "unrecognised" event types
+    return cjson.encode(new_event), nil, metadata
   end
 end
 
@@ -212,6 +194,15 @@ local function from_gemini_chat_openai(response, model_info, route_type)
     }
     messages.object = "chat.completion"
     messages.model = model_info.name
+
+    -- process analytics
+    if response.usageMetadata then
+      messages.usage = {
+        prompt_tokens = response.usageMetadata.promptTokenCount,
+        completion_tokens = response.usageMetadata.candidatesTokenCount,
+        total_tokens = response.usageMetadata.totalTokenCount,
+      }
+    end
 
   else -- probably a server fault or other unexpected response
     local err = "no generation candidates received from Gemini, or max_tokens too short"
