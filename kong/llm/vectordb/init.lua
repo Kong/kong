@@ -114,7 +114,7 @@ end
 -- Get an entry by pk.
 --
 -- @tparam string the primary key of the entry to delete
--- @tparam table[opt] metadata_out if passed a table the table will be fill with metadata of the `get` result
+-- @tparam table[opt] metadata_out if passed a table the table will be fill with metadata of the search result
 -- @treturn string|number|table|nil the payload, if any
 -- @treturn string error message if any
 function _M:get(pk, metadata_out)

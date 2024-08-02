@@ -103,7 +103,7 @@ local function database_setup(namespace, redis_config, connector_config)
   })
 
   if err then
-    return false, "failed to create index: " .. err
+    return false, "failed to create index: " .. (err or "unknown error")
   end
 
   return true, nil
@@ -258,6 +258,17 @@ function Redis:delete(key)
   return redis_op(self.config, "JSON.DEL", key)
 end
 
+-- Drop an index
+--
+-- @param drop_records boolean whether to also drop the keys associated with the index
+-- @treturn boolean indicating success
+-- @treturn string error message if any
+function Redis:drop_index(drop_records)
+  local params = drop_records and { "DD" } or {}
+  local key = full_index_name(self.namespace)
+
+  return redis_op(self.config, "FT.DROPINDEX", key, params)
+end
 
 -- Get a cache entry for a given vector and payload.
 --
@@ -271,12 +282,18 @@ function Redis:get(key, metadata_out)
     return nil, "failed to get key: " .. err
   end
 
+  if not res or res == cjson.null or res == ngx.null then
+    return nil, nil
+  end
+
   res, err = cjson.decode(res)
   if err then
     return nil, "failed to decode payload: " .. err
   end
 
   if type(metadata_out) == "table" then
+    metadata_out.key = key
+
     local ttl, err = redis_op(self.config, "ttl", key)
     if err then
       kong.log.warn("error when retrieving ttl of key: ", err)
