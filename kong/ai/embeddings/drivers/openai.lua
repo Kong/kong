@@ -15,11 +15,7 @@ local http = require("resty.http")
 local deep_copy = require("kong.tools.table").deep_copy
 local gzip = require("kong.tools.gzip")
 
---
--- vars
---
-
-local embeddings_url = "https://api.openai.com/v1/embeddings"
+local OPENAI_EMBEDDINGS_URL = "https://api.openai.com/v1/embeddings"
 
 --
 -- driver object
@@ -28,6 +24,14 @@ local embeddings_url = "https://api.openai.com/v1/embeddings"
 -- Driver is an interface for a openai embeddings driver.
 local Driver = {}
 Driver.__index = Driver
+
+local function good_embeddings(r)
+  return r
+     and r.data
+     and type(r.data) == "table"
+     and #r.data > 0
+     and r.data[1].embedding
+end
 
 -- Constructs a new Driver
 --
@@ -46,6 +50,12 @@ end
 -- @return the API response containing the embeddings
 -- @return nothing. throws an error if any
 function Driver:generate(prompt)
+  if not self.auth or not self.auth.token then
+    return nil, "Authorization is not defined for the openai driver"
+  end
+
+  local embeddings_url = self.upstream_url or OPENAI_EMBEDDINGS_URL
+
   -- prepare prompt for embedding generation
   local body, err = cjson.encode({
     input      = prompt,
@@ -61,12 +71,13 @@ function Driver:generate(prompt)
     ssl_verify = true,
     ssl_cafile = kong.configuration.lua_ssl_trusted_certificate_combined,
   })
+
   local res, err = httpc:request_uri(embeddings_url, {
     method = "POST",
     headers = {
       ["Content-Type"]    = "application/json",
       ["Accept-Encoding"] = "gzip", -- explicitly set because OpenAI likes to change this
-      ["Authorization"]   = self.auth.token,
+      ["Authorization"]   = "Bearer " .. (self.auth and self.auth.token),
     },
     body = body,
   })
@@ -78,8 +89,12 @@ function Driver:generate(prompt)
   end
 
   -- decompress the embeddings response
-  local inflated_body = gzip.inflate_gzip(res.body)
-  local embedding_response, err = cjson.decode(inflated_body)
+  local res_body = res.body
+  if res.headers["Content-Encoding"] and res.headers["Content-Encoding"] == "gzip" then
+    res_body = gzip.inflate_gzip(res_body)
+  end
+
+  local embedding_response, err = cjson.decode(res_body)
   if err then
     return nil, err
   end
@@ -87,6 +102,10 @@ function Driver:generate(prompt)
   -- validate if there are embeddings in the response
   if #embedding_response.data == 0 then
     return nil, "no embeddings found in response"
+  end
+
+  if not good_embeddings(embedding_response) then
+    return nil, "embeddings response does not contain any vectors"
   end
 
   return embedding_response.data[1].embedding, nil

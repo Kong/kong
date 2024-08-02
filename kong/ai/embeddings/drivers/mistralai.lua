@@ -15,11 +15,7 @@ local http = require("resty.http")
 local deep_copy = require("kong.tools.table").deep_copy
 local gzip = require("kong.tools.gzip")
 
---
--- vars
---
-
-local embeddings_url = "https://api.mistral.ai/v1/embeddings"
+local MISTRALAI_EMBEDDINGS_URL = "https://api.mistral.ai/v1/embeddings"
 
 --
 -- driver object
@@ -46,6 +42,12 @@ end
 -- @return the API response containing the embeddings
 -- @return nothing. throws an error if any
 function Driver:generate(prompt)
+  if not self.auth or not self.auth.token then
+    return nil, "Authorization is not defined for the mistralai driver"
+  end
+
+  local embeddings_url = self.upstream_url or MISTRALAI_EMBEDDINGS_URL
+
   local body, err = cjson.encode({
     input           = prompt,
     model           = self.model,

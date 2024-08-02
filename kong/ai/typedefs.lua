@@ -5,12 +5,10 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local null = ngx.null
-
 --
 -- typedefs
 --
-local typedefs = require "kong.db.schema.typedefs"
+local typedefs = require("kong.db.schema.typedefs")
 
 -- the authentication configuration for the vector database.
 local auth = {
@@ -71,12 +69,12 @@ local embeddings = {
       },
     },
     {
-      upstream_url = {
+      upstream_url = typedefs.url({
         type        = "string",
         description = "upstream url for the embeddings",
         required    = false,
-      },
-    }
+      }),
+    },
   },
 }
 
