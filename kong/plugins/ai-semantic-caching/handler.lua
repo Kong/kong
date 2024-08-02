@@ -231,10 +231,12 @@ local function send_stats(conf, cache_response, cache_status, start_time, embedd
   end
 
   local response_stats = deep_copy(cache_response)
+  local fetch_latency = math.floor((ngx.now() - start_time) * 1000)
+  local embeddings_latency = math.floor(embeddings_latency * 1000)
 
   ngx.update_time()
   response_stats.cache = {
-    fetch_latency = ngx.now() - start_time,
+    fetch_latency = fetch_latency,
     embeddings_latency = embeddings_latency,
     vector_db = conf.vectordb.driver,
     cache_status = cache_status,

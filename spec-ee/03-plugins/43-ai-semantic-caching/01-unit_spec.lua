@@ -150,10 +150,10 @@ describe(PLUGIN_NAME .. ": (unit)", function()
         },
         cache = {
           vector_db = "redis",
-          embeddings_latency = 100,
+          embeddings_latency = 100000,
           embeddings_provider = "redis",
           embeddings_model = "kong-model",
-          fetch_latency = 10,
+          fetch_latency = 10000,
         }
       })
     end)

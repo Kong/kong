@@ -574,11 +574,9 @@ function _M.post_request(conf, response_object)
     return
   end
 
+  -- Determine the body string and parse the response object if needed
   if type(response_object) == "string" then
-    -- set raw string body first, then decode
     body_string = response_object
-
-    -- unpack the original response object for getting token and meta info
     response_object, err = cjson.decode(response_object)
     if err then
       return nil, "failed to decode LLM response from JSON"
@@ -588,40 +586,32 @@ function _M.post_request(conf, response_object)
     body_string = response_object.response or "ERROR__NOT_SET"
   end
 
-  -- analytics and logging
-  local provider_name = conf.model.provider
-
+  -- Extract and validate plugin name
   local plugin_name = conf.__key__:match('plugins:(.-):')
   if not plugin_name or plugin_name == "" then
     return nil, "no plugin name is being passed by the plugin"
   end
 
-  -- check if we already have analytics in this context
-  local request_analytics = kong.ctx.shared.analytics
-
-  -- create a new structure if not
-  if not request_analytics then
-    request_analytics = {}
-  end
-
-  -- create a new analytics structure for this plugin
+-- Initialize analytics
+  local request_analytics = kong.ctx.shared.analytics or {}
   local request_analytics_plugin = {
     [log_entry_keys.META_CONTAINER] = {},
     [log_entry_keys.USAGE_CONTAINER] = {},
     [log_entry_keys.CACHE_CONTAINER] = {},
   }
 
-  -- Set the model, response, and provider names in the current try context
-  request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.PLUGIN_ID] = conf.__plugin_id
-  request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.PROVIDER_NAME] = provider_name
-  request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.REQUEST_MODEL] = kong.ctx.shared.llm_model_requested or conf.model.name
-  request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.RESPONSE_MODEL] = response_object.model or conf.model.name
+   -- Set meta data
+  local meta_container = request_analytics_plugin[log_entry_keys.META_CONTAINER]
+  meta_container[log_entry_keys.PLUGIN_ID] = conf.__plugin_id
+  meta_container[log_entry_keys.PROVIDER_NAME] = conf.model.provider
+  meta_container[log_entry_keys.REQUEST_MODEL] = kong.ctx.shared.llm_model_requested or conf.model.name
+  meta_container[log_entry_keys.RESPONSE_MODEL] = response_object.model or conf.model.name
 
   -- Set the llm latency meta, and time per token usage
   local start_time_key = "ai_request_start_time_" .. plugin_name
   if kong.ctx.plugin[start_time_key] then
     local llm_latency = math.floor((ngx.now() - kong.ctx.plugin[start_time_key]) * 1000)
-    request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.LLM_LATENCY] = llm_latency
+    meta_container[log_entry_keys.LLM_LATENCY] = llm_latency
     kong.ctx.shared.ai_request_latency = llm_latency
 
     if response_object.usage and response_object.usage.completion_tokens then
@@ -634,49 +624,34 @@ function _M.post_request(conf, response_object)
   -- set extra per-provider meta
   if kong.ctx.plugin.ai_extra_meta and type(kong.ctx.plugin.ai_extra_meta) == "table" then
     for k, v in pairs(kong.ctx.plugin.ai_extra_meta) do
-      request_analytics_plugin[log_entry_keys.META_CONTAINER][k] = v
+      meta_container[k] = v
     end
   end
 
   -- Capture openai-format usage stats from the transformed response body
-  if response_object.usage then
-    if response_object.usage.prompt_tokens then
-      request_analytics_plugin[log_entry_keys.USAGE_CONTAINER][log_entry_keys.PROMPT_TOKENS] = response_object.usage.prompt_tokens
-    end
-    if response_object.usage.completion_tokens then
-      request_analytics_plugin[log_entry_keys.USAGE_CONTAINER][log_entry_keys.COMPLETION_TOKENS] = response_object.usage.completion_tokens
-    end
-    if response_object.usage.total_tokens then
-      request_analytics_plugin[log_entry_keys.USAGE_CONTAINER][log_entry_keys.TOTAL_TOKENS] = response_object.usage.total_tokens
+  if response_object.usage and type(response_object.usage) == "table" then
+    for k, v in pairs(response_object.usage) do
+      local key = log_entry_keys[string.upper(k)]
+      if key then
+        request_analytics_plugin[log_entry_keys.USAGE_CONTAINER][key] = v
+      end
     end
 
-    if response_object.usage.prompt_tokens and response_object.usage.completion_tokens
-      and conf.model.options and conf.model.options.input_cost and conf.model.options.output_cost then 
-        request_analytics_plugin[log_entry_keys.USAGE_CONTAINER][log_entry_keys.COST] = 
-          (response_object.usage.prompt_tokens * conf.model.options.input_cost
-          + response_object.usage.completion_tokens * conf.model.options.output_cost) / 1000000 -- 1 million
+    if response_object.usage.prompt_tokens and response_object.usage.completion_tokens and
+       conf.model.options and conf.model.options.input_cost and conf.model.options.output_cost then
+        local cost = (response_object.usage.prompt_tokens * conf.model.options.input_cost +
+                      response_object.usage.completion_tokens * conf.model.options.output_cost) / 1000000 -- 1 million
+        request_analytics_plugin[log_entry_keys.USAGE_CONTAINER][log_entry_keys.COST] = cost
     end
   end
 
   -- Capture cache stats
-  if response_object.cache then
-    if response_object.cache.vector_db then
-      request_analytics_plugin[log_entry_keys.CACHE_CONTAINER][log_entry_keys.VECTOR_DB] = response_object.cache.vector_db
-    end
-    if response_object.cache.embeddings_provider then
-      request_analytics_plugin[log_entry_keys.CACHE_CONTAINER][log_entry_keys.EMBEDDINGS_PROVIDER] = response_object.cache.embeddings_provider
-    end
-    if response_object.cache.embeddings_model then
-      request_analytics_plugin[log_entry_keys.CACHE_CONTAINER][log_entry_keys.EMBEDDINGS_MODEL] = response_object.cache.embeddings_model
-    end
-    if response_object.cache.cache_status then
-      request_analytics_plugin[log_entry_keys.CACHE_CONTAINER][log_entry_keys.CACHE_STATUS] = response_object.cache.cache_status
-    end
-    if response_object.cache.fetch_latency then
-      request_analytics_plugin[log_entry_keys.CACHE_CONTAINER][log_entry_keys.FETCH_LATENCY] = math.floor(response_object.cache.fetch_latency * 1000)
-    end
-    if response_object.cache.embeddings_latency then
-      request_analytics_plugin[log_entry_keys.CACHE_CONTAINER][log_entry_keys.EMBEDDINGS_LATENCY] = math.floor(response_object.cache.embeddings_latency * 1000)
+  if response_object.cache and type(response_object.cache) == "table" then
+    for k, v in pairs(response_object.cache) do
+      local key = log_entry_keys[string.upper(k)]
+      if key then
+        request_analytics_plugin[log_entry_keys.CACHE_CONTAINER][key] = v
+      end
     end
   end
 
