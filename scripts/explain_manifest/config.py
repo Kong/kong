@@ -43,7 +43,9 @@ targets = {
         manifest="fixtures/amazonlinux-2-amd64.txt",
         use_rpath=True,
         tests={
-            common_suites: {},
+            common_suites: {
+                "skip_libsimdjson_ffi": True,
+            },
             libc_libcpp_suites: {
                 "libc_max_version": "2.26",
                 # gcc 7.3.1
