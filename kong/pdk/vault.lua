@@ -51,6 +51,7 @@ local decode_json = cjson.decode
 
 local NEGATIVELY_CACHED_VALUE = "\0"
 local ROTATION_INTERVAL = tonumber(os.getenv("KONG_VAULT_ROTATION_INTERVAL"), 10) or 60
+local SECRETS_ROTATION_ERROR_LOGGING_FLAG_PREFIX = "retry_logging:"
 local DAO_MAX_TTL = constants.DATABASE.DAO_MAX_TTL
 
 
@@ -1238,6 +1239,10 @@ local function new(self)
   -- @treturn true|nil `true` after successfully rotating a secret, otherwise `nil`
   -- @treturn string|nil a string describing an error if there was one
   local function rotate_secret(old_cache_key, caching_strategy)
+    if old_cache_key:sub(1, #SECRETS_ROTATION_ERROR_LOGGING_FLAG_PREFIX) == SECRETS_ROTATION_ERROR_LOGGING_FLAG_PREFIX then
+      return true
+    end
+
     local reference, err = parse_cache_key(old_cache_key)
     if not reference then
       -- invalid cache keys are removed (in general should never happen)
@@ -1299,8 +1304,17 @@ local function new(self)
       yield(true, phase)
 
       local ok, err = rotate_secret(cache_key, caching_strategy)
+      local error_logging_flag_key = SECRETS_ROTATION_ERROR_LOGGING_FLAG_PREFIX .. cache_key
       if not ok then
-        self.log.warn(err)
+        -- throttling the error logging for secrets rotation
+        local add_ok, _ = SECRETS_CACHE:add(error_logging_flag_key, true)
+        if add_ok then
+          self.log.warn(err, ". To prevent log flooding, the error during rotation will not be logged again for this secret")
+        end
+
+      else
+        -- reset the error logging count
+        SECRETS_CACHE:delete(error_logging_flag_key)
       end
     end
 
