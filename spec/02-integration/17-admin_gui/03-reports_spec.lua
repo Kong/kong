@@ -69,6 +69,7 @@ describe("anonymous reports for kong manager", function ()
         anonymous_reports = true,
         plugins = "bundled,reports-api",
         dns_hostsfile = dns_hostsfile,
+        resolver_hostsfile = dns_hostsfile,
       }))
 
       finally(function()
