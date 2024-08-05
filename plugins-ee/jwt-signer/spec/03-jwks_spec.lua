@@ -7,6 +7,7 @@
 
 local plugin_name = "jwt-signer"
 local helpers = require "spec.helpers"
+local jws = require "kong.openid-connect.jws"
 local fmt = string.format
 local cjson = require "cjson"
 
@@ -251,3 +252,98 @@ for _, strategy in helpers.each_strategy({ "postgres", "off" }) do
 
   end)
 end
+
+describe(fmt("%s - dbless specific tests", plugin_name), function()
+  local bp, db, admin_client, proxy_client, keyset_name, yaml_file
+  local ec_key = '{"kty":"EC","crv":"P-256","y":"kGe5DgSIycKp8w9aJmoHhB1sB3QTugfnRWm5nU_TzsY","alg":"ES256","kid":"19J8y7Zprt2-QKLjF2I5pVk0OELX6cY2AfaAv1LC_w8","x":"EVs_o5-uQbTjL3chynL4wXgUg2R9q9UU8I5mEovUf84","d":"evZzL1gdAFr88hb2OF_2NxApJCzGCEDdfSp6VQO30hw"}'
+  local now = ngx.time()
+  local exp = now + 600
+  local token = {
+    jwk = cjson.decode(ec_key),
+    header = {
+      typ = "JWT",
+      alg = "ES256",
+    },
+    payload = {
+      sub = "1234567890",
+      name = "John Doe",
+      exp = exp,
+      now = now,
+    },
+  }
+  keyset_name = "kong"
+
+  lazy_setup(function()
+    bp, db = helpers.get_db_utils("postgres", {
+      "routes",
+      "services",
+      "plugins",
+      "jwt_signer_jwks",
+    }, { plugin_name })
+
+    local route = bp.routes:insert({ paths = { "/keyset" } })
+
+    bp.plugins:insert({
+      name = plugin_name,
+      route = route,
+      config = {
+        verify_access_token_signature = false,
+        access_token_signing_algorithm = "ES256",
+        access_token_upstream_header = "Authorization:Bearer",
+        access_token_keyset = keyset_name,
+        channel_token_optional = true,
+      }
+    })
+
+    yaml_file = helpers.make_yaml_file()
+
+    assert(helpers.start_kong({
+      database   = "off",
+      plugins    = plugin_name,
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      declarative_config = yaml_file,
+      pg_host = "unknownhost.konghq.com",
+    }))
+  end)
+
+  lazy_teardown(function()
+    assert(db:truncate("jwt_signer_jwks"))
+    assert(db:truncate("plugins"))
+    assert(db:truncate("services"))
+    assert(db:truncate("routes"))
+    helpers.stop_kong()
+  end)
+
+  before_each(function()
+    admin_client = helpers.admin_client()
+    proxy_client = helpers.proxy_client()
+  end)
+
+  after_each(function()
+    if admin_client then admin_client:close() end
+    if proxy_client then proxy_client:close() end
+  end)
+
+  it("can be queried by name", function()
+    local access_token = assert(jws.encode(token))
+    local credential = "Bearer " .. access_token
+
+    -- load once first to make sure the jwks exists
+    assert(proxy_client:send {
+      method = "GET",
+      path = "/keyset",
+      headers = {
+        ["Authorization"] = credential,
+      }
+    })
+
+    local res, err = assert(admin_client:send {
+      method = "GET",
+      path = fmt("/jwt-signer/jwks/%s", ngx.escape_uri(keyset_name))
+    })
+    assert.is_nil(err)
+    local body = assert.res_status(200, res)
+    local json = cjson.decode(body)
+    assert.is_table(json.keys[1])
+  end)
+end)

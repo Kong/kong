@@ -137,7 +137,12 @@ return {
     schema = jwks_schema,
     methods = {
       GET = function(self, db)
-        local row, _, err = endpoints.select_entity(self, db, jwks_schema)
+        local row, _, err
+        if kong.configuration.database == "off" then
+          row, err = cache.get_keys(self.params.jwt_signer_jwks)
+        else
+          row, _, err = endpoints.select_entity(self, db, jwks_schema)
+        end
         if err then
           return endpoints.handle_error(err)
         elseif row == nil then
