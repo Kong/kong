@@ -1553,7 +1553,8 @@
                                  # Port defaults to 53 if omitted. Accepts
                                  # both IPv4 and IPv6 addresses.
 
-#resolver_hostsfile = /etc/hosts # The hosts file to use. This file is read
+#resolver_hosts_file = /etc/hosts
+                                 # The hosts file to use. This file is read
                                  # once and its content is static in memory.
                                  # To read the file again after modifying it,
                                  # Kong must be reloaded.
