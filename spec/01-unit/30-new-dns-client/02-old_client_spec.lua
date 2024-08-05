@@ -669,7 +669,7 @@ describe("[DNS client]", function()
     local entry1 = cli.cache:get(key1)
     assert.same(nil, entry1)
 
-    for k,v in pairs(cli.stats) do
+    for k,v in pairs(cli.stats.stats) do
       v.query_last_time = nil
     end
 
@@ -682,7 +682,7 @@ describe("[DNS client]", function()
         query = 1,
         query_succ = 1
       },
-    }, cli.stats)
+    }, cli.stats.stats)
   end)
 
   it("fetching multiple SRV answerss (un-typed)", function()
@@ -753,7 +753,7 @@ describe("[DNS client]", function()
     local entry = cli.cache:get(key)
     assert.same(nil, entry)
 
-    for k,v in pairs(cli.stats) do
+    for k,v in pairs(cli.stats.stats) do
       v.query_last_time = nil
     end
 
@@ -764,7 +764,7 @@ describe("[DNS client]", function()
         query = 1,
         query_succ = 1,
       },
-    }, cli.stats)
+    }, cli.stats.stats)
 
     -- check final target
     assert.are.equal(typ, answers[1].type)
