@@ -54,7 +54,7 @@ return {
             type = "number",
             required = true,
           }},
-          { namespace = { description = "The rate limiting library namespace to use for this plugin instance. NOTE: For the plugin instances sharing the same namespace, all the configurations that are required for synchronizing counters, e.g. `strategy`, `redis`, `sync_rate`, `window_size`, `dictionary_name`, need to be the same.", type = "string",
+          { namespace = { description = "The rate limiting namespace to use for this plugin instance. This namespace is used to share rate limiting counters across different instances. If it is not provided, a random UUID is generated. NOTE: For the plugin instances sharing the same namespace, all the configurations that are required for synchronizing counters, e.g. `strategy`, `redis`, `sync_rate`, `window_size`, `dictionary_name`, need to be the same.", type = "string",
             auto = true,
           }},
           { strategy = { description = "The rate-limiting strategy to use for retrieving and incrementing the limits.", type = "string",
