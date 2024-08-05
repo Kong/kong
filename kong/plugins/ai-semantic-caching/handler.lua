@@ -231,18 +231,18 @@ local function send_stats(conf, cache_response, cache_status, start_time, embedd
   end
 
   local response_stats = deep_copy(cache_response)
-  local fetch_latency = math.floor((ngx.now() - start_time) * 1000)
-  local embeddings_latency = math.floor(embeddings_latency * 1000)
 
+  -- update timer for latency calculation
   ngx.update_time()
+
   response_stats.cache = {
-    fetch_latency = fetch_latency,
-    embeddings_latency = embeddings_latency,
+    fetch_latency = math.floor((ngx.now() - start_time) * 1000),
     vector_db = conf.vectordb.driver,
     cache_status = cache_status,
   }
 
   if embeddings_latency then
+    response_stats.cache.embeddings_latency = math.floor(embeddings_latency * 1000)
     response_stats.cache.embeddings_provider = conf.embeddings.driver
     response_stats.cache.embeddings_model = conf.embeddings.model
   end
@@ -420,6 +420,9 @@ function AISemanticCaching:access(conf)
     kong.log.warn("Failed to generate embeddings: ", err, ", plugin config is set to continue on failure")
     return
   end
+
+  -- update timer for latency calculation
+  ngx.update_time()
 
   local embeddings_latency = ngx.now() - embeddings_start_time
   kong.ctx.plugin.semantic_cache_embeddings = embeddings

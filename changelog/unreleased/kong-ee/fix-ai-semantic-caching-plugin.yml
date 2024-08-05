@@ -1,0 +1,3 @@
+message: "**ai-semantic-caching:** Fix the `ai-semantic-caching` plugin with a condition for calculating latencies when no embeddings."
+type: bugfix
+scope: Plugin
