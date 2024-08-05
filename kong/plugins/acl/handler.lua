@@ -80,7 +80,7 @@ function ACLHandler:access(conf)
   else
     local credential = kong.client.get_credential()
     local authenticated_groups
-    if not credential or conf.always_use_authenticated_groups then
+    if (not credential) or conf.always_use_authenticated_groups then
       -- authenticated groups overrides anonymous groups
       authenticated_groups = groups.get_authenticated_groups()
     end
