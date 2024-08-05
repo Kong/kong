@@ -374,7 +374,7 @@ local CONF_PARSERS = {
   legacy_dns_client = { typ = "boolean" },
 
   resolver_address = { typ = "array" },
-  resolver_hostsfile = { typ = "string" },
+  resolver_hosts_file = { typ = "string" },
   resolver_family = { typ = "array" },
   resolver_valid_ttl = { typ = "number" },
   resolver_stale_ttl = { typ = "number" },

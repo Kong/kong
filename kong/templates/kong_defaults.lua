@@ -173,7 +173,7 @@ dns_no_sync = off
 legacy_dns_client = off
 
 resolver_address = NONE
-resolver_hostsfile = /etc/hosts
+resolver_hosts_file = /etc/hosts
 resolver_family = A,SRV
 resolver_valid_ttl = NONE
 resolver_stale_ttl = 3600

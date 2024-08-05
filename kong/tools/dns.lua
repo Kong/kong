@@ -51,7 +51,7 @@ local setup_client = function(conf)
 
     opts = {
       nameservers = servers,
-      hosts = conf.resolver_hostsfile,
+      hosts = conf.resolver_hosts_file,
       family = conf.resolver_family,
       valid_ttl = conf.resolver_valid_ttl,
       error_ttl = conf.resolver_error_ttl,

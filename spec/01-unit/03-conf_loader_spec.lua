@@ -841,9 +841,9 @@ describe("Configuration loader", function()
       -- new dns
       local tmpfile = "/a_file_that_does_not_exist"
       local conf, err = conf_loader(nil, {
-        resolver_hostsfile = tmpfile,
+        resolver_hosts_file = tmpfile,
       })
-      assert.equal([[resolver_hostsfile: file does not exist]], err)
+      assert.equal([[resolver_hosts_file: file does not exist]], err)
       assert.is_nil(conf)
     end)
     it("accepts an existing hosts file", function()
@@ -859,10 +859,10 @@ describe("Configuration loader", function()
       local tmpfile = require("pl.path").tmpname()  -- this creates the file!
       finally(function() os.remove(tmpfile) end)
       local conf, err = conf_loader(nil, {
-        resolver_hostsfile = tmpfile,
+        resolver_hosts_file = tmpfile,
       })
       assert.is_nil(err)
-      assert.equal(tmpfile, conf.resolver_hostsfile)
+      assert.equal(tmpfile, conf.resolver_hosts_file)
     end)
     it("errors on bad entries in the order list", function()
       local conf, err = conf_loader(nil, {

@@ -543,9 +543,9 @@ local function check_and_parse(conf, opts)
     end
   end
 
-  if conf.resolver_hostsfile then
-    if not pl_path.isfile(conf.resolver_hostsfile) then
-      errors[#errors + 1] = "resolver_hostsfile: file does not exist"
+  if conf.resolver_hosts_file then
+    if not pl_path.isfile(conf.resolver_hosts_file) then
+      errors[#errors + 1] = "resolver_hosts_file: file does not exist"
     end
   end
 

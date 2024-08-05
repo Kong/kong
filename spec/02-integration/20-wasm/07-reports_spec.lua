@@ -59,7 +59,7 @@ for _, strategy in helpers.each_strategy() do
         nginx_conf = "spec/fixtures/custom_nginx.template",
         database = strategy,
         dns_hostsfile = dns_hostsfile,
-        resolver_hostsfile = dns_hostsfile,
+        resolver_hosts_file = dns_hostsfile,
         plugins = "bundled,reports-api",
         wasm = true,
         anonymous_reports = true,
