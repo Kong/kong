@@ -239,4 +239,31 @@ for __, deploy in ipairs({ "traditional", "hybrid" }) do
 end)
 
 end
+
+describe("debug_listen ssl configuration", function()
+  after_each(function()
+    assert(helpers.stop_kong())
+  end)
+
+  it("the ssl configuration of debug_listen and status_listen is independent", function()
+    assert(helpers.start_kong({
+      database   = strategy,
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      debug_listen = string.format("%s:%d", DEBUG_LISTEN_HOST, DEBUG_LISTEN_PORT),
+      debug_listen_local = false,
+      status_listen = "0.0.0.0:8100 ssl",
+    }))
+  end)
+
+  it("debug_listen ssl enable", function()
+    assert(helpers.start_kong({
+      database   = strategy,
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      debug_listen = string.format("%s:%d", DEBUG_LISTEN_HOST, DEBUG_LISTEN_PORT) .. " ssl",
+      debug_listen_local = false,
+      status_listen = "0.0.0.0:8100 ssl",
+    }))
+  end)
+end)
+
 end

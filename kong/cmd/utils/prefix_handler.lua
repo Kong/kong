@@ -135,6 +135,9 @@ local function gen_default_ssl_cert(kong_config, target)
     elseif target == "portal_gui" then
       ssl_cert = kong_config["portal_gui_ssl_cert_default" .. suffix]
       ssl_cert_key = kong_config["portal_gui_ssl_cert_key_default" .. suffix]
+    elseif target == "debug" then
+      ssl_cert = kong_config["debug_ssl_cert_default" .. suffix]
+      ssl_cert_key = kong_config["debug_ssl_cert_key_default" .. suffix]
     -- EE ]]
 
     else
@@ -567,7 +570,7 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
   -- generate default SSL certs if needed
   -- [[ XXX EE: adding portal_gui, and portal_api ]]
   do
-    for _, target in ipairs({ "proxy", "admin", "admin_gui", "status", "portal_gui", "portal_api" }) do
+    for _, target in ipairs({ "proxy", "admin", "admin_gui", "status", "portal_gui", "portal_api", "debug" }) do
       local ssl_enabled = kong_config[target .. "_ssl_enabled"]
       if not ssl_enabled and target == "proxy" then
         ssl_enabled = kong_config.stream_proxy_ssl_enabled
@@ -684,6 +687,7 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
       -- [[ XXX EE
       "portal_gui",
       "portal_api",
+      "debug",
       "keyring_public",
       "keyring_private",
       "keyring_recovery_public"

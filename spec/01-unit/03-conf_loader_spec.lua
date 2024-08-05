@@ -79,6 +79,8 @@ describe("Configuration loader", function()
     assert.same({}, conf.admin_gui_ssl_cert_key)
     assert.same({}, conf.status_ssl_cert)
     assert.same({}, conf.status_ssl_cert_key)
+    assert.same({}, conf.debug_ssl_cert)
+    assert.same({}, conf.debug_ssl_cert_key)
     assert.same(nil, conf.privileged_agent)
     assert.same(true, conf.dedicated_config_processing)
     assert.same(false, conf.allow_debug_header)
@@ -324,6 +326,8 @@ describe("Configuration loader", function()
     assert.equal("/usr/local/kong/ssl/admin-gui-kong-default.key", conf.admin_gui_ssl_cert_key_default)
     assert.equal("/usr/local/kong/ssl/status-kong-default.crt", conf.status_ssl_cert_default)
     assert.equal("/usr/local/kong/ssl/status-kong-default.key", conf.status_ssl_cert_key_default)
+    assert.equal("/usr/local/kong/ssl/debug-kong-default.crt", conf.debug_ssl_cert_default)
+    assert.equal("/usr/local/kong/ssl/debug-kong-default.key", conf.debug_ssl_cert_key_default)
   end)
   it("should populate correct admin_gui_origin", function()
     local conf, _, errors = conf_loader(nil, {})
@@ -900,6 +904,8 @@ describe("Configuration loader", function()
           admin_gui_ssl_cert_key = key,
           status_ssl_cert = cert,
           status_ssl_cert_key = key,
+          debug_ssl_cert = cert,
+          debug_ssl_cert_key = key,
           client_ssl_cert = cert,
           client_ssl_cert_key = key,
           cluster_cert = cert,
@@ -917,6 +923,7 @@ describe("Configuration loader", function()
           proxy_listen = "127.0.0.1:456 ssl",
           admin_listen = "127.0.0.1:789 ssl",
           admin_gui_listen = "127.0.0.1:8445 ssl",
+          debug_listen = "127.0.0.1:890 ssl",
         }
 
         for n, v in pairs(properties) do
@@ -2722,6 +2729,10 @@ describe("Configuration loader", function()
         portal_gui_ssl_cert_key_default = true,
         portal_api_ssl_cert_default_ecdsa = true,
         portal_api_ssl_cert_key_default_ecdsa = true,
+        debug_ssl_cert_default = true,
+        debug_ssl_cert_key_default = true,
+        debug_ssl_cert_default_ecdsa = true,
+        debug_ssl_cert_key_default_ecdsa = true,
       }
       local conf = assert(conf_loader(nil, nil, { pre_cmd = true }))
       for k, _ in pairs(conf) do

@@ -1,0 +1,4 @@
+message: |
+  Fixed an issue where `debug_listen` incorrectly used the SSL-related configuration of `status_listen`.
+type: bugfix
+scope: Configuration

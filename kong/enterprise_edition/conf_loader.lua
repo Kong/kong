@@ -43,6 +43,11 @@ local EE_PREFIX_PATHS = {
   portal_gui_ssl_cert_key_default = {"ssl", "portal-gui-kong-default.key"},
   portal_api_ssl_cert_default_ecdsa = {"ssl", "portal-api-kong-default-ecdsa.crt"},
   portal_api_ssl_cert_key_default_ecdsa = {"ssl", "portal-api-kong-default-ecdsa.key"},
+
+  debug_ssl_cert_default = {"ssl", "debug-kong-default.crt"},
+  debug_ssl_cert_key_default = {"ssl", "debug-kong-default.key"},
+  debug_ssl_cert_default_ecdsa = {"ssl", "debug-kong-default-ecdsa.crt"},
+  debug_ssl_cert_key_default_ecdsa = {"ssl", "debug-kong-default-ecdsa.key"},
 }
 
 

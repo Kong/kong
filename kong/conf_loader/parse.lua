@@ -330,7 +330,7 @@ local function check_and_parse(conf, opts)
     end
   end
 
-  for _, prefix in ipairs({ "proxy_", "admin_", "admin_gui_", "status_" }) do
+  for _, prefix in ipairs({ "proxy_", "admin_", "admin_gui_", "status_", "debug_" }) do
     local listen = conf[prefix .. "listen"]
 
     local ssl_enabled = find(concat(listen, ",") .. " ", "%sssl[%s,]") ~= nil

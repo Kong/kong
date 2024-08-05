@@ -189,6 +189,26 @@ describe("NGINX conf compiler", function()
         end
       end)
     end)
+
+    describe("debug", function()
+      it("auto-generates SSL certificate and key", function()
+        assert(prefix_handler.gen_default_ssl_cert(conf, "debug"))
+        for _, suffix in ipairs({ "", "_ecdsa" }) do
+          assert(exists(conf["debug_ssl_cert_default" .. suffix]))
+          assert(exists(conf["debug_ssl_cert_key_default" .. suffix]))
+        end
+      end)
+      it("does not re-generate if they already exist", function()
+        assert(prefix_handler.gen_default_ssl_cert(conf, "debug"))
+        for _, suffix in ipairs({ "", "_ecdsa" }) do
+          local cer = helpers.file.read(conf["debug_ssl_cert_default" .. suffix])
+          local key = helpers.file.read(conf["debug_ssl_cert_key_default" .. suffix])
+          assert(prefix_handler.gen_default_ssl_cert(conf, "debug"))
+          assert.equal(cer, helpers.file.read(conf["debug_ssl_cert_default" .. suffix]))
+          assert.equal(key, helpers.file.read(conf["debug_ssl_cert_key_default" .. suffix]))
+        end
+      end)
+    end)
     --]]
   end)
 
@@ -361,6 +381,7 @@ describe("NGINX conf compiler", function()
         admin_gui_listen = "127.0.0.1:8002",
         portal_gui_listen = "0.0.0.0:9003",
         portal_api_listen = "0.0.0.0:9004",
+        debug_listen = "127.0.0.1:9005",
       }))
       local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.not_matches("listen%s+%d+%.%d+%.%d+%.%d+:%d+ ssl;", kong_nginx_conf)
@@ -1377,6 +1398,9 @@ describe("NGINX conf compiler", function()
           portal_api_listen = "0.0.0.0:9004, 0.0.0.0:9447 ssl",
           portal_api_ssl_cert = "spec/fixtures/kong_spec.crt",
           portal_api_ssl_cert_key = "spec/fixtures/kong_spec.key",
+          debug_listen = "127.0.0.1:8007 ssl",
+          debug_ssl_cert = "spec/fixtures/kong_spec.crt",
+          debug_ssl_cert_key = "spec/fixtures/kong_spec.key",
         })
 
         assert(prefix_handler.prepare_prefix(conf))
@@ -1399,6 +1423,7 @@ describe("NGINX conf compiler", function()
           portal_and_vitals_key = get_portal_and_vitals_key(),
           portal_api_listen = "127.0.0.1:8004 ssl",
           portal_admin_listen = "127.0.0.1:8005 ssl",
+          debug_listen = "127.0.0.1:8006 ssl",
           -- ]]
         })
 
@@ -1419,6 +1444,8 @@ describe("NGINX conf compiler", function()
           assert.truthy(exists(conf["portal_api_ssl_cert_key_default" .. suffix]))
           assert.truthy(exists(conf["portal_gui_ssl_cert_default" .. suffix]))
           assert.truthy(exists(conf["portal_gui_ssl_cert_key_default" .. suffix]))
+          assert.truthy(exists(conf["debug_ssl_cert_default" .. suffix]))
+          assert.truthy(exists(conf["debug_ssl_cert_key_default" .. suffix]))
           -- ]]
         end
 
@@ -1431,10 +1458,11 @@ describe("NGINX conf compiler", function()
           admin_listen  = "127.0.0.1:8001 ssl",
           admin_gui_listen = "127.0.0.1:8002 ssl",
           status_listen = "127.0.0.1:8003 ssl",
+          debug_listen = "127.0.0.1:8006 ssl",
         })
 
         assert(prefix_handler.prepare_prefix(conf))
-        for _, prefix in ipairs({ "", "status_", "admin_", "admin_gui_" }) do
+        for _, prefix in ipairs({ "", "status_", "admin_", "admin_gui_", "debug_" }) do
           for _, suffix in ipairs({ "", "_ecdsa" }) do
             local handle = io.popen("ls -l " .. conf[prefix .. "ssl_cert_default" .. suffix])
             local result = handle:read("*a")
@@ -1498,6 +1526,8 @@ describe("NGINX conf compiler", function()
             portal_gui_ssl_cert_key = key,
             portal_api_ssl_cert = cert,
             portal_api_ssl_cert_key = key,
+            debug_ssl_cert = cert,
+            debug_ssl_cert_key = key,
             keyring_public_key = key,
             keyring_private_key = key,
             keyring_recovery_public_key = key
@@ -1576,6 +1606,8 @@ describe("NGINX conf compiler", function()
             admin_gui_ssl_cert_key = key,
             status_ssl_cert = cert,
             status_ssl_cert_key = key,
+            debug_ssl_cert = cert,
+            debug_ssl_cert_key = key,
             client_ssl_cert = cert,
             client_ssl_cert_key = key,
             cluster_cert = cert,

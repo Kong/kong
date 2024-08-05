@@ -795,8 +795,8 @@ server {
     error_log  ${{DEBUG_ERROR_LOG}} ${{LOG_LEVEL}};
 
 > if #debug_listeners > 0 then
-> if status_ssl_enabled then
-> for i = 1, #status_ssl_cert do
+> if debug_ssl_enabled then
+> for i = 1, #debug_ssl_cert do
     ssl_certificate     $(debug_ssl_cert[i]);
     ssl_certificate_key $(debug_ssl_cert_key[i]);
 > end

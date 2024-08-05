@@ -869,7 +869,7 @@ local function load(path, custom_conf, opts)
     conf.enabled_headers_upstream = setmetatable(enabled_headers_upstream, conf_constants._NOP_TOSTRING_MT)
   end
 
-  for _, prefix in ipairs({ "ssl", "admin_ssl", "admin_gui_ssl", "status_ssl", "client_ssl", "cluster" }) do
+  for _, prefix in ipairs({ "ssl", "admin_ssl", "admin_gui_ssl", "status_ssl", "client_ssl", "cluster", "debug_ssl" }) do
     local ssl_cert = conf[prefix .. "_cert"]
     local ssl_cert_key = conf[prefix .. "_cert_key"]
 
