@@ -139,7 +139,7 @@ function _M.configure_request(conf)
   -- technically min supported version
   query_table["api-version"] = kong.request.get_query_arg("api-version")
                             or (conf.model.options and conf.model.options.azure_api_version)
-  
+
   if auth_param_name and auth_param_value and auth_param_location == "query" then
     query_table[auth_param_name] = auth_param_value
   end

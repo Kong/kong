@@ -84,7 +84,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
       end
 
       local ok, err = validate(config)
-      
+
       assert.is_truthy(ok)
       assert.is_falsy(err)
     end)
@@ -220,7 +220,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     }
 
     local ok, err = validate(config)
-    
+
     assert.equal(err["config"]["@entity"][1], "must set one of 'auth.header_name', 'auth.param_name', "
                                  .. "and its respective options, when provider is not self-hosted")
     assert.is_falsy(ok)
@@ -244,7 +244,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     }
 
     local ok, err = validate(config)
-    
+
     assert.equals(err["config"]["@entity"][1], "all or none of these fields must be set: 'auth.header_name', 'auth.header_value'")
     assert.is_falsy(ok)
   end)
@@ -268,7 +268,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     }
 
     local ok, err = validate(config)
-    
+
     assert.is_falsy(err)
     assert.is_truthy(ok)
   end)
@@ -317,7 +317,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     }
 
     local ok, err = validate(config)
-    
+
     assert.is_falsy(err)
     assert.is_truthy(ok)
   end)
@@ -344,7 +344,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     }
 
     local ok, err = validate(config)
-    
+
     assert.is_falsy(err)
     assert.is_truthy(ok)
   end)

@@ -494,7 +494,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
       }, nil, nil, fixtures))
     end)
-    
+
     lazy_teardown(function()
       helpers.stop_kong()
     end)
@@ -691,7 +691,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             end
           end
         until not buffer
-        
+
         assert.equal(#events, 17)
         assert.equal(buf:tostring(), "1 + 1 = 2. This is the most basic example of addition.")
       end)
@@ -753,7 +753,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             end
           end
         until not buffer
-        
+
         assert.equal(#events, 8)
         assert.equal(buf:tostring(), "1 + 1 = 2")
       end)

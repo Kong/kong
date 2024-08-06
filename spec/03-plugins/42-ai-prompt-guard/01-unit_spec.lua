@@ -18,7 +18,7 @@ local function create_request(typ)
   if typ ~= "chat" and typ ~= "completions" then
     error("type must be one of 'chat' or 'completions'", 2)
   end
-  
+
   return setmetatable({
     messages = messages,
     type = typ,

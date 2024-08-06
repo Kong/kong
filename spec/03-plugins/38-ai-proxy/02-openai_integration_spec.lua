@@ -68,14 +68,14 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       local fixtures = {
         http_mock = {},
       }
-      
+
       fixtures.http_mock.openai = [[
         server {
             server_name openai;
             listen ]]..MOCK_PORT..[[;
-            
+
             default_type 'application/json';
-      
+
 
             location = "/llm/v1/chat/good" {
               content_by_lua_block {
@@ -93,7 +93,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                   ngx.req.read_body()
                   local body, err = ngx.req.get_body_data()
                   body, err = json.decode(body)
-                  
+
                   if err or (body.messages == ngx.null) then
                     ngx.status = 400
                     ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/bad_request.json"))
@@ -118,7 +118,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                   ngx.req.read_body()
                   local body, err = ngx.req.get_body_data()
                   body, err = json.decode(body)
-                  
+
                   if err or (body.messages == ngx.null) then
                     ngx.status = 400
                     ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/bad_request.json"))
@@ -136,7 +136,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             location = "/llm/v1/chat/bad_request" {
               content_by_lua_block {
                 local pl_file = require "pl.file"
-                
+
                 ngx.status = 400
                 ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/bad_request.json"))
               }
@@ -145,7 +145,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             location = "/llm/v1/chat/internal_server_error" {
               content_by_lua_block {
                 local pl_file = require "pl.file"
-                
+
                 ngx.status = 500
                 ngx.header["content-type"] = "text/html"
                 ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/internal_server_error.html"))
@@ -166,7 +166,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                 local token_query = ngx.req.get_uri_args()["apikey"]
 
                 if token == "Bearer openai-key" or token_query == "openai-key" or body.apikey == "openai-key" then
-                  
+
                   if err or (body.messages == ngx.null) then
                     ngx.status = 400
                     ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-completions/responses/bad_request.json"))
@@ -184,7 +184,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             location = "/llm/v1/completions/bad_request" {
               content_by_lua_block {
                 local pl_file = require "pl.file"
-                
+
                 ngx.status = 400
                 ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-completions/responses/bad_request.json"))
               }
@@ -664,7 +664,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
       }, nil, nil, fixtures))
     end)
-    
+
     lazy_teardown(function()
       helpers.stop_kong()
     end)
@@ -692,7 +692,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
         })
-        
+
         -- validate that the request succeeded, response status 200
         local body = assert.res_status(200 , r)
         local json = cjson.decode(body)
@@ -739,7 +739,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
         })
-        
+
         -- validate that the request succeeded, response status 200
         local body = assert.res_status(200 , r)
         local json = cjson.decode(body)
@@ -817,7 +817,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
         })
-        
+
         local body = assert.res_status(500 , r)
         assert.is_not_nil(body)
       end)
@@ -830,7 +830,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
         })
-        
+
         local body = assert.res_status(401 , r)
         local json = cjson.decode(body)
 
@@ -849,7 +849,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
         })
-        
+
         -- validate that the request succeeded, response status 200
         local body = assert.res_status(200 , r)
         local json = cjson.decode(body)
@@ -937,7 +937,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/bad_request.json"),
         })
-        
+
         local body = assert.res_status(400 , r)
         local json = cjson.decode(body)
 
@@ -956,7 +956,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-completions/requests/good.json"),
         })
-        
+
         -- validate that the request succeeded, response status 200
         local body = assert.res_status(200 , r)
         local json = cjson.decode(body)
@@ -979,7 +979,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-completions/requests/bad_request.json"),
         })
-        
+
         local body = assert.res_status(400 , r)
         local json = cjson.decode(body)
 
@@ -1038,7 +1038,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
     describe("one-shot request", function()
       it("success", function()
         local ai_driver = require("kong.llm.drivers.openai")
-  
+
         local plugin_conf = {
           route_type = "llm/v1/chat",
           auth = {
@@ -1054,7 +1054,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             },
           },
         }
-  
+
         local request = {
           messages = {
             [1] = {
@@ -1067,15 +1067,15 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             }
           }
         }
-  
+
         -- convert it to the specified driver format
         local ai_request = ai_driver.to_format(request, plugin_conf.model, "llm/v1/chat")
-  
+
         -- send it to the ai service
         local ai_response, status_code, err = ai_driver.subrequest(ai_request, plugin_conf, {}, false)
         assert.is_nil(err)
         assert.equal(200, status_code)
-  
+
         -- parse and convert the response
         local ai_response, _, err = ai_driver.from_format(ai_response, plugin_conf.model, plugin_conf.route_type)
         assert.is_nil(err)
@@ -1092,7 +1092,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
       it("404", function()
         local ai_driver = require("kong.llm.drivers.openai")
-  
+
         local plugin_conf = {
           route_type = "llm/v1/chat",
           auth = {
@@ -1108,7 +1108,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             },
           },
         }
-  
+
         local request = {
           messages = {
             [1] = {
@@ -1121,7 +1121,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             }
           }
         }
-  
+
         -- convert it to the specified driver format
         local ai_request = ai_driver.to_format(request, plugin_conf.model, "llm/v1/chat")
 
