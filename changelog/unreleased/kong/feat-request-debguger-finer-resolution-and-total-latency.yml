@@ -1,0 +1,7 @@
+message: |
+  Improved the output of the request debugger:
+  - Now the resolution of field `total_time` is microseconds.
+  - A new field `total_time_without_upstream` on the top level shows the latency only introduced by Kong.
+type: feature
+scope: Core
+
