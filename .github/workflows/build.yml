@@ -25,6 +25,7 @@ on:
 env:
   BUILD_ROOT: ${{ github.workspace }}/${{ inputs.relative-build-root }}
   RELATIVE_BUILD_ROOT: ${{ inputs.relative-build-root }}
+  CARGO_NET_GIT_FETCH_WITH_CLI: "true" # https://doc.rust-lang.org/cargo/appendix/git-authentication.html
 
 jobs:
   build:
@@ -41,8 +42,11 @@ jobs:
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
-    - name: Swap git with https
-      run: git config --global url."https://github".insteadOf git://github
+    - name: Swap git with https and make sure Cargo can fetch private repositories
+      run: |
+        git config --global url."https://github".insteadOf git://github
+        # Cargo needs to use https to fetch private repositories
+        git config --global url."https://${{ secrets.GHA_KONG_BOT_READ_TOKEN }}@github.com".insteadOf https://github.com
 
     # these aren't necessarily used by all tests, but building them here will
     # ensures that we have a warm cache when other tests _do_ need to build the

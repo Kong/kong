@@ -1,0 +1,4 @@
+message: |
+  **json-threat-protection**: Added JSON threat protection plugin. Validates JSON nesting depth, array elements, object entries, key length, and string length. Logs or terminates violating requests.
+type: feature
+scope: Plugin

@@ -141,6 +141,7 @@ describe("Plugins", function()
       'hmac-auth',
       'jwt-signer',
       -- authn end
+      'json-threat-protection',
       'xml-threat-protection',
       'websocket-validator',
       'websocket-size-limit',

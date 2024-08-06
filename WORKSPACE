@@ -68,6 +68,18 @@ load("@jsonschema//build:crates.bzl", "jsonschema_crates")
 
 jsonschema_crates()
 
+load("@json_threat_protection//build:repos.bzl", "json_threat_protection_repositories")
+
+json_threat_protection_repositories()
+
+load("@json_threat_protection//build:deps.bzl", "json_threat_protection_dependencies")
+
+json_threat_protection_dependencies(cargo_home_isolated = False)
+
+load("@json_threat_protection//build:crates.bzl", "json_threat_protection_crates")
+
+json_threat_protection_crates()
+
 load("//build/ee:repositories.bzl", "ee_repositories")
 
 ee_repositories()

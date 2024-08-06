@@ -70,6 +70,7 @@ return {
     "xml-threat-protection",
     "ai-semantic-prompt-guard",
     "ai-semantic-caching",
+    "json-threat-protection",
   },
 
   -- this list is joined into the DICTS list in kong.constants

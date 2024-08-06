@@ -130,6 +130,9 @@ jobs:
     name: Build & Package - ${{ matrix.label }}
     environment: ${{ needs.metadata.outputs.deploy-environment }}
 
+    env:
+      CARGO_NET_GIT_FETCH_WITH_CLI: "true" # https://doc.rust-lang.org/cargo/appendix/git-authentication.html
+
     strategy:
       fail-fast: false
       matrix:
@@ -194,8 +197,11 @@ jobs:
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
-    - name: Swap git with https
-      run: git config --global url."https://github".insteadOf git://github
+    - name: Swap git with https and make sure Cargo can fetch private repositories
+      run: |
+        git config --global url."https://github".insteadOf git://github
+        # Cargo needs to use https to fetch private repositories
+        git config --global url."https://${{ secrets.GHA_KONG_BOT_READ_TOKEN }}@github.com".insteadOf https://github.com
 
     - name: Generate build cache key
       id: cache-key

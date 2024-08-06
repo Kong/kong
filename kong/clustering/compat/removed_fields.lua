@@ -420,5 +420,16 @@ return {
     prometheus = {
       "ai_metrics",
     },
+    json_threat_protection = {
+      "max_body_size",
+      "max_container_depth",
+      "max_object_entry_count",
+      "max_object_entry_name_length",
+      "max_array_element_count",
+      "max_string_value_length",
+      "enforcement_mode",
+      "error_status_code",
+      "error_message",
+    },
   },
 }
