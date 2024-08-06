@@ -66,6 +66,7 @@ jobs:
     runs-on: ubuntu-latest-kong
     outputs:
       matrix: ${{ steps.build-info.outputs.matrix }}
+      old-kong-version: ${{ steps.old-kong-version.outputs.ref }}
 
     steps:
     - uses: actions/checkout@v3
@@ -77,6 +78,21 @@ jobs:
             matrix_file=".github/build-and-test-matrix-aarch64.yml"
         fi
         echo "matrix=$(yq e -I=0 -o=json $matrix_file)" >> $GITHUB_OUTPUT
+
+    - name: Get Old Kong Version
+      id: old-kong-version
+      run: |
+        KONG_VERSION=$(bash scripts/grep-kong-version.sh)
+        major=$(echo "$KONG_VERSION" | cut -d. -f1)
+        minor=$(echo "$KONG_VERSION" | cut -d. -f2)
+        # if the minor version isn't 0, use the first release of the previous minor version;
+        # otherwise just leave it empty, so later the default branch or commit will be used.
+        if [ "$minor" -ne 0 ]; then
+          minor=$((minor - 1))
+          echo "ref=$major.$minor.0.0" >> $GITHUB_OUTPUT
+        else
+          echo "ref=" >> $GITHUB_OUTPUT
+        fi
 
   build:
     uses: ./.github/workflows/build.yml
@@ -341,7 +357,7 @@ jobs:
   busted-tests:
     name: Busted test runner ${{ matrix.runner }}
     runs-on: ${{ inputs.aarch64 == true && 'ubuntu-latest-arm64-kong' || 'ubuntu-latest-kong' }}
-    needs: [build,schedule, kong-license-data]
+    needs: [metadata, build,schedule, kong-license-data]
 
     strategy:
       fail-fast: false
@@ -418,6 +434,16 @@ jobs:
       uses: actions/checkout@v3
       with:
         submodules: recursive
+        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+
+    # used for plugin compatibility test
+    - name: Checkout old version Kong source code
+      uses: actions/checkout@v3
+      with:
+        path: kong-ee-old
+        # if the minor version is 0, `ref` will default to ''
+        # which is same as in the previous step
+        ref: ${{ needs.metadata.outputs.old-kong-version }}
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
     - name: Download normal build artifacts
@@ -602,6 +628,7 @@ jobs:
         KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
         KONG_SPEC_TEST_REDIS_STACK_PORT: "16379"
         KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
+        KONG_SPEC_TEST_OLD_VERSION_KONG_PATH: ${{ github.workspace }}/kong-ee-old
         KONG_TEST_LICENSE_DATA: ${{ steps.decrypted_license.outputs.out }}
         DT_TEST: ${{ inputs.dt-test }}
         DT_ENV_ID: ${{ secrets.DT_ENV_ID }}
@@ -804,6 +831,16 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+
+    # used for plugin compatibility test
+    - name: Checkout old version kong source code
+      uses: actions/checkout@v3
+      with:
+        path: kong-ee-old
+        # if the minor version is 0, `ref` will default to ''
+        # which is same as in the previous step
+        ref: ${{ needs.metadata.outputs.old-kong-version }}
+        token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
     - name: Download artifact
       uses: actions/download-artifact@v3
