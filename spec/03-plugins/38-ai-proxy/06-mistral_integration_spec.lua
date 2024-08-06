@@ -16,12 +16,12 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       local fixtures = {
         http_mock = {},
       }
-      
+
       fixtures.http_mock.mistral = [[
         server {
           server_name mistral;
           listen ]]..MOCK_PORT..[[;
-          
+
           default_type 'application/json';
 
           location = "/v1/chat/completions" {
@@ -34,7 +34,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                 ngx.req.read_body()
                 local body, err = ngx.req.get_body_data()
                 body, err = json.decode(body)
-                
+
                 if err or (body.messages == ngx.null) then
                   ngx.status = 400
                   ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/bad_request.json"))
@@ -59,7 +59,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                 ngx.req.read_body()
                 local body, err = ngx.req.get_body_data()
                 body, err = json.decode(body)
-                
+
                 if err or (body.prompt == ngx.null) then
                   ngx.status = 400
                   ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-completions/responses/bad_request.json"))
@@ -307,7 +307,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
       }, nil, nil, fixtures))
     end)
-    
+
     lazy_teardown(function()
       helpers.stop_kong()
     end)
@@ -329,7 +329,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
         })
-        
+
         -- validate that the request succeeded, response status 200
         local body = assert.res_status(200 , r)
         local json = cjson.decode(body)
@@ -357,7 +357,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-completions/requests/good.json"),
         })
-        
+
         -- validate that the request succeeded, response status 200
         local body = assert.res_status(200 , r)
         local json = cjson.decode(body)

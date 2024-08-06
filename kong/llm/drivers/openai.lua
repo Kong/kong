@@ -72,7 +72,7 @@ function _M.from_format(response_string, model_info, route_type)
   if not transformers_from[route_type] then
     return nil, fmt("no transformer available from format %s://%s", model_info.provider, route_type)
   end
-  
+
   local ok, response_string, err = pcall(transformers_from[route_type], response_string, model_info)
   if not ok or err then
     return nil, fmt("transformation failed from type %s://%s: %s",
@@ -203,7 +203,7 @@ function _M.configure_request(conf)
     parsed_url = socket_url.parse(ai_shared.upstream_url_format[DRIVER_NAME])
     parsed_url.path = path
   end
-  
+
   -- if the path is read from a URL capture, ensure that it is valid
   parsed_url.path = string_gsub(parsed_url.path, "^/*", "/")
 
