@@ -186,7 +186,7 @@ jobs:
           APPD_PASSWORD: ${{ secrets.TEST_API_APPD_PASSWORD }}
 
 
-      - uses: datadog/junit-upload-github-action@a83979ccdfd5b9bff45aab16f726168e2bc23de2 # v1.3.0
+      - uses: datadog/junit-upload-github-action@c4b57b587ae0e3ed618a1f0e7a7d260cfde53032 # v1.4.0
         continue-on-error: true
         if: ${{ always() && env.HAS_ACCESS_TO_SECRETS == 'true' }} # upload test results even if the job fails
         with:
