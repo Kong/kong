@@ -9,6 +9,7 @@ local type = type
 local table_insert = table.insert
 local table_concat = table.concat
 local encode_base64 = ngx.encode_base64
+local unescape_uri = ngx.unescape_uri
 local worker_id = ngx.worker.id
 local fmt = string.format
 
@@ -50,7 +51,7 @@ local function parse_proxy_url(proxy_server)
     end
 
     if parsed.user and parsed.password then
-      ret.proxy_authorization = "Basic " .. encode_base64(parsed.user  .. ":" .. parsed.password)
+      ret.proxy_authorization = "Basic " .. encode_base64(unescape_uri(parsed.user)  .. ":" .. unescape_uri(parsed.password))
     end
   end
 
