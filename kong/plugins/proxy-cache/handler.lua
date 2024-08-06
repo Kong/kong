@@ -10,24 +10,17 @@ local ngx              = ngx
 local kong             = kong
 local type             = type
 local pairs            = pairs
-local tostring         = tostring
-local tonumber         = tonumber
-local max              = math.max
 local floor            = math.floor
 local lower            = string.lower
-local concat           = table.concat
 local time             = ngx.time
 local resp_get_headers = ngx.resp and ngx.resp.get_headers
-local ngx_re_gmatch    = ngx.re.gmatch
 local ngx_re_sub       = ngx.re.gsub
 local ngx_re_match     = ngx.re.match
-local parse_http_time  = ngx.parse_http_time
 local parse_mime_type  = mime_type.parse_mime_type
-local parse_directive_header = require("kong.tools.cache").parse_directive_header
-local calculate_resource_ttl = require("kong.tools.cache").calculate_resource_ttl
+local parse_directive_header = require("kong.tools.http").parse_directive_header
+local calculate_resource_ttl = require("kong.tools.http").calculate_resource_ttl
 
 
-local tab_new = require("table.new")
 
 
 local STRATEGY_PATH = "kong.plugins.proxy-cache.strategies"
