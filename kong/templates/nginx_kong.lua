@@ -592,7 +592,7 @@ server {
 server {
     charset UTF-8;
     server_name kong_worker_events;
-    listen unix:${{PREFIX}}/worker_events.sock;
+    listen unix:${{SOCKET_PATH}}/worker_events.sock;
     access_log off;
     location / {
         content_by_lua_block {

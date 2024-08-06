@@ -25,8 +25,8 @@ local _log_prefix = "[clustering] "
 
 local KONG_VERSION = kong.version
 
-local prefix = kong.configuration.prefix or require("pl.path").abspath(ngx.config.prefix())
-local CLUSTER_PROXY_SSL_TERMINATOR_SOCK = fmt("unix:%s/cluster_proxy_ssl_terminator.sock", prefix)
+local CLUSTER_PROXY_SSL_TERMINATOR_SOCK = fmt("unix:%s/cluster_proxy_ssl_terminator.sock",
+                                              kong.configuration.socket_path)
 
 local _M = {}
 
