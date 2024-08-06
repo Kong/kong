@@ -1146,6 +1146,12 @@ describe("Configuration loader", function()
           })
           assert.contains("fragments, query strings or parameters are meaningless in proxy configuration", errors)
           assert.is_nil(conf)
+
+          local conf, _, errors = conf_loader(nil, {
+            proxy_server = "http://user:password#@localhost:2333",
+          })
+          assert.contains("fragments, query strings or parameters are meaningless in proxy configuration", errors)
+          assert.is_nil(conf)
         end)
 
         it("doesn't allow cluster_use_proxy on CP but allows on DP", function()
