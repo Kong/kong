@@ -80,7 +80,7 @@ describe("[DNS client stats]", function()
       cli:resolve("_ldaps._tcp.srv.test")
 
       local query_last_time
-      for k, v in pairs(cli.stats) do
+      for k, v in pairs(cli.stats.stats) do
         if v.query_last_time then
           query_last_time = v.query_last_time
           v.query_last_time = nil
@@ -95,7 +95,7 @@ describe("[DNS client stats]", function()
           ["miss"] = 1,
           ["runs"] = 1,
         },
-      }, cli.stats)
+      }, cli.stats.stats)
     end)
 
     it("resolve all types", function()
@@ -151,7 +151,7 @@ describe("[DNS client stats]", function()
       cli:resolve("empty_result_not_stale.test")
 
       local query_last_time
-      for k, v in pairs(cli.stats) do
+      for k, v in pairs(cli.stats.stats) do
         if v.query_last_time then
           query_last_time = v.query_last_time
           v.query_last_time = nil
@@ -198,7 +198,7 @@ describe("[DNS client stats]", function()
           ["query"] = 2,
           ["query_fail:name error"] = 2,
         },
-      }, cli.stats)
+      }, cli.stats.stats)
     end)
   end)
 end)
