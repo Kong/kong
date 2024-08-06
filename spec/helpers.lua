@@ -36,6 +36,8 @@ local REDIS_SSL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_SSL_PORT") or 63
 local REDIS_SSL_SNI = os.getenv("KONG_SPEC_TEST_REDIS_SSL_SNI") or "test-redis.example.com"
 local TEST_COVERAGE_MODE = os.getenv("KONG_COVERAGE")
 local TEST_COVERAGE_TIMEOUT = 30
+-- consistent with path set in .github/workflows/build_and_test.yml and build/dockerfiles/deb.pongo.Dockerfile
+local OLD_VERSION_KONG_PATH = os.getenv("KONG_SPEC_TEST_OLD_VERSION_KONG_PATH") or "/usr/local/share/lua/5.1/kong/kong-old"
 local BLACKHOLE_HOST = "10.255.255.255"
 local KONG_VERSION = require("kong.meta")._VERSION
 local PLUGINS_LIST
@@ -4196,6 +4198,44 @@ do
   end
 end
 
+-- This function is used for plugin compatibility test.
+-- It will use the old version plugin by including the path of the old plugin
+-- at the first of LUA_PATH.
+-- The return value is a function which when called will recover the original
+-- LUA_PATH and remove the temporary directory if it exists.
+-- For an example of how to use it, please see:
+-- plugins-ee/rate-limiting-advanced/spec/06-old-plugin-compatibility_spec.lua
+-- spec/03-plugins/03-http-log/05-old-plugin-compatibility_spec.lua
+local function use_old_plugin(name)
+  assert(type(name) == "string", "must specify the plugin name")
+
+  local old_plugin_path
+  local temp_dir
+  if pl_path.exists(OLD_VERSION_KONG_PATH .. "/kong/plugins/" .. name) then
+    -- only include the path of the specified plugin into LUA_PATH
+    -- and keep the directory structure 'kong/plugins/...'
+    temp_dir = make_temp_dir()
+    old_plugin_path = temp_dir
+    local dest_dir = old_plugin_path .. "/kong/plugins"
+    assert(pl_dir.makepath(dest_dir), "failed to makepath " .. dest_dir)
+    assert(shell.run("cp -r " .. OLD_VERSION_KONG_PATH .. "/kong/plugins/" .. name .. " " .. dest_dir), "failed to copy the plugin directory")
+
+  else
+    error("the specified plugin " .. name .. " doesn't exist")
+  end
+
+  local origin_lua_path = os.getenv("LUA_PATH")
+  -- put the old plugin path at first
+  assert(setenv("LUA_PATH", old_plugin_path .. "/?.lua;" .. old_plugin_path .. "/?/init.lua;" .. origin_lua_path), "failed to set LUA_PATH env")
+
+  return function ()
+    setenv("LUA_PATH", origin_lua_path)
+    if temp_dir then
+      pl_dir.rmtree(temp_dir)
+    end
+  end
+end
+
 
 ----------------
 -- Variables/constants
@@ -4235,6 +4275,7 @@ end
 -- @field zipkin_port the port for Zipkin service, it can be set by env KONG_SPEC_TEST_ZIPKIN_PORT.
 -- @field otelcol_host The host for OpenTelemetry Collector service, it can be set by env KONG_SPEC_TEST_OTELCOL_HOST.
 -- @field otelcol_http_port the port for OpenTelemetry Collector service, it can be set by env KONG_SPEC_TEST_OTELCOL_HTTP_PORT.
+-- @field old_version_kong_path the path for the old version kong source code, it can be set by env KONG_SPEC_TEST_OLD_VERSION_KONG_PATH.
 -- @field otelcol_zpages_port the port for OpenTelemetry Collector Zpages service, it can be set by env KONG_SPEC_TEST_OTELCOL_ZPAGES_PORT.
 -- @field otelcol_file_exporter_path the path of for OpenTelemetry Collector's file exporter, it can be set by env KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH.
 
@@ -4298,6 +4339,8 @@ end
   redis_ssl_sni  = REDIS_SSL_SNI,
 
   blackhole_host = BLACKHOLE_HOST,
+
+  old_version_kong_path = OLD_VERSION_KONG_PATH,
 
   -- Kong testing helpers
   execute = exec,
@@ -4368,6 +4411,9 @@ end
   stop_grpc_target = stop_grpc_target,
   get_grpc_target_port = get_grpc_target_port,
   generate_keys = generate_keys,
+
+  -- plugin compatibility test
+  use_old_plugin = use_old_plugin,
 
   -- Only use in CLI tests from spec/02-integration/01-cmd
   kill_all = function(prefix, timeout)
