@@ -140,6 +140,7 @@ for _, strategy in helpers.each_strategy() do
         allow = { "*" },
         hide_groups_header = false,
         include_consumer_groups = false,
+        always_use_authenticated_groups = false,
       }
     }
 
@@ -155,6 +156,7 @@ for _, strategy in helpers.each_strategy() do
         allow = { "*" },
         hide_groups_header = false,
         include_consumer_groups = false,
+        always_use_authenticated_groups = false,
       }
     }
 

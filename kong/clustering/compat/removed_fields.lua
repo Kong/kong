@@ -436,5 +436,8 @@ return {
       "error_status_code",
       "error_message",
     },
+    acl = {
+      "always_use_authenticated_groups",
+    },
   },
 }

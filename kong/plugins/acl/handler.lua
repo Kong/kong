@@ -104,7 +104,7 @@ function ACLHandler:access(conf)
   else
     local authenticated_groups
     -- but no no credential, aka anonymous
-    if not credential then
+    if (not credential) or conf.always_use_authenticated_groups then
       -- authenticated groups overrides anonymous groups
       authenticated_groups = groups.get_authenticated_groups(conf.include_consumer_groups)
     end
