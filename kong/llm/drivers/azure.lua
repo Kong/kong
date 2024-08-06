@@ -148,7 +148,7 @@ function _M.configure_request(conf, identity_interface)
     end
 
     kong.service.request.set_header("Authorization", "Bearer " .. token)
-  
+
   else
     if auth_header_name and auth_header_value then
       kong.service.request.set_header(auth_header_name, auth_header_value)

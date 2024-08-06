@@ -28,7 +28,7 @@ local _CHAT_ROLES = {
 
 local function handle_stream_event(event_t, model_info, route_type)
   local metadata
-  
+
   -- discard empty frames, it should either be a random new line, or comment
   if (not event_t.data) or (#event_t.data < 1) then
     return
@@ -38,12 +38,12 @@ local function handle_stream_event(event_t, model_info, route_type)
   if err then
     return nil, "failed to decode event frame from cohere: " .. err, nil
   end
-  
+
   local new_event
 
   if event.event_type == "stream-start" then
     kong.ctx.plugin.ai_proxy_cohere_stream_id = event.generation_id
-    
+
     -- ignore the rest of this one
     new_event = {
       choices = {
@@ -59,7 +59,7 @@ local function handle_stream_event(event_t, model_info, route_type)
       model = model_info.name,
       object = "chat.completion.chunk",
     }
-    
+
   elseif event.event_type == "text-generation" then
     -- this is a token
     if route_type == "stream/llm/v1/chat" then
@@ -144,19 +144,19 @@ end
 local function handle_json_inference_event(request_table, model)
   request_table.temperature = request_table.temperature
   request_table.max_tokens = request_table.max_tokens
-  
+
   request_table.p = request_table.top_p
   request_table.k = request_table.top_k
-  
+
   request_table.top_p = nil
   request_table.top_k = nil
-  
+
   request_table.model = model.name or request_table.model
   request_table.stream = request_table.stream or false  -- explicitly set this
-  
+
   if request_table.prompt and request_table.messages then
     return kong.response.exit(400, "cannot run a 'prompt' and a history of 'messages' at the same time - refer to schema")
-    
+
   elseif request_table.messages then
     -- we have to move all BUT THE LAST message into "chat_history" array
     -- and move the LAST message (from 'user') into "message" string
@@ -171,26 +171,26 @@ local function handle_json_inference_event(request_table, model)
           else
             role = _CHAT_ROLES.user
           end
-          
+
           chat_history[i] = {
             role = role,
             message = v.content,
           }
         end
       end
-      
+
       request_table.chat_history = chat_history
     end
-    
+
     request_table.message = request_table.messages[#request_table.messages].content
     request_table.messages = nil
-    
+
   elseif request_table.prompt then
     request_table.prompt = request_table.prompt
     request_table.messages = nil
     request_table.message = nil
   end
-  
+
   return request_table, "application/json", nil
 end
 
@@ -209,7 +209,7 @@ local transformers_from = {
     -- messages/choices table is only 1 size, so don't need to static allocate
     local messages = {}
     messages.choices = {}
-  
+
     if response_table.prompt and response_table.generations then
       -- this is a "co.generate"
       for i, v in ipairs(response_table.generations) do
@@ -222,7 +222,7 @@ local transformers_from = {
       messages.object = "text_completion"
       messages.model = model_info.name
       messages.id = response_table.id
-  
+
       local stats = {
         completion_tokens = response_table.meta
                         and response_table.meta.billed_units
@@ -237,10 +237,10 @@ local transformers_from = {
                   and (response_table.meta.billed_units.output_tokens + response_table.meta.billed_units.input_tokens),
       }
       messages.usage = stats
-  
+
     elseif response_table.text then
       -- this is a "co.chat"
-  
+
       messages.choices[1] = {
         index = 0,
         message = {
@@ -252,7 +252,7 @@ local transformers_from = {
       messages.object = "chat.completion"
       messages.model = model_info.name
       messages.id = response_table.generation_id
-  
+
       local stats = {
         completion_tokens = response_table.meta
                         and response_table.meta.billed_units
@@ -267,10 +267,10 @@ local transformers_from = {
                   and (response_table.meta.billed_units.output_tokens + response_table.meta.billed_units.input_tokens),
       }
       messages.usage = stats
-  
+
     else -- probably a fault
       return nil, "'text' or 'generations' missing from cohere response body"
-  
+
     end
 
     return cjson.encode(messages)
@@ -321,17 +321,17 @@ local transformers_from = {
       prompt.object = "chat.completion"
       prompt.model = model_info.name
       prompt.id = response_table.generation_id
-  
+
       local stats = {
         completion_tokens = response_table.token_count and response_table.token_count.response_tokens,
         prompt_tokens = response_table.token_count and response_table.token_count.prompt_tokens,
         total_tokens = response_table.token_count and response_table.token_count.total_tokens,
       }
       prompt.usage = stats
-  
+
     else -- probably a fault
       return nil, "'text' or 'generations' missing from cohere response body"
-  
+
     end
 
     return cjson.encode(prompt)
@@ -472,7 +472,7 @@ function _M.configure_request(conf)
                       and ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
                       or "/"
   end
-  
+
   -- if the path is read from a URL capture, ensure that it is valid
   parsed_url.path = string_gsub(parsed_url.path, "^/*", "/")
 

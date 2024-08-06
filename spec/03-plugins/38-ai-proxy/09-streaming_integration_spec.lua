@@ -760,7 +760,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             end
           end
         until not buffer
-        
+
         assert.equal(#events, 8)
         assert.equal(buf:tostring(), "1 + 1 = 2")
       end)

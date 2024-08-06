@@ -23,12 +23,12 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       local fixtures = {
         http_mock = {},
       }
-      
+
       fixtures.http_mock.llama2 = [[
         server {
           server_name llama2;
           listen ]]..MOCK_PORT..[[;
-          
+
           default_type 'application/json';
 
           location = "/raw/llm/v1/chat" {
@@ -162,7 +162,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
       }, nil, nil, fixtures))
     end)
-    
+
     lazy_teardown(function()
       helpers.stop_kong()
     end)
@@ -184,7 +184,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = pl_file.read("spec/fixtures/ai-proxy/llama2/raw/requests/good-chat.json"),
         })
-        
+
         local body = assert.res_status(200, r)
         local json = cjson.decode(body)
 
@@ -199,7 +199,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = pl_file.read("spec/fixtures/ai-proxy/llama2/raw/requests/good-completions.json"),
         })
-        
+
         local body = assert.res_status(200, r)
         local json = cjson.decode(body)
 
@@ -210,7 +210,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
     describe("one-shot request", function()
       it("success", function()
         local ai_driver = require("kong.llm.drivers.llama2")
-  
+
         local plugin_conf = {
           route_type = "llm/v1/chat",
           auth = {
@@ -227,7 +227,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             },
           },
         }
-  
+
         local request = {
           messages = {
             [1] = {
@@ -267,7 +267,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
       it("404", function()
         local ai_driver = require("kong.llm.drivers.llama2")
-  
+
         local plugin_conf = {
           route_type = "llm/v1/chat",
           auth = {
@@ -310,7 +310,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
       it("401", function()
         local ai_driver = require("kong.llm.drivers.llama2")
-  
+
         local plugin_conf = {
           route_type = "llm/v1/chat",
           auth = {

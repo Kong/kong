@@ -539,7 +539,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
             local expected_request_json = pl_file.read(filename)
             local expected_request_table, err = cjson.decode(expected_request_json)
             assert.is_nil(err)
-            
+
             -- compare the tables
             assert.same(expected_request_table, actual_request_table)
           end)
@@ -554,7 +554,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
             local filename
             if l.config.provider == "llama2" then
               filename = fmt("spec/fixtures/ai-proxy/unit/real-responses/%s/%s/%s.json", l.config.provider, l.config.options.llama2_format, pl_replace(k, "/", "-"))
-            
+
             elseif l.config.provider == "mistral" then
               filename = fmt("spec/fixtures/ai-proxy/unit/real-responses/%s/%s/%s.json", l.config.provider, l.config.options.mistral_format, pl_replace(k, "/", "-"))
 
@@ -611,7 +611,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
           it("converts to provider request format correctly", function()
             -- load the real provider frame from file
             local real_stream_frame = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/real-stream-frames/%s/%s.txt", config.provider, pl_replace(format_name, "/", "-")))
-            
+
             -- use the shared function to produce an SSE format object
             local real_transformed_frame, err = ai_shared.frame_to_events(real_stream_frame)
             assert.is_nil(err)
@@ -635,7 +635,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
   -- generic tests
   it("throws correct error when format is not supported", function()
     local driver = require("kong.llm.drivers.mistral")  -- one-shot, random example of provider with only prompt support
-    
+
     local model_config = {
       route_type = "llm/v1/chatnopenotsupported",
       name = "mistral-tiny",
@@ -658,7 +658,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
     assert.equal(err, "no transformer available to format mistral://llm/v1/chatnopenotsupported/ollama")
   end)
 
-  
+
   it("produces a correct default config merge", function()
     local formatted, err = ai_shared.merge_config_defaults(
       SAMPLE_LLM_V1_CHAT_WITH_SOME_OPTS,
@@ -682,7 +682,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
   end)
 
   describe("streaming transformer tests", function()
-    
+
     it("transforms truncated-json type (beginning of stream)", function()
       local input = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/partial-json-beginning/input.bin"))
       local events = ai_shared.frame_to_events(input, "gemini")
@@ -702,7 +702,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
       assert.same(events, expected_events, true)
     end)
-    
+
     it("transforms complete-json type", function()
       local input = pl_file.read(fmt("spec/fixtures/ai-proxy/unit/streaming-chunk-formats/complete-json/input.bin"))
       local events = ai_shared.frame_to_events(input, "cohere")  -- not "truncated json mode" like Gemini

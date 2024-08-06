@@ -78,7 +78,7 @@ local function to_claude_prompt(req)
     return kong_messages_to_claude_prompt(req.messages)
 
   end
-  
+
   return nil, "request is missing .prompt and .messages commands"
 end
 
@@ -335,7 +335,7 @@ function _M.from_format(response_string, model_info, route_type)
   if not transform then
     return nil, fmt("no transformer available from format %s://%s", model_info.provider, route_type)
   end
-  
+
   local ok, response_string, err, metadata = pcall(transform, response_string, model_info, route_type)
   if not ok or err then
     return nil, fmt("transformation failed from type %s://%s: %s",

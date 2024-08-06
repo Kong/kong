@@ -259,7 +259,7 @@ local function send_response(conf, cache_response, stream_mode, start_time, embe
   end
 
   cache_response = cjson.decode(cache_response)
-  
+
   local cc = req_cc()
 
   local ttl = conf.storage_ttl or
@@ -332,7 +332,7 @@ end
 -- Access phase for semantic caching
 function AISemanticCaching:access(conf)
   local start_time = ngx.now()
-  
+
   local cc = req_cc()
 
   if not cacheable_request(conf, cc) then
@@ -418,7 +418,7 @@ function AISemanticCaching:access(conf)
       llm_state.set_semantic_cache_hit(true)
       return bad_request(conf, err, "Failed to generate embeddings")
     end
-    
+
     -- Continue regardless of error, but break from the plugin
     kong.log.warn("Failed to generate embeddings: ", err, ", plugin config is set to continue on failure")
     return

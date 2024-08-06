@@ -268,7 +268,7 @@ function _M.frame_to_events(frame, provider)
 
     -- it may start with ',' which is the start of the new frame
     frame = (string.sub(str_ltrim(frame), 1, 1) == "," and string.sub(str_ltrim(frame), 2)) or frame
-    
+
     -- it may end with the array terminator ']' indicating the finished stream
     if string.sub(str_rtrim(frame), -1) == "]" then
       frame = string.sub(str_rtrim(frame), 1, -2)
@@ -455,7 +455,7 @@ function _M.from_ollama(response_string, model_info, route_type)
 
     end
   end
-  
+
   if output and output ~= _M._CONST.SSE_TERMINATOR then
     output, err = cjson.encode(output)
   end
@@ -692,7 +692,7 @@ function _M.post_request(conf, response_object)
     response_tokens = 0
   end
   llm_state.increase_response_tokens_count(response_tokens)
-  
+
 
   return nil
 end

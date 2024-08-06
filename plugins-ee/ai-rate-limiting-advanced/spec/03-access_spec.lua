@@ -173,14 +173,14 @@ for _, strategy in strategies() do
       local fixtures = {
         http_mock = {},
       }
-      
+
       fixtures.http_mock.openai = [[
         server {
             server_name openai;
             listen ]]..MOCK_PORT..[[;
-            
+
             default_type 'application/json';
-      
+
 
             location = "/llm/v1/chat/good" {
                 content_by_lua_block {
@@ -198,7 +198,7 @@ for _, strategy in strategies() do
                         ngx.req.read_body()
                         local body, err = ngx.req.get_body_data()
                         body, err = json.decode(body)
-                        
+
                         if err or (body.messages == ngx.null) then
                             ngx.status = 400
                             ngx.print(pl_file.read("/kong-plugin/spec/fixtures/openai/responses/bad_request.json"))
@@ -216,21 +216,21 @@ for _, strategy in strategies() do
             location = "/llm/v1/chat/transform" {
                 content_by_lua_block {
                     ngx.header["Content-Type"] = "application/json"
-      
+
                     local pl_file = require "pl.file"
                     local json = require("cjson.safe")
                     ngx.req.read_body()
                     local body, err = ngx.req.get_body_data()
                     body, err = json.decode(body)
-      
+
                     local token = ngx.req.get_headers()["authorization"]
                     local token_query = ngx.req.get_uri_args()["apikey"]
-      
+
                     if token == "Bearer cohere-key" or token_query == "cohere-key" or body.apikey == "cohere-key" then
                         ngx.req.read_body()
                         local body, err = ngx.req.get_body_data()
                         body, err = json.decode(body)
-                        
+
                         if err or (body.messages == ngx.null) then
                             ngx.status = 400
                             ngx.print(pl_file.read("/kong-plugin/spec/fixtures/cohere/responses/bad_request.json"))
@@ -248,21 +248,21 @@ for _, strategy in strategies() do
             location = "/llm/v1/chat/instruction/openai" {
                 content_by_lua_block {
                     ngx.header["Content-Type"] = "application/json"
-      
+
                     local pl_file = require "pl.file"
                     local json = require("cjson.safe")
                     ngx.req.read_body()
                     local body, err = ngx.req.get_body_data()
                     body, err = json.decode(body)
-      
+
                     local token = ngx.req.get_headers()["authorization"]
                     local token_query = ngx.req.get_uri_args()["apikey"]
-      
+
                     if token == "Bearer openai-key" or token_query == "openai-key" or body.apikey == "openai-key" then
                         ngx.req.read_body()
                         local body, err = ngx.req.get_body_data()
                         body, err = json.decode(body)
-                        
+
                         if err or (body.messages == ngx.null) then
                             ngx.status = 400
                             ngx.print(pl_file.read("/kong-plugin/spec/fixtures/openai/responses/bad_request.json"))
@@ -280,21 +280,21 @@ for _, strategy in strategies() do
             location = "/llm/v1/chat/instruction/azure" {
                 content_by_lua_block {
                     ngx.header["Content-Type"] = "application/json"
-      
+
                     local pl_file = require "pl.file"
                     local json = require("cjson.safe")
                     ngx.req.read_body()
                     local body, err = ngx.req.get_body_data()
                     body, err = json.decode(body)
-      
+
                     local token = ngx.req.get_headers()["authorization"]
                     local token_query = ngx.req.get_uri_args()["apikey"]
-      
+
                     if token == "Bearer azure-key" or token_query == "azure-key" or body.apikey == "azure-key" then
                         ngx.req.read_body()
                         local body, err = ngx.req.get_body_data()
                         body, err = json.decode(body)
-                        
+
                         if err or (body.messages == ngx.null) then
                             ngx.status = 400
                             ngx.print(pl_file.read("/kong-plugin/spec/fixtures/azure/responses/bad_request.json"))
@@ -398,7 +398,7 @@ for _, strategy in strategies() do
         name = "route-6",
         hosts = { "test6.com" },
       })
-      
+
       -- with wrong type request prompt function
       local route7 = assert(bp.routes:insert {
         protocols = { "http" },
@@ -805,7 +805,7 @@ for _, strategy in strategies() do
                 },
                 body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
                 })
-                
+
                 assert.res_status(200, res)
 
                 assert.are.same(310, tonumber(res.headers["x-ai-ratelimit-limit-3-openai"]))
@@ -859,7 +859,7 @@ for _, strategy in strategies() do
             },
             body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
             })
-            
+
             local body = assert.res_status(429, res)
             local json = cjson.decode(body)
 
@@ -968,7 +968,7 @@ for _, strategy in strategies() do
                 },
                 body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
                 })
-                
+
                 assert.res_status(200, res)
 
                 assert.are.same(260, tonumber(res.headers["x-ai-ratelimit-limit-5-openai"]))
@@ -996,7 +996,7 @@ for _, strategy in strategies() do
             },
             body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
             })
-            
+
             local body = assert.res_status(429, res)
             local json = cjson.decode(body)
 
@@ -1043,7 +1043,7 @@ for _, strategy in strategies() do
             },
             body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
             })
-            
+
             local body = assert.res_status(429, res)
             local json = cjson.decode(body)
 
@@ -1070,7 +1070,7 @@ for _, strategy in strategies() do
             },
             body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
             })
-            
+
             assert.res_status(200, res)
         end)
 
@@ -1087,7 +1087,7 @@ for _, strategy in strategies() do
             },
             body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
             })
-            
+
             local body = assert.res_status(429, res)
             local json = cjson.decode(body)
 
@@ -1113,7 +1113,7 @@ for _, strategy in strategies() do
             },
             body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
             })
-            
+
             assert.res_status(200, res)
 
             assert.are.same(100, tonumber(res.headers["x-ai-ratelimit-limit-5-cohere"]))
@@ -1157,7 +1157,7 @@ for _, strategy in strategies() do
             },
             body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
             })
-            
+
             local body = assert.res_status(500, res)
             local json = cjson.decode(body)
 
@@ -1178,7 +1178,7 @@ for _, strategy in strategies() do
             },
             body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
             })
-            
+
             local body = assert.res_status(500, res)
             local json = cjson.decode(body)
 
@@ -1201,7 +1201,7 @@ for _, strategy in strategies() do
                 },
                 body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
                 })
-                
+
                 assert.res_status(200, res)
 
                 assert.are.same(100, tonumber(res.headers["x-ai-ratelimit-limit-3-openai"]))
@@ -1224,7 +1224,7 @@ for _, strategy in strategies() do
             },
             body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
             })
-            
+
             local body = assert.res_status(429, res)
             local json = cjson.decode(body)
 
@@ -1251,7 +1251,7 @@ for _, strategy in strategies() do
               },
               body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
               })
-              
+
               assert.res_status(200, res)
 
               -- Use to handle small round numbers
@@ -1280,7 +1280,7 @@ for _, strategy in strategies() do
           },
           body = pl_file.read(helpers.get_fixtures_path() .. "/openai/requests/good.json")
           })
-          
+
           local body = assert.res_status(429, res)
           local json = cjson.decode(body)
 

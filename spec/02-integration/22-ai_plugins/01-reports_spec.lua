@@ -45,32 +45,32 @@ for _, strategy in helpers.each_strategy() do
             local fixtures = {
               http_mock = {},
             }
-            
+
             fixtures.http_mock.openai = [[
               server {
                   server_name openai;
                   listen ]]..MOCK_PORT..[[;
-                  
+
                   default_type 'application/json';
-            
-      
+
+
                   location = "/llm/v1/chat/good" {
                     content_by_lua_block {
                       local pl_file = require "pl.file"
                       local json = require("cjson.safe")
-      
+
                       ngx.req.read_body()
                       local body, err = ngx.req.get_body_data()
                       body, err = json.decode(body)
-      
+
                       local token = ngx.req.get_headers()["authorization"]
                       local token_query = ngx.req.get_uri_args()["apikey"]
-      
+
                       if token == "Bearer openai-key" or token_query == "openai-key" or body.apikey == "openai-key" then
                         ngx.req.read_body()
                         local body, err = ngx.req.get_body_data()
                         body, err = json.decode(body)
-                        
+
                         if err or (body.messages == ngx.null) then
                           ngx.status = 400
                           ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/bad_request.json"))

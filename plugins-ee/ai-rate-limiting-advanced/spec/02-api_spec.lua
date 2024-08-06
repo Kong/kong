@@ -108,7 +108,7 @@ describe("ai-rate-limiting-advanced API", function()
       })
       local body = assert.res_status(201, res)
       local json = cjson.decode(body)
-      
+
       assert.same( "openai", json.config.llm_providers[1].name)
       assert.same( 3600, json.config.llm_providers[1].window_size)
       assert.same( 10, json.config.llm_providers[1].limit)
