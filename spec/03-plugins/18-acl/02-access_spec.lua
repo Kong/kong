@@ -80,6 +80,20 @@ for _, strategy in helpers.each_strategy() do
         consumer = { id = consumer4.id },
       }
 
+      local consumer5 = bp.consumers:insert {
+        username = "consumer5"
+      }
+
+      bp.keyauth_credentials:insert {
+        key      = "apikey127",
+        consumer = { id = consumer5.id },
+      }
+
+      bp.acls:insert {
+        group    = "acl_group1",
+        consumer = { id = consumer5.id },
+      }
+
       local anonymous = bp.consumers:insert {
         username = "anonymous"
       }
@@ -739,6 +753,86 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
+      local route15 = bp.routes:insert({
+        hosts = { "acl15.test" }
+      })
+
+      bp.plugins:insert {
+        name = "acl",
+        route = { id = route15.id },
+        config = {
+          allow = { "auth_group1" },
+          hide_groups_header = false,
+          always_use_authenticated_groups = true,
+        }
+      }
+
+      bp.plugins:insert {
+        name = "key-auth",
+        route = { id = route15.id },
+        config = {}
+      }
+
+      bp.plugins:insert {
+        name = "ctx-checker",
+        route = { id = route15.id },
+        config = {
+          ctx_kind      = "kong.ctx.shared",
+          ctx_set_field = "authenticated_groups",
+          ctx_set_array = { "auth_group1" },
+        }
+      }
+
+      local route16 = bp.routes:insert({
+        hosts = { "acl16.test" }
+      })
+
+      bp.plugins:insert {
+        name = "acl",
+        route = { id = route16.id },
+        config = {
+          allow = { "auth_group1" },
+          hide_groups_header = false,
+          always_use_authenticated_groups = true,
+        }
+      }
+
+      bp.plugins:insert {
+        name = "key-auth",
+        route = { id = route16.id },
+        config = {}
+      }
+
+      bp.plugins:insert {
+        name = "ctx-checker",
+        route = { id = route16.id },
+        config = {
+          ctx_kind      = "kong.ctx.shared",
+          ctx_set_field = "authenticated_groups",
+          ctx_set_array = { "auth_group2" },
+        }
+      }
+
+      local route17 = bp.routes:insert({
+        hosts = { "acl17.test" }
+      })
+
+      bp.plugins:insert {
+        name = "acl",
+        route = { id = route17.id },
+        config = {
+          allow = { "acl_group1" },
+          hide_groups_header = false,
+          always_use_authenticated_groups = true,
+        }
+      }
+
+      bp.plugins:insert {
+        name = "key-auth",
+        route = { id = route17.id },
+        config = {}
+      }
+
       assert(helpers.start_kong({
         plugins    = "bundled, ctx-checker",
         database   = strategy,
@@ -1378,6 +1472,46 @@ for _, strategy in helpers.each_strategy() do
           }
         }))
         assert.res_status(200, res)
+      end)
+    end)
+
+    describe("always_use_authenticated_groups", function()
+      it("if authenticated_groups is set, it'll be used", function()
+        local res = assert(proxy_client:get("/request?apikey=apikey127", {
+          headers = {
+            ["Host"] = "acl15.test"
+          }
+        }))
+        local body = assert(cjson.decode(assert.res_status(200, res)))
+        assert.equal("auth_group1", body.headers["x-authenticated-groups"])
+        assert.equal(nil, body.headers["x-consumer-groups"])
+
+        res = assert(proxy_client:get("/request?apikey=apikey127", {
+          headers = {
+            ["Host"] = "acl16.test"
+          }
+        }))
+        body = assert(cjson.decode(assert.res_status(403, res)))
+        assert.matches("You cannot consume this service", body.message)
+      end)
+
+      it("if authenticated_groups is not set, fallback to use acl groups", function()
+        local res = assert(proxy_client:get("/request?apikey=apikey127", {
+          headers = {
+            ["Host"] = "acl17.test"
+          }
+        }))
+        local body = assert(cjson.decode(assert.res_status(200, res)))
+        assert.equal(nil, body.headers["x-authenticated-groups"])
+        assert.equal("acl_group1", body.headers["x-consumer-groups"])
+
+        local res = assert(proxy_client:get("/request?apikey=apikey126", {
+          headers = {
+            ["Host"] = "acl17.test"
+          }
+        }))
+        body = assert(cjson.decode(assert.res_status(403, res)))
+        assert.matches("You cannot consume this service", body.message)
       end)
     end)
   

@@ -207,5 +207,8 @@ return {
     prometheus = {
       "ai_metrics",
     },
+    acl = {
+      "always_use_authenticated_groups",
+    },
   },
 }
