@@ -1559,7 +1559,7 @@
                                  # To read the file again after modifying it,
                                  # Kong must be reloaded.
 
-#resolver_family = A,AAAA,SRV    # The supported query types.
+#resolver_family = A,SRV         # The supported query types.
                                  #
                                  # For a domain name, Kong will only query
                                  # either IP addresses (A or AAAA) or SRV
