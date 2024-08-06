@@ -1391,6 +1391,99 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       end)
     end)
 
+    describe("openai multi-modal requests #ttt", function()
+      it("logs statistics", function()
+        local r = client:get("/openai/llm/v1/chat/good", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good_multi_modal.json"),
+        })
+        
+        -- validate that the request succeeded, response status 200
+        local body = assert.res_status(200 , r)
+        local json = cjson.decode(body)
+
+        -- check this is in the 'kong' response format
+        assert.equals(json.id, "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2")
+        assert.equals(json.model, "gpt-3.5-turbo-0613")
+        assert.equals(json.object, "chat.completion")
+
+        assert.is_table(json.choices)
+        assert.is_table(json.choices[1].message)
+        assert.same({
+          content = "The sum of 1 + 1 is 2.",
+          role = "assistant",
+        }, json.choices[1].message)
+
+        local log_message = wait_for_json_log_entry(FILE_LOG_PATH_STATS_ONLY)
+        assert.same("127.0.0.1", log_message.client_ip)
+        assert.is_number(log_message.request.size)
+        assert.is_number(log_message.response.size)
+
+        -- test ai-proxy stats
+        -- TODO: as we are reusing this test for ai-proxy and ai-proxy-advanced
+        -- we are currently stripping the top level key and comparing values directly
+        local _, first_expected = next(_EXPECTED_CHAT_STATS)
+        local _, first_got = next(log_message.ai)
+        local actual_llm_latency = first_got.meta.llm_latency
+        local actual_time_per_token = first_got.usage.time_per_token
+        local time_per_token = math.floor(actual_llm_latency / first_got.usage.completion_tokens)
+
+        first_got.meta.llm_latency = 1
+        first_got.usage.time_per_token = 1
+
+        assert.same(first_expected, first_got)
+        assert.is_true(actual_llm_latency > 0)
+        assert.same(actual_time_per_token, time_per_token)
+      end)
+
+      it("logs payloads", function()
+        local r = client:get("/openai/llm/v1/chat/good-with-payloads", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good_multi_modal.json"),
+        })
+
+        -- validate that the request succeeded, response status 200
+        local body = assert.res_status(200 , r)
+        local json = cjson.decode(body)
+
+        -- check this is in the 'kong' response format
+        assert.equals(json.id, "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2")
+        assert.equals(json.model, "gpt-3.5-turbo-0613")
+        assert.equals(json.object, "chat.completion")
+
+        assert.is_table(json.choices)
+        assert.is_table(json.choices[1].message)
+        assert.same({
+          content = "The sum of 1 + 1 is 2.",
+          role = "assistant",
+        }, json.choices[1].message)
+
+        local log_message = wait_for_json_log_entry(FILE_LOG_PATH_WITH_PAYLOADS)
+        assert.same("127.0.0.1", log_message.client_ip)
+        assert.is_number(log_message.request.size)
+        assert.is_number(log_message.response.size)
+
+        -- TODO: as we are reusing this test for ai-proxy and ai-proxy-advanced
+        -- we are currently stripping the top level key and comparing values directly
+        local _, message = next(log_message.ai)
+
+        -- test request bodies
+        assert.matches('"content": "What is 1 + 1?"', message.payload.request, nil, true)
+        assert.matches('"role": "user"', message.payload.request, nil, true)
+
+        -- test response bodies
+        assert.matches('"content": "The sum of 1 + 1 is 2.",', message.payload.response, nil, true)
+        assert.matches('"role": "assistant"', message.payload.response, nil, true)
+        assert.matches('"id": "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2"', message.payload.response, nil, true)
+      end)
+    end)
+
     describe("one-shot request", function()
       it("success", function()
         local ai_driver = require("kong.llm.drivers.openai")
