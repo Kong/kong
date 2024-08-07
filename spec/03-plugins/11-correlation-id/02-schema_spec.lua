@@ -88,7 +88,7 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
 
   describe("in hybrid mode", function()
     local route
-    setup(function()
+    lazy_setup(function()
       route = bp.routes:insert({
         hosts = {"example.com"},
       })
