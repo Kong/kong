@@ -239,8 +239,8 @@ jobs:
           username: ${{ secrets.GHA_DOCKERHUB_PULL_USER }}
           password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
 
-      - name: Add domain.test to hostnames for ACME Plugin tests
-        run: echo "127.0.0.1 domain.test" | sudo tee -a /etc/hosts
+      - name: Set domain.test to hostnames for ACME and otel file permissions
+        run: echo "127.0.0.1 domain.test" | sudo tee -a /etc/hosts && cd gateway-docker-compose-generator/otel && chmod 666 file_exporter.json
 
       - name: Setup tmate session
         if: ${{ inputs.enable_verbose_response_logging == 'true' }}
@@ -285,6 +285,7 @@ jobs:
           # set CUSTOM_PLUGIN to false in case of amazonlinux-2 image
           CUSTOM_PLUGIN: ${{ endsWith(env.GW_IMAGE, 'amazonlinux-2') && 'false' || env.CUSTOM_PLUGIN_VAR }}
           ACME: true
+          OTEL: true
 
       - name: Logs from Gateway Start
         if: failure()
@@ -431,9 +432,9 @@ jobs:
         with:
           username: ${{ secrets.GHA_DOCKERHUB_PULL_USER }}
           password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
-
-      - name: Add domain.test to hostnames for ACME Plugin tests
-        run: echo "127.0.0.1 domain.test" | sudo tee -a /etc/hosts
+      
+      - name: Set domain.test to hostnames for ACME and otel file permissions
+        run: echo "127.0.0.1 domain.test" | sudo tee -a /etc/hosts && cd gateway-docker-compose-generator/otel && chmod 666 file_exporter.json
 
       - name: Setup tmate session
         if: ${{ inputs.enable_verbose_response_logging == 'true' }}
@@ -477,6 +478,7 @@ jobs:
           # set CUSTOM_PLUGIN to false in case of amazonlinux-2 image
           CUSTOM_PLUGIN: ${{ endsWith(env.GW_IMAGE, 'amazonlinux-2') && 'false' || env.CUSTOM_PLUGIN_VAR }}
           ACME: true
+          OTEL: true
 
       - name: Logs from Gateway Start
         if: failure()
@@ -606,9 +608,9 @@ jobs:
         with:
           username: ${{ secrets.GHA_DOCKERHUB_PULL_USER }}
           password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
-
-      - name: Add domain.test to hostnames for ACME Plugin tests
-        run: echo "127.0.0.1 domain.test" | sudo tee -a /etc/hosts
+      
+      - name: Set domain.test to hostnames for ACME and otel file permissions
+        run: echo "127.0.0.1 domain.test" | sudo tee -a /etc/hosts && cd gateway-docker-compose-generator/otel && chmod 666 file_exporter.json
 
       - name: Setup tmate session
         if: ${{ inputs.enable_verbose_response_logging == 'true' }}
@@ -664,6 +666,7 @@ jobs:
           AZURE_CLIENT_SECRET: ${{ secrets.TEST_API_AZURE_CLIENT_SECRET }}
           ACME: true
           CUSTOM_PLUGIN: ${{ env.CUSTOM_PLUGIN_VAR }}
+          OTEL: true
 
       - name: Logs from Gateway Start
         if: failure()

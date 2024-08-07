@@ -55,8 +55,10 @@ export {
   runDockerContainerCommand,
   deployKonnectDataPlane,
   stopAndRemoveTargetContainer,
-  reloadGateway
+  reloadGateway,
+  copyFileFromDockerContainer
 } from './exec/gateway-container';
+export { getTargetFileContent, createFileWithContent, deleteTargetFile } from './utilities/files'
 export { removeSecretFile, safeStopGateway, startGateway } from './exec/gw-ec2';
 export {
   Credentials,
@@ -113,5 +115,5 @@ export { generateDpopProof, generateJWT, submitLoginInfo, getKeycloakLogs } from
 export { getAuthOptions, setKAuthCookies } from './auth/kauth-tokens'
 export * from './entities/organization'
 export { getApiConfig } from './config/api-config';
-export { generatePublicPrivateCertificates, getTargetFileContent, removeCertficatesAndKeys } from './exec/certificates'
+export { generatePublicPrivateCertificates, removeCertficatesAndKeys } from './exec/certificates'
 export { createPolly } from './mocking/polly'

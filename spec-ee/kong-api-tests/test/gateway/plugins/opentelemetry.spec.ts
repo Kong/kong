@@ -60,7 +60,7 @@ describe('Gateway Plugins: OpenTelemetry', function () {
   let expectedTraces: number;
 
   before(async function () {
-    // enable kong opel tracing for requests for this test
+    // enable kong otel tracing for requests for this test
     await resetGatewayContainerEnvVariable(
       {
         KONG_TRACING_INSTRUMENTATIONS: 'request',
@@ -88,7 +88,7 @@ describe('Gateway Plugins: OpenTelemetry', function () {
     await wait(jaegerWait); // eslint-disable-line no-restricted-syntax
   });
 
-  it('should not create opel plugin with invalid config.endpoint', async function () {
+  it('should not create otel plugin with invalid config.endpoint', async function () {
     const pluginPayload = {
       name: 'opentelemetry',
       config: {
@@ -185,9 +185,9 @@ describe('Gateway Plugins: OpenTelemetry', function () {
       'Should have service.version'
     ).to.be.string;
 
-    const opelTagUrl = `${proxyUrl.split(':8000')[0]}${paths[0]}`;
+    const otelTagUrl = `${proxyUrl.split(':8000')[0]}${paths[0]}`;
 
-    expect(urlObj.value, `Should see correct http.url`).to.equal(opelTagUrl);
+    expect(urlObj.value, `Should see correct http.url`).to.equal(otelTagUrl);
 
     expect(
       targetDataset.spans[0].tags.some((tag) => tag.value === 200),
@@ -195,7 +195,7 @@ describe('Gateway Plugins: OpenTelemetry', function () {
     ).to.be.true;
   });
 
-  it('should patch opel plugin resource_attributes', async function () {
+  it('should patch otel plugin resource_attributes', async function () {
     const resp = await axios({
       method: 'patch',
       url: `${url}/${pluginId}`,
@@ -315,7 +315,7 @@ describe('Gateway Plugins: OpenTelemetry', function () {
     expect(resp.data.headers['B3'], 'Should see B3 header being sent').to.contain(b3Header.split('-')[0]);
   });
 
-  it('should patch opel plugin header_type to ignore', async function () {
+  it('should patch otel plugin header_type to ignore', async function () {
     const resp = await axios({
       method: 'patch',
       url: `${url}/${pluginId}`,
@@ -389,7 +389,7 @@ describe('Gateway Plugins: OpenTelemetry', function () {
     expect(resp.data.headers['B3'], 'Should see B3 header id').to.contain(b3Header.split('-')[1]);
   });
 
-  it('should patch opel plugin propagation configurations', async function () {
+  it('should patch otel plugin propagation configurations', async function () {
     const resp = await axios({
       method: 'patch',
       url: `${url}/${pluginId}`,

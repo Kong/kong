@@ -18,9 +18,10 @@ export const wait = async (waitTime: number) => {
  * Find match of a given regex in a given string and return Boolean
  * @param {string} regexPattern to search for
  * @param {string} targetString
+ * @param {string} testOrExec - either 'test' or 'exec' to control the return value
  * @returns {boolean}
  */
-export const findRegex = (regexPattern, targetString) => {
+export const findRegex = (regexPattern, targetString, testOrExec = 'test') => {
   const regex = new RegExp(regexPattern, 'g');
-  return regex.test(targetString);
+  return testOrExec === 'test' ? regex.test(targetString) : regex.exec(targetString);
 };

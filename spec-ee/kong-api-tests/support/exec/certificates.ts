@@ -35,18 +35,3 @@ export const removeCertficatesAndKeys = () => {
     }
   })
 }
-
-/**
- * Reads the target file and returns its contents
- * @returns {string}
- */
-export const getTargetFileContent = (filename: string) => {
-  const file = path.resolve(process.cwd(), filename);
-
-  if (fs.existsSync(file)) {
-    console.log("exists")
-    return fs.readFileSync(file, 'utf8');
-  } else {
-    console.error(`Couldn't read the given file at ${file}`);
-  }
-}

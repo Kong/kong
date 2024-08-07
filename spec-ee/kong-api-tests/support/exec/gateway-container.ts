@@ -161,15 +161,25 @@ export const getKongVersionFromContainer = (containerName = 'kong-cp') => {
 };
 
 /**
- * Run docker start on db container
+ * Run docker command on a target container
  * @param {string} containerName - name of the container to start
  * @param {string} command - command to run, can be either stop or start
  */
 export const runDockerContainerCommand = async (containerName, command) => {
-  // stop docker postgres database container
   const result = await execSync(`docker ${command} ${containerName}`);
   return result.toString('utf-8');
 };
+
+/**
+ * Copy a file from target container
+ * @param {string} containerName - name of the container to start
+ * @param {string} fileName - the name of the target file
+ */
+export const copyFileFromDockerContainer = (containerName, fileName) => {
+  const cwd = path.resolve(process.cwd());
+  execSync(`docker cp ${containerName}:/${fileName} ${cwd}`);
+};
+
 
 /**
  * Generates code snippet and deploys a Konnect Data Plane via Docker in the same network as other test 3rd party services
