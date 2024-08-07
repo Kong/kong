@@ -153,6 +153,13 @@ environment variable to `true`.
 export CARGO_NET_GIT_FETCH_WITH_CLI=true
 ```
 
+An alternative is to edit the `~/.cargo/config` file and add the following lines:
+
+```toml
+[net]
+git-fetch-with-cli = true
+```
+
 Finally, we start the build process:
 
 ```
