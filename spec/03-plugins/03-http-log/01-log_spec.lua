@@ -92,10 +92,7 @@ for _, strategy in helpers.each_strategy() do
           http_endpoint = "http://" .. helpers.mock_upstream_host
             .. ":"
             .. helpers.mock_upstream_port
-            .. "/post_log/http_tag",
-          queue = {
-            max_batch_size = 2,
-          }
+            .. "/post_log/http_tag"
         }
       }
 
@@ -338,6 +335,23 @@ for _, strategy in helpers.each_strategy() do
             key1 = "value1",
             key2 = "{vault://env/http-log-key2}"
           }
+        }
+      }
+
+      local route1_4 = bp.routes:insert {
+        hosts   = { "no_queue.test" },
+        service = service1
+      }
+
+      bp.plugins:insert {
+        route = { id = route1_4.id },
+        name     = "http-log",
+        config   = {
+          http_endpoint = "http://" .. helpers.mock_upstream_host
+            .. ":"
+            .. helpers.mock_upstream_port
+            .. "/post_log/http",
+          no_queue = true,
         }
       }
 
@@ -642,11 +656,11 @@ for _, strategy in helpers.each_strategy() do
         admin_client:close()
    end)
 
-    it("should not use queue when max_batch_size is 1", function()
+    it("should not use queue when no_queue is true", function()
       reset_log("http")
       local res = proxy_client:get("/status/200", {
         headers = {
-          ["Host"] = "http_logging.test"
+          ["Host"] = "no_queue.test"
         }
       })
       assert.res_status(200, res)
