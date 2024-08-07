@@ -87,6 +87,10 @@ def common_suites(expect, libxcrypt_no_obsolete_api: bool = False, skip_libsimdj
             .functions \
             .contain("simdjson_ffi_state_new")
 
+    expect("/usr/local/openresty/site/lualib/liblua_resty_json_threat_protection.so", "lua-resty-json-threat-protection should have ffi module compiled") \
+        .functions \
+        .contain("validator_new_from_json")
+
     if libxcrypt_no_obsolete_api:
         expect("/usr/local/openresty/nginx/sbin/nginx", "nginx linked with libxcrypt.so.2") \
             .needed_libraries.contain("libcrypt.so.2")
@@ -102,7 +106,7 @@ def common_suites(expect, libxcrypt_no_obsolete_api: bool = False, skip_libsimdj
     expect("**/*.so", "dynamic libraries are compiled with OpenSSL 3.2.x") \
         .version_requirement.key("libssl.so.3").less_than("OPENSSL_3.3.0") \
         .version_requirement.key("libcrypto.so.3").less_than("OPENSSL_3.3.0") \
-    
+
     # wasm filters
     for f in wasm_filters:
         expect("/usr/local/kong/wasm/%s" % f, "wasm filter %s is installed under kong/wasm" % f).exists()
