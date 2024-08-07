@@ -142,7 +142,7 @@ Now, you have to authenticate with GitHub to download some essential repos.
 There are three ways to do it:
 * By [`gh`](https://cli.github.com/), basically `gh auth login`.
 * By [Personal Access Token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token). This token does not need to have any other permission than `Public Repositories (read-only)`, and set it as `GITHUB_TOKEN` environment variable.
-* By [git credential helper](https://git-scm.com/docs/gitcredentials).
+* Use [git credential helper](https://git-scm.com/docs/gitcredentials).
 
 Then you have to make the rust build system also authenticate with GitHub,
 there is nothing you need to do if you were authenticated using `gh` or `git credential helper`,
