@@ -180,6 +180,7 @@ describe("declarative config: process_auto_fields", function()
                   max_retry_delay = 60,
                   max_retry_time = 60,
                 },
+                no_queue = false,
               }
             },
           }
@@ -237,6 +238,7 @@ describe("declarative config: process_auto_fields", function()
                   max_retry_delay = 60,
                   max_retry_time = 60,
                 },
+                no_queue = false,
               }
             },
           }
@@ -354,6 +356,7 @@ describe("declarative config: process_auto_fields", function()
                         max_retry_delay = 60,
                         max_retry_time = 60,
                       },
+                      no_queue = false,
                     }
                   },
                 }
@@ -675,6 +678,7 @@ describe("declarative config: process_auto_fields", function()
                             max_retry_delay = 60,
                             max_retry_time = 60,
                           },
+                          no_queue = false,
                         }
                       }
                     }

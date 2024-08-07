@@ -303,6 +303,7 @@ describe("declarative config: flatten", function()
                   max_retry_time = 60,
                   max_bytes = null,
                 },
+                no_queue = false,
               }
             },
             {
@@ -410,6 +411,7 @@ describe("declarative config: flatten", function()
                   max_retry_time = 60,
                   max_bytes = null,
                 },
+                no_queue = false,
               },
               consumer = {
                 id = "UUID"
@@ -611,7 +613,8 @@ describe("declarative config: flatten", function()
                     max_retry_delay = 60,
                     max_retry_time = 60,
                     max_bytes = null,
-                  }
+                  },
+                  no_queue = false,
                 },
                 consumer = null,
                 created_at = 1234567890,
@@ -1129,6 +1132,7 @@ describe("declarative config: flatten", function()
                     max_retry_time = 60,
                     max_bytes = null,
                   },
+                  no_queue = false,
                 },
                 consumer = null,
                 created_at = 1234567890,
