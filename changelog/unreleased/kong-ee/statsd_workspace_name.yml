@@ -1,0 +1,3 @@
+message: "**statsd**:Fixed an issue where the exported workspace was always `default` when the workspace identifier was set to the workspace name."
+type: bugfix
+scope: Plugin

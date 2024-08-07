@@ -8,7 +8,6 @@
 local Queue = require "kong.tools.queue"
 local constants = require "kong.plugins.statsd.constants"
 local statsd_logger = require "kong.plugins.statsd.statsd_logger"
-local ws = require "kong.workspaces"
 
 local ngx = ngx
 local kong = kong
@@ -135,11 +134,11 @@ local get_service_id = {
 }
 
 local get_workspace_id = {
-  workspace_id   = function()
-    return ws.get_workspace_id()
+  workspace_id   = function(message)
+    return message.workspace
   end,
-  workspace_name = function()
-    return ws.get_workspace_name()
+  workspace_name = function(message)
+    return message.workspace_name
   end
 }
 
@@ -200,12 +199,12 @@ local metrics = {
       -- skip status_count_per_workspace in tag mode
       return
     end
-    local get_workspace_id = get_workspace_id[metric_config.workspace_identifier or conf.workspace_identifier_default]
-    local workspace_id     = get_workspace_id()
+    local id_or_name = metric_config.workspace_identifier or conf.workspace_identifier_default
+    local workspace_id_or_name = get_workspace_id[id_or_name](message)
 
-    if workspace_id then
+    if workspace_id_or_name then
       logger:send_statsd(string_format("%s.workspace.%s.status.%s", scope_name,
-        workspace_id, message.response.status),
+        workspace_id_or_name, message.response.status),
         1, logger.stat_types.counter,
         metric_config.sample_rate)
     end
@@ -369,9 +368,8 @@ end
 
 local function get_tags(conf, message, metric_config)
   local tags = {}
-
-  local get_workspace_id = get_workspace_id[metric_config.workspace_identifier or conf.workspace_identifier_default]
-  local workspace_id     = get_workspace_id()
+  local id_or_name = metric_config.workspace_identifier or conf.workspace_identifier_default
+  local workspace_id_or_name = get_workspace_id[id_or_name](message)
 
 
   local get_service_id = get_service_id[metric_config.service_identifier or conf.service_identifier_default]
@@ -393,11 +391,11 @@ local function get_tags(conf, message, metric_config)
     tags["route"] = route_name
   end
 
-  if workspace_id then
-    tags["workspace"] = workspace_id
+  if workspace_id_or_name then
+    tags["workspace"] = workspace_id_or_name
   end
 
-  if workspace_id then
+  if consumer_id then
     tags["consumer"] = consumer_id
   end
 

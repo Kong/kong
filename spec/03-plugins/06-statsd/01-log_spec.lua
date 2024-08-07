@@ -67,6 +67,7 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client_grpc
     local shdict_count
     local reset_license_data
+    local ws1
 
     lazy_setup(function()
       reset_license_data = clear_license_env()
@@ -77,6 +78,11 @@ for _, strategy in helpers.each_strategy() do
         "plugins",
         "consumers",
         "keyauth_credentials",
+      })
+
+      -- workspace: ws1
+      ws1 = assert(bp.workspaces:insert {
+        name = "ws1"
       })
 
       local consumer = bp.consumers:insert {
@@ -853,6 +859,96 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
+      -- for ws1 routes
+      for i = 121, 125 do
+        local service = bp.services:insert_ws({
+          protocol = helpers.mock_upstream_protocol,
+          host     = helpers.mock_upstream_host,
+          port     = helpers.mock_upstream_port,
+          name     = fmt("statsd%s", i)
+        }, ws1)
+        routes[i] = bp.routes:insert_ws({
+          hosts   = { fmt("logging%d.test", i) },
+          service = service
+        }, ws1)
+      end
+
+      bp.statsd_plugins:insert_ws({
+        route = { id = routes[121].id },
+        config = {
+          host      = "127.0.0.1",
+          port      = UDP_PORT,
+          metrics   = {
+            {
+              name                 = "request_size",
+              stat_type            = "counter",
+              sample_rate          = 1,
+              workspace_identifier = "workspace_name",
+            },
+          },
+          tag_style = "dogstatsd",
+        },
+      }, ws1)
+      
+      bp.statsd_plugins:insert_ws({
+        route = { id = routes[122].id },
+        config = {
+          host      = "127.0.0.1",
+          port      = UDP_PORT,
+          metrics   = {
+            {
+              name                 = "request_size",
+              stat_type            = "counter",
+              sample_rate          = 1,
+              workspace_identifier = "workspace_name",
+            },
+          },
+          tag_style = "influxdb",
+        },
+      }, ws1)
+      
+      bp.statsd_plugins:insert_ws({
+        route = { id = routes[123].id },
+        config = {
+          host      = "127.0.0.1",
+          port      = UDP_PORT,
+          metrics   = {
+            {
+              name                 = "request_size",
+              stat_type            = "counter",
+              sample_rate          = 1,
+              workspace_identifier = "workspace_name",
+            },
+          },
+          tag_style = "librato",
+        },
+      }, ws1)
+      
+      bp.statsd_plugins:insert_ws({
+        route = { id = routes[124].id },
+        config = {
+          host      = "127.0.0.1",
+          port      = UDP_PORT,
+          metrics   = {
+            {
+              name                 = "request_size",
+              stat_type            = "counter",
+              sample_rate          = 1,
+              workspace_identifier = "workspace_name",
+            },
+          },
+          tag_style = "signalfx",
+        },
+      }, ws1)
+      
+      bp.statsd_plugins:insert_ws({
+        route = { id = routes[125].id },
+        config = {
+          host      = "127.0.0.1",
+          port      = UDP_PORT,
+          workspace_identifier_default = "workspace_name",
+        },
+      }, ws1)
       -- grpc
       local grpc_routes = {}
       for i = 1, 2 do
@@ -1198,8 +1294,114 @@ for _, strategy in helpers.each_strategy() do
         assert.contains("prefix.cache_datastore_hits_total%[.*%]:%d+|c", metrics, true)
         assert.contains("prefix.cache_datastore_misses_total%[.*%]:%d+|c", metrics, true)
       end)
+      
+      it("logs over UDP with default metrics using no tag_style [workspace #ws1]", function()
+        local metrics_count = expected_metrics_count(1)
+        local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
+        local response = assert(proxy_client:send {
+          method = "GET",
+          path = "/request?apikey=kong",
+          headers = {
+            host = "logging125.test"
+          }
+        })
+        assert.res_status(200, response)
 
-      it("request_size customer identifier with dogstatsd tag_style ", function()
+        local ok, metrics = thread:join()
+
+        assert.True(ok)
+        assert.contains("kong.service.statsd125.request.count:1|c", metrics)
+        assert.contains("kong.service.statsd125.request.size:%d+|c", metrics, true)
+        assert.contains("kong.service.statsd125.response.size:%d+|c", metrics, true)
+        assert.contains("kong.service.statsd125.latency:%d+|ms", metrics, true)
+        assert.contains("kong.service.statsd125.status.200:1|c", metrics)
+        assert.contains("kong.service.statsd125.upstream_latency:%d*|ms", metrics, true)
+        assert.contains("kong.service.statsd125.kong_latency:%d*|ms", metrics, true)
+        assert.contains("kong.service.statsd125.workspace." .. ws1.name, metrics, true)
+      end)
+
+      describe("request_size using the workspace name of workspace identifier [workspace #ws1]", function()
+        it("with dogstatsd tag_style", function()
+          local metrics_count = expected_metrics_count(1)
+          local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
+          local response = assert(proxy_client:send {
+            method = "GET",
+            path = "/request?apikey=kong",
+            headers = {
+              host = "logging121.test"
+            }
+          })
+          assert.res_status(200, response)
+
+          local ok, res = thread:join()
+          assert.True(ok)
+          assert.contains("kong.request.size:%d+|c|#.*", res, true)
+          assert.contains(".*workspace:" .. ws1.name, res, true)
+          assert.contains(".*service:.*-.*-.*", res, true)
+        end)
+
+        it("with influxdb tag_style", function()
+          local metrics_count = expected_metrics_count(1)
+          local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
+          local response = assert(proxy_client:send {
+            method = "GET",
+            path = "/request?apikey=kong",
+            headers = {
+              host = "logging122.test"
+            }
+          })
+          assert.res_status(200, response)
+
+          local ok, res = thread:join()
+          assert.True(ok)
+
+          assert.contains("kong.request.size,.*:%d+|c", res, true)
+          assert.contains(".*workspace=" .. ws1.name, res, true)
+          assert.contains(".*service=statsd122", res, true)
+        end)
+
+        it("with librato tag_style", function()
+          local metrics_count = expected_metrics_count(1)
+          local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
+          local response = assert(proxy_client:send {
+            method = "GET",
+            path = "/request?apikey=kong",
+            headers = {
+              host = "logging123.test"
+            }
+          })
+          assert.res_status(200, response)
+
+          local ok, res = thread:join()
+          assert.True(ok)
+
+          assert.contains("kong.request.size#.*:%d+|c", res, true)
+          assert.contains(".*workspace=" .. ws1.name, res, true)
+          assert.contains(".*service=statsd123", res, true)
+        end)
+
+        it("with signalfx tag_style", function()
+          local metrics_count = expected_metrics_count(1)
+          local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
+          local response = assert(proxy_client:send {
+            method = "GET",
+            path = "/request?apikey=kong",
+            headers = {
+              host = "logging124.test"
+            }
+          })
+          assert.res_status(200, response)
+
+          local ok, res = thread:join()
+          assert.True(ok)
+
+          assert.contains("kong.request.size%[.*%]:%d+|c", res, true)
+          assert.contains(".*workspace=" .. ws1.name, res, true)
+          assert.contains(".*service=statsd124", res, true)
+        end)
+      end)
+
+      it("request_size customer identifier with dogstatsd tag_style", function()
         local metrics_count = expected_metrics_count(1)
         local thread = helpers.udp_server(UDP_PORT, metrics_count, 2)
         local response = assert(proxy_client:send {
@@ -1214,7 +1416,7 @@ for _, strategy in helpers.each_strategy() do
         local ok, res = thread:join()
         assert.True(ok)
         assert.contains("kong.request.size:%d+|c|#.*", res, true)
-        assert.not_contains(".*workspace=%s+-%s+-.*", res, true)
+        assert.contains(".*workspace:" .. workspace_name_pattern, res, true)
         assert.contains(".*service:.*-.*-.*", res, true)
         assert.contains(".*consumer:.*-.*-.*", res, true)
       end)
@@ -1278,7 +1480,6 @@ for _, strategy in helpers.each_strategy() do
         assert.contains(".*service=.*-.*-.*", res, true)
         assert.contains(".*consumer=.*-.*-.*", res, true)
       end)
-
 
       it("request_count", function()
         local metrics_count = expected_metrics_count(1)
