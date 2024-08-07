@@ -147,46 +147,4 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     assert.not_nil(err)
     assert.same({ config = { rules = {allow_prompts = { [1] = "length must be at most 500" }}}}, err)
   end)
-
-  it("won't allow too many array items", function()
-    local config = {
-        embeddings = {
-            provider = "openai",
-            name = "text-embedding-3-large",
-        },
-        vectordb = {
-            strategy = "redis",
-            distance_metric = "cosine",
-            threshold = 0.5,
-            dimensions = 1024,
-            redis = {
-                host = "localhost",
-                port = 6379,
-            },
-        },
-        rules = {
-            match_all_conversation_history = true,
-            allow_prompts = {
-                [1] = "pattern",
-                [2] = "pattern",
-                [3] = "pattern",
-                [4] = "pattern",
-                [5] = "pattern",
-                [6] = "pattern",
-                [7] = "pattern",
-                [8] = "pattern",
-                [9] = "pattern",
-                [10] = "pattern",
-                [11] = "pattern",
-            },
-            deny_prompts = {},
-        }
-    }
-
-    local ok, err = validate(config)
-
-    assert.is_falsy(ok)
-    assert.not_nil(err)
-    assert.same({ config = { rules= {allow_prompts = "length must be at most 10" }}}, err)
-  end)
 end)

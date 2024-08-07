@@ -49,7 +49,7 @@ return {
                   type = "array",
                   description = "List of prompts to allow.",
                   required = false,
-                  len_max = 10,
+                  len_max = 100,
                   elements = {
                     type = "string",
                     len_min = 1,
@@ -62,7 +62,7 @@ return {
                   type = "array",
                   description = "List of prompts to deny.",
                   required = false,
-                  len_max = 10,
+                  len_max = 100,
                   elements = {
                     type = "string",
                     len_min = 1,
