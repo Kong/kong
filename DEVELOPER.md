@@ -412,24 +412,24 @@ To avoid long compilation times, give the VM plenty of RAM (8GB recommended) and
 You will need to setup port forwarding on VirtualBox to be able to ssh into the box which can be done as follows:
 
 1. Select the virtual machine you want to use and click "Settings"
-2. Click the "Network" tab
-3. Click the "Advanced" dropdown
-4. Click "Port Forwarding"
-5. Add a new rule in the popup. The only thing you will need is "Host Port" to be 22222 and "Guest Port" to be 22. Everything else can be left default (see screenshot below)
-6. Click "Ok"
+1. Click the "Network" tab
+1. Click the "Advanced" dropdown
+1. Click "Port Forwarding"
+1. Add a new rule in the popup. The only thing you will need is "Host Port" to be 22222 and "Guest Port" to be 22. Everything else can be left default (see screenshot below)
+1. Click "Ok"
 
 Now you should be able to `ssh <your_name>@127.1 -p 22222` to get SSH prompt. However, this requires us to type a long command and password every time we sign in. It is recommended you set up a public key and SSH alias to make this process simpler:
 
 1. On your host machine, generate a keypair for SSH into the guest: `ssh-keygen -t ed25519`.
 Just keep hitting Enter until the key is generated. You do not need a password for this key file since it is only used for SSH into your guest
-2. Type `cat .ssh/id_ed25519.pub` and copy the public key
-3. SSH into the guest using the command above
-4. Create the ssh config directory (if it doesn't exist) `$ mkdir -p .ssh`
-5. Edit the authorized keys list: `vim .ssh/authorized_keys`
-6. Paste in the content of .ssh/id_ed25519.pub
-7. Adjust the required privileges: `chmod 700 .ssh/`  and `chmod 400 .ssh/authorized_keys`
-8. Logout of guest and make sure you are not promoted password when SSH again
-9. Edit the .ssh/config file on your host and put in the following content:
+1. Type `cat .ssh/id_ed25519.pub` and copy the public key
+1. SSH into the guest using the command above
+1. Create the ssh config directory (if it doesn't exist) `$ mkdir -p .ssh`
+1. Edit the authorized keys list: `vim .ssh/authorized_keys`
+1. Paste in the content of .ssh/id_ed25519.pub
+1. Adjust the required privileges: `chmod 700 .ssh/`  and `chmod 400 .ssh/authorized_keys`
+1. Logout of guest and make sure you are not promoted password when SSH again
+1. Edit the .ssh/config file on your host and put in the following content:
 
 ```
     Host dev
