@@ -192,7 +192,7 @@ function HttpLogHandler:log(conf)
   kong.log.debug("Queue name automatically configured based on configuration parameters to: ", queue_conf.name)
   local entry = cjson.encode(kong.log.serialize())
 
-  if queue_conf.max_batch_size == 1 then
+  if conf.no_queue then
     local queue = Queue.create(queue_conf, send_entries, conf)
     local ok, err = timer_at(0, function(premature)
       if premature then

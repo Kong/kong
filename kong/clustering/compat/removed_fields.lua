@@ -210,5 +210,8 @@ return {
     acl = {
       "always_use_authenticated_groups",
     },
+    http_log = {
+      "no_queue"
+    },
   },
 }

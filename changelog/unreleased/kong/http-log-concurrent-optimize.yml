@@ -1,4 +1,3 @@
-message: |
-  **HTTP-Log**: When `queue.max_batch_size` is 1, log entries are now sent in separate, parallel HTTP requests.  Previously, they were sent sequentially in FIFO order.
-type: bugfix
+message: "**HTTP-Log**: Added a new configuration `no_queue` to indicates whether to disable the queue mechanism."
+type: feature
 scope: Plugin
