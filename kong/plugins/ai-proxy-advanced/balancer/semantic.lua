@@ -40,12 +40,11 @@ function algorithm:afterHostUpdate()
       return false, "unable to generate embeddings for target: " .. err
     end
 
-    local key_id, err = vectordb_driver:insert(embedding, {hash=keyid}, keyid)
+    local _, err = vectordb_driver:insert(embedding, {hash=keyid}, keyid)
     if err then
       return false, "unable to set cache for target: " .. err
     end
 
-    table.insert(self._cached_target_ids, key_id)
   end
 
   return true
@@ -168,15 +167,12 @@ function algorithm:cleanup()
   end
 
   local good = true
-  for _, id in ipairs(self._cached_target_ids) do
-    local ok, err = vectordb_driver:delete(id)
-    if not ok then
-      good = false
-      kong.log.warn("failed to delete cache for target: ", err)
-    end
+  local ok, err = vectordb_driver:drop_index()
+  if not ok then
+    good = false
+    kong.log.warn("failed to delete cache for target: ", err)
   end
 
-  self._cached_target_ids = {}
   return good, not good and "error occured during cleanup" or nil
 end
 
@@ -189,7 +185,6 @@ function algorithm.new(targets, conf)
     namespace = "ai_proxy_advanced_semantic:" .. conf.__plugin_id,
     targets = targets or {},
     _target_id_map = {},
-    _cached_target_ids = {},
   }, algorithm)
 
   local ok, err = self:afterHostUpdate()
