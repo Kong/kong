@@ -138,8 +138,8 @@ macOS
 brew install libyaml
 ```
 
-Now, you have to authenticate with GitHub to download some essential repos.
-There are three ways to do it:
+Now, you have to authenticate with GitHub to download some essential repos
+using either one of the following ways:
 * By [`gh`](https://cli.github.com/), basically `gh auth login`.
 * By [Personal Access Token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token). This token does not need to have any other permission than `Public Repositories (read-only)`, and set it as `GITHUB_TOKEN` environment variable.
 * Use [git credential helper](https://git-scm.com/docs/gitcredentials).
