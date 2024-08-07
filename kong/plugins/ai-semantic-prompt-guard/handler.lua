@@ -32,32 +32,32 @@ local function delete_guard_instance(conf)
   local deny_namespace = namespace .. ":deny"
   local allow_semanticdb, err = vectordb.new(conf.vectordb.strategy, allow_namespace, conf.vectordb)
   if err then
-    return nil, "unable to create vectordb:" .. err
+    kong.log.err("unable to create vectordb:" .. err)
+    return
   end
   if not allow_semanticdb then
-    return nil, "unable to create vectordb"
+    kong.log.err("unable to create vectordb")
+    return
   end
 
   local deny_semanticdb, err = vectordb.new(conf.vectordb.strategy, deny_namespace, conf.vectordb)
   if err then
-    return nil, "unable to create vectordb:" .. err
+    kong.log.err("unable to create vectordb:" .. err)
+    return
   end
   if not deny_semanticdb then
-    return nil, "unable to create vectordb"
+    kong.log.err("unable to create vectordb")
+    return
   end
 
-  for _, embedding in pairs(guard.index_prompts_embeddings) do
-    if embedding.payload.action == "allow" then
-      local _, err = allow_semanticdb:delete(embedding.key)
-      if err then
-        kong.log.err("unable to delete cache for prompt: ", err)
-      end
-    else
-      local _, err = deny_semanticdb:delete(embedding.key)
-      if err then
-        kong.log.err("unable to delete cache for prompt: ", err)
-      end
-    end
+  local ok, err = allow_semanticdb:drop_index(true)
+  if not ok then
+    kong.log.err("unable to drop index for allow prompts: " .. (err or "nil"))
+  end
+
+  local ok, err = deny_semanticdb:drop_index(true)
+  if not ok then
+    kong.log.err("unable to drop index for deny prompts: " .. (err or "nil"))
   end
 
   guard_by_plugin_key[conf_key] = nil
@@ -96,25 +96,21 @@ local function get_guard_instance(conf, bypass_cache)
 
     if bypass_cache and guard then
       guard_by_plugin_key[conf_key] = nil
-      for _, embedding in pairs(guard.index_prompts_embeddings) do
-        if embedding.payload.action == "allow" then
-          local _, err = allow_semanticdb:delete(embedding.key)
-          if err then
-            kong.log.err("unable to delete cache for prompt: ", err)
-          end
-        else
-          local _, err = deny_semanticdb:delete(embedding.key)
-          if err then
-            kong.log.err("unable to delete cache for prompt: ", err)
-          end
-        end
+      local _, err = allow_semanticdb:drop_index(true)
+      if err then
+        kong.log.info("unable to delete cache for allow_prompt: ", err)
+      end
+    
+      local _, err = deny_semanticdb:drop_index(true)
+      if err then
+        kong.log.info("unable to delete cache for deny_prompt: ", err)
       end
     end
 
     guard = {
       embeddings = embedding,
     }
-    local index_prompts_embeddings = {}
+
     for i, prompt in ipairs(conf.rules.allow_prompts or {}) do
       local embedding, err = guard.embeddings:generate(prompt)
       if not embedding then
@@ -122,11 +118,10 @@ local function get_guard_instance(conf, bypass_cache)
       end
       local payload = {action="allow", prompt=prompt}
       local keyid = sha256_hex(prompt)
-      local key, err = allow_semanticdb:insert(embedding, payload, keyid)
+      local _, err = allow_semanticdb:insert(embedding, payload, keyid)
       if err then
         return nil, "unable to set cache for prompt: " .. err
       end
-      index_prompts_embeddings[prompt] = { key = key, payload = payload }
     end
 
     for _, prompt in ipairs(conf.rules.deny_prompts or {}) do
@@ -136,14 +131,12 @@ local function get_guard_instance(conf, bypass_cache)
       end
       local payload = {action="deny", prompt=prompt}
       local keyid = sha256_hex(prompt)
-      local key, err = deny_semanticdb:insert(embedding, payload, keyid)
+      local _, err = deny_semanticdb:insert(embedding, payload, keyid)
       if err then
         return nil, "unable to set cache for prompt: " .. err
       end
-      index_prompts_embeddings[prompt] = { key = key, payload = payload }
     end
 
-    guard.index_prompts_embeddings = index_prompts_embeddings
     guard_by_plugin_key[conf_key] = guard
   end
 
