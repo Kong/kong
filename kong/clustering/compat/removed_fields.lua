@@ -163,5 +163,52 @@ return {
     oauth2 = {
       "realm",
     },
+    opentelemetry = {
+      "traces_endpoint",
+      "logs_endpoint",
+    },
+    ai_proxy = {
+      "max_request_body_size",
+      "model.options.gemini",
+      "auth.gcp_use_service_account",
+      "auth.gcp_service_account_json",
+      "model.options.bedrock",
+      "auth.aws_access_key_id",
+      "auth.aws_secret_access_key",
+    },
+    ai_prompt_decorator = {
+      "max_request_body_size",
+    },
+    ai_prompt_guard = {
+      "match_all_roles",
+      "max_request_body_size",
+    },
+    ai_prompt_template = {
+      "max_request_body_size",
+    },
+    ai_request_transformer = {
+      "max_request_body_size",
+      "llm.model.options.gemini",
+      "llm.auth.gcp_use_service_account",
+      "llm.auth.gcp_service_account_json",
+      "llm.model.options.bedrock",
+      "llm.auth.aws_access_key_id",
+      "llm.auth.aws_secret_access_key",
+    },
+    ai_response_transformer = {
+      "max_request_body_size",
+      "llm.model.options.gemini",
+      "llm.auth.gcp_use_service_account",
+      "llm.auth.gcp_service_account_json",
+      "llm.model.options.bedrock",
+      "llm.auth.aws_access_key_id",
+      "llm.auth.aws_secret_access_key",
+    },
+    prometheus = {
+      "ai_metrics",
+    },
+    acl = {
+      "always_use_authenticated_groups",
+    },
   },
 }

@@ -10,8 +10,6 @@ local _M = {
   config_schema = require "kong.llm.schemas",
 }
 
-
-
 do
   -- formats_compatible is a map of formats that are compatible with each other.
   local formats_compatible = {
@@ -93,20 +91,51 @@ do
   function LLM:ai_introspect_body(request, system_prompt, http_opts, response_regex_match)
     local err, _
 
-    -- set up the request
-    local ai_request = {
-      messages = {
-        [1] = {
-          role = "system",
-          content = system_prompt,
+    -- set up the LLM request for transformation instructions
+    local ai_request
+
+    -- mistral, cohere, titan (via Bedrock) don't support system commands
+    if self.driver == "bedrock" then
+      for _, p in ipairs(self.driver.bedrock_unsupported_system_role_patterns) do
+        if request.model:find(p) then
+          ai_request = {
+            messages = {
+              [1] = {
+                role = "user",
+                content = system_prompt,
+              },
+              [2] = {
+                role = "assistant",
+                content = "What is the message?",
+              },
+              [3] = {
+                role = "user",
+                content = request,
+              }
+            },
+            stream = false,
+          }
+          break
+        end
+      end
+    end
+
+    -- not Bedrock, or didn't match banned pattern - continue as normal
+    if not ai_request then
+      ai_request = {
+        messages = {
+          [1] = {
+            role = "system",
+            content = system_prompt,
+          },
+          [2] = {
+            role = "user",
+            content = request,
+          }
         },
-        [2] = {
-          role = "user",
-          content = request,
-        }
-      },
-      stream = false,
-    }
+        stream = false,
+      }
+    end
 
     -- convert it to the specified driver format
     ai_request, _, err = self.driver.to_format(ai_request, self.conf.model, "llm/v1/chat")
@@ -206,8 +235,9 @@ do
     }
     setmetatable(self, LLM)
 
-    local provider = (self.conf.model or {}).provider or "NONE_SET"
-    local driver_module = "kong.llm.drivers." .. provider
+    self.provider = (self.conf.model or {}).provider or "NONE_SET"
+    local driver_module = "kong.llm.drivers." .. self.provider
+
     local ok
     ok, self.driver = pcall(require, driver_module)
     if not ok then

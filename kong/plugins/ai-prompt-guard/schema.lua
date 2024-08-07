@@ -32,6 +32,16 @@ return {
               type = "boolean",
               required = true,
               default = false } },
+          { max_request_body_size = {
+              type = "integer",
+              default = 8 * 1024,
+              gt = 0,
+              description = "max allowed body size allowed to be introspected" } },
+          { match_all_roles = {
+              description = "If true, will match all roles in addition to 'user' role in conversation history.",
+              type = "boolean",
+              required = true,
+              default = false } },
         }
       }
     }
@@ -39,6 +49,10 @@ return {
   entity_checks = {
     {
       at_least_one_of = { "config.allow_patterns", "config.deny_patterns" },
-    }
+    },
+    { conditional = {
+      if_field = "config.match_all_roles", if_match = { eq = true },
+      then_field = "config.allow_all_conversation_history", then_match = { eq = false },
+    } },
   }
 }

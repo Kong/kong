@@ -280,6 +280,8 @@ local constants = {
       service = "upstream",
     }
   },
+
+  SOCKET_DIRECTORY = "sockets",
 }
 
 for _, v in ipairs(constants.CLUSTERING_SYNC_STATUS) do

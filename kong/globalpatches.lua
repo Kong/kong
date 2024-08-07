@@ -409,6 +409,10 @@ return function(options)
     local seeded = {}
     local randomseed = math.randomseed
 
+    if options.rbusted then
+      _G.math.native_randomseed = randomseed
+    end
+
     _G.math.randomseed = function()
       local pid = ngx.worker.pid()
       local id
@@ -534,6 +538,8 @@ return function(options)
     local old_tcp_connect
     local old_udp_setpeername
 
+    local old_ngx_log = ngx.log
+
     -- need to do the extra check here: https://github.com/openresty/lua-nginx-module/issues/860
     local function strip_nils(first, second)
       if second then
@@ -589,6 +595,31 @@ return function(options)
       return sock
     end
 
+    -- OTel-formatted logs feature
+    local dynamic_hook = require "kong.dynamic_hook"
+    local hook_called = false
+    _G.ngx.log = function(...)
+      if hook_called then
+        -- detect recursive loops or yielding from the hook:
+        old_ngx_log(ngx.ERR, debug.traceback("concurrent execution detected for: ngx.log", 2))
+        return old_ngx_log(...)
+      end
+
+      -- stack level = 5:
+      -- 1: maybe_push
+      -- 2: dynamic_hook.pcall
+      -- 3: dynamic_hook.run_hook
+      -- 4: patched function
+      -- 5: caller
+      hook_called = true
+      dynamic_hook.run_hook("observability_logs", "push", 5, nil, ...)
+      hook_called = false
+      return old_ngx_log(...)
+    end
+    -- export native ngx.log to be used where
+    -- the patched code must not be executed
+    _G.native_ngx_log = old_ngx_log
+
     if not options.cli and not options.rbusted then
       local timing = require "kong.timing"
       timing.register_hooks()
@@ -597,7 +628,7 @@ return function(options)
     -- STEP 5: load code that should be using the patched versions, if any (because of dependency chain)
     do
       -- dns query patch
-      local instrumentation = require "kong.tracing.instrumentation"
+      local instrumentation = require "kong.observability.tracing.instrumentation"
       client.toip = instrumentation.get_wrapped_dns_query(client.toip)
 
       -- patch request_uri to record http_client spans

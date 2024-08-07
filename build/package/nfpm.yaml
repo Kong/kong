@@ -32,8 +32,8 @@ contents:
 - src: nfpm-prefix/share
   dst: /usr/local/share
   type: tree
-- src: nfpm-prefix/etc/kong
-  dst: /etc/kong
+- dst: /etc/kong
+  type: dir
 - src: bin/kong
   dst: /usr/local/bin/kong
 - src: bin/kong-health
@@ -46,8 +46,12 @@ contents:
   dst: /usr/local/kong/filters/proxy_wasm_key_auth.meta.json
 - src: build/package/kong.logrotate
   dst: /etc/kong/kong.logrotate
+  type: config|noreplace
   file_info:
     mode: 0644
+- src: nfpm-prefix/etc/kong/kong.conf.default
+  dst: /etc/kong/kong.conf.default
+  type: config
 - src: /usr/local/openresty/bin/resty
   dst: /usr/local/bin/resty
   type: symlink
@@ -82,11 +86,10 @@ overrides:
     - ${RPM_EXTRA_DEPS}
     - ${RPM_EXTRA_DEPS_2}
     - ${RPM_EXTRA_DEPS_3}
-  apk:
-    depends:
-    - ca-certificates
 
 rpm:
+  prefixes:
+  - /usr/local
   signature:
     # PGP secret key (can also be ASCII-armored), the passphrase is taken
     # from the environment variable $NFPM_RPM_PASSPHRASE with a fallback

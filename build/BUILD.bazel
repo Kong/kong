@@ -83,6 +83,11 @@ lualib_deps = [
     "@atc_router//:lualib_srcs",
 ]
 
+# TODO: merge into luaclib_deps once amazonlinux2 support is dropped
+lualib_conditional_deps = [
+    "@simdjson_ffi//:lualib_srcs",
+]
+
 [
     kong_install(
         name = "install-%s-lualib" % get_workspace_name(k),
@@ -95,11 +100,16 @@ lualib_deps = [
             ] else "/lib"
         ),
     )
-    for k in lualib_deps
+    for k in lualib_deps + lualib_conditional_deps
 ]
 
 luaclib_deps = [
     "@atc_router",
+]
+
+# TODO: merge into luaclib_deps once amazonlinux2 support is dropped
+luaclib_conditional_deps = [
+    "@simdjson_ffi",
 ]
 
 [
@@ -109,7 +119,7 @@ luaclib_deps = [
         prefix = "openresty/site/lualib",
         strip_path = get_workspace_name(k),
     )
-    for k in luaclib_deps
+    for k in luaclib_deps + luaclib_conditional_deps
 ]
 
 kong_rules_group(
@@ -120,7 +130,13 @@ kong_rules_group(
     ] + [
         "install-%s-luaclib" % get_workspace_name(k)
         for k in luaclib_deps
-    ],
+    ] + select({
+        "@kong//:simdjson_flag": [
+            ":install-simdjson_ffi-lualib",
+            ":install-simdjson_ffi-luaclib",
+        ],
+        "//conditions:default": [],
+    }),
 )
 
 # WasmX
@@ -218,6 +234,7 @@ kong_genrule(
     ],
     outs = [
         "bin/luarocks",
+        "bin/luarocks-admin",
         "etc/kong/kong.conf.default",
         "etc/luarocks",
         "lib",
@@ -231,6 +248,7 @@ kong_genrule(
         LUAROCKS=${WORKSPACE_PATH}/$(dirname '$(location @luarocks//:luarocks_make)')/luarocks_tree
         cp -r ${LUAROCKS}/share ${LUAROCKS}/lib ${LUAROCKS}/etc ${BUILD_DESTDIR}/.
         cp ${LUAROCKS}/bin/luarocks ${BUILD_DESTDIR}/bin/.
+        cp ${LUAROCKS}/bin/luarocks-admin ${BUILD_DESTDIR}/bin/.
         chmod -R "u+rw" ${BUILD_DESTDIR}/share/lua
 
         mkdir -p ${BUILD_DESTDIR}/etc/kong/

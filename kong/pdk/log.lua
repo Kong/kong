@@ -17,12 +17,14 @@ local inspect = require("inspect")
 local phase_checker = require("kong.pdk.private.phases")
 local constants = require("kong.constants")
 local clear_tab = require("table.clear")
+local ngx_null = ngx.null
 
 
-local request_id_get = require("kong.tracing.request_id").get
+local request_id_get = require("kong.observability.tracing.request_id").get
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local get_tls1_version_str = require("ngx.ssl").get_tls1_version_str
 local get_workspace_name = require("kong.workspaces").get_workspace_name
+local dynamic_hook = require("kong.dynamic_hook")
 
 
 local sub = string.sub
@@ -308,6 +310,13 @@ local function gen_log_func(lvl_const, imm_buf, to_string, stack_level, sep)
       -- log call
       return
     end
+
+    -- OpenTelemetry Logs
+    -- stack level otel logs = stack_level + 3:
+    -- 1: maybe_push
+    -- 2: dynamic_hook.pcall
+    -- 3: dynamic_hook.run_hook
+    dynamic_hook.run_hook("observability_logs", "push", stack_level + 3, nil, lvl_const, ...)
 
     local n = select("#", ...)
 
@@ -632,7 +641,12 @@ do
 
   local function is_valid_value(v, visited)
     local t = type(v)
-    if v == nil or t == "number" or t == "string" or t == "boolean" then
+
+    -- cdata is not supported by cjson.encode
+    if type(v) == 'cdata' then
+        return false
+
+    elseif v == nil or v == ngx_null or t == "number" or t == "string" or t == "boolean" then
       return true
     end
 

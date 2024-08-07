@@ -20,7 +20,7 @@ def read_requirements(path=None):
         lines = [re.findall("(.+)=([^# ]+)", d) for d in f.readlines()]
         return {l[0][0]: l[0][1].strip() for l in lines if l}
 
-def common_suites(expect, libxcrypt_no_obsolete_api: bool = False):
+def common_suites(expect, libxcrypt_no_obsolete_api: bool = False, skip_libsimdjson_ffi: bool = False):
     # file existence
     expect("/usr/local/kong/include/google/protobuf/**.proto",
            "includes Google protobuf headers").exists()
@@ -81,6 +81,11 @@ def common_suites(expect, libxcrypt_no_obsolete_api: bool = False):
     expect("/usr/local/openresty/site/lualib/libatc_router.so", "ATC router so should have ffi module compiled") \
         .functions \
         .contain("router_execute")
+
+    if not skip_libsimdjson_ffi:
+        expect("/usr/local/openresty/site/lualib/libsimdjson_ffi.so", "simdjson should have ffi module compiled") \
+            .functions \
+            .contain("simdjson_ffi_state_new")
 
     if libxcrypt_no_obsolete_api:
         expect("/usr/local/openresty/nginx/sbin/nginx", "nginx linked with libxcrypt.so.2") \
@@ -143,6 +148,7 @@ def docker_suites(expect):
             .gid.equals(0)
 
     for path in ("/usr/local/bin/luarocks",
+                 "/usr/local/bin/luarocks-admin",
                  "/usr/local/etc/luarocks/**",
                  "/usr/local/lib/lua/**",
                  "/usr/local/lib/luarocks/**",

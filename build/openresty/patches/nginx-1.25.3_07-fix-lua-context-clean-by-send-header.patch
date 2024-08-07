@@ -1,0 +1,45 @@
+diff --git a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_util.c b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_util.c
+index 8fd2656..b2fdb6c 100644
+--- a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_util.c
++++ b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_util.c
+@@ -549,6 +549,10 @@ ngx_http_lua_send_header_if_needed(ngx_http_request_t *r,
+         if (!ctx->buffering) {
+             dd("sending headers");
+             rc = ngx_http_send_header(r);
++            if (r->filter_finalize) {
++                ngx_http_set_ctx(r, ctx, ngx_http_lua_module);
++            }
++
+             ctx->header_sent = 1;
+             return rc;
+         }
+diff --git a/bundle/ngx_lua-0.10.26/t/002-content.t b/bundle/ngx_lua-0.10.26/t/002-content.t
+index 54de40e..eb9d587 100644
+--- a/bundle/ngx_lua-0.10.26/t/002-content.t
++++ b/bundle/ngx_lua-0.10.26/t/002-content.t
+@@ -1098,3 +1098,25 @@ failed to load inlined Lua code: content_by_lua(...45678901234567890123456789012
+ GET /lua
+ --- response_body_like: 503 Service Temporarily Unavailable
+ --- error_code: 503
++
++
++
++=== TEST 52: send_header trigger filter finalize does not clear the ctx
++--- config
++    location /lua {
++        content_by_lua_block {
++            ngx.header["Last-Modified"] = ngx.http_time(ngx.time())
++            ngx.send_headers()
++            local phase = ngx.get_phase()
++        }
++        header_filter_by_lua_block {
++            ngx.header["X-Hello-World"] = "Hello World"
++        }
++    }
++--- request
++GET /lua
++--- more_headers
++If-Unmodified-Since: Wed, 01 Jan 2020 07:28:00 GMT
++--- error_code: 412
++--- no_error_log
++unknown phase: 0

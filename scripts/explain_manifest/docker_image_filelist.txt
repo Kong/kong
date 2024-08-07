@@ -3,6 +3,7 @@
 /usr/local/kong/**
 /usr/local/bin/kong
 /usr/local/bin/luarocks
+/usr/local/bin/luarocks-admin
 /usr/local/etc/luarocks/**
 /usr/local/lib/lua/**
 /usr/local/lib/luarocks/**

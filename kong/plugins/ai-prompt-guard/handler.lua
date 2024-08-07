@@ -29,48 +29,46 @@ local execute do
   -- @treturn[2] nil
   -- @treturn[2] string The error message
   function execute(request, conf)
-    local user_prompt
+    local collected_prompts
+    local messages = request.messages
 
-    -- concat all 'user' prompts into one string, if conversation history must be checked
-    if type(request.messages) == "table" and not conf.allow_all_conversation_history then
+    -- concat all prompts into one string, if conversation history must be checked
+    if type(messages) == "table" then
       local buf = buffer.new()
+      -- Note allow_all_conversation_history means ignores history
+      local just_pick_latest = conf.allow_all_conversation_history
 
-      for _, v in ipairs(request.messages) do
+      -- iterate in reverse so we get the latest user prompt first
+      -- instead of the oldest one in history
+      for i=#messages, 1, -1 do
+        local v = messages[i]
         if type(v.role) ~= "string" then
           return nil, bad_format_error
         end
-        if v.role == "user" then
+        if v.role == "user" or conf.match_all_roles then
           if type(v.content) ~= "string" then
             return nil, bad_format_error
           end
           buf:put(v.content)
-        end
-      end
 
-      user_prompt = buf:get()
-
-    elseif type(request.messages) == "table" then
-      -- just take the trailing 'user' prompt
-      for _, v in ipairs(request.messages) do
-        if type(v.role) ~= "string" then
-          return nil, bad_format_error
-        end
-        if v.role == "user" then
-          if type(v.content) ~= "string" then
-            return nil, bad_format_error
+          if just_pick_latest then
+            break
           end
-          user_prompt = v.content
+
+          buf:put(" ") -- put a seperator to avoid adhension of words
         end
       end
+
+      collected_prompts = buf:get()
 
     elseif type(request.prompt) == "string" then
-      user_prompt = request.prompt
+      collected_prompts = request.prompt
 
     else
       return nil, bad_format_error
     end
 
-    if not user_prompt then
+    if not collected_prompts then
       return nil, "no 'prompt' or 'messages' received"
     end
 
@@ -78,7 +76,7 @@ local execute do
     -- check the prompt for explcit ban patterns
     for _, v in ipairs(conf.deny_patterns or EMPTY) do
       -- check each denylist; if prompt matches it, deny immediately
-      local m, _, err = ngx_re_find(user_prompt, v, "jo")
+      local m, _, err = ngx_re_find(collected_prompts, v, "jo")
       if err then
         -- regex failed, that's an error by the administrator
         kong.log.err("bad regex pattern '", v ,"', failed to execute: ", err)
@@ -98,7 +96,7 @@ local execute do
     -- if any allow_patterns specified, make sure the prompt matches one of them
     for _, v in ipairs(conf.allow_patterns or EMPTY) do
       -- check each denylist; if prompt matches it, deny immediately
-      local m, _, err = ngx_re_find(user_prompt, v, "jo")
+      local m, _, err = ngx_re_find(collected_prompts, v, "jo")
 
       if err then
         -- regex failed, that's an error by the administrator
@@ -121,7 +119,7 @@ function plugin:access(conf)
   kong.ctx.shared.ai_prompt_guarded = true -- future use
 
   -- if plugin ordering was altered, receive the "decorated" request
-  local request = kong.request.get_body("application/json")
+  local request = kong.request.get_body("application/json", nil, conf.max_request_body_size)
   if type(request) ~= "table" then
     return bad_request("this LLM route only supports application/json requests")
   end

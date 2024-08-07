@@ -1,11 +1,12 @@
 local _M = {}
 
 -- imports
-local cjson     = require("cjson.safe")
-local http      = require("resty.http")
-local fmt       = string.format
-local os        = os
-local parse_url = require("socket.url").parse
+local cjson      = require("cjson.safe")
+local http       = require("resty.http")
+local fmt        = string.format
+local os         = os
+local parse_url  = require("socket.url").parse
+local aws_stream = require("kong.tools.aws_stream")
 --
 
 -- static
@@ -16,7 +17,11 @@ local split        = require("kong.tools.string").split
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 local function str_ltrim(s) -- remove leading whitespace from string.
-  return (s:gsub("^%s*", ""))
+  return type(s) == "string" and s:gsub("^%s*", "")
+end
+
+local function str_rtrim(s) -- remove trailing whitespace from string.
+  return type(s) == "string" and s:match('^(.*%S)%s*$')
 end
 --
 
@@ -35,11 +40,13 @@ local log_entry_keys = {
   PROVIDER_NAME = "provider_name",
   REQUEST_MODEL = "request_model",
   RESPONSE_MODEL = "response_model",
+  LLM_LATENCY = "llm_latency",
 
   -- usage keys
   PROMPT_TOKENS = "prompt_tokens",
   COMPLETION_TOKENS = "completion_tokens",
   TOTAL_TOKENS = "total_tokens",
+  TIME_PER_TOKEN = "time_per_token",
   COST = "cost",
 
   -- cache keys
@@ -51,17 +58,26 @@ local log_entry_keys = {
 
 local openai_override = os.getenv("OPENAI_TEST_PORT")
 
+_M._CONST = {
+  ["SSE_TERMINATOR"] = "[DONE]",
+}
+
 _M.streaming_has_token_counts = {
   ["cohere"] = true,
   ["llama2"] = true,
   ["anthropic"] = true,
+  ["gemini"] = true,
+  ["bedrock"] = true,
 }
 
 _M.upstream_url_format = {
-  openai = fmt("%s://api.openai.com:%s", (openai_override and "http") or "https", (openai_override) or "443"),
-  anthropic = "https://api.anthropic.com:443",
-  cohere = "https://api.cohere.com:443",
-  azure = "https://%s.openai.azure.com:443/openai/deployments/%s",
+  openai        = fmt("%s://api.openai.com:%s", (openai_override and "http") or "https", (openai_override) or "443"),
+  anthropic     = "https://api.anthropic.com:443",
+  cohere        = "https://api.cohere.com:443",
+  azure         = "https://%s.openai.azure.com:443/openai/deployments/%s",
+  gemini        = "https://generativelanguage.googleapis.com",
+  gemini_vertex = "https://%s",
+  bedrock       = "https://bedrock-runtime.%s.amazonaws.com",
 }
 
 _M.operation_map = {
@@ -105,6 +121,24 @@ _M.operation_map = {
       method = "POST",
     },
   },
+  gemini = {
+    ["llm/v1/chat"] = {
+      path = "/v1beta/models/%s:%s",
+      method = "POST",
+    },
+  },
+  gemini_vertex = {
+    ["llm/v1/chat"] = {
+      path = "/v1/projects/%s/locations/%s/publishers/google/models/%s:%s",
+      method = "POST",
+    },
+  },
+  bedrock = {
+    ["llm/v1/chat"] = {
+      path = "/model/%s/%s",
+      method = "POST",
+    },
+  },
 }
 
 _M.clear_response_headers = {
@@ -118,6 +152,12 @@ _M.clear_response_headers = {
     "Set-Cookie",
   },
   mistral = {
+    "Set-Cookie",
+  },
+  gemini = {
+    "Set-Cookie",
+  },
+  bedrock = {
     "Set-Cookie",
   },
 }
@@ -199,21 +239,67 @@ end
 -- as if it were an SSE message.
 --
 -- @param {string} frame input string to format into SSE events
--- @param {string} delimiter delimeter (can be complex string) to split by
+-- @param {boolean} raw_json sets application/json byte-parser mode
 -- @return {table} n number of split SSE messages, or empty table
-function _M.frame_to_events(frame)
+function _M.frame_to_events(frame, provider)
   local events = {}
 
+  if (not frame) or (#frame < 1) or (type(frame)) ~= "string" then
+    return
+  end
+
+  -- some new LLMs return the JSON object-by-object,
+  -- because that totally makes sense to parse?!
+  if provider == "gemini" then
+    local done = false
+
+    -- if this is the first frame, it will begin with array opener '['
+    frame = (string.sub(str_ltrim(frame), 1, 1) == "[" and string.sub(str_ltrim(frame), 2)) or frame
+
+    -- it may start with ',' which is the start of the new frame
+    frame = (string.sub(str_ltrim(frame), 1, 1) == "," and string.sub(str_ltrim(frame), 2)) or frame
+    
+    -- it may end with the array terminator ']' indicating the finished stream
+    if string.sub(str_rtrim(frame), -1) == "]" then
+      frame = string.sub(str_rtrim(frame), 1, -2)
+      done = true
+    end
+
+    -- for multiple events that arrive in the same frame, split by top-level comma
+    for _, v in ipairs(split(frame, "\n,")) do
+      events[#events+1] = { data = v }
+    end
+
+    if done then
+      -- add the done signal here
+      -- but we have to retrieve the metadata from a previous filter run
+      events[#events+1] = { data = _M._CONST.SSE_TERMINATOR }
+    end
+
+  elseif provider == "bedrock" then
+    local parser = aws_stream:new(frame)
+    while true do
+      local msg = parser:next_message()
+
+      if not msg then
+        break
+      end
+
+      events[#events+1] = { data = cjson.encode(msg) }
+    end
+
+  -- check if it's raw json and just return the split up data frame
   -- Cohere / Other flat-JSON format parser
   -- just return the split up data frame
-  if (not kong or not kong.ctx.plugin.truncated_frame) and string.sub(str_ltrim(frame), 1, 1) == "{" then
+  elseif (not kong or not kong.ctx.plugin.truncated_frame) and string.sub(str_ltrim(frame), 1, 1) == "{" then
     for event in frame:gmatch("[^\r\n]+") do
       events[#events + 1] = {
         data = event,
       }
     end
+
+  -- standard SSE parser
   else
-    -- standard SSE parser
     local event_lines = split(frame, "\n")
     local struct = { event = nil, id = nil, data = nil }
 
@@ -226,7 +312,10 @@ function _M.frame_to_events(frame)
       -- test for truncated chunk on the last line (no trailing \r\n\r\n)
       if #dat > 0 and #event_lines == i then
         ngx.log(ngx.DEBUG, "[ai-proxy] truncated sse frame head")
-        kong.ctx.plugin.truncated_frame = dat
+        if kong then
+          kong.ctx.plugin.truncated_frame = dat
+        end
+
         break  -- stop parsing immediately, server has done something wrong
       end
 
@@ -357,7 +446,7 @@ function _M.from_ollama(response_string, model_info, route_type)
     end
   end
   
-  if output and output ~= "[DONE]" then
+  if output and output ~= _M._CONST.SSE_TERMINATOR then
     output, err = cjson.encode(output)
   end
 
@@ -404,24 +493,26 @@ function _M.resolve_plugin_conf(kong_request, conf)
 
   -- handle all other options
   for k, v in pairs(conf.model.options or {}) do
-    local prop_m = string_match(v or "", '%$%((.-)%)')
-    if prop_m then
-      local splitted = split(prop_m, '.')
-      if #splitted ~= 2 then
-        return nil, "cannot parse expression for field '" .. v .. "'"
-      end
-      
-      -- find the request parameter, with the configured name
-      prop_m, err = _M.conf_from_request(kong_request, splitted[1], splitted[2])
-      if err then
-        return nil, err
-      end
-      if not prop_m then
-        return nil, splitted[1] .. " key " .. splitted[2] .. " was not provided"
-      end
+    if type(v) == "string" then
+      local prop_m = string_match(v or "", '%$%((.-)%)')
+      if prop_m then
+        local splitted = split(prop_m, '.')
+        if #splitted ~= 2 then
+          return nil, "cannot parse expression for field '" .. v .. "'"
+        end
+        
+        -- find the request parameter, with the configured name
+        prop_m, err = _M.conf_from_request(kong_request, splitted[1], splitted[2])
+        if err then
+          return nil, err
+        end
+        if not prop_m then
+          return nil, splitted[1] .. " key " .. splitted[2] .. " was not provided"
+        end
 
-      -- replace the value
-      conf_m.model.options[k] = prop_m
+        -- replace the value
+        conf_m.model.options[k] = prop_m
+      end
     end
   end
 
@@ -438,13 +529,14 @@ function _M.pre_request(conf, request_table)
     request_table[auth_param_name] = auth_param_value
   end
 
+  -- retrieve the plugin name
+  local plugin_name = conf.__key__:match('plugins:(.-):')
+  if not plugin_name or plugin_name == "" then
+    return nil, "no plugin name is being passed by the plugin"
+  end
+
   -- if enabled AND request type is compatible, capture the input for analytics
   if conf.logging and conf.logging.log_payloads then
-    local plugin_name = conf.__key__:match('plugins:(.-):')
-    if not plugin_name or plugin_name == "" then
-      return nil, "no plugin name is being passed by the plugin"
-    end
-
     kong.log.set_serialize_value(fmt("ai.%s.%s.%s", plugin_name, log_entry_keys.PAYLOAD_CONTAINER, log_entry_keys.REQUEST_BODY), kong.request.get_raw_body())
   end
 
@@ -458,11 +550,18 @@ function _M.pre_request(conf, request_table)
     kong.ctx.shared.ai_prompt_tokens = (kong.ctx.shared.ai_prompt_tokens or 0) + prompt_tokens
   end
 
+  local start_time_key = "ai_request_start_time_" .. plugin_name
+  kong.ctx.plugin[start_time_key] = ngx.now()
+
   return true, nil
 end
 
 function _M.post_request(conf, response_object)
   local body_string, err
+
+  if not response_object then
+    return
+  end
 
   if type(response_object) == "string" then
     -- set raw string body first, then decode
@@ -507,6 +606,20 @@ function _M.post_request(conf, response_object)
   request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.REQUEST_MODEL] = kong.ctx.plugin.llm_model_requested or conf.model.name
   request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.RESPONSE_MODEL] = response_object.model or conf.model.name
 
+  -- Set the llm latency meta, and time per token usage
+  local start_time_key = "ai_request_start_time_" .. plugin_name
+  if kong.ctx.plugin[start_time_key] then
+    local llm_latency = math.floor((ngx.now() - kong.ctx.plugin[start_time_key]) * 1000)
+    request_analytics_plugin[log_entry_keys.META_CONTAINER][log_entry_keys.LLM_LATENCY] = llm_latency
+    kong.ctx.shared.ai_request_latency = llm_latency
+
+    if response_object.usage and response_object.usage.completion_tokens then
+      local time_per_token = math.floor(llm_latency / response_object.usage.completion_tokens)
+      request_analytics_plugin[log_entry_keys.USAGE_CONTAINER][log_entry_keys.TIME_PER_TOKEN] = time_per_token
+      kong.ctx.shared.ai_request_time_per_token = time_per_token
+    end
+  end
+
   -- set extra per-provider meta
   if kong.ctx.plugin.ai_extra_meta and type(kong.ctx.plugin.ai_extra_meta) == "table" then
     for k, v in pairs(kong.ctx.plugin.ai_extra_meta) do
@@ -527,7 +640,7 @@ function _M.post_request(conf, response_object)
     end
 
     if response_object.usage.prompt_tokens and response_object.usage.completion_tokens
-      and conf.model.options.input_cost and conf.model.options.output_cost then 
+      and conf.model.options and conf.model.options.input_cost and conf.model.options.output_cost then 
         request_analytics_plugin[log_entry_keys.USAGE_CONTAINER][log_entry_keys.COST] = 
           (response_object.usage.prompt_tokens * conf.model.options.input_cost
           + response_object.usage.completion_tokens * conf.model.options.output_cost) / 1000000 -- 1 million

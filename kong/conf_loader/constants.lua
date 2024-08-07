@@ -370,6 +370,7 @@ local CONF_PARSERS = {
   dns_not_found_ttl = { typ = "number" },
   dns_error_ttl = { typ = "number" },
   dns_no_sync = { typ = "boolean" },
+  legacy_dns_client = { typ = "boolean" },
   privileged_worker = {
     typ = "boolean",
     deprecated = {
@@ -498,6 +499,7 @@ local CONF_PARSERS = {
   cluster_use_proxy = { typ = "boolean" },
   cluster_dp_labels = { typ = "array" },
   cluster_rpc = { typ = "boolean" },
+  cluster_cjson = { typ = "boolean" },
 
   kic = { typ = "boolean" },
   pluginserver_names = { typ = "array" },

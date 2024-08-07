@@ -253,6 +253,10 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         expected_otel_prior_35.config.header_type = "preserve"
         expected_otel_prior_35.config.sampling_rate = nil
         expected_otel_prior_35.config.propagation = nil
+        expected_otel_prior_35.config.traces_endpoint = nil
+        expected_otel_prior_35.config.logs_endpoint = nil
+        expected_otel_prior_35.config.endpoint = "http://1.1.1.1:12345/v1/trace"
+
         do_assert(uuid(), "3.4.0", expected_otel_prior_35)
 
         -- cleanup
@@ -274,6 +278,9 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         expected_otel_prior_34.config.header_type = "preserve"
         expected_otel_prior_34.config.sampling_rate = nil
         expected_otel_prior_34.config.propagation = nil
+        expected_otel_prior_34.config.traces_endpoint = nil
+        expected_otel_prior_34.config.logs_endpoint = nil
+        expected_otel_prior_34.config.endpoint = "http://1.1.1.1:12345/v1/trace"
         do_assert(uuid(), "3.3.0", expected_otel_prior_34)
 
         -- cleanup
@@ -472,49 +479,200 @@ describe("CP/DP config compat transformations #" .. strategy, function()
           admin.plugins:remove({ id = response_rl.id })
         end)
       end)
+    end)
 
-      describe("proxy-cache plugin", function()
-        it("rename age field in response_headers config from age to Age", function()
-          -- [[ 3.8.x ]] --
-          local response_rl = admin.plugins:insert {
-            name = "proxy-cache",
-            enabled = true,
-            config = {
-              response_code = { 200, 301, 404 },
-              request_method = { "GET", "HEAD" },
-              content_type = { "text/plain", "application/json" },
-              cache_ttl = 300,
-              strategy = "memory",
-              cache_control = false,
-              memory = {
-                dictionary_name = "kong_db_cache",
+    describe("ai plugins supported providers", function()
+      it("[ai-proxy] tries to use unsupported providers on older Kong versions", function()
+        -- [[ 3.8.x ]] --
+        local ai_proxy = admin.plugins:insert {
+          name = "ai-proxy",
+          enabled = true,
+          config = {
+            response_streaming = "allow",
+            route_type = "llm/v1/chat",
+            auth = {
+              header_name = "header",
+              header_value = "value",
+              gcp_service_account_json = '{"service": "account"}',
+              gcp_use_service_account = true,
+            },
+            model = {
+              name = "any-model-name",
+              provider = "gemini",
+              options = {
+                max_tokens = 512,
+                temperature = 0.5,
+                gemini = {
+                  api_endpoint = "https://gemini.local",
+                  project_id = "kong-gemini",
+                  location_id = "us-east5",
+                },
               },
-              -- [[ age field renamed to Age
-              response_headers = {
-                ["Age"] = true,
-                ["X-Cache-Status"] = true,
-                ["X-Cache-Key"] = true
-              }
-              -- ]]
-            }
-          }
+            },
+            max_request_body_size = 8192,
+          },
+        }
+        -- ]]
 
-          local expected_response_rl_prior_38 = cycle_aware_deep_copy(response_rl)
-          expected_response_rl_prior_38.config.response_headers = {
-            ["age"] = true,
-            ["X-Cache-Status"] = true,
-            ["X-Cache-Key"] = true
-          }
+        local expected = cycle_aware_deep_copy(ai_proxy)
 
-          do_assert(uuid(), "3.7.0", expected_response_rl_prior_38)
+        -- max body size
+        expected.config.max_request_body_size = nil
 
-          -- cleanup
-          admin.plugins:remove({ id = response_rl.id })
-        end)
+        -- gemini fields
+        expected.config.auth.gcp_service_account_json = nil
+        expected.config.auth.gcp_use_service_account = nil
+        expected.config.model.options.gemini = nil
+
+        -- bedrock fields
+        expected.config.auth.aws_access_key_id = nil
+        expected.config.auth.aws_secret_access_key = nil
+        expected.config.model.options.bedrock = nil
+
+        -- 'ai fallback' field sets
+        expected.config.route_type = "preserve"
+        expected.config.model.provider = "openai"
+
+        do_assert(uuid(), "3.7.0", expected)
+
+        expected.config.response_streaming = nil
+        expected.config.model.options.upstream_path = nil
+        expected.config.route_type = "llm/v1/chat"
+
+        do_assert(uuid(), "3.6.0", expected)
+
+        -- cleanup
+        admin.plugins:remove({ id = ai_proxy.id })
+      end)
+
+      it("[ai-request-transformer] tries to use unsupported providers on older Kong versions", function()
+        -- [[ 3.8.x ]] --
+        local ai_request_transformer = admin.plugins:insert {
+          name = "ai-request-transformer",
+          enabled = true,
+          config = {
+            llm = {
+              route_type = "llm/v1/chat",
+              auth = {
+                header_name = "header",
+                header_value = "value",
+                gcp_service_account_json = '{"service": "account"}',
+                gcp_use_service_account = true,
+              },
+              model = {
+                name = "any-model-name",
+                provider = "gemini",
+                options = {
+                  max_tokens = 512,
+                  temperature = 0.5,
+                  gemini = {
+                    api_endpoint = "https://gemini.local",
+                    project_id = "kong-gemini",
+                    location_id = "us-east5",
+                  },
+                },
+              },
+            },
+            max_request_body_size = 8192,
+            prompt = "anything",
+          },
+        }
+        -- ]]
+
+        local expected = cycle_aware_deep_copy(ai_request_transformer)
+
+        -- max body size
+        expected.config.max_request_body_size = nil
+
+        -- gemini fields
+        expected.config.llm.auth.gcp_service_account_json = nil
+        expected.config.llm.auth.gcp_use_service_account = nil
+        expected.config.llm.model.options.gemini = nil
+
+        -- bedrock fields
+        expected.config.llm.auth.aws_access_key_id = nil
+        expected.config.llm.auth.aws_secret_access_key = nil
+        expected.config.llm.model.options.bedrock = nil
+
+        -- 'ai fallback' field sets
+        expected.config.llm.model.provider = "openai"
+
+        do_assert(uuid(), "3.7.0", expected)
+
+        expected.config.llm.model.options.upstream_path = nil
+        expected.config.llm.route_type = "llm/v1/chat"
+
+        do_assert(uuid(), "3.6.0", expected)
+
+        -- cleanup
+        admin.plugins:remove({ id = ai_request_transformer.id })
+      end)
+
+      it("[ai-response-transformer] tries to use unsupported providers on older Kong versions", function()
+        -- [[ 3.8.x ]] --
+        local ai_response_transformer = admin.plugins:insert {
+          name = "ai-response-transformer",
+          enabled = true,
+          config = {
+            llm = {
+              route_type = "llm/v1/chat",
+              auth = {
+                header_name = "header",
+                header_value = "value",
+                gcp_service_account_json = '{"service": "account"}',
+                gcp_use_service_account = true,
+              },
+              model = {
+                name = "any-model-name",
+                provider = "gemini",
+                options = {
+                  max_tokens = 512,
+                  temperature = 0.5,
+                  gemini = {
+                    api_endpoint = "https://gemini.local",
+                    project_id = "kong-gemini",
+                    location_id = "us-east5",
+                  },
+                },
+              },
+            },
+            max_request_body_size = 8192,
+            prompt = "anything",
+          },
+        }
+        -- ]]
+
+        local expected = cycle_aware_deep_copy(ai_response_transformer)
+
+        -- max body size
+        expected.config.max_request_body_size = nil
+
+        -- gemini fields
+        expected.config.llm.auth.gcp_service_account_json = nil
+        expected.config.llm.auth.gcp_use_service_account = nil
+        expected.config.llm.model.options.gemini = nil
+
+        -- bedrock fields
+        expected.config.llm.auth.aws_access_key_id = nil
+        expected.config.llm.auth.aws_secret_access_key = nil
+        expected.config.llm.model.options.bedrock = nil
+
+        -- 'ai fallback' field sets
+        expected.config.llm.model.provider = "openai"
+
+        do_assert(uuid(), "3.7.0", expected)
+
+        expected.config.llm.model.options.upstream_path = nil
+        expected.config.llm.route_type = "llm/v1/chat"
+
+        do_assert(uuid(), "3.6.0", expected)
+
+        -- cleanup
+        admin.plugins:remove({ id = ai_response_transformer.id })
       end)
     end)
 
-    describe("ai plugins", function()
+    describe("ai plugins shared options", function()
       it("[ai-proxy] sets unsupported AI LLM properties to nil or defaults", function()
         -- [[ 3.7.x ]] --
         local ai_proxy = admin.plugins:insert {
@@ -536,16 +694,33 @@ describe("CP/DP config compat transformations #" .. strategy, function()
                 upstream_path = "/anywhere", -- becomes nil
               },
             },
+            max_request_body_size = 8192,
           },
         }
         -- ]]
 
-        local expected_ai_proxy_prior_37 = cycle_aware_deep_copy(ai_proxy)
-        expected_ai_proxy_prior_37.config.response_streaming = nil
-        expected_ai_proxy_prior_37.config.model.options.upstream_path = nil
-        expected_ai_proxy_prior_37.config.route_type = "llm/v1/chat"
+        local expected = cycle_aware_deep_copy(ai_proxy)
 
-        do_assert(uuid(), "3.6.0", expected_ai_proxy_prior_37)
+        -- max body size
+        expected.config.max_request_body_size = nil
+
+        -- gemini fields
+        expected.config.auth.gcp_service_account_json = nil
+        expected.config.auth.gcp_use_service_account = nil
+        expected.config.model.options.gemini = nil
+
+        -- bedrock fields
+        expected.config.auth.aws_access_key_id = nil
+        expected.config.auth.aws_secret_access_key = nil
+        expected.config.model.options.bedrock = nil
+
+        do_assert(uuid(), "3.7.0", expected)
+
+        expected.config.response_streaming = nil
+        expected.config.model.options.upstream_path = nil
+        expected.config.route_type = "llm/v1/chat"
+
+        do_assert(uuid(), "3.6.0", expected)
 
         -- cleanup
         admin.plugins:remove({ id = ai_proxy.id })
@@ -577,14 +752,31 @@ describe("CP/DP config compat transformations #" .. strategy, function()
                 },
               },
             },
+            max_request_body_size = 8192,
           },
         }
         -- ]]
 
-        local expected_ai_request_transformer_prior_37 = cycle_aware_deep_copy(ai_request_transformer)
-        expected_ai_request_transformer_prior_37.config.llm.model.options.upstream_path = nil
+        local expected = cycle_aware_deep_copy(ai_request_transformer)
 
-        do_assert(uuid(), "3.6.0", expected_ai_request_transformer_prior_37)
+        -- max body size
+        expected.config.max_request_body_size = nil
+
+        -- gemini fields
+        expected.config.llm.auth.gcp_service_account_json = nil
+        expected.config.llm.auth.gcp_use_service_account = nil
+        expected.config.llm.model.options.gemini = nil
+
+        -- bedrock fields
+        expected.config.llm.auth.aws_access_key_id = nil
+        expected.config.llm.auth.aws_secret_access_key = nil
+        expected.config.llm.model.options.bedrock = nil
+
+        do_assert(uuid(), "3.7.0", expected)
+
+        expected.config.llm.model.options.upstream_path = nil
+
+        do_assert(uuid(), "3.6.0", expected)
 
         -- cleanup
         admin.plugins:remove({ id = ai_request_transformer.id })
@@ -614,17 +806,80 @@ describe("CP/DP config compat transformations #" .. strategy, function()
                 },
               },
             },
+            max_request_body_size = 8192,
+          },
+        }
+        --]]
+
+        local expected = cycle_aware_deep_copy(ai_response_transformer)
+
+        -- max body size
+        expected.config.max_request_body_size = nil
+
+        -- gemini fields
+        expected.config.llm.auth.gcp_service_account_json = nil
+        expected.config.llm.auth.gcp_use_service_account = nil
+        expected.config.llm.model.options.gemini = nil
+
+        -- bedrock fields
+        expected.config.llm.auth.aws_access_key_id = nil
+        expected.config.llm.auth.aws_secret_access_key = nil
+        expected.config.llm.model.options.bedrock = nil
+
+        do_assert(uuid(), "3.7.0", expected)
+
+        expected.config.llm.model.options.upstream_path = nil
+
+        do_assert(uuid(), "3.6.0", expected)
+
+        -- cleanup
+        admin.plugins:remove({ id = ai_response_transformer.id })
+      end)
+
+      it("[ai-prompt-guard] sets unsupported match_all_roles to nil or defaults", function()
+        -- [[ 3.8.x ]] --
+        local ai_prompt_guard = admin.plugins:insert {
+          name = "ai-prompt-guard",
+          enabled = true,
+          config = {
+            allow_patterns = { "a" },
+            allow_all_conversation_history = false,
+            match_all_roles = true,
+            max_request_body_size = 8192,
           },
         }
         -- ]]
 
-        local expected_ai_response_transformer_prior_37 = cycle_aware_deep_copy(ai_response_transformer)
-        expected_ai_response_transformer_prior_37.config.llm.model.options.upstream_path = nil
+        local expected = cycle_aware_deep_copy(ai_prompt_guard)
+        expected.config.match_all_roles = nil
+        expected.config.max_request_body_size = nil
 
-        do_assert(uuid(), "3.6.0", expected_ai_response_transformer_prior_37)
+        do_assert(uuid(), "3.7.0", expected)
 
         -- cleanup
-        admin.plugins:remove({ id = ai_response_transformer.id })
+        admin.plugins:remove({ id = ai_prompt_guard.id })
+      end)
+    end)
+
+    describe("prometheus plugins", function()
+      it("[prometheus] remove ai_metrics property for versions below 3.8", function()
+        -- [[ 3.8.x ]] --
+        local prometheus = admin.plugins:insert {
+          name = "prometheus",
+          enabled = true,
+          config = {
+            ai_metrics = true, -- becomes nil
+          },
+        }
+        -- ]]
+
+        local expected_prometheus_prior_38 = cycle_aware_deep_copy(prometheus)
+        expected_prometheus_prior_38.config.ai_metrics = nil
+
+        do_assert(uuid(), "3.7.0", expected_prometheus_prior_38)
+
+        -- cleanup
+        admin.plugins:remove({ id = prometheus.id })
       end)
     end)
 
@@ -760,6 +1015,46 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
         -- cleanup
         admin.plugins:remove({ id = rt.id })
+      end)
+    end)
+
+    describe("compatibility test for acl plugin", function()
+      it("removes `config.always_use_authenticated_groups` before sending them to older(less than 3.8.0.0) DP nodes", function()
+        local acl = admin.plugins:insert {
+          name = "acl",
+          enabled = true,
+          config = {
+            allow = { "admin" },
+            -- [[ new fields 3.8.0
+            always_use_authenticated_groups = true,
+            -- ]]
+          }
+        }
+
+        assert.not_nil(acl.config.always_use_authenticated_groups)
+        local expected_acl = cycle_aware_deep_copy(acl)
+        expected_acl.config.always_use_authenticated_groups = nil
+        do_assert(uuid(), "3.7.0", expected_acl)
+
+        -- cleanup
+        admin.plugins:remove({ id = acl.id })
+      end)
+
+      it("does not remove `config.always_use_authenticated_groups` from DP nodes that are already compatible", function()
+        local acl = admin.plugins:insert {
+          name = "acl",
+          enabled = true,
+          config = {
+            allow = { "admin" },
+            -- [[ new fields 3.8.0
+            always_use_authenticated_groups = true,
+            -- ]]
+          }
+        }
+        do_assert(uuid(), "3.8.0", acl)
+
+        -- cleanup
+        admin.plugins:remove({ id = acl.id })
       end)
     end)
   end)

@@ -28,13 +28,12 @@ ARG EE_PORTS
 ARG TARGETARCH
 
 ARG KONG_ARTIFACT=kong.${RPM_PLATFORM}.${TARGETARCH}.rpm
-ARG KONG_ARTIFACT_PATH=
-COPY ${KONG_ARTIFACT_PATH}${KONG_ARTIFACT} /tmp/kong.rpm
+ARG KONG_ARTIFACT_PATH
 
 # hadolint ignore=DL3015
-RUN yum update -y \
-    && yum install -y /tmp/kong.rpm \
-    && rm /tmp/kong.rpm \
+RUN --mount=type=bind,source=${KONG_ARTIFACT_PATH},target=/tmp/pkg \
+    yum update -y \
+    && yum install -y /tmp/pkg/${KONG_ARTIFACT} \
     && chown kong:0 /usr/local/bin/kong \
     && chown -R kong:0 /usr/local/kong \
     && ln -sf /usr/local/openresty/bin/resty /usr/local/bin/resty \

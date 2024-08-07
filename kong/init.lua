@@ -84,7 +84,7 @@ local balancer = require "kong.runloop.balancer"
 local kong_error_handlers = require "kong.error_handlers"
 local plugin_servers = require "kong.runloop.plugin_servers"
 local lmdb_txn = require "resty.lmdb.transaction"
-local instrumentation = require "kong.tracing.instrumentation"
+local instrumentation = require "kong.observability.tracing.instrumentation"
 local process = require "ngx.process"
 local tablepool = require "tablepool"
 local table_new = require "table.new"
@@ -837,7 +837,7 @@ function Kong.init_worker()
 
   schema_state = nil
 
-  local worker_events, err = kong_global.init_worker_events()
+  local worker_events, err = kong_global.init_worker_events(kong.configuration)
   if not worker_events then
     stash_init_worker_error("failed to instantiate 'kong.worker_events' " ..
                             "module: " .. err)

@@ -38,6 +38,7 @@ return {
         { aws_role_session_name = { description = "The identifier of the assumed role session.", type = "string",
           default = "kong"
         } },
+        { aws_sts_endpoint_url = typedefs.url },
         { aws_region = typedefs.host },
         { function_name = {
           type = "string",

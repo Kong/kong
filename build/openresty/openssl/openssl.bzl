@@ -11,10 +11,13 @@ load("@kong_bindings//:variables.bzl", "KONG_VAR")
 # Read https://wiki.openssl.org/index.php/Compilation_and_Installation
 
 CONFIGURE_OPTIONS = select({
-    "@kong//:aarch64-linux-anylibc-cross": [
+    "@kong//:aarch64-linux-glibc-cross": [
         "linux-aarch64",
     ],
-    # no extra args needed for "@kong//:x86_64-linux-musl-cross" or non-cross builds
+    "@kong//:x86_64-linux-glibc-cross": [
+        "linux-x86_64",
+    ],
+    # no extra args needed for non-cross builds
     "//conditions:default": [],
 }) + [
     "-g",

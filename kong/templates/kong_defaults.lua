@@ -42,6 +42,7 @@ cluster_max_payload = 16777216
 cluster_use_proxy = off
 cluster_dp_labels = NONE
 cluster_rpc = off
+cluster_cjson = off
 
 lmdb_environment_path = dbless.lmdb
 lmdb_map_size = 2048m
@@ -168,6 +169,7 @@ dns_cache_size = 10000
 dns_not_found_ttl = 30
 dns_error_ttl = 1
 dns_no_sync = off
+legacy_dns_client = off
 
 dedicated_config_processing = on
 worker_consistency = eventual

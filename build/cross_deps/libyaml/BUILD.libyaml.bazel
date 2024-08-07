@@ -14,11 +14,11 @@ configure_make(
     configure_command = "configure",
     configure_in_place = True,
     configure_options = select({
-        "@kong//:aarch64-linux-anylibc-cross": [
-            "--host=aarch64-linux",
+        "@kong//:aarch64-linux-glibc-cross": [
+            "--host=aarch64-unknown-linux-gnu",
         ],
-        "@kong//:x86_64-linux-musl-cross": [
-            "--host=x86_64-linux-musl",
+        "@kong//:x86_64-linux-glibc-cross": [
+            "--host=x86_64-unknown-linux-gnu",
         ],
         "//conditions:default": [],
     }),

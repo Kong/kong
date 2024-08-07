@@ -17,6 +17,7 @@ local pl_path = require "pl.path"
 local tablex = require "pl.tablex"
 local log = require "kong.cmd.utils.log"
 local env = require "kong.cmd.utils.env"
+local constants = require "kong.constants"
 
 
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
@@ -482,6 +483,10 @@ local function load(path, custom_conf, opts)
   -- load absolute paths
   conf.prefix = abspath(conf.prefix)
 
+  -- The socket path is where we store listening unix sockets for IPC and private APIs.
+  -- It is derived from the prefix and is NOT intended to be user-configurable
+  conf.socket_path = pl_path.join(conf.prefix, constants.SOCKET_DIRECTORY)
+
   if conf.lua_ssl_trusted_certificate
      and #conf.lua_ssl_trusted_certificate > 0 then
 
@@ -640,8 +645,7 @@ local function load(path, custom_conf, opts)
     -- set it as such in kong_defaults, because it can only be used if wasm is
     -- _also_ enabled. We inject it here if the user has not opted to set it
     -- themselves.
-    -- TODO: as a temporary compatibility fix, we are forcing it to 'off'.
-    add_wasm_directive("nginx_http_proxy_wasm_lua_resolver", "off")
+    add_wasm_directive("nginx_http_proxy_wasm_lua_resolver", "on")
 
     -- configure wasmtime module cache
     if conf.role == "traditional" or conf.role == "data_plane" then

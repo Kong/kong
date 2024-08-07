@@ -1,25 +1,21 @@
 local cjson         = require "cjson.safe"
 local upload        = require "resty.upload"
+local decoder       = require "kong.api.arguments_decoder"
 
 
 local setmetatable  = setmetatable
 local getmetatable  = getmetatable
-local tonumber      = tonumber
 local rawget        = rawget
 local concat        = table.concat
 local insert        = table.insert
-local ipairs        = ipairs
 local pairs         = pairs
 local lower         = string.lower
 local find          = string.find
 local sub           = string.sub
-local next          = next
 local type          = type
 local ngx           = ngx
 local req           = ngx.req
 local log           = ngx.log
-local re_match      = ngx.re.match
-local re_gmatch     = ngx.re.gmatch
 local req_read_body = req.read_body
 local get_uri_args  = req.get_uri_args
 local get_body_data = req.get_body_data
@@ -31,23 +27,7 @@ local kong          = kong
 local NOTICE        = ngx.NOTICE
 
 
-local multipart_mt = {}
 local arguments_mt = {}
-
-
-function multipart_mt:__tostring()
-  return self.data
-end
-
-
-function multipart_mt:__index(name)
-  local json = rawget(self, "json")
-  if json then
-    return json[name]
-  end
-
-  return nil
-end
 
 
 function arguments_mt:__index(name)
@@ -129,7 +109,7 @@ end
 
 
 local function combine_arg(to, arg)
-  if type(arg) ~= "table" or getmetatable(arg) == multipart_mt then
+  if type(arg) ~= "table" or getmetatable(arg) == decoder.multipart_mt then
     insert(to, #to + 1, arg)
 
   else
@@ -140,7 +120,7 @@ local function combine_arg(to, arg)
         to[k] = v
 
       else
-        if type(t) == "table" and getmetatable(t) ~= multipart_mt then
+        if type(t) == "table" and getmetatable(t) ~= decoder.multipart_mt then
           combine_arg(t, v)
 
         else
@@ -279,140 +259,6 @@ infer = function(args, schema)
 end
 
 
-local function decode_array_arg(name, value, container)
-  container = container or {}
-
-  if type(name) ~= "string" then
-    container[name] = value
-    return container[name]
-  end
-
-  local indexes = {}
-  local count   = 0
-  local search  = name
-
-  while true do
-    local captures, err = re_match(search, [[(.+)\[(\d*)\]$]], "ajos")
-    if captures then
-      search = captures[1]
-      count = count + 1
-      indexes[count] = tonumber(captures[2])
-
-    elseif err then
-      log(NOTICE, err)
-      break
-
-    else
-      break
-    end
-  end
-
-  if count == 0 then
-    container[name] = value
-    return container[name]
-  end
-
-  container[search] = {}
-  container = container[search]
-
-  for i = count, 1, -1 do
-    local index = indexes[i]
-
-    if i == 1 then
-      if index then
-        insert(container, index, value)
-        return container[index]
-      end
-
-      if type(value) == "table" and getmetatable(value) ~= multipart_mt then
-        for j, v in ipairs(value) do
-          insert(container, j, v)
-        end
-
-      else
-        container[#container + 1] = value
-      end
-
-      return container
-
-    else
-      if not container[index or 1] then
-        container[index or 1] = {}
-        container = container[index or 1]
-      end
-    end
-  end
-end
-
-
-local function decode_arg(name, value)
-  if type(name) ~= "string" or re_match(name, [[^\.+|\.$]], "jos") then
-    return { name = value }
-  end
-
-  local iterator, err = re_gmatch(name, [[[^.]+]], "jos")
-  if not iterator then
-    if err then
-      log(NOTICE, err)
-    end
-
-    return decode_array_arg(name, value)
-  end
-
-  local names = {}
-  local count = 0
-
-  while true do
-    local captures, err = iterator()
-    if captures then
-      count = count + 1
-      names[count] = captures[0]
-
-    elseif err then
-      log(NOTICE, err)
-      break
-
-    else
-      break
-    end
-  end
-
-  if count == 0 then
-    return decode_array_arg(name, value)
-  end
-
-  local container = {}
-  local bucket = container
-
-  for i = 1, count do
-    if i == count then
-      decode_array_arg(names[i], value, bucket)
-      return container
-
-    else
-      bucket = decode_array_arg(names[i], {}, bucket)
-    end
-  end
-end
-
-
-local function decode(args, schema)
-  local i = 0
-  local r = {}
-
-  if type(args) ~= "table" then
-    return r
-  end
-
-  for name, value in pairs(args) do
-    i = i + 1
-    r[i] = decode_arg(name, value)
-  end
-
-  return infer(combine(r), schema)
-end
-
-
 local function parse_multipart_header(header, results)
   local name
   local value
@@ -531,7 +377,7 @@ local function parse_multipart_stream(options, boundary)
           data     = {
             n      = 0,
           }
-        }, multipart_mt)
+        }, decoder.multipart_mt)
 
         headers = nil
       end
@@ -582,7 +428,7 @@ local function parse_multipart_stream(options, boundary)
         if part_name then
           local enclosure = part_args[part_name]
           if enclosure then
-            if type(enclosure) == "table" and getmetatable(enclosure) ~= multipart_mt then
+            if type(enclosure) == "table" and getmetatable(enclosure) ~= decoder.multipart_mt then
               enclosure[#enclosure + 1] = part
 
             else
@@ -621,6 +467,14 @@ local function parse_multipart(options, content_type)
   end
 
   return parse_multipart_stream(options, boundary)
+end
+
+
+-- decodes and infers the arguments
+-- the name "decode" is kept for backwards compatibility
+local function decode(args, schema)
+  local decoded = decoder.decode(args)
+  return infer(combine(decoded), schema)
 end
 
 
@@ -730,11 +584,9 @@ end
 
 
 return {
-  load         = load,
-  decode       = decode,
-  decode_arg   = decode_arg,
-  infer        = infer,
-  infer_value  = infer_value,
-  combine      = combine,
-  multipart_mt = multipart_mt,
+  load        = load,
+  infer_value = infer_value,
+  decode      = decode,
+  _infer      = infer,
+  _combine    = combine,
 }

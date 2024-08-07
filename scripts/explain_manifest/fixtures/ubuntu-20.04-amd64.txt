@@ -193,7 +193,7 @@
   - lua-resty-lmdb
   - ngx_brotli
   - ngx_wasmx_module
-  OpenSSL   : OpenSSL 3.2.1 30 Jan 2024
+  OpenSSL   : OpenSSL 3.2.2 4 Jun 2024
   DWARF     : True
   DWARF - ngx_http_request_t related DWARF DIEs: True
 
@@ -206,3 +206,10 @@
   - libc.so.6
   - ld-linux-x86-64.so.2
   - libstdc++.so.6
+
+- Path      : /usr/local/openresty/site/lualib/libsimdjson_ffi.so
+  Needed    :
+  - libstdc++.so.6
+  - libm.so.6
+  - libgcc_s.so.1
+  - libc.so.6

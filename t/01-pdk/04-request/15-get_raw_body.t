@@ -119,3 +119,81 @@ body: 'potato'
 body err: request body did not fit into client body buffer, consider raising 'client_body_buffer_size'
 --- no_error_log
 [error]
+
+
+
+=== TEST 6: request.get_raw_body() returns correctly if max_allowed_file_size is larger than request
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            local body, err = pdk.request.get_raw_body(20000)
+            if body then
+              ngx.say("body length: ", #body)
+
+            else
+              ngx.say("body err: ", err)
+            end
+        }
+    }
+--- request eval
+"GET /t\r\n" . ("a" x 20000)
+--- response_body
+body length: 20000
+--- no_error_log
+[error]
+
+
+
+=== TEST 7: request.get_raw_body() returns error if max_allowed_file_size is smaller than request
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            local body, err = pdk.request.get_raw_body(19999)
+            if body then
+              ngx.say("body length: ", #body)
+
+            else
+              ngx.say("body err: ", err)
+            end
+        }
+    }
+--- request eval
+"GET /t\r\n" . ("a" x 20000)
+--- response_body
+body err: request body file too big: 20000 > 19999
+--- no_error_log
+[error]
+
+
+
+=== TEST 8: request.get_raw_body() returns correctly if max_allowed_file_size is equal to 0
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            local body, err = pdk.request.get_raw_body(0)
+            if body then
+              ngx.say("body length: ", #body)
+
+            else
+              ngx.say("body err: ", err)
+            end
+        }
+    }
+--- request eval
+"GET /t\r\n" . ("a" x 20000)
+--- response_body
+body length: 20000
+--- no_error_log
+[error]

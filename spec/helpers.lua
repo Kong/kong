@@ -545,7 +545,7 @@ end
 -- @param db the database object
 -- @return ml_cache instance
 local function get_cache(db)
-  local worker_events = assert(kong_global.init_worker_events())
+  local worker_events = assert(kong_global.init_worker_events(conf))
   local cluster_events = assert(kong_global.init_cluster_events(conf, db))
   local cache = assert(kong_global.init_cache(conf,
                                               cluster_events,
@@ -1210,6 +1210,7 @@ local function grpc_client(host, port, opts)
     __call = function(t, args)
       local service = assert(args.service)
       local body = args.body
+      local arg_opts = args.opts or {}
 
       local t_body = type(body)
       if t_body ~= "nil" then
@@ -1217,11 +1218,12 @@ local function grpc_client(host, port, opts)
           body = cjson.encode(body)
         end
 
-        args.opts["-d"] = string.format("'%s'", body)
+        arg_opts["-d"] = string.format("'%s'", body)
       end
 
-      local opts = gen_grpcurl_opts(pl_tablex.merge(t.opts, args.opts, true))
-      local ok, _, out, err = exec(string.format(t.cmd_template, opts, service), true)
+      local cmd_opts = gen_grpcurl_opts(pl_tablex.merge(t.opts, arg_opts, true))
+      local cmd = string.format(t.cmd_template, cmd_opts, service)
+      local ok, _, out, err = exec(cmd, true)
 
       if ok then
         return ok, ("%s%s"):format(out or "", err or "")
@@ -2457,6 +2459,11 @@ local deep_sort do
 
     if type(a) == "table" then
       return deep_compare(a[1], b[1])
+    end
+
+    -- compare cjson.null or ngx.null
+    if type(a) == "userdata" and type(b) == "userdata" then
+      return false
     end
 
     return a < b
@@ -3836,10 +3843,13 @@ end
 -- @param preserve_dc ???
 local function cleanup_kong(prefix, preserve_prefix, preserve_dc)
   -- remove socket files to ensure `pl.dir.rmtree()` ok
-  local socks = { "/worker_events.sock", "/stream_worker_events.sock", }
-  for _, name in ipairs(socks) do
-    local sock_file = (prefix or conf.prefix) .. name
-    os.remove(sock_file)
+  prefix = prefix or conf.prefix
+  local socket_path = pl_path.join(prefix, constants.SOCKET_DIRECTORY)
+  for child in lfs.dir(socket_path) do
+    if child:sub(-5) == ".sock" then
+      local path = pl_path.join(socket_path, child)
+      os.remove(path)
+    end
   end
 
   -- note: set env var "KONG_TEST_DONT_CLEAN" !! the "_TEST" will be dropped

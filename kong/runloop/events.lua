@@ -258,20 +258,29 @@ local function crud_plugins_handler(data)
 end
 
 
-local function crud_snis_handler(data)
-  log(DEBUG, "[events] SNI updated, invalidating cached certificates")
-
-  local sni = data.old_entity or data.entity
-  local sni_name = sni.name
+local function invalidate_snis(sni_name)
   local sni_wild_pref, sni_wild_suf = certificate.produce_wild_snis(sni_name)
   core_cache:invalidate("snis:" .. sni_name)
 
-  if sni_wild_pref then
+  if sni_wild_pref and sni_wild_pref ~= sni_name then
     core_cache:invalidate("snis:" .. sni_wild_pref)
   end
 
-  if sni_wild_suf then
+  if sni_wild_suf and sni_wild_suf ~= sni_name then
     core_cache:invalidate("snis:" .. sni_wild_suf)
+  end
+end
+
+
+local function crud_snis_handler(data)
+  log(DEBUG, "[events] SNI updated, invalidating cached certificates")
+
+  local new_name = data.entity.name
+  local old_name = data.old_entity and data.old_entity.name
+
+  invalidate_snis(new_name)
+  if old_name and old_name ~= new_name then
+    invalidate_snis(old_name)
   end
 end
 
@@ -498,12 +507,18 @@ local stream_reconfigure_listener
 do
   local buffer = require "string.buffer"
 
-  -- `kong.configuration.prefix` is already normalized to an absolute path,
-  -- but `ngx.config.prefix()` is not
-  local PREFIX = kong and kong.configuration and
-                 kong.configuration.prefix or
-                 require("pl.path").abspath(ngx.config.prefix())
-  local STREAM_CONFIG_SOCK = "unix:" .. PREFIX .. "/stream_config.sock"
+  -- this module may be loaded before `kong.configuration` is initialized
+  local socket_path = kong and kong.configuration
+                      and kong.configuration.socket_path
+
+  if not socket_path then
+    -- `kong.configuration.socket_path` is already normalized to an absolute
+    -- path, but `ngx.config.prefix()` is not
+    socket_path = require("pl.path").abspath(ngx.config.prefix() .. "/"
+                                             .. constants.SOCKET_DIRECTORY)
+  end
+
+  local STREAM_CONFIG_SOCK = "unix:" .. socket_path .. "/stream_config.sock"
   local IS_HTTP_SUBSYSTEM  = ngx.config.subsystem == "http"
 
   local function broadcast_reconfigure_event(data)

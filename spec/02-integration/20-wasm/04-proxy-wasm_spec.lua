@@ -1,5 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
+local meta = require "kong.meta"
 
 
 local HEADER_NAME_PHASE = "X-PW-Phase"
@@ -195,7 +196,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
 
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      assert.equal("proxy-wasm", json.headers["via"])
+      assert.equal("1.1 " .. meta._SERVER_TOKENS, json.headers["via"])
       -- TODO: honor case-sensitivity (proxy-wasm-rust-sdk/ngx_wasm_module investigation)
       -- assert.equal("proxy-wasm", json.headers["Via"])
       assert.logfile().has.no.line("[error]", true, 0)
@@ -786,7 +787,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
       assert.logfile().has.no.line("[crit]",  true, 0)
     end)
 
-    pending("resolves DNS hostnames to send an http dispatch, return its response body", function()
+    it("resolves DNS hostnames to send an http dispatch, return its response body", function()
       local client = helpers.proxy_client()
       finally(function() client:close() end)
 

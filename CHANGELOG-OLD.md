@@ -2,6 +2,10 @@
 
 Looking for recent releases? Please see [CHANGELOG.md](CHANGELOG.md) instead.
 
+- [2.8.5](#285)
+- [2.8.4](#284)
+- [2.8.3](#283)
+- [2.8.2](#282)
 - [2.8.1](#281)
 - [2.8.0](#280)
 - [2.7.1](#271)
@@ -64,6 +68,55 @@ Looking for recent releases? Please see [CHANGELOG.md](CHANGELOG.md) instead.
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+## [2.8.5]
+
+### Kong
+
+#### Performance
+##### Performance
+
+- Fixed an inefficiency issue in the Luajit hashing algorithm
+ [#13269](https://github.com/Kong/kong/issues/13269)
+
+
+#### Fixes
+##### Default
+
+- Added zlib1g-dev dependency to Ubuntu packages.
+ [#13269](https://github.com/Kong/kong/issues/13269)
+
+
+## [2.8.4]
+
+### Fixes
+
+- Fixed a bug where internal redirects (i.e. those produced by the error_page directive) could interfere with worker process handling the request when buffered proxying is being used.
+
+## [2.8.3]
+
+### Fixes
+
+##### Plugins
+
+- **HTTP Log**: fix internal error during validating the schema if http_endpoint contains
+  userinfo but headers is empty [#9574](https://github.com/Kong/kong/pull/9574)
+- Update the batch queues module so that queues no longer grow without bounds if
+  their consumers fail to process the entries.  Instead, old batches are now dropped
+  and an error is logged.
+  [#10247](https://github.com/Kong/kong/pull/10247)
+
+##### CLI
+
+- Fixed a packaging problem affecting a subset of releases where the `kong version`
+  command was incorrect
+
+## [2.8.2]
+
+### Dependencies
+
+- Bumped `OpenSSL` from 1.1.1n to 1.1.1o
+  [#8635](https://github.com/Kong/kong/pull/8809)
 
 ## [2.8.1]
 

@@ -188,6 +188,12 @@ for _, strategy in helpers.each_strategy() do
         service     = null,
       }
 
+      local route28 = bp.routes:insert {
+        hosts       = { "lambda28.test" },
+        protocols   = { "http", "https" },
+        service     = null,
+      }
+
       bp.plugins:insert {
         name     = "aws-lambda",
         route    = { id = route1.id },
@@ -560,6 +566,20 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route28.id },
+        config                 = {
+          port                 = 10001,
+          aws_key              = "mock-key",
+          aws_secret           = "mock-secret",
+          aws_region           = "us-east-1",
+          function_name        = "functionWithArrayCTypeInMVHAndEmptyArray",
+          empty_arrays_mode    = "legacy",
+          is_proxy_integration = true,
+        }
+      }
+
       fixtures.dns_mock:A({
         name = "custom.lambda.endpoint",
         address = "127.0.0.1",
@@ -928,7 +948,7 @@ for _, strategy in helpers.each_strategy() do
         })
 
         if server_tokens then
-          assert.equal(server_tokens, res.headers["Via"])
+          assert.equal("2 " .. server_tokens, res.headers["Via"])
         end
       end)
 
@@ -983,6 +1003,19 @@ for _, strategy in helpers.each_strategy() do
 
         local body = assert.res_status(200, res)
         assert.matches("\"testbody\":%[%]", body)
+      end)
+
+      it("invokes a Lambda function with legacy empty array mode and mutlivalueheaders", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            ["Host"] = "lambda28.test"
+          }
+        })
+
+        local _ = assert.res_status(200, res)
+        assert.equal("application/json+test", res.headers["Content-Type"])
       end)
 
       describe("config.is_proxy_integration = true", function()

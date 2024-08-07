@@ -1,0 +1,2 @@
+message: "Bumped lua-resty-openssl from 1.4.0 to 1.5.0"
+type: dependency
