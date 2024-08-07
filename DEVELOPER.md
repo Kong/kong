@@ -144,7 +144,7 @@ using either one of the following ways:
 * By [Personal Access Token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token). This token does not need to have any other permission than `Public Repositories (read-only)`, and set it as `GITHUB_TOKEN` environment variable.
 * Use [git credential helper](https://git-scm.com/docs/gitcredentials).
 
-Then you have to make the rust build system also authenticate with GitHub,
+Then you have to make the Rust build system also authenticate with GitHub,
 there is nothing you need to do if you were authenticated using `gh` or `git credential helper`,
 otherwise, you can set the[`CARGO_NET_GIT_FETCH_WITH_CLI`](https://doc.rust-lang.org/cargo/reference/config.html)
 environment variable to `true`.
