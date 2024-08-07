@@ -9,6 +9,7 @@ local string_gsub = string.gsub
 local table_insert = table.insert
 local string_lower = string.lower
 local signer = require("resty.aws.request.sign")
+local llm_state = require("kong.llm.state")
 --
 
 -- globals
@@ -381,7 +382,7 @@ end
 
 -- returns err or nil
 function _M.configure_request(conf, aws_sdk)
-  local operation = kong.ctx.shared.ai_proxy_streaming_mode and "converse-stream"
+  local operation = llm_state.is_streaming_mode() and "converse-stream"
                                                              or "converse"
 
   local f_url = conf.model.options and conf.model.options.upstream_url
