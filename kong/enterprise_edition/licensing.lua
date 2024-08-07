@@ -256,7 +256,7 @@ function _M:update(license)
   _M.features:update(cycle_aware_deep_copy(license_helpers.get_featureset(_M.l_type)))
 
   _M.configuration:clear()
-  _M.configuration:update(cycle_aware_deep_copy(_M.kong_conf))
+  _M.configuration:update(cycle_aware_deep_copy(_M.kong_conf) or {})
   _M.configuration:update(_M.features.conf or {}, true)
 end
 
