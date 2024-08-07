@@ -8,11 +8,24 @@
 local log           = require "kong.plugins.openid-connect.log"
 local hash          = require "kong.openid-connect.hash"
 local session       = require "resty.session"
+local map           = require "pl.tablex".map
 
 
-local ipairs        = ipairs
+local ngx_null = ngx.null
 local concat        = table.concat
 local encode_base64 = ngx.encode_base64
+
+local function is_present(x)
+  return x and ngx_null ~= x
+end
+
+local function is_redis_cluster(redis)
+  return is_present(redis.cluster_nodes)
+end
+
+local function is_redis_sentinel(redis)
+  return is_present(redis.sentinel_nodes)
+end
 
 
 local function new(args, secret)
@@ -50,53 +63,72 @@ local function new(args, secret)
 
       elseif not redis and storage == "redis" then
         log("loading configuration for redis session storage")
-        local cluster_nodes = args.get_conf_arg("session_redis_cluster_nodes")
-        if cluster_nodes then
-          local n = 0
-          local name = {}
-          for _, node in ipairs(cluster_nodes) do
-            name[n+1] = node.ip   or "127.0.0.1"
-            name[n+2] = ":"
-            name[n+3] = node.port or 6379
-            n = n + 3
-          end
+        local redis_conf = args.get_conf_arg("redis")
+        if is_redis_cluster(redis_conf) then
+          local cluster_addresses = map(function(node)
+            return string.format("%s:%s", node.ip, tostring(node.port))
+          end, redis_conf["cluster_nodes"])
+          local cluster_name = concat(cluster_addresses, ";", 1, #cluster_addresses)
 
-          local hashed_name = encode_base64(hash.S256(concat(name, ";", 1, n)), true)
+          local hashed_name = encode_base64(hash.S256(cluster_name), true)
 
           redis = {
-            prefix           = args.get_conf_arg("session_redis_prefix"),
-            username         = args.get_conf_arg("session_redis_username"),
-            password         = args.get_conf_arg("session_redis_password"),
-            connect_timeout  = args.get_conf_arg("session_redis_connect_timeout"),
-            read_timeout     = args.get_conf_arg("session_redis_read_timeout"),
-            send_timeout     = args.get_conf_arg("session_redis_send_timeout"),
-            ssl              = args.get_conf_arg("session_redis_ssl", false),
-            ssl_verify       = args.get_conf_arg("session_redis_ssl_verify", false),
-            server_name      = args.get_conf_arg("session_redis_server_name"),
-            name             = "redis-cluster:" .. hashed_name,
-            nodes            = cluster_nodes,
-            lock_zone        = "kong_locks",
-            max_redirections = args.get_conf_arg("session_redis_cluster_max_redirections")
+            prefix            = redis_conf["prefix"],
+            username          = redis_conf["username"],
+            password          = redis_conf["password"],
+            connect_timeout   = redis_conf["connect_timeout"],
+            read_timeout      = redis_conf["read_timeout"],
+            send_timeout      = redis_conf["send_timeout"],
+            pool_size         = redis_conf["keepalive_pool_size"],
+            backlog           = redis_conf["keepalive_backlog"],
+            ssl               = redis_conf["ssl"] or false,
+            ssl_verify        = redis_conf["ssl_verify"] or false,
+            server_name       = redis_conf["server_name"],
+            name              = "redis-cluster:" .. hashed_name,
+            nodes             = redis_conf["cluster_nodes"],
+            lock_zone         = "kong_locks",
+            max_redirections  = redis_conf["cluster_max_redirections"]
                             or args.get_conf_arg("session_redis_cluster_maxredirections"),
           }
 
-        else
-          redis = {
-            prefix          = args.get_conf_arg("session_redis_prefix"),
-            socket          = args.get_conf_arg("session_redis_socket"),
-            host            = args.get_conf_arg("session_redis_host", "127.0.0.1"),
-            port            = args.get_conf_arg("session_redis_port", 6379),
-            username        = args.get_conf_arg("session_redis_username"),
-            password        = args.get_conf_arg("session_redis_password"),
-            connect_timeout = args.get_conf_arg("session_redis_connect_timeout"),
-            read_timeout    = args.get_conf_arg("session_redis_read_timeout"),
-            send_timeout    = args.get_conf_arg("session_redis_send_timeout"),
-            ssl             = args.get_conf_arg("session_redis_ssl", false),
-            ssl_verify      = args.get_conf_arg("session_redis_ssl_verify", false),
-            server_name     = args.get_conf_arg("session_redis_server_name"),
-          }
+          elseif is_redis_sentinel(redis_conf)  then
+            redis = {
+              master            = redis_conf["sentinel_master"],
+              role              = redis_conf["sentinel_role"],
+              sentinels         = redis_conf["sentinel_nodes"],
+              socket            = redis_conf["socket"],
+              sentinel_username = redis_conf["username"],
+              sentinel_password = redis_conf["password"],
+              database          = redis_conf["database"],
+              prefix            = redis_conf["prefix"],
+              connect_timeout   = redis_conf["connect_timeout"],
+              read_timeout      = redis_conf["read_timeout"],
+              send_timeout      = redis_conf["send_timeout"],
+              pool_size         = redis_conf["keepalive_pool_size"],
+              backlog           = redis_conf["keepalive_backlog"],
+              ssl               = redis_conf["ssl"] or false,
+              ssl_verify        = redis_conf["ssl_verify"] or false,
+              server_name       = redis_conf["server_name"],
+            }
+          else
+            redis = {
+              prefix            = redis_conf["prefix"],
+              socket            = redis_conf["socket"],
+              host              = redis_conf["host"],
+              port              = redis_conf["port"],
+              username          = redis_conf["username"],
+              password          = redis_conf["password"],
+              connect_timeout   = redis_conf["connect_timeout"],
+              read_timeout      = redis_conf["read_timeout"],
+              send_timeout      = redis_conf["send_timeout"],
+              pool_size         = redis_conf["keepalive_pool_size"],
+              backlog           = redis_conf["keepalive_backlog"],
+              ssl               = redis_conf["ssl"] or false,
+              ssl_verify        = redis_conf["ssl_verify"] or false,
+              server_name       = redis_conf["server_name"],
+            }
+          end
         end
-      end
 
       initialized = true
     end

@@ -102,6 +102,71 @@ describe(PLUGIN_NAME .. ": (#schema)", function()
     assert.is_truthy(ok)
   end)
 
+  it('accepts old redis configuration', function()
+    local ok, err = validate({
+      issuer = "https://accounts.google.test/.well-known/openid-configuration",
+      session_storage = 'redis',
+      session_redis_host = "localhost",
+      session_redis_port = 1234,
+    })
+
+    assert.is_nil(err)
+    assert.is_truthy(ok)
+  end)
+
+  it('accepts new redis configuration', function()
+    local ok, err = validate({
+      issuer = "https://accounts.google.test/.well-known/openid-configuration",
+      session_storage = 'redis',
+      redis = {
+        connect_timeout = 100,
+        send_timeout = 101,
+        read_timeout = 102,
+        cluster_nodes = {
+          {
+            ip = "redis-node-1",
+            port = 6379,
+          },
+          {
+            ip = "redis-node-2",
+            port = 6380,
+          },
+          {
+            ip = "127.0.0.1",
+            port = 6381,
+          },
+        }
+      },
+    })
+
+    assert.is_nil(err)
+    assert.is_truthy(ok)
+
+    ok, err = validate({
+      issuer = "https://accounts.google.test/.well-known/openid-configuration",
+      session_storage = 'redis',
+      redis = {
+        socket = "some_socket",
+        prefix = "some_prefix_",
+      },
+    })
+
+    assert.is_nil(err)
+    assert.is_truthy(ok)
+
+    ok, err = validate({
+      issuer = "https://accounts.google.test/.well-known/openid-configuration",
+      session_storage = 'redis',
+      redis = {
+        host = "localhost",
+        port = 6379,
+      },
+    })
+
+    assert.is_nil(err)
+    assert.is_truthy(ok)
+  end)
+
 
   it("redis cluster nodes rejects bad ports", function()
     local ok, err = validate({
@@ -119,7 +184,7 @@ describe(PLUGIN_NAME .. ": (#schema)", function()
     })
     assert.is_same(
     { port = "expected an integer" },
-    err.config.session_redis_cluster_nodes[1]
+    err.session_redis_cluster_nodes[1]
     )
     assert.is_falsy(ok)
   end)

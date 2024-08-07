@@ -16,10 +16,26 @@ local cache = require "kong.plugins.openid-connect.cache"
 local arguments = require "kong.plugins.openid-connect.arguments"
 local ee_redis  = require "kong.enterprise_edition.tools.redis.v2"
 local redis_schema = ee_redis.config_schema
+local tablex = require "pl.tablex"
 
 
 local get_phase = ngx.get_phase
 
+
+local REDIS_OIDC_SCHEMA = tablex.deepcopy(redis_schema)
+table.insert(REDIS_OIDC_SCHEMA.fields,
+  { prefix = {
+      description = "The Redis session key prefix.",
+      required = false,
+      type     = "string",
+  } }
+)
+table.insert(REDIS_OIDC_SCHEMA.fields,
+  { socket = { description = "The Redis unix socket path.",
+        required = false,
+        type     = "string",
+  } }
+)
 
 local function validate_issuer(conf)
   local phase = get_phase()
@@ -1285,126 +1301,7 @@ local config = {
               default = 11211,
             },
           },
-          {
-            session_redis_prefix = {
-              description = "The Redis session key prefix.",
-              required = false,
-              type = "string",
-            },
-          },
-          {
-            session_redis_socket = {
-              description = "The Redis unix socket path.",
-              required = false,
-              type = "string",
-            },
-          },
-          {
-            session_redis_host = {
-              description = "The Redis host.",
-              required = false,
-              type = "string",
-              default = "127.0.0.1",
-            },
-          },
-          {
-            session_redis_port = typedefs.port {
-              description = "The Redis port.",
-              required = false,
-              default = 6379,
-            },
-          },
-          {
-            session_redis_username = {
-              description = "Username to use for Redis connection when the `redis` session storage is defined and ACL authentication is desired. If undefined, ACL authentication will not be performed. This requires Redis v6.0.0+. To be compatible with Redis v5.x.y, you can set it to `default`.",
-              required = false,
-              type = "string",
-              referenceable = true,
-            },
-          },
-          {
-            session_redis_password = {
-              description = "Password to use for Redis connection when the `redis` session storage is defined. If undefined, no AUTH commands are sent to Redis.",
-              required = false,
-              type = "string",
-              encrypted = true,
-              referenceable = true,
-            },
-          },
-          {
-            session_redis_connect_timeout = {
-              description = "Session redis connection timeout in milliseconds.",
-              required = false,
-              type = "integer",
-            },
-          },
-          {
-            session_redis_read_timeout = {
-              description = "Session redis read timeout in milliseconds.",
-              required = false,
-              type = "integer",
-            },
-          },
-          {
-            session_redis_send_timeout = {
-              description = "Session redis send timeout in milliseconds.",
-              required = false,
-              type = "integer",
-            },
-          },
-          {
-            session_redis_ssl = {
-              description = "Use SSL/TLS for Redis connection.",
-              required = false,
-              type = "boolean",
-              default = false,
-            },
-          },
-          {
-            session_redis_ssl_verify = {
-              description = "Verify identity provider server certificate.",
-              required = false,
-              type = "boolean",
-              default = false,
-            },
-          },
-          {
-            session_redis_server_name = {
-              description = "The SNI used for connecting the Redis server.",
-              required = false,
-              type = "string",
-            },
-          },
-          {
-            session_redis_cluster_nodes = {
-              description = "The Redis cluster node host. Takes an array of host records, with either `ip` or `host`, and `port` values.",
-              required = false,
-              type = "array",
-              elements = {
-                type = "record",
-                fields = {
-                  {
-                    ip = typedefs.host {
-                      required = true,
-                      default = "127.0.0.1",
-                    },
-                  },
-                  {
-                    port = typedefs.port {
-                      default = 6379,
-                    },
-                  },
-                },
-              },
-            },
-          },
-          {
-            session_redis_cluster_max_redirections = {
-              description = "The Redis cluster maximum redirects.",
-              required = false,
-              type = "integer",
-            },
-          },
+          { redis = REDIS_OIDC_SCHEMA },
           {
             reverify = {
               description = "Specifies whether to always verify tokens stored in the session.",
@@ -2488,17 +2385,6 @@ local config = {
             },
           },
           {
-            session_redis_cluster_maxredirections = {
-              type = "integer",
-              deprecation = {
-                message = "openid-connect: config.session_redis_cluster_maxredirections is deprecated, please use config.session_redis_cluster_max_redirections instead",
-                removal_in_version = "4.0", },
-              func = function(value)
-                return { session_redis_cluster_max_redirections = value }
-              end,
-            },
-          },
-          {
             session_cookie_renew = {
               type = "number",
               deprecation = {
@@ -2534,9 +2420,211 @@ local config = {
               func = function() end,
             },
           },
+
+          -- Redis renaming: deprecated forms, to be removed in Kong 4.0
+          { session_redis_prefix = {
+            type = "string",
+            translate_backwards = {'redis', 'prefix'},
+            deprecation = {
+              message = "openid-connect: config.session_redis_prefix is deprecated, please use config.redis.prefix instead",
+              removal_in_version = "4.0", },
+            func = function(value)
+              return { redis = { prefix = value } }
+            end
+          } },
+          { session_redis_socket = {
+            type = "string",
+            translate_backwards = {'redis', 'socket'},
+            deprecation = {
+              message = "openid-connect: config.session_redis_socket is deprecated, please use config.redis.socket instead",
+              removal_in_version = "4.0", },
+            func = function(value)
+              return { redis = { socket = value } }
+            end
+          }},
+          { session_redis_host = {
+            type = "string",
+            translate_backwards = {'redis', 'host'},
+            deprecation = {
+              message = "openid-connect: config.session_redis_host is deprecated, please use config.redis.host instead",
+              removal_in_version = "4.0", },
+            func = function(value, read_only_full_config)
+              if read_only_full_config["session_redis_cluster_nodes"] and read_only_full_config["session_redis_cluster_nodes"] ~= ngx.null then
+                return nil
+              end
+              return { redis = { host = value } }
+            end
+          } },
+          { session_redis_port = {
+            type = "integer",
+            translate_backwards = {'redis', 'port'},
+            deprecation = {
+              message = "openid-connect: config.session_redis_port is deprecated, please use config.redis.port instead",
+              removal_in_version = "4.0", },
+            func = function(value, read_only_full_config)
+              if read_only_full_config["session_redis_cluster_nodes"] and read_only_full_config["session_redis_cluster_nodes"] ~= ngx.null then
+                return nil
+              end
+              return { redis = { port = value } }
+            end
+          } },
+          {
+            session_redis_username = {
+              type = "string",
+              translate_backwards = {'redis', 'username'},
+              deprecation = {
+                message = "openid-connect: config.redis_host is deprecated, please use config.redis.host instead",
+                removal_in_version = "4.0", },
+              func = function(value)
+                return { redis = { username = value } }
+              end
+            },
+          },
+          {
+            session_redis_password = {
+              type = "string",
+              translate_backwards = {'redis', 'password'},
+              deprecation = {
+                message = "openid-connect: config.session_redis_password is deprecated, please use config.redis.password instead",
+                removal_in_version = "4.0", },
+              func = function(value)
+                return { redis = { password = value } }
+              end
+            },
+          },
+          {
+            session_redis_connect_timeout = {
+              type = "integer",
+              translate_backwards = {'redis', 'connect_timeout'},
+              deprecation = {
+                message = "openid-connect: config.session_redis_connect_timeout is deprecated, please use config.redis.connect_timeout instead",
+                removal_in_version = "4.0", },
+              func = function(value)
+                return { redis = { connect_timeout = value } }
+              end
+            },
+          },
+          {
+            session_redis_read_timeout = {
+              type = "integer",
+              translate_backwards = {'redis', 'read_timeout'},
+              deprecation = {
+                message = "openid-connect: config.session_redis_read_timeout is deprecated, please use config.redis.read_timeout instead",
+                removal_in_version = "4.0", },
+              func = function(value)
+                return { redis = { read_timeout = value } }
+              end
+            },
+          },
+          {
+            session_redis_send_timeout = {
+              type = "integer",
+              translate_backwards = {'redis', 'send_timeout'},
+              deprecation = {
+                message = "openid-connect: config.session_redis_send_timeout is deprecated, please use config.redis.send_timeout instead",
+                removal_in_version = "4.0", },
+              func = function(value)
+                return { redis = { send_timeout = value } }
+              end
+            },
+          },
+          {
+            session_redis_ssl = {
+              type = "boolean",
+              translate_backwards = {'redis', 'ssl'},
+              deprecation = {
+                message = "openid-connect: config.session_redis_ssl is deprecated, please use config.redis.ssl instead",
+                removal_in_version = "4.0", },
+              func = function(value)
+                return { redis = { ssl = value } }
+              end
+            },
+          },
+          {
+            session_redis_ssl_verify = {
+              type = "boolean",
+              translate_backwards = {'redis', 'ssl_verify'},
+              deprecation = {
+                message = "openid-connect: config.session_redis_ssl_verify is deprecated, please use config.redis.ssl_verify instead",
+                removal_in_version = "4.0", },
+              func = function(value)
+                return { redis = { ssl_verify = value } }
+              end
+            },
+          },
+          {
+            session_redis_server_name = {
+              type = "string",
+              translate_backwards = {'redis', 'server_name'},
+              deprecation = {
+                message = "openid-connect: config.session_redis_server_name is deprecated, please use config.redis.server_name instead",
+                removal_in_version = "4.0", },
+              func = function(value)
+                return { redis = { server_name = value } }
+              end
+            },
+          },
+          {
+            session_redis_cluster_nodes = {
+              type = "array",
+              elements = {
+                type = "record",
+                fields = {
+                  {
+                    ip = typedefs.host {
+                      required = true,
+                      default  = "127.0.0.1",
+                    },
+                  },
+                  {
+                    port = typedefs.port {
+                      default = 6379,
+                    },
+                  },
+                }
+              },
+              translate_backwards = {'redis', 'cluster_nodes'},
+              deprecation = {
+                message = "openid-connect: config.session_redis_cluster_nodes is deprecated, please use config.redis.cluster_nodes instead",
+                removal_in_version = "4.0", },
+              func = function(value)
+                return { redis = { cluster_nodes = value } }
+              end
+            },
+          },
+          {
+            session_redis_cluster_max_redirections = {
+              type = "integer",
+              translate_backwards = {'redis', 'cluster_max_redirections'},
+              deprecation = {
+                message = "openid-connect: config.session_redis_cluster_max_redirections is deprecated, please use config.redis.cluster_max_redirections instead",
+                removal_in_version = "4.0", },
+              func = function(value)
+                return { redis = { cluster_max_redirections = value } }
+              end
+            },
+          },
         },
       },
     },
+  },
+  entity_checks = {
+    { custom_entity_check = {
+      field_sources = { "config" },
+      fn = function(entity)
+        local config = entity.config
+        if config.session_storage == "redis" then
+          if config.redis == ngx.null or (
+              config.redis.host == ngx.null and
+              config.redis.socket == ngx.null and
+              config.redis.sentinel_nodes == ngx.null and
+              config.redis.cluster_nodes == ngx.null) then
+            return nil, "No redis config provided"
+          end
+        end
+
+        return true
+      end } }
   },
 }
 
