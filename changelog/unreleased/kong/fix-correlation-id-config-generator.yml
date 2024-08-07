@@ -1,3 +1,3 @@
-message: fix a bug where correlation-id plugin would cause 500 error if `config.generator=null` in database
+message: **correlation-id**: Fixed an issue where the plugin would not work if we explicitly set the `generator` to `null`.
 scope: Plugin
 type: bugfix
