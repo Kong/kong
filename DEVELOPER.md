@@ -138,11 +138,26 @@ macOS
 brew install libyaml
 ```
 
-Now, we have to set environment variable `GITHUB_TOKEN` to download some essential repos.
-You can follow [Managing your personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) to generate an access token.
+Now, you have to authenticate with GitHub to download some essential repos
+using either one of the following ways:
+* Download [`gh cli`](https://cli.github.com/) and run `gh auth login` once.
+* Use a [Personal Access Token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token). This token does not need to have any other permission than `Public Repositories (read-only)`, and set it as `GITHUB_TOKEN` environment variable.
+* Use [git credential helper](https://git-scm.com/docs/gitcredentials).
 
-```bash
-# export GITHUB_TOKEN=ghp_xxxxxx_your_access_token
+Then you have to make the Rust build system also authenticate with GitHub,
+there is nothing you need to do if you were authenticated using `gh` or `git credential helper`,
+otherwise, you can set the[`CARGO_NET_GIT_FETCH_WITH_CLI`](https://doc.rust-lang.org/cargo/reference/config.html)
+environment variable to `true`.
+
+```shell
+export CARGO_NET_GIT_FETCH_WITH_CLI=true
+```
+
+An alternative is to edit the `~/.cargo/config` file and add the following lines:
+
+```toml
+[net]
+git-fetch-with-cli = true
 ```
 
 Finally, we start the build process:
