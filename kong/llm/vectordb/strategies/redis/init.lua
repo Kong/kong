@@ -7,7 +7,7 @@
 
 local cjson = require "cjson.safe"
 local deep_copy = require("kong.tools.table").deep_copy
-local redis_ee = require("kong.enterprise_edition.redis")
+local redis_ee = require("kong.enterprise_edition.tools.redis.v2")
 local utils = require("kong.llm.vectordb.strategies.redis.utils")
 
 

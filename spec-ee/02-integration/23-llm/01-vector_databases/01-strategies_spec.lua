@@ -76,7 +76,7 @@ describe("[" .. strategy .. " vectordb]", function()
 
   after_each(function()
     if strategy == "redis" then
-      local red = assert(require("kong.enterprise_edition.redis").connection(default_config.redis))
+      local red = assert(require("kong.enterprise_edition.tools.redis.v2").connection(default_config.redis))
       assert(red:flushall())
     end
   end)
@@ -182,7 +182,7 @@ describe("[" .. strategy .. " vectordb]", function()
       assert.truthy(ok)
 
       if strategy == "redis" then
-        local red2 = assert(require("kong.enterprise_edition.redis").connection(default_config.redis))
+        local red2 = assert(require("kong.enterprise_edition.tools.redis.v2").connection(default_config.redis))
         local res, err = red2["JSON.GET"](red2, key)
         assert.truthy(res == ngx.null)
         assert.is_nil(err)

@@ -4424,12 +4424,20 @@ local function use_old_plugin(name)
     error("the specified plugin " .. name .. " doesn't exist")
   end
 
-  local origin_lua_path = os.getenv("LUA_PATH")
+  local plugin_include_path = old_plugin_path .. "/?.lua;" .. old_plugin_path .. "/?/init.lua;"
+
   -- put the old plugin path at first
-  assert(setenv("LUA_PATH", old_plugin_path .. "/?.lua;" .. old_plugin_path .. "/?/init.lua;" .. origin_lua_path), "failed to set LUA_PATH env")
+  local origin_lua_path = os.getenv("LUA_PATH")
+  assert(setenv("LUA_PATH", plugin_include_path .. origin_lua_path), "failed to set LUA_PATH env")
+
+  -- LUA_PATH is used by "kong commands" like "kong start", "kong config" etc.
+  -- but for busted tests that are already running (since this is spec/helpers.lua) in order to use old plugin we need to update `package.path`
+  local origin_package_path = package.path
+  package.path = plugin_include_path .. origin_package_path
 
   return function ()
     setenv("LUA_PATH", origin_lua_path)
+    package.path = origin_package_path
     if temp_dir then
       pl_dir.rmtree(temp_dir)
     end

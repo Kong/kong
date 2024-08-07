@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local redis  = require "kong.enterprise_edition.redis"
+local redis  = require "kong.enterprise_edition.tools.redis.v2"
 local typedefs = require "kong.db.schema.typedefs"
 local loadstring = loadstring
 
@@ -115,7 +115,7 @@ return {
           else
               providersList[provider.name] = true
           end
-        
+
           if provider.name == "requestPrompt" then
             if config.request_prompt_count_function == null then
               return nil, "You must provide request prompt count function when using requestPrompt provider"

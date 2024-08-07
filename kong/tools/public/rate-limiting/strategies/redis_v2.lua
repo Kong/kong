@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local redis = require "kong.enterprise_edition.redis"
+local redis = require "kong.enterprise_edition.tools.redis.v2"
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 local ngx_log   = ngx.log
@@ -26,7 +26,7 @@ end
 
 
 local _M = {}
-local mt = { __index = _M }
+local mt = { __index = _M, }
 
 
 local function window_floor(size, time)
@@ -36,10 +36,6 @@ end
 
 function _M.new(_, opts)
   local conf = cycle_aware_deep_copy(opts)
-
-  -- initialize redis configuration - e.g., parse
-  -- Sentinel addresses
-  redis.init_conf(conf)
 
   return setmetatable({
     config = conf,
@@ -52,7 +48,9 @@ function _M:push_diffs(diffs)
     error("diffs must be a table", 2)
   end
 
-  if #diffs == 0 then
+  local diffs_n = #diffs
+
+  if diffs_n == 0 then
     return true
   end
 
@@ -63,7 +61,7 @@ function _M:push_diffs(diffs)
 
   red:init_pipeline()
 
-  for i = 1, #diffs do
+  for i = 1, diffs_n do
     local key     = diffs[i].key
     local windows = diffs[i].windows
 
@@ -87,10 +85,12 @@ function _M:push_diffs(diffs)
   end
 
   local err_tab = {}
+  local err_n = 0
   for i, res in ipairs(results) do
     -- the res would be `{false, err}` if the query fails
     if type(res) == "table" and #res == 2 and res[1] == false then
-      tb_insert(err_tab, fmt("query #%s in the push diffs pipeline failed: %s", i, res[2]))
+      err_tab[err_n] = fmt("query #%s in the push diffs pipeline failed: %s", i, res[2])
+      err_n = err_n + 1
     end
   end
 
@@ -112,11 +112,10 @@ function _M:get_counters(namespace, window_sizes, time)
 
   red:init_pipeline()
 
-  for i = 1, #window_sizes do
-    local floor = window_floor(window_sizes[i], time)
-    red:hgetall(floor .. ":" .. window_sizes[i] .. ":" .. namespace)
-    red:hgetall(floor -  window_sizes[i] .. ":" .. window_sizes[i] .. ":" ..
-                namespace)
+  for _, window_size in pairs(window_sizes) do
+    local floor = window_floor(window_size, time)
+    red:hgetall(floor .. ":" .. window_size .. ":" .. namespace)
+    red:hgetall(floor -  window_size .. ":" .. window_size .. ":" .. namespace)
   end
 
   local res, err = red:commit_pipeline()

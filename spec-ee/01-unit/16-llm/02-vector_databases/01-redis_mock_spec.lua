@@ -178,7 +178,7 @@ describe("[redis vectordb]", function()
       assert.is_nil(err)
       assert.truthy(ok)
 
-      local red2 = assert(require("kong.enterprise_edition.redis").connection(default_config.redis))
+      local red2 = assert(require("kong.enterprise_edition.tools.redis.v2").connection(default_config.redis))
       local res, err = red2["JSON.GET"](red2, key)
       assert.truthy(res == nil)
       assert.is_nil(err)

@@ -158,9 +158,13 @@ build = {
     ["kong.enterprise_edition.meta"] = "kong/enterprise_edition/meta.lua",
     ["kong.enterprise_edition.plugin_overwrite"] = "kong/enterprise_edition/plugin_overwrite.lua",
     ["kong.enterprise_edition.proxies"] = "kong/enterprise_edition/proxies.lua",
+
     ["kong.enterprise_edition.redis"] = "kong/enterprise_edition/redis/init.lua",
-    ["kong.enterprise_edition.redis.schema_migrations_templates.cluster_sentinel_addreses_to_nodes_370_to_380"] = "kong/enterprise_edition/redis/schema_migrations_templates/cluster_sentinel_addreses_to_nodes_370_to_380.lua",
-    ["kong.enterprise_edition.redis.config_utils"] = "kong/enterprise_edition/redis/config_utils.lua",
+
+    ["kong.enterprise_edition.tools.redis.v2"] = "kong/enterprise_edition/tools/redis/v2/init.lua",
+    ["kong.enterprise_edition.tools.redis.v2.schema_migrations_templates.cluster_sentinel_addreses_to_nodes_370_to_380"] = "kong/enterprise_edition/tools/redis/v2/schema_migrations_templates/cluster_sentinel_addreses_to_nodes_370_to_380.lua",
+    ["kong.enterprise_edition.tools.redis.v2.config_utils"] = "kong/enterprise_edition/tools/redis/v2/config_utils.lua",
+
     ["kong.enterprise_edition.smtp_client"] = "kong/enterprise_edition/smtp_client.lua",
     ["kong.enterprise_edition.utils"] = "kong/enterprise_edition/utils.lua",
     ["kong.enterprise_edition.invoke_plugin"] = "kong/enterprise_edition/invoke_plugin.lua",
@@ -323,6 +327,7 @@ build = {
     ["kong.tools.public.rate-limiting"] = "kong/tools/public/rate-limiting/init.lua",
     ["kong.tools.public.rate-limiting.strategies.postgres"] = "kong/tools/public/rate-limiting/strategies/postgres.lua",
     ["kong.tools.public.rate-limiting.strategies.redis"] = "kong/tools/public/rate-limiting/strategies/redis.lua",
+    ["kong.tools.public.rate-limiting.strategies.redis_v2"] = "kong/tools/public/rate-limiting/strategies/redis_v2.lua",
     ["kong.tools.json-schema.draft4"] = "kong/tools/json-schema/draft4/init.lua",
 
     ["kong.tools.aws_stream"] = "kong/tools/aws_stream.lua",

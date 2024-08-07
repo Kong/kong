@@ -8,7 +8,7 @@
 local helpers = require "spec.helpers"
 local ee_helpers = require "spec-ee.helpers"
 local cjson = require "cjson"
-local redis = require "kong.enterprise_edition.redis"
+local redis = require "kong.enterprise_edition.tools.redis.v2"
 local redis_strategy = require "kong.plugins.proxy-cache-advanced.strategies.redis"
 local utils = require "kong.tools.utils"
 local version = require "version"

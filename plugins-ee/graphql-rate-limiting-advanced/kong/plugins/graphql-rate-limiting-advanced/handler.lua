@@ -9,7 +9,7 @@
 
 local GqlSchema       = require "kong.gql.schema"
 local build_ast       = require "kong.gql.query.build_ast"
-local ratelimiting    = require("kong.tools.public.rate-limiting").new_instance("graphql-rate-limiting-advanced")
+local ratelimiting    = require("kong.tools.public.rate-limiting").new_instance("graphql-rate-limiting-advanced", { redis_config_version = "v2" })
 local schema          = require "kong.plugins.graphql-rate-limiting-advanced.schema"
 local cost            = require "kong.plugins.graphql-rate-limiting-advanced.cost"
 local meta            = require "kong.meta"

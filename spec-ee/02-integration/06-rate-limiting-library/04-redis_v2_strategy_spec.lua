@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local redis_strategy = require "kong.tools.public.rate-limiting.strategies.redis"
+local redis_strategy = require "kong.tools.public.rate-limiting.strategies.redis_v2"
 local redis = require "resty.redis"
 local helpers = require "spec.helpers"
 local ee_helpers = require "spec-ee.helpers"
@@ -35,7 +35,7 @@ describe("rate-limiting: Redis strategy", function()
 
   local redis_opts = {
     host = helpers.redis_host,
-    port = 6379,
+    port = helpers.redis_port,
     database = 0,
   }
 
@@ -238,7 +238,7 @@ describe("public tool rate-limiting redis cluster", function()
       read_timeout    = 100,
       keepalive_pool_size = 5,
       keepalive_backlog = 5,
-      cluster_addresses = ee_helpers.redis_cluster_addresses,
+      cluster_nodes = ee_helpers.redis_cluster_nodes,
     },
     err_conf = {
       connect_timeout = 100,
@@ -246,7 +246,9 @@ describe("public tool rate-limiting redis cluster", function()
       read_timeout    = 100,
       keepalive_pool_size = 5,
       keepalive_backlog = 5,
-      cluster_addresses = { "localhost:7654" },
+      cluster_nodes = {
+        { ip = "localhost", port = 7654 }
+      },
     },
     err_sentinel_conf = {
       connect_timeout = 100,
@@ -254,7 +256,11 @@ describe("public tool rate-limiting redis cluster", function()
       read_timeout    = 100,
       keepalive_pool_size = 5,
       keepalive_backlog = 5,
-      sentinel_addresses = { "localhost:7654", "localhost:7655", "localhost:7656" },
+      sentinel_nodes = {
+        {host = "localhost", port = 7654},
+        {host = "localhost", port = 7655},
+        {host = "localhost", port = 7656}
+      },
     },
   }
 

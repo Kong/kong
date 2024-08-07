@@ -14,7 +14,8 @@ local table_contains = require "kong.tools.utils".table_contains
 local oidcdefs = require "kong.plugins.openid-connect.typedefs"
 local cache = require "kong.plugins.openid-connect.cache"
 local arguments = require "kong.plugins.openid-connect.arguments"
-local redis_schema = require "kong.enterprise_edition.redis".config_schema
+local ee_redis  = require "kong.enterprise_edition.tools.redis.v2"
+local redis_schema = ee_redis.config_schema
 
 
 local get_phase = ngx.get_phase

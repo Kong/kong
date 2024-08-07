@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 
-local ratelimiting = require("kong.tools.public.rate-limiting").new_instance("rate-limiting-advanced")
+local ratelimiting = require("kong.tools.public.rate-limiting").new_instance("rate-limiting-advanced", { redis_config_version = "v2" })
 local schema = require "kong.plugins.rate-limiting-advanced.schema"
 local event_hooks = require "kong.enterprise_edition.event_hooks"
 local helpers = require "kong.enterprise_edition.consumer_groups_helpers"

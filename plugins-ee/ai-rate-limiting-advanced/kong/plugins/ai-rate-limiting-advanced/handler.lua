@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 
-local ratelimiting = require("kong.tools.public.rate-limiting").new_instance("ai-rate-limiting-advanced")
+local ratelimiting = require("kong.tools.public.rate-limiting").new_instance("ai-rate-limiting-advanced", { redis_config_version = "v2" })
 local ai_shared = require("kong.llm.drivers.shared")
 local schema = require "kong.plugins.ai-rate-limiting-advanced.schema"
 local event_hooks = require "kong.enterprise_edition.event_hooks"
@@ -358,12 +358,12 @@ function NewRLHandler:access(conf)
     -- but we should still show the rate to the client, maintaining a uniform
     -- set of response headers regardless of whether we block the request
     local rate = ratelimiting.sliding_window(key, current_window, nil, namespace_provider,
-                                        window_type == "fixed" and 0 or nil) 
+                                        window_type == "fixed" and 0 or nil)
 
     if provider == "requestPrompt" then
       if rate < current_limit or not conf.disable_penalty then
         rate = ratelimiting.increment(key, current_window, query_cost, namespace_provider,
-                                      window_type == "fixed" and 0 or nil) 
+                                      window_type == "fixed" and 0 or nil)
       end
     end
 

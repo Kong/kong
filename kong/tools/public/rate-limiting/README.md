@@ -116,7 +116,16 @@ not use anymore, but those deleted namespaces may belong to other plugins.
 To provide necessary isolation without changing the original interfaces, we
 added this new interface. Every returned instance has its own
 `ratelimiting.config` that won't interfere with each other. As a usage example:
-`local ratelimiting = require("kong.tools.public.rate-limiting").new_instance("rate-limiting-foo")`
+`local ratelimiting = require("kong.tools.public.rate-limiting").new_instance("rate-limiting-foo")`.
+
+Additionaly we have updated Redis configuration used by this plugin and if the
+strategy provided for this library is `redis` then there are 2 ways to configure it.
+If the plugin that uses this library is compatible with `kong.enterprise_edition.tools.redis.v2` then
+please instantiate the library with `redis_config_version` like this:
+`local ratelimiting = require("kong.tools.public.rate-limiting").new_instance("rate-limiting-foo", { redis_config_version = 2 })`.
+
+The old way is the default one and was left in place for backwards compatiblity. It
+will be removed in the upcoming major version.
 
 If the library is used in the old way, the behavior is as before. In this case,
 it will return a default instance which may be shared with other plugins.

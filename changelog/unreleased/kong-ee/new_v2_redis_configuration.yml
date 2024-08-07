@@ -1,0 +1,3 @@
+message: The shared configuration for Redis `kong/enterprise_edition/redis/init.lua` was deprecated in favor of `kong/enterprise_edition/tools/redis/v2/init.lua`
+type: deprecation
+scope: PDK

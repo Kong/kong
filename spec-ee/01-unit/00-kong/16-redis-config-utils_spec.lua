@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local redis_config_utils = require "kong.enterprise_edition.redis.config_utils"
+local redis_config_utils = require "kong.enterprise_edition.tools.redis.v2.config_utils"
 
 
 describe("redis_config_utils", function()

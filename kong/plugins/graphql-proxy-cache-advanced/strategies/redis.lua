@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local cjson = require "cjson.safe"
-local redis = require "kong.enterprise_edition.redis"
+local redis = require "kong.enterprise_edition.tools.redis.v2"
 local load_module_if_exists = require "kong.tools.module".load_module_if_exists
 local cycle_aware_deep_copy = require "kong.tools.table".cycle_aware_deep_copy
 

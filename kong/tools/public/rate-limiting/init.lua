@@ -49,7 +49,8 @@ local function window_floor(size, time)
 end
 
 
-local function new_instance(instance_name)
+local function new_instance(instance_name, options)
+  options = options or {}
   -- namespace configurations
   local config = {
   -- default = {
@@ -553,8 +554,16 @@ local function new_instance(instance_name)
     -- if no database or sync_rate == -1, bypass instantiating. Improve perf
     local strategy_class
     if strategy_type ~= "off" and opts.sync_rate ~= -1 then
-      strategy_class = require("kong.tools.public.rate-limiting." ..
+      if strategy_type == "redis" then
+        if options.redis_config_version == "v2" then
+          strategy_class = require("kong.tools.public.rate-limiting.strategies.redis_v2")
+        else
+          strategy_class = require("kong.tools.public.rate-limiting.strategies.redis")
+        end
+      else
+        strategy_class = require("kong.tools.public.rate-limiting." ..
                                "strategies." .. strategy_type)
+      end
 
     else
       log(DEBUG, "rate-limiting strategy is 'off' or sync_rate is '-1'. ",
@@ -590,6 +599,17 @@ local function new_instance(instance_name)
       if err then
         log(ERR, "error starting new maintenance timer: ", err)
       end
+    end
+
+    if not options.redis_config_version or options.redis_config_version ~= "v2" then
+      log(WARN,
+        debug.traceback("Your plugin is using rate-limiting library with redis strategy without specifying redis_config_version. " ..
+          "If a plugin instance will use redis storage strategy it will default to old redis configuration for backwards compatibility "..
+          "but this deprecated configuration version will be removed in the upcoming major release. " ..
+          "Please update your plugin to use new initialization function like:\n" ..
+          "local ratelimiting = require(\"kong.tools.public.rate-limiting\").new_instance(\"custom-plugin-name\", { redis_config_version = \"v2\"})\n" ..
+          "(deprecated after: 3.8.0, removal in: 4.0.0)")
+      )
     end
 
     return true

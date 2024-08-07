@@ -5,13 +5,22 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local redis = require "kong.enterprise_edition.redis".config_schema
+local redis = require "kong.enterprise_edition.tools.redis.v2".config_schema
 local Entity = require "kong.db.schema.entity"
-local redis_init_conf = require "kong.enterprise_edition.redis".init_conf
+
+local Redis = assert(Entity.new(redis))
+
+local function process_auto_fields_and_insert(conf)
+  local processed_configuration, err = Redis:process_auto_fields(conf, "insert")
+  if not processed_configuration then
+    return nil, err
+  end
+  local ok, err = Redis:validate(processed_configuration)
+
+  return ok, err, processed_configuration
+end
 
 describe("redis schema", function()
-  local Redis = assert(Entity.new(redis))
-
   it("errors with invalid redis data", function()
     local ok, err  = Redis:validate_insert({
       host = "127.0.0.1",
@@ -39,7 +48,7 @@ describe("redis schema", function()
   end)
 
   it("accepts valid redis sentinel data", function()
-    local ok, err = Redis:validate_insert({
+    local ok, err = process_auto_fields_and_insert({
       sentinel_addresses = { "127.0.0.1:26379" },
       sentinel_master = "mymaster",
       sentinel_role = "master",
@@ -50,7 +59,7 @@ describe("redis schema", function()
   end)
 
   it("accepts valid redis cluster data", function()
-    local ok, err = Redis:validate_insert({
+    local ok, err = process_auto_fields_and_insert({
       cluster_addresses = { "127.0.0.1:26379" },
     })
 
@@ -66,8 +75,6 @@ describe("redis schema", function()
       }
     }
 
-    redis_init_conf(configA.redis)
-
     local redis_cluster_obj = {
       name = "redis-cluster" .. table.concat(configA.redis.cluster_addresses),
     }
@@ -81,38 +88,11 @@ describe("redis schema", function()
       }
     }
 
-    redis_init_conf(configB.redis)
-
     local redis_cluster_obj = {
       name = "redis-cluster" .. table.concat(configB.redis.cluster_addresses),
     }
 
     assert.same("redis-clusterredis:6380", redis_cluster_obj.name)
-  end)
-
-  it("cluster_addresses must be sorted", function()
-    local config = {
-      redis = {
-        cluster_addresses = {
-          "redis:6379",
-          "redis:6375",
-          "redis:6378",
-          "redis:6376",
-          "redis:6377",
-        }
-      }
-    }
-
-    local expected = {
-      "redis:6375",
-      "redis:6376",
-      "redis:6377",
-      "redis:6378",
-      "redis:6379",
-    }
-
-    redis_init_conf(config.redis)
-    assert.same(expected, config.redis.cluster_addresses)
   end)
 
   it("errors with invalid redis sentinel data", function()
@@ -123,7 +103,7 @@ describe("redis schema", function()
 
     assert.is_falsy(ok)
     assert.same("all or none of these fields must be set: 'sentinel_master'," ..
-      " 'sentinel_role', 'sentinel_addresses'", err["@entity"][1])
+      " 'sentinel_role', 'sentinel_nodes'", err["@entity"][1])
 
     local ok, err = Redis:validate_insert({
       sentinel_master = "mymaster",
@@ -132,7 +112,7 @@ describe("redis schema", function()
 
     assert.is_falsy(ok)
     assert.same("all or none of these fields must be set: 'sentinel_master'," ..
-      " 'sentinel_role', 'sentinel_addresses'", err["@entity"][1])
+      " 'sentinel_role', 'sentinel_nodes'", err["@entity"][1])
 
     local ok, err = Redis:validate_insert({
       sentinel_addresses = { "127.0.0.1:26379" },
@@ -141,9 +121,9 @@ describe("redis schema", function()
 
     assert.is_falsy(ok)
     assert.same("all or none of these fields must be set: 'sentinel_master'," ..
-      " 'sentinel_role', 'sentinel_addresses'", err["@entity"][1])
+      " 'sentinel_role', 'sentinel_nodes'", err["@entity"][1])
 
-    local ok, err = Redis:validate_insert({
+    local ok, err = process_auto_fields_and_insert({
       sentinel_addresses = { "127.0.0.1:26379" },
       sentinel_master = "mymaster",
       sentinel_role = "master",
@@ -152,9 +132,9 @@ describe("redis schema", function()
 
     assert.is_falsy(ok)
     assert.same("these sets are mutually exclusive: ('sentinel_master'," ..
-      " 'sentinel_role', 'sentinel_addresses'), ('host')", err["@entity"][1])
+      " 'sentinel_role', 'sentinel_nodes'), ('host')", err["@entity"][1])
 
-    local ok, err = Redis:validate_insert({
+    local ok, err = process_auto_fields_and_insert({
       sentinel_addresses = { "127.0.0.1:26379" },
       sentinel_master = "mymaster",
       sentinel_role = "master",
@@ -163,9 +143,9 @@ describe("redis schema", function()
 
     assert.is_falsy(ok)
     assert.same("these sets are mutually exclusive: ('sentinel_master'," ..
-      " 'sentinel_role', 'sentinel_addresses'), ('port')", err["@entity"][1])
+      " 'sentinel_role', 'sentinel_nodes'), ('port')", err["@entity"][1])
 
-    local ok, err = Redis:validate_insert({
+    local ok, err = process_auto_fields_and_insert({
       sentinel_addresses = { "127.0.0.1" },
       sentinel_master = "mymaster",
       sentinel_role = "master",
@@ -174,7 +154,25 @@ describe("redis schema", function()
     assert.is_falsy(ok)
     assert.same("Invalid Redis host address: 127.0.0.1", err.sentinel_addresses)
 
-    local ok, err = Redis:validate_insert({
+    local ok, err = process_auto_fields_and_insert({
+      sentinel_addresses = {},
+      sentinel_master = "mymaster",
+      sentinel_role = "master",
+    })
+
+    assert.is_falsy(ok)
+    assert.same("length must be at least 1", err.sentinel_addresses)
+
+    local ok, err = process_auto_fields_and_insert({
+      sentinel_nodes = {},
+      sentinel_master = "mymaster",
+      sentinel_role = "master",
+    })
+
+    assert.is_falsy(ok)
+    assert.same("length must be at least 1", err.sentinel_nodes)
+
+    local ok, err = process_auto_fields_and_insert({
       sentinel_addresses = { "127.0.0.1:12345", "127.0.0.2" },
       sentinel_master = "mymaster",
       sentinel_role = "master",
@@ -186,31 +184,45 @@ describe("redis schema", function()
   end)
 
   it("errors with invalid redis cluster data", function()
-    local ok, err = Redis:validate_insert({
+    local ok, err = process_auto_fields_and_insert({
       cluster_addresses = "127.0.0.1:26379"
     })
 
     assert.is_falsy(ok)
     assert.same("expected an array", err.cluster_addresses)
 
-    local ok, err = Redis:validate_insert({
+    local ok, err = process_auto_fields_and_insert({
       cluster_addresses = { "127.0.0.1:26379" },
       host = "127.0.0.1",
       port = 6578,
     })
 
     assert.is_falsy(ok)
-    assert.same("these sets are mutually exclusive: ('cluster_addresses')," ..
+    assert.same("these sets are mutually exclusive: ('cluster_nodes')," ..
       " ('host', 'port')", err["@entity"][1])
 
-    local ok, err = Redis:validate_insert({
+    local ok, err = process_auto_fields_and_insert({
       cluster_addresses = { "127.0.0.1" },
     })
 
     assert.is_falsy(ok)
     assert.same("Invalid Redis host address: 127.0.0.1", err.cluster_addresses)
 
-    local ok, err = Redis:validate_insert({
+    local ok, err = process_auto_fields_and_insert({
+      cluster_addresses = {},
+    })
+
+    assert.is_falsy(ok)
+    assert.same("length must be at least 1", err.cluster_addresses)
+
+    local ok, err = process_auto_fields_and_insert({
+      cluster_nodes = {},
+    })
+
+    assert.is_falsy(ok)
+    assert.same("length must be at least 1", err.cluster_nodes)
+
+    local ok, err = process_auto_fields_and_insert({
       cluster_addresses = { "127.0.0.1:26379" },
       sentinel_addresses = { "127.0.0.1:12345" },
       sentinel_master = "mymaster",
@@ -219,24 +231,18 @@ describe("redis schema", function()
 
     assert.is_falsy(ok)
     assert.same("these sets are mutually exclusive: ('sentinel_master'," ..
-      " 'sentinel_role', 'sentinel_addresses'), ('cluster_addresses')", err["@entity"][1])
+      " 'sentinel_role', 'sentinel_nodes'), ('cluster_nodes')", err["@entity"][1])
   end)
 
-  it("granular timeouts derive from default timeout", function()
-    local conf = {}
-
-    conf = Redis:process_auto_fields(conf, "insert")
-    local ok, errs = Redis:validate(conf)
+  it("granular timeouts have defaults", function()
+    local ok, errs, processed_configuration = process_auto_fields_and_insert({})
 
     assert.is_nil(errs)
     assert.truthy(ok)
-    assert.same(2000, conf.timeout)
 
-    redis_init_conf(conf)
-
-    assert.same(2000, conf.connect_timeout)
-    assert.same(2000, conf.send_timeout)
-    assert.same(2000, conf.read_timeout)
+    assert.same(2000, processed_configuration.connect_timeout)
+    assert.same(2000, processed_configuration.send_timeout)
+    assert.same(2000, processed_configuration.read_timeout)
   end)
 
   it("accepts deprecated timeout", function()
@@ -244,18 +250,14 @@ describe("redis schema", function()
       timeout = 42,
     }
 
-    conf = Redis:process_auto_fields(conf, "insert")
-    local ok, errs = Redis:validate(conf)
+    local ok, errs, processed_configuration = process_auto_fields_and_insert(conf)
 
     assert.is_nil(errs)
     assert.truthy(ok)
-    assert.same(42, conf.timeout)
 
-    redis_init_conf(conf)
-
-    assert.same(42, conf.connect_timeout)
-    assert.same(42, conf.send_timeout)
-    assert.same(42, conf.read_timeout)
+    assert.same(conf.timeout, processed_configuration.connect_timeout)
+    assert.same(conf.timeout, processed_configuration.send_timeout)
+    assert.same(conf.timeout, processed_configuration.read_timeout)
   end)
 
   it("accepts granular timeouts", function()
@@ -265,32 +267,13 @@ describe("redis schema", function()
       read_timeout = 168,
     }
 
-    conf = Redis:process_auto_fields(conf, "insert")
-    local ok, errs = Redis:validate(conf)
+    local ok, errs, processed_configuration = process_auto_fields_and_insert(conf)
 
     assert.is_nil(errs)
     assert.truthy(ok)
-    assert.same(2000, conf.timeout)
-
-    redis_init_conf(conf)
-
-    assert.same(42, conf.connect_timeout)
-    assert.same(84, conf.send_timeout)
-    assert.same(168, conf.read_timeout)
-  end)
-
-  it("granular timeouts are mutually required", function()
-    local conf = {
-      connect_timeout = 42,
-      read_timeout = 168,
-    }
-
-    conf = Redis:process_auto_fields(conf, "insert")
-    local ok, errs = Redis:validate(conf)
-
-    assert.falsy(ok)
-    assert.same("all or none of these fields must be set: 'connect_timeout'," ..
-      " 'send_timeout', 'read_timeout'", errs["@entity"][1])
+    assert.same(conf.connect_timeout, processed_configuration.connect_timeout)
+    assert.same(conf.send_timeout, processed_configuration.send_timeout)
+    assert.same(conf.read_timeout, processed_configuration.read_timeout)
   end)
 
   it("rejects invalid keepalive_pool_size", function()

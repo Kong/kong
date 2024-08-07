@@ -7,7 +7,8 @@
 
 local spec_helpers = require "spec.helpers"
 local conf_loader = require "kong.conf_loader"
-local DB          = require "kong.db"
+local DB = require "kong.db"
+local tablex = require "pl.tablex"
 
 local function window_floor(size, time)
   return math.floor(time / size) * size
@@ -74,6 +75,62 @@ describe("rate-limiting", function()
       .. "interface to initialize the rate limiting library. To avoid potential"
       .. " race conditions or other unexpected behaviors, the plugin code should"
       .. " be updated to use new initialization function like", true)
+    end)
+
+    describe("when redis strategy", function()
+      local library_config_template = {
+        dict      = "avoid-conflict",
+        sync_rate = 10,
+        strategy  = "redis",
+        strategy_opts = {}
+      }
+      local library_config_1 = tablex.merge(library_config_template, { namespace = "avoid-conflict-1" }, true)
+      local library_config_2 = tablex.merge(library_config_template, { namespace = "avoid-conflict-2" }, true)
+      local library_config_3 = tablex.merge(library_config_template, { namespace = "avoid-conflict-3" }, true)
+
+      local function clean_logfile()
+        local file = io.open(log_path, "w")
+        file:write("")
+        file:close()
+      end
+
+      before_each(function()
+        clean_logfile()
+      end)
+
+      after_each(function()
+        clean_logfile()
+      end)
+
+      it("print a warn log when the library is used but initialized in old way", function()
+        local rl = require("kong.tools.public.rate-limiting")
+        assert.is_true(rl.new(library_config_1))
+
+        assert.logfile(log_path).has.line("[rate-limiting] Your plugin is using rate-limiting library with redis strategy without " ..
+          "specifying redis_config_version. If a plugin instance will use redis storage strategy it will default to old redis " ..
+          "configuration for backwards compatibility but this deprecated configuration version will be " ..
+          "removed in the upcoming major release. Please update your plugin to use new initialization function like:", true)
+      end)
+
+      it("print a warn log when the library is used correctly initialized but without redis config version", function()
+        local rl_instance = require("kong.tools.public.rate-limiting").new_instance("test-config")
+        assert.is_true(rl_instance.new(library_config_2))
+
+        assert.logfile(log_path).has.line("[test-config] Your plugin is using rate-limiting library with redis strategy without " ..
+          "specifying redis_config_version. If a plugin instance will use redis storage strategy it will default to old redis " ..
+          "configuration for backwards compatibility but this deprecated configuration version will be " ..
+          "removed in the upcoming major release. Please update your plugin to use new initialization function like:", true)
+      end)
+
+      it("print a warn log when the library is used without correctly initialized redis config version", function()
+        local rl_instance = require("kong.tools.public.rate-limiting").new_instance("test-config", { redis_config_version = "v2" })
+        assert.is_true(rl_instance.new(library_config_3))
+
+        assert.logfile(log_path).has.no.line("[test-config] Your plugin is using rate-limiting library with redis strategy without " ..
+          "specifying redis_config_version. If a plugin instance will use redis storage strategy it will default to old redis " ..
+          "configuration for backwards compatibility but this deprecated configuration version will be " ..
+          "removed in the upcoming major release. Please update your plugin to use new initialization function like:", true)
+      end)
     end)
   end)
 
