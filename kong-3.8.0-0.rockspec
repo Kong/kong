@@ -205,7 +205,6 @@ build = {
     ["kong.tools.emmy_debugger"] = "kong/tools/emmy_debugger.lua",
     ["kong.tools.redis.schema"] = "kong/tools/redis/schema.lua",
     ["kong.tools.aws_stream"] = "kong/tools/aws_stream.lua",
-    ["kong.tools.cache"] = "kong/tools/cache.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.events"] = "kong/runloop/events.lua",
