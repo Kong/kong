@@ -1552,6 +1552,14 @@
                                  # the local `resolv.conf` file will be used.
                                  # Port defaults to 53 if omitted. Accepts
                                  # both IPv4 and IPv6 addresses.
+                                 #
+                                 # Examples:
+                                 #
+                                 # ```
+                                 # resolver_address = [::1]
+                                 # resolver_address = 192.168.1.1
+                                 # resolver_address = [::1]:53, 192.168.1.1:53
+                                 # ```
 
 #resolver_hosts_file = /etc/hosts
                                  # The hosts file to use. This file is read
