@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+# chmod +x $0
+
+ip=$(hostname -i)
+
+redis-server --dir /data-1 --port 7000 --cluster-enabled yes --cluster-port 17000 --cluster-config-file rc-node-0.conf --cluster-node-timeout 5000 --appendonly yes --cluster-announce-ip "${ip}" --cluster-announce-port 7000 --cluster-announce-bus-port 17000 --daemonize yes --loglevel notice
+sleep 1
+
+redis-server --dir /data-2 --port 7001 --cluster-enabled yes --cluster-port 17001 --cluster-config-file rc-node-1.conf --cluster-node-timeout 5000 --appendonly yes --cluster-announce-ip "${ip}" --cluster-announce-port 7001 --cluster-announce-bus-port 17001 --daemonize yes --loglevel notice
+sleep 1
+
+redis-server --dir /data-3 --port 7002 --cluster-enabled yes --cluster-port 17002 --cluster-config-file rc-node-2.conf --cluster-node-timeout 5000 --appendonly yes --cluster-announce-ip "${ip}" --cluster-announce-port 7002 --cluster-announce-bus-port 17002 --daemonize yes --loglevel notice
+sleep 1
+
+redis-server --dir /data-4 --port 7003 --cluster-enabled yes --cluster-port 17003 --cluster-config-file rc-node-3.conf --cluster-node-timeout 5000 --appendonly yes --cluster-announce-ip "${ip}" --cluster-announce-port 7003 --cluster-announce-bus-port 17003 --daemonize yes --loglevel notice
+sleep 1
+
+redis-server --dir /data-5 --port 7004 --cluster-enabled yes --cluster-port 17004 --cluster-config-file rc-node-4.conf --cluster-node-timeout 5000 --appendonly yes --cluster-announce-ip "${ip}" --cluster-announce-port 7004 --cluster-announce-bus-port 17004 --daemonize yes --loglevel notice
+sleep 1
+
+redis-server --dir /data-6 --port 7005 --cluster-enabled yes --cluster-port 17005 --cluster-config-file rc-node-5.conf --cluster-node-timeout 5000 --appendonly yes --cluster-announce-ip "${ip}" --cluster-announce-port 7005 --cluster-announce-bus-port 17005 --daemonize yes --loglevel notice
+sleep 1
+
+redis-cli --cluster create redis-clusters:7000 redis-clusters:7001 redis-clusters:7002 redis-clusters:7003 redis-clusters:7004 redis-clusters:7005 --cluster-replicas 1 --cluster-yes
+
+sleep infinity

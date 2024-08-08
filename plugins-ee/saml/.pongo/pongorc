@@ -1,4 +1,5 @@
 --postgres
 --redis
+--redis-clusters
 --keycloak
 --memcached
