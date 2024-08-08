@@ -482,7 +482,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
     end)
 
     describe("ai plugins supported providers", function()
-      it("[ai-proxy] tries to use unsupported providers on older Kong versions", function()
+      it("[ai-proxy] tries to use unsupported providers on older Kong versions #ttt", function()
         -- [[ 3.8.x ]] --
         local ai_proxy = admin.plugins:insert {
           name = "ai-proxy",
@@ -510,6 +510,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
               },
             },
             max_request_body_size = 8192,
+            model_name_header = true,
           },
         }
         -- ]]
@@ -518,6 +519,8 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
         -- max body size
         expected.config.max_request_body_size = nil
+
+        -- model name header
         expected.config.model_name_header = nil
 
         -- gemini fields
@@ -696,6 +699,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
               },
             },
             max_request_body_size = 8192,
+            model_name_header = true,
           },
         }
         -- ]]
@@ -704,6 +708,9 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
         -- max body size
         expected.config.max_request_body_size = nil
+
+        -- model name header
+        expected.config.model_name_header = nil
 
         -- gemini fields
         expected.config.auth.gcp_service_account_json = nil
