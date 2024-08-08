@@ -1546,7 +1546,8 @@
                                  # original DNS resolver. See above `dns_xxx`
                                  # options for the original DNS resolver.
 
-#resolver_address =              # Comma-separated list of nameservers, each
+#resolver_address = <name servers parsed from resolv.conf>
+                                 # Comma-separated list of nameservers, each
                                  # entry in `ip[:port]` format to be used by
                                  # Kong. If not specified, the nameservers in
                                  # the local `resolv.conf` file will be used.
@@ -1582,7 +1583,8 @@
                                  # first attempts IPv4 (A) and then queries
                                  # IPv6 (AAAA).
 
-#resolver_valid_ttl =            # By default, DNS records are cached using
+#resolver_valid_ttl = <TTL from responses>
+                                 # By default, DNS records are cached using
                                  # the TTL value of a response. This optional
                                  # parameter (in seconds) allows overriding it.
 
