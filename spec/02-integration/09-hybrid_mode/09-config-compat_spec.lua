@@ -518,6 +518,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
         -- max body size
         expected.config.max_request_body_size = nil
+        expected.config.model_name_header = nil
 
         -- gemini fields
         expected.config.auth.gcp_service_account_json = nil

@@ -493,6 +493,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.equals("cmpl-8TBeaJVQIhE9kHEJbk1RnKzgFxIqN", json.id)
         assert.equals("gpt-3.5-turbo-instruct", json.model)
         assert.equals("text_completion", json.object)
+        assert.equals(r.headers["X-Kong-LLM-Model"], "azure/gpt-3.5-turbo-instruct")
 
         assert.is_table(json.choices)
         assert.is_table(json.choices[1])
