@@ -7,6 +7,7 @@ permissions:
 jobs:
   assign-author:
     runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     steps:
       - name: assign-author
         # ignore the pull requests opened from PR because token is not correct

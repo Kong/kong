@@ -20,6 +20,7 @@ jobs:
   build:
     name: Build dependencies
     runs-on: ubuntu-22.04
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
 
     env:
       DOWNLOAD_ROOT: $HOME/download-root
@@ -71,6 +72,7 @@ jobs:
           make dev
   autodoc:
     runs-on: ubuntu-22.04
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     needs: [build]
     steps:
       - name: Set environment variables

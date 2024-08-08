@@ -17,6 +17,7 @@ jobs:
   build:
     name: Build dependencies
     runs-on: ubuntu-22.04
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
 
     outputs:
       cache-key: ${{ steps.cache-key.outputs.cache-key }}

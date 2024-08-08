@@ -8,6 +8,7 @@ jobs:
   validate-changelog:
     name: Validate changelog
     runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     steps:
       - uses: actions/checkout@v4
 

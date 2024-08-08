@@ -6,6 +6,7 @@ on:
 jobs:
   close-issues:
     runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     permissions:
       issues: write
       pull-requests: write

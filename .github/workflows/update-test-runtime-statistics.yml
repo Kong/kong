@@ -12,6 +12,7 @@ jobs:
   process-statistics:
     name: Download statistics from GitHub and combine them
     runs-on: ubuntu-22.04
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
