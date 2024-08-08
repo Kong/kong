@@ -1,0 +1,3 @@
+message: "**SAML**: Standardized Redis configuration across plugins. The Redis configuration now follows a common schema shared with other plugins."
+type: deprecation
+scope: Plugin

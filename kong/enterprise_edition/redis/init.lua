@@ -71,7 +71,6 @@ end
 
 _M.config_schema = {
   type = "record",
-
   fields = {
     { host = typedefs.host },
     { port = typedefs.port },

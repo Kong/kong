@@ -1748,7 +1748,8 @@ function Schema:process_auto_fields(data, context, nulls, opts)
           has_errs = true
         else
           data[sname] = nil
-          local new_values = sdata.func(value)
+          local read_only_data = table_tools.cycle_aware_deep_copy(data)
+          local new_values = sdata.func(value, read_only_data)
           if new_values then
             for k, v in pairs(new_values) do
               if type(v) == "table" then

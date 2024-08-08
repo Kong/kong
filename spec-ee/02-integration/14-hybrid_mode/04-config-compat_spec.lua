@@ -129,7 +129,8 @@ describe("CP/DP config compat #" .. strategy, function()
   lazy_setup(function()
     local bp
     local ENABLED_PLUGINS = { 'graphql-rate-limiting-advanced', 'ai-rate-limiting-advanced', 'rate-limiting-advanced', 'openid-connect',
-    'oas-validation', 'mtls-auth', 'application-registration', "jwt-signer", "request-validator", 'proxy-cache-advanced', 'graphql-proxy-cache-advanced' }
+    'oas-validation', 'mtls-auth', 'application-registration', "jwt-signer", "request-validator", 'proxy-cache-advanced', 'graphql-proxy-cache-advanced',
+    'saml' }
     bp, db = helpers.get_db_utils(strategy, {
       "routes",
       "services",
@@ -851,7 +852,7 @@ describe("CP/DP config compat #" .. strategy, function()
       end
     end)
 
-    describe("#oo redis changes - cluster/sentinel_adresses to cluster/sentinel_nodes", function()
+    describe("redis changes - cluster/sentinel_adresses to cluster/sentinel_nodes", function()
       -- We don't have running sentinel nodes config for specs - this is just a mock
       local sentinel_node1 = { host = "localhost1", port = 26379 }
       local sentinel_node2 = { host = "localhost2", port = 26380 }
@@ -955,6 +956,72 @@ describe("CP/DP config compat #" .. strategy, function()
 
 
       local CASES = pl_tablex.merge(CASES_CLUSTER_ADDRESSES, CASES_SENTINEL_ADDRESSES, true)
+
+      for _, case in ipairs(CASES) do
+        local test = case.pending and pending or it
+
+        test(fmt("%s - %s", case.plugin, case.label), function()
+          do_assert(case, "3.7.9.9")
+        end)
+      end
+    end)
+
+    describe("saml: redis changes - moving to shared redis schema", function()
+      local idp_cert =
+        "MIIC8DCCAdigAwIBAgIQLc/POHQrTIVD4/5aCN/6gzANBgkqhkiG9w0BAQsFADA0MTIwMAYDVQQD " ..
+        "EylNaWNyb3NvZnQgQXp1cmUgRmVkZXJhdGVkIFNTTyBDZXJ0aWZpY2F0ZTAeFw0yMjA5MjcyMDE1 " ..
+        "MzRaFw0yNTA5MjcyMDE1MzRaMDQxMjAwBgNVBAMTKU1pY3Jvc29mdCBBenVyZSBGZWRlcmF0ZWQg U" ..
+        "1NPIENlcnRpZmljYXRlMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAv/P9hU7mjKFH " ..
+        "9IxVGQt52p40Vj9lwMLBfrVc9uViCyCLILhGWz0kYbodpBtPkaYMrpJKSvaDD/Pop2Har+3gY1xB " ..
+        "x3UAfLEZpb/ng+fM3AKQYRVH8rdfhtRMVx+mAus5oO/+7ca1ZhKeQpZtrSNBMSooBUFt6LygaotX " ..
+        "7oJOFKBjL8vRjf0EeI0ismXuATtwE+wUDAe7qdsehjeZAD4Y1SLXulzS4ug3xRHPl8J9ZQL2D5Fp " ..
+        "zRXgxX9SUpJ/iwxAj+q3igLmXMUeusCe6ugGrZ4Iz0QNq3v+VhGEhiX6DZByMhBnb1IIhpDBTUTq " ..
+        "fxUno8GI1vh/w8liRldEkISZdQIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQAiw8VNBh5s2EVbDpJe " ..
+        "kqEFT4oZdoDu3J4t1cHzst5Q3+XHWS0dndQh+R2xxVe072TKO/hn5ORlnw8Kp0Eq2g2YLpYvzt+k " ..
+        "hbr/xQqMFhwZnaCCnoNLdoW6A9d7E3yDCnIK/7byfZ3484B4KrnzZdGF9eTFPcMBzyCU223S4R4z " ..
+        "VYnNVfyqmlCaYUcYd9OnAbYZrbD9SPNqPSK/vPhn8aLzpn9huvcxpVYUMQ0+Mq680bse9tRu6Kbg " ..
+        "SkaDNSe+xoE31OeWtR1Ko9Uhy6+Y7T1OQOi+BaNcIB1lXGivaudAVDh3mnKwSRw9vQ5y8m6kzFwE " ..
+        "bkcl288gQ86BzUFaE36V"
+
+      local session_secret = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+
+      local cluster_nodes = {
+        {
+          ip = "redis-node-1",
+          port = 6379,
+        },
+        {
+          ip = "redis-node-2",
+          port = 6380,
+        },
+        {
+          ip = "127.0.0.1",
+          port = 6381,
+        },
+      }
+
+      local CASES = {
+        {
+          plugin = "saml",
+          label = "w/ shared redis schema",
+          pending = false,
+          config = {
+            issuer = "https://samltoolkit.azurewebsites.net/kong_saml",
+            assertion_consumer_path = "/consumer",
+            idp_sso_url = "https://login.microsoftonline.com/f177c1d6-50cf-49e0-818a-a0585cbafd8d/saml2",
+            idp_certificate = idp_cert,
+            session_secret = session_secret,
+            redis = {
+              cluster_nodes = cluster_nodes,
+            }
+          },
+          status = STATUS.NORMAL,
+          validator = function(config)
+            local pok = pcall(function() return assert.same(cluster_nodes, config.session_redis_cluster_nodes) end)
+            return config.redis == nil and pok
+          end
+        },
+      }
 
       for _, case in ipairs(CASES) do
         local test = case.pending and pending or it

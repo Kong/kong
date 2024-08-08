@@ -174,13 +174,90 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     assert.is_truthy(ok)
   end)
 
-  it("redis cluster nodes rejects bad ports", function()
+  it('accepts old redis configuration', function()
     local ok, err = validate({
       issuer = "https://samltoolkit.azurewebsites.net/kong_saml",
       assertion_consumer_path = "/consumer",
       idp_sso_url = "https://login.microsoftonline.com/f177c1d6-50cf-49e0-818a-a0585cbafd8d/saml2",
       idp_certificate = idp_cert,
       session_secret = session_secret,
+      session_storage = 'redis',
+      session_redis_host = "localhost",
+      session_redis_port = 1234,
+    }, saml_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(ok)
+  end)
+
+  it('accepts new redis configuration', function()
+    local ok, err = validate({
+      issuer = "https://samltoolkit.azurewebsites.net/kong_saml",
+      assertion_consumer_path = "/consumer",
+      idp_sso_url = "https://login.microsoftonline.com/f177c1d6-50cf-49e0-818a-a0585cbafd8d/saml2",
+      idp_certificate = idp_cert,
+      session_secret = session_secret,
+      session_storage = 'redis',
+      redis = {
+        connect_timeout = 100,
+        send_timeout = 101,
+        read_timeout = 102,
+        cluster_nodes = {
+          {
+            ip = "redis-node-1",
+            port = 6379,
+          },
+          {
+            ip = "redis-node-2",
+            port = 6380,
+          },
+          {
+            ip = "127.0.0.1",
+            port = 6381,
+          },
+        }
+      },
+    }, saml_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(ok)
+
+    local ok, err = validate({
+      issuer = "https://samltoolkit.azurewebsites.net/kong_saml",
+      assertion_consumer_path = "/consumer",
+      idp_sso_url = "https://login.microsoftonline.com/f177c1d6-50cf-49e0-818a-a0585cbafd8d/saml2",
+      idp_certificate = idp_cert,
+      session_secret = session_secret,
+      session_storage = 'redis',
+      redis = {
+        socket = "some_socket",
+        prefix = "some_prefix_",
+      },
+    }, saml_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(ok)
+
+    local ok, err = validate({
+      issuer = "https://samltoolkit.azurewebsites.net/kong_saml",
+      assertion_consumer_path = "/consumer",
+      idp_sso_url = "https://login.microsoftonline.com/f177c1d6-50cf-49e0-818a-a0585cbafd8d/saml2",
+      idp_certificate = idp_cert,
+      session_secret = session_secret,
+      session_storage = 'redis',
+      redis = {
+        host = "localhost",
+        port = 6379,
+      },
+    }, saml_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(ok)
+  end)
+
+  it("redis cluster nodes rejects bad ports", function()
+    local ok, err = validate({
+      session_storage = 'redis',
       session_redis_cluster_nodes = {
         {
           ip = "redis-node-1",
@@ -193,7 +270,21 @@ describe(PLUGIN_NAME .. ": (schema)", function()
       },
     }, saml_schema)
 
-    assert.is_same({ port = "expected an integer" }, err.config.session_redis_cluster_nodes[1])
+    assert.is_same({ port = "expected an integer" }, err.session_redis_cluster_nodes[1])
+    assert.is_falsy(ok)
+  end)
+
+  it("rejects empty redis config", function()
+    local ok, err = validate({
+      issuer = "https://samltoolkit.azurewebsites.net/kong_saml",
+      assertion_consumer_path = "/consumer",
+      idp_sso_url = "https://login.microsoftonline.com/f177c1d6-50cf-49e0-818a-a0585cbafd8d/saml2",
+      idp_certificate = idp_cert,
+      session_secret = session_secret,
+      session_storage = 'redis',
+    }, saml_schema)
+
+    assert.is_same("No redis config provided", err['@entity'][1])
     assert.is_falsy(ok)
   end)
 

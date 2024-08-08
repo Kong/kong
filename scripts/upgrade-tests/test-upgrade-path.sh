@@ -25,7 +25,9 @@ trap "echo exiting because of error" 0
 
 export KONG_PG_HOST=localhost
 export KONG_TEST_PG_HOST=localhost
-export KONG_PLUGINS=bundled,rate-limiting-advanced,graphql-rate-limiting-advanced
+
+KONG_28XX_PLUGINS=bundled,rate-limiting-advanced,graphql-rate-limiting-advanced
+KONG_34XX_PLUGINS=bundled,rate-limiting-advanced,graphql-rate-limiting-advanced,saml
 
 function usage() {
     cat 1>&2 <<EOF
@@ -211,6 +213,15 @@ for old_version in "${old_versions[@]}"; do
     export OLD_KONG_IMAGE=kong/kong-gateway-dev:$old_kong_tag-ubuntu
 
     echo "Running tests using $OLD_KONG_VERSION as \"old version\" of Kong"
+
+    if [[ "$OLD_KONG_VERSION" == "next/2.8.x.x" ]]; then
+        export KONG_PLUGINS=$KONG_28XX_PLUGINS
+    else
+        export KONG_PLUGINS=$KONG_34XX_PLUGINS
+    fi
+
+    echo "With enabled plugins: $KONG_PLUGINS"
+
 
     build_containers
     initialize_test_list

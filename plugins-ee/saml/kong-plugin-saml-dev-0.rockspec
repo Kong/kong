@@ -34,6 +34,8 @@ build = {
     ["kong.plugins.saml.utils.timestamp"] = "kong/plugins/saml/utils/timestamp.lua",
     ["kong.plugins.saml.utils.xmlcatalog"] = "kong/plugins/saml/utils/xmlcatalog.lua",
     ["kong.plugins.saml.utils.xmlschema"] = "kong/plugins/saml/utils/xmlschema.lua",
+    ["kong.plugins.saml.migrations"] = "kong/plugins/saml/migrations/init.lua",
+    ["kong.plugins.saml.migrations.001_370_to_380"] = "kong/plugins/saml/migrations/001_370_to_380.lua",
   },
   copy_directories = {
     "xml"
