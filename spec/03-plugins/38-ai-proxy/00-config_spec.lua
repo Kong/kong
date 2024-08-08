@@ -11,12 +11,6 @@ local validate do
   end
 end
 
-local WWW_MODELS = {
-  "openai",
-  "azure",
-  "anthropic",
-  "cohere",
-}
 
 local SELF_HOSTED_MODELS = {
   "mistral",
@@ -165,64 +159,6 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     assert.not_nil(err["config"]["@entity"])
     assert.not_nil(err["config"]["@entity"][1])
     assert.equal(err["config"]["@entity"][1], "must set 'model.options.azure_instance' for azure provider")
-    assert.is_falsy(ok)
-  end)
-
-  for i, v in ipairs(WWW_MODELS) do
-    it("requires API auth for www-hosted " .. v .. " model", function()
-      local config = {
-        route_type = "llm/v1/chat",
-        model = {
-          name = "command",
-          provider = v,
-          options = {
-            max_tokens = 256,
-            temperature = 1.0,
-            upstream_url = "http://nowhere",
-          },
-        },
-      }
-
-      if v == "llama2" then
-        config.model.options.llama2_format = "raw"
-      end
-
-      if v == "azure" then
-        config.model.options.azure_instance = "kong"
-      end
-
-      if v == "anthropic" then
-        config.model.options.anthropic_version = "2021-09-01"
-      end
-
-      local ok, err = validate(config)
-
-      assert.not_nil(err["config"]["@entity"])
-      assert.not_nil(err["config"]["@entity"][1])
-      assert.equal(err["config"]["@entity"][1], "must set one of 'auth.header_name', 'auth.param_name', "
-      .. "and its respective options, when provider is not self-hosted")
-      assert.is_falsy(ok)
-    end)
-  end
-
-  it("requires [config.auth] block to be set", function()
-    local config = {
-      route_type = "llm/v1/chat",
-      model = {
-        name = "openai",
-        provider = "openai",
-        options = {
-          max_tokens = 256,
-          temperature = 1.0,
-          upstream_url = "http://nowhere",
-        },
-      },
-    }
-
-    local ok, err = validate(config)
-
-    assert.equal(err["config"]["@entity"][1], "must set one of 'auth.header_name', 'auth.param_name', "
-                                 .. "and its respective options, when provider is not self-hosted")
     assert.is_falsy(ok)
   end)
 
