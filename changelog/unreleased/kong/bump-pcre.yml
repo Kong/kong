@@ -1,0 +1,3 @@
+message: "Bumped PCRE2 to 10.44 to fix some bugs and tidy-up the release (nothing important)"
+type: dependency
+scope: Core
