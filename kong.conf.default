@@ -1556,9 +1556,9 @@
                                  # Examples:
                                  #
                                  # ```
-                                 # resolver_address = [::1]
-                                 # resolver_address = 192.168.1.1
-                                 # resolver_address = [::1]:53, 192.168.1.1:53
+                                 # resolver_address = 8.8.8.8
+                                 # resolver_address = 8.8.8.8, [::1]
+                                 # resolver_address = 8.8.8.8:53, [::1]:53
                                  # ```
 
 #resolver_hosts_file = /etc/hosts
