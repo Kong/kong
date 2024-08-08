@@ -617,7 +617,7 @@ function _M.post_request(conf, response_object)
     if response_object.usage and response_object.usage.completion_tokens then
       local time_per_token = math.floor(llm_latency / response_object.usage.completion_tokens)
       request_analytics_plugin[log_entry_keys.USAGE_CONTAINER][log_entry_keys.TIME_PER_TOKEN] = time_per_token
-      llm_state.set_metrics("totp_latency", time_per_token)
+      llm_state.set_metrics("tpot_latency", time_per_token)
     end
   end
 
