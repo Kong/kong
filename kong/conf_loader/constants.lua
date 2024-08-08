@@ -370,7 +370,17 @@ local CONF_PARSERS = {
   dns_not_found_ttl = { typ = "number" },
   dns_error_ttl = { typ = "number" },
   dns_no_sync = { typ = "boolean" },
+
   legacy_dns_client = { typ = "boolean" },
+
+  resolver_address = { typ = "array" },
+  resolver_hosts_file = { typ = "string" },
+  resolver_family = { typ = "array" },
+  resolver_valid_ttl = { typ = "number" },
+  resolver_stale_ttl = { typ = "number" },
+  resolver_error_ttl = { typ = "number" },
+  resolver_lru_cache_size = { typ = "number" },
+
   privileged_worker = {
     typ = "boolean",
     deprecated = {

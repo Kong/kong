@@ -157,6 +157,7 @@ for _, strategy in helpers.each_strategy() do
         nginx_conf = "spec/fixtures/custom_nginx.template",
         database = strategy,
         dns_hostsfile = dns_hostsfile,
+        resolver_hosts_file = dns_hostsfile,
         plugins = "bundled,reports-api",
         anonymous_reports = true,
       }, nil, nil, fixtures))

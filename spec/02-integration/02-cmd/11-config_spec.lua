@@ -104,6 +104,7 @@ describe("kong config", function()
     assert(helpers.start_kong({
       nginx_conf = "spec/fixtures/custom_nginx.template",
       dns_hostsfile = dns_hostsfile,
+      resolver_hosts_file = dns_hostsfile,
       anonymous_reports = "on",
     }))
 

@@ -642,8 +642,10 @@ describe("Configuration loader", function()
       local conf = assert(conf_loader())
       assert.same({"bundled"}, conf.plugins)
       assert.same({"LAST", "SRV", "A", "CNAME"}, conf.dns_order)
+      assert.same({"A", "SRV"}, conf.resolver_family)
       assert.is_nil(getmetatable(conf.plugins))
       assert.is_nil(getmetatable(conf.dns_order))
+      assert.is_nil(getmetatable(conf.resolver_family))
     end)
     it("trims array values", function()
       local conf = assert(conf_loader("spec/fixtures/to-strip.conf"))
@@ -788,6 +790,31 @@ describe("Configuration loader", function()
       assert.is_nil(err)
       assert.is_table(conf)
     end)
+    it("errors when resolver_address is not a list in ipv4/6[:port] format (new dns)", function()
+      local conf, err = conf_loader(nil, {
+        resolver_address = "1.2.3.4:53;4.3.2.1" -- ; as separator
+      })
+      assert.equal("resolver_address must be a comma separated list in the form of IPv4/6 or IPv4/6:port, got '1.2.3.4:53;4.3.2.1'", err)
+      assert.is_nil(conf)
+
+      conf, err = conf_loader(nil, {
+        resolver_address = "198.51.100.0:53"
+      })
+      assert.is_nil(err)
+      assert.is_table(conf)
+
+      conf, err = conf_loader(nil, {
+        resolver_address = "[::1]:53"
+      })
+      assert.is_nil(err)
+      assert.is_table(conf)
+
+      conf, err = conf_loader(nil, {
+        resolver_address = "198.51.100.0,1.2.3.4:53,::1,[::1]:53"
+      })
+      assert.is_nil(err)
+      assert.is_table(conf)
+    end)
     it("errors when node_id is not a valid uuid", function()
       local conf, err = conf_loader(nil, {
         node_id = "foobar",
@@ -810,6 +837,15 @@ describe("Configuration loader", function()
       assert.equal([[dns_hostsfile: file does not exist]], err)
       assert.is_nil(conf)
     end)
+    it("errors when the hosts file does not exist (new dns)", function()
+      -- new dns
+      local tmpfile = "/a_file_that_does_not_exist"
+      local conf, err = conf_loader(nil, {
+        resolver_hosts_file = tmpfile,
+      })
+      assert.equal([[resolver_hosts_file: file does not exist]], err)
+      assert.is_nil(conf)
+    end)
     it("accepts an existing hosts file", function()
       local tmpfile = require("pl.path").tmpname()  -- this creates the file!
       finally(function() os.remove(tmpfile) end)
@@ -819,12 +855,28 @@ describe("Configuration loader", function()
       assert.is_nil(err)
       assert.equal(tmpfile, conf.dns_hostsfile)
     end)
+    it("accepts an existing hosts file (new dns)", function()
+      local tmpfile = require("pl.path").tmpname()  -- this creates the file!
+      finally(function() os.remove(tmpfile) end)
+      local conf, err = conf_loader(nil, {
+        resolver_hosts_file = tmpfile,
+      })
+      assert.is_nil(err)
+      assert.equal(tmpfile, conf.resolver_hosts_file)
+    end)
     it("errors on bad entries in the order list", function()
       local conf, err = conf_loader(nil, {
         dns_order = "A,CXAME,SRV",
       })
       assert.is_nil(conf)
       assert.equal([[dns_order: invalid entry 'CXAME']], err)
+    end)
+    it("errors on bad entries in the family list", function()
+      local conf, err = conf_loader(nil, {
+        resolver_family = "A,AAAX,SRV",
+      })
+      assert.is_nil(conf)
+      assert.equal([[resolver_family: invalid entry 'AAAX']], err)
     end)
     it("errors on bad entries in headers", function()
       local conf, err = conf_loader(nil, {
