@@ -1949,7 +1949,7 @@ function Kong.log()
   ctx.KONG_PHASE = PHASES.log
 
   runloop.log.before(ctx)
-  kong.analytics:log_request()
+  ee.handlers.log.before(ctx)
   local plugins_iterator = runloop.get_plugins_iterator()
   execute_collected_plugins_iterator(plugins_iterator, "log", ctx)
   plugins_iterator.release(ctx)

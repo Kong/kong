@@ -144,9 +144,12 @@ _M.handlers = {
     end
   },
   log = {
+    before = function(ctx)
+      kong.analytics:log_request()
+      kong.sales_counters:log_request(ctx)
+    end,
     after = function(ctx, status)
       if not ctx.is_internal then
-        kong.sales_counters:log_request(ctx)
         if kong.vitals then
           kong.vitals:log_latency(ctx.KONG_PROXY_LATENCY)
           kong.vitals:log_request(ctx)
