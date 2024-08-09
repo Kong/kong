@@ -35,7 +35,7 @@ jobs:
 
   upgrade-test:
     name: Run migration tests
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs: build
 
     steps:
