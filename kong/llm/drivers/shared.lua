@@ -79,6 +79,7 @@ _M.upstream_url_format = {
   gemini        = "https://generativelanguage.googleapis.com",
   gemini_vertex = "https://%s",
   bedrock       = "https://bedrock-runtime.%s.amazonaws.com",
+  mistral       = "https://api.mistral.ai:443"
 }
 
 _M.operation_map = {

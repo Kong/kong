@@ -144,8 +144,24 @@ end
 
 -- returns err or nil
 function _M.configure_request(conf)
+  local parsed_url
+
   -- mistral shared operation paths
-  local parsed_url = socket_url.parse(conf.model.options.upstream_url)
+  if (conf.model.options and conf.model.options.upstream_url) then
+    parsed_url = socket_url.parse(conf.model.options.upstream_url)
+  else
+    local path = conf.model.options
+             and conf.model.options.upstream_path
+             or ai_shared.operation_map[DRIVER_NAME][conf.route_type]
+             and ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
+             or "/"
+    if not path then
+      return nil, fmt("operation %s is not supported for mistral provider", conf.route_type)
+    end
+
+    parsed_url = socket_url.parse(ai_shared.upstream_url_format[DRIVER_NAME])
+    parsed_url.path = path
+  end
 
   -- if the path is read from a URL capture, ensure that it is valid
   parsed_url.path = (parsed_url.path and string_gsub(parsed_url.path, "^/*", "/")) or "/"

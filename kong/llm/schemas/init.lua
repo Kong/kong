@@ -271,7 +271,7 @@ return {
                                       then_err = "must set %s for azure provider" }},
 
     { conditional_at_least_one_of = { if_field = "model.provider",
-                                      if_match = { one_of = { "mistral", "llama2" } },
+                                      if_match = { one_of = { "llama2" } },
                                       then_at_least_one_of = { "model.options.upstream_url" },
                                       then_err = "must set %s for self-hosted providers/models" }},
 
