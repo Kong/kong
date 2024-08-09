@@ -4110,6 +4110,60 @@ describe("schema", function()
       assert.same({ name = "test1" }, output)
     end)
 
+    it("takes precedence", function()
+      local TestSchema = Schema.new({
+        name = "test",
+        fields = {
+          { name = { type = "string" } },
+        },
+        shorthand_fields = {
+          {
+            username = {
+              type = "string",
+              func = function(value)
+                return {
+                  name = value
+                }
+              end,
+            },
+          },
+        },
+      })
+
+      local input = { username = "test1", name = "ignored" }
+      local output, _ = TestSchema:process_auto_fields(input)
+      assert.same({ name = "test1" }, output)
+    end)
+
+    it("does not take precedence if deprecated", function()
+      local TestSchema = Schema.new({
+        name = "test",
+        fields = {
+          { name = { type = "string" } },
+        },
+        shorthand_fields = {
+          {
+            username = {
+              type = "string",
+              func = function(value)
+                return {
+                  name = value
+                }
+              end,
+              deprecation = {
+                message = "username is deprecated, please use name instead",
+                removal_in_version = "4.0",
+              },
+            },
+          },
+        },
+      })
+
+      local input = { username = "ignored", name = "test1" }
+      local output, _ = TestSchema:process_auto_fields(input)
+      assert.same({ name = "test1" }, output)
+    end)
+
     it("can produce multiple fields", function()
       local TestSchema = Schema.new({
         name = "test",

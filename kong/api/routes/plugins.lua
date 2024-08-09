@@ -94,8 +94,6 @@ local function patch_plugin(self, db, _, parent)
       return kong.response.exit(404, { message = "Not found" })
     end
 
-    plugin = plugin or {}
-
     post.name = post.name or plugin.name
 
     -- Only now we can decode the 'config' table for form-encoded values
@@ -112,6 +110,7 @@ local function patch_plugin(self, db, _, parent)
     post.route = post.route or plugin.route
     post.service = post.service or plugin.service
     post.consumer = post.consumer or plugin.consumer
+    post.protocols = post.protocols or plugin.protocols
 
     if not post.route and self.params.routes then
       post.route = { id = self.params.routes }
