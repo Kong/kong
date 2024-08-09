@@ -644,6 +644,7 @@ function Kong.init()
   -- retrieve kong_config
   local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
   local config = assert(conf_loader(conf_path, nil, { from_kong_env = true }))
+  kong.dns = assert(package.loaded["kong.resty.dns.client"])
 
   reset_kong_shm(config)
 
@@ -683,7 +684,6 @@ function Kong.init()
   assert(db:connect())
 
   kong.db = db
-  kong.dns = dns(config)
 
   if config.proxy_ssl_enabled or config.stream_ssl_enabled then
     certificate.init()
