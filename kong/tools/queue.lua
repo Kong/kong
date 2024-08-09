@@ -241,16 +241,18 @@ local function get_or_create_queue(queue_conf, handler, handler_conf)
 
   queue = setmetatable(queue, Queue_mt)
 
-  kong.timer:named_at("queue " .. key, 0, function(_, q)
-    while q:count() > 0 do
-      q:log_debug("processing queue")
-      q:process_once()
-    end
-    q:log_debug("done processing queue")
-    queues[key] = nil
-  end, queue)
+  if queue.concurrency == 1 then
+    kong.timer:named_at("queue " .. key, 0, function(_, q)
+      while q:count() > 0 do
+        q:log_debug("processing queue")
+        q:process_once()
+      end
+      q:log_debug("done processing queue")
+      queues[key] = nil
+    end, queue)
+    queues[key] = queue
+  end
 
-  queues[key] = queue
 
   queue:log_debug("queue created")
 
@@ -636,7 +638,10 @@ function Queue.enqueue(queue_conf, handler, handler_conf, value)
     "arg #1 (queue_conf) max_bytes must be a number or nil"
   )
 
-  -- TODO: assert concurrency
+  assert(
+    type(queue_conf.concurrency) == "number",
+    "arg #1 (queue_conf) concurrency must be a number"
+  )
 
   local queue = get_or_create_queue(queue_conf, handler, handler_conf)
   return enqueue(queue, value)
