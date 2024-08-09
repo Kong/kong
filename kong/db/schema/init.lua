@@ -1743,10 +1743,12 @@ function Schema:process_auto_fields(data, context, nulls, opts)
           data[sname] = nil
           local new_values = sdata.func(value)
           if new_values then
+            local deprecation = sdata.deprecation
             for k, v in pairs(new_values) do
               if type(v) == "table" then
-                data[k] = table_merge(data[k] or {}, v)
-              else
+                data[k] = deprecation and table_merge(v, data[k])
+                                       or table_merge(data[k] or {}, v)
+              elseif not deprecation or data[k] == nil then
                 data[k] = v
               end
             end
