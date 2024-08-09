@@ -1758,14 +1758,24 @@ function Schema:process_auto_fields(data, context, nulls, opts)
           local read_only_data = cycle_aware_deep_copy(data)
           local new_values = sdata.func(value, read_only_data)
           if new_values then
+            -- a shorthand field may have a deprecation property, that is used
+            -- to determine whether the shorthand's return value takes precedence
+            -- over the similarly named actual schema fields' value when both
+            -- are present. On deprecated shorthand fields the actual schema
+            -- field value takes the precedence, otherwise the shorthand's
+            -- return value takes the precedence.
+            local deprecation = sdata.deprecation
             for k, v in pairs(new_values) do
               if type(v) == "table" then
                 local source = {}
-                if data[k] and data[k] ~= ngx.null then
+                if data[k] and data[k] ~= null then
                   source = data[k]
                 end
+                data[k] = deprecation and table_merge(v, source)
+                                       or table_merge(source, v)
+
                 data[k] = table_merge(source, v)
-              else
+              elseif not deprecation or data[k] == nil then
                 data[k] = v
               end
             end

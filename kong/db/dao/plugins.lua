@@ -23,6 +23,7 @@ local Plugins = {}
 
 
 local fmt = string.format
+local type = type
 local null = ngx.null
 local pairs = pairs
 local tostring = tostring
@@ -75,9 +76,8 @@ local function check_protocols_match(self, plugin)
       })
       return nil, tostring(err_t), err_t
     end
-  end
 
-  if type(plugin.service) == "table" then
+  elseif type(plugin.service) == "table" then
     if not has_common_protocol_with_service(self, plugin, plugin.service) then
       local err_t = self.errors:schema_violation({
         protocols = "must match the protocols of at least one route " ..
@@ -95,9 +95,9 @@ local function check_ordering_validity(self, entity)
   --[[
     Plugins that are scoped to a consumer can't be a target for reordering
     because they rely on a context (ngx.authenticated_consumer) which is only
-    set during the access phase of an authentacation plugin. This means that
-    we can't influence the order of plugins without running their access phase first
-    which is a catch-22.
+    set during the access phase of an authentication plugin. This means that
+    we can't influence the order of plugins without running their access phase
+    first which is a catch-22.
   --]]
   if type(entity.ordering) ~= "table" then
     -- no reordering requested, no need to validate further
@@ -132,22 +132,38 @@ end
 
 
 function Plugins:update(primary_key, entity, options)
-  options = options or {}
-  options.hide_shorthands = true
-  local rbw_entity = self.super.select(self, primary_key, options) -- ignore errors
-  if rbw_entity then
-    entity = self.schema:merge_values(entity, rbw_entity)
+  local rbw_entity
+  if entity.protocols or entity.service or entity.route then
+    if (entity.protocols and not entity.route)
+    or (entity.service and not entity.protocols)
+    or (entity.route and not entity.protocols)
+    then
+      rbw_entity = self.super.select(self, primary_key, options)
+      if rbw_entity then
+        entity.protocols = entity.protocols or rbw_entity.protocols
+        entity.service = entity.service or rbw_entity.service
+        entity.route = entity.route or rbw_entity.route
+      end
+      rbw_entity = rbw_entity or {}
+    end
+    local ok, err, err_t = check_protocols_match(self, entity)
+    if not ok then
+      return nil, err, err_t
+    end
   end
-  local ok, err, err_t = check_protocols_match(self, entity)
-  if not ok then
-    return nil, err, err_t
-  end
-  local ok_o, err_o, err_t_o = check_ordering_validity(self, entity)
-  if not ok_o then
-    return nil, err_o, err_t_o
-  end
+  if entity.ordering or entity.consumer then
+    if not (rbw_entity or (entity.ordering and entity.consumer)) then
+      rbw_entity = self.super.select(self, primary_key, options) or {}
+    end
 
-  options.hide_shorthands = false
+    entity.ordering = entity.ordering or rbw_entity.ordering
+    entity.consumer = entity.consumer or rbw_entity.consumer
+
+    local ok_o, err_o, err_t_o = check_ordering_validity(self, entity)
+    if not ok_o then
+      return nil, err_o, err_t_o
+    end
+  end
   return self.super.update(self, primary_key, entity, options)
 end
 
