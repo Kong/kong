@@ -36,6 +36,30 @@ env:
   RUNNER_COUNT: 7
 
 jobs:
+  metadata:
+    name: Metadata
+    runs-on: ubuntu-22.04
+    outputs:
+      old-kong-version: ${{ steps.old-kong-version.outputs.ref }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Get Old Kong Version
+      id: old-kong-version
+      run: |
+        KONG_VERSION=$(bash scripts/grep-kong-version.sh)
+        major=$(echo "$KONG_VERSION" | cut -d. -f1)
+        minor=$(echo "$KONG_VERSION" | cut -d. -f2)
+        # if the minor version isn't 0, use the first release of the previous minor version;
+        # otherwise just leave it empty, so later the default branch or commit will be used.
+        if [ "$minor" -ne 0 ]; then
+          minor=$((minor - 1))
+          echo "ref=$major.$minor.0" >> $GITHUB_OUTPUT
+        else
+          echo "ref=" >> $GITHUB_OUTPUT
+        fi
+
   build:
     uses: ./.github/workflows/build.yml
     with:
@@ -137,7 +161,7 @@ jobs:
   busted-tests:
     name: Busted test runner ${{ matrix.runner }}
     runs-on: ubuntu-22.04
-    needs: [build,schedule]
+    needs: [metadata,build,schedule]
 
     strategy:
       fail-fast: false
@@ -184,6 +208,15 @@ jobs:
 
     - name: Checkout Kong source code
       uses: actions/checkout@v4
+
+    # used for plugin compatibility test
+    - name: Checkout old version Kong source code
+      uses: actions/checkout@v4
+      with:
+        path: kong-old
+        # if the minor version is 0, `ref` will default to ''
+        # which is same as in the previous step
+        ref: ${{ needs.metadata.outputs.old-kong-version }}
 
     - name: Lookup build cache
       id: cache-deps
@@ -285,6 +318,7 @@ jobs:
         KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
         KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
         KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
+        KONG_SPEC_TEST_OLD_VERSION_KONG_PATH: ${{ github.workspace }}/kong-old
         DD_ENV: ci
         DD_SERVICE: kong-ce-ci
         DD_CIVISIBILITY_MANUAL_API_ENABLED: 1
