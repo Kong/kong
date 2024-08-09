@@ -31,8 +31,8 @@ jobs:
   deck-integration:
     name: Gateway decK integration tests
     runs-on: ubuntu-22.04
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     needs: build
-    timeout-minutes: 5
 
     services:
       postgres:

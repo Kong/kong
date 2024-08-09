@@ -36,6 +36,7 @@ jobs:
   upgrade-test:
     name: Run migration tests
     runs-on: ubuntu-22.04
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     needs: build
 
     steps:

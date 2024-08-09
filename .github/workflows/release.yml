@@ -44,6 +44,7 @@ jobs:
   metadata:
     name: Metadata
     runs-on: ubuntu-22.04
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     outputs:
       kong-version: ${{ steps.build-info.outputs.kong-version }}
       prerelease-docker-repository: ${{ env.PRERELEASE_DOCKER_REPOSITORY }}
@@ -109,6 +110,7 @@ jobs:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-packages'] }}"
 
     runs-on: ubuntu-22.04
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     container:
       image: ${{ matrix.image }}
       options: --privileged
@@ -266,6 +268,7 @@ jobs:
     needs: [metadata, build-packages]
     name: Verify Manifest - Package ${{ matrix.label }}
     runs-on: ubuntu-22.04
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
 
     strategy:
       fail-fast: false
@@ -298,6 +301,7 @@ jobs:
     name: Build Images - ${{ matrix.label }}
     needs: [metadata, build-packages]
     runs-on: ubuntu-22.04
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
 
     permissions:
       # create comments on commits for docker images needs the `write` permission
@@ -402,6 +406,7 @@ jobs:
     needs: [metadata, build-images]
     name: Verify Manifest - Image ${{ matrix.label }}
     runs-on: ubuntu-22.04
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
 
     strategy:
@@ -436,6 +441,7 @@ jobs:
     name: Scan Images - ${{ matrix.label }}
     needs: [metadata, build-images]
     runs-on: ubuntu-22.04
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     if: |-
       always()
       && fromJSON(needs.metadata.outputs.matrix)['scan-vulnerabilities'] != ''
@@ -500,8 +506,8 @@ jobs:
     name: Release Packages - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-packages, build-images]
     runs-on: ubuntu-22.04
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     if: fromJSON(needs.metadata.outputs.matrix)['release-packages'] != ''
-    timeout-minutes: 5 # PULP takes a while to publish
     environment: release
 
     strategy:
@@ -565,6 +571,7 @@ jobs:
     name: Release Images - ${{ matrix.label }} - ${{ needs.metadata.outputs.release-desc }}
     needs: [metadata, build-images]
     runs-on: ubuntu-22.04
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     if: fromJSON(needs.metadata.outputs.matrix)['release-images'] != ''
 
     strategy:

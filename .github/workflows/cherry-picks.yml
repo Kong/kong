@@ -11,6 +11,7 @@ jobs:
   cross-repo-cherrypick:
     name: Cherry pick to remote repository
     runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     # Only run when pull request is merged, or labeled
     # or when a comment containing `/cherry-pick` is created
     # and the author is a member, collaborator or owner

@@ -10,6 +10,7 @@ permissions:
 jobs:
   check_author:
     runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     defaults:
       run:
         shell: bash
