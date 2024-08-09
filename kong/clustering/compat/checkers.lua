@@ -67,6 +67,22 @@ local compatible_checkers = {
 
             has_update = true
           end
+
+          if config.model.provider == "mistral" and (
+            not config.model.options or
+            config.model.options == ngx.null or
+            not config.model.options.upstream_url or
+            config.model.options.upstream_url == ngx.null) then
+
+            log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
+              ' mistral provider uses fallback upstream_url for managed serivice' ..
+              dp_version, log_suffix)
+
+            config.model.options = config.model.options or {}
+            config.model.options.upstream_url = "https://api.mistral.ai:443"
+            has_update = true
+          end
+
         end
 
         if plugin.name == 'ai-request-transformer' then

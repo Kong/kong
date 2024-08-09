@@ -22,7 +22,11 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
 
   for i, v in ipairs(SELF_HOSTED_MODELS) do
-    it("requires upstream_url when using self-hosted " .. v .. " model", function()
+    local op = it
+    if v == "mistral" then -- mistral.ai now has managed service too!
+      op = pending
+    end
+    op("requires upstream_url when using self-hosted " .. v .. " model", function()
       local config = {
         route_type = "llm/v1/chat",
         auth = {
