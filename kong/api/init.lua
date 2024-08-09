@@ -128,3 +128,5 @@ do
 end
 
 return app
+
+-- make tests run

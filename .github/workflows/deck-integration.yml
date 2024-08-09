@@ -112,3 +112,17 @@ jobs:
               event: 'REQUEST_CHANGES',
               body: `## decK integration tests\n\n:warning: failure detected. Please check [the workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details.`
             })
+
+      - name: Dismiss requested changes if tests passed
+        if: ${{ fromJson(steps.find-review.outputs.result).review_id != '' && steps.deck_tests.outcome == 'success' }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PAT }}
+          script: |
+            github.rest.pulls.dismissReview({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              review_id: ${{ fromJson(steps.find-review.outputs.result).review_id }},
+              message: "decK integration tests passed"
+            })
