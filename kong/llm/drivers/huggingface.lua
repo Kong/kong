@@ -136,8 +136,7 @@ end
 local function handle_huggingface_stream(event_t, model_info, route_type)
   -- discard empty frames, it should either be a random new line, or comment
   if (not event_t.data) or (#event_t.data < 1) then
-    event_t.data = "{}"
-    --return
+    return
   end
   local event, err = cjson.decode(event_t.data)
 
