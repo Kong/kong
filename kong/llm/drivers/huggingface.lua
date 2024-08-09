@@ -123,14 +123,14 @@ local function to_huggingface(task, request_table, model_info)
 end
 
 local function safe_access(tbl, ...)
-    local value = tbl
-    for _, key in ipairs({...}) do
-        value = value and value[key]
-        if not value then
-            return nil
-        end
+  local value = tbl
+  for _, key in ipairs({ ... }) do
+    value = value and value[key]
+    if not value then
+      return nil
     end
-    return value
+  end
+  return value
 end
 
 local function handle_huggingface_stream(event_t, model_info, route_type)
