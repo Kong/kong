@@ -76,6 +76,7 @@ local math_min = math.min
 local now = ngx.now
 local sleep = ngx.sleep
 local null = ngx.null
+local timer_at = ngx.timer.at
 
 
 local Queue = {}
@@ -203,14 +204,6 @@ end
 -- @param opts table, requires `name`, optionally includes `retry_count`, `max_coalescing_delay` and `max_batch_size`
 -- @return table: a Queue object.
 local function get_or_create_queue(queue_conf, handler, handler_conf)
-  assert(type(queue_conf) == "table",
-    "arg #1 (queue_conf) must be a table")
-  assert(type(handler) == "function",
-    "arg #2 (handler) must be a function")
-  assert(handler_conf == nil or type(handler_conf) == "table",
-    "arg #3 (handler_conf) must be a table or nil")
-  assert(type(queue_conf.name) == "string",
-    "arg #1 (queue_conf) must include a name")
 
   local name = assert(queue_conf.name)
   local key = _make_queue_key(name)
@@ -223,70 +216,7 @@ local function get_or_create_queue(queue_conf, handler, handler_conf)
     return queue
   end
 
-  queue = Queue.create(queue_conf, handler, handler_conf)
-
-  kong.timer:named_at("queue " .. key, 0, function(_, q)
-    while q:count() > 0 do
-      q:log_debug("processing queue")
-      q:process_once()
-    end
-    q:log_debug("done processing queue")
-    queues[key] = nil
-  end, queue)
-
-  queues[key] = queue
-
-  queue:log_debug("queue created")
-
-  return queue
-end
-
-function Queue.create(queue_conf, handler, handler_conf)
-  assert(type(queue_conf) == "table",
-    "arg #1 (queue_conf) must be a table")
-  assert(type(handler) == "function",
-    "arg #2 (handler) must be a function")
-  assert(handler_conf == nil or type(handler_conf) == "table",
-    "arg #3 (handler_conf) must be a table or nil")
-  assert(type(queue_conf.name) == "string",
-    "arg #1 (queue_conf) must include a name")
-
-
-  assert(
-    type(queue_conf.max_batch_size) == "number",
-    "arg #1 (queue_conf) max_batch_size must be a number"
-  )
-  assert(
-    type(queue_conf.max_coalescing_delay) == "number",
-    "arg #1 (queue_conf) max_coalescing_delay must be a number"
-  )
-  assert(
-    type(queue_conf.max_entries) == "number",
-    "arg #1 (queue_conf) max_entries must be a number"
-  )
-  assert(
-    type(queue_conf.max_retry_time) == "number",
-    "arg #1 (queue_conf) max_retry_time must be a number"
-  )
-  assert(
-    type(queue_conf.initial_retry_delay) == "number",
-    "arg #1 (queue_conf) initial_retry_delay must be a number"
-  )
-  assert(
-    type(queue_conf.max_retry_delay) == "number",
-    "arg #1 (queue_conf) max_retry_delay must be a number"
-  )
-
-  local max_bytes_type = type(queue_conf.max_bytes)
-  assert(
-    max_bytes_type == "nil" or max_bytes_type == "number",
-    "arg #1 (queue_conf) max_bytes must be a number or nil"
-  )
-
-  local name = assert(queue_conf.name)
-  local key = _make_queue_key(name)
-
-  local queue = {
+  queue = {
     -- Queue parameters from the enqueue call
     name = name,
     key = key,
@@ -309,7 +239,22 @@ function Queue.create(queue_conf, handler, handler_conf)
     queue[option] = value
   end
 
-  return setmetatable(queue, Queue_mt)
+  queue = setmetatable(queue, Queue_mt)
+
+  kong.timer:named_at("queue " .. key, 0, function(_, q)
+    while q:count() > 0 do
+      q:log_debug("processing queue")
+      q:process_once()
+    end
+    q:log_debug("done processing queue")
+    queues[key] = nil
+  end, queue)
+
+  queues[key] = queue
+
+  queue:log_debug("queue created")
+
+  return queue
 end
 
 
@@ -370,31 +315,7 @@ function Queue.can_enqueue(queue_conf, entry)
   return _can_enqueue(queue, entry)
 end
 
-
--- Delete the frontmost entry from the queue and adjust the current utilization variables.
-function Queue:delete_frontmost_entry()
-  if self.max_bytes then
-    -- If max_bytes is set, reduce the currently queued byte count by the
-    self.bytes_queued = self.bytes_queued - #self.entries[self.front]
-  end
-  self.entries[self.front] = nil
-  self.front = self.front + 1
-  if self.front == self.back then
-    self.front = 1
-    self.back = 1
-  end
-end
-
-
--- Drop the oldest entry, adjusting the semaphore value in the process.  This is
--- called when the queue runs out of space and needs to make space.
-function Queue:drop_oldest_entry()
-  assert(self.semaphore:count() > 0)
-  self.semaphore:wait(0)
-  self:delete_frontmost_entry()
-end
-
-function Queue:handle(entries)
+local function handle(self, entries)
   local entry_count = #entries
 
   local start_time = now()
@@ -431,6 +352,30 @@ function Queue:handle(entries)
     sleep(math_min(self.max_retry_delay, 2 ^ retry_count * self.initial_retry_delay))
     retry_count = retry_count + 1
   end
+end
+
+
+-- Delete the frontmost entry from the queue and adjust the current utilization variables.
+function Queue:delete_frontmost_entry()
+  if self.max_bytes then
+    -- If max_bytes is set, reduce the currently queued byte count by the
+    self.bytes_queued = self.bytes_queued - #self.entries[self.front]
+  end
+  self.entries[self.front] = nil
+  self.front = self.front + 1
+  if self.front == self.back then
+    self.front = 1
+    self.back = 1
+  end
+end
+
+
+-- Drop the oldest entry, adjusting the semaphore value in the process.  This is
+-- called when the queue runs out of space and needs to make space.
+function Queue:drop_oldest_entry()
+  assert(self.semaphore:count() > 0)
+  self.semaphore:wait(0)
+  self:delete_frontmost_entry()
 end
 
 
@@ -482,7 +427,7 @@ function Queue:process_once()
     self.already_dropped_entries = false
   end
 
-  self:handle(batch)
+  handle(self, batch)
 end
 
 
@@ -567,6 +512,21 @@ local function enqueue(self, entry)
     return nil, "entry must be a non-nil Lua value"
   end
 
+
+  if self.concurrency == 0 then
+    local ok, err = timer_at(0, function(premature)
+      if premature then
+        return
+      end
+      handle(self, { entry })
+    end)
+    if not ok then
+      return nil, "failed to crete timer: " .. err
+    end
+    return true
+  end
+
+
   if self:count() >= self.max_entries * CAPACITY_WARNING_THRESHOLD then
     if not self.warned then
       self:log_warn('queue at %s%% capacity', CAPACITY_WARNING_THRESHOLD * 100)
@@ -635,6 +595,49 @@ end
 
 
 function Queue.enqueue(queue_conf, handler, handler_conf, value)
+
+  assert(type(queue_conf) == "table",
+    "arg #1 (queue_conf) must be a table")
+  assert(type(handler) == "function",
+    "arg #2 (handler) must be a function")
+  assert(handler_conf == nil or type(handler_conf) == "table",
+    "arg #3 (handler_conf) must be a table or nil")
+  assert(type(queue_conf.name) == "string",
+    "arg #1 (queue_conf) must include a name")
+
+  assert(
+    type(queue_conf.max_batch_size) == "number",
+    "arg #1 (queue_conf) max_batch_size must be a number"
+  )
+  assert(
+    type(queue_conf.max_coalescing_delay) == "number",
+    "arg #1 (queue_conf) max_coalescing_delay must be a number"
+  )
+  assert(
+    type(queue_conf.max_entries) == "number",
+    "arg #1 (queue_conf) max_entries must be a number"
+  )
+  assert(
+    type(queue_conf.max_retry_time) == "number",
+    "arg #1 (queue_conf) max_retry_time must be a number"
+  )
+  assert(
+    type(queue_conf.initial_retry_delay) == "number",
+    "arg #1 (queue_conf) initial_retry_delay must be a number"
+  )
+  assert(
+    type(queue_conf.max_retry_delay) == "number",
+    "arg #1 (queue_conf) max_retry_delay must be a number"
+  )
+
+  local max_bytes_type = type(queue_conf.max_bytes)
+  assert(
+    max_bytes_type == "nil" or max_bytes_type == "number",
+    "arg #1 (queue_conf) max_bytes must be a number or nil"
+  )
+
+  -- TODO: assert concurrency
+
   local queue = get_or_create_queue(queue_conf, handler, handler_conf)
   return enqueue(queue, value)
 end

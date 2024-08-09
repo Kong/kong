@@ -166,6 +166,7 @@ return {
     opentelemetry = {
       "traces_endpoint",
       "logs_endpoint",
+      "queue.concurrency",
     },
     ai_proxy = {
       "max_request_body_size",
@@ -211,7 +212,16 @@ return {
       "always_use_authenticated_groups",
     },
     http_log = {
-      "no_queue"
+      "queue.concurrency",
+    },
+    statsd = {
+      "queue.concurrency",
+    },
+    datadog = {
+      "queue.concurrency",
+    },
+    zipkin = {
+      "queue.concurrency",
     },
   },
 }

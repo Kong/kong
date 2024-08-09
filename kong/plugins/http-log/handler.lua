@@ -14,7 +14,6 @@ local tonumber = tonumber
 local fmt = string.format
 local pairs = pairs
 local max = math.max
-local timer_at = ngx.timer.at
 
 
 local sandbox_opts = { env = { kong = kong, ngx = ngx } }
@@ -190,27 +189,12 @@ function HttpLogHandler:log(conf)
 
   local queue_conf = Queue.get_plugin_params("http-log", conf, make_queue_name(conf))
   kong.log.debug("Queue name automatically configured based on configuration parameters to: ", queue_conf.name)
-  local entry = cjson.encode(kong.log.serialize())
-
-  if conf.no_queue then
-    local queue = Queue.create(queue_conf, send_entries, conf)
-    local ok, err = timer_at(0, function(premature)
-      if premature then
-        return
-      end
-      queue:handle({ entry })
-    end)
-    if not ok then
-      kong.log.err("failed to create timer: ", err)
-    end
-    return
-  end
 
   local ok, err = Queue.enqueue(
     queue_conf,
     send_entries,
     conf,
-    entry
+    cjson.encode(kong.log.serialize())
   )
   if not ok then
     kong.log.err("Failed to enqueue log entry to log server: ", err)

@@ -59,7 +59,6 @@ return {
           }},
           { queue = typedefs.queue },
           { custom_fields_by_lua = typedefs.lua_code },
-          { no_queue =  { description = "Indicates whether to disable the queue mechanism.", type = "boolean", default = false, required = true  }, },
         },
         custom_validator = function(config)
           -- check no double userinfo + authorization header
