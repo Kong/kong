@@ -4199,6 +4199,243 @@ do
   end
 end
 
+--------------
+-- A kong based database proxy class for the simulation of database abnormal behavior.
+-- @section db_proxy
+-- @usage
+-- local helpers = require "spec.helpers"
+-- local db_port = 5432
+-- local db_proxy = helpers.db_proxy.new({ db_port = db_port })
+-- assert(db_proxy:start())
+-- db_proxy:status(false)
+-- db_proxy:delay(5)
+-- db_proxy:stop()
+local db_proxy = {}
+local db_proxy_mt = {
+  __index = db_proxy,
+}
+
+--- Creates a db_proxy.
+-- @function db_proxy
+-- @field db_port The actual port of the database.
+-- @field db_proxy_port The proxy port of the database.
+-- @field api_port The port of the api server of the database
+-- proxy by which you can control the behavior of the db proxy 
+-- to simulate abnormal cases.
+-- @field tcp_port The port of the tcp server of the database 
+-- proxy. When invoking the api of the db proxy, it will transfer
+-- the config through this port, so that the config will take
+-- effects. Thus it is used internally.
+-- @param opts (table) Specifies the ports of the database proxy.
+-- The opts.db_port is the only one required, but all the others 
+-- are optional.
+-- @return db proxy
+-- @see db_proxy:start
+-- @see db_proxy:stop
+-- @see db_proxy:get_fixtures
+-- @see db_proxy:delay
+-- @see db_proxy:status
+function db_proxy.new(opts)
+  opts = opts or {}
+
+  if type(opts.db_port) ~= "number" then
+    error("db_port must be a number")
+  end
+
+  local self = {
+    db_port = opts.db_port,
+    db_proxy_port = get_available_port(),
+    api_port = get_available_port(),
+    tcp_port = get_available_port(),
+  }
+
+  return setmetatable(self, db_proxy_mt)
+end
+
+-- Start the db proxy.
+-- @function db_proxy:start
+-- @param opts(optional) Same as the opts used in `start_kong`. 
+-- Strongly recommend not feed this parameter.
+function db_proxy:start(opts)
+  local kong_conf = type(opts) == "table" and opts or {
+    prefix = "servroot_db_proxy",
+    database = "off",
+    -- the proxy should be in the data plane as this can avoid port conflict with the other kong instances.
+    role = "data_plane",
+    nginx_conf = "spec/fixtures/custom_nginx.template",
+    -- this is unused, but required for the template to include a http {} block
+    proxy_listen = "0.0.0.0:" .. get_available_port(),
+    -- this is unused, but required for the template to include a stream {} block
+    -- and this won't occupy 5555 port actually.
+    stream_listen = "0.0.0.0:5555",
+    -- As we specify the proxy working as a data plane, we need to specify the following certs
+    cluster_cert = "spec/fixtures/kong_clustering.crt",
+    cluster_cert_key = "spec/fixtures/kong_clustering.key",
+  }
+
+  self.prefix = kong_conf.prefix
+
+  return start_kong(kong_conf, nil, nil, self:get_fixtures())
+end
+
+-- Stop the db proxy.
+-- @function db_proxy:stop
+function db_proxy:stop()
+  if self.client then
+    self.client:close()
+  end
+
+  return stop_kong(self.prefix, true)
+end
+
+-- Get the fixtures of the db proxy.
+-- @function db_proxy:get_fixtures
+function db_proxy:get_fixtures()
+  return {
+    http_mock = {
+      db_proxy_api_server = [[
+        server {
+          error_log logs/db_proxy_http_error.log;
+          listen 127.0.0.1:]] .. self.api_port .. [[;
+          location /db_proxy_conf {
+            content_by_lua_block {
+              local cjson = require "cjson.safe"
+
+              local function toboolean(value)
+                if value == "true" then
+                  return true
+                else
+                  return false
+                end
+              end
+
+              ngx.req.read_body()
+              local args, err = ngx.req.get_post_args()
+              if not args then
+                ngx.say("cannot get args in req: " .. err)
+                ngx.exit(ngx.ERROR)
+              end
+
+              args.delay = args.delay and tonumber(args.delay) or 0
+              if args.status then
+                args.status = toboolean(args.status)
+
+              else
+                args.status = true
+              end
+
+              local sock = assert(ngx.socket.tcp())
+              sock:settimeout(3000)
+              local ok, err = sock:connect('127.0.0.1', ']] .. self.tcp_port .. [[')
+              if not ok then
+                ngx.say("failed to connect to db_proxy_server: " .. err)
+                ngx.exit(ngx.ERROR)
+              end
+
+              local bytes, err = sock:send(cjson.encode(args))
+              if err then
+                ngx.say("failed to send data to db_proxy: " .. err)
+                ngx.exit(ngx.ERROR)
+              end
+
+              sock:close()
+            }
+          }
+        }
+      ]],
+    },
+
+    stream_mock = {
+      db_proxy_server = [[
+        upstream backend {
+          server 0.0.0.1:1234;
+          balancer_by_lua_block {
+            local balancer = require "ngx.balancer"
+
+            local function sleep(n)
+              local t = os.clock()
+              while os.clock() - t <= n do end
+            end
+
+            if status == false then
+              ngx.exit(ngx.ERROR)
+            end
+
+            if delay and delay > 0 then
+                sleep(delay)
+            end
+
+            local ok, err = balancer.set_current_peer("127.0.0.1", ]] .. self.db_port .. [[)
+            if not ok then
+              ngx.log(ngx.ERR, "failed to set the current peer: ", err)
+              ngx.exit(ngx.ERROR)
+            end
+          }
+        }
+
+        server {
+          listen ]] .. self.db_proxy_port .. [[;
+          error_log logs/db_proxy_error.log;
+          proxy_pass backend;
+        }
+
+        server {
+          listen ]] .. self.tcp_port .. [[;
+          error_log logs/db_proxy_error.log;
+          content_by_lua_block {
+            local cjson = require "cjson.safe"
+            local sock = assert(ngx.req.socket())
+            local data, err = sock:receive("*a")
+            if data then
+              local opts = cjson.decode(data)
+              if opts then
+                _G.delay = opts.delay
+                _G.status = opts.status
+              end
+            end
+          }
+        }
+      ]],
+    },
+  }
+end
+
+-- Set the delay for the db proxy to simulate a slow network.
+-- Notice: you have to assert the success of execution of
+-- this function by yourself like:
+-- `assert.res_status(200, db_proxy:delay(10))`.
+-- @function db_proxy:delay
+-- @param delay (number) The delay in seconds.
+function db_proxy:delay(delay)
+  if type(delay) ~= "number" then
+    error("delay must be a number and greater than 0")
+  end
+
+  if not self.client then
+    self.client = proxy_client(3000, self.api_port)
+  end
+
+  return self.client:post("/db_proxy_conf", { delay = delay })
+end
+
+-- Set the status for the db proxy to simulate an outage.
+-- Notice: you have to assert the success of execution of
+-- this function by yourself like:
+-- `assert.res_status(200, db_proxy:status(false))`.
+-- @function db_proxy:status
+-- @param status (boolean) The status of the database,
+-- false means an outage.
+function db_proxy:status(on_off)
+  if type(on_off) ~= 'boolean' then
+    error("on_off must be a boolean")
+  end
+
+  if not self.client then
+    self.client = proxy_client(3000, self.api_port)
+  end
+
+  return self.client:post("/db_proxy_conf", { status = on_off })
+end
 
 ----------------
 -- Variables/constants
@@ -4254,6 +4491,7 @@ end
 
   -- Kong testing properties
   db = db,
+  db_proxy = db_proxy,
   blueprints = blueprints,
   get_db_utils = get_db_utils,
   get_cache = get_cache,
