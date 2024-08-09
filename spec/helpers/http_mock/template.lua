@@ -181,7 +181,7 @@ $(init)
       }
 # end
 
-# if route.header_filter then
+# if route.header then
       header_filter_by_lua_block {
         $(route.header)
       }
@@ -193,7 +193,7 @@ $(init)
       }
 
 # end
-# if route.body_filter or log_opts.resp_body then
+# if route.body or log_opts.resp_body then
       body_filter_by_lua_block {
 # if route.body_filter then
         $(route.body)
