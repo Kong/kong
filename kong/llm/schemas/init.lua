@@ -37,6 +37,20 @@ local gemini_options_schema = {
   },
 }
 
+local huggingface_options_schema = {
+  type = "record",
+  required = false,
+  fields = {
+    { use_cache = {
+        type = "boolean",
+        description = "Use the cache layer on the inference API",
+        required = false }},
+    { wait_for_model = {
+        type = "boolean",
+        description = "Wait for the model if it is not ready",
+        required = false }},
+  },
+}
 
 local auth_schema = {
   type = "record",
@@ -179,6 +193,7 @@ local model_options_schema = {
         required = false }},
     { gemini = gemini_options_schema },
     { bedrock = bedrock_options_schema },
+    { huggingface = huggingface_options_schema},
   }
 }
 
@@ -192,7 +207,7 @@ local model_schema = {
         type = "string", description = "AI provider request format - Kong translates "
                                     .. "requests to and from the specified backend compatible formats.",
         required = true,
-        one_of = { "openai", "azure", "anthropic", "cohere", "mistral", "llama2", "gemini", "bedrock" }}},
+        one_of = { "openai", "azure", "anthropic", "cohere", "mistral", "llama2", "gemini", "bedrock", "huggingface" }}},
     { name = {
         type = "string",
         description = "Model name to execute.",
