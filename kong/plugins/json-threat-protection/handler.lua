@@ -47,11 +47,12 @@ function JsonThreatProtectionHandler:access(conf)
     end
   end
 
-  local body, errmsg = kong.request.get_raw_body(conf.max_body_size)
+  -- 0 means reading the entire data from temporary files.
+  local body, errmsg = kong.request.get_raw_body(conf.max_body_size < 0 and 0 or conf.max_body_size)
   if not body then
     kong.log.info(errmsg)
 
-    return kong.response.error(400, errmsg)
+    return kong.response.error(500)
   end
 
   local ok, code, path = validator.validate(body,
