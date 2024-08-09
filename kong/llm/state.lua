@@ -94,4 +94,14 @@ function _M.get_response_tokens_count()
   return kong.ctx.shared.llm_response_tokens_count
 end
 
+function _M.set_metrics(key, value)
+  local m = kong.ctx.shared.llm_metrics or {}
+  m[key] = value
+  kong.ctx.shared.llm_metrics = m
+end
+
+function _M.get_metrics(key)
+  return (kong.ctx.shared.llm_metrics or {})[key]
+end
+
 return _M
