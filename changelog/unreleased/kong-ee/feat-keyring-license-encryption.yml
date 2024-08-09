@@ -1,0 +1,3 @@
+message: Added keyring encryption support to license database entity payloads.
+type: feature
+scope: Core

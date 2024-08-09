@@ -900,6 +900,7 @@ export const clearAllKongResources = async () => {
   await clearKongResource('routes');
   await clearKongResource('services');
   await clearKongResource('upstreams');
+  await clearKongResource('licenses');
 };
 
 export const clearKongResource = async (endpoint: string) => {

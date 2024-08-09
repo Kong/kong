@@ -196,6 +196,15 @@ function _M:register_events()
     post_load_license_event(worker_events)
   end, "crud", "licenses")
 
+  if kong and kong.configuration and kong.configuration.keyring_enabled then
+    -- re-read and activate licenses after keyring activation/recovery
+    local function reload_license()
+      post_load_license_event(worker_events)
+    end
+    worker_events.register(reload_license, "keyring", "activate_local")
+    worker_events.register(reload_license, "keyring", "recover")
+  end
+
   -- master process would not receive this event, it does't matter
   worker_events.register(function(data, event, source, pid)
     load_license_local(data.license)

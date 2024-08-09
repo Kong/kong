@@ -307,6 +307,10 @@ function _M.activate_local(id)
 
   ngx.log(ngx.INFO, _log_prefix, "activating key '", id, "'")
 
+  if kong and kong.worker_events then
+    kong.worker_events.post_local("keyring", "activate_local")
+  end
+
   return true
 end
 
@@ -362,7 +366,7 @@ function _M.recover(recv_key)
     end
   end
 
-  if push_config and kong.configuration.role == "control_plane" then
+  if push_config then
     kong.worker_events.post_local("keyring", "recover")
   end
 

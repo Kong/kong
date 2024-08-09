@@ -20,7 +20,9 @@ return {
                          type = "string",
                          required = true,
                          unique = true,
-                         custom_validator = license_helpers.is_valid_license }
+                         custom_validator = license_helpers.is_valid_license,
+                         encrypted = true,
+                       }
     },
     { created_at     = typedefs.auto_timestamp_s },
     { updated_at     = typedefs.auto_timestamp_s },
