@@ -70,6 +70,31 @@ paths:
           description: OK
           content: {}
 
+  /parameter/query:
+    get:
+      parameters:
+        - name: integer
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: boolean
+          in: query
+          required: true
+          schema:
+            type: boolean
+        - name: number
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: string
+          in: query
+          required: true
+          schema:
+            type: string
+
+
 components:
   securitySchemes:
     bearerAuth:

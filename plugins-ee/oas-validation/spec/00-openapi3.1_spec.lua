@@ -254,5 +254,33 @@ for _, strategy in helpers.each_strategy() do
         assert.response(res).has.status(200)
       end)
     end)
+
+    describe("parameter", function()
+      it("sanity", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/parameter/query?integer=1&boolean=true&string=str&number=1.23",
+          headers = {
+            host = "example.com",
+          },
+        })
+        assert.response(res).has.status(200)
+      end)
+
+      it("invalid type", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/parameter/query?integer=1s",
+          headers = {
+            host = "example.com",
+          },
+        })
+        assert.response(res).has.status(400)
+        local body = assert.response(res).has.jsonbody()
+        assert.equal(
+          [[query 'integer' validation failed with error: 'failed to parse '1s' from string to integer']],
+          body.message)
+      end)
+    end)
   end)
 end

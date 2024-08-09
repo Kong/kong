@@ -208,10 +208,22 @@ end
 
 
 local function validate_parameter_value_openapi(parameter)
+  -- TODO: requires a refactor for better handling of Parameter Serialization
   local is_31x = kong.ctx.plugin.is_31x
 
   if parameter["in"] == "cookie" then
     parameter.style = "form" -- cookie only allow form style
+  end
+
+  if parameter["in"] == "query" and not parameter.style and is_31x then
+    -- FIXME: the parameter.decoded_schema handling is inside the validator_param_cache,
+    -- calling validator_param_cache is just to ensure that property decoded_schema is available
+    assert(validator_param_cache[parameter])
+    local v, err = utils_normalize(parameter.value, parameter.decoded_schema)
+    if err then
+      return false, err
+    end
+    parameter.value = v
   end
 
   if parameter["in"] == "body" then
