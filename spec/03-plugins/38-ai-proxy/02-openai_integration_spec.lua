@@ -866,6 +866,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.equals(json.id, "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2")
         assert.equals(json.model, "gpt-3.5-turbo-0613")
         assert.equals(json.object, "chat.completion")
+        assert.equals(r.headers["X-Kong-LLM-Model"], "openai/gpt-3.5-turbo")
 
         assert.is_table(json.choices)
         assert.is_table(json.choices[1].message)

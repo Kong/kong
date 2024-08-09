@@ -423,6 +423,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         -- check this is in the 'kong' response format
         assert.equals(json.model, "command")
         assert.equals(json.object, "chat.completion")
+        assert.equals(r.headers["X-Kong-LLM-Model"], "cohere/command")
 
         assert.is_table(json.choices)
         assert.is_table(json.choices[1].message)

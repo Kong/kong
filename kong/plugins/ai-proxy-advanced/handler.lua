@@ -158,10 +158,7 @@ function _M:header_filter(conf)
     return
   end
 
-  if ngx.var.http_kong_debug or conf.model_name_header then
-    local name = target.model.provider .. "/" .. (kong.ctx.plugin.llm_model_requested or target.model.name)
-    kong.response.set_header("X-Kong-LLM-Model", name)
-  end
+  target.model_name_header = conf.model_name_header
 
   return proxy_handler:header_filter(target)
 end
