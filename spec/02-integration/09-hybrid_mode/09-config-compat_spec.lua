@@ -482,7 +482,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
     end)
 
     describe("ai plugins supported providers", function()
-      it("[ai-proxy] tries to use unsupported providers on older Kong versions #ttt", function()
+      it("[ai-proxy] tries to use unsupported providers on older Kong versions", function()
         -- [[ 3.8.x ]] --
         local ai_proxy = admin.plugins:insert {
           name = "ai-proxy",
