@@ -2,11 +2,7 @@ local _M = {}
 
 local timing
 
-local client = package.loaded["kong.resty.dns.client"]
-if not client then
-  client = require("kong.tools.dns")()
-end
-
+local client = assert(package.loaded["kong.resty.dns.client"])
 
 local function before_toip(qname, _port, _dnsCacheOnly, _try_list)
   timing.enter_context("dns")
