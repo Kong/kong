@@ -1,0 +1,3 @@
+message: "keep query params order in key-auth plugin if hide_credentials is true"
+type: bugfix
+scope: Plugin
