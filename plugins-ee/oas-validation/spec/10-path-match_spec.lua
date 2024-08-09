@@ -266,5 +266,16 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.response(res).has.status(301)
     end)
+
+    it("hyphen parameter", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/hyphen-param/doge",
+        headers = {
+          host = "petstore1.test",
+        },
+      })
+      assert.response(res).has.status(301)
+    end)
   end)
 end

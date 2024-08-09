@@ -78,3 +78,14 @@ paths:
       responses:
         201:
           description: Created
+  /hyphen-param/{param-name}:
+    get:
+      parameters:
+        - name: param-name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        201:
+          description: Created

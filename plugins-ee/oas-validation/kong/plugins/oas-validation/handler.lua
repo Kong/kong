@@ -360,7 +360,10 @@ local function compile_pattern(path)
     pattern = pattern:gsub(char, '\\' .. char)
   end
 
-  return gsub(pattern, "{(.-)}", function(s) return "(?<" .. s .. ">[^/]+)" end)
+  return gsub(pattern, "{(.-)}", function(s)
+    s = gsub(s, "\\%-", "_") -- capture group name does not allow `-` character, so we replace - with _
+    return "(?<" .. s .. ">[^/]+)"
+  end)
 end
 
 local function check_required_parameter(parameter, path_spec)
@@ -378,7 +381,8 @@ local function check_required_parameter(parameter, path_spec)
       kong.log.err("failed to match regular expression path: ", path_pattern)
     end
     if m then
-      value = m[parameter.name]
+      local param_name = gsub(parameter.name, "-", "_")
+      value = m[param_name]
     end
 
   else
