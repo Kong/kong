@@ -188,6 +188,7 @@ build = {
     ["kong.enterprise_edition.profiling.cpu"] = "kong/enterprise_edition/profiling/cpu.lua",
     ["kong.enterprise_edition.profiling.memory"] = "kong/enterprise_edition/profiling/memory.lua",
     ["kong.enterprise_edition.profiling.gc_snapshot"] = "kong/enterprise_edition/profiling/gc_snapshot.lua",
+    ["kong.enterprise_edition.profiling.memory_analyzer"] = "kong/enterprise_edition/profiling/memory_analyzer.lua",
     ["kong.enterprise_edition.oauth.error_codes"] = "kong/enterprise_edition/oauth/error_codes.lua",
     ["kong.enterprise_edition.transformations.plugins.json_navigator"] = "kong/enterprise_edition/transformations/plugins/json_navigator.lua",
     ["kong.enterprise_edition.openapi.plugins.swagger-parser.parser"] = "kong/enterprise_edition/openapi/plugins/swagger-parser/parser.lua",

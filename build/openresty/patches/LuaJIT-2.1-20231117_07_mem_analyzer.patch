@@ -1,0 +1,608 @@
+diff --git a/bundle/LuaJIT-2.1-20231117/Makefile b/bundle/LuaJIT-2.1-20231117/Makefile
+index 3aed365d..a032618c 100644
+--- a/bundle/LuaJIT-2.1-20231117/Makefile
++++ b/bundle/LuaJIT-2.1-20231117/Makefile
+@@ -100,7 +100,7 @@ FILES_JITLIB= bc.lua bcsave.lua dump.lua p.lua v.lua zone.lua \
+ 	      dis_arm64be.lua dis_ppc.lua dis_mips.lua dis_mipsel.lua \
+ 	      dis_mips64.lua dis_mips64el.lua \
+ 	      dis_mips64r6.lua dis_mips64r6el.lua \
+-	      vmdef.lua
++	      vmdef.lua mem_analyze.lua
+ 
+ ifeq (,$(findstring Windows,$(OS)))
+   HOST_SYS:= $(shell uname -s)
+diff --git a/bundle/LuaJIT-2.1-20231117/src/Makefile b/bundle/LuaJIT-2.1-20231117/src/Makefile
+index 1c818a9a..1a3f34e4 100644
+--- a/bundle/LuaJIT-2.1-20231117/src/Makefile
++++ b/bundle/LuaJIT-2.1-20231117/src/Makefile
+@@ -531,7 +531,7 @@
+ 	  lj_ctype.o lj_cdata.o lj_cconv.o lj_ccall.o lj_ccallback.o \
+ 	  lj_carith.o lj_clib.o lj_cparse.o \
+ 	  lj_lib.o lj_alloc.o lib_aux.o \
+-	  $(LJLIB_O) lib_init.o
++	  $(LJLIB_O) lib_init.o lj_mem_analyze.o
+ 
+ LJVMCORE_O= $(LJVM_O) $(LJCORE_O)
+ LJVMCORE_DYNO= $(LJVMCORE_O:.o=_dyn.o)
+diff --git a/bundle/LuaJIT-2.1-20231117/src/jit/mem_analyze.lua b/bundle/LuaJIT-2.1-20231117/src/jit/mem_analyze.lua
+new file mode 100644
+index 00000000..4a86ba9b
+--- /dev/null
++++ b/bundle/LuaJIT-2.1-20231117/src/jit/mem_analyze.lua
+@@ -0,0 +1,144 @@
++local function print_tree(node, level)
++  io.write('\n')
++  local ind = ''
++  for _ = 0, level do
++    ind = ind .. ' '
++  end
++
++  if type(node) == 'table' then
++    local s = '{\n'
++    io.write(ind..s)
++    for k,v in pairs(node) do
++      if type(k) ~= 'number' then k = '"'..k..'"' end
++      io.write(ind .. '['..k..'] = ')
++
++      if type(v) ~= 'table' then
++        --io.write('debug: k='..k..',type(k)='..type(k)..'\n')
++
++        --TODO check why this line does not work
++        -- if k == "lj_mem_addr" then
++
++        if type(v) == 'number' and v > 10000000 then
++          --io.write('debug: v='..v..'\n')
++          io.write(string.format("0x%x", v) .. ',\n')
++        else
++          io.write(tostring(v) .. ',\n')
++        end
++      else
++        print_tree(v, level + 1)
++      end
++    end
++    io.write('\n' .. ind .. '}\n')
++  else
++    io.write(ind .. tostring(node))
++  end
++end
++
++local function is_leaf(node)
++  assert(type(node) == 'table')
++  return node['lj_mem_subs'] == nil or
++    #node['lj_mem_subs'] == 0
++end
++
++local function node2str(node)
++  local s = ''
++  if node['info'] and node['info'] ~= '' then
++    local info = node['info']:gsub("[\n;]", " ")
++    local max_str = 100
++    if info:len() > max_str then
++      info = info:sub(1, max_str) .. '...'
++    end
++    s = s .. '"' .. info .. '" '
++  end
++
++  if node['type'] then
++    s = s .. string.format("t=%s", node['type']) .. ' '
++  end
++
++  s = string.format("%s addr=0x%x", s, node['lj_mem_addr'])
++
++  return s
++end
++
++local function traverse_fg(node)
++  if is_leaf(node) then
++    return {node2str(node)..' '..tostring(node['size'])}
++  else
++    local cur = node2str(node)
++    local res = {cur..' '..tostring(node['size'])}
++    for _, v in ipairs(node['lj_mem_subs']) do
++      for _, sv in ipairs(traverse_fg(v)) do
++        res[#res+1] = cur..';'..sv
++      end
++    end
++
++    return res
++  end
++end
++
++local LOG_TRACE = false
++
++local function log(msg)
++  if LOG_TRACE then
++    print(msg)
++  end
++end
++
++
++local function dump_flamegraph(root, file_name, timeout)
++  local time = os.clock()
++  local res = traverse_fg(root)
++  local tft = os.clock() - time
++
++  log(string.format("traverse_fg(): %.2f.", tft))
++
++  if tft > timeout then
++    return false, "timeout"
++  end
++
++  time = os.clock()
++  local f = io.open(file_name, "w")
++  for _, v in ipairs(res) do
++    f:write(v, '\n')
++  end
++
++  io.close(f)
++  log(string.format("write file: %.2f.", os.clock() - time))
++
++  return true
++end
++
++-- 120 seconds
++local DEFAULT_TIMEOUT = 120
++
++local function analyze(file_name, timeout)
++  if not timeout then
++    timeout = DEFAULT_TIMEOUT
++  end
++
++  local time = os.clock()
++  local root = memanalyze()
++  local mat = os.clock() - time
++  log(string.format("memanalyze(): %.2f.", mat))
++  if mat > timeout then
++    return false, "timeout"
++  end
++
++  local res, err = dump_flamegraph(root, file_name, timeout - mat)
++  if not res then
++    return false, err
++  end
++
++  -- collect the memory used by memanalyze().
++  time = os.clock()
++  root = nil
++  collectgarbage("collect")
++  log(string.format("GC: %.2f.", os.clock() - time))
++
++  return true
++end
++
++-- Public module functions.
++return {
++  analyze = analyze
++}
+diff --git a/bundle/LuaJIT-2.1-20231117/src/lib_base.c b/bundle/LuaJIT-2.1-20231117/src/lib_base.c
+index efae4e21..6da63734 100644
+--- a/bundle/LuaJIT-2.1-20231117/src/lib_base.c
++++ b/bundle/LuaJIT-2.1-20231117/src/lib_base.c
+@@ -38,7 +38,7 @@
+ #include "lj_lib.h"
+ #include "lj_cdata.h"
+ #include "lj_gcsnapshot.h"
+-
++#include "lj_mem_analyze.h"
+ 
+ /* -- Base library: checks ------------------------------------------------ */
+ 
+@@ -508,6 +508,16 @@ LJLIB_CF(newproxy)
+   return 1;
+ }
+ 
++LJLIB_CF(memanalyze)
++{
++  lj_gc_fullgc(L);
++  GCtab *root = lj_mem_analyze(L);
++  settabV(L, L->top++, root);
++
++  return 1;
++}
++
++
+ LJLIB_PUSH("tostring")
+ LJLIB_CF(print)
+ {
+diff --git a/bundle/LuaJIT-2.1-20231117/src/lj_mem_analyze.c b/bundle/LuaJIT-2.1-20231117/src/lj_mem_analyze.c
+new file mode 100644
+index 00000000..089cedb3
+--- /dev/null
++++ b/bundle/LuaJIT-2.1-20231117/src/lj_mem_analyze.c
+@@ -0,0 +1,378 @@
++#include "lj_mem_analyze.h"
++#include "lj_tab.h"
++#include "lj_str.h"
++#include "lj_gc.h"
++#include "lj_ctype.h"
++#include "lj_frame.h"
++#include "lj_dispatch.h"
++#include "lj_debug.h"
++
++#include <stdio.h>
++
++static int64_t LJ_MEM_MAX_DEPTH = 256;
++
++static GCtab *traverse(lua_State *L, GCobj *r, GCtab *visited, GCtab *parent, const char *info, int is_tskey);
++static GCtab *tree_new_node(lua_State *L, GCobj *r, GCtab *visited, GCtab *parent, const char *info);
++static void tree_add_sub(lua_State *L, GCtab *parent, GCtab *sub);
++static void tree_node_set_size(lua_State *L, GCtab *node, const int64_t sz);
++
++static void traverse_tab(lua_State *L, GCtab *t, GCtab *visited, GCtab *parent) {
++  GCtab *mt = tabref(t->metatable);
++  if (mt) {
++    traverse(L, obj2gco(mt), visited, parent, "metatable", 0);
++  }
++
++  MSize i, asize = t->asize;
++  char buf [100];
++  for (i = 0; i < asize; i++) {
++    TValue *tv = arrayslot(t, i);
++    sprintf(buf, "[%d]", i);
++
++    // For non gcv value, because they can not point to other
++    // objects, no further processing is needed.
++    if (tvisgcv(tv)) {
++      traverse(L, gcval(tv), visited, parent, buf, 0);
++    }
++  }
++
++  if (t->hmask > 0) {
++    Node *node = noderef(t->node);
++    MSize i, hmask = t->hmask;
++    for (i = 0; i <= hmask; i++) {
++      Node *n = &node[i];
++      if (!tvisnil(&n->val)) {
++        GCtab *trnode = NULL;
++        if (tvisgcv(&n->key)) {
++          if (tvisstr(&n->key)) {
++            trnode = traverse(L, gcval(&n->key), visited, parent, strdata(strV(&n->key)), 1);
++          } else {
++            trnode = traverse(L, gcval(&n->key), visited, parent, "", 0);
++          }
++        } else {
++          if (tvislightud(&n->key)) {
++            void* lud = lightudV(G(L), &n->key);
++            trnode = tree_new_node(L, (GCobj *)lud, visited, parent, "Lightuserdata");
++          } else if (tvistrue(&n->key)) {
++            trnode = tree_new_node(L, NULL, visited, parent, "True");
++          } else if (tvisfalse(&n->key)) {
++            trnode = tree_new_node(L, NULL, visited, parent, "False");
++          } else if (tvisnumber(&n->key)) {
++            if (tvisint(&n->key)) {
++              sprintf(buf, "Number %d", intV(&n->key));
++            } else {
++              sprintf(buf, "Number %f", numV(&n->key));
++            }
++
++            trnode = tree_new_node(L, NULL, visited, parent, buf);
++          } else {
++            lj_assertL(0, "Shoud not happen. Primitive key type (%s).", lj_typename(&n->key));
++          }
++
++          // None GC value's size has been considered already in
++          // table's size calculation.
++          tree_node_set_size(L, trnode, 0);
++
++          tree_add_sub(L, parent, trnode);
++        }
++
++        lj_assertL(trnode != NULL, "All key types are handled, so trnode should not be NULL");
++
++        // For non gcv value, because they can not point to other
++        // objects, no further processing is needed.
++        if (tvisgcv(&n->val)) {
++          traverse(L, gcval(&n->val), visited, trnode, "", 0);
++        }
++      }
++    }
++  }
++}
++
++static void traverse_func(lua_State *L, GCfunc *fn, GCtab *visited, GCtab *parent) {
++  traverse(L, gcref(fn->c.env), visited, parent, "func env", 0);
++
++  if (isluafunc(fn)) {
++    uint32_t i;
++    lj_assertL(fn->l.nupvalues <= funcproto(fn)->sizeuv,
++               "function upvalues out of range");
++    traverse(L, obj2gco(funcproto(fn)), visited, parent, "", 0);
++    for (i = 0; i < fn->l.nupvalues; i++) {
++      traverse(L, obj2gco(&gcref(fn->l.uvptr[i])->uv), visited, parent, "Lua func upvalues", 0);
++    }
++  } else {
++    uint32_t i;
++    for (i = 0; i < fn->c.nupvalues; i++) {
++      if (tvisgcv(&fn->c.upvalue[i])) {
++        traverse(L, gcval(&fn->c.upvalue[i]), visited, parent, "C func upvalues", 0);
++      }
++    }
++  }
++}
++
++static void traverse_thread(lua_State *L, lua_State *th, GCtab *visited, GCtab *parent) {
++  TValue *o, *top = th->top;
++  int i = 0;
++  char buf[100];
++  for (o = tvref(th->stack)+1+LJ_FR2; o < top; o++, i++) {
++    if (tvisgcv(o)) {
++      sprintf(buf, "stack [%d]", i);
++      traverse(L, gcval(o), visited, parent, buf, 0);
++    }
++  }
++
++  traverse(L, gcref(th->env), visited, parent, "thread env", 0);
++
++  // Handle hidden function (or L). Refer gc_traverse_frames().
++  if (!LJ_FR2) {
++      TValue *frame, *bot = tvref(th->stack);
++      for (frame = th->base-1; frame > bot+LJ_FR2; frame = frame_prev(frame)) {
++        traverse(L, frame_gc(frame), visited, parent, "", 0);
++      }
++  }
++
++  // the openupval list is not handled here. Instead, it is handled in
++  // traverse_func().
++}
++
++static void traverse_proto(lua_State *L, GCproto *pt, GCtab *visited, GCtab *parent) {
++  ptrdiff_t i;
++  traverse(L, gcref(pt->chunkname), visited, parent, "proto chunkname", 0);
++  for (i = -(ptrdiff_t)pt->sizekgc; i < 0; i++) {
++    traverse(L, proto_kgc(pt, i), visited, parent, "kgc", 0);
++  }
++#if LJ_HASJIT
++  if (pt->trace) {
++    GCobj *t = obj2gco(traceref(G2J(G(L)), pt->trace));
++    traverse(L, t, visited, parent, "trace", 0);
++  }
++#endif
++}
++
++static void add_to_visited(lua_State *L, GCtab *visited, intptr_t ptr, GCtab *parent) {
++  TValue key;
++  setintptrV(&key, ptr);
++
++  TValue *tv = lj_tab_set(L, visited, &key);
++  settabV(L, tv, parent);
++}
++
++static int64_t tree_node_get_num_field(lua_State *L, GCtab *node, const char *field) {
++  TValue key;
++  setstrV(L, &key, lj_str_newz(L, field));
++  cTValue *v = lj_tab_get(L, node, &key);
++
++  if (tvisnil(v)) {
++    return 0;
++  } else {
++    return numV(v);
++  }
++}
++
++static void tree_node_set_size(lua_State *L, GCtab *node, const int64_t sz) {
++  setnumV(lj_tab_setstr(L, node, lj_str_newlit(L, "size")),
++          sz);
++}
++
++static void tree_node_set_type(lua_State *L, GCtab *node, const char *t) {
++  setstrV(L, lj_tab_setstr(L, node, lj_str_newlit(L, "type")),
++          lj_str_newz(L, t));
++}
++
++static void tree_node_set_info(lua_State *L, GCtab *node, const char *info) {
++  setstrV(L, lj_tab_setstr(L, node, lj_str_newlit(L, "info")),
++          lj_str_newz(L, info));
++}
++
++static GCtab *tree_new_node(lua_State *L, GCobj *r, GCtab *visited, GCtab *parent, const char *info) {
++  GCtab *n = lj_tab_new_ah(L, 0, 1);
++  // set field addr to r.
++  setintptrV(lj_tab_setstr(L, n, lj_str_newlit(L, "lj_mem_addr")),
++             (intptr_t)r);
++
++  tree_node_set_info(L, n, info);
++
++  // create a subs field for holding sub node list.
++  // TODO check whether 4 is good size.
++  GCtab *list = lj_tab_new_ah(L, 4, 0);
++  settabV(L, lj_tab_setstr(L, n, lj_str_newlit(L, "lj_mem_subs")),
++          list);
++
++  add_to_visited(L, visited, (intptr_t)n, n);
++  add_to_visited(L, visited, (intptr_t)list, n);
++
++  int64_t depth = tree_node_get_num_field(L, parent, "depth") + 1;
++
++  setnumV(lj_tab_setstr(L, n, lj_str_newlit(L, "depth")), depth);
++
++  return n;
++}
++
++static void tree_add_sub(lua_State *L, GCtab *parent, GCtab *sub) {
++  cTValue *tvlist = lj_tab_getstr(parent, lj_str_newlit(L, "lj_mem_subs"));
++  GCtab *list = tabV(tvlist);
++  // TODO assert list is no nil. shall I use tvisnil or just NULL?
++  MSize sz = lj_tab_len(list);
++
++  TValue *tv = (TValue *)lj_tab_setint(L, list, sz + 1);
++  settabV(L, tv, sub);
++}
++
++static GCtab *traverse(lua_State *L, GCobj *r, GCtab *visited, GCtab *parent, const char *info, int is_tskey) {
++  int gct = r->gch.gct;
++
++  // TODO check whether gct >= ~LJ_TSTR && gct <= ~LJ_TUDATA is correct.
++  lj_assertL(gct >= ~LJ_TSTR && gct <= ~LJ_TUDATA,
++             "r is not GCobj pointer, gct = %d", gct);
++
++  TValue key;
++  // Use intptr_t as key in visited table.
++  setintptrV(&key, (intptr_t)r);
++  cTValue *exist = lj_tab_get(L, visited, &key);
++
++  if (tvisnil(exist)) {
++    GCtab *trsub;
++    int64_t depth = tree_node_get_num_field(L, parent, "depth");
++    if (depth > LJ_MEM_MAX_DEPTH) {
++      trsub = tree_new_node(L, r, visited, parent,
++                           "reach max memory hierarchy depth and truncated.");
++      add_to_visited(L, visited, (intptr_t)r, trsub);
++
++      tree_add_sub(L, parent, trsub);
++
++      // Use the parent's size to make this node easier to see in the
++      // finally result. Since this case is rare, it has little impact
++      // on the heap memory dump result. Also need to add 1 in case
++      // its parent size is 0.
++      tree_node_set_size(L, trsub,
++                         tree_node_get_num_field(L, parent, "size") + 1);
++      tree_node_set_type(L, trsub, lj_obj_itypename[gct]);
++
++      return trsub;
++    }
++
++    trsub = tree_new_node(L, r, visited, parent, info);
++    add_to_visited(L, visited, (intptr_t)r, trsub);
++
++    tree_add_sub(L, parent, trsub);
++
++    tree_node_set_type(L, trsub, lj_obj_itypename[gct]);
++
++    if (LJ_LIKELY(gct == ~LJ_TTAB)) {
++      GCtab *t = gco2tab(r);
++      size_t sz = sizeof(GCtab) + sizeof(TValue) * t->asize +
++        (t->hmask ? sizeof(Node) * (t->hmask + 1) : 0);
++      tree_node_set_size(L, trsub, sz);
++
++      traverse_tab(L, gco2tab(r), visited, trsub);
++    } else if (LJ_LIKELY(gct == ~LJ_TFUNC)) {
++      GCfunc *fn = gco2func(r);
++      // fn env is not part of the func's memory size.
++      size_t sz = isluafunc(fn) ? sizeLfunc((MSize)fn->l.nupvalues) :
++        sizeCfunc((MSize)fn->c.nupvalues);
++      tree_node_set_size(L, trsub, sz);
++
++      traverse_func(L, fn, visited, trsub);
++    } else if (LJ_LIKELY(gct == ~LJ_TTHREAD)) {
++      lua_State *th = gco2th(r);
++      size_t sz = sizeof(lua_State) + sizeof(TValue) * th->stacksize;
++      tree_node_set_size(L, trsub, sz);
++
++      traverse_thread(L, th, visited, trsub);
++    } else if (LJ_LIKELY(gct == ~LJ_TSTR)) {
++      GCstr *s = gco2str(r);
++      tree_node_set_size(L, trsub, s->len);
++
++      if (!is_tskey) {
++        tree_node_set_info(L, trsub, strdata(s));
++      }
++    } else if (LJ_LIKELY(gct == ~LJ_TCDATA)) {
++      // For field contains reference/pointer, they are not in the
++      // scope Lua Heap. Because they are allocated by user manually,
++      // so we do not do further process for reference/pointer.
++      GCcdata *cd = gco2cd(r);
++      MSize cd_size = 0;
++      global_State *g = G(L);
++      GCstr* name = NULL;
++      CType *ct = ctype_raw(ctype_ctsG(g), cd->ctypeid);
++
++      if (gcref(ct->name)) {
++        name = gco2str(gcref(ct->name));
++        tree_node_set_info(L, trsub, strdata(name));
++      }
++
++      if (LJ_LIKELY(!cdataisv(cd))) {
++        CTSize sz = ctype_hassize(ct->info) ? ct->size : CTSIZE_PTR;
++        cd_size = sizeof(GCcdata) + sz;
++      } else {
++        cd_size = sizecdatav(cd);
++      }
++
++      tree_node_set_size(L, trsub, cd_size);
++    } else if (LJ_LIKELY(gct == ~LJ_TPROTO)) {
++      GCproto *pt = gco2pt(r);
++
++      traverse_proto(L, pt, visited, trsub);
++      tree_node_set_size(L, trsub, pt->sizept);
++
++      char buf[20];
++      sprintf(buf, "L:%d", lj_debug_line(pt, 0));
++      tree_node_set_info(L, trsub, buf);
++    } else {
++      GCtab *fake = tree_new_node(L, r, visited, parent, "TODO type handling not implemented yet");
++      tree_add_sub(L, trsub, fake);
++      tree_node_set_size(L, trsub, 1);
++      tree_node_set_size(L, fake, 1);
++    }
++
++    return trsub;
++  } else if (is_tskey) { // re-create tree node for string because there is table string key duplication.
++    lj_assertL(gct == ~LJ_TSTR, "gct = %d", gct);
++    GCtab *trsub = tree_new_node(L, r, visited, parent, info);
++    add_to_visited(L, visited, (intptr_t)r, trsub);
++
++    tree_add_sub(L, parent, trsub);
++
++    tree_node_set_type(L, trsub, lj_obj_itypename[gct]);
++    GCstr *s = gco2str(r);
++    tree_node_set_size(L, trsub, s->len);
++
++    return trsub;
++  } else {
++    return tabV(exist);
++  }
++}
++
++GCtab *lj_mem_analyze(lua_State *L) {
++  // visited table: key GCRef, value true/false.
++  GCtab *visited = lj_tab_new_ah(L, 0, 10);
++  // exclude the visited from the traversal to avoid infinite traversal loop.
++  add_to_visited(L, visited, (intptr_t)visited, visited);
++
++  GCtab *trroot = tree_new_node(L, NULL, visited, visited, "Root");
++  tree_node_set_size(L, trroot, 0);
++
++  global_State *g = G(L);
++  // order matters here. Putting mainthread env to the first object to
++  // traverse makes the memory graph more clear.
++  traverse(L, gcref(mainthread(g)->env), visited, trroot, "mainthread env", 0);
++  traverse(L, obj2gco(mainthread(g)), visited, trroot, "mainthread", 0);
++  cTValue *reg = &g->registrytv;
++  lj_assertL(!tvisgcv(reg) || (~itype(reg) == gcval(reg)->gch.gct), "registery should be an gc obj");
++  traverse(L, gcV(reg), visited, trroot, "registry", 0);
++
++  for (int i = 0; i < GCROOT_MAX; i++) {
++    if (gcref(g->gcroot[i]) != NULL) {
++      // TODO the gcroot name is confusing. Replace it with a better name.
++      traverse(L, gcref(g->gcroot[i]), visited, trroot, "gcroot", 0);
++    }
++  }
++
++#if LJ_HASFFI
++  if (ctype_ctsG(g)) {
++    traverse(L, obj2gco(ctype_ctsG(g)->finalizer), visited, trroot, "ffi finalizer", 0);
++  }
++#endif
++
++  // TODO handle dead objects if we want to run it without full gc.
++
++  return trroot;
++}
+diff --git a/bundle/LuaJIT-2.1-20231117/src/lj_mem_analyze.h b/bundle/LuaJIT-2.1-20231117/src/lj_mem_analyze.h
+new file mode 100644
+index 00000000..0b3839f1
+--- /dev/null
++++ b/bundle/LuaJIT-2.1-20231117/src/lj_mem_analyze.h
+@@ -0,0 +1,12 @@
++/*
++** Memory analyzer.
++*/
++
++#ifndef _LJ_MEM_ANALYZER_H
++#define _LJ_MEM_ANALYZER_H
++
++#include "lj_obj.h"
++
++GCtab *lj_mem_analyze(lua_State *L);
++
++#endif

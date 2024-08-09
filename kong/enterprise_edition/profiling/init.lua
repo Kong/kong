@@ -8,6 +8,7 @@
 local cpu                     = require("kong.enterprise_edition.profiling.cpu")
 local memory                  = require("kong.enterprise_edition.profiling.memory")
 local gc_snapshot             = require("kong.enterprise_edition.profiling.gc_snapshot")
+local memory_analyzer         = require("kong.enterprise_edition.profiling.memory_analyzer")
 
 local EV_SRC_CPU_PROF         = "cpu-profiling"
 local EV_EV_CPU_PROF_START    = "start"
@@ -20,10 +21,14 @@ local EV_EV_MEM_TRAC_STOP     = "stop"
 local EV_SRC_GC_SNAPSHOT      = "gc-snapshot"
 local EV_EV_GC_SNAPSHOT_DUMP  = "dump"
 
+local EV_SRC_MEMORY_ANALYZER  = "memory-analyzer"
+local EV_EV_MEMORY_ANALYZE    = "analyze"
+
 local _M = {
   cpu         = {},
   memory      = {},
   gc_snapshot = {},
+  memory_analyzer = {},
 }
 
 function _M.cpu.start(mode, step, interval, timeout, path, pid)
@@ -93,6 +98,20 @@ function _M.gc_snapshot.state()
 end
 
 
+function _M.memory_analyzer.analyze(path, timeout, pid)
+  return kong.worker_events.post(EV_SRC_MEMORY_ANALYZER, EV_EV_MEMORY_ANALYZE, {
+    pid = pid,
+    timeout = timeout,
+    path = path,
+  })
+end
+
+
+function _M.memory_analyzer.state()
+  return memory_analyzer.state()
+end
+
+
 function _M.init_worker()
   local worker_events = kong.worker_events
 
@@ -138,6 +157,18 @@ function _M.init_worker()
       ngx.log(ngx.ERR, "failed to snapshot GC: ", err)
     end
   end, EV_SRC_GC_SNAPSHOT, EV_EV_GC_SNAPSHOT_DUMP)
+
+  worker_events.register(function(data)
+    if data.pid ~= ngx.worker.pid() then
+      return
+    end
+
+    local pok, err = pcall(memory_analyzer.analyze, data.path, data.timeout)
+
+    if not pok then
+      ngx.log(ngx.ERR, "failed to do memory analysis: ", err)
+    end
+  end, EV_SRC_MEMORY_ANALYZER, EV_EV_MEMORY_ANALYZE)
 
   worker_events.register(function(data)
     if data.pid ~= ngx.worker.pid() then

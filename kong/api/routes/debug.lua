@@ -50,6 +50,10 @@ local MAX_CPU_PROFILING_INTERVAL         = 1000000     -- microseconds
 
 local DEFAULT_GC_SNAPSHOT_TIMEOUT        = 120         -- seconds
 
+-- TODO improve the memory analyzer's timeout implementation to
+-- support more accurate timeout measurement.
+local DEFAULT_MEMORY_ANALYZER_TIMEOUT    = 120         -- seconds
+
 local DEFAULT_MEMORY_TRACING_TIMEOUT     = 10          -- seconds
 local DEFAULT_MEMORY_TRACING_STACK_DEPTH = 8
 local DEFAULT_MEMORY_TRACING_BLOCK_SIZE  = 2^20 * 512  -- 512 MiB
@@ -332,6 +336,45 @@ local routes = {
       end
 
       return kong.response.exit(201, response_body("started", "Dumping snapshot in progress on pid: " .. pid))
+    end,
+  },
+  ["/debug/profiling/memory-analyzer"] = {
+    GET = function(self)
+      local state = profiling.memory_analyzer.state()
+
+      if state.status == "started" then
+        state.remain = math_max(state.timeout_at - ngx_time(), 0)
+        state.timeout_at = nil
+      end
+
+      return kong.response.exit(200, state)
+    end,
+    POST = function(self)
+      local state = profiling.memory_analyzer.state()
+
+      if state.status == "started" then
+        return kong.response.exit(409, response_body("error", "Memory analysis is already active on pid: " .. state.pid))
+      end
+
+      local pid     = tonumber(self.params.pid)     or ngx_worker_pid()
+      local timeout = tonumber(self.params.timeout) or DEFAULT_MEMORY_ANALYZER_TIMEOUT
+
+      if timeout < MIN_PROFILING_TIMEOUT or timeout > MAX_PROFILING_TIMEOUT then
+        return kong.response.exit(400, response_body("error", ERR_MSG_INVALID_PROFILING_TIMEOUT .. timeout))
+      end
+
+      if not is_valid_worker_pid(pid) then
+        return kong.response.exit(400, response_body("error", "Invalid pid: " .. pid))
+      end
+
+      local ok, err = profiling.memory_analyzer.analyze(make_profiling_data_path("memory-analyzer", pid, false),
+                                                        timeout, pid)
+
+      if not ok then
+        return kong.response.exit(500, response_body("error", "Failed to start memory analyzer: " .. err))
+      end
+
+      return kong.response.exit(201, response_body("started", "Running memory analyzer on pid: " .. pid))
     end,
   },
   ["/debug/profiling/memory"] = {
