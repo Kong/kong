@@ -285,20 +285,6 @@ return {
     { logging = logging_schema },
   },
   entity_checks = {
-    -- these three checks run in a chain, to ensure that all auth params for each respective "set" are specified
-    { conditional_at_least_one_of = { if_field = "model.provider",
-                                      if_match = { one_of = { "openai", "anthropic", "cohere" } },
-                                      then_at_least_one_of = { "auth.header_name", "auth.param_name" },
-                                      then_err = "must set one of %s, and its respective options, when provider is not self-hosted" }},
-    {
-      conditional_at_least_one_of = {
-        if_field = "model.provider",
-        if_match = { one_of = { "azure" } },
-        then_at_least_one_of = { "auth.header_name", "auth.param_name", "auth.azure_use_managed_identity" },
-        then_err = "must set one of %s, and its respective options, when azure provider is set"
-      }
-    },
-
     { mutually_required = { "auth.header_name", "auth.header_value" }, },
     { mutually_required = { "auth.param_name", "auth.param_value", "auth.param_location" }, },
 
