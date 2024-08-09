@@ -70,9 +70,6 @@ local AWS = require("resty.aws")
 local AWS_REGION do
   AWS_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")
 end
-
-local AZURE_TOKEN_SCOPE = "https://cognitiveservices.azure.com/.default"
-local AZURE_TOKEN_VERSION = "v2.0"
 ----
 
 _M._CONST = {

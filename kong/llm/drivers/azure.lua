@@ -40,7 +40,7 @@ function _M.post_request(conf)
   end
 end
 
-function _M.subrequest(body, conf, http_opts, return_res_table)
+function _M.subrequest(body, conf, http_opts, return_res_table, identity_interface)
   local body_string, err
 
   if type(body) == "table" then
