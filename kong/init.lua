@@ -69,7 +69,6 @@ _G.kong = kong_global.new() -- no versioned PDK for plugins for now
 
 
 local DB = require "kong.db"
-local dns = require "kong.tools.dns"
 local meta = require "kong.meta"
 local lapis = require "lapis"
 local runloop = require "kong.runloop.handler"
