@@ -389,7 +389,10 @@ function _M:access(conf)
   local kong_ctx_shared = kong.ctx.shared
 
   -- record the request header very early, otherwise kong.serivce.request.set_header will polute it
-  kong_ctx_plugin.accept_gzip = (kong.request.get_header("Accept-Encoding") or ""):match("%f[%a]gzip%f[%A]")
+  -- and only run this once, this function may be called multiple times by balancer
+  if kong_ctx_plugin.accept_gzip == nil then
+    kong_ctx_plugin.accept_gzip = not not (kong.request.get_header("Accept-Encoding") or ""):match("%f[%a]gzip%f[%A]")
+  end
 
   -- store the route_type in ctx for use in response parsing
   local route_type = conf.route_type
