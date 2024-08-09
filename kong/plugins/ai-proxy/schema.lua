@@ -20,6 +20,8 @@ local ai_proxy_only_config = {
       gt = 0,
       description = "max allowed body size allowed to be introspected",}
     },
+    { model_name_header = { description = "Display the model name selected in the X-Kong-LLM-Model response header",
+    type = "boolean", default = true, }},
 }
 
 for i, v in pairs(ai_proxy_only_config) do

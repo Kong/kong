@@ -335,6 +335,11 @@ function _M:header_filter(conf)
     kong.response.clear_header(v)
   end
 
+  if ngx.var.http_kong_debug or conf.model_name_header then
+    local name = conf.model.provider .. "/" .. (kong.ctx.plugin.llm_model_requested or conf.model.name)
+    kong.response.set_header("X-Kong-LLM-Model", name)
+  end
+
   -- we use openai's streaming mode (SSE)
   if llm_state.is_streaming_mode() then
     -- we are going to send plaintext event-stream frames for ALL models

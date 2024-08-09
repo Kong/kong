@@ -510,6 +510,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
               },
             },
             max_request_body_size = 8192,
+            model_name_header = true,
           },
         }
         -- ]]
@@ -518,6 +519,9 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
         -- max body size
         expected.config.max_request_body_size = nil
+
+        -- model name header
+        expected.config.model_name_header = nil
 
         -- gemini fields
         expected.config.auth.gcp_service_account_json = nil
@@ -695,6 +699,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
               },
             },
             max_request_body_size = 8192,
+            model_name_header = true,
           },
         }
         -- ]]
@@ -703,6 +708,9 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
         -- max body size
         expected.config.max_request_body_size = nil
+
+        -- model name header
+        expected.config.model_name_header = nil
 
         -- gemini fields
         expected.config.auth.gcp_service_account_json = nil

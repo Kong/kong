@@ -175,6 +175,7 @@ return {
       "model.options.bedrock",
       "auth.aws_access_key_id",
       "auth.aws_secret_access_key",
+      "model_name_header",
     },
     ai_prompt_decorator = {
       "max_request_body_size",
