@@ -85,7 +85,7 @@ overrides:
 
 rpm:
   prefixes:
-  - /usr/local
+  - /
   signature:
     # PGP secret key (can also be ASCII-armored), the passphrase is taken
     # from the environment variable $NFPM_RPM_PASSPHRASE with a fallback
