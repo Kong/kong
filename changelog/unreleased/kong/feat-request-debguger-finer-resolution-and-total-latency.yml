@@ -1,0 +1,6 @@
+message: |
+  Improve the latency resolution of the request debugger from milliseconds to microseconds when latency is lower than 1ms.
+  Add a new field `total_time_without_upstream` to request debugger output to show the total latency of the request without upstream latency.
+type: feature
+scope: Core
+
