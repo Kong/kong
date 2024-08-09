@@ -5,9 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local tablex       = require "pl.tablex"
 local pretty       = require "pl.pretty"
-local table_tools  = require "kong.tools.table"
 local cjson        = require "cjson"
 local new_tab      = require "table.new"
 local nkeys        = require "table.nkeys"
@@ -15,7 +13,16 @@ local is_reference = require "kong.pdk.vault".is_reference
 local json         = require "kong.db.schema.json"
 local cjson_safe   = require "cjson.safe"
 local deprecation  = require "kong.deprecation"
-local deepcompare  = require "pl.tablex".deepcompare
+
+
+local compare_no_order = require "pl.tablex".compare_no_order
+local deepcompare = require "pl.tablex".deepcompare
+
+
+local cycle_aware_deep_copy = require "kong.tools.table".cycle_aware_deep_copy
+local table_merge = require "kong.tools.table".table_merge
+local table_path = require "kong.tools.table".table_path
+local is_array = require "kong.tools.table".is_array
 
 
 local setmetatable = setmetatable
@@ -1034,7 +1041,7 @@ end
 local function handle_missing_field(field, value, opts)
   local no_defaults = opts and opts.no_defaults
   if field.default ~= nil and not no_defaults then
-    local copy = table_tools.cycle_aware_deep_copy(field.default)
+    local copy = cycle_aware_deep_copy(field.default)
     if (field.type == "array" or field.type == "set")
       and type(copy) == "table"
       and not getmetatable(copy)
@@ -1731,7 +1738,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
 
   local is_select = context == "select"
   if not is_select then
-    data = table_tools.cycle_aware_deep_copy(data)
+    data = cycle_aware_deep_copy(data)
   end
 
   local shorthand_fields = self.shorthand_fields
@@ -1748,7 +1755,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
           has_errs = true
         else
           data[sname] = nil
-          local read_only_data = table_tools.cycle_aware_deep_copy(data)
+          local read_only_data = cycle_aware_deep_copy(data)
           local new_values = sdata.func(value, read_only_data)
           if new_values then
             for k, v in pairs(new_values) do
@@ -1757,7 +1764,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
                 if data[k] and data[k] ~= ngx.null then
                   source = data[k]
                 end
-                data[k] = tablex.merge(source, v, true)
+                data[k] = table_merge(source, v)
               else
                 data[k] = v
               end
@@ -1768,7 +1775,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
 
       if is_select and not(opts and opts.hide_shorthands) then
         if sdata.translate_backwards then
-          data[sname] = table_tools.table_path(data, sdata.translate_backwards)
+          data[sname] = table_path(data, sdata.translate_backwards)
         elseif sdata.translate_backwards_with  then
           data[sname] = sdata.translate_backwards_with(data)
         end
@@ -2077,7 +2084,7 @@ function Schema:validate_immutable_fields(input, entity)
   local errors = {}
 
   for key, field in self:each_field(input) do
-    local compare = table_tools.is_array(input[key]) and tablex.compare_no_order or tablex.deepcompare
+    local compare = is_array(input[key]) and compare_no_order or deepcompare
 
     if field.immutable and entity[key] ~= nil and input[key] ~= nil
         and not compare(input[key], entity[key]) then
@@ -2437,7 +2444,7 @@ function Schema.new(definition, is_subschema)
     return nil, validation_errors.SCHEMA_NO_FIELDS
   end
 
-  local self = table_tools.cycle_aware_deep_copy(definition)
+  local self = cycle_aware_deep_copy(definition)
   setmetatable(self, Schema)
 
   local cache_key = self.cache_key
@@ -2495,7 +2502,7 @@ function Schema.new(definition, is_subschema)
     _cache[self.name].schema = self
   end
 
-  -- timestamp-irrelevant fields should not be a critial factor on entities to
+  -- timestamp-irrelevant fields should not be a critical factor on entities to
   -- be loaded or refreshed correctly. These fields, such as `ttl` and `updated_at`
   -- might be ignored during validation.
   -- unvalidated_fields is added for ignoring some fields, key in the table is the
