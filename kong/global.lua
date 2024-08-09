@@ -20,8 +20,8 @@ local KONG_VERSION_NUM = tonumber(string.format("%d%.2d%.2d",
                                   meta._VERSION_TABLE.patch))
 
 local LOCK_OPTS = {
-  exptime = 10,
-  timeout = 5,
+  exptime = 20,
+  timeout = 10,
 }
 
 
