@@ -1,0 +1,3 @@
+message: Deprecated shorthand fields don't take precedence over replacement fields when both are specified.
+type: bugfix
+scope: Core
