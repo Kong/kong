@@ -6,7 +6,6 @@ local kong = kong
 local type = type
 local error = error
 local ipairs = ipairs
-local tostring = tostring
 local fmt = string.format
 
 
@@ -30,23 +29,6 @@ local ERR_DUPLICATE_API_KEY   = "Duplicate API key found"
 local ERR_NO_API_KEY          = "No API key found in request"
 local ERR_INVALID_AUTH_CRED   = "Unauthorized"
 local ERR_INVALID_PLUGIN_CONF = "Invalid plugin configuration"
-local ERR_UNEXPECTED          = "An unexpected error occurred"
-
-
-local function load_credential(key)
-  local cred, err = kong.db.keyauth_credentials:select_by_key(key)
-  if not cred then
-    return nil, err
-  end
-
-  if cred.ttl == 0 then
-    kong.log.debug("key expired")
-
-    return nil
-  end
-
-  return cred, nil, cred.ttl
-end
 
 
 local function set_consumer(consumer, credential)
@@ -177,21 +159,31 @@ local function do_authentication(conf)
 
   -- retrieve our consumer linked to this API key
 
-  local cache = kong.cache
+--  local cache = kong.cache
+--
+--
+--  local credential_cache_key = kong.db.keyauth_credentials:cache_key(key)
+--  -- hit_level be 1 if stale value is propelled into L1 cache; so set a minimal `resurrect_ttl`
+--  local credential, err, hit_level = cache:get(credential_cache_key, { resurrect_ttl = 0.001 }, load_credential,
+--                                    key)
+--
+--  if err then
+--    return error(err)
+--  end
+--
+--  kong.log.debug("credential hit_level: ", tostring(hit_level))
+--
+--  -- no credential in DB, for this key, it is invalid, HTTP 401
+--  if not credential or hit_level == 4 then
+--    return nil, unauthorized(ERR_INVALID_AUTH_CRED, www_auth_content)
+--  end
+--
+--  if not credential or hit_level == 4 then
+--    return nil, unauthorized(ERR_INVALID_AUTH_CRED, www_auth_content)
+--  end
 
-  local credential_cache_key = kong.db.keyauth_credentials:cache_key(key)
-  -- hit_level be 1 if stale value is propelled into L1 cache; so set a minimal `resurrect_ttl`
-  local credential, err, hit_level = cache:get(credential_cache_key, { resurrect_ttl = 0.001 }, load_credential,
-                                    key)
-
-  if err then
-    return error(err)
-  end
-
-  kong.log.debug("credential hit_level: ", tostring(hit_level))
-
-  -- no credential in DB, for this key, it is invalid, HTTP 401
-  if not credential or hit_level == 4 then
+  local key_data = conf.keys[key]
+  if not key_data then
     return nil, unauthorized(ERR_INVALID_AUTH_CRED, www_auth_content)
   end
 
@@ -199,16 +191,19 @@ local function do_authentication(conf)
   -- Success, this request is authenticated
   -----------------------------------------
 
-  -- retrieve the consumer linked to this API key, to set appropriate headers
-  local consumer_cache_key, consumer
-  consumer_cache_key = kong.db.consumers:cache_key(credential.consumer.id)
-  consumer, err      = cache:get(consumer_cache_key, nil,
-                                 kong.client.load_consumer,
-                                 credential.consumer.id)
-  if err then
-    kong.log.err(err)
-    return nil, server_error(ERR_UNEXPECTED)
-  end
+  local consumer = key_data.consumer
+  local credential = key_data.id and { id = key_data.id }
+
+--  -- retrieve the consumer linked to this API key, to set appropriate headers
+--  local consumer_cache_key, consumer
+--  consumer_cache_key = kong.db.consumers:cache_key(credential.consumer.id)
+--  consumer, err      = cache:get(consumer_cache_key, nil,
+--                                 kong.client.load_consumer,
+--                                 credential.consumer.id)
+--  if err then
+--    kong.log.err(err)
+--    return nil, server_error(ERR_UNEXPECTED)
+--  end
 
   set_consumer(consumer, credential)
 
@@ -216,15 +211,18 @@ local function do_authentication(conf)
 end
 
 local function set_anonymous_consumer(anonymous)
-  local consumer_cache_key = kong.db.consumers:cache_key(anonymous)
-  local consumer, err = kong.cache:get(consumer_cache_key, nil,
-                                        kong.client.load_consumer,
-                                        anonymous, true)
-  if err then
-    return error(err)
-  end
+--  local consumer_cache_key = kong.db.consumers:cache_key(anonymous)
+--  local consumer, err = kong.cache:get(consumer_cache_key, nil,
+--                                        kong.client.load_consumer,
+--                                        anonymous, true)
+--  if err then
+--    return error(err)
+--  end
+--
+--  set_consumer(consumer)
 
-  set_consumer(consumer)
+  error("TODO")
+
 end
 
 
