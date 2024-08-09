@@ -142,8 +142,8 @@ local function handle_huggingface_stream(event_t, model_info, route_type)
   local event, err = cjson.decode(event_t.data)
 
   if err then
-    ngx.log(ngx.WARN, "failed to decode stream event frame from huggingface: " .. err)
-    return nil, "failed to decode stream event frame from huggingface", nil
+    ngx.log(ngx.WARN, "failed to decode stream event frame from Hugging Face: " .. err)
+    return nil, "failed to decode stream event frame from Hugging Face", nil
   end
 
   local new_event = {}
@@ -249,7 +249,7 @@ end
 function _M.configure_request(conf)
   local parsed_url = huggingface_endpoint(conf)
   if not parsed_url then
-    return kong.response.exit(400, "Could not parse the huggingface model endponit")
+    return kong.response.exit(400, "Could not parse the Hugging Face model endponit")
   end
   if parsed_url.path then
     kong.service.request.set_path(parsed_url.path)
@@ -285,7 +285,7 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
   -- Construct the Hugging Face API URL
   local url = huggingface_endpoint(conf)
   if not url then
-    return nil, nil, "Could not parse the huggingface model endpoint"
+    return nil, nil, "Could not parse the Hugging Face model endpoint"
   end
   local url_string = url.scheme .. "://" .. url.host .. (url.path or "")
 
@@ -304,7 +304,7 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
 
   -- Handle the response
   if not res then
-    return nil, nil, "Request to HuggingFace API failed: " .. (err or "unknown error")
+    return nil, nil, "Request to Hugging Face API failed: " .. (err or "unknown error")
   end
 
   -- Check if the response should be returned as a table
