@@ -280,6 +280,7 @@ build = {
     ["kong.api.routes.tags"] = "kong/api/routes/tags.lua",
     ["kong.api.routes.targets"] = "kong/api/routes/targets.lua",
     ["kong.api.routes.upstreams"] = "kong/api/routes/upstreams.lua",
+    ["kong.api.routes.dns"] = "kong/api/routes/dns.lua",
     ["kong.api.routes.vitals" ] = "kong/api/routes/vitals.lua",
     ["kong.api.routes.workspaces"] = "kong/api/routes/workspaces.lua",
 
