@@ -133,6 +133,7 @@ describe("vault resurrect_ttl and rotation (#" .. strategy .. ") #" .. vault.nam
   lazy_setup(function()
     helpers.setenv("KONG_LUA_PATH_OVERRIDE", LUA_PATH)
     helpers.setenv("KONG_VAULT_ROTATION_INTERVAL", "1")
+    helpers.setenv("SECRETS_ROTATION_ERROR_LOGGING_MAX_COUNT", "1")
 
     vault:setup()
     vault:create_secret(secret, "init")
@@ -226,8 +227,11 @@ describe("vault resurrect_ttl and rotation (#" .. strategy .. ") #" .. vault.nam
     check_plugin_secret("old", 5)
     vault:delete_secret(secret)
     ngx.sleep(2.5)
+    assert.logfile().has.line(fmt([[could not retrieve value for reference .*vault.*%s\/%s.*]], vault.prefix, secret), false, 4)
+    helpers.clean_logfile()
     check_plugin_secret("old", 5)
     check_plugin_secret("", 5)
+    assert.logfile().has.no.line(fmt([[could not retrieve value for reference .*vault.*%s\/%s.*]], vault.prefix, secret), false, 4)
   end)
 end)
 
