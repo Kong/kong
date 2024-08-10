@@ -23,6 +23,7 @@ local pl_path = require "pl.path"
 local tablex = require "pl.tablex"
 local log = require "kong.cmd.utils.log"
 local env = require "kong.cmd.utils.env"
+local constants = require "kong.constants"
 
 local ee_conf_loader = require "kong.enterprise_edition.conf_loader"
 
@@ -488,6 +489,10 @@ local function load(path, custom_conf, opts)
 
   -- load absolute paths
   conf.prefix = abspath(conf.prefix)
+
+  -- The socket path is where we store listening unix sockets for IPC and private APIs.
+  -- It is derived from the prefix and is NOT intended to be user-configurable
+  conf.socket_path = pl_path.join(conf.prefix, constants.SOCKET_DIRECTORY)
 
   if conf.lua_ssl_trusted_certificate
      and #conf.lua_ssl_trusted_certificate > 0 then

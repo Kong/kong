@@ -4000,10 +4000,13 @@ end
 -- @param preserve_dc ???
 local function cleanup_kong(prefix, preserve_prefix, preserve_dc)
   -- remove socket files to ensure `pl.dir.rmtree()` ok
-  local socks = { "/worker_events.sock", "/stream_worker_events.sock", }
-  for _, name in ipairs(socks) do
-    local sock_file = (prefix or conf.prefix) .. name
-    os.remove(sock_file)
+  prefix = prefix or conf.prefix
+  local socket_path = pl_path.join(prefix, constants.SOCKET_DIRECTORY)
+  for child in lfs.dir(socket_path) do
+    if child:sub(-5) == ".sock" then
+      local path = pl_path.join(socket_path, child)
+      os.remove(path)
+    end
   end
 
   -- note: set env var "KONG_TEST_DONT_CLEAN" !! the "_TEST" will be dropped

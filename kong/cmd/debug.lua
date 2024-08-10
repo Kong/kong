@@ -305,7 +305,7 @@ local function execute(args)
   -- retrieve prefix or use given one
   local conf = assert(conf_loader(args.conf, { prefix = args.prefix }))
   local socket_path = "unix:" .. (args.unix_socket  or
-                                  conf.prefix .. "/kong_debug.sock")
+                                  (conf.socket_path .. "/kong_debug.sock"))
 
   -- construct the data of POST/PUT
   local options = {}

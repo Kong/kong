@@ -328,6 +328,8 @@ local constants = {
       service = "upstream",
     }
   },
+
+  SOCKET_DIRECTORY = "sockets",
 }
 
 -- XXX EE: add enterprise-specific CLUSTERING_SYNC_STATUS enum values before

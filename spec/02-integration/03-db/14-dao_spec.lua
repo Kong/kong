@@ -92,7 +92,7 @@ for _, strategy in helpers.all_strategies() do
         local kong_global = require("kong.global")
         local kong = _G.kong
 
-        kong.worker_events = assert(kong_global.init_worker_events())
+        kong.worker_events = assert(kong_global.init_worker_events(kong.configuration))
         kong.cluster_events = assert(kong_global.init_cluster_events(kong.configuration, kong.db))
         kong.cache = assert(kong_global.init_cache(kong.configuration, kong.cluster_events, kong.worker_events))
         kong.core_cache = assert(kong_global.init_core_cache(kong.configuration, kong.cluster_events, kong.worker_events))
