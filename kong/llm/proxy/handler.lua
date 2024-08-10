@@ -312,6 +312,7 @@ local function transform_body(conf)
   end
 
   kong.ctx.plugin.buffered_response_body = response_body
+  llm_state.set_parsed_response(response_body) -- to be consumed by other plugins
 end
 
 function _M:header_filter(conf)
@@ -321,7 +322,8 @@ function _M:header_filter(conf)
   local ai_driver = require("kong.llm.drivers." .. conf.model.provider)
   ai_driver.post_request(conf)
 
-  if llm_state.should_disable_ai_proxy_response_transform() then
+  -- it's an error, or it's from a generated response of other plugin
+  if llm_state.should_disable_ai_proxy_response_transform() or kong.response.get_source() ~= "service" then
     return
   end
 
@@ -385,13 +387,12 @@ function _M:body_filter(conf)
   end
 end
 
-function _M:rewrite(conf)
-  llm_state.set_ai_proxy_conf(conf)
-end
-
 function _M:access(conf)
   local kong_ctx_plugin = kong.ctx.plugin
   local kong_ctx_shared = kong.ctx.shared
+
+  -- to be consumer by other plugin like ai-semantic-cache
+  llm_state.set_ai_proxy_conf(conf)
 
   -- record the request header very early, otherwise kong.serivce.request.set_header will polute it
   -- and only run this once, this function may be called multiple times by balancer
