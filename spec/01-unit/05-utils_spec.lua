@@ -181,6 +181,11 @@ describe("Utils", function()
       end)
 
       it("test parsing directive header", function()
+        -- EMPTY table return by the function with `nil` should be read-only
+        assert.is_false(pcall(function()
+          tools_http.parse_directive_header(nil)["foo"] = "bar"
+        end))
+
         -- test null
         assert.same(tools_http.parse_directive_header(nil), {})
 
