@@ -160,6 +160,23 @@ An alternative is to edit the `~/.cargo/config` file and add the following lines
 git-fetch-with-cli = true
 ```
 
+You also have to make sure the `git` CLI is using the proper protocol to fetch the dependencies
+if you are authenticated with
+[Personal Access Token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token).
+
+```shell
+# If you are using the HTTPS protocol to clone the repository
+# YOU ONLY NEED TO DO THIS ONLY ONCE FOR THIS DIRECTORY
+git config --local url."https://${GITHUB_TOKEN}@github.com/".insteadOf 'git@github.com:'
+git config --local url."https://${GITHUB_TOKEN}@github.com".insteadOf 'https://github.com'
+
+
+# If you are using the SSH protocol to clone the repository
+# YOU ONLY NEED TO DO THIS ONLY ONCE FOR THIS DIRECTORY
+git config --local url.'git@github.com:'.insteadOf 'https://github.com'
+git config --local url.'ssh://git@github.com/'.insteadOf 'https://github.com/'
+```
+
 Finally, we start the build process:
 
 ```
