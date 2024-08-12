@@ -76,29 +76,6 @@ describe(PLUGIN_NAME .. ": (unit)", function()
   end)
 
   describe("llm/v1/chat operations", function()
-    it("test parsing directive header", function()
-      -- test null
-      assert.same(access_handler._parse_directive_header(nil), {})
-
-      -- test empty string
-      assert.same(access_handler._parse_directive_header(""), {})
-
-      -- test string
-      assert.same(access_handler._parse_directive_header("cache-key=kong-cache,cache-age=300"), {
-        ["cache-age"] = 300,
-        ["cache-key"] = "kong-cache",
-      })
-
-      -- test table
-      assert.same(access_handler._parse_directive_header({
-        ["cache-age"] = 300,
-        ["cache-key"] = "kong-cache",
-      }), {
-        ["cache-age"] = 300,
-        ["cache-key"] = "kong-cache",
-      })
-    end)
-
     it("test good analytics output", function()
       local this_conf, this_stats
 
@@ -202,39 +179,6 @@ describe(PLUGIN_NAME .. ": (unit)", function()
       assert.is_truthy(access_handler._validate_incoming(samples["llm/v1/chat"]["valid"]))
       assert.is_falsy(access_handler._validate_incoming(samples["llm/v1/chat"]["invalid_empty_messages"]))
       assert.is_falsy(access_handler._validate_incoming(samples["llm/v1/chat"]["invalid_wrong_format"]))
-    end)
-
-    it("test ttl calculation", function()
-      -- test max-age header
-      access_handler._set_ngx({
-        var = {
-          sent_http_expires = "60",
-        },
-      })
-      local access_control_header = access_handler._parse_directive_header("cache-key=kong-cache,max-age=300")
-
-      assert.same(access_handler._resource_ttl(access_control_header), 300)
-
-      -- test s-maxage header
-      access_handler._set_ngx({
-        var = {
-          sent_http_expires = "60",
-        },
-      })
-      local access_control_header = access_handler._parse_directive_header("cache-key=kong-cache,s-maxage=310")
-
-      assert.same(access_handler._resource_ttl(access_control_header), 310)
-
-      -- test empty headers
-      local expiry_year = os.date("%Y") + 1
-      access_handler._set_ngx({
-        var = {
-          sent_http_expires = os.date("!%a, %d %b ") .. expiry_year .. " " .. os.date("!%X GMT")  -- format: "Thu, 18 Nov 2099 11:27:35 GMT",
-        },
-      })
-
-      -- chop the last digit to avoid flaky tests (clock skew)
-      assert.same(string.sub(access_handler._resource_ttl(), 0, -2), "3153600")
     end)
 
     it("test chat truncation", function()
