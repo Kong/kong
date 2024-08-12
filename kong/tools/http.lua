@@ -1,5 +1,6 @@
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
+local pl_tblx = require "pl.tablex"
 
 
 local type          = type
@@ -23,7 +24,7 @@ local lower         = string.lower
 local max           = math.max
 local tab_new       = require("table.new")
 
-local EMPTY = {}
+local EMPTY = pl_tblx.readonly({})
 
 local _M = {}
 
