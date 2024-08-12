@@ -44,6 +44,30 @@ local setup_client = function(conf)
     noSynchronisation = conf.dns_no_sync,
   }
 
+  -- new dns client
+  if ngx.shared.kong_dns_cache and not _G.busted_legacy_dns_client then
+
+    servers = {}
+
+    if conf.resolver_address then
+      for i, server in ipairs(conf.resolver_address) do
+        local s = normalize_ip(server)
+        servers[i] = { s.host, s.port or 53 }   -- inserting port if omitted
+      end
+    end
+
+    opts = {
+      nameservers = servers,
+      hosts = conf.resolver_hosts_file,
+      family = conf.resolver_family,
+      valid_ttl = conf.resolver_valid_ttl,
+      error_ttl = conf.resolver_error_ttl,
+      stale_ttl = conf.resolver_stale_ttl,
+      cache_size = conf.resolver_lru_cache_size,
+      enable_ipv6 = true, -- allow for IPv6 nameserver addresses
+    }
+  end
+
   assert(dns_client.init(opts))
 
   return dns_client

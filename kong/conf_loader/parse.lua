@@ -553,6 +553,37 @@ local function check_and_parse(conf, opts)
     end
   end
 
+  --- new dns client
+
+  if conf.resolver_address then
+    for _, server in ipairs(conf.resolver_address) do
+      local dns = normalize_ip(server)
+
+      if not dns or dns.type == "name" then
+        errors[#errors + 1] = "resolver_address must be a comma separated list " ..
+                              "in the form of IPv4/6 or IPv4/6:port, got '"  ..
+                              server .. "'"
+      end
+    end
+  end
+
+  if conf.resolver_hosts_file then
+    if not pl_path.isfile(conf.resolver_hosts_file) then
+      errors[#errors + 1] = "resolver_hosts_file: file does not exist"
+    end
+  end
+
+  if conf.resolver_family then
+    local allowed = { A = true, AAAA = true, SRV = true }
+
+    for _, name in ipairs(conf.resolver_family) do
+      if not allowed[upper(name)] then
+        errors[#errors + 1] = fmt("resolver_family: invalid entry '%s'",
+                                  tostring(name))
+      end
+    end
+  end
+
   if not conf.lua_package_cpath then
     conf.lua_package_cpath = ""
   end

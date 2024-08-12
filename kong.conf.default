@@ -1694,6 +1694,107 @@
                                  # single query.
 
 #------------------------------------------------------------------------------
+# New DNS RESOLVER
+#------------------------------------------------------------------------------
+
+# This DNS resolver introduces global caching for DNS records across workers,
+# significantly reducing the query load on DNS servers.
+#
+# It provides observable statistics, you can retrieve them through the Admin API
+# `/status/dns`.
+
+#legacy_dns_client = off         # Disable the new DNS resolver, using the
+                                 # original DNS resolver. See above `dns_xxx`
+                                 # options for the original DNS resolver.
+
+#resolver_address = <name servers parsed from resolv.conf>
+                                 # Comma-separated list of nameservers, each
+                                 # entry in `ip[:port]` format to be used by
+                                 # Kong. If not specified, the nameservers in
+                                 # the local `resolv.conf` file will be used.
+                                 # Port defaults to 53 if omitted. Accepts
+                                 # both IPv4 and IPv6 addresses.
+                                 #
+                                 # Examples:
+                                 #
+                                 # ```
+                                 # resolver_address = 8.8.8.8
+                                 # resolver_address = 8.8.8.8, [::1]
+                                 # resolver_address = 8.8.8.8:53, [::1]:53
+                                 # ```
+
+#resolver_hosts_file = /etc/hosts
+                                 # The hosts file to use. This file is read
+                                 # once and its content is static in memory.
+                                 # To read the file again after modifying it,
+                                 # Kong must be reloaded.
+
+#resolver_family = A,SRV         # The supported query types.
+                                 #
+                                 # For a domain name, Kong will only query
+                                 # either IP addresses (A or AAAA) or SRV
+                                 # records, but not both.
+                                 #
+                                 # It will query SRV records only when the
+                                 # domain matches the
+                                 # "_<proto>._<service>.<name>" format, for
+                                 # example, "_ldap._tcp.example.com".
+                                 #
+                                 # For IP addresses (A or AAAA) resolution, it
+                                 # first attempts IPv4 (A) and then queries
+                                 # IPv6 (AAAA).
+
+#resolver_valid_ttl = <TTL from responses>
+                                 # By default, DNS records are cached using
+                                 # the TTL value of a response. This optional
+                                 # parameter (in seconds) allows overriding it.
+
+#resolver_error_ttl = 1          # TTL in seconds for error responses and empty
+                                 # responses.
+
+#resolver_stale_ttl = 3600       # Defines, in seconds, how long a record will
+                                 # remain in cache past its TTL. This value
+                                 # will be used while the new DNS record is
+                                 # fetched in the background.
+                                 #
+                                 # Stale data will be used from expiry of a
+                                 # record until either the refresh query
+                                 # completes, or the `resolver_stale_ttl` number
+                                 # of seconds have passed.
+                                 #
+                                 # This configuration enables Kong to be more
+                                 # resilient during the DNS server downtime.
+
+#resolver_lru_cache_size = 10000 # The DNS client uses a two-layer cache system:
+                                 # L1 - worker-level LRU Lua VM cache
+                                 # L2 - across-workers shared memory cache
+                                 #
+                                 # This value specifies the maximum allowed
+                                 # number of DNS responses stored in the L1 LRU
+                                 # lua VM cache.
+                                 #
+                                 # A single name query can easily take up 1~10
+                                 # slots, depending on attempted query types and
+                                 # extended domains from /etc/resolv.conf
+                                 # options `domain` or `search`.
+
+#resolver_mem_cache_size = 5m    # This value specifies the size of the L2
+                                 # shared memory cache for DNS responses,
+                                 # `kong_dns_cache`.
+                                 #
+                                 # Accepted units are `k` and `m`, with a
+                                 # minimum recommended value of a few MBs.
+                                 #
+                                 # 5MB shared memory size could store
+                                 # ~20000 DNS responeses with single A record or
+                                 # ~10000 DNS responeses with 2~3 A records.
+                                 #
+                                 # 10MB shared memory size could store
+                                 # ~40000 DNS responeses with single A record or
+                                 # ~20000 DNS responeses with 2~3 A records.
+
+
+#------------------------------------------------------------------------------
 # VAULTS
 #------------------------------------------------------------------------------
 

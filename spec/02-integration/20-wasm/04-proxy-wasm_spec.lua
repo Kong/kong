@@ -145,6 +145,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
       nginx_conf = "spec/fixtures/custom_nginx.template",
       wasm = true,
       dns_hostsfile = hosts_file,
+      resolver_hosts_file = hosts_file,
       plugins = "pre-function,post-function",
     }))
   end)
