@@ -10,7 +10,7 @@ local unpack = table.unpack
 local insert = table.insert
 local type = type
 local select = select
-local EMPTY = require("pl.tablex").readonly({})
+local EMPTY = require("kong.tools.table").EMPTY
 
 --[[
   The preferred maximum number of return values from a hook,

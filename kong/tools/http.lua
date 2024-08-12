@@ -24,7 +24,7 @@ local lower         = string.lower
 local max           = math.max
 local tab_new       = require("table.new")
 
-local EMPTY = pl_tblx.readonly({})
+local EMPTY = require("kong.tools.table").EMPTY
 
 local _M = {}
 
