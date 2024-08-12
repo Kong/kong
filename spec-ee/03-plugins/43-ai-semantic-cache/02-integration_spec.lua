@@ -96,30 +96,68 @@ local function wait_until_key_in_cache(vector_connector, key)
   end, 5)
 end
 
+local function wait_until_log_ok()
+  local decoded
+  local path = helpers.test_conf.prefix .. "/logs/ai-semantic-cache.log"
+  helpers.wait_until(function()
+    local f = io.open(path, "r")
+    if not f then
+      return false
+    end
+
+    local log_payload = assert(f:read("*a"))
+
+    decoded = cjson.decode(log_payload)
+
+    return decoded
+  end, 5)
+
+  os.remove(path)
+
+  return decoded
+end
+
 local PRE_FUNCTION_ACCESS_SCRIPT = [[
   local pl_file = require("pl.file")
   local cjson = require("cjson.safe")
+  local llm_state = require "kong.llm.state"
 
   local original_request = cjson.decode(pl_file.read("spec-ee/fixtures/ai-proxy/chat/request/%s.json"))
-  kong.ctx.shared.ai_proxy_original_request = original_request
 
   if kong.request.get_header("x-test-stream-mode") and kong.request.get_header("x-test-stream-mode") == "true" then
     original_request.stream = true
-    kong.ctx.shared.ai_proxy_original_request.stream = true
   end
 
-  if (%s) then
-    kong.ctx.shared.ai_stream_full_text = pl_file.read("spec-ee/fixtures/ai-proxy/chat/request/%s-stream.txt")
-  else
-    local llm_state = require "kong.llm.state"
-    llm_state.set_parsed_response(pl_file.read("spec-ee/fixtures/ai-proxy/chat/response/%s.json"))
-  end
+  llm_state.set_request_body_table(original_request)
+
+  llm_state.set_parsed_response(pl_file.read("spec-ee/fixtures/ai-proxy/chat/response/%s.json"))
+
+  llm_state.set_ai_proxy_conf({
+    __key__ = "plugins:kong-ai-proxy-1:123456",
+    model = {
+      provider = "openai",
+    },
+    logging = {
+      log_statistics = true
+    },
+  })
 ]]
 
 local PRE_FUNCTION_HEADER_FILTER_SCRIPT = [[
   if (%s) then
     kong.response.set_header("Content-Type", "text/event-stream")
   end
+]]
+
+local POST_FUNCTION_LOG_SCRIPT = [[
+  local cjson = require "cjson"
+  local f = assert(io.open(kong.configuration.prefix .. "/logs/ai-semantic-cache.log", "w"))
+  assert(f:write(cjson.encode({
+    route = kong.request.get_path(),
+    ai = kong.log.serialize().ai,
+    conf = require("kong.llm.state").get_ai_proxy_conf(),
+  })))
+  f:close()
 ]]
 
 
@@ -171,15 +209,26 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
               strip_path = true,
               paths = { fmt("/%s/%s/%s", VECTORDB_STRATEGY, EMBEDDINGS_STRATEGY, TEST_SCENARIO.id) }
             })
+            -- for creating request body contexts
             bp.plugins:insert {
               name = "pre-function",
               route = { id = rt.id },
               config = {
                 access = {
-                  [1] = fmt(PRE_FUNCTION_ACCESS_SCRIPT, TEST_SCENARIO.chat_request, TEST_SCENARIO.stream_request, TEST_SCENARIO.chat_request, TEST_SCENARIO.chat_response),
+                  [1] = fmt(PRE_FUNCTION_ACCESS_SCRIPT, TEST_SCENARIO.chat_request, TEST_SCENARIO.chat_request, TEST_SCENARIO.chat_response),
                 },
                 header_filter = {
                   [1] = fmt(PRE_FUNCTION_HEADER_FILTER_SCRIPT, TEST_SCENARIO.stream_request),
+                },
+              },
+            }
+            -- for collecting analytics logs
+            bp.plugins:insert {
+              name = "post-function",
+              route = { id = rt.id },
+              config = {
+                log = {
+                  [1] = POST_FUNCTION_LOG_SCRIPT,
                 },
               },
             }
@@ -223,11 +272,11 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         -- use the custom test template to create a local mock server
         nginx_conf = "spec/fixtures/custom_nginx.template",
         -- make sure our plugin gets loaded
-        plugins = "bundled," .. PLUGIN_NAME .. ",pre-function",
+        plugins = "bundled," .. PLUGIN_NAME,
         -- write & load declarative config, only if 'strategy=off'
         declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
         -- let me read test files
-        untrusted_lua_sandbox_requires = "pl.file,cjson.safe,kong.llm.state"
+        untrusted_lua = "on",
       }, nil, nil, fixtures))
     end)
 
@@ -263,7 +312,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
               })
 
               vector_connector:drop_index(true)
- 
+
               local r = proxy_client:get(fmt("/%s/%s/%s", VECTORDB_STRATEGY, EMBEDDINGS_STRATEGY, TEST_SCENARIO.id), {
                 headers = {
                   ["content-type"] = "application/json",
@@ -275,6 +324,18 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                 assert.res_status(200 , r)
                 local x_cache_status = assert.header("X-Cache-Status", r)
                 assert.equals("Miss", x_cache_status)
+
+                local decoded = wait_until_log_ok()
+                -- sanity
+                assert.same(fmt("/%s/%s/%s", VECTORDB_STRATEGY, EMBEDDINGS_STRATEGY, TEST_SCENARIO.id), decoded.route)
+                -- keys
+                local ai_node = decoded.ai and decoded.ai["kong-ai-proxy-1"]
+                assert.not_nil(ai_node and ai_node.cache)
+                assert.not_nil(ai_node.cache.fetch_latency)
+                assert.not_nil(ai_node.cache.embeddings_latency)
+                assert.same("Miss", ai_node.cache.cache_status)
+                assert.same("text-embedding-3-large", ai_node.cache.embeddings_model)
+                assert.same("openai", ai_node.cache.embeddings_provider)
 
               elseif TEST_SCENARIO.expect == 400 then
                 if TEST_SCENARIO.embeddings_config == "bad_too_few_dimensions" then
@@ -371,6 +432,20 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                   assert.equals("Hit", x_cache_status)
                   assert.equals("300", x_cache_ttl)
                   assert.equals("kong_semantic_cache", split(x_cache_key, ":")[1])
+
+                  -- logs
+                  local decoded = wait_until_log_ok()
+                  -- sanity
+                  assert.same(fmt("/%s/%s/%s", VECTORDB_STRATEGY, EMBEDDINGS_STRATEGY, TEST_SCENARIO.id), decoded.route)
+                  -- keys
+                  local ai_node = decoded.ai and decoded.ai["kong-ai-proxy-1"]
+                  assert.not_nil(ai_node and ai_node.cache)
+                  assert.not_nil(ai_node.cache.fetch_latency)
+                  assert.not_nil(ai_node.cache.embeddings_latency)
+                  assert.same("Hit", ai_node.cache.cache_status)
+                  assert.same("text-embedding-3-large", ai_node.cache.embeddings_model)
+                  assert.same("openai", ai_node.cache.embeddings_provider)
+
                 elseif TEST_SCENARIO.expect == 400 then
                   assert.res_status(400 , r)
                 end

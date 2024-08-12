@@ -8,7 +8,6 @@
 local kong_meta       = require("kong.meta")
 local vectordb        = require("kong.llm.vectordb")
 local embeddings      = require("kong.ai.embeddings")
-local split           = require("kong.tools.string").split
 local buffer          = require("string.buffer")
 local sha256_hex      = require "kong.tools.sha256".sha256_hex
 local ai_shared       = require("kong.llm.drivers.shared")
@@ -43,52 +42,19 @@ local _STREAM_CHAT_MESSAGE = {
   object = "chat.completions.chunk",
 }
 
-local _STREAM_CHAT_WRAPPER = {
-  choices = {
-    {
-      finish_reason = nil,
-      index = 0,
-      logprobs = cjson.null,
-      message = {
-        role = "assistant",
-        content = nil,
-      },
-    }
-  },
-  id = nil,
-  model = nil,
-  object = "chat.completion",
-  usage = {
-    completion_tokens = 0,
-    prompt_tokens = 0,
-    total_tokens = 0,
-  },
-}
-
 local SEMANTIC_CACHE_NAMESPACE_PREFIX = "kong_semantic_cache:"
 
--- [[ LINKED TEST -> 01-unit_spec.lua.["test error analytics output"] ]]
-local function send_stats_error(conf, cache_status)
-  local aip_conf = llm_state.get_ai_proxy_conf()
-  if not aip_conf then
-    return
-  end
+local STATUS_HIT = "Hit"
+local STATUS_MISS = "Miss"
+local STATUS_REFRESH = "Refresh"
+local STATUS_BYPASS = "Bypass"
+local STATUS_FAILED = "Failed"
 
-  local response_stats = {
-    usage = {
-      prompt_tokens = 0,
-      completion_tokens = 0,
-      total_tokens = 0,
-    },
-    cache = {
-      vector_db = conf.vectordb.driver,
-      embeddings_provider = conf.embeddings.driver,
-      embeddings_model = conf.embeddings.model,
-      cache_status = cache_status,
-    }
-  }
-
-  ai_shared.post_request(aip_conf, response_stats)
+local function set_cache_status(status)
+  llm_state.set_semantic_cache_hit(status == STATUS_HIT)
+  kong.log.debug("Semantic cache: ", status)
+  kong.ctx.plugin.cache_status = status
+  kong.response.set_header("X-Cache-Status", status)
 end
 
 -- Helper function to log warnings and return a 400 response
@@ -97,7 +63,7 @@ local function bad_request(conf, err, msg)
     kong.log.warn("" .. err)
   end
 
-  send_stats_error(conf, "failed")
+  set_cache_status(STATUS_FAILED)
   return kong.response.exit(400, { message = msg })
 end
 
@@ -162,39 +128,56 @@ local function format_chat(messages, countback, discard_system, discard_assistan
   return buf:get()
 end
 
-local function send_stats(conf, cache_response, cache_status, start_time, embeddings_latency)
-  -- only send the stats if an ai-proxy or ai-proxy-advanced plugin is executed
+local function stash_stats(conf, start_time, embeddings_latency)
   local aip_conf = llm_state.get_ai_proxy_conf()
   if not aip_conf then
     return
   end
 
-  local response_stats = deep_copy(cache_response)
-
   -- update timer for latency calculation
   ngx.update_time()
 
-  response_stats.cache = {
-    fetch_latency = math.floor((ngx.now() - start_time) * 1000),
+  local cache_metrics = {
     vector_db = conf.vectordb.driver,
-    cache_status = cache_status,
+    cache_status = kong.ctx.plugin.cache_status,
   }
 
-  if embeddings_latency then
-    response_stats.cache.embeddings_latency = math.floor(embeddings_latency * 1000)
-    response_stats.cache.embeddings_provider = conf.embeddings.driver
-    response_stats.cache.embeddings_model = conf.embeddings.model
+  if start_time then
+    cache_metrics.fetch_latency = math.floor((ngx.now() - start_time) * 1000)
   end
 
-  ai_shared.post_request(aip_conf, response_stats)
+  if embeddings_latency then
+    cache_metrics.embeddings_latency = math.floor(embeddings_latency * 1000)
+    cache_metrics.embeddings_provider = conf.embeddings.provider
+    cache_metrics.embeddings_model = conf.embeddings.name
+  end
+
+  assert(ai_shared.stash_cache_stats(aip_conf, cache_metrics))
 end
 
-local function send_response(conf, cache_response, stream_mode, start_time, embeddings_latency, metadata)
-  if not cache_response then
+local function post_request(response_body)
+  local aip_conf = llm_state.get_ai_proxy_conf()
+  if not aip_conf then
     return
   end
 
-  cache_response = cjson.decode(cache_response)
+  -- if response_body is passed in, we are in error handling
+  -- create an empty response object
+  if not response_body then
+    response_body = {
+      usage = {
+        prompt_tokens = 0,
+        completion_tokens = 0,
+        total_tokens = 0,
+      },
+    }
+  end
+
+  ai_shared.post_request(aip_conf, response_body)
+end
+
+local function send_cache_response(conf, cache_response, stream_mode, start_time, embeddings_latency, metadata)
+  cache_response = assert(cjson.decode(cache_response))
 
   local cc = req_cc()
 
@@ -206,25 +189,18 @@ local function send_response(conf, cache_response, stream_mode, start_time, embe
   local max_age = conf.cache_ttl - cache_age
 
   if max_age <= 0 then
-    llm_state.set_semantic_cache_hit(false)
-    kong.log.debug("Semantic cache: refresh")
-    local cache_status = "refresh"
-    kong.response.set_header("X-Cache-Status", cache_status)
-    send_stats(conf, cache_response, cache_status, start_time, embeddings_latency)
+    set_cache_status(STATUS_REFRESH)
     return
   end
 
-  kong.log.debug("Semantic cache: hit")
-  local cache_status = "Hit"
+  set_cache_status(STATUS_HIT)
+  -- mimic the proxy handler behaviour to popluate statistics
+  post_request(cache_response)
+  stash_stats(conf, start_time, embeddings_latency)
 
-  llm_state.set_semantic_cache_hit(true)
-
-  kong.response.set_header("X-Cache-Status", cache_status)
   kong.response.set_header("Age", floor(cache_age))
   if metadata.key then kong.response.set_header("X-Cache-Key", metadata.key) end
   if metadata.ttl then kong.response.set_header("X-Cache-Ttl", metadata.ttl) end
-
-  send_stats(conf, cache_response, cache_status, start_time, embeddings_latency)
 
   if stream_mode then
     ngx.status = 200
@@ -268,13 +244,12 @@ end
 -- Access phase for semantic caching
 function AISemanticCaching:access(conf)
   local start_time = ngx.now()
+  kong.ctx.plugin.start_time = start_time
 
   local cc = req_cc()
 
   if not cacheable_request(conf, cc) then
-    local cache_status = "Bypass"
-    kong.response.set_header("X-Cache-Status", cache_status)
-    send_stats_error(conf, cache_status)
+    set_cache_status(STATUS_BYPASS)
     return
   end
 
@@ -295,14 +270,16 @@ function AISemanticCaching:access(conf)
 
   kong.log.debug("Parsing prompt from request body")
 
-  if not validate_incoming(kong.ctx.shared.ai_proxy_original_request) then
+  local request_table = llm_state.get_request_body_table()
+
+  if not validate_incoming(request_table) then
     -- Plugin is enabled by accident or non-AI request
     return bad_request(conf, err, "request format is not valid - check for Content-Type or JSON-completeness")
   end
 
-  local stream_mode = kong.ctx.shared.ai_proxy_original_request.stream
+  local stream_mode = request_table.stream
 
-  local formatted_chat = format_chat(kong.ctx.shared.ai_proxy_original_request.messages,
+  local formatted_chat = format_chat(request_table.messages,
                                     conf.message_countback,
                                     conf.ignore_system_prompts,
                                     conf.ignore_assistant_prompts)
@@ -319,9 +296,9 @@ function AISemanticCaching:access(conf)
 
     if cache_response then
       -- exit and send response
-      send_response(conf, cache_response, stream_mode, start_time, nil, metadata_out)
+      send_cache_response(conf, cache_response, stream_mode, start_time, nil, metadata_out)
+      return
     end
-    metadata_out.refresh_key = cache_key
   end
 
   kong.log.debug("Loading the embeddings driver")
@@ -351,7 +328,7 @@ function AISemanticCaching:access(conf)
   if err then
     if conf.stop_on_failure then
       -- Exit the request early
-      llm_state.set_semantic_cache_hit(true)
+      llm_state.set_semantic_cache_hit(false)
       return bad_request(conf, err, "Failed to generate embeddings")
     end
 
@@ -365,13 +342,14 @@ function AISemanticCaching:access(conf)
 
   local embeddings_latency = ngx.now() - embeddings_start_time
   kong.ctx.plugin.semantic_cache_embeddings = embeddings
+  kong.ctx.plugin.embeddings_latency = embeddings_latency
 
   local cache_response, err = vectordb_driver:search(embeddings, conf.vectordb.default_threshold, metadata_out)
 
   if err then
     if conf.stop_on_failure then
       -- Exit the request early
-      llm_state.set_semantic_cache_hit(true)
+      llm_state.set_semantic_cache_hit(false)
       return bad_request(conf, err, "Failed to query '" .. conf.vectordb.driver .. "' for cached response")
     else
       -- Continue regardless of error, but break from the plugin
@@ -381,15 +359,17 @@ function AISemanticCaching:access(conf)
   end
 
   -- exit and send response
-  send_response(conf, cache_response, stream_mode, start_time, embeddings_latency, metadata_out)
+  if not cache_response then
+    set_cache_status(STATUS_MISS)
+    stash_stats(conf, start_time, embeddings_latency)
+    -- ask ai-proxy* to buffer the stream body to be cached later
+    llm_state.set_stream_body_buffer_needed()
+    return
+  end
 
-  -- Miss caching
-  kong.log.debug("Semantic cache: miss")
-  local cache_status = "Miss"
-  send_stats_error(conf, cache_status)
-  kong.response.set_header("X-Cache-Status", cache_status)
-  llm_state.set_semantic_cache_hit(false)
+  send_cache_response(conf, cache_response, stream_mode, start_time, embeddings_latency, metadata_out)
 end
+
 
 -- Header filter phase for semantic caching
 function AISemanticCaching:header_filter(conf)
@@ -405,6 +385,7 @@ function AISemanticCaching:header_filter(conf)
   end
 end
 
+
 -- Log filter phase for semantic caching
 function AISemanticCaching:log(conf)
   local cc = res_cc()
@@ -412,26 +393,12 @@ function AISemanticCaching:log(conf)
   kong.log.debug("caching response for future requests")
 
   if not llm_state.is_semantic_cache_hit() then
-    local body
-    local content_type = kong.service.response.get_header("Content-Type")
+    -- For now, the whole stream body is not buffered by ai-proxy* unless logging.log_payloads=true
+    -- so we concat it on our side in body_filter phase.
+    local body = llm_state.get_parsed_response()
 
-    if content_type then
-      local raw_type = split(content_type, ";")[1]
-
-      if raw_type == "application/json" then
-        body = llm_state.get_parsed_response()
-      elseif raw_type == "text/event-stream" then
-        body = kong.ctx.shared.ai_stream_full_text
-
-        local cache_wrapper = deep_copy(_STREAM_CHAT_WRAPPER)
-        cache_wrapper.choices[1].message.content = body
-        cache_wrapper.model = kong.ctx.shared.ai_response_model
-        cache_wrapper.choices[1].finish_reason = kong.ctx.shared.ai_stream_finish_reason
-
-        body = cjson.encode(cache_wrapper)
-      end
-    else
-      kong.log.warn("response is missing content-type header, it will not be cached")
+    if not body or #body == 0 then
+      kong.log.warn("No body to cache in a cache miss request")
       return
     end
 
@@ -443,6 +410,10 @@ function AISemanticCaching:log(conf)
     local namespace = SEMANTIC_CACHE_NAMESPACE_PREFIX .. conf.__plugin_id
 
     ngx.timer.at(0, function(premature, conf, embeddings, body, cache_key, storage_ttl)
+      if premature then
+        return
+      end
+
       local vectordb_driver, err = vectordb.new(conf.vectordb.strategy, namespace, conf.vectordb)
       if err then
         kong.log.warn("Unable to load the cache driver: ", err)
@@ -465,8 +436,9 @@ end
 
 -- export private functions and imports for unit test mode
 if _G._TEST then
-  AISemanticCaching._send_stats_error = send_stats_error
-  AISemanticCaching._send_stats = send_stats
+  AISemanticCaching._parse_directive_header = parse_directive_header
+  AISemanticCaching._stash_stats = stash_stats
+  AISemanticCaching._post_request = post_request
   AISemanticCaching._validate_incoming = validate_incoming
   AISemanticCaching._format_chat = format_chat
   AISemanticCaching._set_ngx = function(new_ngx)

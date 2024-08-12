@@ -140,7 +140,6 @@ local _EXPECTED_CHAT_STATS = {
       time_per_token = 1,
       cost = 0.00037,
     },
-    cache = {}
   },
 }
 

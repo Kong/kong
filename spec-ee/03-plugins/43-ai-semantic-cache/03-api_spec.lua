@@ -59,11 +59,12 @@ end
 local PRE_FUNCTION_ACCESS_SCRIPT = [[
   local pl_file = require("pl.file")
   local cjson = require("cjson.safe")
+  local llm_state = require "kong.llm.state"
 
   local original_request = cjson.decode(pl_file.read("spec-ee/fixtures/ai-proxy/chat/request/good.json"))
-  kong.ctx.shared.ai_proxy_original_request = original_request
 
-  local llm_state = require "kong.llm.state"
+  llm_state.set_request_body_table(original_request)
+
   llm_state.set_parsed_response(pl_file.read("spec-ee/fixtures/ai-proxy/chat/response/good.json"))
 ]]
 

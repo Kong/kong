@@ -111,6 +111,14 @@ function _M.get_metrics(key)
   return (kong.ctx.shared.llm_metrics or {})[key]
 end
 
+function _M.set_stream_body_buffer_needed()
+  kong.ctx.shared.llm_stream_body_buffer_needed = true
+end
+
+function _M.is_stream_body_buffer_needed()
+  return kong.ctx.shared.llm_stream_body_buffer_needed
+end
+
 -- EE
 
 function _M.set_semantic_cache_hit(bool)

@@ -477,6 +477,7 @@ function _M.conf_from_request(kong_request, source, key)
   end
 end
 
+
 function _M.resolve_plugin_conf(kong_request, conf)
   local err
   local conf_m = cycle_aware_deep_copy(conf)
@@ -569,6 +570,23 @@ function _M.pre_request(conf, request_table)
   return true, nil
 end
 
+local function get_plugin_analytics_container(plugin_name)
+  -- check if we already have analytics in this context
+  local request_analytics = llm_state.get_request_analytics()
+  if not request_analytics then
+    request_analytics = {}
+    llm_state.set_request_analytics(request_analytics)
+  end
+
+  request_analytics[plugin_name] = request_analytics[plugin_name] or {
+    [log_entry_keys.META_CONTAINER] = {},
+    [log_entry_keys.USAGE_CONTAINER] = {},
+    [log_entry_keys.CACHE_CONTAINER] = {},
+  }
+
+  return request_analytics[plugin_name]
+end
+
 function _M.post_request(conf, response_object)
   local body_string, err
 
@@ -594,15 +612,8 @@ function _M.post_request(conf, response_object)
     return nil, "no plugin name is being passed by the plugin"
   end
 
-  -- check if we already have analytics in this context
-  local request_analytics = llm_state.get_request_analytics() or {}
-
-  -- create a new analytics structure for this plugin
-  local request_analytics_plugin = {
-    [log_entry_keys.META_CONTAINER] = {},
-    [log_entry_keys.USAGE_CONTAINER] = {},
-    [log_entry_keys.CACHE_CONTAINER] = {},
-  }
+  -- create or load exsiting a analytics structure for this plugin
+  local request_analytics_plugin = get_plugin_analytics_container(plugin_name)
 
    -- Set meta data
   local meta_container = request_analytics_plugin[log_entry_keys.META_CONTAINER]
@@ -650,16 +661,6 @@ function _M.post_request(conf, response_object)
     end
   end
 
-  -- Capture cache stats
-  if response_object.cache and type(response_object.cache) == "table" then
-    for k, v in pairs(response_object.cache) do
-      local key = log_entry_keys[string.upper(k)]
-      if key then
-        request_analytics_plugin[log_entry_keys.CACHE_CONTAINER][key] = v
-      end
-    end
-  end
-
   -- Log response body if logging payloads is enabled
   if conf.logging and conf.logging.log_payloads then
     kong.log.set_serialize_value(fmt("ai.%s.%s.%s", plugin_name, log_entry_keys.PAYLOAD_CONTAINER, log_entry_keys.RESPONSE_BODY), body_string)
@@ -669,8 +670,6 @@ function _M.post_request(conf, response_object)
   request_analytics_plugin[log_entry_keys.PAYLOAD_CONTAINER] = {
     [log_entry_keys.RESPONSE_BODY] = body_string,
   }
-  request_analytics[plugin_name] = request_analytics_plugin
-  llm_state.set_request_analytics(request_analytics)
 
   if conf.logging and conf.logging.log_statistics then
     -- Log meta data
@@ -680,10 +679,6 @@ function _M.post_request(conf, response_object)
     -- Log usage data
     kong.log.set_serialize_value(fmt("ai.%s.%s", plugin_name, log_entry_keys.USAGE_CONTAINER),
       request_analytics_plugin[log_entry_keys.USAGE_CONTAINER])
-
-    -- Log cache data
-    kong.log.set_serialize_value(fmt("ai.%s.%s", plugin_name, log_entry_keys.CACHE_CONTAINER),
-      request_analytics_plugin[log_entry_keys.CACHE_CONTAINER])
   end
 
   -- log tokens response for reports and billing
@@ -694,8 +689,37 @@ function _M.post_request(conf, response_object)
   end
   llm_state.increase_response_tokens_count(response_tokens)
 
+  return true
+end
 
-  return nil
+function _M.stash_cache_stats(conf, cache_metrics)
+  if not cache_metrics then
+    return false, "no cache_metrics"
+  end
+
+  -- Extract and validate plugin name
+  local plugin_name = conf.__key__:match('plugins:(.-):')
+  if not plugin_name or plugin_name == "" then
+    return false, "no plugin name is being passed by the plugin"
+  end
+
+  -- create or load exsiting a analytics structure for this plugin
+  local request_analytics_plugin = get_plugin_analytics_container(plugin_name)
+  local cache_container = request_analytics_plugin[log_entry_keys.CACHE_CONTAINER]
+
+  for k, v in pairs(cache_metrics) do
+    local key = log_entry_keys[string.upper(k)]
+    if key then
+      cache_container[key] = v
+    end
+  end
+
+  if conf.logging and conf.logging.log_statistics then
+    -- Log cache data
+    kong.log.set_serialize_value(fmt("ai.%s.%s", plugin_name, log_entry_keys.CACHE_CONTAINER), cache_container)
+  end
+
+  return true
 end
 
 function _M.http_request(url, body, method, headers, http_opts, buffered)

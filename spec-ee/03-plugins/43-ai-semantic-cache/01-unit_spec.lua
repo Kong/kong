@@ -62,7 +62,8 @@ describe(PLUGIN_NAME .. ": (unit)", function()
     _G._TEST = true
     _G.kong = {
         ctx = {
-            shared = {}
+            shared = {},
+            plugin = {},
         },
     }
     package.loaded["kong.plugins.ai-semantic-cache.handler"] = nil
@@ -77,11 +78,11 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
   describe("llm/v1/chat operations", function()
     it("test good analytics output", function()
-      local this_conf, this_stats
+      local this_conf, this_stats, this_cache_stats
 
 
       llm_state.set_ai_proxy_conf({
-        __key__ = "kong-ai-proxy-1",
+        __key__ = "plugins:kong-ai-proxy-1:123456",
         model = {
           provider = "openai",
         },
@@ -100,79 +101,47 @@ describe(PLUGIN_NAME .. ": (unit)", function()
         post_request = function(conf, stats)
           this_conf = conf
           this_stats = stats
+          return true
+        end,
+        stash_cache_stats = function(conf, stats)
+          this_conf = conf
+          this_cache_stats = stats
+          return true
         end,
       })
-      
-      access_handler._send_stats({
+
+      access_handler._stash_stats({
         vectordb = {
           driver = "redis",
         },
         embeddings = {
-          driver = "redis",
-          model = "kong-model",
+          provider = "kong",
+          name = "kong-model",
         },
-      }, samples["llm/v1/chat"]["valid"], nil, math.floor(ngx.now()), 100)
+      }, math.floor(ngx.now()), 100)
+
+      access_handler._post_request(samples["llm/v1/chat"]["valid"])
 
       assert.same(this_conf, {
-        __key__ = "kong-ai-proxy-1",
+        __key__ = "plugins:kong-ai-proxy-1:123456",
         model = {
           provider = "openai",
         },
       })
 
-      this_stats.messages = nil  -- wipe the message context save
-      assert.same(this_stats, {
-        usage = {
-          prompt_tokens = 10,
-          completion_tokens = 20,
-          total_tokens = 30,
-        },
-        cache = {
-          vector_db = "redis",
-          embeddings_latency = 100000,
-          embeddings_provider = "redis",
-          embeddings_model = "kong-model",
-          fetch_latency = 10000,
-        }
-      })
-    end)
+      assert.same({
+        vector_db = "redis",
+        embeddings_latency = 100000,
+        embeddings_provider = "kong",
+        embeddings_model = "kong-model",
+        fetch_latency = 10000,
+      }, this_cache_stats)
 
-    it("test error analytics output", function()
-      local this_conf, this_stats
-
-      llm_state.set_ai_proxy_conf("ai_conf_copy")
-
-      access_handler._set_ai_shared({
-        post_request = function(conf, stats)
-          this_conf = conf
-          this_stats = stats
-        end,
-      })
-
-      access_handler._send_stats_error({
-        vectordb = {
-          driver = "kong_vectordb",
-        },
-        embeddings = {
-          driver = "kong_embeddings",
-          model = "kong_model",
-        },
-      }, "KONG_ERROR")
-
-      assert.same(this_conf, "ai_conf_copy")
-      assert.same(this_stats, {
-        usage = {
-          prompt_tokens = 0,
-          completion_tokens = 0,
-          total_tokens = 0,
-        },
-        cache = {
-          vector_db = "kong_vectordb",
-          embeddings_provider = "kong_embeddings",
-          embeddings_model = "kong_model",
-          cache_status = "KONG_ERROR",
-        }
-      })
+      assert.same({
+        prompt_tokens = 10,
+        completion_tokens = 20,
+        total_tokens = 30,
+      }, this_stats.usage)
     end)
 
     it("test message format recognition and validation", function()
@@ -183,11 +152,11 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
     it("test chat truncation", function()
       local output
-      
+
       -- test truncate to two messages
       output = access_handler._format_chat(samples["llm/v1/chat"]["valid"]["messages"], 2, false, false)
       assert.same(output, 'What is Pi?\n\nsystem: You are a mathematician.\n\n')
-      
+
       -- test discard system messages
       output = access_handler._format_chat(samples["llm/v1/chat"]["valid"]["messages"], 20, true, false)
       assert.same(output, 'What is 2π?\n\nassistant: Pi (π) is a mathematical constant that represents the ratio of a circle\'s circumference to its diameter. This ratio is constant for all circles and is approximately equal to 3.14159.\n\nWhat is Pi?\n\n')

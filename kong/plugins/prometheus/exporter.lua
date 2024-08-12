@@ -364,13 +364,13 @@ local function log(message, serialized)
 
   if serialized.ai_metrics then
     for _, ai_plugin in pairs(serialized.ai_metrics) do
-      local cache_status = ai_plugin.cache.cache_status or ""
-      local vector_db = ai_plugin.cache.vector_db or ""
-      local embeddings_provider = ai_plugin.cache.embeddings_provider or ""
-      local embeddings_model = ai_plugin.cache.embeddings_model or ""
+      local cache_status = ai_plugin.cache and ai_plugin.cache.cache_status or ""
+      local vector_db = ai_plugin.cache and ai_plugin.cache.vector_db or ""
+      local embeddings_provider = ai_plugin.cache and ai_plugin.cache.embeddings_provider or ""
+      local embeddings_model = ai_plugin.cache and ai_plugin.cache.embeddings_model or ""
 
-      labels_table_ai_llm_status[1] = ai_plugin.meta.provider_name
-      labels_table_ai_llm_status[2] = ai_plugin.meta.request_model
+      labels_table_ai_llm_status[1] = ai_plugin.meta and ai_plugin.meta.provider_name
+      labels_table_ai_llm_status[2] = ai_plugin.meta and ai_plugin.meta.request_model
       labels_table_ai_llm_status[3] = cache_status
       labels_table_ai_llm_status[4] = vector_db
       labels_table_ai_llm_status[5] = embeddings_provider
@@ -378,41 +378,41 @@ local function log(message, serialized)
       labels_table_ai_llm_status[7] = workspace
       metrics.ai_llm_requests:inc(1, labels_table_ai_llm_status)
 
-      if ai_plugin.usage.cost and ai_plugin.usage.cost > 0 then
+      if ai_plugin.usage and ai_plugin.usage.cost and ai_plugin.usage.cost > 0 then
         metrics.ai_llm_cost:inc(ai_plugin.usage.cost, labels_table_ai_llm_status)
       end
 
-      if ai_plugin.meta.llm_latency and ai_plugin.meta.llm_latency > 0 then
+      if ai_plugin.meta and ai_plugin.meta.llm_latency and ai_plugin.meta.llm_latency > 0 then
         metrics.ai_llm_provider_latency:observe(ai_plugin.meta.llm_latency, labels_table_ai_llm_status)
       end
 
-      if ai_plugin.cache.fetch_latency and ai_plugin.cache.fetch_latency > 0 then
+      if ai_plugin.cache and ai_plugin.cache.fetch_latency and ai_plugin.cache.fetch_latency > 0 then
         metrics.ai_cache_fetch_latency:observe(ai_plugin.cache.fetch_latency, labels_table_ai_llm_status)
       end
 
-      if ai_plugin.cache.embeddings_latency and ai_plugin.cache.embeddings_latency > 0 then
+      if ai_plugin.cache and ai_plugin.cache.embeddings_latency and ai_plugin.cache.embeddings_latency > 0 then
         metrics.ai_cache_embeddings_latency:observe(ai_plugin.cache.embeddings_latency, labels_table_ai_llm_status)
       end
 
-      labels_table_ai_llm_tokens[1] = ai_plugin.meta.provider_name
-      labels_table_ai_llm_tokens[2] = ai_plugin.meta.request_model
+      labels_table_ai_llm_tokens[1] = ai_plugin.meta and ai_plugin.meta.provider_name
+      labels_table_ai_llm_tokens[2] = ai_plugin.meta and ai_plugin.meta.request_model
       labels_table_ai_llm_tokens[3] = cache_status
       labels_table_ai_llm_tokens[4] = vector_db
       labels_table_ai_llm_tokens[5] = embeddings_provider
       labels_table_ai_llm_tokens[6] = embeddings_model
       labels_table_ai_llm_tokens[8] = workspace
 
-      if ai_plugin.usage.prompt_tokens and ai_plugin.usage.prompt_tokens > 0 then
+      if ai_plugin.usage and ai_plugin.usage.prompt_tokens and ai_plugin.usage.prompt_tokens > 0 then
         labels_table_ai_llm_tokens[7] = "prompt_tokens"
         metrics.ai_llm_tokens:inc(ai_plugin.usage.prompt_tokens, labels_table_ai_llm_tokens)
       end
 
-      if ai_plugin.usage.completion_tokens and ai_plugin.usage.completion_tokens > 0 then
+      if ai_plugin.usage and ai_plugin.usage.completion_tokens and ai_plugin.usage.completion_tokens > 0 then
         labels_table_ai_llm_tokens[7] = "completion_tokens"
         metrics.ai_llm_tokens:inc(ai_plugin.usage.completion_tokens, labels_table_ai_llm_tokens)
       end
 
-      if ai_plugin.usage.total_tokens and ai_plugin.usage.total_tokens > 0 then
+      if ai_plugin.usage and ai_plugin.usage.total_tokens and ai_plugin.usage.total_tokens > 0 then
         labels_table_ai_llm_tokens[7] = "total_tokens"
         metrics.ai_llm_tokens:inc(ai_plugin.usage.total_tokens, labels_table_ai_llm_tokens)
       end

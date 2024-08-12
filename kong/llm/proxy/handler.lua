@@ -12,7 +12,6 @@ local cjson = require("cjson.safe")
 local kong_utils = require("kong.tools.gzip")
 local buffer = require "string.buffer"
 local strip = require("kong.tools.utils").strip
-local deep_copy = require("kong.tools.table").deep_copy
 
 -- cloud auth/sdk providers
 local GCP_SERVICE_ACCOUNT do
@@ -134,11 +133,11 @@ local function handle_streaming_frame(conf, chunk, finished)
   local ai_driver = require("kong.llm.drivers." .. conf.model.provider)
 
   local kong_ctx_plugin = kong.ctx.plugin
-  local kong_ctx_shared = kong.ctx.shared
 
   -- create a buffer to store each response token/frame, on first pass
   kong_ctx_plugin.ai_stream_log_buffer = kong_ctx_plugin.ai_stream_log_buffer or buffer.new()
 
+  local finish_reason
 
   if type(chunk) == "string" and chunk ~= "" then
     -- transform each one into flat format, skipping transformer errors
@@ -169,57 +168,37 @@ local function handle_streaming_frame(conf, chunk, finished)
     for _, event in ipairs(events) do
       local formatted, _, metadata = ai_driver.from_format(event, conf.model, "stream/" .. conf.route_type)
 
-      local event_t = nil
-      local token_t = nil
-      local err
-
-      if formatted then  -- only stream relevant frames back to the user
-        if conf.logging and conf.logging.log_payloads and (formatted ~= ai_shared._CONST.SSE_TERMINATOR) then
-          -- append the "choice" to the buffer, for logging later. this actually works!
-          if not event_t then
-            event_t, err = cjson.decode(formatted)
-          end
-
-          if not err then
-            if event_t.choices and #event_t.choices > 0 then
-              kong_ctx_shared.ai_stream_finish_reason = event_t.choices[1].finish_reason
-            end
-
-            if not token_t then
-              token_t = get_token_text(event_t)
-            end
-
-            kong_ctx_plugin.ai_stream_log_buffer:put(token_t)
-          end
-        end
-
-        -- handle event telemetry
-        if conf.logging and conf.logging.log_statistics then
-          if not ai_shared.streaming_has_token_counts[conf.model.provider] then
-            if formatted ~= ai_shared._CONST.SSE_TERMINATOR then
-              if not event_t then
-                event_t, err = cjson.decode(formatted)
-              end
-
-              if not err then
-                if not token_t then
-                  token_t = get_token_text(event_t)
-                end
-
-                -- incredibly loose estimate based on https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them
-                -- but this is all we can do until OpenAI fixes this...
-                --
-                -- essentially, every 4 characters is a token, with minimum of 1*4 per event
-                kong_ctx_plugin.ai_stream_completion_tokens =
-                    (kong_ctx_plugin.ai_stream_completion_tokens or 0) + math.ceil(#strip(token_t) / 4)
-              end
-            end
-          end
-        end
-
+      if formatted then
         framebuffer:put("data: ")
         framebuffer:put(formatted or "")
         framebuffer:put((formatted ~= ai_shared._CONST.SSE_TERMINATOR) and "\n\n" or "")
+      end
+
+      if formatted ~= ai_shared._CONST.SSE_TERMINATOR then  -- only stream relevant frames back to the user
+        -- append the "choice" to the buffer, for logging later. this actually works!
+        local event_t, err = cjson.decode(formatted)
+
+        if not err then
+          if event_t.choices and #event_t.choices > 0 then
+            finish_reason = event_t.choices[1].finish_reason
+          end
+
+          local token_t = get_token_text(event_t)
+
+          -- either enabled in ai-proxy plugin, or required by other plugin
+          if conf.logging and conf.logging.log_payloads or llm_state.is_stream_body_buffer_needed() then
+            kong_ctx_plugin.ai_stream_log_buffer:put(token_t)
+          end
+
+          if conf.logging and conf.logging.log_statistics then
+            -- incredibly loose estimate based on https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them
+            -- but this is all we can do until OpenAI fixes this...
+            --
+            -- essentially, every 4 characters is a token, with minimum of 1*4 per event
+            kong_ctx_plugin.ai_stream_completion_tokens =
+                (kong_ctx_plugin.ai_stream_completion_tokens or 0) + math.ceil(#strip(token_t) / 4)
+          end
+        end
       end
 
       if conf.logging and conf.logging.log_statistics and metadata then
@@ -249,11 +228,23 @@ local function handle_streaming_frame(conf, chunk, finished)
   ngx.arg[1] = response_frame
 
   if finished then
-    kong_ctx_shared.ai_stream_full_text = kong_ctx_plugin.ai_stream_log_buffer:get()
-    kong_ctx_plugin.ai_stream_log_buffer = nil
+    local response = kong_ctx_plugin.ai_stream_log_buffer:get()
 
-    local fake_response_t = {
-      response = (conf.logging or EMPTY).log_payloads and kong_ctx_shared.ai_stream_full_text,
+    local composite_response_t = {
+      choices = {
+        {
+          finish_reason = finish_reason,
+          index = 0,
+          logprobs = cjson.null,
+          message = {
+            role = "assistant",
+            content = response,
+          },
+        }
+      },
+      model = nil, -- TODO: populate this
+      object = "chat.completion",
+      response = (conf.logging or EMPTY).log_payloads and response,
       usage = {
         prompt_tokens = kong_ctx_plugin.ai_stream_prompt_tokens or 0,
         completion_tokens = kong_ctx_plugin.ai_stream_completion_tokens or 0,
@@ -262,8 +253,10 @@ local function handle_streaming_frame(conf, chunk, finished)
       }
     }
 
+    llm_state.set_parsed_response(cjson.encode(composite_response_t)) -- to be consumed by other plugins
+
     ngx.arg[1] = nil
-    ai_shared.post_request(conf, fake_response_t)
+    ai_shared.post_request(conf, composite_response_t)
     kong_ctx_plugin.ai_stream_log_buffer = nil
   end
 end
@@ -390,7 +383,6 @@ end
 
 function _M:access(conf)
   local kong_ctx_plugin = kong.ctx.plugin
-  local kong_ctx_shared = kong.ctx.shared
 
   -- to be consumer by other plugin like ai-semantic-cache
   llm_state.set_ai_proxy_conf(conf)
@@ -439,8 +431,6 @@ function _M:access(conf)
       multipart = true  -- this may be a large file upload, so we have to proxy it directly
     end
   end
-
-  kong_ctx_shared.ai_proxy_original_request = deep_copy(request_table)
 
   -- resolve the real plugin config values
   local conf_m, err = ai_shared.resolve_plugin_conf(kong.request, conf)
