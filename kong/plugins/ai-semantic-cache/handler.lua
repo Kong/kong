@@ -13,19 +13,14 @@ local buffer          = require("string.buffer")
 local sha256_hex      = require "kong.tools.sha256".sha256_hex
 local ai_shared       = require("kong.llm.drivers.shared")
 local deep_copy       = require("kong.tools.table").deep_copy
-local parse_http_time = ngx.parse_http_time
 local cjson           = require("cjson.safe")
 local llm_state       = require("kong.llm.state")
+local parse_directive_header = require("kong.tools.http").parse_directive_header
+local calculate_resource_ttl = require("kong.tools.http").calculate_resource_ttl
 
 local kong          = kong
 local ngx           = ngx
 local floor         = math.floor
-local ngx_re_gmatch = ngx.re.gmatch
-local ngx_re_match  = ngx.re.match
-local lower         = string.lower
-local time          = ngx.time
-local fmt           = string.format
-local max           = math.max
 
 local AISemanticCaching = {
   PRIORITY = 765, -- leave space for other response-interceptor AI plugins
@@ -115,45 +110,6 @@ local function validate_incoming(request)
     and #request.messages > 0
 end
 
--- Parses Cache-Control header directives
-local function parse_directive_header(h)
-  if not h then
-    return {}
-  end
-
-  if type(h) == "table" then
-    local i = 1
-    local n = {}
-    for key, val in pairs(h) do
-      n[i] = fmt("%s=%s", key, val)
-      i = i + 1
-    end
-
-    h = table.concat(n, ",")
-  end
-
-  local t = {}
-  local res = {}
-  local iter = ngx_re_gmatch(h, "([^,]+)", "oj")
-  local m = iter()
-
-  while m do
-    -- parse the cache-control directives like: max-age=0
-    local _, err = ngx_re_match(m[0], [[^\s*([^=]+)(?:=(.+))?]], "oj", nil, res)
-    if err then
-      kong.log.err("issue when parsing directive headers " .. err)
-    end
-
-    -- Store the directive token as a numeric value if it looks like a number;
-    -- otherwise, store the string value. For directives without token, set the key to true.
-    t[lower(res[1])] = tonumber(res[2]) or res[2] or true
-
-    m = iter()
-  end
-
-  return t
-end
-
 -- Retrieves request Cache-Control directives
 local function req_cc()
   return parse_directive_header(ngx.var.http_cache_control)
@@ -164,33 +120,13 @@ local function res_cc()
   return parse_directive_header(ngx.var.sent_http_cache_control)
 end
 
--- Calculates resource Time-To-Live (TTL) based on Cache-Control headers
-local function resource_ttl(res_cc)
-  local max_age = res_cc and (res_cc["s-maxage"] or res_cc["max-age"])
-
-  if not max_age then
-    local expires = ngx.var.sent_http_expires
-
-    if type(expires) == "table" then
-      expires = expires[#expires]
-    end
-
-    local exp_time = parse_http_time(tostring(expires))
-    if exp_time then
-      max_age = exp_time - time()
-    end
-  end
-
-  return max_age and max(max_age, 0) or 0
-end
-
 -- Checks if the response is cacheable based on Cache-Control directives
 local function cacheable_response(conf, cc)
   if conf.cache_control and (cc["private"] or cc["no-store"] or cc["no-cache"]) then
     return false
   end
 
-  if conf.cache_control and resource_ttl(cc) <= 0 then
+  if conf.cache_control and calculate_resource_ttl(cc) <= 0 then
     return false
   end
 
@@ -263,7 +199,7 @@ local function send_response(conf, cache_response, stream_mode, start_time, embe
   local cc = req_cc()
 
   local ttl = conf.storage_ttl or
-                conf.cache_control and resource_ttl(cc) or
+                conf.cache_control and calculate_resource_ttl(cc) or
                 conf.cache_ttl
 
   local cache_age = cache_response.ttl and (ttl - cache_response.ttl) or 0
@@ -502,7 +438,7 @@ function AISemanticCaching:log(conf)
     local embeddings = kong.ctx.plugin.semantic_cache_embeddings
     local cache_key = kong.ctx.plugin.semantic_cache_key
     local storage_ttl = conf.storage_ttl or
-                  conf.cache_control and resource_ttl(cc) or
+                  conf.cache_control and calculate_resource_ttl(cc) or
                   conf.cache_ttl
     local namespace = SEMANTIC_CACHE_NAMESPACE_PREFIX .. conf.__plugin_id
 
@@ -529,11 +465,9 @@ end
 
 -- export private functions and imports for unit test mode
 if _G._TEST then
-  AISemanticCaching._parse_directive_header = parse_directive_header
   AISemanticCaching._send_stats_error = send_stats_error
   AISemanticCaching._send_stats = send_stats
   AISemanticCaching._validate_incoming = validate_incoming
-  AISemanticCaching._resource_ttl = resource_ttl
   AISemanticCaching._format_chat = format_chat
   AISemanticCaching._set_ngx = function(new_ngx)
     ngx = new_ngx
