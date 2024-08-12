@@ -472,13 +472,18 @@ function _M.configure_request(conf)
   local auth_param_location = conf.auth and conf.auth.param_location
 
   if auth_header_name and auth_header_value then
-    kong.service.request.set_header(auth_header_name, auth_header_value)
+    local exist_value = kong.request.get_header(auth_header_name)
+    if exist_value == nil or not conf.auth.can_override then
+      kong.service.request.set_header(auth_header_name, auth_header_value)
+    end
   end
 
   if auth_param_name and auth_param_value and auth_param_location == "query" then
     local query_table = kong.request.get_query()
-    query_table[auth_param_name] = auth_param_value
-    kong.service.request.set_query(query_table)
+    if query_table[auth_param_name] == nil or not conf.auth.can_override then
+      query_table[auth_param_name] = auth_param_value
+      kong.service.request.set_query(query_table)
+    end
   end
 
   -- if auth_param_location is "form", it will have already been set in a pre-request hook

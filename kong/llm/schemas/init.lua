@@ -97,6 +97,11 @@ local auth_schema = {
         required = false,
         encrypted = true,
         referenceable = true }},
+    { can_override = {
+        type = "boolean",
+        description = "If enabled, the auth header or param can be overridden by the request.",
+        required = false,
+        default = true }},
   }
 }
 
