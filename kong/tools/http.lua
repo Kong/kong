@@ -1,6 +1,5 @@
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
-local pl_tblx = require "pl.tablex"
 
 
 local type          = type
