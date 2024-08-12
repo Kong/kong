@@ -44,9 +44,9 @@ local function parse_proxy_url(proxy_server)
       -- the connection details is statically rendered in nginx template
 
     else -- http
-      ret.proxy_url = fmt("%s://%s:%s", parsed.scheme, parsed.host, parsed.port or 443)
+      ret.proxy_url = fmt("%s://%s:%s", parsed.scheme, unescape_uri(parsed.host), parsed.port or 443)
       ret.scheme = parsed.scheme
-      ret.host = parsed.host
+      ret.host = unescape_uri(parsed.host)
       ret.port = parsed.port
     end
 
