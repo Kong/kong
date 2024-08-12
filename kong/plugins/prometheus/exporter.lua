@@ -386,7 +386,7 @@ local function log(message, serialized)
         metrics.ai_llm_provider_latency:observe(ai_plugin.meta.llm_latency, labels_table_ai_llm_status)
       end
 
-      if ai_plugin.cache.fetch_latency and ai_plugin.meta.fetch_latency > 0 then
+      if ai_plugin.cache.fetch_latency and ai_plugin.cache.fetch_latency > 0 then
         metrics.ai_cache_fetch_latency:observe(ai_plugin.cache.fetch_latency, labels_table_ai_llm_status)
       end
 
