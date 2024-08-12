@@ -21,7 +21,7 @@ local pdk_rl_store_response_header = pdk_private_rl.store_response_header
 local pdk_rl_apply_response_headers = pdk_private_rl.apply_response_headers
 
 
-local EMPTY = {}
+local EMPTY = require("kong.tools.table").EMPTY
 local EXPIRATION = require "kong.plugins.rate-limiting.expiration"
 
 
