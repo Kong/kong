@@ -49,12 +49,11 @@ return Schema.define {
       between = { 0.001, 1000000 }, -- effectively unlimited maximum
       description = "Maximum time in seconds between retries, caps exponential backoff."
     } },
-    { concurrency = {
+    { concurrency_limit = {
       type = "integer",
       default = 1,
-      between = { 0, 1 },
-      required = true,
-      description = "TBD11111111"
+      one_of = { -1, 1 },
+      description = "The number of of queue delivery timers. -1 indicates unlimited."
     } },
 
   }

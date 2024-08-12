@@ -799,6 +799,7 @@ describe("plugin queue", function()
       max_retry_time = 60,
       initial_retry_delay = 1,
       max_retry_delay = 60,
+      concurrency_limit = 1,
     }
 
     local function enqueue(queue_conf, entry)
@@ -836,6 +837,7 @@ describe("plugin queue", function()
       max_retry_time = 60,
       initial_retry_delay = 1,
       max_retry_delay = 60,
+      concurrency_limit = 1,
     }
 
     -- should be true if the queue does not exist
@@ -861,6 +863,7 @@ describe("plugin queue", function()
       max_retry_time = 60,
       initial_retry_delay = 1,
       max_retry_delay = 60,
+      concurrency_limit = 1,
     }
 
     -- should be true if the queue does not exist

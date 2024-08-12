@@ -1,3 +1,0 @@
-message: "**HTTP-Log**: Added a new configuration `queue.concurrency`"
-type: feature
-scope: Plugin

@@ -241,7 +241,7 @@ local function get_or_create_queue(queue_conf, handler, handler_conf)
 
   queue = setmetatable(queue, Queue_mt)
 
-  if queue.concurrency == 1 then
+  if queue.concurrency_limit == 1 then
     kong.timer:named_at("queue " .. key, 0, function(_, q)
       while q:count() > 0 do
         q:log_debug("processing queue")
@@ -514,8 +514,8 @@ local function enqueue(self, entry)
     return nil, "entry must be a non-nil Lua value"
   end
 
-
-  if self.concurrency == 0 then
+  if self.concurrency_limit == -1 then -- unlimited concurrency
+    -- do not enqueue when concurrency_limit is unlimited
     local ok, err = timer_at(0, function(premature)
       if premature then
         return
@@ -639,8 +639,8 @@ function Queue.enqueue(queue_conf, handler, handler_conf, value)
   )
 
   assert(
-    type(queue_conf.concurrency) == "number",
-    "arg #1 (queue_conf) concurrency must be a number"
+    type(queue_conf.concurrency_limit) == "number",
+    "arg #1 (queue_conf) concurrency_limit must be a number"
   )
 
   local queue = get_or_create_queue(queue_conf, handler, handler_conf)
