@@ -179,6 +179,34 @@ describe("Utils", function()
         assert.is_true(tools_http.check_https(true, false))
         assert.is_true(tools_http.check_https(true, true))
       end)
+
+      it("test parsing directive header", function()
+        -- EMPTY table return by the function with `nil` should be read-only
+        assert.is_false(pcall(function()
+          tools_http.parse_directive_header(nil)["foo"] = "bar"
+        end))
+
+        -- test null
+        assert.same(tools_http.parse_directive_header(nil), {})
+
+        -- test empty string
+        assert.same(tools_http.parse_directive_header(""), {})
+
+        -- test string
+        assert.same(tools_http.parse_directive_header("cache-key=kong-cache,cache-age=300"), {
+          ["cache-age"] = 300,
+          ["cache-key"] = "kong-cache",
+        })
+
+        -- test table
+        assert.same(tools_http.parse_directive_header({
+          "cache-age=300",
+          "cache-key=kong-cache",
+        }), {
+          ["cache-age"] = 300,
+          ["cache-key"] = "kong-cache",
+        })
+      end)
     end)
   end)
 
