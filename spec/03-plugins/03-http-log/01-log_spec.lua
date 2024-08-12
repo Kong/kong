@@ -352,7 +352,7 @@ for _, strategy in helpers.each_strategy() do
             .. helpers.mock_upstream_port
             .. "/post_log/http",
           queue = {
-            concurrency = 0,
+            concurrency_limit = -1,
           },
         }
       }
@@ -658,7 +658,7 @@ for _, strategy in helpers.each_strategy() do
         admin_client:close()
    end)
 
-    it("should not use queue when no_queue is true", function()
+    it("should not use queue when queue.concurrency_limit is -1", function()
       reset_log("http")
       local res = proxy_client:get("/status/200", {
         headers = {
