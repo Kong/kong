@@ -76,7 +76,6 @@ local math_min = math.min
 local now = ngx.now
 local sleep = ngx.sleep
 local null = ngx.null
-local timer_at = ngx.timer.at
 
 
 local Queue = {}
@@ -516,7 +515,7 @@ local function enqueue(self, entry)
 
   if self.concurrency_limit == -1 then -- unlimited concurrency
     -- do not enqueue when concurrency_limit is unlimited
-    local ok, err = timer_at(0, function(premature)
+    local ok, err = kong.timer:at(0, function(premature)
       if premature then
         return
       end
