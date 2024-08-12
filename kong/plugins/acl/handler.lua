@@ -1,5 +1,4 @@
 local constants = require "kong.constants"
-local tablex = require "pl.tablex"
 local groups = require "kong.plugins.acl.groups"
 local kong_meta = require "kong.meta"
 
@@ -10,7 +9,7 @@ local error = error
 local kong = kong
 
 
-local EMPTY = tablex.readonly {}
+local EMPTY = require("kong.tools.table").EMPTY
 local DENY = "DENY"
 local ALLOW = "ALLOW"
 

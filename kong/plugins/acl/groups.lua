@@ -1,7 +1,4 @@
-local tablex = require "pl.tablex"
-
-
-local EMPTY = tablex.readonly {}
+local EMPTY = require("kong.tools.table").EMPTY
 
 
 local kong = kong
