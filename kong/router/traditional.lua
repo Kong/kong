@@ -213,7 +213,7 @@ local MATCH_SUBRULES = {
 }
 
 
-local EMPTY_T = {}
+local EMPTY_T = require("kong.tools.table").EMPTY
 
 
 local match_route

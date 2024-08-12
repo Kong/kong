@@ -1,4 +1,3 @@
-local pl_tablex = require "pl.tablex"
 local hostname_type = require("kong.tools.ip").hostname_type
 local hooks = require "kong.hooks"
 local recreate_request = require("ngx.balancer").recreate_request
@@ -34,7 +33,7 @@ local is_http_module   = ngx.config.subsystem == "http"
 local CRIT = ngx.CRIT
 local ERR = ngx.ERR
 local WARN = ngx.WARN
-local EMPTY_T = pl_tablex.readonly {}
+local EMPTY_T = require("kong.tools.table").EMPTY
 
 
 local set_authority
