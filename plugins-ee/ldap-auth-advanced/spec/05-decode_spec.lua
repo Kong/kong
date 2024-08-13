@@ -73,6 +73,38 @@ describe("Plugin: ldap-auth (decode)", function()
     end
   end)
 
+  it("short form empty sequence", function()
+    local der = from_hex("3000")
+    local offset, ret, err = asn1_decode(der)
+    assert.same(nil, err)
+    assert.same({}, ret)
+    assert.same(2, offset)
+  end)
+
+  it("short form empty set", function()
+    local der = from_hex("3100")
+    local offset, ret, err = asn1_decode(der)
+    assert.same(nil, err)
+    assert.same({}, ret)
+    assert.same(2, offset)
+  end)
+
+  it("long form empty sequence", function()
+    local der = from_hex("308400000000")
+    local offset, ret, err = asn1_decode(der)
+    assert.same(nil, err)
+    assert.same({}, ret)
+    assert.same(6, offset)
+  end)
+
+  it("long form empty set", function()
+    local der = from_hex("318400000000")
+    local offset, ret, err = asn1_decode(der)
+    assert.same(nil, err)
+    assert.same({}, ret)
+    assert.same(6, offset)
+  end)
+
   it("doesn't support integer/enumerated with long form", function()
     for name, tag in pairs({ ASN1_INTEGER = "02", ASN1_ENUMERATED = "0a" }) do
       local der = from_hex(tag .. "81020001")  -- value length 2
@@ -123,6 +155,18 @@ describe("Plugin: ldap-auth (decode)", function()
     local der = from_hex("100b02810101040568656c6c6f") -- internal integer is long form
     local _, _, err = asn1_decode(der)
     assert.same("failed to decode ASN1_SEQUENCE: don't support long form for ASN1_INTEGER", err)
+  end)
+
+  it("abnormal long form sequence -- incomplete data", function()
+    local der = from_hex("30840000")
+    local _, _, err = asn1_decode(der)
+    assert.same("failed to decode long form sequence/set: incomplete data", err)
+  end)
+
+  it("abnormal long form set -- incomplete data", function()
+    local der = from_hex("31840000")
+    local _, _, err = asn1_decode(der)
+    assert.same("failed to decode long form sequence/set: incomplete data", err)
   end)
 
   it("normal bind response -- success", function()
@@ -231,6 +275,5 @@ describe("Plugin: ldap-auth (decode)", function()
     local _, err = asn1_parse_ldap_result(der, 5)
     assert.same("diagnostic message should be an octet string", err)
   end)
-
 end)
 

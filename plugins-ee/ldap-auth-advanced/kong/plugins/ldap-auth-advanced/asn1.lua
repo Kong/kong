@@ -11,6 +11,7 @@ local ffi_new = ffi.new
 local ffi_string = ffi.string
 local ffi_cast = ffi.cast
 local band = bit.band
+local bor = bit.bor
 local base = require "resty.core.base"
 local new_tab = base.new_tab
 local lpack = require "lua_pack"
@@ -334,9 +335,64 @@ do
     return seq
   end
 
+  -- if an empty sequence/set, returns the new offset
+  -- if not, return nil
+  -- if error, return nil, err
+  local function check_empty_sequence_or_set(der, offset)
+    local max = #der
+
+    if max >= 2 then
+      local asn1_type = byte(der, offset + 1)
+      -- sequence or set
+      if asn1_type == 0x30 or asn1_type == 0x31 then
+        local length_byte1 = byte(der, offset + 2)
+        -- long form length
+        if length_byte1 > 0x80 then
+          local length_of_length = band(length_byte1, 0x7f)
+
+          if max < offset + 2 + length_of_length then
+            return nil, "failed to decode long form sequence/set: incomplete data"
+          end
+
+          local res = 0
+          for i = 1, length_of_length do
+            res = bor(res, byte(der, offset + 2 + i))
+          end
+
+          -- length is 0, so this is an empty sequence/set
+          if res == 0 then
+            return offset + 2 + length_of_length
+          end
+
+        elseif length_byte1 == 0x00 then
+          return offset + 2
+        end
+      end
+    end
+
+    return nil
+  end
+
   -- offset starts from 0
   function decode(der, offset)
     offset = offset or 0
+
+    -- DER says to always use the smallest possible length representation, but
+    -- there're implementations such as Microsoft AD that always use long form
+    -- length representation. In particular, it encodes an empty sequence as
+    -- `0x308400000000`. Unfortunately, OpenSSL doesn't accept long form
+    -- representation for empty sequences or sets.
+    -- In order to be compatible with such implementations,
+    -- we detect empty sequences/sets and do special handling.
+    local new_offset, err = check_empty_sequence_or_set(der, offset)
+    if err then
+      return nil, nil, err
+    end
+
+    if new_offset then
+      return new_offset, {}
+    end
+
     local obj, err = asn1_get_object(der, offset)
     if not obj then
       return nil, nil, err

@@ -1,0 +1,3 @@
+message: "**ldap-auth-advanced**: Supported decoding an empty sequence or set represented in long form length"
+type: feature
+scope: Plugin
