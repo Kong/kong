@@ -307,12 +307,13 @@ local function transform_body(conf)
     ai_shared.post_request(conf, response_body)
   end
 
+  llm_state.set_parsed_response(response_body) -- to be consumed by other plugins
+
   if accept_gzip() then
     response_body = kong_utils.deflate_gzip(response_body)
   end
 
   kong.ctx.plugin.buffered_response_body = response_body
-  llm_state.set_parsed_response(response_body) -- to be consumed by other plugins
 end
 
 function _M:header_filter(conf)
