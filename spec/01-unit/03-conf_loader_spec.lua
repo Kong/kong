@@ -1231,6 +1231,18 @@ describe("Configuration loader", function()
           assert.is_table(conf)
 
           local conf, _, errors = conf_loader(nil, {
+            proxy_server = "http://😉.tld",
+          })
+          assert.is_nil(errors)
+          assert.is_table(conf)
+
+          local conf, _, errors = conf_loader(nil, {
+            proxy_server = "http://%F0%9F%98%89.tld",
+          })
+          assert.is_nil(errors)
+          assert.is_table(conf)
+
+          local conf, _, errors = conf_loader(nil, {
             proxy_server = "://localhost:2333",
           })
           assert.contains("proxy_server missing scheme", errors)
@@ -1252,6 +1264,18 @@ describe("Configuration loader", function()
 
           local conf, _, errors = conf_loader(nil, {
             proxy_server = "http://localhost:2333/?a=1",
+          })
+          assert.contains("fragments, query strings or parameters are meaningless in proxy configuration", errors)
+          assert.is_nil(conf)
+
+          local conf, _, errors = conf_loader(nil, {
+            proxy_server = "http://user:password%23@localhost:2333",
+          })
+          assert.is_nil(errors)
+          assert.is_table(conf)
+
+          local conf, _, errors = conf_loader(nil, {
+            proxy_server = "http://user:password#@localhost:2333",
           })
           assert.contains("fragments, query strings or parameters are meaningless in proxy configuration", errors)
           assert.is_nil(conf)

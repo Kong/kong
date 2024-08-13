@@ -212,8 +212,8 @@
                                  # stack traces to help improve Kong.
 
 
-#proxy_server =                  # Proxy server defined as a URL. Kong will only use this
-                                 # option if a component is explicitly configured
+#proxy_server =                  # Proxy server defined as an encoded URL. Kong will only
+                                 # use this option if a component is explicitly configured
                                  # to use a proxy.
 
 

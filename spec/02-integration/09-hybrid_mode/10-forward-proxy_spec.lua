@@ -41,7 +41,7 @@ local fixtures = {
 
       content_by_lua_block {
         require("spec.fixtures.forward-proxy-server").connect({
-          basic_auth = ngx.encode_base64("test:konghq"),
+          basic_auth = ngx.encode_base64("test:konghq#"),
         })
       }
     }
@@ -56,7 +56,7 @@ local proxy_configs = {
     proxy_server_ssl_verify = "off",
   },
   ["https off auth on"] = {
-    proxy_server = "http://test:konghq@127.0.0.1:16796",
+    proxy_server = "http://test:konghq%23@127.0.0.1:16796",
     proxy_server_ssl_verify = "off",
   },
   ["https on auth off"] = {
@@ -64,7 +64,7 @@ local proxy_configs = {
     proxy_server_ssl_verify = "off",
   },
   ["https on auth on"] = {
-    proxy_server = "https://test:konghq@127.0.0.1:16798",
+    proxy_server = "https://test:konghq%23@127.0.0.1:16798",
     proxy_server_ssl_verify = "off",
   },
   ["https on auth off verify on"] = {
