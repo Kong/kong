@@ -521,6 +521,7 @@ return function(options)
 
     local client = package.loaded["kong.resty.dns.client"]
     if not client then
+      -- dns initialized here, can't be eliminated due to test dependencies
       client = require("kong.tools.dns")()
     end
 
