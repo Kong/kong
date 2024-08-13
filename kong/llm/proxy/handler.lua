@@ -27,7 +27,7 @@ end
 --
 
 
-local EMPTY = {}
+local EMPTY = require("kong.tools.table").EMPTY
 
 local _M = {}
 
