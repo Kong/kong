@@ -1,0 +1,3 @@
+message: "**degraphql**: Fixed an issue where multiple parameter types were not handled correctly when converting query parameters."
+type: bugfix
+scope: Plugin

@@ -56,6 +56,27 @@ local graphql_mock_query = {
       }
     }
   ]],
+
+  query_with_mixed_param_type = [[
+    query($repoCount: [Int], $rating: Float!, $isActive: Boolean) {
+      user {
+        id
+        name
+        isActive @include(if: $isActive)
+        repositories(last: $repoCount) {
+          nodes {
+            id
+            name
+            languages: stars(rating: $rating)
+          }
+        }
+        friends: following {
+          name
+          isActive
+        }
+      }
+    }
+  ]],
 }
 
 for _, strategy in helpers.each_strategy() do
@@ -120,6 +141,12 @@ for _, strategy in helpers.each_strategy() do
         service = { id = service.id },
         uri = "/fetch_recent_repos",
         query = graphql_mock_query.fetch_recent_repos,
+      })
+
+      assert(db.degraphql_routes:insert {
+        service = { id = service.id },
+        uri = "/query_with_mixed_param_type",
+        query = graphql_mock_query.query_with_mixed_param_type,
       })
 
       helpers.start_kong({
@@ -197,6 +224,25 @@ for _, strategy in helpers.each_strategy() do
       assert.response(res).has.status(200)
       local json = assert.response(res).has.jsonbody()
       assert.same(ori_graph_query, json.data.variables)
+
+      local ori_graph_query_with_mixed_param_type = {
+        repoCount = 3, -- A signed 32‐bit integer
+        rating = 4.5, -- A signed double-precision floating-point value.
+        isActive = true, -- true or false.
+      }
+
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/query_with_mixed_param_type",
+        query   = ori_graph_query_with_mixed_param_type,
+        headers = {
+          ["Host"] = "graphql.test"
+        }
+      })
+
+      assert.response(res).has.status(200)
+      local json = assert.response(res).has.jsonbody()
+      assert.same(ori_graph_query_with_mixed_param_type, json.data.variables)
     end)
 
     it("can update graphql router when creating new graphql_route entity", function ()

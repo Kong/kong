@@ -17,7 +17,6 @@ local workspaces = require "kong.workspaces"
 
 local type = type
 local ipairs = ipairs
-local fmt = string.format
 
 local FORCE = true
 
@@ -109,8 +108,22 @@ local function coerce_query_variable(query_str, args)
 
   if variable_definition and type(variable_definition) == "table" then
     for _, variable in ipairs(variable_definition) do
+      local var_kind = variable.type.kind
+      local var_type
+      if var_kind == "listType" or  var_kind == "nonNullType" then
+        var_type = variable.type.type.name.value
+      end
+
+      if var_kind == "namedType" then
+        var_type = variable.type.name.value
+      end
+
+      if not var_type then
+        kong.log.err("unsupported variable type: ", var_kind)
+        return
+      end
+
       local var_name = variable.variable.name.value
-      local var_type = variable.type.type.name.value
       local var_value = args[var_name]
 
       if var_value then
