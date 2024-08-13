@@ -26,7 +26,9 @@ import {
   createGcpVaultEntity,
   isGateway,
   clearAllKongResources,
-  eventually
+  eventually,
+  deleteHcvAppRole,
+  disableHcvApproleAuth
 } from '@support';
 
 // ********* Note *********
@@ -506,6 +508,8 @@ describe('Vaults: Secret referencing in AWS-Lambda plugin', function () {
 
   after(async function () {
     await deleteCache();
+    await deleteHcvAppRole(hcvApproleAuthPath, hcvRoleName)
+    await disableHcvApproleAuth()
     await deleteHcvSecret(hcvMount, hcvSecretPath);
     await clearAllKongResources();
   });

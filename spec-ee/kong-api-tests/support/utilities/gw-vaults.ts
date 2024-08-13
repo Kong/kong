@@ -64,6 +64,24 @@ export const enableHcvApproleAuth = async (path = "approle") => {
 };
 
 /**
+ * Disable Approle auth method in HCV
+ * @param {string} path - path of the approle auth method to disable
+ */
+export const disableHcvApproleAuth = async (path = "approle") => {
+  const resp = await axios({
+    method: 'DELETE',
+    url: `http://${getHost()}:8200/v1/sys/auth/${path}`,
+    headers: {
+      'X-Vault-Token': hcvToken,
+    }
+  });
+
+  logResponse(resp);
+  expect(resp.status, 'Status should be 204').to.equal(204);
+  return resp.data;
+};
+
+/**
  * Create an HCV policy for reading all secrets
  * @param {string} policy_name - name of the policy
  */
@@ -115,6 +133,27 @@ export const createHcvAppRole = async (path = "approle", role_name = "test-role"
 
   expect(resp.status, 'Status should be 204').to.equal(204);
   return resp.data;
+};
+
+/**
+ * Delete the target Approle in HCV
+ * @param {string} path - path of the enabled approle auth method, default is 'approle'
+ * @param {string} role_name - name of the approle to create, default is 'test-role'
+ */
+export const deleteHcvAppRole = async (path = "approle", role_name = "test-role") => {
+  const policy_name = "hcv-secret-read";
+  await createHcvSecretReadPolicy(policy_name);
+
+  const resp = await axios({
+    method: 'DELETE',
+    url: `http://${getHost()}:8200/v1/auth/${path}/role/${role_name}`,
+    headers: {
+      'X-Vault-Token': hcvToken,
+    }
+  });
+
+  logResponse(resp);
+  expect(resp.status, 'Status should be 204').to.equal(204);
 };
 
 /**
