@@ -457,6 +457,10 @@ end
 
 -- Header filter phase for semantic caching
 function AISemanticCaching:header_filter(conf)
+  if llm_state.is_semantic_cache_hit() then
+    return
+  end
+
   local cc = res_cc()
 
   if not cacheable_response(conf, cc) then
