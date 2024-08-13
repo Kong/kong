@@ -134,10 +134,10 @@ style(profiling): remove unused `#include "lj_mem_tracing.h"`
  create mode 100644 src/lj_mem_tracing.c
  create mode 100644 src/lj_mem_tracing.h
 
-diff --git a/bundle/LuaJIT-2.1-20231117/src/Makefile b/bundle/LuaJIT-2.1-20231117/src/Makefile
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/Makefile b/bundle/LuaJIT-2.1-20231117.1/src/Makefile
 index d80e45a8..1c818a9a 100644
---- a/bundle/LuaJIT-2.1-20231117/src/Makefile
-+++ b/bundle/LuaJIT-2.1-20231117/src/Makefile
+--- a/bundle/LuaJIT-2.1-20231117.1/src/Makefile
++++ b/bundle/LuaJIT-2.1-20231117.1/src/Makefile
 @@ -112,6 +112,9 @@ XCFLAGS=
  #
  # Disable LJ_GC64 mode for x64.
@@ -176,10 +176,10 @@ index d80e45a8..1c818a9a 100644
  	  lj_lex.o lj_parse.o lj_bcread.o lj_bcwrite.o lj_load.o \
  	  lj_ir.o lj_opt_mem.o lj_opt_fold.o lj_opt_narrow.o \
  	  lj_opt_dce.o lj_opt_loop.o lj_opt_split.o lj_opt_sink.o \
-diff --git a/bundle/LuaJIT-2.1-20231117/src/Makefile.dep b/bundle/LuaJIT-2.1-20231117/src/Makefile.dep
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/Makefile.dep b/bundle/LuaJIT-2.1-20231117.1/src/Makefile.dep
 index fda77c83..1992da3e 100644
---- a/bundle/LuaJIT-2.1-20231117/src/Makefile.dep
-+++ b/bundle/LuaJIT-2.1-20231117/src/Makefile.dep
+--- a/bundle/LuaJIT-2.1-20231117.1/src/Makefile.dep
++++ b/bundle/LuaJIT-2.1-20231117.1/src/Makefile.dep
 @@ -45,6 +45,8 @@ lib_string.o: lib_string.c lua.h luaconf.h lauxlib.h lualib.h lj_obj.h \
  lib_table.o: lib_table.c lua.h luaconf.h lauxlib.h lualib.h lj_obj.h \
   lj_def.h lj_arch.h lj_gc.h lj_err.h lj_errmsg.h lj_buf.h lj_str.h \
@@ -252,10 +252,10 @@ index fda77c83..1992da3e 100644
  luajit.o: luajit.c lua.h luaconf.h lauxlib.h lualib.h luajit.h lj_arch.h
  host/buildvm.o: host/buildvm.c host/buildvm.h lj_def.h lua.h luaconf.h \
   lj_arch.h lj_obj.h lj_def.h lj_arch.h lj_gc.h lj_obj.h lj_bc.h lj_ir.h \
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lib_base.c b/bundle/LuaJIT-2.1-20231117/src/lib_base.c
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lib_base.c b/bundle/LuaJIT-2.1-20231117.1/src/lib_base.c
 index cd743e30..efae4e21 100644
---- a/bundle/LuaJIT-2.1-20231117/src/lib_base.c
-+++ b/bundle/LuaJIT-2.1-20231117/src/lib_base.c
+--- a/bundle/LuaJIT-2.1-20231117.1/src/lib_base.c
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lib_base.c
 @@ -37,6 +37,8 @@
  #include "lj_strfmt.h"
  #include "lj_lib.h"
@@ -265,10 +265,10 @@ index cd743e30..efae4e21 100644
  
  /* -- Base library: checks ------------------------------------------------ */
  
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lib_init.c b/bundle/LuaJIT-2.1-20231117/src/lib_init.c
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lib_init.c b/bundle/LuaJIT-2.1-20231117.1/src/lib_init.c
 index 41299f55..c9b50a3d 100644
---- a/bundle/LuaJIT-2.1-20231117/src/lib_init.c
-+++ b/bundle/LuaJIT-2.1-20231117/src/lib_init.c
+--- a/bundle/LuaJIT-2.1-20231117.1/src/lib_init.c
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lib_init.c
 @@ -26,6 +26,11 @@ static const luaL_Reg lj_lib_load[] = {
    { LUA_DBLIBNAME,	luaopen_debug },
    { LUA_BITLIBNAME,	luaopen_bit },
@@ -281,11 +281,11 @@ index 41299f55..c9b50a3d 100644
    { NULL,		NULL }
  };
  
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lib_kprof.c b/bundle/LuaJIT-2.1-20231117/src/lib_kprof.c
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lib_kprof.c b/bundle/LuaJIT-2.1-20231117.1/src/lib_kprof.c
 new file mode 100644
 index 00000000..4b241b88
 --- /dev/null
-+++ b/bundle/LuaJIT-2.1-20231117/src/lib_kprof.c
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lib_kprof.c
 @@ -0,0 +1,116 @@
 +#ifndef LUAJIT_DISABLE_KPROF
 +
@@ -403,10 +403,10 @@ index 00000000..4b241b88
 +}
 +
 +#endif /* LUAJIT_DISABLE_KPROF */
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lj_bcread.c b/bundle/LuaJIT-2.1-20231117/src/lj_bcread.c
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lj_bcread.c b/bundle/LuaJIT-2.1-20231117.1/src/lj_bcread.c
 index c98c0d42..22a64099 100644
---- a/bundle/LuaJIT-2.1-20231117/src/lj_bcread.c
-+++ b/bundle/LuaJIT-2.1-20231117/src/lj_bcread.c
+--- a/bundle/LuaJIT-2.1-20231117.1/src/lj_bcread.c
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lj_bcread.c
 @@ -22,6 +22,8 @@
  #include "lj_bcdump.h"
  #include "lj_state.h"
@@ -426,10 +426,10 @@ index c98c0d42..22a64099 100644
    return pt;
  }
  
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lj_cdata.c b/bundle/LuaJIT-2.1-20231117/src/lj_cdata.c
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lj_cdata.c b/bundle/LuaJIT-2.1-20231117.1/src/lj_cdata.c
 index 77d9730f..b582c30c 100644
---- a/bundle/LuaJIT-2.1-20231117/src/lj_cdata.c
-+++ b/bundle/LuaJIT-2.1-20231117/src/lj_cdata.c
+--- a/bundle/LuaJIT-2.1-20231117.1/src/lj_cdata.c
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lj_cdata.c
 @@ -14,6 +14,7 @@
  #include "lj_cconv.h"
  #include "lj_cdata.h"
@@ -438,10 +438,10 @@ index 77d9730f..b582c30c 100644
  /* -- C data allocation --------------------------------------------------- */
  
  /* Allocate a new C data object holding a reference to another object. */
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lj_cdata.h b/bundle/LuaJIT-2.1-20231117/src/lj_cdata.h
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lj_cdata.h b/bundle/LuaJIT-2.1-20231117.1/src/lj_cdata.h
 index e6ab48ca..b33e6ec6 100644
---- a/bundle/LuaJIT-2.1-20231117/src/lj_cdata.h
-+++ b/bundle/LuaJIT-2.1-20231117/src/lj_cdata.h
+--- a/bundle/LuaJIT-2.1-20231117.1/src/lj_cdata.h
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lj_cdata.h
 @@ -10,6 +10,7 @@
  #include "lj_gc.h"
  #include "lj_ctype.h"
@@ -450,10 +450,10 @@ index e6ab48ca..b33e6ec6 100644
  #if LJ_HASFFI
  
  /* Get C data pointer. */
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lj_debug.c b/bundle/LuaJIT-2.1-20231117/src/lj_debug.c
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lj_debug.c b/bundle/LuaJIT-2.1-20231117.1/src/lj_debug.c
 index 682d6414..60ab8eaf 100644
---- a/bundle/LuaJIT-2.1-20231117/src/lj_debug.c
-+++ b/bundle/LuaJIT-2.1-20231117/src/lj_debug.c
+--- a/bundle/LuaJIT-2.1-20231117.1/src/lj_debug.c
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lj_debug.c
 @@ -586,6 +586,11 @@ static int debug_putchunkname(SBuf *sb, GCproto *pt, int pathstrip)
    return 1;
  }
@@ -466,10 +466,10 @@ index 682d6414..60ab8eaf 100644
  /* Put a compact stack dump into a buffer. */
  void lj_debug_dumpstack(lua_State *L, SBuf *sb, const char *fmt, int depth)
  {
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lj_debug.h b/bundle/LuaJIT-2.1-20231117/src/lj_debug.h
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lj_debug.h b/bundle/LuaJIT-2.1-20231117.1/src/lj_debug.h
 index 1c7fc06e..d914b8d9 100644
---- a/bundle/LuaJIT-2.1-20231117/src/lj_debug.h
-+++ b/bundle/LuaJIT-2.1-20231117/src/lj_debug.h
+--- a/bundle/LuaJIT-2.1-20231117.1/src/lj_debug.h
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lj_debug.h
 @@ -43,6 +43,7 @@ LJ_FUNC void lj_debug_pushloc(lua_State *L, GCproto *pt, BCPos pc);
  LJ_FUNC int lj_debug_getinfo(lua_State *L, const char *what, lj_Debug *ar,
  			     int ext);
@@ -478,10 +478,10 @@ index 1c7fc06e..d914b8d9 100644
  LJ_FUNC void lj_debug_dumpstack(lua_State *L, SBuf *sb, const char *fmt,
  				int depth);
  #endif
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lj_dispatch.c b/bundle/LuaJIT-2.1-20231117/src/lj_dispatch.c
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lj_dispatch.c b/bundle/LuaJIT-2.1-20231117.1/src/lj_dispatch.c
 index b9748bba..dbe83903 100644
---- a/bundle/LuaJIT-2.1-20231117/src/lj_dispatch.c
-+++ b/bundle/LuaJIT-2.1-20231117/src/lj_dispatch.c
+--- a/bundle/LuaJIT-2.1-20231117.1/src/lj_dispatch.c
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lj_dispatch.c
 @@ -30,6 +30,9 @@
  #if LJ_HASPROFILE
  #include "lj_profile.h"
@@ -526,10 +526,10 @@ index b9748bba..dbe83903 100644
      /* Preserve modifications of missing parameters by lua_setlocal(). */
      while (missing-- > 0 && tvisnil(L->top - 1))
        L->top--;
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lj_gc.c b/bundle/LuaJIT-2.1-20231117/src/lj_gc.c
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lj_gc.c b/bundle/LuaJIT-2.1-20231117.1/src/lj_gc.c
 index c3a0c258..86b3dfb3 100644
---- a/bundle/LuaJIT-2.1-20231117/src/lj_gc.c
-+++ b/bundle/LuaJIT-2.1-20231117/src/lj_gc.c
+--- a/bundle/LuaJIT-2.1-20231117.1/src/lj_gc.c
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lj_gc.c
 @@ -872,6 +872,7 @@ void lj_gc_barriertrace(global_State *g, uint32_t traceno)
  /* Call pluggable memory allocator to allocate or resize a fragment. */
  void *lj_mem_realloc(lua_State *L, void *p, GCSize osz, GCSize nsz)
@@ -558,10 +558,10 @@ index c3a0c258..86b3dfb3 100644
    return o;
  }
  
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lj_gc.h b/bundle/LuaJIT-2.1-20231117/src/lj_gc.h
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lj_gc.h b/bundle/LuaJIT-2.1-20231117.1/src/lj_gc.h
 index 3ed790ca..b4b958e2 100644
---- a/bundle/LuaJIT-2.1-20231117/src/lj_gc.h
-+++ b/bundle/LuaJIT-2.1-20231117/src/lj_gc.h
+--- a/bundle/LuaJIT-2.1-20231117.1/src/lj_gc.h
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lj_gc.h
 @@ -7,6 +7,7 @@
  #define _LJ_GC_H
  
@@ -578,11 +578,11 @@ index 3ed790ca..b4b958e2 100644
  }
  
  #define lj_mem_newvec(L, n, t)	((t *)lj_mem_new(L, (GCSize)((n)*sizeof(t))))
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lj_gcsnapshot.c b/bundle/LuaJIT-2.1-20231117/src/lj_gcsnapshot.c
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lj_gcsnapshot.c b/bundle/LuaJIT-2.1-20231117.1/src/lj_gcsnapshot.c
 new file mode 100644
 index 00000000..d43136bd
 --- /dev/null
-+++ b/bundle/LuaJIT-2.1-20231117/src/lj_gcsnapshot.c
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lj_gcsnapshot.c
 @@ -0,0 +1,947 @@
 +#ifndef LUAJIT_DISABLE_KPROF
 +
@@ -1531,11 +1531,11 @@ index 00000000..d43136bd
 +}
 +
 +#endif /* LUAJIT_DISABLE_KPROF */
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lj_gcsnapshot.h b/bundle/LuaJIT-2.1-20231117/src/lj_gcsnapshot.h
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lj_gcsnapshot.h b/bundle/LuaJIT-2.1-20231117.1/src/lj_gcsnapshot.h
 new file mode 100644
 index 00000000..03846eec
 --- /dev/null
-+++ b/bundle/LuaJIT-2.1-20231117/src/lj_gcsnapshot.h
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lj_gcsnapshot.h
 @@ -0,0 +1,11 @@
 +#ifndef LUAJIT_DISABLE_KPROF
 +
@@ -1548,10 +1548,10 @@ index 00000000..03846eec
 +
 +#endif /* _LJ_GCSNAPSHOT_H */
 +#endif /* LUAJIT_DISABLE_KPROF */
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lj_ir.c b/bundle/LuaJIT-2.1-20231117/src/lj_ir.c
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lj_ir.c b/bundle/LuaJIT-2.1-20231117.1/src/lj_ir.c
 index 631b7cbc..e574040c 100644
---- a/bundle/LuaJIT-2.1-20231117/src/lj_ir.c
-+++ b/bundle/LuaJIT-2.1-20231117/src/lj_ir.c
+--- a/bundle/LuaJIT-2.1-20231117.1/src/lj_ir.c
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lj_ir.c
 @@ -33,6 +33,7 @@
  #include "lj_serialize.h"
  #include "lj_strfmt.h"
@@ -1597,11 +1597,11 @@ index 631b7cbc..e574040c 100644
      J->irbotlim -= ofs;
      J->irtoplim = J->irbotlim + 2*szins;
      J->cur.ir = J->irbuf = newbase - J->irbotlim;
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lj_mbuf.h b/bundle/LuaJIT-2.1-20231117/src/lj_mbuf.h
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lj_mbuf.h b/bundle/LuaJIT-2.1-20231117.1/src/lj_mbuf.h
 new file mode 100644
 index 00000000..e0317edf
 --- /dev/null
-+++ b/bundle/LuaJIT-2.1-20231117/src/lj_mbuf.h
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lj_mbuf.h
 @@ -0,0 +1,170 @@
 +#ifndef LUAJIT_DISABLE_KPROF
 +
@@ -1773,10 +1773,10 @@ index 00000000..e0317edf
 +
 +#endif /* _LJ_MBUF_H */
 +#endif /* LUAJIT_DISABLE_KPROF */
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lj_mcode.c b/bundle/LuaJIT-2.1-20231117/src/lj_mcode.c
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lj_mcode.c b/bundle/LuaJIT-2.1-20231117.1/src/lj_mcode.c
 index 0f87caf7..7ea71263 100644
---- a/bundle/LuaJIT-2.1-20231117/src/lj_mcode.c
-+++ b/bundle/LuaJIT-2.1-20231117/src/lj_mcode.c
+--- a/bundle/LuaJIT-2.1-20231117.1/src/lj_mcode.c
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lj_mcode.c
 @@ -19,6 +19,7 @@
  #if LJ_HASJIT || LJ_HASFFI
  #include "lj_vm.h"
@@ -1803,11 +1803,11 @@ index 0f87caf7..7ea71263 100644
  }
  
  static int mcode_setprot(void *p, size_t sz, int prot)
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lj_mem_tracing.c b/bundle/LuaJIT-2.1-20231117/src/lj_mem_tracing.c
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lj_mem_tracing.c b/bundle/LuaJIT-2.1-20231117.1/src/lj_mem_tracing.c
 new file mode 100644
 index 00000000..e47180af
 --- /dev/null
-+++ b/bundle/LuaJIT-2.1-20231117/src/lj_mem_tracing.c
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lj_mem_tracing.c
 @@ -0,0 +1,888 @@
 +#ifndef LUAJIT_DISABLE_KPROF
 +
@@ -2697,11 +2697,11 @@ index 00000000..e47180af
 +}
 +
 +#endif /* LUAJIT_DISABLE_KPROF */
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lj_mem_tracing.h b/bundle/LuaJIT-2.1-20231117/src/lj_mem_tracing.h
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lj_mem_tracing.h b/bundle/LuaJIT-2.1-20231117.1/src/lj_mem_tracing.h
 new file mode 100644
 index 00000000..2604f6f5
 --- /dev/null
-+++ b/bundle/LuaJIT-2.1-20231117/src/lj_mem_tracing.h
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lj_mem_tracing.h
 @@ -0,0 +1,88 @@
 +#ifndef _LJ_MEM_TRACING_H
 +#define _LJ_MEM_TRACING_H
@@ -2791,10 +2791,10 @@ index 00000000..2604f6f5
 +
 +#endif /* _LJ_MEM_TRACING_H */
 +
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lj_parse.c b/bundle/LuaJIT-2.1-20231117/src/lj_parse.c
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lj_parse.c b/bundle/LuaJIT-2.1-20231117.1/src/lj_parse.c
 index b48ab536..40594468 100644
---- a/bundle/LuaJIT-2.1-20231117/src/lj_parse.c
-+++ b/bundle/LuaJIT-2.1-20231117/src/lj_parse.c
+--- a/bundle/LuaJIT-2.1-20231117.1/src/lj_parse.c
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lj_parse.c
 @@ -27,6 +27,7 @@
  #include "lj_parse.h"
  #include "lj_vm.h"
@@ -2813,10 +2813,10 @@ index b48ab536..40594468 100644
    return pt;
  }
  
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lj_profile.c b/bundle/LuaJIT-2.1-20231117/src/lj_profile.c
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lj_profile.c b/bundle/LuaJIT-2.1-20231117.1/src/lj_profile.c
 index 8cefd5fb..f850e888 100644
---- a/bundle/LuaJIT-2.1-20231117/src/lj_profile.c
-+++ b/bundle/LuaJIT-2.1-20231117/src/lj_profile.c
+--- a/bundle/LuaJIT-2.1-20231117.1/src/lj_profile.c
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lj_profile.c
 @@ -60,7 +60,7 @@ typedef struct ProfileState {
    luaJIT_profile_callback cb;	/* Profiler callback. */
    void *data;			/* Profiler callback data. */
@@ -2876,10 +2876,10 @@ index 8cefd5fb..f850e888 100644
    while (*mode) {
      int m = *mode++;
      switch (m) {
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lj_snap.c b/bundle/LuaJIT-2.1-20231117/src/lj_snap.c
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lj_snap.c b/bundle/LuaJIT-2.1-20231117.1/src/lj_snap.c
 index 68de208f..8c73bf46 100644
---- a/bundle/LuaJIT-2.1-20231117/src/lj_snap.c
-+++ b/bundle/LuaJIT-2.1-20231117/src/lj_snap.c
+--- a/bundle/LuaJIT-2.1-20231117.1/src/lj_snap.c
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lj_snap.c
 @@ -25,6 +25,7 @@
  #include "lj_ctype.h"
  #include "lj_cdata.h"
@@ -2914,10 +2914,10 @@ index 68de208f..8c73bf46 100644
    J->cur.snapmap = J->snapmapbuf;
    J->sizesnapmap = need;
  }
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lj_str.c b/bundle/LuaJIT-2.1-20231117/src/lj_str.c
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lj_str.c b/bundle/LuaJIT-2.1-20231117.1/src/lj_str.c
 index 12556702..f38f2f7e 100644
---- a/bundle/LuaJIT-2.1-20231117/src/lj_str.c
-+++ b/bundle/LuaJIT-2.1-20231117/src/lj_str.c
+--- a/bundle/LuaJIT-2.1-20231117.1/src/lj_str.c
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lj_str.c
 @@ -13,6 +13,7 @@
  #include "lj_char.h"
  #include "lj_prng.h"
@@ -2926,10 +2926,10 @@ index 12556702..f38f2f7e 100644
  /* -- String helpers ------------------------------------------------------ */
  
  /* Ordered compare of strings. Assumes string data is 4-byte aligned. */
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lj_tab.c b/bundle/LuaJIT-2.1-20231117/src/lj_tab.c
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lj_tab.c b/bundle/LuaJIT-2.1-20231117.1/src/lj_tab.c
 index db0a5e8a..51f0f1ba 100644
---- a/bundle/LuaJIT-2.1-20231117/src/lj_tab.c
-+++ b/bundle/LuaJIT-2.1-20231117/src/lj_tab.c
+--- a/bundle/LuaJIT-2.1-20231117.1/src/lj_tab.c
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lj_tab.c
 @@ -16,6 +16,7 @@
  
  #include <math.h>
@@ -2995,10 +2995,10 @@ index db0a5e8a..51f0f1ba 100644
    }
    if (oldhmask > 0) {  /* Reinsert pairs from old hash part. */
      global_State *g;
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lj_trace.c b/bundle/LuaJIT-2.1-20231117/src/lj_trace.c
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lj_trace.c b/bundle/LuaJIT-2.1-20231117.1/src/lj_trace.c
 index cc647500..03ceb4b4 100644
---- a/bundle/LuaJIT-2.1-20231117/src/lj_trace.c
-+++ b/bundle/LuaJIT-2.1-20231117/src/lj_trace.c
+--- a/bundle/LuaJIT-2.1-20231117.1/src/lj_trace.c
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lj_trace.c
 @@ -31,6 +31,7 @@
  #include "lj_vmevent.h"
  #include "lj_target.h"
@@ -3062,10 +3062,10 @@ index cc647500..03ceb4b4 100644
  }
  
  /* -- Penalties and blacklisting ------------------------------------------ */
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lj_udata.c b/bundle/LuaJIT-2.1-20231117/src/lj_udata.c
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lj_udata.c b/bundle/LuaJIT-2.1-20231117.1/src/lj_udata.c
 index 7acd9e32..28e58b95 100644
---- a/bundle/LuaJIT-2.1-20231117/src/lj_udata.c
-+++ b/bundle/LuaJIT-2.1-20231117/src/lj_udata.c
+--- a/bundle/LuaJIT-2.1-20231117.1/src/lj_udata.c
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lj_udata.c
 @@ -11,6 +11,7 @@
  #include "lj_err.h"
  #include "lj_udata.h"
@@ -3074,20 +3074,20 @@ index 7acd9e32..28e58b95 100644
  GCudata *lj_udata_new(lua_State *L, MSize sz, GCtab *env)
  {
    GCudata *ud = lj_mem_newt(L, sizeof(GCudata) + sz, GCudata);
-diff --git a/bundle/LuaJIT-2.1-20231117/src/ljamalg.c b/bundle/LuaJIT-2.1-20231117/src/ljamalg.c
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/ljamalg.c b/bundle/LuaJIT-2.1-20231117.1/src/ljamalg.c
 index 9a5108fc..2547b0ae 100644
---- a/bundle/LuaJIT-2.1-20231117/src/ljamalg.c
-+++ b/bundle/LuaJIT-2.1-20231117/src/ljamalg.c
+--- a/bundle/LuaJIT-2.1-20231117.1/src/ljamalg.c
++++ b/bundle/LuaJIT-2.1-20231117.1/src/ljamalg.c
 @@ -87,4 +87,5 @@
  #include "lib_jit.c"
  #include "lib_ffi.c"
  #include "lib_buffer.c"
 +#include "lib_kprof.c"
  #include "lib_init.c"
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lualib.h b/bundle/LuaJIT-2.1-20231117/src/lualib.h
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lualib.h b/bundle/LuaJIT-2.1-20231117.1/src/lualib.h
 index e51887e3..2f459cc7 100644
---- a/bundle/LuaJIT-2.1-20231117/src/lualib.h
-+++ b/bundle/LuaJIT-2.1-20231117/src/lualib.h
+--- a/bundle/LuaJIT-2.1-20231117.1/src/lualib.h
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lualib.h
 @@ -22,6 +22,9 @@
  #define LUA_JITLIBNAME	"jit"
  #define LUA_FFILIBNAME	"ffi"
@@ -3111,4 +3111,3 @@ index e51887e3..2f459cc7 100644
  #ifndef lua_assert
 -- 
 2.34.1
-

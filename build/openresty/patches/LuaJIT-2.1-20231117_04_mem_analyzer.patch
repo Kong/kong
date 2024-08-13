@@ -1,7 +1,7 @@
-diff --git a/bundle/LuaJIT-2.1-20231117/Makefile b/bundle/LuaJIT-2.1-20231117/Makefile
-index 3aed365d..a032618c 100644
---- a/bundle/LuaJIT-2.1-20231117/Makefile
-+++ b/bundle/LuaJIT-2.1-20231117/Makefile
+diff --git a/bundle/LuaJIT-2.1-20231117.1/Makefile b/bundle/LuaJIT-2.1-20231117.1/Makefile
+index 3aed365..a032618 100644
+--- a/bundle/LuaJIT-2.1-20231117.1/Makefile
++++ b/bundle/LuaJIT-2.1-20231117.1/Makefile
 @@ -100,7 +100,7 @@ FILES_JITLIB= bc.lua bcsave.lua dump.lua p.lua v.lua zone.lua \
  	      dis_arm64be.lua dis_ppc.lua dis_mips.lua dis_mipsel.lua \
  	      dis_mips64.lua dis_mips64el.lua \
@@ -11,24 +11,24 @@ index 3aed365d..a032618c 100644
  
  ifeq (,$(findstring Windows,$(OS)))
    HOST_SYS:= $(shell uname -s)
-diff --git a/bundle/LuaJIT-2.1-20231117/src/Makefile b/bundle/LuaJIT-2.1-20231117/src/Makefile
-index 1c818a9a..1a3f34e4 100644
---- a/bundle/LuaJIT-2.1-20231117/src/Makefile
-+++ b/bundle/LuaJIT-2.1-20231117/src/Makefile
-@@ -531,7 +531,7 @@
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/Makefile b/bundle/LuaJIT-2.1-20231117.1/src/Makefile
+index 245f5e4..85988dd 100644
+--- a/bundle/LuaJIT-2.1-20231117.1/src/Makefile
++++ b/bundle/LuaJIT-2.1-20231117.1/src/Makefile
+@@ -531,7 +531,7 @@ LJCORE_O= lj_assert.o lj_gc.o lj_gcsnapshot.o lj_err.o lj_char.o lj_bc.o lj_obj.
  	  lj_ctype.o lj_cdata.o lj_cconv.o lj_ccall.o lj_ccallback.o \
  	  lj_carith.o lj_clib.o lj_cparse.o \
  	  lj_lib.o lj_alloc.o lib_aux.o \
--	  $(LJLIB_O) lib_init.o
-+	  $(LJLIB_O) lib_init.o lj_mem_analyze.o
+-	  $(LJLIB_O) lib_init.o lj_str_hash.o
++	  $(LJLIB_O) lib_init.o lj_str_hash.o lj_mem_analyze.o
  
- LJVMCORE_O= $(LJVM_O) $(LJCORE_O)
- LJVMCORE_DYNO= $(LJVMCORE_O:.o=_dyn.o)
-diff --git a/bundle/LuaJIT-2.1-20231117/src/jit/mem_analyze.lua b/bundle/LuaJIT-2.1-20231117/src/jit/mem_analyze.lua
+ ifeq (x64,$(TARGET_LJARCH))
+   lj_str_hash-CFLAGS = -msse4.2
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/jit/mem_analyze.lua b/bundle/LuaJIT-2.1-20231117.1/src/jit/mem_analyze.lua
 new file mode 100644
-index 00000000..4a86ba9b
+index 0000000..152cd93
 --- /dev/null
-+++ b/bundle/LuaJIT-2.1-20231117/src/jit/mem_analyze.lua
++++ b/bundle/LuaJIT-2.1-20231117.1/src/jit/mem_analyze.lua
 @@ -0,0 +1,144 @@
 +local function print_tree(node, level)
 +  io.write('\n')
@@ -174,10 +174,10 @@ index 00000000..4a86ba9b
 +return {
 +  analyze = analyze
 +}
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lib_base.c b/bundle/LuaJIT-2.1-20231117/src/lib_base.c
-index efae4e21..6da63734 100644
---- a/bundle/LuaJIT-2.1-20231117/src/lib_base.c
-+++ b/bundle/LuaJIT-2.1-20231117/src/lib_base.c
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lib_base.c b/bundle/LuaJIT-2.1-20231117.1/src/lib_base.c
+index efae4e2..6da6373 100644
+--- a/bundle/LuaJIT-2.1-20231117.1/src/lib_base.c
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lib_base.c
 @@ -38,7 +38,7 @@
  #include "lj_lib.h"
  #include "lj_cdata.h"
@@ -204,11 +204,11 @@ index efae4e21..6da63734 100644
  LJLIB_PUSH("tostring")
  LJLIB_CF(print)
  {
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lj_mem_analyze.c b/bundle/LuaJIT-2.1-20231117/src/lj_mem_analyze.c
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lj_mem_analyze.c b/bundle/LuaJIT-2.1-20231117.1/src/lj_mem_analyze.c
 new file mode 100644
-index 00000000..089cedb3
+index 0000000..442d630
 --- /dev/null
-+++ b/bundle/LuaJIT-2.1-20231117/src/lj_mem_analyze.c
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lj_mem_analyze.c
 @@ -0,0 +1,378 @@
 +#include "lj_mem_analyze.h"
 +#include "lj_tab.h"
@@ -588,11 +588,11 @@ index 00000000..089cedb3
 +
 +  return trroot;
 +}
-diff --git a/bundle/LuaJIT-2.1-20231117/src/lj_mem_analyze.h b/bundle/LuaJIT-2.1-20231117/src/lj_mem_analyze.h
+diff --git a/bundle/LuaJIT-2.1-20231117.1/src/lj_mem_analyze.h b/bundle/LuaJIT-2.1-20231117.1/src/lj_mem_analyze.h
 new file mode 100644
-index 00000000..0b3839f1
+index 0000000..0b3839f
 --- /dev/null
-+++ b/bundle/LuaJIT-2.1-20231117/src/lj_mem_analyze.h
++++ b/bundle/LuaJIT-2.1-20231117.1/src/lj_mem_analyze.h
 @@ -0,0 +1,12 @@
 +/*
 +** Memory analyzer.
