@@ -104,6 +104,7 @@ describe("filter metadata [#" .. strategy .. "]", function()
 
   describe("config validation -", function()
     local create_filter_chain
+    local create_filter_plugin
 
     if strategy == "off" then
       create_filter_chain = function(route_host, filter_chain)
@@ -122,8 +123,24 @@ describe("filter metadata [#" .. strategy .. "]", function()
         })
       end
 
+      create_filter_plugin = function(route_host, filter)
+        return post_config(admin, {
+          services = {
+            { name = random_name(),
+              url = helpers.mock_upstream_url,
+              routes = {
+                { name = random_name(),
+                  hosts = { route_host },
+                  plugins = { filter },
+                },
+              },
+            },
+          },
+        })
+      end
+
     else
-      create_filter_chain = function(route_host, filter_chain)
+      local function create_service_and_route(route_host)
         local res = admin:post("/services", json {
           name = random_name(),
           url = helpers.mock_upstream_url,
@@ -141,10 +158,25 @@ describe("filter metadata [#" .. strategy .. "]", function()
 
         assert.response(res).has.status(201)
 
-        local route = assert.response(res).has.jsonbody()
+        return assert.response(res).has.jsonbody()
+      end
 
-        res = admin:post("/routes/" .. route.id .. "/filter-chains",
-                         json(filter_chain))
+      create_filter_chain = function(route_host, filter_chain)
+        local route = create_service_and_route(route_host)
+
+        local res = admin:post("/routes/" .. route.id .. "/filter-chains",
+                               json(filter_chain))
+
+        assert.response(res).has.jsonbody()
+
+        return res
+      end
+
+      create_filter_plugin = function(route_host, filter)
+        local route = create_service_and_route(route_host)
+
+        local res = admin:post("/routes/" .. route.id .. "/plugins",
+                               json(filter))
 
         assert.response(res).has.jsonbody()
 
@@ -203,6 +235,56 @@ describe("filter metadata [#" .. strategy .. "]", function()
                   "x-foo:123",
                 },
               },
+            },
+          },
+        },
+      })
+
+      assert.response(res).has.status(201)
+
+      assert.eventually(function()
+        res = proxy:get("/status/200", { headers = { host = host } })
+        assert.response(res).has.status(200)
+        assert.response(res).has.header("x-foo")
+      end).has_no_error()
+    end)
+
+    it("config schemas are validated for filter plugins", function()
+      local res = create_filter_plugin(random_name(), {
+        name = "rt_with_validation",
+        config = {}, -- empty
+      })
+
+      assert.response(res).has.status(400)
+      local body = assert.response(res).has.jsonbody()
+
+      if strategy == "off" then
+        assert.is_table(body.flattened_errors)
+        assert.same(1, #body.flattened_errors)
+
+        local err = body.flattened_errors[1]
+        assert.is_table(err)
+        assert.same("plugin", err.entity_type)
+        assert.same({
+          {
+            field = "config",
+            message = "property add is required",
+            type = "field"
+          }
+        }, err.errors)
+
+      else
+        assert.same({ config = "property add is required" },
+                    body.fields)
+      end
+
+      local host = random_name() .. ".test"
+      res = create_filter_plugin(host, {
+        name = "rt_with_validation",
+        config = {
+          add = {
+            headers = {
+              "x-foo:123",
             },
           },
         },

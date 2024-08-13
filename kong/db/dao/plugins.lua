@@ -3,6 +3,7 @@ local DAO = require "kong.db.dao"
 local plugin_loader = require "kong.db.schema.plugin_loader"
 local reports = require "kong.reports"
 local plugin_servers = require "kong.runloop.plugin_servers"
+local wasm_plugins = require "kong.runloop.wasm.plugins"
 local version = require "version"
 local load_module_if_exists = require "kong.tools.module".load_module_if_exists
 
@@ -164,6 +165,13 @@ local load_plugin_handler do
       ok, handler = plugin_servers.load_plugin(plugin)
       if type(handler) == "table" then
         handler._go = true
+      end
+    end
+
+    if not ok then
+      ok, handler = wasm_plugins.load_plugin(plugin)
+      if type(handler) == "table" then
+        handler._wasm = true
       end
     end
 

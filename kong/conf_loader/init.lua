@@ -631,7 +631,7 @@ local function load(path, custom_conf, opts)
 
     ---@type kong.configuration.wasm_filter[]
     local active_filters = {}
-    for _, filter in pairs(active_filters_by_name) do
+    for name, filter in pairs(active_filters_by_name) do
       insert(active_filters, filter)
     end
     sort(active_filters, function(lhs, rhs)
@@ -752,6 +752,14 @@ local function load(path, custom_conf, opts)
             plugins[plugin_name] = true
           end
         end
+      end
+    end
+
+    if conf.wasm_modules_parsed then
+      for _, filter in ipairs(conf.wasm_modules_parsed) do
+        assert(plugins[filter.name] == nil,
+               "duplicate plugin/wasm filter name: " .. filter.name)
+        plugins[filter.name] = true
       end
     end
 

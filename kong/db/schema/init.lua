@@ -51,6 +51,7 @@ local random_string = require("kong.tools.rand").random_string
 local uuid = require("kong.tools.uuid").uuid
 local json_validate = json.validate
 
+local EMPTY = {}
 
 local Schema       = {}
 Schema.__index     = Schema
@@ -1076,6 +1077,9 @@ end
 -- @return true if compatible, false otherwise.
 local function compatible_fields(f1, f2)
   local t1, t2 = f1.type, f2.type
+  if t1 == "record" and t2 == "json" then
+    return true
+  end
   if t1 ~= t2 then
     return false
   end
@@ -1128,6 +1132,44 @@ local function resolve_field(self, k, field, subschema)
 end
 
 
+local function get_json_schema(field, field_name, input)
+  local json_schema = field.json_schema
+
+  local schema = json_schema.inline
+  if schema then
+    return schema
+  end
+
+  local parent_key = json_schema.parent_subschema_key
+  local subschema_key = input[parent_key]
+
+  if subschema_key then
+    local schema_name = json_schema.namespace .. "/" .. subschema_key
+    schema = json.get_schema(schema_name) or json_schema.default
+
+    if schema then
+      return schema
+
+    elseif not json_schema.optional then
+      return validation_errors.JSON_SCHEMA_NOT_FOUND:format(schema_name)
+    end
+
+  elseif not json_schema.optional then
+    return validation_errors.JSON_PARENT_KEY_MISSING:format(field_name, parent_key)
+  end
+end
+
+
+local function validate_json_field(field, field_name, input)
+  local schema, err = get_json_schema(field, field_name, input)
+  if schema then
+    local _
+    _, err = json_validate(input[field_name], schema)
+  end
+  return err
+end
+
+
 --- Validate fields of a table, individually, against the schema.
 -- @param self The schema
 -- @param input The input table.
@@ -1141,37 +1183,17 @@ validate_fields = function(self, input)
   local errors, _ = {}
 
   local subschema = get_subschema(self, input)
+  local subschema_fields = subschema and subschema.fields or EMPTY
 
   for k, v in pairs(input) do
     local err
     local field = self.fields[tostring(k)]
+    local subschema_field = subschema_fields[tostring(k)]
 
-    if field and field.type == "json" then
-      local json_schema = field.json_schema
-      local inline_schema = json_schema.inline
-
-      if inline_schema then
-        _, errors[k] = json_validate(v, inline_schema)
-
-      else
-        local parent_key = json_schema.parent_subschema_key
-        local json_subschema_key = input[parent_key]
-
-        if json_subschema_key then
-          local schema_name = json_schema.namespace .. "/" .. json_subschema_key
-          inline_schema = json.get_schema(schema_name) or json_schema.default
-
-          if inline_schema then
-            _, errors[k] = json_validate(v, inline_schema)
-
-          elseif not json_schema.optional then
-            errors[k] = validation_errors.JSON_SCHEMA_NOT_FOUND:format(schema_name)
-          end
-
-        elseif not json_schema.optional then
-          errors[k] = validation_errors.JSON_PARENT_KEY_MISSING:format(k, parent_key)
-        end
-      end
+    if field and field.type == "json"
+      or (subschema_field and subschema_field.type == "json")
+    then
+      errors[k] = validate_json_field(subschema_field or field, k, input)
 
     elseif field and field.type == "self" then
       local pok
