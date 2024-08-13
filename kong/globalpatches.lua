@@ -521,7 +521,8 @@ return function(options)
 
     local client = package.loaded["kong.resty.dns.client"]
     if not client then
-      client = require("kong.tools.dns")()
+      -- just require without dns client init, because we only want `toip` function
+      client = require("kong.resty.dns.client")
     end
 
     --- Patch the TCP connect and UDP setpeername methods such that all
