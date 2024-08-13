@@ -25,6 +25,7 @@ local license_utils  = require "kong.enterprise_edition.license_utils"
 local base64         = require "ngx.base64"
 local sha256_hex     = require "kong.tools.sha256".sha256_hex
 local ee_constants   = require "kong.enterprise_edition.constants"
+local keyring        = require "kong.keyring"
 
 
 local timer_at = ngx.timer.at
@@ -63,14 +64,39 @@ local function decode_base64_str(str)
   end
 end
 
+local logged_keyring_warning = false
+
 function _M.filter_latest_license(lic_iter)
   local license
+
+  local found_encrypted_license = false
+
   for l in lic_iter do
-    -- Select the last updated license
-    if not license or license.updated_at < l.updated_at then
-      license = l
+    if l then
+      -- if this function is called before keyring is unlocked/activated
+      -- (i.e. during `init`), we may come across license payloads that are
+      -- still encrypted and have no choice but to defer
+      if keyring.value_is_encrypted(l.payload) then
+        found_encrypted_license = true
+
+      -- Select the last updated license
+      elseif not license or license.updated_at < l.updated_at then
+        license = l
+      end
     end
   end
+
+  if found_encrypted_license and not logged_keyring_warning then
+    logged_keyring_warning = true
+    ngx.log(ngx.WARN, "[license-helpers] found one or more keyring-encrypted",
+                      " licenses in the database that could not be decrypted",
+                      " because keyring activation has not yet completed.",
+                      " License activation will be retried after this node's",
+                      " keyring has been activated. This warning can be avoided",
+                      " by providing Kong with a license at startup via",
+                      " KONG_LICENSE_DATA or KONG_LICENSE_PATH env vars.")
+  end
+
 
   return license or nil
 end

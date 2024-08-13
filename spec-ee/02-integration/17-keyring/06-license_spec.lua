@@ -156,6 +156,19 @@ local function assert_get_licenses(client, license_id, msg)
   assert.res_status(200, client:get("/licenses/" .. license_id), msg)
 end
 
+local function assert_no_license_entities(client, msg)
+  local res = client:get("/licenses")
+  assert.res_status(200, res)
+  res = assert.response(res).has.jsonbody()
+  assert.is_table(res.data, "invalid response from `GET /licenses`: " .. msg)
+  assert.same({}, res.data, "expected no license entities: " .. msg)
+end
+
+local function assert_encrypted_db_license_warning(prefix)
+  assert.logfile(prefix .. "/logs/error.log")
+    .has.line("found one or more keyring-encrypted licenses in the database", true)
+end
+
 local function new_conf(extra)
   local conf = {
     db_update_frequency = 1,
@@ -212,6 +225,9 @@ describe("Keyring license encryption #postgres", function()
       proxy_listen = "127.0.0.1:9200",
       admin_listen = "127.0.0.1:9201",
     })
+
+    local node_1_errlog = node_1.prefix .. "/logs/error.log"
+    local node_2_errlog = node_2.prefix .. "/logs/error.log"
 
     local db
 
@@ -295,6 +311,10 @@ describe("Keyring license encryption #postgres", function()
       await_license(node_2_admin, UNLICENSED,
                     "node_2: expected no active license at startup")
 
+      -- sanity check: ensure there's nothing in the DB yet
+      assert_no_license_entities(node_1_admin, "node_1: before adding a license")
+      assert_no_license_entities(node_2_admin, "node_2: before addint a license")
+
       -- add a new license
       res = node_1_admin:post("/licenses", json({ payload = license }))
       res = assert.response(res).has.jsonbody()
@@ -315,11 +335,14 @@ describe("Keyring license encryption #postgres", function()
 
       -- stop node_2 first so that it cannot be used to recover node_1's keyring
       assert(helpers.stop_kong(node_2.prefix, true))
+      helpers.clean_logfile(node_1_errlog)
       assert(helpers.restart_kong(node_1))
 
       -- the license still exists in the DB but is unreadable due to encryption
       await_license(node_1_admin, UNLICENSED,
                     "node_1: expected no active license after restart before keyring recovery")
+
+      assert_encrypted_db_license_warning(node_1.prefix)
 
       -- node_1 is unlicensed, so the request-transformer-advanced plugin
       -- should not execute
@@ -333,9 +356,14 @@ describe("Keyring license encryption #postgres", function()
                     "node_1: license should be activated after keyring recovery")
 
       -- start node_2 and await cluster keyring recovery
+      helpers.clean_logfile(node_2_errlog)
       assert(helpers.start_kong(node_2, nil, true))
+
+      assert_encrypted_db_license_warning(node_2.prefix)
+
       await_license(node_2_admin, license_key,
                     "node_2: license should be reactivated after keyring cluster initialization")
+      assert.logfile(node_2_errlog).has.line("loaded license from database", true, 5)
 
       -- sanity check: the license is readable via the DB/admin api
       assert_get_licenses(node_1_admin, license_id, "node_1: after license reactivation")
@@ -519,6 +547,7 @@ describe("Keyring license encryption #postgres", function()
       assert(helpers.restart_kong(cp_1))
 
       -- the license still exists in the DB but is unreadable due to encryption
+      assert_encrypted_db_license_warning(cp_1.prefix)
       await_license(cp_1_admin, UNLICENSED,
                     "cp_1: expected no active license after restart before keyring recovery")
 
@@ -552,7 +581,9 @@ describe("Keyring license encryption #postgres", function()
                       new_header, new_header_value)
 
       -- start cp_2 and await cluster keyring recovery
+      helpers.clean_logfile(cp_2.prefix .. "/logs/error.log")
       assert(helpers.start_kong(cp_2, nil, true))
+      assert_encrypted_db_license_warning(cp_2.prefix)
       await_license(cp_2_admin, license_key,
                     "cp_2: license should be reactivated after keyring cluster initialization")
 

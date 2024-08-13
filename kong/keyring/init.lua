@@ -28,6 +28,13 @@ local function from_hex(s)
   return s:gsub('..', function(cc) return string.char(tonumber(cc, 16)) end)
 end
 
+local function is_encrypted(s)
+  return s:sub(1, #CRYPTO_MARKER) == CRYPTO_MARKER
+end
+
+function _M.value_is_encrypted(s)
+  return type(s) == "string" and is_encrypted(s)
+end
 
 local strategy
 function _M.set_strategy(s)
@@ -84,7 +91,7 @@ function _M.encrypt(p)
   assert(type(p) == "string")
 
   -- encrypted in the first place, dont re-run it
-  if p:sub(1, #CRYPTO_MARKER) == CRYPTO_MARKER then
+  if is_encrypted(p) then
     return p
   end
 
@@ -134,7 +141,7 @@ function _M.decrypt(c)
   assert(type(c) == "string")
 
   -- wasnt encrypted in the first place
-  if c:sub(1, #CRYPTO_MARKER) ~= CRYPTO_MARKER then
+  if not is_encrypted(c) then
     return c
   end
 
