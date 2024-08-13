@@ -42,7 +42,7 @@ return {
     { read_timeout       = nonzero_timeout { default = 60000 }, },
     { tags               = typedefs.tags },
     { client_certificate = { description = "Certificate to be used as client certificate while TLS handshaking to the upstream server.", type = "foreign", reference = "certificates" }, },
-    { tls_verify         = { description = "Whether to enable verification of upstream server TLS certificate.", type = "boolean", }, },
+    { tls_verify         = { description = "Whether to enable verification of upstream server TLS certificate. If not set, the global level config `proxy_ssl_verify` will be used.", type = "boolean", }, },
     { tls_verify_depth   = { description = "Maximum depth of chain while verifying Upstream server's TLS certificate.", type = "integer", default = null, between = { 0, 64 }, }, },
     { ca_certificates    = { description = "Array of CA Certificate object UUIDs that are used to build the trust store while verifying upstream server's TLS certificate.", type = "array", elements = { type = "string", uuid = true, }, }, },
     { enabled            = { description = "Whether the Service is active. ", type = "boolean", required = true, default = true, }, },
