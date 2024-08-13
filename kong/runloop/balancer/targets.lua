@@ -48,7 +48,7 @@ local resolve_timer_running
 local queryDns
 
 function targets_M.init()
-  dns_client = assert(package.loaded["kong.resty.dns.client"])
+  dns_client = assert(kong.dns)
   if renewal_heap:size() > 0 then
     renewal_heap = require("binaryheap").minUnique()
     renewal_weak_cache = setmetatable({}, { __mode = "v" })    
