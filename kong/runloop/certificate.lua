@@ -4,6 +4,7 @@ local mlcache = require "kong.resty.mlcache"
 local new_tab = require "table.new"
 local constants = require "kong.constants"
 local plugin_servers = require "kong.runloop.plugin_servers"
+local wasm_plugins = require "kong.runloop.wasm.plugins"
 local openssl_x509_store = require "resty.openssl.x509.store"
 local openssl_x509 = require "resty.openssl.x509"
 
@@ -469,6 +470,9 @@ do
     local ok, schema = load_module_if_exists(plugin_schema)
     if not ok then
       ok, schema = plugin_servers.load_schema(name)
+    end
+    if not ok then
+      ok, schema = wasm_plugins.load_schema(name)
     end
 
     if not ok then

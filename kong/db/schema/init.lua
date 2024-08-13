@@ -1076,6 +1076,9 @@ end
 -- @return true if compatible, false otherwise.
 local function compatible_fields(f1, f2)
   local t1, t2 = f1.type, f2.type
+  if t1 == "record" and t2 == "json" then
+    return true
+  end
   if t1 ~= t2 then
     return false
   end

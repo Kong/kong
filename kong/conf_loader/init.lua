@@ -631,7 +631,7 @@ local function load(path, custom_conf, opts)
 
     ---@type kong.configuration.wasm_filter[]
     local active_filters = {}
-    for _, filter in pairs(active_filters_by_name) do
+    for name, filter in pairs(active_filters_by_name) do
       insert(active_filters, filter)
     end
     sort(active_filters, function(lhs, rhs)
@@ -753,6 +753,10 @@ local function load(path, custom_conf, opts)
           end
         end
       end
+    end
+
+    for _, filter in ipairs(conf.wasm_modules_parsed) do
+      plugins[filter.name] = true
     end
 
     conf.loaded_plugins = setmetatable(plugins, conf_constants._NOP_TOSTRING_MT)
