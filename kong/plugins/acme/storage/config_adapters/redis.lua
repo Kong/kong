@@ -7,6 +7,8 @@ local function redis_config_adapter(conf)
         ssl = conf.ssl,
         ssl_verify = conf.ssl_verify,
         ssl_server_name = conf.server_name,
+        username = conf.username,
+        password = conf.password,
 
         namespace = conf.extra_options.namespace,
         scan_count = conf.extra_options.scan_count,
