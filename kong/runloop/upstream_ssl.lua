@@ -42,7 +42,7 @@ local function set_service_ssl(ctx)
   end
 
   local tls_verify = service.tls_verify
-  if tls_verify then
+  if tls_verify ~= nil then
     res, err = set_upstream_ssl_verify(tls_verify)
     if not res then
       log(CRIT, "unable to set upstream TLS verification to: ",

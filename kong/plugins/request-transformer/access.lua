@@ -1,7 +1,6 @@
 local multipart = require "multipart"
 local cjson = require("cjson.safe").new()
 local pl_template = require "pl.template"
-local pl_tablex = require "pl.tablex"
 local sandbox = require "kong.tools.sandbox"
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
@@ -35,7 +34,7 @@ local CONTENT_LENGTH = "content-length"
 local CONTENT_TYPE = "content-type"
 local HOST = "host"
 local JSON, MULTI, ENCODED = "json", "multi_part", "form_encoded"
-local EMPTY = pl_tablex.readonly({})
+local EMPTY = require("kong.tools.table").EMPTY
 
 
 local compile_opts = {

@@ -199,8 +199,8 @@
                                  # stack traces to help improve Kong.
 
 
-#proxy_server =                  # Proxy server defined as a URL. Kong will only use this
-                                 # option if a component is explicitly configured
+#proxy_server =                  # Proxy server defined as an encoded URL. Kong will only
+                                 # use this option if a component is explicitly configured
                                  # to use a proxy.
 
 
@@ -2167,7 +2167,7 @@
 #   separate namespaces in the `"<name>/<key>"` format.
 #   For using these functions with non-namespaced keys, the Nginx template needs
 #   a `shm_kv *` entry, which can be defined using `nginx_wasm_shm_kv`.
-# - `nginx_wasm_wasmtime_<flag>`: Injects `flag <flag>` into the `wasmtime {}` 
+# - `nginx_wasm_wasmtime_<flag>`: Injects `flag <flag>` into the `wasmtime {}`
 #   block, allowing various Wasmtime-specific flags to be set.
 # - `nginx_<http|proxy>_<directive>`: Injects `<directive>` into the
 #   `http {}` or `server {}` blocks, as specified in the Nginx injected directives

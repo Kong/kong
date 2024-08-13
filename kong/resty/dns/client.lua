@@ -65,8 +65,7 @@ local COLON = string_byte(":")
 local DEFAULT_TIMEOUT = 2000 -- 2000 is openresty default
 
 
-local EMPTY = setmetatable({},
-  {__newindex = function() error("The 'EMPTY' table is read-only") end})
+local EMPTY = require("kong.tools.table").EMPTY
 
 -- resolver options
 local config

@@ -102,7 +102,7 @@ local UPSTREAM_HEADER_KEY_TO_NAME = {
 }
 
 
-local EMPTY = {}
+local EMPTY = require("kong.tools.table").EMPTY
 
 
 -- NOTE! Prefixes should always follow `nginx_[a-z]+_`.
