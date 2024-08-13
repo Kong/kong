@@ -47,6 +47,7 @@ local proxy_wasm
 
 local kong = _G.kong
 local ngx = ngx
+local null = ngx.null
 local log = ngx.log
 local DEBUG = ngx.DEBUG
 local ERR = ngx.ERR
@@ -63,6 +64,7 @@ local fmt = string.format
 
 local VERSION_KEY = "filter_chains:version"
 local TTL_ZERO = { ttl = 0 }
+local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 
 ---@class kong.runloop.wasm.filter_meta
 ---
@@ -361,6 +363,56 @@ local function build_filter_list(service_chain, route_chain)
 end
 
 
+local function serialize_configuration(config)
+  -- Serialize all JSON configurations up front
+  --
+  -- NOTE: there is a subtle difference between a raw, non-JSON filter
+  -- configuration which requires no encoding (e.g. `my config bytes`)
+  -- and a JSON filter configuration of type=string, which should be
+  -- JSON-encoded (e.g. `"my config string"`).
+  --
+  -- Properly disambiguating between the two cases requires an
+  -- inspection of the filter metadata, which is not guaranteed to be
+  -- present on data-plane/proxy nodes.
+  if config ~= nil and type(config) ~= "string" then
+    return cjson_encode(config)
+  end
+
+  return config
+end
+
+
+local function insert_chain(chains, chain)
+  local route_id = chain.route and chain.route.id
+  local service_id = chain.service and chain.service.id
+
+  local chain_type = service_id and TYPE_SERVICE or TYPE_ROUTE
+  local id = service_id or route_id
+
+  if chains.by_id[chain_type][id] then
+    return chains.by_id[chain_type][id]
+  end
+
+  chains.by_id[chain_type][id] = chain
+
+  if chain_type == TYPE_ROUTE then
+    insert(chains.route_chains, chain)
+  end
+
+  insert(chains.all_chain_refs, {
+    type           = chain_type,
+
+    service_chain  = (chain_type == TYPE_SERVICE and chain) or nil,
+    service_id     = service_id,
+
+    route_chain    = (chain_type == TYPE_ROUTE and chain) or nil,
+    route_id       = route_id,
+  })
+
+  return chain
+end
+
+
 ---
 -- Unconditionally rebuild and return a new wasm state table from the db.
 --
@@ -387,6 +439,15 @@ local function rebuild_state(db, version, old_state)
   ---@type kong.runloop.wasm.filter_chain_reference[]
   local all_chain_refs = {}
 
+  local chains = {
+    all_chain_refs = all_chain_refs,
+    by_id = {
+      [TYPE_SERVICE] = service_chains_by_id,
+      [TYPE_ROUTE] = {},
+    },
+    route_chains = route_chains,
+  }
+
   local page_size = db.filter_chains.max_page_size
 
   for chain, err in db.filter_chains:each(page_size) do
@@ -395,45 +456,38 @@ local function rebuild_state(db, version, old_state)
     end
 
     if chain.enabled then
-      local route_id = chain.route and chain.route.id
-      local service_id = chain.service and chain.service.id
-
-      local chain_type = service_id and TYPE_SERVICE or TYPE_ROUTE
-
       for _, filter in ipairs(chain.filters) do
         if filter.enabled then
-          -- Serialize all JSON configurations up front
-          --
-          -- NOTE: there is a subtle difference between a raw, non-JSON filter
-          -- configuration which requires no encoding (e.g. `my config bytes`)
-          -- and a JSON filter configuration of type=string, which should be
-          -- JSON-encoded (e.g. `"my config string"`).
-          --
-          -- Properly disambiguating between the two cases requires an
-          -- inspection of the filter metadata, which is not guaranteed to be
-          -- present on data-plane/proxy nodes.
-          if filter.config ~= nil and type(filter.config) ~= "string" then
-            filter.config = cjson_encode(filter.config)
-          end
+          filter.config = serialize_configuration(filter.config)
         end
       end
 
-      insert(all_chain_refs, {
-        type           = chain_type,
+      insert_chain(chains, chain)
+    end
+  end
 
-        service_chain  = (chain_type == TYPE_SERVICE and chain) or nil,
-        service_id     = service_id,
+  local plugin_pagesize = kong.db.plugins.pagination.max_page_size
 
-        route_chain    = (chain_type == TYPE_ROUTE and chain) or nil,
-        route_id       = route_id,
+  for plugin, err in kong.db.plugins:each(plugin_pagesize, GLOBAL_QUERY_OPTS) do
+    if err then
+      return nil, "failed iterating plugins: " .. tostring(err)
+    end
+
+    if _M.filters_by_name[plugin.name] and plugin.enabled then
+      local chain = insert_chain(chains, {
+        id = uuid.uuid(),
+        enabled = true,
+        route = plugin.route,
+        service = plugin.service,
+        filters = {},
       })
 
-      if chain_type == TYPE_SERVICE then
-        service_chains_by_id[service_id] = chain
-
-      else
-        insert(route_chains, chain)
-      end
+      -- FIXME insert by plugin priority
+      insert(chain.filters, {
+        name = plugin.name,
+        enabled = true,
+        config = serialize_configuration(plugin.config),
+      })
     end
   end
 
