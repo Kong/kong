@@ -41,7 +41,7 @@ local ngx_encode_base64 = ngx.encode_base64
 local _M = {}
 
 
-local EMPTY = {}
+local EMPTY = require("kong.tools.table").EMPTY
 local SLASH = string_byte("/")
 local RESPONSE_TYPE = "response_type"
 local STATE = "state"

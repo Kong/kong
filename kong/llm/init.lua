@@ -10,7 +10,7 @@ local ai_shared = require("kong.llm.drivers.shared")
 local re_match = ngx.re.match
 local cjson = require("cjson.safe")
 local fmt = string.format
-local EMPTY = {}
+local EMPTY = require("kong.tools.table").EMPTY
 
 
 

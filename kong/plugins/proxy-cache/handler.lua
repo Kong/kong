@@ -32,7 +32,7 @@ local calculate_resource_ttl = require("kong.tools.http").calculate_resource_ttl
 
 local STRATEGY_PATH = "kong.plugins.proxy-cache.strategies"
 local CACHE_VERSION = 1
-local EMPTY = {}
+local EMPTY = require("kong.tools.table").EMPTY
 
 
 -- http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html#sec13.5.1

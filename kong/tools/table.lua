@@ -18,6 +18,9 @@ local getmetatable  = getmetatable
 local _M = {}
 
 
+_M.EMPTY = require("pl.tablex").readonly({})
+
+
 --- packs a set of arguments in a table.
 -- Explicitly sets field `n` to the number of arguments, so it is `nil` safe
 _M.pack = function(...) return {n = select("#", ...), ...} end

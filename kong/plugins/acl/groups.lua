@@ -5,11 +5,10 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local tablex = require "pl.tablex"
 local table_merge = require("kong.tools.table").table_merge
 
 
-local EMPTY = tablex.readonly {}
+local EMPTY = require("kong.tools.table").EMPTY
 
 
 local kong = kong

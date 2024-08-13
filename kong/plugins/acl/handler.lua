@@ -6,7 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local constants = require "kong.constants"
-local tablex = require "pl.tablex"
 local groups = require "kong.plugins.acl.groups"
 local kong_meta = require "kong.meta"
 local table_merge = require("kong.tools.table").table_merge
@@ -19,7 +18,7 @@ local kong = kong
 local get_credential = kong.client.get_credential
 
 
-local EMPTY = tablex.readonly {}
+local EMPTY = require("kong.tools.table").EMPTY
 local DENY = "DENY"
 local ALLOW = "ALLOW"
 

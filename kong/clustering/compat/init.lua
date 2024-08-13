@@ -39,7 +39,7 @@ local COMPATIBILITY_CHECKERS = require("kong.clustering.compat.checkers")
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local KONG_VERSION = meta.version
 
-local EMPTY = {}
+local EMPTY = require("kong.tools.table").EMPTY
 
 
 local _M = {}
