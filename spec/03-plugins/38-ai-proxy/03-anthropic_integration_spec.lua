@@ -218,6 +218,35 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
         },
       }
+
+      local chat_good_no_allow_override = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http" },
+        strip_path = true,
+        paths = { "/anthropic/llm/v1/chat/good-no-allow-override" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = chat_good_no_allow_override.id },
+        config = {
+          route_type = "llm/v1/chat",
+          auth = {
+            header_name = "x-api-key",
+            header_value = "anthropic-key",
+            allow_auth_override = false,
+          },
+          model = {
+            name = "claude-2.1",
+            provider = "anthropic",
+            options = {
+              max_tokens = 256,
+              temperature = 1.0,
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/chat/good",
+              anthropic_version = "2023-06-01",
+            },
+          },
+        },
+      }
       --
 
       -- 200 chat bad upstream response with one option
@@ -530,6 +559,105 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           headers = {
             ["content-type"] = "application/json",
             ["accept"] = "application/json",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/requests/good.json"),
+        })
+
+        local body = assert.res_status(200 , r)
+        local json = cjson.decode(body)
+
+        -- check this is in the 'kong' response format
+        -- assert.equals(json.id, "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2")
+        assert.equals(json.model, "claude-2.1")
+        assert.equals(json.object, "chat.content")
+        assert.equals(r.headers["X-Kong-LLM-Model"], "anthropic/claude-2.1")
+
+        assert.is_table(json.choices)
+        assert.is_table(json.choices[1].message)
+        assert.same({
+          content = "The sum of 1 + 1 is 2.",
+          role = "assistant",
+        }, json.choices[1].message)
+      end)
+
+      it("good request with client right header auth", function()
+        local r = client:get("/anthropic/llm/v1/chat/good", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+            ["x-api-key"] = "anthropic-key",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/requests/good.json"),
+        })
+
+        local body = assert.res_status(200 , r)
+        local json = cjson.decode(body)
+
+        -- check this is in the 'kong' response format
+        -- assert.equals(json.id, "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2")
+        assert.equals(json.model, "claude-2.1")
+        assert.equals(json.object, "chat.content")
+        assert.equals(r.headers["X-Kong-LLM-Model"], "anthropic/claude-2.1")
+
+        assert.is_table(json.choices)
+        assert.is_table(json.choices[1].message)
+        assert.same({
+          content = "The sum of 1 + 1 is 2.",
+          role = "assistant",
+        }, json.choices[1].message)
+      end)
+
+      it("good request with client wrong header auth", function()
+        local r = client:get("/anthropic/llm/v1/chat/good", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+            ["x-api-key"] = "wrong",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/requests/good.json"),
+        })
+
+        local body = assert.res_status(401 , r)
+        local json = cjson.decode(body)
+
+        -- check this is in the 'kong' response format
+        assert.is_truthy(json.error)
+        assert.equals(json.error.type, "authentication_error")
+      end)
+
+      it("good request with client right header auth and no allow_auth_override", function()
+        local r = client:get("/anthropic/llm/v1/chat/good-no-allow-override", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+            ["x-api-key"] = "anthropic-key",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/requests/good.json"),
+        })
+
+        local body = assert.res_status(200 , r)
+        local json = cjson.decode(body)
+
+        -- check this is in the 'kong' response format
+        -- assert.equals(json.id, "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2")
+        assert.equals(json.model, "claude-2.1")
+        assert.equals(json.object, "chat.content")
+        assert.equals(r.headers["X-Kong-LLM-Model"], "anthropic/claude-2.1")
+
+        assert.is_table(json.choices)
+        assert.is_table(json.choices[1].message)
+        assert.same({
+          content = "The sum of 1 + 1 is 2.",
+          role = "assistant",
+        }, json.choices[1].message)
+      end)
+
+      it("good request with client wrong header auth and no allow_auth_override", function()
+        local r = client:get("/anthropic/llm/v1/chat/good-no-allow-override", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+            ["x-api-key"] = "wrong",
           },
           body = pl_file.read("spec/fixtures/ai-proxy/anthropic/llm-v1-chat/requests/good.json"),
         })
