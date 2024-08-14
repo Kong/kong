@@ -175,6 +175,7 @@ return {
       "model.options.bedrock",
       "auth.aws_access_key_id",
       "auth.aws_secret_access_key",
+      "auth.allow_auth_override",
       "model_name_header",
     },
     ai_prompt_decorator = {
