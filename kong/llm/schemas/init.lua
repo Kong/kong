@@ -97,9 +97,9 @@ local auth_schema = {
         required = false,
         encrypted = true,
         referenceable = true }},
-    { can_override = {
+    { allow_auth_override = {
         type = "boolean",
-        description = "If enabled, the auth header or param can be overridden by the request.",
+        description = "If enabled, the authorization header or parameter can be overridden in the request by the value configured in the plugin.",
         required = false,
         default = true }},
   }
