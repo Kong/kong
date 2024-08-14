@@ -465,6 +465,12 @@ local function get_plugins_configs(service)
           threshold = 0.1,
         }
       },
+    },
+    ["upstream-oauth"] = {
+      name = "upstream-oauth",
+      config = {
+        token_endpoint = "http://test.test",
+      }
     }
   }
 end

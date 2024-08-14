@@ -1,0 +1,31 @@
+version: '3.5'
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:15.0.1
+    volumes:
+      - $PWD/.pongo/test.json:/tmp/test.json
+    environment:
+      KEYCLOAK_USER: admin
+      KEYCLOAK_PASSWORD: test
+      DB_VENDOR: h2
+      KEYCLOAK_IMPORT: /tmp/test.json
+      JAVA_OPTS_APPEND: -Dkeycloak.migration.strategy=OVERWRITE_EXISTING
+      # to export, use bin/standalone.sh -Dkeycloak.migration.action=export -Dkeycloak.migration.provider=dir -Dkeycloak.migration.dir=/tmp
+    ports:
+      # temporary exposure of port, Pongo should not need this
+      - "8080:8080"
+      - "8543:8443"
+    healthcheck:
+      interval: 5s
+      retries: 10
+      test:
+      - CMD
+      - curl
+      - --fail
+      - http://localhost:8080
+      timeout: 10s
+    restart: on-failure
+    stop_signal: SIGKILL
+    networks:
+      - ${NETWORK_NAME}

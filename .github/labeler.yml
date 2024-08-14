@@ -430,6 +430,10 @@ plugins-ee/vault-auth:
 - changed-files:
   - any-glob-to-any-file: plugins-ee/vault-auth/**/*
 
+plugins-ee/upstream-oauth:
+- changed-files:
+  - any-glob-to-any-file: plugins-ee/upstream-oauth/**/*
+
 copyright:
 - changed-files:
   - any-glob-to-any-file: COPYRIGHT

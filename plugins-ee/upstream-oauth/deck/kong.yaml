@@ -1,0 +1,71 @@
+_format_version: "3.0"
+services:
+  - name: example-service
+    protocol: http
+    host: httpbin.org
+    port: 80
+    path: /anything
+    enabled: true
+
+    routes:
+      - name: example-route
+        methods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+        paths:
+          - /
+
+        plugins:
+          - name: upstream-oauth
+            enabled: true
+            config:
+              #########################################################################
+              # Client options for requests to the IdP
+              #########################################################################
+              client:
+                auth_method: client_secret_jwt
+                client_secret_jwt_alg: HS512
+                http_version: 1.1
+                http_proxy: ~
+                http_proxy_authorization: ~
+                https_proxy: ~
+                https_proxy_authorization: ~
+                no_proxy: ~
+                timeout: 10000
+                keep_alive: true
+                ssl_verify: false
+
+              #########################################################################
+              # OAuth 2.0 grant configuration
+              #########################################################################
+              oauth:
+                token_endpoint: https://keycloak:8443/auth/realms/test/protocol/openid-connect/token
+                token_headers: {}
+                token_post_args: {}
+                grant_type: password
+                client_id: test-password-grant-jwt-auth
+                client_secret: test-password-grant-jwt-auth-secret
+                username: john
+                password: doe
+                scopes: 
+                  - openid
+                  - profile
+                # audience:
+                #   - example
+
+
+              #########################################################################
+              # Cache configuration
+              #########################################################################
+              # cache:
+              #   strategy: memory
+              #   default_ttl: 300
+              cache:
+                strategy: redis
+                redis:
+                  host: redis
+                  port: 6379
+                  username: null
+                  password: null
