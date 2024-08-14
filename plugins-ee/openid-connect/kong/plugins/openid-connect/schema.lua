@@ -53,6 +53,7 @@ local function validate_issuer(conf)
   local options = args.get_http_opts({
     extra_jwks_uris = args.get_conf_arg("extra_jwks_uris"),
     headers = args.get_conf_args("discovery_headers_names", "discovery_headers_values"),
+    using_pseudo_issuer = args.get_conf_arg("using_pseudo_issuer", false),
   })
 
   local keys = cache.issuers.rediscover(issuer_uri, options)

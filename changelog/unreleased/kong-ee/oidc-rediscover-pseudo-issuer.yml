@@ -1,0 +1,3 @@
+message: "**OpenID-connect:** Fixed an issue where using_pseudo_issuer does not work when patching."
+type: bugfix
+scope: Plugin

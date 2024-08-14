@@ -3942,13 +3942,14 @@ for _, strategy in helpers.all_strategies() do
       end
 
       for _, using_pseudo_issuer in ipairs{false, true} do
-        describe("#using_pseudo_issuer=" .. tostring(using_pseudo_issuer), function()
+        describe("using_pseudo_issuer=" .. tostring(using_pseudo_issuer), function()
+          local plugin, db
           lazy_setup(function()
-            local bp = helpers.get_db_utils(strategy, {
-              "routes",
-              "services",
-              "plugins",
-            }, {
+            mock:start()
+
+            local bp
+            -- clear all tables to purge OIDC discovery cache
+            bp, db = helpers.get_db_utils(strategy, nil, {
               PLUGIN_NAME
             })
 
@@ -3956,18 +3957,18 @@ for _, strategy in helpers.all_strategies() do
               name = PLUGIN_NAME,
               path = "/"
             }
+
             local route = bp.routes:insert {
               service = service,
               paths   = { "/" },
             }
 
-            bp.plugins:insert {
+            plugin = bp.plugins:insert {
               route   = route,
               name    = PLUGIN_NAME,
               config  = {
-                issuer    = "http://unreachable",
+                issuer    = MOCK_ISSUER_URL,
                 using_pseudo_issuer = using_pseudo_issuer,
-                -- TODO: add JWT uri here
               },
             }
 
@@ -3980,10 +3981,9 @@ for _, strategy in helpers.all_strategies() do
 
           lazy_teardown(function()
             helpers.stop_kong()
-          end)
-
-          after_each(function()
-            helpers.clean_logfile()
+            mock:stop()
+            -- clear tables to avoid conflicts with other tests
+            assert(db:truncate())
           end)
 
           it("works", function()
@@ -3997,11 +3997,31 @@ for _, strategy in helpers.all_strategies() do
                 ["Authorization"] = PASSWORD_CREDENTIALS,
               }
             }))
+
             if using_pseudo_issuer then
-              assert.logfile().has.no.line("loading configuration for http://unreachable using discovery failed", true)
+              mock.eventually:has_no_request()
             else
-              assert.logfile().has.line("loading configuration for http://unreachable using discovery failed", true)
+              mock.eventually:has_request()
             end
+
+            local admin_client = assert(helpers.admin_client())
+            assert(admin_client:send{
+              method = "PATCH",
+              path = "/plugins/" .. plugin.id,
+              body = {
+                config = {
+                  rediscovery_lifetime = 100,
+                }
+              },
+              headers = {
+                ["Content-Type"] = "application/json"
+              }
+            })
+
+            -- either way the plugin should not make a request
+            -- if it successfully cached the discovery document it should not
+            -- if it's using the pseudo issuer it should not
+            mock.eventually:has_no_request()
           end)
         end)
       end
