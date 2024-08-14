@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+MASTER_IP=$(hostname -i)
+MASTER_PORT=17000
+
+# "master"
+redis-server --port $MASTER_PORT --daemonize yes
+
+# 2 replicas
+redis-server --replicaof $MASTER_IP $MASTER_PORT --port 17001 --daemonize yes
+redis-server --replicaof $MASTER_IP $MASTER_PORT --port 17002 --daemonize yes
+
+# Copy sentinel config template to each docker service volume
+cp /sentinel-config-template/sentinel-template.conf /redis-sentinel-1/sentinel.conf
+cp /sentinel-config-template/sentinel-template.conf /redis-sentinel-2/sentinel.conf
+cp /sentinel-config-template/sentinel-template.conf /redis-sentinel-3/sentinel.conf
+
+# Prepare configs
+sed -i "s/\$MASTER_IP/$MASTER_IP/g" /redis-sentinel-1/sentinel.conf
+sed -i "s/\$MASTER_PORT/$MASTER_PORT/g" /redis-sentinel-1/sentinel.conf
+
+sed -i "s/\$MASTER_IP/$MASTER_IP/g" /redis-sentinel-2/sentinel.conf
+sed -i "s/\$MASTER_PORT/$MASTER_PORT/g" /redis-sentinel-2/sentinel.conf
+
+sed -i "s/\$MASTER_IP/$MASTER_IP/g" /redis-sentinel-3/sentinel.conf
+sed -i "s/\$MASTER_PORT/$MASTER_PORT/g" /redis-sentinel-3/sentinel.conf
+
+# 3 sentinels
+redis-server /redis-sentinel-1/sentinel.conf --sentinel --port 27000 --daemonize yes
+redis-server /redis-sentinel-2/sentinel.conf --sentinel --port 27001 --daemonize yes
+redis-server /redis-sentinel-3/sentinel.conf --sentinel --port 27002 --daemonize yes
+
+tail -F /redis-sentinel-1/sentinel.conf

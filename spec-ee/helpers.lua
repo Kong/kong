@@ -57,6 +57,28 @@ function _M.parsed_redis_cluster_nodes()
   return redis_cluster_nodes
 end
 
+function _M.parsed_redis_sentinel_nodes()
+  local env_sentinel_addresses = os.getenv("KONG_SPEC_TEST_REDIS_SENTINEL_ADDRESSES")
+
+  -- default
+  if not env_sentinel_addresses then
+    return {
+      {host = "localhost", port = 27000},
+      {host = "localhost", port = 27001},
+      {host = "localhost", port = 27002}
+    }
+  end
+
+  local redis_sentinel_nodes = {}
+  for node in string.gmatch(env_sentinel_addresses, "[^,]+") do
+    local parts = utils.split(node, ":")
+    local parsed_address = { host = parts[1], port = tonumber(parts[2]) }
+    table.insert(redis_sentinel_nodes, parsed_address)
+  end
+
+  return redis_sentinel_nodes
+end
+
 --- Returns Redis Cluster nodes list joined as table of strings like ip:port.
 -- @function redis_cluster_nodes_joined
 -- @treturn table adresses list
@@ -1207,6 +1229,7 @@ _M.portal_api_listeners = listeners._parse_listeners(helpers.test_conf.portal_ap
 _M.portal_gui_listeners = listeners._parse_listeners(helpers.test_conf.portal_gui_listen, http_flags)
 _M.admin_gui_listeners = listeners._parse_listeners(helpers.test_conf.admin_gui_listen, http_flags)
 _M.redis_cluster_nodes = _M.parsed_redis_cluster_nodes()
+_M.redis_sentinel_nodes = _M.parsed_redis_sentinel_nodes()
 _M.redis_cluster_addresses = _M.redis_cluster_nodes_joined()
 
 return _M

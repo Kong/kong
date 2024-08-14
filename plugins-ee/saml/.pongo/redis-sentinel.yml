@@ -1,0 +1,23 @@
+services:
+  redis-sentinel:
+    image: redis:7.4
+    volumes:
+    - rs-node-1-config:/redis-sentinel-1
+    - rs-node-2-config:/redis-sentinel-2
+    - rs-node-3-config:/redis-sentinel-3
+    - ${PONGO_WD}/.pongo/sentinel:/sentinel-config-template
+    - ${PONGO_WD}/.pongo/create-rs:/create-rs
+    networks:
+    - ${NETWORK_NAME}
+    command: /create-rs
+    healthcheck:
+      test: redis-cli -p 27000 SENTINEL sentinels mymaster
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  rs-node-1-config:
+  rs-node-2-config:
+  rs-node-3-config:

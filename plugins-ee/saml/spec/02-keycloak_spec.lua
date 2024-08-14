@@ -34,6 +34,7 @@ local REDIS_PORT          = helpers.redis_port
 local REDIS_USER_VALID    = "saml-user"
 local REDIS_PASSWORD      = "secret"
 local REDIS_CLUSTER_NODES = require "spec-ee.helpers".redis_cluster_nodes
+local REDIS_SENTINEL_NODES = require "spec-ee.helpers".redis_sentinel_nodes
 local MEMCACHED_HOST      = os.getenv("KONG_SPEC_TEST_MEMCACHED_HOST") or "memcached"
 local MEMCACHED_PORT      = tonumber(os.getenv("KONG_SPEC_TEST_MEMCACHED_PORT_11211")) or 11211
 
@@ -173,7 +174,7 @@ end
 
 
 for _, strategy in helpers.all_strategies() do
-  for _, session_storage in ipairs {"memcached", "redis", "cookie", "redis_cluster"} do
+  for _, session_storage in ipairs {"memcached", "redis", "cookie", "redis_cluster", "redis_sentinel"} do
     describe(PLUGIN_NAME .. ": #" .. strategy .. "_" .. session_storage, function()
         local redis
 
@@ -238,6 +239,26 @@ for _, strategy in helpers.all_strategies() do
                   {
                     session_secret = SESSION_SECRET,
                     session_redis_cluster_nodes = REDIS_CLUSTER_NODES,
+                    session_storage = "redis",
+                    validate_assertion_signature = false,
+                    issuer    = ISSUER_URL,
+                    assertion_consumer_path = "/consume",
+                    idp_sso_url = IDP_SSO_URL,
+                    nameid_format = "EmailAddress",
+                    idp_certificate = idp_cert,
+                  },
+                  params or {},
+                  true
+                )
+              elseif session_storage == "redis_sentinel" then
+                return tablex.merge(
+                  {
+                    session_secret = SESSION_SECRET,
+                    redis = {
+                      sentinel_nodes = REDIS_SENTINEL_NODES,
+                      sentinel_role = "master",
+                      sentinel_master = "mymaster"
+                    },
                     session_storage = "redis",
                     validate_assertion_signature = false,
                     issuer    = ISSUER_URL,
