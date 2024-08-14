@@ -13,19 +13,6 @@ local kong_utils = require("kong.tools.gzip")
 local buffer = require "string.buffer"
 local strip = require("kong.tools.utils").strip
 
--- cloud auth/sdk providers
-local GCP_SERVICE_ACCOUNT do
-  GCP_SERVICE_ACCOUNT = os.getenv("GCP_SERVICE_ACCOUNT")
-end
-
-local GCP = require("resty.gcp.request.credentials.accesstoken")
-local aws_config = require "resty.aws.config"  -- reads environment variables whilst available
-local AWS = require("resty.aws")
-local AWS_REGION do
-  AWS_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")
-end
---
-
 
 local EMPTY = require("kong.tools.table").EMPTY
 
@@ -48,64 +35,7 @@ local ERROR__NOT_SET = 'data: {"error": true, "message": "empty or unsupported t
 
 local _KEYBASTION = setmetatable({}, {
   __mode = "k",
-  __index = function(this_cache, plugin_config)
-    if plugin_config.model.provider == "gemini" and
-       plugin_config.auth and
-       plugin_config.auth.gcp_use_service_account then
-
-      ngx.log(ngx.NOTICE, "loading gcp sdk for plugin ", kong.plugin.get_id())
-
-      local service_account_json = (plugin_config.auth and plugin_config.auth.gcp_service_account_json) or GCP_SERVICE_ACCOUNT
-
-      local ok, gcp_auth = pcall(GCP.new, nil, service_account_json)
-      if ok and gcp_auth then
-        -- store our item for the next time we need it
-        gcp_auth.service_account_json = service_account_json
-        this_cache[plugin_config] = { interface = gcp_auth, error = nil }
-        return this_cache[plugin_config]
-      end
-
-      return { interface = nil, error = "cloud-authentication with GCP failed" }
-
-    elseif plugin_config.model.provider == "bedrock" then
-      ngx.log(ngx.NOTICE, "loading aws sdk for plugin ", kong.plugin.get_id())
-      local aws
-
-      local region = plugin_config.model.options
-                 and plugin_config.model.options.bedrock
-                 and plugin_config.model.options.bedrock.aws_region
-                  or AWS_REGION
-
-      if not region then
-        return { interface = nil, error = "AWS region not specified anywhere" }
-      end
-
-      local access_key_set = (plugin_config.auth and plugin_config.auth.aws_access_key_id)
-                          or aws_config.global.AWS_ACCESS_KEY_ID
-      local secret_key_set = plugin_config.auth and plugin_config.auth.aws_secret_access_key
-                          or aws_config.global.AWS_SECRET_ACCESS_KEY
-
-      aws = AWS({
-        -- if any of these are nil, they either use the SDK default or
-        -- are deliberately null so that a different auth chain is used
-        region = region,
-      })
-
-      if access_key_set and secret_key_set then
-        -- Override credential config according to plugin config, if set
-        local creds = aws:Credentials {
-          accessKeyId = access_key_set,
-          secretAccessKey = secret_key_set,
-        }
-
-        aws.config.credentials = creds
-      end
-
-      this_cache[plugin_config] = { interface = aws, error = nil }
-
-      return this_cache[plugin_config]
-    end
-  end,
+  __index = ai_shared.cloud_identity_function,
 })
 
 
@@ -530,6 +460,7 @@ function _M:access(conf)
 
   -- get the provider's cached identity interface - nil may come back, which is fine
   local identity_interface = _KEYBASTION[conf]
+
   if identity_interface and identity_interface.error then
     llm_state.set_response_transformer_skipped()
     kong.log.err("error authenticating with ", conf.model.provider, " using native provider auth, ", identity_interface.error)

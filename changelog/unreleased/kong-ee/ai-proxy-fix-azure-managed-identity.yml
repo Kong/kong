@@ -1,0 +1,5 @@
+message: |
+  Fixed a bug where Azure Managed-Identity tokens would never rotate  
+  in case of a network failure when authenticating.
+type: bugfix
+scope: Plugin
