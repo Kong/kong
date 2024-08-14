@@ -18,7 +18,7 @@
     "@kong/kauth-test-utils": "^0.0.23",
     "axios": "^1.7.3",
     "chai": "^4.5.0",
-    "@kong/khcp-api-client": "^0.1.2099",
+    "@kong/khcp-api-client": "^0.1.2111",
     "chai-arrays": "^2.2.0",
     "chai-as-promised": "^7.1.2",
     "chai-bytes": "^0.1.2",
