@@ -16,7 +16,7 @@ local REDIS_PORT     = 6379
 local REDIS_DATABASE = 2
 
 
-local KEYCLOAK_ISSUER                                  = "https://keycloak:8443/auth/realms/test"
+local KEYCLOAK_ISSUER                                  = "https://keycloak:8443/realms/test"
 local KEYCLOAK_TOKEN_ENDPOINT                          = KEYCLOAK_ISSUER .. "/protocol/openid-connect/token"
 
 local CLIENT_CREDENTIALS_GRANT_POST_AUTH_CLIENT_ID     = "test-client-credentials-grant-post-auth"

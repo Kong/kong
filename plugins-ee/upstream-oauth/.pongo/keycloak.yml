@@ -2,29 +2,40 @@ version: '3.5'
 
 services:
   keycloak:
-    image: quay.io/keycloak/keycloak:15.0.1
+    image: quay.io/keycloak/keycloak:${PONGO_KEYCLOAK_VERSION:-24.0}
+    command: start-dev --import-realm
     volumes:
-      - $PWD/.pongo/test.json:/tmp/test.json
+      - ${PONGO_WD}/.pongo/test.json:/opt/keycloak/data/import/test.json
+      - ${PONGO_WD}/.pongo/truststore.jks:/tmp/truststore.jks
+      - ${PONGO_WD}/.pongo/server.crt:/tmp/server.crt
+      - ${PONGO_WD}/.pongo/server.key:/tmp/server.key
     environment:
       KEYCLOAK_USER: admin
       KEYCLOAK_PASSWORD: test
+      VIRTUAL_PORT: 8080,8443
       DB_VENDOR: h2
-      KEYCLOAK_IMPORT: /tmp/test.json
       JAVA_OPTS_APPEND: -Dkeycloak.migration.strategy=OVERWRITE_EXISTING
-      # to export, use bin/standalone.sh -Dkeycloak.migration.action=export -Dkeycloak.migration.provider=dir -Dkeycloak.migration.dir=/tmp
-    ports:
-      # temporary exposure of port, Pongo should not need this
-      - "8080:8080"
-      - "8543:8443"
+      KC_HTTPS_TRUST_STORE_FILE: /tmp/truststore.jks
+      KC_HTTPS_TRUST_STORE_PASSWORD: password
+      KC_HTTPS_CLIENT_AUTH: request
+      KC_HTTPS_PROTOCOLS: TLSv1.2
+      KC_HTTPS_CERTIFICATE_FILE: /tmp/server.crt
+      KC_HTTPS_CERTIFICATE_KEY_FILE: /tmp/server.key
+      KC_FEATURES: dpop
     healthcheck:
       interval: 5s
       retries: 10
       test:
       - CMD
-      - curl
-      - --fail
-      - http://localhost:8080
+      - timeout
+      - 3s
+      - bash
+      - -c
+      - ':> /dev/tcp/127.0.0.1/8080'
       timeout: 10s
+    ports:
+      - "127.0.0.1::8080"
+      - "127.0.0.1::8443"
     restart: on-failure
     stop_signal: SIGKILL
     networks:
