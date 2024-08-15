@@ -469,7 +469,11 @@ local function get_plugins_configs(service)
     ["upstream-oauth"] = {
       name = "upstream-oauth",
       config = {
-        token_endpoint = "http://test.test",
+        oauth = {
+          token_endpoint = "http://test.test",
+          client_id = "1",
+          client_secret = "2",
+        },
       }
     }
   }
