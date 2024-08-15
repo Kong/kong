@@ -1391,7 +1391,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       end)
     end)
 
-    describe("openai multi-modal requests #ttt", function()
+    describe("openai multi-modal requests", function()
       it("logs statistics", function()
         local r = client:get("/openai/llm/v1/chat/good", {
           headers = {
