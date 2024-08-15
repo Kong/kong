@@ -1,6 +1,6 @@
 -- Use the new dns client library instead. If you want to switch to the original
--- one, you can set `legacy_dns_client = on` in kong.conf.
-if ngx.shared.kong_dns_cache and not _G.busted_legacy_dns_client then
+-- one, you can set `new_dns_client = off` in kong.conf.
+if ngx.shared.kong_dns_cache and _G.busted_new_dns_client then
   package.loaded["kong.dns.client"] = nil
   return require("kong.dns.client")
 end
