@@ -31,9 +31,10 @@ describe("[mistralai]", function()
     it("can generate embeddings", function()
       mistralai_mock.setup(finally)
       local embeddings, err = require("kong.ai.embeddings").new({
-        provider = "mistralai",
-        name = "mistral-embed",
-        auth = { token = "fake" },
+        model = {
+          provider = "mistral",
+          name = "mistral-embed",
+        },
       }, 4)
       assert.is_nil(err)
 

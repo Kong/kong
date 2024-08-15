@@ -9,7 +9,6 @@ local PLUGIN_NAME = "ai-semantic-cache"
 
 local typedefs    = require("kong.db.schema.typedefs")
 local llm         = require("kong.llm")
-local ai_typedefs = require("kong.ai.typedefs")
 
 local schema = {
   name = PLUGIN_NAME,
@@ -55,7 +54,7 @@ local schema = {
               type = "boolean",
               required = true,
               default = false }},
-          { embeddings = ai_typedefs.embeddings },
+          { embeddings = llm.embeddings_schema },
           { vectordb = llm.vectordb_schema },
         },
       },

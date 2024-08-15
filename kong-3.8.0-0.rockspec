@@ -917,13 +917,15 @@ build = {
     ["kong.plugins.ai-semantic-prompt-guard.handler"] = "kong/plugins/ai-semantic-prompt-guard/handler.lua",
     ["kong.plugins.ai-semantic-prompt-guard.schema"] = "kong/plugins/ai-semantic-prompt-guard/schema.lua",
 
-    ["kong.ai.typedefs"] = "kong/ai/typedefs.lua",
     ["kong.ai.embeddings"] = "kong/ai/embeddings/init.lua",
     ["kong.ai.embeddings.drivers.openai"] = "kong/ai/embeddings/drivers/openai.lua",
-    ["kong.ai.embeddings.drivers.mistralai"] = "kong/ai/embeddings/drivers/mistralai.lua",
+    ["kong.ai.embeddings.drivers.mistral"] = "kong/ai/embeddings/drivers/mistral.lua",
+    ["kong.ai.embeddings.utils"] = "kong/ai/embeddings/utils.lua",
 
     ["kong.llm"] = "kong/llm/init.lua",
     ["kong.llm.schemas"] = "kong/llm/schemas/init.lua",
+    ["kong.llm.schemas.auth"] = "kong/llm/schemas/auth.lua",
+    ["kong.llm.schemas.embeddings"] = "kong/llm/schemas/embeddings.lua",
     ["kong.llm.schemas.vectordb"] = "kong/llm/schemas/vectordb.lua",
     ["kong.llm.drivers.shared"] = "kong/llm/drivers/shared.lua",
     ["kong.llm.drivers.openai"] = "kong/llm/drivers/openai.lua",

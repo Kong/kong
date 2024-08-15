@@ -8,7 +8,6 @@
 local typedefs = require("kong.db.schema.typedefs")
 local Schema = require "kong.db.schema"
 local llm = require("kong.llm")
-local ai_typedefs = require("kong.ai.typedefs")
 local null = ngx.null
 
 local deep_copy = require("kong.tools.table").deep_copy
@@ -30,7 +29,7 @@ table.insert(target_schema.fields, #target_schema.fields, {
 local vectordb_schema = deep_copy(llm.vectordb_schema)
 vectordb_schema.required = false
 
-local embeddings_schema = deep_copy(ai_typedefs.embeddings)
+local embeddings_schema = deep_copy(llm.embeddings_schema)
 embeddings_schema.required = false
 
 return {

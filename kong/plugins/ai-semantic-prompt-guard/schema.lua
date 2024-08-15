@@ -6,8 +6,8 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local typedefs = require "kong.db.schema.typedefs"
-local ai_typedefs = require("kong.ai.typedefs")
 local vectordb = require("kong.llm.schemas.vectordb")
+local embeddings = require("kong.llm.schemas.embeddings")
 
 return {
   name = "ai-semantic-prompt-guard",
@@ -16,7 +16,7 @@ return {
     { config = {
       type = "record",
       fields = {
-          { embeddings = ai_typedefs.embeddings },
+          { embeddings = embeddings },
           { vectordb = vectordb },
           { search = {
             type     = "record",

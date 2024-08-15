@@ -12,8 +12,8 @@
 local cjson = require("cjson.safe")
 local http = require("resty.http")
 
-local deep_copy = require("kong.tools.table").deep_copy
 local gzip = require("kong.tools.gzip")
+local build_request = require("kong.ai.embeddings.utils").build_request
 
 local MISTRALAI_EMBEDDINGS_URL = "https://api.mistral.ai/v1/embeddings"
 
@@ -30,10 +30,16 @@ Driver.__index = Driver
 -- @param provided_embeddings_config embeddings driver configuration
 -- @param dimensions the number of dimensions for generating embeddings
 -- @return the Driver object
-function Driver:new(provided_embeddings_config, dimensions)
-  local driver_config = deep_copy(provided_embeddings_config)
-  driver_config.dimensions = dimensions
-  return setmetatable(driver_config, Driver)
+function Driver:new(c, dimensions)
+  c.model = c.model or {}
+  c.model.options = c.model.options or {}
+  return setmetatable({
+    config = {
+      model = c.model or {},
+      auth = c.auth or {}
+    },
+    dimensions = dimensions, -- not used by mistralai
+  }, Driver)
 end
 
 -- Generates the embeddings (vectors) for a given prompt
@@ -42,41 +48,40 @@ end
 -- @return the API response containing the embeddings
 -- @return nothing. throws an error if any
 function Driver:generate(prompt)
-  -- allow auth to skip for custom upstream_url
-  if not self.upstream_url and (not self.auth or not self.auth.token) then
-    return nil, "Authorization is not defined for the mistralai driver"
+  local embeddings_url = self.config.model.options and
+                        self.config.model.options.upstream_url or
+                        MISTRALAI_EMBEDDINGS_URL
+
+  local body = {
+    input           = prompt,
+    model           = self.config.model.name,
+    encoding_format = "float",
+  }
+
+  kong.log.debug("[mistral] generating embeddings for prompt")
+  local httpc, err = http.new({
+    ssl_verify = true,
+    ssl_cafile = kong.configuration.lua_ssl_trusted_certificate_combined,
+  })
+  if not httpc then
+    return nil, err
   end
 
-  local embeddings_url = self.upstream_url or MISTRALAI_EMBEDDINGS_URL
+  local headers = {
+    ["Content-Type"]    = "application/json",
+    ["Accept-Encoding"] = "gzip",
+  }
 
-  local body, err = cjson.encode({
-    input           = prompt,
-    model           = self.name,
-    encoding_format = "float",
-  })
+  embeddings_url, headers, body = build_request(self.config.auth, embeddings_url, headers, body)
+
+  body, err = cjson.encode(body)
   if err then
     return nil, err
   end
 
-  kong.log.debug("[mistralai] generating embeddings for prompt")
-  local httpc = http.new({
-    ssl_verify = true,
-    ssl_cafile = kong.configuration.lua_ssl_trusted_certificate_combined,
-  })
-
-  local auth
-  if self.auth and self.auth.token then
-    auth = "Bearer " .. self.auth.token
-  end
-
-  local embeddings_url = self.upstream_url or embeddings_url
   local res, err = httpc:request_uri(embeddings_url, {
     method = "POST",
-    headers = {
-      ["Content-Type"]    = "application/json",
-      ["Accept-Encoding"] = "gzip",
-      ["Authorization"]   = auth,
-    },
+    headers = headers,
     body = body,
   })
   if not res then
@@ -86,8 +91,12 @@ function Driver:generate(prompt)
     return nil, string.format("unexpected embeddings response (%s): %s", embeddings_url, res.status)
   end
 
-  local inflated_body = gzip.inflate_gzip(res.body)
-  local embedding_response, err = cjson.decode(inflated_body)
+  local res_body = res.body
+  if res.headers["Content-Encoding"] == "gzip" then
+    res_body = gzip.inflate_gzip(res_body)
+  end
+
+  local embedding_response, err = cjson.decode(res_body)
   if err then
     return nil, err
   end

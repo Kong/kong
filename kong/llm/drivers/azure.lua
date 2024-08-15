@@ -162,7 +162,7 @@ function _M.configure_request(conf, identity_interface)
         query_table[auth_param_name] = auth_param_value
       end
     end
-    -- if auth_param_location is "form", it will have already been set in a pre-request hook
+    -- if auth_param_location is "body", it will have already been set in a pre-request hook
   end
   -- ]]
 

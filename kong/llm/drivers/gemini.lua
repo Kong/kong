@@ -405,7 +405,7 @@ function _M.configure_request(conf, identity_interface)
     query_table[auth_param_name] = auth_param_value
     kong.service.request.set_query(query_table)
   end
-  -- if auth_param_location is "form", it will have already been set in a global pre-request hook
+  -- if auth_param_location is "body", it will have already been set in a global pre-request hook
 
   -- if we're passed a GCP SDK, for cloud identity / SSO, use it appropriately
   if identity_interface then

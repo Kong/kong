@@ -193,7 +193,7 @@ function _M.configure_request(conf)
     end
   end
 
-  -- if auth_param_location is "form", it will have already been set in a pre-request hook
+  -- if auth_param_location is "body", it will have already been set in a pre-request hook
   return true, nil
 end
 

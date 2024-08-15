@@ -148,8 +148,8 @@ local function stash_stats(conf, start_time, embeddings_latency)
 
   if embeddings_latency then
     cache_metrics.embeddings_latency = math.floor(embeddings_latency * 1000)
-    cache_metrics.embeddings_provider = conf.embeddings.provider
-    cache_metrics.embeddings_model = conf.embeddings.name
+    cache_metrics.embeddings_provider = conf.embeddings.model.provider
+    cache_metrics.embeddings_model = conf.embeddings.model.name
   end
 
   assert(ai_shared.stash_cache_stats(aip_conf, cache_metrics))

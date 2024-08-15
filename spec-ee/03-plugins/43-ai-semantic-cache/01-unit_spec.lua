@@ -115,8 +115,10 @@ describe(PLUGIN_NAME .. ": (unit)", function()
           driver = "redis",
         },
         embeddings = {
-          provider = "kong",
-          name = "kong-model",
+          model = {
+            provider = "kong",
+            name = "kong-model",
+          },
         },
       }, math.floor(ngx.now()), 100)
 

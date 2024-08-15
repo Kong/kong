@@ -25,9 +25,10 @@ describe(PLUGIN_NAME .. ": (schema)", function()
   it("won't allow both allow_prompts and deny_prompts to be unset", function()
     local config = {
         embeddings = {
-            provider = "openai",
-            name = "text-embedding-3-large",
-            dimensions = 50,
+            model = {
+                provider = "openai",
+                name = "text-embedding-3-large",
+            },
         },
         vectordb = {
             strategy = "redis",
@@ -55,8 +56,10 @@ describe(PLUGIN_NAME .. ": (schema)", function()
   it("won't allow both allow_patterns and deny_patterns to be empty arrays", function()
     local config = {
         embeddings = {
-            provider = "openai",
-            name = "text-embedding-3-large",
+            model = {
+                provider = "openai",
+                name = "text-embedding-3-large",
+            },
         },
         vectordb = {
             strategy = "redis",
@@ -86,8 +89,10 @@ describe(PLUGIN_NAME .. ": (schema)", function()
   it("won't allow patterns that are too long", function()
     local config = {
         embeddings = {
-            provider = "openai",
-            name = "text-embedding-3-large",
+            model = {
+                provider = "openai",
+                name = "text-embedding-3-large",
+            },
         },
         vectordb = {
             strategy = "redis",
@@ -118,9 +123,13 @@ describe(PLUGIN_NAME .. ": (schema)", function()
   it("openai embedding not allow custome_url", function()
     local config = {
         embeddings = {
-            provider = "openai",
-            name = "text-embedding-3-large",
-            upstream_url = "http://localhost:8000",
+            model = {
+                provider = "openai",
+                name = "text-embedding-3-large",
+                options = {
+                    upstream_url = "http://localhost:8000",
+                },
+            },
         },
         vectordb = {
             strategy = "redis",

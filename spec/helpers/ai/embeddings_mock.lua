@@ -56,10 +56,6 @@ local function mock_embeddings(opts)
     return nil, "Only gzip encoding is supported"
   end
 
-  if not opts.headers["Authorization"] then
-    return nil, "Authorization header is required"
-  end
-
   local request_body = cjson.decode(opts.body)
 
   if not request_body.dimensions then

@@ -81,11 +81,16 @@ local VECTORDB_SETUP = {
 
 local EMBEDDINGS_SETUP = {
   auth = {
-    token = "kong-key",
+    header_name = "Authorization",
+    header_value = "Bearer kong-key",
   },
-  provider = "openai",
-  name = "text-embedding-3-large",
-  upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/embeddings",
+  model = {
+    provider = "openai",
+    name = "text-embedding-3-large",
+    options = {
+      upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/embeddings",
+    },
+  },
 }
 
 for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then

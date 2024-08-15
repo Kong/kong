@@ -11,7 +11,7 @@
 
 local supported_embeddings = {
   openai = "kong.ai.embeddings.drivers.openai",
-  mistralai = "kong.ai.embeddings.drivers.mistralai",
+  mistral = "kong.ai.embeddings.drivers.mistral",
 }
 
 --
@@ -25,7 +25,7 @@ local supported_embeddings = {
 -- @return the provider module
 -- @return nothing. throws an error if any
 local function new(embeddings_config, dimensions)
-  local provider_name = embeddings_config.provider
+  local provider_name = embeddings_config.model and embeddings_config.model.provider
   if not provider_name then
     return nil, "empty name provided for embeddings provider"
   end

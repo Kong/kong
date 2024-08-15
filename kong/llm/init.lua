@@ -18,6 +18,7 @@ local EMPTY = require("kong.tools.table").EMPTY
 local _M = {
   config_schema = require "kong.llm.schemas",
   vectordb_schema = require "kong.llm.schemas.vectordb",
+  embeddings_schema = require "kong.llm.schemas.embeddings",
 }
 
 do

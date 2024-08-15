@@ -243,11 +243,16 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                 stop_on_failure = TEST_SCENARIO.stop_on_failure or true,
                 embeddings = {
                   auth = {
-                    token = TEST_SCENARIO.embeddings_config == "bad_unauthorized" and "wrong-key" or "openai-key",
+                    header_name = "Authorization",
+                    header_value = "Bearer " .. (TEST_SCENARIO.embeddings_config == "bad_unauthorized" and "wrong-key" or "openai-key"),
                   },
-                  provider = "openai",
-                  name = "text-embedding-3-large",
-                  upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/" .. TEST_SCENARIO.embeddings_response,
+                  model = {
+                    provider = "openai",
+                    name = "text-embedding-3-large",
+                    options = {
+                      upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/" .. TEST_SCENARIO.embeddings_response,
+                    }
+                  }
                 },
                 vectordb = {
                   strategy = VECTORDB_STRATEGY,
