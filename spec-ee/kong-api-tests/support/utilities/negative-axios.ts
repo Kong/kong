@@ -41,7 +41,7 @@ export const getNegative = async (
  */
 export const postNegative = async (
   url: string,
-  data: object = {},
+  data:string | object = {},
   method: Method = 'post',
   headers: object = {},
   additionalOptions?: object | any
