@@ -296,4 +296,59 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     assert.is_truthy(ok)
   end)
 
+  it("bedrock model can not support ath.allowed_auth_override", function()
+    local config = {
+      route_type = "llm/v1/chat",
+      auth = {
+        param_name = "apikey",
+        param_value = "key",
+        param_location = "query",
+        header_name = "Authorization",
+        header_value = "Bearer token",
+        allow_auth_override = true,
+      },
+      model = {
+        name = "bedrock",
+        provider = "bedrock",
+        options = {
+          max_tokens = 256,
+          temperature = 1.0,
+          upstream_url = "http://nowhere",
+        },
+      },
+    }
+
+    local ok, err = validate(config)
+
+    assert.is_falsy(ok)
+    assert.is_truthy(err)
+  end)
+
+  it("gemini model can not support ath.allowed_auth_override", function()
+    local config = {
+      route_type = "llm/v1/chat",
+      auth = {
+        param_name = "apikey",
+        param_value = "key",
+        param_location = "query",
+        header_name = "Authorization",
+        header_value = "Bearer token",
+        allow_auth_override = true,
+      },
+      model = {
+        name = "gemini",
+        provider = "gemini",
+        options = {
+          max_tokens = 256,
+          temperature = 1.0,
+          upstream_url = "http://nowhere",
+        },
+      },
+    }
+
+    local ok, err = validate(config)
+
+    assert.is_falsy(ok)
+    assert.is_truthy(err)
+  end)
 end)

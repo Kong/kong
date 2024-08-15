@@ -173,6 +173,33 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
         },
       }
+      local chat_good_no_allow_override = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http" },
+        strip_path = true,
+        paths = { "/cohere/llm/v1/chat/good-no-allow-override" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = chat_good_no_allow_override.id },
+        config = {
+          route_type = "llm/v1/chat",
+          auth = {
+            header_name = "Authorization",
+            header_value = "Bearer cohere-key",
+            allow_auth_override = false,
+          },
+          model = {
+            name = "command",
+            provider = "cohere",
+            options = {
+              max_tokens = 256,
+              temperature = 1.0,
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/chat/good",
+            },
+          },
+        },
+      }
       --
 
       -- 200 chat bad upstream response with one option
@@ -413,6 +440,102 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           headers = {
             ["content-type"] = "application/json",
             ["accept"] = "application/json",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/cohere/llm-v1-chat/requests/good.json"),
+        })
+
+        local body = assert.res_status(200 , r)
+        local json = cjson.decode(body)
+
+        -- check this is in the 'kong' response format
+        assert.equals(json.model, "command")
+        assert.equals(json.object, "chat.completion")
+        assert.equals(r.headers["X-Kong-LLM-Model"], "cohere/command")
+
+        assert.is_table(json.choices)
+        assert.is_table(json.choices[1].message)
+        assert.same({
+          content = "The sum of 1 + 1 is 2.",
+          role = "assistant",
+        }, json.choices[1].message)
+      end)
+
+      it("good request with right client auth", function()
+        local r = client:get("/cohere/llm/v1/chat/good", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+            ["Authorization"] = "Bearer cohere-key",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/cohere/llm-v1-chat/requests/good.json"),
+        })
+
+        local body = assert.res_status(200 , r)
+        local json = cjson.decode(body)
+
+        -- check this is in the 'kong' response format
+        assert.equals(json.model, "command")
+        assert.equals(json.object, "chat.completion")
+        assert.equals(r.headers["X-Kong-LLM-Model"], "cohere/command")
+
+        assert.is_table(json.choices)
+        assert.is_table(json.choices[1].message)
+        assert.same({
+          content = "The sum of 1 + 1 is 2.",
+          role = "assistant",
+        }, json.choices[1].message)
+      end)
+
+      it("good request with wrong client auth", function()
+        local r = client:get("/cohere/llm/v1/chat/good", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+            ["Authorization"] = "Bearer wrong",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/cohere/llm-v1-chat/requests/good.json"),
+        })
+
+        local body = assert.res_status(401 , r)
+        local json = cjson.decode(body)
+
+        -- check this is in the 'kong' response format
+        assert.is_truthy(json.message)
+        assert.equals(json.message, "invalid api token")
+      end)
+
+      it("good request with right client auth and no allow_auth_override", function()
+        local r = client:get("/cohere/llm/v1/chat/good-no-allow-override", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+            ["Authorization"] = "Bearer cohere-key",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/cohere/llm-v1-chat/requests/good.json"),
+        })
+
+        local body = assert.res_status(200 , r)
+        local json = cjson.decode(body)
+
+        -- check this is in the 'kong' response format
+        assert.equals(json.model, "command")
+        assert.equals(json.object, "chat.completion")
+        assert.equals(r.headers["X-Kong-LLM-Model"], "cohere/command")
+
+        assert.is_table(json.choices)
+        assert.is_table(json.choices[1].message)
+        assert.same({
+          content = "The sum of 1 + 1 is 2.",
+          role = "assistant",
+        }, json.choices[1].message)
+      end)
+
+      it("good request with wrong client auth and no allow_auth_override", function()
+        local r = client:get("/cohere/llm/v1/chat/good-no-allow-override", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+            ["Authorization"] = "Bearer wrong",
           },
           body = pl_file.read("spec/fixtures/ai-proxy/cohere/llm-v1-chat/requests/good.json"),
         })
