@@ -1713,4 +1713,51 @@ describe("Utils", function()
       assert.equal(nil, kong_table.table_path(t, path))
     end)
   end)
+
+  it("test parse_directive_header function", function()
+    -- test null
+    assert.same(tools_http.parse_directive_header(nil), {})
+
+    -- test empty string
+    assert.same(tools_http.parse_directive_header(""), {})
+
+    -- test string
+    assert.same(tools_http.parse_directive_header("cache-key=kong-cache,cache-age=300"), {
+      ["cache-age"] = 300,
+      ["cache-key"] = "kong-cache",
+    })
+  end)
+
+  it("test calculate_resource_ttl function", function()
+    -- test max-age header
+    _G.ngx = {
+      var = {
+        sent_http_expires = "60",
+      },
+    }
+    local access_control_header = tools_http.parse_directive_header("cache-key=kong-cache,max-age=300")
+
+    assert.same(tools_http.calculate_resource_ttl(access_control_header), 300)
+
+    -- test s-maxage header
+    _G.ngx = {
+      var = {
+        sent_http_expires = "60",
+      },
+    }
+    local access_control_header = tools_http.parse_directive_header("cache-key=kong-cache,s-maxage=310")
+
+    assert.same(tools_http.calculate_resource_ttl(access_control_header), 310)
+
+    -- test empty headers
+    local expiry_year = os.date("%Y") + 1
+    _G.ngx = {
+      var = {
+        sent_http_expires = os.date("!%a, %d %b ") .. expiry_year .. " " .. os.date("!%X GMT")  -- format: "Thu, 18 Nov 2099 11:27:35 GMT",
+      },
+    }
+
+    -- chop the last digit to avoid flaky tests (clock skew)
+    assert.same(string.sub(tools_http.calculate_resource_ttl(), 0, -2), "3153600")
+  end)
 end)
