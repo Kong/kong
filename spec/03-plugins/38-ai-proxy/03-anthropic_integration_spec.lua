@@ -233,7 +233,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           auth = {
             header_name = "x-api-key",
             header_value = "anthropic-key",
-            allow_auth_override = false,
+            allow_override = false,
           },
           model = {
             name = "claude-2.1",
@@ -625,7 +625,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.equals(json.error.type, "authentication_error")
       end)
 
-      it("good request with client right header auth and no allow_auth_override", function()
+      it("good request with client right header auth and no allow_override", function()
         local r = client:get("/anthropic/llm/v1/chat/good-no-allow-override", {
           headers = {
             ["content-type"] = "application/json",
@@ -652,7 +652,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         }, json.choices[1].message)
       end)
 
-      it("good request with client wrong header auth and no allow_auth_override", function()
+      it("good request with client wrong header auth and no allow_override", function()
         local r = client:get("/anthropic/llm/v1/chat/good-no-allow-override", {
           headers = {
             ["content-type"] = "application/json",

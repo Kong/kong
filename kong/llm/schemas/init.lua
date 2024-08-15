@@ -97,7 +97,7 @@ local auth_schema = {
         required = false,
         encrypted = true,
         referenceable = true }},
-    { allow_auth_override = {
+    { allow_override = {
         type = "boolean",
         description = "If enabled, the authorization header or parameter can be overridden in the request by the value configured in the plugin.",
         required = false,
@@ -244,9 +244,9 @@ return {
   entity_checks = {
     { conditional =  { if_field = "model.provider",
                           if_match = { one_of = { "bedrock", "gemini" } },
-                          then_field = "auth.allow_auth_override",
+                          then_field = "auth.allow_override",
                           then_match = { eq = false },
-                          then_err = "bedrock and gemini only support auth.allow_auth_override = false" }},
+                          then_err = "bedrock and gemini only support auth.allow_override = false" }},
     { mutually_required = { "auth.header_name", "auth.header_value" }, },
     { mutually_required = { "auth.param_name", "auth.param_value", "auth.param_location" }, },
 

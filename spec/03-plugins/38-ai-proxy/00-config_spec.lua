@@ -298,7 +298,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
         param_location = "query",
         header_name = "Authorization",
         header_value = "Bearer token",
-        allow_auth_override = true,
+        allow_override = true,
       },
       model = {
         name = "bedrock",
@@ -326,7 +326,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
         param_location = "query",
         header_name = "Authorization",
         header_value = "Bearer token",
-        allow_auth_override = true,
+        allow_override = true,
       },
       model = {
         name = "gemini",

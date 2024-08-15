@@ -495,7 +495,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
               header_value = "value",
               gcp_service_account_json = '{"service": "account"}',
               gcp_use_service_account = true,
-              allow_auth_override = false,
+              allow_override = false,
             },
             model = {
               name = "any-model-name",
@@ -527,7 +527,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         -- gemini fields
         expected.config.auth.gcp_service_account_json = nil
         expected.config.auth.gcp_use_service_account = nil
-        expected.config.auth.allow_auth_override = nil
+        expected.config.auth.allow_override = nil
         expected.config.model.options.gemini = nil
 
         -- bedrock fields
@@ -564,7 +564,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
                 header_value = "value",
                 gcp_service_account_json = '{"service": "account"}',
                 gcp_use_service_account = true,
-                allow_auth_override = false,
+                allow_override = false,
               },
               model = {
                 name = "any-model-name",
@@ -628,7 +628,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
                 header_value = "value",
                 gcp_service_account_json = '{"service": "account"}',
                 gcp_use_service_account = true,
-                allow_auth_override = false,
+                allow_override = false,
               },
               model = {
                 name = "any-model-name",
@@ -724,7 +724,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         -- bedrock fields
         expected.config.auth.aws_access_key_id = nil
         expected.config.auth.aws_secret_access_key = nil
-        expected.config.auth.allow_auth_override = nil
+        expected.config.auth.allow_override = nil
         expected.config.model.options.bedrock = nil
 
         do_assert(uuid(), "3.7.0", expected)
