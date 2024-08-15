@@ -528,7 +528,7 @@ function _M.pre_request(conf, request_table)
   local auth_param_location = conf.auth and conf.auth.param_location
 
   if auth_param_name and auth_param_value and auth_param_location == "body" and request_table then
-    if request_table[auth_param_name] == nil or not conf.auth.allow_auth_override then
+    if request_table[auth_param_name] == nil or not conf.auth.allow_override then
       request_table[auth_param_name] = auth_param_value
     end
   end

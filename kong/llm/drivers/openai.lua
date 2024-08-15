@@ -214,14 +214,14 @@ function _M.configure_request(conf)
 
   if auth_header_name and auth_header_value then
     local exist_value = kong.request.get_header(auth_header_name)
-    if exist_value == nil or not conf.auth.allow_auth_override then
+    if exist_value == nil or not conf.auth.allow_override then
       kong.service.request.set_header(auth_header_name, auth_header_value)
     end
   end
 
   if auth_param_name and auth_param_value and auth_param_location == "query" then
     local query_table = kong.request.get_query()
-    if query_table[auth_param_name] == nil or not conf.auth.allow_auth_override then
+    if query_table[auth_param_name] == nil or not conf.auth.allow_override then
       query_table[auth_param_name] = auth_param_value
       kong.service.request.set_query(query_table)
     end

@@ -288,7 +288,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           auth = {
             header_name = "Authorization",
             header_value = "Bearer openai-key",
-            allow_auth_override = false,
+            allow_override = false,
           },
           model = {
             name = "gpt-3.5-turbo",
@@ -488,7 +488,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             param_name = "apikey",
             param_value = "openai-key",
             param_location = "query",
-            allow_auth_override = false,
+            allow_override = false,
           },
           model = {
             name = "gpt-3.5-turbo-instruct",
@@ -617,7 +617,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             param_name = "apikey",
             param_value = "openai-key",
             param_location = "body",
-            allow_auth_override = false,
+            allow_override = false,
           },
           model = {
             name = "gpt-3.5-turbo-instruct",
@@ -967,7 +967,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.res_status(200 , r)
       end)
 
-      it("authorized request with client right header auth with no allow_auth_override", function()
+      it("authorized request with client right header auth with no allow_override", function()
         local r = client:get("/openai/llm/v1/chat/good-no-allow-override", {
           headers = {
             ["content-type"] = "application/json",
@@ -980,7 +980,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.res_status(200 , r)
       end)
 
-      it("authorized request with wrong client header auth  with no allow_auth_override", function()
+      it("authorized request with wrong client header auth  with no allow_override", function()
         local r = client:get("/openai/llm/v1/chat/good-no-allow-override", {
           headers = {
             ["content-type"] = "application/json",
@@ -1340,7 +1340,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.equals(json.error.code, "invalid_api_key")
       end)
 
-      it("works with post body auth with client right auth body and no allow_auth_override", function()
+      it("works with post body auth with client right auth body and no allow_override", function()
         local good_body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-completions/requests/good.json")
         local body = cjson.decode(good_body)
         body.apikey = "openai-key"
@@ -1365,7 +1365,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.same("\n\nI am a language model AI created by OpenAI. I can answer questions", json.choices[1].text)
       end)
 
-      it("works with post body auth with client wrong auth body and no allow_auth_override", function()
+      it("works with post body auth with client wrong auth body and no allow_override", function()
         local good_body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-completions/requests/good.json")
         local body = cjson.decode(good_body)
         body.apikey = "wrong"
