@@ -10,6 +10,7 @@ on:
     - 'plugins-ee/**/schema.lua'
     - 'kong/db/dao/*.lua'
     - 'kong/api/**/*.lua'
+    - 'spec/06-third-party/01-deck/01-deck-integration_spec.lua'
 
 permissions:
   pull-requests: write
