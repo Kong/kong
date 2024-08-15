@@ -848,4 +848,7 @@ function _M.calculate_cost(query_body, tokens_models, tokens_factor)
   return query_cost, nil
 end
 
+-- for unit tests
+_M._count_words = count_words
+
 return _M
