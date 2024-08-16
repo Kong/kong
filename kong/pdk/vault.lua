@@ -153,18 +153,15 @@ local function parse_reference(reference)
   local key
   local parts = parse_path(resource)
   local count = #parts
-  if count == 1 then
+  if count == 0 then
+    return nil, fmt("reference url has invalid path [%s]", reference)
+  elseif count == 1 then
     resource = unescape_uri(parts[1])
-
+  elseif parts.is_directory then
+    resource = unescape_uri(concat(parts, "/", 1, count))
   else
     resource = unescape_uri(concat(parts, "/", 1, count - 1))
-    if parts[count] ~= "" then
-      key = unescape_uri(parts[count])
-    end
-  end
-
-  if resource == "" then
-    return nil, fmt("reference url has invalid path [%s]", reference)
+    key = unescape_uri(parts[count])
   end
 
   local config
