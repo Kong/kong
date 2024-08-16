@@ -739,4 +739,47 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
   end)
 
+  describe("count_words", function()
+    local c = ai_shared._count_words
+
+    it("normal prompts", function()
+      assert.same(10, c(string.rep("apple ", 10)))
+    end)
+
+    it("multi-modal prompts", function()
+      assert.same(10, c({
+        {
+          type = "text",
+          text = string.rep("apple ", 10),
+        },
+      }))
+
+      assert.same(20, c({
+        {
+          type = "text",
+          text = string.rep("apple ", 10),
+        },
+        {
+          type = "text",
+          text = string.rep("banana ", 10),
+        },
+      }))
+
+      assert.same(10, c({
+        {
+          type = "not_text",
+          text = string.rep("apple ", 10),
+        },
+        {
+          type = "text",
+          text = string.rep("banana ", 10),
+        },
+        {
+          type = "text",
+          -- somehow malformed
+        },
+      }))
+    end)
+  end)
+
 end)
