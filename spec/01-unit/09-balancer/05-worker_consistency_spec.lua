@@ -124,16 +124,9 @@ local function setup_kong(fixtures)
   return kong
 end
 
-for _, enable_new_dns_client in ipairs{ false, true } do
+
 for _, consistency in ipairs({"strict", "eventual"}) do
-  describe("Balancer (worker_consistency = " .. consistency .. ")" ..
-           (enable_new_dns_client and "[new dns]" or ""), function()
-
-    ngx.log(ngx.ERR, "setting ", (enable_new_dns_client and "[new dns]" or "[old dns]"))
-
-    package.loaded["kong.resty.dns.client"] = nil
-    _G.busted_new_dns_client = enable_new_dns_client
-
+  describe("Balancer (worker_consistency = " .. consistency .. ")", function()
     local balancer
     local targets, upstreams, balancers, healthcheckers
     local UPSTREAMS_FIXTURES
@@ -565,5 +558,4 @@ for _, consistency in ipairs({"strict", "eventual"}) do
       end)
     end)
   end)
-end
 end
