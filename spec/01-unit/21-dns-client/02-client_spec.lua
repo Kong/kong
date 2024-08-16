@@ -39,6 +39,8 @@ describe("[DNS client]", function()
   local client, resolver
 
   before_each(function()
+    _G.busted_new_dns_client = false
+
     client = require("kong.resty.dns.client")
     resolver = require("resty.dns.resolver")
 
