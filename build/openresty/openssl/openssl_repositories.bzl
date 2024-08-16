@@ -20,5 +20,6 @@ def openssl_repositories():
         strip_prefix = "openssl-" + version,
         urls = [
             "https://github.com/openssl/openssl/releases/download/openssl-" + version + "/openssl-" + version + ".tar.gz",
+            "https://openssl.org/source/old/3.1/openssl-" + version + ".tar.gz",
         ],
     )
