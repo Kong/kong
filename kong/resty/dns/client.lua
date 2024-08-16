@@ -1506,7 +1506,6 @@ end
 -- @param force_no_sync force noSynchronisation = true for a single call
 -- @return `ip address + port + try_list`, or in case of an error `nil + error + try_list`
 local function execute_toip(qname, port, dnsCacheOnly, try_list, force_no_sync)
-  ngx.log(ngx.ERR, "++++++++++++++++ execute_toip: ", qname)
   local rec, err
   rec, err, try_list = resolve(qname, nil, dnsCacheOnly, try_list, force_no_sync)
   if err then
