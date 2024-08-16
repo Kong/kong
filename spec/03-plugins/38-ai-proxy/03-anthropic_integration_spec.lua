@@ -212,6 +212,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           auth = {
             header_name = "x-api-key",
             header_value = "anthropic-key",
+            allow_override = true,
           },
           model = {
             name = "claude-2.1",

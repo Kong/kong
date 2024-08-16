@@ -108,6 +108,6 @@ return {
         type = "boolean",
         description = "If enabled, the authorization header or parameter can be overridden in the request by the value configured in the plugin.",
         required = false,
-        default = true }},
+        default = false }},
   }
 }
