@@ -70,9 +70,6 @@ local AWS = require("resty.aws")
 local AWS_REGION do
   AWS_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")
 end
-
-local AZURE_TOKEN_SCOPE = "https://cognitiveservices.azure.com/.default"
-local AZURE_TOKEN_VERSION = "v2.0"
 ----
 
 _M._CONST = {
@@ -260,7 +257,7 @@ _M.cloud_identity_function = function(this_cache, plugin_config)
       plugin_config.auth and
       plugin_config.auth.gcp_use_service_account then
 
-    ngx.log(ngx.NOTICE, "loading gcp sdk for plugin ", kong.plugin.get_id())
+    ngx.log(ngx.DEBUG, "loading gcp sdk for plugin ", kong.plugin.get_id())
 
     local service_account_json = (plugin_config.auth and plugin_config.auth.gcp_service_account_json) or GCP_SERVICE_ACCOUNT
 
@@ -275,7 +272,7 @@ _M.cloud_identity_function = function(this_cache, plugin_config)
     return { interface = nil, error = "cloud-authentication with GCP failed" }
 
   elseif plugin_config.model.provider == "bedrock" then
-    ngx.log(ngx.NOTICE, "loading aws sdk for plugin ", kong.plugin.get_id())
+    ngx.log(ngx.DEBUG, "loading aws sdk for plugin ", kong.plugin.get_id())
     local aws
 
     local region = plugin_config.model.options

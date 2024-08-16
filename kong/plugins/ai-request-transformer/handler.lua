@@ -5,10 +5,16 @@ local kong_meta     = require "kong.meta"
 local fmt           = string.format
 local llm           = require("kong.llm")
 local llm_state     = require("kong.llm.state")
+local ai_shared     = require("kong.llm.drivers.shared")
 --
 
 _M.PRIORITY = 777
 _M.VERSION = kong_meta.version
+
+local _KEYBASTION = setmetatable({}, {
+  __mode = "k",
+  __index = ai_shared.cloud_identity_function,
+})
 
 local function bad_request(msg)
   kong.log.info(msg)
@@ -40,14 +46,25 @@ local function create_http_opts(conf)
 end
 
 function _M:access(conf)
+  local kong_ctx_shared = kong.ctx.shared
+
   kong.service.request.enable_buffering()
   llm_state.should_disable_ai_proxy_response_transform()
+
+  -- get cloud identity SDK, if required
+  local identity_interface = _KEYBASTION[conf.llm]
+
+  if identity_interface and identity_interface.error then
+    kong_ctx_shared.skip_response_transformer = true
+    kong.log.err("error authenticating with ", conf.model.provider, " using native provider auth, ", identity_interface.error)
+    return kong.response.exit(500, "LLM request failed before proxying")
+  end
 
   -- first find the configured LLM interface and driver
   local http_opts = create_http_opts(conf)
   conf.llm.__plugin_id = conf.__plugin_id
   conf.llm.__key__ = conf.__key__
-  local ai_driver, err = llm.new_driver(conf.llm, http_opts)
+  local ai_driver, err = llm.new_driver(conf.llm, http_opts, identity_interface)
 
   if not ai_driver then
     return internal_server_error(err)

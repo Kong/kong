@@ -13,19 +13,6 @@ local kong_utils = require("kong.tools.gzip")
 local buffer = require "string.buffer"
 local strip = require("kong.tools.utils").strip
 
--- cloud auth/sdk providers
-local GCP_SERVICE_ACCOUNT do
-  GCP_SERVICE_ACCOUNT = os.getenv("GCP_SERVICE_ACCOUNT")
-end
-
-local GCP = require("resty.gcp.request.credentials.accesstoken")
-local aws_config = require "resty.aws.config"  -- reads environment variables whilst available
-local AWS = require("resty.aws")
-local AWS_REGION do
-  AWS_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")
-end
---
-
 
 local EMPTY = require("kong.tools.table").EMPTY
 

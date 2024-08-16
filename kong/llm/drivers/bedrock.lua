@@ -306,7 +306,7 @@ function _M.to_format(request_table, model_info, route_type)
   return response_object, content_type, nil
 end
 
-function _M.subrequest(body, conf, http_opts, return_res_table)
+function _M.subrequest(body, conf, http_opts, return_res_table, identity_interface)
   -- use shared/standard subrequest routine
   local body_string, err
 
@@ -322,25 +322,51 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
   end
 
   -- may be overridden
-  local url = (conf.model.options and conf.model.options.upstream_url)
-    or fmt(
-    "%s%s",
-    ai_shared.upstream_url_format[DRIVER_NAME],
-    ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
-  )
+  local f_url = conf.model.options and conf.model.options.upstream_url
+  if not f_url then  -- upstream_url override is not set
+    local uri = fmt(ai_shared.upstream_url_format[DRIVER_NAME], identity_interface.interface.config.region)
+    local path = fmt(
+      ai_shared.operation_map[DRIVER_NAME][conf.route_type].path,
+      conf.model.name,
+      "converse")
 
-  local method = ai_shared.operation_map[DRIVER_NAME][conf.route_type].method
+    f_url = uri ..path
+  end
+
+  local parsed_url = socket_url.parse(f_url)
+  local method = ai_shared.operation_map[DRIVER_NAME][conf.route_type].method  
+
+  -- do the IAM auth and signature headers
+  identity_interface.interface.config.signatureVersion = "v4"
+  identity_interface.interface.config.endpointPrefix = "bedrock"
+
+  local r = {
+    headers = {},
+    method = method,
+    path = parsed_url.path,
+    host = parsed_url.host,
+    port = tonumber(parsed_url.port) or 443,
+    body = body_string,
+  }
+
+  local signature, err = signer(identity_interface.interface.config, r)
+  if not signature then
+    return nil, "failed to sign AWS request: " .. (err or "NONE")
+  end
 
   local headers = {
     ["Accept"] = "application/json",
     ["Content-Type"] = "application/json",
   }
-
-  if conf.auth and conf.auth.header_name then
-    headers[conf.auth.header_name] = conf.auth.header_value
+  headers["Authorization"] = signature.headers["Authorization"]
+  if signature.headers["X-Amz-Security-Token"] then 
+    headers["X-Amz-Security-Token"] = signature.headers["X-Amz-Security-Token"]
+  end
+  if signature.headers["X-Amz-Date"] then
+    headers["X-Amz-Date"] = signature.headers["X-Amz-Date"]
   end
 
-  local res, err, httpc = ai_shared.http_request(url, body_string, method, headers, http_opts, return_res_table)
+  local res, err, httpc = ai_shared.http_request(f_url, body_string, method, headers, http_opts, return_res_table)
   if err then
     return nil, nil, "request to ai service failed: " .. err
   end
@@ -386,7 +412,6 @@ function _M.configure_request(conf, aws_sdk)
                                                              or "converse"
 
   local f_url = conf.model.options and conf.model.options.upstream_url
-
   if not f_url then  -- upstream_url override is not set
     local uri = fmt(ai_shared.upstream_url_format[DRIVER_NAME], aws_sdk.config.region)
     local path = fmt(
@@ -394,7 +419,7 @@ function _M.configure_request(conf, aws_sdk)
       conf.model.name,
       operation)
 
-    f_url = fmt("%s%s", uri, path)
+    f_url = uri ..path
   end
 
   local parsed_url = socket_url.parse(f_url)
