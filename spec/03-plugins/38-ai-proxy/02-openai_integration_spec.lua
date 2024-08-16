@@ -252,6 +252,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           auth = {
             header_name = "Authorization",
             header_value = "Bearer openai-key",
+            allow_override = true,
           },
           model = {
             name = "gpt-3.5-turbo",
@@ -464,6 +465,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             param_name = "apikey",
             param_value = "openai-key",
             param_location = "query",
+            allow_override = true,
           },
           model = {
             name = "gpt-3.5-turbo-instruct",
@@ -593,6 +595,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             param_name = "apikey",
             param_value = "openai-key",
             param_location = "body",
+            allow_override = true,
           },
           model = {
             name = "gpt-3.5-turbo-instruct",

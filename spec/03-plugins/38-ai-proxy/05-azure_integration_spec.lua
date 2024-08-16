@@ -154,6 +154,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           auth = {
             header_name = "api-key",
             header_value = "azure-key",
+            allow_override = true,
           },
           model = {
             name = "gpt-3.5-turbo",
