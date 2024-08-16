@@ -133,7 +133,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           auth = {
             header_name = "Authorization",
             header_value = "Bearer mistral-key",
-            allow_auth_override = false,
+            allow_override = false,
           },
           model = {
             name = "mistralai/Mistral-7B-Instruct-v0.1-instruct",
@@ -433,7 +433,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.equals(json.error.code, "invalid_api_key")
       end)
 
-      it("good request with client right auth and no allow_auth_override", function()
+      it("good request with client right auth and no allow_override", function()
         local r = client:get("/mistral/llm/v1/chat/good-no-allow-override", {
           headers = {
             ["content-type"] = "application/json",
@@ -462,7 +462,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         }, json.choices[1].message)
       end)
 
-      it("good request with client wrong auth and no allow_auth_override", function()
+      it("good request with client wrong auth and no allow_override", function()
         local r = client:get("/mistral/llm/v1/chat/good-no-allow-override", {
           headers = {
             ["content-type"] = "application/json",

@@ -163,7 +163,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           auth = {
             header_name = "Authorization",
             header_value = "Bearer llama2-key",
-            allow_auth_override = false,
+            allow_override = false,
           },
           model = {
             name = "llama-2-7b-chat-hf",
@@ -267,7 +267,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.equals(json.error, "Model requires a Pro subscription.")
       end)
 
-      it("runs good request in completions format with client right auth and no allow_auth_override", function()
+      it("runs good request in completions format with client right auth and no allow_override", function()
         local r = client:get("/raw/llm/v1/completions-no-allow-override", {
           headers = {
             ["content-type"] = "application/json",
@@ -283,7 +283,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.equals(json.choices[1].text, "Is a well known font.")
       end)
 
-      it("runs good request in completions format with client wrong auth and no allow_auth_override", function()
+      it("runs good request in completions format with client wrong auth and no allow_override", function()
         local r = client:get("/raw/llm/v1/completions-no-allow-override", {
           headers = {
             ["content-type"] = "application/json",

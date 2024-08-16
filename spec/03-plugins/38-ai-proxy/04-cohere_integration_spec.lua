@@ -187,7 +187,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           auth = {
             header_name = "Authorization",
             header_value = "Bearer cohere-key",
-            allow_auth_override = false,
+            allow_override = false,
           },
           model = {
             name = "command",
@@ -504,7 +504,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.equals(json.message, "invalid api token")
       end)
 
-      it("good request with right client auth and no allow_auth_override", function()
+      it("good request with right client auth and no allow_override", function()
         local r = client:get("/cohere/llm/v1/chat/good-no-allow-override", {
           headers = {
             ["content-type"] = "application/json",
@@ -530,7 +530,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         }, json.choices[1].message)
       end)
 
-      it("good request with wrong client auth and no allow_auth_override", function()
+      it("good request with wrong client auth and no allow_override", function()
         local r = client:get("/cohere/llm/v1/chat/good-no-allow-override", {
           headers = {
             ["content-type"] = "application/json",

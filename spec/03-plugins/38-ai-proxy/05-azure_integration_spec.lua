@@ -190,7 +190,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           auth = {
             header_name = "api-key",
             header_value = "azure-key",
-            allow_auth_override = false,
+            allow_override = false,
           },
           model = {
             name = "gpt-3.5-turbo",
@@ -524,7 +524,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.equals(json.error.code, "invalid_api_key")
       end)
 
-      it("good request with client right auth and no allow_auth_override", function()
+      it("good request with client right auth and no allow_override", function()
         local r = client:get("/azure/llm/v1/chat/good-no-allow-override", {
           headers = {
             ["content-type"] = "application/json",
@@ -551,7 +551,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         }, json.choices[1].message)
       end)
 
-      it("good request with client wrong auth and no allow_auth_override", function()
+      it("good request with client wrong auth and no allow_override", function()
         local r = client:get("/azure/llm/v1/chat/good-no-allow-override", {
           headers = {
             ["content-type"] = "application/json",
