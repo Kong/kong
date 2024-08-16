@@ -350,6 +350,75 @@ end
 
 
 ---
+-- Manages cloud SDKs, for using "workload identity" authentications,
+-- that are tied to this specific plugin in-memory.
+--
+-- This allows users to run different authentication configurations
+-- between different AI Plugins.
+--
+-- @param {table} this_cache self - stores all the SDK instances
+-- @param {table} plugin_config the configuration to cache against and also provide SDK settings with
+-- @return {table} self
+_M.cloud_identity_function = function(this_cache, plugin_config)
+  if plugin_config.model.provider == "gemini" and
+      plugin_config.auth and
+      plugin_config.auth.gcp_use_service_account then
+
+    ngx.log(ngx.DEBUG, "loading gcp sdk for plugin ", kong.plugin.get_id())
+
+    local service_account_json = (plugin_config.auth and plugin_config.auth.gcp_service_account_json) or GCP_SERVICE_ACCOUNT
+
+    local ok, gcp_auth = pcall(GCP.new, nil, service_account_json)
+    if ok and gcp_auth then
+      -- store our item for the next time we need it
+      gcp_auth.service_account_json = service_account_json
+      this_cache[plugin_config] = { interface = gcp_auth, error = nil }
+      return this_cache[plugin_config]
+    end
+
+    return { interface = nil, error = "cloud-authentication with GCP failed" }
+
+  elseif plugin_config.model.provider == "bedrock" then
+    ngx.log(ngx.DEBUG, "loading aws sdk for plugin ", kong.plugin.get_id())
+    local aws
+
+    local region = plugin_config.model.options
+                and plugin_config.model.options.bedrock
+                and plugin_config.model.options.bedrock.aws_region
+                or AWS_REGION
+
+    if not region then
+      return { interface = nil, error = "AWS region not specified anywhere" }
+    end
+
+    local access_key_set = (plugin_config.auth and plugin_config.auth.aws_access_key_id)
+                        or aws_config.global.AWS_ACCESS_KEY_ID
+    local secret_key_set = plugin_config.auth and plugin_config.auth.aws_secret_access_key
+                        or aws_config.global.AWS_SECRET_ACCESS_KEY
+
+    aws = AWS({
+      -- if any of these are nil, they either use the SDK default or
+      -- are deliberately null so that a different auth chain is used
+      region = region,
+    })
+
+    if access_key_set and secret_key_set then
+      -- Override credential config according to plugin config, if set
+      local creds = aws:Credentials {
+        accessKeyId = access_key_set,
+        secretAccessKey = secret_key_set,
+      }
+
+      aws.config.credentials = creds
+    end
+
+    this_cache[plugin_config] = { interface = aws, error = nil }
+
+    return this_cache[plugin_config]
+  end
+end
+
+---
 -- Splits a HTTPS data chunk or frame into individual
 -- SSE-format messages, see:
 -- https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#event_stream_format

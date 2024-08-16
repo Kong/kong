@@ -106,9 +106,9 @@ do
     local ai_request
 
     -- mistral, cohere, titan (via Bedrock) don't support system commands
-    if self.driver == "bedrock" then
+    if self.conf.model.provider == "bedrock" then
       for _, p in ipairs(self.driver.bedrock_unsupported_system_role_patterns) do
-        if request.model:find(p) then
+        if self.conf.model.name:find(p) then
           ai_request = {
             messages = {
               [1] = {
@@ -158,7 +158,7 @@ do
     ai_shared.pre_request(self.conf, ai_request)
 
     -- send it to the ai service
-    local ai_response, _, err = self.driver.subrequest(ai_request, self.conf, http_opts, false)
+    local ai_response, _, err = self.driver.subrequest(ai_request, self.conf, http_opts, false, self.identity_interface)
     if err then
       return nil, "failed to introspect request with AI service: " .. err
     end
@@ -236,13 +236,15 @@ do
   --- Instantiate a new LLM driver instance.
   -- @tparam table conf Configuration table
   -- @tparam table http_opts HTTP options table
+  -- @tparam table [optional] cloud-authentication identity interface
   -- @treturn[1] table A new LLM driver instance
   -- @treturn[2] nil
   -- @treturn[2] string An error message if instantiation failed
-  function _M.new_driver(conf, http_opts)
+  function _M.new_driver(conf, http_opts, identity_interface)
     local self = {
       conf = conf or {},
       http_opts = http_opts or {},
+      identity_interface = identity_interface,  -- 'or nil'
     }
     setmetatable(self, LLM)
 
