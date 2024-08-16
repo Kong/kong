@@ -154,6 +154,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           auth = {
             header_name = "Authorization",
             header_value = "Bearer cohere-key",
+            allow_override = true,
           },
           model = {
             name = "command",

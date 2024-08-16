@@ -128,6 +128,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           auth = {
             header_name = "Authorization",
             header_value = "Bearer llama2-key",
+            allow_override = true,
           },
           model = {
             name = "llama-2-7b-chat-hf",
