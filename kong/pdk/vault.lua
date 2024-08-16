@@ -65,6 +65,11 @@ local BRACE_START = byte("{")
 local BRACE_END = byte("}")
 local COLON = byte(":")
 local SLASH = byte("/")
+local BYT_V = byte("v")
+local BYT_A = byte("a")
+local BYT_U = byte("u")
+local BYT_L = byte("l")
+local BYT_T = byte("t")
 
 
 local VAULT_QUERY_OPTS = { workspace = ngx.null }
@@ -79,13 +84,17 @@ local VAULT_QUERY_OPTS = { workspace = ngx.null }
 -- @tparam string reference reference to check
 -- @treturn boolean `true` is the passed in reference looks like a reference, otherwise `false`
 local function is_reference(reference)
-  return type(reference)      == "string"
-     and byte(reference, 1)   == BRACE_START
-     and byte(reference, -1)  == BRACE_END
-     and byte(reference, 7)   == COLON
-     and byte(reference, 8)   == SLASH
-     and byte(reference, 9)   == SLASH
-     and sub(reference, 2, 6) == "vault"
+  return type(reference)     == "string"
+     and byte(reference, 1)  == BRACE_START
+     and byte(reference, 2)  == BYT_V
+     and byte(reference, 3)  == BYT_A
+     and byte(reference, 4)  == BYT_U
+     and byte(reference, 5)  == BYT_L
+     and byte(reference, 6)  == BYT_T
+     and byte(reference, 7)  == COLON
+     and byte(reference, 8)  == SLASH
+     and byte(reference, 9)  == SLASH
+     and byte(reference, -1) == BRACE_END
 end
 
 
