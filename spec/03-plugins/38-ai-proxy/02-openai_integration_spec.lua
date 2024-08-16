@@ -14,6 +14,11 @@ local FILE_LOG_PATH_STATS_ONLY = os.tmpname()
 local FILE_LOG_PATH_NO_LOGS = os.tmpname()
 local FILE_LOG_PATH_WITH_PAYLOADS = os.tmpname()
 
+local truncate_file = function(path)
+  local file = io.open(path, "w")
+  file:close()
+end
+
 
 local function wait_for_json_log_entry(FILE_LOG_PATH)
   local json
@@ -764,20 +769,21 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
     lazy_teardown(function()
       helpers.stop_kong()
+      os.remove(FILE_LOG_PATH_STATS_ONLY)
+      os.remove(FILE_LOG_PATH_NO_LOGS)
+      os.remove(FILE_LOG_PATH_WITH_PAYLOADS)
     end)
 
     before_each(function()
       client = helpers.proxy_client()
-      os.remove(FILE_LOG_PATH_STATS_ONLY)
-      os.remove(FILE_LOG_PATH_NO_LOGS)
-      os.remove(FILE_LOG_PATH_WITH_PAYLOADS)
+      -- Note: if file is removed instead of trunacted, file-log ends writing to a unlinked file handle
+      truncate_file(FILE_LOG_PATH_STATS_ONLY)
+      truncate_file(FILE_LOG_PATH_NO_LOGS)
+      truncate_file(FILE_LOG_PATH_WITH_PAYLOADS)
     end)
 
     after_each(function()
       if client then client:close() end
-      os.remove(FILE_LOG_PATH_STATS_ONLY)
-      os.remove(FILE_LOG_PATH_NO_LOGS)
-      os.remove(FILE_LOG_PATH_WITH_PAYLOADS)
     end)
 
     describe("openai general", function()
@@ -1391,7 +1397,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       end)
     end)
 
-    describe("openai multi-modal requests", function()
+    describe("#aaa openai multi-modal requests", function()
       it("logs statistics", function()
         local r = client:get("/openai/llm/v1/chat/good", {
           headers = {
@@ -1474,7 +1480,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         local _, message = next(log_message.ai)
 
         -- test request bodies
-        assert.matches('"content": "What is 1 + 1?"', message.payload.request, nil, true)
+        assert.matches('"text": "What\'s in this image?"', message.payload.request, nil, true)
         assert.matches('"role": "user"', message.payload.request, nil, true)
 
         -- test response bodies
