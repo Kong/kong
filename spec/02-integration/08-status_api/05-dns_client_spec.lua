@@ -22,7 +22,7 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database = strategy,
         status_listen = "127.0.0.1:" .. tcp_status_port,
-        legacy_dns_client = "off",
+        new_dns_client = "on",
       }))
 
       client = helpers.http_client("127.0.0.1", tcp_status_port, 20000)
@@ -75,7 +75,7 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database = strategy,
         status_listen = "127.0.0.1:" .. tcp_status_port,
-        legacy_dns_client = "on",
+        new_dns_client = "off",
       }))
 
       client = helpers.http_client("127.0.0.1", tcp_status_port, 20000)
@@ -120,7 +120,7 @@ for _, strategy in helpers.each_strategy() do
         database = strategy,
         cluster_listen = "127.0.0.1:9005",
         nginx_conf = "spec/fixtures/custom_nginx.template",
-        legacy_dns_client = "off",
+        new_dns_client = "on",
       }))
 
       assert(helpers.start_kong({
@@ -133,7 +133,7 @@ for _, strategy in helpers.each_strategy() do
         proxy_listen = "0.0.0.0:9002",
         nginx_conf = "spec/fixtures/custom_nginx.template",
         status_listen = "127.0.0.1:" .. tcp_status_port,
-        legacy_dns_client = "off",
+        new_dns_client = "on",
       }))
 
       client = helpers.http_client("127.0.0.1", tcp_status_port, 20000)

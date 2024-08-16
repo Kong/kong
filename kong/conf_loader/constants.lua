@@ -371,7 +371,7 @@ local CONF_PARSERS = {
   dns_error_ttl = { typ = "number" },
   dns_no_sync = { typ = "boolean" },
 
-  legacy_dns_client = { typ = "boolean" },
+  new_dns_client = { typ = "boolean" },
 
   resolver_address = { typ = "array" },
   resolver_hosts_file = { typ = "string" },

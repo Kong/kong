@@ -5,7 +5,7 @@ return {
   ["/status/dns"] = {
     GET = function (self, db, helpers)
 
-      if kong.configuration.legacy_dns_client then
+      if not kong.configuration.new_dns_client then
         return kong.response.exit(501, {
           message = "not implemented with the legacy DNS client"
         })
