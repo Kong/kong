@@ -238,7 +238,9 @@ local function handle_streaming_frame(conf, chunk, finished)
   end
 
   local response_frame = framebuffer:get()
-  if not finished and accept_gzip() then
+  -- TODO: disable gzip for SSE because it needs immediate flush for each chunk
+  -- and seems nginx doesn't support it
+  if not finished and accept_gzip() and not llm_state.is_streaming_mode() then
     response_frame = kong_utils.deflate_gzip(response_frame)
   end
 
@@ -344,12 +346,15 @@ function _M:header_filter(conf)
   if llm_state.is_streaming_mode() then
     -- we are going to send plaintext event-stream frames for ALL models
     kong.response.set_header("Content-Type", "text/event-stream")
-  end
-
-  if accept_gzip() then
-    kong.response.set_header("Content-Encoding", "gzip")
+    -- TODO: disable gzip for SSE because it needs immediate flush for each chunk
+    -- and seems nginx doesn't support it
   else
-    kong.response.clear_header("Content-Encoding")
+
+    if accept_gzip() then
+      kong.response.set_header("Content-Encoding", "gzip")
+    else
+      kong.response.clear_header("Content-Encoding")
+    end
   end
 end
 
