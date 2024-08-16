@@ -165,15 +165,22 @@ local function to_bedrock_chat_openai(request_table, model_info, route_type)
         system_prompts[#system_prompts+1] = { text = v.content }
 
       else
-        -- for any other role, just construct the chat history as 'parts.text' type
-        new_r.messages = new_r.messages or {}
-        table_insert(new_r.messages, {
-          role = _OPENAI_ROLE_MAPPING[v.role or "user"],  -- default to 'user'
+        local content
+        if type(v.content) == "table" then
+          content = v.content
+        else
           content = {
             {
               text = v.content or ""
             },
-          },
+          }
+        end
+
+        -- for any other role, just construct the chat history as 'parts.text' type
+        new_r.messages = new_r.messages or {}
+        table_insert(new_r.messages, {
+          role = _OPENAI_ROLE_MAPPING[v.role or "user"],  -- default to 'user'
+          content = content,
         })
       end
     end
