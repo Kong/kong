@@ -262,7 +262,7 @@ function _M.to_format(request_table, model_info, route_type)
   return response_object, content_type, nil
 end
 
-function _M.subrequest(body, conf, http_opts, return_res_table)
+function _M.subrequest(body, conf, http_opts, return_res_table, identity_interface)
   -- use shared/standard subrequest routine
   local body_string, err
 
@@ -292,7 +292,23 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
     ["Content-Type"] = "application/json",
   }
 
-  if conf.auth and conf.auth.header_name then
+  if identity_interface and identity_interface.interface then
+    if identity_interface.interface:needsRefresh() then
+      -- HACK: A bug in lua-resty-gcp tries to re-load the environment
+      --       variable every time, which fails in nginx
+      --       Create a whole new interface instead.
+      --       Memory leaks are mega unlikely because this should only
+      --       happen about once an hour, and the old one will be
+      --       cleaned up anyway.
+      local service_account_json = identity_interface.interface.service_account_json
+      identity_interface.interface.token = identity_interface.interface:new(service_account_json).token
+
+      kong.log.debug("gcp identity token for ", kong.plugin.get_id(), " has been refreshed")
+    end
+
+    headers["Authorization"] = "Bearer " .. identity_interface.interface.token
+
+  elseif conf.auth and conf.auth.header_name then
     headers[conf.auth.header_name] = conf.auth.header_value
   end
 
@@ -413,7 +429,7 @@ function _M.configure_request(conf, identity_interface)
       local identity_interface_new = identity_interface:new(service_account_json)
       identity_interface.token = identity_interface_new.token
 
-      kong.log.notice("gcp identity token for ", kong.plugin.get_id(), " has been refreshed")
+      kong.log.debug("gcp identity token for ", kong.plugin.get_id(), " has been refreshed")
     end
 
     kong.service.request.set_header("Authorization", "Bearer " .. identity_interface.token)
