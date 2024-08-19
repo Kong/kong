@@ -325,6 +325,14 @@ ENABLE_KAFKA_UPSTREAM=(
   --data "config.authentication.mechanism=SCRAM-SHA-512"
 )
 
+ENABLE_CONFLUENT=(
+  --data "name=confluent"
+  --data "config.topic=kong"
+  --data "config.cluster_name=kong"
+  --data "config.authentication.cluster_api_key=abcdef12-3456-7890-abcd-ef1234567890"
+  --data "config.authentication.cluster_api_secret=abcdef12-3456-7890-abcd-ef1234567890"
+)
+
 ENABLE_KEY_AUTH_ENC=(
   --data "name=key-auth-enc"
 )

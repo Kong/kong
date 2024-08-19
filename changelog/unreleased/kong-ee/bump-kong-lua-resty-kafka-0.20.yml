@@ -1,0 +1,3 @@
+message: |
+  Bumped `kong-lua-resty-kafka` to `0.20` to support TCP socket keepalive and allow client_id to be set for the kafka client.
+type: dependency

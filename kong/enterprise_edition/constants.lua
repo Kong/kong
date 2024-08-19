@@ -71,6 +71,7 @@ return {
     "ai-semantic-prompt-guard",
     "ai-semantic-cache",
     "json-threat-protection",
+    "confluent",
   },
 
   -- this list is joined into the DICTS list in kong.constants

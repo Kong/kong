@@ -53,6 +53,8 @@ local function create(conf)
     max_buffering = conf.producer_async_buffering_limits_messages_in_memory,
 
     ssl = conf.security.ssl,
+
+    client_id = conf.client_id
   }
   local cluster_name = conf.cluster_name
 

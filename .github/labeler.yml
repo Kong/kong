@@ -362,6 +362,10 @@ plugins/json-threat-protection:
 - changed-files:
   - any-glob-to-any-file: kong/plugins/json-threat-protection/**/*
 
+plugins/confluent:
+- changed-files:
+  - any-glob-to-any-file: kong/plugins/confluent/**/*
+
 plugins-ee/ai-azure-content-safety:
 - changed-files:
   - any-glob-to-any-file: plugins-ee/ai-azure-content-safety/**/*
@@ -381,6 +385,7 @@ plugins-ee/kafka-log:
 plugins-ee/kafka-upstream:
 - changed-files:
   - any-glob-to-any-file: plugins-ee/kafka-upstream/**/*
+
 
 plugins-ee/konnect-application-auth:
 - changed-files:

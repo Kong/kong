@@ -1,0 +1,3 @@
+message: "**confluent:** Added the `confluent` plugin which allows to interface with Confluent."
+type: feature
+scope: Plugin

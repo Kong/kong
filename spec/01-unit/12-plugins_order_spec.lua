@@ -114,6 +114,7 @@ describe("Plugins", function()
       "ai-response-transformer",
       "ai-semantic-cache",
       "standard-webhooks",
+      "confluent",
       "aws-lambda",
       "azure-functions",
       "upstream-timeout",

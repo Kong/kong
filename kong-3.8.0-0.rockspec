@@ -880,6 +880,9 @@ build = {
     ["kong.plugins.azure-functions.handler"] = "kong/plugins/azure-functions/handler.lua",
     ["kong.plugins.azure-functions.schema"]  = "kong/plugins/azure-functions/schema.lua",
 
+    ["kong.plugins.confluent.handler"] = "kong/plugins/confluent/handler.lua",
+    ["kong.plugins.confluent.schema"]  = "kong/plugins/confluent/schema.lua",
+
     ["kong.enterprise_edition.kafka.plugins.producers"]  = "kong/enterprise_edition/kafka/plugins/producers.lua",
 
     ["kong.plugins.opentelemetry.migrations"] = "kong/plugins/opentelemetry/migrations/init.lua",

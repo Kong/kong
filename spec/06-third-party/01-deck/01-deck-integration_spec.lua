@@ -479,6 +479,20 @@ local function get_plugins_configs(service)
           client_secret = "2",
         },
       }
+    },
+    ["confluent"] = {
+      name = "confluent",
+      config = {
+        bootstrap_servers = {
+          {
+            host = "test",
+            port = 123,
+          },
+        },
+        topic = "test",
+        cluster_api_key = "test",
+        cluster_api_secret = "secret",
+      },
     }
   }
 end

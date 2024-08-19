@@ -182,6 +182,7 @@ describe("Plugins", function()
       'ai-response-transformer',
       "ai-semantic-cache",
       'standard-webhooks',
+      'confluent',
       'kafka-upstream',
       'aws-lambda',
       'azure-functions',
