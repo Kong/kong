@@ -256,6 +256,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         expected_otel_prior_35.config.traces_endpoint = nil
         expected_otel_prior_35.config.logs_endpoint = nil
         expected_otel_prior_35.config.endpoint = "http://1.1.1.1:12345/v1/trace"
+        expected_otel_prior_35.config.queue.concurrency_limit = nil
 
         do_assert(uuid(), "3.4.0", expected_otel_prior_35)
 
@@ -281,6 +282,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         expected_otel_prior_34.config.traces_endpoint = nil
         expected_otel_prior_34.config.logs_endpoint = nil
         expected_otel_prior_34.config.endpoint = "http://1.1.1.1:12345/v1/trace"
+        expected_otel_prior_34.config.queue.concurrency_limit = nil
         do_assert(uuid(), "3.3.0", expected_otel_prior_34)
 
         -- cleanup
@@ -307,6 +309,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         expected_zipkin_prior_35.config.header_type = "preserve"
         expected_zipkin_prior_35.config.default_header_type = "b3"
         expected_zipkin_prior_35.config.propagation = nil
+        expected_zipkin_prior_35.config.queue.concurrency_limit = nil
         do_assert(uuid(), "3.4.0", expected_zipkin_prior_35)
 
         -- cleanup
@@ -328,6 +331,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
         expected_zipkin_prior_34.config.header_type = "preserve"
         expected_zipkin_prior_34.config.default_header_type = "b3"
         expected_zipkin_prior_34.config.propagation = nil
+        expected_zipkin_prior_34.config.queue.concurrency_limit = nil
         do_assert(uuid(), "3.3.0", expected_zipkin_prior_34)
 
         -- cleanup

@@ -786,7 +786,7 @@ describe("plugin queue", function()
     assert.equal("One", processed[1])
     assert.equal("Three", processed[2])
     assert.match_re(log_messages, 'WARN \\[\\] queue continue-processing: handler could not process entries: .*: hard error')
-    assert.match_re(log_messages, 'ERR \\[\\] queue continue-processing: could not send entries, giving up after \\d retries.  1 queue entries were lost')  
+    assert.match_re(log_messages, 'ERR \\[\\] queue continue-processing: could not send entries due to max_retry_time exceeded. \\d queue entries were lost')
   end)
 
   it("sanity check for function Queue.is_full() & Queue.can_enqueue()", function()
@@ -799,6 +799,7 @@ describe("plugin queue", function()
       max_retry_time = 60,
       initial_retry_delay = 1,
       max_retry_delay = 60,
+      concurrency_limit = 1,
     }
 
     local function enqueue(queue_conf, entry)
@@ -836,6 +837,7 @@ describe("plugin queue", function()
       max_retry_time = 60,
       initial_retry_delay = 1,
       max_retry_delay = 60,
+      concurrency_limit = 1,
     }
 
     -- should be true if the queue does not exist
@@ -861,6 +863,7 @@ describe("plugin queue", function()
       max_retry_time = 60,
       initial_retry_delay = 1,
       max_retry_delay = 60,
+      concurrency_limit = 1,
     }
 
     -- should be true if the queue does not exist
