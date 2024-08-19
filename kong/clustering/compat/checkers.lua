@@ -79,12 +79,6 @@ local compatible_checkers = {
               'not work in this release',
               dp_version, log_suffix)
           end
-
-          if config.storage_config.redis.password ~= nil then
-            log_warn_message('configures ' .. plugin.name .. ' plugin with redis password',
-              'not work in this release. Please use redis.auth config instead',
-              dp_version, log_suffix)
-          end
         end
 
         if redis_plugins[plugin_name] then
