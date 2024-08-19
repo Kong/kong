@@ -250,6 +250,7 @@ function _M:register_for_messages()
         max_retry_time = 120,
         -- delay between retries
         max_retry_delay = 60,
+        concurrency_limit = 1,
       },
       -- handler
       ingest,
