@@ -1,0 +1,3 @@
+message: "Bumped lua-resty-acme to 0.15.0 to support username/password auth with redis."
+type: dependency
+scope: Core
