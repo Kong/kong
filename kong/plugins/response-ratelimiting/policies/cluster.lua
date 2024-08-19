@@ -68,7 +68,7 @@ return {
         connector:escape_literal(service_id),
         connector:escape_literal(route_id))
 
-      local res, err = connector:query(q)
+      local res, err = connector:query(q, "read")
       if not res then
         return nil, err
       end
