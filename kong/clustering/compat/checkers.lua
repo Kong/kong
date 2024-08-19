@@ -57,14 +57,42 @@ local compatible_checkers = {
   { 3008000000, --[[ 3.8.0.0 ]]
     function(config_table, dp_version, log_suffix)
       local has_update
-      for _, plugin in ipairs(config_table.plugins or {}) do
+      local redis_plugins = {
+        ["proxy-cache-advanced"] = true,
+        ["graphql-proxy-cache-advanced"] = true,
+        ["graphql-rate-limiting-advanced"] = true,
+        ["rate-limiting-advanced"] = true,
+        ["ai-rate-limiting-advanced"] = true,
+        --[=[ the whole 'redis' object is already removed in 'removed_fields.lua'
+        ["saml"] = true,
+        ["openid-connect"] = true,
+        --]=]
+      }
 
-        if plugin.name == 'ai-rate-limiting-advanced' then
+      for _, plugin in ipairs(config_table.plugins or {}) do
+        local plugin_name = plugin.name
+
+        if redis_plugins[plugin_name] then
+          local config = plugin.config
+          if config and config.redis and config.redis.connection_is_proxied ~= nil then
+            config.redis.connection_is_proxied = nil
+            has_update = true
+          end
+          if has_update then
+            log_warn_message(
+              "configures " .. plugin_name .. " plugin with 'connection_is_proxied'" ..
+              ", will remove this field,",
+              dp_version, log_suffix)
+          end
+
+        end
+
+        if plugin_name == 'ai-rate-limiting-advanced' then
           local config = plugin.config
           if config.tokens_count_strategy == "cost" then
             -- remove cost strategy and replace with the default
             config.tokens_count_strategy = "total_tokens"
-            log_warn_message('configures ' .. plugin.name .. ' plugin with tokens_count_strategy == cost',
+            log_warn_message('configures ' .. plugin_name .. ' plugin with tokens_count_strategy == cost',
                              'overwritten with default value `total_tokens`.',
                              dp_version, log_suffix)
             has_update = true
@@ -81,6 +109,88 @@ local compatible_checkers = {
             end
           end
 
+        end
+
+        if plugin_name == 'aws-lambda' then
+          local config = plugin.config
+          if config.aws_sts_endpoint_url ~= nil then
+            config.aws_sts_endpoint_url = nil
+            has_update = true
+            log_warn_message('configures ' .. plugin_name .. ' plugin with aws_sts_endpoint_url',
+              'will be removed.',
+              dp_version, log_suffix)
+          end
+        end
+
+        if plugin_name == 'ai-proxy' then
+          local config = plugin.config
+          if _AI_PROVIDER_INCOMPATIBLE(config.model.provider, 3008000000) then
+            log_warn_message('configures ' .. plugin_name .. ' plugin with' ..
+            ' "openai preserve mode", because ' .. config.model.provider .. ' provider ' ..
+            ' is not supported in this release',
+            dp_version, log_suffix)
+
+            config.model.provider = "openai"
+            config.route_type = "preserve"
+
+            has_update = true
+          end
+
+          if config.model.provider == "mistral" and (
+            not config.model.options or
+            config.model.options == ngx.null or
+            not config.model.options.upstream_url or
+            config.model.options.upstream_url == ngx.null) then
+
+            log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
+              ' mistral provider uses fallback upstream_url for managed serivice' ..
+              dp_version, log_suffix)
+
+            config.model.options = config.model.options or {}
+            config.model.options.upstream_url = "https://api.mistral.ai:443"
+            has_update = true
+          end
+        end
+
+        if plugin_name == 'ai-request-transformer' then
+          local config = plugin.config
+          if _AI_PROVIDER_INCOMPATIBLE(config.llm.model.provider, 3008000000) then
+            log_warn_message('configures ' .. plugin_name .. ' plugin with' ..
+            ' "openai preserve mode", because ' .. config.llm.model.provider .. ' provider ' ..
+            ' is not supported in this release',
+            dp_version, log_suffix)
+
+            config.llm.model.provider = "openai"
+
+            has_update = true
+          end
+        end
+
+        if plugin_name == 'ai-response-transformer' then
+          local config = plugin.config
+          if _AI_PROVIDER_INCOMPATIBLE(config.llm.model.provider, 3008000000) then
+            log_warn_message('configures ' .. plugin_name .. ' plugin with' ..
+            ' "openai preserve mode", because ' .. config.llm.model.provider .. ' provider ' ..
+            ' is not supported in this release',
+            dp_version, log_suffix)
+
+            config.llm.model.provider = "openai"
+
+            has_update = true
+          end
+        end
+
+      end
+
+      for _, vault in ipairs(config_table.vaults or {}) do
+        local name = vault.name
+        local config = vault.config
+        if name == "aws" and config.sts_endpoint_url ~= nil then
+          log_warn_message('contains configuration vaults.aws.sts_endpoint_url',
+                           'be removed',
+                           dp_version, log_suffix)
+          vault.config.sts_endpoint_url = nil
+          has_update = true
         end
       end
 
@@ -113,99 +223,6 @@ local compatible_checkers = {
       return has_update
     end
   },
-  {
-    3008000000, --[[3.8.0.0]]
-    function(config_table, dp_version, log_suffix)
-      local has_update
-
-      for _, vault in ipairs(config_table.vaults or {}) do
-        local name = vault.name
-        local config = vault.config
-        if name == "aws" and config.sts_endpoint_url ~= nil then
-          log_warn_message('contains configuration vaults.aws.sts_endpoint_url',
-                           'be removed',
-                           dp_version, log_suffix)
-          vault.config.sts_endpoint_url = nil
-          has_update = true
-        end
-      end
-
-      for _, plugin in ipairs(config_table.plugins or {}) do
-        if plugin.name == 'aws-lambda' then
-          local config = plugin.config
-          if config.aws_sts_endpoint_url ~= nil then
-            config.aws_sts_endpoint_url = nil
-            has_update = true
-            log_warn_message('configures ' .. plugin.name .. ' plugin with aws_sts_endpoint_url',
-              'will be removed.',
-              dp_version, log_suffix)
-          end
-        end
-
-        if plugin.name == 'ai-proxy' then
-          local config = plugin.config
-          if _AI_PROVIDER_INCOMPATIBLE(config.model.provider, 3008000000) then
-            log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
-            ' "openai preserve mode", because ' .. config.model.provider .. ' provider ' ..
-            ' is not supported in this release',
-            dp_version, log_suffix)
-
-            config.model.provider = "openai"
-            config.route_type = "preserve"
-
-            has_update = true
-          end
-
-          if config.model.provider == "mistral" and (
-            not config.model.options or
-            config.model.options == ngx.null or
-            not config.model.options.upstream_url or
-            config.model.options.upstream_url == ngx.null) then
-
-            log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
-              ' mistral provider uses fallback upstream_url for managed serivice' ..
-              dp_version, log_suffix)
-
-            config.model.options = config.model.options or {}
-            config.model.options.upstream_url = "https://api.mistral.ai:443"
-            has_update = true
-          end
-
-        end
-
-        if plugin.name == 'ai-request-transformer' then
-          local config = plugin.config
-          if _AI_PROVIDER_INCOMPATIBLE(config.llm.model.provider, 3008000000) then
-            log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
-            ' "openai preserve mode", because ' .. config.llm.model.provider .. ' provider ' ..
-            ' is not supported in this release',
-            dp_version, log_suffix)
-
-            config.llm.model.provider = "openai"
-
-            has_update = true
-          end
-        end
-
-        if plugin.name == 'ai-response-transformer' then
-          local config = plugin.config
-          if _AI_PROVIDER_INCOMPATIBLE(config.llm.model.provider, 3008000000) then
-            log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
-            ' "openai preserve mode", because ' .. config.llm.model.provider .. ' provider ' ..
-            ' is not supported in this release',
-            dp_version, log_suffix)
-
-            config.llm.model.provider = "openai"
-
-            has_update = true
-          end
-        end
-      end
-
-      return has_update
-    end
-  },
-
   {
     3007001000, --[[3.7.1.0]]
     function(config_table, dp_version, log_suffix)

@@ -131,6 +131,11 @@ _M.config_schema = {
         default = 5,
         type = "integer",
       } },
+    { connection_is_proxied = { description = "If the connection to Redis is proxied (e.g. Envoy), set it `true`. Set the `host` and `port` to point to the proxy address.",
+        type = "boolean",
+        required = false,
+        default = false,
+      } },
   },
 
   entity_checks = {
@@ -160,6 +165,59 @@ _M.config_schema = {
     },
     {
       mutually_required = { "connect_timeout", "send_timeout", "read_timeout" },
+    },
+    { conditional = {
+        if_field = "connection_is_proxied", if_match = { eq = true },
+        then_field = "host",                then_match = { required = true },
+      }
+    },
+    {
+      custom_entity_check = {
+        field_sources = { "database", "connection_is_proxied" },
+        run_with_missing_fields = true,
+        fn = function(entity)
+          local database = entity.database
+          local connection_is_proxied = entity.connection_is_proxied
+
+          if is_present(database) and database ~= 0 and connection_is_proxied == true then
+            return nil, "database must be '0' or 'null' when 'connection_is_proxied' is 'true'."
+          end
+
+          return true
+        end
+      },
+    },
+    {
+      custom_entity_check = {
+        field_sources = { "cluster_nodes", "connection_is_proxied" },
+        run_with_missing_fields = true,
+        fn = function(entity)
+          local cluster_nodes = entity.cluster_nodes
+          local connection_is_proxied = entity.connection_is_proxied
+
+          if is_present(cluster_nodes) and connection_is_proxied == true then
+            return nil, "'connection_is_proxied' can not be 'true' when 'cluster_nodes' is set."
+          end
+
+          return true
+        end,
+      },
+    },
+    {
+      custom_entity_check = {
+        field_sources = { "sentinel_role", "connection_is_proxied" },
+        run_with_missing_fields = true,
+        fn = function(entity)
+          local sentinel_role = entity.sentinel_role
+          local connection_is_proxied = entity.connection_is_proxied
+
+          if is_present(sentinel_role) and connection_is_proxied == true then
+            return nil, "'connection_is_proxied' can not be 'true' when 'sentinel_role' is set."
+          end
+
+          return true
+        end,
+      },
     },
   },
   shorthand_fields = {
@@ -303,6 +361,8 @@ function _M.connection(conf)
       sentinel_password  = conf.sentinel_password,
       db                 = conf.database,
       connection_options = connect_opts,
+      -- https://github.com/ledgetech/lua-resty-redis-connector?tab=readme-ov-file#proxy-mode
+      connection_is_proxied = conf.connection_is_proxied,
     })
 
     local err, previous_errors

@@ -8,6 +8,10 @@
 local redis = require "kong.enterprise_edition.tools.redis.v2".config_schema
 local Entity = require "kong.db.schema.entity"
 
+
+local ngx_null = ngx.null
+
+
 local Redis = assert(Entity.new(redis))
 
 local function process_auto_fields_and_insert(conf)
@@ -290,5 +294,87 @@ describe("redis schema", function()
       assert.falsy(ok)
       assert.same("value should be between 0 and 2147483646", errs["keepalive_backlog"])
     end
+  end)
+
+  it("supports connection to Redis via proxy", function()
+    local good_conf1 = {
+      host = "redis",
+      port = 6379,
+      database = ngx_null,
+      connection_is_proxied = true,
+    }
+    local ok, errs, processed_configuration = process_auto_fields_and_insert(good_conf1)
+    assert.is_truthy(ok)
+    assert.is_nil(errs)
+    assert.is_truthy(processed_configuration)
+    assert.are_equal(true, processed_configuration.connection_is_proxied)
+
+    local good_conf2 = {
+      host = "redis",
+      port = 6379,
+      database = 0,
+      connection_is_proxied = false,
+    }
+    ok, errs, processed_configuration = process_auto_fields_and_insert(good_conf2)
+    assert.is_truthy(ok)
+    assert.is_nil(errs)
+    assert.is_truthy(processed_configuration)
+    assert.are_equal(false, processed_configuration.connection_is_proxied)
+
+    local bad_conf1 = {
+      host = "redis",
+      port = 6379,
+      database = 0,
+      connection_is_proxied = "xyz",
+    }
+    ok, errs = process_auto_fields_and_insert(bad_conf1)
+    assert.is_falsy(ok)
+    assert.are_equal("expected a boolean", errs["connection_is_proxied"])
+
+    local bad_conf2 = {
+      host = "redis",
+      port = 6379,
+      database = 1,
+      connection_is_proxied = true,
+    }
+    ok, errs = process_auto_fields_and_insert(bad_conf2)
+    assert.is_falsy(ok)
+    assert.are_equal("database must be '0' or 'null' when 'connection_is_proxied' is 'true'.", errs["@entity"][1])
+
+    local bad_conf3 = {
+      connection_is_proxied = true
+    }
+    ok, errs = process_auto_fields_and_insert(bad_conf3)
+    assert.is_falsy(ok)
+    assert.are_equal("failed conditional validation given value of field 'connection_is_proxied'", errs["@entity"][1])
+    assert.are_equal("required field missing", errs["host"])
+
+    local bad_conf4 = {
+      sentinel_nodes = {
+        { host = "sentinel0", port = 26379 },
+        { host = "sentinel1", port = 26379 },
+        { host = "sentinel2", port = 26379 },
+      },
+      sentinel_master = "mymaster0",
+      sentinel_role = "master",
+      connection_is_proxied = true
+    }
+    ok, errs = process_auto_fields_and_insert(bad_conf4)
+    assert.is_falsy(ok)
+    assert.are_equal("failed conditional validation given value of field 'connection_is_proxied'", errs["@entity"][1])
+    assert.are_equal("required field missing", errs["host"])
+
+    local bad_conf5 = {
+      cluster_nodes = {
+        { host = "sentinel0", port = 26379 },
+        { host = "sentinel1", port = 26379 },
+        { host = "sentinel2", port = 26379 },
+      },
+      connection_is_proxied = true
+    }
+    ok, errs = process_auto_fields_and_insert(bad_conf5)
+    assert.is_falsy(ok)
+    assert.are_equal("failed conditional validation given value of field 'connection_is_proxied'", errs["@entity"][1])
+    assert.are_equal("required field missing", errs["host"])
   end)
 end)

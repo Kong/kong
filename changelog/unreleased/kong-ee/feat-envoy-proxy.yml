@@ -1,0 +1,4 @@
+message: >
+  Added connection support via Redis Proxy (e.g. Envoy Redis proxy or Twemproxy) via configuration field `connection_is_proxied`.
+type: feature
+scope: Core

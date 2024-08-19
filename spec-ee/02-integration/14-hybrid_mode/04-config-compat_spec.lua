@@ -736,7 +736,147 @@ describe("CP/DP config compat #" .. strategy, function()
     end)
   end)
 
-  describe("3.8.x.y", function()
+  describe("3.8.0.0", function()
+    -- When the version of data-plane is lower than that of the control-plane it
+    -- connects, DP should receive the config as described in the validator func
+    describe("redis schema - connection_is_proxied", function()
+      local dp_version = "3.7.9.9"
+      local status = STATUS.NORMAL
+      local validator = function(config)
+        local rc = false
+        if config.redis then
+          rc = config.redis.connection_is_proxied == nil
+        end
+        return rc
+      end
+      -- 'connection_is_proxied' is only supported at '3.8.0.0' by the following plugins:
+      -- rate-limiting-advanced | graphql-proxy-cache-advanced | graphql-rate-limiting-advanced |
+      -- proxy-cache-advanced   | ai-rate-limiting-advanced | saml | openid-connect
+      local cases = {
+        {
+          plugin = "rate-limiting-advanced",
+          label = "w/ connection_is_proxied set to true",
+          pending = false,
+          config = {
+            limit = { 1 },
+            window_size = { 2 },
+            sync_rate = 0.1,
+            strategy = "redis",
+            redis = {
+              host = helpers.redis_host,
+              port = helpers.redis_port,
+              connection_is_proxied = true,
+            }
+          },
+          status = status,
+          validator = validator
+        },
+
+        {
+          plugin = "rate-limiting-advanced",
+          label = "w/ connection_is_proxied set to false",
+          pending = false,
+          config = {
+            limit = { 1 },
+            window_size = { 2 },
+            sync_rate = 0.1,
+            strategy = "redis",
+            redis = {
+              host = helpers.redis_host,
+              port = helpers.redis_port,
+              connection_is_proxied = false,
+            }
+          },
+          status = status,
+          validator = validator
+        },
+
+        {
+          plugin = "proxy-cache-advanced",
+          label = "w/ connection_is_proxied set to true",
+          pending = false,
+          config = {
+            strategy = "redis",
+            redis = {
+              host = helpers.redis_host,
+              port = helpers.redis_port,
+              connection_is_proxied = true
+            }
+          },
+          status = status,
+          validator = validator
+        },
+
+        {
+          plugin = "graphql-proxy-cache-advanced",
+          label = "w/ connection_is_proxied set to true",
+          pending = false,
+          config = {
+            strategy = "redis",
+            redis = {
+              host = helpers.redis_host,
+              port = helpers.redis_port,
+              connection_is_proxied = true
+            }
+          },
+          status = status,
+          validator = validator
+        },
+
+        {
+          plugin = "ai-rate-limiting-advanced",
+          label = "w/ connection_is_proxied set to true",
+          pending = false,
+          config = {
+            llm_providers = {{
+              name = "openai",
+              window_size = 60,
+              limit = 10,
+            }},
+            sync_rate = 10,
+            strategy = "redis",
+            redis = {
+              host = helpers.redis_host,
+              port = helpers.redis_port,
+              connection_is_proxied = true
+            }
+          },
+          status = status,
+          validator = validator
+        },
+
+        {
+          plugin = "graphql-rate-limiting-advanced",
+          label = "w/ connection_is_proxied set to true",
+          pending = false,
+          config = {
+            limit = {1},
+            window_size = {2},
+            sync_rate = 0.1,
+            strategy = "redis",
+            redis = {
+              host = helpers.redis_host,
+              port = helpers.redis_port,
+              connection_is_proxied = true
+            }
+          },
+          status = status,
+          validator = validator
+        },
+
+      }
+
+      for i = 1, #cases do
+        local case = cases[i]
+        local test = case.pending and pending or it
+
+        test(fmt("%s - %s", case.plugin, case.label), function()
+          do_assert(case, dp_version)
+        end)
+      end
+
+    end)
+
     -- When a data-plane lower than the version of the control-plane
     -- connects, it should receive the config as described in the validator func
     describe("redis changes - cluster_max_redirections", function()
