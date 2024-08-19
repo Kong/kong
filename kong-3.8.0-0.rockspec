@@ -53,7 +53,7 @@ dependencies = {
   "lua-resty-websocket-proxy == 0.0.1",
   "lua-resty-luasocket == 1.1.2",
   "lua-resty-gcp == 0.0.13",
-  "lua-resty-acme == 0.14.0",
+  "lua-resty-acme == 0.15.0",
   "lua-resty-session == 4.0.5",
   "lua-resty-timer-ng == 0.2.7",
   "lpeg == 1.1.0",
