@@ -198,6 +198,19 @@ jobs:
         ports:
           - 9411:9411
 
+      redis-auth:
+        image: redis/redis-stack-server
+        # Set health checks to wait until redis has started
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6381:6379
+        env:
+          REDIS_ARGS: "--requirepass passdefault"
+
     steps:
     - name: Bump max open files
       run: |

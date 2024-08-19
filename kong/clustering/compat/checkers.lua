@@ -43,6 +43,21 @@ local compatible_checkers = {
     function (config_table, dp_version, log_suffix)
       local has_update
       for _, plugin in ipairs(config_table.plugins or {}) do
+        if plugin.name == 'acme' then
+          local config = plugin.config
+          if config.storage_config.redis.username ~= nil then
+            log_warn_message('configures ' .. plugin.name .. ' plugin with redis username',
+              'not work in this release',
+              dp_version, log_suffix)
+          end
+
+          if config.storage_config.redis.password ~= nil then
+            log_warn_message('configures ' .. plugin.name .. ' plugin with redis password',
+              'not work in this release. Please use redis.auth config instead',
+              dp_version, log_suffix)
+          end
+        end
+
         if plugin.name == 'aws-lambda' then
           local config = plugin.config
           if config.aws_sts_endpoint_url ~= nil then

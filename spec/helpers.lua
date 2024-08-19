@@ -33,6 +33,7 @@ local OTELCOL_FILE_EXPORTER_PATH = os.getenv("KONG_SPEC_TEST_OTELCOL_FILE_EXPORT
 local REDIS_HOST = os.getenv("KONG_SPEC_TEST_REDIS_HOST") or "localhost"
 local REDIS_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_PORT") or 6379)
 local REDIS_SSL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_SSL_PORT") or 6380)
+local REDIS_AUTH_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_AUTH_PORT") or 6381)
 local REDIS_SSL_SNI = os.getenv("KONG_SPEC_TEST_REDIS_SSL_SNI") or "test-redis.example.com"
 local TEST_COVERAGE_MODE = os.getenv("KONG_COVERAGE")
 local TEST_COVERAGE_TIMEOUT = 30
@@ -4340,6 +4341,7 @@ end
   redis_port     = REDIS_PORT,
   redis_ssl_port = REDIS_SSL_PORT,
   redis_ssl_sni  = REDIS_SSL_SNI,
+  redis_auth_port = REDIS_AUTH_PORT,
 
   blackhole_host = BLACKHOLE_HOST,
 
