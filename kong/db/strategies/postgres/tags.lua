@@ -94,7 +94,7 @@ local function page(self, size, token, options, tag)
 
   sql = fmt(sql, unpack(args))
 
-  local res, err = self.connector:query(sql)
+  local res, err = self.connector:query(sql, "read")
 
   if not res then
     return nil, self.errors:database_error(err)

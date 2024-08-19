@@ -33,7 +33,7 @@ function Plugins:select_by_ca_certificate(ca_id, limit, plugin_names)
     name_condition,
     limit_condition)
 
-  return connector:query(qs)
+  return connector:query(qs, "read")
 end
 
 return Plugins
