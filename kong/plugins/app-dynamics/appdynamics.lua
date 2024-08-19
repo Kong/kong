@@ -32,7 +32,7 @@ enum appd_error_level
 };
 
 struct appd_config* appd_config_init();
-
+void appd_config_set_analytics_enabled(struct appd_config* cfg, const unsigned short enable);
 void appd_config_set_app_name(struct appd_config* cfg, const char* app);
 void appd_config_set_tier_name(struct appd_config* cfg, const char* tier);
 void appd_config_set_node_name(struct appd_config* cfg, const char* node);

@@ -1,0 +1,3 @@
+message: "**app-dynamics**: Added new ANALYTICS_ENABLE flag and collected more snapshot userdata in runtime."
+type: feature
+scope: Plugin

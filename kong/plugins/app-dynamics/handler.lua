@@ -106,6 +106,7 @@ if appd then
   fetch_config_variable("FLUSH_METRICS_ON_SHUTDOWN", TYPE_BOOLEAN, true)
   fetch_config_variable("CONTROLLER_CERTIFICATE_FILE", TYPE_STRING, "")
   fetch_config_variable("CONTROLLER_CERTIFICATE_DIR", TYPE_STRING, "")
+  fetch_config_variable("ANALYTICS_ENABLE", TYPE_BOOLEAN, false)
 end
 
 
@@ -117,6 +118,7 @@ local sdk_initialized = false
 local function appd_sdk_initialize()
   local appd_conf = appd.appd_config_init()
 
+  appd.appd_config_set_analytics_enabled(appd_conf, envs.ANALYTICS_ENABLE and 1 or 0)
   appd.appd_config_set_logging_min_level(appd_conf, envs.LOGGING_LEVEL)
   appd.appd_config_set_logging_log_dir(appd_conf, envs.LOGGING_LOG_DIR)
 
@@ -327,7 +329,11 @@ function AppDynamicsHandler:log()
 
   -- Adding any error to BT if API returns >= 400
   local response_status = kong.response.get_status()
-  if response_status >= 400 then
+  if response_status >= 400 and response_status < 500 then
+    appd.appd_bt_enable_snapshot(bt_handle)
+    appd.appd_bt_add_error(bt_handle, appd.APPD_LEVEL_WARNING, "API returned status code " .. response_status, 1)
+  end
+  if response_status >= 500 then
     appd.appd_bt_enable_snapshot(bt_handle)
     appd.appd_bt_add_error(bt_handle, appd.APPD_LEVEL_ERROR, "API returned status code " .. response_status, 1)
   end
@@ -335,6 +341,13 @@ function AppDynamicsHandler:log()
   -- Add further details if snapshot is occurring
   if appd.appd_bt_is_snapshotting(bt_handle) ~= 0 then
     appd.appd_bt_add_user_data(bt_handle, "route", get_route().name)
+    local service = get_service()
+    if service and service.name then
+      appd.appd_bt_add_user_data(bt_handle, "service", service.name)
+    end
+
+    appd.appd_bt_add_user_data(bt_handle, "response_status", tostring(response_status))
+
     appd.appd_bt_set_url(
       bt_handle,
       kong.request.get_scheme() .. "://" .. kong.request.get_host() .. kong.request.get_path())
