@@ -56,5 +56,12 @@ return Schema.define {
       description = "Maximum time in seconds between retries, caps exponential backoff.",
       between = { 0.001, 1000000 }, -- effectively unlimited maximum
     } },
+    { concurrency_limit = {
+      type = "integer",
+      default = 1,
+      one_of = { -1, 1 },
+      description = "The number of of queue delivery timers. -1 indicates unlimited."
+    } },
+
   }
 }

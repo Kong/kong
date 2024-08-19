@@ -339,6 +339,7 @@ return {
     opentelemetry = {
       "traces_endpoint",
       "logs_endpoint",
+      "queue.concurrency_limit",
     },
     response_transformer = {
       "rename.json",
@@ -439,6 +440,18 @@ return {
     },
     acl = {
       "always_use_authenticated_groups",
+    },
+    http_log = {
+      "queue.concurrency_limit",
+    },
+    statsd = {
+      "queue.concurrency_limit",
+    },
+    datadog = {
+      "queue.concurrency_limit",
+    },
+    zipkin = {
+      "queue.concurrency_limit",
     },
   },
 }

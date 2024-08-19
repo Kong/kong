@@ -369,11 +369,11 @@ for _, strategy in helpers.each_strategy() do
           }
         }
       }
-      
+
       local ws = bp.workspaces:insert{
         name = "ws1"
       }
-      
+
       local service12 = bp.services:insert_ws({
         protocol = "http",
         host     = helpers.mock_upstream_host,
@@ -386,7 +386,7 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "http_logging.workspace.name" },
         service = service12
       }, ws)
-      
+
       bp.plugins:insert_ws ({
         route = { id = route12.id },
         name     = "http-log",
@@ -397,7 +397,26 @@ for _, strategy in helpers.each_strategy() do
             .. "/post_log/http_name"
         }
       }, ws)
-      
+
+      local route1_4 = bp.routes:insert {
+        hosts   = { "no_queue.test" },
+        service = service1
+      }
+
+      bp.plugins:insert {
+        route = { id = route1_4.id },
+        name     = "http-log",
+        config   = {
+          http_endpoint = "http://" .. helpers.mock_upstream_host
+            .. ":"
+            .. helpers.mock_upstream_port
+            .. "/post_log/http",
+          queue = {
+            concurrency_limit = -1,
+          },
+        }
+      }
+
       helpers.setenv(vault_env_name, vault_env_value)
 
       assert(helpers.start_kong({
@@ -485,7 +504,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       local entries = get_log("http_param", 1)
-      
+
       assert.same("127.0.0.1", entries[1].client_ip)
       assert.same({
         query = "param",
@@ -683,6 +702,20 @@ for _, strategy in helpers.each_strategy() do
       check_header_is("value2")
 
       admin_client:close()
+    end)
+
+    it("should not use queue when queue.concurrency_limit is -1", function()
+      reset_log("http")
+      local res = proxy_client:get("/status/200", {
+        headers = {
+          ["Host"] = "no_queue.test"
+        }
+      })
+      assert.res_status(200, res)
+
+      local entries = get_log("http", 1)
+      assert.same("127.0.0.1", entries[1].client_ip)
+      assert.logfile().has.no.line("processing queue", true)  -- should not use queue
     end)
   end)
 
@@ -961,7 +994,7 @@ for _, strategy in helpers.each_strategy() do
 
       helpers.clean_logfile()
 
-      local entries = get_log("http", 1)      
+      local entries = get_log("http", 1)
       assert.same("127.0.0.1", entries[1].client_ip)
 
       -- Assertion: there should be no [error], including no error

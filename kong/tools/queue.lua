@@ -247,16 +247,18 @@ local function get_or_create_queue(queue_conf, handler, handler_conf)
 
   queue = setmetatable(queue, Queue_mt)
 
-  kong.timer:named_at("queue " .. key, 0, function(_, q)
-    while q:count() > 0 do
-      q:log_debug("processing queue")
-      q:process_once()
-    end
-    q:log_debug("done processing queue")
-    queues[key] = nil
-  end, queue)
+  if queue.concurrency_limit == 1 then
+    kong.timer:named_at("queue " .. key, 0, function(_, q)
+      while q:count() > 0 do
+        q:log_debug("processing queue")
+        q:process_once()
+      end
+      q:log_debug("done processing queue")
+      queues[key] = nil
+    end, queue)
+    queues[key] = queue
+  end
 
-  queues[key] = queue
 
   queue:log_debug("queue created")
 
@@ -319,6 +321,45 @@ function Queue.can_enqueue(queue_conf, entry)
   end
 
   return _can_enqueue(queue, entry)
+end
+
+local function handle(self, entries)
+  local entry_count = #entries
+
+  local start_time = now()
+  local retry_count = 0
+  while true do
+    self:log_debug("passing %d entries to handler", entry_count)
+    local status, ok, err = pcall(self.handler, self.handler_conf, entries)
+    if status and ok == true then
+      self:log_debug("handler processed %d entries successfully", entry_count)
+      break
+    end
+
+    if not status then
+      -- protected call failed, ok is the error message
+      err = ok
+    end
+
+    self:log_warn("handler could not process entries: %s", tostring(err or "no error details returned by handler"))
+
+    if not err then
+      self:log_err("handler returned falsy value but no error information")
+    end
+
+    if (now() - start_time) > self.max_retry_time then
+      self:log_err(
+        "could not send entries due to max_retry_time exceeded. %d queue entries were lost",
+        entry_count)
+      break
+    end
+
+    -- Delay before retrying.  The delay time is calculated by multiplying the configured initial_retry_delay with
+    -- 2 to the power of the number of retries, creating an exponential increase over the course of each retry.
+    -- The maximum time between retries is capped by the max_retry_delay configuration parameter.
+    sleep(math_min(self.max_retry_delay, 2 ^ retry_count * self.initial_retry_delay))
+    retry_count = retry_count + 1
+  end
 end
 
 
@@ -394,41 +435,7 @@ function Queue:process_once()
     self.already_dropped_entries = false
   end
 
-  local start_time = now()
-  local retry_count = 0
-  while true do
-    self:log_debug("passing %d entries to handler", entry_count)
-    local status
-    status, ok, err = pcall(self.handler, self.handler_conf, batch)
-    if status and ok == true then
-      self:log_debug("handler processed %d entries successfully", entry_count)
-      break
-    end
-
-    if not status then
-      -- protected call failed, ok is the error message
-      err = ok
-    end
-
-    self:log_warn("handler could not process entries: %s", tostring(err or "no error details returned by handler"))
-
-    if not err then
-      self:log_err("handler returned falsy value but no error information")
-    end
-
-    if (now() - start_time) > self.max_retry_time then
-      self:log_err(
-        "could not send entries, giving up after %d retries.  %d queue entries were lost",
-        retry_count, entry_count)
-      break
-    end
-
-    -- Delay before retrying.  The delay time is calculated by multiplying the configured initial_retry_delay with
-    -- 2 to the power of the number of retries, creating an exponential increase over the course of each retry.
-    -- The maximum time between retries is capped by the max_retry_delay configuration parameter.
-    sleep(math_min(self.max_retry_delay, 2 ^ retry_count * self.initial_retry_delay))
-    retry_count = retry_count + 1
-  end
+  handle(self, batch)
 end
 
 
@@ -512,6 +519,21 @@ local function enqueue(self, entry)
   if entry == nil then
     return nil, "entry must be a non-nil Lua value"
   end
+
+  if self.concurrency_limit == -1 then -- unlimited concurrency
+    -- do not enqueue when concurrency_limit is unlimited
+    local ok, err = kong.timer:at(0, function(premature)
+      if premature then
+        return
+      end
+      handle(self, { entry })
+    end)
+    if not ok then
+      return nil, "failed to crete timer: " .. err
+    end
+    return true
+  end
+
 
   if self:count() >= self.max_entries * CAPACITY_WARNING_THRESHOLD then
     if not self.warned then
@@ -620,6 +642,11 @@ function Queue.enqueue(queue_conf, handler, handler_conf, value)
   assert(
     max_bytes_type == "nil" or max_bytes_type == "number",
     "arg #1 (queue_conf) max_bytes must be a number or nil"
+  )
+
+  assert(
+    type(queue_conf.concurrency_limit) == "number",
+    "arg #1 (queue_conf) concurrency_limit must be a number"
   )
 
   local queue = get_or_create_queue(queue_conf, handler, handler_conf)
