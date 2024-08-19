@@ -72,6 +72,21 @@ local compatible_checkers = {
       for _, plugin in ipairs(config_table.plugins or {}) do
         local plugin_name = plugin.name
 
+        if plugin.name == 'acme' then
+          local config = plugin.config
+          if config.storage_config.redis.username ~= nil then
+            log_warn_message('configures ' .. plugin.name .. ' plugin with redis username',
+              'not work in this release',
+              dp_version, log_suffix)
+          end
+
+          if config.storage_config.redis.password ~= nil then
+            log_warn_message('configures ' .. plugin.name .. ' plugin with redis password',
+              'not work in this release. Please use redis.auth config instead',
+              dp_version, log_suffix)
+          end
+        end
+
         if redis_plugins[plugin_name] then
           local config = plugin.config
           if config and config.redis and config.redis.connection_is_proxied ~= nil then

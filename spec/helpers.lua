@@ -4548,6 +4548,7 @@ end
   redis_port     = REDIS_PORT,
   redis_ssl_port = REDIS_SSL_PORT,
   redis_ssl_sni  = REDIS_SSL_SNI,
+  redis_auth_port = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_AUTH_PORT") or 6381),
 
   blackhole_host = BLACKHOLE_HOST,
 

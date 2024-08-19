@@ -408,6 +408,19 @@ jobs:
         ports:
           - 8200:8200
 
+      redis-auth:
+        image: redis/redis-stack-server
+        # Set health checks to wait until redis has started
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6381:6379
+        env:
+          REDIS_ARGS: "--requirepass passdefault"
+
     steps:
     - name: Set up core dumps
       run: |
@@ -458,7 +471,7 @@ jobs:
       with:
         name: build-fips
         path: .
-    
+
     - name: Set permissions in install destination path
       run: |
         sudo chmod 777 /usr/local
