@@ -167,8 +167,6 @@ local schema = {
                       type = "string",
                       referenceable = true
                     },
-                    default = {},
-                    required = true
                   }
                 },
                 {
@@ -179,8 +177,6 @@ local schema = {
                       type = "string",
                       referenceable = true
                     },
-                    default = {},
-                    required = true
                   }
                 },
                 {

@@ -19,7 +19,7 @@ local _M           = { constants = constants }
 
 function _M.new(client_opts, oauth_cfg)
   local headers = table_merge(
-    oauth_cfg.token_headers,
+    oauth_cfg.token_headers or {},
     {
       ["Content-Type"] = "application/x-www-form-urlencoded"
     }
@@ -27,7 +27,7 @@ function _M.new(client_opts, oauth_cfg)
   local body = {}
 
   -- Set additional post arguments from the config first
-  for key, value in pairs(oauth_cfg.token_post_args) do
+  for key, value in pairs(oauth_cfg.token_post_args or {}) do
     util.set_optional_str(body, key, value)
   end
 
