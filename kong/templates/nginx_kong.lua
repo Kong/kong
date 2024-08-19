@@ -42,7 +42,7 @@ lua_shared_dict kong_keyring 5m;
 lua_shared_dict kong_profiling_state 1536k;  # 1.5 MBytes
 lua_shared_dict kong_vaults_hcv 1m;
 
-> if not legacy_dns_client then
+> if new_dns_client then
 lua_shared_dict kong_dns_cache              ${{RESOLVER_MEM_CACHE_SIZE}};
 > end
 

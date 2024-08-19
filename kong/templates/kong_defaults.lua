@@ -289,7 +289,7 @@ dns_not_found_ttl = 30
 dns_error_ttl = 1
 dns_no_sync = off
 
-legacy_dns_client = off
+new_dns_client = on
 
 resolver_address = NONE
 resolver_hosts_file = /etc/hosts

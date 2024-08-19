@@ -243,12 +243,17 @@ end
 -- END TEST HELPERS --
 ----------------------
 
+for _, enable_new_dns_client in ipairs{ false, true } do
 
 describe("[round robin balancer]", function()
+  local srv_name = enable_new_dns_client and "_test._tcp.gelato.test"
+                                         or  "gelato.test"
 
   local snapshot
 
   setup(function()
+    _G.busted_new_dns_client = enable_new_dns_client
+
     _G.package.loaded["kong.resty.dns.client"] = nil -- make sure module is reloaded
     _G.package.loaded["kong.runloop.balancer.targets"] = nil -- make sure module is reloaded
 
@@ -334,12 +339,12 @@ describe("[round robin balancer]", function()
         { name = "getkong.test", address = "::1" },
       })
       dnsSRV({
-        { name = "gelato.test", target = "1.2.3.6", port = 8001 },
-        { name = "gelato.test", target = "1.2.3.6", port = 8002 },
-        { name = "gelato.test", target = "1.2.3.6", port = 8003 },
+        { name = srv_name, target = "1.2.3.6", port = 8001 },
+        { name = srv_name, target = "1.2.3.6", port = 8002 },
+        { name = srv_name, target = "1.2.3.6", port = 8003 },
       })
       local b = new_balancer{
-        hosts = {"mashape.test", "getkong.test", "gelato.test" },
+        hosts = {"mashape.test", "getkong.test", srv_name },
         dns = client,
         wheelSize = 10,
       }
@@ -383,10 +388,10 @@ describe("[round robin balancer]", function()
           { name = "getkong.test", address = "::1" },
         })
         dnsSRV({
-          { name = "gelato.test", target = "1.2.3.4", port = 8001 },
+          { name = srv_name, target = "1.2.3.4", port = 8001 },
         })
         local b = new_balancer{
-          hosts = {"mashape.test", "getkong.test", "gelato.test" },
+          hosts = {"mashape.test", "getkong.test", srv_name },
           dns = client,
           wheelSize = 10,
         }
@@ -510,10 +515,10 @@ describe("[round robin balancer]", function()
           { name = "mashape2.test", address = "12.34.56.2" },
         })
         dnsSRV({
-          { name = "mashape.test", target = "mashape1.test", port = 8001, weight = 5 },
-          { name = "mashape.test", target = "mashape2.test", port = 8002, weight = 5 },
+          { name = srv_name, target = "mashape1.test", port = 8001, weight = 5 },
+          { name = srv_name, target = "mashape2.test", port = 8002, weight = 5 },
         })
-        add_target(b, "mashape.test", 80, 10)
+        add_target(b, srv_name, 80, 10)
 
         local _, _, _, handle = b:getPeer()
         local ok, err = b:setAddressStatus(handle.address, false)
@@ -537,9 +542,9 @@ describe("[round robin balancer]", function()
           { name = "mashape1.test", address = "12.34.56.78" },
         })
         dnsSRV({
-          { name = "mashape.test", target = "mashape1.test", port = 0, weight = 5 },
+          { name = srv_name, target = "mashape1.test", port = 0, weight = 5 },
         })
-        add_target(b, "mashape.test", 80, 10)
+        add_target(b, srv_name, 80, 10)
         local ip, port = b:getPeer()
         assert.equals("12.34.56.78", ip)
         assert.equals(80, port)
@@ -557,18 +562,18 @@ describe("[round robin balancer]", function()
         { name = "mashape.test", address = "1.2.3.4" },
       })
       dnsSRV({
-        { name = "gelato.test", target = "mashape.test", port = 8001 },
+        { name = srv_name, target = "mashape.test", port = 8001 },
       })
       local b = check_balancer(new_balancer {
         hosts = {
-          {name = "gelato.test", port = 123, weight = 100},
+          {name = srv_name, port = 123, weight = 100},
         },
         dns = client,
       })
       local addr, port, host = b:getPeer()
       assert.equal("1.2.3.4", addr)
       assert.equal(8001, port)
-      assert.equal("gelato.test", host)
+      assert.equal(srv_name, host)
     end)
     it("gets an IP address and port number; round-robin", function()
       dnsA({
@@ -765,10 +770,10 @@ describe("[round robin balancer]", function()
         { name = "mashape2.test", address = "12.34.56.2" },
       })
       dnsSRV({
-        { name = "mashape.test", target = "mashape1.test", port = 8001, weight = 5 },
-        { name = "mashape.test", target = "mashape2.test", port = 8002, weight = 5 },
+        { name = srv_name, target = "mashape1.test", port = 8001, weight = 5 },
+        { name = srv_name, target = "mashape2.test", port = 8002, weight = 5 },
       })
-      add_target(b, "mashape.test", 123, 100)
+      add_target(b, srv_name, 123, 100)
       ngx.sleep(0)
       assert.equal(2, count_add)
       assert.equal(0, count_remove)
@@ -1085,15 +1090,15 @@ describe("[round robin balancer]", function()
         { name = "mashape.test", address = "1.2.3.5" },
       })
       dnsSRV({
-        { name = "gelato.test", target = "1.2.3.6", port = 8001, weight = 5 },
-        { name = "gelato.test", target = "1.2.3.6", port = 8002, weight = 5 },
+        { name = srv_name, target = "1.2.3.6", port = 8001, weight = 5 },
+        { name = srv_name, target = "1.2.3.6", port = 8002, weight = 5 },
       })
       local b = check_balancer(new_balancer {
         dns = client,
         wheelSize = 120,
       })
       add_target(b, "mashape.test", 80, 10)
-      add_target(b, "gelato.test", 80, 10)  --> port + weight will be ignored
+      add_target(b, srv_name, 80, 10)  --> port + weight will be ignored
       local count = count_indices(b)
       local state = copyWheel(b)
       assert.same({
@@ -1103,7 +1108,7 @@ describe("[round robin balancer]", function()
         ["1.2.3.6:8002"] = 1,
       }, count)
 
-      add_target(b, "gelato.test", 80, 20)  --> port + weight will be ignored
+      add_target(b, srv_name, 80, 20)  --> port + weight will be ignored
       count = count_indices(b)
       assert.same({
         ["1.2.3.4:80"]   = 2,
@@ -1178,16 +1183,16 @@ describe("[round robin balancer]", function()
     end)
     it("renewed DNS SRV record; no changes", function()
       local record = dnsSRV({
-        { name = "gelato.test", target = "1.2.3.6", port = 8001, weight = 5, ttl = 0.1 },
-        { name = "gelato.test", target = "1.2.3.6", port = 8002, weight = 5, ttl = 0.1 },
-        { name = "gelato.test", target = "1.2.3.6", port = 8003, weight = 5, ttl = 0.1 },
+        { name = srv_name, target = "1.2.3.6", port = 8001, weight = 5, ttl = 0.1 },
+        { name = srv_name, target = "1.2.3.6", port = 8002, weight = 5, ttl = 0.1 },
+        { name = srv_name, target = "1.2.3.6", port = 8003, weight = 5, ttl = 0.1 },
       })
       dnsA({
         { name = "getkong.test", address = "9.9.9.9" },
       })
       local b = check_balancer(new_balancer {
         hosts = {
-          { name = "gelato.test" },
+          { name = srv_name },
           { name = "getkong.test", port = 123, weight = 10 },
         },
         dns = client,
@@ -1197,16 +1202,16 @@ describe("[round robin balancer]", function()
       record.expire = gettime() -1 -- expire current dns cache record
       sleep(0.2)  -- wait for record expiration
       dnsSRV({    -- create a new record (identical)
-        { name = "gelato.test", target = "1.2.3.6", port = 8001, weight = 5 },
-        { name = "gelato.test", target = "1.2.3.6", port = 8002, weight = 5 },
-        { name = "gelato.test", target = "1.2.3.6", port = 8003, weight = 5 },
+        { name = srv_name, target = "1.2.3.6", port = 8001, weight = 5 },
+        { name = srv_name, target = "1.2.3.6", port = 8002, weight = 5 },
+        { name = srv_name, target = "1.2.3.6", port = 8003, weight = 5 },
       })
       -- create a spy to check whether dns was queried
       spy.on(client, "resolve")
       for _ = 1, b.wheelSize do -- call all, to make sure we hit the expired one
         b:getPeer()  -- invoke balancer, to expire record and re-query dns
       end
-      assert.spy(client.resolve).was_called_with("gelato.test",nil, nil)
+      assert.spy(client.resolve).was_called_with(srv_name,nil, nil)
       assert.same(state, copyWheel(b))
     end)
     it("renewed DNS A record; address changes", function()
@@ -1301,7 +1306,9 @@ describe("[round robin balancer]", function()
       local test_name = "really.really.really.does.not.exist.hostname.test"
       local ttl = 0.1
       local staleTtl = 0   -- stale ttl = 0, force lookup upon expiring
-      client.getobj().stale_ttl = 0
+      if client.getobj then
+        client.getobj().stale_ttl = 0
+      end
       local record = dnsA({
         { name = test_name, address = "1.2.3.4", ttl = ttl },
       }, staleTtl)
@@ -1324,7 +1331,9 @@ describe("[round robin balancer]", function()
         assert.is_nil(ip)
         assert.equal(port, "Balancer is unhealthy")
       end
-      client.getobj().stale_ttl = 4
+      if client.getobj then
+        client.getobj().stale_ttl = 4
+      end
     end)
     it("renewed DNS A record; unhealthy entries remain unhealthy after renewal", function()
       local record = dnsA({
@@ -1425,13 +1434,13 @@ describe("[round robin balancer]", function()
       -- depending on order of insertion it is either 1 or 0 indices
       -- but it may never error.
       dnsSRV({
-        { name = "gelato.test", target = "1.2.3.6", port = 8001, weight = 0 },
-        { name = "gelato.test", target = "1.2.3.6", port = 8002, weight = 0 },
+        { name = srv_name, target = "1.2.3.6", port = 8001, weight = 0 },
+        { name = srv_name, target = "1.2.3.6", port = 8002, weight = 0 },
       })
       local b = check_balancer(new_balancer {
         hosts = {
           -- port and weight will be overridden by the above
-          { name = "gelato.test", port = 80, weight = 99999 },
+          { name = srv_name, port = 80, weight = 99999 },
         },
         dns = client,
         wheelSize = 100,
@@ -1569,3 +1578,5 @@ describe("[round robin balancer]", function()
     end)
   end)
 end)
+
+end

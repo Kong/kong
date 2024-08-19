@@ -37,7 +37,7 @@ describe("[dns-client] inter-process communication:",function()
       nginx_conf = "spec/fixtures/custom_nginx.template",
       plugins = "bundled,dns-client-test",
       nginx_main_worker_processes = num_workers,
-      legacy_dns_client = "off",
+      new_dns_client = "on",
     }))
   end)
 

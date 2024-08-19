@@ -1703,9 +1703,7 @@
 # It provides observable statistics, you can retrieve them through the Admin API
 # `/status/dns`.
 
-#legacy_dns_client = off         # Disable the new DNS resolver, using the
-                                 # original DNS resolver. See above `dns_xxx`
-                                 # options for the original DNS resolver.
+#new_dns_client = on             # Enable the new DNS resolver
 
 #resolver_address = <name servers parsed from resolv.conf>
                                  # Comma-separated list of nameservers, each

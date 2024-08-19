@@ -45,7 +45,7 @@ local setup_client = function(conf)
   }
 
   -- new dns client
-  if ngx.shared.kong_dns_cache and not _G.busted_legacy_dns_client then
+  if ngx.shared.kong_dns_cache and _G.busted_new_dns_client ~= false then
 
     servers = {}
 
