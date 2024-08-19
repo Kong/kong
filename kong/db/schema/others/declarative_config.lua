@@ -350,8 +350,8 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
     local child_key
     if parent_entity then
       local parent_schema = all_schemas[parent_entity]
-      local field = parent_schema.fields[entity]
-      if field and not field.transient then
+      local entity_field = parent_schema.fields[entity]
+      if entity_field and not entity_field.transient then
         goto continue
       end
       parent_fk = parent_schema:extract_pk_values(input)
