@@ -12,6 +12,7 @@ local pl_utils = require "pl.utils"
 local helpers  = require "spec.helpers"
 local Errors   = require "kong.db.errors"
 local mocker   = require("spec.fixtures.mocker")
+local ssl_fixtures = require "spec.fixtures.ssl"
 local deepcompare  = require("pl.tablex").deepcompare
 local inspect = require "inspect"
 local nkeys = require "table.nkeys"
@@ -460,8 +461,86 @@ describe("Admin API #off", function()
         assert.is_nil(entities.keyauth_credentials["487ab43c-b2c9-51ec-8da5-367586ea2b61"].ws_id)
         assert.is_nil(entities.plugins["0611a5a9-de73-5a2d-a4e6-6a38ad4c3cb2"].ws_id)
         assert.is_nil(entities.plugins["661199ff-aa1c-5498-982c-d57a4bd6e48b"].ws_id)
-        assert.is_nil(entities.routes["481a9539-f49c-51b6-b2e2-fe99ee68866c"].ws_id)
-        assert.is_nil(entities.services["0855b320-0dd2-547d-891d-601e9b38647f"].ws_id)
+
+        local services = entities.services["0855b320-0dd2-547d-891d-601e9b38647f"]
+        local routes = entities.routes["481a9539-f49c-51b6-b2e2-fe99ee68866c"]
+
+        assert.is_not_nil(services)
+        assert.is_not_nil(routes)
+        assert.is_nil(services.ws_id)
+        assert.is_nil(routes.ws_id)
+        assert.equals(routes.service.id, services.id)
+      end)
+
+      it("certificates should be auto-related with attach snis from /config response", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {    
+            _format_version = "1.1",
+            certificates = {
+              {
+                cert = ssl_fixtures.cert,
+                id = "d83994d2-c24c-4315-b431-ee76b6611dcb",
+                key = ssl_fixtures.key,
+                snis = {
+                  {
+                    name = "foo.example",
+                    id = "1c6e83b7-c9ad-40ac-94e8-52f5ee7bde44",
+                  },
+                }
+              }
+            },
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+
+        local body = assert.response(res).has.status(201)
+        local entities = cjson.decode(body)
+        local certificates = entities.certificates["d83994d2-c24c-4315-b431-ee76b6611dcb"]
+        local snis = entities.snis["1c6e83b7-c9ad-40ac-94e8-52f5ee7bde44"]
+        assert.is_not_nil(certificates)
+        assert.is_not_nil(snis)
+        assert.equals(snis.certificate.id, certificates.id)
+      end)
+
+      it("certificates should be auto-related with separate snis from /config response", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            _format_version = "1.1",
+            certificates = {
+              {
+                cert = ssl_fixtures.cert,
+                id = "d83994d2-c24c-4315-b431-ee76b6611dcb",
+                key = ssl_fixtures.key,
+              },
+            },
+            snis = {
+              {
+                name = "foo.example",
+                id = "1c6e83b7-c9ad-40ac-94e8-52f5ee7bde44",
+                certificate = {
+                  id = "d83994d2-c24c-4315-b431-ee76b6611dcb"
+                }
+              },
+            },
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+
+        local body = assert.response(res).has.status(201)
+        local entities = cjson.decode(body)
+        local certificates = entities.certificates["d83994d2-c24c-4315-b431-ee76b6611dcb"]
+        local snis = entities.snis["1c6e83b7-c9ad-40ac-94e8-52f5ee7bde44"]
+        assert.is_not_nil(certificates)
+        assert.is_not_nil(snis)
+        assert.equals(snis.certificate.id, certificates.id)
       end)
 
       it("can reload upstreams (regression test)", function()
