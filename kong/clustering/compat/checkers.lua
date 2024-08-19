@@ -69,6 +69,18 @@ local compatible_checkers = {
                              dp_version, log_suffix)
             has_update = true
           end
+
+          for i = #config.llm_providers, 1, -1 do
+            local provider_name = config.llm_providers[i].name
+            if provider_name == "gemini" or provider_name == "bedrock" then
+              config.llm_providers[i].name = "requestPrompt"
+              log_warn_message('configures ' .. plugin.name .. ' plugin with llm_providers[' .. i .. '].name == ' .. provider_name,
+                              'overwritten with `requestPrompt`.',
+                              dp_version, log_suffix)
+              has_update = true
+            end
+          end
+
         end
       end
 

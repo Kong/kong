@@ -1031,6 +1031,57 @@ describe("CP/DP config compat #" .. strategy, function()
         end)
       end
     end)
+
+    describe("plugins: compat", function()
+      local CASES = {
+        {
+          plugin = "ai-rate-limiting-advanced",
+          label = "w/ unsupported fields",
+          pending = false,
+          config = {
+            strategy = "local",
+            window_type = "fixed",
+            llm_providers ={
+              {
+                name = "cohere",
+                window_size = 30,
+                limit = 1000,
+              },
+              {
+                name = "gemini",
+                window_size = 30,
+                limit = 1000,
+              },
+              {
+                name = "azure",
+                window_size = 30,
+                limit = 1000,
+              },
+              {
+                name = "bedrock",
+                window_size = 30,
+                limit = 1000,
+              },
+            },
+          },
+          status = STATUS.NORMAL,
+          validator = function(config)
+            return config.llm_providers[2].name == "requestPrompt"  -- replaces gemini
+               and config.llm_providers[4].name == "requestPrompt"  -- replaces bedrock
+          end
+        },
+      }
+
+      for _, case in ipairs(CASES) do
+        local test = case.pending and pending or it
+
+        test(fmt("%s - %s", case.plugin, case.label), function()
+          do_assert(case, "3.7.9.9")
+        end)
+      end
+    end)
+
+    
   end)
 end)
 

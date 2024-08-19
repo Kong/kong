@@ -1,0 +1,5 @@
+message: |
+  **ai-rate-limiting-advanced:** Added the `bedrock` and `gemini` providers to the providers list in 
+  the `ai-rate-limiting-advanced` plugin.
+type: feature
+scope: Plugin
