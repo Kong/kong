@@ -1,5 +1,5 @@
 import { Configuration as KAuthConfiguration } from '@kong/kauth-client-typescript-axios';
-import { Configuration as KonnectConfiguration } from '@kong/khcp-api-client';
+import { Configuration as KonnectV2Configuration } from '@kong/runtime-groups-api-client';
 
 import {
   App,
@@ -9,9 +9,9 @@ import {
 } from './environment';
 
 const API_CONFIG = {
-  konnect: (): KonnectConfiguration => {
-    const basePath = getBasePath({ app: App.konnect });
-    return new KonnectConfiguration({
+  konnect_v2: (): KonnectV2Configuration => {
+    const basePath = getBasePath({ app: App.konnect_v2 });
+    return new KonnectV2Configuration({
       basePath,
       baseOptions: { validateStatus: false },
     });
@@ -28,6 +28,6 @@ export const getApiConfig = (
   preview: boolean = isPreview()
 ):
   | KAuthConfiguration
-  | KonnectConfiguration => {
+  | KonnectV2Configuration => {
   return API_CONFIG[app]({ preview });
 };

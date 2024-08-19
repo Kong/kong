@@ -1,5 +1,5 @@
 import { registerOrgAndAuthenticateAdmin } from '@shared/kauth_workflows';
-import { getDefaultRuntimeGroup, setupKonnectDataPlane } from '@shared/konnect_workflows';
+import { getControlPlane, setupKonnectDataPlane } from '@shared/konnect_workflows';
 import { getAuthOptions, removeCertficatesAndKeys, stopAndRemoveTargetContainer, KokoAuthHeaders  } from '@support';
 import axios from 'axios';
 
@@ -10,8 +10,8 @@ export const mochaHooks: Mocha.RootHookObject = {
       stopAndRemoveTargetContainer('konnect-dp1')
 
       await registerOrgAndAuthenticateAdmin();
-      // get the deafult runtime group id which is being created automatically with the Organization
-      await getDefaultRuntimeGroup();
+      // get the control plane id
+      await getControlPlane()
 
       const kokoAuthHeaders: KokoAuthHeaders = getAuthOptions()?.headers;
       Object.entries(kokoAuthHeaders).forEach(([key, value]) => {

@@ -1,6 +1,6 @@
 import { getGatewayHost } from './gateway-vars';
 import { getApiGeo } from './geos';
-import { getRuntimeGroupId } from '../entities/runtimes';
+import { getControlPlaneId } from '../entities/control-plane';
 
 /**
  * Enum of available envs
@@ -102,8 +102,8 @@ const getPaths = (geo = getApiGeo()) => {
       hostName: getGatewayHost(),
     },
     koko: {
-      dev: `https://${geo}.api.konghq.tech/konnect-api/api/runtime_groups/${getRuntimeGroupId()}`,
-      prod: `https://${geo}.api.konghq.com/konnect-api/api/runtime_groups/${getRuntimeGroupId()}`,
+      dev: `https://${geo}.api.konghq.tech/konnect-api/api/runtime_groups/${getControlPlaneId()}`,
+      prod: `https://${geo}.api.konghq.com/konnect-api/api/runtime_groups/${getControlPlaneId()}`,
     },
     kauth: {
       dev: 'https://global.api.konghq.tech/kauth',

@@ -1,14 +1,15 @@
 import { teams } from '@fixtures';
 import {
+  CreateRuntimeGroupRequest,
   RuntimeGroupsApi,
-} from '@kong/khcp-api-client';
+} from '@kong/runtime-groups-api-client';
 import {
   App,
   expect,
   getApiConfig,
   getAuthOptions,
   logResponse,
-  setRuntimeGroupId,
+  setControlPlaneId,
   Environment,
   getBasePath,
   getOrgName,
@@ -18,7 +19,9 @@ import {
   getDataPlaneDockerImage,
   getNegative,
   retryRequest,
-  setKonnectControlPlaneId
+  setKonnectControlPlaneId,
+  getApiGeo,
+  getControlPlaneId
 } from '@support';
 import { validate as uuidValidate } from 'uuid';
 import axios from 'axios';
@@ -32,43 +35,65 @@ const getControlPlanesUrl = (endpoint = 'control-planes') => {
   return `${basePath}/${endpoint}`;
 };
 
-export const getDefaultRuntimeGroup = async () => {
-  let runtimeGroupId;
-  const config = getApiConfig(App.konnect);
+export const getControlPlane = async (
+  cpName = 'default',
+  geo = getApiGeo()
+) => {
+  const config = getApiConfig(App.konnect_v2);
   const api = new RuntimeGroupsApi(config);
 
   const team = teams.DefaultTeamNames.ORGANIZATION_ADMIN;
   const options = getAuthOptions(team);
 
-  const request: any = () => api.getManyBase(
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
+  const response = await api.listRuntimeGroups({}, options);
+  logResponse(response);
+
+  expect(response.status, 'response status should be 200').to.equal(200);
+
+  const data = response.data.data || [];
+  if (data.length && data.some((x) => x.name === cpName)) {
+    const controlPlaneId = data.find((x) => x.name === cpName)?.id || '';
+    expect(uuidValidate(controlPlaneId), 'runtime group id is a UUID').to.be
+      .true;
+    setControlPlaneId(controlPlaneId);
+  } else {
+    await createControlPlane({ name: cpName }, geo);
+  }
+};
+
+export const createControlPlane = async (
+  createRuntimeGroupRequest: CreateRuntimeGroupRequest,
+  geo = getApiGeo()
+) => {
+  let controlPlaneId = getControlPlaneId(createRuntimeGroupRequest.name, geo);
+
+  if (!controlPlaneId) {
+    const config = getApiConfig(App.konnect_v2);
+    const api = new RuntimeGroupsApi(config);
+
+    const options = getAuthOptions(teams.DefaultTeamNames.ORGANIZATION_ADMIN);
+
+    const response = await api.createRuntimeGroup(
+      { createRuntimeGroupRequest },
       options
     );
+    logResponse(response);
 
-  const assertions = (resp) => {
-    expect(resp.status, 'response status should be 200').to.equal(200);
+    expect(response.status, 'response status should be 201').to.equal(201);
 
-    runtimeGroupId = resp.data.data[0].id;
-    expect(uuidValidate(runtimeGroupId), 'runtime group id is a UUID').to.be.true;
-  };
+    controlPlaneId = response.data.id;
+    expect(uuidValidate(controlPlaneId), 'runtime group id is a UUID').to.be
+      .true;
+    setControlPlaneId(controlPlaneId, createRuntimeGroupRequest.name);
+  }
 
-  // the runtime group creation is now async process, need to retry to get the id
-  await retryRequest(request, assertions);
-
-  setRuntimeGroupId(runtimeGroupId);
-  console.info(`\nCurrent Runtime Group id is  >>>   ${runtimeGroupId}  <<<`)
+  console.info(`\nCurrent Control Plane id is  >>>   ${controlPlaneId}  <<<`)
   console.info(`Current Organization name is >>>   ${getOrgName()}    <<<`)
   console.info(`You can access the organization with current user credentials at https://cloud.konghq.tech/us\n`)
+
+  return controlPlaneId;
 };
+
 
 /**
  * Get control plane and telemetry endpoints to launh a Data Plane
