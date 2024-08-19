@@ -57,8 +57,8 @@ configure_make(
             "libexslt.0.dylib",
         ],
         "//conditions:default": [
-            "libxslt.so.1.1.39",
-            "libexslt.so.0.8.21",
+            "libxslt.so.1.1.42",
+            "libexslt.so.0.8.23",
         ],
     }),
     targets = [

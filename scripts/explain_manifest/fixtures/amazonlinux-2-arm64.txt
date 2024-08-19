@@ -69,7 +69,7 @@
   - libc.so.6
   - ld-linux-aarch64.so.1
 
-- Path      : /usr/local/kong/lib/libexslt.so.0.8.21
+- Path      : /usr/local/kong/lib/libexslt.so.0.8.23
   Needed    :
   - libstdc++.so.6
   - libxslt.so.1
@@ -136,7 +136,7 @@
   - libc.so.6
   - ld-linux-aarch64.so.1
 
-- Path      : /usr/local/kong/lib/libxslt.so.1.1.39
+- Path      : /usr/local/kong/lib/libxslt.so.1.1.42
   Needed    :
   - libstdc++.so.6
   - libxml2.so.2

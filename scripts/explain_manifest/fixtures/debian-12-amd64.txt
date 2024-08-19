@@ -58,7 +58,7 @@
   Needed    :
   - libc.so.6
 
-- Path      : /usr/local/kong/lib/libexslt.so.0.8.21
+- Path      : /usr/local/kong/lib/libexslt.so.0.8.23
   Needed    :
   - libxslt.so.1
   - libxml2.so.2
@@ -109,7 +109,7 @@
   - libm.so.6
   - libc.so.6
 
-- Path      : /usr/local/kong/lib/libxslt.so.1.1.39
+- Path      : /usr/local/kong/lib/libxslt.so.1.1.42
   Needed    :
   - libxml2.so.2
   - libm.so.6

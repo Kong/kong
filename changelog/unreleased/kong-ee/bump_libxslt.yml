@@ -1,0 +1,3 @@
+message: Bumped libxslt to 1.1.42.
+type: dependency
+scope: Core

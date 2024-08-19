@@ -65,7 +65,7 @@
   - libstdc++.so.6
   - libc.so.6
 
-- Path      : /usr/local/kong/lib/libexslt.so.0.8.21
+- Path      : /usr/local/kong/lib/libexslt.so.0.8.23
   Needed    :
   - libstdc++.so.6
   - libxslt.so.1
@@ -125,7 +125,7 @@
   - libm.so.6
   - libc.so.6
 
-- Path      : /usr/local/kong/lib/libxslt.so.1.1.39
+- Path      : /usr/local/kong/lib/libxslt.so.1.1.42
   Needed    :
   - libstdc++.so.6
   - libxml2.so.2
@@ -316,4 +316,3 @@
 
 - Path      : /usr/local/share/xml/xsd
   Type      : directory
-
