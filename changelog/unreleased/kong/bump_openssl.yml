@@ -1,2 +1,0 @@
-message: "Bumped OpenSSL to 3.2.2, to fix unbounded memory growth with session handling in TLSv1.3"
-type: dependency
