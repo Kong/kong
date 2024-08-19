@@ -465,7 +465,7 @@ jobs:
     - name: Sign Prerelease Container Images
       id: sign_prerelease_images
       if: ${{ env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' && steps.image.outputs.digest != '' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository)) }}
-      uses: Kong/public-shared-actions/security-actions/sign-docker-image@62643b74f79f6a697b9add1a2f9c069bf9ca1250
+      uses: Kong/public-shared-actions/security-actions/sign-docker-image@a2132654dffda2a5dd121bbd077a205b4cae8ec0
       with:
         image_digest: ${{ steps.image.outputs.digest }}
         tags: ${{ steps.meta.outputs.tags }}
@@ -538,7 +538,9 @@ jobs:
     name: Scan Images - ${{ matrix.label }}
     needs: [metadata, build-images]
     runs-on: ${{ needs.metadata.outputs.release-runs-on }}
-    if: github.repository_owner == 'Kong'
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
+    # Use DISABLE_SCA_SCAN to completely disable the scan in case of emergency purposes and revert it back when notified.
+    if: github.repository_owner == 'Kong' && vars.DISABLE_SCA_SCAN == 'false'
     strategy:
       fail-fast: false
       matrix:
@@ -577,12 +579,13 @@ jobs:
 
     - name: Place Override grype Config
       run: |
-        cp -v .grype.yaml "${HOME}/"
+        cp -v .grype.yaml "${HOME}/" 
 
     - name: Scan AMD64 Image digest
       if: ${{ steps.image_manifest_metadata.outputs.amd64_image_sha != '' }}
       id: sbom_action_amd64
-      uses: Kong/public-shared-actions/security-actions/scan-docker-image@62643b74f79f6a697b9add1a2f9c069bf9ca1250
+      timeout-minutes: 5
+      uses: Kong/public-shared-actions/security-actions/scan-docker-image@a2132654dffda2a5dd121bbd077a205b4cae8ec0
       with:
         asset_prefix: kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-amd64
         image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
@@ -595,7 +598,8 @@ jobs:
     - name: Scan ARM64 Image digest
       if: ${{ steps.image_manifest_metadata.outputs.arm64_image_sha != '' }}
       id: sbom_action_arm64
-      uses: Kong/public-shared-actions/security-actions/scan-docker-image@62643b74f79f6a697b9add1a2f9c069bf9ca1250
+      timeout-minutes: 5
+      uses: Kong/public-shared-actions/security-actions/scan-docker-image@a2132654dffda2a5dd121bbd077a205b4cae8ec0
       with:
         asset_prefix: kong-${{ needs.metadata.outputs.gh-release-tag-name }}-${{ matrix.label }}-linux-arm64
         image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
@@ -849,7 +853,7 @@ jobs:
     - name: Sign release images
       id: sign_release_images
       if: ${{ github.event.inputs.official  == 'true' && steps.attestation_metadata.outputs.release_tags != '' && env.HAS_ACCESS_TO_GITHUB_TOKEN == 'true' && steps.release_images.outputs.prerelease_image_digest != '' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository)) }}
-      uses: Kong/public-shared-actions/security-actions/sign-docker-image@62643b74f79f6a697b9add1a2f9c069bf9ca1250
+      uses: Kong/public-shared-actions/security-actions/sign-docker-image@a2132654dffda2a5dd121bbd077a205b4cae8ec0
       with:
         image_digest: ${{ steps.release_images.outputs.prerelease_image_digest }}
         tags: ${{ steps.attestation_metadata.outputs.release_tags }}
