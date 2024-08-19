@@ -69,7 +69,6 @@ _G.kong = kong_global.new() -- no versioned PDK for plugins for now
 
 
 local DB = require "kong.db"
-local dns = require "kong.tools.dns"
 local meta = require "kong.meta"
 local lapis = require "lapis"
 local runloop = require "kong.runloop.handler"
@@ -645,6 +644,10 @@ function Kong.init()
   local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
   local config = assert(conf_loader(conf_path, nil, { from_kong_env = true }))
 
+  -- The dns client has been initialized in conf_loader, so we set it directly.
+  -- Other modules should use 'kong.dns' to avoid reinitialization.
+  kong.dns = assert(package.loaded["kong.resty.dns.client"])
+
   reset_kong_shm(config)
 
   -- special math.randomseed from kong.globalpatches not taking any argument.
@@ -683,7 +686,6 @@ function Kong.init()
   assert(db:connect())
 
   kong.db = db
-  kong.dns = dns(config)
 
   if config.proxy_ssl_enabled or config.stream_ssl_enabled then
     certificate.init()
