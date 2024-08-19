@@ -111,7 +111,7 @@
   - libc.so.6
   Runpath   : /usr/local/kong/lib
 
-- Path      : /usr/local/kong/lib/libxml2.so.2.12.7
+- Path      : /usr/local/kong/lib/libxml2.so.2.12.9
   Needed    :
   - libdl.so.2
   - libz.so.1
