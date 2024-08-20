@@ -1337,7 +1337,7 @@ for _, strategy in helpers.each_strategy() do
           assert.True(ok)
           assert.contains("kong.request.size:%d+|c|#.*", res, true)
           assert.contains(".*workspace:" .. ws1.name, res, true)
-          assert.contains(".*service:.*-.*-.*", res, true)
+          assert.contains(".*service:statsd121", res, true)
         end)
 
         it("with influxdb tag_style", function()
