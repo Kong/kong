@@ -5,42 +5,45 @@
 -- @license [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
 -- @module spec.helpers
 
-local BIN_PATH = "bin/kong"
-local TEST_CONF_PATH = os.getenv("KONG_SPEC_TEST_CONF_PATH") or "spec/kong_tests.conf"
-local CUSTOM_PLUGIN_PATH = "./spec/fixtures/custom_plugins/?.lua"
-local CUSTOM_VAULT_PATH = "./spec/fixtures/custom_vaults/?.lua;./spec/fixtures/custom_vaults/?/init.lua"
-local DNS_MOCK_LUA_PATH = "./spec/fixtures/mocks/lua-resty-dns/?.lua"
-local GO_PLUGIN_PATH = "./spec/fixtures/go"
-local GRPC_TARGET_SRC_PATH = "./spec/fixtures/grpc/target/"
-local MOCK_UPSTREAM_PROTOCOL = "http"
-local MOCK_UPSTREAM_SSL_PROTOCOL = "https"
-local MOCK_UPSTREAM_HOST = "127.0.0.1"
-local MOCK_UPSTREAM_HOSTNAME = "localhost"
-local MOCK_UPSTREAM_PORT = 15555
-local MOCK_UPSTREAM_SSL_PORT = 15556
-local MOCK_UPSTREAM_STREAM_PORT = 15557
-local MOCK_UPSTREAM_STREAM_SSL_PORT = 15558
-local GRPCBIN_HOST = os.getenv("KONG_SPEC_TEST_GRPCBIN_HOST") or "localhost"
-local GRPCBIN_PORT = tonumber(os.getenv("KONG_SPEC_TEST_GRPCBIN_PORT")) or 9000
-local GRPCBIN_SSL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_GRPCBIN_SSL_PORT")) or 9001
-local MOCK_GRPC_UPSTREAM_PROTO_PATH = "./spec/fixtures/grpc/hello.proto"
-local ZIPKIN_HOST = os.getenv("KONG_SPEC_TEST_ZIPKIN_HOST") or "localhost"
-local ZIPKIN_PORT = tonumber(os.getenv("KONG_SPEC_TEST_ZIPKIN_PORT")) or 9411
-local OTELCOL_HOST = os.getenv("KONG_SPEC_TEST_OTELCOL_HOST") or "localhost"
-local OTELCOL_HTTP_PORT = tonumber(os.getenv("KONG_SPEC_TEST_OTELCOL_HTTP_PORT")) or 4318
-local OTELCOL_ZPAGES_PORT = tonumber(os.getenv("KONG_SPEC_TEST_OTELCOL_ZPAGES_PORT")) or 55679
-local OTELCOL_FILE_EXPORTER_PATH = os.getenv("KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH") or "./tmp/otel/file_exporter.json"
-local REDIS_HOST = os.getenv("KONG_SPEC_TEST_REDIS_HOST") or "localhost"
-local REDIS_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_PORT") or 6379)
-local REDIS_SSL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_SSL_PORT") or 6380)
-local REDIS_AUTH_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_AUTH_PORT") or 6381)
-local REDIS_SSL_SNI = os.getenv("KONG_SPEC_TEST_REDIS_SSL_SNI") or "test-redis.example.com"
-local TEST_COVERAGE_MODE = os.getenv("KONG_COVERAGE")
-local TEST_COVERAGE_TIMEOUT = 30
--- consistent with path set in .github/workflows/build_and_test.yml and build/dockerfiles/deb.pongo.Dockerfile
-local OLD_VERSION_KONG_PATH = os.getenv("KONG_SPEC_TEST_OLD_VERSION_KONG_PATH") or "/usr/local/share/lua/5.1/kong/kong-old"
-local BLACKHOLE_HOST = "10.255.255.255"
-local KONG_VERSION = require("kong.meta")._VERSION
+local CONSTANTS = {
+  BIN_PATH = "bin/kong",
+  TEST_CONF_PATH = os.getenv("KONG_SPEC_TEST_CONF_PATH") or "spec/kong_tests.conf",
+  CUSTOM_PLUGIN_PATH = "./spec/fixtures/custom_plugins/?.lua",
+  CUSTOM_VAULT_PATH = "./spec/fixtures/custom_vaults/?.lua;./spec/fixtures/custom_vaults/?/init.lua",
+  DNS_MOCK_LUA_PATH = "./spec/fixtures/mocks/lua-resty-dns/?.lua",
+  GO_PLUGIN_PATH = "./spec/fixtures/go",
+  GRPC_TARGET_SRC_PATH = "./spec/fixtures/grpc/target/",
+  MOCK_UPSTREAM_PROTOCOL = "http",
+  MOCK_UPSTREAM_SSL_PROTOCOL = "https",
+  MOCK_UPSTREAM_HOST = "127.0.0.1",
+  MOCK_UPSTREAM_HOSTNAME = "localhost",
+  MOCK_UPSTREAM_PORT = 15555,
+  MOCK_UPSTREAM_SSL_PORT = 15556,
+  MOCK_UPSTREAM_STREAM_PORT = 15557,
+  MOCK_UPSTREAM_STREAM_SSL_PORT = 15558,
+  GRPCBIN_HOST = os.getenv("KONG_SPEC_TEST_GRPCBIN_HOST") or "localhost",
+  GRPCBIN_PORT = tonumber(os.getenv("KONG_SPEC_TEST_GRPCBIN_PORT")) or 9000,
+  GRPCBIN_SSL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_GRPCBIN_SSL_PORT")) or 9001,
+  MOCK_GRPC_UPSTREAM_PROTO_PATH = "./spec/fixtures/grpc/hello.proto",
+  ZIPKIN_HOST = os.getenv("KONG_SPEC_TEST_ZIPKIN_HOST") or "localhost",
+  ZIPKIN_PORT = tonumber(os.getenv("KONG_SPEC_TEST_ZIPKIN_PORT")) or 9411,
+  OTELCOL_HOST = os.getenv("KONG_SPEC_TEST_OTELCOL_HOST") or "localhost",
+  OTELCOL_HTTP_PORT = tonumber(os.getenv("KONG_SPEC_TEST_OTELCOL_HTTP_PORT")) or 4318,
+  OTELCOL_ZPAGES_PORT = tonumber(os.getenv("KONG_SPEC_TEST_OTELCOL_ZPAGES_PORT")) or 55679,
+  OTELCOL_FILE_EXPORTER_PATH = os.getenv("KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH") or "./tmp/otel/file_exporter.json",
+  REDIS_HOST = os.getenv("KONG_SPEC_TEST_REDIS_HOST") or "localhost",
+  REDIS_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_PORT") or 6379),
+  REDIS_SSL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_SSL_PORT") or 6380),
+  REDIS_AUTH_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_AUTH_PORT") or 6381),
+  REDIS_SSL_SNI = os.getenv("KONG_SPEC_TEST_REDIS_SSL_SNI") or "test-redis.example.com",
+  TEST_COVERAGE_MODE = os.getenv("KONG_COVERAGE"),
+  TEST_COVERAGE_TIMEOUT = 30,
+  -- consistent with path set in .github/workflows/build_and_test.yml and build/dockerfiles/deb.pongo.Dockerfile
+  OLD_VERSION_KONG_PATH = os.getenv("KONG_SPEC_TEST_OLD_VERSION_KONG_PATH") or "/usr/local/share/lua/5.1/kong/kong-old",
+  BLACKHOLE_HOST = "10.255.255.255",
+  KONG_VERSION = require("kong.meta")._VERSION,
+}
+
 local PLUGINS_LIST
 
 local consumers_schema_def = require "kong.db.schema.entities.consumers"
@@ -99,8 +102,8 @@ log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
 do
   local paths = {}
   table.insert(paths, os.getenv("KONG_LUA_PACKAGE_PATH"))
-  table.insert(paths, CUSTOM_PLUGIN_PATH)
-  table.insert(paths, CUSTOM_VAULT_PATH)
+  table.insert(paths, CONSTANTS.CUSTOM_PLUGIN_PATH)
+  table.insert(paths, CONSTANTS.CUSTOM_VAULT_PATH)
   table.insert(paths, package.path)
   package.path = table.concat(paths, ";")
 end
@@ -194,7 +197,7 @@ local function make_yaml_file(content, filename)
     assert(fd:write("\n")) -- ensure last line ends in newline
     assert(fd:close())
   else
-    assert(kong_exec("config db_export --conf "..TEST_CONF_PATH.." "..filename))
+    assert(kong_exec("config db_export --conf "..CONSTANTS.TEST_CONF_PATH.." "..filename))
   end
   return filename
 end
@@ -231,7 +234,7 @@ end
 ---------------
 -- Conf and DAO
 ---------------
-local conf = assert(conf_loader(TEST_CONF_PATH))
+local conf = assert(conf_loader(CONSTANTS.TEST_CONF_PATH))
 
 _G.kong = kong_global.new()
 kong_global.init_pdk(_G.kong, conf)
@@ -780,10 +783,10 @@ end
 function resty_http_proxy_mt:_connect()
   local opts = self.options
 
-  if TEST_COVERAGE_MODE == "true" then
-    opts.connect_timeout = TEST_COVERAGE_TIMEOUT * 1000
-    opts.send_timeout    = TEST_COVERAGE_TIMEOUT * 1000
-    opts.read_timeout    = TEST_COVERAGE_TIMEOUT * 1000
+  if CONSTANTS.TEST_COVERAGE_MODE == "true" then
+    opts.connect_timeout = CONSTANTS.TEST_COVERAGE_TIMEOUT * 1000
+    opts.send_timeout    = CONSTANTS.TEST_COVERAGE_TIMEOUT * 1000
+    opts.read_timeout    = CONSTANTS.TEST_COVERAGE_TIMEOUT * 1000
   end
 
   local _, err = self:connect(opts)
@@ -873,8 +876,8 @@ local function http_client(host, port, timeout)
     return http_client_opts(host)
   end
 
-  if TEST_COVERAGE_MODE == "true" then
-    timeout = TEST_COVERAGE_TIMEOUT * 1000
+  if CONSTANTS.TEST_COVERAGE_MODE == "true" then
+    timeout = CONSTANTS.TEST_COVERAGE_TIMEOUT * 1000
   end
 
   return http_client_opts({
@@ -980,8 +983,8 @@ end
 -- @function admin_ssl_client
 -- @param timeout (optional, number) the timeout to use
 local function admin_ssl_client(timeout)
-  if TEST_COVERAGE_MODE == "true" then
-    timeout = TEST_COVERAGE_TIMEOUT * 1000
+  if CONSTANTS.TEST_COVERAGE_MODE == "true" then
+    timeout = CONSTANTS.TEST_COVERAGE_TIMEOUT * 1000
   end
 
   local admin_ip, admin_port
@@ -1202,7 +1205,7 @@ local function grpc_client(host, port, opts)
 
   opts = opts or {}
   if not opts["-proto"] then
-    opts["-proto"] = MOCK_GRPC_UPSTREAM_PROTO_PATH
+    opts["-proto"] = CONSTANTS.MOCK_GRPC_UPSTREAM_PROTO_PATH
   end
 
   return setmetatable({
@@ -1395,8 +1398,8 @@ end
 local function tcp_server(port, opts)
   local threads = require "llthreads2.ex"
   opts = opts or {}
-  if TEST_COVERAGE_MODE == "true" then
-    opts.timeout = TEST_COVERAGE_TIMEOUT
+  if CONSTANTS.TEST_COVERAGE_MODE == "true" then
+    opts.timeout = CONSTANTS.TEST_COVERAGE_TIMEOUT
   end
   local thread = threads.new({
     function(port, opts)
@@ -1666,8 +1669,8 @@ end
 local function http_mock(port, opts)
   local socket = require "socket"
   local server = assert(socket.tcp())
-  if TEST_COVERAGE_MODE == "true" then
-    opts.timeout = TEST_COVERAGE_TIMEOUT
+  if CONSTANTS.TEST_COVERAGE_MODE == "true" then
+    opts.timeout = CONSTANTS.TEST_COVERAGE_TIMEOUT
   end
   server:settimeout(opts and opts.timeout or 60)
   assert(server:setoption('reuseaddr', true))
@@ -1711,8 +1714,8 @@ end
 local function udp_server(port, n, timeout)
   local threads = require "llthreads2.ex"
 
-  if TEST_COVERAGE_MODE == "true" then
-    timeout = TEST_COVERAGE_TIMEOUT
+  if CONSTANTS.TEST_COVERAGE_MODE == "true" then
+    timeout = CONSTANTS.TEST_COVERAGE_TIMEOUT
   end
 
   local thread = threads.new({
@@ -1746,7 +1749,7 @@ local function udp_server(port, n, timeout)
       server:close()
       return (n > 1 and data or data[1]), err
     end
-  }, port or MOCK_UPSTREAM_PORT, n or 1, timeout)
+  }, port or CONSTANTS.MOCK_UPSTREAM_PORT, n or 1, timeout)
   thread:start()
 
   local socket = require "socket"
@@ -1790,8 +1793,8 @@ require("spec.helpers.wait")
 -- -- wait 10 seconds for a file "myfilename" to appear
 -- helpers.wait_until(function() return file_exist("myfilename") end, 10)
 local function wait_until(f, timeout, step)
-  if TEST_COVERAGE_MODE == "true" then
-    timeout = TEST_COVERAGE_TIMEOUT
+  if CONSTANTS.TEST_COVERAGE_MODE == "true" then
+    timeout = CONSTANTS.TEST_COVERAGE_TIMEOUT
   end
 
   luassert.wait_until({
@@ -1816,8 +1819,8 @@ end
 -- @return nothing. It returns when the condition is met, or throws an error
 -- when it times out.
 local function pwait_until(f, timeout, step)
-  if TEST_COVERAGE_MODE == "true" then
-    timeout = TEST_COVERAGE_TIMEOUT
+  if CONSTANTS.TEST_COVERAGE_MODE == "true" then
+    timeout = CONSTANTS.TEST_COVERAGE_TIMEOUT
   end
 
   luassert.wait_until({
@@ -2008,8 +2011,8 @@ end
 -- @tparam[opt=false] boolean opts.override_global_key_auth_plugin to override the global key-auth plugin in waiting
 local function wait_for_all_config_update(opts)
   opts = opts or {}
-  if TEST_COVERAGE_MODE == "true" then
-    opts.timeout = TEST_COVERAGE_TIMEOUT
+  if CONSTANTS.TEST_COVERAGE_MODE == "true" then
+    opts.timeout = CONSTANTS.TEST_COVERAGE_TIMEOUT
   end
   local timeout = opts.timeout or 30
   local admin_client_timeout = opts.admin_client_timeout
@@ -3410,8 +3413,8 @@ function kong_exec(cmd, env, returns, env_vars)
       return t ~= "" and t or nil
     end
     local paths = {}
-    table.insert(paths, cleanup(CUSTOM_PLUGIN_PATH))
-    table.insert(paths, cleanup(CUSTOM_VAULT_PATH))
+    table.insert(paths, cleanup(CONSTANTS.CUSTOM_PLUGIN_PATH))
+    table.insert(paths, cleanup(CONSTANTS.CUSTOM_VAULT_PATH))
     table.insert(paths, cleanup(env.lua_package_path))
     table.insert(paths, cleanup(conf.lua_package_path))
     env.lua_package_path = table.concat(paths, ";")
@@ -3431,7 +3434,7 @@ function kong_exec(cmd, env, returns, env_vars)
     env_vars = string.format("%s KONG_%s='%s'", env_vars, k:upper(), v)
   end
 
-  return exec(env_vars .. " " .. BIN_PATH .. " " .. cmd, returns)
+  return exec(env_vars .. " " .. CONSTANTS.BIN_PATH .. " " .. cmd, returns)
 end
 
 
@@ -3527,8 +3530,8 @@ end
 local function wait_pid(pid_path, timeout, is_retry)
   local pid = get_pid_from_file(pid_path)
 
-  if TEST_COVERAGE_MODE == "true" then
-    timeout = TEST_COVERAGE_TIMEOUT
+  if CONSTANTS.TEST_COVERAGE_MODE == "true" then
+    timeout = CONSTANTS.TEST_COVERAGE_TIMEOUT
   end
 
   if pid then
@@ -3633,9 +3636,9 @@ local function render_fixtures(conf, env, prefix, fixtures)
 
     -- add the mock resolver to the path to ensure the records are loaded
     if env.lua_package_path then
-      env.lua_package_path = DNS_MOCK_LUA_PATH .. ";" .. env.lua_package_path
+      env.lua_package_path = CONSTANTS.DNS_MOCK_LUA_PATH .. ";" .. env.lua_package_path
     else
-      env.lua_package_path = DNS_MOCK_LUA_PATH
+      env.lua_package_path = CONSTANTS.DNS_MOCK_LUA_PATH
     end
   else
     -- remove any old mocks if they exist
@@ -3695,7 +3698,7 @@ end
 local grpc_target_proc
 local function start_grpc_target()
   local ngx_pipe = require "ngx.pipe"
-  assert(make(GRPC_TARGET_SRC_PATH, {
+  assert(make(CONSTANTS.GRPC_TARGET_SRC_PATH, {
     {
       target = "targetservice/targetservice.pb.go",
       src    = { "../targetservice.proto" },
@@ -3712,7 +3715,7 @@ local function start_grpc_target()
       cmd    = "go mod tidy && go mod download all && go build",
     },
   }))
-  grpc_target_proc = assert(ngx_pipe.spawn({ GRPC_TARGET_SRC_PATH .. "/target" }, {
+  grpc_target_proc = assert(ngx_pipe.spawn({ CONSTANTS.GRPC_TARGET_SRC_PATH .. "/target" }, {
       merge_stderr = true,
   }))
 
@@ -3803,8 +3806,8 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
   -- go plugins are enabled
   --  compile fixture go plugins if any setting mentions it
   for _,v in pairs(env) do
-    if type(v) == "string" and v:find(GO_PLUGIN_PATH) then
-      build_go_plugins(GO_PLUGIN_PATH)
+    if type(v) == "string" and v:find(CONSTANTS.GO_PLUGIN_PATH) then
+      build_go_plugins(CONSTANTS.GO_PLUGIN_PATH)
       break
     end
   end
@@ -3825,7 +3828,7 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
     nginx_conf = " --nginx-conf " .. env.nginx_conf
   end
 
-  if TEST_COVERAGE_MODE == "true" then
+  if CONSTANTS.TEST_COVERAGE_MODE == "true" then
     -- render `coverage` blocks in the templates
     nginx_conf_flags[#nginx_conf_flags + 1] = 'coverage'
   end
@@ -3850,8 +3853,8 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
     env.declarative_config = config_yml
   end
 
-  assert(render_fixtures(TEST_CONF_PATH .. nginx_conf, env, prefix, fixtures))
-  return kong_exec("start --conf " .. TEST_CONF_PATH .. nginx_conf .. nginx_conf_flags, env)
+  assert(render_fixtures(CONSTANTS.TEST_CONF_PATH .. nginx_conf, env, prefix, fixtures))
+  return kong_exec("start --conf " .. CONSTANTS.TEST_CONF_PATH .. nginx_conf .. nginx_conf_flags, env)
 end
 
 
@@ -4124,7 +4127,7 @@ local function clustering_client(opts)
   local uri = "wss://" .. opts.host .. ":" .. opts.port ..
               "/v1/outlet?node_id=" .. (opts.node_id or uuid()) ..
               "&node_hostname=" .. (opts.node_hostname or kong.node.get_hostname()) ..
-              "&node_version=" .. (opts.node_version or KONG_VERSION)
+              "&node_version=" .. (opts.node_version or CONSTANTS.KONG_VERSION)
 
   local conn_opts = {
     ssl_verify = false, -- needed for busted tests as CP certs are not trusted by the CLI
@@ -4231,14 +4234,14 @@ local function use_old_plugin(name)
 
   local old_plugin_path
   local temp_dir
-  if pl_path.exists(OLD_VERSION_KONG_PATH .. "/kong/plugins/" .. name) then
+  if pl_path.exists(CONSTANTS.OLD_VERSION_KONG_PATH .. "/kong/plugins/" .. name) then
     -- only include the path of the specified plugin into LUA_PATH
     -- and keep the directory structure 'kong/plugins/...'
     temp_dir = make_temp_dir()
     old_plugin_path = temp_dir
     local dest_dir = old_plugin_path .. "/kong/plugins"
     assert(pl_dir.makepath(dest_dir), "failed to makepath " .. dest_dir)
-    assert(shell.run("cp -r " .. OLD_VERSION_KONG_PATH .. "/kong/plugins/" .. name .. " " .. dest_dir), "failed to copy the plugin directory")
+    assert(shell.run("cp -r " .. CONSTANTS.OLD_VERSION_KONG_PATH .. "/kong/plugins/" .. name .. " " .. dest_dir), "failed to copy the plugin directory")
 
   else
     error("the specified plugin " .. name .. " doesn't exist")
@@ -4316,52 +4319,52 @@ end
   get_db_utils = get_db_utils,
   get_cache = get_cache,
   bootstrap_database = bootstrap_database,
-  bin_path = BIN_PATH,
+  bin_path = CONSTANTS.BIN_PATH,
   test_conf = conf,
-  test_conf_path = TEST_CONF_PATH,
-  go_plugin_path = GO_PLUGIN_PATH,
-  mock_upstream_hostname = MOCK_UPSTREAM_HOSTNAME,
-  mock_upstream_protocol = MOCK_UPSTREAM_PROTOCOL,
-  mock_upstream_host     = MOCK_UPSTREAM_HOST,
-  mock_upstream_port     = MOCK_UPSTREAM_PORT,
-  mock_upstream_url      = MOCK_UPSTREAM_PROTOCOL .. "://" ..
-                           MOCK_UPSTREAM_HOST .. ':' ..
-                           MOCK_UPSTREAM_PORT,
+  test_conf_path = CONSTANTS.TEST_CONF_PATH,
+  go_plugin_path = CONSTANTS.GO_PLUGIN_PATH,
+  mock_upstream_hostname = CONSTANTS.MOCK_UPSTREAM_HOSTNAME,
+  mock_upstream_protocol = CONSTANTS.MOCK_UPSTREAM_PROTOCOL,
+  mock_upstream_host     = CONSTANTS.MOCK_UPSTREAM_HOST,
+  mock_upstream_port     = CONSTANTS.MOCK_UPSTREAM_PORT,
+  mock_upstream_url      = CONSTANTS.MOCK_UPSTREAM_PROTOCOL .. "://" ..
+                           CONSTANTS.MOCK_UPSTREAM_HOST .. ':' ..
+                           CONSTANTS.MOCK_UPSTREAM_PORT,
 
-  mock_upstream_ssl_protocol = MOCK_UPSTREAM_SSL_PROTOCOL,
-  mock_upstream_ssl_host     = MOCK_UPSTREAM_HOST,
-  mock_upstream_ssl_port     = MOCK_UPSTREAM_SSL_PORT,
-  mock_upstream_ssl_url      = MOCK_UPSTREAM_SSL_PROTOCOL .. "://" ..
-                               MOCK_UPSTREAM_HOST .. ':' ..
-                               MOCK_UPSTREAM_SSL_PORT,
+  mock_upstream_ssl_protocol = CONSTANTS.MOCK_UPSTREAM_SSL_PROTOCOL,
+  mock_upstream_ssl_host     = CONSTANTS.MOCK_UPSTREAM_HOST,
+  mock_upstream_ssl_port     = CONSTANTS.MOCK_UPSTREAM_SSL_PORT,
+  mock_upstream_ssl_url      = CONSTANTS.MOCK_UPSTREAM_SSL_PROTOCOL .. "://" ..
+                               CONSTANTS.MOCK_UPSTREAM_HOST .. ':' ..
+                               CONSTANTS.MOCK_UPSTREAM_SSL_PORT,
 
-  mock_upstream_stream_port     = MOCK_UPSTREAM_STREAM_PORT,
-  mock_upstream_stream_ssl_port = MOCK_UPSTREAM_STREAM_SSL_PORT,
-  mock_grpc_upstream_proto_path = MOCK_GRPC_UPSTREAM_PROTO_PATH,
+  mock_upstream_stream_port     = CONSTANTS.MOCK_UPSTREAM_STREAM_PORT,
+  mock_upstream_stream_ssl_port = CONSTANTS.MOCK_UPSTREAM_STREAM_SSL_PORT,
+  mock_grpc_upstream_proto_path = CONSTANTS.MOCK_GRPC_UPSTREAM_PROTO_PATH,
 
-  zipkin_host = ZIPKIN_HOST,
-  zipkin_port = ZIPKIN_PORT,
+  zipkin_host = CONSTANTS.ZIPKIN_HOST,
+  zipkin_port = CONSTANTS.ZIPKIN_PORT,
 
-  otelcol_host               = OTELCOL_HOST,
-  otelcol_http_port          = OTELCOL_HTTP_PORT,
-  otelcol_zpages_port        = OTELCOL_ZPAGES_PORT,
-  otelcol_file_exporter_path = OTELCOL_FILE_EXPORTER_PATH,
+  otelcol_host               = CONSTANTS.OTELCOL_HOST,
+  otelcol_http_port          = CONSTANTS.OTELCOL_HTTP_PORT,
+  otelcol_zpages_port        = CONSTANTS.OTELCOL_ZPAGES_PORT,
+  otelcol_file_exporter_path = CONSTANTS.OTELCOL_FILE_EXPORTER_PATH,
 
-  grpcbin_host     = GRPCBIN_HOST,
-  grpcbin_port     = GRPCBIN_PORT,
-  grpcbin_ssl_port = GRPCBIN_SSL_PORT,
-  grpcbin_url      = string.format("grpc://%s:%d", GRPCBIN_HOST, GRPCBIN_PORT),
-  grpcbin_ssl_url  = string.format("grpcs://%s:%d", GRPCBIN_HOST, GRPCBIN_SSL_PORT),
+  grpcbin_host     = CONSTANTS.GRPCBIN_HOST,
+  grpcbin_port     = CONSTANTS.GRPCBIN_PORT,
+  grpcbin_ssl_port = CONSTANTS.GRPCBIN_SSL_PORT,
+  grpcbin_url      = string.format("grpc://%s:%d", CONSTANTS.GRPCBIN_HOST, CONSTANTS.GRPCBIN_PORT),
+  grpcbin_ssl_url  = string.format("grpcs://%s:%d", CONSTANTS.GRPCBIN_HOST, CONSTANTS.GRPCBIN_SSL_PORT),
 
-  redis_host     = REDIS_HOST,
-  redis_port     = REDIS_PORT,
-  redis_ssl_port = REDIS_SSL_PORT,
-  redis_ssl_sni  = REDIS_SSL_SNI,
-  redis_auth_port = REDIS_AUTH_PORT,
+  redis_host     = CONSTANTS.REDIS_HOST,
+  redis_port     = CONSTANTS.REDIS_PORT,
+  redis_ssl_port = CONSTANTS.REDIS_SSL_PORT,
+  redis_ssl_sni  = CONSTANTS.REDIS_SSL_SNI,
+  redis_auth_port = CONSTANTS.REDIS_AUTH_PORT,
 
-  blackhole_host = BLACKHOLE_HOST,
+  blackhole_host = CONSTANTS.BLACKHOLE_HOST,
 
-  old_version_kong_path = OLD_VERSION_KONG_PATH,
+  old_version_kong_path = CONSTANTS.OLD_VERSION_KONG_PATH,
 
   -- Kong testing helpers
   execute = exec,
