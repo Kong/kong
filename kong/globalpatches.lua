@@ -533,6 +533,7 @@ return function(options)
 
     local client = package.loaded["kong.resty.dns.client"]
     if not client then
+      -- dns initialization here is essential for busted tests.
       client = require("kong.tools.dns")()
     end
 
