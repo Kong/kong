@@ -12,6 +12,8 @@ import {
   isCI,
   wait,
   isGateway,
+  resetGatewayContainerEnvVariable,
+  getKongContainerName,
 } from '@support';
 
 describe('Gateway /licenses API tests', function () {
@@ -22,6 +24,7 @@ describe('Gateway /licenses API tests', function () {
   const validLicense = authDetails.license.valid;
   const inValidLicense = authDetails.license.invalid;
   const validLicenseAws = '{vault://aws/gateway-secret-test/ee_license}'
+  const gwContainerName = getKongContainerName();
 
   const url = `${getBasePath({
     environment: isGateway() ? Environment.gateway.admin : undefined,
@@ -47,6 +50,13 @@ describe('Gateway /licenses API tests', function () {
   };
 
   before(async function () {
+    await resetGatewayContainerEnvVariable(
+      {
+        KONG_KEYRING_ENABLED: 'off',
+      },
+      gwContainerName
+    );
+  
     const service = await createGatewayService(randomString());
     serviceId = service.id;
 
@@ -278,5 +288,12 @@ describe('Gateway /licenses API tests', function () {
     const resp = await postNegative(url, { payload: validLicense });
     logResponse(resp);
     await deleteGatewayService(serviceId);
+
+    await resetGatewayContainerEnvVariable(
+      {
+        KONG_KEYRING_ENABLED: 'on',
+      },
+      gwContainerName
+    );
   });
 });
