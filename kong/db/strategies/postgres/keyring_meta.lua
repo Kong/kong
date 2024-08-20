@@ -13,7 +13,7 @@ function SKey_Meta:select_existing_active()
                 self.statements.select.expr ..
                 " FROM keyring_meta WHERE state = 'active'"
 
-  return self.connector:query(query)
+  return self.connector:query(query, "read")
 end
 
 

@@ -8,8 +8,6 @@
 local concat       = table.concat
 local floor        = math.floor
 local ngx_time     = ngx.time
-local ngx_log      = ngx.log
-local ERR          = ngx.ERR
 local type         = type
 local setmetatable = setmetatable
 local new_tab      = require("table.new")
@@ -49,10 +47,6 @@ SELECT  *
     AND window_size  = ?
 ]]
 
-
-local function log(lvl, ...)
-  ngx_log(lvl, "[rate-limiting] ", ...)
-end
 
 local function window_floor(size, time)
   return floor(time / size) * size
@@ -175,7 +169,7 @@ function _M:get_counters(namespace, window_sizes, time)
   local q = bind(SELECT_SYNC_KEYS_QUERY, { namespace })
   q = q:gsub('%?', concat(window_starts, ", "), 1)
 
-  local rows, err = self.db:query(q)
+  local rows, err = self.db:query(q, "read")
   if not rows then
     return nil, fmt("failed to select sync keys: %s", err)
   end
@@ -204,7 +198,7 @@ function _M:get_window(key, namespace, window_start, window_size)
 
   local q = bind(SELECT_WINDOW_QUERY, param_tab)
 
-  local rows, err = self.db:query(q)
+  local rows, err = self.db:query(q, "read")
   if not rows then
     return nil, "failed to retrieve window for key/namespace (" .. key ..
                 "/" .. namespace .. "): " .. err

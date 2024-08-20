@@ -20,7 +20,7 @@ function Consumers:select_by_username_ignore_case(username)
     kong.db.connector:escape_literal(username:lower()),
     kong.db.connector:escape_literal(ws_id))
 
-  return kong.db.connector:query(qs)
+  return kong.db.connector:query(qs, "read")
 end
 
 return Consumers

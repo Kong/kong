@@ -26,7 +26,7 @@ function _M:select_ids_by_ident(ident)
   local q = fmt([[SELECT id FROM keyauth_enc_credentials WHERE key_ident = %s]],
                 self:escape_literal(ident))
 
-  return self.connector:query(q)
+  return self.connector:query(q, "read")
 end
 
 

@@ -15,7 +15,7 @@ function ConsumerGroupConsumers:count_consumers_in_group(group_id)
     "SELECT COUNT(consumer_id) count FROM consumer_group_consumers WHERE consumer_group_id = %s;",
     kong.db.connector:escape_literal(group_id))
 
-  return kong.db.connector:query(qs)
+  return kong.db.connector:query(qs, "read")
 end
 
 return ConsumerGroupConsumers

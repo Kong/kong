@@ -152,7 +152,7 @@ function _M:table_names_for_select()
   local previous_table_name = "vitals_stats_seconds_" .. previous_interval
 
   local res, err = self.connector:query(fmt(TABLE_NAMES_FOR_SELECT, current_table_name,
-                                     previous_table_name))
+                                     previous_table_name), "read")
   if err then
     return nil, err
   end
@@ -219,7 +219,7 @@ function _M:drop_previous_table()
 
   log(DEBUG, _log_prefix, q)
 
-  local table_names, err = self.connector:query(q)
+  local table_names, err = self.connector:query(q, "read")
 
   if err then
     return nil, "Failed to select tables. query: " .. q .. ". error: " .. tostring(err)

@@ -67,7 +67,7 @@ end
 
 function _M:pull_data()
   local min_year_month = get_year_month(MONTHS_TO_REPORT)
-  local res, err = self.connector:query(fmt(SELECT_DATA, min_year_month.year))
+  local res, err = self.connector:query(fmt(SELECT_DATA, min_year_month.year), "read")
   if err then
     log(ERR, "error occurred during data pull: ", err)
     return nil

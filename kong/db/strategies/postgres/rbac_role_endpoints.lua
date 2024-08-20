@@ -22,7 +22,7 @@ local SQL = [[
 function RbacRoleEndpoints:all_by_endpoint(endpoint, workspace)
   local sql = fmt(SQL, self:escape_literal(workspace), self:escape_literal(endpoint))
 
-  local res, err = self.connector:query(sql)
+  local res, err = self.connector:query(sql, "read")
   if not res then
     return nil, self.errors:database_error(err)
   end

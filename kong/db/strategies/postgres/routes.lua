@@ -78,7 +78,7 @@ function Routes:check_route_overlap(paths, hosts, methods, current_route)
   end
   table_insert(query, "LIMIT 1;")
 
-  local res, err = self.connector:query(table_concat(query, " "))
+  local res, err = self.connector:query(table_concat(query, " "), "read")
   if not res then
     return nil, self.errors:database_error(err)
   end

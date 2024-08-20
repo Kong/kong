@@ -196,7 +196,7 @@ function _M.dynamic_table_names(db)
   local query = [[select table_name from information_schema.tables
       where table_schema = current_schema() and table_name like 'vitals_stats_seconds_%']]
 
-  local result, err = db.connector:query(query)
+  local result, err = db.connector:query(query, "read")
   if not result then
     -- just return what we've got, don't halt processing
     log(WARN, _log_prefix, err)
@@ -480,7 +480,7 @@ function _M:select_stats(query_type, level, node_id, start_ts, end_ts)
   query = query .. " ORDER BY at"
 
   -- BOOM
-  res, err = self.connector:query(query)
+  res, err = self.connector:query(query, "read")
   if not res then
     return nil, "could not select stats. query: " .. query .. " error: " .. err
   end
@@ -490,7 +490,7 @@ end
 
 
 function _M:select_phone_home()
-  local res, err = self.connector:query(fmt(SELECT_STATS_FOR_PHONE_HOME, time() - 3600, self.node_id))
+  local res, err = self.connector:query(fmt(SELECT_STATS_FOR_PHONE_HOME, time() - 3600, self.node_id), "read")
 
   if not res then
     return nil, "could not select stats: " .. err
@@ -516,7 +516,7 @@ function _M:select_phone_home()
     res[1][v] = nil
   end
 
-  local nodes, err = self.connector:query(fmt(SELECT_NODES_FOR_PHONE_HOME, time() - 3600))
+  local nodes, err = self.connector:query(fmt(SELECT_NODES_FOR_PHONE_HOME, time() - 3600), "read")
   if not res then
     return nil, "could not count nodes: " .. err
   end
@@ -747,7 +747,7 @@ function _M:select_node_meta(node_ids)
 
   local query = fmt(SELECT_NODE_META, node_ids_str)
 
-  local res, err = self.connector:query(query)
+  local res, err = self.connector:query(query, "read")
 
   if err then
     return nil, "could not select nodes. query: " .. query .. " error " .. err
@@ -810,7 +810,7 @@ function _M:select_consumer_stats(opts)
 
   query = fmt(query, cons_id, duration, start_ts, end_ts)
 
-  local res, err = self.connector:query(query)
+  local res, err = self.connector:query(query, "read")
 
   if err then
     return nil, "failed to select consumer requests. err: " .. err
@@ -870,7 +870,7 @@ function _M:select_status_codes(opts)
     query = fmt(query, opts.entity_id, duration, start_ts, end_ts)
   end
 
-  local res, err = self.connector:query(query)
+  local res, err = self.connector:query(query, "read")
 
   if err then
     return nil, "failed to select codes. err: " .. err
@@ -1064,7 +1064,7 @@ end
 function _M:node_exists(node_id)
   local query = fmt(SELECT_NODE, node_id)
 
-  local res, err = self.connector:query(query)
+  local res, err = self.connector:query(query, "read")
 
   if err then
     return nil, err

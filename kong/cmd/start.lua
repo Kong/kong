@@ -38,7 +38,7 @@ local function list_fields(db, tname)
   end
 
   local fields = {}
-  local rows, err = db.connector:query(qs[db.strategy]())
+  local rows, err = db.connector:query(qs[db.strategy](), "read")
 
   if err then
     return nil, err

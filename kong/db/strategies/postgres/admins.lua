@@ -15,7 +15,7 @@ function Admins:select_by_username_ignore_case(username)
     "SELECT * FROM admins WHERE LOWER(username) = LOWER(%s);",
     kong.db.connector:escape_literal(username))
 
-  return kong.db.connector:query(qs)
+  return kong.db.connector:query(qs, "read")
 end
 
 return Admins
