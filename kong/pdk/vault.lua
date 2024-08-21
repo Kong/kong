@@ -1300,7 +1300,7 @@ local function new(self)
 
       local ok, err = rotate_secret(cache_key, caching_strategy)
       if not ok then
-        self.log.warn(err)
+        self.log.notice(err)
       end
     end
 
