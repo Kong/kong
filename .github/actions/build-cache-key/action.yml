@@ -46,6 +46,7 @@ runs:
           ${{ hashFiles('**/*.rockspec') }}
           ${{ hashFiles('distribution/*.lua') }}
           ${{ hashFiles('distribution/*.sh') }}
+          ${{ hashFiles('distribution/**/Cargo.lock') }}
           ${{ hashFiles('plugins-ee/**/*.lua') }}
           ${{ hashFiles('plugins-ee/**/*.rockspec') }}
         )
