@@ -824,8 +824,12 @@ local function new(self)
       local resurrected_value = SECRETS_CACHE:get(cache_key)
       if resurrected_value then
         return resurrected_value
+
+      else
+        return nil, fmt("could not get value from external vault (%s)", err)
       end
     end
+
     local cache_value, shdict_ttl, lru_ttl = get_cache_value_and_ttl(value, config, ttl)
     local ok, cache_err = SECRETS_CACHE:safe_set(cache_key, cache_value, shdict_ttl)
     if not ok then
