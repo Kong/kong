@@ -74,6 +74,10 @@ local fixtures = {
                       ngx.header["Content-Type"] = "application/json"
                       ngx.say("{\"statusCode\": 200, \"isBase64Encoded\": true, \"body\": \"eyJrZXkiOiAidmFsdWUiLCAia2V5MiI6IFtdfQ==\", \"headers\": {}, \"multiValueHeaders\": {\"Content-Type\": [\"application/json+test\"]}}")
 
+                    -- elseif string.match(ngx.var.uri, "functionWithNullMultiValueHeaders") then
+                    --   ngx.header["Content-Type"] = "application/json"
+                    --   ngx.say("{\"statusCode\": 200, \"headers\": { \"Age\": \"3600\"}, \"multiValueHeaders\": null}")
+
                     elseif type(res) == 'string' then
                       ngx.header["Content-Length"] = #res + 1
                       ngx.say(res)
