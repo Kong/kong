@@ -821,9 +821,9 @@ local function new(self)
   local function get_from_vault(reference, strategy, config, cache_key, parsed_reference, resurrect)
     local value, err, ttl = invoke_strategy(strategy, config, parsed_reference)
     if resurrect and value == nil then
-      local value = SECRETS_CACHE:get(cache_key)
-      if value then
-        return value
+      local resurrected_value = SECRETS_CACHE:get(cache_key)
+      if resurrected_value then
+        return resurrected_value
       end
     end
     local cache_value, shdict_ttl, lru_ttl = get_cache_value_and_ttl(value, config, ttl)
@@ -1277,12 +1277,15 @@ local function new(self)
         return true
       end
 
+      -- the secret is still within resurrect ttl time, so when we try to refresh the secret
+      -- we do not forciblly override it with a negative value, so that the cached value
+      -- can be resurrected
       resurrect = ttl > SECRETS_CACHE_MIN_TTL
     end
 
     strategy = caching_strategy(strategy, config_hash)
 
-    -- we should force refresh the secret at this point
+    -- try to refresh the secret, according to the remaining time the cached value may or may not be refreshed.
     local ok, err = get_from_vault(reference, strategy, config, new_cache_key, parsed_reference, resurrect)
     if not ok then
       return nil, fmt("could not retrieve value for reference %s (%s)", reference, err)
