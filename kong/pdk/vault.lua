@@ -1252,6 +1252,8 @@ local function new(self)
       return nil, fmt("could not parse reference %s (%s)", reference, err)
     end
 
+    strategy = caching_strategy(strategy, config_hash)
+
     if old_cache_key ~= new_cache_key then
       -- config has changed, thus the old cache key can be removed
       SECRETS_CACHE:delete(old_cache_key)
@@ -1284,11 +1286,10 @@ local function new(self)
           end
 
           LRU:set(reference, cache_value, lru_ttl)
+          return true
         end
       end
     end
-
-    strategy = caching_strategy(strategy, config_hash)
 
     -- we should force refresh the secret at this point
     local ok, err = get_from_vault(reference, strategy, config, new_cache_key, parsed_reference)
