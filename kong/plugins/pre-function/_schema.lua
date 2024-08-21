@@ -33,7 +33,7 @@ return function(plugin_name)
     name = plugin_name,
     fields = {
       { consumer = typedefs.no_consumer },
-      { protocols = typedefs.protocols_http },
+      { protocols = typedefs.protocols },
       {
         config = {
           type = "record",
