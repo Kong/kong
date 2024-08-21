@@ -23,6 +23,7 @@ local code_message_map = {
                                                      "allowed for a string value is exceeded.",
   [validator.ERR_TRAILING_DATA] = "Trailing data.",
   [validator.ERR_INVALID_JSON] = "Invalid JSON.",
+  [validator.ERR_NON_UTF8_INPUT] = "Non-UTF8 input.",
 }
 
 
@@ -55,21 +56,22 @@ function JsonThreatProtectionHandler:access(conf)
     return kong.response.error(500)
   end
 
-  local ok, code, path = validator.validate(body,
-                                            conf.max_container_depth,
-                                            conf.max_object_entry_count,
-                                            conf.max_object_entry_name_length,
-                                            conf.max_array_element_count,
-                                            conf.max_string_value_length,
-                                            true, true)
+  local ok, err_code, path = validator.validate(body,
+                                                conf.max_container_depth,
+                                                conf.max_object_entry_count,
+                                                conf.max_object_entry_name_length,
+                                                conf.max_array_element_count,
+                                                conf.max_string_value_length,
+                                                true, -- enable json path tracing
+                                                true) -- enable yielding
 
   if not ok then
-    local errmsg = string.format(code_message_map[tonumber(code)], path)
+    errmsg = string.format(code_message_map[tonumber(err_code)], path or "")
 
     kong.log.warn("JSON validate failed: ", errmsg)
 
-    if code == validator.ERR_INVALID_JSON then
-      return kong.response.error(400, code_message_map[code])
+    if err_code == validator.ERR_INVALID_JSON or err_code == validator.ERR_NON_UTF8_INPUT then
+      return kong.response.error(400, code_message_map[err_code])
     end
 
     if conf.enforcement_mode == "block" then
