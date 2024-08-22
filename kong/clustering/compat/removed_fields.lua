@@ -453,5 +453,8 @@ return {
     zipkin = {
       "queue.concurrency_limit",
     },
+    statsd_advanced = {
+      "queue.concurrency_limit",
+    },
   },
 }
