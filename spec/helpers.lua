@@ -56,12 +56,14 @@ local function reload_module(name)
 end
 
 
+-- reload some modules
+local shell = reload_module("spec.details.shell")
 local misc = reload_module("spec.details.misc")
 
 
-local conf = misc.conf
-local exec = misc.exec
-local kong_exec = misc.kong_exec
+local conf = shell.conf
+local exec = shell.exec
+local kong_exec = shell.kong_exec
 
 
 log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
