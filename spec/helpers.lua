@@ -5,9 +5,6 @@
 -- @license [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
 -- @module spec.helpers
 
-local CONSTANTS = require("spec.details.constants")
-
-
 local PLUGINS_LIST
 
 
@@ -56,6 +53,7 @@ end
 
 
 -- reload some modules when env or _G changes
+local CONSTANTS = reload_module("spec.details.constants")
 local shell = reload_module("spec.details.shell")
 local misc = reload_module("spec.details.misc")
 
