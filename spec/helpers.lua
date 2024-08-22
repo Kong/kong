@@ -55,7 +55,7 @@ local function reload_module(name)
 end
 
 
--- reload some modules
+-- reload some modules when env or _G changes
 local shell = reload_module("spec.details.shell")
 local misc = reload_module("spec.details.misc")
 
