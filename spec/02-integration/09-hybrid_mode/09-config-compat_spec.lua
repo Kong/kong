@@ -706,8 +706,9 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
         local expected = cycle_aware_deep_copy(ai_request_transformer)
 
-        -- max body size
+        -- shared
         expected.config.max_request_body_size = nil
+        expected.config.llm.auth.allow_override = nil
 
         -- gemini fields
         expected.config.llm.auth.gcp_service_account_json = nil
@@ -770,8 +771,9 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
         local expected = cycle_aware_deep_copy(ai_response_transformer)
 
-        -- max body size
+        -- shared
         expected.config.max_request_body_size = nil
+        expected.config.llm.auth.allow_override = nil
 
         -- gemini fields
         expected.config.llm.auth.gcp_service_account_json = nil
@@ -869,6 +871,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
               auth = {
                 header_name = "header",
                 header_value = "value",
+                allow_override = true,
               },
               model = {
                 name = "any-model-name",
@@ -890,8 +893,9 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
         local expected = cycle_aware_deep_copy(ai_request_transformer)
 
-        -- max body size
+        -- shared
         expected.config.max_request_body_size = nil
+        expected.config.llm.auth.allow_override = nil
 
         -- gemini fields
         expected.config.llm.auth.gcp_service_account_json = nil
@@ -925,6 +929,7 @@ describe("CP/DP config compat transformations #" .. strategy, function()
               auth = {
                 header_name = "header",
                 header_value = "value",
+                allow_override = true,
               },
               model = {
                 name = "any-model-name",
@@ -944,8 +949,9 @@ describe("CP/DP config compat transformations #" .. strategy, function()
 
         local expected = cycle_aware_deep_copy(ai_response_transformer)
 
-        -- max body size
+        -- shared
         expected.config.max_request_body_size = nil
+        expected.config.llm.auth.allow_override = nil
 
         -- gemini fields
         expected.config.llm.auth.gcp_service_account_json = nil
