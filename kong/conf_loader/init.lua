@@ -486,6 +486,14 @@ local function load(path, custom_conf, opts)
   -- The socket path is where we store listening unix sockets for IPC and private APIs.
   -- It is derived from the prefix and is NOT intended to be user-configurable
   conf.socket_path = pl_path.join(conf.prefix, constants.SOCKET_DIRECTORY)
+  conf.worker_events_sock = constants.SOCKETS.WORKER_EVENTS
+  conf.stream_worker_events_sock = constants.SOCKETS.STREAM_WORKER_EVENTS
+  conf.stream_rpc_sock = constants.SOCKETS.STREAM_RPC
+  conf.stream_config_sock = constants.SOCKETS.STREAM_CONFIG
+  conf.stream_tls_passthrough_sock = constants.SOCKETS.STREAM_TLS_PASSTHROUGH
+  conf.stream_tls_terminate_sock = constants.SOCKETS.STREAM_TLS_TERMINATE
+  conf.cluster_proxy_ssl_terminator_sock = constants.SOCKETS.CLUSTER_PROXY_SSL_TERMINATOR
+
 
   if conf.lua_ssl_trusted_certificate
      and #conf.lua_ssl_trusted_certificate > 0 then

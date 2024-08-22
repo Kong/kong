@@ -9,6 +9,7 @@ local lower = string.lower
 local HEADERS = constants.HEADERS
 local BUNDLED_VAULTS = constants.BUNDLED_VAULTS
 local BUNDLED_PLUGINS = constants.BUNDLED_PLUGINS
+local SOCKETS = constants.SOCKETS
 
 
 -- Version 5.7: https://wiki.mozilla.org/Security/Server_Side_TLS
@@ -637,6 +638,7 @@ return {
   HEADERS = HEADERS,
   BUNDLED_VAULTS = BUNDLED_VAULTS,
   BUNDLED_PLUGINS = BUNDLED_PLUGINS,
+  SOCKETS = SOCKETS,
 
   CIPHER_SUITES = CIPHER_SUITES,
   DEFAULT_PATHS = DEFAULT_PATHS,
