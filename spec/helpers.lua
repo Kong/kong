@@ -6,9 +6,10 @@
 -- @module spec.helpers
 
 local CONSTANTS = require("spec.details.constants")
-local misc = require("spec.details.misc")
+
 
 local PLUGINS_LIST
+
 
 local consumers_schema_def = require "kong.db.schema.entities.consumers"
 local services_schema_def = require "kong.db.schema.entities.services"
@@ -47,6 +48,15 @@ local uuid = require("kong.tools.uuid").uuid
 local colors = require "ansicolors"
 local strip = require("kong.tools.string").strip
 local splitlines = require("pl.stringx").splitlines
+
+
+local function reload_module(name)
+  package.loaded[name] = nil
+  return require(name)
+end
+
+
+local misc = reload_module("spec.details.misc")
 
 
 local conf = misc.conf

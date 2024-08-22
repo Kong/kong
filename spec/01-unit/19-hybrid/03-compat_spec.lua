@@ -650,7 +650,6 @@ describe("kong.clustering.compat", function()
       package.loaded["kong.db.schema.entities.routes"] = nil
       package.loaded["kong.db.schema.entities.routes_subschemas"] = nil
       package.loaded["spec.helpers"] = nil
-      package.loaded["spec.details.misc"] = nil
       package.loaded["kong.clustering.compat"] = nil
       package.loaded["kong.db.declarative"] = nil
 
