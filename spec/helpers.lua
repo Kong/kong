@@ -33,7 +33,6 @@ local cjson = require "cjson.safe"
 local kong_table = require "kong.tools.table"
 local http = require "resty.http"
 local pkey = require "resty.openssl.pkey"
-local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
 local shell = require "resty.shell"
@@ -4136,7 +4135,7 @@ end
 
   -- miscellaneous
   intercept = misc.intercept,
-  openresty_ver_num = misc.openresty_ver_num(),
+  openresty_ver_num = misc.openresty_ver_num,
   unindent = misc.unindent,
   make_yaml_file = misc.make_yaml_file,
   setenv = misc.setenv,
