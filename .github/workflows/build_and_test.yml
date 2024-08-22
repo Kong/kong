@@ -51,11 +51,18 @@ jobs:
         KONG_VERSION=$(bash scripts/grep-kong-version.sh)
         major=$(echo "$KONG_VERSION" | cut -d. -f1)
         minor=$(echo "$KONG_VERSION" | cut -d. -f2)
-        # if the minor version isn't 0, use the first release of the previous minor version;
+        # if the minor version isn't 0, use the first release or starting point of the previous minor branch;
         # otherwise just leave it empty, so later the default branch or commit will be used.
         if [ "$minor" -ne 0 ]; then
           minor=$((minor - 1))
-          echo "ref=$major.$minor.0" >> $GITHUB_OUTPUT
+          git fetch origin master -t
+          if [ $(git tag -l "$major.$minor.0") ]; then
+              echo "ref=$major.$minor.0" >> $GITHUB_OUTPUT
+          else
+              git fetch origin release/$major.$minor.x
+              COMMIT_HASH=$(git merge-base origin/master origin/release/$major.$minor.x)
+              echo "ref=$COMMIT_HASH" >> $GITHUB_OUTPUT
+          fi
         else
           echo "ref=" >> $GITHUB_OUTPUT
         fi
