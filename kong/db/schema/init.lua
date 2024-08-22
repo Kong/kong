@@ -1774,7 +1774,6 @@ function Schema:process_auto_fields(data, context, nulls, opts)
                 data[k] = deprecation and table_merge(v, source)
                                        or table_merge(source, v)
 
-                data[k] = table_merge(source, v)
               elseif not deprecation or data[k] == nil then
                 data[k] = v
               end
