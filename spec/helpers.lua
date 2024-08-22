@@ -6,6 +6,7 @@
 -- @module spec.helpers
 
 local CONSTANTS = require("spec.details.constants")
+local misc = require("spec.details.misc")
 
 local PLUGINS_LIST
 
@@ -36,7 +37,6 @@ local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
 local shell = require "resty.shell"
-local ffi = require "ffi"
 local ssl = require "ngx.ssl"
 local ws_client = require "resty.websocket.client"
 local table_clone = require "table.clone"
@@ -50,10 +50,15 @@ local colors = require "ansicolors"
 local strip = require("kong.tools.string").strip
 local splitlines = require("pl.stringx").splitlines
 
-ffi.cdef [[
-  int setenv(const char *name, const char *value, int overwrite);
-  int unsetenv(const char *name);
-]]
+
+local unpack = misc.unpack
+local intercept = misc.intercept
+local openresty_ver_num = misc.openresty_ver_num()
+local unindent = misc.unindent
+local make_yaml_file = misc.make_yaml_file
+local setenv = misc.setenv
+local unsetenv = misc.unsetenv
+local deep_sort = misc.deep_sort
 
 local kong_exec   -- forward declaration
 
@@ -70,101 +75,6 @@ do
   table.insert(paths, package.path)
   package.path = table.concat(paths, ";")
 end
-
---- Returns the OpenResty version.
--- Extract the current OpenResty version in use and returns
--- a numerical representation of it.
--- Ex: `1.11.2.2` -> `11122`
--- @function openresty_ver_num
-local function openresty_ver_num()
-  local nginx_bin = assert(nginx_signals.find_nginx_bin())
-  local _, _, stderr = shell.run(string.format("%s -V", nginx_bin), nil, 0)
-
-  local a, b, c, d = string.match(stderr or "", "openresty/(%d+)%.(%d+)%.(%d+)%.(%d+)")
-  if not a then
-    error("could not execute 'nginx -V': " .. stderr)
-  end
-
-  return tonumber(a .. b .. c .. d)
-end
-
---- Unindent a multi-line string for proper indenting in
--- square brackets.
--- @function unindent
--- @usage
--- local u = helpers.unindent
---
--- u[[
---     hello world
---     foo bar
--- ]]
---
--- -- will return: "hello world\nfoo bar"
-local function unindent(str, concat_newlines, spaced_newlines)
-  str = string.match(str, "(.-%S*)%s*$")
-  if not str then
-    return ""
-  end
-
-  local level  = math.huge
-  local prefix = ""
-  local len
-
-  str = str:match("^%s") and "\n" .. str or str
-  for pref in str:gmatch("\n(%s+)") do
-    len = #prefix
-
-    if len < level then
-      level  = len
-      prefix = pref
-    end
-  end
-
-  local repl = concat_newlines and "" or "\n"
-  repl = spaced_newlines and " " or repl
-
-  return (str:gsub("^\n%s*", ""):gsub("\n" .. prefix, repl):gsub("\n$", ""):gsub("\\r", "\r"))
-end
-
-
---- Set an environment variable
--- @function setenv
--- @param env (string) name of the environment variable
--- @param value the value to set
--- @return true on success, false otherwise
-local function setenv(env, value)
-  return ffi.C.setenv(env, value, 1) == 0
-end
-
-
---- Unset an environment variable
--- @function unsetenv
--- @param env (string) name of the environment variable
--- @return true on success, false otherwise
-local function unsetenv(env)
-  return ffi.C.unsetenv(env) == 0
-end
-
-
---- Write a yaml file.
--- @function make_yaml_file
--- @param content (string) the yaml string to write to the file, if omitted the
--- current database contents will be written using `kong config db_export`.
--- @param filename (optional) if not provided, a temp name will be created
--- @return filename of the file written
-local function make_yaml_file(content, filename)
-  local filename = filename or pl_path.tmpname() .. ".yml"
-  if content then
-    local fd = assert(io.open(filename, "w"))
-    assert(fd:write(unindent(content)))
-    assert(fd:write("\n")) -- ensure last line ends in newline
-    assert(fd:close())
-  else
-    assert(kong_exec("config db_export --conf "..CONSTANTS.TEST_CONF_PATH.." "..filename))
-  end
-  return filename
-end
-
 
 local get_available_port
 do
@@ -528,25 +438,6 @@ end
 -----------------
 local resty_http_proxy_mt = setmetatable({}, { __index = http })
 resty_http_proxy_mt.__index = resty_http_proxy_mt
-
-local pack = function(...) return { n = select("#", ...), ... } end
-local unpack = function(t) return unpack(t, 1, t.n) end
-
---- Prints all returned parameters.
--- Simple debugging aid, it will pass all received parameters, hence will not
--- influence the flow of the code. See also `fail`.
--- @function intercept
--- @see fail
--- @usage -- modify
--- local a,b = some_func(c,d)
--- -- into
--- local a,b = intercept(some_func(c,d))
-local function intercept(...)
-  local args = pack(...)
-  print(require("pl.pretty").write(args))
-  return unpack(args)
-end
-
 
 -- Prepopulate Schema's cache
 Schema.new(consumers_schema_def)
@@ -2408,47 +2299,6 @@ Expected to not contain:
 luassert:register("assertion", "contains", contains,
                   "assertion.contains.negative",
                   "assertion.contains.positive")
-
-local deep_sort do
-  local function deep_compare(a, b)
-    if a == nil then
-      a = ""
-    end
-
-    if b == nil then
-      b = ""
-    end
-
-    deep_sort(a)
-    deep_sort(b)
-
-    if type(a) ~= type(b) then
-      return type(a) < type(b)
-    end
-
-    if type(a) == "table" then
-      return deep_compare(a[1], b[1])
-    end
-
-    -- compare cjson.null or ngx.null
-    if type(a) == "userdata" and type(b) == "userdata" then
-      return false
-    end
-
-    return a < b
-  end
-
-  function deep_sort(t)
-    if type(t) == "table" then
-      for _, v in pairs(t) do
-        deep_sort(v)
-      end
-      table.sort(t, deep_compare)
-    end
-
-    return t
-  end
-end
 
 
 local function copy_errlog(errlog_path)
