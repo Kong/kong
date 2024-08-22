@@ -120,6 +120,8 @@ end
 -- @param value the value to set
 -- @return true on success, false otherwise
 local function setenv(env, value)
+  assert(type(env) == "string", "env must be a string")
+  assert(type(value) == "string", "value must be a string")
   return ffi.C.setenv(env, value, 1) == 0
 end
 
@@ -129,6 +131,7 @@ end
 -- @param env (string) name of the environment variable
 -- @return true on success, false otherwise
 local function unsetenv(env)
+  assert(type(env) == "string", "env must be a string")
   return ffi.C.unsetenv(env) == 0
 end
 
