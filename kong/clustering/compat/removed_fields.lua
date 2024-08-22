@@ -197,6 +197,7 @@ return {
       "llm.model.options.bedrock",
       "llm.auth.aws_access_key_id",
       "llm.auth.aws_secret_access_key",
+      "llm.auth.allow_override",
     },
     ai_response_transformer = {
       "max_request_body_size",
@@ -206,6 +207,7 @@ return {
       "llm.model.options.bedrock",
       "llm.auth.aws_access_key_id",
       "llm.auth.aws_secret_access_key",
+      "llm.auth.allow_override",
     },
     prometheus = {
       "ai_metrics",
