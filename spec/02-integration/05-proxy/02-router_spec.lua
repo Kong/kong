@@ -2682,6 +2682,7 @@ do
     helpers.setenv("KONG_ROUTER_FLAVOR", flavor)
 
     package.loaded["spec.helpers"] = nil
+    package.loaded["spec.details.misc"] = nil
     package.loaded["kong.global"] = nil
     package.loaded["kong.cache"] = nil
     package.loaded["kong.db"] = nil
