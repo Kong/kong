@@ -4256,6 +4256,12 @@ describe("schema", function()
         name = "test",
         fields = {
           { name = { type = "string" } },
+          { record = {
+            type = "record",
+              fields = {
+                { x = { type = "string" } }
+              },
+          }},
         },
         shorthand_fields = {
           {
@@ -4268,12 +4274,24 @@ describe("schema", function()
               end,
             },
           },
+          {
+            y = {
+              type = "string",
+              func = function(value)
+                return {
+                  record = {
+                    x = value,
+                  },
+                }
+              end,
+            },
+          },
         },
       })
 
-      local input = { username = "test1", name = "ignored" }
+      local input = { username = "test1", name = "ignored", record = { x = "ignored" }, y = "test1" }
       local output, _ = TestSchema:process_auto_fields(input)
-      assert.same({ name = "test1" }, output)
+      assert.same({ name = "test1", record = { x = "test1" } }, output)
     end)
 
     it("does not take precedence if deprecated", function()
@@ -4281,6 +4299,12 @@ describe("schema", function()
         name = "test",
         fields = {
           { name = { type = "string" } },
+          { record = {
+            type = "record",
+            fields = {
+              { x = { type = "string" } }
+            },
+          }},
         },
         shorthand_fields = {
           {
@@ -4297,12 +4321,28 @@ describe("schema", function()
               },
             },
           },
+          {
+            y = {
+              type = "string",
+              func = function(value)
+                return {
+                  record = {
+                    x = value,
+                  },
+                }
+              end,
+              deprecation = {
+                message = "y is deprecated, please use record.x instead",
+                removal_in_version = "4.0",
+              },
+            },
+          },
         },
       })
 
-      local input = { username = "ignored", name = "test1" }
+      local input = { username = "ignored", name = "test1", record = { x = "test1" }, y = "ignored"  }
       local output, _ = TestSchema:process_auto_fields(input)
-      assert.same({ name = "test1" }, output)
+      assert.same({ name = "test1", record = { x = "test1" }  }, output)
     end)
 
     it("can produce multiple fields", function()
