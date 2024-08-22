@@ -4,6 +4,7 @@
 local ffi = require("ffi")
 local pl_path = require("pl.path")
 local shell = require("resty.shell")
+local pkey = require "resty.openssl.pkey"
 local conf_loader = require("kong.conf_loader")
 local nginx_signals = require("kong.cmd.utils.nginx_signals")
 local strip = require("kong.tools.string").strip
@@ -264,6 +265,26 @@ function kong_exec(cmd, env, returns, env_vars)
 end
 
 
+--- Generate asymmetric keys
+-- @function generate_keys
+-- @param fmt format to receive the public and private pair
+-- @return `pub, priv` key tuple or `nil + err` on failure
+local function generate_keys(fmt)
+  fmt = string.upper(fmt) or "JWK"
+  local key, err = pkey.new({
+    -- only support RSA for now
+    type = 'RSA',
+    bits = 2048,
+    exp = 65537
+  })
+  assert(key)
+  assert(err == nil, err)
+  local pub = key:tostring("public", fmt)
+  local priv = key:tostring("private", fmt)
+  return pub, priv
+end
+
+
 return {
   pack = pack,
   unpack = unpack,
@@ -279,4 +300,6 @@ return {
   conf = conf,
   exec = exec,
   kong_exec = kong_exec,
+
+  generate_keys = generate_keys,
 }

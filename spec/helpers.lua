@@ -32,7 +32,6 @@ local Entity = require "kong.db.schema.entity"
 local cjson = require "cjson.safe"
 local kong_table = require "kong.tools.table"
 local http = require "resty.http"
-local pkey = require "resty.openssl.pkey"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
 local shell = require "resty.shell"
@@ -3887,26 +3886,6 @@ local function clustering_client(opts)
 end
 
 
---- Generate asymmetric keys
--- @function generate_keys
--- @param fmt format to receive the public and private pair
--- @return `pub, priv` key tuple or `nil + err` on failure
-local function generate_keys(fmt)
-  fmt = string.upper(fmt) or "JWK"
-  local key, err = pkey.new({
-    -- only support RSA for now
-    type = 'RSA',
-    bits = 2048,
-    exp = 65537
-  })
-  assert(key)
-  assert(err == nil, err)
-  local pub = key:tostring("public", fmt)
-  local priv = key:tostring("private", fmt)
-  return pub, priv
-end
-
-
 local make_temp_dir
 do
   local seeded = false
@@ -4141,6 +4120,7 @@ end
   setenv = misc.setenv,
   unsetenv = misc.unsetenv,
   deep_sort = misc.deep_sort,
+  generate_keys = misc.generate_keys,
 
   -- launching Kong subprocesses
   start_kong = start_kong,
@@ -4154,7 +4134,6 @@ end
   start_grpc_target = start_grpc_target,
   stop_grpc_target = stop_grpc_target,
   get_grpc_target_port = get_grpc_target_port,
-  generate_keys = generate_keys,
 
   -- plugin compatibility test
   use_old_plugin = use_old_plugin,
