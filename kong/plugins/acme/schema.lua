@@ -1,8 +1,7 @@
 local typedefs = require "kong.db.schema.typedefs"
 local reserved_words = require "kong.plugins.acme.reserved_words"
 local redis_schema = require "kong.tools.redis.schema"
-
-local tablex = require "pl.tablex"
+local shallow_copy = require("kong.tools.table").shallow_copy
 
 local CERT_TYPES = { "rsa", "ecc" }
 
@@ -82,7 +81,7 @@ local LEGACY_SCHEMA_TRANSLATIONS = {
   }},
 }
 
-local REDIS_STORAGE_SCHEMA = tablex.copy(redis_schema.config_schema.fields)
+local REDIS_STORAGE_SCHEMA = shallow_copy(redis_schema.config_schema.fields)
 table.insert(REDIS_STORAGE_SCHEMA, { extra_options = {
   description = "Custom ACME Redis options",
   type = "record",
