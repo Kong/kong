@@ -51,14 +51,6 @@ local strip = require("kong.tools.string").strip
 local splitlines = require("pl.stringx").splitlines
 
 
-local unpack = misc.unpack
-local intercept = misc.intercept
-local openresty_ver_num = misc.openresty_ver_num()
-local unindent = misc.unindent
-local make_yaml_file = misc.make_yaml_file
-local setenv = misc.setenv
-local unsetenv = misc.unsetenv
-local deep_sort = misc.deep_sort
 local conf = misc.conf
 local exec = misc.exec
 local kong_exec = misc.kong_exec
@@ -2273,7 +2265,7 @@ luassert:register("assertion", "fail", fail,
 -- local i = assert.contains("two", arr)        --> fails
 -- local i = assert.contains("ee$", arr, true)  --> passes; i == 2
 local function contains(state, args)
-  local expected, arr, pattern = unpack(args)
+  local expected, arr, pattern = misc.unpack(args)
   local found
   for i = 1, #arr do
     if (pattern and string.match(arr[i], expected)) or arr[i] == expected then
@@ -2836,13 +2828,13 @@ do
     return found
   end
 
-  say:set("assertion.match_line.negative", unindent [[
+  say:set("assertion.match_line.negative", misc.unindent [[
     Expected file at:
     %s
     To match:
     %s
   ]])
-  say:set("assertion.match_line.positive", unindent [[
+  say:set("assertion.match_line.positive", misc.unindent [[
     Expected file at:
     %s
     To not match:
@@ -2886,13 +2878,13 @@ local function match_re(_, args)
   end
 end
 
-say:set("assertion.match_re.negative", unindent [[
+say:set("assertion.match_re.negative", misc.unindent [[
     Expected log:
     %s
     To match:
     %s
   ]])
-say:set("assertion.match_re.positive", unindent [[
+say:set("assertion.match_re.positive", misc.unindent [[
     Expected log:
     %s
     To not match:
@@ -3978,10 +3970,10 @@ local function use_old_plugin(name)
 
   local origin_lua_path = os.getenv("LUA_PATH")
   -- put the old plugin path at first
-  assert(setenv("LUA_PATH", old_plugin_path .. "/?.lua;" .. old_plugin_path .. "/?/init.lua;" .. origin_lua_path), "failed to set LUA_PATH env")
+  assert(misc.setenv("LUA_PATH", old_plugin_path .. "/?.lua;" .. old_plugin_path .. "/?/init.lua;" .. origin_lua_path), "failed to set LUA_PATH env")
 
   return function ()
-    setenv("LUA_PATH", origin_lua_path)
+    misc.setenv("LUA_PATH", origin_lua_path)
     if temp_dir then
       pl_dir.rmtree(temp_dir)
     end
@@ -4143,13 +4135,13 @@ end
   stress_generator = stress_generator,
 
   -- miscellaneous
-  intercept = intercept,
-  openresty_ver_num = openresty_ver_num(),
-  unindent = unindent,
-  make_yaml_file = make_yaml_file,
-  setenv = setenv,
-  unsetenv = unsetenv,
-  deep_sort = deep_sort,
+  intercept = misc.intercept,
+  openresty_ver_num = misc.openresty_ver_num(),
+  unindent = misc.unindent,
+  make_yaml_file = misc.make_yaml_file,
+  setenv = misc.setenv,
+  unsetenv = misc.unsetenv,
+  deep_sort = misc.deep_sort,
 
   -- launching Kong subprocesses
   start_kong = start_kong,
