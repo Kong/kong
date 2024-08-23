@@ -139,6 +139,7 @@ function _M.new(config)
       initial_retry_delay = 0.2,
       max_retry_time = 60,
       max_retry_delay = 60,
+      concurrency_limit = 1,
     }
   }
 
