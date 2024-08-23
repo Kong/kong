@@ -7,6 +7,8 @@
 
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
+local sha256_hex = require("kong.tools.sha256").sha256_hex
+local uuid = require("kong.tools.uuid").uuid
 
 local UNLICENSED = "UNLICENSED"
 
@@ -344,6 +346,107 @@ describe("Keyring license encryption #postgres", function()
 
       await_license(admin, license_key, "expected license activation after keyring recovery")
       check_ee_plugin(proxy, "after license activation/keyring recovery")
+    end)
+  end)
+
+  describe("admin API", function()
+    local node = new_conf({
+      prefix = "servroot",
+      database = "postgres",
+      keyring_recovery_public_key = "spec-ee/fixtures/keyring/pub.pem",
+    })
+
+    local admin
+    local db
+
+    lazy_setup(function()
+      reset_distribution = setup_distribution()
+
+      local _
+      _, db = assert(helpers.get_db_utils("postgres", {
+        "routes",
+        "services",
+        "plugins",
+        "keyring_meta",
+        "keyring_keys",
+        "licenses",
+      } ))
+
+      assert(helpers.start_kong(node))
+
+      admin = helpers.admin_client()
+    end)
+
+    lazy_teardown(function()
+      if admin then
+        admin:close()
+      end
+
+      helpers.stop_kong(node.prefix)
+      assert(db:truncate())
+      reset_distribution()
+    end)
+
+    local unique_err
+    local license_id
+
+    before_each(function()
+      db.licenses:truncate()
+
+      local res = admin:post("/licenses", json({ payload = license }))
+      res = assert.response(res).has.jsonbody()
+
+      assert.is_table(res)
+      assert.is_string(res.payload)
+      assert.is_string(res.checksum)
+      assert.equals(sha256_hex(res.payload), res.checksum)
+
+      license_id = assert.is_string(res.id)
+
+      unique_err = db.errors:unique_violation({ checksum = res.checksum })
+      -- this field is exposed via the Lua API but is stripped from admin
+      -- API responses
+      unique_err.strategy = nil
+    end)
+
+    it("POST /licenses rejects duplicate payloads", function()
+      local res = admin:post("/licenses", json({ payload = license }))
+      assert.res_status(409, res)
+      res = assert.response(res).has.jsonbody()
+      assert.same(unique_err, res)
+    end)
+
+    it("PUT /licenses/:uuid rejects duplicate payloads", function()
+      local res = admin:put("/licenses/" .. uuid(), json({ payload = license }))
+      assert.res_status(409, res)
+      res = assert.response(res).has.jsonbody()
+      assert.same(unique_err, res)
+    end)
+
+    it("PATCH /licenses/:uuid updates the checksum when the payload changes", function()
+      local update = cjson.decode(license)
+      update.license.payload.admin_seats = "60"
+      update = cjson.encode(update)
+
+      local res = admin:patch("/licenses/" .. license_id, json({ payload = update }))
+      assert.res_status(200, res)
+      res = assert.response(res).has.jsonbody()
+      assert.equals(update, res.payload)
+      assert.equals(sha256_hex(update), res.checksum)
+    end)
+
+    it("PATCH /licenses/:uuid rejects updates to the checksum field", function()
+      local res = admin:patch("/licenses/" .. license_id, json({ checksum = "abcdefg" }))
+      assert.res_status(400, res)
+      res = assert.response(res).has.jsonbody()
+      assert.same({
+        code = 2,
+        fields = {
+          checksum = "immutable field cannot be updated"
+        },
+        message = "schema violation (checksum: immutable field cannot be updated)",
+        name = "schema violation"
+      }, res)
     end)
   end)
 

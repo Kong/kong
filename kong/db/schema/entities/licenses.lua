@@ -9,6 +9,8 @@ local typedefs = require "kong.db.schema.typedefs"
 
 local license_helpers = require "kong.enterprise_edition.license_helpers"
 
+local sha256_hex = require("kong.tools.sha256").sha256_hex
+
 return {
   name = "licenses",
   primary_key = { "id" },
@@ -26,5 +28,25 @@ return {
     },
     { created_at     = typedefs.auto_timestamp_s },
     { updated_at     = typedefs.auto_timestamp_s },
+    { checksum       = { type = "string",
+                         description = "The computed checksum of the license payload.",
+                         unique = true,
+                         immutable = true,
+                       },
+    },
+  },
+  transformations = {
+    {
+      input = { "payload" },
+      on_write = function(payload)
+        local result = {}
+
+        if type(payload) == "string" then
+          result.checksum = sha256_hex(payload)
+        end
+
+        return result
+      end,
+    },
   },
 }
