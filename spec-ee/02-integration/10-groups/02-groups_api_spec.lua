@@ -22,12 +22,12 @@ end
 
 for _, strategy in helpers.each_strategy() do
   describe("Groups API #" .. strategy, function()
-    local function get_request(url, token)
+    local function get_request(url, token, status)
       if not token then
         token ="letmein-default"
       end
 
-      local json = assert.res_status(200, assert(client:send {
+      local json = assert.res_status(status or 200, assert(client:send {
         method = "GET",
         path = url,
         headers = {
@@ -264,11 +264,18 @@ for _, strategy in helpers.each_strategy() do
         assert(db.group_rbac_roles:insert(mapping))
       end
 
-      describe("GET", function()
-        local group, role, workspace, token
+      -- the super-admin's token of the default workspace
+      local token = "letmein-default"
 
+      lazy_setup(function()
+        -- insert default workspace and super-admin
+        ee_helpers.register_rbac_resources(db)
+      end)
+
+      describe("GET", function()
+        local group, role, workspace, non_default_token
         lazy_setup(function()
-          group, role, workspace, token = insert_entities()
+          group, role, workspace, non_default_token = insert_entities()
           insert_mapping(group, role, workspace)
         end)
 
@@ -283,6 +290,10 @@ for _, strategy in helpers.each_strategy() do
           assert.same(res.data[1].workspace.id, workspace.id)
           assert.same(res.data[1].rbac_role.id, role.id)
         end)
+        
+        it("The admin has a role super-admin of the non-default workspace shouldn't list roles by a group id", function()
+          get_request("/groups/" .. group.id .. "/roles", non_default_token, 403)
+        end)
 
         it("The endpoint should list roles by a group name", function()
           local res = get_request("/groups/" .. group.name .. "/roles", token)
@@ -290,6 +301,10 @@ for _, strategy in helpers.each_strategy() do
           assert.same(res.data[1].group.id, group.id)
           assert.same(res.data[1].workspace.id, workspace.id)
           assert.same(res.data[1].rbac_role.id, role.id)
+        end)
+
+        it("The admin has a role super-admin of the non-default workspace shouldn't list roles by a group name", function()
+          get_request("/groups/" .. group.name .. "/roles", non_default_token, 403)
         end)
 
         it("The endpoint should work with the 'offset' filter", function()
@@ -311,7 +326,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("POST", function()
-        local group, role, workspace, token
+        local group, role, workspace
 
         local function check_create(res_code, key, group, role, workspace)
           local json = assert.res_status(res_code, assert(client:send {
@@ -339,7 +354,7 @@ for _, strategy in helpers.each_strategy() do
         end
 
         lazy_setup(function()
-          group, role, workspace, token = insert_entities()
+          group, role, workspace = insert_entities()
           insert_mapping(group, role, workspace)
         end)
 
@@ -409,11 +424,9 @@ for _, strategy in helpers.each_strategy() do
           end
         end)
 
-        it("The endpoint should not create a mapping with incorrect ids", function()
+        it("The endpoint should not create a mapping with incorrect workspace ids", function()
+          -- insert a new role of the default workspace
           local _role = assert(db.rbac_roles:insert{ name = "test_role_" .. utils.uuid()})
-          local res_roles_default = get_request("/default/rbac/roles", token)
-
-          assert.same(_role.id, res_roles_default.data[1].id)
           check_create(404, group.id, group, _role, workspace)
         end)
 
@@ -429,7 +442,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("DELETE", function()
-        local group, role, workspace, token
+        local group, role, workspace
 
         local function check_delete(key)
           assert.res_status(204, assert(client:send {
@@ -451,7 +464,7 @@ for _, strategy in helpers.each_strategy() do
         end
 
         before_each(function()
-          group, role, workspace, token = insert_entities(workspace)
+          group, role, workspace = insert_entities(workspace)
           insert_mapping(group, role, workspace)
         end)
 
