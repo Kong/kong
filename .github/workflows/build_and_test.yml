@@ -70,6 +70,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0  # `git merge-base` requires the history
     - name: Build Info
       id: build-info
       run: |
