@@ -816,9 +816,20 @@ local function new(self)
   -- @tparam table parsed_reference the parsed reference
   -- @treturn string|nil the retrieved value from the vault, of `nil`
   -- @treturn string|nil a string describing an error if there was one
+  -- @treturn boolean|nil whether to resurrect value in case vault errors or doesn't return value
   -- @usage local value, err = get_from_vault(reference, strategy, config, cache_key, parsed_reference)
-  local function get_from_vault(reference, strategy, config, cache_key, parsed_reference)
+  local function get_from_vault(reference, strategy, config, cache_key, parsed_reference, resurrect)
     local value, err, ttl = invoke_strategy(strategy, config, parsed_reference)
+    if resurrect and value == nil then
+      local resurrected_value = SECRETS_CACHE:get(cache_key)
+      if resurrected_value then
+        return resurrected_value
+
+      else
+        return nil, fmt("could not get value from external vault (%s)", err)
+      end
+    end
+
     local cache_value, shdict_ttl, lru_ttl = get_cache_value_and_ttl(value, config, ttl)
     local ok, cache_err = SECRETS_CACHE:safe_set(cache_key, cache_value, shdict_ttl)
     if not ok then
@@ -1261,18 +1272,25 @@ local function new(self)
     -- If the TTL is still greater than the resurrect time
     -- we don't have to rotate the secret, except it if it
     -- negatively cached.
+    local resurrect
     local ttl = SECRETS_CACHE:ttl(new_cache_key)
     if ttl and SECRETS_CACHE:get(new_cache_key) ~= NEGATIVELY_CACHED_VALUE then
       local resurrect_ttl = max(config.resurrect_ttl or DAO_MAX_TTL, SECRETS_CACHE_MIN_TTL)
+      -- the secret is still within ttl, no need to refresh
       if ttl > resurrect_ttl then
         return true
       end
+
+      -- the secret is still within resurrect ttl time, so when we try to refresh the secret
+      -- we do not forciblly override it with a negative value, so that the cached value
+      -- can be resurrected
+      resurrect = ttl > SECRETS_CACHE_MIN_TTL
     end
 
     strategy = caching_strategy(strategy, config_hash)
 
-    -- we should refresh the secret at this point
-    local ok, err = get_from_vault(reference, strategy, config, new_cache_key, parsed_reference)
+    -- try to refresh the secret, according to the remaining time the cached value may or may not be refreshed.
+    local ok, err = get_from_vault(reference, strategy, config, new_cache_key, parsed_reference, resurrect)
     if not ok then
       return nil, fmt("could not retrieve value for reference %s (%s)", reference, err)
     end
