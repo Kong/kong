@@ -68,7 +68,7 @@ local function add_encryption_transformations(self, name, field)
       input = { name },
       on_write = function(value)
         local tbl = {}
-        set_field(tbl, name, keyring.encrypt(value))
+        set_field(tbl, name, keyring.encrypt(value, name, self))
         return tbl
       end,
       on_read = function(value)
@@ -83,7 +83,7 @@ local function add_encryption_transformations(self, name, field)
       on_write = function(value)
         local xs = {}
         for i, x in ipairs(value) do
-          xs[i] = keyring.encrypt(x)
+          xs[i] = keyring.encrypt(x, name, self)
         end
         local tbl = {}
         set_field(tbl, name, xs)

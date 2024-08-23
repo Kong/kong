@@ -79,12 +79,24 @@ end
 _M.backoff = backoff
 
 
-function _M.encrypt(p)
+function _M.encrypt(p, field_name, parent_schema)
   if not kong.configuration.keyring_enabled then
     return p
   end
 
   if not p then
+    return p
+  end
+
+  -- Prevent encryption of license.payload unless explicitly enabled by the
+  -- user. Putting this logic here instead of within the license entity schema
+  -- file has the effect of allowing decryption of pre-encrypted data, which
+  -- means that a user will not get stuck in an unrecoverable state if they
+  -- switch `keyring_encrypt_license` from `on` to `off`
+  if field_name == "payload"
+    and parent_schema and parent_schema.name == "licenses"
+    and not kong.configuration.keyring_encrypt_license
+  then
     return p
   end
 

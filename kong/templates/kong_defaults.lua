@@ -339,6 +339,7 @@ keyring_vault_auth_method = token
 keyring_vault_kube_role = default
 keyring_vault_kube_api_token_file = /run/secrets/kubernetes.io/serviceaccount/token
 keyring_recovery_public_key =
+keyring_encrypt_license = off
 
 event_hooks_enabled = true
 

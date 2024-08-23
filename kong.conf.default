@@ -2796,6 +2796,16 @@
                                  # should be read from the pod's filesystem, if using
                                  # a non-standard container platform setup.
 
+#kerying_encrypt_license = off
+                                 # Enables keyring encryption for license payloads stored
+                                 # in the database.
+                                 #
+                                 # **Warning:** For Kong deployments that rely entirely on
+                                 # the database for license provisioning (i.e. not using
+                                 # `KONG_LICENSE_DATA` or `KONG_LICENSE_PATH`), enabling
+                                 # this option will delay license activation until after
+                                 # the node's keyring has been activated.
+
 #untrusted_lua = sandbox
                                  # Controls loading of Lua functions from admin-supplied
                                  # sources such as the Admin API. LuaJIT bytecode

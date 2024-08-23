@@ -174,6 +174,7 @@ local function new_conf(extra)
     db_update_frequency = 1,
     keyring_enabled = "on",
     keyring_strategy = "cluster",
+    keyring_encrypt_license = "on",
     nginx_conf = "spec/fixtures/custom_nginx.template",
     plugins = "request-transformer-advanced",
     worker_state_update_frequency = 1,
@@ -207,6 +208,143 @@ describe("Keyring license encryption #postgres", function()
     license = assert(helpers.file.read("spec-ee/fixtures/mock_license.json"))
     license_key = assert(cjson.decode(license).license.payload.license_key)
     private_key = assert(helpers.file.read("spec-ee/fixtures/keyring/key.pem"))
+  end)
+
+  describe("keyring_encrypt_license = off", function()
+    local node
+    local admin, proxy
+    local db
+
+    lazy_setup(function()
+      reset_distribution = setup_distribution()
+    end)
+
+    before_each(function()
+      node = new_conf({
+        prefix = "servroot",
+        database = "postgres",
+        keyring_recovery_public_key = "spec-ee/fixtures/keyring/pub.pem",
+        keyring_encrypt_license = "off",
+      })
+
+      -- run migrations, reset tables
+      local bp
+      bp, db = helpers.get_db_utils("postgres", {
+        "routes",
+        "services",
+        "plugins",
+        "keyring_meta",
+        "keyring_keys",
+        "licenses",
+      } )
+
+      local service = assert(bp.services:insert({
+        path = "/request",
+      }))
+      assert(bp.routes:insert({
+        paths = { "/test" },
+        service = service,
+      }))
+
+      assert(bp.plugins:insert({
+        name = "request-transformer-advanced",
+        config = {
+          add = {
+            headers = {
+              "x-test:123",
+            },
+          },
+        },
+      }))
+    end)
+
+    after_each(function()
+      if proxy then
+        proxy:close()
+      end
+
+      if admin then
+        admin:close()
+      end
+
+      helpers.stop_kong(node.prefix)
+    end)
+
+    lazy_teardown(function()
+      assert(db:truncate())
+      reset_distribution()
+    end)
+
+    it("does not prevent license activation at startup", function()
+      assert(helpers.start_kong(node))
+
+      proxy = helpers.proxy_client()
+      proxy.reopen = true
+
+      admin = helpers.admin_client()
+
+      -- initial state
+      await_license(admin, UNLICENSED, "expected no active license at init")
+      assert_no_license_entities(admin, "before adding a license")
+      local res
+
+      -- add a new license
+      res = admin:post("/licenses", json({ payload = license }))
+      res = assert.response(res).has.jsonbody()
+      local license_id = assert.is_string(res.id)
+
+      -- license added
+      await_license(admin, license_key, "expected active license after adding one")
+      assert_get_licenses(admin, license_id, "after adding license")
+
+      -- sanity check: proxying is alive and well
+      check_ee_plugin(proxy, "after adding a license")
+
+      assert(helpers.restart_kong(node))
+
+      await_license(admin, license_key, "expected active license after restart")
+      check_ee_plugin(proxy, "after restart")
+    end)
+
+    it("can decrypt licenses that were previously-encrypted", function()
+      node.keyring_encrypt_license = "on"
+      assert(helpers.start_kong(node))
+
+      proxy = helpers.proxy_client()
+      proxy.reopen = true
+
+      admin = helpers.admin_client()
+
+      -- initial state
+      await_license(admin, UNLICENSED, "expected no active license at init")
+      assert_no_license_entities(admin, "before adding a license")
+
+      -- add a new license
+      local res
+      res = admin:post("/licenses", json({ payload = license }))
+      assert.res_status(201, res)
+      res = assert.response(res).has.jsonbody()
+      local license_id = assert.is_string(res.id)
+
+      -- license added
+      await_license(admin, license_key, "expected active license after adding one")
+      assert_get_licenses(admin, license_id, "after adding license")
+
+      -- sanity check: proxying is alive and well
+      check_ee_plugin(proxy, "after adding a license")
+
+      node.keyring_encrypt_license = "off"
+      assert(helpers.restart_kong(node))
+
+      await_license(admin, UNLICENSED, "after disabling encryption, before keyring recovery")
+      assert_encrypted_db_license_warning(node.prefix)
+
+      -- execute keyring recovery
+      recover_keyring(admin, private_key)
+
+      await_license(admin, license_key, "expected license activation after keyring recovery")
+      check_ee_plugin(proxy, "after license activation/keyring recovery")
+    end)
   end)
 
   describe("#traditional", function()

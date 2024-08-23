@@ -178,6 +178,7 @@ local EE_CONF_INFERENCES = {
   keyring_vault_auth_method = { enum = { "token", "kubernetes" }},
   keyring_vault_kube_role = { typ = "string" },
   keyring_vault_kube_api_token_file = { typ = "string" },
+  keyring_encrypt_license = { typ = "boolean" },
 
   event_hooks_enabled = { typ = "boolean" },
 

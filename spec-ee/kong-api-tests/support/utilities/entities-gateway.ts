@@ -152,7 +152,7 @@ export const createExpressionRouteForService = async (
   const resp = await axios({
     method: 'post',
     url,
-    data: `expression=${expression || '(http.path=="/apitest")'}`,    
+    data: `expression=${expression || '(http.path=="/apitest")'}`,
     headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
     },
@@ -797,8 +797,8 @@ export const deleteCache = async () => {
 };
 
 /**
- * 
- */ 
+ *
+ */
 export const getRouterFlavor = async () => {
   return (await axios(getUrl(''))).data.configuration.router_flavor
 };
