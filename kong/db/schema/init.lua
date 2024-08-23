@@ -6,6 +6,7 @@ local is_reference = require "kong.pdk.vault".is_reference
 local json         = require "kong.db.schema.json"
 local cjson_safe   = require "cjson.safe"
 local deprecation  = require "kong.deprecation"
+local inspect      = require "inspect"
 
 
 local compare_no_order = require "pl.tablex".compare_no_order
@@ -17,6 +18,7 @@ local table_merge = require "kong.tools.table".table_merge
 local null_aware_table_merge = require "kong.tools.table".null_aware_table_merge
 local table_path = require "kong.tools.table".table_path
 local is_array = require "kong.tools.table".is_array
+local join_string = require "kong.tools.string".join
 
 
 local setmetatable = setmetatable
@@ -1704,6 +1706,30 @@ local function collect_field_reference(refs, key, reference)
 end
 
 
+local function validate_deprecation_exclusiveness(data, shorthand_value, shorthand_name, shorthand_definition)
+  if shorthand_value and shorthand_value ~= ngx.null and shorthand_definition.deprecation and shorthand_definition.deprecation.replaced_with then
+    for _, replaced_with_element in ipairs(shorthand_definition.deprecation.replaced_with) do
+      local new_field_value = replaced_with_element.translation and replaced_with_element.translation(data)
+                                                                or table_path(data, replaced_with_element.path)
+
+      if new_field_value and
+        new_field_value ~= ngx.null and
+        not deepcompare(new_field_value, shorthand_value) then
+        local new_field_name = join_string(".", replaced_with_element.path)
+
+        return nil, string.format(
+          "both deprecated and new field are used but their values mismatch: %s = %s vs %s = %s",
+          shorthand_name, inspect(shorthand_value),
+          new_field_name, inspect(new_field_value)
+        )
+      end
+    end
+  end
+
+  return true
+end
+
+
 --- Given a table, update its fields whose schema
 -- definition declares them as `auto = true`,
 -- based on its CRUD operation context, and set
@@ -1737,8 +1763,12 @@ function Schema:process_auto_fields(data, context, nulls, opts)
       local value = data[sname]
       if value ~= nil then
         local _, err = self:validate_field(sdata, value)
+        local _, deprecation_error = validate_deprecation_exclusiveness(data, value, sname, sdata)
         if err then
           errs[sname] = err
+          has_errs = true
+        elseif deprecation_error then
+          errs[sname] = deprecation_error
           has_errs = true
         else
           data[sname] = nil
@@ -1751,7 +1781,9 @@ function Schema:process_auto_fields(data, context, nulls, opts)
             -- field value takes the precedence, otherwise the shorthand's
             -- return value takes the precedence.
             local deprecation = sdata.deprecation
+
             for k, v in pairs(new_values) do
+
               if type(v) == "table" then
                 local source = {}
                 if data[k] and data[k] ~= null then
