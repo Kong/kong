@@ -24,13 +24,19 @@ class CustomSpecReporter extends Spec {
           fs.writeFileSync(reportFile, '');
         }
 
-        let specFile = test.file.split('kong-api-tests/').pop();
+        // bubble up errors that happen not due to a regular assertion failures
+        if (!test.file) {
+          console.error(`Something wrong happened that is not a regular test failure`, test.err)
+          process.exit(1)
+        }
 
-        if (!failedSpecs.includes(specFile)) {
-          console.log(`This failed test will be rerun: ${specFile}`);
-          failedSpecs.push(specFile);
+        this.specFile = test.file.split('kong-api-tests/').pop();
+
+        if (!failedSpecs.includes(this.specFile)) {
+          console.log(`This failed test will be rerun: ${this.specFile}`);
+          failedSpecs.push(this.specFile);
           try {
-            return execSync(`echo ${specFile} >> failed-tests.txt`, {
+            return execSync(`echo ${this.specFile} >> failed-tests.txt`, {
               stdio: 'inherit',
             });
           } catch (error) {

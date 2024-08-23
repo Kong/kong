@@ -127,6 +127,9 @@ jobs:
         run: |
           if test -s failed-tests.txt; then
             npm run test-multiple -- --spec=$(cat failed-tests.txt)
+          else
+            echo -e "No failed test names were found, there is a different issue\nCheck the 'Execute Konnect API Tests' step for more details"
+            exit 1
           fi
         env:
           TEST_ENV: dev

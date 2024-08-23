@@ -198,12 +198,15 @@ jobs:
           HCV: 'false'
           GKE: 'true'
           GW_HOST: 'localhost'
-
+ 
       - name: Retry Failed E2E API Tests
         if: steps.execute_tests.outcome == 'failure'
         run: |
           if test -s failed-tests.txt; then
             npm run test-multiple -- --spec=$(cat failed-tests.txt)
+          else
+            echo -e "No failed test names were found, there is a different issue\nCheck the 'Execute Gateway API Tests' step for more details"
+            exit 1
           fi
         env:
           TEST_APP: gateway

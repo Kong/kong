@@ -325,6 +325,9 @@ jobs:
         run: |
           if test -s failed-tests.txt; then
             npm run test-multiple -- --spec=$(cat failed-tests.txt)
+          else
+            echo -e "No failed test names were found, there is a different issue\nCheck the 'Execute Gateway API Tests' step for more details"
+            exit 1
           fi
         env:
           AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
@@ -518,6 +521,9 @@ jobs:
         run: |
           if test -s failed-tests.txt; then
             npm run test-multiple -- --spec=$(cat failed-tests.txt)
+          else
+            echo -e "No failed test names were found, there is a different issue\nCheck the 'Execute Gateway API Tests' step for more details"
+            exit 1
           fi
         env:
           AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
@@ -706,6 +712,9 @@ jobs:
         run: |
           if test -s failed-tests.txt; then
             npm run test-multiple -- --spec=$(cat failed-tests.txt)
+          else
+            echo -e "No failed test names were found, there is a different issue\nCheck the 'Execute Gateway API Tests' step for more details"
+            exit 1
           fi
         env:
           AZURE_FUNCTION_KEY: ${{ secrets.TEST_API_AZURE_FUNCTION_KEY }}
