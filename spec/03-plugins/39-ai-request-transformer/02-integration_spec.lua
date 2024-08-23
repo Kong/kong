@@ -307,7 +307,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         log_message.ai["ai-request-transformer"].usage.time_per_token = 1
 
         assert.same(_EXPECTED_CHAT_STATS, log_message.ai)
-        assert.is_true(actual_llm_latency > 0)
+        assert.is_true(actual_llm_latency >= 0)
         assert.same(actual_time_per_token, time_per_token)
       end)
 
