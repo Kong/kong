@@ -1542,7 +1542,7 @@
 # It provides observable statistics, you can retrieve them through the Admin API
 # `/status/dns`.
 
-#new_dns_client = on             # Enable the new DNS resolver
+#new_dns_client = off            # Enable or disable the new DNS resolver
 
 #resolver_address = <name servers parsed from resolv.conf>
                                  # Comma-separated list of nameservers, each
