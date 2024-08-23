@@ -57,7 +57,24 @@ function test.init()
 end
 
 
+function test.pause()
+  local shm = ngx.shared[test.SHM_NAME]
+  shm:set("paused", true)
+  return kong.response.exit(200, { message = "succeed" })
+end
+
+
+function test.is_running()
+  local shm = ngx.shared[test.SHM_NAME]
+  return shm:get("paused") ~= true
+end
+
+
 function test.get(conf, resource, version)
+  if not test.is_running() then
+    return nil, "Vault server paused"
+  end
+
   local secret = get_from_shm(resource, version)
 
   kong.log.inspect({
@@ -100,6 +117,10 @@ end
 
 
 function test.api()
+  if not test.is_running() then
+    return kong.response.exit(503, { message = "Vault server paused" })
+  end
+
   local shm       = assert(ngx.shared[test.SHM_NAME])
   local secret    = assert(ngx.var.secret)
   local args      = assert(kong.request.get_query())
@@ -208,6 +229,18 @@ function test.client.get(secret, version)
 end
 
 
+function test.client.pause()
+  local client = assert(http.new())
+
+  local uri = fmt("http://127.0.0.1:%d/pause", test.PORT)
+
+  local res, err = client:request_uri(uri, { method = "GET" })
+  assert(err == nil, "failed GET " .. uri .. ": " .. tostring(err))
+
+  return cjson.decode(res.body)
+end
+
+
 test.http_mock = [[
   lua_shared_dict ]] .. test.SHM_NAME .. [[ 5m;
 
@@ -218,6 +251,12 @@ test.http_mock = [[
     location ~^/secret/(?<secret>.+) {
       content_by_lua_block {
         require("kong.vaults.test").api()
+      }
+    }
+
+    location ~^/pause {
+      content_by_lua_block {
+        require("kong.vaults.test").pause()
       }
     }
   }
