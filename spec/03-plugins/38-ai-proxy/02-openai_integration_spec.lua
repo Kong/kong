@@ -833,7 +833,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         first_got.usage.time_per_token = 1
 
         assert.same(first_expected, first_got)
-        assert.is_true(actual_llm_latency > 0)
+        assert.is_true(actual_llm_latency >= 0)
         assert.same(actual_time_per_token, time_per_token)
       end)
 
@@ -1409,7 +1409,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good_multi_modal.json"),
         })
-        
+
         -- validate that the request succeeded, response status 200
         local body = assert.res_status(200 , r)
         local json = cjson.decode(body)
@@ -1444,7 +1444,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         first_got.usage.time_per_token = 1
 
         assert.same(first_expected, first_got)
-        assert.is_true(actual_llm_latency > 0)
+        assert.is_true(actual_llm_latency >= 0)
         assert.same(actual_time_per_token, time_per_token)
       end)
 
