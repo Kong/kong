@@ -50,7 +50,7 @@ local function redis_op(conf, op, key, args)
 
   local res = results[1]
   -- on error it returns false, err, otherwise it's the returned data
-  if type(res) == "table" and #res == 2 then
+  if type(res) == "table" and #res == 2 and op ~= "KEYS" then
     return res[1], res[2]
   end
 

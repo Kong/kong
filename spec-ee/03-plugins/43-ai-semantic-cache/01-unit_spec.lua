@@ -157,7 +157,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
       -- test truncate to two messages
       output = access_handler._format_chat(samples["llm/v1/chat"]["valid"]["messages"], 2, false, false)
-      assert.same(output, 'What is Pi?\n\nsystem: You are a mathematician.\n\n')
+      assert.same(output, 'What is 2π?\n\nassistant: Pi (π) is a mathematical constant that represents the ratio of a circle\'s circumference to its diameter. This ratio is constant for all circles and is approximately equal to 3.14159.\n\n')
 
       -- test discard system messages
       output = access_handler._format_chat(samples["llm/v1/chat"]["valid"]["messages"], 20, true, false)

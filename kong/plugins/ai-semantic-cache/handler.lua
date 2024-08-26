@@ -112,7 +112,7 @@ end
 local function format_chat(messages, countback, discard_system, discard_assistant)
   local buf = buffer.new()
 
-  for i = countback, 1, -1 do
+  for i = #messages, #messages - countback + 1, -1 do
     local message = messages[i]
     if message then
       if message.role == "system" and not discard_system then

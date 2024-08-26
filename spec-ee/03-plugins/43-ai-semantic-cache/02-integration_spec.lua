@@ -46,7 +46,11 @@ local MOCK_FIXTURE = [[
 
         if body.model == "text-embedding-3-large" and token == "Bearer openai-key" then
           ngx.status = 200
-          ngx.print(pl_file.read("spec-ee/fixtures/ai-proxy/embeddings/response/good.json"))
+          if body.input:match("what") then
+            ngx.print(pl_file.read("spec-ee/fixtures/ai-proxy/embeddings/response/good.json"))
+          else
+            ngx.print(pl_file.read("spec-ee/fixtures/ai-proxy/embeddings/response/good_2.json"))
+          end
         else
           ngx.status = 401
           ngx.print(pl_file.read("spec-ee/fixtures/ai-proxy/embeddings/response/unauthorized.json"))
@@ -96,6 +100,24 @@ local function wait_until_key_in_cache(vector_connector, key)
   end, 5)
 end
 
+local function wait_until_keys_deleted(vector_connector, keys)
+  -- wait until keys are deleted (we get a 200 on plugin API) and execute
+  -- a test function if provided.
+  helpers.wait_until(function()
+    local keys, err = vector_connector:keys(keys)
+    if #keys < 1 and not err then return true end
+    if err then return false end
+
+    for i = 1, #keys do
+      local res, err = vector_connector:delete(keys[i])
+      -- wait_until does not like asserts
+      if not res or err then return false end
+    end
+
+    return true
+  end, 5)      
+end
+
 local function wait_until_log_ok()
   local decoded
   local path = helpers.test_conf.prefix .. "/logs/ai-semantic-cache.log"
@@ -126,6 +148,15 @@ local PRE_FUNCTION_ACCESS_SCRIPT = [[
 
   if kong.request.get_header("x-test-stream-mode") and kong.request.get_header("x-test-stream-mode") == "true" then
     original_request.stream = true
+  end
+
+  local query_value = kong.request.get_query_arg("test")
+
+  if query_value == "true" then
+    table.insert(original_request.messages, {
+      role = "user",
+      content = "what is 1 + 1?"
+    })
   end
 
   llm_state.set_request_body_table(original_request)
@@ -181,7 +212,7 @@ local TEST_SCANARIOS = {
   { id = "97a884ab-5b8f-442a-8011-89dce47a68b8", desc = "good caching",                 vector_config = "good", embeddings_config = "good",                   embeddings_response = "good", chat_request = "good", chat_response = "good", stop_on_failure = true, message_countback = 10, expect = 200, model = "gpt-4-turbo" },
   { id = "4819bbfb-7669-4d7d-a7b8-1c60dc71d2a8", desc = "stream request rest response", vector_config = "good", embeddings_config = "good",                   embeddings_response = "good", chat_request = "good", chat_response = "good", stop_on_failure = true, message_countback = 10, expect = 200, stream_request = true },
   { id = "e73873a3-aec5-429d-b36d-8cfc6bcaed3a", desc = "rest request stream response", vector_config = "good", embeddings_config = "good",                   embeddings_response = "good", chat_request = "good", chat_response = "good", stop_on_failure = true, message_countback = 10, expect = 200, stream_response = true },
-  { id = "ee2b67b2-b766-46f4-b718-af5811f0e365", desc = "good caching short countback", vector_config = "good", embeddings_config = "good",                   embeddings_response = "good", chat_request = "good", chat_response = "good", stop_on_failure = true, message_countback = 1,  expect = 200 },
+  { id = "ee2b67b2-b766-46f4-b718-af5811f0e365", desc = "good caching short countback", vector_config = "good", embeddings_config = "good",                   embeddings_response = "good", chat_request = "good", chat_response = "good", stop_on_failure = true, message_countback = 1,  expect = 200, append_message = true },
   { id = "802b9c2d-efd3-4cdf-b141-4a8f4886b3f8", desc = "bad too few dimensions",       vector_config = "good", embeddings_config = "bad_too_few_dimensions", embeddings_response = "good", chat_request = "good", chat_response = "good", stop_on_failure = true, message_countback = 10, expect = 400 },
   { id = "ad7c8591-415a-49f4-8ae2-b36c3522fa0a", desc = "bad vectordb configuration",   vector_config = "bad",  embeddings_config = "good",                   embeddings_response = "good", chat_request = "good", chat_response = "good", stop_on_failure = true, message_countback = 10, expect = 400 },
   { id = "8d89e29e-76ee-4ba7-83a3-eb1c6157877a", desc = "bad embeddings configuration", vector_config = "good", embeddings_config = "bad_unauthorized",       embeddings_response = "good", chat_request = "good", chat_response = "good", stop_on_failure = true, message_countback = 10, expect = 400 },
@@ -428,12 +459,46 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                 assert.equal(#events, 2)  -- there's always 2 events in this setup, because we put the WHOLE response in one frame
                 assert.equal(string.sub(buf:get(), 0, 30), "A train is a mode of transport")
               else
-                local r = proxy_client:get(fmt("/%s/%s/%s", VECTORDB_STRATEGY, EMBEDDINGS_STRATEGY, TEST_SCENARIO.id), {
+                local QUERY_PARAMETERS = false
+                if TEST_SCENARIO.append_message then
+                  QUERY_PARAMETERS = true
+                end
+
+                local r = proxy_client:get(fmt("/%s/%s/%s?test=%s", VECTORDB_STRATEGY, EMBEDDINGS_STRATEGY, TEST_SCENARIO.id, QUERY_PARAMETERS), {
                   headers = {
                     ["content-type"] = "application/json",
                     ["accept"] = "application/json",
                   },
                 })
+
+                if TEST_SCENARIO.append_message then
+                  wait_until_keys_deleted(vector_connector, "kong_semantic_cache:" .. TEST_SCENARIO.id .. ":*")
+
+                  assert.res_status(200 , r)
+                  local x_cache_status = assert.header("X-Cache-Status", r)
+                  assert.equals("Miss", x_cache_status)
+
+                  local decoded = wait_until_log_ok()
+                  -- sanity
+                  assert.same(fmt("/%s/%s/%s", VECTORDB_STRATEGY, EMBEDDINGS_STRATEGY, TEST_SCENARIO.id), decoded.route)
+                  -- keys
+                  local ai_node = decoded.ai and decoded.ai["kong-ai-proxy-1"]
+                  assert.not_nil(ai_node and ai_node.cache)
+                  assert.not_nil(ai_node.cache.fetch_latency)
+                  assert.not_nil(ai_node.cache.embeddings_latency)
+                  assert.same("Miss", ai_node.cache.cache_status)
+                  assert.same("text-embedding-3-large", ai_node.cache.embeddings_model)
+                  assert.same("openai", ai_node.cache.embeddings_provider)
+
+                  -- one more request to get the cache hit
+                  r = proxy_client:get(fmt("/%s/%s/%s?test=%s", VECTORDB_STRATEGY, EMBEDDINGS_STRATEGY, TEST_SCENARIO.id, QUERY_PARAMETERS), {
+                    headers = {
+                      ["content-type"] = "application/json",
+                      ["accept"] = "application/json",
+                    },
+                  })
+                  wait_until_key_in_cache(vector_connector, "kong_semantic_cache:" .. TEST_SCENARIO.id .. ":*")
+                end
 
                 if TEST_SCENARIO.expect == 200 then
                   assert.res_status(200 , r)
