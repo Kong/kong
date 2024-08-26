@@ -26,8 +26,9 @@ local _log_prefix = "[clustering] "
 
 local KONG_VERSION = kong.version
 
-local CLUSTER_PROXY_SSL_TERMINATOR_SOCK = fmt("unix:%s/cluster_proxy_ssl_terminator.sock",
-                                              kong.configuration.socket_path)
+local CLUSTER_PROXY_SSL_TERMINATOR_SOCK = fmt("unix:%s/%s",
+                                              kong.configuration.socket_path,
+                                              constants.SOCKETS.CLUSTER_PROXY_SSL_TERMINATOR)
 
 local _M = {}
 
