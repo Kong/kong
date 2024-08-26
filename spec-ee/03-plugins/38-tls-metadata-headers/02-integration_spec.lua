@@ -8,6 +8,8 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local escape_uri = ngx.escape_uri
+local openssl_x509 = require "resty.openssl.x509"
+local to_hex = require "resty.string".to_hex
 
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
@@ -17,7 +19,7 @@ local fixture_path_from_prefix = "../" .. fixture_path
 
 local function read_fixture(filename)
   local content  = assert(helpers.utils.readfile(fixture_path .. filename))
-   return content
+  return content
 end
 
 
@@ -67,6 +69,22 @@ local tls_fixtures = { http_mock = {
           proxy_pass https://127.0.0.1:9443/anything;
       }
 
+        location = /intermediate_client {
+            proxy_ssl_certificate ]] .. fixture_path_from_prefix .. [[/intermediate_client_example.com.crt;
+            proxy_ssl_certificate_key ]] .. fixture_path_from_prefix .. [[/intermediate_client_example.com.key;
+            proxy_ssl_name example.com;
+            proxy_set_header Host example.com;
+            proxy_pass https://127.0.0.1:9443/get;
+        }
+
+        location = /good_client_multi-chain {
+            proxy_ssl_certificate ]] .. fixture_path_from_prefix .. [[/client_example.com.crt;
+            proxy_ssl_certificate_key ]] .. fixture_path_from_prefix .. [[/client_example.com.key;
+            proxy_ssl_name example.com;
+            proxy_set_header Host example.com;
+            proxy_pass https://127.0.0.1:9443/get;
+        }
+
     }
   ]], }
 }
@@ -75,7 +93,7 @@ for _, strategy in strategies() do
   describe("Plugin: tls plugins (access) [#" .. strategy .. "]", function()
     local proxy_ssl_client, tls_client
     local bp, db
-    local ca_cert
+    local ca_cert, intermediate_cert
     local service_https, route_https1, route_https2, route_https3
     local db_strategy = strategy ~= "off" and strategy or nil
 
@@ -140,6 +158,10 @@ for _, strategy in strategies() do
         cert = read_fixture("ca.crt"),
       }))
 
+      intermediate_cert = assert(db.ca_certificates:insert({
+        cert = read_fixture("intermediate_ca.crt"),
+      }))
+
       route_https3 = bp.routes:insert {
         service = { id = service_https.id, },
         hosts   = { "example.com" },
@@ -150,8 +172,13 @@ for _, strategy in strategies() do
       assert(bp.plugins:insert {
         name = "mtls-auth",
         route = { id = route_https3.id },
-        config = { skip_consumer_lookup = true,
-          ca_certificates = { ca_cert.id, }, },
+        config = {  skip_consumer_lookup = true,
+                    allow_partial_chain = true,
+                    ca_certificates = {
+                      ca_cert.id,
+                      intermediate_cert.id,
+                    },
+                  },
       })
 
       assert(bp.plugins:insert {
@@ -224,6 +251,78 @@ for _, strategy in strategies() do
         assert.equal("emailAddress=test@test.com,OU=PS,O=Kong,L=Sydney,ST=NSW,C=AU", json.headers["x-client-cert-issuer-dn-custom"])
         assert.equal("emailAddress=test@test.com,OU=PS,O=Kong,L=Sydney,ST=NSW,C=AU", json.headers["x-client-cert-subject-dn-custom"])
         assert.equal("88b74971771571c618e6c6215ba4f6ef71ccc2c7", json.headers["x-client-cert-fingerprint-custom"])
+      end)
+
+      it("returns HTTP 200 on https request if intermediate certificate validation passed", function()
+        local res = assert(tls_client:send {
+          method  = "GET",
+          path    = "/intermediate_client",
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        local m = assert(ngx.re.match(read_fixture("intermediate_client_example.com.crt"),
+                                [[^\X+(?<cert>-----BEGIN CERTIFICATE-----\X+-----END CERTIFICATE-----\X*)]]))
+
+        local cert = escape_uri(m["cert"])
+        assert.equal(cert, json.headers["x-client-cert"])
+        assert.equal("1001", json.headers["x-client-cert-serial"])
+        assert.equal("CN=Interm.", json.headers["x-client-cert-issuer-dn"])
+        assert.equal("CN=1.example.com", json.headers["x-client-cert-subject-dn"])
+        assert.equal("4cf374a3d5a4afc25b87b7bb315b4140dfc69165", json.headers["x-client-cert-fingerprint"])
+      end)
+
+      it("returns HTTP 200 on https request if multi-chain certificate validation passed", function()
+        local res = assert(tls_client:send {
+          method  = "GET",
+          path    = "/good_client_multi-chain",
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        local certs = read_fixture("client_example.com.crt")
+        local it = assert(ngx.re.gmatch(certs,
+                          [[(-----[BEGIN \S\ ]+?-----[\S\s]+?-----[END \S\ ]+?-----\X)]]))
+        local client_cert = assert(it()[1])
+        local escaped_client_cert = escape_uri(client_cert)
+        local x509 = assert(openssl_x509.new(client_cert, "PEM"))
+
+        -- x-client-cert should contain a single certificate
+        assert.equal("string", type(json.headers["x-client-cert"]))
+
+        assert.equal(escaped_client_cert, json.headers["x-client-cert"])
+        assert.equal("a65e0ff498d954b0ac33fd4f35f6d02de145667b", json.headers["x-client-cert-fingerprint"])
+
+        local xfcc_element = json.headers["x-forwarded-client-cert"]
+
+        local expected_cert = escaped_client_cert
+        local expected_subject = "\"CN=foo@example.com,O=Kong Testing,ST=California,C=US\""
+        local expected_hash = to_hex(x509:digest("sha256"))
+        local expected_chain = escape_uri(certs)
+        local expected_xfcc = string.format("Cert=%s;Subject=%s;Hash=%s;Chain=%s",
+                                            expected_cert, expected_subject, expected_hash, expected_chain)
+
+        local xfcc_cert = ngx.re.match(xfcc_element, [[Cert=([^;]+);]])
+        assert.equal(expected_cert, xfcc_cert[1])
+        local xfcc_subject = ngx.re.match(xfcc_element, [[Subject=("[^";]+");]])
+        assert.equal(expected_subject, xfcc_subject[1])
+        local xfcc_hash = ngx.re.match(xfcc_element, [[Hash=([^;]+);]])
+        assert.equal(expected_hash, xfcc_hash[1])
+        local xfcc_chain = ngx.re.match(xfcc_element, [[Chain=(\S+0A)]])
+        assert.equal(expected_chain, xfcc_chain[1])
+        assert.equal(expected_xfcc, xfcc_element)
+
+        -- should append the xfcc element correcly
+        local original_xfcc = "Subject=\"CN=test\";Hash=194a2e827dd41919e5385a8776ddc211326dd7fc78752c671e35001ba8ef1936"
+        res = assert(tls_client:send {
+          method  = "GET",
+          path    = "/good_client_multi-chain",
+          headers = {
+            ["x-forwarded-client-cert"] = original_xfcc,
+          }
+        })
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+        local xfcc = json.headers["x-forwarded-client-cert"]
+        assert.equal(original_xfcc .. "," .. xfcc_element, xfcc)
       end)
 
     end)

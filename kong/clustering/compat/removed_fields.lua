@@ -458,5 +458,8 @@ return {
     statsd_advanced = {
       "queue.concurrency_limit",
     },
+    tls_metadata_headers = {
+      "forwarded_client_cert_header_name",
+    },
   },
 }

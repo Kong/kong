@@ -1,0 +1,3 @@
+message: "**tls-metadata-headers**: Fixed an issue where intermediate certificates details were not included in X-Forwarded-Client-Cert header."
+type: bugfix
+scope: Plugin
