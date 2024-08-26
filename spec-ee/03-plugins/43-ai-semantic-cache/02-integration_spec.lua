@@ -136,6 +136,7 @@ local PRE_FUNCTION_ACCESS_SCRIPT = [[
     __key__ = "plugins:kong-ai-proxy-1:123456",
     model = {
       provider = "openai",
+      name = "%s",
     },
     logging = {
       log_statistics = true
@@ -177,6 +178,7 @@ local DIMENSIONS_LOOKUP = {
 
 local TEST_SCANARIOS = {
   { id = "97a884ab-5b8f-442a-8011-89dce47a68b6", desc = "good caching",                 vector_config = "good", embeddings_config = "good",                   embeddings_response = "good", chat_request = "good", chat_response = "good", stop_on_failure = true, message_countback = 10, expect = 200 },
+  { id = "97a884ab-5b8f-442a-8011-89dce47a68b8", desc = "good caching",                 vector_config = "good", embeddings_config = "good",                   embeddings_response = "good", chat_request = "good", chat_response = "good", stop_on_failure = true, message_countback = 10, expect = 200, model = "gpt-4-turbo" },
   { id = "4819bbfb-7669-4d7d-a7b8-1c60dc71d2a8", desc = "stream request rest response", vector_config = "good", embeddings_config = "good",                   embeddings_response = "good", chat_request = "good", chat_response = "good", stop_on_failure = true, message_countback = 10, expect = 200, stream_request = true },
   { id = "e73873a3-aec5-429d-b36d-8cfc6bcaed3a", desc = "rest request stream response", vector_config = "good", embeddings_config = "good",                   embeddings_response = "good", chat_request = "good", chat_response = "good", stop_on_failure = true, message_countback = 10, expect = 200, stream_response = true },
   { id = "ee2b67b2-b766-46f4-b718-af5811f0e365", desc = "good caching short countback", vector_config = "good", embeddings_config = "good",                   embeddings_response = "good", chat_request = "good", chat_response = "good", stop_on_failure = true, message_countback = 1,  expect = 200 },
@@ -209,13 +211,16 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
               strip_path = true,
               paths = { fmt("/%s/%s/%s", VECTORDB_STRATEGY, EMBEDDINGS_STRATEGY, TEST_SCENARIO.id) }
             })
+
+            local pre_function_script = fmt(PRE_FUNCTION_ACCESS_SCRIPT, TEST_SCENARIO.chat_request, TEST_SCENARIO.chat_response, TEST_SCENARIO.model or "gpt4")
+
             -- for creating request body contexts
             bp.plugins:insert {
               name = "pre-function",
               route = { id = rt.id },
               config = {
                 access = {
-                  [1] = fmt(PRE_FUNCTION_ACCESS_SCRIPT, TEST_SCENARIO.chat_request, TEST_SCENARIO.chat_request, TEST_SCENARIO.chat_response),
+                  [1] = pre_function_script,
                 },
                 header_filter = {
                   [1] = fmt(PRE_FUNCTION_HEADER_FILTER_SCRIPT, TEST_SCENARIO.stream_request),
@@ -305,7 +310,8 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             it("[#" .. VECTORDB_STRATEGY.. "] [#" .. EMBEDDINGS_STRATEGY .. "] " .. TEST_SCENARIO.desc, function()
               -- clear the vectordb for this test
               -- it has to run in here, because we can't get the plugin config from the before_each function
-              local vector_connector = vectordb.new(VECTORDB_STRATEGY, fmt("kong_semantic_cache:%s", TEST_SCENARIO.id), {
+              local model = TEST_SCENARIO.model or "gpt4"
+              local vector_connector = vectordb.new(VECTORDB_STRATEGY, fmt("kong_semantic_cache:%s:openai-%s", TEST_SCENARIO.id, model), {
                 strategy = VECTORDB_STRATEGY,
                 dimensions = DIMENSIONS_LOOKUP[TEST_SCENARIO.embeddings_config],
                 distance_metric = "cosine",
@@ -355,7 +361,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                 return
               end
 
-              wait_until_key_in_cache(vector_connector, "kong_semantic_cache:" .. TEST_SCENARIO.id .. ":*")
+              wait_until_key_in_cache(vector_connector, "kong_semantic_cache:" .. TEST_SCENARIO.id .. ":openai-" ..  model .. ":*")
 
               -- read again, should be cached now
               if TEST_SCENARIO.stream_response then

@@ -253,7 +253,14 @@ function AISemanticCaching:access(conf)
     return
   end
 
-  local namespace = SEMANTIC_CACHE_NAMESPACE_PREFIX .. conf.__plugin_id
+  local model = "NOT_SPECIFIED"
+  -- parse from ai-proxy-* conf
+  local aip_conf = llm_state.get_ai_proxy_conf()
+  if aip_conf and aip_conf.model then
+    model = aip_conf.model.provider .. "-" .. (kong.ctx.plugin.llm_model_requested or aip_conf.model.name)
+  end
+
+  local namespace = SEMANTIC_CACHE_NAMESPACE_PREFIX .. conf.__plugin_id .. ":" .. model
 
   local vectordb_driver, err = vectordb.new(conf.vectordb.strategy, namespace, conf.vectordb)
   if err then
@@ -407,8 +414,14 @@ function AISemanticCaching:log(conf)
     local storage_ttl = conf.storage_ttl or
                   conf.cache_control and calculate_resource_ttl(cc) or
                   conf.cache_ttl
-    local namespace = SEMANTIC_CACHE_NAMESPACE_PREFIX .. conf.__plugin_id
+    local model = "NOT_SPECIFIED"
+    -- parse from ai-proxy-* conf
+    local aip_conf = llm_state.get_ai_proxy_conf()
+    if aip_conf and aip_conf.model then
+      model = aip_conf.model.provider .. "-" .. (kong.ctx.plugin.llm_model_requested or aip_conf.model.name)
+    end
 
+    local namespace = SEMANTIC_CACHE_NAMESPACE_PREFIX .. conf.__plugin_id .. ":" .. model
     ngx.timer.at(0, function(premature, conf, embeddings, body, cache_key, storage_ttl)
       if premature then
         return
