@@ -344,7 +344,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                 assert.not_nil(ai_node and ai_node.cache)
                 assert.not_nil(ai_node.cache.fetch_latency)
                 assert.not_nil(ai_node.cache.embeddings_latency)
-                assert.same("Miss", ai_node.cache.cache_status)
+                assert.same("miss", ai_node.cache.cache_status)
                 assert.same("text-embedding-3-large", ai_node.cache.embeddings_model)
                 assert.same("openai", ai_node.cache.embeddings_provider)
 
@@ -453,7 +453,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                   assert.not_nil(ai_node and ai_node.cache)
                   assert.not_nil(ai_node.cache.fetch_latency)
                   assert.not_nil(ai_node.cache.embeddings_latency)
-                  assert.same("Hit", ai_node.cache.cache_status)
+                  assert.same("hit", ai_node.cache.cache_status)
                   assert.same("text-embedding-3-large", ai_node.cache.embeddings_model)
                   assert.same("openai", ai_node.cache.embeddings_provider)
 
