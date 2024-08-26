@@ -12,6 +12,7 @@ local gsub = string.gsub
 local match = string.match
 local lower = string.lower
 local pairs = pairs
+local re_match = ngx.re.match
 
 cjson.decode_array_with_array_mt(true)
 
@@ -144,6 +145,24 @@ function _M.normalize(value, schema)
 
   return value
 end
+
+function _M.is_version_30x(version)
+  if not version then
+    return false
+  end
+  local m = re_match(version, [[^3\.0\.\d$]], "jo")
+  return m ~= nil
+end
+
+function _M.is_version_31x(version)
+  if not version then
+    return false
+  end
+
+  local m = re_match(version, [[^3\.1\.\d$]], "jo")
+  return m ~= nil
+end
+
 
 
 return _M

@@ -1,0 +1,3 @@
+message: "**OAS Validation:** Fixed an issue where parameter serialization does not behave the same as in the OpenAPI specification"
+type: bugfix
+scope: Plugin

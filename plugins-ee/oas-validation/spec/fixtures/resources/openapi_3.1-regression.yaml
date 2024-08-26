@@ -82,6 +82,7 @@ paths:
             items:
               type: integer
           required: true
+          explode: false
       responses:
         200:
           description: OK
@@ -94,6 +95,7 @@ paths:
           schema:
             $ref: "#/components/schemas/CookieObject"
           required: true
+          explode: false
       responses:
         200:
           description: OK

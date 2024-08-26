@@ -132,5 +132,367 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
+    describe("query parameter", function()
+      describe("/query", function()
+        it("sanity", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/query?integer_array=1&integer_array=2&integer_array=3",
+            headers = {
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(200)
+        end)
+        it("errors", function()
+          -- missing required properties
+          local res = assert(client:send {
+            method = "GET",
+            path = "/query",
+            headers = {
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(400)
+          local body = assert.response(res).has.jsonbody()
+          assert.equal("query 'integer_array' validation failed with error: 'required parameter value not found in request'", body.message)
+
+          -- invalid property type
+          local res = assert(client:send {
+            method = "GET",
+            path = "/query?integer_array=1&integer_array=2&integer_array=str",
+            headers = {
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(400)
+          local body = assert.response(res).has.jsonbody()
+          assert.equal("query 'integer_array' validation failed with error: 'failed to validate item 3: wrong type: expected integer, got string'", body.message)
+        end)
+      end)
+      describe("/query2", function()
+        it("sanity", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/query2?required_integer=1&required_string=s",
+            headers = {
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(200)
+
+          local res = assert(client:send {
+            method = "GET",
+            path = "/query2?required_integer=1&required_string=s&boolean=true",
+            headers = {
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(200)
+        end)
+        it("errors", function()
+          -- missing required properties
+          local res = assert(client:send {
+            method = "GET",
+            path = "/query2?required_string=str",
+            headers = {
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(400)
+          local body = assert.response(res).has.jsonbody()
+          assert.equal("query 'obj' validation failed with error: 'property required_integer is required'", body.message)
+
+          -- invalid property type
+          local res = assert(client:send {
+            method = "GET",
+            path = "/query2?required_integer=1a&required_string=str",
+            headers = {
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(400)
+          local body = assert.response(res).has.jsonbody()
+          assert.equal("query 'obj' validation failed with error: 'property required_integer validation failed: wrong type: expected integer, got string'", body.message)
+        end)
+      end)
+      describe("/query/deepObject", function()
+        it("sanity", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/query/deepObject?deepObject[required_integer]=1&deepObject[required_string]=str",
+            headers = {
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(200)
+
+          local res = assert(client:send {
+            method = "GET",
+            path = "/query/deepObject?deepObject[required_integer]=1&deepObject[required_string]=str&deepObject[boolean]=true",
+            headers = {
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(200)
+        end)
+        it("errors", function()
+          -- missing required properties
+          local res = assert(client:send {
+            method = "GET",
+            path = "/query/deepObject?deepObject[required_integer]=1",
+            headers = {
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(400)
+          local body = assert.response(res).has.jsonbody()
+          assert.equal("query 'deepObject' validation failed with error: 'property required_string is required'", body.message)
+
+          -- invalid property type
+          local res = assert(client:send {
+            method = "GET",
+            path = "/query/deepObject?deepObject[required_integer]=1a&deepObject[required_string]=str",
+            headers = {
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(400)
+          local body = assert.response(res).has.jsonbody()
+          assert.equal("query 'deepObject' validation failed with error: 'property required_integer validation failed: wrong type: expected integer, got string'", body.message)
+        end)
+      end)
+    end)
+
+    describe("path parameter", function()
+      describe("/path/object/{simple_object}", function()
+        it("sanity", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/path/object/required_integer,1,required_string,str",
+            headers = {
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(200)
+
+          local res = assert(client:send {
+            method = "GET",
+            path = "/path/object/required_integer,1,required_string,str,boolean,true",
+            headers = {
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(200)
+        end)
+        it("errors", function()
+          -- missing required properties
+          local res = assert(client:send {
+            method = "GET",
+            path = "/path/object/required_string,str",
+            headers = {
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(400)
+          local body = assert.response(res).has.jsonbody()
+          assert.equal("path 'simple_object' validation failed with error: 'property required_integer is required'", body.message)
+
+          -- invalid property type
+          local res = assert(client:send {
+            method = "GET",
+            path = "/path/object/required_integer,1,required_string,str,boolean,1",
+            headers = {
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(400)
+          local body = assert.response(res).has.jsonbody()
+          assert.equal("path 'simple_object' validation failed with error: 'property boolean validation failed: wrong type: expected boolean, got string'", body.message)
+        end)
+      end)
+      describe("/path/object/{simple_object}/explode", function()
+        it("sanity", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/path/object/required_integer,1,required_string,str",
+            headers = {
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(200)
+
+          local res = assert(client:send {
+            method = "GET",
+            path = "/path/object/required_integer=1,required_string=str,boolean=true/explode",
+            headers = {
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(200)
+        end)
+        it("errors", function()
+          -- missing required properties
+          local res = assert(client:send {
+            method = "GET",
+            path = "/path/object/required_string=str/explode",
+            headers = {
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(400)
+          local body = assert.response(res).has.jsonbody()
+          assert.equal("path 'simple_object' validation failed with error: 'property required_integer is required'", body.message)
+
+          -- invalid property type
+          local res = assert(client:send {
+            method = "GET",
+            path = "/path/object/required_integer=1,required_string=str,boolean=1/explode",
+            headers = {
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(400)
+          local body = assert.response(res).has.jsonbody()
+          assert.equal("path 'simple_object' validation failed with error: 'property boolean validation failed: wrong type: expected boolean, got string'", body.message)
+        end)
+      end)
+      describe("/path/array/{array}", function()
+        it("sanity", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/path/array/1",
+            headers = {
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(200)
+          local res = assert(client:send {
+            method = "GET",
+            path = "/path/array/1,2,3",
+            headers = {
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(200)
+        end)
+        it("errors", function()
+          -- invalid iteam type
+          local res = assert(client:send {
+            method = "GET",
+            path = "/path/array/1,2,a",
+            headers = {
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(400)
+          local body = assert.response(res).has.jsonbody()
+          assert.equal("path 'array' validation failed with error: 'failed to validate item 3: wrong type: expected integer, got string'", body.message)
+        end)
+      end)
+    end)
+
+    describe("header parameter", function()
+      describe("/header", function()
+        it("sanity", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/header",
+            headers = {
+              integer_array = "1,2,3",
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(200)
+
+          local res = assert(client:send {
+            method = "GET",
+            path = "/header",
+            headers = {
+              obj = "required_integer,1,required_string,str,boolean,true",
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(200)
+        end)
+        it("errors", function()
+          -- missing required properties
+          local res = assert(client:send {
+            method = "GET",
+            path = "/header",
+            headers = {
+              obj = "required_integer,1",
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(400)
+          local body = assert.response(res).has.jsonbody()
+          assert.equal("header 'obj' validation failed with error: 'property required_string is required'", body.message)
+
+          -- invalid property type
+          local res = assert(client:send {
+            method = "GET",
+            path = "/header",
+            headers = {
+              integer_array = "1,2,3s",
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(400)
+          local body = assert.response(res).has.jsonbody()
+          assert.equal("header 'integer_array' validation failed with error: 'failed to validate item 3: wrong type: expected integer, got string'", body.message)
+        end)
+      end)
+      describe("/header/explode", function()
+        it("sanity", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/header/explode",
+            headers = {
+              integer_array = "1,2,3",
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(200)
+
+          local res = assert(client:send {
+            method = "GET",
+            path = "/header/explode",
+            headers = {
+              obj = "required_integer=1,required_string=str,boolean=true",
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(200)
+        end)
+        it("errors", function()
+          -- missing required properties
+          local res = assert(client:send {
+            method = "GET",
+            path = "/header/explode",
+            headers = {
+              obj = "required_integer=1",
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(400)
+          local body = assert.response(res).has.jsonbody()
+          assert.equal("header 'obj' validation failed with error: 'property required_string is required'", body.message)
+
+          -- invalid property type
+          local res = assert(client:send {
+            method = "GET",
+            path = "/header/explode",
+            headers = {
+              integer_array = "1,2,3s",
+              host = "example.com",
+            },
+          })
+          assert.response(res).has.status(400)
+          local body = assert.response(res).has.jsonbody()
+          assert.equal("header 'integer_array' validation failed with error: 'failed to validate item 3: wrong type: expected integer, got string'", body.message)
+        end)
+      end)
+    end)
   end)
 end

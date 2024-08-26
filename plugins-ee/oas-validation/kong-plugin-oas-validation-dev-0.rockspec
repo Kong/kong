@@ -24,6 +24,7 @@ build = {
     ["kong.plugins.oas-validation.utils.validation"] = "kong/plugins/oas-validation/utils/validation.lua",
     ["kong.plugins.oas-validation.constants"] = "kong/plugins/oas-validation/constants.lua",
     ["kong.plugins.oas-validation.utils"] = "kong/plugins/oas-validation/utils.lua",
+    ["kong.plugins.oas-validation.utils.serialization"] = "kong/plugins/oas-validation/utils/serialization.lua",
   }
 
 }

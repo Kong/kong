@@ -25,6 +25,7 @@ local meta = require "kong.meta"
 local constants = require "kong.plugins.oas-validation.constants"
 local cookie = require "resty.cookie"
 local jsonschema_rs = require "resty.jsonschema-rs"
+local serialization = require "kong.plugins.oas-validation.utils.serialization"
 
 local kong = kong
 local ngx = ngx
@@ -66,10 +67,6 @@ local DEFAULT_CONTENT_TYPE = "application/json"
 local OPEN_API = "openapi"
 
 local CONTENT_METHODS = constants.CONTENT_METHODS
-
---- Note that we treat 3.1.x as 3.1 series and switch to rust lib for JSONSchema validation.
---- However, we apply a stricted validation in schema to deny spec version > 3.1.0 to avoid undefined behavior.
-local VERSION_31x_PATTERN = [[^3\.1\.\d$]]
 
 local OASValidationPlugin = {
   VERSION  = meta.core_version,
@@ -119,7 +116,7 @@ local validator_param_cache = setmetatable({}, {
       }
     end
     local opts = {
-      dereference = { circular = false },
+      dereference = { maximum_dereference = 0 },
     }
     local decoded_schema, err = swagger_dereference.dereference(schema, opts, refs)
     parameter.decoded_schema = assert(decoded_schema, err)
@@ -127,15 +124,7 @@ local validator_param_cache = setmetatable({}, {
   end
 })
 
--- whether the spec version is 3.1.x
-local function is_version_31x(version)
-  if not version then
-    return false
-  end
 
-  local m = re_match(version, VERSION_31x_PATTERN, "jo")
-  return m ~= nil
-end
 
 local json_cache = lrucache.new(100)
 
@@ -208,90 +197,61 @@ end
 
 
 local function validate_parameter_value_openapi(parameter)
-  -- TODO: requires a refactor for better handling of Parameter Serialization
   local is_31x = kong.ctx.plugin.is_31x
-
-  if parameter["in"] == "cookie" then
-    parameter.style = "form" -- cookie only allow form style
-  end
-
-  if parameter["in"] == "query" and not parameter.style and is_31x then
-    -- FIXME: the parameter.decoded_schema handling is inside the validator_param_cache,
-    -- calling validator_param_cache is just to ensure that property decoded_schema is available
-    assert(validator_param_cache[parameter])
-    local v, err = utils_normalize(parameter.value, parameter.decoded_schema)
-    if err then
-      return false, err
-    end
-    parameter.value = v
-  end
-
-  if parameter["in"] == "body" then
-    local validator = validator_cache[parameter]
-    -- try to validate body against schema
-    -- only Swagger allows defining body in the parameter
-    local ok, err = validate(parameter.schema, parameter.value, validator)
-    if not ok then
-      return false, err
+  local validator = validator_param_cache[parameter]
+  local t = parameter.decoded_schema.type
+  if t == "object" or t == "array" then
+    -- handle parameter serialization when schema.type is obejct or array
+    local style, explode = serialization.serialization_args(parameter)
+    local location = parameter["in"]
+    if style == "form" and explode == true and location == "query" and t == "object" then
+      parameter.value = kong.ctx.plugin.template_environment[location]
     end
 
-    return true
-
-  elseif parameter.style then
-    local validator = validator_param_cache[parameter]
-    if not parameter.decoded_schema.type and parameter.value ~= nil then
-      -- A schema without a type matches any data type, except null
-      return true
-    end
-    local result, err =  deserialize(parameter.style, parameter.decoded_schema.type,
-        parameter.explode, parameter.value, nil, parameter["in"])
-
+    local result, err = deserialize(style, t, explode, parameter.value, nil, location)
     if err or not result then
       return false, err
     end
 
-    if is_31x then
-      -- The Lua lib has loose type converting, while the Rust doesn't,
-      -- we manually normalize values that don't match with their desired type.
-      result, err = utils_normalize(result, parameter.decoded_schema)
-      if err then
-        return false, err
-      end
-    end
-
-    if parameter.decoded_schema.type == "array" and type(result) == "table" then
+    if t == "array" and type(result) == "table" then
       setmetatable(result, cjson.array_mt)
     end
 
-    local payload = is_31x and
-                    assert(json_encode(result)) or
-                    result
-    local ok, err = validate(parameter.decoded_schema, payload, validator)
-    if not ok then
+    parameter.value = result
+  end
+
+  if is_31x then
+    -- normalize value only for 3.1.x
+
+    -- The Lua lib has loose type converting, while the Rust doesn't,
+    -- we manually normalize values that don't match with their desired type.
+    local result, err = utils_normalize(parameter.value, parameter.decoded_schema)
+    if err then
       return false, err
     end
 
-    return true
+    parameter.value = result
+  end
 
-  else
-    if parameter.type == "array" and type(parameter.value) == "string" then
-      parameter.value = {parameter.value}
-    end
-
-    if parameter.type == "array" and type(parameter.value) == "table" then
-      setmetatable(parameter.value, cjson.array_mt)
-    end
-
-    local validator = validator_param_cache[parameter]
-    local payload = is_31x and
-                    assert(json_encode(parameter.value)) or
-                    parameter.value
-    local ok, err = validate(parameter.decoded_schema, payload, validator)
-    if not ok then
-      return false, err
-    end
+  if not t and parameter.value ~= nil then
+    -- A schema without a type matches any data type, except null
     return true
   end
+
+  -- [[ no idea why we need this
+  if parameter.type == "array" and type(parameter.value) == "string" then
+    parameter.value = { parameter.value }
+  end
+
+  if parameter.type == "array" and type(parameter.value) == "table" then
+    setmetatable(parameter.value, cjson.array_mt)
+  end
+  -- ]]
+
+  local payload = is_31x and
+    assert(json_encode(parameter.value)) or
+    parameter.value
+  return validate(parameter.decoded_schema, payload, validator)
 end
 
 
@@ -346,6 +306,19 @@ local function validate_parameter_value(parameter, spec_ver)
   end
 
   if parameter.schema then
+    if location == "body" then
+      -- validate body schema for swagger
+      local validator = validator_cache[parameter]
+      -- try to validate body against schema
+      -- only Swagger allows defining body in the parameter
+      local ok, err = validate(parameter.schema, parameter.value, validator)
+      if not ok then
+        return false, err
+      end
+
+      return true
+    end
+
     return validate_parameter_value_openapi(parameter)
   elseif spec_ver ~= OPEN_API then
     return validate_parameter_value_swagger(parameter)
@@ -389,6 +362,15 @@ local function check_required_parameter(parameter, path_spec)
     value = template_environment[location][parameter.name]
   end
 
+  local is_3xx = kong.ctx.plugin.is_30x or kong.ctx.plugin.is_31x
+  if is_3xx and location == "query" and parameter.required then
+    local t = (parameter.schema and parameter.schema.type) or
+              (validator_param_cache[parameter] and parameter.decoded_schema.type)
+    if t == "object" then
+      return true -- assume it's exist
+    end
+  end
+
   if location == "query" and parameter.required and value == nil and not parameter.allowEmptyValue then
     return false, "required parameter value not found in request"
   end
@@ -426,6 +408,17 @@ local function check_parameter_existence(spec_params, location, allowed)
       if parameter["in"] == location and qname:lower() == parameter.name:lower() then
         exists = true
         break
+      end
+
+      local is_3xx = kong.ctx.plugin.is_30x or kong.ctx.plugin.is_31x
+      if is_3xx and parameter["in"] == location and location == "query" then
+        local t = (parameter.schema and parameter.schema.type) or
+          (validator_param_cache[parameter] and parameter.decoded_schema.type)
+        if t == "object" then
+          -- assume it's exists when object was defined in query parameter
+          exists = true
+          break
+        end
       end
     end
 
@@ -586,7 +579,7 @@ local spec_cache_key = fmt("%s:%s:%s",
       return nil, err
     end
 
-    if not is_version_31x(spec.spec.openapi) then
+    if not utils.is_version_31x(spec.spec.openapi) then
       -- converting nullable keyword, only convert when the spec version is not 3.1.x
       utils.traverse(spec, "nullable", nullable_converter)
     end
@@ -664,7 +657,8 @@ function OASValidationPlugin:access(conf)
 
   -- instead of passing the spec version everywhere, we set the spec version to
   -- the current plugin context to be used in many functions for backward compatibility.
-  kong.ctx.plugin.is_31x = is_version_31x(parsed_spec.openapi)
+  kong.ctx.plugin.is_30x = utils.is_version_30x(parsed_spec.openapi)
+  kong.ctx.plugin.is_31x = utils.is_version_31x(parsed_spec.openapi)
 
   local path_spec, match_path, method_spec = utils.retrieve_operation(parsed_spec, request_path, request_method)
   if not method_spec then
