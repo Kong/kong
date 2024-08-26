@@ -100,6 +100,10 @@ local function callback_wrap(strategy, key, cb, ...)
     end
   end
 
+  if value then
+    err = nil -- ignore errors if value is present
+  end
+
   return value, err, remain_ttl
 end
 

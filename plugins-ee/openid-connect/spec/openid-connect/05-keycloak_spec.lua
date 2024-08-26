@@ -4554,6 +4554,22 @@ for _, strategy in helpers.all_strategies() do
             config  = config,
           }
 
+          local route_wrong_redis = bp.routes:insert {
+            service = service,
+            paths   = { "/wrong-redis" },
+          }
+
+          config.cluster_cache_redis = {
+            host = REDIS_HOST,
+            port = REDIS_PORT + 1,
+          }
+
+          bp.plugins:insert {
+            route   = route_wrong_redis,
+            name    = PLUGIN_NAME,
+            config  = config,
+          }
+
           assert(mock:start())
 
           assert(helpers.start_kong({
@@ -4652,6 +4668,17 @@ for _, strategy in helpers.all_strategies() do
             -- new introspection request as it should not be cached in redis
             mock.eventually:has_request_satisfy(is_introspecting(token))
           end
+
+          -- should not be fail the request when redis cache fails
+          local res5 = assert(proxy_client:send({
+            method = "GET",
+            path = "/wrong-redis",
+            headers = {
+              ["Host"] = KONG_HOST,
+              ["Authorization"] = "Bearer " .. token,
+            }
+          }))
+          assert.response(res5).has.status(200)
         end)
       end)
     end
