@@ -2472,6 +2472,13 @@ describe("Configuration loader", function()
         -- CONF_BASIC
         prefix = true,
         socket_path = true,
+        worker_events_sock = true,
+        stream_worker_events_sock = true,
+        stream_rpc_sock = true,
+        stream_config_sock = true,
+        stream_tls_passthrough_sock = true,
+        stream_tls_terminate_sock = true,
+        cluster_proxy_ssl_terminator_sock = true,
         vaults = true,
         database = true,
         lmdb_environment_path = true,
@@ -2522,7 +2529,7 @@ describe("Configuration loader", function()
       }
       local conf = assert(conf_loader(nil, nil, { pre_cmd = true }))
       for k, _ in pairs(conf) do
-        assert.equal(true, FIELDS[k])
+        assert.equal(true, FIELDS[k], "key " .. k .. " is not in FIELDS")
       end
     end)
   end)

@@ -518,7 +518,7 @@ do
                                              .. constants.SOCKET_DIRECTORY)
   end
 
-  local STREAM_CONFIG_SOCK = "unix:" .. socket_path .. "/stream_config.sock"
+  local STREAM_CONFIG_SOCK = "unix:" .. socket_path .. "/" .. constants.SOCKETS.STREAM_CONFIG
   local IS_HTTP_SUBSYSTEM  = ngx.config.subsystem == "http"
 
   local function broadcast_reconfigure_event(data)
