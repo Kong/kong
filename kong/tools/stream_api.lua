@@ -40,7 +40,7 @@ local HEADER_LEN = #st_pack(PACK_F, MAX_KEY_LEN, MAX_DATA_LEN)
 
 -- this module may be loaded before `kong.configuration` is initialized
 local SOCKET_PATH = "unix:" .. ngx.config.prefix() .. "/"
-                    .. constants.SOCKET_DIRECTORY .. "/stream_rpc.sock"
+                    .. constants.SOCKET_DIRECTORY .. "/" .. constants.SOCKETS.STREAM_RPC
 
 local stream_api = {}
 

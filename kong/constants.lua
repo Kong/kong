@@ -282,6 +282,15 @@ local constants = {
   },
 
   SOCKET_DIRECTORY = "sockets",
+  SOCKETS = {
+    WORKER_EVENTS = "we",
+    STREAM_WORKER_EVENTS = "sw",
+    CLUSTER_PROXY_SSL_TERMINATOR = "cp",
+    STREAM_CONFIG = "sc",
+    STREAM_TLS_TERMINATE = "st",
+    STREAM_TLS_PASSTHROUGH = "sp",
+    STREAM_RPC = "rp",
+  },
 }
 
 for _, v in ipairs(constants.CLUSTERING_SYNC_STATUS) do

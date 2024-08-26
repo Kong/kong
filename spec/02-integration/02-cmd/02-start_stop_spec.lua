@@ -43,11 +43,11 @@ local function wait_until_healthy(prefix)
   local conf = assert(helpers.get_running_conf(prefix))
 
   if conf.proxy_listen and conf.proxy_listen ~= "off" then
-    helpers.wait_for_file("socket", socket_path .. "/worker_events.sock")
+    helpers.wait_for_file("socket", socket_path .. "/" .. constants.SOCKETS.WORKER_EVENTS)
   end
 
   if conf.stream_listen and conf.stream_listen ~= "off" then
-    helpers.wait_for_file("socket", socket_path .. "/stream_worker_events.sock")
+    helpers.wait_for_file("socket", socket_path .. "/" .. constants.SOCKETS.STREAM_WORKER_EVENTS)
   end
 
   if conf.admin_listen and conf.admin_listen ~= "off" then
@@ -1071,7 +1071,7 @@ describe("kong start/stop #" .. strategy, function()
 
       wait_until_healthy(prefix)
 
-      assert.truthy(helpers.path.exists(socket_path .. "/worker_events.sock"),
+      assert.truthy(helpers.path.exists(socket_path .. "/" .. constants.SOCKETS.WORKER_EVENTS),
                     "worker events socket was not created in the socket_path dir")
     end)
   end)
@@ -1080,7 +1080,7 @@ describe("kong start/stop #" .. strategy, function()
     local pidfile = TEST_CONF.nginx_pid
 
     -- the worker events socket is just one of many unix sockets we use
-    local event_sock = SOCKET_PATH .. "/worker_events.sock"
+    local event_sock = SOCKET_PATH .. "/" .. constants.SOCKETS.WORKER_EVENTS
 
     local env = {
       prefix                      = PREFIX,
@@ -1244,8 +1244,8 @@ describe("kong start/stop #" .. strategy, function()
       -- wait until everything is running
       wait_until_healthy(prefix)
 
-      assert.truthy(helpers.path.exists(socket_path .. "/worker_events.sock"))
-      assert.truthy(helpers.path.exists(socket_path .. "/stream_worker_events.sock"))
+      assert.truthy(helpers.path.exists(socket_path .. "/" .. constants.SOCKETS.WORKER_EVENTS))
+      assert.truthy(helpers.path.exists(socket_path .. "/" .. constants.SOCKETS.STREAM_WORKER_EVENTS))
 
       local log = prefix .. "/logs/error.log"
       assert.logfile(log).has.no.line("[error]", true, 0)

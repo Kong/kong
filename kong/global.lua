@@ -6,6 +6,7 @@ local phase_checker = require "kong.pdk.private.phases"
 local kong_cache = require "kong.cache"
 local kong_cluster_events = require "kong.cluster_events"
 local private_node = require "kong.pdk.private.node"
+local constants = require "kong.constants"
 
 local ngx = ngx
 local type = type
@@ -176,8 +177,8 @@ function _GLOBAL.init_worker_events(kong_config)
 
   local socket_path = kong_config.socket_path
   local sock = ngx.config.subsystem == "stream" and
-               "stream_worker_events.sock" or
-               "worker_events.sock"
+               constants.SOCKETS.STREAM_WORKER_EVENTS or
+               constants.SOCKETS.WORKER_EVENTS
 
   local listening = "unix:" .. socket_path .. "/" .. sock
 
