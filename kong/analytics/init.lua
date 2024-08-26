@@ -352,7 +352,8 @@ function _M:create_payload(message)
     },
     route = {
       id = "",
-      name = ""
+      name = "",
+      control_plane_id = ""
     },
     service = {
       id = "",
@@ -540,6 +541,16 @@ function _M:create_payload(message)
 
   if message.route ~= nil then
     local route = payload.route
+    local tags = message.route.tags
+    local tags_len = tags and #tags or 0
+    if tags_len > 0 then
+      local last_tag = tags[tags_len]
+      local substr = last_tag:sub(1, 11)
+
+      if substr == "cluster_id:" then -- eagerly extract the rest of the string
+        route.control_plane_id = last_tag:sub(12, -1)
+      end
+    end
     route.id = message.route.id
     route.name = message.route.name
   end

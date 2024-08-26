@@ -114,6 +114,9 @@ local request_log = {
     response_buffering = true,
     https_redirect_status_code = 426,
     path_handling = "v0",
+    tags = {
+      "cluster_id:167290ee-c682-4ebf-bdea-777777777777"
+    },
     service = {
       id = "167290ee-c682-4ebf-bdea-e49a3ac5e260"
     }
@@ -327,7 +330,8 @@ describe("extract request log properly", function()
       },
       route = {
         id = "78f79740-c410-4fd9-a998-d0a60a99dc9b",
-        name = "route"
+        name = "route",
+        control_plane_id = "167290ee-c682-4ebf-bdea-777777777777"
       },
       service = {
         id = "167290ee-c682-4ebf-bdea-e49a3ac5e260",
@@ -473,7 +477,8 @@ describe("extract request log properly", function()
       },
       route = {
         id = "78f79740-c410-4fd9-a998-d0a60a99dc9b",
-        name = "route"
+        name = "route",
+        control_plane_id = "167290ee-c682-4ebf-bdea-777777777777"
       },
       service = {
         id = "167290ee-c682-4ebf-bdea-e49a3ac5e260",
@@ -650,7 +655,8 @@ describe("extract request log properly", function()
       },
       route = {
         id = "78f79740-c410-4fd9-a998-d0a60a99dc9b",
-        name = "route"
+        name = "route",
+        control_plane_id = "167290ee-c682-4ebf-bdea-777777777777"
       },
       service = {
         id = "167290ee-c682-4ebf-bdea-e49a3ac5e260",
@@ -988,6 +994,7 @@ describe("proto buffer", function()
       route = {
         id = "",
         name = "",
+        control_plane_id = ""
       },
       source = "",
       application_context = {
@@ -1079,6 +1086,7 @@ describe("proto buffer", function()
       route = {
         id = "",
         name = "",
+        control_plane_id = "",
       },
       source = "",
       application_context = {

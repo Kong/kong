@@ -73,6 +73,7 @@ message ResponseInfo {
 message RouteInfo {
   string id = 1;
   string name = 2;
+  string control_plane_id = 3;
 }
 
 message ServiceInfo {
