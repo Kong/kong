@@ -1,0 +1,4 @@
+message: |
+  **AI-proxy-plugin**: Replace the lib and use cycle_aware_deep_copy for the `request_table` object.
+scope: Plugin
+type: feature

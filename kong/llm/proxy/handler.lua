@@ -12,7 +12,7 @@ local cjson = require("cjson.safe")
 local kong_utils = require("kong.tools.gzip")
 local buffer = require "string.buffer"
 local strip = require("kong.tools.utils").strip
-
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 local EMPTY = require("kong.tools.table").EMPTY
 
@@ -346,7 +346,7 @@ function _M:access(conf)
       end
 
       request_table = kong.request.get_body(content_type, nil, conf.max_request_body_size)
-      llm_state.set_request_body_table(request_table)
+      llm_state.set_request_body_table(cycle_aware_deep_copy(request_table))
     end
 
     if not request_table then
