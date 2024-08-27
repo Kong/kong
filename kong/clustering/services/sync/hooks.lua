@@ -49,6 +49,12 @@ function _M:register_dao_hooks(is_cp)
     return
   end
 
+  -- only control plane has these delta operations
+  -- dao:insert
+  -- dao:upsert
+  -- dao:update
+  -- dao:delete
+
   hooks.register_hook("dao:insert:pre", function()
     assert(self.strategy:begin_txn())
   end)
