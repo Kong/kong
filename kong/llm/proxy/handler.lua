@@ -446,7 +446,7 @@ function _M:access(conf)
   end
 
   -- execute pre-request hooks for "all" drivers before set new body
-  local ok, err = ai_shared.pre_request(conf_m, parsed_request_body)
+  local ok, err = ai_shared.pre_request(conf_m, parsed_request_body or request_table)
   if not ok then
     return bail(400, err)
   end

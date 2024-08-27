@@ -341,7 +341,7 @@ function _M.subrequest(body, conf, http_opts, return_res_table, identity_interfa
   end
 
   local parsed_url = socket_url.parse(f_url)
-  local method = ai_shared.operation_map[DRIVER_NAME][conf.route_type].method  
+  local method = ai_shared.operation_map[DRIVER_NAME][conf.route_type].method
 
   -- do the IAM auth and signature headers
   identity_interface.interface.config.signatureVersion = "v4"
@@ -438,6 +438,8 @@ function _M.configure_request(conf, aws_sdk)
 
   -- if the path is read from a URL capture, ensure that it is valid
   parsed_url.path = string_gsub(parsed_url.path, "^/*", "/")
+
+  ai_shared.override_upstream_url(parsed_url, conf)
 
   kong.service.request.set_path(parsed_url.path)
   kong.service.request.set_scheme(parsed_url.scheme)

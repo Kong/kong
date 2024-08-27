@@ -263,6 +263,8 @@ end
 function _M.configure_request(conf)
   local parsed_url = socket_url.parse(conf.model.options.upstream_url)
 
+  ai_shared.override_upstream_url(parsed_url, conf)
+
   -- if the path is read from a URL capture, ensure that it is valid
   parsed_url.path = (parsed_url.path and string_gsub(parsed_url.path, "^/*", "/")) or "/"
 
