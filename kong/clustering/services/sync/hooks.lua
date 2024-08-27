@@ -45,69 +45,85 @@ end
 
 
 function _M:register_dao_hooks(is_cp)
-  if is_cp then
-    hooks.register_hook("dao:insert:post", function(row, name, options, ws_id)
-      local deltas = {
-        {
-          ["type"] = name,
-          id = row.id,
-          ws_id = ws_id,
-          row = row, },
-      }
-
-      local res, err = self.strategy:insert_delta(deltas)
-      if not res then
-        return nil, err
-      end
-
-      local latest_version = self.strategy:get_latest_version()
-
-      for _, node in ipairs(get_all_nodes_with_sync_cap()) do
-        res, err = kong.rpc:call(node, "kong.sync.v2.notify_new_version", latest_version)
-        if not res then
-          if not err:find("requested capability does not exist", nil, true) then
-            ngx.log(ngx.ERR, "unable to notify new version: ", err)
-          end
-
-        else
-          ngx.log(ngx.ERR, "notified ", node, " ", latest_version)
-        end
-      end
-
-      return row, name, options, ws_id
-    end)
-
-    hooks.register_hook("dao:delete:post", function(row, name, options, ws_id, cascade_entries)
-      local deltas = {
-        {
-          ["type"] = name,
-          id = row.id,
-          ws_id = ws_id,
-          row = ngx.null, },
-      }
-
-      local res, err = self.strategy:insert_delta(deltas)
-      if not res then
-        return nil, err
-      end
-
-      local latest_version = self.strategy:get_latest_version()
-
-      for _, node in ipairs(get_all_nodes_with_sync_cap()) do
-        res, err = kong.rpc:call(node, "kong.sync.v2.notify_new_version", latest_version)
-        if not res then
-          if not err:find("requested capability does not exist", nil, true) then
-            ngx.log(ngx.ERR, "unable to notify new version: ", err)
-          end
-
-        else
-          ngx.log(ngx.ERR, "notified ", node, " ", latest_version)
-        end
-      end
-
-      return row, name, options, ws_id, cascade_entries
-    end)
+  if not is_cp then
+    return
   end
+
+  hooks.register_hook("dao:insert:pre", function()
+    assert(self.strategy:begin_txn())
+  end)
+
+  hooks.register_hook("dao:insert:post", function(row, name, options, ws_id)
+    local deltas = {
+      {
+        ["type"] = name,
+        id = row.id,
+        ws_id = ws_id,
+        row = row, },
+    }
+
+    local res, err = self.strategy:insert_delta(deltas)
+    if not res then
+      assert(self.strategy:rollback_txn())
+      return nil, err
+    end
+
+    assert(self.strategy:commit_txn())
+
+    local latest_version = self.strategy:get_latest_version()
+
+    for _, node in ipairs(get_all_nodes_with_sync_cap()) do
+      res, err = kong.rpc:call(node, "kong.sync.v2.notify_new_version", latest_version)
+      if not res then
+        if not err:find("requested capability does not exist", nil, true) then
+          ngx.log(ngx.ERR, "unable to notify new version: ", err)
+        end
+
+      else
+        ngx.log(ngx.ERR, "notified ", node, " ", latest_version)
+      end
+    end
+
+    return row, name, options, ws_id
+  end)
+
+  hooks.register_hook("dao:delete:pre", function()
+    assert(self.strategy:begin_txn())
+  end)
+
+  hooks.register_hook("dao:delete:post", function(row, name, options, ws_id, cascade_entries)
+    local deltas = {
+      {
+        ["type"] = name,
+        id = row.id,
+        ws_id = ws_id,
+        row = ngx.null, },
+    }
+
+    local res, err = self.strategy:insert_delta(deltas)
+    if not res then
+      assert(self.strategy:rollback_txn())
+      return nil, err
+    end
+
+    assert(self.strategy:commit_txn())
+
+    local latest_version = self.strategy:get_latest_version()
+
+    for _, node in ipairs(get_all_nodes_with_sync_cap()) do
+      res, err = kong.rpc:call(node, "kong.sync.v2.notify_new_version", latest_version)
+      if not res then
+        if not err:find("requested capability does not exist", nil, true) then
+          ngx.log(ngx.ERR, "unable to notify new version: ", err)
+        end
+
+      else
+        ngx.log(ngx.ERR, "notified ", node, " ", latest_version)
+      end
+    end
+
+    return row, name, options, ws_id, cascade_entries
+  end)
 end
 
 

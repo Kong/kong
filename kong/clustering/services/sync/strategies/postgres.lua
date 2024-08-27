@@ -63,17 +63,17 @@ end
 
 
 function _M:begin_txn()
-  assert(self.connector:query("BEGIN;"))
+  self.connector:query("BEGIN;")
 end
 
 
 function _M:commit_txn()
-  assert(self.connector:query("COMMIT;"))
+  self.connector:query("COMMIT;")
 end
 
 
 function _M:rollback_txn()
-  assert(self.connector:query("ROLLBACK;"))
+  self.connector:query("ROLLBACK;")
 end
 
 
