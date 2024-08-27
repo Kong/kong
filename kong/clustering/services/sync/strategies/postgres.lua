@@ -63,17 +63,17 @@ end
 
 
 function _M:begin_txn()
-  self.connector:query("BEGIN;")
+  return self.connector:query("BEGIN;")
 end
 
 
 function _M:commit_txn()
-  self.connector:query("COMMIT;")
+  return self.connector:query("COMMIT;")
 end
 
 
 function _M:rollback_txn()
-  self.connector:query("ROLLBACK;")
+  return self.connector:query("ROLLBACK;")
 end
 
 
