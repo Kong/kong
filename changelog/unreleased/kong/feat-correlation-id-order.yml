@@ -1,0 +1,5 @@
+message: |
+  Increased the priority order of the correlation id to 100001 from 1 so that the plugin can be used
+  with other plugins especially custom auth plugins.
+type: feature
+scope: Core
