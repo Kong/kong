@@ -49,6 +49,9 @@ contents:
   dst: /etc/kong/kong.conf.default
   type: config
 - src: /usr/local/openresty/bin/resty
+  dst: /usr/bin/resty
+  type: symlink
+- src: /usr/local/openresty/bin/resty
   dst: /usr/local/bin/resty
   type: symlink
 - src: /usr/local/openresty/nginx/modules
@@ -85,7 +88,7 @@ overrides:
 
 rpm:
   prefixes:
-  - /usr/local
+  - /
   signature:
     # PGP secret key (can also be ASCII-armored), the passphrase is taken
     # from the environment variable $NFPM_RPM_PASSPHRASE with a fallback
