@@ -10,7 +10,7 @@ local insert    = table.insert
 local ngx_log   = ngx.log
 local ngx_now   = ngx.now
 local timer_at  = ngx.timer.at
-local ngx_update_time = ngx.update_time
+local now_updated = require("kong.tools.time").get_updated_now
 
 local knode = kong and kong.node or require "kong.pdk.node".new()
 local concurrency = require "kong.concurrency"
@@ -245,8 +245,7 @@ local function process_event(self, row, local_start_time)
     local delay
 
     if row.nbf and row.now then
-      ngx_update_time()
-      local now = row.now + max(ngx_now() - local_start_time, 0)
+      local now = row.now + max(now_updated() - local_start_time, 0)
       delay = max(row.nbf - now, 0)
     end
 
@@ -308,8 +307,7 @@ local function poll(self)
       end
     end
 
-    ngx_update_time()
-    local local_start_time = ngx_now()
+    local local_start_time = now_updated()
     for i = 1, count do
       local ok, err = process_event(self, rows[i], local_start_time)
       if not ok then
