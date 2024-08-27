@@ -391,6 +391,10 @@ function _M.configure_request(conf, identity_interface)
     parsed_url.path = conf.model.options.upstream_path
   end
 
+  if conf.route_type == "preserve" then
+    parsed_url.path = kong.request.get_path()
+  end
+
   -- if the path is read from a URL capture, ensure that it is valid
   parsed_url.path = string_gsub(parsed_url.path, "^/*", "/")
 

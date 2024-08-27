@@ -263,6 +263,10 @@ end
 function _M.configure_request(conf)
   local parsed_url = socket_url.parse(conf.model.options.upstream_url)
 
+  if conf.route_type == "preserve" then
+    parsed_url.path = kong.request.get_path()
+  end
+
   -- if the path is read from a URL capture, ensure that it is valid
   parsed_url.path = (parsed_url.path and string_gsub(parsed_url.path, "^/*", "/")) or "/"
 

@@ -114,7 +114,13 @@ function _M.configure_request(conf)
       and ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
       or "/"
     )
+
     parsed_url = socket_url.parse(url)
+  end
+
+  if conf.route_type == "preserve" then
+    parsed_url.path = conf.model.options and conf.model.options.upstream_path
+      or kong.request.get_path()
   end
 
   -- if the path is read from a URL capture, 3re that it is valid
