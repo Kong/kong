@@ -19,7 +19,6 @@ local floor        = math.floor
 local type         = type
 local ngx          = ngx
 local timer_every  = ngx.timer.every
-local update_time  = ngx.update_time
 local get_phase    = ngx.get_phase
 local null         = ngx.null
 local now          = ngx.now
