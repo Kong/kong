@@ -454,10 +454,7 @@ function _M.configure_request(conf)
                       or "/"
   end
 
-  if conf.route_type == "preserve" then
-    parsed_url.path = conf.model.options and conf.model.options.upstream_path
-      or kong.request.get_path()
-  end
+  ai_shared.override_upstream_url(parsed_url, conf)
 
   -- if the path is read from a URL capture, ensure that it is valid
   parsed_url.path = string_gsub(parsed_url.path, "^/*", "/")

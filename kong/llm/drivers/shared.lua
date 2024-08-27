@@ -930,6 +930,13 @@ function _M.calculate_cost(query_body, tokens_models, tokens_factor)
   return query_cost, nil
 end
 
+function _M.override_upstream_url(parsed_url, conf)
+  if conf.route_type == "preserve" then
+    parsed_url.path = conf.model.options and conf.model.options.upstream_path
+      or kong.request.get_path()
+  end
+end
+
 -- for unit tests
 _M._count_words = count_words
 
