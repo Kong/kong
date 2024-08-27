@@ -66,7 +66,10 @@ function _TARGETS:upsert(pk, entity, options)
   -- backward compatibility with Kong older than 2.2.0
   local workspace = workspaces.get_workspace_id()
   local opts = { nulls = true, workspace = workspace }
-  for existent in self:each_for_upstream(entity.upstream, nil, opts) do
+  for existent, err, err_t in self:each_for_upstream(entity.upstream, nil, opts) do
+    if not existent then
+      return nil, err, err_t
+    end
     if existent.target == entity.target then
       -- if the upserting entity is newer, update
       if entity.created_at > existent.created_at then
@@ -79,7 +82,6 @@ function _TARGETS:upsert(pk, entity, options)
       end
       -- if upserting entity is older, keep the existent entity
       return true
-
     end
   end
 
