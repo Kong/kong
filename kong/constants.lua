@@ -330,6 +330,15 @@ local constants = {
   },
 
   SOCKET_DIRECTORY = "sockets",
+  SOCKETS = {
+    WORKER_EVENTS = "we",
+    STREAM_WORKER_EVENTS = "sw",
+    CLUSTER_PROXY_SSL_TERMINATOR = "cp",
+    STREAM_CONFIG = "sc",
+    STREAM_TLS_TERMINATE = "st",
+    STREAM_TLS_PASSTHROUGH = "sp",
+    STREAM_RPC = "rp",
+  },
 }
 
 -- XXX EE: add enterprise-specific CLUSTERING_SYNC_STATUS enum values before
@@ -367,6 +376,11 @@ end
 -- Add EE_DICTS to DICTS list
 for _, v in ipairs(ee_constants.EE_DICTS) do
   table.insert(constants.DICTS, v)
+end
+
+-- Add EE_SOCKETS to SOCKETS list
+for k, v in pairs(ee_constants.EE_SOCKETS) do
+  constants.SOCKETS[k] = v
 end
 
 -- XXX EE: we need consumers to use kong.cache for portal auth to work

@@ -9,6 +9,7 @@ local log         = require "kong.cmd.utils.log"
 local cjson       = require "cjson"
 local resty_http  = require "resty.http"
 local conf_loader = require "kong.conf_loader"
+local constants = require "kong.constants"
 
 -- EXIT CODES
 local EC_SUCCESS    = 0
@@ -305,7 +306,7 @@ local function execute(args)
   -- retrieve prefix or use given one
   local conf = assert(conf_loader(args.conf, { prefix = args.prefix }))
   local socket_path = "unix:" .. (args.unix_socket  or
-                                  (conf.socket_path .. "/kong_debug.sock"))
+                                  (conf.socket_path .. "/" .. constants.SOCKETS.KONG_DEBUG))
 
   -- construct the data of POST/PUT
   local options = {}

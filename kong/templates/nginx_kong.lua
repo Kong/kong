@@ -788,7 +788,7 @@ server {
 
 
 > if debug_listen_local then
-    listen unix:${{SOCKET_PATH}}/kong_debug.sock;
+    listen unix:${{SOCKET_PATH}}/${{KONG_DEBUG_SOCK}};
 > end
 
     access_log ${{DEBUG_ACCESS_LOG}};
@@ -894,7 +894,7 @@ server {
 server {
     charset UTF-8;
     server_name kong_worker_events;
-    listen unix:${{SOCKET_PATH}}/worker_events.sock;
+    listen unix:${{SOCKET_PATH}}/${{WORKER_EVENTS_SOCK}};
     access_log off;
     location / {
         content_by_lua_block {

@@ -82,6 +82,11 @@ return {
     "kong_vaults_hcv",
   },
 
+  -- this list is joined into the SOCKETS list in kong.constants
+  EE_SOCKETS = {
+    KONG_DEBUG = "kd",
+  },
+
   -- the remaining entities are inserted as-in into the kong.constants table:
   ADMIN_CONSUMER_USERNAME_SUFFIX = "_ADMIN_",
   PORTAL_PREFIX = "__PORTAL-",
