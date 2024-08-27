@@ -62,4 +62,19 @@ function _M:get_delta(version)
 end
 
 
+function _M:begin_txn()
+  assert(self.connector:query("BEGIN;"))
+end
+
+
+function _M:commit_txn()
+  assert(self.connector:query("COMMIT;"))
+end
+
+
+function _M:rollback_txn()
+  assert(self.connector:query("ROLLBACK;"))
+end
+
+
 return _M
