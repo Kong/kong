@@ -33,6 +33,7 @@ local rep           = string.rep
 local sub           = string.sub
 local log           = ngx.log
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
+local now_updated   = require("kong.tools.time").get_updated_now
 
 
 local NOTICE        = ngx.NOTICE
@@ -42,12 +43,6 @@ local UNIQUE        = {}
 
 local function noop(...)
   return ...
-end
-
-
-local function now_updated()
-  update_time()
-  return now()
 end
 
 
