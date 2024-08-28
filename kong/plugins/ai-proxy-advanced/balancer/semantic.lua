@@ -16,8 +16,8 @@ algorithm.__index = algorithm
 
 
 function algorithm:afterHostUpdate()
-  local embedding_driver, err = embeddings.new(self.embeddings_conf, self.vectordb_conf.dimensions)
-  if not embedding_driver then
+  local embeddings_driver, err = embeddings.new(self.embeddings_conf, self.vectordb_conf.dimensions)
+  if not embeddings_driver then
     return false, "failed to initialize embeddings driver: " .. err
   end
 
@@ -35,7 +35,7 @@ function algorithm:afterHostUpdate()
 
     self._target_id_map[keyid] = target
 
-    local embedding, err = embedding_driver:generate(target.description)
+    local embedding, _, err = embeddings_driver:generate(target.description)
     if err then
       return false, "unable to generate embeddings for target: " .. err
     end
@@ -115,8 +115,8 @@ function algorithm:getPeer(_)
 
   local vectordb_conf = self.vectordb_conf
 
-  local embedding_driver, err = embeddings.new(self.embeddings_conf, vectordb_conf.dimensions)
-  if not embedding_driver then
+  local embeddings_driver, err = embeddings.new(self.embeddings_conf, vectordb_conf.dimensions)
+  if not embeddings_driver then
     return false, "failed to initialize embeddings driver: " .. err
   end
 
@@ -125,7 +125,7 @@ function algorithm:getPeer(_)
     return false, "failed to initialize semantic cache driver: " .. err
   end
 
-  local embedding, err = embedding_driver:generate(message)
+  local embedding, _, err = embeddings_driver:generate(message)
   if not embedding then
     return nil, "unable to generate embeddings for request: " .. err
   end

@@ -39,8 +39,9 @@ describe("[openai]", function()
       assert.is_nil(err)
 
       for prompt, embedding in pairs(known_text_embeddings) do
-        local found_embedding, err = embeddings:generate(prompt, 128)
+        local found_embedding, embeddings_tokens, err = embeddings:generate(prompt, 128)
         assert.is_nil(err)
+        assert.are.same(8, embeddings_tokens)
         assert.are.same(embedding, found_embedding)
       end
     end)

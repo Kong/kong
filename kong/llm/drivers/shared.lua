@@ -64,6 +64,8 @@ local log_entry_keys = {
   CACHE_STATUS = "cache_status",
   FETCH_LATENCY = "fetch_latency",
   EMBEDDINGS_LATENCY = "embeddings_latency",
+  EMBEDDINGS_TOKENS = "embeddings_tokens",
+  COST_SAVINGS = "cost_savings",
 }
 
 local openai_override = os.getenv("OPENAI_TEST_PORT")

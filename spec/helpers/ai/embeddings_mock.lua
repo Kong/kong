@@ -75,6 +75,10 @@ local function mock_embeddings(opts)
     data = {
       { embedding = embedding },
     },
+    usage = {
+      prompt_tokens = 8,
+      total_tokens = 8
+    },
   }
 
   local encoded_response_body = cjson.encode(response_body)

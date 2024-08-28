@@ -120,7 +120,7 @@ describe(PLUGIN_NAME .. ": (unit)", function()
             name = "kong-model",
           },
         },
-      }, math.floor(ngx.now()), 100)
+      }, math.floor(ngx.now()), 100, 100, 100)
 
       access_handler._post_request(samples["llm/v1/chat"]["valid"])
 
@@ -136,13 +136,14 @@ describe(PLUGIN_NAME .. ": (unit)", function()
         embeddings_latency = 100000,
         embeddings_provider = "kong",
         embeddings_model = "kong-model",
+        embeddings_tokens = 100,
         fetch_latency = 10000,
       }, this_cache_stats)
 
       assert.same({
-        prompt_tokens = 10,
-        completion_tokens = 20,
-        total_tokens = 30,
+        prompt_tokens = 0,
+        completion_tokens = 0,
+        total_tokens = 0,
       }, this_stats.usage)
     end)
 

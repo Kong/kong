@@ -23,7 +23,7 @@ local schema = {
           { message_countback = {
               description = "Number of messages in the chat history to Vectorize/Cache",
               type = "number",
-              between = { 1, 10 },
+              between = { 1, 1000 },
               default = 1 }},
           { ignore_system_prompts = {
               description = "Ignore and discard any system prompts when Vectorizing the request",
@@ -38,10 +38,6 @@ local schema = {
               type = "boolean",
               required = true,
               default = false }},
-          { storage_ttl = { description = "Number of seconds to keep resources in the storage backend. This value is independent of `cache_ttl` or resource TTLs defined by Cache-Control behaviors.",
-              type = "integer",
-              default = 300,
-              gt = 0 }},
           { cache_ttl = { description = "TTL in seconds of cache entities. Must be a value greater than 0.",
               type = "integer",
               default = 300,

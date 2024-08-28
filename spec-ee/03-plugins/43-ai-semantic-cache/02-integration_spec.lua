@@ -167,6 +167,10 @@ local PRE_FUNCTION_ACCESS_SCRIPT = [[
     __key__ = "plugins:kong-ai-proxy-1:123456",
     model = {
       provider = "openai",
+      options = {
+        input_cost = 100,
+        output_cost = 100,
+      },
       name = "%s",
     },
     logging = {
@@ -375,6 +379,10 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                 assert.not_nil(ai_node and ai_node.cache)
                 assert.not_nil(ai_node.cache.fetch_latency)
                 assert.not_nil(ai_node.cache.embeddings_latency)
+                assert.not_nil(ai_node.cache.embeddings_tokens)
+                assert.is_nil(ai_node.cache.cost_savings)
+                assert.is_nil(ai_node.usage)
+
                 assert.same("miss", ai_node.cache.cache_status)
                 assert.same("text-embedding-3-large", ai_node.cache.embeddings_model)
                 assert.same("openai", ai_node.cache.embeddings_provider)
@@ -518,6 +526,13 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                   assert.not_nil(ai_node and ai_node.cache)
                   assert.not_nil(ai_node.cache.fetch_latency)
                   assert.not_nil(ai_node.cache.embeddings_latency)
+                  assert.not_nil(ai_node.cache.embeddings_tokens)
+                  assert.not_nil(ai_node.cache.cost_savings)
+
+                  assert.equals(0, ai_node.usage.prompt_tokens)
+                  assert.equals(0, ai_node.usage.completion_tokens)
+                  assert.equals(0, ai_node.usage.total_tokens)
+
                   assert.same("hit", ai_node.cache.cache_status)
                   assert.same("text-embedding-3-large", ai_node.cache.embeddings_model)
                   assert.same("openai", ai_node.cache.embeddings_provider)

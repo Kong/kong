@@ -64,7 +64,7 @@ function Driver:generate(prompt)
     ssl_cafile = kong.configuration.lua_ssl_trusted_certificate_combined,
   })
   if not httpc then
-    return nil, err
+    return nil, nil, err
   end
 
   local headers = {
@@ -76,7 +76,7 @@ function Driver:generate(prompt)
 
   body, err = cjson.encode(body)
   if err then
-    return nil, err
+    return nil, nil, err
   end
 
   local res, err = httpc:request_uri(embeddings_url, {
@@ -85,10 +85,10 @@ function Driver:generate(prompt)
     body = body,
   })
   if not res then
-    return nil, string.format("failed to generate embeddings (%s): %s", embeddings_url, err)
+    return nil, nil, string.format("failed to generate embeddings (%s): %s", embeddings_url, err)
   end
   if res.status ~= 200 then
-    return nil, string.format("unexpected embeddings response (%s): %s", embeddings_url, res.status)
+    return nil, nil, string.format("unexpected embeddings response (%s): %s", embeddings_url, res.status)
   end
 
   local res_body = res.body
@@ -96,16 +96,18 @@ function Driver:generate(prompt)
     res_body = gzip.inflate_gzip(res_body)
   end
 
-  local embedding_response, err = cjson.decode(res_body)
+  local embeddings_response, err = cjson.decode(res_body)
   if err then
-    return nil, err
+    return nil, nil, err
   end
 
-  if not embedding_response.data or #embedding_response.data == 0 then
-    return nil, "no embeddings found in response"
+  if not embeddings_response.data or #embeddings_response.data == 0 then
+    return nil, nil, "no embeddings found in response"
   end
 
-  return embedding_response.data[1].embedding, nil
+  local embeddings_tokens = embeddings_response.usage and embeddings_response.usage.total_tokens or 0
+
+  return embeddings_response.data[1].embedding, embeddings_tokens, nil
 end
 
 --

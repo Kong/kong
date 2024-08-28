@@ -112,7 +112,7 @@ local function get_guard_instance(conf, bypass_cache)
     }
 
     for i, prompt in ipairs(conf.rules.allow_prompts or {}) do
-      local embedding, err = guard.embeddings:generate(prompt)
+      local embedding, _, err = guard.embeddings:generate(prompt)
       if not embedding then
         return nil, "unable to generate embeddings for prompt: " .. err
       end
@@ -125,7 +125,7 @@ local function get_guard_instance(conf, bypass_cache)
     end
 
     for _, prompt in ipairs(conf.rules.deny_prompts or {}) do
-      local embedding, err = guard.embeddings:generate(prompt)
+      local embedding, _, err = guard.embeddings:generate(prompt)
       if not embedding then
         return nil, "unable to generate embeddings for prompt: " .. err
       end

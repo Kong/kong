@@ -128,7 +128,7 @@ local function format_chat(messages, countback, discard_system, discard_assistan
   return buf:get()
 end
 
-local function stash_stats(conf, start_time, embeddings_latency)
+local function stash_stats(conf, start_time, embeddings_latency, embeddings_tokens, saving_prompt_tokens, saving_completion_tokens)
   local aip_conf = llm_state.get_ai_proxy_conf()
   if not aip_conf then
     return
@@ -152,6 +152,18 @@ local function stash_stats(conf, start_time, embeddings_latency)
     cache_metrics.embeddings_model = conf.embeddings.model.name
   end
 
+  if saving_prompt_tokens and saving_completion_tokens and aip_conf.model and aip_conf.model.options
+    and aip_conf.model.options.input_cost and aip_conf.model.options.output_cost then
+    cache_metrics.cost_savings = (
+      (aip_conf.model.options.input_cost * saving_prompt_tokens) +
+      (aip_conf.model.options.output_cost * saving_completion_tokens)
+    ) / 1000000
+  end
+
+  if embeddings_tokens then
+    cache_metrics.embeddings_tokens = embeddings_tokens
+  end
+
   assert(ai_shared.stash_cache_stats(aip_conf, cache_metrics))
 end
 
@@ -163,26 +175,23 @@ local function post_request(response_body)
 
   -- if response_body is passed in, we are in error handling
   -- create an empty response object
-  if not response_body then
-    response_body = {
-      usage = {
-        prompt_tokens = 0,
-        completion_tokens = 0,
-        total_tokens = 0,
-      },
-    }
-  end
+  response_body = response_body or {}
+
+  response_body.usage = {
+    prompt_tokens = 0,
+    completion_tokens = 0,
+    total_tokens = 0,
+  }
 
   ai_shared.post_request(aip_conf, response_body)
 end
 
-local function send_cache_response(conf, cache_response, stream_mode, start_time, embeddings_latency, metadata)
+local function send_cache_response(conf, cache_response, stream_mode, start_time, embeddings_latency, embeddings_tokens, metadata)
   cache_response = assert(cjson.decode(cache_response))
 
   local cc = req_cc()
 
-  local ttl = conf.storage_ttl or
-                conf.cache_control and calculate_resource_ttl(cc) or
+  local ttl = conf.cache_control and calculate_resource_ttl(cc) or
                 conf.cache_ttl
 
   local cache_age = cache_response.ttl and (ttl - cache_response.ttl) or 0
@@ -195,8 +204,10 @@ local function send_cache_response(conf, cache_response, stream_mode, start_time
 
   set_cache_status(STATUS_HIT)
   -- mimic the proxy handler behaviour to popluate statistics
+  local saving_prompt_tokens = cache_response.usage.prompt_tokens
+  local saving_completion_tokens = cache_response.usage.completion_tokens
   post_request(cache_response)
-  stash_stats(conf, start_time, embeddings_latency)
+  stash_stats(conf, start_time, embeddings_latency, embeddings_tokens, saving_prompt_tokens, saving_completion_tokens)
 
   kong.response.set_header("Age", floor(cache_age))
   if metadata.key then kong.response.set_header("X-Cache-Key", metadata.key) end
@@ -233,7 +244,6 @@ local function send_cache_response(conf, cache_response, stream_mode, start_time
 
     -- now exit
     ngx.print("data: [DONE]")
-    ngx.exit(200)
   else
     kong.service.request.enable_buffering()
     cache_response.id = metadata.key
@@ -303,7 +313,7 @@ function AISemanticCaching:access(conf)
 
     if cache_response then
       -- exit and send response
-      send_cache_response(conf, cache_response, stream_mode, start_time, nil, metadata_out)
+      send_cache_response(conf, cache_response, stream_mode, start_time, nil, nil, metadata_out)
       return
     end
   end
@@ -324,7 +334,7 @@ function AISemanticCaching:access(conf)
 
   kong.log.debug("Generating the embeddings for the prompt")
   local embeddings_start_time = ngx.now()
-  local embeddings, err = embeddings_driver:generate(formatted_chat)
+  local embeddings, embeddings_tokens, err = embeddings_driver:generate(formatted_chat)
 
   if embeddings and (#embeddings ~= conf.vectordb.dimensions) then
     return bad_request(conf, "Embedding dimensions do not match the configured vector database. Embeddings were " ..
@@ -368,13 +378,13 @@ function AISemanticCaching:access(conf)
   -- exit and send response
   if not cache_response then
     set_cache_status(STATUS_MISS)
-    stash_stats(conf, start_time, embeddings_latency)
+    stash_stats(conf, start_time, embeddings_latency, embeddings_tokens)
     -- ask ai-proxy* to buffer the stream body to be cached later
     llm_state.set_stream_body_buffer_needed()
     return
   end
 
-  send_cache_response(conf, cache_response, stream_mode, start_time, embeddings_latency, metadata_out)
+  send_cache_response(conf, cache_response, stream_mode, start_time, embeddings_latency, embeddings_tokens, metadata_out)
 end
 
 
@@ -411,8 +421,7 @@ function AISemanticCaching:log(conf)
 
     local embeddings = kong.ctx.plugin.semantic_cache_embeddings
     local cache_key = kong.ctx.plugin.semantic_cache_key
-    local storage_ttl = conf.storage_ttl or
-                  conf.cache_control and calculate_resource_ttl(cc) or
+    local storage_ttl = conf.cache_control and calculate_resource_ttl(cc) or
                   conf.cache_ttl
     local model = "NOT_SPECIFIED"
     -- parse from ai-proxy-* conf
