@@ -45,6 +45,29 @@ function _M.table_merge(t1, t2)
 end
 
 
+--- Merges two table together but does not replace values from `t1` if `t2` for a given key has `ngx.null` value
+-- A new table is created with a non-recursive copy of the provided tables
+-- @param t1 The first table
+-- @param t2 The second table
+-- @return The (new) merged table
+function _M.null_aware_table_merge(t1, t2)
+  local res = {}
+  if t1 then
+    for k,v in pairs(t1) do
+      res[k] = v
+    end
+  end
+  if t2 then
+    for k,v in pairs(t2) do
+      if res[k] == nil or v ~= ngx.null then
+        res[k] = v
+      end
+    end
+  end
+  return res
+end
+
+
 --- Checks if a value exists in a table.
 -- @param arr The table to use
 -- @param val The value to check
