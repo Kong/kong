@@ -107,9 +107,16 @@ function _M:register_dao_hooks(is_cp)
   hooks.register_hook("dao:delete:fail", function(err)
     if err then
       return self.strategy:cancel_txn()
-    else
-      return self.strategy:commit_txn()
     end
+
+    -- no err, we should commit delete operation
+
+    local res, err = self.strategy:commit_txn()
+    if not res then
+      return self.strategy:cancel_txn()
+    end
+
+    return true
   end)
 
   hooks.register_hook("dao:delete:post", function(row, name, options, ws_id, cascade_entries)
