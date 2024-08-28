@@ -45,18 +45,19 @@ end
 
 
 function _M:register_dao_hooks(is_cp)
+  -- only control plane has these delta operations
   if not is_cp then
     return
   end
 
-  -- only control plane has these delta operations
   -- dao:insert
-  -- dao:upsert
-  -- dao:update
-  -- dao:delete
 
   hooks.register_hook("dao:insert:pre", function()
-    assert(self.strategy:begin_txn())
+    return self.strategy:begin_txn()
+  end)
+
+  hooks.register_hook("dao:insert:fail", function()
+    return self.strategy:cancel_txn()
   end)
 
   hooks.register_hook("dao:insert:post", function(row, name, options, ws_id)
@@ -70,11 +71,15 @@ function _M:register_dao_hooks(is_cp)
 
     local res, err = self.strategy:insert_delta(deltas)
     if not res then
-      assert(self.strategy:rollback_txn())
+      self.strategy:cancel_txn()
       return nil, err
     end
 
-    assert(self.strategy:commit_txn())
+    res, err = self.strategy:commit_txn()
+    if not res then
+      self.strategy:cancel_txn()
+      return nil, err
+    end
 
     local latest_version = self.strategy:get_latest_version()
 
@@ -93,8 +98,18 @@ function _M:register_dao_hooks(is_cp)
     return row, name, options, ws_id
   end)
 
+  -- dao:delete
+
   hooks.register_hook("dao:delete:pre", function()
-    assert(self.strategy:begin_txn())
+    return self.strategy:begin_txn()
+  end)
+
+  hooks.register_hook("dao:delete:fail", function(err)
+    if err then
+      return self.strategy:cancel_txn()
+    else
+      return self.strategy:commit_txn()
+    end
   end)
 
   hooks.register_hook("dao:delete:post", function(row, name, options, ws_id, cascade_entries)
@@ -108,11 +123,15 @@ function _M:register_dao_hooks(is_cp)
 
     local res, err = self.strategy:insert_delta(deltas)
     if not res then
-      assert(self.strategy:rollback_txn())
+      self.strategy:cancel_txn()
       return nil, err
     end
 
-    assert(self.strategy:commit_txn())
+    res, err = self.strategy:commit_txn()
+    if not res then
+      self.strategy:cancel_txn()
+      return nil, err
+    end
 
     local latest_version = self.strategy:get_latest_version()
 

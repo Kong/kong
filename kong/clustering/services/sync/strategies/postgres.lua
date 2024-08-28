@@ -72,8 +72,9 @@ function _M:commit_txn()
 end
 
 
-function _M:rollback_txn()
-  return self.connector:query("ROLLBACK;")
+function _M:cancel_txn()
+  -- we will close the connection, not execute 'ROLLBACK'
+  return self.connector:close()
 end
 
 
