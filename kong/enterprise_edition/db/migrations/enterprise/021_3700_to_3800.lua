@@ -53,14 +53,6 @@ return {
         EXCEPTION WHEN UNDEFINED_COLUMN OR DUPLICATE_COLUMN THEN
           -- do nothing, accept existing state
       END$$;
-
-      -- add checksum column to licenses table
-      DO $$
-        BEGIN
-          ALTER TABLE IF EXISTS ONLY "licenses" ADD COLUMN "checksum" TEXT UNIQUE;
-        EXCEPTION WHEN UNDEFINED_COLUMN OR DUPLICATE_COLUMN THEN
-          -- do nothing, accept existing state
-      END$$;
     ]],
     teardown = function(connector)
       -- retrieve all workspace
