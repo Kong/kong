@@ -12,6 +12,8 @@ local kong = kong
 local set_header = kong.service.request.set_header
 local ngx_var = ngx.var
 local meta = require "kong.meta"
+local resty_kong_tls = require "resty.kong.tls"
+local escape_uri = ngx.escape_uri
 
 
 local TLSMetadataHandler = {
@@ -20,32 +22,43 @@ local TLSMetadataHandler = {
   VERSION = meta.core_version
 }
 
+
+local CLIENT_CERT_CHAIN_HEADER = "X-Client-Cert-Chain"
+
+
 function TLSMetadataHandler:access(conf)
 
-  if conf.inject_client_cert_details then
+  if not conf.inject_client_cert_details then
+    return
+  end
 
-    if ngx.var.ssl_client_escaped_cert then
-      -- add http headers
-      set_header(conf.client_cert_header_name,
-        ngx_var.ssl_client_escaped_cert)
+  if ngx.var.ssl_client_escaped_cert then
+    -- add http headers
+    set_header(conf.client_cert_header_name,
+      ngx_var.ssl_client_escaped_cert)
 
-      set_header(conf.client_serial_header_name,
-        ngx_var.ssl_client_serial)
+    set_header(conf.client_serial_header_name,
+      ngx_var.ssl_client_serial)
 
-      set_header(conf.client_cert_issuer_dn_header_name,
-        ngx_var.ssl_client_i_dn)
+    set_header(conf.client_cert_issuer_dn_header_name,
+      ngx_var.ssl_client_i_dn)
 
-      set_header(conf.client_cert_subject_dn_header_name,
-      ngx_var.ssl_client_s_dn)
+    set_header(conf.client_cert_subject_dn_header_name,
+    ngx_var.ssl_client_s_dn)
 
-      set_header(conf.client_cert_fingerprint_header_name,
-        ngx_var.ssl_client_fingerprint)
+    set_header(conf.client_cert_fingerprint_header_name,
+      ngx_var.ssl_client_fingerprint)
 
-    else
-      kong.log.err("plugin enabled to inject tls client certificate headers, but " ..
-        "no client certificate was provided")
-    end
+  else
+    kong.log.err("plugin enabled to inject tls client certificate headers, but " ..
+      "no client certificate was provided")
+  end
 
+  local full_chain = resty_kong_tls.get_full_client_certificate_chain()
+  if full_chain then
+    set_header(CLIENT_CERT_CHAIN_HEADER, escape_uri(full_chain))
+  else
+    kong.log.err("could not get full client certificate chain")
   end
 
 end

@@ -41,6 +41,14 @@ local tls_fixtures = { http_mock = {
             proxy_pass https://127.0.0.1:9443/get;
         }
 
+        location = /intermediate_client {
+            proxy_ssl_certificate ]] .. fixtures_path .. [[/intermediate_client_example.com.crt;
+            proxy_ssl_certificate_key ]] .. fixtures_path .. [[/intermediate_client_example.com.key;
+            proxy_ssl_name example.com;
+            proxy_set_header Host example.com;
+            proxy_pass https://127.0.0.1:9443/get;
+        }
+
     }
   ]], }
 }
@@ -139,9 +147,18 @@ for _, strategy in strategies() do
         assert.is_nil(json.headers["X-Client-Cert"])
       end)
 
+      it("returns HTTP 200 on https request if intermediate certificate passed", function()
+        local res = assert(tls_client:send {
+          method  = "GET",
+          path = "/intermediate_client",
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.is_nil(json.headers["X-Client-Cert"])
+        assert.is_nil(json.headers["X-Client-Cert-Chain"])
+      end)
+
     end)
-
-
 
   end)
 end

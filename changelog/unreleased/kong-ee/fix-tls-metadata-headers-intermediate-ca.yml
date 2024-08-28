@@ -1,0 +1,3 @@
+message: "**tls-metadata-headers**: Fixed an issue where intermediate certificates details were not added to request headers."
+type: bugfix
+scope: Plugin
