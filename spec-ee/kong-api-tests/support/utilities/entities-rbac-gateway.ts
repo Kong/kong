@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { expect } from '../assert/chai-expect';
+import { logResponse } from './logging';
 import { App, Environment, getBasePath } from '../config/environment';
 
 const getUrl = (endpoint: string) => {
@@ -49,7 +50,7 @@ export const deleteUser = async (userNameOrId: string) => {
     url: `${getUrl('rbac/users')}/${userNameOrId}`,
   });
   expect(resp.status, 'Status should be 204').to.equal(204);
-
+  logResponse(resp);
   return resp;
 };
 

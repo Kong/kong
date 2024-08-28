@@ -9,19 +9,31 @@ import {
   logResponse,
   randomString,
   createGatewayService,
-  isCI,
-  wait,
   isGateway,
+  deleteUser,
+  deletePlugin,
+  waitForConfigRebuild,
 } from '@support';
 
 describe('Gateway /licenses API tests', function () {
-  const isCIrun = isCI();
-  const waitTime = 5000;
+  /**
+   * This test requires EE license to be posted via API
+  */
+
   const sampleId = '7ad8a306-cb1f-4b61-8b51-47c3604c3748';
   const licenseKey = 'ASDASDASDASDASDASDASDASDASD_a1VASASD';
   const validLicense = authDetails.license.valid;
   const inValidLicense = authDetails.license.invalid;
-  const validLicenseAws = '{vault://aws/gateway-secret-test/ee_license}'
+  const expiredLicense = authDetails.license.expired; 
+  const validLicenseAws = '{vault://aws/gateway-secret-test/ee_license}';
+  const jwtPluginPayload = {
+    name: 'jwt-signer',
+    config: {}
+  };
+  const rbacUser = {
+    name: 'user1',
+    user_token: 'rbac1'  
+  }
 
   const url = `${getBasePath({
     environment: isGateway() ? Environment.gateway.admin : undefined,
@@ -31,9 +43,19 @@ describe('Gateway /licenses API tests', function () {
     environment: isGateway() ? Environment.gateway.admin : undefined,
   })}/plugins`;
 
+  const rbacUsersUrl = `${getBasePath({
+    environment: isGateway() ? Environment.gateway.admin : undefined,
+  })}/rbac/users`;
+
   let licenseId: string;
+  let expiredLicenseId: string;
+  let licenseValidId: string;
   let serviceId: string;
+  let expiredLicenseServiceId: string;
+  let eeJWTPluginId: string;
+  let eeKeyAuthEncPluginId: string;
   let basePayload: any;
+  let rbacUserId: string;
 
   const assertBasicRespDetails = (resp: AxiosResponse) => {
     expect(resp.data.created_at, 'Should have created_at entry').to.be.a(
@@ -77,7 +99,99 @@ describe('Gateway /licenses API tests', function () {
     logResponse(resp);
 
     expect(resp.status, 'Status should be 204').to.equal(204);
-    await wait(waitTime); // eslint-disable-line no-restricted-syntax
+  });
+
+  it('should deploy an exipred license successfully', async function () {
+    const resp = await postNegative(url, { payload: expiredLicense });
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 201').to.equal(201);
+    assertBasicRespDetails(resp);
+
+    expiredLicenseId = resp.data.id;
+    await waitForConfigRebuild();
+  });
+
+  it('should get license report endpoint with expired license', async function () {
+    const resp = await axios(`${url.split('licenses')[0]}license/report`);
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 200').to.equal(200);
+  });
+
+  it('should create a service successfully with expired license', async function () {
+    const service = await createGatewayService(randomString());
+    expiredLicenseServiceId = service.id;
+  });
+
+  it('should NOT be able to create a RBAC user with expired license', async function () {
+    const resp = await postNegative(`${rbacUsersUrl}`, rbacUser);
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 403').to.equal(403);
+    expect(resp.data.message, 'Should have correct message').to.contain(
+      'Enterprise license missing or expired'
+    );
+  });
+
+  it('should NOT be able to create jwt-signer plugin with expired license', async function () {
+    const resp = await postNegative(`${pluginsUrl}`, jwtPluginPayload);
+    logResponse(resp);
+    expect(resp.status, 'Status should be 400').to.equal(400);
+    expect(resp.data.message, 'Should have correct message').to.contain(
+      'enterprise only plugin'
+    );
+  });
+
+  it('should delete expired license successfully', async function () {
+    const resp = await axios({
+      method: 'delete',
+      url: `${url}/${expiredLicenseId}`,
+    });
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 204').to.equal(204);
+    await waitForConfigRebuild();
+  });
+
+  it('should POST a valid license after deleting expired license', async function () {
+    const resp = await postNegative(url, { payload: validLicense });
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 201').equal(201);
+    assertBasicRespDetails(resp);
+
+    licenseValidId = resp.data.id;
+    await waitForConfigRebuild();
+  });
+
+  it('should create a RBAC user with valid license successfully', async function () {
+    const resp = await postNegative(`${rbacUsersUrl}`, rbacUser);
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 201').to.equal(201);
+    expect(resp.data.id, 'ID is undefined').to.exist;
+    rbacUserId = resp.data.id;
+  });
+
+  it('should create jwt-signer plugin with valid license successfully', async function () {
+    const resp = await postNegative(`${pluginsUrl}`, jwtPluginPayload);
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 201').to.equal(201);
+
+    eeJWTPluginId = resp.data.id;
+  });
+
+  it('should delete valid license successfully', async function () {
+    const resp = await axios({
+      method: 'delete',
+      url: `${url}/${licenseValidId}`,
+    });
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 204').to.equal(204);
+    await waitForConfigRebuild();
   });
 
   it('should not POST an invalid license', async function () {
@@ -104,23 +218,23 @@ describe('Gateway /licenses API tests', function () {
     );
   });
 
-  if (isCIrun) {
-    it('should not enable key-auth-enc ee plugin without license', async function () {
-      const pluginPayload = {
-        name: 'key-auth-enc',
-        config: { key_names: ['apiKey'] },
-      };
+  
+  it('should not enable key-auth-enc ee plugin without license', async function () {
+    const pluginPayload = {
+      ...basePayload,
+      config: { key_names: ['apiKey'] },
+    };
 
-      const resp = await postNegative(pluginsUrl, pluginPayload);
-      logResponse(resp);
+    const resp = await postNegative(pluginsUrl, pluginPayload);
+    logResponse(resp);
 
-      expect(resp.status, 'Status should be 400').to.equal(400);
-      expect(
-        resp.data.message,
-        'Should see correct error message for plugin creation'
-      ).to.include(`'key-auth-enc' is an enterprise only plugin`);
-    });
-  }
+    expect(resp.status, 'Status should be 400').to.equal(400);
+    expect(
+      resp.data.message,
+      'Should see correct error message for plugin creation'
+    ).to.include(`'key-auth-enc' is an enterprise only plugin`);
+  });
+  
 
   it('should POST a valid license', async function () {
     const resp = await postNegative(url, { payload: validLicense });
@@ -128,27 +242,27 @@ describe('Gateway /licenses API tests', function () {
 
     licenseId = resp.data.id;
     assertBasicRespDetails(resp);
+    await waitForConfigRebuild();
   });
 
-  if (isCIrun) {
-    it('should enable key-auth-enc ee plugin with license', async function () {
-      await wait(waitTime); // eslint-disable-line no-restricted-syntax
+  
+  it('should enable key-auth-enc ee plugin with license', async function () {
+    const pluginPayload = {
+      ...basePayload,
+      config: { key_names: ['apiKey'] },
+    };
 
-      const pluginPayload = {
-        ...basePayload,
-        config: { key_names: ['apiKey'] },
-      };
-
-      const resp = await axios({
-        method: 'post',
-        url: pluginsUrl,
-        data: pluginPayload,
-      });
-      logResponse(resp);
-
-      expect(resp.status, 'Status should be 201').to.equal(201);
+    const resp = await axios({
+      method: 'post',
+      url: pluginsUrl,
+      data: pluginPayload,
     });
-  }
+    logResponse(resp);
+
+    expect(resp.status, 'Status should be 201').to.equal(201);
+    eeKeyAuthEncPluginId = resp.data.id;
+  });
+  
 
   it('should not POST a duplicate valid license', async function () {
     const resp = await postNegative(url, { payload: validLicense });
@@ -277,6 +391,11 @@ describe('Gateway /licenses API tests', function () {
     // safegurad subsequent tests from failing due to ee license by additionally posting the ee license
     const resp = await postNegative(url, { payload: validLicense });
     logResponse(resp);
+
     await deleteGatewayService(serviceId);
+    await deleteGatewayService(expiredLicenseServiceId);
+    await deletePlugin(eeJWTPluginId);
+    await deletePlugin(eeKeyAuthEncPluginId);
+    await deleteUser(rbacUserId);
   });
 });
