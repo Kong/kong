@@ -72,6 +72,7 @@ local schema = {
               fields = {
                 {
                   auth_method = {
+                    description = "The authentication method used in client requests to the IdP. Supported values are: `client_secret_basic` to send `client_id` and `client_secret` in the `Authorization: Basic` header, `client_secret_post` to send `client_id` and `client_secret` as part of the request body, or `client_secret_jwt` to send a JWT signed with the `client_secret` using the client assertion as part of the body.",
                     type     = "string",
                     one_of   = oauth_client.constants.AUTH_TYPES,
                     default  = oauth_client.constants.AUTH_TYPE_CLIENT_SECRET_POST,
@@ -80,6 +81,7 @@ local schema = {
                 },
                 {
                   client_secret_jwt_alg = {
+                    description = "The algorithm to use with JWT when using `client_secret_jwt` authentication.",
                     type     = "string",
                     one_of   = oauth_client.constants.CLIENT_SECRET_JWT_ALGS,
                     default  = oauth_client.constants.JWT_ALG_HS512,
@@ -88,6 +90,7 @@ local schema = {
                 },
                 {
                   http_version = {
+                    description = "The HTTP version used for requests made by this plugin. Supported values: `1.1` for HTTP 1.1 and `1.0` for HTTP 1.0.",
                     type             = "number",
                     default          = 1.1,
                     required         = false,
@@ -101,40 +104,47 @@ local schema = {
                 },
                 {
                   http_proxy = typedefs.url {
+                    description = "The proxy to use when making HTTP requests to the IdP.",
                     required = false
                   }
                 },
                 {
                   http_proxy_authorization = {
+                    description = "The `Proxy-Authorization` header value to be used with `http_proxy`.",
                     type     = "string",
                     required = false
                   }
                 },
                 {
                   https_proxy = typedefs.url {
+                    description = "The proxy to use when making HTTPS requests to the IdP.",
                     required = false
                   }
                 },
                 {
                   https_proxy_authorization = {
+                    description = "The `Proxy-Authorization` header value to be used with `https_proxy`.",
                     type     = "string",
                     required = false
                   }
                 },
                 {
                   no_proxy = {
+                    description = "A comma-separated list of hosts that should not be proxied.",
                     type     = "string",
                     required = false
                   }
                 },
                 {
                   timeout = typedefs.timeout {
+                    description = "Network I/O timeout for requests to the IdP in milliseconds.",
                     default = 10000,
                     required = true
                   }
                 },
                 {
                   keep_alive = {
+                    description = "Whether to use keepalive connections to the IdP.",
                     type = "boolean",
                     default = true,
                     required = true
@@ -142,6 +152,7 @@ local schema = {
                 },
                 {
                   ssl_verify = {
+                    description = "Whether to verify the certificate presented by the IdP when using HTTPS.",
                     required = false,
                     type     = "boolean",
                     default  = false,
@@ -156,11 +167,13 @@ local schema = {
               fields = {
                 {
                   token_endpoint = typedefs.url {
+                    description = "The token endpoint URI.",
                     required = true
                   }
                 },
                 {
                   token_headers = {
+                    description = "Extra headers to be passed in the token endpoint request.",
                     type = "map",
                     keys = typedefs.header_name,
                     values = {
@@ -171,6 +184,7 @@ local schema = {
                 },
                 {
                   token_post_args = {
+                    description = "Extra post arguments to be passed in the token endpoint request.",
                     type = "map",
                     keys = { type = "string" },
                     values = {
@@ -181,6 +195,7 @@ local schema = {
                 },
                 {
                   grant_type = {
+                    description = "The OAuth grant type to be used.",
                     type = "string",
                     one_of = oauth_client.constants.GRANT_TYPES,
                     default = oauth_client.constants.GRANT_TYPE_CLIENT_CREDENTIALS,
@@ -189,6 +204,7 @@ local schema = {
                 },
                 {
                   client_id = {
+                    description = "The client ID for the application registration in the IdP.",
                     type          = "string",
                     encrypted     = true,
                     referenceable = true,
@@ -197,6 +213,7 @@ local schema = {
                 },
                 {
                   client_secret = {
+                    description = "The client secret for the application registration in the IdP.",
                     type          = "string",
                     encrypted     = true,
                     referenceable = true,
@@ -205,6 +222,7 @@ local schema = {
                 },
                 {
                   username = {
+                    description = "The username to use if `config.oauth.grant_type` is set to `password`.",
                     type          = "string",
                     encrypted     = true,
                     referenceable = true,
@@ -213,6 +231,7 @@ local schema = {
                 },
                 {
                   password = {
+                    description = "The password to use if `config.oauth.grant_type` is set to `password`.",
                     type          = "string",
                     encrypted     = true,
                     referenceable = true,
@@ -221,6 +240,7 @@ local schema = {
                 },
                 {
                   scopes = {
+                    description = "List of scopes to request from the IdP when obtaining a new token.",
                     type     = "array",
                     default  = {
                       "openid"
@@ -233,6 +253,7 @@ local schema = {
                 },
                 {
                   audience = {
+                    description = "List of audiences passed to the IdP when obtaining a new token.",
                     type     = "array",
                     default  = {},
                     elements = {
@@ -250,6 +271,7 @@ local schema = {
               fields = {
                 {
                   strategy = {
+                    description = "The method Kong should use to cache tokens issued by the IdP.",
                     type = "string",
                     one_of = cache.constants.STRATEGIES,
                     default = cache.constants.STRATEGY_MEMORY,
@@ -262,6 +284,7 @@ local schema = {
                     fields = {
                       {
                         dictionary_name = {
+                          description = "The shared dictionary used by the plugin to cache tokens if `config.cache.strategy` is set to `memory`.",
                           type = "string",
                           required = true,
                           default = "kong_db_cache",
@@ -275,6 +298,7 @@ local schema = {
                 },
                 {
                   eagerly_expire = {
+                    description = "The number of seconds to eagerly expire a cached token. By default, a cached token expires 5 seconds before its lifetime as defined in `expires_in`.",
                     type     = "integer",
                     default  = 5,
                     gt       = -1,
@@ -283,6 +307,7 @@ local schema = {
                 },
                 {
                   default_ttl = {
+                    description = "The lifetime of a token without an explicit `expires_in` value.",
                     type    = "number",
                     default = 3600,
                     gt      = 0
@@ -297,6 +322,7 @@ local schema = {
               fields = {
                 {
                   upstream_access_token_header_name = {
+                    description = "The name of the header used to send the access token (obtained from the IdP) to the upstream service.",
                     type = "string",
                     default = "Authorization",
                     required = true,
@@ -305,6 +331,7 @@ local schema = {
                 },
                 {
                   idp_error_response_status_code = {
+                    description = "The response code to return to the consumer if Kong fails to obtain a token from the IdP.",
                     type = "integer",
                     default = 502,
                     required = true,
@@ -313,6 +340,7 @@ local schema = {
                 },
                 {
                   idp_error_response_content_type = {
+                    description = "The Content-Type of the response to return to the consumer if Kong fails to obtain a token from the IdP.",
                     type = "string",
                     default = "application/json; charset=utf-8",
                     required = true,
@@ -321,6 +349,7 @@ local schema = {
                 },
                 {
                   idp_error_response_message = {
+                    description = "The message to embed in the body of the response to return to the consumer if Kong fails to obtain a token from the IdP.",
                     type = "string",
                     default = "Failed to authenticate request to upstream",
                     required = true,
@@ -329,6 +358,7 @@ local schema = {
                 },
                 {
                   idp_error_response_body_template = {
+                    description = "The template to use to create the body of the response to return to the consumer if Kong fails to obtain a token from the IdP.",
                     type = "string",
                     default = "{ \"code\": \"{{status}}\", \"message\": \"{{message}}\" }",
                     required = true,
@@ -337,6 +367,7 @@ local schema = {
                 },
                 {
                   purge_token_on_upstream_status_codes = {
+                    description = "An array of status codes which will force an access token to be purged when returned by the upstream. An empty array will disable this functionality.",
                     type = "array",
                     default = { 401 },
                     elements = {
