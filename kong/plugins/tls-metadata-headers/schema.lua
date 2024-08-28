@@ -59,12 +59,6 @@ return {
             description = "Define the HTTP header name used for the SHA1 fingerprint of the client certificate.",
             default = "X-Client-Cert-Fingerprint"
           }, },
-          { forwarded_client_cert_header_name = {
-            type = "string",
-            required = true,
-            description = "Define the HTTP header name used for clients or proxies certificate information. If inject_client_cert_details is set to true, the plugin will add certificate details to this header. If set to false, the plugin will forward the certificate information as it was received.",
-            default = "X-Forwarded-Client-Cert"
-          }, },
         },
     }, },
   },
