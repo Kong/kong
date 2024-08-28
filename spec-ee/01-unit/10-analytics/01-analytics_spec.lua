@@ -159,6 +159,8 @@ local request_log = {
         fetch_latency = 452,
         embeddings_latency = 424,
         embeddings_provider = "openai",
+        embeddings_tokens = 10,
+        cost_caching = 0.0020,
       }
     },
     ["ai-request-transformer"] = {
@@ -182,6 +184,8 @@ local request_log = {
         fetch_latency = 452,
         embeddings_latency = 424,
         embeddings_provider = "openai",
+        embeddings_tokens = 10,
+        cost_caching = 0.0020,
       },
     },
   },
@@ -394,6 +398,8 @@ describe("extract request log properly", function()
             fetch_latency = 452,
             embeddings_latency = 424,
             embeddings_provider = "openai",
+            embeddings_tokens = 10,
+            cost_caching = 0.0020,
           }
         },
         {
@@ -418,6 +424,8 @@ describe("extract request log properly", function()
             fetch_latency = 452,
             embeddings_latency = 424,
             embeddings_provider = "openai",
+            embeddings_tokens = 10,
+            cost_caching = 0.0020,
           },
 
         }
@@ -541,6 +549,8 @@ describe("extract request log properly", function()
             fetch_latency = 452,
             embeddings_latency = 424,
             embeddings_provider = "openai",
+            embeddings_tokens = 10,
+            cost_caching = 0.0020,
           }
         },
         {
@@ -565,6 +575,8 @@ describe("extract request log properly", function()
             fetch_latency = 452,
             embeddings_latency = 424,
             embeddings_provider = "openai",
+            embeddings_tokens = 10,
+            cost_caching = 0.0020,
           },
         }
       },
@@ -719,6 +731,8 @@ describe("extract request log properly", function()
             fetch_latency = 452,
             embeddings_latency = 424,
             embeddings_provider = "openai",
+            embeddings_tokens = 10,
+            cost_caching = 0.0020,
           }
         },
         {
@@ -743,6 +757,8 @@ describe("extract request log properly", function()
             fetch_latency = 452,
             embeddings_latency = 424,
             embeddings_provider = "openai",
+            embeddings_tokens = 10,
+            cost_caching = 0.0020,
           },
         }
       },

@@ -150,4 +150,6 @@ message AICacheInfo {
   string embeddings_model = 3;
   uint32 fetch_latency = 4;
   uint32 embeddings_latency = 5;
+  uint32 embeddings_tokens = 6;
+  double cost_caching = 7;
 }
