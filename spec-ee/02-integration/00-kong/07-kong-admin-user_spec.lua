@@ -9,6 +9,7 @@ local helpers = require "spec.helpers"
 local crypto = require "kong.plugins.basic-auth.crypto"
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local DB = require "kong.db"
+local rbac = require "kong.rbac"
 
 for _, strategy in helpers.each_strategy() do
 
@@ -53,5 +54,22 @@ for _, strategy in helpers.each_strategy() do
       assert.same(crypto.hash(consumer.id, os.getenv("KONG_PASSWORD")), cred.password)
     end)
 
+    it("the user_token_ident is nil of the special admin 'kong_admin' ", function()
+      local db = init_db()
+      local token = "foo"
+
+      -- validate if the user_token_ident is nil for the kong_admin
+      local rbac_users = assert(db.rbac_users:select_by_name("kong_admin"))
+      assert.is_nil(rbac_users.user_token_ident)
+      assert.equals(token, rbac_users.user_token)
+
+      -- validate if the user_token_ident is not nil for non kong-admin
+      local no_kong_admin = assert(db.rbac_users:insert {
+        name = "no_kong_admin",
+        user_token = "token",
+      })
+      assert.is_not_nil(no_kong_admin.user_token_ident)
+      assert.equals(no_kong_admin.user_token_ident, rbac.get_token_ident("token"))
+    end)
   end)
 end

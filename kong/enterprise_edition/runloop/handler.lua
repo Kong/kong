@@ -32,8 +32,10 @@ function handler.register_events()
 
   -- rbac token ident cache handling
   worker_events.register(function(data)
-    kong.cache:invalidate("rbac_user_token_ident:" ..
-                          data.entity.user_token_ident)
+    if data.entity and data.entity.user_token_ident then
+      kong.cache:invalidate("rbac_user_token_ident:" ..
+                            data.entity.user_token_ident)
+    end
 
     -- clear a patched ident range cache, if appropriate
     -- this might be nil if we in-place upgrade a pt token
