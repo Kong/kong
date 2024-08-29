@@ -288,6 +288,70 @@ describe("rate-limiting-advanced schema", function()
 
     assert.is_nil(err)
     assert.is_truthy(ok)
+
+    local ok, err = v({
+      window_size = { 60 },
+      limit = { 10 },
+      sync_rate = 10,
+      strategy = "redis",
+      redis = {
+        cluster_nodes = {
+          { ip = "127.0.0.1", port = 26379 }
+        },
+        cluster_addresses = { "127.0.0.1:26379" }
+      },
+    }, rate_limiting_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(ok)
+
+    local ok, err = v({
+      window_size = { 60 },
+      limit = { 10 },
+      sync_rate = 10,
+      strategy = "redis",
+      redis = {
+        cluster_nodes = ngx_null,
+        cluster_addresses = { "127.0.0.1:26379" }
+      },
+    }, rate_limiting_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(ok)
+
+    local ok, err = v({
+      window_size = { 60 },
+      limit = { 10 },
+      sync_rate = 10,
+      strategy = "redis",
+      redis = {
+        cluster_nodes = {
+          { ip = "127.0.0.1", port = 26379 }
+        },
+        cluster_addresses = ngx_null
+      },
+    }, rate_limiting_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(ok)
+
+    local ok, err = v({
+      window_size = { 60 },
+      limit = { 10 },
+      sync_rate = 10,
+      strategy = "redis",
+      redis = {
+        sentinel_master = "mymaster",
+        sentinel_role = "master",
+        sentinel_nodes = {
+          { host = "localhost", port = 26379 }
+        },
+        sentinel_addresses = { "localhost:26379" }
+      },
+    }, rate_limiting_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(ok)
   end)
 
   it("errors with a missing/incomplete redis config", function()
@@ -323,7 +387,52 @@ describe("rate-limiting-advanced schema", function()
         sentinel_master = "example.com",
       }
     }, rate_limiting_schema)
+    assert.is_falsy(ok)
 
+    local ok = v({
+      window_size = { 60 },
+      limit = { 10 },
+      sync_rate = 10,
+      strategy = "redis",
+      redis = {
+        host = "example.com",
+        port = 6379,
+        timeout = 3000,
+        connect_timeout = 3000,
+        send_timeout = 3000,
+        read_timeout = 3001, -- this is different from `timeout` field
+      },
+    }, rate_limiting_schema)
+    assert.is_falsy(ok)
+
+    local ok = v({
+      window_size = { 60 },
+      limit = { 10 },
+      sync_rate = 10,
+      strategy = "redis",
+      redis = {
+        cluster_nodes = {
+          { ip = "127.0.0.1", port = 26380 } -- port differ
+        },
+        cluster_addresses = { "127.0.0.1:26379" }
+      },
+    }, rate_limiting_schema)
+    assert.is_falsy(ok)
+
+    local ok = v({
+      window_size = { 60 },
+      limit = { 10 },
+      sync_rate = 10,
+      strategy = "redis",
+      redis = {
+        sentinel_master = "mymaster",
+        sentinel_role = "master",
+        sentinel_nodes = {
+          { host = "localhost", port = 26380 } -- port differ
+        },
+        sentinel_addresses = { "localhost:26379" }
+      },
+    }, rate_limiting_schema)
     assert.is_falsy(ok)
   end)
 

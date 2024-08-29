@@ -228,6 +228,11 @@ _M.config_schema = {
         deprecation = {
           message = "redis schema field `timeout` is deprecated, use `connect_timeout`, `send_timeout` and `read_timeout`",
           removal_in_version = "4.0",
+          replaced_with = {
+            { path = { "connect_timeout" } },
+            { path = { "send_timeout" } },
+            { path = { "read_timeout" } },
+          }
         },
         func = function(value)
           if is_present(value) then
@@ -245,6 +250,17 @@ _M.config_schema = {
         deprecation = {
           message = "sentinel_addresses is deprecated, please use sentinel_nodes instead",
           removal_in_version = "4.0",
+          replaced_with = {
+            { path = { "sentinel_nodes" },
+              reverse_mapping_function = function(data)
+                if not data.sentinel_nodes or data.sentinel_nodes == ngx.null then
+                  return data.sentinel_nodes
+                end
+
+                return map(redis_config_utils.merge_host_port, data.sentinel_nodes)
+              end
+            }
+          }
         },
         translate_backwards_with = function(data)
           if not data.sentinel_nodes or data.sentinel_nodes == ngx.null then
@@ -272,6 +288,17 @@ _M.config_schema = {
         deprecation = {
           message = "cluster_addresses is deprecated, please use cluster_nodes instead",
           removal_in_version = "4.0",
+          replaced_with = {
+            { path = { "cluster_nodes" },
+              reverse_mapping_function = function(data)
+                if not data.cluster_nodes or data.cluster_nodes == ngx.null then
+                  return data.cluster_nodes
+                end
+
+                return map(redis_config_utils.merge_ip_port, data.cluster_nodes)
+              end
+            }
+          }
         },
         translate_backwards_with = function(data)
           if not data.cluster_nodes or data.cluster_nodes == ngx.null then

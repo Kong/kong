@@ -490,6 +490,7 @@ return {
           type = "string",
           translate_backwards = {'redis', 'prefix'},
           deprecation = {
+            replaced_with = { { path = {'redis', 'prefix'} } },
             message = "saml: config.session_redis_prefix is deprecated, please use config.redis.prefix instead",
             removal_in_version = "4.0", },
           func = function(value)
@@ -500,6 +501,7 @@ return {
           type = "string",
           translate_backwards = {'redis', 'socket'},
           deprecation = {
+            replaced_with = { { path = {'redis', 'socket'} } },
             message = "saml: config.session_redis_socket is deprecated, please use config.redis.socket instead",
             removal_in_version = "4.0", },
           func = function(value)
@@ -510,6 +512,7 @@ return {
           type = "string",
           translate_backwards = {'redis', 'host'},
           deprecation = {
+            replaced_with = { { path = {'redis', 'host'} } },
             message = "saml: config.session_redis_host is deprecated, please use config.redis.host instead",
             removal_in_version = "4.0", },
           func = function(value, read_only_full_config)
@@ -523,6 +526,7 @@ return {
           type = "integer",
           translate_backwards = {'redis', 'port'},
           deprecation = {
+            replaced_with = { { path = {'redis', 'port'} } },
             message = "saml: config.session_redis_port is deprecated, please use config.redis.port instead",
             removal_in_version = "4.0", },
           func = function(value, read_only_full_config)
@@ -537,6 +541,7 @@ return {
             type = "string",
             translate_backwards = {'redis', 'username'},
             deprecation = {
+              replaced_with = { { path = {'redis', 'username'} } },
               message = "saml: config.redis_host is deprecated, please use config.redis.host instead",
               removal_in_version = "4.0", },
             func = function(value)
@@ -549,6 +554,7 @@ return {
             type = "string",
             translate_backwards = {'redis', 'password'},
             deprecation = {
+              replaced_with = { { path = {'redis', 'password'} } },
               message = "saml: config.session_redis_password is deprecated, please use config.redis.password instead",
               removal_in_version = "4.0", },
             func = function(value)
@@ -561,6 +567,7 @@ return {
             type = "integer",
             translate_backwards = {'redis', 'connect_timeout'},
             deprecation = {
+              replaced_with = { { path = {'redis', 'connect_timeout'} } },
               message = "saml: config.session_redis_connect_timeout is deprecated, please use config.redis.connect_timeout instead",
               removal_in_version = "4.0", },
             func = function(value)
@@ -573,6 +580,7 @@ return {
             type = "integer",
             translate_backwards = {'redis', 'read_timeout'},
             deprecation = {
+              replaced_with = { { path = {'redis', 'read_timeout'} } },
               message = "saml: config.session_redis_read_timeout is deprecated, please use config.redis.read_timeout instead",
               removal_in_version = "4.0", },
             func = function(value)
@@ -585,6 +593,7 @@ return {
             type = "integer",
             translate_backwards = {'redis', 'send_timeout'},
             deprecation = {
+              replaced_with = { { path = {'redis', 'send_timeout'} } },
               message = "saml: config.session_redis_send_timeout is deprecated, please use config.redis.send_timeout instead",
               removal_in_version = "4.0", },
             func = function(value)
@@ -597,6 +606,7 @@ return {
             type = "boolean",
             translate_backwards = {'redis', 'ssl'},
             deprecation = {
+              replaced_with = { { path = {'redis', 'ssl'} } },
               message = "saml: config.session_redis_ssl is deprecated, please use config.redis.ssl instead",
               removal_in_version = "4.0", },
             func = function(value)
@@ -609,6 +619,7 @@ return {
             type = "boolean",
             translate_backwards = {'redis', 'ssl_verify'},
             deprecation = {
+              replaced_with = { { path = {'redis', 'ssl_verify'} } },
               message = "saml: config.session_redis_ssl_verify is deprecated, please use config.redis.ssl_verify instead",
               removal_in_version = "4.0", },
             func = function(value)
@@ -621,6 +632,7 @@ return {
             type = "string",
             translate_backwards = {'redis', 'server_name'},
             deprecation = {
+              replaced_with = { { path = {'redis', 'server_name'} } },
               message = "saml: config.session_redis_server_name is deprecated, please use config.redis.server_name instead",
               removal_in_version = "4.0", },
             func = function(value)
@@ -649,6 +661,7 @@ return {
             },
             translate_backwards = {'redis', 'cluster_nodes'},
             deprecation = {
+              replaced_with = { { path = {'redis', 'cluster_nodes'} } },
               message = "saml: config.session_redis_cluster_nodes is deprecated, please use config.redis.cluster_nodes instead",
               removal_in_version = "4.0", },
             func = function(value)
@@ -661,6 +674,7 @@ return {
             type = "integer",
             translate_backwards = {'redis', 'cluster_max_redirections'},
             deprecation = {
+              replaced_with = { { path = {'redis', 'cluster_max_redirections'} } },
               message = "saml: config.session_redis_cluster_max_redirections is deprecated, please use config.redis.cluster_max_redirections instead",
               removal_in_version = "4.0", },
             func = function(value)
@@ -673,6 +687,7 @@ return {
             type = "integer",
             translate_backwards = {'redis', 'cluster_max_redirections'},
             deprecation = {
+              replaced_with = { { path = {'redis', 'cluster_max_redirections'} } },
               message = "saml: config.session_redis_cluster_maxredirections is deprecated, please use config.redis.cluster_max_redirections instead",
               removal_in_version = "4.0", },
             func = function(value)
