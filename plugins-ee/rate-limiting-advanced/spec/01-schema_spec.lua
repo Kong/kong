@@ -93,6 +93,32 @@ describe("rate-limiting-advanced schema", function()
     assert.is_nil(err)
   end)
 
+  it("if new fields contain nulls but timeout does not - overwrite connect/read/send with value of timeout", function()
+    local config, err = v({
+      window_size     = { 60 },
+      limit           = { 10 },
+      strategy        = "redis",
+      sync_rate       = 1,
+      redis           = {
+        host            = "redis",
+        port            = 6379,
+        timeout         = 3005,
+        connect_timeout = ngx_null,
+        read_timeout    = ngx_null,
+        send_timeout    = ngx_null,
+      },
+    }, rate_limiting_schema)
+
+    assert.is_truthy(config)
+    assert.equal("redis", config.config.strategy)
+    assert.equal(1, config.config.sync_rate)
+    assert.equal(3005, config.config.redis.connect_timeout)
+    assert.equal(3005, config.config.redis.read_timeout)
+    assert.equal(3005, config.config.redis.send_timeout)
+    assert.is_nil(config.config.redis.timeout)
+    assert.is_nil(err)
+  end)
+
   it("accepts a minimal config", function()
     local config, err = v({
       window_size = { 60 },

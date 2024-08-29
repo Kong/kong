@@ -4292,6 +4292,11 @@ describe("schema", function()
       local input = { username = "test1", name = "ignored", record = { x = "ignored" }, y = "test1" }
       local output, _ = TestSchema:process_auto_fields(input)
       assert.same({ name = "test1", record = { x = "test1" } }, output)
+
+      -- deprecated fields does take precedence if the new fields are null
+      local input = { username = "overwritten-1", name = ngx.null, record = { x = ngx.null }, y = "overwritten-2"  }
+      local output, _ = TestSchema:process_auto_fields(input)
+      assert.same({ name = "overwritten-1", record = { x = "overwritten-2" }  }, output)
     end)
 
     it("does not take precedence if deprecated", function()
@@ -4343,6 +4348,11 @@ describe("schema", function()
       local input = { username = "ignored", name = "test1", record = { x = "test1" }, y = "ignored"  }
       local output, _ = TestSchema:process_auto_fields(input)
       assert.same({ name = "test1", record = { x = "test1" }  }, output)
+
+      -- deprecated fields does take precedence if the new fields are null
+      local input = { username = "overwritten-1", name = ngx.null, record = { x = ngx.null }, y = "overwritten-2"  }
+      local output, _ = TestSchema:process_auto_fields(input)
+      assert.same({ name = "overwritten-1", record = { x = "overwritten-2" }  }, output)
     end)
 
     it("can produce multiple fields", function()

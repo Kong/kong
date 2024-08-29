@@ -21,6 +21,7 @@ local deepcompare = require "pl.tablex".deepcompare
 
 local cycle_aware_deep_copy = require "kong.tools.table".cycle_aware_deep_copy
 local table_merge = require "kong.tools.table".table_merge
+local null_aware_table_merge = require "kong.tools.table".null_aware_table_merge
 local table_path = require "kong.tools.table".table_path
 local is_array = require "kong.tools.table".is_array
 
@@ -1771,10 +1772,10 @@ function Schema:process_auto_fields(data, context, nulls, opts)
                 if data[k] and data[k] ~= null then
                   source = data[k]
                 end
-                data[k] = deprecation and table_merge(v, source)
+                data[k] = deprecation and null_aware_table_merge(v, source)
                                        or table_merge(source, v)
 
-              elseif not deprecation or data[k] == nil then
+              elseif not deprecation or (data[k] == nil or data[k] == null) then
                 data[k] = v
               end
             end
