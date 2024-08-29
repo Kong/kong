@@ -17,6 +17,7 @@ local table_merge = require "kong.tools.table".table_merge
 local null_aware_table_merge = require "kong.tools.table".null_aware_table_merge
 local table_path = require "kong.tools.table".table_path
 local is_array = require "kong.tools.table".is_array
+local join_string = require "kong.tools.string".join
 
 
 local setmetatable = setmetatable
@@ -1704,6 +1705,35 @@ local function collect_field_reference(refs, key, reference)
 end
 
 
+local function validate_deprecation_exclusiveness(data, shorthand_value, shorthand_name, shorthand_definition)
+  if shorthand_value == nil or
+      shorthand_value == ngx.null or
+      shorthand_definition.deprecation == nil or
+      shorthand_definition.deprecation.replaced_with == nil then
+    return true
+  end
+
+  for _, replaced_with_element in ipairs(shorthand_definition.deprecation.replaced_with) do
+    local new_field_value = replaced_with_element.reverse_mapping_function and replaced_with_element.reverse_mapping_function(data)
+                                                                            or table_path(data, replaced_with_element.path)
+
+    if new_field_value and
+      new_field_value ~= ngx.null and
+      not deepcompare(new_field_value, shorthand_value) then
+      local new_field_name = join_string(".", replaced_with_element.path)
+
+      return nil, string.format(
+        "both deprecated and new field are used but their values mismatch: %s = %s vs %s = %s",
+        shorthand_name, tostring(shorthand_value),
+        new_field_name, tostring(new_field_value)
+      )
+    end
+  end
+
+  return true
+end
+
+
 --- Given a table, update its fields whose schema
 -- definition declares them as `auto = true`,
 -- based on its CRUD operation context, and set
@@ -1741,27 +1771,34 @@ function Schema:process_auto_fields(data, context, nulls, opts)
           errs[sname] = err
           has_errs = true
         else
-          data[sname] = nil
-          local new_values = sdata.func(value)
-          if new_values then
-            -- a shorthand field may have a deprecation property, that is used
-            -- to determine whether the shorthand's return value takes precedence
-            -- over the similarly named actual schema fields' value when both
-            -- are present. On deprecated shorthand fields the actual schema
-            -- field value takes the precedence, otherwise the shorthand's
-            -- return value takes the precedence.
-            local deprecation = sdata.deprecation
-            for k, v in pairs(new_values) do
-              if type(v) == "table" then
-                local source = {}
-                if data[k] and data[k] ~= null then
-                  source = data[k]
-                end
-                data[k] = deprecation and null_aware_table_merge(v, source)
-                                       or table_merge(source, v)
+          local _, deprecation_error = validate_deprecation_exclusiveness(data, value, sname, sdata)
 
-              elseif not deprecation or (data[k] == nil or data[k] == null) then
-                data[k] = v
+          if deprecation_error then
+            errs[sname] = deprecation_error
+            has_errs = true
+          else
+            data[sname] = nil
+            local new_values = sdata.func(value)
+            if new_values then
+              -- a shorthand field may have a deprecation property, that is used
+              -- to determine whether the shorthand's return value takes precedence
+              -- over the similarly named actual schema fields' value when both
+              -- are present. On deprecated shorthand fields the actual schema
+              -- field value takes the precedence, otherwise the shorthand's
+              -- return value takes the precedence.
+              local deprecation = sdata.deprecation
+              for k, v in pairs(new_values) do
+                if type(v) == "table" then
+                  local source = {}
+                  if data[k] and data[k] ~= null then
+                    source = data[k]
+                  end
+                  data[k] = deprecation and null_aware_table_merge(v, source)
+                                        or table_merge(source, v)
+
+                elseif not deprecation or (data[k] == nil or data[k] == null) then
+                  data[k] = v
+                end
               end
             end
           end
