@@ -1767,35 +1767,38 @@ function Schema:process_auto_fields(data, context, nulls, opts)
       local value = data[sname]
       if value ~= nil then
         local _, err = self:validate_field(sdata, value)
-        local _, deprecation_error = validate_deprecation_exclusiveness(data, value, sname, sdata)
         if err then
           errs[sname] = err
           has_errs = true
-        elseif deprecation_error then
-          errs[sname] = deprecation_error
-          has_errs = true
         else
-          data[sname] = nil
-          local new_values = sdata.func(value)
-          if new_values then
-            -- a shorthand field may have a deprecation property, that is used
-            -- to determine whether the shorthand's return value takes precedence
-            -- over the similarly named actual schema fields' value when both
-            -- are present. On deprecated shorthand fields the actual schema
-            -- field value takes the precedence, otherwise the shorthand's
-            -- return value takes the precedence.
-            local deprecation = sdata.deprecation
-            for k, v in pairs(new_values) do
-              if type(v) == "table" then
-                local source = {}
-                if data[k] and data[k] ~= null then
-                  source = data[k]
-                end
-                data[k] = deprecation and null_aware_table_merge(v, source)
-                                       or table_merge(source, v)
+          local _, deprecation_error = validate_deprecation_exclusiveness(data, value, sname, sdata)
 
-              elseif not deprecation or (data[k] == nil or data[k] == null) then
-                data[k] = v
+          if deprecation_error then
+            errs[sname] = deprecation_error
+            has_errs = true
+          else
+            data[sname] = nil
+            local new_values = sdata.func(value)
+            if new_values then
+              -- a shorthand field may have a deprecation property, that is used
+              -- to determine whether the shorthand's return value takes precedence
+              -- over the similarly named actual schema fields' value when both
+              -- are present. On deprecated shorthand fields the actual schema
+              -- field value takes the precedence, otherwise the shorthand's
+              -- return value takes the precedence.
+              local deprecation = sdata.deprecation
+              for k, v in pairs(new_values) do
+                if type(v) == "table" then
+                  local source = {}
+                  if data[k] and data[k] ~= null then
+                    source = data[k]
+                  end
+                  data[k] = deprecation and null_aware_table_merge(v, source)
+                                        or table_merge(source, v)
+
+                elseif not deprecation or (data[k] == nil or data[k] == null) then
+                  data[k] = v
+                end
               end
             end
           end
