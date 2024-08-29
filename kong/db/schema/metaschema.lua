@@ -211,7 +211,7 @@ local field_schema = {
             required = false,
             fields = {
               { path = { type = "array", len_min = 1, required = true, elements = { type = "string"}} },
-              { translation = { type = "function", required = false }}
+              { reverse_mapping_function = { type = "function", required = false }}
             },
           }
       } },

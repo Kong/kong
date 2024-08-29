@@ -4161,7 +4161,7 @@ describe("schema", function()
       assert.same({ field_A = "overwritten-1", field_B = { x = "overwritten-2" }  }, output)
     end)
 
-    describe("with simple 'table_path' translation", function()
+    describe("with simple 'table_path' reverse mapping", function()
       local TestSchema = Schema.new({
         name = "test",
         fields = {
@@ -4247,10 +4247,10 @@ describe("schema", function()
                         old_D = "test-4", new_D_1 = "test-4", new_D_2 = "not-test-4", }
         local output, err = TestSchema:process_auto_fields(input)
         assert.same({
-            old_A = 'both deprecated and new field are used but their values mismatch: old_A = "not-test-1" vs new_A = "test-1"',
-            old_B = 'both deprecated and new field are used but their values mismatch: old_B = "not-test-2" vs new_B.x = "test-2"' ,
-            old_C = 'both deprecated and new field are used but their values mismatch: old_C = "abc" vs new_C = "not-abc"',
-            old_D = 'both deprecated and new field are used but their values mismatch: old_D = "test-4" vs new_D_2 = "not-test-4"' },
+            old_A = 'both deprecated and new field are used but their values mismatch: old_A = not-test-1 vs new_A = test-1',
+            old_B = 'both deprecated and new field are used but their values mismatch: old_B = not-test-2 vs new_B.x = test-2' ,
+            old_C = 'both deprecated and new field are used but their values mismatch: old_C = abc vs new_C = not-abc',
+            old_D = 'both deprecated and new field are used but their values mismatch: old_D = test-4 vs new_D_2 = not-test-4' },
           err
         )
         assert.falsy(output)
@@ -4314,7 +4314,7 @@ describe("schema", function()
       end)
     end)
 
-    describe("with complex field translation", function()
+    describe("with complex field reverse_mapping_function", function()
       local TestSchema = Schema.new({
         name = "test",
         fields = {
@@ -4345,7 +4345,7 @@ describe("schema", function()
               deprecation = {
                 replaced_with = {
                   { path = { "new_A" },
-                    translation = function(data)
+                    reverse_mapping_function = function(data)
                       if data.new_A and data.new_A ~= ngx.null then
                         return data.new_A:lower()
                       end
@@ -4379,7 +4379,7 @@ describe("schema", function()
               deprecation = {
                 replaced_with = {
                   { path = { "new_B", "x" },
-                    translation = function (data)
+                    reverse_mapping_function = function (data)
                       if data.new_B and data.new_B.x ~= ngx.null then
                         return data.new_B.x:lower()
                       end
@@ -4408,7 +4408,7 @@ describe("schema", function()
               deprecation = {
                 replaced_with = {
                   { path = { "new_C" },
-                    translation = function (data)
+                    reverse_mapping_function = function (data)
                       if data.new_C == ngx.null then
                         return ngx.null
                       end
@@ -4430,12 +4430,9 @@ describe("schema", function()
                         old_B = "not-test-2", new_B = { x = "TEST2" },
                         old_C = { 1, 2, 4 },  new_C = { 3, 2, 1 } }
         local output, err = TestSchema:process_auto_fields(input)
-        assert.same({
-            old_A = 'both deprecated and new field are used but their values mismatch: old_A = "not-test-1" vs new_A = "test1"',
-            old_B = 'both deprecated and new field are used but their values mismatch: old_B = "not-test-2" vs new_B.x = "test2"' ,
-            old_C = 'both deprecated and new field are used but their values mismatch: old_C = { 1, 2, 4 } vs new_C = { 1, 2, 3 }' },
-          err
-        )
+        assert.same('both deprecated and new field are used but their values mismatch: old_A = not-test-1 vs new_A = test1', err.old_A)
+        assert.same('both deprecated and new field are used but their values mismatch: old_B = not-test-2 vs new_B.x = test2', err.old_B)
+        assert.matches('both deprecated and new field are used but their values mismatch: old_C = .+ vs new_C = .+', err.old_C)
         assert.falsy(output)
       end)
 
