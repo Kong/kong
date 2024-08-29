@@ -206,6 +206,15 @@ local field_schema = {
       { message = { type = "string", required = true } },
       { removal_in_version = { type = "string", required = true } },
       { old_default = { type = "any", required = false } },
+      { replaced_with = { type = "array", required = false,
+          elements = { type = "record",
+            required = false,
+            fields = {
+              { path = { type = "array", len_min = 1, required = true, elements = { type = "string"}} },
+              { reverse_mapping_function = { type = "function", required = false }}
+            },
+          }
+      } },
     },
   } },
 }
