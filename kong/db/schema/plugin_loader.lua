@@ -9,30 +9,44 @@ local fmt = string.format
 local tostring = tostring
 
 
+local SUBSCHEMA_CACHE = setmetatable({}, { __mode = "kv" })
+
+
 local plugin_loader = {}
 
 
 function plugin_loader.load_subschema(parent_schema, plugin, errors)
-  local plugin_schema = "kong.plugins." .. plugin .. ".schema"
-  local ok, schema = load_module_if_exists(plugin_schema)
-  if not ok then
-    ok, schema = plugin_servers.load_schema(plugin)
+  local schema = SUBSCHEMA_CACHE[plugin]
+  if not schema then
+    local ok
+    ok, schema = load_module_if_exists("kong.plugins." .. plugin .. ".schema")
+    if not ok then
+      ok, schema = plugin_servers.load_schema(plugin)
+    end
+
+    if not ok then
+      return nil, "no configuration schema found for plugin: " .. plugin
+    end
+
+    local err_t
+    ok, err_t = MetaSchema.MetaSubSchema:validate(schema)
+    if not ok then
+      return nil, tostring(errors:schema_violation(err_t))
+    end
+
+    SUBSCHEMA_CACHE[plugin] = schema
   end
 
-  if not ok then
-    return nil, "no configuration schema found for plugin: " .. plugin
+  if not SUBSCHEMA_CACHE[parent_schema] then
+    SUBSCHEMA_CACHE[parent_schema] = {}
   end
 
-  local err_t
-  ok, err_t = MetaSchema.MetaSubSchema:validate(schema)
-  if not ok then
-    return nil, tostring(errors:schema_violation(err_t))
-  end
-
-  local err
-  ok, err = Entity.new_subschema(parent_schema, plugin, schema)
-  if not ok then
-    return nil, "error initializing schema for plugin: " .. err
+  if not SUBSCHEMA_CACHE[parent_schema][plugin] then
+    SUBSCHEMA_CACHE[parent_schema][plugin] = true
+    local ok, err = Entity.new_subschema(parent_schema, plugin, schema)
+    if not ok then
+      return nil, "error initializing schema for plugin: " .. err
+    end
   end
 
   return schema

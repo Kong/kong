@@ -1,0 +1,3 @@
+message: Reduce sub-schema memory usage on start when using bundled plugins in dbless/dataplane nodes.
+type: performance
+scope: Core
