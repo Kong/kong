@@ -1,0 +1,6 @@
+message: |
+  Addded a new LLM driver for interfacing with the Hugging Face inference API.
+  The driver supports both serverless and dedicated LLM instances hosted by
+  Hugging Face for conversational and text generation tasks.
+type: feature
+scope: Core
