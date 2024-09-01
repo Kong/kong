@@ -145,7 +145,7 @@ local function handle_huggingface_stream(event_t, model_info, route_type)
     return nil, "failed to decode stream event frame from Hugging Face", nil
   end
 
-  local new_event = {}
+  local new_event
   if route_type == "stream/llm/v1/chat" then
     local content = safe_access(event, "choices", 1, "delta", "content") or ""
     new_event = {

@@ -1,7 +1,6 @@
 local helpers = require("spec.helpers")
 local cjson = require("cjson")
 local pl_file = require("pl.file")
-local inspect = require("inspect")
 
 local PLUGIN_NAME = "ai-proxy"
 local MOCK_PORT = helpers.get_available_port()
