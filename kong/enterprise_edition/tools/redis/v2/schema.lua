@@ -194,7 +194,6 @@ return {
     {
       timeout = {
         type = "integer",
-        translate_backwards = {'connect_timeout'},
         deprecation = {
           message = "redis schema field `timeout` is deprecated, use `connect_timeout`, `send_timeout` and `read_timeout`",
           removal_in_version = "4.0",
@@ -232,14 +231,6 @@ return {
             }
           }
         },
-        translate_backwards_with = function(data)
-          if not data.sentinel_nodes or data.sentinel_nodes == ngx.null then
-            return data.sentinel_nodes
-          end
-
-          return map(redis_config_utils.merge_host_port, data.sentinel_nodes)
-        end,
-
         func = function(value)
           if not value or value == ngx.null then
             return { sentinel_nodes = value }
@@ -270,13 +261,6 @@ return {
             }
           }
         },
-        translate_backwards_with = function(data)
-          if not data.cluster_nodes or data.cluster_nodes == ngx.null then
-            return data.cluster_nodes
-          end
-
-          return map(redis_config_utils.merge_ip_port, data.cluster_nodes)
-        end,
         func = function(value)
           if not value or value == ngx.null then
             return { cluster_nodes = value }

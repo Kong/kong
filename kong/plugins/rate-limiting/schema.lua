@@ -109,7 +109,6 @@ return {
           -- TODO: deprecated forms, to be removed in Kong 4.0
           { redis_host = {
             type = "string",
-            translate_backwards = {'redis', 'host'},
             deprecation = {
               replaced_with = { { path = { 'redis', 'host' } } },
               message = "rate-limiting: config.redis_host is deprecated, please use config.redis.host instead",
@@ -120,7 +119,6 @@ return {
           } },
           { redis_port = {
             type = "integer",
-            translate_backwards = {'redis', 'port'},
             deprecation = {
               replaced_with = { { path = { 'redis', 'port' } } },
               message = "rate-limiting: config.redis_port is deprecated, please use config.redis.port instead",
@@ -132,7 +130,6 @@ return {
           { redis_password = {
             type = "string",
             len_min = 0,
-            translate_backwards = {'redis', 'password'},
             deprecation = {
               replaced_with = { { path = { 'redis', 'password' } } },
               message = "rate-limiting: config.redis_password is deprecated, please use config.redis.password instead",
@@ -143,7 +140,6 @@ return {
           } },
           { redis_username = {
             type = "string",
-            translate_backwards = {'redis', 'username'},
             deprecation = {
               replaced_with = { { path = { 'redis', 'username' } } },
               message = "rate-limiting: config.redis_username is deprecated, please use config.redis.username instead",
@@ -154,7 +150,6 @@ return {
           } },
           { redis_ssl = {
             type = "boolean",
-            translate_backwards = {'redis', 'ssl'},
             deprecation = {
               replaced_with = { { path = { 'redis', 'ssl' } } },
               message = "rate-limiting: config.redis_ssl is deprecated, please use config.redis.ssl instead",
@@ -165,7 +160,6 @@ return {
           } },
           { redis_ssl_verify = {
             type = "boolean",
-            translate_backwards = {'redis', 'ssl_verify'},
             deprecation = {
               replaced_with = { { path = { 'redis', 'ssl_verify' } } },
               message = "rate-limiting: config.redis_ssl_verify is deprecated, please use config.redis.ssl_verify instead",
@@ -176,7 +170,6 @@ return {
           } },
           { redis_server_name = {
             type = "string",
-            translate_backwards = {'redis', 'server_name'},
             deprecation = {
               replaced_with = { { path = { 'redis', 'server_name' } } },
               message = "rate-limiting: config.redis_server_name is deprecated, please use config.redis.server_name instead",
@@ -187,7 +180,6 @@ return {
           } },
           { redis_timeout = {
             type = "integer",
-            translate_backwards = {'redis', 'timeout'},
             deprecation = {
               replaced_with = { { path = { 'redis', 'timeout' } } },
               message = "rate-limiting: config.redis_timeout is deprecated, please use config.redis.timeout instead",
@@ -198,7 +190,6 @@ return {
           } },
           { redis_database = {
             type = "integer",
-            translate_backwards = {'redis', 'database'},
             deprecation = {
               replaced_with = { { path = { 'redis', 'database' } } },
               message = "rate-limiting: config.redis_database is deprecated, please use config.redis.database instead",
