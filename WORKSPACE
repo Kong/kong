@@ -4,16 +4,16 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "bazel_skylib",
-    sha256 = "74d544d96f4a5bb630d465ca8bbcfe231e3594e5aae57e1edbf17a6eb3ca2506",
+    sha256 = "bc283cdfcd526a52c3201279cda4bc298652efa898b10b4db0837dc51652756f",
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.3.0/bazel-skylib-1.3.0.tar.gz",
-        "https://github.com/bazelbuild/bazel-skylib/releases/download/1.3.0/bazel-skylib-1.3.0.tar.gz",
+        "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.7.1/bazel-skylib-1.7.1.tar.gz",
+        "https://github.com/bazelbuild/bazel-skylib/releases/download/1.7.1/bazel-skylib-1.7.1.tar.gz",
     ],
 )
 
-load("//build:kong_bindings.bzl", "load_bindings")
+load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
 
-load_bindings(name = "kong_bindings")
+bazel_skylib_workspace()
 
 http_archive(
     name = "rules_foreign_cc",
@@ -31,6 +31,10 @@ rules_foreign_cc_dependencies(
     register_default_tools = True,  # register cmake and ninja that are managed by bazel
     register_preinstalled_tools = True,  # use preinstalled toolchains like make
 )
+
+load("//build:kong_bindings.bzl", "load_bindings")
+
+load_bindings(name = "kong_bindings")
 
 load("//build/openresty:repositories.bzl", "openresty_repositories")
 

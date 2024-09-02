@@ -1,15 +1,14 @@
 #!/bin/bash -e
 
 # template variables starts
-workspace_path="{{workspace_path}}"
 luarocks_version="{{luarocks_version}}"
 install_destdir="{{install_destdir}}"
 build_destdir="{{build_destdir}}"
 
-luarocks_exec="{{@luarocks//:luarocks_exec}}"
-luajit_path="{{@openresty//:luajit}}"
-luarocks_host_path="{{@luarocks//:luarocks_host}}"
-luarocks_wrap_script="{{@//build/luarocks:luarocks_wrap_script.lua}}"
+luarocks_exec="{{@@luarocks//:luarocks_exec}}"
+luajit_path="{{@@openresty//:luajit}}"
+luarocks_host_path="{{@@luarocks//:luarocks_host}}"
+luarocks_wrap_script="{{@@//build/luarocks:luarocks_wrap_script.lua}}"
 # template variables ends
 
 mkdir -p $(dirname $@)
@@ -19,8 +18,8 @@ mkdir -p $(dirname $@)
 $luarocks_exec install "luarocks $luarocks_version"
 
 # use host configuration to invoke luarocks API to wrap a correct bin/luarocks script
-rocks_tree=$workspace_path/$(dirname $luarocks_exec)/luarocks_tree
-host_luajit=$workspace_path/$luajit_path/bin/luajit
+rocks_tree=$(dirname $luarocks_exec)/luarocks_tree
+host_luajit=$luajit_path/bin/luajit
 
 host_luarocks_tree=$luarocks_host_path
 export LUA_PATH="$build_destdir/share/lua/5.1/?.lua;$build_destdir/share/lua/5.1/?/init.lua;$host_luarocks_tree/share/lua/5.1/?.lua;$host_luarocks_tree/share/lua/5.1/?/init.lua;;"
@@ -52,7 +51,7 @@ rocks_trees = {
 }
 EOF
 
-# TODO: this still doesn't work
+sed -i -e "s|$build_destdir|$install_destdir|g" $rocks_tree/bin/luarocks
 sed -i -e "s|$rocks_tree|$install_destdir|g" $rocks_tree/bin/luarocks
 
 # only generate the output when the command succeeds

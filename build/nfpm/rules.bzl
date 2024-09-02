@@ -36,10 +36,12 @@ def _nfpm_pkg_impl(ctx):
     nfpm_args.add("-p", ctx.attr.packager)
     nfpm_args.add("-t", out.path)
 
+    build_destdir = ctx.var["BINDIR"] + "/build/" + KONG_VAR["BUILD_NAME"]
+
     ctx.actions.run_shell(
         inputs = ctx.files._nfpm_bin,
         mnemonic = "nFPM",
-        command = "ln -sf %s nfpm-prefix; external/nfpm/nfpm $@" % KONG_VAR["BUILD_DESTDIR"],
+        command = "ln -sf %s nfpm-prefix; external/nfpm/nfpm $@" % build_destdir,
         arguments = [nfpm_args],
         outputs = [out],
         env = env,
