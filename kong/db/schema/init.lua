@@ -1805,8 +1805,12 @@ function Schema:process_auto_fields(data, context, nulls, opts)
         end
       end
 
-      if is_select and sdata.translate_backwards and not(opts and opts.hide_shorthands) then
-        data[sname] = table_path(data, sdata.translate_backwards)
+      if is_select and sdata.deprecation and sdata.deprecation.replaced_with and #sdata.deprecation.replaced_with > 0 and not(opts and opts.hide_shorthands) then
+        if sdata.deprecation.replaced_with[1].reverse_mapping_function then
+          data[sname] = sdata.deprecation.replaced_with[1].reverse_mapping_function(data)
+        else
+          data[sname] = table_path(data, sdata.deprecation.replaced_with[1].path)
+        end
       end
     end
     if has_errs then
@@ -1959,7 +1963,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
 
       if self.shorthand_fields then
         for _, shorthand_field in ipairs(self.shorthand_fields) do
-          if shorthand_field[key] and shorthand_field[key].translate_backwards then
+          if shorthand_field[key] and shorthand_field[key].deprecation and shorthand_field[key].deprecation.replaced_with and #shorthand_field[key].deprecation.replaced_with > 0 then
             should_be_in_ouput = is_select
           end
         end
