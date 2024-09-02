@@ -69,8 +69,6 @@ function _M:register_dao_hooks(is_cp)
         row = row, },
     }
 
-    local latest_version = self.strategy:get_latest_version()
-
     local res, err = self.strategy:insert_delta(deltas)
     if not res then
       self.strategy:cancel_txn()
@@ -82,6 +80,8 @@ function _M:register_dao_hooks(is_cp)
       self.strategy:cancel_txn()
       return nil, err
     end
+
+    local latest_version = self.strategy:get_latest_version()
 
     for _, node in ipairs(get_all_nodes_with_sync_cap()) do
       res, err = kong.rpc:call(node, "kong.sync.v2.notify_new_version", latest_version)
@@ -128,8 +128,6 @@ function _M:register_dao_hooks(is_cp)
         row = ngx.null, },
     }
 
-    local latest_version = self.strategy:get_latest_version()
-
     local res, err = self.strategy:insert_delta(deltas)
     if not res then
       self.strategy:cancel_txn()
@@ -141,6 +139,8 @@ function _M:register_dao_hooks(is_cp)
       self.strategy:cancel_txn()
       return nil, err
     end
+
+    local latest_version = self.strategy:get_latest_version()
 
     for _, node in ipairs(get_all_nodes_with_sync_cap()) do
       res, err = kong.rpc:call(node, "kong.sync.v2.notify_new_version", latest_version)
