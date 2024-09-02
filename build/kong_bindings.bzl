@@ -27,12 +27,10 @@ def _load_vars(ctx):
     build_name = ctx.os.environ.get("BUILD_NAME", "")
     content += '"BUILD_NAME": "%s",\n' % build_name
 
-    build_destdir = workspace_path + "/bazel-bin/build/" + build_name
-    content += '"BUILD_DESTDIR": "%s",\n' % build_destdir
-
     install_destdir = ctx.os.environ.get("INSTALL_DESTDIR", "MANAGED")
     if install_destdir == "MANAGED":
-        install_destdir = build_destdir
+        # this has to be absoluate path to make build scripts happy and artifacts being portable
+        install_destdir = workspace_path + "/bazel-bin/build/" + build_name
     content += '"INSTALL_DESTDIR": "%s",\n' % install_destdir
 
     # Kong Version

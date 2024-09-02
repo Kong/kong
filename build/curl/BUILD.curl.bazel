@@ -36,8 +36,8 @@ configure_make(
         ),
         "--with-ca-fallback",
         "--with-default-ssl-backend=openssl",
-        "--with-nghttp2=$$EXT_BUILD_DEPS$$/nghttp2",
-        "--with-ssl=$$EXT_BUILD_DEPS$$/openssl",
+        "--with-nghttp2=$$EXT_BUILD_DEPS/nghttp2",
+        "--with-ssl=$$EXT_BUILD_DEPS/openssl",
         "--without-brotli",
         "--without-ca-path",
         "--without-libidn2",
@@ -56,7 +56,7 @@ configure_make(
         "//conditions:default": [],
     }) + select({
         "@kong//:any-cross": [
-            "--with-zlib=$$EXT_BUILD_DEPS$$/zlib",
+            "--with-zlib=$$EXT_BUILD_DEPS/zlib",
         ],
         "//conditions:default": [],
     }),

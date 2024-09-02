@@ -101,10 +101,8 @@ kong_genrule(
         "openresty.dev.nop",
     ],
     cmd = """
-        chmod -R "u+rw" ${BUILD_DESTDIR}/openresty
         rm -rf ${BUILD_DESTDIR}/openresty/nginx
         cp -r $(location @openresty//:dev-just-make)/. ${BUILD_DESTDIR}/openresty/
-        chmod -R "u+rw" ${BUILD_DESTDIR}/openresty
         touch ${BUILD_DESTDIR}/openresty.dev.nop
     """,
     visibility = ["//visibility:public"],
@@ -310,21 +308,15 @@ kong_genrule(
         "bin/luarocks",
         "bin/luarocks-admin",
         "etc/kong/kong.conf.default",
-        "etc/luarocks",
         "kong/manifest.json",
-        "lib",
-        "share",
     ],
     cmd =
         """ set -e
-        chmod -R "u+rw" ${BUILD_DESTDIR}/openresty
-
         rm -rf ${BUILD_DESTDIR}/share ${BUILD_DESTDIR}/lib ${BUILD_DESTDIR}/etc
-        LUAROCKS=${WORKSPACE_PATH}/$(dirname '$(location @luarocks//:luarocks_make)')/luarocks_tree
+        LUAROCKS=$(dirname '$(location @luarocks//:luarocks_make)')/luarocks_tree
         cp -r ${LUAROCKS}/share ${LUAROCKS}/lib ${LUAROCKS}/etc ${BUILD_DESTDIR}/.
         cp ${LUAROCKS}/bin/luarocks ${BUILD_DESTDIR}/bin/.
         cp ${LUAROCKS}/bin/luarocks-admin ${BUILD_DESTDIR}/bin/.
-        chmod -R "u+rw" ${BUILD_DESTDIR}/share/lua
 
         mkdir -p ${BUILD_DESTDIR}/etc/kong/
         cp ${WORKSPACE_PATH}/kong.conf.default ${BUILD_DESTDIR}/etc/kong/kong.conf.default
@@ -351,8 +343,12 @@ kong_genrule(
 
         # create empty folder to make nfpm happy when skip_tools is set to True
         mkdir -p ${BUILD_DESTDIR}/kong-tools
-        chmod -R "u+rw" ${BUILD_DESTDIR}/kong-tools
     """,
+    out_dirs = [
+        "etc/luarocks",
+        "lib",
+        "share",
+    ],
     visibility = ["//visibility:public"],
 )
 

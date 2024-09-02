@@ -13,9 +13,10 @@ run --color=yes
 common --color=yes
 common --curses=auto
 
+# TODO: remove after bump to bazel >= 8
+common --enable_workspace
+
 build --experimental_ui_max_stdouterr_bytes=10485760
-# TODO: remove after bump to bazel >= 7
-build --experimental_cc_shared_library
 
 build --show_progress_rate_limit=0
 build --show_timestamps
@@ -23,15 +24,14 @@ build --worker_verbose
 
 build --incompatible_strict_action_env
 
-# Enable --platforms API based cpu,compiler,crosstool_top selection; remove this in 7.0.0 as it's enabled by default
-build --incompatible_enable_cc_toolchain_resolution
+# make output files and directories 0755 instead of 0555
+build --experimental_writable_outputs
+
 
 # Pass PATH, CC, CXX variables from the environment.
 build --action_env=CC --host_action_env=CC
 build --action_env=CXX --host_action_env=CXX
 build --action_env=PATH --host_action_env=PATH
-
-build --action_env=BAZEL_BUILD=1
 
 # temporary fix for https://github.com/bazelbuild/bazel/issues/12905 on macOS
 build --features=-debug_prefix_map_pwd_is_dot

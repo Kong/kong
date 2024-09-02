@@ -11,7 +11,11 @@ def _kong_genrule_impl(ctx):
     for f in ctx.attr.outs:
         outputs.append(ctx.actions.declare_file(KONG_VAR["BUILD_NAME"] + "/" + f))
 
+    for f in ctx.attr.out_dirs:
+        outputs.append(ctx.actions.declare_directory(KONG_VAR["BUILD_NAME"] + "/" + f))
+
     env = dict(KONG_VAR)
+    env["BUILD_DESTDIR"] = ctx.var["BINDIR"] + "/build/" + env["BUILD_NAME"]
 
     # XXX: remove the "env" from KONG_VAR which is a list
     env["OPENRESTY_PATCHES"] = ""
@@ -33,6 +37,7 @@ kong_genrule = rule(
         "cmd": attr.string(),
         "tools": attr.label_list(),
         "outs": attr.string_list(),
+        "out_dirs": attr.string_list(),
     },
 )
 
@@ -82,6 +87,7 @@ def _render_template(ctx, output):
 
     # yes, not a typo, use gcc for linker
     substitutions["{{LD}}"] = substitutions["{{CC}}"]
+    substitutions["{{build_destdir}}"] = ctx.var["BINDIR"] + "/build/" + KONG_VAR["BUILD_NAME"]
 
     ctx.actions.expand_template(
         template = ctx.file.template,
@@ -294,11 +300,16 @@ def _kong_install_impl(ctx):
         #         f = output.path,
         #     ),
         # )
-        output = ctx.actions.declare_file(full_path)
+        if file.is_directory:
+            output = ctx.actions.declare_directory(full_path)
+            src = file.path + "/."  # avoid duplicating the directory name
+        else:
+            output = ctx.actions.declare_file(full_path)
+            src = file.path
         ctx.actions.run_shell(
             outputs = [output],
             inputs = [file],
-            command = "cp -r %s %s" % (file.path, output.path),
+            command = "cp -r %s %s" % (src, output.path),
         )
 
         outputs.append(output)

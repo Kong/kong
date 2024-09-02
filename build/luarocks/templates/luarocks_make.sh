@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
 # template variables starts
-luarocks_exec="{{@luarocks//:luarocks_exec}}"
+luarocks_exec="{{@@luarocks//:luarocks_exec}}"
 # template variables ends
 
 if [[ "$OSTYPE" == "darwin"* ]]; then

@@ -99,10 +99,8 @@ kong_template_genrule(
     output = "luarocks_target.log",
     progress_message = "Luarocks: Install luarocks with target configuration",
     substitutions = {
-        "{{build_destdir}}": KONG_VAR["BUILD_DESTDIR"],
         "{{install_destdir}}": KONG_VAR["INSTALL_DESTDIR"],
         "{{luarocks_version}}": KONG_VAR["LUAROCKS"],
-        "{{workspace_path}}": KONG_VAR["WORKSPACE_PATH"],
     },
     template = "@//build/luarocks:templates/luarocks_target.sh",
     tools = [

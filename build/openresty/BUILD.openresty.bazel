@@ -236,6 +236,9 @@ CONFIGURE_OPTIONS = [
 }) + select({
     "@kong//:brotli_flag": [
         "--add-module=$$EXT_BUILD_ROOT$$/external/ngx_brotli",
+        # force static link; the order or following two entries matter
+        "--with-ld-opt=\"-l:libbrotlienc.a\"",
+        "--with-ld-opt=\"-l:libbrotlicommon.a\"",
     ],
     "//conditions:default": [],
 }) + wasmx_configure_options
@@ -353,13 +356,15 @@ genrule(
         ],
         "//conditions:default": [],
     }),
-    outs = ["dev-builddir"],
+    outs = ["dev-builddir/.marker"],
     cmd = """
         pushd $(RULEDIR)/openresty.build_tmpdir >/dev/null
         make -j%s
         make install
         popd >/dev/null
-        cp -r $(RULEDIR)/openresty.build_tmpdir/openresty $@
+        mkdir -p $$(dirname $@)
+        cp -r $(RULEDIR)/openresty.build_tmpdir/openresty $$(dirname $@)
+        touch $@
     """ % KONG_VAR["NPROC"],
     visibility = ["//visibility:public"],
 )

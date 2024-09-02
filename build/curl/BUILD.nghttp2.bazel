@@ -18,7 +18,7 @@ configure_make(
         "--disable-shared",
         "--enable-lib-only",
         "--enable-static",
-        "--with-openssl=$$EXT_BUILD_DEPS$$/openssl",
+        "--with-openssl=$$EXT_BUILD_DEPS/openssl",
         "--without-cunit",
         "--without-jansson",
         "--without-jemalloc",
@@ -39,7 +39,7 @@ configure_make(
         "//conditions:default": [],
     }) + select({
         "@kong//:any-cross": [
-            "--with-zlib=$$EXT_BUILD_DEPS$$/zlib",
+            "--with-zlib=$$EXT_BUILD_DEPS/zlib",
         ],
         "//conditions:default": [],
     }) + select({
