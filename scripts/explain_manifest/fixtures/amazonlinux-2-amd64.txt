@@ -51,6 +51,13 @@
   - libc.so.6
   Rpath     : /usr/local/kong/lib
 
+- Path      : /usr/local/kong/lib/libada.so
+  Needed    :
+  - libstdc++.so.6
+  - libm.so.6
+  - libgcc_s.so.1
+  - libc.so.6
+
 - Path      : /usr/local/kong/lib/libcrypto.so.3
   Needed    :
   - libm.so.6

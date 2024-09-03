@@ -14,6 +14,7 @@ clib_deps = [
     "@openssl",
     "@libexpat",
     "@snappy",
+    "@ada",
     # EE only
     "@jq",
     "@libxml2",
@@ -25,8 +26,8 @@ clib_deps = [
     kong_install(
         name = "install-%s" % get_workspace_name(k),
         src = k,
-        prefix = "kong/lib" if k in ("@passwdqc", "@snappy") else "kong",
-        strip_path = "snappy" if k == "@snappy" else "",
+        prefix = "kong/lib" if k in ("@passwdqc", "@snappy", "@ada") else "kong",
+        strip_path = "snappy" if k == "@snappy" else "ada" if k == "@ada" else "",
     )
     for k in clib_deps
 ]
