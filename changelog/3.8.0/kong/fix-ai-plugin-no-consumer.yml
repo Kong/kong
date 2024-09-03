@@ -1,4 +1,5 @@
-message: "Fixed certain AI plugins cannot be applied per consumer or per service."
+message: >
+  Fixed an issue where certain AI plugins couldn't be applied per consumer or per service.
 type: bugfix
 scope: Plugin
 

@@ -1,3 +1,5 @@
-message: fix a bug that the `host_header` attribute of upstream entity can not be set correctly in requests to upstream as Host header when retries to upstream happen.
+message: >
+  Fixed an issue where the `host_header` attribute of the upstream entity
+  wouldn't be set correctly as a Host header in requests to the upstream during connection retries.
 scope: Core
 type: bugfix
