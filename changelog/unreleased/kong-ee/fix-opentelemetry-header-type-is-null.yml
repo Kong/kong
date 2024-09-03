@@ -1,0 +1,3 @@
+message: "**OpenTelemetry**: Fixed an issue where header_type being nil caused a concatenation error."
+type: bugfix
+scope: Plugin

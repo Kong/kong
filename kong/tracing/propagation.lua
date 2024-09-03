@@ -583,7 +583,7 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
      found_header_type ~= nil and
      conf_header_type ~= found_header_type
   then
-    kong.log.warn("Mismatched header types. conf: " .. conf_header_type .. ". found: " .. found_header_type)
+    kong.log.warn("Mismatched header types. conf: " .. tostring(conf_header_type) .. ". found: " .. found_header_type)
   end
 
   found_header_type = found_header_type or conf_default_header_type or "b3"

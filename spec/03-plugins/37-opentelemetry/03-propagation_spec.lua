@@ -71,6 +71,11 @@ describe("propagation tests #" .. strategy, function()
       service = service,
     })
 
+    local null_header_type_route = bp.routes:insert({
+      hosts = { "null-header-type" },
+      service = service,
+    })
+
     bp.plugins:insert({
       name = "opentelemetry",
       route = {id = bp.routes:insert({
@@ -120,6 +125,15 @@ describe("propagation tests #" .. strategy, function()
       config = {
         endpoint = "http://localhost:8080/v1/traces",
         header_type = "ignore",
+      }
+    })
+
+    bp.plugins:insert({
+      name = "opentelemetry",
+      route = null_header_type_route,
+      config = {
+        endpoint = "http://localhost:8080/v1/traces",
+        header_type = require("cjson").null,
       }
     })
 
@@ -256,6 +270,20 @@ describe("propagation tests #" .. strategy, function()
     assert.is_not_nil(json.headers.traceparent)
     -- incoming trace id is ignored
     assert.not_matches("00%-" .. trace_id .. "%-%x+-01", json.headers.traceparent)
+  end)
+
+  it("null_header_type", function()
+    local trace_id = gen_trace_id()
+    local r = proxy_client:get("/", {
+      headers = {
+        ["x-b3-sampled"] = "1",
+        ["x-b3-traceid"] = trace_id,
+        host  = "null-header-type",
+      },
+    })
+    local body = assert.response(r).has.status(200)
+    local json = cjson.decode(body)
+    assert.is_nil(json.headers.traceparent)
   end)
 
   it("propagates w3c tracing headers when header_type set to w3c", function()
