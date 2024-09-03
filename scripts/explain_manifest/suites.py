@@ -1,3 +1,4 @@
+import re
 import os
 
 wasm_filters = []
@@ -102,7 +103,11 @@ def common_suites(expect, libxcrypt_no_obsolete_api: bool = False, skip_libsimdj
     expect("**/*.so", "dynamic libraries are compiled with OpenSSL 3.2.x") \
         .version_requirement.key("libssl.so.3").less_than("OPENSSL_3.3.0") \
         .version_requirement.key("libcrypto.so.3").less_than("OPENSSL_3.3.0") \
-    
+
+    ADA_VERSION = read_requirements()["ADA"]
+    expect("**/*.so", "ada version is less than %s" % ADA_VERSION) \
+        .version_requirement.key("libada.so").is_not().greater_than("ADA_%s" % ADA_VERSION) \
+
     # wasm filters
     for f in wasm_filters:
         expect("/usr/local/kong/wasm/%s" % f, "wasm filter %s is installed under kong/wasm" % f).exists()

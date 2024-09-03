@@ -44,6 +44,7 @@ dependencies = {
   "lpeg == 1.1.0",
   "lua-resty-ljsonschema == 1.1.6-2",
   "lua-resty-snappy == 1.0-1",
+  "lua-resty-ada == 1.1.0",
 }
 build = {
   type = "builtin",
