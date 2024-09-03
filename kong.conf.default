@@ -2796,7 +2796,7 @@
                                  # should be read from the pod's filesystem, if using
                                  # a non-standard container platform setup.
 
-#kerying_encrypt_license = off
+#keyring_encrypt_license = off
                                  # Enables keyring encryption for license payloads stored
                                  # in the database.
                                  #
