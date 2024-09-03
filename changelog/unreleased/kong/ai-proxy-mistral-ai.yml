@@ -1,3 +1,0 @@
-message: '**ai-proxy**: Allowed mistral provider to use mistral.ai managed service by omitting upstream_url'
-type: feature
-scope: Plugin

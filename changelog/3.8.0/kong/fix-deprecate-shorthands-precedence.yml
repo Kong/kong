@@ -1,0 +1,5 @@
+message: >
+  Fixed an issue with deprecated shorthand fields so that
+  they don't take precedence over replacement fields when both are specified.
+type: bugfix
+scope: Core

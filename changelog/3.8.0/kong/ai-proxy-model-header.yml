@@ -1,0 +1,4 @@
+message: >
+  **ai-proxy**: Added the new response header `X-Kong-LLM-Model`, which displays the name of the language model used in the AI Proxy plugin.
+type: feature
+scope: Plugin

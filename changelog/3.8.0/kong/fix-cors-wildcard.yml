@@ -1,0 +1,5 @@
+message: >
+  **CORS**: Fixed an issue where the `Access-Control-Allow-Origin` header
+  was not sent when `conf.origins` had multiple entries but included `*`.
+type: bugfix
+scope: Plugin

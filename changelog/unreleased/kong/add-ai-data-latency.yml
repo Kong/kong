@@ -1,3 +1,0 @@
-message: "AI plugins: retrieved latency data and pushed it to logs and metrics."
-type: feature
-scope: "Plugin"

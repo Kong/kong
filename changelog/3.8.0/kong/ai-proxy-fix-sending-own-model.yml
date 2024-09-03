@@ -1,0 +1,5 @@
+message: |
+  **AI-proxy**: Fixed an issue where AI Proxy would still allow callers to specify their own model,
+  ignoring the plugin-configured model name.
+scope: Plugin
+type: bugfix

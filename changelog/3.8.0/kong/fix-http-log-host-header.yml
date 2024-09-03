@@ -1,0 +1,6 @@
+message: >
+  **HTTP-Log**: Fixed an issue where the plugin didn't include
+  port information in the HTTP host header when sending requests to the log server.
+type: bugfix
+scope: Plugin
+

@@ -1,0 +1,4 @@
+message: >
+  **OpenTelemetry and Zipkin**: Removed redundant deprecation warnings.
+type: bugfix
+scope: Plugin

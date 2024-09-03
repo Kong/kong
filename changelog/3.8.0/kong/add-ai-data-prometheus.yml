@@ -1,0 +1,3 @@
+message: "**prometheus**: Added `ai_requests_total`, `ai_cost_total` and `ai_tokens_total` metrics in the Prometheus plugin to start counting AI usage."
+type: feature
+scope: Plugins

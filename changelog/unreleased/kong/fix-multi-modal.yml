@@ -1,4 +1,0 @@
-message: >
-  "**AI Plugins**: Fixed an issue for multi-modal inputs are not properly validated and calculated.
-type: bugfix
-scope: Plugin

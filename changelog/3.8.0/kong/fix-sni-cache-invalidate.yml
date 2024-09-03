@@ -1,0 +1,4 @@
+message: |
+  Fixed an issue where the SNI cache wasn't invalidated when an SNI was updated.
+type: bugfix
+scope: Core

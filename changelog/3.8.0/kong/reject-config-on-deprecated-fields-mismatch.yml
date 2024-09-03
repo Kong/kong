@@ -1,0 +1,5 @@
+message: >
+  Changed the behaviour of shorthand fields that are used to describe deprecated fields. If
+  both fields are sent in the request and their values mismatch, the request will be rejected.
+type: bugfix
+scope: Core

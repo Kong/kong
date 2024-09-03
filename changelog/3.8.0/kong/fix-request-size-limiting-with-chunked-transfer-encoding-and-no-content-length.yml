@@ -1,0 +1,5 @@
+message: >
+  **Request Size Limiting**: Fixed an issue where the body size
+  didn't get checked when the request body was buffered to a temporary file.
+type: bugfix
+scope: Plugin
