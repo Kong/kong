@@ -1,0 +1,4 @@
+message: >
+  **AI Plugins**: Fixed an issue where multi-modal inputs weren't properly validated and calculated.
+type: bugfix
+scope: Plugin

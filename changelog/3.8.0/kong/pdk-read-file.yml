@@ -1,0 +1,3 @@
+message: "Extended `kong.request.get_body` and `kong.request.get_raw_body` to read from buffered files."
+type: feature
+scope: "PDK"

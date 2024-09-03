@@ -1,0 +1,6 @@
+message: >
+  **Response-RateLimiting**: Fixed an issue where the DP would
+  report that deprecated config fields were used
+  when configuration was pushed from the CP.
+type: bugfix
+scope: Plugin

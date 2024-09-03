@@ -1,3 +1,0 @@
-message: "**hmac-auth**: Add WWW-Authenticate headers to 401 responses."
-type: bugfix
-scope: Plugin
