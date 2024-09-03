@@ -1,0 +1,6 @@
+message: |
+  Kong Gateway now appends gateway info to the upstream `Via` header in the format `1.1 kong/3.8.0`, and optionally to the
+  response `Via` header if it is present in the `headers` config of `kong.conf`, in the format `2 kong/3.8.0`.
+  This follows standards defined in RFC7230 and RFC9110.
+type: feature
+scope: Core

@@ -1,3 +1,0 @@
-message: Shorten names of internal Unix sockets to avoid exceeding the socket name limit.
-type: bugfix
-scope: Core

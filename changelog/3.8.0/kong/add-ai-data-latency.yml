@@ -1,0 +1,3 @@
+message: "AI plugins: Latency data is now pushed to logs and metrics."
+type: feature
+scope: "Plugin"

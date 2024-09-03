@@ -1,0 +1,5 @@
+message: >
+  **Key-Auth**: Fixed an issue where the realm field wasn't
+  recognized for older Kong Gateway versions (before 3.7).
+type: bugfix
+scope: Plugin

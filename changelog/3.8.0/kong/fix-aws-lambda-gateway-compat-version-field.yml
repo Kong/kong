@@ -1,0 +1,5 @@
+message: >
+  **AWS-Lambda**: Fixed an issue where the `version` field wasn't
+  set in the request payload when `awsgateway_compatible` was enabled.
+type: bugfix
+scope: Plugin

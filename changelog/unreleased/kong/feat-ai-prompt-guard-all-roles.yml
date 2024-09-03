@@ -1,3 +1,0 @@
-message: "**AI-Prompt-Guard**: add `match_all_roles` option to allow match all roles in addition to `user`."
-type: feature
-scope: Plugin

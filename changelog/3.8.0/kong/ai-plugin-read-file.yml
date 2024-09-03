@@ -1,0 +1,5 @@
+message: >
+  **AI-proxy-plugin**: Added the `allow_override` option to allow overriding
+  the upstream model auth parameter or header from the caller's request.
+type: feature
+scope: "Plugin"

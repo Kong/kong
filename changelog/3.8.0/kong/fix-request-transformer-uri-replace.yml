@@ -1,0 +1,4 @@
+message: |
+  Fixed an issue where the URI captures were unavailable when the first capture group was absent.
+type: bugfix
+scope: Core
