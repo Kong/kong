@@ -303,7 +303,7 @@ local function new(self)
   -- @usage
   -- kong.service.request.clear_query_arg("foo")
   request.clear_query_arg = function(name)
-    check_phase(access_and_rewrite)
+    check_phase(access_and_rewrite_ws)
 
     if type(name) ~= "string" then
       error("query argument name must be a string", 2)

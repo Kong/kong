@@ -150,8 +150,7 @@ local function do_authentication(conf)
       key = v
 
       if conf.hide_credentials then
-        query[name] = nil
-        kong.service.request.set_query(query)
+        kong.service.request.clear_query_arg(name)
         kong.service.request.clear_header(name)
 
         if conf.key_in_body then

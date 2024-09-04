@@ -735,6 +735,48 @@ for _, strategy in helpers.each_strategy() do
         assert.matches("No API key found in request", json.message)
         assert.equal('Key', res.headers["WWW-Authenticate"])
       end)
+
+      it("does not remove apikey and preserves order of query parameters", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/request?c=value1&b=value2&apikey=kong&a=value3",
+          headers = {
+            ["Host"] = "key-auth1.test"
+          }
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.equal("/request?c=value1&b=value2&apikey=kong&a=value3", json.vars.request_uri)
+      end)
+
+      it("removes apikey and preserves order of query parameters", function()
+        local res = assert(proxy_client:send{
+          method = "GET",
+          path = "/request?c=value1&b=value2&apikey=kong&a=value3",
+          headers = {
+            ["Host"] = "key-auth2.test"
+          }
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.equal("/request?c=value1&b=value2&a=value3", json.vars.request_uri)
+      end)
+
+      it("removes apikey in encoded query and preserves order of query parameters", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/request?c=valu%651&b=value2&api%6B%65%79=kong&a=valu%653",
+          headers = {
+            ["Host"] = "key-auth2.test"
+          }
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.equal("/request?c=value1&b=value2&a=value3", json.vars.request_uri)
+      end)
     end)
 
     describe("config.anonymous", function()
