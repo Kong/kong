@@ -19,7 +19,6 @@ local floor        = math.floor
 local type         = type
 local ngx          = ngx
 local timer_every  = ngx.timer.every
-local update_time  = ngx.update_time
 local get_phase    = ngx.get_phase
 local null         = ngx.null
 local now          = ngx.now
@@ -31,6 +30,7 @@ local utils_toposort = db_utils.topological_sort
 local insert       = table.insert
 local table_merge  = require("kong.tools.table").table_merge
 local strip        = require("kong.tools.string").strip
+local now_updated  = require("kong.tools.time").get_updated_now
 
 
 local WARN                          = ngx.WARN
@@ -52,12 +52,6 @@ local OPERATIONS = {
 }
 local ADMIN_API_PHASE = kong_global.phases.admin_api
 local CORE_ENTITIES = constants.CORE_ENTITIES
-
-
-local function now_updated()
-  update_time()
-  return now()
-end
 
 
 local function iterator(rows)
