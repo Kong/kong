@@ -352,15 +352,28 @@ local function get_cache(db)
 end
 
 
+local function get_dcbp()
+  return dcbp
+end
+
+
+local function get_plugins_list()
+  return PLUGINS_LIST
+end
+
+
 return {
-  PLUGINS_LIST = PLUGINS_LIST,
+  --PLUGINS_LIST = PLUGINS_LIST,
 
   db = db,
   blueprints = blueprints,
-  dcbp = dcbp,
+  --dcbp = dcbp,
 
   get_cache = get_cache,
   get_db_utils = get_db_utils,
+
+  get_dcbp = get_dcbp,
+  get_plugins_list = get_plugins_list,
 
   truncate_tables = truncate_tables,
   bootstrap_database = bootstrap_database,

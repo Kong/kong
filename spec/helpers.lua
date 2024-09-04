@@ -100,11 +100,6 @@ end
 ---------------
 local config_yml
 
-local PLUGINS_LIST = DB.PLUGINS_LIST
-local db = DB.db
-local dcbp = DB.dcbp
-local truncate_tables = DB.truncate_tables
-
 -----------------
 -- Custom helpers
 -----------------
@@ -1732,7 +1727,7 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
   local ok, err = prepare_prefix(prefix)
   if not ok then return nil, err end
 
-  truncate_tables(db, tables)
+  DB.truncate_tables(DB.db, tables)
 
   local nginx_conf = ""
   local nginx_conf_flags = { "test" }
@@ -1751,6 +1746,7 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
     nginx_conf_flags = ""
   end
 
+  local dcbp = DB.get_dcbp()
   if dcbp and not env.declarative_config and not env.declarative_config_string then
     if not config_yml then
       config_yml = prefix .. "/config.yml"
@@ -2054,7 +2050,7 @@ local function clustering_client(opts)
   end
   local payload = assert(cjson.encode({ type = "basic_info",
                                         plugins = opts.node_plugins_list or
-                                                  PLUGINS_LIST,
+                                                  DB.get_plugins_list(),
                                         labels = opts.node_labels,
                                         process_conf = opts.node_process_conf,
                                       }))
@@ -2392,6 +2388,7 @@ end
   end,
   -- returns the plugins and version list that is used by Hybrid mode tests
   get_plugins_list = function()
+    local PLUGINS_LIST = DB.get_plugins_list()
     assert(PLUGINS_LIST, "plugin list has not been initialized yet, " ..
                          "you must call get_db_utils first")
     return table_clone(PLUGINS_LIST)
