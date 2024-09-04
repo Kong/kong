@@ -5,9 +5,8 @@
 -- @license [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
 -- @module spec.helpers
 
-local CONSTANTS = require("spec.details.constants")
-
 local PLUGINS_LIST
+
 
 local consumers_schema_def = require "kong.db.schema.entities.consumers"
 local services_schema_def = require "kong.db.schema.entities.services"
@@ -31,12 +30,8 @@ local Entity = require "kong.db.schema.entity"
 local cjson = require "cjson.safe"
 local kong_table = require "kong.tools.table"
 local http = require "resty.http"
-local pkey = require "resty.openssl.pkey"
-local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
-local shell = require "resty.shell"
-local ffi = require "ffi"
 local ssl = require "ngx.ssl"
 local ws_client = require "resty.websocket.client"
 local table_clone = require "table.clone"
@@ -50,12 +45,22 @@ local colors = require "ansicolors"
 local strip = require("kong.tools.string").strip
 local splitlines = require("pl.stringx").splitlines
 
-ffi.cdef [[
-  int setenv(const char *name, const char *value, int overwrite);
-  int unsetenv(const char *name);
-]]
 
-local kong_exec   -- forward declaration
+local function reload_module(name)
+  package.loaded[name] = nil
+  return require(name)
+end
+
+
+-- reload some modules when env or _G changes
+local CONSTANTS = reload_module("spec.details.constants")
+local shell = reload_module("spec.details.shell")
+local misc = reload_module("spec.details.misc")
+
+
+local conf = shell.conf
+local exec = shell.exec
+local kong_exec = shell.kong_exec
 
 
 log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
@@ -70,101 +75,6 @@ do
   table.insert(paths, package.path)
   package.path = table.concat(paths, ";")
 end
-
---- Returns the OpenResty version.
--- Extract the current OpenResty version in use and returns
--- a numerical representation of it.
--- Ex: `1.11.2.2` -> `11122`
--- @function openresty_ver_num
-local function openresty_ver_num()
-  local nginx_bin = assert(nginx_signals.find_nginx_bin())
-  local _, _, stderr = shell.run(string.format("%s -V", nginx_bin), nil, 0)
-
-  local a, b, c, d = string.match(stderr or "", "openresty/(%d+)%.(%d+)%.(%d+)%.(%d+)")
-  if not a then
-    error("could not execute 'nginx -V': " .. stderr)
-  end
-
-  return tonumber(a .. b .. c .. d)
-end
-
---- Unindent a multi-line string for proper indenting in
--- square brackets.
--- @function unindent
--- @usage
--- local u = helpers.unindent
---
--- u[[
---     hello world
---     foo bar
--- ]]
---
--- -- will return: "hello world\nfoo bar"
-local function unindent(str, concat_newlines, spaced_newlines)
-  str = string.match(str, "(.-%S*)%s*$")
-  if not str then
-    return ""
-  end
-
-  local level  = math.huge
-  local prefix = ""
-  local len
-
-  str = str:match("^%s") and "\n" .. str or str
-  for pref in str:gmatch("\n(%s+)") do
-    len = #prefix
-
-    if len < level then
-      level  = len
-      prefix = pref
-    end
-  end
-
-  local repl = concat_newlines and "" or "\n"
-  repl = spaced_newlines and " " or repl
-
-  return (str:gsub("^\n%s*", ""):gsub("\n" .. prefix, repl):gsub("\n$", ""):gsub("\\r", "\r"))
-end
-
-
---- Set an environment variable
--- @function setenv
--- @param env (string) name of the environment variable
--- @param value the value to set
--- @return true on success, false otherwise
-local function setenv(env, value)
-  return ffi.C.setenv(env, value, 1) == 0
-end
-
-
---- Unset an environment variable
--- @function unsetenv
--- @param env (string) name of the environment variable
--- @return true on success, false otherwise
-local function unsetenv(env)
-  return ffi.C.unsetenv(env) == 0
-end
-
-
---- Write a yaml file.
--- @function make_yaml_file
--- @param content (string) the yaml string to write to the file, if omitted the
--- current database contents will be written using `kong config db_export`.
--- @param filename (optional) if not provided, a temp name will be created
--- @return filename of the file written
-local function make_yaml_file(content, filename)
-  local filename = filename or pl_path.tmpname() .. ".yml"
-  if content then
-    local fd = assert(io.open(filename, "w"))
-    assert(fd:write(unindent(content)))
-    assert(fd:write("\n")) -- ensure last line ends in newline
-    assert(fd:close())
-  else
-    assert(kong_exec("config db_export --conf "..CONSTANTS.TEST_CONF_PATH.." "..filename))
-  end
-  return filename
-end
-
 
 local get_available_port
 do
@@ -197,8 +107,6 @@ end
 ---------------
 -- Conf and DAO
 ---------------
-local conf = assert(conf_loader(CONSTANTS.TEST_CONF_PATH))
-
 _G.kong = kong_global.new()
 kong_global.init_pdk(_G.kong, conf)
 ngx.ctx.KONG_PHASE = kong_global.phases.access
@@ -528,25 +436,6 @@ end
 -----------------
 local resty_http_proxy_mt = setmetatable({}, { __index = http })
 resty_http_proxy_mt.__index = resty_http_proxy_mt
-
-local pack = function(...) return { n = select("#", ...), ... } end
-local unpack = function(t) return unpack(t, 1, t.n) end
-
---- Prints all returned parameters.
--- Simple debugging aid, it will pass all received parameters, hence will not
--- influence the flow of the code. See also `fail`.
--- @function intercept
--- @see fail
--- @usage -- modify
--- local a,b = some_func(c,d)
--- -- into
--- local a,b = intercept(some_func(c,d))
-local function intercept(...)
-  local args = pack(...)
-  print(require("pl.pretty").write(args))
-  return unpack(args)
-end
-
 
 -- Prepopulate Schema's cache
 Schema.new(consumers_schema_def)
@@ -1153,8 +1042,6 @@ local function proxy_client_h2()
   assert(proxy_ip, "No https-proxy found in the configuration")
   return http2_client(proxy_ip, proxy_port, true)
 end
-
-local exec -- forward declaration
 
 --- Creates a gRPC client, based on the grpcurl CLI.
 -- @function grpc_client
@@ -2385,7 +2272,7 @@ luassert:register("assertion", "fail", fail,
 -- local i = assert.contains("two", arr)        --> fails
 -- local i = assert.contains("ee$", arr, true)  --> passes; i == 2
 local function contains(state, args)
-  local expected, arr, pattern = unpack(args)
+  local expected, arr, pattern = misc.unpack(args)
   local found
   for i = 1, #arr do
     if (pattern and string.match(arr[i], expected)) or arr[i] == expected then
@@ -2408,47 +2295,6 @@ Expected to not contain:
 luassert:register("assertion", "contains", contains,
                   "assertion.contains.negative",
                   "assertion.contains.positive")
-
-local deep_sort do
-  local function deep_compare(a, b)
-    if a == nil then
-      a = ""
-    end
-
-    if b == nil then
-      b = ""
-    end
-
-    deep_sort(a)
-    deep_sort(b)
-
-    if type(a) ~= type(b) then
-      return type(a) < type(b)
-    end
-
-    if type(a) == "table" then
-      return deep_compare(a[1], b[1])
-    end
-
-    -- compare cjson.null or ngx.null
-    if type(a) == "userdata" and type(b) == "userdata" then
-      return false
-    end
-
-    return a < b
-  end
-
-  function deep_sort(t)
-    if type(t) == "table" then
-      for _, v in pairs(t) do
-        deep_sort(v)
-      end
-      table.sort(t, deep_compare)
-    end
-
-    return t
-  end
-end
 
 
 local function copy_errlog(errlog_path)
@@ -2989,13 +2835,13 @@ do
     return found
   end
 
-  say:set("assertion.match_line.negative", unindent [[
+  say:set("assertion.match_line.negative", misc.unindent [[
     Expected file at:
     %s
     To match:
     %s
   ]])
-  say:set("assertion.match_line.positive", unindent [[
+  say:set("assertion.match_line.positive", misc.unindent [[
     Expected file at:
     %s
     To not match:
@@ -3039,13 +2885,13 @@ local function match_re(_, args)
   end
 end
 
-say:set("assertion.match_re.negative", unindent [[
+say:set("assertion.match_re.negative", misc.unindent [[
     Expected log:
     %s
     To match:
     %s
   ]])
-say:set("assertion.match_re.positive", unindent [[
+say:set("assertion.match_re.positive", misc.unindent [[
     Expected log:
     %s
     To not match:
@@ -3318,87 +3164,6 @@ Expected: %s, given: %s
 luassert:register("assertion", "partial_match", partial_match,
                   "assertion.partial_match.positive",
                   "assertion.partial_match.negative")
-
-
-----------------
--- Shell helpers
--- @section Shell-helpers
-
---- Execute a command.
--- Modified version of `pl.utils.executeex()` so the output can directly be
--- used on an assertion.
--- @function execute
--- @param cmd command string to execute
--- @param returns (optional) boolean: if true, this function will
--- return the same values as Penlight's executeex.
--- @return if `returns` is true, returns four return values
--- (ok, code, stdout, stderr); if `returns` is false,
--- returns either (false, stderr) or (true, stderr, stdout).
-function exec(cmd, returns)
-  --100MB for retrieving stdout & stderr
-  local ok, stdout, stderr, _, code = shell.run(cmd, nil, 0, 1024*1024*100)
-  if returns then
-    return ok, code, stdout, stderr
-  end
-  if not ok then
-    stdout = nil -- don't return 3rd value if fail because of busted's `assert`
-  end
-  return ok, stderr, stdout
-end
-
-
---- Execute a Kong command.
--- @function kong_exec
--- @param cmd Kong command to execute, eg. `start`, `stop`, etc.
--- @param env (optional) table with kong parameters to set as environment
--- variables, overriding the test config (each key will automatically be
--- prefixed with `KONG_` and be converted to uppercase)
--- @param returns (optional) boolean: if true, this function will
--- return the same values as Penlight's `executeex`.
--- @param env_vars (optional) a string prepended to the command, so
--- that arbitrary environment variables may be passed
--- @return if `returns` is true, returns four return values
--- (ok, code, stdout, stderr); if `returns` is false,
--- returns either (false, stderr) or (true, stderr, stdout).
-function kong_exec(cmd, env, returns, env_vars)
-  cmd = cmd or ""
-  env = env or {}
-
-  -- Insert the Lua path to the custom-plugin fixtures
-  do
-    local function cleanup(t)
-      if t then
-        t = strip(t)
-        if t:sub(-1,-1) == ";" then
-          t = t:sub(1, -2)
-        end
-      end
-      return t ~= "" and t or nil
-    end
-    local paths = {}
-    table.insert(paths, cleanup(CONSTANTS.CUSTOM_PLUGIN_PATH))
-    table.insert(paths, cleanup(CONSTANTS.CUSTOM_VAULT_PATH))
-    table.insert(paths, cleanup(env.lua_package_path))
-    table.insert(paths, cleanup(conf.lua_package_path))
-    env.lua_package_path = table.concat(paths, ";")
-    -- note; the nginx config template will add a final ";;", so no need to
-    -- include that here
-  end
-
-  if not env.plugins then
-    env.plugins = "bundled,dummy,cache,rewriter,error-handler-log," ..
-                  "error-generator,error-generator-last," ..
-                  "short-circuit"
-  end
-
-  -- build Kong environment variables
-  env_vars = env_vars or ""
-  for k, v in pairs(env) do
-    env_vars = string.format("%s KONG_%s='%s'", env_vars, k:upper(), v)
-  end
-
-  return exec(env_vars .. " " .. CONSTANTS.BIN_PATH .. " " .. cmd, returns)
-end
 
 
 --- Prepares the Kong environment.
@@ -4130,26 +3895,6 @@ local function clustering_client(opts)
 end
 
 
---- Generate asymmetric keys
--- @function generate_keys
--- @param fmt format to receive the public and private pair
--- @return `pub, priv` key tuple or `nil + err` on failure
-local function generate_keys(fmt)
-  fmt = string.upper(fmt) or "JWK"
-  local key, err = pkey.new({
-    -- only support RSA for now
-    type = 'RSA',
-    bits = 2048,
-    exp = 65537
-  })
-  assert(key)
-  assert(err == nil, err)
-  local pub = key:tostring("public", fmt)
-  local priv = key:tostring("private", fmt)
-  return pub, priv
-end
-
-
 local make_temp_dir
 do
   local seeded = false
@@ -4212,10 +3957,10 @@ local function use_old_plugin(name)
 
   local origin_lua_path = os.getenv("LUA_PATH")
   -- put the old plugin path at first
-  assert(setenv("LUA_PATH", old_plugin_path .. "/?.lua;" .. old_plugin_path .. "/?/init.lua;" .. origin_lua_path), "failed to set LUA_PATH env")
+  assert(misc.setenv("LUA_PATH", old_plugin_path .. "/?.lua;" .. old_plugin_path .. "/?/init.lua;" .. origin_lua_path), "failed to set LUA_PATH env")
 
   return function ()
-    setenv("LUA_PATH", origin_lua_path)
+    misc.setenv("LUA_PATH", origin_lua_path)
     if temp_dir then
       pl_dir.rmtree(temp_dir)
     end
@@ -4377,13 +4122,14 @@ end
   stress_generator = stress_generator,
 
   -- miscellaneous
-  intercept = intercept,
-  openresty_ver_num = openresty_ver_num(),
-  unindent = unindent,
-  make_yaml_file = make_yaml_file,
-  setenv = setenv,
-  unsetenv = unsetenv,
-  deep_sort = deep_sort,
+  intercept = misc.intercept,
+  openresty_ver_num = misc.openresty_ver_num,
+  unindent = misc.unindent,
+  make_yaml_file = misc.make_yaml_file,
+  setenv = misc.setenv,
+  unsetenv = misc.unsetenv,
+  deep_sort = misc.deep_sort,
+  generate_keys = misc.generate_keys,
 
   -- launching Kong subprocesses
   start_kong = start_kong,
@@ -4397,7 +4143,6 @@ end
   start_grpc_target = start_grpc_target,
   stop_grpc_target = stop_grpc_target,
   get_grpc_target_port = get_grpc_target_port,
-  generate_keys = generate_keys,
 
   -- plugin compatibility test
   use_old_plugin = use_old_plugin,
