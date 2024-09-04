@@ -30,6 +30,7 @@ local validate_header = checks.validate_header
 local validate_headers = checks.validate_headers
 local check_phase = phase_checker.check
 local escape = require("kong.tools.uri").escape
+local search_remove = require("resty.ada.search").remove
 
 
 local PHASES = phase_checker.phases
@@ -290,10 +291,36 @@ local function new(self)
   end
 
 
+  ---
+  -- Removes all occurrences of the specified query string argument
+  -- from the request to the Service. The order of query string
+  -- arguments is retained.
+  --
+  -- @function kong.service.request.clear_query_arg
+  -- @phases `rewrite`, `access`
+  -- @tparam string name
+  -- @return Nothing; throws an error on invalid inputs.
+  -- @usage
+  -- kong.service.request.clear_query_arg("foo")
+  request.clear_query_arg = function(name)
+    check_phase(access_and_rewrite)
+
+    if type(name) ~= "string" then
+      error("query argument name must be a string", 2)
+    end
+
+    local args = ngx_var.args
+    if args and args ~= "" then
+      ngx_var.args = search_remove(args, name)
+    end
+  end
+
+
   local set_authority
   if ngx.config.subsystem ~= "stream" then
     set_authority = require("resty.kong.grpc").set_authority
   end
+
 
   ---
   -- Sets a header in the request to the Service with the given value. Any existing header

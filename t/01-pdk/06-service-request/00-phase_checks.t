@@ -103,6 +103,18 @@ qq{
                 log           = "forced false",
                 admin_api     = "forced false",
             }, {
+                method        = "clear_query_arg",
+                args          = { "foo" },
+                init_worker   = false,
+                certificate   = "pending",
+                rewrite       = true,
+                access        = true,
+                response      = "forced false",
+                header_filter = "forced false",
+                body_filter   = "forced false",
+                log           = "forced false",
+                admin_api     = "forced false",
+            }, {
                 method        = "set_header",
                 args          = { "X-Foo", "bar" },
                 init_worker   = false,
