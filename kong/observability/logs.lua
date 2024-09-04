@@ -12,7 +12,7 @@ end
 local request_id_get = require "kong.observability.tracing.request_id".get
 local time_ns = require "kong.tools.time".time_ns
 local table_merge = require "kong.tools.table".table_merge
-local deep_copy = require "kong.tools.utils".deep_copy
+local deep_copy = require "kong.tools.table".deep_copy
 
 local get_log_level = require "resty.kong.log".get_log_level
 local constants_log_levels = require "kong.constants".LOG_LEVELS
