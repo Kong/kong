@@ -403,7 +403,7 @@ return {
         return 0
       end
 
-      local red, err = get_redis_connection(conf)
+      local red, db_key, err = get_redis_connection(conf)
       if not red then
         return nil, err
       end
