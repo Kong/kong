@@ -364,4 +364,7 @@ return {
 
   truncate_tables = truncate_tables,
   bootstrap_database = bootstrap_database,
+
+  each_strategy = each_strategy,
+  all_strategies = all_strategies,
 }
