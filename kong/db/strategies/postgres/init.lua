@@ -12,7 +12,6 @@ local decode_base64 = ngx.decode_base64
 local encode_array  = arrays.encode_array
 local encode_json   = json.encode_json
 local setmetatable  = setmetatable
-local update_time   = ngx.update_time
 local get_phase     = ngx.get_phase
 local tonumber      = tonumber
 local concat        = table.concat
@@ -27,12 +26,12 @@ local null          = ngx.null
 local type          = type
 local load          = load
 local find          = string.find
-local now           = ngx.now
 local fmt           = string.format
 local rep           = string.rep
 local sub           = string.sub
 local log           = ngx.log
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
+local now_updated   = require("kong.tools.time").get_updated_now
 
 
 local NOTICE        = ngx.NOTICE
@@ -42,12 +41,6 @@ local UNIQUE        = {}
 
 local function noop(...)
   return ...
-end
-
-
-local function now_updated()
-  update_time()
-  return now()
 end
 
 

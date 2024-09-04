@@ -27,13 +27,13 @@ local exiting = ngx.worker.exiting
 local worker_id = ngx.worker.id
 local ngx_time = ngx.time
 local ngx_now = ngx.now
-local ngx_update_time = ngx.update_time
 local ngx_var = ngx.var
 local table_insert = table.insert
 local table_remove = table.remove
 local sub = string.sub
 local isempty = require("table.isempty")
 local sleep = ngx.sleep
+local now_updated = require("kong.tools.time").get_updated_now
 
 
 local plugins_list_to_map = compat.plugins_list_to_map
@@ -173,8 +173,7 @@ function _M:push_config()
     n = n + 1
   end
 
-  ngx_update_time()
-  local duration = ngx_now() - start
+  local duration = now_updated() - start
   ngx_log(ngx_DEBUG, _log_prefix, "config pushed to ", n, " data-plane nodes in ", duration, " seconds")
 end
 
