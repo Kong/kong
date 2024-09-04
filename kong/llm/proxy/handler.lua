@@ -11,7 +11,7 @@ local llm_state = require("kong.llm.state")
 local cjson = require("cjson.safe")
 local kong_utils = require("kong.tools.gzip")
 local buffer = require "string.buffer"
-local strip = require("kong.tools.utils").strip
+local strip = require("kong.tools.string").strip
 local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 
