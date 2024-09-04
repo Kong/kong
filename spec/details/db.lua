@@ -11,6 +11,8 @@ local dc_blueprints = require("spec.fixtures.dc_blueprints")
 local conf = require("spec.details.shell").conf
 
 
+-- will be initialized in get_db_utils()
+local dcbp
 local PLUGINS_LIST
 
 
@@ -37,7 +39,6 @@ assert(db:init_connector())
 db.plugins:load_plugin_schemas(conf.loaded_plugins)
 db.vaults:load_vault_schemas(conf.loaded_vaults)
 local blueprints = assert(Blueprints.new(db))
-local dcbp
 
 
 --- Iterator over DB strategies.
@@ -363,17 +364,14 @@ end
 
 
 return {
-  --PLUGINS_LIST = PLUGINS_LIST,
-
   db = db,
   blueprints = blueprints,
-  --dcbp = dcbp,
-
-  get_cache = get_cache,
-  get_db_utils = get_db_utils,
 
   get_dcbp = get_dcbp,
   get_plugins_list = get_plugins_list,
+
+  get_cache = get_cache,
+  get_db_utils = get_db_utils,
 
   truncate_tables = truncate_tables,
   bootstrap_database = bootstrap_database,
