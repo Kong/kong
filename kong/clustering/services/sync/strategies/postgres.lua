@@ -51,14 +51,30 @@ end
 
 
 function _M:get_latest_version()
-  local sql = "SELECT currval(pg_get_serial_sequence('clustering_sync_version', 'version'))"
-  return self.connector:query(sql)[1].currval
+  local sql = "SELECT MAX(version) AS max_version FROM clustering_sync_version"
+  return self.connector:query(sql)[1].max_version
 end
 
 
 function _M:get_delta(version)
   local sql = "SELECT * FROM clustering_sync_delta WHERE version > " .. self.connector:escape_literal(version) .. " ORDER BY version ASC"
   return self.connector:query(sql)
+end
+
+
+function _M:begin_txn()
+  return self.connector:query("BEGIN;")
+end
+
+
+function _M:commit_txn()
+  return self.connector:query("COMMIT;")
+end
+
+
+function _M:cancel_txn()
+  -- we will close the connection, not execute 'ROLLBACK'
+  return self.connector:close()
 end
 
 
