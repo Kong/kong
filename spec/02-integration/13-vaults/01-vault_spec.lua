@@ -175,5 +175,10 @@ for _, strategy in helpers.each_strategy() do
       assert.is_equal("{vault://unknown/missing-key}", certificate.key_alt)
       assert.is_nil(certificate["$refs"])
     end)
+
+    it("generate correct cache key", function ()
+      local cache_key = db.vaults:cache_key("test")
+      assert.equal("vaults:test:::::", cache_key)
+    end)
   end)
 end
