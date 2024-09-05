@@ -1,15 +1,16 @@
 # please see matrix-full.yml for meaning of each field
 build-packages:
-- label: ubuntu-22.04
-  image: ubuntu:22.04
+- label: ubuntu-24.04
+  image: ubuntu:24.04
   package: deb
-  check-manifest-suite: ubuntu-22.04-amd64
+  check-manifest-suite: ubuntu-24.04-amd64
 
 build-images:
 - label: ubuntu
-  base-image: ubuntu:22.04
+  base-image: ubuntu:24.04
   package: deb
-  artifact-from: ubuntu-22.04
+  artifact-from: ubuntu-24.04
+  check-manifest-suite: docker-image-ubuntu-24.04
 
 smoke-tests:
 - label: ubuntu

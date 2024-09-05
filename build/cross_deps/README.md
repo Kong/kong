@@ -17,6 +17,7 @@ We currently do cross compile on following platforms:
 - Amazonlinux 2023
 - Ubuntu 18.04 (Version 3.4.x.x only)
 - Ubuntu 22.04
+- Ubuntu 24.04
 - RHEL 9
 - Debian 12
 
