@@ -7,7 +7,7 @@ local strategy = require("kong.clustering.services.sync.strategies.postgres")
 local rpc = require("kong.clustering.services.sync.rpc")
 
 
-function _M.new(db)
+function _M.new(db, is_cp)
   local strategy = strategy.new(db)
 
   local self = {
@@ -15,20 +15,24 @@ function _M.new(db)
     strategy = strategy,
     hooks = hooks.new(strategy),
     rpc = rpc.new(strategy),
+    is_cp = is_cp,
   }
 
   return setmetatable(self, _MT)
 end
 
 
-function _M:init(manager, is_cp)
-  self.hooks:register_dao_hooks(is_cp)
-  self.rpc:init(manager, is_cp)
+function _M:init(manager)
+  self.hooks:register_dao_hooks(self.is_cp)
+  self.rpc:init(manager, self.is_cp)
 end
 
 
-function _M:init_worker_dp()
-  if ngx.worker.id() == 0 then
+function _M:init_worker()
+  if self.is_cp then
+    self.strategy:init_worker()
+
+  elseif ngx.worker.id() == 0 then
     assert(self.rpc:sync_once(5))
   end
 end
