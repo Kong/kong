@@ -46,10 +46,7 @@ local strip = require("kong.tools.string").strip
 local splitlines = require("pl.stringx").splitlines
 
 
-local function reload_module(name)
-  package.loaded[name] = nil
-  return require(name)
-end
+local reload_module = require("spec.details.module").reload
 
 
 -- reload some modules when env or _G changes
