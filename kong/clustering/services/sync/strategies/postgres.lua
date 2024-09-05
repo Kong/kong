@@ -51,8 +51,8 @@ end
 
 
 function _M:get_latest_version()
-  local sql = "SELECT currval(pg_get_serial_sequence('clustering_sync_version', 'version'))"
-  return self.connector:query(sql)[1].currval
+  local sql = "SELECT MAX(version) AS max_version FROM clustering_sync_version"
+  return self.connector:query(sql)[1].max_version
 end
 
 
