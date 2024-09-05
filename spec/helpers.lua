@@ -18,6 +18,7 @@ local pl_dir = require "pl.dir"
 local cjson = require "cjson.safe"
 local kong_table = require "kong.tools.table"
 local http = require "resty.http"
+local log = require "kong.cmd.utils.log"
 local ssl = require "ngx.ssl"
 local ws_client = require "resty.websocket.client"
 local table_clone = require "table.clone"
@@ -46,6 +47,19 @@ local conf = shell.conf
 local exec = shell.exec
 local kong_exec = shell.kong_exec
 
+
+log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
+
+-- Add to package path so dao helpers can insert custom plugins
+-- (while running from the busted environment)
+do
+  local paths = {}
+  table.insert(paths, os.getenv("KONG_LUA_PACKAGE_PATH"))
+  table.insert(paths, CONSTANTS.CUSTOM_PLUGIN_PATH)
+  table.insert(paths, CONSTANTS.CUSTOM_VAULT_PATH)
+  table.insert(paths, package.path)
+  package.path = table.concat(paths, ";")
+end
 
 local get_available_port
 do
