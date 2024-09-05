@@ -82,9 +82,9 @@ function _M:register_dao_hooks(is_cp)
     end
 
     local latest_version = self.strategy:get_latest_version()
-
     for _, node in ipairs(get_all_nodes_with_sync_cap()) do
-      res, err = kong.rpc:call(node, "kong.sync.v2.notify_new_version", latest_version)
+      res, err = kong.rpc:call(node, "kong.sync.v2.notify_new_version",
+                               { { namespace = "default", new_version = latest_version, }, })
       if not res then
         if not err:find("requested capability does not exist", nil, true) then
           ngx.log(ngx.ERR, "unable to notify new version: ", err)
@@ -108,8 +108,6 @@ function _M:register_dao_hooks(is_cp)
     if err then
       return self.strategy:cancel_txn()
     end
-
-    -- no err, we should commit delete operation
 
     local res, err = self.strategy:commit_txn()
     if not res then
