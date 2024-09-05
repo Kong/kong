@@ -194,6 +194,12 @@ for _, strategy in helpers.each_strategy() do
         service     = null,
       }
 
+      local route29 = bp.routes:insert {
+        hosts       = { "lambda29.test" },
+        protocols   = { "http", "https" },
+        service     = null,
+      }
+
       bp.plugins:insert {
         name     = "aws-lambda",
         route    = { id = route1.id },
@@ -576,6 +582,19 @@ for _, strategy in helpers.each_strategy() do
           aws_region           = "us-east-1",
           function_name        = "functionWithArrayCTypeInMVHAndEmptyArray",
           empty_arrays_mode    = "legacy",
+          is_proxy_integration = true,
+        }
+      }
+
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route29.id },
+        config                 = {
+          port                 = 10001,
+          aws_key              = "mock-key",
+          aws_secret           = "mock-secret",
+          aws_region           = "us-east-1",
+          function_name        = "functionWithNullMultiValueHeaders",
           is_proxy_integration = true,
         }
       }
@@ -1152,6 +1171,25 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(502, res)
           local b = assert.response(res).has.jsonbody()
           assert.equal("Bad Gateway", b.message)
+        end)
+
+        it("do not throw error when 'multiValueHeaders' is JSON null", function ()
+          local res = assert(proxy_client:send {
+            method  = "POST",
+            path    = "/post",
+            headers = {
+              ["Host"]         = "lambda11.test",
+              ["Content-Type"] = "application/json",
+            },
+            body = {
+              statusCode = 201,
+              body = "test",
+              multiValueHeaders = cjson.null,
+            }
+          })
+
+          local body = assert.res_status(201, res)
+          assert.same(body, "test")
         end)
 
         it("returns HTTP 502 with when response from lambda is not valid JSON", function()

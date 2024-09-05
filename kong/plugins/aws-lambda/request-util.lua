@@ -1,6 +1,7 @@
 local kong = kong
 local ngx_encode_base64 = ngx.encode_base64
 local ngx_decode_base64 = ngx.decode_base64
+local null = ngx.null
 local cjson = require "cjson.safe"
 
 local date = require("date")
@@ -89,6 +90,10 @@ local function validate_custom_response(response)
     return nil, "body must be a string"
   end
 
+  if response.isBase64Encoded ~= nil and type(response.isBase64Encoded) ~= "boolean" then
+    return nil, "isBase64Encoded must be a boolean"
+  end
+
   return true
 end
 
@@ -118,13 +123,10 @@ local function extract_proxy_response(content)
   local isBase64Encoded = serialized_content.isBase64Encoded
   if isBase64Encoded == true then
     body = ngx_decode_base64(body)
-
-  elseif isBase64Encoded ~= false and isBase64Encoded ~= nil then
-    return nil, "isBase64Encoded must be a boolean"
   end
 
   local multiValueHeaders = serialized_content.multiValueHeaders
-  if multiValueHeaders then
+  if multiValueHeaders and multiValueHeaders ~= null then
     for header, values in pairs(multiValueHeaders) do
       headers[header] = values
     end
