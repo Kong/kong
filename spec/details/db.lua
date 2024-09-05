@@ -6,6 +6,7 @@ local constants = require("kong.constants")
 local kong_global = require("kong.global")
 local Blueprints = require("spec.fixtures.blueprints")
 local dc_blueprints = require("spec.fixtures.dc_blueprints")
+local uuid = require("kong.tools.uuid").uuid
 
 
 local conf = require("spec.details.shell").conf
@@ -363,6 +364,48 @@ local function get_plugins_list()
 end
 
 
+local validate_plugin_config_schema
+do
+  local consumers_schema_def = require("kong.db.schema.entities.consumers")
+  local services_schema_def = require("kong.db.schema.entities.services")
+  local plugins_schema_def = require("kong.db.schema.entities.plugins")
+  local routes_schema_def = require("kong.db.schema.entities.routes")
+  local Schema = require("kong.db.schema")
+  local Entity = require("kong.db.schema.entity")
+
+  -- Prepopulate Schema's cache
+  Schema.new(consumers_schema_def)
+  Schema.new(services_schema_def)
+  Schema.new(routes_schema_def)
+
+  local plugins_schema = assert(Entity.new(plugins_schema_def))
+
+  --- Validate a plugin configuration against a plugin schema.
+  -- @function validate_plugin_config_schema
+  -- @param config The configuration to validate. This is not the full schema,
+  -- only the `config` sub-object needs to be passed.
+  -- @param schema_def The schema definition
+  -- @return the validated schema, or nil+error
+  validate_plugin_config_schema = function(config, schema_def)
+    assert(plugins_schema:new_subschema(schema_def.name, schema_def))
+    local entity = {
+      id = uuid(),
+      name = schema_def.name,
+      config = config
+    }
+    local entity_to_insert, err = plugins_schema:process_auto_fields(entity, "insert")
+    if err then
+      return nil, err
+    end
+    local _, err = plugins_schema:validate_insert(entity_to_insert)
+    if err then return
+      nil, err
+    end
+    return entity_to_insert
+  end
+end
+
+
 return {
   db = db,
   blueprints = blueprints,
@@ -378,4 +421,6 @@ return {
 
   each_strategy = each_strategy,
   all_strategies = all_strategies,
+
+  validate_plugin_config_schema = validate_plugin_config_schema,
 }

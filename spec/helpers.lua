@@ -6,10 +6,6 @@
 -- @module spec.helpers
 
 
-local consumers_schema_def = require "kong.db.schema.entities.consumers"
-local services_schema_def = require "kong.db.schema.entities.services"
-local plugins_schema_def = require "kong.db.schema.entities.plugins"
-local routes_schema_def = require "kong.db.schema.entities.routes"
 local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local conf_loader = require "kong.conf_loader"
 local constants = require "kong.constants"
@@ -19,8 +15,6 @@ local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local version = require "version"
 local pl_dir = require "pl.dir"
-local Schema = require "kong.db.schema"
-local Entity = require "kong.db.schema.entity"
 local cjson = require "cjson.safe"
 local kong_table = require "kong.tools.table"
 local http = require "resty.http"
@@ -105,38 +99,6 @@ local config_yml
 -----------------
 local resty_http_proxy_mt = setmetatable({}, { __index = http })
 resty_http_proxy_mt.__index = resty_http_proxy_mt
-
--- Prepopulate Schema's cache
-Schema.new(consumers_schema_def)
-Schema.new(services_schema_def)
-Schema.new(routes_schema_def)
-
-local plugins_schema = assert(Entity.new(plugins_schema_def))
-
-
---- Validate a plugin configuration against a plugin schema.
--- @function validate_plugin_config_schema
--- @param config The configuration to validate. This is not the full schema,
--- only the `config` sub-object needs to be passed.
--- @param schema_def The schema definition
--- @return the validated schema, or nil+error
-local function validate_plugin_config_schema(config, schema_def)
-  assert(plugins_schema:new_subschema(schema_def.name, schema_def))
-  local entity = {
-    id = uuid(),
-    name = schema_def.name,
-    config = config
-  }
-  local entity_to_insert, err = plugins_schema:process_auto_fields(entity, "insert")
-  if err then
-    return nil, err
-  end
-  local _, err = plugins_schema:validate_insert(entity_to_insert)
-  if err then return
-    nil, err
-  end
-  return entity_to_insert
-end
 
 
 --- Check if a request can be retried in the case of a closed connection
@@ -2296,7 +2258,7 @@ end
   wait_for_invalidation = wait_for_invalidation,
   each_strategy = DB.each_strategy,
   all_strategies = DB.all_strategies,
-  validate_plugin_config_schema = validate_plugin_config_schema,
+  validate_plugin_config_schema = DB.validate_plugin_config_schema,
   clustering_client = clustering_client,
   https_server = https_server,
   stress_generator = stress_generator,
