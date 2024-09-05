@@ -694,8 +694,8 @@ function Kong.init()
 
     if config.cluster_rpc then
       kong.rpc = require("kong.clustering.rpc.manager").new(config, kong.node.get_id())
-      kong.sync = require("kong.clustering.services.sync").new(db)
-      kong.sync:init(kong.rpc, is_control_plane(config))
+      kong.sync = require("kong.clustering.services.sync").new(db, is_control_plane(config))
+      kong.sync:init(kong.rpc)
 
       if is_data_plane(config) then
         require("kong.clustering.services.debug").init(kong.rpc)
@@ -994,13 +994,15 @@ function Kong.init_worker()
                            cluster_tls.get_cluster_cert_key(kong.configuration))
         end)
 
-        kong.sync:init_worker_dp()
-
       else -- control_plane
         kong.rpc.concentrator:start()
       end
     end
   --end
+
+  if kong.sync and is_http_module then
+    kong.sync:init_worker()
+  end
 
   ok, err = wasm.init_worker()
   if not ok then

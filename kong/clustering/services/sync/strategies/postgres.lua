@@ -8,6 +8,9 @@ local cjson = require("cjson.safe")
 local string_format = string.format
 local table_concat = table.concat
 local cjson_encode = cjson.encode
+local ngx_log = ngx.log
+local ngx_ERR = ngx.ERR
+local ngx_DEBUG = ngx.DEBUG
 
 
 function _M.new(db)
@@ -16,6 +19,38 @@ function _M.new(db)
   }
 
   return setmetatable(self, _MT)
+end
+
+
+local PURGE_QUERY = [[
+  DELETE FROM clustering_sync_version
+  WHERE "version" < (
+      SELECT MAX("version") - %d
+      FROM clustering_sync_version
+  );
+]]
+
+
+function _M:init_worker()
+  ngx.timer.every(3600, function(premature)
+    if premature then
+      ngx_log(ngx_DEBUG, "[incremental] worker exiting, killing incremental cleanup timer")
+
+      return
+    end
+
+    local res, err = self.connector:query(string_format(PURGE_QUERY, 100))
+    if not res then
+      ngx_log(ngx_ERR,
+              "[incremental] unable to purge old data from incremental delta table, err: ",
+              err)
+
+      return
+    end
+
+    ngx_log(ngx_DEBUG,
+            "[incremental] successfully purged old data from incremental delta table")
+  end)
 end
 
 
