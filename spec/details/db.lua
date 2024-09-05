@@ -1,4 +1,4 @@
-local pl_tablex = require "pl.tablex"
+local pl_tablex = require("pl.tablex")
 
 
 local DB = require("kong.db")
