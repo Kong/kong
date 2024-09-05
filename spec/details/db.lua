@@ -16,6 +16,18 @@ local dcbp
 local PLUGINS_LIST
 
 
+-- Add to package path so dao helpers can insert custom plugins
+-- (while running from the busted environment)
+do
+  local paths = {}
+  table.insert(paths, os.getenv("KONG_LUA_PACKAGE_PATH"))
+  table.insert(paths, CONSTANTS.CUSTOM_PLUGIN_PATH)
+  table.insert(paths, CONSTANTS.CUSTOM_VAULT_PATH)
+  table.insert(paths, package.path)
+  package.path = table.concat(paths, ";")
+end
+
+
 ---------------
 -- Conf and DAO
 ---------------

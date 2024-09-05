@@ -32,6 +32,9 @@ local uuid = require("kong.tools.uuid").uuid
 local reload_module = require("spec.details.module").reload
 
 
+log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
+
+
 -- reload some modules when env or _G changes
 local CONSTANTS = reload_module("spec.details.constants")
 local shell = reload_module("spec.details.shell")
@@ -47,19 +50,6 @@ local conf = shell.conf
 local exec = shell.exec
 local kong_exec = shell.kong_exec
 
-
-log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
-
--- Add to package path so dao helpers can insert custom plugins
--- (while running from the busted environment)
-do
-  local paths = {}
-  table.insert(paths, os.getenv("KONG_LUA_PACKAGE_PATH"))
-  table.insert(paths, CONSTANTS.CUSTOM_PLUGIN_PATH)
-  table.insert(paths, CONSTANTS.CUSTOM_VAULT_PATH)
-  table.insert(paths, package.path)
-  package.path = table.concat(paths, ";")
-end
 
 local get_available_port
 do
