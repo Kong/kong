@@ -41,6 +41,9 @@ db.vaults:load_vault_schemas(conf.loaded_vaults)
 local blueprints = assert(Blueprints.new(db))
 
 
+kong.db = db
+
+
 --- Iterator over DB strategies.
 -- @function each_strategy
 -- @param strategies (optional string array) explicit list of strategies to use,
