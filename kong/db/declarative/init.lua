@@ -245,6 +245,7 @@ _M.to_yaml_file                = declarative_export.to_yaml_file
 _M.export_from_db              = declarative_export.export_from_db
 _M.export_config               = declarative_export.export_config
 _M.export_config_proto         = declarative_export.export_config_proto
+_M.export_config_sync          = declarative_export.export_config_sync
 _M.sanitize_output             = declarative_export.sanitize_output
 
 

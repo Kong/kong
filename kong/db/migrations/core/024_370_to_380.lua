@@ -12,7 +12,7 @@ return {
         "id" UUID NOT NULL,
         "ws_id" UUID NOT NULL,
         "row" JSON,
-        FOREIGN KEY (version) REFERENCES clustering_sync_version(version)
+        FOREIGN KEY (version) REFERENCES clustering_sync_version(version) ON DELETE CASCADE
       );
       CREATE INDEX clustering_sync_delta_version_idx ON clustering_sync_delta (version);
       END;
