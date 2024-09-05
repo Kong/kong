@@ -8,7 +8,8 @@
 local helpers = require "spec.helpers"
 local fmt = string.format
 local pl_path = require "pl.path"
-local pl_file = require("pl.file")
+local pl_file = require "pl.file"
+local pl_utils = require "pl.utils"
 
 local mock_server_port = helpers.get_available_port()
 
@@ -56,9 +57,35 @@ local fixtures = {
         location = /v1/auth/approle/login {
           content_by_lua_block {
             ngx.req.read_body()
-            ngx.status = 200
-            ngx.header["Content-Type"] = "application/json"
-            ngx.say('{"auth": {"client_token": "mock_token"}}')
+            local body = ngx.req.get_body_data()
+            local cjson = require "cjson"
+            local json = cjson.decode(body)
+            ngx.log(ngx.DEBUG, body)
+            if json.secret_id == "test-secret-id" then
+              ngx.status = 200
+              ngx.header["Content-Type"] = "application/json"
+              ngx.say('{"auth": {"client_token": "mock_token"}}')
+            else
+              ngx.status = 403
+              ngx.header["Content-Type"] = "application/json"
+              ngx.say('{"message": "invalid secret_id"}')
+            end
+          }
+        }
+
+        location = /v1/sys/wrapping/unwrap {
+          content_by_lua_block {
+            ngx.req.read_body()
+            local wrapping_token = ngx.req.get_headers()["X-Vault-Token"]
+            if wrapping_token and wrapping_token == "test_wrapping_token" then
+              ngx.status = 200
+              ngx.header["Content-Type"] = "application/json"
+              ngx.say('{"data": {"secret_id": "test-secret-id"}}')
+            else
+              ngx.status = 500
+              ngx.header["Content-Type"] = "application/json"
+              ngx.say('{"message": "invalid wrapping token"}')
+            end
           }
         }
       }
@@ -174,6 +201,26 @@ for _, strategy in helpers.each_strategy() do
         KONG_VAULT_HCV_AUTH_METHOD = "approle",
         KONG_VAULT_HCV_APPROLE_ROLE_ID = "test-role-id",
         KONG_VAULT_HCV_APPROLE_SECRET_ID = "test-secret-id",
+      })
+
+      finally(function()
+        env_resetter()
+      end)
+
+      -- Should be able to use CLI
+      assert(helpers.kong_exec("vault get {vault://hcv/kong} --vv"))
+    end)
+
+    it("worked in CLI with approle auth method and response wrapping file", function ()
+      local tmp_file_name = pl_path.tmpname()
+      pl_utils.writefile(tmp_file_name, "test_wrapping_token")
+
+      local env_resetter = setup_env_var({
+        KONG_PG_USER = "{vault://hcv/db/user}",
+        KONG_VAULT_HCV_AUTH_METHOD = "approle",
+        KONG_VAULT_HCV_APPROLE_ROLE_ID = "test-role-id",
+        KONG_VAULT_HCV_APPROLE_SECRET_ID_FILE = tmp_file_name,
+        KONG_VAULT_HCV_APPROLE_RESPONSE_WRAPPING = "true",
       })
 
       finally(function()

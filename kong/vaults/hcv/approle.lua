@@ -34,7 +34,13 @@ local secret_id_mlcache = resty_mlcache.new(cache_name, shm_name, {
 
 
 local function get_secret_id_file(file)
-  return pl_file.read(file):gsub("\n", "")
+  local raw_content, err = pl_file.read(file)
+  if not raw_content then
+    return nil, err
+  end
+
+  local content = raw_content:gsub("\n", "")
+  return content
 end
 
 
