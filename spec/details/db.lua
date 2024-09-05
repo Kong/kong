@@ -6,7 +6,6 @@ local constants = require("kong.constants")
 local kong_global = require("kong.global")
 local Blueprints = require("spec.fixtures.blueprints")
 local dc_blueprints = require("spec.fixtures.dc_blueprints")
-local CONSTANTS = require("spec.details.constants")
 
 
 local conf = require("spec.details.shell").conf
@@ -20,6 +19,8 @@ local PLUGINS_LIST
 -- Add to package path so dao helpers can insert custom plugins
 -- (while running from the busted environment)
 do
+  local CONSTANTS = require("spec.details.constants")
+
   local paths = {}
   table.insert(paths, os.getenv("KONG_LUA_PACKAGE_PATH"))
   table.insert(paths, CONSTANTS.CUSTOM_PLUGIN_PATH)
