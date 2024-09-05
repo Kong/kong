@@ -6,6 +6,7 @@ local constants = require("kong.constants")
 local kong_global = require("kong.global")
 local Blueprints = require("spec.fixtures.blueprints")
 local dc_blueprints = require("spec.fixtures.dc_blueprints")
+local CONSTANTS = require("spec.details.constants")
 
 
 local conf = require("spec.details.shell").conf
