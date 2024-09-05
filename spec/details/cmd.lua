@@ -1,4 +1,5 @@
 local lfs = require("lfs")
+local version = require("version")
 local pl_dir = require("pl.dir")
 local pl_path = require("pl.path")
 local pl_utils = require("pl.utils")
@@ -20,6 +21,21 @@ local kong_exec = shell.kong_exec
 
 
 local config_yml
+
+
+--- Return the actual Kong version the tests are running against.
+-- See [version.lua](https://github.com/kong/version.lua) for the format. This
+-- is mostly useful for testing plugins that should work with multiple Kong versions.
+-- @function get_version
+-- @return a `version` object
+-- @usage
+-- local version = require 'version'
+-- if helpers.get_version() < version("0.15.0") then
+--   -- do something
+-- end
+local function get_version()
+  return version(select(3, assert(kong_exec("version"))))
+end
 
 
 local function build_go_plugins(path)
@@ -380,7 +396,14 @@ local function restart_kong(env, tables, fixtures)
 end
 
 
+-- TODO
+-- get_kong_workers
+-- reload_kong
+
+
 return {
+  get_version = get_version,
+
   start_kong = start_kong,
   cleanup_kong = cleanup_kong,
   stop_kong = stop_kong,
