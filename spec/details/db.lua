@@ -6,7 +6,6 @@ local constants = require("kong.constants")
 local kong_global = require("kong.global")
 local Blueprints = require("spec.fixtures.blueprints")
 local dc_blueprints = require("spec.fixtures.dc_blueprints")
-local uuid = require("kong.tools.uuid").uuid
 
 
 local conf = require("spec.details.shell").conf
@@ -372,6 +371,7 @@ do
   local routes_schema_def = require("kong.db.schema.entities.routes")
   local Schema = require("kong.db.schema")
   local Entity = require("kong.db.schema.entity")
+  local uuid = require("kong.tools.uuid").uuid
 
   -- Prepopulate Schema's cache
   Schema.new(consumers_schema_def)
