@@ -386,13 +386,20 @@ do
   -- only the `config` sub-object needs to be passed.
   -- @param schema_def The schema definition
   -- @return the validated schema, or nil+error
-  validate_plugin_config_schema = function(config, schema_def)
+  validate_plugin_config_schema = function(config, schema_def, extra_fields)
     assert(plugins_schema:new_subschema(schema_def.name, schema_def))
     local entity = {
       id = uuid(),
       name = schema_def.name,
       config = config
     }
+
+    if extra_fields then
+      for k, v in pairs(extra_fields) do
+        entity[k] = v
+      end
+    end
+
     local entity_to_insert, err = plugins_schema:process_auto_fields(entity, "insert")
     if err then
       return nil, err
