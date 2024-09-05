@@ -84,4 +84,14 @@ function Vaults:load_vault_schemas(vault_set)
 end
 
 
+function Vaults:cache_key(prefix)
+  if type(prefix) == "table" then
+    prefix = prefix.prefix
+  end
+
+  -- Always return the cache_key without a workspace because prefix is unique across workspaces
+  return "vaults:" .. prefix .. ":::::"
+end
+
+
 return Vaults
