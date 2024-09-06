@@ -1,7 +1,6 @@
 local new_zipkin_reporter = require "kong.plugins.zipkin.reporter".new
 local new_span = require "kong.plugins.zipkin.span".new
-local utils = require "kong.tools.utils"
-local propagation = require "kong.tracing.propagation"
+local propagation = require "kong.observability.tracing.propagation"
 local request_tags = require "kong.plugins.zipkin.request_tags"
 local kong_meta = require "kong.meta"
 local ngx_re = require "ngx.re"
@@ -12,7 +11,7 @@ local ngx_var = ngx.var
 local split = ngx_re.split
 local subsystem = ngx.config.subsystem
 local fmt = string.format
-local rand_bytes = utils.get_rand_bytes
+local rand_bytes = require("kong.tools.rand").get_rand_bytes
 local to_hex = require "resty.string".to_hex
 
 local ZipkinLogHandler = {

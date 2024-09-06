@@ -1,12 +1,10 @@
 local logger       = require "kong.cmd.utils.log"
-local utils        = require "kong.tools.utils"
 local pgmoon       = require "pgmoon"
 local arrays       = require "pgmoon.arrays"
-local stringx      = require "pl.stringx"
 local semaphore    = require "ngx.semaphore"
-local kong_global = require "kong.global"
-local constants = require "kong.constants"
-local db_utils  = require "kong.db.utils"
+local kong_global  = require "kong.global"
+local constants    = require "kong.constants"
+local db_utils     = require "kong.db.utils"
 
 
 local setmetatable = setmetatable
@@ -21,7 +19,6 @@ local floor        = math.floor
 local type         = type
 local ngx          = ngx
 local timer_every  = ngx.timer.every
-local update_time  = ngx.update_time
 local get_phase    = ngx.get_phase
 local null         = ngx.null
 local now          = ngx.now
@@ -31,7 +28,9 @@ local fmt          = string.format
 local sub          = string.sub
 local utils_toposort = db_utils.topological_sort
 local insert       = table.insert
-local table_merge  = utils.table_merge
+local table_merge  = require("kong.tools.table").table_merge
+local strip        = require("kong.tools.string").strip
+local now_updated  = require("kong.tools.time").get_updated_now
 
 
 local WARN                          = ngx.WARN
@@ -53,12 +52,6 @@ local OPERATIONS = {
 }
 local ADMIN_API_PHASE = kong_global.phases.admin_api
 local CORE_ENTITIES = constants.CORE_ENTITIES
-
-
-local function now_updated()
-  update_time()
-  return now()
-end
 
 
 local function iterator(rows)
@@ -146,6 +139,7 @@ do
     local res, err = utils_toposort(table_names, get_table_name_neighbors)
 
     if res then
+      insert(res, 1, "clustering_rpc_requests")
       insert(res, 1, "cluster_events")
     end
 
@@ -867,7 +861,7 @@ function _mt:run_up_migration(name, up_sql)
     error("no connection")
   end
 
-  local sql = stringx.strip(up_sql)
+  local sql = strip(up_sql)
   if sub(sql, -1) ~= ";" then
     sql = sql .. ";"
   end

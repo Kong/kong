@@ -1,6 +1,5 @@
 local helpers = require "spec.helpers"
 local ssl_fixtures = require "spec.fixtures.ssl"
-local atc_compat = require "kong.router.compat"
 
 
 local other_ca_cert = [[
@@ -103,20 +102,8 @@ local function reload_router(flavor)
 end
 
 
+-- TODO: remove it when we confirm it is not needed
 local function gen_route(flavor, r)
-  if flavor ~= "expressions" then
-    return r
-  end
-
-  r.expression = atc_compat.get_expression(r)
-  r.priority = tonumber(atc_compat._get_priority(r))
-
-  r.hosts = nil
-  r.paths = nil
-  r.snis  = nil
-
-  r.destinations = nil
-
   return r
 end
 
@@ -134,8 +121,25 @@ local function gen_plugin(route)
   }
 end
 
+local function get_proxy_client(subsystems, stream_port)
+  if subsystems == "http" then
+    return assert(helpers.proxy_client())
+  else
+     return assert(helpers.proxy_client(20000, stream_port))
+  end
+end
 
-for _, flavor in ipairs({ "traditional", "traditional_compatible" }) do
+local function wait_for_all_config_update(subsystems)
+  local opt = {}
+  if subsystems == "stream" then
+    opt.stream_enabled = true
+    opt.stream_port = 19003
+  end
+
+  helpers.wait_for_all_config_update(opt)
+end
+
+for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
 for _, strategy in helpers.each_strategy() do
   describe("overriding upstream TLS parameters for database [#" .. strategy .. ", flavor = " .. flavor .. "]", function()
     local admin_client
@@ -322,31 +326,13 @@ for _, strategy in helpers.each_strategy() do
     lazy_teardown(function()
       helpers.stop_kong()
     end)
-  
+
     local function get_tls_service_id(subsystems)
       if subsystems == "http" then
         return service_mtls.id
       else
         return tls_service_mtls.id
-      end      
-    end
-
-    local function get_proxy_client(subsystems, stream_port)
-      if subsystems == "http" then
-        return assert(helpers.proxy_client())
-      else
-         return assert(helpers.proxy_client(20000, stream_port))
       end
-    end
-
-    local function wait_for_all_config_update(subsystems) 
-      local opt = {}
-      if subsystems == "stream" then
-        opt.stream_enabled = true
-        opt.stream_port = 19003
-      end
-
-      helpers.wait_for_all_config_update(opt)
     end
 
     for _, subsystems in pairs({"http", "stream"}) do
@@ -894,7 +880,7 @@ for _, strategy in helpers.each_strategy() do
               end)
             end
           end, 10)
-          
+
           if subsystems == "http" then
             assert.matches("An invalid response was received from the upstream server", body)
           end
@@ -1260,6 +1246,199 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end
+  end)
+end
+end   -- for flavor
+
+for _, flavor in ipairs({ "traditional", "traditional_compatible", "expressions" }) do
+for _, strategy in helpers.each_strategy() do
+  describe("overriding upstream TLS parameters for database [#" .. strategy .. ", flavor = " .. flavor .. "] (nginx_proxy_proxy_ssl_verify: on, nginx_sproxy_proxy_ssl_verify: on)", function()
+    local admin_client
+    local bp
+    local service_tls
+    local tls_service_tls
+    local route_tls_buffered_proxying
+
+    reload_router(flavor)
+
+    lazy_setup(function()
+      bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "certificates",
+        "ca_certificates",
+        "upstreams",
+        "targets",
+      })
+
+      service_tls = assert(bp.services:insert({
+        name = "protected-service",
+        url = "https://example.com:16799/", -- domain name needed for hostname check
+      }))
+
+      assert(bp.routes:insert(gen_route(flavor,{
+        service = { id = service_tls.id, },
+        hosts = { "example.com", },
+        paths = { "/tls", },
+      })))
+
+      route_tls_buffered_proxying = assert(bp.routes:insert(gen_route(flavor,{
+        service = { id = service_tls.id, },
+        hosts = { "example.com", },
+        paths = { "/tls-buffered-proxying", },
+      })))
+
+      -- use pre-function to enable buffered_proxying in order to trigger the
+      -- `ngx.location.capture("/kong_buffered_http")` in `Kong.response()`
+      assert(bp.plugins:insert(gen_plugin(route_tls_buffered_proxying)))
+
+      -- tls
+      tls_service_tls = assert(bp.services:insert({
+        name = "tls-protected-service",
+        url = "tls://example.com:16799", -- domain name needed for hostname check
+      }))
+
+      assert(bp.routes:insert(gen_route(flavor,{
+        service = { id = tls_service_tls.id, },
+        destinations = {
+          {
+            port = 19001,
+          },
+        },
+        protocols = {
+          "tls",
+        },
+      })))
+
+      assert(helpers.start_kong({
+        router_flavor = flavor,
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        stream_listen = helpers.get_proxy_ip(false) .. ":19000,"
+                     .. helpers.get_proxy_ip(false) .. ":19001,"
+                     .. helpers.get_proxy_ip(false) .. ":19002,"
+                     .. helpers.get_proxy_ip(false) .. ":19003",
+        nginx_proxy_proxy_ssl_verify = "on",
+        -- An unrelated ca, just used as a placeholder to prevent nginx from reporting errors
+        nginx_proxy_proxy_ssl_trusted_certificate = "../spec/fixtures/kong_clustering_ca.crt",
+        nginx_sproxy_proxy_ssl_verify = "on",
+        nginx_sproxy_proxy_ssl_trusted_certificate = "../spec/fixtures/kong_clustering_ca.crt",
+      }, nil, nil, fixtures))
+
+      admin_client = assert(helpers.admin_client())
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+    for _, subsystems in pairs({"http", "stream"}) do
+    describe(subsystems .. " TLS verification options against upstream", function()
+      describe("tls_verify", function()
+        it("default is on, request is blocked", function()
+          local proxy_client = get_proxy_client(subsystems, 19001)
+          local path
+          if subsystems == "http" then
+            path = "/tls"
+          else
+            path = "/"
+          end
+
+          local res, err = proxy_client:send {
+            path    = path,
+            headers = {
+              ["Host"] = "example.com",
+            }
+          }
+          if subsystems == "http" then
+            local body = assert.res_status(502, res)
+            assert.matches("An invalid response was received from the upstream server", body)
+          else
+            assert.equals("connection reset by peer", err)
+          end
+          assert(proxy_client:close())
+        end)
+
+        -- buffered_proxying
+        if subsystems == "http" then
+          it("default is on, buffered_proxying = true, request is blocked", function()
+            local proxy_client = get_proxy_client(subsystems, 19001)
+            local path = "/tls-buffered-proxying"
+            local res = proxy_client:send {
+              path    = path,
+              headers = {
+                ["Host"] = "example.com",
+              }
+            }
+
+            local body = assert.res_status(502, res)
+            assert.matches("An invalid response was received from the upstream server", body)
+            assert(proxy_client:close())
+          end)
+        end
+
+        it("#db turn it off, request is allowed", function()
+          local service_tls_id
+          if subsystems == "http" then
+            service_tls_id = service_tls.id
+          else
+            service_tls_id = tls_service_tls.id
+          end
+          local res = assert(admin_client:patch("/services/" .. service_tls_id, {
+            body = {
+              tls_verify = false,
+            },
+            headers = { ["Content-Type"] = "application/json" },
+          }))
+
+          assert.res_status(200, res)
+
+          wait_for_all_config_update(subsystems)
+
+          local path
+          if subsystems == "http" then
+            path = "/tls"
+          else
+            path = "/"
+          end
+
+          helpers.wait_until(function()
+            local proxy_client = get_proxy_client(subsystems, 19001)
+            res = proxy_client:send {
+              path    = path,
+              headers = {
+                ["Host"] = "example.com",
+              }
+            }
+            return pcall(function()
+              local body = assert.res_status(200, res)
+              assert.equals("it works", body)
+              assert(proxy_client:close())
+            end)
+          end, 10)
+
+          -- buffered_proxying
+          if subsystems == "http" then
+            helpers.wait_until(function()
+              local proxy_client = get_proxy_client(subsystems, 19001)
+              res = proxy_client:send {
+                path    = "/tls-buffered-proxying",
+                headers = {
+                  ["Host"] = "example.com",
+                }
+              }
+
+              return pcall(function()
+                local body = assert.res_status(200, res)
+                assert.equals("it works", body)
+                assert(proxy_client:close())
+              end)
+            end, 10)
+          end
+        end)
+      end)
+    end)
+    end
   end)
 end
 end   -- for flavor

@@ -7,7 +7,6 @@ return {
   name = "ai-response-transformer",
   fields = {
     { protocols = typedefs.protocols_http },
-    { consumer = typedefs.no_consumer },
     { config = {
       type = "record",
       fields = {
@@ -45,6 +44,13 @@ return {
             required = true,
             default = true,
         }},
+
+        { max_request_body_size = {
+            type = "integer",
+            default = 8 * 1024,
+            gt = 0,
+            description = "max allowed body size allowed to be introspected",}
+        },
 
         -- from forward-proxy
         { http_proxy_host = typedefs.host },

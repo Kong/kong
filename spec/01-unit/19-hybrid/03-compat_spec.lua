@@ -10,6 +10,16 @@ local function reset_fields()
 end
 
 describe("kong.clustering.compat", function()
+  -- The truncate() in the following teardown() will clean all tables' records,
+  -- which may cause some other tests to fail because the number of records
+  -- in the truncated table differs from the number of records after bootstrap.
+  -- So we need this to reset schema.
+  lazy_teardown(function()
+    if _G.kong.db then
+      _G.kong.db:schema_reset()
+    end
+  end)
+
   describe("calculating fields to remove", function()
     before_each(reset_fields)
     after_each(reset_fields)
@@ -497,7 +507,7 @@ describe("kong.clustering.compat", function()
             id = "00000000-0000-0000-0000-000000000005",
             name = "opentelemetry",
             config = {
-              endpoint = "http://example.com",
+              traces_endpoint = "http://example.com",
               queue = {
                 max_batch_size = 9,
                 max_coalescing_delay = 9,
@@ -630,5 +640,121 @@ describe("kong.clustering.compat", function()
       assert.is_nil(assert(services[3]).ca_certificates)
     end)
 
-  end)
+  end)  -- describe
+
+  describe("route entities compatible changes", function()
+    local function reload_modules(flavor)
+      _G.kong = { configuration = { router_flavor = flavor } }
+      _G.kong.db = nil
+
+      package.loaded["kong.db.schema.entities.routes"] = nil
+      package.loaded["kong.db.schema.entities.routes_subschemas"] = nil
+      package.loaded["spec.helpers"] = nil
+      package.loaded["kong.clustering.compat"] = nil
+      package.loaded["kong.db.declarative"] = nil
+
+      require("kong.db.schema.entities.routes")
+      require("kong.db.schema.entities.routes_subschemas")
+
+      compat = require("kong.clustering.compat")
+      helpers = require ("spec.helpers")
+      declarative = require("kong.db.declarative")
+    end
+
+    lazy_setup(function()
+      reload_modules("expressions")
+    end)
+
+    lazy_teardown(function()
+      reload_modules()
+    end)
+
+    it("won't update with mixed mode routes in expressions flavor lower than 3.7", function()
+      local _, db = helpers.get_db_utils(nil, {
+        "routes",
+      })
+      _G.kong.db = db
+
+      -- mixed mode routes
+      assert(declarative.load_into_db({
+        routes = {
+          route1 = {
+            protocols = { "http" },
+            id = "00000000-0000-0000-0000-000000000001",
+            hosts = { "example.com" },
+            expression = ngx.null,
+          },
+          route2 = {
+            protocols = { "http" },
+            id = "00000000-0000-0000-0000-000000000002",
+            expression = [[http.path == "/foo"]],
+          },
+        },
+      }, { _transform = true }))
+
+      local config = { config_table = declarative.export_config() }
+
+      local ok, err = compat.check_mixed_route_entities(config, "3.6.0", "expressions")
+      assert.is_false(ok)
+      assert(string.find(err, "does not support mixed mode route"))
+
+      local ok, err = compat.check_mixed_route_entities(config, "3.7.0", "expressions")
+      assert.is_true(ok)
+      assert.is_nil(err)
+    end)
+
+    it("updates with all traditional routes in expressions flavor", function()
+      local _, db = helpers.get_db_utils(nil, {
+        "routes",
+      })
+      _G.kong.db = db
+
+      assert(declarative.load_into_db({
+        routes = {
+          route1 = {
+            protocols = { "http" },
+            id = "00000000-0000-0000-0000-000000000001",
+            hosts = { "example.com" },
+            expression = ngx.null,
+          },
+        },
+      }, { _transform = true }))
+
+      local config = { config_table = declarative.export_config() }
+
+      local ok, err = compat.check_mixed_route_entities(config, "3.6.0", "expressions")
+      assert.is_true(ok)
+      assert.is_nil(err)
+    end)
+
+    it("updates with all expression routes in expressions flavor", function()
+      local _, db = helpers.get_db_utils(nil, {
+        "routes",
+      })
+      _G.kong.db = db
+
+      assert(declarative.load_into_db({
+        routes = {
+          route1 = {
+            protocols = { "http" },
+            id = "00000000-0000-0000-0000-000000000001",
+            expression = [[http.path == "/foo"]],
+          },
+          route2 = {
+            protocols = { "http" },
+            id = "00000000-0000-0000-0000-000000000002",
+            expression = [[http.path == "/bar"]],
+          },
+        },
+      }, { _transform = true }))
+
+      local config = { config_table = declarative.export_config() }
+
+      local ok, err = compat.check_mixed_route_entities(config, "3.6.0", "expressions")
+      assert.is_true(ok)
+      assert.is_nil(err)
+    end)
+
+  end)  -- describe
+
 end)

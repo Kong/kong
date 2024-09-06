@@ -179,6 +179,7 @@ describe("declarative config: process_auto_fields", function()
                   max_coalescing_delay = 1,
                   max_retry_delay = 60,
                   max_retry_time = 60,
+                  concurrency_limit = 1,
                 },
               }
             },
@@ -236,6 +237,7 @@ describe("declarative config: process_auto_fields", function()
                   max_coalescing_delay = 1,
                   max_retry_delay = 60,
                   max_retry_time = 60,
+                  concurrency_limit = 1,
                 },
               }
             },
@@ -353,6 +355,7 @@ describe("declarative config: process_auto_fields", function()
                         max_coalescing_delay = 1,
                         max_retry_delay = 60,
                         max_retry_time = 60,
+                        concurrency_limit = 1,
                       },
                     }
                   },
@@ -674,6 +677,7 @@ describe("declarative config: process_auto_fields", function()
                             max_coalescing_delay = 1,
                             max_retry_delay = 60,
                             max_retry_time = 60,
+                            concurrency_limit = 1,
                           },
                         }
                       }

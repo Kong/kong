@@ -3,7 +3,6 @@ local _MT = { __index = _M, }
 
 
 local semaphore = require("ngx.semaphore")
-local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local clustering_utils = require("kong.clustering.utils")
 local compat = require("kong.clustering.compat")
@@ -20,25 +19,26 @@ local pairs = pairs
 local ngx = ngx
 local ngx_log = ngx.log
 local timer_at = ngx.timer.at
-local cjson_decode = cjson.decode
-local cjson_encode = cjson.encode
+local json_decode = clustering_utils.json_decode
+local json_encode = clustering_utils.json_encode
 local kong = kong
 local ngx_exit = ngx.exit
 local exiting = ngx.worker.exiting
 local worker_id = ngx.worker.id
 local ngx_time = ngx.time
 local ngx_now = ngx.now
-local ngx_update_time = ngx.update_time
 local ngx_var = ngx.var
 local table_insert = table.insert
 local table_remove = table.remove
 local sub = string.sub
 local isempty = require("table.isempty")
 local sleep = ngx.sleep
+local now_updated = require("kong.tools.time").get_updated_now
 
 
 local plugins_list_to_map = compat.plugins_list_to_map
 local update_compatible_payload = compat.update_compatible_payload
+local check_mixed_route_entities = compat.check_mixed_route_entities
 local deflate_gzip = require("kong.tools.gzip").deflate_gzip
 local yield = require("kong.tools.yield").yield
 local connect_dp = clustering_utils.connect_dp
@@ -120,7 +120,7 @@ function _M:export_deflated_reconfigure_payload()
 
   -- store serialized plugins map for troubleshooting purposes
   local shm_key_name = "clustering:cp_plugins_configured:worker_" .. (worker_id() or -1)
-  kong_dict:set(shm_key_name, cjson_encode(self.plugins_configured))
+  kong_dict:set(shm_key_name, json_encode(self.plugins_configured))
   ngx_log(ngx_DEBUG, "plugin configuration map key: ", shm_key_name, " configuration: ", kong_dict:get(shm_key_name))
 
   local config_hash, hashes = calculate_config_hash(config_table)
@@ -135,7 +135,7 @@ function _M:export_deflated_reconfigure_payload()
 
   self.reconfigure_payload = payload
 
-  payload, err = cjson_encode(payload)
+  payload, err = json_encode(payload)
   if not payload then
     return nil, err
   end
@@ -173,8 +173,7 @@ function _M:push_config()
     n = n + 1
   end
 
-  ngx_update_time()
-  local duration = ngx_now() - start
+  local duration = now_updated() - start
   ngx_log(ngx_DEBUG, _log_prefix, "config pushed to ", n, " data-plane nodes in ", duration, " seconds")
 end
 
@@ -206,7 +205,7 @@ function _M:handle_cp_websocket(cert)
       err = "failed to receive websocket basic info data"
 
     else
-      data, err = cjson_decode(data)
+      data, err = json_decode(data)
       if type(data) ~= "table" then
           err = "failed to decode websocket basic info data" ..
                 (err and ": " .. err or "")
@@ -237,6 +236,12 @@ function _M:handle_cp_websocket(cert)
   local sync_status = CLUSTERING_SYNC_STATUS.UNKNOWN
   local purge_delay = self.conf.cluster_data_plane_purge_delay
   local update_sync_status = function()
+    local rpc_peers
+
+    if self.conf.cluster_rpc then
+      rpc_peers = kong.rpc:get_peers()
+    end
+
     local ok
     ok, err = kong.db.clustering_data_planes:upsert({ id = dp_id }, {
       last_seen = last_seen,
@@ -249,6 +254,8 @@ function _M:handle_cp_websocket(cert)
       sync_status = sync_status, -- TODO: import may have been failed though
       labels = data.labels,
       cert_details = dp_cert_details,
+      -- only update rpc_capabilities if dp_id is connected
+      rpc_capabilities = rpc_peers and rpc_peers[dp_id] or {},
     }, { ttl = purge_delay })
     if not ok then
       ngx_log(ngx_ERR, _log_prefix, "unable to update clustering data plane status: ", err, log_suffix)
@@ -428,6 +435,15 @@ function _M:handle_cp_websocket(cert)
         if sync_status ~= previous_sync_status then
           update_sync_status()
         end
+
+        goto continue
+      end
+
+      ok, err = check_mixed_route_entities(self.reconfigure_payload, dp_version,
+                                           kong and kong.configuration and
+                                           kong.configuration.router_flavor)
+      if not ok then
+        ngx_log(ngx_WARN, _log_prefix, "unable to send updated configuration to data plane: ", err, log_suffix)
 
         goto continue
       end

@@ -192,6 +192,8 @@ local field_schema = {
   { encrypted = { type = "boolean" }, },
   { referenceable = { type = "boolean" }, },
   { json_schema = json_metaschema },
+  -- Transient attribute: used to mark a field as a non-db column
+  { transient = { type = "boolean" }, },
   -- Deprecation attribute: used to mark a field as deprecated
   -- Results in `message` and `removal_in_version` to be printed in a warning
   -- (via kong.deprecation) when the field is used.
@@ -204,6 +206,15 @@ local field_schema = {
       { message = { type = "string", required = true } },
       { removal_in_version = { type = "string", required = true } },
       { old_default = { type = "any", required = false } },
+      { replaced_with = { type = "array", required = false,
+          elements = { type = "record",
+            required = false,
+            fields = {
+              { path = { type = "array", len_min = 1, required = true, elements = { type = "string"}} },
+              { reverse_mapping_function = { type = "function", required = false }}
+            },
+          }
+      } },
     },
   } },
 }
@@ -489,6 +500,14 @@ local attribute_types = {
   },
   json_schema = {
     ["json"] = true,
+  },
+  transient = {
+    ["string"] = true,
+    ["number"] = true,
+    ["integer"] = true,
+    ["array"] = true,
+    ["set"] = true,
+    ["boolean"] = true,
   },
 }
 

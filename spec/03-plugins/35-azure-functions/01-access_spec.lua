@@ -110,7 +110,7 @@ for _, strategy in helpers.each_strategy() do
           }
         ),
       }
-      
+
       -- this plugin definition results in an upstream url to
       -- http://mockbin.org/request
       -- which will echo the request for inspection
@@ -257,7 +257,7 @@ for _, strategy in helpers.each_strategy() do
         }
       })
 
-      assert.equal(server_tokens, res.headers["Via"])
+      assert.equal("2 " .. server_tokens, res.headers["Via"])
     end)
 
     it("returns Content-Length header", function()

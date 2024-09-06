@@ -9,6 +9,7 @@ local lower = string.lower
 local HEADERS = constants.HEADERS
 local BUNDLED_VAULTS = constants.BUNDLED_VAULTS
 local BUNDLED_PLUGINS = constants.BUNDLED_PLUGINS
+local SOCKETS = constants.SOCKETS
 
 
 -- Version 5.7: https://wiki.mozilla.org/Security/Server_Side_TLS
@@ -102,7 +103,7 @@ local UPSTREAM_HEADER_KEY_TO_NAME = {
 }
 
 
-local EMPTY = {}
+local EMPTY = require("kong.tools.table").EMPTY
 
 
 -- NOTE! Prefixes should always follow `nginx_[a-z]+_`.
@@ -370,6 +371,17 @@ local CONF_PARSERS = {
   dns_not_found_ttl = { typ = "number" },
   dns_error_ttl = { typ = "number" },
   dns_no_sync = { typ = "boolean" },
+
+  new_dns_client = { typ = "boolean" },
+
+  resolver_address = { typ = "array" },
+  resolver_hosts_file = { typ = "string" },
+  resolver_family = { typ = "array" },
+  resolver_valid_ttl = { typ = "number" },
+  resolver_stale_ttl = { typ = "number" },
+  resolver_error_ttl = { typ = "number" },
+  resolver_lru_cache_size = { typ = "number" },
+
   privileged_worker = {
     typ = "boolean",
     deprecated = {
@@ -497,6 +509,8 @@ local CONF_PARSERS = {
   cluster_max_payload = { typ = "number" },
   cluster_use_proxy = { typ = "boolean" },
   cluster_dp_labels = { typ = "array" },
+  cluster_rpc = { typ = "boolean" },
+  cluster_cjson = { typ = "boolean" },
 
   kic = { typ = "boolean" },
   pluginserver_names = { typ = "array" },
@@ -541,6 +555,7 @@ local CONF_PARSERS = {
 
   wasm = { typ = "boolean" },
   wasm_filters_path = { typ = "string" },
+  wasm_filters = { typ = "array" },
 
   error_template_html = { typ = "string" },
   error_template_json = { typ = "string" },
@@ -623,6 +638,7 @@ return {
   HEADERS = HEADERS,
   BUNDLED_VAULTS = BUNDLED_VAULTS,
   BUNDLED_PLUGINS = BUNDLED_PLUGINS,
+  SOCKETS = SOCKETS,
 
   CIPHER_SUITES = CIPHER_SUITES,
   DEFAULT_PATHS = DEFAULT_PATHS,
@@ -640,4 +656,6 @@ return {
   _NOP_TOSTRING_MT = _NOP_TOSTRING_MT,
 
   LMDB_VALIDATION_TAG = LMDB_VALIDATION_TAG,
+
+  WASM_BUNDLED_FILTERS_PATH = "/usr/local/kong/wasm",
 }

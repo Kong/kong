@@ -1,7 +1,7 @@
-local pl_tablex = require "pl.tablex"
-local utils = require "kong.tools.utils"
+local hostname_type = require("kong.tools.ip").hostname_type
 local hooks = require "kong.hooks"
 local recreate_request = require("ngx.balancer").recreate_request
+local uuid = require("kong.tools.uuid").uuid
 
 local healthcheckers = require "kong.runloop.balancer.healthcheckers"
 local balancers = require "kong.runloop.balancer.balancers"
@@ -27,13 +27,13 @@ local table = table
 local table_concat = table.concat
 local run_hook = hooks.run_hook
 local var = ngx.var
-local get_updated_now_ms = utils.get_updated_now_ms
+local get_updated_now_ms = require("kong.tools.time").get_updated_now_ms
 local is_http_module   = ngx.config.subsystem == "http"
 
 local CRIT = ngx.CRIT
 local ERR = ngx.ERR
 local WARN = ngx.WARN
-local EMPTY_T = pl_tablex.readonly {}
+local EMPTY_T = require("kong.tools.table").EMPTY
 
 
 local set_authority
@@ -130,10 +130,9 @@ local function get_value_to_hash(upstream, ctx)
       identifier = var.remote_addr
 
     elseif hash_on == "header" then
-      identifier = ngx.req.get_headers()[upstream[header_field_name]]
-      if type(identifier) == "table" then
-        identifier = table_concat(identifier)
-      end
+      -- since nginx 1.23.0/openresty 1.25.3.1
+      -- ngx.var will automatically combine all header values with identical name
+      identifier = var["http_" .. upstream[header_field_name]]
 
     elseif hash_on == "cookie" then
       identifier = var["cookie_" .. upstream.hash_on_cookie]
@@ -145,7 +144,7 @@ local function get_value_to_hash(upstream, ctx)
           ctx = ngx.ctx
         end
 
-        identifier = utils.uuid()
+        identifier = uuid()
 
         ctx.balancer_data.hash_cookie = {
           key = upstream.hash_on_cookie,
@@ -306,6 +305,7 @@ local function execute(balancer_data, ctx)
   if dns_cache_only then
     -- retry, so balancer is already set if there was one
     balancer = balancer_data.balancer
+    upstream = balancer_data.upstream
 
   else
     -- first try, so try and find a matching balancer/upstream object
@@ -358,6 +358,16 @@ local function execute(balancer_data, ctx)
     balancer_data.balancer_handle = handle
 
   else
+    -- Note: balancer_data.retry_callback is only set by PDK once in access phase
+    -- if kong.service.set_target_retry_callback is called
+    if balancer_data.try_count ~= 0 and balancer_data.retry_callback then
+      local pok, perr, err = pcall(balancer_data.retry_callback)
+      if not pok or not perr then
+        log(ERR, "retry handler failed: ", err or perr)
+        return nil, "failure to get a peer from retry handler", 503
+      end
+    end
+
     -- have to do a regular DNS lookup
     local try_list
     local hstate = run_hook("balancer:to_ip:pre", balancer_data.host)
@@ -412,7 +422,7 @@ local function post_health(upstream, hostname, ip, port, is_healthy)
   end
 
   local ok, err
-  if ip and (utils.hostname_type(ip) ~= "name") then
+  if ip and (hostname_type(ip) ~= "name") then
     ok, err = healthchecker:set_target_status(ip, port, hostname, is_healthy)
   else
     ok, err = healthchecker:set_all_target_statuses_for_hostname(hostname, port, is_healthy)

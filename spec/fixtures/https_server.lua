@@ -9,11 +9,13 @@ local pl_dir = require "pl.dir"
 local pl_file = require "pl.file"
 local pl_template = require "pl.template"
 local pl_path = require "pl.path"
-local pl_stringx = require "pl.stringx"
 local uuid = require "resty.jit-uuid"
 local http_client = require "resty.http"
 local cjson = require "cjson"
 local shell = require "resty.shell"
+
+
+local Template = require("pl.stringx").Template
 
 
 -- we need this to get random UUIDs
@@ -62,7 +64,7 @@ local function create_conf(params)
     return nil, err
   end
 
-  local compiled_tpl = pl_stringx.Template(tpl:render(params, { ipairs = ipairs }))
+  local compiled_tpl = Template(tpl:render(params, { ipairs = ipairs }))
   local conf_filename = params.base_path .. "/nginx.conf"
   local conf, err = io.open (conf_filename, "w")
   if err then

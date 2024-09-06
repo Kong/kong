@@ -1,11 +1,12 @@
 local typedefs = require "kong.db.schema.typedefs"
-local utils = require "kong.tools.utils"
+local normalize_ip = require("kong.tools.ip").normalize_ip
+local validate_utf8 = require("kong.tools.string").validate_utf8
 
 
 local function validate_target(target)
-  local p = utils.normalize_ip(target)
+  local p = normalize_ip(target)
   if not p then
-    local ok = utils.validate_utf8(target)
+    local ok = validate_utf8(target)
     if not ok then
       return nil, "Invalid target; not a valid hostname or ip address"
     end

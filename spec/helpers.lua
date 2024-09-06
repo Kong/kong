@@ -5,40 +5,9 @@
 -- @license [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
 -- @module spec.helpers
 
-local BIN_PATH = "bin/kong"
-local TEST_CONF_PATH = os.getenv("KONG_SPEC_TEST_CONF_PATH") or "spec/kong_tests.conf"
-local CUSTOM_PLUGIN_PATH = "./spec/fixtures/custom_plugins/?.lua"
-local CUSTOM_VAULT_PATH = "./spec/fixtures/custom_vaults/?.lua;./spec/fixtures/custom_vaults/?/init.lua"
-local DNS_MOCK_LUA_PATH = "./spec/fixtures/mocks/lua-resty-dns/?.lua"
-local GO_PLUGIN_PATH = "./spec/fixtures/go"
-local GRPC_TARGET_SRC_PATH = "./spec/fixtures/grpc/target/"
-local MOCK_UPSTREAM_PROTOCOL = "http"
-local MOCK_UPSTREAM_SSL_PROTOCOL = "https"
-local MOCK_UPSTREAM_HOST = "127.0.0.1"
-local MOCK_UPSTREAM_HOSTNAME = "localhost"
-local MOCK_UPSTREAM_PORT = 15555
-local MOCK_UPSTREAM_SSL_PORT = 15556
-local MOCK_UPSTREAM_STREAM_PORT = 15557
-local MOCK_UPSTREAM_STREAM_SSL_PORT = 15558
-local GRPCBIN_HOST = os.getenv("KONG_SPEC_TEST_GRPCBIN_HOST") or "localhost"
-local GRPCBIN_PORT = tonumber(os.getenv("KONG_SPEC_TEST_GRPCBIN_PORT")) or 9000
-local GRPCBIN_SSL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_GRPCBIN_SSL_PORT")) or 9001
-local MOCK_GRPC_UPSTREAM_PROTO_PATH = "./spec/fixtures/grpc/hello.proto"
-local ZIPKIN_HOST = os.getenv("KONG_SPEC_TEST_ZIPKIN_HOST") or "localhost"
-local ZIPKIN_PORT = tonumber(os.getenv("KONG_SPEC_TEST_ZIPKIN_PORT")) or 9411
-local OTELCOL_HOST = os.getenv("KONG_SPEC_TEST_OTELCOL_HOST") or "localhost"
-local OTELCOL_HTTP_PORT = tonumber(os.getenv("KONG_SPEC_TEST_OTELCOL_HTTP_PORT")) or 4318
-local OTELCOL_ZPAGES_PORT = tonumber(os.getenv("KONG_SPEC_TEST_OTELCOL_ZPAGES_PORT")) or 55679
-local OTELCOL_FILE_EXPORTER_PATH = os.getenv("KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH") or "./tmp/otel/file_exporter.json"
-local REDIS_HOST = os.getenv("KONG_SPEC_TEST_REDIS_HOST") or "localhost"
-local REDIS_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_PORT") or 6379)
-local REDIS_SSL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_SSL_PORT") or 6380)
-local REDIS_SSL_SNI = os.getenv("KONG_SPEC_TEST_REDIS_SSL_SNI") or "test-redis.example.com"
-local TEST_COVERAGE_MODE = os.getenv("KONG_COVERAGE")
-local TEST_COVERAGE_TIMEOUT = 30
-local BLACKHOLE_HOST = "10.255.255.255"
-local KONG_VERSION = require("kong.meta")._VERSION
+
 local PLUGINS_LIST
+
 
 local consumers_schema_def = require "kong.db.schema.entities.consumers"
 local services_schema_def = require "kong.db.schema.entities.services"
@@ -49,7 +18,6 @@ local dc_blueprints = require "spec.fixtures.dc_blueprints"
 local conf_loader = require "kong.conf_loader"
 local kong_global = require "kong.global"
 local Blueprints = require "spec.fixtures.blueprints"
-local pl_stringx = require "pl.stringx"
 local constants = require "kong.constants"
 local pl_tablex = require "pl.tablex"
 local pl_utils = require "pl.utils"
@@ -61,29 +29,37 @@ local pl_Set = require "pl.Set"
 local Schema = require "kong.db.schema"
 local Entity = require "kong.db.schema.entity"
 local cjson = require "cjson.safe"
-local utils = require "kong.tools.utils"
+local kong_table = require "kong.tools.table"
 local http = require "resty.http"
-local pkey = require "resty.openssl.pkey"
-local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
-local shell = require "resty.shell"
-local ffi = require "ffi"
 local ssl = require "ngx.ssl"
 local ws_client = require "resty.websocket.client"
 local table_clone = require "table.clone"
 local https_server = require "spec.fixtures.https_server"
 local stress_generator = require "spec.fixtures.stress_generator"
-local resty_signal = require "resty.signal"
 local lfs = require "lfs"
 local luassert = require "luassert.assert"
+local uuid = require("kong.tools.uuid").uuid
+local colors = require "ansicolors"
+local strip = require("kong.tools.string").strip
+local splitlines = require("pl.stringx").splitlines
 
-ffi.cdef [[
-  int setenv(const char *name, const char *value, int overwrite);
-  int unsetenv(const char *name);
-]]
 
-local kong_exec   -- forward declaration
+local reload_module = require("spec.details.module").reload
+
+
+-- reload some modules when env or _G changes
+local CONSTANTS = reload_module("spec.details.constants")
+local shell = reload_module("spec.details.shell")
+local misc = reload_module("spec.details.misc")
+local grpc = reload_module("spec.details.grpc")
+local dns_mock = reload_module("spec.details.dns")
+
+
+local conf = shell.conf
+local exec = shell.exec
+local kong_exec = shell.kong_exec
 
 
 log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
@@ -93,106 +69,11 @@ log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
 do
   local paths = {}
   table.insert(paths, os.getenv("KONG_LUA_PACKAGE_PATH"))
-  table.insert(paths, CUSTOM_PLUGIN_PATH)
-  table.insert(paths, CUSTOM_VAULT_PATH)
+  table.insert(paths, CONSTANTS.CUSTOM_PLUGIN_PATH)
+  table.insert(paths, CONSTANTS.CUSTOM_VAULT_PATH)
   table.insert(paths, package.path)
   package.path = table.concat(paths, ";")
 end
-
---- Returns the OpenResty version.
--- Extract the current OpenResty version in use and returns
--- a numerical representation of it.
--- Ex: `1.11.2.2` -> `11122`
--- @function openresty_ver_num
-local function openresty_ver_num()
-  local nginx_bin = assert(nginx_signals.find_nginx_bin())
-  local _, _, stderr = shell.run(string.format("%s -V", nginx_bin), nil, 0)
-
-  local a, b, c, d = string.match(stderr or "", "openresty/(%d+)%.(%d+)%.(%d+)%.(%d+)")
-  if not a then
-    error("could not execute 'nginx -V': " .. stderr)
-  end
-
-  return tonumber(a .. b .. c .. d)
-end
-
---- Unindent a multi-line string for proper indenting in
--- square brackets.
--- @function unindent
--- @usage
--- local u = helpers.unindent
---
--- u[[
---     hello world
---     foo bar
--- ]]
---
--- -- will return: "hello world\nfoo bar"
-local function unindent(str, concat_newlines, spaced_newlines)
-  str = string.match(str, "(.-%S*)%s*$")
-  if not str then
-    return ""
-  end
-
-  local level  = math.huge
-  local prefix = ""
-  local len
-
-  str = str:match("^%s") and "\n" .. str or str
-  for pref in str:gmatch("\n(%s+)") do
-    len = #prefix
-
-    if len < level then
-      level  = len
-      prefix = pref
-    end
-  end
-
-  local repl = concat_newlines and "" or "\n"
-  repl = spaced_newlines and " " or repl
-
-  return (str:gsub("^\n%s*", ""):gsub("\n" .. prefix, repl):gsub("\n$", ""):gsub("\\r", "\r"))
-end
-
-
---- Set an environment variable
--- @function setenv
--- @param env (string) name of the environment variable
--- @param value the value to set
--- @return true on success, false otherwise
-local function setenv(env, value)
-  return ffi.C.setenv(env, value, 1) == 0
-end
-
-
---- Unset an environment variable
--- @function unsetenv
--- @param env (string) name of the environment variable
--- @return true on success, false otherwise
-local function unsetenv(env)
-  return ffi.C.unsetenv(env) == 0
-end
-
-
---- Write a yaml file.
--- @function make_yaml_file
--- @param content (string) the yaml string to write to the file, if omitted the
--- current database contents will be written using `kong config db_export`.
--- @param filename (optional) if not provided, a temp name will be created
--- @return filename of the file written
-local function make_yaml_file(content, filename)
-  local filename = filename or pl_path.tmpname() .. ".yml"
-  if content then
-    local fd = assert(io.open(filename, "w"))
-    assert(fd:write(unindent(content)))
-    assert(fd:write("\n")) -- ensure last line ends in newline
-    assert(fd:close())
-  else
-    assert(kong_exec("config db_export --conf "..TEST_CONF_PATH.." "..filename))
-  end
-  return filename
-end
-
 
 local get_available_port
 do
@@ -225,8 +106,6 @@ end
 ---------------
 -- Conf and DAO
 ---------------
-local conf = assert(conf_loader(TEST_CONF_PATH))
-
 _G.kong = kong_global.new()
 kong_global.init_pdk(_G.kong, conf)
 ngx.ctx.KONG_PHASE = kong_global.phases.access
@@ -542,7 +421,7 @@ end
 -- @param db the database object
 -- @return ml_cache instance
 local function get_cache(db)
-  local worker_events = assert(kong_global.init_worker_events())
+  local worker_events = assert(kong_global.init_worker_events(conf))
   local cluster_events = assert(kong_global.init_cluster_events(conf, db))
   local cache = assert(kong_global.init_cache(conf,
                                               cluster_events,
@@ -556,25 +435,6 @@ end
 -----------------
 local resty_http_proxy_mt = setmetatable({}, { __index = http })
 resty_http_proxy_mt.__index = resty_http_proxy_mt
-
-local pack = function(...) return { n = select("#", ...), ... } end
-local unpack = function(t) return unpack(t, 1, t.n) end
-
---- Prints all returned parameters.
--- Simple debugging aid, it will pass all received parameters, hence will not
--- influence the flow of the code. See also `fail`.
--- @function intercept
--- @see fail
--- @usage -- modify
--- local a,b = some_func(c,d)
--- -- into
--- local a,b = intercept(some_func(c,d))
-local function intercept(...)
-  local args = pack(...)
-  print(require("pl.pretty").write(args))
-  return unpack(args)
-end
-
 
 -- Prepopulate Schema's cache
 Schema.new(consumers_schema_def)
@@ -593,7 +453,7 @@ local plugins_schema = assert(Entity.new(plugins_schema_def))
 local function validate_plugin_config_schema(config, schema_def)
   assert(plugins_schema:new_subschema(schema_def.name, schema_def))
   local entity = {
-    id = utils.uuid(),
+    id = uuid(),
     name = schema_def.name,
     config = config
   }
@@ -694,7 +554,7 @@ end
 -- @param opts table with options. See [lua-resty-http](https://github.com/pintsized/lua-resty-http)
 function resty_http_proxy_mt:send(opts, is_reopen)
   local cjson = require "cjson"
-  local utils = require "kong.tools.utils"
+  local encode_args = require("kong.tools.http").encode_args
 
   opts = opts or {}
 
@@ -708,7 +568,7 @@ function resty_http_proxy_mt:send(opts, is_reopen)
     opts.body = cjson.encode(opts.body)
 
   elseif string.find(content_type, "www-form-urlencoded", nil, true) and t_body_table then
-    opts.body = utils.encode_args(opts.body, true, opts.no_array_indexes)
+    opts.body = encode_args(opts.body, true, opts.no_array_indexes)
 
   elseif string.find(content_type, "multipart/form-data", nil, true) and t_body_table then
     local form = opts.body
@@ -737,7 +597,7 @@ function resty_http_proxy_mt:send(opts, is_reopen)
 
   -- build querystring (assumes none is currently in 'opts.path')
   if type(opts.query) == "table" then
-    local qs = utils.encode_args(opts.query)
+    local qs = encode_args(opts.query)
     opts.path = opts.path .. "?" .. qs
     opts.query = nil
   end
@@ -774,10 +634,10 @@ end
 function resty_http_proxy_mt:_connect()
   local opts = self.options
 
-  if TEST_COVERAGE_MODE == "true" then
-    opts.connect_timeout = TEST_COVERAGE_TIMEOUT * 1000
-    opts.send_timeout    = TEST_COVERAGE_TIMEOUT * 1000
-    opts.read_timeout    = TEST_COVERAGE_TIMEOUT * 1000
+  if CONSTANTS.TEST_COVERAGE_MODE == "true" then
+    opts.connect_timeout = CONSTANTS.TEST_COVERAGE_TIMEOUT * 1000
+    opts.send_timeout    = CONSTANTS.TEST_COVERAGE_TIMEOUT * 1000
+    opts.read_timeout    = CONSTANTS.TEST_COVERAGE_TIMEOUT * 1000
   end
 
   local _, err = self:connect(opts)
@@ -824,7 +684,7 @@ end
 -- @see admin_ssl_client
 local function http_client_opts(options)
   if not options.scheme then
-    options = utils.cycle_aware_deep_copy(options)
+    options = kong_table.cycle_aware_deep_copy(options)
     options.scheme = "http"
     if options.port == 443 then
       options.scheme = "https"
@@ -867,8 +727,8 @@ local function http_client(host, port, timeout)
     return http_client_opts(host)
   end
 
-  if TEST_COVERAGE_MODE == "true" then
-    timeout = TEST_COVERAGE_TIMEOUT * 1000
+  if CONSTANTS.TEST_COVERAGE_MODE == "true" then
+    timeout = CONSTANTS.TEST_COVERAGE_TIMEOUT * 1000
   end
 
   return http_client_opts({
@@ -974,8 +834,8 @@ end
 -- @function admin_ssl_client
 -- @param timeout (optional, number) the timeout to use
 local function admin_ssl_client(timeout)
-  if TEST_COVERAGE_MODE == "true" then
-    timeout = TEST_COVERAGE_TIMEOUT * 1000
+  if CONSTANTS.TEST_COVERAGE_MODE == "true" then
+    timeout = CONSTANTS.TEST_COVERAGE_TIMEOUT * 1000
   end
 
   local admin_ip, admin_port
@@ -1182,8 +1042,6 @@ local function proxy_client_h2()
   return http2_client(proxy_ip, proxy_port, true)
 end
 
-local exec -- forward declaration
-
 --- Creates a gRPC client, based on the grpcurl CLI.
 -- @function grpc_client
 -- @param host hostname to connect to
@@ -1196,7 +1054,7 @@ local function grpc_client(host, port, opts)
 
   opts = opts or {}
   if not opts["-proto"] then
-    opts["-proto"] = MOCK_GRPC_UPSTREAM_PROTO_PATH
+    opts["-proto"] = CONSTANTS.MOCK_GRPC_UPSTREAM_PROTO_PATH
   end
 
   return setmetatable({
@@ -1207,6 +1065,7 @@ local function grpc_client(host, port, opts)
     __call = function(t, args)
       local service = assert(args.service)
       local body = args.body
+      local arg_opts = args.opts or {}
 
       local t_body = type(body)
       if t_body ~= "nil" then
@@ -1214,11 +1073,12 @@ local function grpc_client(host, port, opts)
           body = cjson.encode(body)
         end
 
-        args.opts["-d"] = string.format("'%s'", body)
+        arg_opts["-d"] = string.format("'%s'", body)
       end
 
-      local opts = gen_grpcurl_opts(pl_tablex.merge(t.opts, args.opts, true))
-      local ok, _, out, err = exec(string.format(t.cmd_template, opts, service), true)
+      local cmd_opts = gen_grpcurl_opts(pl_tablex.merge(t.opts, arg_opts, true))
+      local cmd = string.format(t.cmd_template, cmd_opts, service)
+      local ok, _, out, err = exec(cmd, true)
 
       if ok then
         return ok, ("%s%s"):format(out or "", err or "")
@@ -1387,8 +1247,8 @@ end
 local function tcp_server(port, opts)
   local threads = require "llthreads2.ex"
   opts = opts or {}
-  if TEST_COVERAGE_MODE == "true" then
-    opts.timeout = TEST_COVERAGE_TIMEOUT
+  if CONSTANTS.TEST_COVERAGE_MODE == "true" then
+    opts.timeout = CONSTANTS.TEST_COVERAGE_TIMEOUT
   end
   local thread = threads.new({
     function(port, opts)
@@ -1658,8 +1518,8 @@ end
 local function http_mock(port, opts)
   local socket = require "socket"
   local server = assert(socket.tcp())
-  if TEST_COVERAGE_MODE == "true" then
-    opts.timeout = TEST_COVERAGE_TIMEOUT
+  if CONSTANTS.TEST_COVERAGE_MODE == "true" then
+    opts.timeout = CONSTANTS.TEST_COVERAGE_TIMEOUT
   end
   server:settimeout(opts and opts.timeout or 60)
   assert(server:setoption('reuseaddr', true))
@@ -1703,8 +1563,8 @@ end
 local function udp_server(port, n, timeout)
   local threads = require "llthreads2.ex"
 
-  if TEST_COVERAGE_MODE == "true" then
-    timeout = TEST_COVERAGE_TIMEOUT
+  if CONSTANTS.TEST_COVERAGE_MODE == "true" then
+    timeout = CONSTANTS.TEST_COVERAGE_TIMEOUT
   end
 
   local thread = threads.new({
@@ -1738,7 +1598,7 @@ local function udp_server(port, n, timeout)
       server:close()
       return (n > 1 and data or data[1]), err
     end
-  }, port or MOCK_UPSTREAM_PORT, n or 1, timeout)
+  }, port or CONSTANTS.MOCK_UPSTREAM_PORT, n or 1, timeout)
   thread:start()
 
   local socket = require "socket"
@@ -1782,8 +1642,8 @@ require("spec.helpers.wait")
 -- -- wait 10 seconds for a file "myfilename" to appear
 -- helpers.wait_until(function() return file_exist("myfilename") end, 10)
 local function wait_until(f, timeout, step)
-  if TEST_COVERAGE_MODE == "true" then
-    timeout = TEST_COVERAGE_TIMEOUT
+  if CONSTANTS.TEST_COVERAGE_MODE == "true" then
+    timeout = CONSTANTS.TEST_COVERAGE_TIMEOUT
   end
 
   luassert.wait_until({
@@ -1808,8 +1668,8 @@ end
 -- @return nothing. It returns when the condition is met, or throws an error
 -- when it times out.
 local function pwait_until(f, timeout, step)
-  if TEST_COVERAGE_MODE == "true" then
-    timeout = TEST_COVERAGE_TIMEOUT
+  if CONSTANTS.TEST_COVERAGE_MODE == "true" then
+    timeout = CONSTANTS.TEST_COVERAGE_TIMEOUT
   end
 
   luassert.wait_until({
@@ -2000,8 +1860,8 @@ end
 -- @tparam[opt=false] boolean opts.override_global_key_auth_plugin to override the global key-auth plugin in waiting
 local function wait_for_all_config_update(opts)
   opts = opts or {}
-  if TEST_COVERAGE_MODE == "true" then
-    opts.timeout = TEST_COVERAGE_TIMEOUT
+  if CONSTANTS.TEST_COVERAGE_MODE == "true" then
+    opts.timeout = CONSTANTS.TEST_COVERAGE_TIMEOUT
   end
   local timeout = opts.timeout or 30
   local admin_client_timeout = opts.admin_client_timeout
@@ -2411,7 +2271,7 @@ luassert:register("assertion", "fail", fail,
 -- local i = assert.contains("two", arr)        --> fails
 -- local i = assert.contains("ee$", arr, true)  --> passes; i == 2
 local function contains(state, args)
-  local expected, arr, pattern = unpack(args)
+  local expected, arr, pattern = misc.unpack(args)
   local found
   for i = 1, #arr do
     if (pattern and string.match(arr[i], expected)) or arr[i] == expected then
@@ -2435,42 +2295,33 @@ luassert:register("assertion", "contains", contains,
                   "assertion.contains.negative",
                   "assertion.contains.positive")
 
-local deep_sort do
-  local function deep_compare(a, b)
-    if a == nil then
-      a = ""
-    end
 
-    if b == nil then
-      b = ""
-    end
+local function copy_errlog(errlog_path)
+  local file_path = "Unknown path"
+  local line_number = "Unknown line"
+  local errlog_cache_dir = os.getenv("SPEC_ERRLOG_CACHE_DIR") or "/tmp/kong_errlog_cache"
 
-    deep_sort(a)
-    deep_sort(b)
+  local ok, err = pl_dir.makepath(errlog_cache_dir)
+  assert(ok, "makepath failed: " .. tostring(err))
 
-    if type(a) ~= type(b) then
-      return type(a) < type(b)
-    end
-
-    if type(a) == "table" then
-      return deep_compare(a[1], b[1])
-    end
-
-    return a < b
+  local info = debug.getinfo(4, "Sl")
+  if info then
+    file_path = info.source:gsub("^@", "")
+    line_number = info.currentline
   end
 
-  function deep_sort(t)
-    if type(t) == "table" then
-      for _, v in pairs(t) do
-        deep_sort(v)
-      end
-      table.sort(t, deep_compare)
-    end
+  if string.find(file_path, '/', nil, true) then
+    file_path = string.gsub(file_path, '/', '_')
+  end
+  file_path = errlog_cache_dir .. "/" .. file_path:gsub("%.lua$", "_") .. "line_" .. line_number .. '.log'
 
-    return t
+  ok, err = pl_file.copy(errlog_path, file_path)
+  if ok then
+    print(colors("%{yellow}Log saved as: " .. file_path .. "%{reset}"))
+  else
+    print(colors("%{red}Failed to save error log for test " .. file_path .. ": " .. err))
   end
 end
-
 
 --- Assertion to check the status-code of a http response.
 -- @function status
@@ -2498,12 +2349,14 @@ local function res_status(state, args)
   if expected ~= res.status then
     local body, err = res:read_body()
     if not body then body = "Error reading body: " .. err end
-    table.insert(args, 1, pl_stringx.strip(body))
+    table.insert(args, 1, strip(body))
     table.insert(args, 1, res.status)
     table.insert(args, 1, expected)
     args.n = 3
 
     if res.status == 500 then
+      copy_errlog(conf.nginx_err_logs)
+
       -- on HTTP 500, we can try to read the server's error logs
       -- for debugging purposes (very useful for travis)
       local str = pl_file.read(conf.nginx_err_logs)
@@ -2511,7 +2364,7 @@ local function res_status(state, args)
         return false -- no err logs to read in this prefix
       end
 
-      local lines_t = pl_stringx.splitlines(str)
+      local lines_t = splitlines(str)
       local str_t = {}
       -- filter out debugs as they are not usually useful in this context
       for i = 1, #lines_t do
@@ -2535,12 +2388,12 @@ local function res_status(state, args)
     local body, err = res:read_body()
     local output = body
     if not output then output = "Error reading body: " .. err end
-    output = pl_stringx.strip(output)
+    output = strip(output)
     table.insert(args, 1, output)
     table.insert(args, 1, res.status)
     table.insert(args, 1, expected)
     args.n = 3
-    return true, {pl_stringx.strip(body)}
+    return true, { strip(body) }
   end
 end
 say:set("assertion.res_status.negative", [[
@@ -2791,6 +2644,22 @@ luassert:register("assertion", "gt", is_gt,
                   "assertion.gt.negative",
                   "assertion.gt.positive")
 
+
+
+---
+-- Matcher to ensure a value is greater than a base value.
+-- @function is_gt_matcher
+-- @param base the base value to compare against
+-- @param value the value that must be greater than the base value
+local function is_gt_matcher(state, arguments)
+  local expected = arguments[1]
+  return function(value)
+    return value > expected
+  end
+end
+luassert:register("matcher", "gt", is_gt_matcher)
+
+
 --- Generic modifier "certificate".
 -- Will set a "certificate" value in the assertion state, so following
 -- assertions will operate on the value set.
@@ -2965,13 +2834,13 @@ do
     return found
   end
 
-  say:set("assertion.match_line.negative", unindent [[
+  say:set("assertion.match_line.negative", misc.unindent [[
     Expected file at:
     %s
     To match:
     %s
   ]])
-  say:set("assertion.match_line.positive", unindent [[
+  say:set("assertion.match_line.positive", misc.unindent [[
     Expected file at:
     %s
     To not match:
@@ -3015,13 +2884,13 @@ local function match_re(_, args)
   end
 end
 
-say:set("assertion.match_re.negative", unindent [[
+say:set("assertion.match_re.negative", misc.unindent [[
     Expected log:
     %s
     To match:
     %s
   ]])
-say:set("assertion.match_re.positive", unindent [[
+say:set("assertion.match_re.positive", misc.unindent [[
     Expected log:
     %s
     To not match:
@@ -3033,214 +2902,6 @@ luassert:register("assertion", "match_re", match_re,
   "assertion.match_re.negative",
   "assertion.match_re.positive")
 
-
-----------------
--- DNS-record mocking.
--- These function allow to create mock dns records that the test Kong instance
--- will use to resolve names. The created mocks are injected by the `start_kong`
--- function.
--- @usage
--- -- Create a new DNS mock and add some DNS records
--- local fixtures = {
---   dns_mock = helpers.dns_mock.new { mocks_only = true }
--- }
---
--- fixtures.dns_mock:SRV {
---   name = "my.srv.test.com",
---   target = "a.my.srv.test.com",
---   port = 80,
--- }
--- fixtures.dns_mock:SRV {
---   name = "my.srv.test.com",     -- adding same name again: record gets 2 entries!
---   target = "b.my.srv.test.com", -- a.my.srv.test.com and b.my.srv.test.com
---   port = 8080,
--- }
--- fixtures.dns_mock:A {
---   name = "a.my.srv.test.com",
---   address = "127.0.0.1",
--- }
--- fixtures.dns_mock:A {
---   name = "b.my.srv.test.com",
---   address = "127.0.0.1",
--- }
--- @section DNS-mocks
-
-
-local dns_mock = {}
-do
-  dns_mock.__index = dns_mock
-  dns_mock.__tostring = function(self)
-    -- fill array to prevent json encoding errors
-    local out = {
-      mocks_only = self.mocks_only,
-      records = {}
-    }
-    for i = 1, 33 do
-      out.records[i] = self[i] or {}
-    end
-    local json = assert(cjson.encode(out))
-    return json
-  end
-
-
-  local TYPE_A, TYPE_AAAA, TYPE_CNAME, TYPE_SRV = 1, 28, 5, 33
-
-
-  --- Creates a new DNS mock.
-  -- The options table supports the following fields:
-  --
-  -- - `mocks_only`: boolean, if set to `true` then only mock records will be
-  --   returned. If `falsy` it will fall through to an actual DNS lookup.
-  -- @function dns_mock.new
-  -- @param options table with mock options
-  -- @return dns_mock object
-  -- @usage
-  -- local mock = helpers.dns_mock.new { mocks_only = true }
-  function dns_mock.new(options)
-    return setmetatable(options or {}, dns_mock)
-  end
-
-
-  --- Adds an SRV record to the DNS mock.
-  -- Fields `name`, `target`, and `port` are required. Other fields get defaults:
-  --
-  -- * `weight`; 20
-  -- * `ttl`; 600
-  -- * `priority`; 20
-  -- @param rec the mock DNS record to insert
-  -- @return true
-  function dns_mock:SRV(rec)
-    if self == dns_mock then
-      error("can't operate on the class, you must create an instance", 2)
-    end
-    if getmetatable(self or {}) ~= dns_mock then
-      error("SRV method must be called using the colon notation", 2)
-    end
-    assert(rec, "Missing record parameter")
-    local name = assert(rec.name, "No name field in SRV record")
-
-    self[TYPE_SRV] = self[TYPE_SRV] or {}
-    local query_answer = self[TYPE_SRV][name]
-    if not query_answer then
-      query_answer = {}
-      self[TYPE_SRV][name] = query_answer
-    end
-
-    table.insert(query_answer, {
-      type = TYPE_SRV,
-      name = name,
-      target = assert(rec.target, "No target field in SRV record"),
-      port = assert(rec.port, "No port field in SRV record"),
-      weight = rec.weight or 10,
-      ttl = rec.ttl or 600,
-      priority = rec.priority or 20,
-      class = rec.class or 1
-    })
-    return true
-  end
-
-
-  --- Adds an A record to the DNS mock.
-  -- Fields `name` and `address` are required. Other fields get defaults:
-  --
-  -- * `ttl`; 600
-  -- @param rec the mock DNS record to insert
-  -- @return true
-  function dns_mock:A(rec)
-    if self == dns_mock then
-      error("can't operate on the class, you must create an instance", 2)
-    end
-    if getmetatable(self or {}) ~= dns_mock then
-      error("A method must be called using the colon notation", 2)
-    end
-    assert(rec, "Missing record parameter")
-    local name = assert(rec.name, "No name field in A record")
-
-    self[TYPE_A] = self[TYPE_A] or {}
-    local query_answer = self[TYPE_A][name]
-    if not query_answer then
-      query_answer = {}
-      self[TYPE_A][name] = query_answer
-    end
-
-    table.insert(query_answer, {
-      type = TYPE_A,
-      name = name,
-      address = assert(rec.address, "No address field in A record"),
-      ttl = rec.ttl or 600,
-      class = rec.class or 1
-    })
-    return true
-  end
-
-
-  --- Adds an AAAA record to the DNS mock.
-  -- Fields `name` and `address` are required. Other fields get defaults:
-  --
-  -- * `ttl`; 600
-  -- @param rec the mock DNS record to insert
-  -- @return true
-  function dns_mock:AAAA(rec)
-    if self == dns_mock then
-      error("can't operate on the class, you must create an instance", 2)
-    end
-    if getmetatable(self or {}) ~= dns_mock then
-      error("AAAA method must be called using the colon notation", 2)
-    end
-    assert(rec, "Missing record parameter")
-    local name = assert(rec.name, "No name field in AAAA record")
-
-    self[TYPE_AAAA] = self[TYPE_AAAA] or {}
-    local query_answer = self[TYPE_AAAA][name]
-    if not query_answer then
-      query_answer = {}
-      self[TYPE_AAAA][name] = query_answer
-    end
-
-    table.insert(query_answer, {
-      type = TYPE_AAAA,
-      name = name,
-      address = assert(rec.address, "No address field in AAAA record"),
-      ttl = rec.ttl or 600,
-      class = rec.class or 1
-    })
-    return true
-  end
-
-
-  --- Adds a CNAME record to the DNS mock.
-  -- Fields `name` and `cname` are required. Other fields get defaults:
-  --
-  -- * `ttl`; 600
-  -- @param rec the mock DNS record to insert
-  -- @return true
-  function dns_mock:CNAME(rec)
-    if self == dns_mock then
-      error("can't operate on the class, you must create an instance", 2)
-    end
-    if getmetatable(self or {}) ~= dns_mock then
-      error("CNAME method must be called using the colon notation", 2)
-    end
-    assert(rec, "Missing record parameter")
-    local name = assert(rec.name, "No name field in CNAME record")
-
-    self[TYPE_CNAME] = self[TYPE_CNAME] or {}
-    local query_answer = self[TYPE_CNAME][name]
-    if not query_answer then
-      query_answer = {}
-      self[TYPE_CNAME][name] = query_answer
-    end
-
-    table.insert(query_answer, {
-      type = TYPE_CNAME,
-      name = name,
-      cname = assert(rec.cname, "No cname field in CNAME record"),
-      ttl = rec.ttl or 600,
-      class = rec.class or 1
-    })
-    return true
-  end
-end
 
 ---
 -- Assertion to partially compare two lua tables.
@@ -3294,86 +2955,6 @@ Expected: %s, given: %s
 luassert:register("assertion", "partial_match", partial_match,
                   "assertion.partial_match.positive",
                   "assertion.partial_match.negative")
-
-
-----------------
--- Shell helpers
--- @section Shell-helpers
-
---- Execute a command.
--- Modified version of `pl.utils.executeex()` so the output can directly be
--- used on an assertion.
--- @function execute
--- @param cmd command string to execute
--- @param returns (optional) boolean: if true, this function will
--- return the same values as Penlight's executeex.
--- @return if `returns` is true, returns four return values
--- (ok, code, stdout, stderr); if `returns` is false,
--- returns either (false, stderr) or (true, stderr, stdout).
-function exec(cmd, returns)
-  local ok, stdout, stderr, _, code = shell.run(cmd, nil, 0)
-  if returns then
-    return ok, code, stdout, stderr
-  end
-  if not ok then
-    stdout = nil -- don't return 3rd value if fail because of busted's `assert`
-  end
-  return ok, stderr, stdout
-end
-
-
---- Execute a Kong command.
--- @function kong_exec
--- @param cmd Kong command to execute, eg. `start`, `stop`, etc.
--- @param env (optional) table with kong parameters to set as environment
--- variables, overriding the test config (each key will automatically be
--- prefixed with `KONG_` and be converted to uppercase)
--- @param returns (optional) boolean: if true, this function will
--- return the same values as Penlight's `executeex`.
--- @param env_vars (optional) a string prepended to the command, so
--- that arbitrary environment variables may be passed
--- @return if `returns` is true, returns four return values
--- (ok, code, stdout, stderr); if `returns` is false,
--- returns either (false, stderr) or (true, stderr, stdout).
-function kong_exec(cmd, env, returns, env_vars)
-  cmd = cmd or ""
-  env = env or {}
-
-  -- Insert the Lua path to the custom-plugin fixtures
-  do
-    local function cleanup(t)
-      if t then
-        t = pl_stringx.strip(t)
-        if t:sub(-1,-1) == ";" then
-          t = t:sub(1, -2)
-        end
-      end
-      return t ~= "" and t or nil
-    end
-    local paths = {}
-    table.insert(paths, cleanup(CUSTOM_PLUGIN_PATH))
-    table.insert(paths, cleanup(CUSTOM_VAULT_PATH))
-    table.insert(paths, cleanup(env.lua_package_path))
-    table.insert(paths, cleanup(conf.lua_package_path))
-    env.lua_package_path = table.concat(paths, ";")
-    -- note; the nginx config template will add a final ";;", so no need to
-    -- include that here
-  end
-
-  if not env.plugins then
-    env.plugins = "bundled,dummy,cache,rewriter,error-handler-log," ..
-                  "error-generator,error-generator-last," ..
-                  "short-circuit"
-  end
-
-  -- build Kong environment variables
-  env_vars = env_vars or ""
-  for k, v in pairs(env) do
-    env_vars = string.format("%s KONG_%s='%s'", env_vars, k:upper(), v)
-  end
-
-  return exec(env_vars .. " " .. BIN_PATH .. " " .. cmd, returns)
-end
 
 
 --- Prepares the Kong environment.
@@ -3468,8 +3049,8 @@ end
 local function wait_pid(pid_path, timeout, is_retry)
   local pid = get_pid_from_file(pid_path)
 
-  if TEST_COVERAGE_MODE == "true" then
-    timeout = TEST_COVERAGE_TIMEOUT
+  if CONSTANTS.TEST_COVERAGE_MODE == "true" then
+    timeout = CONSTANTS.TEST_COVERAGE_TIMEOUT
   end
 
   if pid then
@@ -3574,9 +3155,9 @@ local function render_fixtures(conf, env, prefix, fixtures)
 
     -- add the mock resolver to the path to ensure the records are loaded
     if env.lua_package_path then
-      env.lua_package_path = DNS_MOCK_LUA_PATH .. ";" .. env.lua_package_path
+      env.lua_package_path = CONSTANTS.DNS_MOCK_LUA_PATH .. ";" .. env.lua_package_path
     else
-      env.lua_package_path = DNS_MOCK_LUA_PATH
+      env.lua_package_path = CONSTANTS.DNS_MOCK_LUA_PATH
     end
   else
     -- remove any old mocks if they exist
@@ -3601,76 +3182,6 @@ local function build_go_plugins(path)
     assert(ok, stderr)
   end
 end
-
-local function isnewer(path_a, path_b)
-  if not pl_path.exists(path_a) then
-    return true
-  end
-  if not pl_path.exists(path_b) then
-    return false
-  end
-  return assert(pl_path.getmtime(path_b)) > assert(pl_path.getmtime(path_a))
-end
-
-local function make(workdir, specs)
-  workdir = pl_path.normpath(workdir or pl_path.currentdir())
-
-  for _, spec in ipairs(specs) do
-    local targetpath = pl_path.join(workdir, spec.target)
-    for _, src in ipairs(spec.src) do
-      local srcpath = pl_path.join(workdir, src)
-      if isnewer(targetpath, srcpath) then
-        local ok, _, stderr = shell.run(string.format("cd %s; %s", workdir, spec.cmd), nil, 0)
-        assert(ok, stderr)
-        if isnewer(targetpath, srcpath) then
-          error(string.format("couldn't make %q newer than %q", targetpath, srcpath))
-        end
-        break
-      end
-    end
-  end
-
-  return true
-end
-
-local grpc_target_proc
-local function start_grpc_target()
-  local ngx_pipe = require "ngx.pipe"
-  assert(make(GRPC_TARGET_SRC_PATH, {
-    {
-      target = "targetservice/targetservice.pb.go",
-      src    = { "../targetservice.proto" },
-      cmd    = "protoc --go_out=. --go-grpc_out=. -I ../ ../targetservice.proto",
-    },
-    {
-      target = "targetservice/targetservice_grpc.pb.go",
-      src    = { "../targetservice.proto" },
-      cmd    = "protoc --go_out=. --go-grpc_out=. -I ../ ../targetservice.proto",
-    },
-    {
-      target = "target",
-      src    = { "grpc-target.go", "targetservice/targetservice.pb.go", "targetservice/targetservice_grpc.pb.go" },
-      cmd    = "go mod tidy && go mod download all && go build",
-    },
-  }))
-  grpc_target_proc = assert(ngx_pipe.spawn({ GRPC_TARGET_SRC_PATH .. "/target" }, {
-      merge_stderr = true,
-  }))
-
-  return true
-end
-
-local function stop_grpc_target()
-  if grpc_target_proc then
-    grpc_target_proc:kill(resty_signal.signum("QUIT"))
-    grpc_target_proc = nil
-  end
-end
-
-local function get_grpc_target_port()
-  return 15010
-end
-
 
 --- Start the Kong instance to test against.
 -- The fixtures passed to this function can be 3 types:
@@ -3744,8 +3255,8 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
   -- go plugins are enabled
   --  compile fixture go plugins if any setting mentions it
   for _,v in pairs(env) do
-    if type(v) == "string" and v:find(GO_PLUGIN_PATH) then
-      build_go_plugins(GO_PLUGIN_PATH)
+    if type(v) == "string" and v:find(CONSTANTS.GO_PLUGIN_PATH) then
+      build_go_plugins(CONSTANTS.GO_PLUGIN_PATH)
       break
     end
   end
@@ -3766,7 +3277,7 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
     nginx_conf = " --nginx-conf " .. env.nginx_conf
   end
 
-  if TEST_COVERAGE_MODE == "true" then
+  if CONSTANTS.TEST_COVERAGE_MODE == "true" then
     -- render `coverage` blocks in the templates
     nginx_conf_flags[#nginx_conf_flags + 1] = 'coverage'
   end
@@ -3787,12 +3298,12 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
         return nil, err
       end
     end
-    env = utils.cycle_aware_deep_copy(env)
+    env = kong_table.cycle_aware_deep_copy(env)
     env.declarative_config = config_yml
   end
 
-  assert(render_fixtures(TEST_CONF_PATH .. nginx_conf, env, prefix, fixtures))
-  return kong_exec("start --conf " .. TEST_CONF_PATH .. nginx_conf .. nginx_conf_flags, env)
+  assert(render_fixtures(CONSTANTS.TEST_CONF_PATH .. nginx_conf, env, prefix, fixtures))
+  return kong_exec("start --conf " .. CONSTANTS.TEST_CONF_PATH .. nginx_conf .. nginx_conf_flags, env)
 end
 
 
@@ -3803,10 +3314,13 @@ end
 -- @param preserve_dc ???
 local function cleanup_kong(prefix, preserve_prefix, preserve_dc)
   -- remove socket files to ensure `pl.dir.rmtree()` ok
-  local socks = { "/worker_events.sock", "/stream_worker_events.sock", }
-  for _, name in ipairs(socks) do
-    local sock_file = (prefix or conf.prefix) .. name
-    os.remove(sock_file)
+  prefix = prefix or conf.prefix
+  local socket_path = pl_path.join(prefix, constants.SOCKET_DIRECTORY)
+  for child in lfs.dir(socket_path) do
+    local path = pl_path.join(socket_path, child)
+    if lfs.attributes(path, "mode") == "socket" then
+      os.remove(path)
+    end
   end
 
   -- note: set env var "KONG_TEST_DONT_CLEAN" !! the "_TEST" will be dropped
@@ -4060,9 +3574,9 @@ local function clustering_client(opts)
 
   local c = assert(ws_client:new())
   local uri = "wss://" .. opts.host .. ":" .. opts.port ..
-              "/v1/outlet?node_id=" .. (opts.node_id or utils.uuid()) ..
+              "/v1/outlet?node_id=" .. (opts.node_id or uuid()) ..
               "&node_hostname=" .. (opts.node_hostname or kong.node.get_hostname()) ..
-              "&node_version=" .. (opts.node_version or KONG_VERSION)
+              "&node_version=" .. (opts.node_version or CONSTANTS.KONG_VERSION)
 
   local conn_opts = {
     ssl_verify = false, -- needed for busted tests as CP certs are not trusted by the CLI
@@ -4102,26 +3616,6 @@ local function clustering_client(opts)
 end
 
 
---- Generate asymmetric keys
--- @function generate_keys
--- @param fmt format to receive the public and private pair
--- @return `pub, priv` key tuple or `nil + err` on failure
-local function generate_keys(fmt)
-  fmt = string.upper(fmt) or "JWK"
-  local key, err = pkey.new({
-    -- only support RSA for now
-    type = 'RSA',
-    bits = 2048,
-    exp = 65537
-  })
-  assert(key)
-  assert(err == nil, err)
-  local pub = key:tostring("public", fmt)
-  local priv = key:tostring("private", fmt)
-  return pub, priv
-end
-
-
 local make_temp_dir
 do
   local seeded = false
@@ -4153,6 +3647,44 @@ do
                        "last error: " .. tostring(err))
 
     return tmp, function() pl_dir.rmtree(tmp) end
+  end
+end
+
+-- This function is used for plugin compatibility test.
+-- It will use the old version plugin by including the path of the old plugin
+-- at the first of LUA_PATH.
+-- The return value is a function which when called will recover the original
+-- LUA_PATH and remove the temporary directory if it exists.
+-- For an example of how to use it, please see:
+-- plugins-ee/rate-limiting-advanced/spec/06-old-plugin-compatibility_spec.lua
+-- spec/03-plugins/03-http-log/05-old-plugin-compatibility_spec.lua
+local function use_old_plugin(name)
+  assert(type(name) == "string", "must specify the plugin name")
+
+  local old_plugin_path
+  local temp_dir
+  if pl_path.exists(CONSTANTS.OLD_VERSION_KONG_PATH .. "/kong/plugins/" .. name) then
+    -- only include the path of the specified plugin into LUA_PATH
+    -- and keep the directory structure 'kong/plugins/...'
+    temp_dir = make_temp_dir()
+    old_plugin_path = temp_dir
+    local dest_dir = old_plugin_path .. "/kong/plugins"
+    assert(pl_dir.makepath(dest_dir), "failed to makepath " .. dest_dir)
+    assert(shell.run("cp -r " .. CONSTANTS.OLD_VERSION_KONG_PATH .. "/kong/plugins/" .. name .. " " .. dest_dir), "failed to copy the plugin directory")
+
+  else
+    error("the specified plugin " .. name .. " doesn't exist")
+  end
+
+  local origin_lua_path = os.getenv("LUA_PATH")
+  -- put the old plugin path at first
+  assert(misc.setenv("LUA_PATH", old_plugin_path .. "/?.lua;" .. old_plugin_path .. "/?/init.lua;" .. origin_lua_path), "failed to set LUA_PATH env")
+
+  return function ()
+    misc.setenv("LUA_PATH", origin_lua_path)
+    if temp_dir then
+      pl_dir.rmtree(temp_dir)
+    end
   end
 end
 
@@ -4195,6 +3727,7 @@ end
 -- @field zipkin_port the port for Zipkin service, it can be set by env KONG_SPEC_TEST_ZIPKIN_PORT.
 -- @field otelcol_host The host for OpenTelemetry Collector service, it can be set by env KONG_SPEC_TEST_OTELCOL_HOST.
 -- @field otelcol_http_port the port for OpenTelemetry Collector service, it can be set by env KONG_SPEC_TEST_OTELCOL_HTTP_PORT.
+-- @field old_version_kong_path the path for the old version kong source code, it can be set by env KONG_SPEC_TEST_OLD_VERSION_KONG_PATH.
 -- @field otelcol_zpages_port the port for OpenTelemetry Collector Zpages service, it can be set by env KONG_SPEC_TEST_OTELCOL_ZPAGES_PORT.
 -- @field otelcol_file_exporter_path the path of for OpenTelemetry Collector's file exporter, it can be set by env KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH.
 
@@ -4215,49 +3748,52 @@ end
   get_db_utils = get_db_utils,
   get_cache = get_cache,
   bootstrap_database = bootstrap_database,
-  bin_path = BIN_PATH,
+  bin_path = CONSTANTS.BIN_PATH,
   test_conf = conf,
-  test_conf_path = TEST_CONF_PATH,
-  go_plugin_path = GO_PLUGIN_PATH,
-  mock_upstream_hostname = MOCK_UPSTREAM_HOSTNAME,
-  mock_upstream_protocol = MOCK_UPSTREAM_PROTOCOL,
-  mock_upstream_host     = MOCK_UPSTREAM_HOST,
-  mock_upstream_port     = MOCK_UPSTREAM_PORT,
-  mock_upstream_url      = MOCK_UPSTREAM_PROTOCOL .. "://" ..
-                           MOCK_UPSTREAM_HOST .. ':' ..
-                           MOCK_UPSTREAM_PORT,
+  test_conf_path = CONSTANTS.TEST_CONF_PATH,
+  go_plugin_path = CONSTANTS.GO_PLUGIN_PATH,
+  mock_upstream_hostname = CONSTANTS.MOCK_UPSTREAM_HOSTNAME,
+  mock_upstream_protocol = CONSTANTS.MOCK_UPSTREAM_PROTOCOL,
+  mock_upstream_host     = CONSTANTS.MOCK_UPSTREAM_HOST,
+  mock_upstream_port     = CONSTANTS.MOCK_UPSTREAM_PORT,
+  mock_upstream_url      = CONSTANTS.MOCK_UPSTREAM_PROTOCOL .. "://" ..
+                           CONSTANTS.MOCK_UPSTREAM_HOST .. ':' ..
+                           CONSTANTS.MOCK_UPSTREAM_PORT,
 
-  mock_upstream_ssl_protocol = MOCK_UPSTREAM_SSL_PROTOCOL,
-  mock_upstream_ssl_host     = MOCK_UPSTREAM_HOST,
-  mock_upstream_ssl_port     = MOCK_UPSTREAM_SSL_PORT,
-  mock_upstream_ssl_url      = MOCK_UPSTREAM_SSL_PROTOCOL .. "://" ..
-                               MOCK_UPSTREAM_HOST .. ':' ..
-                               MOCK_UPSTREAM_SSL_PORT,
+  mock_upstream_ssl_protocol = CONSTANTS.MOCK_UPSTREAM_SSL_PROTOCOL,
+  mock_upstream_ssl_host     = CONSTANTS.MOCK_UPSTREAM_HOST,
+  mock_upstream_ssl_port     = CONSTANTS.MOCK_UPSTREAM_SSL_PORT,
+  mock_upstream_ssl_url      = CONSTANTS.MOCK_UPSTREAM_SSL_PROTOCOL .. "://" ..
+                               CONSTANTS.MOCK_UPSTREAM_HOST .. ':' ..
+                               CONSTANTS.MOCK_UPSTREAM_SSL_PORT,
 
-  mock_upstream_stream_port     = MOCK_UPSTREAM_STREAM_PORT,
-  mock_upstream_stream_ssl_port = MOCK_UPSTREAM_STREAM_SSL_PORT,
-  mock_grpc_upstream_proto_path = MOCK_GRPC_UPSTREAM_PROTO_PATH,
+  mock_upstream_stream_port     = CONSTANTS.MOCK_UPSTREAM_STREAM_PORT,
+  mock_upstream_stream_ssl_port = CONSTANTS.MOCK_UPSTREAM_STREAM_SSL_PORT,
+  mock_grpc_upstream_proto_path = CONSTANTS.MOCK_GRPC_UPSTREAM_PROTO_PATH,
 
-  zipkin_host = ZIPKIN_HOST,
-  zipkin_port = ZIPKIN_PORT,
+  zipkin_host = CONSTANTS.ZIPKIN_HOST,
+  zipkin_port = CONSTANTS.ZIPKIN_PORT,
 
-  otelcol_host               = OTELCOL_HOST,
-  otelcol_http_port          = OTELCOL_HTTP_PORT,
-  otelcol_zpages_port        = OTELCOL_ZPAGES_PORT,
-  otelcol_file_exporter_path = OTELCOL_FILE_EXPORTER_PATH,
+  otelcol_host               = CONSTANTS.OTELCOL_HOST,
+  otelcol_http_port          = CONSTANTS.OTELCOL_HTTP_PORT,
+  otelcol_zpages_port        = CONSTANTS.OTELCOL_ZPAGES_PORT,
+  otelcol_file_exporter_path = CONSTANTS.OTELCOL_FILE_EXPORTER_PATH,
 
-  grpcbin_host     = GRPCBIN_HOST,
-  grpcbin_port     = GRPCBIN_PORT,
-  grpcbin_ssl_port = GRPCBIN_SSL_PORT,
-  grpcbin_url      = string.format("grpc://%s:%d", GRPCBIN_HOST, GRPCBIN_PORT),
-  grpcbin_ssl_url  = string.format("grpcs://%s:%d", GRPCBIN_HOST, GRPCBIN_SSL_PORT),
+  grpcbin_host     = CONSTANTS.GRPCBIN_HOST,
+  grpcbin_port     = CONSTANTS.GRPCBIN_PORT,
+  grpcbin_ssl_port = CONSTANTS.GRPCBIN_SSL_PORT,
+  grpcbin_url      = string.format("grpc://%s:%d", CONSTANTS.GRPCBIN_HOST, CONSTANTS.GRPCBIN_PORT),
+  grpcbin_ssl_url  = string.format("grpcs://%s:%d", CONSTANTS.GRPCBIN_HOST, CONSTANTS.GRPCBIN_SSL_PORT),
 
-  redis_host     = REDIS_HOST,
-  redis_port     = REDIS_PORT,
-  redis_ssl_port = REDIS_SSL_PORT,
-  redis_ssl_sni  = REDIS_SSL_SNI,
+  redis_host     = CONSTANTS.REDIS_HOST,
+  redis_port     = CONSTANTS.REDIS_PORT,
+  redis_ssl_port = CONSTANTS.REDIS_SSL_PORT,
+  redis_ssl_sni  = CONSTANTS.REDIS_SSL_SNI,
+  redis_auth_port = CONSTANTS.REDIS_AUTH_PORT,
 
-  blackhole_host = BLACKHOLE_HOST,
+  blackhole_host = CONSTANTS.BLACKHOLE_HOST,
+
+  old_version_kong_path = CONSTANTS.OLD_VERSION_KONG_PATH,
 
   -- Kong testing helpers
   execute = exec,
@@ -4307,13 +3843,14 @@ end
   stress_generator = stress_generator,
 
   -- miscellaneous
-  intercept = intercept,
-  openresty_ver_num = openresty_ver_num(),
-  unindent = unindent,
-  make_yaml_file = make_yaml_file,
-  setenv = setenv,
-  unsetenv = unsetenv,
-  deep_sort = deep_sort,
+  intercept = misc.intercept,
+  openresty_ver_num = misc.openresty_ver_num,
+  unindent = misc.unindent,
+  make_yaml_file = misc.make_yaml_file,
+  setenv = misc.setenv,
+  unsetenv = misc.unsetenv,
+  deep_sort = misc.deep_sort,
+  generate_keys = misc.generate_keys,
 
   -- launching Kong subprocesses
   start_kong = start_kong,
@@ -4324,10 +3861,12 @@ end
   get_kong_workers = get_kong_workers,
   wait_until_no_common_workers = wait_until_no_common_workers,
 
-  start_grpc_target = start_grpc_target,
-  stop_grpc_target = stop_grpc_target,
-  get_grpc_target_port = get_grpc_target_port,
-  generate_keys = generate_keys,
+  start_grpc_target = grpc.start_grpc_target,
+  stop_grpc_target = grpc.stop_grpc_target,
+  get_grpc_target_port = grpc.get_grpc_target_port,
+
+  -- plugin compatibility test
+  use_old_plugin = use_old_plugin,
 
   -- Only use in CLI tests from spec/02-integration/01-cmd
   kill_all = function(prefix, timeout)

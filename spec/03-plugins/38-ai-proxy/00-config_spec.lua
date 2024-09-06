@@ -11,12 +11,6 @@ local validate do
   end
 end
 
-local WWW_MODELS = {
-  "openai",
-  "azure",
-  "anthropic",
-  "cohere",
-}
 
 local SELF_HOSTED_MODELS = {
   "mistral",
@@ -28,7 +22,11 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
 
   for i, v in ipairs(SELF_HOSTED_MODELS) do
-    it("requires upstream_url when using self-hosted " .. v .. " model", function()
+    local op = it
+    if v == "mistral" then -- mistral.ai now has managed service too!
+      op = pending
+    end
+    op("requires upstream_url when using self-hosted " .. v .. " model", function()
       local config = {
         route_type = "llm/v1/chat",
         auth = {
@@ -84,7 +82,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
       end
 
       local ok, err = validate(config)
-      
+
       assert.is_truthy(ok)
       assert.is_falsy(err)
     end)
@@ -168,64 +166,6 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     assert.is_falsy(ok)
   end)
 
-  for i, v in ipairs(WWW_MODELS) do
-    it("requires API auth for www-hosted " .. v .. " model", function()
-      local config = {
-        route_type = "llm/v1/chat",
-        model = {
-          name = "command",
-          provider = v,
-          options = {
-            max_tokens = 256,
-            temperature = 1.0,
-            upstream_url = "http://nowhere",
-          },
-        },
-      }
-
-      if v == "llama2" then
-        config.model.options.llama2_format = "raw"
-      end
-
-      if v == "azure" then
-        config.model.options.azure_instance = "kong"
-      end
-
-      if v == "anthropic" then
-        config.model.options.anthropic_version = "2021-09-01"
-      end
-
-      local ok, err = validate(config)
-
-      assert.not_nil(err["config"]["@entity"])
-      assert.not_nil(err["config"]["@entity"][1])
-      assert.equal(err["config"]["@entity"][1], "must set one of 'auth.header_name', 'auth.param_name', "
-      .. "and its respective options, when provider is not self-hosted")
-      assert.is_falsy(ok)
-    end)
-  end
-
-  it("requires [config.auth] block to be set", function()
-    local config = {
-      route_type = "llm/v1/chat",
-      model = {
-        name = "openai",
-        provider = "openai",
-        options = {
-          max_tokens = 256,
-          temperature = 1.0,
-          upstream_url = "http://nowhere",
-        },
-      },
-    }
-
-    local ok, err = validate(config)
-    
-    assert.equal(err["config"]["@entity"][1], "must set one of 'auth.header_name', 'auth.param_name', "
-                                 .. "and its respective options, when provider is not self-hosted")
-    assert.is_falsy(ok)
-  end)
-
   it("requires both [config.auth.header_name] and [config.auth.header_value] to be set", function()
     local config = {
       route_type = "llm/v1/chat",
@@ -244,7 +184,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     }
 
     local ok, err = validate(config)
-    
+
     assert.equals(err["config"]["@entity"][1], "all or none of these fields must be set: 'auth.header_name', 'auth.header_value'")
     assert.is_falsy(ok)
   end)
@@ -268,7 +208,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     }
 
     local ok, err = validate(config)
-    
+
     assert.is_falsy(err)
     assert.is_truthy(ok)
   end)
@@ -317,7 +257,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     }
 
     local ok, err = validate(config)
-    
+
     assert.is_falsy(err)
     assert.is_truthy(ok)
   end)
@@ -344,9 +284,64 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     }
 
     local ok, err = validate(config)
-    
+
     assert.is_falsy(err)
     assert.is_truthy(ok)
   end)
 
+  it("bedrock model can not support ath.allowed_auth_override", function()
+    local config = {
+      route_type = "llm/v1/chat",
+      auth = {
+        param_name = "apikey",
+        param_value = "key",
+        param_location = "query",
+        header_name = "Authorization",
+        header_value = "Bearer token",
+        allow_override = true,
+      },
+      model = {
+        name = "bedrock",
+        provider = "bedrock",
+        options = {
+          max_tokens = 256,
+          temperature = 1.0,
+          upstream_url = "http://nowhere",
+        },
+      },
+    }
+
+    local ok, err = validate(config)
+
+    assert.is_falsy(ok)
+    assert.is_truthy(err)
+  end)
+
+  it("gemini model can not support ath.allowed_auth_override", function()
+    local config = {
+      route_type = "llm/v1/chat",
+      auth = {
+        param_name = "apikey",
+        param_value = "key",
+        param_location = "query",
+        header_name = "Authorization",
+        header_value = "Bearer token",
+        allow_override = true,
+      },
+      model = {
+        name = "gemini",
+        provider = "gemini",
+        options = {
+          max_tokens = 256,
+          temperature = 1.0,
+          upstream_url = "http://nowhere",
+        },
+      },
+    }
+
+    local ok, err = validate(config)
+
+    assert.is_falsy(ok)
+    assert.is_truthy(err)
+  end)
 end)

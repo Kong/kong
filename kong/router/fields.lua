@@ -17,11 +17,6 @@ local get_uri_args  = ngx.req.get_uri_args
 local server_name   = require("ngx.ssl").server_name
 
 
-local PREFIX_LEN = 13 -- #"http.headers."
-local HTTP_HEADERS_PREFIX = "http.headers."
-local HTTP_QUERIES_PREFIX = "http.queries."
-
-
 local HTTP_FIELDS = {
 
   ["String"] = {"net.protocol", "tls.sni",
@@ -166,7 +161,12 @@ else  -- stream
   FIELDS_FUNCS["net.dst.ip"] =
   function(params)
     if not params.dst_ip then
-      if var.kong_tls_passthrough_block == "1" or var.ssl_protocol then
+      if params._need_proxy_protocol == nil then
+        params._need_proxy_protocol = var.kong_tls_passthrough_block == "1" or
+                                      var.ssl_protocol ~= nil
+      end
+
+      if params._need_proxy_protocol then
         params.dst_ip = var.proxy_protocol_server_addr
 
       else
@@ -180,8 +180,14 @@ else  -- stream
   FIELDS_FUNCS["net.dst.port"] =
   function(params, ctx)
     if not params.dst_port then
-      if var.kong_tls_passthrough_block == "1" or var.ssl_protocol then
+      if params._need_proxy_protocol == nil then
+        params._need_proxy_protocol = var.kong_tls_passthrough_block == "1" or
+                                      var.ssl_protocol ~= nil
+      end
+
+      if params._need_proxy_protocol then
         params.dst_port = tonumber(var.proxy_protocol_server_port, 10)
+
       else
         params.dst_port = (ctx or ngx.ctx).host_port or tonumber(var.server_port, 10)
       end
@@ -209,6 +215,11 @@ if is_http then
   local fmt = string.format
   local ngx_null = ngx.null
   local re_split = require("ngx.re").split
+
+
+  local PREFIX_LEN = 13 -- #"http.headers."
+  local HTTP_HEADERS_PREFIX = "http.headers."
+  local HTTP_QUERIES_PREFIX = "http.queries."
 
 
   local HTTP_SEGMENTS_PREFIX = "http.path.segments."

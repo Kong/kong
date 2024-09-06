@@ -177,6 +177,7 @@ for _, strategy in helpers.each_strategy() do
         nginx_conf = "spec/fixtures/custom_nginx.template",
         database = strategy,
         dns_hostsfile = dns_hostsfile,
+        resolver_hosts_file = dns_hostsfile,
         anonymous_reports = true,
         plugins = "reports-api",
         stream_listen = helpers.get_proxy_ip(false) .. ":19000," ..
@@ -240,6 +241,20 @@ for _, strategy in helpers.each_strategy() do
       assert.match("wss_reqs=0", reports_data)
 
       proxy_ssl_client:close()
+    end)
+
+    it("when send http request to https port, no other error in error.log", function()
+      local https_port = assert(helpers.get_proxy_port(true))
+      local proxy_client = assert(helpers.proxy_client(nil, https_port))
+      local res = proxy_client:get("/", {
+        headers = { host  = "http-service.test" }
+      })
+      reports_send_ping({port=constants.REPORTS.STATS_TLS_PORT})
+
+      assert.response(res).has_status(400)
+      assert.logfile().has.no.line("using uninitialized")
+      assert.logfile().has.no.line("could not determine log suffix (scheme=http, proxy_mode=)")
+      proxy_client:close()
     end)
 
     it("reports h2c requests", function()

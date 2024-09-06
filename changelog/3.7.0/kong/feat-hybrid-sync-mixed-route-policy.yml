@@ -1,0 +1,7 @@
+message: |
+  Improved config handling when the CP runs with the router set to the `expressions` flavor:
+    - If mixed config is detected and a lower DP is attached to the CP, no config will be sent at all
+    - If the expression is invalid on the CP, no config will be sent at all
+    - If the expression is invalid on a lower DP, it will be sent to the DP and DP validation will catch this and communicate back to the CP (this could result in partial config application)
+type: feature
+scope: Core

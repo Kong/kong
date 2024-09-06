@@ -1,11 +1,13 @@
 local cjson = require "cjson"
 local iteration = require "kong.db.iteration"
-local utils = require "kong.tools.utils"
+local kong_table = require "kong.tools.table"
 local defaults = require "kong.db.strategies.connector".defaults
 local hooks = require "kong.hooks"
 local workspaces = require "kong.workspaces"
 local new_tab = require "table.new"
 local DAO_MAX_TTL = require("kong.constants").DATABASE.DAO_MAX_TTL
+local is_valid_uuid = require("kong.tools.uuid").is_valid_uuid
+local deep_copy     = require("kong.tools.table").deep_copy
 
 local setmetatable = setmetatable
 local tostring     = tostring
@@ -22,7 +24,7 @@ local log          = ngx.log
 local fmt          = string.format
 local match        = string.match
 local run_hook     = hooks.run_hook
-local table_merge  = utils.table_merge
+local table_merge  = kong_table.table_merge
 
 
 local ERR          = ngx.ERR
@@ -154,7 +156,7 @@ local function get_pagination_options(self, options)
     error("options must be a table when specified", 3)
   end
 
-  options = utils.cycle_aware_deep_copy(options, true)
+  options = kong_table.cycle_aware_deep_copy(options, true)
 
   if type(options.pagination) == "table" then
     options.pagination = table_merge(self.pagination, options.pagination)
@@ -173,7 +175,7 @@ local function validate_options_value(self, options)
 
   if options.workspace then
     if type(options.workspace) == "string" then
-      if not utils.is_valid_uuid(options.workspace) then
+      if not is_valid_uuid(options.workspace) then
         local ws = kong.db.workspaces:select_by_name(options.workspace)
         if ws then
           options.workspace = ws.id
@@ -286,6 +288,12 @@ local function validate_options_value(self, options)
   if options.export ~= nil then
     if type(options.export) ~= "boolean" then
       errors.export = "must be a boolean"
+    end
+  end
+
+  if options.skip_ttl ~= nil then
+    if type(options.skip_ttl) ~= "boolean" then
+      errors.skip_ttl = "must be a boolean"
     end
   end
 
@@ -895,8 +903,9 @@ local function generate_foreign_key_methods(schema)
           return nil, err, err_t
         end
 
-        local show_ws_id = { show_ws_id = true }
-        local entity, err, err_t = self["select_by_" .. name](self, unique_value, show_ws_id)
+        local select_options = deep_copy(options or {})
+        select_options["show_ws_id"] = true
+        local entity, err, err_t = self["select_by_" .. name](self, unique_value, select_options)
         if err then
           return nil, err, err_t
         end
@@ -905,7 +914,7 @@ local function generate_foreign_key_methods(schema)
           return true
         end
 
-        local cascade_entries = find_cascade_delete_entities(self, entity, show_ws_id)
+        local cascade_entries = find_cascade_delete_entities(self, entity, select_options)
 
         local ok, err_t = run_hook("dao:delete_by:pre",
                                    entity,
@@ -956,7 +965,7 @@ function _M.new(db, schema, strategy, errors)
     schema     = schema,
     strategy   = strategy,
     errors     = errors,
-    pagination = utils.shallow_copy(defaults.pagination),
+    pagination = kong_table.shallow_copy(defaults.pagination),
     super      = super,
   }
 
@@ -1118,7 +1127,7 @@ function DAO:each_for_export(size, options)
     if not options then
       options = get_pagination_options(self, options)
     else
-      options = utils.cycle_aware_deep_copy(options, true)
+      options = kong_table.cycle_aware_deep_copy(options, true)
     end
 
     options.export = true
@@ -1292,8 +1301,9 @@ function DAO:delete(pk_or_entity, options)
     return nil, tostring(err_t), err_t
   end
 
-  local show_ws_id = { show_ws_id = true }
-  local entity, err, err_t = self:select(primary_key, show_ws_id)
+  local select_options = deep_copy(options or {})
+  select_options["show_ws_id"] = true
+  local entity, err, err_t = self:select(primary_key, select_options)
   if err then
     return nil, err, err_t
   end
@@ -1310,7 +1320,7 @@ function DAO:delete(pk_or_entity, options)
     end
   end
 
-  local cascade_entries = find_cascade_delete_entities(self, primary_key, show_ws_id)
+  local cascade_entries = find_cascade_delete_entities(self, primary_key, select_options)
 
   local ws_id = entity.ws_id
   local _
@@ -1472,12 +1482,12 @@ function DAO:post_crud_event(operation, entity, old_entity, options)
   if self.events then
     local entity_without_nulls
     if entity then
-      entity_without_nulls = remove_nulls(utils.cycle_aware_deep_copy(entity, true))
+      entity_without_nulls = remove_nulls(kong_table.cycle_aware_deep_copy(entity, true))
     end
 
     local old_entity_without_nulls
     if old_entity then
-      old_entity_without_nulls = remove_nulls(utils.cycle_aware_deep_copy(old_entity, true))
+      old_entity_without_nulls = remove_nulls(kong_table.cycle_aware_deep_copy(old_entity, true))
     end
 
     local ok, err = self.events.post_local("dao:crud", operation, {

@@ -1,8 +1,8 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local utils = require "kong.tools.utils"
 local pretty = require "pl.pretty"
 local to_hex = require "resty.string".to_hex
+local get_rand_bytes = require("kong.tools.rand").get_rand_bytes
 
 local fmt = string.format
 
@@ -17,12 +17,12 @@ local http_route_clear_host       = "http-clear-route"
 local http_route_no_preserve_host = "http-no-preserve-route"
 
 local function gen_trace_id()
-  return to_hex(utils.get_rand_bytes(16))
+  return to_hex(get_rand_bytes(16))
 end
 
 
 local function gen_span_id()
-  return to_hex(utils.get_rand_bytes(8))
+  return to_hex(get_rand_bytes(8))
 end
 
 local function get_span(name, spans)
@@ -73,7 +73,7 @@ local function setup_otel_old_propagation(bp, service)
     }).id},
     config = {
       -- fake endpoint, request to backend will sliently fail
-      endpoint = "http://localhost:8080/v1/traces",
+      traces_endpoint = "http://localhost:8080/v1/traces",
     }
   })
 
@@ -84,7 +84,7 @@ local function setup_otel_old_propagation(bp, service)
       hosts = { http_route_ignore_host },
     }).id},
     config = {
-      endpoint = "http://localhost:8080/v1/traces",
+      traces_endpoint = "http://localhost:8080/v1/traces",
       header_type = "ignore",
     }
   })
@@ -96,7 +96,7 @@ local function setup_otel_old_propagation(bp, service)
       hosts = { http_route_w3c_host },
     }).id},
     config = {
-      endpoint = "http://localhost:8080/v1/traces",
+      traces_endpoint = "http://localhost:8080/v1/traces",
       header_type = "w3c",
     }
   })
@@ -108,7 +108,7 @@ local function setup_otel_old_propagation(bp, service)
       hosts = { http_route_dd_host },
     }).id},
     config = {
-      endpoint = "http://localhost:8080/v1/traces",
+      traces_endpoint = "http://localhost:8080/v1/traces",
       header_type = "datadog",
     }
   })
@@ -120,7 +120,7 @@ local function setup_otel_old_propagation(bp, service)
       hosts = { http_route_b3_single_host },
     }).id},
     config = {
-      endpoint = "http://localhost:8080/v1/traces",
+      traces_endpoint = "http://localhost:8080/v1/traces",
       header_type = "b3-single",
     }
   })
@@ -136,7 +136,7 @@ local function setup_otel_new_propagation(bp, service)
       hosts = { http_route_host },
     }).id},
     config = {
-      endpoint = "http://localhost:8080/v1/traces",
+      traces_endpoint = "http://localhost:8080/v1/traces",
       propagation = {
         extract = { "b3", "w3c", "jaeger", "ot", "datadog", "aws", "gcp" },
         inject = { "preserve" },
@@ -152,7 +152,7 @@ local function setup_otel_new_propagation(bp, service)
       hosts = { http_route_ignore_host },
     }).id},
     config = {
-      endpoint = "http://localhost:8080/v1/traces",
+      traces_endpoint = "http://localhost:8080/v1/traces",
       propagation = {
         extract = { },
         inject = { "preserve" },
@@ -168,7 +168,7 @@ local function setup_otel_new_propagation(bp, service)
       hosts = { http_route_w3c_host },
     }).id},
     config = {
-      endpoint = "http://localhost:8080/v1/traces",
+      traces_endpoint = "http://localhost:8080/v1/traces",
       propagation = {
         extract = { "b3", "w3c", "jaeger", "ot", "datadog", "aws", "gcp" },
         inject = { "preserve", "w3c" },
@@ -184,7 +184,7 @@ local function setup_otel_new_propagation(bp, service)
       hosts = { http_route_dd_host },
     }).id},
     config = {
-      endpoint = "http://localhost:8080/v1/traces",
+      traces_endpoint = "http://localhost:8080/v1/traces",
       propagation = {
         extract = { "b3", "w3c", "jaeger", "ot", "datadog", "aws", "gcp" },
         inject = { "preserve", "datadog" },
@@ -200,7 +200,7 @@ local function setup_otel_new_propagation(bp, service)
       hosts = { http_route_b3_single_host },
     }).id},
     config = {
-      endpoint = "http://localhost:8080/v1/traces",
+      traces_endpoint = "http://localhost:8080/v1/traces",
       propagation = {
         extract = { "b3", "w3c", "jaeger", "ot", "datadog", "aws", "gcp" },
         inject = { "preserve", "b3-single" },
@@ -218,7 +218,7 @@ local function setup_otel_new_propagation(bp, service)
       hosts = { http_route_no_preserve_host },
     }).id},
     config = {
-      endpoint = "http://localhost:8080/v1/traces",
+      traces_endpoint = "http://localhost:8080/v1/traces",
       -- old configuration ignored when new propagation configuration is provided
       header_type = "preserve",
       propagation = {
@@ -237,7 +237,7 @@ local function setup_otel_new_propagation(bp, service)
       hosts = { http_route_clear_host },
     }).id},
     config = {
-      endpoint = "http://localhost:8080/v1/traces",
+      traces_endpoint = "http://localhost:8080/v1/traces",
       propagation = {
         extract = { "w3c", "ot" },
         inject = { "preserve" },
@@ -621,7 +621,7 @@ for _, sampling_rate in ipairs({1, 0, 0.5}) do
         }).id},
         config = {
           -- fake endpoint, request to backend will sliently fail
-          endpoint = "http://localhost:8080/v1/traces",
+          traces_endpoint = "http://localhost:8080/v1/traces",
           sampling_rate = sampling_rate,
         }
       })
@@ -776,7 +776,7 @@ describe("propagation tests with enabled " .. instrumentation .. " instrumentati
       name = "opentelemetry",
       route = {id = route.id},
       config = {
-        endpoint = "http://localhost:8080/v1/traces",
+        traces_endpoint = "http://localhost:8080/v1/traces",
       }
     })
 

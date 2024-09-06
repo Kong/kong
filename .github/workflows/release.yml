@@ -1,9 +1,6 @@
 name: Package & Release
 
 # The workflow to build and release official Kong packages and images.
-#
-# TODO:
-# Do not bump the version of actions/checkout to v4 before dropping rhel7 and amazonlinux2.
 
 on:  # yamllint disable-line rule:truthy
   pull_request:
@@ -60,7 +57,7 @@ jobs:
       commit-sha: ${{ github.event.pull_request.head.sha || github.sha }}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Build Info
       id: build-info
       run: |
@@ -132,15 +129,15 @@ jobs:
 
     - name: Cache Git
       id: cache-git
-      if: (matrix.package == 'rpm' || matrix.image == 'debian:10') && matrix.image != ''
+      if: (matrix.package == 'rpm') && matrix.image != ''
       uses: actions/cache@v4
       with:
         path: /usr/local/git
         key: ${{ matrix.label }}-git-2.41.0
 
-    # el-7,8, amazonlinux-2,2023, debian-10 doesn't have git 2.18+, so we need to install it manually
+    # el-7,8, amazonlinux-2,2023 doesn't have git 2.18+, so we need to install it manually
     - name: Install newer Git
-      if: (matrix.package == 'rpm' || matrix.image == 'debian:10') && matrix.image != '' && steps.cache-git.outputs.cache-hit != 'true'
+      if: (matrix.package == 'rpm') && matrix.image != '' && steps.cache-git.outputs.cache-hit != 'true'
       run: |
         if which apt 2>/dev/null; then
           apt update
@@ -154,30 +151,18 @@ jobs:
         tar xf git-2.41.0.tar.gz
         cd git-2.41.0
 
-        # https://gitlab.com/gitlab-org/omnibus-gitlab/-/merge_requests/5948/diffs
-        if [[ ${{ matrix.image }} == "centos:7" ]]; then
-          echo 'CFLAGS=-std=gnu99' >> config.mak
-        fi
-
         make configure
         ./configure --prefix=/usr/local/git
         make -j$(nproc)
         make install
 
     - name: Add Git to PATH
-      if: (matrix.package == 'rpm' || matrix.image == 'debian:10') && matrix.image != ''
+      if: (matrix.package == 'rpm') && matrix.image != ''
       run: |
         echo "/usr/local/git/bin" >> $GITHUB_PATH
 
-    - name: Debian Git dependencies
-      if: matrix.image == 'debian:10'
-      run: |
-        apt update
-        # dependencies for git
-        apt install -y wget libz-dev libssl-dev libcurl4-gnutls-dev libexpat1-dev sudo
-
     - name: Checkout Kong source code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Swap git with https
       run: git config --global url."https://github".insteadOf git://github
@@ -204,7 +189,7 @@ jobs:
         grep -v '^#' .requirements >> $GITHUB_ENV
 
     - name: Setup Bazel
-      uses: bazelbuild/setup-bazelisk@b39c379c82683a5f25d34f0d062761f62693e0b2 # v3.0.0
+      uses: bazelbuild/setup-bazelisk@95c9bf48d0c570bb3e28e57108f3450cd67c1a44 # v2.0.0
 
     - name: Install Deb Dependencies
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true'
@@ -270,7 +255,7 @@ jobs:
         sudo dmesg || true
         tail -n500 bazel-out/**/*/CMake.log || true
 
-    - name: Upload artifact
+    - name: Upload artifacts
       uses: actions/upload-artifact@v3
       with:
         name: ${{ matrix.label }}-packages
@@ -288,7 +273,7 @@ jobs:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-packages'] }}"
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Download artifact
       uses: actions/download-artifact@v3
@@ -324,7 +309,7 @@ jobs:
         include: "${{ fromJSON(needs.metadata.outputs.matrix)['build-images'] }}"
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Download artifact
       uses: actions/download-artifact@v3
@@ -398,7 +383,7 @@ jobs:
         platforms: ${{ steps.docker_platforms_arg.outputs.platforms }}
         build-args: |
           KONG_BASE_IMAGE=${{ matrix.base-image }}
-          KONG_ARTIFACT_PATH=bazel-bin/pkg/
+          KONG_ARTIFACT_PATH=bazel-bin/pkg
           KONG_VERSION=${{ needs.metadata.outputs.kong-version }}
           RPM_PLATFORM=${{ steps.docker_rpm_platform_arg.outputs.rpm_platform }}
           EE_PORTS=8002 8445 8003 8446 8004 8447
@@ -451,8 +436,10 @@ jobs:
     name: Scan Images - ${{ matrix.label }}
     needs: [metadata, build-images]
     runs-on: ubuntu-22.04
+    timeout-minutes: ${{ fromJSON(vars.GHA_DEFAULT_TIMEOUT) }}
     if: |-
       always()
+      && vars.DISABLE_SCA_SCAN == 'false'
       && fromJSON(needs.metadata.outputs.matrix)['scan-vulnerabilities'] != ''
       && needs.build-images.result == 'success'
       && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'))
@@ -498,7 +485,7 @@ jobs:
     - name: Scan AMD64 Image digest
       id: sbom_action_amd64
       if: steps.image_manifest_metadata.outputs.amd64_sha != ''
-      uses: Kong/public-shared-actions/security-actions/scan-docker-image@v2
+      uses: Kong/public-shared-actions/security-actions/scan-docker-image@5c685ec0bc8d18f9faa540cb66837c326176c541
       with:
         asset_prefix: kong-${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}-linux-amd64
         image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
@@ -506,7 +493,7 @@ jobs:
     - name: Scan ARM64 Image digest
       if: steps.image_manifest_metadata.outputs.manifest_list_exists == 'true' && steps.image_manifest_metadata.outputs.arm64_sha != ''
       id: sbom_action_arm64
-      uses: Kong/public-shared-actions/security-actions/scan-docker-image@v2
+      uses: Kong/public-shared-actions/security-actions/scan-docker-image@5c685ec0bc8d18f9faa540cb66837c326176c541
       with:
         asset_prefix: kong-${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}-linux-arm64
         image: ${{ needs.metadata.outputs.prerelease-docker-repository }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
@@ -597,6 +584,12 @@ jobs:
         username: ${{ secrets.GHA_DOCKERHUB_PUSH_USER }}
         password: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PUSH_TOKEN }}
 
+    - uses: actions/checkout@v3
+
+    - name: Get latest commit SHA on master
+      run: |
+        echo "latest_sha=$(git ls-remote origin -h refs/heads/master | cut -f1)" >> $GITHUB_ENV
+
     - name: Docker meta
       id: meta
       uses: docker/metadata-action@v5
@@ -604,7 +597,7 @@ jobs:
         images: ${{ needs.metadata.outputs.docker-repository }}
         sep-tags: " "
         tags: |
-          type=raw,value=latest,enable=${{ matrix.label == 'ubuntu' }}
+          type=raw,value=latest,enable=${{ matrix.label == 'ubuntu' && github.ref_name == 'master' && env.latest_sha == needs.metadata.outputs.commit-sha }}
           type=match,enable=${{ github.event_name == 'workflow_dispatch' }},pattern=\d.\d,value=${{ github.event.inputs.version }}
           type=match,enable=${{ github.event_name == 'workflow_dispatch' && matrix.label == 'ubuntu' }},pattern=\d.\d,value=${{ github.event.inputs.version }},suffix=
           type=raw,enable=${{ github.event_name == 'workflow_dispatch' }},${{ github.event.inputs.version }}

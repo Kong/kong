@@ -1,14 +1,15 @@
 local Queue = require "kong.tools.queue"
-local utils = require "kong.tools.utils"
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local helpers = require "spec.helpers"
 local mocker = require "spec.fixtures.mocker"
 local timerng = require "resty.timerng"
 local queue_schema = require "kong.tools.queue_schema"
+local uuid = require("kong.tools.uuid").uuid
 local queue_num = 1
 
 
 local function queue_conf(conf)
-  local defaulted_conf = utils.cycle_aware_deep_copy(conf)
+  local defaulted_conf = cycle_aware_deep_copy(conf)
   if not conf.name then
     defaulted_conf.name = "test-" .. tostring(queue_num)
     queue_num = queue_num + 1
@@ -70,7 +71,7 @@ describe("plugin queue", function()
           err = function(message) return log('ERR', message) end,
         },
         plugin = {
-          get_id = function () return utils.uuid() end,
+          get_id = function () return uuid() end,
         },
       },
       ngx = {
@@ -127,7 +128,7 @@ describe("plugin queue", function()
 
   it("displays log_tag in log entries", function ()
     local handler_invoked
-    local log_tag = utils.uuid()
+    local log_tag = uuid()
     Queue.enqueue(
       queue_conf({ name = "log-tag", log_tag = log_tag }),
       function ()
@@ -785,6 +786,94 @@ describe("plugin queue", function()
     assert.equal("One", processed[1])
     assert.equal("Three", processed[2])
     assert.match_re(log_messages, 'WARN \\[\\] queue continue-processing: handler could not process entries: .*: hard error')
-    assert.match_re(log_messages, 'ERR \\[\\] queue continue-processing: could not send entries, giving up after \\d retries.  1 queue entries were lost')  
+    assert.match_re(log_messages, 'ERR \\[\\] queue continue-processing: could not send entries due to max_retry_time exceeded. \\d queue entries were lost')
+  end)
+
+  it("sanity check for function Queue.is_full() & Queue.can_enqueue()", function()
+    local queue_conf = {
+      name = "queue-full-checking-too-many-entries",
+      max_batch_size = 99999, -- avoiding automatically flushing,
+      max_entries = 2,
+      max_bytes = nil, -- avoiding bytes limit
+      max_coalescing_delay = 99999, -- avoiding automatically flushing,
+      max_retry_time = 60,
+      initial_retry_delay = 1,
+      max_retry_delay = 60,
+      concurrency_limit = 1,
+    }
+
+    local function enqueue(queue_conf, entry)
+      Queue.enqueue(
+        queue_conf,
+        function()
+          return true
+        end,
+        nil,
+        entry
+      )
+    end
+
+    -- should be true if the queue does not exist
+    assert.is_true(Queue.can_enqueue(queue_conf))
+
+    assert.is_false(Queue.is_full(queue_conf))
+    assert.is_true(Queue.can_enqueue(queue_conf, "One"))
+    enqueue(queue_conf, "One")
+    assert.is_false(Queue.is_full(queue_conf))
+
+    assert.is_true(Queue.can_enqueue(queue_conf, "Two"))
+    enqueue(queue_conf, "Two")
+    assert.is_true(Queue.is_full(queue_conf))
+
+    assert.is_false(Queue.can_enqueue(queue_conf, "Three"))
+
+
+    queue_conf = {
+      name = "queue-full-checking-too-many-bytes",
+      max_batch_size = 99999, -- avoiding automatically flushing,
+      max_entries = 99999, -- big enough to avoid entries limit
+      max_bytes = 2,
+      max_coalescing_delay = 99999, -- avoiding automatically flushing,
+      max_retry_time = 60,
+      initial_retry_delay = 1,
+      max_retry_delay = 60,
+      concurrency_limit = 1,
+    }
+
+    -- should be true if the queue does not exist
+    assert.is_true(Queue.can_enqueue(queue_conf))
+
+    assert.is_false(Queue.is_full(queue_conf))
+    assert.is_true(Queue.can_enqueue(queue_conf, "1"))
+    enqueue(queue_conf, "1")
+    assert.is_false(Queue.is_full(queue_conf))
+
+    assert.is_true(Queue.can_enqueue(queue_conf, "2"))
+    enqueue(queue_conf, "2")
+    assert.is_true(Queue.is_full(queue_conf))
+
+    assert.is_false(Queue.can_enqueue(queue_conf, "3"))
+
+    queue_conf = {
+      name = "queue-full-checking-too-large-entry",
+      max_batch_size = 99999, -- avoiding automatically flushing,
+      max_entries = 99999, -- big enough to avoid entries limit
+      max_bytes = 3,
+      max_coalescing_delay = 99999, -- avoiding automatically flushing,
+      max_retry_time = 60,
+      initial_retry_delay = 1,
+      max_retry_delay = 60,
+      concurrency_limit = 1,
+    }
+
+    -- should be true if the queue does not exist
+    assert.is_true(Queue.can_enqueue(queue_conf))
+
+    enqueue(queue_conf, "1")
+
+    assert.is_false(Queue.is_full(queue_conf))
+    assert.is_true(Queue.can_enqueue(queue_conf, "1"))
+    assert.is_true(Queue.can_enqueue(queue_conf, "11"))
+    assert.is_false(Queue.can_enqueue(queue_conf, "111"))
   end)
 end)

@@ -1,7 +1,7 @@
 OS := $(shell uname | awk '{print tolower($$0)}')
 MACHINE := $(shell uname -m)
 
-DEV_ROCKS = "busted 2.2.0" "busted-hjtest 0.0.5" "luacheck 1.1.2" "lua-llthreads2 0.1.6" "ldoc 1.5.0" "luacov 0.15.0"
+DEV_ROCKS = "busted 2.2.0" "busted-hjtest 0.0.5" "luacheck 1.2.0" "lua-llthreads2 0.1.6" "ldoc 1.5.0" "luacov 0.15.0"
 WIN_SCRIPTS = "bin/busted" "bin/kong" "bin/kong-health"
 BUSTED_ARGS ?= -v
 TEST_CMD ?= bin/busted $(BUSTED_ARGS)
@@ -39,12 +39,12 @@ endif
 .PHONY: install dev \
 	lint test test-integration test-plugins test-all \
 	pdk-phase-check functional-tests \
-	fix-windows release wasm-test-filters
+	fix-windows release wasm-test-filters test-logs
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 KONG_SOURCE_LOCATION ?= $(ROOT_DIR)
 GRPCURL_VERSION ?= 1.8.5
-BAZLISK_VERSION ?= 1.19.0
+BAZLISK_VERSION ?= 1.20.0
 H2CLIENT_VERSION ?= 0.4.4
 BAZEL := $(shell command -v bazel 2> /dev/null)
 VENV = /dev/null # backward compatibility when no venv is built
@@ -90,6 +90,14 @@ build-venv: check-bazel
 		$(BAZEL) build //build:venv --verbose_failures --action_env=BUILD_NAME=$(BUILD_NAME); \
 	fi
 
+build-openresty: check-bazel
+
+	@if [ ! -e bazel-bin/build/$(BUILD_NAME)/openresty ]; then \
+		$(BAZEL) build //build:install-openresty --verbose_failures --action_env=BUILD_NAME=$(BUILD_NAME); \
+	else \
+		$(BAZEL) build //build:dev-make-openresty --verbose_failures --action_env=BUILD_NAME=$(BUILD_NAME); \
+	fi
+
 install-dev-rocks: build-venv
 	@. $(VENV) ;\
 	for rock in $(DEV_ROCKS) ; do \
@@ -111,12 +119,8 @@ build-release: check-bazel
 package/deb: check-bazel build-release
 	$(BAZEL) build --config release :kong_deb
 
-package/apk: check-bazel build-release
-	$(BAZEL) build --config release :kong_apk
-
 package/rpm: check-bazel build-release
 	$(BAZEL) build --config release :kong_el8 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE
-	$(BAZEL) build --config release :kong_el7 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE
 	$(BAZEL) build --config release :kong_aws2	--action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE
 	$(BAZEL) build --config release :kong_aws2022 --action_env=RPM_SIGNING_KEY_FILE --action_env=NFPM_RPM_PASSPHRASE
 
@@ -158,6 +162,9 @@ ifndef test_spec
 	$(error test_spec variable needs to be set, i.e. make test-custom test_spec=foo/bar/baz_spec.lua)
 endif
 	@$(VENV) $(TEST_CMD) $(test_spec)
+
+test-logs:
+	tail -F servroot/logs/error.log
 
 pdk-phase-checks: dev
 	rm -f t/phase_checks.stats

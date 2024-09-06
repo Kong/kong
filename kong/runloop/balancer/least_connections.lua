@@ -14,8 +14,7 @@ local binaryHeap = require "binaryheap"
 local ngx_log = ngx.log
 local ngx_DEBUG = ngx.DEBUG
 
-local EMPTY = setmetatable({},
-        {__newindex = function() error("The 'EMPTY' table is read-only") end})
+local EMPTY = require("kong.tools.table").EMPTY
 
 
 local lc = {}

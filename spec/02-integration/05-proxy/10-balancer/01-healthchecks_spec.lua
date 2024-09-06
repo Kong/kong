@@ -1,7 +1,7 @@
 local bu = require "spec.fixtures.balancer_utils"
 local cjson = require "cjson"
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 
 
 local https_server = helpers.https_server
@@ -38,7 +38,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       fixtures.dns_mock:SRV {
-        name = "my.srv.test.test",
+        name = "_srv._pro.my.srv.test.test",
         target = "a.my.srv.test.test",
         port = 80,  -- port should fail to connect
       }
@@ -57,7 +57,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       fixtures.dns_mock:SRV {
-        name = "srv-changes-port.test",
+        name = "_srv._pro.srv-changes-port.test",
         target = "a-changes-port.test",
         port = 90,  -- port should fail to connect
       }
@@ -114,7 +114,7 @@ for _, strategy in helpers.each_strategy() do
       })
       -- the following port will not be used, will be overwritten by
       -- the mocked SRV record.
-      bu.add_target(bp, upstream_id, "my.srv.test.test", 80)
+      bu.add_target(bp, upstream_id, "_srv._pro.my.srv.test.test", 80)
       local api_host = bu.add_api(bp, upstream_name)
       bu.end_testcase_setup(strategy, bp)
 
@@ -301,7 +301,7 @@ for _, strategy in helpers.each_strategy() do
       })
       -- the following port will not be used, will be overwritten by
       -- the mocked SRV record.
-      bu.add_target(bp, upstream_id, "srv-changes-port.test", 80)
+      bu.add_target(bp, upstream_id, "_srv._pro.srv-changes-port.test", 80)
       local api_host = bu.add_api(bp, upstream_name, { connect_timeout = 100, })
       bu.end_testcase_setup(strategy, bp)
 
@@ -328,7 +328,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equals("UNHEALTHY", health.data[1].health)
         assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
 
-        local status = bu.put_target_address_health(upstream_id, "srv-changes-port.test:80", "a-changes-port.test:90", "healthy")
+        local status = bu.put_target_address_health(upstream_id, "_srv._pro.srv-changes-port.test:80", "a-changes-port.test:90", "healthy")
         assert.same(204, status)
       end, 15)
 
@@ -1099,7 +1099,7 @@ for _, strategy in helpers.each_strategy() do
               local api_host, service_id = bu.add_api(bp, upstream_name, { connect_timeout = 50, })
 
               -- add a plugin
-              local plugin_id = utils.uuid()
+              local plugin_id = uuid.uuid()
               bp.plugins:insert({
                 id = plugin_id,
                 service = { id = service_id },
@@ -1780,7 +1780,7 @@ for _, strategy in helpers.each_strategy() do
 
                 for i = 1, 3 do
                   hosts[i] = {
-                    hostname = bu.gen_multi_host(),
+                    hostname = "_srv._pro." .. bu.gen_multi_host(),
                     port1 = helpers.get_available_port(),
                     port2 = helpers.get_available_port(),
                   }

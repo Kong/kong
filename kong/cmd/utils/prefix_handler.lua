@@ -5,6 +5,7 @@ local kong_nginx_stream_template = require "kong.templates.nginx_kong_stream"
 local nginx_main_inject_template = require "kong.templates.nginx_inject"
 local nginx_http_inject_template = require "kong.templates.nginx_kong_inject"
 local nginx_stream_inject_template = require "kong.templates.nginx_kong_stream_inject"
+local wasmtime_cache_template = require "kong.templates.wasmtime_cache_config"
 local system_constants = require "lua_system_constants"
 local process_secrets = require "kong.cmd.utils.process_secrets"
 local openssl_bignum = require "resty.openssl.bn"
@@ -14,7 +15,6 @@ local x509 = require "resty.openssl.x509"
 local x509_extension = require "resty.openssl.x509.extension"
 local x509_name = require "resty.openssl.x509.name"
 local pl_template = require "pl.template"
-local pl_stringx = require "pl.stringx"
 local pl_tablex = require "pl.tablex"
 local pl_utils = require "pl.utils"
 local pl_file = require "pl.file"
@@ -24,6 +24,10 @@ local log = require "kong.cmd.utils.log"
 local ffi = require "ffi"
 local bit = require "bit"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
+
+
+local strip = require("kong.tools.string").strip
+local split = require("kong.tools.string").split
 
 
 local getmetatable = getmetatable
@@ -41,6 +45,7 @@ local math = math
 local join = pl_path.join
 local io = io
 local os = os
+local fmt = string.format
 
 
 local function pre_create_private_file(file)
@@ -227,12 +232,16 @@ local function get_ulimit()
   if not ok then
     return nil, stderr
   end
-  local sanitized_limit = pl_stringx.strip(stdout)
+  local sanitized_limit = strip(stdout)
   if sanitized_limit:lower():match("unlimited") then
     return 65536
   else
     return tonumber(sanitized_limit)
   end
+end
+
+local function quote(s)
+  return fmt("%q", s)
 end
 
 local function compile_conf(kong_config, conf_template, template_env_inject)
@@ -244,7 +253,8 @@ local function compile_conf(kong_config, conf_template, template_env_inject)
     tostring = tostring,
     os = {
       getenv = os.getenv,
-    }
+    },
+    quote = quote,
   }
 
   local kong_proxy_access_log = kong_config.proxy_access_log
@@ -419,6 +429,10 @@ local function compile_nginx_conf(kong_config, template)
   return compile_conf(kong_config, template)
 end
 
+local function compile_wasmtime_cache_conf(kong_config)
+  return compile_conf(kong_config, wasmtime_cache_template)
+end
+
 local function prepare_prefixed_interface_dir(usr_path, interface_dir, kong_config)
   local usr_interface_path = usr_path .. "/" .. interface_dir
   local interface_path = kong_config.prefix .. "/" .. interface_dir
@@ -465,6 +479,13 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
     end
   elseif not pl_path.isdir(kong_config.prefix) then
     return nil, kong_config.prefix .. " is not a directory"
+  end
+
+  if not exists(kong_config.socket_path) then
+    local ok, err = makepath(kong_config.socket_path)
+    if not ok then
+      return nil, err
+    end
   end
 
   -- create directories in prefix
@@ -673,6 +694,23 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
     return true
   end
 
+  if kong_config.wasm then
+    if kong_config.wasmtime_cache_directory then
+      local ok, err = makepath(kong_config.wasmtime_cache_directory)
+      if not ok then
+        return nil, err
+      end
+    end
+
+    if kong_config.wasmtime_cache_config_file  then
+      local wasmtime_conf, err = compile_wasmtime_cache_conf(kong_config)
+      if not wasmtime_conf then
+        return nil, err
+      end
+      pl_file.write(kong_config.wasmtime_cache_config_file, wasmtime_conf)
+    end
+  end
+
   -- compile Nginx configurations
   local nginx_template
   if nginx_custom_template_path then
@@ -697,7 +735,7 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
   end
 
   local template_env = {}
-  nginx_conf_flags = nginx_conf_flags and pl_stringx.split(nginx_conf_flags, ",") or {}
+  nginx_conf_flags = nginx_conf_flags and split(nginx_conf_flags, ",") or {}
   for _, flag in ipairs(nginx_conf_flags) do
     template_env[flag] = true
   end

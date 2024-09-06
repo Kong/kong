@@ -1,8 +1,9 @@
 -- Copyright (C) Kong Inc.
 
-local strip = require("pl.stringx").strip
+local strip = require("kong.tools.string").strip
 local kong_meta = require "kong.meta"
 local tonumber = tonumber
+local lfs = require "lfs"
 
 
 local RequestSizeLimitingHandler = {}
@@ -52,6 +53,15 @@ function RequestSizeLimitingHandler:access(conf)
     local data = kong.request.get_raw_body()
     if data then
       check_size(#data, conf.allowed_payload_size, headers, conf.size_unit)
+    else
+      -- Check the file size when the request body buffered to a temporary file
+      local body_filepath = ngx.req.get_body_file()
+      if body_filepath then
+        local file_size = lfs.attributes(body_filepath, "size")
+        check_size(file_size, conf.allowed_payload_size, headers, conf.size_unit)
+      else 
+        kong.log.warn("missing request body")
+      end
     end
   end
 end

@@ -1,9 +1,9 @@
 
 local dns_utils = require "kong.resty.dns.utils"
 local mocker = require "spec.fixtures.mocker"
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 
-local ws_id = utils.uuid()
+local ws_id = uuid.uuid()
 
 local client, balancers, targets
 
@@ -153,11 +153,17 @@ local function validate_lcb(b, debug)
 end
 
 
-describe("[least-connections]", function()
+for _, enable_new_dns_client in ipairs{ false, true } do
+
+describe("[least-connections]" .. (enable_new_dns_client and "[new dns]" or ""), function()
+  local srv_name = enable_new_dns_client and "_test._tcp.konghq.com"
+                                         or  "konghq.com"
 
   local snapshot
 
   setup(function()
+    _G.busted_new_dns_client = enable_new_dns_client
+
     _G.package.loaded["kong.resty.dns.client"] = nil -- make sure module is reloaded
     _G.package.loaded["kong.runloop.balancer.targets"] = nil -- make sure module is reloaded
 
@@ -219,6 +225,7 @@ describe("[least-connections]", function()
       resolvConf = {
         "nameserver 198.51.100.0"
       },
+      cache_purge = true,
     })
     snapshot = assert:snapshot()
   end)
@@ -261,10 +268,10 @@ describe("[least-connections]", function()
 
     it("honours weights", function()
       dnsSRV({
-        { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
-        { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },
+        { name = srv_name, target = "20.20.20.20", port = 80, weight = 20 },
+        { name = srv_name, target = "50.50.50.50", port = 80, weight = 50 },
       })
-      local b = validate_lcb(new_balancer({ "konghq.com" }))
+      local b = validate_lcb(new_balancer({ srv_name }))
 
       local counts = {}
       local handles = {}
@@ -285,10 +292,10 @@ describe("[least-connections]", function()
 
     it("first returns top weights, on a 0-connection balancer", function()
       dnsSRV({
-        { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
-        { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },
+        { name = srv_name, target = "20.20.20.20", port = 80, weight = 20 },
+        { name = srv_name, target = "50.50.50.50", port = 80, weight = 50 },
       })
-      local b = validate_lcb(new_balancer({ "konghq.com" }))
+      local b = validate_lcb(new_balancer({ srv_name }))
 
       local handles = {}
       local ip, _, handle
@@ -315,13 +322,13 @@ describe("[least-connections]", function()
 
     it("doesn't use unavailable addresses", function()
       dnsSRV({
-        { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
-        { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },
+        { name = srv_name, target = "20.20.20.20", port = 80, weight = 20 },
+        { name = srv_name, target = "50.50.50.50", port = 80, weight = 50 },
       })
-      local b = validate_lcb(new_balancer({ "konghq.com" }))
+      local b = validate_lcb(new_balancer({ srv_name }))
 
       -- mark one as unavailable
-      b:setAddressStatus(b:findAddress("50.50.50.50", 80, "konghq.com"), false)
+      b:setAddressStatus(b:findAddress("50.50.50.50", 80, srv_name), false)
       local counts = {}
       local handles = {}
       for i = 1,70 do
@@ -341,13 +348,13 @@ describe("[least-connections]", function()
 
     it("uses reenabled (available) addresses again", function()
       dnsSRV({
-        { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
-        { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },
+        { name = srv_name, target = "20.20.20.20", port = 80, weight = 20 },
+        { name = srv_name, target = "50.50.50.50", port = 80, weight = 50 },
       })
-      local b = validate_lcb(new_balancer({ "konghq.com" }))
+      local b = validate_lcb(new_balancer({ srv_name }))
 
       -- mark one as unavailable
-      b:setAddressStatus(b:findAddress("20.20.20.20", 80, "konghq.com"), false)
+      b:setAddressStatus(b:findAddress("20.20.20.20", 80, srv_name), false)
       local counts = {}
       local handles = {}
       for i = 1,70 do
@@ -364,7 +371,7 @@ describe("[least-connections]", function()
       }, counts)
 
       -- let's do another 70, after resetting
-      b:setAddressStatus(b:findAddress("20.20.20.20", 80, "konghq.com"), true)
+      b:setAddressStatus(b:findAddress("20.20.20.20", 80, srv_name), true)
       for i = 1,70 do
         local ip, _, _, handle = b:getPeer()
         counts[ip] = (counts[ip] or 0) + 1
@@ -387,11 +394,11 @@ describe("[least-connections]", function()
 
     it("does not return already failed addresses", function()
       dnsSRV({
-        { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
-        { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },
-        { name = "konghq.com", target = "70.70.70.70", port = 80, weight = 70 },
+        { name = srv_name, target = "20.20.20.20", port = 80, weight = 20 },
+        { name = srv_name, target = "50.50.50.50", port = 80, weight = 50 },
+        { name = srv_name, target = "70.70.70.70", port = 80, weight = 70 },
       })
-      local b = validate_lcb(new_balancer({ "konghq.com" }))
+      local b = validate_lcb(new_balancer({ srv_name }))
 
       local tried = {}
       local ip, _, handle
@@ -423,11 +430,11 @@ describe("[least-connections]", function()
 
     it("retries, after all addresses failed, restarts with previously failed ones", function()
       dnsSRV({
-        { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
-        { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },
-        { name = "konghq.com", target = "70.70.70.70", port = 80, weight = 70 },
+        { name = srv_name, target = "20.20.20.20", port = 80, weight = 20 },
+        { name = srv_name, target = "50.50.50.50", port = 80, weight = 50 },
+        { name = srv_name, target = "70.70.70.70", port = 80, weight = 70 },
       })
-      local b = validate_lcb(new_balancer({ "konghq.com" }))
+      local b = validate_lcb(new_balancer({ srv_name }))
 
       local tried = {}
       local ip, _, handle
@@ -448,10 +455,10 @@ describe("[least-connections]", function()
 
     it("releases the previous connection", function()
       dnsSRV({
-        { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
-        { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },
+        { name = srv_name, target = "20.20.20.20", port = 80, weight = 20 },
+        { name = srv_name, target = "50.50.50.50", port = 80, weight = 50 },
       })
-      local b = validate_lcb(new_balancer({ "konghq.com" }))
+      local b = validate_lcb(new_balancer({ srv_name }))
 
       local handle -- define outside loop, so it gets reused and released
       for i = 1,70 do
@@ -477,9 +484,9 @@ describe("[least-connections]", function()
 
     it("releases a connection", function()
       dnsSRV({
-        { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
+        { name = srv_name, target = "20.20.20.20", port = 80, weight = 20 },
       })
-      local b = validate_lcb(new_balancer({ "konghq.com" }))
+      local b = validate_lcb(new_balancer({ srv_name }))
 
       local ip, _, _, handle = b:getPeer()
       assert.equal("20.20.20.20", ip)
@@ -492,9 +499,9 @@ describe("[least-connections]", function()
 
     it("releases connection of already disabled/removed address", function()
       dnsSRV({
-        { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
+        { name = srv_name, target = "20.20.20.20", port = 80, weight = 20 },
       })
-      local b = validate_lcb(new_balancer({ "konghq.com" }))
+      local b = validate_lcb(new_balancer({ srv_name }))
 
       local ip, _, _, handle = b:getPeer()
       assert.equal("20.20.20.20", ip)
@@ -512,3 +519,5 @@ describe("[least-connections]", function()
   end)
 
 end)
+
+end

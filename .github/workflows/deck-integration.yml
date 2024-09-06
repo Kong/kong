@@ -1,0 +1,77 @@
+name: Gateway decK Integration Tests
+
+on:
+  pull_request:
+    paths:
+    - 'kong/db/schema/**/*.lua'
+    - 'kong/**/schema.lua'
+    - 'kong/plugins/**/daos.lua'
+    - 'kong/db/dao/*.lua'
+    - 'kong/api/**/*.lua'
+
+permissions:
+  pull-requests: write
+
+env:
+  LIBRARY_PREFIX: /usr/local/kong
+  TEST_RESULTS_XML_OUTPUT: test-results
+  BUILD_ROOT: ${{ github.workspace }}/bazel-bin/build
+
+# cancel previous runs if new commits are pushed to the PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      relative-build-root: bazel-bin/build
+
+  deck-integration:
+    name: Gateway decK integration tests
+    runs-on: ubuntu-22.04
+    needs: build
+    timeout-minutes: 5
+
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: kong
+          POSTGRES_DB: kong
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
+
+    steps:
+      - name: Install packages
+        run: sudo apt update && sudo apt install -y libyaml-dev valgrind libprotobuf-dev libpam-dev postgresql-client jq
+
+      - name: Checkout Kong source code
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+          token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
+
+      - name: Lookup build cache
+        id: cache-deps
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.BUILD_ROOT }}
+          key: ${{ needs.build.outputs.cache-key }}
+
+      - name: Install Kong dev
+        run: make dev
+
+      - name: Tests
+        id: deck_tests
+        env:
+          KONG_TEST_PG_DATABASE: kong
+          KONG_TEST_PG_USER: kong
+          KONG_TEST_DATABASE: postgres
+        run: |
+          mkdir $TEST_RESULTS_XML_OUTPUT
+          source ${{ env.BUILD_ROOT }}/kong-dev-venv.sh
+          bin/busted spec/06-third-party/01-deck -o hjtest -Xoutput $(realpath $TEST_RESULTS_XML_OUTPUT)/report.xml -v

@@ -38,8 +38,12 @@ wasm {
 > end
 > end
 
-> if #nginx_wasm_wasmtime_directives > 0 then
+> if #nginx_wasm_wasmtime_directives > 0 or wasmtime_cache_config_file then
   wasmtime {
+> if wasmtime_cache_config_file then
+    cache_config $(quote(wasmtime_cache_config_file));
+> end
+
 > for _, el in ipairs(nginx_wasm_wasmtime_directives) do
     flag $(el.name) $(el.value);
 > end
@@ -79,7 +83,7 @@ stream {
 
 > if cluster_ssl_tunnel then
     server {
-        listen unix:${{PREFIX}}/cluster_proxy_ssl_terminator.sock;
+        listen unix:${{SOCKET_PATH}}/${{CLUSTER_PROXY_SSL_TERMINATOR_SOCK}};
 
         proxy_pass ${{cluster_ssl_tunnel}};
         proxy_ssl on;

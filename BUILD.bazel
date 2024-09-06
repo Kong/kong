@@ -42,15 +42,6 @@ nfpm_pkg(
 )
 
 nfpm_pkg(
-    name = "kong_apk",
-    config = "//build:package/nfpm.yaml",
-    env = nfpm_env,
-    packager = "apk",
-    pkg_name = "kong",
-    visibility = ["//visibility:public"],
-)
-
-nfpm_pkg(
     name = "kong_el9",
     config = "//build:package/nfpm.yaml",
     env = nfpm_env,
@@ -65,18 +56,6 @@ nfpm_pkg(
     env = nfpm_env,
     packager = "rpm",
     pkg_name = "kong.el8",
-    visibility = ["//visibility:public"],
-)
-
-nfpm_pkg(
-    name = "kong_el7",
-    config = "//build:package/nfpm.yaml",
-    env = nfpm_env,
-    extra_env = {
-        "RPM_EXTRA_DEPS": "hostname",
-    },
-    packager = "rpm",
-    pkg_name = "kong.el7",
     visibility = ["//visibility:public"],
 )
 
@@ -123,6 +102,18 @@ config_setting(
     visibility = ["//visibility:public"],
 )
 
+config_setting(
+    name = "debug_linux_flag",
+    constraint_values = [
+        "@platforms//os:linux",
+    ],
+    flag_values = {
+        ":debug": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
+# --//:brotli=true
 bool_flag(
     name = "brotli",
     build_setting_default = True,
@@ -136,13 +127,16 @@ config_setting(
     visibility = ["//visibility:public"],
 )
 
+# --//:simdjson=true
+bool_flag(
+    name = "simdjson",
+    build_setting_default = True,
+)
+
 config_setting(
-    name = "debug_linux_flag",
-    constraint_values = [
-        "@platforms//os:linux",
-    ],
+    name = "simdjson_flag",
     flag_values = {
-        ":debug": "true",
+        ":simdjson": "true",
     },
     visibility = ["//visibility:public"],
 )
@@ -244,16 +238,16 @@ string_flag(
     visibility = ["//visibility:public"],
 )
 
-# --//:wasmx_el7_workaround=false
+# --//:skip_tools=false
 bool_flag(
-    name = "wasmx_el7_workaround",
+    name = "skip_tools",
     build_setting_default = False,
 )
 
 config_setting(
-    name = "wasmx_el7_workaround_flag",
+    name = "skip_tools_flag",
     flag_values = {
-        ":wasmx_el7_workaround": "true",
+        ":skip_tools": "true",
     },
     visibility = ["//visibility:public"],
 )
@@ -288,38 +282,6 @@ platform(
     ],
 )
 
-# backward compatibility
-alias(
-    name = "ubuntu-22.04-arm64",
-    actual = ":generic-crossbuild-aarch64",
-)
-
-platform(
-    name = "alpine-crossbuild-x86_64",
-    constraint_values = [
-        "@platforms//os:linux",
-        "@platforms//cpu:x86_64",
-        "//build/platforms/distro:alpine",
-        ":cross_build",
-    ],
-)
-
-# backward compatibility
-alias(
-    name = "alpine-x86_64",
-    actual = ":alpine-crossbuild-x86_64",
-)
-
-platform(
-    name = "alpine-crossbuild-aarch64",
-    constraint_values = [
-        "@platforms//os:linux",
-        "@platforms//cpu:aarch64",
-        "//build/platforms/distro:alpine",
-        ":cross_build",
-    ],
-)
-
 [
     platform(
         name = vendor + "-crossbuild-aarch64",
@@ -333,10 +295,20 @@ platform(
     for vendor in aarch64_glibc_distros
 ]
 
+platform(
+    name = "aws2-crossbuild-x86_64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+        "//build/platforms/distro:aws2",
+        ":cross_build",
+    ],
+)
+
 # config_settings define a select() condition based on user-set constraint_values
 # see https://bazel.build/docs/configurable-attributes
 config_setting(
-    name = "aarch64-linux-anylibc-cross",
+    name = "aarch64-linux-glibc-cross",
     constraint_values = [
         "@platforms//os:linux",
         "@platforms//cpu:aarch64",
@@ -346,11 +318,10 @@ config_setting(
 )
 
 config_setting(
-    name = "x86_64-linux-musl-cross",
+    name = "x86_64-linux-glibc-cross",
     constraint_values = [
         "@platforms//os:linux",
         "@platforms//cpu:x86_64",
-        "//build/platforms/distro:alpine",
         ":cross_build",
     ],
     visibility = ["//visibility:public"],
@@ -360,8 +331,8 @@ selects.config_setting_group(
     # matches all cross build platforms
     name = "any-cross",
     match_any = [
-        ":aarch64-linux-anylibc-cross",
-        ":x86_64-linux-musl-cross",
+        ":aarch64-linux-glibc-cross",
+        ":x86_64-linux-glibc-cross",
     ],
     visibility = ["//visibility:public"],
 )

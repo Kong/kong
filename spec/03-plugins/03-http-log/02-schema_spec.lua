@@ -2,7 +2,7 @@ local PLUGIN_NAME = "http-log"
 
 
 local Queue = require "kong.tools.queue"
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 local mocker = require "spec.fixtures.mocker"
 
 -- helper function to validate data against a schema
@@ -37,7 +37,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
           err = function(message) return log('ERR', message) end,
         },
         plugin = {
-          get_id = function () return utils.uuid() end,
+          get_id = function () return uuid.uuid() end,
         },
       },
       ngx = {

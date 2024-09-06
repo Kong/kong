@@ -2,11 +2,11 @@ local meta = require "kong.meta"
 local helpers = require "spec.helpers"
 local constants = require "kong.constants"
 local cjson = require "cjson"
-local utils   = require "kong.tools.utils"
+local uuid   = require("kong.tools.uuid").uuid
 
 
 local default_server_header = meta._SERVER_TOKENS
-
+local default_via_value =  "1.1 " .. default_server_header
 
 for _, strategy in helpers.each_strategy() do
 describe("headers [#" .. strategy .. "]", function()
@@ -95,7 +95,7 @@ describe("headers [#" .. strategy .. "]", function()
 
         assert.res_status(200, res)
         assert.not_equal(default_server_header, res.headers["server"])
-        assert.equal(default_server_header, res.headers["via"])
+        assert.equal(default_via_value, res.headers["via"])
       end)
 
       it("should return Kong 'Server' header but not the Kong 'Via' header when no API matched (no proxy)", function()
@@ -146,8 +146,8 @@ describe("headers [#" .. strategy .. "]", function()
         })
 
         assert.res_status(200, res)
-        assert.equal(default_server_header, res.headers["via"])
-        assert.not_equal(default_server_header, res.headers["server"])
+        assert.equal(default_via_value, res.headers["via"])
+        assert.not_equal(default_via_value, res.headers["server"])
       end)
 
       it("should not return Kong 'Via' header or Kong 'Via' header when no API matched (no proxy)", function()
@@ -223,7 +223,7 @@ describe("headers [#" .. strategy .. "]", function()
 
         assert.res_status(200, res)
         assert.not_equal(default_server_header, res.headers["server"])
-        assert.equal(default_server_header, res.headers["via"])
+        assert.equal(default_via_value, res.headers["via"])
       end)
 
       it("should return Kong 'Server' header but not the Kong 'Via' header when no API matched (no proxy)", function()
@@ -455,7 +455,7 @@ describe("headers [#" .. strategy .. "]", function()
       if strategy ~= "off" then
         it("should not be returned when plugin errors on rewrite phase", function()
           local admin_client = helpers.admin_client()
-          local uuid = utils.uuid()
+          local uuid = uuid()
           local res = assert(admin_client:send {
             method = "PUT",
             path = "/plugins/" .. uuid,
@@ -746,7 +746,7 @@ describe("headers [#" .. strategy .. "]", function()
 
         assert.res_status(200, res)
         assert.not_equal(default_server_header, res.headers["server"])
-        assert.equal(default_server_header, res.headers["via"])
+        assert.equal(default_via_value, res.headers["via"])
         assert.is_not_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
         assert.is_nil(res.headers[constants.HEADERS.RESPONSE_LATENCY])
       end)
@@ -807,7 +807,7 @@ describe("headers [#" .. strategy .. "]", function()
 
         assert.res_status(200, res)
         assert.not_equal(default_server_header, res.headers["server"])
-        assert.equal(default_server_header, res.headers["via"])
+        assert.equal(default_via_value, res.headers["via"])
         assert.is_not_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
         assert.is_nil(res.headers[constants.HEADERS.RESPONSE_LATENCY])
       end)
@@ -885,7 +885,7 @@ describe("headers [#" .. strategy .. "]", function()
 
         assert.res_status(200, res)
         assert.not_equal(default_server_header, res.headers["server"])
-        assert.equal(default_server_header, res.headers["via"])
+        assert.equal(default_via_value, res.headers["via"])
         assert.is_not_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
         assert.is_nil(res.headers[constants.HEADERS.RESPONSE_LATENCY])
       end)

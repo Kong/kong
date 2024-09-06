@@ -1,7 +1,7 @@
 --- Contextual data for the current request.
 --
 -- @module kong.ctx
-local base = require "resty.core.base"
+local get_request = require("resty.core.base").get_request
 
 
 local setmetatable = setmetatable
@@ -14,8 +14,8 @@ local _CTX_CORE_KEY = {}
 
 
 ---
--- A table that has the same lifetime as the current request. This table is shared 
--- between all plugins. It can be used to share data between several plugins in a 
+-- A table that has the same lifetime as the current request. This table is shared
+-- between all plugins. It can be used to share data between several plugins in a
 -- given request.
 --
 -- This table is only relevant in the context of a request and cannot be
@@ -112,7 +112,7 @@ local function new()
   local _ctx_mt = {}
 
   function _ctx_mt.__index(_, k)
-    if not base.get_request() then
+    if not get_request() then
       return
     end
 

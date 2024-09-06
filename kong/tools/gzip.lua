@@ -1,5 +1,6 @@
 local buffer = require "string.buffer"
 local zlib = require "ffi-zlib"
+local yield = require("kong.tools.yield").yield
 
 
 local inflate_gzip  = zlib.inflateGzip
@@ -15,7 +16,16 @@ local GZIP_CHUNK_SIZE = 65535
 
 
 local function read_input_buffer(input_buffer)
+  local count = 0
+  local yield_size = GZIP_CHUNK_SIZE * 2
+
   return function(size)
+    count = count + size
+    if count > yield_size then
+      count = 0
+      yield()
+    end
+
     local data = input_buffer:get(size)
     return data ~= "" and data or nil
   end

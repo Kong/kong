@@ -1,9 +1,8 @@
 local multipart = require "multipart"
 local cjson = require("cjson.safe").new()
 local pl_template = require "pl.template"
-local pl_tablex = require "pl.tablex"
 local sandbox = require "kong.tools.sandbox"
-local utils = require "kong.tools.utils"
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 local table_insert = table.insert
 local get_uri_args = kong.request.get_query
@@ -35,7 +34,7 @@ local CONTENT_LENGTH = "content-length"
 local CONTENT_TYPE = "content-type"
 local HOST = "host"
 local JSON, MULTI, ENCODED = "json", "multi_part", "form_encoded"
-local EMPTY = pl_tablex.readonly({})
+local EMPTY = require("kong.tools.table").EMPTY
 
 
 local compile_opts = {
@@ -148,6 +147,19 @@ local function append_value(current_value, value)
   end
 end
 
+local function rename(tbl, old_name, new_name)
+  if old_name == new_name then
+    return
+  end
+
+  local value = tbl[old_name]
+  if value then
+    tbl[old_name] = nil
+    tbl[new_name] = value
+    return true
+  end
+end
+
 local function transform_headers(conf, template_env)
   local headers = get_headers()
   local headers_to_remove = {}
@@ -165,11 +177,17 @@ local function transform_headers(conf, template_env)
 
   -- Rename headers(s)
   for _, old_name, new_name in iter(conf.rename.headers, template_env) do
-    old_name = old_name:lower()
-    local value = headers[old_name]
-    if value then
-      headers[new_name:lower()] = value
-      headers[old_name] = nil
+    local lower_old_name, lower_new_name = old_name:lower(), new_name:lower()
+    -- headers by default are case-insensitive
+    -- but if we have a case change, we need to handle it as a special case
+    local need_remove
+    if lower_old_name == lower_new_name then
+      need_remove = rename(headers, old_name, new_name)
+    else
+      need_remove = rename(headers, lower_old_name, lower_new_name)
+    end
+
+    if need_remove then
       headers_to_remove[old_name] = true
     end
   end
@@ -221,7 +239,7 @@ local function transform_querystrings(conf, template_env)
     return
   end
 
-  local querystring = utils.cycle_aware_deep_copy(template_env.query_params)
+  local querystring = cycle_aware_deep_copy(template_env.query_params)
 
   -- Remove querystring(s)
   for _, name, value in iter(conf.remove.querystring, template_env) do
@@ -230,9 +248,7 @@ local function transform_querystrings(conf, template_env)
 
   -- Rename querystring(s)
   for _, old_name, new_name in iter(conf.rename.querystring, template_env) do
-    local value = querystring[old_name]
-    querystring[new_name] = value
-    querystring[old_name] = nil
+    rename(querystring, old_name, new_name)
   end
 
   for _, name, value in iter(conf.replace.querystring, template_env) do
@@ -275,10 +291,7 @@ local function transform_json_body(conf, body, content_length, template_env)
 
   if content_length > 0 and #conf.rename.body > 0 then
     for _, old_name, new_name in iter(conf.rename.body, template_env) do
-      local value = parameters[old_name]
-      parameters[new_name] = value
-      parameters[old_name] = nil
-      renamed = true
+      renamed = rename(parameters, old_name, new_name) or renamed
     end
   end
 
@@ -326,10 +339,7 @@ local function transform_url_encoded_body(conf, body, content_length, template_e
 
   if content_length > 0 and #conf.rename.body > 0 then
     for _, old_name, new_name in iter(conf.rename.body, template_env) do
-      local value = parameters[old_name]
-      parameters[new_name] = value
-      parameters[old_name] = nil
-      renamed = true
+      renamed = rename(parameters, old_name, new_name) or renamed
     end
   end
 
@@ -370,8 +380,9 @@ local function transform_multipart_body(conf, body, content_length, content_type
 
   if content_length > 0 and #conf.rename.body > 0 then
     for _, old_name, new_name in iter(conf.rename.body, template_env) do
-      if parameters:get(old_name) then
-        local value = parameters:get(old_name).value
+      local para = parameters:get(old_name)
+      if para and old_name ~= new_name then
+        local value = para.value
         parameters:set_simple(new_name, value)
         parameters:delete(old_name)
         renamed = true
@@ -530,7 +541,7 @@ function _M.execute(conf)
   local template_env = {}
   if lua_enabled and sandbox_enabled then
     -- load the sandbox environment to be used to render the template
-    template_env = utils.cycle_aware_deep_copy(sandbox.configuration.environment)
+    template_env = cycle_aware_deep_copy(sandbox.configuration.environment)
     -- here we can optionally add functions to expose to the sandbox, eg:
     -- tostring = tostring,
     -- because headers may contain array elements such as duplicated headers

@@ -1,0 +1,7 @@
+message: >
+  Starting from this version, a new DNS client library has been implemented and added into Kong, which is disabled by default. The new DNS client library has the following changes
+  - Introduced global caching for DNS records across workers, significantly reducing the query load on DNS servers.
+  - Introduced observable statistics for the new DNS client, and a new Status API `/status/dns` to retrieve them.
+  - Simplified the logic and make it more standardized
+type: feature
+scope: Core

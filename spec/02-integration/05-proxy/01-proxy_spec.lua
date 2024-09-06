@@ -1,8 +1,10 @@
 local helpers = require "spec.helpers"
 local utils = require "pl.utils"
-local stringx = require "pl.stringx"
 local http = require "resty.http"
-local atc_compat = require "kong.router.compat"
+local constants = require "kong.constants"
+
+
+local strip = require("kong.tools.string").strip
 
 
 local function count_server_blocks(filename)
@@ -17,11 +19,11 @@ local function get_listeners(filename)
   local result = {}
   for block in file:gmatch("[%\n%s]+server%s+(%b{})") do
     local server_name = block:match("[%\n%s]server_name%s(.-);")
-    server_name = server_name and stringx.strip(server_name) or "stream"
+    server_name = server_name and strip(server_name) or "stream"
     local server = result[server_name] or {}
     result[server_name] = server
     for listen in block:gmatch("[%\n%s]listen%s(.-);") do
-      listen = stringx.strip(listen)
+      listen = strip(listen)
       table.insert(server, listen)
       server[listen] = #server
     end
@@ -101,10 +103,10 @@ describe("#stream proxy interface listeners", function()
       stream_listen = "127.0.0.1:9011, 127.0.0.1:9012",
     }))
 
-    local stream_events_sock_path = "unix:" .. helpers.test_conf.prefix .. "/stream_worker_events.sock"
+    local stream_events_sock_path = "unix:" .. helpers.test_conf.socket_path .. "/" .. constants.SOCKETS.STREAM_WORKER_EVENTS
 
     if helpers.test_conf.database == "off" then
-      local stream_config_sock_path = "unix:" .. helpers.test_conf.prefix .. "/stream_config.sock"
+      local stream_config_sock_path = "unix:" .. helpers.test_conf.socket_path .. "/" .. constants.SOCKETS.STREAM_CONFIG
 
       assert.equals(3, count_server_blocks(helpers.test_conf.nginx_kong_stream_conf))
       assert.same({
@@ -162,16 +164,8 @@ local function reload_router(flavor)
 end
 
 
+-- TODO: remove it when we confirm it is not needed
 local function gen_route(flavor, r)
-  if flavor ~= "expressions" then
-    return r
-  end
-
-  r.expression = atc_compat.get_expression(r)
-  r.priority = tonumber(atc_compat._get_priority(r))
-
-  r.destinations = nil
-
   return r
 end
 

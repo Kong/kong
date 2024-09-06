@@ -23,7 +23,6 @@ return {
   name = "ai-prompt-template",
   fields = {
     { protocols = typedefs.protocols_http },
-    { consumer = typedefs.no_consumer },
     { config = {
       type = "record",
       fields = {
@@ -44,6 +43,12 @@ return {
             type = "boolean",
             required = true,
             default = false,
+        }},
+        { max_request_body_size = {
+            type = "integer",
+            default = 8 * 1024,
+            gt = 0,
+            description = "max allowed body size allowed to be introspected",
         }},
       }
     }}

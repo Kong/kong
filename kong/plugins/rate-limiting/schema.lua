@@ -104,6 +104,7 @@ return {
             type = "string",
             translate_backwards = {'redis', 'host'},
             deprecation = {
+              replaced_with = { { path = { 'redis', 'host' } } },
               message = "rate-limiting: config.redis_host is deprecated, please use config.redis.host instead",
               removal_in_version = "4.0", },
             func = function(value)
@@ -114,6 +115,7 @@ return {
             type = "integer",
             translate_backwards = {'redis', 'port'},
             deprecation = {
+              replaced_with = { { path = { 'redis', 'port' } } },
               message = "rate-limiting: config.redis_port is deprecated, please use config.redis.port instead",
               removal_in_version = "4.0", },
             func = function(value)
@@ -125,6 +127,7 @@ return {
             len_min = 0,
             translate_backwards = {'redis', 'password'},
             deprecation = {
+              replaced_with = { { path = { 'redis', 'password' } } },
               message = "rate-limiting: config.redis_password is deprecated, please use config.redis.password instead",
               removal_in_version = "4.0", },
             func = function(value)
@@ -135,6 +138,7 @@ return {
             type = "string",
             translate_backwards = {'redis', 'username'},
             deprecation = {
+              replaced_with = { { path = { 'redis', 'username' } } },
               message = "rate-limiting: config.redis_username is deprecated, please use config.redis.username instead",
               removal_in_version = "4.0", },
             func = function(value)
@@ -145,6 +149,7 @@ return {
             type = "boolean",
             translate_backwards = {'redis', 'ssl'},
             deprecation = {
+              replaced_with = { { path = { 'redis', 'ssl' } } },
               message = "rate-limiting: config.redis_ssl is deprecated, please use config.redis.ssl instead",
               removal_in_version = "4.0", },
             func = function(value)
@@ -155,6 +160,7 @@ return {
             type = "boolean",
             translate_backwards = {'redis', 'ssl_verify'},
             deprecation = {
+              replaced_with = { { path = { 'redis', 'ssl_verify' } } },
               message = "rate-limiting: config.redis_ssl_verify is deprecated, please use config.redis.ssl_verify instead",
               removal_in_version = "4.0", },
             func = function(value)
@@ -165,6 +171,7 @@ return {
             type = "string",
             translate_backwards = {'redis', 'server_name'},
             deprecation = {
+              replaced_with = { { path = { 'redis', 'server_name' } } },
               message = "rate-limiting: config.redis_server_name is deprecated, please use config.redis.server_name instead",
               removal_in_version = "4.0", },
             func = function(value)
@@ -175,6 +182,7 @@ return {
             type = "integer",
             translate_backwards = {'redis', 'timeout'},
             deprecation = {
+              replaced_with = { { path = { 'redis', 'timeout' } } },
               message = "rate-limiting: config.redis_timeout is deprecated, please use config.redis.timeout instead",
               removal_in_version = "4.0", },
             func = function(value)
@@ -185,6 +193,7 @@ return {
             type = "integer",
             translate_backwards = {'redis', 'database'},
             deprecation = {
+              replaced_with = { { path = { 'redis', 'database' } } },
               message = "rate-limiting: config.redis_database is deprecated, please use config.redis.database instead",
               removal_in_version = "4.0", },
             func = function(value)

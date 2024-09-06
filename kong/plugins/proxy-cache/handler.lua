@@ -1,36 +1,31 @@
 local require     = require
 local cache_key   = require "kong.plugins.proxy-cache.cache_key"
-local utils       = require "kong.tools.utils"
 local kong_meta   = require "kong.meta"
 local mime_type   = require "kong.tools.mime_type"
 local nkeys       = require "table.nkeys"
+local split       = require("kong.tools.string").split
 
 
 local ngx              = ngx
 local kong             = kong
 local type             = type
 local pairs            = pairs
-local tostring         = tostring
-local tonumber         = tonumber
-local max              = math.max
 local floor            = math.floor
 local lower            = string.lower
-local concat           = table.concat
 local time             = ngx.time
 local resp_get_headers = ngx.resp and ngx.resp.get_headers
-local ngx_re_gmatch    = ngx.re.gmatch
 local ngx_re_sub       = ngx.re.gsub
 local ngx_re_match     = ngx.re.match
-local parse_http_time  = ngx.parse_http_time
 local parse_mime_type  = mime_type.parse_mime_type
+local parse_directive_header = require("kong.tools.http").parse_directive_header
+local calculate_resource_ttl = require("kong.tools.http").calculate_resource_ttl
 
 
-local tab_new = require("table.new")
 
 
 local STRATEGY_PATH = "kong.plugins.proxy-cache.strategies"
 local CACHE_VERSION = 1
-local EMPTY = {}
+local EMPTY = require("kong.tools.table").EMPTY
 
 
 -- http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html#sec13.5.1
@@ -74,39 +69,6 @@ local function set_res_header(res, header, value, conf)
   end
 end
 
-local function parse_directive_header(h)
-  if not h then
-    return EMPTY
-  end
-
-  if type(h) == "table" then
-    h = concat(h, ", ")
-  end
-
-  local t    = {}
-  local res  = tab_new(3, 0)
-  local iter = ngx_re_gmatch(h, "([^,]+)", "oj")
-
-  local m = iter()
-  while m do
-    local _, err = ngx_re_match(m[0], [[^\s*([^=]+)(?:=(.+))?]],
-                                "oj", nil, res)
-    if err then
-      kong.log.err(err)
-    end
-
-    -- store the directive token as a numeric value if it looks like a number;
-    -- otherwise, store the string value. for directives without token, we just
-    -- set the key to true
-    t[lower(res[1])] = tonumber(res[2]) or res[2] or true
-
-    m = iter()
-  end
-
-  return t
-end
-
-
 local function req_cc()
   return parse_directive_header(ngx.var.http_cache_control)
 end
@@ -114,27 +76,6 @@ end
 
 local function res_cc()
   return parse_directive_header(ngx.var.sent_http_cache_control)
-end
-
-
-local function resource_ttl(res_cc)
-  local max_age = res_cc["s-maxage"] or res_cc["max-age"]
-
-  if not max_age then
-    local expires = ngx.var.sent_http_expires
-
-    -- if multiple Expires headers are present, last one wins
-    if type(expires) == "table" then
-      expires = expires[#expires]
-    end
-
-    local exp_time = parse_http_time(tostring(expires))
-    if exp_time then
-      max_age = exp_time - time()
-    end
-  end
-
-  return max_age and max(max_age, 0) or 0
 end
 
 
@@ -227,7 +168,7 @@ local function cacheable_response(conf, cc)
     return false
   end
 
-  if conf.cache_control and resource_ttl(cc) <= 0 then
+  if conf.cache_control and calculate_resource_ttl(cc) <= 0 then
     return false
   end
 
@@ -260,7 +201,7 @@ function ProxyCacheHandler:init_worker()
   kong.cluster_events:subscribe("proxy-cache:purge", function(data)
     kong.log.err("handling purge of '", data, "'")
 
-    local plugin_id, cache_key = unpack(utils.split(data, ":"))
+    local plugin_id, cache_key = unpack(split(data, ":"))
     local plugin, err = kong.db.plugins:select({ id = plugin_id })
     if err then
       kong.log.err("error in retrieving plugins: ", err)
@@ -401,7 +342,7 @@ function ProxyCacheHandler:access(conf)
 
 
   reset_res_header(res)
-  set_res_header(res, "Age", floor(time() - res.timestamp), conf)
+  set_res_header(res, "age", floor(time() - res.timestamp), conf)
   set_res_header(res, "X-Cache-Status", "Hit", conf)
   set_res_header(res, "X-Cache-Key", cache_key, conf)
 
@@ -425,7 +366,7 @@ function ProxyCacheHandler:header_filter(conf)
   if cacheable_response(conf, cc) then
     -- TODO: should this use the kong.conf configured limit?
     proxy_cache.res_headers = resp_get_headers(0, true)
-    proxy_cache.res_ttl = conf.cache_control and resource_ttl(cc) or conf.cache_ttl
+    proxy_cache.res_ttl = conf.cache_control and calculate_resource_ttl(cc) or conf.cache_ttl
 
   else
     set_header(conf, "X-Cache-Status", "Bypass")

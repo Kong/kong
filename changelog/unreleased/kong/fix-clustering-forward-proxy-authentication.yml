@@ -1,0 +1,3 @@
+message: Fixed an issue where hybrid mode not working if the forward proxy password contains special character(#). Note that the `proxy_server` configuration parameter still needs to be url-encoded.
+type: bugfix
+scope: Clustering

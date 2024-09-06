@@ -138,11 +138,43 @@ macOS
 brew install libyaml
 ```
 
-Now, we have to set environment variable `GITHUB_TOKEN` to download some essential repos.
-You can follow [Managing your personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) to generate an access token. It does not need to have any other permission than `Public Repositories (read-only)`.
+Now, you have to authenticate with GitHub to download some essential repos
+using either one of the following ways:
+* Download [`gh cli`](https://cli.github.com/) and run `gh auth login` once.
+* Use a [Personal Access Token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token). This token does not need to have any other permission than `Public Repositories (read-only)`, and set it as `GITHUB_TOKEN` environment variable.
+* Use [git credential helper](https://git-scm.com/docs/gitcredentials).
 
-```bash
-# export GITHUB_TOKEN=ghp_xxxxxx_your_access_token
+Then you have to make the Rust build system also authenticate with GitHub,
+there is nothing you need to do if you were authenticated using `gh` or `git credential helper`,
+otherwise, you can set the[`CARGO_NET_GIT_FETCH_WITH_CLI`](https://doc.rust-lang.org/cargo/reference/config.html)
+environment variable to `true`.
+
+```shell
+export CARGO_NET_GIT_FETCH_WITH_CLI=true
+```
+
+An alternative is to edit the `~/.cargo/config` file and add the following lines:
+
+```toml
+[net]
+git-fetch-with-cli = true
+```
+
+You also have to make sure the `git` CLI is using the proper protocol to fetch the dependencies
+if you are authenticated with
+[Personal Access Token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token).
+
+```shell
+# If you are using the HTTPS protocol to clone the repository
+# YOU ONLY NEED TO DO THIS ONLY ONCE FOR THIS DIRECTORY
+git config --local url."https://${GITHUB_TOKEN}@github.com/".insteadOf 'git@github.com:'
+git config --local url."https://${GITHUB_TOKEN}@github.com".insteadOf 'https://github.com'
+
+
+# If you are using the SSH protocol to clone the repository
+# YOU ONLY NEED TO DO THIS ONLY ONCE FOR THIS DIRECTORY
+git config --local url.'git@github.com:'.insteadOf 'https://github.com'
+git config --local url.'ssh://git@github.com/'.insteadOf 'https://github.com/'
 ```
 
 Finally, we start the build process:
@@ -201,6 +233,8 @@ Install the development dependencies ([busted](https://lunarmodules.github.io/bu
 ```shell
 make dev
 ```
+
+If Rust/Cargo doesn't work, try setting `export KONG_TEST_USER_CARGO_DISABLED=1` first.
 
 Kong relies on three test suites using the [busted](https://lunarmodules.github.io/busted/) testing library:
 
@@ -437,6 +471,110 @@ how to access (or create) a development container with a well-defined tool and r
 
 - See [How to create a GitHub codespace](https://docs.github.com/en/codespaces/developing-in-codespaces/creating-a-codespace#creating-a-codespace).
 - See [How to create a VSCode development container](https://code.visualstudio.com/docs/remote/containers#_quick-start-try-a-development-container).
+
+## Debugging Kong Gateway with EmmyLua and IntelliJ IDEA/VSCode
+
+[EmmyLua](https://emmylua.github.io/) is a plugin for IntelliJ IDEA and VSCode that provides Lua language
+support.  It comes with debugger support that makes it possible to set breakpoints in Lua code
+and inspect variables.  Kong Gateway can be debugged using EmmyLua by following these steps:
+
+### Install the IDE
+
+#### IntelliJ IDEA
+
+Download and install IntelliJ IDEA from [here](https://www.jetbrains.com/idea/download/).  Note
+that IntelliJ is a commercial product and requires a paid license after the trial period.
+
+#### VSCode
+
+Download and install MS Visual Studio Code from [here](https://code.visualstudio.com/download).
+
+### Install EmmyLua
+
+#### IntelliJ IDEA
+
+Go to the `Settings`->`Plugins`->`Marketplace` and search for `EmmyLua`.
+Install the plugin.
+
+#### VSCode
+
+Go to the `Settings`->`Extensions` and search for `EmmyLua`.
+Install the plugin (publisher is `Tangzx`).
+
+### Download and install the EmmyLua debugging server
+
+The [EmmyLuaDebugger](https://github.com/EmmyLua/EmmyLuaDebugger) is a standalone C++ program
+that runs on the same machine as Kong Gateway and that mediates between the IDE's
+debugger and the Lua code running in Kong Gateway.  It can be downloaded from
+[GitHub](https://github.com/EmmyLua/EmmyLuaDebugger/releases).  The release
+ZIP file contains a single shared library named emmy_core.so (Linux) or emmy_core.dylib (macOS).
+Place this file in a directory that is convenient for you and remember the path.
+
+Depending on your Linux version, you may need to compile
+[EmmyLuaDebugger](https://github.com/EmmyLua/EmmyLuaDebugger) on your
+own system as the release binaries published on GitHub assume a pretty
+recent version of GLIBC to be present.
+
+### Start Kong Gateway with the EmmyLua debugger
+
+To enable the EmmyLua debugger, the `KONG_EMMY_DEBUGGER` environment variable must be set to
+the absolute path of the debugger shared library file when Kong Gateway is started.  It is
+also advisable to start Kong Gateway with only one worker process, as debugging multiple worker
+processes requires special care.  For example:
+
+```shell
+KONG_EMMY_DEBUGGER=/path/to/emmy_core.so KONG_NGINX_WORKER_PROCESSES=1 kong start
+```
+
+### Create debugger configuration
+
+#### IntelliJ IDEA
+
+Go to `Run`->`Edit Configurations` and click the `+` button to add a new
+configuration.  Select `Emmy Debugger(NEW)` as the configuration type.  Enter a descriptive
+name for the configuration, e.g. "Kong Gateway Debug".  Click `OK` to save the configuration.
+
+#### VSCode
+
+Go to `Run`->`Add Configuration` and choose `EmmyLua New Debugger`. Enter a descriptive name
+for the configuration, e.g. "Kong Gateway Debug". Save `launch.json`.
+
+### Start the EmmyLua debugger
+
+To connect the EmmyLua debugger to Kong Gateway, click the `Run`->`Debug` menu item in IntelliJ
+(`Run`->`Start Debugging` in VSCode) and select the configuration that you've just created.  You
+will notice that the restart and stop buttons on the top of your IDE will change to solid green
+and red colors.  You can now set breakpoints in your Lua code and start debugging.  Try setting
+a breakpoint in the global `access` function that is defined `runloop/handler.lua` and send
+a proxy request to the Gateway.  The debugger should stop at the breakpoint and you can
+inspect the variables in the request context.
+
+### Debugging `busted` tests
+
+To debug `busted` tests, you can set the `BUSTED_EMMY_DEBUGGER` environment variable to the path
+to the EmmyLua debugger shared library.  When debugging is enabled, `busted` will always wait for
+the IDE to connect during startup.
+
+### Debugging environment variables
+
+The following environment variables can be set to control the behavior of the EmmyLua debugger
+integration:
+
+- `KONG_EMMY_DEBUGGER`: The path to the EmmyLua debugger shared library.
+- `KONG_EMMY_DEBUGGER_HOST`: The IP address that the EmmyLua debugger will listen on.  The default
+  is `localhost`.
+- `KONG_EMMY_DEBUGGER_PORT`: The port that the EmmyLua debugger will listen on.  The default is
+  `9966`.
+- `KONG_EMMY_DEBUGGER_WAIT`: If set, Kong Gateway will wait for the debugger to connect
+  before starting continuing to start.
+- `KONG_EMMY_DEBUGGER_SOURCE_PATH`: The path to the source code that the EmmyLua debugger will
+  use to resolve source code locations.  The default is the current working directory.
+- `KONG_EMMY_DEBUGGER_MULTI_WORKER`: If set, a debugger will be started for each worker process, using
+  incrementing port numbers starting at `KONG_EMMY_DEBUGGER_PORT`.  The default is to start
+  only one debugger for worker zero.
+
+To control debugger behavior while running `busted` tests, a similar set of environment variables
+prefixed with `BUSTED_` instead of `KONG_` can be used.
 
 ## What's next
 

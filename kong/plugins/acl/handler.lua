@@ -1,5 +1,4 @@
 local constants = require "kong.constants"
-local tablex = require "pl.tablex"
 local groups = require "kong.plugins.acl.groups"
 local kong_meta = require "kong.meta"
 
@@ -10,7 +9,7 @@ local error = error
 local kong = kong
 
 
-local EMPTY = tablex.readonly {}
+local EMPTY = require("kong.tools.table").EMPTY
 local DENY = "DENY"
 local ALLOW = "ALLOW"
 
@@ -80,7 +79,7 @@ function ACLHandler:access(conf)
   else
     local credential = kong.client.get_credential()
     local authenticated_groups
-    if not credential then
+    if (not credential) or conf.always_use_authenticated_groups then
       -- authenticated groups overrides anonymous groups
       authenticated_groups = groups.get_authenticated_groups()
     end

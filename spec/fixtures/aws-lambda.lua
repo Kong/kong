@@ -60,6 +60,20 @@ local fixtures = {
                     elseif string.match(ngx.var.uri, "functionWithTransferEncodingHeader") then
                       ngx.say("{\"statusCode\": 200, \"headers\": { \"Transfer-Encoding\": \"chunked\", \"transfer-encoding\": \"chunked\"}}")
 
+                    elseif string.match(ngx.var.uri, "functionWithLatency") then
+                      -- additional latency
+                      ngx.sleep(2)
+                      ngx.say("{\"statusCodge\": 200, \"body\": \"dGVzdA=\", \"isBase64Encoded\": false}")
+
+                    elseif string.match(ngx.var.uri, "functionWithEmptyArray") then
+                      ngx.header["Content-Type"] = "application/json"
+                      local str = "{\"statusCode\": 200, \"testbody\": [], \"isBase64Encoded\": false}"
+                      ngx.say(str)
+
+                    elseif string.match(ngx.var.uri, "functionWithArrayCTypeInMVHAndEmptyArray") then
+                      ngx.header["Content-Type"] = "application/json"
+                      ngx.say("{\"statusCode\": 200, \"isBase64Encoded\": true, \"body\": \"eyJrZXkiOiAidmFsdWUiLCAia2V5MiI6IFtdfQ==\", \"headers\": {}, \"multiValueHeaders\": {\"Content-Type\": [\"application/json+test\"]}}")
+
                     elseif type(res) == 'string' then
                       ngx.header["Content-Length"] = #res + 1
                       ngx.say(res)

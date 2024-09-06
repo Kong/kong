@@ -54,6 +54,10 @@ function PrometheusHandler:log(conf)
     serialized.latencies = message.latencies
   end
 
+  if conf.ai_metrics then
+    serialized.ai_metrics = message.ai
+  end
+
   if conf.upstream_health_metrics then
     exporter.set_export_upstream_health_metrics(true)
   else

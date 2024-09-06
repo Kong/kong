@@ -2,8 +2,9 @@ local lmdb = require("resty.lmdb")
 local txn = require("resty.lmdb.transaction")
 local constants = require("kong.constants")
 local workspaces = require("kong.workspaces")
-local utils = require("kong.tools.utils")
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local declarative_config = require("kong.db.schema.others.declarative_config")
+local concurrency = require("kong.concurrency")
 
 
 local yield = require("kong.tools.yield").yield
@@ -85,7 +86,7 @@ local function load_into_db(entities, meta)
 
     local primary_key, ok, err, err_t
     for _, entity in pairs(entities[schema_name]) do
-      entity = utils.cycle_aware_deep_copy(entity)
+      entity = cycle_aware_deep_copy(entity)
       entity._tags = nil
       entity.ws_id = nil
 
@@ -312,7 +313,7 @@ local function load_into_cache(entities, meta, hash)
 
       local cache_key = dao:cache_key(id, nil, nil, nil, nil, item.ws_id)
       if transform and schema:has_transformations(item) then
-        local transformed_item = utils.cycle_aware_deep_copy(item)
+        local transformed_item = cycle_aware_deep_copy(item)
         remove_nulls(transformed_item)
 
         local err
@@ -571,24 +572,24 @@ do
   local DECLARATIVE_RETRY_TTL_MAX = 10
   local DECLARATIVE_LOCK_KEY = "declarative:lock"
 
-  -- make sure no matter which path it exits, we released the lock.
   load_into_cache_with_events = function(entities, meta, hash, hashes)
-    local kong_shm = ngx.shared.kong
+    local ok, err, ttl = concurrency.with_worker_mutex({
+      name = DECLARATIVE_LOCK_KEY,
+      timeout = 0,
+      exptime = DECLARATIVE_LOCK_TTL,
+    }, function()
+      return load_into_cache_with_events_no_lock(entities, meta, hash, hashes)
+    end)
 
-    local ok, err = kong_shm:add(DECLARATIVE_LOCK_KEY, 0, DECLARATIVE_LOCK_TTL)
     if not ok then
-      if err == "exists" then
-        local ttl = min(kong_shm:ttl(DECLARATIVE_LOCK_KEY), DECLARATIVE_RETRY_TTL_MAX)
-        return nil, "busy", ttl
+      if err == "timeout" then
+        ttl = ttl or DECLARATIVE_RETRY_TTL_MAX
+        local retry_after = min(ttl, DECLARATIVE_RETRY_TTL_MAX)
+        return nil, "busy", retry_after
       end
 
-      kong_shm:delete(DECLARATIVE_LOCK_KEY)
       return nil, err
     end
-
-    ok, err = load_into_cache_with_events_no_lock(entities, meta, hash, hashes)
-
-    kong_shm:delete(DECLARATIVE_LOCK_KEY)
 
     return ok, err
   end

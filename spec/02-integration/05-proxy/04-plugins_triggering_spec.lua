@@ -1,5 +1,5 @@
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 local cjson = require "cjson"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
@@ -415,7 +415,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("execute a log plugin", function()
-        local uuid = utils.uuid()
+        local uuid = uuid.uuid()
 
         local res = assert(proxy_client:send {
           method = "GET",
@@ -470,7 +470,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- regression test for bug spotted in 0.12.0rc2
       it("responses.send stops plugin but runloop continues", function()
-        local uuid = utils.uuid()
+        local uuid = uuid.uuid()
 
         local res = assert(proxy_client:send {
           method = "GET",
@@ -766,7 +766,7 @@ for _, strategy in helpers.each_strategy() do
 
       it("executes a log plugin on Bad Gateway (HTTP 502)", function()
         -- triggers error_page directive
-        local uuid = utils.uuid()
+        local uuid = uuid.uuid()
 
         local res = assert(proxy_client:send {
           method = "GET",
@@ -787,7 +787,7 @@ for _, strategy in helpers.each_strategy() do
 
       it("log plugins sees same request in error_page handler (HTTP 502)", function()
         -- triggers error_page directive
-        local uuid = utils.uuid()
+        local uuid = uuid.uuid()
 
         local res = assert(proxy_client:send {
           method = "POST",
@@ -818,7 +818,7 @@ for _, strategy in helpers.each_strategy() do
 
       it("executes a log plugin on Service Unavailable (HTTP 503)", function()
         -- Does not trigger error_page directive (no proxy_intercept_errors)
-        local uuid = utils.uuid()
+        local uuid = uuid.uuid()
 
         local res = assert(proxy_client:send {
           method = "GET",
@@ -839,7 +839,7 @@ for _, strategy in helpers.each_strategy() do
 
       it("executes a log plugin on Gateway Timeout (HTTP 504)", function()
         -- triggers error_page directive
-        local uuid = utils.uuid()
+        local uuid = uuid.uuid()
 
         local res = assert(proxy_client:send {
           method = "GET",
@@ -860,7 +860,7 @@ for _, strategy in helpers.each_strategy() do
 
       it("log plugins sees same request in error_page handler (HTTP 504)", function()
         -- triggers error_page directive
-        local uuid = utils.uuid()
+        local uuid = uuid.uuid()
 
         local res = assert(proxy_client:send {
           method = "POST",
@@ -891,7 +891,7 @@ for _, strategy in helpers.each_strategy() do
 
       it("executes a global log plugin on Nginx-produced client errors (HTTP 400)", function()
         -- triggers error_page directive
-        local uuid = utils.uuid()
+        local uuid = uuid.uuid()
 
         local res = assert(proxy_client:send {
           method = "GET",
@@ -919,7 +919,7 @@ for _, strategy in helpers.each_strategy() do
 
       it("log plugins sees same request in error_page handler (HTTP 400)", function()
         -- triggers error_page directive
-        local uuid = utils.uuid()
+        local uuid = uuid.uuid()
 
         local res = assert(proxy_client:send {
           method = "POST",
@@ -954,7 +954,7 @@ for _, strategy in helpers.each_strategy() do
 
       it("executes a global log plugin on Nginx-produced client errors (HTTP 414)", function()
         -- triggers error_page directive
-        local uuid = utils.uuid()
+        local uuid = uuid.uuid()
 
         local res = assert(proxy_client:send {
           method = "GET",
@@ -982,7 +982,7 @@ for _, strategy in helpers.each_strategy() do
 
       it("log plugins sees same request in error_page handler (HTTP 414)", function()
         -- triggers error_page directive
-        local uuid = utils.uuid()
+        local uuid = uuid.uuid()
 
         local res = assert(proxy_client:send {
           method = "POST",

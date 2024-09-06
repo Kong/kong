@@ -152,7 +152,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
                 local token = ngx.req.get_headers()["authorization"]
                 local token_query = ngx.req.get_uri_args()["apikey"]
-                
+
                 if token == "Bearer openai-key" or token_query == "openai-key" or body.apikey == "openai-key" then
                   ngx.req.read_body()
                   local body, err = ngx.req.get_body_data()
@@ -235,7 +235,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
       }, nil, nil, fixtures))
     end)
-    
+
     lazy_teardown(function()
       helpers.stop_kong()
     end)
@@ -257,6 +257,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             ["content-type"] = "application/json",
             ["accept"] = "application/json",
             ["x-test-type"] = "200",
+            ["accept-encoding"] = "gzip, identity"
           },
           body = format_stencils.llm_v1_chat.good.user_request,
         })
@@ -287,6 +288,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           ["content-type"] = "application/json",
           ["accept"] = "application/json",
           ["x-test-type"] = "200_FAULTY",
+          ["accept-encoding"] = "gzip, identity"
         },
         body = format_stencils.llm_v1_chat.good.user_request,
       })
@@ -307,6 +309,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           ["content-type"] = "application/json",
           ["accept"] = "application/json",
           ["x-test-type"] = "401",
+          ["accept-encoding"] = "gzip, identity"
         },
         body = format_stencils.llm_v1_chat.good.user_request,
       })
@@ -327,6 +330,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           ["content-type"] = "application/json",
           ["accept"] = "application/json",
           ["x-test-type"] = "500",
+          ["accept-encoding"] = "gzip, identity"
         },
         body = format_stencils.llm_v1_chat.good.user_request,
       })
@@ -347,6 +351,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           ["content-type"] = "application/json",
           ["accept"] = "application/json",
           ["x-test-type"] = "500_FAULTY",
+          ["accept-encoding"] = "gzip, identity"
         },
         body = format_stencils.llm_v1_chat.good.user_request,
       })

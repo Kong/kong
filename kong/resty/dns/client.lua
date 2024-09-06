@@ -1,3 +1,10 @@
+-- Use the new dns client library instead. If you want to switch to the original
+-- one, you can set `new_dns_client = off` in kong.conf.
+if ngx.shared.kong_dns_cache and _G.busted_new_dns_client ~= false then
+  package.loaded["kong.dns.client"] = nil
+  return require("kong.dns.client")
+end
+
 --------------------------------------------------------------------------
 -- DNS client.
 --
@@ -25,7 +32,7 @@ local fileexists = require("pl.path").exists
 local semaphore = require("ngx.semaphore").new
 local lrucache = require("resty.lrucache")
 local resolver = require("resty.dns.resolver")
-local cycle_aware_deep_copy = require("kong.tools.utils").cycle_aware_deep_copy
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 local req_dyn_hook = require("kong.dynamic_hook")
 local time = ngx.now
 local log = ngx.log
@@ -50,7 +57,7 @@ local table_concat = table.concat
 local string_lower = string.lower
 local string_byte  = string.byte
 
-local req_dyn_hook_run_hooks = req_dyn_hook.run_hooks
+local req_dyn_hook_run_hook = req_dyn_hook.run_hook
 
 
 local DOT   = string_byte(".")
@@ -58,8 +65,7 @@ local COLON = string_byte(":")
 local DEFAULT_TIMEOUT = 2000 -- 2000 is openresty default
 
 
-local EMPTY = setmetatable({},
-  {__newindex = function() error("The 'EMPTY' table is read-only") end})
+local EMPTY = require("kong.tools.table").EMPTY
 
 -- resolver options
 local config
@@ -146,7 +152,7 @@ local cachelookup = function(qname, qtype)
 
   local ctx = ngx.ctx
   if ctx and ctx.has_timing then
-    req_dyn_hook_run_hooks("timing", "dns:cache_lookup", cached ~= nil)
+    req_dyn_hook_run_hook("timing", "dns:cache_lookup", cached ~= nil)
   end
 
   if cached then
@@ -1511,7 +1517,7 @@ local function execute_toip(qname, port, dnsCacheOnly, try_list, force_no_sync)
     -- our SRV entry might still contain a hostname, so recurse, with found port number
     local srvport = (entry.port ~= 0 and entry.port) or port -- discard port if it is 0
     add_status_to_try_list(try_list, "dereferencing SRV")
-    return execute_toip(entry.target, srvport, dnsCacheOnly, try_list)
+    return execute_toip(entry.target, srvport, dnsCacheOnly, try_list, force_no_sync)
   end
 
   -- must be A or AAAA

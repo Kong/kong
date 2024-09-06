@@ -1,0 +1,2 @@
+message: Made the RPM package relocatable with the default prefix set to `/`.
+type: dependency

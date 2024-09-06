@@ -46,11 +46,12 @@ if [[ "$1" == "kong" ]]; then
 
     # remove all dangling sockets in $PREFIX dir before starting Kong
     LOGGED_SOCKET_WARNING=0
-    for localfile in "$PREFIX"/*; do
+    socket_path=$PREFIX/sockets
+    for localfile in "$socket_path"/*; do
       if [ -S "$localfile" ]; then
         if (( LOGGED_SOCKET_WARNING == 0 )); then
           printf >&2 'WARN: found dangling unix sockets in the prefix directory '
-          printf >&2 '(%q) ' "$PREFIX"
+          printf >&2 '(%q) ' "$socket_path"
           printf >&2 'while preparing to start Kong. This may be a sign that Kong '
           printf >&2 'was previously shut down uncleanly or is in an unknown state '
           printf >&2 'and could require further investigation.\n'

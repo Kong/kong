@@ -73,7 +73,6 @@ ROCKS_CONFIG=$ROCKS_CONFIG
 export LUAROCKS_CONFIG=$ROCKS_CONFIG
 export CC=$CC
 export LD=$LD
-export EXT_BUILD_ROOT=$root_path # for musl
 
 # no idea why PATH is not preserved in ctx.actions.run_shell
 export PATH=$PATH

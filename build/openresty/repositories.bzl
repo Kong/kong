@@ -2,13 +2,17 @@
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
+load("//build:build_system.bzl", "git_or_local_repository")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 load("//build/openresty/pcre:pcre_repositories.bzl", "pcre_repositories")
 load("//build/openresty/openssl:openssl_repositories.bzl", "openssl_repositories")
+load("//build/openresty/simdjson_ffi:simdjson_ffi_repositories.bzl", "simdjson_ffi_repositories")
 load("//build/openresty/atc_router:atc_router_repositories.bzl", "atc_router_repositories")
 load("//build/openresty/wasmx:wasmx_repositories.bzl", "wasmx_repositories")
+load("//build/openresty/wasmx/filters:repositories.bzl", "wasm_filters_repositories")
 load("//build/openresty/brotli:brotli_repositories.bzl", "brotli_repositories")
+load("//build/openresty/snappy:snappy_repositories.bzl", "snappy_repositories")
+load("//build/openresty/ada:ada_repositories.bzl", "ada_repositories")
 
 # This is a dummy file to export the module's repository.
 _NGINX_MODULE_DUMMY_FILE = """
@@ -17,14 +21,24 @@ filegroup(
     srcs = glob(["**"]),
     visibility = ["//visibility:public"],
 )
+
+filegroup(
+    name = "lualib_srcs",
+    srcs = glob(["lualib/**/*.lua", "lib/**/*.lua"]),
+    visibility = ["//visibility:public"],
+)
 """
 
 def openresty_repositories():
     pcre_repositories()
     openssl_repositories()
+    simdjson_ffi_repositories()
     atc_router_repositories()
     wasmx_repositories()
+    wasm_filters_repositories()
     brotli_repositories()
+    snappy_repositories()
+    ada_repositories()
 
     openresty_version = KONG_VAR["OPENRESTY"]
 
@@ -32,7 +46,7 @@ def openresty_repositories():
         openresty_http_archive_wrapper,
         name = "openresty",
         build_file = "//build/openresty:BUILD.openresty.bazel",
-        sha256 = "32ec1a253a5a13250355a075fe65b7d63ec45c560bbe213350f0992a57cd79df",
+        sha256 = KONG_VAR["OPENRESTY_SHA256"],
         strip_prefix = "openresty-" + openresty_version,
         urls = [
             "https://openresty.org/download/openresty-" + openresty_version + ".tar.gz",
@@ -43,7 +57,7 @@ def openresty_repositories():
     )
 
     maybe(
-        new_git_repository,
+        git_or_local_repository,
         name = "lua-kong-nginx-module",
         branch = KONG_VAR["LUA_KONG_NGINX_MODULE"],
         remote = "https://github.com/Kong/lua-kong-nginx-module",
@@ -52,7 +66,7 @@ def openresty_repositories():
     )
 
     maybe(
-        new_git_repository,
+        git_or_local_repository,
         name = "lua-resty-lmdb",
         branch = KONG_VAR["LUA_RESTY_LMDB"],
         remote = "https://github.com/Kong/lua-resty-lmdb",
@@ -63,7 +77,7 @@ def openresty_repositories():
     )
 
     maybe(
-        new_git_repository,
+        git_or_local_repository,
         name = "lua-resty-events",
         branch = KONG_VAR["LUA_RESTY_EVENTS"],
         remote = "https://github.com/Kong/lua-resty-events",
@@ -72,7 +86,7 @@ def openresty_repositories():
     )
 
     maybe(
-        new_git_repository,
+        git_or_local_repository,
         name = "ngx_brotli",
         branch = KONG_VAR["NGX_BROTLI"],
         remote = "https://github.com/google/ngx_brotli",
@@ -81,7 +95,7 @@ def openresty_repositories():
     )
 
 def _openresty_binding_impl(ctx):
-    ctx.file("BUILD.bazel", _NGINX_MODULE_DUMMY_FILE)
+    ctx.file("BUILD.bazel", "")
     ctx.file("WORKSPACE", "workspace(name = \"openresty_patch\")")
 
     version = "LuaJIT\\\\ 2.1.0-"

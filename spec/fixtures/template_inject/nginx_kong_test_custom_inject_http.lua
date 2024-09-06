@@ -5,8 +5,8 @@ lua_shared_dict kong_mock_upstream_loggers  10m;
     server {
         server_name mock_upstream;
 
-        listen 15555;
-        listen 15556 ssl;
+        listen 15555 reuseport;
+        listen 15556 ssl reuseport;
 
 > for i = 1, #ssl_cert do
         ssl_certificate     $(ssl_cert[i]);

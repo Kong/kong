@@ -1,4 +1,3 @@
-local utils        = require "kong.tools.utils"
 local constants    = require "kong.constants"
 local certificate  = require "kong.runloop.certificate"
 local balancer     = require "kong.runloop.balancer"
@@ -11,7 +10,7 @@ local unpack       = unpack
 local ipairs       = ipairs
 local tonumber     = tonumber
 local fmt          = string.format
-local utils_split  = utils.split
+local split        = require("kong.tools.string").split
 
 
 local ngx   = ngx
@@ -114,7 +113,7 @@ end
 
 -- cluster event: "balancer:targets"
 local function cluster_balancer_targets_handler(data)
-  local operation, key = unpack(utils_split(data, ":"))
+  local operation, key = unpack(split(data, ":"))
 
   local entity = "all"
   if key ~= "all" then
@@ -152,7 +151,7 @@ end
 
 
 local function cluster_balancer_upstreams_handler(data)
-  local operation, ws_id, id, name = unpack(utils_split(data, ":"))
+  local operation, ws_id, id, name = unpack(split(data, ":"))
   local entity = {
     id = id,
     name = name,
@@ -259,20 +258,29 @@ local function crud_plugins_handler(data)
 end
 
 
-local function crud_snis_handler(data)
-  log(DEBUG, "[events] SNI updated, invalidating cached certificates")
-
-  local sni = data.old_entity or data.entity
-  local sni_name = sni.name
+local function invalidate_snis(sni_name)
   local sni_wild_pref, sni_wild_suf = certificate.produce_wild_snis(sni_name)
   core_cache:invalidate("snis:" .. sni_name)
 
-  if sni_wild_pref then
+  if sni_wild_pref and sni_wild_pref ~= sni_name then
     core_cache:invalidate("snis:" .. sni_wild_pref)
   end
 
-  if sni_wild_suf then
+  if sni_wild_suf and sni_wild_suf ~= sni_name then
     core_cache:invalidate("snis:" .. sni_wild_suf)
+  end
+end
+
+
+local function crud_snis_handler(data)
+  log(DEBUG, "[events] SNI updated, invalidating cached certificates")
+
+  local new_name = data.entity.name
+  local old_name = data.old_entity and data.old_entity.name
+
+  invalidate_snis(new_name)
+  if old_name and old_name ~= new_name then
+    invalidate_snis(old_name)
   end
 end
 
@@ -499,12 +507,18 @@ local stream_reconfigure_listener
 do
   local buffer = require "string.buffer"
 
-  -- `kong.configuration.prefix` is already normalized to an absolute path,
-  -- but `ngx.config.prefix()` is not
-  local PREFIX = kong and kong.configuration and
-                 kong.configuration.prefix or
-                 require("pl.path").abspath(ngx.config.prefix())
-  local STREAM_CONFIG_SOCK = "unix:" .. PREFIX .. "/stream_config.sock"
+  -- this module may be loaded before `kong.configuration` is initialized
+  local socket_path = kong and kong.configuration
+                      and kong.configuration.socket_path
+
+  if not socket_path then
+    -- `kong.configuration.socket_path` is already normalized to an absolute
+    -- path, but `ngx.config.prefix()` is not
+    socket_path = require("pl.path").abspath(ngx.config.prefix() .. "/"
+                                             .. constants.SOCKET_DIRECTORY)
+  end
+
+  local STREAM_CONFIG_SOCK = "unix:" .. socket_path .. "/" .. constants.SOCKETS.STREAM_CONFIG
   local IS_HTTP_SUBSYSTEM  = ngx.config.subsystem == "http"
 
   local function broadcast_reconfigure_event(data)

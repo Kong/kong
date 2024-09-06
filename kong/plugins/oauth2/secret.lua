@@ -1,6 +1,3 @@
-local utils = require "kong.tools.utils"
-
-
 local type = type
 local fmt = string.format
 local find = string.find
@@ -11,6 +8,9 @@ local assert = assert
 local tonumber = tonumber
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
+local strip = require("kong.tools.string").strip
+local split = require("kong.tools.string").split
+local get_rand_bytes = require("kong.tools.rand").get_rand_bytes
 
 
 local ENABLED_ALGORITHMS = {
@@ -33,20 +33,20 @@ local ENABLED_ALGORITHMS = {
 
 
 local function infer(value)
-  value = utils.strip(value)
+  value = strip(value)
   return tonumber(value, 10) or value
 end
 
 
 local function parse_phc(phc)
-  local parts = utils.split(phc, "$")
+  local parts = split(phc, "$")
   local count = #parts
   if count < 2 or count > 5 then
     return nil, "invalid phc string format"
   end
 
   local id = parts[2]
-  local id_parts = utils.split(id, "-")
+  local id_parts = split(id, "-")
   local id_count = #id_parts
 
   local prefix
@@ -62,15 +62,15 @@ local function parse_phc(phc)
   local params = {}
   local prms = parts[3]
   if prms then
-    local prm_parts = utils.split(prms, ",")
+    local prm_parts = split(prms, ",")
     for i = 1, #prm_parts do
       local param = prm_parts[i]
-      local kv = utils.split(param, "=")
+      local kv = split(param, "=")
       local kv_count = #kv
       if kv_count == 1 then
         params[#params + 1] = infer(kv[1])
       elseif kv_count == 2 then
-        local k = utils.strip(kv[1])
+        local k = strip(kv[1])
         params[k] = infer(kv[2])
       else
         return nil, "invalid phc string format for parameter"
@@ -95,9 +95,9 @@ local function parse_phc(phc)
   end
 
   return {
-    id     = utils.strip(id),
-    prefix = utils.strip(prefix),
-    digest = utils.strip(digest),
+    id     = strip(id),
+    prefix = strip(prefix),
+    digest = strip(digest),
     params = params,
     salt   = salt,
     hash   = hash,
@@ -131,8 +131,8 @@ if ENABLED_ALGORITHMS.ARGON2 then
       m_cost      = ARGON2_M_COST,
     }
     do
-      local hash = argon2.hash_encoded("", utils.get_rand_bytes(ARGON2_SALT_LEN), ARGON2_OPTIONS)
-      local parts = utils.split(hash, "$")
+      local hash = argon2.hash_encoded("", get_rand_bytes(ARGON2_SALT_LEN), ARGON2_OPTIONS)
+      local parts = split(hash, "$")
       remove(parts)
       remove(parts)
       ARGON2_PREFIX = concat(parts, "$")
@@ -141,7 +141,7 @@ if ENABLED_ALGORITHMS.ARGON2 then
     local crypt = {}
 
     function crypt.hash(secret)
-      return argon2.hash_encoded(secret, utils.get_rand_bytes(ARGON2_SALT_LEN), ARGON2_OPTIONS)
+      return argon2.hash_encoded(secret, get_rand_bytes(ARGON2_SALT_LEN), ARGON2_OPTIONS)
     end
 
     function crypt.verify(secret, hash)
@@ -170,7 +170,7 @@ if ENABLED_ALGORITHMS.BCRYPT then
 
     do
       local hash = bcrypt.digest("", BCRYPT_ROUNDS)
-      local parts = utils.split(hash, "$")
+      local parts = split(hash, "$")
       remove(parts)
       BCRYPT_PREFIX = concat(parts, "$")
     end
@@ -230,7 +230,7 @@ if ENABLED_ALGORITHMS.PBKDF2 then
         end
       end
 
-      local salt = opts.salt or utils.get_rand_bytes(PBKDF2_SALT_LEN)
+      local salt = opts.salt or get_rand_bytes(PBKDF2_SALT_LEN)
       local hash, err = kdf:derive(opts.outlen or PBKDF2_HASH_LEN, {
         pass        = secret,
         salt        = salt,
@@ -252,7 +252,7 @@ if ENABLED_ALGORITHMS.PBKDF2 then
 
     do
       local hash = derive("")
-      local parts = utils.split(hash, "$")
+      local parts = split(hash, "$")
       remove(parts)
       remove(parts)
       PBKDF2_PREFIX = concat(parts, "$")

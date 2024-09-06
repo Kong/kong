@@ -1,13 +1,13 @@
-local _M = {}
-
--- imports
-local kong_meta    = require "kong.meta"
-local new_tab      = require("table.new")
+local new_tab = require("table.new")
+local llm_state = require("kong.llm.state")
 local EMPTY = {}
---
 
-_M.PRIORITY = 772
-_M.VERSION = kong_meta.version
+
+local plugin = {
+  PRIORITY = 772,
+  VERSION = require("kong.meta").version
+}
+
 
 
 local function bad_request(msg)
@@ -15,13 +15,15 @@ local function bad_request(msg)
   return kong.response.exit(400, { error = { message = msg } })
 end
 
-function _M.execute(request, conf)
+
+
+-- Adds the prompts to the request prepend/append.
+-- @tparam table request The deserialized JSON body of the request
+-- @tparam table conf The plugin configuration
+-- @treturn table The decorated request (same table, content updated)
+local function execute(request, conf)
   local prepend = conf.prompts.prepend or EMPTY
   local append = conf.prompts.append or EMPTY
-
-  if #prepend == 0 and #append == 0 then
-    return request, nil
-  end
 
   local old_messages = request.messages
   local new_messages = new_tab(#append + #prepend + #old_messages, 0)
@@ -44,29 +46,34 @@ function _M.execute(request, conf)
     new_messages[n] = { role = msg.role, content = msg.content }
   end
 
-  return request, nil
+  return request
 end
 
-function _M:access(conf)
+
+
+function plugin:access(conf)
   kong.service.request.enable_buffering()
-  kong.ctx.shared.ai_prompt_decorated = true  -- future use
+  llm_state.set_prompt_decorated()  -- future use
 
   -- if plugin ordering was altered, receive the "decorated" request
-  local request, err = kong.request.get_body("application/json")
-  if err then
+  local request = kong.request.get_body("application/json", nil, conf.max_request_body_size)
+  if type(request) ~= "table"  then
     return bad_request("this LLM route only supports application/json requests")
   end
 
-  if not request.messages or #request.messages < 1 then
+  if #(request.messages or EMPTY) < 1 then
     return bad_request("this LLM route only supports llm/chat type requests")
   end
 
-  local decorated_request, err = self.execute(request, conf)
-  if err then
-    return bad_request(err)
-  end
-  
-  kong.service.request.set_body(decorated_request, "application/json")
+  kong.service.request.set_body(execute(request, conf), "application/json")
 end
 
-return _M
+
+
+if _G._TEST then
+  -- only if we're testing export this function (using a different name!)
+  plugin._execute = execute
+end
+
+
+return plugin

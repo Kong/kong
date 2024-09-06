@@ -1,9 +1,9 @@
 local cjson = require "cjson"
-local utils = require "kong.tools.utils"
 local reports = require "kong.reports"
 local endpoints = require "kong.api.endpoints"
 local arguments = require "kong.api.arguments"
 local api_helpers = require "kong.api.api_helpers"
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 
 local ngx = ngx
@@ -20,7 +20,7 @@ local function reports_timer(premature, data)
     return
   end
 
-  local r_data = utils.cycle_aware_deep_copy(data)
+  local r_data = cycle_aware_deep_copy(data)
 
   r_data.config = nil
   r_data.route = nil
@@ -76,27 +76,22 @@ end
 
 local function patch_plugin(self, db, _, parent)
   local post = self.args and self.args.post
+  if post then
+    -- Read-before-write only if necessary
+    if post.name == nil then
+      -- We need the name, otherwise we don't know what type of
+      -- plugin this is and we can't perform *any* validations.
+      local plugin, _, err_t = endpoints.select_entity(self, db, db.plugins.schema)
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
 
-  -- Read-before-write only if necessary
-  if post and (post.name     == nil or
-               post.route    == nil or
-               post.service  == nil or
-               post.consumer == nil) then
+      if not plugin then
+        return kong.response.exit(404, { message = "Not found" })
+      end
 
-    -- We need the name, otherwise we don't know what type of
-    -- plugin this is and we can't perform *any* validations.
-    local plugin, _, err_t = endpoints.select_entity(self, db, db.plugins.schema)
-    if err_t then
-      return endpoints.handle_error(err_t)
+      post.name = plugin.name
     end
-
-    if not plugin then
-      return kong.response.exit(404, { message = "Not found" })
-    end
-
-    plugin = plugin or {}
-
-    post.name = post.name or plugin.name
 
     -- Only now we can decode the 'config' table for form-encoded values
     local content_type = ngx.var.content_type
@@ -106,23 +101,6 @@ local function patch_plugin(self, db, _, parent)
          find(content_type, "multipart/form-data",               1, true) == 1 then
         post = arguments.decode(post, kong.db.plugins.schema)
       end
-    end
-
-    -- While we're at it, get values for composite uniqueness check
-    post.route = post.route or plugin.route
-    post.service = post.service or plugin.service
-    post.consumer = post.consumer or plugin.consumer
-
-    if not post.route and self.params.routes then
-      post.route = { id = self.params.routes }
-    end
-
-    if not post.service and self.params.services then
-      post.service = { id = self.params.services }
-    end
-
-    if not post.consumer and self.params.consumers then
-      post.consumer = { id = self.params.consumers }
     end
 
     self.args.post = post

@@ -28,7 +28,7 @@ cc_toolchain_config(
     compiler_configuration = {},
     target_cpu = "aarch64",
     toolchain_path_prefix = "/usr/aarch64-linux-gnu/",  # is this required?
-    tools_path_prefix = "/usr/bin/aarch64-linux-gnu-",
+    tools_prefix = "aarch64-linux-gnu-",
 )
 
 cc_toolchain(
@@ -49,18 +49,10 @@ cc_toolchain(
 
 define_managed_toolchain(
     arch = "x86_64",
-    gcc_version = "11",
-    libc = "musl",
-    target_compatible_with = ["//build/platforms/distro:alpine"],
-    vendor = "alpine",
-)
-
-define_managed_toolchain(
-    arch = "aarch64",
-    gcc_version = "11",
-    libc = "musl",
-    target_compatible_with = ["//build/platforms/distro:alpine"],
-    vendor = "alpine",
+    gcc_version = aarch64_glibc_distros["aws2"],
+    libc = "gnu",
+    target_compatible_with = ["//build/platforms/distro:aws2"],
+    vendor = "aws2",
 )
 
 [

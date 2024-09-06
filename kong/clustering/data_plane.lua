@@ -3,12 +3,10 @@ local _MT = { __index = _M, }
 
 
 local semaphore = require("ngx.semaphore")
-local cjson = require("cjson.safe")
 local config_helper = require("kong.clustering.config_helper")
 local clustering_utils = require("kong.clustering.utils")
 local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
-local pl_stringx = require("pl.stringx")
 local inspect = require("inspect")
 
 local assert = assert
@@ -19,8 +17,8 @@ local sub = string.sub
 local ngx = ngx
 local ngx_log = ngx.log
 local ngx_sleep = ngx.sleep
-local cjson_decode = cjson.decode
-local cjson_encode = cjson.encode
+local json_decode = clustering_utils.json_decode
+local json_encode = clustering_utils.json_encode
 local exiting = ngx.worker.exiting
 local ngx_time = ngx.time
 local inflate_gzip = require("kong.tools.gzip").inflate_gzip
@@ -37,7 +35,7 @@ local PING_WAIT = PING_INTERVAL * 1.5
 local _log_prefix = "[clustering] "
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
-local endswith = pl_stringx.endswith
+local endswith = require("pl.stringx").endswith
 
 local function is_timeout(err)
   return err and sub(err, -7) == "timeout"
@@ -112,7 +110,7 @@ end
 ---@param err_t kong.clustering.config_helper.update.err_t
 ---@param log_suffix? string
 local function send_error(c, err_t, log_suffix)
-  local payload, json_err = cjson_encode({
+  local payload, json_err = json_encode({
     type = "error",
     error = err_t,
   })
@@ -122,7 +120,7 @@ local function send_error(c, err_t, log_suffix)
     ngx_log(ngx_ERR, _log_prefix, "failed to JSON-encode error payload for ",
             "control plane: ", json_err, ", payload: ", inspect(err_t), log_suffix)
 
-    payload = assert(cjson_encode({
+    payload = assert(json_encode({
       type = "error",
       error = {
         name = constants.CLUSTERING_DATA_PLANE_ERROR.GENERIC,
@@ -181,11 +179,11 @@ function _M:communicate(premature)
   -- The CP will make the decision on whether sync will be allowed
   -- based on the received information
   local _
-  _, err = c:send_binary(cjson_encode({ type = "basic_info",
-                                        plugins = self.plugins_list,
-                                        process_conf = configuration,
-                                        filters = self.filters,
-                                        labels = labels, }))
+  _, err = c:send_binary(json_encode({ type = "basic_info",
+                                       plugins = self.plugins_list,
+                                       process_conf = configuration,
+                                       filters = self.filters,
+                                       labels = labels, }))
   if err then
     ngx_log(ngx_ERR, _log_prefix, "unable to send basic information to control plane: ", uri,
                      " err: ", err, " (retrying after ", reconnection_delay, " seconds)", log_suffix)
@@ -239,7 +237,7 @@ function _M:communicate(premature)
 
       local msg = assert(inflate_gzip(data))
       yield()
-      msg = assert(cjson_decode(msg))
+      msg = assert(json_decode(msg))
       yield()
 
       if msg.type ~= "reconfigure" then

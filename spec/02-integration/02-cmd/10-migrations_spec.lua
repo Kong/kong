@@ -1,8 +1,8 @@
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
 local DB = require "kong.db.init"
 local tb_clone = require "table.clone"
 local shell = require "resty.shell"
+local strip = require("kong.tools.string").strip
 
 
 -- Current number of migrations to execute in a new install
@@ -361,7 +361,7 @@ for _, strategy in helpers.each_strategy() do
           plugins = "bundled"
         }, true)
         assert.equal(0, code)
-        assert.equal("Database is already up-to-date", utils.strip(stdout))
+        assert.equal("Database is already up-to-date", strip(stdout))
         assert.equal("", stderr)
 
         code, stdout, stderr = run_kong("migrations up -f", {
@@ -400,14 +400,14 @@ for _, strategy in helpers.each_strategy() do
         }, true)
 
         assert.equal(0, code)
-        assert.equal("Database is already up-to-date", utils.strip(stdout))
+        assert.equal("Database is already up-to-date", strip(stdout))
         assert.equal("", stderr)
 
         code, stdout, stderr = run_kong("migrations finish", {
           plugins = "bundled"
         }, true)
         assert.equal(0, code)
-        assert.equal("No pending migrations to finish", utils.strip(stdout))
+        assert.equal("No pending migrations to finish", strip(stdout))
         assert.equal("", stderr)
 
         code, stdout, stderr = run_kong("migrations finish -f", {
@@ -445,4 +445,3 @@ for _, strategy in helpers.each_strategy() do
   end)
 
 end
-

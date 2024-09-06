@@ -78,6 +78,11 @@ do
   local start_time      = ngx.req.start_time
   local monotonic_msec  = require("resty.core.time").monotonic_msec
 
+  function _M.get_updated_now()
+    update_time()
+    return now()        -- time is kept in seconds with millisecond resolution.
+  end
+
   function _M.get_now_ms()
     return now() * 1000 -- time is kept in seconds with millisecond resolution.
   end

@@ -75,8 +75,7 @@ end
 
 
 function _M.apply_ref()
-  local r = get_request()
-  if not r then
+  if not get_request() then
     ngx_log(ngx_WARN, "could not apply ngx.ctx: no request found")
     return
   end

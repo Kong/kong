@@ -58,6 +58,11 @@ local BRACE_START = byte("{")
 local BRACE_END = byte("}")
 local COLON = byte(":")
 local SLASH = byte("/")
+local BYT_V = byte("v")
+local BYT_A = byte("a")
+local BYT_U = byte("u")
+local BYT_L = byte("l")
+local BYT_T = byte("t")
 
 
 local VAULT_QUERY_OPTS = { workspace = ngx.null }
@@ -72,13 +77,17 @@ local VAULT_QUERY_OPTS = { workspace = ngx.null }
 -- @tparam string reference reference to check
 -- @treturn boolean `true` is the passed in reference looks like a reference, otherwise `false`
 local function is_reference(reference)
-  return type(reference)      == "string"
-     and byte(reference, 1)   == BRACE_START
-     and byte(reference, -1)  == BRACE_END
-     and byte(reference, 7)   == COLON
-     and byte(reference, 8)   == SLASH
-     and byte(reference, 9)   == SLASH
-     and sub(reference, 2, 6) == "vault"
+  return type(reference)     == "string"
+     and byte(reference, 1)  == BRACE_START
+     and byte(reference, 2)  == BYT_V
+     and byte(reference, 3)  == BYT_A
+     and byte(reference, 4)  == BYT_U
+     and byte(reference, 5)  == BYT_L
+     and byte(reference, 6)  == BYT_T
+     and byte(reference, 7)  == COLON
+     and byte(reference, 8)  == SLASH
+     and byte(reference, 9)  == SLASH
+     and byte(reference, -1) == BRACE_END
 end
 
 
@@ -146,18 +155,15 @@ local function parse_reference(reference)
   local key
   local parts = parse_path(resource)
   local count = #parts
-  if count == 1 then
+  if count == 0 then
+    return nil, fmt("reference url has invalid path [%s]", reference)
+  elseif count == 1 then
     resource = unescape_uri(parts[1])
-
+  elseif parts.is_directory then
+    resource = unescape_uri(concat(parts, "/", 1, count))
   else
     resource = unescape_uri(concat(parts, "/", 1, count - 1))
-    if parts[count] ~= "" then
-      key = unescape_uri(parts[count])
-    end
-  end
-
-  if resource == "" then
-    return nil, fmt("reference url has invalid path [%s]", reference)
+    key = unescape_uri(parts[count])
   end
 
   local config
@@ -769,7 +775,23 @@ local function new(self)
 
       else
         lru_ttl = ttl
-        shdict_ttl = DAO_MAX_TTL
+        -- shared dict ttl controls when the secret
+        -- value will be refreshed by `rotate_secrets`
+        -- timer. If a secret whose remaining time is less
+        -- than `config.resurrect_ttl`(or DAO_MAX_TTL
+        -- if not configured), it could possibly
+        -- be updated in every cycle of `rotate_secrets`.
+        --
+        -- The shdict_ttl should be
+        -- `config.ttl` + `config.resurrect_ttl`
+        -- to make sure the secret value persists for
+        -- at least `config.ttl` seconds.
+        -- When `config.resurrect_ttl` is not set and
+        -- `config.ttl` is not set, shdict_ttl will be
+        -- DAO_MAX_TTL * 2; when `config.resurrect_ttl`
+        -- is not set but `config.ttl` is set, shdict_ttl
+        -- will be ttl + DAO_MAX_TTL
+        shdict_ttl = ttl + DAO_MAX_TTL
       end
 
     else
@@ -800,9 +822,20 @@ local function new(self)
   -- @tparam table parsed_reference the parsed reference
   -- @treturn string|nil the retrieved value from the vault, of `nil`
   -- @treturn string|nil a string describing an error if there was one
+  -- @treturn boolean|nil whether to resurrect value in case vault errors or doesn't return value
   -- @usage local value, err = get_from_vault(reference, strategy, config, cache_key, parsed_reference)
-  local function get_from_vault(reference, strategy, config, cache_key, parsed_reference)
+  local function get_from_vault(reference, strategy, config, cache_key, parsed_reference, resurrect)
     local value, err, ttl = invoke_strategy(strategy, config, parsed_reference)
+    if resurrect and value == nil then
+      local resurrected_value = SECRETS_CACHE:get(cache_key)
+      if resurrected_value then
+        return resurrected_value
+
+      else
+        return nil, fmt("could not get value from external vault (%s)", err)
+      end
+    end
+
     local cache_value, shdict_ttl, lru_ttl = get_cache_value_and_ttl(value, config, ttl)
     local ok, cache_err = SECRETS_CACHE:safe_set(cache_key, cache_value, shdict_ttl)
     if not ok then
@@ -1245,18 +1278,25 @@ local function new(self)
     -- If the TTL is still greater than the resurrect time
     -- we don't have to rotate the secret, except it if it
     -- negatively cached.
+    local resurrect
     local ttl = SECRETS_CACHE:ttl(new_cache_key)
     if ttl and SECRETS_CACHE:get(new_cache_key) ~= NEGATIVELY_CACHED_VALUE then
       local resurrect_ttl = max(config.resurrect_ttl or DAO_MAX_TTL, SECRETS_CACHE_MIN_TTL)
+      -- the secret is still within ttl, no need to refresh
       if ttl > resurrect_ttl then
         return true
       end
+
+      -- the secret is still within resurrect ttl time, so when we try to refresh the secret
+      -- we do not forciblly override it with a negative value, so that the cached value
+      -- can be resurrected
+      resurrect = ttl > SECRETS_CACHE_MIN_TTL
     end
 
     strategy = caching_strategy(strategy, config_hash)
 
-    -- we should refresh the secret at this point
-    local ok, err = get_from_vault(reference, strategy, config, new_cache_key, parsed_reference)
+    -- try to refresh the secret, according to the remaining time the cached value may or may not be refreshed.
+    local ok, err = get_from_vault(reference, strategy, config, new_cache_key, parsed_reference, resurrect)
     if not ok then
       return nil, fmt("could not retrieve value for reference %s (%s)", reference, err)
     end
@@ -1284,7 +1324,7 @@ local function new(self)
 
       local ok, err = rotate_secret(cache_key, caching_strategy)
       if not ok then
-        self.log.warn(err)
+        self.log.notice(err)
       end
     end
 

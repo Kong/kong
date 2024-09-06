@@ -1,7 +1,6 @@
 -- Kong runloop
 
 local meta         = require "kong.meta"
-local utils        = require "kong.tools.utils"
 local Router       = require "kong.router"
 local balancer     = require "kong.runloop.balancer"
 local events       = require "kong.runloop.events"
@@ -12,12 +11,12 @@ local constants    = require "kong.constants"
 local concurrency  = require "kong.concurrency"
 local lrucache     = require "resty.lrucache"
 local ktls         = require "resty.kong.tls"
-local request_id   = require "kong.tracing.request_id"
+local request_id   = require "kong.observability.tracing.request_id"
 
 
 local PluginsIterator = require "kong.runloop.plugins_iterator"
 local log_level       = require "kong.runloop.log_level"
-local instrumentation = require "kong.tracing.instrumentation"
+local instrumentation = require "kong.observability.tracing.instrumentation"
 local req_dyn_hook   = require "kong.dynamic_hook"
 
 
@@ -36,6 +35,7 @@ local gsub              = string.gsub
 local find              = string.find
 local lower             = string.lower
 local fmt               = string.format
+
 local ngx               = ngx
 local var               = ngx.var
 local log               = ngx.log
@@ -50,8 +50,9 @@ local http_version      = ngx.req.http_version
 local request_id_get    = request_id.get
 local escape            = require("kong.tools.uri").escape
 local encode            = require("string.buffer").encode
+local uuid              = require("kong.tools.uuid").uuid
 
-local req_dyn_hook_run_hooks = req_dyn_hook.run_hooks
+local req_dyn_hook_run_hook = req_dyn_hook.run_hook
 
 local is_http_module   = subsystem == "http"
 local is_stream_module = subsystem == "stream"
@@ -69,6 +70,9 @@ local ROUTERS_REBUILD_COUNTER_KEY =
 local ROUTER_CACHE_SIZE = DEFAULT_MATCH_LRUCACHE_SIZE
 local ROUTER_CACHE = lrucache.new(ROUTER_CACHE_SIZE)
 local ROUTER_CACHE_NEG = lrucache.new(ROUTER_CACHE_SIZE)
+
+
+local DEFAULT_PROXY_HTTP_VERSION = "1.1"
 
 
 local NOOP = function() end
@@ -226,7 +230,7 @@ end
 -- or an error happened).
 -- @returns error message as a second return value in case of failure/error
 local function rebuild(name, callback, version, opts)
-  local current_version, err = kong.core_cache:get(name .. ":version", TTL_ZERO, utils.uuid)
+  local current_version, err = kong.core_cache:get(name .. ":version", TTL_ZERO, uuid)
   if err then
     return nil, "failed to retrieve " .. name .. " version: " .. err
   end
@@ -333,7 +337,7 @@ end
 
 
 local function get_router_version()
-  return kong.core_cache:get("router:version", TTL_ZERO, utils.uuid)
+  return kong.core_cache:get("router:version", TTL_ZERO, uuid)
 end
 
 
@@ -533,7 +537,7 @@ end
 
 
 local function update_plugins_iterator()
-  local version, err = kong.core_cache:get("plugins_iterator:version", TTL_ZERO, utils.uuid)
+  local version, err = kong.core_cache:get("plugins_iterator:version", TTL_ZERO, uuid)
   if err then
     return nil, "failed to retrieve plugins iterator version: " .. err
   end
@@ -621,7 +625,7 @@ end
 
 local reconfigure_handler
 do
-  local get_monotonic_ms = utils.get_updated_monotonic_ms
+  local get_monotonic_ms = require("kong.tools.time").get_updated_monotonic_ms
 
   local ngx_worker_id = ngx.worker.id
   local exiting = ngx.worker.exiting
@@ -892,11 +896,9 @@ return {
 
   init_worker = {
     before = function()
-      -- TODO: PR #9337 may affect the following line
-      local prefix = kong.configuration.prefix or ngx.config.prefix()
-
-      STREAM_TLS_TERMINATE_SOCK = fmt("unix:%s/stream_tls_terminate.sock", prefix)
-      STREAM_TLS_PASSTHROUGH_SOCK = fmt("unix:%s/stream_tls_passthrough.sock", prefix)
+      local socket_path = kong.configuration.socket_path
+      STREAM_TLS_TERMINATE_SOCK = fmt("unix:%s/%s", socket_path, constants.SOCKETS.STREAM_TLS_TERMINATE)
+      STREAM_TLS_PASSTHROUGH_SOCK = fmt("unix:%s/%s", socket_path, constants.SOCKETS.STREAM_TLS_PASSTHROUGH)
 
       log_level.init_worker()
 
@@ -1112,7 +1114,7 @@ return {
       local has_timing = ctx.has_timing
 
       if has_timing then
-        req_dyn_hook_run_hooks("timing", "before:router")
+        req_dyn_hook_run_hook("timing", "before:router")
       end
 
       -- routing request
@@ -1120,7 +1122,7 @@ return {
       local match_t = router:exec(ctx)
 
       if has_timing then
-        req_dyn_hook_run_hooks("timing", "after:router")
+        req_dyn_hook_run_hook("timing", "after:router")
       end
 
       if not match_t then
@@ -1141,7 +1143,7 @@ return {
       ctx.workspace = match_t.route and match_t.route.ws_id
 
       if has_timing then
-        req_dyn_hook_run_hooks("timing", "workspace_id:got", ctx.workspace)
+        req_dyn_hook_run_hook("timing", "workspace_id:got", ctx.workspace)
       end
 
       local host           = var.host
@@ -1288,6 +1290,14 @@ return {
       var.upstream_x_forwarded_path   = forwarded_path
       var.upstream_x_forwarded_prefix = forwarded_prefix
 
+      do
+        local req_via = get_header(constants.HEADERS.VIA, ctx)
+        local kong_inbound_via = protocol_version and protocol_version .. " " .. SERVER_HEADER
+                                 or SERVER_HEADER
+        var.upstream_via = req_via and req_via .. ", " .. kong_inbound_via
+                           or kong_inbound_via
+      end
+
       -- At this point, the router and `balancer_setup_stage1` have been
       -- executed; detect requests that need to be redirected from `proxy_pass`
       -- to `grpc_pass`. After redirection, this function will return early
@@ -1396,11 +1406,11 @@ return {
         end
       end
 
-      if var.http_proxy then
+      if get_header("proxy", ctx) then
         clear_header("Proxy")
       end
 
-      if var.http_proxy_connection then
+      if get_header("proxy_connection", ctx) then
         clear_header("Proxy-Connection")
       end
     end
@@ -1477,7 +1487,31 @@ return {
         end
 
         if enabled_headers[headers.VIA] then
-          header[headers.VIA] = SERVER_HEADER
+          -- Kong does not support injected directives like 'nginx_location_proxy_http_version',
+          -- so we skip checking them.
+
+          local proxy_http_version
+
+          local upstream_scheme = var.upstream_scheme
+          if upstream_scheme == "grpc" or upstream_scheme == "grpcs" then
+            proxy_http_version = "2"
+          end
+          if not proxy_http_version then
+            proxy_http_version = ctx.proxy_http_version or
+                                 kong.configuration.proxy_http_version or
+                                 DEFAULT_PROXY_HTTP_VERSION
+          end
+
+          local kong_outbound_via = proxy_http_version .. " " .. SERVER_HEADER
+          local resp_via = var["upstream_http_" .. headers.VIA]
+          header[headers.VIA] = resp_via and resp_via .. ", " .. kong_outbound_via
+                                or kong_outbound_via
+        end
+
+        -- If upstream does not provide the 'Server' header, an 'openresty' header
+        -- would be inserted by default. We override it with the Kong server header.
+        if not header[headers.SERVER] and enabled_headers[headers.SERVER] then
+          header[headers.SERVER] = SERVER_HEADER
         end
 
       else

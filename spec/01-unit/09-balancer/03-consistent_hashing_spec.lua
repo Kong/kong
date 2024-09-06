@@ -11,9 +11,9 @@ local targets, balancers
 require "spec.helpers" -- initialize db
 local dns_utils = require "kong.resty.dns.utils"
 local mocker = require "spec.fixtures.mocker"
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 
-local ws_id = utils.uuid()
+local ws_id = uuid.uuid()
 
 local helpers = require "spec.helpers.dns"
 local gettime = helpers.gettime
@@ -21,6 +21,7 @@ local sleep = helpers.sleep
 local dnsSRV = function(...) return helpers.dnsSRV(client, ...) end
 local dnsA = function(...) return helpers.dnsA(client, ...) end
 local dnsAAAA = function(...) return helpers.dnsAAAA(client, ...) end
+local dnsExpire = helpers.dnsExpire
 
 
 
@@ -199,11 +200,16 @@ end
 -- END TEST HELPERS --
 ----------------------
 
-describe("[consistent_hashing]", function()
+for _, enable_new_dns_client in ipairs{ false, true } do
 
+describe("[consistent_hashing]" .. (enable_new_dns_client and "[new dns]" or ""), function()
+  local srv_name = enable_new_dns_client and "_test._tcp.gelato.io"
+                                         or  "gelato.io"
   local snapshot
 
   setup(function()
+    _G.busted_new_dns_client = enable_new_dns_client
+
     _G.package.loaded["kong.resty.dns.client"] = nil -- make sure module is reloaded
     _G.package.loaded["kong.runloop.balancer.targets"] = nil -- make sure module is reloaded
 
@@ -265,6 +271,7 @@ describe("[consistent_hashing]", function()
       -- so that CI and docker can have reliable results
       -- but remove `search` and `domain`
       search = {},
+      cache_purge = true,
     })
     snapshot = assert:snapshot()
   end)
@@ -550,10 +557,10 @@ describe("[consistent_hashing]", function()
         { name = "mashape2.com", address = "12.34.56.2" },
       })
       dnsSRV({
-        { name = "mashape.com", target = "mashape1.com", port = 8001, weight = 5 },
-        { name = "mashape.com", target = "mashape2.com", port = 8002, weight = 5 },
+        { name = srv_name, target = "mashape1.com", port = 8001, weight = 5 },
+        { name = srv_name, target = "mashape2.com", port = 8002, weight = 5 },
       })
-      add_target(b, "mashape.com", 123, 100)
+      add_target(b, srv_name, 123, 100)
       ngx.sleep(0)
       assert.equal(2, count_add)
       assert.equal(0, count_remove)
@@ -844,6 +851,7 @@ describe("[consistent_hashing]", function()
       -- expire the existing record
       record.expire = 0
       record.expired = true
+      dnsExpire(client, record)
       -- do a lookup to trigger the async lookup
       client.resolve("really.really.really.does.not.exist.host.test", {qtype = client.TYPE_A})
       sleep(1) -- provide time for async lookup to complete
@@ -880,15 +888,15 @@ describe("[consistent_hashing]", function()
         { name = "mashape.com", address = "1.2.3.5" },
       })
       dnsSRV({
-        { name = "gelato.io", target = "1.2.3.6", port = 8001, weight = 5 },
-        { name = "gelato.io", target = "1.2.3.6", port = 8002, weight = 5 },
+        { name = srv_name, target = "1.2.3.6", port = 8001, weight = 5 },
+        { name = srv_name, target = "1.2.3.6", port = 8002, weight = 5 },
       })
       local b = new_balancer({
         dns = client,
         wheelSize = 1000,
       })
       add_target(b, "mashape.com", 80, 10)
-      add_target(b, "gelato.io", 80, 10)  --> port + weight will be ignored
+      add_target(b, srv_name, 80, 10)  --> port + weight will be ignored
       local count = count_indices(b)
       local state = copyWheel(b)
       -- 33%: 106 points
@@ -900,7 +908,7 @@ describe("[consistent_hashing]", function()
         ["1.2.3.6:8002"] = 53,
       }, count)
 
-      add_target(b, "gelato.io", 80, 20)  --> port + weight will be ignored
+      add_target(b, srv_name, 80, 20)  --> port + weight will be ignored
       count = count_indices(b)
       assert.same({
         ["1.2.3.4:80"]   = 106,
@@ -975,16 +983,16 @@ describe("[consistent_hashing]", function()
     end)
     it("renewed DNS SRV record; no changes", function()
       local record = dnsSRV({
-        { name = "gelato.io", target = "1.2.3.6", port = 8001, weight = 5 },
-        { name = "gelato.io", target = "1.2.3.6", port = 8002, weight = 5 },
-        { name = "gelato.io", target = "1.2.3.6", port = 8003, weight = 5 },
+        { name = srv_name, target = "1.2.3.6", port = 8001, weight = 5 },
+        { name = srv_name, target = "1.2.3.6", port = 8002, weight = 5 },
+        { name = srv_name, target = "1.2.3.6", port = 8003, weight = 5 },
       })
       dnsA({
         { name = "getkong.org", address = "9.9.9.9" },
       })
       local b = new_balancer({
         hosts = {
-          { name = "gelato.io" },
+          { name = srv_name },
           { name = "getkong.org", port = 123, weight = 10 },
         },
         dns = client,
@@ -993,9 +1001,9 @@ describe("[consistent_hashing]", function()
       local state = copyWheel(b)
       record.expire = gettime() -1 -- expire current dns cache record
       dnsSRV({    -- create a new record (identical)
-        { name = "gelato.io", target = "1.2.3.6", port = 8001, weight = 5 },
-        { name = "gelato.io", target = "1.2.3.6", port = 8002, weight = 5 },
-        { name = "gelato.io", target = "1.2.3.6", port = 8003, weight = 5 },
+        { name = srv_name, target = "1.2.3.6", port = 8001, weight = 5 },
+        { name = srv_name, target = "1.2.3.6", port = 8002, weight = 5 },
+        { name = srv_name, target = "1.2.3.6", port = 8003, weight = 5 },
       })
       -- create a spy to check whether dns was queried
       spy.on(client, "resolve")
@@ -1003,7 +1011,7 @@ describe("[consistent_hashing]", function()
       -- invoke balancer, to expire record and re-query dns
       --b:_hit_all()
       targets.resolve_targets(b.targets)
-      assert.spy(client.resolve).was_called_with("gelato.io",nil, nil)
+      assert.spy(client.resolve).was_called_with(srv_name,nil, nil)
       assert.same(state, copyWheel(b))
     end)
     it("low weight with zero-indices assigned doesn't fail", function()
@@ -1043,13 +1051,13 @@ describe("[consistent_hashing]", function()
       -- depending on order of insertion it is either 1 or 0 indices
       -- but it may never error.
       dnsSRV({
-        { name = "gelato.io", target = "1.2.3.6", port = 8001, weight = 0 },
-        { name = "gelato.io", target = "1.2.3.6", port = 8002, weight = 0 },
+        { name = srv_name, target = "1.2.3.6", port = 8001, weight = 0 },
+        { name = srv_name, target = "1.2.3.6", port = 8002, weight = 0 },
       })
       local b = new_balancer({
         hosts = {
           -- port and weight will be overridden by the above
-          { name = "gelato.io", port = 80, weight = 99999 },
+          { name = srv_name, port = 80, weight = 99999 },
         },
         dns = client,
         wheelSize = 100,
@@ -1117,3 +1125,5 @@ describe("[consistent_hashing]", function()
     end)
   end)
 end)
+
+end

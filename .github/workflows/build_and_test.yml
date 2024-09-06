@@ -36,6 +36,39 @@ env:
   RUNNER_COUNT: 7
 
 jobs:
+  metadata:
+    name: Metadata
+    runs-on: ubuntu-22.04
+    outputs:
+      old-kong-version: ${{ steps.old-kong-version.outputs.ref }}
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # `git merge-base` requires the history
+
+    - name: Get Old Kong Version
+      id: old-kong-version
+      run: |
+        KONG_VERSION=$(bash scripts/grep-kong-version.sh)
+        major=$(echo "$KONG_VERSION" | cut -d. -f1)
+        minor=$(echo "$KONG_VERSION" | cut -d. -f2)
+        # if the minor version isn't 0, use the first release or starting point of the previous minor branch;
+        # otherwise just leave it empty, so later the default branch or commit will be used.
+        if [ "$minor" -ne 0 ]; then
+          minor=$((minor - 1))
+          git fetch origin master -t
+          if [ $(git tag -l "$major.$minor.0") ]; then
+              echo "ref=$major.$minor.0" >> $GITHUB_OUTPUT
+          else
+              git fetch origin release/$major.$minor.x
+              COMMIT_HASH=$(git merge-base origin/master origin/release/$major.$minor.x)
+              echo "ref=$COMMIT_HASH" >> $GITHUB_OUTPUT
+          fi
+        else
+          echo "ref=" >> $GITHUB_OUTPUT
+        fi
+
   build:
     uses: ./.github/workflows/build.yml
     with:
@@ -137,7 +170,7 @@ jobs:
   busted-tests:
     name: Busted test runner ${{ matrix.runner }}
     runs-on: ubuntu-22.04
-    needs: [build,schedule]
+    needs: [metadata,build,schedule]
 
     strategy:
       fail-fast: false
@@ -174,6 +207,19 @@ jobs:
         ports:
           - 9411:9411
 
+      redis-auth:
+        image: redis/redis-stack-server
+        # Set health checks to wait until redis has started
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6381:6379
+        env:
+          REDIS_ARGS: "--requirepass passdefault"
+
     steps:
     - name: Bump max open files
       run: |
@@ -184,6 +230,15 @@ jobs:
 
     - name: Checkout Kong source code
       uses: actions/checkout@v4
+
+    # used for plugin compatibility test
+    - name: Checkout old version Kong source code
+      uses: actions/checkout@v4
+      with:
+        path: kong-old
+        # if the minor version is 0, `ref` will default to ''
+        # which is same as in the previous step
+        ref: ${{ needs.metadata.outputs.old-kong-version }}
 
     - name: Lookup build cache
       id: cache-deps
@@ -259,6 +314,7 @@ jobs:
       run: |
            echo FAILED_TEST_FILES_FILE=failed-tests.json >> $GITHUB_ENV
            echo TEST_FILE_RUNTIME_FILE=test-runtime.json >> $GITHUB_ENV
+           echo SPEC_ERRLOG_CACHE_DIR=/tmp/${{ github.run_id }}/build_test/${{ matrix.runner }} >> $GITHUB_ENV
 
     - name: Build & install dependencies
       run: |
@@ -284,18 +340,28 @@ jobs:
         KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
         KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
         KONG_SPEC_TEST_OTELCOL_FILE_EXPORTER_PATH: ${{ github.workspace }}/tmp/otel/file_exporter.json
+        KONG_SPEC_TEST_OLD_VERSION_KONG_PATH: ${{ github.workspace }}/kong-old
         DD_ENV: ci
         DD_SERVICE: kong-ce-ci
         DD_CIVISIBILITY_MANUAL_API_ENABLED: 1
         DD_CIVISIBILITY_AGENTLESS_ENABLED: true
         DD_TRACE_GIT_METADATA_ENABLED: true
         DD_API_KEY: ${{ secrets.DATADOG_API_KEY }}
+        SPEC_ERRLOG_CACHE_DIR: ${{ env.SPEC_ERRLOG_CACHE_DIR }}
       uses: Kong/gateway-test-scheduler/runner@69f0c2a562ac44fc3650b8bfa62106b34094b5ce # v3
       with:
         tests-to-run-file: test-chunk.${{ matrix.runner }}.json
         failed-test-files-file: ${{ env.FAILED_TEST_FILES_FILE }}
         test-file-runtime-file: ${{ env.TEST_FILE_RUNTIME_FILE }}
         setup-venv-path: ${{ env.BUILD_ROOT }}
+
+    - name: Upload error logs
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: busted-test-errlogs-${{ matrix.runner }}
+        path: ${{ env.SPEC_ERRLOG_CACHE_DIR }}
+        retention-days: 1
 
     - name: Upload test rerun information
       if: always()
@@ -361,6 +427,10 @@ jobs:
           $CPAN_DOWNLOAD/cpanm --notest --local-lib=$HOME/perl5 local::lib && eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
           $CPAN_DOWNLOAD/cpanm --notest Test::Nginx
 
+    - name: Generate environment variables
+      run: |
+           echo SPEC_ERRLOG_CACHE_DIR=/tmp/${{ github.run_id }}/PDK_test >> $GITHUB_ENV
+
     - name: Tests
       env:
         TEST_SUITE: pdk
@@ -371,6 +441,14 @@ jobs:
           fi
           eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
           prove -I. -r t
+
+    - name: Upload error logs
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: PDK-test-errlogs
+        path: ${{ env.SPEC_ERRLOG_CACHE_DIR }}
+        retention-days: 1
 
     - name: Archive coverage stats file
       uses: actions/upload-artifact@v3

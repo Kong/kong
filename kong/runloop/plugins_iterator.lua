@@ -1,7 +1,7 @@
 local workspaces = require "kong.workspaces"
 local constants = require "kong.constants"
-local utils = require "kong.tools.utils"
 local tablepool = require "tablepool"
+local req_dyn_hook = require "kong.dynamic_hook"
 
 
 local kong = kong
@@ -16,6 +16,9 @@ local ipairs = ipairs
 local format = string.format
 local fetch_table = tablepool.fetch
 local release_table = tablepool.release
+local uuid = require("kong.tools.uuid").uuid
+local get_updated_monotonic_ms = require("kong.tools.time").get_updated_monotonic_ms
+local req_dyn_hook_disable_by_default = req_dyn_hook.disable_by_default
 
 
 local TTL_ZERO = { ttl = 0 }
@@ -158,6 +161,7 @@ local function get_plugin_config(plugin, name, ws_id)
   cfg.consumer_id = plugin.consumer and plugin.consumer.id
   cfg.plugin_instance_name = plugin.instance_name
   cfg.__plugin_id = plugin.id
+  cfg.__ws_id = ws_id
 
   local key = kong.db.plugins:cache_key(name,
                                         cfg.route_id,
@@ -427,15 +431,19 @@ end
 
 
 local function configure(configurable, ctx)
+  -- Disable hooks that are selectively enabled by plugins
+  -- in their :configure handler
+  req_dyn_hook_disable_by_default("observability_logs")
+
   ctx = ctx or ngx.ctx
   local kong_global = require "kong.global"
   for _, plugin in ipairs(CONFIGURABLE_PLUGINS) do
     local name = plugin.name
 
     kong_global.set_namespaced_log(kong, plugin.name, ctx)
-    local start = utils.get_updated_monotonic_ms()
+    local start = get_updated_monotonic_ms()
     local ok, err = pcall(plugin.handler[CONFIGURE_PHASE], plugin.handler, configurable[name])
-    local elapsed = utils.get_updated_monotonic_ms() - start
+    local elapsed = get_updated_monotonic_ms() - start
     kong_global.reset_log(kong, ctx)
 
     if not ok then
@@ -514,7 +522,7 @@ function PluginsIterator.new(version)
     end
 
     if is_not_dbless and counter > 0 and counter % page_size == 0 and kong.core_cache then
-      local new_version, err = kong.core_cache:get("plugins_iterator:version", TTL_ZERO, utils.uuid)
+      local new_version, err = kong.core_cache:get("plugins_iterator:version", TTL_ZERO, uuid)
       if err then
         return nil, "failed to retrieve plugins iterator version: " .. err
       end

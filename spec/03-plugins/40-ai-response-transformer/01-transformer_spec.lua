@@ -1,4 +1,4 @@
-local llm_class = require("kong.llm")
+local llm = require("kong.llm")
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local http_mock = require "spec.helpers.http_mock"
@@ -8,6 +8,7 @@ local MOCK_PORT = helpers.get_available_port()
 local PLUGIN_NAME = "ai-response-transformer"
 
 local OPENAI_INSTRUCTIONAL_RESPONSE = {
+  __key__ = "ai-response-transformer",
   route_type = "llm/v1/chat",
   model = {
     name = "gpt-4",
@@ -89,10 +90,10 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
   describe("openai transformer tests, specific response", function()
     it("transforms request based on LLM instructions, with response transformation instructions format", function()
-      local llm = llm_class:new(OPENAI_INSTRUCTIONAL_RESPONSE, {})
-      assert.truthy(llm)
+      local llmdriver = llm.new_driver(OPENAI_INSTRUCTIONAL_RESPONSE, {})
+      assert.truthy(llmdriver)
 
-      local result, err = llm:ai_introspect_body(
+      local result, err = llmdriver:ai_introspect_body(
         REQUEST_BODY,      -- request body
         SYSTEM_PROMPT,     -- conf.prompt
         {},                -- http opts
@@ -106,14 +107,14 @@ describe(PLUGIN_NAME .. ": (unit)", function()
       assert.same(EXPECTED_RESULT, table_result)
 
       -- parse in response string format
-      local headers, body, status, err = llm:parse_json_instructions(result)
+      local headers, body, status, err = llmdriver:parse_json_instructions(result)
       assert.is_nil(err)
       assert.same({ ["content-type"] = "application/xml" }, headers)
       assert.same(209, status)
       assert.same(EXPECTED_RESULT.body, body)
 
       -- parse in response table format
-      headers, body, status, err = llm:parse_json_instructions(table_result)
+      headers, body, status, err = llmdriver:parse_json_instructions(table_result)
       assert.is_nil(err)
       assert.same({ ["content-type"] = "application/xml" }, headers)
       assert.same(209, status)

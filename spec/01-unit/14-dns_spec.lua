@@ -1,8 +1,8 @@
 local mocker = require "spec.fixtures.mocker"
 local balancer = require "kong.runloop.balancer"
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 
-local ws_id = utils.uuid()
+local ws_id = uuid.uuid()
 
 local function setup_it_block()
   local client = require "kong.resty.dns.client"
@@ -29,6 +29,7 @@ local function setup_it_block()
     nameservers = { "198.51.100.0" },
     enable_ipv6 = true,
     order = { "LAST", "SRV", "A", "CNAME" },
+    cache_purge = true,
   }
 end
 

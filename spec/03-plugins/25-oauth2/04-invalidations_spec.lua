@@ -407,6 +407,8 @@ for _, strategy in helpers.each_strategy() do
         local token = cjson.decode(assert.res_status(200, res))
         assert.is_table(token)
 
+        helpers.wait_for_all_config_update()
+
         -- The token should work
         local res = assert(proxy_ssl_client:send {
           method  = "GET",

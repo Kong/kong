@@ -11,10 +11,13 @@ load("@kong_bindings//:variables.bzl", "KONG_VAR")
 # Read https://wiki.openssl.org/index.php/Compilation_and_Installation
 
 CONFIGURE_OPTIONS = select({
-    "@kong//:aarch64-linux-anylibc-cross": [
+    "@kong//:aarch64-linux-glibc-cross": [
         "linux-aarch64",
     ],
-    # no extra args needed for "@kong//:x86_64-linux-musl-cross" or non-cross builds
+    "@kong//:x86_64-linux-glibc-cross": [
+        "linux-x86_64",
+    ],
+    # no extra args needed for non-cross builds
     "//conditions:default": [],
 }) + [
     "-g",
@@ -57,19 +60,28 @@ def build_openssl(
             "//conditions:default": {},
         }),
         lib_source = ":%s-all_srcs" % name,
-        out_binaries = ["openssl"],
         # Note that for Linux builds, libssl must come before libcrypto on the linker command-line.
         # As such, libssl must be listed before libcrypto
         out_shared_libs = select({
             "@platforms//os:macos": [
                 "libssl.3.dylib",
                 "libcrypto.3.dylib",
+                "ossl-modules/legacy.dylib",
+                "engines-3/capi.dylib",
+                "engines-3/loader_attic.dylib",
+                "engines-3/padlock.dylib",
             ],
             "//conditions:default": [
                 "libssl.so.3",
                 "libcrypto.so.3",
+                "ossl-modules/legacy.so",
+                "engines-3/afalg.so",
+                "engines-3/capi.so",
+                "engines-3/loader_attic.so",
+                "engines-3/padlock.so",
             ],
         }),
+        out_include_dir = "include/openssl",
         targets = [
             "-j" + KONG_VAR["NPROC"],
             # don't set the prefix by --prefix switch, but only override the install destdir using INSTALLTOP

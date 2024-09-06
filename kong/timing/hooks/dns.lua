@@ -1,12 +1,5 @@
 local _M = {}
-
 local timing
-
-local client = package.loaded["kong.resty.dns.client"]
-if not client then
-  client = require("kong.tools.dns")()
-end
-
 
 local function before_toip(qname, _port, _dnsCacheOnly, _try_list)
   timing.enter_context("dns")
@@ -30,6 +23,7 @@ function _M.register_hooks(timing_module)
     Here is the signature of the `toip()` function:
     function toip(self, qname, port, dnsCacheOnly, try_list)
   --]]
+  local client = assert(package.loaded["kong.resty.dns.client"])
   req_dyn_hook.hook_function("timing", client, "toip", 4, {
     befores = { before_toip },
     afters = { after_toip },

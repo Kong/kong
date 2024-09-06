@@ -1,0 +1,3 @@
+message: "Bumped lua-resty-lmdb from 1.4.1 to 1.4.2"
+type: dependency
+scope: Core

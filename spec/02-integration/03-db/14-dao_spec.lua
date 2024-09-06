@@ -1,6 +1,7 @@
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
 local declarative = require "kong.db.declarative"
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
+local uuid = require("kong.tools.uuid").uuid
 
 -- Note: include "off" strategy here as well
 for _, strategy in helpers.all_strategies() do
@@ -15,6 +16,7 @@ for _, strategy in helpers.all_strategies() do
         "services",
         "consumers",
         "acls",
+        "keyauth_credentials",
       })
       _G.kong.db = db
 
@@ -83,7 +85,7 @@ for _, strategy in helpers.all_strategies() do
         local kong_global = require("kong.global")
         local kong = _G.kong
 
-        kong.worker_events = assert(kong_global.init_worker_events())
+        kong.worker_events = assert(kong_global.init_worker_events(kong.configuration))
         kong.cluster_events = assert(kong_global.init_cluster_events(kong.configuration, kong.db))
         kong.cache = assert(kong_global.init_cache(kong.configuration, kong.cluster_events, kong.worker_events))
         kong.core_cache = assert(kong_global.init_core_cache(kong.configuration, kong.cluster_events, kong.worker_events))
@@ -97,6 +99,7 @@ for _, strategy in helpers.all_strategies() do
       db.consumers:truncate()
       db.plugins:truncate()
       db.services:truncate()
+      db.keyauth_credentials:truncate()
     end)
 
     it("select_by_cache_key()", function()
@@ -139,7 +142,7 @@ for _, strategy in helpers.all_strategies() do
 
     it("update_by_instance_name", function()
       local newhost = "newhost"
-      local updated_plugin = utils.cycle_aware_deep_copy(plugin2)
+      local updated_plugin = cycle_aware_deep_copy(plugin2)
       updated_plugin.config.redis.host = newhost
       updated_plugin.config.redis_host = newhost
 
@@ -151,7 +154,7 @@ for _, strategy in helpers.all_strategies() do
     it("upsert_by_instance_name", function()
       -- existing plugin upsert (update part of upsert)
       local newhost = "newhost"
-      local updated_plugin = utils.cycle_aware_deep_copy(plugin2)
+      local updated_plugin = cycle_aware_deep_copy(plugin2)
       updated_plugin.config.redis.host = newhost
       updated_plugin.config.redis_host = newhost
 
@@ -161,7 +164,7 @@ for _, strategy in helpers.all_strategies() do
 
       -- new plugin upsert (insert part of upsert)
       local new_plugin_config = {
-        id = utils.uuid(),
+        id = uuid(),
         enabled = true,
         name = "rate-limiting",
         instance_name = 'rate-limiting-instance-2',
@@ -183,6 +186,36 @@ for _, strategy in helpers.all_strategies() do
       assert.same(new_plugin_config.config.minute, read_plugin.config.minute)
       assert.same(new_plugin_config.config.redis.host, read_plugin.config.redis.host)
       assert.same(new_plugin_config.config.redis.host, read_plugin.config.redis_host) -- legacy field is included
+    end)
+
+    it("keyauth_credentials can be deleted or selected before run ttl cleanup in background timer", function()
+      local key = uuid()
+      local original_keyauth_credentials = bp.keyauth_credentials:insert({
+        consumer = { id = consumer.id },
+        key = key,
+      }, { ttl = 5 })
+
+      -- wait for 5 seconds.
+      ngx.sleep(5)
+
+      -- select or delete keyauth_credentials after ttl expired.
+      local expired_keyauth_credentials
+      helpers.wait_until(function()
+        expired_keyauth_credentials = kong.db.keyauth_credentials:select_by_key(key)
+        return not expired_keyauth_credentials
+      end, 1)
+      assert.is_nil(expired_keyauth_credentials)
+      kong.db.keyauth_credentials:delete_by_key(key)
+
+      -- select or delete keyauth_credentials with skip_ttl=true after ttl expired.
+      expired_keyauth_credentials = kong.db.keyauth_credentials:select_by_key(key, { skip_ttl = true })
+      assert.not_nil(expired_keyauth_credentials)
+      assert.same(expired_keyauth_credentials.id, original_keyauth_credentials.id)
+      kong.db.keyauth_credentials:delete_by_key(key, { skip_ttl = true })
+
+      -- check again
+      expired_keyauth_credentials = kong.db.keyauth_credentials:select_by_key(key, { skip_ttl = true })
+      assert.is_nil(expired_keyauth_credentials)
     end)
   end)
 end

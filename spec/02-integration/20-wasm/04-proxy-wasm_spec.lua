@@ -1,5 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
+local meta = require "kong.meta"
 
 
 local HEADER_NAME_PHASE = "X-PW-Phase"
@@ -137,6 +138,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
       nginx_conf = "spec/fixtures/custom_nginx.template",
       wasm = true,
       dns_hostsfile = hosts_file,
+      resolver_hosts_file = hosts_file,
       plugins = "pre-function,post-function",
     }))
   end)
@@ -195,7 +197,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
 
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      assert.equal("proxy-wasm", json.headers["via"])
+      assert.equal("1.1 " .. meta._SERVER_TOKENS, json.headers["via"])
       -- TODO: honor case-sensitivity (proxy-wasm-rust-sdk/ngx_wasm_module investigation)
       -- assert.equal("proxy-wasm", json.headers["Via"])
       assert.logfile().has.no.line("[error]", true, 0)
@@ -281,7 +283,7 @@ describe("proxy-wasm filters (#wasm) (#" .. strategy .. ")", function()
       assert.res_status(200, res)
       assert.response(res).has.no.header("x-via")
       assert.logfile().has.line([[testing in "Log"]])
-      assert.logfile().has.line("cannot add response header: headers already sent")
+      assert.logfile().has.line("can only set response headers before \"on_response_body\"")
     end)
 
     pending("throw a trap", function()

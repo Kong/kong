@@ -642,8 +642,10 @@ describe("Configuration loader", function()
       local conf = assert(conf_loader())
       assert.same({"bundled"}, conf.plugins)
       assert.same({"LAST", "SRV", "A", "CNAME"}, conf.dns_order)
+      assert.same({"A", "SRV"}, conf.resolver_family)
       assert.is_nil(getmetatable(conf.plugins))
       assert.is_nil(getmetatable(conf.dns_order))
+      assert.is_nil(getmetatable(conf.resolver_family))
     end)
     it("trims array values", function()
       local conf = assert(conf_loader("spec/fixtures/to-strip.conf"))
@@ -788,6 +790,31 @@ describe("Configuration loader", function()
       assert.is_nil(err)
       assert.is_table(conf)
     end)
+    it("errors when resolver_address is not a list in ipv4/6[:port] format (new dns)", function()
+      local conf, err = conf_loader(nil, {
+        resolver_address = "1.2.3.4:53;4.3.2.1" -- ; as separator
+      })
+      assert.equal("resolver_address must be a comma separated list in the form of IPv4/6 or IPv4/6:port, got '1.2.3.4:53;4.3.2.1'", err)
+      assert.is_nil(conf)
+
+      conf, err = conf_loader(nil, {
+        resolver_address = "198.51.100.0:53"
+      })
+      assert.is_nil(err)
+      assert.is_table(conf)
+
+      conf, err = conf_loader(nil, {
+        resolver_address = "[::1]:53"
+      })
+      assert.is_nil(err)
+      assert.is_table(conf)
+
+      conf, err = conf_loader(nil, {
+        resolver_address = "198.51.100.0,1.2.3.4:53,::1,[::1]:53"
+      })
+      assert.is_nil(err)
+      assert.is_table(conf)
+    end)
     it("errors when node_id is not a valid uuid", function()
       local conf, err = conf_loader(nil, {
         node_id = "foobar",
@@ -810,6 +837,15 @@ describe("Configuration loader", function()
       assert.equal([[dns_hostsfile: file does not exist]], err)
       assert.is_nil(conf)
     end)
+    it("errors when the hosts file does not exist (new dns)", function()
+      -- new dns
+      local tmpfile = "/a_file_that_does_not_exist"
+      local conf, err = conf_loader(nil, {
+        resolver_hosts_file = tmpfile,
+      })
+      assert.equal([[resolver_hosts_file: file does not exist]], err)
+      assert.is_nil(conf)
+    end)
     it("accepts an existing hosts file", function()
       local tmpfile = require("pl.path").tmpname()  -- this creates the file!
       finally(function() os.remove(tmpfile) end)
@@ -819,12 +855,28 @@ describe("Configuration loader", function()
       assert.is_nil(err)
       assert.equal(tmpfile, conf.dns_hostsfile)
     end)
+    it("accepts an existing hosts file (new dns)", function()
+      local tmpfile = require("pl.path").tmpname()  -- this creates the file!
+      finally(function() os.remove(tmpfile) end)
+      local conf, err = conf_loader(nil, {
+        resolver_hosts_file = tmpfile,
+      })
+      assert.is_nil(err)
+      assert.equal(tmpfile, conf.resolver_hosts_file)
+    end)
     it("errors on bad entries in the order list", function()
       local conf, err = conf_loader(nil, {
         dns_order = "A,CXAME,SRV",
       })
       assert.is_nil(conf)
       assert.equal([[dns_order: invalid entry 'CXAME']], err)
+    end)
+    it("errors on bad entries in the family list", function()
+      local conf, err = conf_loader(nil, {
+        resolver_family = "A,AAAX,SRV",
+      })
+      assert.is_nil(conf)
+      assert.equal([[resolver_family: invalid entry 'AAAX']], err)
     end)
     it("errors on bad entries in headers", function()
       local conf, err = conf_loader(nil, {
@@ -1122,6 +1174,18 @@ describe("Configuration loader", function()
           assert.is_table(conf)
 
           local conf, _, errors = conf_loader(nil, {
+            proxy_server = "http://😉.tld",
+          })
+          assert.is_nil(errors)
+          assert.is_table(conf)
+
+          local conf, _, errors = conf_loader(nil, {
+            proxy_server = "http://%F0%9F%98%89.tld",
+          })
+          assert.is_nil(errors)
+          assert.is_table(conf)
+
+          local conf, _, errors = conf_loader(nil, {
             proxy_server = "://localhost:2333",
           })
           assert.contains("proxy_server missing scheme", errors)
@@ -1143,6 +1207,18 @@ describe("Configuration loader", function()
 
           local conf, _, errors = conf_loader(nil, {
             proxy_server = "http://localhost:2333/?a=1",
+          })
+          assert.contains("fragments, query strings or parameters are meaningless in proxy configuration", errors)
+          assert.is_nil(conf)
+
+          local conf, _, errors = conf_loader(nil, {
+            proxy_server = "http://user:password%23@localhost:2333",
+          })
+          assert.is_nil(errors)
+          assert.is_table(conf)
+
+          local conf, _, errors = conf_loader(nil, {
+            proxy_server = "http://user:password#@localhost:2333",
           })
           assert.contains("fragments, query strings or parameters are meaningless in proxy configuration", errors)
           assert.is_nil(conf)
@@ -1948,10 +2024,47 @@ describe("Configuration loader", function()
 
   describe("#wasm properties", function()
     local temp_dir, cleanup
+    local user_filters
+    local bundled_filters
+    local all_filters
 
     lazy_setup(function()
       temp_dir, cleanup = helpers.make_temp_dir()
-      assert(helpers.file.write(temp_dir .. "/empty-filter.wasm", "hello!"))
+      assert(helpers.file.write(temp_dir .. "/filter-a.wasm", "hello!"))
+      assert(helpers.file.write(temp_dir .. "/filter-b.wasm", "hello!"))
+
+      user_filters = {
+        {
+          name = "filter-a",
+          path = temp_dir .. "/filter-a.wasm",
+        },
+        {
+          name = "filter-b",
+          path = temp_dir .. "/filter-b.wasm",
+        }
+      }
+
+      do
+        -- for local builds, the bundled filter path is not constant, so we
+        -- must load the config first to discover the path
+        local conf = assert(conf_loader(nil, {
+          wasm = "on",
+          wasm_filters = "bundled",
+        }))
+
+        assert(conf.wasm_bundled_filters_path)
+        bundled_filters = {
+          {
+            name = "datakit",
+            path = conf.wasm_bundled_filters_path .. "/datakit.wasm",
+          },
+        }
+      end
+
+      all_filters = {}
+      table.insert(all_filters, bundled_filters[1])
+      table.insert(all_filters, user_filters[1])
+      table.insert(all_filters, user_filters[2])
     end)
 
     lazy_teardown(function() cleanup() end)
@@ -1979,12 +2092,7 @@ describe("Configuration loader", function()
         wasm_filters_path = temp_dir,
       })
       assert.is_nil(err)
-      assert.same({
-          {
-              name = "empty-filter",
-              path = temp_dir .. "/empty-filter.wasm",
-          }
-      }, conf.wasm_modules_parsed)
+      assert.same(all_filters, conf.wasm_modules_parsed)
       assert.same(temp_dir, conf.wasm_filters_path)
     end)
 
@@ -1997,6 +2105,95 @@ describe("Configuration loader", function()
       assert.is_nil(conf)
     end)
 
+    it("wasm_filters default", function()
+      local conf, err = conf_loader(nil, {
+        wasm = "on",
+        wasm_filters_path = temp_dir,
+      })
+      assert.is_nil(err)
+      assert.same(all_filters, conf.wasm_modules_parsed)
+      assert.same({ "bundled", "user" }, conf.wasm_filters)
+    end)
+
+    it("wasm_filters = off", function()
+      local conf, err = conf_loader(nil, {
+        wasm = "on",
+        wasm_filters = "off",
+        wasm_filters_path = temp_dir,
+      })
+      assert.is_nil(err)
+      assert.same({}, conf.wasm_modules_parsed)
+    end)
+
+    it("wasm_filters = 'user' allows all user filters", function()
+      local conf, err = conf_loader(nil, {
+        wasm = "on",
+        wasm_filters = "user",
+        wasm_filters_path = temp_dir,
+      })
+      assert.is_nil(err)
+      assert.same(user_filters, conf.wasm_modules_parsed)
+    end)
+
+    it("wasm_filters can allow individual user filters", function()
+      local conf, err = conf_loader(nil, {
+        wasm = "on",
+        wasm_filters = assert(user_filters[1].name),
+        wasm_filters_path = temp_dir,
+      })
+      assert.is_nil(err)
+      assert.same({ user_filters[1] }, conf.wasm_modules_parsed)
+    end)
+
+    it("wasm_filters = 'bundled' allows all bundled filters", function()
+      local conf, err = conf_loader(nil, {
+        wasm = "on",
+        wasm_filters = "bundled",
+        wasm_filters_path = temp_dir,
+      })
+      assert.is_nil(err)
+      assert.same(bundled_filters, conf.wasm_modules_parsed)
+    end)
+
+    it("prefers user filters to bundled filters when a conflict exists", function()
+      local user_filter = temp_dir .. "/datakit.wasm"
+      assert(helpers.file.write(user_filter, "I'm a happy little wasm filter"))
+      finally(function()
+        assert(os.remove(user_filter))
+      end)
+
+      local conf, err = conf_loader(nil, {
+        wasm = "on",
+        wasm_filters = "bundled,user",
+        wasm_filters_path = temp_dir,
+      })
+      assert.is_nil(err)
+
+      local found = false
+      for _, filter in ipairs(conf.wasm_modules_parsed) do
+        if filter.name == "datakit" then
+          found = true
+          assert.equals(user_filter, filter.path,
+                        "user filter should override the bundled filter")
+        end
+      end
+
+      assert.is_true(found, "expected the user filter to be enabled")
+    end)
+
+    it("populates wasmtime_cache_* properties", function()
+      local conf, err = conf_loader(nil, {
+        wasm = "on",
+        wasm_filters = "bundled,user",
+        wasm_filters_path = temp_dir,
+      })
+      assert.is_nil(err)
+
+      assert.is_string(conf.wasmtime_cache_directory,
+                       "wasmtime_cache_directory was not set")
+      assert.is_string(conf.wasmtime_cache_config_file,
+                       "wasmtime_cache_config_file was not set")
+    end)
   end)
 
   describe("errors", function()
@@ -2274,6 +2471,14 @@ describe("Configuration loader", function()
       local FIELDS = {
         -- CONF_BASIC
         prefix = true,
+        socket_path = true,
+        worker_events_sock = true,
+        stream_worker_events_sock = true,
+        stream_rpc_sock = true,
+        stream_config_sock = true,
+        stream_tls_passthrough_sock = true,
+        stream_tls_terminate_sock = true,
+        cluster_proxy_ssl_terminator_sock = true,
         vaults = true,
         database = true,
         lmdb_environment_path = true,
@@ -2324,7 +2529,7 @@ describe("Configuration loader", function()
       }
       local conf = assert(conf_loader(nil, nil, { pre_cmd = true }))
       for k, _ in pairs(conf) do
-        assert.equal(true, FIELDS[k])
+        assert.equal(true, FIELDS[k], "key " .. k .. " is not in FIELDS")
       end
     end)
   end)

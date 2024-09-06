@@ -1,5 +1,5 @@
 local uuid = require("resty.jit-uuid")
-local utils = require("kong.tools.utils")
+local kong_table = require("kong.tools.table")
 local Errors = require("kong.db.errors")
 local Entity = require("kong.db.schema.entity")
 local Schema = require("kong.db.schema")
@@ -7,6 +7,7 @@ local constants = require("kong.constants")
 local plugin_loader = require("kong.db.schema.plugin_loader")
 local vault_loader = require("kong.db.schema.vault_loader")
 local schema_topological_sort = require("kong.db.schema.topological_sort")
+local utils_uuid = require("kong.tools.uuid").uuid
 
 
 local null = ngx.null
@@ -99,7 +100,7 @@ local function add_top_level_entities(fields, known_entities)
   local records = {}
 
   for _, entity in ipairs(known_entities) do
-    local definition = utils.cycle_aware_deep_copy(all_schemas[entity], true)
+    local definition = kong_table.cycle_aware_deep_copy(all_schemas[entity], true)
 
     for k, _ in pairs(definition.fields) do
       if type(k) ~= "number" then
@@ -132,7 +133,7 @@ end
 
 
 local function copy_record(record, include_foreign, duplicates, name, cycle_aware_cache)
-  local copy = utils.cycle_aware_deep_copy(record, true, nil, cycle_aware_cache)
+  local copy = kong_table.cycle_aware_deep_copy(record, true, nil, cycle_aware_cache)
   if include_foreign then
     return copy
   end
@@ -335,7 +336,7 @@ local function uniqueness_error_msg(entity, key, value)
 end
 
 
-local function populate_references(input, known_entities, by_id, by_key, expected, errs, parent_entity)
+local function populate_references(input, known_entities, by_id, by_key, expected, errs, parent_entity, parent_idx)
   for _, entity in ipairs(known_entities) do
     yield(true)
 
@@ -349,7 +350,8 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
     local child_key
     if parent_entity then
       local parent_schema = all_schemas[parent_entity]
-      if parent_schema.fields[entity] then
+      local entity_field = parent_schema.fields[entity]
+      if entity_field and not entity_field.transient then
         goto continue
       end
       parent_fk = parent_schema:extract_pk_values(input)
@@ -363,7 +365,7 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
     for i, item in ipairs(input[entity]) do
       yield(true)
 
-      populate_references(item, known_entities, by_id, by_key, expected, errs, entity)
+      populate_references(item, known_entities, by_id, by_key, expected, errs, entity, i)
 
       local item_id = DeclarativeConfig.pk_string(entity_schema, item)
       local key = use_key and item[endpoint_key]
@@ -381,8 +383,23 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
       if item_id then
         by_id[entity] = by_id[entity] or {}
         if (not failed) and by_id[entity][item_id] then
-          errs[entity] = errs[entity] or {}
-          errs[entity][i] = uniqueness_error_msg(entity, "primary key", item_id)
+          local err_t
+
+          if parent_entity and parent_idx then
+            errs[parent_entity]                     = errs[parent_entity] or {}
+            errs[parent_entity][parent_idx]         = errs[parent_entity][parent_idx] or {}
+            errs[parent_entity][parent_idx][entity] = errs[parent_entity][parent_idx][entity] or {}
+
+            -- e.g. errs["upstreams"][5]["targets"]
+            err_t = errs[parent_entity][parent_idx][entity]
+
+          else
+            errs[entity] = errs[entity] or {}
+            err_t = errs[entity]
+          end
+
+          err_t[i] = uniqueness_error_msg(entity, "primary key", item_id)
+
         else
           by_id[entity][item_id] = item
           table.insert(by_id[entity], item_id)
@@ -406,7 +423,7 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
       end
 
       if parent_fk then
-        item[child_key] = utils.cycle_aware_deep_copy(parent_fk, true)
+        item[child_key] = kong_table.cycle_aware_deep_copy(parent_fk, true)
       end
     end
 
@@ -593,7 +610,7 @@ local function generate_ids(input, known_entities, parent_entity)
       local pk_name, key = get_key_for_uuid_gen(entity, item, schema,
                                                 parent_fk, child_key)
       if key then
-        item = utils.cycle_aware_deep_copy(item, true)
+        item = kong_table.cycle_aware_deep_copy(item, true)
         item[pk_name] = generate_uuid(schema.name, key)
         input[entity][i] = item
       end
@@ -633,7 +650,7 @@ local function populate_ids_for_validation(input, known_entities, parent_entity,
         if key then
           item[pk_name] = generate_uuid(schema.name, key)
         else
-          item[pk_name] = utils.uuid()
+          item[pk_name] = utils_uuid()
         end
       end
 
@@ -652,7 +669,7 @@ local function populate_ids_for_validation(input, known_entities, parent_entity,
       end
 
       if parent_fk and not item[child_key] then
-        item[child_key] = utils.cycle_aware_deep_copy(parent_fk, true)
+        item[child_key] = kong_table.cycle_aware_deep_copy(parent_fk, true)
       end
     end
 
@@ -756,11 +773,11 @@ local function flatten(self, input)
       self.full_schema = DeclarativeConfig.load(self.plugin_set, self.vault_set, true)
     end
 
-    local input_copy = utils.cycle_aware_deep_copy(input, true)
+    local input_copy = kong_table.cycle_aware_deep_copy(input, true)
     populate_ids_for_validation(input_copy, self.known_entities)
     local ok2, err2 = self.full_schema:validate(input_copy)
     if not ok2 then
-      local err3 = utils.cycle_aware_deep_merge(err2, extract_null_errors(err))
+      local err3 = kong_table.cycle_aware_deep_merge(err2, extract_null_errors(err))
       return nil, err3
     end
 

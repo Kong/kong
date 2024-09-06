@@ -3,7 +3,7 @@
 
 local table_new = require("table.new")
 local table_clear = require("table.clear")
-local get_request_id = require("kong.tracing.request_id").get
+local get_request_id = require("kong.observability.tracing.request_id").get
 
 
 -- set in new()

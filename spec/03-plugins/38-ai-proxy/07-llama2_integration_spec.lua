@@ -16,12 +16,12 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       local fixtures = {
         http_mock = {},
       }
-      
+
       fixtures.http_mock.llama2 = [[
         server {
           server_name llama2;
           listen ]]..MOCK_PORT..[[;
-          
+
           default_type 'application/json';
 
           location = "/raw/llm/v1/chat" {
@@ -128,6 +128,36 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           auth = {
             header_name = "Authorization",
             header_value = "Bearer llama2-key",
+            allow_override = true,
+          },
+          model = {
+            name = "llama-2-7b-chat-hf",
+            provider = "llama2",
+            options = {
+              max_tokens = 256,
+              temperature = 1.0,
+              llama2_format = "raw",
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/raw/llm/v1/completions",
+            },
+          },
+        },
+      }
+
+      local chat_good_no_allow_override = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http" },
+        strip_path = true,
+        paths = { "/raw/llm/v1/completions-no-allow-override" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = chat_good_no_allow_override.id },
+        config = {
+          route_type = "llm/v1/completions",
+          auth = {
+            header_name = "Authorization",
+            header_value = "Bearer llama2-key",
+            allow_override = false,
           },
           model = {
             name = "llama-2-7b-chat-hf",
@@ -155,7 +185,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
       }, nil, nil, fixtures))
     end)
-    
+
     lazy_teardown(function()
       helpers.stop_kong()
     end)
@@ -177,7 +207,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = pl_file.read("spec/fixtures/ai-proxy/llama2/raw/requests/good-chat.json"),
         })
-        
+
         local body = assert.res_status(200, r)
         local json = cjson.decode(body)
 
@@ -192,18 +222,83 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = pl_file.read("spec/fixtures/ai-proxy/llama2/raw/requests/good-completions.json"),
         })
-        
+
         local body = assert.res_status(200, r)
         local json = cjson.decode(body)
 
         assert.equals(json.choices[1].text, "Is a well known font.")
       end)
+
+      it("runs good request in completions format with client right auth", function()
+        local r = client:get("/raw/llm/v1/completions", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+            ["Authorization"] = "Bearer llama2-key"
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/llama2/raw/requests/good-completions.json"),
+        })
+
+        local body = assert.res_status(200, r)
+        local json = cjson.decode(body)
+
+        assert.equals(json.choices[1].text, "Is a well known font.")
+      end)
+
+      it("runs good request in completions format with client wrong auth", function()
+        local r = client:get("/raw/llm/v1/completions", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+            ["Authorization"] = "Bearer wrong"
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/llama2/raw/requests/good-completions.json"),
+        })
+
+        local body = assert.res_status(401, r)
+        local json = cjson.decode(body)
+
+        assert.equals(json.error, "Model requires a Pro subscription.")
+      end)
+
+      it("runs good request in completions format with client right auth and no allow_override", function()
+        local r = client:get("/raw/llm/v1/completions-no-allow-override", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+            ["Authorization"] = "Bearer llama2-key"
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/llama2/raw/requests/good-completions.json"),
+        })
+
+        local body = assert.res_status(200, r)
+        local json = cjson.decode(body)
+
+        assert.equals(json.choices[1].text, "Is a well known font.")
+      end)
+
+      it("runs good request in completions format with client wrong auth and no allow_override", function()
+        local r = client:get("/raw/llm/v1/completions-no-allow-override", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+            ["Authorization"] = "Bearer wrong"
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/llama2/raw/requests/good-completions.json"),
+        })
+
+        local body = assert.res_status(200, r)
+        local json = cjson.decode(body)
+
+        assert.equals(json.choices[1].text, "Is a well known font.")
+      end)
+
     end)
 
     describe("one-shot request", function()
       it("success", function()
         local ai_driver = require("kong.llm.drivers.llama2")
-  
+
         local plugin_conf = {
           route_type = "llm/v1/chat",
           auth = {
@@ -220,7 +315,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             },
           },
         }
-  
+
         local request = {
           messages = {
             [1] = {
@@ -260,7 +355,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
       it("404", function()
         local ai_driver = require("kong.llm.drivers.llama2")
-  
+
         local plugin_conf = {
           route_type = "llm/v1/chat",
           auth = {
@@ -303,7 +398,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
       it("401", function()
         local ai_driver = require("kong.llm.drivers.llama2")
-  
+
         local plugin_conf = {
           route_type = "llm/v1/chat",
           auth = {

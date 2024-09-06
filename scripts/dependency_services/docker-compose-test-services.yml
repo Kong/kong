@@ -42,7 +42,20 @@ services:
     ports:
       - 127.0.0.1::9411
     command: --logging.level.zipkin2=DEBUG
-
+  redis-auth:
+    image: redis/redis-stack-server
+    ports:
+      - 127.0.0.1::6381
+    environment:
+      - REDIS_ARGS=--requirepass passdefault
+    volumes:
+      - redis-auth-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--pass", "passdefault", "ping"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
 volumes:
   postgres-data:
   redis-data:
+  redis-auth-data:

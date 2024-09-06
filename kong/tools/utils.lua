@@ -18,13 +18,15 @@ local _M = {}
 
 do
   local modules = {
+    -- [[ keep it here for compatibility
     "kong.tools.table",
-    "kong.tools.string",
     "kong.tools.uuid",
     "kong.tools.rand",
     "kong.tools.time",
+    "kong.tools.string",
     "kong.tools.ip",
     "kong.tools.http",
+    -- ]] keep it here for compatibility
   }
 
   for _, str in ipairs(modules) do

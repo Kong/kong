@@ -1,5 +1,5 @@
-local pl_stringx = require "pl.stringx"
-local utils = require "kong.tools.utils"
+local tools_ip = require "kong.tools.ip"
+local strip = require("kong.tools.string").strip
 
 
 local type = type
@@ -73,7 +73,7 @@ local function parse_option_flags(value, flags)
     end
   end
 
-  return pl_stringx.strip(value), result, pl_stringx.strip(sanitized)
+  return strip(value), result, strip(sanitized)
 end
 
 
@@ -98,7 +98,7 @@ local function parse_listeners(values, flags)
     return nil, usage
   end
 
-  if pl_stringx.strip(values[1]) == "off" then
+  if strip(values[1]) == "off" then
     return list
   end
 
@@ -109,14 +109,14 @@ local function parse_listeners(values, flags)
     -- verify IP for remainder
     local ip
 
-    if utils.hostname_type(remainder) == "name" then
+    if tools_ip.hostname_type(remainder) == "name" then
       -- it's not an IP address, so a name/wildcard/regex
       ip = {}
       ip.host, ip.port = remainder:match("(.+):([%d]+)$")
 
     else
       -- It's an IPv4 or IPv6, normalize it
-      ip = utils.normalize_ip(remainder)
+      ip = tools_ip.normalize_ip(remainder)
       -- nginx requires brackets in IPv6 addresses, but normalize_ip does
       -- not include them (due to backwards compatibility with its other uses)
       if ip and ip.type == "ipv6" then

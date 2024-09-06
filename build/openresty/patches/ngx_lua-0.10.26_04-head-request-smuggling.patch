@@ -1,0 +1,27 @@
+From e5248aa8203d3e0075822a577c1cdd19f5f1f831 Mon Sep 17 00:00:00 2001
+From: lijunlong <lijunlong@openresty.com>
+Date: Sat, 9 Mar 2024 12:30:14 +0800
+Subject: [PATCH] bugfix: fixed HTTP HEAD request smuggling issue.
+
+---
+ src/ngx_http_lua_util.c |  6 ++++
+ t/020-subrequest.t      | 80 +++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 86 insertions(+)
+
+diff --git a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_util.c b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_util.c
+index 8fd26561a7..727ca3da39 100644
+--- a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_util.c
++++ b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_util.c
+@@ -603,6 +603,12 @@ ngx_http_lua_send_chain_link(ngx_http_request_t *r, ngx_http_lua_ctx_t *ctx,
+     if (r->header_only) {
+         ctx->eof = 1;
+ 
++        if (!r->request_body && r == r->main) {
++            if (ngx_http_discard_request_body(r) != NGX_OK) {
++                return NGX_ERROR;
++            }
++        }
++
+         if (ctx->buffering) {
+             return ngx_http_lua_send_http10_headers(r, ctx);
+         }

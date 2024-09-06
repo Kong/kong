@@ -209,6 +209,22 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
+      local route5 = bp.routes:insert {
+        hosts   = { "http_host_header.test" },
+        service = service1
+      }
+
+      bp.plugins:insert {
+        route  = { id = route5.id },
+        name   = "http-log",
+        config = {
+          http_endpoint = "http://" .. helpers.mock_upstream_host
+                                    .. ":"
+                                    .. helpers.mock_upstream_port
+                                    .. "/post_log/http_host_header"
+        }
+      }
+
       local route6 = bp.routes:insert {
         hosts   = { "https_logging_faulty.test" },
         service = service2
@@ -319,6 +335,25 @@ for _, strategy in helpers.each_strategy() do
             key1 = "value1",
             key2 = "{vault://env/http-log-key2}"
           }
+        }
+      }
+
+      local route1_4 = bp.routes:insert {
+        hosts   = { "no_queue.test" },
+        service = service1
+      }
+
+      bp.plugins:insert {
+        route = { id = route1_4.id },
+        name     = "http-log",
+        config   = {
+          http_endpoint = "http://" .. helpers.mock_upstream_host
+            .. ":"
+            .. helpers.mock_upstream_port
+            .. "/post_log/http",
+          queue = {
+            concurrency_limit = -1,
+          },
         }
       }
 
@@ -535,6 +570,24 @@ for _, strategy in helpers.each_strategy() do
       assert.same(vault_env_value, entries[1].log_req_headers.key2)
     end)
 
+    it("http client implicitly adds Host header", function()
+      reset_log("http_host_header")
+      local res = proxy_client:get("/status/200", {
+        headers = {
+          ["Host"] = "http_host_header.test"
+        }
+      })
+      assert.res_status(200, res)
+
+      local entries = get_log("http_host_header", 1)
+      local host_header
+      if helpers.mock_upstream_port == 80 then
+        host_header = helpers.mock_upstream_host
+      else
+        host_header = helpers.mock_upstream_host .. ":" .. helpers.mock_upstream_port
+      end
+      assert.same(entries[1].log_req_headers['host'] or "", host_header)
+    end)
 
     it("puts changed configuration into effect immediately", function()
         local admin_client = assert(helpers.admin_client())
@@ -604,6 +657,20 @@ for _, strategy in helpers.each_strategy() do
 
         admin_client:close()
    end)
+
+    it("should not use queue when queue.concurrency_limit is -1", function()
+      reset_log("http")
+      local res = proxy_client:get("/status/200", {
+        headers = {
+          ["Host"] = "no_queue.test"
+        }
+      })
+      assert.res_status(200, res)
+
+      local entries = get_log("http", 1)
+      assert.same("127.0.0.1", entries[1].client_ip)
+      assert.logfile().has.no.line("processing queue", true)  -- should not use queue
+    end)
   end)
 
   -- test both with a single worker for a deterministic test,

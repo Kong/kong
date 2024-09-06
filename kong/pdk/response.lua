@@ -16,9 +16,9 @@ local buffer = require "string.buffer"
 local cjson = require "cjson.safe"
 local checks = require "kong.pdk.private.checks"
 local phase_checker = require "kong.pdk.private.phases"
-local utils = require "kong.tools.utils"
-local request_id = require "kong.tracing.request_id"
+local request_id = require "kong.observability.tracing.request_id"
 local constants = require "kong.constants"
+local tools_http = require "kong.tools.http"
 
 
 local ngx = ngx
@@ -56,6 +56,7 @@ local header_body_log = phase_checker.new(PHASES.response,
 local rewrite_access_header = phase_checker.new(PHASES.rewrite,
                                                 PHASES.access,
                                                 PHASES.response,
+                                                PHASES.balancer,
                                                 PHASES.header_filter,
                                                 PHASES.error,
                                                 PHASES.admin_api)
@@ -1146,7 +1147,7 @@ local function new(self, major_version)
         content_type = CONTENT_TYPE_GRPC
       else
         local accept_header = ngx.req.get_headers()[ACCEPT_NAME]
-        content_type = utils.get_response_type(accept_header)
+        content_type = tools_http.get_response_type(accept_header)
       end
     end
 
@@ -1156,7 +1157,7 @@ local function new(self, major_version)
     if content_type ~= CONTENT_TYPE_GRPC then
       local actual_message = message or get_http_error_message(status)
       local rid = request_id.get() or ""
-      body = fmt(utils.get_error_template(content_type), actual_message, rid)
+      body = fmt(tools_http.get_error_template(content_type), actual_message, rid)
     end
 
     local ctx = ngx.ctx

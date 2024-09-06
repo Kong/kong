@@ -1,0 +1,3 @@
+message: "**Jwt**: Fixed an issue where the plugin would fail when using invalid public keys for ES384 and ES512 algorithms."
+type: bugfix
+scope: Plugin

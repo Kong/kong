@@ -1,6 +1,5 @@
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
-local tools_str = require "kong.tools.string"
 
 
 local type          = type
@@ -13,10 +12,18 @@ local sort          = table.sort
 local concat        = table.concat
 local fmt           = string.format
 local re_match      = ngx.re.match
-local join          = tools_str.join
-local split         = tools_str.split
-local strip         = tools_str.strip
+local join          = require("kong.tools.string").join
+local split         = require("kong.tools.string").split
+local strip         = require("kong.tools.string").strip
+local parse_http_time = ngx.parse_http_time
+local time          = ngx.time
+local ngx_re_gmatch = ngx.re.gmatch
+local ngx_re_match = ngx.re.match
+local lower         = string.lower
+local max           = math.max
+local tab_new       = require("table.new")
 
+local EMPTY = require("kong.tools.table").EMPTY
 
 local _M = {}
 
@@ -210,16 +217,19 @@ _M.check_https = function(trusted_ip, allow_terminated)
   -- otherwise, we fall back to relying on the client scheme
   -- (which was either validated earlier, or we fall through this block)
   if trusted_ip then
-    local scheme = ngx.req.get_headers()["x-forwarded-proto"]
+    local scheme = ngx.var.http_x_forwarded_proto
+    if not scheme then
+      return false
+    end
 
     -- we could use the first entry (lower security), or check the contents of
     -- each of them (slow). So for now defensive, and error
     -- out on multiple entries for the x-forwarded-proto header.
-    if type(scheme) == "table" then
+    if scheme:find(",", 1, true) then
       return nil, "Only one X-Forwarded-Proto header allowed"
     end
 
-    return tostring(scheme):lower() == "https"
+    return scheme:lower() == "https"
   end
 
   return false
@@ -531,14 +541,7 @@ do
   local replace_dashes = require("kong.tools.string").replace_dashes
 
   function _M.get_header(name, ctx)
-    local value = ngx.var["http_" .. replace_dashes(name)]
-
-    if not value or not value:find(", ", 1, true) then
-      return value
-    end
-
     local headers
-
     if ctx then
       if not ctx.cached_request_headers then
         ctx.cached_request_headers = ngx.req.get_headers()
@@ -547,14 +550,75 @@ do
       headers = ctx.cached_request_headers
 
     else
+      local value = ngx.var["http_" .. replace_dashes(name)]
+      if not value or not value:find(", ", 1, true) then
+        return value
+      end
+
       headers = ngx.req.get_headers()
     end
 
-    value = headers[name]
-
-    return type(value) == "table" and
-           value[1] or value
+    local value = headers[name]
+    return type(value) == "table" and value[1] or value
   end
+end
+
+-- Parses a HTTP header value into a table of directives
+-- eg: Cache-Control: public, max-age=3600
+--     => { public = true, ["max-age"] = 3600 }
+-- @param h (string) the header value to parse
+-- @return table a table of directives
+function _M.parse_directive_header(h)
+  if not h then
+    return EMPTY
+  end
+
+  if type(h) == "table" then
+    h = concat(h, ", ")
+  end
+
+  local t = {}
+  local res = tab_new(3, 0)
+  local iter = ngx_re_gmatch(h, "([^,]+)", "oj")
+
+  local m = iter()
+  while m do
+    local _, err = ngx_re_match(m[0], [[^\s*([^=]+)(?:=(.+))?]], "oj", nil, res)
+    if err then
+      kong.log.err(err)
+    end
+
+    -- store the directive token as a numeric value if it looks like a number;
+    -- otherwise, store the string value. for directives without token, we just
+    -- set the key to true
+    t[lower(res[1])] = tonumber(res[2]) or res[2] or true
+
+    m = iter()
+  end
+
+  return t
+end
+
+-- Calculates resource Time-To-Live (TTL) based on Cache-Control headers
+-- @param res_cc (table) the Cache-Control headers, as parsed by `parse_directive_header`
+-- @return number the TTL in seconds
+function _M.calculate_resource_ttl(res_cc)
+  local max_age = res_cc and (res_cc["s-maxage"] or res_cc["max-age"])
+
+  if not max_age then
+    local expires = ngx.var.sent_http_expires
+
+    if type(expires) == "table" then
+      expires = expires[#expires]
+    end
+
+    local exp_time = parse_http_time(tostring(expires))
+    if exp_time then
+      max_age = exp_time - time()
+    end
+  end
+
+  return max_age and max(max_age, 0) or 0
 end
 
 

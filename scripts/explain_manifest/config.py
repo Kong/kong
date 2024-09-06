@@ -38,25 +38,14 @@ def transform(f: FileInfo):
 # - https://repology.org/project/gcc/versions
 # TODO: libstdc++ verions
 targets = {
-    "alpine-amd64": ExpectSuite(
-        name="Alpine Linux (amd64)",
-        manifest="fixtures/alpine-amd64.txt",
-        use_rpath=True,
-        tests={
-            common_suites: {},
-            libc_libcpp_suites: {
-                # alpine 3.16: gcc 11.2.1
-                "libcxx_max_version": "3.4.29",
-                "cxxabi_max_version": "1.3.13",
-            },
-        }
-    ),
     "amazonlinux-2-amd64": ExpectSuite(
         name="Amazon Linux 2 (amd64)",
         manifest="fixtures/amazonlinux-2-amd64.txt",
         use_rpath=True,
         tests={
-            common_suites: {},
+            common_suites: {
+                "skip_libsimdjson_ffi": True,
+            },
             libc_libcpp_suites: {
                 "libc_max_version": "2.26",
                 # gcc 7.3.1
@@ -79,20 +68,6 @@ targets = {
                 "cxxabi_max_version": "1.3.13",
             },
         },
-    ),
-    "el7-amd64": ExpectSuite(
-        name="Redhat 7 (amd64)",
-        manifest="fixtures/el7-amd64.txt",
-        use_rpath=True,
-        tests={
-            common_suites: {},
-            libc_libcpp_suites: {
-                "libc_max_version": "2.17",
-                # gcc 4.8.5
-                "libcxx_max_version": "3.4.19",
-                "cxxabi_max_version": "1.3.7",
-            },
-        }
     ),
     "el8-amd64": ExpectSuite(
         name="Redhat 8 (amd64)",
@@ -147,19 +122,6 @@ targets = {
                 # gcc 11.2.0
                 "libcxx_max_version": "3.4.29",
                 "cxxabi_max_version": "1.3.13",
-            },
-        }
-    ),
-    "debian-10-amd64": ExpectSuite(
-        name="Debian 10 (amd64)",
-        manifest="fixtures/debian-10-amd64.txt",
-        tests={
-            common_suites: {},
-            libc_libcpp_suites: {
-                "libc_max_version": "2.28",
-                # gcc 8.3.0
-                "libcxx_max_version": "3.4.25",
-                "cxxabi_max_version": "1.3.11",
             },
         }
     ),

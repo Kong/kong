@@ -14,7 +14,7 @@ function Services:select_by_ca_certificate(ca_id, limit)
     kong.db.connector:escape_literal(ca_id),
     limit_condition)
 
-  return kong.db.connector:query(qs)
+  return kong.db.connector:query(qs, "read")
 end
 
 return Services

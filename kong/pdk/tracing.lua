@@ -9,9 +9,8 @@ local require = require
 local ffi = require "ffi"
 local tablepool = require "tablepool"
 local new_tab = require "table.new"
-local utils = require "kong.tools.utils"
 local phase_checker = require "kong.pdk.private.phases"
-local tracing_context = require "kong.tracing.tracing_context"
+local tracing_context = require "kong.observability.tracing.tracing_context"
 
 local ngx = ngx
 local type = type
@@ -20,12 +19,12 @@ local ipairs = ipairs
 local tostring = tostring
 local setmetatable = setmetatable
 local getmetatable = getmetatable
-local rand_bytes = utils.get_rand_bytes
+local rand_bytes = require("kong.tools.rand").get_rand_bytes
 local check_phase = phase_checker.check
 local PHASES = phase_checker.phases
 local ffi_cast = ffi.cast
 local ffi_str = ffi.string
-local ffi_time_unix_nano = utils.time_ns
+local ffi_time_unix_nano = require("kong.tools.time").time_ns
 local tablepool_fetch = tablepool.fetch
 local tablepool_release = tablepool.release
 local ngx_log = ngx.log
@@ -576,12 +575,13 @@ local function new_tracer(name, options)
   -- @tparam number sampling_rate the sampling rate to apply for the
   -- probability sampler
   -- @treturn bool sampled value of sampled for this trace
-  function self:get_sampling_decision(parent_should_sample, sampling_rate)
+  function self:get_sampling_decision(parent_should_sample, plugin_sampling_rate)
     local ctx = ngx.ctx
 
     local sampled
     local root_span = ctx.KONG_SPANS and ctx.KONG_SPANS[1]
     local trace_id = tracing_context.get_raw_trace_id(ctx)
+    local sampling_rate = plugin_sampling_rate or kong.configuration.tracing_sampling_rate
 
     if not root_span or root_span.attributes["kong.propagation_only"] then
       -- should not sample if there is no root span or if the root span is
@@ -593,12 +593,7 @@ local function new_tracer(name, options)
       -- and Kong is configured to only do headers propagation
       sampled = parent_should_sample
 
-    elseif not sampling_rate then
-      -- no custom sampling_rate was passed:
-      -- reuse the sampling result of the root_span
-      sampled = root_span.should_sample == true
-
-    else
+    elseif sampling_rate then
       -- use probability-based sampler
       local err
       sampled, err = self.sampler(trace_id, sampling_rate)

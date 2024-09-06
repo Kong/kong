@@ -2,7 +2,7 @@ local ipairs = ipairs
 local type = type
 
 
-local log_warn_message
+local log_warn_message, _AI_PROVIDER_INCOMPATIBLE
 do
   local ngx_log = ngx.log
   local ngx_WARN = ngx.WARN
@@ -19,10 +19,134 @@ do
                     KONG_VERSION, hint, dp_version, action)
     ngx_log(ngx_WARN, _log_prefix, msg, log_suffix)
   end
+
+  local _AI_PROVIDERS_ADDED = {
+    [3008000000] = {
+      "gemini",
+      "bedrock",
+    },
+  }
+
+  _AI_PROVIDER_INCOMPATIBLE = function(provider, ver)
+    for _, v in ipairs(_AI_PROVIDERS_ADDED[ver]) do
+      if v == provider then
+        return true
+      end
+    end
+
+    return false
+  end
 end
 
-
 local compatible_checkers = {
+  { 3008000000, --[[ 3.8.0.0 ]]
+    function (config_table, dp_version, log_suffix)
+      local has_update
+      for _, plugin in ipairs(config_table.plugins or {}) do
+        if plugin.name == 'acme' then
+          local config = plugin.config
+          if config.storage_config.redis.username ~= nil then
+            log_warn_message('configures ' .. plugin.name .. ' plugin with redis username',
+              'not work in this release',
+              dp_version, log_suffix)
+          end
+        end
+
+        if plugin.name == 'aws-lambda' then
+          local config = plugin.config
+          if config.aws_sts_endpoint_url ~= nil then
+            config.aws_sts_endpoint_url = nil
+            has_update = true
+            log_warn_message('configures ' .. plugin.name .. ' plugin with aws_sts_endpoint_url',
+              'will be removed.',
+              dp_version, log_suffix)
+          end
+        end
+
+        if plugin.name == 'ai-proxy' then
+          local config = plugin.config
+          if _AI_PROVIDER_INCOMPATIBLE(config.model.provider, 3008000000) then
+            log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
+            ' "openai preserve mode", because ' .. config.model.provider .. ' provider ' ..
+            ' is not supported in this release',
+            dp_version, log_suffix)
+
+            config.model.provider = "openai"
+            config.route_type = "preserve"
+
+            has_update = true
+          end
+
+          if config.model.provider == "mistral" and (
+            not config.model.options or
+            config.model.options == ngx.null or
+            not config.model.options.upstream_url or
+            config.model.options.upstream_url == ngx.null) then
+
+            log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
+              ' mistral provider uses fallback upstream_url for managed serivice' ..
+              dp_version, log_suffix)
+
+            config.model.options = config.model.options or {}
+            config.model.options.upstream_url = "https://api.mistral.ai:443"
+            has_update = true
+          end
+
+        end
+
+        if plugin.name == 'ai-request-transformer' then
+          local config = plugin.config
+          if _AI_PROVIDER_INCOMPATIBLE(config.llm.model.provider, 3008000000) then
+            log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
+            ' "openai preserve mode", because ' .. config.llm.model.provider .. ' provider ' ..
+            ' is not supported in this release',
+            dp_version, log_suffix)
+
+            config.llm.model.provider = "openai"
+
+            has_update = true
+          end
+        end
+
+        if plugin.name == 'ai-response-transformer' then
+          local config = plugin.config
+          if _AI_PROVIDER_INCOMPATIBLE(config.llm.model.provider, 3008000000) then
+            log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
+            ' "openai preserve mode", because ' .. config.llm.model.provider .. ' provider ' ..
+            ' is not supported in this release',
+            dp_version, log_suffix)
+
+            config.llm.model.provider = "openai"
+
+            has_update = true
+          end
+        end
+      end
+
+      return has_update
+    end
+  },
+  { 3007000000, --[[ 3.7.0.0 ]]
+    function(config_table, dp_version, log_suffix)
+      local has_update
+
+      for _, plugin in ipairs(config_table.plugins or {}) do
+        if plugin.name == 'ai-proxy' then
+          local config = plugin.config
+          if config.route_type == "preserve" then
+            config.route_type = "llm/v1/chat"
+            log_warn_message('configures ' .. plugin.name .. ' plugin with' ..
+                              ' route_type == "llm/v1/chat", because preserve' ..
+                              ' mode is not supported in this release',
+                              dp_version, log_suffix)
+            has_update = true
+          end
+        end
+      end
+
+      return has_update
+    end,
+  },
   { 3006000000, --[[ 3.6.0.0 ]]
     function(config_table, dp_version, log_suffix)
       local has_update
@@ -47,6 +171,7 @@ local compatible_checkers = {
       return has_update
     end,
   },
+
   { 3005000000, --[[ 3.5.0.0 ]]
     function(config_table, dp_version, log_suffix)
       local has_update

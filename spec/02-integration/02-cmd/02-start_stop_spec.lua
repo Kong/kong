@@ -10,12 +10,14 @@ local read_file = helpers.file.read
 
 
 local PREFIX = helpers.test_conf.prefix
+local SOCKET_PATH = helpers.test_conf.socket_path
 local TEST_CONF = helpers.test_conf
 local TEST_CONF_PATH = helpers.test_conf_path
 
 
 local function wait_until_healthy(prefix)
   prefix = prefix or PREFIX
+  local socket_path = prefix .. "/sockets"
 
   local cmd
 
@@ -41,11 +43,11 @@ local function wait_until_healthy(prefix)
   local conf = assert(helpers.get_running_conf(prefix))
 
   if conf.proxy_listen and conf.proxy_listen ~= "off" then
-    helpers.wait_for_file("socket", prefix .. "/worker_events.sock")
+    helpers.wait_for_file("socket", socket_path .. "/" .. constants.SOCKETS.WORKER_EVENTS)
   end
 
   if conf.stream_listen and conf.stream_listen ~= "off" then
-    helpers.wait_for_file("socket", prefix .. "/stream_worker_events.sock")
+    helpers.wait_for_file("socket", socket_path .. "/" .. constants.SOCKETS.STREAM_WORKER_EVENTS)
   end
 
   if conf.admin_listen and conf.admin_listen ~= "off" then
@@ -1034,11 +1036,51 @@ describe("kong start/stop #" .. strategy, function()
     end)
   end)
 
+  describe("socket_path", function()
+    it("is created on demand by `kong prepare`", function()
+      local dir, cleanup = helpers.make_temp_dir()
+      finally(cleanup)
+
+      local cmd = fmt("prepare -p %q", dir)
+      assert.truthy(kong_exec(cmd), "expected '" .. cmd .. "' to succeed")
+      assert.truthy(helpers.path.isdir(dir .. "/sockets"),
+                    "expected '" .. dir .. "/sockets' directory to be created")
+    end)
+
+    it("can be a user-created symlink", function()
+      local prefix, cleanup = helpers.make_temp_dir()
+      finally(cleanup)
+
+      local socket_path
+      socket_path, cleanup = helpers.make_temp_dir()
+      finally(cleanup)
+
+      assert.truthy(helpers.execute(fmt("ln -sf %q %q/sockets", socket_path, prefix)),
+                    "failed to symlink socket path")
+
+      local preserve_prefix = true
+      assert(helpers.start_kong({
+        prefix = prefix,
+        database = "off",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }, nil, preserve_prefix))
+
+      finally(function()
+        helpers.stop_kong(prefix)
+      end)
+
+      wait_until_healthy(prefix)
+
+      assert.truthy(helpers.path.exists(socket_path .. "/" .. constants.SOCKETS.WORKER_EVENTS),
+                    "worker events socket was not created in the socket_path dir")
+    end)
+  end)
+
   describe("dangling socket cleanup", function()
     local pidfile = TEST_CONF.nginx_pid
 
     -- the worker events socket is just one of many unix sockets we use
-    local event_sock = PREFIX .. "/worker_events.sock"
+    local event_sock = SOCKET_PATH .. "/" .. constants.SOCKETS.WORKER_EVENTS
 
     local env = {
       prefix                      = PREFIX,
@@ -1134,7 +1176,7 @@ describe("kong start/stop #" .. strategy, function()
       local _, stderr = assert_start()
 
       assert.matches("[warn] Found dangling unix sockets in the prefix directory", stderr, nil, true)
-      assert.matches(PREFIX, stderr, nil, true)
+      assert.matches(SOCKET_PATH, stderr, nil, true)
 
       assert.matches("removing unix socket", stderr)
       assert.matches(event_sock, stderr, nil, true)
@@ -1175,6 +1217,7 @@ describe("kong start/stop #" .. strategy, function()
 
     it("works with resty.events when KONG_PREFIX is a relative path", function()
       local prefix = "relpath"
+      local socket_path = "relpath/sockets"
 
       finally(function()
         -- this test uses a non-default prefix, so it must manage
@@ -1201,8 +1244,8 @@ describe("kong start/stop #" .. strategy, function()
       -- wait until everything is running
       wait_until_healthy(prefix)
 
-      assert.truthy(helpers.path.exists(prefix .. "/worker_events.sock"))
-      assert.truthy(helpers.path.exists(prefix .. "/stream_worker_events.sock"))
+      assert.truthy(helpers.path.exists(socket_path .. "/" .. constants.SOCKETS.WORKER_EVENTS))
+      assert.truthy(helpers.path.exists(socket_path .. "/" .. constants.SOCKETS.STREAM_WORKER_EVENTS))
 
       local log = prefix .. "/logs/error.log"
       assert.logfile(log).has.no.line("[error]", true, 0)

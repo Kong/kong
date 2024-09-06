@@ -31,7 +31,7 @@ local _M = {
 ---@field config_schema kong.db.schema.json.schema_doc|nil
 
 
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 local reports = require "kong.reports"
 local clear_tab = require "table.clear"
 local cjson = require "cjson.safe"
@@ -81,7 +81,7 @@ local FILTER_META_SCHEMA = {
 --
 ---@return string
 local function get_version()
-  return kong.core_cache:get(VERSION_KEY, TTL_ZERO, utils.uuid)
+  return kong.core_cache:get(VERSION_KEY, TTL_ZERO, uuid.uuid)
 end
 
 
@@ -836,6 +836,7 @@ local function enable(kong_config)
 
   if not ngx.IS_CLI then
     proxy_wasm = proxy_wasm or require "resty.wasmx.proxy_wasm"
+    jit.off(proxy_wasm.set_host_properties_handlers)
 
     register_property_handlers()
   end
@@ -944,13 +945,6 @@ function _M.attach(ctx)
       log(CRIT, "failed setting host property handlers: ", err)
       return kong.response.error(500)
     end
-  end
-
-  jit.off(proxy_wasm.start)
-  ok, err = proxy_wasm.start()
-  if not ok then
-    log(CRIT, "failed to execute ", chain.label, " filter chain for request: ", err)
-    return kong.response.error(500)
   end
 end
 

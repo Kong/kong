@@ -1,8 +1,10 @@
 local helpers = require "spec.helpers"
 local shell = require "resty.shell"
+local pl_file = require "pl.file"
 
 local tcp_service_port = helpers.get_available_port()
 local tcp_proxy_port = helpers.get_available_port()
+local MOCK_PORT = helpers.get_available_port()
 local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 
 describe("Plugin: prometheus (access)", function()
@@ -116,7 +118,7 @@ describe("Plugin: prometheus (access)", function()
       local body = assert.res_status(200, res)
       assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
 
-      return body:find('http_requests_total{service="mock-service",route="http-route",code="200",source="service",consumer=""} 1', nil, true)
+      return body:find('http_requests_total{service="mock-service",route="http-route",code="200",source="service",workspace="default",consumer=""} 1', nil, true)
     end)
 
     res = assert(proxy_client:send {
@@ -136,7 +138,7 @@ describe("Plugin: prometheus (access)", function()
       local body = assert.res_status(200, res)
       assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
 
-      return body:find('http_requests_total{service="mock-service",route="http-route",code="400",source="service",consumer=""} 1', nil, true)
+      return body:find('http_requests_total{service="mock-service",route="http-route",code="400",source="service",workspace="default",consumer=""} 1', nil, true)
     end)
   end)
 
@@ -161,7 +163,7 @@ describe("Plugin: prometheus (access)", function()
       local body = assert.res_status(200, res)
       assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
 
-      return body:find('http_requests_total{service="mock-grpc-service",route="grpc-route",code="200",source="service",consumer=""} 1', nil, true)
+      return body:find('http_requests_total{service="mock-grpc-service",route="grpc-route",code="200",source="service",workspace="default",consumer=""} 1', nil, true)
     end)
 
     ok, resp = proxy_client_grpcs({
@@ -184,7 +186,7 @@ describe("Plugin: prometheus (access)", function()
       local body = assert.res_status(200, res)
       assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
 
-      return body:find('http_requests_total{service="mock-grpcs-service",route="grpcs-route",code="200",source="service",consumer=""} 1', nil, true)
+      return body:find('http_requests_total{service="mock-grpcs-service",route="grpcs-route",code="200",source="service",workspace="default",consumer=""} 1', nil, true)
     end)
   end)
 
@@ -206,10 +208,10 @@ describe("Plugin: prometheus (access)", function()
       })
       local body = assert.res_status(200, res)
       assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
-      assert.matches('kong_stream_sessions_total{service="tcp-service",route="tcp-route",code="200",source="service"} 1', body, nil, true)
-      assert.matches('kong_session_duration_ms_bucket{service="tcp%-service",route="tcp%-route",le="%+Inf"} %d+', body)
+      assert.matches('kong_stream_sessions_total{service="tcp-service",route="tcp-route",code="200",source="service",workspace="default"} 1', body, nil, true)
+      assert.matches('kong_session_duration_ms_bucket{service="tcp%-service",route="tcp%-route",workspace="default",le="%+Inf"} %d+', body)
 
-      return body:find('kong_stream_sessions_total{service="tcp-service",route="tcp-route",code="200",source="service"} 1', nil, true)
+      return body:find('kong_stream_sessions_total{service="tcp-service",route="tcp-route",code="200",source="service",workspace="default"} 1', nil, true)
     end)
 
     thread:join()
@@ -456,7 +458,7 @@ describe("Plugin: prometheus (access) per-consumer metrics", function()
       local body = assert.res_status(200, res)
       assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
 
-      return body:find('http_requests_total{service="mock-service",route="http-route",code="200",source="service",consumer="alice"} 1', nil, true)
+      return body:find('http_requests_total{service="mock-service",route="http-route",code="200",source="service",workspace="default",consumer="alice"} 1', nil, true)
     end)
 
     res = assert(proxy_client:send {
@@ -477,7 +479,7 @@ describe("Plugin: prometheus (access) per-consumer metrics", function()
       local body = assert.res_status(200, res)
       assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
 
-      return body:find('http_requests_total{service="mock-service",route="http-route",code="400",source="service",consumer="alice"} 1', nil, true)
+      return body:find('http_requests_total{service="mock-service",route="http-route",code="400",source="service",workspace="default",consumer="alice"} 1', nil, true)
     end)
   end)
 
@@ -498,10 +500,10 @@ describe("Plugin: prometheus (access) per-consumer metrics", function()
         path    = "/metrics",
       })
       body = assert.res_status(200, res)
-      return body:find('http_requests_total{service="mock-service",route="http-route",code="200",source="service",consumer="alice"} 1', nil, true)
+      return body:find('http_requests_total{service="mock-service",route="http-route",code="200",source="service",workspace="default",consumer="alice"} 1', nil, true)
     end)
 
-    assert.matches('http_requests_total{service="mock-service",route="http-route",code="401",source="kong",consumer=""} 1', body, nil, true)
+    assert.matches('http_requests_total{service="mock-service",route="http-route",code="401",source="kong",workspace="default",consumer=""} 1', body, nil, true)
 
     assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
   end)
@@ -611,3 +613,293 @@ describe("Plugin: prometheus (access) granular metrics switch", function()
 
 end)
 end
+
+describe("Plugin: prometheus (access) AI metrics", function()
+  local proxy_client
+  local admin_client
+  local prometheus_plugin
+
+  setup(function()
+    local bp = helpers.get_db_utils()
+
+    local fixtures = {
+      http_mock = {},
+    }
+
+    fixtures.http_mock.openai = [[
+      server {
+          server_name openai;
+          listen ]]..MOCK_PORT..[[;
+          
+          default_type 'application/json';
+    
+  
+          location = "/llm/v1/chat/good" {
+            content_by_lua_block {
+              local pl_file = require "pl.file"
+              local json = require("cjson.safe")
+  
+              ngx.req.read_body()
+              local body, err = ngx.req.get_body_data()
+              body, err = json.decode(body)
+  
+              local token = ngx.req.get_headers()["authorization"]
+              local token_query = ngx.req.get_uri_args()["apikey"]
+  
+              if token == "Bearer openai-key" or token_query == "openai-key" or body.apikey == "openai-key" then
+                ngx.req.read_body()
+                local body, err = ngx.req.get_body_data()
+                body, err = json.decode(body)
+                
+                if err or (body.messages == ngx.null) then
+                  ngx.status = 400
+                  ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/bad_request.json"))
+                else
+                  ngx.status = 200
+                  ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/good.json"))
+                end
+              else
+                ngx.status = 401
+                ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/unauthorized.json"))
+              end
+            }
+          }
+      }
+    ]]
+
+    local empty_service = assert(bp.services:insert {
+      name = "empty_service",
+      host = "localhost", --helpers.mock_upstream_host,
+      port = 8080, --MOCK_PORT,
+      path = "/",
+    })
+  
+    -- 200 chat good with one option
+    local chat_good = assert(bp.routes:insert {
+      service = empty_service,
+      name = "http-route",
+      protocols = { "http" },
+      strip_path = true,
+      paths = { "/" }
+    })
+
+    bp.plugins:insert {
+      name = "ai-proxy",
+      route = { id = chat_good.id },
+      config = {
+        route_type = "llm/v1/chat",
+        logging = {
+          log_payloads = false,
+          log_statistics = true,
+        },
+        auth = {
+          header_name = "Authorization",
+          header_value = "Bearer openai-key",
+        },
+        model = {
+          name = "gpt-3.5-turbo",
+          provider = "openai",
+          options = {
+            max_tokens = 256,
+            temperature = 1.0,
+            upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/chat/good",
+            input_cost = 10.0,
+            output_cost = 10.0,
+          },
+        },
+      },
+    }
+
+    prometheus_plugin = assert(bp.plugins:insert {
+      protocols = { "http", "https", "grpc", "grpcs", "tcp", "tls" },
+      name = "prometheus",
+      config = {
+        -- ai_metrics = true,
+        status_code_metrics = true,
+      },
+    })
+
+    assert(helpers.start_kong ({
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        plugins = "bundled, prometheus",
+    }, nil, nil, fixtures))
+    proxy_client = helpers.proxy_client()
+    admin_client = helpers.admin_client()
+  end)
+
+  teardown(function()
+    if proxy_client then
+      proxy_client:close()
+    end
+    if admin_client then
+      admin_client:close()
+    end
+
+    helpers.stop_kong()
+  end)
+
+  it("no AI metrics when not enable in Prometheus plugin", function()
+    local res = assert(proxy_client:send {
+      method  = "GET",
+      path    = "/status/200",
+      headers = {
+        host = helpers.mock_upstream_host,
+        authorization = 'Bearer openai-key',
+        ["content-type"] = 'application/json',
+        accept = 'application/json',
+      },
+      body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
+    })
+    assert.res_status(200, res)
+
+    local body
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      body = assert.res_status(200, res)
+      return res.status == 200
+    end)
+
+    assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+    assert.matches('http_requests_total{service="empty_service",route="http-route",code="200",source="service",workspace="default",consumer=""} 1', body, nil, true)
+    
+    assert.not_match('ai_llm_requests_total', body, nil, true)
+    assert.not_match('ai_llm_cost_total', body, nil, true)
+    assert.not_match('ai_llm_tokens_total', body, nil, true)
+    assert.not_match('ai_llm_provider_latency_ms_bucket', body, nil, true)
+  end)
+
+  it("update prometheus plugin config", function()
+    local body
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "PATCH",
+        path = "/plugins/" .. prometheus_plugin.id,
+        body = {
+          name = "prometheus",
+          config = {
+            status_code_metrics = true,
+            ai_metrics = true,
+          }
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+      body = assert.res_status(200, res)
+      return res.status == 200
+    end)
+
+    local cjson = require "cjson"
+    local json = cjson.decode(body)
+    assert.equal(true, json.config.ai_metrics)
+
+    ngx.sleep(2)
+  end)
+  
+  it("add the count for proxied AI requests", function()
+    local res = assert(proxy_client:send {
+      method  = "GET",
+      path    = "/status/200",
+      headers = {
+        host = helpers.mock_upstream_host,
+        authorization = 'Bearer openai-key',
+        ["content-type"] = 'application/json',
+        accept = 'application/json',
+      },
+      body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
+    })
+    assert.res_status(200, res)
+
+    local body
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      body = assert.res_status(200, res)
+      return res.status == 200
+    end)
+
+    assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+    assert.matches('http_requests_total{service="empty_service",route="http-route",code="200",source="service",workspace="default",consumer=""} 2', body, nil, true)
+    
+    assert.matches('ai_llm_requests_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",workspace="default"} 1', body, nil, true)
+
+    assert.matches('ai_llm_cost_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",workspace="default"} 0.00037', body, nil, true)
+
+    assert.matches('ai_llm_provider_latency_ms_bucket{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",workspace="default",le="+Inf"} 1', body, nil, true)
+
+    assert.matches('ai_llm_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",token_type="completion_tokens",workspace="default"} 12', body, nil, true)
+    assert.matches('ai_llm_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",token_type="prompt_tokens",workspace="default"} 25', body, nil, true)
+    assert.matches('ai_llm_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",token_type="total_tokens",workspace="default"} 37', body, nil, true)
+  end)
+
+  it("increments the count for proxied AI requests", function()
+    local res = assert(proxy_client:send {
+      method  = "GET",
+      path    = "/status/200",
+      headers = {
+        host = helpers.mock_upstream_host,
+        authorization = 'Bearer openai-key',
+        ["content-type"] = 'application/json',
+        accept = 'application/json',
+      },
+      body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good.json"),
+    })
+    assert.res_status(200, res)
+
+    local body
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      body = assert.res_status(200, res)
+      return res.status == 200
+    end)
+
+    assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+    assert.matches('http_requests_total{service="empty_service",route="http-route",code="200",source="service",workspace="default",consumer=""} 3', body, nil, true)
+    
+    assert.matches('ai_llm_requests_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",workspace="default"} 2', body, nil, true)
+
+    assert.matches('ai_llm_cost_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",workspace="default"} 0.00074', body, nil, true)
+
+    assert.matches('ai_llm_provider_latency_ms_bucket{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",workspace="default",le="+Inf"} 2', body, nil, true)
+
+    assert.matches('ai_llm_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",token_type="completion_tokens",workspace="default"} 24', body, nil, true)
+    assert.matches('ai_llm_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",token_type="prompt_tokens",workspace="default"} 50', body, nil, true)
+    assert.matches('ai_llm_tokens_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",token_type="total_tokens",workspace="default"} 74', body, nil, true)
+  end)
+
+  it("behave correctly if AI metrics are not found", function()
+    local res = assert(proxy_client:send {
+      method  = "GET",
+      path    = "/status/400",
+      headers = {
+        host = helpers.mock_upstream_host,
+      }
+    })
+    assert.res_status(400, res)
+
+    local body
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      body = assert.res_status(200, res)
+      return res.status == 200
+    end)
+
+    assert.matches('http_requests_total{service="empty_service",route="http-route",code="400",source="kong",workspace="default",consumer=""} 1', body, nil, true)
+    assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+
+    assert.matches('ai_llm_requests_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",workspace="default"} 2', body, nil, true)
+    assert.matches('ai_llm_cost_total{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",workspace="default"} 0.00074', body, nil, true)
+    assert.matches('ai_llm_provider_latency_ms_bucket{ai_provider="openai",ai_model="gpt-3.5-turbo",cache_status="",vector_db="",embeddings_provider="",embeddings_model="",workspace="default",le="+Inf"} 2', body, nil, true)
+  end)
+end)

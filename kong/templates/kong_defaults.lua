@@ -41,6 +41,8 @@ cluster_ocsp = off
 cluster_max_payload = 16777216
 cluster_use_proxy = off
 cluster_dp_labels = NONE
+cluster_rpc = off
+cluster_cjson = off
 
 lmdb_environment_path = dbless.lmdb
 lmdb_map_size = 2048m
@@ -168,6 +170,17 @@ dns_not_found_ttl = 30
 dns_error_ttl = 1
 dns_no_sync = off
 
+new_dns_client = off
+
+resolver_address = NONE
+resolver_hosts_file = /etc/hosts
+resolver_family = A,SRV
+resolver_valid_ttl = NONE
+resolver_stale_ttl = 3600
+resolver_lru_cache_size = 10000
+resolver_mem_cache_size = 5m
+resolver_error_ttl = 1
+
 dedicated_config_processing = on
 worker_consistency = eventual
 worker_state_update_frequency = 5
@@ -208,6 +221,7 @@ tracing_sampling_rate = 0.01
 wasm = off
 wasm_filters_path = NONE
 wasm_dynamic_module = NONE
+wasm_filters = bundled,user
 
 request_debug = on
 request_debug_token =

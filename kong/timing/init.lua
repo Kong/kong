@@ -7,11 +7,11 @@ local ngx                 = ngx
 local ngx_var             = ngx.var
 local ngx_req_set_header  = ngx.req.set_header
 
-local assert              = assert 
+local assert              = assert
 local ipairs              = ipairs
 local string_format       = string.format
 
-local request_id_get      = require("kong.tracing.request_id").get
+local request_id_get      = require("kong.observability.tracing.request_id").get
 
 local FILTER_ALL_PHASES = {
   ssl_cert      = nil,    -- NYI
@@ -48,6 +48,12 @@ local function should_run()
 end
 
 
+local get_header
+if ngx.config.subsystem == "http" then
+  get_header = require("kong.tools.http").get_header
+end
+
+
 local function is_loopback(binary_addr)
   -- ipv4 127.0.0.0/8 or ipv6 ::1
   if (#binary_addr == 4 and binary_addr:byte(1) == 127) or
@@ -65,12 +71,12 @@ function _M.auth()
   end
 
   local ngx_ctx = ngx.ctx
-  
+
   assert(ngx_ctx.req_trace_id == nil)
 
-  local http_x_kong_request_debug = ngx_var.http_x_kong_request_debug
-  local http_x_kong_request_debug_token = ngx_var.http_x_kong_request_debug_token
-  local http_x_kong_request_debug_log = ngx_var.http_x_kong_request_debug_log
+  local http_x_kong_request_debug = get_header("x_kong_request_debug", ngx_ctx)
+  local http_x_kong_request_debug_token = get_header("x_kong_request_debug_token", ngx_ctx)
+  local http_x_kong_request_debug_log = get_header("x_kong_request_debug_log", ngx_ctx)
 
   if http_x_kong_request_debug then
     ngx_req_set_header("X-Kong-Request-Debug", nil)
@@ -216,7 +222,7 @@ function _M.init_worker(is_enabled)
   enabled = is_enabled and ngx.config.subsystem == "http"
 
   if enabled then
-    req_dyn_hook.always_enable("timing:auth")
+    req_dyn_hook.enable_by_default("timing:auth")
   end
 end
 

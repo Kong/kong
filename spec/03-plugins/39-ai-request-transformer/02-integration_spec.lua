@@ -1,18 +1,51 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
+local pl_file = require "pl.file"
+
+local strip = require("kong.tools.string").strip
 
 local MOCK_PORT = helpers.get_available_port()
 local PLUGIN_NAME = "ai-request-transformer"
 
+local FILE_LOG_PATH_STATS_ONLY = os.tmpname()
+
+local function wait_for_json_log_entry(FILE_LOG_PATH)
+  local json
+
+  assert
+    .with_timeout(10)
+    .ignore_exceptions(true)
+    .eventually(function()
+      local data = assert(pl_file.read(FILE_LOG_PATH))
+
+      data = strip(data)
+      assert(#data > 0, "log file is empty")
+
+      data = data:match("%b{}")
+      assert(data, "log file does not contain JSON")
+
+      json = cjson.decode(data)
+    end)
+    .has_no_error("log file contains a valid JSON entry")
+
+  return json
+end
+
 local OPENAI_FLAT_RESPONSE = {
   route_type = "llm/v1/chat",
+  logging = {
+    log_payloads = false,
+    log_statistics = true,
+  },
   model = {
     name = "gpt-4",
     provider = "openai",
     options = {
       max_tokens = 512,
       temperature = 0.5,
-      upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/flat"
+      upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/flat",
+      input_cost = 10.0,
+      output_cost = 10.0,
     },
   },
   auth = {
@@ -84,6 +117,26 @@ local EXPECTED_RESULT_FLAT = {
   }
 }
 
+local _EXPECTED_CHAT_STATS = {
+  ["ai-request-transformer"] = {
+    meta = {
+      plugin_id = '71083e79-4921-4f9f-97a4-ee7810b6cd8a',
+      provider_name = 'openai',
+      request_model = 'gpt-4',
+      response_model = 'gpt-3.5-turbo-0613',
+      llm_latency = 1
+    },
+    usage = {
+      prompt_tokens = 25,
+      completion_tokens = 12,
+      total_tokens = 37,
+      time_per_token = 1,
+      cost = 0.00037,
+    },
+    cache = {}
+  },
+}
+
 local SYSTEM_PROMPT = "You are a mathematician. "
                    .. "Multiply all numbers in my JSON request, by 2."
 
@@ -105,7 +158,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         server {
             server_name llm;
             listen ]]..MOCK_PORT..[[;
-            
+
             default_type 'application/json';
 
             location ~/flat {
@@ -118,7 +171,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             location = "/badrequest" {
               content_by_lua_block {
                 local pl_file = require "pl.file"
-                
+
                 ngx.status = 400
                 ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/bad_request.json"))
               }
@@ -127,7 +180,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             location = "/internalservererror" {
               content_by_lua_block {
                 local pl_file = require "pl.file"
-                
+
                 ngx.status = 500
                 ngx.header["content-type"] = "text/html"
                 ngx.print(pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/responses/internal_server_error.html"))
@@ -142,10 +195,19 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       })
       bp.plugins:insert {
         name = PLUGIN_NAME,
+        id = "71083e79-4921-4f9f-97a4-ee7810b6cd8a",
         route = { id = without_response_instructions.id },
         config = {
           prompt = SYSTEM_PROMPT,
           llm = OPENAI_FLAT_RESPONSE,
+        },
+      }
+
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = without_response_instructions.id },
+        config = {
+          path = FILE_LOG_PATH_STATS_ONLY,
         },
       }
 
@@ -186,7 +248,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
       }, nil, nil, fixtures))
     end)
-    
+
     lazy_teardown(function()
       helpers.stop_kong()
     end)
@@ -208,12 +270,45 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = REQUEST_BODY,
         })
-        
+
         local body = assert.res_status(200 , r)
         local body_table, err = cjson.decode(body)
 
         assert.is_nil(err)
         assert.same(EXPECTED_RESULT_FLAT, body_table.post_data.params)
+      end)
+
+      it("logs statistics", function()
+        local r = client:get("/echo-flat", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+          },
+          body = REQUEST_BODY,
+        })
+
+        local body = assert.res_status(200 , r)
+        local _, err = cjson.decode(body)
+
+        assert.is_nil(err)
+
+        local log_message = wait_for_json_log_entry(FILE_LOG_PATH_STATS_ONLY)
+        assert.same("127.0.0.1", log_message.client_ip)
+        assert.is_number(log_message.request.size)
+        assert.is_number(log_message.response.size)
+
+        -- test ai-request-transformer stats
+        local actual_chat_stats = log_message.ai
+        local actual_llm_latency = actual_chat_stats["ai-request-transformer"].meta.llm_latency
+        local actual_time_per_token = actual_chat_stats["ai-request-transformer"].usage.time_per_token
+        local time_per_token = math.floor(actual_llm_latency / actual_chat_stats["ai-request-transformer"].usage.completion_tokens)
+
+        log_message.ai["ai-request-transformer"].meta.llm_latency = 1
+        log_message.ai["ai-request-transformer"].usage.time_per_token = 1
+
+        assert.same(_EXPECTED_CHAT_STATS, log_message.ai)
+        assert.is_true(actual_llm_latency >= 0)
+        assert.same(actual_time_per_token, time_per_token)
       end)
 
       it("bad request from LLM", function()

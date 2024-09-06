@@ -6,6 +6,7 @@ local phase_checker = require "kong.pdk.private.phases"
 local kong_cache = require "kong.cache"
 local kong_cluster_events = require "kong.cluster_events"
 local private_node = require "kong.pdk.private.node"
+local constants = require "kong.constants"
 
 local ngx = ngx
 local type = type
@@ -168,28 +169,20 @@ function _GLOBAL.init_pdk(self, kong_config)
 end
 
 
-function _GLOBAL.init_worker_events()
+function _GLOBAL.init_worker_events(kong_config)
   -- Note: worker_events will not work correctly if required at the top of the file.
   --       It must be required right here, inside the init function
   local worker_events
   local opts
 
-  local configuration = kong.configuration
-
-  -- `kong.configuration.prefix` is already normalized to an absolute path,
-  -- but `ngx.config.prefix()` is not
-  local prefix = configuration and
-                 configuration.prefix or
-                 require("pl.path").abspath(ngx.config.prefix())
-
+  local socket_path = kong_config.socket_path
   local sock = ngx.config.subsystem == "stream" and
-               "stream_worker_events.sock" or
-               "worker_events.sock"
+               constants.SOCKETS.STREAM_WORKER_EVENTS or
+               constants.SOCKETS.WORKER_EVENTS
 
-  local listening = "unix:" .. prefix .. "/" .. sock
+  local listening = "unix:" .. socket_path .. "/" .. sock
 
-  local max_payload_len = configuration and
-                          configuration.worker_events_max_payload
+  local max_payload_len = kong_config.worker_events_max_payload
 
   if max_payload_len and max_payload_len > 65535 then   -- default is 64KB
     ngx.log(ngx.WARN,
@@ -203,6 +196,9 @@ function _GLOBAL.init_worker_events()
     listening = listening,  -- unix socket for broker listening
     max_queue_len = 1024 * 50,  -- max queue len for events buffering
     max_payload_len = max_payload_len,  -- max payload size in bytes
+    enable_privileged_agent = kong_config.dedicated_config_processing
+                          and kong_config.role == "data_plane"
+                           or false,
   }
 
   worker_events = require "resty.events.compat"

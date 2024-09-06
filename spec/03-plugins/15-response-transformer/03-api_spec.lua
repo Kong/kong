@@ -56,6 +56,7 @@ for _, strategy in helpers.each_strategy() do
         end)
         it("rename succeeds with colons", function()
           local rename_header = "x-request-id:x-custom-request-id"
+          local rename_json = "old_key:new_key"
           local res = assert(admin_client:send {
             method  = "POST",
             path    = "/plugins",
@@ -64,6 +65,7 @@ for _, strategy in helpers.each_strategy() do
               config = {
                 rename = {
                   headers = { rename_header },
+                  json    = { rename_json },
                 },
               },
             },
@@ -74,6 +76,7 @@ for _, strategy in helpers.each_strategy() do
           assert.response(res).has.status(201)
           local body = assert.response(res).has.jsonbody()
           assert.equals(rename_header, body.config.rename.headers[1])
+          assert.equals(rename_json, body.config.rename.json[1])
 
           admin_client:send {
             method  = "DELETE",
@@ -201,6 +204,7 @@ for _, strategy in helpers.each_strategy() do
                 },
                 rename = {
                   headers    = cjson.null,
+                  json       = cjson.null,
                 },
                 replace = {
                   headers    = cjson.null,
@@ -232,6 +236,7 @@ for _, strategy in helpers.each_strategy() do
             },
             rename = {
               headers = "required field missing",
+              json = "required field missing",
             },
             replace = {
               headers = "required field missing",

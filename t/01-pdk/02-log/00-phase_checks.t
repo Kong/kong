@@ -66,7 +66,12 @@ qq{
                         },
                        response = {
                           get_source = function() return "service" end,
-                       },
+                        },
+                       service = {
+                          response = {
+                            get_status = function() return 200 end,
+                          },
+                        },
                      }
                   }
                 },
@@ -232,5 +237,3 @@ qq{
 GET /t
 --- no_error_log
 [error]
-
-

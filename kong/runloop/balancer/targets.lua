@@ -10,7 +10,6 @@ local dns_client = require "kong.resty.dns.client"
 local upstreams = require "kong.runloop.balancer.upstreams"
 local balancers = require "kong.runloop.balancer.balancers"
 local dns_utils = require "kong.resty.dns.utils"
-local utils = require "kong.tools.utils"
 
 local ngx = ngx
 local null = ngx.null
@@ -23,7 +22,7 @@ local tonumber = tonumber
 local table_sort = table.sort
 local assert = assert
 local exiting = ngx.worker.exiting
-local get_updated_now_ms = utils.get_updated_now_ms
+local get_updated_now_ms = require("kong.tools.time").get_updated_now_ms
 
 local CRIT = ngx.CRIT
 local DEBUG = ngx.DEBUG
@@ -31,8 +30,7 @@ local ERR = ngx.ERR
 local WARN = ngx.WARN
 
 local SRV_0_WEIGHT = 1      -- SRV record with weight 0 should be hit minimally, hence we replace by 1
-local EMPTY = setmetatable({},
-  {__newindex = function() error("The 'EMPTY' table is read-only") end})
+local EMPTY = require("kong.tools.table").EMPTY
 local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 
 -- global binary heap for all balancers to share as a single update timer for
@@ -50,7 +48,7 @@ local resolve_timer_running
 local queryDns
 
 function targets_M.init()
-  dns_client = require("kong.tools.dns")(kong.configuration)    -- configure DNS client
+  dns_client = assert(package.loaded["kong.resty.dns.client"])
   if renewal_heap:size() > 0 then
     renewal_heap = require("binaryheap").minUnique()
     renewal_weak_cache = setmetatable({}, { __mode = "v" })    

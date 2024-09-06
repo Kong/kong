@@ -1,4 +1,4 @@
-local llm_class = require("kong.llm")
+local llm = require("kong.llm")
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local http_mock = require "spec.helpers.http_mock"
@@ -9,6 +9,7 @@ local PLUGIN_NAME = "ai-request-transformer"
 
 local FORMATS = {
   openai = {
+    __key__ = "ai-request-transformer",
     route_type = "llm/v1/chat",
     model = {
       name = "gpt-4",
@@ -25,6 +26,7 @@ local FORMATS = {
     },
   },
   cohere = {
+    __key__ = "ai-request-transformer",
     route_type = "llm/v1/chat",
     model = {
       name = "command",
@@ -41,6 +43,7 @@ local FORMATS = {
     },
   },
   anthropic = {
+    __key__ = "ai-request-transformer",
     route_type = "llm/v1/chat",
     model = {
       name = "claude-2.1",
@@ -57,6 +60,7 @@ local FORMATS = {
     },
   },
   azure = {
+    __key__ = "ai-request-transformer",
     route_type = "llm/v1/chat",
     model = {
       name = "gpt-4",
@@ -64,7 +68,7 @@ local FORMATS = {
       options = {
         max_tokens = 512,
         temperature = 0.5,
-        upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORT .. "/chat/azure"
+        upstream_url = "http://" .. helpers.mock_upstream_host .. ":" .. MOCK_PORT .. "/chat/azure",
       },
     },
     auth = {
@@ -73,6 +77,7 @@ local FORMATS = {
     },
   },
   llama2 = {
+    __key__ = "ai-request-transformer",
     route_type = "llm/v1/chat",
     model = {
       name = "llama2",
@@ -90,6 +95,7 @@ local FORMATS = {
     },
   },
   mistral = {
+    __key__ = "ai-request-transformer",
     route_type = "llm/v1/chat",
     model = {
       name = "mistral",
@@ -110,6 +116,7 @@ local FORMATS = {
 
 local OPENAI_NOT_JSON = {
   route_type = "llm/v1/chat",
+  __key__ = "ai-request-transformer",
   model = {
     name = "gpt-4",
     provider = "openai",
@@ -217,10 +224,10 @@ describe(PLUGIN_NAME .. ": (unit)", function()
   for name, format_options in pairs(FORMATS) do
     describe(name .. " transformer tests, exact json response", function()
       it("transforms request based on LLM instructions", function()
-        local llm = llm_class:new(format_options, {})
-        assert.truthy(llm)
+        local llmdriver = llm.new_driver(format_options, {})
+        assert.truthy(llmdriver)
 
-        local result, err = llm:ai_introspect_body(
+        local result, err = llmdriver:ai_introspect_body(
           REQUEST_BODY,      -- request body
           SYSTEM_PROMPT,     -- conf.prompt
           {},                -- http opts
@@ -239,10 +246,10 @@ describe(PLUGIN_NAME .. ": (unit)", function()
 
   describe("openai transformer tests, pattern matchers", function()
     it("transforms request based on LLM instructions, with json extraction pattern", function()
-      local llm = llm_class:new(OPENAI_NOT_JSON, {})
-      assert.truthy(llm)
+      local llmdriver = llm.new_driver(OPENAI_NOT_JSON, {})
+      assert.truthy(llmdriver)
 
-      local result, err = llm:ai_introspect_body(
+      local result, err = llmdriver:ai_introspect_body(
         REQUEST_BODY,         -- request body
         SYSTEM_PROMPT,        -- conf.prompt
         {},                   -- http opts
@@ -258,10 +265,10 @@ describe(PLUGIN_NAME .. ": (unit)", function()
     end)
 
     it("transforms request based on LLM instructions, but fails to match pattern", function()
-      local llm = llm_class:new(OPENAI_NOT_JSON, {})
-      assert.truthy(llm)
+      local llmdriver = llm.new_driver(OPENAI_NOT_JSON, {})
+      assert.truthy(llmdriver)
 
-      local result, err = llm:ai_introspect_body(
+      local result, err = llmdriver:ai_introspect_body(
         REQUEST_BODY,      -- request body
         SYSTEM_PROMPT,     -- conf.prompt
         {},                -- http opts

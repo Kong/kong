@@ -3,6 +3,7 @@ local helpers = require "spec.helpers"
 local meta    = require "kong.meta"
 local pl_file = require "pl.file"
 local fixtures = require "spec.fixtures.aws-lambda"
+local http_mock = require "spec.helpers.http_mock"
 
 local TEST_CONF = helpers.test_conf
 local server_tokens = meta._SERVER_TOKENS
@@ -15,6 +16,19 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: AWS Lambda (access) [#" .. strategy .. "]", function()
     local proxy_client
     local admin_client
+    local mock_http_server_port = helpers.get_available_port()
+
+    local mock = http_mock.new(mock_http_server_port, [[
+      ngx.print('hello world')
+    ]],  {
+      prefix = "mockserver",
+      log_opts = {
+        req = true,
+        req_body = true,
+        req_large_body = true,
+      },
+      tls = false,
+    })
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -152,6 +166,36 @@ for _, strategy in helpers.each_strategy() do
 
       local route24 = bp.routes:insert {
         hosts       = { "lambda24.test" },
+        protocols   = { "http", "https" },
+        service     = null,
+      }
+
+      local route25 = bp.routes:insert {
+        hosts       = { "lambda25.test" },
+        protocols   = { "http", "https" },
+        service     = null,
+      }
+
+      local route26 = bp.routes:insert {
+        hosts       = { "lambda26.test" },
+        protocols   = { "http", "https" },
+        service     = null,
+      }
+
+      local route27 = bp.routes:insert {
+        hosts       = { "lambda27.test" },
+        protocols   = { "http", "https" },
+        service     = null,
+      }
+
+      local route28 = bp.routes:insert {
+        hosts       = { "lambda28.test" },
+        protocols   = { "http", "https" },
+        service     = null,
+      }
+
+      local route29 = bp.routes:insert {
+        hosts       = { "lambda29.test" },
         protocols   = { "http", "https" },
         service     = null,
       }
@@ -482,6 +526,79 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route25.id },
+        config                 = {
+          port                 = 10001,
+          aws_key              = "mock-key",
+          aws_secret           = "mock-secret",
+          aws_region           = "us-east-1",
+          function_name        = "functionWithLatency",
+        }
+      }
+
+      bp.plugins:insert {
+        route = { id = route25.id },
+        name = "http-log",
+        config   = {
+          http_endpoint = "http://localhost:" .. mock_http_server_port,
+        }
+      }
+
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route26.id },
+        config                 = {
+          port                 = 10001,
+          aws_key              = "mock-key",
+          aws_secret           = "mock-secret",
+          aws_region           = "us-east-1",
+          function_name        = "functionWithEmptyArray",
+          empty_arrays_mode    = "legacy",
+        }
+      }
+
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route27.id },
+        config                 = {
+          port                 = 10001,
+          aws_key              = "mock-key",
+          aws_secret           = "mock-secret",
+          aws_region           = "us-east-1",
+          function_name        = "functionWithEmptyArray",
+          empty_arrays_mode    = "correct",
+        }
+      }
+
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route28.id },
+        config                 = {
+          port                 = 10001,
+          aws_key              = "mock-key",
+          aws_secret           = "mock-secret",
+          aws_region           = "us-east-1",
+          function_name        = "functionWithArrayCTypeInMVHAndEmptyArray",
+          empty_arrays_mode    = "legacy",
+          is_proxy_integration = true,
+        }
+      }
+
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route29.id },
+        config                 = {
+          port                 = 10001,
+          aws_key              = "mock-key",
+          aws_secret           = "mock-secret",
+          aws_region           = "us-east-1",
+          function_name        = "functionWithNullMultiValueHeaders",
+          is_proxy_integration = true,
+        }
+      }
+
       fixtures.dns_mock:A({
         name = "custom.lambda.endpoint",
         address = "127.0.0.1",
@@ -504,7 +621,7 @@ for _, strategy in helpers.each_strategy() do
       lazy_setup(function()
         assert(helpers.start_kong({
           database   = strategy,
-          plugins = "aws-lambda",
+          plugins = "aws-lambda, http-log",
           nginx_conf = "spec/fixtures/custom_nginx.template",
           -- we don't actually use any stream proxy features in this test suite,
           -- but this is needed in order to load our forward-proxy stream_mock fixture
@@ -850,7 +967,7 @@ for _, strategy in helpers.each_strategy() do
         })
 
         if server_tokens then
-          assert.equal(server_tokens, res.headers["Via"])
+          assert.equal("2 " .. server_tokens, res.headers["Via"])
         end
       end)
 
@@ -881,6 +998,43 @@ for _, strategy in helpers.each_strategy() do
           local _, count = logs:gsub([[%[aws%-lambda%].+lambda%.ab%-cdef%-1%.amazonaws%.com.+name error"]], "")
           return count >= 1
         end, 10)
+      end)
+
+      it("invokes a Lambda function with empty array", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            ["Host"] = "lambda26.test"
+          }
+        })
+
+        local body = assert.res_status(200, res)
+        assert.matches("\"testbody\":{}", body)
+
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            ["Host"] = "lambda27.test"
+          }
+        })
+
+        local body = assert.res_status(200, res)
+        assert.matches("\"testbody\":%[%]", body)
+      end)
+
+      it("invokes a Lambda function with legacy empty array mode and mutlivalueheaders", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            ["Host"] = "lambda28.test"
+          }
+        })
+
+        local _ = assert.res_status(200, res)
+        assert.equal("application/json+test", res.headers["Content-Type"])
       end)
 
       describe("config.is_proxy_integration = true", function()
@@ -1017,6 +1171,25 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(502, res)
           local b = assert.response(res).has.jsonbody()
           assert.equal("Bad Gateway", b.message)
+        end)
+
+        it("do not throw error when 'multiValueHeaders' is JSON null", function ()
+          local res = assert(proxy_client:send {
+            method  = "POST",
+            path    = "/post",
+            headers = {
+              ["Host"]         = "lambda11.test",
+              ["Content-Type"] = "application/json",
+            },
+            body = {
+              statusCode = 201,
+              body = "test",
+              multiValueHeaders = cjson.null,
+            }
+          })
+
+          local body = assert.res_status(201, res)
+          assert.same(body, "test")
         end)
 
         it("returns HTTP 502 with when response from lambda is not valid JSON", function()
@@ -1193,7 +1366,7 @@ for _, strategy in helpers.each_strategy() do
         helpers.setenv("AWS_REGION", "us-east-1")
         assert(helpers.start_kong({
           database   = strategy,
-          plugins = "aws-lambda",
+          plugins = "aws-lambda, http-log",
           nginx_conf = "spec/fixtures/custom_nginx.template",
           -- we don't actually use any stream proxy features in this test suite,
           -- but this is needed in order to load our forward-proxy stream_mock fixture
@@ -1217,6 +1390,52 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
         assert.is_string(res.headers.age)
         assert.is_array(res.headers["Access-Control-Allow-Origin"])
+      end)
+    end)
+
+    describe("With latency", function()
+      lazy_setup(function()
+        assert(mock:start())
+
+        helpers.setenv("AWS_REGION", "us-east-1")
+        assert(helpers.start_kong({
+          database   = strategy,
+          plugins = "aws-lambda, http-log",
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+          -- we don't actually use any stream proxy features in this test suite,
+          -- but this is needed in order to load our forward-proxy stream_mock fixture
+          stream_listen = helpers.get_proxy_ip(false) .. ":19000",
+        }, nil, nil, fixtures))
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+        helpers.unsetenv("AWS_REGION")
+        assert(mock:stop())
+      end)
+
+      it("invokes a Lambda function with GET and latency", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            ["Host"] = "lambda25.test"
+          }
+        })
+
+        assert.res_status(200, res)
+        local http_log_entries
+        assert.eventually(function ()
+          http_log_entries = mock:get_all_logs()
+          return #http_log_entries >= 1
+        end).with_timeout(10).is_truthy()
+        assert.is_not_nil(http_log_entries[1])
+        local log_entry_with_latency = cjson.decode(http_log_entries[1].req.body)
+        -- Accessing the aws mock server will require some time for sure
+        -- So if latencies.kong < latencies.proxy we should assume that the
+        -- latency calculation is working. Checking a precise number will
+        -- result in flakiness here.
+        assert.True(log_entry_with_latency.latencies.kong < log_entry_with_latency.latencies.proxy)
       end)
     end)
   end)

@@ -115,6 +115,9 @@ return {
     opentelemetry = {
       "sampling_rate",
     },
+    basic_auth = {
+      "realm"
+    }
   },
 
   -- Any dataplane older than 3.7.0
@@ -124,6 +127,105 @@ return {
     },
     zipkin = {
       "propagation",
+    },
+    ai_proxy = {
+      "response_streaming",
+      "model.options.upstream_path",
+    },
+    ai_request_transformer = {
+      "llm.model.options.upstream_path",
+    },
+    ai_response_transformer = {
+      "llm.model.options.upstream_path",
+    },
+    key_auth = {
+      "realm"
+    },
+  },
+
+  -- Any dataplane older than 3.8.0
+  [3008000000] = {
+    response_transformer = {
+      "rename.json",
+    },
+    aws_lambda = {
+      "empty_arrays_mode",
+    },
+    ldap_auth = {
+      "realm",
+    },
+    hmac_auth = {
+      "realm",
+    },
+    jwt = {
+      "realm",
+    },
+    oauth2 = {
+      "realm",
+    },
+    opentelemetry = {
+      "traces_endpoint",
+      "logs_endpoint",
+      "queue.concurrency_limit",
+    },
+    ai_proxy = {
+      "max_request_body_size",
+      "model.options.gemini",
+      "auth.gcp_use_service_account",
+      "auth.gcp_service_account_json",
+      "model.options.bedrock",
+      "auth.aws_access_key_id",
+      "auth.aws_secret_access_key",
+      "auth.allow_override",
+      "model_name_header",
+    },
+    ai_prompt_decorator = {
+      "max_request_body_size",
+    },
+    ai_prompt_guard = {
+      "match_all_roles",
+      "max_request_body_size",
+    },
+    ai_prompt_template = {
+      "max_request_body_size",
+    },
+    ai_request_transformer = {
+      "max_request_body_size",
+      "llm.model.options.gemini",
+      "llm.auth.gcp_use_service_account",
+      "llm.auth.gcp_service_account_json",
+      "llm.model.options.bedrock",
+      "llm.auth.aws_access_key_id",
+      "llm.auth.aws_secret_access_key",
+      "llm.auth.allow_override",
+    },
+    ai_response_transformer = {
+      "max_request_body_size",
+      "llm.model.options.gemini",
+      "llm.auth.gcp_use_service_account",
+      "llm.auth.gcp_service_account_json",
+      "llm.model.options.bedrock",
+      "llm.auth.aws_access_key_id",
+      "llm.auth.aws_secret_access_key",
+      "llm.auth.allow_override",
+    },
+    prometheus = {
+      "ai_metrics",
+    },
+    acl = {
+      "always_use_authenticated_groups",
+    },
+    http_log = {
+      "queue.concurrency_limit",
+    },
+    statsd = {
+      "queue.concurrency_limit",
+    },
+    datadog = {
+      "queue.concurrency_limit",
+    },
+    zipkin = {
+      "queue.concurrency_limit",
     },
   },
 }

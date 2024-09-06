@@ -1,7 +1,6 @@
 local arrays        = require "pgmoon.arrays"
 local json          = require "pgmoon.json"
 local cjson_safe    = require "cjson.safe"
-local utils         = require "kong.tools.utils"
 local new_tab       = require "table.new"
 local clear_tab     = require "table.clear"
 
@@ -13,7 +12,6 @@ local decode_base64 = ngx.decode_base64
 local encode_array  = arrays.encode_array
 local encode_json   = json.encode_json
 local setmetatable  = setmetatable
-local update_time   = ngx.update_time
 local get_phase     = ngx.get_phase
 local tonumber      = tonumber
 local concat        = table.concat
@@ -28,11 +26,12 @@ local null          = ngx.null
 local type          = type
 local load          = load
 local find          = string.find
-local now           = ngx.now
 local fmt           = string.format
 local rep           = string.rep
 local sub           = string.sub
 local log           = ngx.log
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
+local now_updated   = require("kong.tools.time").get_updated_now
 
 
 local NOTICE        = ngx.NOTICE
@@ -42,12 +41,6 @@ local UNIQUE        = {}
 
 local function noop(...)
   return ...
-end
-
-
-local function now_updated()
-  update_time()
-  return now()
 end
 
 
@@ -424,7 +417,7 @@ local function execute(strategy, statement_name, attributes, options)
 
   local is_update = options and options.update
   local has_ttl   = strategy.schema.ttl
-
+  local skip_ttl = options and options.skip_ttl
   if has_ws_id then
     assert(ws_id == nil or type(ws_id) == "string")
     argv[0] = escape_literal(connector, ws_id, "ws_id")
@@ -433,7 +426,7 @@ local function execute(strategy, statement_name, attributes, options)
   for i = 1, argc do
     local name = argn[i]
     local value
-    if has_ttl and name == "ttl" then
+    if has_ttl and name == "ttl" and not skip_ttl then
       value = (options and options.ttl)
               and get_ttl_value(strategy, attributes, options)
 
@@ -576,7 +569,12 @@ end
 
 
 function _mt:select(primary_key, options)
-  local res, err = execute(self, "select", self.collapse(primary_key), options)
+  local statement_name = "select"
+  if self.schema.ttl and options and options.skip_ttl then
+    statement_name = "select_skip_ttl"
+  end
+
+  local res, err = execute(self, statement_name, self.collapse(primary_key), options)
   if res then
     local row = res[1]
     if row then
@@ -592,6 +590,11 @@ end
 
 function _mt:select_by_field(field_name, unique_value, options)
   local statement_name = "select_by_" .. field_name
+
+  if self.schema.ttl and options and options.skip_ttl then
+    statement_name = statement_name .. "_skip_ttl"
+  end
+
   local filter = {
     [field_name] = unique_value,
   }
@@ -695,7 +698,11 @@ end
 
 
 function _mt:delete(primary_key, options)
-  local res, err = execute(self, "delete", self.collapse(primary_key), options)
+  local statement_name = "delete"
+  if self.schema.ttl and options and options.skip_ttl then
+    statement_name = "delete_skip_ttl"
+  end
+  local res, err = execute(self, statement_name, self.collapse(primary_key), options)
   if res then
     if res.affected_rows == 0 then
       return nil, nil
@@ -710,6 +717,9 @@ end
 
 function _mt:delete_by_field(field_name, unique_value, options)
   local statement_name = "delete_by_" .. field_name
+  if self.schema.ttl and options and options.skip_ttl then
+    statement_name = statement_name .. "_skip_ttl"
+  end
   local filter = {
     [field_name] = unique_value,
   }
@@ -827,6 +837,10 @@ function _M.new(connector, schema, errors)
 
 
   for field_name, field in schema:each_field() do
+    if field.transient then
+      goto continue
+    end
+
     if field.type == "foreign" then
       local foreign_schema           = field.schema
       local foreign_key_names        = {}
@@ -908,6 +922,7 @@ function _M.new(connector, schema, errors)
 
       insert(fields, prepared_field)
     end
+    ::continue::
   end
 
   local primary_key_names        = {}
@@ -1097,7 +1112,7 @@ function _M.new(connector, schema, errors)
   do
     local function add(name, opts, add_ws)
       local orig_argn = opts.argn
-      opts = utils.cycle_aware_deep_copy(opts)
+      opts = cycle_aware_deep_copy(opts)
 
       -- ensure LIMIT table is the same
       for i, n in ipairs(orig_argn) do
@@ -1189,6 +1204,19 @@ function _M.new(connector, schema, errors)
     }
   })
 
+  add_statement("delete_skip_ttl", {
+    operation = "write",
+    argn = primary_key_names,
+    argv = primary_key_args,
+    code = {
+      "DELETE\n",
+      "  FROM ", table_name_escaped, "\n",
+      where_clause(
+        " WHERE ", "(" .. pk_escaped .. ") = (" .. primary_key_placeholders .. ")",
+                   ws_id_select_where), ";"
+    }
+  })
+
   add_statement("select", {
     operation = "read",
     expr = select_expressions,
@@ -1201,6 +1229,21 @@ function _M.new(connector, schema, errors)
       " WHERE ", "(" .. pk_escaped .. ") = (" .. primary_key_placeholders .. ")",
                  ttl_select_where,
                  ws_id_select_where),
+      " LIMIT 1;"
+    }
+  })
+
+  add_statement("select_skip_ttl", {
+    operation = "read",
+    expr = select_expressions,
+    argn = primary_key_names,
+    argv = primary_key_args,
+    code = {
+      "SELECT ", select_expressions, "\n",
+      "  FROM ", table_name_escaped, "\n",
+      where_clause(
+        " WHERE ", "(" .. pk_escaped .. ") = (" .. primary_key_placeholders .. ")",
+                   ws_id_select_where),
       " LIMIT 1;"
     }
   })
@@ -1387,6 +1430,20 @@ function _M.new(connector, schema, errors)
         },
       })
 
+      add_statement("select_by_" .. field_name .. "_skip_ttl", {
+        operation = "read",
+        argn = single_names,
+        argv = single_args,
+        code = {
+          "SELECT ", select_expressions, "\n",
+          "  FROM ", table_name_escaped, "\n",
+          where_clause(
+            " WHERE ", unique_escaped .. " = $1",
+                       ws_id_select_where),
+          " LIMIT 1;"
+        },
+      })
+
       local update_by_args_names = {}
       for _, update_name in ipairs(update_names) do
         insert(update_by_args_names, update_name)
@@ -1440,6 +1497,19 @@ function _M.new(connector, schema, errors)
           " WHERE ",  unique_escaped .. " = $1",
                       ttl_select_where,
                       ws_id_select_where), ";"
+        }
+      })
+
+      add_statement("delete_by_" .. field_name .. "_skip_ttl", {
+        operation = "write",
+        argn = single_names,
+        argv = single_args,
+        code = {
+          "DELETE\n",
+          "  FROM ", table_name_escaped, "\n",
+          where_clause(
+            " WHERE ", unique_escaped .. " = $1",
+                       ws_id_select_where), ";"
         }
       })
     end

@@ -1,14 +1,14 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local utils = require "kong.tools.utils"
 local to_hex = require "resty.string".to_hex
+local get_rand_bytes = require("kong.tools.rand").get_rand_bytes
 
 local fmt = string.format
 local W3C_TRACE_ID_HEX_LEN = 32
 
 
 local function gen_trace_id(traceid_byte_count)
-  return to_hex(utils.get_rand_bytes(traceid_byte_count))
+  return to_hex(get_rand_bytes(traceid_byte_count))
 end
 
 
@@ -24,7 +24,7 @@ end
 
 
 local function gen_span_id()
-  return to_hex(utils.get_rand_bytes(8))
+  return to_hex(get_rand_bytes(8))
 end
 
 

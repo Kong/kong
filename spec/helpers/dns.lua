@@ -37,7 +37,10 @@ end
 
 --- Expires a record now.
 -- @param record a DNS record previously created
-function _M.dnsExpire(record)
+function _M.dnsExpire(client, record)
+  local dnscache = client.getcache()
+  dnscache:delete(record[1].name .. ":" .. record[1].type)
+  dnscache:delete(record[1].name .. ":-1")  -- A/AAAA
   record.expire = gettime() - 1
 end
 
@@ -76,12 +79,20 @@ function _M.dnsSRV(client, records, staleTtl)
   -- set timeouts
   records.touch = gettime()
   records.expire = gettime() + records[1].ttl
+  records.ttl = records[1].ttl
 
   -- create key, and insert it
+
+  -- for orignal dns client
   local key = records[1].type..":"..records[1].name
   dnscache:set(key, records, records[1].ttl + (staleTtl or 4))
   -- insert last-succesful lookup type
   dnscache:set(records[1].name, records[1].type)
+
+  -- for new dns client
+  local key = records[1].name..":"..records[1].type
+  dnscache:set(key, records, records[1].ttl + (staleTtl or 4))
+
   return records
 end
 
@@ -117,12 +128,22 @@ function _M.dnsA(client, records, staleTtl)
   -- set timeouts
   records.touch = gettime()
   records.expire = gettime() + records[1].ttl
+  records.ttl = records[1].ttl
 
   -- create key, and insert it
+
+  -- for original dns client
   local key = records[1].type..":"..records[1].name
   dnscache:set(key, records, records[1].ttl + (staleTtl or 4))
   -- insert last-succesful lookup type
   dnscache:set(records[1].name, records[1].type)
+
+  -- for new dns client
+  local key = records[1].name..":"..records[1].type
+  dnscache:set(key, records, records[1].ttl)
+  key = records[1].name..":-1"  -- A/AAAA
+  dnscache:set(key, records, records[1].ttl)
+
   return records
 end
 
@@ -157,12 +178,22 @@ function _M.dnsAAAA(client, records, staleTtl)
   -- set timeouts
   records.touch = gettime()
   records.expire = gettime() + records[1].ttl
+  records.ttl = records[1].ttl
 
   -- create key, and insert it
+
+  -- for orignal dns client
   local key = records[1].type..":"..records[1].name
   dnscache:set(key, records, records[1].ttl + (staleTtl or 4))
   -- insert last-succesful lookup type
   dnscache:set(records[1].name, records[1].type)
+
+  -- for new dns client
+  local key = records[1].name..":"..records[1].type
+  dnscache:set(key, records, records[1].ttl + (staleTtl or 4))
+  key = records[1].name..":-1" -- A/AAAA
+  dnscache:set(key, records, records[1].ttl + (staleTtl or 4))
+
   return records
 end
 

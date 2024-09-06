@@ -69,6 +69,7 @@ describe("anonymous reports for kong manager", function ()
         anonymous_reports = true,
         plugins = "bundled,reports-api",
         dns_hostsfile = dns_hostsfile,
+        resolver_hosts_file = dns_hostsfile,
       }))
 
       finally(function()
@@ -84,6 +85,7 @@ describe("anonymous reports for kong manager", function ()
         anonymous_reports = true,
         plugins = "bundled,reports-api",
         dns_hostsfile = dns_hostsfile,
+        resolver_hosts_file = dns_hostsfile,
       }))
 
       finally(function()
@@ -101,6 +103,7 @@ describe("anonymous reports for kong manager", function ()
         anonymous_reports = true,
         plugins = "bundled,reports-api",
         dns_hostsfile = dns_hostsfile,
+        resolver_hosts_file = dns_hostsfile,
       }))
 
       local gui_dir_path = prepare_gui_dir()

@@ -16,14 +16,14 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       local fixtures = {
         http_mock = {},
       }
-      
+
       fixtures.http_mock.cohere = [[
         server {
             server_name cohere;
             listen ]]..MOCK_PORT..[[;
-            
+
             default_type 'application/json';
-      
+
 
             location = "/llm/v1/chat/good" {
               content_by_lua_block {
@@ -78,7 +78,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             location = "/llm/v1/chat/bad_request" {
               content_by_lua_block {
                 local pl_file = require "pl.file"
-                
+
                 ngx.status = 400
                 ngx.print(pl_file.read("spec/fixtures/ai-proxy/cohere/llm-v1-chat/responses/bad_request.json"))
               }
@@ -87,7 +87,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             location = "/llm/v1/chat/internal_server_error" {
               content_by_lua_block {
                 local pl_file = require "pl.file"
-                
+
                 ngx.status = 500
                 ngx.header["content-type"] = "text/html"
                 ngx.print(pl_file.read("spec/fixtures/ai-proxy/cohere/llm-v1-chat/responses/internal_server_error.html"))
@@ -105,7 +105,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
                   ngx.req.read_body()
                   local body, err = ngx.req.get_body_data()
                   body, err = json.decode(body)
-                  
+
                   if err or (not body.prompt) then
                     ngx.status = 400
                     ngx.print(pl_file.read("spec/fixtures/ai-proxy/cohere/llm-v1-completions/responses/bad_request.json"))
@@ -123,7 +123,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
             location = "/llm/v1/completions/bad_request" {
               content_by_lua_block {
                 local pl_file = require "pl.file"
-                
+
                 ngx.status = 400
                 ngx.print(pl_file.read("spec/fixtures/ai-proxy/cohere/llm-v1-completions/responses/bad_request.json"))
               }
@@ -154,6 +154,34 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           auth = {
             header_name = "Authorization",
             header_value = "Bearer cohere-key",
+            allow_override = true,
+          },
+          model = {
+            name = "command",
+            provider = "cohere",
+            options = {
+              max_tokens = 256,
+              temperature = 1.0,
+              upstream_url = "http://"..helpers.mock_upstream_host..":"..MOCK_PORT.."/llm/v1/chat/good",
+            },
+          },
+        },
+      }
+      local chat_good_no_allow_override = assert(bp.routes:insert {
+        service = empty_service,
+        protocols = { "http" },
+        strip_path = true,
+        paths = { "/cohere/llm/v1/chat/good-no-allow-override" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = chat_good_no_allow_override.id },
+        config = {
+          route_type = "llm/v1/chat",
+          auth = {
+            header_name = "Authorization",
+            header_value = "Bearer cohere-key",
+            allow_override = false,
           },
           model = {
             name = "command",
@@ -356,7 +384,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
       }, nil, nil, fixtures))
     end)
-    
+
     lazy_teardown(function()
       helpers.stop_kong()
     end)
@@ -378,7 +406,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = pl_file.read("spec/fixtures/ai-proxy/cohere/llm-v1-chat/requests/good.json"),
         })
-        
+
         local body = assert.res_status(500 , r)
         assert.is_not_nil(body)
       end)
@@ -391,29 +419,12 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = pl_file.read("spec/fixtures/ai-proxy/cohere/llm-v1-chat/requests/good.json"),
         })
-        
+
         local body = assert.res_status(401 , r)
         local json = cjson.decode(body)
 
         -- check this is in the 'kong' response format
         assert.equals(json.message, "invalid api token")
-      end)
-
-      it("tries to override model", function()
-        local r = client:get("/cohere/llm/v1/chat/good", {
-          headers = {
-            ["content-type"] = "application/json",
-            ["accept"] = "application/json",
-          },
-          body = pl_file.read("spec/fixtures/ai-proxy/cohere/llm-v1-chat/requests/good_own_model.json"),
-        })
-        
-        local body = assert.res_status(400, r)
-        local json = cjson.decode(body)
-
-        -- check this is in the 'kong' response format
-        assert.is_truthy(json.error)
-        assert.equals(json.error.message, "cannot use own model for this instance")
       end)
     end)
 
@@ -426,13 +437,110 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = pl_file.read("spec/fixtures/ai-proxy/cohere/llm-v1-chat/requests/good.json"),
         })
-        
+
         local body = assert.res_status(200 , r)
         local json = cjson.decode(body)
 
         -- check this is in the 'kong' response format
         assert.equals(json.model, "command")
         assert.equals(json.object, "chat.completion")
+        assert.equals(r.headers["X-Kong-LLM-Model"], "cohere/command")
+
+        assert.is_table(json.choices)
+        assert.is_table(json.choices[1].message)
+        assert.same({
+          content = "The sum of 1 + 1 is 2.",
+          role = "assistant",
+        }, json.choices[1].message)
+      end)
+
+      it("good request with right client auth", function()
+        local r = client:get("/cohere/llm/v1/chat/good", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+            ["Authorization"] = "Bearer cohere-key",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/cohere/llm-v1-chat/requests/good.json"),
+        })
+
+        local body = assert.res_status(200 , r)
+        local json = cjson.decode(body)
+
+        -- check this is in the 'kong' response format
+        assert.equals(json.model, "command")
+        assert.equals(json.object, "chat.completion")
+        assert.equals(r.headers["X-Kong-LLM-Model"], "cohere/command")
+
+        assert.is_table(json.choices)
+        assert.is_table(json.choices[1].message)
+        assert.same({
+          content = "The sum of 1 + 1 is 2.",
+          role = "assistant",
+        }, json.choices[1].message)
+      end)
+
+      it("good request with wrong client auth", function()
+        local r = client:get("/cohere/llm/v1/chat/good", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+            ["Authorization"] = "Bearer wrong",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/cohere/llm-v1-chat/requests/good.json"),
+        })
+
+        local body = assert.res_status(401 , r)
+        local json = cjson.decode(body)
+
+        -- check this is in the 'kong' response format
+        assert.is_truthy(json.message)
+        assert.equals(json.message, "invalid api token")
+      end)
+
+      it("good request with right client auth and no allow_override", function()
+        local r = client:get("/cohere/llm/v1/chat/good-no-allow-override", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+            ["Authorization"] = "Bearer cohere-key",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/cohere/llm-v1-chat/requests/good.json"),
+        })
+
+        local body = assert.res_status(200 , r)
+        local json = cjson.decode(body)
+
+        -- check this is in the 'kong' response format
+        assert.equals(json.model, "command")
+        assert.equals(json.object, "chat.completion")
+        assert.equals(r.headers["X-Kong-LLM-Model"], "cohere/command")
+
+        assert.is_table(json.choices)
+        assert.is_table(json.choices[1].message)
+        assert.same({
+          content = "The sum of 1 + 1 is 2.",
+          role = "assistant",
+        }, json.choices[1].message)
+      end)
+
+      it("good request with wrong client auth and no allow_override", function()
+        local r = client:get("/cohere/llm/v1/chat/good-no-allow-override", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+            ["Authorization"] = "Bearer wrong",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/cohere/llm-v1-chat/requests/good.json"),
+        })
+
+        local body = assert.res_status(200 , r)
+        local json = cjson.decode(body)
+
+        -- check this is in the 'kong' response format
+        assert.equals(json.model, "command")
+        assert.equals(json.object, "chat.completion")
+        assert.equals(r.headers["X-Kong-LLM-Model"], "cohere/command")
 
         assert.is_table(json.choices)
         assert.is_table(json.choices[1].message)
@@ -450,7 +558,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = pl_file.read("spec/fixtures/ai-proxy/cohere/llm-v1-chat/requests/good.json"),
         })
-        
+
         -- check we got internal server error
         local body = assert.res_status(500 , r)
         local json = cjson.decode(body) 
@@ -465,7 +573,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = pl_file.read("spec/fixtures/ai-proxy/cohere/llm-v1-chat/requests/bad_request.json"),
         })
-        
+
         local body = assert.res_status(400 , r)
         local json = cjson.decode(body)
 
@@ -483,7 +591,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = pl_file.read("spec/fixtures/ai-proxy/cohere/llm-v1-completions/requests/good.json"),
         })
-        
+
         local body = assert.res_status(200 , r)
         local json = cjson.decode(body)
 
@@ -504,7 +612,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
           body = pl_file.read("spec/fixtures/ai-proxy/cohere/llm-v1-completions/requests/bad_request.json"),
         })
-        
+
         local body = assert.res_status(400 , r)
         local json = cjson.decode(body)
 

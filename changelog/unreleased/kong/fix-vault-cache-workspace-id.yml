@@ -1,0 +1,4 @@
+message: |
+   **Vault**: Fixed an issue where updating a vault entity in a non-default workspace will not take effect.
+type: bugfix
+scope: Core

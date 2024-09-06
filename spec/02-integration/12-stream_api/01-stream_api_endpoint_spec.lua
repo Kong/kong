@@ -1,6 +1,8 @@
 local helpers = require "spec.helpers"
 local stream_api = require "kong.tools.stream_api"
 local encode = require("cjson").encode
+local constants = require "kong.constants"
+
 
 describe("Stream module API endpoint", function()
 
@@ -13,7 +15,7 @@ describe("Stream module API endpoint", function()
       plugins = "stream-api-echo",
     })
 
-    socket_path = "unix:" .. helpers.get_running_conf().prefix .. "/stream_rpc.sock"
+    socket_path = "unix:" .. helpers.get_running_conf().socket_path .. "/" .. constants.SOCKETS.STREAM_RPC
   end)
 
   lazy_teardown(function()

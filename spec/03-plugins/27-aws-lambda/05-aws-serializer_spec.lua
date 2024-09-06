@@ -1,5 +1,5 @@
-local utils = require "kong.tools.utils"
 local date = require "date"
+local cycle_aware_deep_copy = require("kong.tools.table").cycle_aware_deep_copy
 
 describe("[AWS Lambda] aws-gateway input", function()
 
@@ -10,7 +10,7 @@ describe("[AWS Lambda] aws-gateway input", function()
 
   local function reload_module()
     -- make sure to reload the module
-    package.loaded["kong.tracing.request_id"] = nil
+    package.loaded["kong.observability.tracing.request_id"] = nil
     package.loaded["kong.plugins.aws-lambda.request-util"] = nil
     aws_serialize = require "kong.plugins.aws-lambda.request-util".aws_serializer
   end
@@ -21,8 +21,8 @@ describe("[AWS Lambda] aws-gateway input", function()
     local body_data
     _G.ngx = setmetatable({
       req = {
-        get_headers = function() return utils.cycle_aware_deep_copy(mock_request.headers) end,
-        get_uri_args = function() return utils.cycle_aware_deep_copy(mock_request.query) end,
+        get_headers = function() return cycle_aware_deep_copy(mock_request.headers) end,
+        get_uri_args = function() return cycle_aware_deep_copy(mock_request.query) end,
         read_body = function() body_data = mock_request.body end,
         get_body_data = function() return body_data end,
         http_version = function() return mock_request.http_version end,
@@ -88,6 +88,7 @@ describe("[AWS Lambda] aws-gateway input", function()
     local out = aws_serialize()
 
     assert.same({
+        version = "1.0",
         httpMethod = "GET",
         path = "/123/strip/more",
         resource = "/(?<version>\\d+)/strip",
@@ -165,6 +166,7 @@ describe("[AWS Lambda] aws-gateway input", function()
     local out = aws_serialize()
 
     assert.same({
+        version = "1.0",
         httpMethod = "GET",
         path = "/plain/strip/more",
         resource = "/plain/strip",
@@ -262,6 +264,7 @@ describe("[AWS Lambda] aws-gateway input", function()
         local out = aws_serialize()
 
         assert.same({
+          version = "1.0",
           body = tdata.body_out,
           headers = {
             ["Content-Type"] = tdata.ct,

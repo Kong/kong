@@ -1,6 +1,4 @@
-local tablex       = require "pl.tablex"
 local pretty       = require "pl.pretty"
-local table_tools  = require "kong.tools.table"
 local cjson        = require "cjson"
 local new_tab      = require "table.new"
 local nkeys        = require "table.nkeys"
@@ -8,7 +6,18 @@ local is_reference = require "kong.pdk.vault".is_reference
 local json         = require "kong.db.schema.json"
 local cjson_safe   = require "cjson.safe"
 local deprecation  = require "kong.deprecation"
-local deepcompare  = require "pl.tablex".deepcompare
+
+
+local compare_no_order = require "pl.tablex".compare_no_order
+local deepcompare = require "pl.tablex".deepcompare
+
+
+local cycle_aware_deep_copy = require "kong.tools.table".cycle_aware_deep_copy
+local table_merge = require "kong.tools.table".table_merge
+local null_aware_table_merge = require "kong.tools.table".null_aware_table_merge
+local table_path = require "kong.tools.table".table_path
+local is_array = require "kong.tools.table".is_array
+local join_string = require "kong.tools.string".join
 
 
 local setmetatable = setmetatable
@@ -19,6 +28,7 @@ local tostring     = tostring
 local concat       = table.concat
 local insert       = table.insert
 local format       = string.format
+local ipairs       = ipairs
 local unpack       = unpack
 local assert       = assert
 local yield        = require("kong.tools.yield").yield
@@ -886,8 +896,9 @@ function Schema:validate_field(field, value)
 
   if field.deprecation then
     local old_default = field.deprecation.old_default
-    local should_warn = old_default == nil
-                        or not deepcompare(value, old_default)
+    local should_warn = kong and kong.configuration and kong.configuration.role ~= "data_plane" and
+                          (old_default == nil
+                            or not deepcompare(value, old_default))
     if should_warn then
       deprecation(field.deprecation.message,
           { after = field.deprecation.removal_in_version, })
@@ -1025,7 +1036,7 @@ end
 local function handle_missing_field(field, value, opts)
   local no_defaults = opts and opts.no_defaults
   if field.default ~= nil and not no_defaults then
-    local copy = table_tools.cycle_aware_deep_copy(field.default)
+    local copy = cycle_aware_deep_copy(field.default)
     if (field.type == "array" or field.type == "set")
       and type(copy) == "table"
       and not getmetatable(copy)
@@ -1642,6 +1653,87 @@ local function adjust_field_for_context(field, value, context, nulls, opts)
 end
 
 
+local function resolve_reference(kong, value)
+  local deref, err = kong.vault.get(value)
+  if not deref then
+    if err then
+      kong.log.warn("unable to resolve reference ", value, " (", err, ")")
+    else
+      kong.log.notice("unable to resolve reference ", value)
+    end
+  end
+  return deref or ""
+end
+
+
+local function collect_previous_references(prev_refs, key, refs)
+  if prev_refs and prev_refs[key] then
+    if refs then
+      if not refs[key] then
+        refs[key] = prev_refs[key]
+      end
+
+    else
+      refs = { [key] = prev_refs[key] }
+    end
+  end
+  return refs
+end
+
+
+local function collect_subfield_reference(refs, key, references, index, narr, nrec)
+  if not refs then
+    refs = {
+      [key] = new_tab(narr, nrec)
+    }
+  elseif not refs[key] then
+    refs[key] = new_tab(narr, nrec)
+  end
+  refs[key][index] = references[index]
+  return refs
+end
+
+
+local function collect_field_reference(refs, key, reference)
+  if refs then
+    refs[key] = reference
+  else
+    refs = { [key] = reference }
+  end
+
+  return refs
+end
+
+
+local function validate_deprecation_exclusiveness(data, shorthand_value, shorthand_name, shorthand_definition)
+  if shorthand_value == nil or
+      shorthand_value == ngx.null or
+      shorthand_definition.deprecation == nil or
+      shorthand_definition.deprecation.replaced_with == nil then
+    return true
+  end
+
+  for _, replaced_with_element in ipairs(shorthand_definition.deprecation.replaced_with) do
+    local new_field_value = replaced_with_element.reverse_mapping_function and replaced_with_element.reverse_mapping_function(data)
+                                                                            or table_path(data, replaced_with_element.path)
+
+    if new_field_value and
+      new_field_value ~= ngx.null and
+      not deepcompare(new_field_value, shorthand_value) then
+      local new_field_name = join_string(".", replaced_with_element.path)
+
+      return nil, string.format(
+        "both deprecated and new field are used but their values mismatch: %s = %s vs %s = %s",
+        shorthand_name, tostring(shorthand_value),
+        new_field_name, tostring(new_field_value)
+      )
+    end
+  end
+
+  return true
+end
+
+
 --- Given a table, update its fields whose schema
 -- definition declares them as `auto = true`,
 -- based on its CRUD operation context, and set
@@ -1663,7 +1755,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
 
   local is_select = context == "select"
   if not is_select then
-    data = table_tools.cycle_aware_deep_copy(data)
+    data = cycle_aware_deep_copy(data)
   end
 
   local shorthand_fields = self.shorthand_fields
@@ -1679,14 +1771,34 @@ function Schema:process_auto_fields(data, context, nulls, opts)
           errs[sname] = err
           has_errs = true
         else
-          data[sname] = nil
-          local new_values = sdata.func(value)
-          if new_values then
-            for k, v in pairs(new_values) do
-              if type(v) == "table" then
-                data[k] = tablex.merge(data[k] or {}, v, true)
-              else
-                data[k] = v
+          local _, deprecation_error = validate_deprecation_exclusiveness(data, value, sname, sdata)
+
+          if deprecation_error then
+            errs[sname] = deprecation_error
+            has_errs = true
+          else
+            data[sname] = nil
+            local new_values = sdata.func(value)
+            if new_values then
+              -- a shorthand field may have a deprecation property, that is used
+              -- to determine whether the shorthand's return value takes precedence
+              -- over the similarly named actual schema fields' value when both
+              -- are present. On deprecated shorthand fields the actual schema
+              -- field value takes the precedence, otherwise the shorthand's
+              -- return value takes the precedence.
+              local deprecation = sdata.deprecation
+              for k, v in pairs(new_values) do
+                if type(v) == "table" then
+                  local source = {}
+                  if data[k] and data[k] ~= null then
+                    source = data[k]
+                  end
+                  data[k] = deprecation and null_aware_table_merge(v, source)
+                                        or table_merge(source, v)
+
+                elseif not deprecation or (data[k] == nil or data[k] == null) then
+                  data[k] = v
+                end
               end
             end
           end
@@ -1694,7 +1806,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
       end
 
       if is_select and sdata.translate_backwards and not(opts and opts.hide_shorthands) then
-        data[sname] = table_tools.table_path(data, sdata.translate_backwards)
+        data[sname] = table_path(data, sdata.translate_backwards)
       end
     end
     if has_errs then
@@ -1776,32 +1888,10 @@ function Schema:process_auto_fields(data, context, nulls, opts)
       if resolve_references then
         if ftype == "string" and field.referenceable then
           if is_reference(value) then
-            if refs then
-              refs[key] = value
-            else
-              refs = { [key] = value }
-            end
-
-            local deref, err = kong.vault.get(value)
-            if deref then
-              value = deref
-
-            else
-              if err then
-                kong.log.warn("unable to resolve reference ", value, " (", err, ")")
-              else
-                kong.log.notice("unable to resolve reference ", value)
-              end
-
-              value = ""
-            end
-
-          elseif prev_refs and prev_refs[key] then
-            if refs then
-              refs[key] = prev_refs[key]
-            else
-              refs = { [key] = prev_refs[key] }
-            end
+            refs = collect_field_reference(refs, key, value)
+            value = resolve_reference(kong, value)
+          else
+            refs = collect_previous_references(prev_refs, key, refs)
           end
 
         elseif vtype == "table" and (ftype == "array" or ftype == "set") then
@@ -1811,43 +1901,13 @@ function Schema:process_auto_fields(data, context, nulls, opts)
             if count > 0 then
               for i = 1, count do
                 if is_reference(value[i]) then
-                  if not refs then
-                    refs = {}
-                  end
-
-                  if not refs[key] then
-                    refs[key] = new_tab(count, 0)
-                  end
-
-                  refs[key][i] = value[i]
-
-                  local deref, err = kong.vault.get(value[i])
-                  if deref then
-                    value[i] = deref
-
-                  else
-                    if err then
-                      kong.log.warn("unable to resolve reference ", value[i], " (", err, ")")
-                    else
-                      kong.log.notice("unable to resolve reference ", value[i])
-                    end
-
-                    value[i] = ""
-                  end
+                  refs = collect_subfield_reference(refs, key, value, i, count, 0)
+                  value[i] = resolve_reference(kong, value[i])
                 end
               end
             end
 
-            if prev_refs and prev_refs[key] then
-              if refs then
-                if not refs[key] then
-                  refs[key] = prev_refs[key]
-                end
-
-              else
-                refs = { [key] = prev_refs[key] }
-              end
-            end
+            refs = collect_previous_references(prev_refs, key, refs)
           end
 
         elseif vtype == "table" and ftype == "map" then
@@ -1857,43 +1917,13 @@ function Schema:process_auto_fields(data, context, nulls, opts)
             if count > 0 then
               for k, v in pairs(value) do
                 if is_reference(v) then
-                  if not refs then
-                    refs = {}
-                  end
-
-                  if not refs[key] then
-                    refs[key] = new_tab(0, count)
-                  end
-
-                  refs[key][k] = v
-
-                  local deref, err = kong.vault.get(v)
-                  if deref then
-                    value[k] = deref
-
-                  else
-                    if err then
-                      kong.log.warn("unable to resolve reference ", v, " (", err, ")")
-                    else
-                      kong.log.notice("unable to resolve reference ", v)
-                    end
-
-                    value[k] = ""
-                  end
+                  refs = collect_subfield_reference(refs, key, value, k, 0, count)
+                  value[k] = resolve_reference(kong, v)
                 end
               end
             end
 
-            if prev_refs and prev_refs[key] then
-              if refs then
-                if not refs[key] then
-                  refs[key] = prev_refs[key]
-                end
-
-              else
-                refs = { [key] = prev_refs[key] }
-              end
-            end
+            refs = collect_previous_references(prev_refs, key, refs)
           end
         end
       end
@@ -2078,7 +2108,7 @@ function Schema:validate_immutable_fields(input, entity)
   local errors = {}
 
   for key, field in self:each_field(input) do
-    local compare = table_tools.is_array(input[key]) and tablex.compare_no_order or tablex.deepcompare
+    local compare = is_array(input[key]) and compare_no_order or deepcompare
 
     if field.immutable and entity[key] ~= nil and not compare(input[key], entity[key]) then
       errors[key] = validation_errors.IMMUTABLE
@@ -2437,7 +2467,7 @@ function Schema.new(definition, is_subschema)
     return nil, validation_errors.SCHEMA_NO_FIELDS
   end
 
-  local self = table_tools.cycle_aware_deep_copy(definition)
+  local self = cycle_aware_deep_copy(definition)
   setmetatable(self, Schema)
 
   local cache_key = self.cache_key
@@ -2495,7 +2525,7 @@ function Schema.new(definition, is_subschema)
     _cache[self.name].schema = self
   end
 
-  -- timestamp-irrelevant fields should not be a critial factor on entities to
+  -- timestamp-irrelevant fields should not be a critical factor on entities to
   -- be loaded or refreshed correctly. These fields, such as `ttl` and `updated_at`
   -- might be ignored during validation.
   -- unvalidated_fields is added for ignoring some fields, key in the table is the

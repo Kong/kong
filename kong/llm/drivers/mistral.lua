@@ -7,6 +7,7 @@ local fmt = string.format
 local ai_shared = require("kong.llm.drivers.shared")
 local openai_driver = require("kong.llm.drivers.openai")
 local socket_url = require "socket.url"
+local string_gsub = string.gsub
 --
 
 -- globals
@@ -64,6 +65,8 @@ function _M.to_format(request_table, model_info, route_type)
   if not transformers_to[transformer_type] then
     return nil, nil, fmt("no transformer available to format %s://%s", model_info.provider, transformer_type)
   end
+
+  request_table = ai_shared.merge_config_defaults(request_table, model_info.options, model_info.route_type)
 
   -- dynamically call the correct transformer
   local ok, response_object, content_type, err = pcall(
@@ -128,11 +131,6 @@ function _M.subrequest(body, conf, http_opts, return_res_table)
 end
 
 function _M.pre_request(conf, body)
-  -- check for user trying to bring own model
-  if body and body.model then
-    return nil, "cannot use own model for this instance"
-  end
-
   return true, nil
 end
 
@@ -146,14 +144,28 @@ end
 
 -- returns err or nil
 function _M.configure_request(conf)
-  if conf.route_type ~= "preserve" then
-    -- mistral shared openai operation paths
-    local parsed_url = socket_url.parse(conf.model.options.upstream_url)
+  local parsed_url
 
-    kong.service.request.set_path(parsed_url.path)
-    kong.service.request.set_scheme(parsed_url.scheme)
-    kong.service.set_target(parsed_url.host, tonumber(parsed_url.port))
+  -- mistral shared operation paths
+  if (conf.model.options and conf.model.options.upstream_url) then
+    parsed_url = socket_url.parse(conf.model.options.upstream_url)
+  else
+    parsed_url = socket_url.parse(ai_shared.upstream_url_format[DRIVER_NAME])
+    parsed_url.path = (conf.model.options and
+                        conf.model.options.upstream_path)
+                      or (ai_shared.operation_map[DRIVER_NAME][conf.route_type] and
+                        ai_shared.operation_map[DRIVER_NAME][conf.route_type].path)
+                      or "/"
   end
+
+  ai_shared.override_upstream_url(parsed_url, conf)
+
+  -- if the path is read from a URL capture, ensure that it is valid
+  parsed_url.path = (parsed_url.path and string_gsub(parsed_url.path, "^/*", "/")) or "/"
+
+  kong.service.request.set_path(parsed_url.path)
+  kong.service.request.set_scheme(parsed_url.scheme)
+  kong.service.set_target(parsed_url.host, (tonumber(parsed_url.port) or 443))
 
   local auth_header_name = conf.auth and conf.auth.header_name
   local auth_header_value = conf.auth and conf.auth.header_value
@@ -162,13 +174,18 @@ function _M.configure_request(conf)
   local auth_param_location = conf.auth and conf.auth.param_location
 
   if auth_header_name and auth_header_value then
-    kong.service.request.set_header(auth_header_name, auth_header_value)
+    local exist_value = kong.request.get_header(auth_header_name)
+    if exist_value == nil or not conf.auth.allow_override then
+      kong.service.request.set_header(auth_header_name, auth_header_value)
+    end
   end
 
   if auth_param_name and auth_param_value and auth_param_location == "query" then
     local query_table = kong.request.get_query()
-    query_table[auth_param_name] = auth_param_value
-    kong.service.request.set_query(query_table)
+    if query_table[auth_param_name] == nil or not conf.auth.allow_override then
+      query_table[auth_param_name] = auth_param_value
+      kong.service.request.set_query(query_table)
+    end
   end
 
   -- if auth_param_location is "form", it will have already been set in a pre-request hook

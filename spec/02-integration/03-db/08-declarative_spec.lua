@@ -10,6 +10,12 @@ for _, strategy in helpers.each_strategy() do
     lazy_setup(function()
       local _
       _, db = helpers.get_db_utils(strategy)
+
+      -- This is a special case, where some DB states could be corrupted by DB truncation in `lazy_teardown()`.
+      -- We manually bootstrap the DB here to ensure the creation of a table is done correctly
+      db:schema_reset()
+      helpers.bootstrap_database(db)
+
       _G.kong.db = db
       assert(helpers.start_kong({
         database   = strategy,
@@ -126,6 +132,7 @@ for _, strategy in helpers.each_strategy() do
         deny = ngx.null,
         allow = { "*" },
         hide_groups_header = false,
+        always_use_authenticated_groups = false,
       }
     }
 
@@ -140,6 +147,7 @@ for _, strategy in helpers.each_strategy() do
         deny = ngx.null,
         allow = { "*" },
         hide_groups_header = false,
+        always_use_authenticated_groups = false,
       }
     }
 

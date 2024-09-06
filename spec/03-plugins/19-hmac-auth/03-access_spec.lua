@@ -1,7 +1,7 @@
 local cjson = require "cjson"
 local openssl_mac = require "resty.openssl.mac"
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
+local uuid = require "kong.tools.uuid"
 local resty_sha256 = require "resty.sha256"
 
 local fmt = string.format
@@ -47,7 +47,8 @@ for _, strategy in helpers.each_strategy() do
         name     = "hmac-auth",
         route = { id = route1.id },
         config   = {
-          clock_skew = 3000
+          clock_skew = 3000,
+          realm = "test-realm"
         }
       }
 
@@ -95,7 +96,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "hmac-auth",
         route = { id = route3.id },
         config   = {
-          anonymous  = utils.uuid(),  -- non existing consumer
+          anonymous  = uuid.uuid(),  -- non existing consumer
           clock_skew = 3000
         }
       }
@@ -175,19 +176,40 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("HMAC Authentication", function()
-      it("should not be authorized when the hmac credentials are missing", function()
-        local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-        local res = assert(proxy_client:send {
-          method = "POST",
-          body = {},
-          headers = {
-            ["HOST"] = "hmacauth.test",
-            date = date
-          }
-        })
-        local body = assert.res_status(401, res)
-        body = cjson.decode(body)
-        assert.equal("Unauthorized", body.message)
+      describe("when realm is set", function ()
+        it("should not be authorized when the hmac credentials are missing", function()
+          local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
+          local res = assert(proxy_client:send {
+            method = "POST",
+            body = {},
+            headers = {
+              ["HOST"] = "hmacauth.test",
+              date = date
+            }
+          })
+          local body = assert.res_status(401, res)
+          assert.equal('hmac realm="test-realm"', res.headers["WWW-Authenticate"])
+          body = cjson.decode(body)
+          assert.equal("Unauthorized", body.message)
+        end)
+      end)
+
+      describe("when realm is not set", function ()
+        it("should return a 401 with an invalid authorization header", function()
+          local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/request",
+            body    = {},
+            headers = {
+              ["HOST"]                = "hmacauth6.test",
+              date                    = date,
+              ["proxy-authorization"] = "this is no hmac token at all is it?",
+            },
+          })
+          assert.res_status(401, res)
+          assert.equal('hmac', res.headers["WWW-Authenticate"])
+        end)
       end)
 
       it("rejects gRPC call without credentials", function()
@@ -211,6 +233,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         local body = assert.res_status(401, res)
+        assert.equal('hmac realm="test-realm"', res.headers["WWW-Authenticate"])
         body = cjson.decode(body)
         assert.equal(SIGNATURE_NOT_VALID, body.message)
       end)
@@ -228,6 +251,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         local body = assert.res_status(401, res)
+        assert.equal('hmac realm="test-realm"', res.headers["WWW-Authenticate"])
         body = cjson.decode(body)
         assert.equal("HMAC signature does not match", body.message)
       end)
@@ -242,6 +266,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         local body = assert.res_status(401, res)
+        assert.equal('hmac realm="test-realm"', res.headers["WWW-Authenticate"])
         body = cjson.decode(body)
         assert.equal([[HMAC signature cannot be verified, ]]
                     .. [[a valid date or x-date header is]]
@@ -260,6 +285,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         local body = assert.res_status(401, res)
+        assert.equal('hmac realm="test-realm"', res.headers["WWW-Authenticate"])
         body = cjson.decode(body)
         assert.equal(SIGNATURE_NOT_VALID, body.message)
       end)
@@ -276,6 +302,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         local body = assert.res_status(401, res)
+        assert.equal('hmac realm="test-realm"', res.headers["WWW-Authenticate"])
         body = cjson.decode(body)
         assert.equal(SIGNATURE_NOT_VALID, body.message)
       end)
@@ -293,6 +320,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         local body = assert.res_status(401, res)
+        assert.equal('hmac realm="test-realm"', res.headers["WWW-Authenticate"])
         body = cjson.decode(body)
         assert.equal(SIGNATURE_NOT_VALID, body.message)
       end)
@@ -310,6 +338,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         local body = assert.res_status(401, res)
+        assert.equal('hmac realm="test-realm"', res.headers["WWW-Authenticate"])
         body = cjson.decode(body)
         assert.equal(SIGNATURE_NOT_VALID, body.message)
       end)
@@ -326,6 +355,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         local body = assert.res_status(401, res)
+        assert.equal('hmac realm="test-realm"', res.headers["WWW-Authenticate"])
         body = cjson.decode(body)
         assert.equal(SIGNATURE_NOT_VALID, body.message)
       end)
@@ -341,6 +371,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         local body = assert.res_status(401, res)
+        assert.equal('hmac realm="test-realm"', res.headers["WWW-Authenticate"])
         body = cjson.decode(body)
         assert.equal("Unauthorized", body.message)
       end)
@@ -361,6 +392,7 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         local body = assert.res_status(401, res)
+        assert.equal('hmac realm="test-realm"', res.headers["WWW-Authenticate"])
         body = cjson.decode(body)
         assert.not_nil(body.message)
         assert.matches("HMAC signature cannot be verified", body.message)
@@ -381,6 +413,7 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         local body = assert.res_status(401, res)
+        assert.equal('hmac realm="test-realm"', res.headers["WWW-Authenticate"])
         body = cjson.decode(body)
         assert.not_nil(body.message)
         assert.matches("HMAC signature cannot be verified", body.message)
@@ -633,6 +666,7 @@ for _, strategy in helpers.each_strategy() do
             })
 
         local body = assert.res_status(401, res)
+        assert.equal('hmac realm="test-realm"', res.headers["WWW-Authenticate"])
         body = cjson.decode(body)
         assert.equal(SIGNATURE_NOT_VALID, body.message)
       end)
@@ -659,6 +693,7 @@ for _, strategy in helpers.each_strategy() do
         })
 
         local body = assert.res_status(401, res)
+        assert.equal('hmac realm="test-realm"', res.headers["WWW-Authenticate"])
         body = cjson.decode(body)
         assert.equal(SIGNATURE_NOT_VALID, body.message)
       end)
@@ -686,6 +721,7 @@ for _, strategy in helpers.each_strategy() do
         })
 
         local body = assert.res_status(401, res)
+        assert.equal('hmac realm="test-realm"', res.headers["WWW-Authenticate"])
         body = cjson.decode(body)
         assert.equal(SIGNATURE_NOT_VALID, body.message)
       end)
@@ -711,6 +747,7 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         local body = assert.res_status(401, res)
+        assert.equal('hmac realm="test-realm"', res.headers["WWW-Authenticate"])
         body = cjson.decode(body)
         assert.equal(SIGNATURE_NOT_VALID, body.message)
       end)
@@ -736,6 +773,7 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         local body = assert.res_status(401, res)
+        assert.equal('hmac realm="test-realm"', res.headers["WWW-Authenticate"])
         body = cjson.decode(body)
         assert.equal(SIGNATURE_NOT_VALID, body.message)
       end)
@@ -761,6 +799,7 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         local body = assert.res_status(401, res)
+        assert.equal('hmac realm="test-realm"', res.headers["WWW-Authenticate"])
         body = cjson.decode(body)
         assert.equal(SIGNATURE_NOT_VALID, body.message)
       end)
@@ -786,6 +825,7 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         local body = assert.res_status(401, res)
+        assert.equal('hmac realm="test-realm"', res.headers["WWW-Authenticate"])
         body = cjson.decode(body)
         assert.equal(SIGNATURE_NOT_VALID, body.message)
       end)
@@ -834,6 +874,7 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         assert.res_status(401, res)
+        assert.equal('hmac realm="test-realm"', res.headers["WWW-Authenticate"])
       end)
 
       it("should pass the right headers to the upstream server", function()
@@ -905,6 +946,7 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         local body = assert.res_status(401, res)
+        assert.equal('hmac realm="test-realm"', res.headers["WWW-Authenticate"])
         body = cjson.decode(body)
         assert.equal([[HMAC signature cannot be verified, a valid date or]]
           .. [[ x-date header is required for HMAC Authentication]], body.message)
@@ -930,6 +972,7 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         local body = assert.res_status(401, res)
+        assert.equal('hmac realm="test-realm"', res.headers["WWW-Authenticate"])
         body = cjson.decode(body)
         assert.equal([[HMAC signature cannot be verified, a valid date or]]
           .. [[ x-date header is required for HMAC Authentication]], body.message)
@@ -1071,6 +1114,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         local body = assert.res_status(401, res)
+        assert.equal('hmac', res.headers["WWW-Authenticate"])
         body = cjson.decode(body)
         assert.equal("HMAC signature does not match", body.message)
       end)
@@ -1253,6 +1297,7 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         local body = assert.res_status(401, res)
+        assert.equal('hmac', res.headers["WWW-Authenticate"])
         body = cjson.decode(body)
         assert.equal("HMAC signature does not match", body.message)
       end)
@@ -1280,6 +1325,7 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         local body = assert.res_status(401, res)
+        assert.equal('hmac', res.headers["WWW-Authenticate"])
         body = cjson.decode(body)
         assert.equal("HMAC signature does not match", body.message)
       end)
@@ -1307,6 +1353,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         local body = assert.res_status(401, res)
+        assert.equal('hmac', res.headers["WWW-Authenticate"])
         body = cjson.decode(body)
         assert.equal("HMAC signature does not match", body.message)
       end)
@@ -1354,6 +1401,7 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         assert.res_status(401, res)
+        assert.equal('hmac', res.headers["WWW-Authenticate"])
 
         encodedSignature = ngx.encode_base64(
           hmac_sha1_binary("secret", "date: "
@@ -1373,6 +1421,7 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         assert.res_status(401, res)
+        assert.equal('hmac', res.headers["WWW-Authenticate"])
       end)
 
       it("should pass with GET with request-line having query param", function()
@@ -1587,6 +1636,7 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         assert.res_status(401, res)
+        assert.equal('hmac', res.headers["WWW-Authenticate"])
       end)
 
       it("should pass with GET with hmac-sha384", function()
@@ -1653,6 +1703,7 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         assert.res_status(401, res)
+        assert.equal('hmac', res.headers["WWW-Authenticate"])
       end)
 
       it("should return a 401 with an invalid authorization header", function()
@@ -1668,6 +1719,7 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         assert.res_status(401, res)
+        assert.equal('hmac', res.headers["WWW-Authenticate"])
       end)
 
       it("should pass with hmac-sha1", function()
@@ -1831,6 +1883,7 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         assert.response(res).has.status(401)
+        assert.equal('hmac', res.headers["WWW-Authenticate"])
       end)
 
       it("fails 401, with only the second credential provided", function()
@@ -1844,6 +1897,7 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         assert.response(res).has.status(401)
+        assert.equal('Key', res.headers["WWW-Authenticate"])
       end)
 
       it("fails 401, with no credential provided", function()
@@ -1855,6 +1909,7 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         assert.response(res).has.status(401)
+        assert.equal('Key', res.headers["WWW-Authenticate"])
       end)
 
     end)

@@ -24,6 +24,7 @@ return {
           { keepalive = { description = "An optional value in milliseconds that defines how long an idle connection to LDAP server will live before being closed.", type = "number", default = 60000 }, },
           { anonymous = { description = "An optional string (consumer UUID or username) value to use as an “anonymous” consumer if authentication fails. If empty (default null), the request fails with an authentication failure `4xx`.", type = "string" }, },
           { header_type = { description = "An optional string to use as part of the Authorization header",  type = "string", default = "ldap" }, },
+          { realm = { description = "When authentication fails the plugin sends `WWW-Authenticate` header with `realm` attribute value.", type = "string", required = false }, },
         },
         entity_checks = {
           { conditional = {

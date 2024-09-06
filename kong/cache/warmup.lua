@@ -1,4 +1,4 @@
-local utils = require "kong.tools.utils"
+local hostname_type = require("kong.tools.ip").hostname_type
 local constants = require "kong.constants"
 local buffer = require "string.buffer"
 local acl_groups
@@ -25,7 +25,7 @@ local ngx = ngx
 local now = ngx.now
 local log = ngx.log
 local NOTICE  = ngx.NOTICE
-
+local DEBUG = ngx.DEBUG
 
 local NO_TTL_FLAG = require("kong.resty.mlcache").NO_TTL_FLAG
 
@@ -131,7 +131,7 @@ function cache_warmup.single_dao(dao)
     end
 
     if entity_name == "services" then
-      if utils.hostname_type(entity.host) == "name"
+      if hostname_type(entity.host) == "name"
          and hosts_set[entity.host] == nil then
         host_count = host_count + 1
         hosts_array[host_count] = entity.host
@@ -145,7 +145,7 @@ function cache_warmup.single_dao(dao)
     end
 
     if entity_name == "acls" and acl_groups ~= nil then
-      log(NOTICE, "warmup acl groups cache for consumer id: ", entity.consumer.id , "...")
+      log(DEBUG, "warmup acl groups cache for consumer id: ", entity.consumer.id , "...")
       local _, err = acl_groups.warmup_groups_cache(entity.consumer.id)
       if err then
         log(NOTICE, "warmup acl groups cache for consumer id: ", entity.consumer.id , " err: ", err)

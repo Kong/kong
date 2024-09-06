@@ -15,7 +15,7 @@ local SYNC_RATE_REALTIME = -1
 
 local EMPTY_UUID = "00000000-0000-0000-0000-000000000000"
 
-local EMPTY = {}
+local EMPTY = require("kong.tools.table").EMPTY
 
 local cur_usage = {
   --[[
@@ -396,7 +396,7 @@ return {
         return 0
       end
 
-      local red, err = get_redis_connection(conf)
+      local red, db_key, err = get_redis_connection(conf)
       if not red then
         return nil, err
       end

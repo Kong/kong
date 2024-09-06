@@ -1,15 +1,16 @@
 local kong = kong
 local ngx_encode_base64 = ngx.encode_base64
 local ngx_decode_base64 = ngx.decode_base64
+local null = ngx.null
 local cjson = require "cjson.safe"
 
-local pl_stringx = require("pl.stringx")
 local date = require("date")
-local get_request_id = require("kong.tracing.request_id").get
+local get_request_id = require("kong.observability.tracing.request_id").get
 
 local EMPTY = {}
 
-local split = pl_stringx.split
+local isempty = require "table.isempty"
+local split = require("kong.tools.string").split
 local ngx_req_get_headers  = ngx.req.get_headers
 local ngx_req_get_uri_args = ngx.req.get_uri_args
 local ngx_get_http_version = ngx.req.http_version
@@ -89,6 +90,10 @@ local function validate_custom_response(response)
     return nil, "body must be a string"
   end
 
+  if response.isBase64Encoded ~= nil and type(response.isBase64Encoded) ~= "boolean" then
+    return nil, "isBase64Encoded must be a boolean"
+  end
+
   return true
 end
 
@@ -118,13 +123,10 @@ local function extract_proxy_response(content)
   local isBase64Encoded = serialized_content.isBase64Encoded
   if isBase64Encoded == true then
     body = ngx_decode_base64(body)
-
-  elseif isBase64Encoded ~= false and isBase64Encoded ~= nil then
-    return nil, "isBase64Encoded must be a boolean"
   end
 
   local multiValueHeaders = serialized_content.multiValueHeaders
-  if multiValueHeaders then
+  if multiValueHeaders and multiValueHeaders ~= null then
     for header, values in pairs(multiValueHeaders) do
       headers[header] = values
     end
@@ -246,6 +248,7 @@ local function aws_serializer(ctx, config)
   end
 
   local request = {
+    version                         = "1.0",
     resource                        = ctx.router_matches.uri,
     path                            = path,
     httpMethod                      = var.request_method,
@@ -324,10 +327,36 @@ local function build_request_payload(conf)
 end
 
 
+-- TODO: remove this in the next major release
+-- function to remove array_mt metatables from empty tables
+-- This is just a backward compatibility code to keep a
+-- long-lived behavior that Kong responsed JSON objects
+-- instead of JSON arrays for empty arrays.
+local function remove_array_mt_for_empty_table(tbl)
+  if type(tbl) ~= "table" then
+    return tbl
+  end
+
+  -- Check if the current table(array) is empty and has a array_mt metatable, and remove it
+  if isempty(tbl) and getmetatable(tbl) == cjson.array_mt then
+    setmetatable(tbl, nil)
+  end
+
+  for _, value in pairs(tbl) do
+    if type(value) == "table" then
+      remove_array_mt_for_empty_table(value)
+    end
+  end
+
+  return tbl
+end
+
+
 return {
   aws_serializer = aws_serializer,
   validate_http_status_code = validate_http_status_code,
   validate_custom_response = validate_custom_response,
   build_request_payload = build_request_payload,
   extract_proxy_response = extract_proxy_response,
+  remove_array_mt_for_empty_table = remove_array_mt_for_empty_table,
 }

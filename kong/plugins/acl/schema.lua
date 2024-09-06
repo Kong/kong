@@ -16,6 +16,7 @@ return {
               type = "array",
               elements = { type = "string" }, }, },
           { hide_groups_header = { type = "boolean", required = true, default = false, description = "If enabled (`true`), prevents the `X-Consumer-Groups` header from being sent in the request to the upstream service." }, },
+          { always_use_authenticated_groups = { type = "boolean", required = true, default = false, description = "If enabled (`true`), the authenticated groups will always be used even when an authenticated consumer already exists. If the authenticated groups don't exist, it will fallback to use the groups associated with the consumer. By default the authenticated groups will only be used when there is no consumer or the consumer is anonymous." } },
         },
       }
     }

@@ -95,8 +95,98 @@ local Queue_mt = {
 }
 
 
-local function make_queue_key(name)
+local function _make_queue_key(name)
   return (workspaces.get_workspace_id() or "") .. "." .. name
+end
+
+
+local function _remaining_capacity(self)
+  local remaining_entries = self.max_entries - self:count()
+  local max_bytes = self.max_bytes
+
+  -- we enqueue entries one by one,
+  -- so it is impossible to have a negative value
+  assert(remaining_entries >= 0, "queue should not be over capacity")
+
+  if not max_bytes then
+    return remaining_entries
+  end
+
+  local remaining_bytes = max_bytes - self.bytes_queued
+
+  -- we check remaining_bytes before enqueueing an entry,
+  -- so it is impossible to have a negative value
+  assert(remaining_bytes >= 0, "queue should not be over capacity")
+
+  return remaining_entries, remaining_bytes
+end
+
+
+local function _is_reaching_max_entries(self)
+  -- `()` is used to get the first return value only
+  return (_remaining_capacity(self)) == 0
+end
+
+
+local function _will_exceed_max_entries(self)
+   -- `()` is used to get the first return value only
+  return (_remaining_capacity(self)) - 1 < 0
+end
+
+
+local function _is_entry_too_large(self, entry)
+  local max_bytes = self.max_bytes
+
+  if not max_bytes then
+    return false
+  end
+
+  if type(entry) ~= "string" then
+    -- handle non-string entry, including `nil`
+    return false
+  end
+
+  return #entry > max_bytes
+end
+
+
+local function _is_reaching_max_bytes(self)
+  if not self.max_bytes then
+    return false
+  end
+
+  local _, remaining_bytes = _remaining_capacity(self)
+  return remaining_bytes == 0
+end
+
+
+local function _will_exceed_max_bytes(self, entry)
+  if not self.max_bytes then
+    return false
+  end
+
+  if type(entry) ~= "string" then
+    -- handle non-string entry, including `nil`
+    return false
+  end
+
+  local _, remaining_bytes = _remaining_capacity(self)
+  return #entry > remaining_bytes
+end
+
+
+local function _is_full(self)
+  return _is_reaching_max_entries(self) or _is_reaching_max_bytes(self)
+end
+
+
+local function _can_enqueue(self, entry)
+  return not (
+    _is_full(self)                       or
+    _is_entry_too_large(self, entry)     or
+    _will_exceed_max_entries(self)       or
+    _will_exceed_max_bytes(self, entry)
+  )
 end
 
 
@@ -104,7 +194,7 @@ local queues = {}
 
 
 function Queue.exists(name)
-  return queues[make_queue_key(name)] and true or false
+  return queues[_make_queue_key(name)] and true or false
 end
 
 -------------------------------------------------------------------------------
@@ -115,7 +205,7 @@ end
 local function get_or_create_queue(queue_conf, handler, handler_conf)
 
   local name = assert(queue_conf.name)
-  local key = make_queue_key(name)
+  local key = _make_queue_key(name)
 
   local queue = queues[key]
   if queue then
@@ -150,16 +240,18 @@ local function get_or_create_queue(queue_conf, handler, handler_conf)
 
   queue = setmetatable(queue, Queue_mt)
 
-  kong.timer:named_at("queue " .. key, 0, function(_, q)
-    while q:count() > 0 do
-      q:log_debug("processing queue")
-      q:process_once()
-    end
-    q:log_debug("done processing queue")
-    queues[key] = nil
-  end, queue)
+  if queue.concurrency_limit == 1 then
+    kong.timer:named_at("queue " .. key, 0, function(_, q)
+      while q:count() > 0 do
+        q:log_debug("processing queue")
+        q:process_once()
+      end
+      q:log_debug("done processing queue")
+      queues[key] = nil
+    end, queue)
+    queues[key] = queue
+  end
 
-  queues[key] = queue
 
   queue:log_debug("queue created")
 
@@ -190,6 +282,77 @@ function Queue:log_err(...) self:log(kong.log.err, ...) end
 
 function Queue:count()
   return self.back - self.front
+end
+
+
+function Queue.is_full(queue_conf)
+  local queue = queues[_make_queue_key(queue_conf.name)]
+  if not queue then
+    -- treat non-existing queues as not full as they will be created on demand
+    return false
+  end
+
+  return _is_full(queue)
+end
+
+
+function Queue.can_enqueue(queue_conf, entry)
+  local queue = queues[_make_queue_key(queue_conf.name)]
+  if not queue then
+    -- treat non-existing queues having enough capacity.
+    -- WARNING: The limitation is that if the `entry` is a string and the `queue.max_bytes` is set,
+    --          and also the `#entry` is larger than `queue.max_bytes`,
+    --          this function will incorrectly return `true` instead of `false`.
+    --          This is a limitation of the current implementation.
+    --          All capacity checking functions need a Queue instance to work correctly.
+    --          constructing a Queue instance just for this function is not efficient,
+    --          so we just return `true` here.
+    --          This limitation should not happen in normal usage,
+    --          as user should be aware of the queue capacity settings
+    --          to avoid such situation.
+    return true
+  end
+
+  return _can_enqueue(queue, entry)
+end
+
+local function handle(self, entries)
+  local entry_count = #entries
+
+  local start_time = now()
+  local retry_count = 0
+  while true do
+    self:log_debug("passing %d entries to handler", entry_count)
+    local status, ok, err = pcall(self.handler, self.handler_conf, entries)
+    if status and ok == true then
+      self:log_debug("handler processed %d entries successfully", entry_count)
+      break
+    end
+
+    if not status then
+      -- protected call failed, ok is the error message
+      err = ok
+    end
+
+    self:log_warn("handler could not process entries: %s", tostring(err or "no error details returned by handler"))
+
+    if not err then
+      self:log_err("handler returned falsy value but no error information")
+    end
+
+    if (now() - start_time) > self.max_retry_time then
+      self:log_err(
+        "could not send entries due to max_retry_time exceeded. %d queue entries were lost",
+        entry_count)
+      break
+    end
+
+    -- Delay before retrying.  The delay time is calculated by multiplying the configured initial_retry_delay with
+    -- 2 to the power of the number of retries, creating an exponential increase over the course of each retry.
+    -- The maximum time between retries is capped by the max_retry_delay configuration parameter.
+    sleep(math_min(self.max_retry_delay, 2 ^ retry_count * self.initial_retry_delay))
+    retry_count = retry_count + 1
+  end
 end
 
 
@@ -260,46 +423,12 @@ function Queue:process_once()
   for _ = 1, entry_count do
     self:delete_frontmost_entry()
   end
-  if self.queue_full then
+  if self.already_dropped_entries then
     self:log_info('queue resumed processing')
-    self.queue_full = false
+    self.already_dropped_entries = false
   end
 
-  local start_time = now()
-  local retry_count = 0
-  while true do
-    self:log_debug("passing %d entries to handler", entry_count)
-    local status
-    status, ok, err = pcall(self.handler, self.handler_conf, batch)
-    if status and ok == true then
-      self:log_debug("handler processed %d entries successfully", entry_count)
-      break
-    end
-
-    if not status then
-      -- protected call failed, ok is the error message
-      err = ok
-    end
-
-    self:log_warn("handler could not process entries: %s", tostring(err or "no error details returned by handler"))
-
-    if not err then
-      self:log_err("handler returned falsy value but no error information")
-    end
-
-    if (now() - start_time) > self.max_retry_time then
-      self:log_err(
-        "could not send entries, giving up after %d retries.  %d queue entries were lost",
-        retry_count, entry_count)
-      break
-    end
-
-    -- Delay before retrying.  The delay time is calculated by multiplying the configured initial_retry_delay with
-    -- 2 to the power of the number of retries, creating an exponential increase over the course of each retry.
-    -- The maximum time between retries is capped by the max_retry_delay configuration parameter.
-    sleep(math_min(self.max_retry_delay, 2 ^ retry_count * self.initial_retry_delay))
-    retry_count = retry_count + 1
-  end
+  handle(self, batch)
 end
 
 
@@ -384,6 +513,21 @@ local function enqueue(self, entry)
     return nil, "entry must be a non-nil Lua value"
   end
 
+  if self.concurrency_limit == -1 then -- unlimited concurrency
+    -- do not enqueue when concurrency_limit is unlimited
+    local ok, err = kong.timer:at(0, function(premature)
+      if premature then
+        return
+      end
+      handle(self, { entry })
+    end)
+    if not ok then
+      return nil, "failed to crete timer: " .. err
+    end
+    return true
+  end
+
+
   if self:count() >= self.max_entries * CAPACITY_WARNING_THRESHOLD then
     if not self.warned then
       self:log_warn('queue at %s%% capacity', CAPACITY_WARNING_THRESHOLD * 100)
@@ -393,38 +537,54 @@ local function enqueue(self, entry)
     self.warned = nil
   end
 
-  if self:count() == self.max_entries then
-    if not self.queue_full then
-      self.queue_full = true
-      self:log_err("queue full, dropping old entries until processing is successful again")
-    end
+  if _is_reaching_max_entries(self) then
+    self:log_err("queue full, dropping old entries until processing is successful again")
     self:drop_oldest_entry()
+    self.already_dropped_entries = true
   end
+
+  if _is_entry_too_large(self, entry) then
+    local err_msg = string.format(
+      "string to be queued is longer (%d bytes) than the queue's max_bytes (%d bytes)",
+      #entry,
+      self.max_bytes
+    )
+    self:log_err(err_msg)
+
+    return nil, err_msg
+  end
+
+  if _will_exceed_max_bytes(self, entry) then
+    local dropped = 0
+
+    repeat
+      self:drop_oldest_entry()
+      dropped = dropped + 1
+      self.already_dropped_entries = true
+    until not _will_exceed_max_bytes(self, entry)
+
+    self:log_err("byte capacity exceeded, %d queue entries were dropped", dropped)
+  end
+
+  -- safety guard
+  -- The queue should not be full if we are running into this situation.
+  -- Since the dropping logic is complicated,
+  -- further maintenancers might introduce bugs,
+  -- so I added this assertion to detect this kind of bug early.
+  -- It's better to crash early than leak memory
+  -- as analyze memory leak is hard.
+  assert(
+    -- assert that enough space is available on the queue now
+    _can_enqueue(self, entry),
+    "queue should not be full after dropping entries"
+  )
 
   if self.max_bytes then
     if type(entry) ~= "string" then
       self:log_err("queuing non-string entry to a queue that has queue.max_bytes set, capacity monitoring will not be correct")
-    else
-      if #entry > self.max_bytes then
-        local message = string.format(
-          "string to be queued is longer (%d bytes) than the queue's max_bytes (%d bytes)",
-          #entry, self.max_bytes)
-        self:log_err(message)
-        return nil, message
-      end
-
-      local dropped = 0
-      while self:count() > 0 and (self.bytes_queued + #entry) > self.max_bytes do
-        self:drop_oldest_entry()
-        dropped = dropped + 1
-      end
-      if dropped > 0 then
-        self.queue_full = true
-        self:log_err("byte capacity exceeded, %d queue entries were dropped", dropped)
-      end
-
-      self.bytes_queued = self.bytes_queued + #entry
     end
+
+    self.bytes_queued = self.bytes_queued + #entry
   end
 
   self.entries[self.back] = entry
@@ -442,10 +602,45 @@ function Queue.enqueue(queue_conf, handler, handler_conf, value)
   assert(type(handler) == "function",
     "arg #2 (handler) must be a function")
   assert(handler_conf == nil or type(handler_conf) == "table",
-    "arg #3 (handler_conf) must be a table")
-
+    "arg #3 (handler_conf) must be a table or nil")
   assert(type(queue_conf.name) == "string",
     "arg #1 (queue_conf) must include a name")
+
+  assert(
+    type(queue_conf.max_batch_size) == "number",
+    "arg #1 (queue_conf) max_batch_size must be a number"
+  )
+  assert(
+    type(queue_conf.max_coalescing_delay) == "number",
+    "arg #1 (queue_conf) max_coalescing_delay must be a number"
+  )
+  assert(
+    type(queue_conf.max_entries) == "number",
+    "arg #1 (queue_conf) max_entries must be a number"
+  )
+  assert(
+    type(queue_conf.max_retry_time) == "number",
+    "arg #1 (queue_conf) max_retry_time must be a number"
+  )
+  assert(
+    type(queue_conf.initial_retry_delay) == "number",
+    "arg #1 (queue_conf) initial_retry_delay must be a number"
+  )
+  assert(
+    type(queue_conf.max_retry_delay) == "number",
+    "arg #1 (queue_conf) max_retry_delay must be a number"
+  )
+
+  local max_bytes_type = type(queue_conf.max_bytes)
+  assert(
+    max_bytes_type == "nil" or max_bytes_type == "number",
+    "arg #1 (queue_conf) max_bytes must be a number or nil"
+  )
+
+  assert(
+    type(queue_conf.concurrency_limit) == "number",
+    "arg #1 (queue_conf) concurrency_limit must be a number"
+  )
 
   local queue = get_or_create_queue(queue_conf, handler, handler_conf)
   return enqueue(queue, value)
@@ -454,12 +649,14 @@ end
 -- For testing, the _exists() function is provided to allow a test to wait for the
 -- queue to have been completely processed.
 function Queue._exists(name)
-  local queue = queues[make_queue_key(name)]
+  local queue = queues[_make_queue_key(name)]
   return queue and queue:count() > 0
 end
 
 
+-- [[ For testing purposes only
 Queue._CAPACITY_WARNING_THRESHOLD = CAPACITY_WARNING_THRESHOLD
+-- ]]
 
 
 return Queue

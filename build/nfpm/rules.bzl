@@ -23,8 +23,6 @@ def _nfpm_pkg_impl(ctx):
     env["OPENRESTY_PATCHES"] = ""
 
     pkg_ext = ctx.attr.packager
-    if pkg_ext == "apk":
-        pkg_ext = "apk.tar.gz"
 
     # create like kong.<target_arch>.deb
     out = ctx.actions.declare_file("%s/%s.%s.%s" % (

@@ -74,7 +74,8 @@ local function new()
   -- Using this method is equivalent to ask Kong to not run the load-balancing
   -- phase for this request, and consider it manually overridden.
   -- Load-balancing components such as retries and health-checks will also be
-  -- ignored for this request.
+  -- ignored for this request. Use `kong.service.set_retries` to overwrite
+  -- retries count.
   --
   -- The `host` argument expects the hostname or IP address of the upstream 
   -- server, and the `port` expects a port number.
@@ -87,7 +88,7 @@ local function new()
   -- kong.service.set_target("service.local", 443)
   -- kong.service.set_target("192.168.130.1", 80)
   function service.set_target(host, port)
-    check_phase(PHASES.access)
+    check_phase(access_and_rewrite_and_balancer_preread)
 
     if type(host) ~= "string" then
       error("host must be a string", 2)
@@ -106,6 +107,96 @@ local function new()
     ctx.balancer_data.port = port
   end
 
+
+  -- Sets the retry callback function when the target set by `service.set_target`
+  -- failed to connect. The callback function will be called with no argument and
+  -- must return `host`, `port` and `err` if any.
+  --
+  --
+  -- @function kong.service.set_target_retry_callback
+  -- @phases access
+  -- @tparam function retry_callback
+  -- @usage
+  -- kong.service.set_target_retry_callback(function() return "service.local", 443 end)
+  function service.set_target_retry_callback(retry_callback)
+    check_phase(PHASES.access)
+
+    if type(retry_callback) ~= "function" then
+      error("retry_callback must be a function", 2)
+    end
+
+    ngx.ctx.balancer_data.retry_callback = retry_callback
+  end
+
+
+  ---
+  -- Sets the retries count for the current request. This will override the
+  -- default retries count set in the Upstream entity.
+  --
+  -- The `retries` argument expects an integer between 0 and 32767.
+  --
+  -- @function kong.service.set_retries
+  -- @phases access
+  -- @tparam number retries
+  -- @usage
+  -- kong.service.set_retries(233)
+  function service.set_retries(retries)
+    check_phase(PHASES.access)
+
+    if type(retries) ~= "number" or floor(retries) ~= retries then
+      error("retries must be an integer", 2)
+    end
+    if retries < 0 or retries > 32767 then
+      error("port must be an integer between 0 and 32767: given " .. retries, 2)
+    end
+
+    local ctx = ngx.ctx
+    ctx.balancer_data.retries = retries
+  end
+
+  ---
+  -- Sets the timeouts for the current request. This will override the
+  -- default timeouts set in the Upstream entity.
+  -- 
+  -- The `connect_timeout`, `write_timeout`, and `read_timeout` arguments expect
+  -- an integer between 1 and 2147483646.
+  --
+  -- @function kong.service.set_timeouts
+  -- @phases access
+  -- @tparam number connect_timeout
+  -- @tparam number write_timeout
+  -- @tparam number read_timeout
+  -- @usage
+  -- kong.service.set_timeouts(233, 233, 233)
+  function service.set_timeouts(connect_timeout, write_timeout, read_timeout)
+    check_phase(PHASES.access)
+
+    if type(connect_timeout) ~= "number" or floor(connect_timeout) ~= connect_timeout then
+      error("connect_timeout must be an integer", 2)
+    end
+    if connect_timeout < 1 or connect_timeout > 2147483646 then
+      error("connect_timeout must be an integer between 1 and 2147483646: given " .. connect_timeout, 2)
+    end
+
+    if type(write_timeout) ~= "number" or floor(write_timeout) ~= write_timeout then
+      error("write_timeout must be an integer", 2)
+    end
+    if write_timeout < 1 or write_timeout > 2147483646 then
+      error("write_timeout must be an integer between 1 and 2147483646: given " .. write_timeout, 2)
+    end
+
+    if type(read_timeout) ~= "number" or floor(read_timeout) ~= read_timeout then
+      error("read_timeout must be an integer", 2)
+    end
+    if read_timeout < 1 or read_timeout > 2147483646 then
+      error("read_timeout must be an integer between 1 and 2147483646: given " .. read_timeout, 2)
+    end
+
+    local ctx = ngx.ctx
+    ctx.balancer_data.connect_timeout = connect_timeout
+    ctx.balancer_data.write_timeout = write_timeout
+    ctx.balancer_data.read_timeout = read_timeout
+  end
 
   local tls = require("resty.kong.tls")
 

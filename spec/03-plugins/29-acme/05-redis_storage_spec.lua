@@ -555,4 +555,134 @@ describe("Plugin: acme (storage.redis)", function()
     end)
   end)
 
+  describe("redis authentication", function()
+    describe("happy path", function()
+
+      it("should successfully connect to Redis with Auth using username/password", function()
+        local config = {
+          host = helpers.redis_host,
+          port = helpers.redis_auth_port,
+          database = 0,
+          username = "default",
+          password = "passdefault",
+        }
+        local storage, err = redis_storage.new(config)
+        assert.is_nil(err)
+        assert.not_nil(storage)
+        local err = storage:set("foo", "bar", 10)
+        assert.is_nil(err)
+        local value, err = storage:get("foo")
+        assert.is_nil(err)
+        assert.equal("bar", value)
+      end)
+
+      it("should successfully connect to Redis with Auth using legacy auth", function()
+        local config = {
+          host = helpers.redis_host,
+          port = helpers.redis_auth_port,
+          database = 0,
+          auth = "passdefault",
+        }
+        local storage, err = redis_storage.new(config)
+        assert.is_nil(err)
+        assert.not_nil(storage)
+        local err = storage:set("foo", "bar", 10)
+        assert.is_nil(err)
+        local value, err = storage:get("foo")
+        assert.is_nil(err)
+        assert.equal("bar", value)
+      end)
+
+      it("should successfully connect to Redis with Auth using just password", function()
+        local config = {
+          host = helpers.redis_host,
+          port = helpers.redis_auth_port,
+          database = 0,
+          password = "passdefault",
+        }
+        local storage, err = redis_storage.new(config)
+        assert.is_nil(err)
+        assert.not_nil(storage)
+        local err = storage:set("foo", "bar", 10)
+        assert.is_nil(err)
+        local value, err = storage:get("foo")
+        assert.is_nil(err)
+        assert.equal("bar", value)
+      end)
+    end)
+
+    describe("unhappy path", function()
+      it("should not connect to Redis with Auth using just username", function()
+        local config = {
+          host = helpers.redis_host,
+          port = helpers.redis_auth_port,
+          database = 0,
+          username = "default",
+        }
+        local storage, err = redis_storage.new(config)
+        assert.is_nil(err)
+        assert.not_nil(storage)
+        local err = storage:set("foo", "bar", 10)
+        assert.equal("can't select database NOAUTH Authentication required.", err)
+      end)
+
+      it("should not connect to Redis with Auth using wrong username", function()
+        local config = {
+          host = helpers.redis_host,
+          port = helpers.redis_auth_port,
+          database = 0,
+          username = "wrongusername",
+        }
+        local storage, err = redis_storage.new(config)
+        assert.is_nil(err)
+        assert.not_nil(storage)
+        local err = storage:set("foo", "bar", 10)
+        assert.equal("can't select database NOAUTH Authentication required.", err)
+      end)
+
+      it("should not connect to Redis with Auth using wrong password and no username", function()
+        local config = {
+          host = helpers.redis_host,
+          port = helpers.redis_auth_port,
+          database = 0,
+          password = "wrongpassword"
+        }
+        local storage, err = redis_storage.new(config)
+        assert.is_nil(err)
+        assert.not_nil(storage)
+        local err = storage:set("foo", "bar", 10)
+        assert.equal("authentication failed WRONGPASS invalid username-password pair or user is disabled.", err)
+      end)
+
+      it("should not connect to Redis with Auth using wrong password and correct username", function()
+        local config = {
+          host = helpers.redis_host,
+          port = helpers.redis_auth_port,
+          database = 0,
+          username = "default",
+          password = "wrongpassword"
+        }
+        local storage, err = redis_storage.new(config)
+        assert.is_nil(err)
+        assert.not_nil(storage)
+        local err = storage:set("foo", "bar", 10)
+        assert.equal("authentication failed WRONGPASS invalid username-password pair or user is disabled.", err)
+      end)
+
+      it("should not connect to Redis with Auth using correct password and wrong username", function()
+        local config = {
+          host = helpers.redis_host,
+          port = helpers.redis_auth_port,
+          database = 0,
+          username = "kong",
+          password = "passdefault"
+        }
+        local storage, err = redis_storage.new(config)
+        assert.is_nil(err)
+        assert.not_nil(storage)
+        local err = storage:set("foo", "bar", 10)
+        assert.equal("authentication failed WRONGPASS invalid username-password pair or user is disabled.", err)
+      end)
+    end)
+  end)
 end)

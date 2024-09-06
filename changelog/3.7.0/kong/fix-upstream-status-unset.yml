@@ -1,0 +1,3 @@
+message: Fixed a bug that `X-Kong-Upstream-Status` didn't appear in the response headers even if it was set in the `headers` parameter in the `kong.conf` file when the response was hit and returned by the Proxy Cache plugin.
+scope: Core
+type: bugfix

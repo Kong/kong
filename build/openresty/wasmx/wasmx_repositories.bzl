@@ -1,6 +1,6 @@
 """A module defining the third party dependency WasmX"""
 
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
+load("//build:build_system.bzl", "git_or_local_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 
@@ -42,12 +42,12 @@ wasm_runtimes = {
     },
     "wasmtime": {
         "linux": {
-            "x86_64": "bb6859c30de292db22b32522e3ef42239cebef93f42c9cad2e0306311122e72a",
-            "aarch64": "63b2bd25828cf882befe7a6e9d5162c9a750f0ab1dbc2160f778eea48e9b52f7",
+            "x86_64": "c2fe82f4d707711523e57c2fc8f67d8fc0311fd3cf15050f811f88b30c254980",
+            "aarch64": "4593a131018a99df3aa16b41b1c63838cbbba9a36771c444a39761b25be73469",
         },
         "macos": {
-            "x86_64": "2a79e92fb4150b9389d9ec67da0ba9ab913b9207122050a5e183a3695645692f",
-            "aarch64": "118b36b69953f00cebd9b5901b3313a19dea58eea926236a7318309f053e27a0",
+            "x86_64": "2939cdf4eca5ce79c7e179c338c46700deb88bc7906da206a272143c3da0ca5b",
+            "aarch64": "cafff668144d15fdee57645918d06330aa05126b6a28b92b836eb69987842cd9",
         },
     },
 }
@@ -57,7 +57,7 @@ def wasmx_repositories():
     if wasm_module_branch == "":
         wasm_module_branch = KONG_VAR["NGX_WASM_MODULE"]
 
-    new_git_repository(
+    git_or_local_repository(
         name = "ngx_wasmx_module",
         branch = wasm_module_branch,
         remote = KONG_VAR["NGX_WASM_MODULE_REMOTE"],
@@ -69,8 +69,8 @@ filegroup(
 )
 
 filegroup(
-    name = "lua_libs",
-    srcs = glob(["lib/resty/**"]),
+    name = "lualib_srcs",
+    srcs = glob(["lib/**/*.lua"]),
     visibility = ["//visibility:public"]
 )
 

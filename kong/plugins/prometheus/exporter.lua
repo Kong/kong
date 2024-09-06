@@ -17,8 +17,9 @@ local stream_available, stream_api = pcall(require, "kong.tools.stream_api")
 
 local role = kong.configuration.role
 
-local KONG_LATENCY_BUCKETS = { 1, 2, 5, 7, 10, 15, 20, 30, 50, 75, 100, 200, 500, 750, 1000}
-local UPSTREAM_LATENCY_BUCKETS = {25, 50, 80, 100, 250, 400, 700, 1000, 2000, 5000, 10000, 30000, 60000 }
+local KONG_LATENCY_BUCKETS = { 1, 2, 5, 7, 10, 15, 20, 30, 50, 75, 100, 200, 500, 750, 1000 }
+local UPSTREAM_LATENCY_BUCKETS = { 25, 50, 80, 100, 250, 400, 700, 1000, 2000, 5000, 10000, 30000, 60000 }
+local AI_LLM_PROVIDER_LATENCY_BUCKETS = { 250, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 10000, 30000, 60000 }
 local IS_PROMETHEUS_ENABLED
 
 
@@ -33,7 +34,6 @@ package.loaded['prometheus_resty_counter'] = require("resty.counter")
 
 local kong_subsystem = ngx.config.subsystem
 local http_subsystem = kong_subsystem == "http"
-
 
 local function init()
   local shm = "prometheus_metrics"
@@ -101,21 +101,21 @@ local function init()
   if http_subsystem then
     metrics.status = prometheus:counter("http_requests_total",
                                         "HTTP status codes per consumer/service/route in Kong",
-                                        {"service", "route", "code", "source", "consumer"})
+                                        {"service", "route", "code", "source", "workspace", "consumer"})
   else
     metrics.status = prometheus:counter("stream_sessions_total",
                                         "Stream status codes per service/route in Kong",
-                                        {"service", "route", "code", "source"})
+                                        {"service", "route", "code", "source", "workspace"})
   end
   metrics.kong_latency = prometheus:histogram("kong_latency_ms",
                                               "Latency added by Kong and enabled plugins " ..
                                               "for each service/route in Kong",
-                                              {"service", "route"},
+                                              {"service", "route", "workspace"},
                                               KONG_LATENCY_BUCKETS)
   metrics.upstream_latency = prometheus:histogram("upstream_latency_ms",
                                                   "Latency added by upstream response " ..
                                                   "for each service/route in Kong",
-                                                  {"service", "route"},
+                                                  {"service", "route", "workspace"},
                                                   UPSTREAM_LATENCY_BUCKETS)
 
 
@@ -123,13 +123,13 @@ local function init()
     metrics.total_latency = prometheus:histogram("request_latency_ms",
                                                  "Total latency incurred during requests " ..
                                                  "for each service/route in Kong",
-                                                 {"service", "route"},
+                                                 {"service", "route", "workspace"},
                                                  UPSTREAM_LATENCY_BUCKETS)
   else
     metrics.total_latency = prometheus:histogram("session_duration_ms",
                                                  "latency incurred in stream session " ..
                                                  "for each service/route in Kong",
-                                                 {"service", "route"},
+                                                 {"service", "route", "workspace"},
                                                  UPSTREAM_LATENCY_BUCKETS)
   end
 
@@ -137,13 +137,31 @@ local function init()
     metrics.bandwidth = prometheus:counter("bandwidth_bytes",
                                           "Total bandwidth (ingress/egress) " ..
                                           "throughput in bytes",
-                                          {"service", "route", "direction", "consumer"})
+                                          {"service", "route", "direction", "workspace","consumer"})
   else -- stream has no consumer
     metrics.bandwidth = prometheus:counter("bandwidth_bytes",
                                           "Total bandwidth (ingress/egress) " ..
                                           "throughput in bytes",
-                                          {"service", "route", "direction"})
+                                          {"service", "route", "direction", "workspace"})
   end
+
+  -- AI mode
+  metrics.ai_llm_requests = prometheus:counter("ai_llm_requests_total",
+                                      "AI requests total per ai_provider in Kong",
+                                      {"ai_provider", "ai_model", "cache_status", "vector_db", "embeddings_provider", "embeddings_model", "workspace"})
+
+  metrics.ai_llm_cost = prometheus:counter("ai_llm_cost_total",
+                                      "AI requests cost per ai_provider/cache in Kong",
+                                      {"ai_provider", "ai_model", "cache_status", "vector_db", "embeddings_provider", "embeddings_model", "workspace"})
+
+  metrics.ai_llm_tokens = prometheus:counter("ai_llm_tokens_total",
+                                      "AI requests cost per ai_provider/cache in Kong",
+                                      {"ai_provider", "ai_model", "cache_status", "vector_db", "embeddings_provider", "embeddings_model", "token_type", "workspace"})
+
+  metrics.ai_llm_provider_latency = prometheus:histogram("ai_llm_provider_latency_ms",
+                                      "LLM response Latency for each AI plugins per ai_provider in Kong",
+                                      {"ai_provider", "ai_model", "cache_status", "vector_db", "embeddings_provider", "embeddings_model", "workspace"},
+                                      AI_LLM_PROVIDER_LATENCY_BUCKETS)
 
   -- Hybrid mode status
   if role == "control_plane" then
@@ -198,15 +216,18 @@ end
 
 -- Since in the prometheus library we create a new table for each diverged label
 -- so putting the "more dynamic" label at the end will save us some memory
-local labels_table_bandwidth = {0, 0, 0, 0}
-local labels_table_status = {0, 0, 0, 0, 0}
-local labels_table_latency = {0, 0}
+local labels_table_bandwidth = {0, 0, 0, 0, 0}
+local labels_table_status = {0, 0, 0, 0, 0, 0}
+local labels_table_latency = {0, 0, 0}
 local upstream_target_addr_health_table = {
   { value = 0, labels = { 0, 0, 0, "healthchecks_off", ngx.config.subsystem } },
   { value = 0, labels = { 0, 0, 0, "healthy", ngx.config.subsystem } },
   { value = 0, labels = { 0, 0, 0, "unhealthy", ngx.config.subsystem } },
   { value = 0, labels = { 0, 0, 0, "dns_error", ngx.config.subsystem } },
 }
+-- ai
+local labels_table_ai_llm_status = {0, 0, 0, 0, 0, 0, 0}
+local labels_table_ai_llm_tokens = {0, 0, 0, 0, 0, 0, 0, 0}
 
 local function set_healthiness_metrics(table, upstream, target, address, status, metrics_bucket)
   for i = 1, #table do
@@ -248,10 +269,12 @@ local function log(message, serialized)
     consumer = nil -- no consumer in stream
   end
 
+  local workspace = message.workspace_name or ""
   if serialized.ingress_size or serialized.egress_size then
     labels_table_bandwidth[1] = service_name
     labels_table_bandwidth[2] = route_name
-    labels_table_bandwidth[4] = consumer
+    labels_table_bandwidth[4] = workspace
+    labels_table_bandwidth[5] = consumer
 
     local ingress_size = serialized.ingress_size
     if ingress_size and ingress_size > 0 then
@@ -277,7 +300,8 @@ local function log(message, serialized)
       labels_table_status[4] = "kong"
     end
 
-    labels_table_status[5] = consumer
+    labels_table_status[5] = workspace
+    labels_table_status[6] = consumer
 
     metrics.status:inc(1, labels_table_status)
   end
@@ -285,6 +309,7 @@ local function log(message, serialized)
   if serialized.latencies then
     labels_table_latency[1] = service_name
     labels_table_latency[2] = route_name
+    labels_table_latency[3] = workspace
 
     if http_subsystem then
       local request_latency = serialized.latencies.request
@@ -307,6 +332,55 @@ local function log(message, serialized)
     local kong_proxy_latency = serialized.latencies.kong
     if kong_proxy_latency ~= nil and kong_proxy_latency >= 0 then
       metrics.kong_latency:observe(kong_proxy_latency, labels_table_latency)
+    end
+  end
+
+  if serialized.ai_metrics then
+    for _, ai_plugin in pairs(serialized.ai_metrics) do
+      local cache_status = ai_plugin.cache.cache_status or ""
+      local vector_db = ai_plugin.cache.vector_db or ""
+      local embeddings_provider = ai_plugin.cache.embeddings_provider or ""
+      local embeddings_model = ai_plugin.cache.embeddings_model or ""
+
+      labels_table_ai_llm_status[1] = ai_plugin.meta.provider_name
+      labels_table_ai_llm_status[2] = ai_plugin.meta.request_model
+      labels_table_ai_llm_status[3] = cache_status
+      labels_table_ai_llm_status[4] = vector_db
+      labels_table_ai_llm_status[5] = embeddings_provider
+      labels_table_ai_llm_status[6] = embeddings_model
+      labels_table_ai_llm_status[7] = workspace
+      metrics.ai_llm_requests:inc(1, labels_table_ai_llm_status)
+
+      if ai_plugin.usage.cost and ai_plugin.usage.cost > 0 then
+        metrics.ai_llm_cost:inc(ai_plugin.usage.cost, labels_table_ai_llm_status)
+      end
+
+      if ai_plugin.meta.llm_latency and ai_plugin.meta.llm_latency > 0 then
+        metrics.ai_llm_provider_latency:observe(ai_plugin.meta.llm_latency, labels_table_ai_llm_status)
+      end
+
+      labels_table_ai_llm_tokens[1] = ai_plugin.meta.provider_name
+      labels_table_ai_llm_tokens[2] = ai_plugin.meta.request_model
+      labels_table_ai_llm_tokens[3] = cache_status
+      labels_table_ai_llm_tokens[4] = vector_db
+      labels_table_ai_llm_tokens[5] = embeddings_provider
+      labels_table_ai_llm_tokens[6] = embeddings_model
+      labels_table_ai_llm_tokens[8] = workspace
+
+      if ai_plugin.usage.prompt_tokens and ai_plugin.usage.prompt_tokens > 0 then
+        labels_table_ai_llm_tokens[7] = "prompt_tokens"
+        metrics.ai_llm_tokens:inc(ai_plugin.usage.prompt_tokens, labels_table_ai_llm_tokens)
+      end
+
+      if ai_plugin.usage.completion_tokens and ai_plugin.usage.completion_tokens > 0 then
+        labels_table_ai_llm_tokens[7] = "completion_tokens"
+        metrics.ai_llm_tokens:inc(ai_plugin.usage.completion_tokens, labels_table_ai_llm_tokens)
+      end
+
+      if ai_plugin.usage.total_tokens and ai_plugin.usage.total_tokens > 0 then
+        labels_table_ai_llm_tokens[7] = "total_tokens"
+        metrics.ai_llm_tokens:inc(ai_plugin.usage.total_tokens, labels_table_ai_llm_tokens)
+      end
     end
   end
 end
