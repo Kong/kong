@@ -63,10 +63,7 @@ local kong_vitals = require "kong.vitals"
 local http_new = http.new
 
 
-local function reload_module(name)
-  package.loaded[name] = nil
-  return require(name)
-end
+local reload_module = require("spec.details.module").reload
 
 
 -- reload some modules when env or _G changes
