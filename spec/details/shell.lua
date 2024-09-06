@@ -1,9 +1,9 @@
 local shell = require("resty.shell")
-local conf_loader = require("kong.conf_loader")
 local strip = require("kong.tools.string").strip
 
 
 local CONSTANTS = require("spec.details.constants")
+local conf = require("spec.details.conf")
 
 
 ----------------
@@ -31,9 +31,6 @@ local function exec(cmd, returns)
   end
   return ok, stderr, stdout
 end
-
-
-local conf = assert(conf_loader(CONSTANTS.TEST_CONF_PATH))
 
 
 --- Execute a Kong command.

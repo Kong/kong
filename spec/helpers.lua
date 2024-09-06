@@ -37,6 +37,7 @@ log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
 
 -- reload some modules when env or _G changes
 local CONSTANTS = reload_module("spec.details.constants")
+local conf = reload_module("spec.details.conf")
 local shell = reload_module("spec.details.shell")
 local misc = reload_module("spec.details.misc")
 local DB = reload_module("spec.details.db")
@@ -46,7 +47,6 @@ local asserts = reload_module("spec.details.asserts") -- luacheck: ignore
 local server = reload_module("spec.details.server")
 
 
-local conf = shell.conf
 local exec = shell.exec
 local kong_exec = shell.kong_exec
 

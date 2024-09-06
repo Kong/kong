@@ -8,7 +8,7 @@ local Blueprints = require("spec.fixtures.blueprints")
 local dc_blueprints = require("spec.fixtures.dc_blueprints")
 
 
-local conf = require("spec.details.shell").conf
+local conf = require("spec.details.conf")
 
 
 -- will be initialized in get_db_utils()
