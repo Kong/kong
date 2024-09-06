@@ -8,6 +8,7 @@ local kong_utils    = require("kong.tools.gzip")
 local llm           = require("kong.llm")
 local llm_state     = require("kong.llm.state")
 local ai_shared     = require("kong.llm.drivers.shared")
+local llm_state     = require("kong.llm.state")
 --
 
 _M.PRIORITY = 769
@@ -105,6 +106,7 @@ end
 
 
 function _M:access(conf)
+  llm_state.set_request_model(conf.llm.model and conf.llm.model.name)
   local kong_ctx_shared = kong.ctx.shared
 
   kong.service.request.enable_buffering()
