@@ -1,9 +1,9 @@
-load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make", "make")
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@kong//build/openresty/wasmx:rules.bzl", "wasm_runtime", "wasmx_configure_options", "wasmx_env")
-load("@openresty_binding//:variables.bzl", "LUAJIT_VERSION")
-load("@kong_bindings//:variables.bzl", "KONG_VAR")
 load("@kong//build/openresty/wasmx/filters:variables.bzl", "WASM_FILTERS_TARGETS")
+load("@kong_bindings//:variables.bzl", "KONG_VAR")
+load("@openresty_binding//:variables.bzl", "LUAJIT_VERSION")
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make", "make")
 
 filegroup(
     name = "luajit_srcs",
@@ -96,11 +96,11 @@ make(
             "libluajit-5.1.so.2",
         ],
     }),
+    postfix_script = "make clean; ASFLAGS= make all PREFIX=$INSTALLDIR; ASFLAGS= make install PREFIX=$INSTALLDIR",
     targets = [
         "-j" + KONG_VAR["NPROC"],
         "install",
     ],
-    postfix_script = "make clean; ASFLAGS= make all PREFIX=$INSTALLDIR; ASFLAGS= make install PREFIX=$INSTALLDIR",
     visibility = ["//visibility:public"],
 )
 
