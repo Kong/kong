@@ -8,9 +8,6 @@ local Blueprints = require("spec.fixtures.blueprints")
 local dc_blueprints = require("spec.fixtures.dc_blueprints")
 
 
-local conf = require("spec.details.conf")
-
-
 -- will be initialized in get_db_utils()
 local dcbp
 local PLUGINS_LIST
@@ -33,6 +30,9 @@ end
 ---------------
 -- Conf and DAO
 ---------------
+
+local conf = require("spec.details.conf")
+
 
 _G.kong = kong_global.new()
 kong_global.init_pdk(_G.kong, conf)
