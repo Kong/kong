@@ -203,7 +203,6 @@ jobs:
                 m4 \
                 perl \
                 pkg-config \
-                python-is-python3 \
                 unzip \
                 zlib1g-dev
 
