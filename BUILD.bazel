@@ -141,6 +141,20 @@ config_setting(
     visibility = ["//visibility:public"],
 )
 
+# --//:addition_deps=true
+bool_flag(
+    name = "additional_deps",
+    build_setting_default = True,
+)
+
+config_setting(
+    name = "additional_deps_flag",
+    flag_values = {
+        ":additional_deps": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
 # --//:licensing=false
 bool_flag(
     name = "licensing",

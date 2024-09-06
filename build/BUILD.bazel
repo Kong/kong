@@ -13,6 +13,9 @@ clib_deps = [
     "@openssl",
     "@libexpat",
     "@snappy",
+]
+
+additional_deps = [
     "@ada",
 ]
 
@@ -23,15 +26,15 @@ clib_deps = [
         prefix = "kong/lib" if k in ("@passwdqc", "@snappy", "@ada") else "kong",
         strip_path = "snappy" if k == "@snappy" else "ada" if k == "@ada" else "",
     )
-    for k in clib_deps
+    for k in clib_deps + additional_deps
 ]
 
 kong_rules_group(
     name = "install-clibs",
-    propagates = [
-        ":install-%s" % get_workspace_name(k)
-        for k in clib_deps
-    ],
+    propagates = select({
+        "@kong//:additional_deps_flag": [":install-%s" % get_workspace_name(k) for k in clib_deps + additional_deps],
+        "//conditions:default": [":install-%s" % get_workspace_name(k) for k in clib_deps],
+    }),
     visibility = ["//visibility:public"],
 )
 
