@@ -6,10 +6,10 @@ local colors = require("ansicolors")
 local luassert = require("luassert.assert")
 
 
+local conf = require("spec.details.conf")
 local misc = require("spec.details.misc")
 
 
-local conf = require("spec.details.shell").conf
 local strip = require("kong.tools.string").strip
 local splitlines = require("pl.stringx").splitlines
 
@@ -818,4 +818,5 @@ luassert:register("assertion", "partial_match", partial_match,
                   "assertion.partial_match.negative")
 
 
+-- the same behivor with other modules
 return true
