@@ -127,6 +127,14 @@ jobs:
         apt-get update
         apt-get install -y git tar gzip file sudo
 
+    - name: Install newer Gcc
+      if: matrix.package == 'rpm' && matrix.label == 'amazonlinux-2'
+      run: |
+        yum update -y
+        yum install -y gcc10.x86_64 gcc10-c++.x86_64
+        update-alternatives --list
+        yum search glibc
+
     - name: Cache Git
       id: cache-git
       if: (matrix.package == 'rpm') && matrix.image != ''
