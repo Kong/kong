@@ -100,7 +100,7 @@ make(
         "-j" + KONG_VAR["NPROC"],
         "install",
     ],
-    postfix_script = "make clean; ASFLAGS= make all PREFIX=$INSTALLDIR; ASFLAGS= make install PREFIX=$INSTALLDIR"
+    postfix_script = "make clean; ASFLAGS= make all PREFIX=$INSTALLDIR; ASFLAGS= make install PREFIX=$INSTALLDIR",
     visibility = ["//visibility:public"],
 )
 
