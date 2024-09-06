@@ -10,14 +10,11 @@ local prefix_handler = require("kong.cmd.utils.prefix_handler")
 
 
 local CONSTANTS = require("spec.details.constants")
+local conf = require("spec.details.conf")
 local shell = require("spec.details.shell")
 local pid = require("spec.details.pid")
 local DB = require("spec.details.db")
 local dns_mock = require("spec.details.dns")
-
-
-local conf = shell.conf
-local kong_exec = shell.kong_exec
 
 
 local config_yml
@@ -34,7 +31,7 @@ local config_yml
 --   -- do something
 -- end
 local function get_version()
-  return version(select(3, assert(kong_exec("version"))))
+  return version(select(3, assert(shell.kong_exec("version"))))
 end
 
 
@@ -116,7 +113,7 @@ local function render_fixtures(conf, env, prefix, fixtures)
   if fixtures and (fixtures.http_mock or fixtures.stream_mock) then
     -- prepare the prefix so we get the full config in the
     -- hidden `.kong_env` file, including test specified env vars etc
-    assert(kong_exec("prepare --conf " .. conf, env))
+    assert(shell.kong_exec("prepare --conf " .. conf, env))
     local render_config = assert(conf_loader(prefix .. "/.kong_env", nil,
                                              { from_kong_env = true }))
 
@@ -314,7 +311,7 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
   end
 
   assert(render_fixtures(CONSTANTS.TEST_CONF_PATH .. nginx_conf, env, prefix, fixtures))
-  return kong_exec("start --conf " .. CONSTANTS.TEST_CONF_PATH .. nginx_conf .. nginx_conf_flags, env)
+  return shell.kong_exec("start --conf " .. CONSTANTS.TEST_CONF_PATH .. nginx_conf .. nginx_conf_flags, env)
 end
 
 
@@ -383,6 +380,7 @@ local function stop_kong(prefix, preserve_prefix, preserve_dc, signal, nowait)
 
   return true
 end
+
 
 --- Restart Kong. Reusing declarative config when using `database=off`.
 -- @function restart_kong
