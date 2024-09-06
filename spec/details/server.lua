@@ -397,9 +397,9 @@ end
 
 return {
   tcp_server = tcp_server,
-  udp_server = udp_server,
+  kill_tcp_server = kill_tcp_server,
 
   http_mock = http_mock,
 
-  kill_tcp_server = kill_tcp_server,
+  udp_server = udp_server,
 }
