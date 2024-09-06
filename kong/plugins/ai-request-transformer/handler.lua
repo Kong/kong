@@ -6,7 +6,6 @@ local fmt           = string.format
 local llm           = require("kong.llm")
 local llm_state     = require("kong.llm.state")
 local ai_shared     = require("kong.llm.drivers.shared")
-local llm_state     = require("kong.llm.state")
 --
 
 _M.PRIORITY = 777
