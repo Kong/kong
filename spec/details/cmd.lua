@@ -17,6 +17,7 @@ local DB = require("spec.details.db")
 local dns_mock = require("spec.details.dns")
 
 
+-- initialized in start_kong()
 local config_yml
 
 
