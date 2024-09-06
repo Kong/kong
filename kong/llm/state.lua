@@ -104,4 +104,12 @@ function _M.get_metrics(key)
   return (kong.ctx.shared.llm_metrics or {})[key]
 end
 
+function _M.set_request_model(model)
+  kong.ctx.shared.llm_model_requested = model
+end
+
+function _M.get_request_model()
+  return kong.ctx.shared.llm_model_requested or "NOT_SPECIFIED"
+end
+
 return _M

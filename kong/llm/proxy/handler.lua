@@ -268,7 +268,7 @@ function _M:header_filter(conf)
   end
 
   if ngx.var.http_kong_debug or conf.model_name_header then
-    local name = conf.model.provider .. "/" .. (kong.ctx.plugin.llm_model_requested or conf.model.name)
+    local name = conf.model.provider .. "/" .. (llm_state.get_request_model())
     kong.response.set_header("X-Kong-LLM-Model", name)
   end
 
@@ -385,7 +385,7 @@ function _M:access(conf)
     return bail(400, "model parameter not found in request, nor in gateway configuration")
   end
 
-  kong_ctx_plugin.llm_model_requested = conf_m.model.name
+  llm_state.set_request_model(conf_m.model.name)
 
   -- check the incoming format is the same as the configured LLM format
   local compatible, err = llm.is_compatible(request_table, route_type)
