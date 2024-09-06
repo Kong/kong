@@ -90,7 +90,6 @@ end
 return {
   run = shell.run,
 
-  conf = conf,
   exec = exec,
   kong_exec = kong_exec,
 }
