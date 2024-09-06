@@ -6,7 +6,7 @@ local colors = require("ansicolors")
 local luassert = require("luassert.assert")
 
 
-local conf = require("spec.details.conf")
+local conf = require("spec.details.shell").conf
 local misc = require("spec.details.misc")
 
 
@@ -182,6 +182,7 @@ local function copy_errlog(errlog_path)
     print(colors("%{red}Failed to save error log for test " .. file_path .. ": " .. err))
   end
 end
+
 
 --- Assertion to check the status-code of a http response.
 -- @function status
