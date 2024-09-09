@@ -144,6 +144,7 @@ class ExpectChain():
 
     def _compare(self, attr, fn):
         self._checks_count += 1
+        results = []
         for f in self._files:
             if not hasattr(f, attr):
                 continue  # accept missing attribute for now
@@ -153,8 +154,10 @@ class ExpectChain():
                 if self._key_name not in v:
                     return True
                 v = v[self._key_name]
-            (ok, err_template) = fn(v)
-            if (not not ok) == self._logical_reverse:
+            (r, err_template) = fn(v)
+            if r:
+                results.append(r)
+            if (not not r) == self._logical_reverse:
                 _not = "not"
                 if self._logical_reverse:
                     _not = "actually"
@@ -163,7 +166,7 @@ class ExpectChain():
                     f.relpath, attr, err_template.format(v, NOT=_not)
                 ))
                 return False
-        return True
+        return results
 
     def _exist(self):
         self._checks_count += 1
@@ -179,7 +182,9 @@ class ExpectChain():
         return self._compare(attr, lambda a: (a == expect, "'{}' does {NOT} equal to '%s'" % expect))
 
     def _match(self, attr, expect):
-        return self._compare(attr, lambda a: (re.search(expect, a), "'{}' does {NOT} match '%s'" % expect))
+        r = self._compare(attr, lambda a: (re.search(expect, a), "'{}' does {NOT} match '%s'" % expect))
+        self.last_macthes = r
+        return (not not r)
 
     def _less_than(self, attr, expect):
         def fn(a):
@@ -222,8 +227,9 @@ class ExpectChain():
             if isinstance(a, list):
                 msg = "'%s' is {NOT} found in the list" % expect
                 for e in a:
-                    if re.search(expect, e):
-                        return True, msg
+                    r = re.search(expect, e)
+                    if r:
+                        return r, msg
                 return False, msg
             else:
                 return False, "'%s' is not a list" % attr
@@ -331,3 +337,7 @@ class ExpectChain():
             s(self.expect, **suite.tests[s])
 
         self._print_result()  # cleanup the lazy buffer
+
+
+    def get_last_macthes(self):
+        return self.last_macthes
