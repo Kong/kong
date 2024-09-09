@@ -105,6 +105,7 @@ end
 
 
 function _M:access(conf)
+  llm_state.set_request_model(conf.llm.model and conf.llm.model.name)
   local kong_ctx_shared = kong.ctx.shared
 
   kong.service.request.enable_buffering()
