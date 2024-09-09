@@ -14,6 +14,7 @@ local pl_utils = require("pl.utils")
 local constants = require("kong.constants")
 local conf_loader = require("kong.conf_loader")
 local kong_table = require("kong.tools.table")
+local kill = require("kong.cmd.utils.kill")
 local prefix_handler = require("kong.cmd.utils.prefix_handler")
 
 
@@ -403,6 +404,56 @@ local function restart_kong(env, tables, fixtures)
 end
 
 
+-- Only use in CLI tests from spec/02-integration/01-cmd
+local function kill_all(prefix, timeout)
+  local running_conf = get_running_conf(prefix)
+  if not running_conf then return end
+
+  -- kill kong_tests.conf service
+  local pid_path = running_conf.nginx_pid
+  if pl_path.exists(pid_path) then
+    kill.kill(pid_path, "-TERM")
+    pid.wait_pid(pid_path, timeout)
+  end
+end
+
+
+local function signal(prefix, signal, pid_path)
+  if not pid_path then
+    local running_conf = get_running_conf(prefix)
+    if not running_conf then
+      error("no config file found at prefix: " .. prefix)
+    end
+
+    pid_path = running_conf.nginx_pid
+  end
+
+  return kill.kill(pid_path, signal)
+end
+
+
+-- send signal to all Nginx workers, not including the master
+local function signal_workers(prefix, signal, pid_path)
+  if not pid_path then
+    local running_conf = get_running_conf(prefix)
+    if not running_conf then
+      error("no config file found at prefix: " .. prefix)
+    end
+
+    pid_path = running_conf.nginx_pid
+  end
+
+  local cmd = string.format("pkill %s -P `cat %s`", signal, pid_path)
+  local _, _, _, _, code = shell.run(cmd)
+
+  if not pid.pid_dead(pid_path) then
+    return false
+  end
+
+  return code
+end
+
+
 -- TODO
 -- get_kong_workers
 -- reload_kong
@@ -421,5 +472,9 @@ return {
 
   get_running_conf = get_running_conf,
   clean_logfile = clean_logfile,
+
+  kill_all = kill_all,
+  signal = signal,
+  signal_workers = signal_workers,
 }
 
