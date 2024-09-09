@@ -274,7 +274,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     assert.is_falsy(ok)
   end)
 
-  it("rejects empty redis config", function()
+  it("allows empty redis config - takes defaults", function()
     local ok, err = validate({
       issuer = "https://samltoolkit.azurewebsites.net/kong_saml",
       assertion_consumer_path = "/consumer",
@@ -282,6 +282,24 @@ describe(PLUGIN_NAME .. ": (schema)", function()
       idp_certificate = idp_cert,
       session_secret = session_secret,
       session_storage = 'redis',
+    }, saml_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(ok)
+  end)
+
+  it("rejects empty redis config - when explicit defaults set", function()
+    local ok, err = validate({
+      issuer = "https://samltoolkit.azurewebsites.net/kong_saml",
+      assertion_consumer_path = "/consumer",
+      idp_sso_url = "https://login.microsoftonline.com/f177c1d6-50cf-49e0-818a-a0585cbafd8d/saml2",
+      idp_certificate = idp_cert,
+      session_secret = session_secret,
+      session_storage = 'redis',
+      redis = {
+        host = ngx.null,
+        port = ngx.null
+      }
     }, saml_schema)
 
     assert.is_same("No redis config provided", err['@entity'][1])

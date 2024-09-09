@@ -352,6 +352,49 @@ describe("rate-limiting-advanced schema", function()
 
     assert.is_nil(err)
     assert.is_truthy(ok)
+
+    -- defaults to host/port
+    local entity, err = v({
+      window_size = { 60 },
+      limit = { 10 },
+      sync_rate = 10,
+      strategy = "redis",
+    }, rate_limiting_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(entity)
+    assert.same(entity.config.redis.host, "127.0.0.1")
+    assert.same(entity.config.redis.port, 6379)
+
+    local entity, err = v({
+      window_size = { 60 },
+      limit = { 10 },
+      sync_rate = 10,
+      strategy = "redis",
+      redis = {
+        host = "example.com"
+      }
+    }, rate_limiting_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(entity)
+    assert.same(entity.config.redis.host, "example.com")
+    assert.same(entity.config.redis.port, 6379)
+
+    local entity, err = v({
+      window_size = { 60 },
+      limit = { 10 },
+      sync_rate = 10,
+      strategy = "redis",
+      redis = {
+        port = 7100
+      }
+    }, rate_limiting_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(entity)
+    assert.same(entity.config.redis.host, "127.0.0.1")
+    assert.same(entity.config.redis.port, 7100)
   end)
 
   it("errors with a missing/incomplete redis config", function()
@@ -360,6 +403,10 @@ describe("rate-limiting-advanced schema", function()
       limit = { 10 },
       sync_rate = 10,
       strategy = "redis",
+      redis = {
+        host = ngx.null,
+        port = ngx.null
+      }
     }, rate_limiting_schema)
 
     assert.is_falsy(ok)
@@ -372,6 +419,7 @@ describe("rate-limiting-advanced schema", function()
       strategy = "redis",
       redis = {
         host = "example.com",
+        port = ngx.null
       }
     }, rate_limiting_schema)
 

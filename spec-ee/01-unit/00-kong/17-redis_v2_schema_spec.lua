@@ -71,6 +71,20 @@ describe("redis schema", function()
     assert.is_true(ok)
   end)
 
+  it("accepts combination of all: single, cluster, sentinel", function()
+    local ok, err = process_auto_fields_and_insert({
+      host = "127.0.0.1",
+      port = 6379,
+      cluster_addresses = { "127.0.0.1:26379" },
+      sentinel_addresses = { "127.0.0.1:26379" },
+      sentinel_master = "mymaster",
+      sentinel_role = "master",
+    })
+
+    assert.is_nil(err)
+    assert.is_true(ok)
+  end)
+
   it("redis clusters need to be specific to a configuration", function()
     -- Simulate the creation of a plugin configuration with redis cluster
     local configA = {
@@ -128,28 +142,6 @@ describe("redis schema", function()
       " 'sentinel_role', 'sentinel_nodes'", err["@entity"][1])
 
     local ok, err = process_auto_fields_and_insert({
-      sentinel_addresses = { "127.0.0.1:26379" },
-      sentinel_master = "mymaster",
-      sentinel_role = "master",
-      host = "127.0.0.1",
-    })
-
-    assert.is_falsy(ok)
-    assert.same("these sets are mutually exclusive: ('sentinel_master'," ..
-      " 'sentinel_role', 'sentinel_nodes'), ('host')", err["@entity"][1])
-
-    local ok, err = process_auto_fields_and_insert({
-      sentinel_addresses = { "127.0.0.1:26379" },
-      sentinel_master = "mymaster",
-      sentinel_role = "master",
-      port = 6379,
-    })
-
-    assert.is_falsy(ok)
-    assert.same("these sets are mutually exclusive: ('sentinel_master'," ..
-      " 'sentinel_role', 'sentinel_nodes'), ('port')", err["@entity"][1])
-
-    local ok, err = process_auto_fields_and_insert({
       sentinel_addresses = { "127.0.0.1" },
       sentinel_master = "mymaster",
       sentinel_role = "master",
@@ -196,16 +188,6 @@ describe("redis schema", function()
     assert.same("expected an array", err.cluster_addresses)
 
     local ok, err = process_auto_fields_and_insert({
-      cluster_addresses = { "127.0.0.1:26379" },
-      host = "127.0.0.1",
-      port = 6578,
-    })
-
-    assert.is_falsy(ok)
-    assert.same("these sets are mutually exclusive: ('cluster_nodes')," ..
-      " ('host', 'port')", err["@entity"][1])
-
-    local ok, err = process_auto_fields_and_insert({
       cluster_addresses = { "127.0.0.1" },
     })
 
@@ -225,17 +207,6 @@ describe("redis schema", function()
 
     assert.is_falsy(ok)
     assert.same("length must be at least 1", err.cluster_nodes)
-
-    local ok, err = process_auto_fields_and_insert({
-      cluster_addresses = { "127.0.0.1:26379" },
-      sentinel_addresses = { "127.0.0.1:12345" },
-      sentinel_master = "mymaster",
-      sentinel_role = "master",
-    })
-
-    assert.is_falsy(ok)
-    assert.same("these sets are mutually exclusive: ('sentinel_master'," ..
-      " 'sentinel_role', 'sentinel_nodes'), ('cluster_nodes')", err["@entity"][1])
   end)
 
   it("granular timeouts have defaults", function()
@@ -341,14 +312,6 @@ describe("redis schema", function()
     assert.is_falsy(ok)
     assert.are_equal("database must be '0' or 'null' when 'connection_is_proxied' is 'true'.", errs["@entity"][1])
 
-    local bad_conf3 = {
-      connection_is_proxied = true
-    }
-    ok, errs = process_auto_fields_and_insert(bad_conf3)
-    assert.is_falsy(ok)
-    assert.are_equal("failed conditional validation given value of field 'connection_is_proxied'", errs["@entity"][1])
-    assert.are_equal("required field missing", errs["host"])
-
     local bad_conf4 = {
       sentinel_nodes = {
         { host = "sentinel0", port = 26379 },
@@ -361,20 +324,18 @@ describe("redis schema", function()
     }
     ok, errs = process_auto_fields_and_insert(bad_conf4)
     assert.is_falsy(ok)
-    assert.are_equal("failed conditional validation given value of field 'connection_is_proxied'", errs["@entity"][1])
-    assert.are_equal("required field missing", errs["host"])
+    assert.are_equal("'connection_is_proxied' can not be 'true' when 'sentinel_role' is set.", errs["@entity"][1])
 
     local bad_conf5 = {
       cluster_nodes = {
-        { host = "sentinel0", port = 26379 },
-        { host = "sentinel1", port = 26379 },
-        { host = "sentinel2", port = 26379 },
+        { ip = "127.0.0.1", port = 26379 },
+        { ip = "127.0.0.1", port = 26379 },
+        { ip = "127.0.0.1", port = 26379 },
       },
       connection_is_proxied = true
     }
     ok, errs = process_auto_fields_and_insert(bad_conf5)
     assert.is_falsy(ok)
-    assert.are_equal("failed conditional validation given value of field 'connection_is_proxied'", errs["@entity"][1])
-    assert.are_equal("required field missing", errs["host"])
+    assert.are_equal("'connection_is_proxied' can not be 'true' when 'cluster_nodes' is set.", errs["@entity"][1])
   end)
 end)

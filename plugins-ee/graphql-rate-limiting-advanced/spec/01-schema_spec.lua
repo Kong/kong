@@ -89,6 +89,7 @@ describe("Hybrid mode schema validation", function()
 
   describe("accepts the redis strategy", function()
     local redis_conf_map = {
+      ['default-single'] = {},
       ['single-node'] = {
         host = '1.1.1.1', port = 12345,
       },
@@ -111,14 +112,23 @@ describe("Hybrid mode schema validation", function()
           { ip = '1.1.1.2', port = 23456}
         },
       },
-      ['failed_if_more_than_one'] = {
+      ['all'] = {
         host = '1.1.1.1', port = 12345,
         cluster_nodes = {
           { ip = '1.1.1.1', port = 12345 },
           { ip = '1.1.1.2', port = 23456 }
         },
+        sentinel_role = 'master',
+        sentinel_nodes = {
+          { host = '1.1.1.1', port = 12345 },
+          { host = '1.1.1.2', port = 23456 }
+        },
+        sentinel_master = '1.1.1.1:12345',
       },
-      ['failed_no_redis_conf'] = {},
+      ['failed_no_redis_conf'] = {
+        host = ngx.null,
+        port = ngx.null
+      },
     }
     for mode, cf in pairs(redis_conf_map) do
       it("in " .. mode .. " mode", function()

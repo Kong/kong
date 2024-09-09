@@ -178,7 +178,7 @@ for _, strategy in helpers.each_strategy() do
           assert.same("socket-1", body.config.redis.socket)
         end)
 
-        it("doesn't accept empty config", function()
+        it("accepts empty config - defaults to host/port", function()
           local res = assert(admin_client:send {
             method  = "POST",
             path    = "/plugins",
@@ -194,12 +194,37 @@ for _, strategy in helpers.each_strategy() do
               ["Content-Type"] = "application/json"
             }
           })
+          local body = cjson.decode(assert.res_status(201, res))
+          assert.same("127.0.0.1", body.config.redis.host)
+          assert.same(6379, body.config.redis.port)
+        end)
+
+        it("doesn't accept empty config - explicit nulls", function()
+          local res = assert(admin_client:send {
+            method  = "POST",
+            path    = "/plugins",
+            body    = {
+              name  = "openid-connect",
+              route = { id = route.id },
+              config = {
+                issuer = "https://accounts.google.test/.well-known/openid-configuration",
+                session_storage = "redis",
+                redis = {
+                  host = ngx.null,
+                  port = ngx.null
+                }
+              },
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
           local body = cjson.decode(assert.res_status(400, res))
 
            assert.same("No redis config provided", body.fields['@entity'][1])
         end)
 
-        it("should only save cluster_nodes - when using both host/port and cluster_nodes", function()
+        it("should save all confiugrations both host/port and cluster_nodes", function()
           local cluster_nodes_config = {
             {
               ip = "redis-node-1",
@@ -235,13 +260,13 @@ for _, strategy in helpers.each_strategy() do
           local body = cjson.decode(assert.res_status(201, res))
 
           -- "OLD" config
-          assert.same(ngx.null, body.config.session_redis_host)
-          assert.same(ngx.null, body.config.session_redis_port)
+          assert.same("localhost", body.config.session_redis_host)
+          assert.same(7123, body.config.session_redis_port)
           assert.same(cluster_nodes_config, body.config.session_redis_cluster_nodes)
 
           -- "NEW" (v2) config
-          assert.same(ngx.null, body.config.redis.host)
-          assert.same(ngx.null, body.config.redis.port)
+          assert.same("localhost", body.config.redis.host)
+          assert.same(7123, body.config.redis.port)
           assert.same(cluster_nodes_config, body.config.redis.cluster_nodes)
         end)
       end)

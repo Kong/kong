@@ -35,7 +35,7 @@ describe("rate-limiting: Redis strategy", function()
 
   local redis_opts = {
     host = helpers.redis_host,
-    port = 6379,
+    port = helpers.redis_port,
     database = 0,
   }
 

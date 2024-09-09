@@ -376,8 +376,8 @@ if uh.database_type() == 'postgres' then
           assert.same('redis', body.data[1].config.session_storage)
           assert.same(cluster_nodes, body.data[1].config.redis.cluster_nodes)
           assert.same(cluster_nodes, body.data[1].config.session_redis_cluster_nodes)
-          assert.same(ngx.null, body.data[1].config.redis.host)
-          assert.same(ngx.null, body.data[1].config.redis.port)
+          assert.same("127.0.0.1", body.data[1].config.redis.host)
+          assert.same(6379, body.data[1].config.redis.port)
 
           admin_client:close()
       end)

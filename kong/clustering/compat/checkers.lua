@@ -83,17 +83,76 @@ local compatible_checkers = {
 
         if redis_plugins[plugin_name] then
           local config = plugin.config
-          if config and config.redis and config.redis.connection_is_proxied ~= nil then
-            config.redis.connection_is_proxied = nil
-            has_update = true
-          end
-          if has_update then
-            log_warn_message(
-              "configures " .. plugin_name .. " plugin with 'connection_is_proxied'" ..
-              ", will remove this field,",
-              dp_version, log_suffix)
-          end
+          if config and config.redis then
+            -- connection_is_proxied -----------------------
+            if config.redis.connection_is_proxied ~= nil then
+              config.redis.connection_is_proxied = nil
+              has_update = true
 
+              log_warn_message(
+                "configures " .. plugin_name .. " plugin with 'connection_is_proxied'" ..
+                ", will remove this field,",
+                dp_version, log_suffix)
+            end
+            -- connection_is_proxied -----------------------
+
+            -- conflicting host/port, cluster_nodes, sentinel_nodes -----------------------
+            if config.redis.cluster_nodes and config.redis.cluster_nodes ~= ngx.null then
+              if config.redis.host or config.redis.port or config.redis.sentinel_nodes then
+                config.redis.host = nil
+                config.redis.port = nil
+                config.redis.sentinel_nodes = nil
+                config.redis.sentinel_addresses = nil
+                config.redis.sentinel_master = nil
+                config.redis.sentinel_role = nil
+                has_update = true
+
+                log_warn_message(
+                  "configures " .. plugin_name .. " plugin with 'redis host/port and sentinel_nodes'" ..
+                  ", will clear those fields for older DPs to accept this config,", dp_version, log_suffix
+                )
+              end
+            elseif config.redis.sentinel_nodes and config.redis.sentinel_nodes ~= ngx.null then
+              if config.redis.host or config.redis.port then
+                config.redis.host = nil
+                config.redis.port = nil
+                has_update = true
+
+                log_warn_message(
+                  "configures " .. plugin_name .. " plugin with 'redis host/port'" ..
+                  ", will clear those fields for older DPs to accept this config,", dp_version, log_suffix
+                )
+              end
+            end
+          end
+        end
+
+        if plugin_name == "saml" or plugin_name == "openid-connect" then
+          local config = plugin.config
+          if config and config.redis then
+            if config.redis.cluster_nodes and config.redis.cluster_nodes ~= ngx.null then
+              if config.redis.host or config.redis.port then
+                -- Entire config.redis block will be removed by `removed_fields` so there's no point in clearing it here
+                -- config.redis.host = nil
+                -- config.redis.port = nil
+
+                config.session_redis_host = nil
+                config.session_redis_port = nil
+
+                has_update = true
+
+                log_warn_message(
+                  "configures " .. plugin_name .. " plugin with 'redis host/port and sentinel_nodes'" ..
+                  ", will clear those fields for older DPs to accept this config,", dp_version, log_suffix
+                )
+              end
+
+              -- No need to check redis.config.sentinel_nodes since before 3.8.0.0 saml and openid-connect
+              -- did not support Redis Sentinel conifugration. Admin updates are forbidden during upgrade phase so
+              -- it's impossible to have new CP (3.8) with a plugin configured to use ex: saml + Redis Sentinel
+              -- and at the same time have an older DP (3.7)
+            end
+          end
         end
 
         if plugin_name == 'ai-rate-limiting-advanced' then

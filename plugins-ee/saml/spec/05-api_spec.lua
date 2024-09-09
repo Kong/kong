@@ -52,7 +52,6 @@ for _, strategy in helpers.each_strategy() do
           db:truncate("plugins")
         end)
 
-
         it("should save host/port", function()
           local res = assert(admin_client:send {
             method  = "POST",
@@ -190,7 +189,7 @@ for _, strategy in helpers.each_strategy() do
           assert.same("socket-1", body.config.redis.socket)
         end)
 
-        it("doesn't accept empty config", function()
+        it("accepts empty config - defaults to host/port", function()
           local res = assert(admin_client:send {
             method  = "POST",
             path    = "/plugins",
@@ -210,12 +209,69 @@ for _, strategy in helpers.each_strategy() do
               ["Content-Type"] = "application/json"
             }
           })
+          local body = cjson.decode(assert.res_status(201, res))
+          assert.same("127.0.0.1", body.config.redis.host)
+          assert.same(6379, body.config.redis.port)
+        end)
+
+        it("accepts only partial config with host defined - port fallbacks to default", function()
+          local res = assert(admin_client:send {
+            method  = "POST",
+            path    = "/plugins",
+            body    = {
+              name  = "saml",
+              route = { id = route.id },
+              config = {
+                idp_sso_url = "http://example.com",
+                issuer = "test",
+                session_secret = "testtesttesttesttesttesttesttest",
+                assertion_consumer_path = "/test",
+                validate_assertion_signature = false,
+                session_storage = "redis",
+                redis = {
+                  host = "example"
+                }
+              },
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = cjson.decode(assert.res_status(201, res))
+          assert.same("example", body.config.redis.host)
+          assert.same(6379, body.config.redis.port)
+        end)
+
+        it("doesn't accept empty config with explicit nulls", function()
+          local res = assert(admin_client:send {
+            method  = "POST",
+            path    = "/plugins",
+            body    = {
+              name  = "saml",
+              route = { id = route.id },
+              config = {
+                idp_sso_url = "http://example.com",
+                issuer = "test",
+                session_secret = "testtesttesttesttesttesttesttest",
+                assertion_consumer_path = "/test",
+                validate_assertion_signature = false,
+                session_storage = "redis",
+                redis = {
+                  host = ngx.null,
+                  port = ngx.null
+                }
+              },
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
           local body = cjson.decode(assert.res_status(400, res))
 
            assert.same("No redis config provided", body.fields['@entity'][1])
         end)
 
-        it("should only save cluster_nodes - when using both host/port and cluster_nodes", function()
+        it("should save all configuration both host/port and cluster_nodes", function()
           local cluster_nodes_config = {
             {
               ip = "redis-node-1",
@@ -255,14 +311,71 @@ for _, strategy in helpers.each_strategy() do
           local body = cjson.decode(assert.res_status(201, res))
 
           -- "OLD" config
-          assert.same(ngx.null, body.config.session_redis_host)
-          assert.same(ngx.null, body.config.session_redis_port)
+          assert.same("localhost", body.config.session_redis_host)
+          assert.same(7123, body.config.session_redis_port)
           assert.same(cluster_nodes_config, body.config.session_redis_cluster_nodes)
 
           -- "NEW" (v2) config
-          assert.same(ngx.null, body.config.redis.host)
-          assert.same(ngx.null, body.config.redis.port)
+          assert.same("localhost", body.config.redis.host)
+          assert.same(7123, body.config.redis.port)
           assert.same(cluster_nodes_config, body.config.redis.cluster_nodes)
+        end)
+
+        it("should allow to configure all of the options", function ()
+          local res = assert(admin_client:send {
+            method  = "POST",
+            path    = "/plugins",
+            body    = {
+              name  = "saml",
+              route = { id = route.id },
+              config = {
+                idp_sso_url = "http://example.com",
+                issuer = "test",
+                session_secret = "testtesttesttesttesttesttesttest",
+                assertion_consumer_path = "/test",
+                validate_assertion_signature = false,
+                session_storage = "redis",
+                redis = {
+                  host = "example.com",
+                  port = 6380,
+                  cluster_nodes = {
+                    {
+                      ip = "redis-node-1",
+                      port = 6379,
+                    },
+                    {
+                      ip = "redis-node-2",
+                      port = 6380,
+                    },
+                    {
+                      ip = "127.0.0.1",
+                      port = 6381,
+                    },
+                  },
+                  sentinel_nodes = {
+                    {
+                      host = "redis-sentinel-node-1",
+                      port = 6379,
+                    },
+                    {
+                      host = "redis-sentinel-node-2",
+                      port = 6380,
+                    },
+                    {
+                      host = "redis-sentinel-node-3",
+                      port = 6381,
+                    },
+                  },
+                  sentinel_role = "master",
+                  sentinel_master = "mymaster"
+                }
+              },
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          assert.res_status(201, res)
         end)
       end)
     end)

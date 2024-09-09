@@ -54,8 +54,10 @@ _M.config_schema = {
   type = "record",
 
   fields = {
-    { host = typedefs.host },
-    { port = typedefs.port },
+    { host = typedefs.host { default = "127.0.0.1" } },
+     -- the port is only used when the host is set.
+     -- The default value is not used when other strategies are used so we do not do the mutual exclusion check for it
+    { port = typedefs.port { default = 6379 } },
     { connect_timeout = typedefs.timeout { default = DEFAULT_TIMEOUT } },
     { send_timeout = typedefs.timeout { default = DEFAULT_TIMEOUT } },
     { read_timeout = typedefs.timeout { default = DEFAULT_TIMEOUT } },
@@ -140,28 +142,10 @@ _M.config_schema = {
 
   entity_checks = {
     {
-      mutually_exclusive_sets = {
-        set1 = { "sentinel_master", "sentinel_role", "sentinel_nodes" },
-        set2 = { "host", "port" },
-      },
-    },
-    {
-      mutually_exclusive_sets = {
-        set1 = { "sentinel_master", "sentinel_role", "sentinel_nodes" },
-        set2 = { "cluster_nodes" },
-      },
-    },
-    {
-      mutually_exclusive_sets = {
-        set1 = { "cluster_nodes" },
-        set2 = { "host", "port" },
-      },
+      mutually_required = { "host", "port" },
     },
     {
       mutually_required = { "sentinel_master", "sentinel_role", "sentinel_nodes" },
-    },
-    {
-      mutually_required = { "host", "port" },
     },
     {
       mutually_required = { "connect_timeout", "send_timeout", "read_timeout" },

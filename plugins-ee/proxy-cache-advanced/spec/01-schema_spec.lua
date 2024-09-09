@@ -130,11 +130,25 @@ describe("proxy-cache-advanced schema", function()
 
     assert.is_nil(err)
     assert.is_truthy(ok)
+
+    -- empty redis config - fallbacks to defaults
+    local entity, err = v({
+      strategy = "redis",
+    }, proxy_cache_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(entity)
+    assert.same(entity.config.redis.host, "127.0.0.1")
+    assert.same(entity.config.redis.port, 6379)
   end)
 
   it("errors with a missing redis config", function()
     local entity, err = v({
       strategy = "redis",
+      redis = {
+        host = ngx.null,
+        port = ngx.null
+      }
     }, proxy_cache_schema)
 
     assert.is_same("No redis config provided", err["@entity"][1])

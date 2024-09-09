@@ -415,4 +415,20 @@ describe(PLUGIN_NAME .. ": (#schema)", function()
       assert.is_nil(err)
     end)
   end)
+
+
+  describe("redis scheme", function()
+    describe("deprecation and migration", function()
+      it("default port", function()
+        local ok, err = validate({
+          issuer = "https://accounts.google.test/.well-known/openid-configuration",
+          session_storage = 'redis',
+          session_redis_host = "localhost",
+        })
+
+        assert.is_nil(err)
+        assert.is_truthy(ok)
+      end)
+    end)
+  end)
 end)

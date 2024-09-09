@@ -515,10 +515,7 @@ return {
             replaced_with = { { path = {'redis', 'host'} } },
             message = "saml: config.session_redis_host is deprecated, please use config.redis.host instead",
             removal_in_version = "4.0", },
-          func = function(value, read_only_full_config)
-            if read_only_full_config["session_redis_cluster_nodes"] and read_only_full_config["session_redis_cluster_nodes"] ~= ngx.null then
-              return nil
-            end
+          func = function(value)
             return { redis = { host = value } }
           end
         } },
@@ -529,10 +526,7 @@ return {
             replaced_with = { { path = {'redis', 'port'} } },
             message = "saml: config.session_redis_port is deprecated, please use config.redis.port instead",
             removal_in_version = "4.0", },
-          func = function(value, read_only_full_config)
-            if read_only_full_config["session_redis_cluster_nodes"] and read_only_full_config["session_redis_cluster_nodes"] ~= ngx.null then
-              return nil
-            end
+          func = function(value)
             return { redis = { port = value } }
           end
         } },

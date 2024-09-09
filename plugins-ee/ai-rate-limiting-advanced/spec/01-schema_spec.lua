@@ -324,10 +324,10 @@ describe("ai-rate-limiting-advanced schema", function()
 
     assert.is_nil(err)
     assert.is_truthy(ok)
-  end)
 
-  it("errors with a missing/incomplete redis config", function()
-    local ok, err = v({
+
+    -- host & port getting defeault values
+    local entity, err = v({
       llm_providers = {{
         name = "openai",
         window_size = 60,
@@ -336,11 +336,12 @@ describe("ai-rate-limiting-advanced schema", function()
       sync_rate = 10,
       strategy = "redis",
     }, ai_rate_limiting_schema)
+    assert.is_nil(err)
+    assert.is_truthy(entity)
+    assert.same(entity.config.redis.host, "127.0.0.1")
+    assert.same(entity.config.redis.port, 6379)
 
-    assert.is_falsy(ok)
-    assert.same({ "No redis config provided" }, err["@entity"])
-
-    local ok, err = v({
+    local entity, err = v({
       llm_providers = {{
         name = "openai",
         window_size = 60,
@@ -353,8 +354,47 @@ describe("ai-rate-limiting-advanced schema", function()
       }
     }, ai_rate_limiting_schema)
 
+    assert.is_nil(err)
+    assert.is_truthy(entity)
+    assert.same(entity.config.redis.host, "example.com")
+    assert.same(entity.config.redis.port, 6379)
+
+    local entity, err = v({
+      llm_providers = {{
+        name = "openai",
+        window_size = 60,
+        limit = 10,
+      }},
+      sync_rate = 10,
+      strategy = "redis",
+      redis = {
+        port = 7100,
+      }
+    }, ai_rate_limiting_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(entity)
+    assert.same(entity.config.redis.host, "127.0.0.1")
+    assert.same(entity.config.redis.port, 7100)
+  end)
+
+  it("errors with a missing/incomplete redis config", function()
+    local ok, err = v({
+      llm_providers = {{
+        name = "openai",
+        window_size = 60,
+        limit = 10,
+      }},
+      sync_rate = 10,
+      strategy = "redis",
+      redis = {
+        host = ngx.null,
+        port = ngx.null
+      }
+    }, ai_rate_limiting_schema)
+
     assert.is_falsy(ok)
-    assert.is_truthy(err.config.redis["@entity"])
+    assert.same({ "No redis config provided" }, err["@entity"])
 
     local ok = v({
       llm_providers = {{

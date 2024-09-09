@@ -130,8 +130,8 @@ describe("upstream-oauth: (schema)", function()
     }, err)
   end)
 
-  it("requires redis configuration if cache.strategy=redis", function()
-    local _, err = validate({
+  it("requires redis configuration if cache.strategy=redis - allows to fallback to defaults", function()
+    local entity, err = validate({
       oauth = {
         client_id = "test",
         client_secret = "test",
@@ -139,6 +139,25 @@ describe("upstream-oauth: (schema)", function()
       },
       cache = {
         strategy = cache.constants.STRATEGY_REDIS
+      }
+    })
+    assert.is_nil(err)
+    assert.is_truthy(entity)
+  end)
+
+  it("requires redis configuration if cache.strategy=redis - no explicit nulls for host/port", function()
+    local _, err = validate({
+      oauth = {
+        client_id = "test",
+        client_secret = "test",
+        token_endpoint = "https://konghq.com/"
+      },
+      cache = {
+        strategy = cache.constants.STRATEGY_REDIS,
+        redis = {
+          host = ngx.null,
+          port = ngx.null
+        }
       }
     })
     assert.is_same({

@@ -27,6 +27,34 @@ local PLUGIN_LIST
 
 local EMPTY = {}
 
+local idp_cert =
+  "MIIC8DCCAdigAwIBAgIQLc/POHQrTIVD4/5aCN/6gzANBgkqhkiG9w0BAQsFADA0MTIwMAYDVQQD " ..
+  "EylNaWNyb3NvZnQgQXp1cmUgRmVkZXJhdGVkIFNTTyBDZXJ0aWZpY2F0ZTAeFw0yMjA5MjcyMDE1 " ..
+  "MzRaFw0yNTA5MjcyMDE1MzRaMDQxMjAwBgNVBAMTKU1pY3Jvc29mdCBBenVyZSBGZWRlcmF0ZWQg U" ..
+  "1NPIENlcnRpZmljYXRlMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAv/P9hU7mjKFH " ..
+  "9IxVGQt52p40Vj9lwMLBfrVc9uViCyCLILhGWz0kYbodpBtPkaYMrpJKSvaDD/Pop2Har+3gY1xB " ..
+  "x3UAfLEZpb/ng+fM3AKQYRVH8rdfhtRMVx+mAus5oO/+7ca1ZhKeQpZtrSNBMSooBUFt6LygaotX " ..
+  "7oJOFKBjL8vRjf0EeI0ismXuATtwE+wUDAe7qdsehjeZAD4Y1SLXulzS4ug3xRHPl8J9ZQL2D5Fp " ..
+  "zRXgxX9SUpJ/iwxAj+q3igLmXMUeusCe6ugGrZ4Iz0QNq3v+VhGEhiX6DZByMhBnb1IIhpDBTUTq " ..
+  "fxUno8GI1vh/w8liRldEkISZdQIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQAiw8VNBh5s2EVbDpJe " ..
+  "kqEFT4oZdoDu3J4t1cHzst5Q3+XHWS0dndQh+R2xxVe072TKO/hn5ORlnw8Kp0Eq2g2YLpYvzt+k " ..
+  "hbr/xQqMFhwZnaCCnoNLdoW6A9d7E3yDCnIK/7byfZ3484B4KrnzZdGF9eTFPcMBzyCU223S4R4z " ..
+  "VYnNVfyqmlCaYUcYd9OnAbYZrbD9SPNqPSK/vPhn8aLzpn9huvcxpVYUMQ0+Mq680bse9tRu6Kbg " ..
+  "SkaDNSe+xoE31OeWtR1Ko9Uhy6+Y7T1OQOi+BaNcIB1lXGivaudAVDh3mnKwSRw9vQ5y8m6kzFwE " ..
+  "bkcl288gQ86BzUFaE36V"
+
+local session_secret = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+
+-- We don't have running sentinel nodes config for specs - this is just a mock
+local sentinel_node1 = { host = "localhost1", port = 26379 }
+local sentinel_node2 = { host = "localhost2", port = 26380 }
+local sentinel_node3 = { host = "localhost3", port = 26381 }
+local sentinel_nodes = { sentinel_node1, sentinel_node2, sentinel_node3 }
+local sentinel_addresses = {
+  sentinel_node1.host .. ":" .. sentinel_node1.port,
+  sentinel_node2.host .. ":" .. sentinel_node2.port,
+  sentinel_node3.host .. ":" .. sentinel_node3.port,
+}
 
 local function cluster_client(opts)
   opts = opts or {}
@@ -86,6 +114,12 @@ local function get_plugin(node_id, node_version, name)
   end
 
   return plugin, get_sync_status(node_id)
+end
+
+local ngx_null = ngx.null
+
+local function is_present(value)
+  return value and value ~= ngx_null
 end
 
 for _, strategy in helpers.each_strategy() do
@@ -993,17 +1027,6 @@ describe("CP/DP config compat #" .. strategy, function()
     end)
 
     describe("redis changes - cluster/sentinel_adresses to cluster/sentinel_nodes", function()
-      -- We don't have running sentinel nodes config for specs - this is just a mock
-      local sentinel_node1 = { host = "localhost1", port = 26379 }
-      local sentinel_node2 = { host = "localhost2", port = 26380 }
-      local sentinel_node3 = { host = "localhost3", port = 26381 }
-      local sentinel_nodes = { sentinel_node1, sentinel_node2, sentinel_node3 }
-      local sentinel_addresses = {
-        sentinel_node1.host .. ":" .. sentinel_node1.port,
-        sentinel_node2.host .. ":" .. sentinel_node2.port,
-        sentinel_node3.host .. ":" .. sentinel_node3.port,
-      }
-
       -- Shared redis config is used by:
       -- rate-limiting-advanced | graphql-rate-limiting-advanced | proxy-cache-advanced |
       --    graphql-proxy-cache-advanced | ai-rate-limiting-advanced
@@ -1107,24 +1130,6 @@ describe("CP/DP config compat #" .. strategy, function()
     end)
 
     describe("saml: redis changes - moving to shared redis schema", function()
-      local idp_cert =
-        "MIIC8DCCAdigAwIBAgIQLc/POHQrTIVD4/5aCN/6gzANBgkqhkiG9w0BAQsFADA0MTIwMAYDVQQD " ..
-        "EylNaWNyb3NvZnQgQXp1cmUgRmVkZXJhdGVkIFNTTyBDZXJ0aWZpY2F0ZTAeFw0yMjA5MjcyMDE1 " ..
-        "MzRaFw0yNTA5MjcyMDE1MzRaMDQxMjAwBgNVBAMTKU1pY3Jvc29mdCBBenVyZSBGZWRlcmF0ZWQg U" ..
-        "1NPIENlcnRpZmljYXRlMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAv/P9hU7mjKFH " ..
-        "9IxVGQt52p40Vj9lwMLBfrVc9uViCyCLILhGWz0kYbodpBtPkaYMrpJKSvaDD/Pop2Har+3gY1xB " ..
-        "x3UAfLEZpb/ng+fM3AKQYRVH8rdfhtRMVx+mAus5oO/+7ca1ZhKeQpZtrSNBMSooBUFt6LygaotX " ..
-        "7oJOFKBjL8vRjf0EeI0ismXuATtwE+wUDAe7qdsehjeZAD4Y1SLXulzS4ug3xRHPl8J9ZQL2D5Fp " ..
-        "zRXgxX9SUpJ/iwxAj+q3igLmXMUeusCe6ugGrZ4Iz0QNq3v+VhGEhiX6DZByMhBnb1IIhpDBTUTq " ..
-        "fxUno8GI1vh/w8liRldEkISZdQIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQAiw8VNBh5s2EVbDpJe " ..
-        "kqEFT4oZdoDu3J4t1cHzst5Q3+XHWS0dndQh+R2xxVe072TKO/hn5ORlnw8Kp0Eq2g2YLpYvzt+k " ..
-        "hbr/xQqMFhwZnaCCnoNLdoW6A9d7E3yDCnIK/7byfZ3484B4KrnzZdGF9eTFPcMBzyCU223S4R4z " ..
-        "VYnNVfyqmlCaYUcYd9OnAbYZrbD9SPNqPSK/vPhn8aLzpn9huvcxpVYUMQ0+Mq680bse9tRu6Kbg " ..
-        "SkaDNSe+xoE31OeWtR1Ko9Uhy6+Y7T1OQOi+BaNcIB1lXGivaudAVDh3mnKwSRw9vQ5y8m6kzFwE " ..
-        "bkcl288gQ86BzUFaE36V"
-
-      local session_secret = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-
       local cluster_nodes = {
         {
           ip = "redis-node-1",
@@ -1221,7 +1226,262 @@ describe("CP/DP config compat #" .. strategy, function()
       end
     end)
 
-    
+    describe("redis: removes conflicting fields for older DPs", function ()
+      describe("shared redis config plugins", function()
+        local plugins_config = {
+          {
+            plugin_name = "rate-limiting-advanced",
+            plugin_config = {
+              limit = {1},
+              window_size = {2},
+              sync_rate = 0.1,
+              strategy = "redis",
+            }
+          },
+          {
+            plugin_name = "graphql-rate-limiting-advanced",
+            plugin_config = {
+              limit = {1},
+              window_size = {2},
+              sync_rate = 0.1,
+              strategy = "redis",
+            }
+          },
+          {
+            plugin_name = "ai-rate-limiting-advanced",
+            plugin_config = {
+              llm_providers = {{
+                name = "openai",
+                window_size = 60,
+                limit = 10,
+              }},
+              sync_rate = 10,
+              strategy = "redis",
+            }
+          },
+          {
+            plugin_name = "proxy-cache-advanced",
+            plugin_config = {
+              strategy = "redis",
+            }
+          },
+          {
+            plugin_name = "graphql-proxy-cache-advanced",
+            plugin_config = {
+              strategy = "redis",
+            }
+          }
+        }
+
+        describe("full config - cluster + sentinel + host/port", function()
+          local CASES = pl_tablex.map(function(config)
+            return {
+              plugin = config.plugin_name,
+              label = "w/ full config - cluster + sentinel + host/port configured",
+              pending = false,
+              config = pl_tablex.merge(config.plugin_config,
+                { redis = {
+                    cluster_nodes = ee_helpers.redis_cluster_nodes,
+                    sentinel_nodes = sentinel_nodes,
+                    sentinel_master = "mymaster",
+                    sentinel_role = "master",
+                    host = "127.0.0.5",
+                    port = 6380
+                } }, true),
+              status = STATUS.NORMAL,
+              validator = function(config)
+                return is_present(config.redis.cluster_addresses) and
+                        not is_present(config.redis.sentinel_addresses) and
+                        not is_present(config.redis.sentinel_role) and
+                        not is_present(config.redis.sentinel_master) and
+                        not is_present(config.redis.host) and
+                        not is_present(config.redis.port)
+              end
+            }
+          end, plugins_config)
+
+          for _, case in ipairs(CASES) do
+            local test = case.pending and pending or it
+
+            test(fmt("%s - %s", case.plugin, case.label), function()
+              do_assert(case, "3.7.9.9")
+            end)
+          end
+        end)
+
+        describe("partial config - sentinel + host/port", function()
+          local CASES = pl_tablex.map(function(config)
+            return {
+              plugin = config.plugin_name,
+              label = "w/ partial config - sentinel + host/port configured",
+              pending = false,
+              config = pl_tablex.merge(config.plugin_config,
+                { redis = {
+                    sentinel_nodes = sentinel_nodes,
+                    sentinel_master = "mymaster",
+                    sentinel_role = "master",
+                    host = "127.0.0.5",
+                    port = 6380
+                } }, true),
+              status = STATUS.NORMAL,
+              validator = function(config)
+                return is_present(config.redis.sentinel_addresses) and
+                       is_present(config.redis.sentinel_role) and
+                       is_present(config.redis.sentinel_master) and
+                        not is_present(config.redis.cluster_addresses) and
+                        not is_present(config.redis.host) and
+                        not is_present(config.redis.port)
+              end
+            }
+          end, plugins_config)
+
+          for _, case in ipairs(CASES) do
+            local test = case.pending and pending or it
+
+            test(fmt("%s - %s", case.plugin, case.label), function()
+              do_assert(case, "3.7.9.9")
+            end)
+          end
+        end)
+
+        describe("empty redis config - default values are passed", function()
+          local CASES = pl_tablex.map(function(config)
+            return {
+              plugin = config.plugin_name,
+              label = "w/ empty redis config - default values are passed",
+              pending = false,
+              config = config.plugin_config,
+              status = STATUS.NORMAL,
+              validator = function(config)
+                return is_present(config.redis.host) and
+                       is_present(config.redis.port) and
+                        not is_present(config.redis.sentinel_addresses) and
+                        not is_present(config.redis.sentinel_role) and
+                        not is_present(config.redis.sentinel_master) and
+                        not is_present(config.redis.cluster_addresses)
+              end
+            }
+          end, plugins_config)
+
+          for _, case in ipairs(CASES) do
+            local test = case.pending and pending or it
+
+            test(fmt("%s - %s", case.plugin, case.label), function()
+              do_assert(case, "3.7.9.9")
+            end)
+          end
+        end)
+      end)
+
+      describe("saml and openid-connect", function()
+        local CASES = {
+          {
+            plugin = "saml",
+            label = "w/ full config - cluster + sentinel + host/port configured",
+            pending = false,
+            config = {
+              issuer = "https://samltoolkit.azurewebsites.net/kong_saml",
+              assertion_consumer_path = "/consumer",
+              idp_sso_url = "https://login.microsoftonline.com/f177c1d6-50cf-49e0-818a-a0585cbafd8d/saml2",
+              idp_certificate = idp_cert,
+              session_secret = session_secret,
+              session_storage = "redis",
+              redis = {
+                cluster_nodes = ee_helpers.redis_cluster_nodes,
+                sentinel_nodes = sentinel_nodes,
+                sentinel_master = "mymaster",
+                sentinel_role = "master",
+                host = "127.0.0.5",
+                port = 6380
+              }
+            },
+            status = STATUS.NORMAL,
+            validator = function(config)
+              return is_present(config.session_redis_cluster_nodes) and
+                      not is_present(config.session_redis_sentinel_nodes) and
+                      not is_present(config.session_redis_sentinel_role) and
+                      not is_present(config.session_redis_sentinel_master) and
+                      not is_present(config.session_redis_host) and
+                      not is_present(config.session_redis_port)
+            end
+          },
+          {
+            plugin = "saml",
+            label = "w/ empty redis config - default values are passed",
+            pending = false,
+            config = {
+              issuer = "https://samltoolkit.azurewebsites.net/kong_saml",
+              assertion_consumer_path = "/consumer",
+              idp_sso_url = "https://login.microsoftonline.com/f177c1d6-50cf-49e0-818a-a0585cbafd8d/saml2",
+              idp_certificate = idp_cert,
+              session_secret = session_secret,
+              session_storage = "redis"
+            },
+            status = STATUS.NORMAL,
+            validator = function(config)
+              return is_present(config.session_redis_host) and
+                      is_present(config.session_redis_port) and
+                      not is_present(config.session_redis_sentinel_nodes) and
+                      not is_present(config.session_redis_sentinel_role) and
+                      not is_present(config.session_redis_sentinel_master) and
+                      not is_present(config.session_redis_cluster_nodes)
+            end
+          },
+          {
+            plugin = "openid-connect",
+            label = "w/ full config - cluster + sentinel + host/port configured",
+            pending = false,
+            config = {
+              issuer = "https://accounts.google.test/.well-known/openid-configuration",
+              session_storage = "redis",
+              redis = {
+                cluster_nodes = ee_helpers.redis_cluster_nodes,
+                sentinel_nodes = sentinel_nodes,
+                sentinel_master = "mymaster",
+                sentinel_role = "master",
+                host = "127.0.0.5",
+                port = 6380
+              }
+            },
+            status = STATUS.NORMAL,
+            validator = function(config)
+              return is_present(config.session_redis_cluster_nodes) and
+                      not is_present(config.session_redis_sentinel_nodes) and
+                      not is_present(config.session_redis_sentinel_role) and
+                      not is_present(config.session_redis_sentinel_master) and
+                      not is_present(config.session_redis_host) and
+                      not is_present(config.session_redis_port)
+            end
+          },
+          {
+            plugin = "openid-connect",
+            label = "w/ empty redis config - default values are passed",
+            pending = false,
+            config = {
+              issuer = "https://accounts.google.test/.well-known/openid-configuration",
+              session_storage = "redis",
+            },
+            status = STATUS.NORMAL,
+            validator = function(config)
+              return is_present(config.session_redis_host) and
+                      is_present(config.session_redis_port) and
+                      not is_present(config.session_redis_sentinel_nodes) and
+                      not is_present(config.session_redis_sentinel_role) and
+                      not is_present(config.session_redis_sentinel_master) and
+                      not is_present(config.session_redis_cluster_nodes)
+            end
+          }
+        }
+
+        for _, case in ipairs(CASES) do
+          local test = case.pending and pending or it
+
+          test(fmt("%s - %s", case.plugin, case.label), function()
+            do_assert(case, "3.7.9.9")
+          end)
+        end
+      end)
+    end)
   end)
 end)
 
