@@ -1381,8 +1381,6 @@ function Kong.balancer()
   local now_ms = get_now_ms()
   local now_ns = time_ns()
 
-  ctx.KONG_PHASE = PHASES.balancer
-
   if not ctx.KONG_BALANCER_START then
     ctx.KONG_BALANCER_START = now_ms
 
