@@ -229,7 +229,7 @@ time to control how the ngx_wasm_module repository is sourced:
 
 ## Cross compiling
 
-Cross compiling is currently only tested on Ubuntu 22.04 x86_64 with following targeting platforms:
+Cross compiling is currently only tested on Ubuntu 22.04/24.04 x86_64 with following targeting platforms:
 
 - **//:generic-crossbuild-aarch64** Use the system installed aarch64 toolchain.
   - Requires user to manually install `crossbuild-essential-arm64` on Debian/Ubuntu.

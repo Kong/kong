@@ -102,6 +102,9 @@ function push_package () {
   if [ "$ARTIFACT_VERSION" == "22.04" ]; then
     dist_version="--dist-version jammy"
   fi
+  if [ "$ARTIFACT_VERSION" == "24.04" ]; then
+    dist_version="--dist-version noble"
+  fi
 
   tags="$PACKAGE_TAGS"
   echo "tags passed to script: ${tags}"

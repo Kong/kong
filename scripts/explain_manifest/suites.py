@@ -183,10 +183,7 @@ def arm64_suites(expect):
     expect("/usr/local/kong-tools/bin/curl", "tools are arm64 arch") \
         .arch.equals("AARCH64")
 
-def docker_suites(expect):
-    kong_uid = 1000
-    kong_gid = 1000
-
+def docker_suites(expect, kong_uid: int = 1000, kong_gid: int = 1000):
     expect("/etc/passwd", "kong user exists") \
         .text_content.matches("kong:x:%d" % kong_uid)
 

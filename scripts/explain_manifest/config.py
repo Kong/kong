@@ -142,6 +142,19 @@ targets = {
             ee_suites: {},
         }
     ),
+    "ubuntu-24.04-amd64": ExpectSuite(
+        name="Ubuntu 24.04 (amd64)",
+        manifest="fixtures/ubuntu-24.04-amd64.txt",
+        tests={
+            common_suites: {},
+            libc_libcpp_suites: {
+                "libc_max_version": "2.35",
+                # gcc 11.2.0
+                "libcxx_max_version": "3.4.29",
+                "cxxabi_max_version": "1.3.13",
+            },
+        }
+    ),
     "debian-11-amd64": ExpectSuite(
         name="Debian 11 (amd64)",
         manifest="fixtures/debian-11-amd64.txt",
@@ -175,6 +188,16 @@ targets = {
         manifest=None,
         tests={
             docker_suites: {},
+        }
+    ),
+    "docker-image-ubuntu-24.04": ExpectSuite(
+        name="Ubuntu 24.04 Docker Image",
+        manifest=None,
+        tests={
+            docker_suites: {
+                "kong_uid": 1001,
+                "kong_gid": 1001,
+            },
         }
     ),
 }

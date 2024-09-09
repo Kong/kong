@@ -1,22 +1,23 @@
 # please see matrix-full.yml for meaning of each field
 build-packages:
-- label: ubuntu-22.04
-  image: ubuntu:22.04
+- label: ubuntu-24.04
+  image: ubuntu:24.04
   package: deb
-  check-manifest-suite: ubuntu-22.04-amd64
-- label: ubuntu-22.04-arm64
-  image: ubuntu:22.04
+  check-manifest-suite: ubuntu-24.04-amd64
+- label: ubuntu-24.04-arm64
+  image: ubuntu:24.04
   package: deb
   bazel-args: --platforms=//:generic-crossbuild-aarch64
-  check-manifest-suite: ubuntu-22.04-arm64
+  check-manifest-suite: ubuntu-24.04-arm64
 
 build-images:
 - label: ubuntu
-  base-image: ubuntu:22.04
+  base-image: ubuntu:24.04
   package: deb
-  artifact-from: ubuntu-22.04
-  artifact-from-alt: ubuntu-22.04-arm64
+  artifact-from: ubuntu-24.04
+  artifact-from-alt: ubuntu-24.04-arm64
   docker-platforms: linux/amd64, linux/arm64
+  check-manifest-suite: docker-image-ubuntu-24.04
 
 release-packages:
 

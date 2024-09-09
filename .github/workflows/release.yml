@@ -525,17 +525,19 @@ jobs:
         cache: 'pip' # caching pip dependencies
 
     - name: Verify
+      env:
+        SUITE: ${{ matrix.check-manifest-suite || 'docker-image' }}
       run: |
         cd scripts/explain_manifest
         # docker image verify requires sudo to set correct permissions, so we
         # also install deps for root
-        sudo -E pip install -r requirements.txt
+        sudo -H -E pip install -r requirements.txt
         IMAGE=${{ env.PRERELEASE_DOCKER_REPOSITORY }}:${{ needs.metadata.outputs.commit-sha }}-${{ matrix.label }}
 
-        sudo -E python ./main.py --image $IMAGE -f docker_image_filelist.txt -s docker-image
+        sudo -H -E python ./main.py --image $IMAGE -f docker_image_filelist.txt -s "$SUITE"
 
         if [[ ! -z "${{ matrix.docker-platforms }}" ]]; then
-          DOCKER_DEFAULT_PLATFORM=linux/arm64 sudo -E python ./main.py --image $IMAGE -f docker_image_filelist.txt -s docker-image
+          DOCKER_DEFAULT_PLATFORM=linux/arm64 sudo -E python ./main.py --image $IMAGE -f docker_image_filelist.txt -s "$SUITE"
         fi
 
   scan-images:
