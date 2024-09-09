@@ -43,6 +43,8 @@ local foreign_children = {}
 do
   local CACHED_OUT
 
+  -- Generate a stable and unique string key from primary key defined inside
+  -- schema, supports both non-composite and composite primary keys
   function DeclarativeConfig.pk_string(schema, object)
     if #schema.primary_key == 1 then
       return tostring(object[schema.primary_key[1]])
