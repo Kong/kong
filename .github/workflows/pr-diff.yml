@@ -14,12 +14,10 @@ jobs:
     runs-on: ubuntu-latest
 
     # Only run when a comment containing `/prdiff` is created
-    # and the author is a member, collaborator or owner
     if: >
       (
         github.event_name == 'issue_comment' &&
         github.event.issue.pull_request &&
-        contains(fromJSON('["MEMBER", "COLLABORATOR", "OWNER"]'), github.event.comment.author_association) &&
         startsWith(github.event.comment.body, '/prdiff')
       )
 
