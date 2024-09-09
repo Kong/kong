@@ -25,12 +25,12 @@ local function patch_funcs()
   helpers._start_kong_orig = helpers.start_kong
   helpers.start_kong = function(config, ...)
     config = config or {}
-    config.plugins = "bundled," .. PLUGIN_NAME
+    config.plugins = "bundled, ctx-checker-last, ctx-checker, " .. PLUGIN_NAME
     return helpers._start_kong_orig(config, ...)
   end
   helpers._get_db_utils_orig = helpers.get_db_utils
   helpers.get_db_utils = function(strategy, tables, _, ...)
-    return helpers._get_db_utils_orig(strategy, tables, { PLUGIN_NAME }, ...)
+    return helpers._get_db_utils_orig(strategy, tables, { PLUGIN_NAME, "ctx-checker-last", "ctx-checker" }, ...)
   end
 
   local db = require("kong.db")

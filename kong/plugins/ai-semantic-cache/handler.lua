@@ -267,7 +267,7 @@ function AISemanticCaching:access(conf)
   -- parse from ai-proxy-* conf
   local aip_conf = llm_state.get_ai_proxy_conf()
   if aip_conf and aip_conf.model then
-    model = aip_conf.model.provider .. "-" .. (kong.ctx.plugin.llm_model_requested or aip_conf.model.name)
+    model = aip_conf.model.provider .. "-" .. llm_state.get_request_model()
   end
 
   local namespace = SEMANTIC_CACHE_NAMESPACE_PREFIX .. conf.__plugin_id .. ":" .. model
@@ -427,7 +427,7 @@ function AISemanticCaching:log(conf)
     -- parse from ai-proxy-* conf
     local aip_conf = llm_state.get_ai_proxy_conf()
     if aip_conf and aip_conf.model then
-      model = aip_conf.model.provider .. "-" .. (kong.ctx.plugin.llm_model_requested or aip_conf.model.name)
+      model = aip_conf.model.provider .. "-" .. llm_state.get_request_model()
     end
 
     local namespace = SEMANTIC_CACHE_NAMESPACE_PREFIX .. conf.__plugin_id .. ":" .. model

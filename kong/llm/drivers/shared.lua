@@ -756,7 +756,7 @@ function _M.post_request(conf, response_object)
   meta_container[log_entry_keys.PLUGIN_ID] = conf.__plugin_id
   meta_container[log_entry_keys.PROVIDER_NAME] = conf.model.provider
   -- kong.ctx.plugin.llm_model_requested is only possibly set by ai-proxy{,-advanced} plugins
-  meta_container[log_entry_keys.REQUEST_MODEL] = kong.ctx.plugin.llm_model_requested or conf.model.name
+  meta_container[log_entry_keys.REQUEST_MODEL] = llm_state.get_request_model()
   meta_container[log_entry_keys.RESPONSE_MODEL] = response_object.model or conf.model.name
 
   -- Set the llm latency meta, and time per token usage

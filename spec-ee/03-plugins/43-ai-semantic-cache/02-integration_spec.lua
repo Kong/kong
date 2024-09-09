@@ -177,6 +177,8 @@ local PRE_FUNCTION_ACCESS_SCRIPT = [[
       log_statistics = true
     },
   })
+
+  llm_state.set_request_model("%s")
 ]]
 
 local PRE_FUNCTION_HEADER_FILTER_SCRIPT = [[
@@ -247,9 +249,9 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
               paths = { fmt("/%s/%s/%s", VECTORDB_STRATEGY, EMBEDDINGS_STRATEGY, TEST_SCENARIO.id) }
             })
 
-            local pre_function_script = fmt(PRE_FUNCTION_ACCESS_SCRIPT, TEST_SCENARIO.chat_request, TEST_SCENARIO.chat_response, TEST_SCENARIO.model or "gpt4")
+            local pre_function_script = fmt(PRE_FUNCTION_ACCESS_SCRIPT, TEST_SCENARIO.chat_request, TEST_SCENARIO.chat_response, TEST_SCENARIO.model or "gpt4", TEST_SCENARIO.model or "gpt4")
 
-            -- for creating request body contexts
+            -- for injecting request body context
             bp.plugins:insert {
               name = "pre-function",
               route = { id = rt.id },

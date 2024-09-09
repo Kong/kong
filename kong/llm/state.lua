@@ -119,6 +119,14 @@ function _M.is_stream_body_buffer_needed()
   return kong.ctx.shared.llm_stream_body_buffer_needed
 end
 
+function _M.set_request_model(model)
+  kong.ctx.shared.llm_model_requested = model
+end
+
+function _M.get_request_model()
+  return kong.ctx.shared.llm_model_requested or "NOT_SPECIFIED"
+end
+
 -- EE
 
 function _M.set_semantic_cache_hit(bool)
@@ -138,3 +146,4 @@ function _M.get_ai_proxy_conf()
 end
 
 return _M
+

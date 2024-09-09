@@ -73,7 +73,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
     local client
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy == "off" and "postgres" or strategy, nil, { PLUGIN_NAME })
+      local bp = helpers.get_db_utils(strategy == "off" and "postgres" or strategy, nil, { PLUGIN_NAME, "ctx-checker-last", "ctx-checker" })
 
       -- set up openai mock fixtures
       local fixtures = {
@@ -279,6 +279,15 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         config = {
           path = FILE_LOG_PATH_STATS_ONLY,
         },
+      }
+      bp.plugins:insert {
+        name = "ctx-checker-last",
+        route = { id = chat_good.id },
+        config = {
+          ctx_kind        = "kong.ctx.shared",
+          ctx_check_field = "llm_model_requested",
+          ctx_check_value = "gpt-3.5-turbo",
+        }
       }
 
       -- 200 chat good with one option
@@ -550,8 +559,8 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       }
       --
 
-      -- 200 chat good but no model set
-      local chat_good = assert(bp.routes:insert {
+      -- 200 chat good but no model set in plugin config
+      local chat_good_no_model = assert(bp.routes:insert {
         service = empty_service,
         protocols = { "http" },
         strip_path = true,
@@ -559,7 +568,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       })
       bp.plugins:insert {
         name = PLUGIN_NAME,
-        route = { id = chat_good.id },
+        route = { id = chat_good_no_model.id },
         config = {
           route_type = "llm/v1/chat",
           auth = {
@@ -578,10 +587,19 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
       }
       bp.plugins:insert {
         name = "file-log",
-        route = { id = chat_good.id },
+        route = { id = chat_good_no_model.id },
         config = {
           path = "/dev/stdout",
         },
+      }
+      bp.plugins:insert {
+        name = "ctx-checker-last",
+        route = { id = chat_good_no_model.id },
+        config = {
+          ctx_kind        = "kong.ctx.shared",
+          ctx_check_field = "llm_model_requested",
+          ctx_check_value = "try-to-override-the-model",
+        }
       }
       --
 
@@ -761,7 +779,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           },
         },
       }
-      --
+      
 
       -- start kong
       assert(helpers.start_kong({
@@ -770,7 +788,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         -- use the custom test template to create a local mock server
         nginx_conf = "spec/fixtures/custom_nginx.template",
         -- make sure our plugin gets loaded
-        plugins = "bundled," .. PLUGIN_NAME,
+        plugins = "bundled,ctx-checker-last,ctx-checker," .. PLUGIN_NAME,
         -- write & load declarative config, only if 'strategy=off'
         declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
       }, nil, nil, fixtures))
@@ -842,6 +860,7 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.same(first_expected, first_got)
         assert.is_true(actual_llm_latency >= 0)
         assert.same(actual_time_per_token, time_per_token)
+        assert.same(first_got.meta.request_model, "gpt-3.5-turbo")
       end)
 
       it("does not log statistics", function()
@@ -1037,6 +1056,9 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
           content = "The sum of 1 + 1 is 2.",
           role = "assistant",
         }, json.choices[1].message)
+
+        -- from ctx-checker-last plugin
+        assert.equals(r.headers["ctx-checker-last-llm-model-requested"], "gpt-3.5-turbo")
       end)
 
       it("good request, parses model of cjson.null", function()
@@ -1117,6 +1139,38 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
         assert.is_truthy(json.error)
         assert.equals(json.error.message, "request format not recognised")
       end)
+
+      -- check that kong.ctx.shared.llm_model_requested is set
+      it("good request setting model from client body", function()
+        local r = client:get("/openai/llm/v1/chat/good-no-model-param", {
+          headers = {
+            ["content-type"] = "application/json",
+            ["accept"] = "application/json",
+          },
+          body = pl_file.read("spec/fixtures/ai-proxy/openai/llm-v1-chat/requests/good_own_model.json"),
+        })
+
+        -- validate that the request succeeded, response status 200
+        local body = assert.res_status(200 , r)
+        local json = cjson.decode(body)
+
+        -- check this is in the 'kong' response format
+        assert.equals(json.id, "chatcmpl-8T6YwgvjQVVnGbJ2w8hpOA17SeNy2")
+        assert.equals(json.model, "gpt-3.5-turbo-0613")
+        assert.equals(json.object, "chat.completion")
+        assert.equals(r.headers["X-Kong-LLM-Model"], "openai/try-to-override-the-model")
+
+        assert.is_table(json.choices)
+        assert.is_table(json.choices[1].message)
+        assert.same({
+          content = "The sum of 1 + 1 is 2.",
+          role = "assistant",
+        }, json.choices[1].message)
+
+        -- from ctx-checker-last plugin
+        assert.equals(r.headers["ctx-checker-last-llm-model-requested"], "try-to-override-the-model")
+      end)
+
     end)
 
     describe("openai llm/v1/completions", function()
