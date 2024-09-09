@@ -1,4 +1,4 @@
-lief==0.12.*
+lief==0.15.*
 globmatch==2.0.*
 pyelftools==0.29
 looseversion==1.1.2

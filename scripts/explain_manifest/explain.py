@@ -130,15 +130,16 @@ class ElfFileInfo(FileInfo):
         if not binary:  # not an ELF file, malformed, etc
             return
 
-        self.arch = binary.header.machine_type.name
+        # lief._lief.ELF.ARCH.X86_64
+        self.arch = str(binary.header.machine_type).split(".")[-1]
 
         for d in binary.dynamic_entries:
-            if d.tag == lief.ELF.DYNAMIC_TAGS.NEEDED:
+            if d.tag == lief._lief.ELF.DynamicEntry.TAG.NEEDED:
                 self.needed_libraries.append(d.name)
-            elif d.tag == lief.ELF.DYNAMIC_TAGS.RPATH:
-                self.rpath = d.name
-            elif d.tag == lief.ELF.DYNAMIC_TAGS.RUNPATH:
-                self.runpath = d.name
+            elif d.tag == lief._lief.ELF.DynamicEntry.TAG.RPATH:
+                self.rpath = d.runpath
+            elif d.tag == lief._lief.ELF.DynamicEntry.TAG.RUNPATH:
+                self.runpath = d.runpath
 
         # create closures and lazily evaluated
         self.get_exported_symbols = lambda: sorted(
@@ -201,7 +202,7 @@ class NginxInfo(ElfFileInfo):
         binary = lief.parse(path)
 
         for s in binary.strings:
-            if re.match("\s*--prefix=/", s):
+            if re.match(r"\s*--prefix=/", s):
                 self.nginx_compile_flags = s
                 for m in re.findall("add(?:-dynamic)?-module=(.*?) ", s):
                     if m.startswith("../"):  # skip bundled modules
@@ -213,7 +214,7 @@ class NginxInfo(ElfFileInfo):
                     else:
                         self.nginx_modules.append(os.path.join(pdir, mname))
                 self.nginx_modules = sorted(list(set(self.nginx_modules)))
-            elif m := re.match("^built with (.+) \(running with", s):
+            elif m := re.match(r"^built with (.+) \(running with", s):
                 self.nginx_compiled_openssl = m.group(1).strip()
 
         # Fetch DWARF infos

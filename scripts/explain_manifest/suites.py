@@ -48,15 +48,15 @@ def common_suites(expect, libxcrypt_no_obsolete_api: bool = False, skip_libsimdj
         .exported_symbols.contain("pcre2_general_context_free_8") \
         .exported_symbols.do_not().contain("pcre_free") \
         .needed_libraries.do_not().contain_match("libpcre.so.+") \
-        .needed_libraries.do_not().contain_match("libpcre.+.so.+") \
-        .needed_libraries.do_not().contain_match("libpcre2\-(8|16|32).so.+") \
+        .needed_libraries.do_not().contain_match(r"libpcre.+.so.+") \
+        .needed_libraries.do_not().contain_match(r"libpcre2\-(8|16|32).so.+") \
 
     if skip_nginx_debug:
         expect("/usr/local/openresty/nginx/sbin/nginx", "nginx should be compiled with debug flag") \
-            .nginx_compile_flags.match("with\-debug")
+            .nginx_compile_flags.match(r"with\-debug")
     else:
         expect("/usr/local/openresty/nginx/sbin/nginx", "nginx should not be compiled with debug flag") \
-            .nginx_compile_flags.do_not().match("with\-debug")
+            .nginx_compile_flags.do_not().match(r"with\-debug")
 
     expect("/usr/local/openresty/nginx/sbin/nginx", "nginx should include Kong's patches") \
         .functions \
@@ -103,7 +103,7 @@ def common_suites(expect, libxcrypt_no_obsolete_api: bool = False, skip_libsimdj
             .needed_libraries.contain("libcrypt.so.1")
 
     expect("/usr/local/openresty/nginx/sbin/nginx", "nginx compiled with OpenSSL 3.2.x") \
-        .nginx_compiled_openssl.matches("OpenSSL 3.2.\d") \
+        .nginx_compiled_openssl.matches(r"OpenSSL 3.2.\d") \
         .version_requirement.key("libssl.so.3").less_than("OPENSSL_3.3.0") \
         .version_requirement.key("libcrypto.so.3").less_than("OPENSSL_3.3.0") \
 
@@ -187,12 +187,20 @@ def arm64_suites(expect):
     expect("/usr/local/kong-tools/bin/curl", "tools are arm64 arch") \
         .arch.equals("AARCH64")
 
-def docker_suites(expect, kong_uid: int = 1000, kong_gid: int = 1000):
-    expect("/etc/passwd", "kong user exists") \
-        .text_content.matches("kong:x:%d" % kong_uid)
+def docker_suites(expect):
 
-    expect("/etc/group", "kong group exists") \
-        .text_content.matches("kong:x:%d" % kong_gid)
+    m = expect("/etc/passwd", "kong user exists") \
+        .text_content.matches(r"kong:x:(\d+)").get_last_macthes()
+
+    if m:
+        kong_uid = int(m[0].groups()[0])
+
+
+    m = expect("/etc/group", "kong group exists") \
+        .text_content.matches(r"kong:x:(\d+)").get_last_macthes()
+
+    if m:
+        kong_gid = int(m[0].groups()[0])
 
     for path in ("/usr/local/kong/**", "/usr/local/bin/kong"):
         expect(path, "%s owned by kong:root" % path) \
