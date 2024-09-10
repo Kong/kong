@@ -258,6 +258,8 @@ _M.foreign_field_key_prefix    = declarative_import.foreign_field_key_prefix
 _M.load_into_db                = declarative_import.load_into_db
 _M.load_into_cache             = declarative_import.load_into_cache
 _M.load_into_cache_with_events = declarative_import.load_into_cache_with_events
+_M.insert_entity_for_txn       = declarative_import.insert_entity_for_txn
+_M.delete_entity_for_txn       = declarative_import.delete_entity_for_txn
 _M.workspace_id                = declarative_import.workspace_id
 
 
