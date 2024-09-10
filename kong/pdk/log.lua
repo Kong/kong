@@ -54,6 +54,7 @@ local byte = string.byte
 
 
 local DOT_BYTE = byte(".")
+local FFI_ERROR = require("resty.core.base").FFI_ERROR
 
 
 local _PREFIX = "[kong] "
@@ -63,6 +64,17 @@ local PHASES = phase_checker.phases
 local PHASES_LOG = PHASES.log
 local QUESTION_MARK = byte("?")
 local TYPE_NAMES = constants.RESPONSE_SOURCE.NAMES
+
+
+local ngx_lua_ffi_raw_log do
+  if ngx.config.subsystem == "http" or ngx.config.is_console then -- luacheck: ignore
+    ngx_lua_ffi_raw_log = require("ffi").C.ngx_http_lua_ffi_raw_log
+
+  elseif ngx.config.subsystem == "stream" then
+    ngx_lua_ffi_raw_log = require("ffi").C.ngx_stream_lua_ffi_raw_log
+  end
+end
+
 
 -- EE websockets [[
 PHASES_LOG = phase_checker.new(PHASES_LOG, PHASES.ws_close)
@@ -195,6 +207,21 @@ local serializers = {
             to_string((select(5, ...))))
   end,
 }
+
+local function raw_log_inspect(level, msg)
+  if type(level) ~= "number" then
+    error("bad argument #1 to 'raw_log' (must be a number)", 2)
+  end
+
+  if type(msg) ~= "string" then
+    error("bad argument #2 to 'raw_log' (must be a string)", 2)
+  end
+
+  local rc = ngx_lua_ffi_raw_log(nil, level, msg, #msg)
+  if rc == FFI_ERROR then
+    error("bad log level", 2)
+  end
+end
 
 
 --- Writes a log line to the location specified by the current Nginx
@@ -379,7 +406,7 @@ local function gen_log_func(lvl_const, imm_buf, to_string, stack_level, sep)
       local i = fullmsg:find("\n") + 1
       local header = fullmsg:sub(1, i - 2) .. ("-"):rep(WRAP - i + 3) .. "+"
 
-      errlog.raw_log(lvl_const, header)
+      raw_log_inspect(lvl_const, header)
 
       while i <= fullmsg_len do
         local part = sub(fullmsg, i, i + WRAP - 1)
@@ -394,10 +421,10 @@ local function gen_log_func(lvl_const, imm_buf, to_string, stack_level, sep)
         end
 
         part = part .. (" "):rep(WRAP - #part)
-        errlog.raw_log(lvl_const, "|" .. part .. "|")
+        raw_log_inspect(lvl_const, "|" .. part .. "|")
 
         if i > fullmsg_len then
-          errlog.raw_log(lvl_const, "+" .. ("-"):rep(WRAP) .. "+")
+          raw_log_inspect(lvl_const, "+" .. ("-"):rep(WRAP) .. "+")
         end
       end
 
