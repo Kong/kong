@@ -92,7 +92,8 @@ end
 
 
 function _M:get_delta(version)
-  local sql = "SELECT * FROM clustering_sync_delta WHERE version > " .. self.connector:escape_literal(version) .. " ORDER BY version ASC"
+  local sql = "SELECT * FROM clustering_sync_delta WHERE version > " ..
+              self.connector:escape_literal(version) .. " ORDER BY version ASC"
   return self.connector:query(sql)
 end
 
