@@ -4,7 +4,7 @@ aarch64_glibc_distros = {
     "rhel9": "11",
     "rhel8": "8",
     "aws2023": "11",
-    "aws2": "7",
+    "aws2": "8",
 }
 
 def define_managed_toolchain(
@@ -78,7 +78,7 @@ def register_all_toolchains(name = None):
 
     register_managed_toolchain(
         arch = "x86_64",
-        gcc_version = "7",
+        gcc_version = "8",
         libc = "gnu",
         vendor = "aws2",
     )
