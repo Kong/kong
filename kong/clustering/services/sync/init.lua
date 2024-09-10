@@ -34,6 +34,13 @@ function _M:init_worker()
 
   elseif ngx.worker.id() == 0 then
     assert(self.rpc:sync_once(5))
+    assert(ngx.timer.every(30, function(premature)
+      if premature then
+        return
+      end
+
+      assert(self.rpc:sync_once(0))
+    end))
   end
 end
 

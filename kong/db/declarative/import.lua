@@ -248,13 +248,140 @@ end
 
 
 local function item_key(schema_name, ws_id, pk_str)
-  return item_key_prefix .. pk_str
+  return item_key_prefix(schema_name, ws_id) .. pk_str
 end
 
 
 local function config_is_empty(entities)
   -- empty configuration has no entries other than workspaces
   return entities.workspaces and nkeys(entities) == 1
+end
+
+
+-- Serialize and set keys for a single validated entity into
+-- the provided LMDB txn object, this operation is only safe
+-- is the entity does not already exist inside the LMDB database
+--
+-- This function sets the following:
+-- * <entity_name>|<ws_id>|*|<pk_string> => serialized item
+-- * <entity_name>|<ws_id>|<unique_field_name>|sha256(field_value) => <entity_name>|<ws_id>|*|<pk_string>
+-- * <entity_name>|<ws_id>|<foreign_field_name>|<foreign_key>|<pk_string> -> <entity_name>|<ws_id>|*|<pk_string>
+local function insert_entity_for_txn(t, entity_name, item, options)
+  local dao = kong.db[entity_name]
+  local schema = dao.schema
+  local pk = pk_string(schema, item)
+  local ws_id = workspace_id(schema, options)
+
+  local item_key = item_key(entity_name, ws_id, pk)
+  item = remove_nulls(item)
+
+  local item_marshalled, err = marshall(item)
+  if not item_marshalled then
+    return nil, err
+  end
+
+  t:set(item_key, item_marshalled)
+
+  -- select_by_cache_key
+  if schema.cache_key then
+    local cache_key = dao:cache_key(item)
+    local key = unique_field_key(entity_name, ws_id, "cache_key", cache_key)
+    t:set(key, item_key)
+  end
+
+  for fname, fdata in schema:each_field() do
+    local is_foreign = fdata.type == "foreign"
+    local fdata_reference = fdata.reference
+    local value = item[fname]
+
+    if value then
+      if fdata.unique then
+        -- unique and not a foreign key, or is a foreign key, but non-composite
+        -- see: validate_foreign_key_is_single_primary_key, composite foreign
+        -- key is currently unsupported by the DAO
+        if type(value) == "table" then
+          assert(is_foreign)
+          value = pk_string(kong.db[fdata_reference].schema, value)
+        end
+
+        if fdata.unique_across_ws then
+          ws_id = default_workspace_id
+        end
+
+        local key = unique_field_key(entity_name, ws_id, fname, value)
+        t:set(key, item_key)
+      end
+
+      if is_foreign then
+        -- is foreign, generate page_for_foreign_field indexes
+        assert(type(value) == "table")
+        value = pk_string(kong.db[fdata_reference].schema, value)
+
+        local key = foreign_field_key(entity_name, ws_id, fname, value, pk)
+        t:set(key, item_key)
+      end
+    end
+  end
+
+  return true
+end
+
+
+-- Serialize and remove keys for a single validated entity into
+-- the provided LMDB txn object, this operation is safe whether the provided
+-- entity exists inside LMDB or not, but the provided entity must contains the
+-- correct field value so indexes can be deleted correctly
+local function delete_entity_for_txn(t, entity_name, item, options)
+  local dao = kong.db[entity_name]
+  local schema = dao.schema
+  local pk = pk_string(schema, item)
+  local ws_id = workspace_id(schema, options)
+
+  local item_key = item_key(entity_name, ws_id, pk)
+  t:set(item_key, nil)
+
+  -- select_by_cache_key
+  if schema.cache_key then
+    local cache_key = dao:cache_key(item)
+    local key = unique_field_key(entity_name, ws_id, "cache_key", cache_key)
+    t:set(key, nil)
+  end
+
+  for fname, fdata in schema:each_field() do
+    local is_foreign = fdata.type == "foreign"
+    local fdata_reference = fdata.reference
+    local value = item[fname]
+
+    if value then
+      if fdata.unique then
+        -- unique and not a foreign key, or is a foreign key, but non-composite
+        -- see: validate_foreign_key_is_single_primary_key, composite foreign
+        -- key is currently unsupported by the DAO
+        if type(value) == "table" then
+          assert(is_foreign)
+          value = pk_string(kong.db[fdata_reference].schema, value)
+        end
+
+        if fdata.unique_across_ws then
+          ws_id = default_workspace_id
+        end
+
+        local key = unique_field_key(entity_name, ws_id, fname, value)
+        t:set(key, nil)
+      end
+
+      if is_foreign then
+        -- is foreign, generate page_for_foreign_field indexes
+        assert(type(value) == "table")
+        value = pk_string(kong.db[fdata_reference].schema, value)
+
+        local key = foreign_field_key(entity_name, ws_id, fname, value, pk)
+        t:set(key, nil)
+      end
+    end
+  end
+
+  return true
 end
 
 
@@ -296,7 +423,7 @@ local function load_into_cache(entities, meta, hash)
     local schema = dao.schema
 
     for id, item in pairs(items) do
-      if schema.workspaceable and (item_ws_id == null or item_ws_id == nil) then
+      if not schema.workspaceable or item.ws_id == null or item.ws_id == nil then
         item.ws_id = default_workspace_id
       end
 
@@ -439,133 +566,6 @@ do
 end
 
 
--- Serialize and set keys for a single validated entity into
--- the provided LMDB txn object, this operation is only safe
--- is the entity does not already exist inside the LMDB database
---
--- This function sets the following:
--- * <entity_name>|<ws_id>|*|<pk_string> => serialized item
--- * <entity_name>|<ws_id>|<unique_field_name>|sha256(field_value) => <entity_name>|<ws_id>|*|<pk_string>
--- * <entity_name>|<ws_id>|<foreign_field_name>|<foreign_key>|<pk_string> -> <entity_name>|<ws_id>|*|<pk_string>
-local function insert_entity_for_txn(t, entity_name, item, options)
-  local dao = kong.db[entity_name]
-  local schema = dao.schema
-  local pk = pk_string(schema, item)
-  local ws_id = workspace_id(schema, options)
-
-  local item_key = item_key(entity_name, ws_id, pk)
-  item = remove_nulls(item)
-
-  local item_marshalled, err = marshall(item)
-  if not item_marshalled then
-    return nil, err
-  end
-
-  t:set(item_key, item_marshalled)
-
-  -- select_by_cache_key
-  if schema.cache_key then
-    local cache_key = dao:cache_key(item)
-    local key = unique_field_key(entity_name, ws_id, "cache_key", cache_key)
-    t:set(key, item_key)
-  end
-
-  for fname, fdata in schema:each_field() do
-    local is_foreign = fdata.type == "foreign"
-    local fdata_reference = fdata.reference
-    local value = item[fname]
-
-    if value then
-      if fdata.unique then
-        -- unique and not a foreign key, or is a foreign key, but non-composite
-        -- see: validate_foreign_key_is_single_primary_key, composite foreign
-        -- key is currently unsupported by the DAO
-        if type(value) == "table" then
-          assert(is_foreign)
-          value = pk_string(kong.db[fdata_reference].schema, value)
-        end
-
-        if fdata.unique_across_ws then
-          ws_id = default_workspace_id
-        end
-
-        local key = unique_field_key(entity_name, ws_id, fname, value)
-        t:set(key, item_key)
-      end
-
-      if is_foreign then
-        -- is foreign, generate page_for_foreign_field indexes
-        assert(type(value) == "table")
-        value = pk_string(kong.db[fdata_reference].schema, value)
-
-        local key = foreign_field_key(entity_name, ws_id, fname, value, pk)
-        t:set(key, item_key)
-      end
-    end
-  end
-
-  return true
-end
-
-
--- Serialize and remove keys for a single validated entity into
--- the provided LMDB txn object, this operation is safe whether the provided
--- entity exists inside LMDB or not, but the provided entity must contains the
--- correct field value so indexes can be deleted correctly
-local function delete_entity_for_txn(t, entity_name, item, options)
-  local dao = kong.db[entity_name]
-  local schema = dao.schema
-  local pk = pk_string(schema, item)
-  local ws_id = workspace_id(schema, options)
-
-  local item_key = item_key(entity_name, ws_id, pk)
-  t:set(item_key, nil)
-
-  -- select_by_cache_key
-  if schema.cache_key then
-    local cache_key = dao:cache_key(item)
-    local key = unique_field_key(entity_name, ws_id, "cache_key", cache_key)
-    t:set(key, nil)
-  end
-
-  for fname, fdata in schema:each_field() do
-    local is_foreign = fdata.type == "foreign"
-    local fdata_reference = fdata.reference
-    local value = item[fname]
-
-    if value then
-      if fdata.unique then
-        -- unique and not a foreign key, or is a foreign key, but non-composite
-        -- see: validate_foreign_key_is_single_primary_key, composite foreign
-        -- key is currently unsupported by the DAO
-        if type(value) == "table" then
-          assert(is_foreign)
-          value = pk_string(kong.db[fdata_reference].schema, value)
-        end
-
-        if fdata.unique_across_ws then
-          ws_id = default_workspace_id
-        end
-
-        local key = unique_field_key(entity_name, ws_id, fname, value)
-        t:set(key, nil)
-      end
-
-      if is_foreign then
-        -- is foreign, generate page_for_foreign_field indexes
-        assert(type(value) == "table")
-        value = pk_string(kong.db[fdata_reference].schema, value)
-
-        local key = foreign_field_key(entity_name, ws_id, fname, value, pk)
-        t:set(key, nil)
-      end
-    end
-  end
-
-  return true
-end
-
-
 return {
   get_current_hash = get_current_hash,
   unique_field_key = unique_field_key,
@@ -578,4 +578,6 @@ return {
   load_into_db = load_into_db,
   load_into_cache = load_into_cache,
   load_into_cache_with_events = load_into_cache_with_events,
+  insert_entity_for_txn = insert_entity_for_txn,
+  delete_entity_for_txn = delete_entity_for_txn,
 }
