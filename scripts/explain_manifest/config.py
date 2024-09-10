@@ -191,16 +191,6 @@ targets = {
             docker_suites: {},
         }
     ),
-    "docker-image-ubuntu-24.04": ExpectSuite(
-        name="Ubuntu 24.04 Docker Image",
-        manifest=None,
-        tests={
-            docker_suites: {
-                "kong_uid": 1001,
-                "kong_gid": 1001,
-            },
-        }
-    ),
 }
 
 # populate arm64 and fips suites from amd64 suites
