@@ -66,6 +66,24 @@ local blueprints = assert(Blueprints.new(db))
 kong.db = db
 
 
+--- Gets the ml_cache instance.
+-- @function get_cache
+-- @param db the database object
+-- @return ml_cache instance
+local function get_cache(db)
+  local worker_events = assert(kong_global.init_worker_events(conf))
+  local cluster_events = assert(kong_global.init_cluster_events(conf, db))
+  local cache = assert(kong_global.init_cache(conf,
+                                              cluster_events,
+                                              worker_events
+                                              ))
+  return cache
+end
+
+
+kong.cache = get_cache(db)
+
+
 --- Iterator over DB strategies.
 -- @function each_strategy
 -- @param strategies (optional string array) explicit list of strategies to use,
@@ -360,21 +378,6 @@ local function get_db_utils(strategy, tables, plugins, vaults, skip_migrations)
   end, PLUGINS_LIST)
 
   return bp, db
-end
-
-
---- Gets the ml_cache instance.
--- @function get_cache
--- @param db the database object
--- @return ml_cache instance
-local function get_cache(db)
-  local worker_events = assert(kong_global.init_worker_events(conf))
-  local cluster_events = assert(kong_global.init_cluster_events(conf, db))
-  local cache = assert(kong_global.init_cache(conf,
-                                              cluster_events,
-                                              worker_events
-                                              ))
-  return cache
 end
 
 
