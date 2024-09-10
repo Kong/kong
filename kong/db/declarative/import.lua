@@ -28,6 +28,7 @@ local get_workspace_id = workspaces.get_workspace_id
 
 local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
+local DECLARATIVE_DEFAULT_WORKSPACE_KEY = constants.DECLARATIVE_DEFAULT_WORKSPACE_KEY
 
 
 -- Generates the appropriate workspace ID for current operating context
@@ -453,6 +454,7 @@ local function load_into_cache(entities, meta, hash)
   end
 
   t:set(DECLARATIVE_HASH_KEY, hash)
+  t:set(DECLARATIVE_DEFAULT_WORKSPACE_KEY, default_workspace_id)
 
   kong.default_workspace = default_workspace_id
 

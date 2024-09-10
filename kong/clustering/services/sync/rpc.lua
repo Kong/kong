@@ -82,7 +82,6 @@ function _M:init(manager, is_cp)
         if not deltas then
           return nil, err
         end
-        ngx.log(ngx.ERR, "deltas: ", require("inspect")(deltas))
 
         return { default = { deltas = deltas, wipe = true, }, }
       end
@@ -158,7 +157,6 @@ function _M:sync_once(delay)
 
     local res, err = concurrency.with_worker_mutex(SYNC_MUTEX_OPTS, function()
       for i = 1, 2 do
-        ngx.log(ngx.ERR, "kong.sync.v2.get_delta: ", tonumber(declarative.get_current_hash()) or 0)
         local ns_deltas, err = kong.rpc:call("control_plane", "kong.sync.v2.get_delta",
                                              { default =
                                                { version =
