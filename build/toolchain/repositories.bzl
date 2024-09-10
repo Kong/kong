@@ -23,40 +23,40 @@ filegroup(
 def toolchain_repositories():
     http_archive(
         name = "aarch64-rhel9-linux-gnu-gcc-11",
-        url = "https://github.com/Kong/crosstool-ng-actions/releases/download/0.7.0/aarch64-rhel9-linux-gnu-glibc-2.34-gcc-11.tar.gz",
-        sha256 = "8db520adb98f43dfe3da5d51e09679b85956e3a11362d7cba37a85065e87fcf7",
+        url = "https://github.com/Kong/crosstool-ng-actions/releases/download/0.8.0/aarch64-rhel9-linux-gnu-glibc-2.34-gcc-11.tar.gz",
+        sha256 = "b8f9573cb71d5556aea5a0e13c205786b5817f54273e2efcde71548e9eb297a2",
         strip_prefix = "aarch64-rhel9-linux-gnu",
         build_file_content = build_file_content,
     )
 
     http_archive(
         name = "aarch64-rhel8-linux-gnu-gcc-8",
-        url = "https://github.com/Kong/crosstool-ng-actions/releases/download/0.7.0/aarch64-rhel8-linux-gnu-glibc-2.28-gcc-8.tar.gz",
-        sha256 = "de41ca31b6a056bddd770b4cb50fe8e8c31e8faa9ce857771ab7410a954d1cbe",
+        url = "https://github.com/Kong/crosstool-ng-actions/releases/download/0.8.0/aarch64-rhel8-linux-gnu-glibc-2.28-gcc-8.tar.gz",
+        sha256 = "f802d09c54f037f78198ff90bf847d822529ec3c6797a922e282453ad44321ef",
         strip_prefix = "aarch64-rhel8-linux-gnu",
         build_file_content = build_file_content,
     )
 
     http_archive(
         name = "aarch64-aws2023-linux-gnu-gcc-11",
-        url = "https://github.com/Kong/crosstool-ng-actions/releases/download/0.7.0/aarch64-aws2023-linux-gnu-glibc-2.34-gcc-11.tar.gz",
-        sha256 = "c0333ba0934b32f59ab9c3076c47785c94413aae264cc2ee78d6d5fd46171a9d",
+        url = "https://github.com/Kong/crosstool-ng-actions/releases/download/0.8.0/aarch64-aws2023-linux-gnu-glibc-2.34-gcc-11.tar.gz",
+        sha256 = "4b5ef1511035fcb4b95c543485dc7a72675abcb27c4d2b6a20ac4598f2717a9f",
         strip_prefix = "aarch64-aws2023-linux-gnu",
         build_file_content = build_file_content,
     )
 
     http_archive(
-        name = "aarch64-aws2-linux-gnu-gcc-7",
-        url = "https://github.com/Kong/crosstool-ng-actions/releases/download/0.7.0/aarch64-aws2-linux-gnu-glibc-2.26-gcc-7.tar.gz",
-        sha256 = "de365a366b5de93b0f6d851746e7ced06946b083b390500d4c1b4a8360702331",
+        name = "aarch64-aws2-linux-gnu-gcc-8",
+        url = "https://github.com/Kong/crosstool-ng-actions/releases/download/0.8.0/aarch64-aws2-linux-gnu-glibc-2.26-gcc-8.tar.gz",
+        sha256 = "4bcf3e5448cca6c33f8d6d3e97da0378cfa57b116e5ba6f037e4fd11149ed37f",
         strip_prefix = "aarch64-aws2-linux-gnu",
         build_file_content = build_file_content,
     )
 
     http_archive(
-        name = "x86_64-aws2-linux-gnu-gcc-7",
-        url = "https://github.com/Kong/crosstool-ng-actions/releases/download/0.7.0/x86_64-aws2-linux-gnu-glibc-2.26-gcc-7.tar.gz",
-        sha256 = "645c242d13bf456ca59a7e9701e9d2f53336fd0497ccaff2b151da9921469985",
+        name = "x86_64-aws2-linux-gnu-gcc-8",
+        url = "https://github.com/Kong/crosstool-ng-actions/releases/download/0.8.0/x86_64-aws2-linux-gnu-glibc-2.26-gcc-8.tar.gz",
+        sha256 = "bb742616c651900280ac63e926d941fa4bb851e648d011a04a29de62e818e516",
         strip_prefix = "x86_64-aws2-linux-gnu",
         build_file_content = build_file_content,
     )
