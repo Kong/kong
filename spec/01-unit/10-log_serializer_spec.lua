@@ -253,6 +253,7 @@ describe("kong.log.serialize", function()
       _G.ngx = {
         config = {
           subsystem = "stream",
+          is_console = true,
         },
         ctx = {
           balancer_data = {
