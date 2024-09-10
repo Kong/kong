@@ -550,7 +550,7 @@ do
     -- @usage
     -- kong.log.inspect.on()
     function self.on()
-      self.print = gen_log_func(_LEVELS.debug, inspect_buf, inspect, 3, " ")
+      self.print = gen_log_func(_LEVELS.notice, inspect_buf, inspect, 3, " ")
     end
 
 
