@@ -26,6 +26,8 @@ clib_deps = [
     kong_install(
         name = "install-%s" % get_workspace_name(k),
         src = k,
+        # only install openssl and libxml2 headers
+        exclude = [] if k in ("@openssl", "@libxml2") else ["include"],
         prefix = "kong/lib" if k in ("@passwdqc", "@snappy", "@ada") else "kong",
         strip_path = "snappy" if k == "@snappy" else "ada" if k == "@ada" else "",
     )
@@ -35,6 +37,7 @@ clib_deps = [
 kong_install(
     name = "install-openssl-fips",
     src = "@openssl_fips",
+    exclude = ["include"],  # skip install headers
     strip_path = "openssl_fips/openssl_fips/fipsmodule",
 )
 

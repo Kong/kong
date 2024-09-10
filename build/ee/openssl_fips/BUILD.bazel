@@ -19,6 +19,6 @@ genrule(
         "@kong//build/ee/openssl_fips:openssl.cnf.template",
     ],
     outs = ["openssl.cnf"],
-    cmd = "cat $(location @kong//build/ee/openssl_fips:openssl.cnf.template ) $$(echo '$(locations @openssl_fips//:openssl_fips)' | awk '{print $$1}')/fipsmodule/fipsmodule.cnf > $@",
+    cmd = "cat $(location @kong//build/ee/openssl_fips:openssl.cnf.template ) $$(dirname $$(echo '$(locations @openssl_fips//:openssl_fips)' | awk '{print $$1}'))/../../fipsmodule.cnf > $@",
     visibility = ["//visibility:public"],
 )

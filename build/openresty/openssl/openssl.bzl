@@ -73,10 +73,10 @@ def build_openssl(
         # As such, libssl must be listed before libcrypto
         out_shared_libs = select({
             "@platforms//os:macos": [
-                "ossl-modules/fips.dylib",
+                "lib/ossl-modules/fips.dylib",
             ],
             "//conditions:default": [
-                "ossl-modules/fips.so",
+                "lib/ossl-modules/fips.so",
             ],
         }) if fips else select({
             "@platforms//os:macos": [
@@ -97,9 +97,8 @@ def build_openssl(
                 "engines-3/padlock.so",
             ],
         }),
-        out_data_dirs = ["fipsmodule"] if fips else [],  # the generated openssl.cnf is needed by fips activation
-        out_include_dir = "" if fips else "include/openssl",  # don't install headers on fips to avoid collision
-        out_lib_dir = "fipsmodule/lib" if fips else "lib",
+        out_include_dir = "include/openssl",
+        out_lib_dir = "fipsmodule" if fips else "lib",
         targets = [
             "-j" + KONG_VAR["NPROC"],
             # don't set the prefix by --prefix switch, but only override the install destdir using INSTALLTOP
