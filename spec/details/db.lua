@@ -35,9 +35,9 @@ do
 end
 
 
----------------
+-- ------------
 -- Conf and DAO
----------------
+-- ------------
 
 local conf = require("spec.details.conf")
 
