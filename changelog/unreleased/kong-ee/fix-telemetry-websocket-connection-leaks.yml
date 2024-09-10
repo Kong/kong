@@ -1,0 +1,3 @@
+message: Fixed a connection leak issue where the websocket connection was not closed promptly during reconnection.
+type: bugfix
+scope: Clustering

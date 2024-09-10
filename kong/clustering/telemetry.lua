@@ -219,6 +219,10 @@ local function telemetry_communicate(premature, self, uri, server_name, on_conne
 
   local res, err = c:connect(uri, opts)
   if not res then
+    -- close it proactively to avoid connection leaks (CLOSE-WAIT) if the Lua VM
+    -- does not recycle it in time
+    c:close()
+
     local delay = math.random(5, 10)
 
     ngx_log(ngx_ERR, "connection to control plane ", uri, " broken: ", err,
