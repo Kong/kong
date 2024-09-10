@@ -124,7 +124,7 @@ local function export_from_db_impl(emitter, skip_ws, skip_disabled_entities, exp
       return nil, err
     end
 
-    sync_version = ok[1][1]
+    sync_version = assert(ok[1].max)
   end
 
   emitter:emit_toplevel({
@@ -359,7 +359,7 @@ local sync_emitter = {
 
   emit_entity = function(self, entity_name, entity_data)
     self.out_n = self.out_n + 1
-    self.out[self.out_n] = { row = entity_data, version = self.sync_version, }
+    self.out[self.out_n] = { ["type"] = entity_name , row = entity_data, version = self.sync_version, }
   end,
 
   done = function(self)
@@ -374,7 +374,7 @@ end
 
 
 local function export_config_sync()
-  return export_from_db_impl(proto_emitter.new(), false, false, false)
+  return export_from_db_impl(sync_emitter.new(), false, false, true)
 end
 
 
