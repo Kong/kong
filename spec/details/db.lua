@@ -81,9 +81,6 @@ local function get_cache(db)
 end
 
 
-kong.cache = get_cache(db)
-
-
 --- Iterator over DB strategies.
 -- @function each_strategy
 -- @param strategies (optional string array) explicit list of strategies to use,
