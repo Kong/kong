@@ -206,6 +206,28 @@ local function generate_keys(fmt)
 end
 
 
+-- Case insensitive lookup function, returns the value and the original key. Or
+-- if not found nil and the search key
+-- @usage -- sample usage
+-- local test = { SoMeKeY = 10 }
+-- print(lookup(test, "somekey"))  --> 10, "SoMeKeY"
+-- print(lookup(test, "NotFound")) --> nil, "NotFound"
+local function lookup(t, k)
+  local ok = k
+  if type(k) ~= "string" then
+    return t[k], k
+  else
+    k = k:lower()
+  end
+  for key, value in pairs(t) do
+    if tostring(key):lower() == k then
+      return value, key
+    end
+  end
+  return nil, ok
+end
+
+
 return {
   pack = pack,
   unpack = unpack,
@@ -219,4 +241,6 @@ return {
   deep_sort = deep_sort,
 
   generate_keys = generate_keys,
+
+  lookup = lookup,
 }
