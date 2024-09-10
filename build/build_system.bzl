@@ -285,6 +285,15 @@ def _kong_install_impl(ctx):
         if path.startswith(ctx.attr.src.label.workspace_name + "/copy_" + ctx.attr.src.label.name):
             continue
 
+        # skip explictly excluded directories
+        should_skip = False
+        for e in ctx.attr.exclude:
+            if path.startswith(label_path + "/" + e):
+                should_skip = True
+                break
+        if should_skip:
+            continue
+
         # only replace the first one
         target_path = path.replace(strip_path + "/", "", 1)
         full_path = "%s/%s%s" % (KONG_VAR["BUILD_NAME"], prefix, target_path)
@@ -349,11 +358,11 @@ kong_install = rule(
         #     doc = "List of files to explictly install, take effect after exclude; full name, or exactly one '*' at beginning or end as wildcard are supported",
         #     default = [],
         # ),
-        # "exclude": attr.string_list(
-        #     mandatory = False,
-        #     doc = "List of directories to exclude from installation",
-        #     default = [],
-        # ),
+        "exclude": attr.string_list(
+            mandatory = False,
+            doc = "List of directories to exclude from installation",
+            default = [],
+        ),
         "create_dynamic_library_symlink": attr.bool(
             mandatory = False,
             doc = "Create non versioned symlinks to the versioned so, e.g. libfoo.so -> libfoo.so.1.2.3",
