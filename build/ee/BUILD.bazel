@@ -1,65 +1,33 @@
-load("//build:build_system.bzl", "kong_rules_group")
-load("@kong_bindings//:variables.bzl", "KONG_VAR")
+load("//build:build_system.bzl", "kong_rules_group", "kong_template_genrule")
 
-genrule(
+kong_template_genrule(
     name = "luarocks_install_ee_plugins",
     srcs = [
+        "@kong//:plugins_ee_rockspec_srcs",
         "@luarocks//:luarocks_exec",
         "@luarocks//:luarocks_make",  # don't let them run concurrently
-        "@kong//:plugins_ee_rockspec_srcs",
     ],
-    outs = ["luarocks_install_ee_plugins.log"],
-    cmd = """
-        touch $@.tmp
+    output = "luarocks_install_ee_plugins.log",
+    progress_message = "Luarocks: Install EE plugins",
+    template = "@//build/ee:templates/luarocks-install-ee-plugins.sh",
+    visibility = ["//visibility:public"],
+)
 
-        cwd=$$(pwd)
-        for dir in lua-resty-openapi3-deserializer kong-gql; do
-            echo "Installing library: $$dir" >> $$cwd/$@.tmp
-            pushd distribution/$$dir >> $$cwd/$@.tmp
-                $$cwd/$(location @luarocks//:luarocks_exec) make *.rockspec >> $$cwd/$@.tmp
-            popd >> $$cwd/$@.tmp
-        done
-
-        for plugin_ee in plugins-ee/*; do
-            if [ -d "$$plugin_ee" ]; then
-                echo "Installing plugin: $$(basename $$plugin_ee)" >> $$cwd/$@.tmp
-                pushd $$plugin_ee >> $$cwd/$@.tmp
-                    $$cwd/$(location @luarocks//:luarocks_exec) make *.rockspec >> $$cwd/$@.tmp
-                popd >> $$cwd/$@.tmp
-            fi
-        done
-
-        # HACK
-        cp -r plugins-ee/saml/xml $$(dirname $(location @luarocks//:luarocks_exec))/luarocks_tree/share/
-
-        # only generate the output when the command succeeds
-        mv $@.tmp $@
-    """,
-    message = "Luarocks: Install EE plugins",
+filegroup(
+    name = "distributions_constants",
+    srcs = ["distributions_constants.lua"],
     visibility = ["//visibility:public"],
 )
 
 # TODO: should this be skipped if developing locally?
-genrule(
+kong_template_genrule(
     name = "copy_distributions_constants",
     srcs = [
+        ":distributions_constants",
         "@luarocks//:luarocks_make",  # overwrite after it's been written by luarocks
-        "@kong//:distribution_srcs",
     ],
-    outs = ["copy_distributions_constants.log"],
-    cmd = "WORKSPACE_PATH=" + KONG_VAR["WORKSPACE_PATH"] + """
-        touch $@.tmp
-        cwd=$$(pwd)
-
-        LUAROCKS=$${WORKSPACE_PATH}/$$(dirname '$(location @luarocks//:luarocks_make)')/luarocks_tree 2>> $$cwd/$@.tmp
-        dest=$${LUAROCKS}/share/lua/5.1/kong/enterprise_edition/distributions_constants.lua
-
-        distributions_srcs=$$(echo '$(locations @kong//:distribution_srcs)' | awk '{print $$1}') 2>> $$cwd/$@.tmp
-        cp -v $${WORKSPACE_PATH}/$$(dirname $${distributions_srcs})/distributions_constants.lua $${dest} 2>&1 >> $$cwd/$@.tmp
-
-        # only generate the output when the command succeeds
-        mv $@.tmp $@
-    """,
+    output = "copy_distributions_constants.log",
+    template = "@//build/ee:templates/copy-distribution-constants.sh",
     visibility = ["//visibility:public"],
 )
 
@@ -72,7 +40,7 @@ kong_ljbc_directories = [
     "plugins",
 ]
 
-[genrule(
+[kong_template_genrule(
     name = "bytecode_compile_%s" % d,
     srcs = [
         "@luarocks//:luarocks_make",  # overwrite after it's been written by luarocks
@@ -83,40 +51,12 @@ kong_ljbc_directories = [
         "@kong//:any-cross": [],
         "//conditions:default": ["@openresty//:luajit"],
     }),
-    outs = ["bytecode_compile_%s.log" % d],
-    cmd = """
-        touch $@.tmp
-        cwd=$$(pwd)
-
-        LUAROCKS={workspace_path}/$$(dirname '$(location @luarocks//:luarocks_make)')/luarocks_tree 2>> $$cwd/$@.tmp
-        src=$$LUAROCKS/share/lua/5.1/kong/{source_dir}
-
-        LUAJIT={workspace_path}/$$(echo $(locations @openresty//:luajit) | awk '{{print $$1}}')
-        export LUA_PATH="$$LUAJIT/share/luajit-2.1/?.lua;;"
-        luajit=$$LUAJIT/bin/luajit 2>> $$cwd/$@.tmp
-
-        pushd $$src 2>&1 >> $$cwd/$@.tmp
-
-            find . -type f -name '*.lua' -print | while read -r source_path; do
-                $$luajit \
-                    -b \
-                    -g \
-                    -t raw \
-                    -- \
-                    "$$source_path" \
-                    "$${{source_path//.lua/.ljbc}}"
-
-                rm -fv "$$source_path" 2>&1 >> $$cwd/$@.tmp
-            done
-
-        popd 2>&1 >> $$cwd/$@.tmp
-
-        # only generate the output when the command succeeds
-        mv $@.tmp $@
-    """.format(
-        source_dir = d,
-        workspace_path = KONG_VAR["WORKSPACE_PATH"],
-    ),
+    output = "bytecode_compile_%s.log" % d,
+    progress_message = "Bytecode compiling: " + d,
+    substitutions = {
+        "{{source_dir}}": d,
+    },
+    template = "@//build/ee:templates/bytecode-compile.sh",
     tools = select({
         "@kong//:any-cross": ["@openresty//:luajit"],
         "//conditions:default": [],
@@ -134,7 +74,7 @@ kong_rules_group(
 )
 
 # TODO: should this be skipped if developing locally?
-genrule(
+kong_template_genrule(
     name = "luarocks_license",
     srcs = [
         ":luarocks_install_ee_plugins",
@@ -144,52 +84,9 @@ genrule(
         "@kong//:any-cross": [],
         "//conditions:default": ["@jq//:libjq"],
     }),
-    outs = ["manifest.json"],
-    cmd = "WORKSPACE_PATH=" + KONG_VAR["WORKSPACE_PATH"] + """
-        _luarocks="$(location @luarocks//:luarocks_exec)"
-        _jq="$${WORKSPACE_PATH}/$$(echo $(locations @jq//:libjq) | awk '{print $$1}')/bin/jq"
-
-        "$$_luarocks" list --porcelain | grep 'installed' \
-            | while read -r _name _version _unused; do
-
-            # iterate through luarocks outputting a json object per package
-            "$$_jq" -nM \
-                --arg name "$$_name" \
-                --arg version "$$_version" \
-                --arg license "$$(
-                    "$$_luarocks" show --rock-license "$$_name"
-                )" \
-                --arg homepage "$$(
-                    "$$_luarocks" show --home "$$_name"
-                )" \
-                '{
-                    "name": $$name,
-                    "version": $$version,
-                    "license": $$license,
-                    "homepage": $$homepage
-                }'
-
-            >&2
-
-            unset _name _version
-
-            # finally output a large json object containing the per-package info
-            # and write it to a path that gets packages
-            done \
-                | "$$_jq" -s \
-                    '{
-                        "schema_version": "1",
-                        "product": {
-                            "name": "Kong Gateway",
-                            "luarocks": .
-                        }
-                    }' \
-                        > $@
-
-        # just to  validate the resulting file is writeable/valid/etc.
-        "$$_jq" '.' '$@' >/dev/null
-    """,
-    message = "Luarocks: Generate license manifest",
+    output = "manifest.json",
+    progress_message = "Luarocks: Generate license manifest",
+    template = "@//build/ee:templates/luarocks-license.sh",
     tools = select({
         "@kong//:any-cross": ["@jq//:libjq"],
         "//conditions:default": [],
