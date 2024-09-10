@@ -77,7 +77,7 @@ describe("cache the workspace names in hybrid mode #" .. strategy, function()
     assert.res_status(201, res)
 
     res = assert(admin_client:post("/foo-ws/services/mockbin-service/routes", {
-      body = { paths = { "/" }, },
+      body = { paths = { "/foo-route" }, },
       headers = {["Content-Type"] = "application/json"}
     }))
     assert.res_status(201, res)
@@ -93,6 +93,10 @@ describe("cache the workspace names in hybrid mode #" .. strategy, function()
       headers = {["Content-Type"] = "application/json"}
     }))
     assert.res_status(201, res)
+
+    helpers.wait_for_all_config_update({
+      forced_proxy_port = 9002,
+    })
   end)
 
   lazy_teardown(function()
@@ -108,7 +112,7 @@ describe("cache the workspace names in hybrid mode #" .. strategy, function()
       local proxy_client = helpers.http_client("127.0.0.1", 9002)
       local res = proxy_client:send({
         method  = "GET",
-        path    = "/",
+        path    = "/foo-route",
         headers = {
           ["file-log-uuid"] = uuid
         }
