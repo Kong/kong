@@ -24,15 +24,8 @@ configure_make(
         "--without-iconv",
         "--without-python",
         "--without-lzma",
-    ] + select({
-        "@kong//:aarch64-linux-glibc-cross": [
-            "--host=aarch64-unknown-linux-gnu",
-        ],
-        "@kong//:x86_64-linux-glibc-cross": [
-            "--host=x86_64-unknown-linux-gnu",
-        ],
-        "//conditions:default": [],
-    }),
+    ],
+    configure_xcompile = True,  # use automatic cross compile detection
     lib_source = ":all_srcs",
     linkopts = select({
         "@kong//:any-cross": [

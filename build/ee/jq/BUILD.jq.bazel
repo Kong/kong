@@ -21,18 +21,11 @@ configure_make(
     name = "libjq",
     configure_command = "configure",
     configure_in_place = True,
-    configure_options = select({
-        "@kong//:aarch64-linux-glibc-cross": [
-            "--host=aarch64-unknown-linux-gnu",
-        ],
-        "@kong//:x86_64-linux-glibc-cross": [
-            "--host=x86_64-unknown-linux-gnu",
-        ],
-        "//conditions:default": [],
-    }) + [
+    configure_options = [
         "--with-oniguruma=builtin",
         "--disable-maintainer-mode",
     ],
+    configure_xcompile = True,  # use automatic cross compile detection
     env = select({
         "@platforms//os:macos": {
             # don't use rule_foreign_cc's libtool as archiver as it seems to be a bug

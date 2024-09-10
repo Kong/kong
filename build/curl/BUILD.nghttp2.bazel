@@ -30,14 +30,6 @@ configure_make(
         "--without-libxml2",  # TODO if libxml2 makes it into CE, use it here
         "--without-systemd",
     ] + select({
-        "@kong//:aarch64-linux-glibc-cross": [
-            "--host=aarch64-unknown-linux-gnu",
-        ],
-        "@kong//:x86_64-linux-glibc-cross": [
-            "--host=x86_64-unknown-linux-gnu",
-        ],
-        "//conditions:default": [],
-    }) + select({
         "@kong//:any-cross": [
             "--with-zlib=$$EXT_BUILD_DEPS/zlib",
         ],
@@ -48,6 +40,7 @@ configure_make(
         ],
         "//conditions:default": [],
     }),
+    configure_xcompile = True,  # use automatic cross compile detection
     env = select({
         "@platforms//os:macos": {
             "AR": "/usr/bin/ar",

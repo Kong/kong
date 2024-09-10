@@ -47,19 +47,12 @@ configure_make(
         "--without-libssh2",
         "--without-zstd",
     ] + select({
-        "@kong//:aarch64-linux-glibc-cross": [
-            "--host=aarch64-unknown-linux-gnu",
-        ],
-        "@kong//:x86_64-linux-glibc-cross": [
-            "--host=x86_64-unknown-linux-gnu",
-        ],
-        "//conditions:default": [],
-    }) + select({
         "@kong//:any-cross": [
             "--with-zlib=$$EXT_BUILD_DEPS/zlib",
         ],
         "//conditions:default": [],
     }),
+    configure_xcompile = True,  # use automatic cross compile detection
     data = ["ssl/cacerts-%s.pem" % KONG_VAR["CA_CERTS"]],
     env = select({
         "@platforms//os:macos": {
