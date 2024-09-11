@@ -375,3 +375,39 @@ kong_install = rule(
 
 def get_workspace_name(label):
     return label.replace("@", "").split("/")[0]
+
+def _kong_cc_static_library_impl(ctx):
+    linker_input = ctx.attr.src[CcInfo].linking_context.linker_inputs.to_list()[0]
+    libs = []
+    for lib in linker_input.libraries:
+        libs.append(cc_common.create_library_to_link(
+            actions = ctx.actions,
+            # omit dynamic_library and pic_dynamic_library fields
+            static_library = lib.static_library,
+            pic_static_library = lib.pic_static_library,
+            interface_library = lib.interface_library,
+            alwayslink = lib.alwayslink,
+        ))
+
+    cc_info = CcInfo(
+        compilation_context = ctx.attr.src[CcInfo].compilation_context,
+        linking_context = cc_common.create_linking_context(
+            linker_inputs = depset(direct = [
+                cc_common.create_linker_input(
+                    owner = linker_input.owner,
+                    libraries = depset(libs),
+                    user_link_flags = linker_input.user_link_flags,
+                ),
+            ]),
+        ),
+    )
+
+    return [ctx.attr.src[OutputGroupInfo], cc_info]
+
+kong_cc_static_library = rule(
+    implementation = _kong_cc_static_library_impl,
+    doc = "Filter a cc_library target to only output archive (.a) files",
+    attrs = {
+        "src": attr.label(allow_files = True, doc = "Label of a cc_library"),
+    },
+)
