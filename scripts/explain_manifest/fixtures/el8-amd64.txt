@@ -17,8 +17,6 @@
 
 - Path      : /usr/local/kong/lib/engines-3/afalg.so
   Needed    :
-  - libstdc++.so.6
-  - libm.so.6
   - libcrypto.so.3
   - libdl.so.2
   - libc.so.6
@@ -26,8 +24,6 @@
 
 - Path      : /usr/local/kong/lib/engines-3/capi.so
   Needed    :
-  - libstdc++.so.6
-  - libm.so.6
   - libcrypto.so.3
   - libdl.so.2
   - libc.so.6
@@ -35,8 +31,6 @@
 
 - Path      : /usr/local/kong/lib/engines-3/loader_attic.so
   Needed    :
-  - libstdc++.so.6
-  - libm.so.6
   - libcrypto.so.3
   - libdl.so.2
   - libc.so.6
@@ -44,8 +38,6 @@
 
 - Path      : /usr/local/kong/lib/engines-3/padlock.so
   Needed    :
-  - libstdc++.so.6
-  - libm.so.6
   - libcrypto.so.3
   - libdl.so.2
   - libc.so.6
@@ -54,14 +46,11 @@
 - Path      : /usr/local/kong/lib/libada.so
   Needed    :
   - libstdc++.so.6
-  - libm.so.6
   - libgcc_s.so.1
   - libc.so.6
 
 - Path      : /usr/local/kong/lib/libcrypto.so.3
   Needed    :
-  - libstdc++.so.6
-  - libm.so.6
   - libdl.so.2
   - libc.so.6
   Runpath   : /usr/local/kong/lib
@@ -111,14 +100,11 @@
 - Path      : /usr/local/kong/lib/libsnappy.so
   Needed    :
   - libstdc++.so.6
-  - libm.so.6
   - libgcc_s.so.1
   - libc.so.6
 
 - Path      : /usr/local/kong/lib/libssl.so.3
   Needed    :
-  - libstdc++.so.6
-  - libm.so.6
   - libcrypto.so.3
   - libdl.so.2
   - libc.so.6
@@ -142,8 +128,6 @@
 
 - Path      : /usr/local/kong/lib/ossl-modules/legacy.so
   Needed    :
-  - libstdc++.so.6
-  - libm.so.6
   - libcrypto.so.3
   - libdl.so.2
   - libc.so.6
@@ -294,21 +278,17 @@
   Needed    :
   - libgcc_s.so.1
   - libpthread.so.0
-  - libm.so.6
   - libdl.so.2
   - libc.so.6
   - ld-linux-x86-64.so.2
-  - libstdc++.so.6
 
 - Path      : /usr/local/openresty/site/lualib/liblua_resty_json_threat_protection.so
   Needed    :
   - libgcc_s.so.1
   - libpthread.so.0
-  - libm.so.6
   - libdl.so.2
   - libc.so.6
   - ld-linux-x86-64.so.2
-  - libstdc++.so.6
 
 - Path      : /usr/local/openresty/site/lualib/liblua_resty_jsonschema_rs.so
   Needed    :
@@ -318,12 +298,10 @@
   - libdl.so.2
   - libc.so.6
   - ld-linux-x86-64.so.2
-  - libstdc++.so.6
 
 - Path      : /usr/local/openresty/site/lualib/libsimdjson_ffi.so
   Needed    :
   - libstdc++.so.6
-  - libm.so.6
   - libgcc_s.so.1
   - libc.so.6
 
@@ -332,3 +310,4 @@
 
 - Path      : /usr/local/share/xml/xsd
   Type      : directory
+
