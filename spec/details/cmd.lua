@@ -370,12 +370,12 @@ local function stop_kong(prefix, preserve_prefix, preserve_dc, signal, nowait)
     return nil, err
   end
 
-  local pid, err = pid.get_pid_from_file(running_conf.nginx_pid)
-  if not pid then
+  local id, err = pid.get_pid_from_file(running_conf.nginx_pid)
+  if not id then
     return nil, err
   end
 
-  local ok, _, err = shell.run(string.format("kill -%s %d", signal, pid), nil, 0)
+  local ok, _, err = shell.run(string.format("kill -%s %d", signal, id), nil, 0)
   if not ok then
     return nil, err
   end
