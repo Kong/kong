@@ -143,7 +143,6 @@ describe('@gke: Gateway RLA Plugin Tests', function () {
         namespace: redisNamespace,
         redis: {
           host: 'redis',
-          port: 6379,
           username: redisUsername,
           password: redisPassword,
         },
