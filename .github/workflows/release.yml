@@ -226,7 +226,15 @@ jobs:
 
     - name: Setup Bazel
       if: steps.cache-deps.outputs.cache-hit != 'true'
-      uses: bazelbuild/setup-bazelisk@987a6fb73f6be98289d7e48654b519e9f3b8d0cb # v2.0.0
+      uses: bazel-contrib/setup-bazel@0.8.5
+      with:
+        bazelisk-version: "1.20.0"
+        # Avoid downloading Bazel every time.
+        bazelisk-cache: true
+        # Store build cache per workflow.
+        disk-cache: ${{ github.workflow }}
+        # Share repository cache between workflows.
+        repository-cache: true
 
     - name: Install Deb Build Dependencies
       if: matrix.package == 'deb' && steps.cache-deps.outputs.cache-hit != 'true'
