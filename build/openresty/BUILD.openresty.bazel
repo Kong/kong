@@ -1,6 +1,7 @@
 load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make", "make")
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@kong//build/openresty/wasmx:rules.bzl", "wasm_runtime", "wasmx_configure_options", "wasmx_env")
+load("@kong//build:build_system.bzl", "kong_cc_static_library")
 load("@openresty_binding//:variables.bzl", "LUAJIT_VERSION")
 load("@kong_bindings//:variables.bzl", "KONG_VAR")
 load("@kong//build/openresty/wasmx/filters:variables.bzl", "WASM_FILTERS_TARGETS")
@@ -236,9 +237,6 @@ CONFIGURE_OPTIONS = [
 }) + select({
     "@kong//:brotli_flag": [
         "--add-module=$$EXT_BUILD_ROOT$$/external/ngx_brotli",
-        # force static link; the order or following two entries matter
-        "--with-ld-opt=\"-l:libbrotlienc.a\"",
-        "--with-ld-opt=\"-l:libbrotlicommon.a\"",
     ],
     "//conditions:default": [],
 }) + wasmx_configure_options
@@ -260,6 +258,18 @@ filegroup(
 
 wasm_runtime(
     name = "wasm_runtime",
+    visibility = ["//visibility:public"],
+)
+
+kong_cc_static_library(
+    name = "brotlienc",
+    src = "@brotli//:brotlienc",
+    visibility = ["//visibility:public"],
+)
+
+kong_cc_static_library(
+    name = "brotlicommon",
+    src = "@brotli//:brotlicommon",
     visibility = ["//visibility:public"],
 )
 
@@ -312,7 +322,7 @@ configure_make(
         "//conditions:default": "ln -srf openresty/nginx/sbin/nginx openresty/bin/openresty",
     }),
     targets = [
-        "-j" + KONG_VAR["NPROC"],
+        "-j " + KONG_VAR["NPROC"],
         "install -j" + KONG_VAR["NPROC"],
     ],
     visibility = ["//visibility:public"],
@@ -333,8 +343,8 @@ configure_make(
         "//conditions:default": [],
     }) + select({
         "@kong//:brotli_flag": [
-            "@brotli//:brotlicommon",
-            "@brotli//:brotlienc",
+            ":brotlicommon",
+            ":brotlienc",
         ],
         "//conditions:default": [],
     }),
