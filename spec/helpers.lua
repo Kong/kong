@@ -41,7 +41,7 @@ local grpc = reload_module("spec.details.grpc")
 local dns_mock = reload_module("spec.details.dns")
 local asserts = reload_module("spec.details.asserts") -- luacheck: ignore
 local server = reload_module("spec.details.server")
-local pid = require("spec.details.pid")
+local pid = reload_module("spec.details.pid")
 local cmd = reload_module("spec.details.cmd")
 
 

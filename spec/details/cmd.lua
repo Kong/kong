@@ -21,8 +21,8 @@ local prefix_handler = require("kong.cmd.utils.prefix_handler")
 local CONSTANTS = require("spec.details.constants")
 local conf = require("spec.details.conf")
 local shell = require("spec.details.shell")
-local pid = require("spec.details.pid")
 local DB = require("spec.details.db")
+local pid = require("spec.details.pid")
 local dns_mock = require("spec.details.dns")
 
 
