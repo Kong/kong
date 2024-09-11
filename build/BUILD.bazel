@@ -249,9 +249,6 @@ kong_genrule(
         mkdir -p ${BUILD_DESTDIR}/etc/kong/
         cp ${WORKSPACE_PATH}/kong.conf.default ${BUILD_DESTDIR}/etc/kong/kong.conf.default
 
-        # TODO: remove this after lua-resty-websocket becomes a patch or merged to upstream
-        rm -rf ${BUILD_DESTDIR}/openresty/lualib/resty/websocket
-
         # housecleaning
         if [[ -d ${BUILD_DESTDIR}/kong/lib64 ]]; then
             cp -r ${BUILD_DESTDIR}/kong/lib64/* ${BUILD_DESTDIR}/kong/lib/.

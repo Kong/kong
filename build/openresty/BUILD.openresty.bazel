@@ -314,10 +314,11 @@ configure_make(
         "//conditions:default": [],
     }),
     postfix_script = select({
-        # macOS ln doesn't support -r/relative path
-        "@platforms//os:macos": "ln -sf openresty/nginx/sbin/nginx openresty/bin/openresty",
-        "//conditions:default": "ln -srf openresty/nginx/sbin/nginx openresty/bin/openresty",
-    }),
+                         # macOS ln doesn't support -r/relative path
+                         "@platforms//os:macos": "ln -sf openresty/nginx/sbin/nginx openresty/bin/openresty",
+                         "//conditions:default": "ln -srf openresty/nginx/sbin/nginx openresty/bin/openresty",
+                     }) +  # TODO: remove this after lua-resty-websocket becomes a patch or merged to upstream
+                     " && rm -rf $INSTALLDIR/lualib/resty/websocket",
     targets = [
         "-j " + KONG_VAR["NPROC"],
         "install -j" + KONG_VAR["NPROC"],
