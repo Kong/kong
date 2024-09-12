@@ -13,10 +13,10 @@ local ffi = require("ffi")
 local pl_path = require("pl.path")
 local pkey = require("resty.openssl.pkey")
 local nginx_signals = require("kong.cmd.utils.nginx_signals")
-local shell = require("spec.details.shell")
+local shell = require("spec.internal.shell")
 
 
-local CONSTANTS = require("spec.details.constants")
+local CONSTANTS = require("spec.internal.constants")
 
 
 ffi.cdef [[

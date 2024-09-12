@@ -1,4 +1,4 @@
-local CONSTANTS = require("spec.details.constants")
+local CONSTANTS = require("spec.internal.constants")
 local conf_loader = require("kong.conf_loader")
 
 

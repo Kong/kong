@@ -10,8 +10,8 @@ local shell = require("resty.shell")
 local strip = require("kong.tools.string").strip
 
 
-local CONSTANTS = require("spec.details.constants")
-local conf = require("spec.details.conf")
+local CONSTANTS = require("spec.internal.constants")
+local conf = require("spec.internal.conf")
 
 
 ----------------

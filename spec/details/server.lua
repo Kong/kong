@@ -6,7 +6,7 @@
 -- @module spec.helpers
 
 
-local CONSTANTS = require("spec.details.constants")
+local CONSTANTS = require("spec.internal.constants")
 
 
 ---
@@ -63,7 +63,7 @@ local function tcp_server(port, opts)
         end
 
         if opts.tls and handshake_done then
-          local ssl = require "spec.details.ssl"
+          local ssl = require "spec.internal.ssl"
 
           local params = {
             mode = "server",
