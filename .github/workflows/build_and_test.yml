@@ -1008,7 +1008,7 @@ jobs:
       with:
         repository: Kong/kong-pongo
         path: kong-pongo
-        ref: 2.12.0
+        ref: 2.13.0
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
