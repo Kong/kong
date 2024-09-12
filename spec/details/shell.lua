@@ -5,6 +5,14 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+------------------------------------------------------------------
+-- Collection of utilities to help testing Kong features and plugins.
+--
+-- @copyright Copyright 2016-2022 Kong Inc. All rights reserved.
+-- @license [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
+-- @module spec.helpers
+
+
 local shell = require("resty.shell")
 local conf_loader = require("kong.conf_loader")
 local strip = require("kong.tools.string").strip
