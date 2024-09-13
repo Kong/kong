@@ -130,7 +130,7 @@ import {
 
     // send 150 requests to seed data for the plugin
     // it appears the Sigularityheader is not always present in the first 5 requests, so try 30 times
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 100; i++) {
       // eslint-disable-next-line no-restricted-syntax
       resp = await sendRequestsAndReturnLastResp(5, '')
 
