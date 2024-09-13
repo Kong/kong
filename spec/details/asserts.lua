@@ -21,7 +21,7 @@ local colors = require("ansicolors")
 local luassert = require("luassert.assert")
 
 
-local conf = require("spec.details.shell").conf
+local conf = require("spec.details.conf")
 local misc = require("spec.details.misc")
 
 

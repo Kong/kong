@@ -13,18 +13,8 @@
 -- @module spec.helpers
 
 
-local PLUGINS_LIST
-
-
-local consumers_schema_def = require "kong.db.schema.entities.consumers"
-local services_schema_def = require "kong.db.schema.entities.services"
-local plugins_schema_def = require "kong.db.schema.entities.plugins"
-local routes_schema_def = require "kong.db.schema.entities.routes"
 local prefix_handler = require "kong.cmd.utils.prefix_handler"
-local dc_blueprints = require "spec.fixtures.dc_blueprints"
 local conf_loader = require "kong.conf_loader"
-local kong_global = require "kong.global"
-local Blueprints = require "spec.fixtures.blueprints"
 local constants = require "kong.constants"
 local pl_tablex = require "pl.tablex"
 local pl_utils = require "pl.utils"
@@ -32,17 +22,10 @@ local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local version = require "version"
 local pl_dir = require "pl.dir"
-local pl_Set = require "pl.Set"
-local Schema = require "kong.db.schema"
-local Entity = require "kong.db.schema.entity"
 local cjson = require "cjson.safe"
 local kong_table = require "kong.tools.table"
 local http = require "resty.http"
 local log = require "kong.cmd.utils.log"
-local DB = require "kong.db"
-local invoke_plugin = require "kong.enterprise_edition.invoke_plugin"
-local portal_router = require "kong.portal.router"
-local rbac = require "kong.rbac"
 local ssl = require "ngx.ssl"
 local ws_client = require "resty.websocket.client"
 local table_clone = require "table.clone"
@@ -54,7 +37,6 @@ local uuid = require("kong.tools.uuid").uuid
 
 -- XXX EE
 local dist_constants = require "kong.enterprise_edition.distributions_constants"
-local kong_vitals = require "kong.vitals"
 -- EE
 
 local http_new = http.new
@@ -63,35 +45,23 @@ local http_new = http.new
 local reload_module = require("spec.details.module").reload
 
 
+log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
+
+
 -- reload some modules when env or _G changes
 local CONSTANTS = reload_module("spec.details.constants")
+local conf = reload_module("spec.details.conf")
 local shell = reload_module("spec.details.shell")
 local misc = reload_module("spec.details.misc")
+local DB = reload_module("spec.details.db")
 local grpc = reload_module("spec.details.grpc")
 local dns_mock = reload_module("spec.details.dns")
 local asserts = reload_module("spec.details.asserts") -- luacheck: ignore
 local server = reload_module("spec.details.server")
 
 
-local conf = shell.conf
 local exec = shell.exec
 local kong_exec = shell.kong_exec
-
-
-log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
-
--- Add to package path so dao helpers can insert custom plugins
--- (while running from the busted environment)
-do
-  local paths = {}
-  table.insert(paths, os.getenv("KONG_LUA_PACKAGE_PATH"))
-  table.insert(paths, CONSTANTS.CUSTOM_PLUGIN_PATH)
-  -- XXX EE custom plugins for enterprise tests
-  table.insert(paths, CONSTANTS.CUSTOM_EE_PLUGIN_PATH)
-  table.insert(paths, CONSTANTS.CUSTOM_VAULT_PATH)
-  table.insert(paths, package.path)
-  package.path = table.concat(paths, ";")
-end
 
 
 local get_available_port
@@ -125,459 +95,13 @@ end
 ---------------
 -- Conf and DAO
 ---------------
-_G.kong = kong_global.new()
-kong_global.init_pdk(_G.kong, conf)
-ngx.ctx.KONG_PHASE = kong_global.phases.access
-_G.kong.core_cache = {
-  get = function(self, key, opts, func, ...)
-    if key == constants.CLUSTER_ID_PARAM_KEY then
-      return "123e4567-e89b-12d3-a456-426655440000"
-    end
-
-    return func(...)
-  end
-}
-
-local db = assert(DB.new(conf))
-assert(db:init_connector())
-db.vaults:load_vault_schemas(conf.loaded_vaults)
-db.plugins:load_plugin_schemas(conf.loaded_plugins)
-local blueprints = assert(Blueprints.new(db))
-local dcbp
 local config_yml
-
-
-kong.db = db
-
-
-local cache
-
---- Gets the ml_cache instance.
--- @function get_cache
--- @param db the database object
--- @return ml_cache instance
-local function get_cache(db)
-  if not cache then
-    local worker_events = require "resty.events.compat"
-    worker_events.configure({
-      listening = "unix:",
-      testing = true,
-    })
-
-    local cluster_events = assert(kong_global.init_cluster_events(conf, db))
-    cache = assert(kong_global.init_cache(conf,
-                                          cluster_events,
-                                          worker_events
-                                          ))
-  end
-
-  return cache
-end
-
-
-kong.cache = get_cache(db)
-
-cache._busted_hooked = false
-
-local function clear_cache_on_file_end(file)
-  if _G.kong and
-    _G.kong.cache and
-    _G.kong.cache.mlcache and
-    _G.kong.cache.mlcache.lru and
-    _G.kong.cache.mlcache.lru.free_queue and
-    _G.kong.cache.mlcache.lru.cache_queue
-  then
-    _G.kong.cache.mlcache.lru.free_queue = nil
-    _G.kong.cache.mlcache.lru.cache_queue = nil
-    _G.kong.cache.mlcache.lru = nil
-    collectgarbage()
-  end
-end
-
-local function register_busted_hook(opts)
-  local busted = require("busted")
-  if not cache or cache._busted_hooked then
-      return
-  end
-
-  cache._busted_hooked = true
-
-  busted.subscribe({'file', 'end' }, clear_cache_on_file_end)
-end
-
-register_busted_hook()
-
-local vitals
-local function get_vitals(db)
-  if not vitals then
-    vitals = kong_vitals.new({
-      db = db,
-      ttl_seconds = 3600,
-      ttl_minutes = 24 * 60,
-      ttl_days = 30,
-    })
-  end
-
-  return vitals
-end
-
-kong.vitals = get_vitals(db)
-
-local analytics
-local function get_analytics()
-  if not analytics then
-    local kong_analytics = require "kong.analytics"
-    analytics = kong_analytics.new({})
-  end
-
-  return analytics
-end
-
-kong.analytics = get_analytics()
-
---- Iterator over DB strategies.
--- @function each_strategy
--- @param strategies (optional string array) explicit list of strategies to use,
--- defaults to `{ "postgres", }`.
--- @see all_strategies
--- @usage
--- -- repeat all tests for each strategy
--- for _, strategy_name in helpers.each_strategy() do
---   describe("my test set [#" .. strategy .. "]", function()
---
---     -- add your tests here
---
---   end)
--- end
-local function each_strategy() -- luacheck: ignore   -- required to trick ldoc into processing for docs
-end
-
---- Iterator over all strategies, the DB ones and the DB-less one.
--- To test with DB-less, check the example.
--- @function all_strategies
--- @param strategies (optional string array) explicit list of strategies to use,
--- defaults to `{ "postgres", "off" }`.
--- @see each_strategy
--- @see make_yaml_file
--- @usage
--- -- example of using DB-less testing
---
--- -- use "all_strategies" to iterate over; "postgres", "off"
--- for _, strategy in helpers.all_strategies() do
---   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
---
---     lazy_setup(function()
---
---       -- when calling "get_db_utils" with "strategy=off", we still use
---       -- "postgres" so we can write the test setup to the database.
---       local bp = helpers.get_db_utils(
---                      strategy == "off" and "postgres" or strategy,
---                      nil, { PLUGIN_NAME })
---
---       -- Inject a test route, when "strategy=off" it will still be written
---       -- to Postgres.
---       local route1 = bp.routes:insert({
---         hosts = { "test1.com" },
---       })
---
---       -- start kong
---       assert(helpers.start_kong({
---         -- set the strategy
---         database   = strategy,
---         nginx_conf = "spec/fixtures/custom_nginx.template",
---         plugins = "bundled," .. PLUGIN_NAME,
---
---         -- The call to "make_yaml_file" will write the contents of
---         -- the database to a temporary file, which filename is returned.
---         -- But only when "strategy=off".
---         declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
---
---         -- the below lines can be omitted, but are just to prove that the test
---         -- really runs DB-less despite that Postgres was used as intermediary
---         -- storage.
---         pg_host = strategy == "off" and "unknownhost.konghq.com" or nil,
---       }))
---     end)
---
---     ... rest of your test file
-local function all_strategies() -- luacheck: ignore   -- required to trick ldoc into processing for docs
-end
-
-do
-  local def_db_strategies = {"postgres"}
-  local def_all_strategies = {"postgres", "off"}
-  local env_var = os.getenv("KONG_DATABASE")
-  if env_var then
-    def_db_strategies = { env_var }
-    def_all_strategies = { env_var }
-  end
-  local db_available_strategies = pl_Set(def_db_strategies)
-  local all_available_strategies = pl_Set(def_all_strategies)
-
-  local function iter(strategies, i)
-    i = i + 1
-    local strategy = strategies[i]
-    if strategy then
-      return i, strategy
-    end
-  end
-
-  each_strategy = function(strategies)
-    if not strategies then
-      return iter, def_db_strategies, 0
-    end
-
-    for i = #strategies, 1, -1 do
-      if not db_available_strategies[strategies[i]] then
-        table.remove(strategies, i)
-      end
-    end
-    return iter, strategies, 0
-  end
-
-  all_strategies = function(strategies)
-    if not strategies then
-      return iter, def_all_strategies, 0
-    end
-
-    for i = #strategies, 1, -1 do
-      if not all_available_strategies[strategies[i]] then
-        table.remove(strategies, i)
-      end
-    end
-    return iter, strategies, 0
-  end
-end
-
-local function truncate_tables(db, tables)
-  if not tables then
-    return
-  end
-
-  for _, t in ipairs(tables) do
-    if db[t] and db[t].schema then
-      db[t]:truncate()
-    end
-  end
-end
-
-local function bootstrap_database(db)
-  local schema_state = assert(db:schema_state())
-  if schema_state.needs_bootstrap then
-    assert(db:schema_bootstrap())
-  end
-
-  if schema_state.new_migrations then
-    assert(db:run_migrations(schema_state.new_migrations, {
-      run_up = true,
-      run_teardown = true,
-    }))
-  end
-end
-
---- Gets the database utility helpers and prepares the database for a testrun.
--- This will a.o. bootstrap the datastore and truncate the existing data that
--- migth be in it. The BluePrint and DB objects returned can be used to create
--- test entities in the database.
---
--- So the difference between the `db` and `bp` is small. The `db` one allows access
--- to the datastore for creating entities and inserting data. The `bp` one is a
--- wrapper around the `db` one. It will auto-insert some stuff and check for errors;
---
--- - if you create a route using `bp`, it will automatically attach it to the
---   default service that it already created, without you having to specify that
---   service.
--- - any errors returned by `db`, which will be `nil + error` in Lua, will be
---   wrapped in an assertion by `bp` so if something is wrong it will throw a hard
---   error which is convenient when testing. When using `db` you have to manually
---   check for errors.
---
--- Since `bp` is a wrapper around `db` it will only know about the Kong standard
--- entities in the database. Hence the `db` one should be used when working with
--- custom DAO's for which no `bp` entry is available.
--- @function get_db_utils
--- @param strategy (optional) the database strategy to use, will default to the
--- strategy in the test configuration.
--- @param tables (optional) tables to truncate, this can be used to accelarate
--- tests if only a few tables are used. By default all tables will be truncated.
--- @param plugins (optional) array of plugins to mark as loaded. Since kong will
--- load all the bundled plugins by default, this is useful mostly for marking
--- custom plugins as loaded.
--- @param vaults (optional) vault configuration to use.
--- @param skip_migrations (optional) if true, migrations will not be run.
--- @return BluePrint, DB
--- @usage
--- local PLUGIN_NAME = "my_fancy_plugin"
--- local bp = helpers.get_db_utils("postgres", nil, { PLUGIN_NAME })
---
--- -- Inject a test route. No need to create a service, there is a default
--- -- service which will echo the request.
--- local route1 = bp.routes:insert({
---   hosts = { "test1.com" },
--- })
--- -- add the plugin to test to the route we created
--- bp.plugins:insert {
---   name = PLUGIN_NAME,
---   route = { id = route1.id },
---   config = {},
--- }
-local function get_db_utils(strategy, tables, plugins, vaults, skip_migrations)
-  strategy = strategy or conf.database
-  if tables ~= nil and type(tables) ~= "table" then
-    error("arg #2 must be a list of tables to truncate", 2)
-  end
-  if plugins ~= nil and type(plugins) ~= "table" then
-    error("arg #3 must be a list of plugins to enable", 2)
-  end
-
-  if plugins then
-    for _, plugin in ipairs(plugins) do
-      conf.loaded_plugins[plugin] = true
-    end
-  end
-
-  if vaults ~= nil and type(vaults) ~= "table" then
-    error("arg #4 must be a list of vaults to enable", 2)
-  end
-
-  if vaults then
-    for _, vault in ipairs(vaults) do
-      conf.loaded_vaults[vault] = true
-    end
-  end
-
-  -- Clean workspaces from the context - otherwise, migrations will fail,
-  -- as some of them have dao calls
-  -- If `no_truncate` is falsey, `dao:truncate` and `db:truncate` are called,
-  -- and these set the workspace back again to the new `default` workspace
-  ngx.ctx.workspace = nil
-
-  -- DAO (DB module)
-  local db = assert(DB.new(conf, strategy))
-  assert(db:init_connector())
-
-  if not skip_migrations then
-    bootstrap_database(db)
-  end
-
-  do
-    local database = conf.database
-    conf.database = strategy
-    conf.database = database
-  end
-
-  db:truncate("plugins")
-  assert(db.vaults:load_vault_schemas(conf.loaded_vaults))
-  assert(db.plugins:load_plugin_schemas(conf.loaded_plugins))
-
-  -- XXX EE
-  kong.invoke_plugin = invoke_plugin.new {
-    loaded_plugins = db.plugins:get_handlers(),
-    kong_global = kong_global,
-  }
-
-  db:truncate("tags")
-
-  -- initialize portal router
-  kong.portal_router = portal_router.new(db)
-
-  _G.kong.db = db
-
-  -- cleanup tables
-  if not tables then
-    assert(db:truncate())
-
-  else
-    tables[#tables + 1] = "workspaces"
-    truncate_tables(db, tables)
-  end
-
-  -- blueprints
-  local bp
-  if strategy ~= "off" then
-    bp = assert(Blueprints.new(db))
-    dcbp = nil
-  else
-    bp = assert(dc_blueprints.new(db))
-    dcbp = bp
-  end
-
-  if plugins then
-    for _, plugin in ipairs(plugins) do
-      conf.loaded_plugins[plugin] = false
-    end
-  end
-
-  rbac.register_dao_hooks(db)
-  if vaults then
-    for _, vault in ipairs(vaults) do
-      conf.loaded_vaults[vault] = false
-    end
-  end
-
-  if strategy ~= "off" then
-    local workspaces = require "kong.workspaces"
-    workspaces.upsert_default(db)
-  end
-
-  -- calculation can only happen here because this function
-  -- initializes the kong.db instance
-  PLUGINS_LIST = assert(kong.db.plugins:get_handlers())
-  table.sort(PLUGINS_LIST, function(a, b)
-    return a.name:lower() < b.name:lower()
-  end)
-
-  PLUGINS_LIST = pl_tablex.map(function(p)
-    return { name = p.name, version = p.handler.VERSION, }
-  end, PLUGINS_LIST)
-
-  return bp, db
-end
 
 -----------------
 -- Custom helpers
 -----------------
 local resty_http_proxy_mt = setmetatable({}, { __index = http })
 resty_http_proxy_mt.__index = resty_http_proxy_mt
-
--- Prepopulate Schema's cache
-Schema.new(consumers_schema_def)
-Schema.new(services_schema_def)
-Schema.new(routes_schema_def)
-
-local plugins_schema = assert(Entity.new(plugins_schema_def))
-
-
---- Validate a plugin configuration against a plugin schema.
--- @function validate_plugin_config_schema
--- @param config The configuration to validate. This is not the full schema,
--- only the `config` sub-object needs to be passed.
--- @param schema_def The schema definition
--- @return the validated schema, or nil+error
-local function validate_plugin_config_schema(config, schema_def, extra_fields)
-  assert(plugins_schema:new_subschema(schema_def.name, schema_def))
-  local entity = {
-    id = uuid(),
-    name = schema_def.name,
-    config = config
-  }
-
-  if extra_fields then
-    for k, v in pairs(extra_fields) do
-      entity[k] = v
-    end
-  end
-
-  local entity_to_insert, err = plugins_schema:process_auto_fields(entity, "insert")
-  if err then
-    return nil, err
-  end
-  local _, err = plugins_schema:validate_insert(entity_to_insert)
-  if err then return
-    nil, err
-  end
-  return entity_to_insert
-end
 
 
 --- Check if a request can be retried in the case of a closed connection
@@ -2168,7 +1692,7 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
   local ok, err = prepare_prefix(prefix)
   if not ok then return nil, err end
 
-  truncate_tables(db, tables)
+  DB.truncate_tables(DB.db, tables)
 
   local nginx_conf = ""
   local nginx_conf_flags = { "test" }
@@ -2187,6 +1711,7 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
     nginx_conf_flags = ""
   end
 
+  local dcbp = DB.get_dcbp()
   if dcbp and not env.declarative_config and not env.declarative_config_string then
     if not config_yml then
       config_yml = prefix .. "/config.yml"
@@ -2505,7 +2030,7 @@ local function clustering_client(opts)
   end
   local payload = assert(cjson.encode({ type = "basic_info",
                                         plugins = opts.node_plugins_list or
-                                                  PLUGINS_LIST,
+                                                  DB.get_plugins_list(),
                                         labels = opts.node_labels,
                                         process_conf = opts.node_process_conf,
                                       }))
@@ -2695,11 +2220,11 @@ end
   utils = pl_utils,
 
   -- Kong testing properties
-  db = db,
-  blueprints = blueprints,
-  get_db_utils = get_db_utils,
-  get_cache = get_cache,
-  bootstrap_database = bootstrap_database,
+  db = DB.db,
+  blueprints = DB.blueprints,
+  get_db_utils = DB.get_db_utils,
+  get_cache = DB.get_cache,
+  bootstrap_database = DB.bootstrap_database,
   bin_path = CONSTANTS.BIN_PATH,
   test_conf = conf,
   test_conf_path = CONSTANTS.TEST_CONF_PATH,
@@ -2787,9 +2312,9 @@ end
   clean_prefix = clean_prefix,
   clean_logfile = clean_logfile,
   wait_for_invalidation = wait_for_invalidation,
-  each_strategy = each_strategy,
-  all_strategies = all_strategies,
-  validate_plugin_config_schema = validate_plugin_config_schema,
+  each_strategy = DB.each_strategy,
+  all_strategies = DB.all_strategies,
+  validate_plugin_config_schema = DB.validate_plugin_config_schema,
   clustering_client = clustering_client,
   tmpdir = tmpdir,
   https_server = https_server,
@@ -2884,6 +2409,7 @@ end
   end,
   -- returns the plugins and version list that is used by Hybrid mode tests
   get_plugins_list = function()
+    local PLUGINS_LIST = DB.get_plugins_list()
     assert(PLUGINS_LIST, "plugin list has not been initialized yet, " ..
                          "you must call get_db_utils first")
     return table_clone(PLUGINS_LIST)
