@@ -8,13 +8,13 @@ import {
     waitForConfigRebuild,
     logResponse,
     isGateway,
-    resetGatewayContainerEnvVariable,
     getKongContainerName,
     getGatewayMode,
     clearAllKongResources,
     randomString,
     generateDpopProof,
     isGwNative,
+    resetGatewayContainerEnvVariable,
 } from '@support'
 import {
     authDetails,

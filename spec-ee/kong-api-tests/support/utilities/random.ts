@@ -25,3 +25,14 @@ export const findRegex = (regexPattern, targetString, testOrExec = 'test') => {
   const regex = new RegExp(regexPattern, 'g');
   return testOrExec === 'test' ? regex.test(targetString) : regex.exec(targetString);
 };
+
+/**
+ * Find number of matches of a given regex in a given string and return count
+ * @param {string} regexPattern to search for
+ * @param {string} targetString
+ * @returns {number}
+ */
+export const regexCount = (regexPattern, targetString) => {
+  const regex = new RegExp(regexPattern, 'g');
+  return (targetString.match(regex) || []).length;
+};
