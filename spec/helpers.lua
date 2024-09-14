@@ -13,14 +13,10 @@
 -- @module spec.helpers
 
 
-local prefix_handler = require "kong.cmd.utils.prefix_handler"
-local conf_loader = require "kong.conf_loader"
-local constants = require "kong.constants"
 local pl_tablex = require "pl.tablex"
 local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
-local version = require "version"
 local pl_dir = require "pl.dir"
 local cjson = require "cjson.safe"
 local kong_table = require "kong.tools.table"
@@ -57,6 +53,8 @@ local DB = reload_module("spec.details.db")
 local grpc = reload_module("spec.details.grpc")
 local dns_mock = reload_module("spec.details.dns")
 local asserts = reload_module("spec.details.asserts") -- luacheck: ignore
+local pid = reload_module("spec.details.pid")
+local cmd = reload_module("spec.details.cmd")
 local server = reload_module("spec.details.server")
 
 
@@ -91,11 +89,6 @@ do
   end
 end
 
-
----------------
--- Conf and DAO
----------------
-local config_yml
 
 -----------------
 -- Custom helpers
@@ -1380,434 +1373,6 @@ do
 end
 
 
---- Prepares the Kong environment.
--- Creates the working directory if it does not exist.
--- @param prefix (optional) path to the working directory, if omitted the test
--- configuration will be used
--- @function prepare_prefix
-local function prepare_prefix(prefix)
-  return pl_dir.makepath(prefix or conf.prefix)
-end
-
-
---- Cleans the Kong environment.
--- Deletes the working directory if it exists.
--- @param prefix (optional) path to the working directory, if omitted the test
--- configuration will be used
--- @function clean_prefix
-local function clean_prefix(prefix)
-
-  -- like pl_dir.rmtree, but ignore mount points
-  local function rmtree(fullpath)
-    if pl_path.islink(fullpath) then return false,'will not follow symlink' end
-    for root,dirs,files in pl_dir.walk(fullpath,true) do
-      if pl_path.islink(root) then
-        -- sub dir is a link, remove link, do not follow
-        local res, err = os.remove(root)
-        if not res then
-          return nil, err .. ": " .. root
-        end
-
-      else
-        for i,f in ipairs(files) do
-          f = pl_path.join(root,f)
-          local res, err = os.remove(f)
-          if not res then
-            return nil,err .. ": " .. f
-          end
-        end
-
-        local res, err = pl_path.rmdir(root)
-        -- skip errors when trying to remove mount points
-        if not res and shell.run("findmnt " .. root .. " 2>&1 >/dev/null", nil, 0) == 0 then
-          return nil, err .. ": " .. root
-        end
-      end
-    end
-    return true
-  end
-
-  prefix = prefix or conf.prefix
-  if pl_path.exists(prefix) then
-    local _, err = rmtree(prefix)
-    if err then
-      error(err)
-    end
-  end
-end
-
-
--- Reads the pid from a pid file and returns it, or nil + err
-local function get_pid_from_file(pid_path)
-  local pid
-  local fd, err = io.open(pid_path)
-  if not fd then
-    return nil, err
-  end
-
-  pid = fd:read("*l")
-  fd:close()
-
-  return pid
-end
-
-
-local function pid_dead(pid, timeout)
-  local max_time = ngx.now() + (timeout or 10)
-
-  repeat
-    if not shell.run("ps -p " .. pid .. " >/dev/null 2>&1", nil, 0) then
-      return true
-    end
-    -- still running, wait some more
-    ngx.sleep(0.05)
-  until ngx.now() >= max_time
-
-  return false
-end
-
--- Waits for the termination of a pid.
--- @param pid_path Filename of the pid file.
--- @param timeout (optional) in seconds, defaults to 10.
-local function wait_pid(pid_path, timeout, is_retry)
-  local pid = get_pid_from_file(pid_path)
-
-  if CONSTANTS.TEST_COVERAGE_MODE == "true" then
-    timeout = CONSTANTS.TEST_COVERAGE_TIMEOUT
-  end
-
-  if pid then
-    if pid_dead(pid, timeout) then
-      return
-    end
-
-    if is_retry then
-      return
-    end
-
-    -- Timeout reached: kill with SIGKILL
-    shell.run("kill -9 " .. pid .. " >/dev/null 2>&1", nil, 0)
-
-    -- Sanity check: check pid again, but don't loop.
-    wait_pid(pid_path, timeout, true)
-  end
-end
-
-
---- Return the actual configuration running at the given prefix.
--- It may differ from the default, as it may have been modified
--- by the `env` table given to start_kong.
--- @function get_running_conf
--- @param prefix (optional) The prefix path where the kong instance is running,
--- defaults to the prefix in the default config.
--- @return The conf table of the running instance, or nil + error.
-local function get_running_conf(prefix)
-  local default_conf = conf_loader(nil, {prefix = prefix or conf.prefix})
-  return conf_loader.load_config_file(default_conf.kong_env)
-end
-
-
---- Clears the logfile. Will overwrite the logfile with an empty file.
--- @function clean_logfile
--- @param logfile (optional) filename to clear, defaults to the current
--- error-log file
--- @return nothing
--- @see line
-local function clean_logfile(logfile)
-  logfile = logfile or (get_running_conf() or conf).nginx_err_logs
-
-  assert(type(logfile) == "string", "'logfile' must be a string")
-
-  local fh, err, errno = io.open(logfile, "w+")
-
-  if fh then
-    fh:close()
-    return
-
-  elseif errno == 2 then -- ENOENT
-    return
-  end
-
-  error("failed to truncate logfile: " .. tostring(err))
-end
-
-
---- Return the actual Kong version the tests are running against.
--- See [version.lua](https://github.com/kong/version.lua) for the format. This
--- is mostly useful for testing plugins that should work with multiple Kong versions.
--- @function get_version
--- @return a `version` object
--- @usage
--- local version = require 'version'
--- if helpers.get_version() < version("0.15.0") then
---   -- do something
--- end
-local function get_version()
-  return version(select(3, assert(kong_exec("version"))))
-end
-
-
-local function render_fixtures(conf, env, prefix, fixtures)
-
-  if fixtures and (fixtures.http_mock or fixtures.stream_mock) then
-    -- prepare the prefix so we get the full config in the
-    -- hidden `.kong_env` file, including test specified env vars etc
-    assert(kong_exec("prepare --conf " .. conf, env))
-    local render_config = assert(conf_loader(prefix .. "/.kong_env", nil,
-                                             { from_kong_env = true }))
-
-    for _, mocktype in ipairs { "http_mock", "stream_mock" } do
-
-      for filename, contents in pairs(fixtures[mocktype] or {}) do
-        -- render the file using the full configuration
-        contents = assert(prefix_handler.compile_conf(render_config, contents))
-
-        -- write file to prefix
-        filename = prefix .. "/" .. filename .. "." .. mocktype
-        assert(pl_utils.writefile(filename, contents))
-      end
-    end
-  end
-
-  if fixtures and fixtures.dns_mock then
-    -- write the mock records to the prefix
-    assert(getmetatable(fixtures.dns_mock) == dns_mock,
-           "expected dns_mock to be of a helpers.dns_mock class")
-    assert(pl_utils.writefile(prefix .. "/dns_mock_records.json",
-                              tostring(fixtures.dns_mock)))
-
-    -- add the mock resolver to the path to ensure the records are loaded
-    if env.lua_package_path then
-      env.lua_package_path = CONSTANTS.DNS_MOCK_LUA_PATH .. ";" .. env.lua_package_path
-    else
-      env.lua_package_path = CONSTANTS.DNS_MOCK_LUA_PATH
-    end
-  else
-    -- remove any old mocks if they exist
-    os.remove(prefix .. "/dns_mock_records.json")
-  end
-
-  return true
-end
-
-
-local function build_go_plugins(path)
-  if pl_path.exists(pl_path.join(path, "go.mod")) then
-    local ok, _, stderr = shell.run(string.format(
-            "cd %s; go mod tidy; go mod download", path), nil, 0)
-    assert(ok, stderr)
-  end
-  for _, go_source in ipairs(pl_dir.getfiles(path, "*.go")) do
-    local ok, _, stderr = shell.run(string.format(
-            "cd %s; go build %s",
-            path, pl_path.basename(go_source)
-    ), nil, 0)
-    assert(ok, stderr)
-  end
-end
-
---- Start the Kong instance to test against.
--- The fixtures passed to this function can be 3 types:
---
--- * DNS mocks
---
--- * Nginx server blocks to be inserted in the http module
---
--- * Nginx server blocks to be inserted in the stream module
--- @function start_kong
--- @param env table with Kong configuration parameters (and values)
--- @param tables list of database tables to truncate before starting
--- @param preserve_prefix (boolean) if truthy, the prefix will not be cleaned
--- before starting
--- @param fixtures tables with fixtures, dns, http and stream mocks.
--- @return return values from `execute`
--- @usage
--- -- example mocks
--- -- Create a new DNS mock and add some DNS records
--- local fixtures = {
---   http_mock = {},
---   stream_mock = {},
---   dns_mock = helpers.dns_mock.new()
--- }
---
--- **DEPRECATED**: http_mock fixture is deprecated. Please use `spec.helpers.http_mock` instead.
---
--- fixtures.dns_mock:A {
---   name = "a.my.srv.test.com",
---   address = "127.0.0.1",
--- }
---
--- -- The blocks below will be rendered by the Kong template renderer, like other
--- -- custom Kong templates. Hence the `${{xxxx}}` values.
--- -- Multiple mocks can be added each under their own filename ("my_server_block" below)
--- fixtures.http_mock.my_server_block = [[
---      server {
---          server_name my_server;
---          listen 10001 ssl;
---
---          ssl_certificate ${{SSL_CERT}};
---          ssl_certificate_key ${{SSL_CERT_KEY}};
---          ssl_protocols TLSv1.2 TLSv1.3;
---
---          location ~ "/echobody" {
---            content_by_lua_block {
---              ngx.req.read_body()
---              local echo = ngx.req.get_body_data()
---              ngx.status = status
---              ngx.header["Content-Length"] = #echo + 1
---              ngx.say(echo)
---            }
---          }
---      }
---    ]]
---
--- fixtures.stream_mock.my_server_block = [[
---      server {
---        -- insert stream server config here
---      }
---    ]]
---
--- assert(helpers.start_kong( {database = "postgres"}, nil, nil, fixtures))
-local function start_kong(env, tables, preserve_prefix, fixtures)
-  if tables ~= nil and type(tables) ~= "table" then
-    error("arg #2 must be a list of tables to truncate")
-  end
-  env = env or {}
-  local prefix = env.prefix or conf.prefix
-
-  -- go plugins are enabled
-  --  compile fixture go plugins if any setting mentions it
-  for _,v in pairs(env) do
-    if type(v) == "string" and v:find(CONSTANTS.GO_PLUGIN_PATH) then
-      build_go_plugins(CONSTANTS.GO_PLUGIN_PATH)
-      break
-    end
-  end
-
-  -- note: set env var "KONG_TEST_DONT_CLEAN" !! the "_TEST" will be dropped
-  if not (preserve_prefix or os.getenv("KONG_DONT_CLEAN")) then
-    clean_prefix(prefix)
-  end
-
-  local ok, err = prepare_prefix(prefix)
-  if not ok then return nil, err end
-
-  DB.truncate_tables(DB.db, tables)
-
-  local nginx_conf = ""
-  local nginx_conf_flags = { "test" }
-  if env.nginx_conf then
-    nginx_conf = " --nginx-conf " .. env.nginx_conf
-  end
-
-  if CONSTANTS.TEST_COVERAGE_MODE == "true" then
-    -- render `coverage` blocks in the templates
-    nginx_conf_flags[#nginx_conf_flags + 1] = 'coverage'
-  end
-
-  if next(nginx_conf_flags) then
-    nginx_conf_flags = " --nginx-conf-flags " .. table.concat(nginx_conf_flags, ",")
-  else
-    nginx_conf_flags = ""
-  end
-
-  local dcbp = DB.get_dcbp()
-  if dcbp and not env.declarative_config and not env.declarative_config_string then
-    if not config_yml then
-      config_yml = prefix .. "/config.yml"
-      local cfg = dcbp.done()
-      local declarative = require "kong.db.declarative"
-      local ok, err = declarative.to_yaml_file(cfg, config_yml)
-      if not ok then
-        return nil, err
-      end
-    end
-    env = kong_table.cycle_aware_deep_copy(env)
-    env.declarative_config = config_yml
-  end
-
-  assert(render_fixtures(CONSTANTS.TEST_CONF_PATH .. nginx_conf, env, prefix, fixtures))
-  return kong_exec("start --conf " .. CONSTANTS.TEST_CONF_PATH .. nginx_conf .. nginx_conf_flags, env)
-end
-
-
--- Cleanup after kong test instance, should be called if start_kong was invoked with the nowait flag
--- @function cleanup_kong
--- @param prefix (optional) the prefix where the test instance runs, defaults to the test configuration.
--- @param preserve_prefix (boolean) if truthy, the prefix will not be deleted after stopping
--- @param preserve_dc ???
-local function cleanup_kong(prefix, preserve_prefix, preserve_dc)
-  -- remove socket files to ensure `pl.dir.rmtree()` ok
-  prefix = prefix or conf.prefix
-  local socket_path = pl_path.join(prefix, constants.SOCKET_DIRECTORY)
-  for child in lfs.dir(socket_path) do
-    local path = pl_path.join(socket_path, child)
-    if lfs.attributes(path, "mode") == "socket" then
-      os.remove(path)
-    end
-  end
-
-  -- note: set env var "KONG_TEST_DONT_CLEAN" !! the "_TEST" will be dropped
-  if not (preserve_prefix or os.getenv("KONG_DONT_CLEAN")) then
-    clean_prefix(prefix)
-  end
-
-  if not preserve_dc then
-    config_yml = nil
-  end
-  ngx.ctx.workspace = nil
-end
-
-
--- Stop the Kong test instance.
--- @function stop_kong
--- @param prefix (optional) the prefix where the test instance runs, defaults to the test configuration.
--- @param preserve_prefix (boolean) if truthy, the prefix will not be deleted after stopping
--- @param preserve_dc ???
--- @param signal (optional string) signal name to send to kong, defaults to TERM
--- @param nowait (optional) if truthy, don't wait for kong to terminate.  caller needs to wait and call cleanup_kong
--- @return true or nil+err
-local function stop_kong(prefix, preserve_prefix, preserve_dc, signal, nowait)
-  prefix = prefix or conf.prefix
-  signal = signal or "TERM"
-
-  local running_conf, err = get_running_conf(prefix)
-  if not running_conf then
-    return nil, err
-  end
-
-  local pid, err = get_pid_from_file(running_conf.nginx_pid)
-  if not pid then
-    return nil, err
-  end
-
-  local ok, _, err = shell.run(string.format("kill -%s %d", signal, pid), nil, 0)
-  if not ok then
-    return nil, err
-  end
-
-  if nowait then
-    return running_conf.nginx_pid
-  end
-
-  wait_pid(running_conf.nginx_pid)
-
-  cleanup_kong(prefix, preserve_prefix, preserve_dc)
-
-  return true
-end
-
---- Restart Kong. Reusing declarative config when using `database=off`.
--- @function restart_kong
--- @param env see `start_kong`
--- @param tables see `start_kong`
--- @param fixtures see `start_kong`
--- @return true or nil+err
-local function restart_kong(env, tables, fixtures)
-  stop_kong(env.prefix, true, true)
-  return start_kong(env, tables, true, fixtures)
-end
-
 --- Wait until no common workers.
 -- This will wait until all the worker PID's listed have gone (others may have appeared). If an `expected_total` is specified, it will also wait until the new workers have reached this number.
 -- @function wait_until_no_common_workers
@@ -1907,92 +1472,6 @@ local function reload_kong(...)
     wait_until_no_common_workers(workers, 1, opts[2])
   end
   return ok, err
-end
-
-local is_echo_server_ready, get_echo_server_received_data, echo_server_reset
-do
-  -- Message id is maintained within echo server context and not
-  -- needed for echo server user.
-  -- This id is extracted from the number in nginx error.log at each
-  -- line of log. i.e.:
-  --  2023/12/15 14:10:12 [info] 718291#0: *303 stream [lua] content_by_lua ...
-  -- in above case, the id is 303.
-  local msg_id = -1
-  local prefix_dir = "servroot"
-
-  --- Check if echo server is ready.
-  --
-  -- @function is_echo_server_ready
-  -- @return boolean
-  function is_echo_server_ready()
-    -- ensure server is ready.
-    local sock = ngx.socket.tcp()
-    sock:settimeout(0.1)
-    local retry = 0
-    local test_port = 8188
-
-    while true do
-      if sock:connect("localhost", test_port) then
-        sock:send("START\n")
-        local ok = sock:receive()
-        sock:close()
-        if ok == "START" then
-          return true
-        end
-      else
-        retry = retry + 1
-        if retry > 10 then
-          return false
-        end
-      end
-    end
-  end
-
-  --- Get the echo server's received data.
-  -- This function check the part of expected data with a timeout.
-  --
-  -- @function get_echo_server_received_data
-  -- @param expected part of the data expected.
-  -- @param timeout (optional) timeout in seconds, default is 0.5.
-  -- @return  the data the echo server received. If timeouts, return "timeout".
-  function get_echo_server_received_data(expected, timeout)
-    if timeout == nil then
-      timeout = 0.5
-    end
-
-    local extract_cmd = "grep content_by_lua "..prefix_dir.."/logs/error.log | tail -1"
-    local _, _, log = assert(exec(extract_cmd))
-    local pattern = "%*(%d+)%s.*received data: (.*)"
-    local cur_msg_id, data = string.match(log, pattern)
-
-    -- unit is second.
-    local t = 0.1
-    local time_acc = 0
-
-    -- retry it when data is not available. because sometime,
-    -- the error.log has not been flushed yet.
-    while string.find(data, expected) == nil or cur_msg_id == msg_id  do
-      ngx.sleep(t)
-      time_acc = time_acc + t
-      if time_acc >= timeout then
-        return "timeout"
-      end
-
-      _, _, log = assert(exec(extract_cmd))
-      cur_msg_id, data = string.match(log, pattern)
-    end
-
-    -- update the msg_id, it persists during a cycle from echo server
-    -- start to stop.
-    msg_id = cur_msg_id
-
-    return data
-  end
-
-  function echo_server_reset()
-    stop_kong(prefix_dir)
-    msg_id = -1
-  end
 end
 
 --- Simulate a Hybrid mode DP and connect to the CP specified in `opts`.
@@ -2276,15 +1755,15 @@ end
   execute = exec,
   dns_mock = dns_mock,
   kong_exec = kong_exec,
-  get_version = get_version,
-  get_running_conf = get_running_conf,
+  get_version = cmd.get_version,
+  get_running_conf = cmd.get_running_conf,
   http_client = http_client,
   grpc_client = grpc_client,
   http2_client = http2_client,
   make_synchronized_clients = make_synchronized_clients,
   wait_until = wait_until,
   pwait_until = pwait_until,
-  wait_pid = wait_pid,
+  wait_pid = pid.wait_pid,
   wait_timer = wait_timer,
   wait_for_all_config_update = wait_for_all_config_update,
   wait_for_file = wait_for_file,
@@ -2292,9 +1771,9 @@ end
   tcp_server = server.tcp_server,
   udp_server = server.udp_server,
   kill_tcp_server = server.kill_tcp_server,
-  is_echo_server_ready = is_echo_server_ready,
-  echo_server_reset = echo_server_reset,
-  get_echo_server_received_data = get_echo_server_received_data,
+  is_echo_server_ready = server.is_echo_server_ready,
+  echo_server_reset = server.echo_server_reset,
+  get_echo_server_received_data = server.get_echo_server_received_data,
   http_mock = server.http_mock,
   get_proxy_ip = get_proxy_ip,
   get_proxy_port = get_proxy_port,
@@ -2308,9 +1787,9 @@ end
   proxy_ssl_client = proxy_ssl_client,
   admin_ssl_client = admin_ssl_client,
   admin_gui_ssl_client = admin_gui_ssl_client,
-  prepare_prefix = prepare_prefix,
-  clean_prefix = clean_prefix,
-  clean_logfile = clean_logfile,
+  prepare_prefix = cmd.prepare_prefix,
+  clean_prefix = cmd.clean_prefix,
+  clean_logfile = cmd.clean_logfile,
   wait_for_invalidation = wait_for_invalidation,
   each_strategy = DB.each_strategy,
   all_strategies = DB.all_strategies,
@@ -2332,10 +1811,10 @@ end
   generate_keys = misc.generate_keys,
 
   -- launching Kong subprocesses
-  start_kong = start_kong,
-  stop_kong = stop_kong,
-  cleanup_kong = cleanup_kong,
-  restart_kong = restart_kong,
+  start_kong = cmd.start_kong,
+  stop_kong = cmd.stop_kong,
+  cleanup_kong = cmd.cleanup_kong,
+  restart_kong = cmd.restart_kong,
   reload_kong = reload_kong,
   get_kong_workers = get_kong_workers,
   wait_until_no_common_workers = wait_until_no_common_workers,
@@ -2348,19 +1827,7 @@ end
   use_old_plugin = use_old_plugin,
 
   -- Only use in CLI tests from spec/02-integration/01-cmd
-  kill_all = function(prefix, timeout)
-    local kill = require "kong.cmd.utils.kill"
-
-    local running_conf = get_running_conf(prefix)
-    if not running_conf then return end
-
-    -- kill kong_tests.conf service
-    local pid_path = running_conf.nginx_pid
-    if pl_path.exists(pid_path) then
-      kill.kill(pid_path, "-TERM")
-      wait_pid(pid_path, timeout)
-    end
-  end,
+  kill_all = cmd.kill_all,
 
   with_current_ws = function(ws,fn, db)
     local old_ws = ngx.ctx.workspace
@@ -2372,41 +1839,11 @@ end
     return res
   end,
 
-  signal = function(prefix, signal, pid_path)
-    local kill = require "kong.cmd.utils.kill"
-
-    if not pid_path then
-      local running_conf = get_running_conf(prefix)
-      if not running_conf then
-        error("no config file found at prefix: " .. prefix)
-      end
-
-      pid_path = running_conf.nginx_pid
-    end
-
-    return kill.kill(pid_path, signal)
-  end,
+  signal = cmd.signal,
 
   -- send signal to all Nginx workers, not including the master
-  signal_workers = function(prefix, signal, pid_path)
-    if not pid_path then
-      local running_conf = get_running_conf(prefix)
-      if not running_conf then
-        error("no config file found at prefix: " .. prefix)
-      end
+  signal_workers = cmd.signal_workers,
 
-      pid_path = running_conf.nginx_pid
-    end
-
-    local cmd = string.format("pkill %s -P `cat %s`", signal, pid_path)
-    local _, _, _, _, code = shell.run(cmd)
-
-    if not pid_dead(pid_path) then
-      return false
-    end
-
-    return code
-  end,
   -- returns the plugins and version list that is used by Hybrid mode tests
   get_plugins_list = function()
     local PLUGINS_LIST = DB.get_plugins_list()
