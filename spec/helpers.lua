@@ -12,13 +12,11 @@ local pl_file = require "pl.file"
 local pl_dir = require "pl.dir"
 local cjson = require "cjson.safe"
 local log = require "kong.cmd.utils.log"
-local ssl = require "ngx.ssl"
-local ws_client = require "resty.websocket.client"
+local table_clone = require "table.clone"
 local https_server = require "spec.fixtures.https_server"
 local stress_generator = require "spec.fixtures.stress_generator"
 local lfs = require "lfs"
 local luassert = require "luassert.assert"
-local uuid = require("kong.tools.uuid").uuid
 
 
 local reload_module = require("spec.internal.module").reload
@@ -701,63 +699,76 @@ local function reload_kong(strategy, ...)
   return ok, err
 end
 
---- Simulate a Hybrid mode DP and connect to the CP specified in `opts`.
--- @function clustering_client
--- @param opts Options to use, the `host`, `port`, `cert` and `cert_key` fields
--- are required.
--- Other fields that can be overwritten are:
--- `node_hostname`, `node_id`, `node_version`, `node_plugins_list`. If absent,
--- they are automatically filled.
--- @return msg if handshake succeeded and initial message received from CP or nil, err
-local function clustering_client(opts)
-  assert(opts.host)
-  assert(opts.port)
-  assert(opts.cert)
-  assert(opts.cert_key)
+local make_temp_dir
+do
+  local seeded = false
 
-  local inflate_gzip = require("kong.tools.gzip").inflate_gzip
+  function make_temp_dir()
+    if not seeded then
+      ngx.update_time()
+      math.randomseed(ngx.worker.pid() + ngx.now())
+      seeded = true
+    end
 
-  local c = assert(ws_client:new())
-  local uri = "wss://" .. opts.host .. ":" .. opts.port ..
-              "/v1/outlet?node_id=" .. (opts.node_id or uuid()) ..
-              "&node_hostname=" .. (opts.node_hostname or kong.node.get_hostname()) ..
-              "&node_version=" .. (opts.node_version or CONSTANTS.KONG_VERSION)
+    local tmp
+    local ok, err
 
-  local conn_opts = {
-    ssl_verify = false, -- needed for busted tests as CP certs are not trusted by the CLI
-    client_cert = assert(ssl.parse_pem_cert(assert(pl_file.read(opts.cert)))),
-    client_priv_key = assert(ssl.parse_pem_priv_key(assert(pl_file.read(opts.cert_key)))),
-    server_name = opts.server_name or "kong_clustering",
-  }
+    local tries = 1000
+    for _ = 1, tries do
+      local name = "/tmp/.kong-test" .. math.random()
 
-  local res, err = c:connect(uri, conn_opts)
-  if not res then
-    return nil, err
+      ok, err = pl_path.mkdir(name)
+
+      if ok then
+        tmp = name
+        break
+      end
+    end
+
+    assert(tmp ~= nil, "failed to create temporary directory " ..
+                       "after " .. tostring(tries) .. " tries, " ..
+                       "last error: " .. tostring(err))
+
+    return tmp, function() pl_dir.rmtree(tmp) end
   end
-  local payload = assert(cjson.encode({ type = "basic_info",
-                                        plugins = opts.node_plugins_list or
-                                                  DB.get_plugins_list(),
-                                        labels = opts.node_labels,
-                                        process_conf = opts.node_process_conf,
-                                      }))
-  assert(c:send_binary(payload))
+end
 
-  assert(c:send_ping(string.rep("0", 32)))
+-- This function is used for plugin compatibility test.
+-- It will use the old version plugin by including the path of the old plugin
+-- at the first of LUA_PATH.
+-- The return value is a function which when called will recover the original
+-- LUA_PATH and remove the temporary directory if it exists.
+-- For an example of how to use it, please see:
+-- plugins-ee/rate-limiting-advanced/spec/06-old-plugin-compatibility_spec.lua
+-- spec/03-plugins/03-http-log/05-old-plugin-compatibility_spec.lua
+local function use_old_plugin(name)
+  assert(type(name) == "string", "must specify the plugin name")
 
-  local data, typ, err
-  data, typ, err = c:recv_frame()
-  c:close()
+  local old_plugin_path
+  local temp_dir
+  if pl_path.exists(CONSTANTS.OLD_VERSION_KONG_PATH .. "/kong/plugins/" .. name) then
+    -- only include the path of the specified plugin into LUA_PATH
+    -- and keep the directory structure 'kong/plugins/...'
+    temp_dir = make_temp_dir()
+    old_plugin_path = temp_dir
+    local dest_dir = old_plugin_path .. "/kong/plugins"
+    assert(pl_dir.makepath(dest_dir), "failed to makepath " .. dest_dir)
+    assert(shell.run("cp -r " .. CONSTANTS.OLD_VERSION_KONG_PATH .. "/kong/plugins/" .. name .. " " .. dest_dir), "failed to copy the plugin directory")
 
-  if typ == "binary" then
-    local odata = assert(inflate_gzip(data))
-    local msg = assert(cjson.decode(odata))
-    return msg
-
-  elseif typ == "pong" then
-    return "PONG"
+  else
+    error("the specified plugin " .. name .. " doesn't exist")
   end
 
-  return nil, "unknown frame from CP: " .. (typ or err)
+  local origin_lua_path = os.getenv("LUA_PATH")
+  -- put the old plugin path at first
+  assert(misc.setenv("LUA_PATH", old_plugin_path .. "/?.lua;" .. old_plugin_path .. "/?/init.lua;" .. origin_lua_path), "failed to set LUA_PATH env")
+
+  return function ()
+    misc.setenv("LUA_PATH", origin_lua_path)
+    if temp_dir then
+      pl_dir.rmtree(temp_dir)
+    end
+  end
 end
 
 
@@ -910,7 +921,7 @@ end
   each_strategy = DB.each_strategy,
   all_strategies = DB.all_strategies,
   validate_plugin_config_schema = DB.validate_plugin_config_schema,
-  clustering_client = clustering_client,
+  clustering_client = client.clustering_client,
   https_server = https_server,
   stress_generator = stress_generator,
 

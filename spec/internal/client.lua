@@ -6,17 +6,22 @@
 -- @module spec.helpers
 
 
-local cjson = require("cjson.safe")
-local http = require("resty.http")
+local pl_file = require("pl.file")
 local pl_tablex = require("pl.tablex")
 local luassert = require("luassert.assert")
+local cjson = require("cjson.safe")
+local ssl = require("ngx.ssl")
+local http = require("resty.http")
+local ws_client = require("resty.websocket.client")
 local kong_table = require("kong.tools.table")
+local uuid = require("kong.tools.uuid").uuid
 
 
 local CONSTANTS = require("spec.internal.constants")
 local conf = require("spec.internal.conf")
 local shell = require("spec.internal.shell")
 local misc = require("spec.internal.misc")
+local DB = require("spec.internal.db")
 local asserts = require("spec.internal.asserts") -- luacheck: ignore
 
 
@@ -765,6 +770,66 @@ local function make_synchronized_clients(clients)
 end
 
 
+--- Simulate a Hybrid mode DP and connect to the CP specified in `opts`.
+-- @function clustering_client
+-- @param opts Options to use, the `host`, `port`, `cert` and `cert_key` fields
+-- are required.
+-- Other fields that can be overwritten are:
+-- `node_hostname`, `node_id`, `node_version`, `node_plugins_list`. If absent,
+-- they are automatically filled.
+-- @return msg if handshake succeeded and initial message received from CP or nil, err
+local function clustering_client(opts)
+  assert(opts.host)
+  assert(opts.port)
+  assert(opts.cert)
+  assert(opts.cert_key)
+
+  local inflate_gzip = require("kong.tools.gzip").inflate_gzip
+
+  local c = assert(ws_client:new())
+  local uri = "wss://" .. opts.host .. ":" .. opts.port ..
+              "/v1/outlet?node_id=" .. (opts.node_id or uuid()) ..
+              "&node_hostname=" .. (opts.node_hostname or kong.node.get_hostname()) ..
+              "&node_version=" .. (opts.node_version or CONSTANTS.KONG_VERSION)
+
+  local conn_opts = {
+    ssl_verify = false, -- needed for busted tests as CP certs are not trusted by the CLI
+    client_cert = assert(ssl.parse_pem_cert(assert(pl_file.read(opts.cert)))),
+    client_priv_key = assert(ssl.parse_pem_priv_key(assert(pl_file.read(opts.cert_key)))),
+    server_name = opts.server_name or "kong_clustering",
+  }
+
+  local res, err = c:connect(uri, conn_opts)
+  if not res then
+    return nil, err
+  end
+  local payload = assert(cjson.encode({ type = "basic_info",
+                                        plugins = opts.node_plugins_list or
+                                                  DB.get_plugins_list(),
+                                        labels = opts.node_labels,
+                                        process_conf = opts.node_process_conf,
+                                      }))
+  assert(c:send_binary(payload))
+
+  assert(c:send_ping(string.rep("0", 32)))
+
+  local data, typ, err
+  data, typ, err = c:recv_frame()
+  c:close()
+
+  if typ == "binary" then
+    local odata = assert(inflate_gzip(data))
+    local msg = assert(cjson.decode(odata))
+    return msg
+
+  elseif typ == "pong" then
+    return "PONG"
+  end
+
+  return nil, "unknown frame from CP: " .. (typ or err)
+end
+
+
 return {
   get_proxy_ip = get_proxy_ip,
   get_proxy_port = get_proxy_port,
@@ -787,5 +852,7 @@ return {
   admin_gui_ssl_client = admin_gui_ssl_client,
 
   make_synchronized_clients = make_synchronized_clients,
+
+  clustering_client = clustering_client,
 }
 
