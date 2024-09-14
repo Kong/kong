@@ -113,15 +113,16 @@ end
 
 local function merge_consumer_groups_window_size(config)
   local base_window_size = config.window_size
+  local ws_id = config.__ws_id
 
   local merged_sizes    -- array of window sizes
   local seen_sizes      -- map of window sizes
 
   if config.enforce_consumer_groups and config.consumer_groups then
     for _, group_name in ipairs(config.consumer_groups) do
-      local consumer_group = helpers.get_consumer_group(group_name)
+      local consumer_group = helpers.get_consumer_group(group_name, ws_id)
       if consumer_group then
-        local consumer_group_config = helpers.get_consumer_group_config(consumer_group.id, "rate-limiting-advanced")
+        local consumer_group_config = helpers.get_consumer_group_config(consumer_group.id, "rate-limiting-advanced", ws_id)
         local consumer_group_window_size = consumer_group_config and consumer_group_config.config
                                            and consumer_group_config.config.window_size
         if consumer_group_window_size then

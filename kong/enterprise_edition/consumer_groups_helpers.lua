@@ -9,20 +9,30 @@ local kong = kong
 local utils = require "kong.tools.utils"
 
 
-local function _select_consumer_group(consumer_group_pk)
-  if not utils.is_valid_uuid(consumer_group_pk) then
-    return kong.db.consumer_groups:select_by_name(consumer_group_pk)
+local function _select_consumer_group(consumer_group_pk, ws_id)
+  local opts
+  if ws_id then
+    opts = { workspace = ws_id }
   end
-  return kong.db.consumer_groups:select({ id = consumer_group_pk })
+
+  if not utils.is_valid_uuid(consumer_group_pk) then
+    return kong.db.consumer_groups:select_by_name(consumer_group_pk, opts)
+  end
+  return kong.db.consumer_groups:select({ id = consumer_group_pk }, opts)
 end
 
-local function get_consumer_group(consumer_group_pk)
-  local cache_key = kong.db.consumer_groups:cache_key(consumer_group_pk)
-  return kong.cache:get(cache_key, nil, _select_consumer_group, consumer_group_pk)
+local function get_consumer_group(consumer_group_pk, ws_id)
+  local cache_key = kong.db.consumer_groups:cache_key(consumer_group_pk, nil, nil, nil, nil, ws_id)
+  return kong.cache:get(cache_key, nil, _select_consumer_group, consumer_group_pk, ws_id)
 end
 
-local function _find_consumer_group_config(consumer_group_pk, plugin_name)
-  for row, err in kong.db.consumer_group_plugins:each_for_consumer_group({ id = consumer_group_pk }, nil, { search_fields = { name = { eq = plugin_name } } }) do
+local function _find_consumer_group_config(consumer_group_pk, plugin_name, ws_id)
+  local opts = { search_fields = { name = { eq = plugin_name } } }
+  if ws_id then
+    opts.workspace = ws_id
+  end
+
+  for row, err in kong.db.consumer_group_plugins:each_for_consumer_group({ id = consumer_group_pk }, nil, opts) do
     if err then
       kong.log.err(err)
       return nil, err
@@ -34,9 +44,9 @@ local function _find_consumer_group_config(consumer_group_pk, plugin_name)
   return nil, "could not find the configuration"
 end
 
-local function get_consumer_group_config(consumer_group_pk, plugin_name)
-  local cache_key = kong.db.consumer_group_plugins:cache_key(consumer_group_pk, plugin_name)
-  return kong.cache:get(cache_key, nil, _find_consumer_group_config, consumer_group_pk, plugin_name)
+local function get_consumer_group_config(consumer_group_pk, plugin_name, ws_id)
+  local cache_key = kong.db.consumer_group_plugins:cache_key(consumer_group_pk, plugin_name, nil, nil, nil, ws_id)
+  return kong.cache:get(cache_key, nil, _find_consumer_group_config, consumer_group_pk, plugin_name, ws_id)
 end
 
 local function get_consumers_in_group(consumer_group_pk)

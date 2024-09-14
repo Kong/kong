@@ -2388,6 +2388,90 @@ for _, strategy in strategies() do
             )
           ))
 
+          -- [[  create a non-default workspace: ws1
+          local ws1 = bp.workspaces:insert {
+            name = "ws1",
+          }
+
+          -- consumer_group_gold_ws1 has a overriding config
+          local consumer_gold_ws1 = assert(bp.consumers:insert_ws({
+            custom_id = "consumer_gold_ws1"
+          }, ws1))
+
+          -- consumer_group_silver_ws1 has no overriding config
+          local consumer_silver_ws1 = assert(bp.consumers:insert_ws({
+            custom_id = "consumer_silver_ws1"
+          }, ws1))
+
+          -- not in any consumer group
+          local consumer_copper_ws1 = assert(bp.consumers:insert_ws({
+            custom_id = "consumer_copper_ws1"
+          }, ws1))
+
+          local consumer_group_gold_ws1 = assert(bp.consumer_groups:insert_ws({
+            name = "consumer_group_gold_ws1"
+          }, ws1))
+
+          local consumer_group_silver_ws1 = assert(bp.consumer_groups:insert_ws({
+            name = "consumer_group_silver_ws1"
+          }, ws1))
+
+          assert(bp.consumer_group_consumers:insert({
+            consumer          = { id = consumer_gold_ws1.id },
+            consumer_group 	  = { id = consumer_group_gold_ws1.id },
+          }))
+
+          assert(bp.consumer_group_consumers:insert({
+            consumer          = { id = consumer_silver_ws1.id },
+            consumer_group 	  = { id = consumer_group_silver_ws1.id },
+          }))
+
+          assert(bp.consumer_group_plugins:insert_ws({
+              name = "rate-limiting-advanced",
+              consumer_group = { id = consumer_group_gold_ws1.id },
+              config = {
+                window_size = { 20 },   -- a window_size different from that in the default config
+                limit = { OVERRIDE_LIMIT },
+              }
+          }, ws1))
+
+          assert(bp.keyauth_credentials:insert_ws({
+            key = "apikeygold_ws1",
+            consumer = { id = consumer_gold_ws1.id },
+          }, ws1))
+
+          assert(bp.keyauth_credentials:insert_ws({
+            key = "apikeysilver_ws1",
+            consumer = { id = consumer_silver_ws1.id },
+          }, ws1))
+
+          assert(bp.keyauth_credentials:insert_ws({
+            key = "apikeycopper_ws1",
+            consumer = { id = consumer_copper_ws1.id },
+          }, ws1))
+
+          local route_for_consumer_group_window_size_ws1 = assert(bp.routes:insert_ws({
+            name = "test_consumer_groups_window_size_ws1",
+            hosts = { "consumer_group_window_size_ws1.test"},
+          }, ws1))
+
+          assert(bp.plugins:insert_ws({
+            name = "key-auth",
+            route = { id = route_for_consumer_group_window_size_ws1.id },
+          }, ws1))
+
+          assert(bp.plugins:insert_ws(
+            build_plugin_fn("redis")(
+              route_for_consumer_group_window_size_ws1.id, 10, DEFAULT_LIMIT, 0.1, nil,
+              nil, redis_configuration, {
+                namespace = "Bja3la2PxdkaeUEMC2dcHa8pocMy241d",
+                enforce_consumer_groups = true,
+                consumer_groups = { "consumer_group_gold_ws1", "consumer_group_silver_ws1" }
+              }
+            ), ws1
+          ))
+          -- ws1 ]]
+
           assert(helpers.start_kong({
             plugins = "rate-limiting-advanced,key-auth",
             role = "control_plane",
@@ -2812,98 +2896,100 @@ for _, strategy in strategies() do
         end)
 
         describe("with consumer groups", function()
-          it("works normally when the window_size in overriding config is different from that in the default config", function()
-            -- Hit DP 1
-            for i = 1, OVERRIDE_LIMIT do
-              proxy_client = helpers.proxy_client(nil, PROXY_PORT)
+          for ws, suffix in pairs({ default = "", ws1 = "_ws1" }) do
+            it("works normally when the window_size in overriding config is different from that in the default config with workspace " .. ws, function()
+              -- Hit DP 1
+              for i = 1, OVERRIDE_LIMIT do
+                proxy_client = helpers.proxy_client(nil, PROXY_PORT)
+                local res = assert(proxy_client:send {
+                  method = "GET",
+                  path = "/get?apikey=apikeygold" .. suffix,
+                  headers = {
+                    ["Host"] = "consumer_group_window_size" .. suffix .. ".test"
+                  }
+                })
+                assert.res_status(200, res)
+                proxy_client:close()
+              end
+
+              -- wait for the counter to sync
+              ngx_sleep(0.1 + 0.5)
+
+              -- Hit DP 2
+              proxy_client = helpers.proxy_client(nil, 9104)
               local res = assert(proxy_client:send {
                 method = "GET",
-                path = "/get?apikey=apikeygold",
+                path = "/get?apikey=apikeygold" .. suffix,
                 headers = {
-                  ["Host"] = "consumer_group_window_size.test"
+                  ["Host"] = "consumer_group_window_size" .. suffix .. ".test"
                 }
               })
-              assert.res_status(200, res)
+              assert.res_status(429, res)
               proxy_client:close()
-            end
+            end)
 
-            -- wait for the counter to sync
-            ngx_sleep(0.1 + 0.5)
+            it("uses the default config if the consumer groups doesn't have overriding config with workspace " .. ws, function()
+              -- Hit DP 1
+              for i = 1, DEFAULT_LIMIT do
+                proxy_client = helpers.proxy_client(nil, PROXY_PORT)
+                local res = assert(proxy_client:send {
+                  method = "GET",
+                  path = "/get?apikey=apikeysilver" .. suffix,
+                  headers = {
+                    ["Host"] = "consumer_group_window_size" .. suffix .. ".test"
+                  }
+                })
+                assert.res_status(200, res)
+                proxy_client:close()
+              end
 
-            -- Hit DP 2
-            proxy_client = helpers.proxy_client(nil, 9104)
-            local res = assert(proxy_client:send {
-              method = "GET",
-              path = "/get?apikey=apikeygold",
-              headers = {
-                ["Host"] = "consumer_group_window_size.test"
-              }
-            })
-            assert.res_status(429, res)
-            proxy_client:close()
-          end)
+              -- wait for the counter to sync
+              ngx_sleep(0.1 + 0.5)
 
-          it("uses the default config if the consumer groups doesn't have overriding config", function()
-            -- Hit DP 1
-            for i = 1, DEFAULT_LIMIT do
-              proxy_client = helpers.proxy_client(nil, PROXY_PORT)
+              -- Hit DP 2
+              proxy_client = helpers.proxy_client(nil, 9104)
               local res = assert(proxy_client:send {
                 method = "GET",
-                path = "/get?apikey=apikeysilver",
+                path = "/get?apikey=apikeysilver" .. suffix,
                 headers = {
-                  ["Host"] = "consumer_group_window_size.test"
+                  ["Host"] = "consumer_group_window_size" .. suffix .. ".test"
                 }
               })
-              assert.res_status(200, res)
+              assert.res_status(429, res)
               proxy_client:close()
-            end
+            end)
 
-            -- wait for the counter to sync
-            ngx_sleep(0.1 + 0.5)
+            it("uses the default config if the consumer isn't in any group with workspace " .. ws, function()
+              -- Hit DP 1
+              for i = 1, DEFAULT_LIMIT do
+                proxy_client = helpers.proxy_client(nil, PROXY_PORT)
+                local res = assert(proxy_client:send {
+                  method = "GET",
+                  path = "/get?apikey=apikeycopper" .. suffix,
+                  headers = {
+                    ["Host"] = "consumer_group_window_size" .. suffix .. ".test"
+                  }
+                })
+                assert.res_status(200, res)
+                proxy_client:close()
+              end
 
-            -- Hit DP 2
-            proxy_client = helpers.proxy_client(nil, 9104)
-            local res = assert(proxy_client:send {
-              method = "GET",
-              path = "/get?apikey=apikeysilver",
-              headers = {
-                ["Host"] = "consumer_group_window_size.test"
-              }
-            })
-            assert.res_status(429, res)
-            proxy_client:close()
-          end)
+              -- wait for the counter to sync
+              ngx_sleep(0.1 + 0.5)
 
-          it("uses the default config if the consumer isn't in any group", function()
-            -- Hit DP 1
-            for i = 1, DEFAULT_LIMIT do
-              proxy_client = helpers.proxy_client(nil, PROXY_PORT)
+              -- Hit DP 2
+              proxy_client = helpers.proxy_client(nil, 9104)
               local res = assert(proxy_client:send {
                 method = "GET",
-                path = "/get?apikey=apikeycopper",
+                path = "/get?apikey=apikeycopper" .. suffix,
                 headers = {
-                  ["Host"] = "consumer_group_window_size.test"
+                  ["Host"] = "consumer_group_window_size" .. suffix .. ".test"
                 }
               })
-              assert.res_status(200, res)
+              assert.res_status(429, res)
               proxy_client:close()
-            end
-
-            -- wait for the counter to sync
-            ngx_sleep(0.1 + 0.5)
-
-            -- Hit DP 2
-            proxy_client = helpers.proxy_client(nil, 9104)
-            local res = assert(proxy_client:send {
-              method = "GET",
-              path = "/get?apikey=apikeycopper",
-              headers = {
-                ["Host"] = "consumer_group_window_size.test"
-              }
-            })
-            assert.res_status(429, res)
-            proxy_client:close()
-          end)
+            end)
+          end
         end)
       end)
     end

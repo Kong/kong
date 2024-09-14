@@ -1,0 +1,3 @@
+message: "**Rate Limiting Advanced:** Fixed an issue where counters of the overriding consumer groups didn't fetched when the window_size is different and the workspace is non-default."
+type: bugfix
+scope: Plugin
