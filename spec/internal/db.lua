@@ -391,7 +391,6 @@ end
 
 -- returns the plugins and version list that is used by Hybrid mode tests
 local function clone_plugins_list()
-  local PLUGINS_LIST = get_plugins_list()
   assert(PLUGINS_LIST, "plugin list has not been initialized yet, " ..
                        "you must call get_db_utils first")
   return table_clone(PLUGINS_LIST)

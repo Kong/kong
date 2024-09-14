@@ -1694,7 +1694,7 @@ end
   signal_workers = cmd.signal_workers,
 
   -- returns the plugins and version list that is used by Hybrid mode tests
-  get_plugins_list = DB.clone_plugins_list(),
+  get_plugins_list = DB.clone_plugins_list,
 
   get_available_port = get_available_port,
 
