@@ -6,4 +6,9 @@ return {
       ngx.print("hello")
     end,
   },
+  ["/parsed_params"] = {
+    POST = function(self, db, helpers, parent)
+      kong.response.exit(200, self.params)
+    end,
+  },
 }

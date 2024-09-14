@@ -298,9 +298,6 @@ local function parse_params(fn)
 
         if is_json and not self.json then
           return kong.response.exit(400, { message = "Cannot parse JSON body" })
-
-        elseif find(content_type, "application/x-www-form-urlencode", 1, true) then
-          self.params = decode_args(self.params)
         end
       end
     end
