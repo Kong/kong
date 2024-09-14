@@ -7,6 +7,7 @@
 
 
 local pl_tablex = require("pl.tablex")
+local table_clone = require("table.clone")
 
 
 local DB = require("kong.db")
@@ -388,6 +389,14 @@ local function get_plugins_list()
 end
 
 
+-- returns the plugins and version list that is used by Hybrid mode tests
+local function clone_plugins_list()
+  assert(PLUGINS_LIST, "plugin list has not been initialized yet, " ..
+                       "you must call get_db_utils first")
+  return table_clone(PLUGINS_LIST)
+end
+
+
 local validate_plugin_config_schema
 do
   local consumers_schema_def = require("kong.db.schema.entities.consumers")
@@ -444,6 +453,7 @@ return {
 
   get_dcbp = get_dcbp,
   get_plugins_list = get_plugins_list,
+  clone_plugins_list = clone_plugins_list,
 
   get_cache = get_cache,
   get_db_utils = get_db_utils,

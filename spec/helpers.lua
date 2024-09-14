@@ -17,7 +17,6 @@ local http = require "resty.http"
 local log = require "kong.cmd.utils.log"
 local ssl = require "ngx.ssl"
 local ws_client = require "resty.websocket.client"
-local table_clone = require "table.clone"
 local https_server = require "spec.fixtures.https_server"
 local stress_generator = require "spec.fixtures.stress_generator"
 local lfs = require "lfs"
@@ -1703,12 +1702,8 @@ end
   signal_workers = cmd.signal_workers,
 
   -- returns the plugins and version list that is used by Hybrid mode tests
-  get_plugins_list = function()
-    local PLUGINS_LIST = DB.get_plugins_list()
-    assert(PLUGINS_LIST, "plugin list has not been initialized yet, " ..
-                         "you must call get_db_utils first")
-    return table_clone(PLUGINS_LIST)
-  end,
+  get_plugins_list = DB.clone_plugins_list(),
+
   get_available_port = get_available_port,
 
   make_temp_dir = misc.make_temp_dir,
