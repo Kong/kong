@@ -6,7 +6,6 @@ local app_helpers = require "lapis.application"
 local arguments = require "kong.api.arguments"
 local Errors = require "kong.db.errors"
 local hooks = require "kong.hooks"
-local decode_args = require("kong.tools.http").decode_args
 
 
 local ngx = ngx
