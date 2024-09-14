@@ -6,6 +6,7 @@ local app_helpers = require "lapis.application"
 local arguments = require "kong.api.arguments"
 local Errors = require "kong.db.errors"
 local hooks = require "kong.hooks"
+local decode_args = require("kong.tools.http").decode_args
 
 
 local ngx = ngx
@@ -297,6 +298,9 @@ local function parse_params(fn)
 
         if is_json and not self.json then
           return kong.response.exit(400, { message = "Cannot parse JSON body" })
+
+        elseif find(content_type, "application/x-www-form-urlencode", 1, true) then
+          self.params = decode_args(self.params)
         end
       end
     end
