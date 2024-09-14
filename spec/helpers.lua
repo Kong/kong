@@ -1686,15 +1686,7 @@ end
   -- Only use in CLI tests from spec/02-integration/01-cmd
   kill_all = cmd.kill_all,
 
-  with_current_ws = function(ws,fn, db)
-    local old_ws = ngx.ctx.workspace
-    ngx.ctx.workspace = nil
-    ws = ws or {db.workspaces:select_by_name("default")}
-    ngx.ctx.workspace = ws[1] and ws[1].id
-    local res = fn()
-    ngx.ctx.workspace = old_ws
-    return res
-  end,
+  with_current_ws = misc.with_current_ws,
 
   signal = cmd.signal,
 

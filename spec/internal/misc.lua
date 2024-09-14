@@ -230,6 +230,17 @@ local function lookup(t, k)
 end
 
 
+local function with_current_ws(ws,fn, db)
+  local old_ws = ngx.ctx.workspace
+  ngx.ctx.workspace = nil
+  ws = ws or {db.workspaces:select_by_name("default")}
+  ngx.ctx.workspace = ws[1] and ws[1].id
+  local res = fn()
+  ngx.ctx.workspace = old_ws
+  return res
+end
+
+
 local make_temp_dir
 do
   local seeded = false
@@ -320,6 +331,7 @@ return {
 
   lookup = lookup,
 
+  with_current_ws = with_current_ws,
   make_temp_dir = make_temp_dir,
   use_old_plugin = use_old_plugin,
 }
