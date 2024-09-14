@@ -6,13 +6,10 @@
 -- @module spec.helpers
 
 
-local pl_file = require("pl.file")
 local pl_tablex = require("pl.tablex")
 local luassert = require("luassert.assert")
 local cjson = require("cjson.safe")
-local ssl = require("ngx.ssl")
 local http = require("resty.http")
-local ws_client = require("resty.websocket.client")
 local kong_table = require("kong.tools.table")
 local uuid = require("kong.tools.uuid").uuid
 
@@ -21,7 +18,6 @@ local CONSTANTS = require("spec.internal.constants")
 local conf = require("spec.internal.conf")
 local shell = require("spec.internal.shell")
 local misc = require("spec.internal.misc")
-local DB = require("spec.internal.db")
 local asserts = require("spec.internal.asserts") -- luacheck: ignore
 
 
@@ -94,7 +90,6 @@ end
 -- @function http_client:send
 -- @param opts table with options. See [lua-resty-http](https://github.com/pintsized/lua-resty-http)
 function resty_http_proxy_mt:send(opts, is_reopen)
-  local cjson = require "cjson"
   local encode_args = require("kong.tools.http").encode_args
 
   opts = opts or {}
@@ -784,7 +779,11 @@ local function clustering_client(opts)
   assert(opts.cert)
   assert(opts.cert_key)
 
+  local pl_file = require("pl.file")
+  local ssl = require("ngx.ssl")
   local inflate_gzip = require("kong.tools.gzip").inflate_gzip
+  local ws_client = require("resty.websocket.client")
+  local DB = require("spec.internal.db")
 
   local c = assert(ws_client:new())
   local uri = "wss://" .. opts.host .. ":" .. opts.port ..
