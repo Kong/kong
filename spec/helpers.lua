@@ -25,24 +25,24 @@ local luassert = require "luassert.assert"
 local uuid = require("kong.tools.uuid").uuid
 
 
-local reload_module = require("spec.details.module").reload
+local reload_module = require("spec.internal.module").reload
 
 
 log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
 
 
 -- reload some modules when env or _G changes
-local CONSTANTS = reload_module("spec.details.constants")
-local conf = reload_module("spec.details.conf")
-local shell = reload_module("spec.details.shell")
-local misc = reload_module("spec.details.misc")
-local DB = reload_module("spec.details.db")
-local grpc = reload_module("spec.details.grpc")
-local dns_mock = reload_module("spec.details.dns")
-local asserts = reload_module("spec.details.asserts") -- luacheck: ignore
-local pid = reload_module("spec.details.pid")
-local cmd = reload_module("spec.details.cmd")
-local server = reload_module("spec.details.server")
+local CONSTANTS = reload_module("spec.internal.constants")
+local conf = reload_module("spec.internal.conf")
+local shell = reload_module("spec.internal.shell")
+local misc = reload_module("spec.internal.misc")
+local DB = reload_module("spec.internal.db")
+local grpc = reload_module("spec.internal.grpc")
+local dns_mock = reload_module("spec.internal.dns")
+local asserts = reload_module("spec.internal.asserts") -- luacheck: ignore
+local pid = reload_module("spec.internal.pid")
+local cmd = reload_module("spec.internal.cmd")
+local server = reload_module("spec.internal.server")
 
 
 local exec = shell.exec

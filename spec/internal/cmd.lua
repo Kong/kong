@@ -18,12 +18,12 @@ local kill = require("kong.cmd.utils.kill")
 local prefix_handler = require("kong.cmd.utils.prefix_handler")
 
 
-local CONSTANTS = require("spec.details.constants")
-local conf = require("spec.details.conf")
-local shell = require("spec.details.shell")
-local DB = require("spec.details.db")
-local pid = require("spec.details.pid")
-local dns_mock = require("spec.details.dns")
+local CONSTANTS = require("spec.internal.constants")
+local conf = require("spec.internal.conf")
+local shell = require("spec.internal.shell")
+local DB = require("spec.internal.db")
+local pid = require("spec.internal.pid")
+local dns_mock = require("spec.internal.dns")
 
 
 -- initialized in start_kong()

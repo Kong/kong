@@ -6,7 +6,7 @@
 -- @module spec.helpers
 
 
-local CONSTANTS = require("spec.details.constants")
+local CONSTANTS = require("spec.internal.constants")
 
 
 ---
@@ -63,7 +63,7 @@ local function tcp_server(port, opts)
         end
 
         if opts.tls and handshake_done then
-          local ssl = require "spec.details.ssl"
+          local ssl = require "spec.internal.ssl"
 
           local params = {
             mode = "server",
@@ -405,8 +405,8 @@ end
 
 local is_echo_server_ready, get_echo_server_received_data, echo_server_reset
 do
-  local shell = require("spec.details.shell")
-  local cmd = require("spec.details.cmd")
+  local shell = require("spec.internal.shell")
+  local cmd = require("spec.internal.cmd")
 
   -- Message id is maintained within echo server context and not
   -- needed for echo server user.
