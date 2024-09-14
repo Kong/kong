@@ -11,6 +11,7 @@
 
 local ffi = require("ffi")
 local pl_path = require("pl.path")
+local pl_dir = require "pl.dir"
 local pkey = require("resty.openssl.pkey")
 local nginx_signals = require("kong.cmd.utils.nginx_signals")
 local shell = require("spec.internal.shell")
@@ -229,6 +230,80 @@ local function lookup(t, k)
 end
 
 
+local make_temp_dir
+do
+  local seeded = false
+
+  function make_temp_dir()
+    if not seeded then
+      ngx.update_time()
+      math.randomseed(ngx.worker.pid() + ngx.now())
+      seeded = true
+    end
+
+    local tmp
+    local ok, err
+
+    local tries = 1000
+    for _ = 1, tries do
+      local name = "/tmp/.kong-test" .. math.random()
+
+      ok, err = pl_path.mkdir(name)
+
+      if ok then
+        tmp = name
+        break
+      end
+    end
+
+    assert(tmp ~= nil, "failed to create temporary directory " ..
+                       "after " .. tostring(tries) .. " tries, " ..
+                       "last error: " .. tostring(err))
+
+    return tmp, function() pl_dir.rmtree(tmp) end
+  end
+end
+
+
+-- This function is used for plugin compatibility test.
+-- It will use the old version plugin by including the path of the old plugin
+-- at the first of LUA_PATH.
+-- The return value is a function which when called will recover the original
+-- LUA_PATH and remove the temporary directory if it exists.
+-- For an example of how to use it, please see:
+-- plugins-ee/rate-limiting-advanced/spec/06-old-plugin-compatibility_spec.lua
+-- spec/03-plugins/03-http-log/05-old-plugin-compatibility_spec.lua
+local function use_old_plugin(name)
+  assert(type(name) == "string", "must specify the plugin name")
+
+  local old_plugin_path
+  local temp_dir
+  if pl_path.exists(CONSTANTS.OLD_VERSION_KONG_PATH .. "/kong/plugins/" .. name) then
+    -- only include the path of the specified plugin into LUA_PATH
+    -- and keep the directory structure 'kong/plugins/...'
+    temp_dir = make_temp_dir()
+    old_plugin_path = temp_dir
+    local dest_dir = old_plugin_path .. "/kong/plugins"
+    assert(pl_dir.makepath(dest_dir), "failed to makepath " .. dest_dir)
+    assert(shell.run("cp -r " .. CONSTANTS.OLD_VERSION_KONG_PATH .. "/kong/plugins/" .. name .. " " .. dest_dir), "failed to copy the plugin directory")
+
+  else
+    error("the specified plugin " .. name .. " doesn't exist")
+  end
+
+  local origin_lua_path = os.getenv("LUA_PATH")
+  -- put the old plugin path at first
+  assert(setenv("LUA_PATH", old_plugin_path .. "/?.lua;" .. old_plugin_path .. "/?/init.lua;" .. origin_lua_path), "failed to set LUA_PATH env")
+
+  return function ()
+    setenv("LUA_PATH", origin_lua_path)
+    if temp_dir then
+      pl_dir.rmtree(temp_dir)
+    end
+  end
+end
+
+
 return {
   pack = pack,
   unpack = unpack,
@@ -244,4 +319,7 @@ return {
   generate_keys = generate_keys,
 
   lookup = lookup,
+
+  make_temp_dir = make_temp_dir,
+  use_old_plugin = use_old_plugin,
 }
