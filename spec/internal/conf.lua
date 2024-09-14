@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local CONSTANTS = require("spec.details.constants")
+local CONSTANTS = require("spec.internal.constants")
 local conf_loader = require("kong.conf_loader")
 
 

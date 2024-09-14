@@ -21,8 +21,8 @@ local colors = require("ansicolors")
 local luassert = require("luassert.assert")
 
 
-local conf = require("spec.details.conf")
-local misc = require("spec.details.misc")
+local conf = require("spec.internal.conf")
+local misc = require("spec.internal.misc")
 
 
 local strip = require("kong.tools.string").strip

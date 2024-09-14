@@ -10,7 +10,7 @@ local shell = require("resty.shell")
 local resty_signal = require("resty.signal")
 
 
-local CONSTANTS = require("spec.details.constants")
+local CONSTANTS = require("spec.internal.constants")
 
 
 local function isnewer(path_a, path_b)

@@ -16,7 +16,7 @@
 local shell = require("resty.shell")
 
 
-local CONSTANTS = require("spec.details.constants")
+local CONSTANTS = require("spec.internal.constants")
 
 
 -- Reads the pid from a pid file and returns it, or nil + err
