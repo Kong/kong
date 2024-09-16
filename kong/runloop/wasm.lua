@@ -65,11 +65,28 @@ local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 ---@class kong.runloop.wasm.filter_meta
 ---
 ---@field config_schema kong.db.schema.json.schema_doc|nil
+---@field metrics table|nil
 
 local FILTER_META_SCHEMA = {
   type = "object",
   properties = {
     config_schema = json_schema.metaschema,
+    metrics = {
+      type = "object",
+      properties = {
+        label_patterns = {
+          type = "array",
+          items = {
+            type = "object",
+            required = { "label", "pattern" },
+            properties = {
+              label = { type = "string" },
+              pattern = { type = "string" },
+            }
+          }
+        }
+      }
+    }
   },
 }
 
