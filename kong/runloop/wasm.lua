@@ -402,6 +402,8 @@ local function rebuild_state(db, version, old_state)
 
       for _, filter in ipairs(chain.filters) do
         if filter.enabled then
+          _M.filters_by_name[filter.name].config = cjson_decode(filter.config) or filter.config
+
           -- Serialize all JSON configurations up front
           --
           -- NOTE: there is a subtle difference between a raw, non-JSON filter
