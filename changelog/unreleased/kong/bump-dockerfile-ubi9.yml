@@ -1,2 +1,2 @@
-message: "Bumped rpm dockerfile to UBI 9"
+message: "Bumped rpm dockerfile default base UBI 8 -> 9"
 type: dependency
