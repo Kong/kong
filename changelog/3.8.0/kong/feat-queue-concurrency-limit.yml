@@ -1,0 +1,5 @@
+message: |
+  Added the new configuration parameter `concurrency_limit` (integer, defaults to 1), which lets you specify the number of delivery timers in the queue.
+  Note that setting `concurrency_limit` to `-1` means no limit at all, and each HTTP log entry would create an individual timer for sending.
+type: feature
+scope: Core

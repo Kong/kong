@@ -1,3 +1,0 @@
-message: Fixed an issue that pdk.log.serialize() will throw an error when JSON entity set by serialize_value contains json.null
-type: bugfix
-scope: PDK

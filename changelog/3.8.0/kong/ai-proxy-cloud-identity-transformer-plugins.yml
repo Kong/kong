@@ -1,0 +1,5 @@
+message: >
+  **AI Transformer plugins**: Fixed an issue where Cloud Identity authentication
+  was not used in `ai-request-transformer` and `ai-response-transformer` plugins.
+scope: Plugin
+type: bugfix

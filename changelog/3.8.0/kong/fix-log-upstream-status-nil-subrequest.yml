@@ -1,0 +1,4 @@
+message: |
+  **PDK**: Fixed an issue where the log serializer logged `upstream_status` as nil in the requests that contained subrequests.
+type: bugfix
+scope: PDK

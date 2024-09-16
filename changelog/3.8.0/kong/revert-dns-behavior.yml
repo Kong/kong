@@ -1,0 +1,5 @@
+message: >
+  Reverted the DNS client to the original behavior of ignoring ADDITIONAL SECTION in DNS responses.
+type: bugfix
+scope: Core
+

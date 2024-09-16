@@ -1,0 +1,4 @@
+message: >
+  **OpenTelemetry:** Fixed an issue where migration failed when upgrading from below version 3.3 to 3.7.
+type: bugfix
+scope: Plugin

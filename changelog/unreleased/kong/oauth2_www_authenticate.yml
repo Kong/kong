@@ -1,4 +1,0 @@
-message: "**OAuth2**: Add WWW-Authenticate headers to all 401 responses and realm option."
-type: bugfix
-scope: Plugin
-

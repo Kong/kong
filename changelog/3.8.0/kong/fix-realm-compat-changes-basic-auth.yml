@@ -1,0 +1,5 @@
+message: >
+  **Basic-Auth**: Fixed an issue where the realm field
+  wasn't recognized for older Kong Gateway versions (before 3.6).
+type: bugfix
+scope: Plugin
