@@ -199,7 +199,7 @@ export const deleteUserRole = async (
  * @param {string} roleNameOrId - role name or id
  * @param {string} entity_id - id of the target entity
  * @param {string} entity_type - type of the target entity e.g. 'services'
- * @param {string|string[]} actions - optional actions, 'create,read,update,delete' is default
+ * @param {string} actions - optional comma-separated list of actions, 'create,read,update,delete' is default
  * @param {boolean} negative - optional negative boolean, false is default
  * @returns {AxiosResponse}
  */
