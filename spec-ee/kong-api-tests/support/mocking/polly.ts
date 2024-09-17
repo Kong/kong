@@ -34,6 +34,9 @@ export const createPolly = (name, config?: PollyConfig): Polly => {
     // After how long the recorded request will be considered expired from the time it was persisted
     expiresIn: '30d',
     // What should occur when Polly tries to use an expired recording in replay mode
-    expiryStrategy: 'warn'
+    expiryStrategy: 'warn',
+    matchRequestsBy: {
+      headers: false
+    }
   });
 }
