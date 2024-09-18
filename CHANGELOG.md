@@ -1,6 +1,7 @@
 # Table of Contents
 
 - [3.8.0](#380)
+- [3.7.1](#371)
 - [3.7.0](#370)
 - [3.6.1](#361)
 - [3.5.0](#350)
@@ -439,6 +440,15 @@ to not be written to the logging plugin(s).
 - Improved the user experience in Kong Manager by fixing various UI-related issues.
  [#232](https://github.com/Kong/kong-manager/issues/232) [#233](https://github.com/Kong/kong-manager/issues/233) [#234](https://github.com/Kong/kong-manager/issues/234) [#237](https://github.com/Kong/kong-manager/issues/237) [#238](https://github.com/Kong/kong-manager/issues/238) [#240](https://github.com/Kong/kong-manager/issues/240) [#244](https://github.com/Kong/kong-manager/issues/244) [#250](https://github.com/Kong/kong-manager/issues/250) [#252](https://github.com/Kong/kong-manager/issues/252) [#255](https://github.com/Kong/kong-manager/issues/255) [#257](https://github.com/Kong/kong-manager/issues/257) [#263](https://github.com/Kong/kong-manager/issues/263) [#264](https://github.com/Kong/kong-manager/issues/264) [#267](https://github.com/Kong/kong-manager/issues/267) [#272](https://github.com/Kong/kong-manager/issues/272)
 
+## 3.7.1
+### Kong
+
+#### Performance
+
+##### Performance
+
+ - Fixed an inefficiency issue in the Luajit hashing algorithm
+ [#13240](https://github.com/Kong/kong/issues/13240)
 
 ## 3.7.0
 ### Kong
