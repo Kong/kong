@@ -1,0 +1,3 @@
+message: Kong Manager will now show scoping entities as links in the plugin detail page.
+type: feature
+githubs: [3454]

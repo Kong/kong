@@ -1,0 +1,3 @@
+message: Fixed an issue where user info was not refreshed after the active admin was updated.
+type: bugfix
+githubs: [3386]

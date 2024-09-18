@@ -1,0 +1,3 @@
+message: Removed redundant data previously saved in browser's local storage.
+type: bugfix
+githubs: [3438]

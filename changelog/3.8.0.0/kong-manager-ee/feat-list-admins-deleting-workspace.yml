@@ -1,0 +1,4 @@
+message: >-
+  While deleting a workspace, Kong Manager will now list admins that prevent the operation.
+type: feature
+githubs: [3427]

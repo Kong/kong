@@ -1,0 +1,5 @@
+message: >-
+  Kong Manager will now show input boxes that allow optionally creating SNIs while creating a
+  certificate.
+type: feature
+githubs: [3488]

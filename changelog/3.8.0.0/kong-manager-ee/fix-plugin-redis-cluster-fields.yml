@@ -1,0 +1,5 @@
+message: >-
+  Fixed issues with `cluster_addresses` and `sentinel_addresses` fields for plugins that support
+  Redis clusters.
+type: bugfix
+githubs: [3375]

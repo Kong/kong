@@ -1,0 +1,5 @@
+message: >-
+  Fixed an issue where dynamic ordering was configurable for plugins scoped by consumers and/or
+  consumer groups. These plugins does not support dynamic ordering.
+type: bugfix
+githubs: [3415]
