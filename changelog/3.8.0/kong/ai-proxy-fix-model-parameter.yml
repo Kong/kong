@@ -1,5 +1,5 @@
 message: |
-  **AI-proxy**: Fixed an issue where Cohere and Anthropic providers didn't read the `model` parameter properly
+  **AI-proxy-plugin**: Fixed a bug where Cohere and Anthropic providers don't read the `model` parameter properly 
   from the caller's request body.
 scope: Plugin
 type: bugfix

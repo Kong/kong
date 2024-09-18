@@ -1,4 +1,4 @@
 message: |
-   **AI-Proxy**: Fixed issue when response was gzipped even if the client didn't accept the format.
+   **AI-Proxy**: Fixed issue when response is gzipped even if client doesn't accept.
 type: bugfix
 scope: Plugin

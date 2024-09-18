@@ -1,4 +1,5 @@
 message: |
-  **AI-proxy**: Fixed an issue where using OpenAI Function inference requests would log a request error, and then hang until timeout.
+  **AI-proxy-plugin**: Fixed a bug where using "OpenAI Function" inference requests would log a 
+  request error, and then hang until timeout.
 scope: Plugin
 type: bugfix
