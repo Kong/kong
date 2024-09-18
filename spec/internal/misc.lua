@@ -11,7 +11,7 @@
 
 local ffi = require("ffi")
 local pl_path = require("pl.path")
-local pl_dir = require "pl.dir"
+local pl_dir = require("pl.dir")
 local pkey = require("resty.openssl.pkey")
 local nginx_signals = require("kong.cmd.utils.nginx_signals")
 local shell = require("spec.internal.shell")
