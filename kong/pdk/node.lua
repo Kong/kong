@@ -272,6 +272,9 @@ local function new(self)
     -- 1. user provided node id
     local configuration_node_id = self and self.configuration and self.configuration.node_id
     if configuration_node_id then
+      ngx.log(ngx.WARN, "The `node_id`, which has been deprecated since 3.9, is not recommended to be specified manually!!!\n",
+        "Please make sure it is unique across the cluster.\n",
+        "Please note that it will be removed from configuration since 4.x.")
       node_id = configuration_node_id
     end
     -- 2. node id (if any) on file-system
