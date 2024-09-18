@@ -1455,7 +1455,7 @@ local function new(self)
 
     initialized = true
 
-    if self.configuration.cluster_rpc then
+    if self.configuration.database ~= "off" or self.configuration.cluster_rpc then
       self.worker_events.register(handle_vault_crud_event, "crud", "vaults")
     end
 
