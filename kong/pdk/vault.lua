@@ -1455,7 +1455,9 @@ local function new(self)
 
     initialized = true
 
-    self.worker_events.register(handle_vault_crud_event, "crud", "vaults")
+    if self.configuration.cluster_rpc then
+      self.worker_events.register(handle_vault_crud_event, "crud", "vaults")
+    end
 
     local _, err = self.timer:named_every("secret-rotation", ROTATION_INTERVAL, rotate_secrets_timer)
     if err then
