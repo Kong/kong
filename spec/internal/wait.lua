@@ -7,6 +7,7 @@ local https_server = require("spec.fixtures.https_server")
 
 local CONSTANTS = require("spec.internal.constants")
 local shell = require("spec.internal.shell")
+local asserts = require("spec.internal.asserts") -- luacheck: ignore
 local client = require("spec.internal.client")
 
 

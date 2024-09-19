@@ -6,15 +6,7 @@
 -- @module spec.helpers
 
 
-local pl_utils = require "pl.utils"
-local pl_path = require "pl.path"
-local pl_file = require "pl.file"
-local pl_dir = require "pl.dir"
-local log = require "kong.cmd.utils.log"
-local https_server = require "spec.fixtures.https_server"
-local stress_generator = require "spec.fixtures.stress_generator"
-
-
+local log = require("kong.cmd.utils.log")
 local reload_module = require("spec.internal.module").reload
 
 
@@ -85,10 +77,10 @@ local wait = reload_module("spec.internal.wait")
 -- @export
   return {
   -- Penlight
-  dir = pl_dir,
-  path = pl_path,
-  file = pl_file,
-  utils = pl_utils,
+  dir = require("pl.dir"),
+  path = require("pl.path"),
+  file = require("pl.file"),
+  utils = require("pl.utils"),
 
   -- Kong testing properties
   db = DB.db,
@@ -187,8 +179,8 @@ local wait = reload_module("spec.internal.wait")
   all_strategies = DB.all_strategies,
   validate_plugin_config_schema = DB.validate_plugin_config_schema,
   clustering_client = client.clustering_client,
-  https_server = https_server,
-  stress_generator = stress_generator,
+  https_server = require("spec.fixtures.https_server"),
+  stress_generator = require("spec.fixtures.stress_generator"),
 
   -- miscellaneous
   intercept = misc.intercept,
