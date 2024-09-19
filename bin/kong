@@ -1,7 +1,6 @@
 #!/usr/bin/env resty
 
 setmetatable(_G, nil)
-pcall(require, "luarocks.loader")
 package.path = (os.getenv("KONG_LUA_PATH_OVERRIDE") or "") .. "./?.lua;./?/init.lua;" .. package.path
 require("kong.globalpatches")({ cli = true })
 math.randomseed() -- Generate PRNG seed
@@ -137,8 +136,6 @@ local args_str = table.concat(args_table, " ")
 
 local inline_code = string.format([[
 setmetatable(_G, nil)
-
-pcall(require, "luarocks.loader")
 
 package.path = (os.getenv("KONG_LUA_PATH_OVERRIDE") or "") .. "./?.lua;./?/init.lua;" .. package.path
 

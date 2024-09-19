@@ -74,8 +74,6 @@ if not os.getenv("KONG_BUSTED_RESPAWNED") then
   os.exit(rc)
 end
 
-pcall(require, "luarocks.loader")
-
 if os.getenv("BUSTED_EMMY_DEBUGGER") then
   emmy_debugger.init({
     debugger = os.getenv("BUSTED_EMMY_DEBUGGER"),
