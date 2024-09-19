@@ -13,7 +13,7 @@ def luarocks_repositories():
         strip_prefix = "luarocks-" + version,
         sha256 = KONG_VAR["LUAROCKS_SHA256"],
         urls = [
-            "https://luarocks.org/releases/luarocks-" + version + ".tar.gz",
+            "https://luarocks.github.io/luarocks/releases/luarocks-" + version + ".tar.gz",
         ],
     )
 
