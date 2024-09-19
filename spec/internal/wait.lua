@@ -1,3 +1,11 @@
+------------------------------------------------------------------
+-- Collection of utilities to help testing Kong features and plugins.
+--
+-- @copyright Copyright 2016-2022 Kong Inc. All rights reserved.
+-- @license [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
+-- @module spec.helpers
+
+
 local cjson = require("cjson.safe")
 local lfs = require("lfs")
 local pl_file = require("pl.file")
