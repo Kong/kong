@@ -12,7 +12,7 @@ do
 
   -- flavor could be "traditional","traditional_compatible" or "expressions"
   -- changing flavor will change db's schema
-  reload_helpers= function(flavor)
+  reload_helpers = function(flavor)
     _G.kong = {
       configuration = {
         router_flavor = flavor,
