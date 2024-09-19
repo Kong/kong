@@ -8,7 +8,7 @@ end
 
 local reload_helpers
 do
-  local misc = require("spec.internal.misc")
+  local sys = require("spec.internal.sys")
 
   -- flavor could be "traditional","traditional_compatible" or "expressions"
   -- changing flavor will change db's schema
@@ -19,14 +19,14 @@ do
       },
     }
 
-    misc.setenv("KONG_ROUTER_FLAVOR", flavor)
+    sys.setenv("KONG_ROUTER_FLAVOR", flavor)
 
     reload("kong.db.schema.entities.routes_subschemas")
     reload("kong.db.schema.entities.routes")
 
     local helpers = reload("spec.helpers")
 
-    misc.unsetenv("KONG_ROUTER_FLAVOR")
+    sys.unsetenv("KONG_ROUTER_FLAVOR")
 
     return helpers
   end
