@@ -244,6 +244,10 @@ local function send_cache_response(conf, cache_response, stream_mode, start_time
 
     -- now exit
     ngx.print("data: [DONE]")
+
+    -- need to exit here to avoid other plugin buffering proxy processing,
+    -- as we are streaming the response, that will conflict with the `ngx.print` API
+    return ngx.exit(ngx.OK)
   else
     kong.service.request.enable_buffering()
     cache_response.id = metadata.key

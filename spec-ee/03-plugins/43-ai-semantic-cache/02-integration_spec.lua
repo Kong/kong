@@ -179,6 +179,10 @@ local PRE_FUNCTION_ACCESS_SCRIPT = [[
   })
 
   llm_state.set_request_model("%s")
+  if kong.request.get_header("x-test-enable-buffer-proxy") and kong.request.get_header("x-test-enable-buffer-proxy") == "true" then
+    ngx.log(ngx.ERR, "buffering enabled")
+    kong.service.request.enable_buffering()
+  end
 ]]
 
 local PRE_FUNCTION_HEADER_FILTER_SCRIPT = [[
@@ -216,6 +220,7 @@ local DIMENSIONS_LOOKUP = {
 local TEST_SCANARIOS = {
   { id = "97a884ab-5b8f-442a-8011-89dce47a68b6", desc = "good caching",                 vector_config = "good", embeddings_config = "good",                   embeddings_response = "good", chat_request = "good", chat_response = "good", stop_on_failure = true, message_countback = 10, expect = 200 },
   { id = "97a884ab-5b8f-442a-8011-89dce47a68b8", desc = "good caching",                 vector_config = "good", embeddings_config = "good",                   embeddings_response = "good", chat_request = "good", chat_response = "good", stop_on_failure = true, message_countback = 10, expect = 200, model = "gpt-4-turbo" },
+  { id = "97a884ab-5b8f-442a-8011-89dce47a68b1", desc = "good caching",                 vector_config = "good", embeddings_config = "good",                   embeddings_response = "good", chat_request = "good", chat_response = "good", stop_on_failure = true, message_countback = 10, expect = 200, enable_buffer_proxy = true },
   { id = "4819bbfb-7669-4d7d-a7b8-1c60dc71d2a8", desc = "stream request rest response", vector_config = "good", embeddings_config = "good",                   embeddings_response = "good", chat_request = "good", chat_response = "good", stop_on_failure = true, message_countback = 10, expect = 200, stream_request = true },
   { id = "e73873a3-aec5-429d-b36d-8cfc6bcaed3a", desc = "rest request stream response", vector_config = "good", embeddings_config = "good",                   embeddings_response = "good", chat_request = "good", chat_response = "good", stop_on_failure = true, message_countback = 10, expect = 200, stream_response = true },
   { id = "ee2b67b2-b766-46f4-b718-af5811f0e365", desc = "good caching short countback", vector_config = "good", embeddings_config = "good",                   embeddings_response = "good", chat_request = "good", chat_response = "good", stop_on_failure = true, message_countback = 1,  expect = 200, append_message = true },
@@ -541,6 +546,25 @@ for _, strategy in helpers.all_strategies() do if strategy ~= "cassandra" then
 
                 elseif TEST_SCENARIO.expect == 400 then
                   assert.res_status(400 , r)
+                end
+              end
+
+              if TEST_SCENARIO.enable_buffer_proxy then
+                local r = proxy_client:get(fmt("/%s/%s/%s", VECTORDB_STRATEGY, EMBEDDINGS_STRATEGY, TEST_SCENARIO.id), {
+                  headers = {
+                    ["content-type"] = "application/json",
+                    ["accept"] = "application/json",
+                    ["x-test-enable-buffer-proxy"] = "true",
+                    ["x-test-stream-mode"] = "true",
+                  },
+                })
+
+                if TEST_SCENARIO.expect == 200 then
+                  
+                  assert.res_status(200 , r)
+                  local x_cache_status = assert.header("X-Cache-Status", r)
+                  assert.equals("Hit", x_cache_status)
+                  assert.logfile().has.no.line("headers have already been sent", true)
                 end
               end
             end)
