@@ -676,6 +676,7 @@ return {
   wait_for_all_config_update = wait_for_all_config_update,
   wait_for_file = wait_for_file,
   wait_for_file_contents = wait_for_file_contents,
+  wait_until_no_common_workers = wait_until_no_common_workers,
 
   get_kong_workers = get_kong_workers,
   reload_kong = reload_kong,
