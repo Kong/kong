@@ -23,9 +23,6 @@ do
 
     reload("kong.db.schema.entities.routes_subschemas")
     reload("kong.db.schema.entities.routes")
-    reload("kong.db")
-    reload("kong.cache")
-    reload("kong.global")
 
     local helpers = reload("spec.helpers")
 
