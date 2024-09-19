@@ -271,13 +271,28 @@ function _M.before_filter(self)
 end
 
 function _M.cors_filter(self)
-  local origin = self.req.headers["Origin"]
+  local allowed_origins = kong.configuration.admin_gui_origin
 
-  if kong.configuration.admin_gui_origin then
-    origin = kong.configuration.admin_gui_origin
+  local function is_origin_allowed(req_origin)
+    for _, allowed_origin in ipairs(allowed_origins) do
+      if req_origin == allowed_origin then
+        return true
+      end
+    end
+    return false
   end
 
-  ngx.header["Access-Control-Allow-Origin"] = origin or "*"
+  local req_origin = self.req.headers["Origin"]
+
+  if allowed_origins and #allowed_origins > 0 then
+    if not is_origin_allowed(req_origin) then
+      req_origin = allowed_origins[1]
+    end
+  else
+    req_origin = req_origin or "*"
+  end
+
+  ngx.header["Access-Control-Allow-Origin"] = req_origin
   ngx.header["Access-Control-Allow-Credentials"] = "true"
 
   if ngx.req.get_method() == "OPTIONS" then
