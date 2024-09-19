@@ -17,7 +17,6 @@ local http = require "resty.http"
 local log = require "kong.cmd.utils.log"
 local ssl = require "ngx.ssl"
 local ws_client = require "resty.websocket.client"
-local table_clone = require "table.clone"
 local https_server = require "spec.fixtures.https_server"
 local stress_generator = require "spec.fixtures.stress_generator"
 local lfs = require "lfs"
@@ -1505,79 +1504,6 @@ local function clustering_client(opts)
 end
 
 
-local make_temp_dir
-do
-  local seeded = false
-
-  function make_temp_dir()
-    if not seeded then
-      ngx.update_time()
-      math.randomseed(ngx.worker.pid() + ngx.now())
-      seeded = true
-    end
-
-    local tmp
-    local ok, err
-
-    local tries = 1000
-    for _ = 1, tries do
-      local name = "/tmp/.kong-test" .. math.random()
-
-      ok, err = pl_path.mkdir(name)
-
-      if ok then
-        tmp = name
-        break
-      end
-    end
-
-    assert(tmp ~= nil, "failed to create temporary directory " ..
-                       "after " .. tostring(tries) .. " tries, " ..
-                       "last error: " .. tostring(err))
-
-    return tmp, function() pl_dir.rmtree(tmp) end
-  end
-end
-
--- This function is used for plugin compatibility test.
--- It will use the old version plugin by including the path of the old plugin
--- at the first of LUA_PATH.
--- The return value is a function which when called will recover the original
--- LUA_PATH and remove the temporary directory if it exists.
--- For an example of how to use it, please see:
--- plugins-ee/rate-limiting-advanced/spec/06-old-plugin-compatibility_spec.lua
--- spec/03-plugins/03-http-log/05-old-plugin-compatibility_spec.lua
-local function use_old_plugin(name)
-  assert(type(name) == "string", "must specify the plugin name")
-
-  local old_plugin_path
-  local temp_dir
-  if pl_path.exists(CONSTANTS.OLD_VERSION_KONG_PATH .. "/kong/plugins/" .. name) then
-    -- only include the path of the specified plugin into LUA_PATH
-    -- and keep the directory structure 'kong/plugins/...'
-    temp_dir = make_temp_dir()
-    old_plugin_path = temp_dir
-    local dest_dir = old_plugin_path .. "/kong/plugins"
-    assert(pl_dir.makepath(dest_dir), "failed to makepath " .. dest_dir)
-    assert(shell.run("cp -r " .. CONSTANTS.OLD_VERSION_KONG_PATH .. "/kong/plugins/" .. name .. " " .. dest_dir), "failed to copy the plugin directory")
-
-  else
-    error("the specified plugin " .. name .. " doesn't exist")
-  end
-
-  local origin_lua_path = os.getenv("LUA_PATH")
-  -- put the old plugin path at first
-  assert(misc.setenv("LUA_PATH", old_plugin_path .. "/?.lua;" .. old_plugin_path .. "/?/init.lua;" .. origin_lua_path), "failed to set LUA_PATH env")
-
-  return function ()
-    misc.setenv("LUA_PATH", origin_lua_path)
-    if temp_dir then
-      pl_dir.rmtree(temp_dir)
-    end
-  end
-end
-
-
 ----------------
 -- Variables/constants
 -- @section exported-fields
@@ -1755,20 +1681,12 @@ end
   get_grpc_target_port = grpc.get_grpc_target_port,
 
   -- plugin compatibility test
-  use_old_plugin = use_old_plugin,
+  use_old_plugin = misc.use_old_plugin,
 
   -- Only use in CLI tests from spec/02-integration/01-cmd
   kill_all = cmd.kill_all,
 
-  with_current_ws = function(ws,fn, db)
-    local old_ws = ngx.ctx.workspace
-    ngx.ctx.workspace = nil
-    ws = ws or {db.workspaces:select_by_name("default")}
-    ngx.ctx.workspace = ws[1] and ws[1].id
-    local res = fn()
-    ngx.ctx.workspace = old_ws
-    return res
-  end,
+  with_current_ws = misc.with_current_ws,
 
   signal = cmd.signal,
 
@@ -1776,13 +1694,9 @@ end
   signal_workers = cmd.signal_workers,
 
   -- returns the plugins and version list that is used by Hybrid mode tests
-  get_plugins_list = function()
-    local PLUGINS_LIST = DB.get_plugins_list()
-    assert(PLUGINS_LIST, "plugin list has not been initialized yet, " ..
-                         "you must call get_db_utils first")
-    return table_clone(PLUGINS_LIST)
-  end,
+  get_plugins_list = DB.clone_plugins_list,
+
   get_available_port = get_available_port,
 
-  make_temp_dir = make_temp_dir,
+  make_temp_dir = misc.make_temp_dir,
 }
