@@ -27,9 +27,6 @@
 local pcall = pcall
 
 
-pcall(require, "luarocks.loader")
-
-
 assert(package.loaded["resty.core"], "lua-resty-core must be loaded; make " ..
                                      "sure 'lua_load_resty_core' is not "..
                                      "disabled.")
