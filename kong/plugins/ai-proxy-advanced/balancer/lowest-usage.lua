@@ -19,14 +19,14 @@ end
 
 function algo:afterBalance(conf, target)
   local data_point
-  if conf.tokens_count_strategy == "total-tokens" then
+  if conf.balancer.tokens_count_strategy == "total-tokens" then
     data_point = llm_state.get_prompt_tokens_count() + llm_state.get_response_tokens_count()
-  elseif conf.tokens_count_strategy == "prompt-tokens" then
+  elseif conf.balancer.tokens_count_strategy == "prompt-tokens" then
     data_point = llm_state.get_prompt_tokens_count()
-  elseif conf.tokens_count_strategy == "completion-tokens" then
+  elseif conf.balancer.tokens_count_strategy == "completion-tokens" then
     data_point = llm_state.get_response_tokens_count()
   else
-    error("unknown token strategy: " .. conf.tokens_count_strategy)
+    error("unknown token strategy: " .. conf.balancer.tokens_count_strategy)
   end
 
   -- get the tokens coun as datapoint

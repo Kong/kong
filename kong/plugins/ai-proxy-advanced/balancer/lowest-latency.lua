@@ -19,12 +19,12 @@ end
 
 function algo:afterBalance(conf, target)
   local data_point
-  if conf.latency_strategy == "tpot" then
+  if conf.balancer.latency_strategy == "tpot" then
     data_point = llm_state.get_metrics("tpot_latency")
-  elseif conf.latency_strategy == "e2e" then
+  elseif conf.balancer.latency_strategy == "e2e" then
     data_point = llm_state.get_metrics("e2e_latency")
   else
-    error("unknown token strategy: " .. conf.tokens_count_strategy)
+    error("unknown token strategy: " .. conf.balancer.latency_strategy)
   end
 
   -- get the tokens coun as datapoint

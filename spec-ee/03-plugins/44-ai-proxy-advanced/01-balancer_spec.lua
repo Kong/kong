@@ -219,6 +219,83 @@ describe("[ewma based balancer]", function()
     assert.is_nil(target)
     assert.matches("No peers are available", err)
   end)
+
+  for _, strategy in ipairs({"total-tokens", "prompt-tokens", "completion-tokens"}) do
+    it("lowest-usage datapoints: " .. strategy, function()
+      local b = require "kong.plugins.ai-proxy-advanced.balancer.lowest-usage".new {
+        {name = "mashape.test", weight = 100, id = "1"},
+        {name = "getkong.test", weight = 100, id = "2"},
+        {name = "konghq.test",   weight = 100, id = "3"},
+      }
+      local conf = {
+        balancer = {
+          tokens_count_strategy = strategy,
+        },
+      }
+      -- put some datapoints
+      for _=1, 3 do
+        state.set_prompt_tokens_count(10)
+        state.set_response_tokens_count(10)
+        b:afterBalance(conf, { id = "1" })
+        state.set_prompt_tokens_count(1)
+        state.set_response_tokens_count(1)
+        b:afterBalance(conf, { id = "2" })
+        state.set_prompt_tokens_count(2)
+        state.set_response_tokens_count(2)
+        b:afterBalance(conf, { id = "3" })
+        ngx.sleep(0.001)
+        ngx.update_time()
+      end
+
+      local res = {}
+      for _ = 1, 10 do
+        local target = b:getPeer()
+        res[target.name] = (res[target.name] or 0) + 1
+      end
+      assert.equal(nil, res["mashape.test"])
+      assert.equal(10, res["getkong.test"])
+      assert.equal(nil, res["konghq.test"])
+    end)
+  end
+
+  for _, strategy in ipairs({"tpot", "e2e"}) do
+    it("lowest-latency datapoints", function()
+      local b = require "kong.plugins.ai-proxy-advanced.balancer.lowest-latency".new {
+        {name = "mashape.test", weight = 100, id = "1"},
+        {name = "getkong.test", weight = 100, id = "2"},
+        {name = "konghq.test",   weight = 100, id = "3"},
+      }
+      local conf = {
+        balancer = {
+          latency_strategy = strategy,
+        },
+      }
+      -- put some datapoints
+      for _=1, 3 do
+        state.set_metrics("tpot_latency", 10)
+        state.set_metrics("e2e_latency", 10)
+        b:afterBalance(conf, { id = "1" })
+        state.set_metrics("tpot_latency", 1)
+        state.set_metrics("e2e_latency", 1)
+        b:afterBalance(conf, { id = "2" })
+        state.set_metrics("tpot_latency", 2)
+        state.set_metrics("e2e_latency", 2)
+        b:afterBalance(conf, { id = "3" })
+        ngx.sleep(0.001)
+        ngx.update_time()
+      end
+
+      local res = {}
+      for _ = 1, 10 do
+        local target = b:getPeer()
+        res[target.name] = (res[target.name] or 0) + 1
+      end
+      assert.equal(nil, res["mashape.test"])
+      assert.equal(10, res["getkong.test"])
+      assert.equal(nil, res["konghq.test"])
+    end)
+  end
+
 end)
 
 
