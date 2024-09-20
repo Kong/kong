@@ -1443,7 +1443,7 @@ local function new(self)
   ---
   -- Initializes vault.
   --
-  -- Registers event handlers (on non-dbless nodes) and starts a recurring secrets
+  -- Registers event handlers and starts a recurring secrets
   -- rotation timer. It does nothing on control planes.
   --
   -- @local
@@ -1455,7 +1455,7 @@ local function new(self)
 
     initialized = true
 
-    if self.configuration.database ~= "off" then
+    if self.configuration.database ~= "off" or self.configuration.cluster_rpc then
       self.worker_events.register(handle_vault_crud_event, "crud", "vaults")
     end
 
