@@ -53,6 +53,7 @@ local function get_balancer_instance(conf, bypass_cache)
   return balancer_instance
 end
 
+-- crud event handler for traditional mode
 function _M:init_worker()
   if kong.configuration.database == "off" or not (kong.worker_events and kong.worker_events.register) then
     return
@@ -105,6 +106,36 @@ function _M:init_worker()
     end)
   end
 
+end
+
+-- crud event handler for hybrid mode
+function _M:configure(configs)
+  if not configs then
+    return
+  end
+
+  local current_config_ids = {}
+
+  for _, conf in ipairs(configs) do
+    local k = conf.__plugin_id
+    if balancers_by_plugin_key[k] then
+      kong.log.warn("plugin instance is recreated: ", k, ", all previous balancing state is reset")
+    end
+    assert(get_balancer_instance(conf, BYPASS_CACHE))
+    current_config_ids[k] = true
+  end
+
+  -- purge non existent balancers
+  local keys_to_delete = {}
+  for k, _ in pairs(balancers_by_plugin_key) do
+    if not current_config_ids[k] then
+      keys_to_delete[k] = true
+    end
+  end
+  for _, k in ipairs(keys_to_delete) do
+    balancers_by_plugin_key[k] = nil
+    kong.log.debug("plugin instance is delete: ", k)
+  end
 end
 
 function _M:access(conf)

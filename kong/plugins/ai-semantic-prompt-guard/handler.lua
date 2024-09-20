@@ -289,6 +289,7 @@ function plugin:access(conf)
   end
 end
 
+-- crud event handler for traditional mode
 function plugin:init_worker()
   -- we need to consider the case of dbless mode. Currently, dbless mode does not have crud events,
   -- so we do not know how to flush the existing dirty data index
@@ -339,6 +340,34 @@ function plugin:init_worker()
       }
       worker_events.post("ai-semantic-prompt-guard", "flush", post_data)
     end)
+  end
+end
+
+
+-- crud event handler for hybrid mode
+function plugin:configure(configs)
+  if not configs then
+    return
+  end
+
+  local current_config_ids = {}
+
+  for _, conf in ipairs(configs) do
+    local k = conf.__plugin_id
+    get_guard_instance(conf, BYPASS_CACHE)
+    current_config_ids[k] = true
+  end
+
+  -- purge non existent balancers
+  local keys_to_delete = {}
+  for k, _ in pairs(guard_by_plugin_key) do
+    if not current_config_ids[k] then
+      keys_to_delete[k] = true
+    end
+  end
+  for _, k in ipairs(keys_to_delete) do
+    guard_by_plugin_key[k] = nil
+    kong.log.debug("plugin instance is delete: ", k)
   end
 end
 
