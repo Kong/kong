@@ -555,7 +555,7 @@ end
 local function declarative_init_build()
   local default_ws = kong.db.workspaces:select_by_name("default")
   kong.default_workspace = default_ws and default_ws.id or kong.default_workspace
-  ngx.log(ngx.ERR, "default_ws: ", require("inspect")(default_ws))
+  --ngx.log(ngx.ERR, "default_ws: ", require("inspect")(default_ws))
 
   local ok, err = runloop.build_plugins_iterator("init")
   if not ok then
