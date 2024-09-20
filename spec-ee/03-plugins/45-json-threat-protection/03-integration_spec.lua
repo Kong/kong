@@ -320,4 +320,90 @@ for _, strategy in helpers.each_strategy() do
       end)
     end
   end
+
+  describe("with default config", function()
+    local proxy_client
+    local admin_client
+    local bp
+
+    lazy_setup(function()
+      bp = helpers.get_db_utils(nil, {
+        "routes",
+        "services",
+        "plugins",
+      })
+
+      local service = bp.services:insert()
+
+      local route = bp.routes:insert {
+        paths      = { "/" },
+        hosts      = { "test1.test" },
+        protocols  = { "http", "https" },
+        service    = service
+      }
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        log_level  = "warn",
+        plugins    = "bundled,json-threat-protection",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+
+      admin_client = helpers.admin_client()
+      proxy_client = helpers.proxy_client()
+
+      local res = assert(admin_client:send {
+        method  = "POST",
+        path    = "/plugins",
+        body    = {
+          name  = "json-threat-protection",
+          route = { id = route.id },
+          config = {},
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+      local body = cjson.decode(assert.res_status(201, res))
+      assert.equal(8192, body.config.max_body_size)
+      assert.equal(-1, body.config.max_container_depth)
+      assert.equal(-1, body.config.max_object_entry_count)
+      assert.equal(-1, body.config.max_object_entry_name_length)
+      assert.equal(-1, body.config.max_array_element_count)
+      assert.equal(-1, body.config.max_string_value_length)
+      assert.equal("block", body.config.enforcement_mode)
+      assert.equal(400, body.config.error_status_code)
+      assert.equal("Bad Request", body.config.error_message)
+
+      helpers.wait_for_all_config_update()
+    end)
+
+    lazy_teardown(function()
+      if proxy_client then
+        proxy_client:close()
+      end
+
+      if admin_client then
+        admin_client:close()
+      end
+
+      helpers.stop_kong()
+    end)
+
+    it("should be on success", function()
+      local res = assert(proxy_client:send {
+        method  = "POST",
+        path    = "/",
+        headers = {
+          ["Host"]   = "test1.test",
+          ["Content-Type"] = "application/json",
+        },
+        body = cjson.encode({
+          aaa = 1,
+          bbb = "abc",
+        }),
+      })
+      assert.response(res).has.status(200)
+    end)
+  end)
 end

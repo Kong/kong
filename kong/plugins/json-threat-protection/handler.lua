@@ -56,14 +56,16 @@ function JsonThreatProtectionHandler:access(conf)
     return kong.response.error(500)
   end
 
-  local ok, err_code, path = validator.validate(body,
-                                                conf.max_container_depth,
-                                                conf.max_object_entry_count,
-                                                conf.max_object_entry_name_length,
-                                                conf.max_array_element_count,
-                                                conf.max_string_value_length,
-                                                true, -- enable json path tracing
-                                                true) -- enable yielding
+  local ok, err_code, path = validator.validate(
+    body,
+    conf.max_container_depth >= 0 and conf.max_container_depth or nil,
+    conf.max_object_entry_count >= 0 and conf.max_object_entry_count or nil,
+    conf.max_object_entry_name_length >= 0 and conf.max_object_entry_name_length or nil,
+    conf.max_array_element_count >= 0 and conf.max_array_element_count or nil,
+    conf.max_string_value_length >= 0 and conf.max_string_value_length or nil,
+    true, -- enable json path tracing
+    true -- enable yielding
+  )
 
   if not ok then
     errmsg = string.format(code_message_map[tonumber(err_code)], path or "")

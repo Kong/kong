@@ -30,6 +30,62 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
+    describe("with default config", function()
+      local route
+
+      lazy_setup(function()
+        local service = bp.services:insert()
+
+        route = bp.routes:insert {
+          hosts      = { "test1.test" },
+          protocols  = { "http", "https" },
+          service    = service,
+        }
+
+        assert(helpers.start_kong({
+          database   = strategy,
+          log_level  = "warn",
+          plugins    = "bundled,json-threat-protection",
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        }))
+
+        admin_client = helpers.admin_client()
+      end)
+
+      lazy_teardown(function()
+        if admin_client then
+          admin_client:close()
+        end
+
+        helpers.stop_kong()
+      end)
+
+      it("should create plugin instance successfully with negative value", function()
+        local res = assert(admin_client:send {
+          method  = "POST",
+          path    = "/plugins",
+          body    = {
+            name  = "json-threat-protection",
+            route = { id = route.id },
+            config = {},
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = cjson.decode(assert.res_status(201, res))
+        assert.equal(8192, body.config.max_body_size)
+        assert.equal(-1, body.config.max_container_depth)
+        assert.equal(-1, body.config.max_object_entry_count)
+        assert.equal(-1, body.config.max_object_entry_name_length)
+        assert.equal(-1, body.config.max_array_element_count)
+        assert.equal(-1, body.config.max_string_value_length)
+        assert.equal("block", body.config.enforcement_mode)
+        assert.equal(400, body.config.error_status_code)
+        assert.equal("Bad Request", body.config.error_message)
+      end)
+    end)
+
     describe("POST", function()
       local route
 
