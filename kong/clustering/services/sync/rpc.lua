@@ -2,8 +2,8 @@ local _M = {}
 local _MT = { __index = _M, }
 
 
-local semaphore = require("ngx.semaphore")
-local lmdb = require("resty.lmdb")
+--local semaphore = require("ngx.semaphore")
+--local lmdb = require("resty.lmdb")
 local txn = require("resty.lmdb.transaction")
 local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
@@ -201,9 +201,13 @@ function _M:sync_once(delay)
             -- upsert the entity
             -- does the entity already exists?
             local old_entity, err = kong.db[delta.type]:select(delta.row)
+            if err then
+              return nil, err
+            end
+
             local crud_event_type = "create"
 
-            if entity then
+            if old_entity then
               local res, err = delete_entity_for_txn(t, delta.type, old_entity, nil)
               if not res then
                 return nil, err
@@ -223,6 +227,10 @@ function _M:sync_once(delay)
           else
             -- delete the entity
             local old_entity, err = kong.db[delta.type]:select({ id = delta.id, }) -- TODO: composite key
+            if err then
+              return nil, err
+            end
+
             if old_entity then
               local res, err = delete_entity_for_txn(t, delta.type, old_entity, nil)
               if not res then
