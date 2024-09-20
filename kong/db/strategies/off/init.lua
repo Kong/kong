@@ -1,34 +1,35 @@
 local declarative_config = require("kong.db.schema.others.declarative_config")
-local workspaces = require("kong.workspaces")
+--local workspaces = require("kong.workspaces")
 local lmdb = require("resty.lmdb")
 local lmdb_prefix = require("resty.lmdb.prefix")
-local lmdb_transaction = require("resty.lmdb.transaction")
+--local lmdb_transaction = require("resty.lmdb.transaction")
 local marshaller = require("kong.db.declarative.marshaller")
-local yield = require("kong.tools.yield").yield
+--local yield = require("kong.tools.yield").yield
 local declarative = require("kong.db.declarative")
 
 local kong = kong
 local string_format = string.format
 local type = type
 local next = next
-local sort = table.sort
-local pairs = pairs
-local match = string.match
+--local sort = table.sort
+--local pairs = pairs
+--local match = string.match
 local assert = assert
-local tostring = tostring
-local tonumber = tonumber
-local encode_base64 = ngx.encode_base64
-local decode_base64 = ngx.decode_base64
+--local tostring = tostring
+--local tonumber = tonumber
+--local encode_base64 = ngx.encode_base64
+--local decode_base64 = ngx.decode_base64
 local null = ngx.null
 local unmarshall = marshaller.unmarshall
-local marshall = marshaller.marshall
+--local marshall = marshaller.marshall
 local lmdb_get = lmdb.get
-local get_workspace_id = workspaces.get_workspace_id
+--local get_workspace_id = workspaces.get_workspace_id
 local pk_string = declarative_config.pk_string
 local unique_field_key = declarative.unique_field_key
 local item_key = declarative.item_key
 local item_key_prefix = declarative.item_key_prefix
 local workspace_id = declarative.workspace_id
+local foreign_field_key_prefix = declarative.foreign_field_key_prefix
 
 
 local PROCESS_AUTO_FIELDS_OPTS = {
@@ -110,7 +111,7 @@ local function page_for_prefix(self, prefix, size, offset, options, follow)
 
   offset = offset or prefix
 
-  local list = {}
+  --local list = {}
 
   local ret = {}
   local ret_idx = 0
@@ -201,6 +202,7 @@ local function select_by_field(self, field, value, options)
 end
 
 
+--[[
 local function remove_nulls(tbl)
   for k,v in pairs(tbl) do
     if v == null then
@@ -212,6 +214,7 @@ local function remove_nulls(tbl)
   end
   return tbl
 end
+--]]
 
 
 do
