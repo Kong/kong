@@ -983,9 +983,10 @@ function Kong.init_worker()
   --if kong.clustering then
   --  kong.clustering:init_worker()
 
-    local cluster_tls = require("kong.clustering.tls")
-
     if kong.rpc and is_http_module then
+      -- only available in http subsystem
+      local cluster_tls = require("kong.clustering.tls")
+
       if is_data_plane(kong.configuration) then
         ngx.timer.at(0, function(premature)
           kong.rpc:connect(premature,
