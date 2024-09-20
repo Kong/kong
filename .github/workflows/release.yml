@@ -697,3 +697,4 @@ jobs:
         for tag in $TAGS; do
           regctl -v debug image copy $PRERELEASE_IMAGE $tag
         done
+

@@ -1,24 +1,70 @@
-# please see matrix-full.yml for meaning of each field
 build-packages:
-- label: ubuntu-22.04
-  os: ubuntu-22.04
-  package: deb
-  check-manifest-suite: ubuntu-22.04-amd64
+# label: used to distinguish artifacts for later use
+# image: docker image name if the build is running in side a container
+# package: package type
+# package-type: the nfpm packaging target, //:kong_{package} target; only used when package is rpm
+# bazel-args: additional bazel build flags
+# check-manifest-suite: the check manifest suite as defined in scripts/explain_manifest/config.py
+
+# RHEL
+- label: rhel-7
+  image: centos:7
+  package: rpm
+  package-type: el7
+  check-manifest-suite: el7-amd64
+- label: rhel-8
+  image: rockylinux:8
+  package: rpm
+  package-type: el8
+  check-manifest-suite: el8-amd64
+
 
 build-images:
-- label: ubuntu
-  base-image: ubuntu:22.04
-  package: deb
-  artifact-from: ubuntu-22.04
+# Only build images for the latest version of each major release.
+
+# label: used as compose docker image label ${github.sha}-${label}
+# base-image: docker image to use as base
+# package: package type
+# artifact-from: label of build-packages to use
+# artifact-from-alt: another label of build-packages to use for downloading package (to build multi-arch image)
+# docker-platforms: comma separated list of docker buildx platforms to build for
+
+- label: rhel7
+  base-image: centos:7
+  package: rpm
+  package-distro: el7
+  artifact-from: rhel-7
+
+# RHEL
+- label: rhel
+  base-image: centos:7
+  package: rpm
+  rpm_platform: el7
+  artifact-from: rhel-7
+  docker-platforms: linux/amd64
 
 smoke-tests:
-- label: ubuntu
+- label: rhel
 
 scan-vulnerabilities:
-- label: ubuntu
+- label: rhel
 
 release-packages:
+# RHEL
+- label: rhel-7
+  package: rpm
+  artifact-from: rhel-7
+  artifact-version: 7
+  artifact-type: rhel
+  artifact: kong.el7.amd64.rpm
+- label: rhel-8
+  package: rpm
+  artifact-from: rhel-8
+  artifact-version: 8
+  artifact-type: rhel
+  artifact: kong.el8.amd64.rpm
 
 release-images:
-- label: ubuntu
-  package: deb
+- label: rhel7
+  package: rpm
+- label: rhel
