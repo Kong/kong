@@ -1,0 +1,4 @@
+message: "**ai-proxy-advanced**, **ai-semantic-prompt-guard**: Fixed an issue where stale plugin config was not updated in dbless and hybrid mode."
+type: bugfix
+scope: Plugin
+

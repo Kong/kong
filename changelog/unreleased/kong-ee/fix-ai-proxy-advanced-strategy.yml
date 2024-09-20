@@ -1,0 +1,4 @@
+message: "**ai-proxy-advanced**: Fixed an issue where lowest-usage and lowest-latency strategy did not update data points correctly."
+type: bugfix
+scope: Plugin
+

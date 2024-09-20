@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local state = require "kong.plugins.ai-proxy-advanced.balancer.state"
+local llm_state = require "kong.llm.state"
 
 describe("[round robin balancer]", function()
   local function new_balancer(targets)
@@ -83,6 +84,7 @@ describe("[ewma based balancer]", function()
       },
       ctx = {
         plugin = {},
+        shared = {},
       }
     }
   end)
@@ -93,6 +95,7 @@ describe("[ewma based balancer]", function()
 
   before_each(function()
     _G.kong.ctx.plugin = {}
+    _G.kong.ctx.shared = {}
   end)
 
   it("select the target with smaller datapoint", function()
@@ -234,15 +237,21 @@ describe("[ewma based balancer]", function()
       }
       -- put some datapoints
       for _=1, 3 do
-        state.set_prompt_tokens_count(10)
-        state.set_response_tokens_count(10)
+        llm_state.increase_prompt_tokens_count(10)
+        llm_state.increase_response_tokens_count(10)
         b:afterBalance(conf, { id = "1" })
-        state.set_prompt_tokens_count(1)
-        state.set_response_tokens_count(1)
+        kong.ctx.shared = {}
+
+        llm_state.increase_prompt_tokens_count(1)
+        llm_state.increase_response_tokens_count(1)
         b:afterBalance(conf, { id = "2" })
-        state.set_prompt_tokens_count(2)
-        state.set_response_tokens_count(2)
+        kong.ctx.shared = {}
+
+        llm_state.increase_prompt_tokens_count(2)
+        llm_state.increase_response_tokens_count(2)
         b:afterBalance(conf, { id = "3" })
+        kong.ctx.shared = {}
+
         ngx.sleep(0.001)
         ngx.update_time()
       end
@@ -272,14 +281,14 @@ describe("[ewma based balancer]", function()
       }
       -- put some datapoints
       for _=1, 3 do
-        state.set_metrics("tpot_latency", 10)
-        state.set_metrics("e2e_latency", 10)
+        llm_state.set_metrics("tpot_latency", 10)
+        llm_state.set_metrics("e2e_latency", 10)
         b:afterBalance(conf, { id = "1" })
-        state.set_metrics("tpot_latency", 1)
-        state.set_metrics("e2e_latency", 1)
+        llm_state.set_metrics("tpot_latency", 1)
+        llm_state.set_metrics("e2e_latency", 1)
         b:afterBalance(conf, { id = "2" })
-        state.set_metrics("tpot_latency", 2)
-        state.set_metrics("e2e_latency", 2)
+        llm_state.set_metrics("tpot_latency", 2)
+        llm_state.set_metrics("e2e_latency", 2)
         b:afterBalance(conf, { id = "3" })
         ngx.sleep(0.001)
         ngx.update_time()
