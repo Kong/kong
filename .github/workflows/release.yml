@@ -115,6 +115,28 @@ jobs:
       options: --privileged
 
     steps:
+    - name: modify centos repo
+      if: matrix.package == 'rpm' && matrix.image == 'centos:7'
+      run: |
+        # Disable mirrorlist and set baseurl for all .repo files
+        for repo_file in /etc/yum.repos.d/*.repo; do
+          sed -i 's|^mirrorlist=|#mirrorlist=|g' "$repo_file"
+          sed -i 's|^#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' "$repo_file"
+          sed -i 's|^# baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' "$repo_file"
+          sed -i 's|$releasever|7.9.2009|g' "$repo_file"
+        done
+        yum clean all
+        yum install -y centos-release-scl
+        for repo_file in /etc/yum.repos.d/*.repo; do
+          sed -i 's|^mirrorlist=|#mirrorlist=|g' "$repo_file"
+          sed -i 's|^#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' "$repo_file"
+          sed -i 's|^# baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' "$repo_file"
+          sed -i 's|$releasever|7.9.2009|g' "$repo_file"
+        done
+        yum clean all
+        yum install -y devtoolset-9
+        scl enable devtoolset-9 bash
+
     - name: Early Rpm Setup
       if: matrix.package == 'rpm' && matrix.image != ''
       run: |
