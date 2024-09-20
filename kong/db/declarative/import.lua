@@ -15,10 +15,10 @@ local sha256_hex = require("kong.tools.sha256").sha256_hex
 local pk_string = declarative_config.pk_string
 
 local assert = assert
-local sort = table.sort
+--local sort = table.sort
 local type = type
 local pairs = pairs
-local next = next
+--local next = next
 local insert = table.insert
 local string_format = string.format
 local null = ngx.null
@@ -306,7 +306,7 @@ local function insert_entity_for_txn(t, entity_name, item, options)
         end
 
         if fdata.unique_across_ws then
-          ws_id = default_workspace_id
+          ws_id = kong.default_workspace
         end
 
         local key = unique_field_key(entity_name, ws_id, fname, value)
@@ -364,7 +364,7 @@ local function delete_entity_for_txn(t, entity_name, item, options)
         end
 
         if fdata.unique_across_ws then
-          ws_id = default_workspace_id
+          ws_id = kong.default_workspace
         end
 
         local key = unique_field_key(entity_name, ws_id, fname, value)
