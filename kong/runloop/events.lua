@@ -233,7 +233,6 @@ end
 
 
 local function crud_routes_handler()
-  log(ngx.ERR, "[events] Route updated, invalidating router")
   log(DEBUG, "[events] Route updated, invalidating router")
   core_cache:invalidate("router:version")
 end
