@@ -3,10 +3,10 @@ local _MT = { __index = _M }
 
 
 local cjson = require("cjson.safe")
+local buffer = require("string.buffer")
 
 
 local string_format = string.format
-local table_concat = table.concat
 local cjson_encode = cjson.encode
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
@@ -70,16 +70,16 @@ local NEW_VERSION_QUERY = [[
 --   { type = "route", "id" = "0a5bac5c-b795-4981-95d2-919ba3390b7e", "ws_id" = "73478cf6-964f-412d-b1c4-8ac88d9e85e9", row = "JSON", }
 -- }
 function _M:insert_delta(deltas)
-  local delta_str = {}
-  for i, d in ipairs(deltas) do
-    delta_str[i] = string_format("(new_version, %s, %s, %s, %s)",
-                                 self.connector:escape_literal(d.type),
-                                 self.connector:escape_literal(d.id),
-                                 self.connector:escape_literal(d.ws_id),
-                                 self.connector:escape_literal(cjson_encode(d.row)))
+  local buf = buffer.new()
+  for _, d in ipairs(deltas) do
+    buf:putf("(new_version, %s, %s, %s, %s)",
+             self.connector:escape_literal(d.type),
+             self.connector:escape_literal(d.id),
+             self.connector:escape_literal(d.ws_id),
+             self.connector:escape_literal(cjson_encode(d.row)))
   end
 
-  local sql = string_format(NEW_VERSION_QUERY, table_concat(delta_str))
+  local sql = string_format(NEW_VERSION_QUERY, buf:get())
 
   return self.connector:query(sql)
 end

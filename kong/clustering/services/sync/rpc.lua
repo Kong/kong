@@ -151,9 +151,9 @@ end
 
 function _M:init(manager, is_cp)
   if is_cp then
-    init_cp(manager)
+    self:init_cp(manager)
   else
-    init_dp(manager)
+    self:init_dp(manager)
   end
 end
 
