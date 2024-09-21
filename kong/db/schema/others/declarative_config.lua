@@ -7,7 +7,6 @@ local constants = require("kong.constants")
 local plugin_loader = require("kong.db.schema.plugin_loader")
 local vault_loader = require("kong.db.schema.vault_loader")
 local schema_topological_sort = require("kong.db.schema.topological_sort")
-local request_aware_table = require("kong.tools.request_aware_table")
 local utils_uuid = require("kong.tools.uuid").uuid
 
 
@@ -41,6 +40,8 @@ local foreign_children = {}
 
 
 do
+  local request_aware_table = require("kong.tools.request_aware_table")
+
   local CACHED_OUT
 
   -- Generate a stable and unique string key from primary key defined inside
@@ -48,19 +49,18 @@ do
   function DeclarativeConfig.pk_string(schema, object)
     if #schema.primary_key == 1 then
       return tostring(object[schema.primary_key[1]])
-
-    else
-      if not CACHED_OUT then
-        CACHED_OUT = request_aware_table.new()
-      end
-
-      CACHED_OUT.clear()
-      for _, k in ipairs(schema.primary_key) do
-        insert(CACHED_OUT, tostring(object[k]))
-      end
-
-      return concat(CACHED_OUT, ":")
     end
+
+    if not CACHED_OUT then
+      CACHED_OUT = request_aware_table.new()
+    end
+
+    CACHED_OUT.clear()
+    for _, k in ipairs(schema.primary_key) do
+      insert(CACHED_OUT, tostring(object[k]))
+    end
+
+    return concat(CACHED_OUT, ":")
   end
 end
 
