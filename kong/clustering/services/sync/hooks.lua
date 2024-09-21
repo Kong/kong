@@ -3,13 +3,18 @@ local _MT = { __index = _M, }
 
 
 local hooks = require("kong.hooks")
+local EMPTY = require("kong.tools.table").EMPTY
 --local constants = require("kong.constants")
 
 
 --local CLUSTERING_PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
+local ipairs = ipairs
 local ngx_log = ngx.log
 --local ngx_DEBUG = ngx.DEBUG
 local ngx_ERR = ngx.ERR
+
+
+local DEFAULT_PAGE_SIZE = 512
 
 
 function _M.new(strategy)
@@ -22,17 +27,17 @@ end
 
 
 local function get_all_nodes_with_sync_cap()
-  local ret = {}
-  local ret_n = 0
-
-  local res, err = kong.db.clustering_data_planes:page(512)
+  local res, err = kong.db.clustering_data_planes:page(DEFAULT_PAGE_SIZE)
   if err then
     return nil, "unable to query DB " .. err
   end
 
   if not res then
-    return {}
+    return EMPTY
   end
+
+  local ret = {}
+  local ret_n = 0
 
   for _, row in ipairs(res) do
     for _, c in ipairs(row.rpc_capabilities) do
@@ -49,17 +54,17 @@ end
 
 function _M:notify_all_nodes(new_version)
   local latest_version = self.strategy:get_latest_version()
+  local msg = { default = { new_version = latest_version, }, }
 
   for _, node in ipairs(get_all_nodes_with_sync_cap()) do
-    local res, err = kong.rpc:call(node, "kong.sync.v2.notify_new_version",
-                             { default = { new_version = latest_version, }, })
+    local res, err = kong.rpc:call(node, "kong.sync.v2.notify_new_version", msg)
     if not res then
       if not err:find("requested capability does not exist", nil, true) then
-        ngx.log(ngx.ERR, "unable to notify new version: ", err)
+        ngx_log(ngx_ERR, "unable to notify new version: ", err)
       end
 
     else
-      ngx.log(ngx.ERR, "notified ", node, " ", latest_version)
+      ngx_log(ngx_ERR, "notified ", node, " ", latest_version)
     end
   end
 end
@@ -68,10 +73,11 @@ end
 function _M:entity_delta_writer(row, name, options, ws_id)
   local deltas = {
     {
-      ["type"] = name,
+      type = name,
       id = row.id,
       ws_id = ws_id,
-      row = row, },
+      row = row,
+    },
   }
 
   local res, err = self.strategy:insert_delta(deltas)
@@ -98,11 +104,15 @@ function _M:register_dao_hooks(is_cp)
     return
   end
 
+  local function is_db_export(name)
+    local db_export = kong.db[name].schema.db_export
+    return db_export == nil or db_export == true
+  end
+
   -- dao:insert
 
   hooks.register_hook("dao:insert:pre", function(entity, name, options)
-    local db_export = kong.db[name].schema.db_export
-    if db_export == nil or db_export == true then
+    if is_db_export(name) then
       return self.strategy:begin_txn()
     end
 
@@ -110,8 +120,7 @@ function _M:register_dao_hooks(is_cp)
   end)
 
   hooks.register_hook("dao:insert:fail", function(err, entity, name)
-    local db_export = kong.db[name].schema.db_export
-    if db_export == nil or db_export == true then
+    if is_db_export(name) then
       local res, err = self.strategy:cancel_txn()
       if not res then
         ngx_log(ngx_ERR, "unable to cancel cancel_txn: ", err)
@@ -120,8 +129,7 @@ function _M:register_dao_hooks(is_cp)
   end)
 
   hooks.register_hook("dao:insert:post", function(row, name, options, ws_id)
-    local db_export = kong.db[name].schema.db_export
-    if db_export == nil or db_export == true then
+    if is_db_export(name) then
       return self:entity_delta_writer(row, name, options, ws_id)
     end
 
@@ -131,8 +139,7 @@ function _M:register_dao_hooks(is_cp)
   -- dao:delete
 
   hooks.register_hook("dao:delete:pre", function(entity, name, options)
-    local db_export = kong.db[name].schema.db_export
-    if db_export == nil or db_export == true then
+    if is_db_export(name) then
       return self.strategy:begin_txn()
     end
 
@@ -140,8 +147,7 @@ function _M:register_dao_hooks(is_cp)
   end)
 
   hooks.register_hook("dao:delete:fail", function(err, entity, name)
-    local db_export = kong.db[name].schema.db_export
-    if db_export == nil or db_export == true then
+    if is_db_export(name) then
       local res, err = self.strategy:cancel_txn()
       if not res then
         ngx_log(ngx_ERR, "unable to cancel cancel_txn: ", err)
@@ -150,14 +156,14 @@ function _M:register_dao_hooks(is_cp)
   end)
 
   hooks.register_hook("dao:delete:post", function(row, name, options, ws_id, cascade_entries)
-    local db_export = kong.db[name].schema.db_export
-    if db_export == nil or db_export == true then
+    if is_db_export(name) then
       local deltas = {
         {
           ["type"] = name,
           id = row.id,
           ws_id = ws_id,
-          row = ngx.null, },
+          row = ngx.null,
+        },
       }
 
       local res, err = self.strategy:insert_delta(deltas)
@@ -181,8 +187,7 @@ function _M:register_dao_hooks(is_cp)
   -- dao:update
 
   hooks.register_hook("dao:update:pre", function(entity, name, options)
-    local db_export = kong.db[name].schema.db_export
-    if db_export == nil or db_export == true then
+    if is_db_export(name) then
       return self.strategy:begin_txn()
     end
 
@@ -190,8 +195,7 @@ function _M:register_dao_hooks(is_cp)
   end)
 
   hooks.register_hook("dao:update:fail", function(err, entity, name)
-    local db_export = kong.db[name].schema.db_export
-    if db_export == nil or db_export == true then
+    if is_db_export(name) then
       local res, err = self.strategy:cancel_txn()
       if not res then
         ngx_log(ngx_ERR, "unable to cancel cancel_txn: ", err)
@@ -200,8 +204,7 @@ function _M:register_dao_hooks(is_cp)
   end)
 
   hooks.register_hook("dao:update:post", function(row, name, options, ws_id)
-    local db_export = kong.db[name].schema.db_export
-    if db_export == nil or db_export == true then
+    if is_db_export(name) then
       return self:entity_delta_writer(row, name, options, ws_id)
     end
 
@@ -211,8 +214,7 @@ function _M:register_dao_hooks(is_cp)
   -- dao:upsert
 
   hooks.register_hook("dao:upsert:pre", function(entity, name, options)
-    local db_export = kong.db[name].schema.db_export
-    if db_export == nil or db_export == true then
+    if is_db_export(name) then
       return self.strategy:begin_txn()
     end
 
@@ -220,8 +222,7 @@ function _M:register_dao_hooks(is_cp)
   end)
 
   hooks.register_hook("dao:upsert:fail", function(err, entity, name)
-    local db_export = kong.db[name].schema.db_export
-    if db_export == nil or db_export == true then
+    if is_db_export(name) then
       local res, err = self.strategy:cancel_txn()
       if not res then
         ngx_log(ngx_ERR, "unable to cancel cancel_txn: ", err)
@@ -230,8 +231,7 @@ function _M:register_dao_hooks(is_cp)
   end)
 
   hooks.register_hook("dao:upsert:post", function(row, name, options, ws_id)
-    local db_export = kong.db[name].schema.db_export
-    if db_export == nil or db_export == true then
+    if is_db_export(name) then
       return self:entity_delta_writer(row, name, options, ws_id)
     end
 
