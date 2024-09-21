@@ -31,120 +31,129 @@ function _M.new(strategy)
 end
 
 
-function _M:init(manager, is_cp)
-  if is_cp then
-    -- CP
-    -- Method: kong.sync.v2.get_delta
-    -- Params: versions: list of current versions of the database
-    -- { { namespace = "default", current_version = 1000, }, }
-    manager.callbacks:register("kong.sync.v2.get_delta", function(node_id, current_versions)
-      local rpc_peers
-      if kong.rpc then
-        rpc_peers = kong.rpc:get_peers()
+function _M:init_cp(manager)
+  -- CP
+  -- Method: kong.sync.v2.get_delta
+  -- Params: versions: list of current versions of the database
+  -- { { namespace = "default", current_version = 1000, }, }
+  manager.callbacks:register("kong.sync.v2.get_delta", function(node_id, current_versions)
+    local rpc_peers
+    if kong.rpc then
+      rpc_peers = kong.rpc:get_peers()
+    end
+
+    local default_namespace
+    for namespace, v in pairs(current_versions) do
+      if namespace == "default" then
+        default_namespace = v
       end
+    end
 
-      local default_namespace
-      for namespace, v in pairs(current_versions) do
-        if namespace == "default" then
-          default_namespace = v
-        end
-      end
+    if not default_namespace then
+      return nil, "default namespace does not exist inside params"
+    end
 
-      if not default_namespace then
-        return nil, "default namespace does not exist inside params"
-      end
+    local ok, err = kong.db.clustering_data_planes:upsert({ id = node_id }, {
+      last_seen = ngx.time(),
+      hostname = node_id,
+      ip = "127.0.7.1",
+      version = "3.8.0.0",
+      sync_status = "normal",
+      config_hash = string.format("%032d", default_namespace.version),
+      rpc_capabilities = rpc_peers and rpc_peers[node_id] or {},
+    })
+    if not ok then
+      ngx_log(ngx_ERR, "unable to update clustering data plane status: ", err)
+    end
 
-      local ok, err = kong.db.clustering_data_planes:upsert({ id = node_id }, {
-        last_seen = ngx.time(),
-        hostname = node_id,
-        ip = "127.0.7.1",
-        version = "3.8.0.0",
-        sync_status = "normal",
-        config_hash = string.format("%032d", default_namespace.version),
-        rpc_capabilities = rpc_peers and rpc_peers[node_id] or {},
-      })
-      if not ok then
-        ngx.log(ngx.ERR, "unable to update clustering data plane status: ", err)
-      end
+    -- is the node empty? If so, just do a full sync to bring it up to date faster
+    if default_namespace.version == 0 or
+       self.strategy:get_latest_version() - default_namespace.version > FULL_SYNC_THRESHOLD
+    then
+      -- we need to full sync because holes are found
 
-      -- is the node empty? If so, just do a full sync to bring it up to date faster
-      if default_namespace.version == 0 or
-         self.strategy:get_latest_version() - default_namespace.version > FULL_SYNC_THRESHOLD
-      then
-        -- we need to full sync because holes are found
-
-        ngx_log(ngx_INFO, "[kong.sync.v2] database is empty or too far behind for node_id: ", node_id,
-                ", current_version: ", default_namespace.version,
-                ", forcing a full sync")
+      ngx_log(ngx_INFO, "[kong.sync.v2] database is empty or too far behind for node_id: ", node_id,
+              ", current_version: ", default_namespace.version,
+              ", forcing a full sync")
 
 
-        local deltas, err = declarative.export_config_sync()
-        if not deltas then
-          return nil, err
-        end
-
-        return { default = { deltas = deltas, wipe = true, }, }
-      end
-
-      local res, err = self.strategy:get_delta(default_namespace.version)
-      if not res then
+      local deltas, err = declarative.export_config_sync()
+      if not deltas then
         return nil, err
       end
 
-      if #res == 0 then
-        ngx_log(ngx_DEBUG, "[kong.sync.v2] no delta for node_id: ", node_id,
-                ", current_version: ", default_namespace.version,
-                ", node is already up to date" )
-        return { default = { deltas = res, wipe = false, }, }
+      return { default = { deltas = deltas, wipe = true, }, }
+    end
+
+    local res, err = self.strategy:get_delta(default_namespace.version)
+    if not res then
+      return nil, err
+    end
+
+    if #res == 0 then
+      ngx_log(ngx_DEBUG, "[kong.sync.v2] no delta for node_id: ", node_id,
+              ", current_version: ", default_namespace.version,
+              ", node is already up to date" )
+      return { default = { deltas = res, wipe = false, }, }
+    end
+
+    -- some deltas are returned, are they contiguous?
+    if res[1].version ~= default_namespace.version + 1 then
+      -- we need to full sync because holes are found
+      -- in the delta, meaning the oldest version is no longer
+      -- available
+
+      ngx_log(ngx_INFO, "[kong.sync.v2] delta for node_id no longer available: ", node_id,
+              ", current_version: ", default_namespace.version,
+              ", forcing a full sync")
+
+
+      local deltas, err = declarative.export_config_sync()
+      if not deltas then
+        return nil, err
       end
 
-      -- some deltas are returned, are they contiguous?
-      if res[1].version ~= default_namespace.version + 1 then
-        -- we need to full sync because holes are found
-        -- in the delta, meaning the oldest version is no longer
-        -- available
+      return { default = { deltas = deltas, wipe = true, }, }
+    end
 
-        ngx_log(ngx_INFO, "[kong.sync.v2] delta for node_id no longer available: ", node_id,
-                ", current_version: ", default_namespace.version,
-                ", forcing a full sync")
+    return { default = {  deltas = res, wipe = false, }, }
+  end)
+end
 
 
-        local deltas, err = declarative.export_config_sync()
-        if not deltas then
-          return nil, err
+function _M:init_dp(manager)
+  -- DP
+  -- Method: kong.sync.v2.notify_new_version
+  -- Params: new_versions: list of namespaces and their new versions, like:
+  -- { { namespace = "default", new_version = 1000, }, }
+  manager.callbacks:register("kong.sync.v2.notify_new_version", function(node_id, new_versions)
+    -- currently only default is supported, and anything else is ignored
+    for namespace, new_version in pairs(new_versions) do
+      if namespace == "default" then
+        local version = new_version.new_version
+        if not version then
+          return nil, "'new_version' key does not exist"
         end
 
-        return { default = { deltas = deltas, wipe = true, }, }
+        local lmdb_ver = tonumber(declarative.get_current_hash()) or 0
+        if lmdb_ver < version then
+          return self:sync_once()
+        end
+
+        return true
       end
+    end
 
-      return { default = {  deltas = res, wipe = false, }, }
-    end)
+    return nil, "default namespace does not exist inside params"
+  end)
+end
 
+
+function _M:init(manager, is_cp)
+  if is_cp then
+    init_cp(manager)
   else
-    -- DP
-    -- Method: kong.sync.v2.notify_new_version
-    -- Params: new_versions: list of namespaces and their new versions, like:
-    -- { { namespace = "default", new_version = 1000, }, }
-    manager.callbacks:register("kong.sync.v2.notify_new_version", function(node_id, new_versions)
-      -- currently only default is supported, and anything else is ignored
-      for namespace, new_version in pairs(new_versions) do
-        if namespace == "default" then
-          local version = new_version.new_version
-          if not version then
-            return nil, "'new_version' key does not exist"
-          end
-
-          local lmdb_ver = tonumber(declarative.get_current_hash()) or 0
-          if lmdb_ver < version then
-            return self:sync_once()
-          end
-
-          return true
-        end
-      end
-
-      return nil, "default namespace does not exist inside params"
-    end)
+    init_dp(manager)
   end
 end
 
@@ -164,7 +173,7 @@ function _M:sync_once(delay)
                                                },
                                              })
         if not ns_deltas then
-          ngx.log(ngx.ERR, "sync get_delta error: ", err)
+          ngx_log(ngx_ERR, "sync get_delta error: ", err)
           return true
         end
 
