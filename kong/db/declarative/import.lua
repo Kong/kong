@@ -405,6 +405,9 @@ local function load_into_cache(entities, meta, hash)
 
   assert(type(default_workspace_id) == "string")
 
+  -- set it for insert_entity_for_txn()
+  kong.default_workspace = default_workspace_id
+
   if not hash or hash == "" or config_is_empty(entities) then
     hash = DECLARATIVE_EMPTY_CONFIG_HASH
   end
@@ -455,8 +458,6 @@ local function load_into_cache(entities, meta, hash)
 
   t:set(DECLARATIVE_HASH_KEY, hash)
   t:set(DECLARATIVE_DEFAULT_WORKSPACE_KEY, default_workspace_id)
-
-  kong.default_workspace = default_workspace_id
 
   local ok, err = t:commit()
   if not ok then
