@@ -31,8 +31,11 @@ end
 function _M:init_worker()
   if self.is_cp then
     self.strategy:init_worker()
+    return
+  end
 
-  elseif ngx.worker.id() == 0 then
+  -- is dp, sync in worker 0
+  if ngx.worker.id() == 0 then
     assert(self.rpc:sync_once(5))
     assert(ngx.timer.every(30, function(premature)
       if premature then
