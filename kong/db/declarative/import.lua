@@ -315,7 +315,11 @@ local function insert_entity_for_txn(t, entity_name, item, options)
 
       if is_foreign then
         -- is foreign, generate page_for_foreign_field indexes
-        assert(type(value) == "table")
+        --if type(value) ~= "table" then
+        --  value = { value }
+        --end
+        assert(type(value) == "table", debug.traceback())
+
         value = pk_string(kong.db[fdata_reference].schema, value)
 
         local key = foreign_field_key(entity_name, ws_id, fname, value, pk)
@@ -373,7 +377,11 @@ local function delete_entity_for_txn(t, entity_name, item, options)
 
       if is_foreign then
         -- is foreign, generate page_for_foreign_field indexes
+        --if type(value) ~= "table" then
+        --  value = { value }
+        --end
         assert(type(value) == "table")
+
         value = pk_string(kong.db[fdata_reference].schema, value)
 
         local key = foreign_field_key(entity_name, ws_id, fname, value, pk)
