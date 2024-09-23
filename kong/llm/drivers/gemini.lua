@@ -198,10 +198,19 @@ local function from_gemini_chat_openai(response, model_info, route_type)
       }
     end
 
-  else -- probably a server fault or other unexpected response
+  elseif response.candidates
+           and #response.candidates > 0
+           and response.candidates[1].finishReason
+           and response.candidates[1].finishReason == "SAFETY" then
+    local err = "transformation generation candidate breached Gemini content safety"
+    ngx.log(ngx.ERR, err)
+    return nil, err
+
+  else-- probably a server fault or other unexpected response
     local err = "no generation candidates received from Gemini, or max_tokens too short"
     ngx.log(ngx.ERR, err)
     return nil, err
+
   end
 
   return cjson.encode(messages)
