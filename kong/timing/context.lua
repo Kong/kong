@@ -120,7 +120,9 @@ function _M:to_json()
 
   self:set_root_context_prop("dangling", dangling)
   self:finalize(self.root_context)
-  self.root_context.total_time_without_upstream = self:get_total_time_without_upstream()
+  if self.root_context.child ~= nil then
+    self.root_context.total_time_without_upstream = self:get_total_time_without_upstream()
+  end
   return assert(cjson.encode(self.root_context))
 end
 
