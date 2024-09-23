@@ -1,4 +1,4 @@
-local cjson         = require("cjson.safe")
+local cjson         = require("cjson.safe").new()
 
 local ngx_get_phase = ngx.get_phase
 local ngx_re_gmatch = ngx.re.gmatch
@@ -15,6 +15,8 @@ local assert        = assert
 local _M            = {}
 local _MT           = { __index = _M }
 
+-- Set number precision smaller than 16 to avoid floating point errors
+cjson.encode_number_precision(14)
 
 function _M:enter_subcontext(name)
   assert(name ~= nil, "name is required")
