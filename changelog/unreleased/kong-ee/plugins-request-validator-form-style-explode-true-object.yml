@@ -1,0 +1,3 @@
+message: "**Request-validator**: Fixed an issue where requests get rejected when defining an object parameter with form style and exploded."
+type: bugfix
+scope: Plugin

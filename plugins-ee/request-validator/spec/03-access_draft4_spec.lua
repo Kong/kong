@@ -834,6 +834,53 @@ for _, strategy in strategies() do
           assert.same({ "a", "e"}, body.data)
         end)
       end
+
+      it("location: query, style: form, explode: true schema_type: object", function()
+        local param_schema = {
+          {
+            name = "id",
+            ["in"] = "query",
+            required = true,
+            schema = [[
+            {
+              "type": "object",
+              "required": ["integer", "string"],
+              "properties": {
+                "integer": {
+                  "type": "integer"
+                },
+                "string": {
+                  "type": "string"
+                }
+              }
+            }]],
+            style = "form",
+            explode = true,
+          }
+        }
+
+        add_plugin(admin_client, { parameter_schema = param_schema,  verbose_response = true }, 201)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/anything?integer=1&string=str",
+          headers = {
+            ["Host"] = "path.test",
+          }
+        })
+        assert.res_status(200, res)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/anything?integer=1",
+          headers = {
+            ["Host"] = "path.test",
+          }
+        })
+        assert.res_status(400, res)
+        local body = assert.response(res).has.jsonbody()
+        assert.same("query 'id' validation failed, [error] property string is required", body.message)
+      end)
     end)
   end)
 end

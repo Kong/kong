@@ -211,8 +211,16 @@ end
 
 -- validates the 'required' property of a schema
 local function validate_required(location, parameter)
-  if location == "query" and parameter.style == "deepObject" then
-    return true
+  if location == "query" then
+    if parameter.style == "deepObject" then
+      return true
+    end
+    if parameter.style == "form" and parameter.explode == true then
+      assert(validator_param_cache[parameter])
+      if (parameter.decoded_schema or EMPTY).type == "object" then
+        return true
+      end
+    end
   end
 
   local value = template_environment[location][parameter.name]
@@ -253,13 +261,18 @@ local validate_data do
       return validate_style_deepobject(location, parameter)
     end
 
+    local validator = validator_param_cache[parameter]
+    if location == "query" and parameter.style == "form" and parameter.explode == true and
+      (parameter.decoded_schema or EMPTY).type == "object" then
+      parameter.value = template_environment["query"]
+    end
+
     -- if param is not required and value is nil or serialization
     -- information not being set, return valid
     if not parameter.value or parameter.style == ngx_null  then
       return true
     end
 
-    local validator = validator_param_cache[parameter]
     if type(parameter.value) ~= "table" or tables_allowed[parameter.decoded_schema.type] then
       -- if the value is a table, then we can only validate it for non-primitives
       local result, err =  deserialize(parameter.style, parameter.decoded_schema.type,
