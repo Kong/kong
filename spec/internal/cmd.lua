@@ -461,11 +461,6 @@ local function signal_workers(prefix, signal, pid_path)
 end
 
 
--- TODO
--- get_kong_workers
--- reload_kong
-
-
 return {
   get_version = get_version,
 
