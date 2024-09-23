@@ -691,7 +691,7 @@ function Kong.init()
 
   if is_http_module and (is_data_plane(config) or is_control_plane(config))
   then
-    --kong.clustering = require("kong.clustering").new(config)
+    kong.clustering = require("kong.clustering").new(config)
 
     if config.cluster_rpc then
       kong.rpc = require("kong.clustering.rpc.manager").new(config, kong.node.get_id())
