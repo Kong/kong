@@ -277,13 +277,34 @@ function _M.subrequest(body, conf, http_opts, return_res_table, identity_interfa
     return nil, nil, "body must be table or string"
   end
 
-  -- may be overridden
-  local url = (conf.model.options and conf.model.options.upstream_url)
-    or fmt(
-    "%s%s",
-    ai_shared.upstream_url_format[DRIVER_NAME],
-    ai_shared.operation_map[DRIVER_NAME][conf.route_type].path
-  )
+  local operation = llm_state.is_streaming_mode() and "streamGenerateContent"
+                                                             or "generateContent"
+  local f_url = conf.model.options and conf.model.options.upstream_url
+
+  if not f_url then  -- upstream_url override is not set
+    -- check if this is "public" or "vertex" gemini deployment
+    if conf.model.options
+        and conf.model.options.gemini
+        and conf.model.options.gemini.api_endpoint
+        and conf.model.options.gemini.project_id
+        and conf.model.options.gemini.location_id
+    then
+      -- vertex mode
+      f_url = fmt(ai_shared.upstream_url_format["gemini_vertex"],
+                  conf.model.options.gemini.api_endpoint) ..
+              fmt(ai_shared.operation_map["gemini_vertex"][conf.route_type].path,
+                  conf.model.options.gemini.project_id,
+                  conf.model.options.gemini.location_id,
+                  conf.model.name,
+                  operation)
+    else
+      -- public mode
+      f_url = ai_shared.upstream_url_format["gemini"] ..
+              fmt(ai_shared.operation_map["gemini"][conf.route_type].path,
+                  conf.model.name,
+                  operation)
+    end
+  end
 
   local method = ai_shared.operation_map[DRIVER_NAME][conf.route_type].method
 
@@ -312,7 +333,7 @@ function _M.subrequest(body, conf, http_opts, return_res_table, identity_interfa
     headers[conf.auth.header_name] = conf.auth.header_value
   end
 
-  local res, err, httpc = ai_shared.http_request(url, body_string, method, headers, http_opts, return_res_table)
+  local res, err, httpc = ai_shared.http_request(f_url, body_string, method, headers, http_opts, return_res_table)
   if err then
     return nil, nil, "request to ai service failed: " .. err
   end
