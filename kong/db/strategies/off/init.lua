@@ -17,8 +17,8 @@ local next = next
 local assert = assert
 --local tostring = tostring
 --local tonumber = tonumber
---local encode_base64 = ngx.encode_base64
---local decode_base64 = ngx.decode_base64
+local encode_base64 = ngx.encode_base64
+local decode_base64 = ngx.decode_base64
 local null = ngx.null
 local unmarshall = marshaller.unmarshall
 --local marshall = marshaller.marshall
@@ -144,7 +144,7 @@ local function page_for_prefix(self, prefix, size, offset, options, follow)
   end
 
   if err_or_more then
-    return ret, nil, last_key .. "\x00"
+    return ret, nil, encode_base64(last_key .. "\x00", true)
   end
 
   return ret
@@ -155,6 +155,22 @@ local function page(self, size, offset, options)
   local schema = self.schema
   local ws_id = workspace_id(schema, options)
   local prefix = item_key_prefix(schema.name, ws_id)
+
+  if offset then
+    local token = decode_base64(offset)
+    if not token then
+      return nil, self.errors:invalid_offset(offset, "bad base64 encoding")
+    end
+
+    --local number = tonumber(token)
+    --if not number then
+    --  return nil, self.errors:invalid_offset(offset, "invalid offset")
+    --end
+
+    offset = token
+
+  end
+
   return page_for_prefix(self, prefix, size, offset, options, false)
 end
 
