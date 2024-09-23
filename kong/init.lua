@@ -876,12 +876,13 @@ function Kong.init_worker()
     kong.cache:invalidate_local(constants.ADMIN_GUI_KCONFIG_CACHE_KEY)
   end
 
-  --if process.type() == "privileged agent" then
-  --  if kong.clustering then
-  --    kong.clustering:init_worker()
-  --  end
-  --  return
-  --end
+  if process.type() == "privileged agent" and not kong.rpc then
+    if kong.clustering then
+      -- full sync cp/dp
+      kong.clustering:init_worker()
+    end
+    return
+  end
 
   kong.vault.init_worker()
 
@@ -980,10 +981,12 @@ function Kong.init_worker()
     plugin_servers.start()
   end
 
-  --if kong.clustering then
-  --  kong.clustering:init_worker()
+  if kong.clustering then
+    if not kong.rpc then
+      -- full sync cp/dp
+      kong.clustering:init_worker()
 
-    if kong.rpc and is_http_module then
+    elseif kong.rpc and is_http_module then
       -- only available in http subsystem
       local cluster_tls = require("kong.clustering.tls")
 
@@ -1000,7 +1003,7 @@ function Kong.init_worker()
         kong.rpc.concentrator:start()
       end
     end
-  --end
+  end
 
   if kong.sync and is_http_module then
     kong.sync:init_worker()
