@@ -226,7 +226,7 @@ jobs:
 
     - name: Setup Bazel
       if: steps.cache-deps.outputs.cache-hit != 'true'
-      uses: bazel-contrib/setup-bazel@0.8.5
+      uses: bazel-contrib/setup-bazel@e403ad507104847c3539436f64a9e9eecc73eeec #0.8.5
       with:
         bazelisk-version: "1.20.0"
         # Avoid downloading Bazel every time.
