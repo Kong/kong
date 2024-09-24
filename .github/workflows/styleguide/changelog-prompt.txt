@@ -45,11 +45,17 @@ Bad examples would be:
   * Kong Gateway failed to generate a keyring when RBAC was enabled.
   * Fixes Websocket tracing.
 
-When giving an answer, please enumerate the issues using bullet points.
-Please provide a suggestion for the changelog message if it does not meet the above criteria.
-Always add the complete final suggestion in a ``yaml`` block. No need to ask further questions.
+The answer should adhere to the following restrictions:
 
-Also, when you had suggestions please add the Styleguide defined above as a collapsable markdown element using the syntax
+- Respond with a structure that is equal to the patch that you were asked to review. Only replace the parts that you saw a problem in.
+- When giving an answer, please enumerate the issues using bullet points.
+- Please provide a suggestion for the changelog message if it does not meet the above criteria.
+- Always add the complete final suggestion in a GitHub markdown block like this:
+
+```suggestion [Your complete suggestion here] ```
+
+
+When you had suggestions please add the Styleguide defined above as a collapsable markdown element using the syntax
 
 <details>
   <summary>Changelog Styleguide</summary>
@@ -58,4 +64,4 @@ Also, when you had suggestions please add the Styleguide defined above as a coll
 
 </details>
 
-Only add a LGTM comment when you had nothing to correct
+No need to ask further questions.

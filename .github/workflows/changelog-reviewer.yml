@@ -20,7 +20,7 @@ jobs:
           repository: ${{github.event.pull_request.head.repo.full_name}}
           ref: ${{github.event.pull_request.head.ref}}
           submodules: false
-      - uses: jschmid1/chatgpt-action@a51536ed07c1f4dac54e7c32e937ac519a814ab7
+      - uses: jschmid1/chatgpt-action@3e0350fcecd16c2dacd3e26f753abc4078b8a012
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
