@@ -34,7 +34,7 @@ __DATA__
         http2 on;
         ssl_client_hello_by_lua_block {
             local ssl = require "ngx.ssl"
-            local ok, err = ssl.disable_http2()
+            local ok, err = ssl.disable_http2_alpn()
             if not ok then
                 ngx.log(ngx.ERR, "failed to disable http2")
             end
@@ -99,7 +99,7 @@ alpn server accepted http/1.1
         http2 on;
         ssl_client_hello_by_lua_block {
             local ssl = require "ngx.ssl"
-            local ok, err = ssl.disable_http2()
+            local ok, err = ssl.disable_http2_alpn()
             if not ok then
                 ngx.log(ngx.ERR, "failed to disable http2")
             end

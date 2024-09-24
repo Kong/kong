@@ -1,5 +1,5 @@
 diff --git a/bundle/lua-resty-core-0.1.28/lib/ngx/ssl.lua b/bundle/lua-resty-core-0.1.28/lib/ngx/ssl.lua
-index 8792be0..39279aa 100644
+index 8792be0..38cbc51 100644
 --- a/bundle/lua-resty-core-0.1.28/lib/ngx/ssl.lua
 +++ b/bundle/lua-resty-core-0.1.28/lib/ngx/ssl.lua
 @@ -18,6 +18,7 @@ local get_size_ptr = base.get_size_ptr
@@ -23,7 +23,7 @@ index 8792be0..39279aa 100644
  
      int ngx_http_lua_ffi_ssl_verify_client(void *r,
          void *cdata, int depth, char **err);
-+    int ngx_http_lua_ffi_ssl_disable_http2(ngx_http_request_t *r, char **err);
++    int ngx_http_lua_ffi_ssl_disable_http2_alpn(ngx_http_request_t *r, char **err);
      ]]
  
      ngx_lua_ffi_ssl_set_der_certificate =
@@ -31,7 +31,7 @@ index 8792be0..39279aa 100644
      ngx_lua_ffi_free_cert = C.ngx_http_lua_ffi_free_cert
      ngx_lua_ffi_free_priv_key = C.ngx_http_lua_ffi_free_priv_key
      ngx_lua_ffi_ssl_verify_client = C.ngx_http_lua_ffi_ssl_verify_client
-+    ngx_lua_ffi_disable_http2 = C.ngx_http_lua_ffi_ssl_disable_http2
++    ngx_lua_ffi_disable_http2 = C.ngx_http_lua_ffi_ssl_disable_http2_alpn
  
  elseif subsystem == 'stream' then
      ffi.cdef[[
@@ -39,7 +39,7 @@ index 8792be0..39279aa 100644
  end
  
  
-+function _M.disable_http2()
++function _M.disable_http2_alpn()
 +    if get_phase() ~= "ssl_client_hello" then
 +        error("API disabled in the current context")
 +    end
@@ -62,7 +62,7 @@ index 8792be0..39279aa 100644
      _M.SSL3_VERSION = 0x0300
      _M.TLS1_VERSION = 0x0301
 diff --git a/bundle/nginx-1.25.3/src/http/modules/ngx_http_ssl_module.c b/bundle/nginx-1.25.3/src/http/modules/ngx_http_ssl_module.c
-index 1c92d9f..e9094c5 100644
+index 1c92d9f..cab2300 100644
 --- a/bundle/nginx-1.25.3/src/http/modules/ngx_http_ssl_module.c
 +++ b/bundle/nginx-1.25.3/src/http/modules/ngx_http_ssl_module.c
 @@ -8,6 +8,7 @@
@@ -78,12 +78,12 @@ index 1c92d9f..e9094c5 100644
          h2scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v2_module);
  
 -        if (h2scf->enable || hc->addr_conf->http2) {
-+        if ((h2scf->enable || hc->addr_conf->http2) && !ngx_http_lua_get_ssl_disable_http2(c->ssl)) {
++        if ((h2scf->enable || hc->addr_conf->http2) && !ngx_http_lua_get_ssl_disable_http2_alpn(c->ssl)) {
              srv = (unsigned char *) NGX_HTTP_V2_ALPN_PROTO NGX_HTTP_ALPN_PROTOS;
              srvlen = sizeof(NGX_HTTP_V2_ALPN_PROTO NGX_HTTP_ALPN_PROTOS) - 1;
  
 diff --git a/bundle/nginx-1.25.3/src/http/ngx_http_request.c b/bundle/nginx-1.25.3/src/http/ngx_http_request.c
-index bd2be5e..9492551 100644
+index bd2be5e..022e905 100644
 --- a/bundle/nginx-1.25.3/src/http/ngx_http_request.c
 +++ b/bundle/nginx-1.25.3/src/http/ngx_http_request.c
 @@ -8,6 +8,7 @@
@@ -94,60 +94,51 @@ index bd2be5e..9492551 100644
  
  
  static void ngx_http_wait_request_handler(ngx_event_t *ev);
-@@ -837,7 +838,7 @@ ngx_http_ssl_handshake_handler(ngx_connection_t *c)
- 
-         h2scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v2_module);
- 
--        if (h2scf->enable || hc->addr_conf->http2) {
-+        if ((h2scf->enable || hc->addr_conf->http2) && !ngx_http_lua_get_ssl_disable_http2(c->ssl)) {
- 
-             SSL_get0_alpn_selected(c->ssl->connection, &data, &len);
- 
 diff --git a/bundle/ngx_lua-0.10.26/src/api/ngx_http_lua_api.h b/bundle/ngx_lua-0.10.26/src/api/ngx_http_lua_api.h
-index 193c44e..fec6d61 100644
+index 193c44e..b81c73d 100644
 --- a/bundle/ngx_lua-0.10.26/src/api/ngx_http_lua_api.h
 +++ b/bundle/ngx_lua-0.10.26/src/api/ngx_http_lua_api.h
 @@ -70,6 +70,7 @@ void ngx_http_lua_co_ctx_resume_helper(ngx_http_lua_co_ctx_t *coctx, int nrets);
  
  int ngx_http_lua_get_lua_http10_buffering(ngx_http_request_t *r);
  
-+unsigned ngx_http_lua_get_ssl_disable_http2(ngx_ssl_connection_t *ssl);
++unsigned ngx_http_lua_get_ssl_disable_http2_alpn(ngx_ssl_connection_t *ssl);
  
  #endif /* _NGX_HTTP_LUA_API_H_INCLUDED_ */
  
 diff --git a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_api.c b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_api.c
-index 0d3ec9c..fe030c5 100644
+index 0d3ec9c..963bf96 100644
 --- a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_api.c
 +++ b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_api.c
 @@ -340,5 +340,14 @@ ngx_http_lua_get_lua_http10_buffering(ngx_http_request_t *r)
      return llcf->http10_buffering;
  }
  
-+unsigned ngx_http_lua_get_ssl_disable_http2(ngx_ssl_connection_t *ssl)
++unsigned ngx_http_lua_get_ssl_disable_http2_alpn(ngx_ssl_connection_t *ssl)
 +{
 +    ngx_http_lua_assert(ssl->connection);
 +    ngx_http_lua_ssl_ctx_t *cctx;
 +    
 +    cctx = ngx_http_lua_ssl_get_ctx(ssl->connection);
 +    ngx_http_lua_assert(cctx);
-+    return cctx->disable_http2;
++    return cctx->disable_http2_alpn;
 +}
  
  /* vi:set ft=c ts=4 sw=4 et fdm=marker: */
 diff --git a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_ssl.h b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_ssl.h
-index 3d577c6..e1b1583 100644
+index 3d577c6..c6ff1ed 100644
 --- a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_ssl.h
 +++ b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_ssl.h
 @@ -38,6 +38,7 @@ typedef struct {
      unsigned                 entered_client_hello_handler:1;
      unsigned                 entered_cert_handler:1;
      unsigned                 entered_sess_fetch_handler:1;
-+    unsigned                 disable_http2:1;
++    unsigned                 disable_http2_alpn:1;
  } ngx_http_lua_ssl_ctx_t;
  
  
 diff --git a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_ssl_client_helloby.c b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_ssl_client_helloby.c
-index 03ac430..fe125a2 100644
+index 03ac430..4f178f8 100644
 --- a/bundle/ngx_lua-0.10.26/src/ngx_http_lua_ssl_client_helloby.c
 +++ b/bundle/ngx_lua-0.10.26/src/ngx_http_lua_ssl_client_helloby.c
 @@ -713,4 +713,33 @@ ngx_http_lua_ffi_ssl_set_protocols(ngx_http_request_t *r,
@@ -155,7 +146,7 @@ index 03ac430..fe125a2 100644
  }
  
 +int
-+ngx_http_lua_ffi_ssl_disable_http2(ngx_http_request_t *r, char **err)
++ngx_http_lua_ffi_ssl_disable_http2_alpn(ngx_http_request_t *r, char **err)
 +{
 +    ngx_ssl_conn_t    *ssl_conn;
 +    ngx_http_lua_ssl_ctx_t *cctx;
@@ -178,7 +169,7 @@ index 03ac430..fe125a2 100644
 +    }
 +    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
 +                  "lua ssl disable http2");
-+    cctx->disable_http2 = 1;
++    cctx->disable_http2_alpn = 1;
 +
 +    return NGX_OK;
 +}
