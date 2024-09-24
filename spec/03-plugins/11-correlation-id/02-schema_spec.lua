@@ -107,7 +107,8 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
         COMMIT;
       ]], {
         ROUTE_ID = route.id,
-        CACHE_KEY = "plugins:correlation-id:"..route.id.."::::"..ws.id,
+        --CACHE_KEY = "plugins:correlation-id:"..route.id.."::::"..ws.id,
+        CACHE_KEY = "plugins|"..ws.id.."|route|"..route.id.."|"..plugin_id,
         ID = plugin_id,
       })
       local _, err = db.connector:query(sql)
@@ -151,7 +152,7 @@ describe("Plugin: correlation-id (schema) #a [#" .. strategy .."]", function()
       helpers.stop_kong("servroot2")
     end)
 
-    it("auto-complete generator if it is `null` in database", function()
+    it("#only auto-complete generator if it is `null` in database", function()
       local sql = 'SELECT config FROM plugins WHERE id=\''.. plugin_id ..'\';'
       local res, err = db.connector:query(sql)
       assert.is_nil(err)
