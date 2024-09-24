@@ -949,6 +949,11 @@ local function load(path, custom_conf, opts)
     end
   end
 
+  if not conf.cluster_rpc then
+    log.warn("Cluster incremental sync has been forcibly disabled")
+    conf.cluster_incremental_sync = false
+  end
+
   -- initialize the dns client, so the globally patched tcp.connect method
   -- will work from here onwards.
   assert(require("kong.tools.dns")(conf))

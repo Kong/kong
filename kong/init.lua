@@ -695,8 +695,11 @@ function Kong.init()
 
     if config.cluster_rpc then
       kong.rpc = require("kong.clustering.rpc.manager").new(config, kong.node.get_id())
-      kong.sync = require("kong.clustering.services.sync").new(db, is_control_plane(config))
-      kong.sync:init(kong.rpc)
+
+      if config.cluster_incremental_sync then
+        kong.sync = require("kong.clustering.services.sync").new(db, is_control_plane(config))
+        kong.sync:init(kong.rpc)
+      end
 
       if is_data_plane(config) then
         require("kong.clustering.services.debug").init(kong.rpc)
@@ -877,7 +880,7 @@ function Kong.init_worker()
     kong.cache:invalidate_local(constants.ADMIN_GUI_KCONFIG_CACHE_KEY)
   end
 
-  if process.type() == "privileged agent" and not kong.rpc then
+  if process.type() == "privileged agent" and not kong.sync then
     if kong.clustering then
       -- full sync cp/dp
       kong.clustering:init_worker()
@@ -985,11 +988,11 @@ function Kong.init_worker()
   if kong.clustering then
 
     -- full sync cp/dp
-    if not kong.rpc then
+    if not kong.sync then
       kong.clustering:init_worker()
 
     -- rpc and incremental sync
-    elseif kong.rpc and is_http_module then
+    elseif kong.sync and is_http_module then
 
       -- only available in http subsystem
       local cluster_tls = require("kong.clustering.tls")
