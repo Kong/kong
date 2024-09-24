@@ -2,9 +2,10 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson.safe"
 
 
+for _, cluster_rpc in ipairs { "on", "off"  } do
 for _, strategy in helpers.each_strategy() do
 
-describe("CP/DP PKI sync #" .. strategy, function()
+describe("CP/DP PKI sync #" .. strategy .. " rpc=" .. cluster_rpc, function()
 
   lazy_setup(function()
     helpers.get_db_utils(strategy, {
@@ -25,6 +26,7 @@ describe("CP/DP PKI sync #" .. strategy, function()
       -- additional attributes for PKI:
       cluster_mtls = "pki",
       cluster_ca_cert = "spec/fixtures/kong_clustering_ca.crt",
+      cluster_rpc = cluster_rpc,
     }))
 
     assert(helpers.start_kong({
@@ -40,6 +42,7 @@ describe("CP/DP PKI sync #" .. strategy, function()
       cluster_mtls = "pki",
       cluster_server_name = "kong_clustering",
       cluster_ca_cert = "spec/fixtures/kong_clustering.crt",
+      cluster_rpc = cluster_rpc,
     }))
   end)
 
@@ -158,4 +161,5 @@ describe("CP/DP PKI sync #" .. strategy, function()
   end)
 end)
 
-end
+end -- for _, strategy
+end -- for cluster_rpc
