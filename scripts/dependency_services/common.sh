@@ -65,7 +65,12 @@ if [ ! -z "$plugins_ee_directory" ]; then
     mkdir -p "$ptemp"
 
     pushd "$plugins_ee_directory/.pongo" >/dev/null
-    for f in $(ls *.yml *.yaml 2>/dev/null); do
+
+    shopt -s nullglob
+    yaml_files=(*.yml *.yaml)
+    shopt -u nullglob
+
+    for f in "${yaml_files[@]}"; do
         compose_file="$compose_file:$(pwd)/$f"
         for service in $(yq '.services | keys| .[]' <"$f"); do
             # rest-proxy -> rest_proxy
