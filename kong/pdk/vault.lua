@@ -1456,7 +1456,7 @@ local function new(self)
     initialized = true
 
     if self.configuration.database ~= "off" or  -- postgres
-       self.configuration.role == "data_plane" and self.configuration.cluster_rpc -- incremental dp
+       self.configuration.role == "data_plane" and self.configuration.cluster_incremental_sync -- incremental dp
     then
       self.worker_events.register(handle_vault_crud_event, "crud", "vaults")
     end
