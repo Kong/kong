@@ -58,7 +58,7 @@ function _M:init_cp(manager)
     local ok, err = kong.db.clustering_data_planes:upsert({ id = node_id }, {
       last_seen = ngx.time(),
       hostname = node_id,
-      ip = "127.0.7.1",   -- XXX how to get the corret ip?
+      ip = kong.rpc.client_ips[node_id],   -- try to get the corret ip
       version = "3.8.0.0",
       sync_status = CLUSTERING_SYNC_STATUS.NORMAL,
       config_hash = string.format("%032d", default_namespace.version),

@@ -42,6 +42,7 @@ function _M.new(conf, node_id)
     -- clients[node_id]: { socket1 => true, socket2 => true, ... }
     clients = {},
     client_capabilities = {},
+    client_ips = {},  -- store DP node's ip addr
     node_id = node_id,
     conf = conf,
     cluster_cert = assert(clustering_tls.get_cluster_cert(conf)),
@@ -75,16 +76,18 @@ end
 
 
 function _M:_remove_socket(socket)
-  local sockets = assert(self.clients[socket.node_id])
+  local node_id = socket.node_id
+  local sockets = assert(self.clients[node_id])
 
   assert(sockets[socket])
 
   sockets[socket] = nil
 
   if table_isempty(sockets) then
-    self.clients[socket.node_id] = nil
-    self.client_capabilities[socket.node_id] = nil
-    assert(self.concentrator:_enqueue_unsubscribe(socket.node_id))
+    self.clients[node_id] = nil
+    self.client_ips[node_id] = nil
+    self.client_capabilities[node_id] = nil
+    assert(self.concentrator:_enqueue_unsubscribe(node_id))
   end
 end
 
@@ -254,6 +257,9 @@ function _M:handle_websocket()
 
   local s = socket.new(self, wb, node_id)
   self:_add_socket(s, rpc_capabilities)
+
+  -- store DP's ip addr
+  self.client_ips[node_id] = ngx_var.remote_addr
 
   s:start()
   local res, err = s:join()
