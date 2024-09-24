@@ -760,14 +760,14 @@ function Kong.init()
 
   require("resty.kong.var").patch_metatable()
 
-  --if config.dedicated_config_processing and is_data_plane(config) then
-  --  -- TODO: figure out if there is better value than 4096
-  --  -- 4096 is for the cocurrency of the lua-resty-timer-ng
-  --  local ok, err = process.enable_privileged_agent(4096)
-  --  if not ok then
-  --    error(err)
-  --  end
-  --end
+  if config.dedicated_config_processing and is_data_plane(config) and not kong.sync then
+    -- TODO: figure out if there is better value than 4096
+    -- 4096 is for the cocurrency of the lua-resty-timer-ng
+    local ok, err = process.enable_privileged_agent(4096)
+    if not ok then
+      error(err)
+    end
+  end
 
   if config.request_debug and config.role ~= "control_plane" and is_http_module then
     local token = config.request_debug_token or uuid()
