@@ -41,7 +41,7 @@ for _, strategy in helpers.each_strategy() do
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         database = strategy,
         cluster_listen = "127.0.0.1:9005",
-        cluster_rpc = "off",
+        cluster_rpc = "off",  -- disable rpc
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
 
@@ -52,7 +52,8 @@ for _, strategy in helpers.each_strategy() do
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         cluster_control_plane = "127.0.0.1:9005",
-        cluster_rpc = "off",
+        cluster_rpc = "off",  -- disable rpc
+        dedicated_config_processing = "off", -- worker 0
         proxy_listen = "0.0.0.0:9002",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
