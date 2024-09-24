@@ -32,5 +32,8 @@ function EventHooksHandler:access()
   end
 end
 
+function EventHooksHandler:header_filter()
+  kong.response.add_header("x-event-hooks-enabled", kong.configuration.event_hooks_enabled)
+end
 
 return EventHooksHandler

@@ -16,6 +16,21 @@ local function client_send(req)
   return status, body
 end
 
+-- replace distributions_constants.lua to mock a GA release distribution
+local function setup_distribution()
+  local tmp_filename = "/tmp/distributions_constants.lua"
+  assert(helpers.file.copy("kong/enterprise_edition/distributions_constants.lua", tmp_filename, true))
+  assert(helpers.file.copy("spec-ee/fixtures/mock_distributions_constants.lua", "kong/enterprise_edition/distributions_constants.lua", true))
+
+  return function()
+    if helpers.path.exists(tmp_filename) then
+      -- restore and delete backup
+      assert(helpers.file.copy(tmp_filename, "kong/enterprise_edition/distributions_constants.lua", true))
+      assert(helpers.file.delete(tmp_filename))
+    end
+  end
+end
+
 for _, strategy in helpers.each_strategy() do
   describe("DP privileged agent publish event hooks during init_worker, strategy#" .. strategy, function()
     local db
@@ -70,17 +85,15 @@ for _, strategy in helpers.each_strategy() do
                   local body_data = ngx.req.get_body_data()
                   local cjson_decode = require("cjson").decode
                   local body = cjson_decode(body_data)
-                  if body.operation == "create" then
-                    ngx.status = 200
-                  elseif body.operation == "delete" then
-                    ngx.status = 204
-                  else
+                  if body.source == "foo" and body.event == "bar" then
                     local new_val, err = webhook_hit_counter:incr("hits", 1, 0)
-                    if not new_val then
-                      ngx.log(ngx.ERR, "failed to increment webhook hit counter: ", err)
+                    if err then
+                      ngx.status = 500
+                      ngx.say(err)
+                     return
                     end
-                    ngx.status = 200
                   end
+                  ngx.status = 200
                 }
               }
               location /hits {
@@ -179,7 +192,9 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(201, res)
 
-        ngx.sleep(1)
+        helpers.wait_for_all_config_update({
+          forced_proxy_port = 9002,
+        })
 
         -- make a request to trigger the event
         local res = assert(proxy_client:send {
@@ -221,6 +236,217 @@ for _, strategy in helpers.each_strategy() do
 
       assert.is_nil(ok)
       assert.equal("source 'dog' is not registered", err)
+    end)
+  end)
+
+  describe("DP should work after receiving event_hooks from CP, strategy#" .. strategy, function()
+
+    lazy_setup(function()
+
+      helpers.test_conf.lua_package_path = helpers.test_conf.lua_package_path .. ";./spec-ee/fixtures/custom_plugins/?.lua"
+
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "clustering_data_planes",
+        "event_hooks"
+      }, {"event-hooks-tester"})
+
+      local service = assert(bp.services:insert())
+
+      local route = assert(bp.routes:insert({
+        hosts = { "test" },
+        service = service,
+      }))
+
+      assert(bp.plugins:insert {
+        name = "event-hooks-tester",
+        route = { id = route.id },
+        config = {},
+      })
+
+      assert(bp.event_hooks:insert({
+        source = "foo",
+        event = "bar",
+        handler = "log",
+        config = {},
+      }))
+
+      assert(helpers.start_kong({
+        role = "control_plane",
+        cluster_cert = "spec/fixtures/kong_clustering.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+        database = strategy,
+        db_update_frequency = 0.1,
+        cluster_listen = "127.0.0.1:9005",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        plugins = "bundled," .. "event-hooks-tester",
+      }))
+
+      assert(helpers.start_kong({
+        role = "data_plane",
+        database = "off",
+        prefix = "servroot-dp",
+        cluster_cert = "spec/fixtures/kong_clustering.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+        cluster_control_plane = "127.0.0.1:9005",
+        proxy_listen = "0.0.0.0:9002",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        plugins = "bundled," .. "event-hooks-tester",
+        log_level = "debug",
+      }))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong("servroot-dp")
+      helpers.stop_kong("servroot")
+    end)
+
+    local admin_client, proxy_client
+    before_each(function()
+      admin_client = helpers.admin_client()
+      proxy_client = helpers.proxy_client(nil, 9002)
+    end)
+
+    after_each(function()
+      if admin_client then
+        admin_client:close()
+      end
+      if proxy_client then
+        proxy_client:close()
+      end
+    end)
+
+    it("event_hooks should works in DP", function()
+      helpers.wait_for_all_config_update({
+        forced_proxy_port = 9002,
+      })
+
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/",
+        headers = {
+          host = "test",
+        }
+      })
+      assert.res_status(200, res)
+
+      assert.logfile("servroot-dp/logs/error.log").has.line("log callback")
+      assert.logfile("servroot-dp/logs/error.log").has.line("Trigger an event in access phase")
+    end)
+  end)
+
+  describe("DP event_hooks.emit() should work after receiving license from CP, #" .. strategy, function()
+
+    local reset_distribution
+    local valid_license
+
+    lazy_setup(function()
+      clear_license_env()
+      local f = assert(io.open("spec-ee/fixtures/mock_license.json"))
+      valid_license = f:read("*a")
+      f:close()
+      reset_distribution = setup_distribution()
+      helpers.test_conf.lua_package_path = helpers.test_conf.lua_package_path .. ";./spec-ee/fixtures/custom_plugins/?.lua"
+
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "clustering_data_planes",
+        "event_hooks",
+        "licenses",
+      }, {"event-hooks-tester"})
+
+      local service = assert(bp.services:insert())
+
+      local route = assert(bp.routes:insert({
+        hosts = { "test" },
+        service = service,
+      }))
+
+      assert(bp.plugins:insert {
+        name = "event-hooks-tester",
+        route = { id = route.id },
+        config = {},
+      })
+
+      assert(helpers.start_kong({
+        role = "control_plane",
+        cluster_cert = "spec/fixtures/kong_clustering.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+        database = strategy,
+        db_update_frequency = 0.1,
+        cluster_listen = "127.0.0.1:9005",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        plugins = "bundled," .. "event-hooks-tester",
+      }))
+
+      assert(helpers.start_kong({
+        role = "data_plane",
+        database = "off",
+        prefix = "servroot-dp",
+        cluster_cert = "spec/fixtures/kong_clustering.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+        cluster_control_plane = "127.0.0.1:9005",
+        proxy_listen = "0.0.0.0:9002",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        plugins = "bundled," .. "event-hooks-tester",
+        log_level = "info",
+      }))
+    end)
+
+    lazy_teardown(function()
+      reset_distribution()
+      helpers.stop_kong("servroot-dp")
+      helpers.stop_kong("servroot")
+    end)
+
+    local admin_client, proxy_client
+    before_each(function()
+      admin_client = helpers.admin_client()
+      proxy_client = helpers.proxy_client(nil, 9002)
+    end)
+
+    after_each(function()
+      if admin_client then
+        admin_client:close()
+      end
+      if proxy_client then
+        proxy_client:close()
+      end
+    end)
+
+    it("event_hooks should works in DP", function()
+      local res = assert(admin_client:send {
+        method = "POST",
+        path = "/licenses",
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+        body = { payload = valid_license },
+      })
+      assert.res_status(201, res)
+
+      helpers.wait_for_all_config_update({
+        forced_proxy_port = 9002,
+      })
+
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/",
+        headers = {
+          host = "test",
+        }
+      })
+      assert.res_status(200, res)
+      assert.equal("true", res.headers["x-event-hooks-enabled"])
+      assert.logfile("servroot-dp/logs/error.log").has.no.line("failed to emit event: source 'foo' is not registered")
     end)
   end)
 end
