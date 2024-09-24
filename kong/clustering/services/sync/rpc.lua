@@ -13,6 +13,7 @@ local concurrency = require("kong.concurrency")
 local insert_entity_for_txn = declarative.insert_entity_for_txn
 local delete_entity_for_txn = declarative.delete_entity_for_txn
 local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
+local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local SYNC_MUTEX_OPTS = { name = "get_delta", timeout = 0, }
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
@@ -53,12 +54,13 @@ function _M:init_cp(manager)
       return nil, "default namespace does not exist inside params"
     end
 
+    -- XXX TODO: follow update_sync_status() in control_plane.lua
     local ok, err = kong.db.clustering_data_planes:upsert({ id = node_id }, {
       last_seen = ngx.time(),
       hostname = node_id,
-      ip = "127.0.7.1",
+      ip = "127.0.7.1",   -- XXX how to get the corret ip?
       version = "3.8.0.0",
-      sync_status = "normal",
+      sync_status = CLUSTERING_SYNC_STATUS.NORMAL,
       config_hash = string.format("%032d", default_namespace.version),
       rpc_capabilities = rpc_peers and rpc_peers[node_id] or {},
     })
