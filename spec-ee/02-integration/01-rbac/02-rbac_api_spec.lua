@@ -18,6 +18,7 @@ local get_portal_and_vitals_key = require("spec-ee.helpers").get_portal_and_vita
 
 local PORTAL_PREFIX = constants.PORTAL_PREFIX
 local null = ngx.null
+local is_fips = os.getenv("KONG_FIPS")
 
 
 local compare_no_order = require "pl.tablex".compare_no_order
@@ -202,7 +203,11 @@ describe("Admin API RBAC with #" .. strategy, function()
         local json = cjson.decode(body)
 
         assert.equal("bob", json.name)
-        assert.matches("%$2b%$09%$", json.user_token)
+        if is_fips then
+          assert.matches("%$pbkdf2%-sha512%$i%=10000,l%=32%$", json.user_token)
+        else
+          assert.matches("%$2b%$09%$", json.user_token)
+        end
         assert.equal("bar", json.comment)
         assert.is_true(utils.is_valid_uuid(json.id))
         assert.is_true(json.enabled)
@@ -225,7 +230,11 @@ describe("Admin API RBAC with #" .. strategy, function()
         local json = cjson.decode(body)
 
         assert.equal("fubar", json.name)
-        assert.matches("%$2b%$09%$", json.user_token)
+        if is_fips then
+          assert.matches("%$pbkdf2%-sha512%$i%=10000,l%=32%$", json.user_token)
+        else
+          assert.matches("%$2b%$09%$", json.user_token)
+        end
 
         -- what I really want to do here is :find_all({ name = "fubar" }),
         -- but that doesn't return any results
@@ -385,7 +394,11 @@ describe("Admin API RBAC with #" .. strategy, function()
         local json = cjson.decode(body)
 
         assert.equal("alice", json.name)
-        assert.matches("%$2b%$09%$", json.user_token)
+        if is_fips then
+          assert.matches("%$pbkdf2%-sha512%$i%=10000,l%=32%$", json.user_token)
+        else
+          assert.matches("%$2b%$09%$", json.user_token)
+        end
         assert.is_true(utils.is_valid_uuid(json.id))
         assert.is_false(json.enabled)
       end)
@@ -694,7 +707,11 @@ describe("Admin API RBAC with #" .. strategy, function()
         body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.matches("%$2b%$09%$", json.user_token)
+        if is_fips then
+          assert.matches("%$pbkdf2%-sha512%$i%=10000,l%=32%$", json.user_token)
+        else
+          assert.matches("%$2b%$09%$", json.user_token)
+        end
         assert.not_equal(rbac_user.user_token, json.user_token)
       end)
 

@@ -16,8 +16,18 @@ local ee_helpers = require "spec-ee.helpers"
 local fmt = string.format
 
 
-local hmac_sha1_binary = function(secret, data)
-  return openssl_mac.new(secret, "HMAC", nil, "sha1"):final(data)
+local sha_alg = "sha256"
+local algorithms = {"hmac-" .. sha_alg}
+local hmac_alg = "hmac-" .. sha_alg
+if not helpers.is_fips_build then
+  sha_alg = "sha1"
+  hmac_alg = "hmac-" .. sha_alg
+  algorithms[#algorithms + 1] = hmac_alg
+end
+
+
+local hmac_sha_binary = function(secret, data)
+  return openssl_mac.new(secret, "HMAC", nil, sha_alg):final(data)
 end
 
 
@@ -154,7 +164,7 @@ for proto, conf in ee_helpers.each_protocol() do
         config   = {
           clock_skew            = 3000,
           enforce_headers       = {"date", "request-line"},
-          algorithms            = {"hmac-sha1", "hmac-sha256"},
+          algorithms            = algorithms,
           validate_request_body = true
         }
       }
@@ -257,8 +267,8 @@ for proto, conf in ee_helpers.each_protocol() do
 
       it("should not be authorized when the HMAC signature is not properly base64 encoded", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-        local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
-          .. [[headers="date",signature="not really a base64 encoded value!!!"]]
+        local hmacAuth = [["hmac username="bob",algorithm="]] .. hmac_alg
+          .. [[", headers="date",signature="not really a base64 encoded value!!!"]]
         local res  = assert(proxy_client:send {
           method          = "POST",
           headers         = {
@@ -396,9 +406,9 @@ for proto, conf in ee_helpers.each_protocol() do
 
       it("should not pass with username missing", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-        local encodedSignature   = ngx.encode_base64(hmac_sha1_binary("secret", "date: " .. date))
-        local hmacAuth = [[hmac algorithm="hmac-sha1",]]
-          .. [[headers="date",signature="]] .. encodedSignature .. [["]]
+        local encodedSignature   = ngx.encode_base64(hmac_sha_binary("secret", "date: " .. date))
+        local hmacAuth = [[hmac algorithm="]] .. hmac_alg
+          .. [[", headers="date",signature="]] .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -418,8 +428,7 @@ for proto, conf in ee_helpers.each_protocol() do
 
       it("should not pass with signature missing", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-        local hmacAuth = [[hmac username="bob",algorithm="hmac-sha1",]]
-          .. [[headers="date"]]
+        local hmacAuth = [[hmac username="bob",algorithm="]] .. hmac_alg .. [[", headers="date"]]
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -439,9 +448,9 @@ for proto, conf in ee_helpers.each_protocol() do
 
       it("should pass with GET", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-        local encodedSignature   = ngx.encode_base64(hmac_sha1_binary("secret", "date: " .. date))
-        local hmacAuth = [[hmac username="bob",algorithm="hmac-sha1",]]
-          .. [[headers="date",signature="]] .. encodedSignature .. [["]]
+        local encodedSignature   = ngx.encode_base64(hmac_sha_binary("secret", "date: " .. date))
+        local hmacAuth = [[hmac username="bob",algorithm="]] .. hmac_alg
+          .. [[", headers="date",signature="]] .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -460,9 +469,9 @@ for proto, conf in ee_helpers.each_protocol() do
       if proto ~= "websocket" then -- doesn't make sense to test gRPC here
       it("accepts authorized gRPC calls", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-        local encodedSignature   = ngx.encode_base64(hmac_sha1_binary("secret", "date: " .. date))
-        local hmacAuth = [[hmac username="bob",algorithm="hmac-sha1",]]
-          .. [[headers="date",signature="]] .. encodedSignature .. [["]]
+        local encodedSignature   = ngx.encode_base64(hmac_sha_binary("secret", "date: " .. date))
+        local hmacAuth = [[hmac username="bob",algorithm="]] .. hmac_alg
+          .. [[", headers="date",signature="]] .. encodedSignature .. [["]]
 
         local ok, res = helpers.proxy_client_grpc(){
           service = "hello.HelloService.SayHello",
@@ -476,11 +485,11 @@ for proto, conf in ee_helpers.each_protocol() do
 
       it("accepts authorized gRPC calls with @request-target (HTTP/2 test), bug #3789", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-        local encodedSignature   = ngx.encode_base64(hmac_sha1_binary("secret", "date: " .. date ..
+        local encodedSignature   = ngx.encode_base64(hmac_sha_binary("secret", "date: " .. date ..
                                                                       "\n@request-target: " ..
                                                                       "post /hello.HelloService/SayHello"))
-        local hmacAuth = [[hmac username="bob",algorithm="hmac-sha1",]]
-          .. [[headers="date @request-target",signature="]] .. encodedSignature .. [["]]
+        local hmacAuth = [[hmac username="bob",algorithm="]] .. hmac_alg
+          .. [[", headers="date @request-target",signature="]] .. encodedSignature .. [["]]
 
         local ok, res = helpers.proxy_client_grpc(){
           service = "hello.HelloService.SayHello",
@@ -495,9 +504,9 @@ for proto, conf in ee_helpers.each_protocol() do
 
       it("should pass with GET and proxy-authorization", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-        local encodedSignature   = ngx.encode_base64(hmac_sha1_binary("secret", "date: " .. date))
-        local hmacAuth = [[hmac username="bob",algorithm="hmac-sha1",]]
-          .. [[headers="date",signature="]] .. encodedSignature .. [["]]
+        local encodedSignature   = ngx.encode_base64(hmac_sha_binary("secret", "date: " .. date))
+        local hmacAuth = [[hmac username="bob",algorithm="]] .. hmac_alg
+          .. [[", headers="date",signature="]] .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -514,9 +523,9 @@ for proto, conf in ee_helpers.each_protocol() do
       if proto ~= "websocket" then -- can't test POST w/ WebSockets
       it("should pass with POST", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-        local encodedSignature   = ngx.encode_base64(hmac_sha1_binary("secret", "date: " .. date))
-        local hmacAuth = [[hmac username="bob",algorithm="hmac-sha1",]]
-          .. [[headers="date",signature="]] .. encodedSignature .. [["]]
+        local encodedSignature   = ngx.encode_base64(hmac_sha_binary("secret", "date: " .. date))
+        local hmacAuth = [[hmac username="bob",algorithm="]] .. hmac_alg
+          .. [[", headers="date",signature="]] .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "POST",
           path    = "/request",
@@ -534,9 +543,9 @@ for proto, conf in ee_helpers.each_protocol() do
 
       it("should pass with GET and valid authorization and wrong proxy-authorization", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-        local encodedSignature   = ngx.encode_base64(hmac_sha1_binary("secret", "date: " .. date))
-        local hmacAuth = [[hmac username="bob",algorithm="hmac-sha1",]]
-          .. [[headers="date",signature="]] .. encodedSignature .. [["]]
+        local encodedSignature   = ngx.encode_base64(hmac_sha_binary("secret", "date: " .. date))
+        local hmacAuth = [[hmac username="bob",algorithm="]] .. hmac_alg
+          .. [[", headers="date",signature="]] .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "POST",
           path    = "/request",
@@ -556,9 +565,9 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should pass with GET and invalid authorization and valid proxy-authorization", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature   = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: " .. date))
-        local hmacAuth = [[hmac username="bob",algorithm="hmac-sha1",]]
-          .. [[headers="date",signature="]] .. encodedSignature .. [["]]
+          hmac_sha_binary("secret", "date: " .. date))
+        local hmacAuth = [[hmac username="bob",algorithm="]] .. hmac_alg
+          .. [[", headers="date",signature="]] .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "POST",
           path    = "/request",
@@ -577,9 +586,9 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should pass with GET with content-md5 header", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: " .. date .. "\n" .. "content-md5: md5"))
-        local hmacAuth = [[hmac username="bob",algorithm="hmac-sha1",]]
-          .. [[headers="date content-md5",signature="]] .. encodedSignature .. [["]]
+          hmac_sha_binary("secret", "date: " .. date .. "\n" .. "content-md5: md5"))
+        local hmacAuth = [[hmac username="bob",algorithm="]] .. hmac_alg
+          .. [[", headers="date content-md5",signature="]] .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -598,10 +607,10 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should pass with GET with request-line", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: "
+          hmac_sha_binary("secret", "date: "
             .. date .. "\n" .. "content-md5: md5" .. "\nGET /request HTTP/1.1"))
-        local hmacAuth = [[hmac username="bob",  algorithm="hmac-sha1", ]]
-          .. [[headers="date content-md5 request-line", signature="]]
+        local hmacAuth = [[hmac username="bob",  algorithm="]] .. hmac_alg
+          .. [[", headers="date content-md5 request-line", signature="]]
           .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -621,10 +630,10 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should pass with GET with @request-target", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: "
+          hmac_sha_binary("secret", "date: "
             .. date .. "\n" .. "content-md5: md5" .. "\n@request-target: get /request"))
-        local hmacAuth = [[hmac username="bob",  algorithm="hmac-sha1", ]]
-          .. [[headers="date content-md5 @request-target", signature="]]
+        local hmacAuth = [[hmac username="bob",  algorithm="]] .. hmac_alg
+          .. [[", headers="date content-md5 @request-target", signature="]]
           .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -645,10 +654,10 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should encode http-1 requests as http/1.0", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: "
+          hmac_sha_binary("secret", "date: "
             .. date .. "\n" .. "content-md5: md5" .. "\nGET /request HTTP/1.0"))
-        local hmacAuth = [[hmac username="bob",  algorithm="hmac-sha1", ]]
-          .. [[headers="date content-md5 request-line", signature="]]
+        local hmacAuth = [[hmac username="bob",  algorithm="]] .. hmac_alg
+          .. [[", headers="date content-md5 request-line", signature="]]
           .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           version = 1.0,
@@ -671,10 +680,10 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should not pass with GET with wrong username in signature", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: " .. date .. "\n"
+          hmac_sha_binary("secret", "date: " .. date .. "\n"
           .. "content-md5: md5" .. "\nGET /request HTTP/1.1"))
-        local hmacAuth = [[hmac username="bobb",  algorithm="hmac-sha1", ]]
-          .. [[headers="date content-md5 request-line", signature="]]
+        local hmacAuth = [[hmac username="bobb",  algorithm="]] .. hmac_alg
+          .. [[", headers="date content-md5 request-line", signature="]]
           .. encodedSignature .. [["]]
             local res = assert(proxy_client:send {
               method  = "GET",
@@ -698,10 +707,10 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should not pass with GET with username blank in signature", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret",
+          hmac_sha_binary("secret",
             "date: " .. date .. "\n" .. "content-md5: md5" .. "\nGET /request HTTP/1.1"))
-        local hmacAuth = [[hmac username="",  algorithm="hmac-sha1",]]
-          .. [[ headers="date content-md5 request-line", signature="]]
+        local hmacAuth = [[hmac username="",  algorithm="]] .. hmac_alg
+          .. [[", headers="date content-md5 request-line", signature="]]
           .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -725,11 +734,11 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should not pass with GET with username missing in signature", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret",
+          hmac_sha_binary("secret",
             "date: " .. date .. "\n" .. "content-md5: md5"
             .. "\nGET /request HTTP/1.1"))
-        local hmacAuth = [[hmac algorithm="hmac-sha1", ]]
-          .. [[headers="date content-md5 request-line", signature="]]
+        local hmacAuth = [[hmac algorithm="]] .. hmac_alg
+          .. [[", headers="date content-md5 request-line", signature="]]
           .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -753,10 +762,10 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should not pass with GET with wrong hmac headers field name", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: " .. date .. "\n"
+          hmac_sha_binary("secret", "date: " .. date .. "\n"
             .. "content-md5: md5" .. "\nGET /request HTTP/1.1"))
-        local hmacAuth = [[hmac username="bob",  algorithm="hmac-sha1",   ]]
-          .. [[wrong_header="date content-md5 request-line", signature="]]
+        local hmacAuth = [[hmac username="bob",  algorithm="]] .. hmac_alg
+          .. [[", wrong_header="date content-md5 request-line", signature="]]
           .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -779,10 +788,10 @@ for proto, conf in ee_helpers.each_protocol() do
        it("should not pass with GET with wrong hmac signature field name", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: " .. date .. "\n"
+          hmac_sha_binary("secret", "date: " .. date .. "\n"
             .. "content-md5: md5" .. "\nGET /request HTTP/1.1"))
-        local hmacAuth = [[hmac username="bob",  algorithm="hmac-sha1",]]
-          .. [[   headers="date content-md5 request-line", wrong_signature="]]
+        local hmacAuth = [[hmac username="bob",  algorithm="]] .. hmac_alg
+          .. [[", headers="date content-md5 request-line", wrong_signature="]]
           .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -805,10 +814,10 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should not pass with GET with malformed hmac signature field", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: " .. date .. "\n"
+          hmac_sha_binary("secret", "date: " .. date .. "\n"
             .. "content-md5: md5" .. "\nGET /request HTTP/1.1"))
-        local hmacAuth = [[hmac username="bob",  algorithm="hmac-sha1"]]
-          .. [[ headers="date content-md5 request-line", signature="]]
+        local hmacAuth = [[hmac username="bob",  algorithm="]] .. hmac_alg
+          .. [[" headers="date content-md5 request-line", signature="]]
           .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -831,10 +840,10 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should not pass with GET with malformed hmac headers field", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: " .. date .. "\n"
+          hmac_sha_binary("secret", "date: " .. date .. "\n"
             .. "content-md5: md5" .. "\nGET /request? HTTP/1.1"))
-        local hmacAuth = [[hmac username="bob",  algorithm="hmac-sha1" ]]
-          .. [[headers="  date content-md5 request-line",signature="]]
+        local hmacAuth = [[hmac username="bob",  algorithm="]] .. hmac_alg
+          .. [[" headers="  date content-md5 request-line",signature="]]
           .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -857,10 +866,10 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should pass with GET with no space or space between hmac signatures fields", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-        hmac_sha1_binary("secret", "date: " .. date .. "\n"
+        hmac_sha_binary("secret", "date: " .. date .. "\n"
           .. "content-md5: md5" .. "\nGET /request HTTP/1.1"))
-        local hmacAuth = [[hmac username="bob",algorithm="hmac-sha1",]]
-          .. [[  headers="date content-md5 request-line",signature="]]
+        local hmacAuth = [[hmac username="bob",algorithm="]] .. hmac_alg
+          .. [[", headers="date content-md5 request-line",signature="]]
           .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -932,10 +941,10 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should pass with GET with x-date header", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret", "x-date: " .. date .. "\n"
+          hmac_sha_binary("secret", "x-date: " .. date .. "\n"
             .. "content-md5: md5" .. "\nGET /request HTTP/1.1"))
-        local hmacAuth = [[hmac username="bob",algorithm="hmac-sha1",]]
-          .. [[  headers="x-date content-md5 request-line",signature="]]
+        local hmacAuth = [[hmac username="bob",algorithm="]] .. hmac_alg
+          .. [[", headers="x-date content-md5 request-line",signature="]]
           .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -953,10 +962,10 @@ for proto, conf in ee_helpers.each_protocol() do
 
       it("should not pass with GET with both date and x-date missing", function()
         local encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret", "content-md5: md5"
+          hmac_sha_binary("secret", "content-md5: md5"
             .. "\nGET /request? HTTP/1.1"))
-        local hmacAuth = [[hmac username="bob",  algorithm="hmac-sha1",]]
-          .. [[ headers="content-md5 request-line",signature="]]
+        local hmacAuth = [[hmac username="bob",  algorithm="]] .. hmac_alg
+          .. [[", headers="content-md5 request-line",signature="]]
           .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -979,10 +988,10 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should not pass with GET with x-date malformed", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret", "x-date: " .. date .. "\n"
+          hmac_sha_binary("secret", "x-date: " .. date .. "\n"
             .. "content-md5: md5" .. "\nGET /request? HTTP/1.1"))
-        local hmacAuth = [[hmac username="bob",algorithm="hmac-sha1",]]
-          .. [[  headers="x-date content-md5 request-line",signature="]]
+        local hmacAuth = [[hmac username="bob",algorithm="]] .. hmac_alg
+          .. [[", headers="x-date content-md5 request-line",signature="]]
           .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -1005,10 +1014,10 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should pass with GET with x-date malformed but date correct", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret", "content-md5: md5"
+          hmac_sha_binary("secret", "content-md5: md5"
             .. "\nGET /request HTTP/1.1"))
-        local hmacAuth = [[hmac username="bob",algorithm="hmac-sha1",]]
-          .. [[  headers="content-md5 request-line",signature="]]
+        local hmacAuth = [[hmac username="bob",algorithm="]] .. hmac_alg
+          .. [[", headers="content-md5 request-line",signature="]]
           .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -1028,10 +1037,10 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should pass with x-date malformed but date correct and used for signature", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: " .. date .. "\n"
+          hmac_sha_binary("secret", "date: " .. date .. "\n"
             .. "content-md5: md5" .. "\nGET /request HTTP/1.1"))
-        local hmacAuth = [[hmac username="bob",algorithm="hmac-sha1",]]
-          .. [[  headers="date content-md5 request-line",signature="]]
+        local hmacAuth = [[hmac username="bob",algorithm="]] .. hmac_alg
+          .. [[", headers="date content-md5 request-line",signature="]]
           .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -1051,10 +1060,10 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should with x-date malformed and used for signature but skew test pass", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret", "x-date: " .. "wrong date" .. "\n"
+          hmac_sha_binary("secret", "x-date: " .. "wrong date" .. "\n"
             .. "content-md5: md5" .. "\nGET /request HTTP/1.1"))
-        local hmacAuth = [[hmac username="bob",algorithm="hmac-sha1",]]
-          .. [[  headers="x-date content-md5 request-line",signature="]]
+        local hmacAuth = [[hmac username="bob",algorithm="]] .. hmac_alg
+          .. [[", headers="x-date content-md5 request-line",signature="]]
           .. encodedSignature .. [["]]
               local res = assert(proxy_client:send {
           method  = "GET",
@@ -1074,10 +1083,10 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should pass with date malformed and used for signature but skew test pass", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: " .. "wrong date" .. "\n"
+          hmac_sha_binary("secret", "date: " .. "wrong date" .. "\n"
             .. "content-md5: md5" .. "\nGET /request HTTP/1.1"))
-        local hmacAuth = [[hmac username="bob",algorithm="hmac-sha1",]]
-          .. [[  headers="date content-md5 request-line",signature="]]
+        local hmacAuth = [[hmac username="bob",algorithm="]] .. hmac_alg
+          .. [[", headers="date content-md5 request-line",signature="]]
           .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -1096,9 +1105,9 @@ for proto, conf in ee_helpers.each_protocol() do
 
       it("should pass with valid credentials and anonymous", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-        local encodedSignature   = ngx.encode_base64(hmac_sha1_binary("secret", "date: " .. date))
-        local hmacAuth = [[hmac username="bob",algorithm="hmac-sha1",]]
-          .. [[headers="date",signature="]] .. encodedSignature .. [["]]
+        local encodedSignature   = ngx.encode_base64(hmac_sha_binary("secret", "date: " .. date))
+        local hmacAuth = [[hmac username="bob",algorithm="]] .. hmac_alg
+          .. [[", headers="date",signature="]] .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -1125,9 +1134,9 @@ for proto, conf in ee_helpers.each_protocol() do
         sha256:update(postBody)
 
         local encodedSignature   = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: "..date))
-        local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
-                ..[[headers="date",signature="]]..encodedSignature..[["]]
+          hmac_sha_binary("secret", "date: "..date))
+        local hmacAuth = [["hmac username="bob",algorithm="]] .. hmac_alg
+                ..[[", headers="date",signature="]]..encodedSignature..[["]]
         local res = assert(proxy_client:send {
           method  = "POST",
           path    = "/request",
@@ -1148,9 +1157,9 @@ for proto, conf in ee_helpers.each_protocol() do
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
 
         local encodedSignature   = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: "..date))
-        local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
-                ..[[headers="date",signature="]]..encodedSignature..[["]]
+          hmac_sha_binary("secret", "date: "..date))
+        local hmacAuth = [["hmac username="bob",algorithm="]] .. hmac_alg
+                .. [[", headers="date",signature="]]..encodedSignature..[["]]
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -1170,9 +1179,9 @@ for proto, conf in ee_helpers.each_protocol() do
         local digest = "SHA-256=" .. ngx.encode_base64(sha256:final())
 
         local encodedSignature   = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: "..date.."\n".."digest: "..digest))
-        local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
-                ..[[headers="date digest",signature="]]..encodedSignature..[["]]
+          hmac_sha_binary("secret", "date: "..date.."\n".."digest: "..digest))
+        local hmacAuth = [["hmac username="bob",algorithm="]] .. hmac_alg
+                ..[[", headers="date digest",signature="]]..encodedSignature..[["]]
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -1236,9 +1245,9 @@ for proto, conf in ee_helpers.each_protocol() do
       if proto ~= "websocket" then -- no body validation w/ WebSockets
       it("should pass with GET when body validation enabled", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-        local encodedSignature   = ngx.encode_base64(hmac_sha1_binary("secret", "date: "..date))
-        local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
-                ..[[headers="date",signature="]]..encodedSignature..[["]]
+        local encodedSignature   = ngx.encode_base64(hmac_sha_binary("secret", "date: "..date))
+        local hmacAuth = [["hmac username="bob",algorithm="]] .. hmac_alg
+                ..[[", headers="date",signature="]]..encodedSignature..[["]]
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -1260,9 +1269,9 @@ for proto, conf in ee_helpers.each_protocol() do
         local digest = "SHA-256=" .. ngx.encode_base64(sha256:final())
 
         local encodedSignature   = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: "..date.."\n".."digest: "..digest))
-        local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
-                ..[[headers="date digest",signature="]]..encodedSignature..[["]]
+          hmac_sha_binary("secret", "date: "..date.."\n".."digest: "..digest))
+        local hmacAuth = [["hmac username="bob",algorithm="]] .. hmac_alg
+                ..[[", headers="date digest",signature="]]..encodedSignature..[["]]
         local res = assert(proxy_client:send {
           method  = "POST",
           path    = "/request",
@@ -1285,9 +1294,9 @@ for proto, conf in ee_helpers.each_protocol() do
         local digest = "SHA-256=" .. ngx.encode_base64(sha256:final())
 
         local encodedSignature   = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: "..date.."\n".."digest: "..digest))
-        local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
-                ..[[headers="date digest",signature="]]..encodedSignature..[["]]
+          hmac_sha_binary("secret", "date: "..date.."\n".."digest: "..digest))
+        local hmacAuth = [["hmac username="bob",algorithm="]] .. hmac_alg
+                ..[[", headers="date digest",signature="]]..encodedSignature..[["]]
         local res = assert(proxy_client:send {
           method  = "POST",
           path    = "/request",
@@ -1310,9 +1319,9 @@ for proto, conf in ee_helpers.each_protocol() do
         local digest = "SHA-256=" .. ngx.encode_base64(sha256:final())
 
         local encodedSignature   = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: "..date.."\n".."digest: "..digest))
-        local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
-                ..[[headers="date digest",signature="]]..encodedSignature..[["]]
+          hmac_sha_binary("secret", "date: "..date.."\n".."digest: "..digest))
+        local hmacAuth = [["hmac username="bob",algorithm="]] .. hmac_alg
+                ..[[", headers="date digest",signature="]]..encodedSignature..[["]]
         local res = assert(proxy_client:send {
           method  = "POST",
           path    = "/request",
@@ -1337,9 +1346,9 @@ for proto, conf in ee_helpers.each_protocol() do
         local digest = "SHA-256=" .. ngx.encode_base64(sha256:final())
 
         local encodedSignature   = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: "..date.."\n".."digest: "..digest))
-        local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
-                ..[[headers="date digest",signature="]]..encodedSignature..[["]]
+          hmac_sha_binary("secret", "date: "..date.."\n".."digest: "..digest))
+        local hmacAuth = [["hmac username="bob",algorithm="]] .. hmac_alg
+                ..[[", headers="date digest",signature="]]..encodedSignature..[["]]
         local res = assert(proxy_client:send {
           method  = "POST",
           path    = "/request",
@@ -1365,9 +1374,9 @@ for proto, conf in ee_helpers.each_protocol() do
         local digest = "SHA-256=" .. ngx.encode_base64(sha256:final())
 
         local encodedSignature   = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: "..date.."\n".."digest: "..digest))
-        local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
-                ..[[headers="date digest",signature="]]..encodedSignature..[["]]
+          hmac_sha_binary("secret", "date: "..date.."\n".."digest: "..digest))
+        local hmacAuth = [["hmac username="bob",algorithm="]] .. hmac_alg
+                ..[[", headers="date digest",signature="]]..encodedSignature..[["]]
         local res = assert(proxy_client:send {
           method  = "POST",
           path    = "/request",
@@ -1388,10 +1397,10 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should pass with GET with request-line", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: "
+          hmac_sha_binary("secret", "date: "
                   .. date .. "\n" .. "content-md5: md5" .. "\nGET /request HTTP/1.1"))
-        local hmacAuth = [[hmac username="bob",  algorithm="hmac-sha1", ]]
-                .. [[headers="date content-md5 request-line", signature="]]
+        local hmacAuth = [[hmac username="bob",  algorithm="]] .. hmac_alg
+                .. [[", headers="date content-md5 request-line", signature="]]
                 .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -1411,10 +1420,10 @@ for proto, conf in ee_helpers.each_protocol() do
         -- hmac-auth signature must include the same query param in request-line: https://github.com/Kong/kong/pull/3339
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: "
+          hmac_sha_binary("secret", "date: "
             .. date .. "\n" .. "content-md5: md5" .. "\nGET /request HTTP/1.1"))
-        local hmacAuth = [[hmac username="bob",  algorithm="hmac-sha1", ]]
-          .. [[headers="date content-md5 request-line", signature="]]
+        local hmacAuth = [[hmac username="bob",  algorithm="]] .. hmac_alg
+          .. [[", headers="date content-md5 request-line", signature="]]
           .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -1431,10 +1440,10 @@ for proto, conf in ee_helpers.each_protocol() do
         assert.equal('hmac', res.headers["WWW-Authenticate"])
 
         encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: "
+          hmac_sha_binary("secret", "date: "
             .. date .. "\n" .. "content-md5: md5" .. "\nGET /request/ HTTP/1.1"))
-        local hmacAuth = [[hmac username="bob",  algorithm="hmac-sha1", ]]
-          .. [[headers="date content-md5 request-line", signature="]]
+        local hmacAuth = [[hmac username="bob",  algorithm="]] .. hmac_alg
+          .. [[", headers="date content-md5 request-line", signature="]]
           .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -1454,10 +1463,10 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should pass with GET with request-line having query param", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: "
+          hmac_sha_binary("secret", "date: "
             .. date .. "\n" .. "content-md5: md5" .. "\nGET /request?name=foo HTTP/1.1"))
-        local hmacAuth = [[hmac username="bob",  algorithm="hmac-sha1", ]]
-          .. [[headers="date content-md5 request-line", signature="]]
+        local hmacAuth = [[hmac username="bob",  algorithm="]] .. hmac_alg
+          .. [[", headers="date content-md5 request-line", signature="]]
           .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -1473,10 +1482,10 @@ for proto, conf in ee_helpers.each_protocol() do
         assert.res_status(200, res)
 
         encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: "
+          hmac_sha_binary("secret", "date: "
             .. date .. "\n" .. "content-md5: md5" .. "\nGET /request/?name=foo HTTP/1.1"))
-        local hmacAuth = [[hmac username="bob",  algorithm="hmac-sha1", ]]
-          .. [[headers="date content-md5 request-line", signature="]]
+        local hmacAuth = [[hmac username="bob",  algorithm="]] .. hmac_alg
+          .. [[", headers="date content-md5 request-line", signature="]]
           .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -1497,10 +1506,10 @@ for proto, conf in ee_helpers.each_protocol() do
         local escaped_uri = fmt("/request?name=%s",
                                 ngx.escape_uri("foo bar"))
         local encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: "
+          hmac_sha_binary("secret", "date: "
             .. date .. "\n" .. "content-md5: md5" .. "\nGET " .. escaped_uri .. " HTTP/1.1"))
-        local hmacAuth = [[hmac username="bob",  algorithm="hmac-sha1", ]]
-          .. [[headers="date content-md5 request-line", signature="]]
+        local hmacAuth = [[hmac username="bob",  algorithm="]] .. hmac_alg
+          .. [[", headers="date content-md5 request-line", signature="]]
           .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -1520,10 +1529,10 @@ for proto, conf in ee_helpers.each_protocol() do
         local escaped_uri = fmt("/request?name=%s",
                                 ngx.escape_uri("foo bár"))
         encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: "
+          hmac_sha_binary("secret", "date: "
             .. date .. "\n" .. "content-md5: md5" .. "\nGET " .. escaped_uri .." HTTP/1.1"))
-        local hmacAuth = [[hmac username="bob",  algorithm="hmac-sha1", ]]
-          .. [[headers="date content-md5 request-line", signature="]]
+        local hmacAuth = [[hmac username="bob",  algorithm="]] .. hmac_alg
+          .. [[", headers="date content-md5 request-line", signature="]]
           .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -1547,10 +1556,10 @@ for proto, conf in ee_helpers.each_protocol() do
                                 ngx.escape_uri("foo bar"),
                                 ngx.escape_uri("san francisco"))
         local encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: "
+          hmac_sha_binary("secret", "date: "
             .. date .. "\n" .. "content-md5: md5" .. "\nGET " .. escaped_uri .. " HTTP/1.1"))
-        local hmacAuth = [[hmac username="bob",  algorithm="hmac-sha1", ]]
-          .. [[headers="date content-md5 request-line", signature="]]
+        local hmacAuth = [[hmac username="bob",  algorithm="]] .. hmac_alg
+          .. [[", headers="date content-md5 request-line", signature="]]
           .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -1572,10 +1581,10 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should pass with GET with request-line having multiple same query param", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: "
+          hmac_sha_binary("secret", "date: "
             .. date .. "\n" .. "content-md5: md5" .. "\nGET /request?name=foo&name=bar HTTP/1.1"))
-        local hmacAuth = [[hmac username="bob",  algorithm="hmac-sha1", ]]
-          .. [[headers="date content-md5 request-line", signature="]]
+        local hmacAuth = [[hmac username="bob",  algorithm="]] .. hmac_alg
+          .. [[", headers="date content-md5 request-line", signature="]]
           .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -1597,10 +1606,10 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should pass with GET with request-line having no uri", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: "
+          hmac_sha_binary("secret", "date: "
             .. date .. "\n" .. "content-md5: md5" .. "\nGET / HTTP/1.1"))
-        local hmacAuth = [[hmac username="bob",  algorithm="hmac-sha1", ]]
-          .. [[headers="date content-md5 request-line", signature="]]
+        local hmacAuth = [[hmac username="bob",  algorithm="]] .. hmac_alg
+          .. [[", headers="date content-md5 request-line", signature="]]
           .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -1620,10 +1629,10 @@ for proto, conf in ee_helpers.each_protocol() do
         local escaped_uri = fmt("/request/%s/?name=foo&name=bar",
                                 ngx.escape_uri("some value"))
         local encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: "
+          hmac_sha_binary("secret", "date: "
             .. date .. "\n" .. "content-md5: md5" .. "\nGET ".. escaped_uri .. " HTTP/1.1"))
-        local hmacAuth = [[hmac username="bob",  algorithm="hmac-sha1", ]]
-          .. [[headers="date content-md5 request-line", signature="]]
+        local hmacAuth = [[hmac username="bob",  algorithm="]] .. hmac_alg
+          .. [[", headers="date content-md5 request-line", signature="]]
           .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -1646,10 +1655,10 @@ for proto, conf in ee_helpers.each_protocol() do
       it("should fail with GET when enforced header request-line missing", function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          hmac_sha1_binary("secret", "date: "
+          hmac_sha_binary("secret", "date: "
                   .. date .. "\n" .. "content-md5: md5"))
-        local hmacAuth = [[hmac username="bob",  algorithm="hmac-sha1", ]]
-                .. [[headers="date content-md5", signature="]]
+        local hmacAuth = [[hmac username="bob",  algorithm="]] .. hmac_alg
+                .. [[", headers="date content-md5", signature="]]
                 .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -1749,13 +1758,13 @@ for proto, conf in ee_helpers.each_protocol() do
         assert.equal('hmac', res.headers["WWW-Authenticate"])
       end)
 
-      it("should pass with hmac-sha1", function()
+      it("should pass with " .. hmac_alg, function()
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
-          openssl_mac.new("secret", "HMAC", nil, "sha1"):final("date: " .. date .. "\n"
+          openssl_mac.new("secret", "HMAC", nil, sha_alg):final("date: " .. date .. "\n"
                   .. "content-md5: md5" .. "\nGET /request HTTP/1.1"))
-        local hmacAuth = [[hmac username="bob",  algorithm="hmac-sha1", ]]
-                .. [[headers="date content-md5 request-line", signature="]]
+        local hmacAuth = [[hmac username="bob",  algorithm="]] .. hmac_alg
+                .. [[", headers="date content-md5 request-line", signature="]]
                 .. encodedSignature .. [["]]
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -1867,9 +1876,9 @@ for proto, conf in ee_helpers.each_protocol() do
       }
 
       hmacDate = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-      local encodedSignature   = ngx.encode_base64(hmac_sha1_binary(credential.secret, "date: " .. hmacDate))
-      hmacAuth = [[hmac username="]] .. credential.username .. [[",algorithm="hmac-sha1",]]
-        .. [[headers="date",signature="]] .. encodedSignature .. [["]]
+      local encodedSignature   = ngx.encode_base64(hmac_sha_binary(credential.secret, "date: " .. hmacDate))
+      hmacAuth = [[hmac username="]] .. credential.username .. [[",algorithm="]] .. hmac_alg
+        .. [[", headers="date",signature="]] .. encodedSignature .. [["]]
 
       assert(helpers.start_kong({
         database = strategy,

@@ -1055,7 +1055,8 @@ describe("Configuration loader", function()
         it("requires SSL DH param file to exist", function()
           local conf, _, errors = conf_loader(nil, {
             ssl_cipher_suite = "custom",
-            ssl_dhparam = "/path/dhparam.pem"
+            ssl_dhparam = "/path/dhparam.pem",
+            fips = false,
           })
           assert.equal(1, #errors)
           assert.contains("ssl_dhparam: failed loading certificate from /path/dhparam.pem", errors)
@@ -1065,6 +1066,7 @@ describe("Configuration loader", function()
             ssl_cipher_suite = "custom",
             nginx_http_ssl_dhparam = "/path/dhparam-http.pem",
             nginx_stream_ssl_dhparam = "/path/dhparam-stream.pem",
+            fips = false,
           })
           assert.equal(2, #errors)
           assert.contains("nginx_http_ssl_dhparam: no such file at /path/dhparam-http.pem", errors)
@@ -1391,7 +1393,8 @@ describe("Configuration loader", function()
         end)
         it("errors on invalid ssl_cipher_suite", function()
           local conf, _, errors = conf_loader(nil, {
-            ssl_cipher_suite = "foo"
+            ssl_cipher_suite = "foo",
+            fips = false,
           })
           assert.is_nil(conf)
           assert.equal(1, #errors)
@@ -1401,6 +1404,7 @@ describe("Configuration loader", function()
           local conf, err = conf_loader(nil, {
             ssl_cipher_suite = "custom",
             ssl_ciphers      = "foo:bar",
+            fips             = false
           })
           assert.is_nil(err)
           assert.equals("foo:bar", conf.ssl_ciphers)
@@ -1408,6 +1412,7 @@ describe("Configuration loader", function()
         it("doesn't override ssl_ciphers when undefined", function()
           local conf, err = conf_loader(nil, {
             ssl_cipher_suite = "custom",
+            fips             = false
           })
           assert.is_nil(err)
           assert.same(nil, conf.ssl_ciphers)

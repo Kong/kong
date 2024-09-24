@@ -8,10 +8,9 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
+local client
 
 for _, strategy in helpers.all_strategies({"postgres", "off"}) do
-
-  local client
   describe("validate plugin ordering schemas", function()
     lazy_setup(function()
       helpers.get_db_utils(nil, {})
@@ -225,6 +224,7 @@ end
 
 for _, strategy in helpers.each_strategy() do
   describe("Dynamic Plugin Ordering - Free License #" .. strategy, function()
+    local fips_flag = os.getenv("KONG_FIPS")
 
     lazy_setup(function()
       helpers.stop_kong()
@@ -233,6 +233,7 @@ for _, strategy in helpers.each_strategy() do
 
       -- No license is present
       helpers.unsetenv("KONG_LICENSE_DATA")
+      helpers.unsetenv("KONG_FIPS")
 
       assert(helpers.start_kong({
         database  = strategy,
@@ -244,6 +245,9 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
       if client then
         client:close()
+      end
+      if fips_flag then
+        helpers.setenv("KONG_FIPS", fips_flag)
       end
     end)
 

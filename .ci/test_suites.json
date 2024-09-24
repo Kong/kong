@@ -33,7 +33,8 @@
     "exclude_tags": "flaky,ipv6,ce,off",
     "venv_script": "kong-dev-fips-venv.sh",
     "environment": {
-      "KONG_TEST_DATABASE": "postgres"
+      "KONG_TEST_DATABASE": "postgres",
+      "KONG_TEST_FIPS": "on"
     },
     "specs": [
       "spec-ee/05-fips",

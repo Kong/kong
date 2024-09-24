@@ -38,6 +38,9 @@ local kong = {
 }
 
 
+local is_fips = os.getenv("KONG_FIPS")
+
+
 local function provision_code(host, extra_headers, client_id, code_challenge)
   local request_client = helpers.proxy_ssl_client()
   local body = {
@@ -196,7 +199,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       client1 = admin_api.oauth2_credentials:insert {
         client_id      = "clientid123",
         client_secret  = "secret123",
-        hash_secret    = true,
+        hash_secret    = not is_fips,
         redirect_uris  = { "http://google.test/kong" },
         name           = "testapp",
         consumer       = { id = consumer.id },
@@ -213,7 +216,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       admin_api.oauth2_credentials:insert {
         client_id     = "clientid333",
         client_secret = "secret333",
-        hash_secret   = true,
+        hash_secret   = not is_fips,
         redirect_uris = { "http://google.test/kong" },
         name          = "testapp3",
         consumer      = { id = consumer.id },
@@ -230,7 +233,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       admin_api.oauth2_credentials:insert {
         client_id     = "clientid1011",
         client_secret = "secret1011",
-        hash_secret   = true,
+        hash_secret   = not is_fips,
         redirect_uris = { "http://google.test/kong", },
         name          = "testapp31",
         consumer      = { id = consumer.id },

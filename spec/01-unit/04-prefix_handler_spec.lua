@@ -1504,6 +1504,7 @@ describe("NGINX conf compiler", function()
           local params = {
             ssl_cipher_suite = "old",
             prefix = tmp_config.prefix,
+            fips = false,
           }
           local ssl_params = {
             ssl_cert = cert,

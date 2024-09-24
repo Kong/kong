@@ -997,6 +997,14 @@ jobs:
         echo "/usr/local/openresty/nginx/sbin/" >> $GITHUB_PATH
         echo SPEC_ERRLOG_CACHE_DIR=/tmp/${{ github.run_id }}/plugins_ee_test/${{ matrix.label }}_${{ matrix.split }} >> $GITHUB_ENV
 
+    - name: Set FIPS environment variable
+      run: |
+        if [[ "${{ matrix.label }}" == "fips" ]]; then
+          echo "KONG_TEST_FIPS=on" >> $GITHUB_ENV
+        else
+          echo "KONG_TEST_FIPS=off" >> $GITHUB_ENV
+        fi
+
     - name: Checkout Kong source code
       uses: actions/checkout@v3
       with:
@@ -1008,7 +1016,7 @@ jobs:
       with:
         repository: Kong/kong-pongo
         path: kong-pongo
-        ref: 2.13.0
+        ref: kag5187_add_fips_env
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 

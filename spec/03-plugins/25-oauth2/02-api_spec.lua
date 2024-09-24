@@ -156,44 +156,46 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.res_status(201, res)
         end)
-        it("creates oauth2 credential with a hashed auto-generated client_secret", function()
-          -- this is quite useless as nobody knows the client_secret
-          local res = assert(admin_client:send {
-            method  = "POST",
-            path    = "/consumers/bob/oauth2",
-            body    = {
-              name          = "Test APP",
-              redirect_uris = { "http://google.test/" },
-              hash_secret = true,
-            },
-            headers = {
-              ["Content-Type"] = "application/json"
-            }
-          })
-          local body = cjson.decode(assert.res_status(201, res))
-          assert.equal(true, body.hash_secret)
-          assert.equal(false, secret.needs_rehash(body.client_secret))
-        end)
-        it("creates oauth2 credential with a hashed client_secret", function()
-          local res = assert(admin_client:send {
-            method  = "POST",
-            path    = "/consumers/bob/oauth2",
-            body    = {
-              name          = "Test APP",
-              redirect_uris = { "http://google.test/" },
-              client_secret = "test",
-              hash_secret   = true,
-            },
-            headers = {
-              ["Content-Type"] = "application/json"
-            }
-          })
-          local body = cjson.decode(assert.res_status(201, res))
-          assert.equal(true, body.hash_secret)
-          assert.equal(false, secret.needs_rehash(body.client_secret))
-          assert.equal(true, secret.verify("test", body.client_secret))
-          assert.equal(false, secret.verify("invalid", body.client_secret))
-        end)
+        if not helpers.is_fips_build() then
+          it("creates oauth2 credential with a hashed auto-generated client_secret", function()
+            -- this is quite useless as nobody knows the client_secret
+            local res = assert(admin_client:send {
+              method  = "POST",
+              path    = "/consumers/bob/oauth2",
+              body    = {
+                name          = "Test APP",
+                redirect_uris = { "http://google.test/" },
+                hash_secret = true,
+              },
+              headers = {
+                ["Content-Type"] = "application/json"
+              }
+            })
+            local body = cjson.decode(assert.res_status(201, res))
+            assert.equal(true, body.hash_secret)
+            assert.equal(false, secret.needs_rehash(body.client_secret))
+          end)
+          it("creates oauth2 credential with a hashed client_secret", function()
+            local res = assert(admin_client:send {
+              method  = "POST",
+              path    = "/consumers/bob/oauth2",
+              body    = {
+                name          = "Test APP",
+                redirect_uris = { "http://google.test/" },
+                client_secret = "test",
+                hash_secret   = true,
+              },
+              headers = {
+                ["Content-Type"] = "application/json"
+              }
+            })
+            local body = cjson.decode(assert.res_status(201, res))
+            assert.equal(true, body.hash_secret)
+            assert.equal(false, secret.needs_rehash(body.client_secret))
+            assert.equal(true, secret.verify("test", body.client_secret))
+            assert.equal(false, secret.verify("invalid", body.client_secret))
+          end)
+        end
         it("creates oauth2 credential without hashing the auto-generated client_secret", function()
           local res = assert(admin_client:send {
             method  = "POST",

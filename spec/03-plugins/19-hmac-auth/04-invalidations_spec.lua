@@ -9,6 +9,13 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local openssl_mac = require "resty.openssl.mac"
 
+local sha_alg = "sha256"
+local hmac_alg = "hmac-" .. sha_alg
+if not helpers.is_fips_build then
+  sha_alg = "sha1"
+  hmac_alg = "hmac-" .. sha_alg
+end
+
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: hmac-auth (invalidations) [#" .. strategy .. "]", function()
     local proxy_client
@@ -68,15 +75,15 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
-    local function hmac_sha1_binary(secret, data)
-      return openssl_mac.new(secret, "HMAC", nil, "sha1"):final(data)
+    local function hmac_sha_binary(secret, data)
+      return openssl_mac.new(secret, "HMAC", nil, sha_alg):final(data)
     end
 
     local function get_authorization(username)
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-      local encodedSignature   = ngx.encode_base64(hmac_sha1_binary("secret", "date: " .. date))
+      local encodedSignature   = ngx.encode_base64(hmac_sha_binary("secret", "date: " .. date))
       return [["hmac username="]] .. username
-           .. [[",algorithm="hmac-sha1",headers="date",signature="]]
+           .. [[",algorithm="]] .. hmac_alg .. [[",headers="date",signature="]]
            .. encodedSignature .. [["]], date
     end
 

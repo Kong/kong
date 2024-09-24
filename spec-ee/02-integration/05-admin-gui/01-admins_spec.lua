@@ -1218,6 +1218,7 @@ for _, strategy in helpers.each_strategy() do
 
         local config = {
           admin_invitation_expiry = 600,
+          fips = os.getenv("KONG_FIPS"),
         }
 
         if _G.kong then

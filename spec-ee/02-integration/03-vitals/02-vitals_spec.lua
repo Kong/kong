@@ -779,8 +779,10 @@ for _, strategy in helpers.each_strategy() do
         assert.spy(s_strategy).was_called(1)
       end)
       it("doesn't initialize strategy when license is free and returns message", function()
+        local fips = os.getenv("KONG_FIPS")
         kong.configuration.vitals = false
         helpers.unsetenv("KONG_LICENSE_DATA")
+        helpers.unsetenv("KONG_FIPS")
 
         local vitals = kong_vitals.new { db = db }
         vitals:reset_counters()
@@ -791,6 +793,10 @@ for _, strategy in helpers.each_strategy() do
 
         assert.spy(s_strategy).was_called(0)
         assert.same(expected, res)
+
+        if fips then
+          helpers.setenv("KONG_FIPS", fips)
+        end
       end)
     end)
 

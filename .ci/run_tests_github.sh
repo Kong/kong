@@ -90,7 +90,7 @@ if [ "$TEST_SUITE" == "plugins-ee" ]; then
         ["third"]="kafka-log oas-validation saml vault-auth"
         ["fourth"]="upstream-oauth mtls-auth header-cert-auth request-validator kafka-upstream konnect-application-auth opa"
         ["fips-first"]="openid-connect"
-        ["fips-second"]="mtls-auth saml header-cert-auth"
+        ["fips-second"]="mtls-auth saml header-cert-auth upstream-oauth"
     )
 
     plugins=${plugins_to_test["$TEST_SPLIT"]}

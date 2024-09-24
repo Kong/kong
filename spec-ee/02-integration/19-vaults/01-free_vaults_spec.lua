@@ -17,6 +17,7 @@ describe("License restrictions in \"free\" mode", function()
       helpers.get_db_utils()
       helpers.unsetenv("KONG_LICENSE_DATA")
       helpers.unsetenv("KONG_TEST_LICENSE_DATA")
+      helpers.unsetenv("KONG_FIPS")
       assert(helpers.start_kong({
         license_path = license_path,
         vaults = "bundled",
