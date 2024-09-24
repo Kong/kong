@@ -982,11 +982,14 @@ function Kong.init_worker()
   end
 
   if kong.clustering then
+
+    -- full sync cp/dp
     if not kong.rpc then
-      -- full sync cp/dp
       kong.clustering:init_worker()
 
+    -- rpc and incremental sync
     elseif kong.rpc and is_http_module then
+
       -- only available in http subsystem
       local cluster_tls = require("kong.clustering.tls")
 
@@ -1002,11 +1005,12 @@ function Kong.init_worker()
       else -- control_plane
         kong.rpc.concentrator:start()
       end
-    end
-  end
 
-  if kong.sync and is_http_module then
-    kong.sync:init_worker()
+      -- init incremental sync
+      if kong.sync then
+        kong.sync:init_worker()
+      end
+    end
   end
 
   ok, err = wasm.init_worker()
