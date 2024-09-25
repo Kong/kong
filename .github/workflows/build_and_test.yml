@@ -1016,7 +1016,7 @@ jobs:
       with:
         repository: Kong/kong-pongo
         path: kong-pongo
-        ref: kag5187_add_fips_env
+        ref: 2.14.0
         submodules: recursive
         token: ${{ secrets.GHA_KONG_BOT_READ_TOKEN }}
 
