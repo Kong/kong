@@ -296,20 +296,22 @@ local function insert_entity_for_txn(t, entity_name, item, options)
     local value = item[fname]
 
     if value then
+      local value_str
+
       if fdata.unique then
         -- unique and not a foreign key, or is a foreign key, but non-composite
         -- see: validate_foreign_key_is_single_primary_key, composite foreign
         -- key is currently unsupported by the DAO
         if type(value) == "table" then
           assert(is_foreign)
-          value = pk_string(kong.db[fdata_reference].schema, value)
+          value_str = pk_string(kong.db[fdata_reference].schema, value)
         end
 
         if fdata.unique_across_ws then
           ws_id = kong.default_workspace
         end
 
-        local key = unique_field_key(entity_name, ws_id, fname, value)
+        local key = unique_field_key(entity_name, ws_id, fname, value_str)
         t:set(key, item_key)
       end
 
@@ -320,9 +322,9 @@ local function insert_entity_for_txn(t, entity_name, item, options)
         --end
         assert(type(value) == "table", debug.traceback())
 
-        value = pk_string(kong.db[fdata_reference].schema, value)
+        value_str = pk_string(kong.db[fdata_reference].schema, value)
 
-        local key = foreign_field_key(entity_name, ws_id, fname, value, pk)
+        local key = foreign_field_key(entity_name, ws_id, fname, value_str, pk)
         t:set(key, item_key)
       end
     end
