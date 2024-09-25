@@ -359,6 +359,12 @@ local function new_router(version)
   end
 
   local detect_changes = kong.core_cache
+
+  -- for dbless we will not check changes when initing
+  if db.strategy == "off" and get_phase() == "init_worker" then
+    detect_changes = false
+  end
+
   local counter = 0
   local page_size = db.routes.pagination.max_page_size
   for route, err in db.routes:each(page_size, GLOBAL_QUERY_OPTS) do
