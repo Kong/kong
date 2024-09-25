@@ -990,9 +990,10 @@ function Kong.init_worker()
     -- full sync cp/dp
     if not kong.sync then
       kong.clustering:init_worker()
+    end
 
     -- rpc and incremental sync
-    elseif kong.sync and is_http_module then
+    if kong.rpc and is_http_module then
 
       -- only available in http subsystem
       local cluster_tls = require("kong.clustering.tls")
