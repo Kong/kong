@@ -311,7 +311,7 @@ local function insert_entity_for_txn(t, entity_name, item, options)
           ws_id = kong.default_workspace
         end
 
-        local key = unique_field_key(entity_name, ws_id, fname, value_str)
+        local key = unique_field_key(entity_name, ws_id, fname, value_str or value)
         t:set(key, item_key)
       end
 
