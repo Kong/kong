@@ -1,8 +1,9 @@
 local helpers = require "spec.helpers"
 local cjson = require("cjson.safe")
 
+for _, inc_sync in ipairs { "on", "off"  } do
 for _, strategy in helpers.each_strategy() do
-  describe("Hybrid Mode RPC #" .. strategy, function()
+  describe("Hybrid Mode RPC #" .. strategy .. " inc_sync=" .. inc_sync, function()
 
     lazy_setup(function()
       helpers.get_db_utils(strategy, {
@@ -16,6 +17,7 @@ for _, strategy in helpers.each_strategy() do
         database = strategy,
         cluster_listen = "127.0.0.1:9005",
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        cluster_incremental_sync = inc_sync, -- incremental sync
       }))
 
       assert(helpers.start_kong({
@@ -27,6 +29,7 @@ for _, strategy in helpers.each_strategy() do
         cluster_control_plane = "127.0.0.1:9005",
         proxy_listen = "0.0.0.0:9002",
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        cluster_incremental_sync = inc_sync, -- incremental sync
       }))
     end)
 
@@ -60,4 +63,5 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
-end
+end -- for _, strategy
+end -- for inc_sync
