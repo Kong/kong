@@ -63,7 +63,7 @@ function _M:init_cp(manager)
       last_seen = ngx.time(),
       hostname = node_id,
       ip = kong.rpc.client_ips[node_id],   -- try to get the corret ip
-      version = "3.8.0.0",
+      version = "3.8.0.0",    -- XXX TODO
       sync_status = CLUSTERING_SYNC_STATUS.NORMAL,
       config_hash = string.format("%032d", default_namespace.version),
       rpc_capabilities = rpc_peers and rpc_peers[node_id] or {},
