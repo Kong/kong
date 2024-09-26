@@ -49,14 +49,12 @@ local UNINIT_WORKSPACE_ID = "00000000-0000-0000-0000-000000000000"
 
 
 local function get_default_workspace()
-  local ws_id = kong.default_workspace
-
-  if ws_id == UNINIT_WORKSPACE_ID then
+  if kong.default_workspace == UNINIT_WORKSPACE_ID then
     local res = assert(kong.db.workspaces:select_by_name("default"))
-    ws_id = res.id
+    kong.default_workspace = res.id
   end
 
-  return ws_id
+  return kong.default_workspace
 end
 
 
