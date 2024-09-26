@@ -254,7 +254,7 @@ describe("Admin API #off", function()
               - username: "bobby_in_yaml_body"
           ]]),
           headers = {
-            ["Content-Type"] = "text/yaml"
+            ["Content-Type"] = "application/yaml"
           },
         })
 
@@ -3475,7 +3475,7 @@ describe("Admin API #off worker_consistency=eventual", function()
         - name: prometheus
       ]]),
       headers = {
-        ["Content-Type"] = "text/yaml"
+        ["Content-Type"] = "application/yaml"
       },
     })
     assert.response(res).has.status(201)
@@ -3505,7 +3505,7 @@ describe("Admin API #off worker_consistency=eventual", function()
         - name: prometheus
       ]]),
       headers = {
-        ["Content-Type"] = "text/yaml"
+        ["Content-Type"] = "application/yaml"
       },
     })
     assert.response(res).has.status(201)
