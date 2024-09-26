@@ -258,7 +258,8 @@ function _M:sync_once(delay)
             crud_events[crud_events_n] = { delta.type, "delete", old_entity, }
           end
 
-          if delta.version ~= version then
+          -- XXX TODO: could delta.version be nil or ngx.null
+          if type(delta.version) == "number" and delta.version ~= version then
             version = delta.version
           end
         end
