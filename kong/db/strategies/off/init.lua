@@ -45,6 +45,21 @@ local _mt = {}
 _mt.__index = _mt
 
 
+local DEFAULT_WORKSPACE_ID = "00000000-0000-0000-0000-000000000000"
+
+
+local function get_default_workspace()
+  local ws_id = kong.default_workspace
+
+  if ws_id == DEFAULT_WORKSPACE_ID then
+    local res = assert(kong.db.workspaces:select_by_name("default"))
+    ws_id = res.id
+  end
+
+  return ws_id
+end
+
+
 local function process_ttl_field(entity)
   if entity and entity.ttl and entity.ttl ~= null then
     local ttl_value = entity.ttl - ngx.time()
@@ -209,7 +224,7 @@ local function select_by_field(self, field, value, options)
   assert(not options or options.workspace ~= null or unique_across_ws)
 
   if unique_across_ws then
-    ws_id = kong.default_workspace
+    ws_id = get_default_workspace()
   end
 
   key = unique_field_key(schema.name, ws_id, field, value)
@@ -275,7 +290,7 @@ function off.new(connector, schema, errors)
     -- This is not the id for the default workspace in DB-less.
     -- This is a sentinel value for the init() phase before
     -- the declarative config is actually loaded.
-    kong.default_workspace = "00000000-0000-0000-0000-000000000000"
+    kong.default_workspace = DEFAULT_WORKSPACE_ID
   end
 
   local name = schema.name
