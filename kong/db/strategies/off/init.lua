@@ -45,13 +45,13 @@ local _mt = {}
 _mt.__index = _mt
 
 
-local DEFAULT_WORKSPACE_ID = "00000000-0000-0000-0000-000000000000"
+local UNINIT_WORKSPACE_ID = "00000000-0000-0000-0000-000000000000"
 
 
 local function get_default_workspace()
   local ws_id = kong.default_workspace
 
-  if ws_id == DEFAULT_WORKSPACE_ID then
+  if ws_id == UNINIT_WORKSPACE_ID then
     local res = assert(kong.db.workspaces:select_by_name("default"))
     ws_id = res.id
   end
@@ -290,7 +290,7 @@ function off.new(connector, schema, errors)
     -- This is not the id for the default workspace in DB-less.
     -- This is a sentinel value for the init() phase before
     -- the declarative config is actually loaded.
-    kong.default_workspace = DEFAULT_WORKSPACE_ID
+    kong.default_workspace = UNINIT_WORKSPACE_ID
   end
 
   local name = schema.name
