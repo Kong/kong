@@ -37,6 +37,8 @@ function _M:init_cp(manager)
   -- Method: kong.sync.v2.get_delta
   -- Params: versions: list of current versions of the database
   -- { { namespace = "default", current_version = 1000, }, }
+  local purge_delay = manager.conf.cluster_data_plane_purge_delay
+
   manager.callbacks:register("kong.sync.v2.get_delta", function(node_id, current_versions)
     ngx_log(ngx_DEBUG, "[kong.sync.v2] config push (connected client)")
 
@@ -65,7 +67,7 @@ function _M:init_cp(manager)
       sync_status = CLUSTERING_SYNC_STATUS.NORMAL,
       config_hash = string.format("%032d", default_namespace.version),
       rpc_capabilities = rpc_peers and rpc_peers[node_id] or {},
-    })
+    }, { ttl = purge_delay })
     if not ok then
       ngx_log(ngx_ERR, "unable to update clustering data plane status: ", err)
     end
@@ -169,6 +171,7 @@ function _M:sync_once(delay)
     end
 
     local res, err = concurrency.with_worker_mutex(SYNC_MUTEX_OPTS, function()
+      -- here must be 2 times
       for i = 1, 2 do
         local ns_deltas, err = kong.rpc:call("control_plane", "kong.sync.v2.get_delta",
                                              { default =
