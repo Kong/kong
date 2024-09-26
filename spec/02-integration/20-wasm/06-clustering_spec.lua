@@ -72,6 +72,7 @@ local function new_wasm_filter_directory()
 end
 
 
+-- XXX TODO: enable inc_sync = "on"
 for _, inc_sync in ipairs { "off"  } do
 describe("#wasm - hybrid mode #postgres" .. " inc_sync=" .. inc_sync, function()
   local cp_prefix = "cp"
