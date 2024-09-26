@@ -100,9 +100,6 @@ describe("kong vault #" .. strategy, function()
   end)
 
   describe("[env] instantiated #" .. strategy, function()
-    -- XXX FIXME
-    local skip_off_strategy = strategy == "off" and pending or it
-
     local db, _, yaml_file
     lazy_setup(function()
       _, db = helpers.get_db_utils(strategy, {
@@ -137,7 +134,7 @@ describe("kong vault #" .. strategy, function()
       helpers.stop_kong()
     end)
 
-    skip_off_strategy("vault get env", function()
+    it("vault get env", function()
       finally(function()
         helpers.unsetenv("SECRETS_TEST")
       end)
@@ -152,7 +149,7 @@ describe("kong vault #" .. strategy, function()
       assert.is_true(ok)
     end)
 
-    skip_off_strategy("vault get non-existing env", function()
+    it("vault get non-existing env", function()
       if strategy == "off" then
         return
       end
