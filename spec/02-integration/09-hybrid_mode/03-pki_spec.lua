@@ -92,11 +92,11 @@ describe("CP/DP PKI sync #" .. strategy .. " inc_sync=" .. inc_sync, function()
 
   describe("sync works", function()
     -- XXX FIXME
-    local skip_off_strategy = strategy == "off" and pending or it
+    local skip_inc_sync = inc_sync == "on" and pending or it
 
     local route_id
 
-    skip_off_strategy("proxy on DP follows CP config", function()
+    skip_inc_sync("proxy on DP follows CP config", function()
       local admin_client = helpers.admin_client(10000)
       finally(function()
         admin_client:close()
