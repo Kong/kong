@@ -84,6 +84,11 @@ local function is_timeout(err)
 end
 
 
+local function is_closed(err)
+  return err and sub(err, -6) == "closed"
+end
+
+
 local function extract_dp_cert(cert)
   local expiry_timestamp = cert:get_not_after()
   -- values in cert_details must be strings
@@ -523,7 +528,12 @@ function _M:handle_cp_websocket(cert)
   end
 
   if perr then
-    ngx_log(ngx_ERR, _log_prefix, perr, log_suffix)
+    if is_closed(perr) then
+      ngx_log(ngx_DEBUG, _log_prefix, "data plane closed the connection", log_suffix)
+    else
+      ngx_log(ngx_ERR, _log_prefix, perr, log_suffix)
+    end
+
     return ngx_exit(ngx_ERROR)
   end
 
