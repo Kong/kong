@@ -2,8 +2,6 @@ local _M = {}
 local _MT = { __index = _M, }
 
 
---local semaphore = require("ngx.semaphore")
---local lmdb = require("resty.lmdb")
 local txn = require("resty.lmdb.transaction")
 local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
@@ -15,10 +13,15 @@ local delete_entity_for_txn = declarative.delete_entity_for_txn
 local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local SYNC_MUTEX_OPTS = { name = "get_delta", timeout = 0, }
+
+
+local fmt = string.format
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
 local ngx_INFO = ngx.INFO
 local ngx_DEBUG = ngx.DEBUG
+
+
 -- number of versions behind before a full sync is forced
 local FULL_SYNC_THRESHOLD = 512
 
@@ -65,7 +68,7 @@ function _M:init_cp(manager)
       ip = kong.rpc.client_ips[node_id],   -- try to get the corret ip
       version = "3.8.0.0",    -- XXX TODO
       sync_status = CLUSTERING_SYNC_STATUS.NORMAL,
-      config_hash = string.format("%032d", default_namespace.version),
+      config_hash = fmt("%032d", default_namespace.version),
       rpc_capabilities = rpc_peers and rpc_peers[node_id] or {},
     }, { ttl = purge_delay })
     if not ok then
@@ -264,7 +267,7 @@ function _M:sync_once(delay)
           end
         end
 
-        t:set(DECLARATIVE_HASH_KEY, string.format("%032d", version))
+        t:set(DECLARATIVE_HASH_KEY, fmt("%032d", version))
         local ok, err = t:commit()
         if not ok then
           return nil, err

@@ -30,17 +30,17 @@ end
 
 
 function _M:init_worker()
+  -- is CP, enable clustering broadcasts
   if self.is_cp then
-    -- enable clustering broadcasts in CP
     events.init()
 
     self.strategy:init_worker()
     return
   end
 
-  -- is dp, sync in worker 0
+  -- is DP, sync in worker 0
   if ngx.worker.id() == 0 then
-    assert(self.rpc:sync_once(0.5))
+    assert(self.rpc:sync_once(0.5)) -- TODO: 0.5 is enough
     assert(ngx.timer.every(30, function(premature)
       if premature then
         return
