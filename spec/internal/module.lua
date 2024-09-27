@@ -21,9 +21,13 @@ do
 
     sys.setenv("KONG_ROUTER_FLAVOR", flavor)
 
+    -- reload db and global module
     reload("kong.db.schema.entities.routes_subschemas")
     reload("kong.db.schema.entities.routes")
+    reload("kong.cache")
+    reload("kong.global")
 
+    -- reload helpers module
     local helpers = reload("spec.helpers")
 
     sys.unsetenv("KONG_ROUTER_FLAVOR")
