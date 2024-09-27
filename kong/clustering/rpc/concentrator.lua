@@ -5,6 +5,7 @@ local _MT = { __index = _M, }
 local uuid = require("resty.jit-uuid")
 local queue = require("kong.clustering.rpc.queue")
 local cjson = require("cjson")
+local events = require("kong.clustering.events")
 local jsonrpc = require("kong.clustering.rpc.json_rpc_v2")
 local rpc_utils = require("kong.clustering.rpc.utils")
 
@@ -213,6 +214,9 @@ end
 
 
 function _M:start(delay)
+  -- enable clustering broadcasts in CP
+  events.init()
+
   if not self.worker_id then
     -- this can not be generated inside `:new()` as ngx.worker.id()
     -- does not yet exist there and can only be generated inside
