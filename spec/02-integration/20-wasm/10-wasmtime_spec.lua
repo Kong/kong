@@ -76,6 +76,8 @@ describe("#wasm wasmtime (role: " .. role .. ")", function()
     local cp_prefix = "./wasm-cp"
 
     lazy_setup(function()
+      helpers.setenv("KONG_CLUSTER_INCREMENTAL_SYNC", inc_sync)
+
       if role == "traditional" then
         helpers.get_db_utils("postgres")
       end
@@ -130,6 +132,8 @@ describe("#wasm wasmtime (role: " .. role .. ")", function()
       if role == "data_plane" then
         helpers.stop_kong(cp_prefix)
       end
+
+      helpers.unsetenv("KONG_CLUSTER_INCREMENTAL_SYNC")
     end)
 
     it("does not introduce any errors", function()
