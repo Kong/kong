@@ -555,7 +555,6 @@ end
 local function declarative_init_build()
   local default_ws = kong.db.workspaces:select_by_name("default")
   kong.default_workspace = default_ws and default_ws.id or kong.default_workspace
-  --ngx.log(ngx.ERR, "default_ws: ", require("inspect")(default_ws))
 
   local ok, err = runloop.build_plugins_iterator("init")
   if not ok then
@@ -917,7 +916,6 @@ function Kong.init_worker()
       end
 
     elseif declarative_entities then
-      --kong.core_cache = core_cache
 
       ok, err = load_declarative_config(kong.configuration,
                                         declarative_entities,
@@ -943,8 +941,6 @@ function Kong.init_worker()
       end
     end
   end
-
-  --kong.core_cache = core_cache
 
   local is_not_control_plane = not is_control_plane(kong.configuration)
   if is_not_control_plane then
