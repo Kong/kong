@@ -89,8 +89,8 @@ local function send_entries_to_datadog(conf, messages)
                                 message.response and message.response.status or "-",
                                 consumer_id, metric_config.tags,
                                 conf,
-                                message.route and message.route.name and gsub(message.route.name ~= null and
-                                message.route.name, "%.", "_") or "")
+                                message.route and (message.route.name and gsub(message.route.name ~= null and
+                                message.route.name, "%.", "_") or message.route.id) or "")
 
       logger:send_statsd(stat_name, stat_value,
                          logger.stat_types[metric_config.stat_type],
